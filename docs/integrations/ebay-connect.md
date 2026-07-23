@@ -107,6 +107,18 @@ The **RuName** is a registered redirect name, **not** a literal URL. Per environ
 Register a **separate RuName per environment**; set its accept/decline/privacy URLs in
 the portal. The app must be approved for every scope requested (see below).
 
+**`invalid_request` on authorize (before consent):** eBay rejected `client_id` +
+`redirect_uri` (RuName). Almost always the RuName string in `EBAY_RU_NAME` does
+**not** belong to the Production App ID in `EBAY_APP_ID` — classic failure mode is
+a **Sandbox RuName** pasted into Production env (sandbox RuNames look similar:
+`Densense_LLC-Densense-CycleF-…` but the suffix differs). Accept URL being correct
+is not enough — the **RuName identifier** must be the Production one under the same
+Production keyset. Connect preflights this and redirects to
+`?error=ebay_oauth_runame_invalid` instead of eBay’s error page.
+
+**`invalid_code` on token exchange (after consent):** code expired/reused, or
+authorize RuName ≠ exchange RuName / App ID. Do not refresh the callback URL.
+
 ### Marketplace Account Deletion / Closure (Production keyset unlock)
 
 eBay **hard-blocks new Production keysets** until this is configured. It is an

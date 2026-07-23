@@ -1,5 +1,5 @@
 import type React from 'react';
-import { Package, PackageOpen, Truck, AlertTriangle, Clock, Mail, Unlink } from '@/components/Icons';
+import { Package, Truck, AlertTriangle, Clock, Unlink } from '@/components/Icons';
 import type { IncomingDeliveryState, IncomingSummary } from './incoming-summary-types';
 
 export interface TileSpec {
@@ -12,19 +12,16 @@ export interface TileSpec {
   title: string;
 }
 
+/**
+ * Incoming dock hunt tiles. One rose delivered attention tile
+ * (`DELIVERED_UNOPENED`); email delivery is a STN writer (not a parallel tile).
+ * `DELIVERED_NOT_UNBOXED` lives on Unbox KPI, not this hunt strip.
+ */
 export const TILES: TileSpec[] = [
   { state: null, label: 'All issued', key: 'issued', tone: 'slate', icon: Package, title: 'Every PO issued upstream and not yet received locally.' },
   {
     state: 'DELIVERED_UNOPENED', label: 'Delivered · not scanned', key: 'delivered_unopened', tone: 'rose', icon: AlertTriangle,
-    title: 'Carrier marked the box delivered AND no operator has scanned the tracking# at the receiving station yet (no receiving_scans row). Physically here, untouched — top priority.',
-  },
-  {
-    state: 'DELIVERED_NOT_UNBOXED', label: 'Delivered · not unboxed', key: 'delivered_not_unboxed', tone: 'rose', icon: PackageOpen,
-    title: 'Carrier marked delivered AND the carton has not been unboxed yet (qty still 0 / unboxed_at null). Includes dock-scanned boxes still waiting to be opened.',
-  },
-  {
-    state: 'DELIVERED_EMAIL', label: 'Delivered (email)', key: 'delivered_email', tone: 'rose', icon: Mail,
-    title: 'An "ORDER DELIVERED" email (eBay) reported this order delivered AND no operator has scanned it at the receiving station yet. The email-driven counterpart to the carrier signal — catches boxes carrier polling misses.',
+    title: 'Carrier marked the box delivered AND no operator has scanned the tracking# at the receiving station yet (no receiving_scans row). Physically here, untouched — top priority. Age bands (<24h / 24–48h / >48h) drive burn-down; >48h needs claims attention.',
   },
   { state: 'ARRIVING_TODAY', label: 'Arriving today', key: 'arriving_today', tone: 'amber', icon: Truck, title: 'Carrier currently reports "out for delivery".' },
   {

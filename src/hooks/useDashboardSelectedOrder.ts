@@ -119,7 +119,19 @@ export function useDashboardSelectedOrder(detailsEnabled: boolean) {
     }
   }, [openOrderId, replaceOpenOrderId]);
 
+  // Latest-ref so the disable effect below depends only on `detailsEnabled`.
+  // clearSelectedOrder's identity churns with every searchParams change; with
+  // it as a dep the effect re-fired per URL update, re-dispatching
+  // close-shipped-details, whose handleClose stripped `openOrderId` — the
+  // Search-mode detail ↔ list flash loop.
+  const clearSelectedOrderRef = useRef(clearSelectedOrder);
+  clearSelectedOrderRef.current = clearSelectedOrder;
+
   useEffect(() => {
+    // Disabled (Search / Receiving / FBA): this hook must not touch the URL or
+    // react to panel events at all — `openOrderId` belongs to Dashboard Search
+    // (`useDashboardSearchOrder`) there.
+    if (!detailsEnabled) return;
     const handleOpen = (e: CustomEvent<ShippedOrder>) => {
       const payload = getOpenShippedDetailsPayload(e.detail);
       if (!payload?.order) return;
@@ -153,15 +165,19 @@ export function useDashboardSelectedOrder(detailsEnabled: boolean) {
       window.removeEventListener('close-shipped-details' as any, handleClose as any);
       window.removeEventListener('order-assignment-updated' as any, handleAssignmentUpdate as any);
     };
-  }, [applySelectedOrder, clearSelectedOrder, selectedContext]);
+  }, [detailsEnabled, applySelectedOrder, clearSelectedOrder, selectedContext]);
 
   useEffect(() => {
     if (detailsEnabled) return;
     dispatchCloseShippedDetails();
-    clearSelectedOrder();
-  }, [clearSelectedOrder, detailsEnabled]);
+    // Do not strip `openOrderId` from the URL — Dashboard Search mode owns that
+    // param for `SearchOrderDetailShell`. Syncing URL here raced canonicalize
+    // and bounced operators back to a q-only list until they clicked the sidebar.
+    clearSelectedOrderRef.current(false);
+  }, [detailsEnabled]);
 
   useEffect(() => {
+    if (!detailsEnabled) return;
     if (openOrderId == null) {
       // URL has caught up to a cleared state; the close-in-flight guard is no
       // longer needed.
@@ -232,7 +248,7 @@ export function useDashboardSelectedOrder(detailsEnabled: boolean) {
     return () => {
       cancelled = true;
     };
-  }, [openOrderId, queryClient, selectedShipped]);
+  }, [detailsEnabled, openOrderId, queryClient, selectedShipped]);
 
   const requestCloseSelectedOrder = useCallback(() => {
     dispatchCloseShippedDetails();

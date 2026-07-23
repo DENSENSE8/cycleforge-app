@@ -262,22 +262,31 @@ async function fetchTimelineSpines(args: {
   ]);
 
   const ticketLinks: TicketLinkTimelineRow[] = [
-    ...(linkRes.rows ?? []).map((r) => ({
-      id: r.id,
-      at: r.created_at,
-      kind: 'linked' as const,
-      ticketLabel: r.zendesk_ticket_id ? `#${r.zendesk_ticket_id}` : '#—',
-      actorName: r.actor_name,
-    })),
-    ...(shipLinkRes.rows ?? []).map((r) => ({
-      id: `ops:${r.id}`,
-      at: r.occurred_at,
-      kind: (r.event_type === 'TICKET_UNLINKED' ? 'unlinked' : 'linked') as
-        | 'linked'
-        | 'unlinked',
-      ticketLabel: r.payload?.zendeskTicketId ? `#${r.payload.zendeskTicketId}` : '#—',
-      actorName: r.actor_name,
-    })),
+    ...(linkRes.rows ?? []).map((r) => {
+      const ticketId = r.zendesk_ticket_id ? String(r.zendesk_ticket_id).replace(/^#/, '') : '';
+      return {
+        id: r.id,
+        at: r.created_at,
+        kind: 'linked' as const,
+        ticketLabel: ticketId ? `#${ticketId}` : '#—',
+        actorName: r.actor_name,
+        href: ticketId ? `/support?ticket=${ticketId}` : null,
+      };
+    }),
+    ...(shipLinkRes.rows ?? []).map((r) => {
+      const raw = r.payload?.zendeskTicketId;
+      const ticketId = raw != null ? String(raw).replace(/^#/, '') : '';
+      return {
+        id: `ops:${r.id}`,
+        at: r.occurred_at,
+        kind: (r.event_type === 'TICKET_UNLINKED' ? 'unlinked' : 'linked') as
+          | 'linked'
+          | 'unlinked',
+        ticketLabel: ticketId ? `#${ticketId}` : '#—',
+        actorName: r.actor_name,
+        href: ticketId ? `/support?ticket=${ticketId}` : null,
+      };
+    }),
   ];
 
   return mergeSupportContextTimeline({

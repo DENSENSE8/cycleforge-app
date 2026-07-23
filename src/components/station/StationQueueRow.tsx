@@ -53,6 +53,7 @@ export function StationQueueRow({
     dot: SOURCE_DOT_BG[src.dotType],
     label: SOURCE_DOT_LABEL[src.dotType],
     description: SOURCE_DOT_LABEL[src.dotType],
+    pill: 'bg-surface-canvas text-text-muted ring-border-soft',
   };
   const serialChip =
     queueMode === 'tech' ? <SerialChip value={String(record.serial_number || '')} width="w-fit max-w-full" /> : undefined;
@@ -64,7 +65,7 @@ export function StationQueueRow({
       selectMode={selectMode}
       isChecked={isChecked}
       isMobile={isMobile}
-      useAlternateStripe={index % 2 === 0}
+      useAlternateStripe={index % 2 === 1}
       testerDisplay="---"
       packerDisplay="---"
       testerId={null}

@@ -23,6 +23,7 @@ import {
   useSensor,
   useSensors,
 } from '@dnd-kit/core';
+import { requestConfirm } from '@/design-system/components/confirm';
 import { sortableKeyboardCoordinates, arrayMove } from '@dnd-kit/sortable';
 import { toast } from '@/lib/toast';
 import type { BlockInstanceConfig, SlotId, StationConfig } from '@/lib/stations/contract';
@@ -62,7 +63,7 @@ export interface StationEditorApi {
   sortableIds: string[];
   sensors: ReturnType<typeof useSensors>;
   enterEdit: () => void;
-  exitEdit: () => void;
+  exitEdit: () => Promise<void>;
   openPalette: () => void;
   closePalette: () => void;
   setConfiguring: (inst: BlockInstanceConfig | null) => void;
@@ -100,8 +101,15 @@ export function useStationEditor({
     setEditing(true);
   }, [getBaseConfig]);
 
-  const exitEdit = useCallback(() => {
-    if (dirty && !window.confirm('Discard unsaved block changes?')) return;
+  const exitEdit = useCallback(async () => {
+    if (dirty) {
+      const ok = await requestConfirm({
+        description: 'Discard unsaved block changes?',
+        tone: 'primary',
+        confirmLabel: 'Discard',
+      });
+      if (!ok) return;
+    }
     setEditing(false);
     setDraftConfig(null);
     setDirty(false);

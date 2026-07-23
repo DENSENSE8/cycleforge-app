@@ -6,9 +6,11 @@
  *
  * Station Workbench anatomy (same as Unbox / Testing):
  *   StationContextBar (density=bar identity + corner toolbar) →
+ *   mid-canvas StationRightEdgeAction (Open in Unbox) →
  *   SectionTabsSlider (Overview / Staging / …) → Save-for-unbox dock.
  *
- * Classify pills live in the Overview tab — not expanded in the entity header.
+ * Classify pills in the bookmark open the matching Classify accordion row
+ * (via `onClassifyPillOpen`) — they do not expand a horizontal strip in the header.
  * All state lives in the shared `useUnboxLineController` so triage and unbox
  * stay in lock-step on carton data without sharing a JSX shell.
  */
@@ -25,10 +27,17 @@ import {
   StationContextBar,
   StationHeaderToolbar,
   StationMoreDetails,
+  StationRightEdgeAction,
+  stationRightEdgeActionHostClass,
 } from '@/components/station/entity-context';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { IconButton } from '@/design-system/primitives';
+import {
+  HEADER_ICON_BTN_CLASS,
+  TOP_CHROME_ICON_GLYPH,
+} from '@/components/layout/header-shell';
 import { openInUnboxHref } from '@/lib/receiving/surface-path';
+import { cn } from '@/utils/_cn';
 import { resolveTriageTerminal } from './terminal/triage-terminal';
 import { invalidateReceivingFeeds } from '@/lib/queries/receiving-queries';
 import { WorkspaceActionFeedbackSlot } from '../workspace/WorkspaceActionFeedbackSlot';
@@ -70,6 +79,18 @@ export function TriagePanel({
   const [activeTab, setActiveTab] = useState<TriageView>('overview');
   const [pairingOpen, setPairingOpen] = useState(false);
   const togglePairing = useCallback(() => setPairingOpen((v) => !v), []);
+  const [classifyExpand, setClassifyExpand] = useState<{
+    dimension: 'urgency' | 'platform' | 'type';
+    requestId: number;
+  } | null>(null);
+
+  const openClassifyFromHeader = useCallback((picker: 'urgency' | 'platform' | 'type') => {
+    setActiveTab('overview');
+    setClassifyExpand((prev) => ({
+      dimension: picker,
+      requestId: (prev?.requestId ?? 0) + 1,
+    }));
+  }, []);
 
   useEffect(() => {
     setActionFeedback(null);
@@ -78,6 +99,7 @@ export function TriagePanel({
   }, [row.id]);
 
   // TriageFocusResolver — on open, switch to the first unmet SectionTabsSlider tab.
+  // Pair focus also expands Package Pairing (overview defaults it collapsed).
   useEffect(() => {
     const facts = deriveTriageFocusFacts(
       row,
@@ -92,6 +114,7 @@ export function TriagePanel({
     }
     const tab = triageFocusToTab(target);
     if (tab) setActiveTab(tab);
+    if (target === 'pair') setPairingOpen(true);
   }, [row.id]);
 
   const handleSaveForUnbox = useCallback(async () => {
@@ -164,6 +187,8 @@ export function TriagePanel({
         onItemDescFeedback: handleItemDescFeedback,
         onItemDescSaved: handleItemDescSaved,
         onNotesFeedback: setActionFeedback,
+        classifyExpandDimension: classifyExpand?.dimension ?? null,
+        classifyExpandRequestId: classifyExpand?.requestId ?? 0,
       }),
     [
       row,
@@ -174,43 +199,53 @@ export function TriagePanel({
       togglePairing,
       handleItemDescFeedback,
       handleItemDescSaved,
+      classifyExpand,
     ],
   );
 
-  // Unfound: pairing stays visible with no Edit-PO toggle (product not at
-  // door yet — Arrival pairing has no Inventory Item / Auto-match to hide).
-  const editPoControl = c.isUnfound ? undefined : (
+  // PairingTogglePill always available — Arrival defaults pairing collapsed
+  // (matched + unfound); accordion header + this pill both toggle.
+  const editPoControl = (
     <PairingTogglePill
       open={pairingOpen}
       onToggle={togglePairing}
-      closedLabel="Edit PO — show package pairing"
+      closedLabel="Show package pairing"
       openLabel="Hide package pairing"
     />
   );
 
   const router = useRouter();
-  const openInUnboxControl =
-    row.receiving_id != null ? (
-      <HoverTooltip label="Open this carton in unbox (serials, photos, receive)" asChild focusable={false}>
-        <IconButton
-          icon={<PackageOpen className="h-4 w-4" />}
-          ariaLabel="Open in unbox"
-          tone="accent"
-          size="sm"
-          onClick={() => router.push(openInUnboxHref(row.receiving_id!, row.id))}
-          className="border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100"
-        />
-      </HoverTooltip>
-    ) : null;
+  // PairingTogglePill only in the tabs rail — Open in Unbox is the
+  // mid-canvas right-edge sliced bookmark (not moreDetails / not SlicedActionDock).
+  const sectionTabsRightSlot = editPoControl;
 
-  // SectionTabsSlider rightSlot: Open-in-unbox always (far right); Edit-PO when matched.
-  const sectionTabsRightSlot =
-    editPoControl || openInUnboxControl ? (
-      <div className="flex shrink-0 items-center gap-1.5">
-        {editPoControl}
-        {openInUnboxControl}
-      </div>
-    ) : undefined;
+  const openInUnboxEdge =
+    row.receiving_id != null ? (
+      <StationRightEdgeAction
+        className={cn(
+          stationRightEdgeActionHostClass,
+          'border-blue-200 bg-blue-50/90',
+        )}
+        data-testid="triage-open-in-unbox-edge"
+      >
+        <HoverTooltip
+          label="Open this carton in unbox (serials, photos, receive)"
+          asChild
+          focusable={false}
+        >
+          <IconButton
+            icon={<PackageOpen className={TOP_CHROME_ICON_GLYPH} />}
+            ariaLabel="Open in unbox"
+            size="md"
+            onClick={() => router.push(openInUnboxHref(row.receiving_id!, row.id))}
+            className={cn(
+              HEADER_ICON_BTN_CLASS,
+              'text-blue-700 hover:bg-blue-100 hover:text-blue-800',
+            )}
+          />
+        </HoverTooltip>
+      </StationRightEdgeAction>
+    ) : null;
 
   const buildTerminal = useCallback(
     (kind: string) =>
@@ -244,7 +279,9 @@ export function TriagePanel({
               staffId={staffId}
               c={c}
               expandClassifyWhenPending={false}
-              showClassifyControls={false}
+              showClassifyControls
+              classifyInteractive
+              onClassifyPillOpen={openClassifyFromHeader}
               density="bar"
             />
           }
@@ -268,6 +305,7 @@ export function TriagePanel({
             </StationMoreDetails>
           }
         />
+        {openInUnboxEdge}
         <StationWorkbench
           ambientWash={false}
           className="relative z-0 h-full flex-1 bg-transparent"

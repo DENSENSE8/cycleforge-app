@@ -25,9 +25,8 @@ export interface LabelPrintFeedItem {
 /**
  * Recently-printed label feed, backed by `station_activity_logs` rows
  * written by POST /api/post-multi-sn. Replaces the per-device localStorage
- * `useLabelRecents` for the Labels → Recent sub-view (the localStorage
- * version still drives the pre-search recents pinned at the top of the
- * Products sub-view).
+ * `useLabelRecents` for local SKU pins (the Products Labels Printed rail now
+ * uses this server feed via ProductLabelsRecentRail).
  */
 export function useLabelPrintFeed(limit = 50) {
   return useQuery<LabelPrintFeedItem[]>({

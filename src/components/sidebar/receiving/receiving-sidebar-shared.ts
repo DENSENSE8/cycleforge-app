@@ -13,6 +13,7 @@ import { RECEIVING_MODE_ICONS } from '@/lib/nav/station-nav-icons';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { SOURCE_PLATFORMS } from '@/lib/source-platform';
+import { RECEIVING_TYPES } from '@/lib/receiving/receiving-type-meta';
 import type { ClaimSeverity, ClaimType } from '@/lib/receiving-claim-type';
 
 // ── Sidebar mode switcher ───────────────────────────────────────────────────
@@ -170,15 +171,14 @@ export const RETURN_PLATFORM_LABELS: Record<string, string> = {
   ECWID: 'Ecwid',
 };
 
-export const RECEIVING_TYPE_OPTS = [
-  { value: 'PO', label: 'PO' },
-  { value: 'RETURN', label: 'Return' },
-  { value: 'TRADE_IN', label: 'Trade In' },
-  { value: 'PICKUP', label: 'Pick Up' },
-];
+/** Built-in type pills — derived from the receiving-type SoT (incl. Repair). */
+export const RECEIVING_TYPE_OPTS = RECEIVING_TYPES.map((t) => ({
+  value: t.value,
+  label: t.label,
+}));
 
 /** Carton-level default types the carton pill can set (PICKUP is a carton source, not a pill type). */
-export const CARTON_INTAKE_TYPES = ['PO', 'RETURN', 'TRADE_IN'] as const;
+export const CARTON_INTAKE_TYPES = ['PO', 'RETURN', 'REPAIR', 'TRADE_IN'] as const;
 
 // Pill options + printed-label map both derive from the platform SoT so a
 // platform never reads two ways across surfaces. Add a platform in

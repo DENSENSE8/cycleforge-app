@@ -72,7 +72,7 @@ export interface ShippedQueryParams {
   phase?: 'spine' | 'full';
 }
 
-/** Pending queue (label-assigned, not yet packed). Matches `PendingOrdersTable`. */
+/** Pending queue (label-assigned, not yet packed). Matches the Pending grid / UnshippedTable. */
 export function pendingOrdersQuery({
   searchQuery = '',
   packedBy,

@@ -1,5 +1,5 @@
 /**
- * Single source of truth for "delivered but not scanned" (Phase B).
+ * Single source of truth for "delivered but not scanned" (dock hunt queue).
  *
  * Every read path — the Incoming tile count, the standalone list endpoint, and
  * the main receiving-lines `delivery_state` — derives its delivered-unscanned
@@ -8,20 +8,36 @@
  *
  * The unit is the **shipment**, not the PO line: a delivered-unscanned package
  * is an inbound STN row that is delivered, within the window, and has no
- * operator `receiving_scans` against any linked receiving row. (PO-line
- * anchoring reads ~0 because most inbound shipments are registered from a PO
- * reference# and never get their own receiving row — see the historic recount
- * comment this helper replaces.)
+ * operator `receiving_scans` against any linked receiving row.
+ *
+ * Exit rule (physical-first): a dock `receiving_scans` match (or window
+ * age-out) is the only way off this queue. Zoho terminal status must NEVER
+ * hide an unscanned delivered box — ERP state is enrichment/badge only.
  */
 
-import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 
-/** Shared window for delivered-unscanned across count + list (R5/B3). */
-export const DELIVERED_UNSCANNED_WINDOW_DAYS = 30;
+/** Hunt-queue window — older boxes belong in Loss/Claims (admin), not the dock. */
+export const DELIVERED_UNSCANNED_WINDOW_DAYS = 14;
 
 /** Defensive cap on the rendered list. */
 export const DELIVERED_UNSCANNED_CAP = 100;
+
+/** Hours-since-delivered SLA bands for the hunt queue (derived from delivered_at). */
+export const DELIVERED_UNSCANNED_AGE_BANDS = ['lt_24h', 'h24_48', 'gt_48h'] as const;
+export type DeliveredUnscannedAgeBand = (typeof DELIVERED_UNSCANNED_AGE_BANDS)[number];
+
+/**
+ * SQL CASE expression over `stn.delivered_at` → age band. Callers that already
+ * projected `delivered_at` can pass that column name instead.
+ */
+export function deliveredUnscannedAgeBandSql(deliveredAtExpr = 'stn.delivered_at'): string {
+  return `CASE
+    WHEN ${deliveredAtExpr} > NOW() - interval '24 hours' THEN 'lt_24h'
+    WHEN ${deliveredAtExpr} > NOW() - interval '48 hours' THEN 'h24_48'
+    ELSE 'gt_48h'
+  END`;
+}
 
 /**
  * source_system values that mark a shipment as INBOUND (a dock arrival) even
@@ -148,25 +164,6 @@ export function deliveredUnscannedBaseSql(windowParam: string, orgParam?: string
          AND ${SHIPMENT_SCAN_MATCH_CONDITION}
     )`
     : SHIPMENT_SCANNED_PREDICATE;
-  const notZohoReceived = orgParam
-    ? `NOT EXISTS (
-  SELECT 1 FROM zoho_po_mirror mm
-   WHERE COALESCE(mm.status, '') IN (${ZOHO_TERMINAL_STATUSES_SQL})
-     AND (
-       mm.zoho_purchaseorder_id = (
-         SELECT r.zoho_purchaseorder_id FROM receiving_carton r
-          WHERE r.shipment_id = stn.id AND r.zoho_purchaseorder_id IS NOT NULL
-            AND r.organization_id = ${orgParam}
-          ORDER BY r.id LIMIT 1
-       )
-       OR (
-         COALESCE(mm.reference_number, '') <> ''
-         AND regexp_replace(upper(mm.reference_number), '[^A-Z0-9]', '', 'g')
-             = stn.tracking_number_normalized
-       )
-     )
-)`
-    : NOT_ZOHO_RECEIVED_SHIPMENT_PREDICATE;
   const zohoPoResolved = orgParam
     ? `(
   EXISTS (
@@ -190,24 +187,21 @@ export function deliveredUnscannedBaseSql(windowParam: string, orgParam?: string
            stn.tracking_number_raw,
            stn.tracking_number_normalized,
            stn.delivered_at::text       AS delivered_at,
-           stn.source_system
+           stn.source_system,
+           ${deliveredUnscannedAgeBandSql('stn.delivered_at')} AS age_band
       FROM shipping_tracking_numbers stn
      WHERE stn.is_delivered = true
        AND stn.delivered_at > NOW() - (${windowParam} || ' days')::interval
        AND ${inboundPredicate}
        AND NOT ${scannedPredicate}
-       -- A delivered box whose Zoho PO already reads received/closed/cancelled
-       -- is no longer "needs receiving" — drop it so the carrier surface matches
-       -- the email path's NOT_ZOHO_RECEIVED guard. The PO is resolved the same
-       -- two ways the list endpoint uses (linked receiving row, else tracking#
-       -- → reference#), keeping count === list.length.
-       AND ${notZohoReceived}
-       -- Delivered-unscanned is strictly Zoho-expected inbound work: the
-       -- tracking# must resolve to a PO (reference# match or linked receiving
-       -- row). Unmatched dock scans (receiving_lookup_po) and orphan STNs
-       -- without a Zoho PO belong in triage / PO Mailbox, not here.
+       -- Physical-first: dock scan is the only operational exit. Zoho terminal
+       -- status is enrichment on the list row, never a hard exclusion — ERP
+       -- "received" must not hide an unscanned box on the floor.
+       -- Delivered-unscanned is Zoho-resolved inbound work: the tracking# must
+       -- resolve to a PO (reference# match or linked receiving row). Unmatched
+       -- dock scans and orphan STNs belong in triage / PO Mailbox, not here.
        AND ${zohoPoResolved}
-     ORDER BY stn.tracking_number_normalized, stn.delivered_at DESC
+     ORDER BY stn.tracking_number_normalized, stn.delivered_at ASC
   `;
 }
 
@@ -230,12 +224,10 @@ const ZOHO_TERMINAL_STATUSES_SQL = ZOHO_TERMINAL_STATUSES.map((s) => `'${s}'`).j
 export const NOT_ZOHO_RECEIVED_PREDICATE = `COALESCE(mirror.status, '') NOT IN (${ZOHO_TERMINAL_STATUSES_SQL})`;
 
 /**
- * Shipment-anchored counterpart to {@link NOT_ZOHO_RECEIVED_PREDICATE} for the
- * delivered-unscanned base (alias `stn`), which has no `zoho_po_mirror` join.
- * True when the shipment's resolved PO is NOT in a Zoho-terminal status. The PO
- * is resolved exactly as the list endpoint does — the linked `receiving` row's
- * PO id, else the normalized tracking# matched back to
- * `zoho_po_mirror.reference_number` — so the base and the rendered list agree.
+ * Shipment-anchored counterpart to {@link NOT_ZOHO_RECEIVED_PREDICATE}.
+ * Kept for Incoming PO-line surfaces and badge resolution. The delivered-
+ * unscanned hunt queue does NOT use this — physical dock scan is the sole exit
+ * (see {@link deliveredUnscannedBaseSql}).
  */
 export const NOT_ZOHO_RECEIVED_SHIPMENT_PREDICATE = `NOT EXISTS (
   SELECT 1 FROM zoho_po_mirror mm
@@ -297,87 +289,6 @@ export const CARRIER_MISMATCH_PREDICATE = `(
   )
 )`;
 
-/**
- * The email-driven "delivered but not scanned" base query — the eBay-mailbox
- * counterpart to {@link deliveredUnscannedBaseSql}. An order is here when:
- *   - an "ORDER DELIVERED" email logged a delivery signal for its order#, AND
- *   - that order# maps to a still-incoming receiving_line (EXPECTED, qty 0,
- *     Zoho PO not received/closed), AND
- *   - no operator has scanned it at the dock yet (no receiving_scans row).
- *
- * The join key is the normalized order# — identical normalization on both
- * sides (email_delivery_signals.order_number_norm ===
- * receiving_line_zoho.zoho_purchaseorder_number_norm), which is how an eBay
- * sales-order# auto-bound into the carton PO# lines up. One row per order#,
- * most-recent delivery email winning the dedupe.
- */
-export function emailDeliveredUnscannedBaseSql(
-  windowDays: number = DELIVERED_UNSCANNED_WINDOW_DAYS,
-  orgParam?: string,
-): string {
-  // email_delivery_signals (eds) and receiving_line (rl) both carry
-  // organization_id, so when an org param is supplied we pin them explicitly and
-  // also align the org on the string-key join (order_number_norm) and the inner
-  // receiving/receiving_scans NOT-EXISTS. zoho_po_mirror is NEEDS-COL and is
-  // scoped transitively through the org-pinned `rl` join. The string stays
-  // byte-identical when `orgParam` is omitted.
-  //
-  // Wave-2 reader cutover: the line's zoho cluster (zoho_purchaseorder_id /
-  // _number / _number_norm) reads from receiving_line_zoho `rz` (1:1, PK
-  // receiving_line_id; rz rows exist for every line with ANY zoho field), so
-  // the string-key join is now eds↔rz and rl hangs off rz's PK.
-  const orgFilter = orgParam
-    ? `
-       AND eds.organization_id = ${orgParam}
-       AND rl.organization_id = ${orgParam}
-       AND rl.organization_id = eds.organization_id
-       AND rz.organization_id = eds.organization_id`
-    : '';
-  // The original inner predicate is an OR-chain; when we append an org AND it must
-  // bind across the whole OR, so wrap it in parens ONLY in the org-scoped variant.
-  // When orgParam is omitted the block is reproduced verbatim (byte-identical).
-  const innerPoMatch = orgParam
-    ? `(r2.id = rl.receiving_id
-             OR (rl.receiving_id IS NULL
-                 AND r2.source = 'zoho_po'
-                 AND r2.zoho_purchaseorder_id = rz.zoho_purchaseorder_id))
-            AND r2.organization_id = ${orgParam} AND rs.organization_id = ${orgParam}`
-    : `r2.id = rl.receiving_id
-             OR (rl.receiving_id IS NULL
-                 AND r2.source = 'zoho_po'
-                 AND r2.zoho_purchaseorder_id = rz.zoho_purchaseorder_id)`;
-  return `
-    SELECT DISTINCT ON (eds.order_number_norm)
-           eds.order_number,
-           eds.order_number_norm,
-           eds.delivered_at::text       AS delivered_at,
-           eds.email_subject,
-           eds.email_from,
-           eds.gmail_msg_id,
-           rz.zoho_purchaseorder_id,
-           rz.zoho_purchaseorder_number
-      FROM email_delivery_signals eds
-      JOIN receiving_line_zoho rz
-        ON rz.zoho_purchaseorder_number_norm = eds.order_number_norm
-      JOIN receiving_line rl
-        ON rl.id = rz.receiving_line_id
-       AND rl.organization_id = rz.organization_id
-      LEFT JOIN zoho_po_mirror mirror
-        ON mirror.zoho_purchaseorder_id = rz.zoho_purchaseorder_id
-     WHERE eds.delivered_at > NOW() - (${windowDays} || ' days')::interval
-       AND rl.workflow_status = 'EXPECTED'
-       AND COALESCE(rl.quantity_received, 0) = 0
-       AND ${NOT_ZOHO_RECEIVED_PREDICATE}${orgFilter}
-       AND NOT EXISTS (
-         SELECT 1
-           FROM receiving_carton r2
-           JOIN receiving_scans rs ON rs.receiving_id = r2.id
-          WHERE ${innerPoMatch}
-       )
-     ORDER BY eds.order_number_norm, eds.delivered_at DESC
-  `;
-}
-
 /** pg-like client surface so this helper stays decoupled from a specific pool. */
 interface Queryable {
   query<T extends Record<string, unknown>>(
@@ -398,6 +309,7 @@ export async function getDeliveredUnscannedCount(
   if (orgId) {
     // shipping_tracking_numbers is NEEDS-COL → GUC-wrap (tenantQuery) + pin the
     // org-bearing aliases inside the shared predicates via $2.
+    const { tenantQuery } = await import('@/lib/tenancy/db');
     const { rows } = await tenantQuery<{ n: number }>(
       orgId,
       `SELECT COUNT(*)::int AS n FROM ( ${deliveredUnscannedBaseSql('$1', '$2')} ) d`,
@@ -423,6 +335,7 @@ export async function getDeliveredUnscannedByCarrier(
   orgId?: OrgId,
 ): Promise<Record<string, number>> {
   if (orgId) {
+    const { tenantQuery } = await import('@/lib/tenancy/db');
     const { rows } = await tenantQuery<{ carrier: string; n: number }>(
       orgId,
       `SELECT carrier, COUNT(*)::int AS n
@@ -445,66 +358,77 @@ export async function getDeliveredUnscannedByCarrier(
   return out;
 }
 
-/** Row shape for the email-driven delivered-unscanned list. */
-export interface EmailDeliveredUnscannedRow {
-  order_number: string;
-  order_number_norm: string;
-  delivered_at: string;
-  email_subject: string | null;
-  email_from: string | null;
-  gmail_msg_id: string;
-  zoho_purchaseorder_id: string | null;
-  zoho_purchaseorder_number: string | null;
-}
-
 /**
- * Count of email-delivered, still-incoming, unscanned orders. Wraps the
- * canonical base so it always matches the list length for the same window.
+ * Count of delivered-unscanned shipments in the claims-attention band (>48h).
+ * Same canonical base as {@link getDeliveredUnscannedCount}.
  */
-export async function getEmailDeliveredUnscannedCount(
+export async function getDeliveredUnscannedClaimsCount(
   client: Queryable,
   windowDays: number = DELIVERED_UNSCANNED_WINDOW_DAYS,
   orgId?: OrgId,
 ): Promise<number> {
   if (orgId) {
-    // email_delivery_signals + receiving_line both carry org_id; pin them via $1.
+    const { tenantQuery } = await import('@/lib/tenancy/db');
     const { rows } = await tenantQuery<{ n: number }>(
       orgId,
-      `SELECT COUNT(*)::int AS n FROM ( ${emailDeliveredUnscannedBaseSql(windowDays, '$1')} ) d`,
-      [orgId],
+      `SELECT COUNT(*)::int AS n
+         FROM ( ${deliveredUnscannedBaseSql('$1', '$2')} ) d
+        WHERE d.age_band = 'gt_48h'`,
+      [String(windowDays), orgId],
     );
     return Number(rows[0]?.n ?? 0);
   }
   const { rows } = await client.query<{ n: number }>(
-    `SELECT COUNT(*)::int AS n FROM ( ${emailDeliveredUnscannedBaseSql(windowDays)} ) d`,
+    `SELECT COUNT(*)::int AS n
+       FROM ( ${deliveredUnscannedBaseSql('$1')} ) d
+      WHERE d.age_band = 'gt_48h'`,
+    [String(windowDays)],
   );
   return Number(rows[0]?.n ?? 0);
 }
 
 /**
- * The email-delivered, still-incoming, unscanned orders (newest delivery
- * first). Drives both the Incoming "Delivered (email)" list and the
- * cross-check that excludes already-scanned/received orders.
+ * Promote email "ORDER DELIVERED" signals onto linked STN rows so the carrier
+ * hunt queue sees them (email is a writer/fallback, not a parallel ops tile).
+ * Sets is_delivered + delivered_at when carrier poll never confirmed delivery.
  */
-export async function getEmailDeliveredUnscanned(
+export async function promoteEmailDeliverySignalsToStn(
   client: Queryable,
-  windowDays: number = DELIVERED_UNSCANNED_WINDOW_DAYS,
-  orgId?: OrgId,
-): Promise<EmailDeliveredUnscannedRow[]> {
-  if (orgId) {
-    const { rows } = await tenantQuery<EmailDeliveredUnscannedRow & Record<string, unknown>>(
-      orgId,
-      `SELECT * FROM ( ${emailDeliveredUnscannedBaseSql(windowDays, '$1')} ) d
-      ORDER BY delivered_at DESC
-      LIMIT ${DELIVERED_UNSCANNED_CAP}`,
-      [orgId],
-    );
-    return rows;
-  }
-  const { rows } = await client.query<EmailDeliveredUnscannedRow & Record<string, unknown>>(
-    `SELECT * FROM ( ${emailDeliveredUnscannedBaseSql(windowDays)} ) d
-      ORDER BY delivered_at DESC
-      LIMIT ${DELIVERED_UNSCANNED_CAP}`,
+  orgId: OrgId,
+  orderNumberNorms: string[],
+  deliveredAt: Date | null,
+): Promise<number> {
+  const norms = [...new Set(orderNumberNorms.map((n) => n.trim()).filter(Boolean))];
+  if (norms.length === 0) return 0;
+  const { rows } = await client.query<{ id: number }>(
+    `WITH linked AS (
+       SELECT DISTINCT stn.id AS shipment_id
+         FROM receiving_line_zoho rz
+         JOIN receiving_line rl
+           ON rl.id = rz.receiving_line_id AND rl.organization_id = rz.organization_id
+         JOIN receiving_carton r
+           ON (
+                r.id = rl.receiving_id
+             OR (rl.receiving_id IS NULL
+                 AND r.source = 'zoho_po'
+                 AND r.zoho_purchaseorder_id = rz.zoho_purchaseorder_id
+                 AND r.organization_id = rl.organization_id)
+           )
+         JOIN shipping_tracking_numbers stn ON stn.id = r.shipment_id
+        WHERE rz.organization_id = $1::uuid
+          AND rz.zoho_purchaseorder_number_norm = ANY($2::text[])
+          AND stn.id IS NOT NULL
+          AND COALESCE(stn.is_delivered, false) = false
+     )
+     UPDATE shipping_tracking_numbers stn
+        SET is_delivered = true,
+            delivered_at = COALESCE(stn.delivered_at, $3::timestamptz, NOW()),
+            latest_status_category = COALESCE(stn.latest_status_category, 'DELIVERED'),
+            updated_at = NOW()
+       FROM linked
+      WHERE stn.id = linked.shipment_id
+     RETURNING stn.id`,
+    [orgId, norms, deliveredAt],
   );
-  return rows;
+  return rows.length;
 }

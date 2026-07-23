@@ -4,7 +4,7 @@
  * Outbound workspace chrome — one unified header bar for Dashboard · Outbound.
  *
  * Left:  lifecycle tabs (To Ship count only).
- * Right: search · filters · Import · Add · staff/columns portal.
+ * Right: search · filters · (portal) · sort · Import · Add.
  * Row select lives in the table left gutter (always on), not chrome.
  */
 
@@ -83,17 +83,15 @@ export function OutboundWorkspaceHeader({
           tone="blue"
         />
       }
-      // [⚡] [⫶ lane/status] + Pending display sort (Priority|Newest|Deadline).
-      // Select-all lives in the table column header (left gutter ☐), not chrome.
-      right={
+      // [⚡] [⫶ lane/status] filters. Select-all lives in the table column
+      // header (left gutter ☐), not chrome. Display sort is trailing (quiet).
+      right={<OutboundExactFilters mode={active} />}
+      trailing={
+        /* Sort (dropdown) → Import (blue) → Add (green) — same CTA cluster as Labels. */
         <>
           {active === 'unshipped' ? <QueueSortSwitch sort={sort} onChange={setSort} /> : null}
-          <OutboundExactFilters mode={active} />
+          <OutboundOrderChromeActions onNewOrder={openIntakeForm} />
         </>
-      }
-      trailing={
-        /* Import + Add — same CTAs as Labels / Pack / `/test` Shipping. */
-        <OutboundOrderChromeActions onNewOrder={openIntakeForm} />
       }
     />
   );

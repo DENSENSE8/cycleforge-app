@@ -27,7 +27,7 @@ interface UpNextActionDockProps {
  * Terminal action surface for the shipping preview workspace — Start CTA with
  * an optional split menu for Out of Stock. Routes through
  * {@link STATION_TERMINAL_REGISTRY}.shipping + {@link StationTerminalDock}
- * (Unbox-family waist) instead of a raw FloatingButton.
+ * (Unbox-family waist) instead of a raw SlicedActionDock.
  *
  * Events out:
  *  - `tech-upnext-action-start` → starts the previewed order

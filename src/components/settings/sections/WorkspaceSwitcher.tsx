@@ -25,6 +25,7 @@
 
 import { useState } from 'react';
 import { Button } from '@/design-system/primitives';
+import { requestConfirm } from '@/design-system/components/confirm';
 import { useAuth } from '@/contexts/AuthContext';
 
 function orgInitials(name: string): string {
@@ -65,13 +66,12 @@ export function WorkspaceSwitcher() {
 
   const switchTo = async (organizationId: string, name: string) => {
     if (switching) return;
-    if (
-      !window.confirm(
-        `Switch to ${name}? Your current view and any unsaved scan state will close.`,
-      )
-    ) {
-      return;
-    }
+    const ok = await requestConfirm({
+      description: `Switch to ${name}? Your current view and any unsaved scan state will close.`,
+      tone: 'primary',
+      confirmLabel: 'Switch',
+    });
+    if (!ok) return;
     setSwitching(organizationId);
     setSwitchErr(null);
     try {

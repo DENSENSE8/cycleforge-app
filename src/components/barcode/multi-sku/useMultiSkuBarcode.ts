@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/lib/toast';
 import {
   printProductLabel,
@@ -13,7 +14,6 @@ import { CONDITION_OPTIONS } from '@/components/receiving/zoho-po-types';
 import { useBarcodeModeStep } from './useBarcodeModeStep';
 import { useSerialList } from './useSerialList';
 import { lookupProductInfo, peekNextUnitId, postMultiSn, resolveUnitId } from './unit-label-api';
-
 export type ConditionGrade = (typeof CONDITION_OPTIONS)[number]['value'];
 export type BarcodeLayout = 'vertical' | 'horizontal';
 
@@ -35,6 +35,7 @@ function createClientEventId(): string {
  *   mode in local state and reveals steps one at a time.
  */
 export function useMultiSkuBarcode(layout: BarcodeLayout) {
+  const queryClient = useQueryClient();
   const isHorizontal = layout === 'horizontal';
   const { mode, step, setStep, handleModeChange, bottomAnchorRef } = useBarcodeModeStep(isHorizontal);
   const {
@@ -77,7 +78,7 @@ export function useMultiSkuBarcode(layout: BarcodeLayout) {
 
   // localStorage recents still feed the Products picker's pinned chips
   // (ProductsSidebarPanel); the desktop "Recent" bottom strip was removed in
-  // favour of the server-backed Recent sub-tab (RecentlyPrintedList).
+  // favour of the server-backed Printed sidebar rail (ProductLabelsRecentRail).
   const { push: pushRecent } = useLabelRecents();
 
   // Surface validation/fetch errors via the global toast system instead of the
@@ -416,8 +417,10 @@ export function useMultiSkuBarcode(layout: BarcodeLayout) {
         });
       }
 
-      // Pin this SKU at the top of the Products picker for one-tap re-fill.
+      // Pin this SKU for local recents; refresh the Printed sidebar rail.
       pushRecent({ sku, sn: mode === 'auto-unit' ? undefined : serialNumbers[0], title });
+      void queryClient.invalidateQueries({ queryKey: ['labels.recent'] });
+      window.dispatchEvent(new CustomEvent('labels-print-feed'));
 
       resetSerials();
       issueClientEventIdRef.current = null;

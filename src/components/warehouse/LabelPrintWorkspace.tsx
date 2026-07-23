@@ -15,6 +15,7 @@ import { useEffect, useState } from 'react';
 import { toast } from '@/lib/toast';
 import { Button } from '@/design-system/primitives';
 import { BinLabelPrinter } from '@/components/barcode/BinLabelPrinter';
+import { LABEL_BUILDER } from '@/components/barcode/label-builder-layout';
 
 export function LabelPrintWorkspace() {
   const [queuedBins, setQueuedBins] = useState<number[]>([]);
@@ -34,27 +35,27 @@ export function LabelPrintWorkspace() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex min-h-0 flex-1 flex-col gap-4 p-4">
+      <div className={`flex min-h-0 flex-1 flex-col ${LABEL_BUILDER.stackGap} ${LABEL_BUILDER.pagePad}`}>
         {queuedBins.length > 0 && (
-        <div className="flex items-start justify-between gap-3 rounded-2xl border border-blue-200 bg-blue-50/50 p-4">
-          <div className="min-w-0">
-            <p className="text-sm font-semibold text-blue-900">
-              {queuedBins.length} bin{queuedBins.length === 1 ? '' : 's'} queued from Bins
-            </p>
-            <p className="mt-0.5 text-[11.5px] text-blue-700">
-              Bulk-grid print lands in the next update. For now, step through each bin below to print it.
-            </p>
+          <div className={`${LABEL_BUILDER.contentShell} flex items-start justify-between gap-3 rounded-xl border border-blue-200 bg-blue-50/50 p-3`}>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-blue-900">
+                {queuedBins.length} bin{queuedBins.length === 1 ? '' : 's'} queued from Bins
+              </p>
+              <p className="mt-0.5 text-role-caption text-blue-700">
+                Bulk-grid print lands in the next update. For now, step through each bin below to print it.
+              </p>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setQueuedBins([])}
+              className="shrink-0 text-blue-700 hover:text-blue-900"
+            >
+              Clear
+            </Button>
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setQueuedBins([])}
-            className="shrink-0 text-blue-700 hover:text-blue-900"
-          >
-            Clear
-          </Button>
-        </div>
-      )}
+        )}
 
         <BinLabelPrinter />
       </div>

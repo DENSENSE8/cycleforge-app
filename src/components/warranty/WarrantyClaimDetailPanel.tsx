@@ -13,6 +13,7 @@ import { EventTimeline } from '@/components/ui/EventTimeline';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { ThreadPanel } from '@/components/threads/ThreadPanel';
 import { IconButton } from '@/design-system/primitives';
+import { requestConfirm } from '@/design-system/components/confirm';
 import { warrantyEventsToTimeline } from '@/lib/timeline';
 import { formatDateTimePST } from '@/utils/date';
 import { zendeskTicketUrl } from '@/lib/zendesk-ticket-url';
@@ -45,11 +46,13 @@ export function WarrantyClaimDetailPanel({ claimId, onClose }: WarrantyClaimDeta
   const { data: claim, isLoading, error } = useWarrantyClaim(claimId);
   const { remove } = useWarrantyMutations();
 
-  const deleteClaim = () => {
+  const deleteClaim = async () => {
     if (!claim) return;
-    const ok = window.confirm(
-      `Delete claim ${claim.claimNumber}? It will disappear from all warranty views (the audit trail is kept).`,
-    );
+    const ok = await requestConfirm({
+      description: `Delete claim ${claim.claimNumber}? It will disappear from all warranty views (the audit trail is kept).`,
+      tone: 'danger',
+      confirmLabel: 'Delete',
+    });
     if (!ok) return;
     remove.mutate({ id: claim.id }, { onSuccess: onClose });
   };

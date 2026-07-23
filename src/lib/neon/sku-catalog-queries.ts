@@ -23,9 +23,17 @@ export interface SkuCatalogRow {
   replenish_target_cents: number | null;
   /** Per-SKU pack/handling guidance shown to the packer (P1-PCK-02). */
   notes: string | null;
+  /**
+   * External inventory-provider item id (`items.zoho_item_id` while Zoho is the
+   * adapter). NULL = unlinked hub row. Never join identity on SKU string.
+   */
+  provider_item_id: string | null;
   created_at: string;
   updated_at: string;
 }
+
+/** Catalog list filter segments (Products Catalog MDM). */
+export type SkuCatalogLinkFilter = 'active_linked' | 'unlinked_pending' | 'all';
 
 export interface SkuPlatformIdRow {
   id: number;
@@ -164,6 +172,8 @@ export async function upsertSkuCatalog(params: {
   replenishTargetCents?: number | null;
   /** Per-SKU pack/handling guidance shown to the packer (P1-PCK-02). */
   notes?: string | null;
+  /** External inventory-provider item id. Omitted = preserve; set to stamp linkage. */
+  providerItemId?: string | null;
 }, orgId: OrgId): Promise<SkuCatalogRow> {
   // The lifecycle params are referenced directly ($8–$11) rather than via
   // EXCLUDED so that omitting them (null) preserves the existing row on update
@@ -174,6 +184,13 @@ export async function upsertSkuCatalog(params: {
   // scope the upsert via tenantQuery, and conflict on (organization_id, sku) so
   // the same SKU string can exist per-org (H4). Callers thread ctx.organizationId
   // / the sync account's org — there is no global (org-less) upsert path.
+  //
+  // provider_item_id ($15): omitted (undefined) preserves existing on conflict;
+  // an explicit non-empty string stamps the inventory linkage.
+  const providerItemId =
+    params.providerItemId !== undefined
+      ? (params.providerItemId?.trim() || null)
+      : null;
   const values: unknown[] = [
     params.sku.trim(),
     params.productTitle.trim(),
@@ -193,12 +210,13 @@ export async function upsertSkuCatalog(params: {
     // is the right normalization.
     params.notes !== undefined ? (params.notes?.trim() || null) : null,
     orgId,
+    providerItemId,
   ];
   const sql = `INSERT INTO sku_catalog
        (sku, product_title, category, upc, ean, image_url, is_active,
         lifecycle_status, reorder_threshold, last_known_cost_cents, sourcing_notes,
-        replenish_target_cents, notes, organization_id)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, COALESCE($8, 'active'), $9, $10, $11, $12, $13, $14)
+        replenish_target_cents, notes, organization_id, provider_item_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, COALESCE($8, 'active'), $9, $10, $11, $12, $13, $14, $15)
      ON CONFLICT (organization_id, sku) DO UPDATE SET
        product_title = EXCLUDED.product_title,
        category = COALESCE(EXCLUDED.category, sku_catalog.category),
@@ -212,6 +230,7 @@ export async function upsertSkuCatalog(params: {
        sourcing_notes = COALESCE($11, sku_catalog.sourcing_notes),
        replenish_target_cents = COALESCE($12, sku_catalog.replenish_target_cents),
        notes = COALESCE($13, sku_catalog.notes),
+       provider_item_id = COALESCE($15, sku_catalog.provider_item_id),
        updated_at = NOW()
      RETURNING *`;
   // Always tenant-scoped: orgId is required, the row is stamped organization_id
@@ -950,10 +969,29 @@ export async function ensureSkuCatalogEntry(
   // ensured row lands in / is read from the caller's tenant; when omitted both
   // calls keep their prior behavior.
 
-  // 1. Cache
+  // 1. Cache — if we already have the hub row but lack inventory linkage and
+  // the caller supplied zoho_item_id, stamp provider_item_id without a Zoho roundtrip.
   if (trimmed) {
     const cached = await getSkuCatalogBySku(trimmed, orgId);
-    if (cached) return cached;
+    if (cached) {
+      if (hint?.zoho_item_id && !cached.provider_item_id) {
+        try {
+          await tenantQuery(
+            orgId,
+            `UPDATE sku_catalog
+             SET provider_item_id = $1, updated_at = NOW()
+             WHERE id = $2
+               AND organization_id = $3
+               AND provider_item_id IS NULL`,
+            [hint.zoho_item_id.trim(), cached.id, orgId],
+          );
+          return { ...cached, provider_item_id: hint.zoho_item_id.trim() };
+        } catch {
+          // unique conflict or race — return cached as-is
+        }
+      }
+      return cached;
+    }
   }
 
   // 2. Zoho fallback — dynamic import keeps Zoho out of non-receiving code paths
@@ -971,6 +1009,7 @@ export async function ensureSkuCatalogEntry(
           upc: item.upc ?? null,
           ean: item.ean ?? null,
           isActive: item.status !== 'inactive',
+          providerItemId: item.item_id || hint.zoho_item_id,
         }, orgId);
         // Best-effort: seed a default/rules-based pack profile if none exists yet.
         try {
@@ -995,6 +1034,7 @@ export async function ensureSkuCatalogEntry(
           upc: match.upc ?? null,
           ean: match.ean ?? null,
           isActive: match.status !== 'inactive',
+          providerItemId: match.item_id ?? null,
         }, orgId);
         try {
           const c = classifyPackTier({ productTitle: catalog.product_title, category: catalog.category, sku: catalog.sku });
@@ -1021,9 +1061,20 @@ export async function ensureSkuCatalogEntry(
 /**
  * Sync items from Zoho upsert into sku_catalog.
  * Called after itemRepository.upsertMany().
+ * Stamps `provider_item_id` from the inventory mirror's external id — never
+ * treat SKU string equality as identity for later reads.
  */
 export async function syncSkuCatalogFromItems(
-  rows: Array<{ sku?: string | null; name?: string | null; upc?: string | null; ean?: string | null; image_url?: string | null; status?: string | null }>,
+  rows: Array<{
+    sku?: string | null;
+    name?: string | null;
+    upc?: string | null;
+    ean?: string | null;
+    image_url?: string | null;
+    status?: string | null;
+    /** Inventory provider external id (`items.zoho_item_id`). */
+    zoho_item_id?: string | null;
+  }>,
   orgId: OrgId,
 ): Promise<void> {
   const valid = rows.filter((r) => r.sku && r.sku.trim());
@@ -1033,12 +1084,21 @@ export async function syncSkuCatalogFromItems(
   // organization_id column (stamp on insert), the upsert runs via
   // withTenantTransaction (GUC set), and conflicts on (organization_id, sku) so
   // the same SKU string can be synced per-org without colliding (H4).
-  const cols = 7;
+  const cols = 8;
   const values: string[] = [];
   const params: unknown[] = [];
   let idx = 1;
   for (const row of valid) {
-    const ph = [`$${idx}`, `$${idx + 1}`, `$${idx + 2}`, `$${idx + 3}`, `$${idx + 4}`, `$${idx + 5}`, `$${idx + 6}`];
+    const ph = [
+      `$${idx}`,
+      `$${idx + 1}`,
+      `$${idx + 2}`,
+      `$${idx + 3}`,
+      `$${idx + 4}`,
+      `$${idx + 5}`,
+      `$${idx + 6}`,
+      `$${idx + 7}`,
+    ];
     values.push(`(${ph.join(', ')})`);
     params.push(
       row.sku!.trim(),
@@ -1048,11 +1108,12 @@ export async function syncSkuCatalogFromItems(
       row.image_url?.trim() || null,
       row.status === 'active',
       orgId,
+      row.zoho_item_id?.trim() || null,
     );
     idx += cols;
   }
 
-  const sql = `INSERT INTO sku_catalog (sku, product_title, upc, ean, image_url, is_active, organization_id)
+  const sql = `INSERT INTO sku_catalog (sku, product_title, upc, ean, image_url, is_active, organization_id, provider_item_id)
      VALUES ${values.join(', ')}
      ON CONFLICT (organization_id, sku) DO UPDATE SET
        product_title = COALESCE(NULLIF(sku_catalog.product_title, 'Unknown Product'), EXCLUDED.product_title),
@@ -1060,6 +1121,7 @@ export async function syncSkuCatalogFromItems(
        ean = COALESCE(EXCLUDED.ean, sku_catalog.ean),
        image_url = COALESCE(EXCLUDED.image_url, sku_catalog.image_url),
        is_active = EXCLUDED.is_active,
+       provider_item_id = COALESCE(EXCLUDED.provider_item_id, sku_catalog.provider_item_id),
        updated_at = NOW()`;
   await withTenantTransaction(orgId, (client) => client.query(sql, params));
 }
@@ -1182,6 +1244,42 @@ export interface SkuCatalogListRow {
   ecwid_display_name: string | null;
   ecwid_image_url: string | null;
   ecwid_sku: string | null;
+  /** External inventory-provider item id when linked. */
+  provider_item_id: string | null;
+  /** Title from inventory mirror (`items.name`) when linked; else null. */
+  inventory_title: string | null;
+  /** True when provider_item_id is set. */
+  is_inventory_linked: boolean;
+  /** True when a pending_skus row still needs create/resolve for this hub sku. */
+  has_pending_action: boolean;
+  /** Display title: inventory SoT title when linked, else catalog product_title. */
+  display_title: string;
+}
+
+function linkFilterWhere(linkFilter: SkuCatalogLinkFilter): string {
+  switch (linkFilter) {
+    case 'active_linked':
+      // Default Catalog view: clean, trustworthy Active & Inventory-linked rows.
+      return `sc.is_active = true AND sc.provider_item_id IS NOT NULL`;
+    case 'unlinked_pending':
+      // MDM debt surface: missing inventory link and/or open pending_skus work.
+      // pending_skus is not yet tenant-scoped (deferred) — match by catalog id /
+      // normalized sku only.
+      return `(
+        sc.provider_item_id IS NULL
+        OR EXISTS (
+          SELECT 1 FROM pending_skus ps
+          WHERE ps.status = 'PENDING'
+            AND (
+              ps.sku_catalog_id = sc.id
+              OR ps.normalized_sku = fn_normalize_sku(sc.sku)
+            )
+        )
+      )`;
+    case 'all':
+    default:
+      return 'TRUE';
+  }
 }
 
 export async function getSkuCatalogList(params: {
@@ -1191,11 +1289,21 @@ export async function getSkuCatalogList(params: {
   sort?: string;
   dir?: string;
   ecwidOnly?: boolean;
+  /** Catalog MDM segment. Default preserves prior admin list behavior (active only). */
+  linkFilter?: SkuCatalogLinkFilter;
 }, orgId?: OrgId): Promise<{ items: SkuCatalogListRow[]; total: number }> {
   const search = (params.q || '').trim();
   const limit = Math.min(params.limit || 100, 500);
   const offset = params.offset || 0;
   const desc = params.dir === 'desc';
+  // When linkFilter is omitted, preserve historic admin list behavior (active
+  // rows only, no provider-link requirement). Catalog UI always passes an
+  // explicit segment.
+  const explicitFilter = params.linkFilter;
+  const whereLink =
+    explicitFilter === undefined
+      ? 'sc.is_active = true'
+      : linkFilterWhere(explicitFilter);
 
   let orderBy: string;
   switch (params.sort) {
@@ -1211,8 +1319,8 @@ export async function getSkuCatalogList(params: {
       break;
     default:
       orderBy = desc
-        ? 'sc.product_title DESC, sc.sku DESC'
-        : 'sc.product_title, sc.sku';
+        ? 'display_title DESC, sc.sku DESC'
+        : 'display_title, sc.sku';
       break;
   }
 
@@ -1221,6 +1329,18 @@ export async function getSkuCatalogList(params: {
   const listSql = `SELECT
        sc.id, sc.sku, sc.product_title, sc.category, sc.image_url, sc.is_active,
        sc.lifecycle_status, sc.reorder_threshold, sc.last_known_cost_cents,
+       sc.provider_item_id,
+       it.name AS inventory_title,
+       (sc.provider_item_id IS NOT NULL) AS is_inventory_linked,
+       EXISTS (
+         SELECT 1 FROM pending_skus ps
+         WHERE ps.status = 'PENDING'
+           AND (
+             ps.sku_catalog_id = sc.id
+             OR ps.normalized_sku = fn_normalize_sku(sc.sku)
+           )
+       ) AS has_pending_action,
+       COALESCE(NULLIF(BTRIM(it.name), ''), sc.product_title) AS display_title,
        COUNT(DISTINCT sp.id)::int AS platform_count,
        COUNT(DISTINCT pm.id)::int AS manual_count,
        COUNT(DISTINCT qc.id)::int AS qc_step_count,
@@ -1230,6 +1350,9 @@ export async function getSkuCatalogList(params: {
        ecwid.image_url AS ecwid_image_url,
        ecwid.platform_sku AS ecwid_sku
      FROM sku_catalog sc
+     LEFT JOIN items it
+       ON it.zoho_item_id = sc.provider_item_id
+      AND it.organization_id = sc.organization_id
      LEFT JOIN sku_platform_ids sp ON sp.sku_catalog_id = sc.id AND sp.is_active = true
      LEFT JOIN product_manuals pm ON pm.sku_catalog_id = sc.id AND pm.is_active = true
      LEFT JOIN qc_check_templates qc ON qc.sku_catalog_id = sc.id
@@ -1253,10 +1376,10 @@ export async function getSkuCatalogList(params: {
        WHERE e.sku_catalog_id = sc.id AND e.platform = 'ecwid' AND e.is_active = true AND e.display_name IS NOT NULL
        LIMIT 1
      ) ecwid ON TRUE
-     WHERE sc.is_active = true${orgId ? ' AND sc.organization_id = $4' : ''}
-       AND ($1 = '' OR sc.sku ILIKE '%' || $1 || '%' OR sc.product_title ILIKE '%' || $1 || '%' OR sc.category ILIKE '%' || $1 || '%')
+     WHERE (${whereLink})${orgId ? ' AND sc.organization_id = $4' : ''}
+       AND ($1 = '' OR sc.sku ILIKE '%' || $1 || '%' OR sc.product_title ILIKE '%' || $1 || '%' OR sc.category ILIKE '%' || $1 || '%' OR it.name ILIKE '%' || $1 || '%' OR sc.provider_item_id ILIKE '%' || $1 || '%')
        ${params.ecwidOnly ? `AND EXISTS (SELECT 1 FROM sku_platform_ids e WHERE e.sku_catalog_id = sc.id AND e.platform = 'ecwid' AND e.is_active = true AND e.display_name IS NOT NULL)` : ''}
-     GROUP BY sc.id, oc.order_count, ls.last_shipped, ecwid.display_name, ecwid.image_url, ecwid.platform_sku
+     GROUP BY sc.id, oc.order_count, ls.last_shipped, ecwid.display_name, ecwid.image_url, ecwid.platform_sku, it.name
      ORDER BY ${orderBy}
      LIMIT $2 OFFSET $3`;
   const result = orgId
@@ -1265,8 +1388,11 @@ export async function getSkuCatalogList(params: {
 
   const countSql = `SELECT COUNT(*)::int AS total
      FROM sku_catalog sc
-     WHERE sc.is_active = true${orgId ? ' AND sc.organization_id = $2' : ''}
-       AND ($1 = '' OR sc.sku ILIKE '%' || $1 || '%' OR sc.product_title ILIKE '%' || $1 || '%' OR sc.category ILIKE '%' || $1 || '%')
+     LEFT JOIN items it
+       ON it.zoho_item_id = sc.provider_item_id
+      AND it.organization_id = sc.organization_id
+     WHERE (${whereLink})${orgId ? ' AND sc.organization_id = $2' : ''}
+       AND ($1 = '' OR sc.sku ILIKE '%' || $1 || '%' OR sc.product_title ILIKE '%' || $1 || '%' OR sc.category ILIKE '%' || $1 || '%' OR it.name ILIKE '%' || $1 || '%' OR sc.provider_item_id ILIKE '%' || $1 || '%')
        ${params.ecwidOnly ? `AND EXISTS (SELECT 1 FROM sku_platform_ids e WHERE e.sku_catalog_id = sc.id AND e.platform = 'ecwid' AND e.is_active = true AND e.display_name IS NOT NULL)` : ''}`;
   const countResult = orgId
     ? await tenantQuery<{ total: number }>(orgId, countSql, [search, orgId])
@@ -1284,6 +1410,15 @@ export interface SkuCatalogDetailResult {
   catalog: SkuCatalogRow;
   packProfile: { packTier: 'SMALL' | 'MEDIUM' | 'LARGE'; estimatedMinutes: number | null } | null;
   platformIds: SkuPlatformIdRow[];
+  /** FBA FNSKU/ASIN rows hanging off this hub (MDM crosswalk). */
+  fnskus: Array<{
+    fnsku: string;
+    asin: string | null;
+    sku: string | null;
+    product_title: string | null;
+    condition: string | null;
+    is_active: boolean;
+  }>;
   manuals: Array<{
     id: number;
     sku: string | null;
@@ -1322,7 +1457,13 @@ export async function getSkuCatalogDetail(id: number, orgId?: OrgId): Promise<Sk
   // orgId is omitted, behavior is identical to before.
   const platformSql = `SELECT * FROM sku_platform_ids WHERE sku_catalog_id = $1 AND is_active = true${orgId ? ' AND organization_id = $2' : ''} ORDER BY platform, created_at`;
   const qcSql = `SELECT * FROM qc_check_templates WHERE sku_catalog_id = $1${orgId ? ' AND organization_id = $2' : ''} ORDER BY sort_order, id`;
-  const [packProfileResult, platformResult, manualResult, qcResult] = await Promise.all([
+  const fnskuSql = `SELECT fnsku, asin, sku, product_title, condition, is_active
+     FROM fba_fnskus
+     WHERE sku_catalog_id = $1
+       AND is_active = true
+       ${orgId ? 'AND (organization_id = $2 OR organization_id IS NULL)' : ''}
+     ORDER BY fnsku`;
+  const [packProfileResult, platformResult, manualResult, qcResult, fnskuResult] = await Promise.all([
     orgId
       ? tenantQuery<{ pack_tier: 'SMALL' | 'MEDIUM' | 'LARGE'; estimated_minutes: number | null }>(
         orgId,
@@ -1341,6 +1482,16 @@ export async function getSkuCatalogDetail(id: number, orgId?: OrgId): Promise<Sk
     orgId
       ? tenantQuery<QcCheckTemplateRow>(orgId, qcSql, [id, orgId])
       : pool.query<QcCheckTemplateRow>(qcSql, [id]),
+    orgId
+      ? tenantQuery<{
+          fnsku: string;
+          asin: string | null;
+          sku: string | null;
+          product_title: string | null;
+          condition: string | null;
+          is_active: boolean;
+        }>(orgId, fnskuSql, [id, orgId])
+      : pool.query(fnskuSql, [id]),
   ]);
 
   return {
@@ -1349,6 +1500,7 @@ export async function getSkuCatalogDetail(id: number, orgId?: OrgId): Promise<Sk
       ? { packTier: packProfileResult.rows[0].pack_tier, estimatedMinutes: packProfileResult.rows[0].estimated_minutes }
       : null,
     platformIds: platformResult.rows,
+    fnskus: fnskuResult.rows,
     manuals: manualResult.rows,
     qcChecks: qcResult.rows,
   };

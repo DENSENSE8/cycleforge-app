@@ -10,8 +10,9 @@
  *   Role denies   — not in role + no override
  */
 
-import { type StationTheme, stationThemeColors } from '@/utils/staff-colors';
+import { type StationTheme } from '@/utils/staff-colors';
 import type { PermissionSource } from '@/lib/auth/permissions-shared';
+import { Switch } from '@/design-system/primitives/Switch';
 
 interface PageAccessSwitchProps {
   label: string;
@@ -31,8 +32,19 @@ const SOURCE_PILL: Record<PermissionSource, { className: string; text: string }>
   'role-denies': { className: 'bg-surface-sunken text-text-soft ring-border-soft',          text: 'Role denies' },
 };
 
+/** Static Tailwind classes so JIT sees every theme (dynamic `bg-${x}` is purged). */
+const THEME_CHECKED: Record<StationTheme, string> = {
+  green: 'data-[state=checked]:bg-emerald-600',
+  blue: 'data-[state=checked]:bg-blue-600',
+  purple: 'data-[state=checked]:bg-purple-600',
+  yellow: 'data-[state=checked]:bg-amber-500',
+  black: 'data-[state=checked]:bg-slate-800',
+  red: 'data-[state=checked]:bg-red-600',
+  lightblue: 'data-[state=checked]:bg-sky-500',
+  pink: 'data-[state=checked]:bg-pink-600',
+};
+
 export function PageAccessSwitch({ label, permission, enabled, source, theme, disabled, busy, onToggle }: PageAccessSwitchProps) {
-  const sc = stationThemeColors[theme];
   const pill = SOURCE_PILL[source];
   return (
     <li className={`flex items-center gap-3 px-4 py-2.5 transition ${disabled ? 'opacity-60' : 'hover:bg-surface-canvas/60'}`}>
@@ -45,24 +57,13 @@ export function PageAccessSwitch({ label, permission, enabled, source, theme, di
           </span>
         </div>
       </div>
-      {/* ds-raw-button */}
-      <button
-        type="button"
-        role="switch"
-        aria-checked={enabled}
-        aria-label={`Toggle ${label}`}
+      <Switch
+        checked={enabled}
         disabled={disabled || busy}
-        onClick={onToggle}
-        className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors disabled:cursor-not-allowed ${
-          enabled ? sc.bg : 'bg-surface-strong'
-        }`}
-      >
-        <span
-          className={`inline-block h-4 w-4 transform rounded-full bg-surface-card shadow transition-transform ${
-            enabled ? 'translate-x-6' : 'translate-x-1'
-          }`}
-        />
-      </button>
+        onCheckedChange={() => onToggle()}
+        aria-label={`Toggle ${label}`}
+        checkedClassName={THEME_CHECKED[theme]}
+      />
     </li>
   );
 }

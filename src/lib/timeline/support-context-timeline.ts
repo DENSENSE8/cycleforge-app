@@ -36,9 +36,10 @@ function ticketLinkEventsToTimeline(rows: TicketLinkTimelineRow[]): TimelineItem
       at: r.at,
       title: r.kind === 'linked' ? 'Ticket linked' : 'Ticket unlinked',
       tone,
-      subtitle: r.ticketLabel,
+      // Identity lives on the TicketChip only — never duplicate as a plain subtitle.
       actor: r.actorName ?? undefined,
       ref: { kind: 'ticket' as const, value: r.ticketLabel, href },
+      href,
       sourceEventType: r.kind === 'linked' ? 'TICKET_LINKED' : 'TICKET_UNLINKED',
     } satisfies TimelineItem;
   });

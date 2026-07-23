@@ -17,7 +17,7 @@ interface Props {
   /**
    * Where the primary send CTA lives.
    * - `inline` (default): footer Button — used in modals/popovers
-   * - `terminal`: dock FloatingButton owns send — Claim tab in TestingPanel
+   * - `terminal`: dock SlicedActionDock owns send — Claim tab in TestingPanel
    */
   sendPlacement?: 'inline' | 'terminal';
   /** Opens SendPhotoNoteModal locked to this ticket (Claim tab). */

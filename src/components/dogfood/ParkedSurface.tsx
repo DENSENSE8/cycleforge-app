@@ -6,7 +6,6 @@ import {
   MessageSquare,
   Monitor,
   Search,
-  Warehouse,
 } from '@/components/Icons';
 import type { ParkedSurfaceKey } from '@/lib/dogfood/parked-surfaces';
 import { getParkedSurfaceMeta } from '@/lib/dogfood/parked-surfaces';
@@ -18,7 +17,6 @@ export const PARKED_SURFACE_ICONS: Record<
   home: Inbox,
   operations: Monitor,
   sourcing: Search,
-  warehouse: Warehouse,
   fba: Boxes,
   studio: Layers,
   'ai-chat': MessageSquare,

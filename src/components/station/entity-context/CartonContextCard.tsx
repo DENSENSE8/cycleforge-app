@@ -1,35 +1,30 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ChevronLeft, Reply, SlidersHorizontal } from '@/components/Icons';
+import { ChevronLeft, Reply } from '@/components/Icons';
 import { getLast4 } from '@/components/ui/CopyChip';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { WorkspaceCard } from '@/design-system/components';
 import { Button, IconButton } from '@/design-system/primitives';
-import {
-  framerPresence,
-  framerTransition,
-} from '@/design-system/foundations/motion-framer';
-import {
-  useMotionPresence,
-  useMotionTransition,
-} from '@/design-system/foundations/motion-framer-hooks';
 import { ReceivingPhotoButton } from '@/components/receiving/workspace/line-edit/ReceivingPhotoButton';
 import { IdentityLinkChip } from '@/components/receiving/workspace/line-edit/IdentityLinkChip';
 import { ReceivingTicketChip } from '@/components/receiving/workspace/line-edit/ReceivingTicketChip';
-import { SellerMessageChip } from '@/components/receiving/workspace/line-edit/SellerMessageChip';
 import { FulfillmentPickupPill } from '@/components/receiving/ReceivingIdentityChips';
 import {
   InlinePillPicker,
   INLINE_PILL_LEADING,
-  type InlinePillOption,
 } from '@/components/receiving/workspace/line-edit/InlinePillPicker';
+import {
+  platformClassifyOptions,
+  typeClassifyOptions,
+  urgencyClassifyOptions,
+} from '@/components/receiving/workspace/line-edit/classify-pill-options';
 import {
   receivingPriorityRank,
   receivingPriorityTone,
 } from '@/components/receiving/workspace/line-edit/receiving-priority';
-import { PRIORITY_OVERRIDE_TIERS, priorityOverrideTier } from '@/lib/receiving/priority-override';
+import { priorityOverrideTier } from '@/lib/receiving/priority-override';
 import { usePlatformCatalog, useReceivingTypeCatalog, usePlatformMeta } from '@/hooks/useCatalog';
 import {
   formatListingLinkMenuOptions,
@@ -39,9 +34,8 @@ import { PlatformMark } from '@/components/ui/PlatformMark';
 import { cn } from '@/utils/_cn';
 import {
   HEADER_ICON_BTN_CLASS,
-  HEADER_ICON_BTN_OPEN_CLASS,
   HEADER_ICON_GAP,
-  HEADER_ICON_GLYPH,
+  TOP_CHROME_ICON_GLYPH,
   HEADER_ICON_WRAP,
 } from '@/components/layout/header-shell';
 import { STATION_CONTEXT_CLAIM_PILL_CLASS } from './station-context-action-pill';
@@ -92,8 +86,10 @@ export function CartonContextCard({
   receivingId,
   staffId,
   isUnmatched,
-  classifyPending = false,
+  classifyPending: _classifyPending = false,
   showClassifyControls = true,
+  classifyInteractive = true,
+  onClassifyPillOpen,
   onMakeClaim,
   showStaffPhotoRow = true,
   listingLink,
@@ -148,10 +144,21 @@ export function CartonContextCard({
    */
   classifyPending?: boolean;
   /**
-   * When false, hide the classify toggle + platform/type/urgency pills from
-   * this header (triage moves them into the Overview SectionTabsSlider tab).
+   * When false, hide platform/type/urgency pills from this header.
    */
   showClassifyControls?: boolean;
+  /**
+   * When false (with {@link showClassifyControls}), urgency / platform / type
+   * render as read-only tone pills — facts for the station bar.
+   * Editing lives in triage Overview / Unbox Classify tab. Default true = Unbox
+   * InlinePillPicker edit.
+   */
+  classifyInteractive?: boolean;
+  /**
+   * Fired when the operator opens a classify pill picker (Unbox). Lets the
+   * host switch to the Classify tab for unfound cartons.
+   */
+  onClassifyPillOpen?: (picker: 'urgency' | 'platform' | 'type') => void;
   /** Opens the claim modal. Omit (undefined) to hide the Claim button. */
   onMakeClaim?: () => void;
   /** Photos + Claim row. Hidden in triage (unbox-only). */
@@ -227,26 +234,22 @@ export function CartonContextCard({
    */
   onSendToTicket?: () => void;
 }) {
-  const [classifyOpen, setClassifyOpen] = useState(classifyPending);
-  // Classify pills slide in on the identity row (same plane as chips) — not a
-  // second strip. Sidebar-rail presence: left-origin reveal from the toggle.
-  const classifyPresence = useMotionPresence(framerPresence.sidebarRailRow);
-  const classifyTransition = useMotionTransition(framerTransition.sidebarRailRowMount);
-
-  // An unclassified unfound carton auto-expands the classify pills — this exact
-  // header, expanded, IS the classify surface (no separate control). Opens the
-  // moment classification is pending; never force-closes, so the operator can
-  // still collapse back to the condensed one-row default after classifying.
-  useEffect(() => {
-    if (classifyPending) {
-      setClassifyOpen(true);
-    }
-  }, [classifyPending]);
-
+  // Pills always visible when showClassifyControls — no hide/show toggle.
   // One picker open at a time. Opening any pill unrenders the trailing chip
   // cluster (the options fill the freed row); selecting / dismissing collapses
   // back to null and rerenders the chips. See the AnimatePresence swap below.
   const [openPicker, setOpenPicker] = useState<'urgency' | 'platform' | 'type' | null>(null);
+
+  const openClassifyPicker = (picker: 'urgency' | 'platform' | 'type') => {
+    if (!classifyInteractive) return;
+    // Prefer host handoff (Unbox → Classify tab) over expanding the horizontal
+    // marketplace pill strip in the bookmark header.
+    if (onClassifyPillOpen) {
+      onClassifyPillOpen(picker);
+      return;
+    }
+    setOpenPicker(picker);
+  };
 
   // Canonical platform tone/label for the listing chip — same SoT the platform
   // pill and printed label read, so a platform never presents two ways.
@@ -299,9 +302,7 @@ export function CartonContextCard({
   const overrideMeta = priorityOverrideTier(priorityTier);
   const urgencyValue = priorityTier != null ? String(priorityTier) : 'auto';
   const effectiveUrgencyLabel = overrideMeta ? overrideMeta.label : derivedTone.label;
-  const effectiveUrgencyClass = overrideMeta
-    ? overrideMeta.activeClass
-    : `${derivedTone.className} border-transparent`;
+  const effectiveUrgencyClass = overrideMeta ? overrideMeta.activeClass : derivedTone.className;
   // In Auto mode the option matching the platform-derived urgency renders in
   // its active tone — the collapsed pill shows that derived label, so an open
   // picker highlighting only "Auto" read as if the current urgency were
@@ -310,53 +311,23 @@ export function CartonContextCard({
   // nothing. Manual override set → normal value-match highlighting only.
   const RANK_TO_TIER: Record<number, number> = { 0: 0, 1: 1, 2: 1, 3: 2, 4: 3 };
   const derivedTierEquivalent = priorityTier == null ? RANK_TO_TIER[derivedRank] ?? null : null;
-  const urgencyOptions: InlinePillOption[] = [
-    {
-      value: 'auto',
-      label: 'Auto',
-      title: `Auto — follows platform (${derivedTone.label})`,
-      activeClass: 'border-border-default bg-surface-card text-text-muted',
-      inactiveClass:
-        'border-border-soft bg-surface-card/70 text-text-soft hover:border-border-default hover:bg-surface-hover',
-    },
-    ...PRIORITY_OVERRIDE_TIERS.map((t) => ({
-      value: String(t.value),
-      label: t.label,
-      title:
-        derivedTierEquivalent === t.value
-          ? `${t.title} — current (auto from platform); click to pin`
-          : t.title,
-      activeClass: t.activeClass,
-      inactiveClass: derivedTierEquivalent === t.value ? t.activeClass : t.inactiveClass,
-    })),
-  ];
+  const urgencyOptions = urgencyClassifyOptions({
+    derivedLabel: derivedTone.label,
+    derivedTierEquivalent,
+    autoActiveClass: 'border-border-default bg-surface-card text-text-muted',
+  }).map((o) =>
+    o.value === 'auto' ? { ...o, activeClass: effectiveUrgencyClass } : o,
+  );
   const handleUrgencySelect = (v: string) =>
     onPrioritySelect?.(v === 'auto' ? null : Number(v));
 
-  // Platform/Type pill options come straight from the org catalog (active rows,
-  // org sort order) — so renames, hides, reorders, and custom entries the org
-  // makes in the catalog manager all propagate here. Falls back to the built-in
-  // lists until the catalog is seeded. The synthesized amber "Unfound" pill
-  // leads the platform set for unmatched cartons (front-end only — never written
-  // to source_platform).
-  const platformOptions: InlinePillOption[] = [
-    ...(isUnmatched
-      ? [
-          {
-            value: '',
-            label: 'Unfound',
-            title: 'No Zoho PO matched this carton',
-            activeClass: 'border-amber-600 bg-amber-500 text-white',
-            inactiveClass:
-              'border-amber-200 bg-amber-50 text-amber-700 hover:border-amber-300 hover:bg-amber-100',
-          } as InlinePillOption,
-        ]
-      : []),
-    ...platformCatalog.options.map((o) => ({ value: o.value, label: o.label })),
-  ];
-  const typeOptions: InlinePillOption[] = typeCatalog.options
-    .filter((o) => o.value !== 'PICKUP')
-    .map((o) => ({ value: o.value, label: o.label }));
+  // Platform/Type identity faces come from shared builders (same SoT as the
+  // Classify tab). Org catalog drives the option set; tones/marks stay built-in.
+  const platformOptions = platformClassifyOptions({
+    catalogOptions: platformCatalog.options,
+    isUnmatched,
+  });
+  const typeOptions = typeClassifyOptions({ catalogOptions: typeCatalog.options });
 
   const body = (
       <div className={cn(density === 'bar' ? 'space-y-1 px-0.5 py-0' : 'space-y-2 px-4 pt-2 pb-3')}>
@@ -367,14 +338,14 @@ export function CartonContextCard({
               listing/PO#/tracking are compact chips with hover Open/Edit menus.
               Priority/Claim/Photos are unbox-only (hidden in triage). */}
           <div className={cn('flex min-w-0 items-center', density === 'bar' && 'w-full max-w-full')}>
-            <AnimatePresence mode="wait" initial={false}>
+            <AnimatePresence initial={false}>
               {openPicker === null ? (
                 <motion.div
                   key="bar"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  transition={{ duration: 0.12 }}
+                  transition={{ duration: 0.12, ease: [0.22, 1, 0.36, 1] }}
                   className={cn(
                     'flex min-w-0 items-center',
                     density === 'bar'
@@ -394,46 +365,20 @@ export function CartonContextCard({
                     size="md"
                     onClick={onExitToList}
                     ariaLabel={exitLabel}
-                    icon={<ChevronLeft className={HEADER_ICON_GLYPH} />}
+                    icon={<ChevronLeft className={TOP_CHROME_ICON_GLYPH} />}
                     className={cn(HEADER_ICON_BTN_CLASS, 'text-text-faint hover:text-text-muted')}
                   />
                 </HoverTooltip>
               </div>
             ) : null}
-            {showClassifyControls && showStaffPhotoRow ? (
-              <div className={HEADER_ICON_WRAP}>
-                <HoverTooltip label={classifyOpen ? 'Hide classification' : 'Show classification'} asChild>
-                  <IconButton
-                    type="button"
-                    size="md"
-                    onClick={() => setClassifyOpen((v) => !v)}
-                    aria-expanded={classifyOpen}
-                    aria-pressed={classifyOpen}
-                    ariaLabel={classifyOpen ? 'Hide classification' : 'Show classification'}
-                    icon={<SlidersHorizontal className={HEADER_ICON_GLYPH} />}
-                    className={cn(
-                      HEADER_ICON_BTN_CLASS,
-                      classifyOpen
-                        ? HEADER_ICON_BTN_OPEN_CLASS
-                        : 'text-text-faint hover:text-text-muted',
-                    )}
-                  />
-                </HoverTooltip>
-              </div>
-            ) : null}
             </div>
-            {/* Classify pills — inline on the identity row for both densities.
-                AnimatePresence slides them in from the toggle (left origin);
-                never a second border-t strip under the chips. */}
-            <AnimatePresence initial={false}>
-              {showClassifyControls && classifyOpen ? (
-                <motion.div
-                  key="classify-pills"
-                  data-testid="carton-context-classify-pills"
-                  {...classifyPresence}
-                  transition={classifyTransition}
-                  className="flex shrink-0 items-center gap-2"
-                >
+            {/* Classify bookmark — WIP dogfood: text-only full SoT names.
+                Unbox/Triage click → Classify dimension (no icon faces). */}
+            {showClassifyControls ? (
+              <div
+                data-testid="carton-context-classify-pills"
+                className="flex shrink-0 items-center gap-1.5"
+              >
                   {showStaffPhotoRow ? (
                     <InlinePillPicker
                       ariaLabel="Urgency"
@@ -442,10 +387,14 @@ export function CartonContextCard({
                       onSelect={handleUrgencySelect}
                       collapsedLabel={effectiveUrgencyLabel}
                       collapsedClass={effectiveUrgencyClass}
+                      collapsedFace="label"
+                      expandedFace="iconLabel"
                       open={false}
-                      onOpenChange={(o) => { if (o) setOpenPicker('urgency'); }}
-                      disabled={!onPrioritySelect}
-                      leadingIcon={INLINE_PILL_LEADING.urgency}
+                      onOpenChange={(o) => {
+                        if (o) openClassifyPicker('urgency');
+                      }}
+                      disabled={classifyInteractive ? !onPrioritySelect : false}
+                      readOnly={!classifyInteractive}
                     />
                   ) : null}
                   <InlinePillPicker
@@ -453,25 +402,32 @@ export function CartonContextCard({
                     options={platformOptions}
                     value={platformValue}
                     onSelect={onPlatformSelect}
+                    collapsedFace="label"
+                    expandedFace="iconLabel"
                     open={false}
-                    onOpenChange={(o) => { if (o) setOpenPicker('platform'); }}
-                    disabled={receivingId == null}
+                    onOpenChange={(o) => {
+                      if (o) openClassifyPicker('platform');
+                    }}
+                    disabled={classifyInteractive ? receivingId == null : false}
+                    readOnly={!classifyInteractive}
                     placeholder={isUnmatched ? 'Unfound' : 'Platform'}
-                    leadingIcon={INLINE_PILL_LEADING.platform}
                   />
                   <InlinePillPicker
                     ariaLabel="Type"
                     options={typeOptions}
                     value={receivingType}
                     onSelect={onTypeSelect}
+                    collapsedFace="label"
+                    expandedFace="iconLabel"
                     open={false}
-                    onOpenChange={(o) => { if (o) setOpenPicker('type'); }}
+                    onOpenChange={(o) => {
+                      if (o) openClassifyPicker('type');
+                    }}
+                    readOnly={!classifyInteractive}
                     placeholder="Type"
-                    leadingIcon={INLINE_PILL_LEADING.type}
                   />
-                </motion.div>
-              ) : null}
-            </AnimatePresence>
+              </div>
+            ) : null}
             </div>
 
             {/* Clusters 2–3 — identity facts · Claim/Photos (bar: always pin
@@ -639,11 +595,6 @@ export function CartonContextCard({
                       />
                     </HoverTooltip>
                   ) : null}
-                  <SellerMessageChip
-                    receivingId={receivingId}
-                    lineId={lineId}
-                    linkedTicketId={providerTicketId}
-                  />
                 </div>
               ) : onMakeClaim ? (
                 <HoverTooltip label="File claim" placement="above" asChild>
@@ -660,7 +611,7 @@ export function CartonContextCard({
                 </HoverTooltip>
               ) : null}
 
-            {/* Photos — camera + ×N + send-to-phone (+); hover opens gallery when photos exist. */}
+            {/* Photos — camera + count (or + when empty); hover opens gallery when photos exist. */}
             {receivingId != null ? (
               <ReceivingPhotoButton
                 receivingId={receivingId}
@@ -679,7 +630,7 @@ export function CartonContextCard({
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  transition={{ duration: 0.12 }}
+                  transition={{ duration: 0.12, ease: [0.22, 1, 0.36, 1] }}
                   className="flex min-w-0 flex-1 items-center"
                 >
                   {/* Right side unrendered — the chosen picker owns the row.
@@ -693,6 +644,7 @@ export function CartonContextCard({
                       onSelect={handleUrgencySelect}
                       open
                       onOpenChange={(o) => { if (!o) setOpenPicker(null); }}
+                      expandedFace="iconLabel"
                       leadingIcon={INLINE_PILL_LEADING.urgency}
                     />
                   ) : openPicker === 'platform' ? (
@@ -703,6 +655,7 @@ export function CartonContextCard({
                       onSelect={onPlatformSelect}
                       open
                       onOpenChange={(o) => { if (!o) setOpenPicker(null); }}
+                      expandedFace="iconLabel"
                       placeholder={isUnmatched ? 'Unfound' : 'Platform'}
                       leadingIcon={INLINE_PILL_LEADING.platform}
                     />
@@ -714,6 +667,7 @@ export function CartonContextCard({
                       onSelect={onTypeSelect}
                       open
                       onOpenChange={(o) => { if (!o) setOpenPicker(null); }}
+                      expandedFace="iconLabel"
                       placeholder="Type"
                       leadingIcon={INLINE_PILL_LEADING.type}
                     />

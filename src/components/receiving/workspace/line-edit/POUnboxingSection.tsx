@@ -43,6 +43,8 @@ interface POUnboxingSectionProps {
   /** Controlled Package-Pairing open state; uncontrolled (internal) if omitted. */
   pairingOpen?: boolean;
   onPairingToggle?: () => void;
+  /** Carton-open snapshot of `receiving.accordionExpand`. */
+  accordionBootstrap?: 'default' | 'all';
 }
 
 export function POUnboxingSection({
@@ -60,6 +62,7 @@ export function POUnboxingSection({
   suppressItemsHeader = false,
   pairingOpen: pairingOpenProp,
   onPairingToggle,
+  accordionBootstrap = 'default',
 }: POUnboxingSectionProps) {
   const receivingId = row.receiving_id ?? null;
   const linkedPo = !c.isUnfound && !shouldUseUnmatchedItemsSurface(row);
@@ -116,6 +119,7 @@ export function POUnboxingSection({
       suppressHeader={suppressItemsHeader}
       onItemDescFeedback={onItemDescFeedback}
       onItemDescSaved={onItemDescSaved}
+      accordionBootstrap={accordionBootstrap}
     />
   );
 

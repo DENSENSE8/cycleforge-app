@@ -17,6 +17,7 @@ import Link from 'next/link';
 import { formatDistanceToNowStrict } from 'date-fns';
 import { NetworkChip } from '@/components/mobile/NetworkChip';
 import { Button } from '@/design-system/primitives';
+import { requestConfirm } from '@/design-system/components/confirm';
 import { Barcode, ChevronRight, Clock } from '@/components/Icons';
 import { rmaStatusBadgeClass } from '@/lib/rma-status';
 import { conditionLabel } from '@/lib/conditions';
@@ -117,7 +118,12 @@ export default function RmaPage() {
   };
 
   const closeRma = async (id: number) => {
-    if (!window.confirm('Close this RMA? No further dispositions can be recorded against it.')) return;
+    const ok = await requestConfirm({
+      description: 'Close this RMA? No further dispositions can be recorded against it.',
+      tone: 'danger',
+      confirmLabel: 'Close',
+    });
+    if (!ok) return;
     setWorking(id);
     try {
       const res = await fetch(`/api/rma/${id}/close`, { method: 'POST' });

@@ -1,9 +1,9 @@
 'use client';
 
 /**
- * Search order detail shell — Shopify feel: order identity header, full-width
- * section tabs, one centered padded content lane (no left summary sidebar; the
- * Overview tab carries the at-a-glance facts).
+ * Search order detail shell — identity bookmark + section tabs + one padded
+ * content lane. Overview is presence-driven (only mounts facts that exist);
+ * deep tabs keep the full schema with teaching empties.
  */
 
 import { useState } from 'react';

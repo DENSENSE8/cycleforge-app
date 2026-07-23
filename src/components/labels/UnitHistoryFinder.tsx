@@ -102,10 +102,12 @@ export function UnitHistoryFinder() {
   const setHistoryId = useCallback(
     (key: string | null) => {
       const params = new URLSearchParams(searchParams.toString());
+      params.set('view', 'labels');
+      params.set('labelsView', 'history');
       if (key) params.set('historyId', key);
       else params.delete('historyId');
       const qs = params.toString();
-      router.replace(qs ? `/products?${qs}` : '/products');
+      router.replace(qs ? `/products?${qs}` : '/products?view=labels');
     },
     [router, searchParams],
   );
@@ -174,7 +176,7 @@ export function UnitHistoryFinder() {
               No history yet
             </p>
             <p className="mt-2 max-w-[240px] text-role-caption font-medium text-text-soft">
-              Scan a unit's DataMatrix above — its full timeline appears in the workspace.
+              Scan a unit&apos;s DataMatrix in the header — its full timeline appears beside this list.
             </p>
           </div>
         ) : (

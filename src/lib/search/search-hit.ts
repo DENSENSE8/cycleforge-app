@@ -15,6 +15,7 @@
  */
 
 import type { SearchEntityType } from '@/lib/search/build-search-text';
+import { getLast4 } from '@/lib/copy-chip-format';
 import {
   buildOrderJourneyHref,
   buildSerialJourneyHref,
@@ -90,13 +91,19 @@ export function isUiEntityType(value: string): value is SearchHitEntityType {
  * main pane (`openOrderId`) and the Recent|Search map in the L2 sidebar.
  * Optional `q` keeps the header pill + Search-map list in sync; `map=search`
  * opens the near-match rail (default when arriving from header / ⌘K).
+ * Pass `map: 'recent'` to preserve the Recent rail across canonicalize so the
+ * sidebar mode does not flash Search↔Recent on every open.
  */
-export function orderSearchHref(orderId: string | number, query?: string): string {
+export function orderSearchHref(
+  orderId: string | number,
+  query?: string,
+  opts?: { map?: 'search' | 'recent' },
+): string {
   const id = String(orderId).trim();
   const sp = new URLSearchParams();
   sp.set('mode', 'search');
   sp.set('openOrderId', id);
-  sp.set('map', 'search');
+  sp.set('map', opts?.map === 'recent' ? 'recent' : 'search');
   const q = query?.trim();
   if (q) sp.set('q', q);
   return `/dashboard?${sp.toString()}`;
@@ -138,6 +145,32 @@ export function looksLikeIdentifier(query: string): boolean {
   if (/^\d{3,}$/.test(q)) return true; // bare numeric id / tracking fragment
   // Alphanumeric token with digits (serials, FNSKUs, order ids, LPNs, RS-#).
   return /^[A-Za-z0-9#:_\-\.\/]+$/.test(q) && /\d{2,}/.test(q) && q.length >= 4;
+}
+
+/**
+ * Narrow-rail title display (header dropdown + sidebar AI matches). Long
+ * tracking/PO/serial-shaped titles share a prefix and truncate to identical
+ * `94…` crumbs — show last-4 instead and keep the full value for a tooltip.
+ * Product titles (spaces) and short ids stay intact.
+ */
+interface NarrowSearchTitleDisplay {
+  display: string;
+  full: string;
+  abbreviated: boolean;
+}
+
+/** Min length before an identifier-shaped title is abbreviated to last-4. */
+const NARROW_ID_TITLE_MIN = 12;
+
+export function narrowSearchTitleDisplay(title: string): NarrowSearchTitleDisplay {
+  const full = String(title ?? '').trim();
+  if (!full) return { display: title ?? '', full: title ?? '', abbreviated: false };
+  // Product / prose titles have spaces — never crush them to last-4.
+  if (/\s/.test(full)) return { display: full, full, abbreviated: false };
+  if (!looksLikeIdentifier(full) || full.length < NARROW_ID_TITLE_MIN) {
+    return { display: full, full, abbreviated: false };
+  }
+  return { display: getLast4(full), full, abbreviated: true };
 }
 
 /**
@@ -189,6 +222,46 @@ export function shouldAutoOpenSearchOrder(
   hits: ReadonlyArray<{ entityType: string }>,
 ): boolean {
   return hits.length === 1 && hits[0]?.entityType === 'order';
+}
+
+/** Minimal hit fields used to confirm a sole ORDER matches an identifier query. */
+type SoleOrderMatchHit = {
+  id: number;
+  entityType: string;
+  title?: string;
+  subtitle?: string;
+  facets?: Record<string, string | null> | null;
+};
+
+/**
+ * Identifier lookup miss → retrieve bridge: auto-open when retrieve settled to
+ * **exactly one ORDER** whose display identity contains the query (human order
+ * # lives in subtitle; numeric pk may match `id`). Other entity types
+ * (receiving PO siblings, units) are ignored — eBay-style ids often return
+ * ORDER + RECEIVING together; that must still open the order.
+ *
+ * Returns null for Zoho PO / multi-order / true miss — callers must fall
+ * through to the cross-entity results list, never force a dead `openOrderId`.
+ */
+export function soleMatchingOrderHit(
+  hits: ReadonlyArray<SoleOrderMatchHit>,
+  query: string,
+): { id: number } | null {
+  const q = query.trim().toLowerCase();
+  if (!q) return null;
+
+  const matched = hits.filter((hit) => {
+    if (hit.entityType !== 'order' || !Number.isFinite(hit.id) || hit.id <= 0) return false;
+    if (String(hit.id) === q) return true;
+    const hay = [hit.subtitle, hit.title, hit.facets?.order_id]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase();
+    return hay.includes(q);
+  });
+
+  if (matched.length === 1) return { id: matched[0].id };
+  return null;
 }
 
 /**

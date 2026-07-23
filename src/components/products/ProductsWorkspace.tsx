@@ -3,15 +3,19 @@
 import { useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { ManualLibrary } from '@/components/manuals/ManualLibrary';
-import { parseLabelsView } from '@/components/sidebar/ProductsSidebarPanel';
 
-// Lazy-load the labels workspace — it pulls in the DataMatrix renderer +
-// barcode helpers + sub-components that aren't needed for the default
-// Manuals view.
-const MultiSkuSnBarcode = dynamic(() => import('@/components/MultiSkuSnBarcode'), {
-  ssr: false,
-  loading: () => <div className="p-6 text-sm text-text-faint">Loading labels…</div>,
-});
+// Lazy-load the labels workbench — pulls in the DataMatrix renderer + barcode
+// helpers + catalog list; not needed for the default Manuals view.
+const LabelsProductsWorkspace = dynamic(
+  () =>
+    import('@/components/labels/LabelsProductsWorkspace').then(
+      (m) => m.LabelsProductsWorkspace,
+    ),
+  {
+    ssr: false,
+    loading: () => <div className="p-6 text-sm text-text-faint">Loading labels…</div>,
+  },
+);
 
 // Lazy-load the pairing shell — pulls in the Product Hub graph + suggestion
 // fetcher, none of which the default Manuals view needs.
@@ -20,18 +24,6 @@ const ProductsPairingShell = dynamic(
   {
     ssr: false,
     loading: () => <div className="p-6 text-sm text-text-faint">Loading pairing workspace…</div>,
-  },
-);
-
-// Lazy-load the unit detail viewer — mounts for both Recent and History
-// sub-views (read-only unit detail: linkage header, identity, location,
-// timeline). Pulls in the SKU-graph + popover bundle, none of which the
-// default Manuals view needs.
-const UnitDetailWorkspace = dynamic(
-  () => import('@/components/labels/unit-detail/UnitDetailWorkspace').then((m) => m.UnitDetailWorkspace),
-  {
-    ssr: false,
-    loading: () => <div className="p-6 text-sm text-text-faint">Loading unit detail…</div>,
   },
 );
 
@@ -53,19 +45,21 @@ const KitPartsWorkspace = dynamic(
   },
 );
 
+// Lazy-load the Catalog MDM browser — only mounts when view=catalog.
+const ProductsCatalogWorkspace = dynamic(
+  () =>
+    import('./catalog/ProductsCatalogWorkspace').then((m) => m.ProductsCatalogWorkspace),
+  {
+    ssr: false,
+    loading: () => <div className="p-6 text-sm text-text-faint">Loading catalog…</div>,
+  },
+);
+
 export function ProductsWorkspace() {
   const searchParams = useSearchParams();
   const view = searchParams.get('view');
-  const labelsView = parseLabelsView(searchParams.get('labelsView'));
 
-  if (view === 'labels') {
-    // Printing only happens on the Products (`print`) sub-view. Recent and
-    // History both render the read-only unit detail workspace, fed by
-    // `?historyId=` — Recent's row click selects a printed unit, History's
-    // scan/paste resolves one. Neither shows the label-printing component.
-    if (labelsView === 'print') return <MultiSkuSnBarcode layout="horizontal" />;
-    return <UnitDetailWorkspace />;
-  }
+  if (view === 'labels') return <LabelsProductsWorkspace />;
   if (view === 'pairing') return <ProductsPairingShell />;
   // QC view: right pane shows the selected SKU's QC checklist (selection comes
   // from the sidebar's QcProductPicker via `?skuId=`).
@@ -73,6 +67,7 @@ export function ProductsWorkspace() {
   // Kit Parts view: right pane shows the selected SKU's "what's in the box" BOM
   // editor (selection comes from the sidebar's KitPartsPicker via `?skuId=`).
   if (view === 'kit') return <KitPartsWorkspace />;
+  if (view === 'catalog') return <ProductsCatalogWorkspace />;
   // Manuals (default) renders the PDF viewer in the main pane — selection
   // comes from the sidebar's LibraryBrowser (`?id=`).
   return <ManualLibrary />;

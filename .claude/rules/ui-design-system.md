@@ -49,13 +49,21 @@ Rails are a **recipe** for workbench pickers — not proof that every Workbench 
 - **Random card soup** — decorative grids of nested cards for ordinary collections.
 - **Nested cards-as-rows** — e.g. `SectionCard` inside a list of `SectionCard`s.
 - **Second visual language** beside Kinetic Ledger tokens.
-- **Hand-rolled `<table>` / tab band / row markup** for a tabular ops surface. **Do:** compose the golden
-  page recipe — `DashboardScrollShell` + `WORKBENCH_CHROME_COLUMN`/`WORKBENCH_BODY_COLUMN` +
-  `WorkbenchChromeHeader` (tabs) + `KpiTile` + `DateGroupHeader`/`groupRowsBy` day bands + `RowTitle` /
-  `RowMetaColumns` / `ChipColumns` / `LedgerValue`. Golden page: `DashboardOrdersView.tsx`.
-  *Extending an existing hand-rolled table is not "matching siblings" — it is growing a fork. Migrate the
-  region to the recipe instead, and resolve every per-kind label/hue through a registry
-  (`workflow-stages.ts`-style), never a map inlined in the view.*
+- **Hand-rolled `<table>` / tab band / row markup** for a tabular ops surface. **Do:** compose the
+  Workbench spreadsheet SoT — `LedgerGrid` (+ `VirtualGroupedSections`, optional `gridSkin="airtable"`)
+  from `@/design-system/components/grid`, with a **domain thin composer** for cells/columns (golden:
+  Pending via `OrdersGridView`). Page chrome still uses `DashboardScrollShell` +
+  `WORKBENCH_CHROME_COLUMN`/`WORKBENCH_BODY_COLUMN` + `WorkbenchChromeHeader` + `KpiTile` where needed;
+  day bands via `LedgerGrid` `showDayHeaders` / `DateGroupHeader`, multi-line folds via
+  `CollapsibleGroupRow` + `groupRowsBy` (not Maximize2 — that opens the detail pane). HTML
+  `DataTable`, boards, pickers, and rails stay sibling surfaces. *Extending a hand-rolled queue
+  shell is growing a fork — migrate onto `LedgerGrid` instead.*
+  **Grid state math** (column defs / sort / visibility / order) goes through the headless waist —
+  `useGridSurface` + `GridSurfaceDescriptor` / `buildLedgerColumnDefs` (TanStack Table v8, state
+  ONLY; station recipe: `LedgerGridSurface`). Never mount a foreign UI grid (AG Grid / MUI /
+  Glide), never hand-roll a second sort-toggle state machine, never give TanStack widths/markup/
+  grouping (grouping = ask-first, plan Phase E). Shared row VALUE cells: `@/components/ui/grid-cells`.
+  Keep `"use no memo"` on `useGridSurface` (React Compiler freeze trap).
 - **Hand-rolling the card shell** — never re-type `rounded-2xl border border-border-soft
   bg-surface-card shadow-sm`. Compose **`Panel`** (generic static surface — its default *is* that
   shell; props: `padding`/`radius`/`elevation`/`borderless`), **`SectionCard`** (`@/design-system/
@@ -67,6 +75,8 @@ Rails are a **recipe** for workbench pickers — not proof that every Workbench 
 
 - **Station (`floor`):** scan bar + single active-entity card; fact stacks and `divide-y` rows *inside* the card. No browse grids competing with scan focus.
 - **Workbench (`ops`):** primary = list **or** table **or** board **or** master–detail (data shape decides). Fact stacks for record bodies. Scroll region `flex-1 overflow-y-auto`; sticky chrome with `border-t`/`border-b` as needed.
+  - **Scoped search chrome:** icon-first `ToolbarSearchToggle` (`@/design-system/primitives`) — collapsed at rest, expands on hover/focus. Never an always-open `SearchField` in the workbench header search slot.
+  - **Display sort chrome:** quiet trailing dropdown (current value + caret), **left of Import** when present — never a solid `TabSwitch` beside search. SoT: `QueueSortSwitch` / Labels trailing sort. Rule: `.cursor/rules/workbench-sort-chrome.mdc`.
 - **Monitor (`rollup`):** vertical scroll shell + **named rollup zones** may use responsive CSS grid (`KpiStrip`, tri-panel of `SectionCard`s). Compose `@/design-system/components/monitor` — see [display/monitor-rollup-blocks.md](display/monitor-rollup-blocks.md).
 - **Canvas (`studio`):** spatial graph layout; inspector is secondary detail, not a second graph.
 
@@ -144,7 +154,10 @@ Full waist: [source-of-truth.md](source-of-truth.md).
 - **Nav chrome law:** MasterNav L1 page rows (and modeless MRU jumps) render SoT page icons
   (lighter stroke); L2 modes (dropdown, hover, header “now”, mode MRU, scan rails) keep glyphs
   with heavier stroke. CommandBar Pages / mobile page rows stay label-only until those surfaces
-  are migrated. Stroke SoT: `nav-weight.tsx`.
+  are migrated. Stroke SoT: `nav-weight.tsx`. **Exception — closed-header MRU chips + GlobalHeader
+  actions:** native SVG stroke only (`SIDEBAR_MRU_GLYPH` / `TOP_CHROME_ICON_GLYPH` in
+  `header-shell.ts`); force page stroke on MRU when mode wrappers would otherwise
+  bake mode weight — keep mode stroke ≤ 2.25 (`nav-weight.tsx`); 2.75 muddies dense glyphs.
 - Size by context: row dot `h-2 w-2` · field/inline `h-3.5 w-3.5` · button/loader `h-4 w-4` (`Loader2 animate-spin`).
 - **Icon buttons own their box via `IconButton size`** (`xs` 24 · `sm` 28 · `md` 32 · `lg` 36 · `touch` 44px —
   `src/design-system/primitives/IconButton.tsx`), never a hand-set `h-N w-N` on the button. Omit `size` only for a

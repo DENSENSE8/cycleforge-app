@@ -2,10 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight } from '../Icons';
-import { Button, IconButton } from '@/design-system/primitives';
-import {
-    getSidebarIntakeInputClass,
-} from '@/design-system/components';
+import { Button, IconButton, TextField } from '@/design-system/primitives';
 
 interface ProductSelection {
   type: string;
@@ -77,7 +74,6 @@ export function ProductSelector({
   onSelect, selectedProduct, onPriceChange, fillHeight,
   selectedItems: controlledItems, onSelectedItemsChange,
 }: ProductSelectorProps) {
-  const blueInputClass = getSidebarIntakeInputClass('blue');
   const [categories, setCategories] = useState<CategoryNode[]>([]);
   const [products, setProducts] = useState<EcwidProduct[]>([]);
   const [rootName, setRootName] = useState('Bose Repair Service');
@@ -290,12 +286,12 @@ export function ProductSelector({
           ariaLabel="Go back"
           icon={<ChevronLeft className="h-4 w-4" />}
         />
-        <input
-          type="text"
+        <TextField
+          label={showAllProducts ? 'Search all repairs' : isAtRoot ? 'Search categories' : 'Search products'}
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder={showAllProducts ? 'Search all repairs...' : isAtRoot ? 'Search categories...' : 'Search products...'}
-          className={`flex-1 ${blueInputClass}`}
+          onChange={setSearch}
+          className="flex-1"
+          tone="blue"
         />
       </div>
 
@@ -319,12 +315,12 @@ export function ProductSelector({
 
         {showOther && (
           <div className="flex items-center gap-2">
-            <input
-              type="text"
+            <TextField
+              label="Product name"
               value={otherModelText}
-              onChange={(e) => setOtherModelText(e.target.value)}
-              placeholder="Enter product name..."
-              className={`flex-1 ${blueInputClass}`}
+              onChange={setOtherModelText}
+              className="flex-1"
+              tone="blue"
               onKeyDown={(e) => { if (e.key === 'Enter') handleOtherSubmit(); }}
             />
             <Button

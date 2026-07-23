@@ -67,6 +67,7 @@ export function amendmentsToTimeline(rows: AmendmentTimelineRow[]): TimelineItem
       ref: serial ? { value: serial, kind: 'serial' } : undefined,
       actor: r.raised_by_name?.trim() || undefined,
       badges,
+      sourceEventType: 'UNIT_SUBSTITUTED',
     };
   });
 }

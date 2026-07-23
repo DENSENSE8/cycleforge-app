@@ -573,6 +573,14 @@ test('regression: forge master-plan sync is machine-gated (allowAnonymous + forg
   );
 });
 
+test('regression: orders/[id]/amazon-refresh is orders.create (Product-tab ASIN reimport)', () => {
+  const paths = routesGatedBy('orders.create').map((r) => r.path);
+  assert.ok(
+    paths.includes('/api/orders/[id]/amazon-refresh/route.ts'),
+    'orders.create should gate POST /api/orders/[id]/amazon-refresh',
+  );
+});
+
 test('regression: orders-exceptions/[id] PATCH is orders.create (tracking-only exception edit)', () => {
   const paths = routesGatedBy('orders.create').map((r) => r.path);
   assert.ok(

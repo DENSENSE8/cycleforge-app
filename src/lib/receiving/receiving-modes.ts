@@ -419,6 +419,9 @@ const incomingMode: ReceivingModeDescriptor = {
     if (ctx.isDeliveredNotUnboxedFacet) {
       return 'Nothing delivered-and-not-unboxed right now.';
     }
+    if (ctx.incomingSource === 'ebay') {
+      return 'No eBay purchases yet — Import to sync linked buyer accounts.';
+    }
     return 'No incoming POs — Zoho says everything issued is already received.';
   },
 };

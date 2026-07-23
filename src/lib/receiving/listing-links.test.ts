@@ -4,7 +4,9 @@ import {
   collectCartonListingLinks,
   formatListingLinkMenuOptions,
   listingUrlIdentityKey,
+  buildOpenLinksHubHref,
 } from './listing-links';
+
 
 test('manual listing URL wins as primary', () => {
   const links = collectCartonListingLinks({
@@ -167,4 +169,17 @@ test('listingUrlIdentityKey extracts marketplace item ids for last-4 chips', () 
   assert.equal(listingUrlIdentityKey('https://shopgoodwill.com/item/267952401'), '267952401');
   assert.equal(listingUrlIdentityKey(''), '');
   assert.equal(listingUrlIdentityKey('not-a-url'), '');
+});
+
+test('buildOpenLinksHubHref encodes hrefs as a JSON query param', () => {
+  const href = buildOpenLinksHubHref([
+    { href: 'https://www.ebay.com/itm/1' },
+    { href: 'https://www.amazon.com/dp/B0' },
+  ]);
+  assert.ok(href.startsWith('/open-links?'));
+  const qs = new URLSearchParams(href.slice('/open-links?'.length));
+  assert.deepEqual(JSON.parse(qs.get('links') ?? 'null'), [
+    'https://www.ebay.com/itm/1',
+    'https://www.amazon.com/dp/B0',
+  ]);
 });

@@ -1,26 +1,7 @@
-/** Shared with `ShippedIntakeForm` and FBA create shipment — keep in sync. */
+/** Shared intake chrome — shell close / subtitle / submit CTAs. */
 
 export const SIDEBAR_INTAKE_LABEL_CLASS =
   'block text-role-micro uppercase tracking-widest text-text-muted';
-
-const SIDEBAR_INTAKE_INPUT_BASE_CLASS =
-  'w-full px-4 py-3 bg-surface-canvas border border-border-soft rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:border-transparent transition-all';
-
-const SIDEBAR_INTAKE_INPUT_RING_CLASS = {
-  green: 'focus:ring-green-500',
-  orange: 'focus:ring-orange-500',
-  blue: 'focus:ring-blue-500',
-} as const;
-
-export function getSidebarIntakeInputClass(tone: keyof typeof SIDEBAR_INTAKE_INPUT_RING_CLASS = 'green'): string {
-  return `${SIDEBAR_INTAKE_INPUT_BASE_CLASS} ${SIDEBAR_INTAKE_INPUT_RING_CLASS[tone]}`;
-}
-
-export const SIDEBAR_INTAKE_INPUT_CLASS = getSidebarIntakeInputClass('green');
-
-export const SIDEBAR_INTAKE_INPUT_MONO_CLASS = `${SIDEBAR_INTAKE_INPUT_CLASS} font-mono`.trim();
-
-export const SIDEBAR_INTAKE_SELECT_CLASS = SIDEBAR_INTAKE_INPUT_CLASS;
 
 export const SIDEBAR_INTAKE_CLOSE_BUTTON_CLASS =
   'p-2 bg-surface-sunken hover:bg-surface-strong rounded-xl transition-all';

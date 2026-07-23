@@ -2,7 +2,6 @@
 export type IncomingDeliveryState =
   | 'DELIVERED_UNOPENED'
   | 'DELIVERED_NOT_UNBOXED'
-  | 'DELIVERED_EMAIL'
   | 'ARRIVING_TODAY'
   | 'STALLED'
   | 'IN_TRANSIT'
@@ -23,8 +22,10 @@ export interface IncomingCarrierBreakdown {
 export interface IncomingSummary {
   issued: number;
   delivered_unopened: number;
+  /** Unbox attention — scanned-in but not unboxed (not an Incoming hunt tile). */
   delivered_not_unboxed: number;
-  delivered_email: number;
+  /** Hunt-queue claims band: delivered >48h, still unscanned. */
+  delivered_unscanned_claims: number;
   arriving_today: number;
   stalled: number;
   in_transit: number;

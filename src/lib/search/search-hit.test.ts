@@ -10,11 +10,13 @@ import {
   globalSearchHandoffHref,
   isUiEntityType,
   journeyHandoffHref,
+  narrowSearchTitleDisplay,
   orderSearchHref,
   searchHitHref,
   searchScopeHref,
   searchScopeLabel,
   shouldAutoOpenSearchOrder,
+  soleMatchingOrderHit,
   toDbEntityType,
   toUiEntityType,
 } from './search-hit';
@@ -50,6 +52,10 @@ test('orderSearchHref: opens Dashboard Search detail with optional q', () => {
     orderSearchHref('111-6350504-7603458', '111-6350504-7603458'),
     '/dashboard?mode=search&openOrderId=111-6350504-7603458&map=search&q=111-6350504-7603458',
   );
+  assert.equal(
+    orderSearchHref(42, 'x', { map: 'recent' }),
+    '/dashboard?mode=search&openOrderId=42&map=recent&q=x',
+  );
 });
 
 test('shouldAutoOpenSearchOrder: exact sole ORDER hit only', () => {
@@ -63,6 +69,74 @@ test('shouldAutoOpenSearchOrder: exact sole ORDER hit only', () => {
   assert.equal(
     shouldAutoOpenSearchOrder([{ entityType: 'order' }, { entityType: 'unit' }]),
     false,
+  );
+});
+
+test('soleMatchingOrderHit: sole ORDER whose subtitle/title contains the query', () => {
+  assert.deepEqual(
+    soleMatchingOrderHit(
+      [
+        {
+          id: 5436,
+          entityType: 'order',
+          subtitle: '27-14721-28101 · 00210-P-1 · EBAY',
+          title: 'Bose Wave',
+        },
+      ],
+      '27-14721-28101',
+    ),
+    { id: 5436 },
+  );
+  // ORDER + RECEIVING siblings (common for eBay-style ids) still opens the order.
+  assert.deepEqual(
+    soleMatchingOrderHit(
+      [
+        {
+          id: 5436,
+          entityType: 'order',
+          subtitle: '27-14721-28101 · EBAY',
+        },
+        {
+          id: 5853,
+          entityType: 'receiving',
+          subtitle: '27-14721-32085 · PENDING',
+        },
+      ],
+      '27-14721-28101',
+    ),
+    { id: 5436 },
+  );
+  // Numeric pk as query
+  assert.deepEqual(
+    soleMatchingOrderHit([{ id: 5436, entityType: 'order', subtitle: 'x' }], '5436'),
+    { id: 5436 },
+  );
+  // Zoho PO / receiving-only → null (never force openOrderId)
+  assert.equal(
+    soleMatchingOrderHit(
+      [{ id: 9, entityType: 'receiving', subtitle: '05-14897-15602 · PO' }],
+      '05-14897-15602',
+    ),
+    null,
+  );
+  // Two matching orders → null
+  assert.equal(
+    soleMatchingOrderHit(
+      [
+        { id: 1, entityType: 'order', subtitle: '27-14721-28101' },
+        { id: 2, entityType: 'order', subtitle: '27-14721-28101 · dup' },
+      ],
+      '27-14721-28101',
+    ),
+    null,
+  );
+  // Sole ORDER but query not in identity → null (avoid false open)
+  assert.equal(
+    soleMatchingOrderHit(
+      [{ id: 1, entityType: 'order', subtitle: '99-00000-00000 · EBAY' }],
+      '27-14721-28101',
+    ),
+    null,
   );
 });
 
@@ -177,4 +251,41 @@ test('facetChips: one chip per present facet, tones from the semantic families',
     ['TESTED:blue', 'USED_GOOD:amber', 'ebay:gray'],
   );
   assert.deepEqual(facetChips({}), []);
+});
+
+test('narrowSearchTitleDisplay: long tracking-shaped titles abbreviate to last-4', () => {
+  const tracking = '9434608101234567890123';
+  const out = narrowSearchTitleDisplay(tracking);
+  assert.equal(out.abbreviated, true);
+  assert.equal(out.full, tracking);
+  assert.equal(out.display, '0123');
+});
+
+test('narrowSearchTitleDisplay: product titles with spaces stay full', () => {
+  const title = 'Bose Wave Series III / IV Console';
+  const out = narrowSearchTitleDisplay(title);
+  assert.equal(out.abbreviated, false);
+  assert.equal(out.display, title);
+  assert.equal(out.full, title);
+});
+
+test('narrowSearchTitleDisplay: short identifiers stay full', () => {
+  const out = narrowSearchTitleDisplay('940011');
+  assert.equal(out.abbreviated, false);
+  assert.equal(out.display, '940011');
+});
+
+test('narrowSearchTitleDisplay: human order ids under the min length stay full', () => {
+  // 11 chars with digits — identifier-shaped but below NARROW_ID_TITLE_MIN (12).
+  const out = narrowSearchTitleDisplay('27-14721-28');
+  assert.equal(out.abbreviated, false);
+  assert.equal(out.display, '27-14721-28');
+});
+
+test('narrowSearchTitleDisplay: long human order ids abbreviate to last-4', () => {
+  const id = '27-14721-28101';
+  const out = narrowSearchTitleDisplay(id);
+  assert.equal(out.abbreviated, true);
+  assert.equal(out.display, '8101');
+  assert.equal(out.full, id);
 });

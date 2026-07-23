@@ -9,6 +9,8 @@ interface Tab {
   id: string;
   label: string;
   count?: number;
+  /** Optional leading glyph — used by SectionTabsSlider labeled strips. */
+  icon?: (props: { className?: string }) => ReactNode;
   color?: 'blue' | 'emerald' | 'orange' | 'purple' | 'green' | 'yellow' | 'gray' | 'red' | 'teal';
   /**
    * When true, render a vertical hairline immediately before this tab
@@ -48,6 +50,17 @@ interface TabSwitchProps {
    * (the accent-surface pairing); inactive/hover text is unchanged.
    */
   solidTone?: 'inverse' | 'accent';
+  /**
+   * `fill` (default) — track stretches; tabs share width (`flex-1`).
+   * `hug` — rail sizes to content; tabs stay intrinsic width. Use for
+   * compact workbench chrome (e.g. {@link SectionTabsSlider}).
+   */
+  fit?: 'fill' | 'hug';
+  /**
+   * Optional control rendered inside the rail after the tabs (e.g. a ⋯
+   * overflow trigger). Not measured by the sliding pill.
+   */
+  trailing?: ReactNode;
 }
 
 const colorTextMap: Record<string, { active: string; shadow: string }> = {
@@ -95,10 +108,13 @@ export function TabSwitch({
   stationChromeOutlineClassName,
   countStyle = 'badge',
   solidTone = 'inverse',
+  fit = 'fill',
+  trailing,
 }: TabSwitchProps) {
   const upNext = variant === 'upNext';
   const solid = variant === 'solid';
   const solidAccent = solid && solidTone === 'accent';
+  const hug = fit === 'hug';
   const upNextOutline = stationChromeOutlineClassName ?? 'border border-border-default';
   const defaultRailClass = upNext
     ? `${upNextRailBaseClass} ${upNextOutline}`
@@ -108,6 +124,8 @@ export function TabSwitch({
         ? 'rounded-xl bg-surface-strong p-1.5 shadow-[inset_0_1px_3px_rgba(0,0,0,0.08)]'
         : 'bg-surface-sunken rounded-xl p-1';
   const railCombined = railClassName ?? defaultRailClass;
+  const trackWidthClass = scrollable ? 'w-max min-w-full' : hug ? 'w-max' : 'w-full';
+  const tabFlexClass = hug ? 'shrink-0' : 'flex-1';
   const railRef = useRef<HTMLDivElement | null>(null);
   const trackRef = useRef<HTMLDivElement | null>(null);
   const buttonRefs = useRef<Record<string, HTMLButtonElement | null>>({});
@@ -186,12 +204,11 @@ export function TabSwitch({
   return (
     <div
       ref={railRef}
-      className={`${railCombined} ${scrollable ? 'overflow-x-auto scrollbar-hide' : ''} ${className}`}
+      className={`${railCombined} ${scrollable ? 'overflow-x-auto scrollbar-hide' : ''} ${
+        hug ? 'inline-flex w-auto max-w-full' : ''
+      } ${className}`}
     >
-      <div
-        ref={trackRef}
-        className={`relative flex gap-1 ${scrollable ? 'w-max min-w-full' : 'w-full'}`}
-      >
+      <div ref={trackRef} className={`relative flex gap-1 ${trackWidthClass}`}>
         <motion.div
           aria-hidden
           className={`pointer-events-none absolute z-0 rounded-full ${
@@ -214,6 +231,7 @@ export function TabSwitch({
           const isActive = activeTab === tab.id;
           const colors = colorTextMap[tab.color ?? 'blue'] ?? colorTextMap.blue;
           const upNextLabels = upNextLabelTextClass[tab.color ?? 'blue'] ?? upNextLabelTextClass.blue;
+          const Icon = tab.icon;
           return (
             <div key={tab.id} className="contents">
               {tab.dividerBefore ? (
@@ -228,13 +246,15 @@ export function TabSwitch({
                   buttonRefs.current[tab.id] = node;
                 }}
                 onClick={() => onTabChange(tab.id)}
-                className={`relative z-10 flex-1 min-w-[3rem] whitespace-nowrap rounded-full transition-colors duration-150 ${
+                className={`relative z-10 ${tabFlexClass} min-w-[3rem] whitespace-nowrap rounded-full transition-colors duration-150 ${
                   solid ? 'font-bold' : 'font-black uppercase tracking-widest'
                 } ${
                   upNext
                     ? 'px-3 py-2 text-role-caption'
                     : solid
-                      ? 'px-5 py-2.5 text-role-caption'
+                      ? hug
+                        ? 'px-3 py-2 text-role-caption'
+                        : 'px-5 py-2.5 text-role-caption'
                       : highContrast
                         ? 'px-4 py-2 text-role-caption'
                         : 'px-3 py-1.5 text-role-micro'
@@ -255,13 +275,14 @@ export function TabSwitch({
                 }`}
               >
                 <motion.span
-                  className="relative z-10 flex items-center justify-center gap-1"
+                  className="relative z-10 flex items-center justify-center gap-1.5"
                   animate={{
                     scale: isActive ? 1 : solid ? 1 : upNext || highContrast ? 0.98 : 0.93,
                     opacity: isActive ? 1 : solid || upNext ? 1 : highContrast ? 0.9 : 0.52,
                   }}
                   transition={{ duration: 0.18, ease: motionBezier.easeOut }}
                 >
+                  {Icon ? <Icon className="h-3.5 w-3.5 shrink-0" /> : null}
                   {tab.label}
                   {tab.count !== undefined && tab.count > 0 ? (
                     countStyle === 'plain' ? (
@@ -296,6 +317,7 @@ export function TabSwitch({
             </div>
           );
         })}
+        {trailing ? <div className="relative z-10 flex shrink-0 items-stretch">{trailing}</div> : null}
       </div>
     </div>
   );

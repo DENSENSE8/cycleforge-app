@@ -7,6 +7,7 @@ import { cn } from '@/utils/_cn';
 import { toast } from '@/lib/toast';
 import { Button, IconButton } from '@/design-system/primitives';
 import { AnchoredLayer } from '@/design-system/primitives/AnchoredLayer';
+import { requestConfirm } from '@/design-system/components/confirm';
 import { useWarrantyClaim } from '@/hooks/useWarrantyClaims';
 import { useWarrantyMutations } from '@/hooks/useWarrantyMutations';
 import {
@@ -204,16 +205,15 @@ function WarrantyTicketPanel({ claimId }: { claimId: number }) {
               type="button"
               disabled={unlink.isPending}
               ariaLabel="Unlink ticket"
-              onClick={() => {
+              onClick={async () => {
                 const ticketId = claim?.zendeskTicketId;
                 if (ticketId == null) return;
-                if (
-                  !window.confirm(
-                    `Unlink ticket #${ticketId} from this claim? The ticket stays in the helpdesk — only the claim link is removed.`,
-                  )
-                ) {
-                  return;
-                }
+                const ok = await requestConfirm({
+                  description: `Unlink ticket #${ticketId} from this claim? The ticket stays in the helpdesk — only the claim link is removed.`,
+                  tone: 'danger',
+                  confirmLabel: 'Unlink',
+                });
+                if (!ok) return;
                 unlink.mutate(ticketId, {
                   onSuccess: () => toast.success(`Unlinked ticket #${ticketId}`),
                   onError: (e) =>

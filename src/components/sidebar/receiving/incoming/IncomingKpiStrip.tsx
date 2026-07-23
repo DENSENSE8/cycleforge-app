@@ -95,7 +95,17 @@ export function IncomingKpiStrip() {
       value: summary.delivered_unopened,
       intent: 'warn',
       status: 'Scan in',
-      tooltip: 'Carrier marked delivered but no dock scan is logged yet.',
+      tooltip: 'Carrier marked delivered but no dock scan is logged yet. Age bands drive burn-down.',
+    });
+  }
+  if (summary.delivered_unscanned_claims > 0) {
+    metrics.push({
+      id: 'delivered_unscanned_claims',
+      label: 'Claims clock',
+      value: summary.delivered_unscanned_claims,
+      intent: 'warn',
+      status: '>48h',
+      tooltip: 'Delivered more than 48 hours ago and still unscanned — claims / OS&D attention.',
     });
   }
   if (summary.awaiting_tracking > 0) {

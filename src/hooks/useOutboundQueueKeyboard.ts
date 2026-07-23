@@ -8,7 +8,7 @@
  *   Esc    — close detail
  *
  * Reuses the existing navigate-shipped-details / close-shipped-details bridge
- * so OrdersQueueTable and DashboardShippedTable stay in sync without a second
+ * so OrdersGridView and DashboardShippedTable stay in sync without a second
  * selection bus. Capture-phase so it coexists with filter hotkeys (A/1/2/3).
  */
 

@@ -3,10 +3,13 @@
 /**
  * Compact carton-photos control for the condensed CartonContextCard row.
  *
- * One pill: camera + (×N when photos exist) + "+". Click sends a capture
- * request to the paired phone. When photos exist, hovering the pill reveals
- * the read/delete gallery toolbar — the wrapper owns hover (with a short leave
- * delay) so the cursor can cross the gap to the popover without it collapsing.
+ * One pill: camera pinned left + (count when photos exist, else "+") pinned
+ * right. Click sends a capture request to the paired phone. Count and "+"
+ * never share the face — when a count is shown the plus is omitted. Width is
+ * locked (`justify-between`) so digit growth does not shift the identity row.
+ * When photos exist, hovering the pill reveals the read/delete gallery
+ * toolbar — the wrapper owns hover (with a short leave delay) so the cursor
+ * can cross the gap to the popover without it collapsing.
  *
  * Upload opens {@link PhotoUploadOverlay} (RightPaneOverlay SoT, same shell as
  * ReceivingClaimModal) with drag-drop + device picker. The gallery stays pinned
@@ -209,10 +212,13 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
       ariaLabel={ariaLabel}
       aria-expanded={hasGallery ? galleryHover || galleryUploadPinned || galleryMovePinned : emptyUploadOpen}
       icon={<Camera className="h-4 w-4" />}
-      iconRight={<Plus className="h-3 w-3" />}
+      // Right face: count when photos exist (children), else "+". Camera stays
+      // left via justify-between on the locked photo-pill width. Count is not
+      // iconRight — Button's icon box would crush multi-digit tabular nums.
+      iconRight={hasGallery ? undefined : <Plus className="h-3 w-3" />}
       className={btnClass}
     >
-      {count > 0 ? <>{count}</> : null}
+      {hasGallery ? count : null}
     </Button>
   );
 

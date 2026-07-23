@@ -85,7 +85,6 @@ export function useReceivingModeContext(): ReceivingModeState {
   const incomingState: IncomingDeliveryState | null =
     incomingStateRaw === 'DELIVERED_UNOPENED'
       || incomingStateRaw === 'DELIVERED_NOT_UNBOXED'
-      || incomingStateRaw === 'DELIVERED_EMAIL'
       || incomingStateRaw === 'ARRIVING_TODAY'
       || incomingStateRaw === 'STALLED'
       || incomingStateRaw === 'IN_TRANSIT'

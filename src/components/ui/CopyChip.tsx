@@ -320,12 +320,17 @@ export const OrderIdChip = ({
   display,
   dense,
   plain,
+  truncateDisplay = true,
+  fitDisplayWidth = false,
 }: {
   value: string;
   display: string;
   dense?: boolean;
   /** Omit the leading hash icon — used by the quiet queue-grid identity cells. */
   plain?: boolean;
+  /** Grid tracks: keep last-4 fully visible (no `33…` ellipsis). */
+  truncateDisplay?: boolean;
+  fitDisplayWidth?: boolean;
 }) => (
   <CopyChip
     value={value}
@@ -333,6 +338,8 @@ export const OrderIdChip = ({
     tone="id"
     icon={plain ? null : undefined}
     dense={dense}
+    truncateDisplay={truncateDisplay}
+    fitDisplayWidth={fitDisplayWidth}
   />
 );
 
@@ -394,6 +401,7 @@ export const TrackingChip = ({
    */
   fitDisplayWidth = true,
   dense,
+  disableTooltip = false,
 }: {
   value: string;
   /** @deprecated Tracking labels are always derived from `value` as last four. */
@@ -404,6 +412,8 @@ export const TrackingChip = ({
   showIcon?: boolean;
   fitDisplayWidth?: boolean;
   dense?: boolean;
+  /** Skip the site hover copy bubble — click still copies. */
+  disableTooltip?: boolean;
 }) => (
   <CopyChip
     value={value}
@@ -412,6 +422,7 @@ export const TrackingChip = ({
     icon={showIcon ? undefined : null}
     width={width}
     disableCopy={disableCopy}
+    disableTooltip={disableTooltip}
     outerPad={showIcon ? 'chip' : 'flush'}
     fitDisplayWidth={fitDisplayWidth}
     dense={dense}
@@ -483,6 +494,25 @@ export const SkuScanRefChip = ({
     dense={dense}
   />
 );
+
+/**
+ * Empty SKU slot on a PO-line meta row — dashed yellow underline (same pencil
+ * tone as {@link SkuScanRefChip}) so "no SKU yet" reads differently from a
+ * filled solid-underline chip. Used by matched rows with a blank SKU and by
+ * the empty unfound stub row before the first return/serial import.
+ */
+export function EmptySkuChipFace({ dense = true }: { dense?: boolean } = {}) {
+  return (
+    <AddValueChipFace
+      label="----"
+      icon={<Pencil className="h-3.5 w-3.5 shrink-0" />}
+      colorClass="text-yellow-600"
+      underlineClass="border-yellow-500"
+      dense={dense}
+      size="chip"
+    />
+  );
+}
 
 /**
  * Zoho PO unit cost on a receiving line. Lucide stroke `$` + underlined amount.
@@ -718,10 +748,27 @@ export const TrackingCountChip = ({ count, dense }: { count: number; dense?: boo
   <GroupCountChip count={count} tone="tracking" dense={dense} />
 );
 
-export const TicketChip = ({ value, display }: { value: string; display: string }) => (
-  <CopyChip value={value} display={display} tone="ticket" />
+export const TicketChip = ({
+  value,
+  display,
+  dense = false,
+  disableTooltip = false,
+}: {
+  value: string;
+  display: string;
+  /** Bookmark / dense chrome — smaller icon + caption mono. */
+  dense?: boolean;
+  /** Skip the site hover copy bubble — click still copies. */
+  disableTooltip?: boolean;
+}) => (
+  <CopyChip
+    value={value}
+    display={display}
+    tone="ticket"
+    dense={dense}
+    disableTooltip={disableTooltip}
+  />
 );
-
 /** Bin / location barcode chip (teal / Tags). Prefer last-4 display for long barcodes. */
 export const BinChip = ({
   value,

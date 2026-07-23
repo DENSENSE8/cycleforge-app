@@ -96,6 +96,16 @@ function triageMetrics(summary: IncomingSummary): ReceivingMetric[] {
       tooltip: 'Carrier marked delivered but no dock scan is logged yet.',
     });
   }
+  if (summary.delivered_unscanned_claims > 0) {
+    metrics.push({
+      id: 'delivered_unscanned_claims',
+      label: 'Claims clock',
+      value: summary.delivered_unscanned_claims,
+      intent: 'warn',
+      status: '>48h',
+      tooltip: 'Delivered more than 48 hours ago and still unscanned.',
+    });
+  }
   if (summary.awaiting_tracking > 0) {
     metrics.push({
       id: 'awaiting_tracking',

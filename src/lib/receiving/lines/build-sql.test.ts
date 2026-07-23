@@ -100,7 +100,6 @@ const LIST_COMBOS: Combo[] = [
   { name: 'view=incoming malformed po range silently no-ops', qs: 'view=incoming&po_from=junk&po_to=2026-13-99x' },
   { name: 'view=incoming delivery_state=DELIVERED_UNOPENED', qs: 'view=incoming&delivery_state=delivered_unopened' },
   { name: 'view=incoming delivery_state=DELIVERED_NOT_UNBOXED', qs: 'view=incoming&delivery_state=delivered_not_unboxed' },
-  { name: 'view=incoming delivery_state=DELIVERED_EMAIL', qs: 'view=incoming&delivery_state=DELIVERED_EMAIL' },
   { name: 'view=incoming delivery_state=ARRIVING_TODAY', qs: 'view=incoming&delivery_state=ARRIVING_TODAY' },
   { name: 'view=incoming delivery_state=STALLED', qs: 'view=incoming&delivery_state=STALLED' },
   { name: 'view=incoming delivery_state=IN_TRANSIT', qs: 'view=incoming&delivery_state=IN_TRANSIT' },

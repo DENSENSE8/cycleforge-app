@@ -1,54 +1,34 @@
 /**
  * Replenishment / backorder presentation SoT for order surfaces.
  *
- * Maps `replenishment_requests.status` (enum: detected · pending_review ·
- * planned_for_po · po_created · waiting_for_receipt · fulfilled · cancelled —
- * see the baseline migration) to the ONE label/tone story every view uses.
- * The Pending grid's `stock` column, tooltips, and any future backorder rollup
- * resolve through here — never an inline status map in a component
- * (`workflow-stages.ts` discipline).
- *
- * The standard backorder-row anatomy this powers: shortfall qty · fulfillment
- * status · expected-supply signal (PO#) — data facts only; the free-text
- * `out_of_stock` reason is NOT part of this registry (it surfaces only via the
- * Product-cell OOS corner indicator).
+ * Maps `replenishment_requests.status` to the ONE label story every view uses.
+ * The Pending grid's OOS corner-indicator tooltip resolves through
+ * {@link replenishmentTooltip} — never an inline status map in a component.
+ * (The dedicated `stock` grid column was retired 2026-07-22; short/chip cell
+ * tones were removed with it — revive only when a rollup consumer needs them.)
  */
 
 interface ReplenishmentStatusMeta {
   /** Full status label (tooltips, detail panes). */
   label: string;
-  /** ≤7-char cell word beside the shortfall qty in the narrow stock track. */
-  short: string;
-  /** 3-layer chip tone classes (house chip anatomy: bg · text · ring). */
-  chip: string;
 }
 
-const CHIP = {
-  amber: 'bg-amber-50 text-amber-700 ring-amber-200',
-  blue: 'bg-blue-50 text-blue-700 ring-blue-200',
-  indigo: 'bg-indigo-50 text-indigo-700 ring-indigo-200',
-  emerald: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
-  gray: 'bg-surface-sunken text-text-muted ring-border-default',
-} as const;
-
 const REPLENISHMENT_STATUS_META: Record<string, ReplenishmentStatusMeta> = {
-  detected:            { label: 'Shortage detected',   short: 'need',    chip: CHIP.amber },
-  pending_review:      { label: 'Pending review',      short: 'review',  chip: CHIP.amber },
-  planned_for_po:      { label: 'Planned for PO',      short: 'plan',    chip: CHIP.blue },
-  po_created:          { label: 'PO created',          short: 'PO',      chip: CHIP.blue },
-  waiting_for_receipt: { label: 'Waiting for receipt', short: 'inbound', chip: CHIP.indigo },
-  fulfilled:           { label: 'Restocked',           short: 'stocked', chip: CHIP.emerald },
-  cancelled:           { label: 'Cancelled',           short: 'void',    chip: CHIP.gray },
+  detected: { label: 'Shortage detected' },
+  pending_review: { label: 'Pending review' },
+  planned_for_po: { label: 'Planned for PO' },
+  po_created: { label: 'PO created' },
+  waiting_for_receipt: { label: 'Waiting for receipt' },
+  fulfilled: { label: 'Restocked' },
+  cancelled: { label: 'Cancelled' },
 };
 
 const UNKNOWN_STATUS: ReplenishmentStatusMeta = {
   label: 'Replenishment',
-  short: 'restock',
-  chip: CHIP.gray,
 };
 
 /** Resolve a raw status (NULL-safe) to its display meta. */
-export function replenishmentStatusMeta(status: string | null | undefined): ReplenishmentStatusMeta {
+function replenishmentStatusMeta(status: string | null | undefined): ReplenishmentStatusMeta {
   const key = String(status ?? '').trim().toLowerCase();
   return REPLENISHMENT_STATUS_META[key] ?? UNKNOWN_STATUS;
 }
@@ -76,7 +56,7 @@ export function rowReplenishmentFacts(row: Record<string, unknown>): RowReplenis
   };
 }
 
-/** One-line tooltip for the stock cell: status · ordering N · PO · notes. */
+/** One-line replenishment summary (OOS indicator tooltip): status · ordering N · PO · notes. */
 export function replenishmentTooltip(facts: RowReplenishmentFacts): string {
   const meta = replenishmentStatusMeta(facts.status);
   return [

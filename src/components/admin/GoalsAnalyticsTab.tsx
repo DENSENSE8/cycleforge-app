@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { AdminEmptyDetail } from './shared';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { FILTER_DROPDOWN_SELECT_CLASS } from '@/design-system/components/FilterDropdownSelect';
 
 type StationFilter = 'ALL' | 'TECH' | 'PACK';
 type RangeFilter = 7 | 14 | 30;
@@ -154,7 +155,7 @@ export function GoalsAnalyticsTab() {
           <select
             value={stationFilter}
             onChange={(e) => setStationFilter(e.target.value as StationFilter)}
-            className="ml-2 rounded-md border border-border-default px-2 py-1 text-role-caption"
+            className={`ml-2 w-auto ${FILTER_DROPDOWN_SELECT_CLASS}`}
           >
             <option value="ALL">All stations</option>
             <option value="TECH">Tech</option>

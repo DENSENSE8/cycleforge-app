@@ -4,6 +4,7 @@ import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import {
   filterLinesByPoGroup,
   getReceivingPoGroupTitle,
+  getReceivingPoIdentityParts,
   isReceivingPoGroupTitleRow,
   receivingAdaptiveRailTitle,
   receivingPoGroupKey,
@@ -96,6 +97,37 @@ test('receivingRailRowTitle — marketplace order without Zoho PO', () => {
     receivingRailRowTitle(r, 'po-group', (p) => (p === 'ebay' ? 'eBay' : p)),
     'eBay · USAV-Buyer · Order 12-34567-89012',
   );
+});
+
+test('getReceivingPoIdentityParts — eBay-only row uses source_order_id as Order', () => {
+  const parts = getReceivingPoIdentityParts(
+    row({
+      inbound_source_type: 'ebay',
+      source_order_id: '05-14843-41472',
+      platform_account_label: 'Buyer-A',
+      zoho_purchaseorder_id: null,
+      zoho_purchaseorder_number: null,
+    }),
+    (p) => (p === 'ebay' ? 'eBay' : p),
+  );
+  assert.equal(parts.poValue, '05-14843-41472');
+  assert.equal(parts.idPrefix, 'Order');
+  assert.equal(parts.platformLabel, 'eBay');
+  assert.equal(parts.accountLabel, 'Buyer-A');
+});
+
+test('getReceivingPoIdentityParts — Zoho PO wins over eBay source_order_id', () => {
+  const parts = getReceivingPoIdentityParts(
+    row({
+      inbound_source_type: 'ebay',
+      source_order_id: '05-14843-41472',
+      zoho_purchaseorder_id: 'zoho-1',
+      zoho_purchaseorder_number: 'PO-99',
+    }),
+    identity,
+  );
+  assert.equal(parts.poValue, 'PO-99');
+  assert.equal(parts.idPrefix, 'PO');
 });
 
 test('receivingRailRowTitle — line mode keeps product name', () => {

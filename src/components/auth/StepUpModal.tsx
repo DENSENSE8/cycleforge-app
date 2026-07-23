@@ -12,6 +12,15 @@
 
 import { useCallback, useState } from 'react';
 import { startAuthentication } from '@simplewebauthn/browser';
+import { Button } from '@/design-system/primitives';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/design-system/components/Dialog';
 
 interface StepUpModalProps {
   scope: string;
@@ -78,8 +87,6 @@ export function StepUpModal({ scope, open, onResolved, onCancel, reason }: StepU
     }
   }, [scope, onResolved]);
 
-  if (!open) return null;
-
   const press = (d: string) => {
     setErr(null);
     setPin((p) => {
@@ -90,55 +97,80 @@ export function StepUpModal({ scope, open, onResolved, onCancel, reason }: StepU
   };
 
   return (
-    <div
-      className="fixed inset-0 z-modal flex items-center justify-center bg-scrim/60 p-4"
-      onClick={onCancel}
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (!next && !busy) onCancel();
+      }}
     >
-      <div
-        className="bg-surface-card rounded-2xl p-6 w-full max-w-sm text-center"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-amber-100 text-amber-700 text-xl">
-          🔐
-        </div>
-        <h2 className="text-base font-semibold text-text-default">Confirm your identity</h2>
-        <p className="text-xs text-text-soft mt-1">
-          {reason || `Enter your PIN to ${scope.replace(/_/g, ' ').replace(/\./g, ' ')}`}.
-        </p>
+      <DialogContent hideClose className="max-w-sm text-center">
+        <DialogHeader className="items-center text-center">
+          <div className="mx-auto mb-1 flex h-12 w-12 items-center justify-center rounded-full bg-amber-100 text-xl text-amber-700">
+            🔐
+          </div>
+          <DialogTitle>Confirm your identity</DialogTitle>
+          <DialogDescription>
+            {reason || `Enter your PIN to ${scope.replace(/_/g, ' ').replace(/\./g, ' ')}`}.
+          </DialogDescription>
+        </DialogHeader>
 
-        <div className="my-5 flex justify-center gap-2.5">
-          {[0,1,2,3,4,5].map((i) => (
-            <div key={i} className={`h-3 w-3 rounded-full transition ${i < pin.length ? 'bg-surface-inverse' : 'bg-surface-strong'}`} />
+        <div className="flex justify-center gap-2.5">
+          {[0, 1, 2, 3, 4, 5].map((i) => (
+            <div
+              key={i}
+              className={`h-3 w-3 rounded-full transition ${i < pin.length ? 'bg-surface-inverse' : 'bg-surface-strong'}`}
+            />
           ))}
         </div>
 
-        {err && <div className="mb-3 text-xs text-red-600">{err}</div>}
+        {err && <div className="text-xs text-red-600">{err}</div>}
 
         {/* ds-raw-button: PIN entry numpad keypad (digit/passkey/backspace keys) — auth surface, not design-system Buttons */}
-        <div className="grid grid-cols-3 gap-2 mb-3">
-          {['1','2','3','4','5','6','7','8','9'].map((d) => (
-            <button key={d} type="button" disabled={busy}
-              className="ds-raw-button h-12 rounded-lg bg-surface-canvas border border-border-soft text-lg font-medium hover:bg-surface-sunken"
-              onClick={() => press(d)}>{d}</button>
+        <div className="mb-1 grid grid-cols-3 gap-2">
+          {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((d) => (
+            <button
+              key={d}
+              type="button"
+              disabled={busy}
+              className="ds-raw-button h-12 rounded-lg border border-border-soft bg-surface-canvas text-lg font-medium hover:bg-surface-sunken"
+              onClick={() => press(d)}
+            >
+              {d}
+            </button>
           ))}
-          <button type="button" disabled={busy}
+          <button
+            type="button"
+            disabled={busy}
             className="ds-raw-button h-12 rounded-lg text-xs text-text-soft hover:text-text-default"
-            onClick={() => submitPasskey()}>Passkey</button>
-          <button type="button" disabled={busy}
-            className="ds-raw-button h-12 rounded-lg bg-surface-canvas border border-border-soft text-lg font-medium hover:bg-surface-sunken"
-            onClick={() => press('0')}>0</button>
-          <button type="button" disabled={busy || pin.length === 0}
-            className="ds-raw-button h-12 rounded-lg bg-surface-canvas border border-border-soft text-base hover:bg-surface-sunken"
-            onClick={() => setPin((p) => p.slice(0, -1))}>⌫</button>
+            onClick={() => submitPasskey()}
+          >
+            Passkey
+          </button>
+          <button
+            type="button"
+            disabled={busy}
+            className="ds-raw-button h-12 rounded-lg border border-border-soft bg-surface-canvas text-lg font-medium hover:bg-surface-sunken"
+            onClick={() => press('0')}
+          >
+            0
+          </button>
+          <button
+            type="button"
+            disabled={busy || pin.length === 0}
+            className="ds-raw-button h-12 rounded-lg border border-border-soft bg-surface-canvas text-base hover:bg-surface-sunken"
+            onClick={() => setPin((p) => p.slice(0, -1))}
+          >
+            ⌫
+          </button>
         </div>
 
-        {/* ds-raw-button: minimal inline text-link cancel (no chrome) — Button would add height/padding */}
-        <button type="button" onClick={onCancel}
-          className="text-xs text-text-soft hover:text-text-default mt-1">
-          Cancel
-        </button>
-      </div>
-    </div>
+        <DialogFooter className="sm:justify-center">
+          <Button type="button" variant="secondary" size="sm" onClick={onCancel} disabled={busy}>
+            Cancel
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

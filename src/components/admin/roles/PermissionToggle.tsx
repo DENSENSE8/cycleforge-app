@@ -9,6 +9,7 @@
 
 import { requiresStepUp, type PermissionString } from '@/lib/auth/permissions-shared';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { Switch } from '@/design-system/primitives/Switch';
 
 interface PermissionToggleProps {
   label: string;
@@ -37,21 +38,14 @@ export function PermissionToggle({ label, permission, enabled, color, disabled, 
         </div>
         <code className="truncate text-role-micro font-mono text-text-soft">{permission}</code>
       </div>
-      {/* ds-raw-button */}
-      <button
-        type="button"
-        role="switch"
-        aria-checked={enabled}
-        aria-label={`Toggle ${label}`}
+      <Switch
+        checked={enabled}
         disabled={disabled}
-        onClick={onToggle}
+        onCheckedChange={() => onToggle()}
+        aria-label={`Toggle ${label}`}
+        checkedClassName="data-[state=checked]:bg-transparent"
         style={enabled ? { backgroundColor: color } : undefined}
-        className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors disabled:cursor-not-allowed ${enabled ? '' : 'bg-surface-strong'}`}
-      >
-        <span
-          className={`inline-block h-4 w-4 transform rounded-full bg-surface-card shadow transition-transform ${enabled ? 'translate-x-6' : 'translate-x-1'}`}
-        />
-      </button>
+      />
     </li>
   );
 }

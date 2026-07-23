@@ -85,6 +85,11 @@ interface Props {
   /** Hide the embedded "PO items · N" eyebrow — the tab slider owns the label. */
   suppressHeader?: boolean;
   /**
+   * Carton-open snapshot of `receiving.accordionExpand`. `'all'` keeps the
+   * active line body expanded and suppresses inactive decorative chevrons.
+   */
+  accordionBootstrap?: 'default' | 'all';
+  /**
    * Opt-in: extra controls rendered in each line's title row, immediately after
    * the ⋮ menu (e.g. the testing page's serial LINK combine control).
    * Omitted callers (unbox) render nothing here — unchanged.
@@ -126,6 +131,7 @@ export function PoLinesAccordion({
   embedded = false,
   headerRight,
   suppressHeader = false,
+  accordionBootstrap = 'default',
 }: Props) {
   const { queryKey, allRows, rows, cartonUnitIds, serialsLoading } = usePoLinesData({
     receivingId,
@@ -138,6 +144,8 @@ export function PoLinesAccordion({
   // closed so a high-qty line (x100 unit rows) doesn't lock the workspace to
   // a wall of rows. Re-expands whenever the active line changes (sync during
   // render so the first paint of the new line isn't collapsed for a frame).
+  // `accordionBootstrap === 'all'` forces expanded on open + on line switch.
+  const expandAll = accordionBootstrap === 'all';
   const [activeCollapsed, setActiveCollapsed] = useState(false);
   const [collapseForLineId, setCollapseForLineId] = useState(activeLineId);
   if (activeLineId !== collapseForLineId) {
@@ -145,6 +153,11 @@ export function PoLinesAccordion({
     setActiveCollapsed(false);
   }
   const expandActiveRow = useCallback(() => setActiveCollapsed(false), []);
+  const effectiveCollapsed = expandAll ? false : activeCollapsed;
+  const toggleCollapsed = useCallback(() => {
+    if (expandAll) return;
+    setActiveCollapsed((v) => !v);
+  }, [expandAll]);
 
   // Tab-panel visibility gate for framer `layout`. When this accordion sits in a
   // hidden tab (`display:none`, e.g. the Units display is active), its rows
@@ -204,8 +217,9 @@ export function PoLinesAccordion({
               readOnly={readOnly}
               animateLayout={layoutActive}
               serialsLoading={serialsLoading}
-              activeCollapsed={activeCollapsed}
-              onToggleCollapsed={() => setActiveCollapsed((v) => !v)}
+              activeCollapsed={effectiveCollapsed}
+              onToggleCollapsed={toggleCollapsed}
+              showInactiveChevron={false}
               activeConditionOverride={activeConditionOverride}
               activeSerialActions={activeSerialActions}
               activeRowSlot={activeRowSlot}

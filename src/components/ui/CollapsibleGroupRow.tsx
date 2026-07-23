@@ -95,10 +95,15 @@ export function CollapsibleGroupRow({
         }}
         aria-expanded={isOpen}
         className={cn(
-          'ds-raw-button flex w-full cursor-pointer items-center gap-2 text-left transition-colors hover:bg-blue-50/50',
-          nestRail ? 'py-1.5' : 'py-0',
-          QUEUE_ROW.px,
-          isOpen ? 'bg-blue-50/40' : index != null && index % 2 === 1 ? 'bg-surface-canvas/40' : 'bg-surface-card',
+          'ds-raw-button flex w-full cursor-pointer items-center text-left transition-colors hover:bg-blue-50/50',
+          // Spreadsheet skins (nestRail off) must be flush — QUEUE_ROW.px would
+          // indent multi-line PO headers relative to singleton leaf rows.
+          nestRail ? cn('gap-2 py-1.5', QUEUE_ROW.px) : 'gap-0 px-0 py-0',
+          isOpen ? 'bg-blue-50/40' : index != null && index % 2 === 1
+            ? nestRail
+              ? 'bg-surface-canvas/40'
+              : 'bg-surface-canvas'
+            : 'bg-surface-card',
         )}
       >
         {showChevron ? (

@@ -57,6 +57,11 @@ export interface SupportContextHubProps {
    * inline TicketLinkPopover in the Customer empty state.
    */
   onRequestLinkTicket?: () => void;
+  /**
+   * Hide ticket `#` / subject embed in the linkage strip (Support station
+   * Summary + Connections — Ticket tab owns the number).
+   */
+  hideTicketEmbed?: boolean;
 }
 
 export function SupportContextHub({
@@ -74,6 +79,7 @@ export function SupportContextHub({
   linkageOnly = false,
   surface = 'card',
   onRequestLinkTicket,
+  hideTicketEmbed = false,
 }: SupportContextHubProps) {
   const flush = surface === 'flush';
   const cardShellClass = flush
@@ -140,7 +146,11 @@ export function SupportContextHub({
           linkageOnly && 'pb-3',
         )}
       >
-        <LinkageStrip bundle={data} dense={dense || linkageOnly} />
+        <LinkageStrip
+          bundle={data}
+          dense={dense || linkageOnly}
+          hideTicketEmbed={hideTicketEmbed}
+        />
       </div>
     );
 

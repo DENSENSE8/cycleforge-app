@@ -131,7 +131,7 @@ export const RECEIVING_SELECTION_SCOPE = 'receiving' as const;
  * band. History keys day-bands on the active sort axis (unboxed or scanned);
  * Receive uses 'scanned'. History is client-sorted (serverSorted=false).
  */
-export type ReceivingActivityAxis = 'scanned' | 'unboxed' | 'received';
+export type ReceivingActivityAxis = 'scanned' | 'unboxed' | 'received' | 'tested';
 
 export function receivingRowActivityTs(
   row: {
@@ -186,10 +186,10 @@ export function poGroupAnchorMs(group: ReceivingPoGroup): number {
   return Number.isFinite(t) ? t : 0;
 }
 
-/** Stage stamp shown in the receiving history meta subrow (Unbox / Triage / Done). */
+/** Stage stamp shown in the receiving history meta subrow (Unbox / Triage / Done / Testing). */
 type ReceivingRowStageStamp = {
   instant: string;
-  label: 'Scanned' | 'Unboxed' | 'Received';
+  label: 'Scanned' | 'Unboxed' | 'Received' | 'Tested';
   staffName: string | null;
 };
 
@@ -198,6 +198,7 @@ type ReceivingStageStampRow = {
   received_at?: string | null;
   unboxed_at?: string | null;
   received_done_at?: string | null;
+  tested_at?: string | null;
   scanned_by_name?: string | null;
   received_by_name?: string | null;
   unboxed_by_name?: string | null;
@@ -214,6 +215,22 @@ export function resolveReceivingRowStageStamp(
   row: ReceivingStageStampRow,
   axis: ReceivingActivityAxis,
 ): ReceivingRowStageStamp | null {
+  if (axis === 'tested') {
+    const tested = (row.tested_at || '').trim();
+    if (tested) {
+      return { instant: tested, label: 'Tested', staffName: null };
+    }
+    // Pending / not-yet-tested: fall through to unboxed clock.
+    const unboxed = (row.unboxed_at || '').trim();
+    if (unboxed) {
+      return {
+        instant: unboxed,
+        label: 'Unboxed',
+        staffName: (row.unboxed_by_name || '').trim() || null,
+      };
+    }
+    return null;
+  }
   if (axis === 'unboxed') {
     const instant = (row.unboxed_at || '').trim();
     if (instant) {

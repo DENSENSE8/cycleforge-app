@@ -13,6 +13,13 @@ export interface ReceivingLineRow {
   id: number;
   receiving_id: number | null;
   /**
+   * Real `shipping_tracking_numbers.id` for a shipment-anchored delivered-unscanned
+   * row (no receiving_line). The row's `id` is a negative, collision-free React key
+   * only — recover the true shipment id from THIS field, never by decoding `id`
+   * (see `shipmentIdFromDeliveredUnscannedRow`). Null on every line-anchored row.
+   */
+  shipment_ref?: number | null;
+  /**
    * Client-minted identity for an OPTIMISTIC scan row (the triage "importing"
    * stub). Carries across the stub → resolved-row reconcile so the sidebar rail
    * keys both renders by the same value (see SidebarRailShell `getReconcileId`)
@@ -85,7 +92,6 @@ export interface ReceivingLineRow {
   delivery_state?:
     | 'DELIVERED_UNOPENED'
     | 'DELIVERED_NOT_UNBOXED'
-    | 'DELIVERED_EMAIL'
     | 'ARRIVING_TODAY'
     | 'STALLED'
     | 'IN_TRANSIT'
@@ -119,6 +125,11 @@ export interface ReceivingLineRow {
   expected_delivery_date?: string | null;
   /** Vendor name from zoho_po_mirror (Incoming view only). */
   vendor_name?: string | null;
+  /**
+   * Hours-since-delivered SLA band for the delivered-unscanned hunt queue
+   * (`lt_24h` | `h24_48` | `gt_48h`). Set on synthetic shipment rows only.
+   */
+  delivered_age_band?: 'lt_24h' | 'h24_48' | 'gt_48h' | null;
   /**
    * Universal Incoming purchase identity (receiving_lines spine cache; Incoming
    * view only). `inbound_source_type` badges the row's source ('zoho' | 'ebay' | …);

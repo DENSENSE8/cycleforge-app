@@ -32,6 +32,7 @@ import {
   resolveOperatorAccentTheme,
   resolvesUseStaffAccent,
 } from '@/utils/operator-accent';
+import { Switch } from '@/design-system/primitives/Switch';
 
 /**
  * True palette miniature — a tiny "app" rendered from the theme's actual
@@ -129,21 +130,7 @@ function AccentToggleRow({
           <span className="mt-0.5 block text-role-caption text-text-soft">{description}</span>
         ) : null}
       </span>
-      <button
-        type="button"
-        role="switch"
-        aria-checked={checked}
-        onClick={() => onChange(!checked)}
-        className={`ds-raw-button relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors ${
-          checked ? 'bg-blue-600' : 'bg-surface-strong'
-        }`}
-      >
-        <span
-          className={`inline-block h-4 w-4 transform rounded-full bg-surface-card shadow transition-transform ${
-            checked ? 'translate-x-6' : 'translate-x-1'
-          }`}
-        />
-      </button>
+      <Switch checked={checked} onCheckedChange={onChange} aria-label={label} />
     </label>
   );
 }

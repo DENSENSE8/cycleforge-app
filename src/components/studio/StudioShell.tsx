@@ -19,6 +19,7 @@
 import { useLocalStorage } from '@/hooks';
 import { ChevronLeft, ChevronRight, Plus, Sparkles, Upload } from '@/components/Icons';
 import { Button, IconButton } from '@/design-system/primitives';
+import { requestConfirm } from '@/design-system/components/confirm';
 import { useStudioWorkspace } from './StudioWorkspaceContext';
 import { useStudioSimulation } from './useStudioSimulation';
 import { StudioCanvas } from './StudioCanvas';
@@ -239,14 +240,14 @@ export function StudioShell() {
                   type="button"
                   variant="ghost"
                   size="sm"
-                  onClick={() => {
-                    if (
-                      window.confirm(
+                  onClick={async () => {
+                    const ok = await requestConfirm({
+                      description:
                         'Discard this draft? Its unsaved-to-active changes are permanently removed. This cannot be undone.',
-                      )
-                    ) {
-                      void discardDraft();
-                    }
+                      tone: 'danger',
+                      confirmLabel: 'Discard',
+                    });
+                    if (ok) void discardDraft();
                   }}
                   disabled={busy !== null}
                   className="h-auto rounded-md border border-rose-200 bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-700 hover:bg-rose-100"

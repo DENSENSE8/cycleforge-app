@@ -35,7 +35,7 @@ const WarrantyWorkspace = dynamic(
  *
  * - tickets   → full queue workbench (`SupportTicketsBoard`) + Station focus
  *   when `?ticket=` is set. Sidebar shows recently selected only.
- * - orders    → Dashboard To Ship board (`UnshippedTable` / OrdersQueueTable) +
+ * - orders    → Dashboard To Ship board (`UnshippedTable` / OrdersGridView) +
  *   Station order focus when `?openOrderId=` is set.
  * - voicemail → selected voicemail detail (`?vm=`), Workbench crossfade.
  * - calls     → the org call-log Monitor stream (read-only).

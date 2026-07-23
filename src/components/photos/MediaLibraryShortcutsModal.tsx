@@ -1,9 +1,13 @@
 'use client';
 
 import { useEffect } from 'react';
-import { createPortal } from 'react-dom';
-import { X } from '@/components/Icons';
-import { IconButton } from '@/design-system/primitives';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/design-system/components/Dialog';
 
 interface ShortcutRow {
   keys: string[];
@@ -62,10 +66,11 @@ function ShortcutList({ title, rows }: { title: string; rows: ShortcutRow[] }) {
 
 /** Keyboard shortcut cheat sheet for the media library (toggled with `?`). */
 export function MediaLibraryShortcutsModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  // `?` toggles help closed (Escape is handled by Dialog).
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' || e.key === '?') {
+      if (e.key === '?') {
         e.preventDefault();
         onClose();
       }
@@ -74,35 +79,25 @@ export function MediaLibraryShortcutsModal({ open, onClose }: { open: boolean; o
     return () => window.removeEventListener('keydown', onKey);
   }, [open, onClose]);
 
-  if (!open || typeof document === 'undefined') return null;
-
-  return createPortal(
-    <div
-      className="fixed inset-0 z-modal flex items-center justify-center bg-scrim/40 p-4"
-      onClick={onClose}
-      role="dialog"
-      aria-modal="true"
-      aria-label="Media library keyboard shortcuts"
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (!next) onClose();
+      }}
     >
-      <div
-        className="w-full max-w-md rounded-xl border border-border-soft bg-surface-card p-5 shadow-xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-role-caption font-bold text-text-default">Keyboard shortcuts</h2>
-          <IconButton
-            onClick={onClose}
-            ariaLabel="Close shortcuts"
-            className="-my-1 rounded p-1 text-text-faint hover:bg-surface-hover hover:text-text-muted"
-            icon={<X className="h-4 w-4" />}
-          />
-        </div>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="text-role-caption font-bold">Keyboard shortcuts</DialogTitle>
+          <DialogDescription className="sr-only">
+            Grid and photo viewer keyboard shortcuts for the media library.
+          </DialogDescription>
+        </DialogHeader>
         <div className="space-y-4">
           <ShortcutList title="Grid" rows={GRID_SHORTCUTS} />
           <ShortcutList title="Photo viewer" rows={VIEWER_SHORTCUTS} />
         </div>
-      </div>
-    </div>,
-    document.body,
+      </DialogContent>
+    </Dialog>
   );
 }

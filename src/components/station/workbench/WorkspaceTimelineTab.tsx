@@ -15,7 +15,7 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Barcode, Loader2, MapPin } from '@/components/Icons';
+import { Barcode, History, Loader2, MapPin } from '@/components/Icons';
 import { SectionTabsSlider, WorkspaceCard, type SectionTab } from '@/design-system/components';
 import {
   CarrierTrackingSection,
@@ -28,7 +28,9 @@ import {
   type JourneyResponse,
 } from '@/lib/queries/operations-journey-queries';
 import type { CarrierEvent } from '@/lib/timeline';
+import type { TimelineItem } from '@/lib/timeline/types';
 import type { JourneyUrlFilters } from '@/components/sidebar/operations/useOperationsTimelineUrlState';
+import { TimelineSection } from '@/components/ui/TimelineSection';
 import {
   normalizeExplicitSerials,
   resolveTimelineSections,
@@ -37,9 +39,8 @@ import {
 import { StationUnitJourneys } from './StationUnitJourneys';
 
 export type { WorkspaceTimelineAnchor } from './resolve-timeline-sections';
-export { resolveTimelineSections } from './resolve-timeline-sections';
 
-type TimelineSpine = 'units' | 'tracking';
+type TimelineSpine = 'units' | 'tracking' | 'activity';
 
 function emptyJourneyFilters(partial: Partial<JourneyUrlFilters> & Pick<JourneyUrlFilters, 'dim'>): JourneyUrlFilters {
   return {
@@ -226,11 +227,34 @@ function UnitsPanel({
   return <StationUnitJourneys serials={serials} loading={loading} />;
 }
 
+function ActivityPanel({
+  items,
+  loading,
+}: {
+  items: TimelineItem[];
+  loading: boolean;
+}) {
+  return (
+    <TimelineSection
+      title="Activity"
+      items={items}
+      loading={loading}
+      density="compact"
+      metaTrail
+      emptyMessage="No activity yet — link tracking or scan at the dock."
+      headerRight={
+        !loading && items.length > 0 ? <span>{items.length} events</span> : undefined
+      }
+    />
+  );
+}
+
 export function WorkspaceTimelineTab(props: WorkspaceTimelineAnchor) {
   const tracking = String(props.tracking ?? '').trim();
   const orderId = String(props.orderId ?? '').trim();
   const poId = String(props.poId ?? '').trim();
   const receivingId = props.receivingId ?? null;
+  const activity = props.activity ?? null;
   const explicitSerials = useMemo(
     () => normalizeExplicitSerials(props.serials),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- serialize list identity
@@ -245,9 +269,11 @@ export function WorkspaceTimelineTab(props: WorkspaceTimelineAnchor) {
         orderId,
         receivingId,
         serials: explicitSerials,
+        activity: props.activity,
       }),
-    [poId, tracking, orderId, receivingId, explicitSerials],
+    [poId, tracking, orderId, receivingId, explicitSerials, props.activity],
   );
+  const showActivity = plan.showActivity && activity != null;
 
   const carton = useCartonSerials(plan.fetchCartonSerials ? receivingId : null);
   const serials = plan.fetchCartonSerials ? carton.serials : explicitSerials;
@@ -271,15 +297,29 @@ export function WorkspaceTimelineTab(props: WorkspaceTimelineAnchor) {
   );
   const carrier = plan.carrierVia === 'po' ? poCarrier : journeyCarrier;
 
-  const [spine, setSpine] = useState<TimelineSpine>('units');
+  // Activity leads when present (Support Timeline); else Units → Tracking.
+  const [spine, setSpine] = useState<TimelineSpine>(() =>
+    props.activity != null ? 'activity' : 'units',
+  );
 
-  // Carton identity change → Units default when serials exist.
   useEffect(() => {
-    setSpine(plan.showSerials ? 'units' : 'tracking');
-  }, [poId, receivingId, tracking, orderId, plan.showSerials]);
+    if (showActivity) setSpine('activity');
+    else if (plan.showSerials) setSpine('units');
+    else if (plan.showCarrier) setSpine('tracking');
+  }, [poId, receivingId, tracking, orderId, plan.showSerials, plan.showCarrier, showActivity]);
 
   const tabs = useMemo((): SectionTab[] => {
     const next: SectionTab[] = [];
+    if (showActivity && activity) {
+      next.push({
+        id: 'activity',
+        label: 'Activity',
+        icon: History,
+        content: (
+          <ActivityPanel items={activity.items} loading={Boolean(activity.loading)} />
+        ),
+      });
+    }
     if (plan.showSerials) {
       next.push({
         id: 'units',
@@ -302,6 +342,9 @@ export function WorkspaceTimelineTab(props: WorkspaceTimelineAnchor) {
   }, [
     plan.showSerials,
     plan.showCarrier,
+    showActivity,
+    activity?.items,
+    activity?.loading,
     serials,
     serialsLoading,
     carrier.shipment,
@@ -313,7 +356,9 @@ export function WorkspaceTimelineTab(props: WorkspaceTimelineAnchor) {
   const activeId =
     tabs.some((t) => t.id === spine) ? spine : (tabs[0]?.id as TimelineSpine | undefined);
 
-  if (!plan.hasContent || tabs.length === 0) {
+  const hasAnyContent = plan.hasContent;
+
+  if (!hasAnyContent || tabs.length === 0) {
     return (
       <WorkspaceCard variant="glass" overflow="visible" bodyDensity="nested">
         <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-8 text-center text-role-caption font-medium text-text-soft">
@@ -331,7 +376,7 @@ export function WorkspaceTimelineTab(props: WorkspaceTimelineAnchor) {
     body = (
       <SectionTabsSlider
         tabs={tabs}
-        value={activeId ?? 'units'}
+        value={activeId ?? (showActivity ? 'activity' : 'units')}
         onChange={(id) => setSpine(id as TimelineSpine)}
         ariaLabel="Timeline spine"
       />

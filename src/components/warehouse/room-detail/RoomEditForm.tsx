@@ -16,7 +16,7 @@ export function RoomEditForm({ c }: { c: RoomDetailController }) {
   const {
     creating, selectedRoom, form, setForm, confirmDelete, setConfirmDelete,
     stats, usedLetters, trimmedName, trimmedLetter,
-    nameTaken, renameTaken, canSave, isDirty, roomMutating,
+    nameTaken, renameTaken, canSave, isDirty, saveDisabledReason, roomMutating,
     setParam, goToBins, handleSave, handleDelete, handleDiscard,
   } = c;
 
@@ -184,6 +184,7 @@ export function RoomEditForm({ c }: { c: RoomDetailController }) {
           onClick: handleSave,
           isLoading: roomMutating,
           disabled: !canSave || (!creating && !isDirty),
+          title: saveDisabledReason,
           tone: 'blue',
           icon: creating ? <Plus className="h-4 w-4" /> : <Check className="h-4 w-4" />,
         }}

@@ -17,9 +17,8 @@ import { STAFF_FILTER_PARAM, useStaffFilter } from '@/hooks/useStaffFilter';
  * is set (absent = Me default for the caller; token = explicit all).
  *
  * Workbench toolbar SoT: popover `align="end"` (opens left — right edge flush
- * with the trigger), matching {@link WorkbenchFilterPopover} lane filters and
- * {@link ColumnConfigButton} `toolbar` variant. Do not pass `align="start"` in
- * right-side chrome slots.
+ * with the trigger), matching {@link WorkbenchFilterPopover} lane filters.
+ * Do not pass `align="start"` in right-side chrome slots.
  */
 export function StaffFilterButton({
   iconOnly = false,

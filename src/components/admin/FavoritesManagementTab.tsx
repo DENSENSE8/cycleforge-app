@@ -4,7 +4,12 @@ import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { qk } from '@/queries/keys';
 import { Edit, Plus, Trash2, X } from '@/components/Icons';
-import { Button, IconButton } from '@/design-system/primitives';
+import { Button, Checkbox, IconButton } from '@/design-system/primitives';
+import {
+  Dialog,
+  DialogContent,
+} from '@/design-system/components/Dialog';
+import { requestConfirm } from '@/design-system/components/confirm';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { mainStickyHeaderClass, mainStickyHeaderShellRowClass } from '@/components/layout/header-shell';
 import { toast } from '@/lib/toast';
@@ -209,10 +214,13 @@ export function FavoritesManagementTab() {
     createMutation.mutate(form);
   };
 
-  const handleDelete = (row: FavoriteRecord) => {
-    if (!window.confirm(`Remove favorite "${row.label}" (${row.sku}) from ${workspace}? This deletes it permanently — to hide it instead, edit and turn off Active.`)) {
-      return;
-    }
+  const handleDelete = async (row: FavoriteRecord) => {
+    const ok = await requestConfirm({
+      description: `Remove favorite "${row.label}" (${row.sku}) from ${workspace}? This deletes it permanently — to hide it instead, edit and turn off Active.`,
+      tone: 'danger',
+      confirmLabel: 'Remove',
+    });
+    if (!ok) return;
     deleteMutation.mutate(row.id);
   };
 
@@ -328,11 +336,14 @@ export function FavoritesManagementTab() {
         </div>
       </div>
 
-      {isFormOpen && (
-        <div className="fixed inset-0 z-modal flex items-center justify-center p-4">
-          {/* ds-raw-button: full-bleed modal scrim/overlay dismiss target, not a DS Button */}
-          <button type="button" className="absolute inset-0 bg-scrim/30" onClick={closeForm} aria-label="Close favorite form" />
-          <div className="relative flex w-full max-w-2xl flex-col overflow-hidden border border-border-soft bg-surface-card shadow-xl">
+      <Dialog
+        open={isFormOpen}
+        onOpenChange={(next) => {
+          if (!next) closeForm();
+        }}
+      >
+        <DialogContent hideClose className="max-w-2xl gap-0 overflow-hidden p-0 sm:rounded-xl">
+          <div className="flex w-full flex-col overflow-hidden">
             <div className="flex items-center justify-between border-b border-border-soft px-5 py-4">
               <div>
                 <p className={sectionLabel}>{editingId != null ? 'Edit Favorite' : 'New Favorite'}</p>
@@ -439,11 +450,10 @@ export function FavoritesManagementTab() {
               </label>
 
               <label className="flex items-center gap-3 border border-border-soft px-3 py-3 md:col-span-2">
-                <input
-                  type="checkbox"
+                <Checkbox
                   checked={form.isActive}
-                  onChange={(e) => setForm((c) => ({ ...c, isActive: e.target.checked }))}
-                  className="h-4 w-4 border-border-default text-text-default focus:ring-border-default"
+                  onCheckedChange={(v) => setForm((c) => ({ ...c, isActive: v === true }))}
+                  aria-label="Active"
                 />
                 <span className={`${sectionLabel} text-text-muted`}>Active (shown in the {workspace} picker)</span>
               </label>
@@ -469,8 +479,8 @@ export function FavoritesManagementTab() {
               </Button>
             </div>
           </div>
-        </div>
-      )}
+        </DialogContent>
+      </Dialog>
     </section>
   );
 }

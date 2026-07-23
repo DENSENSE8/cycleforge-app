@@ -6,12 +6,10 @@ import { Loader2, Lock, Check, AlertCircle } from '../Icons';
 import { HorizontalButtonSlider, type HorizontalSliderItem } from '@/components/ui/HorizontalButtonSlider';
 import { ConditionPills } from '@/components/receiving/workspace/ConditionPills';
 import { normalizeCondition } from '@/components/tech/StationConditionEditor';
-import { Button } from '@/design-system/primitives';
+import { Button, TextField } from '@/design-system/primitives';
 import {
-  SidebarIntakeFormField,
+  FormField,
   SidebarIntakeFormShell,
-  SIDEBAR_INTAKE_INPUT_CLASS,
-  SIDEBAR_INTAKE_INPUT_MONO_CLASS,
   SIDEBAR_INTAKE_SUBMIT_BUTTON_CLASS,
 } from '@/design-system/components';
 
@@ -165,10 +163,6 @@ export function ShippedIntakeForm({ onClose, onSubmit }: ShippedIntakeFormProps)
     }
   };
 
-  const productTitleClassName = isProductTitleLocked
-    ? 'w-full px-4 py-3 border rounded-xl text-sm font-semibold bg-green-50 border-green-300 text-green-900 cursor-not-allowed focus:outline-none'
-    : SIDEBAR_INTAKE_INPUT_CLASS;
-
   return (
     <SidebarIntakeFormShell
       title="New Order Entry"
@@ -198,179 +192,152 @@ export function ShippedIntakeForm({ onClose, onSubmit }: ShippedIntakeFormProps)
     >
       {activeTab === 'replacement' ? (
         <>
-          <SidebarIntakeFormField label="Order ID" required>
-            <>
-              <input
-                type="text"
-                value={replacementData.order_id}
-                onChange={(e) => handleOrderIdChange(e.target.value)}
-                onBlur={handleOrderIdBlur}
-                placeholder="Enter order ID..."
-                className={SIDEBAR_INTAKE_INPUT_CLASS}
-              />
-              {lookupStatus !== 'idle' ? (
-                <div className="flex items-center gap-2 text-xs">
-                  {lookupStatus === 'searching' ? (
-                    <>
-                      <Loader2 className="h-3 w-3 animate-spin text-blue-500" />
-                      <span className="font-bold text-blue-600">Searching...</span>
-                    </>
-                  ) : null}
-                  {lookupStatus === 'found' ? (
-                    <>
-                      <Check className="h-3 w-3 text-green-600" />
-                      <span className="font-bold text-green-600">Order found! Product title auto-filled.</span>
-                    </>
-                  ) : null}
-                  {lookupStatus === 'not-found' ? (
-                    <>
-                      <AlertCircle className="h-3 w-3 text-amber-600" />
-                      <span className="font-bold text-amber-600">
-                        Order not found. Please enter product title manually.
-                      </span>
-                    </>
-                  ) : null}
-                </div>
-              ) : null}
-            </>
-          </SidebarIntakeFormField>
-
-          <SidebarIntakeFormField label="Shipping Tracking Number" required>
-            <input
-              type="text"
-              value={replacementData.shipping_tracking_number}
-              onChange={(e) =>
-                setReplacementData((prev) => ({ ...prev, shipping_tracking_number: e.target.value }))
-              }
-              placeholder="Enter tracking number..."
-              className={SIDEBAR_INTAKE_INPUT_MONO_CLASS}
+          <div className="space-y-2">
+            <TextField
+              label="Order ID"
+              value={replacementData.order_id}
+              onChange={handleOrderIdChange}
+              onBlur={handleOrderIdBlur}
+              required
+              tone="emerald"
             />
-          </SidebarIntakeFormField>
-
-          <SidebarIntakeFormField
-            label="Reason or Ticket #"
-            required
-            hintBelow={
-              <p className="text-role-eyebrow font-medium text-text-soft">
-                Will be saved as:{' '}
-                <span className="font-bold">
-                  {replacementData.reason || '[Reason]'} - {replacementData.product_title || '[Product Title]'}
-                </span>
-              </p>
-            }
-          >
-            <input
-              type="text"
-              value={replacementData.reason}
-              onChange={(e) => setReplacementData((prev) => ({ ...prev, reason: e.target.value }))}
-              placeholder="Reason for shipment..."
-              className={SIDEBAR_INTAKE_INPUT_CLASS}
-            />
-          </SidebarIntakeFormField>
-
-          <SidebarIntakeFormField
-            label={
-              <>
-                Product Title
-                {isProductTitleLocked ? (
-                  <span className="ml-2 inline-flex items-center gap-1 text-green-600">
-                    <Lock className="h-3 w-3" />
-                    <span className="text-role-micro">Locked</span>
-                  </span>
+            {lookupStatus !== 'idle' ? (
+              <div className="flex items-center gap-2 text-xs">
+                {lookupStatus === 'searching' ? (
+                  <>
+                    <Loader2 className="h-3 w-3 animate-spin text-blue-500" />
+                    <span className="font-bold text-blue-600">Searching...</span>
+                  </>
                 ) : null}
-              </>
+                {lookupStatus === 'found' ? (
+                  <>
+                    <Check className="h-3 w-3 text-green-600" />
+                    <span className="font-bold text-green-600">Order found! Product title auto-filled.</span>
+                  </>
+                ) : null}
+                {lookupStatus === 'not-found' ? (
+                  <>
+                    <AlertCircle className="h-3 w-3 text-amber-600" />
+                    <span className="font-bold text-amber-600">
+                      Order not found. Please enter product title manually.
+                    </span>
+                  </>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
+
+          <TextField
+            label="Shipping Tracking Number"
+            value={replacementData.shipping_tracking_number}
+            onChange={(next) =>
+              setReplacementData((prev) => ({ ...prev, shipping_tracking_number: next }))
             }
             required
-            hintBelow={
-              isProductTitleLocked ? (
-                <p className="text-role-eyebrow font-medium text-green-600">
-                  This field is locked because the order ID was found in the database.
-                </p>
-              ) : null
-            }
-          >
-            <input
-              type="text"
-              value={replacementData.product_title}
-              onChange={(e) => setReplacementData((prev) => ({ ...prev, product_title: e.target.value }))}
-              placeholder={isProductTitleLocked ? 'Auto-filled from order lookup' : 'Enter product title...'}
-              readOnly={isProductTitleLocked}
-              disabled={isProductTitleLocked}
-              className={productTitleClassName}
-            />
-          </SidebarIntakeFormField>
+            mono
+            tone="emerald"
+          />
 
-          <SidebarIntakeFormField label="Condition" required>
+          <div className="space-y-2">
+            <TextField
+              label="Reason or Ticket #"
+              value={replacementData.reason}
+              onChange={(next) => setReplacementData((prev) => ({ ...prev, reason: next }))}
+              required
+              tone="emerald"
+            />
+            <p className="text-role-eyebrow font-medium text-text-soft">
+              Will be saved as:{' '}
+              <span className="font-bold">
+                {replacementData.reason || '[Reason]'} - {replacementData.product_title || '[Product Title]'}
+              </span>
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <TextField
+              label={isProductTitleLocked ? 'Product Title (locked)' : 'Product Title'}
+              value={replacementData.product_title}
+              onChange={(next) => setReplacementData((prev) => ({ ...prev, product_title: next }))}
+              required
+              disabled={isProductTitleLocked}
+              readOnly={isProductTitleLocked}
+              tone="emerald"
+              trailing={
+                isProductTitleLocked ? (
+                  <Lock className="h-3.5 w-3.5 text-green-600" aria-hidden />
+                ) : null
+              }
+            />
+            {isProductTitleLocked ? (
+              <p className="text-role-eyebrow font-medium text-green-600">
+                Locked — order ID was found in the database.
+              </p>
+            ) : null}
+          </div>
+
+          <FormField label="Condition" required>
             <ConditionPills
               value={replacementData.condition}
               onChange={(next) =>
                 setReplacementData((prev) => ({ ...prev, condition: normalizeCondition(next) }))
               }
             />
-          </SidebarIntakeFormField>
+          </FormField>
 
-          <SidebarIntakeFormField label="SKU" optionalHint="(Optional)">
-            <input
-              type="text"
-              value={replacementData.sku}
-              onChange={(e) => setReplacementData((prev) => ({ ...prev, sku: e.target.value }))}
-              placeholder="Enter SKU..."
-              className={SIDEBAR_INTAKE_INPUT_MONO_CLASS}
-            />
-          </SidebarIntakeFormField>
+          <TextField
+            label="SKU (optional)"
+            value={replacementData.sku}
+            onChange={(next) => setReplacementData((prev) => ({ ...prev, sku: next }))}
+            mono
+            tone="emerald"
+          />
         </>
       ) : (
         <>
-          <SidebarIntakeFormField label="Order ID" required>
-            <input
-              type="text"
-              value={addOrderData.order_id}
-              onChange={(e) => setAddOrderData((prev) => ({ ...prev, order_id: e.target.value }))}
-              placeholder="Enter order ID..."
-              className={SIDEBAR_INTAKE_INPUT_CLASS}
-            />
-          </SidebarIntakeFormField>
+          <TextField
+            label="Order ID"
+            value={addOrderData.order_id}
+            onChange={(next) => setAddOrderData((prev) => ({ ...prev, order_id: next }))}
+            required
+            tone="emerald"
+          />
 
-          <SidebarIntakeFormField label="Shipping Tracking Number" required>
-            <input
-              type="text"
-              value={addOrderData.shipping_tracking_number}
-              onChange={(e) =>
-                setAddOrderData((prev) => ({ ...prev, shipping_tracking_number: e.target.value }))
-              }
-              placeholder="Enter tracking number..."
-              className={SIDEBAR_INTAKE_INPUT_MONO_CLASS}
-            />
-          </SidebarIntakeFormField>
+          <TextField
+            label="Shipping Tracking Number"
+            value={addOrderData.shipping_tracking_number}
+            onChange={(next) =>
+              setAddOrderData((prev) => ({ ...prev, shipping_tracking_number: next }))
+            }
+            required
+            mono
+            tone="emerald"
+          />
 
-          <SidebarIntakeFormField label="Product Title" required>
-            <input
-              type="text"
-              value={addOrderData.product_title}
-              onChange={(e) => setAddOrderData((prev) => ({ ...prev, product_title: e.target.value }))}
-              placeholder="Enter product title..."
-              className={SIDEBAR_INTAKE_INPUT_CLASS}
-            />
-          </SidebarIntakeFormField>
+          <TextField
+            label="Product Title"
+            value={addOrderData.product_title}
+            onChange={(next) => setAddOrderData((prev) => ({ ...prev, product_title: next }))}
+            required
+            tone="emerald"
+          />
 
-          <SidebarIntakeFormField label="Condition" required>
+          <FormField label="Condition" required>
             <ConditionPills
               value={addOrderData.condition}
               onChange={(next) =>
                 setAddOrderData((prev) => ({ ...prev, condition: normalizeCondition(next) }))
               }
             />
-          </SidebarIntakeFormField>
+          </FormField>
 
-          <SidebarIntakeFormField label="SKU" optionalHint="(Optional)">
-            <input
-              type="text"
-              value={addOrderData.sku}
-              onChange={(e) => setAddOrderData((prev) => ({ ...prev, sku: e.target.value }))}
-              placeholder="Enter SKU..."
-              className={SIDEBAR_INTAKE_INPUT_MONO_CLASS}
-            />
-          </SidebarIntakeFormField>
+          <TextField
+            label="SKU (optional)"
+            value={addOrderData.sku}
+            onChange={(next) => setAddOrderData((prev) => ({ ...prev, sku: next }))}
+            mono
+            tone="emerald"
+          />
         </>
       )}
     </SidebarIntakeFormShell>

@@ -10,7 +10,7 @@ interface Range {
   endStr: string;
 }
 
-export interface ShippedPeriodControls {
+interface ShippedPeriodControls {
   /** Active explicit (non-week) range, or null when on a week. */
   activeRange: Range | null;
   /** This week / Last week / This month / Last month presets. */
@@ -26,8 +26,7 @@ const eq = (a: Range, b: Range) => a.startStr === b.startStr && a.endStr === b.e
 /**
  * Maps the shipped table's URL period state onto the {@link DateRangePickerPill}
  * vocabulary: the four week/month presets, a custom-range handler, the active
- * explicit range, and a reset. Shared by the list header and the board header so
- * both pills behave identically. Every handler is a single atomic URL write via
+ * explicit range, and a reset. Every handler is a single atomic URL write via
  * the filters hook's `setPeriod*` setters.
  */
 export function useShippedPeriodControls(filters: ShippedTableFilters): ShippedPeriodControls {

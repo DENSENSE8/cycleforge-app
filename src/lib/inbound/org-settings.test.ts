@@ -1,7 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { resolveInboundSettings, isInboundSourceEnabled, type InboundSettingsDeps } from './org-settings';
+import {
+  resolveInboundSettings,
+  isInboundSourceEnabled,
+  ensureEbayInboundSourceEnabled,
+  type InboundSettingsDeps,
+  type EnsureEbayInboundDeps,
+} from './org-settings';
 import type { OrgId } from '@/lib/tenancy/constants';
+import type { InboundOrgSettingsRaw } from '@/lib/tenancy/settings';
 
 const ORG = '00000000-0000-0000-0000-000000000001' as unknown as OrgId;
 
@@ -26,6 +33,18 @@ function fakes(opts: FakeOpts = {}) {
     },
   };
   return { deps, calls };
+}
+
+function ensureFakes(opts: FakeOpts = {}) {
+  const { deps, calls } = fakes(opts);
+  let written: { inbound: InboundOrgSettingsRaw } | null = null;
+  const ensureDeps: EnsureEbayInboundDeps = {
+    ...deps,
+    updateSettings: async (_orgId, patch) => {
+      written = patch;
+    },
+  };
+  return { deps: ensureDeps, calls, getWritten: () => written };
 }
 
 test('never chose + zoho inventory + ebay buyer → connection-driven default', async () => {
@@ -139,4 +158,47 @@ test('isInboundSourceEnabled is registry + enabled-list gated (fail-closed)', as
   assert.equal(isInboundSourceEnabled(s, 'EBAY'), true); // case-insensitive
   assert.equal(isInboundSourceEnabled(s, 'amazon'), false); // registered but not enabled
   assert.equal(isInboundSourceEnabled(s, 'shopify'), false); // unregistered → never enabled
+});
+
+test('ensureEbayInboundSourceEnabled — no-op when ebay already present', async () => {
+  const { deps, getWritten } = ensureFakes({
+    settings: { inbound: { enabledSources: ['zoho', 'ebay'] } },
+  });
+  const r = await ensureEbayInboundSourceEnabled(ORG, deps);
+  assert.equal(r.changed, false);
+  assert.deepEqual(r.enabledSources, ['zoho', 'ebay']);
+  assert.equal(getWritten(), null);
+});
+
+test('ensureEbayInboundSourceEnabled — merges ebay into stale zoho-only list', async () => {
+  const { deps, getWritten } = ensureFakes({
+    settings: { inbound: { enabledSources: ['zoho'], fuzzyMergeRequiresReview: false } },
+  });
+  const r = await ensureEbayInboundSourceEnabled(ORG, deps);
+  assert.equal(r.changed, true);
+  assert.deepEqual(r.enabledSources, ['zoho', 'ebay']);
+  assert.deepEqual(getWritten()?.inbound.enabledSources, ['zoho', 'ebay']);
+  assert.equal(getWritten()?.inbound.fuzzyMergeRequiresReview, false);
+});
+
+test('ensureEbayInboundSourceEnabled — empty list becomes [ebay]', async () => {
+  const { deps, getWritten } = ensureFakes({
+    settings: { inbound: { enabledSources: [] } },
+  });
+  const r = await ensureEbayInboundSourceEnabled(ORG, deps);
+  assert.equal(r.changed, true);
+  assert.deepEqual(r.enabledSources, ['ebay']);
+  assert.deepEqual(getWritten()?.inbound.enabledSources, ['ebay']);
+});
+
+test('ensureEbayInboundSourceEnabled — never chose + buyer → persist derived with ebay', async () => {
+  const { deps, getWritten } = ensureFakes({
+    settings: {},
+    inventoryProvider: 'zoho',
+    hasBuyer: true,
+  });
+  const r = await ensureEbayInboundSourceEnabled(ORG, deps);
+  assert.equal(r.changed, true);
+  assert.deepEqual(r.enabledSources, ['zoho', 'ebay', 'manual']);
+  assert.deepEqual(getWritten()?.inbound.enabledSources, ['zoho', 'ebay', 'manual']);
 });

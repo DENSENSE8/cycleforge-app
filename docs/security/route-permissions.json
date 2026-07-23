@@ -1,9 +1,9 @@
 {
   "version": 1,
-  "generatedAt": "2026-07-22T04:17:23Z",
-  "totalRoutes": 872,
+  "generatedAt": "2026-07-23T03:11:30Z",
+  "totalRoutes": 873,
   "summary": {
-    "permissionGated": 743,
+    "permissionGated": 744,
     "authenticatedNoPermission": 46,
     "anonymousIntentional": 81,
     "serviceToService": 2,
@@ -3414,6 +3414,15 @@
       ],
       "gate": "withAuth",
       "permission": "orders.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/orders/[id]/amazon-refresh/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "requireRoutePerm",
+      "permission": "orders.create",
       "exemptReason": null
     },
     {

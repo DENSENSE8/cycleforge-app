@@ -28,6 +28,7 @@ import { motion } from 'framer-motion';
 import { openInUnboxHref, TRIAGE_SURFACE_ROUTE } from '@/lib/receiving/surface-path';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/lib/toast';
+import { requestConfirm } from '@/design-system/components/confirm';
 import {
   Link2,
   Loader2,
@@ -255,7 +256,12 @@ function TriageMatchingCard({
       toast.error('Could not resolve the ticket number');
       return;
     }
-    if (!window.confirm(`Unlink ticket #${ticketId} from this package?`)) return;
+    const ok = await requestConfirm({
+      description: `Unlink ticket #${ticketId} from this package?`,
+      tone: 'danger',
+      confirmLabel: 'Unlink',
+    });
+    if (!ok) return;
     setUnlinkingTicket(true);
     try {
       const sp = new URLSearchParams({ receivingId: String(receivingId), ticketId });

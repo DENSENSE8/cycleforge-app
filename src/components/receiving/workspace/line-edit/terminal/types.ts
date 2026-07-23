@@ -4,6 +4,7 @@ import type { UnboxTabBridges } from './unbox-tab-bridges';
 
 export type UnboxView =
   | 'overview'
+  | 'classify'
   | 'units'
   | 'checklist'
   | 'po-note'
@@ -21,6 +22,7 @@ export type UnboxTerminalKind =
   | 'units'
   | 'tracking'
   | 'listings'
+  | 'classify'
   | 'timeline'
   | 'ticket'
   | 'support'

@@ -88,6 +88,8 @@ export function ScanInput({
         placeholder={placeholder}
         autoFocus={autoFocus}
         staffId={user?.staffId}
+        // No MasterNav above on mobile — rail column, not deep masternav inset.
+        leadingColumn="rail"
         rightPadClass="pr-11"
         rightContent={
           <HoverTooltip label={cameraActive ? 'Close camera' : 'Scan with camera'} asChild>

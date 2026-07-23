@@ -22,6 +22,7 @@ import { toast } from '@/lib/toast';
 import { Check, ChevronDown, ChevronUp, Loader2, Pencil, Plus, Settings, Trash2, X } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { Button, IconButton } from '@/design-system/primitives';
+import { requestConfirm } from '@/design-system/components/confirm';
 import { platformsQuery, typesQuery } from '@/lib/queries/catalog-queries';
 import type { PlatformRow, TypeRow } from '@/lib/neon/catalog-queries';
 import { useInvalidateCatalog } from '@/hooks/useCatalog';
@@ -123,8 +124,14 @@ export function CatalogManagerList({
 
   async function setActive(e: Entry, next: boolean) {
     if (busyId != null) return;
-    if (!next && !window.confirm(`${e.isSystem ? 'Hide' : 'Remove'} "${e.label}"? It will stop appearing in pickers.`))
-      return;
+    if (!next) {
+      const ok = await requestConfirm({
+        description: `${e.isSystem ? 'Hide' : 'Remove'} "${e.label}"? It will stop appearing in pickers.`,
+        tone: 'danger',
+        confirmLabel: e.isSystem ? 'Hide' : 'Remove',
+      });
+      if (!ok) return;
+    }
     setBusyId(e.id);
     await call(next ? 'PATCH' : 'DELETE', `/${e.id}`, next ? { isActive: true } : undefined);
     setBusyId(null);

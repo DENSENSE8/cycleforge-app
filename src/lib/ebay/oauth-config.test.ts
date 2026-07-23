@@ -15,6 +15,7 @@ import {
   ebayAuthDomain,
   ebayTokenEndpoint,
   ebayIdentityEndpoint,
+  probeEbayOauthAuthorizeConfig,
 } from './oauth-config';
 
 afterEach(() => {
@@ -112,4 +113,44 @@ test('endpoints are environment-aware', () => {
 
   strictEqual(ebayIdentityEndpoint('SANDBOX'), 'https://api.sandbox.ebay.com/commerce/identity/v1/user/');
   strictEqual(ebayIdentityEndpoint('PRODUCTION'), 'https://api.ebay.com/commerce/identity/v1/user/');
+});
+
+test('probeEbayOauthAuthorizeConfig detects errorOauth invalid_request', async () => {
+  const hops = [
+    'https://auth2.ebay.com/oauth2/authorize?client_id=x',
+    'https://auth2.ebay.com/oauth2/errorOauth?errorId=invalid_request',
+  ];
+  let i = 0;
+  const fetchImpl: typeof fetch = async () => {
+    const location = hops[i++];
+    return new Response(null, {
+      status: 302,
+      headers: location ? { location } : undefined,
+    });
+  };
+  const result = await probeEbayOauthAuthorizeConfig({
+    appId: 'Densense-CycleFor-PRD-test',
+    ruName: 'Some_RuName',
+    environment: 'PRODUCTION',
+    scope: 'https://api.ebay.com/oauth/api_scope',
+    fetchImpl,
+  });
+  deepStrictEqual(result, {
+    ok: false,
+    errorId: 'invalid_request',
+    reason: 'invalid_request',
+  });
+});
+
+test('probeEbayOauthAuthorizeConfig treats terminal HTML as ok', async () => {
+  const fetchImpl: typeof fetch = async () =>
+    new Response('<html>sign in</html>', { status: 200 });
+  const result = await probeEbayOauthAuthorizeConfig({
+    appId: 'Densense-CycleFor-PRD-test',
+    ruName: 'Some_RuName',
+    environment: 'PRODUCTION',
+    scope: 'https://api.ebay.com/oauth/api_scope',
+    fetchImpl,
+  });
+  deepStrictEqual(result, { ok: true });
 });

@@ -27,7 +27,7 @@ const COLUMN_TYPE_GLYPH: Record<ColumnType, ComponentType<{ className?: string }
 /**
  * Subtle data-type indicator shown before a column-header label (Airtable-style).
  * Structural, not decorative: it denotes the column's data type. Kept faint +
- * small so the header reads label-first (board) or icon-only (grid skin).
+ * small so the header reads label-first (board and Pending grid).
  */
 export function ColumnTypeGlyph({ type, className }: { type: ColumnType; className?: string }) {
   const Glyph = COLUMN_TYPE_GLYPH[type];

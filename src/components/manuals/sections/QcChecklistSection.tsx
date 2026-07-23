@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Plus, Loader2, Trash2, Pencil } from '@/components/Icons';
+import { ChevronDown, Plus, Loader2, Trash2, Pencil } from '@/components/Icons';
+import { FILTER_DROPDOWN_SELECT_CLASS } from '@/design-system/components/FilterDropdownSelect';
 import { microBadge } from '@/design-system/tokens/typography/presets';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { Button, IconButton } from '@/design-system/primitives';
@@ -316,26 +317,32 @@ export function QcChecklistSection({ catalogId, qcChecks, onRefresh }: QcCheckli
               />
               <div className="flex gap-2">
                 <HoverTooltip label="Category badge" asChild>
-                  <select
-                    value={stepType}
-                    onChange={(e) => setStepType(e.target.value)}
-                    className="flex-1 rounded-lg border border-border-soft bg-surface-canvas px-2.5 py-1.5 text-role-caption font-bold text-text-default"
-                    aria-label="Category badge"
-                  >
-                    {STEP_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
-                  </select>
+                  <div className="relative flex-1">
+                    <select
+                      value={stepType}
+                      onChange={(e) => setStepType(e.target.value)}
+                      className={FILTER_DROPDOWN_SELECT_CLASS}
+                      aria-label="Category badge"
+                    >
+                      {STEP_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                    <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-text-faint" />
+                  </div>
                 </HoverTooltip>
                 <HoverTooltip label="How the tester records this step" asChild>
-                  <select
-                    value={valueKind}
-                    onChange={(e) => setValueKind(e.target.value)}
-                    className="flex-1 rounded-lg border border-border-soft bg-surface-canvas px-2.5 py-1.5 text-role-caption font-bold text-text-default"
-                    aria-label="How the tester records this step"
-                  >
-                    {VALUE_KINDS.map((k) => (
-                      <option key={k || 'default'} value={k}>{VALUE_KIND_LABEL[k]}</option>
-                    ))}
-                  </select>
+                  <div className="relative flex-1">
+                    <select
+                      value={valueKind}
+                      onChange={(e) => setValueKind(e.target.value)}
+                      className={FILTER_DROPDOWN_SELECT_CLASS}
+                      aria-label="How the tester records this step"
+                    >
+                      {VALUE_KINDS.map((k) => (
+                        <option key={k || 'default'} value={k}>{VALUE_KIND_LABEL[k]}</option>
+                      ))}
+                    </select>
+                    <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-text-faint" />
+                  </div>
                 </HoverTooltip>
               </div>
 
@@ -378,17 +385,20 @@ export function QcChecklistSection({ catalogId, qcChecks, onRefresh }: QcCheckli
               )}
 
               <HoverTooltip label="Auto-tag this failure mode on the unit when this step fails" asChild>
-                <select
-                  value={failureModeId}
-                  onChange={(e) => setFailureModeId(e.target.value)}
-                  className="w-full rounded-lg border border-border-soft bg-surface-canvas px-2.5 py-1.5 text-role-caption font-bold text-text-default"
-                  aria-label="Auto-tag this failure mode on the unit when this step fails"
-                >
-                  <option value="">Auto-tag on fail: none</option>
-                  {failureModes.map((m) => (
-                    <option key={m.id} value={m.id}>{`⚠ ${m.label} (${m.severity})`}</option>
-                  ))}
-                </select>
+                <div className="relative">
+                  <select
+                    value={failureModeId}
+                    onChange={(e) => setFailureModeId(e.target.value)}
+                    className={FILTER_DROPDOWN_SELECT_CLASS}
+                    aria-label="Auto-tag this failure mode on the unit when this step fails"
+                  >
+                    <option value="">Auto-tag on fail: none</option>
+                    {failureModes.map((m) => (
+                      <option key={m.id} value={m.id}>{`⚠ ${m.label} (${m.severity})`}</option>
+                    ))}
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-text-faint" />
+                </div>
               </HoverTooltip>
 
               <div className="flex items-center gap-2">

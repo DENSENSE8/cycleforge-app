@@ -1,8 +1,9 @@
 'use client';
 
 /**
- * Unbox Listings tab — nested SectionTabsSlider over resolvable listing URLs
- * (manual / catalog / sync_notes / derived) plus a manual override field.
+ * Unbox Listings tab — multi-open surface (when 2+ links) + nested detail
+ * slider for each resolvable listing URL (manual / catalog / sync_notes /
+ * derived) plus a manual override field.
  */
 
 import { useMemo, useState } from 'react';
@@ -16,6 +17,7 @@ import { RECEIVING_SCAN_RULE_LINE_CLASS } from '@/components/sidebar/receiving/r
 import type { CartonListingLink } from '@/lib/receiving/listing-links';
 import { recordCopy } from '@/lib/clipboard-history';
 import { cn } from '@/utils/_cn';
+import { OpenListingLinksPanel } from './OpenListingLinksPanel';
 
 function sourceIcon(source: CartonListingLink['source']) {
   switch (source) {
@@ -161,6 +163,9 @@ export function ListingLinksTab({
   setListingLink: (v: string) => void;
 }) {
   const hasManual = listingLinks.some((l) => l.source === 'manual');
+  const hrefs = useMemo(() => listingLinks.map((l) => l.href).filter(Boolean), [listingLinks]);
+  const showOpenAll = hrefs.length > 1;
+
   const tabs: SectionTab[] = useMemo(() => {
     const fromLinks = listingLinks.map((l, i) => {
       const label = sourceLabel(l.source, (l.label || '').trim() || `Listing ${i + 1}`);
@@ -214,13 +219,20 @@ export function ListingLinksTab({
   }
 
   return (
-    <WorkspaceCard variant="glass" overflow="visible" bodyDensity="nested" className={cn('min-w-0')}>
-      <SectionTabsSlider
-        tabs={tabs}
-        value={activeId}
-        onChange={setActive}
-        ariaLabel="Listing links"
-      />
-    </WorkspaceCard>
+    <div className="space-y-4">
+      {showOpenAll ? (
+        <WorkspaceCard variant="glass" overflow="visible" bodyDensity="nested" className="min-w-0">
+          <OpenListingLinksPanel hrefs={hrefs} compact />
+        </WorkspaceCard>
+      ) : null}
+      <WorkspaceCard variant="glass" overflow="visible" bodyDensity="nested" className={cn('min-w-0')}>
+        <SectionTabsSlider
+          tabs={tabs}
+          value={activeId}
+          onChange={setActive}
+          ariaLabel="Listing links"
+        />
+      </WorkspaceCard>
+    </div>
   );
 }

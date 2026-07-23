@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Check, Loader2, Plus, Trash2 } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { requestConfirm } from '@/design-system/components/confirm';
 import {
   useMediaLibrarySavedViews,
   readMediaViewPayload,
@@ -154,8 +155,13 @@ export function MediaSavedViewsSection({
                 {/* ds-raw-button */}
                 <button
                   type="button"
-                  onClick={() => {
-                    if (window.confirm(`Delete saved view "${view.name}"?`)) remove(view.id);
+                  onClick={async () => {
+                    const ok = await requestConfirm({
+                      description: `Delete saved view "${view.name}"?`,
+                      tone: 'danger',
+                      confirmLabel: 'Delete',
+                    });
+                    if (ok) remove(view.id);
                   }}
                   aria-label={`Delete ${view.name}`}
                   className="shrink-0 rounded p-1 text-text-faint opacity-0 transition group-hover:opacity-100 hover:bg-rose-50 hover:text-rose-600"

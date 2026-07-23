@@ -76,11 +76,11 @@ export function useReceivingLinesData({
     enabled: !isDeliveredUnscannedFacet && !isDeliveredNotUnboxedFacet,
   });
 
-  // "Delivered · not scanned" facet: these boxes are shipment-anchored with no
-  // PO line, so the list query above returns nothing for them. Pull the
-  // shipment-level feed and remap each onto a ReceivingLineRow so they flow
-  // through the same grouping + render path. Shares the
-  // `incoming-delivered-unscanned` key so the sidebar's Refresh button refetches.
+  // "Delivered · not scanned" facet: shipment-anchored SoT lives ONLY on
+  // `/incoming/delivered-unscanned` (not view=incoming PO lines). The main list
+  // query above is disabled for this facet; remap via deliveredUnscannedToRow
+  // so rows flow through the same Incoming grid. Shares the
+  // `incoming-delivered-unscanned` key so Refresh invalidates both.
   const { data: deliveredData } = useQuery<DeliveredUnscannedResponse>({
     queryKey: ['incoming-delivered-unscanned'],
     queryFn: async () => {

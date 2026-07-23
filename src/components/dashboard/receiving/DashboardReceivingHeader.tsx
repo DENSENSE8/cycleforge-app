@@ -9,7 +9,7 @@
  *        (`dashboard-receiving-tabs.ts`) — Triage = scanned order, Unbox =
  *        unboxed order — so the tab strip and the table's day-band axis never
  *        disagree (both read `?sort`).
- * Right: [⫶ per-tab filter | search field] | table controls portal.
+ * Right: [⫶ per-tab filter | hover-expand search] | table controls portal.
  *
  * Filtering is per-tab: Triage exposes the carton-source scope (All / Unfound)
  * for the scan/identify step; Unbox drops it (unfound is a triage concern) and
@@ -28,7 +28,7 @@ import {
   WorkbenchFilterMenuRow,
   WorkbenchFilterPopover,
 } from '@/components/dashboard/workbench-filter-popover';
-import { SearchField } from '@/design-system/primitives/SearchField';
+import { ToolbarSearchToggle } from '@/design-system/primitives/ToolbarSearchToggle';
 import { useDebounce } from '@/hooks';
 import {
   DASHBOARD_RECEIVING_TABS,
@@ -162,13 +162,9 @@ export function DashboardReceivingHeader({ controlsSlotRef, className }: Dashboa
       controlsSlotProps={{ 'data-inbound-controls': '' }}
       className={className}
       search={
-        <SearchField
+        <ToolbarSearchToggle
           value={draft}
           onChange={setDraft}
-          onSearch={(v) => {
-            setDraft(v);
-            replaceParams(setReceivingHistoryUrlParams(searchParams, { q: v }));
-          }}
           onClear={() => {
             setDraft('');
             replaceParams(setReceivingHistoryUrlParams(searchParams, { q: '' }));
@@ -176,8 +172,6 @@ export function DashboardReceivingHeader({ controlsSlotRef, className }: Dashboa
           placeholder={getReceivingHistoryPlaceholder(searchField).replace(/^Search/, 'Filter')}
           isSearching={tableFetching}
           tone="blue"
-          size="compact"
-          className="w-40 shrink-0 lg:w-56"
         />
       }
       right={

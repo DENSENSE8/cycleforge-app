@@ -45,10 +45,12 @@ Unbox, Testing, Shipping, and Packing expose a **Timeline** section tab via
 PO path uses Incoming details; order/shipping uses journey `dim=tracking|order`.
 Serials: explicit list or carton fetch via `useCartonSerials`.
 
-Unbox replaced the former Tracking tab with Timeline. Support (team notes /
-activity) and Ticket (customer helpdesk) are sibling SectionTabsSlider tabs —
-Ticket sits to the right of Support; neither mounts the Linkage strip (link from
-entity chrome / console drawer). Packing is terminal-registry-exempt (no sticky dock).
+Unbox replaced the former Tracking tab with Timeline. Unbox primary strip order:
+**Unbox · Listings · Ticket · Units · Zoho** (po-note label from
+`providerCatalogLabel('zoho')` brand token) + ⋯ for Checklist / Support /
+Tracking / Timeline. Neither Support nor Ticket mounts the Linkage strip
+(link from entity chrome / console drawer). Packing is terminal-registry-exempt
+(no sticky dock).
 
 ---
 
@@ -58,18 +60,20 @@ entity chrome / console drawer). Packing is terminal-registry-exempt (no sticky 
 |---|---|---|
 | **1. Progress stepper** | Completeness checklist (Photos → Serial → Print), not a wizard lock | `LinearWorkflowStepper` + `deriveLinearStepStates` — lives in parent shell (`ReceivingLineWorkspace`), not inside `StationWorkbench` |
 | **2. Station bookmark chrome** | Sticky identity bookmark + corner utilities flush under GlobalHeader | `StationContextBar` + `StationMoreDetails` + `CartonContextCard` `density="bar"` via `@/components/station/entity-context` |
-| **3. Section tabs** | Icon-pill slider that owns bar + mounted panels; `rightSlot` for contextual controls | `SectionTabsSlider` + `buildSectionTabs` + `PairingTogglePill` / `ExternalLinkPill` |
+| **2b. Mid-canvas edge jump** | Secondary surface jump (e.g. Triage → Open in Unbox) — not the terminal CTA | `StationRightEdgeAction` + `stationRightEdgeActionHostClass` on the panel `relative` root (~`top-1/4` right). Never nest under `moreDetails`; never use `SlicedActionDock` for this |
+| **3. Section tabs** | Labeled section displays (`TabSwitch` strip + overflow menu) that own bar + mounted panels; `rightSlot` for contextual controls | `SectionTabsSlider` + `buildSectionTabs` + `PairingTogglePill` / `ExternalLinkPill` |
 | **4. Tab body** | Whole contextual display per tab (form state survives via mounted panels) | Station-specific content; bridges register dock state |
 | **5. Feedback / footer** | Inline action feedback (scroll) + receive band (between body and dock) | `WorkspaceActionFeedbackSlot`, `ReceiveFeedbackRegion` |
-| **6. Terminal dock** | Tab-aware primary CTA (mobile-style FloatingButton) | `STATION_TERMINAL_REGISTRY` → resolver → `useStationTerminalAction` → `StationTerminalDock` |
+| **6. Terminal dock** | Tab-aware primary CTA (bottom-edge sliced action dock — mobile display language) | `STATION_TERMINAL_REGISTRY` → resolver → `useStationTerminalAction` → `StationTerminalDock` → `SlicedActionDock` |
 
 ```
 Parent shell
 ├── StationContextBar          ← identity (density=bar) + StationMoreDetails (embedded LineEditToolbar)
+├── StationRightEdgeAction     ← optional mid-canvas jump (Triage Open in Unbox); panel-root absolute
 └── StationWorkbench
     ├── scroll: tabs → feedback  (entityContext/toolbar unused for Unbox-family)
     ├── footer (optional sticky band)
-    └── dock
+    └── dock                   ← SlicedActionDock (bottom-edge primary CTA)
 ```
 
 `StationWorkbench` still accepts optional `toolbar` / `entityContext` for legacy

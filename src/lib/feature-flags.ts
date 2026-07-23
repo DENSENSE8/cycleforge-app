@@ -182,15 +182,13 @@ export function isUnboxRailColumnRead(): boolean {
 }
 
 /**
- * Unified inbound model (receiving-triage streamline Phase 3). When ON,
- * incoming-po-sync registers a shipment per incoming PO and stamps
- * receiving_lines.shipment_id, the delivered-unscanned surface joins line-level
- * SKU/order#, and lookup-po matches by LPN / shipment_id first (last-8 tracking
- * fallback). Requires the 2026-06-08_inbound_handling_unit migration applied +
- * backfill. Default OFF until the migration lands and backfill runs.
+ * Unified inbound model (receiving-triage streamline Phase 3). Default ON:
+ * delivered-unscanned always enriches via receiving_line.shipment_id; lookup-po
+ * stamps LPN / shipment_id. Set RECEIVING_UNIFIED_INBOUND=false only as a
+ * temporary rollback if the inbound_handling_unit migration is absent.
  */
 export function isReceivingUnifiedInbound(): boolean {
-  return readBoolEnv('RECEIVING_UNIFIED_INBOUND');
+  return readBoolEnv('RECEIVING_UNIFIED_INBOUND', true);
 }
 
 /**

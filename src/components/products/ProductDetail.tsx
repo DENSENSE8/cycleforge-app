@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { Loader2, ExternalLink } from '@/components/Icons';
 import type { ProductDetailPayload } from './types';
+import { InventoryMasterChip } from '@/components/products/InventoryMasterChip';
 
 interface ProductDetailProps {
     sku: string;
@@ -104,9 +105,14 @@ export function ProductDetail({ sku }: ProductDetailProps) {
                     )}
                 </div>
                 <div className="min-w-0 flex-1">
-                    <h1 className="truncate text-2xl font-semibold text-text-default">
-                        {product.product_title || product.sku}
-                    </h1>
+                    <div className="flex flex-wrap items-center gap-2">
+                        <h1 className="truncate text-2xl font-semibold text-text-default">
+                            {product.product_title || product.sku}
+                        </h1>
+                        {product.provider_item_id ? (
+                            <InventoryMasterChip providerItemId={product.provider_item_id} />
+                        ) : null}
+                    </div>
                     <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-text-soft">
                         <span className="font-mono">{product.sku}</span>
                         {product.category ? <span>· {product.category}</span> : null}
@@ -123,7 +129,7 @@ export function ProductDetail({ sku }: ProductDetailProps) {
                 <DetailCard title="Attributes">
                     <DetailRow label="GTIN" value={product.gtin} mono />
                     <DetailRow label="UPC" value={product.upc} mono />
-                    <DetailRow label="Inventory item ID" value={product.zoho_item_id} mono />
+                    <DetailRow label="Inventory item ID" value={product.provider_item_id} mono />
                     <DetailRow label="Category" value={product.category} />
                 </DetailCard>
 

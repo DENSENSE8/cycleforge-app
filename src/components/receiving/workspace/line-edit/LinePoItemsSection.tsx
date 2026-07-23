@@ -28,6 +28,7 @@ import {
   dispatchSelectLine,
 } from '@/components/station/receiving-lines-table-helpers';
 import { invalidateReceivingFeeds, receivingSiblingsQueryKey } from '@/lib/queries/receiving-queries';
+import { requestConfirm } from '@/design-system/components/confirm';
 import {
   shouldUsePoAccordion,
   shouldUseUnmatchedItemsSurface,
@@ -50,6 +51,8 @@ interface LinePoItemsSectionProps {
   headerRight?: React.ReactNode;
   /** Hide the embedded "PO items · N" eyebrow — the tab slider owns the label. */
   suppressHeader?: boolean;
+  /** Carton-open snapshot of `receiving.accordionExpand`. */
+  accordionBootstrap?: 'default' | 'all';
 }
 
 interface SiblingsResponse {
@@ -69,6 +72,7 @@ export function LinePoItemsSection({
   embedded = false,
   headerRight,
   suppressHeader = false,
+  accordionBootstrap = 'default',
 }: LinePoItemsSectionProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -182,6 +186,7 @@ export function LinePoItemsSection({
       suppressHeader={suppressHeader}
       placeholderActiveRow={row}
       readOnly={!editLines}
+      accordionBootstrap={accordionBootstrap}
       serialSplit={
         editLines
           ? {
@@ -196,9 +201,14 @@ export function LinePoItemsSection({
       activeSerialActions={{
         editingSerialId: c.headerSerialEdit?.id ?? null,
         onEdit: (s) => c.setHeaderSerialEdit(s),
-        onDelete: (s, lineId) => {
+        onDelete: async (s, lineId) => {
           if (s.id == null) return;
-          if (!window.confirm(`Remove serial ${s.serial_number}?`)) return;
+          const ok = await requestConfirm({
+            description: `Remove serial ${s.serial_number}?`,
+            tone: 'danger',
+            confirmLabel: 'Remove',
+          });
+          if (!ok) return;
           if (c.headerSerialEdit?.id === s.id) c.setHeaderSerialEdit(null);
           void c.deleteSerialUnit(s.id, lineId);
         },

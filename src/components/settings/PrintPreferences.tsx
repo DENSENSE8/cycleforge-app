@@ -26,7 +26,8 @@ import {
 import { buildTestLabelCommands } from '@/lib/print/labelCommands';
 import { isSilentPrintEnabled, setSilentPrintEnabled } from '@/lib/print/printMode';
 import { friendlyPrintError } from '@/lib/print/printErrors';
-import { Button, IconButton } from '@/design-system/primitives';
+import { Button, IconButton, Switch } from '@/design-system/primitives';
+import { FILTER_DROPDOWN_SELECT_CLASS } from '@/design-system/components/FilterDropdownSelect';
 
 interface PrintPreferencesProps {
   onClose?: () => void;
@@ -52,8 +53,7 @@ function SilentPrintToggle() {
   useEffect(() => {
     setOn(isSilentPrintEnabled());
   }, []);
-  const toggle = () => {
-    const next = !on;
+  const setSilent = (next: boolean) => {
     setOn(next);
     setSilentPrintEnabled(next);
   };
@@ -67,23 +67,12 @@ function SilentPrintToggle() {
             : 'Labels open the browser print dialog so you can pick a printer / preview.'}
         </p>
       </div>
-      {/* ds-raw-button: role="switch" toggle track + knob, not a Button/IconButton */}
-      <button
-        type="button"
-        role="switch"
-        aria-checked={on}
+      <Switch
+        checked={on}
+        onCheckedChange={setSilent}
         aria-label="Toggle silent printing"
-        onClick={toggle}
-        className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors ${
-          on ? 'bg-emerald-600' : 'bg-surface-strong'
-        }`}
-      >
-        <span
-          className={`inline-block h-4 w-4 transform rounded-full bg-surface-card shadow transition-transform ${
-            on ? 'translate-x-6' : 'translate-x-1'
-          }`}
-        />
-      </button>
+        checkedClassName="data-[state=checked]:bg-emerald-600"
+      />
     </div>
   );
 }
@@ -301,7 +290,7 @@ function ProfileCard({
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
         <label className="block">
           <span className="mb-1 block text-role-caption font-medium text-text-muted">Role</span>
-          <select value={profile.role} onChange={(e) => set('role', e.target.value as PrinterRole)} className={`${FIELD_CLS} px-2 py-1.5`}>
+          <select value={profile.role} onChange={(e) => set('role', e.target.value as PrinterRole)} className={FILTER_DROPDOWN_SELECT_CLASS}>
             {PRINTER_ROLES.map((r) => (<option key={r.id} value={r.id}>{r.label}</option>))}
           </select>
         </label>
@@ -309,7 +298,7 @@ function ProfileCard({
         {profile.kind !== 'os' ? (
           <label className="block">
             <span className="mb-1 block text-role-caption font-medium text-text-muted">Language</span>
-            <select value={profile.language} onChange={(e) => set('language', e.target.value as LabelLanguage)} className={`${FIELD_CLS} px-2 py-1.5`}>
+            <select value={profile.language} onChange={(e) => set('language', e.target.value as LabelLanguage)} className={FILTER_DROPDOWN_SELECT_CLASS}>
               {LANGUAGES.map((l) => (<option key={l.id} value={l.id}>{l.label}</option>))}
             </select>
           </label>
@@ -322,7 +311,7 @@ function ProfileCard({
 
         <label className="block">
           <span className="mb-1 block text-role-caption font-medium text-text-muted">Paper size</span>
-          <select value={profile.paperSizeId} onChange={(e) => set('paperSizeId', e.target.value)} className={`${FIELD_CLS} px-2 py-1.5`}>
+          <select value={profile.paperSizeId} onChange={(e) => set('paperSizeId', e.target.value)} className={FILTER_DROPDOWN_SELECT_CLASS}>
             {sizes.map((s) => (<option key={s.id} value={s.id}>{s.label}</option>))}
           </select>
         </label>
@@ -330,7 +319,7 @@ function ProfileCard({
         {profile.kind === 'serial' && (
           <label className="block">
             <span className="mb-1 block text-role-caption font-medium text-text-muted">Baud</span>
-            <select value={profile.baudRate ?? 9600} onChange={(e) => set('baudRate', Number(e.target.value))} className={`${FIELD_CLS} px-2 py-1.5`}>
+            <select value={profile.baudRate ?? 9600} onChange={(e) => set('baudRate', Number(e.target.value))} className={FILTER_DROPDOWN_SELECT_CLASS}>
               {[9600, 19200, 38400, 57600, 115200].map((b) => (<option key={b} value={b}>{b}</option>))}
             </select>
           </label>

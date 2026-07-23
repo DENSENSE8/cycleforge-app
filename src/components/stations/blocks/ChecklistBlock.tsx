@@ -10,6 +10,7 @@ import { useState } from 'react';
 import { Check, Loader2 } from '@/components/Icons';
 import { Button, IconButton } from '@/design-system/primitives';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { requestConfirm } from '@/design-system/components/confirm';
 import type { BlockProps, FieldKind, SourceRow } from '@/lib/stations/contract';
 
 /** Kind-aware inline renderer for the `ref` role (PO#, tracking#, SKU…). */
@@ -79,7 +80,14 @@ export function ChecklistBlock({
   const runAction = async (actionId: string, row: SourceRow) => {
     const bound = actions.find((a) => a.def.id === actionId);
     if (!bound) return;
-    if (bound.def.confirm === 'soft' && !window.confirm(`${bound.def.label} — are you sure?`)) return;
+    if (bound.def.confirm === 'soft') {
+      const ok = await requestConfirm({
+        description: `${bound.def.label} — are you sure?`,
+        tone: 'danger',
+        confirmLabel: 'Confirm',
+      });
+      if (!ok) return;
+    }
     await bound.run(row);
   };
 

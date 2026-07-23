@@ -8,7 +8,6 @@
  *   _storage.ts    useLocalStorage, useSessionStorage
  *   _ui.ts         useScrollPosition, useWindowSize, useToggle, useInView, useClickOutside, useMediaQuery, useIsMobile, useDeviceMode
  *   useKeyboard.ts useKeyboard (mobile virtual keyboard detection via Visual Viewport API)
- *   _data.ts       useFetch, useMutation (legacy local-state; NOT TanStack)
  *   _auth.ts       useAuthToken, usePermissions
  *   _cache.ts      useCache
  *   _form.ts       useAutoSaveForm, useUnsavedWarning
@@ -20,7 +19,6 @@
 export * from './_lifecycle';
 export * from './_storage';
 export * from './_ui';
-export * from './_data';
 export * from './_auth';
 export * from './_cache';
 export * from './_form';

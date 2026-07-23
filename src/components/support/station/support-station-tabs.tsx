@@ -3,23 +3,24 @@
 /**
  * Support · Tickets — section-tab defs for the Station Workbench focus pane.
  *
- * Mirrors `SupportOrdersWorkspace`'s tab wiring (compose, don't fork): every tab
- * is an existing SoT surface handed the ticket anchor. The view stays dumb.
+ *   Ticket         → SupportTicketDetail (customer conversation)
+ *   Connections    → linkage only (tracking / order / serial / link actions)
+ *   Conversations  → internal team thread (née Support)
+ *   Timeline       → {@link WorkspaceTimelineTab} (Unbox method) + Activity spine
  *
- *   Overview     → subject/status header + primary anchor summary (linkage strip)
- *   Connections  → SupportContextHub (linkage + Customer|Team|Activity graph)
- *   Ticket       → SupportTicketDetail (the conversation), embedded + dense
- *   Support      → SupportContextHub team segment (internal notes/activity)
- *   Timeline     → WorkspaceTimelineTab when serials/tracking/order resolve
+ * Every panel shares glass {@link WorkspaceCard} elevation except Timeline,
+ * which owns its own Unbox glass shell inside WorkspaceTimelineTab.
  */
 
-import { Info, Link2, MessageSquare, Clock, Ticket } from '@/components/Icons';
+import type { ReactNode } from 'react';
+import { Link2, MessageSquare, Clock, Ticket } from '@/components/Icons';
+import { WorkspaceCard } from '@/design-system/components';
 import { SupportContextHub } from '@/components/support/context';
 import type { SupportContextAnchor } from '@/hooks/useSupportContext';
 import { SupportTicketDetail } from '@/components/support/zendesk/chat/SupportTicketDetail';
+import type { ThreadComposerBridge } from '@/components/threads/ThreadPanel';
 import {
   buildSectionTabs,
-  resolveTimelineSections,
   WorkspaceTimelineTab,
   type WorkspaceTimelineAnchor,
 } from '@/components/station/workbench';
@@ -28,10 +29,45 @@ interface SupportStationTabsInput {
   ticketId: number;
   /** SupportContext anchor for this ticket (`{ ticket: String(id) }`). */
   anchor: SupportContextAnchor;
-  /** Carrier/serial/order anchor for the Timeline tab (from linkage). */
+  /** Carrier/serial/order + optional Activity spine for the Timeline tab. */
   timelineAnchor: WorkspaceTimelineAnchor;
   /** Back-to-queue handler threaded into the embedded conversation header. */
   onBack: () => void;
+  /** Exposes the Ticket-tab composer to the station floating send dock. */
+  onComposerBridgeChange?: (bridge: ThreadComposerBridge | null) => void;
+  /** Exposes the Conversations warehouse-thread composer to the floating dock. */
+  onConversationBridgeChange?: (bridge: ThreadComposerBridge | null) => void;
+}
+
+function TabPanelShell({
+  children,
+  /**
+   * Ticket / Conversations need a flex column that can scroll internally.
+   * Cap height — never force a min-height that invents empty bottom padding.
+   */
+  scrollPane = false,
+}: {
+  children: ReactNode;
+  scrollPane?: boolean;
+}) {
+  return (
+    <WorkspaceCard
+      variant="glass"
+      overflow="hidden"
+      className={
+        scrollPane
+          ? 'flex max-h-[min(72vh,52rem)] min-h-0 flex-col'
+          : 'min-h-0'
+      }
+      bodyClassName={
+        scrollPane
+          ? 'flex min-h-0 flex-1 flex-col p-0'
+          : 'p-3 sm:p-4'
+      }
+    >
+      {children}
+    </WorkspaceCard>
+  );
 }
 
 export function buildSupportStationTabs({
@@ -39,19 +75,25 @@ export function buildSupportStationTabs({
   anchor,
   timelineAnchor,
   onBack,
+  onComposerBridgeChange,
+  onConversationBridgeChange,
 }: SupportStationTabsInput) {
-  const timelinePlan = resolveTimelineSections(timelineAnchor);
-
   return buildSectionTabs([
     {
-      id: 'overview',
-      label: 'Overview',
-      icon: Info,
+      id: 'ticket',
+      label: 'Ticket',
+      icon: Ticket,
       content: (
-        <div className="space-y-3 pb-4">
-          {/* Primary anchor summary — the linkage strip only (no segments). */}
-          <SupportContextHub anchor={anchor} variant="station" linkageOnly />
-        </div>
+        <TabPanelShell scrollPane>
+          <SupportTicketDetail
+            ticketId={ticketId}
+            onBack={onBack}
+            embedded
+            hideExternalLink
+            hideLinkedContext
+            onComposerBridgeChange={onComposerBridgeChange}
+          />
+        </TabPanelShell>
       ),
     },
     {
@@ -59,55 +101,47 @@ export function buildSupportStationTabs({
       label: 'Connections',
       icon: Link2,
       content: (
-        <div className="space-y-3 pb-4">
-          {/* Full linkage graph + Customer|Team|Activity segments. */}
-          <SupportContextHub anchor={anchor} variant="station" hideLinkage={false} />
-        </div>
-      ),
-    },
-    {
-      id: 'ticket',
-      label: 'Ticket',
-      icon: Ticket,
-      content: (
-        // Connections owns the linkage strip, so the conversation hides it.
-        <div className="flex h-full min-h-0 w-full flex-col">
-          <SupportTicketDetail
-            ticketId={ticketId}
-            onBack={onBack}
-            embedded
-            hideExternalLink
-            hideLinkedContext
+        <TabPanelShell>
+          {/* Linkage chips only — no Customer/Team/Activity segment chrome. */}
+          <SupportContextHub
+            anchor={anchor}
+            variant="station"
+            linkageOnly
+            hideTicketEmbed
+            surface="flush"
           />
-        </div>
+        </TabPanelShell>
       ),
     },
     {
-      id: 'support',
-      label: 'Support',
+      id: 'conversations',
+      label: 'Conversations',
       icon: MessageSquare,
       content: (
-        <div className="space-y-3 pb-4">
+        <TabPanelShell scrollPane>
           <SupportContextHub
             anchor={anchor}
             variant="station"
             defaultSegment="team"
+            onlySegment="team"
             hideCustomerSegment
             hideLinkage
+            hideTicketEmbed
+            surface="flush"
+            externalSubmit
+            onBridgeChange={onConversationBridgeChange}
+            className="min-h-0"
           />
-        </div>
+        </TabPanelShell>
       ),
     },
     {
       id: 'timeline',
       label: 'Timeline',
       icon: Clock,
-      visible: timelinePlan.hasContent,
-      content: (
-        <div className="space-y-3 pb-4">
-          <WorkspaceTimelineTab {...timelineAnchor} />
-        </div>
-      ),
+      // Always on — Activity spine keeps the Unbox Timeline method useful
+      // even before tracking/serials resolve.
+      content: <WorkspaceTimelineTab {...timelineAnchor} />,
     },
   ]);
 }

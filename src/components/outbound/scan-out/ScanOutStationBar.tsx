@@ -82,6 +82,8 @@ export function ScanOutStationBar({ autoFocus = true }: { autoFocus?: boolean } 
           placeholder="Scan label to ship out…"
           icon={<Barcode className="h-[17px] w-[17px]" />}
           iconClassName="text-emerald-600"
+          // Align to SIDEBAR_SCAN_DOCK_LEADING_ROW (Unbox/Testing SoT) — not MasterNav deep inset.
+          leadingColumn="rail"
           // Confirm-bench accent: emerald bottom rule + submit trace.
           inputBorderClassName="border-0 border-b-2 border-b-emerald-500"
           submitTraceClassName="bg-emerald-500"

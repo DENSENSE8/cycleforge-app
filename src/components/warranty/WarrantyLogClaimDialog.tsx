@@ -1,9 +1,15 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { createPortal } from 'react-dom';
-import { X } from '@/components/Icons';
-import { Button, IconButton } from '@/design-system/primitives';
+import { Button } from '@/design-system/primitives';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/design-system/components/Dialog';
 import { useWarrantyMutations } from '@/hooks/useWarrantyMutations';
 
 interface WarrantyLogClaimDialogProps {
@@ -26,20 +32,11 @@ interface WarrantyLogClaimDialogProps {
  */
 export function WarrantyLogClaimDialog({ open, onClose, onCreated, initial }: WarrantyLogClaimDialogProps) {
   const { create } = useWarrantyMutations();
-  // Portal target. The dialog launches from the warranty sidebar, which sits
-  // inside framer-motion transformed ancestors — and a `transform` makes
-  // `position: fixed` resolve against that box, not the viewport, clipping the
-  // dialog into the sidebar column. Portalling to document.body escapes it.
-  const [portalNode, setPortalNode] = useState<HTMLElement | null>(null);
   const [serialNumber, setSerialNumber] = useState('');
   const [orderId, setOrderId] = useState('');
   const [sku, setSku] = useState('');
   const [productTitle, setProductTitle] = useState('');
   const [notes, setNotes] = useState('');
-
-  useEffect(() => {
-    setPortalNode(document.body);
-  }, []);
 
   // Seed the form from `initial` each time the dialog opens (so a coverage-card
   // "Log claim" arrives prefilled, and a fresh open starts clean otherwise).
@@ -51,8 +48,6 @@ export function WarrantyLogClaimDialog({ open, onClose, onCreated, initial }: Wa
     setProductTitle(initial?.productTitle ?? '');
     setNotes('');
   }, [open, initial?.serialNumber, initial?.orderId, initial?.sku, initial?.productTitle]);
-
-  if (!open || !portalNode) return null;
 
   const orderIdNum = Number(orderId.trim());
   const hasIdentifier = Boolean(serialNumber.trim() || sku.trim() || (orderId.trim() && orderIdNum > 0));
@@ -83,23 +78,22 @@ export function WarrantyLogClaimDialog({ open, onClose, onCreated, initial }: Wa
 
   const input = 'w-full rounded-md border border-border-soft px-2.5 py-1.5 text-sm';
 
-  return createPortal(
-    <div className="fixed inset-0 z-panelPopover flex items-center justify-center bg-scrim/30 p-4" onClick={onClose}>
-      <div
-        className="w-full max-w-md rounded-xl bg-surface-card shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <header className="flex items-center justify-between border-b border-border-hairline px-5 py-3">
-          <h2 className="text-sm font-semibold text-text-default">Log warranty claim</h2>
-          <IconButton
-            onClick={onClose}
-            className="rounded-full p-1.5 hover:bg-surface-sunken"
-            ariaLabel="Close"
-            icon={<X className="h-4 w-4" />}
-          />
-        </header>
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (!next && !create.isPending) onClose();
+      }}
+    >
+      <DialogContent hideClose className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="text-sm font-semibold">Log warranty claim</DialogTitle>
+          <DialogDescription>
+            Provide a serial, order #, or SKU. The warranty clock + customer are resolved from the order when available.
+          </DialogDescription>
+        </DialogHeader>
 
-        <div className="space-y-3 px-5 py-4">
+        <div className="space-y-3">
           {create.error && (
             <p className="text-xs text-text-danger">
               {create.error instanceof Error ? create.error.message : 'Failed to log claim.'}
@@ -127,12 +121,9 @@ export function WarrantyLogClaimDialog({ open, onClose, onCreated, initial }: Wa
             <label className="mb-1 block text-role-caption font-medium uppercase tracking-wide text-text-faint">Notes</label>
             <textarea className={input} rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
           </div>
-          <p className="text-role-caption text-text-faint">
-            Provide a serial, order #, or SKU. The warranty clock + customer are resolved from the order when available.
-          </p>
         </div>
 
-        <footer className="flex justify-end gap-2 border-t border-border-hairline px-5 py-3">
+        <DialogFooter>
           <Button
             variant="secondary"
             size="sm"
@@ -147,13 +138,13 @@ export function WarrantyLogClaimDialog({ open, onClose, onCreated, initial }: Wa
             size="sm"
             className="text-xs"
             disabled={!hasIdentifier || create.isPending}
+            loading={create.isPending}
             onClick={submit}
           >
-            {create.isPending ? 'Logging…' : 'Log claim'}
+            Log claim
           </Button>
-        </footer>
-      </div>
-    </div>,
-    portalNode,
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

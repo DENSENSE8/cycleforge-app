@@ -61,6 +61,8 @@ export default function StationFbaInput(props: StationFbaInputProps) {
       placeholder="FNSKU (X00…) or ASIN (B0…)"
       autoFocus={false}
       icon={scanIcon}
+      // Match Unbox/Testing/Packing sidebar dock — not MasterNav deep inset.
+      leadingColumn="rail"
       isResolving={c.busy}
       showModeButtons={false}
     />

@@ -1,7 +1,8 @@
 /**
- * Unit tests for buildSectionTabs — visibility gating for SectionTabsSlider.
+ * Unit tests for buildSectionTabs — visibility gating + priority for SectionTabsSlider.
  *
  *   npx tsx --test src/components/station/workbench/build-section-tabs.test.ts
+ *   npx tsx --test src/design-system/components/section-tabs-slider.test.ts
  */
 
 import test from 'node:test';
@@ -23,6 +24,26 @@ test('buildSectionTabs: omits visible:false and keeps the rest', () => {
     [
       { id: 'a', count: undefined },
       { id: 'c', count: 3 },
+    ],
+  );
+});
+
+test('buildSectionTabs: passes priority through', () => {
+  const tabs = buildSectionTabs([
+    { id: 'checklist', label: 'Checklist', icon: Icon, content: 'C' },
+    {
+      id: 'support',
+      label: 'Support',
+      icon: Icon,
+      content: 'S',
+      priority: 'overflow',
+    },
+  ]);
+  assert.deepEqual(
+    tabs.map((t) => ({ id: t.id, priority: t.priority })),
+    [
+      { id: 'checklist', priority: undefined },
+      { id: 'support', priority: 'overflow' },
     ],
   );
 });

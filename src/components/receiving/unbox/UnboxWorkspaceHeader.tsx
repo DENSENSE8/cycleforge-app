@@ -11,8 +11,7 @@ import {
   WorkbenchFilterPopover,
 } from '@/components/dashboard/workbench-filter-popover';
 import { StaffFilterButton } from '@/components/ui/StaffFilterButton';
-import { ToolbarSearchToggle } from '@/components/ui/ToolbarSearchToggle';
-import { SearchField } from '@/design-system/primitives/SearchField';
+import { ToolbarSearchToggle } from '@/design-system/primitives/ToolbarSearchToggle';
 import { parseStaffParam } from '@/hooks/useStaffFilter';
 import { useWorkbenchSearchParam } from '@/hooks/useWorkbenchSearchParam';
 import { useDebounce } from '@/hooks';
@@ -164,13 +163,9 @@ export function UnboxWorkspaceHeader({
       className={className}
       search={
         isHistoryTab ? (
-          <SearchField
+          <ToolbarSearchToggle
             value={draft}
             onChange={setDraft}
-            onSearch={(v) => {
-              setDraft(v);
-              replaceParams(setReceivingHistoryUrlParams(searchParams, { q: v }));
-            }}
             onClear={() => {
               setDraft('');
               replaceParams(setReceivingHistoryUrlParams(searchParams, { q: '' }));
@@ -178,8 +173,6 @@ export function UnboxWorkspaceHeader({
             placeholder={getReceivingHistoryPlaceholder(searchField).replace(/^Search/, 'Filter')}
             isSearching={tableFetching}
             tone="blue"
-            size="compact"
-            className="w-40 shrink-0 lg:w-56"
           />
         ) : (
           <ToolbarSearchToggle

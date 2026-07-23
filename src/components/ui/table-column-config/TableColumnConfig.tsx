@@ -23,8 +23,8 @@ import { tableColumnsFor, type TableColumnSpec, type TableId } from '@/lib/table
  *     (`ChipColumns`, `RowMetaColumns`) call to drop hidden columns. It is a
  *     no-op (`() => false`) when no provider is mounted, so the ~50 historical
  *     importers of those primitives keep their current behavior unchanged.
- *   • {@link useTableColumnConfig} — the full surface the `ColumnConfigButton`
- *     popover uses to list + toggle columns.
+ *   • {@link useTableColumnConfig} — the full surface a Fields / columns menu
+ *     uses to list + toggle columns.
  *
  * Single source of truth = the React Query cache for `staff_preferences`. A
  * toggle writes the cache OPTIMISTICALLY once (instant, one re-render) and

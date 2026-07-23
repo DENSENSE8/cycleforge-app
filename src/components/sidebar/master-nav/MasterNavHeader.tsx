@@ -1,7 +1,7 @@
 'use client';
 
 import { ChevronDown } from '@/components/Icons';
-import { navIconStrokeClass } from '@/components/icons/nav-weight';
+import { NAV_ICON_PAGE_STROKE_CLASS, navIconStrokeClass } from '@/components/icons/nav-weight';
 import {
   SIDEBAR_MASTER_NAV_CHEVRON_PAD_X,
   SIDEBAR_MASTER_NAV_GLYPH,
@@ -22,7 +22,7 @@ export interface MasterNavRecentModeChip {
   label: string;
   /** Mode glyph or page SoT icon (see `iconLayer`). */
   icon: SidebarIconComponent;
-  /** Stroke weight — mode jumps use heavier stroke; modeless page jumps use page. */
+  /** Stroke weight for dropdown/L2 — ignored on closed-header MRU (page stroke only). */
   iconLayer?: 'page' | 'mode';
   onSelect: () => void;
   /** Optional hover hook — warms the destination's data (nav-data-prefetch). */
@@ -134,7 +134,6 @@ export function MasterNavHeader({
         <div className={SIDEBAR_MRU_CLUSTER}>
           {recentModes.map((mode) => {
             const Icon = mode.icon;
-            const layer = mode.iconLayer ?? 'mode';
             return (
               <div
                 key={mode.key}
@@ -147,7 +146,10 @@ export function MasterNavHeader({
                     tone="accent"
                     ariaLabel={mode.label}
                     icon={
-                      <Icon className={navIconStrokeClass(layer, SIDEBAR_MRU_GLYPH)} />
+                      // Page stroke only — same crisp outline as GlobalHeader.
+                      // Mode wrappers bake heavier stroke; forcing page weight
+                      // here keeps dense glyphs sharp in compact MRU cells.
+                      <Icon className={cn(NAV_ICON_PAGE_STROKE_CLASS, SIDEBAR_MRU_GLYPH)} />
                     }
                     onClick={(e) => {
                       e.stopPropagation();

@@ -9,7 +9,8 @@ export interface ProductDetailPayload {
         upc: string | null;
         image_url: string | null;
         is_active: boolean;
-        zoho_item_id: string | null;
+        /** External inventory-provider item id (capability-neutral). */
+        provider_item_id: string | null;
     };
     platforms: Array<{
         id: number;

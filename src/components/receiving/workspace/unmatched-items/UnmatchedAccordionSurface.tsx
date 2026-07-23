@@ -55,6 +55,7 @@ import { PoLinesAccordion, type ActiveRowSerial } from '@/components/receiving/w
 import { ActiveLineConditionSerial } from '@/components/receiving/workspace/line-edit/ActiveLineConditionSerial';
 import { useSerialLookup } from '@/components/receiving/workspace/SerialMatchResult';
 import { dispatchUnboxRailLineUpdated } from '@/components/sidebar/receiving/unbox-rail-events';
+import { requestConfirm } from '@/design-system/components/confirm';
 import { useUnmatchedItems } from './useUnmatchedItems';
 import { IntakeClassifyRow } from './IntakeClassifyRow';
 import { ReturnScanCard } from './ReturnScanCard';
@@ -457,9 +458,14 @@ export function UnmatchedAccordionSurface(props: UnmatchedItemsSectionProps) {
           activeSerialActions={{
             editingSerialId: lineSerials.editingSerial?.id ?? null,
             onEdit: (s) => lineSerials.setEditingSerial(s),
-            onDelete: (s, lineId) => {
+            onDelete: async (s, lineId) => {
               if (s.id == null) return;
-              if (!window.confirm(`Remove serial ${s.serial_number}?`)) return;
+              const ok = await requestConfirm({
+                description: `Remove serial ${s.serial_number}?`,
+                tone: 'danger',
+                confirmLabel: 'Remove',
+              });
+              if (!ok) return;
               void lineSerials.deleteSerialUnit(s.id);
               void lineId;
             },

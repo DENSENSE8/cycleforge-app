@@ -55,35 +55,3 @@ export function staffInitials(name: string | null | undefined): string {
   if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
   return (parts[0] ?? '').slice(0, 2).toUpperCase();
 }
-
-interface StaffInitialsProps {
-  /** Staff ID — resolves the theme color. */
-  staffId: number | null | undefined;
-  /** Display name — drives initials + the hover tooltip. */
-  name?: string | null;
-  /** Additional Tailwind classes. */
-  className?: string;
-}
-
-/**
- * Compact "who" indicator for dense tables: the staff member's first two
- * initials, tinted in their station theme text color, with the full name on
- * hover. Fixed 2-char footprint keeps columns aligned regardless of name length
- * (a long "Michael" takes the same width as "Thuy"). Renders a muted "--" when
- * unassigned so the column stays rigid.
- */
-export function StaffInitials({ staffId, name, className = '' }: StaffInitialsProps) {
-  const display = (name ?? '').trim();
-  const isAssigned = !!staffId && !!display && display !== '---';
-
-  if (!isAssigned) {
-    return <span className={`text-text-faint ${className}`.trim()} aria-hidden>--</span>;
-  }
-
-  const colors = stationThemeColors[getStaffThemeById(staffId)];
-  return (
-    <span title={display} aria-label={display} className={`${colors.text} ${className}`.trim()}>
-      {staffInitials(display)}
-    </span>
-  );
-}

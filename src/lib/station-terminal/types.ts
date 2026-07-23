@@ -25,7 +25,7 @@ export type TerminalWorkspaceMode =
   | 'repair'
   | 'pickup';
 
-/** Preset tones mirrored from FloatingButton — kept as a string union so the
+/** Preset tones mirrored from SlicedActionDock — kept as a string union so the
  *  lib layer does not import the DS primitive. */
 export type TerminalTone = 'accent' | 'blue' | 'emerald' | 'orange' | 'violet' | 'red' | 'gray';
 
@@ -44,7 +44,7 @@ export interface TerminalMenuItem {
 }
 
 /**
- * View-model consumed by StationTerminalDock → FloatingButton.
+ * View-model consumed by StationTerminalDock → SlicedActionDock.
  * `null` means "hide the dock" (no terminal job for this section — Uber
  * hides its sticky cart when count === 0).
  */

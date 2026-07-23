@@ -1,9 +1,14 @@
+import { requestConfirm } from '@/design-system/components/confirm';
 import { ActiveLineTestingSerial, type UnitSlotSerial } from './ActiveLineTestingSerial';
 import type { TestingController } from './testing-panel-types';
 
 /** Shared confirm before removing a serial. */
-export function confirmDeleteSerial(serialNumber: string): boolean {
-  return window.confirm(`Remove serial ${serialNumber}?`);
+export async function confirmDeleteSerial(serialNumber: string): Promise<boolean> {
+  return requestConfirm({
+    description: `Remove serial ${serialNumber}?`,
+    tone: 'danger',
+    confirmLabel: 'Remove',
+  });
 }
 
 /**
@@ -53,9 +58,9 @@ export function TestingLineSlot({
       onSetUnitVerdict={(serial, next) => void c.handleSlotVerdict(lineId, serial, next)}
       onSetUnitCondition={(serial, next) => void c.handleSlotCondition(lineId, serial, next)}
       onAddSerial={(sn) => c.enqueueSerial(lineId, sn)}
-      onDeleteSerial={(s) => {
+      onDeleteSerial={async (s) => {
         if (s.id == null) return;
-        if (!confirmDeleteSerial(s.serial_number)) return;
+        if (!(await confirmDeleteSerial(s.serial_number))) return;
         void c.deleteSerial(lineId, s.id);
       }}
       onReplaceSerial={(original, next) => void c.replaceSerial(lineId, original, next)}

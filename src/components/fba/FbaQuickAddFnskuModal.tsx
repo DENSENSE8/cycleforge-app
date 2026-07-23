@@ -3,8 +3,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Loader2, Plus, X } from '@/components/Icons';
 import { Layer } from '@/design-system/primitives/Layer';
-import { Button, IconButton } from '@/design-system/primitives';
-import { SidebarIntakeFormField } from '@/design-system/components';
+import { Button, IconButton, TextField } from '@/design-system/primitives';
+import { FormField } from '@/design-system/components';
 import type { StationTheme } from '@/utils/staff-colors';
 import { fbaSidebarThemeChrome } from '@/utils/staff-colors';
 import { normalizeFnsku } from '@/lib/tracking-format';
@@ -109,17 +109,14 @@ export function FbaQuickAddFnskuModal({ stationTheme = 'blue' }: { stationTheme?
         </div>
 
         <div className="space-y-4 px-4 py-4">
-          <SidebarIntakeFormField label="Product title" optionalHint="(Optional)">
-            <input
-              type="text"
-              value={productTitle}
-              onChange={(event) => setProductTitle(event.target.value)}
-              placeholder="Product title"
-              className={chrome.input}
-            />
-          </SidebarIntakeFormField>
+          <TextField
+            label="Product title (optional)"
+            value={productTitle}
+            onChange={setProductTitle}
+            tone="neutral"
+          />
 
-          <SidebarIntakeFormField label="Condition" optionalHint="(Optional)">
+          <FormField label="Condition" optionalHint="optional">
             <select
               value={condition}
               onChange={(event) => setCondition(event.target.value)}
@@ -132,45 +129,37 @@ export function FbaQuickAddFnskuModal({ stationTheme = 'blue' }: { stationTheme?
               <option value="B Used - Good">Used - Good</option>
               <option value="C Used - Acceptable">Used - Acceptable</option>
             </select>
-          </SidebarIntakeFormField>
+          </FormField>
 
-          <SidebarIntakeFormField
-            label="FNSKU"
-            required
-            hintBelow={
-              <p className="text-role-micro leading-snug text-text-soft">
-                Save the FNSKU now and fill in more catalog details later if needed.
-              </p>
-            }
-          >
-            <input
-              type="text"
+          <div className="space-y-2">
+            <TextField
+              label="FNSKU"
               value={fnsku}
-              onChange={(event) => setFnsku(normalizeFnsku(event.target.value))}
-              placeholder="X00..."
-              className={chrome.monoInput}
+              onChange={(next) => setFnsku(normalizeFnsku(next))}
+              required
+              mono
+              tone="neutral"
             />
-          </SidebarIntakeFormField>
+            <p className="text-role-micro leading-snug text-text-soft">
+              Save the FNSKU now and fill in more catalog details later if needed.
+            </p>
+          </div>
 
-          <SidebarIntakeFormField label="ASIN" optionalHint="(Optional)">
-            <input
-              type="text"
-              value={asin}
-              onChange={(event) => setAsin(event.target.value.toUpperCase())}
-              placeholder="B0XXXXXXXXXX"
-              className={chrome.monoInput}
-            />
-          </SidebarIntakeFormField>
+          <TextField
+            label="ASIN (optional)"
+            value={asin}
+            onChange={(next) => setAsin(next.toUpperCase())}
+            mono
+            tone="neutral"
+          />
 
-          <SidebarIntakeFormField label="SKU" optionalHint="(Optional)">
-            <input
-              type="text"
-              value={sku}
-              onChange={(event) => setSku(event.target.value)}
-              placeholder="SKU"
-              className={chrome.monoInput}
-            />
-          </SidebarIntakeFormField>
+          <TextField
+            label="SKU (optional)"
+            value={sku}
+            onChange={setSku}
+            mono
+            tone="neutral"
+          />
 
           {error ? <p className="text-xs font-semibold text-red-600">{error}</p> : null}
         </div>

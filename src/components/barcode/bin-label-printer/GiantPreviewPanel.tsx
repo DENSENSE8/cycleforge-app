@@ -21,8 +21,7 @@ interface GiantPreviewPanelProps {
 }
 
 /**
- * Desktop main-pane preview rendered when the picker is in the sidebar.
- * Renders the label at near-actual size to telegraph what will print.
+ * Desktop main-pane preview — confirmation scale, not a hero.
  */
 export function GiantPreviewPanel({
   zoneLetter,
@@ -43,40 +42,34 @@ export function GiantPreviewPanel({
   const ai = segments ? gs1LocationAi(segments, { gln }) : null;
 
   return (
-    <div className="rounded-3xl border border-border-soft bg-surface-card p-8 shadow-sm">
-      <div className="mx-auto max-w-3xl">
-        <div className="text-center">
-          <p className="text-role-micro font-bold uppercase tracking-[0.22em] text-text-faint">
-            Live preview · prints at 3″ × 2″
+    <div className="rounded-2xl border border-border-soft bg-surface-card p-4">
+      <p className="text-role-micro font-semibold uppercase tracking-[0.16em] text-text-faint">
+        Live preview · prints at 3″ × 2″
+      </p>
+
+      <div className="mt-3 flex items-start gap-4 rounded-xl border border-dashed border-border-soft bg-surface-canvas/60 p-4">
+        <div className="min-w-0 flex-1">
+          <p className="text-role-caption font-semibold uppercase tracking-[0.14em] text-text-soft">
+            {orgWarehouseLabel(user?.organizationName || 'Workspace', 'Location')}
+          </p>
+          <p className="mt-1.5 whitespace-nowrap font-mono text-2xl font-bold leading-none tracking-tight text-text-default">
+            {code}
+          </p>
+          <p className="mt-1.5 text-role-caption font-medium leading-snug text-text-muted">
+            {humanReadable({ zone: zoneLetter, aisle, bay, level, position })}
           </p>
         </div>
-
-        <div className="mt-5 flex items-center justify-center">
-          <div className="flex items-start gap-8 rounded-2xl border-2 border-dashed border-border-soft bg-gradient-to-br from-white to-gray-50/50 p-8 shadow-inner">
-            <div className="min-w-0 flex-1">
-              <p className="text-role-caption font-bold uppercase tracking-[0.18em] text-text-soft">
-                {orgWarehouseLabel(user?.organizationName || 'Workspace', 'Location')}
-              </p>
-              <p className="mt-2 whitespace-nowrap font-mono text-3xl font-black leading-none tracking-tight text-text-default">
-                {code}
-              </p>
-              <p className="mt-2 text-role-caption font-semibold leading-snug text-text-muted">
-                {humanReadable({ zone: zoneLetter, aisle, bay, level, position })}
+        <div className="flex h-[132px] w-[132px] shrink-0 items-center justify-center rounded-lg bg-surface-card p-2 ring-1 ring-border-soft">
+          {ai ? (
+            <LocationDataMatrix value={ai} size={116} fgColor="#0F172A" />
+          ) : (
+            <div className="flex h-full w-full flex-col items-center justify-center gap-1.5 text-center">
+              <Printer className="h-5 w-5 text-text-faint" />
+              <p className="px-2 text-role-caption font-medium text-text-faint">
+                Completes when every step is picked
               </p>
             </div>
-            <div className="flex h-[220px] w-[220px] shrink-0 items-center justify-center rounded-xl bg-surface-card p-3 ring-1 ring-border-soft">
-              {ai ? (
-                <LocationDataMatrix value={ai} size={196} fgColor="#0F172A" />
-              ) : (
-                <div className="flex h-full w-full flex-col items-center justify-center gap-2 text-center">
-                  <Printer className="h-7 w-7 text-text-faint" />
-                  <p className="px-4 text-role-caption font-semibold text-text-faint">
-                    Barcode appears when every step is picked in the sidebar
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
+          )}
         </div>
       </div>
     </div>

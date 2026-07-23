@@ -12,7 +12,7 @@ import {
 import {
   HEADER_ICON_BTN_CLASS,
   HEADER_ICON_CLUSTER,
-  HEADER_ICON_GLYPH,
+  TOP_CHROME_ICON_GLYPH,
   HEADER_ICON_WRAP,
 } from '@/components/layout/header-shell';
 import { cn } from '@/utils/_cn';
@@ -82,7 +82,7 @@ export function StationHeaderToolbar({
   const def = workspaceMode(mode);
   const disabled = receivingId == null;
   const [overflowOpen, setOverflowOpen] = useState(false);
-  const glyph = embedded ? HEADER_ICON_GLYPH : 'h-3.5 w-3.5';
+  const glyph = embedded ? TOP_CHROME_ICON_GLYPH : 'h-3.5 w-3.5';
 
   const META: Record<
     Exclude<HeaderActionKey, 'details'>,
@@ -242,7 +242,7 @@ export function StationHeaderToolbar({
                 onClick={() => dispatchReceivingDetailsOverlay(receivingId)}
                 ariaLabel="Open receiving details"
                 className={HEADER_ICON_BTN_CLASS}
-                icon={<Info className={HEADER_ICON_GLYPH} />}
+                icon={<Info className={TOP_CHROME_ICON_GLYPH} />}
               />
             </HoverTooltip>
           </div>

@@ -27,7 +27,8 @@
 
 import pool from '@/lib/db';
 import type { OrgId } from '@/lib/tenancy/constants';
-import { parseOrgSettings, getInboundSettings, type InboundOrgSettings } from '@/lib/tenancy/settings';
+import { parseOrgSettings, getInboundSettings, type InboundOrgSettings, type InboundOrgSettingsRaw } from '@/lib/tenancy/settings';
+import { updateOrgSettings } from '@/lib/tenancy/organizations';
 import { connectedProviderKey } from '@/lib/integrations/capability-connections';
 import { hasConnectedEbayBuyerAccount } from '@/lib/ebay/credentials';
 import { isRegisteredInboundSource, type InboundSourceType } from './source-registry';
@@ -114,4 +115,76 @@ export async function resolveInboundSettings(
 export function isInboundSourceEnabled(settings: InboundOrgSettings, source: string): boolean {
   const s = source.trim().toLowerCase();
   return isRegisteredInboundSource(s) && settings.enabledSources.map((x) => x.toLowerCase()).includes(s);
+}
+
+export interface EnsureEbayInboundDeps extends InboundSettingsDeps {
+  /** Persist a shallow top-level settings patch (`inbound` replaces that key). */
+  updateSettings: (orgId: OrgId, patch: { inbound: InboundOrgSettingsRaw }) => Promise<void>;
+}
+
+const defaultEnsureDeps: EnsureEbayInboundDeps = {
+  ...defaultDeps,
+  updateSettings: (orgId, patch) => updateOrgSettings(orgId, patch),
+};
+
+function listHasEbay(sources: readonly string[]): boolean {
+  return sources.map((x) => x.toLowerCase()).includes('ebay');
+}
+
+/**
+ * Persist `ebay` into `organizations.settings.inbound.enabledSources`.
+ *
+ * Buyer OAuth and marketplace Import call this so a stale explicit list (or
+ * `[]`) cannot leave purchasing connected while Import no-ops. Idempotent:
+ * no-op when `ebay` is already present. When the org never chose a list,
+ * derives the connection-driven default then forces `ebay` in before write.
+ */
+export async function ensureEbayInboundSourceEnabled(
+  orgId: OrgId,
+  deps: EnsureEbayInboundDeps = defaultEnsureDeps,
+): Promise<{ changed: boolean; enabledSources: string[] }> {
+  const { rows } = await deps.query<{ settings: unknown }>(
+    `SELECT settings FROM organizations WHERE id = $1 LIMIT 1`,
+    [orgId],
+  );
+  if (!rows[0]) {
+    return { changed: false, enabledSources: [] };
+  }
+
+  const raw = getInboundSettings(parseOrgSettings(rows[0].settings ?? {}));
+  const existing = raw.enabledSources;
+
+  if (existing !== undefined && listHasEbay(existing)) {
+    return { changed: false, enabledSources: [...existing] };
+  }
+
+  let next: string[];
+  if (existing !== undefined) {
+    next = [...existing, 'ebay'];
+  } else {
+    try {
+      next = await deriveEnabledSourcesFromConnections(orgId, deps);
+    } catch {
+      next = ['manual'];
+    }
+    if (!listHasEbay(next)) {
+      const manualIdx = next.findIndex((s) => s.toLowerCase() === 'manual');
+      if (manualIdx >= 0) {
+        next = [...next.slice(0, manualIdx), 'ebay', ...next.slice(manualIdx)];
+      } else {
+        next = [...next, 'ebay'];
+      }
+    }
+  }
+
+  await deps.updateSettings(orgId, {
+    inbound: {
+      displaySourceAfterMerge: raw.displaySourceAfterMerge,
+      zohoOrderNumberFields: raw.zohoOrderNumberFields,
+      autoMergeSignals: raw.autoMergeSignals,
+      fuzzyMergeRequiresReview: raw.fuzzyMergeRequiresReview,
+      enabledSources: next,
+    },
+  });
+  return { changed: true, enabledSources: next };
 }

@@ -1,6 +1,6 @@
 /**
- * SectionTabsSlider right-slot primitives — recessed-track pills that match
- * the tab-pill chrome in SectionTabsSlider.
+ * SectionTabsSlider right-slot primitives — recessed-track pills that sit
+ * beside the labeled TabSwitch strip (`solid` + accent rail chrome).
  *
  * Unbox and Testing both needed an Edit-PO / pairing pencil and a Zendesk
  * external-link pill on the tab bar `rightSlot`. Compose these instead of
@@ -15,7 +15,7 @@ import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { operatorAccentClasses } from '@/utils/operator-accent';
 import { cn } from '@/utils/_cn';
 
-/** Recessed canvas track that wraps one or more icon pills (matches tab track). */
+/** Light rail that matches TabSwitch `variant="solid"` chrome. */
 export function SectionTabsRightTrack({
   children,
   className,
@@ -26,7 +26,7 @@ export function SectionTabsRightTrack({
   return (
     <div
       className={cn(
-        'inline-flex items-center rounded-xl bg-surface-canvas p-1 ring-1 ring-inset ring-border-soft',
+        'inline-flex items-center rounded-full border border-border-default bg-surface-card p-1 shadow-sm',
         className,
       )}
     >
@@ -60,11 +60,11 @@ export function SectionTabsRightPill({
         aria-expanded={ariaExpanded}
         onClick={onClick}
         className={cn(
-          'flex h-8 w-9 items-center justify-center rounded-lg transition-colors',
+          'flex h-8 w-8 items-center justify-center rounded-full transition-colors',
           active
             ? `${operatorAccentClasses.activePill} text-white`
             : filled
-              ? 'bg-surface-card text-text-muted hover:text-text-default'
+              ? 'text-text-muted hover:bg-surface-hover hover:text-text-default'
               : 'text-text-muted hover:text-text-default',
         )}
       >

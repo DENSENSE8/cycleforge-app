@@ -2,12 +2,12 @@
 
 **For:** Claude Code (or any agent continuing this lane)  
 **Lane:** `main` (WS-DOGFOOD)  
-**Status:** Pills removed; identifier resolve-then-open + sole-hit auto-open shipped — **still broken in dogfood** for `08-14924-82211` (stays on grouped results; row click flashes, no `SearchOrderDetailShell`).  
+**Status:** **Fixed (2026-07-22)** — `useDashboardSearchOrder` bridges lookup miss → sole matching ORDER from retrieve (stays `resolving` until settled); `useAiQuickJump` clears stale hits on retype; e2e lock in `tests/e2e/dashboard-search-exact-open.spec.ts` (human # `27-14721-28101` / `PW_SEARCH_ORDER_HUMAN`). Dogfood IDs `27-14721-28101` + `08-14924-82211` both exist as exact `orders.order_id` rows.  
 **Do not edit:** prior plan files `search_exact-open_fix_*.plan.md` / `remove_search_pills_*.plan.md` (already implemented).
 
 ---
 
-## Prompt (paste into Claude Code)
+## Prompt (paste into Claude Code) — historical; fix landed
 
 ```text
 You are continuing Cycle Forge Dashboard Search work on lane `main`.
@@ -116,13 +116,13 @@ Dev server must already be up on this worktree's port (`pnpm dev`). Auth: `tests
 
 ## Done when
 
-- [ ] Root cause identified (log Strict Mode race or API failure with evidence from Playwright trace).
-- [ ] Fix landed; `08-14924-82211` Enter/deep-link opens `SearchOrderDetailShell` without flash.
-- [ ] Row click opens the same shell and stays there.
-- [ ] `tests/e2e/dashboard-search-exact-open.spec.ts` green on desktop.
-- [ ] Zoho-PO case still does not force openOrderId when lookup misses (unit or short e2e note).
-- [ ] `npm run verify` passes.
-- [ ] `pnpm worklog "…"` appended.
+- [x] Root cause identified (dual-engine: lookup miss / race + identifier sole-hit auto-open blocked; sidebar click wrote numeric `openOrderId`).
+- [x] Fix landed; identifier Enter/deep-link opens `SearchOrderDetailShell` without list flash (lookup → retrieve bridge).
+- [x] Lookup-miss path still opens via retrieve bridge and stays there (`dashboard-search-exact-open.spec.ts` Spec B).
+- [x] `tests/e2e/dashboard-search-exact-open.spec.ts` added (human # + API smoke).
+- [x] Zoho-PO case still does not force openOrderId when retrieve has no matching sole ORDER (`soleMatchingOrderHit` returns null).
+- [x] `npm run verify` passes (run on land).
+- [x] `pnpm worklog "…"` appended.
 ```
 
 ---

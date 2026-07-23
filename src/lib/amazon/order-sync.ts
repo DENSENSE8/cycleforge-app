@@ -233,6 +233,7 @@ async function processOrder(
     sellerId: account.sellerId,
     orderId, productTitle, sku, quantity, status, channel, orderDate, skuCatalogId, customer,
     saleAmount, currency,
+    itemNumber: asin,
   });
   if (outcome === 'created') result.imported++;
   else result.updated++;
@@ -253,6 +254,8 @@ interface UpsertOrderInput {
   customer: MappedCustomer | null;
   saleAmount: number | null;
   currency: string;
+  /** Amazon ASIN — stamped onto orders.item_number when still empty. */
+  itemNumber: string | null;
 }
 
 async function upsertAmazonOrder(p: UpsertOrderInput): Promise<'created' | 'updated'> {
@@ -280,9 +283,17 @@ async function upsertAmazonOrder(p: UpsertOrderInput): Promise<'created' | 'upda
            sku_catalog_id = COALESCE(sku_catalog_id, $6),
            fulfillment_channel = $7,
            customer_id    = COALESCE($8, customer_id),
-           status = CASE WHEN status IS NULL OR status IN ('', 'unassigned') THEN $9 ELSE status END
+           status = CASE WHEN status IS NULL OR status IN ('', 'unassigned') THEN $9 ELSE status END,
+           item_number    = CASE
+             WHEN (item_number IS NULL OR TRIM(item_number) = '') AND $11::text IS NOT NULL AND TRIM($11) <> ''
+               THEN UPPER(TRIM($11))
+             ELSE item_number
+           END
          WHERE id = $1 AND organization_id = $10`,
-        [existingId, p.productTitle, p.sku, p.quantity, p.orderDate, p.skuCatalogId, p.channel, customerId, p.status, p.orgId],
+        [
+          existingId, p.productTitle, p.sku, p.quantity, p.orderDate, p.skuCatalogId, p.channel,
+          customerId, p.status, p.orgId, p.itemNumber,
+        ],
       );
       return 'updated';
     }
@@ -291,8 +302,8 @@ async function upsertAmazonOrder(p: UpsertOrderInput): Promise<'created' | 'upda
       `INSERT INTO orders (
          organization_id, order_id, product_title, condition, sku, status, status_history,
          notes, quantity, out_of_stock, account_source, order_date, sku_catalog_id,
-         fulfillment_channel, customer_id, sale_amount, currency
-       ) VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+         fulfillment_channel, customer_id, sale_amount, currency, item_number
+       ) VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
        ON CONFLICT ON CONSTRAINT idx_orders_unique_account_order DO UPDATE
          SET product_title  = COALESCE(NULLIF(EXCLUDED.product_title, 'No title'), orders.product_title),
              sku            = COALESCE(NULLIF(orders.sku, ''), EXCLUDED.sku),
@@ -301,13 +312,14 @@ async function upsertAmazonOrder(p: UpsertOrderInput): Promise<'created' | 'upda
              sku_catalog_id = COALESCE(orders.sku_catalog_id, EXCLUDED.sku_catalog_id),
              fulfillment_channel = EXCLUDED.fulfillment_channel,
              customer_id    = COALESCE(orders.customer_id, EXCLUDED.customer_id),
+             item_number    = COALESCE(NULLIF(TRIM(orders.item_number), ''), EXCLUDED.item_number),
              status = CASE WHEN orders.status IS NULL OR orders.status IN ('', 'unassigned')
                           THEN EXCLUDED.status ELSE orders.status END
        RETURNING (xmax = 0) AS inserted`,
       [
         p.orgId, p.orderId, p.productTitle, '', p.sku, p.status, JSON.stringify([]),
         '', p.quantity, '', p.accountSource, p.orderDate, p.skuCatalogId, p.channel, customerId,
-        p.saleAmount, p.currency,
+        p.saleAmount, p.currency, p.itemNumber ? p.itemNumber.toUpperCase() : null,
       ],
     );
     // xmax = 0 → a true INSERT; otherwise the ON CONFLICT update path fired (race).

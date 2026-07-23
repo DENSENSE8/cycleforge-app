@@ -1,16 +1,14 @@
 /**
  * POST /api/receiving-lines/incoming/email-rescan
  *
- * Receiving-floor counterpart to /api/admin/po-gmail/reconcile. Drives the
- * Incoming toolbar's "Email" button: rescans the PO mailbox for "ORDER
- * DELIVERED" emails (feeding the Delivered · not scanned surface), upserts
- * missing POs, resolves now-present ones, and links any carrier tracking#.
+ * Receiving-floor counterpart to /api/admin/po-gmail/reconcile. Rescans the PO
+ * mailbox for "ORDER DELIVERED" emails (writes `email_delivery_signals` and
+ * promotes delivery onto linked STN rows so the carrier hunt queue sees them),
+ * upserts missing POs, resolves now-present ones, and links any carrier tracking#.
  *
- * Gated on `receiving.view` to match its toolbar siblings (Zoho / Tracking)
- * — the admin reconcile route stays `admin.view` because it returns raw
- * email bodies for the triage UI. This route returns COUNTS ONLY (no email
- * subjects, senders, or bodies), so receiving staff get the sync summary
- * without the PII surface.
+ * Gated on `receiving.view`. Returns COUNTS ONLY (no email bodies). Chrome CTA
+ * was removed — cron / admin reconcile remain the primary drivers; this route
+ * stays for scripted/operator rescan.
  */
 
 import { NextRequest, NextResponse } from 'next/server';

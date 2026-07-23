@@ -5,14 +5,18 @@ import { toPSTDateKey } from '@/utils/date';
 import { groupRowsBy, type RowGroup } from '@/lib/group-rows';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
 import {
+  defaultDirForQueueSort,
+  isQueueColumnSort,
+  type QueueDisplaySortDir,
+} from '@/utils/queue-display-sort';
+import {
   isShippedByLatestStatus,
   queueRowBandDateSource,
-  saleAmountValue,
-  staffSortKey,
   type OrdersQueueMode,
   type OrdersQueueSort,
   type QueueRowRecord,
 } from './helpers';
+import { compareQueueColumnRows } from './queue-row-compare';
 
 export interface OrdersQueueRows {
   /** Records still in the queue (already-shipped rows filtered out). */
@@ -28,13 +32,16 @@ export interface OrdersQueueRows {
 export interface UseOrdersQueueRowsOptions {
   records: ShippedOrder[];
   sort: OrdersQueueSort;
+  /** Column-sort direction; ignored for composite / legacy modes. */
+  dir?: QueueDisplaySortDir | null;
   queueMode: OrdersQueueMode;
 }
 
 /**
- * Derives the date-banded, order-grouped view of the queue from the raw
- * records. Filters already-shipped rows, bands by deadline/created date, sorts
- * within each day, then folds lines that share an order number into one group.
+ * Derives the date-banded (or flat column-sorted), order-grouped view of the
+ * queue from the raw records. Filters already-shipped rows, bands by
+ * deadline/created date (composites) or sorts globally (column sorts), then
+ * folds lines that share an order number into one group.
  *
  * The flat `displayedRecords` is flattened from the SAME grouped order so that
  * keyboard-nav and shift-range select line up with exactly what's on screen.
@@ -42,10 +49,29 @@ export interface UseOrdersQueueRowsOptions {
 export function useOrdersQueueRows({
   records,
   sort,
+  dir = null,
   queueMode,
 }: UseOrdersQueueRowsOptions): OrdersQueueRows {
   return useMemo(() => {
     const visibleRecords = records.filter((record) => !isShippedByLatestStatus(record));
+
+    // Column sorts: one flat global order (single synthetic band — LedgerGrid
+    // hides day headers). Include rows even when ship-by/created is missing.
+    if (isQueueColumnSort(sort)) {
+      const resolvedDir = dir ?? defaultDirForQueueSort(sort) ?? 'asc';
+      const sorted = [...visibleRecords].sort((a, b) =>
+        compareQueueColumnRows(a, b, sort, resolvedDir),
+      );
+      const groups = groupRowsBy(sorted, (r) => String(r.order_id || '').trim() || `id:${r.id}`);
+      const orderGroupsByDate: [string, RowGroup<ShippedOrder>[]][] = [['', groups]];
+      const displayedRecords = groups.flatMap((g) => g.rows);
+      return {
+        visibleRecords,
+        orderGroupsByDate,
+        displayedRecords,
+        totalCount: sorted.length,
+      };
+    }
 
     const groupedRecords: Record<string, ShippedOrder[]> = {};
     visibleRecords.forEach((record) => {
@@ -74,18 +100,6 @@ export function useOrdersQueueRows({
           const ta = new Date(a.created_at || a.deadline_at || 0).getTime();
           const tb = new Date(b.created_at || b.deadline_at || 0).getTime();
           return tb - ta;
-        }
-        // Highest realized sale price first; ties fall through to deadline.
-        if (sort === 'price') {
-          const diff = saleAmountValue(b as QueueRowRecord) - saleAmountValue(a as QueueRowRecord);
-          if (diff !== 0) return diff;
-          return deadlineTime(a) - deadlineTime(b);
-        }
-        // Cluster a day's rows by assigned tester/packer; ties by deadline.
-        if (sort === 'staff') {
-          const cmp = staffSortKey(a as QueueRowRecord).localeCompare(staffSortKey(b as QueueRowRecord));
-          if (cmp !== 0) return cmp;
-          return deadlineTime(a) - deadlineTime(b);
         }
         // `deadline` is pure soonest-deadline (most overdue) first — no
         // tested-before-pending grouping. `priority` keeps that grouping.
@@ -118,5 +132,5 @@ export function useOrdersQueueRows({
     const totalCount = Object.values(groupedRecords).reduce((sum, dayRecords) => sum + dayRecords.length, 0);
 
     return { visibleRecords, orderGroupsByDate, displayedRecords, totalCount };
-  }, [records, sort, queueMode]);
+  }, [records, sort, dir, queueMode]);
 }

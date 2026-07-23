@@ -1,0 +1,155 @@
+/**
+ * Classify pill option builders — Urgency / Platform / Type as identity faces.
+ *
+ * Shared by the carton bookmark (`InlinePillPicker`) and the Classify tab
+ * checklist so both surfaces render the same tone-coded faces. Bookmark chrome
+ * uses {@link InlinePillOption.shortLabel}; Classify keeps full `label`.
+ */
+
+import { Flag } from '@/components/Icons';
+import { PlatformMark } from '@/components/ui/PlatformMark';
+import { ReceivingTypeMark } from '@/components/ui/ReceivingTypeMark';
+import { TOP_CHROME_ICON_GLYPH } from '@/components/layout/header-shell';
+import { sourcePlatformMeta } from '@/lib/source-platform';
+import { receivingTypeMeta } from '@/lib/receiving/receiving-type-meta';
+import { PRIORITY_OVERRIDE_TIERS } from '@/lib/receiving/priority-override';
+import type { InlinePillOption } from './InlinePillPicker';
+
+const FACE_GLYPH = TOP_CHROME_ICON_GLYPH;
+
+/** Soft platform face fills — brand hue tint, Claim/Photos quiet language. */
+const PLATFORM_FACE_ACTIVE: Record<string, string> = {
+  ebay: 'border-yellow-200 bg-yellow-50 text-yellow-800 shadow-sm',
+  amazon: 'border-orange-200 bg-orange-50 text-orange-700 shadow-sm',
+  fba: 'border-orange-200 bg-orange-50 text-orange-700 shadow-sm',
+  aliexpress: 'border-red-200 bg-red-50 text-red-700 shadow-sm',
+  walmart: 'border-amber-200 bg-amber-50 text-amber-800 shadow-sm',
+  goodwill: 'border-sky-200 bg-sky-50 text-sky-700 shadow-sm',
+  ecwid: 'border-blue-200 bg-blue-50 text-blue-700 shadow-sm',
+  square: 'border-slate-200 bg-slate-50 text-slate-700 shadow-sm', // ds-allow-raw-neutral: Square brand slate
+  shopify: 'border-green-200 bg-green-50 text-green-700 shadow-sm',
+  other: 'border-slate-200 bg-slate-50 text-slate-600 shadow-sm', // ds-allow-raw-neutral: catch-all
+};
+
+const PLATFORM_FACE_IDLE =
+  'border-border-soft bg-surface-card/70 text-text-muted hover:border-border-default hover:bg-surface-hover';
+
+/**
+ * Simple Icons wordmarks read as extra text beside the short lettermark
+ * (e.g. ebay glyph + "EB"). Bookmark chrome uses a tone pip for these;
+ * silhouette marks (Amazon carton, etc.) keep {@link PlatformMark}.
+ */
+const PLATFORM_WORDMARK = new Set([
+  'ebay',
+  'aliexpress',
+  'walmart',
+  'shopify',
+  'square',
+]);
+
+const PLATFORM_TONE_PIP = (
+  <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-current opacity-90" aria-hidden />
+);
+
+export function urgencyClassifyOptions(args: {
+  derivedLabel: string;
+  derivedTierEquivalent: number | null;
+  autoActiveClass: string;
+}): InlinePillOption[] {
+  const { derivedLabel, derivedTierEquivalent, autoActiveClass } = args;
+  return [
+    {
+      value: 'auto',
+      label: 'Auto',
+      shortLabel: 'Auto',
+      title: `Auto — follows platform (${derivedLabel})`,
+      face: <Flag className={FACE_GLYPH} />,
+      activeClass: autoActiveClass,
+      inactiveClass:
+        'border-border-soft bg-surface-card/70 text-text-soft hover:border-border-default hover:bg-surface-hover',
+    },
+    ...PRIORITY_OVERRIDE_TIERS.map((t) => ({
+      value: String(t.value),
+      label: t.label,
+      shortLabel: t.short,
+      title:
+        derivedTierEquivalent === t.value
+          ? `${t.title} — current (auto from platform); click to pin`
+          : t.title,
+      face: <Flag className={FACE_GLYPH} />,
+      activeClass: t.activeClass,
+      inactiveClass: derivedTierEquivalent === t.value ? t.activeClass : t.inactiveClass,
+    })),
+  ];
+}
+
+export function platformClassifyOptions(args: {
+  catalogOptions: Array<{ value: string; label: string }>;
+  isUnmatched: boolean;
+}): InlinePillOption[] {
+  const { catalogOptions, isUnmatched } = args;
+  const unfound: InlinePillOption[] = isUnmatched
+    ? [
+        {
+          value: '',
+          label: 'Unfound',
+          shortLabel: '?',
+          title: 'No Zoho PO matched this carton',
+          face: <PlatformMark empty />,
+          activeClass: 'border-amber-200 bg-amber-50 text-amber-700 shadow-sm',
+          inactiveClass:
+            'border-amber-200 bg-amber-50 text-amber-700 hover:border-amber-300 hover:bg-amber-100',
+        },
+      ]
+    : [];
+
+  return [
+    ...unfound,
+    ...catalogOptions.map((o) => {
+      const meta = sourcePlatformMeta(o.value);
+      const active =
+        PLATFORM_FACE_ACTIVE[meta.value] ??
+        'border-slate-200 bg-slate-50 text-slate-600 shadow-sm'; // ds-allow-raw-neutral: unknown platform face
+      return {
+        value: o.value,
+        label: o.label,
+        shortLabel: meta.mark,
+        title: o.label,
+        face: PLATFORM_WORDMARK.has(meta.value) ? (
+          PLATFORM_TONE_PIP
+        ) : (
+          <PlatformMark
+            platformValue={o.value}
+            textClassName="text-current"
+          />
+        ),
+        activeClass: active,
+        inactiveClass: PLATFORM_FACE_IDLE,
+      } satisfies InlinePillOption;
+    }),
+  ];
+}
+
+export function typeClassifyOptions(args: {
+  catalogOptions: Array<{ value: string; label: string }>;
+}): InlinePillOption[] {
+  return args.catalogOptions
+    .filter((o) => o.value !== 'PICKUP')
+    .map((o) => {
+      const meta = receivingTypeMeta(o.value);
+      return {
+        value: o.value,
+        label: o.label,
+        shortLabel: meta.short,
+        title: o.label,
+        face: (
+          <ReceivingTypeMark
+            typeValue={o.value}
+            textClassName="text-current"
+          />
+        ),
+        activeClass: meta.activeClass,
+        inactiveClass: meta.inactiveClass,
+      } satisfies InlinePillOption;
+    });
+}

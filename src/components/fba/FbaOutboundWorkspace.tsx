@@ -25,7 +25,7 @@ import {
   WORKBENCH_BODY_COLUMN,
   WORKBENCH_CHROME_COLUMN,
 } from '@/components/dashboard/workbench-shell';
-import { FloatingButton } from '@/design-system/primitives';
+import { SlicedActionDock } from '@/design-system/primitives';
 import { Package, X } from '@/components/Icons';
 import { framerPresence, framerTransition, motionBezier } from '@/design-system/foundations/motion-framer';
 import { useMotionPresence, useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
@@ -187,10 +187,11 @@ export function FbaOutboundWorkspace() {
         </div>
       </DashboardScrollShell>
 
-      {/* Same FloatingButton pattern as receiving (primary CTA + split Clear menu) —
+      {/* Bottom-edge sliced dock (same family as station terminal) —
           pinned to the pane, not the scroll content. */}
       {showCombineBar ? (
-        <FloatingButton
+        <SlicedActionDock
+          edge="bottom"
           label={`Combine ${boardSelection.length} item${boardSelection.length === 1 ? '' : 's'} · ${selectedUnits} unit${selectedUnits === 1 ? '' : 's'}`}
           onClick={handleStartCombine}
           icon={<Package className="h-4 w-4 shrink-0" />}

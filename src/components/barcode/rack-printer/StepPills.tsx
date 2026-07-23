@@ -2,6 +2,7 @@ import React, { useRef } from 'react';
 import { useHorizontalWheelScroll } from '@/hooks/useHorizontalWheelScroll';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { noPad, pad2 } from '@/lib/barcode-routing';
+import { LABEL_BUILDER_SELECTED } from '../label-builder-layout';
 import { STEPS, type Step } from './rack-printer-config';
 
 interface StepPillsProps {
@@ -28,7 +29,7 @@ export function StepPills({ activeStep, zoneLetter, roomName, aisle, bay, level,
   return (
     <div
       ref={scrollRef}
-      className="flex w-full min-w-0 overflow-x-scroll overflow-y-hidden overscroll-x-contain rounded-2xl bg-surface-card px-3 py-2 shadow-sm ring-1 ring-border-soft/60 [-ms-overflow-style:none] [scrollbar-width:none] [-webkit-overflow-scrolling:touch] [&::-webkit-scrollbar]:hidden"
+      className="flex w-full min-w-0 overflow-x-scroll overflow-y-hidden overscroll-x-contain rounded-xl bg-surface-card px-2 py-1.5 ring-1 ring-border-soft/60 [-ms-overflow-style:none] [scrollbar-width:none] [-webkit-overflow-scrolling:touch] [&::-webkit-scrollbar]:hidden"
       role="navigation"
       aria-label="Rack location steps"
     >
@@ -46,11 +47,11 @@ export function StepPills({ activeStep, zoneLetter, roomName, aisle, bay, level,
               onClick={() => onPillClick(id)}
               disabled={!isClickable}
               aria-current={isActive ? 'step' : undefined}
-              className={`ds-raw-button flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3 text-role-caption font-semibold transition-all active:scale-95 ${
+              className={`ds-raw-button flex h-7 shrink-0 items-center gap-1.5 rounded-full px-2.5 text-role-caption font-semibold transition-colors ${
                 isActive
-                  ? 'bg-gradient-to-br from-blue-500 to-blue-700 text-white shadow-md shadow-blue-600/30'
+                  ? LABEL_BUILDER_SELECTED.solid
                   : isDone
-                    ? 'bg-blue-50 text-blue-700 hover:bg-blue-100 cursor-pointer'
+                    ? `${LABEL_BUILDER_SELECTED.done} cursor-pointer`
                     : 'bg-surface-sunken text-text-faint cursor-not-allowed'
               }`}
             >

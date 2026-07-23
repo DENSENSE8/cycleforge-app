@@ -7,11 +7,16 @@
  *
  * Workbench contract: URL-addressable selection (`?openOrderId`) + right-pane
  * detail. Do not refactor onto SidebarRailShell (single-list rail engine).
+ *
+ * Scroll: page-owned via `DashboardScrollShell` — KPI strip scrolls away; the
+ * column header sticks under the pinned context chrome. No nested fixed-height
+ * viewport (that trapped scroll inside the grid and kept the KPI on screen).
  */
 
 import { useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { OrdersGridView } from '@/components/dashboard/orders-queue/OrdersGridView';
+import { useDashboardScrollParent } from '@/components/dashboard/DashboardScrollShell';
 import { DASHBOARD_ORDERS_SELECTION_SCOPE } from '@/lib/selection/dashboard-scopes';
 import { StaffFilterButton } from '@/components/ui/StaffFilterButton';
 import { useOutboundQueueKeyboard } from '@/hooks/useOutboundQueueKeyboard';
@@ -47,6 +52,7 @@ export function UnshippedShelfBoard({
   toolbarPortalTarget,
 }: UnshippedShelfBoardProps) {
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const scrollParentRef = useDashboardScrollParent();
 
   useEventBridge({
     'open-shipped-details': (e) => {
@@ -77,15 +83,13 @@ export function UnshippedShelfBoard({
             {searchToolbar}
           </div>
         )}
-      {/* Dual-axis self-scroll — spreadsheet owns a bounded viewport-fit
-          height (page-scroll + overflow-x-clip kill frozen h-scroll).
-          Flush to content edge (no px-3) so the rounded shell meets the
-          workbench gutter. */}
-      <div className="h-[calc(100dvh-13rem)] min-h-[24rem] min-w-0 pb-3">
+      {/* Full-bleed in workbench gutters — page scroll owns Y; grid owns X. */}
+      <div className="min-w-0 pb-3">
         <OrdersGridView
           records={records}
           loading={loading}
           searchValue={searchValue}
+          scrollParentRef={scrollParentRef}
           onOpenRecord={(record) => {
             setSelectedId(Number(record.id));
             onOpenRecord(record);
@@ -97,9 +101,11 @@ export function UnshippedShelfBoard({
           onClearSearch={onClearSearch}
           selectMode={selectMode}
           selectionScope={DASHBOARD_ORDERS_SELECTION_SCOPE}
+          queueMode="fulfillment"
           searchEmptyTitle={searchEmptyTitle}
           searchResultLabel={searchResultLabel}
           clearSearchLabel={clearSearchLabel}
+          data-testid="pending-grid-body"
         />
       </div>
       {footer}

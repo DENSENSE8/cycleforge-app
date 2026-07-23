@@ -31,14 +31,17 @@ export async function GET(
             `SELECT
                  sc.id,
                  sc.sku,
-                 sc.product_title,
+                 COALESCE(NULLIF(BTRIM(it.name), ''), sc.product_title) AS product_title,
                  sc.category,
                  sc.gtin,
                  sc.upc,
                  sc.image_url,
                  sc.is_active,
-                 sc.zoho_item_id
+                 sc.provider_item_id
              FROM sku_catalog sc
+             LEFT JOIN items it
+               ON it.zoho_item_id = sc.provider_item_id
+              AND it.organization_id = sc.organization_id
              WHERE sc.sku = $1
                AND sc.organization_id = $2
              LIMIT 1`,

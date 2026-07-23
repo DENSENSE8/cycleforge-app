@@ -1,13 +1,21 @@
-import { useEffect, useState } from 'react';
-import { createPortal } from 'react-dom';
+'use client';
+
 import { Check, X } from '@/components/Icons';
 import { Button, IconButton } from '@/design-system/primitives';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/design-system/components/Dialog';
 import { FolderPathPicker } from '../FolderPathPicker';
 
 /**
- * Bulk-move sheet — opens from the bulk action bar's "Move". Body is just the
- * FolderPathPicker (search + drill-down + new-folder). Portals to document.body
- * so the overlay covers the whole viewport, matching the other manual modals.
+ * Bulk-move dialog — opens from the bulk action bar's "Move". Body is just the
+ * FolderPathPicker (search + drill-down + new-folder). Uses DS Dialog so the
+ * overlay covers the whole viewport, matching the other manual modals.
  */
 export function BulkMoveSheet({
   count, target, onTargetChange, busy, onCancel, onConfirm,
@@ -19,34 +27,23 @@ export function BulkMoveSheet({
   onCancel: () => void;
   onConfirm: () => void;
 }) {
-  // Gate portal until first client render — document.body doesn't exist in SSR.
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => { setMounted(true); }, []);
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !busy) onCancel();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [busy, onCancel]);
-  if (!mounted) return null;
-
-  return createPortal(
-    <div className="fixed inset-0 z-panelPopover flex items-center justify-center p-4">
-      {/* ds-raw-button: full-bleed dismiss scrim, not a Button shape */}
-      <button
-        type="button"
-        onClick={busy ? undefined : onCancel}
-        className="ds-raw-button absolute inset-0 bg-scrim/40"
-        aria-label="Close"
-      />
-      <div className="relative z-panelPopover w-full max-w-lg overflow-hidden rounded-2xl border border-border-soft bg-surface-card shadow-2xl shadow-zinc-900/20">
-        <div className="flex items-center justify-between border-b border-border-soft px-4 py-3">
+  return (
+    <Dialog
+      open
+      onOpenChange={(next) => {
+        if (!next && !busy) onCancel();
+      }}
+    >
+      <DialogContent hideClose className="max-w-lg gap-0 overflow-hidden p-0">
+        <DialogHeader className="flex-row items-center justify-between space-y-0 border-b border-border-soft px-4 py-3">
           <div>
             <p className="text-role-micro uppercase tracking-[0.16em] text-text-soft">Bulk Move</p>
-            <h2 className="mt-1 text-sm font-black text-text-default">
+            <DialogTitle className="mt-1 text-sm font-black">
               Move {count} {count === 1 ? 'manual' : 'manuals'}
-            </h2>
+            </DialogTitle>
+            <DialogDescription className="sr-only">
+              Choose a destination folder for the selected manuals.
+            </DialogDescription>
           </div>
           <IconButton
             icon={<X className="h-4 w-4" />}
@@ -55,11 +52,11 @@ export function BulkMoveSheet({
             ariaLabel="Close"
             className="rounded-full border border-border-soft bg-surface-card p-2 hover:border-border-default hover:bg-surface-hover hover:text-text-default"
           />
-        </div>
+        </DialogHeader>
         <div className="space-y-4 px-4 py-4">
           <FolderPathPicker value={target} onChange={onTargetChange} />
         </div>
-        <div className="flex items-center justify-end gap-2 border-t border-border-hairline bg-surface-canvas/60 px-4 py-3">
+        <DialogFooter className="border-t border-border-hairline bg-surface-canvas/60 px-4 py-3">
           <Button variant="secondary" size="sm" onClick={onCancel} disabled={busy}>
             Cancel
           </Button>
@@ -72,9 +69,8 @@ export function BulkMoveSheet({
           >
             Move
           </Button>
-        </div>
-      </div>
-    </div>,
-    document.body,
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

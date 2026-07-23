@@ -22,6 +22,7 @@ import { usePhotoGridDensity } from '@/hooks/usePhotoGridDensity';
 import { getCurrentPSTDateKey } from '@/utils/date';
 import type { SelectionAction } from '@/lib/selection/selection-actions';
 import { toast } from '@/lib/toast';
+import { requestConfirm } from '@/design-system/components/confirm';
 import { dispatchReceivingPhotoChanged } from '@/utils/events';
 import { usePackerPhotosRealtimeRefresh } from '@/hooks/usePackerPhotosRealtimeRefresh';
 import { useAuth } from '@/contexts/AuthContext';
@@ -305,7 +306,12 @@ export function PhotoLibraryPage() {
 
   const deletePhotoFromMenu = useCallback(
     async (id: number) => {
-      if (!window.confirm('Delete this photo? This cannot be undone.')) return;
+      const ok = await requestConfirm({
+        description: 'Delete this photo? This cannot be undone.',
+        tone: 'danger',
+        confirmLabel: 'Delete',
+      });
+      if (!ok) return;
       try {
         const res = await fetch(`/api/photos/${id}`, { method: 'DELETE' });
         if (!res.ok) {

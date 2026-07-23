@@ -13,6 +13,10 @@
  * ...preview hits]); Enter navigates the active option or falls through via
  * {@link globalSearchHandoffHref}; Esc clears then blurs; Preview row clicks
  * navigate via order-aware hrefs.
+ *
+ * Paste (clipboard button or Cmd/Ctrl+V) is a commit — {@link SearchField}
+ * fires onSearch. Identifier pastes resolve → open Search order detail with
+ * no preview flash (focus collapses before navigate).
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -38,15 +42,17 @@ import { dashboardSearchRerunHref } from '@/components/dashboard/search/dashboar
 import {
   globalSearchHandoffHref,
   journeyHandoffHref,
+  looksLikeIdentifier,
   orderSearchHref,
 } from '@/lib/search/search-hit';
+import { resolveSearchOrder } from '@/lib/search/resolve-search-order';
 import type { AiSearchHit } from '@/lib/search/ai-search-client';
 import { cn } from '@/utils/_cn';
 import {
   HEADER_ICON_BTN_CLASS,
   HEADER_ICON_BTN_OPEN_CLASS,
-  HEADER_ICON_GLYPH,
   HEADER_ICON_WRAP,
+  TOP_CHROME_ICON_GLYPH,
 } from './header-shell';
 
 /**
@@ -121,7 +127,10 @@ export function GlobalHeaderSearch() {
 
   const trimmedQuery = query.trim();
   const hasValue = trimmedQuery.length > 0;
-  const showPreview = expanded && focused && trimmedQuery.length >= 2;
+  // Identifier queries skip the combobox preview — paste/Enter open detail
+  // directly (operator already has the correct ID). NL / browse still preview.
+  const showPreview =
+    expanded && focused && trimmedQuery.length >= 2 && !looksLikeIdentifier(trimmedQuery);
 
   const aiQuickJump = useAiQuickJump(trimmedQuery, {
     pageContext: pathname,
@@ -137,6 +146,9 @@ export function GlobalHeaderSearch() {
       setClassicSearching(false);
       return;
     }
+    // Clear stale classic hits on retype (same handoff footgun as AI preview).
+    classicAbortRef.current?.abort();
+    setClassicHits([]);
     setClassicSearching(true);
     clearTimeout(classicDebounceRef.current);
     classicDebounceRef.current = setTimeout(async () => {
@@ -243,15 +255,37 @@ export function GlobalHeaderSearch() {
   const flatPreviewHits = useMemo(() => flattenPreviewGroups(previewGroups), [previewGroups]);
 
   // Enter / See all → order workbench or Dashboard Search mode.
+  // Identifier commits always resolve (never trust preview hits — paste can
+  // race a stale list from the previous query).
   const openSearchPage = useCallback(() => {
     if (!trimmedQuery) return;
-    navigateSearchHref(router, globalSearchHandoffHref(trimmedQuery, previewHits), pathname);
     setFocused(false);
+
+    if (!looksLikeIdentifier(trimmedQuery)) {
+      const handoff = globalSearchHandoffHref(trimmedQuery, previewHits);
+      navigateSearchHref(router, handoff, pathname);
+      return;
+    }
+
+    void (async () => {
+      const resolved = await resolveSearchOrder(trimmedQuery);
+      if (resolved.status === 'ok') {
+        navigateSearchHref(router, orderSearchHref(resolved.order.id, trimmedQuery), pathname);
+        return;
+      }
+      navigateSearchHref(
+        router,
+        `/dashboard?mode=search&q=${encodeURIComponent(trimmedQuery)}&map=search`,
+        pathname,
+      );
+    })();
   }, [router, trimmedQuery, previewHits, pathname]);
 
   const emptyQuery = trimmedQuery.length === 0;
   const showRecents = unifiedOn && expanded && focused && emptyQuery && recents.length > 0;
   const showFirstUse = unifiedOn && expanded && focused && emptyQuery && recents.length === 0;
+  // Preview dropdown is for typed exploration only — paste/Enter commits
+  // collapse focus before navigate, so this never paints on the open path.
   const dropdownOpen = showPreview || showRecents || showFirstUse;
 
   const dropdownState: GlobalSearchDropdownState = showPreview
@@ -346,13 +380,56 @@ export function GlobalHeaderSearch() {
 
   const handleSearchSubmit = useCallback(
     (raw: string) => {
-      // A highlighted option wins over the handoff fallback.
+      // A highlighted option wins over the handoff fallback (typed ↓/Enter).
       if (navRef.current.dropdownOpen && activeIndex >= 0 && navigateActive()) return;
       const trimmed = raw.trim();
       if (!trimmed) return;
-      const href = globalSearchHandoffHref(trimmed, navRef.current.flatPreviewHits);
+
+      // Collapse combobox immediately — paste/Enter must not paint preview.
+      setFocused(false);
+
+      // Identifier paste/Enter: resolve → open detail. Never route through the
+      // preview list (operator already copied the correct ID).
+      if (looksLikeIdentifier(trimmed)) {
+        void (async () => {
+          const resolved = await resolveSearchOrder(trimmed);
+          if (resolved.status === 'ok') {
+            const href = orderSearchHref(resolved.order.id, trimmed);
+            if (unifiedOn) {
+              pushRecent({
+                query: trimmed,
+                scope: 'global',
+                scopeHref: href,
+                topHit: {
+                  title: resolved.order.product_title || resolved.order.order_id || trimmed,
+                  href,
+                  entityType: 'order',
+                },
+              });
+            }
+            navigateSearchHref(router, href, pathname);
+            return;
+          }
+          if (unifiedOn) {
+            pushRecent({
+              query: trimmed,
+              scope: 'global',
+              scopeHref: dashboardSearchRerunHref(trimmed),
+            });
+          }
+          navigateSearchHref(
+            router,
+            `/dashboard?mode=search&q=${encodeURIComponent(trimmed)}&map=search`,
+            pathname,
+          );
+        })();
+        return;
+      }
+
+      const preview = navRef.current.flatPreviewHits;
+      const href = globalSearchHandoffHref(trimmed, preview);
       if (unifiedOn) {
-        const top = navRef.current.flatPreviewHits.find((h) => h.entityType === 'order');
+        const top = preview.find((h) => h.entityType === 'order');
         pushRecent({
           query: trimmed,
           scope: 'global',
@@ -363,7 +440,6 @@ export function GlobalHeaderSearch() {
         });
       }
       navigateSearchHref(router, href, pathname);
-      setFocused(false);
     },
     [router, unifiedOn, pushRecent, activeIndex, navigateActive, pathname],
   );
@@ -423,7 +499,7 @@ export function GlobalHeaderSearch() {
               aria-expanded={false}
               onClick={expandAndFocus}
               className={HEADER_ICON_BTN_CLASS}
-              icon={<Search className={HEADER_ICON_GLYPH} />}
+              icon={<Search className={TOP_CHROME_ICON_GLYPH} />}
             />
           </HoverTooltip>
         </div>
@@ -499,7 +575,7 @@ export function GlobalHeaderSearch() {
                 HEADER_ICON_BTN_CLASS,
                 assistant.open && cn(HEADER_ICON_BTN_OPEN_CLASS, 'text-blue-600'),
               )}
-              icon={<Sparkles className={HEADER_ICON_GLYPH} />}
+              icon={<Sparkles className={TOP_CHROME_ICON_GLYPH} />}
             />
           </HoverTooltip>
         </div>

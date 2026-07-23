@@ -120,6 +120,17 @@ export const FULFILLMENT_BOARD_LANES: readonly FulfillmentLaneDescriptor[] = [
   { id: 'BLOCKED', iconKey: 'alert', iconClass: 'text-red-500' },
 ];
 
+/**
+ * Sort rank for Pending grid `?sort=status` — pipeline progression, exception last.
+ * Matches {@link FULFILLMENT_BOARD_LANES} order. Shared by the comparator so
+ * consumers never re-derive lane order.
+ */
+export const FULFILLMENT_STAGE_RANK: Record<FulfillmentLane, number> = {
+  PENDING: 0,
+  TESTED: 1,
+  BLOCKED: 2,
+};
+
 // ════════════════════════════════════════════════════════════════════════════
 // POST‑DOCK (outbound) lifecycle — pack → leave‑the‑building → carrier custody →
 // delivered. The mirror of the pre‑dock half above; the two models meet at the
@@ -225,34 +236,3 @@ export function effectiveShipTime(input: {
 }): string | null {
   return input.shipConfirmedAt || input.packedAt || null;
 }
-
-/** Icon binding key for an outbound lane; the board maps it to a concrete glyph. */
-export type OutboundLaneIconKey =
-  | 'staged'
-  | 'scanned_out'
-  | 'in_custody'
-  | 'delivered'
-  | 'exception'
-  | 'process_gap'
-  | 'orphan';
-
-interface OutboundLaneDescriptor {
-  id: OutboundStage;
-  iconKey: OutboundLaneIconKey;
-}
-
-/**
- * Shipped board lane order (top → bottom = outbound timeline; the exception
- * buckets trail the happy path) + per‑lane icon binding, as data. Was two
- * inlined component literals (`SHIPPED_LANE_ORDER`, `OUTBOUND_STATE_ICON`);
- * label/dot/description still come from the `OUTBOUND_STATE_META` color SoT.
- */
-export const OUTBOUND_BOARD_LANES: readonly OutboundLaneDescriptor[] = [
-  { id: 'PACKED_STAGED', iconKey: 'staged' },
-  { id: 'SCANNED_OUT', iconKey: 'scanned_out' },
-  { id: 'IN_CUSTODY', iconKey: 'in_custody' },
-  { id: 'DELIVERED', iconKey: 'delivered' },
-  { id: 'EXCEPTION', iconKey: 'exception' },
-  { id: 'PROCESS_GAP', iconKey: 'process_gap' },
-  { id: 'ORPHAN', iconKey: 'orphan' },
-];

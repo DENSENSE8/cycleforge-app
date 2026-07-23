@@ -123,23 +123,15 @@ export function CustomerInfoForm({
                         tone="neutral"
                     />
 
-                    <div className="relative w-full">
-                        <span className="pointer-events-none absolute left-3.5 top-1.5 text-role-micro font-semibold uppercase tracking-wide text-text-soft">
-                            Price
-                        </span>
-                        <div className="flex h-11 items-center overflow-hidden rounded-xl border border-border-soft bg-surface-card px-3.5 pt-3 focus-within:border-border-strong focus-within:ring-2 focus-within:ring-border-strong/10">
-                            <span className="pr-1 text-sm font-black text-emerald-500">$</span>
-                            <input
-                                type="text"
-                                inputMode="decimal"
-                                value={price}
-                                onChange={(e) => onPriceChange(e.target.value)}
-                                className="flex-1 bg-transparent text-sm font-black text-emerald-600 outline-none placeholder:font-normal placeholder:text-text-faint"
-                                placeholder="130"
-                                required
-                            />
-                        </div>
-                    </div>
+                    <TextField
+                        label="Price ($)"
+                        value={price}
+                        onChange={onPriceChange}
+                        inputMode="decimal"
+                        required
+                        tone="emerald"
+                        inputClassName="font-black text-emerald-600"
+                    />
 
                     <TextField
                         label="Notes (optional)"

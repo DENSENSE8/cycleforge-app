@@ -28,7 +28,6 @@ export {
 export { buildSectionTabs, type SectionTabDef } from './build-section-tabs';
 export {
   WorkspaceTimelineTab,
-  resolveTimelineSections,
   type WorkspaceTimelineAnchor,
 } from './WorkspaceTimelineTab';
 export { StationUnitJourneys } from './StationUnitJourneys';

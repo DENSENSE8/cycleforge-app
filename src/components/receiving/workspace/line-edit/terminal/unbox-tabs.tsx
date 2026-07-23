@@ -10,7 +10,7 @@ import { LinePoNoteCard } from '../LinePoNoteCard';
 import { SupportContextHub } from '@/components/support/context';
 import { SectionTabsSlider, WorkspaceCard, type SectionTab } from '@/design-system/components';
 import { buildSectionTabs, WorkspaceTimelineTab } from '@/components/station/workbench';
-import { Barcode, ClipboardList, ExternalLink, FileText, History, MapPin, MessageSquare, PackageOpen, Ticket } from '@/components/Icons';
+import { Barcode, ClipboardList, ExternalLink, FileText, History, MapPin, MessageSquare, PackageOpen, SlidersHorizontal, Ticket } from '@/components/Icons';
 import type { ReceivingLineRow } from '@/components/station/ReceivingLinesTable';
 import type { InlineActionFeedbackPayload } from '../../InlineActionFeedbackCard';
 import type { PoNoteTabState } from './usePoNoteTabState';
@@ -22,6 +22,16 @@ import type {
 } from './unbox-tab-bridges';
 import { TrackingNumbersTab } from '../TrackingNumbersTab';
 import { ListingLinksTab } from '../ListingLinksTab';
+import { TriageClassifySection } from '@/components/receiving/triage/TriageClassifySection';
+import { providerCatalogLabel } from '@/lib/integrations/capability-labels';
+
+/** Compact strip label from the Integrations provider catalog (SoT). */
+function providerStripLabel(providerKey: string): string {
+  const full = providerCatalogLabel(providerKey);
+  // Tab strip wants the brand token ("Zoho Inventory" → "Zoho").
+  const brand = full.split(/\s+/)[0]?.trim();
+  return brand || full;
+}
 
 /**
  * Controller is the full `useUnboxLineController` return. Typed as unknown at
@@ -39,6 +49,10 @@ export interface BuildUnboxTabsInput {
   hasTimelineTab: boolean;
   hasTrackingTab: boolean;
   hasListingsTab: boolean;
+  /** Always true — Classify is the SoT editor (strip for unfound, overflow for matched). */
+  hasClassifyTab: boolean;
+  /** Unfound: Classify on primary strip order 2. Matched: under ⋯. */
+  classifyOnStrip: boolean;
   poIdForTracking: string;
   hasPoNoteTab: boolean;
   poNote: PoNoteTabState;
@@ -51,6 +65,12 @@ export interface BuildUnboxTabsInput {
   onChecklistBridge?: (bridge: ChecklistTabBridge | null) => void;
   onUnitsBridge?: (bridge: UnitsTabBridge | null) => void;
   onConversationBridge?: (bridge: ConversationTabBridge | null) => void;
+  /** Carton-open snapshot of `receiving.accordionExpand`. */
+  accordionBootstrap?: 'default' | 'all';
+  /** Header classify pill → open this dimension in TriageClassifySection. */
+  classifyExpandDimension?: 'urgency' | 'platform' | 'type' | null;
+  /** Bump to re-open the same dimension from the header. */
+  classifyExpandRequestId?: number;
 }
 
 /**
@@ -69,6 +89,8 @@ export function buildUnboxTabs(input: BuildUnboxTabsInput): SectionTab[] {
     hasTimelineTab,
     hasTrackingTab,
     hasListingsTab,
+    hasClassifyTab,
+    classifyOnStrip,
     poIdForTracking,
     hasPoNoteTab,
     poNote,
@@ -81,8 +103,14 @@ export function buildUnboxTabs(input: BuildUnboxTabsInput): SectionTab[] {
     onChecklistBridge,
     onUnitsBridge,
     onConversationBridge,
+    accordionBootstrap = 'default',
+    classifyExpandDimension = null,
+    classifyExpandRequestId = 0,
   } = input;
 
+  // Strip: Unbox · Classify (unfound) | Listings (matched) · Ticket · …
+  // Header bookmark shows locked-width icon faces; Classify tab checklist is
+  // the edit surface (clicking a face routes here via onClassifyPillOpen).
   return buildSectionTabs([
     {
       id: 'overview',
@@ -104,6 +132,7 @@ export function buildUnboxTabs(input: BuildUnboxTabsInput): SectionTab[] {
             onPairingToggle={onPairingToggle}
             onItemDescFeedback={onItemDescFeedback}
             onItemDescSaved={onItemDescSaved}
+            accordionBootstrap={accordionBootstrap}
           />
           <WorkspaceNotesCard
             row={row}
@@ -116,70 +145,17 @@ export function buildUnboxTabs(input: BuildUnboxTabsInput): SectionTab[] {
       ),
     },
     {
-      id: 'po-note',
-      label: 'Inventory notes',
-      icon: FileText,
-      visible: hasPoNoteTab,
+      id: 'classify',
+      label: 'Classify',
+      icon: SlidersHorizontal,
+      visible: hasClassifyTab,
+      priority: classifyOnStrip ? 'primary' : 'overflow',
       content: (
-        <LinePoNoteCard
-          draft={poNote.draft}
-          onDraftChange={poNote.setDraft}
-          loading={poNote.loading}
-        />
-      ),
-    },
-    {
-      id: 'checklist',
-      label: 'Checklist',
-      icon: ClipboardList,
-      content: (
-        <WorkspaceCard variant="glass" overflow="visible" bodyDensity="nested">
-          <LineChecklistTab
-            lineId={row.id}
-            sku={row.sku}
-            onBridgeChange={onChecklistBridge}
-          />
-        </WorkspaceCard>
-      ),
-    },
-    {
-      id: 'units',
-      label: `Units on carton · ${serialCount}`,
-      icon: Barcode,
-      count: serialCount,
-      visible: hasUnits,
-      content: (
-        <WorkspaceCard variant="glass" overflow="visible" bodyDensity="nested">
-          <div className="space-y-3">
-            <CartonUnitsRollupBody
-              receivingId={row.receiving_id ?? null}
-              activeLineId={row.id ?? null}
-              showEmpty
-              onBridgeChange={onUnitsBridge}
-            />
-          </div>
-        </WorkspaceCard>
-      ),
-    },
-    {
-      id: 'tracking',
-      label: 'Tracking',
-      icon: MapPin,
-      visible: hasTrackingTab,
-      content: (
-        <TrackingNumbersTab
-          trackingEdit={c.trackingEdit}
-          setTrackingEdit={c.setTrackingEdit}
-          onCommitTracking={(v) => {
-            const trimmed = v.trim();
-            if (trimmed !== (row.tracking_number || '').trim()) {
-              c.patch({ zoho_reference_number: trimmed || null });
-            }
-          }}
-          extraTrackings={c.extraTrackings}
-          setExtraTrackings={c.setExtraTrackings}
-          onCommitExtraTracking={(v, i) => void c.attachExtraBox(v, i)}
-          primaryTrackingTrimmed={c.primaryTrackingTrimmed}
+        <TriageClassifySection
+          row={row}
+          c={c}
+          expandDimension={classifyExpandDimension}
+          expandRequestId={classifyExpandRequestId}
         />
       ),
     },
@@ -195,43 +171,6 @@ export function buildUnboxTabs(input: BuildUnboxTabsInput): SectionTab[] {
           setListingLink={c.setListingLink}
         />
       ),
-    },
-    {
-      id: 'timeline',
-      label: 'Timeline',
-      icon: History,
-      visible: hasTimelineTab,
-      content: (
-        <WorkspaceTimelineTab
-          poId={poIdForTracking || null}
-          tracking={row.tracking_number ?? null}
-          receivingId={row.receiving_id ?? null}
-        />
-      ),
-    },
-    {
-      id: 'support',
-      label: 'Support',
-      icon: MessageSquare,
-      content:
-        activeUnboxView === 'support' && (row.id != null || row.receiving_id != null) ? (
-          <div className="flex h-[68vh] min-h-[460px] flex-col overflow-hidden">
-            <SupportContextHub
-              anchor={{
-                receivingId: row.receiving_id ?? null,
-                lineId: row.id ?? null,
-                tracking: row.tracking_number ?? null,
-              }}
-              variant="station"
-              defaultSegment="team"
-              hideCustomerSegment
-              hideLinkage
-              externalSubmit
-              onBridgeChange={onConversationBridge}
-              className="h-full min-h-0 rounded-2xl"
-            />
-          </div>
-        ) : null,
     },
     {
       id: 'ticket',
@@ -254,6 +193,115 @@ export function buildUnboxTabs(input: BuildUnboxTabsInput): SectionTab[] {
             />
           </div>
         ) : null,
+    },
+    {
+      id: 'units',
+      label: 'Units',
+      icon: Barcode,
+      count: serialCount,
+      visible: hasUnits,
+      content: (
+        <WorkspaceCard variant="glass" overflow="visible" bodyDensity="nested">
+          <div className="space-y-3">
+            <CartonUnitsRollupBody
+              receivingId={row.receiving_id ?? null}
+              activeLineId={row.id ?? null}
+              showEmpty
+              onBridgeChange={onUnitsBridge}
+            />
+          </div>
+        </WorkspaceCard>
+      ),
+    },
+    {
+      id: 'po-note',
+      label: providerStripLabel('zoho'),
+      icon: FileText,
+      visible: hasPoNoteTab,
+      content: (
+        <LinePoNoteCard
+          draft={poNote.draft}
+          onDraftChange={poNote.setDraft}
+          loading={poNote.loading}
+        />
+      ),
+    },
+    {
+      id: 'checklist',
+      label: 'Checklist',
+      icon: ClipboardList,
+      priority: 'overflow',
+      content: (
+        <WorkspaceCard variant="glass" overflow="visible" bodyDensity="nested">
+          <LineChecklistTab
+            lineId={row.id}
+            sku={row.sku}
+            onBridgeChange={onChecklistBridge}
+          />
+        </WorkspaceCard>
+      ),
+    },
+    {
+      id: 'support',
+      label: 'Support',
+      icon: MessageSquare,
+      priority: 'overflow',
+      content:
+        activeUnboxView === 'support' && (row.id != null || row.receiving_id != null) ? (
+          <div className="flex h-[68vh] min-h-[460px] flex-col overflow-hidden">
+            <SupportContextHub
+              anchor={{
+                receivingId: row.receiving_id ?? null,
+                lineId: row.id ?? null,
+                tracking: row.tracking_number ?? null,
+              }}
+              variant="station"
+              defaultSegment="team"
+              hideCustomerSegment
+              hideLinkage
+              externalSubmit
+              onBridgeChange={onConversationBridge}
+              className="h-full min-h-0 rounded-2xl"
+            />
+          </div>
+        ) : null,
+    },
+    {
+      id: 'tracking',
+      label: 'Tracking',
+      icon: MapPin,
+      priority: 'overflow',
+      visible: hasTrackingTab,
+      content: (
+        <TrackingNumbersTab
+          trackingEdit={c.trackingEdit}
+          setTrackingEdit={c.setTrackingEdit}
+          onCommitTracking={(v) => {
+            const trimmed = v.trim();
+            if (trimmed !== (row.tracking_number || '').trim()) {
+              c.patch({ zoho_reference_number: trimmed || null });
+            }
+          }}
+          extraTrackings={c.extraTrackings}
+          setExtraTrackings={c.setExtraTrackings}
+          onCommitExtraTracking={(v, i) => void c.attachExtraBox(v, i)}
+          primaryTrackingTrimmed={c.primaryTrackingTrimmed}
+        />
+      ),
+    },
+    {
+      id: 'timeline',
+      label: 'Timeline',
+      icon: History,
+      priority: 'overflow',
+      visible: hasTimelineTab,
+      content: (
+        <WorkspaceTimelineTab
+          poId={poIdForTracking || null}
+          tracking={row.tracking_number ?? null}
+          receivingId={row.receiving_id ?? null}
+        />
+      ),
     },
   ]);
 }

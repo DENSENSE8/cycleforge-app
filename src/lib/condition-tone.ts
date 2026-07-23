@@ -1,4 +1,4 @@
-import type { ConditionGrade } from '@/lib/conditions';
+import { resolveConditionGrade, type ConditionGrade } from '@/lib/conditions';
 
 /** Visual tone per condition grade — shared by picker pills and inline badges. */
 export type ConditionGradeTone = {
@@ -88,7 +88,10 @@ export function normalizeConditionGrade(code: string | null | undefined): string
 }
 
 export function conditionGradeTone(code: string | null | undefined): ConditionGradeTone {
-  const c = normalizeConditionGrade(code) as ConditionGrade;
+  // Resolve marketplace aliases ("NEW", "L-NEW", "A", …) to grade codes so
+  // order rows color exactly like grade-coded inventory; unknowns (incl. bare
+  // "USED") keep the neutral fallback.
+  const c = resolveConditionGrade(code) as ConditionGrade;
   return CONDITION_GRADE_TONE[c] ?? FALLBACK_TONE;
 }
 

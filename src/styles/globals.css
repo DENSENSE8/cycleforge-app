@@ -553,9 +553,24 @@ html[data-color-scheme='dark'] .react-flow__attribution a { color: #94a3b8; }
   background-color: var(--ds-color-background-surface);
 }
 
+/* Ancestor-scroll + h-scroll split (Pending): the header band sits OUTSIDE the
+   horizontal scroll box so `position: sticky` can dock to the PAGE port (an
+   overflow-x scroll container captures sticky on both axes). The band clips;
+   its row translates by the synced scroll offset (`--cf-grid-sx`, set by
+   LedgerGrid from the body box's scrollLeft); the frozen identity cells
+   counter-translate so they stay pinned at the left edge, mirroring the body's
+   sticky-left pane. */
+[data-cf-grid][data-grid-split-x] [data-grid-col-header] [role='row'] {
+  transform: translateX(var(--cf-grid-sx, 0px));
+}
+[data-cf-grid][data-grid-split-x] [data-grid-col-header] [role='row'] > .sticky {
+  transform: translateX(calc(-1 * var(--cf-grid-sx, 0px)));
+}
+
 /* ── Pending Grid view skin (LedgerGrid) — light connected spreadsheet ──
    Employees-style ledger: ONE visible line color (subtle), continuous vertical
-   + horizontal rules that meet at every cell corner, soft rounded outer shell.
+   + horizontal rules that meet at every cell corner. Full-bleed in workbench
+   gutters (no outer card radius) — Pending page-scrolls via DashboardScrollShell.
    Opt-in via `data-grid-skin="airtable"` — Packed / board never set it.
    Never border-strong (the black cage). Body fill / selection stay React-owned. */
 [data-grid-skin='airtable'] {
@@ -564,13 +579,11 @@ html[data-color-scheme='dark'] .react-flow__attribution a { color: #94a3b8; }
   /* Flush frozen pane — row chrome padding is zero under the skin. */
   --cf-queue-row-px: 0px;
   background-color: var(--ds-color-background-surface);
-  /* Outer border + radius live on the OrdersGridView shell wrapper so this
-     scroll surface keeps overflow-x/y-auto (hidden would kill freeze/virtualize). */
 }
 
 /* Internal grid only (RIGHT + BOTTOM). Shared CSS template keeps header ↔ body
-   verticals locked end-to-end. Outer frame = the rounded shell above — no
-   first-cell left / header top, so edges never double. */
+   verticals locked end-to-end. No outer card frame on Pending — edges come from
+   cell rules only. */
 [data-grid-skin='airtable'] [role='row'] > *,
 [data-grid-skin='airtable'] [data-order-row-id] > *,
 [data-grid-skin='airtable'] [data-grid-summary-row] > * {
@@ -580,7 +593,7 @@ html[data-color-scheme='dark'] .react-flow__attribution a { color: #94a3b8; }
   border-top-width: 0;
 }
 
-/* Trailing column: shell is the right edge — drop the last vertical. */
+/* Trailing column: no outer card — drop the last vertical so the gutter edge is clean. */
 [data-grid-skin='airtable'] [role='row'] > *:last-child,
 [data-grid-skin='airtable'] [data-order-row-id] > *:last-child,
 [data-grid-skin='airtable'] [data-grid-summary-row] > *:last-child {

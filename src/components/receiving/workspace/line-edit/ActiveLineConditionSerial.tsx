@@ -8,6 +8,7 @@ import { ReceivingUnitRows, type UnitSerial } from '../ReceivingUnitRows';
 import type { ActiveRowSerial } from '../PoLinesAccordion';
 import { NoSerialControl, type SerialAbsentState } from './NoSerialControl';
 import { useSetting } from '@/hooks/useSettings';
+import { requestConfirm } from '@/design-system/components/confirm';
 
 type SerialLookupView = Pick<
   ComponentProps<typeof SerialMatchResult>,
@@ -23,7 +24,7 @@ type SerialLookupView = Pick<
  * When a serial lookup is active, surfaces the serial-match band (RETURN flow).
  *
  * Purely presentational: every mutation is delegated to the parent's existing
- * handlers. The `window.confirm` guards on delete are gated by the
+ * handlers. The `requestConfirm` guards on delete are gated by the
  * `receiving.confirmSerialRemoval` org setting (Settings Registry; default on).
  */
 export function ActiveLineConditionSerial({
@@ -119,8 +120,17 @@ export function ActiveLineConditionSerial({
             serialInputRef={serialInputRef}
             serialEditTarget={editingSerial?.id != null ? (editingSerial as UnitSerial) : null}
             onAddSerial={(sn, grade) => onSubmitSerial(sn, grade)}
-            onDeleteSerial={(id) => {
-              if (shouldConfirmRemoval && !window.confirm('Remove this serial?')) return;
+            onDeleteSerial={async (id) => {
+              if (
+                shouldConfirmRemoval &&
+                !(await requestConfirm({
+                  description: 'Remove this serial?',
+                  tone: 'danger',
+                  confirmLabel: 'Remove',
+                }))
+              ) {
+                return;
+              }
               onDeleteSerialUnit(id);
             }}
             onReplaceSerial={(original, next) => onReplaceSerialUnit(original, next)}
@@ -196,9 +206,18 @@ export function ActiveLineConditionSerial({
               nextSerial,
             );
           }}
-          onDeleteSerial={(s) => {
+          onDeleteSerial={async (s) => {
             if (s.id == null) return;
-            if (shouldConfirmRemoval && !window.confirm(`Remove serial ${s.serial_number}?`)) return;
+            if (
+              shouldConfirmRemoval &&
+              !(await requestConfirm({
+                description: `Remove serial ${s.serial_number}?`,
+                tone: 'danger',
+                confirmLabel: 'Remove',
+              }))
+            ) {
+              return;
+            }
             onDeleteSerialUnit(s.id);
           }}
         />

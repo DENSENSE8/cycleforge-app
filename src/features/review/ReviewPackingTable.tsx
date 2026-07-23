@@ -1,14 +1,14 @@
 'use client';
 
 /**
- * Review · Packing — dense SoT table (OrdersQueueTable) with Packed / Shipped /
+ * Review · Packing — outbound spreadsheet (OrdersGridView) with Packed / Shipped /
  * History tabs. Selection writes `?packerLogId=` / `?orderId=` for the overlay.
  */
 
 import { useCallback, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { OrdersQueueTable } from '@/components/dashboard/OrdersQueueTable';
+import { OrdersGridView } from '@/components/dashboard/orders-queue/OrdersGridView';
 import {
   WORKBENCH_BODY_COLUMN,
   WORKBENCH_CHROME_COLUMN,
@@ -16,10 +16,6 @@ import {
 } from '@/components/dashboard/workbench-shell';
 import { DashboardScrollShell } from '@/components/dashboard/DashboardScrollShell';
 import { StaffFilterButton } from '@/components/ui/StaffFilterButton';
-import { TableColumnConfigProvider } from '@/components/ui/table-column-config/TableColumnConfig';
-import { ColumnConfigButton } from '@/components/ui/table-column-config/ColumnConfigButton';
-import { TableOptionsMenu } from '@/components/ui/table-options/TableOptionsMenu';
-import { TableDensityProvider } from '@/components/ui/table-density/TableDensityProvider';
 import { packedOrdersQuery, dashboardShippedQuery } from '@/lib/queries/dashboard-queries';
 import { usePackReviewQueue } from '@/features/review/usePackReviewQueue';
 import { packReviewRowToShippedOrder, type ReviewTableOrder } from '@/lib/packing/review-table-mappers';
@@ -30,7 +26,7 @@ import {
 import { getWeekRangeForOffset } from '@/lib/dashboard-week-range';
 import { toDetailRecord } from '@/components/shipped/shipped-record-mappers';
 import { parseStaffParam } from '@/hooks/useStaffFilter';
-import { MONITOR_SECTION_CARD_SCROLL_CLASS } from '@/design-system/components/monitor';
+import { DASHBOARD_ORDERS_SELECTION_SCOPE } from '@/lib/selection/dashboard-scopes';
 import type { ShippedOrder } from '@/types/orders';
 import type { PackerRecord } from '@/hooks/usePackerLogs';
 
@@ -136,12 +132,6 @@ export function ReviewPackingTable({ onOpenRow, onCloseRow }: ReviewPackingTable
       : tab === 'shipped'
         ? shippedQuery.isLoading
         : historyQuery.isLoading;
-  const fetching =
-    tab === 'packed'
-      ? packedQuery.isFetching
-      : tab === 'shipped'
-        ? shippedQuery.isFetching
-        : historyQuery.isFetching;
 
   const setTab = useCallback(
     (next: string) => {
@@ -163,14 +153,6 @@ export function ReviewPackingTable({ onOpenRow, onCloseRow }: ReviewPackingTable
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
   }, [pathname, router, searchParams]);
 
-  const toolbar = (
-    <div className="flex items-center gap-2">
-      <StaffFilterButton iconOnly />
-      <ColumnConfigButton variant="toolbar" />
-      <TableOptionsMenu showDensity showColumnPresets />
-    </div>
-  );
-
   const emptyCopy =
     tab === 'packed'
       ? 'No packed (staged) orders'
@@ -188,38 +170,28 @@ export function ReviewPackingTable({ onOpenRow, onCloseRow }: ReviewPackingTable
               tabs={PACKING_TABS}
               activeTab={tab}
               onTabChange={setTab}
-              right={toolbar}
+              right={<StaffFilterButton iconOnly />}
             />
           </div>
         }
       >
-        <div className={WORKBENCH_BODY_COLUMN}>
-          <div className={MONITOR_SECTION_CARD_SCROLL_CLASS}>
-            <TableColumnConfigProvider tableId="orders">
-              <TableDensityProvider tableId="orders" urlSync={false}>
-                <OrdersQueueTable
-                  records={records as ShippedOrder[]}
-                  loading={loading}
-                  isRefreshing={fetching && !loading}
-                  searchValue={searchQuery}
-                  onClearSearch={clearSearch}
-                  emptyMessage={emptyCopy}
-                  searchEmptyTitle={`No ${tab} rows found`}
-                  searchResultLabel={`${tab} orders`}
-                  clearSearchLabel="Clear search"
-                  queueMode={tab === 'packed' ? 'staged' : 'fulfillment'}
-                  sort="newest"
-                  onOpenRecord={(record) => onOpenRow(record as ReviewTableOrder)}
-                  onCloseRecord={() => onCloseRow()}
-                  hideHeader
-                  inheritColumnConfig
-                  listShell="monitor"
-                  noHorizontalScroll
-                  growToContent
-                />
-              </TableDensityProvider>
-            </TableColumnConfigProvider>
-          </div>
+        <div className={`${WORKBENCH_BODY_COLUMN} h-[calc(100dvh-8rem)] min-h-[24rem] pb-3`}>
+          <OrdersGridView
+            records={records as ShippedOrder[]}
+            loading={loading}
+            searchValue={searchQuery}
+            onClearSearch={clearSearch}
+            emptyMessage={emptyCopy}
+            searchEmptyTitle={`No ${tab} rows found`}
+            searchResultLabel={`${tab} orders`}
+            clearSearchLabel="Clear search"
+            queueMode={tab === 'packed' ? 'staged' : 'fulfillment'}
+            sort="newest"
+            selectionScope={DASHBOARD_ORDERS_SELECTION_SCOPE}
+            data-testid="review-packing-grid-body"
+            onOpenRecord={(record) => onOpenRow(record as ReviewTableOrder)}
+            onCloseRecord={() => onCloseRow()}
+          />
         </div>
       </DashboardScrollShell>
     </div>

@@ -5,6 +5,7 @@ import { ChevronRight } from '@/components/Icons';
 import { FnskuChip, CopyChip, getLast4 } from '@/components/ui/CopyChip';
 import { PrintTableCheckbox } from '@/components/fba/table/Checkbox';
 import { sectionLabel, SkeletonList } from '@/design-system';
+import { LedgerGrid } from '@/design-system/components/grid';
 import { IconButton, Button } from '@/design-system/primitives';
 import type { StationTheme } from '@/utils/staff-colors';
 import { printQueueTableUi } from '@/utils/staff-colors';
@@ -29,6 +30,9 @@ import {
   FBA_BOARD_SELECT_BY_FNSKU,
   FBA_BOARD_FNSKU_SELECT_RESULT,
 } from '@/lib/fba/events';
+
+const FBA_GRID =
+  'grid grid-cols-[2.5rem_5.5rem_minmax(12rem,1.4fr)_6.5rem_4.5rem_5.5rem_5rem_4rem_minmax(5rem,1fr)_2.5rem] items-center gap-x-1';
 
 interface FbaBoardTableProps {
   items: FbaBoardItem[];
@@ -321,135 +325,149 @@ export function FbaBoardTable({
     );
   }
 
-  // Full-bleed inside the workbench gutters (no card wrap, no inner scroll) —
-  // the page scroll port owns scrolling and the sticky thead docks under the
-  // pinned chrome at top-0, per the Axis-5 workbench shell recipe.
+  // Full-bleed LedgerGrid SoT — sticky header + day bands by due date.
+  const daySections = useMemo<[string, FbaBoardItem[]][]>(() => {
+    const byDay: Record<string, FbaBoardItem[]> = {};
+    for (const item of sortedItems) {
+      const key = item.due_date ? String(item.due_date).slice(0, 10) : 'No due date';
+      (byDay[key] ??= []).push(item);
+    }
+    return Object.entries(byDay).sort((a, b) => a[0].localeCompare(b[0]));
+  }, [sortedItems]);
+
+  const flatIndexById = useMemo(() => {
+    const map = new Map<number, number>();
+    sortedItems.forEach((item, index) => map.set(item.item_id, index));
+    return map;
+  }, [sortedItems]);
+
   return (
-    <div className={cn('relative flex min-w-0 flex-col', contentClassName)}>
-      <table className="min-w-full border-collapse">
-            <thead className="sticky top-0 z-10 bg-surface-card">
-              <tr className="border-b border-border-soft text-left text-role-micro uppercase tracking-widest text-text-soft">
-                <th className="w-10 px-3 py-3">
-                  <span className="sr-only">Select</span>
-                </th>
-                <th className="px-3 py-3">ASIN</th>
-                <th className="min-w-[200px] px-3 py-3">Title</th>
-                <th className="px-3 py-3">FNSKU</th>
-                <th className="px-3 py-3">Qty</th>
-                <th className="px-3 py-3">Status</th>
-                <th className="px-3 py-3">Condition</th>
-                <th className="px-3 py-3">Due</th>
-                <th className="px-3 py-3">Plan</th>
-                <th className="w-12 px-3 py-3">
-                  <span className="sr-only">Details</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border-hairline">
-              {sortedItems.map((item, index) => {
-                const isSelected = selectedIds.has(item.item_id);
-                const due = item.due_date
-                  ? formatDateKeyShort(String(item.due_date).slice(0, 10))
-                  : '—';
-                const planRef = item.shipment_ref || item.amazon_shipment_id || '';
-                return (
-                  <tr
-                    key={item.item_id}
-                    role="button"
-                    tabIndex={0}
-                    onClick={(e) => handleRowActivate(e, index, item)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        handleRowActivate(e, index, item);
-                      }
-                    }}
-                    className={cn(
-                      'cursor-pointer transition-colors',
-                      ui.rowFocusRing,
-                      isSelected
-                        ? 'bg-blue-50 ring-1 ring-inset ring-blue-400'
-                        : 'bg-surface-card hover:bg-gray-50',
-                    )}
-                  >
-                    <td className="px-3 py-3 align-middle">
-                      <PrintTableCheckbox
-                        checked={isSelected}
-                        onChange={() => toggleItem(item.item_id)}
-                        onClick={(e) => handleRowActivate(e, index, item)}
-                        stationTheme={stationTheme}
-                        label={`${isSelected ? 'Deselect' : 'Select'} ${item.fnsku}`}
-                      />
-                    </td>
-                    <td className="px-3 py-3 align-middle">
-                      {item.asin ? (
-                        <CopyChip value={item.asin} display={getLast4(item.asin)} tone="id" dense />
-                      ) : (
-                        <span className="text-role-caption text-text-faint">—</span>
-                      )}
-                    </td>
-                    <td className="max-w-[320px] px-3 py-3 align-middle">
-                      <p className="truncate text-role-caption font-bold text-gray-900">
-                        {item.display_title || '—'}
+    <div className={cn('relative flex min-h-0 min-w-0 flex-1 flex-col', contentClassName)}>
+      <LedgerGrid<FbaBoardItem>
+        daySections={daySections}
+        showDayHeaders
+        scrollX
+        gridSkin="airtable"
+        columnHeader={
+          <div
+            className={cn(
+              FBA_GRID,
+              'border-b border-border-soft bg-surface-card px-3 py-3 text-left text-role-micro uppercase tracking-widest text-text-soft',
+            )}
+          >
+            <span className="sr-only">Select</span>
+            <span>ASIN</span>
+            <span>Title</span>
+            <span>FNSKU</span>
+            <span>Qty</span>
+            <span>Status</span>
+            <span>Condition</span>
+            <span>Due</span>
+            <span>Plan</span>
+            <span className="sr-only">Details</span>
+          </div>
+        }
+        getRowKey={(item) => String(item.item_id)}
+        emptyState={<p className={sectionLabel}>{emptyMessage || 'No items'}</p>}
+        renderRow={(item) => {
+          const index = flatIndexById.get(item.item_id) ?? 0;
+          const isSelected = selectedIds.has(item.item_id);
+          const due = item.due_date ? formatDateKeyShort(String(item.due_date).slice(0, 10)) : '—';
+          const planRef = item.shipment_ref || item.amazon_shipment_id || '';
+          return (
+            <div
+              key={item.item_id}
+              role="button"
+              tabIndex={0}
+              onClick={(e) => handleRowActivate(e, index, item)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  handleRowActivate(e, index, item);
+                }
+              }}
+              className={cn(
+                FBA_GRID,
+                'cursor-pointer border-b border-border-hairline px-3 py-3 transition-colors',
+                ui.rowFocusRing,
+                isSelected ? 'bg-blue-50 ring-1 ring-inset ring-blue-400' : 'bg-surface-card hover:bg-gray-50',
+              )}
+            >
+              <div className="align-middle">
+                <PrintTableCheckbox
+                  checked={isSelected}
+                  onChange={() => toggleItem(item.item_id)}
+                  onClick={(e) => handleRowActivate(e, index, item)}
+                  stationTheme={stationTheme}
+                  label={`${isSelected ? 'Deselect' : 'Select'} ${item.fnsku}`}
+                />
+              </div>
+              <div className="min-w-0 align-middle">
+                {item.asin ? (
+                  <CopyChip value={item.asin} display={getLast4(item.asin)} tone="id" dense />
+                ) : (
+                  <span className="text-role-caption text-text-faint">—</span>
+                )}
+              </div>
+              <div className="min-w-0 align-middle">
+                <p className="truncate text-role-caption font-bold text-gray-900">
+                  {item.display_title || '—'}
+                </p>
+                {item.sku ? (
+                  <p className="truncate text-role-eyebrow font-semibold uppercase tracking-widest text-gray-500">
+                    {item.sku}
+                  </p>
+                ) : null}
+              </div>
+              <div className="align-middle">
+                <FnskuChip value={item.fnsku} />
+              </div>
+              <div className="align-middle">
+                <span className="tabular-nums text-role-caption font-bold text-text-default">
+                  {item.actual_qty}
+                  <span className="text-text-faint"> / </span>
+                  {item.expected_qty}
+                </span>
+              </div>
+              <div className="align-middle">
+                <StatusPill status={item.item_status} />
+              </div>
+              <div className="align-middle text-role-caption font-semibold text-text-soft">
+                {item.condition || '—'}
+              </div>
+              <div className="align-middle text-role-caption tabular-nums text-text-soft">{due}</div>
+              <div className="min-w-0 align-middle">
+                {planRef ? (
+                  <div className="flex flex-col gap-0.5">
+                    <CopyChip value={planRef} display={getLast4(planRef)} tone="id" dense />
+                    {item.destination_fc ? (
+                      <p className="text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint">
+                        {item.destination_fc}
                       </p>
-                      {item.sku ? (
-                        <p className="truncate text-role-eyebrow font-semibold uppercase tracking-widest text-gray-500">
-                          {item.sku}
-                        </p>
-                      ) : null}
-                    </td>
-                    <td className="px-3 py-3 align-middle">
-                      <FnskuChip value={item.fnsku} />
-                    </td>
-                    <td className="px-3 py-3 align-middle">
-                      <span className="tabular-nums text-role-caption font-bold text-text-default">
-                        {item.actual_qty}
-                        <span className="text-text-faint"> / </span>
-                        {item.expected_qty}
-                      </span>
-                    </td>
-                    <td className="px-3 py-3 align-middle">
-                      <StatusPill status={item.item_status} />
-                    </td>
-                    <td className="px-3 py-3 align-middle text-role-caption font-semibold text-text-soft">
-                      {item.condition || '—'}
-                    </td>
-                    <td className="px-3 py-3 align-middle text-role-caption tabular-nums text-text-soft">
-                      {due}
-                    </td>
-                    <td className="px-3 py-3 align-middle">
-                      {planRef ? (
-                        <div className="flex flex-col gap-0.5">
-                          <CopyChip value={planRef} display={getLast4(planRef)} tone="id" dense />
-                          {item.destination_fc ? (
-                            <p className="text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint">
-                              {item.destination_fc}
-                            </p>
-                          ) : null}
-                        </div>
-                      ) : (
-                        <span className="text-role-caption text-text-faint">—</span>
-                      )}
-                    </td>
-                    <td className="px-3 py-3 align-middle">
-                      {onDetailOpen ? (
-                        <IconButton
-                          type="button"
-                          icon={<ChevronRight className="h-3.5 w-3.5" />}
-                          ariaLabel={`Details for ${item.fnsku}`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onDetailOpen(item);
-                          }}
-                          className="flex h-8 w-8 items-center justify-center rounded-lg text-text-faint hover:bg-surface-sunken hover:text-text-muted"
-                        />
-                      ) : null}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-      </table>
+                    ) : null}
+                  </div>
+                ) : (
+                  <span className="text-role-caption text-text-faint">—</span>
+                )}
+              </div>
+              <div className="align-middle">
+                {onDetailOpen ? (
+                  <IconButton
+                    type="button"
+                    icon={<ChevronRight className="h-3.5 w-3.5" />}
+                    ariaLabel={`Details for ${item.fnsku}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDetailOpen(item);
+                    }}
+                    className="flex h-8 w-8 items-center justify-center rounded-lg text-text-faint hover:bg-surface-sunken hover:text-text-muted"
+                  />
+                ) : null}
+              </div>
+            </div>
+          );
+        }}
+      />
     </div>
   );
 }

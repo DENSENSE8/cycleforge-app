@@ -1,35 +1,30 @@
 import { test, expect } from '@playwright/test';
 
 /**
- * Unshipped board virtualization smoke — 2-up (Phase 0) AND 1-up stacked (Phase V0).
+ * Unshipped queue virtualization smoke — Pending grid (LedgerGrid).
  *
- * The Unshipped lane bodies window their rows via `VirtualQueueSections` (behind
- * `NEXT_PUBLIC_UNSHIPPED_VIRTUAL_LIST`, default on), mirroring the Shipped board.
+ * The Board|Grid switcher is retired: the To Ship queue is the single connected
+ * spreadsheet (`OrdersGridView` / `LedgerGrid` + `VirtualGroupedSections`)
+ * windowing against the dashboard's shared page scroll (`DashboardScrollShell`).
  * This mocks `/api/orders` with 500 synthetic PENDING rows so the assertion is
- * DB-independent, then verifies only a windowed slice is in the DOM (`data-index`
- * nodes from the virtualizer), not all 500, in BOTH board layouts:
- *   - 2-up: each lane owns a capped, internally-scrolling body (the original case).
- *   - 1-up stacked: lanes grow to content and share the board's SINGLE scroll
- *     region; Phase V0 makes each lane window against that ancestor (via
- *     `scrollMargin`) instead of mounting every row. This is the regression guard
- *     for the "1-up un-windows" bug that blocked station cutover.
+ * DB-independent, then verifies only a windowed slice is in the DOM
+ * (`data-index` nodes from the virtualizer), not all 500 — the regression guard
+ * for the "ancestor scroll un-windows the list" failure mode.
  *
- * Auth comes from tests/.auth/admin.json (global-setup). Desktop-only — the board
- * is a desktop layout; the mobile (webkit) project is skipped.
+ * Auth comes from tests/.auth/admin.json (global-setup). Desktop-only — the
+ * grid is a desktop layout; the mobile (webkit) project is skipped.
  */
 
 const ROW_COUNT = 500;
 
-/** 500 non-FBA, PENDING (no tech scan, in-stock), unshipped-scope rows, spread
- *  across 3 day bands so the day-header pin is exercised too. Each carries a
- *  unique order_id + sku so `dedupeByOrderProduct` keeps them all as singleton
- *  rows. Fixed dates (no Date.now) keep banding deterministic. */
+/** 500 non-FBA, PENDING (tracked, in-stock), fulfillment-scope rows across 3
+ *  fixed day bands. Unique order_id + sku so `dedupeByOrderProduct` keeps them
+ *  all as singleton rows. Fixed dates (no Date.now) keep banding deterministic. */
 function makeRows(n: number) {
-  const baseDay = Date.UTC(2026, 0, 5, 18, 0, 0); // arbitrary fixed noon-ish PST day
   const rows: Record<string, unknown>[] = [];
   for (let i = 0; i < n; i++) {
-    const dayOffset = i % 3;
-    const at = new Date(baseDay - dayOffset * 86_400_000).toISOString();
+    const day = 20 + (i % 3);
+    const at = `2026-07-${day}T18:00:00.000Z`;
     rows.push({
       id: 900_000 + i,
       order_id: `E2E-VLIST-${900_000 + i}`,
@@ -40,7 +35,10 @@ function makeRows(n: number) {
       account_source: 'Goodwill', // definitively non-FBA → survives isNonFbaRecord
       created_at: at,
       deadline_at: at,
-      shipment_id: 700_000 + i, // fulfillment-scope shape
+      shipment_id: 700_000 + i,
+      // Pending grid shows labeled+tracked rows only — no-tracking rows live on Labels.
+      tracking_number: `94001118992231975${(10_000 + i).toString()}`,
+      shipping_tracking_number: `94001118992231975${(10_000 + i).toString()}`,
       has_tech_scan: false, // → PENDING lane
       out_of_stock: '',
       latest_status_category: 'UNKNOWN', // not shipped → stays in the queue
@@ -66,86 +64,41 @@ async function mockOrders(page: import('@playwright/test').Page, rows: Record<st
   );
 }
 
-test.describe('Unshipped board virtualization', () => {
-  test.skip(({ browserName }) => browserName === 'webkit', 'board is a desktop layout');
+test.describe('Unshipped grid virtualization', () => {
+  test.skip(({ browserName }) => browserName === 'webkit', 'grid is a desktop layout');
 
-  test('2-up: 500 mocked rows render windowed (DOM ≪ dataset)', async ({ page }) => {
+  test('500 mocked rows render windowed against the page scroll (DOM ≪ dataset)', async ({ page }) => {
     await mockOrders(page, makeRows(ROW_COUNT));
     await page.goto('/dashboard?unshipped', { waitUntil: 'domcontentloaded' });
 
-    // Force the capped 2-up layout so a lane body is a real scroll container.
-    // The board columns toggle is a role="button" inside the "Board columns"
-    // group; clicking an already-pressed "2 columns" is a harmless no-op.
-    const twoCol = page.getByRole('button', { name: '2 columns' });
-    await twoCol.waitFor({ state: 'visible', timeout: 45_000 });
-    await twoCol.click();
+    const grid = page.locator('[data-testid="pending-grid-body"]').first();
+    await expect(grid).toBeVisible({ timeout: 45_000 });
 
     // The virtualizer emits data-index nodes; wait for the first, then settle.
-    await page.locator('[data-index]').first().waitFor({ state: 'visible', timeout: 20_000 });
+    await grid.locator('[data-index]').first().waitFor({ state: 'visible', timeout: 20_000 });
     await page.waitForTimeout(600);
 
-    const domRows = await page.locator('[data-order-row-id]').count();
-    const dataIndexNodes = await page.locator('[data-index]').count();
+    const domRows = await grid.locator('[data-order-row-id]').count();
+    const dataIndexNodes = await grid.locator('[data-index]').count();
 
     // eslint-disable-next-line no-console
-    console.log(`[unshipped-vlist 2up] before-scroll: dataIndex=${dataIndexNodes} · domRows=${domRows} of ${ROW_COUNT}`);
+    console.log(`[unshipped-vlist grid] before-scroll: dataIndex=${dataIndexNodes} · domRows=${domRows} of ${ROW_COUNT}`);
 
-    // Something rendered, and it's a windowed slice — NOT the full 500. This is the
-    // environment-independent guard that catches an un-windowing regression.
+    // Something rendered, and it's a windowed slice — NOT the full 500. This is
+    // the environment-independent guard that catches an un-windowing regression.
     expect(dataIndexNodes).toBeGreaterThan(0);
     expect(domRows).toBeGreaterThan(0);
     expect(domRows).toBeLessThan(150);
 
-    // Scroll the populated lane body and confirm the DOM stays windowed (rows
-    // recycle rather than accumulate).
-    const laneBody = page
-      .locator('[data-testid="column-table-body"]')
-      .filter({ has: page.locator('[data-index]') })
-      .first();
-    await laneBody.evaluate((el) => el.scrollTo({ top: 6000 }));
-    await page.waitForTimeout(600);
-
-    const domRowsAfter = await page.locator('[data-order-row-id]').count();
-    // eslint-disable-next-line no-console
-    console.log(`[unshipped-vlist 2up] after-scroll: domRows=${domRowsAfter} of ${ROW_COUNT}`);
-    expect(domRowsAfter).toBeGreaterThan(0);
-    expect(domRowsAfter).toBeLessThan(150);
-  });
-
-  test('1-up stacked: 500 mocked rows window against the shared board scroll (Phase V0)', async ({ page }) => {
-    await mockOrders(page, makeRows(ROW_COUNT));
-    await page.goto('/dashboard?unshipped', { waitUntil: 'domcontentloaded' });
-
-    // Force the 1-up stacked layout. Here the lanes grow to content and share the
-    // board's SINGLE scroll region — the case that used to mount all 500 rows
-    // before Phase V0 taught each lane to window against the ancestor scroll.
-    const oneCol = page.getByRole('button', { name: '1 column' });
-    await oneCol.waitFor({ state: 'visible', timeout: 45_000 });
-    await oneCol.click();
-
-    await page.locator('[data-index]').first().waitFor({ state: 'visible', timeout: 20_000 });
-    await page.waitForTimeout(600);
-
-    const domRows = await page.locator('[data-order-row-id]').count();
-    const dataIndexNodes = await page.locator('[data-index]').count();
-
-    // eslint-disable-next-line no-console
-    console.log(`[unshipped-vlist 1up] before-scroll: dataIndex=${dataIndexNodes} · domRows=${domRows} of ${ROW_COUNT}`);
-
-    // The core Phase V0 assertion: a stacked lane holding 500 rows keeps its DOM
-    // windowed (< 150), NOT one node per row.
-    expect(dataIndexNodes).toBeGreaterThan(0);
-    expect(domRows).toBeGreaterThan(0);
-    expect(domRows).toBeLessThan(150);
-
-    // Scroll the dashboard page scroll port (stacked lanes grow to content).
+    // Scroll the shared dashboard page port and confirm the DOM stays windowed
+    // (rows recycle rather than accumulate) and rows keep painting.
     const pageScroll = page.locator('[data-testid="dashboard-scroll"]');
     await pageScroll.evaluate((el) => el.scrollTo({ top: 6000 }));
     await page.waitForTimeout(600);
 
-    const domRowsAfter = await page.locator('[data-order-row-id]').count();
+    const domRowsAfter = await grid.locator('[data-order-row-id]').count();
     // eslint-disable-next-line no-console
-    console.log(`[unshipped-vlist 1up] after-scroll: domRows=${domRowsAfter} of ${ROW_COUNT}`);
+    console.log(`[unshipped-vlist grid] after-scroll: domRows=${domRowsAfter} of ${ROW_COUNT}`);
     expect(domRowsAfter).toBeGreaterThan(0);
     expect(domRowsAfter).toBeLessThan(150);
   });

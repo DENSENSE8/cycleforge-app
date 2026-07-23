@@ -1,12 +1,11 @@
 /**
- * Shipment-anchored "delivered, no dock scan yet" boxes (incoming-only). The
- * endpoint resolves each box's Zoho PO from its tracking#, so PO#, vendor,
- * dates and the product/item name ride along — these render with the same
- * fidelity as any other incoming PO row.
+ * Shipment-anchored "delivered, no dock scan yet" boxes (incoming-only).
+ * The dedicated `/incoming/delivered-unscanned` feed is the sole read model for
+ * the DELIVERED_UNOPENED hunt facet — the main receiving-lines query is disabled
+ * while this facet is active (see useReceivingLinesData).
  *
- * Extracted from `ReceivingLinesTable.tsx`; the synthetic-id encode/decode pair
- * and the row remapper live here so the table + the incoming details panel
- * (which needs the decode for its delete path) share one source of truth.
+ * The endpoint resolves each box's Zoho PO from its tracking#, so PO#, vendor,
+ * dates, product/item name, age band, and Zoho status ride along.
  */
 
 import type { ReceivingLineRow } from './receiving-line-row';
@@ -18,7 +17,11 @@ export interface DeliveredUnscanned {
   tracking_number_normalized: string;
   delivered_at: string | null;
   source_system: string | null;
+  /** Mirrors SoT age bands — `lt_24h` | `h24_48` | `gt_48h`. */
+  age_band?: 'lt_24h' | 'h24_48' | 'gt_48h' | null;
   zoho_purchaseorder_id: string | null;
+  /** Zoho mirror status — badge only; never gates hunt-queue membership. */
+  zoho_status?: string | null;
   po_number: string | null;
   vendor_name: string | null;
   expected_delivery_date: string | null;
@@ -32,41 +35,32 @@ export interface DeliveredUnscannedResponse {
   success: boolean;
   count: number;
   window_days: number;
+  claims_count?: number;
   items: DeliveredUnscanned[];
 }
 
 /**
- * Synthetic-row id base for shipment-anchored "delivered · not scanned" boxes.
- * They have no receiving_line, so we mint a negative, collision-free id from the
- * shipment id: `id = BASE - shipment_id`. Keep the encode ({@link deliveredUnscannedToRow})
- * and decode ({@link shipmentIdFromDeliveredUnscannedRow}) in lockstep so the
- * incoming details panel can recover the real shipment id for its delete path.
- */
-export const DELIVERED_UNSCANNED_SYNTHETIC_ID_BASE = -2_000_000;
-
-/**
- * Recover the `shipping_tracking_numbers.id` from a synthetic delivered-unscanned
- * row, or null if `row` isn't one. A delivered-unscanned row is the only producer
- * of `tracking_source === 'shipment'` with a negative id (see {@link deliveredUnscannedToRow}).
+ * Recover the real `shipping_tracking_numbers.id` from a shipment-anchored
+ * delivered-unscanned row, or null if `row` isn't one. Reads the explicit
+ * {@link ReceivingLineRow.shipment_ref} field — never decodes `row.id`, which is
+ * a namespaced negative React key with no identity contract. A delivered-unscanned
+ * row is the only producer of `tracking_source === 'shipment'` + null `receiving_id`
+ * carrying a `shipment_ref` (see {@link deliveredUnscannedToRow}).
  */
 export function shipmentIdFromDeliveredUnscannedRow(row: ReceivingLineRow): number | null {
-  if (row.tracking_source !== 'shipment' || row.id >= 0) return null;
-  const shipmentId = DELIVERED_UNSCANNED_SYNTHETIC_ID_BASE - row.id; // inverse of id = BASE - shipment_id
-  return Number.isFinite(shipmentId) && shipmentId > 0 ? shipmentId : null;
+  if (row.tracking_source !== 'shipment' || row.receiving_id != null) return null;
+  const shipmentId = row.shipment_ref;
+  return typeof shipmentId === 'number' && Number.isFinite(shipmentId) && shipmentId > 0
+    ? shipmentId
+    : null;
 }
 
 /**
  * Remap a shipment-anchored "delivered but not dock-scanned" box onto the
  * standard {@link ReceivingLineRow} shape so the "Delivered · not scanned"
- * facet renders through the very same date-grouping + ReceivingLineOrderRow
- * pipeline as every other history/incoming row — no bespoke pane. Mirrors the
- * server's `buildUnmatchedEmptyReceivingLine` placeholder: there's no PO line
- * yet, so quantities are zero and the carton reads as an unmatched delivery.
+ * facet renders through the same Incoming grid pipeline.
  */
 export function deliveredUnscannedToRow(item: DeliveredUnscanned): ReceivingLineRow {
-  // Product title: the PO's first line item, with a "+N more" hint when the PO
-  // spans several lines. Falls back to the PO# (or a generic label) when the
-  // line names aren't synced yet.
   const itemCount = item.item_count ?? 0;
   const productTitle = item.first_item_name
     ? itemCount > 1
@@ -76,9 +70,18 @@ export function deliveredUnscannedToRow(item: DeliveredUnscanned): ReceivingLine
       ? `PO ${item.po_number}`
       : 'Delivered · needs receiving';
 
+  const zohoTerminal =
+    item.zoho_status &&
+    ['billed', 'closed', 'cancelled', 'received', 'rejected'].includes(
+      item.zoho_status.toLowerCase(),
+    );
+
   return {
-    id: DELIVERED_UNSCANNED_SYNTHETIC_ID_BASE - item.shipment_id,
+    // Negative, collision-free React key (real line ids are positive BIGSERIALs);
+    // the true shipment id rides in `shipment_ref`, not encoded in this value.
+    id: -item.shipment_id,
     receiving_id: null,
+    shipment_ref: item.shipment_id,
     tracking_number: item.tracking_number_raw,
     tracking_source: 'shipment',
     carrier: item.carrier,
@@ -105,8 +108,10 @@ export function deliveredUnscannedToRow(item: DeliveredUnscanned): ReceivingLine
     zoho_last_modified_time: null,
     zoho_synced_at: null,
     receiving_type: 'PO',
-    notes: null,
+    notes: zohoTerminal ? `Zoho: ${item.zoho_status}` : null,
     delivery_state: 'DELIVERED_UNOPENED',
+    delivered_age_band: item.age_band ?? null,
+    zoho_status: item.zoho_status ?? null,
     po_date: item.po_date,
     expected_delivery_date: item.expected_delivery_date,
     vendor_name: item.vendor_name,
@@ -114,7 +119,7 @@ export function deliveredUnscannedToRow(item: DeliveredUnscanned): ReceivingLine
     last_activity_at: item.delivered_at,
     image_url: null,
     source_platform: null,
-    is_priority: false,
+    is_priority: item.age_band === 'gt_48h',
     priority_tier: null,
     receiving_source: 'unmatched',
     serials: [],

@@ -1,10 +1,11 @@
 'use client';
 
-import { Fragment, memo, useCallback, useRef, useState, type ReactNode } from 'react';
+import { Fragment, memo, useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { motion } from 'framer-motion';
 import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
 import { useMotionPresence, useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
-import { AlertTriangle, Check, ChevronDown, FileText, Link2, Maximize2 } from '@/components/Icons';
+import { AlertTriangle, Check, ChevronDown, FileText, Link2, Maximize2, Plus } from '@/components/Icons';
+import { useRouter } from 'next/navigation';
 import { useOrderIdentityCellNodes, OrderIdentityChips } from '@/components/ui/OrderIdentityChips';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { LedgerCellEditor } from '@/design-system/components/grid';
@@ -12,6 +13,7 @@ import { focusRing } from '@/design-system/tokens/focus-ring';
 import {
   CellTextEditPopover,
   ConditionSelectPopover,
+  RowInfoMenuPopover,
   ShipByDatePopover,
 } from './cell-editors';
 import {
@@ -33,9 +35,7 @@ import { getExternalUrlByItemNumber, skuScanPrefixBeforeColon } from '@/hooks/us
 import {
   formatDateWithOrdinal,
   formatLaneAgeCompact,
-  getDaysLateTone,
   getLaneAgeHours,
-  getLaneAgeTone,
   toPSTDateKey,
 } from '@/utils/date';
 import { isSkuSourceRecord } from '@/utils/source-dot';
@@ -45,14 +45,13 @@ import {
   ORDERS_QUEUE_FROZEN_CELL,
   ordersQueueFrozenLeft,
   ordersQueueGridCell,
-  ordersQueueGridTemplate,
+  ordersQueueGridTemplateFor,
   ordersQueueRowShellClass,
   type OrdersQueueColumn,
 } from '@/lib/dashboard-order-row-layout';
 import { conditionGradeTone, orderRowQtyTone } from '@/lib/condition-tone';
 import { conditionGradeTableLabel, EMPTY_META_DASH } from '@/lib/conditions';
 import {
-  replenishmentStatusMeta,
   replenishmentTooltip,
   rowReplenishmentFacts,
 } from '@/lib/orders/replenishment-display';
@@ -60,10 +59,18 @@ import {
   formatQueueRowDateCell,
   formatSalePrice,
   queueRowShipBySource,
+  queueRowTestedAtRaw,
   type OrdersQueueMode,
   type QueueRowRecord,
   type RowStatusMeta,
 } from './helpers';
+import {
+  GridAgeCellValue,
+  GridCellDash,
+  GridDateCellValue,
+  GridDateTimeCellValue,
+  GridStaffCellValue,
+} from '@/components/ui/grid-cells';
 import { useOrderAssignment, type OrderAssignPayload } from '@/hooks/useOrderAssignment';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTableDensity } from '@/hooks/useTableDensity';
@@ -100,18 +107,19 @@ export interface OrdersQueueTableRowProps {
    */
   opaqueStripe?: boolean;
   /**
-   * Airtable grid-view skin. Flattens the zebra to solid white cells (the scoped
-   * gridline carries row separation), renders an always-visible row-select
-   * checkbox in the gutter wired to {@link onToggleSelect}, and arms the
-   * Sheets-style in-cell editors (title / ship-by / qty / condition + the
-   * corner-indicator popovers). Off → board/Packed row: display-only cells;
-   * the Product-cell note/OOS corner indicators stay (they replaced the
-   * retired notes column for every consumer).
+   * Airtable grid-view skin. Always-visible row-select checkbox in the gutter
+   * ({@link onToggleSelect}), Sheets-style in-cell editors, corner-indicator
+   * popovers. Zebra still applies (opaque canvas / card — required for the
+   * frozen identity pane). Off → display-only cells; Product-cell note/OOS
+   * corner indicators stay for every consumer.
    */
   gridSkin?: boolean;
   /** Grid skin only — toggle this row's selection from the gutter checkbox
    *  (stops propagation, so it never opens the record). */
   onToggleSelect?: (record: ShippedOrder, event: { shiftKey: boolean }) => void;
+  /** Grid skin only — true when this row is the ONLY checked row. Surfaces the
+   *  row info-edit dropdown (Notes · OOS · Details) on the Product cell. */
+  singleSelected?: boolean;
   queueMode?: OrdersQueueMode;
   /** Ordered column models (already sanitized). Default = canonical order.
    *  Header + rows + group summaries must receive the SAME list. */
@@ -142,6 +150,10 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   selectMode,
   isChecked,
   useAlternateStripe,
+  testerDisplay,
+  packerDisplay: _packerDisplay,
+  testerId: _testerId,
+  packerId: _packerId,
   rowStatus,
   trackingAction,
   serialChip,
@@ -155,16 +167,25 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   opaqueStripe = false,
   gridSkin = false,
   onToggleSelect,
+  singleSelected = false,
   queueMode = 'fulfillment',
   columns = ORDERS_QUEUE_COLUMNS,
   onRowClick,
 }: OrdersQueueTableRowProps) {
   const orderChannelLabel = useOrderChannelLabel();
   const { has } = useAuth();
+  const router = useRouter();
   const assignOrder = useOrderAssignment();
   const canOos = has('orders.create');
   const [editing, setEditing] = useState<RowEditField | null>(null);
   const [editSeed, setEditSeed] = useState<string | null>(null);
+  const [infoMenuOpen, setInfoMenuOpen] = useState(false);
+  const infoMenuTriggerRef = useRef<HTMLButtonElement | null>(null);
+  // Un-checking the row (or growing the selection) closes its info menu — a
+  // stale open flag must not resurface on the next single-select.
+  useEffect(() => {
+    if (!singleSelected) setInfoMenuOpen(false);
+  }, [singleSelected]);
   // Anchors for the cell-anchored editor popovers. Note/OOS editors anchor to
   // their CORNER INDICATOR (the Sheets note-bubble position) when it exists,
   // else to the title cell aligned toward that corner; mobile anchors the meta
@@ -200,7 +221,6 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   const orderMarketplaceUrl = marketplaceOrderUrl(record.order_id, record.account_source);
   const salePrice = formatSalePrice(record.sale_amount, record.currency);
   const replenishment = rowReplenishmentFacts(record);
-  const stockMeta = replenishmentStatusMeta(replenishment.status);
 
   const hasTester = Boolean(
     (record.test_date_time || record.test_activity_at) &&
@@ -215,7 +235,7 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   const showLaneAge = Boolean(laneAgeLabel) && daysLate === null;
 
   const { classes: densityClasses } = useTableDensity();
-  const isStagedRow = queueMode === 'staged';
+  const isStagedRow = queueMode === 'staged' || queueMode === 'shipped';
   const isHidden = useIsColumnHidden();
   const showQtyCol = !isHidden('qty');
   const showConditionCol = !isHidden('condition');
@@ -307,8 +327,10 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
     hideOrderId: hideOrderIdChip,
     tracking: trackingRaw,
     trackingAction,
-    onPasteTracking: queueMode === 'fulfillment' || queueMode === 'labels' ? onPasteTracking : undefined,
-    onReplaceTracking: queueMode === 'fulfillment' || queueMode === 'labels' ? onReplaceTracking : undefined,
+    onPasteTracking:
+      queueMode === 'fulfillment' || queueMode === 'labels' ? onPasteTracking : undefined,
+    onReplaceTracking:
+      queueMode === 'fulfillment' || queueMode === 'labels' ? onReplaceTracking : undefined,
     onEditListingLink: gridEditable ? () => openEditor('link') : undefined,
     serialChip,
     variant: 'plain' as const,
@@ -318,7 +340,7 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   // platform / order / tracking survive any column order.
   const identityNodes = useOrderIdentityCellNodes(identityChipProps);
 
-  const gridTemplate = isMobile ? undefined : ordersQueueGridTemplate(columns.map((c) => c.key));
+  const gridTemplate = isMobile ? undefined : ordersQueueGridTemplateFor(columns);
   const cellInset = gridSkin ? ('grid' as const) : ('cell' as const);
   const dataCell = (rule = true) => ordersQueueGridCell({ rule, inset: cellInset });
 
@@ -341,53 +363,23 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
         ? `In lane ${laneAgeLabel}`
         : '';
 
-  const dateNode = dateCellData ? (
-    <HoverTooltip label={dateCellData.tooltip} focusable={false}>
-      <span
-        className={cn(
-          'tabular-nums normal-case tracking-normal text-text-muted',
-          densityClasses.metaText,
-        )}
-      >
-        {dateCellData.label}
-      </span>
-    </HoverTooltip>
-  ) : (
-    <span className="text-text-faint" aria-hidden>
-      —
-    </span>
+  const dateNode = (
+    <GridDateCellValue
+      label={dateCellData?.label}
+      tooltip={dateCellData?.tooltip}
+      className={densityClasses.metaText}
+    />
   );
 
-  const ageNode =
-    daysLate !== null ? (
-      <HoverTooltip label={ageTooltip} focusable={false}>
-        <span
-          className={cn(
-            'tabular-nums normal-case tracking-normal',
-            getDaysLateTone(daysLate),
-            densityClasses.metaText,
-          )}
-        >
-          {daysLate}d
-        </span>
-      </HoverTooltip>
-    ) : showLaneAge ? (
-      <HoverTooltip label={ageTooltip} focusable={false}>
-        <span
-          className={cn(
-            'tabular-nums normal-case tracking-normal',
-            getLaneAgeTone(laneAgeHours),
-            densityClasses.metaText,
-          )}
-        >
-          {laneAgeLabel}
-        </span>
-      </HoverTooltip>
-    ) : (
-      <span className="text-text-faint" aria-hidden>
-        —
-      </span>
-    );
+  const ageNode = (
+    <GridAgeCellValue
+      daysLate={daysLate}
+      laneAgeLabel={showLaneAge ? laneAgeLabel : null}
+      laneAgeHours={laneAgeHours}
+      tooltip={ageTooltip}
+      className={densityClasses.metaText}
+    />
+  );
 
   // ── Navigate-mode cell trigger (the adopted Sheets keyboard contract) ────
   // Click → edit (stopPropagation so the row doesn't open); Enter/F2 → edit
@@ -498,9 +490,45 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
     'shrink-0 rounded p-0.5 text-text-soft opacity-0 transition-opacity hover:bg-surface-hover hover:text-text-default focus-visible:opacity-100 group-hover/row:opacity-100',
     focusRing('control'),
   );
+  // Single-selected info menu (Notes · OOS · Details). The trigger stays in the
+  // DOM on every grid row so geometry never shifts with selection; it becomes
+  // visible (and interactive) only while this is the one checked row.
+  const infoMenuTrigger = (
+    // ds-raw-button: single-select info chevron — opacity/geometry tied to row
+    // selection; IconButton would shift the frozen Product cell chrome.
+    <button
+      ref={infoMenuTriggerRef}
+      type="button"
+      data-row-info-menu
+      aria-label={`Edit info — order ${record.order_id || record.id}`}
+      aria-haspopup="menu"
+      aria-expanded={infoMenuOpen}
+      tabIndex={singleSelected ? 0 : -1}
+      aria-hidden={singleSelected ? undefined : true}
+      onClick={(e) => {
+        e.stopPropagation();
+        setInfoMenuOpen(true);
+      }}
+      onKeyDown={(e) => e.stopPropagation()}
+      className={cn(
+        hoverControlClass,
+        singleSelected ? 'opacity-100 text-text-muted' : 'pointer-events-none !opacity-0',
+      )}
+    >
+      <ChevronDown className="h-3.5 w-3.5" />
+    </button>
+  );
+
   const expandAffordance =
     gridSkin && !isMobile ? (
       <span className="ml-auto inline-flex shrink-0 items-center gap-0.5">
+        {singleSelected ? (
+          <HoverTooltip label="Edit info" focusable={false}>
+            {infoMenuTrigger}
+          </HoverTooltip>
+        ) : (
+          infoMenuTrigger
+        )}
         <HoverTooltip label="Edit listing link" focusable={false}>
           <button
             type="button"
@@ -647,9 +675,12 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
             })}
           >
             {oosIndicator}
-            <HoverTooltip label={`${rowStatus.label} — ${rowStatus.description}`} focusable={false}>
-              <span className={cn('h-2 w-2 shrink-0 rounded-full', rowStatus.dot)} />
-            </HoverTooltip>
+            {/* Status chip lives in the Status column on gridSkin; board/mobile keep the title-dot. */}
+            {!gridSkin ? (
+              <HoverTooltip label={`${rowStatus.label} — ${rowStatus.description}`} focusable={false}>
+                <span className={cn('h-2 w-2 shrink-0 rounded-full', rowStatus.dot)} />
+              </HoverTooltip>
+            ) : null}
             <span className="min-w-0 flex-1 truncate text-role-data text-text-default">
               {record.product_title || 'Unknown Product'}
             </span>
@@ -685,6 +716,46 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
             {ageNode}
           </div>
         );
+      case 'tester':
+        // TESTED lane (plan §9): scan actor → assignee → staff-id lookup, all
+        // normalized upstream into `testerDisplay` ('---' when truly missing).
+        return (
+          <div data-col="tester" className={dataCell(rule)}>
+            <GridStaffCellValue name={testerDisplay} className={densityClasses.metaText} />
+          </div>
+        );
+      case 'testedAt': {
+        const testedAtRaw = queueRowTestedAtRaw(record);
+        return (
+          <div data-col="testedAt" className={dataCell(rule)}>
+            {testedAtRaw ? (
+              <GridDateTimeCellValue
+                raw={testedAtRaw}
+                className={cn('text-text-muted', densityClasses.metaText)}
+              />
+            ) : (
+              <GridCellDash />
+            )}
+          </div>
+        );
+      }
+      case 'status':
+        return isHidden('status') ? (
+          <span className={dataCell(rule)} />
+        ) : (
+          <div data-col="status" className={dataCell(rule)}>
+            <HoverTooltip label={rowStatus.description} focusable={false}>
+              <span
+                className={cn(
+                  'inline-flex min-w-0 max-w-full items-center truncate rounded-full inset-chip text-role-micro font-black uppercase tracking-widest ring-1 ring-inset',
+                  rowStatus.pill,
+                )}
+              >
+                {rowStatus.label}
+              </span>
+            </HoverTooltip>
+          </div>
+        );
       case 'qty':
         return showQtyCol ? (
           <div
@@ -698,7 +769,15 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
             )}
             {...cellTriggerProps('qty', { typing: true, label: `Edit quantity (${qty})` })}
           >
-            <span className={cn('min-w-0 truncate font-mono tabular-nums text-role-eyebrow', orderRowQtyTone(qty))}>
+            {/* Same type scale as the Date / Age cells — numerals must not
+                read a step smaller than their neighbor facts. */}
+            <span
+              className={cn(
+                'min-w-0 truncate tabular-nums normal-case tracking-normal',
+                orderRowQtyTone(qty),
+                densityClasses.metaText,
+              )}
+            >
               {qty}
             </span>
             {editing === 'qty' && gridEditable ? (
@@ -777,33 +856,17 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
         ) : (
           <span className={dataCell(rule)} />
         );
-      case 'stock':
-        // Data-driven backorder metrics only (shortfall · status; PO + notes in
-        // the tooltip); quiet-empty when in stock — the free-text OOS reason
-        // lives on the Product-cell indicator, never here.
-        return (
-          <div data-col="stock" className={dataCell(rule)}>
-            {replenishment.requestId ? (
-              <HoverTooltip label={replenishmentTooltip(replenishment)} focusable={false} className="min-w-0">
-                <span
-                  className={cn(
-                    'inline-flex min-w-0 max-w-full items-center gap-1 rounded inset-chip text-role-micro font-black uppercase tracking-widest ring-1 ring-inset',
-                    stockMeta.chip,
-                  )}
-                >
-                  {replenishment.quantityToOrder != null ? (
-                    <span className="font-mono tabular-nums">{replenishment.quantityToOrder}</span>
-                  ) : null}
-                  <span className="min-w-0 truncate">{stockMeta.short}</span>
-                </span>
-              </HoverTooltip>
-            ) : null}
-          </div>
-        );
       case 'platform':
+        // The listing-link cell: the brand mark opens the listing. On the grid,
+        // a row with no listing link shows a quiet dash (an unlinked mark
+        // would read as a dead link) — FBA keeps its channel mark by design.
         return (
           <div data-col="platform" className={dataCell(rule)}>
-            {isHidden('platform') ? null : identityNodes.platformMark}
+            {isHidden('platform') ? null : gridSkin && !productPageUrl && !isFba ? (
+              <GridCellDash />
+            ) : (
+              identityNodes.platformMark
+            )}
           </div>
         );
       case 'order':
@@ -813,9 +876,36 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
           </div>
         );
       case 'tracking':
+        // Pending grid: a row with no tracking has no label yet — that's a
+        // different status, surfaced as a compact soft-accent + icon that
+        // jumps to the outbound label station (`/shipping?open=`) to print.
+        // Icon-only keeps the tracking track as narrow as last-4 chips.
+        // The paste-from-clipboard chip stays a Labels/board-only tool.
         return (
           <div data-col="tracking" className={dataCell(rule)}>
-            {isHidden('tracking') ? null : identityNodes.tracking}
+            {isHidden('tracking') ? null : gridSkin && !trackingRaw ? (
+              <HoverTooltip label="No label yet — create it at the shipping station" focusable={false}>
+                <button
+                  type="button"
+                  data-add-label
+                  aria-label={`Create shipping label — order ${record.order_id || record.id}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    router.push(`/shipping?open=${record.id}`);
+                  }}
+                  onKeyDown={(e) => e.stopPropagation()}
+                  className={cn(
+                    'ds-raw-button inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md ring-1 ring-inset transition-colors',
+                    'bg-surface-accent text-text-accent ring-border-accent hover:bg-surface-accent/80',
+                    focusRing('cell'),
+                  )}
+                >
+                  <Plus className="h-3 w-3" aria-hidden />
+                </button>
+              </HoverTooltip>
+            ) : (
+              identityNodes.tracking
+            )}
           </div>
         );
       default:
@@ -866,7 +956,7 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
       data-order-row-id={String(record.id)}
       className={cn(
         'group/row relative',
-        ordersQueueRowShellClass(isMobile),
+        ordersQueueRowShellClass(isMobile, { scrollMinContent: gridSkin }),
         'cursor-pointer border-b border-border-hairline transition-colors',
         // Grid skin: flush shell — cells own px/py so vertical rules meet edges.
         gridSkin ? 'px-0 py-0' : QUEUE_ROW.px,
@@ -875,21 +965,31 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
             ? 'py-2.5 hover:bg-blue-50/50'
             : cn('hover:bg-surface-hover', densityClasses.rowPadding)),
         gridSkin && 'hover:bg-surface-hover',
+        // Idle zebra: opaque canvas/card on grid (frozen pane inherits row bg);
+        // translucent canvas allowed only off-grid. Selection overrides stripe.
         isStagedRow
           ? (selectMode ? isChecked : isSelected)
             ? 'bg-blue-50/80'
             : useAlternateStripe
-              ? opaqueStripe ? 'bg-surface-canvas' : 'bg-surface-canvas/40'
+              ? opaqueStripe || gridSkin
+                ? 'bg-surface-canvas'
+                : 'bg-surface-canvas/40'
               : 'bg-surface-card'
           : (selectMode ? isChecked : isSelected)
             ? QUEUE_ROW.selectedClass
-            : gridSkin
-              ? 'bg-surface-card'
-              : useAlternateStripe
-                ? 'bg-surface-card'
-                : opaqueStripe ? 'bg-surface-canvas' : 'bg-surface-canvas/40',
+            : useAlternateStripe
+              ? opaqueStripe || gridSkin
+                ? 'bg-surface-canvas'
+                : 'bg-surface-canvas/40'
+              : 'bg-surface-card',
       )}
-      style={gridTemplate ? { gridTemplateColumns: gridTemplate } : undefined}
+      style={
+        gridTemplate
+          ? {
+              gridTemplateColumns: gridTemplate,
+            }
+          : undefined
+      }
     >
       {isMobile ? (
         <>
@@ -925,6 +1025,19 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
           <Fragment key={col.key}>{renderDesktopCell(col, i === columns.length - 1)}</Fragment>
         ))
       )}
+
+      {/* Single-selected row info menu — Notes · OOS · Details, in that order. */}
+      {infoMenuOpen && singleSelected ? (
+        <RowInfoMenuPopover
+          anchorRef={infoMenuTriggerRef}
+          canEditNotes={canEditNotes}
+          canEditOos={canOos}
+          onNotes={() => openEditor('note')}
+          onOutOfStock={() => openEditor('oos')}
+          onDetails={() => onRowClick(record)}
+          onDone={() => setInfoMenuOpen(false)}
+        />
+      ) : null}
 
       {/* Cell-anchored editor popovers (body-portaled — never clipped). */}
       {editing === 'date' && gridEditable ? (
@@ -1014,9 +1127,11 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   if (prev.useAlternateStripe !== next.useAlternateStripe) return false;
   if (prev.opaqueStripe !== next.opaqueStripe) return false;
   if (prev.gridSkin !== next.gridSkin) return false;
+  if (prev.singleSelected !== next.singleSelected) return false;
   if (prev.columns !== next.columns) return false;
   if (prev.rowStatus.dot !== next.rowStatus.dot) return false;
   if (prev.rowStatus.label !== next.rowStatus.label) return false;
+  if (prev.rowStatus.pill !== next.rowStatus.pill) return false;
   if (prev.hasOutOfStock !== next.hasOutOfStock) return false;
   if (prev.outOfStockValue !== next.outOfStockValue) return false;
   if (prev.notesValue !== next.notesValue) return false;
@@ -1032,6 +1147,10 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   if (prev.record.deadline_at !== next.record.deadline_at) return false;
   if (prev.record.created_at !== next.record.created_at) return false;
   if (prev.record.item_number !== next.record.item_number) return false;
+  // TESTED-lane cells (tester + tested-at) render these — compare or go stale.
+  if (prev.testerDisplay !== next.testerDisplay) return false;
+  if (prev.record.test_date_time !== next.record.test_date_time) return false;
+  if (prev.record.test_activity_at !== next.record.test_activity_at) return false;
   const prevR = prev.record as Record<string, unknown>;
   const nextR = next.record as Record<string, unknown>;
   if (prevR.replenishment_request_id !== nextR.replenishment_request_id) return false;

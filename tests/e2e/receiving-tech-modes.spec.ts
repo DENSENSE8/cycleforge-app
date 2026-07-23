@@ -163,7 +163,7 @@ test.describe('Receiving + Tech workspace mode smoke tests', () => {
       return;
     }
 
-    // Triage's terminal action: "Save for unbox" FloatingButton (caps.saveBar)…
+    // Triage's terminal action: "Save for unbox" SlicedActionDock (caps.saveBar)…
     await expect(
       page.getByRole('button', { name: /Save for unbox/i }),
     ).toBeVisible({ timeout: PANEL_TIMEOUT });
@@ -223,13 +223,13 @@ test.describe('Receiving + Tech workspace mode smoke tests', () => {
       page.getByRole('button', { name: 'Back to all tested lines' }),
     ).toBeVisible({ timeout: PANEL_TIMEOUT });
 
-    // Shared station entity-context bookmark chrome (classify toggle) —
-    // the old standalone Platform pill is retired.
+    // Shared station entity-context bookmark chrome — classify pills always on
+    // (hide/show toggle removed); the old standalone Platform pill is retired.
     await expect(
-      page.getByRole('button', { name: /Show classification|Hide classification/i }).first(),
+      page.getByTestId('carton-context-classify-pills'),
     ).toBeVisible({ timeout: PANEL_TIMEOUT });
 
-    // The Pass · Print FloatingButton — the testing terminal action.
+    // The Pass · Print SlicedActionDock — the testing terminal action.
     const passBtn = page.getByRole('button', { name: /^Pass\s*[·•]|^Printing/i });
     await expect(passBtn).toBeVisible({ timeout: PANEL_TIMEOUT });
   });
@@ -270,10 +270,10 @@ test.describe('Receiving + Tech workspace mode smoke tests', () => {
     ).toBeVisible({ timeout: PANEL_TIMEOUT });
 
     // Shared station entity-context bookmark chrome (CartonContextCard
-    // density="bar") — the classify toggle proves testing reuses receiving's
+    // density="bar") — classify pills prove testing reuses receiving's
     // condensed identity header (the old standalone Platform pill is retired).
     await expect(
-      page.getByRole('button', { name: /Show classification|Hide classification/i }).first(),
+      page.getByTestId('carton-context-classify-pills'),
     ).toBeVisible({ timeout: PANEL_TIMEOUT });
 
     // SectionTabsSlider — unbox-style display switcher under the carton header.
@@ -285,7 +285,7 @@ test.describe('Receiving + Tech workspace mode smoke tests', () => {
     await expect(page.getByRole('tab', { name: 'Ticket' })).toBeVisible({ timeout: PANEL_TIMEOUT });
     await expect(page.getByRole('tab', { name: 'Timeline' })).toBeVisible({ timeout: PANEL_TIMEOUT });
 
-    // The Pass · Print FloatingButton — the testing terminal action.
+    // The Pass · Print SlicedActionDock — the testing terminal action.
     await expect(
       page.getByRole('button', { name: /^Pass\s*[·•]|^Printing/i }),
     ).toBeVisible({ timeout: PANEL_TIMEOUT });

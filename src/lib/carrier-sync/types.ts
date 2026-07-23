@@ -1,14 +1,11 @@
 import type { CarrierCode, NormalizedShipmentStatus } from '@/lib/shipping/types';
 
 /**
- * Live per-carrier sync feed for the "Sync carriers" button on the Incoming
- * receiving view. Mirrors the orders-sync NDJSON contract (see
+ * Live per-carrier sync feed for POST /api/receiving-lines/incoming/refresh/stream.
+ * Mirrors the orders-sync NDJSON contract (see
  * {@link import('@/lib/orders-sync/types').SyncStreamEvent}) but is keyed by
- * carrier instead of source, so the dialog can show a tab per carrier with the
- * exact shipments being re-polled.
+ * carrier instead of source.
  */
-
-export type SyncTaskStatus = 'idle' | 'running' | 'done' | 'error';
 
 /** One shipment's outcome from a single re-poll. */
 export interface CarrierSyncShipmentDetail {
@@ -40,16 +37,6 @@ export interface CarrierSyncResult {
   errors: number;
   capped: boolean;
   throttled?: boolean;
-}
-
-/** Per-carrier tab state the dialog renders from. */
-export interface CarrierTabState {
-  status: SyncTaskStatus;
-  /** Shipments queued for this carrier in the current sweep. */
-  total: number;
-  rows: CarrierSyncShipmentDetail[];
-  summary?: string;
-  error?: string;
 }
 
 /**

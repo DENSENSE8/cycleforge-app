@@ -20,9 +20,15 @@ import { TicketLinkPopover, invalidateSupportContextCaches } from './TicketLinkP
 export function LinkageStrip({
   bundle,
   dense = false,
+  hideTicketEmbed = false,
 }: {
   bundle: SupportContextBundle;
   dense?: boolean;
+  /**
+   * Support station Summary / Connections: ticket `#` lives on the Ticket tab +
+   * identity bar only — keep unlink/link actions without embedding the number.
+   */
+  hideTicketEmbed?: boolean;
 }) {
   const qc = useQueryClient();
   const { has, isLoaded } = useAuth();
@@ -30,10 +36,14 @@ export function LinkageStrip({
   const [pickerOpen, setPickerOpen] = useState(false);
   const [trackingOpen, setTrackingOpen] = useState(false);
   const { linkage, ticket, linkable } = bundle;
-  // Operator PRIMARY = internal registry id; provider-native id is SECONDARY.
-  const ticketPrimary = ticket ? primaryTicketLabel(ticket.id) : null;
-  const ticketSecondary = ticket
-    ? secondaryProviderLabel({ provider: ticket.provider, externalTicketId: ticket.externalTicketId })
+  // Display label for unlink popovers — provider-native when present.
+  const ticketPrimary = ticket
+    ? (ticket.label ||
+        secondaryProviderLabel({
+          provider: ticket.provider,
+          externalTicketId: ticket.externalTicketId,
+        }) ||
+        primaryTicketLabel(ticket.id))
     : null;
 
   const unlink = useMutation({
@@ -120,17 +130,19 @@ export function LinkageStrip({
 
         {ticket && linkable && canZendesk ? (
           <div className="flex items-center gap-2">
-            <span className="text-role-caption font-semibold text-text-muted">
-              Ticket {ticketPrimary}
-              {ticketSecondary ? ` · ${ticketSecondary}` : ''}
-              {ticket.subject ? ` · ${ticket.subject}` : ''}
-            </span>
+            {hideTicketEmbed ? null : (
+              <span className="text-role-caption font-semibold text-text-muted">
+                Ticket {ticketPrimary}
+                {ticket.subject ? ` · ${ticket.subject}` : ''}
+              </span>
+            )}
             <Button
               size="sm"
               variant="ghost"
               icon={<Unlink />}
               loading={unlink.isPending}
               onClick={() => unlink.mutate()}
+              aria-label={ticketPrimary ? `Unlink ticket ${ticketPrimary}` : 'Unlink ticket'}
             >
               Unlink
             </Button>

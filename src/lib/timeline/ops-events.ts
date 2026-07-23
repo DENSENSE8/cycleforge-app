@@ -1,4 +1,5 @@
 import type { TimelineItem, TimelineTone } from './types';
+import { searchHitHref } from '@/lib/search/search-hit';
 
 /**
  * One `ops_events` row (src/lib/ops-events.ts / migration 2026-06-30) — the
@@ -35,6 +36,13 @@ function pretty(eventType: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
 }
 
+function opsEventHref(row: OpsEventRow): string | undefined {
+  if (row.entity_type === 'receiving' && row.entity_id > 0) {
+    return searchHitHref('RECEIVING', row.entity_id);
+  }
+  return undefined;
+}
+
 /**
  * Map `ops_events` rows → {@link TimelineItem}s for the shared `EventTimeline`.
  * Closes Gap #11 of the returns-unification plan (§6 row 11): this spine had
@@ -45,7 +53,8 @@ function pretty(eventType: string): string {
  * path readJourneyEntity doesn't have today; wiring a new spine in is a
  * separate, larger change than adding the adapter itself. The entity_id is
  * kept out of `ref` for the same reason — a bare carton id isn't one of
- * EventTimeline's known CopyChip kinds (tracking/serial/fnsku/id/sku).
+ * EventTimeline's known CopyChip kinds (tracking/serial/fnsku/id/sku). Rail
+ * glyph links to Unbox via {@link searchHitHref} when the entity is a carton.
  */
 export function opsEventsToTimeline(rows: OpsEventRow[]): TimelineItem[] {
   return rows.map((r) => {
@@ -60,6 +69,7 @@ export function opsEventsToTimeline(rows: OpsEventRow[]): TimelineItem[] {
       tone,
       actor: r.actor_name ?? undefined,
       sourceEventType: r.event_type,
+      href: opsEventHref(r),
     };
   });
 }

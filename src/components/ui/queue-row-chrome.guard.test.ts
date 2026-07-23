@@ -44,7 +44,6 @@ describe('queue-row left-edge chrome', () => {
       ['ReceivingLineOrderRow', '../station/ReceivingLineOrderRow.tsx'],
       ['ReceivingPoSummary', '../station/ReceivingPoSummary.tsx'],
       ['OrdersQueueTableRow', '../dashboard/orders-queue/OrdersQueueTableRow.tsx'],
-      ['ShippedRecordRow', '../shipped/ShippedRecordRow.tsx'],
       ['StationRecordShell', '../station/StationRecordShell.tsx'],
     ] as const;
 
@@ -55,8 +54,6 @@ describe('queue-row left-edge chrome', () => {
         `${name} must import QUEUE_ROW and/or metaIndentFor`,
       );
       if (name === 'OrdersQueueTableRow') {
-        // Columnar WMS grid: QUEUE_ROW.px + ordersQueueGridTemplate; metaIndentFor
-        // remains on the mobile stacked path only.
         assert.ok(src.includes('QUEUE_ROW.px'), `${name} must apply QUEUE_ROW.px`);
         assert.ok(
           src.includes('ordersQueueGridTemplate') || src.includes('ordersQueueRowShellClass'),
@@ -93,17 +90,13 @@ describe('queue-row left-edge chrome', () => {
     assert.doesNotMatch(src, /\bpl-5\b/, 'CollapsibleGroupRow must not hardcode pl-5');
   });
 
-  it('OrdersQueueTable monitor list body has no extra px inset', () => {
-    const src = readSibling('../dashboard/OrdersQueueTable.tsx');
+  it('OrdersGridView outer shell has no list-body px-2 inset', () => {
+    const src = readSibling('../dashboard/orders-queue/OrdersGridView.tsx');
+    assert.ok(src.includes('LedgerGrid'), 'OrdersGridView must compose LedgerGrid');
     assert.doesNotMatch(
       src,
-      /listShell === 'monitor'[\s\S]{0,200}px-2/,
-      'monitor listShell must not add list-body px-2',
-    );
-    assert.doesNotMatch(
-      src,
-      /monitorShell \? 'flex w-full flex-col px-2/,
-      'monitor listBodyClass must not include px-2',
+      /flex w-full flex-col px-2/,
+      'OrdersGridView must not add list-body px-2',
     );
   });
 });

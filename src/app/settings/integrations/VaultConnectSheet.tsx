@@ -2,10 +2,19 @@
 
 /**
  * Typed vault credential connect sheet — replaces the generic JSON textarea.
+ * Despite the name, this is a centered modal (Dialog), not a bottom sheet.
  */
 import { useCallback, useMemo, useState } from 'react';
 import { toast } from '@/lib/toast';
 import { Button } from '@/design-system/primitives/Button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/design-system/components/Dialog';
 import { getCredentialFormDef } from '@/lib/integrations/credential-form-defs';
 import type { ConfiguredFieldHint } from '@/lib/integrations/credential-payload';
 import { CredentialField } from './CredentialField';
@@ -155,22 +164,26 @@ export function VaultConnectSheet({
   }, [formDef]);
 
   return (
-    <div className="fixed inset-0 z-modal flex items-center justify-center px-4">
-      <button type="button" aria-label="Close" onClick={onClose} className="absolute inset-0 bg-scrim/40 backdrop-blur-sm" />
-      <div className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-border-soft bg-surface-card p-5 shadow-2xl">
-        <h2 className="text-base font-semibold text-text-default">
-          {isUpdate ? `Update ${providerLabel}` : `Connect ${providerLabel}`}
-        </h2>
-        {formDef ? (
-          <p className="mt-1 text-role-caption text-text-soft">{formDef.description}</p>
-        ) : (
-          <p className="mt-1 text-role-caption text-text-soft">
-            Enter credentials for {providerLabel}. Stored encrypted in the workspace vault.
-          </p>
-        )}
+    <Dialog
+      open
+      onOpenChange={(next) => {
+        if (!next && !busy) onClose();
+      }}
+    >
+      <DialogContent hideClose className="max-h-[90vh] max-w-lg overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>
+            {isUpdate ? `Update ${providerLabel}` : `Connect ${providerLabel}`}
+          </DialogTitle>
+          <DialogDescription>
+            {formDef
+              ? formDef.description
+              : `Enter credentials for ${providerLabel}. Stored encrypted in the workspace vault.`}
+          </DialogDescription>
+        </DialogHeader>
 
         {formDef && !showAdvanced && (
-          <div className="mt-4 space-y-4">
+          <div className="space-y-4">
             {sections.map(([section, fields]) => (
               <div key={section || '_default'} className="space-y-3">
                 {section ? (
@@ -192,7 +205,7 @@ export function VaultConnectSheet({
         )}
 
         {(!formDef || showAdvanced) && (
-          <div className="mt-4">
+          <div>
             <textarea
               className={`${FIELD_INPUT_CLS} h-48 font-mono text-role-caption shadow-inner`}
               value={advancedJson}
@@ -206,7 +219,7 @@ export function VaultConnectSheet({
         {formDef && (
           <button
             type="button"
-            className="mt-3 text-role-caption font-semibold text-text-soft hover:text-text-default"
+            className="text-role-caption font-semibold text-text-soft hover:text-text-default"
             onClick={() => setShowAdvanced((v) => !v)}
           >
             {showAdvanced ? '← Back to form' : 'Advanced: paste JSON'}
@@ -214,10 +227,10 @@ export function VaultConnectSheet({
         )}
 
         {formError && (
-          <div className="mt-3 rounded-md bg-red-50 px-2 py-1 text-role-caption font-medium text-red-700">{formError}</div>
+          <div className="rounded-md bg-red-50 px-2 py-1 text-role-caption font-medium text-red-700">{formError}</div>
         )}
 
-        <div className="mt-4 flex items-center justify-end gap-2">
+        <DialogFooter>
           <Button variant="secondary" size="sm" onClick={onClose}>Cancel</Button>
           <Button
             variant="primary"
@@ -227,8 +240,8 @@ export function VaultConnectSheet({
           >
             Save
           </Button>
-        </div>
-      </div>
-    </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

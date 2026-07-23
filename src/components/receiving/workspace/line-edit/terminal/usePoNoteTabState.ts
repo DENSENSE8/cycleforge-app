@@ -26,7 +26,7 @@ export function usePoNoteTabState({
   onLoadZohoNotes,
 }: {
   overallZohoNotes: string | null;
-  /** Whether the Inventory notes tab is currently selected. */
+  /** Whether the Zoho (PO notes) tab is currently selected. */
   active: boolean;
   onSaveOverallNote: (text: string) => void | Promise<void>;
   onLoadZohoNotes?: () => Promise<string | null | undefined>;

@@ -11,9 +11,17 @@ import { FnskuCatalogInfoPanel } from '@/components/fba/FnskuCatalogInfoPanel';
 import { getFnskuCatalogValue, isFnskuCatalogContext } from '@/utils/fnsku-catalog';
 import { CopyChip } from '@/components/ui/CopyChip';
 import { LedgerValue } from '@/design-system/components/LedgerValue';
-import { ShippingEditableRow, type EditableShippingFields } from '@/components/shipped/details-panel/ShippingInformationSection';
+import { DetailsPanelRow } from '@/design-system/components/DetailsPanelRow';
+import { Button, IconButton } from '@/design-system/primitives';
+import { Copy, ExternalLink, Lock } from '@/components/Icons';
+import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import type { EditableShippingFields } from '@/components/shipped/details-panel/ShippingInformationSection';
 import { useExternalItemUrl } from '@/hooks/useExternalItemUrl';
 import { isOrderShipped } from '@/components/shipped/details-panel/shipped-details-logic';
+import { isAmazonOrderForItemRefresh } from '@/lib/amazon/order-item-refresh-shared';
+import { conditionGradeTone } from '@/lib/condition-tone';
+import { conditionLabel } from '@/lib/conditions';
+import { toast } from '@/lib/toast';
 
 import { normalizeCondition, type ConditionGrade } from '@/components/tech/StationConditionEditor';
 
@@ -125,6 +133,55 @@ function SkuPlatformList({
   );
 }
 
+function ConditionHeaderChip({
+  value,
+  locked,
+  saving,
+  expanded,
+  onToggle,
+}: {
+  value: ConditionGrade;
+  locked: boolean;
+  saving: boolean;
+  expanded: boolean;
+  onToggle: () => void;
+}) {
+  const tone = conditionGradeTone(value);
+  const label = conditionLabel(value, 'pill');
+  const chip = (
+    <span
+      className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-role-micro font-semibold uppercase tracking-wider ring-1 ring-inset ${tone.badge}`}
+    >
+      {label}
+      {locked ? <Lock className="h-3 w-3 opacity-70" aria-hidden /> : null}
+      {saving ? <span className="text-text-info">…</span> : null}
+    </span>
+  );
+
+  if (locked) {
+    return (
+      <HoverTooltip label="Condition locked after shipping" asChild focusable={false}>
+        <span className="inline-flex">{chip}</span>
+      </HoverTooltip>
+    );
+  }
+
+  return (
+    <HoverTooltip label={expanded ? 'Hide condition picker' : 'Change condition'} asChild>
+      {/* ds-raw-button: compact condition chip in Product Title header — not a DS Button CTA */}
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={expanded}
+        aria-label={`Condition ${label}${expanded ? ' — collapse' : ' — change'}`}
+        className="ds-raw-button inline-flex rounded-md transition-opacity hover:opacity-90"
+      >
+        {chip}
+      </button>
+    </HoverTooltip>
+  );
+}
+
 export function ProductDetailsSection({
   shipped,
   editableShippingFields,
@@ -134,6 +191,8 @@ export function ProductDetailsSection({
 }) {
   const [conditionValue, setConditionValue] = useState<ConditionGrade>(normalizeCondition(shipped.condition));
   const [isSavingCondition, setIsSavingCondition] = useState(false);
+  const [conditionExpanded, setConditionExpanded] = useState(false);
+  const [amazonRefreshing, setAmazonRefreshing] = useState(false);
   const orderAssignmentMutation = useOrderAssignment();
   const skuIdentity = useSkuIdentity(shipped.sku, shipped.account_source);
   // Condition freezes once the order has shipped — you can't re-grade what's gone.
@@ -141,12 +200,14 @@ export function ProductDetailsSection({
 
   useEffect(() => {
     setConditionValue(normalizeCondition(shipped.condition));
+    setConditionExpanded(false);
   }, [shipped.id, shipped.condition]);
 
   const handleConditionChange = async (nextCondition: string) => {
     if (conditionLocked || isSavingCondition) return;
     const grade = normalizeCondition(nextCondition);
     setConditionValue(grade);
+    setConditionExpanded(false);
     setIsSavingCondition(true);
     try {
       await orderAssignmentMutation.mutateAsync({
@@ -185,17 +246,100 @@ export function ProductDetailsSection({
     return list;
   }, [skuIdentity.platforms]);
 
-  const itemNumberRow = editableShippingFields ? (
-    <ShippingEditableRow
+  const itemNumberValue = String(
+    editableShippingFields?.itemNumber ?? shipped.item_number ?? '',
+  ).trim();
+  const hasItemNumber = Boolean(itemNumberValue);
+  const canAmazonRefresh = isAmazonOrderForItemRefresh(shipped.order_id, shipped.account_source);
+  const itemExternalUrl = hasItemNumber ? getExternalUrlByItemNumber(itemNumberValue) : null;
+
+  const handleAmazonRefresh = async () => {
+    if (amazonRefreshing || !canAmazonRefresh) return;
+    setAmazonRefreshing(true);
+    try {
+      const res = await fetch(`/api/orders/${shipped.id}/amazon-refresh`, { method: 'POST' });
+      const data = await res.json().catch(() => ({})) as {
+        success?: boolean;
+        error?: string;
+        itemNumber?: string;
+        productTitle?: string;
+      };
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || `Amazon refresh failed (HTTP ${res.status})`);
+      }
+      const nextItem = String(data.itemNumber || '').trim();
+      if (nextItem && editableShippingFields) {
+        editableShippingFields.onItemNumberChange(nextItem);
+        editableShippingFields.onBlur();
+      }
+      toast.success(nextItem ? `Item number ${nextItem}` : 'Amazon listing refreshed');
+      refreshAfterCatalogSave();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Amazon refresh failed');
+    } finally {
+      setAmazonRefreshing(false);
+    }
+  };
+
+  const itemNumberRow = (
+    <DetailsPanelRow
       label="Item Number"
-      value={editableShippingFields.itemNumber}
-      placeholder="Item Number"
-      onChange={editableShippingFields.onItemNumberChange}
-      onBlur={editableShippingFields.onBlur}
-      externalUrl={getExternalUrlByItemNumber(editableShippingFields.itemNumber)}
-      allowEdit={false}
-    />
-  ) : null;
+      actions={
+        hasItemNumber ? (
+          <div className="flex items-center gap-1.5">
+            {itemExternalUrl ? (
+              <HoverTooltip label="Open listing" asChild>
+                <IconButton
+                  tone="accent"
+                  onClick={() => window.open(itemExternalUrl, '_blank', 'noopener,noreferrer')}
+                  ariaLabel="Open item number listing"
+                  icon={<ExternalLink className="h-3.5 w-3.5" />}
+                />
+              </HoverTooltip>
+            ) : null}
+            <HoverTooltip label="Copy Item Number" asChild>
+              <IconButton
+                tone="neutral"
+                onClick={() => {
+                  void navigator.clipboard.writeText(itemNumberValue);
+                }}
+                ariaLabel="Copy Item Number"
+                icon={<Copy className="h-3.5 w-3.5" />}
+              />
+            </HoverTooltip>
+          </div>
+        ) : null
+      }
+    >
+      {hasItemNumber ? (
+        <div className="space-y-0">
+          <p className="truncate text-sm font-bold text-text-default">{itemNumberValue}</p>
+          <ContextualManualLinkRow
+            sku={shipped.sku}
+            itemNumber={itemNumberValue}
+            allowEmbeddedItemNumberInput={false}
+            embedded
+          />
+        </div>
+      ) : (
+        <div className="space-y-2">
+          <p className="text-sm font-medium text-text-faint">No item number</p>
+          {canAmazonRefresh ? (
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              className="text-xs"
+              disabled={amazonRefreshing}
+              onClick={() => { void handleAmazonRefresh(); }}
+            >
+              {amazonRefreshing ? 'Reimporting…' : 'Reimport from Amazon'}
+            </Button>
+          ) : null}
+        </div>
+      )}
+    </DetailsPanelRow>
+  );
 
   return (
     <section className="space-y-3">
@@ -210,11 +354,13 @@ export function ProductDetailsSection({
             sourceKey={shipped.id}
             onCatalogSaved={refreshAfterCatalogSave}
           />
-          <ContextualManualLinkRow
-            sku={shipped.sku}
-            itemNumber={shipped.item_number}
-            allowEmbeddedItemNumberInput={false}
-          />
+          {hasItemNumber ? (
+            <ContextualManualLinkRow
+              sku={shipped.sku}
+              itemNumber={shipped.item_number}
+              allowEmbeddedItemNumberInput={false}
+            />
+          ) : null}
         </div>
       ) : (
         <div className="space-y-0">
@@ -224,24 +370,24 @@ export function ProductDetailsSection({
             noTruncate
             variant="flat"
             valueClassName="font-sans"
+            headerAccessory={
+              <ConditionHeaderChip
+                value={conditionValue}
+                locked={conditionLocked}
+                saving={isSavingCondition}
+                expanded={conditionExpanded}
+                onToggle={() => setConditionExpanded((v) => !v)}
+              />
+            }
           />
 
-          <div className="border-b border-border-hairline py-3">
-            {isSavingCondition ? (
-              <div className="mb-1 flex justify-end">
-                <span className="text-role-micro uppercase tracking-wide text-text-info">Saving</span>
-              </div>
-            ) : null}
-            <ConditionPills value={conditionValue} onChange={handleConditionChange} readOnly={conditionLocked} />
-          </div>
+          {!conditionLocked && conditionExpanded ? (
+            <div className="border-b border-border-hairline py-2">
+              <ConditionPills value={conditionValue} onChange={handleConditionChange} />
+            </div>
+          ) : null}
 
           {itemNumberRow}
-
-          <ContextualManualLinkRow
-            sku={shipped.sku}
-            itemNumber={shipped.item_number}
-            allowEmbeddedItemNumberInput={false}
-          />
 
           <SkuPlatformList
             canonicalSku={canonicalSku}

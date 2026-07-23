@@ -6,7 +6,7 @@ import { test, expect, type Locator, type Page } from '@playwright/test';
  * Asserts against the live Pending spreadsheet (`pending-grid-body` / LedgerGrid):
  *   (1) sticky column header with a label per track;
  *   (2) drag grip only in the header (grid skin: no grip — select-all only);
- *   (3) stock / platform / order / tracking lock under their headers;
+ *   (3) platform / order / tracking lock under their headers;
  *   (4) frozen identity pane on h-scroll;
  *   (5) header drag-reorder persists per staff (select · title locked);
  *   (6) platform renders a fixed brand mark (icon/lettermark), never wide text;
@@ -53,31 +53,48 @@ test.describe('To Ship · Pending Sheets-like grid', () => {
 
     const headerRow = headerRowIn(table);
     await expect(headerRow).toBeVisible();
-    // Icon-only headers — labels live in sr-only + tooltips.
-    for (const col of ['title', 'date', 'age', 'stock', 'platform', 'order', 'tracking'] as const) {
-      await expect(headerRow.locator(`[data-col="${col}"]`)).toHaveCount(1);
-      await expect(headerRow.locator(`[data-col="${col}"] .sr-only`).first()).toHaveText(
-        col === 'title' ? 'Product' : col === 'age' ? 'Age' : col === 'date' ? 'Ship by' : col === 'stock' ? 'Stock' : col === 'platform' ? 'Platform' : col === 'order' ? 'Order' : 'Tracking',
-      );
-    }
+    // Adaptive headers: label when track fits; otherwise glyph + sr-only (no A…).
+    const expectHeader = async (col: string, visibleOrSr: string) => {
+      const cell = headerRow.locator(`[data-col="${col}"]`);
+      await expect(cell).toHaveCount(1);
+      await expect(cell.locator('svg')).toHaveCount(1);
+      const sr = cell.locator('.sr-only');
+      if ((await sr.count()) > 0) {
+        await expect(sr.first()).toHaveText(visibleOrSr);
+      } else {
+        await expect(cell).toContainText(visibleOrSr === 'Ship by' ? 'By' : visibleOrSr === 'Platform' ? 'Ch.' : visibleOrSr);
+      }
+    };
+    await expectHeader('title', 'Product');
+    await expectHeader('date', 'Ship by');
+    await expectHeader('age', 'Age');
+    await expectHeader('status', 'Status');
+    await expectHeader('platform', 'Platform');
+    await expectHeader('order', 'Order');
+    await expectHeader('tracking', 'Tracking');
 
     // Grid skin: no drag grip on rows; header may omit grip (select-all only).
     await expect(row.locator('.cursor-grab')).toHaveCount(0);
 
-    // Flat Ship-by column — no floating day-band chrome; no status gutter;
-    // no retired notes column. Age docks directly to the right of Ship by.
+    // Flat Ship-by column — no floating day-band chrome; Status is a first-class
+    // column (Pending / Tested / Out of stock); no retired notes / stock columns.
     await expect(table.locator('[data-grid-day-band]')).toHaveCount(0);
-    await expect(row.locator('[data-col="status"]')).toHaveCount(0);
+    await expect(row.locator('[data-col="status"]')).toHaveCount(1);
     await expect(row.locator('[data-col="notes"]')).toHaveCount(0);
+    await expect(row.locator('[data-col="stock"]')).toHaveCount(0);
     await expect(row.locator('[data-col="date"]')).toHaveCount(1);
     await expect(row.locator('[data-col="age"]')).toHaveCount(1);
+    // No empty-tracking rows on Pending (filtered client-side).
+    await expect(row.locator('[data-add-label]')).toHaveCount(0);
     const dateHeader = headerRow.locator('[data-col="date"]');
     const ageHeader = headerRow.locator('[data-col="age"]');
+    const statusHeader = headerRow.locator('[data-col="status"]');
     await expect(dateHeader).toHaveCount(1);
     expect(Math.abs((await leftX(dateHeader)) - (await leftX(row.locator('[data-col="date"]'))))).toBeLessThan(4);
     expect((await leftX(ageHeader)) > (await leftX(dateHeader)), 'Age header sits right of Ship by').toBe(true);
+    expect((await leftX(statusHeader)) > (await leftX(ageHeader)), 'Status header sits right of Age').toBe(true);
 
-    for (const col of ['stock', 'platform', 'order', 'tracking'] as const) {
+    for (const col of ['platform', 'order', 'tracking'] as const) {
       const cell = row.locator(`[data-col="${col}"]`);
       await expect(cell).toHaveCount(1);
       const headerCell = headerRow.locator(`[data-col="${col}"]`);
@@ -101,9 +118,9 @@ test.describe('To Ship · Pending Sheets-like grid', () => {
     const borderRight = (loc: Locator) =>
       loc.evaluate((el) => parseFloat(getComputedStyle(el).borderRightWidth) || 0);
 
-    const stock = row.locator('[data-col="stock"]');
-    await expect(stock).toHaveCount(1);
-    expect(await borderRight(stock), 'stock cell has a vertical column rule').toBeGreaterThan(0);
+    const platform = row.locator('[data-col="platform"]');
+    await expect(platform).toHaveCount(1);
+    expect(await borderRight(platform), 'platform cell has a vertical column rule').toBeGreaterThan(0);
 
     const tracking = row.locator('[data-col="tracking"]');
     await expect(tracking).toHaveCount(1);
@@ -116,7 +133,7 @@ test.describe('To Ship · Pending Sheets-like grid', () => {
     await page.screenshot({ path: 'test-results/to-ship-pending-grid-lines.png', fullPage: false });
   });
 
-  test('typed column headers are icon-only with sr-only labels', async ({ page }) => {
+  test('typed column headers show glyph; label or sr-only (never truncated A…)', async ({ page }) => {
     await page.goto('/dashboard?unshipped');
 
     const table = page.locator('[data-testid="pending-grid-body"]').first();
@@ -127,13 +144,42 @@ test.describe('To Ship · Pending Sheets-like grid', () => {
     for (const col of ['title', 'date', 'qty', 'age'] as const) {
       const cell = headerRow.locator(`[data-col="${col}"]`);
       await expect(cell.locator('svg')).toHaveCount(1);
-      await expect(cell.locator('.sr-only').first()).toBeAttached();
+      // Visible short label OR sr-only full label — never a clipped "A…" alone.
+      const text = ((await cell.innerText()) || '').replace(/\s+/g, ' ').trim();
+      expect(text.includes('…') || text.endsWith('...'), `${col} must not truncate`).toBe(false);
+      const accessible = (await cell.locator('.sr-only').count()) > 0
+        ? await cell.locator('.sr-only').first().textContent()
+        : text;
+      expect(accessible?.length ?? 0, `${col} has an accessible name`).toBeGreaterThan(0);
     }
 
-    // Chrome sort switcher for Priority | Newest | Deadline.
+    // Chrome sort dropdown for Priority | Newest | Deadline + column sorts
+    // (trailing, left of Import). Header click syncs the same `?sort=` SoT.
     await expect(page.locator('[data-queue-sort-switch]')).toBeVisible();
 
     await page.screenshot({ path: 'test-results/to-ship-pending-grid-typed-headers.png', fullPage: false });
+  });
+
+  test('click Product header sorts A–Z then Z–A via ?sort=title&dir=', async ({ page }) => {
+    await page.goto('/dashboard?unshipped');
+
+    const table = page.locator('[data-testid="pending-grid-body"]').first();
+    await expect(table).toBeVisible({ timeout: 20_000 });
+    const headerRow = headerRowIn(table);
+    const titleHeader = headerRow.locator('[data-col="title"]');
+    await expect(titleHeader).toBeVisible();
+
+    await titleHeader.click();
+    await expect(page).toHaveURL(/sort=title/);
+    await expect(titleHeader).toHaveAttribute('aria-sort', 'ascending');
+
+    await titleHeader.click();
+    await expect(page).toHaveURL(/sort=title/);
+    await expect(page).toHaveURL(/dir=desc/);
+    await expect(titleHeader).toHaveAttribute('aria-sort', 'descending');
+
+    // Dropdown trigger mirrors the active column sort short label.
+    await expect(page.locator('[data-queue-sort-switch]')).toContainText('Product');
   });
 
   test('frozen identity pane pins on horizontal scroll', async ({ page }) => {
@@ -178,13 +224,12 @@ test.describe('To Ship · Pending Sheets-like grid', () => {
 
     const platformCell = row.locator('[data-col="platform"]').first();
     await expect(platformCell).toHaveCount(1);
-    // Fixed narrow icon track (3rem ≈ 48px) — a variable-width marketplace
-    // name cannot fit; the mark (SVG brand icon or lettermark box) can.
+    // Fixed narrow icon track (3.5rem ≈ 56px) — a variable-width marketplace
+    // name cannot fit; the fixed-footprint PlatformMark can.
     const width = (await platformCell.boundingBox())!.width;
     expect(width, 'platform track is the fixed icon width').toBeLessThan(64);
 
-    // Accessible name survives icon-only presentation (sr-only inside the mark
-    // button, when the row has a platform at all).
+    // Accessible name on the mark button (sr-only), when the row has a platform.
     const markButtons = platformCell.locator('button');
     if ((await markButtons.count()) > 0) {
       await expect(markButtons.first().locator('.sr-only')).toBeAttached();
@@ -305,5 +350,58 @@ test.describe('To Ship · Pending Sheets-like grid', () => {
     await qtyCell.locator('input').press('Enter');
     await restore;
     await expect(qtyCell).toContainText(before || '1');
+  });
+
+  test('status chip renders; KPI scrolls away; column header sticks under chrome', async ({ page }) => {
+    await page.goto('/dashboard?unshipped');
+
+    const chrome = page.locator('[data-dashboard-chrome]').first();
+    const scroll = page.locator('[data-testid="dashboard-scroll"]').first();
+    const table = page.locator('[data-testid="pending-grid-body"]').first();
+    await expect(table).toBeVisible({ timeout: 20_000 });
+    const row = table.locator('[data-order-row-id]').first();
+    await expect(row).toBeVisible({ timeout: 20_000 });
+
+    const statusCell = row.locator('[data-col="status"]');
+    await expect(statusCell).toBeVisible();
+    const statusText = ((await statusCell.innerText()) || '').trim().toUpperCase();
+    expect(
+      /PENDING|TESTED|OUT OF STOCK/.test(statusText),
+      `status chip reads a fulfillment lane (got "${statusText}")`,
+    ).toBe(true);
+
+    const kpi = page.locator('[aria-label="Outbound attention"]').first();
+    await expect(kpi).toBeVisible();
+
+    const headerBand = table.locator('[data-grid-col-header]').first();
+    await expect(headerBand).toBeVisible();
+
+    // Scroll the page port far enough that the KPI leaves and the sticky
+    // column header docks under the pinned context chrome.
+    await scroll.evaluate((el) => {
+      el.scrollTop = Math.min(el.scrollHeight, 600);
+    });
+    await page.waitForTimeout(200);
+
+    const chromeBox = await chrome.boundingBox();
+    const headerBox = await headerBand.boundingBox();
+    const kpiBox = await kpi.boundingBox();
+    expect(chromeBox && headerBox, 'chrome + header measurable after scroll').toBeTruthy();
+    // KPI should have scrolled up out of (or mostly out of) the scrollport.
+    if (kpiBox && chromeBox) {
+      expect(kpiBox.y + kpiBox.height, 'KPI fully or mostly above the scroll top').toBeLessThanOrEqual(
+        chromeBox.y + chromeBox.height + 24,
+      );
+    }
+    if (chromeBox && headerBox) {
+      expect(
+        headerBox.y,
+        'sticky header sits at or just below pinned chrome',
+      ).toBeGreaterThanOrEqual(chromeBox.y + chromeBox.height - 2);
+      expect(
+        headerBox.y,
+        'sticky header does not float far below chrome',
+      ).toBeLessThan(chromeBox.y + chromeBox.height + 8);
+    }
   });
 });

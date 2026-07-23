@@ -2,6 +2,14 @@
 
 import { useCallback, useState } from 'react';
 import { Button } from '@/design-system/primitives';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/design-system/components/Dialog';
 
 interface DuplicateRoleDialogProps {
   open: boolean;
@@ -44,15 +52,22 @@ export function DuplicateRoleDialog({ open, sourceRoleId, sourceLabel, onClose, 
     }
   }, [sourceRoleId, label, key, onDuplicated, onClose]);
 
-  if (!open) return null;
-
   return (
-    <div className="fixed inset-0 z-modal flex items-center justify-center bg-scrim/60 p-4" onClick={() => { if (!busy) onClose(); }}>
-      <div className="w-full max-w-md rounded-2xl bg-surface-card p-5" onClick={(e) => e.stopPropagation()}>
-        <h2 className="text-lg font-semibold text-text-default">Duplicate role</h2>
-        <p className="mt-0.5 text-xs text-text-soft">Copies permissions and color from <b>{sourceLabel}</b>.</p>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (!next && !busy) onClose();
+      }}
+    >
+      <DialogContent hideClose className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Duplicate role</DialogTitle>
+          <DialogDescription>
+            Copies permissions and color from <b>{sourceLabel}</b>.
+          </DialogDescription>
+        </DialogHeader>
 
-        <div className="mt-5 space-y-3">
+        <div className="space-y-3">
           <label className="block">
             <span className="block text-role-caption font-semibold uppercase tracking-wider text-text-soft">New label</span>
             <input
@@ -74,15 +89,15 @@ export function DuplicateRoleDialog({ open, sourceRoleId, sourceLabel, onClose, 
           </label>
         </div>
 
-        {err && <div className="mt-3 rounded-lg bg-red-50 inset-field text-xs text-red-700">{err}</div>}
+        {err && <div className="rounded-lg bg-red-50 inset-field text-xs text-red-700">{err}</div>}
 
-        <div className="mt-5 flex justify-end gap-2">
+        <DialogFooter>
           <Button variant="secondary" size="sm" onClick={onClose} disabled={busy}>Cancel</Button>
-          <Button variant="primary" size="sm" onClick={submit} loading={busy} disabled={!key.trim()}>
+          <Button variant="primary" size="sm" onClick={submit} loading={busy} disabled={!KEY_RE.test(key.trim())}>
             Duplicate
           </Button>
-        </div>
-      </div>
-    </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

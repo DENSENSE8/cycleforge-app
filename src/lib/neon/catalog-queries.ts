@@ -81,6 +81,7 @@ const SEED_PLATFORMS: Array<[slug: string, label: string, tone: string, sort: nu
 const SEED_TYPES: Array<[slug: string, label: string, kind: string, isReturn: boolean, sort: number]> = [
   ['po', 'PO', 'both', false, 10],
   ['return', 'Return', 'receiving', true, 20],
+  ['repair', 'Repair', 'receiving', false, 25],
   ['trade_in', 'Trade In', 'receiving', false, 30],
   ['pickup', 'Pick Up', 'receiving', false, 40],
 ];

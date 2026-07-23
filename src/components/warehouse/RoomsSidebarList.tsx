@@ -12,11 +12,13 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { AnimatePresence, motion, Reorder, useReducedMotion } from 'framer-motion';
 import { toast } from '@/lib/toast';
 import { useLocations } from '@/hooks/useLocations';
+import { shouldClearUnknownRoomSelection } from '@/hooks/locations-cache';
 import { useBinsOverview } from '@/hooks/useBinsOverview';
 import { useRoomFinder } from './roomFinderContext';
 import { Check, GripVertical, Pencil, Plus, Trash2, X } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { Button, IconButton } from '@/design-system/primitives';
+import { requestConfirm } from '@/design-system/components/confirm';
 
 interface RoomSummary {
   key: string;
@@ -38,6 +40,7 @@ export function RoomsSidebarList() {
     rooms,
     roomNames,
     loading: roomsLoading,
+    fetching: roomsFetching,
     removeRoom,
     reorderRooms,
     roomMutating,
@@ -170,11 +173,22 @@ export function RoomsSidebarList() {
   }, [orderedSummaries, query]);
 
   // If the URL points at a room that no longer exists, clear the selection
-  // gracefully so the right pane shows the empty state.
+  // gracefully so the right pane shows the empty state. Skip while a room
+  // mutation or shared-cache refetch is in flight (rename race).
   useEffect(() => {
-    if (!selectedRoom || roomsLoading) return;
-    if (!allRoomNames.includes(selectedRoom)) selectRoom(null);
-  }, [selectedRoom, allRoomNames, roomsLoading, selectRoom]);
+    if (
+      !shouldClearUnknownRoomSelection({
+        selectedRoom,
+        allRoomNames,
+        roomsLoading,
+        roomMutating,
+        isFetching: roomsFetching,
+      })
+    ) {
+      return;
+    }
+    selectRoom(null);
+  }, [selectedRoom, allRoomNames, roomsLoading, roomMutating, roomsFetching, selectRoom]);
 
   const handleReorder = useCallback((order: string[]) => {
     setLocalOrder(order);
@@ -196,7 +210,11 @@ export function RoomsSidebarList() {
 
   const handleDelete = useCallback(
     async (name: string) => {
-      const ok = window.confirm(`Delete room "${name}"? Bins are preserved in history.`);
+      const ok = await requestConfirm({
+        description: `Delete room "${name}"? Bins are preserved in history.`,
+        tone: 'danger',
+        confirmLabel: 'Delete',
+      });
       if (!ok) return;
       setPendingDeletes((s) => new Set(s).add(name));
       try {

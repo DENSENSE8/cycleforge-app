@@ -25,7 +25,7 @@ export function useIncomingSummary(): IncomingSummary | null {
         issued: summaryData.issued,
         delivered_unopened: summaryData.delivered_unopened,
         delivered_not_unboxed: summaryData.delivered_not_unboxed ?? 0,
-        delivered_email: summaryData.delivered_email ?? 0,
+        delivered_unscanned_claims: summaryData.delivered_unscanned_claims ?? 0,
         arriving_today: summaryData.arriving_today,
         stalled: summaryData.stalled ?? 0,
         in_transit: summaryData.in_transit,

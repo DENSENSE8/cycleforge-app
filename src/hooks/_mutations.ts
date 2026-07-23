@@ -25,9 +25,8 @@
  *   - otherwise behaves exactly like `useMutation` (isPending, mutate,
  *     mutateAsync, onError, …).
  *
- * NOTE: the legacy local-state `useMutation` in `_data.ts` is a different,
- * pre-TanStack helper. Do not confuse the two — new code should reach for
- * `useResourceMutation`.
+ * Prefer `useResourceMutation` for new server mutations — TanStack is the
+ * house mutation SoT (isPending, targeted invalidation, HttpError envelope).
  */
 
 import { useCallback } from 'react';
@@ -37,6 +36,7 @@ import {
   type UseMutationOptions,
   type UseMutationResult,
 } from '@tanstack/react-query';
+import { requestConfirm } from '@/design-system/components/confirm';
 
 /** Error carrying the HTTP status so callers can branch on 401/403 vs 5xx. */
 export class HttpError extends Error {
@@ -113,12 +113,11 @@ export function useResourceMutation<TData = unknown, TVars = void>(
 }
 
 /**
- * Gate an async action behind a `window.confirm()` prompt.
+ * Gate an async action behind the Kinetic Ledger AlertDialog confirm host.
  *
- * Replaces the inline `if (!confirm('…')) return;` blocks that precede every
- * destructive mutation in the legacy components (revoke passkey/session,
- * reset PIN, delete line, …). Returns a stable callback that resolves to
- * `false` (and skips the action) when the user cancels, `true` otherwise.
+ * Replaces legacy `window.confirm()` blocks. Mounts via `ConfirmDialogHost`
+ * in Providers. Returns a stable callback that resolves to `false` (and skips
+ * the action) when the user cancels, `true` otherwise.
  *
  * Compose it directly with a mutation's `mutateAsync`:
  *
@@ -136,7 +135,8 @@ export function useConfirmedAction<Args extends unknown[]>(
 ): (...args: Args) => Promise<boolean> {
   return useCallback(
     async (...args: Args): Promise<boolean> => {
-      if (typeof window !== 'undefined' && !window.confirm(message)) return false;
+      const ok = await requestConfirm({ description: message, tone: 'danger' });
+      if (!ok) return false;
       await action(...args);
       return true;
     },

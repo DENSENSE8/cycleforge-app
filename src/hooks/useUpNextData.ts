@@ -255,7 +255,7 @@ export function useUpNextData({ techId, onAllCompleted }: UseUpNextDataOptions) 
   useAblyChannel(fbaChannelName, 'fba.shipment.changed', debouncedRefresh, !!fbaChannelName);
   useAblyChannel(fbaChannelName, 'fba.catalog.changed', debouncedRefresh, !!fbaChannelName);
 
-  // Mirror the real-time update strategy from PendingOrdersTable: respond to
+  // Mirror the real-time update strategy from the Pending grid: respond to
   // broadcast refresh events so data stays in sync without waiting for the poll.
   useEffect(() => {
     const handleRefresh = () => refreshRef.current();

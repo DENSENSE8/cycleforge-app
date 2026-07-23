@@ -1,9 +1,10 @@
 import type React from 'react';
 
 /**
- * Semantic color for a timeline dot / badge. The {@link EventTimeline} component
- * owns the tone→class map (single source of truth for timeline colors); callers
- * choose tones, never raw classes.
+ * Semantic color for timeline *badges* (exception / signed-by pills). The rail
+ * no longer uses tone dots — {@link EventTimeline} resolves mode glyphs via
+ * `sourceEventType` + `resolveTimelineGlyph`. Callers choose tones for badges,
+ * never raw classes.
  */
 export type TimelineTone = 'default' | 'info' | 'success' | 'warning' | 'danger' | 'muted';
 
@@ -98,7 +99,7 @@ export interface TimelineItem {
   at: string | null;
   /** Primary line. */
   title: string;
-  /** Dot color (default 'info'). */
+  /** Badge / legacy tone (default 'info'). Rail markers ignore this. */
   tone?: TimelineTone;
   /** Secondary line (location / detail), rendered muted under the title. */
   subtitle?: string;
@@ -116,8 +117,16 @@ export interface TimelineItem {
   actor?: string;
   /** Optional pills below the title (signed-by, exception, …). */
   badges?: TimelineItemBadge[];
-  /** Optional leading glyph rendered in place of the dot. */
+  /**
+   * Rare escape: custom rail glyph. Prefer `sourceEventType` +
+   * `resolveTimelineGlyph` — do not use this for domain mode identity.
+   */
   icon?: React.ReactNode;
+  /**
+   * Deep-link for the rail mode glyph (Unbox / Support / History / …).
+   * When omitted, {@link EventTimeline} falls back to `ref.href` if present.
+   */
+  href?: string;
   /**
    * Inline photo thumbnails for this event (unbox / testing captures). Rendered
    * as a horizontal thumbnail strip under the row; omit ⇒ no media block. The
@@ -126,16 +135,15 @@ export interface TimelineItem {
   media?: TimelineMedia[];
   /**
    * The adapter's raw source event-type string (e.g. `inventory_events.event_type`
-   * — 'SHIPPED', 'RETURNED', …), when the source spine has one. Deliberately
-   * NOT domain vocabulary the renderer or a generic consumer should switch on
-   * — {@link EventTimeline} never reads this field. It exists so a specific,
-   * already-domain-aware merge/section component (e.g. `SerialJourneySection`
-   * counting a serial's ship/return round trips) can key off a stable enum
-   * value instead of pattern-matching the display `title` string, which is
-   * free to change without warning. Only adapters backed by a real event-type
-   * enum set it (`inventoryEventsToTimeline`, `opsEventsToTimeline`); the
-   * others (SAL activity types, audit actions, carrier status categories,
-   * warranty events) leave it undefined.
+   * — 'SHIPPED', 'RETURNED', …), when the source spine has one.
+   *
+   * {@link EventTimeline} reads this only to resolve the rail mode glyph via
+   * `resolveTimelineGlyph` (never for titles). Domain-aware merge helpers
+   * (e.g. `SerialJourneySection` round-trip counts) may also key off it —
+   * never pattern-match the display `title` string.
+   *
+   * Adapters should set this whenever the source has a stable type enum so the
+   * rail never falls back to the generic signal glyph.
    */
   sourceEventType?: string;
 }

@@ -1,9 +1,11 @@
 # Receiving-scans → STN link plan (Phase 6 detail)
 
-**FINAL STATUS: MOSTLY DONE (72%). Status verified 2026-06-28.**
-The `linkScanToStn` get-or-create is now UN-GATED / always-on (the
-`RECEIVING_UNIFIED_INBOUND` gate was removed — the "flip the flag" rollout step is
-superseded). Remaining: S5 read cutover (design decision) + S6 column drop.
+**FINAL STATUS: MOSTLY DONE (72%). Status verified 2026-06-28; enrichment default ON 2026-07-22.**
+The `linkScanToStn` get-or-create is UN-GATED / always-on. Delivered-unscanned
+SKU/PO enrichment no longer waits on `RECEIVING_UNIFIED_INBOUND` (list path is
+always enriched; the flag defaults ON for remaining lookup-po LPN stamp). The
+old "flip the flag" ops step is superseded. Remaining: S5 read cutover (design
+decision) + S6 column drop.
 
 Status: step 1 implemented 2026-06-08 · Owner: receiving
 Parent: [receiving-triage-streamline-plan.md](./receiving-triage-streamline-plan.md) §6

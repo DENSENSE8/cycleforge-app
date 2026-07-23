@@ -1,10 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { renameRoom, setRoomZoneLetter, softDeleteRoom } from '@/lib/neon/location-queries';
+import {
+  getRooms,
+  renameRoom,
+  setRoomZoneLetter,
+  softDeleteRoom,
+  type Location,
+} from '@/lib/neon/location-queries';
 import { requireRoutePerm } from '@/lib/auth/dynamic-route-guard';
+
+function roomSnapshot(rooms: Location[], name: string): Location | null {
+  const key = name.trim();
+  return (
+    rooms.find(
+      (r) =>
+        !r.row_label &&
+        !r.col_label &&
+        ((r.room || '').trim() === key || (r.name || '').trim() === key),
+    ) ?? null
+  );
+}
 
 /**
  * PATCH /api/rooms/[room]
- * Body: { name: string }   — rename the room everywhere it appears.
+ * Body: { name?: string, zoneLetter?: string | null }
+ * Returns the updated room snapshot so clients can write the shared cache
+ * before a refetch (closes the rename ↔ ?room= race).
  */
 export async function PATCH(
   req: NextRequest,
@@ -46,9 +66,10 @@ export async function PATCH(
       didRename = true;
     }
 
+    const targetName = didRename ? newName : oldName;
+
     let letterResult: { ok: true } | { ok: false; reason: 'duplicate' | 'not_found' } | null = null;
     if (zoneLetter !== undefined) {
-      const targetName = didRename ? newName : oldName;
       // Tenant-scoped: setRoomZoneLetter gates its UPDATE WHERE clauses on
       // organization_id so we never re-letter another tenant's room.
       letterResult = await setRoomZoneLetter(targetName, zoneLetter, orgId);
@@ -67,9 +88,14 @@ export async function PATCH(
     }
 
     if (!didRename && letterResult === null) {
-      return NextResponse.json({ success: true, updated: 0, barcodesRekeyed: 0 });
+      return NextResponse.json({ success: true, updated: 0, barcodesRekeyed: 0, room: null });
     }
-    return NextResponse.json({ success: true, ...renameResult });
+
+    // Authoritative parent row for shared-cache setQueryData (before refetch).
+    const rooms = await getRooms(orgId);
+    const room = roomSnapshot(rooms, targetName);
+
+    return NextResponse.json({ success: true, ...renameResult, room });
   } catch (err: any) {
     if (err?.code === '23505') {
       return NextResponse.json(

@@ -16,6 +16,7 @@ import { useState } from 'react';
 import { toast } from '@/lib/toast';
 import { Check, Loader2, Pencil, Plus, Trash2, X } from '@/components/Icons';
 import { Button, IconButton } from '@/design-system/primitives';
+import { requestConfirm } from '@/design-system/components/confirm';
 import type { PlatformAccountRow } from '@/lib/neon/catalog-queries';
 import { usePlatformAccountCatalog, usePlatformCatalog, useInvalidateCatalog } from '@/hooks/useCatalog';
 
@@ -74,7 +75,14 @@ export function PlatformAccountsManager() {
 
   async function setActive(a: PlatformAccountRow, next: boolean) {
     if (busyId != null) return;
-    if (!next && !window.confirm(`Remove "${a.label}"? It will stop appearing as a channel.`)) return;
+    if (!next) {
+      const ok = await requestConfirm({
+        description: `Remove "${a.label}"? It will stop appearing as a channel.`,
+        tone: 'danger',
+        confirmLabel: 'Remove',
+      });
+      if (!ok) return;
+    }
     setBusyId(a.id);
     await call(next ? 'PATCH' : 'DELETE', `/${a.id}`, next ? { isActive: true } : undefined);
     setBusyId(null);

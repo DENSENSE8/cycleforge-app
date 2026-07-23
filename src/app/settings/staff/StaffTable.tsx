@@ -8,8 +8,16 @@
  * /api/admin/staff/list after each mutation so we don't drift on errors.
  */
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button } from '@/design-system/primitives';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/design-system/components/Dialog';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 
 interface StaffRow {
@@ -196,15 +204,14 @@ export function StaffTable({ initialStaff }: StaffTableProps) {
         </table>
       </div>
 
-      {inviteOpen && (
-        <InviteModal
-          onClose={() => setInviteOpen(false)}
-          onInvited={async () => {
-            setInviteOpen(false);
-            await refresh();
-          }}
-        />
-      )}
+      <InviteModal
+        open={inviteOpen}
+        onClose={() => setInviteOpen(false)}
+        onInvited={async () => {
+          setInviteOpen(false);
+          await refresh();
+        }}
+      />
     </>
   );
 }
@@ -265,15 +272,24 @@ function AuthPolicyCell({
 }
 
 interface InviteModalProps {
+  open: boolean;
   onClose: () => void;
   onInvited: () => void;
 }
 
-function InviteModal({ onClose, onInvited }: InviteModalProps) {
+function InviteModal({ open, onClose, onInvited }: InviteModalProps) {
   const [form, setForm] = useState({ name: '', role: 'packer', email: '' });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [enrollmentUrl, setEnrollmentUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    setForm({ name: '', role: 'packer', email: '' });
+    setBusy(false);
+    setError(null);
+    setEnrollmentUrl(null);
+  }, [open]);
 
   const submit = useCallback(async () => {
     if (!form.email.trim()) {
@@ -310,17 +326,22 @@ function InviteModal({ onClose, onInvited }: InviteModalProps) {
   }, [form]);
 
   return (
-    <div className="fixed inset-0 z-modal flex items-center justify-center px-4">
-      {/* ds-raw-button: full-bleed modal scrim/overlay dismiss target, not a DS Button */}
-      <button type="button" aria-label="Close" onClick={onClose} className="absolute inset-0 bg-scrim/40 backdrop-blur-sm" />
-      <div className="relative w-full max-w-md rounded-2xl border border-border-soft bg-surface-card p-5 shadow-2xl">
-        <h2 className="text-base font-semibold text-text-default">Invite a teammate</h2>
-        <p className="mt-1 text-role-caption text-text-soft">
-          They&apos;ll get an email link to join and set a password. They can add a station PIN later from Settings → Security.
-        </p>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (!next && !busy) onClose();
+      }}
+    >
+      <DialogContent hideClose className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Invite a teammate</DialogTitle>
+          <DialogDescription>
+            They&apos;ll get an email link to join and set a password. They can add a station PIN later from Settings → Security.
+          </DialogDescription>
+        </DialogHeader>
 
         {enrollmentUrl ? (
-          <div className="mt-4 space-y-3">
+          <div className="space-y-3">
             <div className="rounded-xl bg-emerald-50 px-3 py-2 text-role-caption text-emerald-700">Invite created.</div>
             <label className="block">
               <span className="mb-1 block text-role-caption font-medium uppercase tracking-[0.08em] text-text-soft">Enrollment link</span>
@@ -331,14 +352,14 @@ function InviteModal({ onClose, onInvited }: InviteModalProps) {
                 onFocus={(e) => e.currentTarget.select()}
               />
             </label>
-            <div className="flex justify-end">
+            <DialogFooter>
               <Button variant="brand" size="sm" onClick={onInvited}>
                 Done
               </Button>
-            </div>
+            </DialogFooter>
           </div>
         ) : (
-          <div className="mt-4 space-y-3">
+          <div className="space-y-3">
             <label className="block">
               <span className="mb-1 block text-role-caption font-medium uppercase tracking-[0.08em] text-text-soft">Name</span>
               <input
@@ -372,7 +393,7 @@ function InviteModal({ onClose, onInvited }: InviteModalProps) {
             {error && (
               <div className="rounded-lg bg-red-50 px-2 py-1.5 text-role-caption font-medium text-red-700">{error}</div>
             )}
-            <div className="flex items-center justify-end gap-2">
+            <DialogFooter>
               <Button variant="secondary" size="sm" onClick={onClose}>
                 Cancel
               </Button>
@@ -384,10 +405,10 @@ function InviteModal({ onClose, onInvited }: InviteModalProps) {
               >
                 {busy ? 'Inviting…' : 'Send invite'}
               </Button>
-            </div>
+            </DialogFooter>
           </div>
         )}
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

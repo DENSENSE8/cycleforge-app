@@ -45,6 +45,8 @@ export function unitPhotosToTimeline(rows: UnitTimelinePhotoRow[]): TimelineItem
       tone: meta.tone,
       subtitle: `${list.length} photo${list.length === 1 ? '' : 's'}`,
       media: sorted.map((r) => ({ photoId: r.photoId, thumbUrl: r.thumbUrl, fullUrl: r.fullUrl })),
+      sourceEventType:
+        source === 'unbox' ? 'UNBOX_PHOTOS' : source === 'testing' ? 'TEST_PHOTOS' : 'PACK_PHOTOS',
     });
   }
   return items;

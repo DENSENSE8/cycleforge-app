@@ -654,7 +654,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
             if (foundSalId) publishActivityLogged({ organizationId: ctx.organizationId, id: foundSalId, station: 'PACK', activityType: 'PACK_COMPLETED', staffId, scanRef: order.tracking_number ?? scanInput, fnsku: null, source: 'packing-logs' }).catch(() => {});
             if (foundRecord.id) await prependToPackerLogsCache(staffId, foundRecord, ctx.organizationId);
 
-            // Broadcast to all devices so UpNext + PendingOrdersTable update instantly
+            // Broadcast to all devices so UpNext + Pending grid update instantly
             await Promise.allSettled([
                 publishOrderChanged({ organizationId: ctx.organizationId, orderIds: [order.id], source: 'packing-logs' }),
                 publishPackerLogChanged({

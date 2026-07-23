@@ -1,23 +1,28 @@
 'use client';
 
 /**
- * Search order-detail Overview — a Shopify-style two-column snapshot (default
- * tab). The wide main column leads with what matters most: packing photos →
- * shipping → product (last). The narrow side column carries order meta + dates.
- * Packing photos reuse the already-built `PhotoGallery` (fullscreen viewer);
- * deep tabs keep the full per-facet detail.
+ * Search order-detail Overview — presence-driven snapshot (default tab).
+ * Bookmark owns identity (order # · title · chips); Overview only mounts
+ * facts/cards that have data. Packing photos appear when captured; empty
+ * teaching states live on deep tabs, not here.
  */
 
-import { useOrderChannelLabel } from '@/hooks/useCatalog';
-import { conditionLabel } from '@/lib/conditions';
-import type { ShippedOrder } from '@/types/orders';
-import { formatDateTimePST } from '@/utils/date';
-import { PhotoGallery, type PhotoGalleryInput } from '@/components/shipped/PhotoGallery';
+import { AlertTriangle } from '@/components/Icons';
+import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import {
+  isSearchOrderFactEmpty,
+  isShipByBeforeCreated,
+} from '@/components/dashboard/search/search-order-overview-presence';
 import {
   SearchOrderCard,
   SearchOrderFactList,
   SearchOrderFactRow,
 } from '@/components/dashboard/search/SearchOrderTabFrame';
+import { PhotoGallery, type PhotoGalleryInput } from '@/components/shipped/PhotoGallery';
+import type { ShippedOrder } from '@/types/orders';
+import { formatDateTimePST } from '@/utils/date';
+import { cn } from '@/utils/_cn';
+import type { ReactNode } from 'react';
 
 function firstNonEmpty(...values: Array<string | null | undefined>): string {
   for (const v of values) {
@@ -27,20 +32,14 @@ function firstNonEmpty(...values: Array<string | null | undefined>): string {
   return '';
 }
 
+function anyPresent(...values: ReactNode[]): boolean {
+  return values.some((v) => !isSearchOrderFactEmpty(v));
+}
+
 export function SearchOrderOverviewTab({ order }: { order: ShippedOrder }) {
-  const orderChannelLabel = useOrderChannelLabel();
-  const platform = orderChannelLabel(order.order_id || '', order.account_source);
   const tracking = firstNonEmpty(
     order.shipping_tracking_number,
     ...(order.tracking_numbers ?? []),
-  );
-  const condition = order.condition ? conditionLabel(order.condition, 'table') : '';
-  const status = firstNonEmpty(
-    order.latest_status_label,
-    order.shipment_status,
-    order.is_delivered ? 'Delivered' : '',
-    order.is_shipped ? 'Shipped' : '',
-    'Open',
   );
   const sale =
     order.sale_amount != null && order.sale_amount !== ''
@@ -50,98 +49,136 @@ export function SearchOrderOverviewTab({ order }: { order: ShippedOrder }) {
   const photos = (order.packer_photos_url ?? []) as PhotoGalleryInput[];
   const hasPhotos = Array.isArray(photos) && photos.length > 0;
 
+  const latestEvent = order.latest_event_at ? formatDateTimePST(order.latest_event_at) : '';
+  const shipConfirmed = order.ship_confirmed_at
+    ? formatDateTimePST(order.ship_confirmed_at)
+    : '';
+  const created = order.created_at ? formatDateTimePST(order.created_at) : '';
+  const shipByRaw = order.ship_by_date ? formatDateTimePST(order.ship_by_date) : '';
+  const packedAt = order.packed_at ? formatDateTimePST(order.packed_at) : '';
+  const shipByAnomaly = isShipByBeforeCreated(order.ship_by_date, order.created_at);
+
+  const hasShipping = anyPresent(
+    tracking,
+    order.carrier,
+    order.shipment_status,
+    order.latest_status_label,
+    latestEvent,
+    shipConfirmed,
+  );
+  // Title / condition live in the bookmark — Overview only adds catalog deltas.
+  const hasProduct = anyPresent(
+    order.sku,
+    order.item_number,
+    order.serial_number,
+    order.quantity,
+    sale,
+  );
+  const hasDates = anyPresent(created, shipByRaw, packedAt, order.packed_by_name);
+  const hasSide = hasDates;
+  const hasMain = hasPhotos || hasShipping || hasProduct;
+
+  if (!hasMain && !hasSide) {
+    return (
+      <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-8 text-center">
+        <p className="text-role-caption font-semibold text-text-muted">No overview facts yet</p>
+        <p className="mt-1 text-role-micro font-medium text-text-faint">
+          Open a section tab for the full schema, or wait for packout / ship-out data.
+        </p>
+      </div>
+    );
+  }
+
   return (
-    <div>
-      {/* Identity (order # · title · chips) lives in the top bookmark; Overview
-          leads straight into the two-column snapshot. */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {/* Main column — importance order: photos → shipping → product */}
-        <div className="stack-section lg:col-span-2">
-            <SearchOrderCard
-              title="Packing photos"
-              description="Proof of packout for this order."
-            >
-              {hasPhotos ? (
-                <PhotoGallery
-                  photos={photos}
-                  orderId={order.order_id}
-                  launcherLayout="thumbnails"
-                />
-              ) : (
-                <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-8 text-center">
-                  <p className="text-role-caption font-semibold text-text-muted">
-                    No packing photos
-                  </p>
-                  <p className="mt-1 text-role-micro font-medium text-text-faint">
-                    Photos appear here once the packer captures the packout.
-                  </p>
-                </div>
-              )}
+    <div
+      className={cn(
+        'grid grid-cols-1 gap-6',
+        hasMain && hasSide && 'lg:grid-cols-3',
+      )}
+    >
+      {hasMain ? (
+        <div className={cn('stack-section', hasSide && 'lg:col-span-2')}>
+          {hasPhotos ? (
+            <SearchOrderCard title="Packing photos">
+              <PhotoGallery
+                photos={photos}
+                orderId={order.order_id}
+                launcherLayout="thumbnails"
+              />
             </SearchOrderCard>
+          ) : null}
 
-            <SearchOrderCard title="Shipping" description="Carrier, tracking, and ship-out.">
+          {hasShipping ? (
+            <SearchOrderCard title="Shipping">
               <SearchOrderFactList>
-                <SearchOrderFactRow label="Tracking" value={tracking} mono span />
-                <SearchOrderFactRow label="Carrier" value={order.carrier} />
-                <SearchOrderFactRow label="Shipment status" value={order.shipment_status} />
-                <SearchOrderFactRow label="Latest status" value={order.latest_status_label} />
+                <SearchOrderFactRow label="Tracking" value={tracking} mono span omitWhenEmpty />
+                <SearchOrderFactRow label="Carrier" value={order.carrier} omitWhenEmpty />
                 <SearchOrderFactRow
-                  label="Latest event"
-                  value={order.latest_event_at ? formatDateTimePST(order.latest_event_at) : ''}
+                  label="Shipment status"
+                  value={order.shipment_status}
+                  omitWhenEmpty
                 />
                 <SearchOrderFactRow
-                  label="Ship confirmed"
-                  value={
-                    order.ship_confirmed_at ? formatDateTimePST(order.ship_confirmed_at) : ''
-                  }
+                  label="Latest status"
+                  value={order.latest_status_label}
+                  omitWhenEmpty
                 />
+                <SearchOrderFactRow label="Latest event" value={latestEvent} omitWhenEmpty />
+                <SearchOrderFactRow label="Ship confirmed" value={shipConfirmed} omitWhenEmpty />
               </SearchOrderFactList>
             </SearchOrderCard>
+          ) : null}
 
-            <SearchOrderCard title="Product" description="Catalog and unit identity.">
+          {hasProduct ? (
+            <SearchOrderCard title="Product">
               <SearchOrderFactList>
-                <SearchOrderFactRow label="Title" value={order.product_title} span />
-                <SearchOrderFactRow label="SKU" value={order.sku} mono />
-                <SearchOrderFactRow label="Item #" value={order.item_number} mono />
-                <SearchOrderFactRow label="Condition" value={condition} />
-                <SearchOrderFactRow label="Serial" value={order.serial_number} mono />
-                <SearchOrderFactRow label="Quantity" value={order.quantity} />
-                <SearchOrderFactRow label="Sale amount" value={sale} />
+                <SearchOrderFactRow label="SKU" value={order.sku} mono omitWhenEmpty />
+                <SearchOrderFactRow label="Item #" value={order.item_number} mono omitWhenEmpty />
+                <SearchOrderFactRow
+                  label="Serial"
+                  value={order.serial_number}
+                  mono
+                  omitWhenEmpty
+                />
+                <SearchOrderFactRow label="Quantity" value={order.quantity} omitWhenEmpty />
+                <SearchOrderFactRow label="Sale amount" value={sale} omitWhenEmpty />
               </SearchOrderFactList>
             </SearchOrderCard>
-          </div>
-
-          {/* Side column — order meta + handling */}
-          <div className="stack-section">
-            <SearchOrderCard title="Order">
-              <SearchOrderFactList cols={1}>
-                <SearchOrderFactRow label="Order #" value={order.order_id} mono />
-                <SearchOrderFactRow label="Platform" value={platform} />
-                <SearchOrderFactRow label="Status" value={status} />
-                <SearchOrderFactRow label="Condition" value={condition} />
-                <SearchOrderFactRow label="Sale amount" value={sale} />
-              </SearchOrderFactList>
-            </SearchOrderCard>
-
-            <SearchOrderCard title="Dates & handling">
-              <SearchOrderFactList cols={1}>
-                <SearchOrderFactRow
-                  label="Created"
-                  value={order.created_at ? formatDateTimePST(order.created_at) : ''}
-                />
-                <SearchOrderFactRow
-                  label="Ship by"
-                  value={order.ship_by_date ? formatDateTimePST(order.ship_by_date) : ''}
-                />
-                <SearchOrderFactRow
-                  label="Packed at"
-                  value={order.packed_at ? formatDateTimePST(order.packed_at) : ''}
-                />
-                <SearchOrderFactRow label="Packed by" value={order.packed_by_name} />
-              </SearchOrderFactList>
-            </SearchOrderCard>
-          </div>
+          ) : null}
         </div>
+      ) : null}
+
+      {hasSide ? (
+        <div className="stack-section">
+          <SearchOrderCard title="Dates & handling">
+            <SearchOrderFactList cols={1}>
+              <SearchOrderFactRow label="Created" value={created} omitWhenEmpty />
+              <SearchOrderFactRow
+                label="Ship by"
+                value={
+                  shipByRaw ? (
+                    shipByAnomaly ? (
+                      <HoverTooltip label="Ship-by is before created — check marketplace clock / import.">
+                        <span className="inline-flex items-center gap-1.5 text-text-warning">
+                          <AlertTriangle className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                          {shipByRaw}
+                        </span>
+                      </HoverTooltip>
+                    ) : (
+                      shipByRaw
+                    )
+                  ) : (
+                    ''
+                  )
+                }
+                omitWhenEmpty
+              />
+              <SearchOrderFactRow label="Packed at" value={packedAt} omitWhenEmpty />
+              <SearchOrderFactRow label="Packed by" value={order.packed_by_name} omitWhenEmpty />
+            </SearchOrderFactList>
+          </SearchOrderCard>
+        </div>
+      ) : null}
     </div>
   );
 }

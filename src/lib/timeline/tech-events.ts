@@ -86,6 +86,7 @@ export function techEventsToTimeline(rows: TechTimelineRow[]): TimelineItem[] {
       subtitle,
       ref,
       actor: r.actor_name ?? undefined,
+      sourceEventType: r.kind,
     };
   });
 }

@@ -21,7 +21,18 @@ test('resolveTimelineSections: empty anchor → no content', () => {
   assert.equal(plan.hasContent, false);
   assert.equal(plan.showCarrier, false);
   assert.equal(plan.showSerials, false);
+  assert.equal(plan.showActivity, false);
   assert.equal(plan.carrierVia, null);
+});
+
+test('resolveTimelineSections: activity-only → has content and showActivity', () => {
+  const plan = resolveTimelineSections({
+    activity: { items: [], loading: false },
+  });
+  assert.equal(plan.showActivity, true);
+  assert.equal(plan.hasContent, true);
+  assert.equal(plan.showSerials, false);
+  assert.equal(plan.showCarrier, false);
 });
 
 test('resolveTimelineSections: poId prefers PO carrier path', () => {

@@ -33,9 +33,9 @@ import { normalizeCopyText } from '@/lib/copy-chip-format';
  *   • Tracking empty — paste last in-app tracking clipboard entry when present
  *
  * Grid surfaces (`layout="cells"` / {@link useOrderIdentityCellNodes}) render
- * the platform as a FIXED-footprint brand mark ({@link PlatformMark} — vendored
- * monochrome icon or lettermark), never a variable-width marketplace name; the
- * label lives in tooltip + sr-only.
+ * the platform as a FIXED-footprint brand mark ({@link PlatformMark} — bare
+ * monochrome channel icon / lettermark), never a variable-width
+ * marketplace name; the label lives in tooltip + sr-only.
  */
 export interface OrderIdentityChipsProps {
   platformLabel: string;
@@ -272,8 +272,8 @@ export function useOrderIdentityCellNodes({
           if (productPageUrl && !isFba) openExternal(productPageUrl);
         }}
         className={cn(
-          'ds-raw-button inline-flex items-center justify-center rounded-md',
-          productPageUrl && !isFba ? 'hover:bg-surface-hover' : 'cursor-default',
+          'ds-raw-button inline-flex items-center justify-center',
+          productPageUrl && !isFba ? 'rounded-sm hover:bg-surface-hover' : 'cursor-default',
         )}
       >
         <PlatformMark

@@ -379,7 +379,7 @@ export default function StationPacking({
           </div>
         ) : null}
 
-        {/* Flush 40px scan band — same ScanBandShell as Unbox / Shipping / Testing. */}
+        {/* Flush 40px scan band — same ScanBandShell + rail leading column as Unbox / Testing / Shipping. */}
         <ScanBandShell themeColor={themeColor}>
           <ThemedStationScanBar
             value={inputValue}
@@ -390,6 +390,8 @@ export default function StationPacking({
             placeholder="Tracking, unit QR, FNSKU, FBA, SKU"
             icon={<Barcode className="h-[17px] w-[17px]" />}
             iconClassName={activeColor.text}
+            // Align icon/text to SIDEBAR_SCAN_DOCK_LEADING_ROW (Unbox/Testing SoT) — not MasterNav deep inset.
+            leadingColumn="rail"
             autoFocus
             isResolving={isLoading}
             className="w-full"

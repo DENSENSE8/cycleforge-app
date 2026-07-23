@@ -1,5 +1,17 @@
 'use client';
 
+/**
+ * Sidebar surface for `/products`. Hosts:
+ *   - View toggle — Catalog · Manuals (default) · Labels · Pairing · QC · Kit.
+ *   - Catalog: short MDM blurb (list lives in the main pane).
+ *   - Manuals: LibraryBrowser (search + file tree).
+ *   - Labels: Printed recent rail only (catalog browse lives in the right-pane
+ *     workbench — Axis-5 Unbox / outbound Labels split).
+ *   - Pairing / QC / Kit: sidebar pickers driving the right pane via URL.
+ *
+ * Mounted by DashboardSidebar when routeKey === 'products'.
+ */
+
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { sidebarHeaderPillRowClass, SIDEBAR_GUTTER } from '@/components/layout/header-shell';
@@ -7,17 +19,14 @@ import { SidebarShell } from '@/components/layout/SidebarShell';
 import { appChromeClass } from '@/design-system/tokens/app-surface';
 import { HorizontalButtonSlider, type HorizontalSliderItem } from '@/components/ui/HorizontalButtonSlider';
 import { useMasterNavEnabled } from '@/components/sidebar/master-nav';
-import { useLabelRecents } from '@/hooks/useLabelRecents';
 import { useSkuCatalogSearch, type SkuCatalogItem } from '@/hooks/useSkuCatalogSearch';
-import { Printer, FileText, Link2, Check, Clock, History, Package, PackageOpen, ShoppingCart, Star, Sparkles, List } from '@/components/Icons';
+import { Printer, FileText, Link2, Check, Package, PackageOpen, ShoppingCart, Star, Sparkles, List, Tags } from '@/components/Icons';
 import { PairingQueueList } from '@/components/products/pairing/PairingQueueList';
 import { PairingUnmatchedSection } from '@/components/products/pairing/PairingUnmatchedSection';
 import { AddOrPairSkuModal } from '@/components/products/pairing/AddOrPairSkuModal';
 import type { PairingQueueItem, PairingSort, UnmappedPlatformId } from '@/components/products/pairing/types';
 import { LibraryBrowser } from '@/components/manuals/LibraryBrowser';
-import { RecentlyPrintedList, recentLookupKey } from '@/components/labels/RecentlyPrintedList';
-import type { LabelPrintFeedItem } from '@/hooks/useLabelPrintFeed';
-import { UnitHistoryFinder } from '@/components/labels/UnitHistoryFinder';
+import { ProductLabelsRecentRail } from '@/components/labels/ProductLabelsRecentRail';
 import { SearchBar } from '@/components/ui/SearchBar';
 
 const PAIRING_SORT_ITEMS: HorizontalSliderItem[] = [
@@ -32,61 +41,27 @@ function parsePairingSort(raw: string | null): PairingSort {
   return 'volume';
 }
 
-type View = 'manuals' | 'labels' | 'pairing' | 'qc' | 'kit';
+type View = 'manuals' | 'labels' | 'pairing' | 'qc' | 'kit' | 'catalog';
 function parseView(raw: string | null): View {
   if (raw === 'labels') return 'labels';
   if (raw === 'pairing') return 'pairing';
   if (raw === 'qc') return 'qc';
   if (raw === 'kit') return 'kit';
-  // Manuals is the default landing view (folds in the retired /manuals route).
+  if (raw === 'catalog') return 'catalog';
   return 'manuals';
 }
 
-// Sub-tabs under the Labels view. `print` is the default and stays out of
-// the URL to keep deep links clean; `recent` and `history` are explicit.
-export type LabelsSubView = 'print' | 'recent' | 'history';
-export function parseLabelsView(raw: string | null): LabelsSubView {
-  if (raw === 'recent') return 'recent';
-  if (raw === 'history') return 'history';
-  return 'print';
-}
-
-const LABELS_SUB_VIEW_ITEMS: HorizontalSliderItem[] = [
-  { id: 'print',   label: 'Products', icon: Package },
-  { id: 'recent',  label: 'Recent',   icon: Clock },
-  { id: 'history', label: 'History',  icon: History },
-];
-
-/**
- * Sidebar surface for `/products`. Hosts:
- *   - View toggle — Manuals (default) · Labels · Pairing · QC. Writes `?view=`.
- *   - Manuals view (default): renders <SkuCatalogSidebar> which owns its own
- *     search + sort + mode pills + selected-product accordion sections.
- *   - Labels view: second pill row (Print · Recent · History) writes
- *     `?labelsView=`. Print is the default sub-view and shows the SearchBar
- *     + Zoho product picker list; picking a row dispatches `sku:fill` for
- *     the MultiSkuSnBarcode workspace (which now owns the print/log/reprint
- *     mode switcher at the top of its display). Recent and History
- *     sub-views host their own bodies (no shared search bar).
- *   - Pairing view: PairingQueueList; selection writes ?sku=.
- *
- * Mounted by DashboardSidebar when routeKey === 'products'. The right-pane
- * workspace and this panel both read the same URL searchParams, so no
- * prop-drilling or context is needed.
- */
 export function ProductsSidebarPanel() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const masterNavEnabled = useMasterNavEnabled();
   const view = parseView(searchParams.get('view'));
-  const labelsView = parseLabelsView(searchParams.get('labelsView'));
   const currentQuery = searchParams.get('q') || '';
   const pairingSort = parsePairingSort(searchParams.get('sort'));
 
-  const { recents } = useLabelRecents();
-
   const viewItems = useMemo<HorizontalSliderItem[]>(
     () => [
+      { id: 'catalog', label: 'Catalog',       icon: Tags },
       { id: 'manuals', label: 'Manuals',       icon: FileText },
       { id: 'labels',  label: 'Labels', icon: Printer },
       { id: 'pairing', label: 'Pairing',       icon: Link2 },
@@ -98,7 +73,6 @@ export function ProductsSidebarPanel() {
 
   const [searchInput, setSearchInput] = useState(currentQuery);
   useEffect(() => {
-    // Sync external URL changes back into the input (e.g. browser back).
     setSearchInput(currentQuery);
   }, [currentQuery]);
 
@@ -124,36 +98,12 @@ export function ProductsSidebarPanel() {
   );
 
   const handleViewChange = useCallback(
-    // Manuals is the default — drop the param when selected so the URL stays clean.
     (id: string) => updateParams({ view: id === 'manuals' ? null : id }),
     [updateParams],
   );
 
   const handlePairingSortChange = useCallback(
-    // 'volume' is the default — drop the param when selected so the URL stays clean.
     (id: string) => updateParams({ sort: id === 'volume' ? null : id }),
-    [updateParams],
-  );
-
-  const handleLabelsSubViewChange = useCallback(
-    // 'print' is the default — drop the param when selected so the URL stays clean.
-    // Clear any selected unit (`historyId`) so each sub-tab starts at its own
-    // prompt/empty state instead of carrying over a stale detail selection.
-    (id: string) => updateParams({ labelsView: id === 'print' ? null : id, historyId: null }),
-    [updateParams],
-  );
-
-  const handleProductPick = useCallback((sku: string) => {
-    window.dispatchEvent(new CustomEvent('sku:fill', { detail: { sku } }));
-  }, []);
-
-  // Recent row → select the printed unit; the main pane (UnitHistoryWorkspace)
-  // reads `?historyId=` and loads its full detail. No printing happens here.
-  const handleRecentSelect = useCallback(
-    (item: LabelPrintFeedItem) => {
-      const key = recentLookupKey(item);
-      if (key) updateParams({ historyId: key });
-    },
     [updateParams],
   );
 
@@ -162,23 +112,14 @@ export function ProductsSidebarPanel() {
   const isPairing = view === 'pairing';
   const isQc = view === 'qc';
   const isKit = view === 'kit';
-  // Labels → History sub-view: the top search bar doubles as the unit-history
-  // scan/paste input (Enter dispatches a lookup the History list resolves).
-  const isHistory = isLabels && labelsView === 'history';
+  const isCatalog = view === 'catalog';
 
-  const searchPlaceholder = isHistory
-    ? 'Scan or paste a DataMatrix…'
-    : isLabels
-      ? 'Filter SKU, title…'
-      : isPairing
-        ? 'Filter SKU, title, or any platform ID…'
-        : isManuals
-          ? 'Fuzzy filter folders & manuals…'
-          : 'Filter products…';
+  const searchPlaceholder = isPairing
+    ? 'Filter SKU, title, or any platform ID…'
+    : isManuals
+      ? 'Fuzzy filter folders & manuals…'
+      : 'Filter products…';
 
-  // Manuals view = the file-tree library browser (sidebar) + PDF viewer
-  // (main pane). QC delegates to the main pane. Labels/Pairing have their
-  // own sidebar bodies below.
   return (
     <SidebarShell
       className={appChromeClass}
@@ -197,42 +138,22 @@ export function ProductsSidebarPanel() {
               />
             </div>
           ) : null}
-          {/* In-context list filter — local base SearchBar. The global header
-              pill stays global. History is a submit-to-scan input. */}
-          <div className={`${SIDEBAR_GUTTER} pt-3 pb-2`}>
-            <SearchBar
-              size="compact"
-              variant="blue"
-              value={searchInput}
-              onChange={isHistory ? setSearchInput : handleSearchChange}
-              onClear={() => (isHistory ? setSearchInput('') : handleSearchChange(''))}
-              onSearch={(raw) => {
-                const value = raw.trim();
-                if (!value) return;
-                if (isHistory) {
-                  window.dispatchEvent(new CustomEvent('unit-history:lookup', { detail: { raw: value } }));
-                  setSearchInput('');
-                }
-              }}
-              placeholder={searchPlaceholder}
-            />
-          </div>
+          {/* Labels + Catalog own browse search in the workbench chrome. */}
+          {!isLabels && !isCatalog ? (
+            <div className={`${SIDEBAR_GUTTER} pt-3 pb-2`}>
+              <SearchBar
+                size="compact"
+                variant="blue"
+                value={searchInput}
+                onChange={handleSearchChange}
+                onClear={() => handleSearchChange('')}
+                placeholder={searchPlaceholder}
+              />
+            </div>
+          ) : null}
         </>
       }
       headerRows={[
-        // Labels sub-tab row — Print / Recent / History.
-        isLabels ? (
-          <HorizontalButtonSlider
-            items={LABELS_SUB_VIEW_ITEMS}
-            value={labelsView}
-            onChange={handleLabelsSubViewChange}
-            variant="nav"
-            dense
-            className="w-full"
-            aria-label="Labels sub-view"
-          />
-        ) : null,
-        // Pairing sort pills — second row for the Pairing view.
         isPairing ? (
           <HorizontalButtonSlider
             items={PAIRING_SORT_ITEMS}
@@ -248,26 +169,24 @@ export function ProductsSidebarPanel() {
       bodyClassName="flex flex-col overflow-hidden p-0"
     >
       {isLabels ? (
-        labelsView === 'recent' ? (
-          <RecentlyPrintedList
-            onSelect={handleRecentSelect}
-            selectedKey={searchParams.get('historyId')}
-          />
-        ) : labelsView === 'history' ? (
-          <UnitHistoryFinder />
-        ) : (
-          <ProductPickerList
-            query={searchInput}
-            recents={recents.map((r) => r.sku)}
-            onPick={handleProductPick}
-          />
-        )
+        <ProductLabelsRecentRail />
       ) : isPairing ? (
         <PairingSidebarQueue query={searchInput} sort={pairingSort} />
       ) : isQc ? (
         <QcSidebarPicker query={searchInput} />
       ) : isKit ? (
         <KitPartsPicker query={searchInput} />
+      ) : isCatalog ? (
+        <div className={`${SIDEBAR_GUTTER} space-y-2 py-4 text-role-caption text-text-soft`}>
+          <p className="font-semibold text-text-muted">Product catalog</p>
+          <p>
+            Hub-primary list of warehouse products. Inventory-linked rows show the Inventory chip;
+            expand a row to see channel products and FBA IDs.
+          </p>
+          <p className="text-text-faint">
+            Use Unlinked / Pending in the main pane to surface MDM gaps.
+          </p>
+        </div>
       ) : isManuals ? (
         <LibraryBrowser query={searchInput} basePath="/products" />
       ) : null}
@@ -534,121 +453,3 @@ function KitPartsPicker({ query }: { query: string }) {
   );
 }
 
-// ─── Product picker list ────────────────────────────────────────────────────
-
-interface ProductPickerListProps {
-  query: string;
-  /** Most-recently-printed SKUs, newest first. Floated to the top when not searching. */
-  recents: string[];
-  onPick: (sku: string) => void;
-}
-
-function ProductPickerList({ query, recents, onPick }: ProductPickerListProps) {
-  // Sources from the Zoho `items` mirror (canonical inventory SKU + Zoho name) via
-  // the catalog search API's `zoho_catalog` field — the Zoho product display is
-  // the source of truth. NOT `sku_catalog`/`sku_stock`, which use an independent
-  // SKU numbering that collides with inventory SKUs on the same string (e.g. SKU
-  // 00016 is a different product in each table). That single query matches on
-  // inventory SKU OR name, so no per-shape field detection is needed. allowEmpty
-  // fetches the top page when the user hasn't typed yet so there's always
-  // something to click.
-  const { data, isLoading, isError } = useSkuCatalogSearch(query, {
-    limit: 50,
-    allowEmpty: true,
-    searchField: 'zoho_catalog',
-  });
-
-  const items = data ?? [];
-  const trimmedQuery = query.trim();
-
-  // When idle (no query) we float recents above the alphabetical list so
-  // "what I just printed" stays one tap away. With a query, the recents
-  // pin makes no sense — results are already ordered by relevance.
-  const recentItems = trimmedQuery
-    ? []
-    : recents
-        .map((sku) => items.find((i) => i.sku.toUpperCase() === sku.toUpperCase()))
-        .filter((i): i is SkuCatalogItem => !!i);
-
-  const recentSet = new Set(recentItems.map((i) => i.sku.toUpperCase()));
-  const restItems = items.filter((i) => !recentSet.has(i.sku.toUpperCase()));
-
-  return (
-    <div className="flex-1 overflow-y-auto">
-      {isLoading && items.length === 0 ? (
-        <div className="inset-empty text-center text-role-caption font-semibold text-text-faint">
-          Loading products…
-        </div>
-      ) : isError ? (
-        <div className="inset-empty text-center text-role-caption font-semibold text-red-500">
-          Couldn't load products.
-        </div>
-      ) : items.length === 0 ? (
-        <div className="inset-empty text-center text-role-caption font-semibold text-text-faint">
-          {trimmedQuery ? 'No matches.' : 'No products available.'}
-        </div>
-      ) : (
-        <ul className="divide-y divide-border-hairline">
-          {recentItems.length > 0 && (
-            <li className={`bg-surface-canvas ${SIDEBAR_GUTTER} py-1.5 text-role-eyebrow uppercase tracking-[0.18em] text-text-soft`}>
-              Recent
-            </li>
-          )}
-          {recentItems.map((item) => (
-            <ProductRow key={`recent-${item.id}`} item={item} onPick={onPick} />
-          ))}
-          {recentItems.length > 0 && restItems.length > 0 && (
-            <li className={`bg-surface-canvas ${SIDEBAR_GUTTER} py-1.5 text-role-eyebrow uppercase tracking-[0.18em] text-text-soft`}>
-              All
-            </li>
-          )}
-          {restItems.map((item) => (
-            <ProductRow key={item.id} item={item} onPick={onPick} />
-          ))}
-        </ul>
-      )}
-    </div>
-  );
-}
-
-interface ProductRowProps {
-  item: SkuCatalogItem;
-  onPick: (sku: string) => void;
-}
-
-function ProductRow({ item, onPick }: ProductRowProps) {
-  return (
-    <li>
-      {/* ds-raw-button: catalog picker list-row (image + title/sku), one-row anatomy — not the Button primitive shape */}
-      <button
-        type="button"
-        onClick={() => onPick(item.sku)}
-        className={`ds-raw-button flex w-full items-center gap-3 ${SIDEBAR_GUTTER} py-2 text-left transition-colors hover:bg-blue-50`}
-      >
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-md bg-surface-canvas ring-1 ring-border-soft">
-          {item.image_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={item.image_url}
-              alt=""
-              loading="lazy"
-              decoding="async"
-              className="h-full w-full object-cover"
-              onError={(e) => {
-                (e.currentTarget as HTMLImageElement).style.display = 'none';
-              }}
-            />
-          ) : (
-            <Printer className="h-4 w-4 text-text-faint" />
-          )}
-        </span>
-        <span className="flex min-w-0 flex-1 flex-col">
-          <span className="text-role-caption font-semibold leading-snug text-text-default break-words">
-            {item.product_title || item.sku}
-          </span>
-          <span className="truncate font-mono text-role-micro text-text-soft">{item.sku}</span>
-        </span>
-      </button>
-    </li>
-  );
-}

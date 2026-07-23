@@ -3,10 +3,12 @@
 import type { ReactNode } from 'react';
 import { cn } from '@/utils/_cn';
 import { META_COL } from '@/components/ui/RowMetaColumns';
+import { EmptySkuChipFace } from '@/components/ui/CopyChip';
 
 /**
  * Fixed-column meta grid for PO line accordion rows.
  * Order: qty | SKU | condition | serial | price (price last — variable width).
+ * Empty SKU uses the dashed yellow face (same slot as a filled SkuScanRefChip).
  */
 export function PoLineMetaGrid({
   qty,
@@ -50,7 +52,7 @@ export function PoLineMetaGrid({
         {qty}
       </span>
       <span data-col="sku" className="min-w-0 truncate">
-        {sku ?? <span className="text-text-faint/40">—</span>}
+        {sku ?? <EmptySkuChipFace dense />}
       </span>
       <span data-col="condition" className="truncate">
         {condition}
@@ -58,7 +60,7 @@ export function PoLineMetaGrid({
       <span data-col="serial" className="flex min-w-0 items-center gap-1 truncate">
         {serial ?? <span className="text-text-faint/40">—</span>}
       </span>
-      <span data-col="price" className="flex justify-self-end items-center text-right tabular-nums">
+      <span className="flex justify-self-end items-center text-right tabular-nums" data-col="price">
         {price ?? null}
       </span>
     </div>

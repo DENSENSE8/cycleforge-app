@@ -1,0 +1,126 @@
+/**
+ * Unbox / History / Testing spreadsheet column model — SoT for receiving-line
+ * LedgerGrid surfaces that are not Incoming POS.
+ *
+ * Same spreadsheet family as Pending / Incoming (Date as a per-row column —
+ * no sticky day-band headers on these rails):
+ *   select · title · date · qty · cond · stage · platform · order · tracking · serial
+ *
+ * Incoming keeps its own Expected / Age / Status columns
+ * ({@link INCOMING_GRID_COLUMNS}). Stage label (Unboxed / Scanned / Tested) is
+ * a header prop — the track key stays `stage`. Date is the civil day of the
+ * activity-axis stamp (Unboxed / Scanned / Tested).
+ */
+
+import type { ColumnType } from '@/lib/tables/table-columns';
+import { ordersQueueColVar } from '@/lib/dashboard-order-row-layout';
+
+export type ReceivingGridColumnKey =
+  | 'select'
+  | 'title'
+  | 'date'
+  | 'qty'
+  | 'condition'
+  | 'stage'
+  | 'platform'
+  | 'order'
+  | 'tracking'
+  | 'serial';
+
+export interface ReceivingGridColumn {
+  key: ReceivingGridColumnKey;
+  width: string;
+  label?: string;
+  gridLabel?: string;
+  labelFitRem?: number;
+  type?: ColumnType;
+  /** `TableColumnConfig` hide key (`receiving` / `testing` table registry). */
+  hideKey?: string;
+  /** When false, header is not click-to-sort (select gutter only). Default true for data cols. */
+  sortable?: boolean;
+}
+
+/**
+ * Canonical Unbox / History / Testing columns. Fact tracks are content-hard
+ * `minmax(X,X)`; only `title` flexes. `order` hides under legacy `orderid`;
+ * `stage` hides under meta `rest`.
+ */
+export const RECEIVING_GRID_COLUMNS: readonly ReceivingGridColumn[] = [
+  { key: 'select', width: 'minmax(2rem, 2rem)', sortable: false },
+  {
+    key: 'title',
+    width: 'minmax(12rem, 1fr)',
+    label: 'Product Title',
+    gridLabel: 'Product',
+    type: 'text',
+    labelFitRem: 8,
+  },
+  // Civil day of the activity-axis stamp — Pending/Incoming Date column recipe.
+  { key: 'date', width: 'minmax(4.5rem, 4.5rem)', label: 'Date', gridLabel: 'Date', type: 'date', labelFitRem: 4.5 },
+  { key: 'qty', width: 'minmax(2.75rem, 2.75rem)', label: 'Qty', type: 'number', hideKey: 'qty', labelFitRem: 4.5 },
+  { key: 'condition', width: 'minmax(5.5rem, 5.5rem)', label: 'Cond', type: 'tag', hideKey: 'condition', labelFitRem: 4.5 },
+  // Stage clock (Unboxed / Scanned / Tested) — hide with meta `rest`.
+  { key: 'stage', width: 'minmax(4.5rem, 4.5rem)', label: 'Stage', type: 'date', hideKey: 'rest', labelFitRem: 4.5 },
+  { key: 'platform', width: 'minmax(3rem, 3rem)', label: 'Platform', gridLabel: 'Ch.', type: 'external', hideKey: 'platform', labelFitRem: 4.5 },
+  { key: 'order', width: 'minmax(4.5rem, 4.5rem)', label: 'Order', type: 'id', hideKey: 'orderid', labelFitRem: 4.5 },
+  { key: 'tracking', width: 'minmax(5.75rem, 5.75rem)', label: 'Tracking', type: 'location', hideKey: 'tracking', labelFitRem: 4.5 },
+  { key: 'serial', width: 'minmax(5.75rem, 5.75rem)', label: 'Serial', type: 'id', hideKey: 'serial', labelFitRem: 4.5 },
+] as const;
+
+const RECEIVING_GRID_LOCKED_KEYS: readonly ReceivingGridColumnKey[] = ['select', 'title'];
+
+/** Data columns that support click-to-sort (excludes select). */
+const RECEIVING_GRID_SORTABLE_KEYS: readonly ReceivingGridColumnKey[] = RECEIVING_GRID_COLUMNS.filter(
+  (c) => c.sortable !== false && c.key !== 'select',
+).map((c) => c.key);
+
+export function isReceivingGridSortable(key: string): key is ReceivingGridColumnKey {
+  return (RECEIVING_GRID_SORTABLE_KEYS as readonly string[]).includes(key);
+}
+
+/** Parse rem floor from a track string. */
+function receivingGridColumnTrackRem(column: ReceivingGridColumn): number {
+  const m = column.width.match(/([\d.]+)rem/);
+  return m ? Number(m[1]) : 12;
+}
+
+export function receivingGridHeaderShowsLabel(column: ReceivingGridColumn): boolean {
+  const fit = column.labelFitRem ?? 4.5;
+  return receivingGridColumnTrackRem(column) >= fit;
+}
+
+export function receivingContentMinWidthRem(
+  columns: readonly ReceivingGridColumn[] = RECEIVING_GRID_COLUMNS,
+): number {
+  return columns.reduce((sum, c) => sum + receivingGridColumnTrackRem(c), 0);
+}
+
+export function receivingGridTemplate(
+  columns: readonly ReceivingGridColumn[] = RECEIVING_GRID_COLUMNS,
+): string {
+  return columns.map((c) => `var(${ordersQueueColVar(c.key)}, ${c.width})`).join(' ');
+}
+
+export function isReceivingGridFrozen(key: string): boolean {
+  return RECEIVING_GRID_LOCKED_KEYS.includes(key as ReceivingGridColumnKey);
+}
+
+export type ReceivingGridSortDir = 'asc' | 'desc';
+
+/** Default direction when first activating a column sort. */
+export function defaultDirForReceivingGridSort(key: ReceivingGridColumnKey): ReceivingGridSortDir {
+  // Date / stage: most recent first (ops scan).
+  if (key === 'date' || key === 'stage') return 'desc';
+  return 'asc';
+}
+
+// (flipReceivingGridSortDir retired — the TanStack sort surface owns the
+//  asc ↔ desc cycle via LedgerGridSurface / useGridSurface.)
+
+// Shared spreadsheet chrome — same helpers as outbound OrdersGridView / Incoming.
+export {
+  ORDERS_QUEUE_FROZEN_CELL as RECEIVING_GRID_FROZEN_CELL,
+  ordersQueueFrozenLeft as receivingGridFrozenLeft,
+  ordersQueueGridCell as receivingGridCell,
+  ordersQueueRowShellClass as receivingGridRowShellClass,
+} from '@/lib/dashboard-order-row-layout';

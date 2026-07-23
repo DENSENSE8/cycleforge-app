@@ -9,6 +9,7 @@
  */
 
 import type { ReactNode } from 'react';
+import { isSearchOrderFactEmpty } from '@/components/dashboard/search/search-order-overview-presence';
 import { Panel } from '@/design-system/primitives';
 import { cn } from '@/utils/_cn';
 
@@ -18,14 +19,21 @@ export function SearchOrderFactRow({
   value,
   mono,
   span,
+  omitWhenEmpty = false,
 }: {
   label: string;
   value: ReactNode;
   mono?: boolean;
   /** Force the cell to span the full grid width (long values like tracking). */
   span?: boolean;
+  /**
+   * Overview / presence-driven surfaces: skip the cell entirely when empty.
+   * Deep tabs keep the default (em dash) so the full schema still teaches.
+   */
+  omitWhenEmpty?: boolean;
 }) {
-  const empty = value == null || value === '';
+  const empty = isSearchOrderFactEmpty(value);
+  if (omitWhenEmpty && empty) return null;
   return (
     <div className={cn('flex min-w-0 flex-col gap-1', span && 'sm:col-span-2')}>
       <dt className="text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint">
