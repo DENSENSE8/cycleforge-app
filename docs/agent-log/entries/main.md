@@ -410,3 +410,4 @@
 - `2026-07-23T23:30:59.049Z` · **main** · main · agent · Saved shipped-order-display-roi-plan.md (search→order body CTAs + Shopify/Amazon ROI ranking) — ok
 - `2026-07-23T23:34:21.995Z` · **main** · main · agent · Catalog platform tabs (Zoho+channels) + LedgerGridSurface spreadsheet; demoted Active/Linked to filter refine — ok
 - `2026-07-23T23:35:59.961Z` · **main** · main · agent · Merged Unbox overview Receive CTA into the notes composer (one elevated shell): SlicedActionDock embedded mode + StationComposerDock trailingAction + StationTerminalDock embedded render — shipped
+- `2026-07-24T18:35:21.758Z` · **main** · main · agent · Support tickets: Add chrome CTA + Unbox-style create modal with order/tracking/serial linkages — ok
