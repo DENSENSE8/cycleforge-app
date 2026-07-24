@@ -4,16 +4,16 @@
  * Compact carton-photos control for the condensed CartonContextCard row.
  *
  * One pill: camera pinned left + (count when photos exist, else "+") pinned
- * right. Click sends a capture request to the paired phone. Count and "+"
- * never share the face — when a count is shown the plus is omitted. Width is
- * locked (`justify-between`) so digit growth does not shift the identity row.
- * When photos exist, hovering the pill reveals the read/delete gallery
- * toolbar — the wrapper owns hover (with a short leave delay) so the cursor
- * can cross the gap to the popover without it collapsing.
+ * right. Click always sends a capture request to the paired phone — never opens
+ * an upload popover (device upload lives on the hover gallery once photos
+ * exist). Count and "+" never share the face — when a count is shown the plus
+ * is omitted. Width is locked (`justify-between`) so digit growth does not
+ * shift the identity row. When photos exist, hovering the pill reveals the
+ * read/delete gallery toolbar — the wrapper owns hover (with a short leave
+ * delay) so the cursor can cross the gap to the popover without it collapsing.
  *
- * Upload opens {@link PhotoUploadOverlay} (RightPaneOverlay SoT, same shell as
- * ReceivingClaimModal) with drag-drop + device picker. The gallery stays pinned
- * while that overlay is open so the upload controller is not unmounted mid-pick.
+ * While a gallery-owned upload/move overlay is open, the peek stays pinned so
+ * the upload controller is not unmounted mid-pick.
  */
 
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -22,14 +22,12 @@ import { useAblyClient } from '@/contexts/AblyContext';
 import { useReceivingPhotosRealtimeRefresh } from '@/hooks/useReceivingPhotosRealtimeRefresh';
 import { useAuth } from '@/contexts/AuthContext';
 import { PhotoGallery } from '@/components/shipped/PhotoGallery';
-import { PhotoUploadOverlay } from '@/components/shipped/photo-gallery/PhotoUploadOverlay';
 import { receivingPhotosQueryKey, refreshReceivingPhotos } from '@/lib/queries/receiving-queries';
 import { Camera, Plus } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { publishReceivingPhotoRequest } from '@/lib/realtime/receiving-photo-request';
 import { toast } from '@/lib/toast';
-import { uploadPhotoClient } from '@/lib/photos/upload-client';
 import { receivingPhotoToGalleryInput } from '@/components/shipped/photo-gallery/photo-gallery-utils';
 import { STATION_CONTEXT_PHOTO_PILL_CLASS } from '@/components/station/entity-context/station-context-action-pill';
 
@@ -92,7 +90,14 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
 
   useReceivingPhotosRealtimeRefresh(receivingId, staffId, refresh, staffId > 0 && !!orgId);
 
+  const [phoneSending, setPhoneSending] = useState(false);
+
   const handleRequestOnPhone = useCallback(async () => {
+    if (!orgId || staffId <= 0) {
+      toast.error('Sign in on your phone to take photos');
+      return;
+    }
+    setPhoneSending(true);
     try {
       const client = await getClient();
       await publishReceivingPhotoRequest(client, orgId, staffId, receivingId);
@@ -100,6 +105,8 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
     } catch (err) {
       console.warn('receiving-photo-button: photo request publish failed', err);
       toast.error('Could not send to phone');
+    } finally {
+      setPhoneSending(false);
     }
   }, [getClient, orgId, receivingId, staffId]);
 
@@ -118,11 +125,6 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
   const [galleryUploadPinned, setGalleryUploadPinned] = useState(false);
   /** Pin while Move photos modal is open (same hover-host unmount hazard). */
   const [galleryMovePinned, setGalleryMovePinned] = useState(false);
-  /** Empty-carton desktop upload — same RightPaneOverlay shell, owned here. */
-  const [emptyUploadOpen, setEmptyUploadOpen] = useState(false);
-  const [emptyUploading, setEmptyUploading] = useState(false);
-  const [emptyUploadError, setEmptyUploadError] = useState<string | null>(null);
-  const [phoneSending, setPhoneSending] = useState(false);
   const hideTimer = useRef<ReturnType<typeof setTimeout>>();
 
   const showGalleryPeek = hasGallery && (galleryHover || galleryUploadPinned || galleryMovePinned);
@@ -141,67 +143,21 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
     if (hideTimer.current) clearTimeout(hideTimer.current);
   }, []);
 
-  const handleEmptyUploadFiles = useCallback(
-    async (files: File[]) => {
-      const images = files.filter((f) => f.type.startsWith('image/'));
-      if (images.length === 0 || emptyUploading) return;
-      setEmptyUploading(true);
-      setEmptyUploadError(null);
-      try {
-        for (const file of images) {
-          await uploadPhotoClient({
-            file,
-            entityType: 'RECEIVING',
-            entityId: receivingId,
-            photoType: 'receiving_item',
-            poRef: poRef ?? `RCV-${receivingId}`,
-          });
-        }
-        refresh();
-        const n = images.length;
-        toast.success(n === 1 ? '1 photo uploaded' : `${n} photos uploaded`);
-        setEmptyUploadOpen(false);
-        setEmptyUploadError(null);
-      } catch (err) {
-        console.error('receiving-photo-button: upload failed', err);
-        setEmptyUploadError(err instanceof Error ? err.message : 'Upload failed');
-      } finally {
-        setEmptyUploading(false);
-      }
-    },
-    [emptyUploading, receivingId, poRef, refresh],
-  );
-
-  const handleEmptySendToPhone = useCallback(async () => {
-    setPhoneSending(true);
-    try {
-      await handleRequestOnPhone();
-    } finally {
-      setPhoneSending(false);
-    }
-  }, [handleRequestOnPhone]);
-
   // One consistent resting state across every PO — a calm blue-tinted pill.
   // Radius shared with Claim via {@link STATION_CONTEXT_PHOTO_PILL_CLASS}.
   const btnClass = STATION_CONTEXT_PHOTO_PILL_CLASS;
 
   const title = hasGallery
     ? `${count} photo${count === 1 ? '' : 's'} · send to phone`
-    : 'Add photos';
+    : 'Send to phone';
 
   const ariaLabel = hasGallery
     ? `${count} carton photo${count === 1 ? '' : 's'}; send to phone or hover for gallery`
-    : 'Add carton photos — upload from device or send to phone';
+    : 'Send capture request to phone';
 
   const handlePillClick = useCallback(() => {
-    if (hasGallery) {
-      void handleRequestOnPhone();
-      return;
-    }
-    // No photos yet — open the desktop upload popover (drag-drop + device + phone).
-    setEmptyUploadError(null);
-    setEmptyUploadOpen(true);
-  }, [hasGallery, handleRequestOnPhone]);
+    void handleRequestOnPhone();
+  }, [handleRequestOnPhone]);
 
   const pillButton = (
     <Button
@@ -209,8 +165,9 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
       variant="ghost"
       size="sm"
       onClick={handlePillClick}
+      disabled={phoneSending}
       ariaLabel={ariaLabel}
-      aria-expanded={hasGallery ? galleryHover || galleryUploadPinned || galleryMovePinned : emptyUploadOpen}
+      aria-expanded={hasGallery ? galleryHover || galleryUploadPinned || galleryMovePinned : undefined}
       icon={<Camera className="h-4 w-4" />}
       // Right face: count when photos exist (children), else "+". Camera stays
       // left via justify-between on the locked photo-pill width. Count is not
@@ -273,27 +230,6 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
           </div>
         </div>
       ) : null}
-
-      <PhotoUploadOverlay
-        open={emptyUploadOpen}
-        onClose={() => {
-          if (emptyUploading) return;
-          setEmptyUploadOpen(false);
-          setEmptyUploadError(null);
-        }}
-        onFiles={handleEmptyUploadFiles}
-        uploading={emptyUploading}
-        uploadError={emptyUploadError}
-        onClearError={() => setEmptyUploadError(null)}
-        title="Upload carton photos"
-        subtitle="Drop images here, choose files from this device, or send a capture request to your phone."
-        secondaryAction={{
-          label: 'Send to phone',
-          onClick: () => void handleEmptySendToPhone(),
-          loading: phoneSending,
-          disabled: !orgId || staffId <= 0,
-        }}
-      />
     </div>
   );
 });

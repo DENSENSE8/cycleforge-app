@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { z } from 'zod';
 import { ApiError, errorResponse } from '@/lib/api';
 import { withAuth } from '@/lib/auth/withAuth';
 import {
@@ -12,6 +11,12 @@ import {
   listCandidatesForAnchor,
   unlinkTicketFromAnchor,
 } from '@/lib/support/ticket-link';
+import {
+  ClaimTicketLinkBody,
+  ClaimTicketLinkSearchQuery,
+  ClaimTicketUnlinkQuery,
+  formatZodIssues,
+} from './link-request';
 
 export const dynamic = 'force-dynamic';
 
@@ -31,29 +36,29 @@ function notConfigured(context: string): NextResponse {
   );
 }
 
-const SearchQuery = z.object({
-  query: z.string().trim().optional(),
-  receivingId: z.coerce.number().int().positive(),
-  lineId: z.coerce.number().int().positive().optional(),
-});
+function validationFailed(details: string): NextResponse {
+  return NextResponse.json({ success: false, error: 'Validation failed', details }, { status: 400 });
+}
 
 export const GET = withAuth(async (req: NextRequest, ctx) => {
   const context = 'GET /api/receiving/zendesk-claim/link';
   try {
     const sp = req.nextUrl.searchParams;
-    const parsed = SearchQuery.parse({
+    const parsed = ClaimTicketLinkSearchQuery.safeParse({
       query: sp.get('query') ?? undefined,
       receivingId: sp.get('receivingId') ?? undefined,
       lineId: sp.get('lineId') ?? undefined,
     });
+    if (!parsed.success) return validationFailed(formatZodIssues(parsed.error));
+
     const { tickets, hiddenLinked } = await listCandidatesForAnchor({
       orgId: ctx.organizationId,
       anchor: {
         type: 'receiving',
-        receivingId: parsed.receivingId,
-        lineId: parsed.lineId,
+        receivingId: parsed.data.receivingId,
+        lineId: parsed.data.lineId,
       },
-      query: parsed.query,
+      query: parsed.data.query,
     });
     return NextResponse.json({ success: true, tickets, hiddenLinked });
   } catch (err) {
@@ -62,23 +67,27 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   }
 }, { permission: 'receiving.mark_received' });
 
-const LinkBody = z.object({
-  receivingId: z.number().int().positive(),
-  lineId: z.number().int().positive().nullable().optional(),
-  ticketId: z.number().int().positive(),
-});
-
 export const POST = withAuth(async (req: NextRequest, ctx) => {
   const context = 'POST /api/receiving/zendesk-claim/link';
   try {
-    const body = LinkBody.parse(await req.json().catch(() => null));
+    const raw = await req.json().catch(() => null);
+    const parsed = ClaimTicketLinkBody.safeParse(raw);
+    if (!parsed.success) {
+      const details = formatZodIssues(parsed.error);
+      console.warn('[POST /api/receiving/zendesk-claim/link] validation failed', {
+        details,
+        received: raw,
+      });
+      return validationFailed(details);
+    }
+    const body = parsed.data;
     const result = await linkTicketToAnchor({
       orgId: ctx.organizationId,
       ticketId: body.ticketId,
       anchor: {
         type: 'receiving',
         receivingId: body.receivingId,
-        lineId: body.lineId,
+        lineId: body.lineId ?? null,
       },
       staffId: ctx.staffId,
     });
@@ -94,12 +103,6 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
   }
 }, { permission: 'receiving.mark_received' });
 
-const UnlinkQuery = z.object({
-  receivingId: z.coerce.number().int().positive(),
-  lineId: z.coerce.number().int().positive().optional(),
-  ticketId: z.coerce.number().int().positive(),
-});
-
 /**
  * DELETE ?receivingId=N[&lineId=N]&ticketId=N — detach a linked ticket from the
  * carton/line. Removes the ticket_links row (entity-scoped) and clears the
@@ -109,18 +112,20 @@ export const DELETE = withAuth(async (req: NextRequest, ctx) => {
   const context = 'DELETE /api/receiving/zendesk-claim/link';
   try {
     const sp = req.nextUrl.searchParams;
-    const parsed = UnlinkQuery.parse({
+    const parsed = ClaimTicketUnlinkQuery.safeParse({
       receivingId: sp.get('receivingId') ?? undefined,
       lineId: sp.get('lineId') ?? undefined,
       ticketId: sp.get('ticketId') ?? undefined,
     });
+    if (!parsed.success) return validationFailed(formatZodIssues(parsed.error));
+
     const { removed } = await unlinkTicketFromAnchor({
       orgId: ctx.organizationId,
-      ticketId: parsed.ticketId,
+      ticketId: parsed.data.ticketId,
       anchor: {
         type: 'receiving',
-        receivingId: parsed.receivingId,
-        lineId: parsed.lineId,
+        receivingId: parsed.data.receivingId,
+        lineId: parsed.data.lineId,
       },
     });
     return NextResponse.json({ success: true, removed });
