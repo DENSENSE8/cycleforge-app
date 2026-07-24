@@ -20,6 +20,7 @@ import {
   type FiledTicket,
   type LinkCandidate,
 } from '../claim-types';
+import { normalizeReceivingTicketEntityRefs } from '@/lib/support/ticket-refs';
 import { useClaimPhotos } from './useClaimPhotos';
 import { useClaimTicketSearch } from './useClaimTicketSearch';
 import { useClaimTemplate } from './useClaimTemplate';
@@ -85,8 +86,14 @@ export function useReceivingClaimController({
   const LAST_CC_EMAIL_STORAGE_KEY = 'receiving-claim:last-cc-email';
   const receivingId = row.receiving_id;
   // `undefined` override = default to the row's own line; an explicit value
-  // (incl. `null` for a carton-level claim) wins.
-  const lineId = lineIdOverride !== undefined ? lineIdOverride : row.id;
+  // (incl. `null` for a carton-level claim) wins. Placeholder / unfound stub
+  // ids (`id = -receiving_id`) normalize to null so link/create POST never
+  // sends a non-positive lineId that Zod rejects as "Validation failed".
+  const rawLineId = lineIdOverride !== undefined ? lineIdOverride : row.id;
+  const { lineId } = normalizeReceivingTicketEntityRefs({
+    lineId: rawLineId,
+    receivingId,
+  });
   // A real PO# (number or id) — when present, 'unfound' is neither defaulted nor
   // offered, even if the carton came in as an unmatched scan.
   const hasPo = !!(row.zoho_purchaseorder_number || row.zoho_purchaseorder_id);
