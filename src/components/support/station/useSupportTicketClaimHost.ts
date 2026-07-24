@@ -38,17 +38,11 @@ export function useSupportTicketClaimHost() {
   const qc = useQueryClient();
   const [createOpen, setCreateOpen] = useState(false);
   const [anchor, setAnchor] = useState<SupportTicketCreateAnchor | null>(null);
-  /** Prefill order # when opening from an order-anchored surface. */
-  const [defaultOrderNumber, setDefaultOrderNumber] = useState<string | null>(null);
 
-  const openCreate = useCallback(
-    (a?: SupportTicketCreateAnchor | null, opts?: { orderNumber?: string | null }) => {
-      setAnchor(a ?? null);
-      setDefaultOrderNumber(opts?.orderNumber?.trim() || null);
-      setCreateOpen(true);
-    },
-    [],
-  );
+  const openCreate = useCallback((a?: SupportTicketCreateAnchor | null) => {
+    setAnchor(a ?? null);
+    setCreateOpen(true);
+  }, []);
   const closeCreate = useCallback(() => setCreateOpen(false), []);
 
   const createTicket = useMutation<CreatedSupportTicket, Error, CreateSupportTicketArgs>({
@@ -89,7 +83,6 @@ export function useSupportTicketClaimHost() {
   return {
     createOpen,
     anchor,
-    defaultOrderNumber,
     openCreate,
     closeCreate,
     createTicket,
