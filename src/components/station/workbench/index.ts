@@ -19,6 +19,8 @@
  */
 
 export { StationWorkbench } from './StationWorkbench';
+export { StationPanelRoot } from './StationPanelRoot';
+export { StationAmbientWash } from './StationAmbientWash';
 export {
   SectionTabsRightTrack,
   SectionTabsRightPill,
@@ -37,6 +39,7 @@ export {
 } from './merge-station-unit-journeys';
 export {
   STATION_WORKBENCH_COLUMN,
+  STATION_WORKBENCH_IDENTITY_COLUMN,
   STATION_WORKBENCH_HEADER_COLUMN,
   STATION_WORKBENCH_BODY_COLUMN,
   STATION_WORKBENCH_BODY_DOCKED,
@@ -45,6 +48,3 @@ export {
 export {
   StationWorkspaceSkeleton,
 } from './StationWorkspaceSkeleton';
-
-/** Re-export the thinner shell for callers that only need toolbar → body → dock. */
-export { StationWorkbenchShell } from '@/components/station/terminal/StationWorkbenchShell';

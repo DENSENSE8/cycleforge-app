@@ -135,7 +135,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
         COALESCE(ord_match.account_source,
           CASE WHEN sal.fnsku IS NOT NULL THEN 'fba' ELSE NULL END
         ) AS account_source,
-        ord_match.out_of_stock,
+        ord_match.is_out_of_stock,
         COALESCE(order_trackings.tracking_numbers, '[]'::json) AS tracking_numbers,
         COALESCE(order_trackings.tracking_number_rows, '[]'::json) AS tracking_number_rows,
         COALESCE(
@@ -173,7 +173,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
           o.notes,
           o.status_history,
           o.account_source,
-          o.out_of_stock,
+          o.is_out_of_stock,
           o.created_at
         FROM orders o
         LEFT JOIN shipment_links osl ON osl.owner_id = o.id AND osl.owner_type = 'ORDER'

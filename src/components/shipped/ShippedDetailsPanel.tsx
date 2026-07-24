@@ -63,8 +63,7 @@ export function ShippedDetailsPanel({
     setShippingTrackingNumber,
     notes,
     setNotes,
-    outOfStock,
-    setOutOfStock,
+    isOutOfStock,
     shipByDate,
     setShipByDate,
     isSavingInlineFields,
@@ -220,10 +219,11 @@ export function ShippedDetailsPanel({
           setNotes={setNotes}
           isSavingNotes={isSavingNotes}
           onSaveNotes={() => { void handleSaveNotes(() => setActiveInput('none')); }}
-          outOfStock={outOfStock}
-          setOutOfStock={setOutOfStock}
+          isOutOfStock={isOutOfStock}
           isSavingOutOfStock={isSavingOutOfStock}
-          onSaveOutOfStock={() => { void handleSaveOutOfStock(() => setActiveInput('none')); }}
+          onSaveOutOfStock={(checked) => {
+            void handleSaveOutOfStock(checked, () => setActiveInput('none'));
+          }}
           onMarkShippedSuccess={() => {
             setActiveInput('none');
             onUpdate();

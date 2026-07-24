@@ -80,17 +80,15 @@ export function useUpNextOrderActions(
     }
   }, [techId, onStart, fetchOrders]);
 
-  const handleMissingParts = useCallback(async (orderId: number, reason: string) => {
-    const trimmed = reason.trim();
-    if (!trimmed) return;
+  const handleMissingParts = useCallback(async (orderId: number, isOutOfStockFlag: boolean) => {
     try {
       const res = await fetch('/api/orders/missing-parts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orderId, reason: trimmed }),
+        body: JSON.stringify({ orderId, isOutOfStock: isOutOfStockFlag }),
       });
       if (res.ok) {
-        onMissingParts(orderId, trimmed);
+        onMissingParts(orderId, isOutOfStockFlag ? 'Out of stock' : '');
         setShowMissingPartsInput(null);
         setMissingPartsReason('');
         fetchOrders();
@@ -116,7 +114,7 @@ export function useUpNextOrderActions(
     const handleOosEvent = (e: Event) => {
       const detail = (e as CustomEvent<UpNextActionOosPayload>).detail;
       if (!detail) return;
-      handleMissingParts(detail.orderId, detail.reason);
+      handleMissingParts(detail.orderId, detail.isOutOfStock);
     };
     window.addEventListener('tech-upnext-action-start', handleStartEvent);
     window.addEventListener('tech-upnext-action-oos-set', handleOosEvent);

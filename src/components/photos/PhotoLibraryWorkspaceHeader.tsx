@@ -4,7 +4,7 @@
  * Media Library workbench chrome — dashboard display-header recipe.
  *
  * Left:  recency tabs (Recent · Today · Last 7 · All).
- * Right: search · media type · filters · sort · NAS.
+ * Right: search · filters · media type · sort · NAS.
  *
  * Density / refresh / select / icons-list stay on the breadcrumb path strip
  * ({@link PhotoLibraryHeader}) — those are in-folder photo actions.
@@ -136,30 +136,6 @@ export function PhotoLibraryWorkspaceHeader({ className }: { className?: string 
       }
       right={
         <>
-          <PhotoMediaTypeMenu
-            activeScope={activeScope}
-            activeImageType={filters.imageType ?? null}
-            activeDocumentType={filters.documentType ?? 'all'}
-            activeOutboundMedia={filters.outboundMedia ?? 'documents'}
-            inferredScope={null}
-            onSelect={({ scope, imageType }) =>
-              patch({
-                sourceScope: scope,
-                imageType,
-                documentType: scope === 'outbound' ? filters.documentType ?? 'all' : undefined,
-                outboundMedia: scope === 'outbound' ? filters.outboundMedia ?? 'documents' : undefined,
-                poRef: undefined,
-                label: undefined,
-              })
-            }
-            onDocumentTypeSelect={(documentType) =>
-              patch({ documentType, outboundMedia: 'documents' })
-            }
-            onPackPhotosSelect={() =>
-              patch({ outboundMedia: 'pack_photos', documentType: undefined })
-            }
-          />
-
           <WorkbenchFilterPopover
             open={filterOpen}
             onOpenChange={setFilterOpen}
@@ -197,6 +173,30 @@ export function PhotoLibraryWorkspaceHeader({ className }: { className?: string 
               <PhotoLibraryNasBackup />
             </div>
           </WorkbenchFilterPopover>
+
+          <PhotoMediaTypeMenu
+            activeScope={activeScope}
+            activeImageType={filters.imageType ?? null}
+            activeDocumentType={filters.documentType ?? 'all'}
+            activeOutboundMedia={filters.outboundMedia ?? 'documents'}
+            inferredScope={null}
+            onSelect={({ scope, imageType }) =>
+              patch({
+                sourceScope: scope,
+                imageType,
+                documentType: scope === 'outbound' ? filters.documentType ?? 'all' : undefined,
+                outboundMedia: scope === 'outbound' ? filters.outboundMedia ?? 'documents' : undefined,
+                poRef: undefined,
+                label: undefined,
+              })
+            }
+            onDocumentTypeSelect={(documentType) =>
+              patch({ documentType, outboundMedia: 'documents' })
+            }
+            onPackPhotosSelect={() =>
+              patch({ outboundMedia: 'pack_photos', documentType: undefined })
+            }
+          />
 
           <PhotoSortMenu
             sort={filters.sort ?? 'recent'}

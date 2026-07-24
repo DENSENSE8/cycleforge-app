@@ -55,7 +55,7 @@ describe('shippedOutToDenseRailVM', () => {
     quantity: '1',
     status: 'SHIPPED',
     shipping_tracking_number: '1Z',
-    out_of_stock: null,
+    is_out_of_stock: false,
     is_shipped: true,
   };
 

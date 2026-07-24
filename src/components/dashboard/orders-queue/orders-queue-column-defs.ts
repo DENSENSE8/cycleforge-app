@@ -11,10 +11,10 @@
  * here exist for state math (and future TanStack-sorted surfaces), not JSX.
  *
  * Mode → column set:
- *   `fulfillment.default` — select · title · date · age · status · qty · cond ·
- *     platform · order · tracking (the canonical `ORDERS_QUEUE_COLUMNS`).
- *   `fulfillment.tested` (`?ustatus=TESTED`) — status demoted; **tester** +
- *     **testedAt** surface per plan §9 (`ORDERS_QUEUE_TESTED_COLUMNS`).
+ *   `fulfillment.default` — select · title · date · age · qty · cond ·
+ *     order · tracking (the canonical `ORDERS_QUEUE_COLUMNS`).
+ *   `fulfillment.tested` (`?tested`) — **tester** + **testedAt** surface per
+ *     plan §9 (`ORDERS_QUEUE_TESTED_COLUMNS`).
  */
 
 import type { ColumnDef } from '@tanstack/react-table';
@@ -46,7 +46,10 @@ function accessorFor(key: OrdersQueueColumn['key']): (row: ShippedOrder) => unkn
     case 'status':
       return (row) => {
         const r = row as QueueRowRecord;
-        return { hasTechScan: Boolean(r.has_tech_scan), outOfStock: r.out_of_stock ?? null };
+        return {
+          hasTechScan: Boolean(r.has_tech_scan),
+          isOutOfStock: Boolean(r.is_out_of_stock ?? r.isOutOfStock),
+        };
       };
     case 'qty':
       return (row) => Number(row.quantity) || 0;

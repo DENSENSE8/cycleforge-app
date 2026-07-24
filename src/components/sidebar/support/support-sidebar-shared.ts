@@ -84,6 +84,16 @@ export function supportOrdersHref(orderPk: number): string {
   return `/support?mode=orders&openOrderId=${id}`;
 }
 
+/**
+ * Deep link: open the order on Support · Orders and land on the New ticket
+ * create form (order-anchored). Used by "Report an issue" on the order body.
+ */
+export function supportCreateTicketHref(orderPk: number): string {
+  const id = Number(orderPk);
+  if (!Number.isFinite(id) || id <= 0) return '/support?mode=orders&createTicket=1';
+  return `/support?mode=orders&openOrderId=${id}&createTicket=1`;
+}
+
 /** Escape hatch: full Dashboard Shipping detail for the same order pk. */
 export function dashboardOrderHref(orderPk: number): string {
   const id = Number(orderPk);
@@ -113,6 +123,7 @@ export const SUPPORT_MODE_SCOPED_PARAMS = [
   'type', // issues: bug | suggestion | question
   'reporter', // issues: reporter staff id
   'openOrderId', // orders: selected order row pk
+  'createTicket', // orders: open New ticket create form (order-anchored)
   'ustatus', // orders: To Ship lane filter
   'attention', // orders: urgent-only
   'stage', // orders: coarse server facet (legacy)

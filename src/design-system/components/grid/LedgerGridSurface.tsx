@@ -8,22 +8,23 @@ import { useGridSurface } from '@/design-system/components/grid/useGridSurface';
 import type { GridSurfaceDescriptor } from '@/design-system/components/grid/grid-surface-descriptor';
 import type { RowGroup } from '@/lib/group-rows';
 import { cn } from '@/utils/_cn';
+import { TABLE_SURFACE_CLIP_CLASS } from '@/design-system/tokens/table-surface';
 
 /**
  * `LedgerGridSurface<Row>` — the descriptor-driven Workbench spreadsheet
  * composer (plan Phase C). One mounted shell, many
- * {@link GridSurfaceDescriptor}s: the surface owns the card shell, the loading
- * skeleton, the teaching empty box, the TanStack headless sort surface
- * (`useGridSurface` — asc ↔ desc cycle, per-column desc-first), and the
- * `LedgerGrid` mount (airtable skin + `scrollX` + content-min). The caller owns
- * what is genuinely per-domain: data fetch, house grouping/day-banding (OUTSIDE
- * TanStack until plan Phase E), sort durability (local state or URL), and the
- * header / row / group renderers.
+ * {@link GridSurfaceDescriptor}s: the surface owns the framed table shell
+ * ({@link TABLE_SURFACE_CLIP_CLASS}), the loading skeleton, the teaching empty
+ * box, the TanStack headless sort surface (`useGridSurface` — asc ↔ desc cycle,
+ * per-column desc-first), and the `LedgerGrid` mount (airtable skin + `scrollX`
+ * + content-min). The caller owns what is genuinely per-domain: data fetch,
+ * house grouping/day-banding (OUTSIDE TanStack until plan Phase E), sort
+ * durability (local state or URL), and the header / row / group renderers.
  *
  * Station adopters: Incoming POS (`IncomingGridView`) and Unbox / History /
- * Testing (`ReceivingGridView`). Outbound Pending keeps composing `LedgerGrid`
- * directly — its chrome contract differs (full-bleed ancestor page scroll, URL
- * `?sort=` SoT, viewport force-hide, drag column order).
+ * Testing (`ReceivingGridView`). Outbound Pending composes `LedgerGrid`
+ * directly with {@link TABLE_SURFACE_CLIP_CLASS} (ancestor page scroll,
+ * URL `?sort=` SoT, viewport force-hide, drag column order).
  */
 interface LedgerGridSurfaceProps<Row, K extends string> {
   descriptor: GridSurfaceDescriptor<Row>;
@@ -109,8 +110,10 @@ export function LedgerGridSurface<Row, K extends string>({
   return (
     <div
       data-testid={testId}
+      data-table-surface=""
       className={cn(
-        'flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-lg border border-border-soft bg-surface-card',
+        'flex h-full min-h-0 min-w-0 flex-1 flex-col',
+        TABLE_SURFACE_CLIP_CLASS,
         className,
       )}
     >

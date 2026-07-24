@@ -1,7 +1,5 @@
 /** Client-safe catalog list types (mirror of server SkuCatalogListRow). */
 
-export type CatalogLinkFilter = 'active_linked' | 'unlinked_pending' | 'all';
-
 export interface CatalogListRow {
   id: number;
   sku: string;

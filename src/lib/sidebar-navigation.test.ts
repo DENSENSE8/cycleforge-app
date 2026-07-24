@@ -317,11 +317,12 @@ test('resolver matches existing panel derivations for known deep-links', () => {
   assert.equal(resolveSidebarMode('tech', at('/test', 'view=testing')), 'testing');
   assert.equal(resolveSidebarMode('tech', at('/test', 'staffId=7')), 'shipping');
   assert.equal(resolveSidebarMode('tech', at('/tech', 'view=testing')), 'testing');
-  // Sales (former Walk-In main) — 3-mode hub (Local Pickup · Sales · Repair);
-  // bare = Sales default, `?mode=` drives it, legacy `?category=` still maps.
+  // Sales (former Walk-In main) — Local Pickup · Sales hub; Repair lives on
+  // `/repair`. Bare = Sales default, `?mode=` drives it, legacy `?category=`
+  // still maps. Stale `?mode=repair` parses as Sales (proxy redirects first).
   assert.equal(resolveSidebarMode('walk-in', at('/walk-in')), 'sales');
   assert.equal(resolveSidebarMode('walk-in', at('/walk-in', 'mode=pickup')), 'pickup');
-  assert.equal(resolveSidebarMode('walk-in', at('/walk-in', 'mode=repair')), 'repair');
+  assert.equal(resolveSidebarMode('walk-in', at('/walk-in', 'mode=repair')), 'sales');
   assert.equal(resolveSidebarMode('walk-in', at('/walk-in', 'category=pickups')), 'pickup');
   assert.equal(resolveSidebarMode('walk-in', at('/walk-in', 'category=sales')), 'sales');
 });

@@ -3,6 +3,7 @@
 import { photoHeroLayoutId } from '@/components/shipped/photo-gallery/photo-gallery-utils';
 import { formatDateTimePST } from '@/utils/date';
 import { cn } from '@/utils/_cn';
+import { TicketNasBackupButton } from '../TicketNasBackupButton';
 import { PhotoThumb } from '../PhotoThumb';
 import { GroupSelectionMark } from './GroupSelectionMark';
 import { SelectionMark } from './SelectionMark';
@@ -22,6 +23,7 @@ export function PhotoListView({
 }: PhotoGridViewProps) {
   const groups = groupPhotosByTicket(photos, scope);
   const showGroupHeaders = groups.length > 1 || selectionActive;
+  const showNasBackup = scope === 'claims';
 
   return (
     <div className="space-y-4">
@@ -30,11 +32,14 @@ export function PhotoListView({
         const allGroupSelected =
           groupIds.length > 0 && groupIds.every((id) => selected.has(id));
         const someGroupSelected = groupIds.some((id) => selected.has(id));
+        const ticketNumber = group.key.startsWith('ticket:')
+          ? group.key.slice('ticket:'.length)
+          : null;
 
         return (
           <section key={group.key} className="space-y-1.5">
-            {showGroupHeaders ? (
-              <header className="flex items-center gap-2 px-1">
+            {showGroupHeaders || (showNasBackup && ticketNumber) ? (
+              <header className="flex flex-wrap items-center gap-2 px-1">
                 {selectionActive && onToggleGroupSelection ? (
                   <GroupSelectionMark
                     allSelected={allGroupSelected}
@@ -49,6 +54,14 @@ export function PhotoListView({
                 <span className="shrink-0 rounded-full bg-surface-sunken px-1.5 py-0.5 text-role-micro font-bold tabular-nums text-text-soft">
                   {group.photos.length}
                 </span>
+                {showNasBackup && ticketNumber ? (
+                  <TicketNasBackupButton
+                    ticketNumber={ticketNumber}
+                    size="sm"
+                    label="Backup to NAS"
+                    className="ml-auto"
+                  />
+                ) : null}
               </header>
             ) : null}
             <ul className="divide-y divide-border-hairline overflow-hidden rounded-lg border border-border bg-card">

@@ -20,6 +20,9 @@ function patchOrderFieldInCaches(current: unknown, orderId: number, patch: Recor
   if ('outOfStock' in patch) {
     normalizedPatch.out_of_stock = patch.outOfStock;
   }
+  if ('isOutOfStock' in patch) {
+    normalizedPatch.is_out_of_stock = patch.isOutOfStock;
+  }
 
   const patchRow = (row: Record<string, unknown> | null | undefined) => {
     if (!row || Number(row.id) !== orderId) return row;
@@ -121,13 +124,11 @@ export function useOrderFieldSave({
     }
   };
 
-  const saveOutOfStock = async (value: string) => {
-    const trimmed = value.trim();
-    const outOfStockValue = trimmed || null;
+  const saveOutOfStock = async (checked: boolean) => {
     await persistOrderRecordField(
-      { outOfStock: outOfStockValue },
-      { outOfStock: outOfStockValue, out_of_stock: outOfStockValue },
-      { outOfStock: outOfStockValue },
+      { isOutOfStock: checked },
+      { isOutOfStock: checked, is_out_of_stock: checked },
+      { isOutOfStock: checked },
       setIsSavingOutOfStock,
       'Failed to save out of stock',
     );

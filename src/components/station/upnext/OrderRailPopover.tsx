@@ -80,10 +80,10 @@ export function OrderRailPopover({
         <TrackingChip value={tracking} display={getLast4(tracking)} />
       </div>
 
-      {order.out_of_stock && String(order.out_of_stock).trim() ? (
+      {order.is_out_of_stock ? (
         <div className="flex items-center gap-1.5 rounded-md border border-red-100 bg-red-50/60 px-2 py-1">
           <span className="min-w-0 flex-1 truncate text-role-caption font-semibold text-red-700">
-            {order.out_of_stock}
+            Out of stock
           </span>
         </div>
       ) : null}

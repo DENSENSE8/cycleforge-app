@@ -44,3 +44,5 @@ export const PRODUCT_HUB_PLATFORMS = [
   'mercari',
   'shopify',
 ] as const;
+
+export type ProductHubPlatform = (typeof PRODUCT_HUB_PLATFORMS)[number];

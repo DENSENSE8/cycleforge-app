@@ -84,14 +84,12 @@ export function useShippingRailActions({
   );
 
   const handleMissingParts = useCallback(
-    async (orderId: number, reason: string) => {
-      const trimmed = reason.trim();
-      if (!trimmed) return;
+    async (orderId: number, isOutOfStockFlag: boolean) => {
       try {
         const res = await fetch('/api/orders/missing-parts', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ orderId, reason: trimmed }),
+          body: JSON.stringify({ orderId, isOutOfStock: isOutOfStockFlag }),
         });
         if (res.ok) {
           onMissingParts();
@@ -117,7 +115,7 @@ export function useShippingRailActions({
     const handleOosEvent = (e: Event) => {
       const detail = (e as CustomEvent<UpNextActionOosPayload>).detail;
       if (!detail) return;
-      void handleMissingParts(detail.orderId, detail.reason);
+      void handleMissingParts(detail.orderId, detail.isOutOfStock);
     };
     window.addEventListener('tech-upnext-action-start', handleStartEvent);
     window.addEventListener('tech-upnext-action-oos-set', handleOosEvent);

@@ -145,6 +145,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       orderNumber,
       shipByDate,
       outOfStock,
+      isOutOfStock,
       notes,
       isUrgent,
       shippingTrackingNumber,
@@ -176,7 +177,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
 
     const orgId = ctx.organizationId;
     let outOfStockChanged = false;
-    let outOfStockValue: string | null = null;
+    let outOfStockValueBoolean: boolean = false;
 
     // Sentinel for the duplicate order_id case: thrown to abort the tenant
     // transaction (the wrapper ROLLBACKs), then caught to return the exact
@@ -306,11 +307,17 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         values.push(normalizedOrderNumber || null);
       }
 
-      if (outOfStock !== undefined) {
+      if (outOfStock !== undefined || isOutOfStock !== undefined) {
         outOfStockChanged = true;
-        outOfStockValue = outOfStock;
-        updates.push(`out_of_stock = $${paramCount++}`);
-        values.push(outOfStock);
+        // Handle both legacy string outOfStock and new boolean isOutOfStock
+        if (isOutOfStock !== undefined) {
+          outOfStockValueBoolean = Boolean(isOutOfStock);
+        } else if (outOfStock !== undefined) {
+          // Legacy: non-empty trim → true
+          outOfStockValueBoolean = Boolean(String(outOfStock || '').trim());
+        }
+        updates.push(`is_out_of_stock = $${paramCount++}`);
+        values.push(outOfStockValueBoolean);
       }
       if (notes !== undefined) {
         updates.push(`notes = $${paramCount++}`);
@@ -363,7 +370,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       if (packerId !== undefined) changedFields.packerId = packerId;
       if (orderNumber !== undefined) changedFields.orderNumber = orderNumber;
       if (shipByDate !== undefined) changedFields.shipByDate = shipByDate;
-      if (outOfStock !== undefined) changedFields.outOfStock = outOfStock;
+      if (outOfStock !== undefined || isOutOfStock !== undefined) changedFields.isOutOfStock = outOfStockValueBoolean;
       if (notes !== undefined) changedFields.notes = notes;
       if (isUrgent !== undefined) changedFields.isUrgent = Boolean(isUrgent);
       if (shippingTrackingNumber !== undefined) changedFields.shippingTrackingNumber = shippingTrackingNumber;
@@ -429,12 +436,11 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     }
 
     if (process.env.FEATURE_REPLENISHMENT === 'true' && outOfStockChanged) {
-      const trimmedOutOfStock = String(outOfStockValue || '').trim();
       for (const orderId of idsToUpdate) {
-        if (trimmedOutOfStock) {
+        if (outOfStockValueBoolean) {
           await ensureReplenishmentForOrder({
             orderId,
-            reason: trimmedOutOfStock,
+            reason: 'Out of stock',
             changedBy: 'staff',
             forceFullQuantity: true,
           }, ctx.organizationId);

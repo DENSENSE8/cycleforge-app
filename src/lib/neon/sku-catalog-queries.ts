@@ -1259,7 +1259,7 @@ export interface SkuCatalogListRow {
 function linkFilterWhere(linkFilter: SkuCatalogLinkFilter): string {
   switch (linkFilter) {
     case 'active_linked':
-      // Default Catalog view: clean, trustworthy Active & Inventory-linked rows.
+      // Refine: Active & Inventory-linked rows only.
       return `sc.is_active = true AND sc.provider_item_id IS NOT NULL`;
     case 'unlinked_pending':
       // MDM debt surface: missing inventory link and/or open pending_skus work.
@@ -1282,14 +1282,65 @@ function linkFilterWhere(linkFilter: SkuCatalogLinkFilter): string {
   }
 }
 
+/** Whitelist channel keys safe to interpolate after validation (no user free-text). */
+const CATALOG_CHANNEL_PLATFORMS = new Set([
+  'amazon',
+  'fba',
+  'ebay',
+  'ecwid',
+  'walmart',
+  'mercari',
+  'shopify',
+]);
+
+/**
+ * Channel scope for catalog platform tabs. `zoho` / omitted = inventory-master
+ * MDM list (no channel EXISTS). Other keys require an active sku_platform_ids
+ * row. Legacy `ecwidOnly` maps to ecwid with the historic display_name guard.
+ */
+function channelPlatformWhere(params: {
+  platform?: string | null;
+  ecwidOnly?: boolean;
+}): string {
+  const raw = (params.platform || '').trim().toLowerCase();
+  if (raw && raw !== 'zoho' && CATALOG_CHANNEL_PLATFORMS.has(raw)) {
+    // Validated whitelist key only — never interpolate untrusted input.
+    return `EXISTS (
+      SELECT 1 FROM sku_platform_ids e
+      WHERE e.sku_catalog_id = sc.id
+        AND e.platform = '${raw}'
+        AND e.is_active = true
+    )`;
+  }
+  if (params.ecwidOnly) {
+    return `EXISTS (
+      SELECT 1 FROM sku_platform_ids e
+      WHERE e.sku_catalog_id = sc.id
+        AND e.platform = 'ecwid'
+        AND e.is_active = true
+        AND e.display_name IS NOT NULL
+    )`;
+  }
+  return 'TRUE';
+}
+
 export async function getSkuCatalogList(params: {
   q?: string;
   limit?: number;
   offset?: number;
   sort?: string;
   dir?: string;
+  /**
+   * Legacy Ecwid search alias — prefer `platform: 'ecwid'`. When true without
+   * platform, applies the historic display_name-required ecwid EXISTS.
+   */
   ecwidOnly?: boolean;
-  /** Catalog MDM segment. Default preserves prior admin list behavior (active only). */
+  /**
+   * Catalog platform tab: `zoho` (or omit) = full MDM list; channel key =
+   * rows with that sku_platform_ids link.
+   */
+  platform?: string | null;
+  /** Catalog MDM segment refine. Default preserves prior admin list behavior (active only). */
   linkFilter?: SkuCatalogLinkFilter;
 }, orgId?: OrgId): Promise<{ items: SkuCatalogListRow[]; total: number }> {
   const search = (params.q || '').trim();
@@ -1298,12 +1349,16 @@ export async function getSkuCatalogList(params: {
   const desc = params.dir === 'desc';
   // When linkFilter is omitted, preserve historic admin list behavior (active
   // rows only, no provider-link requirement). Catalog UI always passes an
-  // explicit segment.
+  // explicit segment (`all` when no refine).
   const explicitFilter = params.linkFilter;
   const whereLink =
     explicitFilter === undefined
       ? 'sc.is_active = true'
       : linkFilterWhere(explicitFilter);
+  const whereChannel = channelPlatformWhere({
+    platform: params.platform,
+    ecwidOnly: params.ecwidOnly,
+  });
 
   let orderBy: string;
   switch (params.sort) {
@@ -1376,9 +1431,9 @@ export async function getSkuCatalogList(params: {
        WHERE e.sku_catalog_id = sc.id AND e.platform = 'ecwid' AND e.is_active = true AND e.display_name IS NOT NULL
        LIMIT 1
      ) ecwid ON TRUE
-     WHERE (${whereLink})${orgId ? ' AND sc.organization_id = $4' : ''}
+     WHERE (${whereLink})
+       AND (${whereChannel})${orgId ? ' AND sc.organization_id = $4' : ''}
        AND ($1 = '' OR sc.sku ILIKE '%' || $1 || '%' OR sc.product_title ILIKE '%' || $1 || '%' OR sc.category ILIKE '%' || $1 || '%' OR it.name ILIKE '%' || $1 || '%' OR sc.provider_item_id ILIKE '%' || $1 || '%')
-       ${params.ecwidOnly ? `AND EXISTS (SELECT 1 FROM sku_platform_ids e WHERE e.sku_catalog_id = sc.id AND e.platform = 'ecwid' AND e.is_active = true AND e.display_name IS NOT NULL)` : ''}
      GROUP BY sc.id, oc.order_count, ls.last_shipped, ecwid.display_name, ecwid.image_url, ecwid.platform_sku, it.name
      ORDER BY ${orderBy}
      LIMIT $2 OFFSET $3`;
@@ -1391,9 +1446,9 @@ export async function getSkuCatalogList(params: {
      LEFT JOIN items it
        ON it.zoho_item_id = sc.provider_item_id
       AND it.organization_id = sc.organization_id
-     WHERE (${whereLink})${orgId ? ' AND sc.organization_id = $2' : ''}
-       AND ($1 = '' OR sc.sku ILIKE '%' || $1 || '%' OR sc.product_title ILIKE '%' || $1 || '%' OR sc.category ILIKE '%' || $1 || '%' OR it.name ILIKE '%' || $1 || '%' OR sc.provider_item_id ILIKE '%' || $1 || '%')
-       ${params.ecwidOnly ? `AND EXISTS (SELECT 1 FROM sku_platform_ids e WHERE e.sku_catalog_id = sc.id AND e.platform = 'ecwid' AND e.is_active = true AND e.display_name IS NOT NULL)` : ''}`;
+     WHERE (${whereLink})
+       AND (${whereChannel})${orgId ? ' AND sc.organization_id = $2' : ''}
+       AND ($1 = '' OR sc.sku ILIKE '%' || $1 || '%' OR sc.product_title ILIKE '%' || $1 || '%' OR sc.category ILIKE '%' || $1 || '%' OR it.name ILIKE '%' || $1 || '%' OR sc.provider_item_id ILIKE '%' || $1 || '%')`;
   const countResult = orgId
     ? await tenantQuery<{ total: number }>(orgId, countSql, [search, orgId])
     : await pool.query<{ total: number }>(countSql, [search]);

@@ -47,6 +47,7 @@ const MODE_SCOPED_PARAMS = [
   'incview',
   'state',
   'sort',
+  'dir',
   'po_from',
   'po_to',
   'page',

@@ -25,17 +25,17 @@ export interface ShippedPanelEditorDockProps {
   setNotes: (value: string) => void;
   isSavingNotes: boolean;
   onSaveNotes: () => void;
-  outOfStock: string;
-  setOutOfStock: (value: string) => void;
+  isOutOfStock: boolean;
   isSavingOutOfStock: boolean;
-  onSaveOutOfStock: () => void;
+  /** Persist the out-of-stock flag (boolean). */
+  onSaveOutOfStock: (checked: boolean) => void;
   shippingTrackingNumber: string;
   onMarkShippedSuccess: () => void;
 }
 
 /**
- * Fixed footer region for header-action editors (mark shipped, out-of-stock,
- * notes). Saved values render as read-only cards here; queue rows show icons.
+ * Fixed footer region for header-action editors (mark shipped, out-of-stock
+ * flag toggle, notes). Queue rows show icons for the same flags.
  */
 export function ShippedPanelEditorDock({
   shipped,
@@ -48,8 +48,7 @@ export function ShippedPanelEditorDock({
   setNotes,
   isSavingNotes,
   onSaveNotes,
-  outOfStock,
-  setOutOfStock,
+  isOutOfStock,
   isSavingOutOfStock,
   onSaveOutOfStock,
   shippingTrackingNumber,
@@ -58,13 +57,9 @@ export function ShippedPanelEditorDock({
   const [packerOptions, setPackerOptions] = useState<StaffRecipient[]>([]);
 
   const savedNotes = String(notes || shipped.notes || '').trim();
-  const savedOutOfStock = String(
-    outOfStock || (shipped as { out_of_stock?: string }).out_of_stock || '',
-  ).trim();
   const hasSavedNotes = savedNotes.length > 0;
-  const hasSavedOutOfStock = savedOutOfStock.length > 0;
   const showOutOfStockRegion =
-    showOutOfStock && (activeInput === 'out_of_stock' || hasSavedOutOfStock);
+    showOutOfStock && (activeInput === 'out_of_stock' || isOutOfStock);
   const showNotesRegion = showNotes && (activeInput === 'notes' || hasSavedNotes);
   const hasExpandedEditor = showMarkAsShipped && activeInput === 'mark_shipped';
 
@@ -124,24 +119,14 @@ export function ShippedPanelEditorDock({
       </AnimatePresence>
 
       {showOutOfStockRegion ? (
-        activeInput === 'out_of_stock' ? (
-          <ShippedOutOfStockComposer
-            value={outOfStock}
-            onChange={setOutOfStock}
-            onCancel={() => {
-              setOutOfStock(String((shipped as { out_of_stock?: string }).out_of_stock || ''));
-              setActiveInput('none');
-            }}
-            onSubmit={onSaveOutOfStock}
-            isSaving={isSavingOutOfStock}
-          />
-        ) : (
-          <ShippedOutOfStockComposer
-            value={savedOutOfStock}
-            readOnly
-            onClick={() => setActiveInput('out_of_stock')}
-          />
-        )
+        <ShippedOutOfStockComposer
+          checked={isOutOfStock}
+          isSaving={isSavingOutOfStock}
+          onCheckedChange={(checked) => {
+            onSaveOutOfStock(checked);
+            if (!checked) setActiveInput('none');
+          }}
+        />
       ) : null}
 
       {showNotesRegion ? (

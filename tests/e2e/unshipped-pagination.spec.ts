@@ -29,7 +29,7 @@ function makeRows(n: number) {
       deadline_at: at,
       shipment_id: 600_000 + i,
       has_tech_scan: false,
-      out_of_stock: '',
+      is_out_of_stock: false,
       latest_status_category: 'UNKNOWN',
     });
   }

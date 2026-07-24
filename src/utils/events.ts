@@ -117,12 +117,12 @@ export function dispatchUpNextActionStart(payload: UpNextActionStartPayload): vo
 }
 
 /**
- * Right-pane "Out of stock" submit — `UpNextOrder` routes this to
- * `handleMissingParts`, which POSTs the reason and refreshes the queue.
+ * Right-pane "Out of stock" toggle — `UpNextOrder` routes this to
+ * `handleMissingParts`, which POSTs `isOutOfStock` and refreshes the queue.
  */
 export interface UpNextActionOosPayload {
   orderId: number;
-  reason: string;
+  isOutOfStock: boolean;
 }
 
 export function dispatchUpNextActionOos(payload: UpNextActionOosPayload): void {

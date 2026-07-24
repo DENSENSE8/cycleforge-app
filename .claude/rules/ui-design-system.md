@@ -68,8 +68,9 @@ Rails are a **recipe** for workbench pickers — not proof that every Workbench 
   bg-surface-card shadow-sm`. Compose **`Panel`** (generic static surface — its default *is* that
   shell; props: `padding`/`radius`/`elevation`/`borderless`), **`SectionCard`** (`@/design-system/
   components/monitor` — Monitor rollup zones), or **`CardShell`** (selectable/animated list rows).
-  Guard: `surface-box-tokens.guard.test.ts` (`npm run test:surface-box-guard`) ratchets hand-rolled
-  shells down; a true one-off carries a same-line `ds-allow-box` comment.
+  **Ops tables / spreadsheets** compose `TABLE_SURFACE_*` from `tokens/table-surface.ts`
+  (rounded-xl + raised + sunken frozen header). Guard: `surface-box-tokens.guard.test.ts` (`npm run test:surface-box-guard`)
+  ratchets hand-rolled shells down; a true one-off carries a same-line `ds-allow-box` comment.
 
 ### Allow by surface
 

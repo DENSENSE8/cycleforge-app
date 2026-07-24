@@ -960,7 +960,9 @@ export const orders = pgTable('orders', {
   condition: text('condition'),
   /** FK to shipping_tracking_numbers — single source of truth for carrier tracking */
   shipmentId: bigint('shipment_id', { mode: 'number' }),
-  outOfStock: text('out_of_stock'),
+  /** Operator-toggled out-of-stock / blocked flag (Pending BLOCKED lane).
+   *  Replaces retired free-text `out_of_stock`. Migration 2026-07-23b. */
+  isOutOfStock: boolean('is_out_of_stock').notNull().default(false),
   notes: text('notes'),
   /** Operator-toggled urgent / expedited flag (dashboard queue quick-actions Zap).
    *  Tier-0 semantics for the future "Expedited" filter. Migration 2026-07-14. */

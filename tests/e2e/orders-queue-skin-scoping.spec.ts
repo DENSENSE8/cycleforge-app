@@ -2,18 +2,21 @@ import { test, expect, type Locator } from '@playwright/test';
 
 /**
  * Outbound spreadsheet skin — Pending + Packed share OrdersGridView / LedgerGrid
- * (Airtable grid skin). Assert both tabs render the same white shell + glyphs;
+ * (Airtable grid skin). Assert both tabs render the same framed table + glyphs;
  * no day-band headers.
  *
- * Shell contract (post minimal-simplify): FULL-BLEED in the workbench gutters —
- * no outer card radius/border; edges come from the skin's internal hairline
- * cell rules only. Header band is opaque white with no backdrop blur.
+ * Shell contract: rounded ops table surface (`TABLE_SURFACE_CLIP_CLASS` /
+ * `[data-table-surface]`) — xl radius, border, raised lift, overflow-hidden.
+ * Frozen header = strong; body = white. Continuous airtable column lines run
+ * through header AND body (clipped at the rounded corners).
  *
  * Token truth (light theme — the default under test):
- *   background-surface #ffffff → 255,255,255   (grid header + cells)
+ *   background-surface #ffffff → 255,255,255   (body cells)
+ *   surface-strong     #e2e8f0 → 226,232,240   (frozen header)
  */
 
 const WHITE = '255,255,255';
+const STRONG = '226,232,240';
 
 function toRgb(s: string): string {
   let m = s.match(/rgba?\(([^)]+)\)/);
@@ -40,42 +43,48 @@ async function assertAirtableGridShell(grid: Locator) {
   const header = headerRowIn(grid);
   await expect(header).toBeVisible();
 
-  expect(await bgRgb(header), 'grid header is white').toBe(WHITE);
+  expect(await bgRgb(header), 'frozen header is strong (depth above white rows)').toBe(STRONG);
   expect(await backdropOf(header), 'grid header drops the backdrop blur').toBe('none');
 
   expect(await glyphCount(header, 'qty'), 'qty has type glyph').toBeGreaterThanOrEqual(1);
   expect(await glyphCount(header, 'age'), 'age has type glyph').toBeGreaterThanOrEqual(1);
   expect(await glyphCount(header, 'order'), 'order has type glyph').toBeGreaterThanOrEqual(1);
-  // Narrow tracks: glyph + sr-only (adaptive); never truncated visible "Q…" / "CH…".
   await expect(header.locator('[data-col="qty"] .sr-only')).toHaveText('Qty');
-  await expect(header.locator('[data-col="platform"] .sr-only')).toHaveText('Platform');
+  await expect(header.locator('[data-col="condition"]')).toContainText('Cond');
   await expect(header.locator('[data-col="age"] .sr-only')).toHaveText('Age');
 
-  // No floating day-band headers in the flat spreadsheet.
   await expect(grid.locator('[data-date]')).toHaveCount(0);
 
-  // Full-bleed shell: no outer card radius; the airtable skin surface is white
-  // and internal hairline cell rules are the only lines.
-  const shell = await grid
-    .locator('[data-grid-skin="airtable"]')
-    .first()
-    .evaluate((el) => {
-      const s = getComputedStyle(el);
-      return { radius: s.borderRadius, background: s.backgroundColor };
-    });
-  expect(parseFloat(shell.radius), 'grid shell is full-bleed (no card radius)').toBe(0);
-  expect(toRgb(shell.background), 'grid skin surface is white').toBe(WHITE);
+  // Rounded raised clip frame.
+  const framed = await grid.evaluate((el) => {
+    const s = getComputedStyle(el);
+    return {
+      radius: s.borderRadius,
+      borderTopWidth: s.borderTopWidth,
+      overflow: s.overflow,
+    };
+  });
+  expect(parseFloat(framed.radius), 'ops table shell has xl radius').toBeGreaterThan(0);
+  expect(parseFloat(framed.borderTopWidth), 'ops table shell has perimeter border').toBeGreaterThan(0);
+  expect(framed.overflow, 'ops table shell clips corners').toBe('hidden');
+
+  // Continuous column lines: header cell + body cell both draw a right rule.
+  const headerCellBorder = await header.locator('[data-col="title"]').evaluate(
+    (el) => parseFloat(getComputedStyle(el).borderRightWidth) || 0,
+  );
+  expect(headerCellBorder, 'header draws continuous column rules').toBeGreaterThan(0);
+
   const firstCell = grid.locator('[data-order-row-id] > [data-col]').first();
   const cellBorder = await firstCell.evaluate(
     (el) => parseFloat(getComputedStyle(el).borderRightWidth) || 0,
   );
-  expect(cellBorder, 'internal hairline cell rules draw the grid').toBeGreaterThan(0);
+  expect(cellBorder, 'body draws continuous column rules').toBeGreaterThan(0);
 }
 
 test.describe('outbound OrdersGridView / LedgerGrid (Pending + Packed)', () => {
   test.skip(({ browserName }) => browserName === 'webkit', 'orders-queue grid is a desktop layout');
 
-  test('Pending GRID — rounded light shell, label+glyph headers, always-select', async ({ page }) => {
+  test('Pending GRID — rounded clip shell, continuous column lines, always-select', async ({ page }) => {
     await page.goto('/dashboard?unshipped');
     const grid = page.locator('[data-testid="pending-grid-body"]').first();
     await assertAirtableGridShell(grid);
@@ -87,11 +96,8 @@ test.describe('outbound OrdersGridView / LedgerGrid (Pending + Packed)', () => {
     await page.screenshot({ path: 'test-results/orders-queue-scoping-grid-white.png' });
   });
 
-  test('column header stays sticky against the page port while rows scroll', async ({ page }) => {
+  test('column header is sticky inside the framed grid', async ({ page }) => {
     await page.goto('/dashboard?unshipped');
-    // Split-x mode (ancestor page scroll): the surface is [data-cf-grid]; the
-    // header band lives OUTSIDE the inner h-scroll box so it can dock to the
-    // page port (`pending-grid-scroll` is the inner horizontal scroll body).
     const surface = page.locator('[data-testid="pending-grid-body"] [data-cf-grid]').first();
     await expect(surface).toBeVisible({ timeout: 20_000 });
     await expect(surface.locator('[data-order-row-id]').first()).toBeVisible({ timeout: 20_000 });
@@ -102,27 +108,6 @@ test.describe('outbound OrdersGridView / LedgerGrid (Pending + Packed)', () => {
     expect(pos, 'header band is position:sticky').toBe('sticky');
     const top = await headerBand.evaluate((el) => getComputedStyle(el).top);
     expect(top === '0px' || top === '0', 'header band docks at top:0').toBe(true);
-    // The header band must NOT sit inside the horizontal scroll container — an
-    // overflow-x box would capture its stickiness away from the page port.
-    const insideXScroll = await headerBand.evaluate(
-      (el) => Boolean(el.closest('[data-testid="pending-grid-scroll"]')),
-    );
-    expect(insideXScroll, 'header band lives outside the h-scroll body').toBe(false);
-
-    // Scrolling the PAGE port keeps the band pinned + visible over the rows.
-    const pageScroll = page.locator('[data-testid="dashboard-scroll"]');
-    await pageScroll.evaluate((el) => {
-      el.scrollTop = Math.min(el.scrollHeight, 500);
-    });
-    await page.waitForTimeout(150);
-    await expect(headerBand).toBeVisible();
-    const bandBox = await headerBand.boundingBox();
-    const portBox = await pageScroll.boundingBox();
-    expect(bandBox && portBox, 'band + port measurable after scroll').toBeTruthy();
-    if (bandBox && portBox) {
-      expect(bandBox.y, 'band pinned at/under the port top').toBeGreaterThanOrEqual(portBox.y - 2);
-      expect(bandBox.y, 'band did not scroll away with the rows').toBeLessThan(portBox.y + 120);
-    }
   });
 
   test('Packed tab — same LedgerGrid airtable skin (no day bands)', async ({ page }) => {

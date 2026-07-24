@@ -15,6 +15,7 @@ export * from './DropdownMenu';
 export * from './ExpandableSection';
 export * from './ExternalLinkButton';
 export * from './SlicedActionDock';
+export * from './StationComposerDock';
 export * from './IconButton';
 export * from './Layer';
 export * from './Panel';

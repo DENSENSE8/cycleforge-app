@@ -5,8 +5,9 @@
  *   • **legacy** (`dashboardOrderRowShellClass`) — title+meta stack left, chips right.
  *     Mobile fallback + pipeline board lanes + Tech/Packer week rows still use this.
  *   • **orders queue columns** (`ordersQueueRowShellClass`) — Google-Sheets-like
- *     WMS grid (Outbound Pending · Packed · Labels · Staged · Shipped · Review):
- *       select · title · date · age · status · qty · cond · platform · order · tracking
+ *     WMS grid (Outbound Pending · Tested · Packed · Labels · Staged · Shipped · Review):
+ *       select · title · date · age · qty · cond · order · tracking
+ *       (Tested tab: status demoted → tester · testedAt after age)
  *   • **Incoming columns** (`INCOMING_GRID_COLUMNS`) — LedgerGrid for `/incoming`:
  *       select · title · date · age · qty · cond · status · platform · order · tracking
  *   • **Receiving browse columns** (`RECEIVING_GRID_COLUMNS`) — LedgerGrid for
@@ -70,8 +71,8 @@ export interface OrdersQueueColumn {
 }
 
 /**
- * Canonical column model, in strict scan order:
- *   select · title · date · age · status · qty · cond · platform · order · tracking
+ * Canonical Pending-tab column model, in strict scan order:
+ *   select · title · date · age · qty · cond · order · tracking
  * Never mix `auto`/`fr` for the same slot across rows, or columns drift (the
  * uneven look the Sheets rewrite exists to kill). `order` hides under the legacy
  * `orderid` config key (the grid column is `order`; the hide-registry key is
@@ -80,17 +81,12 @@ export interface OrdersQueueColumn {
  * **Date** = absolute civil ship-by (deadline → created fallback) — compact cell.
  * **Age** = relative urgency (`Nd` / lane age) with SLA tone — docks directly
  * after Date so when + how-late scan as one pair.
- * **Status** = fulfillment lane chip (Pending / Tested / Out of stock) from
- * `deriveFulfillmentState` — docks beside Age so when · how-late · where-in-pipeline
- * scan as one cluster.
+ * Status + Platform columns retired — lifecycle tabs (Pending · Tested) own the
+ * lane; listing open stays on the product-cell hover link.
  * The old free-text `notes` column and the replenishment `stock` column are
  * retired — note / OOS presence live as corner indicators on the Product cell
  * (replenishment facts surface in the OOS indicator tooltip); their widths fund
  * the flex title track.
- * **Platform** = fixed brand-icon track (no variable-width marketplace names) —
- * it is the listing-link cell (click opens the listing; dash when no link).
- * Marks are bare channel icons (`PlatformMark`) — fixed transparent footprint,
- * no sunken tile — tinted monochrome brand paths so tone stays scannable.
  * Fact tracks are content-hard `minmax(X,X)`; `title` is the ONLY flex track.
  */
 export const ORDERS_QUEUE_COLUMNS: readonly OrdersQueueColumn[] = [
@@ -99,24 +95,21 @@ export const ORDERS_QUEUE_COLUMNS: readonly OrdersQueueColumn[] = [
   // Content-sized floors (cell values) — headers go glyph-only below labelFitRem.
   { key: 'date', width: 'minmax(4.5rem, 4.5rem)', label: 'Ship by', gridLabel: 'By', type: 'date', labelFitRem: 4.5 },
   { key: 'age', width: 'minmax(3rem, 3rem)', label: 'Age', type: 'date', labelFitRem: 4.5 },
-  { key: 'status', width: 'minmax(6.5rem, 6.5rem)', label: 'Status', type: 'tag', hideKey: 'status', labelFitRem: 4.5 },
   { key: 'qty', width: 'minmax(2.75rem, 2.75rem)', label: 'Qty', type: 'number', hideKey: 'qty', labelFitRem: 4.5 },
   { key: 'condition', width: 'minmax(5.5rem, 5.5rem)', label: 'Cond', type: 'tag', hideKey: 'condition', labelFitRem: 4.5 },
-  { key: 'platform', width: 'minmax(3rem, 3rem)', label: 'Platform', gridLabel: 'Ch.', type: 'external', hideKey: 'platform', labelFitRem: 4.5 },
   { key: 'order', width: 'minmax(3.75rem, 3.75rem)', label: 'Order', type: 'id', hideKey: 'orderid', labelFitRem: 4.5 },
   // Glyph-only header (pin) — track sized for last-4 chips / + label icon.
   { key: 'tracking', width: 'minmax(3.75rem, 3.75rem)', label: 'Tracking', type: 'location', hideKey: 'tracking', labelFitRem: 4.5 },
 ] as const;
 
 /**
- * TESTED-lane column model (`?ustatus=TESTED` on the fulfillment queue): every
- * row is TESTED, so the redundant Status pill track is demoted and the lane
- * surfaces **who tested** + **when** instead — Tester docks after Age (the
- * "who · when" pair reads beside the urgency cluster). Field contract (plan §9):
- * tester name resolves `tested_by_name → tester_name → getStaffName(id)` via
- * `normalizePersonName`; tested-at prefers `test_date_time` then
- * `test_activity_at`, ignores the legacy `'1'` sentinel, formats via
- * `formatDateTimePST`.
+ * TESTED-tab column model (`?tested` / fulfillment.tested): every row is TESTED,
+ * so the lane surfaces **who tested** + **when** instead of a redundant Status
+ * pill — Tester docks after Age (the "who · when" pair reads beside the urgency
+ * cluster). Field contract (plan §9): tester name resolves
+ * `tested_by_name → tester_name → getStaffName(id)` via `normalizePersonName`;
+ * tested-at prefers `test_date_time` then `test_activity_at`, ignores the legacy
+ * `'1'` sentinel, formats via `formatDateTimePST`.
  */
 export const ORDERS_QUEUE_TESTED_COLUMNS: readonly OrdersQueueColumn[] = [
   { key: 'select', width: 'minmax(2rem, 2rem)' },
@@ -128,7 +121,6 @@ export const ORDERS_QUEUE_TESTED_COLUMNS: readonly OrdersQueueColumn[] = [
   { key: 'testedAt', width: 'minmax(10rem, 10rem)', label: 'Tested at', type: 'date', labelFitRem: 4.5 },
   { key: 'qty', width: 'minmax(2.75rem, 2.75rem)', label: 'Qty', type: 'number', hideKey: 'qty', labelFitRem: 4.5 },
   { key: 'condition', width: 'minmax(5.5rem, 5.5rem)', label: 'Cond', type: 'tag', hideKey: 'condition', labelFitRem: 4.5 },
-  { key: 'platform', width: 'minmax(3rem, 3rem)', label: 'Platform', gridLabel: 'Ch.', type: 'external', hideKey: 'platform', labelFitRem: 4.5 },
   { key: 'order', width: 'minmax(3.75rem, 3.75rem)', label: 'Order', type: 'id', hideKey: 'orderid', labelFitRem: 4.5 },
   { key: 'tracking', width: 'minmax(3.75rem, 3.75rem)', label: 'Tracking', type: 'location', hideKey: 'tracking', labelFitRem: 4.5 },
 ] as const;
@@ -168,15 +160,15 @@ export function ordersQueueContentMinWidthRem(
 
 /**
  * Viewport priority collapse (DevExtreme-style): when the scrollport is tight,
- * force-hide secondary columns in order By → Qty → Ch. Never touches Age /
- * Cond / Order / Tracking / Product. Ephemeral — not written to staff prefs.
+ * force-hide secondary columns in order By → Qty → Cond. Never touches Age /
+ * Order / Tracking / Product. Ephemeral — not written to staff prefs.
  *
  * Breakpoints are px widths of the LedgerGrid scrollport (16px rem assumed).
  */
 const ORDERS_QUEUE_VIEWPORT_COLLAPSE_ORDER: readonly OrdersQueueColumnKey[] = [
   'date',
   'qty',
-  'platform',
+  'condition',
 ] as const;
 
 /** Show all columns at/above this scrollport width. */

@@ -8,7 +8,7 @@ import { test, expect, type Locator, type Page } from '@playwright/test';
  * precedent), so every `?ustatus` lane, the TESTED tester/tested-at cells, the
  * order-fold, KPI click-to-filter, and the in-cell editors are exercised against
  * known data. Matrix rows covered here (per the Phase A execution prompt):
- *   G1–G10 (`?ustatus` lanes + TESTED column swap + mode toggles + sort)
+ *   G1–G10 (``?tested` / Pending tab + TESTED column swap + mode toggles + sort)
  *   E1–E4  (house order-folds outside TanStack)
  *   F2–F6  (keyboard edit contract + condition listbox + corner indicators)
  *   H1–H2  (viewport force-hide collapse / restore)
@@ -46,7 +46,7 @@ function makeRow(i: number, overrides: Record<string, unknown> = {}): MockRow {
     tracking_number: `9400111899223197${(100_000 + i).toString()}`,
     shipping_tracking_number: `9400111899223197${(100_000 + i).toString()}`,
     has_tech_scan: false,
-    out_of_stock: '',
+    is_out_of_stock: false,
     notes: '',
     is_urgent: false,
     latest_status_category: 'UNKNOWN', // not shipped → stays in the queue
@@ -62,7 +62,7 @@ function makeRow(i: number, overrides: Record<string, unknown> = {}): MockRow {
  *      T3 no names/ids + sentinel/blank stamps → em-dash cells
  *  - 6 PENDING singletons (one carries a note, one an OOS would flip lane — so
  *    the note row stays PENDING; OOS lives on the BLOCKED row)
- *  - 1 BLOCKED (out_of_stock text)
+ *  - 1 BLOCKED (is_out_of_stock)
  *  - 1 multi-line order (two PENDING rows sharing one order_id) → house fold
  */
 function fixtureRows(): MockRow[] {
@@ -109,7 +109,7 @@ function fixtureRows(): MockRow[] {
   rows.push(
     makeRow(9, {
       product_title: 'E2E BLOCKED Row',
-      out_of_stock: 'Need PSU replacement',
+      is_out_of_stock: true,
     }),
   );
   // Multi-line order — same order_id, different products, SAME day band
@@ -141,8 +141,8 @@ async function mockOrdersFeed(page: Page, rows: MockRow[]) {
       });
     },
   );
-  const tested = rows.filter((r) => r.has_tech_scan && !String(r.out_of_stock || '').trim()).length;
-  const blocked = rows.filter((r) => String(r.out_of_stock || '').trim()).length;
+  const tested = rows.filter((r) => r.has_tech_scan && !r.is_out_of_stock).length;
+  const blocked = rows.filter((r) => r.is_out_of_stock).length;
   const pending = rows.length - tested - blocked;
   await page.route(
     (url) => url.pathname === '/api/orders/queue-counts',
@@ -179,7 +179,7 @@ test.describe('Pending grid · TanStack + TESTED mode (mocked feed)', () => {
 
   test('G2/G6/G7/G8: TESTED lane swaps to Tester + Tested-at columns with §9 cell contract', async ({ page }) => {
     await mockOrdersFeed(page, fixtureRows());
-    await page.goto('/dashboard?unshipped&ustatus=TESTED', { waitUntil: 'domcontentloaded' });
+    await page.goto('/dashboard?tested', { waitUntil: 'domcontentloaded' });
 
     const table = grid(page);
     await expect(table).toBeVisible({ timeout: 20_000 });
@@ -230,39 +230,37 @@ test.describe('Pending grid · TanStack + TESTED mode (mocked feed)', () => {
     await page.screenshot({ path: 'test-results/pending-grid-tested-lane.png', fullPage: false });
   });
 
-  test('G1/G3/G4: PENDING and BLOCKED lanes keep default columns; clearing restores', async ({ page }) => {
+  test('G1/G3/G4: Pending tab + Blocked refine keep default columns; Tested tab swaps', async ({ page }) => {
     await mockOrdersFeed(page, fixtureRows());
 
-    // G1 — PENDING lane: only pending rows; default column set (status present).
-    await page.goto('/dashboard?unshipped&ustatus=PENDING', { waitUntil: 'domcontentloaded' });
+    // G1 — Pending tab: non-TESTED rows; default column set (no Status / Tester).
+    await page.goto('/dashboard?unshipped', { waitUntil: 'domcontentloaded' });
     const table = grid(page);
     await expect(table).toBeVisible({ timeout: 20_000 });
     await expect(table.locator('[data-order-row-id]').first()).toBeVisible({ timeout: 20_000 });
     const headerRow = headerRowIn(table);
-    await expect(headerRow.locator('[data-col="status"]')).toHaveCount(1);
+    await expect(headerRow.locator('[data-col="status"]')).toHaveCount(0);
+    await expect(headerRow.locator('[data-col="platform"]')).toHaveCount(0);
     await expect(headerRow.locator('[data-col="tester"]')).toHaveCount(0);
     await expect(headerRow.locator('[data-col="testedAt"]')).toHaveCount(0);
-    const firstStatus = table.locator('[data-order-row-id]').first().locator('[data-col="status"]');
-    await expect(firstStatus).toContainText(/pending/i);
+    // Pending + Blocked only (3 tested rows excluded).
+    await expect(table.locator('[data-order-row-id]')).toHaveCount(9);
 
-    // G3 — BLOCKED lane renders the OOS vocabulary without crashing.
+    // G3 — BLOCKED refine on Pending renders OOS rows without crashing.
     await page.goto('/dashboard?unshipped&ustatus=BLOCKED', { waitUntil: 'domcontentloaded' });
     await expect(table.locator('[data-order-row-id]')).toHaveCount(1, { timeout: 20_000 });
-    await expect(
-      table.locator('[data-order-row-id]').first().locator('[data-col="status"]'),
-    ).toContainText(/out of stock/i);
 
-    // G4 — clearing the filter restores the default fulfillment column set.
+    // G4 — clearing Blocked restores the Pending tab default column set.
     await page.goto('/dashboard?unshipped', { waitUntil: 'domcontentloaded' });
     await expect(table.locator('[data-order-row-id]').first()).toBeVisible({ timeout: 20_000 });
     const headerRow2 = headerRowIn(table);
-    await expect(headerRow2.locator('[data-col="status"]')).toHaveCount(1);
+    await expect(headerRow2.locator('[data-col="status"]')).toHaveCount(0);
     await expect(headerRow2.locator('[data-col="tester"]')).toHaveCount(0);
 
     await page.screenshot({ path: 'test-results/pending-grid-default-lane.png', fullPage: false });
   });
 
-  test('G5/G9: KPI tiles drive ?ustatus and columns swap live without freezing', async ({ page }) => {
+  test('G5/G9: KPI tiles drive Tested/Pending tabs and columns swap live without freezing', async ({ page }) => {
     await mockOrdersFeed(page, fixtureRows());
     await page.goto('/dashboard?unshipped', { waitUntil: 'domcontentloaded' });
 
@@ -274,24 +272,26 @@ test.describe('Pending grid · TanStack + TESTED mode (mocked feed)', () => {
     const readyTile = page.getByRole('button', { name: /ready to pack/i }).first();
     await expect(readyTile).toBeVisible({ timeout: 20_000 });
 
-    // G5 — KPI click filters the board AND swaps the column set.
+    // G5 — KPI click switches to Tested tab AND swaps the column set.
     await readyTile.click();
-    await expect(page).toHaveURL(/ustatus=TESTED/);
+    await expect(page).toHaveURL(/[?&]tested(=|&|$)/);
     await expect(headerRowIn(table).locator('[data-col="tester"]')).toHaveCount(1, { timeout: 10_000 });
     await expect(table.locator('[data-order-row-id]')).toHaveCount(3);
 
-    // G9 — TESTED → PENDING → TESTED, all client-side; headers + rows must
-    // repaint every time (guards the React Compiler / stale-memo freeze).
-    const awaitingTile = page.getByRole('button', { name: /awaiting test/i }).first();
-    await awaitingTile.click();
-    await expect(page).toHaveURL(/ustatus=PENDING/);
+    // G9 — Tested → Pending → Tested; headers + rows must repaint every time.
+    const pendingTile = page
+      .locator('[aria-label="Outbound attention"]')
+      .getByRole('button', { name: /pending/i })
+      .first();
+    await pendingTile.click();
+    await expect(page).toHaveURL(/[?&]unshipped(=|&|$)/);
     await expect(headerRowIn(table).locator('[data-col="tester"]')).toHaveCount(0, { timeout: 10_000 });
-    await expect(headerRowIn(table).locator('[data-col="status"]')).toHaveCount(1);
+    await expect(headerRowIn(table).locator('[data-col="status"]')).toHaveCount(0);
     const pendingCount = await table.locator('[data-order-row-id]').count();
-    expect(pendingCount, 'pending rows repaint after toggle').toBeGreaterThan(3);
+    expect(pendingCount, 'pending rows repaint after toggle').toBe(9);
 
     await readyTile.click();
-    await expect(page).toHaveURL(/ustatus=TESTED/);
+    await expect(page).toHaveURL(/[?&]tested(=|&|$)/);
     await expect(headerRowIn(table).locator('[data-col="tester"]')).toHaveCount(1, { timeout: 10_000 });
     await expect(table.locator('[data-order-row-id]')).toHaveCount(3);
 
@@ -300,7 +300,7 @@ test.describe('Pending grid · TanStack + TESTED mode (mocked feed)', () => {
 
   test('G10/D1: sort works under the TESTED column set; chrome dropdown drives ?sort=', async ({ page }) => {
     await mockOrdersFeed(page, fixtureRows());
-    await page.goto('/dashboard?unshipped&ustatus=TESTED', { waitUntil: 'domcontentloaded' });
+    await page.goto('/dashboard?tested', { waitUntil: 'domcontentloaded' });
 
     const table = grid(page);
     await expect(table.locator('[data-order-row-id]').first()).toBeVisible({ timeout: 20_000 });
@@ -525,9 +525,9 @@ test.describe('Pending grid · TanStack + TESTED mode (mocked feed)', () => {
         { timeout: 10_000, message: 'By (date) force-hides on a tight scrollport' },
       )
       .toBe(0);
-    // The priority ladder never touches Age / Cond / Order / Tracking / Product.
+    // The priority ladder never touches Age / Order / Tracking / Product.
+    // Cond may collapse on very tight viewports (By → Qty → Cond).
     await expect(headerRow.locator('[data-col="age"]')).toHaveCount(1);
-    await expect(headerRow.locator('[data-col="condition"]')).toHaveCount(1);
     await expect(headerRow.locator('[data-col="tracking"]')).toHaveCount(1);
     await expect(headerRow.locator('[data-col="title"]')).toHaveCount(1);
 
@@ -540,7 +540,7 @@ test.describe('Pending grid · TanStack + TESTED mode (mocked feed)', () => {
       )
       .toBe(1);
     await expect(headerRow.locator('[data-col="qty"]')).toHaveCount(1);
-    await expect(headerRow.locator('[data-col="platform"]')).toHaveCount(1);
+    await expect(headerRow.locator('[data-col="condition"]')).toHaveCount(1);
   });
 
   test('I1/I2: 400-row feed stays windowed; grid stays usable after a lane toggle', async ({ page }) => {
@@ -575,7 +575,7 @@ test.describe('Pending grid · TanStack + TESTED mode (mocked feed)', () => {
     expect(afterScroll).toBeGreaterThan(0);
     expect(afterScroll).toBeLessThan(150);
 
-    await page.goto('/dashboard?unshipped&ustatus=TESTED', { waitUntil: 'domcontentloaded' });
+    await page.goto('/dashboard?tested', { waitUntil: 'domcontentloaded' });
     await expect(table.locator('[data-order-row-id]').first()).toBeVisible({ timeout: 20_000 });
     await expect(headerRowIn(table).locator('[data-col="tester"]')).toHaveCount(1);
     const testedRows = await table.locator('[data-order-row-id]').count();
@@ -587,7 +587,7 @@ test.describe('Pending grid · TanStack + TESTED mode (mocked feed)', () => {
 
   test('J1/J3 + A8: no foreign grid DOM, no drag-resize handles; Packed never leaks TESTED columns', async ({ page }) => {
     await mockOrdersFeed(page, fixtureRows());
-    await page.goto('/dashboard?unshipped&ustatus=TESTED', { waitUntil: 'domcontentloaded' });
+    await page.goto('/dashboard?tested', { waitUntil: 'domcontentloaded' });
 
     const table = grid(page);
     await expect(table.locator('[data-order-row-id]').first()).toBeVisible({ timeout: 20_000 });
@@ -600,7 +600,7 @@ test.describe('Pending grid · TanStack + TESTED mode (mocked feed)', () => {
     await expect(table.locator('[data-order-row-id] .cursor-grab')).toHaveCount(0);
 
     // A8 — Packed tab (queueMode staged) keeps the default column set even with
-    // ?ustatus=TESTED still in the URL.
+    // ?tested= still in the URL.
     const packedTab = page.getByRole('button', { name: 'Packed', exact: true });
     await expect(packedTab).toBeVisible({ timeout: 20_000 });
     await packedTab.click();

@@ -1,4 +1,5 @@
 import { SLIDER_PRESETS, type HorizontalSliderItem } from '@/components/ui/HorizontalButtonSlider';
+import { isOutOfStock } from '@/utils/order-out-of-stock';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -6,9 +7,8 @@ export type UpNextTabId = 'all' | 'orders' | 'repair' | 'fba' | 'stock' | 'recei
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
-export function isOutOfStock(order: { out_of_stock: string | null }): boolean {
-  return !!String(order.out_of_stock || '').trim();
-}
+/** Re-export for legacy UpNext callers still on this module. */
+export { isOutOfStock };
 
 export function getRepairSortValue(deadlineAt: string | null | undefined, fallbackDateTime?: string | null | undefined): number {
   const source = deadlineAt || fallbackDateTime;

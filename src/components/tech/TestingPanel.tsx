@@ -15,6 +15,7 @@ import { SectionTabsSlider } from '@/design-system/components';
 import { StationTerminalDock, useStationTerminalAction } from '@/components/station/terminal';
 import {
   StationWorkbench,
+  StationPanelRoot,
   PairingTogglePill,
   ExternalLinkPill,
   buildSectionTabs,
@@ -341,14 +342,7 @@ export function TestingPanel({
 
   return (
     <>
-      <div className="relative isolate flex h-full min-h-0 flex-col bg-surface-canvas">
-        {/* Ambient wash covers identity + body so the gradient isn't clipped
-            under a separate chrome band. */}
-        <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 overflow-visible">
-          <div className="absolute -top-24 left-1/2 h-72 w-[44rem] -translate-x-1/2 rounded-full bg-blue-400/[0.08] blur-3xl" />
-          <div className="absolute right-[-7rem] top-1/3 h-80 w-80 rounded-full bg-violet-400/[0.06] blur-3xl" />
-          <div className="absolute bottom-[-5rem] left-[-5rem] h-80 w-80 rounded-full bg-emerald-400/[0.06] blur-3xl" />
-        </div>
+      <StationPanelRoot className="isolate">
         <StationContextBar
           identity={<TestingCartonHeader c={c} row={row} staffId={staffId} />}
           moreDetails={
@@ -402,7 +396,7 @@ export function TestingPanel({
             showEmptyState={false}
           />
         ) : null}
-      </div>
+      </StationPanelRoot>
 
       <TestingPanelModals c={c} row={row} />
     </>

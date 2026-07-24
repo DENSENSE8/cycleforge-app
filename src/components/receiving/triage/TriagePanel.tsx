@@ -22,7 +22,7 @@ import { toast } from '@/lib/toast';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 import { PackageOpen } from '@/components/Icons';
 import { StationTerminalDock, useStationTerminalAction } from '@/components/station/terminal';
-import { PairingTogglePill, StationWorkbench } from '@/components/station/workbench';
+import { PairingTogglePill, StationPanelRoot, StationWorkbench } from '@/components/station/workbench';
 import {
   StationContextBar,
   StationHeaderToolbar,
@@ -266,12 +266,7 @@ export function TriagePanel({
 
   return (
     <>
-      <div className="relative flex h-full min-h-0 flex-col bg-surface-canvas">
-        <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 overflow-visible">
-          <div className="absolute -top-24 left-1/2 h-72 w-[44rem] -translate-x-1/2 rounded-full bg-blue-400/[0.08] blur-3xl" />
-          <div className="absolute right-[-7rem] top-1/3 h-80 w-80 rounded-full bg-violet-400/[0.06] blur-3xl" />
-          <div className="absolute bottom-[-5rem] left-[-5rem] h-80 w-80 rounded-full bg-emerald-400/[0.06] blur-3xl" />
-        </div>
+      <StationPanelRoot>
         <StationContextBar
           identity={
             <LineCartonContextSection
@@ -336,7 +331,7 @@ export function TriagePanel({
             photoIntent="all"
           />
         ) : null}
-      </div>
+      </StationPanelRoot>
 
       <LineEditModals row={row} c={c} />
     </>

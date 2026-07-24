@@ -42,10 +42,11 @@ interface RepairIntakeFormProps {
     favoriteSkuId?: number | null;
     /**
      * Headless kiosk variant (device principal, no staff session): a team member
-     * fills this WITH the customer at the front desk. Hides the staff-only
+     * fills this WITH the customer at the front desk. Hides staff-only
      * affordances whose endpoints a device token cannot reach — technician
-     * assignment, favorites, existing-customer PII search, the Zendesk link and
-     * print — and swaps the Ecwid catalog for a manual product field. Default off
+     * assignment, existing-customer PII search, the Zendesk link and print —
+     * and swaps Ecwid catalog search for a manual product field. Repair
+     * favorites load read-only from `/api/kiosk/repair/favorites`. Default off
      * = the unchanged /repair staff flow. Submit still goes through the injected
      * `onSubmit` (the kiosk host points it at the device-authed route).
      */
@@ -174,6 +175,24 @@ export function RepairIntakeForm({ onClose, onSubmit, initialData, favoriteSkuId
     const handleUseFavorite = async (favorite: FavoriteSkuRecord) => {
         setIsFetchingFavorite(true);
         try {
+            // Kiosk device token cannot hit Ecwid / repair-issues — apply the
+            // cached favorite fields only (same fall-through the staff path uses
+            // when those fetches fail).
+            if (kioskMode) {
+                const items = favoriteToSelectedItems(favorite);
+                const draft = buildDraftFromFavorite(favorite);
+                setSelectedItems(items);
+                setFormData((prev) => ({
+                    ...prev,
+                    ...draft,
+                    product: draft.product ?? prev.product,
+                    customer: prev.customer,
+                    serialNumber: prev.serialNumber,
+                }));
+                setCurrentStep('issue');
+                return;
+            }
+
             const { ecwidProduct, skuReasons } = await fetchFavoriteIntakeContext(favorite);
             const items = favoriteToSelectedItems(favorite, ecwidProduct);
             const draft = buildDraftFromFavorite(favorite, ecwidProduct, skuReasons);
@@ -520,30 +539,43 @@ export function RepairIntakeForm({ onClose, onSubmit, initialData, favoriteSkuId
                                 </div>
                             )}
                             {kioskMode ? (
-                                // Headless kiosk: the Ecwid catalog + favorites are staff-authed
-                                // endpoints a device token can't reach — capture the product by
-                                // hand instead (type fixed to the 'Other' convention). Price is
-                                // entered on the Contact step, same as every other intake.
-                                <section className="space-y-3">
-                                    <p className={SECTION_LABEL}>What are we repairing?</p>
-                                    <TextField
-                                        label="Product / model"
-                                        value={formData.product.model}
-                                        onChange={(value) => setFormData(prev => ({
-                                            ...prev,
-                                            product: { type: value.trim() ? 'Other' : '', model: value, sourceSku: null },
-                                        }))}
-                                        tone="neutral"
-                                        autoFocus
+                                // Device principal: read-only repair favorites via
+                                // `/api/kiosk/repair/favorites`, plus a manual product
+                                // field when nothing matches. Price stays on Contact.
+                                <div className="space-y-8">
+                                    <FavoritesWorkspaceSection
+                                        variant="quick-pick"
+                                        workspaceKey="repair"
+                                        accent="blue"
+                                        title="Common repairs"
+                                        description=""
+                                        emptyLabel="No common repairs yet — enter the product below"
+                                        useLabel="Start repair"
+                                        readOnly
+                                        listUrl="/api/kiosk/repair/favorites"
+                                        onUseFavorite={handleUseFavorite}
                                     />
-                                </section>
+
+                                    <section className="space-y-3">
+                                        <p className={SECTION_LABEL}>Or enter product</p>
+                                        <TextField
+                                            label="Product / model"
+                                            value={formData.product.model}
+                                            onChange={(value) => setFormData(prev => ({
+                                                ...prev,
+                                                product: { type: value.trim() ? 'Other' : '', model: value, sourceSku: null },
+                                            }))}
+                                            tone="neutral"
+                                        />
+                                    </section>
+                                </div>
                             ) : (
                                 <>
                                     <FavoritesWorkspaceSection
                                         variant="quick-pick"
                                         workspaceKey="repair"
                                         accent="blue"
-                                        title="Common Repairs"
+                                        title="Common repairs"
                                         description=""
                                         emptyLabel="No repair favorites yet"
                                         useLabel="Start repair"

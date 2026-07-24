@@ -64,7 +64,7 @@ export default function UnshippedSidebar(props: UnshippedSidebarProps) {
     },
   };
 
-  const isPrePack = scope.mode === 'unshipped';
+  const isPrePack = scope.mode === 'unshipped' || scope.mode === 'tested';
   const refinements = isPrePack ? scope.unshippedRefinements : scope.shippedRefinements;
   const onClearAll = isPrePack ? scope.clearUnshippedScope : scope.clearShippedScope;
 

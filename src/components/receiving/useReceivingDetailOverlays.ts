@@ -1,10 +1,10 @@
 'use client';
 
 /**
- * Overlay state for `/receiving`: the carton details stack (with lazy enrich),
- * the local-pickup review panel, and the Incoming-mode details slide-over.
- * Owns the `receiving-open-details-overlay` bridge, the Incoming row-select →
- * panel bridge, and the mode-flip cleanup. Extracted from ReceivingDashboard;
+ * Overlay state for `/receiving`: the carton details stack (with lazy enrich)
+ * and the Incoming-mode details slide-over. Owns the
+ * `receiving-open-details-overlay` bridge, the Incoming row-select → panel
+ * bridge, and the mode-flip cleanup. Extracted from ReceivingDashboard;
  * behaviour is unchanged.
  */
 
@@ -36,11 +36,9 @@ export interface IncomingDetailsTarget {
 export interface ReceivingDetailOverlays {
   overlayLog: ReceivingDetailsLog | null;
   setOverlayLog: React.Dispatch<React.SetStateAction<ReceivingDetailsLog | null>>;
-  pickupReviewOrderId: number | null;
-  setPickupReviewOrderId: React.Dispatch<React.SetStateAction<number | null>>;
   incomingDetails: IncomingDetailsTarget | null;
   setIncomingDetails: React.Dispatch<React.SetStateAction<IncomingDetailsTarget | null>>;
-  /** Re-fetch + merge the open overlay log (or hand off to the pickup review). */
+  /** Re-fetch + merge the open overlay log. */
   enrichOverlayLog: (receivingId: number) => Promise<void>;
 }
 
@@ -50,9 +48,6 @@ export function useReceivingDetailOverlays(
   incomingView: 'pos' | 'email' = 'pos',
 ): ReceivingDetailOverlays {
   const [overlayLog, setOverlayLog] = useState<ReceivingDetailsLog | null>(null);
-  // A finalized local pickup PO opens its own review/reprint panel instead of
-  // the generic carton details stack (it has no receiving_lines).
-  const [pickupReviewOrderId, setPickupReviewOrderId] = useState<number | null>(null);
   // Incoming-mode details panel — populated when a row is selected in
   // mode=incoming. {po_id, po_number} so the panel renders its header label
   // immediately, then re-keys its details query on po_id change.
@@ -69,13 +64,13 @@ export function useReceivingDetailOverlays(
       if (overlayLogIdRef.current !== String(receivingId)) return;
 
       if (result.kind === 'local_pickup') {
+        // No parallel pickup review UI — close the carton seed. Reprint/edit
+        // goes through Unbox crossfade + History SoTs.
         setOverlayLog(null);
-        setPickupReviewOrderId(result.orderId);
         return;
       }
       if (result.kind === 'missing') return;
 
-      setPickupReviewOrderId(null);
       setOverlayLog((prev) =>
         prev?.id === String(receivingId) ? { ...prev, ...result.log } : prev,
       );
@@ -171,7 +166,6 @@ export function useReceivingDetailOverlays(
       const receivingId = Number(detail?.receivingId);
       if (!Number.isFinite(receivingId) || receivingId <= 0) return;
 
-      setPickupReviewOrderId(null);
       setOverlayLog(receivingDetailsInstantSeed(receivingId, detail?.seed));
       void enrichOverlayLog(receivingId);
     };
@@ -182,8 +176,6 @@ export function useReceivingDetailOverlays(
   return {
     overlayLog,
     setOverlayLog,
-    pickupReviewOrderId,
-    setPickupReviewOrderId,
     incomingDetails,
     setIncomingDetails,
     enrichOverlayLog,

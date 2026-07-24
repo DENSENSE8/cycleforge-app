@@ -1154,7 +1154,6 @@ export async function runGoogleSheetsTransferOrders(
             sku: sheetSku || '',
             condition: sheetCondition || '',
             shipmentId: primaryShipmentId,
-            outOfStock: '',
             notes: sheetNotes || '',
             status: 'unassigned',
             statusHistory: [],

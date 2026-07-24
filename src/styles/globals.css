@@ -538,19 +538,20 @@ html[data-color-scheme='dark'] .react-flow__attribution a { color: #94a3b8; }
   box-shadow: 8px 0 8px -8px rgba(15, 23, 42, 0.22);
 }
 
-/* Sticky column header — depth once rows scroll under the frozen band. */
+/* Sticky column header — soft depth once rows scroll under the frozen band. */
 [data-cf-grid].cf-grid-scrolled-y [data-grid-col-header] {
-  box-shadow: 0 4px 10px -6px rgba(15, 23, 42, 0.18);
+  box-shadow: 0 4px 10px -6px rgba(15, 23, 42, 0.16);
 }
 
-/* Sticky header band must stay opaque above virtualized absolute rows. */
+/* Sticky header band — quiet sunken fill (table-surface SoT) above white body.
+   Must stay opaque above virtualized absolute rows. */
 [data-cf-grid] [data-grid-col-header] {
-  background-color: var(--ds-color-background-surface);
+  background-color: var(--ds-color-surface-sunken);
 }
 
 /* Frozen identity cells in the sticky header stack above scrolling header tracks. */
 [data-cf-grid] [data-grid-col-header] .sticky {
-  background-color: var(--ds-color-background-surface);
+  background-color: var(--ds-color-surface-sunken);
 }
 
 /* Ancestor-scroll + h-scroll split (Pending): the header band sits OUTSIDE the
@@ -567,24 +568,22 @@ html[data-color-scheme='dark'] .react-flow__attribution a { color: #94a3b8; }
   transform: translateX(calc(-1 * var(--cf-grid-sx, 0px)));
 }
 
-/* ── Pending Grid view skin (LedgerGrid) — light connected spreadsheet ──
-   Employees-style ledger: ONE visible line color (subtle), continuous vertical
-   + horizontal rules that meet at every cell corner. Full-bleed in workbench
-   gutters (no outer card radius) — Pending page-scrolls via DashboardScrollShell.
-   Opt-in via `data-grid-skin="airtable"` — Packed / board never set it.
-   Never border-strong (the black cage). Body fill / selection stay React-owned. */
+/* ── Ops spreadsheet skin (LedgerGrid) — continuous airtable grid ──
+   ONE line color (`border-default`) through header AND body so column rules
+   stay visible on the sunken frozen band (light `border-subtle` ≡
+   `surface-strong` and would erase header verticals). Outer frame is
+   `[data-table-surface]` (rounded-xl + overflow-hidden + raised). Opt-in via
+   `data-grid-skin="airtable"`. Never border-strong (the black cage). */
 [data-grid-skin='airtable'] {
-  --cf-grid-line: var(--ds-color-border-subtle);
+  --cf-grid-line: var(--ds-color-border-default);
   --cf-grid-line-w: var(--ds-border-width-thin);
-  /* Flush frozen pane — row chrome padding is zero under the skin. */
   --cf-queue-row-px: 0px;
   background-color: var(--ds-color-background-surface);
 }
 
-/* Internal grid only (RIGHT + BOTTOM). Shared CSS template keeps header ↔ body
-   verticals locked end-to-end. No outer card frame on Pending — edges come from
-   cell rules only. */
-[data-grid-skin='airtable'] [role='row'] > *,
+/* Internal grid only (RIGHT + BOTTOM) — header + body + summary share one
+   continuous column-line language. Shell owns the outer perimeter. */
+[data-grid-skin='airtable'] [data-grid-col-header] [role='row'] > *,
 [data-grid-skin='airtable'] [data-order-row-id] > *,
 [data-grid-skin='airtable'] [data-grid-summary-row] > * {
   border-right: var(--cf-grid-line-w) solid var(--cf-grid-line);
@@ -593,8 +592,8 @@ html[data-color-scheme='dark'] .react-flow__attribution a { color: #94a3b8; }
   border-top-width: 0;
 }
 
-/* Trailing column: no outer card — drop the last vertical so the gutter edge is clean. */
-[data-grid-skin='airtable'] [role='row'] > *:last-child,
+/* Trailing column: shell owns the right perimeter — no cell right rule. */
+[data-grid-skin='airtable'] [data-grid-col-header] [role='row'] > *:last-child,
 [data-grid-skin='airtable'] [data-order-row-id] > *:last-child,
 [data-grid-skin='airtable'] [data-grid-summary-row] > *:last-child {
   border-right-width: 0;
@@ -607,8 +606,10 @@ html[data-color-scheme='dark'] .react-flow__attribution a { color: #94a3b8; }
   border-bottom-width: 0;
 }
 
-/* Opaque white header (drop the /95 canvas tint + blur). */
-[data-grid-skin='airtable'] [role='row'] {
-  background-color: var(--ds-color-background-surface);
+/* Frozen header band — quiet sunken over white body (matches TABLE_FROZEN_HEADER). */
+[data-grid-skin='airtable'] [data-grid-col-header],
+[data-grid-skin='airtable'] [data-grid-col-header] [role='row'],
+[data-grid-skin='airtable'] [data-grid-col-header] .sticky {
+  background-color: var(--ds-color-surface-sunken);
   backdrop-filter: none;
 }

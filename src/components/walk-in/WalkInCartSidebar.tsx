@@ -4,12 +4,13 @@
  * Walk-In counter cart sidebar — the shared staged-cart picker.
  *
  * One shell for every Walk-In job whose sidebar is "staged lines + footer
- * submit": Sales (`SalesCartSidebar`) and Local Pickup
- * (`LocalPickupSidebarList`). Both previously carried their own copy of this
- * column — same header band, same dashed empty box, same AnimatePresence row
- * stack, same subtotal + submit + error footer — differing only in copy, the
- * row's trailing meta cells, and the money formatter. This is the single shape
- * for that one job; the callers stay thin adapters over their own store.
+ * submit" (Sales → `SalesCartSidebar`). Local Pickup graduated to Receiving
+ * and reuses Unbox/History SoTs — no parallel cart sidebar. Both Sales (and
+ * formerly pickup) previously carried their own copy of this column — same
+ * header band, same dashed empty box, same AnimatePresence row stack, same
+ * subtotal + submit + error footer — differing only in copy, the row's
+ * trailing meta cells, and the money formatter. This is the single shape for
+ * that one job; the callers stay thin adapters over their own store.
  *
  * The shell owns chrome only. Selection, cart state, and the submit CTA belong
  * to the job's store — a job passes rows as children and its own footer.

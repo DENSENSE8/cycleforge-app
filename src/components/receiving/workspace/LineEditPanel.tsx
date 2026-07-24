@@ -49,6 +49,7 @@ import {
 import { StationTerminalDock, useStationTerminalAction } from '@/components/station/terminal';
 import {
   StationWorkbench,
+  StationPanelRoot,
   PairingTogglePill,
   ExternalLinkPill,
   STATION_WORKBENCH_COLUMN,
@@ -56,6 +57,7 @@ import {
 import { usePoNoteTabState } from './line-edit/terminal/usePoNoteTabState';
 import { resolveUnboxTerminal } from './line-edit/terminal/unbox-terminal';
 import { buildUnboxTabs, UnboxSectionTabs } from './line-edit/terminal/unbox-tabs';
+import { WorkspaceNotesCard } from './line-edit/WorkspaceNotesCard';
 import type { UnboxView } from './line-edit/terminal/types';
 import type {
   ChecklistTabBridge,
@@ -376,8 +378,6 @@ export function LineEditPanel({
         onPairingToggle: togglePairing,
         onItemDescFeedback: handleItemDescFeedback,
         onItemDescSaved: handleItemDescSaved,
-        activeStep,
-        onActionFeedback: setActionFeedback,
         onChecklistBridge,
         onUnitsBridge,
         onConversationBridge,
@@ -405,7 +405,6 @@ export function LineEditPanel({
       togglePairing,
       handleItemDescFeedback,
       handleItemDescSaved,
-      activeStep,
       onChecklistBridge,
       onUnitsBridge,
       onConversationBridge,
@@ -457,14 +456,7 @@ export function LineEditPanel({
 
   return (
     <>
-      <div className="relative flex h-full min-h-0 flex-col bg-surface-canvas">
-        {/* Ambient wash covers identity + body so the gradient isn't clipped
-            under a separate chrome band. */}
-        <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 overflow-visible">
-          <div className="absolute -top-24 left-1/2 h-72 w-[44rem] -translate-x-1/2 rounded-full bg-blue-400/[0.08] blur-3xl" />
-          <div className="absolute right-[-7rem] top-1/3 h-80 w-80 rounded-full bg-violet-400/[0.06] blur-3xl" />
-          <div className="absolute bottom-[-5rem] left-[-5rem] h-80 w-80 rounded-full bg-emerald-400/[0.06] blur-3xl" />
-        </div>
+      <StationPanelRoot>
         <AnimatePresence mode="wait" initial={false}>
           {showTicketEditor ? (
             <motion.div
@@ -562,10 +554,41 @@ export function LineEditPanel({
                   ) : null
                 }
                 dock={
-                  <StationTerminalDock
-                    vm={terminalVm}
-                    assignedTechId={row.assigned_tech_id}
-                  />
+                  // Overview: ONE elevated shell — the receive split-CTA rides
+                  // inside the notes composer footer (no second dock row).
+                  // Other tabs keep the full-width terminal band.
+                  activeUnboxView === 'overview' ? (
+                    <div className="shrink-0 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 sm:px-6">
+                      <div className={STATION_WORKBENCH_COLUMN}>
+                        {terminalVm?.disabled && terminalVm.disabledReason ? (
+                          <p
+                            role="status"
+                            className="mb-1.5 text-right text-role-caption font-semibold text-amber-700"
+                          >
+                            {terminalVm.disabledReason}
+                          </p>
+                        ) : null}
+                        <WorkspaceNotesCard
+                          row={row}
+                          c={c}
+                          onActionFeedback={setActionFeedback}
+                          activeStep={activeStep}
+                          trailingAction={
+                            <StationTerminalDock
+                              embedded
+                              vm={terminalVm}
+                              assignedTechId={row.assigned_tech_id}
+                            />
+                          }
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <StationTerminalDock
+                      vm={terminalVm}
+                      assignedTechId={row.assigned_tech_id}
+                    />
+                  )
                 }
               />
             </motion.div>
@@ -580,7 +603,7 @@ export function LineEditPanel({
             photoIntent="all"
           />
         ) : null}
-      </div>
+      </StationPanelRoot>
 
       <LineEditModals row={row} c={c} />
     </>

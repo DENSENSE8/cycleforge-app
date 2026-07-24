@@ -34,6 +34,7 @@ import {
   WORKBENCH_BODY_COLUMN,
   WORKBENCH_CHROME_COLUMN,
 } from '@/components/dashboard/workbench-shell';
+import { Panel } from '@/design-system/primitives';
 import { cn } from '@/utils/_cn';
 import { PhotoContextMenu, type PhotoContextMenuItem } from './PhotoContextMenu';
 import { PhotoDateBreadcrumb } from './PhotoDateBreadcrumb';
@@ -42,6 +43,7 @@ import { PhotoLibraryGrid } from './PhotoLibraryGrid';
 import { PhotoLibraryHeader } from './PhotoLibraryHeader';
 import { PhotoLibraryToolbar } from './PhotoLibraryToolbar';
 import { PhotoLibraryWorkspaceHeader } from './PhotoLibraryWorkspaceHeader';
+import { PhotoLibraryTicketNasBackup } from './PhotoLibraryTicketNasBackup';
 import { PhotoLabelEditor } from './PhotoLabelEditor';
 import { MediaLibraryShortcutsModal } from './MediaLibraryShortcutsModal';
 import {
@@ -642,7 +644,17 @@ export function PhotoLibraryPage() {
           />
         ) : null}
 
-        <div className="relative min-h-0 flex-1 pb-6">
+        {resolvedTicketId && !selectionActive ? (
+          <PhotoLibraryTicketNasBackup ticketId={resolvedTicketId} />
+        ) : null}
+
+        <Panel
+          data-testid="photo-library-display"
+          padding="none"
+          radius="xl"
+          elevation="md"
+          className="relative mb-6 min-h-0 flex-1 p-3"
+        >
           <PhotoLibraryGrid
             photos={photos}
             view={view}
@@ -696,7 +708,7 @@ export function PhotoLibraryPage() {
               {`Showing all ${photos.length} photo${photos.length === 1 ? '' : 's'}`}
             </p>
           ) : null}
-        </div>
+        </Panel>
       </div>
 
       {claimPhotos !== null ? (

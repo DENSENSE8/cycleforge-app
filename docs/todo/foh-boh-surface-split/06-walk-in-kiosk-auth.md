@@ -193,3 +193,20 @@ schema drift). Add unit tests for `withKioskAuth` (device-principal resolution, 
 - The kiosk **forms** and Square/Zoho/Ecwid wiring — those are [03](./03-sales-main-history.md).
 - A `/m/walk-in` mobile shell (parent R6, deferred).
 - Kiosk **hardware/layout** polish (parent Phase 0 #6, deferred) — this doc is auth only.
+
+---
+
+## Addendum — host split (2026-07-23)
+
+Public tablet URL is now **`https://{slug}.kiosk.app.cycleforge.ai`** (dogfood:
+`https://usav.kiosk.app.cycleforge.ai`). Same deploy; `proxy.ts` allowlists the
+kiosk host to intake UI + device APIs only. Path `/kiosk` remains the internal
+route (`/` on the kiosk host rewrites to it). Staff-host `/kiosk` 308s to the
+tenant kiosk origin when a slug is present.
+
+- Host SoT: `src/lib/tenancy/kiosk-host.ts`
+- Ops runbook (MDM + DNS): [`docs/security/kiosk-device-lockdown.md`](../../security/kiosk-device-lockdown.md)
+- Human DNS gate: HUMAN-TODO §J7b (`*.kiosk.app.cycleforge.ai`)
+
+Org for writes is still the device row; pairing additionally rejects enroll-code
+org ≠ host-slug org. `cf_kiosk` stays host-only — re-pair after cutover.

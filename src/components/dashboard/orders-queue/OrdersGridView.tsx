@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useMemo, useRef, type ReactNode, type RefObject } from 'react';
+import { useSearchParams } from 'next/navigation';
 import type { OnChangeFn, SortingState, VisibilityState } from '@tanstack/react-table';
 import { getDaysLateNullable } from '@/utils/date';
 import { useStaffNameMap } from '@/hooks/useStaffNameMap';
@@ -10,8 +11,12 @@ import { useColumnOrder } from '@/components/ui/table-column-config/useColumnOrd
 import { OrderSearchEmptyState } from '@/components/dashboard/OrderSearchEmptyState';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
 import { LedgerGrid, useGridSurface } from '@/design-system/components/grid';
+import {
+  TABLE_SURFACE_CLIP_CLASS,
+} from '@/design-system/tokens/table-surface';
 import { useQueueDisplaySort } from '@/hooks/useQueueDisplaySort';
 import { useToShipStatusFilter } from '@/components/unshipped/useToShipStatusFilter';
+import { getDashboardOrderViewFromSearch } from '@/utils/dashboard-search-state';
 import {
   ordersQueueColumnsFor,
   ordersQueueContentMinWidthRem,
@@ -106,6 +111,7 @@ export function OrdersGridView({
   'data-testid': dataTestId = 'orders-grid-body',
   scrollParentRef,
 }: OrdersGridViewProps) {
+  const searchParams = useSearchParams();
   const { isMobile } = useUIModeOptional();
   const { getStaffName } = useStaffNameMap();
   const { sort: urlSort, dir: urlDir, setSort } = useQueueDisplaySort();
@@ -114,13 +120,12 @@ export function OrdersGridView({
   const sort = sortProp ?? urlSort;
   const dir: QueueDisplaySortDir | null = urlDriven ? urlDir : null;
 
-  // Mode column set (plan Phase A): the fulfillment queue filtered to TESTED
-  // swaps to the tester + tested-at layout; every other surface/lane keeps the
-  // canonical set. `?ustatus` is read here (not passed down) because the KPI
-  // strip, hotkeys, and legend all drive the same URL param.
+  // Mode column set (plan Phase A): the Tested lifecycle tab (or legacy
+  // `?ustatus=TESTED` on station embeds) swaps to tester + tested-at layout.
+  const orderView = getDashboardOrderViewFromSearch(searchParams);
   const { active: ustatus } = useToShipStatusFilter();
   const columnMode: OrdersQueueColumnMode =
-    queueMode === 'fulfillment' && ustatus === 'TESTED'
+    queueMode === 'fulfillment' && (orderView === 'tested' || ustatus === 'TESTED')
       ? 'fulfillment.tested'
       : 'fulfillment.default';
   const canonicalColumns = ordersQueueColumnsFor(columnMode);
@@ -287,7 +292,7 @@ export function OrdersGridView({
         (r.packer_name as string | undefined) ||
         getStaffName(r.packed_by as number | null | undefined) ||
         getStaffName(r.packer_id as number | null | undefined);
-      const outOfStockValue = String(r.out_of_stock || '').trim();
+      const hasOutOfStock = Boolean(r.is_out_of_stock);
       const notesValue = String(r.notes || '').trim();
       return (
         <OrdersQueueTableRow
@@ -309,8 +314,7 @@ export function OrdersGridView({
           testerId={(r.tested_by as number | null) ?? (r.tester_id as number | null)}
           packerId={(r.packed_by as number | null) ?? (r.packer_id as number | null)}
           rowStatus={resolveRowStatus(r, queueMode)}
-          hasOutOfStock={outOfStockValue !== ''}
-          outOfStockValue={outOfStockValue}
+          hasOutOfStock={hasOutOfStock}
           notesValue={notesValue}
           daysLate={getDaysLateNullable(r.deadline_at as string | null | undefined)}
           queueMode={queueMode}
@@ -354,13 +358,13 @@ export function OrdersGridView({
     <div
       ref={shellRef}
       data-testid={dataTestId}
+      data-table-surface=""
       className={cn(
-        // Full-bleed in workbench gutters — no card wrapper (KPI tiles + chrome
-        // strip are the only cards). Ancestor-scroll Pending grows with content;
-        // self-scroll surfaces (Packed / Labels) keep a flex-fill shell.
-        scrollParentRef
-          ? 'flex min-w-0 w-full flex-col'
-          : 'flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden',
+        // Framed ops table shell (SoT: table-surface) — always overflow-hidden
+        // so airtable cell grid clips cleanly at rounded corners.
+        'flex min-w-0 w-full flex-col',
+        !scrollParentRef && 'h-full min-h-0 flex-1',
+        TABLE_SURFACE_CLIP_CLASS,
         className,
       )}
     >

@@ -11,7 +11,7 @@
  * Selection via `?openOrderId=`. Escape hatch → Dashboard Shipping.
  */
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
@@ -20,7 +20,6 @@ import {
   FileText,
   MessageSquare,
   Package,
-  Plus,
   Ticket,
 } from '@/components/Icons';
 import { useAuth } from '@/contexts/AuthContext';
@@ -73,9 +72,11 @@ function SupportOrderFocus({
   onClose: () => void;
 }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { has, isLoaded } = useAuth();
   const canCreateTicket = !isLoaded || has('integrations.zendesk');
   const claim = useSupportTicketClaimHost();
+  const openCreateTicket = claim.openCreate;
   const paneMotion = useMotionPresence(framerPresence.workbenchPane);
   const paneTransition = useMotionTransition(framerTransition.workbenchPaneMount);
   const [view, setView] = useState<OrdersView>('order');
@@ -91,8 +92,7 @@ function SupportOrderFocus({
     setShippingTrackingNumber,
     notes,
     setNotes,
-    outOfStock,
-    setOutOfStock,
+    isOutOfStock,
     shipByDate,
     setShipByDate,
     isSavingInlineFields,
@@ -104,6 +104,18 @@ function SupportOrderFocus({
     handleSaveNotes,
     handleSaveOutOfStock,
   } = useShippedDetailState(order, onReload);
+
+  // Deep link: ?createTicket=1 opens New ticket (order-anchored), then strips the flag.
+  useEffect(() => {
+    if (!canCreateTicket) return;
+    const raw = searchParams.get('createTicket');
+    if (raw !== '1' && raw !== 'true') return;
+    openCreateTicket({ type: 'order', orderId: Number(shipped.id) });
+    const sp = new URLSearchParams(searchParams.toString());
+    sp.delete('createTicket');
+    const qs = sp.toString();
+    router.replace(qs ? `/support?${qs}` : '/support?mode=orders', { scroll: false });
+  }, [canCreateTicket, openCreateTicket, router, searchParams, shipped.id]);
 
   const meta = deriveShippedHeaderMeta(shipped);
   const { copiedAll, handleCopyAll } = useShippedCopyActions(shipped, meta.orderIdDisplay);
@@ -133,6 +145,11 @@ function SupportOrderFocus({
                 onUpdate={onReload}
                 showPackingPhotos
                 showSerialNumber
+                onReportIssue={
+                  canCreateTicket
+                    ? () => openCreateTicket({ type: 'order', orderId: Number(shipped.id) })
+                    : undefined
+                }
                 editableShippingFields={{
                   orderNumber,
                   itemNumber,
@@ -205,6 +222,8 @@ function SupportOrderFocus({
       saveInlineFields,
       saveShipByDate,
       orderAnchor,
+      canCreateTicket,
+      openCreateTicket,
     ],
   );
 
@@ -243,7 +262,7 @@ function SupportOrderFocus({
               <IconButton
                 size="sm"
                 icon={<AlertTriangle className="h-3.5 w-3.5" />}
-                ariaLabel="Edit out of stock"
+                ariaLabel="Toggle out of stock"
                 aria-pressed={activeInput === 'out_of_stock'}
                 onClick={() =>
                   setActiveInput((prev) =>
@@ -257,16 +276,6 @@ function SupportOrderFocus({
                 }
               />
             </HoverTooltip>
-            {canCreateTicket ? (
-              <HoverTooltip label="Create ticket">
-                <IconButton
-                  size="sm"
-                  icon={<Plus className="h-3.5 w-3.5" />}
-                  ariaLabel="Create a ticket for this order"
-                  onClick={() => claim.openCreate({ type: 'order', orderId: Number(shipped.id) })}
-                />
-              </HoverTooltip>
-            ) : null}
             <HoverTooltip label="Open on Dashboard">
               <IconButton
                 size="sm"
@@ -310,11 +319,10 @@ function SupportOrderFocus({
             onSaveNotes={() => {
               void handleSaveNotes(() => setActiveInput('none'));
             }}
-            outOfStock={outOfStock}
-            setOutOfStock={setOutOfStock}
+            isOutOfStock={isOutOfStock}
             isSavingOutOfStock={isSavingOutOfStock}
-            onSaveOutOfStock={() => {
-              void handleSaveOutOfStock(() => setActiveInput('none'));
+            onSaveOutOfStock={(checked) => {
+              void handleSaveOutOfStock(checked, () => setActiveInput('none'));
             }}
             shippingTrackingNumber={shippingTrackingNumber}
             onMarkShippedSuccess={() => {
@@ -329,11 +337,13 @@ function SupportOrderFocus({
       <SupportCreateTicketModal
         open={claim.createOpen}
         defaultSubject={`Order #${meta.orderIdDisplay}`}
+        defaultOrderNumber={meta.orderIdDisplay}
+        orderFieldLocked
         submitting={claim.createTicket.isPending}
         onClose={claim.closeCreate}
-        onCreate={({ subject, note }) =>
+        onCreate={({ subject, note, linkages }) =>
           claim.createTicket.mutate(
-            { subject, note },
+            { subject, note, linkages },
             {
               onSuccess: (data) =>
                 router.push(`/support?mode=tickets&ticket=${data.providerTicketId}`),

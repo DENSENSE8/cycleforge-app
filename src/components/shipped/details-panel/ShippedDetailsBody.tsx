@@ -60,10 +60,9 @@ export interface ShippedDetailsBodyProps {
   setNotes: (value: string) => void;
   isSavingNotes: boolean;
   onSaveNotes: () => void;
-  outOfStock: string;
-  setOutOfStock: (value: string) => void;
+  isOutOfStock: boolean;
   isSavingOutOfStock: boolean;
-  onSaveOutOfStock: () => void | Promise<void>;
+  onSaveOutOfStock: (checked: boolean) => void | Promise<void>;
   onMarkShippedSuccess: () => void;
   isDeleteArmed: boolean;
   isDeletingOrder: boolean;
@@ -94,8 +93,7 @@ export function ShippedDetailsBody({
   setNotes,
   isSavingNotes,
   onSaveNotes,
-  outOfStock,
-  setOutOfStock,
+  isOutOfStock,
   isSavingOutOfStock,
   onSaveOutOfStock,
   onMarkShippedSuccess,
@@ -302,8 +300,7 @@ export function ShippedDetailsBody({
           setNotes={setNotes}
           isSavingNotes={isSavingNotes}
           onSaveNotes={onSaveNotes}
-          outOfStock={outOfStock}
-          setOutOfStock={setOutOfStock}
+          isOutOfStock={isOutOfStock}
           isSavingOutOfStock={isSavingOutOfStock}
           onSaveOutOfStock={onSaveOutOfStock}
           shippingTrackingNumber={editableFields.trackingNumber}

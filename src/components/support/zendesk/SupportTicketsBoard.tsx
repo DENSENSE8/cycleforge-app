@@ -15,6 +15,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { Link2, RefreshCw } from '@/components/Icons';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button, EmptyState, IconButton } from '@/design-system/primitives';
 import { SkeletonList } from '@/design-system/components/Skeletons';
 import { MONITOR_SECTION_CARD_SCROLL_CLASS } from '@/design-system/components/monitor';
@@ -38,8 +39,11 @@ import {
   type TicketListParams,
 } from '@/hooks/useZendeskQueries';
 import { useRecentTickets } from '@/hooks/useRecentTickets';
+import { SupportCreateTicketModal } from '@/components/support/station/SupportCreateTicketModal';
+import { useSupportTicketClaimHost } from '@/components/support/station/useSupportTicketClaimHost';
 import { cn } from '@/utils/_cn';
 import { ZendeskSelect } from './ZendeskSelect';
+import { SupportTicketChromeActions } from './SupportTicketChromeActions';
 import { SupportTicketRow } from './queue/SupportTicketRow';
 
 const SUPPORT_PATH = '/support';
@@ -123,7 +127,11 @@ function useSupportTicketsUrl() {
 }
 
 export function SupportTicketsBoard() {
+  const router = useRouter();
   const queryClient = useQueryClient();
+  const { has, isLoaded } = useAuth();
+  const canCreateTicket = !isLoaded || has('integrations.zendesk');
+  const claim = useSupportTicketClaimHost();
   const { status, setStatus, searchQuery, setSearch, openTicket } = useSupportTicketsUrl();
   const { push } = useRecentTickets();
 
@@ -226,6 +234,11 @@ export function SupportTicketsBoard() {
                 </HoverTooltip>
               </div>
             }
+            trailing={
+              canCreateTicket ? (
+                <SupportTicketChromeActions onAdd={() => claim.openCreate()} />
+              ) : null
+            }
           />
         </div>
       }
@@ -312,6 +325,21 @@ export function SupportTicketsBoard() {
           </div>
         </div>
       </div>
+
+      <SupportCreateTicketModal
+        open={claim.createOpen}
+        submitting={claim.createTicket.isPending}
+        onClose={claim.closeCreate}
+        onCreate={({ subject, note, linkages }) =>
+          claim.createTicket.mutate(
+            { subject, note, linkages },
+            {
+              onSuccess: (data) =>
+                router.push(`/support?mode=tickets&ticket=${data.providerTicketId}`),
+            },
+          )
+        }
+      />
     </DashboardScrollShell>
   );
 }

@@ -487,7 +487,7 @@ export const FLOWS: OpsFlow[] = [
     blurb: 'Front-desk Walk-In station on Receiving: Sales · Local Pickup · Repair. Local pickup cart → LCPU PO + receiving record. Stage = local_pickup_orders.status.',
     stations: ['ADMIN', 'RECEIVING'],
     source: 'local_pickup_orders.status · 2026-04-13 create_local_pickup_orders · /pickup?job=',
-    code: ['/api/local-pickup-orders', '/api/local-pickup-orders/[id]/finalize', '/api/local-pickup-orders/[id]/void', 'src/components/work-orders/localPickupStore.ts', 'src/lib/walk-in/jobs.ts'],
+    code: ['/api/local-pickup-orders', '/api/local-pickup-orders/[id]/finalize', '/api/local-pickup-orders/[id]/void', 'src/lib/walk-in/jobs.ts'],
     steps: [
       { stage: 'Draft', key: 'DRAFT', station: 'ADMIN', note: 'Cart open — items being added (editable only while DRAFT)', by: 'POST /api/local-pickup-orders' },
       { stage: 'Completed', key: 'COMPLETED', station: 'RECEIVING', note: 'Finalized → PO (LCPU-…) + receiving row created; label printable', by: '/api/local-pickup-orders/[id]/finalize' },

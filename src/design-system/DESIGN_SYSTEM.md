@@ -66,6 +66,9 @@ Token density presets also exist as `compact` / `standard` / `spacious` in `toke
   - `tokens/radii.ts` — graduated scale (none → sm → md → lg → xl → 2xl → 3xl → full)
   - `tokens/shadows.ts` — raw box-shadow CSS vars + elevation roles
     (`elevationClass('flat' | 'raised' | 'overlay')`; raised intensity `soft` | `default`)
+  - `tokens/table-surface.ts` — ops table / spreadsheet shell
+    (`TABLE_SURFACE_CLASS` / `CLIP` / `SCROLLPORT` + `TABLE_FROZEN_HEADER_CLASS` —
+    xl radius + raised lift + sunken frozen header; airtable column rules continuous)
 - Motion:
   - `foundations/motion.ts` — CSS-oriented durations / cubic-bezier strings (`micro=100ms`, `fast=150ms`)
   - `foundations/motion-framer.ts` — Framer Motion presets used on station surfaces:
@@ -127,6 +130,7 @@ Token density presets also exist as `compact` / `standard` / `spacious` in `toke
 - Overlays: `AssignmentOverlayCard`, `Tooltip`
 - **Workbench spreadsheet (SoT):** `components/grid/`
   - `LedgerGrid` — virtualized sticky-header spreadsheet shell (`scrollX`, `gridSkin="airtable"`, optional day bands). Golden path: Pending / To Ship via `OrdersGridView`. Under ancestor page scroll + `scrollX` it runs **split-x mode**: the header band lives outside the inner h-scroll box (an `overflow-x` container captures `position: sticky` on both axes) and is translated via the synced `--cf-grid-sx` offset.
+  - Outer frame: compose `TABLE_SURFACE_CLIP_CLASS` from `tokens/table-surface.ts` (rounded-xl + raised + overflow-hidden; sunken frozen header). Airtable draws **continuous** column rules (`border-default`) through header + body; shell clips corners.
   - `LedgerCellEditor` — Sheets-style in-cell edit commit shell.
   - `VirtualGroupedSections` — shared date→groups/rows virtualizer (LedgerGrid + station/receiving feeds).
   - **Headless state engine (TanStack Table v8 — state math ONLY):** `useGridSurface` (`"use no memo"` — React Compiler trap) owns column defs + sorting + visibility + column order; markup, virtualization, grouping/folds, fetch, and mutations stay house. `grid-surface-descriptor.ts` (`buildLedgerColumnDefs`, `makeGridSurfaceDescriptor`, `GridSurfaceDescriptor`) lifts a house column-model list (`ORDERS_QUEUE_COLUMNS` / `INCOMING_GRID_COLUMNS` / `RECEIVING_GRID_COLUMNS`) into TanStack defs carrying the house model on `meta.gridColumn`. **Never** mount a foreign UI grid (AG Grid / MUI / Glide) and never let TanStack own widths/markup — geometry stays on the house CSS-var templates.

@@ -71,6 +71,7 @@ export function countFulfillmentStates(
     shipment_id?: number | string | null;
     has_tech_scan?: boolean | null;
     out_of_stock?: string | null;
+    is_out_of_stock?: boolean;
   }>,
 ): FulfillmentCounts {
   const counts: FulfillmentCounts = { ...ZERO_FULFILLMENT_COUNTS };
@@ -78,7 +79,10 @@ export function countFulfillmentStates(
     const state = deriveFulfillmentState({
       shipmentId: r.shipment_id,
       hasTechScan: Boolean(r.has_tech_scan),
-      outOfStock: r.out_of_stock,
+      // Prefer new boolean field, fallback to legacy string logic
+      isOutOfStock: 'is_out_of_stock' in r && r.is_out_of_stock !== undefined 
+        ? r.is_out_of_stock 
+        : Boolean(String(r.out_of_stock || '').trim()),
     });
     counts[state] += 1;
   }
@@ -97,7 +101,7 @@ export function fulfillmentCountsFromCombos(
   for (const c of combos) {
     const state = deriveFulfillmentState({
       hasTechScan: c.hasTechScan,
-      outOfStock: c.blocked ? '1' : null,
+      isOutOfStock: c.blocked,
     });
     counts[state] += c.count;
   }

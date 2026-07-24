@@ -46,7 +46,7 @@ export function ClaimNasBackupCard({
               disabled={c.archiveSubmitting || !c.row.receiving_id}
               onClick={c.archiveToNas}
             >
-              {c.archiveSubmitting ? 'Saving…' : 'Back up locally'}
+              {c.archiveSubmitting ? 'Saving…' : 'Upload & sync to NAS'}
             </Button>
           ) : (
             <p className="flex items-center gap-1.5 text-role-caption font-medium text-text-muted">
@@ -101,7 +101,7 @@ export function ClaimNasBackupCard({
 
       {canArchive ? (
         backupOk ? (
-          <HoverTooltip label="Save the carton photos to local storage again" asChild>
+          <HoverTooltip label="Upload & sync the carton photos to NAS again" asChild>
             <Button
               variant="ghost"
               size="sm"
@@ -110,7 +110,7 @@ export function ClaimNasBackupCard({
               disabled={c.archiveSubmitting || !c.row.receiving_id}
               onClick={c.archiveToNas}
             >
-              {c.archiveSubmitting ? 'Saving…' : 'Back up again'}
+              {c.archiveSubmitting ? 'Saving…' : 'Sync to NAS again'}
             </Button>
           </HoverTooltip>
         ) : (

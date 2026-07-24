@@ -13,7 +13,7 @@ test('getDashboardPendingLayoutFromSearch: always grid (board|grid retired)', ()
 });
 
 test('normalizeDashboardOrderViewParams: strips stale ?view= on every tab', () => {
-  for (const view of ['unshipped', 'packed', 'shipped', 'fba'] as const) {
+  for (const view of ['unshipped', 'tested', 'packed', 'shipped', 'fba'] as const) {
     const params = new URLSearchParams('view=grid');
     normalizeDashboardOrderViewParams(params, view);
     assert.equal(params.has('view'), false, `view should be cleared for ${view}`);

@@ -4,11 +4,12 @@
  * Sales sidebar — the desk mode rail + Walk-In station deep-links.
  *
  * The **mode rail** (`WalkInModeSlider` → `?mode=`) is the surface's primary
- * navigation: Local Pickup · Sales · Repair. The per-mode **table tabs** live in
+ * navigation: Local Pickup · Sales. The per-mode **table tabs** live in
  * the page chrome (`WalkInDeskHeader` → `WorkbenchChromeHeader`) — modes ≠ tabs.
  *
  * Below the rail sits the one thing a history Monitor can't do — start work.
- * Sales is observe-only; every action here hands off to the station.
+ * Sales is observe-only; every action here hands off to the station (Repair
+ * intake → Receiving `/repair`).
  */
 
 import { useRouter } from 'next/navigation';

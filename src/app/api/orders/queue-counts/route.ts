@@ -14,7 +14,7 @@ import { withAuth } from '@/lib/auth/withAuth';
  * `/api/orders?fulfillmentScope=true` row payload — i.e. download every open
  * order just to size three numbers. This route replaces that with a single
  * `COUNT(*)` grouped by the two RAW signals the fulfillment lane is derived from
- * (`has_tech_scan`, `out_of_stock` present). It deliberately does NOT map those
+ * (`has_tech_scan`, `is_out_of_stock`). It deliberately does NOT map those
  * to PENDING/TESTED/BLOCKED here: that mapping is `deriveFulfillmentState` (SoT
  * `src/lib/order-lifecycle.ts`, Decision 8) and is applied CLIENT-side over the
  * returned `combos`. SQL only aggregates facts; TS owns the lane rule.
@@ -69,7 +69,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
           SELECT 1 FROM station_activity_logs sal
           WHERE sal.shipment_id IS NOT NULL AND sal.shipment_id = o.shipment_id
         )) AS has_tech_scan,
-        (COALESCE(TRIM(o.out_of_stock), '') <> '') AS blocked,
+        o.is_out_of_stock AS blocked,
         COUNT(*)::int AS n,
         COUNT(*) FILTER (WHERE o.is_urgent)::int AS urgent_n
       FROM orders o

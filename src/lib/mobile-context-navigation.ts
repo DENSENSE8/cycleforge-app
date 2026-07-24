@@ -37,6 +37,7 @@ export interface MobileContextRowConfig {
 
 const DASHBOARD_VIEW_OPTIONS: MobileContextOption[] = [
   { id: 'unshipped', label: 'Pending' },
+  { id: 'tested', label: 'Tested' },
   { id: 'packed', label: 'Packed' },
   { id: 'shipped', label: 'Shipped' },
   { id: 'fba', label: 'FBA prep' },

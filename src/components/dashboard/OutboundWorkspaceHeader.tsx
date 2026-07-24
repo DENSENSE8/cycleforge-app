@@ -3,7 +3,7 @@
 /**
  * Outbound workspace chrome — one unified header bar for Dashboard · Outbound.
  *
- * Left:  lifecycle tabs (To Ship count only).
+ * Left:  lifecycle tabs (Pending · Tested · Packed · Shipped).
  * Right: search · filters · (portal) · sort · Import · Add.
  * Row select lives in the table left gutter (always on), not chrome.
  */
@@ -12,6 +12,7 @@ import { useMemo, type Ref } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   DASHBOARD_ORDER_VIEW_LABEL,
+  isPrePackOrderView,
   type DashboardOrderView,
 } from '@/utils/dashboard-search-state';
 import { OutboundExactFilters, useToShipFilterHotkeys } from '@/components/dashboard/OutboundFilterStrip';
@@ -22,12 +23,15 @@ import { ToolbarSearchToggle } from '@/components/ui/ToolbarSearchToggle';
 import { useDashboardSearchController } from '@/hooks/useDashboardSearchController';
 import { useQueueDisplaySort } from '@/hooks/useQueueDisplaySort';
 import { unshippedQueueCountsQuery } from '@/lib/queries/dashboard-queries';
+import { fulfillmentCountsFromCombos } from '@/lib/unshipped-state';
 
-const LIFECYCLE_VIEWS = ['unshipped', 'packed', 'shipped'] as const;
+const LIFECYCLE_VIEWS = ['unshipped', 'tested', 'packed', 'shipped'] as const;
 type LifecycleView = (typeof LIFECYCLE_VIEWS)[number];
 
 function isLifecycleView(view: DashboardOrderView): view is LifecycleView {
-  return view === 'unshipped' || view === 'packed' || view === 'shipped';
+  return (
+    view === 'unshipped' || view === 'tested' || view === 'packed' || view === 'shipped'
+  );
 }
 
 export interface OutboundWorkspaceHeaderProps {
@@ -47,21 +51,29 @@ export function OutboundWorkspaceHeader({
   const { data: queueCounts } = useQuery(unshippedQueueCountsQuery());
   const { searchQuery, setSearch, openIntakeForm } = useDashboardSearchController();
   const { sort, setSort } = useQueueDisplaySort();
-  useToShipFilterHotkeys(active === 'unshipped');
+  useToShipFilterHotkeys(isPrePackOrderView(active));
 
-  // Counts only on To Ship; Packed/Shipped stay label-only.
+  const fromCombos = fulfillmentCountsFromCombos(queueCounts?.combos ?? []);
+  const pendingCount =
+    (fromCombos.PENDING || queueCounts?.byStage.pending || 0) + (fromCombos.BLOCKED || 0);
+  const testedCount = fromCombos.TESTED || queueCounts?.byStage.tested || 0;
+
+  // Counts on Pending + Tested; Packed/Shipped stay label-only.
   const tabs = useMemo(
     () =>
       LIFECYCLE_VIEWS.map((id) => ({
         id,
         label: DASHBOARD_ORDER_VIEW_LABEL[id],
-        count: id === 'unshipped' ? queueCounts?.total : undefined,
-        color: (id === 'unshipped' ? 'blue' : id === 'packed' ? 'orange' : 'emerald') as
-          | 'blue'
-          | 'orange'
-          | 'emerald',
+        count: id === 'unshipped' ? pendingCount : id === 'tested' ? testedCount : undefined,
+        color: (id === 'unshipped'
+          ? 'blue'
+          : id === 'tested'
+            ? 'teal'
+            : id === 'packed'
+              ? 'orange'
+              : 'emerald') as 'blue' | 'teal' | 'orange' | 'emerald',
       })),
-    [queueCounts?.total],
+    [pendingCount, testedCount],
   );
 
   return (
@@ -89,7 +101,7 @@ export function OutboundWorkspaceHeader({
       trailing={
         /* Sort (dropdown) → Import (blue) → Add (green) — same CTA cluster as Labels. */
         <>
-          {active === 'unshipped' ? <QueueSortSwitch sort={sort} onChange={setSort} /> : null}
+          {isPrePackOrderView(active) ? <QueueSortSwitch sort={sort} onChange={setSort} /> : null}
           <OutboundOrderChromeActions onNewOrder={openIntakeForm} />
         </>
       }

@@ -221,17 +221,18 @@ function PackedSegments() {
 /** Scroll body for the Outbound rail (segments + saved views). */
 export function OutboundSidebarFilterMap() {
   const { mode } = useOutboundSidebarScope();
+  const isPrePack = mode === 'unshipped' || mode === 'tested';
 
   return (
     <div className="space-y-4">
-      {mode === 'unshipped' ? (
+      {isPrePack ? (
         <UnshippedSegments />
       ) : mode === 'packed' ? (
         <PackedSegments />
       ) : (
         <ShippedSegments />
       )}
-      <OutboundSavedViewsList mode={mode} />
+      <OutboundSavedViewsList mode={isPrePack ? 'unshipped' : mode} />
     </div>
   );
 }

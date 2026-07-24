@@ -44,12 +44,6 @@ describe('compareQueueColumnRows', () => {
     assert.ok(compareQueueColumnRows(neu, parts, 'condition', 'asc') < 0);
   });
 
-  it('sorts platform via order-id channel heuristics', () => {
-    const amazon = row({ id: 1, order_id: '111-2222222-3333333' });
-    const ebay = row({ id: 2, order_id: '12-34567-89012' });
-    assert.ok(compareQueueColumnRows(amazon, ebay, 'platform', 'asc') < 0);
-  });
-
   it('puts empty tracking last in both directions', () => {
     const filled = row({
       id: 1,
@@ -58,26 +52,6 @@ describe('compareQueueColumnRows', () => {
     const empty = row({ id: 2 });
     assert.ok(compareQueueColumnRows(filled, empty, 'tracking', 'asc') < 0);
     assert.ok(compareQueueColumnRows(filled, empty, 'tracking', 'desc') < 0);
-  });
-
-  it('sorts status by fulfillment stage rank (PENDING → TESTED → BLOCKED)', () => {
-    const pending = row({ id: 1, shipment_id: 10 });
-    const tested = row({
-      id: 2,
-      shipment_id: 11,
-      ...({ has_tech_scan: true } as object),
-    });
-    const blocked = row({ id: 3, shipment_id: 12, out_of_stock: 'waiting on supplier' });
-    assert.ok(compareQueueColumnRows(pending, tested, 'status', 'asc') < 0);
-    assert.ok(compareQueueColumnRows(tested, blocked, 'status', 'asc') < 0);
-    assert.ok(compareQueueColumnRows(pending, blocked, 'status', 'asc') < 0);
-    assert.ok(compareQueueColumnRows(pending, tested, 'status', 'desc') > 0);
-  });
-
-  it('status sort tiebreaks on deadline', () => {
-    const sooner = row({ id: 1, shipment_id: 10, deadline_at: '2026-07-01T00:00:00.000Z' });
-    const later = row({ id: 2, shipment_id: 11, deadline_at: '2026-07-05T00:00:00.000Z' });
-    assert.ok(compareQueueColumnRows(sooner, later, 'status', 'asc') < 0);
   });
 
   it('tiebreaks on deadline', () => {

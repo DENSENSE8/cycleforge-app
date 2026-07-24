@@ -112,7 +112,7 @@ export async function handleTrackingScan(
           quantity: String(data.order.quantity || '1'),
           is_shipped: data.order.isShipped ?? false,
           ship_by_date: data.order.shipByDate ?? null,
-          out_of_stock: null,
+          is_out_of_stock: false,
         },
       }));
     } else if (data.techActivityId) {
@@ -141,7 +141,7 @@ export async function handleTrackingScan(
           quantity: '1',
           is_shipped: false,
           ship_by_date: null,
-          out_of_stock: null,
+          is_out_of_stock: false,
         },
       }));
     }

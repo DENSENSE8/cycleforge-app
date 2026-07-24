@@ -38,11 +38,14 @@ Each concern has one module — never inline or re-derive:
 | Spacing scale + intents | `src/design-system/tokens/spacing.mjs` |
 | Focus affordance | `src/design-system/tokens/focus-ring.ts` (`focusRing`) |
 | Depth elevation (flat · raised · overlay) | `src/design-system/tokens/shadows.ts` (`elevationClass`) |
+| Ops table / spreadsheet surface shell | `src/design-system/tokens/table-surface.ts` (`TABLE_SURFACE_*` + `TABLE_FROZEN_HEADER_CLASS`) — rounded-xl + raised + sunken header; never hand-roll |
 | Surface / box shell | `Panel` / `SectionCard` / `CardShell` (never hand-roll the shell) |
 | Dialog / AlertDialog | `@/design-system/components` `Dialog` / `AlertDialog` (+ `requestConfirm` / `ConfirmDialogHost`) — never hand-roll `fixed inset-0` scrims; floor confirms stay on `ConfirmSheet` |
 | Switch / Checkbox | `@/design-system/primitives` `Switch` / `Checkbox` |
 | Dropdown / Context menu | `@/design-system/primitives` `DropdownMenu` / `ContextMenu` |
 | Station entity-context header | `@/components/station/entity-context` (`CartonContextCard` + `StationContextBar`) — Unbox/Triage/Testing/Shipping |
+| Station Workbench shell / column / wash | `@/components/station/workbench` — `StationWorkbench`, `StationPanelRoot` (+ `StationAmbientWash`), `STATION_WORKBENCH_*` column tokens (`workbench-layout.ts`, 720px + `px-4 sm:px-6`). Never `max-w-3xl` or a copied wash. Guard: `station-workbench-chrome.guard.test.ts`; rule: `.claude/rules/display/station-workbench.md` |
+| Station composer dock (chat-style notes entry) | `@/design-system/primitives` `StationComposerDock` — Unbox overview carton notes in the dock band; Receive/Print rides in its `trailingAction` as `<StationTerminalDock embedded>` (bare `SlicedActionDock` track, Send suppressed) — one shell, never composer + a second CTA row. Never hand-roll a mid-canvas ChatGPT prompt shell for station notes |
 | Workbench chrome scoped search | `@/design-system/primitives/ToolbarSearchToggle` (icon → expand on hover/focus; compose `SearchField`) |
 | Resizable document PDF slide-over | `@/design-system/components/DocumentSlideOver` (+ `DocumentPreviewFrame`, `useHorizontalEdgeResize`) |
 | Integrations / capabilities | `src/lib/integrations/**` |

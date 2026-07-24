@@ -32,7 +32,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     // PK stn.id = o.shipment_id) plus the GUC-wrapped tenantQuery connection.
     const summaryQuery = `
       WITH pending_orders AS (
-        SELECT o.id, o.out_of_stock
+        SELECT o.id, o.is_out_of_stock
         FROM orders o
         LEFT JOIN shipping_tracking_numbers stn ON stn.id = o.shipment_id
         WHERE o.shipment_id IS NOT NULL
@@ -75,7 +75,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
            AND organization_id = $1
            AND ${yesterdayFilter}) AS tested_yesterday,
         (SELECT count(*)::int FROM repair_service WHERE status NOT IN ('Done', 'Shipped', 'Picked Up') AND organization_id = $1) AS repair_count,
-        (SELECT count(*)::int FROM pending_orders WHERE COALESCE(BTRIM(out_of_stock), '') <> '') AS oos_count,
+        (SELECT count(*)::int FROM pending_orders WHERE is_out_of_stock) AS oos_count,
         (SELECT count(*)::int FROM late_orders) AS late_count,
         (SELECT count(*)::int FROM station_activity_logs WHERE activity_type = 'FNSKU_SCANNED' AND organization_id = $1 AND ${todayFilter}) AS fba_today,
         (SELECT count(*)::int FROM station_activity_logs WHERE activity_type = 'FNSKU_SCANNED' AND organization_id = $1 AND ${yesterdayFilter}) AS fba_yesterday

@@ -32,7 +32,10 @@ export function DashboardOrdersContextPanel() {
   if (getDashboardDomainFromSearch(searchParams) === 'inbound') return null;
 
   const isOutbound =
-    dashboardSearch.orderView === 'unshipped' || dashboardSearch.orderView === 'shipped';
+    dashboardSearch.orderView === 'unshipped' ||
+    dashboardSearch.orderView === 'tested' ||
+    dashboardSearch.orderView === 'packed' ||
+    dashboardSearch.orderView === 'shipped';
 
   return (
     <>

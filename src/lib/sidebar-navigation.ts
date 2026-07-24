@@ -36,7 +36,6 @@ import {
   Tags,
   TrendingUp,
   Send,
-  Wrench,
   Zap,
   Warehouse,
   ShelvingUnit,
@@ -754,12 +753,12 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
   {
     id: 'products', label: 'Products', href: PRODUCTS, icon: Tags, kind: 'main', requires: 'sku_stock.view',
     modes: [
-      { id: 'catalog', label: 'Catalog', icon: Tags, to: () => ({ pathname: PRODUCTS, params: { view: 'catalog', linkFilter: null } }) },
-      { id: 'manuals', label: 'Manuals', icon: FileText, to: () => ({ pathname: PRODUCTS, params: { view: null, linkFilter: null } }) },
-      { id: 'labels',  label: 'Labels',  icon: Barcode,  to: () => ({ pathname: PRODUCTS, params: { view: 'labels', linkFilter: null } }) },
-      { id: 'pairing', label: 'Pairing', icon: Link2,    to: () => ({ pathname: PRODUCTS, params: { view: 'pairing', linkFilter: null } }) },
-      { id: 'qc',      label: 'QC',      icon: Check,     to: () => ({ pathname: PRODUCTS, params: { view: 'qc', linkFilter: null } }) },
-      { id: 'kit',     label: 'Kit Parts', icon: PackageOpen, to: () => ({ pathname: PRODUCTS, params: { view: 'kit', linkFilter: null } }) },
+      { id: 'catalog', label: 'Catalog', icon: Tags, to: () => ({ pathname: PRODUCTS, params: { view: 'catalog', platform: null, linkFilter: null } }) },
+      { id: 'manuals', label: 'Manuals', icon: FileText, to: () => ({ pathname: PRODUCTS, params: { view: null, platform: null, linkFilter: null } }) },
+      { id: 'labels',  label: 'Labels',  icon: Barcode,  to: () => ({ pathname: PRODUCTS, params: { view: 'labels', platform: null, linkFilter: null } }) },
+      { id: 'pairing', label: 'Pairing', icon: Link2,    to: () => ({ pathname: PRODUCTS, params: { view: 'pairing', platform: null, linkFilter: null } }) },
+      { id: 'qc',      label: 'QC',      icon: Check,     to: () => ({ pathname: PRODUCTS, params: { view: 'qc', platform: null, linkFilter: null } }) },
+      { id: 'kit',     label: 'Kit Parts', icon: PackageOpen, to: () => ({ pathname: PRODUCTS, params: { view: 'kit', platform: null, linkFilter: null } }) },
     ],
     resolveMode: ({ params }) => {
       const v = params.get('view');
@@ -785,19 +784,16 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
   // Data Wipe (`/wipe`) is temporarily absent from master nav — revisit when the
   // station UX is ready for general rollout. Route + `tech.data_wipe` gate remain.
   // ── Sales (front-desk transaction-history hub) ────────────────────────────
-  // Formerly "Walk-In". Intake/processing lives on the Walk-In station
-  // (`/pickup?job=sales|pickup|repair`); this page is the observe side — a
-  // 3-mode hub (Local Pickup · Sales · Repair) whose per-mode header tabs swap
-  // separate tables. `?mode=pickup|sales|repair` (default `sales` dropped); the
-  // per-mode `?tab=` clears on mode switch. Legacy `?category=` maps onto the
-  // new modes; `?new=true` / `?openRepair=` still redirect to the station
-  // (`useWalkInTaskRedirect`).
+  // Formerly "Walk-In". Intake/processing lives on `/pickup` (Local Pickup) and
+  // `/repair` (Receiving Repair queue). This page is the observe side — Local
+  // Pickup · Sales history. `?mode=pickup|sales` (default `sales` dropped);
+  // legacy `?mode=repair` / `?category=repairs` redirect to `/repair` at the
+  // proxy. `?new=true` / `?openRepair=` still redirect via `useWalkInTaskRedirect`.
   {
     id: 'walk-in', label: 'Sales', href: WALK_IN, icon: SalesPage, kind: 'main', requires: 'walk_in.view',
     modes: [
       { id: 'pickup', label: 'Local Pickup', icon: ShoppingCart, to: () => ({ pathname: WALK_IN, params: { mode: 'pickup', tab: null, category: null } }) },
       { id: 'sales',  label: 'Sales',        icon: SalesPrice,   to: () => ({ pathname: WALK_IN, params: { mode: null, tab: null, category: null } }) },
-      { id: 'repair', label: 'Repair',       icon: Wrench,       to: () => ({ pathname: WALK_IN, params: { mode: 'repair', tab: null, category: null } }) },
     ],
     // Reads the new `?mode=`, falling back to legacy `?category=` for old links.
     resolveMode: ({ params }) => parseWalkInHistoryMode(params.get('mode') ?? params.get('category')),

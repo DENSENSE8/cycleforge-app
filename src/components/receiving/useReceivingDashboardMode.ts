@@ -2,10 +2,11 @@
 
 /**
  * Parses the receiving right-pane mode. The graduated surface routes (`/unbox`,
- * `/triage`) carry no `?mode=` — being on the route IS the mode — so the mode is
- * derived path-first, then from `?mode=` for the legacy `/receiving` page.
- * History + Incoming are table-only (they hide the workspace overlay even if one
- * is open in state, so a quick peek doesn't lose unfinished edits).
+ * `/triage`, `/repair`, …) carry no `?mode=` — being on the route IS the mode —
+ * so the mode is derived path-first, then from `?mode=` for the legacy
+ * `/receiving` page. History + Incoming + Repair are table-only (they hide the
+ * workspace overlay even if one is open in state, so a quick peek doesn't lose
+ * unfinished edits).
  */
 
 import { useSearchParams, usePathname } from 'next/navigation';
@@ -15,6 +16,7 @@ import {
   TRIAGE_SURFACE_ROUTE,
   INCOMING_SURFACE_ROUTE,
   PICKUP_SURFACE_ROUTE,
+  REPAIR_SURFACE_ROUTE,
   HISTORY_SURFACE_ROUTE,
 } from '@/lib/receiving/surface-path';
 
@@ -23,6 +25,7 @@ export interface ReceivingDashboardMode {
   isTriageMode: boolean;
   isHistoryMode: boolean;
   isIncomingMode: boolean;
+  isRepairMode: boolean;
   isTableOnlyMode: boolean;
   /** Incoming right-pane sub-view from `?incview=` (`pos` default | `email`). */
   incomingView: IncomingView;
@@ -42,16 +45,20 @@ export function useReceivingDashboardMode(): ReceivingDashboardMode {
           ? 'incoming'
           : pathname.startsWith(PICKUP_SURFACE_ROUTE)
             ? 'pickup'
-            : searchParams.get('mode') ?? 'receive';
+            : pathname.startsWith(REPAIR_SURFACE_ROUTE)
+              ? 'repair'
+              : searchParams.get('mode') ?? 'receive';
   const isHistoryMode = mode === 'history';
   const isIncomingMode = mode === 'incoming';
+  const isRepairMode = mode === 'repair';
   const incomingView: IncomingView = searchParams.get('incview') === 'email' ? 'email' : 'pos';
   return {
     mode,
     isTriageMode: mode === 'triage',
     isHistoryMode,
     isIncomingMode,
-    isTableOnlyMode: isHistoryMode || isIncomingMode,
+    isRepairMode,
+    isTableOnlyMode: isHistoryMode || isIncomingMode || isRepairMode,
     incomingView,
   };
 }

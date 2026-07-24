@@ -3,11 +3,15 @@
 /**
  * The `/receiving` right-pane column. The History/Incoming table stays mounted
  * (display-toggled) so its cache + scroll survive tab flips; over it the focused
- * line workspace soft-swaps in. Unbox and Triage each own a browse+overlay
- * crossfade shell (`UnboxLineWorkspace` / `TriageLineWorkspace`).
+ * line workspace soft-swaps in. Unbox, Triage, and Local Pickup share the
+ * browse+overlay crossfade SoT (`UnboxLineWorkspace` / `TriageLineWorkspace`);
+ * pickup reuses Unbox's shell (no parallel Pickup* UI). Repair mounts
+ * `RepairTable` with `RepairWorkspaceHeader` (Active/Done · search · Add) —
+ * LedgerGrid day-banded queue, not ReceivingLines.
  */
 
 import { AnimatePresence, motion } from 'framer-motion';
+import { useSearchParams } from 'next/navigation';
 import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
 import { useMotionPresence, useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
 import ReceivingLinesTable from '@/components/station/ReceivingLinesTable';
@@ -19,6 +23,9 @@ import { TriageLineWorkspace } from '@/components/receiving/triage/TriageLineWor
 import { IncomingDetailsPanel } from '@/components/sidebar/receiving/IncomingDetailsPanel';
 import { EmailTriagePanel } from '@/components/receiving/EmailTriagePanel';
 import type { IncomingView } from '@/components/receiving/EmailTriagePanel';
+import { RepairTable } from '@/components/repair';
+import { PickupWorkspace } from '@/components/receiving/pickup/PickupWorkspace';
+import { parseRepairTab } from '@/lib/walk-in/history-modes';
 import type { SelectionAction } from '@/lib/selection/selection-actions';
 import type { ScanIntakeSurface } from '@/lib/receiving/scan';
 import type { ReceivingLineRow } from '@/components/station/ReceivingLinesTable';
@@ -69,6 +76,7 @@ export function ReceivingRightPane({
   onCloseIncoming,
   onCloseWorkspace,
 }: ReceivingRightPaneProps) {
+  const searchParams = useSearchParams();
   const isUnboxMode = mode === 'receive';
   // Incoming Email-Triage sub-view swap keeps the snappy canonical crossfade —
   // it fades in over the (display:none) table, so there is no second pane to
@@ -80,9 +88,33 @@ export function ReceivingRightPane({
   // the POS table (default) and the Email Triage worklist. The table stays
   // mounted (cache + scroll); Email Triage crossfades in over it, both sitting
   // below the 45px toggle band.
+  // Repair is table-only but mounts RepairTable (not ReceivingLinesTable).
   const showEmailTriage = isIncomingMode && incomingView === 'email';
-  const showTable = isTableOnlyMode && !showEmailTriage;
+  const showTable = isTableOnlyMode && !showEmailTriage && mode !== 'repair';
 
+  // Repair queue — LedgerGrid day-banded Workbench (Active/Done via `?tab=`).
+  if (mode === 'repair') {
+    return (
+      <RightPaneOverlayHost className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+        <RepairTable filter={parseRepairTab(searchParams.get('tab'))} />
+      </RightPaneOverlayHost>
+    );
+  }
+
+  // Local Pickup — its own LCPU product table (like Repair's dedicated pane).
+  // LCPU data lives in local_pickup_orders/items, not the receiving-lines
+  // pipeline, so pickup can't share the Unbox feed; it shares the Unbox *look*
+  // (workbench chrome + framed table) via PickupWorkspace. `?lcpu=` (set by the
+  // sidebar rail) highlights one order's rows.
+  if (mode === 'pickup') {
+    return (
+      <RightPaneOverlayHost className="flex min-w-0 flex-1 flex-col overflow-hidden">
+        <PickupWorkspace selectedOrderId={Number(searchParams.get('lcpu')) || null} />
+      </RightPaneOverlayHost>
+    );
+  }
+
+  // Unbox browse/crossfade SoT (ReceivingLineWorkspace overlay).
   if (isUnboxMode) {
     return (
       <RightPaneOverlayHost className="flex min-w-0 flex-1 flex-col overflow-hidden">

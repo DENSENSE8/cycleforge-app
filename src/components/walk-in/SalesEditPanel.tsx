@@ -3,8 +3,7 @@
 /**
  * Walk-in sales main-pane editor.
  *
- * The sales counterpart to {@link ../work-orders/LocalPickupEditPanel}: a
- * sticky {@link PaneHeader} (Sale chip + product identity + prev/next + the
+ * Sticky {@link PaneHeader} (Sale chip + product identity + prev/next + the
  * [+ Add item] CTA) over a scrollable single-column body that edits the
  * currently-selected staged line. Selection + cart live in the shared
  * {@link salesCartStore}; the slim sidebar list (`SalesCartSidebar`) drives

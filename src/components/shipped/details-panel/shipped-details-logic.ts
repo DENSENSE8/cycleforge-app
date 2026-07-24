@@ -121,8 +121,8 @@ export function canEditShippingInfo(shipped: ShippedOrder): boolean {
  * falls back to the absolute table id rendered as an EXCEPTIONS reference.
  */
 export function deriveShippedHeaderMeta(shipped: ShippedOrder): ShippedHeaderMeta {
-  const outOfStockValue = String((shipped as any).out_of_stock || '').trim();
-  const hasOutOfStock = outOfStockValue !== '';
+  const hasOutOfStock = Boolean((shipped as any).is_out_of_stock);
+  const outOfStockValue = hasOutOfStock ? 'Out of stock' : '';
   const testedById = shipped.tested_by ?? null;
   const canEditAssignment = Number(shipped.id) > 0 && !isExceptionShippedRow(shipped);
   const hasTechScan = Boolean((shipped as any).has_tech_scan);
@@ -130,13 +130,13 @@ export function deriveShippedHeaderMeta(shipped: ShippedOrder): ShippedHeaderMet
   // header pill can never disagree with the order's board lane (the projection
   // is exception‑first: out‑of‑stock → BLOCKED wins over a tech scan). Tone +
   // label below are presentation only.
-  const lane = resolveFulfillmentLane({ hasTechScan, outOfStock: outOfStockValue });
+  const lane = resolveFulfillmentLane({ hasTechScan, isOutOfStock: hasOutOfStock });
   const statusTone: StatusTone = lane === 'TESTED' ? 'emerald' : lane === 'BLOCKED' ? 'red' : 'yellow';
   const statusLabel =
     lane === 'TESTED'
       ? `Tested by ${getStaffName(testedById)}`
       : lane === 'BLOCKED'
-        ? outOfStockValue
+        ? 'Out of stock'
         : 'Pending';
   const orderIdTrimmed = String(shipped.order_id || '').trim();
   const showExceptionsFallback = !orderIdTrimmed;

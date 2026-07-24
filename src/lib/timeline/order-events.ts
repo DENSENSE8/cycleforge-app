@@ -42,6 +42,14 @@ function pretty(action: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
 }
 
+function prettyFieldKey(key: string): string {
+  switch (key) {
+    case 'isOutOfStock': return 'Out of stock';
+    case 'isUrgent': return 'Urgent';
+    default: return key;
+  }
+}
+
 /**
  * Map order audit rows → timeline items for the {@link EventTimeline} in the
  * order details panel. Curates titles/tones for the governing events
@@ -64,8 +72,8 @@ export function orderAuditToTimeline(rows: OrderAuditRow[]): TimelineItem[] {
     }
 
     const mapped = ACTION_MAP[r.action];
-    const title = mapped?.title ?? pretty(r.action);
-    const tone = mapped?.tone ?? 'muted';
+    let title = mapped?.title ?? pretty(r.action);
+    let tone: TimelineTone = mapped?.tone ?? 'muted';
 
     let subtitle: string | undefined;
     let ref: TimelineItem['ref'];
@@ -73,7 +81,16 @@ export function orderAuditToTimeline(rows: OrderAuditRow[]): TimelineItem[] {
       const t = String((r.after_data?.trackingNumber as string | undefined) ?? '').trim();
       if (t) ref = { value: t, kind: 'tracking' }; // last-4 CopyChip, copy-on-click
     } else if (r.action === 'ORDER_ASSIGNMENT_UPDATED' && changedKeys.length > 0) {
-      subtitle = changedKeys.join(', ');
+      if (
+        changedKeys.length === 1 &&
+        changedKeys[0] === 'isOutOfStock' &&
+        typeof r.after_data?.isOutOfStock === 'boolean'
+      ) {
+        title = r.after_data.isOutOfStock ? 'Marked out of stock' : 'Cleared out of stock';
+        tone = r.after_data.isOutOfStock ? 'danger' : 'muted';
+      } else {
+        subtitle = changedKeys.map(prettyFieldKey).join(', ');
+      }
     }
 
     // Field-level before→after diff (edit-style rows only). `diffChanges`

@@ -8,7 +8,7 @@
  */
 
 import { createPortal } from 'react-dom';
-import { Clock, Pencil } from '../Icons';
+import { Clock, DollarSign, Pencil, PrinterAlt } from '../Icons';
 import { RepairPickupFlow } from '@/components/repair/RepairPickupFlow';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
@@ -130,12 +130,44 @@ export function RepairDetailsPanel({
                 <PaneHeaderActionBar
                   iconOnly
                   variant="card"
-                  actions={c.panelActions.map((action) => ({
-                    key: action.key,
-                    label: action.label,
-                    icon: <span className={action.toneClassName}>{action.icon}</span>,
-                    onClick: action.onAction,
-                  }))}
+                  actions={[
+                    ...c.panelActions.map((action) => ({
+                      key: action.key,
+                      label: action.label,
+                      icon: <span className={action.toneClassName}>{action.icon}</span>,
+                      onClick: action.onAction,
+                    })),
+                    {
+                      key: 'print',
+                      label: 'Repair document',
+                      icon: (
+                        <span className="text-blue-600">
+                          <PrinterAlt className="h-3.5 w-3.5" />
+                        </span>
+                      ),
+                      onClick: c.printRepairDocument,
+                    },
+                    ...(c.canCreateSquarePayment
+                      ? [
+                          {
+                            key: 'square-pay',
+                            label: c.isPaying
+                              ? 'Creating payment link…'
+                              : c.hasSourceSku
+                                ? 'Square payment (catalog SKU)'
+                                : 'Square payment (price)',
+                            icon: (
+                              <span className="text-emerald-600">
+                                <DollarSign className="h-3.5 w-3.5" />
+                              </span>
+                            ),
+                            onClick: () => {
+                              if (!c.isPaying) void c.openSquarePayment();
+                            },
+                          },
+                        ]
+                      : []),
+                  ]}
                   onPrev={onMoveUp}
                   onNext={onMoveDown}
                   prevDisabled={disableMoveUp}

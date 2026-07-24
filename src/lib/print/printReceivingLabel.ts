@@ -1,6 +1,6 @@
 import { getLast4 } from '@/components/ui/CopyChip';
 import { receivingHandle } from '@/lib/barcode-routing';
-import { buildFaceInfoHtml, type LabelFaceModel } from '@/lib/print/labelFace';
+import { type LabelFaceModel } from '@/lib/print/labelFace';
 import { conditionLabel } from '@/lib/conditions';
 // receivingLabelTypeDisplay moved to @/lib/receiving/receiving-type-display —
 // it is a pure presentation mapper; keeping it here made every consumer's
@@ -156,33 +156,4 @@ export function receivingPayloadToFace(payload: ReceivingLabelPayload): LabelFac
     matrix: { value: qrValue, symbology: 'datamatrix', scale: 4 },
     hri,
   };
-}
-
-/**
- * Generate a 2×1" carton label via the shared `printLabel` shell. The plain
- * DataMatrix carries the `R-{id}` handle — `routeScan()` parses the prefix and
- * navigates to /m/r/{id}. No URL on the wire.
- *
- * NOTE: this shell-based path (Electron silent → browser dialog) is used by
- * non-unbox callers (e.g. local pickup). The unbox flow prints through
- * `receiving-label-helpers.printReceivingLabel`, which adds the WebUSB/Web
- * Serial raw-TSPL path for paired thermal printers — both now render the
- * identical face via {@link receivingPayloadToFace}.
- */
-export function printReceivingLabel(payload: ReceivingLabelPayload): void {
-  if (typeof window === 'undefined') return;
-  const face = receivingPayloadToFace(payload);
-  if (!face.matrix.value) return;
-
-  // Lazy: `printLabel` drags the bwip-js barcode engine (~250 KB gz). This
-  // module's face-model exports ride in many station bundles; only the actual
-  // print action should pay for the print shell.
-  void import('@/lib/print/printLabel').then(({ printLabel }) => {
-    printLabel({
-      name: 'Label',
-      ...buildFaceInfoHtml(face),
-      dataMatrix: face.matrix,
-      hri: face.hri,
-    });
-  });
 }

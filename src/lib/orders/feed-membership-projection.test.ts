@@ -16,23 +16,23 @@ function fakeDeps(fetchRows: unknown[], flipCount = 0): { deps: FeedProjectionDe
   return { deps, calls: () => n };
 }
 
-const row = (id: number, hasTechScan: boolean, outOfStock: string) => ({
+const row = (id: number, hasTechScan: boolean, isOutOfStock: boolean) => ({
   id,
   organization_id: 'org-1',
   shipment_id: 100 + id,
   has_tech_scan: hasTechScan,
-  out_of_stock: outOfStock,
+  is_out_of_stock: isOutOfStock,
   occurred_at: new Date('2026-01-0' + ((id % 9) + 1)),
   title: `Order ${id}`,
 });
 
 test('computes the fulfillment lane in NODE (deriveFulfillmentState) and buckets by lane', async () => {
   const fetchRows = [
-    row(1, false, ''),      // PENDING (untested, in stock)
-    row(2, true, ''),       // TESTED
-    row(3, true, 'OOS'),    // BLOCKED — out_of_stock wins over tech scan
-    row(4, false, '   '),   // PENDING — whitespace out_of_stock trims to empty (matches isOutOfStock)
-    row(5, false, 'short'), // BLOCKED — any non-empty out_of_stock
+    row(1, false, false),   // PENDING (untested, in stock)
+    row(2, true, false),    // TESTED
+    row(3, true, true),     // BLOCKED — is_out_of_stock wins over tech scan
+    row(4, false, false),   // PENDING — not out of stock
+    row(5, false, true),    // BLOCKED — out of stock
   ];
   const { deps } = fakeDeps(fetchRows, 2);
   const res = await projectOrdersUnshippedMemberships(90, deps);

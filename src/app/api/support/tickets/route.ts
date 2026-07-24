@@ -21,20 +21,30 @@ const Anchor = z.discriminatedUnion('type', [
   }),
 ]);
 
+const Linkages = z
+  .object({
+    order: z.string().trim().min(1).max(128).optional(),
+    tracking: z.string().trim().min(1).max(128).optional(),
+    serial: z.string().trim().min(1).max(128).optional(),
+  })
+  .optional();
+
 const Body = z.object({
   subject: z.string().trim().min(1).max(300),
   note: z.string().trim().max(5000).optional(),
   anchor: Anchor.optional(),
+  linkages: Linkages,
 });
 
 /**
  * POST /api/support/tickets — station-generic ticket create.
  *
  * Mints a live helpdesk ticket via the capability facade and (optionally) links
- * it to an anchor through the shared link waist ({@link createSupportTicket} →
- * `linkTicketToAnchor`). Returns the provider id so the caller can open it
- * (`?ticket=<providerTicketId>`). Idempotent: an `Idempotency-Key` header dedupes
- * a retried submit (the facade caches an identical-key create).
+ * it to an anchor / resolved linkages through the shared link waist
+ * ({@link createSupportTicket} → `linkTicketToAnchor` + shipment references).
+ * Returns the provider id so the caller can open it (`?ticket=<providerTicketId>`).
+ * Idempotent: an `Idempotency-Key` header dedupes a retried submit (the facade
+ * caches an identical-key create).
  *
  * Gated on `integrations.zendesk` (the station-generic create capability); a
  * disconnected helpdesk returns an operator-actionable 409, not a 500.
@@ -55,6 +65,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       subject: parsed.data.subject,
       note: parsed.data.note ?? null,
       anchor: parsed.data.anchor ?? null,
+      linkages: parsed.data.linkages ?? null,
       staffId: ctx.staffId ?? null,
       idempotencyKey: readIdempotencyKey(req),
     });

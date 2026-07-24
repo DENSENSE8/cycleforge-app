@@ -75,7 +75,7 @@ export function PhotoDateBreadcrumb({
         onClick={() => onNavigate({ dateFrom: undefined, dateTo: undefined })}
         className={cn(
           // ds-raw-button: breadcrumb nav crumb (disabled = current depth) — not a DS Button
-          // pl-0: align calendar icon with the folder icon in PhotoLibraryHeader (same px-4 gutter).
+          // pl-0: align calendar icon with the path-bar leading edge (Panel px-3).
           'ds-raw-button flex shrink-0 items-center gap-1 rounded-md py-1 pl-0 pr-1.5 font-bold transition',
           canReset ? 'text-text-soft hover:bg-surface-hover hover:text-text-default' : 'text-text-default',
         )}

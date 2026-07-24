@@ -25,11 +25,11 @@ import {
  */
 
 describe('orders-queue mode column sets (TanStack ColumnDefs)', () => {
-  it('fulfillment.default matches the canonical 10-column scan order', () => {
+  it('fulfillment.default matches the canonical 8-column scan order', () => {
     const defs = ordersQueueColumnDefsFor('fulfillment.default');
     assert.deepEqual(
       defs.map((d) => d.id),
-      ['select', 'title', 'date', 'age', 'status', 'qty', 'condition', 'platform', 'order', 'tracking'],
+      ['select', 'title', 'date', 'age', 'qty', 'condition', 'order', 'tracking'],
     );
     assert.deepEqual(
       defs.map((d) => d.id),
@@ -38,13 +38,14 @@ describe('orders-queue mode column sets (TanStack ColumnDefs)', () => {
     );
   });
 
-  it('fulfillment.tested demotes Status and surfaces Tester + Tested at after Age', () => {
+  it('fulfillment.tested surfaces Tester + Tested at after Age (no Status / Platform)', () => {
     const defs = ordersQueueColumnDefsFor('fulfillment.tested');
     assert.deepEqual(
       defs.map((d) => d.id),
-      ['select', 'title', 'date', 'age', 'tester', 'testedAt', 'qty', 'condition', 'platform', 'order', 'tracking'],
+      ['select', 'title', 'date', 'age', 'tester', 'testedAt', 'qty', 'condition', 'order', 'tracking'],
     );
-    assert.ok(!defs.some((d) => d.id === 'status'), 'redundant Status pill is demoted on the TESTED lane');
+    assert.ok(!defs.some((d) => d.id === 'status'), 'Status pill is not on the TESTED tab');
+    assert.ok(!defs.some((d) => d.id === 'platform'), 'Platform column is retired');
   });
 
   it('defs are stable references per mode (safe hook deps)', () => {
@@ -112,6 +113,7 @@ describe('ORDERS_QUEUE_TESTED_COLUMNS — house geometry for the TESTED lane', (
     assert.ok((out as string[]).includes('tester'), 'tester inserted at canonical slot');
     assert.ok((out as string[]).includes('testedAt'), 'testedAt inserted at canonical slot');
     assert.ok(!(out as string[]).includes('status'), 'status is not a TESTED-mode column');
+    assert.ok(!(out as string[]).includes('platform'), 'platform is retired');
     assert.equal(out[0], 'select');
     assert.equal(out[1], 'title');
     // And the default canonical still drops the TESTED-only keys:

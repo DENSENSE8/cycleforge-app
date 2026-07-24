@@ -73,7 +73,6 @@ export function StationQueueRow({
       rowStatus={rowStatus}
       serialChip={serialChip}
       hasOutOfStock={false}
-      outOfStockValue=""
       notesValue={String(record.notes || '')}
       daysLate={null}
       disableEnterAnimation

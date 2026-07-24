@@ -27,7 +27,7 @@ export function warmActiveView(
   const view = getDashboardOrderViewFromSearch(sp);
   const searchQuery = String(sp.get('search') || '').trim();
 
-  if (view === 'unshipped') {
+  if (view === 'unshipped' || view === 'tested') {
     return queryClient.prefetchQuery(unshippedOrdersQuery({ searchQuery, strictSearchScope: true }));
   }
   if (view === 'fba') {

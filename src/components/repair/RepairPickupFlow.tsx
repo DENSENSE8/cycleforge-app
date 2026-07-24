@@ -152,6 +152,7 @@ export function RepairPickupFlow({ repair, onUpdate, onClose }: RepairPickupFlow
           </div>
 
           <div className="flex-1 min-h-0 flex flex-col items-center justify-start px-6 pt-4 pb-2 gap-2">
+            {/* Signature-pad viewport box, not a station workbench column. ds-station-max-w-exempt */}
             <div className="w-full max-w-3xl h-[260px]">
               <SignaturePad onSignatureChange={setSignatureData} fillHeight label="Pickup Signature" />
             </div>

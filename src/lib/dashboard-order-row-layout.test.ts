@@ -74,10 +74,10 @@ describe('ordersQueueRowShellClass / grid template', () => {
 });
 
 describe('ORDERS_QUEUE_COLUMNS — the column model header + template share', () => {
-  it('is the 10-column scan order and derives the CSS-var template (no drift)', () => {
+  it('is the 8-column scan order and derives the CSS-var template (no drift)', () => {
     assert.deepEqual(
       ORDERS_QUEUE_COLUMNS.map((c) => c.key),
-      ['select', 'title', 'date', 'age', 'status', 'qty', 'condition', 'platform', 'order', 'tracking'],
+      ['select', 'title', 'date', 'age', 'qty', 'condition', 'order', 'tracking'],
     );
     // Each track = its width CSS var with the model width as the fallback, so a
     // persisted/resized width overrides with zero template rebuild.
@@ -91,7 +91,7 @@ describe('ORDERS_QUEUE_COLUMNS — the column model header + template share', ()
   it('resize helpers: only data columns resize; widths → CSS vars', () => {
     assert.deepEqual(
       [...ORDERS_QUEUE_RESIZABLE_KEYS],
-      ['title', 'date', 'age', 'status', 'qty', 'condition', 'platform', 'order', 'tracking'],
+      ['title', 'date', 'age', 'qty', 'condition', 'order', 'tracking'],
       'select control gutter is not resizable',
     );
     assert.equal(ordersQueueColVar('title'), '--cf-col-title');
@@ -105,7 +105,7 @@ describe('ORDERS_QUEUE_COLUMNS — the column model header + template share', ()
   it('control gutters carry no label/type; every data column is typed + labelled', () => {
     const byKey = Object.fromEntries(ORDERS_QUEUE_COLUMNS.map((c) => [c.key, c]));
     assert.equal(byKey.select.label, undefined, 'select is a control gutter');
-    for (const k of ['title', 'date', 'age', 'status', 'qty', 'condition', 'platform', 'order', 'tracking']) {
+    for (const k of ['title', 'date', 'age', 'qty', 'condition', 'order', 'tracking']) {
       assert.ok(byKey[k].type, `${k} has a data-type glyph`);
       assert.ok(byKey[k].label, `${k} has a header label`);
     }
@@ -117,10 +117,8 @@ describe('ORDERS_QUEUE_COLUMNS — the column model header + template share', ()
       ORDERS_QUEUE_COLUMNS.filter((c) => c.hideKey).map((c) => [c.key, c.hideKey]),
     );
     assert.deepEqual(hide, {
-      status: 'status',
       qty: 'qty',
       condition: 'condition',
-      platform: 'platform',
       order: 'orderid',
       tracking: 'tracking',
     });
@@ -151,33 +149,33 @@ describe('sanitizeOrdersQueueColumnOrder — persisted order → safe full order
 
   it('known movable keys keep their persisted relative order', () => {
     const out = sanitizeOrdersQueueColumnOrder([
-      'tracking', 'order', 'platform', 'condition', 'qty', 'status', 'age', 'date',
+      'tracking', 'order', 'condition', 'qty', 'age', 'date',
     ]);
     assert.deepEqual(out, [
       'select', 'title',
-      'tracking', 'order', 'platform', 'condition', 'qty', 'status', 'age', 'date',
+      'tracking', 'order', 'condition', 'qty', 'age', 'date',
     ]);
   });
 
-  it('unknown keys (the retired notes / stock columns) are silently dropped', () => {
+  it('unknown keys (retired notes / stock / status / platform) are silently dropped', () => {
     const out = sanitizeOrdersQueueColumnOrder([
       'date', 'age', 'status', 'qty', 'condition', 'notes', 'stock', 'platform', 'order', 'tracking',
     ]);
     assert.ok(!(out as string[]).includes('notes'));
     assert.ok(!(out as string[]).includes('stock'));
+    assert.ok(!(out as string[]).includes('status'));
+    assert.ok(!(out as string[]).includes('platform'));
     assert.deepEqual(out, [
-      'select', 'title', 'date', 'age', 'status', 'qty', 'condition', 'platform', 'order', 'tracking',
+      'select', 'title', 'date', 'age', 'qty', 'condition', 'order', 'tracking',
     ]);
   });
 
   it('missing canonical keys are inserted at their canonical position', () => {
-    // Persisted before `status` / `platform` existed: they must ship where the
-    // SoT puts them, not appended at the end.
     const out = sanitizeOrdersQueueColumnOrder([
       'date', 'age', 'qty', 'condition', 'order', 'tracking',
     ]);
     assert.deepEqual(out, [
-      'select', 'title', 'date', 'age', 'status', 'qty', 'condition', 'platform', 'order', 'tracking',
+      'select', 'title', 'date', 'age', 'qty', 'condition', 'order', 'tracking',
     ]);
   });
 
@@ -200,7 +198,7 @@ describe('sanitizeOrdersQueueColumnOrder — persisted order → safe full order
   });
 
   it('orderedOrdersQueueColumns + ordersQueueGridTemplate respect the order', () => {
-    const order = ['tracking', 'date', 'age', 'status', 'qty', 'condition', 'platform', 'order'];
+    const order = ['tracking', 'date', 'age', 'qty', 'condition', 'order'];
     const cols = orderedOrdersQueueColumns(order);
     assert.equal(cols[2].key, 'tracking', 'first movable column is the persisted first key');
     const template = ordersQueueGridTemplate(order);
@@ -218,7 +216,7 @@ describe('orders queue content mins + adaptive headers + viewport collapse', () 
   it('fact tracks are hard minmax floors; title is the only flex track', () => {
     const byKey = Object.fromEntries(ORDERS_QUEUE_COLUMNS.map((c) => [c.key, c]));
     assert.ok(byKey.title.width.includes('1fr'), 'title flexes leftover space');
-    for (const k of ['date', 'age', 'status', 'qty', 'condition', 'platform', 'order', 'tracking'] as const) {
+    for (const k of ['date', 'age', 'qty', 'condition', 'order', 'tracking'] as const) {
       assert.match(byKey[k].width, /^minmax\([\d.]+rem, [\d.]+rem\)$/, `${k} is content-hard`);
     }
   });
@@ -229,7 +227,6 @@ describe('orders queue content mins + adaptive headers + viewport collapse', () 
     assert.equal(ordersQueueHeaderShowsLabel(byKey.age), false, 'Age is glyph-only');
     assert.equal(ordersQueueHeaderShowsLabel(byKey.tracking), false, 'Tracking is glyph-only');
     assert.equal(ordersQueueHeaderShowsLabel(byKey.date), true, 'By fits 4.5rem');
-    assert.equal(ordersQueueHeaderShowsLabel(byKey.status), true, 'Status fits');
     assert.equal(ordersQueueHeaderShowsLabel(byKey.condition), true, 'Cond fits');
     assert.equal(ordersQueueHeaderShowsLabel(byKey.title), true, 'Product fits');
   });
@@ -240,11 +237,11 @@ describe('orders queue content mins + adaptive headers + viewport collapse', () 
     assert.ok(sum > 30, 'full grid needs a real horizontal min');
   });
 
-  it('viewport force-hide collapses By → Qty → Ch. as width tightens', () => {
+  it('viewport force-hide collapses By → Qty → Cond as width tightens', () => {
     assert.deepEqual([...ordersQueueViewportForceHidden(800)], []);
     assert.deepEqual([...ordersQueueViewportForceHidden(700)], ['date']);
     assert.deepEqual([...ordersQueueViewportForceHidden(600)], ['date', 'qty']);
-    assert.deepEqual([...ordersQueueViewportForceHidden(500)].sort(), ['date', 'platform', 'qty']);
+    assert.deepEqual([...ordersQueueViewportForceHidden(500)].sort(), ['condition', 'date', 'qty']);
   });
 
   it('scrollMinContent row shell shares --cf-orders-grid-w (locked columns)', () => {

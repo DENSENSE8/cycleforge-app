@@ -104,7 +104,7 @@ async function getOrderItemContext(orderId: number, client: DbClient, orgId: Org
        o.product_title,
        o.sku,
        o.quantity,
-       o.out_of_stock,
+       o.is_out_of_stock,
        i.id AS item_id,
        i.zoho_item_id,
        i.name AS item_name,
@@ -448,7 +448,7 @@ async function ensureReplenishmentForOrderBody(
         vendor.vendorZohoContactId,
         vendor.vendorName,
         cleanText(order.purchase_rate),
-        cleanText(reason) || cleanText(order.out_of_stock),
+        cleanText(reason) || (order.is_out_of_stock ? 'Out of stock' : null),
         orgId,
       ]
     );
@@ -460,7 +460,7 @@ async function ensureReplenishmentForOrderBody(
        SELECT rr.organization_id, $1, NULL, 'detected', $2, $3
        FROM replenishment_requests rr
        WHERE rr.id = $1 AND rr.organization_id = $4`,
-      [requestId, changedBy, cleanText(reason) || cleanText(order.out_of_stock), orgId]
+      [requestId, changedBy, cleanText(reason) || (order.is_out_of_stock ? 'Out of stock' : null), orgId]
     );
   }
 
@@ -879,7 +879,7 @@ export async function backfillLegacyOutOfStockOrders(orgId: OrgId) {
   const rows = await withTenantConnection(orgId, (c) => c.query(
     `SELECT id
      FROM orders
-     WHERE COALESCE(BTRIM(out_of_stock), '') <> ''
+     WHERE is_out_of_stock = true
        AND organization_id = $1
      ORDER BY created_at ASC, id ASC`,
     [orgId]

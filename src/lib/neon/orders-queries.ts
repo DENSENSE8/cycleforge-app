@@ -39,7 +39,7 @@ export interface ActiveOrder {
   carrier?: string | null;
   deadline_at?: string | null;
   ship_by_date?: string | null;
-  out_of_stock: string | null;
+  is_out_of_stock: boolean;
   /** Operator urgent / expedited toggle (orders.is_urgent). Populated by the
    *  active-orders queue; other surfaces may omit it. */
   is_urgent?: boolean;
@@ -1271,7 +1271,7 @@ export async function getActiveOrders(options?: {
        stn.latest_status_category AS shipment_status,
        stn.carrier,
        to_char(wa_deadline.deadline_at, 'YYYY-MM-DD HH24:MI:SS') AS ship_by_date,
-       o.out_of_stock,
+       o.is_out_of_stock,
        to_char(o.created_at, 'YYYY-MM-DD HH24:MI:SS') AS created_at,
        wa_t.assigned_tech_id   AS tester_id,
        wa_p.assigned_packer_id AS packer_id,
@@ -1309,7 +1309,7 @@ export async function getActiveOrders(options?: {
      LEFT JOIN tech_serial_numbers tsn ON tsn.shipment_id = o.shipment_id AND o.shipment_id IS NOT NULL
      WHERE ${conditions.join(' AND ')}
      GROUP BY o.id, o.shipment_id, wa_deadline.deadline_at, o.order_id, o.product_title, o.quantity,
-              o.condition, o.item_number, stn.tracking_number_raw, o.sku, o.out_of_stock,
+              o.condition, o.item_number, stn.tracking_number_raw, o.sku, o.is_out_of_stock,
               o.is_urgent,
               o.account_source, o.notes, o.sale_amount, o.currency, o.status_history,
               stn.is_carrier_accepted, stn.is_in_transit, stn.is_out_for_delivery, stn.is_delivered,
@@ -1471,7 +1471,7 @@ export async function updateOrder(
     itemNumber: string | null;
     shipByDate: string | null;
     notes: string | null;
-    outOfStock: string | null;
+    isOutOfStock: boolean;
     statusHistory: any;
     accountSource: string | null;
     saleAmount: number | null;
@@ -1486,7 +1486,7 @@ export async function updateOrder(
     quantity: 'quantity',
     itemNumber: 'item_number',
     notes: 'notes',
-    outOfStock: 'out_of_stock',
+    isOutOfStock: 'is_out_of_stock',
     statusHistory: 'status_history',
     accountSource: 'account_source',
     saleAmount: 'sale_amount',
