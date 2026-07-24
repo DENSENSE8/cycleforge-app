@@ -10,7 +10,7 @@ import { useCallback, useMemo } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStaffFilter } from '@/hooks/useStaffFilter';
-import { getDashboardOrderViewFromSearch } from '@/utils/dashboard-search-state';
+import { getDashboardOrderViewFromSearch, normalizeDashboardOrderViewParams } from '@/utils/dashboard-search-state';
 import type { FulfillmentState } from '@/lib/unshipped-state';
 import { FULFILLMENT_STATE_META } from '@/lib/unshipped-state';
 import {
@@ -18,7 +18,7 @@ import {
 } from '@/components/shipping/shipped-filter/useShippedFilterRefinements';
 import type { FilterRefinement } from '@/design-system/components/FilterRefinementBar';
 
-export type OutboundSidebarMode = 'unshipped' | 'packed' | 'shipped';
+export type OutboundSidebarMode = 'unshipped' | 'tested' | 'packed' | 'shipped';
 
 export type UnshippedSegmentId =
   | 'all'
@@ -50,7 +50,10 @@ export function useOutboundSidebarScope() {
 
   const orderView = getDashboardOrderViewFromSearch(searchParams);
   const mode: OutboundSidebarMode =
-    orderView === 'shipped' || orderView === 'packed' || orderView === 'unshipped'
+    orderView === 'shipped' ||
+    orderView === 'packed' ||
+    orderView === 'unshipped' ||
+    orderView === 'tested'
       ? orderView
       : 'unshipped';
 
@@ -124,27 +127,38 @@ export function useOutboundSidebarScope() {
 
   /** Null when filters are mixed (e.g. other-staff only) so no single row looks selected. */
   const activeUnshippedSegment = useMemo((): UnshippedSegmentId | null => {
+    if (mode === 'tested') return 'TESTED';
     if (attentionOnly && !ustatus && stage === 'all') return 'attention';
+    if (ustatus === 'BLOCKED') return 'BLOCKED';
     if (ustatus) return ustatus;
     if (myStaffId != null && staffId === myStaffId && stage === 'all' && !lateOnly) return 'mine';
     if (stage === 'all' && staffId == null && !lateOnly && !attentionOnly) return 'all';
     return null;
-  }, [myStaffId, staffId, ustatus, stage, attentionOnly, lateOnly]);
+  }, [mode, myStaffId, staffId, ustatus, stage, attentionOnly, lateOnly]);
 
   const selectUnshippedSegment = useCallback(
     (id: UnshippedSegmentId) => {
       if (id === 'all') {
-        clearUnshippedScope();
+        replaceParams((p) => {
+          normalizeDashboardOrderViewParams(p, 'unshipped');
+          p.delete('ustatus');
+          p.delete('stage');
+          p.delete('staff');
+          p.delete('search');
+          p.delete('late');
+          p.delete('attention');
+        });
         return;
       }
       if (id === 'mine') {
         if (myStaffId == null) return;
         // Toggle off if already mine-only (→ All staff, sticky).
-        if (staffId === myStaffId && !ustatus && stage === 'all' && !attentionOnly) {
+        if (staffId === myStaffId && !ustatus && stage === 'all' && !attentionOnly && mode !== 'tested') {
           setStaff(null);
           return;
         }
         replaceParams((p) => {
+          normalizeDashboardOrderViewParams(p, mode === 'tested' ? 'tested' : 'unshipped');
           p.set('staff', String(myStaffId));
           p.delete('ustatus');
           p.delete('stage');
@@ -161,6 +175,8 @@ export function useOutboundSidebarScope() {
           return;
         }
         replaceParams((p) => {
+          // Urgent refine stays on the current pre-pack tab.
+          if (mode !== 'tested') normalizeDashboardOrderViewParams(p, 'unshipped');
           p.set('attention', '1');
           p.delete('ustatus');
           p.delete('stage');
@@ -168,20 +184,35 @@ export function useOutboundSidebarScope() {
         });
         return;
       }
-      // Lane segment — toggle off if already active.
-      if (ustatus === id) {
+      if (id === 'TESTED') {
+        replaceParams((p) => {
+          normalizeDashboardOrderViewParams(p, mode === 'tested' ? 'unshipped' : 'tested');
+        });
+        return;
+      }
+      if (id === 'PENDING') {
+        replaceParams((p) => {
+          normalizeDashboardOrderViewParams(p, 'unshipped');
+          p.delete('ustatus');
+          p.delete('attention');
+        });
+        return;
+      }
+      // BLOCKED — Pending tab + OOS refine.
+      if (ustatus === 'BLOCKED' && mode === 'unshipped') {
         setUstatus(null);
         return;
       }
       replaceParams((p) => {
-        p.set('ustatus', id);
+        normalizeDashboardOrderViewParams(p, 'unshipped');
+        p.set('ustatus', 'BLOCKED');
         p.delete('stage');
         p.delete('attention');
       });
     },
     [
       attentionOnly,
-      clearUnshippedScope,
+      mode,
       myStaffId,
       replaceParams,
       setStaff,

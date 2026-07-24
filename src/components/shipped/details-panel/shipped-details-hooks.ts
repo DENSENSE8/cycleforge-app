@@ -30,8 +30,8 @@ export function useShippedDetailState(initialShipped: ShippedOrder, onUpdate: ()
   const [itemNumber, setItemNumber] = useState(initialShipped.item_number || '');
   const [shippingTrackingNumber, setShippingTrackingNumber] = useState(initialShipped.shipping_tracking_number || '');
   const [notes, setNotes] = useState(initialShipped.notes || '');
-  const [outOfStock, setOutOfStock] = useState(
-    String((initialShipped as { out_of_stock?: string }).out_of_stock || ''),
+  const [isOutOfStock, setIsOutOfStock] = useState(
+    Boolean((initialShipped as { is_out_of_stock?: boolean }).is_out_of_stock),
   );
 
   const fieldSave = useOrderFieldSave({
@@ -61,7 +61,7 @@ export function useShippedDetailState(initialShipped: ShippedOrder, onUpdate: ()
     setItemNumber(initialShipped.item_number || '');
     setShippingTrackingNumber(initialShipped.shipping_tracking_number || '');
     setNotes(initialShipped.notes || '');
-    setOutOfStock(String((initialShipped as { out_of_stock?: string }).out_of_stock || ''));
+    setIsOutOfStock(Boolean((initialShipped as { is_out_of_stock?: boolean }).is_out_of_stock));
     resetRefs(
       initialShipped.order_id || '',
       initialShipped.item_number || '',
@@ -74,29 +74,31 @@ export function useShippedDetailState(initialShipped: ShippedOrder, onUpdate: ()
   }, [itemNumber, orderNumber, persistInlineFields, shippingTrackingNumber]);
 
   const saveOutOfStockIfChanged = useCallback(async () => {
-    const initialValue = String((initialShipped as { out_of_stock?: string }).out_of_stock || '').trim();
-    const nextValue = outOfStock.trim();
-    if (nextValue === initialValue) return;
-    await saveOutOfStock(outOfStock);
-    setShipped((current) => ({ ...current, out_of_stock: nextValue } as ShippedOrder));
-  }, [initialShipped, outOfStock, saveOutOfStock, setShipped]);
+    const initialValue = Boolean((initialShipped as { is_out_of_stock?: boolean }).is_out_of_stock);
+    if (isOutOfStock === initialValue) return;
+    await saveOutOfStock(isOutOfStock);
+    setShipped((current) => ({ ...current, is_out_of_stock: isOutOfStock } as ShippedOrder));
+  }, [initialShipped, isOutOfStock, saveOutOfStock, setShipped]);
 
-  const handleSaveOutOfStock = useCallback(async (onSaved?: () => void) => {
-    const trimmed = outOfStock.trim();
-    const currentSaved = String((shipped as { out_of_stock?: string }).out_of_stock || '').trim();
-    if (trimmed === currentSaved) {
+  const handleSaveOutOfStock = useCallback(async (
+    checked: boolean,
+    onSaved?: () => void,
+  ) => {
+    const currentSaved = Boolean((shipped as { is_out_of_stock?: boolean }).is_out_of_stock);
+    setIsOutOfStock(checked);
+    if (checked === currentSaved) {
       onSaved?.();
       return;
     }
     try {
-      await saveOutOfStock(outOfStock);
-      setShipped((current) => ({ ...current, out_of_stock: trimmed } as ShippedOrder));
+      await saveOutOfStock(checked);
+      setShipped((current) => ({ ...current, is_out_of_stock: checked } as ShippedOrder));
       onSaved?.();
     } catch (error) {
       console.error('Failed to save out of stock:', error);
-      setOutOfStock(String((shipped as { out_of_stock?: string }).out_of_stock || ''));
+      setIsOutOfStock(Boolean((shipped as { is_out_of_stock?: boolean }).is_out_of_stock));
     }
-  }, [outOfStock, saveOutOfStock, setOutOfStock, setShipped, shipped]);
+  }, [isOutOfStock, saveOutOfStock, setIsOutOfStock, setShipped, shipped]);
 
   const handleSaveNotes = useCallback(async (onSaved?: () => void) => {
     const trimmed = notes.trim();
@@ -137,8 +139,7 @@ export function useShippedDetailState(initialShipped: ShippedOrder, onUpdate: ()
     setShippingTrackingNumber,
     notes,
     setNotes,
-    outOfStock,
-    setOutOfStock,
+    isOutOfStock,
     shipByDate,
     setShipByDate,
     isSavingInlineFields,

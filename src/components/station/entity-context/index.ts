@@ -30,7 +30,6 @@
  *   - Shipping (active order) → `ShippingEntityContextHeader`
  *   - Packing (active order) → `PackOrderIdentity`
  *   - Review · Packing → `ReviewOrderIdentity` (`src/features/review/packer/`)
- *   - Local pickup → `PickupEntityContextHeader`
  *
  * Card implementation lives here. Pill class tokens stay in
  * `station-context-action-pill.ts` (import that module directly when needed).

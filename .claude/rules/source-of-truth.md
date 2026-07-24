@@ -23,6 +23,7 @@ fields, pick the presentation kind and import from the SoT below (Kinetic Ledger
 | Spacing scale + intents | `src/design-system/tokens/spacing.mjs` (+ `Stack`/`Inset`/`Row` primitives) |
 | Focus affordance | `src/design-system/tokens/focus-ring.ts` (`focusRing(archetype, tone)`) |
 | Depth elevation (flat · raised · overlay) | `src/design-system/tokens/shadows.ts` (`elevationClass`) |
+| Ops table / spreadsheet surface shell | `src/design-system/tokens/table-surface.ts` (`TABLE_SURFACE_*` + `TABLE_FROZEN_HEADER_CLASS`) |
 | Surface / box shell | `Panel` (generic) · `SectionCard` (monitor) · `CardShell` (rows) — never hand-roll |
 | Dialog / AlertDialog | `@/design-system/components/Dialog` · `AlertDialog` · `requestConfirm` / `ConfirmDialogHost` — never hand-roll `fixed inset-0` scrims for new modals; station floor confirms stay on `ConfirmSheet` |
 | Switch / Checkbox | `@/design-system/primitives` `Switch` / `Checkbox` |
@@ -31,6 +32,7 @@ fields, pick the presentation kind and import from the SoT below (Kinetic Ledger
 | Global detail-stack overlay shell | `@/design-system/shells/detail-stack` (`DETAIL_STACK_LAYOUT`, `detailStackAsideClassName`, …) |
 | Station entity-context header | `@/components/station/entity-context` (`CartonContextCard` + `StationContextBar`) — Unbox / Triage / Testing / Shipping active-order |
 | Workbench chrome scoped search | `@/design-system/primitives/ToolbarSearchToggle` — collapsed Search icon; expands on hover / focus / click (or when query non-empty); composes `SearchField`. Never mount an always-open `SearchField` in a `WorkbenchChromeHeader` `search` slot. |
+| Station composer dock (chat-style notes) | `@/design-system/primitives` `StationComposerDock` — Unbox overview carton notes in the dock band; Receive/Print rides in its `trailingAction` as `<StationTerminalDock embedded>` (bare `SlicedActionDock` track — `slicedActionDockWrapperClass()` is the placement SoT; Send suppressed, Enter/blur still save). One shell, never composer + a second CTA row. Never hand-roll a mid-canvas ChatGPT prompt shell for station notes. |
 | Resizable document PDF slide-over | `@/design-system/components/DocumentSlideOver` (+ `DocumentPreviewFrame`, `useHorizontalEdgeResize`) — Labels Print, Testing manuals |
 | Buttons | `src/design-system/primitives` `Button` |
 | Product icon glyphs | `@/components/Icons` (`src/components/icons/*`) — never duplicate nav primitives |
@@ -93,6 +95,21 @@ If a facet has no SoT yet, **add or extend one** (pattern evolution) — do not 
   - `overlay` — floating UI (menus, popovers, dialogs)
 - Never hand-roll `shadow-* shadow-scrim/*` for these jobs; dial ink/spread only in the SoT.
 - z-index remains separate (`tokens/z-index.ts`) — same elevation style can stack at different orders.
+
+## Ops table / spreadsheet surface shell
+
+- Source: `src/design-system/tokens/table-surface.ts`.
+  - `TABLE_SURFACE_CLASS` — `rounded-xl` + `border-border-soft` + `bg-surface-card` +
+    `elevationClass('raised')`.
+  - `TABLE_SURFACE_CLIP_CLASS` — surface + `overflow-hidden` (**the one recipe** — clips
+    airtable cell paints at the corner curve). `TABLE_SURFACE_SCROLLPORT_CLASS` aliases it.
+  - `TABLE_FROZEN_HEADER_CLASS` — `bg-surface-sunken` frozen header over white body rows
+    (quiet band; never `surface-strong` — equals `border-subtle` in light and erases header grid).
+- Airtable skin (`data-grid-skin="airtable"`): continuous RIGHT+BOTTOM cell rules
+  (`border-default`) through **header and body**; shell owns the outer perimeter
+  (drop trailing column right rule).
+- Consumers: `DataTable`, `LedgerGridSurface`, outbound `OrdersGridView`.
+- Never hand-roll `rounded-* border … shadow-*` / header fills for ops collection tables.
 
 ## Spacing (density-aware scale + intents)
 

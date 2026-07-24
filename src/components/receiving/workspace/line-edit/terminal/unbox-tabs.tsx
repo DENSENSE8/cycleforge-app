@@ -2,7 +2,6 @@
 
 import type { ReactNode } from 'react';
 import { CartonUnitsRollupBody } from '../../CartonUnitsRollup';
-import { WorkspaceNotesCard } from '../WorkspaceNotesCard';
 import { UnboxLabelPreview } from '../UnboxLabelPreview';
 import { POUnboxingSection } from '../POUnboxingSection';
 import { LineChecklistTab } from '../LineChecklistTab';
@@ -60,8 +59,6 @@ export interface BuildUnboxTabsInput {
   onPairingToggle: () => void;
   onItemDescFeedback: (feedback: InlineActionFeedbackPayload | null) => void;
   onItemDescSaved: (lineId: number, zohoNotes: string | null) => void;
-  activeStep: string | null | undefined;
-  onActionFeedback: (feedback: InlineActionFeedbackPayload | null) => void;
   onChecklistBridge?: (bridge: ChecklistTabBridge | null) => void;
   onUnitsBridge?: (bridge: UnitsTabBridge | null) => void;
   onConversationBridge?: (bridge: ConversationTabBridge | null) => void;
@@ -98,8 +95,6 @@ export function buildUnboxTabs(input: BuildUnboxTabsInput): SectionTab[] {
     onPairingToggle,
     onItemDescFeedback,
     onItemDescSaved,
-    activeStep,
-    onActionFeedback,
     onChecklistBridge,
     onUnitsBridge,
     onConversationBridge,
@@ -133,12 +128,6 @@ export function buildUnboxTabs(input: BuildUnboxTabsInput): SectionTab[] {
             onItemDescFeedback={onItemDescFeedback}
             onItemDescSaved={onItemDescSaved}
             accordionBootstrap={accordionBootstrap}
-          />
-          <WorkspaceNotesCard
-            row={row}
-            c={c}
-            onActionFeedback={onActionFeedback}
-            activeStep={activeStep as never}
           />
           <UnboxLabelPreview row={row} c={c} />
         </div>

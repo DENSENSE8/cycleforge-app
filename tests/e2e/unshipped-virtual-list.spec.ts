@@ -40,7 +40,7 @@ function makeRows(n: number) {
       tracking_number: `94001118992231975${(10_000 + i).toString()}`,
       shipping_tracking_number: `94001118992231975${(10_000 + i).toString()}`,
       has_tech_scan: false, // → PENDING lane
-      out_of_stock: '',
+      is_out_of_stock: false,
       latest_status_category: 'UNKNOWN', // not shipped → stays in the queue
     });
   }

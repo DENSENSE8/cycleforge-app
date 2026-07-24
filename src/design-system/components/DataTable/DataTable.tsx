@@ -3,6 +3,10 @@
 import { type ReactNode } from 'react';
 import { cn } from '@/utils/_cn';
 import { tableHeader, tableCell } from '../../tokens/typography/presets';
+import {
+  TABLE_FROZEN_HEADER_CLASS,
+  TABLE_SURFACE_CLIP_CLASS,
+} from '../../tokens/table-surface';
 import { EmptyState } from '../../primitives/EmptyState';
 
 // ─── DataTable ───────────────────────────────────────────────────────────────
@@ -11,10 +15,10 @@ import { EmptyState } from '../../primitives/EmptyState';
 // tables with no shared markup; this is the one reusable surface they collapse
 // onto (the adoption plan's `04 · DataTable family`).
 //
-// Token-first: surface, border, and text come from the semantic tokens and the
-// shared typography presets (`tableHeader`, `tableCell`) so every table reads
-// identically and themes for free. Column alignment + width are declared once
-// in the `columns` schema and applied to both header and cells.
+// Token-first: surface shell is {@link TABLE_SURFACE_CLIP_CLASS} (rounded-xl +
+// raised elevation); frozen header via {@link TABLE_FROZEN_HEADER_CLASS}.
+// Typography from `tableHeader` / `tableCell`. Column alignment + width are
+// declared once in the `columns` schema and applied to both header and cells.
 //
 // Generic over the row type; the caller maps each column's `cell(row)`.
 
@@ -67,17 +71,17 @@ export function DataTable<Row>({
 }: DataTableProps<Row>) {
   if (rows.length === 0) {
     return (
-      <div className={cn('rounded-xl border border-border-soft bg-surface-card', className)}>
+      <div data-table-surface="" className={cn(TABLE_SURFACE_CLIP_CLASS, className)}>
         {empty ?? <EmptyState title="Nothing here yet" description="No rows to display." />}
       </div>
     );
   }
 
   return (
-    <div className={cn('overflow-hidden rounded-xl border border-border-soft bg-surface-card', className)}>
+    <div data-table-surface="" className={cn(TABLE_SURFACE_CLIP_CLASS, className)}>
       <table className="w-full border-collapse">
-        <thead className={cn(stickyHeader && 'sticky top-0 z-[1]')}>
-          <tr className="bg-surface-canvas">
+        <thead className={cn(stickyHeader && 'sticky top-0 z-sticky')}>
+          <tr className={TABLE_FROZEN_HEADER_CLASS}>
             {columns.map((col) => (
               <th
                 key={col.key}

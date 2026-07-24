@@ -33,8 +33,10 @@ function parseLinkFilter(raw: string | null): SkuCatalogLinkFilter | undefined {
 /**
  * GET /api/sku-catalog — Paginated SKU catalog list with platform/manual/QC counts.
  *
- * Optional `linkFilter=active_linked|unlinked_pending|all` for Products Catalog
- * MDM segments. When omitted, preserves historic active-only admin list behavior.
+ * Optional `platform=zoho|amazon|…` for Products Catalog chrome tabs (zoho /
+ * omit = inventory-master MDM list). Optional `linkFilter=active_linked|
+ * unlinked_pending|all` is a refine scope — when omitted, preserves historic
+ * active-only admin list behavior.
  */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
   try {
@@ -45,11 +47,12 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     const sort = searchParams.get('sort') || 'az';
     const dir = searchParams.get('dir') || 'asc';
     const ecwidOnly = searchParams.get('ecwidOnly') === 'true';
+    const platform = searchParams.get('platform');
     const linkFilter = parseLinkFilter(searchParams.get('linkFilter'));
 
     const [{ items, total }, providerKey, providerLabel] = await Promise.all([
       getSkuCatalogList(
-        { q, limit, offset, sort, dir, ecwidOnly, linkFilter },
+        { q, limit, offset, sort, dir, ecwidOnly, platform, linkFilter },
         ctx.organizationId,
       ),
       connectedProviderKey(ctx.organizationId, 'inventory'),

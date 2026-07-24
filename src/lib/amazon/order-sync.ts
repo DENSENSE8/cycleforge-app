@@ -301,9 +301,9 @@ async function upsertAmazonOrder(p: UpsertOrderInput): Promise<'created' | 'upda
     const ins = await client.query<{ inserted: boolean }>(
       `INSERT INTO orders (
          organization_id, order_id, product_title, condition, sku, status, status_history,
-         notes, quantity, out_of_stock, account_source, order_date, sku_catalog_id,
+         notes, quantity, account_source, order_date, sku_catalog_id,
          fulfillment_channel, customer_id, sale_amount, currency, item_number
-       ) VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+       ) VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
        ON CONFLICT ON CONSTRAINT idx_orders_unique_account_order DO UPDATE
          SET product_title  = COALESCE(NULLIF(EXCLUDED.product_title, 'No title'), orders.product_title),
              sku            = COALESCE(NULLIF(orders.sku, ''), EXCLUDED.sku),
@@ -318,7 +318,7 @@ async function upsertAmazonOrder(p: UpsertOrderInput): Promise<'created' | 'upda
        RETURNING (xmax = 0) AS inserted`,
       [
         p.orgId, p.orderId, p.productTitle, '', p.sku, p.status, JSON.stringify([]),
-        '', p.quantity, '', p.accountSource, p.orderDate, p.skuCatalogId, p.channel, customerId,
+        '', p.quantity, p.accountSource, p.orderDate, p.skuCatalogId, p.channel, customerId,
         p.saleAmount, p.currency, p.itemNumber ? p.itemNumber.toUpperCase() : null,
       ],
     );

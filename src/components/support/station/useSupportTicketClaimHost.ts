@@ -19,12 +19,14 @@ import { toast } from '@/lib/toast';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 import { invalidateSupportContextCaches } from '@/hooks';
 import type { TicketLinkAnchorInput } from '@/lib/support/ticket-link';
+import type { SupportTicketLinkages } from '@/lib/support/create-ticket-linkages';
 
 type SupportTicketCreateAnchor = TicketLinkAnchorInput;
 
 interface CreateSupportTicketArgs {
   subject: string;
   note?: string | null;
+  linkages?: SupportTicketLinkages | null;
 }
 
 interface CreatedSupportTicket {
@@ -36,15 +38,21 @@ export function useSupportTicketClaimHost() {
   const qc = useQueryClient();
   const [createOpen, setCreateOpen] = useState(false);
   const [anchor, setAnchor] = useState<SupportTicketCreateAnchor | null>(null);
+  /** Prefill order # when opening from an order-anchored surface. */
+  const [defaultOrderNumber, setDefaultOrderNumber] = useState<string | null>(null);
 
-  const openCreate = useCallback((a?: SupportTicketCreateAnchor | null) => {
-    setAnchor(a ?? null);
-    setCreateOpen(true);
-  }, []);
+  const openCreate = useCallback(
+    (a?: SupportTicketCreateAnchor | null, opts?: { orderNumber?: string | null }) => {
+      setAnchor(a ?? null);
+      setDefaultOrderNumber(opts?.orderNumber?.trim() || null);
+      setCreateOpen(true);
+    },
+    [],
+  );
   const closeCreate = useCallback(() => setCreateOpen(false), []);
 
   const createTicket = useMutation<CreatedSupportTicket, Error, CreateSupportTicketArgs>({
-    mutationFn: async ({ subject, note }) => {
+    mutationFn: async ({ subject, note, linkages }) => {
       const res = await fetch('/api/support/tickets', {
         method: 'POST',
         headers: {
@@ -56,6 +64,7 @@ export function useSupportTicketClaimHost() {
           subject,
           note: note?.trim() ? note.trim() : undefined,
           anchor: anchor ?? undefined,
+          linkages: linkages ?? undefined,
         }),
       });
       const data = await res.json().catch(() => null);
@@ -69,6 +78,7 @@ export function useSupportTicketClaimHost() {
     },
     onSuccess: () => {
       invalidateSupportContextCaches(qc);
+      void qc.invalidateQueries({ queryKey: ['zendesk'] });
       setCreateOpen(false);
     },
     onError: (err) => {
@@ -76,5 +86,12 @@ export function useSupportTicketClaimHost() {
     },
   });
 
-  return { createOpen, anchor, openCreate, closeCreate, createTicket };
+  return {
+    createOpen,
+    anchor,
+    defaultOrderNumber,
+    openCreate,
+    closeCreate,
+    createTicket,
+  };
 }

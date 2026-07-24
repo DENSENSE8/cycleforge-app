@@ -88,6 +88,7 @@
     "test:control-size-guard": "tsx --test src/components/ui/control-size-tokens.guard.test.ts",
     "test:focus-ring-guard": "tsx --test src/components/ui/focus-ring-tokens.guard.test.ts",
     "test:surface-box-guard": "tsx --test src/components/ui/surface-box-tokens.guard.test.ts",
+    "test:station-workbench-guard": "tsx --test src/components/station/workbench/station-workbench-chrome.guard.test.ts src/lib/station-terminal/station-terminal.test.ts",
     "test:reason-codes-guard": "tsx --test src/lib/reason-codes.guard.test.ts",
     "test:billing": "tsx --test src/lib/billing/delinquency.test.ts src/lib/billing/activation-events.test.ts",
     "test:date-civil": "tsx --test src/utils/date.civil.test.ts src/utils/date-civil.guard.test.ts",

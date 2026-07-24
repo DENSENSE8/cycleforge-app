@@ -1,13 +1,13 @@
 'use client';
 
 /**
- * Sales-hub mode rail — the sidebar switcher for the three front-desk modes
- * (Local Pickup · Sales · Repair). Writes `?mode=` (default `sales` dropped) and
- * clears the mode-scoped `?tab=` + legacy `?category=` so each mode opens clean.
+ * Sales-hub mode rail — the sidebar switcher for Local Pickup · Sales.
+ * Writes `?mode=` (default `sales` dropped) and clears the mode-scoped `?tab=`
+ * + legacy `?category=` so each mode opens clean.
  *
  * Modes ≠ tabs: this rail lives in the sidebar; the per-mode table tabs live in
- * the main-pane header (`WalkInDeskHeader`). Repair is hidden for operators
- * without `repair.view` (mirrors the station job gate).
+ * the main-pane header (`WalkInDeskHeader`). Repair is a Receiving surface
+ * (`/repair`) — open it from the station hand-off, not this rail.
  */
 
 import { useCallback, useMemo } from 'react';

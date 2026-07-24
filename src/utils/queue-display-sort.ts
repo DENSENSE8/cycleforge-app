@@ -13,10 +13,8 @@ export type QueueDisplaySortColumn =
   | 'title'
   | 'date'
   | 'age'
-  | 'status'
   | 'qty'
   | 'condition'
-  | 'platform'
   | 'order'
   | 'tracking';
 
@@ -28,10 +26,8 @@ const QUEUE_COLUMN_SORTS: readonly QueueDisplaySortColumn[] = [
   'title',
   'date',
   'age',
-  'status',
   'qty',
   'condition',
-  'platform',
   'order',
   'tracking',
 ] as const;
@@ -66,10 +62,8 @@ export const QUEUE_DISPLAY_SORT_OPTIONS: readonly {
   { id: 'title', label: 'Product title', shortLabel: 'Product' },
   { id: 'date', label: 'Ship by date', shortLabel: 'Ship by' },
   { id: 'age', label: 'Days late', shortLabel: 'Age' },
-  { id: 'status', label: 'Status', shortLabel: 'Status' },
   { id: 'qty', label: 'Quantity', shortLabel: 'Qty' },
   { id: 'condition', label: 'Condition', shortLabel: 'Cond' },
-  { id: 'platform', label: 'Platform', shortLabel: 'Platform' },
   { id: 'order', label: 'Order number', shortLabel: 'Order' },
   { id: 'tracking', label: 'Tracking number', shortLabel: 'Tracking' },
 ] as const;

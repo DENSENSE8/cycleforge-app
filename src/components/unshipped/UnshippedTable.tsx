@@ -12,17 +12,18 @@ import { unshippedOrdersQuery, unshippedQueueCountsQuery } from '@/lib/queries/d
 import { Button } from '@/design-system/primitives';
 import { useAblyChannel } from '@/hooks/useAblyChannel';
 import { useAuth } from '@/contexts/AuthContext';
-import { deriveFulfillmentState, type FulfillmentState } from '@/lib/unshipped-state';
+import { deriveFulfillmentState, fulfillmentCountsFromCombos, type FulfillmentState } from '@/lib/unshipped-state';
 import { patchUnshippedOrderCache, invalidateUnshippedCounts } from '@/lib/queries/dashboard-cache-patch';
 import { SHIPPING_PATH } from '@/components/outbound/outbound-sidebar-shared';
 import type { ShippedOrder } from '@/types/orders';
 
 /**
- * To Ship fulfillment queue — the dashboard's default lifecycle tab.
+ * Pre-pack fulfillment queue — Dashboard Pending / Tested tabs (and pack/shipping
+ * stations that embed the same table without a lane scope).
  *
  * Workbench contract: URL-addressable selection (`?openOrderId`) + crossfading
- * right-pane detail. Renders as a single exact list (status chips in the header
- * legend still filter via `?ustatus` / `?stage`).
+ * right-pane detail. Dashboard tabs force the lane via {@link fulfillmentLane};
+ * stations omit it and keep optional `?ustatus` / `?stage` filters.
  */
 export interface UnshippedTableProps extends DashboardSearchSectionProps {
   packedBy?: number;
@@ -36,6 +37,11 @@ export interface UnshippedTableProps extends DashboardSearchSectionProps {
    * Pack station passes this to open the pack overlay instead.
    */
   onOpenRecord?: (record: ShippedOrder) => void;
+  /**
+   * Dashboard lifecycle lane. `pending` = PENDING + BLOCKED (exclude TESTED);
+   * `tested` = TESTED only. Omit for station embeds (all lanes + `?ustatus`).
+   */
+  fulfillmentLane?: 'pending' | 'tested';
 }
 
 /** Map an assignment/order-changed event payload to the flat row patch it implies
@@ -66,7 +72,13 @@ function assignmentPatchFromEvent(detail: any): Record<string, unknown> {
     patch.packed_by_name = packerName ?? null;
   }
   if (deadlineAt !== undefined) patch.deadline_at = deadlineAt;
-  if (outOfStock !== undefined) patch.out_of_stock = outOfStock;
+  if (outOfStock !== undefined || detail?.isOutOfStock !== undefined) {
+    const flagged =
+      detail?.isOutOfStock !== undefined
+        ? Boolean(detail.isOutOfStock)
+        : Boolean(String(outOfStock || '').trim());
+    patch.is_out_of_stock = flagged;
+  }
   if (notes !== undefined) patch.notes = notes;
   if (itemNumber !== undefined) patch.item_number = itemNumber;
   if (condition !== undefined) patch.condition = condition;
@@ -85,6 +97,7 @@ export function UnshippedTable({
   selectMode = false,
   toolbarPortalTarget,
   onOpenRecord,
+  fulfillmentLane,
 }: UnshippedTableProps = {}) {
   const pathname = usePathname();
   const router = useRouter();
@@ -261,25 +274,34 @@ export function UnshippedTable({
 
   const allRecords = query.data || [];
   // `?stage` (pending/tested) is filtered SERVER-side now (Phase 1), so the query
-  // data already reflects it. `?ustatus` stays a client filter — exact derived
-  // FulfillmentState (PENDING/TESTED/BLOCKED), Decision 8. `?attention=1` now
-  // keeps only operator-flagged urgent rows (orders.is_urgent).
+  // data already reflects it. Dashboard tabs force the lane via `fulfillmentLane`;
+  // stations still honor `?ustatus`. `?attention=1` keeps urgent-only rows.
   const records = allRecords.filter((r) => {
     const row = r as {
       has_tech_scan?: boolean;
-      out_of_stock?: string | null;
+      is_out_of_stock?: boolean;
       is_urgent?: boolean;
       tracking_number?: string | null;
       shipping_tracking_number?: string | null;
     };
-    // Pending dashboard is labeled + tracked only — no-tracking rows belong on Labels.
+    // Pre-pack dashboard is labeled + tracked only — no-tracking rows belong on Labels.
     const tracking = String(row.tracking_number || row.shipping_tracking_number || '').trim();
     if (!tracking) return false;
     const state = deriveFulfillmentState({
       hasTechScan: Boolean(row.has_tech_scan),
-      outOfStock: row.out_of_stock,
+      isOutOfStock: Boolean(row.is_out_of_stock),
     });
-    if (statusFilter && state !== statusFilter) return false;
+    if (fulfillmentLane === 'tested') {
+      if (state !== 'TESTED') return false;
+    } else if (fulfillmentLane === 'pending') {
+      // Pending tab = awaiting test + OOS; never TESTED (that's the Tested tab).
+      if (state === 'TESTED') return false;
+      // Optional Blocked-only refine within Pending.
+      if (statusFilter === 'BLOCKED' && state !== 'BLOCKED') return false;
+      if (statusFilter && statusFilter !== 'BLOCKED' && state !== statusFilter) return false;
+    } else if (statusFilter && state !== statusFilter) {
+      return false;
+    }
     if (urgentOnly && !row.is_urgent) return false;
     return true;
   });
@@ -309,9 +331,16 @@ export function UnshippedTable({
   // the loaded ceiling ⇒ more rows exist. Bumping the ceiling refetches the wider
   // page. Hidden during search (results are already the full match set).
   const stageTotal =
-    stageFilter === 'pending' ? (queueCounts?.byStage.pending ?? 0)
-      : stageFilter === 'tested' ? (queueCounts?.byStage.tested ?? 0)
-        : (queueCounts?.total ?? 0);
+    fulfillmentLane === 'pending'
+      ? (queueCounts?.byStage.pending ?? 0) +
+        (fulfillmentCountsFromCombos(queueCounts?.combos ?? []).BLOCKED || 0)
+      : fulfillmentLane === 'tested'
+        ? (queueCounts?.byStage.tested ?? 0)
+        : stageFilter === 'pending'
+          ? (queueCounts?.byStage.pending ?? 0)
+          : stageFilter === 'tested'
+            ? (queueCounts?.byStage.tested ?? 0)
+            : (queueCounts?.total ?? 0);
   const showLoadMore = !searchQuery && stageTotal > rowLimit;
   const footer = showLoadMore ? (
     <div className="flex flex-col items-center gap-1 py-4">

@@ -3,6 +3,7 @@
 import type { ReactNode } from 'react';
 import { cn } from '@/utils/_cn';
 import { STATION_TERMINAL_SCROLL_CLEARANCE } from '@/components/station/terminal/StationTerminalDock';
+import { StationAmbientWash } from './StationAmbientWash';
 import {
   STATION_WORKBENCH_COLUMN,
   STATION_WORKBENCH_BODY_DOCKED,
@@ -20,7 +21,7 @@ import {
  *   3. tabs          — SectionTabsSlider (bar + mounted panels) OR plain body
  *   4. children      — extra scroll-body content (triage card stack, siblings)
  *   5. feedback      — inline action / receive feedback bands
- *   6. dock          — StationTerminalDock (tab-aware SlicedActionDock)
+ *   6. dock          — StationComposerDock (optional) + StationTerminalDock
  *
  * Station chrome (corner utilities · identity column synced to workbench
  * body via {@link STATION_WORKBENCH_IDENTITY_COLUMN}) lives in
@@ -68,13 +69,7 @@ export function StationWorkbench({
         className,
       )}
     >
-      {ambientWash ? (
-        <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 overflow-visible">
-          <div className="absolute -top-24 left-1/2 h-72 w-[44rem] -translate-x-1/2 rounded-full bg-blue-400/[0.08] blur-3xl" />
-          <div className="absolute right-[-7rem] top-1/3 h-80 w-80 rounded-full bg-violet-400/[0.06] blur-3xl" />
-          <div className="absolute bottom-[-5rem] left-[-5rem] h-80 w-80 rounded-full bg-emerald-400/[0.06] blur-3xl" />
-        </div>
-      ) : null}
+      {ambientWash ? <StationAmbientWash /> : null}
 
       {toolbar}
 

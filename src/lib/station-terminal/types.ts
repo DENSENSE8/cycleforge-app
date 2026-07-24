@@ -67,6 +67,8 @@ export interface TerminalActionVm {
   docked?: boolean;
   maxWidth?: string;
   fullWidth?: boolean;
+  /** Compact end-aligned pill (composer + CTA band). Default center. */
+  align?: 'center' | 'end';
 }
 
 /**

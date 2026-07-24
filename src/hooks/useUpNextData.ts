@@ -6,6 +6,7 @@ import { parsePositiveInt } from '@/utils/number';
 import { getOrdersChannelName, getRepairsChannelName, getStationChannelName, getFbaChannelName, safeChannelName } from '@/lib/realtime/channels';
 import { useAblyChannel } from '@/hooks/useAblyChannel';
 import { useAuth } from '@/contexts/AuthContext';
+import { isOutOfStock as orderIsOutOfStock } from '@/utils/order-out-of-stock';
 
 interface UseUpNextDataOptions {
   techId: string;
@@ -131,7 +132,7 @@ export function useUpNextData({ techId, onAllCompleted }: UseUpNextDataOptions) 
         quantity: row.quantity ?? null,
         status: String(row.status || ''),
         shipping_tracking_number: String(row.shipping_tracking_number || row.tracking_number || ''),
-        out_of_stock: row.out_of_stock ?? null,
+        is_out_of_stock: Boolean(row.is_out_of_stock),
         tester_id: row.tester_id ?? null,
         tester_name: row.tester_name ?? null,
         has_tech_scan: Boolean(row.has_tech_scan),
@@ -141,7 +142,7 @@ export function useUpNextData({ techId, onAllCompleted }: UseUpNextDataOptions) 
       const deduped = normalizedOrders.filter((row, idx, arr) =>
         arr.findIndex((cand) => Number(cand.id) === Number(row.id)) === idx
       );
-      const currentOrders = deduped.filter((order: Order) => !String(order.out_of_stock || '').trim());
+      const currentOrders = deduped.filter((order: Order) => !orderIsOutOfStock(order));
       const allCompleted = currentOrders.length === 0;
 
       setAllOrders(deduped);

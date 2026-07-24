@@ -103,7 +103,7 @@ export async function handleFnskuScan(
           quantity: String(data.order.quantity || '1'),
           is_shipped: Boolean(data.order.isShipped),
           ship_by_date: data.order.shipByDate ?? null,
-          out_of_stock: data.order.outOfStock ?? null,
+          is_out_of_stock: Boolean(data.order.isOutOfStock),
         },
       }));
     }

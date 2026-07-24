@@ -74,7 +74,10 @@ export interface Order {
   quantity?: string | null;
   status: string;
   shipping_tracking_number: string;
-  out_of_stock: string | null;
+  /** orders.is_out_of_stock — operator blocked/OOS flag. */
+  is_out_of_stock?: boolean;
+  /** @deprecated Prefer is_out_of_stock. */
+  out_of_stock?: string | null;
   /** Staff id from work_assignments; null means unassigned (visible to all techs) */
   tester_id?: number | null;
   /** Display name of the assigned tester */

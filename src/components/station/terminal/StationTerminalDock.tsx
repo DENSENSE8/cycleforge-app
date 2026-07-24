@@ -15,6 +15,17 @@ import { cn } from '@/utils/_cn';
  */
 export const STATION_TERMINAL_SCROLL_CLEARANCE = 'pb-32';
 
+/** VM tone, tinted with the assigned tech's station theme when unset. */
+function resolveDockToneClasses(
+  vm: TerminalActionVm | null,
+  assignedTechId?: number | null,
+): { bg: string; hover: string } | undefined {
+  if (vm?.toneClasses) return vm.toneClasses;
+  if (assignedTechId == null) return undefined;
+  const theme = stationThemeColors[getStaffThemeById(assignedTechId)];
+  return theme ? { bg: theme.bg, hover: theme.hover } : undefined;
+}
+
 /**
  * Renders a TerminalActionVm as the panel-level bottom-edge sliced action dock.
  * Cross-fades (200–250ms) when the VM label / kind swaps on tab change;
@@ -22,21 +33,47 @@ export const STATION_TERMINAL_SCROLL_CLEARANCE = 'pb-32';
  *
  * When `assignedTechId` is set and the VM has no explicit `toneClasses`,
  * tints the track with the assigned tech's station theme (unbox receive bar).
+ *
+ * `embedded` renders ONLY the pill track — no band, no `disabledReason` line,
+ * no crossfade — for mounting inside another control's chrome (Unbox overview
+ * mounts it in the notes composer footer). The host owns placement and the
+ * disabled-reason line; the VM→dock mapping stays here so the registry remains
+ * the single terminal path.
  */
 export function StationTerminalDock({
   vm,
   assignedTechId,
+  embedded = false,
   className,
 }: {
   vm: TerminalActionVm | null;
   assignedTechId?: number | null;
+  embedded?: boolean;
   className?: string;
 }) {
   const reduceMotion = useReducedMotion();
-  const techTheme =
-    assignedTechId != null ? stationThemeColors[getStaffThemeById(assignedTechId)] : null;
+  const toneClasses = resolveDockToneClasses(vm, assignedTechId);
 
-  const toneClasses = vm?.toneClasses ?? (techTheme ? { bg: techTheme.bg, hover: techTheme.hover } : undefined);
+  if (embedded) {
+    if (!vm) return null;
+    return (
+      <SlicedActionDock
+        embedded
+        label={vm.label}
+        onClick={() => void vm.onClick()}
+        icon={vm.icon}
+        disabled={vm.disabled}
+        loading={vm.loading}
+        title={vm.title}
+        tone={vm.tone ?? 'accent'}
+        toneClasses={toneClasses}
+        menu={vm.menu}
+        menuLabel={vm.menuLabel}
+        menuTitle={vm.menuTitle}
+        className={className}
+      />
+    );
+  }
 
   // Key on label + docked so Receive ↔ Save swaps animate; secondary menu
   // changes alone should not re-trigger the enter animation.
@@ -62,7 +99,8 @@ export function StationTerminalDock({
               <p
                 role="status"
                 className={cn(
-                  'mx-auto w-full text-center text-role-caption font-semibold text-amber-700',
+                  'mx-auto w-full text-role-caption font-semibold text-amber-700',
+                  vm.align === 'end' ? 'text-right' : 'text-center',
                   vm.maxWidth ?? 'max-w-[720px]',
                 )}
               >
@@ -86,6 +124,7 @@ export function StationTerminalDock({
             maxWidth={vm.maxWidth ?? 'max-w-[720px]'}
             fullWidth={vm.fullWidth ?? true}
             docked={vm.docked ?? false}
+            align={vm.align ?? 'center'}
           />
         </motion.div>
       ) : null}

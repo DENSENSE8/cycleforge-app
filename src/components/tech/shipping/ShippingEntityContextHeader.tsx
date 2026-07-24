@@ -92,16 +92,28 @@ export function ShippingEntityContextHeader({
 }
 
 /** Out-of-stock banner — mount below {@link StationContextBar}, not inside it. */
-export function ShippingOutOfStockNotice({ outOfStock }: { outOfStock?: string | null }) {
-  const message = String(outOfStock || '').trim();
-  if (!message) return null;
+export function ShippingOutOfStockNotice({
+  outOfStock,
+  isOutOfStock,
+}: {
+  /** @deprecated Prefer isOutOfStock boolean. */
+  outOfStock?: string | boolean | null;
+  isOutOfStock?: boolean;
+}) {
+  const flagged =
+    typeof isOutOfStock === 'boolean'
+      ? isOutOfStock
+      : typeof outOfStock === 'boolean'
+        ? outOfStock
+        : Boolean(String(outOfStock || '').trim());
+  if (!flagged) return null;
 
   return (
     <WorkspaceCard label="Out of stock" tone="red" bodyClassName="px-5 py-3">
       <div className="flex items-start gap-2.5">
         <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-red-500" />
         <p className="min-w-0 flex-1 text-sm font-semibold leading-snug text-red-800">
-          {message}
+          Out of stock
         </p>
       </div>
     </WorkspaceCard>

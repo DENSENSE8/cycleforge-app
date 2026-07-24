@@ -19,7 +19,7 @@ export const OrderUpdateBody = z
     itemNumber: nullableText.optional(),
     shipByDate: nullableText.optional(),
     notes: trimmed.nullable().optional(),
-    outOfStock: nullableText.optional(),
+    isOutOfStock: z.boolean().optional(),
     accountSource: nullableText.optional(),
   })
   .strict()

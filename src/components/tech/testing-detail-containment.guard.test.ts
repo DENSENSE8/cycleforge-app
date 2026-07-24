@@ -20,10 +20,9 @@ test('open Testing detail hides the mounted browse chrome and layers above heade
 });
 
 test('Testing photo peek is anchored to the full-pane overlay shell', () => {
-  assert.match(
-    PANEL,
-    /className="relative isolate flex h-full min-h-0 flex-col bg-surface-canvas"/,
-  );
+  // Panel root composes the station SoT (StationPanelRoot → isolate stacking
+  // context + ambient wash), not a hand-rolled `relative isolate flex …` div.
+  assert.match(PANEL, /<StationPanelRoot className="isolate">/);
   assert.match(PANEL, /<UnitPackPhotoPeek[\s\S]*?showEmptyState=\{false\}/);
   assert.equal(PO_SECTION.includes('UnitPackPhotoPeek'), false);
 });

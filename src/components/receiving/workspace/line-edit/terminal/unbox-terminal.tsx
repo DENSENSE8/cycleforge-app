@@ -41,6 +41,18 @@ const dockBase = {
   maxWidth: UNBOX_DOCK_MAX,
 };
 
+/**
+ * Overview receive — mounted `embedded` INSIDE the notes composer footer
+ * (`LineEditPanel` dock). The band fields below only apply if this VM is ever
+ * rendered as a standalone dock; embedded ignores them.
+ */
+const overviewDockBase = {
+  docked: true as const,
+  fullWidth: false,
+  align: 'end' as const,
+  maxWidth: UNBOX_DOCK_MAX,
+};
+
 /** Print · Receive dock — overview / mode-default. */
 export function resolveUnboxReceiveTerminal(ctx: UnboxTerminalContext): TerminalActionVm {
   const r = ctx.receive;
@@ -63,7 +75,7 @@ export function resolveUnboxReceiveTerminal(ctx: UnboxTerminalContext): Terminal
   }));
 
   return {
-    ...dockBase,
+    ...overviewDockBase,
     label: r.printReceivePrimaryLabel,
     title: r.printThenReceiveTitle,
     disabled: r.combinedReviewDisabled,

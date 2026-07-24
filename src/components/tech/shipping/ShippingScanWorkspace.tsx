@@ -137,7 +137,7 @@ export function ShippingScanWorkspace({
           />
         }
       />
-      <ShippingOutOfStockNotice outOfStock={previewOrder?.out_of_stock} />
+      <ShippingOutOfStockNotice isOutOfStock={Boolean(previewOrder?.is_out_of_stock)} />
       <SectionTabsSlider
         tabs={tabs}
         value={view}

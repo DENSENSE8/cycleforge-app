@@ -10,6 +10,7 @@ import { WORKSPACE_MODES, type WorkspaceMode } from '@/components/station/entity
 import { STATION_TERMINAL_REGISTRY, getTerminalSlice } from './registry';
 import { resolveTerminalKind } from './resolve-terminal-action';
 import type { TerminalWorkspaceMode } from './types';
+import { TERMINAL_MODES_WITHOUT_HEADER_CHROME } from '@/components/station/workbench/station-workbench-chrome-config';
 
 const TERMINAL_MODES = Object.keys(STATION_TERMINAL_REGISTRY) as TerminalWorkspaceMode[];
 
@@ -22,6 +23,28 @@ test('registry: every TerminalWorkspaceMode has a structurally complete entry', 
     if (!slice.hasSectionTabs) {
       assert.ok(slice.defaultKind, `${mode}: modes without section tabs need defaultKind`);
     }
+  }
+});
+
+test('registry: every terminal mode either has WORKSPACE_MODES header chrome or is documented chrome-less', () => {
+  // Guard G — keep the two registries in sync. Every TerminalWorkspaceMode must
+  // be either an Unbox-family mode with a WORKSPACE_MODES header-toolbar row, or
+  // explicitly listed as chrome-less (shipping/pickup/repair own a dock but no
+  // StationHeaderToolbar). A new terminal mode must consciously pick a side.
+  const CHROME_LESS = new Set<TerminalWorkspaceMode>(
+    TERMINAL_MODES_WITHOUT_HEADER_CHROME as readonly TerminalWorkspaceMode[],
+  );
+  for (const mode of TERMINAL_MODES) {
+    const hasHeaderChrome = mode in WORKSPACE_MODES;
+    assert.ok(
+      hasHeaderChrome !== CHROME_LESS.has(mode),
+      `${mode}: terminal mode must be in WORKSPACE_MODES (header chrome) XOR the chrome-less set — ` +
+        `add a WORKSPACE_MODES row or list it as chrome-less.`,
+    );
+  }
+  // Every WORKSPACE_MODES mode is header-chrome, so none may be chrome-less.
+  for (const mode of Object.keys(WORKSPACE_MODES)) {
+    assert.equal(CHROME_LESS.has(mode as TerminalWorkspaceMode), false, `${mode}: has header chrome`);
   }
 });
 

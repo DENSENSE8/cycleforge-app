@@ -8,13 +8,14 @@ import type { ShippedDetailsContext } from '@/utils/events';
 // URLs resolve to 'unshipped' at the URL-read layer.
 //
 // Lifecycle tabs (ops names → industry labels in the UI):
-//   unshipped → "Pending"  (labeled, not yet packed)
+//   unshipped → "Pending"  (awaiting test + OOS; excludes TESTED)
+//   tested    → "Tested"   (ready to pack — has tech scan)
 //   packed    → "Packed"   (PACKED_STAGED — staged, not yet left the dock)
 //   shipped   → "Shipped"  (left warehouse / in carrier custody / delivered)
-export type DashboardOrderView = 'unshipped' | 'packed' | 'shipped' | 'fba';
+export type DashboardOrderView = 'unshipped' | 'tested' | 'packed' | 'shipped' | 'fba';
 /**
- * UI grouping for the dashboard view pills. Pending / Packed / Shipped share
- * outbound order data; FBA is a distinct data source and stays its own group.
+ * UI grouping for the dashboard view pills. Pending / Tested / Packed / Shipped
+ * share outbound order data; FBA is a distinct data source and stays its own group.
  */
 export type DashboardViewGroup = 'orders' | 'fba';
 export type DashboardCacheEntry = readonly [unknown, unknown];
@@ -31,6 +32,7 @@ export interface DashboardAssignmentUpdateDetail {
   packerId?: number | null;
   shipByDate?: string | null;
   outOfStock?: string | null;
+  isOutOfStock?: boolean;
   notes?: string | null;
   shippingTrackingNumber?: string | null;
   itemNumber?: string | null;
@@ -54,14 +56,23 @@ export function buildSupportWarrantyRedirectSearch(
 }
 
 export function getDashboardOrderViewFromSearch(
-  searchParams: Pick<URLSearchParams, 'has'>
+  searchParams: Pick<URLSearchParams, 'has' | 'get'>
 ): DashboardOrderView {
   if (searchParams.has('shipped')) return 'shipped';
   if (searchParams.has('packed')) return 'packed';
   if (searchParams.has('fba')) return 'fba';
+  if (searchParams.has('tested')) return 'tested';
+  // Legacy bookmark: Pending tab + `?ustatus=TESTED` → Tested lifecycle tab.
+  const ustatus = String(searchParams.get('ustatus') || '').trim().toUpperCase();
+  if (ustatus === 'TESTED' && (searchParams.has('unshipped') || searchParams.has('pending') || !searchParams.has('shipped'))) {
+    // Only rewrite when we're on the pre-pack surface (default / unshipped / pending).
+    if (!searchParams.has('packed') && !searchParams.has('shipped') && !searchParams.has('fba')) {
+      return 'tested';
+    }
+  }
   // Legacy `?warranty` is redirected to Support by the dashboard page; treat as unshipped.
-  // The merged pre-ship mode. `?unshipped`, the legacy `?pending` (Awaiting +
-  // Pending are now one mode), and the bare default all resolve here.
+  // The Pending (awaiting test) mode. `?unshipped`, the legacy `?pending`, and the
+  // bare default all resolve here.
   return 'unshipped';
 }
 
@@ -85,9 +96,15 @@ export const DASHBOARD_ORDER_VIEW_LABEL: Record<
   string
 > = {
   unshipped: 'Pending',
+  tested: 'Tested',
   packed: 'Packed',
   shipped: 'Shipped',
 };
+
+/** Pre-pack lifecycle tabs (Pending + Tested) share the unshipped queue + sort. */
+export function isPrePackOrderView(view: DashboardOrderView): boolean {
+  return view === 'unshipped' || view === 'tested';
+}
 
 export function normalizeDashboardOrderViewParams(
   params: URLSearchParams,
@@ -96,6 +113,7 @@ export function normalizeDashboardOrderViewParams(
   const nextView = preferredView ?? getDashboardOrderViewFromSearch(params);
   params.delete('unshipped');
   params.delete('pending');
+  params.delete('tested');
   params.delete('packed');
   params.delete('shipped');
   params.delete('fba');
@@ -104,20 +122,29 @@ export function normalizeDashboardOrderViewParams(
   params.delete('open');
   params.delete('wstatus');
   params.delete('wexp');
-  // Nested board layout was retired — lists only on Pending / Packed / Shipped.
+  // Nested board layout was retired — lists only on lifecycle tabs.
   params.delete('layout');
-  // Board|Grid switcher retired — Pending is always the spreadsheet grid.
+  // Board|Grid switcher retired — Pending/Tested are always the spreadsheet grid.
   // Strip stale `?view=` from every tab (including Pending bookmarks).
   params.delete('view');
   // Cross-tab status filters are view-specific; clear so they don't bleed.
-  if (nextView !== 'unshipped') {
+  // Pre-pack tabs (Pending + Tested) keep sort / urgent; lane is the tab itself.
+  if (!isPrePackOrderView(nextView)) {
     params.delete('ustatus');
     params.delete('stage');
     params.delete('late');
     params.delete('attention');
     params.delete('surface');
-    // Pending display-sort (`?sort=`) stays To Ship–scoped.
+    // Display-sort (`?sort=`) stays Pending/Tested–scoped.
     params.delete('sort');
+  } else {
+    // Tabs own Pending vs Tested. Drop TESTED/PENDING lane params that duplicate
+    // the tab; keep BLOCKED on Pending so the OOS filter still works.
+    const lane = String(params.get('ustatus') || '').trim().toUpperCase();
+    if (nextView === 'tested' || lane !== 'BLOCKED') {
+      params.delete('ustatus');
+    }
+    params.delete('stage');
   }
   if (nextView === 'packed') {
     // Packed is the exact staged list — status chips don't apply.
@@ -201,7 +228,12 @@ export function patchDashboardSelectedOrderFromAssignment(
   if (detail.testerId !== undefined) next.tester_id = detail.testerId;
   if (detail.packerId !== undefined) next.packer_id = detail.packerId;
   if (detail.shipByDate !== undefined) next.ship_by_date = detail.shipByDate;
-  if (detail.outOfStock !== undefined) next.out_of_stock = detail.outOfStock;
+  if (detail.outOfStock !== undefined || detail.isOutOfStock !== undefined) {
+    next.is_out_of_stock =
+      detail.isOutOfStock !== undefined
+        ? Boolean(detail.isOutOfStock)
+        : Boolean(String(detail.outOfStock || '').trim());
+  }
   if (detail.notes !== undefined) next.notes = detail.notes ?? '';
   if (detail.shippingTrackingNumber !== undefined) next.shipping_tracking_number = detail.shippingTrackingNumber;
   if (detail.itemNumber !== undefined) next.item_number = detail.itemNumber;

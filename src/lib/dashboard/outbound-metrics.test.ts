@@ -28,7 +28,7 @@ const baseCtx = (over: Partial<OutboundMetricCtx> = {}): OutboundMetricCtx => ({
   mode: 'shipped',
   total: 100,
   shipped: { ...ZERO_OUTBOUND_METRICS },
-  unshipped: { total: 0, pending: 0, tested: 0, blocked: 0 },
+  unshipped: { total: 0, pending: 0, tested: 0, blocked: 0, urgent: 0 },
   roi: null,
   ...over,
 });
@@ -78,15 +78,27 @@ test('level metrics carry a board filter; rate/trend metrics do not', () => {
   for (const m of Object.values(byId)) assert.ok(m.tooltip, `${m.id} needs a tooltip`);
 });
 
-test('unshipped lane metrics carry filterUstatus for click-to-filter', () => {
+test('unshipped queue metrics: Pending / Urgent / Out of stock click targets', () => {
   const unshipped = resolveOutboundMetrics(
-    baseCtx({ mode: 'unshipped', unshipped: { total: 33, pending: 12, tested: 21, blocked: 3 }, roi: roi() }),
+    baseCtx({
+      mode: 'unshipped',
+      unshipped: { total: 33, pending: 12, tested: 21, blocked: 3, urgent: 5 },
+      roi: roi(),
+    }),
   );
   const byId = Object.fromEntries(unshipped.map((m) => [m.id, m]));
-  assert.equal(byId.ready?.filterUstatus, 'TESTED');
-  assert.equal(byId.awaiting?.filterUstatus, 'PENDING');
+  assert.equal(byId.pending?.label, 'Pending');
+  // Pending tab total = awaiting-test + OOS.
+  assert.equal(byId.pending?.value, '15');
+  assert.equal(byId.pending?.filterUstatus, 'PENDING');
+  assert.equal(byId.urgent?.label, 'Urgent');
+  assert.equal(byId.urgent?.value, '5');
+  assert.equal(byId.urgent?.filterAttention, true);
+  assert.equal(byId.blocked?.label, 'Out of stock');
   assert.equal(byId.blocked?.filterUstatus, 'BLOCKED');
+  assert.equal(byId.ready?.filterUstatus, 'TESTED');
   assert.equal(byId.ready?.filterState, undefined);
+  assert.equal(byId.awaiting, undefined);
 });
 
 test('mode filters the registry (no unshipped ids leak into shipped)', () => {
@@ -95,9 +107,14 @@ test('mode filters the registry (no unshipped ids leak into shipped)', () => {
   );
   assert.equal(shipped.find((m) => m.id === 'ready'), undefined);
   assert.equal(shipped.find((m) => m.id === 'blocked'), undefined);
+  assert.equal(shipped.find((m) => m.id === 'urgent'), undefined);
 
   const unshipped = resolveOutboundMetrics(
-    baseCtx({ mode: 'unshipped', unshipped: { total: 33, pending: 12, tested: 21, blocked: 3 }, roi: roi() }),
+    baseCtx({
+      mode: 'unshipped',
+      unshipped: { total: 33, pending: 12, tested: 21, blocked: 3, urgent: 2 },
+      roi: roi(),
+    }),
   );
   assert.ok(unshipped.some((m) => m.id === 'ready'));
   assert.equal(unshipped.find((m) => m.id === 'ontime'), undefined);
@@ -118,7 +135,10 @@ test('splitOutboundAttention: severity-ranked attention, delta-only trend, statu
     },
     roi: roi({ pctChange: -13 }),
   });
-  const { attention, trend } = splitOutboundAttention(resolveOutboundMetrics(ctx));
+  const { queue, attention, trend } = splitOutboundAttention(resolveOutboundMetrics(ctx));
+
+  // Shipped has no queue zone tiles.
+  assert.deepEqual(queue, []);
 
   // Attention = problems only, sorted by severity descending.
   const attnIds = attention.map((m) => m.id);
@@ -154,11 +174,23 @@ test('splitOutboundAttention caps the attention zone', () => {
   assert.equal(splitOutboundAttention(resolveOutboundMetrics(ctx), 2).attention.length, 2);
 });
 
-test('blocked always sorts to the front despite a tiny share', () => {
-  const ctx = baseCtx({ mode: 'unshipped', unshipped: { total: 200, pending: 120, tested: 79, blocked: 1 } });
-  const { attention } = splitOutboundAttention(resolveOutboundMetrics(ctx));
-  // severity 3 (blocked) outranks the severity-1 backlog even though its share is 1/200.
-  assert.equal(attention[0].id, 'blocked');
+test('queue zone pins Pending → Urgent → Out of stock left of attention/trend', () => {
+  const ctx = baseCtx({
+    mode: 'unshipped',
+    unshipped: { total: 200, pending: 120, tested: 79, blocked: 1, urgent: 4 },
+    roi: roi({ unitsStuck: 16, pctChange: -13 }),
+  });
+  const { queue, attention, trend } = splitOutboundAttention(resolveOutboundMetrics(ctx));
+  assert.deepEqual(
+    queue.map((m) => m.id),
+    ['pending', 'urgent', 'blocked'],
+  );
+  // OOS / Pending / Urgent are NOT re-sorted into attention.
+  assert.ok(!attention.some((m) => m.id === 'blocked' || m.id === 'pending' || m.id === 'urgent'));
+  // Ready + stuck stay in attention; packed in trend — after the queue cluster.
+  assert.ok(attention.some((m) => m.id === 'stuck'));
+  assert.ok(attention.some((m) => m.id === 'ready'));
+  assert.deepEqual(trend.map((m) => m.id), ['packed']);
 });
 
 test('every registry entry returns null on empty context (zero-safe)', () => {

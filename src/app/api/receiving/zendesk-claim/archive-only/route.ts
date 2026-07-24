@@ -11,6 +11,8 @@ import { CLAIM_TYPE_LABEL, type ClaimType } from '@/lib/zendesk-claim-template';
 import { listAllReceivingPhotoIds } from '@/lib/photos/queries/receiving-list';
 import { getOrganization } from '@/lib/tenancy/organizations';
 import { getNasStorageTarget } from '@/lib/tenancy/settings';
+import { getTicketEntity } from '@/lib/zendesk-links';
+import { tenantQuery } from '@/lib/tenancy/db';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -31,13 +33,6 @@ const optionalPositiveId = z.preprocess((v) => {
   return Number.isFinite(n) && n > 0 ? Math.trunc(n) : undefined;
 }, z.number().int().positive().optional());
 
-// The one truly-required id — accepts a string/number but must resolve to a
-// positive int; the field path in `details` names it if it doesn't.
-const requiredPositiveId = z.preprocess(
-  (v) => (typeof v === 'string' && v.trim() !== '' ? Number(v.trim()) : v),
-  z.number().int().positive(),
-);
-
 // Length caps are truncated, never rejected — this text only fills the archive
 // info file, so an over-long paste must not fail the whole backup.
 const cap = (max: number) =>
@@ -47,7 +42,9 @@ const cap = (max: number) =>
   );
 
 const Body = z.object({
-  receivingId: requiredPositiveId,
+  // Optional when the ticket is already linked to a receiving carton/line —
+  // photo-library ticket leaf passes ticketNumber alone.
+  receivingId: optionalPositiveId,
   lineId: optionalPositiveId,
   // Accept a number or string id → a non-empty folder-name string.
   ticketNumber: z.preprocess(
@@ -62,6 +59,40 @@ const Body = z.object({
 
 function normalizeArchiveFolderName(input: string): string {
   return input.trim().replace(/^#/, '').replace(/[\\/:*?"<>|]+/g, '-').trim();
+}
+
+function parseZendeskTicketId(ticketNumber: string): number | null {
+  const digits = ticketNumber.replace(/^#/, '').trim().match(/^\d+$/);
+  if (!digits) return null;
+  const n = Number(digits[0]);
+  return Number.isInteger(n) && n > 0 ? n : null;
+}
+
+/** Resolve carton (+ optional line) from the ticket's primary entity link. */
+async function resolveReceivingFromTicket(
+  orgId: string,
+  ticketNumber: string,
+): Promise<{ receivingId: number; lineId?: number } | null> {
+  const zendeskTicketId = parseZendeskTicketId(ticketNumber);
+  if (zendeskTicketId == null) return null;
+  const entity = await getTicketEntity(orgId, zendeskTicketId);
+  if (!entity) return null;
+  if (entity.type === 'RECEIVING') {
+    return { receivingId: entity.id };
+  }
+  if (entity.type === 'RECEIVING_LINE') {
+    const parent = await tenantQuery<{ receiving_id: number | null }>(
+      orgId,
+      `SELECT receiving_id FROM receiving_line WHERE id = $1 AND organization_id = $2 LIMIT 1`,
+      [entity.id, orgId],
+    );
+    const receivingId = parent.rows[0]?.receiving_id;
+    if (receivingId == null || !Number.isFinite(Number(receivingId)) || Number(receivingId) <= 0) {
+      return null;
+    }
+    return { receivingId: Number(receivingId), lineId: entity.id };
+  }
+  return null;
 }
 
 export const POST = withAuth(async (req: NextRequest, ctx) => {
@@ -87,7 +118,25 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       return NextResponse.json({ success: false, error: 'Folder name is required' }, { status: 400 });
     }
 
-    const allPhotoIds = await listAllReceivingPhotoIds(ctx.organizationId, body.receivingId);
+    let receivingId = body.receivingId;
+    let lineId = body.lineId;
+    if (receivingId == null) {
+      const resolved = await resolveReceivingFromTicket(ctx.organizationId, body.ticketNumber);
+      if (!resolved) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'No receiving carton is linked to this ticket',
+            details: 'Pass receivingId, or link the ticket to a carton before syncing to NAS.',
+          },
+          { status: 400 },
+        );
+      }
+      receivingId = resolved.receivingId;
+      if (lineId == null && resolved.lineId != null) lineId = resolved.lineId;
+    }
+
+    const allPhotoIds = await listAllReceivingPhotoIds(ctx.organizationId, receivingId);
     const allPhotos = (
       await Promise.all(
         allPhotoIds.map(async (photoId) => ({
@@ -103,8 +152,8 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       `Archive target: ${folderName}`,
       'Mode: Archive to NAS (no Zendesk ticket created by this call)',
       body.claimType ? `Claim type: ${CLAIM_TYPE_LABEL[body.claimType as ClaimType]}` : null,
-      `Receiving id: ${body.receivingId}`,
-      body.lineId != null ? `Receiving line id: ${body.lineId}` : null,
+      `Receiving id: ${receivingId}`,
+      lineId != null ? `Receiving line id: ${lineId}` : null,
       `Captured: ${new Date().toISOString()}`,
       `Photos on claim record: ${allPhotoIds.length}`,
       `Photos resolved for NAS archive: ${allPhotos.length}`,

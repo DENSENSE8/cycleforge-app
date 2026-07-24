@@ -141,10 +141,18 @@ interface KioskPairing {
  * the code-consuming UPDATE only matches an `enrolled`, unexpired row, so a
  * replay finds nothing (mirrors `consumeEnrollment`). Runs on the owner pool —
  * pre-auth, org unknown until the row matches; the org is then read FROM the
- * row, never from the request subdomain.
+ * row, never trusted from the request subdomain alone.
+ *
+ * When `expectedOrganizationId` is set (kiosk host slug → org), the UPDATE
+ * also requires `organization_id` to match — wrong-tenant codes fail closed
+ * as a miss (same shape as expired/unknown), and never activate the device.
  */
-export async function pairKioskDevice(code: string | null | undefined): Promise<KioskPairing | null> {
+export async function pairKioskDevice(
+  code: string | null | undefined,
+  opts?: { expectedOrganizationId?: string | null },
+): Promise<KioskPairing | null> {
   if (!code || typeof code !== 'string' || code.length < 8) return null;
+  const expectedOrg = opts?.expectedOrganizationId?.trim() || null;
   const token = newDeviceToken();
   const r = await pool.query(
     `UPDATE kiosk_devices
@@ -156,8 +164,9 @@ export async function pairKioskDevice(code: string | null | undefined): Promise<
       WHERE enroll_code_hash = $1
         AND status = 'enrolled'
         AND enroll_code_expires_at > now()
+        AND ($3::uuid IS NULL OR organization_id = $3::uuid)
       RETURNING id, organization_id, label`,
-    [sha256(code), sha256(token)],
+    [sha256(code), sha256(token), expectedOrg],
   );
   const row = r.rows[0] as { id: number; organization_id: string; label: string } | undefined;
   if (!row) return null;

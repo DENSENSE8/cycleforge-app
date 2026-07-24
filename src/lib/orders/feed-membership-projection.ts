@@ -70,7 +70,7 @@ interface RawOrderRow {
   organization_id: string;
   shipment_id: number | string | null;
   has_tech_scan: boolean;
-  out_of_stock: string | null;
+  is_out_of_stock: boolean;
   occurred_at: Date | string;
   title: string;
 }
@@ -92,7 +92,7 @@ export async function projectOrdersUnshippedMemberships(
              SELECT 1 FROM station_activity_logs sal
              WHERE sal.shipment_id IS NOT NULL AND sal.shipment_id = o.shipment_id
            )) AS has_tech_scan,
-           o.out_of_stock,
+           o.is_out_of_stock,
            COALESCE(wa.deadline_at, o.created_at) AS occurred_at,
            COALESCE(NULLIF(o.product_title, ''), 'Order ' || COALESCE(o.order_id, o.id::text)) AS title
       FROM orders o
@@ -126,7 +126,7 @@ export async function projectOrdersUnshippedMemberships(
     const lane = deriveFulfillmentState({
       shipmentId: r.shipment_id,
       hasTechScan: Boolean(r.has_tech_scan),
-      outOfStock: r.out_of_stock,
+      isOutOfStock: Boolean(r.is_out_of_stock),
     });
     const state = lane.toLowerCase() as LaneState;
     byLane[state] += 1;

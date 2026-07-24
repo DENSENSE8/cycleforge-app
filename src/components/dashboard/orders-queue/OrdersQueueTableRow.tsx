@@ -93,7 +93,6 @@ export interface OrdersQueueTableRowProps {
   trackingAction?: React.ReactNode;
   serialChip?: React.ReactNode;
   hasOutOfStock: boolean;
-  outOfStockValue: string;
   notesValue: string;
   daysLate: number | null;
   disableEnterAnimation?: boolean;
@@ -128,7 +127,7 @@ export interface OrdersQueueTableRowProps {
 }
 
 /** In-cell / popover editors this row can host (one open at a time). */
-type RowEditField = 'title' | 'qty' | 'date' | 'condition' | 'note' | 'oos' | 'link';
+type RowEditField = 'title' | 'qty' | 'date' | 'condition' | 'note' | 'link';
 
 /**
  * Pending / fulfillment queue row — Sheets-like WMS grid:
@@ -158,7 +157,6 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   trackingAction,
   serialChip,
   hasOutOfStock,
-  outOfStockValue,
   notesValue,
   daysLate,
   isMobile,
@@ -279,6 +277,14 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
     },
     [assignOrder, record.id],
   );
+
+  const toggleOutOfStock = useCallback(() => {
+    commitAssign(
+      { isOutOfStock: !hasOutOfStock },
+      hasOutOfStock ? 'Cleared out of stock' : 'Marked out of stock',
+      'Failed to save',
+    );
+  }, [commitAssign, hasOutOfStock]);
 
   const onPasteTracking = useCallback(
     (value: string) => {
@@ -424,7 +430,7 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   // FROZEN title cell so the exception signal survives horizontal scroll.
   // Hover/focus = exact text; click (or Shift+F2) = cell-anchored editor.
   const oosTooltip = [
-    outOfStockValue.trim() || 'Out of stock',
+    'Out of stock',
     replenishment.requestId ? replenishmentTooltip(replenishment) : null,
   ]
     .filter(Boolean)
@@ -436,10 +442,10 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
         ref={oosIndicatorRef}
         type="button"
         data-indicator="oos"
-        aria-label={`Out of stock: ${outOfStockValue.trim() || 'flagged'}`}
+        aria-label="Out of stock"
         onClick={(e) => {
           e.stopPropagation();
-          if (canOos) openEditor('oos');
+          if (canOos) toggleOutOfStock();
         }}
         onKeyDown={(e) => e.stopPropagation()}
         className={cn(
@@ -588,10 +594,10 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
           <HoverTooltip label={oosTooltip} focusable={false}>
             <button
               type="button"
-              aria-label={`Out of stock: ${outOfStockValue.trim() || 'flagged'}`}
+              aria-label="Out of stock"
               onClick={(e) => {
                 e.stopPropagation();
-                if (canOos) openEditor('oos');
+                if (canOos) toggleOutOfStock();
               }}
               className="ds-raw-button inline-flex items-center text-red-600"
             >
@@ -1033,7 +1039,10 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
           canEditNotes={canEditNotes}
           canEditOos={canOos}
           onNotes={() => openEditor('note')}
-          onOutOfStock={() => openEditor('oos')}
+          onOutOfStock={() => {
+            setInfoMenuOpen(false);
+            toggleOutOfStock();
+          }}
           onDetails={() => onRowClick(record)}
           onDone={() => setInfoMenuOpen(false)}
         />
@@ -1081,27 +1090,6 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
           saving={assignOrder.isPending}
         />
       ) : null}
-      {editing === 'oos' ? (
-        <CellTextEditPopover
-          // OOS corner is top-LEFT — anchor its triangle, panel start-aligned.
-          anchorRef={!isMobile && hasOutOfStock ? oosIndicatorRef : editorAnchorRef}
-          placement="bottom-start"
-          title="Out of stock"
-          tone="danger"
-          initialValue={outOfStockValue.trim()}
-          multiline
-          placeholder="What needs to be ordered?"
-          onCommit={(next) =>
-            commitAssign(
-              { outOfStock: next },
-              next ? 'Marked out of stock' : 'Cleared out of stock',
-              'Failed to save',
-            )
-          }
-          onDone={closeEditor}
-          saving={assignOrder.isPending}
-        />
-      ) : null}
       {editing === 'link' ? (
         <CellTextEditPopover
           anchorRef={editorAnchorRef}
@@ -1133,7 +1121,6 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   if (prev.rowStatus.label !== next.rowStatus.label) return false;
   if (prev.rowStatus.pill !== next.rowStatus.pill) return false;
   if (prev.hasOutOfStock !== next.hasOutOfStock) return false;
-  if (prev.outOfStockValue !== next.outOfStockValue) return false;
   if (prev.notesValue !== next.notesValue) return false;
   if (prev.daysLate !== next.daysLate) return false;
   if (prev.record.product_title !== next.record.product_title) return false;

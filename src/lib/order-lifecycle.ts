@@ -40,13 +40,21 @@ export interface OrderLifecycleSignals {
   hasTechScan?: boolean | null;
   /** PACK event timestamp (pack completed, not merely a packer assigned). */
   packedAt?: string | null;
-  /** orders.out_of_stock — a non‑empty string means the line is flagged blocked. */
-  outOfStock?: string | null;
+  /**
+   * orders.is_out_of_stock — operator flag that the line is blocked.
+   * Prefer this boolean. Legacy callers may still pass `outOfStock` as a
+   * non-empty string (pre-2026-07-23b); both are accepted by {@link isOutOfStock}.
+   */
+  isOutOfStock?: boolean | null;
+  /** @deprecated Use `isOutOfStock`. Kept for transitional row shapes / tests. */
+  outOfStock?: string | boolean | null;
 }
 
 // ─── Shared predicates (one definition, reused by every evaluator) ──────────────
-/** A non‑empty out_of_stock string flags the line as blocked. */
+/** True when the order is flagged out of stock (boolean SoT, legacy text tolerated). */
 export function isOutOfStock(s: OrderLifecycleSignals): boolean {
+  if (typeof s.isOutOfStock === 'boolean') return s.isOutOfStock;
+  if (typeof s.outOfStock === 'boolean') return s.outOfStock;
   return String(s.outOfStock ?? '').trim() !== '';
 }
 /** A label/tracking is attached (shipment_id present). */
@@ -119,17 +127,6 @@ export const FULFILLMENT_BOARD_LANES: readonly FulfillmentLaneDescriptor[] = [
   { id: 'TESTED', iconKey: 'check', iconClass: 'text-green-500' },
   { id: 'BLOCKED', iconKey: 'alert', iconClass: 'text-red-500' },
 ];
-
-/**
- * Sort rank for Pending grid `?sort=status` — pipeline progression, exception last.
- * Matches {@link FULFILLMENT_BOARD_LANES} order. Shared by the comparator so
- * consumers never re-derive lane order.
- */
-export const FULFILLMENT_STAGE_RANK: Record<FulfillmentLane, number> = {
-  PENDING: 0,
-  TESTED: 1,
-  BLOCKED: 2,
-};
 
 // ════════════════════════════════════════════════════════════════════════════
 // POST‑DOCK (outbound) lifecycle — pack → leave‑the‑building → carrier custody →

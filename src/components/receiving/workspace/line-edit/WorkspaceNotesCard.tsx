@@ -1,23 +1,23 @@
 'use client';
 
 /**
- * WorkspaceNotesCard — the header-less, auto-saving carton Notes composer.
+ * WorkspaceNotesCard — the auto-saving carton Notes composer.
  *
  * Extracted from {@link LineEditPanel} so the Unbox panel and the standalone
  * {@link TriagePanel} share ONE notes implementation. Pure composition over the
- * controller bag; the panel owns the stagger wrapper, this owns the card.
+ * controller bag; the panel owns placement (dock vs mid-canvas).
  *
  * The note is ONE durable buffer (`receiving_lines.notes`): it composes the
  * printed label face AND is the operator's saved note. It hydrates from the row
- * and auto-saves on blur (see `useUnboxLineController` / {@link LineNotesCard}),
- * so a reprint carries the same note. The old separate "Label" vs "Internal"
- * buffers and the manual "save to internal" bridge are gone.
+ * and saves on Enter / commit / blur (see `useUnboxLineController` /
+ * {@link LineNotesCard}), so a reprint carries the same note.
  *
- * The composer keeps a bottom-right button that APPENDS the note to the carton's
- * synced PO note (via {@link useSyncedPoNote}). The full view / reload / overwrite
- * of that PO note lives in the standalone "PO note" display tab ({@link LinePoNoteCard}).
+ * Built on {@link StationComposerDock}. The full view / reload / overwrite of
+ * the synced PO note lives in the standalone "PO note" display tab
+ * ({@link LinePoNoteCard}).
  */
 
+import type { ReactNode } from 'react';
 import type { ReceivingStepKey } from '../ReceivingProgressStepper';
 import { LineNotesCard } from './LineNotesCard';
 import { useSyncedPoNote } from './hooks/useSyncedPoNote';
@@ -30,9 +30,20 @@ interface WorkspaceNotesCardProps {
   c: UnboxLineController;
   onActionFeedback: (feedback: InlineActionFeedbackPayload | null) => void;
   activeStep?: ReceivingStepKey | null;
+  /** Pass-through to StationComposerDock mount motion. */
+  animateMount?: boolean;
+  /** Terminal CTA for the composer's trailing edge (Unbox overview receive). */
+  trailingAction?: ReactNode;
 }
 
-export function WorkspaceNotesCard({ row, c, onActionFeedback, activeStep }: WorkspaceNotesCardProps) {
+export function WorkspaceNotesCard({
+  row,
+  c,
+  onActionFeedback,
+  activeStep,
+  animateMount = true,
+  trailingAction,
+}: WorkspaceNotesCardProps) {
   const { saveOverallNote } = useSyncedPoNote(row, onActionFeedback);
   return (
     <div id="zoho-notes-card">
@@ -47,8 +58,8 @@ export function WorkspaceNotesCard({ row, c, onActionFeedback, activeStep }: Wor
         previousLineNotes={c.prevLineNotes}
         onNotesChange={c.setLabelNotes}
         onSaveNotes={() => {
-          // Auto-save on blur. Returns whether it actually persisted, so the card
-          // only flashes "Saved" when the note changed.
+          // Returns whether it actually persisted, so the card only flashes
+          // "Saved" when the note changed.
           const next = c.labelNotes;
           if (next === (row.notes || '')) return false;
           void c.patch({ notes: next });
@@ -57,6 +68,8 @@ export function WorkspaceNotesCard({ row, c, onActionFeedback, activeStep }: Wor
         onSaveOverallNote={saveOverallNote}
         showSyncToPo={!c.isUnfound}
         activeStep={activeStep}
+        animateMount={animateMount}
+        trailingAction={trailingAction}
       />
     </div>
   );

@@ -1,15 +1,13 @@
 'use client';
 
-import { AnimatePresence, motion } from 'framer-motion';
-import { useCallback, useEffect, useState } from 'react';
-import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
-import { OutOfStockEditorBlock } from '@/components/ui/OutOfStockEditorBlock';
+import { useCallback } from 'react';
 import { StationTerminalDock, useStationTerminalAction } from '@/components/station/terminal';
 import {
   dispatchUpNextActionStart,
   dispatchUpNextActionOos,
 } from '@/utils/events';
 import type { Order } from '@/components/station/upnext/upnext-types';
+import { isOutOfStock as orderIsOutOfStock } from '@/utils/order-out-of-stock';
 import { resolveShippingTerminal } from './shipping/terminal/shipping-terminal';
 
 interface UpNextActionDockProps {
@@ -31,17 +29,10 @@ interface UpNextActionDockProps {
  *
  * Events out:
  *  - `tech-upnext-action-start` → starts the previewed order
- *  - `tech-upnext-action-oos-set` → marks the order out-of-stock with a reason
+ *  - `tech-upnext-action-oos-set` → toggles orders.is_out_of_stock
  */
 export function UpNextActionDock({ order }: UpNextActionDockProps) {
-  const [showEditor, setShowEditor] = useState(false);
-  const [reason, setReason] = useState(order.out_of_stock ?? '');
-  const hasOutOfStock = Boolean((order.out_of_stock ?? '').trim());
-
-  useEffect(() => {
-    setShowEditor(false);
-    setReason(order.out_of_stock ?? '');
-  }, [order.id, order.out_of_stock]);
+  const hasOutOfStock = orderIsOutOfStock(order);
 
   const handleStart = useCallback(() => {
     dispatchUpNextActionStart({
@@ -51,21 +42,21 @@ export function UpNextActionDock({ order }: UpNextActionDockProps) {
     });
   }, [order.id, order.shipping_tracking_number, order.order_id]);
 
-  const handleOosSubmit = useCallback(() => {
-    const trimmed = reason.trim();
-    if (!trimmed) return;
-    dispatchUpNextActionOos({ orderId: order.id, reason: trimmed });
-    setShowEditor(false);
-  }, [order.id, reason]);
+  const handleToggleOos = useCallback(() => {
+    dispatchUpNextActionOos({
+      orderId: order.id,
+      isOutOfStock: !hasOutOfStock,
+    });
+  }, [order.id, hasOutOfStock]);
 
   const buildTerminal = useCallback(
     (kind: string) =>
       resolveShippingTerminal(kind, {
         onStart: handleStart,
-        onOutOfStock: () => setShowEditor(true),
+        onOutOfStock: handleToggleOos,
         hasOutOfStock,
       }),
-    [handleStart, hasOutOfStock],
+    [handleStart, handleToggleOos, hasOutOfStock],
   );
 
   const terminalVm = useStationTerminalAction({
@@ -75,37 +66,5 @@ export function UpNextActionDock({ order }: UpNextActionDockProps) {
     build: buildTerminal,
   });
 
-  return (
-    <>
-      <AnimatePresence initial={false}>
-        {showEditor ? (
-          <motion.div
-            key="oos-editor"
-            initial={framerPresence.collapseHeight.initial}
-            animate={framerPresence.collapseHeight.animate}
-            exit={framerPresence.collapseHeight.exit}
-            transition={framerTransition.upNextCollapse}
-            className="pointer-events-none absolute inset-x-0 bottom-[calc(3.75rem+max(1rem,env(safe-area-inset-bottom)))] z-20 px-4 sm:px-6"
-          >
-            <div className="pointer-events-auto mx-auto w-full max-w-3xl">
-              <div className="rounded-2xl bg-surface-card px-4 py-3 shadow-lg ring-1 ring-border-soft">
-                <OutOfStockEditorBlock
-                  value={reason}
-                  onChange={setReason}
-                  onCancel={() => {
-                    setShowEditor(false);
-                    setReason(order.out_of_stock ?? '');
-                  }}
-                  onSubmit={handleOosSubmit}
-                  autoFocus
-                />
-              </div>
-            </div>
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
-
-      <StationTerminalDock vm={terminalVm} />
-    </>
-  );
+  return <StationTerminalDock vm={terminalVm} />;
 }

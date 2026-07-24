@@ -1,0 +1,222 @@
+'use client';
+
+import { Calendar, Check, ChevronUp, ChevronDown, DollarSign, Ticket } from '@/components/Icons';
+import { tableHeader } from '@/design-system/tokens/typography/presets';
+import { ColumnTypeGlyph } from '@/components/ui/table-column-config/column-type-glyph';
+import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { emitToggleAll } from '@/lib/selection/table-selection';
+import { useTableSelection, useTableSelectionTotal } from '@/hooks/useTableSelection';
+import {
+  REPAIR_GRID_COLUMNS,
+  REPAIR_GRID_FROZEN_CELL,
+  isRepairGridFrozen,
+  isRepairGridSortable,
+  repairGridCell,
+  repairGridFrozenLeft,
+  repairGridHeaderShowsLabel,
+  repairGridRowShellClass,
+  repairGridTemplate,
+  type RepairGridColumn,
+  type RepairGridColumnKey,
+  type RepairGridSortDir,
+} from '@/lib/repair/repair-grid-layout';
+import { cn } from '@/utils/_cn';
+
+/**
+ * Sticky column header for the repair queue LedgerGrid — SoT labels, adaptive
+ * glyph + short label, click-to-sort (Pending spreadsheet contract), select-all
+ * over the shared repair selection scope. Twin of `IncomingGridColumnHeader`.
+ */
+export function RepairGridColumnHeader({
+  selectionScope,
+  className,
+  columns = REPAIR_GRID_COLUMNS,
+  activeSort = null,
+  sortDir = null,
+  onSortColumn,
+}: {
+  selectionScope: string;
+  className?: string;
+  columns?: readonly RepairGridColumn[];
+  activeSort?: RepairGridColumnKey | null;
+  sortDir?: RepairGridSortDir | null;
+  onSortColumn?: (key: RepairGridColumnKey) => void;
+}) {
+  const scope = selectionScope ?? '__idle__';
+  const selectedRows = useTableSelection<{ id?: number | string }>(scope, (r) => Number(r.id));
+  const total = useTableSelectionTotal(scope);
+  const selectedCount = selectionScope ? selectedRows.length : 0;
+  const allSelected = Boolean(selectionScope && total > 0 && selectedCount >= total);
+  const someSelected = Boolean(selectionScope && selectedCount > 0 && !allSelected);
+
+  const template = repairGridTemplate(columns);
+  const dataColumns = columns.filter((c) => c.key !== 'select');
+
+  const onToggleAll = () => {
+    if (!selectionScope) return;
+    emitToggleAll(selectionScope, allSelected ? 'none' : 'all');
+  };
+
+  return (
+    <div
+      role="row"
+      className={cn(
+        'group/hrow grid min-h-11 border-b border-border-default bg-surface-card px-0 py-0',
+        repairGridRowShellClass(false, { scrollMinContent: true }),
+        className,
+      )}
+      style={{ gridTemplateColumns: template }}
+    >
+      <div
+        className={cn(
+          repairGridCell({ inset: 'none', rule: true }),
+          'justify-center',
+          REPAIR_GRID_FROZEN_CELL,
+        )}
+        style={{ left: repairGridFrozenLeft('select') }}
+      >
+        <button
+          type="button"
+          onClick={onToggleAll}
+          aria-label={allSelected ? 'Deselect all' : 'Select all'}
+          aria-checked={allSelected ? true : someSelected ? 'mixed' : false}
+          role="checkbox"
+          className={cn(
+            'ds-raw-button flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors',
+            allSelected
+              ? 'border-accent-bg bg-accent-bg text-text-inverse'
+              : someSelected
+                ? 'border-accent-bg bg-accent-bg/20 text-accent-bg'
+                : 'border-border-default bg-surface-card hover:border-border-strong',
+          )}
+        >
+          {allSelected ? (
+            <Check className="h-3 w-3" />
+          ) : someSelected ? (
+            <span className="h-0.5 w-2 rounded-full bg-current" />
+          ) : null}
+        </button>
+      </div>
+
+      {dataColumns.map((column, i) => {
+        const last = i === dataColumns.length - 1;
+        const sortable = Boolean(onSortColumn) && isRepairGridSortable(column.key);
+        const isActiveSort = activeSort === column.key;
+        return (
+          <RepairHeaderCell
+            key={column.key}
+            column={column}
+            last={last}
+            sortActive={sortable}
+            isActiveSort={isActiveSort}
+            sortDir={isActiveSort ? sortDir : null}
+            onSort={sortable ? () => onSortColumn?.(column.key) : undefined}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+function RepairHeaderCell({
+  column,
+  last,
+  sortActive = false,
+  isActiveSort = false,
+  sortDir = null,
+  onSort,
+}: {
+  column: RepairGridColumn;
+  last: boolean;
+  sortActive?: boolean;
+  isActiveSort?: boolean;
+  sortDir?: RepairGridSortDir | null;
+  onSort?: () => void;
+}) {
+  const label = column.label ?? column.key;
+  const showTextLabel = repairGridHeaderShowsLabel(column);
+  const visibleLabel = column.gridLabel ?? label;
+  const frozen = isRepairGridFrozen(column.key);
+
+  // Per-column header glyph overrides (like Pending's date→Calendar): the SoT
+  // type glyph is `#` for id/number, so Price → $, Ticket → ticket mark, Created
+  // → calendar; Order keeps the `#` (type 'id').
+  const glyph =
+    column.key === 'date' ? (
+      <Calendar className="h-3 w-3 shrink-0 text-text-faint" aria-hidden />
+    ) : column.key === 'price' ? (
+      <DollarSign className="h-3 w-3 shrink-0 text-text-faint" aria-hidden />
+    ) : column.key === 'ticket' ? (
+      <Ticket className="h-3 w-3 shrink-0 text-text-faint" aria-hidden />
+    ) : column.type ? (
+      <ColumnTypeGlyph type={column.type} className="h-3 w-3 text-text-faint" />
+    ) : null;
+
+  const sortChevron =
+    isActiveSort && sortDir ? (
+      sortDir === 'asc' ? (
+        <ChevronUp className="h-3 w-3 shrink-0 text-text-muted opacity-80" aria-hidden />
+      ) : (
+        <ChevronDown className="h-3 w-3 shrink-0 text-text-muted opacity-80" aria-hidden />
+      )
+    ) : null;
+
+  const inner = !showTextLabel ? (
+    <>
+      <span className="sr-only">{label}</span>
+      {glyph}
+      {sortChevron}
+    </>
+  ) : (
+    <>
+      {glyph}
+      <span className="min-w-0 truncate">{visibleLabel}</span>
+      {sortChevron}
+    </>
+  );
+
+  const ariaSort =
+    isActiveSort && sortDir
+      ? sortDir === 'asc'
+        ? 'ascending'
+        : 'descending'
+      : sortActive
+        ? 'none'
+        : undefined;
+
+  const tip =
+    isActiveSort && sortDir
+      ? `${label} · sorted ${sortDir === 'asc' ? 'A→Z / ascending' : 'Z→A / descending'}`
+      : sortActive
+        ? `${label} · click to sort`
+        : label;
+
+  const cell = (
+    <div
+      role="columnheader"
+      data-col={column.key}
+      data-frozen-edge={column.key === 'title' ? true : undefined}
+      aria-sort={ariaSort}
+      onClick={onSort}
+      className={cn(
+        'group/hcell relative min-h-11 justify-start gap-1',
+        // Numeric price header right-aligns with its right-aligned cells.
+        column.key === 'price' && 'justify-end',
+        repairGridCell({ rule: !last, inset: 'grid' }),
+        frozen && REPAIR_GRID_FROZEN_CELL,
+        tableHeader,
+        sortActive && 'cursor-pointer hover:text-text-default',
+        isActiveSort && 'text-text-default',
+      )}
+      style={frozen ? { left: repairGridFrozenLeft(column.key) } : undefined}
+    >
+      {inner}
+    </div>
+  );
+
+  return (
+    <HoverTooltip label={tip} focusable={false} asChild>
+      {cell}
+    </HoverTooltip>
+  );
+}

@@ -1,15 +1,10 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { Check, Download, Loader2, Pencil, History, DollarSign, User, Tag } from '@/components/Icons';
+import { Check, Download, History, Loader2, DollarSign, User, Tag, Pencil } from '@/components/Icons';
 import type { ReceivingStepKey } from '../ReceivingProgressStepper';
-import {
-  WorkspaceCard,
-  WORKSPACE_NESTED_FIELD,
-  WORKSPACE_NESTED_FIELD_PAD_COMPACT,
-  WORKSPACE_NESTED_OVERLAY_CORNER_COMPACT,
-} from '@/design-system/components';
+import { StationComposerDock } from '@/design-system/primitives';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/lib/toast';
 import { NoteComposerInsertRail, type NoteComposerInsertAction } from '../NoteComposerInsertRail';
@@ -29,23 +24,15 @@ import {
 } from '../note-composer-helpers';
 
 /**
- * Header-less carton-notes composer for the receiving workspace — ONE note, not
- * a tab stack.
+ * Carton-notes composer — ONE durable buffer (`receiving_lines.notes`).
  *
- * The note is a single durable buffer (`receiving_lines.notes`): it composes the
- * printed label face AND is the operator's saved note. It hydrates from the row
- * (in `useUnboxLineController`) and **auto-saves on blur** — a light "Saved"
- * flash confirms it — so a reprint carries the same note. There is no separate
- * "Label" vs "Internal" buffer and no manual "save to internal" bridge anymore.
+ * Composes the printed label face AND is the operator's saved note. Hydrates
+ * from the row and saves on Enter / commit / blur. Built on
+ * {@link StationComposerDock} (ChatGPT-style dock chrome).
  *
- * The composer keeps its insert rail (staff stamp / ticket subject / unit price /
- * synced-PO note / product title) and, for matched cartons, one bottom-right
- * button that pushes the note into the carton's synced PO note. The receiving
- * Checklist is now a top-level display tab, not a surface inside this card.
+ * Insert rail (staff stamp / ticket / price / synced PO / title) and, for
+ * matched cartons, push-to-PO live in the composer footer.
  */
-
-const NOTES_TEXTAREA_FOCUS =
-  'focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
 
 export function LineNotesCard({
   notes,
@@ -61,6 +48,8 @@ export function LineNotesCard({
   onSaveOverallNote,
   showSyncToPo = true,
   activeStep = null,
+  animateMount = true,
+  trailingAction,
 }: {
   /** The one durable note (`receiving_lines.notes`) — composes the label + saves. */
   notes: string;
@@ -87,14 +76,20 @@ export function LineNotesCard({
   showSyncToPo?: boolean;
   /** Active workflow step — auto-focuses the composer on the print step. */
   activeStep?: ReceivingStepKey | null;
+  /** Pass-through to StationComposerDock mount motion. */
+  animateMount?: boolean;
+  /**
+   * Terminal CTA rendered at the composer's trailing edge (Unbox overview
+   * mounts the Receive/Print split here). Replaces the blue Send — Enter and
+   * blur still save.
+   */
+  trailingAction?: ReactNode;
 }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [savedFlash, setSavedFlash] = useState(false);
   const savedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { user } = useAuth();
 
-  // Focus the composer when the workflow reaches the print step, so the operator
-  // lands on the label note without hunting for the cursor.
   useEffect(() => {
     if (activeStep === 'print') {
       requestAnimationFrame(() => focusTextEnd(textareaRef.current));
@@ -108,13 +103,21 @@ export function LineNotesCard({
     [],
   );
 
-  // Auto-save on blur; flash "Saved" only when the note actually changed.
-  const handleBlur = useCallback(() => {
-    if (!onSaveNotes()) return;
+  const flashSaved = useCallback(() => {
     setSavedFlash(true);
     if (savedTimer.current) clearTimeout(savedTimer.current);
     savedTimer.current = setTimeout(() => setSavedFlash(false), 1600);
-  }, [onSaveNotes]);
+  }, []);
+
+  const commitNotes = useCallback(() => {
+    if (!onSaveNotes()) return;
+    flashSaved();
+  }, [onSaveNotes, flashSaved]);
+
+  // Auto-save on blur when the note changed.
+  const handleBlur = useCallback(() => {
+    commitNotes();
+  }, [commitNotes]);
 
   const appendToNotes = useCallback(
     (text: string) => {
@@ -145,7 +148,9 @@ export function LineNotesCard({
     setFetchingTicketSubject(true);
     try {
       const res = await fetch(`/api/receiving/zendesk-claim/thread?ticketId=${ticketId}`);
-      const data = (await res.json().catch(() => null)) as { ticket?: { subject?: string | null } } | null;
+      const data = (await res.json().catch(() => null)) as {
+        ticket?: { subject?: string | null };
+      } | null;
       const subject = data?.ticket?.subject?.trim();
       if (res.ok && subject) {
         appendToNotes(subject);
@@ -251,80 +256,67 @@ export function LineNotesCard({
     appendToNotes,
   ]);
 
-  return (
-    // Glass worksheet surface — matches the carton context / PO items cards so the
-    // whole unbox column reads as one frosted worksheet. No header row: the
-    // placeholder teaches what the field is, and it saves itself.
-    <WorkspaceCard variant="glass" overflow="visible" bodyDensity="nested">
-      <div className="group relative">
-        <textarea
-          ref={textareaRef}
-          rows={2}
-          aria-label="Carton notes"
-          value={notes}
-          onChange={(e) => onNotesChange(e.target.value)}
-          onBlur={handleBlur}
-          placeholder="Notes for this carton — printed on the label and saved"
-          className={`block h-[50px] w-full resize-none ${WORKSPACE_NESTED_FIELD} ${WORKSPACE_NESTED_FIELD_PAD_COMPACT} text-role-caption leading-snug text-text-default placeholder:text-text-faint pr-10 ${NOTES_TEXTAREA_FOCUS}`}
-        />
-
-        {/* Top-left repeat-previous; top-right insert rail; bottom-right push-to-PO. */}
-        {trimmedPreviousNotes && (
-          <div className="pointer-events-none absolute left-1.5 top-px opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
-            <div className="pointer-events-auto">
-              <HoverTooltip label="Repeat the previous line's notes" asChild>
-                {/* ds-raw-button */}
-                <button
-                  type="button"
-                  onClick={() => appendToNotes(trimmedPreviousNotes)}
-                  aria-label="Repeat the previous line's notes"
-                  className={`${NOTE_OVERLAY_ICON_BTN} bg-surface-card/80 text-text-faint shadow-sm ring-1 ring-border-soft/60 transition hover:bg-surface-sunken hover:text-text-muted`}
-                >
-                  <History className={NOTE_OVERLAY_ICON} />
-                </button>
-              </HoverTooltip>
-            </div>
-          </div>
-        )}
-
-        <NoteComposerInsertRail
-          actions={insertActions}
-          className={WORKSPACE_NESTED_OVERLAY_CORNER_COMPACT}
-        />
-
-        {/* Bottom-left: a light "Saved" confirmation that fades in on blur-save. */}
-        <div
-          aria-live="polite"
-          className={`pointer-events-none absolute bottom-px left-3 flex items-center gap-1 text-role-micro font-semibold uppercase tracking-wide text-emerald-600 transition-opacity duration-300 ${
-            savedFlash ? 'opacity-100' : 'opacity-0'
-          }`}
-        >
-          <Check className="h-3 w-3" /> Saved
-        </div>
-
-        {showSyncToPo ? (
-          <div className="pointer-events-none absolute bottom-px right-1.5 z-10">
-            <div className="pointer-events-auto">
-              <HoverTooltip label="Push this note to the synced PO" asChild>
-                {/* ds-raw-button */}
-                <button
-                  type="button"
-                  onClick={() => void handleSyncToInventory()}
-                  disabled={syncingToInventory}
-                  aria-label="Push this note to the synced PO note"
-                  className={`${NOTE_DOWNLOAD_SYNC_BTN} disabled:cursor-not-allowed disabled:opacity-40`}
-                >
-                  {syncingToInventory ? (
-                    <Loader2 className={`${NOTE_OVERLAY_ICON} animate-spin`} />
-                  ) : (
-                    <Download className={NOTE_OVERLAY_ICON} />
-                  )}
-                </button>
-              </HoverTooltip>
-            </div>
-          </div>
-        ) : null}
+  const footerStart = (
+    <>
+      <NoteComposerInsertRail actions={insertActions} placement="inline" />
+      {trimmedPreviousNotes ? (
+        <HoverTooltip label="Repeat the previous line's notes" asChild>
+          {/* ds-raw-button */}
+          <button
+            type="button"
+            onClick={() => appendToNotes(trimmedPreviousNotes)}
+            aria-label="Repeat the previous line's notes"
+            className={`${NOTE_OVERLAY_ICON_BTN} text-text-faint transition hover:bg-surface-sunken hover:text-text-muted`}
+          >
+            <History className={NOTE_OVERLAY_ICON} />
+          </button>
+        </HoverTooltip>
+      ) : null}
+      <div
+        aria-live="polite"
+        className={`flex items-center gap-1 text-role-micro font-semibold uppercase tracking-wide text-emerald-600 transition-opacity duration-300 ${
+          savedFlash ? 'opacity-100' : 'pointer-events-none opacity-0'
+        }`}
+      >
+        <Check className="h-3 w-3" /> Saved
       </div>
-    </WorkspaceCard>
+    </>
+  );
+
+  const footerEnd = showSyncToPo ? (
+    <HoverTooltip label="Push this note to the synced PO" asChild>
+      {/* ds-raw-button */}
+      <button
+        type="button"
+        onClick={() => void handleSyncToInventory()}
+        disabled={syncingToInventory}
+        aria-label="Push this note to the synced PO note"
+        className={`${NOTE_DOWNLOAD_SYNC_BTN} disabled:cursor-not-allowed disabled:opacity-40`}
+      >
+        {syncingToInventory ? (
+          <Loader2 className={`${NOTE_OVERLAY_ICON} animate-spin`} />
+        ) : (
+          <Download className={NOTE_OVERLAY_ICON} />
+        )}
+      </button>
+    </HoverTooltip>
+  ) : null;
+
+  return (
+    <StationComposerDock
+      value={notes}
+      onChange={onNotesChange}
+      onCommit={commitNotes}
+      onBlur={handleBlur}
+      placeholder="Notes for this carton — printed on the label and saved"
+      ariaLabel="Carton notes"
+      commitAriaLabel="Save carton notes"
+      commitTooltip="Save notes (Enter)"
+      footerStart={footerStart}
+      footerEnd={footerEnd}
+      trailingAction={trailingAction}
+      animateMount={animateMount}
+      textareaRef={textareaRef}
+    />
   );
 }

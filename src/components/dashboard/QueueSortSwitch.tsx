@@ -18,25 +18,31 @@ import {
 } from '@/utils/queue-display-sort';
 import { cn } from '@/utils/_cn';
 
-export function QueueSortSwitch({
+export function QueueSortSwitch<T extends string = QueueDisplaySort>({
   sort,
   onChange,
+  options,
+  ariaLabel = 'Sort queue',
   className,
 }: {
-  sort: QueueDisplaySort;
-  onChange: (next: QueueDisplaySort) => void;
+  sort: T;
+  onChange: (next: T) => void;
+  /** Sort choices; defaults to the Pending / Testing queue vocabulary.
+   *  Repair passes its own `REPAIR_DISPLAY_SORT_OPTIONS`. */
+  options?: readonly { id: T; label: string; shortLabel: string }[];
+  /** Accessible name for the dropdown listbox. */
+  ariaLabel?: string;
   className?: string;
 }) {
+  const opts =
+    (options ?? QUEUE_DISPLAY_SORT_OPTIONS) as readonly { id: T; label: string; shortLabel: string }[];
   const [open, setOpen] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
 
-  const activeOption = useMemo(
-    () => QUEUE_DISPLAY_SORT_OPTIONS.find((o) => o.id === sort) ?? QUEUE_DISPLAY_SORT_OPTIONS[0],
-    [sort],
-  );
+  const activeOption = useMemo(() => opts.find((o) => o.id === sort) ?? opts[0], [opts, sort]);
 
-  const handleSelect = (next: QueueDisplaySort) => {
+  const handleSelect = (next: T) => {
     if (next !== sort) onChange(next);
     setOpen(false);
     buttonRef.current?.focus();
@@ -50,7 +56,7 @@ export function QueueSortSwitch({
   };
 
   const handleOptionKeyDown = (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
-    const count = QUEUE_DISPLAY_SORT_OPTIONS.length;
+    const count = opts.length;
     if (event.key === 'Escape') {
       event.preventDefault();
       setOpen(false);
@@ -98,11 +104,11 @@ export function QueueSortSwitch({
         matchWidth={false}
         padded={false}
         role="listbox"
-        aria-label="Sort queue"
+        aria-label={ariaLabel}
         className="min-w-[9.5rem] rounded-lg p-0.5 shadow-md"
       >
         <ul ref={listRef} className="list-none">
-          {QUEUE_DISPLAY_SORT_OPTIONS.map((o, index) => {
+          {opts.map((o, index) => {
             const active = sort === o.id;
             return (
               <li key={o.id} role="none">

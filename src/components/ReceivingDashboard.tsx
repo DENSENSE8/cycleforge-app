@@ -49,7 +49,7 @@ export default function ReceivingDashboard() {
   const { user } = useAuth();
   const staffId = String(user?.staffId ?? '');
 
-  const { mode, isTriageMode, isIncomingMode, isTableOnlyMode, incomingView } =
+  const { mode, isTriageMode, isIncomingMode, isRepairMode, isTableOnlyMode, incomingView } =
     useReceivingDashboardMode();
 
   const { workspace, setWorkspace, nav, setNav, scanInFlight, restorePending } =
@@ -58,8 +58,6 @@ export default function ReceivingDashboard() {
   const {
     overlayLog,
     setOverlayLog,
-    pickupReviewOrderId,
-    setPickupReviewOrderId,
     incomingDetails,
     setIncomingDetails,
     enrichOverlayLog,
@@ -74,7 +72,8 @@ export default function ReceivingDashboard() {
     bulkActions,
   } = useReceivingLineBulkSelection({
     scope: RECEIVING_SELECTION_SCOPE,
-    active: isTableOnlyMode,
+    // History / Incoming only — Repair mounts its own queue (no line bulk select).
+    active: isTableOnlyMode && !isRepairMode,
     formatCopyRow: formatReceivingCopyRow,
   });
 
@@ -124,8 +123,6 @@ export default function ReceivingDashboard() {
           if (overlayLog) void enrichOverlayLog(Number(overlayLog.id));
         }}
         onOverlayLogDeleted={() => setOverlayLog(null)}
-        pickupReviewOrderId={pickupReviewOrderId}
-        onClosePickupReview={() => setPickupReviewOrderId(null)}
         claimRow={claimRow}
         onCloseClaim={() => setClaimRow(null)}
         onClaimFiled={() => {

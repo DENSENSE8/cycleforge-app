@@ -5,13 +5,15 @@
  * tablets (FOH/BOH surface split, doc 06). Manager-only (`walk_in.enroll_kiosk`).
  *
  * Enrolling mints a ONE-TIME pairing code shown once here; the manager carries
- * it to the tablet's /kiosk "Set up this tablet" screen. Only hashes live
- * server-side — this surface never sees a token.
+ * it to the tablet's kiosk host (`{slug}.kiosk.app.cycleforge.ai`) "Set up this
+ * tablet" screen. Only hashes live server-side — this surface never sees a token.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button } from '@/design-system/primitives';
 import { focusRing } from '@/design-system/tokens/focus-ring';
+import { useAuth } from '@/contexts/AuthContext';
+import { kioskOriginForSlug } from '@/lib/tenancy/kiosk-host';
 import { cn } from '@/utils/_cn';
 
 interface KioskDeviceRow {
@@ -54,12 +56,23 @@ function fmtRelative(when: string | null): string {
 }
 
 export function KioskDevicesSection() {
+  const { user } = useAuth();
   const [rows, setRows] = useState<KioskDeviceRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [label, setLabel] = useState('');
   const [enrolling, setEnrolling] = useState(false);
   const [freshCode, setFreshCode] = useState<FreshCode | null>(null);
+
+  const kioskUrl = useMemo(() => {
+    const slug = user?.organizationSlug?.trim();
+    if (!slug) return null;
+    try {
+      return `${kioskOriginForSlug(slug)}/`;
+    } catch {
+      return null;
+    }
+  }, [user?.organizationSlug]);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -117,8 +130,18 @@ export function KioskDevicesSection() {
       <header>
         <h1 className="sr-only">Kiosk devices</h1>
         <p className="text-sm text-text-soft">
-          Customer-facing intake tablets (<code className="rounded bg-surface-sunken px-1">/kiosk</code>). Each
-          authenticates as a device, never a staff account. Enroll one to get a one-time pairing code.
+          Customer-facing intake tablets
+          {kioskUrl ? (
+            <>
+              {' '}
+              (
+              <code className="rounded bg-surface-sunken px-1 break-all">{kioskUrl}</code>
+              )
+            </>
+          ) : (
+            <> (<code className="rounded bg-surface-sunken px-1">{'{slug}.kiosk.app.cycleforge.ai'}</code>)</>
+          )}
+          . Each authenticates as a device, never a staff account. Enroll one to get a one-time pairing code.
         </p>
       </header>
 
@@ -152,7 +175,13 @@ export function KioskDevicesSection() {
               {freshCode.code}
             </p>
             <p className="mt-1 text-xs font-semibold text-emerald-700">
-              On the tablet, open /kiosk → “Set up this tablet” and enter this code before{' '}
+              On the tablet, open{' '}
+              {kioskUrl ? (
+                <code className="rounded bg-emerald-100/80 px-1 break-all">{kioskUrl}</code>
+              ) : (
+                <>the workspace kiosk URL</>
+              )}{' '}
+              → “Set up this tablet” and enter this code before{' '}
               {new Date(freshCode.expiresAt).toLocaleTimeString()}.
             </p>
           </div>

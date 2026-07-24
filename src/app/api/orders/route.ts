@@ -419,7 +419,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
         ${trackingArraysSelect}
         COALESCE(sc.sku, o.sku) AS sku,
         o.condition,
-        o.out_of_stock,
+        o.is_out_of_stock,
         o.status,
         o.notes,
         o.is_urgent,

@@ -40,12 +40,12 @@ export function LabelsQueueTable({
     const rows = [...(query.data ?? [])].filter((r) => {
       const row = r as ShippedOrder & {
         has_tech_scan?: boolean;
-        out_of_stock?: string | null;
+        is_out_of_stock?: boolean;
         is_urgent?: boolean;
       };
       const state = deriveFulfillmentState({
         hasTechScan: Boolean(row.has_tech_scan),
-        outOfStock: row.out_of_stock,
+        isOutOfStock: Boolean(row.is_out_of_stock),
       });
       if (statusFilter && state !== statusFilter) return false;
       if (urgentOnly && !row.is_urgent) return false;

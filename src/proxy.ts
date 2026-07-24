@@ -19,12 +19,19 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import {
+  isBareKioskPlatformHost,
+  isKioskHost,
+  isKioskHostAllowedPath,
+  kioskOriginForSlug,
+} from '@/lib/tenancy/kiosk-host';
 
 // Inlined (not imported) to keep the Edge bundle free of node:crypto / pg.
 // Must stay in sync with `src/lib/auth/session.ts` (SESSION_COOKIE_NAME +
 // LEGACY_SESSION_COOKIE_NAME). During the cookie rename the edge accepts EITHER
 // the canonical `cf_sid` or the legacy `usav_sid` — the migrate-on-touch to a
 // single cf_sid happens in the /api/auth/session heartbeat (Node runtime).
+// Kiosk host helpers are pure string/env (no db) — safe to import here.
 const SESSION_COOKIE_NAME = 'cf_sid';
 const LEGACY_SESSION_COOKIE_NAME = 'usav_sid';
 
@@ -82,6 +89,9 @@ const RESERVED_SUBDOMAINS = new Set<string>([
   'status',
   'staging',
   'preview',
+  // Platform kiosk apex (`kiosk.app.cycleforge.ai`) — not a tenant. Tenant
+  // kiosks live at `{slug}.kiosk.app.cycleforge.ai` (first label = slug).
+  'kiosk',
   // Named Cloudflare dev tunnel (pnpm dev:tunnel:named) — not a tenant slug.
   'usav-dev',
 ]);
@@ -228,7 +238,8 @@ function resolveMobileUaRewrite(pathname: string, ua: string | null): string | n
  *                     pointing at it now would land on the dashboard default)
  * The rest of the matrix:
  *   `/pickup?job=…`  → `resolveWalkInJobRedirect` below
- *   `/walk-in?mode=sales` / `?category=` → in-page (`useWalkInTaskRedirect`)
+ *   `/walk-in?mode=repair` / `?category=repairs` → `/repair`
+ *   `/walk-in?mode=sales` / other `?category=` → in-page (`useWalkInTaskRedirect`)
  */
 function resolveReceivingSurfaceRedirect(url: NextRequest['nextUrl']): NextRequest['nextUrl'] | null {
   if (url.pathname !== '/receiving') return null;
@@ -268,6 +279,25 @@ function resolveWalkInJobRedirect(url: NextRequest['nextUrl']): NextRequest['nex
   const next = url.clone();
   next.pathname = job === 'repair' ? '/repair' : job === 'sales' ? '/walk-in' : '/pickup';
   next.searchParams.delete('job'); // the route IS the mode now
+  return next;
+}
+
+/**
+ * Sales-hub Repair mode redirect. Repair left `/walk-in` for Receiving
+ * `/repair` (RepairTable → LedgerGrid). Preserve queue deep-link params
+ * (`tab`, `search`, `openRepair`, `new`); drop `mode` / legacy `category`.
+ */
+function resolveWalkInRepairModeRedirect(url: NextRequest['nextUrl']): NextRequest['nextUrl'] | null {
+  if (url.pathname !== '/walk-in' && url.pathname !== '/walk-in/') return null;
+  const mode = url.searchParams.get('mode');
+  const category = url.searchParams.get('category');
+  const isRepair =
+    mode === 'repair' || mode === 'repairs' || category === 'repair' || category === 'repairs';
+  if (!isRepair) return null;
+  const next = url.clone();
+  next.pathname = '/repair';
+  next.searchParams.delete('mode');
+  next.searchParams.delete('category');
   return next;
 }
 
@@ -456,9 +486,54 @@ function applySecurityHeaders(res: NextResponse): NextResponse {
 
 export function proxy(req: NextRequest): NextResponse {
   const { pathname } = req.nextUrl;
+  const hostHeader = req.headers.get('host');
   const hasCookie = Boolean(
     req.cookies.get(SESSION_COOKIE_NAME)?.value || req.cookies.get(LEGACY_SESSION_COOKIE_NAME)?.value,
   );
+
+  // ── Kiosk host surface (`{slug}.kiosk.app.cycleforge.ai`) ─────────────────
+  // Hard isolation: only the intake UI + device-authed kiosk APIs. Staff
+  // enroll/revoke/devices and every other app path → 404 (no chrome leak).
+  if (isBareKioskPlatformHost(hostHeader)) {
+    return applySecurityHeaders(
+      pathname.startsWith('/api/')
+        ? NextResponse.json({ error: 'NOT_FOUND' }, { status: 404 })
+        : new NextResponse('Not Found', { status: 404 }),
+    );
+  }
+
+  if (isKioskHost(hostHeader)) {
+    if (!isKioskHostAllowedPath(pathname)) {
+      return applySecurityHeaders(
+        pathname.startsWith('/api/')
+          ? NextResponse.json({ error: 'NOT_FOUND' }, { status: 404 })
+          : new NextResponse('Not Found', { status: 404 }),
+      );
+    }
+
+    const requestHeaders = new Headers(req.headers);
+    const tenantSlug = extractTenantSlug(hostHeader);
+    if (tenantSlug) {
+      requestHeaders.set('x-tenant-slug', tenantSlug);
+    }
+
+    // MDM pins the origin root — rewrite `/` → `/kiosk`.
+    const effectivePath = pathname === '/' ? '/kiosk' : pathname;
+    requestHeaders.set('x-pathname', effectivePath);
+
+    if (pathname === '/') {
+      const url = req.nextUrl.clone();
+      url.pathname = '/kiosk';
+      return applySecurityHeaders(
+        NextResponse.rewrite(url, { request: { headers: requestHeaders } }),
+      );
+    }
+
+    return applySecurityHeaders(
+      NextResponse.next({ request: { headers: requestHeaders } }),
+    );
+  }
+
   // Path-prefix rewrites take precedence; UA-based rewrites are a fallback
   // for exact paths with a /m/* counterpart (see MOBILE_UA_REWRITES).
   const rewriteTarget =
@@ -472,9 +547,30 @@ export function proxy(req: NextRequest): NextResponse {
   // Stamp the tenant slug (if any) so downstream handlers can resolve the
   // org without re-parsing the host header. The slug is just a hint —
   // the authoritative org id always comes from the session.
-  const tenantSlug = extractTenantSlug(req.headers.get('host'));
+  const tenantSlug = extractTenantSlug(hostHeader);
   if (tenantSlug) {
     requestHeaders.set('x-tenant-slug', tenantSlug);
+  }
+
+  // Legacy staff-host `/kiosk` → permanent redirect to the tenant kiosk origin.
+  // Production apex (no slug) → sign-in. Non-production without a slug keeps
+  // serving `/kiosk` on the staff host so local E2E / tunnels work pre-DNS.
+  if (pathname === '/kiosk' || pathname.startsWith('/kiosk/')) {
+    if (tenantSlug) {
+      try {
+        const dest = new URL(`${kioskOriginForSlug(tenantSlug)}/`);
+        return applySecurityHeaders(NextResponse.redirect(dest, 308));
+      } catch {
+        /* invalid slug — fall through */
+      }
+    }
+    if (process.env.NODE_ENV === 'production') {
+      const url = req.nextUrl.clone();
+      url.pathname = '/signin';
+      url.searchParams.set('next', '/kiosk');
+      url.searchParams.set('reason', 'kiosk-workspace');
+      return applySecurityHeaders(NextResponse.redirect(url));
+    }
   }
 
   const applyRewriteOrNext = (): NextResponse => {
@@ -494,6 +590,7 @@ export function proxy(req: NextRequest): NextResponse {
       resolveAuditLogRedirect(req.nextUrl) ??
       resolveReceivingSurfaceRedirect(req.nextUrl) ??
       resolveWalkInJobRedirect(req.nextUrl) ??
+      resolveWalkInRepairModeRedirect(req.nextUrl) ??
       resolvePackSurfaceRedirect(req.nextUrl) ??
       resolveTestSurfaceRedirect(req.nextUrl) ??
       resolveShippingSurfaceRedirect(req.nextUrl) ??

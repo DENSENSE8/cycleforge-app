@@ -21,11 +21,14 @@ import {
 import { ContextualSelectionBar } from '@/design-system/components/ContextualSelectionBar';
 import { DASHBOARD_ORDERS_SELECTION_SCOPE } from '@/lib/selection/dashboard-scopes';
 import type { SelectionAction } from '@/lib/selection/selection-actions';
-import type { DashboardOrderView } from '@/utils/dashboard-search-state';
+import {
+  isPrePackOrderView,
+  type DashboardOrderView,
+} from '@/utils/dashboard-search-state';
 import type { DashSelectableRow } from '@/hooks/useDashboardBulkSelection';
 
 // Phase 4 (bundle deferral): non-default order views are code-split so their
-// chunks load only when the user switches tabs — the default To Ship view
+// chunks load only when the user switches tabs — the default Pending view
 // (`UnshippedTable`) stays in the initial bundle. `ssr: false`: the dashboard
 // is a client shell behind BootGate, so there's no SSR to preserve.
 function TableFallback() {
@@ -42,7 +45,7 @@ const FbaShipmentsTable = dynamic(() => import('@/components/fba/FbaShipmentsTab
 
 interface DashboardOrdersViewProps {
   orderView: DashboardOrderView;
-  /** Switch the lifecycle tab (To Ship · Packed · Shipped) — writes the URL view flag. */
+  /** Switch the lifecycle tab (Pending · Tested · Packed · Shipped) — writes the URL view flag. */
   onSelectView: (view: DashboardOrderView) => void;
   selectMode: boolean;
   selectionEnabled: boolean;
@@ -59,7 +62,7 @@ export function DashboardOrdersView({
   selectionActions,
 }: DashboardOrdersViewProps) {
   const showOutboundChrome =
-    orderView === 'unshipped' || orderView === 'packed' || orderView === 'shipped';
+    isPrePackOrderView(orderView) || orderView === 'packed' || orderView === 'shipped';
   const [outboundControlsEl, setOutboundControlsEl] = useState<HTMLDivElement | null>(null);
 
   return (
@@ -86,7 +89,13 @@ export function DashboardOrdersView({
         {showOutboundChrome ? (
           <div className="mb-4">
             <OutboundKpiStrip
-              mode={orderView === 'packed' ? 'shipped' : (orderView as 'unshipped' | 'shipped')}
+              mode={
+                orderView === 'packed' || orderView === 'shipped'
+                  ? 'shipped'
+                  : orderView === 'tested'
+                    ? 'tested'
+                    : 'unshipped'
+              }
             />
           </div>
         ) : null}
@@ -110,6 +119,7 @@ export function DashboardOrdersView({
                 strictSearchScope
                 selectMode={selectMode}
                 toolbarPortalTarget={outboundControlsEl}
+                fulfillmentLane={orderView === 'tested' ? 'tested' : 'pending'}
               />
             )}
           </Suspense>

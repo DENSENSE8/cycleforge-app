@@ -98,6 +98,8 @@ test('resolveUnboxReceiveTerminal: primary label from controller', () => {
   );
   assert.equal(vm.label, 'Receive');
   assert.equal(vm.docked, true);
+  assert.equal(vm.fullWidth, false);
+  assert.equal(vm.align, 'end');
   assert.ok(vm.menu && vm.menu.some((m) => m.label.startsWith('Print only')));
   assert.ok(vm.menu && vm.menu.some((m) => m.label === 'Save all to inventory'));
   const carton = vm.menu?.find((m) => m.label === 'Carton label');

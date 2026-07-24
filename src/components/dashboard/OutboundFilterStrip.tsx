@@ -3,15 +3,16 @@
 /**
  * Outbound header filter pieces (right cluster):
  *
- * - {@link OutboundExactFilters} — icon-only Urgent + Filter popover (lanes / statuses + All)
+ * - {@link OutboundExactFilters} — icon-only Urgent + Filter popover
+ *   (Pending tab: Urgent + Blocked; tabs own Pending / Tested)
  *
  * Resting chrome: [⚡] [⫶] — labels + counts live in the popover / tooltips.
  *
- * Keyboard (capture, To Ship only, when not typing):
- *   `A` = All · `1`/`2`/`3` = Pending/Tested/Blocked · `4`/`U` = Urgent
+ * Keyboard (capture, Pending/Tested only, when not typing):
+ *   `A` = clear filters · `1`/`2` = Pending/Tested tabs · `3` = Blocked · `4`/`U` = Urgent
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { Zap } from '@/components/Icons';
@@ -26,23 +27,20 @@ import {
 import {
   FULFILLMENT_STATE_META,
   fulfillmentCountsFromCombos,
-  type FulfillmentState,
 } from '@/lib/unshipped-state';
 import { OUTBOUND_STATE_META, type OutboundState } from '@/lib/outbound-state';
 import { unshippedQueueCountsQuery } from '@/lib/queries/dashboard-queries';
 import { useShippedScanOutData } from '@/hooks/useShippedScanOutData';
 import { useOutboundStatusFilter } from '@/components/shipped/useOutboundStatusFilter';
 import { useToShipStatusFilter } from '@/components/unshipped/useToShipStatusFilter';
+import {
+  isPrePackOrderView,
+  normalizeDashboardOrderViewParams,
+  type DashboardOrderView,
+} from '@/utils/dashboard-search-state';
 import { cn } from '@/utils/_cn';
 
-type UnshippedLegendKey = FulfillmentState;
-type FilterMode = 'unshipped' | 'packed' | 'shipped';
-
-const UNSHIPPED_ITEMS: { state: UnshippedLegendKey; short: string }[] = [
-  { state: 'PENDING', short: 'Pending' },
-  { state: 'TESTED', short: 'Tested' },
-  { state: 'BLOCKED', short: 'Out of stock' },
-];
+type FilterMode = 'unshipped' | 'tested' | 'packed' | 'shipped';
 
 const SHIPPED_ITEMS: { state: OutboundState; short: string; fold?: OutboundState }[] = [
   { state: 'PACKED_STAGED', short: 'Staging' },
@@ -64,11 +62,13 @@ function isTypingTarget(el: EventTarget | null): boolean {
 }
 
 /**
- * Toolbar + hotkey actions for To Ship / Shipping Pending. Lane toggle shares
- * {@link useToShipStatusFilter} with the KPI strips; urgent + "All" (also clears
- * legacy `late`) stay here because KPIs don't drive those.
+ * Toolbar + hotkey actions for Pending / Tested. Blocked + urgent share
+ * {@link useToShipStatusFilter} / attention URL params; Pending/Tested tabs are
+ * first-class views via {@link normalizeDashboardOrderViewParams}.
+ *
+ * Shared waist with {@link OutboundKpiStrip} queue tiles — one URL write path.
  */
-function useToShipFilterActions() {
+export function useToShipFilterActions() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
@@ -90,8 +90,28 @@ function useToShipFilterActions() {
     [router, pathname, searchParams],
   );
 
+  const selectLifecycleTab = useCallback(
+    (view: 'unshipped' | 'tested') => {
+      replaceParams((p) => {
+        normalizeDashboardOrderViewParams(p, view);
+      });
+    },
+    [replaceParams],
+  );
+
   const selectAll = useCallback(() => {
     replaceParams((p) => {
+      p.delete('ustatus');
+      p.delete('stage');
+      p.delete('late');
+      p.delete('attention');
+    });
+  }, [replaceParams]);
+
+  /** Full Pending tab — lifecycle view + clear OOS / urgent refines in one write. */
+  const selectPendingTab = useCallback(() => {
+    replaceParams((p) => {
+      normalizeDashboardOrderViewParams(p, 'unshipped');
       p.delete('ustatus');
       p.delete('stage');
       p.delete('late');
@@ -113,11 +133,33 @@ function useToShipFilterActions() {
     });
   }, [replaceParams]);
 
-  return { active, urgentOnly, selectAll, toggle, toggleUrgent };
+  const toggleBlocked = useCallback(() => {
+    // Blocked lives under Pending — jump there if needed, then toggle.
+    replaceParams((p) => {
+      normalizeDashboardOrderViewParams(p, 'unshipped');
+      if (p.get('ustatus') === 'BLOCKED') p.delete('ustatus');
+      else {
+        p.set('ustatus', 'BLOCKED');
+        p.delete('stage');
+        p.delete('attention');
+      }
+    });
+  }, [replaceParams]);
+
+  return {
+    active,
+    urgentOnly,
+    selectAll,
+    selectPendingTab,
+    toggle,
+    toggleUrgent,
+    toggleBlocked,
+    selectLifecycleTab,
+  };
 }
 
 export function useToShipFilterHotkeys(enabled: boolean) {
-  const { selectAll, toggle, toggleUrgent } = useToShipFilterActions();
+  const { selectAll, toggleUrgent, toggleBlocked, selectLifecycleTab } = useToShipFilterActions();
 
   useEffect(() => {
     if (!enabled) return;
@@ -139,50 +181,48 @@ export function useToShipFilterHotkeys(enabled: boolean) {
         toggleUrgent();
         return;
       }
-      const digitMap: Record<string, UnshippedLegendKey> = {
-        Digit1: 'PENDING',
-        Numpad1: 'PENDING',
-        Digit2: 'TESTED',
-        Numpad2: 'TESTED',
-        Digit3: 'BLOCKED',
-        Numpad3: 'BLOCKED',
-      };
-      const lane = digitMap[code];
-      if (lane) {
+      if (code === 'Digit1' || code === 'Numpad1') {
         e.preventDefault();
         e.stopPropagation();
-        toggle(lane);
+        selectLifecycleTab('unshipped');
+        return;
+      }
+      if (code === 'Digit2' || code === 'Numpad2') {
+        e.preventDefault();
+        e.stopPropagation();
+        selectLifecycleTab('tested');
+        return;
+      }
+      if (code === 'Digit3' || code === 'Numpad3') {
+        e.preventDefault();
+        e.stopPropagation();
+        toggleBlocked();
       }
     };
 
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
-  }, [enabled, selectAll, toggle, toggleUrgent]);
+  }, [enabled, selectAll, toggleUrgent, toggleBlocked, selectLifecycleTab]);
 }
 
-/** Icon-only Urgent + Filter popover (lanes / statuses + All). */
+/** Icon-only Urgent + Filter popover (Blocked + clear). */
 export function OutboundExactFilters({ mode }: { mode: FilterMode }) {
   if (mode === 'packed') return null;
-  return mode === 'shipped' ? <ShippedExactFilters /> : <ToShipExactFilters />;
+  return mode === 'shipped' ? <ShippedExactFilters /> : <ToShipExactFilters mode={mode} />;
 }
 
-function ToShipExactFilters() {
-  const { active, urgentOnly, selectAll, toggle, toggleUrgent } = useToShipFilterActions();
+function ToShipExactFilters({ mode }: { mode: 'unshipped' | 'tested' }) {
+  const { active, urgentOnly, selectAll, toggleBlocked, toggleUrgent } = useToShipFilterActions();
   const [open, setOpen] = useState(false);
   const { data } = useQuery(unshippedQueueCountsQuery());
   const fromCombos = fulfillmentCountsFromCombos(data?.combos ?? []);
-  const counts = useMemo(
-    () => ({
-      PENDING: fromCombos.PENDING || data?.byStage.pending || 0,
-      TESTED: fromCombos.TESTED || data?.byStage.tested || 0,
-      BLOCKED: fromCombos.BLOCKED,
-    }),
-    [fromCombos.PENDING, fromCombos.TESTED, fromCombos.BLOCKED, data?.byStage.pending, data?.byStage.tested],
-  );
-  const allCount = counts.PENDING + counts.TESTED + counts.BLOCKED;
+  const blockedCount = fromCombos.BLOCKED;
+  const pendingCount = (fromCombos.PENDING || data?.byStage.pending || 0) + blockedCount;
   const urgentCount = data?.urgent ?? 0;
-  const allActive = active == null && !urgentOnly;
-  const laneHot = active != null || urgentOnly;
+  const blockedActive = active === 'BLOCKED';
+  const allActive = !blockedActive && !urgentOnly;
+  const laneHot = blockedActive || urgentOnly;
+  const tabCount = mode === 'tested' ? fromCombos.TESTED || data?.byStage.tested || 0 : pendingCount;
 
   return (
     <div className="flex min-w-0 shrink-0 items-center gap-1.5">
@@ -202,12 +242,12 @@ function ToShipExactFilters() {
         open={open}
         onOpenChange={setOpen}
         hot={laneHot}
-        label="Lane filters · 1 Pending · 2 Tested · 3 Blocked · 4 Urgent · A All"
+        label="Filters · 1 Pending · 2 Tested · 3 Blocked · 4 Urgent · A Clear"
       >
-        <WorkbenchFilterGroupLabel>Lane</WorkbenchFilterGroupLabel>
+        <WorkbenchFilterGroupLabel>Filters</WorkbenchFilterGroupLabel>
         <WorkbenchFilterMenuRow
-          label="All"
-          count={allCount}
+          label={mode === 'tested' ? 'All tested' : 'All on tab'}
+          count={tabCount}
           active={allActive}
           shortcut="A"
           onClick={() => {
@@ -227,24 +267,21 @@ function ToShipExactFilters() {
             setOpen(false);
           }}
         />
-        {UNSHIPPED_ITEMS.map(({ state, short }, i) => {
-          const isOn = active === state;
-          const m = FULFILLMENT_STATE_META[state];
-          return (
-            <WorkbenchFilterMenuRow
-              key={state}
-              label={short}
-              count={counts[state]}
-              active={isOn}
-              shortcut={String(i + 1)}
-              leading={<span className={cn('h-2 w-2 shrink-0 rounded-full', m.dot)} />}
-              onClick={() => {
-                toggle(state);
-                setOpen(false);
-              }}
-            />
-          );
-        })}
+        {mode === 'unshipped' ? (
+          <WorkbenchFilterMenuRow
+            label="Out of stock"
+            count={blockedCount}
+            active={blockedActive}
+            shortcut="3"
+            leading={
+              <span className={cn('h-2 w-2 shrink-0 rounded-full', FULFILLMENT_STATE_META.BLOCKED.dot)} />
+            }
+            onClick={() => {
+              toggleBlocked();
+              setOpen(false);
+            }}
+          />
+        ) : null}
       </WorkbenchFilterPopover>
     </div>
   );
@@ -298,7 +335,7 @@ function ShippedExactFilters() {
 
 /** @deprecated Prefer {@link OutboundExactFilters}. */
 export function OutboundFilterStrip({ mode }: { mode: FilterMode }) {
-  useToShipFilterHotkeys(mode === 'unshipped');
+  useToShipFilterHotkeys(isPrePackOrderView(mode as DashboardOrderView));
   return (
     <div className="flex min-w-0 items-center gap-1.5">
       <OutboundExactFilters mode={mode} />

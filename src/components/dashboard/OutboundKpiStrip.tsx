@@ -12,23 +12,23 @@
  * language — so the strip reads as one family with `OperationsAnalyticsView`.
  *
  * Job (the redesign): this is an **attention header**, not a status mirror. It
- * answers two questions and drops everything else:
+ * answers three questions and drops everything else:
+ *   • "What's in the Pending queue?" — the **queue** zone (unshipped only):
+ *     Pending → Urgent → Out of stock, pinned left in that order. Urgent and
+ *     Out of stock click-to-filter the board; Pending clears refines and shows
+ *     the full tab.
  *   • "What needs me right now?" — the **attention** zone: severity-ranked
- *     actionable facts (blocked, exceptions, a slipping on-time rate, the test
- *     backlog). Sorted by `severity` DESC so "check immediately" sits leftmost;
- *     hero toned by intent (danger/warning), a status dot below. Healthy or
+ *     actionable facts (units stuck, ready-to-pack, exceptions, …). Sorted by
+ *     `severity` DESC; hero toned by intent (danger/warning). Healthy or
  *     zero-count metrics simply don't appear.
  *   • "What's down from previous weeks?" — the **trend** zone: metrics carrying an
  *     honest week-over-week `delta`. Today only throughput has a real prior-week
- *     baseline (`useOperationsRoi.pctChange`); on-time / exceptions / dwell / queue
- *     depth join this zone once the ROI endpoint returns prior-period values
- *     (Phase 2). We show a delta ONLY where the baseline is real — never a
- *     decorative arrow.
+ *     baseline (`useOperationsRoi.pctChange`).
  *
- * Pure status with neither severity nor a delta (delivered, in-transit,
- * ready-to-pack) is intentionally NOT shown — it's not "what needs you", and it
- * already lives on the board legend / lanes below. When both zones are empty the
- * strip shows a calm all-clear.
+ * Pure status with neither severity nor a delta (delivered, in-transit) is
+ * intentionally NOT shown — it's not "what needs you", and it already lives on
+ * the board legend / lanes below. When all zones are empty the strip shows a
+ * calm all-clear.
  *
  * The zoning + sort is pure and testable in `@/lib/dashboard/outbound-metrics`
  * (`splitOutboundAttention`); this file only renders it.
@@ -37,7 +37,8 @@
  * attention tiles that map to a real board state click-to-toggle via a SHARED
  * URL hook so a filter set from either the strip or the toolbar lights the other:
  *   • shipped → `?ostatus` via `useOutboundStatusFilter`
- *   • unshipped → `?ustatus` via `useToShipStatusFilter` (PENDING / TESTED / BLOCKED)
+ *   • Pending / Tested tabs → lifecycle view switch (or `?ustatus=BLOCKED` /
+ *     `?attention=1` via `useToShipFilterActions`)
  * Every tile explains its numerator/denominator on hover via `HoverTooltip`.
  *
  * Loading contract (unchanged): the counts source shares the WARM table cache while
@@ -60,21 +61,38 @@ import {
 } from '@/lib/dashboard/outbound-metrics';
 import type { OutboundState } from '@/lib/outbound-state';
 import { useOutboundStatusFilter } from '@/components/shipped/useOutboundStatusFilter';
-import { useToShipStatusFilter } from '@/components/unshipped/useToShipStatusFilter';
+import { useToShipFilterActions } from '@/components/dashboard/OutboundFilterStrip';
 import { useGatedOperationsRoi } from '@/features/operations/workspace/useGatedOperationsRoi';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { CheckCircle, RefreshCw } from '@/components/Icons';
 import { cn } from '@/utils/_cn';
 import type { FulfillmentState } from '@/lib/unshipped-state';
+import {
+  getDashboardOrderViewFromSearch,
+  type DashboardOrderView,
+} from '@/utils/dashboard-search-state';
+import { useSearchParams } from 'next/navigation';
 
-const EMPTY_UNSHIPPED = { total: 0, pending: 0, tested: 0, blocked: 0 };
+const EMPTY_UNSHIPPED = { total: 0, pending: 0, tested: 0, blocked: 0, urgent: 0 };
 
 /** The shipped board's `?ostatus` filter, threaded to attention tiles that map to
  *  a real outbound state. Absent in unshipped mode. */
 type OutboundFilter = { active: OutboundState | null; toggle: (state: OutboundState) => void };
 
-/** The To Ship board's `?ustatus` filter — Pending / Tested / Blocked lanes. */
-type ToShipFilter = { active: FulfillmentState | null; toggle: (state: FulfillmentState) => void };
+/** Pre-pack click targets — lifecycle tab and/or Blocked / Urgent refine. */
+type ToShipFilter = {
+  active: FulfillmentState | null;
+  orderView: DashboardOrderView;
+  urgentOnly: boolean;
+  toggle: (state: FulfillmentState) => void;
+  selectView: (view: DashboardOrderView) => void;
+  /** Jump to Pending and toggle Out-of-stock refine in one URL write. */
+  toggleBlocked: () => void;
+  /** Toggle Urgent-only (`?attention=1`). */
+  toggleUrgent: () => void;
+  /** Full Pending tab — clear OOS / urgent refines in one URL write. */
+  selectPendingTab: () => void;
+};
 
 /**
  * The one resolved shape both modes flow through. Because counts + trend come from
@@ -116,11 +134,20 @@ function MetricKpiTile({
 }) {
   const tone = metricIntentTextClass(metric.intent);
   const shippedClickable = Boolean(metric.filterState && filter);
-  const toShipClickable = Boolean(metric.filterUstatus && toShipFilter);
+  const toShipClickable = Boolean(
+    toShipFilter && (metric.filterUstatus || metric.filterAttention),
+  );
   const clickable = shippedClickable || toShipClickable;
+  const lane = metric.filterUstatus;
   const active = Boolean(
     (metric.filterState && filter?.active === metric.filterState) ||
-      (metric.filterUstatus && toShipFilter?.active === metric.filterUstatus),
+      (metric.filterAttention && toShipFilter?.urgentOnly) ||
+      (lane === 'BLOCKED' && toShipFilter?.active === 'BLOCKED') ||
+      (lane === 'TESTED' && toShipFilter?.orderView === 'tested') ||
+      (lane === 'PENDING' &&
+        toShipFilter?.orderView === 'unshipped' &&
+        toShipFilter?.active !== 'BLOCKED' &&
+        !toShipFilter?.urgentOnly),
   );
 
   // Tone the hero only for genuine problems (warn/bad); a neutral backlog stays
@@ -141,8 +168,24 @@ function MetricKpiTile({
 
   const onOpen = shippedClickable
     ? () => filter?.toggle(metric.filterState as OutboundState)
-    : toShipClickable
-      ? () => toShipFilter?.toggle(metric.filterUstatus as FulfillmentState)
+    : toShipClickable && toShipFilter
+      ? () => {
+          if (metric.filterAttention) {
+            toShipFilter.toggleUrgent();
+            return;
+          }
+          if (lane === 'TESTED') {
+            if (toShipFilter.orderView === 'tested') toShipFilter.selectView('unshipped');
+            else toShipFilter.selectView('tested');
+            return;
+          }
+          if (lane === 'PENDING') {
+            toShipFilter.selectPendingTab();
+            return;
+          }
+          // BLOCKED — Pending tab + OOS refine in one navigation.
+          toShipFilter.toggleBlocked();
+        }
       : undefined;
 
   const tile = (
@@ -199,7 +242,7 @@ function OutboundStripAllClear({ mode }: { mode: 'shipped' | 'unshipped' }) {
   const copy =
     mode === 'shipped'
       ? { title: 'Nothing needs attention.', hint: 'Blockers, exceptions, and week-over-week trends surface here.' }
-      : { title: 'The queue is clear.', hint: 'Blocked units and the test backlog surface here.' };
+      : { title: 'The queue is clear.', hint: 'Pending, urgent, and out-of-stock counts surface here.' };
   return (
     <div className="flex items-center gap-3 rounded-xl border border-dashed border-border-soft bg-surface-card px-4 py-5">
       <CheckCircle className="h-5 w-5 shrink-0 text-text-success" />
@@ -236,8 +279,8 @@ function OutboundStripLayout(data: OutboundStripData): ReactNode {
   if (data.isError) return <OutboundStripError onRetry={data.refetch} />;
   if (data.isPending) return <OutboundStripSkeleton reservedSlots={data.reservedSlots} />;
 
-  const { attention, trend } = splitOutboundAttention(data.metrics);
-  const tiles = [...attention, ...trend];
+  const { queue, attention, trend } = splitOutboundAttention(data.metrics);
+  const tiles = [...queue, ...attention, ...trend];
   if (tiles.length === 0) return <OutboundStripAllClear mode={data.mode} />;
 
   return (
@@ -270,7 +313,30 @@ function ShippedStrip() {
 function UnshippedStrip() {
   const query = useQuery(unshippedQueueCountsQuery());
   const { roi, pending: roiPending } = useGatedOperationsRoi();
-  const toShipFilter = useToShipStatusFilter();
+  const {
+    active,
+    urgentOnly,
+    toggle,
+    toggleBlocked,
+    toggleUrgent,
+    selectPendingTab,
+    selectLifecycleTab,
+  } = useToShipFilterActions();
+  const searchParams = useSearchParams();
+  const orderView = getDashboardOrderViewFromSearch(searchParams);
+
+  const toShipFilter: ToShipFilter = {
+    active,
+    orderView,
+    urgentOnly,
+    toggle,
+    selectView: (view) => {
+      if (view === 'unshipped' || view === 'tested') selectLifecycleTab(view);
+    },
+    toggleBlocked,
+    toggleUrgent,
+    selectPendingTab,
+  };
   const { data } = query;
 
   const unshipped = {
@@ -278,6 +344,7 @@ function UnshippedStrip() {
     pending: data?.byStage.pending ?? 0,
     tested: data?.byStage.tested ?? 0,
     blocked: (data?.combos ?? []).reduce((s, c) => s + (c.blocked ? c.count : 0), 0),
+    urgent: data?.urgent ?? 0,
   };
 
   return OutboundStripLayout({
@@ -289,7 +356,7 @@ function UnshippedStrip() {
       unshipped,
       roi,
     }),
-    reservedSlots: 3,
+    reservedSlots: 5,
     toShipFilter,
     isPending: query.isPending || roiPending,
     isError: query.isError,
@@ -297,7 +364,7 @@ function UnshippedStrip() {
   });
 }
 
-export function OutboundKpiStrip({ mode }: { mode: 'unshipped' | 'shipped' }) {
+export function OutboundKpiStrip({ mode }: { mode: 'unshipped' | 'tested' | 'shipped' }) {
   // No own horizontal padding — the dashboard content column owns the gutter so
   // the strip, Unshipped/Shipped control bar, and board share one left/right edge.
   return (

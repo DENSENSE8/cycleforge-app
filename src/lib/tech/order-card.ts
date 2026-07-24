@@ -19,7 +19,7 @@ export async function findOrderByShipment(
     `SELECT
        o.id, o.shipment_id, o.order_id, o.product_title, o.item_number, o.sku,
        o.condition, o.notes, o.account_source, o.status, o.status_history,
-       o.out_of_stock, o.order_date, o.created_at, o.quantity,
+       o.is_out_of_stock, o.order_date, o.created_at, o.quantity,
        COALESCE(stn.tracking_number_raw, '') AS shipping_tracking_number,
        COALESCE(stn.is_carrier_accepted OR stn.is_in_transit OR stn.is_out_for_delivery OR stn.is_delivered, false) AS is_shipped,
        to_char(wa_d.deadline_at, 'YYYY-MM-DD') AS ship_by_date,
@@ -88,7 +88,7 @@ export function buildOrderPayload(row: any, overrides: Record<string, unknown> =
     isShipped: row?.is_shipped || false,
     packerId: row?.packer_id || null,
     testerId: row?.tester_id || null,
-    outOfStock: row?.out_of_stock || null,
+    isOutOfStock: row?.is_out_of_stock || false,
     shipByDate: row?.ship_by_date || null,
     orderDate: row?.order_date || null,
     createdAt: row?.created_at || null,

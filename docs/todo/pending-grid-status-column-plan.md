@@ -1,10 +1,10 @@
 # Plan — Pending grid **Status column** (sortable; replaces lane-style display)
 
-> **Status: LANDED 2026-07-22** (fulfillment-only + no-tracking filter +
-> full-bleed + page-scroll sticky). Companion:
-> `pending-grid-minimal-simplify-handoff.md`.
+> **Status: SUPERSEDED 2026-07-23** — Status + Platform columns removed; lane is
+> now the lifecycle tabs **Pending · Tested · Packed · Shipped** (`?tested`
+> peer of `?unshipped`). Historical notes below archive the Status-column landing.
 
-## Landed shape
+## Landed shape (archive)
 
 - **Status column** after Age: Pending · Tested · Out of stock via
   `deriveFulfillmentState` + `FULFILLMENT_STATE_META` (not `AWAITING_LABEL`).
@@ -36,12 +36,15 @@ leftovers of the retired swimlane board:
 
 Presentation via **`FULFILLMENT_STATE_META`**. No inline status→class maps.
 
-## Column model
+## Column model (superseded)
 
-`select · title · date · age · status · qty · cond · platform · order · tracking`
+Was: `select · title · date · age · status · qty · cond · platform · order · tracking`
+
+Now: `select · title · date · age · qty · cond · order · tracking` on Pending;
+Tested tab uses tester · testedAt instead of status.
 
 ## Follow-ups (ask-first)
 
 - Align KPI / queue-counts with the tracking filter if dogfood shows drift.
-- Chip-click → `?ustatus=` filter (Airtable-style).
+- ~~Chip-click → `?ustatus=` filter~~ → lifecycle **Tested** tab.
 - Retire invisible tested-first grouping inside `priority` once status sort is the explicit alternative.

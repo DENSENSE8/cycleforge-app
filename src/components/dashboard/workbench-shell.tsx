@@ -3,19 +3,20 @@
 /**
  * Workbench page-shell recipe — the shared "padded + tabbed" body used by the
  * golden pages (Dashboard · Shipping) and the convergence target for every
- * full-bleed workbench surface (Outbound, Receiving incoming/history, Walk-in
- * repair). See `docs/todo/display-convergence-log.md` → Axis 5.
+ * full-bleed workbench surface (Outbound, Receiving incoming/history/repair).
+ * See `docs/todo/display-convergence-log.md` → Axis 5.
  *
  * Compose with {@link DashboardScrollShell}:
  *   <DashboardScrollShell
  *     chrome={<div className={WORKBENCH_CHROME_COLUMN}><WorkbenchChromeHeader … /></div>}
  *   >
- *     <div className={WORKBENCH_BODY_COLUMN}> KPI (scrolls away) · table full-bleed </div>
+ *     <div className={WORKBENCH_BODY_COLUMN}> KPI (scrolls away) · framed table </div>
  *   </DashboardScrollShell>
  *
- * The table stays FULL-BLEED inside the gutter column — never wrapped in a
- * Panel/card. Padding comes from the gutters; the only "cards" are the KPI
- * tiles and this chrome strip.
+ * The collection table sits in the gutter column inside the ops table-surface
+ * shell (`TABLE_SURFACE_*` — rounded-xl, raised lift, strong frozen header).
+ * Do not hand-roll a second card around it; KPI tiles + the chrome strip are
+ * sibling raised surfaces, not nested wrappers.
  */
 
 import type { HTMLAttributes, ReactNode, Ref } from 'react';
@@ -27,7 +28,7 @@ import { cn } from '@/utils/_cn';
 export const WORKBENCH_GUTTERS = 'mx-auto w-full max-w-[1440px] min-w-0 px-4 sm:px-6 lg:px-8';
 /** Chrome-slot wrapper: the pinned header band lives here (outside the scroll port). */
 export const WORKBENCH_CHROME_COLUMN = cn(WORKBENCH_GUTTERS, 'py-2');
-/** Scroll-body column: KPI strip (scrolls away) then the full-bleed table. */
+/** Scroll-body column: KPI strip (scrolls away) then the framed ops table. */
 export const WORKBENCH_BODY_COLUMN = cn('relative flex flex-col', WORKBENCH_GUTTERS, 'pb-8 pt-4');
 
 /**

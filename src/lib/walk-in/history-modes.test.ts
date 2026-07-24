@@ -23,30 +23,30 @@ test('parseWalkInHistoryMode defaults to sales', () => {
   assert.equal(parseWalkInHistoryMode('nope'), 'sales');
 });
 
-test('parseWalkInHistoryMode accepts the three modes', () => {
+test('parseWalkInHistoryMode accepts Local Pickup · Sales', () => {
   assert.equal(parseWalkInHistoryMode('pickup'), 'pickup');
   assert.equal(parseWalkInHistoryMode('sales'), 'sales');
-  assert.equal(parseWalkInHistoryMode('repair'), 'repair');
 });
 
 test('parseWalkInHistoryMode maps legacy category values', () => {
   assert.equal(parseWalkInHistoryMode('pickups'), 'pickup');
-  assert.equal(parseWalkInHistoryMode('repairs'), 'repair');
+  // Repair left the hub for `/repair` — legacy values fall through to Sales.
+  assert.equal(parseWalkInHistoryMode('repairs'), 'sales');
+  assert.equal(parseWalkInHistoryMode('repair'), 'sales');
   assert.equal(parseWalkInHistoryMode('all'), 'sales');
 });
 
-test('mode items are ordered Local Pickup · Sales · Repair', () => {
+test('mode items are ordered Local Pickup · Sales', () => {
   assert.deepEqual(
     WALK_IN_HISTORY_MODE_ITEMS.map((i) => i.id),
-    ['pickup', 'sales', 'repair'],
+    ['pickup', 'sales'],
   );
-  assert.deepEqual([...WALK_IN_HISTORY_MODES], ['pickup', 'sales', 'repair']);
+  assert.deepEqual([...WALK_IN_HISTORY_MODES], ['pickup', 'sales']);
 });
 
-test('only repair mode carries an extra permission', () => {
+test('hub modes carry no extra permission', () => {
   assert.equal(WALK_IN_MODE_PERMISSION.pickup, null);
   assert.equal(WALK_IN_MODE_PERMISSION.sales, null);
-  assert.equal(WALK_IN_MODE_PERMISSION.repair, 'repair.view');
 });
 
 test('per-mode tab parsers default correctly', () => {
@@ -63,7 +63,6 @@ test('per-mode tab parsers default correctly', () => {
 test('defaultTabForMode matches the per-mode defaults', () => {
   assert.equal(defaultTabForMode('pickup'), 'completed');
   assert.equal(defaultTabForMode('sales'), 'today');
-  assert.equal(defaultTabForMode('repair'), 'active');
 });
 
 test('pickup tab maps to the API status', () => {
@@ -73,6 +72,8 @@ test('pickup tab maps to the API status', () => {
 
 test('isWalkInHistoryMode guards the union', () => {
   assert.equal(isWalkInHistoryMode('pickup'), true);
+  assert.equal(isWalkInHistoryMode('sales'), true);
+  assert.equal(isWalkInHistoryMode('repair'), false);
   assert.equal(isWalkInHistoryMode('pickups'), false);
   assert.equal(isWalkInHistoryMode(null), false);
 });

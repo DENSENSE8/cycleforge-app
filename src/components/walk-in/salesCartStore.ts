@@ -3,10 +3,10 @@
 /**
  * Shared walk-in sales intake store.
  *
- * Mirrors {@link ../work-orders/localPickupStore} so the Sales surface runs the
- * same two-pane intake as Local Pickup: a slim selectable sidebar list
- * (`SalesCartSidebar`) and a main-pane editor + add popover (`SalesEditPanel`)
- * live in separate `RouteShell` slots and share this one module-scoped
+ * Sales surface runs the same two-pane intake pattern: a slim selectable
+ * sidebar list (`SalesCartSidebar`) and a main-pane editor + add popover
+ * (`SalesEditPanel`) live in separate `RouteShell` slots and share this one
+ * module-scoped
  * singleton via `useSalesCart()` (useSyncExternalStore) — no CustomEvent bus.
  *
  * Source of truth: `cart` (staged items) + `selectedKey` (which line the main

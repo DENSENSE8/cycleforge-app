@@ -384,6 +384,128 @@ test.describe('Kiosk API — device-principal auth contract', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
+// A2. Kiosk host gating — `{slug}.kiosk.app.cycleforge.ai` (Host-header E2E).
+// Connects to the local baseURL but stamps Host so proxy / pair see a kiosk host.
+// ─────────────────────────────────────────────────────────────────────────────
+
+function dogfoodKioskHost(): string {
+  const explicit = (process.env.NEXT_PUBLIC_KIOSK_HOST_SUFFIX || '').trim().toLowerCase();
+  if (explicit) return `usav.${explicit.replace(/^\.+/, '')}`;
+  const appUrl = (process.env.NEXT_PUBLIC_APP_URL || '').trim();
+  if (appUrl) {
+    try {
+      return `usav.kiosk.${new URL(appUrl).hostname.toLowerCase()}`;
+    } catch {
+      /* fall through */
+    }
+  }
+  return 'usav.kiosk.app.cycleforge.ai';
+}
+
+function dogfoodStaffHost(): string {
+  const appUrl = (process.env.NEXT_PUBLIC_APP_URL || '').trim();
+  if (appUrl) {
+    try {
+      return `usav.${new URL(appUrl).hostname.toLowerCase()}`;
+    } catch {
+      /* fall through */
+    }
+  }
+  return 'usav.app.cycleforge.ai';
+}
+
+test.describe('Kiosk host — subdomain gating', () => {
+  test('kiosk host 404s staff enroll / revoke / devices APIs', async ({ baseURL }) => {
+    const host = dogfoodKioskHost();
+    const ctx = await pwRequest.newContext({
+      baseURL: baseURL!,
+      storageState: EMPTY_STORAGE,
+      extraHTTPHeaders: { Host: host },
+    });
+    try {
+      const enroll = await ctx.post('/api/kiosk/enroll', {
+        data: { label: uniqueLabel('E2E KioskHost Enroll') },
+        headers: { 'content-type': 'application/json' },
+        maxRedirects: 0,
+      });
+      expect(enroll.status(), `enroll blocked on ${host}`).toBe(404);
+
+      const revoke = await ctx.post('/api/kiosk/revoke', {
+        data: { deviceId: 1 },
+        headers: { 'content-type': 'application/json' },
+        maxRedirects: 0,
+      });
+      expect(revoke.status(), 'revoke blocked on kiosk host').toBe(404);
+
+      const list = await ctx.get('/api/kiosk/devices', { maxRedirects: 0 });
+      expect(list.status(), 'devices list blocked on kiosk host').toBe(404);
+    } finally {
+      await ctx.dispose();
+    }
+  });
+
+  test('kiosk host blocks staff surfaces (e.g. /settings → 404)', async ({ baseURL }) => {
+    const host = dogfoodKioskHost();
+    const ctx = await pwRequest.newContext({
+      baseURL: baseURL!,
+      storageState: EMPTY_STORAGE,
+      extraHTTPHeaders: { Host: host },
+    });
+    try {
+      const res = await ctx.get('/settings', { maxRedirects: 0 });
+      expect(res.status()).toBe(404);
+    } finally {
+      await ctx.dispose();
+    }
+  });
+
+  test('pair + intake succeed on the dogfood kiosk Host', async ({ request, baseURL }) => {
+    const host = dogfoodKioskHost();
+    const label = uniqueLabel('E2E KioskHost Pair');
+    const { deviceId, code } = await enrollDevice(request, label);
+    const tablet = await pwRequest.newContext({
+      baseURL: baseURL!,
+      storageState: EMPTY_STORAGE,
+      extraHTTPHeaders: { Host: host },
+    });
+    try {
+      const pairRes = await tablet.post('/api/kiosk/pair', {
+        data: { code },
+        headers: { 'content-type': 'application/json' },
+      });
+      expect(pairRes.status(), `pair on ${host}`).toBe(200);
+
+      const intakeRes = await tablet.post('/api/kiosk/intake', {
+        data: { service: 'sales' },
+        headers: { 'content-type': 'application/json' },
+      });
+      expect(intakeRes.status(), 'intake on kiosk host').toBe(200);
+    } finally {
+      await tablet.dispose();
+      await revokeDevice(request, deviceId);
+    }
+  });
+
+  test('staff-host /kiosk 308s to the tenant kiosk origin when Host has a slug', async ({ baseURL }) => {
+    const staffHost = dogfoodStaffHost();
+    const kioskHost = dogfoodKioskHost();
+    const ctx = await pwRequest.newContext({
+      baseURL: baseURL!,
+      storageState: EMPTY_STORAGE,
+      extraHTTPHeaders: { Host: staffHost },
+    });
+    try {
+      const res = await ctx.get('/kiosk', { maxRedirects: 0 });
+      expect(res.status(), `GET /kiosk on ${staffHost}`).toBe(308);
+      const location = res.headers()['location'] || '';
+      expect(location, 'Location points at kiosk origin').toContain(kioskHost);
+    } finally {
+      await ctx.dispose();
+    }
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 // B. Tablet UI — the rendered customer surface, across desktop + iPad landscape.
 // ─────────────────────────────────────────────────────────────────────────────
 

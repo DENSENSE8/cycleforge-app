@@ -5,6 +5,7 @@ import type { RSRecord } from '@/lib/neon/repair-service-queries';
 import { usePanelActions } from '@/hooks/usePanelActions';
 import { zendeskTicketUrl as buildZendeskTicketUrl } from '@/lib/zendesk-ticket-url';
 import { useActivityInboxOptional } from '@/contexts/ActivityInboxContext';
+import { toast } from '@/lib/toast';
 import type { RepairTabId } from './repair-details-shared';
 
 /**
@@ -25,6 +26,7 @@ export function useRepairDetailsPanel({ repair, onUpdate }: { repair: RSRecord; 
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [showPickupFlow, setShowPickupFlow] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
+  const [isPaying, setIsPaying] = useState(false);
   const [activeTab, setActiveTab] = useState<RepairTabId>('overview');
   const ticketInputRef = useRef<HTMLInputElement>(null);
 
@@ -175,6 +177,59 @@ export function useRepairDetailsPanel({ repair, onUpdate }: { repair: RSRecord; 
     },
   );
 
+  // ── Repair document + Square payment (moved off the queue rows to here) ────
+  // The header action bar surfaces Print always; Pay only when a Square link
+  // can be created (a linked catalog SKU, or a valid free-text price to fall
+  // back on). The panel builds the button chrome from these.
+  const sourceSku = String(repair.source_sku || '').trim();
+  const parsePriceToMinorUnits = (value: string | null | undefined): number | null => {
+    const cleaned = String(value || '').replace(/[^0-9.-]/g, '');
+    const parsed = Number(cleaned);
+    if (!Number.isFinite(parsed) || parsed <= 0) return null;
+    const amount = Math.round(parsed * 100);
+    return amount > 0 ? amount : null;
+  };
+  const canCreateSquarePayment =
+    Boolean(sourceSku) || parsePriceToMinorUnits(repair.price) !== null;
+
+  const printRepairDocument = () => {
+    window.open(`/api/repair-service/print/${repair.id}`, '_blank', 'noopener,noreferrer');
+  };
+
+  const openSquarePayment = async () => {
+    if (isPaying) return;
+    const amount = parsePriceToMinorUnits(repair.price);
+    if (!sourceSku && amount === null) {
+      toast.error('Add a source SKU or set a valid repair price before creating a Square payment link.');
+      return;
+    }
+
+    const pendingWindow = window.open('', '_blank');
+    setIsPaying(true);
+    try {
+      const response = await fetch('/api/repair/square-payment-link', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ repairId: repair.id, sourceSku: sourceSku || null }),
+      });
+      const payload = (await response.json().catch(() => ({}))) as {
+        success?: boolean;
+        paymentUrl?: string;
+        error?: string;
+      };
+      if (!response.ok || !payload.success || !payload.paymentUrl) {
+        throw new Error(payload.error || 'Failed to create Square payment link');
+      }
+      if (pendingWindow) pendingWindow.location.href = payload.paymentUrl;
+      else window.open(payload.paymentUrl, '_blank', 'noopener,noreferrer');
+    } catch (error) {
+      if (pendingWindow && !pendingWindow.closed) pendingWindow.close();
+      toast.error(error instanceof Error ? error.message : 'Failed to open Square checkout');
+    } finally {
+      setIsPaying(false);
+    }
+  };
+
   // Shared helper already returns null for the `RS-<id>` fallback (non-numeric)
   // and passes through full URLs an operator may have pasted.
   const zendeskTicketUrl = buildZendeskTicketUrl(ticketNumber);
@@ -250,6 +305,11 @@ export function useRepairDetailsPanel({ repair, onUpdate }: { repair: RSRecord; 
     canStartPickup,
     linksDirty, hasAnyLink,
     panelActions,
+    isPaying,
+    canCreateSquarePayment,
+    hasSourceSku: Boolean(sourceSku),
+    printRepairDocument,
+    openSquarePayment,
     zendeskTicketUrl,
     handleDelete, handleSaveLinks, handleClearLinks,
     handleSaveTicket, handleSaveNotes, handleStatusChange,

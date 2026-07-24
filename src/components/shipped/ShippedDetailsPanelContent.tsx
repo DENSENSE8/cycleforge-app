@@ -9,6 +9,7 @@ import { ShippingInformationSection, type EditableShippingFields, type Prepacked
 import { ProductDetailsSection } from '@/components/shipped/details-panel/ProductDetailsSection';
 import { OrderPipelineSection } from '@/components/shipped/details-panel/OrderPipelineSection';
 import { OrderQuickLinksSection } from '@/components/shipped/details-panel/OrderQuickLinksSection';
+import { OrderSupportActionsSection } from '@/components/shipped/details-panel/OrderSupportActionsSection';
 
 interface DurationData {
   boxingDuration?: string;
@@ -34,6 +35,13 @@ interface ShippedDetailsPanelContentProps {
    * The full-page order view keeps the tabs and omits this.
    */
   showQuickLinks?: boolean;
+  /**
+   * Order-body "Report an issue" CTA. Default on for shipping section so search →
+   * open order always exposes create-ticket without header chrome.
+   */
+  showSupportActions?: boolean;
+  /** Prefer in-place create when already on Support Orders. */
+  onReportIssue?: () => void;
   editableShippingFields?: EditableShippingFields;
   /** When set, gates section rendering to just the active tab. Undefined = render all (legacy single-scroll view). */
   activeSection?: ShippedActiveSection;
@@ -56,6 +64,8 @@ export function ShippedDetailsPanelContent({
   showSerialNumber = true,
   productDetailsFirst = false,
   showQuickLinks = false,
+  showSupportActions = true,
+  onReportIssue,
   editableShippingFields,
   activeSection,
   variant = 'flat',
@@ -162,6 +172,12 @@ export function ShippedDetailsPanelContent({
         : null}
 
       {!productDetailsFirst && showProduct && wrapSection(productDetailsSection)}
+
+      {showSupportActions && showShipping
+        ? wrapSection(
+            <OrderSupportActionsSection shipped={shipped} onReportIssue={onReportIssue} />,
+          )
+        : null}
 
       {showQuickLinks && showShipping && wrapSection(<OrderQuickLinksSection shipped={shipped} />)}
     </div>

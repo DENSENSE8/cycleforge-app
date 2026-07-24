@@ -32,24 +32,10 @@ export const WORKSPACE_NESTED_FIELD =
 export const WORKSPACE_NESTED_FIELD_PAD = 'inset-field';
 
 /**
- * Compact field pad for the 50px overview Notes textarea — tighter than
- * {@link WORKSPACE_NESTED_FIELD_PAD} so line-height fits without clipping.
- * Label preview + claim composers keep the default pad.
- */
-export const WORKSPACE_NESTED_FIELD_PAD_COMPACT = 'px-3 py-1';
-
-/**
  * Absolute corner for overlays floating on a nested field (insert rail, Edit
  * label CTA). Pair with `absolute` / `pointer-events-none` wrappers.
  */
 export const WORKSPACE_NESTED_OVERLAY_CORNER = 'right-1.5 top-1.5';
-
-/**
- * Compact overlay corner for the 50px Notes field — sits one pixel under the
- * top edge so the 22px icon clears `py-1` padding. Label + Claim keep
- * {@link WORKSPACE_NESTED_OVERLAY_CORNER}.
- */
-export const WORKSPACE_NESTED_OVERLAY_CORNER_COMPACT = 'right-1.5 top-px';
 
 const BODY_DENSITY_CLASS: Record<WorkspaceCardBodyDensity, string> = {
   default: 'px-5 py-4',
@@ -117,13 +103,11 @@ const TONE_RAIL: Record<WorkspaceCardTone, string> = {
  * The optional left rail picks up the receiving variant tone (PO → blue,
  * RETURN → red, etc.) — useful for visually grouping cards by record kind.
  *
- * Stacked overview Notes + Label preview: use `variant="glass"`,
+ * Stacked overview Label / content tabs: use `variant="glass"`,
  * `bodyDensity="nested"`, and {@link WORKSPACE_NESTED_FIELD} /
- * {@link WORKSPACE_NESTED_FIELD_PAD} on the inner white field so both cards
- * share one display language and left edge. Content tabs (checklist, units,
- * timeline, manuals) use the same nested body pad. Overlay chrome:
- * {@link WORKSPACE_NESTED_OVERLAY_CORNER} (default) /
- * {@link WORKSPACE_NESTED_OVERLAY_CORNER_COMPACT} (50px Notes).
+ * {@link WORKSPACE_NESTED_FIELD_PAD} on the inner white field. Overlay chrome:
+ * {@link WORKSPACE_NESTED_OVERLAY_CORNER}. Carton notes use
+ * `StationComposerDock` in the Unbox dock band.
  */
 export function WorkspaceCard({
   label,

@@ -5,6 +5,7 @@ import {
   DEFAULT_TICKET_STATUS,
   parseSupportMode,
   parseTicketStatus,
+  supportCreateTicketHref,
   supportOrdersHref,
   SUPPORT_MODE_SCOPED_PARAMS,
 } from './support-sidebar-shared';
@@ -37,12 +38,21 @@ describe('support order hrefs', () => {
     assert.equal(dashboardOrderHref(99), '/dashboard?openOrderId=99');
     assert.equal(dashboardOrderHref(-1), '/dashboard');
   });
+
+  it('builds create-ticket deep links from order pk', () => {
+    assert.equal(
+      supportCreateTicketHref(42),
+      '/support?mode=orders&openOrderId=42&createTicket=1',
+    );
+    assert.equal(supportCreateTicketHref(0), '/support?mode=orders&createTicket=1');
+  });
 });
 
 describe('SUPPORT_MODE_SCOPED_PARAMS', () => {
   it('includes orders-owned URL keys', () => {
     for (const key of [
       'openOrderId',
+      'createTicket',
       'ustatus',
       'attention',
       'stage',

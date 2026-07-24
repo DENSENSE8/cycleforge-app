@@ -46,6 +46,8 @@ import { TriageScanBand, UnboxScanBand } from '@/components/sidebar/receiving/Re
 import { TriageCartonSearchBar } from '@/components/sidebar/receiving/TriageCartonSearchBar';
 import { ReceivingRailBody } from '@/components/sidebar/receiving/ReceivingRailBody';
 import { ReceivingBulkActionBar } from '@/components/sidebar/receiving/ReceivingBulkActionBar';
+import { RepairSidebarPanel } from '@/components/sidebar/RepairSidebarPanel';
+import { PickupSidebarRail } from '@/components/receiving/pickup/PickupSidebarRail';
 
 import { useReceivingMode } from '@/components/sidebar/receiving/useReceivingMode';
 import { usePoContext } from '@/components/sidebar/receiving/usePoContext';
@@ -253,6 +255,18 @@ export function ReceivingSidebarPanel() {
           // in IncomingWorkspaceHeader on the right pane.
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
             <IncomingSidebarPanel />
+          </div>
+        ) : mode === 'repair' ? (
+          // Repair Favorites + intake overlay. Active/Done · search · Add live in
+          // RepairWorkspaceHeader on the right pane (RepairTable).
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+            <RepairSidebarPanel embedded hideSectionHeader />
+          </div>
+        ) : mode === 'pickup' ? (
+          // Local Pickup — LCPU orders rail (row = pickup order). Selecting one
+          // writes `?lcpu=` to highlight its products in the right-pane table.
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+            <PickupSidebarRail />
           </div>
         ) : (
           <>

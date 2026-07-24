@@ -34,14 +34,14 @@ export function useUpNextCard({
 
   useEffect(() => {
     if (showMissingPartsInput === order.id) {
-      onMissingPartsReasonChange(String(order.out_of_stock || ''));
+      onMissingPartsReasonChange(order.is_out_of_stock ? 'Out of stock' : '');
     }
-  }, [showMissingPartsInput, order.id, order.out_of_stock, onMissingPartsReasonChange]);
+  }, [showMissingPartsInput, order.id, order.is_out_of_stock, onMissingPartsReasonChange]);
 
   // Computed values
   const showActions    = effectiveTab !== 'stock';
   const isStockTab     = effectiveTab === 'stock';
-  const hasOutOfStock  = String(order.out_of_stock || '').trim() !== '';
+  const hasOutOfStock  = Boolean(order.is_out_of_stock);
   const quantity       = Math.max(1, parseInt(String(order.quantity || '1'), 10) || 1);
   const daysLate       = getDaysLateNumber(order.ship_by_date, order.created_at);
   const trackingNumber = String(order.shipping_tracking_number || '').trim();

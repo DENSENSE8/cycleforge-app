@@ -9,15 +9,29 @@
  *
  * Public by design (`allowAnonymous`) — the pairing CODE is the capability, the
  * same shape as /api/auth/enroll consuming an enrollment token. The org is read
- * from the matched device row, never from the request.
+ * from the matched device row, never trusted from the request alone. On a kiosk
+ * host (`{slug}.kiosk.app…`) the host slug's org must match the enroll row
+ * (defense in depth); mismatch → same 404 as a bad code.
+ *
+ * Production requires a tenant kiosk host. Non-production still allows pairing
+ * on the staff host path so local E2E works before DNS.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { withAuth } from '@/lib/auth/withAuth';
-import { pairKioskDevice, KIOSK_COOKIE_NAME } from '@/lib/auth/kiosk-device';
+import {
+  pairKioskDevice,
+  KIOSK_COOKIE_NAME,
+} from '@/lib/auth/kiosk-device';
+import {
+  LEGACY_SESSION_COOKIE_NAME,
+  SESSION_COOKIE_NAME,
+} from '@/lib/auth/session';
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import pool from '@/lib/db';
+import { isKioskHost, parseKioskHost } from '@/lib/tenancy/kiosk-host';
+import { resolveOrgIdFromRequest, NIL_ORG_ID } from '@/lib/tenancy/resolve-org-from-request';
 
 export const runtime = 'nodejs';
 
@@ -35,9 +49,31 @@ async function handlePair(req: NextRequest) {
       return NextResponse.json({ error: 'INVALID_REQUEST' }, { status: 400 });
     }
 
-    const pairing = await pairKioskDevice(parsed.data.code);
+    const host = req.headers.get('host');
+    const onKioskHost = isKioskHost(host);
+    const isProd = process.env.NODE_ENV === 'production';
+
+    if (!onKioskHost && isProd) {
+      return NextResponse.json({ error: 'KIOSK_HOST_REQUIRED' }, { status: 403 });
+    }
+
+    let expectedOrganizationId: string | null = null;
+    if (onKioskHost) {
+      const kiosk = parseKioskHost(host);
+      if (!kiosk) {
+        return NextResponse.json({ error: 'KIOSK_HOST_REQUIRED' }, { status: 403 });
+      }
+      // Prefer the proxy-stamped slug header; fall back is still host-derived.
+      expectedOrganizationId = await resolveOrgIdFromRequest(req);
+      if (expectedOrganizationId === NIL_ORG_ID) {
+        // Unknown slug — oracle-safe miss (do not activate any device).
+        return NextResponse.json({ error: 'INVALID_PAIRING_CODE' }, { status: 404 });
+      }
+    }
+
+    const pairing = await pairKioskDevice(parsed.data.code, { expectedOrganizationId });
     if (!pairing) {
-      // Expired, already-used, or unknown code — never distinguish (no oracle).
+      // Expired, already-used, unknown, or host/org mismatch — never distinguish.
       return NextResponse.json({ error: 'INVALID_PAIRING_CODE' }, { status: 404 });
     }
 
@@ -63,7 +99,26 @@ async function handlePair(req: NextRequest) {
       sameSite: 'lax',
       path: '/',
       maxAge: KIOSK_COOKIE_MAX_AGE_SECONDS,
+      // intentionally no `domain` — host-only on `{slug}.kiosk.app…`
     });
+    // Clear any stray staff session on the kiosk host so a tablet profile
+    // never coexists staff + device principals.
+    if (onKioskHost) {
+      res.cookies.set(SESSION_COOKIE_NAME, '', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 0,
+      });
+      res.cookies.set(LEGACY_SESSION_COOKIE_NAME, '', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 0,
+      });
+    }
     return res;
 }
 

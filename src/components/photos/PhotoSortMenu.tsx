@@ -1,8 +1,8 @@
 'use client';
 
 import { useRef, useState, type KeyboardEvent } from 'react';
-import { ChevronDown, ChevronUp } from '@/components/Icons';
-import { photoLibraryControlButtonClass } from '@/components/photos/photo-library-controls';
+import { ArrowUpDown, ChevronDown, ChevronUp } from '@/components/Icons';
+import { ToolbarButton } from '@/components/ui/ToolbarButton';
 import { Popover } from '@/design-system';
 import type { PhotoLibrarySortMode } from '@/lib/photos/library-filter-state';
 import { cn } from '@/utils/_cn';
@@ -16,9 +16,7 @@ const OPTIONS: {
   { value: 'oldest', label: 'Oldest', icon: ChevronDown },
 ];
 
-const SORT_MENU_WIDTH = 'w-[4.75rem]';
-
-/** Right-pane sort dropdown — click trigger, pick an option. */
+/** Right-pane sort dropdown — Newest / Oldest. Same h-8 ToolbarButton shell as media type. */
 export function PhotoSortMenu({
   sort,
   onSortChange,
@@ -31,7 +29,6 @@ export function PhotoSortMenu({
   const listRef = useRef<HTMLUListElement>(null);
 
   const activeOption = OPTIONS.find((o) => o.value === sort) ?? OPTIONS[0];
-  const ActiveIcon = activeOption.icon;
 
   const handleSelect = (value: PhotoLibrarySortMode) => {
     if (value !== sort) onSortChange(value);
@@ -70,22 +67,21 @@ export function PhotoSortMenu({
 
   return (
     <>
-      <button
+      <ToolbarButton
         ref={buttonRef}
         type="button"
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-label={`Sort: ${activeOption.label}`}
+        active={open}
         onClick={() => setOpen((o) => !o)}
         onKeyDown={handleButtonKeyDown}
-        className={cn(
-          'ds-raw-button',
-          photoLibraryControlButtonClass(true, cn(SORT_MENU_WIDTH, 'justify-start gap-1 whitespace-nowrap pl-1.5 pr-1')),
-        )}
+        className="gap-1 normal-case tracking-normal"
       >
-        <ActiveIcon className="h-3.5 w-3.5 shrink-0" />
-        {activeOption.label}
-      </button>
+        <ArrowUpDown className="h-3.5 w-3.5 shrink-0" />
+        <span className="whitespace-nowrap">{activeOption.label}</span>
+        <ChevronDown className={cn('h-3 w-3 shrink-0 opacity-60 transition-transform', open && 'rotate-180')} />
+      </ToolbarButton>
 
       <Popover
         open={open}

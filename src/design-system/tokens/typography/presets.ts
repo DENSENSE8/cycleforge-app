@@ -24,8 +24,9 @@ export const qtyProgress = 'text-role-caption font-bold font-mono tabular-nums l
 /** Card titles (e.g. OrderCard, FbaItemCard, RepairCard main heading) */
 export const cardTitle = 'text-base font-black text-text-default leading-tight' as const;
 
-/** Table column headers */
-export const tableHeader = 'text-role-micro uppercase tracking-[0.16em] text-text-soft' as const;
+/** Table column headers — quiet label chrome (override role-micro's 600 weight). */
+export const tableHeader =
+  'text-role-micro font-normal uppercase tracking-[0.06em] text-text-faint' as const;
 
 /** Table cell content */
 export const tableCell = 'text-sm font-semibold text-text-default' as const;

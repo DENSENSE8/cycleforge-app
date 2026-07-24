@@ -169,7 +169,10 @@ export function resolveRowStatus(record: QueueRowRecord, queueMode: OrdersQueueM
   const state = deriveFulfillmentState({
     shipmentId: record.shipment_id,
     hasTechScan: Boolean(record.has_tech_scan),
-    outOfStock: record.out_of_stock as string | null | undefined,
+    isOutOfStock: Boolean(
+      (record as QueueRowRecord).is_out_of_stock
+        ?? (record as QueueRowRecord).isOutOfStock,
+    ),
   });
   const meta = FULFILLMENT_STATE_META[state];
   return { dot: meta.dot, label: meta.label, description: meta.description, pill: meta.pill };

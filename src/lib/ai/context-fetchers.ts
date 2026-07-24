@@ -37,7 +37,7 @@ export async function fetchOrdersContext(params: IntentParams, orgId: OrgId): Pr
           o.condition,
           o.sku,
           o.status,
-          o.out_of_stock,
+          o.is_out_of_stock,
           stn.tracking_number_raw,
           COALESCE(stn.is_carrier_accepted OR stn.is_in_transit
             OR stn.is_out_for_delivery OR stn.is_delivered, false) AS is_shipped,
@@ -78,7 +78,7 @@ export async function fetchOrdersContext(params: IntentParams, orgId: OrgId): Pr
       if (row.tracking_number_raw) lines.push(`Tracking: ${row.tracking_number_raw}`);
       if (row.sku) lines.push(`SKU: ${row.sku}`);
       if (row.condition) lines.push(`Condition: ${row.condition}`);
-      if (row.out_of_stock) lines.push(`Missing part / OOS: ${row.out_of_stock}`);
+      if (row.is_out_of_stock) lines.push(`Missing part / OOS: Out of stock`);
       return lines.join('\n');
     }
   }
@@ -108,7 +108,7 @@ export async function fetchOrdersContext(params: IntentParams, orgId: OrgId): Pr
                 OR stn.is_out_for_delivery OR stn.is_delivered, false)
           )::int AS due_today,
           COUNT(*) FILTER (
-            WHERE COALESCE(BTRIM(o.out_of_stock), '') <> ''
+            WHERE o.is_out_of_stock = true
           )::int AS out_of_stock
         FROM orders o
         LEFT JOIN shipping_tracking_numbers stn ON stn.id = o.shipment_id

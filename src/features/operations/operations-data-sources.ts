@@ -54,7 +54,7 @@ export const OPERATIONS_SECONDARY_KPI_SOURCES = {
     bullets: [
       'From the `/api/dashboard/operations` summary subquery on pending outbound orders:',
       '`pending_orders` joins orders + tracking; excludes shipped-by-carrier and station-log completion.',
-      'Counts orders where trimmed `out_of_stock` is non-empty.',
+      'Counts orders where `is_out_of_stock` is true.',
       '`summary.outOfStock`.',
     ],
     endpoint: 'GET /api/dashboard/operations?timeRange=24h',

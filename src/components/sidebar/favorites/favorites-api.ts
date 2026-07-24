@@ -3,8 +3,14 @@ import type { EcwidSearchProduct } from './favorites-search';
 
 /** Pure network layer for the favorites workspace. Throws with server messages. */
 
-export async function fetchFavorites(workspaceKey: FavoriteWorkspaceKey): Promise<FavoriteSkuRecord[]> {
-  const res = await fetch(`/api/favorites?workspace=${encodeURIComponent(workspaceKey)}`);
+export async function fetchFavorites(
+  workspaceKey: FavoriteWorkspaceKey,
+  options?: { listUrl?: string },
+): Promise<FavoriteSkuRecord[]> {
+  const url =
+    options?.listUrl?.trim() ||
+    `/api/favorites?workspace=${encodeURIComponent(workspaceKey)}`;
+  const res = await fetch(url);
   const data = await res.json();
   if (!res.ok) throw new Error(data?.details || data?.error || 'Failed to load favorites');
   return Array.isArray(data?.favorites) ? data.favorites : [];

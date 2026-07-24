@@ -1,0 +1,28 @@
+---
+description: Unbox-family station right panes compose one Station Workbench SoT — no second layout language
+globs: "**/receiving/workspace/**,**/receiving/triage/**,**/tech/TestingPanel.tsx,**/tech/shipping/**,**/tech/ActiveOrderWorkspace.tsx,**/tech/UpNextActionDock.tsx,**/packer/**,**/outbound/labels/**,**/support/station/**,**/support/orders/**,**/features/review/packer/**,**/repair/**,**/station/workbench/**,**/station/entity-context/**,**/station/terminal/**"
+alwaysApply: false
+---
+
+# Station Workbench (Unbox-family right panes)
+
+Golden: `receiving/workspace/LineEditPanel.tsx`. Full rule + tiers:
+`.claude/rules/display/station-workbench.md`. CI: `station-workbench-chrome.guard.test.ts`
+(+ `station-terminal.test.ts`). Baselines shrink only — never raise one to pass.
+
+## Always
+- Identity: `StationContextBar` + entity-context adapter `density="bar"` **above** `StationWorkbench`.
+- Outer shell: `StationPanelRoot` (owns `bg-surface-canvas` column + `StationAmbientWash`).
+- Column: `STATION_WORKBENCH_*` (720px + `px-4 sm:px-6`) from `workbench-layout.ts`.
+- Terminal: `useStationTerminalAction` + `STATION_TERMINAL_REGISTRY` (or `TERMINAL_HAND_VM_ALLOWLIST` + follow-up).
+- Unbox overview notes: `StationComposerDock` in the dock band (+ compact `SlicedActionDock` `align="end"`) — not a mid-canvas nested notes card.
+- Tabs: `buildSectionTabs` + `SectionTabsSlider`. Mid-canvas jump: `StationRightEdgeAction`.
+
+## Never
+- `max-w-3xl` / local `max-w-[720px]` for a family column (escape: `ds-station-max-w-exempt`).
+- Copy the 3-blob ambient wash outside `StationAmbientWash`.
+- Hand-roll `relative flex h-full min-h-0 flex-col bg-surface-canvas` outside `StationPanelRoot`.
+- Fork a second condensed identity header (only `SupportTicketIdentity` is sanctioned).
+- Put carton identity in `StationWorkbench` `entityContext`/`toolbar` (Tier A/B).
+- Reintroduce `StationWorkbenchShell`; use `STATION_WORKBENCH_HEADER_COLUMN` for identity/body.
+- Hand-roll a ChatGPT-style station notes prompt beside `StationComposerDock`.

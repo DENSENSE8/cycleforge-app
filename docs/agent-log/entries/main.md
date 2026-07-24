@@ -387,3 +387,26 @@
 - `2026-07-23T15:40:35.100Z` · **main** · main · agent · Trash FloatingButton → SlicedActionDock (bottom-edge sliced segments, mobile display language); StationTerminalDock + FBA migrated — ok
 - `2026-07-23T15:45:47.440Z` · **main** · main · agent · Classify bookmark: keep short-name pills, lock equal w-14, pip instead of wordmark+EB; skip re-open when Classify dimension already expanded — ok
 - `2026-07-23T15:51:02.489Z` · **main** · main · agent · WIP dogfood: carton header classify pills text-only full SoT names; ignore outside-click on header pills so Classify dropdown does not close-reopen — ok
+- `2026-07-23T15:52:03.968Z` · **main** · main · agent · SlicedActionDock: restore fully rounded-2xl pill chrome (all corners) matching old FloatingButton — ok
+- `2026-07-23T16:12:16.874Z` · **main** · main · agent · commit+prod deploy: ledger grids, products catalog, DS shell SoT — ok
+- `2026-07-23T17:58:29.444Z` · **main** · main · agent · kiosk subdomain routing: {slug}.kiosk.app.cycleforge.ai host SoT + proxy allowlist + pair org match + Settings/docs/E2E — success
+- `2026-07-23T18:02:33.759Z` · **main** · main · agent · Ops table surface SoT: framed xl + soft raised on DataTable/LedgerGridSurface/OrdersGridView — done
+- `2026-07-23T18:04:56.797Z` · **main** · main · agent · Order details Out of Stock: replace text note composer with Switch toggle (sentinel flag in out_of_stock column) — ok
+- `2026-07-23T18:06:13.204Z` · **main** · main · agent · Table surface: drop radius (square table), sunken frozen header for depth — done
+- `2026-07-23T18:18:39.287Z` · **main** · main · agent · Table surface: restore rounded-xl + raised depth; clip-path for page-scroll corners — done
+- `2026-07-23T18:28:30.242Z` · **main** · main · agent · Table surface corners: static clip-path, strong header, no header verticals — done
+- `2026-07-23T18:33:16.993Z` · **main** · main · agent · Table surface: one overflow-hidden recipe, continuous header+body column grid — done
+- `2026-07-23T18:34:39.523Z` · **main** · main · agent · Dashboard lifecycle: Pending · Tested · Packed · Shipped; drop Status/Platform columns — ok
+- `2026-07-23T18:38:27.781Z` · **main** · main · agent · Quieter ledger header: sunken band + border-default column rules through header; soft tableHeader type — done
+- `2026-07-23T18:43:13.242Z` · **main** · main · agent · Pending/Urgent/OOS KPI tiles on outbound strip with click-to-filter — ok
+- `2026-07-23T18:46:11.939Z` · **main** · main · agent · orders.is_out_of_stock boolean: migration+backfill+drop text; filters/API/UI/audit timeline; knip baseline for concurrent WIP orphans — ok
+- `2026-07-23T18:49:02.621Z` · **main** · main · agent · Retired LocalPickup UI; /pickup routes through UnboxLineWorkspace + History SoT — done
+- `2026-07-23T18:57:22.683Z` · **main** · main · agent · Catalog workbench: gutters + debounced search + filter popover (Dashboard shell recipe) — done
+- `2026-07-23T19:06:28.696Z` · **main** · main · agent · Station Workbench SoT: hard rules + chrome guards (A-G) + StationPanelRoot/AmbientWash extract; deleted StationWorkbenchShell; migrated Triage skeleton to 720 tokens — ok
+- `2026-07-23T22:10:14.347Z` · **main** · main · agent · Wire RepairTable (LedgerGrid) onto /repair receiving history pane; drop Walk-In hub repair mode + redirect — ok
+- `2026-07-23T23:11:42.356Z` · **main** · main · agent · Report an issue on order body → Support create-ticket deep-link (?createTicket=1); removed header Plus — ok
+- `2026-07-23T23:15:16.223Z` · **main** · main · agent · Ticket NAS backup outside claim modal: shared TicketNasBackupButton on carton ticket chip + photo library ticket leaf/group headers; archive-only resolves receiving from ticket link — ok
+- `2026-07-23T23:15:30.194Z` · **main** · main · agent · Unbox overview: StationComposerDock chat-style carton notes in dock band; compact end-aligned Receive/Print SlicedActionDock — ok
+- `2026-07-23T23:30:59.049Z` · **main** · main · agent · Saved shipped-order-display-roi-plan.md (search→order body CTAs + Shopify/Amazon ROI ranking) — ok
+- `2026-07-23T23:34:21.995Z` · **main** · main · agent · Catalog platform tabs (Zoho+channels) + LedgerGridSurface spreadsheet; demoted Active/Linked to filter refine — ok
+- `2026-07-23T23:35:59.961Z` · **main** · main · agent · Merged Unbox overview Receive CTA into the notes composer (one elevated shell): SlicedActionDock embedded mode + StationComposerDock trailingAction + StationTerminalDock embedded render — shipped

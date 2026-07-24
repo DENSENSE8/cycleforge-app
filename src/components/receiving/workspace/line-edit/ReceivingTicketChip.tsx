@@ -2,13 +2,14 @@
 
 import { useRef, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Archive, Clock, ExternalLink, Loader2, TicketHelp, Unlink } from '@/components/Icons';
+import { Clock, ExternalLink, Loader2, TicketHelp, Unlink } from '@/components/Icons';
 import { toast } from '@/lib/toast';
 import { cn } from '@/utils/_cn';
 import { formatDateTimePST } from '@/utils/date';
 import { AnchoredLayer } from '@/design-system/primitives/AnchoredLayer';
 import { Button } from '@/design-system/primitives';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { TicketNasBackupButton } from '@/components/photos/TicketNasBackupButton';
 import { IdentityLinkChip } from './IdentityLinkChip';
 import {
   SellerMessageAnchoredPanel,
@@ -185,28 +186,10 @@ function TicketThreadPanel({
     onError: (err) => toast.error(err.message || 'Could not unlink the ticket'),
   });
 
-  // Archive this carton's photos to the NAS folder named after the ticket (via
-  // the office agent) — the same publish the claim modal does, available here so
-  // it can be (re)triggered from the filed-ticket dropdown.
-  const archive = useMutation<{ folderName: string; copied: number; total: number }, Error>({
-    mutationFn: async () => {
-      if (receivingId == null || ticketId == null) {
-        throw new Error('Missing receiving link');
-      }
-      const res = await fetch('/api/receiving/zendesk-claim/archive-only', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ receivingId, lineId, ticketNumber: String(ticketId) }),
-      });
-      const json = await res.json().catch(() => null);
-      if (!res.ok || !json?.success) {
-        throw new Error(ticketApiError(json, `Request failed (${res.status})`));
-      }
-      return { folderName: json.folderName, copied: json.copied, total: json.total };
-    },
-    onSuccess: (d) => toast.success(`Archived ${d.copied}/${d.total} photo(s) → ${d.folderName}`),
-    onError: (err) => toast.error(err.message || 'Could not archive photos'),
-  });
+  const ticketNumber =
+    ticketId != null
+      ? String(ticketId)
+      : displayTicketId.replace(/^#/, '').trim() || '';
 
   return (
     <div
@@ -214,38 +197,52 @@ function TicketThreadPanel({
       aria-label="Ticket history"
       className="flex max-h-[460px] w-[360px] max-w-[calc(100vw-24px)] flex-col overflow-hidden rounded-xl border border-border-soft bg-surface-card shadow-xl"
     >
-      <header className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2 border-b border-border-hairline inset-field">
-        <div className="flex min-w-0 flex-1 items-start gap-2">
-          <TicketHelp className="mt-0.5 h-4 w-4 shrink-0 text-orange-500" />
-          <div className="min-w-0">
-            <div className="break-words text-role-data font-semibold leading-snug text-text-default">
-              {displayTicketId ? `Ticket ${displayTicketId.startsWith('#') ? displayTicketId : `#${displayTicketId}`}` : 'Ticket'}
+      <header className="space-y-2 border-b border-border-hairline inset-field">
+        <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
+          <div className="flex min-w-0 flex-1 items-start gap-2">
+            <TicketHelp className="mt-0.5 h-4 w-4 shrink-0 text-orange-500" />
+            <div className="min-w-0">
+              <div className="break-words text-role-data font-semibold leading-snug text-text-default">
+                {displayTicketId ? `Ticket ${displayTicketId.startsWith('#') ? displayTicketId : `#${displayTicketId}`}` : 'Ticket'}
+              </div>
+              {data?.ticket.subject ? (
+                <div className="break-words text-role-micro leading-snug text-text-faint">{data.ticket.subject}</div>
+              ) : null}
             </div>
-            {data?.ticket.subject ? (
-              <div className="break-words text-role-micro leading-snug text-text-faint">{data.ticket.subject}</div>
+          </div>
+          <div className="flex max-w-full flex-wrap items-center justify-end gap-1.5">
+            {data?.ticket.status ? (
+              <span className="rounded-full bg-surface-sunken px-2 py-0.5 text-role-micro font-medium uppercase tracking-wide text-text-soft">
+                {data.ticket.status}
+              </span>
+            ) : null}
+            {data?.ticket.url ? (
+              <HoverTooltip label="Open in Zendesk" asChild>
+                <a
+                  href={data.ticket.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label="Open in Zendesk"
+                  className="rounded-md p-1 text-text-faint transition hover:bg-surface-sunken hover:text-text-muted"
+                >
+                  <ExternalLink className="h-3.5 w-3.5" />
+                </a>
+              </HoverTooltip>
             ) : null}
           </div>
         </div>
-        <div className="flex max-w-full flex-wrap items-center justify-end gap-1.5">
-          {data?.ticket.status ? (
-            <span className="rounded-full bg-surface-sunken px-2 py-0.5 text-role-micro font-medium uppercase tracking-wide text-text-soft">
-              {data.ticket.status}
-            </span>
-          ) : null}
-          {data?.ticket.url ? (
-            <HoverTooltip label="Open in Zendesk" asChild>
-              <a
-                href={data.ticket.url}
-                target="_blank"
-                rel="noreferrer"
-                aria-label="Open in Zendesk"
-                className="rounded-md p-1 text-text-faint transition hover:bg-surface-sunken hover:text-text-muted"
-              >
-                <ExternalLink className="h-3.5 w-3.5" />
-              </a>
-            </HoverTooltip>
-          ) : null}
-        </div>
+        {/* Under the ticket — same archive waist as the claim modal, always reachable. */}
+        {ticketNumber ? (
+          <div className="pt-0.5">
+            <TicketNasBackupButton
+              ticketNumber={ticketNumber}
+              receivingId={receivingId}
+              lineId={lineId}
+              label="Upload & sync to NAS"
+              className="w-full justify-center"
+            />
+          </div>
+        ) : null}
       </header>
 
       <div className="min-h-0 flex-1 space-y-2 overflow-y-auto px-3 py-3">
@@ -293,20 +290,6 @@ function TicketThreadPanel({
         <span className="min-w-0 flex-1 text-role-caption leading-snug text-text-faint">
           Unlinking only removes our reference — the ticket stays in Zendesk.
         </span>
-        <HoverTooltip label="Archive this carton's photos to the ticket's NAS folder" asChild>
-          <Button
-            variant="secondary"
-            size="sm"
-            loading={archive.isPending}
-            icon={<Archive className="h-3.5 w-3.5" />}
-            disabled={archive.isPending || receivingId == null || ticketId == null}
-            onClick={() => archive.mutate()}
-            aria-label="Archive this carton's photos to the ticket's NAS folder"
-            className="shrink-0 border border-blue-200 bg-surface-card text-blue-700 ring-0 hover:bg-blue-50"
-          >
-            Archive
-          </Button>
-        </HoverTooltip>
         <Button
           variant="secondary"
           size="sm"

@@ -69,7 +69,14 @@ export interface OutboundMetricCtx {
   /** Shipped-side rollups (from `useShippedScanOutData`). */
   shipped: OutboundMetrics;
   /** Unshipped queue tallies. */
-  unshipped: { total: number; pending: number; tested: number; blocked: number };
+  unshipped: {
+    total: number;
+    pending: number;
+    tested: number;
+    blocked: number;
+    /** Operator-flagged expedited rows (`orders.is_urgent`). */
+    urgent: number;
+  };
   /** Org throughput ROI (null when ungated / no data). */
   roi: OperationsRoiData | null;
 }
@@ -106,11 +113,20 @@ export interface ComputedMetric {
   filterState?: OutboundState;
   /**
    * When set, the tile toggles the To Ship / Shipping Pending board's `?ustatus`
-   * (via `useToShipStatusFilter`). Maps ready → TESTED, awaiting → PENDING,
-   * blocked → BLOCKED. Mutually exclusive with {@link filterState}.
+   * (via `useToShipStatusFilter`). Maps ready → TESTED, pending → PENDING,
+   * blocked → BLOCKED (Out of stock). Mutually exclusive with {@link filterState}
+   * and {@link filterAttention}.
    */
   filterUstatus?: FulfillmentState;
+  /**
+   * When set, the tile toggles Urgent-only (`?attention=1` / `orders.is_urgent`).
+   * Mutually exclusive with {@link filterState} and {@link filterUstatus}.
+   */
+  filterAttention?: boolean;
 }
+
+/** Pinned left queue cluster on the unshipped strip — fixed display order. */
+const OUTBOUND_QUEUE_ZONE_IDS = ['pending', 'urgent', 'blocked'] as const;
 
 export interface OutboundMetricDef {
   id: string;
@@ -284,6 +300,68 @@ export const OUTBOUND_METRICS: OutboundMetricDef[] = [
     },
   },
   {
+    id: 'pending',
+    label: 'Pending',
+    modes: ['unshipped'],
+    compute: ({ unshipped }) => {
+      // Pending tab total = awaiting-test lane + out-of-stock (matches tab badge).
+      const tabTotal = unshipped.pending + unshipped.blocked;
+      if (tabTotal <= 0) return null;
+      return {
+        id: 'pending',
+        label: 'Pending',
+        value: tabTotal.toLocaleString(),
+        fraction: share(tabTotal, unshipped.total || tabTotal),
+        intent: 'neutral',
+        // Queue fact — pinned left via {@link OUTBOUND_QUEUE_ZONE_IDS}; severity
+        // kept > 0 so empty-queue all-clear still works when nothing else shows.
+        severity: 1,
+        status: 'In queue',
+        tooltip: `Pending tab (awaiting test + out of stock) · ${tabTotal}. Click to show the full Pending tab.`,
+        filterUstatus: 'PENDING',
+      };
+    },
+  },
+  {
+    id: 'urgent',
+    label: 'Urgent',
+    modes: ['unshipped'],
+    compute: ({ unshipped }) => {
+      if (unshipped.urgent <= 0) return null;
+      return {
+        id: 'urgent',
+        label: 'Urgent',
+        value: unshipped.urgent.toLocaleString(),
+        fraction: share(unshipped.urgent, unshipped.total || unshipped.urgent),
+        intent: 'warn',
+        severity: 2,
+        status: 'Expedited',
+        tooltip: `Operator-flagged urgent orders · ${unshipped.urgent}. Click to filter the board.`,
+        filterAttention: true,
+      };
+    },
+  },
+  {
+    id: 'blocked',
+    label: 'Out of stock',
+    modes: ['unshipped'],
+    compute: ({ unshipped }) => {
+      if (unshipped.blocked <= 0) return null;
+      return {
+        id: 'blocked',
+        label: 'Out of stock',
+        value: unshipped.blocked.toLocaleString(),
+        fraction: share(unshipped.blocked, unshipped.total || unshipped.blocked),
+        intent: 'bad',
+        // Check immediately — even 1 OOS unit needs a human.
+        severity: 3,
+        status: 'Check now',
+        tooltip: `Out of stock ÷ open queue · ${unshipped.blocked}/${unshipped.total}. Click to filter the board.`,
+        filterUstatus: 'BLOCKED',
+      };
+    },
+  },
+  {
     id: 'ready',
     label: 'Ready to pack',
     modes: ['unshipped'],
@@ -296,54 +374,12 @@ export const OUTBOUND_METRICS: OutboundMetricDef[] = [
         value: unshipped.tested.toLocaleString(),
         fraction: share(unshipped.tested, denom),
         intent: 'neutral',
-        // Packable work — shown so the strip mirrors the three board lanes and
-        // click-to-filters `?ustatus=TESTED` (same waist as Shipping Pending).
+        // Packable work — stays in the attention zone (not the pinned queue
+        // cluster) so Pending / Urgent / OOS stay leftmost.
         severity: 1,
         status: 'In queue',
         tooltip: `Tested & ready to pack ÷ open queue · ${unshipped.tested}/${denom}. Click to filter the board.`,
         filterUstatus: 'TESTED',
-      };
-    },
-  },
-  {
-    id: 'awaiting',
-    label: 'Awaiting test',
-    modes: ['unshipped'],
-    compute: ({ unshipped }) => {
-      if (unshipped.pending <= 0) return null;
-      const denom = unshipped.pending + unshipped.tested;
-      return {
-        id: 'awaiting',
-        label: 'Awaiting test',
-        value: unshipped.pending.toLocaleString(),
-        fraction: share(unshipped.pending, denom),
-        intent: 'warn',
-        // The test bottleneck — the pile to work down. A focus item (sev 1).
-        severity: 1,
-        status: 'Backlog',
-        tooltip: `Awaiting test ÷ open queue · ${unshipped.pending}/${denom}. Click to filter the board.`,
-        filterUstatus: 'PENDING',
-      };
-    },
-  },
-  {
-    id: 'blocked',
-    label: 'Blocked',
-    modes: ['unshipped'],
-    compute: ({ unshipped }) => {
-      if (unshipped.blocked <= 0) return null;
-      return {
-        id: 'blocked',
-        label: 'Blocked',
-        value: unshipped.blocked.toLocaleString(),
-        fraction: share(unshipped.blocked, unshipped.total),
-        intent: 'bad',
-        // Check immediately — even 1 blocked unit needs a human, so it always
-        // sorts to the front regardless of its tiny share.
-        severity: 3,
-        status: 'Check now',
-        tooltip: `Blocked ÷ open queue · ${unshipped.blocked}/${unshipped.total}. Click to filter the board.`,
-        filterUstatus: 'BLOCKED',
       };
     },
   },
@@ -364,24 +400,27 @@ export function resolveOutboundMetrics(ctx: OutboundMetricCtx): ComputedMetric[]
 
 /**
  * The attention view over the resolved metrics — the shape the redesigned
- * OutboundKpiStrip renders. Two honest zones, and nothing else:
+ * OutboundKpiStrip renders. Three zones:
  *
- *   • `attention` — `severity > 0`, sorted by severity DESC then value DESC, so
- *     "check immediately" (blocked, exceptions) sits leftmost and pressure
- *     (backlog, slow dock) follows. Capped so the header stays scannable.
+ *   • `queue` — pinned left on unshipped: Pending → Urgent → Out of stock
+ *     ({@link OUTBOUND_QUEUE_ZONE_IDS}), only when each compute returned a tile.
+ *   • `attention` — remaining `severity > 0` (not in queue), sorted by severity
+ *     DESC then value DESC. Capped so the header stays scannable.
  *   • `trend` — `severity === 0` metrics that carry an honest week-over-week
  *     `delta` ("what's down from previous weeks"). Today only throughput has a
  *     real baseline; more join once the ROI endpoint returns prior-period values.
  *
  * Pure status with neither severity nor delta (delivered, in-transit) is
- * dropped on shipped — it lives on the board. Unshipped lane buckets
- * (blocked / ready / awaiting) stay visible so they can click-to-filter.
- * When BOTH zones are empty the strip shows an all-clear.
+ * dropped on shipped — it lives on the board. When ALL zones are empty the
+ * strip shows an all-clear.
  */
 export interface OutboundAttention {
+  queue: ComputedMetric[];
   attention: ComputedMetric[];
   trend: ComputedMetric[];
 }
+
+const QUEUE_ZONE_ID_SET = new Set<string>(OUTBOUND_QUEUE_ZONE_IDS);
 
 export function splitOutboundAttention(
   metrics: ComputedMetric[],
@@ -391,10 +430,14 @@ export function splitOutboundAttention(
     const n = Number.parseFloat(m.value.replace(/[^0-9.]/g, ''));
     return Number.isFinite(n) ? n : 0;
   };
+  const byId = new Map(metrics.map((m) => [m.id, m]));
+  const queue = OUTBOUND_QUEUE_ZONE_IDS.map((id) => byId.get(id)).filter(
+    (m): m is ComputedMetric => m != null,
+  );
   const attention = metrics
-    .filter((m) => m.severity > 0)
+    .filter((m) => m.severity > 0 && !QUEUE_ZONE_ID_SET.has(m.id))
     .sort((a, b) => b.severity - a.severity || parseValue(b) - parseValue(a))
     .slice(0, attentionLimit);
   const trend = metrics.filter((m) => m.severity === 0 && m.delta !== undefined);
-  return { attention, trend };
+  return { queue, attention, trend };
 }

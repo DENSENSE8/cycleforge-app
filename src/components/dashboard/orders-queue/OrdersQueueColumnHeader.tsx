@@ -20,6 +20,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { Check, Calendar, Clock, ChevronUp, ChevronDown } from '@/components/Icons';
 import { tableHeader } from '@/design-system/tokens/typography/presets';
 import { elevationClass } from '@/design-system/tokens/shadows';
+import { TABLE_FROZEN_HEADER_CLASS } from '@/design-system/tokens/table-surface';
 import { useIsColumnHidden } from '@/components/ui/table-column-config/TableColumnConfig';
 import { ColumnTypeGlyph } from '@/components/ui/table-column-config/column-type-glyph';
 import { QUEUE_ROW } from '@/components/ui/queue-row-chrome';
@@ -156,9 +157,9 @@ export function OrdersQueueColumnHeader({
       className={cn(
         // Sticky lives on LedgerGrid's `[data-grid-col-header]` wrapper so the
         // whole band freezes as one layer; this row fills that band.
-        'group/hrow grid border-b border-border-default bg-surface-card',
+        'group/hrow grid border-b border-border-default',
         gridSkin
-          ? 'min-h-11 px-0 py-0'
+          ? cn('min-h-11 px-0 py-0', TABLE_FROZEN_HEADER_CLASS)
           : cn('sticky top-0 z-sticky bg-surface-canvas/95 py-2 backdrop-blur-sm', ORDERS_QUEUE_COL_HEADER_STICKY, QUEUE_ROW.px),
         ordersQueueRowShellClass(false, { scrollMinContent: gridSkin }),
         className,

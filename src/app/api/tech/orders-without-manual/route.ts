@@ -64,7 +64,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
           o.sku,
           o.account_source,
           o.notes,
-          o.out_of_stock,
+          o.is_out_of_stock,
           COALESCE(o_stn.is_carrier_accepted OR o_stn.is_in_transit
             OR o_stn.is_out_for_delivery OR o_stn.is_delivered, false) AS is_shipped
         FROM tech_serial_numbers tsn
@@ -117,7 +117,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
             o.sku,
             o.account_source,
             o.notes,
-            o.out_of_stock,
+            o.is_out_of_stock,
             o.shipment_id
           FROM orders o
           WHERE o.id = order_match.id

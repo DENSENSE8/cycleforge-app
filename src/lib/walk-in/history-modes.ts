@@ -1,8 +1,12 @@
 /**
- * Sales surface (`/walk-in`) **mode axis** — the front-desk history hub now hosts
- * three sidebar modes, each with its own top-header tabs that swap between
+ * Sales surface (`/walk-in`) **mode axis** — the front-desk history hub hosts
+ * Local Pickup · Sales, each with its own top-header tabs that swap between
  * genuinely separate tables (the dashboard pattern: Outbound = Pending/Packed/
  * Shipped). This is the analogue of `src/lib/dashboard/dashboard-domains.ts`.
+ *
+ * Repair graduated to Receiving `/repair` (RepairTable + LedgerGrid) — it is
+ * no longer a hub mode. Legacy `?mode=repair` / `?category=repairs` redirect at
+ * the proxy; `parseRepairTab` stays here as the shared `?tab=` SoT for `/repair`.
  *
  * Modes ≠ tabs: the **mode** lives in the sidebar (`?mode=`), the **tab** lives
  * in the main-pane header (`?tab=`, validated per mode). Both drop their default
@@ -13,13 +17,13 @@
  * Legacy `?category=` coercion still lives in `history-categories.ts`.
  */
 
-import { SalesPrice, ShoppingCart, Wrench } from '@/components/Icons';
+import { SalesPrice, ShoppingCart } from '@/components/Icons';
 import type { HorizontalSliderItem } from '@/components/ui/HorizontalButtonSlider';
 import type { PermissionString } from '@/lib/auth/permissions-shared';
 import type { RepairTab } from '@/lib/neon/repair-service-queries';
 
-/** Sidebar modes, in required left→right order: Local Pickup · Sales · Repair. */
-export const WALK_IN_HISTORY_MODES = ['pickup', 'sales', 'repair'] as const;
+/** Sidebar modes, in required left→right order: Local Pickup · Sales. */
+export const WALK_IN_HISTORY_MODES = ['pickup', 'sales'] as const;
 export type WalkInHistoryMode = (typeof WALK_IN_HISTORY_MODES)[number];
 
 /** Sales is the surface identity — the default mode, dropped from the URL. */
@@ -29,15 +33,12 @@ export const DEFAULT_WALK_IN_HISTORY_MODE: WalkInHistoryMode = 'sales';
 export const WALK_IN_HISTORY_MODE_ITEMS: HorizontalSliderItem[] = [
   { id: 'pickup', label: 'Local Pickup', icon: ShoppingCart },
   { id: 'sales', label: 'Sales', icon: SalesPrice },
-  { id: 'repair', label: 'Repair', icon: Wrench },
 ];
 
 /** Extra permission a mode needs on top of the page gate (`walk_in.view`). */
 export const WALK_IN_MODE_PERMISSION: Record<WalkInHistoryMode, PermissionString | null> = {
   pickup: null,
   sales: null,
-  // A counter operator isn't automatically a repair tech (mirrors WALK_IN_JOB_PERMISSIONS).
-  repair: 'repair.view',
 };
 
 export function isWalkInHistoryMode(value: string | null | undefined): value is WalkInHistoryMode {
@@ -46,9 +47,10 @@ export function isWalkInHistoryMode(value: string | null | undefined): value is 
 
 export function parseWalkInHistoryMode(raw: string | null | undefined): WalkInHistoryMode {
   if (isWalkInHistoryMode(raw)) return raw;
-  // Legacy `?category=` values map onto the new modes.
+  // Legacy `?category=` values map onto the remaining hub modes.
   if (raw === 'pickups') return 'pickup';
-  if (raw === 'repairs') return 'repair';
+  // `repairs` / `repair` left the hub for `/repair` (proxy redirects); fall
+  // through to Sales if somehow still parsed client-side.
   // `sales`, `all`, and everything unknown fall through to the default (Sales).
   return DEFAULT_WALK_IN_HISTORY_MODE;
 }
@@ -92,13 +94,8 @@ export function parseSalesTab(raw: string | null | undefined): SalesTab {
     : DEFAULT_SALES_TAB;
 }
 
-// ── Repair mode: Incoming · Active · Done (existing RepairTab / RepairTable) ───
+// ── Repair `?tab=` SoT (Receiving `/repair` queue — not a Walk-In hub mode) ───
 export const DEFAULT_REPAIR_TAB: RepairTab = 'active';
-export const REPAIR_TAB_ITEMS: WalkInModeTab[] = [
-  { id: 'incoming', label: 'Incoming' },
-  { id: 'active', label: 'Active' },
-  { id: 'done', label: 'Done' },
-];
 export function parseRepairTab(raw: string | null | undefined): RepairTab {
   return raw === 'incoming' || raw === 'active' || raw === 'done' ? raw : DEFAULT_REPAIR_TAB;
 }
@@ -108,8 +105,6 @@ export function defaultTabForMode(mode: WalkInHistoryMode): string {
   switch (mode) {
     case 'pickup':
       return DEFAULT_PICKUP_TAB;
-    case 'repair':
-      return DEFAULT_REPAIR_TAB;
     case 'sales':
     default:
       return DEFAULT_SALES_TAB;

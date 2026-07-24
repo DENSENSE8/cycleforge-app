@@ -8,15 +8,15 @@
  * Workbench contract: URL-addressable selection (`?openOrderId`) + right-pane
  * detail. Do not refactor onto SidebarRailShell (single-list rail engine).
  *
- * Scroll: page-owned via `DashboardScrollShell` — KPI strip scrolls away; the
- * column header sticks under the pinned context chrome. No nested fixed-height
- * viewport (that trapped scroll inside the grid and kept the KPI on screen).
+ * Scroll: KPI strip lives above the framed table in the page scroll body; the
+ * table card uses `TABLE_SURFACE_CLIP_CLASS` (rounded + overflow-hidden) so
+ * airtable column lines clip cleanly at the corners. Column header sticks
+ * inside the grid when the card self-scrolls; no page-level sticky/split-x.
  */
 
 import { useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { OrdersGridView } from '@/components/dashboard/orders-queue/OrdersGridView';
-import { useDashboardScrollParent } from '@/components/dashboard/DashboardScrollShell';
 import { DASHBOARD_ORDERS_SELECTION_SCOPE } from '@/lib/selection/dashboard-scopes';
 import { StaffFilterButton } from '@/components/ui/StaffFilterButton';
 import { useOutboundQueueKeyboard } from '@/hooks/useOutboundQueueKeyboard';
@@ -52,7 +52,6 @@ export function UnshippedShelfBoard({
   toolbarPortalTarget,
 }: UnshippedShelfBoardProps) {
   const [selectedId, setSelectedId] = useState<number | null>(null);
-  const scrollParentRef = useDashboardScrollParent();
 
   useEventBridge({
     'open-shipped-details': (e) => {
@@ -83,13 +82,12 @@ export function UnshippedShelfBoard({
             {searchToolbar}
           </div>
         )}
-      {/* Full-bleed in workbench gutters — page scroll owns Y; grid owns X. */}
+      {/* Framed ops table — rounded + overflow-hidden clips the airtable grid. */}
       <div className="min-w-0 pb-3">
         <OrdersGridView
           records={records}
           loading={loading}
           searchValue={searchValue}
-          scrollParentRef={scrollParentRef}
           onOpenRecord={(record) => {
             setSelectedId(Number(record.id));
             onOpenRecord(record);

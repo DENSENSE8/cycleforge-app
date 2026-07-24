@@ -102,9 +102,9 @@ test('deriveShippedHeaderMeta: tech scan → emerald tested status', () => {
 });
 
 test('deriveShippedHeaderMeta: out of stock → red status', () => {
-  const meta = deriveShippedHeaderMeta(makeShipped({ id: 5, out_of_stock: 'Backordered' }));
+  const meta = deriveShippedHeaderMeta(makeShipped({ id: 5, is_out_of_stock: true }));
   assert.equal(meta.statusTone, 'red');
-  assert.equal(meta.statusLabel, 'Backordered');
+  assert.equal(meta.statusLabel, 'Out of stock');
   assert.equal(meta.hasOutOfStock, true);
 });
 

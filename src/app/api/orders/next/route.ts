@@ -164,13 +164,13 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
 
     const countConditions = [...baseConditions];
     if (outOfStock === 'true') {
-      countConditions.push(`COALESCE(BTRIM(o.out_of_stock), '') <> ''`);
+      countConditions.push(`o.is_out_of_stock`);
       // Stock blockers are globally visible to all techs regardless of assignment.
     } else if (outOfStock === 'false') {
       countConditions.push(`NOT COALESCE(stn.is_carrier_accepted OR stn.is_in_transit
          OR stn.is_out_for_delivery OR stn.is_delivered, false)`);
       countConditions.push(`o.shipment_id IS NOT NULL`);
-      countConditions.push(`COALESCE(BTRIM(o.out_of_stock), '') = ''`);
+      countConditions.push(`NOT o.is_out_of_stock`);
       countConditions.push(noTechScanClause);
       // Normal order flow: show orders assigned to this tech or currently unassigned.
       countConditions.push(`(wa_t.assigned_tech_id IS NULL OR wa_t.assigned_tech_id = ANY($1::int[]))`);
@@ -206,7 +206,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
           OR stn.is_out_for_delivery OR stn.is_delivered,
           false
         ) AS is_shipped,
-        o.out_of_stock,
+        o.is_out_of_stock,
         wa_t.assigned_tech_id AS tester_id,
         staff_t.name          AS tester_name,
         COALESCE(sal_scan.has_scan, false) AS has_tech_scan

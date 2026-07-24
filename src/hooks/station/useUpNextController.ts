@@ -80,7 +80,7 @@ export function useUpNextController({
 
   const filteredStockOrders = useMemo(() => {
     if (!searchText.trim()) return stockOrders;
-    return stockOrders.filter((o) => matchesSearch(searchText, [o.product_title, o.order_id, o.shipping_tracking_number, o.sku, o.condition, o.out_of_stock]));
+    return stockOrders.filter((o) => matchesSearch(searchText, [o.product_title, o.order_id, o.shipping_tracking_number, o.sku, o.condition]));
   }, [stockOrders, searchText]);
 
   const filteredRepairs = useMemo(() => {

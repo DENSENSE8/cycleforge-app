@@ -33,6 +33,18 @@ export interface FavoritesWorkspaceSectionProps {
   searchSkuSuffixFilter?: string;
   fuzzyTitleSearch?: boolean;
   searchResultsMaxHeightClass?: string;
+  /**
+   * Read-only templates (kiosk device principal): hide add / manage / edit.
+   * List still loads + `onUseFavorite` fires.
+   */
+  readOnly?: boolean;
+  /**
+   * Override list endpoint. Staff default is `/api/favorites?workspace=…`.
+   * Kiosk uses `/api/kiosk/repair/favorites` (device token, repair workspace only).
+   */
+  listUrl?: string;
+  /** When true, expand the list on mount (default: quick-pick or inlineRows). */
+  defaultOpen?: boolean;
 }
 
 /**
@@ -42,7 +54,16 @@ export interface FavoritesWorkspaceSectionProps {
  * quick-pick / default views + the shared form.
  */
 export function useFavoritesWorkspace(props: FavoritesWorkspaceSectionProps) {
-  const { workspaceKey, variant = 'default', searchSkuSuffixFilter, fuzzyTitleSearch = false } = props;
+  const {
+    workspaceKey,
+    variant = 'default',
+    searchSkuSuffixFilter,
+    fuzzyTitleSearch = false,
+    listUrl,
+    inlineRows = false,
+    defaultOpen,
+    readOnly = false,
+  } = props;
   const isQuickPick = variant === 'quick-pick';
 
   const [favorites, setFavorites] = useState<FavoriteSkuRecord[]>([]);
@@ -59,13 +80,15 @@ export function useFavoritesWorkspace(props: FavoritesWorkspaceSectionProps) {
   const [editingFavoriteId, setEditingFavoriteId] = useState<number | null>(null);
   // header pencil toggle — shows trash delete buttons on rows
   const [isManageMode, setIsManageMode] = useState(false);
-  const [isListOpen, setIsListOpen] = useState(variant === 'quick-pick');
+  const [isListOpen, setIsListOpen] = useState(
+    defaultOpen ?? (isQuickPick || inlineRows),
+  );
 
   const loadFavorites = async () => {
     setIsLoading(true);
     setError(null);
     try {
-      setFavorites(await fetchFavorites(workspaceKey));
+      setFavorites(await fetchFavorites(workspaceKey, { listUrl }));
     } catch (err: any) {
       setError(err?.message || 'Failed to load favorites');
       setFavorites([]);
@@ -77,7 +100,15 @@ export function useFavoritesWorkspace(props: FavoritesWorkspaceSectionProps) {
   useEffect(() => {
     void loadFavorites();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [workspaceKey]);
+  }, [workspaceKey, listUrl]);
+
+  // Read-only surfaces never open the editor.
+  useEffect(() => {
+    if (!readOnly) return;
+    setShowForm(false);
+    setIsManageMode(false);
+    setEditingFavoriteId(null);
+  }, [readOnly]);
 
   const resetDraft = () => {
     setDraft(EMPTY_DRAFT);

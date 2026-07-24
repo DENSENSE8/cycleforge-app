@@ -45,7 +45,7 @@ export async function getOrders(orgId: string): Promise<WorkOrderRow[]> {
        o.account_source,
        o.quantity,
        o.notes,
-       o.out_of_stock,
+       o.is_out_of_stock,
        o.created_at,
        (COALESCE((SELECT count(*) FROM station_activity_logs sal2
          WHERE sal2.shipment_id IS NOT NULL AND sal2.shipment_id = o.shipment_id
@@ -162,7 +162,7 @@ function mapOrderRow(row: any) {
     quantity: row.quantity ? String(row.quantity) : null,
     createdAt: normalizePSTTimestamp(row.created_at),
     hasTechScan: Boolean(row.has_tech_scan),
-    outOfStock: row.out_of_stock ? String(row.out_of_stock).trim() : null,
+    isOutOfStock: Boolean(row.is_out_of_stock),
   };
 }
 
@@ -197,7 +197,7 @@ export async function getWorkOrdersInRange(
        o.account_source,
        o.quantity,
        o.notes,
-       o.out_of_stock,
+       o.is_out_of_stock,
        o.created_at,
        false AS has_tech_scan,
        test_wa.id AS test_assignment_id,

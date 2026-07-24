@@ -194,7 +194,6 @@ async function createOrUpdateOrderFromEbayTracking(params: {
       status_history,
       notes,
       quantity,
-      out_of_stock,
       account_source,
       order_date,
       sku_catalog_id,
@@ -202,7 +201,7 @@ async function createOrUpdateOrderFromEbayTracking(params: {
       currency,
       buyer_note
     ) VALUES (
-      $1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9, $10, $11, $12, $13, $14, $15, $16
+      $1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9, $10, $11, $12, $13, $14, $15
     )
     ON CONFLICT ON CONSTRAINT idx_orders_unique_account_order DO UPDATE
       SET product_title = COALESCE(NULLIF(EXCLUDED.product_title, 'No title'), orders.product_title),
@@ -226,7 +225,6 @@ async function createOrUpdateOrderFromEbayTracking(params: {
       JSON.stringify([]),
       '',
       quantity,
-      '',
       params.accountName,
       orderDate,
       skuCatalogId,

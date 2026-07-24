@@ -4,11 +4,8 @@
  */
 
 import { CONDITION_GRADES, resolveConditionGrade } from '@/lib/conditions';
-import { deriveFulfillmentState } from '@/lib/unshipped-state';
-import { FULFILLMENT_STAGE_RANK } from '@/lib/order-lifecycle';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
 import { getDaysLateNullable } from '@/utils/date';
-import { getOrderPlatformLabel } from '@/utils/order-platform';
 import type { QueueDisplaySortColumn, QueueDisplaySortDir } from '@/utils/queue-display-sort';
 import {
   queueRowShipBySource,
@@ -81,32 +78,11 @@ export function compareQueueColumnRows(
     case 'age':
       primary = ageValue(a) - ageValue(b);
       break;
-    case 'status': {
-      const sa = deriveFulfillmentState({
-        shipmentId: ra.shipment_id,
-        hasTechScan: Boolean(ra.has_tech_scan),
-        outOfStock: ra.out_of_stock as string | null | undefined,
-      });
-      const sb = deriveFulfillmentState({
-        shipmentId: rb.shipment_id,
-        hasTechScan: Boolean(rb.has_tech_scan),
-        outOfStock: rb.out_of_stock as string | null | undefined,
-      });
-      primary = FULFILLMENT_STAGE_RANK[sa] - FULFILLMENT_STAGE_RANK[sb];
-      break;
-    }
     case 'qty':
       primary = qtyValue(ra) - qtyValue(rb);
       break;
     case 'condition':
       primary = conditionRank(String(ra.condition ?? '')) - conditionRank(String(rb.condition ?? ''));
-      break;
-    case 'platform':
-      primary = getOrderPlatformLabel(ra.order_id, ra.account_source).localeCompare(
-        getOrderPlatformLabel(rb.order_id, rb.account_source),
-        undefined,
-        { sensitivity: 'base' },
-      );
       break;
     case 'order':
       primary = String(ra.order_id || '').localeCompare(String(rb.order_id || ''), undefined, {
