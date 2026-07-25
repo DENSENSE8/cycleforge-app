@@ -27,6 +27,11 @@ export interface TransferOrderDetails {
    * as a warning instead of silently disappearing.
    */
   unresolvedTracking: TransferOrderDetail[];
+  /**
+   * Rows imported with a present Item Number that did not resolve to
+   * sku_catalog / sku_platform_ids. Enqueued on Review · Catalog link.
+   */
+  unmatchedCatalog: TransferOrderDetail[];
 }
 
 export interface OrderExceptionResolutionDetail {
@@ -51,6 +56,8 @@ export interface TransferTabState {
   trackingAttached?: number;
   /** Rows whose tracking value failed carrier detection (not linked). */
   unresolvedTracking?: number;
+  /** Sheet rows skipped because raw Item Number was blank. */
+  skippedNoItemNumber?: number;
   processedRows?: number;
 }
 
@@ -88,7 +95,7 @@ export type SyncPhase =
  */
 export type SyncStreamEvent =
   | { type: 'phase'; phase: SyncPhase; message?: string; count?: number }
-  | { type: 'detail'; kind: 'inserted' | 'updated' | 'deleted' | 'unknownTitle' | 'unresolvedTracking'; row: TransferOrderDetail }
+  | { type: 'detail'; kind: 'inserted' | 'updated' | 'deleted' | 'unknownTitle' | 'unresolvedTracking' | 'unmatchedCatalog'; row: TransferOrderDetail }
   | { type: 'exception'; kind: 'resolved' | 'open'; row: OrderExceptionResolutionDetail }
   | { type: 'result'; result: Record<string, unknown> }
   | { type: 'error'; error: string };

@@ -12,7 +12,7 @@ import { NoSerialControl } from '@/components/receiving/workspace/line-edit/NoSe
  * Empty unfound carton — "scan the first return" affordance.
  *
  * Same row anatomy as a matched {@link PoLineRow}: title · qty | SKU | condition
- * meta · serial body. The SKU slot uses the dashed empty face until a return /
+ * meta · serial body. The SKU slot uses the mono `----` empty face until a return /
  * catalog import fills a real SKU. Scan runs the carton-level create-line→attach
  * flow (`handleReturnSerialScan`); on a shipped match it imports the sales order
  * and populates the line.
@@ -62,7 +62,7 @@ export function ReturnScanCard({
             {title}
           </p>
         </div>
-        {/* Meta — qty | dashed SKU | condition (same columns as matched rows). */}
+        {/* Meta — qty | empty SKU (----) | condition (same columns as matched rows). */}
         <PoLineMetaGrid
           qty={<ProgressBadge received={0} expected={1} />}
           sku={<EmptySkuChipFace dense />}

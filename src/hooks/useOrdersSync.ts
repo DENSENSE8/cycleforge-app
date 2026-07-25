@@ -54,7 +54,7 @@ function phaseSummary(phase: SyncPhase, count?: number): string {
 }
 
 function emptyTransferDetails(): TransferOrderDetails {
-  return { inserted: [], updated: [], deleted: [], unknownTitle: [], unresolvedTracking: [] };
+  return { inserted: [], updated: [], deleted: [], unknownTitle: [], unresolvedTracking: [], unmatchedCatalog: [] };
 }
 
 export function useOrdersSync() {

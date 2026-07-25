@@ -17,6 +17,10 @@ export interface ImportStatus {
     updated?: number;
     trackingAttached?: number;
     unresolvedTracking?: number;
+    /** Sheet rows skipped for blank Item Number (unlinkable without listing id). */
+    skippedNoItemNumber?: number;
+    /** Distinct listings imported without a catalog match (Review · Catalog link). */
+    unmatchedCatalog?: number;
     processedRows?: number;
     exceptionsResolved?: number;
     ecwidInserted?: number;
@@ -42,7 +46,14 @@ export const itemVariants = {
 };
 
 export function emptyTransferDetails(): TransferOrderDetails {
-  return { inserted: [], updated: [], deleted: [], unknownTitle: [], unresolvedTracking: [] };
+  return {
+    inserted: [],
+    updated: [],
+    deleted: [],
+    unknownTitle: [],
+    unresolvedTracking: [],
+    unmatchedCatalog: [],
+  };
 }
 
 export function cloneDetails(d: TransferOrderDetails): TransferOrderDetails {
@@ -52,6 +63,7 @@ export function cloneDetails(d: TransferOrderDetails): TransferOrderDetails {
     deleted: [...d.deleted],
     unknownTitle: [...d.unknownTitle],
     unresolvedTracking: [...(d.unresolvedTracking ?? [])],
+    unmatchedCatalog: [...(d.unmatchedCatalog ?? [])],
   };
 }
 

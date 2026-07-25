@@ -28,6 +28,7 @@ import { zIndex as zLayer } from '@/design-system/tokens/z-index';
 import { useEscapeClose } from '@/design-system/hooks';
 import { X } from '@/components/Icons';
 import { IconButton } from '@/design-system/primitives';
+import { buildUnboxingCartonLibraryHref } from '@/components/shipped/photo-gallery/photo-context-provenance';
 import { MovePhotosBetweenPoModal } from '@/components/receiving/workspace/line-edit/MovePhotosBetweenPoModal';
 import { usePhotoGallery } from '@/components/shipped/photo-gallery/usePhotoGallery';
 import { PhotoViewerPortal } from '@/components/shipped/photo-gallery/PhotoViewerPortal';
@@ -76,12 +77,15 @@ export function PhotoPeekFan({
   cards,
   holdMs = 480,
   receivingId,
+  poRef,
   onPhotoDeleted,
 }: {
   cards: PeekCard[];
   holdMs?: number;
   /** Scopes delete broadcasts to this carton (desktop camera ×N + mobile feed). */
   receivingId?: number;
+  /** PO#/order ref for the unboxing media-library deep link. */
+  poRef?: string | null;
   /** Wired so the viewer's delete affordance can refresh the source list. */
   onPhotoDeleted?: (photoId: number) => void;
 }) {
@@ -108,13 +112,17 @@ export function PhotoPeekFan({
     [chronoCards],
   );
 
+  const cartonLibraryHref = receivingId
+    ? buildUnboxingCartonLibraryHref({ receivingId, poRef: poRef ?? null })
+    : undefined;
+
   // Reuse the shared gallery's fullscreen viewer (zoom/pan/nav/filmstrip + delete)
   // instead of a bespoke lightbox.
   const gallery = usePhotoGallery({
     photos: chronoPhotos,
     receivingId,
     allowReassign: !!receivingId,
-    libraryHref: receivingId ? `/ops/photos?receivingId=${receivingId}` : undefined,
+    libraryHref: cartonLibraryHref,
     onPhotoDeleted,
     onPhotoReassigned: onPhotoDeleted,
   });

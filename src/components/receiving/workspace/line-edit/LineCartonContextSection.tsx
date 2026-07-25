@@ -13,7 +13,10 @@
 
 import { CartonContextCard } from '@/components/station/entity-context';
 import { dispatchReceivingWorkspaceClose } from '@/utils/events';
-import type { ReceivingLineRow } from '@/components/station/ReceivingLinesTable';
+import {
+  dispatchLineUpdated,
+  type ReceivingLineRow,
+} from '@/components/station/ReceivingLinesTable';
 import { isLocalPickupFulfillment } from '@/lib/receiving/fulfillment-mode';
 import type { UnboxLineController } from './unbox-line-controller';
 
@@ -113,7 +116,9 @@ export function LineCartonContextSection({
       zendeskChipDisplay={c.zendeskChipDisplay}
       providerTicketId={c.providerTicketId}
       onTicketUnlinked={() => {
+        c.setZendesk('');
         void c.invalidateSupportTicket();
+        dispatchLineUpdated({ id: row.id, zendesk_ticket: null });
       }}
       primaryTrackingTrimmed={c.primaryTrackingTrimmed}
       filledExtraTrackingsCount={c.filledExtraTrackingsCount}

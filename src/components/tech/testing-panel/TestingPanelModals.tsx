@@ -6,6 +6,10 @@ import { SendPhotoNoteModal } from '@/components/receiving/workspace/SendPhotoNo
 import { MovePhotosBetweenPoModal } from '@/components/receiving/workspace/line-edit/MovePhotosBetweenPoModal';
 import { dispatchLineUpdated, type ReceivingLineRow } from '@/components/station/ReceivingLinesTable';
 import { invalidateSupportContextCaches } from '@/hooks';
+import {
+  invalidateReceivingFeeds,
+  patchReceivingRailTicketByCarton,
+} from '@/lib/queries/receiving-queries';
 import type { TestingController } from './testing-panel-types';
 
 /** The claim and audit overlays for the testing panel. SKU pairing lives in the pairing section tab. */
@@ -27,7 +31,19 @@ export function TestingPanelModals({
         onTicketCreated={(tk) => {
           toast.success(`Claim filed — ${tk}`);
           invalidateSupportContextCaches(qc);
+          if (row.receiving_id != null) {
+            patchReceivingRailTicketByCarton(qc, row.receiving_id, tk);
+          }
           dispatchLineUpdated({ id: row.id, zendesk_ticket: tk });
+          invalidateReceivingFeeds(qc);
+        }}
+        onTicketUnlinked={() => {
+          invalidateSupportContextCaches(qc);
+          if (row.receiving_id != null) {
+            patchReceivingRailTicketByCarton(qc, row.receiving_id, null);
+          }
+          dispatchLineUpdated({ id: row.id, zendesk_ticket: null });
+          invalidateReceivingFeeds(qc);
         }}
       />
 

@@ -228,18 +228,160 @@ function cartonExistsSql(resolver: string): string {
       )`;
 }
 
-function ticketFinderExists(params: unknown[], rawValue: string): string {
-  const digits = rawValue.replace(/^#/, '').trim();
-  if (/^\d+$/.test(digits)) {
-    params.push(Number(digits));
-    const id = `$${params.length}`;
-    return `EXISTS (
+/**
+ * Photos linked to a Zendesk ticket — either dual-linked as ZENDESK_TICKET
+ * claim evidence, or carton/line unboxing photos for a ticket that was linked
+ * via `ticket_links` / `receiving_*.zendesk_ticket` without a photo backfill.
+ *
+ * `id` / `hashForm` / `plainForm` are already-bound param placeholders
+ * (e.g. `$2`, `$3`, `$4`) for the numeric id, "#9599", and "9599".
+ */
+function ticketLinkedPhotoExists(id: string, hashForm: string, plainForm: string): string {
+  return `(
+      EXISTS (
         SELECT 1 FROM photo_entity_links l
          WHERE l.photo_id = p.id
            AND l.organization_id = p.organization_id
            AND l.entity_type = 'ZENDESK_TICKET'
            AND l.entity_id = ${id}
-      )`;
+      )
+      OR EXISTS (
+        SELECT 1 FROM photo_entity_links l
+         LEFT JOIN receiving_line rl
+                ON l.entity_type = 'RECEIVING_LINE' AND rl.id = l.entity_id
+               AND rl.organization_id = p.organization_id
+         LEFT JOIN receiving_carton rc ON rc.organization_id = p.organization_id AND (
+                (l.entity_type = 'RECEIVING' AND rc.id = l.entity_id)
+             OR (l.entity_type = 'RECEIVING_LINE' AND rc.id = rl.receiving_id)
+              )
+         WHERE l.photo_id = p.id
+           AND l.organization_id = p.organization_id
+           AND l.entity_type IN ('RECEIVING', 'RECEIVING_LINE')
+           AND (
+             rc.zendesk_ticket IN (${hashForm}, ${plainForm})
+             OR rl.zendesk_ticket IN (${hashForm}, ${plainForm})
+             OR EXISTS (
+               SELECT 1 FROM ticket_links tl
+                WHERE tl.organization_id = p.organization_id
+                  AND tl.zendesk_ticket_id = ${id}
+                  AND (
+                    (tl.entity_type = 'RECEIVING' AND tl.entity_id = rc.id)
+                    OR (tl.entity_type = 'RECEIVING_LINE' AND rl.id IS NOT NULL AND tl.entity_id = rl.id)
+                    OR (tl.entity_type = 'RECEIVING_LINE' AND rc.id IS NOT NULL AND tl.entity_id IN (
+                          SELECT x.id FROM receiving_line x
+                           WHERE x.receiving_id = rc.id AND x.organization_id = p.organization_id))
+                  )
+             )
+           )
+      )
+    )`;
+}
+
+/** Claims scope: any photo that belongs under a filed/linked Zendesk claim. */
+function claimsScopePhotoExists(): string {
+  return `(
+      EXISTS (
+        SELECT 1 FROM photo_entity_links l
+         WHERE l.photo_id = p.id
+           AND l.organization_id = p.organization_id
+           AND l.entity_type = 'ZENDESK_TICKET'
+      )
+      OR EXISTS (
+        SELECT 1 FROM photo_entity_links l
+         LEFT JOIN receiving_line rl
+                ON l.entity_type = 'RECEIVING_LINE' AND rl.id = l.entity_id
+               AND rl.organization_id = p.organization_id
+         LEFT JOIN receiving_carton rc ON rc.organization_id = p.organization_id AND (
+                (l.entity_type = 'RECEIVING' AND rc.id = l.entity_id)
+             OR (l.entity_type = 'RECEIVING_LINE' AND rc.id = rl.receiving_id)
+              )
+         WHERE l.photo_id = p.id
+           AND l.organization_id = p.organization_id
+           AND l.entity_type IN ('RECEIVING', 'RECEIVING_LINE')
+           AND (
+             NULLIF(TRIM(rc.zendesk_ticket), '') IS NOT NULL
+             OR NULLIF(TRIM(rl.zendesk_ticket), '') IS NOT NULL
+             OR EXISTS (
+               SELECT 1 FROM ticket_links tl
+                WHERE tl.organization_id = p.organization_id
+                  AND tl.zendesk_ticket_id IS NOT NULL
+                  AND (
+                    (tl.entity_type = 'RECEIVING' AND tl.entity_id = rc.id)
+                    OR (tl.entity_type = 'RECEIVING_LINE' AND rl.id IS NOT NULL AND tl.entity_id = rl.id)
+                    OR (tl.entity_type = 'RECEIVING_LINE' AND rc.id IS NOT NULL AND tl.entity_id IN (
+                          SELECT x.id FROM receiving_line x
+                           WHERE x.receiving_id = rc.id AND x.organization_id = p.organization_id))
+                  )
+             )
+           )
+      )
+    )`;
+}
+
+/**
+ * Resolve the Zendesk ticket id for a photo — dual-link first, then carton/line
+ * `zendesk_ticket`, then `ticket_links`. Used for SELECT ticket_id + claims
+ * folder grouping so linked-but-not-dual-linked unboxing photos still bucket
+ * under `#9599`.
+ */
+function photoResolvedTicketIdExpr(): string {
+  return `COALESCE(
+      (SELECT lz.entity_id FROM photo_entity_links lz
+        WHERE lz.photo_id = p.id
+          AND lz.organization_id = p.organization_id
+          AND lz.entity_type = 'ZENDESK_TICKET'
+        LIMIT 1),
+      (SELECT CASE
+          WHEN regexp_replace(TRIM(COALESCE(rc.zendesk_ticket, rl.zendesk_ticket, '')), '^#', '') ~ '^[0-9]+$'
+          THEN regexp_replace(TRIM(COALESCE(rc.zendesk_ticket, rl.zendesk_ticket, '')), '^#', '')::bigint
+          ELSE NULL
+        END
+         FROM photo_entity_links l
+         LEFT JOIN receiving_line rl
+                ON l.entity_type = 'RECEIVING_LINE' AND rl.id = l.entity_id
+               AND rl.organization_id = p.organization_id
+         LEFT JOIN receiving_carton rc ON rc.organization_id = p.organization_id AND (
+                (l.entity_type = 'RECEIVING' AND rc.id = l.entity_id)
+             OR (l.entity_type = 'RECEIVING_LINE' AND rc.id = rl.receiving_id)
+              )
+        WHERE l.photo_id = p.id
+          AND l.organization_id = p.organization_id
+          AND l.entity_type IN ('RECEIVING', 'RECEIVING_LINE')
+          AND COALESCE(NULLIF(TRIM(rc.zendesk_ticket), ''), NULLIF(TRIM(rl.zendesk_ticket), '')) IS NOT NULL
+        LIMIT 1),
+      (SELECT tl.zendesk_ticket_id
+         FROM photo_entity_links l
+         LEFT JOIN receiving_line rl
+                ON l.entity_type = 'RECEIVING_LINE' AND rl.id = l.entity_id
+               AND rl.organization_id = p.organization_id
+         LEFT JOIN receiving_carton rc ON rc.organization_id = p.organization_id AND (
+                (l.entity_type = 'RECEIVING' AND rc.id = l.entity_id)
+             OR (l.entity_type = 'RECEIVING_LINE' AND rc.id = rl.receiving_id)
+              )
+         JOIN ticket_links tl ON tl.organization_id = p.organization_id
+          AND tl.zendesk_ticket_id IS NOT NULL
+          AND (
+            (tl.entity_type = 'RECEIVING' AND tl.entity_id = rc.id)
+            OR (tl.entity_type = 'RECEIVING_LINE' AND rl.id IS NOT NULL AND tl.entity_id = rl.id)
+            OR (tl.entity_type = 'RECEIVING_LINE' AND rc.id IS NOT NULL AND tl.entity_id IN (
+                  SELECT x.id FROM receiving_line x
+                   WHERE x.receiving_id = rc.id AND x.organization_id = p.organization_id))
+          )
+        WHERE l.photo_id = p.id
+          AND l.organization_id = p.organization_id
+          AND l.entity_type IN ('RECEIVING', 'RECEIVING_LINE')
+        LIMIT 1)
+    )`;
+}
+
+function ticketFinderExists(params: unknown[], rawValue: string): string {
+  const digits = rawValue.replace(/^#/, '').trim();
+  if (/^\d+$/.test(digits)) {
+    params.push(Number(digits), `#${digits}`, digits);
+    const id = `$${params.length - 2}`;
+    const hashForm = `$${params.length - 1}`;
+    const plainForm = `$${params.length}`;
+    return ticketLinkedPhotoExists(id, hashForm, plainForm);
   }
   params.push(`%${digits}%`);
   const v = `$${params.length}`;
@@ -337,10 +479,15 @@ function buildLibraryWhere(filters: LibraryFilters): { clauses: string[]; params
            AND l.entity_type = $${params.length - 1}
            AND l.entity_id = $${params.length}
       )`);
+  } else if (filters.entityType === 'ZENDESK_TICKET') {
+    // Claims scope: dual-linked claim evidence OR unboxing photos on a carton/line
+    // that already carries a Zendesk ticket (ticket_links / zendesk_ticket column).
+    // Linking a ticket without photo backfill must still surface the carton's photos.
+    clauses.push(claimsScopePhotoExists());
   } else if (filters.entityType) {
     // Scope filter (no specific entity): keep ONLY photos linked to this entity
-    // type — e.g. claims = ZENDESK_TICKET, packing = PACKER_LOG. Receiving
-    // photos link as RECEIVING or RECEIVING_LINE, so unboxing matches both.
+    // type — e.g. packing = PACKER_LOG. Receiving photos link as RECEIVING or
+    // RECEIVING_LINE, so unboxing matches both.
     const types =
       filters.entityType === 'RECEIVING' ? ['RECEIVING', 'RECEIVING_LINE'] : [filters.entityType];
     params.push(types);
@@ -402,15 +549,12 @@ function buildLibraryWhere(filters: LibraryFilters): { clauses: string[]; params
       )`);
   }
   if (filters.ticketId) {
-    params.push(filters.ticketId);
-    clauses.push(`
-      EXISTS (
-        SELECT 1 FROM photo_entity_links l
-         WHERE l.photo_id = p.id
-           AND l.organization_id = p.organization_id
-           AND l.entity_type = 'ZENDESK_TICKET'
-           AND l.entity_id = $${params.length}
-      )`);
+    const digits = String(filters.ticketId).replace(/^#/, '').trim();
+    params.push(Number(digits), `#${digits}`, digits);
+    const id = `$${params.length - 2}`;
+    const hashForm = `$${params.length - 1}`;
+    const plainForm = `$${params.length}`;
+    clauses.push(ticketLinkedPhotoExists(id, hashForm, plainForm));
   }
   if (filters.pickupId) {
     params.push(filters.pickupId);
@@ -509,11 +653,7 @@ export async function listPhotoLibrary(filters: LibraryFilters) {
             EXISTS (SELECT 1 FROM photo_analysis a WHERE a.photo_id = p.id) AS has_analysis,
             (SELECT (a.metadata->>'damage_detected')::boolean
                FROM photo_analysis a WHERE a.photo_id = p.id LIMIT 1) AS damage_detected,
-            (SELECT lz.entity_id FROM photo_entity_links lz
-              WHERE lz.photo_id = p.id
-                AND lz.organization_id = p.organization_id
-                AND lz.entity_type = 'ZENDESK_TICKET'
-              LIMIT 1) AS ticket_id,
+            ${photoResolvedTicketIdExpr()} AS ticket_id,
             (SELECT COALESCE(json_agg(json_build_object(
                       'id', lb.id, 'key', lb.key, 'label', lb.label,
                       'color', lb.color, 'icon', lb.icon
@@ -528,9 +668,7 @@ export async function listPhotoLibrary(filters: LibraryFilters) {
             -- Precedence keeps a receiving capture as unboxing/pickup even when the
             -- unit it created is also linked (RECEIVING before SERIAL_UNIT).
             (CASE
-               WHEN EXISTS (SELECT 1 FROM photo_entity_links l
-                             WHERE l.photo_id = p.id AND l.organization_id = p.organization_id
-                               AND l.entity_type = 'ZENDESK_TICKET') THEN 'claims'
+               WHEN ${claimsScopePhotoExists()} THEN 'claims'
                WHEN EXISTS (SELECT 1 FROM photo_entity_links l
                              WHERE l.photo_id = p.id AND l.organization_id = p.organization_id
                                AND l.entity_type = 'PACKER_LOG') THEN 'packing'
@@ -704,15 +842,7 @@ export async function listPhotoLibraryFolders(
     orderExpr = `bucket_key DESC`;
   } else {
     bucketExpr = claims
-      ? `COALESCE(
-           (SELECT 'ticket:' || lz.entity_id::text
-              FROM photo_entity_links lz
-             WHERE lz.photo_id = p.id
-               AND lz.organization_id = p.organization_id
-               AND lz.entity_type = 'ZENDESK_TICKET'
-             LIMIT 1),
-           '__unlinked__'
-         )`
+      ? `COALESCE('ticket:' || (${photoResolvedTicketIdExpr()})::text, '__unlinked__')`
       : `CASE
            WHEN NULLIF(TRIM(p.po_ref), '') IS NOT NULL THEN 'po:' || TRIM(p.po_ref)
            ELSE '__unlinked__'

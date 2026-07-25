@@ -44,6 +44,18 @@ test('resolvePhotoLibraryFolderLevel maps URL path to aggregation level', () => 
     }),
     { level: 'entity', isLeaf: true, eyebrow: 'Photos' },
   );
+  assert.deepEqual(
+    resolvePhotoLibraryFolderLevel({ receivingId: '88' }),
+    { level: 'entity', isLeaf: true, eyebrow: 'Photos' },
+  );
+  assert.deepEqual(
+    resolvePhotoLibraryFolderLevel({ ticketId: '9599' }),
+    { level: 'entity', isLeaf: true, eyebrow: 'Photos' },
+  );
+  assert.deepEqual(
+    resolvePhotoLibraryFolderLevel({ poFinder: '9599' }),
+    { level: 'entity', isLeaf: true, eyebrow: 'Photos' },
+  );
 });
 
 test('folder leaf page size is five', () => {

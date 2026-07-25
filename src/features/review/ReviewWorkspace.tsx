@@ -2,8 +2,10 @@
 
 /**
  * `/review` Workbench — table + detail overlay (Outbound Labels recipe).
- * Modes: Packing (default, `?mode=` cleared) · Pairing (`?mode=pairing`).
- * Packing tabs: `?rtab=packed|shipped|history`. Selection: `?packerLogId=` / `?orderId=`.
+ * Modes: Packing (default, `?mode=` cleared) · Pairing (`?mode=pairing`) ·
+ * Catalog link (`?mode=catalog-link`).
+ * Packing tabs: `?rtab=packed|shipped|history`. Selection: `?packerLogId=` / `?orderId=` /
+ * Catalog link: `?choreId=`.
  */
 
 import { useCallback, useMemo } from 'react';
@@ -18,6 +20,7 @@ import { PackerReviewMode } from '@/features/review/packer/PackerReviewMode';
 import { usePackReviewRow } from '@/features/review/usePackReviewRow';
 import { ReviewPairingTable } from '@/features/review/pairing/ReviewPairingTable';
 import { ReviewPairingDetail } from '@/features/review/pairing/ReviewPairingDetail';
+import { ReviewCatalogLinkTable } from '@/features/review/catalog-link/ReviewCatalogLinkTable';
 import {
   shippedOrderToPackReviewRow,
   type ReviewTableOrder,
@@ -26,8 +29,10 @@ import { usePackReviewQueue } from '@/features/review/usePackReviewQueue';
 import type { ShippedOrder } from '@/types/orders';
 import { useQuery } from '@tanstack/react-query';
 
-function parseReviewMode(raw: string | null): 'packer' | 'pairing' {
-  return raw === 'pairing' ? 'pairing' : 'packer';
+function parseReviewMode(raw: string | null): 'packer' | 'pairing' | 'catalog-link' {
+  if (raw === 'pairing') return 'pairing';
+  if (raw === 'catalog-link') return 'catalog-link';
+  return 'packer';
 }
 
 export function ReviewWorkspace() {
@@ -47,6 +52,7 @@ export function ReviewWorkspace() {
     const params = new URLSearchParams(searchParams.toString());
     params.delete('packerLogId');
     params.delete('orderId');
+    params.delete('choreId');
     const qs = params.toString();
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
   }, [pathname, router, searchParams]);
@@ -60,6 +66,7 @@ export function ReviewWorkspace() {
       const oid = Number(order.id);
       if (Number.isFinite(oid) && oid > 0) params.set('orderId', String(oid));
       else params.delete('orderId');
+      params.delete('choreId');
       router.replace(`${pathname}?${params.toString()}`, { scroll: false });
     },
     [pathname, router, searchParams],
@@ -69,6 +76,7 @@ export function ReviewWorkspace() {
     (order: ShippedOrder) => {
       const params = new URLSearchParams(searchParams.toString());
       params.delete('packerLogId');
+      params.delete('choreId');
       params.set('orderId', String(order.id));
       router.replace(`${pathname}?${params.toString()}`, { scroll: false });
     },
@@ -77,17 +85,20 @@ export function ReviewWorkspace() {
 
   const packingOpen = mode === 'packer' && (packerLogId != null || orderId != null);
   const pairingOpen = mode === 'pairing' && orderId != null;
+  const overlayOpen = packingOpen || pairingOpen;
 
   return (
     <div className="relative h-full min-h-0 w-full overflow-hidden bg-surface-canvas">
       <div
-        className={`flex h-full min-h-0 w-full flex-col ${packingOpen || pairingOpen ? 'pointer-events-none' : ''}`}
-        aria-hidden={packingOpen || pairingOpen ? true : undefined}
-        inert={packingOpen || pairingOpen ? true : undefined}
-        style={{ visibility: packingOpen || pairingOpen ? 'hidden' : 'visible' }}
+        className={`flex h-full min-h-0 w-full flex-col ${overlayOpen ? 'pointer-events-none' : ''}`}
+        aria-hidden={overlayOpen ? true : undefined}
+        inert={overlayOpen ? true : undefined}
+        style={{ visibility: overlayOpen ? 'hidden' : 'visible' }}
       >
         {mode === 'pairing' ? (
           <ReviewPairingTable onOpenOrder={openPairingOrder} onCloseOrder={clearSelection} />
+        ) : mode === 'catalog-link' ? (
+          <ReviewCatalogLinkTable />
         ) : (
           <ReviewPackingTable onOpenRow={openPackingRow} onCloseRow={clearSelection} />
         )}

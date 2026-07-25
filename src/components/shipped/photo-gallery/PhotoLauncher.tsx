@@ -53,8 +53,9 @@ export function PhotoLauncher({ g }: { g: PhotoGalleryController }) {
       'text-blue-700 transition-all hover:bg-blue-50 disabled:pointer-events-none disabled:opacity-40',
     );
     const sep = 'border-l border-blue-200/90';
+    const hasPhotos = photoItems.length > 0;
     const canDownload =
-      !g.downloading && photoItems.length > 0 && !photoItems.every((p) => p.status === 'error');
+      !g.downloading && hasPhotos && !photoItems.every((p) => p.status === 'error');
 
     return (
       <div
@@ -70,13 +71,16 @@ export function PhotoLauncher({ g }: { g: PhotoGalleryController }) {
         )}
       >
         {g.toolbarShowLabel ? (
-          <HoverTooltip label="View photos fullscreen" asChild>
+          <HoverTooltip label={hasPhotos ? 'View photos fullscreen' : 'No photos yet'} asChild>
             {/* ds-raw-button: composite text-left launcher (label + chevron) — not a Button shape */}
             <button
               type="button"
-              onClick={() => g.openViewer(0)}
-              className="flex min-w-0 shrink-0 items-center gap-1 rounded-lg py-0.5 pl-1 pr-1.5 text-left transition-all hover:bg-blue-100/50 active:scale-[0.995]"
-              aria-label="View photos fullscreen"
+              onClick={() => {
+                if (hasPhotos) g.openViewer(0);
+              }}
+              disabled={!hasPhotos}
+              className="flex min-w-0 shrink-0 items-center gap-1 rounded-lg py-0.5 pl-1 pr-1.5 text-left transition-all hover:bg-blue-100/50 active:scale-[0.995] disabled:pointer-events-none disabled:opacity-40"
+              aria-label={hasPhotos ? 'View photos fullscreen' : 'No photos yet'}
             >
               <div className="flex min-w-0 flex-col">
                 <span className="text-role-micro uppercase tracking-wider text-blue-600">
@@ -99,12 +103,13 @@ export function PhotoLauncher({ g }: { g: PhotoGalleryController }) {
           className="flex shrink-0 items-stretch overflow-hidden rounded-lg border border-blue-200 bg-surface-card shadow-sm"
           data-testid="photo-launcher-toolbar"
         >
-          <HoverTooltip label="Show photo details" asChild>
+          <HoverTooltip label={hasPhotos ? 'Show photo details' : 'No photos yet'} asChild>
             <IconButton
               onClick={(e) => {
                 e.stopPropagation();
                 g.openViewer(0, { details: true });
               }}
+              disabled={!hasPhotos}
               className={iconBtn}
               ariaLabel="Show photo details"
               icon={<Info className="h-4 w-4 text-blue-700" />}
@@ -146,12 +151,13 @@ export function PhotoLauncher({ g }: { g: PhotoGalleryController }) {
           </HoverTooltip>
 
           {g.allowReassign ? (
-            <HoverTooltip label="Move to another PO" asChild>
+            <HoverTooltip label={hasPhotos ? 'Move to another PO' : 'No photos to move'} asChild>
               <IconButton
                 onClick={(e) => {
                   e.stopPropagation();
                   g.openMovePhotos();
                 }}
+                disabled={!hasPhotos}
                 className={cn(iconBtn, sep, g.movePhotosOpen ? 'bg-blue-100' : '')}
                 ariaLabel="Move to another PO"
                 aria-pressed={g.movePhotosOpen}
@@ -174,12 +180,13 @@ export function PhotoLauncher({ g }: { g: PhotoGalleryController }) {
             </HoverTooltip>
           ) : null}
 
-          <HoverTooltip label="View photos fullscreen" asChild>
+          <HoverTooltip label={hasPhotos ? 'View photos fullscreen' : 'No photos yet'} asChild>
             <IconButton
               onClick={(e) => {
                 e.stopPropagation();
                 g.openViewer(0);
               }}
+              disabled={!hasPhotos}
               className={cn(iconBtn, sep)}
               ariaLabel="View photos fullscreen"
               icon={<ImageIcon className="h-4 w-4 text-blue-700" />}

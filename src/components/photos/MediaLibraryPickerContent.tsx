@@ -35,7 +35,7 @@ import { resolvePhotoLibraryFolderLevel } from '@/lib/photos/folder-level';
 import type { PhotoLibrarySourceScope } from '@/lib/photos/library-filter-state';
 import { mediaPickerShowsGridControls, photoGridLeafClass, photoGridTileProps } from '@/lib/photos/photo-grid-density';
 import { sourceScopeFromFilters } from '@/lib/photos/library-filter-state';
-import { claimsTicketLabel, photoGroupHeaderLabel } from '@/lib/photos/display-names';
+import { resolvePhotoLibraryFolderLeafLabel } from '@/lib/photos/library-context-label';
 import { getCurrentPSTDateKey } from '@/utils/date';
 import { cn } from '@/utils/_cn';
 
@@ -304,12 +304,14 @@ export function MediaLibraryPickerContent({
 
   const folderLeafLabel = useMemo(() => {
     if (!folderIsLeaf || searchActive) return undefined;
-    if (onCartonTab && receivingId) return `Carton #${receivingId}`;
-    if (resolvedPickerTicketId) return claimsTicketLabel(resolvedPickerTicketId);
-    if (resolvedPickerPoRef) {
-      return photoGroupHeaderLabel(`po:${resolvedPickerPoRef}`, scope, resolvedPickerPoRef);
-    }
-    return undefined;
+    return (
+      resolvePhotoLibraryFolderLeafLabel({
+        scope,
+        poRef: resolvedPickerPoRef,
+        ticketId: resolvedPickerTicketId,
+        receivingId: onCartonTab && receivingId ? String(receivingId) : undefined,
+      }) ?? undefined
+    );
   }, [
     folderIsLeaf,
     searchActive,

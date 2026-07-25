@@ -58,7 +58,8 @@ export function handleStationComposerKeyDown(
 /**
  * Whether the blue Send control renders. A `trailingAction` (e.g. the Unbox
  * overview receive split-CTA) OWNS the trailing slot — two primaries in one
- * footer read as two cards. Enter / blur still commit.
+ * footer read as two cards. Enter still fires `onCommit` (caller maps that
+ * to the trailing primary — chat Send); blur is separate.
  */
 export function stationComposerShowsCommit(opts: {
   hideCommitButton?: boolean;
@@ -103,8 +104,9 @@ interface StationComposerDockProps {
   footerEnd?: ReactNode;
   /**
    * Terminal control mounted at the footer's trailing edge. Replaces the blue
-   * Send button (Enter / blur still commit) so the composer stays ONE shell
-   * instead of a composer card + a separate CTA dock.
+   * Send button so the composer stays ONE shell. Caller should map Enter
+   * (`onCommit`) to the same primary as this control (chat Send); blur save
+   * stays on `onBlur`.
    */
   trailingAction?: ReactNode;
   /** Auto-grow between min/max. Default true. */

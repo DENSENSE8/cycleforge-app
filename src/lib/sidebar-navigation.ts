@@ -696,16 +696,22 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
   // ── Review (Packer Review Station) ─────────────────────────────────────────
   // The `?mode=` axis = WHICH station's work you're reviewing. Packing (photo/
   // item decide) is the default (param cleared); Pairing allocates serial/SKU to
-  // outbound lines. Tech / receiving / shipping review land later as pills on the
-  // SAME page — never new routes. When a non-packing review mode ships, widen the
+  // outbound lines; Catalog link pairs unmatched import listings to Zoho/catalog.
+  // Tech / receiving / shipping review land later as pills on the SAME page —
+  // never new routes. When a non-packing review mode ships, widen the
   // APP_SIDEBAR_NAV `requires` gate to any-of (packing.review OR …).
   {
     id: 'review', label: 'Review', href: REVIEW, icon: ClipboardList, kind: 'station', requires: 'packing.review',
     modes: [
-      { id: 'packer', label: 'Packing', icon: PackageCheck, to: () => ({ pathname: REVIEW, params: { mode: null, rtab: null, packerLogId: null, orderId: null } }) },
-      { id: 'pairing', label: 'Pairing', icon: Link2, to: () => ({ pathname: REVIEW, params: { mode: 'pairing', rtab: null, packerLogId: null, orderId: null } }) },
+      { id: 'packer', label: 'Packing', icon: PackageCheck, to: () => ({ pathname: REVIEW, params: { mode: null, rtab: null, packerLogId: null, orderId: null, choreId: null } }) },
+      { id: 'pairing', label: 'Pairing', icon: Link2, to: () => ({ pathname: REVIEW, params: { mode: 'pairing', rtab: null, packerLogId: null, orderId: null, choreId: null } }) },
+      { id: 'catalog-link', label: 'Catalog link', icon: Tags, to: () => ({ pathname: REVIEW, params: { mode: 'catalog-link', rtab: null, packerLogId: null, orderId: null, choreId: null } }) },
     ],
-    resolveMode: ({ params }) => (params.get('mode') === 'pairing' ? 'pairing' : 'packer'),
+    resolveMode: ({ params }) => {
+      const m = params.get('mode');
+      if (m === 'pairing' || m === 'catalog-link') return m;
+      return 'packer';
+    },
   },
   // ── Inventory ─────────────────────────────────────────────────────────────
   // `?mode=triage|pulse` or `?section=replenish`; default `ledger`.

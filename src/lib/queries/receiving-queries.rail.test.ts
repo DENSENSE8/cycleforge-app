@@ -7,6 +7,7 @@ import {
   UNBOX_QUEUE_SEGMENT,
   UNBOX_RAIL_SEGMENT,
   patchTestingRailByLine,
+  patchReceivingRailTicketByCarton,
   patchUnboxRailQtyByCarton,
   patchUnboxRailTitleByCarton,
   purgeTriageRailsAfterUnboxOpen,
@@ -387,6 +388,60 @@ describe('patchUnboxRailQtyByCarton', () => {
     assert.equal(next?.[0]?.unbox_opened_at, '2026-07-20T10:00:00Z');
     assert.equal(next?.[0]?.item_name, 'Widget');
     assert.equal(next?.[0]?.id, -50);
+  });
+});
+
+describe('patchReceivingRailTicketByCarton', () => {
+  it('clears zendesk_ticket on Unboxed and triage rails for the carton', () => {
+    const qc = new QueryClient();
+    const flagged = {
+      id: -50060,
+      receiving_id: 50060,
+      client_event_id: 'carton:50060',
+      item_name: 'Unfound PO',
+      zendesk_ticket: '#9606',
+    } as ReceivingRailRow & { item_name: string; zendesk_ticket: string };
+    const other = {
+      id: -1,
+      receiving_id: 1,
+      client_event_id: 'carton:1',
+      item_name: 'Unfound PO',
+      zendesk_ticket: '#1111',
+    } as ReceivingRailRow & { item_name: string; zendesk_ticket: string };
+
+    qc.setQueryData(railKey(UNBOX_RAIL_SEGMENT), [flagged, other]);
+    qc.setQueryData(railKey('unfound'), [flagged]);
+
+    patchReceivingRailTicketByCarton(qc, 50060, null);
+
+    const unbox = qc.getQueryData<Array<ReceivingRailRow & { zendesk_ticket?: string | null }>>(
+      railKey(UNBOX_RAIL_SEGMENT),
+    );
+    const unfound = qc.getQueryData<Array<ReceivingRailRow & { zendesk_ticket?: string | null }>>(
+      railKey('unfound'),
+    );
+    assert.equal(unbox?.[0]?.zendesk_ticket, null);
+    assert.equal(unbox?.[1]?.zendesk_ticket, '#1111');
+    assert.equal(unfound?.[0]?.zendesk_ticket, null);
+  });
+
+  it('sets the filed ticket label on the carton row', () => {
+    const qc = new QueryClient();
+    qc.setQueryData(railKey(UNBOX_RAIL_SEGMENT), [
+      {
+        id: -7,
+        receiving_id: 7,
+        client_event_id: 'carton:7',
+        zendesk_ticket: null,
+      } as ReceivingRailRow & { zendesk_ticket: string | null },
+    ]);
+
+    patchReceivingRailTicketByCarton(qc, 7, '#9606');
+
+    const next = qc.getQueryData<Array<ReceivingRailRow & { zendesk_ticket?: string | null }>>(
+      railKey(UNBOX_RAIL_SEGMENT),
+    );
+    assert.equal(next?.[0]?.zendesk_ticket, '#9606');
   });
 });
 

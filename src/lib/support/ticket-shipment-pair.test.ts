@@ -4,8 +4,10 @@ import type { OrgId } from '@/lib/tenancy/constants';
 import {
   pairTicketShipmentFromEntity,
   pairTicketShipmentFromReceiving,
+  unpairTicketShipmentFromReceiving,
   type PairTicketShipmentFromEntityDeps,
   type PairTicketShipmentFromReceivingDeps,
+  type UnpairTicketShipmentFromReceivingDeps,
 } from '@/lib/support/ticket-shipment-pair';
 
 const ORG = '00000000-0000-4000-8000-000000000001' as OrgId;
@@ -143,5 +145,73 @@ describe('pairTicketShipmentFromEntity', () => {
       },
     );
     assert.equal(out, null);
+  });
+});
+
+describe('unpairTicketShipmentFromReceiving', () => {
+  it('no-ops when the carton has no shipment_id', async () => {
+    const lookups: Array<{ receivingId: number }> = [];
+    const removals: unknown[] = [];
+    const deps: UnpairTicketShipmentFromReceivingDeps = {
+      lookupCartonShipmentId: async (_orgId, receivingId) => {
+        lookups.push({ receivingId });
+        return null;
+      },
+      removeReference: async (args) => {
+        removals.push(args);
+        return { removed: true, promotedShipmentId: null };
+      },
+    };
+    const out = await unpairTicketShipmentFromReceiving(
+      { orgId: ORG, ticketId: 9606, receivingId: 50060, staffId: 3 },
+      deps,
+    );
+    assert.equal(out, null);
+    assert.deepEqual(lookups, [{ receivingId: 50060 }]);
+    assert.equal(removals.length, 0);
+  });
+
+  it('calls removeReference when shipment_id is present', async () => {
+    const removals: Array<{
+      orgId: OrgId;
+      ticketId: number;
+      shipmentId: number;
+      staffId?: number | null;
+    }> = [];
+    const deps: UnpairTicketShipmentFromReceivingDeps = {
+      lookupCartonShipmentId: async () => 43573,
+      removeReference: async (args) => {
+        removals.push(args);
+        return { removed: true, promotedShipmentId: null };
+      },
+    };
+    const out = await unpairTicketShipmentFromReceiving(
+      { orgId: ORG, ticketId: 9606, receivingId: 50060, staffId: 3 },
+      deps,
+    );
+    assert.deepEqual(out, {
+      shipmentId: 43573,
+      removed: true,
+      promotedShipmentId: null,
+    });
+    assert.deepEqual(removals, [
+      { orgId: ORG, ticketId: 9606, shipmentId: 43573, staffId: 3 },
+    ]);
+  });
+
+  it('reports removed: false when no SHIPMENT row existed', async () => {
+    const deps: UnpairTicketShipmentFromReceivingDeps = {
+      lookupCartonShipmentId: async () => 99,
+      removeReference: async () => ({ removed: false, promotedShipmentId: null }),
+    };
+    const out = await unpairTicketShipmentFromReceiving(
+      { orgId: ORG, ticketId: 42, receivingId: 7 },
+      deps,
+    );
+    assert.deepEqual(out, {
+      shipmentId: 99,
+      removed: false,
+      promotedShipmentId: null,
+    });
   });
 });

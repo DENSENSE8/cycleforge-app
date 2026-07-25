@@ -46,6 +46,50 @@ export async function pairTicketShipmentFromReceiving(
   });
 }
 
+export type UnpairTicketShipmentFromReceivingDeps = {
+  lookupCartonShipmentId: (
+    orgId: OrgId,
+    receivingId: number,
+  ) => Promise<number | null>;
+  removeReference: (args: {
+    orgId: OrgId;
+    ticketId: number;
+    shipmentId: number;
+    staffId?: number | null;
+  }) => Promise<{ removed: boolean; promotedShipmentId: number | null }>;
+};
+
+/**
+ * Reverse of {@link pairTicketShipmentFromReceiving}: when detaching a ticket
+ * from a receiving carton/line, also drop the carton's STN reference so
+ * package-scoped readers (by-entity chip, shipment fallback) clear.
+ *
+ * Returns null when the carton has no shipment_id (nothing to unpair).
+ */
+export async function unpairTicketShipmentFromReceiving(
+  args: {
+    orgId: OrgId;
+    ticketId: number;
+    receivingId: number;
+    staffId?: number | null;
+  },
+  deps: UnpairTicketShipmentFromReceivingDeps,
+): Promise<{
+  shipmentId: number;
+  removed: boolean;
+  promotedShipmentId: number | null;
+} | null> {
+  const shipmentId = await deps.lookupCartonShipmentId(args.orgId, args.receivingId);
+  if (shipmentId == null) return null;
+  const result = await deps.removeReference({
+    orgId: args.orgId,
+    ticketId: args.ticketId,
+    shipmentId,
+    staffId: args.staffId ?? null,
+  });
+  return { shipmentId, ...result };
+}
+
 export type PairTicketShipmentFromEntityDeps = PairTicketShipmentFromReceivingDeps & {
   lookupLineReceivingId: (orgId: OrgId, lineId: number) => Promise<number | null>;
 };

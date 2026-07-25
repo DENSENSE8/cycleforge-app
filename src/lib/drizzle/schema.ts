@@ -2425,6 +2425,39 @@ export const pendingSkus = pgTable('pending_skus', {
 export type PendingSku = typeof pendingSkus.$inferSelect;
 export type NewPendingSku = typeof pendingSkus.$inferInsert;
 
+/**
+ * order_catalog_link_chores — Review · Catalog link steward queue.
+ * Enqueued only when Google Sheets transfer-orders imports an order whose Item
+ * Number misses sku_catalog / sku_platform_ids. Not a scan of historical orphans.
+ * See migration 2026-07-24_order_catalog_link_chores.sql.
+ */
+export const orderCatalogLinkChores = pgTable('order_catalog_link_chores', {
+  id: bigserial('id', { mode: 'number' }).primaryKey(),
+  organizationId: orgIdCol(),
+  itemNumber: text('item_number').notNull(),
+  accountSource: text('account_source').notNull().default(''),
+  productTitle: text('product_title'),
+  sku: text('sku'),
+  status: text('status').notNull().default('open'),
+  skuCatalogId: integer('sku_catalog_id').references(() => skuCatalog.id, { onDelete: 'set null' }),
+  orderCount: integer('order_count').notNull().default(1),
+  firstSeenAt: timestamp('first_seen_at', { withTimezone: true }).notNull().defaultNow(),
+  lastSeenAt: timestamp('last_seen_at', { withTimezone: true }).notNull().defaultNow(),
+  linkedAt: timestamp('linked_at', { withTimezone: true }),
+  ignoredAt: timestamp('ignored_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  orgItemSourceUx: uniqueIndex('ux_order_catalog_link_chores_org_item_source').on(
+    table.organizationId,
+    table.itemNumber,
+    table.accountSource,
+  ),
+}));
+
+export type OrderCatalogLinkChore = typeof orderCatalogLinkChores.$inferSelect;
+export type NewOrderCatalogLinkChore = typeof orderCatalogLinkChores.$inferInsert;
+
 // ─── Bose Sourcing Engine ────────────────────────────────────────────────────
 // Compatibility DB + alternative-sourcing tables. See migrations
 // 2026-06-06e/f/g and docs/bose-parts-sourcing-engine-plan.md.

@@ -4,13 +4,13 @@
  * Compact carton-photos control for the condensed CartonContextCard row.
  *
  * One pill: camera pinned left + (count when photos exist, else "+") pinned
- * right. Click always sends a capture request to the paired phone — never opens
- * an upload popover (device upload lives on the hover gallery once photos
- * exist). Count and "+" never share the face — when a count is shown the plus
- * is omitted. Width is locked (`justify-between`) so digit growth does not
- * shift the identity row. When photos exist, hovering the pill reveals the
- * read/delete gallery toolbar — the wrapper owns hover (with a short leave
- * delay) so the cursor can cross the gap to the popover without it collapsing.
+ * right. Click always sends a capture request to the paired phone. Hover
+ * always reveals the gallery action strip (upload / library / …) — including
+ * when the carton has no photos yet (empty → Upload photos). Count and "+"
+ * never share the face — when a count is shown the plus is omitted. Width is
+ * locked (`justify-between`) so digit growth does not shift the identity row.
+ * The wrapper owns hover (with a short leave delay) so the cursor can cross
+ * the gap to the popover without it collapsing.
  *
  * While a gallery-owned upload/move overlay is open, the peek stays pinned so
  * the upload controller is not unmounted mid-pick.
@@ -29,6 +29,7 @@ import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { publishReceivingPhotoRequest } from '@/lib/realtime/receiving-photo-request';
 import { toast } from '@/lib/toast';
 import { receivingPhotoToGalleryInput } from '@/components/shipped/photo-gallery/photo-gallery-utils';
+import { buildUnboxingCartonLibraryHref } from '@/components/shipped/photo-gallery/photo-context-provenance';
 import { STATION_CONTEXT_PHOTO_PILL_CLASS } from '@/components/station/entity-context/station-context-action-pill';
 
 interface PhotoRow {
@@ -120,6 +121,10 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
 
   const count = photos.length;
   const hasGallery = count > 0;
+  const cartonLibraryHref = buildUnboxingCartonLibraryHref({
+    receivingId,
+    poRef: poRef ?? null,
+  });
   const [galleryHover, setGalleryHover] = useState(false);
   /** Pin while gallery-owned upload overlay is open (avoids unmount mid-pick). */
   const [galleryUploadPinned, setGalleryUploadPinned] = useState(false);
@@ -127,12 +132,15 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
   const [galleryMovePinned, setGalleryMovePinned] = useState(false);
   const hideTimer = useRef<ReturnType<typeof setTimeout>>();
 
-  const showGalleryPeek = hasGallery && (galleryHover || galleryUploadPinned || galleryMovePinned);
+  // Hover peek is available with or without photos — empty cartons still get
+  // the gallery action strip (Upload photos) so operators can pick device upload
+  // without using the pill click (pill click = send-to-phone only).
+  const showGalleryPeek = galleryHover || galleryUploadPinned || galleryMovePinned;
 
   const openGallery = useCallback(() => {
     if (hideTimer.current) clearTimeout(hideTimer.current);
-    if (count > 0) setGalleryHover(true);
-  }, [count]);
+    setGalleryHover(true);
+  }, []);
 
   const scheduleCloseGallery = useCallback(() => {
     if (hideTimer.current) clearTimeout(hideTimer.current);
@@ -149,11 +157,11 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
 
   const title = hasGallery
     ? `${count} photo${count === 1 ? '' : 's'} · send to phone`
-    : 'Send to phone';
+    : 'Send to phone · hover for upload';
 
   const ariaLabel = hasGallery
     ? `${count} carton photo${count === 1 ? '' : 's'}; send to phone or hover for gallery`
-    : 'Send capture request to phone';
+    : 'Send capture request to phone; hover for upload options';
 
   const handlePillClick = useCallback(() => {
     void handleRequestOnPhone();
@@ -167,7 +175,7 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
       onClick={handlePillClick}
       disabled={phoneSending}
       ariaLabel={ariaLabel}
-      aria-expanded={hasGallery ? galleryHover || galleryUploadPinned || galleryMovePinned : undefined}
+      aria-expanded={showGalleryPeek}
       icon={<Camera className="h-4 w-4" />}
       // Right face: count when photos exist (children), else "+". Camera stays
       // left via justify-between on the locked photo-pill width. Count is not
@@ -182,16 +190,12 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
   return (
     <div
       className="relative shrink-0"
-      onMouseEnter={hasGallery ? openGallery : undefined}
-      onMouseLeave={hasGallery ? scheduleCloseGallery : undefined}
-      onFocusCapture={hasGallery ? openGallery : undefined}
-      onBlurCapture={
-        hasGallery
-          ? (e) => {
-              if (!e.currentTarget.contains(e.relatedTarget as Node | null)) scheduleCloseGallery();
-            }
-          : undefined
-      }
+      onMouseEnter={openGallery}
+      onMouseLeave={scheduleCloseGallery}
+      onFocusCapture={openGallery}
+      onBlurCapture={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) scheduleCloseGallery();
+      }}
     >
       {/* Suppress pill tooltip while peek is open — avoids tooltip + toolbar stacking. */}
       {showGalleryPeek ? (
@@ -215,7 +219,7 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
               launcherLayout="toolbar"
               toolbarShowLabel={false}
               compact
-              libraryHref={`/ops/photos?receivingId=${receivingId}`}
+              libraryHref={cartonLibraryHref}
               onPhotoDeleted={(photoId) => refresh(photoId)}
               // Reassign/upload are NOT deletes — passing the photo id as
               // `deletedPhotoId` filtered the just-added photo straight back OUT

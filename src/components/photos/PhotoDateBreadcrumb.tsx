@@ -4,7 +4,8 @@ import { Fragment } from 'react';
 import { Calendar, ChevronRight } from '@/components/Icons';
 import { describePhotoDatePath, dayLabel } from '@/lib/photos/date-hierarchy';
 import type { PhotoLibraryFilterState } from '@/lib/photos/library-filter-state';
-import { claimsTicketLabel } from '@/lib/photos/display-names';
+import { resolvePhotoLibraryFolderLeafLabel } from '@/lib/photos/library-context-label';
+import { sourceScopeFromFilters } from '@/lib/photos/library-filter-state';
 import { cn } from '@/utils/_cn';
 
 interface PhotoDateBreadcrumbProps {
@@ -34,10 +35,11 @@ interface PhotoDateBreadcrumbProps {
  * The chip is labeled **Latest** (not Recent) so it is not confused with the
  * workbench chrome **Recent** tab (all types, no date pin).
  *
- * When a PO folder is open the folder name is appended as the active leaf after
- * the day (`folderLeafLabel`, or derived from `filters.poRef` / `ticketId`).
+ * When a PO / carton / ticket folder is open the folder name is appended as the
+ * active leaf after the day (`folderLeafLabel`, or derived from filters).
  * Every date crumb above a folder leaf stays clickable — widening a date also
- * clears the PO (the parent's `onNavigate` resets `poRef`).
+ * clears the entity leaf (the parent's `onNavigate` resets poRef / ticket /
+ * receivingId).
  */
 export function PhotoDateBreadcrumb({
   filters,
@@ -48,11 +50,14 @@ export function PhotoDateBreadcrumb({
   hideFolderLeaf = false,
 }: PhotoDateBreadcrumbProps) {
   const dateCrumbs = describePhotoDatePath(filters);
-  const poRef = filters.poRef?.trim() || null;
-  const ticketId = filters.ticketId?.trim() || null;
   const resolvedFolderLeaf =
     folderLeafLabel?.trim() ||
-    (ticketId ? claimsTicketLabel(ticketId) : poRef ? `PO ${poRef}` : null);
+    resolvePhotoLibraryFolderLeafLabel({
+      scope: sourceScopeFromFilters(filters),
+      poRef: filters.poRef,
+      ticketId: filters.ticketId,
+      receivingId: filters.receivingId,
+    });
   const showFolderLeaf = resolvedFolderLeaf !== null && !hideFolderLeaf;
   const hasDate = dateCrumbs.length > 0;
   // "All dates" can reset whenever there's a date OR a folder drill to clear.

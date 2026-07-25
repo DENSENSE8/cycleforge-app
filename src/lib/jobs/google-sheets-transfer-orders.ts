@@ -82,6 +82,16 @@ export class GoogleSheetsTransferOrdersJobError extends Error {
 }
 
 import type { SyncProgress, TransferOrderDetail, TransferOrderDetails } from '@/lib/orders-sync/types';
+import {
+  emptyTransferSheetSkipCounts,
+  filterEligibleTransferSheetRows,
+  type TransferSheetSkipCounts,
+} from '@/lib/jobs/transfer-sheet-eligibility';
+import {
+  enqueueCatalogLinkChoresForImport,
+  type EnqueueCatalogLinkChoreInput,
+} from '@/lib/inventory/order-catalog-link-chores';
+import { shouldEnqueueCatalogLinkChore } from '@/lib/inventory/order-catalog-link-chore-gates';
 
 export type { TransferOrderDetail, TransferOrderDetails } from '@/lib/orders-sync/types';
 
@@ -103,6 +113,11 @@ export interface GoogleSheetsTransferOrdersJobResult {
   tabName: string;
   ecwidApiRows?: number;
   skippedRows?: number;
+  /** Sheet-path eligibility skips (raw Item Number / tracking / order id / Ecwid). */
+  skippedNoOrderId?: number;
+  skippedNoTracking?: number;
+  skippedNoItemNumber?: number;
+  skippedEcwid?: number;
   durationMs: number;
   details: TransferOrderDetails;
 }
@@ -133,13 +148,13 @@ const FIXED_COL_INDICES_DEFAULT = {
 /** Sheet row 1 headers that MUST be present (minimal small-business import). */
 const REQUIRED_SHEET_HEADER_BINDINGS: { field: keyof typeof FIXED_COL_INDICES_DEFAULT; candidates: string[] }[] = [
   { field: 'orderNumber', candidates: ['Order Number', 'Order - Number', 'Order #', 'Order ID'] },
+  { field: 'itemNumber', candidates: ['Item Number', 'Item ID', 'Listing ID'] },
   { field: 'itemTitle', candidates: ['Item title', 'Item Title', 'Product Title', 'Product', 'Title', 'Description'] },
 ];
 
 /** Optional columns — missing headers leave index at -1 (absent), not a sync failure. */
 const OPTIONAL_SHEET_COLUMN_BINDINGS: { field: keyof typeof FIXED_COL_INDICES_DEFAULT; candidates: string[] }[] = [
   { field: 'shipByDate', candidates: ['Ship by date', 'Ship Date', 'Due Date'] },
-  { field: 'itemNumber', candidates: ['Item Number', 'Item ID', 'Listing ID'] },
   { field: 'quantity', candidates: ['Quantity', 'Qty'] },
   { field: 'usavSku', candidates: ['USAV SKU', 'SKU', 'Internal SKU'] },
   { field: 'condition', candidates: ['Condition'] },
@@ -342,6 +357,7 @@ export async function runGoogleSheetsTransferOrders(
     let eligibleSourceRows: any[][] = [];
     let ecwidApiRows = 0;
     let sheetTotalRows = 0;
+    let sheetSkips: TransferSheetSkipCounts = emptyTransferSheetSkipCounts();
 
     // ─── Google Sheets fetch (source: 'sheets' | 'all') ──────────────
     if (source !== 'ecwid') {
@@ -425,33 +441,16 @@ export async function runGoogleSheetsTransferOrders(
       }
 
       sheetTotalRows = sourceRows.length - 1;
-      let skippedNoOrderId = 0;
-      let skippedNoTracking = 0;
-      let skippedEcwid = 0;
-      eligibleSourceRows = sourceRows.slice(1).filter((row) => {
-        const orderId = String(row[colIndices.orderNumber] || '').trim();
-        if (!orderId) {
-          skippedNoOrderId += 1;
-          return false;
-        }
-        // Require tracking — blank-tracking rows used to land as AWAITING_LABEL
-        // on Shipping · Labels for "print later". Labels work needs a real
-        // shipment; skip the same way ShipStation sync does.
-        const tracking = normalizeTracking(row[colIndices.tracking]);
-        if (!tracking) {
-          skippedNoTracking += 1;
-          return false;
-        }
-        // Ecwid orders are now fetched directly from the Ecwid API — skip them in the sheet.
-        const platform = colIndices.platform >= 0
-          ? String(row[colIndices.platform] || '').trim()
-          : '';
-        if (platform.toLowerCase() === 'ecwid') {
-          skippedEcwid += 1;
-          return false;
-        }
-        return true;
+      // Gate on raw sheet Item Number (not catalog title-match backfill) so
+      // unlinkable blank-item_number trash never lands in orders.
+      const filtered = filterEligibleTransferSheetRows(sourceRows.slice(1), {
+        orderNumber: colIndices.orderNumber,
+        tracking: colIndices.tracking,
+        itemNumber: colIndices.itemNumber,
+        platform: colIndices.platform,
       });
+      eligibleSourceRows = filtered.eligible;
+      sheetSkips = filtered.skips;
       // #region agent log
       try {
         appendFileSync(
@@ -466,11 +465,10 @@ export async function runGoogleSheetsTransferOrders(
               targetTabName,
               sheetTotalRows,
               eligibleCount: eligibleSourceRows.length,
-              skippedNoOrderId,
-              skippedNoTracking,
-              skippedEcwid,
+              ...sheetSkips,
               trackingCol: colIndices.tracking,
               orderNumberCol: colIndices.orderNumber,
+              itemNumberCol: colIndices.itemNumber,
               itemTitleCol: colIndices.itemTitle,
               platformCol: colIndices.platform,
               headerSample: (headerRow || []).slice(0, 12).map((c: unknown) => String(c ?? '')),
@@ -525,8 +523,9 @@ export async function runGoogleSheetsTransferOrders(
         tabName: targetTabName,
         ecwidApiRows,
         skippedRows: sheetTotalRows,
+        ...sheetSkips,
         durationMs: Date.now() - startedAt,
-        details: { inserted: [], updated: [], deleted: [], unknownTitle: [], unresolvedTracking: [] },
+        details: { inserted: [], updated: [], deleted: [], unknownTitle: [], unresolvedTracking: [], unmatchedCatalog: [] },
       };
     }
 
@@ -967,6 +966,8 @@ export async function runGoogleSheetsTransferOrders(
     let unmatchedCustomers = 0;
     const detailsUnknownTitle: TransferOrderDetail[] = [];
     const detailsUnresolvedTracking: TransferOrderDetail[] = [];
+    const detailsUnmatchedCatalog: TransferOrderDetail[] = [];
+    const catalogLinkChoresToEnqueue: EnqueueCatalogLinkChoreInput[] = [];
 
     for (const [orderId, group] of Array.from(groupedSourceByOrderId.entries())) {
       const row = group.row;
@@ -1016,6 +1017,21 @@ export async function runGoogleSheetsTransferOrders(
           : (typeof existing?.createdAt === 'string' ? existing.createdAt : null),
       };
       if (titleSource === 'none') detailsUnknownTitle.push(detailRow);
+      if (
+        shouldEnqueueCatalogLinkChore({
+          rawItemNumber: rawSheetItemNumber,
+          skuCatalogId: sheetSkuCatalogId,
+        })
+      ) {
+        detailsUnmatchedCatalog.push(detailRow);
+        catalogLinkChoresToEnqueue.push({
+          itemNumber: rawSheetItemNumber,
+          accountSource: sheetPlatform,
+          productTitle: sheetProductTitle,
+          sku: sheetSku,
+          bumpBy: 1,
+        });
+      }
       const matchedCustomer = orderId ? latestCustomerByOrderId.get(orderId) : undefined;
       const matchedCustomerId = matchedCustomer ? Number(matchedCustomer.id) : Number.NaN;
       const customerId = Number.isFinite(matchedCustomerId) ? matchedCustomerId : null;
@@ -1266,6 +1282,15 @@ export async function runGoogleSheetsTransferOrders(
       );
     }
 
+    // Explicit catalog-link chores for NEW unmatched Item Numbers only (no
+    // historical orphan scan). Upserts unpaired sku_platform_ids + Review queue.
+    if (catalogLinkChoresToEnqueue.length > 0) {
+      await enqueueCatalogLinkChoresForImport(effectiveOrgId, catalogLinkChoresToEnqueue);
+      for (const detail of detailsUnmatchedCatalog) {
+        progress({ type: 'detail', kind: 'unmatchedCatalog', row: detail });
+      }
+    }
+
     // Always bust the cached order views and notify clients via Ably so the
     // dashboard refreshes on every successful cron delivery — even when no
     // new orders were inserted or fields updated.
@@ -1315,6 +1340,7 @@ export async function runGoogleSheetsTransferOrders(
       unmatchedCustomers,
       tabName: targetTabName,
       ecwidApiRows,
+      ...sheetSkips,
       durationMs: Date.now() - startedAt,
       details: {
         inserted: ordersToInsert.map((e) => e.detail),
@@ -1322,6 +1348,7 @@ export async function runGoogleSheetsTransferOrders(
         deleted: ordersToDelete.map((e) => e.detail),
         unknownTitle: detailsUnknownTitle,
         unresolvedTracking: detailsUnresolvedTracking,
+        unmatchedCatalog: detailsUnmatchedCatalog,
       },
     };
   } catch (error: any) {

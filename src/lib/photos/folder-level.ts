@@ -21,15 +21,24 @@ export function isPhotoLibraryFolderLevel(raw: string | null | undefined): raw i
 
 /**
  * Derive aggregation level (and whether the UI is at a photo leaf) from URL filters.
- * Root (no dates) → year tiles. Day → entity folders. poRef/ticketId/custom → leaf.
+ * Root (no dates) → year tiles. Day → entity folders.
+ * poRef / ticketId / receivingId / poFinder / custom → leaf (search + carton
+ * deep-links open photos instead of staying on empty year/entity tiles).
  */
 export function resolvePhotoLibraryFolderLevel(filters: {
   dateFrom?: string;
   dateTo?: string;
   poRef?: string;
   ticketId?: string;
+  receivingId?: string;
+  poFinder?: string;
 }): { level: PhotoLibraryFolderLevel; isLeaf: boolean; eyebrow: string } {
-  if (filters.poRef?.trim() || filters.ticketId?.trim()) {
+  if (
+    filters.poRef?.trim() ||
+    filters.ticketId?.trim() ||
+    filters.receivingId?.trim() ||
+    filters.poFinder?.trim()
+  ) {
     return { level: 'entity', isLeaf: true, eyebrow: 'Photos' };
   }
 

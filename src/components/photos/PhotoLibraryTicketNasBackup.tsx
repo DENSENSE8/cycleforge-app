@@ -34,7 +34,8 @@ export function PhotoLibraryTicketNasBackup({
             Ticket {claimsTicketLabel(trimmed)} · NAS backup
           </p>
           <p className="text-role-micro text-text-muted">
-            Upload &amp; sync this ticket&apos;s carton photos to the office NAS claim folder
+            Upload &amp; sync carton photos into the NAS claims folder named{' '}
+            {claimsTicketLabel(trimmed)} (same as File a claim)
           </p>
         </div>
       </div>

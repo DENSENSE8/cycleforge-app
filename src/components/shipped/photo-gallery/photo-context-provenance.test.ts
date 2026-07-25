@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  buildUnboxingCartonLibraryHref,
   describePhotoWorkflow,
   resolveLinkedEntityDisplay,
   resolveProvenanceNavLink,
@@ -39,4 +40,15 @@ test('resolveProvenanceNavLink entity-scopes when poRef exists', () => {
   const link = resolveProvenanceNavLink(workflow, { poRef: '4421', photoType: 'RECEIVING' });
   assert.equal(link?.href, '/ops/photos?sourceScope=unboxing&poRef=4421');
   assert.equal(link?.label, 'View all from PO 4421');
+});
+
+test('buildUnboxingCartonLibraryHref pins unbox scope + carton id', () => {
+  assert.equal(
+    buildUnboxingCartonLibraryHref({ receivingId: 88 }),
+    '/ops/photos?sourceScope=unboxing&receivingId=88',
+  );
+  assert.equal(
+    buildUnboxingCartonLibraryHref({ receivingId: 88, poRef: ' 14-14825 ' }),
+    '/ops/photos?sourceScope=unboxing&receivingId=88&poRef=14-14825',
+  );
 });

@@ -51,12 +51,12 @@ test('accordion surface is ONE row surface: PoLinesAccordion + shared editor lea
   assert.ok(/<ReturnScanCard\b/.test(SURFACE), 'empty carton keeps the scan-first-return affordance');
 });
 
-test('empty unfound ReturnScanCard matches PoLineRow anatomy (title + dashed SKU + condition)', () => {
+test('empty unfound ReturnScanCard matches PoLineRow anatomy (title + empty SKU + condition)', () => {
   assert.ok(/Unfound PO/.test(RETURN_CARD), 'empty stub paints the Unfound PO title');
   assert.ok(/<PoLineMetaGrid\b/.test(RETURN_CARD), 'meta uses the shared PoLineMetaGrid columns');
   assert.ok(
     /<EmptySkuChipFace\b/.test(RETURN_CARD),
-    'empty SKU slot uses the dashed EmptySkuChipFace (matched-row parity)',
+    'empty SKU slot uses EmptySkuChipFace (matched-row parity)',
   );
   assert.ok(
     /<ConditionGradeChip\b/.test(RETURN_CARD),

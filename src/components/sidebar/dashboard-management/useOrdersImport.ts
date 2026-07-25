@@ -117,10 +117,16 @@ export function useOrdersImport() {
       const upd = Number((data as any).updatedOrdersFields ?? acc.updated.length);
       const trk = Number((data as any).updatedOrdersTracking ?? 0);
       const unresolved = Number((data as any).unresolvedTrackingCount ?? acc.unresolvedTracking.length);
+      const skippedNoItemNumber = Number((data as any).skippedNoItemNumber ?? 0);
+      const unmatchedCatalog = Number(
+        (data as any).details?.unmatchedCatalog?.length ?? acc.unmatchedCatalog?.length ?? 0,
+      );
       const parts = [
         ins && `${ins} inserted`,
         upd && `${upd} updated${trk ? ` (${trk} tracking)` : ''}`,
         unresolved && `⚠ ${unresolved} tracking not recognized`,
+        skippedNoItemNumber && `⚠ ${skippedNoItemNumber} skipped (no Item Number)`,
+        unmatchedCatalog && `⚠ ${unmatchedCatalog} need catalog link`,
       ].filter(Boolean);
       setter({
         status: success ? 'done' : 'error',
@@ -131,6 +137,7 @@ export function useOrdersImport() {
         updated: upd,
         trackingAttached: trk,
         unresolvedTracking: unresolved,
+        skippedNoItemNumber,
         deleted: Number((data as any).deletedDuplicateOrders ?? acc.deleted.length),
         processedRows: Number((data as any).processedRows || 0),
         tabName: (data as any).tabName,
@@ -224,6 +231,14 @@ export function useOrdersImport() {
       const totalUpdated = Number(sheetsResultPayload?.updatedOrdersFields || 0) + Number(ecwidResultPayload?.updatedOrdersFields || 0);
       const totalTracking = Number(sheetsResultPayload?.updatedOrdersTracking || 0) + Number(ecwidResultPayload?.updatedOrdersTracking || 0);
       const totalUnresolved = Number(sheetsResultPayload?.unresolvedTrackingCount || 0) + Number(ecwidResultPayload?.unresolvedTrackingCount || 0);
+      const totalSkippedNoItemNumber = Number(sheetsResultPayload?.skippedNoItemNumber || 0);
+      const sheetsUnmatched = Number(
+        (sheetsResultPayload as any)?.details?.unmatchedCatalog?.length || 0,
+      );
+      const ecwidUnmatched = Number(
+        (ecwidResultPayload as any)?.details?.unmatchedCatalog?.length || 0,
+      );
+      const totalUnmatchedCatalog = sheetsUnmatched + ecwidUnmatched;
       const exceptionsResolved = Number(exceptionsResultPayload?.matched || 0);
 
       await invalidateDashboardOrderQueries(queryClient);
@@ -236,6 +251,8 @@ export function useOrdersImport() {
       if (totalInserted > 0) parts.push(`${totalInserted} inserted`);
       if (totalUpdated > 0) parts.push(`${totalUpdated} updated${totalTracking ? ` (${totalTracking} tracking)` : ''}`);
       if (totalUnresolved > 0) parts.push(`⚠ ${totalUnresolved} tracking not recognized`);
+      if (totalSkippedNoItemNumber > 0) parts.push(`⚠ ${totalSkippedNoItemNumber} skipped (no Item Number)`);
+      if (totalUnmatchedCatalog > 0) parts.push(`⚠ ${totalUnmatchedCatalog} need catalog link`);
 
       setStatus({
         type: anyFailed ? 'error' : 'success',
@@ -246,6 +263,8 @@ export function useOrdersImport() {
           updated: totalUpdated,
           trackingAttached: totalTracking,
           unresolvedTracking: totalUnresolved,
+          skippedNoItemNumber: totalSkippedNoItemNumber,
+          unmatchedCatalog: totalUnmatchedCatalog,
           processedRows: Number(sheetsResultPayload?.processedRows || 0) + Number(ecwidResultPayload?.processedRows || 0),
           exceptionsResolved,
           ecwidInserted: Number(ecwidResultPayload?.insertedOrders || 0),

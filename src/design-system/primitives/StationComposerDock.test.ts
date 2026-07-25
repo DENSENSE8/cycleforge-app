@@ -56,7 +56,8 @@ test('stationComposerShowsCommit: a trailingAction replaces the Send button', ()
   // Default composer keeps Send.
   assert.equal(stationComposerShowsCommit({}), true);
   // A trailing terminal CTA (Unbox overview receive) owns the slot instead —
-  // two primaries in one footer is the two-card look this replaced.
+  // two primaries in one footer is the two-card look this replaced. Enter
+  // still fires onCommit (mapped to print+receive by the Unbox host).
   assert.equal(stationComposerShowsCommit({ hasTrailingAction: true }), false);
   // Explicit opt-out still wins on its own.
   assert.equal(stationComposerShowsCommit({ hideCommitButton: true }), false);

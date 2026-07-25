@@ -661,6 +661,43 @@ export function patchUnboxRailQtyByCarton(
 }
 
 /**
+ * Set/clear the filed-claim rail flag (`zendesk_ticket`) on every receiving
+ * sidebar rail, keyed by carton.
+ *
+ * Unboxed ignores `receiving-line-updated` (`acceptLineUpdateBus: false`), so a
+ * claim unlink that only dispatches the bus leaves the orange Ticket chip on
+ * Unfound PO rows. This patches all `receiving-lines-table/rail/*` caches so
+ * the flag drops immediately; pair with {@link invalidateReceivingFeeds} for
+ * the authoritative refetch.
+ */
+export function patchReceivingRailTicketByCarton(
+  queryClient: QueryClient,
+  receivingId: number,
+  zendeskTicket: string | null,
+): void {
+  if (!Number.isFinite(receivingId) || receivingId <= 0) return;
+  const cartonKey = receivingRailCartonKey(receivingId);
+  queryClient.setQueriesData<Array<ReceivingRailRow & { zendesk_ticket?: string | null }>>(
+    { queryKey: ['receiving-lines-table', 'rail'] },
+    (old) => {
+      if (!Array.isArray(old)) return old;
+      let changed = false;
+      const next = old.map((row) => {
+        if (row.receiving_id !== receivingId && row.client_event_id !== cartonKey) {
+          return row;
+        }
+        const prev = (row.zendesk_ticket ?? '').trim() || null;
+        const nextTicket = zendeskTicket?.trim() || null;
+        if (prev === nextTicket) return row;
+        changed = true;
+        return { ...row, zendesk_ticket: nextTicket };
+      });
+      return changed ? next : old;
+    },
+  );
+}
+
+/**
  * Allowlisted fields on the Testing "You / Recent" dock, keyed by **line** id.
  *
  * TestingRecentRail does not subscribe to `receiving-line-updated`. Verdict /

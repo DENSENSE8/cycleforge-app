@@ -29,8 +29,9 @@ export function usePhotoLibraryFolders(
         dateTo: filters.dateTo,
         poRef: filters.poRef,
         ticketId: filters.ticketId,
+        receivingId: filters.receivingId,
       }),
-    [filters.dateFrom, filters.dateTo, filters.poRef, filters.ticketId],
+    [filters.dateFrom, filters.dateTo, filters.poRef, filters.ticketId, filters.receivingId],
   );
 
   const enabled = (opts.enabled ?? true) && !resolved.isLeaf;

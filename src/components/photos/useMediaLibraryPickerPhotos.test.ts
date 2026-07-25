@@ -39,9 +39,25 @@ test('buildMediaLibraryPickerFilters: search without dates gets a bounded window
     search: 'serial',
   });
   assert.ok(filters);
-  assert.equal(filters!.q, 'serial');
+  assert.equal(filters!.poFinder, 'serial');
+  assert.equal(filters!.poFinderKind, 'any');
+  assert.equal(filters!.q, undefined);
   assert.ok(filters!.dateFrom);
   assert.ok(filters!.dateTo);
+});
+
+test('buildMediaLibraryPickerFilters: claims search uses ticket finder kind', () => {
+  const filters = buildMediaLibraryPickerFilters({
+    mediaType: { scope: 'claims' },
+    ticketTab: false,
+    cartonTab: false,
+    dateNav: {},
+    search: '9599',
+  });
+  assert.ok(filters);
+  assert.equal(filters!.sourceScope, 'claims');
+  assert.equal(filters!.poFinder, '9599');
+  assert.equal(filters!.poFinderKind, 'ticket');
 });
 
 test('buildMediaLibraryPickerFilters: ticket tab is claims + ticketId', () => {

@@ -31,6 +31,10 @@ import {
   type PhotoLibraryRecencyTab,
 } from '@/lib/photos/library-filter-state';
 import {
+  parsePhotoLibraryTicketSearch,
+  photoLibrarySearchFace,
+} from '@/lib/photos/ticket-search';
+import {
   buildPhotoLibraryRefinements,
   photoLibraryStructuredFilterCount,
 } from '@/lib/photos/library-refinements';
@@ -61,17 +65,49 @@ export function PhotoLibraryWorkspaceHeader({ className }: { className?: string 
     staleTime: 10 * 60 * 1000,
   });
 
-  const [searchInput, setSearchInput] = useState(filters.poFinder ?? filters.q ?? '');
+  const activeScope = sourceScopeFromFilters(filters);
+  const activeTab = recencyTabFromFilters(filters);
+
+  const [searchInput, setSearchInput] = useState(() =>
+    photoLibrarySearchFace({ ...filters, sourceScope: activeScope }),
+  );
   const debouncedInput = useDebounce(searchInput, 250);
   const [filterOpen, setFilterOpen] = useState(false);
 
   useEffect(() => {
-    setSearchInput(filters.poFinder ?? filters.q ?? '');
-  }, [filters.q, filters.poFinder]);
+    setSearchInput(photoLibrarySearchFace({ ...filters, sourceScope: activeScope }));
+  }, [filters.q, filters.poFinder, filters.ticketId, activeScope]);
 
   useEffect(() => {
     const trimmed = debouncedInput.trim();
-    if (trimmed === (filters.poFinder ?? '')) return;
+    const current = photoLibrarySearchFace({ ...filters, sourceScope: activeScope });
+    if (trimmed === current) return;
+
+    // Under Zendesk Claims, a typed ticket number becomes the ticket leaf filter
+    // (photos + NAS archive folder `#9599`) — same waist as ReceivingClaimModal.
+    if (activeScope === 'claims') {
+      const ticketDigits = parsePhotoLibraryTicketSearch(trimmed);
+      if (ticketDigits) {
+        patch({
+          ticketId: ticketDigits,
+          poFinder: undefined,
+          poFinderKind: undefined,
+          q: undefined,
+          dateFrom: undefined,
+          dateTo: undefined,
+        });
+        return;
+      }
+      patch({
+        ticketId: undefined,
+        poFinder: trimmed || undefined,
+        poFinderKind: trimmed ? 'ticket' : undefined,
+        q: undefined,
+        ...(trimmed ? { dateFrom: undefined, dateTo: undefined } : {}),
+      });
+      return;
+    }
+
     patch({
       poFinder: trimmed || undefined,
       poFinderKind: trimmed ? 'any' : undefined,
@@ -79,9 +115,6 @@ export function PhotoLibraryWorkspaceHeader({ className }: { className?: string 
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedInput]);
-
-  const activeScope = sourceScopeFromFilters(filters);
-  const activeTab = recencyTabFromFilters(filters);
 
   const refinements = useMemo(
     () =>

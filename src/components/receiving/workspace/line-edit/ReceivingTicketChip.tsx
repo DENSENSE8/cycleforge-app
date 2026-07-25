@@ -40,6 +40,11 @@ function parseTicketId(raw: string): number | null {
 }
 
 import { useTicketThread, threadKey } from '@/components/support/TicketThreadCard';
+import { invalidateSupportContextCaches } from '@/hooks';
+import {
+  invalidateReceivingFeeds,
+  patchReceivingRailTicketByCarton,
+} from '@/lib/queries/receiving-queries';
 
 /**
  * Filed-ticket chip for the carton identity row. Renders the same
@@ -180,6 +185,15 @@ function TicketThreadPanel({
     },
     onSuccess: () => {
       if (ticketId != null) qc.removeQueries({ queryKey: threadKey(ticketId) });
+      // Chip display comes from useEntitySupportTicket — bust that cache here so
+      // every host (Unbox / Testing / Triage) drops the orange ticket number.
+      invalidateSupportContextCaches(qc);
+      // Unboxed rail ignores receiving-line-updated — clear the Ticket flag on
+      // every rail cache by carton, then refetch feeds.
+      if (receivingId != null) {
+        patchReceivingRailTicketByCarton(qc, receivingId, null);
+      }
+      invalidateReceivingFeeds(qc);
       toast.success('Ticket unlinked');
       onUnlinked();
     },
