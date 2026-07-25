@@ -48,7 +48,7 @@ test('PO line meta chips: SKU precedes condition (price no longer mid-row)', () 
   assert.ok(conditionIdx < priceIdx, 'UnitPriceChip must be last among identity chips');
 });
 
-test('PO line meta: empty SKU uses dashed EmptySkuChipFace (not a bare em-dash)', () => {
+test('PO line meta: empty SKU uses EmptySkuChipFace (not a bare em-dash)', () => {
   assert.ok(
     /EmptySkuChipFace/.test(SRC),
     'PoLineRow must render EmptySkuChipFace when line.sku is blank',

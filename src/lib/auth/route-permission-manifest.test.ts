@@ -633,6 +633,10 @@ test('packing.review gates the manager decide + queue routes', () => {
     paths.includes('/api/packing/verification/queue/route.ts'),
     'the review queue read is gated by packing.review',
   );
+  assert.ok(
+    paths.includes('/api/review/catalog-link/route.ts'),
+    'Review · Catalog link chores are gated by packing.review',
+  );
 });
 
 test('packing.review is a registered permission', () => {

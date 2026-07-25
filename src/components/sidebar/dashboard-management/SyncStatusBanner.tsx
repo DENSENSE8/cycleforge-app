@@ -94,6 +94,24 @@ export function SyncStatusBanner({ status, onDismiss }: { status: ImportStatus |
                     </p>
                   </motion.div>
                 ) : null}
+
+                {(status.details.skippedNoItemNumber ?? 0) > 0 ? (
+                  <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }} className="flex items-center gap-2 inset-field rounded-xl bg-amber-50/80 border border-amber-200/60">
+                    <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                    <p className={`${fieldLabel} text-amber-700`}>
+                      <span className="font-black">{status.details.skippedNoItemNumber}</span> row{status.details.skippedNoItemNumber === 1 ? '' : 's'} skipped — blank Item Number (listing id required to import)
+                    </p>
+                  </motion.div>
+                ) : null}
+
+                {(status.details.unmatchedCatalog ?? 0) > 0 ? (
+                  <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.55 }} className="flex items-center gap-2 inset-field rounded-xl bg-amber-50/80 border border-amber-200/60">
+                    <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                    <p className={`${fieldLabel} text-amber-700`}>
+                      <span className="font-black">{status.details.unmatchedCatalog}</span> listing{status.details.unmatchedCatalog === 1 ? '' : 's'} imported without a catalog match — link them in Review · Catalog link
+                    </p>
+                  </motion.div>
+                ) : null}
               </div>
             </motion.div>
           ) : null}

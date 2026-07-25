@@ -8,7 +8,7 @@ import { usePhotoLibraryFolders } from '@/hooks/usePhotoLibraryFolders';
 import { usePhotoLibraryUrlState } from '@/hooks/usePhotoLibraryUrlState';
 import { usePhotoSelection } from '@/hooks/usePhotoSelection';
 import { usePhotoShareLinks } from '@/hooks/usePhotoShareLinks';
-import { describePhotoLibraryContext } from '@/lib/photos/library-context-label';
+import { describePhotoLibraryContext, resolvePhotoLibraryFolderLeafLabel } from '@/lib/photos/library-context-label';
 import { photoShareTitle } from '@/lib/photos/display-names';
 import { buildPhotoDateTree } from '@/lib/photos/date-tree';
 import {
@@ -74,8 +74,17 @@ export function PhotoLibraryPage() {
         dateTo: filters.dateTo,
         poRef: filters.poRef,
         ticketId: filters.ticketId,
+        receivingId: filters.receivingId,
+        poFinder: filters.poFinder,
       }),
-    [filters.dateFrom, filters.dateTo, filters.poRef, filters.ticketId],
+    [
+      filters.dateFrom,
+      filters.dateTo,
+      filters.poRef,
+      filters.ticketId,
+      filters.receivingId,
+      filters.poFinder,
+    ],
   );
   const foldersIsLeaf = view === 'folders' && foldersBrowse.isLeaf;
   const fetchPhotos =
@@ -91,22 +100,30 @@ export function PhotoLibraryPage() {
   const { density: gridDensity, setDensity: setGridDensity } = usePhotoGridDensity();
   const queryClient = useQueryClient();
 
-  // A finder search (serial/tracking/order/PO) resolves to one PO when every
-  // loaded photo shares it. Mirror that PO into the breadcrumb + folder-path
+  // A finder search OR a carton deep-link (receivingId) resolves to one PO when
+  // every loaded photo shares it. Mirror that PO into the breadcrumb + folder-path
   // chrome so the right panel reads like an opened PO folder — without writing
-  // poRef to the URL (the search box stays the source of truth). An explicit PO
-  // drill (filters.poRef) always wins; a multi-PO finder result stays generic.
+  // poRef to the URL when the search box / receivingId is the source of truth.
+  // An explicit PO drill (filters.poRef) always wins; a multi-PO result stays
+  // generic.
   const resolvedPoRef = useMemo<string | undefined>(() => {
     if (filters.poRef) return filters.poRef;
-    if (!filters.poFinder || photos.length === 0) return undefined;
+    const canInfer = Boolean(filters.poFinder) || Boolean(filters.receivingId);
+    if (!canInfer || photos.length === 0) return undefined;
     const refs = new Set(photos.map((p) => p.poRef ?? '').filter(Boolean));
     return refs.size === 1 ? [...refs][0] : undefined;
-  }, [filters.poRef, filters.poFinder, photos]);
+  }, [filters.poRef, filters.poFinder, filters.receivingId, photos]);
 
   const scope = sourceScopeFromFilters(filters);
 
   const resolvedTicketId = useMemo<string | undefined>(() => {
-    if (filters.ticketId) return filters.ticketId;
+    if (filters.ticketId?.trim()) return filters.ticketId.trim().replace(/^#/, '');
+    // Claims search typed as a ticket # — carry it for leaf chrome + NAS archive
+    // even before photos resolve (same folder name as ReceivingClaimModal).
+    if (scope === 'claims' && filters.poFinder) {
+      const digits = filters.poFinder.trim().replace(/^#/, '');
+      if (/^\d+$/.test(digits)) return digits;
+    }
     if (scope !== 'claims' || !filters.poFinder || photos.length === 0) return undefined;
     const tickets = new Set(
       photos.map((p) => p.ticketId).filter((id): id is number => id != null && id > 0),
@@ -125,7 +142,7 @@ export function PhotoLibraryPage() {
 
   // Filters with the resolved PO + the photos' real day span folded in, for the
   // display chrome that reads `poRef`/dates (breadcrumbs, folder header, context
-  // label). Identity-stable when there's no PO context to enrich.
+  // label). Identity-stable when there's no entity context to enrich.
   const displayFilters = useMemo(() => {
     let next = filters;
     if (resolvedPoRef && !filters.poRef) {
@@ -134,7 +151,14 @@ export function PhotoLibraryPage() {
     if (resolvedTicketId && !filters.ticketId) {
       next = { ...next, ticketId: resolvedTicketId };
     }
-    if (!resolvedPoRef && !filters.poRef && !resolvedTicketId && !filters.ticketId) {
+    const hasEntityLeaf = Boolean(
+      resolvedPoRef ||
+        filters.poRef ||
+        resolvedTicketId ||
+        filters.ticketId ||
+        filters.receivingId,
+    );
+    if (!hasEntityLeaf) {
       return next;
     }
     return photoDaySpan
@@ -176,6 +200,26 @@ export function PhotoLibraryPage() {
   const { subtitle } = describePhotoLibraryContext(displayFilters);
 
   const folderIsLeaf = foldersIsLeaf;
+  const folderLeafLabel = useMemo(
+    () =>
+      folderIsLeaf
+        ? resolvePhotoLibraryFolderLeafLabel({
+            scope,
+            poRef: resolvedPoRef ?? filters.poRef,
+            ticketId: resolvedTicketId ?? filters.ticketId,
+            receivingId: filters.receivingId,
+          })
+        : null,
+    [
+      folderIsLeaf,
+      scope,
+      resolvedPoRef,
+      resolvedTicketId,
+      filters.poRef,
+      filters.ticketId,
+      filters.receivingId,
+    ],
+  );
   const viewToggleModes = useMemo(
     () => photoLibraryViewToggleModes(view, folderIsLeaf),
     [view, folderIsLeaf],
@@ -611,17 +655,15 @@ export function PhotoLibraryPage() {
                 filters={displayFilters}
                 today={today}
                 mostRecentDay={isSettled ? mostRecentDay : undefined}
-                folderLeafLabel={
-                  folderIsLeaf
-                    ? filters.ticketId
-                      ? `#${filters.ticketId}`
-                      : filters.poRef
-                        ? `PO ${filters.poRef}`
-                        : undefined
-                    : undefined
-                }
+                folderLeafLabel={folderLeafLabel ?? undefined}
                 onNavigate={({ dateFrom, dateTo }) =>
-                  patch({ dateFrom, dateTo, poRef: undefined, ticketId: undefined })
+                  patch({
+                    dateFrom,
+                    dateTo,
+                    poRef: undefined,
+                    ticketId: undefined,
+                    receivingId: undefined,
+                  })
                 }
               />
             }

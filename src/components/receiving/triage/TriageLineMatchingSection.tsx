@@ -28,7 +28,8 @@ import {
   dispatchLineUpdated,
   dispatchSelectLine,
 } from '@/components/station/receiving-lines-table-helpers';
-import { invalidateReceivingFeeds } from '@/lib/queries/receiving-queries';
+import { invalidateReceivingFeeds, patchReceivingRailTicketByCarton } from '@/lib/queries/receiving-queries';
+import { invalidateSupportContextCaches } from '@/hooks';
 import { WorkspaceCard } from '@/design-system/components';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
@@ -245,6 +246,8 @@ function ArrivalMatchingCard({
       await queryClient.invalidateQueries({
         queryKey: ['triage-ticket-candidates', receivingId],
       });
+      patchReceivingRailTicketByCarton(queryClient, receivingId, null);
+      invalidateSupportContextCaches(queryClient);
       invalidateReceivingFeeds(queryClient);
       toast.success('Ticket unlinked');
     } catch (err) {

@@ -1,4 +1,4 @@
-import type { PhotoLibraryFilterState } from './library-filter-state';
+import type { PhotoLibraryFilterState, PhotoLibrarySourceScope } from './library-filter-state';
 import {
   PHOTO_SOURCE_SCOPE_LABELS,
   sourceScopeFromFilters,
@@ -7,6 +7,48 @@ import { claimsTicketLabel } from '@/lib/photos/display-names';
 
 export const PHOTO_LIBRARY_DEFAULT_SUBTITLE =
   'Browse receiving, packing, and unit photos';
+
+/**
+ * Format a PO / order / unit ref for folder + breadcrumb chrome.
+ * Unboxing synthetic `PO_<cartonId>` refs render as "PO Unfound — <id>".
+ */
+export function photoLibraryPoLeafLabel(
+  poRef: string,
+  scope: PhotoLibrarySourceScope,
+): string {
+  const trimmed = poRef.trim();
+  if (!trimmed) return 'PO';
+  if (scope === 'local_pickup') return `Pickup ${trimmed}`;
+  if (scope === 'packing') return `Order ${trimmed}`;
+  if (scope === 'repair') return `Unit ${trimmed}`;
+  if (scope === 'unboxing' || scope === 'all') {
+    const unfound = trimmed.match(/^PO_(\d+)$/);
+    if (unfound) return `PO Unfound — ${unfound[1]}`;
+  }
+  return `PO ${trimmed}`;
+}
+
+/**
+ * Active folder leaf for breadcrumb / path chrome when the library is drilled
+ * into a carton, PO, or ticket. Prefer ticket → PO → carton id.
+ */
+export function resolvePhotoLibraryFolderLeafLabel(input: {
+  scope: PhotoLibrarySourceScope;
+  poRef?: string | null;
+  ticketId?: string | null;
+  receivingId?: string | null;
+}): string | null {
+  const ticketId = input.ticketId?.trim();
+  if (ticketId) return claimsTicketLabel(ticketId);
+
+  const poRef = input.poRef?.trim();
+  if (poRef) return photoLibraryPoLeafLabel(poRef, input.scope);
+
+  const receivingId = input.receivingId?.trim();
+  if (receivingId) return `Carton #${receivingId}`;
+
+  return null;
+}
 
 export function describePhotoLibraryContext(filters: PhotoLibraryFilterState): {
   title: string;
@@ -19,12 +61,8 @@ export function describePhotoLibraryContext(filters: PhotoLibraryFilterState): {
       subtitle: PHOTO_LIBRARY_DEFAULT_SUBTITLE,
     };
   }
-  if (filters.receivingId) {
-    return {
-      title: `Receiving #${filters.receivingId}`,
-      subtitle: 'Photos linked to this receiving session',
-    };
-  }
+  // Prefer the human PO / ticket leaf over the raw receiving id when both are
+  // present (Unbox deep-links pass receivingId + poRef together).
   if (filters.ticketId) {
     return {
       title: claimsTicketLabel(filters.ticketId),
@@ -33,8 +71,17 @@ export function describePhotoLibraryContext(filters: PhotoLibraryFilterState): {
   }
   if (filters.poRef) {
     return {
-      title: `PO ${filters.poRef}`,
-      subtitle: 'Photos linked to this purchase order',
+      title: photoLibraryPoLeafLabel(filters.poRef, source),
+      subtitle:
+        source === 'packing'
+          ? 'Photos linked to this order'
+          : 'Photos linked to this purchase order',
+    };
+  }
+  if (filters.receivingId) {
+    return {
+      title: `Carton #${filters.receivingId}`,
+      subtitle: 'Photos linked to this receiving carton',
     };
   }
   if (filters.q) {

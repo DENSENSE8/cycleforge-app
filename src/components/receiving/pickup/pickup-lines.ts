@@ -33,7 +33,7 @@ export interface PickupLine {
   zoho_vendor_name: string | null;
 }
 
-interface PickupOrderGroup {
+export interface PickupOrderGroup {
   orderId: number;
   poNumber: string;
   customer: string | null;

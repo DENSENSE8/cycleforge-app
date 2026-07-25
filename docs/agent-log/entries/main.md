@@ -411,3 +411,9 @@
 - `2026-07-23T23:34:21.995Z` · **main** · main · agent · Catalog platform tabs (Zoho+channels) + LedgerGridSurface spreadsheet; demoted Active/Linked to filter refine — ok
 - `2026-07-23T23:35:59.961Z` · **main** · main · agent · Merged Unbox overview Receive CTA into the notes composer (one elevated shell): SlicedActionDock embedded mode + StationComposerDock trailingAction + StationTerminalDock embedded render — shipped
 - `2026-07-24T18:35:21.758Z` · **main** · main · agent · Support tickets: Add chrome CTA + Unbox-style create modal with order/tracking/serial linkages — ok
+- `2026-07-24T18:44:35.983Z` · **main** · main · agent · Unbox notes bar: Enter fires print+receive like chat Send (blur still saves) — ok
+- `2026-07-24T18:55:51.882Z` · **main** · main · agent · Receiving ticket unlink clears paired STN + refreshes chip; unlinked #9606 from 1ZY228K59084864672 — ok
+- `2026-07-24T19:01:39.056Z` · **main** · main · agent · Unlink clears Unfound PO sidebar ticket flag (rail cache patch + feed invalidate) — ok
+- `2026-07-24T19:31:02.230Z` · **main** · main · agent · Media library claims search resolves ticket via carton links; NAS archive uses ticket # folder like claim modal — ok
+- `2026-07-25T01:51:56.264Z` · **main** · main · agent · Gate Google Sheets transfer-orders on raw Item Number (required header + skip blank cells; surface skippedNoItemNumber) — ok
+- `2026-07-25T02:11:11.560Z` · **main** · main · agent · Review Catalog-link chore: enqueue unmatched Item Number imports; /review?mode=catalog-link + link API — ok

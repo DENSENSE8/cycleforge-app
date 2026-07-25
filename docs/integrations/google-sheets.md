@@ -25,6 +25,24 @@ mirrors USAV's single service account.
 
 `updateNonshippedOrders` (an old execute-script target) is likewise **410 Gone**.
 
+## Transfer-orders eligibility
+
+`runGoogleSheetsTransferOrders` (sheet path) only imports rows that have:
+
+1. **Order Number** (required header + non-blank cell)
+2. **Item Number** / Item ID / Listing ID (required header + non-blank **raw** cell — catalog title-match does **not** count)
+3. **Tracking** (non-blank cell; blank tracking is skipped like ShipStation)
+4. Platform ≠ `ecwid` on the sheet (Ecwid comes from the API path)
+
+Missing required headers fail the job with HTTP 400. Blank Item Number rows are counted as `skippedNoItemNumber` and never insert/update `orders` — this keeps unlinkable trash out of the orders SoT (`sku_platform_ids` / listing search need a listing id).
+
+When Item Number is present but does **not** resolve to an existing `sku_catalog` /
+`sku_platform_ids` row, the order **still imports** (`sku_catalog_id` null) and an
+explicit chore is upserted into `order_catalog_link_chores`. Operators clear that
+queue on **Review → Catalog link** (`/review?mode=catalog-link`): link the listing
+once to a Zoho/catalog SoT and all matching orders backfill. Historical orphans are
+**not** scanned into this queue — only new import misses.
+
 ## What `/api/sync-sheets` maps
 
 - **`shipped`** tab → `orders` (`status='shipped'`, title/qty/condition/tracking/sku +

@@ -63,7 +63,10 @@ export function PhotoGallery(props: PhotoGalleryProps) {
     />
   ) : null;
 
-  if (g.photoItems.length === 0) {
+  // Toolbar layout keeps the action strip even with zero photos (upload /
+  // library / send-to-ticket stay available; view/download/move disable).
+  // Other layouts keep the legacy empty card / Upload button.
+  if (g.photoItems.length === 0 && g.launcherLayout !== 'toolbar') {
     if (!g.canUpload) {
       return (
         <div className={`w-full bg-surface-canvas border border-border-soft rounded-xl px-4 py-3 ${g.className}`}>
@@ -101,17 +104,19 @@ export function PhotoGallery(props: PhotoGalleryProps) {
       {uploadOverlay}
       {movePhotosModal}
 
-      {isMobile ? (
-        <MobileSwipePhotoViewer
-          open={g.viewerOpen}
-          initialIndex={g.currentIndex}
-          slides={swipeSlides}
-          onClose={g.closeViewer}
-          onDelete={handleDelete}
-        />
-      ) : (
-        <PhotoViewerPortal g={g} />
-      )}
+      {g.photoItems.length > 0 ? (
+        isMobile ? (
+          <MobileSwipePhotoViewer
+            open={g.viewerOpen}
+            initialIndex={g.currentIndex}
+            slides={swipeSlides}
+            onClose={g.closeViewer}
+            onDelete={handleDelete}
+          />
+        ) : (
+          <PhotoViewerPortal g={g} />
+        )
+      ) : null}
     </>
   );
 }

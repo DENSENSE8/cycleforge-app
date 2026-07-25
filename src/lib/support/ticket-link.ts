@@ -9,10 +9,12 @@ import {
   requireHelpdeskProvider,
 } from '@/lib/integrations/helpdesk';
 import { recordOpsEvent } from '@/lib/ops-events';
+import { listAllReceivingPhotoIds } from '@/lib/photos/queries/receiving-list';
 import { registerShipmentPermissive } from '@/lib/shipping/sync-shipment';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { ZendeskNotConfiguredError } from '@/lib/zendesk';
+import { linkLibraryPhotosToTicket } from '@/lib/zendesk-attachments';
 import {
   buildExternalId,
   clearTicketExternalIdIfMatches,
@@ -35,8 +37,10 @@ import {
 import {
   pairTicketShipmentFromEntity as pairTicketShipmentFromEntityCore,
   pairTicketShipmentFromReceiving as pairTicketShipmentFromReceivingCore,
+  unpairTicketShipmentFromReceiving as unpairTicketShipmentFromReceivingCore,
   type PairTicketShipmentFromEntityDeps,
   type PairTicketShipmentFromReceivingDeps,
+  type UnpairTicketShipmentFromReceivingDeps,
 } from '@/lib/support/ticket-shipment-pair';
 
 export type TicketLinkAnchorInput =
@@ -245,6 +249,17 @@ export async function linkTicketToAnchor(args: {
       });
     } catch (pairErr) {
       console.warn('[ticket-link] STN pair after receiving anchor failed', pairErr);
+    }
+
+    // Dual-link existing carton photos as claim evidence so Media Library
+    // claims search / NAS ticket folders resolve without waiting for a re-upload.
+    try {
+      const photoIds = await listAllReceivingPhotoIds(args.orgId, args.anchor.receivingId);
+      if (photoIds.length > 0) {
+        await linkLibraryPhotosToTicket(args.orgId, ticket.id, photoIds);
+      }
+    } catch (photoErr) {
+      console.warn('[ticket-link] claim photo backfill failed', photoErr);
     }
   }
 
@@ -523,6 +538,27 @@ export async function pairTicketShipmentFromReceiving(
   return pairTicketShipmentFromReceivingCore(args, deps);
 }
 
+const defaultUnpairFromReceivingDeps: UnpairTicketShipmentFromReceivingDeps = {
+  lookupCartonShipmentId: defaultPairFromReceivingDeps.lookupCartonShipmentId,
+  removeReference: (args) => removeTicketShipmentReference(args),
+};
+
+async function unpairTicketShipmentFromReceiving(
+  args: {
+    orgId: OrgId;
+    ticketId: number;
+    receivingId: number;
+    staffId?: number | null;
+  },
+  deps: UnpairTicketShipmentFromReceivingDeps = defaultUnpairFromReceivingDeps,
+): Promise<{
+  shipmentId: number;
+  removed: boolean;
+  promotedShipmentId: number | null;
+} | null> {
+  return unpairTicketShipmentFromReceivingCore(args, deps);
+}
+
 /**
  * Pair a ticket to a known STN (by id or tracking). Prefer
  * {@link pairTicketShipmentFromReceiving} when the carton is in hand.
@@ -658,7 +694,7 @@ export async function unlinkTicketFromAnchor(args: {
   // id as if it were the entity id).
 }): Promise<{ removed: boolean; entityType: TicketLinkEntityType; entityId: number }> {
   const resolved = await resolveTicketLinkAnchor(args.orgId, args.anchor);
-  const removed = await unlinkTicket({
+  let removed = await unlinkTicket({
     orgId: args.orgId,
     zendeskTicketId: args.ticketId,
     entityType: resolved.entityType,
@@ -676,6 +712,22 @@ export async function unlinkTicketFromAnchor(args: {
     });
   }
 
+  // Link always pairs the carton's STN; unlink must reverse that or the
+  // package chip keeps resolving via ticketFromShipmentLink.
+  if (args.anchor.type === 'receiving') {
+    try {
+      const unpaired = await unpairTicketShipmentFromReceiving({
+        orgId: args.orgId,
+        ticketId: args.ticketId,
+        receivingId: args.anchor.receivingId,
+        staffId: args.staffId ?? null,
+      });
+      if (unpaired?.removed) removed = true;
+    } catch (unpairErr) {
+      console.warn('[ticket-link] STN unpair after receiving unlink failed', unpairErr);
+    }
+  }
+
   await clearTicketExternalIdIfMatches({
     orgId: args.orgId,
     zendeskTicketId: args.ticketId,
@@ -691,6 +743,16 @@ export async function unlinkTicketFromAnchor(args: {
         `UPDATE receiving_line SET zendesk_ticket = NULL WHERE id = $1 AND organization_id = $2 AND zendesk_ticket = $3`,
         [resolved.entityId, args.orgId, ticketNumber],
       );
+      // Carton display column may still hold the ticket when the primary was
+      // line-scoped — clear the package too.
+      if (args.anchor.type === 'receiving') {
+        await tenantQuery(
+          args.orgId,
+          `UPDATE receiving_carton SET zendesk_ticket = NULL
+            WHERE id = $1 AND organization_id = $2 AND zendesk_ticket = $3`,
+          [args.anchor.receivingId, args.orgId, ticketNumber],
+        );
+      }
     } else if (resolved.entityType === 'RECEIVING') {
       await tenantQuery(
         args.orgId,

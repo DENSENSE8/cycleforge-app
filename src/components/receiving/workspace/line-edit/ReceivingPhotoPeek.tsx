@@ -117,7 +117,7 @@ export const ReceivingPhotoPeek = memo(function ReceivingPhotoPeek({
 
   const cards = demo ? DEMO_CARDS.slice(0, demoShown) : realCards;
 
-  return <PhotoPeekFan cards={cards} receivingId={receivingId} onPhotoDeleted={(photoId) => refresh(photoId)} />;
+  return <PhotoPeekFan cards={cards} receivingId={receivingId} poRef={poRef} onPhotoDeleted={(photoId) => refresh(photoId)} />;
 });
 
 export default ReceivingPhotoPeek;

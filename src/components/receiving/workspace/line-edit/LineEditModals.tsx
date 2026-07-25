@@ -14,6 +14,10 @@ import { SendPhotoNoteModal } from '../SendPhotoNoteModal';
 import { MovePhotosBetweenPoModal } from './MovePhotosBetweenPoModal';
 import { dispatchLineUpdated, type ReceivingLineRow } from '@/components/station/ReceivingLinesTable';
 import { invalidateSupportContextCaches } from '@/hooks';
+import {
+  invalidateReceivingFeeds,
+  patchReceivingRailTicketByCarton,
+} from '@/lib/queries/receiving-queries';
 import type { UnboxLineController } from './unbox-line-controller';
 
 interface LineEditModalsProps {
@@ -52,14 +56,27 @@ export function LineEditModals({ row, c }: LineEditModalsProps) {
           c.setClaimModalOpen(false);
           c.setReturnClaimPrefill(null);
         }}
-        onTicketCreated={() => {
+        onTicketCreated={(ticketNumber) => {
           void c.invalidateSupportTicket();
           invalidateSupportContextCaches(qc);
-          dispatchLineUpdated({ id: row.id, notes: row.notes });
+          if (row.receiving_id != null) {
+            patchReceivingRailTicketByCarton(qc, row.receiving_id, ticketNumber);
+          }
+          dispatchLineUpdated({
+            id: row.id,
+            zendesk_ticket: ticketNumber,
+            notes: row.notes,
+          });
+          invalidateReceivingFeeds(qc);
         }}
         onTicketUnlinked={() => {
           void c.invalidateSupportTicket();
           invalidateSupportContextCaches(qc);
+          if (row.receiving_id != null) {
+            patchReceivingRailTicketByCarton(qc, row.receiving_id, null);
+          }
+          dispatchLineUpdated({ id: row.id, zendesk_ticket: null, notes: row.notes });
+          invalidateReceivingFeeds(qc);
         }}
       />
     </>

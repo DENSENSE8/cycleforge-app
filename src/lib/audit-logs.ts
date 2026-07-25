@@ -372,6 +372,9 @@ export const AUDIT_ACTION = {
   // OCR local-pickup: item read off a label that isn't in the system yet was
   // flagged into the pending_skus "needs creating in Zoho" queue (P2-AI-01).
   SKU_CATALOG_FLAG_MISSING: 'sku_catalog.flag_missing',
+  // Review · Catalog link: pair an unmatched import listing to a catalog SoT.
+  SKU_CATALOG_LINK_REVIEW: 'sku_catalog.link_review',
+  SKU_CATALOG_LINK_IGNORE: 'sku_catalog.link_ignore',
   // SKU relationship graph (parent→child edges)
   SKU_RELATIONSHIP_CREATE: 'sku_relationship.create',
   SKU_RELATIONSHIP_UPDATE: 'sku_relationship.update',

@@ -9,8 +9,9 @@
  *
  * The note is ONE durable buffer (`receiving_lines.notes`): it composes the
  * printed label face AND is the operator's saved note. It hydrates from the row
- * and saves on Enter / commit / blur (see `useUnboxLineController` /
- * {@link LineNotesCard}), so a reprint carries the same note.
+ * and saves on blur / Send (see `useUnboxLineController` /
+ * {@link LineNotesCard}), so a reprint carries the same note. With the
+ * overview Receive CTA mounted, Enter saves then fires print+receive.
  *
  * Built on {@link StationComposerDock}. The full view / reload / overwrite of
  * the synced PO note lives in the standalone "PO note" display tab
@@ -34,6 +35,10 @@ interface WorkspaceNotesCardProps {
   animateMount?: boolean;
   /** Terminal CTA for the composer's trailing edge (Unbox overview receive). */
   trailingAction?: ReactNode;
+  /** Enter → same primary as the trailing Receive CTA (print + receive). */
+  onPrimaryAction?: () => void;
+  /** Mirrors the disabled Receive pill so Enter is a no-op when blocked. */
+  primaryActionDisabled?: boolean;
 }
 
 export function WorkspaceNotesCard({
@@ -43,6 +48,8 @@ export function WorkspaceNotesCard({
   activeStep,
   animateMount = true,
   trailingAction,
+  onPrimaryAction,
+  primaryActionDisabled,
 }: WorkspaceNotesCardProps) {
   const { saveOverallNote } = useSyncedPoNote(row, onActionFeedback);
   return (
@@ -70,6 +77,8 @@ export function WorkspaceNotesCard({
         activeStep={activeStep}
         animateMount={animateMount}
         trailingAction={trailingAction}
+        onPrimaryAction={onPrimaryAction}
+        primaryActionDisabled={primaryActionDisabled}
       />
     </div>
   );

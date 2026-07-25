@@ -6,6 +6,7 @@ import {
   photoGroupKey,
   UNLINKED_PHOTO_GROUP_KEY,
 } from '@/lib/photos/display-names';
+import { photoLibraryPoLeafLabel } from '@/lib/photos/library-context-label';
 import type { PhotoDateNav } from './types';
 
 // ── Folders view (date drill) ───────────────────────────────────────────────
@@ -43,10 +44,7 @@ export function isoWeekForYmd(ymd: string): number {
 }
 
 export function poLabel(poRef: string, scope: PhotoLibrarySourceScope): string {
-  if (scope === 'local_pickup') return `Pickup ${poRef}`;
-  if (scope === 'packing') return `Order ${poRef}`;
-  if (scope === 'repair') return `Unit ${poRef}`;
-  return `PO ${poRef}`;
+  return photoLibraryPoLeafLabel(poRef, scope);
 }
 
 interface DayBucket {

@@ -83,7 +83,12 @@ export function buildMediaLibraryPickerFilters({
   if (mediaType.imageType) base.imageType = mediaType.imageType;
 
   if (search?.trim()) {
-    base.q = search.trim();
+    const trimmed = search.trim();
+    // Prefer the structured finder (PO / tracking / ticket / …) over free-text
+    // `q=` — ticket numbers never match OCR/po_ref-only searchPhotos().
+    base.poFinder = trimmed;
+    base.poFinderKind =
+      mediaType.scope === 'claims' || ticketTab ? 'ticket' : 'any';
     if (dateNav.dateFrom && dateNav.dateTo) {
       base.dateFrom = dateNav.dateFrom;
       base.dateTo = dateNav.dateTo;

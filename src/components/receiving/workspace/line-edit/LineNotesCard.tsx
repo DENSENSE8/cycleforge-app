@@ -27,8 +27,11 @@ import {
  * Carton-notes composer — ONE durable buffer (`receiving_lines.notes`).
  *
  * Composes the printed label face AND is the operator's saved note. Hydrates
- * from the row and saves on Enter / commit / blur. Built on
+ * from the row and saves on blur / Send. Built on
  * {@link StationComposerDock} (ChatGPT-style dock chrome).
+ *
+ * When a {@link trailingAction} (Unbox Receive) owns the footer, Enter acts
+ * like Send-in-chat: save the note, then fire {@link onPrimaryAction}.
  *
  * Insert rail (staff stamp / ticket / price / synced PO / title) and, for
  * matched cartons, push-to-PO live in the composer footer.
@@ -50,6 +53,8 @@ export function LineNotesCard({
   activeStep = null,
   animateMount = true,
   trailingAction,
+  onPrimaryAction,
+  primaryActionDisabled = false,
 }: {
   /** The one durable note (`receiving_lines.notes`) — composes the label + saves. */
   notes: string;
@@ -80,10 +85,18 @@ export function LineNotesCard({
   animateMount?: boolean;
   /**
    * Terminal CTA rendered at the composer's trailing edge (Unbox overview
-   * mounts the Receive/Print split here). Replaces the blue Send — Enter and
-   * blur still save.
+   * mounts the Receive/Print split here). Replaces the blue Send — Enter
+   * fires {@link onPrimaryAction} (chat Send); blur still saves.
    */
   trailingAction?: ReactNode;
+  /**
+   * Primary footer action for Enter when {@link trailingAction} is mounted
+   * (print + receive). Empty notes still allow Enter — receive is not gated
+   * on having typed a note.
+   */
+  onPrimaryAction?: () => void;
+  /** When true, Enter is a no-op (mirrors the disabled Receive pill). */
+  primaryActionDisabled?: boolean;
 }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [savedFlash, setSavedFlash] = useState(false);
@@ -113,6 +126,18 @@ export function LineNotesCard({
     if (!onSaveNotes()) return;
     flashSaved();
   }, [onSaveNotes, flashSaved]);
+
+  // Enter: with a trailing Receive CTA, behave like chat Send (save → receive).
+  // Without it, Enter is just save (Send button path).
+  const handleCommit = useCallback(() => {
+    if (onPrimaryAction) {
+      commitNotes();
+      if (primaryActionDisabled) return;
+      onPrimaryAction();
+      return;
+    }
+    commitNotes();
+  }, [onPrimaryAction, primaryActionDisabled, commitNotes]);
 
   // Auto-save on blur when the note changed.
   const handleBlur = useCallback(() => {
@@ -306,12 +331,17 @@ export function LineNotesCard({
     <StationComposerDock
       value={notes}
       onChange={onNotesChange}
-      onCommit={commitNotes}
+      onCommit={handleCommit}
       onBlur={handleBlur}
+      // Receive CTA: Enter must fire even with an empty note (chat-send).
+      // Default composer still requires non-empty text before Save.
+      commitDisabled={onPrimaryAction ? primaryActionDisabled : undefined}
       placeholder="Notes for this carton — printed on the label and saved"
       ariaLabel="Carton notes"
       commitAriaLabel="Save carton notes"
-      commitTooltip="Save notes (Enter)"
+      commitTooltip={
+        onPrimaryAction ? 'Receive (Enter) · Shift+Enter for newline' : 'Save notes (Enter)'
+      }
       footerStart={footerStart}
       footerEnd={footerEnd}
       trailingAction={trailingAction}

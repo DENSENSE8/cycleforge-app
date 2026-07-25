@@ -105,8 +105,9 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
 
 /**
  * DELETE ?receivingId=N[&lineId=N]&ticketId=N — detach a linked ticket from the
- * carton/line. Removes the ticket_links row (entity-scoped) and clears the
- * zendesk_ticket column. The Zendesk ticket itself is never touched.
+ * carton/line. Removes the ticket_links RECEIVING/RECEIVING_LINE row, the
+ * paired SHIPMENT (STN) reference for the carton's tracking, and clears the
+ * zendesk_ticket display columns. The Zendesk ticket itself is never touched.
  */
 export const DELETE = withAuth(async (req: NextRequest, ctx) => {
   const context = 'DELETE /api/receiving/zendesk-claim/link';

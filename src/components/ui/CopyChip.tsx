@@ -496,21 +496,35 @@ export const SkuScanRefChip = ({
 );
 
 /**
- * Empty SKU slot on a PO-line meta row — dashed yellow underline (same pencil
- * tone as {@link SkuScanRefChip}) so "no SKU yet" reads differently from a
- * filled solid-underline chip. Used by matched rows with a blank SKU and by
- * the empty unfound stub row before the first return/serial import.
+ * Empty SKU slot on a PO-line meta row — mono `----` + solid yellow underline
+ * matching a dense {@link SkuScanRefChip} footprint (same pencil tone, same
+ * 4ch width). Presentational only (no copy button) so accordion row clicks
+ * stay on the row. Used by blank matched SKUs and the empty unfound stub.
+ *
+ * Do NOT route through {@link AddValueChipFace}: its non-mono micro label +
+ * dashed underline stacks four short hyphens over two CSS dashes and reads as
+ * an uneven double-dash, not a 4-char empty chip.
  */
 export function EmptySkuChipFace({ dense = true }: { dense?: boolean } = {}) {
+  const tone = CHIP_TONES.sku;
   return (
-    <AddValueChipFace
-      label="----"
-      icon={<Pencil className="h-3.5 w-3.5 shrink-0" />}
-      colorClass="text-yellow-600"
-      underlineClass="border-yellow-500"
-      dense={dense}
-      size="chip"
-    />
+    <span
+      className="relative inline-flex w-fit max-w-full items-center justify-start px-1.5"
+      aria-label="No SKU"
+    >
+      <span className="inline-flex max-w-full items-center justify-start gap-0.5 py-0">
+        <span className={`shrink-0 ${dense ? '[&_svg]:h-3 [&_svg]:w-3' : ''} ${tone.iconClass}`}>
+          {tone.icon}
+        </span>
+        <span
+          className={`${
+            dense ? 'text-role-caption font-bold font-mono text-text-default' : monoValue
+          } tracking-tight leading-none border-b-2 pb-0.5 text-left ${tone.underline}`}
+        >
+          ----
+        </span>
+      </span>
+    </span>
   );
 }
 

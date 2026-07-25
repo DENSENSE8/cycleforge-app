@@ -1,9 +1,9 @@
 {
   "version": 1,
-  "generatedAt": "2026-07-24T18:31:53Z",
-  "totalRoutes": 876,
+  "generatedAt": "2026-07-25T02:04:53Z",
+  "totalRoutes": 877,
   "summary": {
-    "permissionGated": 747,
+    "permissionGated": 748,
     "authenticatedNoPermission": 46,
     "anonymousIntentional": 81,
     "serviceToService": 2,
@@ -5592,6 +5592,16 @@
       ],
       "gate": "withAuth",
       "permission": "receiving.mark_received",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/review/catalog-link/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "packing.review",
       "exemptReason": null
     },
     {

@@ -573,6 +573,11 @@ export function LineEditPanel({
                           c={c}
                           onActionFeedback={setActionFeedback}
                           activeStep={activeStep}
+                          // Enter in the notes field = chat Send → print+receive.
+                          onPrimaryAction={
+                            terminalVm ? () => void terminalVm.onClick() : undefined
+                          }
+                          primaryActionDisabled={Boolean(terminalVm?.disabled)}
                           trailingAction={
                             <StationTerminalDock
                               embedded

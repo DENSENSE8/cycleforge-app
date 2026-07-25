@@ -1,4 +1,5 @@
 import { claimsTicketLabel } from '@/lib/photos/display-names';
+import { photoLibraryPoLeafLabel } from '@/lib/photos/library-context-label';
 import type { PhotoMeta } from './photo-gallery-utils';
 
 export type PhotoWorkflowKind = 'unboxing' | 'packing' | 'claims' | 'unknown';
@@ -40,8 +41,7 @@ export function describePhotoWorkflow(meta: PhotoMeta): PhotoWorkflowDescriptor 
  * ref renders as "PO <ref>".
  */
 export function unboxingPoLabel(poRef: string): string {
-  const unfound = poRef.trim().match(/^PO_(\d+)$/);
-  return unfound ? `PO Unfound — ${unfound[1]}` : `PO ${poRef}`;
+  return photoLibraryPoLeafLabel(poRef, 'unboxing');
 }
 
 export interface LinkedEntityDisplay {
@@ -122,6 +122,24 @@ export function resolveLinkedEntityDisplay(
 export interface ProvenanceNavLink {
   href: string;
   label: string;
+}
+
+/**
+ * Deep link from Unbox carton chrome into that carton's media-library folder.
+ * Always pins `sourceScope=unboxing` so the library chrome reads as receiving
+ * context; prefers `poRef` (folder leaf) and always includes `receivingId` so
+ * unmatched / synthetic-PO cartons still resolve to this carton only.
+ */
+export function buildUnboxingCartonLibraryHref(input: {
+  receivingId: number;
+  poRef?: string | null;
+}): string {
+  const params = new URLSearchParams();
+  params.set('sourceScope', 'unboxing');
+  params.set('receivingId', String(input.receivingId));
+  const poRef = input.poRef?.trim();
+  if (poRef) params.set('poRef', poRef);
+  return `/ops/photos?${params.toString()}`;
 }
 
 /**

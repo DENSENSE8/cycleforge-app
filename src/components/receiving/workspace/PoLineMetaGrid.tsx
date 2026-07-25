@@ -8,7 +8,12 @@ import { EmptySkuChipFace } from '@/components/ui/CopyChip';
 /**
  * Fixed-column meta grid for PO line accordion rows.
  * Order: qty | SKU | condition | serial | price (price last — variable width).
- * Empty SKU uses the dashed yellow face (same slot as a filled SkuScanRefChip).
+ * Empty SKU uses the mono `----` face (same slot as a filled SkuScanRefChip).
+ *
+ * Cells are flex + items-center so plain qty text shares a vertical midline
+ * with underlined identity chips (icon + label + border-b). Qty gets the same
+ * `pb-0.5` as chip labels so its baseline sits with the chip text, not above
+ * the underline band.
  */
 export function PoLineMetaGrid({
   qty,
@@ -48,13 +53,13 @@ export function PoLineMetaGrid({
         ].join(' '),
       }}
     >
-      <span data-col="qty" className="truncate tabular-nums">
+      <span data-col="qty" className="flex min-w-0 items-center truncate tabular-nums pb-0.5">
         {qty}
       </span>
-      <span data-col="sku" className="min-w-0 truncate">
+      <span data-col="sku" className="flex min-w-0 items-center truncate">
         {sku ?? <EmptySkuChipFace dense />}
       </span>
-      <span data-col="condition" className="truncate">
+      <span data-col="condition" className="flex min-w-0 items-center truncate">
         {condition}
       </span>
       <span data-col="serial" className="flex min-w-0 items-center gap-1 truncate">
