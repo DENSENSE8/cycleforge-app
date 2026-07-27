@@ -2,7 +2,6 @@ import {
   appChromeBandHairlineClass,
   appChromeClass,
   appChromeMutedClass,
-  appWorkCanvasEdgeClass,
 } from '@/design-system/tokens/app-surface';
 import { cn } from '@/utils/_cn';
 
@@ -124,15 +123,19 @@ export const mainStickyHeaderShellRowClass = 'flex h-[44px] items-center justify
 export const mainStickyHeaderCompactRowClass = 'flex h-[40px] items-center justify-between gap-4 px-4';
 
 /**
- * Desktop app content host — soft top-left cutout + depth-edge hairline where
- * master sidebar × global header meet the work column. Chrome
- * ({@link appChromeClass}) shows through the curve; the stroke is
- * {@link appWorkCanvasEdgeClass} so every desktop page gets the same radius
- * hairline (not only Unbox/Triage/Pack). Pair with GlobalHeader (no
- * `border-b`). Chromeless / mobile routes skip it.
+ * Desktop app content host — **square** top-left corner, no edge stroke.
+ *
+ * This used to be a `rounded-tl-2xl` cutout plus an `appWorkCanvasEdgeClass`
+ * hairline all the way around, so chrome showed through the curve at the
+ * sidebar × header join. That curve cut a notch out of the top-left of every
+ * page; the canvas background now runs flat into that corner instead, and the
+ * ONLY separator in the desktop frame is the flat hairline under
+ * {@link GlobalHeader}. Keep it that way — re-adding a border here puts a
+ * second line right beneath the header's.
+ *
+ * Chromeless / mobile routes skip this entirely.
  */
-export const appContentShellClass =
-  `flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-tl-2xl ${appWorkCanvasEdgeClass}`;
+export const appContentShellClass = 'flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden';
 
 /**
  * Shared hit-box for GlobalHeader icon actions (sidebar, goal ring, WO, right rail).

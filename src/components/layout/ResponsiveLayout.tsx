@@ -13,7 +13,6 @@ import { Button, IconButton } from '@/design-system/primitives';
 import { isMobileAllowedPath } from '@/lib/sidebar-navigation';
 import { isClientPublicPath } from '@/contexts/AuthContext';
 import { GlobalHeader } from '@/components/layout/GlobalHeader';
-import { StationRailDock, StationRailDockProvider } from '@/components/layout/station-rail';
 import { appContentShellClass } from '@/components/layout/header-shell';
 import { appChromeClass } from '@/design-system/tokens/app-surface';
 import { cn } from '@/utils/_cn';
@@ -288,10 +287,6 @@ export function ResponsiveLayout({ children }: ResponsiveLayoutProps) {
   // resolves, so a refresh never flashes the desktop frame.
   if (!isMobile && !onMobileRoute) {
     return (
-      // The rail-dock provider spans the sidebar AND the work column: the
-      // per-route sidebar panel owns the scan session, the dock frame lives
-      // over the canvas, and the portal joins them.
-      <StationRailDockProvider>
       <div className="flex min-h-0 w-full flex-1 overflow-hidden">
         <GlobalWedgeScannerMount />
         <PhoneScanBridgeMount />
@@ -316,11 +311,6 @@ export function ResponsiveLayout({ children }: ResponsiveLayoutProps) {
           <main className={cn(chromeless ? 'flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden' : appContentShellClass)}>
             {children}
           </main>
-
-          {/* Floating station rail — bottom-left of the work canvas, over the
-              page. Sibling of `<main>` (not a child) so `<main>`'s
-              `overflow-hidden` + rounded-tl cutout never clips it. */}
-          {!chromeless && <StationRailDock />}
         </div>
 
         {/* Left-edge reveal — only when the sidebar is collapsed. Rest the
@@ -367,7 +357,6 @@ export function ResponsiveLayout({ children }: ResponsiveLayoutProps) {
         </Suspense>
         {drawerOverlay}
       </div>
-      </StationRailDockProvider>
     );
   }
 

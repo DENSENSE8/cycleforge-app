@@ -1,10 +1,17 @@
 'use client';
 
 import type { ReactNode } from 'react';
+import { usePathname } from 'next/navigation';
 import { X } from '@/components/Icons';
 import { IconButton } from '@/design-system/primitives';
 import { MasterNav, MasterNavProvider } from '@/components/sidebar/master-nav';
 import { SidebarContextPanel } from '@/components/sidebar/SidebarContextPanel';
+import {
+  STATION_COLUMN_CARD_BOTTOM,
+  STATION_COLUMN_CARD_TOP,
+  STATION_COLUMN_CLASS,
+} from '@/components/sidebar/station-column';
+import { isStationSurfaceRoute } from '@/lib/sidebar-navigation';
 import { appChromeClass } from '@/design-system/tokens/app-surface';
 import { cn } from '@/utils/_cn';
 
@@ -20,11 +27,23 @@ export interface SidebarShellProps {
 }
 
 /**
- * The single master sidebar nav — hovering the header trigger drops down the
- * active page's L2 modes; clicking it opens the full nav (grouped Main /
- * Stations / More). The `MasterNavProvider` tells panels rendered in
- * `renderContext` to hide their own mode pills (the header menus are the
- * single switcher).
+ * The master sidebar column.
+ *
+ * - **Station surfaces** ({@link isStationSurfaceRoute}) → the two-card column
+ *   (`station-column.ts`): a gray backdrop with the **nav card** flush to the
+ *   top and the **station card** (recents + scan bar) flush to the bottom.
+ *   Same shell, same width, same elevation, mirrored radii. They are flex
+ *   siblings, so opening a nav menu expands the top card downward and pushes
+ *   the station card down — the menus never cover the scan bar.
+ * - **Everywhere else** → the classic single panel: master nav with the context
+ *   panel as its body and menus floating over it.
+ *
+ * The **mobile drawer always keeps the classic panel**, on every route:
+ * `GlobalHeader` doesn't exist on the mobile branch, so the drawer is the only
+ * nav path there and it should not be re-shaped by desktop station chrome.
+ *
+ * `MasterNavProvider` stays on both paths — ~14 route panels read
+ * `useMasterNavEnabled()` to suppress their own mode pill-row.
  *
  * See docs/design-system/master-sidebar-nav-migration-plan.md.
  */
@@ -34,6 +53,31 @@ export function SidebarShell({
   onNavigate,
   inDrawer = false,
 }: SidebarShellProps) {
+  const pathname = usePathname();
+  const stationColumn = !inDrawer && isStationSurfaceRoute(pathname);
+
+  if (stationColumn) {
+    return (
+      <aside className={STATION_COLUMN_CLASS}>
+        <MasterNavProvider enabled>
+          <div className={STATION_COLUMN_CARD_TOP}>
+            {/* `docked`: menus render in flow and grow this card downward. */}
+            <MasterNav
+              permissions={permissions}
+              mobileRestricted={mobileRestricted}
+              onNavigate={onNavigate}
+              layout="docked"
+            />
+          </div>
+
+          <div className={STATION_COLUMN_CARD_BOTTOM}>
+            <SidebarContextPanel />
+          </div>
+        </MasterNavProvider>
+      </aside>
+    );
+  }
+
   return (
     <aside
       className={cn(

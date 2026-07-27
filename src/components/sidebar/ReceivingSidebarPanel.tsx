@@ -20,7 +20,7 @@
  * fetches, mutates, or computes — it only wires hooks to UI.
  */
 
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSurfaceParamHygiene } from '@/hooks/useSurfaceParamHygiene';
@@ -33,7 +33,6 @@ import {
   getStaffStationBridgeChannelName,
 } from '@/lib/realtime/channels';
 
-import { StationRailPortal, useHasStationRailDock } from '@/components/layout/station-rail';
 import { RailEditModeProvider } from '@/components/sidebar/rail-edit-mode';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { buildPendingScanStubRow } from '@/components/sidebar/receiving/receiving-sidebar-shared';
@@ -62,26 +61,10 @@ import { usePhoneScanBridge } from '@/components/sidebar/receiving/usePhoneScanB
 import { usePhotoRequestPublisher } from '@/components/sidebar/receiving/usePhotoRequestPublisher';
 import { useRailEditMode } from '@/components/sidebar/receiving/useRailEditMode';
 
-/**
- * Places the scan-and-recents unit in whichever host is available.
- *
- * `dock` (desktop) → the floating, non-dismissible rail over the work canvas.
- * Otherwise → inline in the sidebar column, exactly as before. Same children,
- * same order, one composition — the host changes, the unit does not.
- */
-function ReceivingScanSurfaceRail({ dock, children }: { dock: boolean; children: ReactNode }) {
-  if (dock) return <StationRailPortal>{children}</StationRailPortal>;
-  return <>{children}</>;
-}
-
 export function ReceivingSidebarPanel() {
   useSurfaceParamHygiene();
   const queryClient = useQueryClient();
   const masterNavEnabled = useMasterNavEnabled();
-  // Desktop mounts a floating rail dock over the work canvas; the scan band +
-  // recent rail render there so they stay on screen for every station surface.
-  // Without a dock (mobile drawer, chromeless) they fall back inline.
-  const hasRailDock = useHasStationRailDock();
 
   // Identity is server-derived (the proxy redirects unauthenticated traffic to
   // /signin), so `user` is non-null whenever this sidebar renders.
@@ -290,55 +273,9 @@ export function ReceivingSidebarPanel() {
           // filtered via URL params instead. The returns banner still rides here.
           <ReceivingReturnBanner returns={returns} onDismiss={dismissReturn} />
         ) : (
-          // Scan surfaces (Unbox / Triage). The whole scan-and-recents unit —
-          // alerts → rail → filter → scan bar → bulk bar — renders as ONE block,
-          // portaled into the floating dock over the work canvas when one is
-          // mounted (desktop) and inline otherwise (mobile drawer).
-          //
-          // Order is the house scan-dock order: the live rail stacks upward and
-          // the scan bar is pinned at the bottom edge, so a focus-locked input
-          // never drifts as the feed grows (`SidebarShell`'s `footer` slot
-          // documents the same "always-available dock scan bar" contract).
-          <ReceivingScanSurfaceRail dock={hasRailDock}>
-            <ReceivingReturnBanner returns={returns} onDismiss={dismissReturn} />
-
-            {/* Multi-match picker — above the rail so it stays visible. */}
-            {scanDriven && !selectedLine && scanMatchedRows.length > 1 ? (
-              <ReceivingLinePicker
-                rows={scanMatchedRows}
-                onPick={(line) => {
-                  setLineAccordionBootstrap('default');
-                  setSelectedLine(line);
-                }}
-                onCancel={() => {
-                  setScanDriven(false);
-                  setScanMatchedRows([]);
-                  clearScanSession();
-                }}
-              />
-            ) : null}
-
-            {/* Scan-surface rail. Unbox keeps a fixed Unboxed rail; Triage keeps
-                a fixed combined Triage rail — browse tabs live in the right-pane
-                workbench (UnboxWorkspaceView / TriageWorkspaceView). */}
-            <div className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain">
-              <ReceivingRailBody
-                mode={mode}
-                selectedLine={selectedLine}
-                triageLeadingRow={triageLeadingRow}
-                triageFilterText={mode === 'triage' ? triageListQuery : ''}
-              />
-            </div>
-
-            {/* Carton-list filter (D1) — finds a carton already in the
-                Triage/Prioritize/Unfound/Done list, distinct from the scan band
-                below and from the Zoho-PO search inside the pairing hub
-                (PoLinkTab, kept as-is). Hidden while bulk-editing so it never
-                collides with the selection action bar. */}
-            {mode === 'triage' && !railEditMode ? (
-              <TriageCartonSearchBar value={triageListQuery} onChange={updateTriageQuery} />
-            ) : null}
-
+          // Scan surfaces (Unbox / Triage): scan bar pinned at the top of the
+          // station card, alerts and the recents feed beneath it.
+          <>
             {mode === 'triage' ? (
               // Triage is a scan surface: a tracking-only entry wired to the same
               // submitTrackingScan → lookup-po flow. Scan-only — the input never
@@ -386,6 +323,45 @@ export function ReceivingSidebarPanel() {
               />
             )}
 
+            <ReceivingReturnBanner returns={returns} onDismiss={dismissReturn} />
+
+            {/* Multi-match picker — above the rail so it stays visible. */}
+            {scanDriven && !selectedLine && scanMatchedRows.length > 1 ? (
+              <ReceivingLinePicker
+                rows={scanMatchedRows}
+                onPick={(line) => {
+                  setLineAccordionBootstrap('default');
+                  setSelectedLine(line);
+                }}
+                onCancel={() => {
+                  setScanDriven(false);
+                  setScanMatchedRows([]);
+                  clearScanSession();
+                }}
+              />
+            ) : null}
+
+            {/* Scan-surface rail. Unbox keeps a fixed Unboxed rail; Triage keeps
+                a fixed combined Triage rail — browse tabs live in the right-pane
+                workbench (UnboxWorkspaceView / TriageWorkspaceView). */}
+            <div className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain">
+              <ReceivingRailBody
+                mode={mode}
+                selectedLine={selectedLine}
+                triageLeadingRow={triageLeadingRow}
+                triageFilterText={mode === 'triage' ? triageListQuery : ''}
+              />
+            </div>
+
+            {/* Carton-list filter (D1) — finds a carton already in the
+                Triage/Prioritize/Unfound/Done list, distinct from the scan band
+                below and from the Zoho-PO search inside the pairing hub
+                (PoLinkTab, kept as-is). Hidden while bulk-editing so it never
+                collides with the selection action bar. */}
+            {mode === 'triage' && !railEditMode ? (
+              <TriageCartonSearchBar value={triageListQuery} onChange={updateTriageQuery} />
+            ) : null}
+
             {/* Edit-mode bulk dismiss — rides at the very bottom of the rail. */}
             {railEditMode ? (
               <ReceivingBulkActionBar
@@ -394,7 +370,7 @@ export function ReceivingSidebarPanel() {
                 busy={railBulkDismissing}
               />
             ) : null}
-          </ReceivingScanSurfaceRail>
+          </>
         )}
       </RailEditModeProvider>
     </div>

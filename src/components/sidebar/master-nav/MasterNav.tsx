@@ -45,6 +45,7 @@ export function MasterNav({
   mobileRestricted = false,
   renderContext,
   onNavigate,
+  layout,
   className,
 }: {
   permissions?: ReadonlySet<string>;
@@ -53,6 +54,8 @@ export function MasterNav({
   onNavigate?: () => void;
   /** The workspace body shown below the header when closed. */
   renderContext?: () => ReactNode;
+  /** Menu placement — see {@link MasterNavView}'s `layout`. */
+  layout?: 'floating' | 'docked';
   className?: string;
 }) {
   const { pageId, modeId } = useActiveSidebarMode();
@@ -207,6 +210,7 @@ export function MasterNav({
       onRowHover={handleRowHover}
       onRequestClose={closeMenu}
       renderContext={renderContext}
+      layout={layout}
       className={className}
     />
   );

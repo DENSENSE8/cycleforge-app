@@ -258,6 +258,31 @@ export function getSidebarNavItems(opts: GetSidebarNavItemsOpts = {}): SidebarNa
   return items;
 }
 
+/**
+ * Route keys that render the **two-card station column** (nav card on top,
+ * recents + scan bar card below) instead of the classic single sidebar panel.
+ *
+ * Exactly the `kind: 'station'` rows of {@link APP_SIDEBAR_NAV} — every bench an
+ * operator scans at. Derived by route KEY, not by path prefix, so all of a
+ * station's surfaces come along automatically: `receiving` alone covers
+ * `/unbox`, `/triage`, `/incoming`, `/pickup`, `/repair` and `/receiving/*`.
+ *
+ * Kept here beside {@link getSidebarRouteKey} so the sidebar shell can ask the
+ * question without importing any station's own mode logic.
+ */
+const STATION_SURFACE_ROUTE_KEYS = new Set<SidebarRouteKey>([
+  'receiving',
+  'outbound',
+  'tech',
+  'packer',
+  'review',
+  'support',
+]);
+
+export function isStationSurfaceRoute(pathname: string | null): boolean {
+  return STATION_SURFACE_ROUTE_KEYS.has(getSidebarRouteKey(pathname));
+}
+
 export function getSidebarRouteKey(pathname: string | null): SidebarRouteKey {
   if (!pathname) return 'unknown';
   if (pathname === '/') return 'home';

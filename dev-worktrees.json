@@ -77,6 +77,14 @@
       "note": "WS-PHOTO · topic/photo · :3110 · station-staged photo evidence chain"
     },
     {
+      "id": "nav-ia",
+      "label": "Nav IA · lanes",
+      "path": "../cycleforge-nav-ia",
+      "appPort": 3130,
+      "unlockParked": true,
+      "note": "WS-NAV-IA · topic/nav-ia · :3130 · lane-based master nav (Phase 4 of the page-consolidation plan). unlockParked so the Phase-2 nav can be designed with the parked surfaces visible. Brief: docs/todo/page-consolidation-station-first-GEMINI-RESEARCH-BRIEFING.md"
+    },
+    {
       "id": "tokens",
       "label": "Token consolidation",
       "path": "../cycleforge-tokens",
