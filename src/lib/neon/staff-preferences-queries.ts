@@ -102,21 +102,29 @@ export interface StaffPreferences {
   testingHistoryBoard?: BoardPrefs | null;
   /**
    * Per-staff column config for the shared list tables, keyed by TableId
-   * ('receiving' | 'orders' | 'shipped' | 'tech' | 'packer'). `hidden` lists the
-   * column keys this staffer turned off (chip keys platform/orderid/tracking/
-   * serial, or meta keys qty/condition/rest); `widths` maps a column key → its
-   * drag-resized width in px (absent → the column's default track width);
-   * `order` is the drag-reordered column-key order (mirrors BoardPrefs.order —
-   * unknown/missing keys fall back to the table's canonical order via its
-   * sanitizer; locked keys can never move). Absent = every column shown at its
-   * default width in canonical order. The JSONB merge is shallow at this key, so
-   * writers send the whole map AND preserve the sibling fields (a widths write
-   * keeps `hidden` + `order`, and so on). See src/lib/tables/table-columns.ts,
-   * TableColumnConfigProvider, useColumnWidths, and useColumnOrder.
+   * (see src/lib/tables/table-columns.ts).
+   *
+   * `hidden` + `shown` are a DELTA against each grid descriptor's default tier,
+   * never an absolute column list: `hidden` lists `core` columns this staffer
+   * turned OFF, `shown` lists `optional` columns they turned ON. Absent = the
+   * descriptor default (lean set). Storing a delta is what lets a descriptor
+   * add an `optional` column without it appearing in anyone's grid unasked, and
+   * lets the default widen later without re-showing tracks a staffer curated
+   * away. Keys are chip keys (platform/orderid/tracking/serial) or meta keys
+   * (qty/condition/rest) — i.e. `LedgerGridColumnModel.hideKey`.
+   *
+   * `widths` maps a column key → its drag-resized width in px (absent → the
+   * column's default track width); `order` is the drag-reordered column-key
+   * order (mirrors BoardPrefs.order — unknown/missing keys fall back to the
+   * table's canonical order via its sanitizer; locked keys can never move).
+   *
+   * The JSONB merge is shallow at this key, so writers send the whole map AND
+   * preserve the sibling fields (a widths write keeps `hidden` + `order`, and so
+   * on). See TableColumnConfigProvider, useGridColumnVisibility, useColumnOrder.
    */
   tableColumns?: Record<
     string,
-    { hidden?: string[]; widths?: Record<string, number>; order?: string[] }
+    { hidden?: string[]; shown?: string[]; widths?: Record<string, number>; order?: string[] }
   > | null;
 }
 

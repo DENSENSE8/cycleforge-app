@@ -13,7 +13,7 @@ export const lightPalette: ThemePalette = {
   label: 'Light',
   hint: 'Bright — the default.',
   scheme: 'light',
-  preview: { canvas: '#f8fafc', card: '#ffffff', accent: '#2563eb', text: '#0f172a' },
+  preview: { canvas: '#eef2f7', card: '#ffffff', accent: '#2563eb', text: '#0f172a' },
   page: { background: '#ffffff', foreground: '#171717' },
   vars: {
     // Neutral chrome (slate family)
@@ -21,7 +21,12 @@ export const lightPalette: ThemePalette = {
     'text-secondary': '#475569',
     'text-soft': '#64748b',
     'text-faint': '#94a3b8',
-    'background-canvas': '#f8fafc',
+    // Page/canvas plane sits a real step BELOW card white (~6%), not the old
+    // #f8fafc (~2%). Depth needs something to cast onto: at a 2% delta a
+    // raised card's shadow has no ground plane to read against and every
+    // surface flattens into one sheet of white. Keep card ↔ canvas separated
+    // when tuning; `surface-hover` stays the lighter row wash.
+    'background-canvas': '#eef2f7',
     'background-surface': '#ffffff',
     'surface-sunken': '#f1f5f9',
     'surface-hover': '#f8fafc', // row/interaction wash (≈ the classic gray-50 hover wash)

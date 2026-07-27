@@ -23,7 +23,6 @@ import {
   QUEUE_ROW,
   metaIndentFor,
 } from '@/components/ui/RowMetaColumns';
-import { useIsColumnHidden } from '@/components/ui/table-column-config/TableColumnConfig';
 import {
   getOrderPlatformColor,
   getOrderPlatformBorderColor,
@@ -120,8 +119,9 @@ export interface OrdersQueueTableRowProps {
    *  row info-edit dropdown (Notes · OOS · Details) on the Product cell. */
   singleSelected?: boolean;
   queueMode?: OrdersQueueMode;
-  /** Ordered column models (already sanitized). Default = canonical order.
-   *  Header + rows + group summaries must receive the SAME list. */
+  /** Ordered VISIBLE column models (already sanitized + visibility-resolved).
+   *  Default = canonical order. Header + rows + group summaries must receive
+   *  the SAME list. */
   columns?: readonly OrdersQueueColumn[];
   onRowClick: (record: ShippedOrder, event?: { shiftKey: boolean }) => void;
 }
@@ -131,10 +131,15 @@ type RowEditField = 'title' | 'qty' | 'date' | 'condition' | 'note' | 'link';
 
 /**
  * Pending / fulfillment queue row — Sheets-like WMS grid:
- *   select(☐) · product · date · age · qty · cond · stock · platform · order · tracking
+ *   select(☐) · product · date · age · qty · cond · order · tracking
  * Every fact owns a track; cells render through a per-column registry mapped
  * over ONE ordered column list, so drag-reorder is a list change — header,
  * rows, and group summaries can never disagree (`columns` prop).
+ *
+ * That list arrives already RESOLVED to the visible tracks
+ * (`useGridColumnVisibility` in `OrdersGridView`), so a hidden column loses its
+ * TRACK — this row never re-tests hidden-ness per cell (the old cell-granular
+ * `useIsColumnHidden` path left a dead empty ruled band where the column was).
  *
  * Grid skin adds the adopted industry in-cell editing contract (click → edit ·
  * Enter/F2 start · typing replaces · Esc revert · Tab/blur commit); note + OOS
@@ -234,9 +239,6 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
 
   const { classes: densityClasses } = useTableDensity();
   const isStagedRow = queueMode === 'staged' || queueMode === 'shipped';
-  const isHidden = useIsColumnHidden();
-  const showQtyCol = !isHidden('qty');
-  const showConditionCol = !isHidden('condition');
 
   // In-cell editing is a Pending-grid affordance: board/Packed/station rows
   // stay display-only. Selection no longer competes with editing — the grid's
@@ -745,25 +747,8 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
           </div>
         );
       }
-      case 'status':
-        return isHidden('status') ? (
-          <span className={dataCell(rule)} />
-        ) : (
-          <div data-col="status" className={dataCell(rule)}>
-            <HoverTooltip label={rowStatus.description} focusable={false}>
-              <span
-                className={cn(
-                  'inline-flex min-w-0 max-w-full items-center truncate rounded-full inset-chip text-role-micro font-black uppercase tracking-widest ring-1 ring-inset',
-                  rowStatus.pill,
-                )}
-              >
-                {rowStatus.label}
-              </span>
-            </HoverTooltip>
-          </div>
-        );
       case 'qty':
-        return showQtyCol ? (
+        return (
           <div
             data-col="qty"
             className={cn(
@@ -800,11 +785,9 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
               />
             ) : null}
           </div>
-        ) : (
-          <span className={dataCell(rule)} />
         );
       case 'condition':
-        return showConditionCol ? (
+        return (
           <div
             data-col="condition"
             ref={conditionCellRef}
@@ -859,26 +842,11 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
               </span>
             )}
           </div>
-        ) : (
-          <span className={dataCell(rule)} />
-        );
-      case 'platform':
-        // The listing-link cell: the brand mark opens the listing. On the grid,
-        // a row with no listing link shows a quiet dash (an unlinked mark
-        // would read as a dead link) — FBA keeps its channel mark by design.
-        return (
-          <div data-col="platform" className={dataCell(rule)}>
-            {isHidden('platform') ? null : gridSkin && !productPageUrl && !isFba ? (
-              <GridCellDash />
-            ) : (
-              identityNodes.platformMark
-            )}
-          </div>
         );
       case 'order':
         return (
           <div data-col="order" className={dataCell(rule)}>
-            {isHidden('orderid') ? null : identityNodes.order}
+            {identityNodes.order}
           </div>
         );
       case 'tracking':
@@ -889,7 +857,7 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
         // The paste-from-clipboard chip stays a Labels/board-only tool.
         return (
           <div data-col="tracking" className={dataCell(rule)}>
-            {isHidden('tracking') ? null : gridSkin && !trackingRaw ? (
+            {gridSkin && !trackingRaw ? (
               <HoverTooltip label="No label yet — create it at the shipping station" focusable={false}>
                 <button
                   type="button"

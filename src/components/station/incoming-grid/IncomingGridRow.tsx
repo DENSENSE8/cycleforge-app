@@ -9,7 +9,6 @@ import {
 import { IncomingAttachTrackingButton } from '@/components/station/IncomingAttachTrackingButton';
 import { FulfillmentPickupPill } from '@/components/receiving/ReceivingIdentityChips';
 import { OrderIdChip, TrackingChip, getLast4 } from '@/components/ui/CopyChip';
-import { useIsColumnHidden } from '@/components/ui/table-column-config/TableColumnConfig';
 import { QUEUE_ROW } from '@/components/ui/queue-row-chrome';
 import { LedgerCellEditor } from '@/design-system/components/grid';
 import { focusRing } from '@/design-system/tokens/focus-ring';
@@ -100,7 +99,6 @@ export const IncomingGridRow = memo(function IncomingGridRow({
   onSelect,
   columns = INCOMING_GRID_COLUMNS,
 }: IncomingGridRowProps) {
-  const isHidden = useIsColumnHidden();
   const resolvePlatformMeta = usePlatformMeta();
   const [editingTitle, setEditingTitle] = useState(false);
   const [editSeed, setEditSeed] = useState<string | null>(null);
@@ -350,9 +348,7 @@ export const IncomingGridRow = memo(function IncomingGridRow({
           </div>
         );
       case 'qty':
-        return isHidden('qty') ? (
-          <span className={dataCell(rule)} />
-        ) : (
+        return (
           <div data-col="qty" className={cn(dataCell(rule), 'justify-end')}>
             <span
               className={cn(
@@ -369,9 +365,7 @@ export const IncomingGridRow = memo(function IncomingGridRow({
           </div>
         );
       case 'condition':
-        return isHidden('condition') ? (
-          <span className={dataCell(rule)} />
-        ) : (
+        return (
           <div data-col="condition" className={dataCell(rule)}>
             <span
               className={cn(
@@ -385,25 +379,19 @@ export const IncomingGridRow = memo(function IncomingGridRow({
           </div>
         );
       case 'status':
-        return isHidden('rest') ? (
-          <span className={dataCell(rule)} />
-        ) : (
+        return (
           <div data-col="status" className={cn(dataCell(rule), 'gap-1')}>
             <IncomingGridStatusCell row={row} />
           </div>
         );
       case 'platform':
-        return isHidden('platform') ? (
-          <span className={dataCell(rule)} />
-        ) : (
+        return (
           <div data-col="platform" className={dataCell(rule)}>
             <GridPlatformMarkValue platformValue={platformMeta.value} label={markLabel} />
           </div>
         );
       case 'order':
-        return isHidden('orderid') ? (
-          <span className={dataCell(rule)} />
-        ) : (
+        return (
           <div data-col="order" className={dataCell(rule)}>
             {poValue ? (
               <OrderIdChip
@@ -417,9 +405,7 @@ export const IncomingGridRow = memo(function IncomingGridRow({
           </div>
         );
       case 'tracking':
-        return isHidden('tracking') ? (
-          <span className={dataCell(rule)} />
-        ) : (
+        return (
           <div data-col="tracking" className={dataCell(rule)}>
             {isPickup && pickupLabel ? (
               <FulfillmentPickupPill dense />

@@ -4,12 +4,18 @@ import { test, expect } from '@playwright/test';
  * Unshipped queue virtualization smoke — Pending grid (LedgerGrid).
  *
  * The Board|Grid switcher is retired: the To Ship queue is the single connected
- * spreadsheet (`OrdersGridView` / `LedgerGrid` + `VirtualGroupedSections`)
- * windowing against the dashboard's shared page scroll (`DashboardScrollShell`).
+ * spreadsheet (`OrdersGridView` / `LedgerGrid` + `VirtualGroupedSections`).
+ * The grid card is bounded to the viewport remainder (`WORKBENCH_TABLE_VIEWPORT`,
+ * matching Packed / Shipped / Labels), so it owns its OWN Y scroll port
+ * (`pending-grid-scroll`) rather than windowing against the dashboard page
+ * scroll. That bound is what makes windowing possible at all: an unbounded host
+ * lets the scroll element grow to the full content height, and the virtualizer
+ * then renders every row.
+ *
  * This mocks `/api/orders` with 500 synthetic PENDING rows so the assertion is
  * DB-independent, then verifies only a windowed slice is in the DOM
  * (`data-index` nodes from the virtualizer), not all 500 — the regression guard
- * for the "ancestor scroll un-windows the list" failure mode.
+ * for the "unbounded host un-windows the list" failure mode.
  *
  * Auth comes from tests/.auth/admin.json (global-setup). Desktop-only — the
  * grid is a desktop layout; the mobile (webkit) project is skipped.
@@ -67,7 +73,7 @@ async function mockOrders(page: import('@playwright/test').Page, rows: Record<st
 test.describe('Unshipped grid virtualization', () => {
   test.skip(({ browserName }) => browserName === 'webkit', 'grid is a desktop layout');
 
-  test('500 mocked rows render windowed against the page scroll (DOM ≪ dataset)', async ({ page }) => {
+  test('500 mocked rows render windowed in the grid scroll port (DOM ≪ dataset)', async ({ page }) => {
     await mockOrders(page, makeRows(ROW_COUNT));
     await page.goto('/dashboard?unshipped', { waitUntil: 'domcontentloaded' });
 
@@ -90,10 +96,10 @@ test.describe('Unshipped grid virtualization', () => {
     expect(domRows).toBeGreaterThan(0);
     expect(domRows).toBeLessThan(150);
 
-    // Scroll the shared dashboard page port and confirm the DOM stays windowed
-    // (rows recycle rather than accumulate) and rows keep painting.
-    const pageScroll = page.locator('[data-testid="dashboard-scroll"]');
-    await pageScroll.evaluate((el) => el.scrollTo({ top: 6000 }));
+    // Scroll the grid's own port and confirm the DOM stays windowed (rows
+    // recycle rather than accumulate) and rows keep painting.
+    const gridScroll = page.locator('[data-testid="pending-grid-scroll"]');
+    await gridScroll.evaluate((el) => el.scrollTo({ top: 6000 }));
     await page.waitForTimeout(600);
 
     const domRowsAfter = await grid.locator('[data-order-row-id]').count();

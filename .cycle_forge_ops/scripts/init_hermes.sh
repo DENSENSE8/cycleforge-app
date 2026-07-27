@@ -1,7 +1,7 @@
 #!/bin/bash
 # Cycle Forge — one-time Hermes setup. Run once from a WSL terminal.
 set -euo pipefail
-OPS="/mnt/e/USAV-Orders-Backend/.cycle_forge_ops"
+OPS="/mnt/e/cycleforge-app/.cycle_forge_ops"
 
 echo "Initializing Hermes Profiles for Cycle Forge..."
 

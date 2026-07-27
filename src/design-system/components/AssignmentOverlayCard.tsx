@@ -1,8 +1,9 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { Layer } from '@/design-system/primitives/Layer';
 import { X } from '@/components/Icons';
+import { Dialog, DialogContent, DialogTitle } from '@/design-system/components/Dialog';
+import { cn } from '@/utils/_cn';
 
 interface AssignmentOverlayCardProps {
   topBar?: ReactNode;
@@ -85,11 +86,13 @@ export function AssignmentOverlayCard({
             </div>
           ) : null}
           {title != null ? (
-            <h3
+            // DialogTitle so the overlay has a real accessible name (Radix warns
+            // without one); renders an <h2> — the modal's own top-level heading.
+            <DialogTitle
               className={`text-2xl font-black leading-[1.1] tracking-tight ${showHeaderGradient ? 'text-white' : 'text-text-default'} ${!headerEyebrow ? 'mt-1' : ''}`.trim()}
             >
               {title}
-            </h3>
+            </DialogTitle>
           ) : null}
           {subtitle ? (
             <div
@@ -121,47 +124,45 @@ export function AssignmentOverlayCard({
 
   const bodyClasses = `flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-3 ${bodyClassName}`.trim();
 
-  const dialog = (
-    <section role="dialog" aria-modal="true" className={sectionShell}>
-      {topBar ? <div className="shrink-0 border-b border-border-hairline">{topBar}</div> : null}
-      {headerBlock}
+  // Position within the viewport. Radix centers by default; the other two modes
+  // override the transform so extra height only ever grows upward.
+  const positionClass = isBottom
+    ? 'top-auto bottom-[max(1rem,5vh)] translate-y-0' // ds-allow-spacing: fixed-overlay safe-bottom geometry
+    : isMidAnchor
+      ? 'top-1/2 -translate-y-full'
+      : '';
 
-      <div className={bodyClasses}>{children}</div>
-
-      {footer ? (
-        <footer className="shrink-0 border-t border-border-emphasis/20 px-4 py-3">
-          {footer}
-        </footer>
-      ) : null}
-    </section>
-  );
-
-  // Portal to <body> so the full-bleed takeover escapes any transformed /
-  // animated ancestor (it's rendered inside slide-over detail panels' motion.div
-  // — a stacking + containing-context trap that would otherwise confine this
-  // `fixed inset-0` overlay to the panel). Some call sites also wrap this in
-  // their own createPortal; that's a harmless redundant body portal.
+  // Radix portals to <body>, so the overlay escapes any transformed / animated
+  // ancestor — this renders inside slide-over detail panels' motion.div, a
+  // stacking + containing-context trap that used to require a manual portal.
+  // `takeover` (1200) keeps it above the detail stack (160) and modal (200).
   return (
-    <Layer level="takeover">
-      <button
-        type="button"
-        aria-label="Close overlay"
-        onClick={onClose}
-        className="fixed inset-0 z-takeover bg-scrim/55 backdrop-blur-[4px]"
-      />
-      {isBottom ? (
-        <div className="pointer-events-none fixed inset-0 z-takeover flex items-end justify-center p-3 pb-[max(1rem,5vh)] sm:p-4 sm:pb-[max(1rem,5vh)]">
-          <div className="pointer-events-auto min-w-0">{dialog}</div>
-        </div>
-      ) : isMidAnchor ? (
-        <div className="pointer-events-auto fixed bottom-1/2 left-1/2 z-takeover min-w-0 max-w-[calc(100vw-1.5rem)] -translate-x-1/2 sm:max-w-[calc(100vw-2rem)]">
-          {dialog}
-        </div>
-      ) : (
-        <div className="pointer-events-none fixed inset-0 z-takeover flex items-center justify-center p-3 sm:p-4">
-          <div className="pointer-events-auto min-w-0">{dialog}</div>
-        </div>
-      )}
-    </Layer>
+    <Dialog open onOpenChange={(next) => { if (!next) onClose(); }}>
+      <DialogContent
+        hideClose
+        aria-describedby={undefined}
+        // Fallback name for the `title={null}` call sites that render their own heading.
+        aria-label={title == null ? 'Assignment' : undefined}
+        overlayClassName="z-takeover bg-scrim/55 backdrop-blur-[4px]"
+        className={cn(
+          'z-takeover max-w-none border-0 bg-transparent p-0 shadow-none',
+          'max-h-[calc(100dvh-1.5rem)]',
+          positionClass,
+        )}
+      >
+        <section className={sectionShell}>
+          {topBar ? <div className="shrink-0 border-b border-border-hairline">{topBar}</div> : null}
+          {headerBlock}
+
+          <div className={bodyClasses}>{children}</div>
+
+          {footer ? (
+            <footer className="shrink-0 border-t border-border-emphasis/20 px-4 py-3">
+              {footer}
+            </footer>
+          ) : null}
+        </section>
+      </DialogContent>
+    </Dialog>
   );
 }

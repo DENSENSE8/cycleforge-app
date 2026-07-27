@@ -7,7 +7,7 @@
 #
 # Optional PWA history stream (Garisek-OS /forge page). When these are set, each
 # stage is POSTed to /api/forge/ingest so the run shows up live in the PWA:
-#   CYCLE_FORGE_REPO   repo root override (default /mnt/e/USAV-Orders-Backend)
+#   CYCLE_FORGE_REPO   repo root override (default /mnt/e/cycleforge-app)
 #   FORGE_INGEST_URL   default http://localhost:3000/api/forge/ingest
 #   FORGE_INGEST_TOKEN shared secret; must equal the app's FORGE_INGEST_TOKEN.
 #
@@ -16,7 +16,7 @@
 # FORGE_* keys stored there populate the loop with no hand-exported secrets.
 set -euo pipefail
 
-REPO_ROOT="${CYCLE_FORGE_REPO:-/mnt/e/USAV-Orders-Backend}"
+REPO_ROOT="${CYCLE_FORGE_REPO:-/mnt/e/cycleforge-app}"
 OPS="$REPO_ROOT/.cycle_forge_ops"
 MANIFEST_DIR="$OPS/manifests"
 

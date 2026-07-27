@@ -15,6 +15,12 @@
  *
  * We deliberately do NOT call GET /api/auth/staff-picker on initial load — the
  * picker mounts (and self-fetches) only when the user opens station mode.
+ *
+ * DISPLAY CONTRACT — this page looks like the product, not a marketing splash.
+ * One calm canvas, one card, house tokens only. The only foreign brand color on
+ * the page lives inside ProviderSignInButton, where Google/Microsoft require it.
+ * Three tiers, in scan order: federated identity → email+password → everything
+ * else behind a disclosure, with the method you used last promoted out of it.
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -35,12 +41,26 @@ import { StaffSigningIn } from '@/components/auth/StaffSigningIn';
 import { SetPinPad } from '@/components/auth/SetPinPad';
 import { BootSplash } from '@/components/boot/BootSplash';
 import { armBootSplash } from '@/lib/boot-flag';
-import { Button, IconButton } from '@/design-system/primitives';
+import { Button, Checkbox, Panel } from '@/design-system/primitives';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/design-system/components/Dialog';
+import { elevationClass } from '@/design-system/tokens/shadows';
+import { cn } from '@/utils/_cn';
+import { LastUsedMarker, ProviderSignInButton } from '@/components/auth/ProviderSignInButton';
+import type { PlatformProvider } from '@/lib/auth/platform-oauth-types';
 import {
   readLastSigninEmail,
+  readLastSigninMethod,
   readRecentSignins,
   writeLastSigninEmail,
+  writeLastSigninMethod,
   writeRecentSignin,
+  type SigninMethod,
 } from '@/lib/auth/recent-signins';
 
 const ROLE_HOME: Record<string, string> = {
@@ -111,8 +131,6 @@ function queryErrorText(kind: 'sso' | 'login' | 'verify', code: string): string 
   return 'Single sign-on failed. Try again or use your password.';
 }
 
-type PlatformProvider = 'google' | 'microsoft';
-
 interface StaffChoiceRow {
   id: number;
   name: string;
@@ -130,11 +148,6 @@ interface WorkspaceMeta {
   /** When true, the org forces email-first login — hide the shared-station PIN entry. */
   emailFirstSignin?: boolean;
 }
-
-const PROVIDER_LABEL: Record<PlatformProvider, string> = {
-  google: 'Continue with Google',
-  microsoft: 'Continue with Microsoft',
-};
 
 export default function SignInPage() {
   const router = useRouter();
@@ -176,6 +189,9 @@ export default function SignInPage() {
   // Shared-computer UX: the same few people keep tapping the same names, so the
   // last-3 they used float to the top; the rest collapse behind a "More" button.
   const [showAllStaff, setShowAllStaff] = useState(false);
+  // Which method worked here last — promotes exactly one option out of the drawer.
+  const [lastMethod, setLastMethod] = useState<SigninMethod | null>(null);
+  const [moreOpen, setMoreOpen] = useState(false);
 
   // Surface the redirect error codes from SSO / magic-link / verify flows.
   useEffect(() => {
@@ -198,6 +214,7 @@ export default function SignInPage() {
   const [signingIn, setSigningIn] = useState(false);
 
   useEffect(() => { setRecent(readRecentSignins()); setRecentReady(true); }, []);
+  useEffect(() => { setLastMethod(readLastSigninMethod()); }, []);
 
   // Prefill the last email used on this device (only when the field is untouched).
   useEffect(() => {
@@ -254,8 +271,9 @@ export default function SignInPage() {
         setError(humanError(data.error));
         return;
       }
-      // Credentials accepted — remember the email for next time on this device.
+      // Credentials accepted — remember email + method for next time on this device.
       writeLastSigninEmail(email);
+      writeLastSigninMethod('password');
       if (data.needsOrgChoice && data.memberships) {
         setOrgChoices(data.memberships);
         setChosenOrg(data.memberships[0]?.organizationId ?? null);
@@ -284,11 +302,6 @@ export default function SignInPage() {
     setAuthStep('password');
   }, [email]);
 
-  const backToEmail = useCallback(() => {
-    setError(null);
-    setAuthStep('email');
-  }, []);
-
   const submitMagicLink = useCallback(async () => {
     if (!email.trim()) { setError('Enter your email first.'); return; }
     setBusy(true);
@@ -300,6 +313,7 @@ export default function SignInPage() {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ email: email.trim() }),
       });
+      writeLastSigninMethod('magic-link');
       setNotice('If that email is registered, we’ve sent a one-time sign-in link. Check your inbox.');
     } catch {
       setNotice('If that email is registered, we’ve sent a one-time sign-in link. Check your inbox.');
@@ -329,6 +343,7 @@ export default function SignInPage() {
         const data = await finishRes.json().catch(() => ({}));
         throw new Error(humanError((data as { error?: string }).error));
       }
+      writeLastSigninMethod('passkey');
       finish(null, null, null, null);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Passkey sign-in failed.');
@@ -336,6 +351,21 @@ export default function SignInPage() {
       setBusy(false);
     }
   }, [finish]);
+
+  // Redirect flows record on *attempt* — we navigate away before the outcome is
+  // known, and this is only ever a display hint on the next visit.
+  const startProvider = useCallback((p: PlatformProvider) => {
+    writeLastSigninMethod(p);
+    const qs = next ? `?next=${encodeURIComponent(next)}` : '';
+    window.location.href = `/api/auth/oauth/${p}/start${qs}`;
+  }, [next]);
+
+  const startSso = useCallback((slug: string) => {
+    writeLastSigninMethod('sso');
+    const qs = new URLSearchParams({ slug });
+    if (next) qs.set('next', next);
+    window.location.href = `/api/auth/sso/start?${qs.toString()}`;
+  }, [next]);
 
   // ── Station PIN handlers (reused bricks) ──────────────────────────────────
   const submitPin = useCallback(async (pin: string) => {
@@ -462,6 +492,34 @@ export default function SignInPage() {
     return { recentStaff: recents, otherStaff: Array.from(byId.values()) };
   }, [staffChoices, recent]);
 
+  // ── Tier 3: everything that isn't federated identity or email+password ─────
+  const extraOptions = useMemo(() => {
+    const opts: { key: string; label: string; method?: SigninMethod; onSelect: () => void }[] = [
+      { key: 'magic-link', label: 'Email me a sign-in link', method: 'magic-link', onSelect: () => void submitMagicLink() },
+      { key: 'passkey', label: 'Sign in with a passkey', method: 'passkey', onSelect: () => void submitAccountPasskey() },
+      { key: 'phone', label: 'Use your phone to sign in', onSelect: () => setShowPhoneQr(true) },
+    ];
+    // Shared-station PIN entry — hidden when the org forces email-first login.
+    if (!workspace?.emailFirstSignin) {
+      opts.push({ key: 'station', label: 'Sign in on a shared station', onSelect: () => setStationOpen(true) });
+    }
+    return opts;
+  }, [submitMagicLink, submitAccountPasskey, workspace?.emailFirstSignin]);
+
+  // Exactly one option gets lifted out of the drawer — the one that worked here last.
+  const promotedOption = useMemo(
+    () => extraOptions.find((o) => o.method != null && o.method === lastMethod) ?? null,
+    [extraOptions, lastMethod],
+  );
+  const drawerOptions = useMemo(
+    () => extraOptions.filter((o) => o !== promotedOption),
+    [extraOptions, promotedOption],
+  );
+
+  const providers = workspace?.platformProviders ?? [];
+  const sso = workspace?.sso ?? null;
+  const hasFederated = providers.length > 0 || sso != null;
+
   if (signingIn) return <BootSplash />;
 
   // ── Station mode (picked → PIN pad) ───────────────────────────────────────
@@ -477,10 +535,46 @@ export default function SignInPage() {
             ) : (
               <SetPinPad staff={picked} onSubmit={submitCreatePin} onBack={() => setPicked(null)} />
             )}
-            <RememberMeToggle checked={rememberMe} onChange={setRememberMe} />
+            <RememberMeField id="remember-station" checked={rememberMe} onChange={setRememberMe} />
           </div>
         )}
-        {showPhoneQr && <PhoneSigninQrPopover onClose={() => setShowPhoneQr(false)} />}
+        <PhoneSigninQrDialog open={showPhoneQr} onClose={() => setShowPhoneQr(false)} />
+      </Shell>
+    );
+  }
+
+  // ── Station mode (roster) — its own view, not a drawer inside the form ────
+  if (stationOpen) {
+    return (
+      <Shell>
+        <AuthCard>
+          <AuthHeader
+            title="Shared station"
+            subtitle={workspace?.resolved ? 'Pick your name to continue.' : undefined}
+          />
+          {workspace?.resolved ? (
+            <div className="space-y-3">
+              <StaffPickerList
+                recent={recent}
+                recentReady={recentReady}
+                onPick={handlePick}
+                onMessage={setPickerMessage}
+                onPolicy={handlePolicy}
+              />
+              {pickerMessage && <StatusBox tone="danger">{pickerMessage}</StatusBox>}
+            </div>
+          ) : (
+            <div className="inset-empty rounded-xl border border-dashed border-border-soft bg-surface-canvas text-role-caption text-text-soft">
+              Station sign-in happens on your workspace URL. Open{' '}
+              <span className="font-semibold text-text-default">yourteam.app.cycleforge.ai</span> to pick
+              your name and enter a PIN.
+            </div>
+          )}
+          <TextLink onClick={() => { setStationOpen(false); setPicked(null); setPickerMessage(null); }}>
+            Back to sign in
+          </TextLink>
+        </AuthCard>
+        <PhoneSigninQrDialog open={showPhoneQr} onClose={() => setShowPhoneQr(false)} />
       </Shell>
     );
   }
@@ -489,24 +583,22 @@ export default function SignInPage() {
   if (staffChoices) {
     return (
       <Shell>
-        <div className="relative w-full max-w-sm space-y-5 rounded-3xl border border-border-soft/50 bg-surface-card/80 p-8 shadow-xl shadow-navy-900/5 backdrop-blur-xl">
-          <div className="space-y-1 text-center">
-            {staffChoiceOrg && (
-              <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">{staffChoiceOrg}</p>
-            )}
-            <h1 className="text-lg font-bold text-text-default">Sign in as a staff member</h1>
-            <p className="text-xs text-text-soft">Tap your name to start.</p>
-          </div>
+        <AuthCard>
+          <AuthHeader
+            eyebrow={staffChoiceOrg ?? undefined}
+            title="Sign in as a staff member"
+            subtitle="Tap your name to start."
+          />
 
           {staffChoices.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-6 text-center text-xs text-text-soft">
+            <div className="inset-empty rounded-xl border border-dashed border-border-soft bg-surface-canvas text-center text-role-caption text-text-soft">
               No staff members yet. Add your team in Settings, then come back to pick a name.
             </div>
           ) : (
             <div className="-mr-1 max-h-[22rem] space-y-4 overflow-y-auto pr-1">
               {recentStaff.length > 0 && (
                 <div className="space-y-1.5">
-                  <p className="px-1 text-role-micro font-semibold uppercase tracking-[0.18em] text-text-faint">Recent</p>
+                  <p className="px-1 text-role-micro uppercase text-text-soft">Recent</p>
                   {recentStaff.map((s) => (
                     <StaffChoiceRowButton key={s.id} staff={s} disabled={busy} onPick={actAsStaff} isRecent />
                   ))}
@@ -516,7 +608,7 @@ export default function SignInPage() {
               {(recentStaff.length === 0 || showAllStaff) && otherStaff.length > 0 && (
                 <div className="space-y-1.5">
                   {recentStaff.length > 0 && (
-                    <p className="px-1 text-role-micro font-semibold uppercase tracking-[0.18em] text-text-faint">All staff</p>
+                    <p className="px-1 text-role-micro uppercase text-text-soft">All staff</p>
                   )}
                   {otherStaff.map((s) => (
                     <StaffChoiceRowButton key={s.id} staff={s} disabled={busy} onPick={actAsStaff} />
@@ -525,36 +617,16 @@ export default function SignInPage() {
               )}
 
               {recentStaff.length > 0 && !showAllStaff && otherStaff.length > 0 && (
-                // ds-raw-button: inline disclosure to reveal the rest of the roster
-                <button
-                  type="button"
-                  onClick={() => setShowAllStaff(true)}
-                  className="group flex w-full items-center justify-center gap-1.5 rounded-xl border border-border-soft bg-surface-card px-3 py-2.5 text-role-caption font-semibold text-text-soft transition hover:border-blue-300 hover:text-text-default"
-                >
-                  More
-                  <span className="text-text-faint">·</span>
-                  <span className="font-medium text-text-faint">{otherStaff.length} more staff</span>
-                  <svg
-                    className="h-3.5 w-3.5 text-text-faint transition group-hover:translate-y-0.5"
-                    viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden
-                  >
-                    <path d="M6 9l6 6 6-6" />
-                  </svg>
-                </button>
+                <Button variant="secondary" size="sm" className="w-full" onClick={() => setShowAllStaff(true)}>
+                  Show {otherStaff.length} more
+                </Button>
               )}
             </div>
           )}
 
-          {/* ds-raw-button: inline text link below staff roster */}
-          <button
-            type="button"
-            onClick={() => { setStaffChoices(null); setError(null); }}
-            className="w-full text-center text-role-caption font-semibold text-text-soft hover:text-text-default"
-          >
-            Use a different login
-          </button>
-          {error && <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">{error}</div>}
-        </div>
+          <TextLink onClick={() => { setStaffChoices(null); setError(null); }}>Use a different login</TextLink>
+          {error && <StatusBox tone="danger">{error}</StatusBox>}
+        </AuthCard>
       </Shell>
     );
   }
@@ -563,18 +635,18 @@ export default function SignInPage() {
   if (orgChoices) {
     return (
       <Shell>
-        <div className="relative w-full max-w-sm space-y-5 rounded-3xl border border-border-soft/50 bg-surface-card/80 p-8 shadow-xl shadow-navy-900/5 backdrop-blur-xl">
-          <div className="space-y-1">
-            <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">Choose a workspace</p>
-            <h1 className="text-lg font-bold text-text-default">Where do you want to go?</h1>
-          </div>
+        <AuthCard>
+          <AuthHeader title="Choose a workspace" subtitle="You’re a member of more than one." />
           <div className="divide-y divide-border-hairline overflow-hidden rounded-xl border border-border-soft">
             {orgChoices.map((m) => (
               <label
                 key={m.organizationId}
-                className={`flex cursor-pointer items-center gap-3 px-3 py-2.5 text-sm ${
-                  chosenOrg === m.organizationId ? 'bg-blue-50 ring-1 ring-inset ring-blue-400' : 'hover:bg-surface-canvas'
-                }`}
+                className={cn(
+                  'flex cursor-pointer items-center gap-3 px-3 py-2.5 text-role-body',
+                  chosenOrg === m.organizationId
+                    ? 'bg-blue-50 ring-1 ring-inset ring-blue-400'
+                    : 'hover:bg-surface-canvas',
+                )}
               >
                 <input
                   type="radio"
@@ -589,61 +661,92 @@ export default function SignInPage() {
           </div>
           <Button
             variant="primary"
+            size="lg"
             className="w-full"
             disabled={busy || !chosenOrg}
             onClick={() => chosenOrg && void submitAccount(chosenOrg)}
           >
             {busy ? 'Signing in…' : 'Continue'}
           </Button>
-          {error && <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">{error}</div>}
-        </div>
+          {error && <StatusBox tone="danger">{error}</StatusBox>}
+        </AuthCard>
       </Shell>
     );
   }
 
-  // ── Primary: email + password ─────────────────────────────────────────────
+  // ── Primary: federated identity → email + password → more ─────────────────
   return (
     <Shell>
-      <div className="relative w-full max-w-sm space-y-5 rounded-3xl border border-border-soft/50 bg-surface-card/80 px-8 pb-8 pt-7 shadow-xl shadow-navy-900/5 backdrop-blur-xl">
-        <div className="space-y-2">
-          <div className="space-y-1 text-center">
-            <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">Cycle Forge</p>
-            <SignInTitle workspaceName={workspaceName} />
-          </div>
+      <AuthCard>
+        <SignInTitle workspaceName={workspaceName} />
 
-          <form
-            className="space-y-4"
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (busy) return;
-              if (authStep === 'email') { advanceToPassword(); return; }
-              if (email.trim() && password) void submitAccount();
-            }}
-          >
-            <SignInAuthStepPanels
-              authStep={authStep}
-              email={email}
-              password={password}
-              onEmailChange={setEmail}
-              onPasswordChange={setPassword}
-              onBackToEmail={backToEmail}
-            />
-
-            <label className="flex cursor-pointer items-center gap-2 text-xs text-text-muted">
-              <input type="checkbox" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} className="h-3.5 w-3.5 rounded border-border-default" />
-              Remember this device
-            </label>
-
-            <Button
-              type="submit"
-              variant="primary"
-              className="w-full"
-              disabled={busy || (authStep === 'email' ? !email.trim() : !password)}
+        {/* Tier 1 — one tap, no typing. Above the form because it's faster. */}
+        <AnimatePresence initial={false}>
+          {authStep === 'email' && hasFederated && (
+            <motion.div
+              key="federated"
+              initial={alternatePresence.initial}
+              animate={alternatePresence.animate}
+              exit={alternatePresence.exit}
+              transition={alternateTransition}
+              className="space-y-2"
             >
-              {authStep === 'email' ? 'Continue' : busy ? 'Signing in…' : 'Sign in'}
-            </Button>
-          </form>
-        </div>
+              {providers.map((p) => (
+                <ProviderSignInButton
+                  key={p}
+                  provider={p}
+                  disabled={busy}
+                  lastUsed={lastMethod === p}
+                  onClick={() => startProvider(p)}
+                />
+              ))}
+              {sso && (
+                <Button
+                  variant="secondary"
+                  size="lg"
+                  className="w-full justify-between"
+                  disabled={busy}
+                  onClick={() => startSso(sso.slug)}
+                >
+                  {sso.label}
+                  {lastMethod === 'sso' && <LastUsedMarker />}
+                </Button>
+              )}
+              <Divider>or</Divider>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Tier 2 — the default path. */}
+        <form
+          className="space-y-4"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (busy) return;
+            if (authStep === 'email') { advanceToPassword(); return; }
+            if (email.trim() && password) void submitAccount();
+          }}
+        >
+          <SignInAuthStepPanels
+            authStep={authStep}
+            email={email}
+            password={password}
+            onEmailChange={setEmail}
+            onPasswordChange={setPassword}
+          />
+
+          <RememberMeField id="remember-account" checked={rememberMe} onChange={setRememberMe} />
+
+          <Button
+            type="submit"
+            variant="primary"
+            size="lg"
+            className="w-full"
+            disabled={busy || (authStep === 'email' ? !email.trim() : !password)}
+          >
+            {authStep === 'email' ? 'Continue' : busy ? 'Signing in…' : 'Sign in'}
+          </Button>
+        </form>
 
         <AnimatePresence mode="popLayout" initial={false}>
           {error && (
@@ -653,9 +756,8 @@ export default function SignInPage() {
               animate={messagePresence.animate}
               exit={messagePresence.exit}
               transition={messageTransition}
-              className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700"
             >
-              {error}
+              <StatusBox tone="danger">{error}</StatusBox>
             </motion.div>
           )}
           {notice && (
@@ -665,126 +767,170 @@ export default function SignInPage() {
               animate={messagePresence.animate}
               exit={messagePresence.exit}
               transition={messageTransition}
-              className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-700"
             >
-              {notice}
+              <StatusBox tone="accent">{notice}</StatusBox>
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* Alternate methods live on the identity (email) step; the password
-            step stays a single, focused row. Tap the email chip to come back. */}
+        {/* Tier 3 — one promoted option (what you used last) + a quiet drawer.
+            Hidden on the password step so that stays a single focused action. */}
         <AnimatePresence initial={false}>
-        {authStep === 'email' && (
-        <motion.div
-          key="alternate"
-          initial={alternatePresence.initial}
-          animate={alternatePresence.animate}
-          exit={alternatePresence.exit}
-          transition={alternateTransition}
-          className="space-y-5"
-        >
-        <div className="flex items-center gap-3">
-          <div className="h-px flex-1 bg-border-hairline" />
-          <span className="text-role-micro font-semibold uppercase tracking-widest text-text-faint">or</span>
-          <div className="h-px flex-1 bg-border-hairline" />
-        </div>
-
-        {(workspace?.platformProviders?.length || workspace?.sso) && (
-          <div className="space-y-2">
-            {workspace?.platformProviders?.map((p) => {
-              const qs = next ? `?next=${encodeURIComponent(next)}` : '';
-              return (
-                <Button key={p} variant="secondary" className="w-full" onClick={() => { window.location.href = `/api/auth/oauth/${p}/start${qs}`; }}>
-                  {PROVIDER_LABEL[p]}
-                </Button>
-              );
-            })}
-            {workspace?.sso && (
-              <Button
-                variant="secondary"
-                className="w-full"
-                onClick={() => {
-                  const params2 = new URLSearchParams({ slug: workspace.sso!.slug });
-                  if (next) params2.set('next', next);
-                  window.location.href = `/api/auth/sso/start?${params2.toString()}`;
-                }}
-              >
-                {workspace.sso.label}
-              </Button>
-            )}
-          </div>
-        )}
-
-        <div className="space-y-2">
-          <Button variant="secondary" className="w-full" disabled={busy} onClick={() => void submitMagicLink()}>
-            Email me a sign-in link
-          </Button>
-          <Button variant="secondary" className="w-full" disabled={busy} onClick={() => void submitAccountPasskey()}>
-            Sign in with a passkey
-          </Button>
-          {/* ds-raw-button: tertiary text link below primary auth buttons */}
-          <button
-            type="button"
-            onClick={() => setShowPhoneQr(true)}
-            className="w-full text-center text-role-caption font-semibold text-text-soft hover:text-text-default"
-          >
-            Use your phone to sign in
-          </button>
-        </div>
-
-        {/* Shared-station PIN mode — collapsed; only offered when a workspace is
-            resolved AND the org hasn't forced email-first login. */}
-        {!workspace?.emailFirstSignin && (
-        <div className="border-t border-border-hairline pt-4">
-          {stationOpen ? (
-            workspace?.resolved ? (
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <p className="text-role-micro uppercase tracking-widest text-text-soft">Shared station — pick your name</p>
-                  {/* ds-raw-button: inline text cancel control in station sub-panel */}
-                  <button type="button" onClick={() => { setStationOpen(false); setPicked(null); }} className="text-role-caption font-semibold text-text-soft hover:text-text-default">Cancel</button>
-                </div>
-                <StaffPickerList
-                  recent={recent}
-                  recentReady={recentReady}
-                  onPick={handlePick}
-                  onMessage={setPickerMessage}
-                  onPolicy={handlePolicy}
-                />
-                {pickerMessage && (
-                  <div className="rounded-lg bg-red-50 px-3 py-2 text-xs font-medium text-red-700">{pickerMessage}</div>
-                )}
-              </div>
-            ) : (
-              <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-4 text-center text-xs text-text-soft">
-                Station sign-in happens on your workspace URL. Open <span className="font-semibold text-text-default">yourteam.app.cycleforge.ai</span> to pick your name and enter a PIN.
-                {/* ds-raw-button: inline text back link inside dashed teaching box */}
-                <button type="button" onClick={() => setStationOpen(false)} className="mt-2 block w-full text-role-caption font-semibold text-blue-600 hover:text-blue-700">Back</button>
-              </div>
-            )
-          ) : (
-            // ds-raw-button: collapsed disclosure trigger for station mode
-            <button
-              type="button"
-              onClick={() => setStationOpen(true)}
-              className="w-full text-center text-xs font-semibold text-text-soft hover:text-text-default"
+          {authStep === 'email' && (
+            <motion.div
+              key="more"
+              initial={alternatePresence.initial}
+              animate={alternatePresence.animate}
+              exit={alternatePresence.exit}
+              transition={alternateTransition}
+              className="space-y-2"
             >
-              Signing in on a shared station?
-            </button>
+              {promotedOption && (
+                <Button
+                  variant="secondary"
+                  size="lg"
+                  className="w-full justify-between"
+                  disabled={busy}
+                  onClick={promotedOption.onSelect}
+                >
+                  {promotedOption.label}
+                  <LastUsedMarker />
+                </Button>
+              )}
+
+              {moreOpen ? (
+                <div className="space-y-2">
+                  {drawerOptions.map((o) => (
+                    <Button
+                      key={o.key}
+                      variant="secondary"
+                      size="lg"
+                      className="w-full"
+                      disabled={busy}
+                      onClick={o.onSelect}
+                    >
+                      {o.label}
+                    </Button>
+                  ))}
+                </div>
+              ) : (
+                <TextLink onClick={() => setMoreOpen(true)}>More sign-in options</TextLink>
+              )}
+            </motion.div>
           )}
-        </div>
-        )}
-        </motion.div>
-        )}
         </AnimatePresence>
 
-        <p className="text-center text-xs text-text-soft">
+        <p className="text-role-caption text-text-soft">
           New here? <a href="/signup" className="font-semibold text-blue-600 hover:text-blue-700">Create a workspace</a>
         </p>
-      </div>
-      {showPhoneQr && <PhoneSigninQrPopover onClose={() => setShowPhoneQr(false)} />}
+      </AuthCard>
+      <PhoneSigninQrDialog open={showPhoneQr} onClose={() => setShowPhoneQr(false)} />
     </Shell>
+  );
+}
+
+// ── Card chrome ─────────────────────────────────────────────────────────────
+
+/** The one card on the page. Panel + the raised-soft elevation role (SoT). */
+function AuthCard({ children }: { children: React.ReactNode }) {
+  return (
+    <Panel
+      padding="lg"
+      radius="2xl"
+      elevation="none"
+      className={cn('w-full max-w-sm space-y-5', elevationClass('raised', 'soft'))}
+    >
+      {children}
+    </Panel>
+  );
+}
+
+interface AuthHeaderProps {
+  eyebrow?: string;
+  title: string;
+  subtitle?: string;
+}
+
+/** Left-aligned. The eyebrow is for real context (an org name), never a restatement. */
+function AuthHeader({ eyebrow, title, subtitle }: AuthHeaderProps) {
+  return (
+    <div className="space-y-1">
+      {eyebrow && <p className="text-role-eyebrow uppercase text-text-soft">{eyebrow}</p>}
+      <h1 className="text-role-title text-text-default">{title}</h1>
+      {subtitle && <p className="text-role-caption text-text-soft">{subtitle}</p>}
+    </div>
+  );
+}
+
+function Divider({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex items-center gap-3 pt-1">
+      <div className="h-px flex-1 bg-border-hairline" />
+      <span className="text-role-micro uppercase text-text-soft">{children}</span>
+      <div className="h-px flex-1 bg-border-hairline" />
+    </div>
+  );
+}
+
+function StatusBox({ tone, children }: { tone: 'danger' | 'accent'; children: React.ReactNode }) {
+  return (
+    <div
+      role={tone === 'danger' ? 'alert' : 'status'}
+      className={cn(
+        'inset-field rounded-lg border text-role-caption',
+        tone === 'danger'
+          ? 'border-border-danger bg-surface-danger text-text-danger'
+          : 'border-border-accent bg-surface-accent text-text-accent',
+      )}
+    >
+      {children}
+    </div>
+  );
+}
+
+/** Quiet tertiary control — the only text-button shape on this page. */
+function TextLink({ onClick, children }: { onClick: () => void; children: React.ReactNode }) {
+  return (
+    // ds-raw-button: tertiary text control; a DS Button variant would read as an action.
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'w-full rounded text-left text-role-caption font-semibold text-text-soft transition-colors hover:text-text-default',
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+
+interface RememberMeFieldProps {
+  id: string;
+  checked: boolean;
+  onChange: (next: boolean) => void;
+}
+
+/**
+ * One shape for one job — the account form and the station PIN pad share this.
+ * The shared-computer warning is the part that actually changes behavior, so it
+ * ships with the control rather than only on one of the two surfaces.
+ */
+function RememberMeField({ id, checked, onChange }: RememberMeFieldProps) {
+  return (
+    <div className="flex items-start gap-2.5">
+      <Checkbox
+        id={id}
+        checked={checked}
+        onCheckedChange={(v) => onChange(v === true)}
+        className="mt-0.5"
+      />
+      <label htmlFor={id} className="cursor-pointer leading-tight">
+        <span className="block text-role-caption font-medium text-text-default">Keep me signed in</span>
+        <span className="block text-role-micro font-normal normal-case tracking-normal text-text-soft">
+          30 days on this device — uncheck on shared computers
+        </span>
+      </label>
+    </div>
   );
 }
 
@@ -803,13 +949,17 @@ function StaffChoiceRowButton({ staff: s, disabled, onPick, isRecent }: StaffCho
       disabled={disabled}
       onClick={() => void onPick(s)}
       aria-label={`Sign in as ${s.name}${s.role ? `, ${s.role}` : ''}`}
-      className={`group flex w-full items-center gap-3 rounded-xl border bg-surface-card px-3 py-2.5 text-left transition hover:border-blue-300 hover:bg-blue-50/50 disabled:opacity-50 ${
-        isRecent ? 'border-blue-200 ring-1 ring-inset ring-blue-100' : 'border-border-soft'
-      }`}
+      className={cn(
+        'group flex w-full items-center gap-3 rounded-xl border bg-surface-card px-3 py-2.5 text-left transition hover:border-blue-300 hover:bg-blue-50/50 disabled:opacity-50',
+        isRecent ? 'border-blue-200 ring-1 ring-inset ring-blue-100' : 'border-border-soft',
+      )}
     >
       <span className="relative shrink-0">
         <span
-          className={`flex h-10 w-10 items-center justify-center rounded-full text-xs font-black uppercase tracking-wide text-text-inverse ${s.color_hex ? '' : 'bg-surface-inverse'}`}
+          className={cn(
+            'flex h-10 w-10 items-center justify-center rounded-full text-role-caption font-black uppercase text-text-inverse',
+            !s.color_hex && 'bg-surface-inverse',
+          )}
           style={s.color_hex ? { backgroundColor: s.color_hex } : undefined}
           aria-hidden
         >
@@ -820,13 +970,13 @@ function StaffChoiceRowButton({ staff: s, disabled, onPick, isRecent }: StaffCho
         )}
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-sm font-semibold text-text-default">{s.name}</span>
+        <span className="block truncate text-role-body font-semibold text-text-default">{s.name}</span>
         {s.role && (
-          <span className="block truncate text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">{s.role}</span>
+          <span className="block truncate text-role-eyebrow uppercase text-text-soft">{s.role}</span>
         )}
       </span>
       <svg
-        className="h-4 w-4 shrink-0 text-text-faint transition group-hover:translate-x-0.5 group-hover:text-blue-500"
+        className="h-4 w-4 shrink-0 text-text-soft transition group-hover:translate-x-0.5 group-hover:text-blue-500"
         viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden
       >
         <path d="M9 6l6 6-6 6" />
@@ -835,67 +985,34 @@ function StaffChoiceRowButton({ staff: s, disabled, onPick, isRecent }: StaffCho
   );
 }
 
-function PhoneSigninQrPopover({ onClose }: { onClose: () => void }) {
+/**
+ * Phone hand-off QR. Composes the DS `Dialog` (Radix) so focus trap, focus
+ * restore on close, Escape, scroll lock, and `aria-modal` come from the SoT —
+ * this used to hand-roll a `fixed inset-0` scrim and had none of them.
+ */
+function PhoneSigninQrDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [url, setUrl] = useState<string>('');
 
   useEffect(() => {
     if (typeof window !== 'undefined') setUrl(`${window.location.origin}/m/signin`);
   }, []);
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
-
   return (
-    <div role="dialog" aria-modal="true" aria-label="Sign in with your phone" className="fixed inset-0 z-modal flex items-center justify-center px-4">
-      {/* ds-raw-button: full-bleed modal scrim/overlay dismiss target, not a DS Button */}
-      <button type="button" aria-label="Close" onClick={onClose} className="absolute inset-0 bg-scrim/40 backdrop-blur-sm transition-opacity" />
-      <div className="relative w-full max-w-sm rounded-3xl border border-border-soft bg-surface-card p-7 shadow-2xl shadow-navy-900/20">
-        <IconButton
-          type="button"
-          onClick={onClose}
-          ariaLabel="Close"
-          className="absolute right-3 top-3 inline-flex h-8 w-8 items-center justify-center rounded-full hover:bg-surface-sunken"
-          icon={
-            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-              <path d="M6 6l12 12" /><path d="M18 6L6 18" />
-            </svg>
-          }
-        />
-        <div className="text-center">
-          <h2 className="text-lg font-semibold tracking-tight text-text-default">Scan to sign in on your phone</h2>
-          <p className="mt-1.5 text-role-caption leading-relaxed text-text-soft">Point your phone camera at the code.</p>
-        </div>
-        <div className="mt-5 flex justify-center">
-          <div className="rounded-2xl border border-border-soft bg-surface-card p-3 shadow-inner shadow-navy-900/[0.03]">
+    <Dialog open={open} onOpenChange={(next) => { if (!next) onClose(); }}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Scan to sign in on your phone</DialogTitle>
+          <DialogDescription>Point your phone camera at the code.</DialogDescription>
+        </DialogHeader>
+        <div className="flex justify-center">
+          {/* QR stays on a light tile in every theme — scanners need the contrast. */}
+          <div className="rounded-2xl border border-border-soft bg-surface-card p-3">
             {url ? <QRCode value={url} size={196} level="M" /> : <div className="h-[196px] w-[196px] animate-pulse rounded-lg bg-surface-sunken" />}
           </div>
         </div>
-        <div className="mt-5 break-all rounded-lg bg-surface-canvas px-3 py-2 text-center text-role-micro font-mono text-text-soft">{url || ' '}</div>
-      </div>
-    </div>
-  );
-}
-
-interface RememberMeToggleProps {
-  checked: boolean;
-  onChange: (next: boolean) => void;
-}
-
-function RememberMeToggle({ checked, onChange }: RememberMeToggleProps) {
-  return (
-    <label className="group inline-flex cursor-pointer items-center gap-3 rounded-full border border-border-soft bg-surface-card/80 px-4 py-2 text-role-caption font-medium text-text-muted shadow-sm shadow-navy-900/[0.03] backdrop-blur transition-all hover:border-border-default hover:text-text-default">
-      <span className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${checked ? 'bg-surface-inverse' : 'bg-surface-strong'}`} aria-hidden>
-        <span className={`inline-block h-4 w-4 rounded-full bg-surface-card shadow-sm transition-transform ${checked ? 'translate-x-[18px]' : 'translate-x-[2px]'}`} />
-      </span>
-      <span className="flex flex-col leading-tight">
-        <span>Keep me signed in</span>
-        <span className="text-role-micro text-text-faint group-hover:text-text-soft">30 days on this device — uncheck on shared computers</span>
-      </span>
-      <input type="checkbox" className="sr-only" checked={checked} onChange={(e) => onChange(e.target.checked)} />
-    </label>
+        <div className="break-all rounded-lg bg-surface-canvas px-3 py-2 text-center font-mono text-role-micro text-text-soft">{url || ' '}</div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -904,68 +1021,48 @@ function SignInTitle({ workspaceName }: { workspaceName: string | null }) {
   const titleTransition = useMotionTransition(framerTransition.signInTitle);
 
   return (
-    <h1 className="min-h-[1.75rem] text-lg font-bold text-text-default">
-      <AnimatePresence mode="wait" initial={false}>
-        <motion.span
-          key={workspaceName ?? '__generic__'}
-          className="block"
-          initial={titlePresence.initial}
-          animate={titlePresence.animate}
-          exit={titlePresence.exit}
-          transition={titleTransition}
-        >
-          {workspaceName ? (
-            <>Sign in to <span className="text-blue-600">{workspaceName}</span></>
-          ) : (
-            'Sign in'
-          )}
-        </motion.span>
-      </AnimatePresence>
-    </h1>
+    <div className="space-y-1">
+      <h1 className="min-h-[1.5rem] text-role-title text-text-default">
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.span
+            key={workspaceName ?? '__generic__'}
+            className="block"
+            initial={titlePresence.initial}
+            animate={titlePresence.animate}
+            exit={titlePresence.exit}
+            transition={titleTransition}
+          >
+            {workspaceName ? `Sign in to ${workspaceName}` : 'Sign in to Cycle Forge'}
+          </motion.span>
+        </AnimatePresence>
+      </h1>
+      <p className="text-role-caption text-text-soft">Use the account you signed up with.</p>
+    </div>
   );
 }
 
-/** Soft color washes — radial gradients avoid `blur` + `overflow-hidden` clip. */
-const SIGNIN_ORB_GRADIENT = [
-  'radial-gradient(ellipse 46% 42% at 8% 14%, rgba(59, 130, 246, 0.42), transparent 72%)',
-  'radial-gradient(ellipse 52% 48% at 94% 22%, rgba(168, 85, 247, 0.34), transparent 74%)',
-  'radial-gradient(ellipse 44% 40% at 26% 92%, rgba(99, 102, 241, 0.38), transparent 70%)',
-].join(', ');
-
+/**
+ * Page canvas. Deliberately plain: one flat surface, no ambient gradients, no
+ * texture overlay, no glass. The card is the design.
+ *
+ * iOS/iPadOS geometry — two rules, both learned the hard way:
+ *  1. The inner column is `min-h-full`, NOT `min-h-dvh`. Root layout pins <body>
+ *     to the visual viewport with `overflow-hidden` (see app/layout.tsx) — a
+ *     `100dvh` child inside this already-viewport-sized `fixed inset-0` box
+ *     overflows it whenever Safari's chrome collapses, and the page scrolls past
+ *     the painted area.
+ *  2. A dedicated `fixed inset-0` paint layer sits behind the content, so
+ *     rubber-band overscroll and any sub-pixel rounding still reveal the canvas
+ *     color rather than the body underneath.
+ */
 function Shell({ children }: { children: React.ReactNode }) {
   const cardPresence = useMotionPresence(framerPresence.signInCard);
   const cardTransition = useMotionTransition(framerTransition.signInCardMount);
 
   return (
-    <div className="fixed inset-0 z-modal overflow-y-auto text-text-default antialiased">
-      {/* Viewport-fixed washes — `absolute inset-0` only covered the scrollport, leaving a white strip below long cards */}
-      <div className="pointer-events-none fixed inset-0 z-base bg-gradient-to-br from-surface-canvas via-surface-card to-surface-canvas" aria-hidden />
-      <motion.div
-        aria-hidden
-        className="pointer-events-none fixed inset-0 z-base"
-        style={{ background: SIGNIN_ORB_GRADIENT }}
-        animate={{ opacity: [0.88, 1, 0.88] }}
-        transition={{ duration: 14, repeat: Infinity, ease: 'easeInOut' }}
-      />
-      <motion.div
-        aria-hidden
-        className="pointer-events-none fixed inset-0 z-base"
-        style={{
-          background: 'radial-gradient(ellipse 38% 34% at 72% 78%, rgba(56, 189, 248, 0.22), transparent 68%)',
-        }}
-        animate={{ opacity: [0.5, 0.85, 0.5], scale: [1, 1.04, 1] }}
-        transition={{ duration: 18, repeat: Infinity, ease: 'easeInOut', delay: 2 }}
-      />
-
-      <div
-        className="pointer-events-none fixed inset-0 z-raised opacity-[0.06] dark:opacity-[0.08]"
-        style={{
-          backgroundImage: 'radial-gradient(circle at 1px 1px, currentColor 1px, transparent 0)',
-          backgroundSize: '32px 32px',
-        }}
-        aria-hidden
-      />
-      <div className="relative z-sticky flex min-h-dvh flex-col items-center justify-start px-6 pt-[12vh] pb-16">
+    <div className="fixed inset-0 z-modal overflow-y-auto overscroll-none bg-surface-canvas text-text-default antialiased">
+      <div className="pointer-events-none fixed inset-0 z-base bg-surface-canvas" aria-hidden />
+      <div className="relative z-sticky flex min-h-full flex-col items-center justify-center px-6 py-12">
         <motion.div
           initial={cardPresence.initial}
           animate={cardPresence.animate}

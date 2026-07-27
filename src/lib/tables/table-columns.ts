@@ -20,7 +20,13 @@
  * every row in a table hides the SAME keys.
  */
 
-export type TableColumnGroup = 'meta' | 'chip';
+/**
+ * `meta` / `chip` are the legacy row-primitive slot families (RowMetaColumns /
+ * ChipColumns). `grid` marks a table whose columns ARE real spreadsheet tracks
+ * declared in a `*-grid-layout` SoT — those never route through the row
+ * primitives, so their keys are the grid column keys themselves.
+ */
+export type TableColumnGroup = 'meta' | 'chip' | 'grid';
 
 /**
  * Presentation data-type of a column — drives the header type glyph (Airtable-
@@ -52,7 +58,16 @@ export interface TableColumnSpec {
 }
 
 /** Stable ids for every shared list table that supports column config. */
-export type TableId = 'receiving' | 'orders' | 'shipped' | 'tech' | 'testing' | 'packer';
+export type TableId =
+  | 'receiving'
+  | 'orders'
+  | 'shipped'
+  | 'tech'
+  | 'testing'
+  | 'packer'
+  | 'catalog'
+  | 'pickup'
+  | 'repair';
 
 /** Canonical meta-slot keys (the left-side qty | condition | rest grid). */
 export const META_KEYS = {
@@ -71,6 +86,21 @@ const CHIP_TRACKING: TableColumnSpec = { key: 'tracking', label: 'Tracking', gro
 const CHIP_SERIAL: TableColumnSpec = { key: 'serial', label: 'Serial', group: 'chip' };
 
 /**
+ * Grid-native tables (Catalog · Pickup · Repair). Unlike the five row-primitive
+ * tables above, these render real spreadsheet TRACKS from their own
+ * `*-grid-layout` SoT, so each key here is that column's `hideKey` (== its grid
+ * column key). Labels mirror the column SoT so the Fields menu and the header
+ * read the same word. `select` / `title` are absent on purpose — they carry no
+ * `hideKey` and are structurally un-hideable.
+ */
+const GRID_COL = (key: string, label: string, type?: ColumnType): TableColumnSpec => ({
+  key,
+  label,
+  group: 'grid',
+  type,
+});
+
+/**
  * Toggleable columns per table. Order here is the order shown in the popover.
  * `rest` is intentionally NOT exposed everywhere — only where its content is a
  * genuinely-optional detail (staff initials / days-late) rather than load-bearing.
@@ -82,6 +112,35 @@ export const TABLE_COLUMNS: Record<TableId, TableColumnSpec[]> = {
   tech: [META_QTY, META_CONDITION, META_REST, CHIP_PLATFORM, CHIP_ORDERID, CHIP_TRACKING, CHIP_SERIAL],
   testing: [META_QTY, META_CONDITION, META_REST, CHIP_PLATFORM, CHIP_ORDERID, CHIP_TRACKING, CHIP_SERIAL],
   packer: [META_QTY, META_CONDITION, META_REST, CHIP_PLATFORM, CHIP_ORDERID, CHIP_TRACKING],
+  // Grid-native: keys are the `hideKey`s in `src/lib/products/catalog-grid-layout.ts`.
+  catalog: [
+    GRID_COL('sku', 'SKU', 'id'),
+    GRID_COL('inventory', 'Inventory', 'id'),
+    GRID_COL('channels', 'Channels', 'number'),
+    GRID_COL('manuals', 'Manuals', 'number'),
+    GRID_COL('qc', 'QC', 'number'),
+    GRID_COL('orders', 'Orders', 'number'),
+    GRID_COL('status', 'Status', 'tag'),
+  ],
+  // Keys are the `hideKey`s in `src/components/receiving/pickup/grid/pickup-grid-layout.ts`.
+  pickup: [
+    GRID_COL('sku', 'SKU', 'id'),
+    GRID_COL('order', 'Order', 'id'),
+    GRID_COL('date', 'Date', 'date'),
+    GRID_COL('qty', 'Qty', 'number'),
+    GRID_COL('condition', 'Cond', 'tag'),
+    GRID_COL('price', 'Price', 'number'),
+    GRID_COL('status', 'Status', 'tag'),
+  ],
+  // Keys are the `hideKey`s in `src/lib/repair/repair-grid-layout.ts`.
+  repair: [
+    GRID_COL('date', 'Created', 'date'),
+    GRID_COL('customer', 'Customer', 'text'),
+    GRID_COL('phone', 'Phone', 'text'),
+    GRID_COL('price', 'Price', 'number'),
+    GRID_COL('order', 'Walk-in / Order', 'id'),
+    GRID_COL('ticket', 'Ticket', 'id'),
+  ],
 };
 
 export function tableColumnsFor(tableId: TableId): TableColumnSpec[] {

@@ -24,11 +24,23 @@ describe('shadows SoT', () => {
     assert.equal(elevationClass('raised', 'default'), ELEVATION_CLASS.raised.default);
     assert.equal(elevationClass('overlay'), ELEVATION_CLASS.overlay);
 
-    assert.match(ELEVATION_CLASS.raised.soft, /^shadow-sm /);
-    assert.match(ELEVATION_CLASS.raised.soft, /scrim\/5$/);
-    assert.match(ELEVATION_CLASS.raised.default, /^shadow-lg /);
-    assert.match(ELEVATION_CLASS.raised.default, /scrim\/10$/);
-    assert.match(ELEVATION_CLASS.overlay, /^shadow-xl /);
-    assert.match(ELEVATION_CLASS.overlay, /scrim\/20$/);
+    assert.equal(ELEVATION_CLASS.raised.soft, 'shadow-elev-soft');
+    assert.equal(ELEVATION_CLASS.raised.default, 'shadow-elev-raised');
+    assert.equal(ELEVATION_CLASS.overlay, 'shadow-elev-overlay');
+  });
+
+  it('every role resolves to a single themed shadow-elev-* utility', () => {
+    // The ladder must stay one class per role: the `--ds-elev-*` var carries
+    // the ambient + key + cast layers, so a `shadow-scrim/NN` color modifier
+    // (which rewrites EVERY layer to one alpha) would flatten the stack back
+    // into the downward-only shadow this ladder replaced.
+    for (const cls of [
+      ELEVATION_CLASS.raised.soft,
+      ELEVATION_CLASS.raised.default,
+      ELEVATION_CLASS.overlay,
+    ]) {
+      assert.match(cls, /^shadow-elev-(soft|raised|overlay)$/);
+      assert.doesNotMatch(cls, /scrim/);
+    }
   });
 });

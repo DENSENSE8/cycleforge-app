@@ -9,7 +9,6 @@
 import { makeGridSurfaceDescriptor, type GridSurfaceDescriptor } from '@/design-system/components/grid';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import {
-  RECEIVING_GRID_COLUMNS,
   defaultDirForReceivingGridSort,
   isReceivingGridFrozen,
   isReceivingGridSortable,
@@ -32,5 +31,8 @@ export function makeReceivingGridDescriptor(
   );
 }
 
-/** Canonical Unbox / History / Testing descriptor (default column set). */
-export const RECEIVING_GRID_DESCRIPTOR = makeReceivingGridDescriptor(RECEIVING_GRID_COLUMNS);
+// No pre-built canonical descriptor: the column set is now resolved per staffer
+// by `useGridColumnVisibility`, so `ReceivingGridView` always builds from the
+// RESOLVED list (which also keeps `contentMinWidthRem` and the CSS grid
+// template honest when a track is hidden). A module-level constant built from
+// the full column list would have been wrong for every staffer with a delta.

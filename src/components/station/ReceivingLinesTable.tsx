@@ -66,6 +66,8 @@ import {
   type ReceivingLaneIconKey,
 } from '@/lib/receiving/receiving-board-lanes';
 import { TableColumnConfigProvider } from '@/components/ui/table-column-config/TableColumnConfig';
+import { GridFieldsMenu } from '@/components/ui/table-column-config/GridFieldsMenu';
+import { RECEIVING_GRID_COLUMNS } from '@/lib/receiving/receiving-grid-layout';
 
 const RECEIVING_LANE_ICON: Record<ReceivingLaneIconKey, React.ComponentType<{ className?: string }>> = {
   inbox: Inbox,
@@ -314,10 +316,20 @@ export default function ReceivingLinesTable({
     );
 
   // Unbox workbench embeds the table under UnboxWorkspaceHeader — week/scope
-  // pill portals into the top tabs bar (dashboard Shipped recipe).
+  // pill portals into the top tabs bar (dashboard Shipped recipe). The Fields
+  // menu rides the same portal: it is a quiet per-staff preference, so it
+  // belongs beside the scope pill, not in the primary tab row.
   if (embedded) {
     const portaledToolbar =
-      toolbarPortalTarget != null ? createPortal(chromePill, toolbarPortalTarget) : null;
+      toolbarPortalTarget != null
+        ? createPortal(
+            <>
+              {chromePill}
+              <GridFieldsMenu tableId="receiving" columns={RECEIVING_GRID_COLUMNS} />
+            </>,
+            toolbarPortalTarget,
+          )
+        : null;
     return (
       <TableColumnConfigProvider tableId="receiving">
         {portaledToolbar}

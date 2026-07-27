@@ -3,7 +3,7 @@
 # Reads the canonical values from the app's .env.local so both sides agree.
 set -e
 HERMES=/home/avion/.local/bin/hermes
-ENVLOCAL=/mnt/e/USAV-Orders-Backend/.env.local
+ENVLOCAL=/mnt/e/cycleforge-app/.env.local
 
 TOKEN=$(grep '^FORGE_INGEST_TOKEN=' "$ENVLOCAL" | cut -d= -f2)
 EP=$("$HERMES" config env-path)

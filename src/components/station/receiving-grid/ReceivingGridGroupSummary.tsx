@@ -20,7 +20,6 @@ import {
   GridDateCellValue,
   GridPlatformMarkValue,
 } from '@/components/ui/grid-cells';
-import { useIsColumnHidden } from '@/components/ui/table-column-config/TableColumnConfig';
 import { usePlatformMeta } from '@/hooks/useCatalog';
 import { useTimeFormat } from '@/lib/time-format/useTimeFormat';
 import { conditionGradeTextClass } from '@/lib/condition-tone';
@@ -80,7 +79,6 @@ export function ReceivingGridGroupSummary({
   onToggleGroupSelect?: () => void;
 }) {
   useTimeFormat();
-  const isHidden = useIsColumnHidden();
   const resolvePlatformMeta = usePlatformMeta();
 
   if (isMobile) {
@@ -218,9 +216,7 @@ export function ReceivingGridGroupSummary({
           </div>
         );
       case 'qty':
-        return isHidden('qty') ? (
-          <span className={dataCell(rule)} />
-        ) : (
+        return (
           <div data-col="qty" className={cn(dataCell(rule), 'justify-end')}>
             <span
               className={cn(
@@ -233,9 +229,7 @@ export function ReceivingGridGroupSummary({
           </div>
         );
       case 'condition':
-        return isHidden('condition') ? (
-          <span className={dataCell(rule)} />
-        ) : (
+        return (
           <div data-col="condition" className={dataCell(rule)}>
             <span
               className={cn(
@@ -249,9 +243,7 @@ export function ReceivingGridGroupSummary({
           </div>
         );
       case 'stage':
-        return isHidden('rest') ? (
-          <span className={dataCell(rule)} />
-        ) : (
+        return (
           <div data-col="stage" className={dataCell(rule)}>
             {stageDisplay && stageDisplay !== '--:--' ? (
               <span className="truncate tabular-nums text-role-caption text-text-faint">
@@ -263,17 +255,13 @@ export function ReceivingGridGroupSummary({
           </div>
         );
       case 'platform':
-        return isHidden('platform') ? (
-          <span className={dataCell(rule)} />
-        ) : (
+        return (
           <div data-col="platform" className={dataCell(rule)}>
             <GridPlatformMarkValue platformValue={platformMeta.value} label={markLabel} />
           </div>
         );
       case 'order':
-        return isHidden('orderid') ? (
-          <span className={dataCell(rule)} />
-        ) : (
+        return (
           <div data-col="order" className={dataCell(rule)}>
             {poValue ? (
               <OrderIdChip
@@ -287,9 +275,7 @@ export function ReceivingGridGroupSummary({
           </div>
         );
       case 'tracking':
-        return isHidden('tracking') ? (
-          <span className={dataCell(rule)} />
-        ) : (
+        return (
           <div data-col="tracking" className={dataCell(rule)}>
             {isPickup ? (
               <FulfillmentPickupPill dense />
@@ -303,9 +289,7 @@ export function ReceivingGridGroupSummary({
           </div>
         );
       case 'serial':
-        return isHidden('serial') ? (
-          <span className={dataCell(rule)} />
-        ) : (
+        return (
           <div data-col="serial" className={dataCell(rule)}>
             {serials.size > 1 ? (
               <SerialCountChip count={serials.size} dense />

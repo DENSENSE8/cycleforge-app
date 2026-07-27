@@ -14,7 +14,6 @@ import {
   TrackingCountChip,
   getLast4,
 } from '@/components/ui/CopyChip';
-import { useIsColumnHidden } from '@/components/ui/table-column-config/TableColumnConfig';
 import { usePlatformMeta } from '@/hooks/useCatalog';
 import { conditionGradeTextClass } from '@/lib/condition-tone';
 import { EMPTY_META_DASH, EMPTY_META_DASH_ALIGN_CLASS } from '@/lib/conditions';
@@ -77,7 +76,6 @@ export function IncomingGridGroupSummary({
   someSelected?: boolean;
   onToggleGroupSelect?: () => void;
 }) {
-  const isHidden = useIsColumnHidden();
   const resolvePlatformMeta = usePlatformMeta();
 
   if (isMobile) {
@@ -241,9 +239,7 @@ export function IncomingGridGroupSummary({
           </div>
         );
       case 'qty':
-        return isHidden('qty') ? (
-          <span className={dataCell(rule)} />
-        ) : (
+        return (
           <div data-col="qty" className={cn(dataCell(rule), 'justify-end')}>
             <span
               className={cn(
@@ -256,9 +252,7 @@ export function IncomingGridGroupSummary({
           </div>
         );
       case 'condition':
-        return isHidden('condition') ? (
-          <span className={dataCell(rule)} />
-        ) : (
+        return (
           <div data-col="condition" className={dataCell(rule)}>
             <span
               className={cn(
@@ -272,25 +266,19 @@ export function IncomingGridGroupSummary({
           </div>
         );
       case 'status':
-        return isHidden('rest') ? (
-          <span className={dataCell(rule)} />
-        ) : (
+        return (
           <div data-col="status" className={cn(dataCell(rule), 'gap-1')}>
             <IncomingGridStatusCell row={first} />
           </div>
         );
       case 'platform':
-        return isHidden('platform') ? (
-          <span className={dataCell(rule)} />
-        ) : (
+        return (
           <div data-col="platform" className={dataCell(rule)}>
             <GridPlatformMarkValue platformValue={platformMeta.value} label={markLabel} />
           </div>
         );
       case 'order':
-        return isHidden('orderid') ? (
-          <span className={dataCell(rule)} />
-        ) : (
+        return (
           <div data-col="order" className={dataCell(rule)}>
             {poValue ? (
               <OrderIdChip
@@ -304,9 +292,7 @@ export function IncomingGridGroupSummary({
           </div>
         );
       case 'tracking':
-        return isHidden('tracking') ? (
-          <span className={dataCell(rule)} />
-        ) : (
+        return (
           <div data-col="tracking" className={dataCell(rule)}>
             {isPickup ? (
               <FulfillmentPickupPill dense />

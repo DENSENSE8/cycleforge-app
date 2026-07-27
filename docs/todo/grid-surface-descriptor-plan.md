@@ -1,7 +1,50 @@
 # Plan — Grid Surface Descriptor (pluggable Workbench tables)
 
-> **Status: Phases A–D LANDED 2026-07-22** (Fable 5, full-plan run) · **Phase E
-> gated (ask-first — decision pending)**.
+> **Status: Phases A–D LANDED 2026-07-22** (Fable 5, full-plan run) ·
+> **§7.3 unified prefs + W1 URL sorts LANDED 2026-07-26** ·
+> **Phase E still gated (ask-first — decision pending)**.
+>
+> ### 2026-07-26 — §7.3 (unified prefs / descriptor-owned visibility) + W1 (URL sorts)
+>
+> Closes the two-visibility-systems defect. Before: TanStack `columnVisibility`
+> dropped a grid TRACK while `useIsColumnHidden()` blanked a chip/meta SLOT
+> inside the cell, so hiding a column left a dead empty ruled band and the
+> header / row / group summary each re-derived "is this hidden?" independently.
+>
+> - **`useGridColumnVisibility`** (`components/grid/useGridColumnVisibility.ts`)
+>   is now the single resolution point: descriptor `tier` + persisted staff
+>   delta + ephemeral viewport force-hide → the visible column list, which the
+>   view hands to the header, rows, summaries **and** its geometry fn. Geometry
+>   was already list-derived in all six families, so no template rework was
+>   needed. Pure core (`resolveGridColumns` / `isGridColumnVisible`) is unit
+>   tested (`grid-column-visibility.test.ts`, 11 cases).
+> - **`tier: 'core' | 'optional'`** on `LedgerGridColumnModel` makes the
+>   descriptor the SoT for the DEFAULT set. Grids open **lean**; staff opt in.
+>   Receiving core = `select · title · date · qty · stage · order · tracking`;
+>   `condition` / `platform` / `serial` are opt-in (usually still empty at scan
+>   time). Locked by `grid-column-tier.guard.test.ts`.
+> - **Prefs are a DELTA**, not an absolute list — `hidden` (core opt-outs) +
+>   new `shown` (optional opt-ins) in `staff_preferences.tableColumns[tableId]`.
+>   No migration (JSONB). This is what lets a new `optional` column ship without
+>   widening anyone's grid, and the lean default widen later without re-showing
+>   a track a staffer curated away.
+> - **`GridFieldsMenu`** is generated from the descriptor (offered iff the column
+>   has a `hideKey`), so `select`/`title` can never be hidden and a new column
+>   appears in the menu automatically. Quiet trailing chrome per
+>   `workbench-sort-chrome.mdc`.
+> - **`useIsColumnHidden` retired from the grid families** (kept for the legacy
+>   `ChipColumns` / `RowMetaColumns` primitives, ~50 non-grid consumers).
+> - **W1 — URL sorts:** `useUrlColumnSort` extracts the engine the house had
+>   already copy-pasted twice (`useQueueDisplaySort`, `useRepairDisplaySort`).
+>   **`?colsort=` / `?coldir=`, NOT `?sort=`/`?dir=`** — recon found `?sort=` is
+>   already owned by *server* ordering on `/incoming` (`useIncomingFilters`,
+>   `zoho_newest`) and History (`normalizeHistorySort`); reusing it would have
+>   made a header click rewrite the server query with an invalid value. Both
+>   params registered in `MODE_SCOPED_PARAMS` and `stripCrossSurfaceParams`
+>   (which was also missing a `dir` strip — fixed).
+>
+> Still open from the all-tables prompt: **W2** (Phase E grouping), **W4** (cell
+> tokens), **W5** (~11 bespoke `<table>`s → `DataTable`), **W6** (v9 eval).
 >
 > - **A** — `@tanstack/react-table` v8.21.3; `useGridSurface` waist
 >   (`"use no memo"`) in `src/design-system/components/grid/`; mode column defs

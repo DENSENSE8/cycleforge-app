@@ -77,6 +77,14 @@
       "note": "WS-PHOTO · topic/photo · :3110 · station-staged photo evidence chain"
     },
     {
+      "id": "tokens",
+      "label": "Token consolidation",
+      "path": "../cycleforge-tokens",
+      "appPort": 3120,
+      "unlockParked": true,
+      "note": "WS-TOKENS · topic/tokens · :3120 · bookkeeping — design-token emitter consolidation developed in main (touches globals.css + layout.tsx, which every lane shares); no physical worktree. Plan: docs/todo/token-system-consolidation-plan.md"
+    },
+    {
       "id": "review",
       "label": "review · topic/review",
       "path": "../cycleforge-review",

@@ -911,6 +911,26 @@ export function getSidebarPageNav(pageId: string): SidebarPageNav | undefined {
 }
 
 /**
+ * Drop modes the user can't access (per-mode `requires`, e.g. admin sub-sections)
+ * so every mode surface matches the page body's own permission filtering. Modes
+ * without `requires` are always visible; gated modes need the permission present.
+ *
+ * Consumers: the master-nav dropdown (`MasterNav`) and the ⌘K palette's Modes
+ * group (`CommandBar`). Returns the SAME object when nothing is filtered, so
+ * callers can memo on the result.
+ */
+export function filterPageModes(
+  page: SidebarPageNav,
+  permissions?: ReadonlySet<string>,
+): SidebarPageNav {
+  if (!page.modes) return page;
+  const modes = page.modes.filter(
+    (mode) => !mode.requires || (permissions?.has(mode.requires) ?? false),
+  );
+  return modes.length === page.modes.length ? page : { ...page, modes };
+}
+
+/**
  * Canonical href for a page id. Modeful pages carry it in `SIDEBAR_PAGE_NAV`;
  * modeless pages (operations, packer, support, ai-chat,
  * audit-log, admin, settings) live only in `APP_SIDEBAR_NAV`. Navigation must

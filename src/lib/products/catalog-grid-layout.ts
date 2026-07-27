@@ -30,10 +30,25 @@ export interface CatalogGridColumn {
   gridLabel?: string;
   labelFitRem?: number;
   type?: ColumnType;
+  /** Staff-preference key (`staff_preferences.tableColumns.catalog`). */
+  hideKey?: string;
+  /** `core` ships ON (opt-out); `optional` ships OFF (opt-in via Fields). */
+  tier?: 'core' | 'optional';
   /** When false, the header is not click-to-sort (select gutter only). */
   sortable?: boolean;
 }
 
+/**
+ * Canonical catalog columns.
+ *
+ * DEFAULT VIEW (tier `core`) is deliberately lean — `select · title · sku ·
+ * inventory · status`: what the product is, how it is keyed, whether it is wired
+ * to the inventory master (the catalog's whole job, and the axis the Filter
+ * popover slices on), and whether it needs attention. The four roll-up COUNTS
+ * (channels · manuals · qc · orders) are drill-down analytics, not scan facts —
+ * they ship `optional` so a first-load catalog reads as a product list instead
+ * of a numbers table. Staff opt them back in per-person via the Fields menu.
+ */
 export const CATALOG_GRID_COLUMNS: readonly CatalogGridColumn[] = [
   { key: 'select', width: 'minmax(2rem, 2rem)', sortable: false },
   {
@@ -43,12 +58,13 @@ export const CATALOG_GRID_COLUMNS: readonly CatalogGridColumn[] = [
     type: 'text',
     labelFitRem: 8,
   },
-  { key: 'sku', width: 'minmax(7rem, 7rem)', label: 'SKU', type: 'id', labelFitRem: 3 },
+  { key: 'sku', width: 'minmax(7rem, 7rem)', label: 'SKU', type: 'id', hideKey: 'sku', labelFitRem: 3 },
   {
     key: 'inventory',
     width: 'minmax(6.5rem, 6.5rem)',
     label: 'Inventory',
     type: 'id',
+    hideKey: 'inventory',
     labelFitRem: 5,
   },
   {
@@ -57,6 +73,8 @@ export const CATALOG_GRID_COLUMNS: readonly CatalogGridColumn[] = [
     label: 'Channels',
     gridLabel: 'Ch',
     type: 'number',
+    hideKey: 'channels',
+    tier: 'optional',
     labelFitRem: 4.5,
   },
   {
@@ -65,6 +83,8 @@ export const CATALOG_GRID_COLUMNS: readonly CatalogGridColumn[] = [
     label: 'Manuals',
     gridLabel: 'Man',
     type: 'number',
+    hideKey: 'manuals',
+    tier: 'optional',
     labelFitRem: 4.5,
   },
   {
@@ -72,6 +92,8 @@ export const CATALOG_GRID_COLUMNS: readonly CatalogGridColumn[] = [
     width: 'minmax(3.5rem, 3.5rem)',
     label: 'QC',
     type: 'number',
+    hideKey: 'qc',
+    tier: 'optional',
     labelFitRem: 2.5,
   },
   {
@@ -79,6 +101,8 @@ export const CATALOG_GRID_COLUMNS: readonly CatalogGridColumn[] = [
     width: 'minmax(4.5rem, 4.5rem)',
     label: 'Orders',
     type: 'number',
+    hideKey: 'orders',
+    tier: 'optional',
     labelFitRem: 4,
   },
   {
@@ -86,6 +110,7 @@ export const CATALOG_GRID_COLUMNS: readonly CatalogGridColumn[] = [
     width: 'minmax(5.5rem, 5.5rem)',
     label: 'Status',
     type: 'tag',
+    hideKey: 'status',
     labelFitRem: 4,
   },
 ] as const;

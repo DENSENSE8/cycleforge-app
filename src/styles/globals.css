@@ -5,28 +5,33 @@
    here: this file keeps only theme-independent tokens, global resets, and the
    dark-scheme raw-neutral compatibility remap below. */
 :root {
-  /* Prefer design-token injection (`--font-sans` / `--font-mono`); these are
-     early fallbacks before the token <style> lands. next/font vars on <html>. */
-  --ds-font-sans: var(--font-ibm-plex-sans), 'IBM Plex Sans', system-ui, sans-serif;
-  --ds-font-mono: var(--font-ibm-plex-mono), 'IBM Plex Mono', ui-monospace, monospace;
-  --ds-radius-sm: 0.5rem;
-  --ds-radius-md: 0.625rem;
-  --ds-radius-lg: 0.75rem;
-  --ds-radius-xl: 1rem;
-  --ds-shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.08);
-  --ds-shadow-md: 0 12px 24px rgba(15, 23, 42, 0.08);
-  --ds-motion-fast: 150ms;
-  --ds-motion-normal: 220ms;
-  --ds-ease-standard: cubic-bezier(0.2, 0, 0, 1);
-  /* Cycle Forge brand navy */
-  --color-navy-50:  #f0f4fb;
-  --color-navy-100: #dde6f5;
-  --color-navy-700: #1a3a6b;
-  --color-navy-800: #0f1f3d;
-  --color-navy-900: #0c1b33;
-  --color-brand:    #0f1f3d;
-  --color-brand-active: #1a3a6b;
-  --color-brand-tint:   #f0f4fb;
+  /* ── Typeface chain — this block is the SoT ──────────────────────────────
+     `next/font` sets `--font-ibm-plex-sans` / `--font-ibm-plex-mono` on <html>
+     (`src/lib/fonts.ts`); these resolve them into full stacks. Stacks mirror
+     `src/design-system/tokens/typography/families.ts` byte-for-byte.
+
+     Both spellings are load-bearing and NEITHER has a fallback at its reader:
+       --font-sans     → `body` + `.font-dm-sans` (src/app/globals.css)
+       --ds-font-sans  → `fontFamily.sans` in tailwind.config.ts, i.e. every
+                         `font-sans` utility in the app, + ProviderSignInButton
+     `src/styles/tokens.ts` currently declares the same four names with the same
+     values and wins the cascade (injected <style> flushes after this
+     stylesheet — see the head-order note below). That duplication is
+     deliberate and temporary: it makes retiring that module a no-op. Once it
+     is gone, these become the only declarations. Never redeclare them in an
+     injected <style>.
+
+     Head order is fixed, not incidental: Next emits this file as a
+     `precedence`-carrying hoisted <link>; React flushes hoisted stylesheets
+     BEFORE the <head>'s own JSX children; the two <style> tags in
+     app/layout.tsx carry no `precedence`. So the order is always
+     link → app-design-tokens → app-theme-palettes, and an injected :root
+     always beats this one at equal specificity. Pinned by
+     `src/app/head-token-order.guard.test.ts`. */
+  --font-sans: var(--font-ibm-plex-sans), 'IBM Plex Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: var(--font-ibm-plex-mono), 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --ds-font-sans: var(--font-sans);
+  --ds-font-mono: var(--font-mono);
   /* CF Type density (search-and-dense-ui-refactor plan §2.3). Scales every
      role-* font-size; default 1 = comfortable (no change). A container opts
      into denser data by setting `data-density="compact"` on itself — weight
@@ -39,6 +44,50 @@
    chrome). Row height + padding are tuned per component (tables land in T2). */
 [data-density='compact'] {
   --cf-density: 0.92;
+}
+
+/* ─── Elevation ladder (--ds-elev-*) ───────────────────────────────────────
+   Role → box-shadow, consumed as the `shadow-elev-*` utilities through
+   elevationClass() (src/design-system/tokens/shadows.ts). Each role is a
+   3-layer stack: AMBIENT (zero-offset) + KEY (tight contact) + CAST (soft
+   depth).
+
+   The ambient layer is load-bearing, not decoration. A purely downward shadow
+   puts all its ink at the bottom edge, so a surface taller than the viewport
+   (an ops grid with 200 rows) reads perfectly FLAT at the only edge still on
+   screen. Every role keeps a zero-offset layer so depth reads at all four
+   edges regardless of how the surface is cropped.
+
+   Dark-family themes ramp the alpha: the same ink over a dark canvas is
+   invisible at light-theme opacities. */
+:root {
+  --ds-elev-soft:
+    0 0 2px rgba(2, 6, 23, 0.04),
+    0 1px 2px rgba(2, 6, 23, 0.06),
+    0 4px 8px -4px rgba(2, 6, 23, 0.06);
+  --ds-elev-raised:
+    0 0 3px rgba(2, 6, 23, 0.05),
+    0 2px 4px -1px rgba(2, 6, 23, 0.07),
+    0 12px 24px -10px rgba(2, 6, 23, 0.13);
+  --ds-elev-overlay:
+    0 0 4px rgba(2, 6, 23, 0.06),
+    0 4px 10px -2px rgba(2, 6, 23, 0.1),
+    0 24px 48px -16px rgba(2, 6, 23, 0.24);
+}
+
+html[data-color-scheme='dark'] {
+  --ds-elev-soft:
+    0 0 2px rgba(0, 0, 0, 0.28),
+    0 1px 2px rgba(0, 0, 0, 0.36),
+    0 4px 8px -4px rgba(0, 0, 0, 0.32);
+  --ds-elev-raised:
+    0 0 3px rgba(0, 0, 0, 0.34),
+    0 2px 4px -1px rgba(0, 0, 0, 0.42),
+    0 12px 24px -10px rgba(0, 0, 0, 0.55);
+  --ds-elev-overlay:
+    0 0 4px rgba(0, 0, 0, 0.4),
+    0 4px 10px -2px rgba(0, 0, 0, 0.5),
+    0 24px 48px -16px rgba(0, 0, 0, 0.7);
 }
 
 /* ─── Page wash (Appearance → Page background / data-app-wash) ─────────────

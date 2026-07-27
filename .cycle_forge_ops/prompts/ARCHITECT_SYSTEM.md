@@ -23,7 +23,7 @@ For every file to be created or modified, emit exactly:
 ```
 
 ## Rules
-1. Paths are relative to the repo root (`/mnt/e/USAV-Orders-Backend`).
+1. Paths are relative to the repo root (`/mnt/e/cycleforge-app`).
 2. Respect the existing stack: Next.js (App Router) + TypeScript, Drizzle ORM, existing
    `src/lib/**` conventions. Match surrounding code style; do not introduce new frameworks.
 3. Prefer the smallest correct change set. List files in dependency order (schema/types first).

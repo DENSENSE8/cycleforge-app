@@ -16,6 +16,10 @@ import {
   receivingSurfaceBasePath,
 } from '@/lib/receiving/surface-path';
 import { DASHBOARD_INBOUND_MODE } from '@/lib/dashboard/dashboard-domains';
+import {
+  GRID_COLUMN_DIR_PARAM,
+  GRID_COLUMN_SORT_PARAM,
+} from '@/lib/tables/grid-column-sort-params';
 import type { ReceivingMode } from '@/components/sidebar/receiving/receiving-sidebar-shared';
 
 /** Dashboard route — hosts the inbound-cartons mode (`?mode=inbound`). */
@@ -106,6 +110,14 @@ export function stripCrossSurfaceParams(
     next.delete('triq');
     next.delete('state');
     next.delete('sort');
+    // `dir` pairs with `sort` — stripping one and not the other left a dangling
+    // direction that re-applied itself to whatever sort Testing resolved next.
+    next.delete('dir');
+    // Spreadsheet COLUMN sort. Testing mounts `ReceivingGridView` too, so a
+    // column sort picked on a receiving surface would otherwise ride into
+    // /test and name a column Testing's list may not contain.
+    next.delete(GRID_COLUMN_SORT_PARAM);
+    next.delete(GRID_COLUMN_DIR_PARAM);
     next.delete('po_from');
     next.delete('po_to');
     next.delete('page');

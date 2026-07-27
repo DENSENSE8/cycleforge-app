@@ -14,7 +14,7 @@
 import { Suspense, useCallback, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { Button } from '@/design-system/primitives';
+import { Button, Panel } from '@/design-system/primitives';
 
 function ResetInner() {
   const router = useRouter();
@@ -99,13 +99,11 @@ function ResetInner() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-surface-canvas px-4">
-      <div className="w-full max-w-sm space-y-6 rounded-2xl border border-border-soft bg-surface-card p-8 shadow-sm">
-        <div className="space-y-1">
-          <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">Cycle Forge</p>
-          <h1 className="text-lg font-bold text-text-default">
-            {mode === 'request' ? 'Reset your password' : 'Choose a new password'}
-          </h1>
-        </div>
+      <Panel padding="lg" radius="2xl" elevation="sm" className="w-full max-w-sm space-y-6">
+        {/* No brand eyebrow — the heading already says what this page is. */}
+        <h1 className="text-role-title text-text-default">
+          {mode === 'request' ? 'Reset your password' : 'Choose a new password'}
+        </h1>
 
         {done === 'requested' ? (
           <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-6 text-center text-sm text-text-muted">
@@ -207,7 +205,7 @@ function ResetInner() {
             Back to sign in
           </Link>
         </div>
-      </div>
+      </Panel>
     </div>
   );
 }

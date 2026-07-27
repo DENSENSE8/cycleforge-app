@@ -23,6 +23,10 @@ import {
   receivingSurfaceBasePath,
 } from '@/lib/receiving/surface-path';
 import { stripCrossSurfaceParams } from '@/lib/surface-isolation';
+import {
+  GRID_COLUMN_DIR_PARAM,
+  GRID_COLUMN_SORT_PARAM,
+} from '@/lib/tables/grid-column-sort-params';
 import type { ReceivingMode } from '@/components/sidebar/receiving/receiving-sidebar-shared';
 import {
   normalizeTriageWorkspaceTabParams,
@@ -48,6 +52,11 @@ const MODE_SCOPED_PARAMS = [
   'state',
   'sort',
   'dir',
+  // Spreadsheet COLUMN sort (`useUrlColumnSort`) — a separate axis from the
+  // server `sort` above, and just as mode-scoped: a column sort picked in
+  // Unbox names columns History may not even have.
+  GRID_COLUMN_SORT_PARAM,
+  GRID_COLUMN_DIR_PARAM,
   'po_from',
   'po_to',
   'page',

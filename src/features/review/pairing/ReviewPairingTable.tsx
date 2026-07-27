@@ -12,6 +12,7 @@ import { OrdersGridView } from '@/components/dashboard/orders-queue/OrdersGridVi
 import {
   WORKBENCH_BODY_COLUMN,
   WORKBENCH_CHROME_COLUMN,
+  WORKBENCH_TABLE_VIEWPORT_NO_KPI,
   WorkbenchChromeHeader,
 } from '@/components/dashboard/workbench-shell';
 import { DashboardScrollShell } from '@/components/dashboard/DashboardScrollShell';
@@ -76,7 +77,7 @@ export function ReviewPairingTable({ onOpenOrder, onCloseOrder }: ReviewPairingT
           </div>
         }
       >
-        <div className={`${WORKBENCH_BODY_COLUMN} h-[calc(100dvh-8rem)] min-h-[24rem] pb-3`}>
+        <div className={`${WORKBENCH_BODY_COLUMN} ${WORKBENCH_TABLE_VIEWPORT_NO_KPI} pb-3`}>
           <OrdersGridView
             records={records}
             loading={loading}

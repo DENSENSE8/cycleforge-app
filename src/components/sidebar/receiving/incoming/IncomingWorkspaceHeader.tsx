@@ -24,6 +24,8 @@ import {
   WorkbenchFilterPopover,
 } from '@/components/dashboard/workbench-filter-popover';
 import { PaneHeaderPagination } from '@/components/ui/pane-header';
+import { GridFieldsMenu } from '@/components/ui/table-column-config/GridFieldsMenu';
+import { INCOMING_GRID_COLUMNS } from '@/lib/receiving/incoming-grid-layout';
 import { ToolbarSearchToggle } from '@/components/ui/ToolbarSearchToggle';
 import { DateRangePickerField } from '@/design-system/components/DateRangePickerField';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
@@ -291,23 +293,29 @@ export function IncomingWorkspaceHeader({
           </>
         }
         trailing={
-          <IncomingChromeActions
-            onImportZoho={() => {
-              void sync.refreshZoho();
-            }}
-            onImportEbay={() => {
-              void sync.refreshMarketplace();
-            }}
-            onAdd={() => {
-              setAddOrderId('');
-              setAddOpen(true);
-            }}
-            importingZoho={sync.zohoRefreshing}
-            importingEbay={sync.marketplaceRefreshing}
-            canImportZoho
-            canImportEbay={universalIncoming && canAddEbay}
-            canAdd={canAddEbay}
-          />
+          <div className="flex items-center gap-2">
+            {/* Per-staff column picker — the opt-in path back to the `optional`
+                tracks (Cond · Ch.) the lean default hides. House slot: first in
+                `trailing`, i.e. left of Import. */}
+            <GridFieldsMenu tableId="receiving" columns={INCOMING_GRID_COLUMNS} />
+            <IncomingChromeActions
+              onImportZoho={() => {
+                void sync.refreshZoho();
+              }}
+              onImportEbay={() => {
+                void sync.refreshMarketplace();
+              }}
+              onAdd={() => {
+                setAddOrderId('');
+                setAddOpen(true);
+              }}
+              importingZoho={sync.zohoRefreshing}
+              importingEbay={sync.marketplaceRefreshing}
+              canImportZoho
+              canImportEbay={universalIncoming && canAddEbay}
+              canAdd={canAddEbay}
+            />
+          </div>
         }
       />
 

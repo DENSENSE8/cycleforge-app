@@ -215,6 +215,20 @@ const config: Config = {
             borderRadius: {
                 station: '8px',
             },
+            // Elevation ladder — the role → box-shadow SoT consumed via
+            // elevationClass() (src/design-system/tokens/shadows.ts). Values
+            // are CSS vars (globals.css) so dark-family themes ramp the alpha
+            // without a second class name. Each role is an ambient + key + cast
+            // stack: the zero-offset ambient layer is what keeps depth readable
+            // at the TOP edge of a surface that runs past the fold.
+            // Register new names in the `shadow` group in src/utils/_cn.ts or
+            // twMerge misgroups them as shadow-COLOR and conflict resolution
+            // silently stops working.
+            boxShadow: {
+                'elev-soft': 'var(--ds-elev-soft)',
+                'elev-raised': 'var(--ds-elev-raised)',
+                'elev-overlay': 'var(--ds-elev-overlay)',
+            },
             zIndex: zIndexScale,
         },
     },

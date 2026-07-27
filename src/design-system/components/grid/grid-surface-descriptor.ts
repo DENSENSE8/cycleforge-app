@@ -28,7 +28,23 @@ export interface LedgerGridColumnModel {
   gridLabel?: string;
   labelFitRem?: number;
   type?: ColumnType;
+  /**
+   * Staff-preference key this track answers to (`staff_preferences
+   * .tableColumns[tableId]`). Columns WITHOUT a `hideKey` are structural — they
+   * never appear in the Fields menu and can never be toggled off.
+   */
   hideKey?: string;
+  /**
+   * `core` (default) ships ON — the lean set every staffer sees on first load;
+   * they may hide it. `optional` ships OFF — an opt-in track a staffer adds from
+   * the Fields menu. This is what makes the descriptor the SoT for the DEFAULT
+   * view instead of "everything, minus whatever each staffer hid": adding an
+   * `optional` column never widens anyone's grid unasked.
+   *
+   * Requires a `hideKey` — an `optional` column with no pref key would be
+   * permanently invisible (asserted by `grid-column-tier.guard.test.ts`).
+   */
+  tier?: 'core' | 'optional';
 }
 
 declare module '@tanstack/react-table' {

@@ -38,13 +38,17 @@ import {
   type CatalogLinkFilter,
   type CatalogRefineFilters,
 } from '@/components/products/catalog/catalog-url-state';
+import { GridFieldsMenu } from '@/components/ui/table-column-config/GridFieldsMenu';
 import {
+  CATALOG_GRID_COLUMNS,
   compareCatalogGridRows,
+  defaultDirForCatalogGridSort,
+  isCatalogGridSortable,
   type CatalogGridColumnKey,
-  type CatalogGridSortDir,
 } from '@/lib/products/catalog-grid-layout';
 import { CATALOG_SELECTION_SCOPE } from '@/lib/selection/catalog-scopes';
 import { useDebounce } from '@/hooks';
+import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
 import { cn } from '@/utils/_cn';
 import { toast } from '@/lib/toast';
 
@@ -71,8 +75,14 @@ export function ProductsCatalogWorkspace() {
   const [error, setError] = useState<string | null>(null);
   const [provider, setProvider] = useState<InventoryProviderMeta | null>(null);
   const [syncing, setSyncing] = useState(false);
-  const [sort, setSort] = useState<CatalogGridColumnKey | null>(null);
-  const [dir, setDir] = useState<CatalogGridSortDir | null>(null);
+
+  // Column sort is DURABLE: `?colsort=`/`?coldir=` (workbench URL-as-state law),
+  // so a reload or a shared catalog link reproduces the same ordering. NOT
+  // `?sort=` — that name is reserved for server ordering vocabularies elsewhere.
+  const { sort, dir, setSort } = useUrlColumnSort<CatalogGridColumnKey>({
+    isColumn: isCatalogGridSortable,
+    defaultDir: defaultDirForCatalogGridSort,
+  });
 
   useEffect(() => {
     setSearchInput(q);
@@ -185,11 +195,6 @@ export function ProductsCatalogWorkspace() {
     setFilterOpen(false);
   }, [updateParams]);
 
-  const onSortChange = useCallback((key: CatalogGridColumnKey, nextDir: CatalogGridSortDir) => {
-    setSort(key);
-    setDir(nextDir);
-  }, []);
-
   const onOpenRow = useCallback(
     (row: CatalogListRow) => {
       router.push(`/products/${encodeURIComponent(row.sku)}`);
@@ -299,17 +304,22 @@ export function ProductsCatalogWorkspace() {
                 </WorkbenchFilterPopover>
               }
               trailing={
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  disabled={syncing}
-                  onClick={() => void refreshInventory()}
-                  className="gap-1.5"
-                >
-                  <RefreshCw className={cn('h-3.5 w-3.5', syncing && 'animate-spin')} />
-                  Refresh inventory
-                </Button>
+                <div className="flex items-center gap-2">
+                  {/* Per-staff column picker — the opt-in path for the
+                      `optional` count columns the lean default hides. */}
+                  <GridFieldsMenu tableId="catalog" columns={CATALOG_GRID_COLUMNS} />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    disabled={syncing}
+                    onClick={() => void refreshInventory()}
+                    className="gap-1.5"
+                  >
+                    <RefreshCw className={cn('h-3.5 w-3.5', syncing && 'animate-spin')} />
+                    Refresh inventory
+                  </Button>
+                </div>
               }
             />
           </div>
@@ -346,7 +356,7 @@ export function ProductsCatalogWorkspace() {
               onOpenRow={onOpenRow}
               sort={sort}
               dir={dir}
-              onSortChange={onSortChange}
+              onSortChange={setSort}
               className="min-h-0 flex-1"
             />
           )}

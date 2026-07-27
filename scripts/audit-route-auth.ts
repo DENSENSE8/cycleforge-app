@@ -21,7 +21,7 @@
  */
 
 import { readdirSync, readFileSync, statSync, writeFileSync, mkdirSync } from 'fs';
-import { dirname, join, relative } from 'path';
+import { dirname, join, relative, sep } from 'path';
 
 const MANIFEST_PATH = 'docs/security/route-permissions.json';
 
@@ -61,10 +61,22 @@ interface Manifest {
   }>;
 }
 
+/**
+ * Collect `route.ts` files as POSIX-separated paths.
+ *
+ * `join()` emits `\` on Windows, but EVERY downstream matcher here is written
+ * in POSIX form — `classifyExemption`'s `path.includes('/api/cron/')` checks
+ * and the `f.replace(/^src\/app/, '')` manifest-key strip. Without this
+ * normalization a Windows run silently (a) failed to strip the prefix, so all
+ * 877 routes mismatched the committed manifest, and (b) matched ZERO
+ * exemptions, so cron/health/ready/webhook routes were reported as ungated.
+ * The manifest is committed in POSIX form and CI runs on Linux, so POSIX is
+ * the canonical shape — normalize at this boundary, once.
+ */
 function walk(dir: string): string[] {
   const out: string[] = [];
   for (const entry of readdirSync(dir)) {
-    const full = join(dir, entry);
+    const full = join(dir, entry).split(sep).join('/');
     if (statSync(full).isDirectory()) out.push(...walk(full));
     else if (entry === 'route.ts') out.push(full);
   }

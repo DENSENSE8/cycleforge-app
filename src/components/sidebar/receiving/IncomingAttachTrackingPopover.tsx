@@ -11,15 +11,14 @@ import {
   type MouseEvent,
   type ReactElement,
 } from 'react';
-import { createPortal } from 'react-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link2, Package, Truck, X, Loader2 } from '@/components/Icons';
 import { Button, IconButton } from '@/design-system/primitives';
+import { Dialog, DialogContent, DialogTitle } from '@/design-system/components/Dialog';
 import { SearchBar } from '@/components/ui/SearchBar';
 import { getLast4 } from '@/components/ui/CopyChip';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { toast } from '@/lib/toast';
-import { zIndex } from '@/design-system/tokens/z-index';
 import { invalidateReceivingFeeds } from '@/lib/queries/receiving-queries';
 
 interface PoHit {
@@ -249,19 +248,8 @@ export function IncomingAttachTrackingPopover({
     [selected, queryClient, onAttached],
   );
 
-  // Esc to close, while open. Keydown is captured at the document so it works
-  // regardless of which field inside the modal holds focus.
-  useEffect(() => {
-    if (!open) return;
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        setOpen(false);
-      }
-    };
-    document.addEventListener('keydown', onKeyDown);
-    return () => document.removeEventListener('keydown', onKeyDown);
-  }, [open, setOpen]);
+  // Escape, focus trap, focus restore, scroll lock and the scrim all come from
+  // the DS Dialog (Radix) — this used to hand-roll every one of them.
 
   const openModal = useCallback((e?: MouseEvent) => {
     // Remember the trigger so focus returns to it on close.
@@ -302,27 +290,19 @@ export function IncomingAttachTrackingPopover({
           </HoverTooltip>
         );
 
-  const modal =
-    open && typeof document !== 'undefined'
-      ? createPortal(
-          <div
-            className="fixed inset-0 flex items-center justify-center bg-scrim/60 p-4"
-            style={{ zIndex: zIndex.modal }}
-            onClick={() => setOpen(false)}
-          >
-            <div
-              ref={cardRef}
-              role="dialog"
-              aria-modal="true"
-              aria-label={selected ? 'Attach tracking number' : 'Find a PO'}
-              onClick={(e) => e.stopPropagation()}
-              className="w-[360px] max-w-full rounded-xl border border-border-soft bg-surface-card p-3 shadow-2xl ring-1 ring-black/5"
-            >
+  const modal = (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogContent
+        ref={cardRef}
+        hideClose
+        aria-describedby={undefined}
+        className="w-[360px] max-w-full gap-0 rounded-xl p-3"
+      >
               {/* Header */}
               <div className="mb-2 flex items-center justify-between">
-                <span className="text-role-eyebrow uppercase tracking-wider text-text-soft">
+                <DialogTitle className="text-role-eyebrow uppercase tracking-wider text-text-soft">
                   {selected ? 'Attach tracking' : 'Find a PO'}
-                </span>
+                </DialogTitle>
                 <IconButton
                   icon={<X className="h-3.5 w-3.5" />}
                   ariaLabel="Close"
@@ -455,11 +435,9 @@ export function IncomingAttachTrackingPopover({
                   </p>
                 </>
               )}
-            </div>
-          </div>,
-          document.body,
-        )
-      : null;
+      </DialogContent>
+    </Dialog>
+  );
 
   return (
     <>

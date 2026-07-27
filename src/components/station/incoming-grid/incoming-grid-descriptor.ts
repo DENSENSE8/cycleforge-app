@@ -17,14 +17,25 @@ import {
   type IncomingGridColumn,
 } from '@/lib/receiving/incoming-grid-layout';
 
-export const INCOMING_GRID_DESCRIPTOR: GridSurfaceDescriptor<ReceivingLineRow, IncomingGridColumn> =
-  makeGridSurfaceDescriptor<ReceivingLineRow, IncomingGridColumn>(
+/**
+ * Build the Incoming descriptor from a RESOLVED column list.
+ *
+ * Takes the columns rather than reading the SoT constant so `contentMinWidthRem`
+ * (the h-scroll activation width) and the TanStack defs follow whatever
+ * `useGridColumnVisibility` resolved — hiding a track shrinks the grid instead
+ * of leaving a dead ruled band the width of the column that used to be there.
+ */
+export function makeIncomingGridDescriptor(
+  columns: readonly IncomingGridColumn[] = INCOMING_GRID_COLUMNS,
+): GridSurfaceDescriptor<ReceivingLineRow, IncomingGridColumn> {
+  return makeGridSurfaceDescriptor<ReceivingLineRow, IncomingGridColumn>(
     'inbound.incoming',
-    INCOMING_GRID_COLUMNS,
-    incomingContentMinWidthRem(INCOMING_GRID_COLUMNS),
+    columns,
+    incomingContentMinWidthRem(columns),
     {
       isSortable: isIncomingGridSortable,
       sortDescFirst: (key) => defaultDirForIncomingGridSort(key) === 'desc',
       isLocked: isIncomingGridFrozen,
     },
   );
+}

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   APP_SIDEBAR_NAV,
+  filterPageModes,
   getSidebarPageNav,
   type SidebarNavItem,
   type SidebarPageNav,
@@ -29,17 +30,6 @@ function toPageNav(item: SidebarNavItem): SidebarPageNav {
   // Carry the flat item's icon AND label so a per-org nav override (which
   // renames via the flat item) survives the merge for modeful pages too.
   return page ? { ...page, icon: item.icon, label: item.label } : item;
-}
-
-/**
- * Drop modes the user can't access (per-mode `requires`, e.g. admin sub-sections)
- * so the dropdown matches the page body's own permission filtering. Modes without
- * `requires` are always visible; gated modes need the permission present.
- */
-function filterPageModes(page: SidebarPageNav, permissions?: ReadonlySet<string>): SidebarPageNav {
-  if (!page.modes) return page;
-  const modes = page.modes.filter((mode) => !mode.requires || (permissions?.has(mode.requires) ?? false));
-  return modes.length === page.modes.length ? page : { ...page, modes };
 }
 
 /**

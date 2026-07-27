@@ -1,7 +1,9 @@
 'use client';
 
-import { useCallback, useMemo, useState, type RefObject } from 'react';
-import { LedgerGridSurface } from '@/design-system/components/grid';
+import { useMemo, type RefObject } from 'react';
+import { LedgerGridSurface, useGridColumnVisibility } from '@/design-system/components/grid';
+import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
+import type { TableId } from '@/lib/tables/table-columns';
 import { groupRowsBy, type RowGroup } from '@/lib/group-rows';
 import {
   poGroupAnchorMs,
@@ -13,15 +15,13 @@ import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { compareReceivingGridRows } from '@/lib/receiving/receiving-grid-compare';
 import {
   RECEIVING_GRID_COLUMNS,
+  defaultDirForReceivingGridSort,
+  isReceivingGridSortable,
   type ReceivingGridColumn,
   type ReceivingGridColumnKey,
-  type ReceivingGridSortDir,
 } from '@/lib/receiving/receiving-grid-layout';
 import { receivingStageColumnLabel } from '@/components/dashboard/queue-table/queue-table-chrome';
-import {
-  RECEIVING_GRID_DESCRIPTOR,
-  makeReceivingGridDescriptor,
-} from './receiving-grid-descriptor';
+import { makeReceivingGridDescriptor } from './receiving-grid-descriptor';
 import { ReceivingGridColumnHeader } from './ReceivingGridColumnHeader';
 import { ReceivingGridGroupRow } from './ReceivingGridGroupRow';
 
@@ -51,7 +51,14 @@ interface ReceivingGridViewProps {
   stageLabel?: string;
   /** Selection bus scope (defaults to receiving). */
   selectionScope?: string;
+  /** FULL canonical column list — visibility is resolved here, not by callers. */
   columns?: readonly ReceivingGridColumn[];
+  /**
+   * Staff-prefs identity for per-staff column config. Unbox / History are
+   * `receiving`; Testing History passes `testing` so the two keep independent
+   * Fields selections.
+   */
+  tableId?: TableId;
   /** Show sticky day-band headers. Default false — Date is a per-row column
    * (Pending / Incoming recipe). Testing History may opt back in. */
   showDayHeaders?: boolean;
@@ -89,29 +96,35 @@ export function ReceivingGridView({
   stageLabel,
   selectionScope = RECEIVING_SELECTION_SCOPE,
   columns = RECEIVING_GRID_COLUMNS,
+  tableId = 'receiving',
   showDayHeaders = false,
   scrollRef,
   className,
   testId = 'receiving-grid-body',
 }: ReceivingGridViewProps) {
-  // Ephemeral column sort (throwaway view state; server/mode order is the
-  // durable default). TanStack owns the toggle cycle via LedgerGridSurface.
-  const [columnSort, setColumnSort] = useState<ReceivingGridColumnKey | null>(null);
-  const [sortDir, setSortDir] = useState<ReceivingGridSortDir | null>(null);
-  const handleSortChange = useCallback((key: ReceivingGridColumnKey, dir: ReceivingGridSortDir) => {
-    setColumnSort(key);
-    setSortDir(dir);
-  }, []);
+  // Column sort is DURABLE: `?colsort=`/`?coldir=` (workbench URL-as-state law),
+  // so a reload or a shared link reproduces the operator's view. Mode switches
+  // clear it via MODE_SCOPED_PARAMS. TanStack still owns the asc↔desc cycle.
+  const {
+    sort: columnSort,
+    dir: sortDir,
+    setSort,
+  } = useUrlColumnSort<ReceivingGridColumnKey>({
+    isColumn: isReceivingGridSortable,
+    defaultDir: defaultDirForReceivingGridSort,
+  });
 
   const resolvedStageLabel = stageLabel ?? receivingStageColumnLabel(activityAxis);
 
-  const descriptor = useMemo(
-    () =>
-      columns === RECEIVING_GRID_COLUMNS
-        ? RECEIVING_GRID_DESCRIPTOR
-        : makeReceivingGridDescriptor(columns),
-    [columns],
-  );
+  // ONE visibility resolution: descriptor default tier + this staffer's delta.
+  // Header, rows, group summaries and the grid template all read `visible` —
+  // a hidden column loses its TRACK rather than rendering an empty ruled cell.
+  const { columns: visible } = useGridColumnVisibility<ReceivingGridColumn>({
+    columns,
+    tableId,
+  });
+
+  const descriptor = useMemo(() => makeReceivingGridDescriptor(visible), [visible]);
 
   const { orderGroupsByDate, flatRows } = useMemo(() => {
     const flatFromGroups = filteredGroupedRecords
@@ -161,7 +174,7 @@ export function ReceivingGridView({
       rows={flatRows}
       sort={columnSort}
       dir={sortDir}
-      onSortChange={handleSortChange}
+      onSortChange={setSort}
       loading={loading}
       emptyMessage={emptyMessage}
       showDayHeaders={showDayHeaders}
@@ -173,7 +186,7 @@ export function ReceivingGridView({
           isMobile={isMobile}
           selectMode={selectMode}
           selectionScope={selectionScope}
-          columns={columns}
+          columns={visible}
           stageLabel={resolvedStageLabel}
           activeSort={columnSort}
           sortDir={sortDir}
@@ -192,7 +205,7 @@ export function ReceivingGridView({
           handleSelectGroup={handleSelectGroup}
           activityAxis={activityAxis}
           isHistory={isHistory}
-          columns={columns}
+          columns={visible}
         />
       )}
       renderRow={(row, stripeIndex) => (
@@ -207,7 +220,7 @@ export function ReceivingGridView({
           handleSelectGroup={handleSelectGroup}
           activityAxis={activityAxis}
           isHistory={isHistory}
-          columns={columns}
+          columns={visible}
         />
       )}
     />
