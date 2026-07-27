@@ -121,16 +121,24 @@ export const StaffPreferencesPutBody = z
     shippedBoard: BOARD_PREFS.nullable().optional(),
     /**
      * Per-staff list-table column config, keyed by TableId. Each table maps to
-     * `{ hidden: string[], widths: Record<colKey, px>, order: string[] }`. Sent
-     * as the whole map (shallow JSONB merge); each writer preserves the sibling
-     * fields (a widths write keeps `hidden` + `order`, and so on).
+     * `{ hidden, shown, widths, order }`. Sent as the whole map (shallow JSONB
+     * merge); each writer preserves the sibling fields (a widths write keeps
+     * `hidden` + `order`, and so on).
+     *
+     * `hidden` + `shown` are a DELTA against the descriptor's default tier, not
+     * an absolute column list — that is what lets a lean default widen later
+     * without silently re-showing tracks a staffer curated away (and lets a new
+     * `optional` column ship without appearing in anyone's grid unasked).
      */
     tableColumns: z
       .record(
         z.string(),
         z
           .object({
+            /** `core` columns this staffer turned OFF. */
             hidden: z.array(z.string()).optional(),
+            /** `optional` columns this staffer turned ON (opt-in delta). */
+            shown: z.array(z.string().max(64)).max(64).optional(),
             /** Per-column drag-resized width in px, keyed by column key. */
             widths: z.record(z.string(), z.number().int().positive().max(2000)).optional(),
             /** Drag-reordered column-key order (sanitized on read; locked keys

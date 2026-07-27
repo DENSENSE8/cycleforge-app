@@ -13,6 +13,8 @@ import { Copy, X } from '@/components/Icons';
 import { emitToggleAll } from '@/lib/selection/table-selection';
 import { useTableSelectMode } from '@/hooks/useTableSelectMode';
 import { useUIModeOptional } from '@/design-system/providers/UIModeProvider';
+import { useGridColumnVisibility } from '@/design-system/components/grid';
+import { ORDERS_QUEUE_COLUMNS, type OrdersQueueColumn } from '@/lib/dashboard-order-row-layout';
 import { toTsvBlock } from '@/lib/station/format-station-copy-row';
 import { getStationSourceRecord, type StationSourceKind } from '@/lib/station/record-to-queue-row';
 import type { QueueRowRecord } from '@/components/dashboard/orders-queue/helpers';
@@ -122,6 +124,16 @@ export function StationHistoryTable<T>({
   const { isMobile } = useUIModeOptional();
   const totalCount = sumDaySectionCounts(daySections);
 
+  // Per-staff visible tracks for the converged station rows. The ⋮ menu below
+  // writes `staff_preferences.tableColumns[tableId].hidden`; resolving it ONCE
+  // here (instead of per cell inside the row, as `useIsColumnHidden` used to)
+  // is what makes a hidden column lose its whole track — header, body and grid
+  // template all read this one list.
+  const { columns: visibleColumns } = useGridColumnVisibility<OrdersQueueColumn>({
+    columns: ORDERS_QUEUE_COLUMNS,
+    tableId,
+  });
+
   // Reconnect-only broad invalidate (the hot path is Ably/local cache patches).
   useStationReconnectSync();
 
@@ -168,6 +180,7 @@ export function StationHistoryTable<T>({
           isChecked={selectedIds.has(id)}
           isSelected={focusedId === id}
           isMobile={isMobile}
+          columns={visibleColumns}
           onToggleSelect={(event) => toggle(id, event.shiftKey)}
           onRowClick={(mapped) => {
             const source = getStationSourceRecord<T>(mapped) ?? record;
@@ -176,7 +189,7 @@ export function StationHistoryTable<T>({
         />
       );
     },
-    [selection, renderRow, selectMode, selectedIds, isMobile, toggle],
+    [selection, renderRow, selectMode, selectedIds, isMobile, visibleColumns, toggle],
   );
 
   const effectiveRenderRow = selection ? convergedRenderRow : renderRow;

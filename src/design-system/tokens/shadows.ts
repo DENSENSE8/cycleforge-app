@@ -4,8 +4,9 @@
  *
  * Raw `shadows.*` feed `--ds-shadow-*` via css-variables. Elevation roles follow
  * industry practice (Atlassian / M3-aligned): role = interaction plane, not
- * viewport position. Shadow is one cue; pair with surface treatment in dark
- * themes when needed.
+ * viewport position. Each role resolves to a `shadow-elev-*` utility whose
+ * value is a themed CSS var (`--ds-elev-*`, globals.css), so dark-family
+ * palettes ramp the alpha instead of forking a second class name.
  *
  * Consume via {@link elevationClass} / {@link ELEVATION_CLASS}. Never hand-roll
  * `shadow-* shadow-scrim/*` for flat / raised / overlay jobs.
@@ -42,13 +43,24 @@ export type ElevationRole = 'flat' | 'raised' | 'overlay';
  */
 export type RaisedIntensity = 'soft' | 'default';
 
+/**
+ * Role → `shadow-elev-*` utility (tailwind.config.ts `theme.extend.boxShadow`,
+ * values in globals.css `--ds-elev-*`).
+ *
+ * Every role is an **ambient + key + cast** stack. The zero-offset ambient
+ * layer is the load-bearing part: a purely downward shadow (the old
+ * `shadow-lg shadow-scrim/10`) puts all of its ink at the bottom edge, so a
+ * surface taller than the viewport — an ops grid with 200 rows — reads
+ * perfectly flat at the only edge still on screen. Keep the ambient layer when
+ * tuning; drop it and tall surfaces lose their depth again.
+ */
 export const ELEVATION_CLASS = {
   flat: '',
   raised: {
-    soft: 'shadow-sm shadow-scrim/5',
-    default: 'shadow-lg shadow-scrim/10',
+    soft: 'shadow-elev-soft',
+    default: 'shadow-elev-raised',
   },
-  overlay: 'shadow-xl shadow-scrim/20',
+  overlay: 'shadow-elev-overlay',
 } as const satisfies Record<
   ElevationRole,
   string | Record<RaisedIntensity, string>

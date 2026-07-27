@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo, useRef, type ReactNode, type RefObject } from 'react';
 import { useSearchParams } from 'next/navigation';
-import type { OnChangeFn, SortingState, VisibilityState } from '@tanstack/react-table';
+import type { OnChangeFn, SortingState } from '@tanstack/react-table';
 import { getDaysLateNullable } from '@/utils/date';
 import { useStaffNameMap } from '@/hooks/useStaffNameMap';
 import { useUIModeOptional } from '@/design-system/providers/UIModeProvider';
@@ -10,7 +10,8 @@ import { useTableSelectMode } from '@/hooks/useTableSelectMode';
 import { useColumnOrder } from '@/components/ui/table-column-config/useColumnOrder';
 import { OrderSearchEmptyState } from '@/components/dashboard/OrderSearchEmptyState';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
-import { LedgerGrid, useGridSurface } from '@/design-system/components/grid';
+import { LedgerGrid, useGridColumnVisibility, useGridSurface } from '@/design-system/components/grid';
+import type { TableId } from '@/lib/tables/table-columns';
 import {
   TABLE_SURFACE_CLIP_CLASS,
 } from '@/design-system/tokens/table-surface';
@@ -67,6 +68,20 @@ interface OrdersGridViewProps {
   /** Surface chrome (status dots, tracking/serial affordances). Default fulfillment. */
   queueMode?: OrdersQueueMode;
   /**
+   * Staff-prefs identity for per-staff column config (visible fields + drag
+   * order), i.e. `staff_preferences.tableColumns[tableId]`.
+   *
+   * Default `'orders'` for EVERY outbound lane — Pending, Tested, Packed,
+   * Labels, Staged, Review, and Shipped all render the SAME column SoT
+   * (`ORDERS_QUEUE_COLUMNS` / `ORDERS_QUEUE_TESTED_COLUMNS`) and already shared
+   * one persisted column ORDER under `'orders'`. Splitting visibility per lane
+   * while order stayed global is the surprising outcome (curate Fields on
+   * Pending, drag a column on Shipped, and the two prefs disagree), so both now
+   * resolve under this one id. A host that genuinely wants an independent
+   * layout passes its own `tableId` and gets BOTH prefs scoped to it.
+   */
+  tableId?: TableId;
+  /**
    * Sort for row order / Date-column banding keys. When omitted, reads `?sort=`
    * via {@link useQueueDisplaySort} (Pending / To Ship).
    */
@@ -106,6 +121,7 @@ export function OrdersGridView({
   selectMode = false,
   selectionScope,
   queueMode = 'fulfillment',
+  tableId = 'orders',
   sort: sortProp,
   className,
   'data-testid': dataTestId = 'orders-grid-body',
@@ -156,20 +172,24 @@ export function OrdersGridView({
   });
   const singleSelectedId = selectedIds.size === 1 ? [...selectedIds][0] : null;
 
-  const { order: persistedOrder, setOrder, resetOrder } = useColumnOrder('orders');
+  const { order: persistedOrder, setOrder, resetOrder } = useColumnOrder(tableId);
   const sanitizedOrder = useMemo(
     () => sanitizeOrdersQueueColumnOrder(persistedOrder, canonicalColumns),
     [persistedOrder, canonicalColumns],
   );
   const shellRef = useRef<HTMLDivElement>(null);
-  // Viewport priority collapse (By → Qty → Ch.) — house logic; mirrored into
-  // TanStack columnVisibility so the state engine owns which tracks render.
-  // Ephemeral — never persisted to staff prefs.
+  // Viewport priority collapse (By → Qty → Cond) — house logic, ephemeral and
+  // never persisted to staff prefs.
   const forceHidden = useViewportForcedHidden(shellRef);
-  const columnVisibility = useMemo<VisibilityState>(
-    () => Object.fromEntries([...forceHidden].map((k) => [k, false])),
-    [forceHidden],
-  );
+  // ONE visibility resolution (descriptor tier + this staffer's delta + the
+  // viewport collapse above), mirrored into TanStack so the state engine stays
+  // the record of which tracks render. `displayColumns` below reads back off
+  // TanStack, so header / rows / group summaries / grid template all follow.
+  const { columnVisibility } = useGridColumnVisibility<OrdersQueueColumn>({
+    columns: canonicalColumns,
+    tableId,
+    forceHidden,
+  });
 
   // URL `?sort=` stays the durable SoT; TanStack mirrors it as controlled state.
   const sortingState = useMemo<SortingState>(

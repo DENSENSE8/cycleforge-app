@@ -20,6 +20,8 @@ import { QueueSortSwitch } from '@/components/dashboard/QueueSortSwitch';
 import { WorkbenchChromeHeader } from '@/components/dashboard/workbench-shell';
 import { OutboundOrderChromeActions } from '@/components/dashboard/OutboundOrderChromeActions';
 import { ToolbarSearchToggle } from '@/components/ui/ToolbarSearchToggle';
+import { GridFieldsMenu } from '@/components/ui/table-column-config/GridFieldsMenu';
+import { ORDERS_QUEUE_COLUMNS } from '@/lib/dashboard-order-row-layout';
 import { useDashboardSearchController } from '@/hooks/useDashboardSearchController';
 import { useQueueDisplaySort } from '@/hooks/useQueueDisplaySort';
 import { unshippedQueueCountsQuery } from '@/lib/queries/dashboard-queries';
@@ -99,9 +101,14 @@ export function OutboundWorkspaceHeader({
       // header (left gutter ☐), not chrome. Display sort is trailing (quiet).
       right={<OutboundExactFilters mode={active} />}
       trailing={
-        /* Sort (dropdown) → Import (blue) → Add (green) — same CTA cluster as Labels. */
+        /* Sort (dropdown) → Fields → Import (blue) → Add (green) — same CTA
+           cluster as Labels. Fields is a quiet per-staff preference, so it sits
+           beside sort rather than in the `right` filter cluster. Every outbound
+           lane shares the `orders` column SoT and one persisted delta, so the
+           menu is lane-independent (see OrdersGridView's `tableId` docblock). */
         <>
           {isPrePackOrderView(active) ? <QueueSortSwitch sort={sort} onChange={setSort} /> : null}
+          <GridFieldsMenu tableId="orders" columns={ORDERS_QUEUE_COLUMNS} />
           <OutboundOrderChromeActions onNewOrder={openIntakeForm} />
         </>
       }

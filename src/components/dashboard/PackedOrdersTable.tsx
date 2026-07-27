@@ -11,6 +11,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { createPortal } from 'react-dom';
 import { OrdersGridView } from '@/components/dashboard/orders-queue/OrdersGridView';
+import { WORKBENCH_TABLE_VIEWPORT } from '@/components/dashboard/workbench-shell';
 import { packedOrdersQuery } from '@/lib/queries/dashboard-queries';
 import { DASHBOARD_ORDERS_SELECTION_SCOPE } from '@/lib/selection/dashboard-scopes';
 import { dispatchOpenShippedDetails, dispatchCloseShippedDetails } from '@/utils/events';
@@ -18,6 +19,7 @@ import { StaffFilterButton } from '@/components/ui/StaffFilterButton';
 import { useEventBridge } from '@/hooks';
 import { parseStaffParam } from '@/hooks/useStaffFilter';
 import { useOutboundQueueKeyboard } from '@/hooks/useOutboundQueueKeyboard';
+import { cn } from '@/utils/_cn';
 import type { ShippedOrder } from '@/types/orders';
 
 export interface PackedOrdersTableProps {
@@ -110,7 +112,7 @@ export function PackedOrdersTable({
           {toolbar}
         </div>
       )}
-      <div className="h-[calc(100dvh-13rem)] min-h-[24rem] min-w-0 pb-3">
+      <div className={cn(WORKBENCH_TABLE_VIEWPORT, 'pb-3')}>
         <OrdersGridView
           records={records as ShippedOrder[]}
           loading={query.isLoading}

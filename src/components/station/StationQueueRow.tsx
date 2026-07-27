@@ -4,6 +4,7 @@ import { SerialChip } from '@/components/ui/CopyChip';
 import { OrdersQueueTableRow } from '@/components/dashboard/orders-queue/OrdersQueueTableRow';
 import { resolveStationSource, SOURCE_DOT_BG, SOURCE_DOT_LABEL } from '@/utils/source-dot';
 import type { QueueRowRecord } from '@/components/dashboard/orders-queue/helpers';
+import type { OrdersQueueColumn } from '@/lib/dashboard-order-row-layout';
 import type { StationSourceKind } from '@/lib/station/record-to-queue-row';
 
 /**
@@ -26,6 +27,7 @@ export function StationQueueRow({
   isChecked,
   isSelected,
   isMobile,
+  columns,
   onToggleSelect,
   onRowClick,
 }: {
@@ -36,6 +38,18 @@ export function StationQueueRow({
   isChecked: boolean;
   isSelected: boolean;
   isMobile: boolean;
+  /**
+   * Visible column tracks, ALREADY resolved by the parent table through
+   * `useGridColumnVisibility` with its own `tableId` ('tech' | 'packer').
+   *
+   * The station benches are the one place `OrdersQueueTableRow` renders outside
+   * a LedgerGrid, and they DO have a live per-staff column config (the ⋮
+   * TableOptionsMenu writes `staff_preferences.tableColumns[tableId].hidden`).
+   * Resolving upstream is what keeps that working now that the row no longer
+   * asks `useIsColumnHidden()` per cell — and it removes the whole track rather
+   * than leaving the empty ruled band the old path produced.
+   */
+  columns?: readonly OrdersQueueColumn[];
   /** Left-gutter checkbox — toggles selection without opening the row. */
   onToggleSelect?: (event: { shiftKey: boolean }) => void;
   onRowClick: (record: QueueRowRecord, event?: { shiftKey: boolean }) => void;
@@ -65,6 +79,7 @@ export function StationQueueRow({
       selectMode={selectMode}
       isChecked={isChecked}
       isMobile={isMobile}
+      columns={columns}
       useAlternateStripe={index % 2 === 1}
       testerDisplay="---"
       packerDisplay="---"

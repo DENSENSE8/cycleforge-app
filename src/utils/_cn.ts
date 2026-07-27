@@ -35,6 +35,13 @@ const twMerge = extendTailwindMerge<'cf-inset' | 'cf-stack' | 'cf-row'>({
   extend: {
     classGroups: {
       'font-size': [{ text: [...CUSTOM_FONT_SIZES] }],
+      // Elevation ladder (tailwind.config.ts theme.extend.boxShadow —
+      // `shadow-elev-*` via elevationClass). Unregistered, twMerge cannot tell
+      // `shadow-elev-raised` is a box-SHADOW (it is not a t-shirt size), lumps
+      // it into the shadow-COLOR group, and two elevation roles on one element
+      // both survive — stylesheet order then picks silently. Same failure mode
+      // as the font-size roles above.
+      shadow: [{ shadow: ['elev-soft', 'elev-raised', 'elev-overlay'] }],
       // Spacing intents (tailwind.config.ts plugin — spacing plan Phase 2).
       // Own groups so two intents of one kind conflict-resolve (last wins);
       // unregistered, twMerge would treat them as unknown classes and keep

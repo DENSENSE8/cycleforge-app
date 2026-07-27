@@ -64,6 +64,16 @@ Rails are a **recipe** for workbench pickers — not proof that every Workbench 
   Glide), never hand-roll a second sort-toggle state machine, never give TanStack widths/markup/
   grouping (grouping = ask-first, plan Phase E). Shared row VALUE cells: `@/components/ui/grid-cells`.
   Keep `"use no memo"` on `useGridSurface` (React Compiler freeze trap).
+  **Column visibility** resolves in exactly ONE place — `useGridColumnVisibility`
+  (descriptor `tier` + staff delta + viewport force-hide → the visible track
+  list, which the header, rows, summaries and the grid template all consume).
+  Grids open **lean**: mark secondary columns `tier: 'optional'` and let staff
+  add them from `GridFieldsMenu` (generated from the descriptor, persisted per
+  staff as a delta). **Never** call `useIsColumnHidden()` from a grid family —
+  it is the retired cell-granularity path that left an empty ruled band instead
+  of removing the track; it survives only for `ChipColumns`/`RowMetaColumns`.
+  **Column sort** is URL-durable via `useUrlColumnSort` (`?colsort=`/`?coldir=`,
+  never `?sort=` on station routes — that is server ordering).
 - **Hand-rolling the card shell** — never re-type `rounded-2xl border border-border-soft
   bg-surface-card shadow-sm`. Compose **`Panel`** (generic static surface — its default *is* that
   shell; props: `padding`/`radius`/`elevation`/`borderless`), **`SectionCard`** (`@/design-system/

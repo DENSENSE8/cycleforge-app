@@ -1,17 +1,22 @@
 'use client';
 
 import { useCallback, useMemo, type RefObject } from 'react';
-import { LedgerGridSurface } from '@/design-system/components/grid';
+import { LedgerGridSurface, useGridColumnVisibility } from '@/design-system/components/grid';
 import type { RowGroup } from '@/lib/group-rows';
 import type { RSRecord } from '@/lib/neon/repair-service-queries';
 import { useTableSelectMode } from '@/hooks/useTableSelectMode';
-import type {
-  RepairGridColumnKey,
-  RepairGridSortDir,
+import {
+  REPAIR_GRID_COLUMNS,
+  type RepairGridColumn,
+  type RepairGridColumnKey,
+  type RepairGridSortDir,
 } from '@/lib/repair/repair-grid-layout';
-import { REPAIR_GRID_DESCRIPTOR } from './repair-grid-descriptor';
+import { makeRepairGridDescriptor } from './repair-grid-descriptor';
 import { RepairGridColumnHeader } from './RepairGridColumnHeader';
 import { RepairGridRow } from './RepairGridRow';
+
+/** Staff-prefs identity — one repair queue, one Fields selection. */
+const REPAIR_TABLE_ID = 'repair' as const;
 
 interface RepairGridViewProps {
   /** Rows in display order (already sorted by the active column, or server order). */
@@ -27,6 +32,8 @@ interface RepairGridViewProps {
   sort: RepairGridColumnKey | null;
   dir: RepairGridSortDir | null;
   onSortChange: (key: RepairGridColumnKey, dir: RepairGridSortDir) => void;
+  /** FULL canonical column list — visibility is resolved here, not by callers. */
+  columns?: readonly RepairGridColumn[];
   scrollRef?: RefObject<HTMLDivElement | null>;
   className?: string;
 }
@@ -49,6 +56,7 @@ export function RepairGridView({
   sort,
   dir,
   onSortChange,
+  columns = REPAIR_GRID_COLUMNS,
   scrollRef,
   className,
 }: RepairGridViewProps) {
@@ -60,6 +68,16 @@ export function RepairGridView({
     rows: records,
     getId: (r) => r.id,
   });
+
+  // ONE visibility resolution: descriptor default tier + this staffer's delta.
+  // Header, rows and the grid template all read `visible` — a hidden column
+  // loses its TRACK rather than rendering an empty ruled cell.
+  const { columns: visible } = useGridColumnVisibility<RepairGridColumn>({
+    columns,
+    tableId: REPAIR_TABLE_ID,
+  });
+
+  const descriptor = useMemo(() => makeRepairGridDescriptor(visible), [visible]);
 
   // Flat spreadsheet: one synthetic band, each repair its own singleton group
   // (no PO/day fold). Row order is the caller's (server order or column sort).
@@ -84,14 +102,15 @@ export function RepairGridView({
         isChecked={selectedIds.has(repair.id)}
         onOpen={onOpen}
         onToggleSelect={onToggleSelect}
+        columns={visible}
       />
     ),
-    [selectedId, selectedIds, onOpen, onToggleSelect],
+    [selectedId, selectedIds, onOpen, onToggleSelect, visible],
   );
 
   return (
     <LedgerGridSurface<RSRecord, RepairGridColumnKey>
-      descriptor={REPAIR_GRID_DESCRIPTOR}
+      descriptor={descriptor}
       orderGroupsByDate={orderGroupsByDate}
       rows={records}
       getRowId={(r) => String(r.id)}
@@ -106,6 +125,7 @@ export function RepairGridView({
       renderColumnHeader={({ toggleColumnSort }) => (
         <RepairGridColumnHeader
           selectionScope={selectionScope}
+          columns={visible}
           activeSort={sort}
           sortDir={dir}
           onSortColumn={toggleColumnSort}

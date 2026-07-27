@@ -93,6 +93,21 @@ If a facet has no SoT yet, **add or extend one** (pattern evolution) — do not 
   - `raised` — in-flow cards / panels; intensity `soft` (bookmark chrome) or
     `default` (glass work cards)
   - `overlay` — floating UI (menus, popovers, dialogs)
+- Each role resolves to one `shadow-elev-*` utility (tailwind.config.ts
+  `theme.extend.boxShadow`) whose value is a themed CSS var `--ds-elev-*`
+  (globals.css; dark-family themes ramp the alpha under
+  `html[data-color-scheme='dark']`). Register any new name in the `shadow`
+  group in `src/utils/_cn.ts` or twMerge misgroups it as shadow-COLOR.
+- **Every role keeps a zero-offset AMBIENT layer** beside its key + cast layers.
+  A purely downward shadow puts all its ink at the bottom edge, so a surface
+  taller than the viewport (an ops grid with 200 rows) reads flat at the only
+  edge still on screen — that was the 2026-07 Pending-grid depth bug. Keep the
+  ambient layer when tuning, and never apply a `shadow-scrim/NN` color modifier
+  to an elevation class: it rewrites every layer to one alpha and flattens the
+  stack back to downward-only.
+- Depth needs a ground plane: `background-canvas` sits a real step below card
+  white (light `#eef2f7` vs `#ffffff`). At the old ~2% delta the shadow had
+  nothing to cast onto and every surface merged into one sheet.
 - Never hand-roll `shadow-* shadow-scrim/*` for these jobs; dial ink/spread only in the SoT.
 - z-index remains separate (`tokens/z-index.ts`) — same elevation style can stack at different orders.
 

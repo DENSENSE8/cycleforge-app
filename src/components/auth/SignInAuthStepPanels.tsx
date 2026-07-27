@@ -1,18 +1,29 @@
 'use client';
 
+/**
+ * Sign-in credential fields.
+ *
+ * Both text entries stay on screen — email is always visible, and the password
+ * field animates in beneath it once the user continues. There is no panel swap
+ * and no back chip: the email is right there to edit, so nothing needs to travel
+ * or be restored.
+ *
+ * The reveal animates `height: auto` via `framerPresence.collapseHeight`, which
+ * is the one sanctioned height animation in the house motion law — a
+ * low-frequency expand/collapse, not a per-interaction transition
+ * (`.claude/rules/display/motion-crossfade.md`).
+ */
+
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import {
   framerDuration,
+  framerPresence,
   framerTransition,
-  signInStepVariants,
-  signInStepVariantsReduced,
 } from '@/design-system/foundations/motion-framer';
-import { useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
+import { useMotionPresence, useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
 import { TextField } from '@/design-system/primitives';
-
-/** Min height during step crossfade — chip + password field + Forgot link row */
-const STEP_VIEWPORT_MIN_H = '7.5rem';
+import { cn } from '@/utils/_cn';
 
 export interface SignInAuthStepPanelsProps {
   authStep: 'email' | 'password';
@@ -20,7 +31,6 @@ export interface SignInAuthStepPanelsProps {
   password: string;
   onEmailChange: (value: string) => void;
   onPasswordChange: (value: string) => void;
-  onBackToEmail: () => void;
 }
 
 export function SignInAuthStepPanels({
@@ -29,82 +39,58 @@ export function SignInAuthStepPanels({
   password,
   onEmailChange,
   onPasswordChange,
-  onBackToEmail,
 }: SignInAuthStepPanelsProps) {
   const passwordRef = useRef<HTMLInputElement>(null);
   const [showPassword, setShowPassword] = useState(false);
+  // TextField's focus affordance is an OUTWARD `focus:ring-2`, so the clip that
+  // the height animation requires would cut the glow off. Clip only while the
+  // row is opening, then release to `overflow-visible` once it settles.
+  const [revealSettled, setRevealSettled] = useState(false);
   const reduceMotion = useReducedMotion();
-  const stepVariants = reduceMotion ? signInStepVariantsReduced : signInStepVariants;
-  const stepTransition = useMotionTransition(framerTransition.signInStepSlide);
+  const revealPresence = useMotionPresence(framerPresence.collapseHeight);
+  const revealTransition = useMotionTransition(framerTransition.signInStepSlide);
 
   useEffect(() => {
     if (authStep !== 'password') {
       setShowPassword(false);
+      setRevealSettled(false);
       return;
     }
+    // Focus once the row has finished opening, so the caret doesn't ride the reveal.
     const delayMs = reduceMotion ? 0 : Math.round(framerDuration.signInStepSlide * 1000);
     const t = window.setTimeout(() => passwordRef.current?.focus(), delayMs);
     return () => window.clearTimeout(t);
   }, [authStep, reduceMotion]);
 
   return (
-    <div
-      className="relative flex w-full flex-col justify-end overflow-visible px-0.5"
-      style={{ height: STEP_VIEWPORT_MIN_H }}
-    >
-      <AnimatePresence mode="wait" initial={false}>
-        {authStep === 'email' ? (
+    <div className="space-y-3">
+      <TextField
+        id="email"
+        name="email"
+        label="Email"
+        type="email"
+        autoComplete="email"
+        autoFocus
+        value={email}
+        onChange={onEmailChange}
+        tone="blue"
+      />
+
+      <AnimatePresence initial={false}>
+        {authStep === 'password' && (
           <motion.div
-            key="email-step"
-            variants={stepVariants}
-            initial="enter"
-            animate="center"
-            exit="exit"
-            transition={stepTransition}
-            className="flex h-full w-full flex-col justify-end"
+            key="password-field"
+            initial={revealPresence.initial}
+            animate={revealPresence.animate}
+            exit={revealPresence.exit}
+            transition={revealTransition}
+            onAnimationComplete={() => setRevealSettled(true)}
+            // `px-1 -mx-1` keeps the horizontal glow off the clip edge while the
+            // row is still opening; once settled the clip is dropped entirely so
+            // the focus ring renders in full.
+            className={cn('px-1 -mx-1', revealSettled ? 'overflow-visible' : 'overflow-hidden')}
           >
-            <TextField
-              id="email"
-              name="email"
-              label="Email"
-              type="email"
-              autoComplete="email"
-              autoFocus
-              value={email}
-              onChange={onEmailChange}
-              tone="blue"
-            />
-          </motion.div>
-        ) : (
-          <motion.div
-            key="password-step"
-            variants={stepVariants}
-            initial="enter"
-            animate="center"
-            exit="exit"
-            transition={stepTransition}
-            className="flex h-full w-full flex-col justify-end space-y-3"
-          >
-            <button
-              type="button"
-              onClick={onBackToEmail}
-              className="group inline-flex max-w-full items-center gap-1.5 self-start rounded-full bg-surface-canvas py-1 pl-1.5 pr-3 text-role-caption font-semibold text-text-muted transition hover:text-text-default"
-            >
-              <svg
-                className="h-3.5 w-3.5 shrink-0 text-text-faint transition group-hover:-translate-x-0.5 group-hover:text-text-soft"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden
-              >
-                <path d="M15 6l-6 6 6 6" />
-              </svg>
-              <span className="truncate">{email.trim()}</span>
-            </button>
-            <div className="w-full space-y-1.5">
+            <div className="space-y-1.5">
               <TextField
                 ref={passwordRef}
                 id="password"
@@ -123,7 +109,7 @@ export function SignInAuthStepPanels({
                     onClick={() => setShowPassword((v) => !v)}
                     aria-pressed={showPassword}
                     aria-label={showPassword ? 'Hide password' : 'Show password'}
-                    className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-text-faint transition hover:bg-surface-canvas hover:text-text-soft"
+                    className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-text-soft transition hover:bg-surface-canvas hover:text-text-default"
                   >
                     {showPassword ? (
                       <svg

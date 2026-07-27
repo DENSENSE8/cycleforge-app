@@ -16,7 +16,9 @@ import { useCallback, useEffect, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { WorkbenchChromeHeader } from '@/components/dashboard/workbench-shell';
 import { QueueSortSwitch } from '@/components/dashboard/QueueSortSwitch';
+import { GridFieldsMenu } from '@/components/ui/table-column-config/GridFieldsMenu';
 import { ToolbarSearchToggle } from '@/components/ui/ToolbarSearchToggle';
+import { REPAIR_GRID_COLUMNS } from '@/lib/repair/repair-grid-layout';
 import { useDebounce } from '@/hooks';
 import { useRepairDisplaySort } from '@/hooks/useRepairDisplaySort';
 import { REPAIR_DISPLAY_SORT_OPTIONS } from '@/lib/repair/repair-display-sort';
@@ -106,6 +108,9 @@ export function RepairWorkspaceHeader() {
       }
       trailing={
         <div className="flex items-center gap-2">
+          {/* Per-staff column picker — the opt-in path for the `optional`
+              tracks (phone · price · order) the lean default hides. */}
+          <GridFieldsMenu tableId="repair" columns={REPAIR_GRID_COLUMNS} />
           <QueueSortSwitch
             sort={sort}
             onChange={setSort}

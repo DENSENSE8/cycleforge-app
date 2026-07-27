@@ -9,10 +9,13 @@
   font-family: var(--font-sans);
 }
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/* `--background` / `--foreground` are OWNED by the theme registry
+   (src/design-system/themes/registry.ts → `<style id="app-theme-palettes">`),
+   which emits them in its `:root` light default AND in every
+   `html[data-theme='<name>']` block. A static pair here was permanently
+   shadowed by that injected block (see the head-order note in
+   src/styles/globals.css) — it pinned `body` to light-theme values that never
+   applied. Removed 2026-07-26; `body` below is now theme-varying. */
 
 body {
   color: var(--foreground);

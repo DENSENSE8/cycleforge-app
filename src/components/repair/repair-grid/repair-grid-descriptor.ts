@@ -8,7 +8,6 @@
 import { makeGridSurfaceDescriptor, type GridSurfaceDescriptor } from '@/design-system/components/grid';
 import type { RSRecord } from '@/lib/neon/repair-service-queries';
 import {
-  REPAIR_GRID_COLUMNS,
   defaultDirForRepairGridSort,
   isRepairGridFrozen,
   isRepairGridSortable,
@@ -16,14 +15,28 @@ import {
   type RepairGridColumn,
 } from '@/lib/repair/repair-grid-layout';
 
-export const REPAIR_GRID_DESCRIPTOR: GridSurfaceDescriptor<RSRecord, RepairGridColumn> =
-  makeGridSurfaceDescriptor<RSRecord, RepairGridColumn>(
+/**
+ * Build the descriptor from a RESOLVED column list (post-visibility), so
+ * `contentMinWidthRem` and the TanStack defs follow the tracks that actually
+ * render — a hidden column loses its width, not just its content.
+ */
+export function makeRepairGridDescriptor(
+  columns: readonly RepairGridColumn[],
+): GridSurfaceDescriptor<RSRecord, RepairGridColumn> {
+  return makeGridSurfaceDescriptor<RSRecord, RepairGridColumn>(
     'repair.queue',
-    REPAIR_GRID_COLUMNS,
-    repairContentMinWidthRem(REPAIR_GRID_COLUMNS),
+    columns,
+    repairContentMinWidthRem(columns),
     {
       isSortable: isRepairGridSortable,
       sortDescFirst: (key) => defaultDirForRepairGridSort(key) === 'desc',
       isLocked: isRepairGridFrozen,
     },
   );
+}
+
+// No pre-built canonical descriptor: the column set is now resolved per staffer
+// by `useGridColumnVisibility`, so `RepairGridView` always builds from the
+// RESOLVED list (which also keeps `contentMinWidthRem` and the CSS grid template
+// honest when a track is hidden). A module-level constant built from the full
+// column list would have been wrong for every staffer with a delta.

@@ -39,6 +39,8 @@ Each concern has one module — never inline or re-derive:
 | Focus affordance | `src/design-system/tokens/focus-ring.ts` (`focusRing`) |
 | Depth elevation (flat · raised · overlay) | `src/design-system/tokens/shadows.ts` (`elevationClass`) |
 | Ops table / spreadsheet surface shell | `src/design-system/tokens/table-surface.ts` (`TABLE_SURFACE_*` + `TABLE_FROZEN_HEADER_CLASS`) — rounded-xl + raised + sunken header; never hand-roll |
+| Grid column visibility (per-staff) | `@/design-system/components/grid` `useGridColumnVisibility` / `useGridFields` + `GridFieldsMenu`. Column `tier: 'core' \| 'optional'` is the default-set SoT (lean by default, staff opt in); prefs persist as a **delta** in `staff_preferences.tableColumns[tableId]`. Never call `useIsColumnHidden()` from a grid family — retired there (legacy `ChipColumns`/`RowMetaColumns` only) |
+| Grid column sort (URL-durable) | `@/hooks/useUrlColumnSort` → `?colsort=`/`?coldir=`. Never reuse `?sort=`/`?dir=` on station routes — taken by server ordering |
 | Surface / box shell | `Panel` / `SectionCard` / `CardShell` (never hand-roll the shell) |
 | Dialog / AlertDialog | `@/design-system/components` `Dialog` / `AlertDialog` (+ `requestConfirm` / `ConfirmDialogHost`) — never hand-roll `fixed inset-0` scrims; floor confirms stay on `ConfirmSheet` |
 | Switch / Checkbox | `@/design-system/primitives` `Switch` / `Checkbox` |
@@ -138,7 +140,7 @@ Color only from semantic / theme tokens (`bg-surface-card`, `border-border-soft`
 
 ## Build gotchas
 
-- Tailwind z-index import in `tailwind.config.ts` needs an explicit `.ts` extension (Turbopack) or all `z-*` utilities silently drop in dev.
+- Tailwind values modules (z-index, spacing) must be imported into `tailwind.config.ts` as **`.mjs`**, with the explicit extension — never the `.ts` twins (Node loads the config directly; a `.ts` import triggers `MODULE_TYPELESS_PACKAGE_JSON` reparsing) and never extensionless (Turbopack silently drops all `z-*` utilities in dev). App code keeps importing `@/design-system/tokens/*`.
 - Classes used only in un-scanned files won't generate — update `content` / safelist and restart the dev server.
 - Bundle altitude: pure helpers live in light modules, not beside print engines / `tenancy/db`; barrels never re-export server-only modules to client consumers; `lib/db.ts` is `server-only` (a client path to it is a build error — fix the chain, never drop the guard). Perf tooling: `pnpm lighthouse:audit` (`docs/performance/LIGHTHOUSE.md`).
 - Detail: `.claude/rules/build-gotchas.md`.

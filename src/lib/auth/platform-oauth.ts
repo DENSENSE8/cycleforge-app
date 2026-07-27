@@ -21,7 +21,11 @@
 
 import { randomBytes } from 'node:crypto';
 
-export type PlatformProvider = 'google' | 'microsoft';
+import type { PlatformProvider } from './platform-oauth-types';
+
+// Re-exported so server callers keep importing from this module; client
+// components import the light twin directly (bundle altitude).
+export type { PlatformProvider };
 
 export interface PlatformProviderEndpoints {
   authorizeUrl: string;

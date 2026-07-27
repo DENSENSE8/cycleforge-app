@@ -71,7 +71,9 @@ for (const gate of GATES) {
   const res = spawnSync(gate.cmd, gate.args, {
     stdio: 'inherit',
     env: { ...process.env, ...(gate.env ?? {}) },
-    shell: false,
+    // Windows: `npx` is npx.CMD — spawning it with shell:false is ENOENT/EINVAL,
+    // which made every npx gate report ✗ no matter what the gate actually did.
+    shell: process.platform === 'win32',
   });
   results.push({ name: gate.name, ok: res.status === 0, advisory: !!gate.advisory });
 }

@@ -4,6 +4,7 @@ import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useSearchParams } from 'next/navigation';
 import { OrdersGridView } from '@/components/dashboard/orders-queue/OrdersGridView';
+import { WORKBENCH_TABLE_VIEWPORT } from '@/components/dashboard/workbench-shell';
 import { OrdersFirstRunEmptyState } from '@/components/dashboard/OrdersFirstRunEmptyState';
 import { AddTrackingNavProvider } from '@/components/outbound/labels/add-tracking-context';
 import { awaitingLabelsQuery } from '@/lib/queries/outbound-queries';
@@ -74,7 +75,7 @@ export function LabelsQueueTable({
 
   return (
     <AddTrackingNavProvider orderedIds={awaitingOrderIds}>
-      <div className="h-[calc(100dvh-13rem)] min-h-[24rem] min-w-0">
+      <div className={WORKBENCH_TABLE_VIEWPORT}>
         <OrdersGridView
           records={records}
           queueMode="labels"

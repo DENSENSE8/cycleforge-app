@@ -32,6 +32,24 @@ export const WORKBENCH_CHROME_COLUMN = cn(WORKBENCH_GUTTERS, 'py-2');
 export const WORKBENCH_BODY_COLUMN = cn('relative flex flex-col', WORKBENCH_GUTTERS, 'pb-8 pt-4');
 
 /**
+ * Bounded host for a framed ops table that sits **under the KPI strip**
+ * (Pending · Packed · Shipped · Labels). Sizes the grid to the viewport
+ * remainder so the table owns Y scroll internally and the page does not grow.
+ *
+ * This is a depth contract, not just layout. `TABLE_SURFACE_*` frames the grid
+ * as a raised card; an unbounded host lets that card grow past the fold, so its
+ * bottom edge — and the elevation that sells the card — is never on screen. A
+ * bounded host keeps all four edges visible and keeps the KPI strip pinned
+ * instead of scrolling away under the tabs.
+ *
+ * `13rem` ≈ global header + workbench tab chrome + KPI strip + gutters.
+ */
+export const WORKBENCH_TABLE_VIEWPORT = 'h-[calc(100dvh-13rem)] min-h-[24rem] min-w-0';
+
+/** {@link WORKBENCH_TABLE_VIEWPORT} for lanes with **no KPI strip** (Review). */
+export const WORKBENCH_TABLE_VIEWPORT_NO_KPI = 'h-[calc(100dvh-8rem)] min-h-[24rem] min-w-0';
+
+/**
  * Padded, boxed table pane — the gutter column + one monitor card wrapping a
  * fixed-height, self-scrolling table (header band + scroll list). The shared
  * "was full-bleed → padded" body used by sidebar-mode surfaces whose modes stay

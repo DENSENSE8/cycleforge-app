@@ -41,7 +41,17 @@ import {
   ChevronRight,
   MessageSquare,
 } from '@/components/Icons';
-import { APP_SIDEBAR_NAV, getSidebarNavItems, type SidebarNavItem } from '@/lib/sidebar-navigation';
+import {
+  APP_SIDEBAR_NAV,
+  applyModeTarget,
+  filterPageModes,
+  getSidebarNavItems,
+  getSidebarPageNav,
+  type SidebarIconComponent,
+  type SidebarNavItem,
+} from '@/lib/sidebar-navigation';
+import { isParkedSurfaceBlocked } from '@/lib/dogfood/parked-surfaces';
+import { useSidebarModeNav } from '@/components/sidebar/master-nav/useSidebarModeNav';
 import { looksLikeIdentifier, searchScopeHref, searchScopeLabel } from '@/lib/search/search-hit';
 import { isSearchEntityType } from '@/lib/search/build-search-text';
 // AI-search rollout flag probe + retrieve POST — shared client bridge
@@ -149,6 +159,59 @@ function buildNavItems(permissions?: ReadonlySet<string>): NavOption[] {
     href: nav.href,
     icon: NAV_ICON_MAP[nav.id] || ChevronRight,
   }));
+}
+
+/** One L2 mode row in the palette (e.g. `Receiving · Arrival`). */
+interface ModeOption {
+  pageId: string;
+  modeId: string;
+  pageLabel: string;
+  modeLabel: string;
+  icon: SidebarIconComponent;
+  /** Display-only href (fresh params) for the row sub-label + the recents entry. */
+  href: string;
+}
+
+/**
+ * Flatten every reachable L2 mode into palette rows. Before this, the master-nav
+ * dropdown was the ONLY surface that could reach a mode — ⌘K listed pages only,
+ * so `/shipping?mode=scan-out` and friends were URL-typing territory.
+ *
+ * Gating mirrors the master nav exactly: page-level `requires` via
+ * `getSidebarNavItems`, per-mode `requires` via the shared `filterPageModes`,
+ * and parked surfaces skipped (they render a stand-in, not their real modes).
+ * Single-mode pages are omitted — the page row already goes there.
+ */
+function buildModeItems(permissions?: ReadonlySet<string>): ModeOption[] {
+  const items = permissions ? getSidebarNavItems({ permissions }) : APP_SIDEBAR_NAV;
+  const out: ModeOption[] = [];
+  for (const item of items) {
+    if (isParkedSurfaceBlocked(item.id)) continue;
+    const page = getSidebarPageNav(item.id);
+    if (!page?.modes) continue;
+    const modes = filterPageModes(page, permissions).modes ?? [];
+    if (modes.length < 2) continue;
+    for (const mode of modes) {
+      // Fresh params, not the live ones — the sub-label must read the same
+      // regardless of which page the palette was opened from. Actual navigation
+      // goes through `useSidebarModeNav`, which preserves params on same-page flips.
+      const { pathname, search } = applyModeTarget(
+        { pathname: page.href, params: new URLSearchParams() },
+        mode.to(),
+      );
+      out.push({
+        pageId: page.id,
+        modeId: mode.id,
+        // The flat item's label, so a per-org nav rename survives (same reason
+        // `toPageNav` carries it in MasterNav).
+        pageLabel: item.label,
+        modeLabel: mode.label,
+        icon: mode.icon,
+        href: search ? `${pathname}?${search}` : pathname,
+      });
+    }
+  }
+  return out;
 }
 
 /**
@@ -353,6 +416,22 @@ export function CommandBar() {
     );
   }, [navItems, query]);
 
+  // L2 modes — matched on page OR mode label so "triage" and "receiving" both
+  // surface Receiving · Arrival.
+  //
+  // Query-gated on purpose: there are ~51 modes, so listing them at rest would
+  // bury the ~19 page rows under a wall. The master-nav dropdown stays the
+  // browsable index; the palette owns depth (type a name, get the mode).
+  const modeItems = useMemo(() => buildModeItems(authPermissions), [authPermissions]);
+  const filteredModes = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return [];
+    return modeItems.filter(
+      (m) =>
+        m.modeLabel.toLowerCase().includes(q) || m.pageLabel.toLowerCase().includes(q),
+    );
+  }, [modeItems, query]);
+
   // ── Selection handlers ──
 
   const navigate = useCallback(
@@ -362,6 +441,25 @@ export function CommandBar() {
       setOpen(false);
     },
     [router],
+  );
+
+  // Mode jumps go through the nav SoT, NOT `navigate` — that one hard-pushes a
+  // bare href, which would drop every mode search param. `useSidebarModeNav`
+  // owns push-vs-replace and param preservation (`applyModeTarget`).
+  const navigateMode = useSidebarModeNav();
+  const selectMode = useCallback(
+    (m: ModeOption) => {
+      navigateMode(m.pageId, m.modeId);
+      setRecents(
+        saveRecent({
+          id: `mode:${m.pageId}:${m.modeId}`,
+          label: `${m.pageLabel} · ${m.modeLabel}`,
+          href: m.href,
+        }),
+      );
+      setOpen(false);
+    },
+    [navigateMode],
   );
 
   const openAiChat = useCallback(() => {
@@ -541,6 +639,27 @@ export function CommandBar() {
                           onSelect={() =>
                             navigate({ id: `nav:${n.id}`, label: n.label, href: n.href })
                           }
+                        />
+                      );
+                    })}
+                  </Command.Group>
+                )}
+
+                {filteredModes.length > 0 && (
+                  <Command.Group
+                    heading="Modes"
+                    className="[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:py-2 [&_[cmdk-group-heading]]:text-role-micro [&_[cmdk-group-heading]]:[&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-widest [&_[cmdk-group-heading]]:text-text-faint"
+                  >
+                    {filteredModes.map((m) => {
+                      const Icon = m.icon;
+                      return (
+                        <CmdRow
+                          key={`mode:${m.pageId}:${m.modeId}`}
+                          value={`mode ${m.pageLabel} ${m.modeLabel}`}
+                          icon={<Icon className="h-4 w-4 text-text-faint" />}
+                          label={`${m.pageLabel} · ${m.modeLabel}`}
+                          subLabel={m.href}
+                          onSelect={() => selectMode(m)}
                         />
                       );
                     })}

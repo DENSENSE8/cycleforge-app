@@ -1,7 +1,9 @@
 'use client';
 
-import { useCallback, useMemo, useState, type RefObject } from 'react';
-import { LedgerGridSurface } from '@/design-system/components/grid';
+import { useMemo, type RefObject } from 'react';
+import { LedgerGridSurface, useGridColumnVisibility } from '@/design-system/components/grid';
+import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
+import type { TableId } from '@/lib/tables/table-columns';
 import { groupRowsBy, type RowGroup } from '@/lib/group-rows';
 import {
   poGroupAnchorMs,
@@ -11,10 +13,13 @@ import {
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { compareIncomingGridRows } from '@/lib/receiving/incoming-grid-compare';
 import {
+  INCOMING_GRID_COLUMNS,
+  defaultDirForIncomingGridSort,
+  isIncomingGridSortable,
+  type IncomingGridColumn,
   type IncomingGridColumnKey,
-  type IncomingGridSortDir,
 } from '@/lib/receiving/incoming-grid-layout';
-import { INCOMING_GRID_DESCRIPTOR } from './incoming-grid-descriptor';
+import { makeIncomingGridDescriptor } from './incoming-grid-descriptor';
 import { IncomingGridColumnHeader } from './IncomingGridColumnHeader';
 import { IncomingGridGroupRow } from './IncomingGridGroupRow';
 
@@ -30,6 +35,14 @@ interface IncomingGridViewProps {
   selectedIds: Set<number>;
   handleSelectRow: (row: ReceivingLineRow) => void;
   handleSelectGroup: (ids: readonly number[]) => void;
+  /** FULL canonical column list — visibility is resolved here, not by callers. */
+  columns?: readonly IncomingGridColumn[];
+  /**
+   * Staff-prefs identity for per-staff column config. Incoming mounts under the
+   * `receiving` `TableColumnConfigProvider` (ReceivingLinesTable), so it keeps
+   * that identity and inherits existing staff Fields selections.
+   */
+  tableId?: TableId;
   /** Mirror of LedgerGrid scroll body for keyboard-nav / page scroll-to-top. */
   scrollRef?: RefObject<HTMLDivElement | null>;
   className?: string;
@@ -56,17 +69,35 @@ export function IncomingGridView({
   selectedIds,
   handleSelectRow,
   handleSelectGroup,
+  columns = INCOMING_GRID_COLUMNS,
+  tableId = 'receiving',
   scrollRef,
   className,
 }: IncomingGridViewProps) {
-  // Ephemeral column sort (throwaway view state; the mode's server ORDER BY is
-  // the durable default). TanStack owns the toggle cycle via LedgerGridSurface.
-  const [columnSort, setColumnSort] = useState<IncomingGridColumnKey | null>(null);
-  const [sortDir, setSortDir] = useState<IncomingGridSortDir | null>(null);
-  const handleSortChange = useCallback((key: IncomingGridColumnKey, dir: IncomingGridSortDir) => {
-    setColumnSort(key);
-    setSortDir(dir);
-  }, []);
+  // Column sort is DURABLE: `?colsort=`/`?coldir=` (workbench URL-as-state law),
+  // so a reload or a shared link reproduces the operator's view. Deliberately
+  // NOT `?sort=` — that param is the Incoming SERVER ORDER BY vocabulary
+  // (`useIncomingFilters`: zoho_newest / expected_soonest / …), and a header
+  // click must never rewrite the API query. Mode switches clear both via
+  // MODE_SCOPED_PARAMS. TanStack still owns the asc↔desc cycle.
+  const {
+    sort: columnSort,
+    dir: sortDir,
+    setSort,
+  } = useUrlColumnSort<IncomingGridColumnKey>({
+    isColumn: isIncomingGridSortable,
+    defaultDir: defaultDirForIncomingGridSort,
+  });
+
+  // ONE visibility resolution: descriptor default tier + this staffer's delta.
+  // Header, rows, group summaries and the grid template all read `visible` —
+  // a hidden column loses its TRACK rather than rendering an empty ruled cell.
+  const { columns: visible } = useGridColumnVisibility<IncomingGridColumn>({
+    columns,
+    tableId,
+  });
+
+  const descriptor = useMemo(() => makeIncomingGridDescriptor(visible), [visible]);
 
   const { orderGroupsByDate, flatRows } = useMemo(() => {
     const flat = Object.values(filteredGroupedRecords).flatMap((day) =>
@@ -98,12 +129,12 @@ export function IncomingGridView({
 
   return (
     <LedgerGridSurface<ReceivingLineRow, IncomingGridColumnKey>
-      descriptor={INCOMING_GRID_DESCRIPTOR}
+      descriptor={descriptor}
       orderGroupsByDate={orderGroupsByDate}
       rows={flatRows}
       sort={columnSort}
       dir={sortDir}
-      onSortChange={handleSortChange}
+      onSortChange={setSort}
       loading={loading}
       emptyMessage={emptyMessage}
       scrollRef={scrollRef}
@@ -114,6 +145,7 @@ export function IncomingGridView({
           isMobile={isMobile}
           selectMode={selectMode}
           selectionScope={RECEIVING_SELECTION_SCOPE}
+          columns={visible}
           activeSort={columnSort}
           sortDir={sortDir}
           onSortColumn={toggleColumnSort}
@@ -129,6 +161,7 @@ export function IncomingGridView({
           selectedIds={selectedIds}
           handleSelectRow={handleSelectRow}
           handleSelectGroup={handleSelectGroup}
+          columns={visible}
         />
       )}
       renderRow={(row, stripeIndex) => (
@@ -141,6 +174,7 @@ export function IncomingGridView({
           selectedIds={selectedIds}
           handleSelectRow={handleSelectRow}
           handleSelectGroup={handleSelectGroup}
+          columns={visible}
         />
       )}
     />

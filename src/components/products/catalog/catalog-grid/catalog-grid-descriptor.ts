@@ -6,7 +6,6 @@
 import { makeGridSurfaceDescriptor, type GridSurfaceDescriptor } from '@/design-system/components/grid';
 import type { CatalogListRow } from '@/components/products/catalog/types';
 import {
-  CATALOG_GRID_COLUMNS,
   catalogContentMinWidthRem,
   defaultDirForCatalogGridSort,
   isCatalogGridFrozen,
@@ -14,14 +13,28 @@ import {
   type CatalogGridColumn,
 } from '@/lib/products/catalog-grid-layout';
 
-export const CATALOG_GRID_DESCRIPTOR: GridSurfaceDescriptor<CatalogListRow, CatalogGridColumn> =
-  makeGridSurfaceDescriptor<CatalogListRow, CatalogGridColumn>(
+/**
+ * Build the descriptor from a RESOLVED column list (post-visibility), so
+ * `contentMinWidthRem` and the TanStack defs follow the tracks that actually
+ * render — a hidden column loses its width, not just its content.
+ */
+export function makeCatalogGridDescriptor(
+  columns: readonly CatalogGridColumn[],
+): GridSurfaceDescriptor<CatalogListRow, CatalogGridColumn> {
+  return makeGridSurfaceDescriptor<CatalogListRow, CatalogGridColumn>(
     'products.catalog',
-    CATALOG_GRID_COLUMNS,
-    catalogContentMinWidthRem(CATALOG_GRID_COLUMNS),
+    columns,
+    catalogContentMinWidthRem(columns),
     {
       isSortable: isCatalogGridSortable,
       sortDescFirst: (key) => defaultDirForCatalogGridSort(key) === 'desc',
       isLocked: isCatalogGridFrozen,
     },
   );
+}
+
+// No pre-built canonical descriptor: the column set is now resolved per staffer
+// by `useGridColumnVisibility`, so `CatalogGridView` always builds from the
+// RESOLVED list (which also keeps `contentMinWidthRem` and the CSS grid template
+// honest when a track is hidden). A module-level constant built from the full
+// column list would have been wrong for every staffer with a delta.

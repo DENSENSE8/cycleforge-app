@@ -21,7 +21,6 @@ import { Check, Calendar, Clock, ChevronUp, ChevronDown } from '@/components/Ico
 import { tableHeader } from '@/design-system/tokens/typography/presets';
 import { elevationClass } from '@/design-system/tokens/shadows';
 import { TABLE_FROZEN_HEADER_CLASS } from '@/design-system/tokens/table-surface';
-import { useIsColumnHidden } from '@/components/ui/table-column-config/TableColumnConfig';
 import { ColumnTypeGlyph } from '@/components/ui/table-column-config/column-type-glyph';
 import { QUEUE_ROW } from '@/components/ui/queue-row-chrome';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
@@ -54,10 +53,13 @@ import { cn } from '@/utils/_cn';
  * Pending Grid (`gridSkin`): adaptive label + type glyph (Airtable), taller bar,
  * tooltips = full labels; content-hard mins + `min-w-max` so h-scroll works.
  * Board / Packed: glyph + full text labels.
- *   select · product · date · age · qty · cond · platform · order · tracking
+ *   select · product · date · age · qty · cond · order · tracking
  *
  * Header, body rows, and group summaries all map over ONE ordered `columns`
- * list (cell-renderer registry), so the three can never disagree on order.
+ * list (cell-renderer registry) — already RESOLVED to the visible tracks by
+ * `useGridColumnVisibility` in the view — so the three can never disagree on
+ * order, and a hidden column loses its TRACK instead of leaving a dead ruled
+ * band. This header never re-asks "is this hidden?".
  * When `onReorderColumns` is provided (Pending grid), every column except the
  * locked pane (`select · title`) is drag-reorderable: whole-header-cell drag
  * (Airtable), house 6px pointer activation (SwimlaneBoard recipe), keyboard
@@ -90,7 +92,8 @@ export function OrdersQueueColumnHeader({
    * Off → board/Packed header.
    */
   gridSkin?: boolean;
-  /** Ordered column models (already sanitized). Default = canonical order. */
+  /** Ordered VISIBLE column models (already sanitized + visibility-resolved).
+   *  Default = canonical order. */
   columns?: readonly OrdersQueueColumn[];
   /**
    * Commit a new MOVABLE-column order after a header drag (locked keys are
@@ -107,7 +110,6 @@ export function OrdersQueueColumnHeader({
   /** Spreadsheet click-to-sort — Pending grid URL-driven mode only. */
   onSortColumn?: (key: OrdersQueueColumnKey) => void;
 }) {
-  const isHidden = useIsColumnHidden();
   const scope = selectionScope ?? '__idle__';
   const selectedRows = useTableSelection<{ id?: number | string }>(scope, (r) => Number(r.id));
   const total = useTableSelectionTotal(scope);
@@ -129,13 +131,10 @@ export function OrdersQueueColumnHeader({
 
   const template = ordersQueueGridTemplateFor(columns);
   const dataColumns = columns.filter((c) => c.key !== 'select');
-  const movableKeys = columns.filter((c) => !isOrdersQueueFrozen(c.key)).map((c) => c.key);
-  // Sortable targets are the VISIBLE movable header cells; hidden columns keep
-  // their key in `movableKeys` so a drop lands relative to the full order.
-  const sortableItems = movableKeys.filter((k) => {
-    const col = columns.find((c) => c.key === k);
-    return !(col?.hideKey && isHidden(col.hideKey));
-  });
+  // `columns` is already the RESOLVED visible list (`useGridColumnVisibility` in
+  // the view), so every movable key here has a rendered header cell — sortable
+  // targets and drop indices read the same list, with no second hidden-ness test.
+  const sortableItems = columns.filter((c) => !isOrdersQueueFrozen(c.key)).map((c) => c.key);
 
   const onToggleAll = () => {
     if (!selectionScope || !selectActive) return;
@@ -145,10 +144,10 @@ export function OrdersQueueColumnHeader({
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     if (!onReorderColumns || !over || active.id === over.id) return;
-    const oldIdx = movableKeys.indexOf(String(active.id) as OrdersQueueColumnKey);
-    const newIdx = movableKeys.indexOf(String(over.id) as OrdersQueueColumnKey);
+    const oldIdx = sortableItems.indexOf(String(active.id) as OrdersQueueColumnKey);
+    const newIdx = sortableItems.indexOf(String(over.id) as OrdersQueueColumnKey);
     if (oldIdx < 0 || newIdx < 0) return;
-    onReorderColumns(arrayMove([...movableKeys], oldIdx, newIdx));
+    onReorderColumns(arrayMove([...sortableItems], oldIdx, newIdx));
   };
 
   const headerRow = (
@@ -205,16 +204,6 @@ export function OrdersQueueColumnHeader({
 
       {dataColumns.map((column, i) => {
         const last = i === dataColumns.length - 1;
-        // Hideable columns collapse to an empty rule cell when hidden, so the
-        // header stays locked to the body + the vertical rules stay continuous.
-        if (column.hideKey && isHidden(column.hideKey)) {
-          return (
-            <span
-              key={column.key}
-              className={ordersQueueGridCell({ rule: !last, inset: gridSkin ? 'grid' : 'cell' })}
-            />
-          );
-        }
         const sortable = Boolean(onReorderColumns) && !isOrdersQueueFrozen(column.key);
         const sortActive = Boolean(onSortColumn) && isQueueColumnSort(column.key);
         const isActiveSort = activeSort === column.key;

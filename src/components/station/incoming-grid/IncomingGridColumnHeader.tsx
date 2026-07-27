@@ -2,7 +2,6 @@
 
 import { Check, ChevronUp, ChevronDown, Calendar, Clock } from '@/components/Icons';
 import { tableHeader } from '@/design-system/tokens/typography/presets';
-import { useIsColumnHidden } from '@/components/ui/table-column-config/TableColumnConfig';
 import { ColumnTypeGlyph } from '@/components/ui/table-column-config/column-type-glyph';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { emitToggleAll } from '@/lib/selection/table-selection';
@@ -27,6 +26,11 @@ import { cn } from '@/utils/_cn';
  * Sticky column header for the Incoming LedgerGrid — SoT labels (Product Title),
  * adaptive glyph + short label, click-to-sort (Pending spreadsheet contract),
  * select-all when selectMode is armed.
+ *
+ * `columns` arrives ALREADY RESOLVED by `useGridColumnVisibility` in
+ * `IncomingGridView` — a column a staffer turned off is absent from the list,
+ * so its track never exists. This header does not re-ask "is it hidden?";
+ * doing so is what used to leave a dead empty ruled band where the column was.
  */
 export function IncomingGridColumnHeader({
   isMobile = false,
@@ -47,7 +51,6 @@ export function IncomingGridColumnHeader({
   sortDir?: IncomingGridSortDir | null;
   onSortColumn?: (key: IncomingGridColumnKey) => void;
 }) {
-  const isHidden = useIsColumnHidden();
   const scope = selectionScope ?? '__idle__';
   const selectedRows = useTableSelection<{ id?: number | string }>(scope, (r) => Number(r.id));
   const total = useTableSelectionTotal(scope);
@@ -113,14 +116,6 @@ export function IncomingGridColumnHeader({
 
       {dataColumns.map((column, i) => {
         const last = i === dataColumns.length - 1;
-        if (column.hideKey && isHidden(column.hideKey)) {
-          return (
-            <span
-              key={column.key}
-              className={incomingGridCell({ rule: !last, inset: 'grid' })}
-            />
-          );
-        }
         const sortable = Boolean(onSortColumn) && isIncomingGridSortable(column.key);
         const isActiveSort = activeSort === column.key;
         return (

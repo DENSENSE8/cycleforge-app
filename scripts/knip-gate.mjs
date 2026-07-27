@@ -69,6 +69,8 @@ function getKnipReport() {
       cwd: REPO_ROOT,
       encoding: 'utf8',
       maxBuffer: 256 * 1024 * 1024,
+      // Windows: `npx` is npx.CMD — unspawnable without a shell.
+      shell: process.platform === 'win32',
     });
   } catch (err) {
     console.error('✖ knip gate: failed to run knip.');

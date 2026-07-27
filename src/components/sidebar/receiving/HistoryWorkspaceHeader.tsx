@@ -21,6 +21,8 @@ import {
 } from '@/components/dashboard/workbench-filter-popover';
 import { ToolbarSearchToggle } from '@/components/ui/ToolbarSearchToggle';
 import { DateRangePickerPill } from '@/components/ui/DateRangeHeader';
+import { GridFieldsMenu } from '@/components/ui/table-column-config/GridFieldsMenu';
+import { RECEIVING_GRID_COLUMNS } from '@/lib/receiving/receiving-grid-layout';
 import { useDebounce } from '@/hooks';
 import {
   HISTORY_SORT_OPTIONS,
@@ -218,6 +220,9 @@ export function HistoryWorkspaceHeader({
               onNext: onNextWeek,
             }}
           />
+          {/* Quiet per-staff column picker. History has no `trailing` slot, so
+              it sits last in `right` — still after the filters, still quiet. */}
+          <GridFieldsMenu tableId="receiving" columns={RECEIVING_GRID_COLUMNS} />
         </>
       }
     />

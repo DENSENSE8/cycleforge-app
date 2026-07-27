@@ -17,11 +17,13 @@
 import { useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { OrdersGridView } from '@/components/dashboard/orders-queue/OrdersGridView';
+import { WORKBENCH_TABLE_VIEWPORT } from '@/components/dashboard/workbench-shell';
 import { DASHBOARD_ORDERS_SELECTION_SCOPE } from '@/lib/selection/dashboard-scopes';
 import { StaffFilterButton } from '@/components/ui/StaffFilterButton';
 import { useOutboundQueueKeyboard } from '@/hooks/useOutboundQueueKeyboard';
 import { dispatchCloseShippedDetails } from '@/utils/events';
 import { useEventBridge } from '@/hooks';
+import { cn } from '@/utils/_cn';
 import type { ShippedOrder } from '@/types/orders';
 
 export interface UnshippedShelfBoardProps {
@@ -82,8 +84,13 @@ export function UnshippedShelfBoard({
             {searchToolbar}
           </div>
         )}
-      {/* Framed ops table — rounded + overflow-hidden clips the airtable grid. */}
-      <div className="min-w-0 pb-3">
+      {/* Framed ops table — rounded + overflow-hidden clips the airtable grid.
+          Bounded to the viewport remainder (WORKBENCH_TABLE_VIEWPORT) so the
+          grid self-scrolls instead of growing the page: an unbounded host let
+          the card run past the fold, which hid its bottom edge and the raised
+          elevation with it (the card only looked lifted while the empty/loading
+          state kept it short). */}
+      <div className={cn(WORKBENCH_TABLE_VIEWPORT, 'pb-3')}>
         <OrdersGridView
           records={records}
           loading={loading}

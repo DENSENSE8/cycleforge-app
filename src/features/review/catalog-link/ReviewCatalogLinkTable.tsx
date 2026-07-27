@@ -14,6 +14,7 @@ import { Button, IconButton } from '@/design-system/primitives';
 import {
   WORKBENCH_BODY_COLUMN,
   WORKBENCH_CHROME_COLUMN,
+  WORKBENCH_TABLE_VIEWPORT_NO_KPI,
   WorkbenchChromeHeader,
 } from '@/components/dashboard/workbench-shell';
 import { DashboardScrollShell } from '@/components/dashboard/DashboardScrollShell';
@@ -93,7 +94,7 @@ export function ReviewCatalogLinkTable() {
           </div>
         }
       >
-        <div className={`${WORKBENCH_BODY_COLUMN} flex h-[calc(100dvh-8rem)] min-h-[24rem] gap-3 pb-3`}>
+        <div className={`${WORKBENCH_BODY_COLUMN} ${WORKBENCH_TABLE_VIEWPORT_NO_KPI} flex gap-3 pb-3`}>
           <div className="min-w-0 flex-1 overflow-auto rounded-xl border border-border-soft bg-surface-card">
             {listQuery.isLoading ? (
               <div className="flex items-center justify-center gap-2 p-8 text-text-muted">

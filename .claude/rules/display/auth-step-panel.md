@@ -1,12 +1,65 @@
 # Auth / compact step panel — multi-step form motion
 
-Canonical architecture for **compact, centered multi-step forms** (sign-in, sign-up, password reset,
-onboarding wizards) where step 2+ may show a **back chip** above the field row. Reference implementation:
-`src/components/auth/SignInAuthStepPanels.tsx` + the primary form block in `src/app/signin/page.tsx`.
+> **Superseded for the 2-field credential case (2026-07-26).** `/signin` no longer swaps panels.
+> Both credential fields stay mounted: email is always visible and the password row **reveals**
+> beneath it via `framerPresence.collapseHeight`. There is no back chip and no fixed-height
+> viewport — the email field is on screen, so nothing needs to travel or be restored. See
+> **[Progressive reveal](#progressive-reveal--the-2-field-default)** below; `signInStepVariants` /
+> `signInStepVariantsReduced` were deleted with the last consumer.
+>
+> The panel-swap architecture documented in the rest of this file still applies to **genuine
+> multi-step wizards** (3+ steps, or steps whose earlier input must leave the screen) — it is no
+> longer the default for a 2-field sign-in.
+
+Canonical architecture for **compact, centered multi-step forms** (sign-up, onboarding wizards)
+where step 2+ may show a **back chip** above the field row.
 
 **Inherits:** [`motion-crossfade.md`](motion-crossfade.md) (opacity+transform, `mode="wait"`, hooks bridge),
 [`ui-design-system.md`](../ui-design-system.md) (Kinetic Ledger tokens). This doc is the **layout +
 motion contract** for step panels only — it does not restate region-contract picker logic.
+
+---
+
+## Progressive reveal — the 2-field default
+
+For a credential form of **two fields** (email → password), keep both mounted and reveal the second.
+
+```tsx
+<div className="space-y-3">
+  <TextField id="email" label="Email" … />          {/* always visible */}
+  <AnimatePresence initial={false}>
+    {step === 'password' && (
+      <motion.div
+        initial={revealPresence.initial}            // framerPresence.collapseHeight
+        animate={revealPresence.animate}
+        exit={revealPresence.exit}
+        transition={revealTransition}               // framerTransition.signInStepSlide
+        onAnimationComplete={() => setSettled(true)}
+        className={cn('px-1 -mx-1', settled ? 'overflow-visible' : 'overflow-hidden')}
+      >
+        …password field + Forgot link…
+      </motion.div>
+    )}
+  </AnimatePresence>
+</div>
+```
+
+Why this shape:
+
+- **`collapseHeight` is the sanctioned height animation.** `motion-crossfade.md` bans animating
+  layout *except* Framer `height: 'auto'` on a low-frequency expand/collapse. A once-per-visit
+  password reveal qualifies; a per-keystroke or per-row toggle does not.
+- **Release the clip once settled.** `TextField`'s focus affordance is an **outward** `focus:ring-2`
+  (`TextField.tsx`), so a permanent `overflow-hidden` shears the glow off the password field. Clip
+  only while opening, then flip to `overflow-visible`. `px-1 -mx-1` keeps the horizontal glow off the
+  clip edge mid-animation. **This is the single most-repeated bug on this surface — the old
+  fixed-viewport recipe hit it too (see the anti-pattern table below).**
+- **No back chip, no fixed viewport height.** Both were compensating for the email field leaving the
+  screen. It no longer leaves.
+- **Focus the revealed field after the animation**, not during — `setTimeout(…, duration)`, `0` under
+  reduced motion.
+
+Reference: `src/components/auth/SignInAuthStepPanels.tsx`.
 
 ---
 

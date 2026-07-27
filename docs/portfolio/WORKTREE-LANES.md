@@ -30,6 +30,7 @@ so `pnpm test:e2e` in a lane hits that lane's server (override via `PW_BASE_URL`
 | `glass` | 3030 | `unbox` | 3080 |
 | `home` | 3040 | `warehouse` | 3090 |
 | `pending-grid` | 3100 | `photo` | 3110 |
+| `tokens` | 3120 | | |
 | | | switcher panel | 3099 |
 
 ## Lanes (target registry)
@@ -47,6 +48,7 @@ so `pnpm test:e2e` in a lane hits that lane's server (override via `PW_BASE_URL`
 | `home` | `topic/home` | WS-HOME | My Day / home (parked) |
 | `pending-grid` | `topic/pending-grid` | WS-PENDING-GRID | To-Ship Pending full spreadsheet grid — **developed in `main`** until the uncommitted predecessor base is committed (no physical worktree yet) |
 | `photo` | `topic/photo` | WS-PHOTO | Photo evidence chain — station-staged capture (arrival → unbox → test → pack), library identity, journey media, photo policy. Plan hub: `docs/todo/photo-evidence-chain-INDEX.md` |
+| `tokens` | `topic/tokens` | WS-TOKENS | Design-token emitter consolidation — collapse the 4 competing `:root` emitters onto the theme registry, retire `tokens/css-variables.ts` + `styles/tokens.ts`, drift-check Tailwind. **Developed in `main`** (it touches `globals.css` / `layout.tsx` / `tailwind.config.ts`, which every lane shares — a worktree would fork the very files being unified). Plan: `docs/todo/token-system-consolidation-plan.md` |
 
 ## Create another lane
 

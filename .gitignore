@@ -88,6 +88,9 @@ scripts/_fix-*
 # Build installers (large artifacts; do not commit)
 context/*.exe
 *.exe
+# electron-builder output dirs (installer + win-unpacked + builder metadata)
+desktop-dist/
+desktop-dist2/
 
 # reversible snapshot for mark-board-shipped-test.ts (contains live tracking state)
 scripts/.shipped-test-snapshot.json

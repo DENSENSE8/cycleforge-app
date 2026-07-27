@@ -60,7 +60,6 @@ export const framerDuration = {
   /** Email ↔ password step slide (x) */
   signInStepSlide: 0.26,
   /** Email ↔ password step crossfade (opacity) */
-  signInStepOpacity: 0.18,
   /** Workspace title text swap */
   signInTitle: 0.18,
   /** Identity chip appear on password step */
@@ -591,23 +590,10 @@ export const tabPagerVariants: Variants = {
   }),
 };
 
-/**
- * Auth step panel swap — email-only vs password+chip panels crossfade as one
- * keyed block inside a fixed-height viewport (`AnimatePresence mode="wait"`).
- * Mirrors `framerPresence.workbenchPane` — opacity + small y, no horizontal slide.
- */
-export const signInStepVariants: Variants = {
-  enter: { opacity: 0, y: 8 },
-  center: { opacity: 1, y: 0 },
-  exit: { opacity: 0, y: -6 },
-};
-
-/** Reduced-motion fallback — opacity only */
-export const signInStepVariantsReduced: Variants = {
-  enter: { opacity: 0 },
-  center: { opacity: 1 },
-  exit: { opacity: 0 },
-};
+// NOTE: `signInStepVariants` / `signInStepVariantsReduced` were removed when
+// /signin stopped swapping panels. Both credential fields now stay mounted and
+// the password row reveals via `framerPresence.collapseHeight` — see
+// `.claude/rules/display/auth-step-panel.md`.
 
 // ─── Mobile-specific durations ───────────────────────────────────────────────
 

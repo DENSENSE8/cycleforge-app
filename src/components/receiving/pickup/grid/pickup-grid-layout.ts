@@ -32,11 +32,23 @@ export interface PickupGridColumn {
   gridLabel?: string;
   labelFitRem?: number;
   type?: ColumnType;
+  /** Staff-preference key (`staff_preferences.tableColumns.pickup`). */
+  hideKey?: string;
+  /** `core` ships ON (opt-out); `optional` ships OFF (opt-in via Fields). */
+  tier?: 'core' | 'optional';
   /** When false, header is not click-to-sort (select gutter only). Default true. */
   sortable?: boolean;
 }
 
-/** Canonical Local Pickup columns. Only `title` flexes; facts are content-hard. */
+/**
+ * Canonical Local Pickup columns. Only `title` flexes; facts are content-hard.
+ *
+ * DEFAULT VIEW (tier `core`) is `select · title · order · date · status` — the
+ * counter operator's four questions: what, which LCPU order, when it's being
+ * picked up, and is it still Draft. `sku` / `qty` / `condition` / `price` are
+ * line detail that the group summary already rolls up and the detail pane shows
+ * in full, so they ship `optional` rather than widening every first load.
+ */
 export const PICKUP_GRID_COLUMNS: readonly PickupGridColumn[] = [
   { key: 'select', width: 'minmax(2rem, 2rem)', sortable: false },
   {
@@ -47,13 +59,13 @@ export const PICKUP_GRID_COLUMNS: readonly PickupGridColumn[] = [
     type: 'text',
     labelFitRem: 8,
   },
-  { key: 'sku', width: 'minmax(7rem, 7rem)', label: 'SKU', type: 'id', labelFitRem: 4.5 },
-  { key: 'order', width: 'minmax(9rem, 9rem)', label: 'Order', type: 'id', labelFitRem: 4.5 },
-  { key: 'date', width: 'minmax(5.5rem, 5.5rem)', label: 'Date', type: 'date', labelFitRem: 4.5 },
-  { key: 'qty', width: 'minmax(2.75rem, 2.75rem)', label: 'Qty', type: 'number', labelFitRem: 4.5 },
-  { key: 'condition', width: 'minmax(5.5rem, 5.5rem)', label: 'Cond', type: 'tag', labelFitRem: 4.5 },
-  { key: 'price', width: 'minmax(5rem, 5rem)', label: 'Price', type: 'number', labelFitRem: 4.5 },
-  { key: 'status', width: 'minmax(5rem, 5rem)', label: 'Status', type: 'tag', labelFitRem: 4.5 },
+  { key: 'sku', width: 'minmax(7rem, 7rem)', label: 'SKU', type: 'id', hideKey: 'sku', tier: 'optional', labelFitRem: 4.5 },
+  { key: 'order', width: 'minmax(9rem, 9rem)', label: 'Order', type: 'id', hideKey: 'order', labelFitRem: 4.5 },
+  { key: 'date', width: 'minmax(5.5rem, 5.5rem)', label: 'Date', type: 'date', hideKey: 'date', labelFitRem: 4.5 },
+  { key: 'qty', width: 'minmax(2.75rem, 2.75rem)', label: 'Qty', type: 'number', hideKey: 'qty', tier: 'optional', labelFitRem: 4.5 },
+  { key: 'condition', width: 'minmax(5.5rem, 5.5rem)', label: 'Cond', type: 'tag', hideKey: 'condition', tier: 'optional', labelFitRem: 4.5 },
+  { key: 'price', width: 'minmax(5rem, 5rem)', label: 'Price', type: 'number', hideKey: 'price', tier: 'optional', labelFitRem: 4.5 },
+  { key: 'status', width: 'minmax(5rem, 5rem)', label: 'Status', type: 'tag', hideKey: 'status', labelFitRem: 4.5 },
 ] as const;
 
 const PICKUP_GRID_LOCKED_KEYS: readonly PickupGridColumnKey[] = ['select', 'title'];

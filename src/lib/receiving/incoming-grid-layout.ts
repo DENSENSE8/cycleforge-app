@@ -33,6 +33,11 @@ export interface IncomingGridColumn {
   type?: ColumnType;
   /** `TableColumnConfig` hide key (`receiving` table registry). */
   hideKey?: string;
+  /**
+   * `core` (default) ships visible; `optional` ships hidden until a staffer adds
+   * it from the Fields menu. See `LedgerGridColumnModel.tier`.
+   */
+  tier?: 'core' | 'optional';
   /** When false, header is not click-to-sort (select gutter only). Default true for data cols. */
   sortable?: boolean;
 }
@@ -41,6 +46,29 @@ export interface IncomingGridColumn {
  * Canonical Incoming columns — same keys / widths / types as
  * {@link ORDERS_QUEUE_COLUMNS}. Fact tracks are content-hard `minmax(X,X)`;
  * only `title` flexes. `order` hides under legacy `orderid`.
+ *
+ * ## Default (`core`) set — deliberately lean
+ *
+ * An inbound line is scanned by: what is it (`title`), when is it due
+ * (`date` = Expected), how overdue (`age`), how many (`qty`), where is the
+ * delivery (`status`), and the two identifiers an operator types or scans
+ * (`order` = PO#, `tracking`). That is the whole default grid.
+ *
+ * `condition` and `platform` are `optional`. On THIS surface a line has not
+ * arrived yet — `condition_grade` is set during unbox/triage, so the Cond cell
+ * is the empty dash for nearly every row, and the source channel is secondary
+ * to the PO/tracking identity the operator actually acts on. A column that is
+ * blank for most rows costs horizontal budget and scan attention for nothing.
+ *
+ * **Tier must match {@link RECEIVING_GRID_COLUMNS} key-for-key.** Incoming
+ * mounts under `TableColumnConfigProvider tableId="receiving"`
+ * (ReceivingLinesTable), so `qty` · `condition` · `rest` · `platform` ·
+ * `orderid` · `tracking` are the SAME stored pref keys Unbox / History use. Tier
+ * is what the staff delta is read against (`optional` ⇒ opt-in via `shown`,
+ * `core` ⇒ opt-out via `hidden`) — marking a key `optional` here and `core`
+ * there would give one stored key two meanings depending on which mode you are
+ * looking at. Changing a tier is a both-grids change (or a split onto a distinct
+ * `TableId`), never an Incoming-local one.
  */
 export const INCOMING_GRID_COLUMNS: readonly IncomingGridColumn[] = [
   { key: 'select', width: 'minmax(2rem, 2rem)', sortable: false },
@@ -56,11 +84,11 @@ export const INCOMING_GRID_COLUMNS: readonly IncomingGridColumn[] = [
   { key: 'date', width: 'minmax(4.5rem, 4.5rem)', label: 'Expected', gridLabel: 'By', type: 'date', labelFitRem: 4.5 },
   { key: 'age', width: 'minmax(3rem, 3rem)', label: 'Age', type: 'date', labelFitRem: 4.5 },
   { key: 'qty', width: 'minmax(2.75rem, 2.75rem)', label: 'Qty', type: 'number', hideKey: 'qty', labelFitRem: 4.5 },
-  { key: 'condition', width: 'minmax(5.5rem, 5.5rem)', label: 'Cond', type: 'tag', hideKey: 'condition', labelFitRem: 4.5 },
+  { key: 'condition', width: 'minmax(5.5rem, 5.5rem)', label: 'Cond', type: 'tag', hideKey: 'condition', tier: 'optional', labelFitRem: 4.5 },
   // Receiving-specific delivery status (hide with meta `rest` in TableColumnConfig).
   // Icon + short Seller claim only (city stays in tooltip).
   { key: 'status', width: 'minmax(4.5rem, 4.5rem)', label: 'Status', type: 'tag', hideKey: 'rest', labelFitRem: 4.5 },
-  { key: 'platform', width: 'minmax(3rem, 3rem)', label: 'Platform', gridLabel: 'Ch.', type: 'external', hideKey: 'platform', labelFitRem: 4.5 },
+  { key: 'platform', width: 'minmax(3rem, 3rem)', label: 'Platform', gridLabel: 'Ch.', type: 'external', hideKey: 'platform', tier: 'optional', labelFitRem: 4.5 },
   // Wide enough for plain last-4 mono (no truncate ellipsis).
   { key: 'order', width: 'minmax(4.5rem, 4.5rem)', label: 'Order', type: 'id', hideKey: 'orderid', labelFitRem: 4.5 },
   // Fits + TRK# attach face (chip-size AddValueChipFace ~62px + cell pad).

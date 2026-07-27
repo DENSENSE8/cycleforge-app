@@ -1,8 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import { listNasDir, type NasEntry } from '@/lib/nas-photos';
 import { NasBreadcrumb, NasFolderCard, NasSectionLabel } from '@/components/nas/NasBrowserChrome';
-import { Layer } from '@/design-system';
 import { Button } from '@/design-system/primitives';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/design-system/components/Dialog';
 
 /**
  * Browse the NAS tree and pick a folder. Reuses the same breadcrumb + folder
@@ -44,17 +49,20 @@ export function FolderPickerModal({
   const folders = entries.filter((e) => e.type === 'directory');
 
   return (
-    <Layer level="panelPopover" role="dialog" aria-modal="true" className="fixed inset-0 grid place-items-center bg-scrim/40 p-4" onClick={onCancel}>
-      <div onClick={(e) => e.stopPropagation()} className="flex max-h-[80vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-surface-card shadow-2xl ring-1 ring-border-soft">
-        <div className="flex items-center justify-between border-b border-border-hairline px-4 py-3">
+    <Dialog open onOpenChange={(next) => { if (!next) onCancel(); }}>
+      <DialogContent
+        hideClose
+        className="flex max-h-[80vh] w-full max-w-lg flex-col gap-0 overflow-hidden p-0"
+      >
+        <DialogHeader className="flex-row items-center justify-between gap-3 space-y-0 border-b border-border-hairline px-4 py-3">
           <div className="min-w-0">
-            <p className="text-role-micro uppercase tracking-[0.18em] text-text-faint">Pick folder · {station}</p>
-            <p className="truncate text-sm font-bold text-text-default">/{dir || 'Root'}</p>
+            <p className="text-role-micro uppercase tracking-[0.18em] text-text-soft">Pick folder · {station}</p>
+            <DialogTitle className="truncate text-sm font-bold">/{dir || 'Root'}</DialogTitle>
           </div>
           <Button variant="secondary" size="sm" type="button" onClick={onCancel}>
             Cancel
           </Button>
-        </div>
+        </DialogHeader>
 
         {dir ? (
           <div className="border-b border-border-hairline inset-field">
@@ -96,7 +104,7 @@ export function FolderPickerModal({
             Use this folder
           </Button>
         </div>
-      </div>
-    </Layer>
+      </DialogContent>
+    </Dialog>
   );
 }

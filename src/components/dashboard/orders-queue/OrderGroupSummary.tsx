@@ -8,7 +8,6 @@ import {
   getLast4,
 } from '@/components/ui/CopyChip';
 import { RowTitle, RowConditionMeta } from '@/components/ui/RowMetaColumns';
-import { useIsColumnHidden } from '@/components/ui/table-column-config/TableColumnConfig';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { PlatformMark } from '@/components/ui/PlatformMark';
 import {
@@ -29,8 +28,8 @@ import {
   ordersQueueRowShellClass,
   type OrdersQueueColumn,
 } from '@/lib/dashboard-order-row-layout';
-import { GridCellDash, GridDateCellValue } from '@/components/ui/grid-cells';
-import { formatQueueRowDateCell, formatSalePrice, queueRowShipBySource, resolveRowStatus, type QueueRowRecord } from './helpers';
+import { GridDateCellValue } from '@/components/ui/grid-cells';
+import { formatQueueRowDateCell, formatSalePrice, queueRowShipBySource, type QueueRowRecord } from './helpers';
 import { orderRowQtyTone } from '@/lib/condition-tone';
 import { orderRowConditionLabel, EMPTY_META_DASH } from '@/lib/conditions';
 import { cn } from '@/utils/_cn';
@@ -39,8 +38,13 @@ import { cn } from '@/utils/_cn';
  * Collapsed header for multi-product orders — the SAME Sheets-like WMS grid as
  * {@link OrdersQueueTableRow}, mapped over the SAME ordered `columns` list
  * (cell-renderer registry), so the group header locks to child rows under any
- * drag-reordered column order. Identity cells are quiet; platform renders the
- * fixed brand mark; each fact stays under its own column header.
+ * drag-reordered column order. Identity cells are quiet; each fact stays under
+ * its own column header. The platform brand mark is a MOBILE-only affordance —
+ * the desktop Platform column is retired from both column models.
+ *
+ * `columns` arrives already RESOLVED to the visible tracks
+ * (`useGridColumnVisibility` in `OrdersGridView`), so a hidden column loses its
+ * TRACK; this summary never re-tests hidden-ness per cell.
  */
 export function OrderGroupSummary({
   rows,
@@ -54,17 +58,11 @@ export function OrderGroupSummary({
    *  so the scoped `[data-grid-skin='airtable']` stylesheet draws the per-cell
    *  spreadsheet gridlines on the collapsed header, matching its child rows. */
   gridSkin?: boolean;
-  /** Ordered column models (already sanitized). Default = canonical order. */
+  /** Ordered VISIBLE column models (already sanitized + visibility-resolved).
+   *  Default = canonical order. */
   columns?: readonly OrdersQueueColumn[];
 }) {
   const orderChannelLabel = useOrderChannelLabel();
-  const isHidden = useIsColumnHidden();
-  const showQtyCol = !isHidden('qty');
-  const showConditionCol = !isHidden('condition');
-  const showStatusCol = !isHidden('status');
-  const showPlatform = !isHidden('platform');
-  const showOrder = !isHidden('orderid');
-  const showTracking = !isHidden('tracking');
 
   const first = rows[0];
   const orderId = String(first.order_id || '').trim();
@@ -82,16 +80,6 @@ export function OrderGroupSummary({
       : conditions.size > 1
         ? 'MIXED'
         : EMPTY_META_DASH;
-
-  // Fulfillment status fold — single lane → that chip; mixed → quiet MIXED.
-  const statusMetas = rows.map((r) => resolveRowStatus(r as QueueRowRecord, 'fulfillment'));
-  const statusLabels = new Set(statusMetas.map((m) => m.label));
-  const groupStatus =
-    statusLabels.size === 1
-      ? statusMetas[0]
-      : statusLabels.size > 1
-        ? { label: 'MIXED', description: 'Mixed fulfillment status in this order', pill: 'bg-surface-canvas text-text-muted ring-border-soft', dot: 'bg-border-emphasis' }
-        : null;
 
   const priceSum = rows.reduce((sum, r) => {
     const n = r.sale_amount == null || r.sale_amount === '' ? NaN : Number(r.sale_amount);
@@ -220,66 +208,33 @@ export function OrderGroupSummary({
             —
           </div>
         );
-      case 'status':
-        return showStatusCol && groupStatus ? (
-          <div data-col="status" className={dataCell(rule)}>
-            <HoverTooltip label={groupStatus.description} focusable={false}>
-              <span
-                className={cn(
-                  'inline-flex min-w-0 max-w-full items-center truncate rounded-full inset-chip text-role-micro font-black uppercase tracking-widest ring-1 ring-inset',
-                  groupStatus.pill,
-                )}
-              >
-                {groupStatus.label}
-              </span>
-            </HoverTooltip>
-          </div>
-        ) : (
-          <span className={dataCell(rule)} />
-        );
       case 'qty':
-        return showQtyCol ? (
+        return (
           <div data-col="qty" className={cn(dataCell(rule), gridSkin && 'justify-end')}>
             {/* Matches the leaf-row qty / Date-cell type scale. */}
             <span className={cn('min-w-0 truncate tabular-nums text-role-caption', orderRowQtyTone(qtySum))}>
               {qtySum}
             </span>
           </div>
-        ) : (
-          <span className={dataCell(rule)} />
         );
       case 'condition':
-        return showConditionCol ? (
+        return (
           <div data-col="condition" className={cn(dataCell(rule), 'text-role-eyebrow uppercase text-text-muted')}>
             <span className="min-w-0 truncate">
               <RowConditionMeta condition={conditionText} />
             </span>
           </div>
-        ) : (
-          <span className={dataCell(rule)} />
-        );
-      case 'platform':
-        // Listing-link cell — mirrors the leaf-row rule: on the grid, a fold
-        // with no listing link shows a quiet dash (FBA keeps its channel mark).
-        return (
-          <div data-col="platform" className={dataCell(rule)}>
-            {!showPlatform ? null : gridSkin && !productPageUrl && !isFba ? (
-              <GridCellDash />
-            ) : (
-              platformCell
-            )}
-          </div>
         );
       case 'order':
         return (
           <div data-col="order" className={dataCell(rule)}>
-            {showOrder ? orderCell : null}
+            {orderCell}
           </div>
         );
       case 'tracking':
         return (
           <div data-col="tracking" className={dataCell(rule)}>
-            {showTracking ? trackingCell : null}
+            {trackingCell}
           </div>
         );
       default:
