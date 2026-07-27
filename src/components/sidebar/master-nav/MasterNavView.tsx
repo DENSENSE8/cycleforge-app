@@ -10,6 +10,8 @@ import {
   type ReactNode,
 } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
+import { framerTransition } from '@/design-system/foundations/motion-framer';
+import { useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
 import { navIconStrokeClass } from '@/components/icons/nav-weight';
 import type { SidebarIconComponent, SidebarPageNav } from '@/lib/sidebar-navigation';
 import { cn } from '@/utils/_cn';
@@ -38,18 +40,21 @@ const ModesPanel = forwardRef<
     className?: string;
     /** Fired after a mode pick so the host can dismiss the panel. */
     onModeSelect?: () => void;
+    /** Drop the floating card chrome — see `MasterNavDropdown`'s `flat`. */
+    flat?: boolean;
   }
->(function ModesPanel({ modes, className, onModeSelect }, ref) {
+>(function ModesPanel({ modes, className, onModeSelect, flat = false }, ref) {
   return (
     <motion.div
       ref={ref}
       key="modes-panel"
       initial={false}
       animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, y: -4, scale: 0.99 }}
+      exit={flat ? { opacity: 0 } : { opacity: 0, y: -4, scale: 0.99 }}
       transition={{ duration: 0.12, ease: 'easeOut' }}
       className={cn(
-        'z-dropdown max-h-[320px] overflow-y-auto rounded-2xl border border-border-soft bg-surface-card p-1 shadow-xl shadow-slate-900/10',
+        'max-h-[320px] overflow-y-auto p-1',
+        !flat && 'z-dropdown rounded-2xl border border-border-soft bg-surface-card shadow-xl shadow-slate-900/10',
         className,
       )}
       role="menu"
@@ -120,6 +125,7 @@ export function MasterNavView({
   onRowHover,
   onRequestClose,
   renderContext,
+  layout = 'floating',
   className,
 }: {
   activePage: SidebarPageNav;
@@ -140,6 +146,16 @@ export function MasterNavView({
   onRequestClose?: () => void;
   /** The workspace body shown under the header; the dropdown floats over it. */
   renderContext?: () => ReactNode;
+  /**
+   * `floating` (default) — menus are absolutely positioned and float over
+   * whatever is below. Used with `renderContext` (the classic sidebar panel) and
+   * standalone.
+   *
+   * `docked` — menus render **in flow**, expanding the host downward. The
+   * station column uses this: the nav card grows and pushes the recents card
+   * down instead of covering it. Ignores `renderContext`.
+   */
+  layout?: 'floating' | 'docked';
   className?: string;
 }) {
   const activeMode = activePage.modes?.find((m) => m.id === activeModeId);
@@ -157,6 +173,9 @@ export function MasterNavView({
   // ── Modes panel (click only) ──────────────────────────────────────────────
   const modeful = pageModes.length > 1;
   const [modesOpen, setModesOpen] = useState(false);
+  // Routed through the hook so `prefers-reduced-motion` collapses the height
+  // tween instead of animating layout for users who asked it not to.
+  const dockedExpandTransition = useMotionTransition(framerTransition.stationCollapse);
 
   // Full nav always wins — dismiss modes when it opens.
   useEffect(() => {
@@ -245,6 +264,55 @@ export function MasterNavView({
       />
     </div>
   );
+
+  // Station column: menus expand the card downward, in flow, so the recents
+  // card below is pushed down rather than covered. Same shell, same width, same
+  // stacking band as that card — only the anchored edge differs. `height: auto`
+  // is the sanctioned layout animation for a low-frequency expand/collapse
+  // (see display/motion-crossfade.md); a nav menu open is exactly that.
+  if (layout === 'docked') {
+    const expanded = open || modesOpen;
+    return (
+      <div className={cn('flex min-h-0 flex-col', className)}>
+        <div ref={headerRef} className="shrink-0">
+          {header}
+        </div>
+        <AnimatePresence initial={false}>
+          {expanded && (
+            <motion.div
+              key={open ? 'nav-menu' : 'modes-menu'}
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={dockedExpandTransition}
+              className="min-h-0 overflow-hidden border-t border-border-hairline"
+            >
+              {open ? (
+                <MasterNavDropdown
+                  ref={menuRef}
+                  flat
+                  activePage={activePage}
+                  activeModeId={activeModeId}
+                  otherPages={otherPages}
+                  expandedKey={expandedKey}
+                  onToggleRow={onToggleRow}
+                  onNavigate={onNavigate}
+                  onRowHover={onRowHover}
+                />
+              ) : (
+                <ModesPanel
+                  ref={modesPanelRef}
+                  flat
+                  modes={pageModes}
+                  onModeSelect={() => setModesOpen(false)}
+                />
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    );
+  }
 
   // With a context body (the sidebar), both menus live in the header band and
   // float over the body below. Without one (the demo card), they float from

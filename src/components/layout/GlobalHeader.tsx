@@ -30,9 +30,12 @@ import { cn } from '@/utils/_cn';
  *   - **Context** — page `panelContent` via {@link useHeader}
  *   - **Find / signal / self** — {@link GlobalHeaderActions} (search ⌘K, inbox, account)
  *
- * No `border-b` here — the desktop `<main>` ({@link appContentShellClass}) owns the
- * separator as a rounded top+left edge + depth hairline so the sidebar × header
- * join is soft on every page, not an L.
+ * This bar owns the **only** separator in the desktop frame: one flat `border-b`
+ * hairline. `<main>` ({@link appContentShellClass}) used to carry a rounded
+ * top-left cutout + a full depth-edge stroke instead; that notched the corner
+ * out of every page. The canvas background now runs flat into the top-left and
+ * the header line does all the separating — so do NOT re-add a border to
+ * `<main>`, or the join doubles up.
  *
  * Mobile keeps its own chrome (MobileAppHeader); this bar is desktop-only.
  */
@@ -60,12 +63,13 @@ export function GlobalHeader({
   if (!user || isClientPublicPath(pathname)) return null;
 
   return (
-    // No border-b — {@link appContentShellClass} on `<main>` owns the separator
-    // as a rounded top+left edge + depth hairline so the master-nav × header
-    // join is a soft corner on every page, not a hard L of hairlines.
+    // The one flat hairline in the desktop frame (see the block comment above):
+    // `<main>` is square-cornered and border-less, so this line is the whole
+    // header × canvas separation.
     <header
       className={cn(
         'sticky top-0 z-header flex h-[40px] w-full shrink-0 select-none items-center gap-3 backdrop-blur-sm',
+        'border-b border-border-soft',
         HEADER_INSET_X,
         appChromeMutedClass,
       )}

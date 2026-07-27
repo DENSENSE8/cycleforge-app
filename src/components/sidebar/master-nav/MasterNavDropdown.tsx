@@ -36,11 +36,17 @@ interface MasterNavDropdownProps {
   onNavigate: (pageId: string, modeId?: string) => void;
   /** Hover hook per page row — warms the destination's data (nav-data-prefetch). */
   onRowHover?: (page: SidebarPageNav) => void;
+  /**
+   * Drop the floating card chrome (radius / border / fill / shadow). For the
+   * in-flow `docked` layout, where the station column's nav card already
+   * provides the surface and a second card inside it would read as nested.
+   */
+  flat?: boolean;
   className?: string;
 }
 
 export const MasterNavDropdown = forwardRef<HTMLDivElement, MasterNavDropdownProps>(function MasterNavDropdown(
-  { activePage, activeModeId, otherPages, expandedKey, onToggleRow, onNavigate, onRowHover, className },
+  { activePage, activeModeId, otherPages, expandedKey, onToggleRow, onNavigate, onRowHover, flat = false, className },
   ref,
 ) {
   const highlightedModeId = activeModeId ?? activePage.modes?.[0]?.id ?? null;
@@ -158,12 +164,13 @@ export const MasterNavDropdown = forwardRef<HTMLDivElement, MasterNavDropdownPro
   return (
     <motion.div
       ref={ref}
-      initial={{ opacity: 0, y: -6, scale: 0.98 }}
+      initial={flat ? false : { opacity: 0, y: -6, scale: 0.98 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, y: -6, scale: 0.98 }}
+      exit={flat ? { opacity: 0 } : { opacity: 0, y: -6, scale: 0.98 }}
       transition={softSpring}
       className={cn(
-        'z-dropdown max-h-[340px] overflow-y-auto rounded-2xl border border-border-soft bg-surface-card p-1 shadow-xl shadow-slate-900/10',
+        'max-h-[340px] overflow-y-auto p-1',
+        !flat && 'z-dropdown rounded-2xl border border-border-soft bg-surface-card shadow-xl shadow-slate-900/10',
         className,
       )}
     >

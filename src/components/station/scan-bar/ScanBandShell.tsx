@@ -36,6 +36,11 @@ export function ScanBandShell({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={mountTransition}
+      // `shrink-0` on the wrapper, not just the inner band: the shell is a flex
+      // child of its host column, and in a height-capped host (the floating rail
+      // dock) an auto-shrink wrapper squashes the 40px band even though the band
+      // itself is `shrink-0`.
+      className="shrink-0"
     >
       <ScanBandGlowHost themeColor={themeColor} className={cn(receivingScanBandClass)}>
         {children}

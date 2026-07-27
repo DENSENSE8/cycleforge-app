@@ -32,12 +32,12 @@ export interface DesktopShellProps {
  *   │  Sidebar  ├──────────────────────────────┤
  *   │  (360px)  │                              │
  *   │           │  Main content (flex-1)       │
- *   │           │  soft-tl radius under header │
+ *   │           │  square corner, no edge      │
  *   └───────────┴──────────────────────────────┘
  *
  * Mirrors {@link ResponsiveLayout}: chrome column is `bg-surface-card`; `<main>`
- * uses {@link appContentShellClass} so the sidebar × header join is a soft
- * corner with the shared depth-edge hairline.
+ * uses {@link appContentShellClass}, which is square-cornered and border-less —
+ * the top bar's own hairline is the only separator.
  *
  * Sidebar collapses with a width transition (matches DashboardSidebar behavior).
  */
@@ -68,9 +68,9 @@ export function DesktopShell({
         {topBar && (
           <div className="flex-shrink-0">{topBar}</div>
         )}
-        <main className={cn(appContentShellClass, !topBar && 'rounded-tl-none')}>
-          {children}
-        </main>
+        {/* `appContentShellClass` is already square-cornered — the old
+            `rounded-tl-none` override for the no-top-bar case is dead. */}
+        <main className={appContentShellClass}>{children}</main>
       </div>
     </div>
   );

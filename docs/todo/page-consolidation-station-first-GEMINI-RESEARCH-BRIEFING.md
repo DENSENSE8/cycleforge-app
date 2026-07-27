@@ -133,6 +133,51 @@ Measured by grepping every `href`/route literal in `src`. These are reachable on
 
 **~4,400 LOC across 20 pages that no navigation path reaches.** This is the cheapest, least controversial win available and is independent of the station question.
 
+> ### ⚠️ AUDIT CORRECTION (2026-07-26, post-brief)
+>
+> A pre-deletion audit disproved part of the table above. **"No inbound `href`" ≠ "dead."**
+> Three distinct categories were conflated; only one is safe to delete.
+>
+> | Route | Audited verdict | Evidence |
+> |---|---|---|
+> | `/open-links` | **LIVE — do not delete** | Not navigated to by `href`; the URL is *built* at `src/lib/receiving/listing-links.ts:189` (`` `/open-links?${qs}` ``) and asserted by `listing-links.test.ts:179`. It is the popup-blocker hub for the Unbox multi-listing flow. |
+> | `/calendar` | **UNLINKED FEATURE — do not delete** | `WorkOrderCalendar` + live E2E (`work-order-calendar.spec.ts`, 3× `goto('/calendar')`). It does **not** overlap Admin → Staff schedule: that section is weekly *staff shifts*; this is *work-order* scheduling. Different domains. |
+> | `/admin/inventory/**` | **UNLINKED FEATURES — do not delete** | `bulk-allocate` and `holds` have **zero** implementations anywhere else in `src`. Deleting removes capability, it does not reclaim debt. (`cycle-counts`/`returns`/`throughput` do have equivalents.) |
+> | `/design-demo/**` | **GATED, not deleted** ✅ done | Real dev tooling — driven by `tests/measure.mjs`, `tests/shot.mjs`, `design-demo-showcase.spec.ts`. Now 404s in production via `src/app/design-demo/layout.tsx`; still available on `next dev`/preview. |
+> | `/reports` | **UNLINKED FEATURE — do not delete** | Calls 3 APIs. Operations → Analytics covers `velocity` + `dead-stock`, but **`/api/reports/bin-utilization` has exactly one caller in the entire repo — this page.** |
+> | `/tracking-exceptions` | **UNLINKED FEATURE — do not delete** | Its API has 6 other consumers (Inventory Triage, `useTriageUnfoundExceptions`, Operations `ExceptionsRow`), so the *data* is well surfaced — but Triage implements GET + PATCH only. `TrackingExceptionsTable.tsx:164` holds the **only** `method: 'DELETE'` against `/api/tracking-exceptions/[id]`. |
+> | `/search`, `/search/history` | **MISCATEGORIZED — belongs in §2d** | Both are 10–21-line `redirect('/dashboard?mode=search')` stubs. They are legacy alias redirects (the "correct, keep" category), not orphan pages. §2c's LOC total was inflated by counting them. |
+> | `/photos` | **Borderline — left in place** | `listNasDir` has 3 other consumers (admin `FolderPickerModal`, mobile `NasPhotoPicker`), so NAS browsing exists elsewhere — but only as *picker modals*, not a full browser. No evidence forces deletion; left pending a product call. |
+> | `/release-notes` | Keep | Unlinked utility, no capability claim. |
+>
+> ### Phase 1's actual yield: **zero deletable LOC**
+>
+> Every one of the ~20 "orphan pages" resolved to **live** (`/open-links`), a
+> **legacy redirect** (`/search*`), **dev tooling** (`/design-demo/**` → gated), or an
+> **unlinked feature with ≥1 capability that exists nowhere else** (`/calendar`,
+> `/admin/inventory/**` → `bulk-allocate` + `holds`, `/reports` → `bin-utilization`,
+> `/tracking-exceptions` → the only `DELETE`). **None was dead code.**
+>
+> **This inverts the diagnosis.** The app does not carry ~4,400 LOC of junk to purge; it
+> carries ~4,400 LOC of **working features nobody can navigate to**. That is a *navigation*
+> failure, which is precisely the Q2 answer ("navigational flattening," not "too many
+> pages") — and it is evidence **for** the lane model, not cleanup preceding it. Features
+> fell off a flat 15-row nav and kept running.
+>
+> **Consequences for the plan:** Phase 1 is not a prerequisite and cannot be "burned"
+> first. Re-scope it from *delete* to **triage**: for each unlinked feature, decide
+> **wire into a lane** or **deliberately retire** (a product decision, with the unique
+> capability named). Q4/Q5 should be answered against that framing.
+>
+> **Method note for Q5.** A reference sweep must cover *four* forms, not one:
+> `href=`/`push()`, template-literal URL builders in `src/lib/**`, `window.open`/`location.assign`,
+> and E2E `goto()`. The first sweep used only the first form and produced three false positives.
+>
+> **Revised framing:** "orphan page" splits into **dead code** (delete), **dev tooling**
+> (gate out of production), and **unlinked feature** (wire into nav *or* deliberately retire —
+> a product decision, not a cleanup). Phase 1 is therefore **not** the "zero dependency risk"
+> step it was scoped as. Please answer Q5 against this three-way split.
+
 ### 2d. Legacy alias / redirect pages (correct, keep)
 
 `/receiving` → `/unbox`, `/packer` → `/pack`, `/tech` → `/test`, `/outbound` → `/shipping`, `/replenish` → `/inventory?section=replenish`, `/signals` → `/operations?mode=signals`, `/manuals` → `/products`. These preserve bookmarks and are ~11–19 LOC each. Not a problem.
@@ -233,7 +278,29 @@ Please score these against each other, don't just pick one:
 
 ## 6. Hard constraints (a recommendation that violates these is unusable)
 
-1. **Multi-tenant.** Nav is permission-filtered per staff role; every surface has a `requires` permission and a route-level middleware gate. A recommendation must survive a tenant where half the surfaces are invisible.
+1. **Multi-tenant.** Nav is permission-filtered per staff role; every surface declares a `requires` permission. A recommendation must survive a tenant where half the surfaces are invisible.
+
+   > **⚠️ CORRECTION (2026-07-26, audited).** An earlier draft of this line claimed a
+   > *"route-level middleware gate."* **That gate does not exist.** There is no
+   > `middleware.ts` / `src/middleware.ts` anywhere in the repo, and
+   > `permissionForPath()` — whose docstring says *"Used by middleware to redirect users
+   > to `/not-authorized`"* — has **zero runtime callers** (only a test imports it).
+   > `ROUTE_PERMISSIONS` is therefore dead config at runtime.
+   >
+   > Real enforcement is **per-page, opt-in**: `requirePermission()` from
+   > `@/lib/auth/page-guard`, called by **24 of 137** pages. The root layout has no gate.
+   > Data is still protected — the API waist is 100% gated (`verify` → *"route-auth
+   > enforce: all 877 routes are gated or intentionally exempt"*), and the ungated pages
+   > audited (`/reports`, `/photos`, `/tracking-exceptions`) are client shells that fetch
+   > through those gated APIs. So the exposure is **page shells, not tenant data** — low
+   > severity, but the architectural claim was false.
+   >
+   > **Why this matters for the IA answer:** any recommendation that assumes URL-typed
+   > navigation is centrally gated is wrong today. If the nav collapses into lanes, the
+   > per-page opt-in model gets *harder* to reason about, not easier — a surface that
+   > drops off the nav keeps resolving for anyone who knows the URL. Please treat
+   > "reinstate a real route gate" as a candidate prerequisite and say whether it should
+   > block the nav work or ship beside it.
 2. **The four region contracts are ratified law.** You may argue a specific region is mis-classified. You may not propose a fifth contract without justifying it against the existing four.
 3. **URL is the state SoT for Workbench and Canvas.** Selection, mode, and (increasingly) filters live in search params. Deep links and reload-safety are non-negotiable for those contracts.
 4. **Scanner-driven regions short-circuit to Station.** Hands-busy operators, focus-locked scan bar, F2 global refocus. Anything that steals scan focus is a regression.
