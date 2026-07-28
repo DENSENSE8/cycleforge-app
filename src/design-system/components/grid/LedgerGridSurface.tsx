@@ -48,6 +48,13 @@ interface LedgerGridSurfaceProps<Row, K extends string> {
   /** Mirror of the LedgerGrid scroll body (keyboard nav / scroll-to-top). */
   scrollRef?: RefObject<HTMLDivElement | null>;
   className?: string;
+  /**
+   * Accessible name for the table — REQUIRED. `LedgerGrid` exposes
+   * `role="table"`, and a table with no accessible name announces as a bare
+   * "table" with no indication of what it holds. Name the collection, not the
+   * page ("Incoming cartons", not "Incoming").
+   */
+  ariaLabel: string;
   /** Outer card testid; the scroll body gets `${testId}-scroll`. */
   testId: string;
 }
@@ -68,6 +75,7 @@ export function LedgerGridSurface<Row, K extends string>({
   showDayHeaders = false,
   scrollRef,
   className,
+  ariaLabel,
   testId,
 }: LedgerGridSurfaceProps<Row, K>) {
   // Controlled sort mirror → TanStack state; header clicks route through the
@@ -127,6 +135,7 @@ export function LedgerGridSurface<Row, K extends string>({
           contentMinWidthRem={descriptor.contentMinWidthRem}
           gridSkin="airtable"
           showDayHeaders={dayHeadersActive}
+          aria-label={ariaLabel}
           data-testid={`${testId}-scroll`}
           bodyRef={scrollRef}
           orderGroupsByDate={orderGroupsByDate}

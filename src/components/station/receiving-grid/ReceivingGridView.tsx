@@ -169,6 +169,7 @@ export function ReceivingGridView({
 
   return (
     <LedgerGridSurface<ReceivingLineRow, ReceivingGridColumnKey>
+      ariaLabel="Receiving carton lines"
       descriptor={descriptor}
       orderGroupsByDate={orderGroupsByDate}
       rows={flatRows}

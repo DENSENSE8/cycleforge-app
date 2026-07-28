@@ -92,6 +92,7 @@ export function UnshippedShelfBoard({
           state kept it short). */}
       <div className={cn(WORKBENCH_TABLE_VIEWPORT, 'pb-3')}>
         <OrdersGridView
+          ariaLabel="Shelved unshipped orders"
           records={records}
           loading={loading}
           searchValue={searchValue}

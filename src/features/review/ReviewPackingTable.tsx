@@ -178,6 +178,7 @@ export function ReviewPackingTable({ onOpenRow, onCloseRow }: ReviewPackingTable
       >
         <div className={`${WORKBENCH_BODY_COLUMN} ${WORKBENCH_TABLE_VIEWPORT_NO_KPI} pb-3`}>
           <OrdersGridView
+            ariaLabel="Orders awaiting packing review"
             records={records as ShippedOrder[]}
             loading={loading}
             searchValue={searchQuery}

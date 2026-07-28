@@ -79,6 +79,7 @@ export function ReviewPairingTable({ onOpenOrder, onCloseOrder }: ReviewPairingT
       >
         <div className={`${WORKBENCH_BODY_COLUMN} ${WORKBENCH_TABLE_VIEWPORT_NO_KPI} pb-3`}>
           <OrdersGridView
+            ariaLabel="Orders awaiting pairing review"
             records={records}
             loading={loading}
             searchValue={searchQuery}

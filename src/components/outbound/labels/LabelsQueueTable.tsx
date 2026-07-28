@@ -77,6 +77,7 @@ export function LabelsQueueTable({
     <AddTrackingNavProvider orderedIds={awaitingOrderIds}>
       <div className={WORKBENCH_TABLE_VIEWPORT}>
         <OrdersGridView
+          ariaLabel="Labels queue"
           records={records}
           queueMode="labels"
           loading={query.isLoading}

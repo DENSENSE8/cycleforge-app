@@ -129,6 +129,7 @@ export function IncomingGridView({
 
   return (
     <LedgerGridSurface<ReceivingLineRow, IncomingGridColumnKey>
+      ariaLabel="Incoming cartons"
       descriptor={descriptor}
       orderGroupsByDate={orderGroupsByDate}
       rows={flatRows}

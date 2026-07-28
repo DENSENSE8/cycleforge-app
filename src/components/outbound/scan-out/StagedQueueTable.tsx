@@ -63,6 +63,7 @@ export function StagedQueueTable({
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col">
       <OrdersGridView
+        ariaLabel="Orders staged for scan-out"
         records={records}
         queueMode="staged"
         loading={query.isLoading}

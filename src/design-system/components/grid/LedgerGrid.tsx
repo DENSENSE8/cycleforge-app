@@ -93,6 +93,11 @@ interface LedgerGridProps<T> {
    * Omitted → the plain hairline look (the vertical shelf-board never opts in).
    */
   gridSkin?: 'airtable';
+  /**
+   * Accessible name for the table. A `role="table"` with no name announces as a
+   * bare "table" — pass the surface's human label (e.g. "Incoming cartons").
+   */
+  'aria-label'?: string;
   /** Test hook on the scroll body. */
   'data-testid'?: string;
 }
@@ -118,6 +123,7 @@ export function LedgerGrid<T>({
   bodyRef: bodyRefProp,
   className,
   gridSkin,
+  'aria-label': ariaLabel,
   'data-testid': dataTestId = 'ledger-grid-body',
 }: LedgerGridProps<T>) {
   const bodyRef = useRef<HTMLDivElement>(null);
@@ -217,6 +223,14 @@ export function LedgerGrid<T>({
   return (
     <div
       ref={bodyRef}
+      // `table`, NOT `grid`. ARIA `grid` is a composite widget and asserting it
+      // obligates the full APG keyboard contract (roving tabindex, arrow-key cell
+      // navigation, Home/End, Ctrl+Home/End) which this shell does not implement.
+      // `table` is the honest claim for tabular content whose cells may still hold
+      // widgets. Omitted while empty so the empty-state message isn't announced as
+      // a table with no rows.
+      role={empty ? undefined : 'table'}
+      aria-label={empty ? undefined : ariaLabel}
       data-cf-grid
       data-grid-skin={gridSkin}
       data-grid-split-x={splitX ? '' : undefined}
@@ -261,6 +275,11 @@ export function LedgerGrid<T>({
               band (self-scroll), or counter-translate under split mode. */}
           <div
             ref={headerRef}
+            // The caller's `columnHeader` carries `role="row"` + `role="columnheader"`.
+            // Both have a REQUIRED context role (`row` needs rowgroup/table/grid;
+            // `columnheader` needs a row in a table/grid). Without this rowgroup the
+            // header roles are orphaned and the markup is spec-invalid.
+            role="rowgroup"
             data-grid-col-header=""
             className={cn(
               'sticky top-0 z-sticky isolate shrink-0 bg-surface-card',
