@@ -348,6 +348,7 @@ export function FbaBoardTable({
         showDayHeaders
         scrollX
         gridSkin="airtable"
+        aria-label="FBA shipment board"
         columnHeader={
           <div
             className={cn(

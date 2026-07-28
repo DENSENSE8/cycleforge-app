@@ -114,6 +114,7 @@ export function PackedOrdersTable({
       )}
       <div className={cn(WORKBENCH_TABLE_VIEWPORT, 'pb-3')}>
         <OrdersGridView
+          ariaLabel="Packed orders"
           records={records as ShippedOrder[]}
           loading={query.isLoading}
           searchValue={searchQuery}

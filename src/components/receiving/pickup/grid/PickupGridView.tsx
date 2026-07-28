@@ -132,6 +132,7 @@ export function PickupGridView({
 
   return (
     <LedgerGridSurface<PickupLine, PickupGridColumnKey>
+      ariaLabel="Local pickup order lines"
       descriptor={descriptor}
       orderGroupsByDate={orderGroupsByDate}
       rows={rows}

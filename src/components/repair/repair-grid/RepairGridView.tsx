@@ -110,6 +110,7 @@ export function RepairGridView({
 
   return (
     <LedgerGridSurface<RSRecord, RepairGridColumnKey>
+      ariaLabel="Repair queue"
       descriptor={descriptor}
       orderGroupsByDate={orderGroupsByDate}
       rows={records}

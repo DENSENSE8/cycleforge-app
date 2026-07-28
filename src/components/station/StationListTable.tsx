@@ -84,6 +84,12 @@ export interface StationListTableProps<TRecord> {
   searchValue?: string;
   onClearSearch?: () => void;
   emptyMessage: string;
+  /**
+   * Accessible name for the virtualized table. Optional here (unlike the other
+   * grid composers) because this shell is wrapped by generic station adapters —
+   * it falls back to `bannerTitle`, which is already the surface's human label.
+   */
+  ariaLabel?: string;
   /** Typed first-run empty (zero rows, no search) — teaches instead of faint text. */
   firstRunEmpty?: ReactNode;
   searchEmptyTitle?: string;
@@ -125,6 +131,7 @@ export function StationListTable<TRecord>({
   searchValue = '',
   onClearSearch,
   emptyMessage,
+  ariaLabel,
   firstRunEmpty,
   searchEmptyTitle = 'Not found',
   searchResultLabel = 'records',
@@ -244,6 +251,7 @@ export function StationListTable<TRecord>({
             orderGroupsByDate={orderGroupsByDate}
             daySections={daySections}
             showDayHeaders
+            aria-label={ariaLabel ?? bannerTitle}
             columnHeader={columnHeader}
             renderRow={renderRow}
             renderGroup={renderGroup}

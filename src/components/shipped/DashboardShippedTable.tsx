@@ -179,6 +179,7 @@ export function DashboardShippedTable({
         data-testid="column-table-body"
       >
         <OrdersGridView
+          ariaLabel="Shipped orders"
           records={gridRecords}
           loading={query.isLoading}
           searchValue={filters.search}

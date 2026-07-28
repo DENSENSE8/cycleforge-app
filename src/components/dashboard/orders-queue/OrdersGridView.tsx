@@ -86,6 +86,13 @@ interface OrdersGridViewProps {
    * via {@link useQueueDisplaySort} (Pending / To Ship).
    */
   sort?: OrdersQueueSort;
+  /**
+   * Accessible name for the table — REQUIRED. `LedgerGrid` exposes
+   * `role="table"`; one shared grid serves every outbound lane, so the lane must
+   * name itself ("Packed orders", "Labels queue") or a screen reader announces
+   * an anonymous table on all of them.
+   */
+  ariaLabel: string;
   /** Extra classes on the outer shell. */
   className?: string;
   /** Stable test id for the outer shell (default pending-grid-body). */
@@ -123,6 +130,7 @@ export function OrdersGridView({
   queueMode = 'fulfillment',
   tableId = 'orders',
   sort: sortProp,
+  ariaLabel,
   className,
   'data-testid': dataTestId = 'orders-grid-body',
   scrollParentRef,
@@ -393,6 +401,7 @@ export function OrdersGridView({
         scrollParentRef={scrollParentRef}
         contentMinWidthRem={ordersQueueContentMinWidthRem(displayColumns)}
         gridSkin="airtable"
+        aria-label={ariaLabel}
         data-testid={scrollTestId}
         orderGroupsByDate={orderGroupsByDate}
         isSearching={isSearching}

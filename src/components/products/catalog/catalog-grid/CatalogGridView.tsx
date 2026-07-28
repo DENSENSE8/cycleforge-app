@@ -103,6 +103,7 @@ export function CatalogGridView({
 
   return (
     <LedgerGridSurface<CatalogListRow, CatalogGridColumnKey>
+      ariaLabel="Product catalog"
       descriptor={descriptor}
       orderGroupsByDate={orderGroupsByDate}
       rows={rows}
