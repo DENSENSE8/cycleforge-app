@@ -308,7 +308,7 @@ export function OrdersGridView({
     : `${dataTestId}-scroll`;
 
   const renderRow = useCallback(
-    (record: ShippedOrder, stripeIndex: number) => {
+    (record: ShippedOrder, stripeIndex: number, rowIndex?: number) => {
       const r = record as QueueRowRecord;
       const testerName =
         (r.tested_by_name as string | undefined) ||
@@ -329,6 +329,7 @@ export function OrdersGridView({
           disableLayoutAnimation
           opaqueStripe
           gridSkin
+          rowIndex={rowIndex}
           onToggleSelect={handleToggleSelect}
           singleSelected={singleSelectedId === Number(record.id)}
           record={r}
@@ -369,10 +370,15 @@ export function OrdersGridView({
   );
 
   const renderGroup = useCallback(
-    (group: Parameters<typeof QueueGroupRow>[0]['group'], baseStripeIndex: number) => (
+    (
+      group: Parameters<typeof QueueGroupRow>[0]['group'],
+      baseStripeIndex: number,
+      rowIndex?: number,
+    ) => (
       <QueueGroupRow
         group={group}
         baseStripeIndex={baseStripeIndex}
+        rowIndex={rowIndex}
         isMobile={isMobile}
         gridSkin
         columns={displayColumns}

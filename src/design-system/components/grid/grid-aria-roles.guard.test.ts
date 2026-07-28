@@ -121,6 +121,62 @@ describe('grid ARIA structure', () => {
     }
   });
 
+  it('LedgerGrid declares aria-rowcount (virtualized totals are not inferable)', () => {
+    assert.match(
+      ledgerGrid,
+      /aria-rowcount=\{empty \? undefined : rowCount\}/,
+      'Only a window of rows is in the DOM; without aria-rowcount a screen ' +
+        'reader reports the window size as the table size.',
+    );
+    assert.match(
+      ledgerGrid,
+      /countGridRows\(/,
+      'The count must come from the shared helper so it cannot drift from the ' +
+        'index assignment in VirtualGroupedSections.',
+    );
+  });
+
+  it('the virtualizer positioning wrapper stays out of the a11y tree', () => {
+    // A generic div between role="table" and its rows breaks the required
+    // context chain, so the wrapper is presentational and the real roles live
+    // on the rendered row / rowgroup.
+    assert.match(
+      read(join(GRID_DIR, 'VirtualGroupedSections.tsx')),
+      /role="presentation"/,
+      'The absolutely-positioned virtual-item wrapper must be presentational.',
+    );
+  });
+
+  it('elements never claim a row role AND an interactive role at once', () => {
+    // An element has exactly one role. Both of these previously used
+    // button/checkbox on the element that must be the row; the fix is a single
+    // ternary, never two role= attributes on one element.
+    const dualRole: [string, string][] = [
+      ['CollapsibleGroupRow.tsx', join(SRC_DIR, 'components/ui/CollapsibleGroupRow.tsx')],
+      [
+        'OrdersQueueTableRow.tsx',
+        join(SRC_DIR, 'components/dashboard/orders-queue/OrdersQueueTableRow.tsx'),
+      ],
+    ];
+    for (const [name, path] of dualRole) {
+      const source = stripComments(read(path));
+      assert.match(
+        source,
+        /role=\{inTable \? 'row'/,
+        `${name} must pick the row role from the in-table flag, so the row role ` +
+          'and the interactive role can never both apply to one element.',
+      );
+      // Inner controls (the select cell's real checkbox) keep their own hard-coded
+      // roles — only the ROW element's role is context-dependent.
+      assert.doesNotMatch(
+        source,
+        /role="row"/,
+        `${name} must not hard-code role="row" — outside a table that is an ` +
+          'orphaned role.',
+      );
+    }
+  });
+
   it('no component asserts role="row" or role="columnheader" outside a grid header', () => {
     // Every column-header component is passed to LedgerGrid as `columnHeader`,
     // which now supplies the rowgroup/table context. Any NEW file asserting these

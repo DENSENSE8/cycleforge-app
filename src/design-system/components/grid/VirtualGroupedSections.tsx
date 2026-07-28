@@ -9,6 +9,10 @@ import {
   nextGroupStripeIndex,
   stripeIndexForDateStart,
 } from '@/design-system/components/grid/group-stripe-index';
+import {
+  GRID_HEADER_ROW_INDEX,
+  groupRowSpan,
+} from '@/design-system/components/grid/grid-row-index';
 
 /**
  * `VirtualGroupedSections<T>` — DS SoT windowed renderer for date-ordered
@@ -33,9 +37,15 @@ import {
  */
 
 type FlatItem<T> =
-  | { kind: 'header'; key: string; date: string; count: number }
-  | { kind: 'group'; key: string; group: RowGroup<T>; baseStripeIndex: number }
-  | { kind: 'row'; key: string; record: T; stripeIndex: number };
+  | { kind: 'header'; key: string; date: string; count: number; rowIndex: number }
+  | {
+      kind: 'group';
+      key: string;
+      group: RowGroup<T>;
+      baseStripeIndex: number;
+      rowIndex: number;
+    }
+  | { kind: 'row'; key: string; record: T; stripeIndex: number; rowIndex: number };
 
 interface VirtualGroupedSectionsProps<T> {
   /** Date bands → folded order groups (grouped mode). Mutually exclusive with
@@ -47,10 +57,14 @@ interface VirtualGroupedSectionsProps<T> {
   scrollParentRef: RefObject<HTMLElement | null>;
   /** Render one row at the given zebra-stripe index. Used directly in flat mode
    *  and threaded into `renderGroup` in grouped mode. */
-  renderRow: (record: T, stripeIndex: number) => ReactNode;
+  renderRow: (record: T, stripeIndex: number, rowIndex?: number) => ReactNode;
   /** Grouped mode: render one order group (singleton row or multi-product fold).
    *  Required when `orderGroupsByDate` is passed. */
-  renderGroup?: (group: RowGroup<T>, baseStripeIndex: number) => ReactNode;
+  renderGroup?: (
+    group: RowGroup<T>,
+    baseStripeIndex: number,
+    rowIndex?: number,
+  ) => ReactNode;
   /** Stable identity for a flat row (defaults to its index within the stream —
    *  pass a real id so windowing survives re-sorts without remounting). */
   getRowKey?: (record: T, dayIndex: number) => string;
@@ -99,6 +113,10 @@ export function VirtualGroupedSections<T>({
 }: VirtualGroupedSectionsProps<T>) {
   const items = useMemo<FlatItem<T>[]>(() => {
     const flat: FlatItem<T>[] = [];
+    // ARIA row numbering runs alongside the zebra-stripe walk. It counts every
+    // row the grid COULD show (folds treated as expanded) so a collapse never
+    // renumbers the table — see grid-row-index.ts. Row 1 is the column header.
+    let rowIndex = GRID_HEADER_ROW_INDEX + 1;
     if (orderGroupsByDate) {
       // One stripe slot per top-level group (collapsed multi-child = one visual
       // row). Continuous across dates when day headers are hidden so a band
@@ -107,11 +125,19 @@ export function VirtualGroupedSections<T>({
       for (const [date, groups] of orderGroupsByDate) {
         const dayTotal = groups.reduce((sum, g) => sum + g.rows.length, 0);
         if (showDayHeaders) {
-          flat.push({ kind: 'header', key: `h:${date}`, date, count: dayTotal });
+          flat.push({ kind: 'header', key: `h:${date}`, date, count: dayTotal, rowIndex });
+          rowIndex += 1;
         }
         stripeIndex = stripeIndexForDateStart(stripeIndex, showDayHeaders);
         for (const group of groups) {
-          flat.push({ kind: 'group', key: `g:${date}:${group.key}`, group, baseStripeIndex: stripeIndex });
+          flat.push({
+            kind: 'group',
+            key: `g:${date}:${group.key}`,
+            group,
+            baseStripeIndex: stripeIndex,
+            rowIndex,
+          });
+          rowIndex += groupRowSpan(group);
           stripeIndex = nextGroupStripeIndex(stripeIndex);
         }
       }
@@ -119,13 +145,14 @@ export function VirtualGroupedSections<T>({
       let stripeIndex = 0;
       for (const [date, rows] of daySections) {
         if (showDayHeaders) {
-          flat.push({ kind: 'header', key: `h:${date}`, date, count: rows.length });
+          flat.push({ kind: 'header', key: `h:${date}`, date, count: rows.length, rowIndex });
+          rowIndex += 1;
         }
         stripeIndex = stripeIndexForDateStart(stripeIndex, showDayHeaders);
         rows.forEach((record, dayIndex) => {
           const key = getRowKey ? `r:${getRowKey(record, dayIndex)}` : `r:${date}:${dayIndex}`;
-          flat.push({ kind: 'row', key, record, stripeIndex });
-          stripeIndex += 1;
+          flat.push({ kind: 'row', key, record, stripeIndex, rowIndex });
+          rowIndex += 1;
         });
       }
     }
@@ -198,6 +225,11 @@ export function VirtualGroupedSections<T>({
             key={vRow.key}
             data-index={vRow.index}
             ref={virtualizer.measureElement}
+            // Positioning shell only. `role="table"` requires row/rowgroup
+            // children, and a generic div between them breaks that chain — so
+            // this wrapper is removed from the a11y tree and the real row /
+            // rowgroup roles live on the rendered content itself.
+            role="presentation"
             // The active header pins via position:sticky (top:0); every other item
             // is absolutely positioned by the virtualizer transform. When embedded
             // in a shared ancestor scroll region, subtract `scrollMargin` to lay out
@@ -211,11 +243,16 @@ export function VirtualGroupedSections<T>({
             }
           >
             {item.kind === 'header' ? (
-              <DateGroupHeader date={item.date} total={item.count} sticky={false} />
+              <DateGroupHeader
+                date={item.date}
+                total={item.count}
+                sticky={false}
+                rowIndex={item.rowIndex}
+              />
             ) : item.kind === 'group' ? (
-              renderGroup?.(item.group, item.baseStripeIndex) ?? null
+              renderGroup?.(item.group, item.baseStripeIndex, item.rowIndex) ?? null
             ) : (
-              renderRow(item.record, item.stripeIndex)
+              renderRow(item.record, item.stripeIndex, item.rowIndex)
             )}
           </div>
         );

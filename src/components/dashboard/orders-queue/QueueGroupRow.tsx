@@ -15,6 +15,11 @@ export interface QueueGroupRowProps {
    *  Expanded children continue locally from `base + 1` so they don't share the
    *  header's stripe. */
   baseStripeIndex: number;
+  /**
+   * Absolute ARIA row index of this group's summary (or of the leaf, when the
+   * group is a singleton). Children follow at `rowIndex + 1 + i`.
+   */
+  rowIndex?: number;
   isMobile: boolean;
   /** Airtable grid-view skin. Passed to {@link OrderGroupSummary} so the collapsed
    *  multi-product header emits `data-grid-summary-row` and picks up the scoped
@@ -24,7 +29,7 @@ export interface QueueGroupRowProps {
    *  tracks the same drag-reordered order as the leaf rows. */
   columns?: readonly OrdersQueueColumn[];
   /** Render a single queue row at the given zebra-stripe index. */
-  renderRow: (record: ShippedOrder, stripeIndex: number) => ReactNode;
+  renderRow: (record: ShippedOrder, stripeIndex: number, rowIndex?: number) => ReactNode;
 }
 
 /**
@@ -33,21 +38,25 @@ export interface QueueGroupRowProps {
  * folds into a {@link CollapsibleGroupRow}. Shared by {@link OrdersGridView}
  * / LedgerGrid (flat spreadsheet) — no duplicate row/group markup.
  */
-export function QueueGroupRow({ group, baseStripeIndex, isMobile, gridSkin = false, columns, renderRow }: QueueGroupRowProps) {
+export function QueueGroupRow({ group, baseStripeIndex, rowIndex, isMobile, gridSkin = false, columns, renderRow }: QueueGroupRowProps) {
   // Singleton order → a plain row (renderRow already sets the row key).
   if (group.rows.length === 1) {
-    return <>{renderRow(group.rows[0], baseStripeIndex)}</>;
+    return <>{renderRow(group.rows[0], baseStripeIndex, rowIndex)}</>;
   }
   // Multi-product order → one collapsed header, expand to reveal each product
   // line. Header takes `baseStripeIndex`; children continue after it.
   return (
     <CollapsibleGroupRow
       index={baseStripeIndex}
+      rowIndex={rowIndex}
       showChevron={false}
       nestRail={!gridSkin}
       summary={<OrderGroupSummary rows={group.rows} isMobile={isMobile} gridSkin={gridSkin} columns={columns} />}
     >
-      {group.rows.map((row, i) => renderRow(row, baseStripeIndex + 1 + i))}
+      {/* Summary owns `rowIndex`; children follow it in order. */}
+      {group.rows.map((row, i) =>
+        renderRow(row, baseStripeIndex + 1 + i, rowIndex == null ? undefined : rowIndex + 1 + i),
+      )}
     </CollapsibleGroupRow>
   );
 }
