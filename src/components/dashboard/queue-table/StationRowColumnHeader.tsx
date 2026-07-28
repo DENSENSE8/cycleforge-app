@@ -50,8 +50,14 @@ export function StationRowColumnHeader({
   const metaIndent = metaIndentFor('wide', selectMode);
 
   return (
+    // No `role="row"`. This is a VISUAL column guide over legacy two-zone queue
+    // rows (`dashboardOrderRowShellClass`) that carry no table semantics — and
+    // its own HeaderCells emit no `role="columnheader"`, so it was never a
+    // meaningful row. `StationListTable` also renders it standalone (empty and
+    // non-virtualized paths) with no table/rowgroup ancestor, where the role was
+    // an orphan and therefore spec-invalid. Restore it only alongside real
+    // `columnheader` cells AND a guaranteed table context.
     <div
-      role="row"
       className={cn(
         'shrink-0 border-b border-border-hairline bg-surface-canvas/95',
         QUEUE_ROW.px,

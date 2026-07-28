@@ -132,10 +132,10 @@ describe('grid ARIA structure', () => {
       'PickupGridColumnHeader.tsx',
       'ReceivingGridColumnHeader.tsx',
       'RepairGridColumnHeader.tsx',
-      // Rendered OUTSIDE LedgerGrid on StationListTable's non-virtualized path —
-      // still orphaned there. Tracked as the remaining gap; do not add to this
-      // list, shrink it.
-      'StationRowColumnHeader.tsx',
+      // Shrink-only. `StationRowColumnHeader.tsx` was removed 2026-07-28: it is
+      // rendered standalone by StationListTable (empty + non-virtualized paths)
+      // with no table context, and emitted no columnheader cells, so its
+      // `role="row"` was an orphan. Do not add entries — remove them.
     ]);
 
     const offenders = collectTsx(SRC_DIR)
