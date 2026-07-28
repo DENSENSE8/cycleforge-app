@@ -1,5 +1,7 @@
 'use client';
 
+import { GRID_HEADER_ROW_INDEX } from '@/design-system/components/grid/grid-row-index';
+
 import {
   DndContext,
   KeyboardSensor,
@@ -153,6 +155,7 @@ export function OrdersQueueColumnHeader({
   const headerRow = (
     <div
       role="row"
+      aria-rowindex={GRID_HEADER_ROW_INDEX}
       className={cn(
         // Sticky lives on LedgerGrid's `[data-grid-col-header]` wrapper so the
         // whole band freezes as one layer; this row fills that band.

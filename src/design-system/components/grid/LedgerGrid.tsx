@@ -9,6 +9,7 @@ import {
   type RefObject,
 } from 'react';
 import { VirtualGroupedSections } from '@/design-system/components/grid/VirtualGroupedSections';
+import { countGridRows } from '@/design-system/components/grid/grid-row-index';
 import type { RowGroup } from '@/lib/group-rows';
 import {
   ORDERS_QUEUE_GRID_WIDTH_VAR,
@@ -154,6 +155,7 @@ export function LedgerGrid<T>({
 
   const empty =
     (orderGroupsByDate?.length ?? 0) === 0 && (daySections?.length ?? 0) === 0;
+  const rowCount = countGridRows({ orderGroupsByDate, daySections, showDayHeaders });
   // Self-scrolling body owns the virtualizer scroll unless an ancestor is passed.
   const useAncestorScroll = Boolean(scrollParentRef);
   // Ancestor page scroll + h-scroll (Pending): the header band must dock to the
@@ -231,6 +233,10 @@ export function LedgerGrid<T>({
       // a table with no rows.
       role={empty ? undefined : 'table'}
       aria-label={empty ? undefined : ariaLabel}
+      // Only a WINDOW of rows is ever in the DOM, so the total must be declared
+      // or AT reports "row 3 of 30" on a 1,200-row grid. Counted as if every
+      // fold were expanded — see grid-row-index.ts for why that is correct.
+      aria-rowcount={empty ? undefined : rowCount}
       data-cf-grid
       data-grid-skin={gridSkin}
       data-grid-split-x={splitX ? '' : undefined}

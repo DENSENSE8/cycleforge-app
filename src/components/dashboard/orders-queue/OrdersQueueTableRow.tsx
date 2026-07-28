@@ -112,6 +112,13 @@ export interface OrdersQueueTableRowProps {
    * corner indicators stay for every consumer.
    */
   gridSkin?: boolean;
+  /**
+   * Absolute `aria-rowindex` when this row sits inside a `role="table"` grid.
+   * Supplied by the virtualizer via `renderRow`; only a WINDOW of rows is ever
+   * in the DOM, so without it AT announces the wrong position. Omitted outside
+   * a table — `role="row"` there would be an orphaned role.
+   */
+  rowIndex?: number;
   /** Grid skin only — toggle this row's selection from the gutter checkbox
    *  (stops propagation, so it never opens the record). */
   onToggleSelect?: (record: ShippedOrder, event: { shiftKey: boolean }) => void;
@@ -169,6 +176,7 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   disableLayoutAnimation = false,
   opaqueStripe = false,
   gridSkin = false,
+  rowIndex,
   onToggleSelect,
   singleSelected = false,
   queueMode = 'fulfillment',
@@ -808,7 +816,7 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
                     openEditor('condition');
                   }}
                   className={cn(
-                    'ds-raw-button inline-flex min-w-0 max-w-full items-center gap-0.5 rounded-full inset-chip text-role-micro font-black uppercase tracking-widest ring-1 ring-inset transition-colors',
+                    'ds-raw-button inline-flex min-w-0 max-w-full items-center gap-0.5 rounded-full inset-chip text-role-micro uppercase tracking-widest ring-1 ring-inset transition-colors',
                     conditionGradeTone(conditionValue).badge,
                     focusRing('cell'),
                   )}
@@ -887,8 +895,11 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
     }
   };
 
+  const inTable = rowIndex != null;
+
   return (
     <motion.div
+      aria-rowindex={rowIndex}
       layout={animateLayout}
       layoutScroll={animateLayout}
       {...(animatePresence ? rowPresence : {})}
@@ -918,10 +929,16 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
           onRowClick(record, event);
         }
       }}
-      role={selectMode ? 'checkbox' : 'button'}
+      // Inside a `role="table"` grid this element IS the row — an element has
+      // exactly one role, and a table whose rows claim `button`/`checkbox` has
+      // no rows at all. Selection moves to `aria-selected` (valid on `row`);
+      // the real checkbox lives in the select cell above, so nothing is lost.
+      // Outside a table the original interactive roles stand.
+      role={inTable ? 'row' : selectMode ? 'checkbox' : 'button'}
       tabIndex={0}
-      aria-checked={selectMode ? isChecked : undefined}
-      aria-pressed={selectMode ? undefined : isSelected}
+      aria-selected={inTable ? isChecked : undefined}
+      aria-checked={!inTable && selectMode ? isChecked : undefined}
+      aria-pressed={inTable || selectMode ? undefined : isSelected}
       aria-label={
         selectMode
           ? `Select order ${record.order_id || record.id}`

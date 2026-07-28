@@ -51,6 +51,12 @@ interface DateGroupHeaderProps {
    */
   sticky?: boolean;
   /**
+   * Absolute `aria-rowindex` when this band sits inside a `role="table"` grid.
+   * Supplied by `VirtualGroupedSections`; omitted elsewhere (a bare band outside
+   * a table must NOT claim `role="row"` — that is an orphaned role).
+   */
+  rowIndex?: number;
+  /**
    * Sticky offset utility. Default `top-0` — correct when the table header sits
    * *outside* the scroll container (the house pattern). Override only if a
    * header lives inside the same scroll viewport.
@@ -69,6 +75,7 @@ export function DateGroupHeader({
   total,
   actions,
   sticky = true,
+  rowIndex,
   stickyTopClass = 'top-0',
   className,
   animate = false,
@@ -108,6 +115,8 @@ export function DateGroupHeader({
   if (!animate) {
     return (
       <div
+        role={rowIndex == null ? undefined : 'row'}
+        aria-rowindex={rowIndex}
         data-date={date}
         className={cn(sticky && ['sticky z-raised', stickyTopClass], dayGroupChipRowClass, className)}
       >
@@ -118,6 +127,8 @@ export function DateGroupHeader({
 
   return (
     <motion.div
+      role={rowIndex == null ? undefined : 'row'}
+      aria-rowindex={rowIndex}
       data-date={date}
       layout
       layoutScroll

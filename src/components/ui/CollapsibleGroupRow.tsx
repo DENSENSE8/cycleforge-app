@@ -35,6 +35,7 @@ export function CollapsibleGroupRow({
   nestRail = true,
   className,
   index,
+  rowIndex,
 }: {
   /** Collapsed-header content (left: title+meta, right: shared chips). */
   summary: ReactNode;
@@ -64,7 +65,16 @@ export function CollapsibleGroupRow({
   className?: string;
   /** Row index for zebra striping the header, matching the sibling rows. */
   index?: number;
+  /**
+   * Absolute `aria-rowindex` for the summary row when this fold sits inside a
+   * `role="table"` grid. Supplying it switches the fold to real table
+   * semantics: this wrapper becomes a `rowgroup` and the summary becomes a
+   * `row`. Omit it outside a table — `rowgroup`/`row` have a REQUIRED context
+   * role, so claiming them with no table ancestor is an orphan.
+   */
+  rowIndex?: number;
 }) {
+  const inTable = rowIndex != null;
   const [internal, setInternal] = useState(defaultExpanded);
   const isOpen = controlled ?? internal;
 
@@ -77,14 +87,19 @@ export function CollapsibleGroupRow({
   return (
     // When expanded, a darker bottom hairline closes off the revealed child rows
     // as one visually-bounded unit; collapsed, it matches the gray-100 row dividers.
-    <div className={cn(nestRail ? 'border-b' : 'border-b-0', nestRail && (isOpen ? 'border-border-default' : 'border-border-hairline'), className)}>
+    <div role={inTable ? 'rowgroup' : undefined} className={cn(nestRail ? 'border-b' : 'border-b-0', nestRail && (isOpen ? 'border-border-default' : 'border-border-hairline'), className)}>
       {/* role="button" instead of a real <button>: the `summary` is built from
           the same identity chips the child rows use (OrderIdChip / SerialChip …),
           and those are themselves <button>s for copy-to-clipboard. A real
           <button> here would nest buttons → invalid HTML + a hydration error.
           The single-line ReceivingLineOrderRow uses this same div-role pattern. */}
       <div
-        role="button"
+        // Inside a table this element IS the summary row, not a button — an
+        // element has exactly one role, and `aria-expanded` is valid on `row`
+        // (that is how expandable rows are modelled). Outside a table it stays
+        // a button. Either way the click/keyboard behaviour is identical.
+        role={inTable ? 'row' : 'button'}
+        aria-rowindex={rowIndex}
         tabIndex={0}
         onClick={toggle}
         onKeyDown={(event) => {
@@ -116,7 +131,7 @@ export function CollapsibleGroupRow({
         ) : null}
         <div className="min-w-0 flex-1">{summary}</div>
         {count != null ? (
-          <span className="shrink-0 rounded-full bg-surface-sunken px-1.5 py-0.5 text-role-eyebrow font-bold uppercase tracking-widest text-text-soft">
+          <span className="shrink-0 rounded-full bg-surface-sunken px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest text-text-soft">
             {count} {countLabel}
           </span>
         ) : null}
@@ -125,6 +140,7 @@ export function CollapsibleGroupRow({
         {isOpen ? (
           <motion.div
             key="body"
+            role={inTable ? 'presentation' : undefined}
             {...framerPresence.collapseHeight}
             transition={framerTransition.cardExpansion}
             className="overflow-hidden"
@@ -133,6 +149,9 @@ export function CollapsibleGroupRow({
                 (pad past the glyph); when hidden, children share the singleton
                 title edge — see QUEUE_ROW.nest*. */}
             <div
+              // Layout-only wrappers between `rowgroup` and its child rows would
+              // break the required-context chain, so they leave the a11y tree.
+              role={inTable ? 'presentation' : undefined}
               className={cn(
                 nestRail && 'border-l-2 border-border-hairline bg-surface-canvas/30',
                 !nestRail && 'bg-surface-canvas/30',
