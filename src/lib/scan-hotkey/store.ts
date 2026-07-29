@@ -105,7 +105,23 @@ export function registerScanTarget(focus: () => void): () => void {
   };
 }
 
+/**
+ * Fired on `window` immediately before the hotkey moves focus to the active
+ * scan bar. Transient chrome that can cover the bench — the master-nav menus
+ * drop down from the 40px band directly over the scan bar at the top of the
+ * station card — listens for this and dismisses itself, so the operator never
+ * ends up typing a scan into an input hidden behind a menu.
+ *
+ * Deliberately a DOM event, not a store callback: the store is framework-
+ * agnostic (no React import), and any overlay anywhere may need to yield to a
+ * scan without registering itself here.
+ */
+export const SCAN_FOCUS_REQUESTED_EVENT = 'scan-focus-requested';
+
 function focusTopTarget(): void {
+  if (isBrowser()) {
+    window.dispatchEvent(new CustomEvent(SCAN_FOCUS_REQUESTED_EVENT));
+  }
   targets[targets.length - 1]?.();
 }
 
@@ -116,6 +132,13 @@ function ensureGlobalListener(): void {
   window.addEventListener('keydown', (e: KeyboardEvent) => {
     if (capturing) return; // capture handler owns the keystroke
     if (e.metaKey || e.ctrlKey || e.altKey) return;
+    // Shift+<hotkey> is a DIFFERENT chord and belongs to whoever bound it — the
+    // Pending grid binds Shift+F2 to the in-cell note editor (Sheets' insert-note
+    // key) and only calls preventDefault(), so the event still reaches this
+    // window listener. Without this guard a staffer who rebinds the scan hotkey
+    // to F2 gets both: the note editor opens AND the scan bar steals focus.
+    // A keyboard wedge never emits Shift+<hotkey>, so nothing real is lost.
+    if (e.shiftKey) return;
     if (e.key !== hotkey) return;
     e.preventDefault();
     focusTopTarget();
