@@ -49,7 +49,7 @@
     "report:packing-today": "tsx scripts/report-packing-today.ts",
     "tenancy:canary": "node scripts/tenancy-canary.mjs",
     "tenancy:canary:check": "node scripts/tenancy-canary.mjs --check",
-    "provision:qa-org": "tsx scripts/provision-qa-org.ts",
+    "provision:qa-org": "tsx --conditions=react-server scripts/provision-qa-org.ts",
     "test:tenancy-idor": "tsx --test src/lib/tenancy/idor-regression.test.ts",
     "test:dashboard-state": "tsx --test src/utils/dashboard-search-state.test.ts",
     "test:tracking-format": "tsx --test src/lib/tracking-format.test.ts",

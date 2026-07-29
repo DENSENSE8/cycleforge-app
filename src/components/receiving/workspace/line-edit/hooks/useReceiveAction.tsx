@@ -10,6 +10,12 @@ import { randomId } from '@/components/sidebar/receiving/receiving-sidebar-share
 import { classifyReceiveResponse } from '../../ReceiveResponsePanel';
 import { useScanFeedback } from '@/lib/scan-feedback/useScanFeedback';
 import { shouldUseLocalReceiveOnly } from '@/lib/receiving/intake-items-routing';
+import {
+  photoPolicyOverrideField,
+  readPhotoPolicyWaiver,
+  type PhotoPolicyWaiver,
+} from '@/lib/receiving/photo-policy-override-wire';
+import type { PhotoPolicyOverrideCode } from '@/lib/receiving/exception-codes';
 import { enqueuePendingZohoSync } from '@/lib/receiving/zoho-sync-toast-tracker';
 import { useAuth } from '@/contexts/AuthContext';
 import { refreshDomains } from '@/lib/refresh/bus';
@@ -62,6 +68,12 @@ export type ReceiveSummary = {
   itemDescription?: string | null;
   /** PO / operator notes text for the details dropdown. */
   poNotes?: string | null;
+  /**
+   * Set when the receive went through on a photo-policy waiver. The checklist
+   * turns amber and names the reason — a receive that skipped the evidence gate
+   * must not paint the same green as one that satisfied it.
+   */
+  photoPolicyWaiver: PhotoPolicyWaiver | null;
 };
 
 /**
@@ -83,7 +95,16 @@ export type ReceiveResult =
       /** Raw API response — surfaced in the success card's details dropdown. */
       response: ReceiveResponseRecord;
     }
-  | { kind: 'diagnostic'; response: ReceiveResponseRecord };
+  | {
+      kind: 'diagnostic';
+      response: ReceiveResponseRecord;
+      /**
+       * Intent this attempt used. Carried so a photo-policy override can replay
+       * the SAME receive rather than guessing `zoho_receive` — waiving the gate
+       * must never silently upgrade a scan-only or local receive.
+       */
+      intent: ReceiveIntent;
+    };
 
 export type ReceiveInFlight = { startedAt: number; intent: ReceiveIntent };
 
@@ -135,14 +156,25 @@ export function useReceiveAction(
   // Multimodal confirmation cue (gated by org master switch + per-staff toggles).
   const { playScanFeedback } = useScanFeedback();
 
+  /**
+   * `options.photoPolicyOverride` waives the receive-time photo-evidence gate.
+   * It is only ever supplied by the surface that just made the operator pick a
+   * reason (`PhotoPolicyOverrideSheet`); omitting it leaves the gate a hard
+   * block, which is the safe default and why it has no default value here.
+   */
   const handleReceive = useCallback(
-    (receiveIntent: ReceiveIntent = 'zoho_receive') => {
+    (
+      receiveIntent: ReceiveIntent = 'zoho_receive',
+      options?: { photoPolicyOverride: PhotoPolicyOverrideCode },
+    ) => {
+      const photoPolicyOverride = options?.photoPolicyOverride ?? null;
       if (receiveInFlightRef.current) return;
       if (row.receiving_id == null) {
         // Pre-condition failure surfaces inline (no toast) so every receive
         // signal lives in the same place below the label.
         setReceiveResult({
           kind: 'diagnostic',
+          intent: receiveIntent,
           response: {
             at: Date.now(),
             durationMs: 0,
@@ -204,6 +236,7 @@ export function useReceiveAction(
               notes: perLineNotes || undefined,
               staff_id: Number(staffId),
               client_event_id: clientEventId,
+              ...(photoPolicyOverride ? photoPolicyOverrideField(photoPolicyOverride) : null),
             }),
             // Hard ceiling so a server-side hang can never wedge the progress
             // strip. The handler returns optimistically within a few seconds;
@@ -227,7 +260,7 @@ export function useReceiveAction(
               status: markRes.status,
               error: (markData as { error?: unknown })?.error,
             });
-            setReceiveResult({ kind: 'diagnostic', response: respRecord });
+            setReceiveResult({ kind: 'diagnostic', intent: receiveIntent, response: respRecord });
             setResponseExpanded(true);
             playScanFeedback('reject');
           } else {
@@ -310,6 +343,10 @@ export function useReceiveAction(
                 alreadyReceived,
                 itemDescription: row.zoho_notes?.trim() || null,
                 poNotes: perLineNotes || row.receiving_zoho_notes?.trim() || null,
+                // Read off the RESPONSE, never off what we sent: the server is
+                // the authority on whether the gate actually had to be waived,
+                // and a carton whose photos landed mid-flight comes back clean.
+                photoPolicyWaiver: readPhotoPolicyWaiver(markData),
               };
 
               setReceiveResult({
@@ -335,7 +372,7 @@ export function useReceiveAction(
               }
               playScanFeedback('success');
             } else {
-              setReceiveResult({ kind: 'diagnostic', response: respRecord });
+              setReceiveResult({ kind: 'diagnostic', intent: receiveIntent, response: respRecord });
               setResponseExpanded(true);
               playScanFeedback('reject');
             }
@@ -386,6 +423,7 @@ export function useReceiveAction(
           const message = err instanceof Error ? err.message : 'Receive failed';
           setReceiveResult({
             kind: 'diagnostic',
+            intent: receiveIntent,
             response: {
               at: Date.now(),
               durationMs: Date.now() - startedAt,

@@ -102,6 +102,16 @@ const nextConfig: NextConfig = {
             // covers static/CDN hits and keeps query strings via Next redirects).
             { source: '/outbound', destination: '/shipping', permanent: true },
             { source: '/outbound/', destination: '/shipping', permanent: true },
+            // Shipping modes moved from `?mode=` onto their own segments.
+            // `permanent: false` (307) ON PURPOSE while the old links drain: a
+            // 308 is cached by browsers forever, so it cannot be taken back if
+            // the mapping turns out wrong. Switch to 308 at sunset, not before.
+            // The stale `?mode=` rides along to the destination and is dropped
+            // there by the boundary parse — it is not declared on any mode spec.
+            { source: '/shipping', has: [{ type: 'query', key: 'mode', value: 'ready' }], destination: '/shipping/ready', permanent: false },
+            { source: '/shipping', has: [{ type: 'query', key: 'mode', value: 'fba' }], destination: '/shipping/fba', permanent: false },
+            { source: '/shipping', has: [{ type: 'query', key: 'mode', value: 'scan-out' }], destination: '/shipping/scan-out', permanent: false },
+            { source: '/shipping', has: [{ type: 'query', key: 'mode', value: 'labels' }], destination: '/shipping/labels', permanent: false },
         ];
     },
     serverExternalPackages: [

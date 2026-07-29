@@ -29,6 +29,14 @@ import {
   evaluateReceivingPhotoPolicyGate,
   isPreReceiveWorkflowStatus,
 } from '@/lib/receiving/photo-policy-gate';
+import {
+  PHOTO_POLICY_OVERRIDE_BODY_KEY,
+  parsePhotoPolicyOverride,
+  photoPolicyOverrideInvalidBody,
+  photoPolicyOverrideWarning,
+  recordPhotoPolicyOverride,
+} from '@/lib/receiving/photo-policy-override';
+import type { PhotoPolicyOverrideCode } from '@/lib/receiving/exception-codes';
 import type { OrgId } from '@/lib/tenancy/constants';
 import {
   isPlacementParityObserve,
@@ -443,6 +451,14 @@ export const POST = withAuth(async (request, ctx) => {
     const serialNumber = String(body?.serial_number || '').trim() || null;
     const zendeskTicket = String(body?.zendesk_ticket || '').trim() || null;
     const notes = String(body?.notes || '').trim() || null;
+    // WS-PHOTO §4 soft block: an operator may consciously receive past the
+    // photo-evidence gate ONLY with a code from the receiving-exception system
+    // registry (`PHOTO_WAIVED_*`). Absent → the gate stays the hard 409 below;
+    // present-but-unrecognized → 400, even when the gate would have passed
+    // anyway (a waiver we cannot name must never ride along unnoticed).
+    const photoPolicyOverride = parsePhotoPolicyOverride(body?.[PHOTO_POLICY_OVERRIDE_BODY_KEY]);
+    /** Set only when a valid override actually waived a real block. */
+    let photoPolicyWaiver: { code: PhotoPolicyOverrideCode; blockers: string[] } | null = null;
     // Optional destination bin
     // scanned at the same time as the receive action. Triggers a PUTAWAY
     // event + serial_units.current_location update inside the same txn.
@@ -527,6 +543,10 @@ export const POST = withAuth(async (request, ctx) => {
       return NextResponse.json({ success: false, error: 'receiving_line_id is required' }, { status: 400 });
     }
 
+    if (photoPolicyOverride.state === 'invalid') {
+      return NextResponse.json(photoPolicyOverrideInvalidBody(), { status: 400 });
+    }
+
     // Validate destination bin exists before we commit anything else. The
     // previous behavior was to fail silently inside applyInventoryV2Effects,
     // leaving the line received but the bin assignment skipped. Bin storage
@@ -597,10 +617,16 @@ export const POST = withAuth(async (request, ctx) => {
           alreadyReceived: !isPreReceiveWorkflowStatus(beforeRow.workflow_status),
         });
         if (!gate.ok) {
-          return NextResponse.json(
-            { success: false, error: 'PHOTO_POLICY', blockers: gate.blockers },
-            { status: 409 },
-          );
+          // §4 soft block. WITHOUT an override this stays the byte-identical
+          // 409 — the default is unchanged. WITH one, the receive proceeds and
+          // the waiver is persisted + audited below (never a silent bypass).
+          if (photoPolicyOverride.state !== 'valid') {
+            return NextResponse.json(
+              { success: false, error: 'PHOTO_POLICY', blockers: gate.blockers },
+              { status: 409 },
+            );
+          }
+          photoPolicyWaiver = { code: photoPolicyOverride.code, blockers: gate.blockers };
         }
       }
     }
@@ -694,6 +720,33 @@ export const POST = withAuth(async (request, ctx) => {
 
     if (!foldedLine) {
       return NextResponse.json({ success: false, error: 'receiving_line not found' }, { status: 404 });
+    }
+
+    // §4 soft block — persist + audit the waiver as close to the mutation as
+    // possible (the line is now known to exist, so the exception FK is safe).
+    // An override that receives without a trail is worse than no gate at all,
+    // so this runs before any Zoho/side-effect work that could throw.
+    if (photoPolicyWaiver) {
+      await recordPhotoPolicyOverride(ctx.organizationId as OrgId, {
+        code: photoPolicyWaiver.code,
+        blockers: photoPolicyWaiver.blockers,
+        // Evidence scope was the line's own carton — same source the gate used.
+        receivingId: beforeRow?.line_receiving_id ?? null,
+        receivingLineIds: [receivingLineId],
+        staffId,
+      });
+      await recordAudit(pool, ctx, request, {
+        source: 'receiving-station',
+        action: AUDIT_ACTION.RECEIVING_PHOTO_POLICY_OVERRIDE,
+        entityType: AUDIT_ENTITY.RECEIVING_LINE,
+        entityId: receivingLineId,
+        reasonCode: photoPolicyWaiver.code,
+        method: serialNumber ? 'scan' : 'manual',
+        extra: {
+          receiving_id: beforeRow?.line_receiving_id ?? receivingId,
+          blockers: photoPolicyWaiver.blockers,
+        },
+      });
     }
 
     let line = foldedLine;
@@ -1094,6 +1147,15 @@ export const POST = withAuth(async (request, ctx) => {
       workflow_status: workflowStatus,
       zoho_synced: zohoReceiveOk,
       ...(zohoReceiveError ? { zoho_error: zohoReceiveError } : {}),
+      // §4 soft block: the receive went through, but say WHAT was waived —
+      // same `code`/`blockers` the 409 would have carried.
+      ...(photoPolicyWaiver
+        ? {
+            warnings: [
+              photoPolicyOverrideWarning(photoPolicyWaiver.code, photoPolicyWaiver.blockers),
+            ],
+          }
+        : {}),
       receiving_line: line,
       ...(v2Effects
         ? {

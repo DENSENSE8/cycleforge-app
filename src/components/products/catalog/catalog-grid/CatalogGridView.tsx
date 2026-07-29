@@ -85,11 +85,10 @@ export function CatalogGridView({
   );
 
   const renderLeaf = useCallback(
-    (row: CatalogListRow, stripeIndex: number) => (
+    (row: CatalogListRow) => (
       <CatalogGridRow
         key={row.id}
         row={row}
-        index={stripeIndex}
         isSelected={selectedId === row.id}
         isChecked={selectedIds.has(row.id)}
         inventoryProviderLabel={inventoryProviderLabel}
@@ -125,8 +124,8 @@ export function CatalogGridView({
           onSortColumn={toggleColumnSort}
         />
       )}
-      renderGroup={(group, baseStripeIndex) => renderLeaf(group.rows[0], baseStripeIndex)}
-      renderRow={(row, stripeIndex) => renderLeaf(row, stripeIndex)}
+      renderGroup={(group) => renderLeaf(group.rows[0])}
+      renderRow={(row) => renderLeaf(row)}
     />
   );
 }

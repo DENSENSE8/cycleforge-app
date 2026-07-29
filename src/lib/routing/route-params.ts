@@ -124,6 +124,9 @@ export const SHARED_OWNED_KEYS: Readonly<Record<string, string>> = {
   dir: 'Direction for `sort`; shares its owner set. Stripping one without the other left a dangling direction (the 2026-06 bug).',
   rh_q: 'Receiving search box — Incoming and History mount the same search chrome over their own feed.',
   page: '1-based server pagination. Same question on every paged feed; the page number carries no feed identity, so one key is correct.',
+  q: 'The surface\'s own list filter — one question ("narrow this list"), asked by every route that shows a list. Deliberately NOT the same key as History\'s namespaced `rh_q`, which searches a different feed with its own field/scope pair.',
+  open: 'The focused record on a Shipping mode. Same question and same id space (an order id) across labels / ready / scan-out — a mode switch drops it anyway, since navigation constructs rather than copies.',
+  new: 'Opens the surface\'s own intake form. One question per surface; the routes that use it cannot both be current, so there is no ambiguity to resolve with a longer name.',
 };
 
 /** One route's param contract. */

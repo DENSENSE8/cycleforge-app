@@ -43,11 +43,7 @@ export function usePhotoLibraryUrlState() {
 
   const replaceFilters = useCallback(
     (next: PhotoLibraryFilterState) => {
-      // Drop the inspected photo whenever the filter set changes: `?photoId=`
-      // points into the CURRENT result set, and a scope/date/search change can
-      // evict it. Carrying it over would leave the inspector describing a photo
-      // that is no longer anywhere in the grid behind it.
-      replaceUrl(next, { ...display, page: 1, photoId: null });
+      replaceUrl(next, { ...display, page: 1 });
     },
     [display, replaceUrl],
   );
@@ -91,9 +87,7 @@ export function usePhotoLibraryUrlState() {
    */
   const applyView = useCallback(
     (nextFilters: PhotoLibraryFilterState, nextView: PhotoLibraryViewMode) => {
-      // photoId omitted → the applied view opens with no inspector; a saved
-      // view snapshots filters, never a transient record selection.
-      replaceUrl(nextFilters, { view: nextView, page: 1, photoId: null });
+      replaceUrl(nextFilters, { view: nextView, page: 1 });
     },
     [replaceUrl],
   );
@@ -105,20 +99,12 @@ export function usePhotoLibraryUrlState() {
     [display, filters, replaceUrl],
   );
 
-  /** Open (or close, with `null`) the non-modal photo inspector. */
-  const setInspectedPhotoId = useCallback(
-    (photoId: number | null) => {
-      replaceUrl(filters, { ...display, photoId });
-    },
-    [display, filters, replaceUrl],
-  );
-
   const clearStructured = useCallback(() => {
     replaceFilters(clearStructuredPhotoFilters(filters));
   }, [filters, replaceFilters]);
 
   const clearAll = useCallback(() => {
-    replaceUrl({}, { view: display.view, page: 1, photoId: null });
+    replaceUrl({}, { view: display.view, page: 1 });
   }, [display.view, replaceUrl]);
 
   return {
@@ -129,7 +115,6 @@ export function usePhotoLibraryUrlState() {
     setSourceScope,
     setView,
     setPage,
-    setInspectedPhotoId,
     clearStructured,
     clearAll,
     replaceFilters,

@@ -7,7 +7,6 @@ import {
   useEffect,
   useState,
   useRef,
-  type ReactNode,
 } from 'react';
 import { motion } from 'framer-motion';
 import { AnchoredLayer } from '@/design-system/primitives/AnchoredLayer';
@@ -109,21 +108,16 @@ const ModesPanel = forwardRef<
  * nowhere else.** `MasterNavDropdown` is deleted; {@link SidebarNavList} is the
  * same rows with no card chrome, because the slide-over already IS the card.
  *
- * ## Two mounts, one component, no swapping
+ * ## One body: the page list
  *
- * This renders a 40px identity band over exactly one body, and which body it is
- * comes from where it was mounted — it never changes at runtime:
- *
- * - **Resident column** (`hasContext`) — the route's own sidebar: the Media
- *   library's facet rail, Products' catalog picker, the receiving rails. The
- *   band's chevron calls `onOpen`, which opens the slide-over; the column does
- *   NOT swap its own body out from under the operator.
- * - **Slide-over** — the page list, always.
+ * This renders a 40px identity band over the page list, and nothing else. A
+ * route's own sidebar — the Media library's facet rail, Products' catalog
+ * picker, the receiving rails — is NOT a body this component can render; it
+ * mounts in the content region beside the workspace (`ContextPanelLayout`).
  *
  * That separation is the point: a route's sidebar is its own component, not a
- * state of the nav. An earlier pass had the column swap between picker and page
- * list, which made the route's sidebar a mode of the navigator rather than a
- * surface in its own right.
+ * state of the nav. While it was a body here, the two surfaces shared one column
+ * and opening the navigator took away the picker you were navigating from.
  *
  * L2 modes stay a portaled `panelPopover` menu off the band — a short list and a
  * fast in-place switch is a different job from browsing every page, and it must
@@ -140,8 +134,6 @@ export function MasterNavView({
   onToggleRow,
   onNavigate,
   onRowHover,
-  renderContext,
-  hasContext = false,
   className,
 }: {
   activePage: SidebarPageNav;
@@ -158,15 +150,6 @@ export function MasterNavView({
   onNavigate: (pageId: string, modeId?: string) => void;
   /** Hover hook per page row — warms the destination's data. */
   onRowHover?: (page: SidebarPageNav) => void;
-  /** The route's own sidebar. Rendered as the body when `hasContext`. */
-  renderContext?: () => ReactNode;
-  /**
-   * Mounted as a route's resident column (body = `renderContext`) rather than as
-   * the slide-over (body = the page list). Also gates the band's nav chevron: in
-   * the slide-over the list is already on screen, so a trigger for it would be a
-   * dead control.
-   */
-  hasContext?: boolean;
   className?: string;
 }) {
   const activeMode = activePage.modes?.find((m) => m.id === activeModeId);
@@ -220,9 +203,9 @@ export function MasterNavView({
           leadingIcon={headerIcon}
           open={false}
           onClick={handleNavToggle}
-          // Only the resident column needs a way to reach the page list; inside
-          // the slide-over that list is already the body.
-          showNavToggle={hasContext}
+          // The list IS this surface's body, so a trigger for it would be a
+          // dead control. (The header's sidebar button is the way in.)
+          showNavToggle={false}
           modesOpen={modesOpen}
           onModesClick={handleModesToggle}
           showModesToggle={modeful}
@@ -230,22 +213,18 @@ export function MasterNavView({
         />
       </div>
 
-      {/* One body, fixed at mount. No crossfade, because nothing swaps. */}
-      {hasContext ? (
-        <div className="min-h-0 flex-1 overflow-hidden">{renderContext?.()}</div>
-      ) : (
-        <div className="min-h-0 flex-1 overflow-y-auto">
-          <SidebarNavList
-            activePage={activePage}
-            activeModeId={activeModeId}
-            otherPages={otherPages}
-            expandedKey={expandedKey}
-            onToggleRow={onToggleRow}
-            onNavigate={onNavigate}
-            onRowHover={onRowHover}
-          />
-        </div>
-      )}
+      {/* One body, always the page list. Nothing swaps, so no crossfade. */}
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        <SidebarNavList
+          activePage={activePage}
+          activeModeId={activeModeId}
+          otherPages={otherPages}
+          expandedKey={expandedKey}
+          onToggleRow={onToggleRow}
+          onNavigate={onNavigate}
+          onRowHover={onRowHover}
+        />
+      </div>
 
       {/*
         L2 — pick a mode on the page you are already on. A short list of short

@@ -16,7 +16,15 @@ export interface PhotoMeta {
   ticketId?: number | null;
   takenByStaffId?: number | null;
   takenByStaffName?: string | null;
+  /** Server-INSERT instant. This is the UPLOAD time, not the shutter time. */
   createdAt?: string | null;
+  /**
+   * Device-reported capture instant (`photos.client_captured_at`) — the shutter
+   * clock, which for a queued mobile upload can precede `createdAt` by hours.
+   * Null for desktop/legacy rows with no usable timestamp, and NOT
+   * server-attested; the panel labels it as device-reported for that reason.
+   */
+  clientCapturedAt?: string | null;
   damageDetected?: boolean | null;
   hasAnalysis?: boolean | null;
   caption?: string | null;
@@ -29,12 +37,20 @@ export function unboxingPhotoMeta(fields: {
   poRef?: string | null;
   caption?: string | null;
   createdAt?: string | null;
+  /**
+   * Shutter clock off the row (`/api/receiving-photos` → `clientCapturedAt`).
+   * Threaded here rather than left off, so the carton peek reports the same
+   * provenance the media-library viewer does — a field written on upload and
+   * never read back is not evidence, it is a column.
+   */
+  clientCapturedAt?: string | null;
   takenByStaffName?: string | null;
 }): PhotoMeta {
   return {
     poRef: fields.poRef ?? null,
     caption: fields.caption ?? null,
     createdAt: fields.createdAt ?? null,
+    clientCapturedAt: fields.clientCapturedAt ?? null,
     takenByStaffName: fields.takenByStaffName ?? null,
     photoType: 'RECEIVING',
     sourceScope: 'unboxing',
@@ -47,6 +63,8 @@ export interface ReceivingPhotoRowLike {
   photoUrl: string;
   caption?: string | null;
   createdAt?: string | null;
+  /** Shutter clock from `/api/receiving-photos`; null on desktop/legacy rows. */
+  clientCapturedAt?: string | null;
 }
 
 /**
@@ -58,10 +76,15 @@ export interface ReceivingPhotoRowLike {
  * drives the viewer's "Linked to PO …" readout + deep link.
  */
 export function receivingPhotoMeta(
-  row: Pick<ReceivingPhotoRowLike, 'caption' | 'createdAt'>,
+  row: Pick<ReceivingPhotoRowLike, 'caption' | 'createdAt' | 'clientCapturedAt'>,
   ctx: { poRef: string | null },
 ): PhotoMeta {
-  return unboxingPhotoMeta({ poRef: ctx.poRef, caption: row.caption, createdAt: row.createdAt });
+  return unboxingPhotoMeta({
+    poRef: ctx.poRef,
+    caption: row.caption,
+    createdAt: row.createdAt,
+    clientCapturedAt: row.clientCapturedAt,
+  });
 }
 
 /** Receiving photo row → `PhotoGallery` input `{id, url, meta}` (poRef required). */

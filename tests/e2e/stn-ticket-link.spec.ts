@@ -29,7 +29,7 @@ test.describe('Outbound → link a support ticket to an STN', () => {
     // `ready`, not `labels`: the labels queue is "orders awaiting a label", which
     // is empty whenever the floor is caught up — and an order without a label has
     // no STN, so the affordance could never render there anyway.
-    await page.goto('/shipping?mode=ready');
+    await page.goto('/shipping/ready');
 
     // Pick the first order row that opens the details panel. The panel hosts the
     // shipping section that owns the affordance.

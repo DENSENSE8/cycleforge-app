@@ -1,8 +1,12 @@
 'use client';
 
+import { useState } from 'react';
 import { ChevronDown, X } from '@/components/Icons';
 import { Button, IconButton } from '@/design-system/primitives';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { PhotoPolicyOverrideSheet } from '@/components/receiving/PhotoPolicyOverrideSheet';
+import { readPhotoPolicyBlock } from '@/lib/receiving/photo-policy-override-wire';
+import type { PhotoPolicyOverrideCode } from '@/lib/receiving/exception-codes';
 import { toast } from '@/lib/toast';
 
 /* ──────────────────────────────────────────────────────────────────────────
@@ -38,6 +42,12 @@ export type ReceiveResponsePanelProps = {
   expanded: boolean;
   onToggle: () => void;
   onDismiss: () => void;
+  /**
+   * Replay the blocked receive carrying an operator-chosen waiver code. When
+   * absent the photo-policy verdict renders read-only — the block stays hard,
+   * which is the correct degrade for a host that can't re-run the receive.
+   */
+  onPhotoPolicyOverride?: (code: PhotoPolicyOverrideCode) => void;
 };
 
 type ZohoResultRow = {
@@ -67,17 +77,16 @@ export function classifyReceiveResponse(r: ReceiveResponsePanelProps['response']
   // the bench (take the required photos), not a system failure. Blockers come
   // from the shared evaluator, so this copy matches the preflight disabled
   // reason exactly.
-  const photoBlockers = Array.isArray(body.blockers)
-    ? (body.blockers as unknown[]).filter(
-        (b): b is string => typeof b === 'string' && b.trim().length > 0,
-      )
-    : [];
-  if (!r.ok && r.httpStatus === 409 && body.error === 'PHOTO_POLICY' && photoBlockers.length > 0) {
+  const photoBlock = r.ok ? null : readPhotoPolicyBlock(r.httpStatus, body);
+  if (photoBlock) {
     return {
       verdict: 'photo_policy',
       headline: 'Photos required before receive',
       tone: 'amber',
-      detail: photoBlockers.join(' · '),
+      detail:
+        photoBlock.blockers.length > 0
+          ? photoBlock.blockers.join(' · ')
+          : 'This carton is missing the photos your org requires at receive.',
     };
   }
   if (!r.ok) {
@@ -257,9 +266,13 @@ export function ReceiveResponsePanel({
   expanded,
   onToggle,
   onDismiss,
+  onPhotoPolicyOverride,
 }: ReceiveResponsePanelProps) {
   const body = (response.body || {}) as Record<string, unknown>;
   const classification = classifyReceiveResponse(response);
+  const [overrideOpen, setOverrideOpen] = useState(false);
+  const photoBlock = readPhotoPolicyBlock(response.httpStatus, response.body);
+  const canOverride = classification.verdict === 'photo_policy' && Boolean(onPhotoPolicyOverride);
   const showApiErrorCallout =
     !response.ok &&
     typeof body.error === 'string' &&
@@ -325,6 +338,17 @@ export function ReceiveResponsePanel({
               <p className="mt-0.5 text-role-micro font-medium leading-snug text-text-muted">
                 {classification.detail}
               </p>
+            ) : null}
+            {canOverride ? (
+              // Quiet + secondary on purpose: shooting the missing photos is
+              // the primary path out of this state. The override costs the
+              // operator a named reason that lands on the carton's exception
+              // list, so it must never read as the easy button.
+              <div className="mt-1.5">
+                <Button variant="secondary" size="sm" onClick={() => setOverrideOpen(true)}>
+                  Receive without photos…
+                </Button>
+              </div>
             ) : null}
             {showApiErrorCallout ? (
               <div className="mt-1.5 rounded border border-rose-200 bg-rose-50/90 px-1.5 py-1">
@@ -414,6 +438,18 @@ export function ReceiveResponsePanel({
           </div>
         ) : null}
       </div>
+
+      {canOverride ? (
+        <PhotoPolicyOverrideSheet
+          open={overrideOpen}
+          onClose={() => setOverrideOpen(false)}
+          blockers={photoBlock?.blockers ?? []}
+          onConfirm={(code) => {
+            setOverrideOpen(false);
+            onPhotoPolicyOverride?.(code);
+          }}
+        />
+      ) : null}
     </div>
   );
 }

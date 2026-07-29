@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
 import { ApiError, errorResponse } from '@/lib/api';
 import { uploadPhoto } from '@/lib/photos/service';
+import {
+  CLIENT_CAPTURED_AT_FIELD,
+  parseClientCapturedAt,
+} from '@/lib/photos/capture-provenance';
 import { linkReceivingPhotoToClaim } from '@/lib/photos/claim-link';
 import { uploadPermissionFor } from '@/lib/photos/entity-permissions';
 import type { PhotoEntityType, PhotoLinkRole } from '@/lib/photos/types';
@@ -26,6 +30,27 @@ function parseEntityType(raw: FormDataEntryValue | null): PhotoEntityType {
     throw ApiError.badRequest(`Invalid entityType: ${value}`);
   }
   return value as PhotoEntityType;
+}
+
+/**
+ * Read the device-reported capture instant off the multipart body.
+ *
+ * Absent is the normal case (desktop uploads, and any legacy client that
+ * predates the field) and must be indistinguishable from a clean upload —
+ * hence `null`, never a 400. Present-but-unparseable also degrades to `null`
+ * rather than rejecting: provenance is a secondary fact on an evidence upload,
+ * so a client bug must cost the timestamp, not the photo. It is logged so the
+ * bug is still visible instead of silently eroding the column.
+ */
+function parseCapturedAt(raw: FormDataEntryValue | null): Date | null {
+  const captured = parseClientCapturedAt(raw);
+  if (!captured && raw !== null && String(raw).trim()) {
+    console.warn(
+      `[photos.upload] ignoring unparseable ${CLIENT_CAPTURED_AT_FIELD}; storing NULL`,
+      { raw: String(raw).slice(0, 64) },
+    );
+  }
+  return captured;
 }
 
 function parseLinkRole(raw: FormDataEntryValue | null): PhotoLinkRole | undefined {
@@ -64,6 +89,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     const photoType = String(form.get('photoType') || '').trim() || null;
     const poRef = String(form.get('poRef') || '').trim() || null;
     const linkRole = parseLinkRole(form.get('linkRole'));
+    const clientCapturedAt = parseCapturedAt(form.get(CLIENT_CAPTURED_AT_FIELD));
 
     const result = await uploadPhoto({
       organizationId: ctx.organizationId,
@@ -75,6 +101,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       poRef,
       fileBuffer: buffer,
       contentType,
+      clientCapturedAt,
       useStorageAdapter: true,
     });
 

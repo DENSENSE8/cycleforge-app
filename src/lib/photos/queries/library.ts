@@ -5,6 +5,7 @@ import {
   RECEIVING_PHOTO_UNBOX_CARTON,
   type ReceivingPhotoStage,
 } from '@/lib/receiving/photo-intent';
+import { addDaysToDateKey, warehouseDayUtcBounds } from '@/utils/date';
 import { stageFromPhotoType, type PhotoEvidenceStage } from '../stages';
 import { isPhotoLibraryStage } from '../library-filter-state';
 import { mapPhotoRow } from './list-for-entity';
@@ -493,19 +494,43 @@ function buildLibraryWhere(filters: LibraryFilters): { clauses: string[]; params
   const params: unknown[] = [filters.organizationId];
   const clauses: string[] = ['p.organization_id = $1'];
 
-  // dateFrom/dateTo are PST `YYYY-MM-DD` calendar days (the same PST the folder
-  // date-tree groups by). Compare against the photo's PST *calendar date* so the
-  // range is inclusive of the whole end day — and so a single day (from===to)
-  // matches that whole PST day. A naive `created_at <= dateTo::timestamptz` casts
-  // to start-of-day in the server TZ (UTC), making a single-day window zero-width
-  // (≈ always empty) and shifting multi-day ranges by the UTC offset.
-  if (filters.dateFrom) {
-    params.push(filters.dateFrom);
-    clauses.push(`(p.created_at AT TIME ZONE 'America/Los_Angeles')::date >= $${params.length}::date`);
+  // dateFrom/dateTo are PST `YYYY-MM-DD` calendar days. Resolve them to INSTANT
+  // bounds in JS and compare the raw column, as a half-open range:
+  //
+  //     created_at >= <PST midnight of dateFrom>
+  //     created_at <  <PST midnight of the day AFTER dateTo>
+  //
+  // **Why not cast the column.** This used to read
+  // `(p.created_at AT TIME ZONE 'America/Los_Angeles')::date >= $n::date`, which
+  // is correct but *not sargable*: a predicate on a FUNCTION of the column cannot
+  // use `idx_photos_org_created (organization_id, created_at DESC)`, so every
+  // date-filtered read was a Seq Scan over the org's whole photo table plus a
+  // top-N sort. Measured on the dogfood tenant (EXPLAIN ANALYZE, 2026-07-28):
+  // Seq Scan 2,841 rows / 1.81 ms → Index Scan 48 rows / 0.09 ms, identical
+  // result sets. Seq-scan cost grows with the table; the index scan does not,
+  // and the flat photo stream pages continuously, so it leans on this far harder
+  // than the old folder drill did.
+  //
+  // The bounds also make the index supply `ORDER BY created_at DESC` directly,
+  // which removes the sort node entirely.
+  //
+  // **Why half-open** rather than `<= endIso` (23:59:59.999): a timestamptz has
+  // microsecond resolution, so an inclusive millisecond bound drops any capture
+  // landing in the final sub-millisecond of a day. `< next-day-midnight` has no
+  // such hole and needs no leap/DST special-casing — `warehouseDayUtcBounds`
+  // resolves each civil day through the zone database, so PST/PDT is handled.
+  const dateFromBounds = filters.dateFrom ? warehouseDayUtcBounds(filters.dateFrom) : null;
+  if (dateFromBounds) {
+    params.push(dateFromBounds.startIso);
+    clauses.push(`p.created_at >= $${params.length}::timestamptz`);
   }
-  if (filters.dateTo) {
-    params.push(filters.dateTo);
-    clauses.push(`(p.created_at AT TIME ZONE 'America/Los_Angeles')::date <= $${params.length}::date`);
+  // Upper bound = start of the day AFTER dateTo (exclusive).
+  const dateToBounds = filters.dateTo
+    ? warehouseDayUtcBounds(addDaysToDateKey(filters.dateTo, 1))
+    : null;
+  if (dateToBounds) {
+    params.push(dateToBounds.startIso);
+    clauses.push(`p.created_at < $${params.length}::timestamptz`);
   }
   if (filters.poRef) {
     params.push(`%${filters.poRef}%`);
@@ -739,7 +764,7 @@ export async function listPhotoLibrary(filters: LibraryFilters) {
   // (which Postgres would require to lead the ORDER BY, breaking date sort).
   const res = await pool.query(
     `SELECT p.id, p.organization_id, p.photo_type, p.taken_by_staff_id,
-            p.po_ref, p.created_at,
+            p.po_ref, p.created_at, p.client_captured_at,
             (SELECT s.name FROM staff s
               WHERE s.id = p.taken_by_staff_id
                 AND s.organization_id = p.organization_id

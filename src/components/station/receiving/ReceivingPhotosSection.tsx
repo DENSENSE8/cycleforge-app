@@ -13,6 +13,8 @@ interface ReceivingPhoto {
   photoUrl: string;
   caption: string | null;
   createdAt?: string;
+  /** Shutter clock from `/api/receiving-photos` — surfaced in the viewer panel. */
+  clientCapturedAt?: string | null;
 }
 
 interface ReceivingPhotosSectionProps {

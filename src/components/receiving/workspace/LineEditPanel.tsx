@@ -32,8 +32,6 @@ import { ReceiveFeedbackRegion } from './ReceiveFeedbackRegion';
 import { WorkspaceActionFeedbackSlot } from './WorkspaceActionFeedbackSlot';
 import type { InlineActionFeedbackPayload } from './InlineActionFeedbackCard';
 import { ReceivingPhotoPeek } from './line-edit/ReceivingPhotoPeek';
-import { ReceivingPhotoButton } from './line-edit/ReceivingPhotoButton';
-import { SerialChip, SkuSerialChip } from '@/components/ui/CopyChip';
 import { LineCartonContextSection } from './line-edit/LineCartonContextSection';
 import { useSyncedPoNote } from './line-edit/hooks/useSyncedPoNote';
 import { LineEditModals } from './line-edit/LineEditModals';
@@ -553,6 +551,16 @@ export function LineEditPanel({
                             c.setReceiveResult(null);
                             c.setResponseExpanded(false);
                           }}
+                          // Replay the blocked attempt's OWN intent — waiving
+                          // the photo gate must not silently promote a
+                          // scan-only or local receive into a Zoho receive.
+                          onPhotoPolicyOverride={(code) => {
+                            const blocked =
+                              c.receiveResult?.kind === 'diagnostic'
+                                ? c.receiveResult.intent
+                                : 'zoho_receive';
+                            void c.handleReceive(blocked, { photoPolicyOverride: code });
+                          }}
                         />
                       </div>
                     </div>
@@ -606,43 +614,16 @@ export function LineEditPanel({
         </AnimatePresence>
 
         {!showTicketEditor && row.receiving_id != null ? (
-          <>
-            {/* Carton evidence fan — the unbox carton-open record only.
-                Arrival (door) shots live in triage's peek; item shots in the
-                line cluster below (stage matrix, photo-evidence-chain-INDEX). */}
-            <ReceivingPhotoPeek
-              receivingId={row.receiving_id}
-              staffId={Number(staffId) || 0}
-              poRef={c.poNumber || null}
-              photoIntent="unbox_carton"
-            />
-            {/* Active-line ITEM capture — SKU · serial identity chrome beside a
-                line-scoped camera pill (RECEIVING_LINE + receiving_item). Floats
-                in the photo corner below the carton fan; mirrors the fan's
-                bottom-anchor idiom so it clears the terminal dock. */}
-            <div className="pointer-events-none absolute inset-y-0 right-3 z-20 flex items-end">
-              <div className="pointer-events-auto mb-[calc(22%+0.75rem)] flex items-center gap-1.5 rounded-xl border border-border-soft bg-surface-card p-1 pl-2 shadow-lg">
-                <span className="text-role-micro uppercase tracking-widest text-text-soft">
-                  Item
-                </span>
-                {row.sku ? (
-                  <SkuSerialChip value={row.sku} display={row.sku} width="w-auto shrink-0" />
-                ) : null}
-                {latestRowSerial ? (
-                  <SerialChip value={latestRowSerial} width="w-auto shrink-0" dense />
-                ) : null}
-                <ReceivingPhotoButton
-                  receivingId={row.receiving_id}
-                  staffId={Number(staffId) || 0}
-                  poRef={c.poNumber || null}
-                  photoStage="unbox_item"
-                  receivingLineId={row.id}
-                  poRouteRef={row.zoho_purchaseorder_id || row.zoho_purchaseorder_number || null}
-                  galleryPlacement="above"
-                />
-              </div>
-            </div>
-          </>
+          /* Carton evidence fan — the unbox carton-open record only. Arrival
+             (door) shots live in triage's peek. Item evidence
+             (RECEIVING_LINE + receiving_item) currently has NO desktop capture
+             surface — see the note in `photo-evidence-chain-INDEX`. */
+          <ReceivingPhotoPeek
+            receivingId={row.receiving_id}
+            staffId={Number(staffId) || 0}
+            poRef={c.poNumber || null}
+            photoIntent="unbox_carton"
+          />
         ) : null}
       </StationPanelRoot>
 

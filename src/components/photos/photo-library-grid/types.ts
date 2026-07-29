@@ -30,11 +30,6 @@ export interface PhotoGridViewProps {
   onSelectTile: (id: number, mods: TileSelectMods) => void;
   onToggleGroupSelection?: (ids: number[]) => void;
   onPhotoContextMenu?: (photo: LibraryPhoto, e: ReactMouseEvent) => void;
-  /** Open the shared fullscreen viewer at this photo. */
+  /** Open the shared fullscreen viewer at this photo — the tile's click action. */
   openAt: (id: number) => void;
-  /**
-   * Open the non-modal inspector for a photo. Optional so embedded grids
-   * (pickers, claim attach) that have no right rail keep click → viewer.
-   */
-  onInspect?: (id: number) => void;
 }

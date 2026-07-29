@@ -7,6 +7,12 @@ export interface InsertPhotoCatalogInput {
   staffId: number | null;
   photoType?: string | null;
   poRef?: string | null;
+  /**
+   * Device-reported capture instant, already normalized by
+   * `../capture-provenance.ts`. Absent/null is the honest value for a surface
+   * with no device timestamp — never substitute `now()` or `created_at` here.
+   */
+  clientCapturedAt?: Date | null;
 }
 
 /** Insert a catalog row (no entity columns — links + storage hold relationships/bytes). */
@@ -15,10 +21,16 @@ export async function insertPhotoCatalog(
   input: InsertPhotoCatalogInput,
 ): Promise<number> {
   const { rows } = await client.query<{ id: string }>(
-    `INSERT INTO photos (taken_by_staff_id, photo_type, organization_id, po_ref)
-     VALUES ($1, $2, $3, $4)
+    `INSERT INTO photos (taken_by_staff_id, photo_type, organization_id, po_ref, client_captured_at)
+     VALUES ($1, $2, $3, $4, $5)
      RETURNING id`,
-    [input.staffId, input.photoType ?? null, input.organizationId, input.poRef ?? null],
+    [
+      input.staffId,
+      input.photoType ?? null,
+      input.organizationId,
+      input.poRef ?? null,
+      input.clientCapturedAt ?? null,
+    ],
   );
   return Number(rows[0].id);
 }

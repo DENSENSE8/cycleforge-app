@@ -2,7 +2,7 @@
 
 import { motion } from 'framer-motion';
 import {
-  AlertTriangle, Barcode, Calendar, ChevronRight, ExternalLink, FileText, Hash,
+  AlertTriangle, Barcode, Calendar, Camera, ChevronRight, ExternalLink, FileText, Hash,
   Image as ImageIcon, Layers, Package, Sparkles, Tag, Truck, User,
 } from '../../Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
@@ -260,8 +260,27 @@ export function PhotoContextPanel({
           </Field>
         ) : null}
 
+        {/* Capture vs upload are two different instants and the gap between them
+            is the whole point: a carton photo taken on a dead-zone dock queues
+            in localStorage and INSERTs hours later, and a concealed-damage
+            dispute turns on when the shutter fired. So the device's own clock
+            gets its own field, and `createdAt` is labelled for what it actually
+            is — the upload. The caveat line is visible rather than a tooltip
+            because "this number came from the operator's phone" is part of the
+            fact, not optional context. */}
+        {meta?.clientCapturedAt ? (
+          <Field icon={<Camera className="h-3.5 w-3.5" />} label="Captured">
+            <time dateTime={meta.clientCapturedAt} className="tabular-nums">
+              {formatDateTimePST(meta.clientCapturedAt)}
+            </time>
+            <p className="mt-0.5 text-xs leading-snug text-text-faint">
+              Reported by the capture device — not server-verified.
+            </p>
+          </Field>
+        ) : null}
+
         {meta?.createdAt ? (
-          <Field icon={<Calendar className="h-3.5 w-3.5" />} label="Captured">
+          <Field icon={<Calendar className="h-3.5 w-3.5" />} label="Uploaded">
             <time dateTime={meta.createdAt} className="tabular-nums">{formatDateTimePST(meta.createdAt)}</time>
           </Field>
         ) : null}

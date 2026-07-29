@@ -111,6 +111,7 @@ export function MobileUnitPhotoStudio({
             stage,
             packerLogId,
             poRef,
+            capturedAtMs: s.capturedAtMs,
           },
           s.blob,
           s.previewUrl,

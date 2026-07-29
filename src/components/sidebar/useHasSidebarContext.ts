@@ -8,7 +8,7 @@ import {
 } from '@/lib/dashboard/dashboard-domains';
 
 /**
- * Does the current location actually put a body in the sidebar spine?
+ * Does the current location actually have a context panel to render?
  *
  * `hasSidebarContextPanel` answers it from the route key alone, which is right
  * for every route but one: the dashboard's Receiving mode is a Monitor, so
@@ -16,12 +16,11 @@ import {
  * key otherwise has a panel. That single exception lives here rather than in the
  * route-key contract, which would otherwise have to learn about params.
  *
- * **Two consumers, and they must agree.** `MasterNavView` uses it to decide the
- * spine's resting body (a `false` shows the page list instead of an empty pane),
- * and `useSidebarPin` uses it to decide whether the route may hold a resident
- * column at all. When they disagreed, `/dashboard?mode=inbound` kept a 360px
- * column whose body had nothing to render — the exact empty-column bug the spine
- * migration set out to remove.
+ * One consumer now: `ContextPanelLayout`, which uses it to decide whether to
+ * mount the rail column beside the workspace at all. That single owner is the
+ * point — while the answer was also feeding the nav spine's body choice, the two
+ * could disagree, and `/dashboard?mode=inbound` held a 360px column whose body
+ * had nothing to render.
  */
 export function useHasSidebarContext(): boolean {
   const pathname = usePathname();

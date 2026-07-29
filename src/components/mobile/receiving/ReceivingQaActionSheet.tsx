@@ -24,6 +24,13 @@ import { safeRandomUUID } from '@/lib/safe-uuid';
 import { toast } from '@/lib/toast';
 import { BottomSheet, ConfirmSheet } from '@/components/ui/BottomSheet';
 import { Button } from '@/design-system/primitives';
+import { PhotoPolicyOverrideSheet } from '@/components/receiving/PhotoPolicyOverrideSheet';
+import {
+  photoPolicyOverrideField,
+  readPhotoPolicyBlock,
+  readPhotoPolicyWaiver,
+} from '@/lib/receiving/photo-policy-override-wire';
+import type { PhotoPolicyOverrideCode } from '@/lib/receiving/exception-codes';
 
 export interface ReceivingLineLite {
   id: number;
@@ -45,12 +52,27 @@ async function markAllLines(
   qaStatus: 'PASSED' | 'FAILED_FUNCTIONAL' | 'FAILED_DAMAGED' | 'FAILED_INCOMPLETE',
   dispositionCode: 'ACCEPT' | 'RTV' | 'HOLD',
   notes: string | null,
-): Promise<{ ok: number; failed: number; photoBlockers: string[] | null }> {
+  /**
+   * Photo-policy waiver for this whole pass, or null for none. REQUIRED at
+   * every call site — no default — so adding a third verdict action can't
+   * silently inherit a waiver it never asked the operator about.
+   */
+  photoPolicyOverride: PhotoPolicyOverrideCode | null,
+): Promise<{
+  ok: number;
+  failed: number;
+  photoBlockers: string[] | null;
+  waived: number;
+  /** Lines the gate blocked — the exact set a waived retry replays. */
+  blockedLines: ReceivingLineLite[];
+}> {
   let ok = 0;
   let failed = 0;
+  let waived = 0;
   // First PHOTO_POLICY 409's blockers — the org's photo policy judges the whole
   // carton, so one set of reasons covers every blocked line.
   let photoBlockers: string[] | null = null;
+  const blockedLines: ReceivingLineLite[] = [];
   for (const line of lines) {
     try {
       const res = await fetch('/api/receiving/mark-received', {
@@ -64,61 +86,112 @@ async function markAllLines(
           condition_grade: qaStatus === 'PASSED' ? 'USED_A' : 'PARTS',
           notes,
           client_event_id: safeRandomUUID(),
+          ...(photoPolicyOverride ? photoPolicyOverrideField(photoPolicyOverride) : null),
         }),
       });
+      const body = (await res.json().catch(() => null)) as unknown;
       if (res.ok) {
         ok += 1;
+        if (readPhotoPolicyWaiver(body)) waived += 1;
       } else {
         failed += 1;
-        if (photoBlockers === null) {
-          const body = (await res.json().catch(() => null)) as
-            | { error?: string; blockers?: string[] }
-            | null;
-          if (res.status === 409 && body?.error === 'PHOTO_POLICY' && Array.isArray(body.blockers)) {
-            photoBlockers = body.blockers;
-          }
+        const block = readPhotoPolicyBlock(res.status, body);
+        if (block) {
+          blockedLines.push(line);
+          if (photoBlockers === null) photoBlockers = block.blockers;
         }
       }
     } catch {
       failed += 1;
     }
   }
-  return { ok, failed, photoBlockers };
+  return { ok, failed, photoBlockers, waived, blockedLines };
 }
 
 export function ReceivingQaActionSheet({ open, onClose, receivingId, lines, onMutated }: Props) {
   const [confirmFail, setConfirmFail] = useState<null | { reason: string }>(null);
   const [confirmPass, setConfirmPass] = useState(false);
   const [busy, setBusy] = useState(false);
+  /**
+   * A photo-policy block the operator can consciously waive. Holds the gate's
+   * blockers plus the retry that replays the SAME verdict pass carrying the
+   * chosen code — so the waiver stays bound to the action that was blocked
+   * instead of becoming a mode the next action inherits.
+   */
+  const [photoBlock, setPhotoBlock] = useState<null | {
+    blockers: string[];
+    retry: (code: PhotoPolicyOverrideCode) => void;
+  }>(null);
 
   const lineCount = lines.length;
 
-  const runPass = async () => {
+  // `targetLines` narrows a waived retry to the lines the gate actually
+  // blocked — re-posting the ones that already went through would be a second
+  // verdict write for no reason.
+  const runPass = async (
+    targetLines: ReceivingLineLite[] = lines,
+    photoPolicyOverride: PhotoPolicyOverrideCode | null = null,
+  ) => {
     setBusy(true);
-    const { ok, failed, photoBlockers } = await markAllLines(lines, 'PASSED', 'ACCEPT', null);
+    const { ok, failed, photoBlockers, waived, blockedLines } = await markAllLines(
+      targetLines,
+      'PASSED',
+      'ACCEPT',
+      null,
+      photoPolicyOverride,
+    );
     setBusy(false);
+    // Blocked and not yet waived: keep the sheet open and offer the override
+    // instead of firing a toast the operator can't act on.
+    if (photoBlockers && !photoPolicyOverride) {
+      setPhotoBlock({
+        blockers: photoBlockers,
+        retry: (code) => {
+          setPhotoBlock(null);
+          void runPass(blockedLines, code);
+        },
+      });
+      return;
+    }
     setConfirmPass(false);
     onClose();
-    if (photoBlockers?.length) toast.error(`Photos required — ${photoBlockers.join(' · ')}`);
-    else if (failed > 0) toast.error(`Marked ${ok} passed · ${failed} failed`);
+    if (failed > 0) toast.error(`Marked ${ok} passed · ${failed} failed`);
+    else if (waived > 0) toast.warning(`Marked ${ok} as tested PASS · photos waived`);
     else toast.success(`Marked ${ok} line${ok === 1 ? '' : 's'} as tested PASS`);
     onMutated?.();
   };
 
-  const runFail = async () => {
-    if (!confirmFail) return;
+  // `reason` is threaded as an argument, not read from `confirmFail`: the
+  // ConfirmSheet clears that state the moment it fires, so a waived RETRY would
+  // otherwise find it null and silently do nothing.
+  const runFail = async (
+    reason: string | null,
+    targetLines: ReceivingLineLite[] = lines,
+    photoPolicyOverride: PhotoPolicyOverrideCode | null = null,
+  ) => {
     setBusy(true);
-    const { ok, failed, photoBlockers } = await markAllLines(
-      lines,
+    const { ok, failed, photoBlockers, waived, blockedLines } = await markAllLines(
+      targetLines,
       'FAILED_FUNCTIONAL',
       'RTV',
-      confirmFail.reason || null,
+      reason,
+      photoPolicyOverride,
     );
     setBusy(false);
+    if (photoBlockers && !photoPolicyOverride) {
+      setPhotoBlock({
+        blockers: photoBlockers,
+        retry: (code) => {
+          setPhotoBlock(null);
+          void runFail(reason, blockedLines, code);
+        },
+      });
+      return;
+    }
     setConfirmFail(null);
     onClose();
-    if (photoBlockers?.length) toast.error(`Photos required — ${photoBlockers.join(' · ')}`);
-    else if (failed > 0) toast.error(`Returned ${ok} · ${failed} failed`);
+    if (failed > 0) toast.error(`Returned ${ok} · ${failed} failed`);
+    else if (waived > 0) toast.warning(`Returned ${ok} · photos waived`);
     else toast.success(`Marked ${ok} line${ok === 1 ? '' : 's'} as FAILED · return`);
     onMutated?.();
   };
@@ -157,7 +230,7 @@ export function ReceivingQaActionSheet({ open, onClose, receivingId, lines, onMu
         title={`Mark ${lineCount} line${lineCount === 1 ? '' : 's'} PASSED?`}
         message="Marks each line tested-PASS with disposition ACCEPT. Cannot be undone from this screen."
         confirmLabel={busy ? 'Working…' : 'Yes, mark PASSED'}
-        onConfirm={runPass}
+        onConfirm={() => void runPass()}
       />
 
       {confirmFail && (
@@ -168,9 +241,19 @@ export function ReceivingQaActionSheet({ open, onClose, receivingId, lines, onMu
           message="Marks every line tested-FAIL with disposition RTV (return to vendor). Use the note field below to capture the reason."
           confirmLabel={busy ? 'Working…' : 'Yes, return all'}
           destructive
-          onConfirm={runFail}
+          onConfirm={() => void runFail(confirmFail.reason || null)}
         />
       )}
+
+      {/* Level 2 — above both the action sheet and a stacked ConfirmSheet. */}
+      <PhotoPolicyOverrideSheet
+        open={photoBlock !== null}
+        onClose={() => setPhotoBlock(null)}
+        blockers={photoBlock?.blockers ?? []}
+        busy={busy}
+        level={2}
+        onConfirm={(code) => photoBlock?.retry(code)}
+      />
     </>
   );
 }

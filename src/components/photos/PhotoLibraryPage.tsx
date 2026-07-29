@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Download, ExternalLink, Link2, Loader2, Tag, TicketHelp, Trash2 } from '@/components/Icons';
 import { usePhotoLibrary, photoLibraryFilterParams } from '@/hooks/usePhotoLibrary';
-import { usePhotoLibraryFolders } from '@/hooks/usePhotoLibraryFolders';
 import { usePhotoLibraryUrlState } from '@/hooks/usePhotoLibraryUrlState';
 import { usePhotoSelection } from '@/hooks/usePhotoSelection';
 import { usePhotoShareLinks } from '@/hooks/usePhotoShareLinks';
@@ -12,11 +11,9 @@ import { describePhotoLibraryContext, resolvePhotoLibraryFolderLeafLabel } from 
 import { photoShareTitle } from '@/lib/photos/display-names';
 import { buildPhotoDateTree } from '@/lib/photos/date-tree';
 import {
-  PHOTO_LIBRARY_FOLDER_LEAF_PAGE_SIZE,
-  photoLibraryViewToggleModes,
+  PHOTO_LIBRARY_HEADER_DISPLAY_MODES,
   sourceScopeFromFilters,
 } from '@/lib/photos/library-filter-state';
-import { resolvePhotoLibraryFolderLevel } from '@/lib/photos/folder-level';
 import { useMediaLibraryShortcuts } from '@/hooks/useMediaLibraryShortcuts';
 import { usePhotoGridDensity } from '@/hooks/usePhotoGridDensity';
 import { getCurrentPSTDateKey } from '@/utils/date';
@@ -45,12 +42,8 @@ import { PhotoLibraryToolbar } from './PhotoLibraryToolbar';
 import { PhotoLibraryWorkspaceHeader } from './PhotoLibraryWorkspaceHeader';
 import { PhotoLibraryTicketNasBackup } from './PhotoLibraryTicketNasBackup';
 import { PhotoLabelEditor } from './PhotoLabelEditor';
-import { PhotoInspectorPanel } from './PhotoInspectorPanel';
 import { MediaLibraryShortcutsModal } from './MediaLibraryShortcutsModal';
-import {
-  photoLibraryShowsGridControls,
-  photoLibraryShowsSelectControl,
-} from '@/lib/photos/photo-grid-density';
+import { photoLibraryShowsGridControls } from '@/lib/photos/photo-grid-density';
 
 /** Fixed share-link lifetime (24h) for copied links + share pages. */
 const DEFAULT_SHARE_TTL_SECONDS = 24 * 60 * 60;
@@ -64,40 +57,15 @@ export type { LibraryPhoto } from './photo-library-types';
 import type { LibraryPhoto } from './photo-library-types';
 import { isLibraryDocument, libraryDocumentId } from './photo-library-types';
 
-/** Right pane: workbench chrome + folders grid. Filters live in the header. */
+/** Right pane: workbench chrome + the flat photo stream. Filters live in the header. */
 export function PhotoLibraryPage() {
-  const { filters, display, setView, patch, setInspectedPhotoId } = usePhotoLibraryUrlState();
+  const { filters, display, setView, patch } = usePhotoLibraryUrlState();
   const { view } = display;
-  const foldersBrowse = useMemo(
-    () =>
-      resolvePhotoLibraryFolderLevel({
-        dateFrom: filters.dateFrom,
-        dateTo: filters.dateTo,
-        poRef: filters.poRef,
-        ticketId: filters.ticketId,
-        receivingId: filters.receivingId,
-        poFinder: filters.poFinder,
-      }),
-    [
-      filters.dateFrom,
-      filters.dateTo,
-      filters.poRef,
-      filters.ticketId,
-      filters.receivingId,
-      filters.poFinder,
-    ],
-  );
-  const foldersIsLeaf = view === 'folders' && foldersBrowse.isLeaf;
-  const fetchPhotos =
-    view !== 'folders' || foldersIsLeaf;
 
-  const { query, photos, isSettled } = usePhotoLibrary(filters, {
-    pageSize: foldersIsLeaf ? PHOTO_LIBRARY_FOLDER_LEAF_PAGE_SIZE : undefined,
-    enabled: fetchPhotos,
-  });
-  const foldersQuery = usePhotoLibraryFolders(filters, {
-    enabled: view === 'folders' && !foldersIsLeaf,
-  });
+  // Always fetch photos. The folder drill used to gate this query behind
+  // `view !== 'folders' || isLeaf`, which is why a bare load painted year tiles
+  // and fetched nothing; every view now renders photos, so there is no gate.
+  const { query, photos, isSettled } = usePhotoLibrary(filters);
   const { density: gridDensity, setDensity: setGridDensity } = usePhotoGridDensity();
   const queryClient = useQueryClient();
 
@@ -200,64 +168,45 @@ export function PhotoLibraryPage() {
   const shareLinks = usePhotoShareLinks();
   const { subtitle } = describePhotoLibraryContext(displayFilters);
 
-  const folderIsLeaf = foldersIsLeaf;
-  const folderLeafLabel = useMemo(
-    () =>
-      folderIsLeaf
-        ? resolvePhotoLibraryFolderLeafLabel({
-            scope,
-            poRef: resolvedPoRef ?? filters.poRef,
-            ticketId: resolvedTicketId ?? filters.ticketId,
-            receivingId: filters.receivingId,
-          })
-        : null,
-    [
-      folderIsLeaf,
+  // Trailing breadcrumb crumb naming the entity in view (PO / ticket / carton).
+  //
+  // This used to be gated on `folderIsLeaf` — i.e. only while the operator had
+  // physically descended to a folder leaf. With the drill gone, the crumb is
+  // gated on the thing it actually describes: whether an entity filter is
+  // active. That KEEPS the capability rather than dropping it with the folders
+  // — `?poRef=` still reads as "… › PO 14-…" — and it now works in every view,
+  // including List, which the old gate excluded for no reason.
+  const leafPoRef = resolvedPoRef ?? filters.poRef;
+  const leafTicketId = resolvedTicketId ?? filters.ticketId;
+  const leafReceivingId = filters.receivingId;
+  const folderLeafLabel = useMemo(() => {
+    if (!leafPoRef && !leafTicketId && !leafReceivingId) return null;
+    return resolvePhotoLibraryFolderLeafLabel({
       scope,
-      resolvedPoRef,
-      resolvedTicketId,
-      filters.poRef,
-      filters.ticketId,
-      filters.receivingId,
-    ],
-  );
-  const viewToggleModes = useMemo(
-    () => photoLibraryViewToggleModes(view, folderIsLeaf),
-    [view, folderIsLeaf],
-  );
-  const showGridControls = photoLibraryShowsGridControls(view, folderIsLeaf);
-  const showSelectControl = photoLibraryShowsSelectControl(view, folderIsLeaf);
+      poRef: leafPoRef,
+      ticketId: leafTicketId,
+      receivingId: leafReceivingId,
+    });
+  }, [scope, leafPoRef, leafTicketId, leafReceivingId]);
+  const showGridControls = photoLibraryShowsGridControls(view);
 
   const refreshLibrary = useCallback(() => {
-    // Folders browse disables the photo infinite query — refetching it no-ops.
-    // Invalidate so year/month tiles and leaf pages both pick up new captures.
-    if (view === 'folders' && !folderIsLeaf) {
-      void queryClient.invalidateQueries({ queryKey: ['photo-library-folders'] });
-      return;
-    }
     void queryClient.invalidateQueries({ queryKey: ['photo-library'] });
-  }, [view, folderIsLeaf, queryClient]);
+  }, [queryClient]);
 
-  const isRefreshing =
-    view === 'folders' && !folderIsLeaf
-      ? foldersQuery.query.isFetching && !foldersQuery.query.isLoading
-      : query.isFetching && !query.isLoading;
+  const isRefreshing = query.isFetching && !query.isLoading;
 
   // Date breadcrumb quick-jump defaults: today + the most recent
   // capture day across the loaded photos — both keyed off `created_at` (PST),
   // never the most-recent PO or photo type.
   const today = useMemo(() => getCurrentPSTDateKey(), []);
 
-  // Folders stay folders — do not force Today on view switch (Recent landing owns bare load).
-  const handleViewChange = useCallback(
-    (next: typeof view) => {
-      if (next === 'folders') {
-        patch({ poRef: undefined, ticketId: undefined });
-      }
-      setView(next);
-    },
-    [patch, setView],
-  );
+  // A view switch is presentation only — it never touches the filter set. The
+  // old `folders` branch cleared poRef/ticketId because entering the drill had
+  // to reset to the top of the hierarchy; there is no hierarchy to re-enter now,
+  // and silently dropping an entity filter on a display toggle would be a
+  // surprise (switch to List, lose the PO you were looking at).
+  const handleViewChange = setView;
   const mostRecentDay = useMemo(
     () => buildPhotoDateTree(photos)[0]?.months[0]?.days[0]?.ymd,
     [photos],
@@ -267,16 +216,6 @@ export function PhotoLibraryPage() {
     setSelectMode(false);
     clear();
   }, [clear]);
-
-  // The inspected photo, resolved from `?photoId=` against the loaded rows.
-  // Resolving against `photos` (rather than fetching by id) keeps the inspector
-  // a pure projection of what the grid already has — no second request, and no
-  // way for it to show a photo the current filters exclude.
-  const inspectedPhoto = useMemo(
-    () => photos.find((p) => p.id === display.photoId) ?? null,
-    [photos, display.photoId],
-  );
-  const closeInspector = useCallback(() => setInspectedPhotoId(null), [setInspectedPhotoId]);
 
   // Reset selection when the BROWSE SCOPE changes — a folder drill, breadcrumb
   // jump, source-scope switch, or search. Selection is keyed by id and (by
@@ -317,14 +256,14 @@ export function PhotoLibraryPage() {
   }, [filters, selectIds]);
 
   // Grid keyboard shortcuts (the viewer owns its own keys). `?` help, `⌘A`
-  // select-all while selecting, `Esc` exit, `1`–`5` view switch.
+  // select-all while selecting, `Esc` exit, digit → view switch.
   const toggleShortcuts = useCallback(() => setShowShortcuts((v) => !v), []);
   const selectViewByIndex = useCallback(
     (index: number) => {
-      const next = viewToggleModes[index];
+      const next = PHOTO_LIBRARY_HEADER_DISPLAY_MODES[index];
       if (next) handleViewChange(next);
     },
-    [handleViewChange, viewToggleModes],
+    [handleViewChange],
   );
   useMediaLibraryShortcuts({
     selectionActive,
@@ -336,16 +275,9 @@ export function PhotoLibraryPage() {
 
   // Infinite scroll lives in {@link PhotoLibraryLoadMoreSentinel} (needs scroll-shell root).
 
-  const metaLine =
-    view === 'folders' && !foldersIsLeaf
-      ? foldersQuery.isLoading
-        ? 'Loading…'
-        : `${foldersQuery.tiles.length} folder${foldersQuery.tiles.length === 1 ? '' : 's'} · ${foldersQuery.eyebrow}`
-      : query.isLoading
-        ? 'Loading…'
-        : foldersIsLeaf
-          ? `${photos.length} photo${photos.length === 1 ? '' : 's'}${query.hasNextPage ? '+' : ''}`
-          : `${photos.length} photo${photos.length === 1 ? '' : 's'} in view · ${subtitle}`;
+  const metaLine = query.isLoading
+    ? 'Loading…'
+    : `${photos.length} photo${photos.length === 1 ? '' : 's'} in view · ${subtitle}`;
 
   const downloadPhotoFile = useCallback(async (url: string, filename: string) => {
     const res = await fetch(url);
@@ -686,7 +618,6 @@ export function PhotoLibraryPage() {
                 density={gridDensity}
                 onDensityChange={setGridDensity}
                 showDensity={showGridControls}
-                showSelect={showSelectControl}
                 selectionActive={selectionActive}
                 onStartSelect={() => setSelectMode(true)}
                 onRefresh={refreshLibrary}
@@ -712,15 +643,10 @@ export function PhotoLibraryPage() {
             view={view}
             gridDensity={gridDensity}
             sourceScope={sourceScopeFromFilters(filters)}
-            dateFrom={filters.dateFrom}
-            dateTo={filters.dateTo}
-            poRef={resolvedPoRef}
-            ticketId={resolvedTicketId}
-            onNavigate={({ dateFrom, dateTo, poRef, ticketId }) =>
-              patch({ dateFrom, dateTo, poRef, ticketId })
-            }
             onPhotoDeleted={() => {
               void queryClient.invalidateQueries({ queryKey: ['photo-library'] });
+              // The picker modal still browses server folder aggregates, so its
+              // counts must drop too when a photo is deleted from here.
               void queryClient.invalidateQueries({ queryKey: ['photo-library-folders'] });
             }}
             selectionActive={selectionActive}
@@ -731,32 +657,16 @@ export function PhotoLibraryPage() {
               e.preventDefault();
               setCtxMenu({ photo, x: e.clientX, y: e.clientY });
             }}
-            onInspect={setInspectedPhotoId}
-            isLoading={foldersIsLeaf || view !== 'folders' ? query.isLoading : foldersQuery.isLoading}
-            isSettled={
-              foldersIsLeaf || view !== 'folders' ? isSettled : foldersQuery.isSettled
-            }
-            error={
-              foldersIsLeaf || view !== 'folders'
-                ? query.error instanceof Error
-                  ? query.error.message
-                  : null
-                : foldersQuery.error
-            }
-            folderTiles={foldersQuery.tiles}
-            foldersLoading={foldersQuery.isLoading}
-            foldersIsLeaf={foldersIsLeaf}
-            hasMorePhotos={Boolean(query.hasNextPage)}
-            isFetchingMorePhotos={query.isFetchingNextPage}
-            onLoadMorePhotos={() => void query.fetchNextPage()}
+            isLoading={query.isLoading}
+            error={query.error instanceof Error ? query.error.message : null}
           />
-          {view !== 'folders' && query.hasNextPage ? (
+          {query.hasNextPage ? (
             <PhotoLibraryLoadMoreSentinel
               hasNextPage={query.hasNextPage}
               isFetchingNextPage={query.isFetchingNextPage}
               onLoadMore={() => void query.fetchNextPage()}
             />
-          ) : view !== 'folders' && !query.isLoading && photos.length > 0 ? (
+          ) : !query.isLoading && photos.length > 0 ? (
             <p className="mt-6 text-center text-role-micro uppercase tracking-widest text-text-faint">
               {`Showing all ${photos.length} photo${photos.length === 1 ? '' : 's'}`}
             </p>
@@ -791,15 +701,6 @@ export function PhotoLibraryPage() {
           scopeImageType={filters.imageType}
           onClose={() => setLabelEditorPhotos(null)}
         />
-      ) : null}
-
-      {/* Non-modal inspector — registers the single right-rail slot. Renders
-          nothing inline; RightRailHost owns the geometry. Mounted ONLY while a
-          photo is selected: see the note in PhotoInspectorPanel — an
-          always-mounted registrar with `enabled=false` leaves an invisible
-          click-blocking aside behind. */}
-      {inspectedPhoto ? (
-        <PhotoInspectorPanel photo={inspectedPhoto} onClose={closeInspector} />
       ) : null}
 
       <MediaLibraryShortcutsModal open={showShortcuts} onClose={() => setShowShortcuts(false)} />

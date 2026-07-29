@@ -1,3 +1,4 @@
+import { CLIENT_CAPTURED_AT_FIELD } from './capture-provenance';
 import type { PhotoEntityType } from './types';
 
 export interface ClientUploadInput {
@@ -7,6 +8,20 @@ export interface ClientUploadInput {
   photoType?: string;
   linkRole?: 'primary' | 'claim_evidence' | 'insurance_share';
   poRef?: string;
+  /**
+   * Device-reported capture instant in epoch milliseconds — the shutter clock
+   * for a canvas capture, `File.lastModified` for a picked/dropped File. Read it
+   * with `@/lib/photos/capture-time` so the shared bounds apply (see
+   * `capture-provenance.ts` for why a null beats a fabricated 1970).
+   *
+   * Optional on purpose: a desktop File with no usable timestamp and every
+   * legacy caller genuinely have no capture time, and the column is nullable to
+   * say so honestly. Omitting it uploads exactly as before.
+   *
+   * NOT server-attested — it is the operator's device clock, stored beside
+   * `created_at`, never instead of it.
+   */
+  clientCapturedAtMs?: number | null;
 }
 
 export interface ClientUploadResult {
@@ -24,6 +39,11 @@ export async function uploadPhotoClient(input: ClientUploadInput): Promise<Clien
   if (input.photoType) form.append('photoType', input.photoType);
   if (input.linkRole) form.append('linkRole', input.linkRole);
   if (input.poRef) form.append('poRef', input.poRef);
+  // Epoch-ms verbatim — the route's parser accepts that form, so no capture
+  // surface has to format a date. Absent stays absent (null column, no warn).
+  if (input.clientCapturedAtMs != null && Number.isFinite(input.clientCapturedAtMs)) {
+    form.append(CLIENT_CAPTURED_AT_FIELD, String(Math.trunc(input.clientCapturedAtMs)));
+  }
 
   const res = await fetch('/api/photos/upload', { method: 'POST', body: form });
   const data = (await res.json().catch(() => null)) as ClientUploadResult & {

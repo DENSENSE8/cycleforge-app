@@ -54,6 +54,18 @@ export interface LibraryPhoto extends PhotoIdentityMeta {
   /** Resolved name of the uploader (joined from `staff`), for the viewer panel. */
   takenByStaffName?: string | null;
   createdAt: string;
+  /**
+   * Device-reported capture instant (`photos.client_captured_at`) — when the
+   * shutter fired, as opposed to `createdAt`, which is when the server INSERTed
+   * the row. They diverge by minutes-to-hours whenever a mobile upload queued
+   * offline and drained later, and a carrier concealed-damage dispute turns on
+   * the former.
+   *
+   * NOT server-attested (it is the operator's device clock) and null for every
+   * desktop/legacy row that had no usable timestamp — render it as a distinct,
+   * clearly-labelled fact, never as a substitute for `createdAt`.
+   */
+  clientCapturedAt?: string | null;
   displayUrl: string;
   thumbUrl: string;
   damageDetected?: boolean | null;

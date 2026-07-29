@@ -2,6 +2,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   COMPLETE_CARTON_GENERIC_BLOCKER,
+  COMPLETE_CARTON_IDLE,
   completeCartonRequestBody,
   foldSyncVerdict,
   mapCompleteCartonResponse,
@@ -67,6 +68,98 @@ describe('mapCompleteCartonResponse', () => {
       blockers: ['  ', '', 'needs a package photo'],
     });
     assert.deepEqual(out.blockers, ['needs a package photo']);
+  });
+
+  it('§4: with NO override, a 409 PHOTO_POLICY still blocks — the default is unchanged', () => {
+    // The soft block only relaxes the gate when the operator supplies a
+    // PHOTO_WAIVED_* code. The DEFAULT body carries none — `useCompleteCarton`
+    // spreads `photoPolicyOverrideField(...)` on top only when the operator
+    // picks a reason — so the phone's plain "Complete carton" must keep landing
+    // on `blocked`. A waiver leaking into the default body would silently
+    // disable the gate for every receive.
+    const body = completeCartonRequestBody(row(), 42, 'k') as Record<string, unknown>;
+    assert.equal(
+      body.photo_policy_override,
+      undefined,
+      'the phone sends no override today — a stray one would silently waive the gate',
+    );
+    const out = mapCompleteCartonResponse(409, {
+      success: false,
+      error: 'PHOTO_POLICY',
+      blockers: ['carton needs an arrival package photo'],
+    });
+    assert.equal(out.phase, 'blocked');
+  });
+
+  it('§4: a waived receive (200 + warnings) completes, but is NOT a clean success', () => {
+    // The third outcome. The receive happened, so the phase is `done` and the
+    // sync bookkeeping is unchanged — but `waiver` is set, because the carton
+    // is received carrying an open exception and the bench is the last place
+    // that can still say so.
+    const out = mapCompleteCartonResponse(200, {
+      success: true,
+      updated_count: 2,
+      receive_intent: 'zoho_receive',
+      receiving_lines: [{ id: 11 }, { id: 12 }],
+      warnings: [
+        {
+          code: 'PHOTO_POLICY',
+          reason_code: 'PHOTO_WAIVED_UPLOAD_FAILED',
+          blockers: ['carton needs an arrival package photo'],
+        },
+      ],
+    });
+    assert.equal(out.phase, 'done');
+    assert.equal(out.error, null);
+    assert.deepEqual(out.blockers, []);
+    assert.equal(out.updatedCount, 2);
+    assert.deepEqual(out.lineIds, [11, 12]);
+    assert.equal(out.awaitsSync, true);
+    assert.deepEqual(out.waiver, {
+      reasonCode: 'PHOTO_WAIVED_UPLOAD_FAILED',
+      blockers: ['carton needs an arrival package photo'],
+    });
+  });
+
+  it('§4: an ordinary receive reports no waiver', () => {
+    const out = mapCompleteCartonResponse(200, { success: true, updated_count: 1 });
+    assert.equal(out.waiver, null);
+    assert.equal(COMPLETE_CARTON_IDLE.waiver, null);
+  });
+
+  it('§4: a warning naming a code outside the vocabulary is NOT read as a waiver', () => {
+    // The reason code drives operator-facing copy; trusting arbitrary server
+    // text here would put an unvalidated string on the receipt.
+    for (const reason_code of ['NO_PO', 'PHOTO_WAIVED_LOL', '', 42]) {
+      const out = mapCompleteCartonResponse(200, {
+        success: true,
+        updated_count: 1,
+        warnings: [{ code: 'PHOTO_POLICY', reason_code, blockers: ['x'] }],
+      });
+      assert.equal(out.waiver, null, `reason_code: ${String(reason_code)}`);
+    }
+  });
+
+  it('§4: a non-policy warning is ignored', () => {
+    const out = mapCompleteCartonResponse(200, {
+      success: true,
+      updated_count: 1,
+      warnings: [{ code: 'ZOHO_CIRCUIT_OPEN' }],
+    });
+    assert.equal(out.waiver, null);
+  });
+
+  it('§4: a forged override answers 400 INVALID_PHOTO_POLICY_OVERRIDE — an error, never a block', () => {
+    // A waiver we cannot name must not read as "shoot more photos and retry";
+    // that would loop the operator forever on a client bug.
+    const out = mapCompleteCartonResponse(400, {
+      success: false,
+      error: 'INVALID_PHOTO_POLICY_OVERRIDE',
+      allowed: ['PHOTO_WAIVED_NO_DEVICE'],
+    });
+    assert.equal(out.phase, 'error');
+    assert.equal(out.error, 'INVALID_PHOTO_POLICY_OVERRIDE');
+    assert.deepEqual(out.blockers, []);
   });
 
   it('a NON-policy 409 is still an error (idempotency / conflict)', () => {

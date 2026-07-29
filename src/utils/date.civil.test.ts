@@ -77,6 +77,39 @@ test('warehouseDayUtcBounds covers a full LA wall day as UTC instants', () => {
   assert.equal(b.endIso, '2026-06-02T06:59:59.999Z');
 });
 
+test('a half-open day range spans exactly the civil day, including DST shifts', () => {
+  // The media-library photo filter builds its SQL window as
+  //   created_at >= bounds(from).startIso  AND  created_at < bounds(to + 1).startIso
+  // (src/lib/photos/queries/library.ts). That is only correct if consecutive
+  // day-starts differ by the day's TRUE length — which is not 24h twice a year.
+  // A fixed `+86400000` here would silently drop or double-count an hour of
+  // evidence photos on those two days.
+  const startOf = (key: string) => {
+    const b = warehouseDayUtcBounds(key);
+    assert.ok(b, `no bounds for ${key}`);
+    return Date.parse(b.startIso);
+  };
+  const hoursSpanned = (key: string) =>
+    (startOf(addDaysToDateKey(key, 1)) - startOf(key)) / 3_600_000;
+
+  // Ordinary day.
+  assert.equal(hoursSpanned('2026-06-01'), 24);
+  // Spring forward (2nd Sunday in March 2026) — 23-hour day, PST→PDT.
+  assert.equal(startOf('2026-03-08'), Date.parse('2026-03-08T08:00:00.000Z'));
+  assert.equal(hoursSpanned('2026-03-08'), 23);
+  // Fall back (1st Sunday in November 2026) — 25-hour day, PDT→PST.
+  assert.equal(startOf('2026-11-01'), Date.parse('2026-11-01T07:00:00.000Z'));
+  assert.equal(hoursSpanned('2026-11-01'), 25);
+
+  // The exclusive upper bound must equal the next day's start exactly — no gap,
+  // no overlap. `endIso` (…23:59:59.999) is 1ms short, which is why the query
+  // uses the next day's start instead: a timestamptz has microsecond precision,
+  // so an inclusive millisecond bound can drop a capture.
+  const nov1 = warehouseDayUtcBounds('2026-11-01');
+  assert.ok(nov1);
+  assert.equal(Date.parse(nov1.endIso) + 1, startOf('2026-11-02'));
+});
+
 test('formatWeekRangeCompact uses civil keys only', () => {
   assert.equal(formatWeekRangeCompact('2026-06-01', '2026-06-05'), 'JUN 1st - 5th');
   assert.match(formatWeekRangeCompact('2026-05-30', '2026-06-02'), /MAY 30th/);

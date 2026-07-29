@@ -37,6 +37,8 @@ import { useAblyChannel } from '@/hooks/useAblyChannel';
 import { useAuth } from '@/contexts/AuthContext';
 import { InlineActionFeedbackCard } from './InlineActionFeedbackCard';
 import { ReceiveResponsePanel } from './ReceiveResponsePanel';
+import { photoPolicyOverrideLabel } from '@/lib/receiving/photo-policy-override-wire';
+import type { PhotoPolicyOverrideCode } from '@/lib/receiving/exception-codes';
 import type {
   ReceiveInFlight,
   ReceiveResult,
@@ -82,6 +84,21 @@ type ChecklistView = {
 };
 
 function buildView(summary: ReceiveSummary, failed: boolean): ChecklistView {
+  // A waived receive outranks every success headline below: the lines really
+  // did commit, but they committed carrying an open exception, and the bench is
+  // where the operator who took that call can still read it back. Amber, and
+  // the reason is named — never the plain green "Receive complete".
+  if (!failed && summary.photoPolicyWaiver) {
+    const { blockers } = summary.photoPolicyWaiver;
+    return {
+      tone: 'amber',
+      headline: `Received without photos · ${photoPolicyOverrideLabel(summary.photoPolicyWaiver.reasonCode)}`,
+      items: ['Marked as received'],
+      note: blockers.length > 0
+        ? `Photo policy waived — ${blockers.join(' · ')}. Logged as a receiving exception.`
+        : 'Photo policy waived. Logged as a receiving exception.',
+    };
+  }
   if (failed) {
     return {
       tone: 'amber',
@@ -271,12 +288,19 @@ export function ReceiveFeedbackRegion({
   responseExpanded,
   setResponseExpanded,
   onDismiss,
+  onPhotoPolicyOverride,
 }: {
   receiving: ReceiveInFlight | null;
   receiveResult: ReceiveResult | null;
   responseExpanded: boolean;
   setResponseExpanded: (next: boolean) => void;
   onDismiss: () => void;
+  /**
+   * Replay the blocked receive with an operator-chosen waiver code. Optional:
+   * a host that can't re-run the receive simply doesn't offer the override, and
+   * the block stays hard — never a dead button.
+   */
+  onPhotoPolicyOverride?: (code: PhotoPolicyOverrideCode) => void;
 }) {
   const presence = useMotionPresence(framerPresence.workbenchPane);
   const transition = useMotionTransition(framerTransition.workbenchPaneMount);
@@ -317,6 +341,7 @@ export function ReceiveFeedbackRegion({
                 expanded={responseExpanded}
                 onToggle={() => setResponseExpanded(!responseExpanded)}
                 onDismiss={onDismiss}
+                onPhotoPolicyOverride={onPhotoPolicyOverride}
               />
             </WorkspaceCard>
           ) : null}

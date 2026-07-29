@@ -176,11 +176,30 @@ export function TabSwitch({
     const activeButton = buttonRefs.current[activeTab];
     if (!rail || !activeButton) return;
     const railWidth = rail.clientWidth;
-    const maxScroll = rail.scrollWidth - railWidth;
-    const targetLeft = activeButton.offsetLeft + activeButton.offsetWidth / 2 - railWidth / 2;
-    const left = Math.max(0, Math.min(targetLeft, Math.max(0, maxScroll)));
+    const maxScroll = Math.max(0, rail.scrollWidth - railWidth);
+    if (maxScroll === 0) return;
+
+    // Scroll to the NEAREST edge, and only when the active tab is actually out
+    // of view. This used to CENTER the active tab unconditionally, which meant
+    // a first tab in an overflowing rail got scrolled half off its own left
+    // edge — "Pending 99+" rendering as "ing 99+" on the dashboard the moment
+    // the header was narrow enough to overflow. Centering is only ever right
+    // for a tab in the middle of a long rail; for the ends it manufactures the
+    // clipping it was supposed to prevent.
+    const PAD = 8;
+    const left = activeButton.offsetLeft;
+    const right = left + activeButton.offsetWidth;
+    const viewLeft = rail.scrollLeft;
+    const viewRight = viewLeft + railWidth;
+
+    let next = viewLeft;
+    if (left - PAD < viewLeft) next = left - PAD;
+    else if (right + PAD > viewRight) next = right + PAD - railWidth;
+    else return;
+
+    const clamped = Math.max(0, Math.min(next, maxScroll));
     requestAnimationFrame(() => {
-      rail.scrollTo({ left, behavior: 'smooth' });
+      rail.scrollTo({ left: clamped, behavior: 'smooth' });
     });
   }, [activeTab, scrollable, tabs]);
 

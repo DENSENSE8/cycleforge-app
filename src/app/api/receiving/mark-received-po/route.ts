@@ -35,6 +35,14 @@ import { getOrganization } from '@/lib/tenancy/organizations';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { getReceivingPhotoPolicy } from '@/lib/settings/accessors';
 import { evaluateReceivingPhotoPolicyGate } from '@/lib/receiving/photo-policy-gate';
+import {
+  PHOTO_POLICY_OVERRIDE_BODY_KEY,
+  parsePhotoPolicyOverride,
+  photoPolicyOverrideInvalidBody,
+  photoPolicyOverrideWarning,
+  recordPhotoPolicyOverride,
+} from '@/lib/receiving/photo-policy-override';
+import type { PhotoPolicyOverrideCode } from '@/lib/receiving/exception-codes';
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import { conditionLabel } from '@/lib/conditions';
 import { mergeSerialNoteIntoLineDescription } from '@/lib/zoho';
@@ -177,6 +185,14 @@ export const POST = withAuth(async (request, ctx) => {
       : null;
     const zendeskTicket = String(body?.zendesk_ticket || '').trim() || null;
     const notes = String(body?.notes || '').trim() || null;
+    // WS-PHOTO §4 soft block: an operator may consciously receive past the
+    // photo-evidence gate ONLY with a code from the receiving-exception system
+    // registry (`PHOTO_WAIVED_*`). Absent → the gate stays the hard 409 below;
+    // present-but-unrecognized → 400 (checked before the idempotency claim, so
+    // a malformed waiver never reserves a key it can't use).
+    const photoPolicyOverride = parsePhotoPolicyOverride(body?.[PHOTO_POLICY_OVERRIDE_BODY_KEY]);
+    /** Set only when a valid override actually waived a real block. */
+    let photoPolicyWaiver: { code: PhotoPolicyOverrideCode; blockers: string[] } | null = null;
     // Server-trusted actor from the verified session cookie. The wrapper
     // guarantees ctx.staffId is set on this permission-gated route.
     const staffId = ctx.staffId;
@@ -218,6 +234,10 @@ export const POST = withAuth(async (request, ctx) => {
         { success: false, error: 'receiving_id is required' },
         { status: 400 },
       );
+    }
+
+    if (photoPolicyOverride.state === 'invalid') {
+      return NextResponse.json(photoPolicyOverrideInvalidBody(), { status: 400 });
     }
 
     // Idempotency: long-running Zoho-sync routes are exactly the place a
@@ -343,14 +363,22 @@ export const POST = withAuth(async (request, ctx) => {
           policy: photoPolicy,
         });
         if (!gate.ok) {
-          if (ownedClaim) {
-            await releaseIdempotencyClaim(pool, ownedClaim).catch(() => {});
-            ownedClaim = null;
+          // §4 soft block. WITHOUT an override this stays the byte-identical
+          // 409 — including the claim release, which is what lets the same key
+          // retry once the photos land. WITH a valid override the receive
+          // proceeds and KEEPS its claim (respond() finalizes it as normal),
+          // because a waived receive is a real, non-retryable effect.
+          if (photoPolicyOverride.state !== 'valid') {
+            if (ownedClaim) {
+              await releaseIdempotencyClaim(pool, ownedClaim).catch(() => {});
+              ownedClaim = null;
+            }
+            return NextResponse.json(
+              { success: false, error: 'PHOTO_POLICY', blockers: gate.blockers },
+              { status: 409 },
+            );
           }
-          return NextResponse.json(
-            { success: false, error: 'PHOTO_POLICY', blockers: gate.blockers },
-            { status: 409 },
-          );
+          photoPolicyWaiver = { code: photoPolicyOverride.code, blockers: gate.blockers };
         }
       }
     }
@@ -1204,6 +1232,38 @@ export const POST = withAuth(async (request, ctx) => {
     const auditAction = skipZohoReceive
       ? AUDIT_ACTION.PO_RECEIVE_REVERSE
       : AUDIT_ACTION.PO_RECEIVE;
+
+    // §4 soft block — persist + audit the waiver alongside the per-line receive
+    // audit. One exception row and one audit row per received line: the waiver
+    // covers the whole receive act, and `require_one` blockers are carton-level
+    // so no single line is "the" culprit. An override without this trail would
+    // be worse than having no gate at all.
+    if (photoPolicyWaiver) {
+      await recordPhotoPolicyOverride(ctx.organizationId as OrgId, {
+        code: photoPolicyWaiver.code,
+        blockers: photoPolicyWaiver.blockers,
+        receivingId,
+        receivingLineIds: updatedLines.map((l) => l.id),
+        staffId,
+      });
+      for (const l of updatedLines) {
+        await recordAudit(pool, ctx, request, {
+          source: auditSource,
+          action: AUDIT_ACTION.RECEIVING_PHOTO_POLICY_OVERRIDE,
+          entityType: AUDIT_ENTITY.RECEIVING_LINE,
+          entityId: l.id,
+          reasonCode: photoPolicyWaiver.code,
+          scanRef: localTracking,
+          method: station === 'MOBILE' ? 'scan' : 'manual',
+          extra: {
+            receiving_id: receivingId,
+            station,
+            blockers: photoPolicyWaiver.blockers,
+          },
+        });
+      }
+    }
+
     for (const l of updatedLines) {
       const before = beforeByLineId.get(l.id) ?? null;
       await recordAudit(pool, ctx, request, {
@@ -1296,6 +1356,15 @@ export const POST = withAuth(async (request, ctx) => {
       updated_count: linesUpdatedViaReceiveUnits ? updatedLines.length : 0,
       receiving_lines: updatedLines,
       receiving_id: receivingId,
+      // §4 soft block: the receive went through, but say WHAT was waived —
+      // same `code`/`blockers` the 409 would have carried.
+      ...(photoPolicyWaiver
+        ? {
+            warnings: [
+              photoPolicyOverrideWarning(photoPolicyWaiver.code, photoPolicyWaiver.blockers),
+            ],
+          }
+        : {}),
       // Per-action breakdown the inline ReceiveSuccessChecklist renders as
       // staggered green checks. Optimistic — the Zoho writes run in after();
       // the realtime `zohoReceive` verdict reconciles a background failure.

@@ -16,6 +16,7 @@ import {
   type ViewerCloseAction,
   type ViewerCloseState,
 } from './viewer-close-state';
+import { captureTimeFromFile } from '@/lib/photos/capture-time';
 import { uploadPhotoClient } from '@/lib/photos/upload-client';
 import { toast } from '@/lib/toast';
 import { RECEIVING_PHOTO_PACKAGE } from '@/lib/receiving/photo-intent';
@@ -511,6 +512,10 @@ export function usePhotoGallery(props: PhotoGalleryProps) {
             entityId: effectiveUploadTarget.entityId,
             photoType: effectiveUploadTarget.photoType,
             poRef: effectiveUploadTarget.poRef,
+            // Read BEFORE the route's re-encode ever sees the bytes. A dropped
+            // File's `lastModified` is the closest unambiguous capture instant
+            // available here; null when it fails the shared bounds.
+            clientCapturedAtMs: captureTimeFromFile(file),
           });
           uploadedIds.push(res.id);
           newItems.push({

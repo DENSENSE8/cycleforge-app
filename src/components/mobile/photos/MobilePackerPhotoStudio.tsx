@@ -82,7 +82,12 @@ export function MobilePackerPhotoStudio({
       const existingCount = query.data?.photos?.length ?? 0;
       shots.forEach((s, index) => {
         packerPhotoUploadQueue.enqueue(
-          { ...scope, photoType: photoType ?? null, fileIndex: existingCount + index + 1 },
+          {
+            ...scope,
+            photoType: photoType ?? null,
+            fileIndex: existingCount + index + 1,
+            capturedAtMs: s.capturedAtMs,
+          },
           s.blob,
           s.previewUrl,
         );

@@ -180,6 +180,15 @@ export const AUDIT_ACTION = {
   RECEIVING_LINE_QTY_UPDATE: 'receiving_line.qty.update',
   RECEIVING_HEADER_UPDATE:   'receiving.header.update',
   /**
+   * An operator consciously received a carton that the `receiving.photoPolicy`
+   * evidence gate had blocked (WS-PHOTO §4 soft block). `reason_code` carries a
+   * `PHOTO_WAIVED_*` code from the receiving-exception system registry — never
+   * free text — and the same act writes a `receiving_exceptions` row per line.
+   * Distinct from PO_RECEIVE: that says the line was received; this says the
+   * completion-insurance gate was waived to do it.
+   */
+  RECEIVING_PHOTO_POLICY_OVERRIDE: 'receiving.photo_policy.override',
+  /**
    * Operator-driven PO relink — make the website authoritative over Zoho. Writes
    * the chosen PO (and optional SKU correction) onto the line + carton, even when
    * Zoho already had a different (wrong) link. Distinct from RECEIVING_MATCH
@@ -515,6 +524,9 @@ export const AUDIT_REASON_REQUIRED: ReadonlySet<string> = new Set([
   // Voiding a purchased label reverses a paid carrier action — require a reason.
   AUDIT_ACTION.LABEL_VOIDED,
   AUDIT_ACTION.OPS_PLAN_TASK_CANCEL,
+  // Waiving the photo-evidence gate IS the override — it is meaningless
+  // without the PHOTO_WAIVED_* code that says why.
+  AUDIT_ACTION.RECEIVING_PHOTO_POLICY_OVERRIDE,
 ]);
 
 // ── Server-trusted wrapper ─────────────────────────────────────────────────

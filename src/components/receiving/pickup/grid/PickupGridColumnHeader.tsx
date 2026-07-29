@@ -3,7 +3,7 @@
 import { ChevronUp, ChevronDown } from '@/components/Icons';
 import { tableHeader } from '@/design-system/tokens/typography/presets';
 import { ColumnTypeGlyph } from '@/components/ui/table-column-config/column-type-glyph';
-import { gridHeaderCellAlignClass } from '@/design-system/components/grid/grid-header-align';
+import { gridHeaderCellAlignClass, resolveGridColumnAlign } from '@/design-system/components/grid/grid-header-align';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { cn } from '@/utils/_cn';
 import {
@@ -98,7 +98,6 @@ function PickupHeaderCell({
   const showTextLabel = pickupGridHeaderShowsLabel(column);
   const visibleLabel = column.gridLabel ?? label;
   const frozen = isPickupGridFrozen(column.key);
-  const alignEnd = column.key === 'price' || column.key === 'qty';
 
   const glyph = column.type ? (
     <ColumnTypeGlyph type={column.type} className="h-3 w-3 text-text-faint" />
@@ -152,7 +151,7 @@ function PickupHeaderCell({
       onClick={onSort}
       className={cn(
         'group/hcell relative gap-1 min-h-11',
-        gridHeaderCellAlignClass(alignEnd ? 'end' : 'start'),
+        gridHeaderCellAlignClass(resolveGridColumnAlign(column)),
         pickupGridCell({ rule: !last, inset: 'grid' }),
         frozen && PICKUP_GRID_FROZEN_CELL,
         tableHeader,

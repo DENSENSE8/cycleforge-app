@@ -11,6 +11,15 @@ import { test, expect } from '@playwright/test';
 
 const SERIAL = `SNCTL${process.env.AUDIT_STAMP || String(Date.now()).slice(-7)}`;
 
+// DIAGNOSTIC, NOT A GATE. This spec attaches a serial to a REAL order picked
+// from live data, so a plain `playwright test` run would mutate production rows
+// (and, until CF-03 is fixed, smear that serial across every order sharing the
+// shipment). Opt in explicitly: AUDIT_MUTATE_REAL_DATA=1.
+test.skip(
+  process.env.AUDIT_MUTATE_REAL_DATA !== '1',
+  'mutates real order data — set AUDIT_MUTATE_REAL_DATA=1 to run, and clean up after',
+);
+
 test('CONTROL — serial attaches to a real order that HAS a tracking link', async ({ page, request }) => {
   // Pick a live unassigned order that has a tracking number + shipment id.
   const listRes = await request.get('/api/orders?status=unassigned&limit=25');

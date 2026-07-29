@@ -221,6 +221,14 @@ export default [
       'src/lib/zoho/fulfillment-sync.ts',
       'src/lib/realtime/publish.ts',
       'src/lib/jobs/google-sheets-transfer-orders.ts',
+      // RELOCATED debt, not new debt: the order-ingest pipeline was extracted
+      // out of google-sheets-transfer-orders.ts (above) into this writer. The
+      // same four `transitionalDogfoodOrgId()` fallbacks moved with it — the
+      // count did not grow. They exist because `ingestCanonicalOrders` still
+      // takes `orgId?`, which is what selects the legacy raw-pool path for
+      // un-migrated cron callers. Making `orgId` REQUIRED is the burn-down step
+      // that retires this entry; it needs those callers migrated first.
+      'src/lib/orders/ingest-canonical-orders.ts',
       'src/services/OrderSyncService.ts',
       // D1 (Ably org-namespacing) session-less integration publishers — these
       // carrier/Square/shipping-sync paths have no request org yet (single-tenant

@@ -258,7 +258,7 @@ test('hits map facets to chips and carry machine-readable facets', async () => {
 
   const hit = res.hits[0];
   assert.equal(hit.entityType, 'receiving');
-  assert.equal(hit.href, '/unbox?openReceivingId=7');
+  assert.equal(hit.href, '/carton/7');
   assert.deepEqual(hit.chips.map((c) => c.label).sort(), ['ACTIVE', 'USED_GOOD', 'ebay'].sort());
   assert.equal(hit.facets?.condition_grade, 'USED_GOOD');
   // Phase E: tracking/carrier pass through to the machine-readable facets so

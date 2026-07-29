@@ -10,6 +10,7 @@
  * additive and one surface at a time.
  */
 
+import { OUTBOUND_ROUTE_PARAMS } from './outbound-routes';
 import { RECEIVING_ROUTE_PARAMS } from './receiving-routes';
 import type { RouteParamsSpec } from './route-params';
 
@@ -19,6 +20,7 @@ import type { RouteParamsSpec } from './route-params';
  */
 const ROUTE_PARAM_SPECS: readonly RouteParamsSpec[] = [
   ...RECEIVING_ROUTE_PARAMS,
+  ...OUTBOUND_ROUTE_PARAMS,
 ].sort((a, b) => b.route.length - a.route.length);
 
 /** The spec governing `pathname`, or `null` when that route has not migrated. */

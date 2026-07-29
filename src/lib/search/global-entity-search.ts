@@ -15,7 +15,7 @@ import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { looksLikeTicketScan } from '@/lib/support/ticket-scan';
 import { searchSupportTickets } from '@/lib/search/support-ticket-search';
-import { orderSearchHref } from '@/lib/search/search-hit';
+import { orderSearchHref, searchHitHref } from '@/lib/search/search-hit';
 
 export interface GlobalSearchResult {
   id: number;
@@ -165,7 +165,10 @@ export async function searchReceiving(orgId: OrgId, query: string, limit: number
     entityType: 'receiving' as const,
     title: String(row.tracking_number || row.po_number || `Receiving #${row.id}`),
     subtitle: [row.carrier, row.po_number || row.source_order_id].filter(Boolean).join(' · ') || 'Unknown carrier',
-    href: `/unbox?openReceivingId=${row.id}`,
+    // Compose the SoT rather than re-deriving: this fast path and hybrid
+    // retrieval must land a carton on the SAME surface, and the hardcoded twin
+    // is how they drifted when RECEIVING moved to the read-only inspector.
+    href: searchHitHref('RECEIVING', Number(row.id)),
     matchField: 'receiving',
   }));
 }

@@ -1,8 +1,6 @@
 'use client';
 
 import { MasterNav, MasterNavProvider } from '@/components/sidebar/master-nav';
-import { SidebarContextPanel } from '@/components/sidebar/SidebarContextPanel';
-import { useHasSidebarContext } from '@/components/sidebar/useHasSidebarContext';
 import { appChromeClass } from '@/design-system/tokens/app-surface';
 import { cn } from '@/utils/_cn';
 
@@ -15,29 +13,17 @@ export interface SidebarShellProps {
   onNavigate?: () => void;
   /** Inset the top for the mobile drawer notch / status bar. */
   inDrawer?: boolean;
-  /**
-   * Render the page list instead of the route's own sidebar. Set by the
-   * slide-over; the resident column leaves it off.
-   */
-  navOnly?: boolean;
-  /** Open the page-list slide-over (from the resident column's band chevron). */
-  onOpenNav?: () => void;
 }
 
 /**
- * Host for the 40px identity band plus one body.
+ * Host for the 40px identity band plus the page list.
  *
- * Two mounts, and the body is decided by which one you are in — it never swaps:
- *
- * - **Resident column** — the route's OWN sidebar (`SidebarContextPanel`): the
- *   Media library's facet rail, Products' picker, the receiving rails. Present
- *   whenever the route has one, absent when it doesn't, which is what stops a
- *   panel-less surface reserving 360px of blank chrome.
- * - **Slide-over** (`navOnly`) — the page list, and only the page list.
- *
- * Station benches keep their scan bar + recents rail in the CONTENT region
- * instead, so they survive the nav being closed — `useHasSidebarContext` reports
- * false for them and they render no column here.
+ * **One body, always: the page list.** A route's own sidebar is no longer a body
+ * this shell can render — it mounts in the content region beside the workspace
+ * (`ContextPanelLayout`), the shape the station benches always had. What that
+ * removes is a whole class of conflict: the navigator and the route's picker used
+ * to share this column, so opening one took away the other, and a route with no
+ * picker (the Media library) left the navigator painting over the work canvas.
  *
  * `MasterNavProvider` marks that the nav owns page + mode, so ~14 route panels
  * suppress their own mode pill-row (`useMasterNavEnabled`).
@@ -47,18 +33,12 @@ export function SidebarShell({
   mobileRestricted,
   onNavigate,
   inDrawer = false,
-  navOnly = false,
-  onOpenNav,
 }: SidebarShellProps) {
-  const routeHasContext = useHasSidebarContext();
-  const hasContext = !navOnly && routeHasContext;
-
   return (
     <div
       className={cn(
-        // No border-r / drop shadow when resident — the content shell
-        // (`appContentShellClass`) owns the soft join. The slide-over adds its
-        // own edge + elevation, because there it really is a floating layer.
+        // No edge or elevation here — the spine's host (slide-over / drawer)
+        // owns those, because there it really is a floating layer.
         'flex h-full w-full flex-col overflow-hidden',
         appChromeClass,
         // In the mobile drawer, inset the top so the header clears the notch.
@@ -70,9 +50,6 @@ export function SidebarShell({
           permissions={permissions}
           mobileRestricted={mobileRestricted}
           onNavigate={onNavigate}
-          renderContext={() => <SidebarContextPanel />}
-          hasContext={hasContext}
-          onOpenNav={onOpenNav}
           className="flex-1 min-h-0"
         />
       </MasterNavProvider>

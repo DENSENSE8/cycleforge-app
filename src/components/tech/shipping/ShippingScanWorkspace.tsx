@@ -3,24 +3,24 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Barcode, History } from '@/components/Icons';
 import { SectionTabsSlider } from '@/design-system/components';
-import { StationContextBar } from '@/components/station/entity-context';
 import { buildSectionTabs, WorkspaceTimelineTab } from '@/components/station/workbench';
 import { initSkuSerialGroups } from '@/lib/tech/sku-serial-groups';
 import type { ActiveStationOrder } from '@/hooks/useStationTestingController';
 import type { Order } from '@/components/station/upnext/upnext-types';
-import {
-  ShippingEntityContextHeader,
-  ShippingOutOfStockNotice,
-} from './ShippingEntityContextHeader';
 import { ShippingSkuSerialRows } from './ShippingSkuSerialRows';
 import { ShippingCapturedUnits } from './ShippingCapturedUnits';
 import type { ShippingView } from './terminal/shipping-terminal';
 
 /**
- * Unbox-shaped shipping workspace — sticky {@link StationContextBar} identity
- * ({@link ShippingEntityContextHeader} → CartonContextCard density=bar) +
- * {@link SectionTabsSlider} seam + focused tab bodies (SKU↔serial pairing,
- * captured units, timeline).
+ * Shipping section tabs — the {@link SectionTabsSlider} seam plus its focused
+ * tab bodies (SKU↔serial pairing, captured units, timeline).
+ *
+ * Mounts in the `tabs` slot of `ActiveOrderWorkspace`'s `StationWorkbench`.
+ * The station chrome around it belongs to the host: identity rides the sticky
+ * `StationContextBar` bookmark (`ShippingEntityContextHeader` →
+ * CartonContextCard density=bar) and notices sit in `entityContext` — never
+ * re-mount either here, or the bookmark scrolls with the body instead of
+ * hanging under GlobalHeader.
  *
  * Terminal dock: preview Start CTA lives on ActiveOrderWorkspace via
  * STATION_TERMINAL_REGISTRY.shipping defaultKind `start`. Active scan tabs
@@ -32,16 +32,13 @@ export function ShippingScanWorkspace({
   onRemoveSerial,
   onChangeCondition,
   isMutatingCondition,
-  onExit,
 }: {
   activeOrder: ActiveStationOrder;
-  /** Up Next preview row — supplies OOS + status fields missing from ActiveStationOrder. */
+  /** Up Next preview row — supplies status fields missing from ActiveStationOrder. */
   previewOrder?: Order;
   onRemoveSerial?: (serial: string, index: number) => Promise<void> | void;
   onChangeCondition?: (next: string) => void | Promise<void>;
   isMutatingCondition?: boolean;
-  /** Close the active order → right pane crossfades back to the list. */
-  onExit?: () => void;
 }) {
   const [view, setView] = useState<ShippingView>('ship');
   const hasUnits = activeOrder.serialNumbers.length > 0;
@@ -128,22 +125,11 @@ export function ShippingScanWorkspace({
   );
 
   return (
-    <div className="relative flex min-h-0 flex-col space-y-4">
-      <StationContextBar
-        identity={
-          <ShippingEntityContextHeader
-            activeOrder={activeOrder}
-            onExitToList={onExit}
-          />
-        }
-      />
-      <ShippingOutOfStockNotice isOutOfStock={Boolean(previewOrder?.is_out_of_stock)} />
-      <SectionTabsSlider
-        tabs={tabs}
-        value={view}
-        onChange={(id) => setView(id as ShippingView)}
-        ariaLabel="Shipping displays"
-      />
-    </div>
+    <SectionTabsSlider
+      tabs={tabs}
+      value={view}
+      onChange={(id) => setView(id as ShippingView)}
+      ariaLabel="Shipping displays"
+    />
   );
 }

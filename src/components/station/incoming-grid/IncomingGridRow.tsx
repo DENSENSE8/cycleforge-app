@@ -9,7 +9,7 @@ import {
 import { IncomingAttachTrackingButton } from '@/components/station/IncomingAttachTrackingButton';
 import { FulfillmentPickupPill } from '@/components/receiving/ReceivingIdentityChips';
 import { OrderIdChip, TrackingChip, getLast4 } from '@/components/ui/CopyChip';
-import { QUEUE_ROW } from '@/components/ui/queue-row-chrome';
+import { ledgerRowStateClass } from '@/components/ui/queue-row-chrome';
 import { LedgerCellEditor } from '@/design-system/components/grid';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { usePlatformMeta } from '@/hooks/useCatalog';
@@ -46,6 +46,7 @@ import {
   GridDateCellValue,
   GridPlatformMarkValue,
 } from '@/components/ui/grid-cells';
+import { gridCellAlignClass } from '@/design-system/components/grid';
 import { cn } from '@/utils/_cn';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { ReceivingLineOrderRow } from '@/components/station/ReceivingLineOrderRow';
@@ -215,7 +216,8 @@ export const IncomingGridRow = memo(function IncomingGridRow({
         )
       : undefined;
 
-  const dataCell = (rule = true) => incomingGridCell({ rule, inset: 'grid' });
+  const dataCell = (col: IncomingGridColumn, rule = true) =>
+    cn(incomingGridCell({ rule, inset: 'grid' }), gridCellAlignClass(col));
 
   const ageNode = (
     <GridAgeCellValue
@@ -303,7 +305,7 @@ export const IncomingGridRow = memo(function IncomingGridRow({
           <div
             data-col="title"
             className={cn(
-              dataCell(rule),
+              dataCell(col, rule),
               INCOMING_GRID_FROZEN_CELL,
               // `relative` required for LedgerCellEditor absolute overlay (Pending
               // date/qty cells; title sticky alone is not enough under nest folds).
@@ -333,7 +335,7 @@ export const IncomingGridRow = memo(function IncomingGridRow({
         );
       case 'date':
         return (
-          <div data-col="date" className={dataCell(rule)}>
+          <div data-col="date" className={dataCell(col, rule)}>
             <GridDateCellValue
               label={dateCell?.label}
               tooltip={dateCell?.tooltip}
@@ -343,13 +345,13 @@ export const IncomingGridRow = memo(function IncomingGridRow({
         );
       case 'age':
         return (
-          <div data-col="age" className={dataCell(rule)}>
+          <div data-col="age" className={dataCell(col, rule)}>
             {ageNode}
           </div>
         );
       case 'qty':
         return (
-          <div data-col="qty" className={cn(dataCell(rule), 'justify-end')}>
+          <div data-col="qty" className={dataCell(col, rule)}>
             <span
               className={cn(
                 'min-w-0 truncate tabular-nums text-role-caption',
@@ -366,7 +368,7 @@ export const IncomingGridRow = memo(function IncomingGridRow({
         );
       case 'condition':
         return (
-          <div data-col="condition" className={dataCell(rule)}>
+          <div data-col="condition" className={dataCell(col, rule)}>
             <span
               className={cn(
                 'min-w-0 truncate text-role-eyebrow uppercase',
@@ -380,19 +382,19 @@ export const IncomingGridRow = memo(function IncomingGridRow({
         );
       case 'status':
         return (
-          <div data-col="status" className={cn(dataCell(rule), 'gap-1')}>
+          <div data-col="status" className={cn(dataCell(col, rule), 'gap-1')}>
             <IncomingGridStatusCell row={row} />
           </div>
         );
       case 'platform':
         return (
-          <div data-col="platform" className={dataCell(rule)}>
+          <div data-col="platform" className={dataCell(col, rule)}>
             <GridPlatformMarkValue platformValue={platformMeta.value} label={markLabel} />
           </div>
         );
       case 'order':
         return (
-          <div data-col="order" className={dataCell(rule)}>
+          <div data-col="order" className={dataCell(col, rule)}>
             {poValue ? (
               <OrderIdChip
                 value={poValue}
@@ -406,18 +408,22 @@ export const IncomingGridRow = memo(function IncomingGridRow({
         );
       case 'tracking':
         return (
-          <div data-col="tracking" className={dataCell(rule)}>
+          <div data-col="tracking" className={dataCell(col, rule)}>
             {isPickup && pickupLabel ? (
               <FulfillmentPickupPill dense />
             ) : trackingValue ? (
-              <TrackingChip value={trackingValue} display={getLast4(trackingValue)} />
+              <TrackingChip
+                value={trackingValue}
+                display={getLast4(trackingValue)}
+                showIcon={!col.omitCellIcon}
+              />
             ) : (
               trackingAction ?? <GridCellDash />
             )}
           </div>
         );
       default:
-        return <span className={dataCell(rule)} />;
+        return <span className={dataCell(col, rule)} />;
     }
   };
 
@@ -443,12 +449,7 @@ export const IncomingGridRow = memo(function IncomingGridRow({
       }}
       className={cn(
         incomingGridRowShellClass(false, { scrollMinContent: true }),
-        'cursor-pointer border-b border-border-hairline px-0 py-0 transition-colors hover:bg-surface-hover',
-        isSelected
-          ? QUEUE_ROW.selectedClass
-          : index % 2 === 1
-            ? 'bg-surface-canvas'
-            : 'bg-surface-card',
+        ledgerRowStateClass(isSelected),
       )}
       style={{ gridTemplateColumns: incomingGridTemplate(columns) }}
     >

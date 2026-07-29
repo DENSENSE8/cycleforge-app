@@ -5,7 +5,7 @@ import { Check } from '@/components/Icons';
 import { InventoryMasterChip } from '@/components/products/InventoryMasterChip';
 import type { CatalogListRow } from '@/components/products/catalog/types';
 import { GridCellDash } from '@/components/ui/grid-cells';
-import { QUEUE_ROW } from '@/components/ui/queue-row-chrome';
+import { ledgerRowStateClass } from '@/components/ui/queue-row-chrome';
 import {
   CATALOG_GRID_COLUMNS,
   CATALOG_GRID_FROZEN_CELL,
@@ -16,11 +16,11 @@ import {
   catalogGridTemplate,
   type CatalogGridColumn,
 } from '@/lib/products/catalog-grid-layout';
+import { gridCellAlignClass } from '@/design-system/components/grid';
 import { cn } from '@/utils/_cn';
 
 interface CatalogGridRowProps {
   row: CatalogListRow;
-  index: number;
   isSelected: boolean;
   isChecked: boolean;
   inventoryProviderLabel?: string | null;
@@ -35,7 +35,6 @@ interface CatalogGridRowProps {
  */
 export const CatalogGridRow = memo(function CatalogGridRow({
   row,
-  index,
   isSelected,
   isChecked,
   inventoryProviderLabel,
@@ -44,7 +43,8 @@ export const CatalogGridRow = memo(function CatalogGridRow({
   columns = CATALOG_GRID_COLUMNS,
 }: CatalogGridRowProps) {
   const title = catalogDisplayTitle(row);
-  const dataCell = (rule = true) => catalogGridCell({ rule, inset: 'grid' });
+  const dataCell = (col: CatalogGridColumn, rule = true) =>
+    cn(catalogGridCell({ rule, inset: 'grid' }), gridCellAlignClass(col));
 
   const renderCell = (col: CatalogGridColumn, last: boolean): ReactNode => {
     const rule = !last;
@@ -84,7 +84,7 @@ export const CatalogGridRow = memo(function CatalogGridRow({
         return (
           <div
             data-col="title"
-            className={cn(dataCell(rule), CATALOG_GRID_FROZEN_CELL, 'relative min-w-0 gap-2')}
+            className={cn(dataCell(col, rule), CATALOG_GRID_FROZEN_CELL, 'relative min-w-0 gap-2')}
             style={{ left: catalogGridFrozenLeft('title') }}
             data-frozen-edge
           >
@@ -116,7 +116,7 @@ export const CatalogGridRow = memo(function CatalogGridRow({
         );
       case 'sku':
         return (
-          <div data-col="sku" className={dataCell(rule)}>
+          <div data-col="sku" className={dataCell(col, rule)}>
             <span className="min-w-0 truncate font-mono text-role-caption text-text-muted">
               {row.sku}
             </span>
@@ -124,7 +124,7 @@ export const CatalogGridRow = memo(function CatalogGridRow({
         );
       case 'inventory':
         return (
-          <div data-col="inventory" className={dataCell(rule)}>
+          <div data-col="inventory" className={dataCell(col, rule)}>
             {row.is_inventory_linked ? (
               <InventoryMasterChip
                 providerItemId={row.provider_item_id}
@@ -137,7 +137,7 @@ export const CatalogGridRow = memo(function CatalogGridRow({
         );
       case 'channels':
         return (
-          <div data-col="channels" className={cn(dataCell(rule), 'justify-end')}>
+          <div data-col="channels" className={dataCell(col, rule)}>
             <span className="tabular-nums text-role-caption text-text-default">
               {row.platform_count}
             </span>
@@ -145,7 +145,7 @@ export const CatalogGridRow = memo(function CatalogGridRow({
         );
       case 'manuals':
         return (
-          <div data-col="manuals" className={cn(dataCell(rule), 'justify-end')}>
+          <div data-col="manuals" className={dataCell(col, rule)}>
             <span className="tabular-nums text-role-caption text-text-default">
               {row.manual_count}
             </span>
@@ -153,7 +153,7 @@ export const CatalogGridRow = memo(function CatalogGridRow({
         );
       case 'qc':
         return (
-          <div data-col="qc" className={cn(dataCell(rule), 'justify-end')}>
+          <div data-col="qc" className={dataCell(col, rule)}>
             <span className="tabular-nums text-role-caption text-text-default">
               {row.qc_step_count}
             </span>
@@ -161,7 +161,7 @@ export const CatalogGridRow = memo(function CatalogGridRow({
         );
       case 'orders':
         return (
-          <div data-col="orders" className={cn(dataCell(rule), 'justify-end')}>
+          <div data-col="orders" className={dataCell(col, rule)}>
             <span className="tabular-nums text-role-caption text-text-default">
               {row.order_count}
             </span>
@@ -169,7 +169,7 @@ export const CatalogGridRow = memo(function CatalogGridRow({
         );
       case 'status':
         return (
-          <div data-col="status" className={cn(dataCell(rule), 'flex-wrap gap-1')}>
+          <div data-col="status" className={cn(dataCell(col, rule), 'flex-wrap gap-1')}>
             {row.has_pending_action ? (
               <span className="rounded border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-role-eyebrow font-semibold uppercase tracking-wider text-amber-800">
                 Pending
@@ -186,7 +186,7 @@ export const CatalogGridRow = memo(function CatalogGridRow({
           </div>
         );
       default:
-        return <span className={dataCell(rule)} />;
+        return <span className={dataCell(col, rule)} />;
     }
   };
 
@@ -207,12 +207,7 @@ export const CatalogGridRow = memo(function CatalogGridRow({
       }}
       className={cn(
         catalogGridRowShellClass(false, { scrollMinContent: true }),
-        'cursor-pointer border-b border-border-hairline px-0 py-0 transition-colors hover:bg-surface-hover',
-        isSelected || isChecked
-          ? QUEUE_ROW.selectedClass
-          : index % 2 === 1
-            ? 'bg-surface-canvas'
-            : 'bg-surface-card',
+        ledgerRowStateClass(isSelected || isChecked),
       )}
       style={{ gridTemplateColumns: catalogGridTemplate(columns) }}
     >

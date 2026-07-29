@@ -17,6 +17,13 @@ interface DbPhotoRow {
   taken_by_staff_id: number | null;
   po_ref: string | null;
   created_at: string;
+  /**
+   * Device-reported shutter instant. REQUIRED on the row type (nullable value,
+   * not an optional key) so a SELECT that forgets the column is a type error
+   * here rather than a silently-null field in the viewer — the exact way this
+   * provenance was write-only on first landing.
+   */
+  client_captured_at: string | null;
 }
 
 export function mapPhotoRow(row: DbPhotoRow) {
@@ -29,6 +36,8 @@ export function mapPhotoRow(row: DbPhotoRow) {
     poRef: row.po_ref,
     url: photoContentUrl(id),
     createdAt: row.created_at,
+    /** Shutter clock — BESIDE `createdAt` (server INSERT), never instead of it. */
+    clientCapturedAt: row.client_captured_at ?? null,
   };
 }
 
@@ -79,5 +88,5 @@ export function buildListForEntityQuery(input: ListForEntityInput): {
 
 export const PHOTO_SELECT = `
   DISTINCT ON (p.id) p.id, p.organization_id, p.photo_type, p.taken_by_staff_id,
-  p.po_ref, p.created_at
+  p.po_ref, p.created_at, p.client_captured_at
 `;

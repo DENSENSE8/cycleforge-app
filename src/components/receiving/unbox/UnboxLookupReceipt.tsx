@@ -47,9 +47,14 @@ interface UnboxLookupReceiptProps {
 
 function Fact({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="space-y-1">
+    // `min-w-0` so a long value shrinks inside the flex row instead of pushing
+    // its siblings out; `whitespace-nowrap` keeps each fact on a single line so
+    // the row stays one band deep.
+    <div className="min-w-0 space-y-1">
       <p className="text-role-micro uppercase tracking-widest text-text-soft">{label}</p>
-      <div className="text-role-caption font-semibold text-text-default">{children}</div>
+      <div className="whitespace-nowrap text-role-caption font-semibold text-text-default">
+        {children}
+      </div>
     </div>
   );
 }
@@ -115,7 +120,9 @@ export function UnboxLookupReceipt({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4 border-t border-border-soft pt-4">
+          {/* One band at the workbench column width — 720px fits all four facts
+              across, so the 2×2 grid was spending a second row on nothing. */}
+          <div className="flex items-center justify-between gap-4 border-t border-border-soft pt-4">
             {poNumber ? (
               <Fact label="Purchase order">
                 {/* Last-4 preview like every other PoChip call site (and like

@@ -7,12 +7,16 @@ are the panel ports the guards baseline/allowlist as **known gaps**. Priority by
 alignment pain. Each closes a guard baseline or allowlist entry — never raise a
 baseline to "finish" one.
 
-1. **Shipping host fold** — `tech/ActiveOrderWorkspace.tsx`: fold into
-   `StationContextBar` + `StationWorkbench`; kill `max-w-3xl` (Guard A baseline)
-   and the dual `PaneHeader`. Also `tech/shipping/terminal/shipping-terminal.tsx`
-   `maxWidth: 'max-w-3xl'` → `STATION_WORKBENCH_COLUMN` (720). Clears both Guard A
-   offenders → drop `MAX_W_3XL_BASELINE` to 0. Removes `ShippingScanWorkspace` /
-   `ActiveOrderWorkspace` from `STATION_WORKBENCH_ADOPTION_EXEMPT`.
+1. ~~**Shipping host fold**~~ — **DONE 2026-07-28.** `tech/ActiveOrderWorkspace.tsx`
+   now composes `StationPanelRoot` → `StationContextBar` (identity bookmark,
+   pinned flush under GlobalHeader) → `StationWorkbench` (`entityContext`
+   notices · `tabs` = `ShippingScanWorkspace` · `children` = substitution ·
+   `dock` = preview Start). The dual `PaneHeader` title row is gone (its close
+   button is the identity back chevron; the decorative "Scan next" hint chip was
+   dropped — the sidebar scan bar owns that affordance). `shipping-terminal.tsx`
+   dock track is 720. `MAX_W_3XL_BASELINE` → 0; `ShippingScanWorkspace` /
+   `ActiveOrderWorkspace` off `STATION_WORKBENCH_ADOPTION_EXEMPT`
+   (`ActiveOrderWorkspace` is now in `STATION_WORKBENCH_REQUIRED`).
 
 2. **Labels registry slice** — `outbound/labels/LabelsOrderWorkspace.tsx`: replace
    the hand-built `TerminalActionVm` with a `STATION_TERMINAL_REGISTRY` `labels`

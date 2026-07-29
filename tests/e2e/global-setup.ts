@@ -1,5 +1,6 @@
 import { request as pwRequest, type APIRequestContext, type FullConfig } from '@playwright/test';
 import path from 'path';
+import { QA_ORG_SLUG } from '@/lib/tenancy/qa-org';
 import fs from 'fs';
 
 const AUTH_DIR = path.join(__dirname, '..', '.auth');
@@ -155,7 +156,10 @@ export default async function globalSetup(config: FullConfig) {
   const usavStaff = process.env.PW_STAFF_NAME || 'Michael';
   const usavSlug = process.env.PW_TENANT_SLUG || 'usav';
   const qaStaff = process.env.PW_QA_STAFF_NAME || 'QA Admin';
-  const qaSlug = process.env.PW_QA_TENANT_SLUG || 'qa';
+  // Default to the slug the provisioner actually writes, not a guess. It was
+  // `'qa'`, which never matched `provision:qa-org`'s `cycleforge-qa`, so the
+  // QA session silently failed to mint on every run and qa-desktop skipped.
+  const qaSlug = process.env.PW_QA_TENANT_SLUG || QA_ORG_SLUG;
 
   fs.mkdirSync(AUTH_DIR, { recursive: true });
 
@@ -167,7 +171,10 @@ export default async function globalSetup(config: FullConfig) {
   // QA sandbox session (qa-desktop project) — best-effort; skip when org not provisioned
   if (!(await probeSession(baseURL, QA_STORAGE))) {
     try {
-      await signInStaff(baseURL, qaStaff, qaSlug, QA_STORAGE);
+      // Pinless, NOT signInStaff: PW_OWNER_EMAIL/PASSWORD are the dogfood
+      // tenant's shared owner account, which has no membership in the QA org —
+      // routing QA through it 401s no matter how the org is provisioned.
+      await signInPinless(baseURL, qaSlug, qaStaff, QA_STORAGE, process.env.PW_QA_STAFF_PIN?.trim());
     } catch (err) {
       console.warn(
         `[global-setup] QA session not minted for "${qaStaff}" — run pnpm provision:qa-org first.`,

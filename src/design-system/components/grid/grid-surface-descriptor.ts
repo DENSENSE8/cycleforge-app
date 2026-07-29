@@ -29,6 +29,28 @@ export interface LedgerGridColumnModel {
   labelFitRem?: number;
   type?: ColumnType;
   /**
+   * Justification OVERRIDE. Leave unset — `type` already decides
+   * (`resolveGridColumnAlign`), and deriving is what keeps a column's header
+   * and its cells from drifting apart. Set this only when a column genuinely
+   * disagrees with its type's default, and set it HERE so the exception is
+   * declared once rather than re-typed per surface.
+   */
+  align?: 'start' | 'end';
+  /**
+   * Suppress the leading tone glyph on this column's value chips.
+   *
+   * In a typed grid the column header already carries the data-type glyph, so
+   * repeating it in every cell paints the same mark twice down the track — the
+   * Unbox tracking column drew a MapPin in its header AND in all ~40 rows
+   * beneath it. The Pending grid solved this first with a `variant: 'plain'`
+   * prop; declaring it on the column instead makes it a property of "this
+   * column is typed in a grid" rather than a thing each surface remembers.
+   *
+   * Chips keep their icons everywhere else (rails, sidebars, mobile stacks),
+   * where no header labels the value — this never strips them globally.
+   */
+  omitCellIcon?: boolean;
+  /**
    * Staff-preference key this track answers to (`staff_preferences
    * .tableColumns[tableId]`). Columns WITHOUT a `hideKey` are structural — they
    * never appear in the Fields menu and can never be toggled off.

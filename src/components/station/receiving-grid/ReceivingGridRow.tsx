@@ -14,7 +14,7 @@ import {
   GridDateCellValue,
   GridPlatformMarkValue,
 } from '@/components/ui/grid-cells';
-import { QUEUE_ROW } from '@/components/ui/queue-row-chrome';
+import { ledgerRowStateClass } from '@/components/ui/queue-row-chrome';
 import { LedgerCellEditor } from '@/design-system/components/grid';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { usePlatformMeta } from '@/hooks/useCatalog';
@@ -38,6 +38,7 @@ import {
 import { sourcePlatformMetaFromLabel } from '@/lib/source-platform';
 import { toast } from '@/lib/toast';
 import { formatDateTimePST, formatOpsStageTime } from '@/utils/date';
+import { gridCellAlignClass } from '@/design-system/components/grid';
 import { cn } from '@/utils/_cn';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { ReceivingLineOrderRow } from '@/components/station/ReceivingLineOrderRow';
@@ -210,7 +211,8 @@ export const ReceivingGridRow = memo(function ReceivingGridRow({
   const trackingValue = displayTrackingNumber(row) ?? '';
   const serialsCsv = resolveReceivingLineSerialsCsv(row);
 
-  const dataCell = (rule = true) => receivingGridCell({ rule, inset: 'grid' });
+  const dataCell = (col: ReceivingGridColumn, rule = true) =>
+    cn(receivingGridCell({ rule, inset: 'grid' }), gridCellAlignClass(col));
   const gridEditable = !isMobile;
 
   const titleTriggerProps = gridEditable
@@ -280,7 +282,7 @@ export const ReceivingGridRow = memo(function ReceivingGridRow({
           <div
             data-col="title"
             className={cn(
-              dataCell(rule),
+              dataCell(col, rule),
               RECEIVING_GRID_FROZEN_CELL,
               'relative gap-1.5',
               gridEditable && focusRing('cell'),
@@ -308,7 +310,7 @@ export const ReceivingGridRow = memo(function ReceivingGridRow({
         );
       case 'date':
         return (
-          <div data-col="date" className={dataCell(rule)}>
+          <div data-col="date" className={dataCell(col, rule)}>
             <GridDateCellValue
               label={dateCell?.label}
               tooltip={dateCell?.tooltip}
@@ -318,7 +320,7 @@ export const ReceivingGridRow = memo(function ReceivingGridRow({
         );
       case 'qty':
         return (
-          <div data-col="qty" className={cn(dataCell(rule), 'justify-end')}>
+          <div data-col="qty" className={dataCell(col, rule)}>
             <span
               className={cn(
                 'min-w-0 truncate tabular-nums text-role-caption',
@@ -335,7 +337,7 @@ export const ReceivingGridRow = memo(function ReceivingGridRow({
         );
       case 'condition':
         return (
-          <div data-col="condition" className={dataCell(rule)}>
+          <div data-col="condition" className={dataCell(col, rule)}>
             <span
               className={cn(
                 'min-w-0 truncate text-role-eyebrow uppercase',
@@ -349,7 +351,7 @@ export const ReceivingGridRow = memo(function ReceivingGridRow({
         );
       case 'stage':
         return (
-          <div data-col="stage" className={dataCell(rule)}>
+          <div data-col="stage" className={dataCell(col, rule)}>
             {stageDisplay && stageDisplay !== '--:--' ? (
               <HoverTooltip label={stageTip} focusable={false}>
                 <span className="truncate tabular-nums text-role-caption text-text-faint">
@@ -363,13 +365,13 @@ export const ReceivingGridRow = memo(function ReceivingGridRow({
         );
       case 'platform':
         return (
-          <div data-col="platform" className={dataCell(rule)}>
+          <div data-col="platform" className={dataCell(col, rule)}>
             <GridPlatformMarkValue platformValue={platformMeta.value} label={markLabel} />
           </div>
         );
       case 'order':
         return (
-          <div data-col="order" className={dataCell(rule)}>
+          <div data-col="order" className={dataCell(col, rule)}>
             {poValue ? (
               <OrderIdChip
                 value={poValue}
@@ -383,11 +385,15 @@ export const ReceivingGridRow = memo(function ReceivingGridRow({
         );
       case 'tracking':
         return (
-          <div data-col="tracking" className={dataCell(rule)}>
+          <div data-col="tracking" className={dataCell(col, rule)}>
             {isPickup && pickupLabel ? (
               <FulfillmentPickupPill dense />
             ) : trackingValue ? (
-              <TrackingChip value={trackingValue} display={getLast4(trackingValue)} />
+              <TrackingChip
+                value={trackingValue}
+                display={getLast4(trackingValue)}
+                showIcon={!col.omitCellIcon}
+              />
             ) : (
               <GridCellDash />
             )}
@@ -395,7 +401,7 @@ export const ReceivingGridRow = memo(function ReceivingGridRow({
         );
       case 'serial':
         return (
-          <div data-col="serial" className={dataCell(rule)}>
+          <div data-col="serial" className={dataCell(col, rule)}>
             {serialsCsv ? (
               <SerialChip value={serialsCsv} width="w-auto shrink-0" dense />
             ) : (
@@ -404,7 +410,7 @@ export const ReceivingGridRow = memo(function ReceivingGridRow({
           </div>
         );
       default:
-        return <span className={dataCell(rule)} />;
+        return <span className={dataCell(col, rule)} />;
     }
   };
 
@@ -430,12 +436,7 @@ export const ReceivingGridRow = memo(function ReceivingGridRow({
       }}
       className={cn(
         receivingGridRowShellClass(false, { scrollMinContent: true }),
-        'cursor-pointer border-b border-border-hairline px-0 py-0 transition-colors hover:bg-surface-hover',
-        isSelected
-          ? QUEUE_ROW.selectedClass
-          : index % 2 === 1
-            ? 'bg-surface-canvas'
-            : 'bg-surface-card',
+        ledgerRowStateClass(isSelected),
       )}
       style={{ gridTemplateColumns: receivingGridTemplate(columns) }}
     >

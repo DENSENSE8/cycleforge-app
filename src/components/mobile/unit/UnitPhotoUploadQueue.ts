@@ -39,6 +39,14 @@ export interface UnitPhotoScope {
   packerLogId?: number | null;
   /** Order / shipment ref for poRef filing. */
   poRef?: string | null;
+  /**
+   * Device-reported capture instant (epoch ms) from `CapturedShot.capturedAtMs`
+   * — stored as `photos.client_captured_at`, beside (never instead of)
+   * `created_at`. It rides in `scope` so `PersistedEntry.meta` carries it
+   * through a localStorage rehydration; see the receiving queue's `PhotoScope`
+   * for the full rationale. Optional: pre-2026-07-29 persisted entries have none.
+   */
+  capturedAtMs?: number | null;
 }
 
 export interface UnitUploadEntry {
@@ -185,6 +193,7 @@ async function postPhoto(
     entityId: entry.scope.serialUnitId,
     photoType,
     poRef: entry.scope.poRef ?? entry.scope.unitKey ?? undefined,
+    clientCapturedAtMs: entry.scope.capturedAtMs ?? null,
   });
   const packerLogId = entry.scope.packerLogId;
   if (isPacking && packerLogId != null && Number.isFinite(packerLogId) && packerLogId > 0) {

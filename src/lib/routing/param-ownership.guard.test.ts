@@ -23,11 +23,15 @@ import {
   declaredKeys,
 } from './route-params';
 import { RECEIVING_ROUTE_PARAMS } from './receiving-routes';
+import { OUTBOUND_ROUTE_PARAMS } from './outbound-routes';
 
 const SRC_ROOT = join(process.cwd(), 'src');
 
+/** Every migrated family the guard governs. */
+const ALL_SPECS = [...RECEIVING_ROUTE_PARAMS, ...OUTBOUND_ROUTE_PARAMS];
+
 /** The receiving surface tree — where a receiving param may legitimately be read. */
-const RECEIVING_TREE = [
+const OWNED_TREES = [
   'components/receiving',
   'components/sidebar/receiving',
   'app/unbox',
@@ -36,6 +40,9 @@ const RECEIVING_TREE = [
   'app/pickup',
   'app/repair',
   'app/receiving',
+  'components/outbound',
+  'components/fba',
+  'app/shipping',
 ];
 
 /**
@@ -74,7 +81,7 @@ const GET_CALL = /\.get\('([a-zA-Z_][a-zA-Z0-9_]*)'\)/g;
 
 test('rule 3 — a param is owned by exactly one route', () => {
   const owners = new Map<string, string[]>();
-  for (const spec of RECEIVING_ROUTE_PARAMS) {
+  for (const spec of ALL_SPECS) {
     for (const key of Object.keys(spec.owns)) {
       owners.set(key, [...(owners.get(key) ?? []), spec.route]);
     }
@@ -94,7 +101,7 @@ test('rule 3 — a param is owned by exactly one route', () => {
 
 test('SHARED_OWNED_KEYS only lists keys that are actually shared (it shrinks)', () => {
   const shareCount = new Map<string, number>();
-  for (const spec of RECEIVING_ROUTE_PARAMS) {
+  for (const spec of ALL_SPECS) {
     for (const key of Object.keys(spec.owns)) {
       shareCount.set(key, (shareCount.get(key) ?? 0) + 1);
     }
@@ -109,7 +116,7 @@ test('SHARED_OWNED_KEYS only lists keys that are actually shared (it shrinks)', 
 
 test('an owned param never shadows an ambient one', () => {
   const shadowed: string[] = [];
-  for (const spec of RECEIVING_ROUTE_PARAMS) {
+  for (const spec of ALL_SPECS) {
     for (const key of Object.keys(spec.owns)) {
       if (key in AMBIENT_PARAMS) shadowed.push(`${spec.route} owns ambient ?${key}=`);
     }
@@ -122,9 +129,9 @@ test('an owned param never shadows an ambient one', () => {
 });
 
 test('every receiving route declares at least one param and a unique route', () => {
-  const routes = RECEIVING_ROUTE_PARAMS.map((spec) => spec.route);
+  const routes = ALL_SPECS.map((spec) => spec.route);
   assert.equal(new Set(routes).size, routes.length, 'Two specs claim the same route.');
-  for (const spec of RECEIVING_ROUTE_PARAMS) {
+  for (const spec of ALL_SPECS) {
     assert.ok(
       declaredKeys(spec).length > 0,
       `${spec.route} declares no params — delete the spec or declare what it owns.`,
@@ -134,14 +141,14 @@ test('every receiving route declares at least one param and a unique route', () 
 
 test('no raw param read in the receiving tree bypasses a spec', () => {
   const declared = new Set<string>([
-    ...RECEIVING_ROUTE_PARAMS.flatMap((spec) => Object.keys(spec.owns)),
+    ...ALL_SPECS.flatMap((spec) => Object.keys(spec.owns)),
     ...Object.keys(AMBIENT_PARAMS),
   ]);
 
   const offenders: string[] = [];
   const seenUndeclared = new Set<string>();
 
-  for (const dir of RECEIVING_TREE) {
+  for (const dir of OWNED_TREES) {
     for (const file of walk(join(SRC_ROOT, dir))) {
       const source = readFileSync(file, 'utf8');
       for (const match of source.matchAll(GET_CALL)) {

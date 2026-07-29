@@ -102,15 +102,22 @@ There are at least eight writers of orders. Please build the authoritative list 
 
 ---
 
-## 4. What already exists that the ingest path ignores
+## 4. The seam already exists — this is a half-finished migration, not a greenfield build
 
-**This is the most important section.** The repo already contains the pattern that order ingest predates and bypasses:
+**This is the most important section, and run 1 got it wrong.** The target architecture is already scaffolded. Verify all of this yourself:
 
-- **Connector + capability-facade layer** — `src/lib/integrations/**`. `Capability` in `connectors/types.ts`; facades like `getInventoryProvider` / `getHelpdeskProvider` in `integrations/inventory/` and `integrations/helpdesk/`; credentials in the `organization_integrations` vault via `integrations/credentials.ts`. Product code calls the facade, never the vendor.
-- **Order ingest uses none of it.** It reaches for Google Sheets creds and Ecwid creds directly inside a job, and there is no `getOrderProvider` / `OrdersConnector` capability at all.
-- A **Nango** integration path exists (`nango-additive-integration`), and a **Shopify** orders-in build is reportedly code-complete behind Nango — so a second, newer ingest philosophy already exists beside the sheet one.
+- **`orders` is already a declared Capability.** `src/lib/integrations/connectors/types.ts` — the `Capability` union includes `'orders'`, documented as *"sales-order ingestion (marketplaces / storefronts / POS)"*. The same file has a `sync()` contract and a comment describing *"connection-driven ingestion (replaces the transfer-orders buttons)"*.
+- **Sheets and Ecwid already have connector adapters** — `src/lib/integrations/connectors/orders-transfer.ts` exports `googleSheetsSync(orgId)` and `ecwidSync(orgId)`, routed through `POST /api/integrations/[provider]/sync`.
+- **But those adapters are thin wrappers around the old job.** `orders-transfer.ts` imports `runGoogleSheetsTransferOrders` from the 1,300-line job and reshapes its result into a `SyncOutcome`. Its own header states the legacy NDJSON routes (`/api/google-sheets/transfer-orders`, `/api/ecwid/transfer-orders`) stay live because the cron fan-out and a legacy importer panel still stream through them.
+- **Sibling connectors exist for `amazon`, `ebay`, `shipstation`, `shopify`, `square`, `zoho`, `nextiva`,** plus `orchestrator.ts` and `registry.ts`. A Nango-backed Shopify orders-in path is reportedly code-complete — a second, newer ingest philosophy already sits beside the sheet one.
+- The capability-facade precedent is `getInventoryProvider` / `getHelpdeskProvider` (`integrations/inventory/`, `integrations/helpdesk/`), with credentials in the `organization_integrations` vault via `integrations/credentials.ts`.
 
-**Question:** is the correct simplification simply *"orders become a capability"* — an `orders.import` / `orders.sync` connector interface each platform implements, with one typed domain writer behind it — thereby deleting the sheet-shaped array, the positional column indices, and most of the eight paths above? What does that cost, and what does the Google Sheet (a human-maintained source with no API contract) do inside such a model?
+**So the real question is not "should orders become a capability" — it is: given that the seam exists and is wrapping the legacy job rather than replacing it, what is the shortest path to pushing normalization *down through* that seam and deleting the job?** Specifically:
+
+- Where should the `CanonicalOrder` shape live so both the existing connectors (amazon/ebay/shopify) and the wrapper adapters can converge on it?
+- What still depends on the legacy NDJSON routes and the cron fan-out, and in what order can those be cut over?
+- What does a **human-maintained Google Sheet** — no API contract, daily `Sheet_MM_DD_YYYY` tabs, header-guessed columns — look like as a first-class connector? Is it a connector at all, or an import surface that produces `CanonicalOrder` and is not on the sync schedule?
+- `orders-transfer.ts` also contains a hardcoded absolute debug-log path and `appendFileSync` in production code. Note it; it is in-flight debugging cruft in the ingest path.
 
 ---
 
@@ -128,6 +135,33 @@ sku_catalog: id, sku, product_title, category, upc, ean, gtin, image_url,
 ```
 
 **Measured link rate: 323 of 1,204 orders in the last 45 days carry a `sku_catalog_id` — 27%.** For the other 73%, the denormalized `product_title` is the *only* product identity that exists. So "just drop the columns and join" is not available today; the brief needs a path that survives the unlinked majority.
+
+### 5.1 The identifier-link question, measured (added after run 1)
+
+The product owner's position is that an order should not be admitted on a **product title alone** — it should carry a provider **item number** that links it to the catalog hub. Directionally that is the only join the house permits, since joining on the SKU *string* is banned (see the landmine below). But the data says the mechanism is not there yet:
+
+```
+orders.item_number  →  sku_catalog.provider_item_id
+    0 matches, out of 709 orders that have an item_number
+    provider_item_id is populated on 109 of 1,366 catalog rows (8%)
+```
+
+Per-source `item_number` coverage is also wildly uneven, and inverted against the current link rate:
+
+| Source | Orders (45d) | Has `item_number` | Has `sku_catalog_id` |
+|---|---|---|---|
+| Amazon | 552 | 479 (87%) | 64 |
+| eBay | 417 | **75 (18%)** | 186 |
+| ecwid | 107 | 107 (100%) | 7 |
+| Walmart | 55 | 19 (35%) | 23 |
+
+eBay has the *worst* identifier coverage and the *best* catalog link rate — because linking today runs on **title matching** (`batchResolveSkuCatalogByTitles` in `src/lib/neon/sku-catalog-queries.ts`, plus the chore queue in `src/lib/inventory/order-catalog-link-chores.ts`), not on identifiers.
+
+**Questions.**
+- Is "reject an order that has no resolvable catalog identifier" ever the right ingest gate for a used-goods reseller, or does it fail the moment a marketplace omits the field (82% of eBay today)? What do comparable systems do — hard reject, quarantine, or accept-and-reconcile?
+- What is the correct **identity ladder** at ingest — `provider_item_id` → GTIN/UPC/EAN → normalized title — and which rungs belong at ingest vs a background reconcile chore?
+- Is `provider_item_id` even the right column, given it is 8% populated and matches nothing? Should the link be a **polymorphic `entity_type`/`entity_id` link table** per `.claude/rules/polymorphic-tables.md` (one row per order-line↔catalog association, org-led index, named CHECK) rather than a scalar FK — and does that earn its complexity here, or is a plain FK correct?
+- Title matching is currently load-bearing. If identifiers become primary, what happens to it — deleted, or demoted to a fallback rung?
 
 **A landmine you must respect** (`.claude/rules/source-of-truth.md` → SKU identity): `items` (a Zoho mirror) and `sku_catalog` are **two independent SKU numbering schemes that collide**. **Never join on the SKU string.** `items.name` is the title-display SoT — `get-title-by-sku` deliberately prefers `items.name` over `sku_catalog`. Any proposal that resolves product identity by SKU text is wrong here; explain how yours avoids it.
 
@@ -178,11 +212,12 @@ Two specific oddities to rule on:
 
 ## 9. Deliverable format
 
-1. **Executive verdict**, ≤10 lines: the single biggest simplification available, named.
-2. **Industry survey** per §3/§4/§5, with citations and dominant-pattern calls; flag what changed since ~2022 (notably: has the "normalize into a canonical order schema at the connector edge" pattern won?).
-3. **Target architecture** for this repo — one diagram plus a table of *what gets deleted*. Every row must name a file or table that goes away or merges.
-4. **Catalog-hub ruling** (§5): snapshot vs reference, with the migration, the backfill for the unlinked 73%, and the failure modes.
-5. **Sequenced deletion plan** — phases, each independently shippable and revertible, ordered by *lines and paths removed per unit of risk*. Mark anything ask-first per §7.9.
+0. **Verification log** — a short table of every file path and module behaviour your plan depends on, with what you confirmed and how (directory listing, line number, signature). Anything you could not confirm is marked `[UNVERIFIED]` and may not carry a phase. Put this FIRST; a plan whose paths are wrong is not reviewable.
+1. **Executive verdict**, ≤10 lines: the single biggest simplification available, named. Given §4, it is probably not "build a capability."
+2. **Industry survey** per §3/§4/§5, **with live web citations** (§0.2) — named systems, dated sources, dominant-pattern calls; flag what changed since ~2022 (notably: has "normalize into a canonical order schema at the connector edge" won, and how do unified-API vendors shape it?).
+3. **Target architecture** for this repo — one diagram plus a table of *what gets deleted*. Every row must name a **verified** file or table that goes away or merges.
+4. **Catalog-hub ruling** (§5 + §5.1): snapshot vs reference; the identity ladder; whether an identifier gate at ingest is viable; the migration, the backfill for the unlinked 73%, and the failure modes.
+5. **Sequenced deletion plan** — phases, each independently shippable and revertible, ordered by *lines and paths removed per unit of risk*. Mark anything ask-first per §7.9. Account for what still depends on the legacy NDJSON routes and the cron fan-out (§4).
 6. **What you would NOT change**, and why. Include anything that looks redundant but is load-bearing.
 
 **Two standing instructions.** Where a recommendation collides with a house law in §7, cite it by number and argue the case — the laws are evolvable against a stated argument, not silently. And do not propose a message bus, a new microservice, an event-sourcing rewrite, or a vendor iPaaS unless you can show it deletes more than it adds; the goal is fewer moving parts than exist today, not a better-architected larger system.

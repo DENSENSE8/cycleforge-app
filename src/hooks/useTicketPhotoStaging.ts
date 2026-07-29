@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useState } from 'react';
+import { captureTimeFromFile } from '@/lib/photos/capture-time';
 import { uploadPhotoClient, linkPhotoClient } from '@/lib/photos/upload-client';
 import { toast } from '@/lib/toast';
 
@@ -40,6 +41,10 @@ export function useTicketPhotoStaging(ticketId: number) {
           entityType: 'ZENDESK_TICKET',
           entityId: ticketId,
           linkRole: 'claim_evidence',
+          // Claim evidence is the surface most likely to be argued over, so the
+          // File's own timestamp travels with it rather than collapsing into the
+          // server-insert instant. Null when it fails the shared bounds.
+          clientCapturedAtMs: captureTimeFromFile(file),
         })
           .then((res) => {
             setStaged((prev) =>

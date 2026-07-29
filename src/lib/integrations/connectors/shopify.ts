@@ -26,14 +26,17 @@
  * Lazily imported by the registry so the connection reader never pulls in this
  * module.
  */
-import pool from '@/lib/db';
 import type { OrgId } from '@/lib/tenancy/constants';
+import type { CanonicalOrderLine } from '@/lib/orders/canonical-order';
+import { ingestConnectorOrders } from './ingest-connector-orders';
 import { getIntegrationCredentials, type ShopifyCredentials } from '@/lib/integrations/credentials';
 import { isNangoConfigured, nangoProxy } from '@/lib/integrations/nango';
 import { getSyncCursor, updateSyncCursor } from '@/lib/sync-cursors';
 import type { HealthResult, SyncOutcome } from './types';
 
 const ACCOUNT_SOURCE = 'shopify';
+/** Seeded on a brand-new row only; never overwrites a real title. */
+const SHOPIFY_TITLE_FALLBACK = 'Shopify order';
 /** Admin API version for the vault-direct fallback. The Nango proxy pins the
  *  version in the provider template, so this only applies off the Nango path. */
 const DEFAULT_API_VERSION = '2024-10';
@@ -120,66 +123,42 @@ function summarizeLines(node: ShopifyOrderNode): { title: string; quantity: numb
   const quantity = lines.reduce((s, li) => s + (Number(li.quantity) || 0), 0) || 1;
   const first = lines.find((li) => (li.title ?? '').trim())?.title?.trim();
   const title = !first
-    ? 'Shopify order'
+    ? SHOPIFY_TITLE_FALLBACK
     : lines.length > 1
       ? `${first} +${lines.length - 1} more`
       : first;
   return { title, quantity };
 }
 
-/** Upsert one Shopify order into `orders`. Returns 'created' | 'updated'. */
-async function upsertOrder(orgId: OrgId, node: ShopifyOrderNode): Promise<'created' | 'updated'> {
+/** Map a Shopify order node to a canonical line. Title '' means "unknown" —
+ *  the writer seeds the placeholder only on a brand-new row. */
+function toCanonicalLine(node: ShopifyOrderNode): CanonicalOrderLine {
   const { title, quantity } = summarizeLines(node);
   // GraphQL money is a decimal string (e.g. "42.00") — already in major units,
   // unlike Square's integer cents. Do NOT divide.
   const rawAmount = node.currentTotalPriceSet?.shopMoney?.amount;
-  const saleAmount = rawAmount != null && rawAmount !== '' && Number.isFinite(Number(rawAmount))
-    ? Number(rawAmount)
-    : null;
-  const currency = node.currentTotalPriceSet?.shopMoney?.currencyCode || 'USD';
-  // A fully fulfilled Shopify order is realized — mark shipped so it lands in
-  // the tracker as completed (mirrors Square/Amazon read-only ingestion).
-  const status = node.displayFulfillmentStatus === 'FULFILLED' ? 'shipped' : 'unassigned';
-  // legacyResourceId is the stable numeric id; fall back to the order name.
-  const orderId = node.legacyResourceId || node.name;
-
-  const result = await pool.query(
-    `INSERT INTO orders (
-       organization_id, order_id, product_title, condition, sku, status, status_history, notes,
-       quantity, account_source, order_date, sku_catalog_id,
-       sale_amount, currency
-     ) VALUES (
-       $1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9, $10, $11, $12, $13, $14
-     )
-     ON CONFLICT ON CONSTRAINT idx_orders_unique_account_order DO UPDATE
-       SET product_title = COALESCE(NULLIF(EXCLUDED.product_title, 'Shopify order'), orders.product_title),
-           quantity = COALESCE(NULLIF(orders.quantity, ''), EXCLUDED.quantity),
-           order_date = COALESCE(orders.order_date, EXCLUDED.order_date),
-           sale_amount = COALESCE(orders.sale_amount, EXCLUDED.sale_amount),
-           currency = COALESCE(NULLIF(orders.currency, ''), EXCLUDED.currency),
-           status = CASE
-             WHEN orders.status IS NULL OR orders.status = '' OR orders.status = 'unassigned' THEN EXCLUDED.status
-             ELSE orders.status
-           END
-       RETURNING (xmax = 0) AS inserted`,
-    [
-      orgId,
-      orderId,
-      title,
-      '',
-      '',
-      status,
-      JSON.stringify([]),
-      '',
-      String(quantity),
-      ACCOUNT_SOURCE,
-      node.createdAt ?? null,
-      null,
-      saleAmount,
-      currency,
-    ],
-  );
-  return result.rows[0]?.inserted ? 'created' : 'updated';
+  return {
+    // legacyResourceId is the stable numeric id; fall back to the order name.
+    externalOrderId: String(node.legacyResourceId || node.name || ''),
+    itemNumber: '',
+    sku: '',
+    productTitle: title === SHOPIFY_TITLE_FALLBACK ? '' : title,
+    condition: '',
+    quantity: String(quantity),
+    notes: '',
+    accountSource: ACCOUNT_SOURCE,
+    trackings: [],
+    shipByDate: null,
+    orderDate: node.createdAt ? new Date(node.createdAt) : null,
+    saleAmount:
+      rawAmount != null && rawAmount !== '' && Number.isFinite(Number(rawAmount))
+        ? String(Number(rawAmount))
+        : null,
+    currency: node.currentTotalPriceSet?.shopMoney?.currencyCode || 'USD',
+    // A fully fulfilled Shopify order is realized — mark shipped so it lands in
+    // the tracker as completed (mirrors Square/Amazon read-only ingestion).
+    status: node.displayFulfillmentStatus === 'FULFILLED' ? 'shipped' : 'unassigned',
+  };
 }
 
 const SHOP_QUERY = `query { shop { name } }`;
@@ -219,11 +198,9 @@ export async function shopifySync(orgId: OrgId): Promise<SyncOutcome> {
   // Shopify search syntax: `updated_at:>=<ISO8601>`.
   const q = `updated_at:>=${since.toISOString()}`;
 
-  let imported = 0;
-  let updated = 0;
   let maxUpdatedAt = since.getTime();
   let cursor: string | null | undefined;
-  const errors: string[] = [];
+  const lines: CanonicalOrderLine[] = [];
 
   try {
     for (let page = 0; page < MAX_PAGES; page++) {
@@ -233,12 +210,7 @@ export async function shopifySync(orgId: OrgId): Promise<SyncOutcome> {
       for (const edge of edges) {
         const node = edge.node;
         if (!node || (!node.legacyResourceId && !node.name)) continue;
-        try {
-          if ((await upsertOrder(orgId, node)) === 'created') imported++;
-          else updated++;
-        } catch (e) {
-          errors.push(`${node.legacyResourceId ?? node.name}: ${msg(e)}`);
-        }
+        lines.push(toCanonicalLine(node));
         const ts = node.updatedAt ? Date.parse(node.updatedAt) : NaN;
         if (Number.isFinite(ts) && ts > maxUpdatedAt) maxUpdatedAt = ts;
       }
@@ -248,19 +220,24 @@ export async function shopifySync(orgId: OrgId): Promise<SyncOutcome> {
       if (!cursor) break;
     }
 
-    // Advance the watermark only on a clean run so a mid-page failure re-pulls.
-    if (errors.length === 0 && maxUpdatedAt > since.getTime()) {
+    // One ingest for the whole run, so the cache bust + realtime publish fire
+    // once rather than per page.
+    const counts = await ingestConnectorOrders(orgId, ACCOUNT_SOURCE, lines, {
+      fallbackProductTitle: SHOPIFY_TITLE_FALLBACK,
+    });
+
+    // Advance the watermark only on a clean run so a failure re-pulls.
+    if (maxUpdatedAt > since.getTime()) {
       await updateSyncCursor(cursorKey, new Date(maxUpdatedAt));
     }
+
+    return {
+      ok: true,
+      imported: counts.imported,
+      updated: counts.updated,
+      cursor: new Date(maxUpdatedAt).toISOString(),
+    };
   } catch (e) {
     return { ok: false, error: `shopify: ${msg(e)}` };
   }
-
-  return {
-    ok: errors.length === 0,
-    imported,
-    updated,
-    error: errors.length ? errors.join('; ') : undefined,
-    cursor: new Date(maxUpdatedAt).toISOString(),
-  };
 }
