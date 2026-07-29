@@ -35,7 +35,10 @@ import { toast } from '@/lib/toast';
 import { receivingPhotoToGalleryInput } from '@/components/shipped/photo-gallery/photo-gallery-utils';
 import { buildUnboxingCartonLibraryHref } from '@/components/shipped/photo-gallery/photo-context-provenance';
 import { STATION_CONTEXT_PHOTO_PILL_CLASS } from '@/components/station/entity-context/station-context-action-pill';
-import type { ReceivingPhotoStage } from '@/lib/receiving/photo-intent';
+import {
+  RECEIVING_PHOTO_LIST_INTENT_CARTON,
+  type ReceivingPhotoStage,
+} from '@/lib/receiving/photo-intent';
 import {
   effectiveReceivingPhotoStage,
   receivingPhotoListIntentForScope,
@@ -126,7 +129,8 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
   // `receiving_unbox_carton` correctly; only this read broadens. Triage's
   // arrival-only pill and the line/item pill are unaffected.
   const baseListIntent = receivingPhotoListIntentForScope({ stage, receivingLineId: lineId });
-  const listIntent = baseListIntent === 'unbox_carton' ? 'carton' : baseListIntent;
+  const listIntent =
+    baseListIntent === 'unbox_carton' ? RECEIVING_PHOTO_LIST_INTENT_CARTON : baseListIntent;
   const uploadTarget = useMemo(() => {
     try {
       return resolveReceivingPhotoTarget({ receivingId, receivingLineId: lineId, stage });
