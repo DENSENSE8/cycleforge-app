@@ -39,7 +39,7 @@ test('searchHitHref: every entity type deep-links to its record surface', () => 
     '/dashboard?mode=search&openOrderId=42&map=search',
   );
   assert.equal(searchHitHref('SERIAL_UNIT', 9), '/inventory/units?unit=9');
-  assert.equal(searchHitHref('RECEIVING', 3), '/unbox?openReceivingId=3');
+  assert.equal(searchHitHref('RECEIVING', 3), '/carton/3');
   assert.equal(searchHitHref('SKU', 11), '/products?view=qc&skuId=11');
   assert.equal(searchHitHref('REPAIR', 5), '/repair?tab=active&openRepair=5');
   assert.equal(searchHitHref('FBA_SHIPMENT', 2), '/fba?openShipmentId=2');
@@ -317,7 +317,7 @@ test('soleHitHref: one hit of ANY type opens; a real list never does', () => {
   // list. One row is not a choice.
   assert.equal(
     soleHitHref([{ id: 50200, entityType: 'receiving' }]),
-    '/unbox?openReceivingId=50200',
+    '/carton/50200',
   );
   assert.equal(soleHitHref([{ id: 12, entityType: 'unit' }]), '/inventory/units?unit=12');
   assert.equal(soleHitHref([{ id: 9, entityType: 'repair' }]), '/repair?tab=active&openRepair=9');

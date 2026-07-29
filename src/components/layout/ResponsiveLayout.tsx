@@ -10,13 +10,9 @@ import { useUIMode } from '@/design-system/providers/UIModeProvider';
 import { useBodyScrollLock } from '@/design-system/hooks';
 import { AlertTriangle, RotateCcw, X } from '@/components/Icons';
 import { Button, IconButton } from '@/design-system/primitives';
-import { isMobileAllowedPath, isStationSurfaceRoute } from '@/lib/sidebar-navigation';
-import { useHasSidebarContext } from '@/components/sidebar/useHasSidebarContext';
+import { isMobileAllowedPath } from '@/lib/sidebar-navigation';
 import { SIDEBAR_SPINE_WIDTH } from '@/components/sidebar/sidebar-spine';
-import {
-  STATION_PANEL_COLUMN_CLASS,
-  STATION_PANEL_HOST_CLASS,
-} from '@/components/sidebar/station-column';
+import { ContextPanelLayout } from '@/components/sidebar/ContextPanelLayout';
 import { isClientPublicPath } from '@/contexts/AuthContext';
 import { GlobalHeader } from '@/components/layout/GlobalHeader';
 import { appContentShellClass } from '@/components/layout/header-shell';
@@ -50,17 +46,6 @@ const SidebarSlideOver = dynamic(
 const CommandBar = dynamic(() => import('@/components/CommandBar').then((m) => m.CommandBar), { ssr: false });
 const GlobalDesktopSkuScanner = dynamic(
   () => import('@/components/layout/GlobalDesktopSkuScanner').then((m) => m.GlobalDesktopSkuScanner),
-  { ssr: false },
-);
-// The station bench panel (scan bar + recents rail) now lives in the CONTENT
-// region rather than the sidebar, so it survives the nav being hidden. Its own
-// dispatcher is already per-route code-split, so this stays a thin boundary.
-const SidebarContextPanel = dynamic(
-  () => import('@/components/sidebar/SidebarContextPanel').then((m) => m.SidebarContextPanel),
-  { ssr: false },
-);
-const MasterNavProvider = dynamic(
-  () => import('@/components/sidebar/master-nav').then((m) => m.MasterNavProvider),
   { ssr: false },
 );
 const ReceivingPhoneBridgeMount = dynamic(
@@ -162,17 +147,9 @@ export function ResponsiveLayout({ children, kioskHost = false }: ResponsiveLayo
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  // Desktop-only: collapse the permanent left sidebar via the global header's
-  // top-left toggle so the main content can run full-width.
-  // Station benches mount their scan bar + recents rail in the CONTENT region so
-  // those survive the nav being closed — which is most of the time at a bench.
-  const navOnlySurface = isStationSurfaceRoute(pathname);
-  /**
-   * Does this route have a sidebar of its OWN (a picker / facet rail)? If so it
-   * gets a resident column; if not, nothing is reserved and the surface runs
-   * full width. The page list is never here — it is the slide-over.
-   */
-  const routeHasSidebar = useHasSidebarContext();
+  // A route's OWN sidebar (picker / facet rail / bench) is no longer mounted
+  // here at all: `ContextPanelLayout` renders it inside the content region,
+  // beside the workspace. The left aside is the nav spine and nothing else.
   const [navOpen, setNavOpen] = useState(false);
   const closeNav = useCallback(() => setNavOpen(false), []);
   // Close the transient spine on navigation — the route it opened for is gone.
@@ -330,20 +307,6 @@ export function ResponsiveLayout({ children, kioskHost = false }: ResponsiveLayo
       <div className="flex min-h-0 w-full flex-1 overflow-hidden">
         <GlobalWedgeScannerMount />
         <PhoneScanBridgeMount />
-        {/* The route's OWN sidebar. Absent when the route has none, which is
-            what stops a panel-less surface reserving an empty column. */}
-        {!chromeless && routeHasSidebar && (
-          <ErrorBoundary
-            label="sidebar"
-            fallback={(_e, reset) => <SidebarFallback reset={reset} />}
-          >
-            <Suspense fallback={null}>
-              <aside className={cn('h-full shrink-0 overflow-hidden', SIDEBAR_SPINE_WIDTH)}>
-                <DashboardSidebar onOpenNav={() => setNavOpen(true)} />
-              </aside>
-            </Suspense>
-          </ErrorBoundary>
-        )}
         <div className={cn('relative flex h-full min-w-0 flex-1 flex-col overflow-hidden', appChromeClass)}>
           {!chromeless && (
           <GlobalHeader
@@ -353,28 +316,10 @@ export function ResponsiveLayout({ children, kioskHost = false }: ResponsiveLayo
           />
           )}
           <main className={cn(chromeless ? 'flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden' : appContentShellClass)}>
-            {navOnlySurface && !chromeless ? (
-              // Station bench: the scan bar + recents rail ride here, beside the
-              // workspace, so they stay on screen when the nav is hidden.
-              <div className={STATION_PANEL_HOST_CLASS}>
-                {/* `data-station-panel` is the bench panel's identity hook, so a
-                    test can ask "did the bench render?" without keying off its
-                    width class — see `sidebar-nav-overlay.spec.ts`. */}
-                <div className={STATION_PANEL_COLUMN_CLASS} data-station-panel>
-                  {/* `enabled` keeps every panel's own mode pill-row suppressed
-                      (`useMasterNavEnabled()`): the nav owns page + mode, and a
-                      second mode strip at the top of the bench is noise. */}
-                  <MasterNavProvider enabled>
-                    <SidebarContextPanel />
-                  </MasterNavProvider>
-                </div>
-                <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-                  {children}
-                </div>
-              </div>
-            ) : (
-              children
-            )}
+            {/* The route's own sidebar rides HERE, beside the workspace — one
+                wrapper for every route, benches included. See
+                `ContextPanelLayout`. */}
+            {chromeless ? children : <ContextPanelLayout>{children}</ContextPanelLayout>}
           </main>
         </div>
 
@@ -412,14 +357,14 @@ export function ResponsiveLayout({ children, kioskHost = false }: ResponsiveLayo
           </div>
         )}
 
-        {/* The transient spine. Same component as the resident column — only the
-            host differs — so "open the sidebar" is one gesture and one surface on
-            every route. */}
+        {/* The nav spine — the page list, and only the page list. The route's own
+            sidebar rides in the content region, so this never lands on top of
+            it. */}
         {!chromeless && (
           <ErrorBoundary label="sidebar-slide-over" fallback={() => null}>
             <Suspense fallback={null}>
               <SidebarSlideOver open={navOpen} onClose={closeNav}>
-                <DashboardSidebar navOnly onNavigate={closeNav} />
+                <DashboardSidebar onNavigate={closeNav} />
               </SidebarSlideOver>
             </Suspense>
           </ErrorBoundary>

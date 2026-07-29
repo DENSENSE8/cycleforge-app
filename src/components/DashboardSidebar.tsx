@@ -12,28 +12,19 @@ export interface DashboardSidebarProps {
   inDrawer?: boolean;
   /** Called when the user navigates from within the sidebar. */
   onNavigate?: () => void;
-  /** Render the page list (the slide-over mount) instead of the route's sidebar. */
-  navOnly?: boolean;
-  /** Open the page-list slide-over (from the resident column's band chevron). */
-  onOpenNav?: () => void;
 }
 
 /**
- * Thin composition layer for the sidebar. State + side effects live in
- * `dashboard-sidebar-hooks`; the chrome lives in `SidebarShell`; the route's own
- * sidebar lives in `SidebarContextPanel`.
+ * Thin composition layer for the nav spine. State + side effects live in
+ * `dashboard-sidebar-hooks`; the chrome lives in `SidebarShell`. The route's own
+ * sidebar is NOT here — it mounts beside the workspace via `ContextPanelLayout`.
  *
- * It owns **no geometry**. The host supplies the width — a resident column or
- * {@link SidebarSlideOver} — so the two mounts cannot disagree about it. (This
- * component used to hardcode `w-[360px]`, which is how a route with no sidebar
- * ended up reserving 360px of empty chrome: the width was unconditional and
- * nothing in the system could say the panel was absent.)
+ * It owns **no geometry**. The host supplies the width — {@link SidebarSlideOver}
+ * or the mobile drawer — so the two mounts cannot disagree about it.
  */
 export default function DashboardSidebar({
   inDrawer = false,
   onNavigate,
-  navOnly = false,
-  onOpenNav,
 }: DashboardSidebarProps) {
   const { isMobile } = useUIMode();
   const permissions = useAuthPermissions();
@@ -45,8 +36,6 @@ export default function DashboardSidebar({
       mobileRestricted={isMobile}
       onNavigate={onNavigate}
       inDrawer={inDrawer}
-      navOnly={navOnly}
-      onOpenNav={onOpenNav}
     />
   );
 }

@@ -3,7 +3,7 @@
 import { Calendar, Check, ChevronUp, ChevronDown, DollarSign, Ticket } from '@/components/Icons';
 import { tableHeader } from '@/design-system/tokens/typography/presets';
 import { ColumnTypeGlyph } from '@/components/ui/table-column-config/column-type-glyph';
-import { gridHeaderCellAlignClass } from '@/design-system/components/grid/grid-header-align';
+import { gridHeaderCellAlignClass, resolveGridColumnAlign } from '@/design-system/components/grid/grid-header-align';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { emitToggleAll } from '@/lib/selection/table-selection';
 import { useTableSelection, useTableSelectionTotal } from '@/hooks/useTableSelection';
@@ -201,8 +201,7 @@ function RepairHeaderCell({
       onClick={onSort}
       className={cn(
         'group/hcell relative min-h-11 gap-1',
-        // Numeric price header right-aligns with its right-aligned cells.
-        gridHeaderCellAlignClass(column.key === 'price' ? 'end' : 'start'),
+        gridHeaderCellAlignClass(resolveGridColumnAlign(column)),
         repairGridCell({ rule: !last, inset: 'grid' }),
         frozen && REPAIR_GRID_FROZEN_CELL,
         tableHeader,

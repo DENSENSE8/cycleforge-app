@@ -42,6 +42,8 @@ import {
   type CompleteCartonOutcome,
   type CompleteCartonSyncStatus,
 } from '@/components/mobile/receiving/complete-carton';
+import { photoPolicyOverrideField } from '@/lib/receiving/photo-policy-override-wire';
+import type { PhotoPolicyOverrideCode } from '@/lib/receiving/exception-codes';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 
 export function useCompleteCarton(row: ReceivingLineRow | null) {
@@ -75,22 +77,35 @@ export function useCompleteCarton(row: ReceivingLineRow | null) {
     Boolean(stationChannel) && state.phase === 'done' && state.awaitsSync,
   );
 
-  const run = useCallback(async () => {
+  /**
+   * Receive the carton.
+   *
+   * `photoPolicyOverride` is how a blocked carton gets through, and it is
+   * passed ONLY by the surface that just showed the operator the waiver sheet.
+   * Absent = no waiver = the gate keeps hard-blocking, which is the safe
+   * default; there is deliberately no way to make a plain retry carry a code it
+   * inherited from an earlier attempt.
+   */
+  const run = useCallback(async (photoPolicyOverride?: PhotoPolicyOverrideCode | null) => {
     const receivingId = row?.receiving_id;
     if (!row || !receivingId || inFlightRef.current) return;
     inFlightRef.current = true;
     setState((prev) => ({ ...prev, phase: 'working', error: null }));
 
     if (!idempotencyKeyRef.current) idempotencyKeyRef.current = safeRandomUUID();
+    // A waived retry is a genuinely different request from the blocked one, so
+    // it must not replay the blocked attempt's cached response.
+    if (photoPolicyOverride) idempotencyKeyRef.current = safeRandomUUID();
 
     try {
       const res = await fetch('/api/receiving/mark-received-po', {
         method: 'POST',
         credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(
-          completeCartonRequestBody(row, receivingId, idempotencyKeyRef.current),
-        ),
+        body: JSON.stringify({
+          ...completeCartonRequestBody(row, receivingId, idempotencyKeyRef.current),
+          ...(photoPolicyOverride ? photoPolicyOverrideField(photoPolicyOverride) : null),
+        }),
       });
       const body = await res.json().catch(() => null);
       const outcome = mapCompleteCartonResponse(res.status, body);

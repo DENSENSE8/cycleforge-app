@@ -132,9 +132,11 @@ export function searchHitHref(dbType: SearchEntityType, entityId: number): strin
     case 'SERIAL_UNIT':
       return `/inventory/units?unit=${entityId}`;
     case 'RECEIVING':
-      // Unbox is the first-class receiving surface (`/unbox`); it opens the
-      // carton via `?openReceivingId=`.
-      return `/unbox?openReceivingId=${entityId}`;
+      // The READ view (plan D4). This used to be `/unbox?openReceivingId=`,
+      // which meant every search hit — and every sole-hit auto-open — dropped
+      // the operator into the WORK editor, the exact surface a lookup is trying
+      // to avoid. `/unbox` is still one click away from the inspector.
+      return `/carton/${entityId}`;
     case 'SKU':
       return `/products?view=qc&skuId=${entityId}`;
     case 'REPAIR':

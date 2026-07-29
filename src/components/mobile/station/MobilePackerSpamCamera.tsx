@@ -11,6 +11,7 @@ import { Camera, X, Check } from '@/components/Icons';
 import { Button, IconButton } from '@/design-system/primitives';
 import { useCamera } from '@/hooks/useCamera';
 import { compressPhotoForUpload } from '@/lib/image/compress-for-upload';
+import { shutterCaptureTime } from '@/lib/photos/capture-time';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 import {
   MobileSwipePhotoViewer,
@@ -29,6 +30,19 @@ export interface CapturedShot {
   id: string;
   blob: Blob;
   previewUrl: string;
+  /**
+   * Shutter instant (epoch ms) — stamped at the FRAME GRAB, before `toBlob` and
+   * `compressPhotoForUpload`, which together can run for a noticeable fraction
+   * of a second on a warehouse phone.
+   *
+   * Required, not defaulted: this camera is the only place a `CapturedShot` is
+   * born, and a canvas capture has no `File.lastModified` to fall back on, so a
+   * shot that reaches the queue without it has silently lost the only capture
+   * time that will ever exist. Making it required turns "a new capture path
+   * forgot to stamp" into a compile error instead of a null column an operator
+   * discovers during a carrier dispute.
+   */
+  capturedAtMs: number;
 }
 
 /** Already-saved photos for this PO/line — shown in the bottom-left gallery bubble. */
@@ -241,6 +255,10 @@ export function MobilePackerSpamCamera({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     ctx.drawImage(video, sx, sy, sWidth, sHeight, 0, 0, sWidth, sHeight);
+    // The frame is now grabbed — this is the shutter instant the operator saw.
+    // Read it BEFORE the encode + compress below, which are async and can cost
+    // a visible fraction of a second on a warehouse phone.
+    const capturedAtMs = shutterCaptureTime();
 
     const rawBlob = await new Promise<Blob | null>((res) =>
       canvas.toBlob((b) => res(b), 'image/jpeg', jpegQuality),
@@ -252,7 +270,7 @@ export function MobilePackerSpamCamera({
     const previewUrl = URL.createObjectURL(blob);
     const id = safeRandomUUID();
 
-    setShots((prev) => [...prev, { id, blob, previewUrl }]);
+    setShots((prev) => [...prev, { id, blob, previewUrl, capturedAtMs }]);
     setFlash(true);
     setTimeout(() => setFlash(false), 160);
   }, [shots.length, maxPhotos, jpegQuality, videoRef, gateCapture]);
@@ -357,7 +375,7 @@ export function MobilePackerSpamCamera({
     const id = safeRandomUUID();
 
     handedOffRef.current = true;
-    onDone([{ id, blob, previewUrl }]);
+    onDone([{ id, blob, previewUrl, capturedAtMs: shutterCaptureTime() }]);
   }, [jpegQuality, onDone]);
 
   // Only surface the test-photo escape hatch in dev builds so it never reaches

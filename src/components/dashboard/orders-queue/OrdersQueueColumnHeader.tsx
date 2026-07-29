@@ -1,7 +1,7 @@
 'use client';
 
 import { GRID_HEADER_ROW_INDEX } from '@/design-system/components/grid/grid-row-index';
-import { gridHeaderCellAlignClass } from '@/design-system/components/grid/grid-header-align';
+import { gridHeaderCellAlignClass, resolveGridColumnAlign } from '@/design-system/components/grid/grid-header-align';
 
 import {
   DndContext,
@@ -402,7 +402,7 @@ function HeaderCell({
         'group/hcell relative',
         // Every header aligns with its data (SoT). Pending data tracks are all
         // left-aligned, so no column passes `end` here.
-        gridSkin ? cn(gridHeaderCellAlignClass(), 'gap-1') : 'justify-center',
+        gridSkin ? cn(gridHeaderCellAlignClass(resolveGridColumnAlign(column)), 'gap-1') : 'justify-center',
         !gridSkin && glyph && 'gap-1',
         ordersQueueGridCell({ rule: !last, inset: cellInset }),
         frozen && ORDERS_QUEUE_FROZEN_CELL,

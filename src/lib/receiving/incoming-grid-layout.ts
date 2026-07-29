@@ -9,7 +9,7 @@
  * PO as order). Status stays its own column — never folded into Product Title.
  */
 
-import type { ColumnType } from '@/lib/tables/table-columns';
+import type { LedgerGridColumnModel } from '@/design-system/components/grid/grid-surface-descriptor';
 import { ordersQueueColVar } from '@/lib/dashboard-order-row-layout';
 
 export type IncomingGridColumnKey =
@@ -24,20 +24,9 @@ export type IncomingGridColumnKey =
   | 'order'
   | 'tracking';
 
-export interface IncomingGridColumn {
+/** Extends the house model — see {@link LedgerGridColumnModel}; only `key` narrows. */
+export interface IncomingGridColumn extends Omit<LedgerGridColumnModel, 'key'> {
   key: IncomingGridColumnKey;
-  width: string;
-  label?: string;
-  gridLabel?: string;
-  labelFitRem?: number;
-  type?: ColumnType;
-  /** `TableColumnConfig` hide key (`receiving` table registry). */
-  hideKey?: string;
-  /**
-   * `core` (default) ships visible; `optional` ships hidden until a staffer adds
-   * it from the Fields menu. See `LedgerGridColumnModel.tier`.
-   */
-  tier?: 'core' | 'optional';
   /** When false, header is not click-to-sort (select gutter only). Default true for data cols. */
   sortable?: boolean;
 }
@@ -92,7 +81,7 @@ export const INCOMING_GRID_COLUMNS: readonly IncomingGridColumn[] = [
   // Wide enough for plain last-4 mono (no truncate ellipsis).
   { key: 'order', width: 'minmax(4.5rem, 4.5rem)', label: 'Order', type: 'id', hideKey: 'orderid', labelFitRem: 4.5 },
   // Fits + TRK# attach face (chip-size AddValueChipFace ~62px + cell pad).
-  { key: 'tracking', width: 'minmax(5.75rem, 5.75rem)', label: 'Tracking', type: 'location', hideKey: 'tracking', labelFitRem: 4.5 },
+  { key: 'tracking', width: 'minmax(5.75rem, 5.75rem)', label: 'Tracking', type: 'location', omitCellIcon: true, hideKey: 'tracking', labelFitRem: 4.5 },
 ] as const;
 
 export const INCOMING_GRID_LOCKED_KEYS: readonly IncomingGridColumnKey[] = ['select', 'title'];

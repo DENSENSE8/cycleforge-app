@@ -1,12 +1,14 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useQueryClient } from '@tanstack/react-query';
 import { Camera, Check, Loader2 } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { useCompleteCarton } from '@/components/mobile/receiving/useCompleteCarton';
+import { PhotoPolicyOverrideSheet } from '@/components/receiving/PhotoPolicyOverrideSheet';
+import { photoPolicyOverrideLabel } from '@/lib/receiving/photo-policy-override-wire';
 import { invalidateReceivingFeeds } from '@/lib/queries/receiving-queries';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { MobileReceivingPhotoStrip } from '@/components/mobile/receiving/MobileReceivingPhotoStrip';
@@ -78,6 +80,11 @@ function CompleteCartonAction({
 }: {
   complete: ReturnType<typeof useCompleteCarton>;
 }) {
+  // The waiver sheet stacks over the carton sheet (level 1) — the operator is
+  // mid-task on this carton, so the acknowledgement belongs on top of it, not
+  // on a screen they had to navigate to.
+  const [overrideOpen, setOverrideOpen] = useState(false);
+
   if (complete.phase === 'done') {
     const lineSuffix =
       complete.updatedCount > 0
@@ -124,6 +131,22 @@ function CompleteCartonAction({
       );
     }
 
+    // Received on a photo-policy waiver. Amber, not green: the carton IS
+    // received, but it carries an open exception, and this is the last moment
+    // the operator who took that call can see it named.
+    if (complete.waiver) {
+      return (
+        <div className="rounded-2xl bg-amber-50 px-4 py-3 ring-1 ring-inset ring-amber-200">
+          <p className="text-role-caption font-semibold uppercase tracking-widest text-amber-700">
+            Received without photos{lineSuffix}
+          </p>
+          <p className="mt-1 text-role-caption font-semibold text-amber-800">
+            Logged as an exception · {photoPolicyOverrideLabel(complete.waiver.reasonCode)}
+          </p>
+        </div>
+      );
+    }
+
     return (
       <div className="flex items-center justify-center gap-2 rounded-2xl bg-emerald-50 px-4 py-4 text-emerald-700 ring-1 ring-inset ring-emerald-200">
         <Check className="h-5 w-5 shrink-0" />
@@ -149,6 +172,18 @@ function CompleteCartonAction({
               </li>
             ))}
           </ul>
+          {/* The soft block's escape hatch. Deliberately quiet and secondary:
+              shooting the photos is the primary path, and this one costs the
+              operator a named reason on the carton's exception list. */}
+          <Button
+            variant="secondary"
+            size="md"
+            onClick={() => setOverrideOpen(true)}
+            disabled={working}
+            className="mt-2.5 w-full"
+          >
+            Receive without photos…
+          </Button>
         </div>
       ) : null}
 
@@ -175,6 +210,18 @@ function CompleteCartonAction({
           'Complete carton'
         )}
       </Button>
+
+      <PhotoPolicyOverrideSheet
+        open={overrideOpen}
+        onClose={() => setOverrideOpen(false)}
+        blockers={complete.blockers}
+        busy={working}
+        level={1}
+        onConfirm={(code) => {
+          setOverrideOpen(false);
+          void complete.run(code);
+        }}
+      />
     </div>
   );
 }

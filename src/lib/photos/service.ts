@@ -56,6 +56,13 @@ export interface AttachLegacyPhotoInput {
   contentType?: string;
   /** When true, return existing id instead of throwing on duplicate URL. */
   idempotent?: boolean;
+  /**
+   * Device-reported capture instant → `photos.client_captured_at` (see
+   * `./capture-provenance.ts`). Optional: the legacy-URL attach surfaces
+   * (NAS picker, packing/packer log imports) mostly have no device timestamp
+   * and correctly leave it null.
+   */
+  clientCapturedAt?: Date | null;
 }
 
 /**
@@ -113,6 +120,7 @@ export async function attachPhotoWithLegacyUrl(
       staffId: input.staffId,
       photoType: input.photoType ?? null,
       poRef,
+      clientCapturedAt: input.clientCapturedAt ?? null,
     });
 
     await createPhotoEntityLink(client, {
@@ -154,6 +162,7 @@ async function uploadPhotoLegacyUrl(input: UploadPhotoInput): Promise<UploadPhot
     poRef: input.poRef,
     linkRole: input.linkRole,
     contentType: input.contentType,
+    clientCapturedAt: input.clientCapturedAt ?? null,
     idempotent: false,
   });
   return result;
@@ -183,6 +192,11 @@ async function uploadPhotoToAdapter(input: UploadPhotoInput): Promise<UploadPhot
       staffId: input.staffId,
       photoType: input.photoType ?? null,
       poRef,
+      // Device-reported, already normalized at the route edge. Deliberately NOT
+      // derived from the buffer here: `generateThumbnail` re-encodes, and the
+      // mobile capture path already stripped EXIF client-side before the bytes
+      // ever reached us (see ./capture-provenance.ts).
+      clientCapturedAt: input.clientCapturedAt ?? null,
     });
 
     const { objectKey, thumbObjectKey } = buildGcsObjectKey({

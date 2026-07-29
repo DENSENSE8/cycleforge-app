@@ -246,6 +246,8 @@ function FeedbackBody({
   const [undoBusy, setUndoBusy] = useState(false);
   const variant = inferVariant(activeOrder);
   const { Icon, label, tint, border, bar } = VARIANTS[variant];
+  /** Tracking resolved to no order — nothing scanned here attaches to a record. */
+  const isException = variant === 'exception';
   const qty = Math.max(1, Number(activeOrder.quantity) || 1);
   const scanned = activeOrder.serialNumbers.length;
   const remaining = Math.max(0, qty - scanned);
@@ -302,15 +304,25 @@ function FeedbackBody({
               <IdentifierChip activeOrder={activeOrder} variant={variant} />
             </div>
           </div>
+          {/* An UNMATCHED scan is not "Active" — the tracking number resolved to
+              no order, so anything scanned here lands on an exception, not on a
+              record. Rendering the emerald Active chip here is what let a
+              technician believe an orphaned serial had been captured. */}
           <motion.span
             layout
             initial={{ opacity: 0, scale: 0.92 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={framerTransition.quantityBump}
-            className="inline-flex shrink-0 items-center gap-1 rounded-md bg-emerald-50 px-1.5 py-0.5 text-[8.5px] font-semibold uppercase tracking-widest text-emerald-600 ring-1 ring-inset ring-emerald-200"
+            className={`inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-[8.5px] font-semibold uppercase tracking-widest ring-1 ring-inset ${
+              isException
+                ? 'bg-amber-50 text-amber-700 ring-amber-300'
+                : 'bg-emerald-50 text-emerald-600 ring-emerald-200'
+            }`}
           >
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-            Active
+            <span
+              className={`h-1.5 w-1.5 rounded-full ${isException ? 'bg-amber-500' : 'bg-emerald-500'}`}
+            />
+            {isException ? 'No order' : 'Active'}
           </motion.span>
         </div>
 
@@ -335,14 +347,30 @@ function FeedbackBody({
               <span className="ml-1 font-semibold text-text-faint">
                 · <AnimatedStat value={remaining} speed="fast" className="inline" /> left
               </span>
+            ) : isException ? (
+              // Never claim "complete" for a scan with no order behind it.
+              <span className="ml-1 font-semibold text-amber-700">· not linked</span>
             ) : (
               <span className="ml-1 font-semibold text-emerald-600">· complete</span>
             )}
           </span>
         </div>
 
-        {/* Shipping mode: STN ↔ unit/preboxed label pairing cue */}
-        {trackingKey && scanned > 0 ? (
+        {/* Shipping mode: STN ↔ unit/preboxed label pairing cue.
+            Suppressed for an unmatched scan — there is no order to pair TO, so
+            the serials are held against an exception for reconciliation. Saying
+            "N units paired" there was a false completion signal. */}
+        {isException && scanned > 0 ? (
+          <div className="mt-2 flex flex-wrap items-center gap-1.5 rounded-md border border-amber-300 bg-amber-50 px-2 py-1">
+            <AlertTriangle className="h-3 w-3 shrink-0 text-amber-700" />
+            <span className="text-role-eyebrow uppercase tracking-widest text-amber-800">
+              {scanned} serial{scanned === 1 ? '' : 's'} held — no order matched
+            </span>
+            <span className="text-role-eyebrow normal-case tracking-normal text-amber-700">
+              Recorded against an exception for reconciliation, not attached to an order.
+            </span>
+          </div>
+        ) : trackingKey && scanned > 0 ? (
           <div className="mt-2 flex flex-wrap items-center gap-1.5 rounded-md border border-blue-200 bg-blue-50/80 px-2 py-1">
             <MapPin className="h-3 w-3 shrink-0 text-blue-600" />
             <span className="text-role-eyebrow uppercase tracking-widest text-blue-700">

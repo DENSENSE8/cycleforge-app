@@ -60,6 +60,27 @@ export interface PhotoScope {
    */
   stage?: ReceivingPhotoStage;
   /**
+   * Device-reported capture instant (epoch ms) — the shutter clock from
+   * `CapturedShot.capturedAtMs`, or `captureTimeFromFile()` for a picked File.
+   * Stored server-side as `photos.client_captured_at`, BESIDE `created_at`.
+   *
+   * Why it must live here rather than be read at upload time: `created_at` is
+   * the server-INSERT instant, and this queue exists precisely because that
+   * insert can be minutes-to-hours late — a photo captured on a dead-zone dock
+   * sits in localStorage until the phone reconnects. Reading a clock in
+   * `postPhotoViaAdapter` would record the drain, not the capture.
+   *
+   * Persisted for free: `PersistedEntry.meta` is `Omit<UploadEntry,'previewUrl'>`,
+   * which carries the whole `scope`, so a tab kill mid-queue rehydrates the true
+   * capture time with the photo. Do NOT move this out of `scope` onto a field
+   * that persist() drops.
+   *
+   * Optional, unlike `CapturedShot.capturedAtMs`: entries rehydrated from a
+   * pre-2026-07-29 localStorage payload have none, and a null column is the
+   * honest record of "no capture time known".
+   */
+  capturedAtMs?: number | null;
+  /**
    * When `receivingLineId` is unset: `all` loads PO + every line (matches
    * `photo_count` badges); `po` loads PO-level entity photos only.
    */
@@ -85,6 +106,11 @@ interface QueueState {
 
 // ─── Storage shape ──────────────────────────────────────────────────────────
 const STORAGE_KEY = 'cf.receiving.upload_queue.v1';
+// Deliberately NOT bumped when `scope.capturedAtMs` was added: rehydrate() drops
+// every entry whose `v` doesn't match, so a bump would delete the queued photos
+// of anyone mid-shift at deploy time — real evidence, thrown away to version an
+// optional field. The field is additive and optional; a v1 payload without it
+// rehydrates fine and uploads with a null capture time, which is the truth.
 const STORAGE_VERSION = 1;
 // Hard cap on persisted entries to keep localStorage well below the 5 MB
 // per-origin quota even on cheap Android Chromes.
@@ -237,6 +263,7 @@ async function postPhotoViaAdapter(
     entityId,
     photoType: receivingPhotoTypeForStage(stage),
     poRef: entry.scope.poRef ?? undefined,
+    clientCapturedAtMs: entry.scope.capturedAtMs ?? null,
   });
   return { id: result.id, url: result.url };
 }

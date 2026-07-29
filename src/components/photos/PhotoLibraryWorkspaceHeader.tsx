@@ -3,10 +3,11 @@
 /**
  * Media Library workbench chrome — dashboard display-header recipe.
  *
- * Left:  lifecycle facet tabs (All · Unboxing · Pickups · Packing · Repair ·
- *        Claims · Outbound). Date is a filter, not a tab — see
- *        `PHOTO_LIBRARY_SCOPE_TABS`.
- * Right: search · filters · media type · sort · NAS.
+ * Refinements only: search · filters · media type · sort · NAS. The lifecycle
+ * facets (All · Unboxing · Pickups · Packing · Repair · Claims · Outbound) and
+ * the capture-day drill are NAVIGATION — they live in the resident sidebar rail
+ * ({@link PhotoLibrarySidebarPanel}), which is also what stops this single row
+ * from overflowing and clipping the controls on its right.
  *
  * Density / refresh / select / icons-list stay on the breadcrumb path strip
  * ({@link PhotoLibraryHeader}) — those are in-view photo actions.
@@ -41,12 +42,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useDebounce } from '@/hooks';
 import { usePhotoLibraryUrlState } from '@/hooks/usePhotoLibraryUrlState';
 import {
-  applySourceScopeTab,
   DEFAULT_PHOTO_LIBRARY_VIEW,
-  PHOTO_LIBRARY_SCOPE_TAB_LABEL,
-  PHOTO_LIBRARY_SCOPE_TABS,
   sourceScopeFromFilters,
-  type PhotoLibrarySourceScope,
 } from '@/lib/photos/library-filter-state';
 import {
   parsePhotoLibraryTicketSearch,
@@ -156,15 +153,6 @@ export function PhotoLibraryWorkspaceHeader({ className }: { className?: string 
     refinements.length > 0;
   const structuredCount = photoLibraryStructuredFilterCount(filters);
 
-  // Lifecycle facets. Unlike the date tabs these replaced, EVERY position maps to
-  // exactly one tab — `sourceScopeFromFilters` defaults to 'all' — so the strip
-  // can never be in the "no tab owns this" state the recency tabs had to model.
-  const tabs = PHOTO_LIBRARY_SCOPE_TABS.map((id: PhotoLibrarySourceScope) => ({
-    id,
-    label: PHOTO_LIBRARY_SCOPE_TAB_LABEL[id],
-    color: 'blue' as const,
-  }));
-
   const savable =
     structuredCount > 0 ||
     !!filters.poFinder ||
@@ -176,9 +164,9 @@ export function PhotoLibraryWorkspaceHeader({ className }: { className?: string 
 
   return (
     <WorkbenchChromeHeader
-      tabs={tabs}
-      activeTab={activeScope}
-      onTabChange={(id) => patch(applySourceScopeTab(id as PhotoLibrarySourceScope))}
+      // No tab rail: the seven lifecycle facets moved to the resident sidebar
+      // rail (`PhotoLibrarySidebarPanel`) — they are navigation, and they were
+      // the reason this row overflowed and clipped its own right controls.
       solidTone="accent"
       className={className}
       search={

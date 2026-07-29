@@ -1,9 +1,9 @@
 {
   "version": 1,
-  "generatedAt": "2026-07-29T05:25:36Z",
-  "totalRoutes": 882,
+  "generatedAt": "2026-07-29T06:48:02Z",
+  "totalRoutes": 880,
   "summary": {
-    "permissionGated": 752,
+    "permissionGated": 750,
     "authenticatedNoPermission": 46,
     "anonymousIntentional": 82,
     "serviceToService": 2,
@@ -2468,15 +2468,6 @@
       ],
       "gate": "withAuth (no permission)",
       "permission": null,
-      "exemptReason": null
-    },
-    {
-      "path": "/api/import-orders/route.ts",
-      "methods": [
-        "POST"
-      ],
-      "gate": "withAuth",
-      "permission": "orders.create",
       "exemptReason": null
     },
     {
@@ -7098,15 +7089,6 @@
       ],
       "gate": "requireRoutePerm",
       "permission": "dashboard.view",
-      "exemptReason": null
-    },
-    {
-      "path": "/api/sync-sheets/route.ts",
-      "methods": [
-        "POST"
-      ],
-      "gate": "withAuth",
-      "permission": "integrations.sheets",
       "exemptReason": null
     },
     {

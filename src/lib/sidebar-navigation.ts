@@ -52,6 +52,7 @@ import {
   TECH_MODE_ICONS,
 } from '@/lib/nav/station-nav-icons';
 import { parseWalkInHistoryMode } from '@/lib/walk-in/history-modes';
+import { OUTBOUND_MODE_PATHS, outboundModeFromPath } from '@/components/outbound/outbound-sidebar-shared';
 import { routeParamsFor } from '@/lib/routing/registry';
 import { parseRouteParams } from '@/lib/routing/route-params';
 
@@ -185,7 +186,11 @@ export const APP_SIDEBAR_NAV: SidebarNavItem[] = [
   // hop. Route key still resolves to 'receiving', so the item stays active
   // across every receiving mode (/unbox, /triage, /receiving?mode=…).
   { id: 'receiving',         label: 'Receiving',   href: '/unbox',              icon: STATION_PAGE_ICONS.receiving, kind: 'station', requires: 'receiving.view' },
-  { id: 'outbound',          label: 'Shipping',    href: '/shipping',           icon: STATION_PAGE_ICONS.outbound,  kind: 'station', requires: 'shipping.view' },
+  // Points at the Labels mode's own route so the primary nav lands on the
+  // canonical URL without the bare-`/shipping` redirect hop (same reason
+  // Receiving points at `/unbox`). Route key still resolves to 'outbound', so
+  // the item stays active across every shipping mode.
+  { id: 'outbound',          label: 'Shipping',    href: OUTBOUND_MODE_PATHS.labels, icon: STATION_PAGE_ICONS.outbound,  kind: 'station', requires: 'shipping.view' },
   // Points at the first-class Test surface (`/test`) so the primary nav lands on
   // the canonical URL without a redirect hop. Route key still resolves to 'tech'
   // (reuses the tech panel), so the item stays active on /test + /tech.
@@ -318,9 +323,12 @@ const CONTEXT_PANEL_ROUTE_KEYS = new Set<SidebarRouteKey>([
   'warehouse',
   'walk-in',
   'manuals-library',
-  // Deliberately NOT here: `ops-photos`. The Media library owns its whole
-  // context in the workbench chrome header, so it has no sidebar and reserves no
-  // column — the empty-column case this contract exists to express.
+  // The Media library holds the two NAVIGATIONAL facets (lifecycle scope +
+  // capture day) in a resident rail; refinements (search, filters, media type,
+  // sort) stay in its workbench chrome header. It used to be excluded here, which
+  // made it the one desktop route reserving no column — so the transient spine
+  // painted over the photo grid instead of landing on a reserved column.
+  'ops-photos',
 ]);
 
 /** True when this route's spine holds a context panel — see {@link CONTEXT_PANEL_ROUTE_KEYS}. */
@@ -733,16 +741,22 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
   // `?mode=labels|scan-out|ready|fba`; default `labels` (param cleared).
   // Nav id stays `outbound` for bookmark/test stability (route is `/shipping`).
   {
-    id: 'outbound', label: 'Shipping', href: SHIPPING, icon: STATION_PAGE_ICONS.outbound, kind: 'station', requires: 'shipping.view',
+    id: 'outbound', label: 'Shipping', href: OUTBOUND_MODE_PATHS.labels, icon: STATION_PAGE_ICONS.outbound, kind: 'station', requires: 'shipping.view',
     // Scan out sits last (rightmost) — the dock ship-confirm station is the
     // end-of-line action after labels/ready/fba prep.
     modes: [
-      { id: 'labels',   label: 'Labels',   icon: SHIPPING_MODE_ICONS.labels,   to: () => ({ pathname: SHIPPING, params: { mode: null, q: null, open: null, sort: null, fbaMode: null } }) },
-      { id: 'ready',    label: 'Ready',    icon: SHIPPING_MODE_ICONS.ready,    to: () => ({ pathname: SHIPPING, params: { mode: 'ready', q: null, open: null, sort: null, fbaMode: null } }) },
-      { id: 'fba',      label: 'FBA',      icon: SHIPPING_MODE_ICONS.fba,      to: () => ({ pathname: SHIPPING, params: { mode: 'fba', q: null, open: null, sort: null } }) },
-      { id: 'scan-out', label: 'Scan out', icon: SHIPPING_MODE_ICONS['scan-out'], to: () => ({ pathname: SHIPPING, params: { mode: 'scan-out', q: null, open: null, sort: null, fbaMode: null } }) },
+      // The mode is the ROUTE now — no `?mode=` delta to write, and nothing to
+      // null out, because `applyModeTarget` boundary-parses the destination
+      // against its spec (`@/lib/routing/outbound-routes`).
+      { id: 'labels',   label: 'Labels',   icon: SHIPPING_MODE_ICONS.labels,   to: () => ({ pathname: OUTBOUND_MODE_PATHS.labels }) },
+      { id: 'ready',    label: 'Ready',    icon: SHIPPING_MODE_ICONS.ready,    to: () => ({ pathname: OUTBOUND_MODE_PATHS.ready }) },
+      { id: 'fba',      label: 'FBA',      icon: SHIPPING_MODE_ICONS.fba,      to: () => ({ pathname: OUTBOUND_MODE_PATHS.fba }) },
+      { id: 'scan-out', label: 'Scan out', icon: SHIPPING_MODE_ICONS['scan-out'], to: () => ({ pathname: OUTBOUND_MODE_PATHS['scan-out'] }) },
     ],
-    resolveMode: ({ params }) => {
+    resolveMode: ({ pathname, params }) => {
+      // Path-first; `?mode=` is only a read-fallback for a legacy link.
+      const fromPath = outboundModeFromPath(pathname);
+      if (fromPath) return fromPath;
       const m = params.get('mode');
       if (m === 'scan-out' || m === 'ready' || m === 'fba') return m;
       return 'labels';

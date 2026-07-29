@@ -11,9 +11,7 @@ import { usePhotoGridKeyboardNav } from './photo-library-grid/usePhotoGridKeyboa
 import { PhotoListView } from './photo-library-grid/PhotoListView';
 import { PhotoTicketGrid } from './photo-library-grid/PhotoTicketGrid';
 import { PhotoFlatGrid } from './photo-library-grid/PhotoFlatGrid';
-import { FoldersView } from './photo-library-grid/FoldersView';
-import type { PhotoDateNav, TileSelectMods } from './photo-library-grid/types';
-import type { LibraryFolderTile } from '@/hooks/usePhotoLibraryFolders';
+import type { TileSelectMods } from './photo-library-grid/types';
 
 export type { PhotoDateNav, TileSelectMods } from './photo-library-grid/types';
 
@@ -21,17 +19,8 @@ interface PhotoLibraryGridProps {
   photos: LibraryPhoto[];
   view: PhotoLibraryViewMode;
   gridDensity: PhotoGridDensity;
-  /** Source scope drives folder labels (PO# for unboxing, Order# for packing). */
+  /** Source scope drives tile labels (PO# for unboxing, Order# for packing). */
   sourceScope?: PhotoLibrarySourceScope;
-  /** Active date filter (drives the folders-view drill level). */
-  dateFrom?: string;
-  dateTo?: string;
-  /** Active PO# filter (folders-view PO leaf). */
-  poRef?: string;
-  /** Active Zendesk ticket filter (claims folders leaf). */
-  ticketId?: string;
-  /** Narrow/widen the date+PO filter from a folder click or path-bar crumb. */
-  onNavigate?: (nav: PhotoDateNav) => void;
   /** Whether selection UI (checkmarks, toggle-on-click) is engaged. */
   selectionActive: boolean;
   /** The currently-selected photo ids. */
@@ -41,21 +30,10 @@ interface PhotoLibraryGridProps {
   onToggleGroupSelection?: (ids: number[]) => void;
   /** Right-click a photo tile — the page opens the contextual action menu. */
   onPhotoContextMenu?: (photo: LibraryPhoto, e: ReactMouseEvent) => void;
-  /** Open the non-modal inspector (single click); the viewer moves to double-click. */
-  onInspect?: (id: number) => void;
-  /** Called after a photo is deleted from the folder viewer so the list refreshes. */
+  /** Called after a photo is deleted from the viewer so the list refreshes. */
   onPhotoDeleted?: (photoId: number) => void;
   isLoading: boolean;
-  /** First page for the active filter settled (not placeholder). Gates empty-day widen. */
-  isSettled?: boolean;
   error: string | null;
-  /** Server folder tiles (non-leaf folders browse). */
-  folderTiles?: LibraryFolderTile[];
-  foldersLoading?: boolean;
-  foldersIsLeaf?: boolean;
-  hasMorePhotos?: boolean;
-  isFetchingMorePhotos?: boolean;
-  onLoadMorePhotos?: () => void;
 }
 
 export function PhotoLibraryGrid({
@@ -63,66 +41,19 @@ export function PhotoLibraryGrid({
   view,
   gridDensity,
   sourceScope = 'all',
-  dateFrom,
-  dateTo,
-  poRef,
-  ticketId,
-  onNavigate,
   selectionActive,
   selected,
   onSelectTile,
   onToggleGroupSelection,
   onPhotoContextMenu,
-  onInspect,
   onPhotoDeleted,
   isLoading,
-  isSettled = !isLoading,
   error,
-  folderTiles,
-  foldersLoading,
-  foldersIsLeaf = false,
-  hasMorePhotos,
-  isFetchingMorePhotos,
-  onLoadMorePhotos,
 }: PhotoLibraryGridProps) {
   const { openAt, lightbox } = usePhotoGridLightbox({ photos, sourceScope, onPhotoDeleted });
   // Roving arrow-key navigation across tiles (←/→/↑/↓/Home/End + Space to select).
   // Attached per-view below so it only fires while focus is inside the grid.
   const onGridKeyDown = usePhotoGridKeyboardNav({ onSelect: onSelectTile });
-
-  // Folders non-leaf never needs the photo stream — don't skeleton on empty photos.
-  if (view === 'folders' && !foldersIsLeaf) {
-    if (error) {
-      return (
-        <div className="mx-auto mt-6 flex max-w-sm flex-col items-center gap-2 rounded-xl border border-dashed border-rose-200 bg-rose-50 px-6 py-10 text-center">
-          <ImageIcon className="h-6 w-6 text-rose-400" />
-          <p className="text-sm font-semibold text-rose-900">Couldn’t load folders</p>
-          <p className="text-xs leading-relaxed text-rose-600">{error}</p>
-        </div>
-      );
-    }
-    return (
-      <FoldersView
-        photos={photos}
-        scope={sourceScope}
-        gridDensity={gridDensity}
-        dateFrom={dateFrom}
-        dateTo={dateTo}
-        poRef={poRef}
-        ticketId={ticketId}
-        onNavigate={onNavigate ?? (() => {})}
-        selectionActive={selectionActive}
-        selected={selected}
-        onSelectTile={onSelectTile}
-        onPhotoContextMenu={onPhotoContextMenu}
-        onPhotoDeleted={onPhotoDeleted}
-        isSettled={isSettled}
-        folderTiles={folderTiles}
-        foldersLoading={foldersLoading}
-        isLeaf={false}
-      />
-    );
-  }
 
   // Only skeleton when we have nothing to show — keepPreviousData keeps prior tiles up.
   if (isLoading && photos.length === 0) {
@@ -137,7 +68,7 @@ export function PhotoLibraryGrid({
       </div>
     );
   }
-  if (photos.length === 0 && view !== 'folders') {
+  if (photos.length === 0) {
     return <PhotoEmptyState />;
   }
 
@@ -156,33 +87,6 @@ export function PhotoLibraryGrid({
         />
         {lightbox}
       </div>
-    );
-  }
-
-  if (view === 'folders') {
-    return (
-      <FoldersView
-        photos={photos}
-        scope={sourceScope}
-        gridDensity={gridDensity}
-        dateFrom={dateFrom}
-        dateTo={dateTo}
-        poRef={poRef}
-        ticketId={ticketId}
-        onNavigate={onNavigate ?? (() => {})}
-        selectionActive={selectionActive}
-        selected={selected}
-        onSelectTile={onSelectTile}
-        onPhotoContextMenu={onPhotoContextMenu}
-        onPhotoDeleted={onPhotoDeleted}
-        isSettled={isSettled}
-        folderTiles={folderTiles}
-        foldersLoading={foldersLoading}
-        isLeaf
-        hasMorePhotos={hasMorePhotos}
-        isFetchingMorePhotos={isFetchingMorePhotos}
-        onLoadMorePhotos={onLoadMorePhotos}
-      />
     );
   }
 
@@ -216,7 +120,6 @@ export function PhotoLibraryGrid({
         onSelectTile={onSelectTile}
         onPhotoContextMenu={onPhotoContextMenu}
         openAt={openAt}
-        onInspect={onInspect}
       />
       {lightbox}
     </div>

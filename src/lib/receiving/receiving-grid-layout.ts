@@ -12,7 +12,8 @@
  * activity-axis stamp (Unboxed / Scanned / Tested).
  */
 
-import type { ColumnType } from '@/lib/tables/table-columns';
+import { gridHeaderLabelFits } from '@/design-system/components/grid/grid-header-align';
+import type { LedgerGridColumnModel } from '@/design-system/components/grid/grid-surface-descriptor';
 import { ordersQueueColVar } from '@/lib/dashboard-order-row-layout';
 
 export type ReceivingGridColumnKey =
@@ -27,20 +28,16 @@ export type ReceivingGridColumnKey =
   | 'tracking'
   | 'serial';
 
-export interface ReceivingGridColumn {
+/**
+ * EXTENDS the house model — it does not re-declare it. Every shared field
+ * (`width` · `label` · `gridLabel` · `labelFitRem` · `type` · `align` ·
+ * `omitCellIcon` · `hideKey` · `tier`) is inherited, so a new presentation
+ * field lands once on `LedgerGridColumnModel` instead of being re-typed in
+ * each of the five surface layouts. Only `key` narrows, plus genuinely
+ * receiving-specific fields.
+ */
+export interface ReceivingGridColumn extends Omit<LedgerGridColumnModel, 'key'> {
   key: ReceivingGridColumnKey;
-  width: string;
-  label?: string;
-  gridLabel?: string;
-  labelFitRem?: number;
-  type?: ColumnType;
-  /** `TableColumnConfig` hide key (`receiving` / `testing` table registry). */
-  hideKey?: string;
-  /**
-   * `core` (default) ships visible; `optional` ships hidden until a staffer adds
-   * it from the Fields menu. See `LedgerGridColumnModel.tier`.
-   */
-  tier?: 'core' | 'optional';
   /** When false, header is not click-to-sort (select gutter only). Default true for data cols. */
   sortable?: boolean;
 }
@@ -78,11 +75,16 @@ export const RECEIVING_GRID_COLUMNS: readonly ReceivingGridColumn[] = [
   { key: 'date', width: 'minmax(4.5rem, 4.5rem)', label: 'Date', gridLabel: 'Date', type: 'date', labelFitRem: 4.5 },
   { key: 'qty', width: 'minmax(2.75rem, 2.75rem)', label: 'Qty', type: 'number', hideKey: 'qty', labelFitRem: 4.5 },
   { key: 'condition', width: 'minmax(5.5rem, 5.5rem)', label: 'Cond', type: 'tag', hideKey: 'condition', tier: 'optional', labelFitRem: 4.5 },
-  // Stage clock (Unboxed / Scanned / Tested) — hide with meta `rest`.
-  { key: 'stage', width: 'minmax(4.5rem, 4.5rem)', label: 'Stage', type: 'date', hideKey: 'rest', labelFitRem: 4.5 },
+  // Stage clock — hide with meta `rest`. The track is sized for the RUNTIME
+  // label (`Unboxed` / `Scanned` / `Tested`, injected by the header's
+  // `stageLabel` prop), not for the placeholder `Stage` declared here: at
+  // 4.5rem the 7-character stage names clipped to `UNBO…`. 5rem clears the
+  // longest of them (`gridHeaderLabelFits`), and the label-aware fit test now
+  // degrades to the clock glyph rather than clipping if a longer one appears.
+  { key: 'stage', width: 'minmax(5rem, 5rem)', label: 'Stage', type: 'date', hideKey: 'rest', labelFitRem: 4.5 },
   { key: 'platform', width: 'minmax(3rem, 3rem)', label: 'Platform', gridLabel: 'Ch.', type: 'external', hideKey: 'platform', tier: 'optional', labelFitRem: 4.5 },
   { key: 'order', width: 'minmax(4.5rem, 4.5rem)', label: 'Order', type: 'id', hideKey: 'orderid', labelFitRem: 4.5 },
-  { key: 'tracking', width: 'minmax(5.75rem, 5.75rem)', label: 'Tracking', type: 'location', hideKey: 'tracking', labelFitRem: 4.5 },
+  { key: 'tracking', width: 'minmax(5.75rem, 5.75rem)', label: 'Tracking', type: 'location', omitCellIcon: true, hideKey: 'tracking', labelFitRem: 4.5 },
   { key: 'serial', width: 'minmax(5.75rem, 5.75rem)', label: 'Serial', type: 'id', hideKey: 'serial', tier: 'optional', labelFitRem: 4.5 },
 ] as const;
 
@@ -105,7 +107,12 @@ function receivingGridColumnTrackRem(column: ReceivingGridColumn): number {
 
 export function receivingGridHeaderShowsLabel(column: ReceivingGridColumn): boolean {
   const fit = column.labelFitRem ?? 4.5;
-  return receivingGridColumnTrackRem(column) >= fit;
+  const trackRem = receivingGridColumnTrackRem(column);
+  if (trackRem < fit) return false;
+  // The label must ALSO fit — Unbox overrides `stage` with `Unboxed` at runtime
+  // over a track sized for `Stage`, and a clipped `UNBO…` is worse than the
+  // glyph. See `gridHeaderLabelFits`.
+  return gridHeaderLabelFits(trackRem, column.gridLabel ?? column.label ?? column.key);
 }
 
 export function receivingContentMinWidthRem(

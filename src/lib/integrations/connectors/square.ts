@@ -17,13 +17,16 @@
  * Lazily imported by the registry so the connection reader never pulls in the
  * Square client.
  */
-import pool from '@/lib/db';
 import type { OrgId } from '@/lib/tenancy/constants';
+import type { CanonicalOrderLine } from '@/lib/orders/canonical-order';
+import { ingestConnectorOrders } from './ingest-connector-orders';
 import { squareFetchForOrg } from '@/lib/square/server';
 import { getSyncCursor, updateSyncCursor } from '@/lib/sync-cursors';
 import type { SyncOutcome } from './types';
 
 const ACCOUNT_SOURCE = 'square';
+/** Seeded on a brand-new row only; never overwrites a real title. */
+const SQUARE_TITLE_FALLBACK = 'Square order';
 // First-run lookback when no watermark exists yet (Square POS history is small).
 const FIRST_RUN_LOOKBACK_MS = 30 * 24 * 60 * 60 * 1000;
 const PAGE_LIMIT = 200;
@@ -61,60 +64,37 @@ function summarizeLines(order: SquareOrder): { title: string; quantity: number }
   const quantity = lines.reduce((s, li) => s + (Number(li.quantity) || 0), 0) || 1;
   const first = lines.find((li) => (li.name ?? '').trim())?.name?.trim();
   const title = !first
-    ? 'Square order'
+    ? SQUARE_TITLE_FALLBACK
     : lines.length > 1
       ? `${first} +${lines.length - 1} more`
       : first;
   return { title, quantity };
 }
 
-/** Upsert one Square order into `orders`. Returns 'created' | 'updated'. */
-async function upsertOrder(orgId: OrgId, order: SquareOrder): Promise<'created' | 'updated'> {
+/** Map a Square order to a canonical line. Title '' means "unknown" — the
+ *  writer seeds the 'Square order' placeholder only on a brand-new row. */
+function toCanonicalLine(order: SquareOrder): CanonicalOrderLine {
   const { title, quantity } = summarizeLines(order);
-  const saleAmount =
-    typeof order.total_money?.amount === 'number' ? order.total_money.amount / 100 : null;
-  const currency = order.total_money?.currency || 'USD';
-  // In-store Square sales are realized/fulfilled at the register; mark shipped
-  // so they land in the tracker as completed (mirrors Amazon FBA read-only).
-  const status = order.state === 'COMPLETED' ? 'shipped' : 'unassigned';
-
-  const result = await pool.query(
-    `INSERT INTO orders (
-       organization_id, order_id, product_title, condition, sku, status, status_history, notes,
-       quantity, account_source, order_date, sku_catalog_id,
-       sale_amount, currency
-     ) VALUES (
-       $1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9, $10, $11, $12, $13, $14
-     )
-     ON CONFLICT ON CONSTRAINT idx_orders_unique_account_order DO UPDATE
-       SET product_title = COALESCE(NULLIF(EXCLUDED.product_title, 'Square order'), orders.product_title),
-           quantity = COALESCE(NULLIF(orders.quantity, ''), EXCLUDED.quantity),
-           order_date = COALESCE(orders.order_date, EXCLUDED.order_date),
-           sale_amount = COALESCE(orders.sale_amount, EXCLUDED.sale_amount),
-           currency = COALESCE(NULLIF(orders.currency, ''), EXCLUDED.currency),
-           status = CASE
-             WHEN orders.status IS NULL OR orders.status = '' OR orders.status = 'unassigned' THEN EXCLUDED.status
-             ELSE orders.status
-           END
-       RETURNING (xmax = 0) AS inserted`,
-    [
-      orgId,
-      order.id,
-      title,
-      '',
-      '',
-      status,
-      JSON.stringify([]),
-      '',
-      String(quantity),
-      ACCOUNT_SOURCE,
-      order.created_at ?? null,
-      null,
-      saleAmount,
-      currency,
-    ],
-  );
-  return result.rows[0]?.inserted ? 'created' : 'updated';
+  return {
+    externalOrderId: String(order.id ?? ''),
+    itemNumber: '',
+    sku: '',
+    productTitle: title === SQUARE_TITLE_FALLBACK ? '' : title,
+    condition: '',
+    quantity: String(quantity),
+    notes: '',
+    accountSource: ACCOUNT_SOURCE,
+    trackings: [],
+    shipByDate: null,
+    orderDate: order.created_at ? new Date(order.created_at) : null,
+    // Square money is integer cents — unlike Shopify's decimal string.
+    saleAmount:
+      typeof order.total_money?.amount === 'number' ? String(order.total_money.amount / 100) : null,
+    currency: order.total_money?.currency || 'USD',
+    // In-store Square sales are realized at the register; mark shipped so they
+    // land in the tracker as completed (mirrors Amazon FBA read-only ingest).
+    status: order.state === 'COMPLETED' ? 'shipped' : 'unassigned',
+  };
 }
 
 export async function squareSync(orgId: OrgId): Promise<SyncOutcome> {
@@ -130,11 +110,9 @@ export async function squareSync(orgId: OrgId): Promise<SyncOutcome> {
   }
 
   const since = (await getSyncCursor(cursorKey)) ?? new Date(Date.now() - FIRST_RUN_LOOKBACK_MS);
-  let imported = 0;
-  let updated = 0;
   let maxUpdatedAt = since.getTime();
   let pageCursor: string | undefined;
-  const errors: string[] = [];
+  const lines: CanonicalOrderLine[] = [];
 
   try {
     for (let page = 0; page < MAX_PAGES; page++) {
@@ -166,12 +144,7 @@ export async function squareSync(orgId: OrgId): Promise<SyncOutcome> {
       const orders = res.data.orders ?? [];
       for (const order of orders) {
         if (!order.id) continue;
-        try {
-          if ((await upsertOrder(orgId, order)) === 'created') imported++;
-          else updated++;
-        } catch (e) {
-          errors.push(`${order.id}: ${e instanceof Error ? e.message : String(e)}`);
-        }
+        lines.push(toCanonicalLine(order));
         const ts = order.updated_at ? Date.parse(order.updated_at) : NaN;
         if (Number.isFinite(ts) && ts > maxUpdatedAt) maxUpdatedAt = ts;
       }
@@ -180,19 +153,24 @@ export async function squareSync(orgId: OrgId): Promise<SyncOutcome> {
       if (!pageCursor) break;
     }
 
-    // Advance the watermark only on a clean run so a mid-page failure re-pulls.
-    if (errors.length === 0 && maxUpdatedAt > since.getTime()) {
+    // One ingest for the whole run, so the cache bust + realtime publish fire
+    // once rather than per page.
+    const counts = await ingestConnectorOrders(orgId, ACCOUNT_SOURCE, lines, {
+      fallbackProductTitle: SQUARE_TITLE_FALLBACK,
+    });
+
+    // Advance the watermark only on a clean run so a failure re-pulls.
+    if (maxUpdatedAt > since.getTime()) {
       await updateSyncCursor(cursorKey, new Date(maxUpdatedAt));
     }
+
+    return {
+      ok: true,
+      imported: counts.imported,
+      updated: counts.updated,
+      cursor: new Date(maxUpdatedAt).toISOString(),
+    };
   } catch (e) {
     return { ok: false, error: `square: ${e instanceof Error ? e.message : String(e)}` };
   }
-
-  return {
-    ok: errors.length === 0,
-    imported,
-    updated,
-    error: errors.length ? errors.join('; ') : undefined,
-    cursor: new Date(maxUpdatedAt).toISOString(),
-  };
 }

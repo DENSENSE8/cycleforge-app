@@ -22,7 +22,6 @@ import { useSidebarModeNav } from './useSidebarModeNav';
 import { MAX_RECENT_MODES, useRecentModes } from './useRecentModes';
 import { MasterNavView, type MasterNavPageModeChip } from './MasterNavView';
 import type { MasterNavRecentModeChip } from './MasterNavHeader';
-import type { ReactNode } from 'react';
 
 /** Merge a flat nav item with its mode metadata (if the page has modes). */
 function toPageNav(item: SidebarNavItem): SidebarPageNav {
@@ -43,8 +42,6 @@ function toPageNav(item: SidebarNavItem): SidebarPageNav {
 export function MasterNav({
   permissions,
   mobileRestricted = false,
-  renderContext,
-  hasContext = false,
   onOpenNav,
   onNavigate,
   className,
@@ -53,11 +50,7 @@ export function MasterNav({
   mobileRestricted?: boolean;
   /** Fired after a page/mode pick (e.g. to close the slide-over). */
   onNavigate?: () => void;
-  /** The route's context panel — the spine's resting body when `hasContext`. */
-  renderContext?: () => ReactNode;
-  /** Mounted as a route's resident column — see {@link MasterNavView}. */
-  hasContext?: boolean;
-  /** Open the page-list slide-over (wired from the resident column's band). */
+  /** Open the page-list spine (wired from the band's chevron, where shown). */
   onOpenNav?: () => void;
   className?: string;
 }) {
@@ -209,8 +202,6 @@ export function MasterNav({
       onToggleRow={setExpandedKey}
       onNavigate={handleNavigate}
       onRowHover={handleRowHover}
-      renderContext={renderContext}
-      hasContext={hasContext}
       className={className}
     />
   );

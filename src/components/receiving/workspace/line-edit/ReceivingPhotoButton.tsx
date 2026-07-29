@@ -49,6 +49,8 @@ interface PhotoRow {
   caption: string | null;
   uploadedBy: number | null;
   createdAt: string;
+  /** Shutter clock from `/api/receiving-photos` — surfaced in the viewer panel. */
+  clientCapturedAt?: string | null;
 }
 
 interface PhotosPayload {

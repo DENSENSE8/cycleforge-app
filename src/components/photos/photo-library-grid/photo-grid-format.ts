@@ -82,6 +82,7 @@ function libraryPhotoMeta(
     takenByStaffId: photo.takenByStaffId ?? null,
     takenByStaffName: photo.takenByStaffName ?? null,
     createdAt: photo.createdAt,
+    clientCapturedAt: photo.clientCapturedAt ?? null,
     damageDetected: photo.damageDetected ?? null,
     hasAnalysis: photo.hasAnalysis ?? null,
     caption: photo.caption ?? null,

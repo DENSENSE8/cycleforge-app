@@ -119,28 +119,12 @@ export const PHOTO_SEARCH_FIELD_LABELS: Record<PhotoSearchField, string> = {
 /** First built-in media type — used when an operator explicitly picks Unboxing. */
 export const DEFAULT_PHOTO_LIBRARY_MEDIA_SCOPE = BUILTIN_IMAGE_TYPES[0].key;
 
-/**
- * Chrome recency tabs — Recent is the bare-load landing (all types, no date pin).
- *
- * There is deliberately **no `all` tab**: "all dates" and "recent" are the same
- * filter state (no date pin), so the two tabs produced byte-identical URLs and
- * `recencyTabFromFilters` resolved both back to `recent` — `All` was a tab that
- * could never light up. Clearing the date filter is `Recent`; the breadcrumb's
- * "All dates" crumb is the other way to reach it.
- */
-export type PhotoLibraryRecencyTab = 'recent' | 'today' | 'last7';
-
-export const PHOTO_LIBRARY_RECENCY_TABS: readonly PhotoLibraryRecencyTab[] = [
-  'recent',
-  'today',
-  'last7',
-];
-
-export const PHOTO_LIBRARY_RECENCY_TAB_LABEL: Record<PhotoLibraryRecencyTab, string> = {
-  recent: 'Recent',
-  today: 'Today',
-  last7: 'Last 7',
-};
+// The chrome recency tabs (Recent · Today · Last 7) were REMOVED when the tab
+// strip became lifecycle facets (`PHOTO_LIBRARY_SCOPE_TABS`). Date is a filter,
+// not a lifecycle stage — it now lives as date presets in the Media Library
+// sidebar and the breadcrumb, both of which express ranges the 3-value tab
+// projection never could (yesterday, any custom drill). The tab→filter mapping
+// helpers (`recencyTabFromFilters` / `applyRecencyTab`) went with them.
 
 /** True when no explicit media type is pinned in the URL (bare or `sourceScope=all`). */
 export function isPhotoLibraryMediaTypeUnset(filters: PhotoLibraryFilterState): boolean {
@@ -169,56 +153,6 @@ function defaultPhotoLibraryLandingPatch(): Partial<PhotoLibraryFilterState> {
 /** @deprecated Prefer {@link defaultPhotoLibraryLandingPatch} — kept for call-site migrations. */
 export function defaultPhotoLibraryMediaTypePatch(): Partial<PhotoLibraryFilterState> {
   return defaultPhotoLibraryLandingPatch();
-}
-
-/**
- * Map URL state → the active chrome recency tab, or `null` when **no tab owns
- * the current position**.
- *
- * The tabs are a 3-value projection of an arbitrary date range plus an entity
- * drill, so most positions have no tab. Returning `null` instead of guessing is
- * the whole point: the previous version mapped a `custom` range to `all` and
- * everything else (including `yesterday`) to `recent`, so the header claimed
- * "All" while the operator was four levels deep in
- * `2026 › June › Jun 15-21 › June 17`, and claimed "Recent" while sitting
- * inside a PO folder. The breadcrumb (`PhotoDateBreadcrumb`) is the SoT for
- * drill position; the tabs only report the three shortcuts they can express.
- */
-export function recencyTabFromFilters(
-  filters: PhotoLibraryFilterState,
-): PhotoLibraryRecencyTab | null {
-  // An entity leaf (PO / ticket / carton) or a live finder search is a position
-  // no date tab represents.
-  if (
-    filters.poRef?.trim() ||
-    filters.ticketId?.trim() ||
-    filters.receivingId?.trim() ||
-    filters.poFinder?.trim()
-  ) {
-    return null;
-  }
-  const preset = datePresetFromFilters(filters);
-  if (preset === 'today') return 'today';
-  if (preset === 'last7') return 'last7';
-  if (preset === 'all') return 'recent';
-  // 'yesterday' | 'custom' — a drill depth the tab strip cannot express.
-  return null;
-}
-
-/**
- * Apply a chrome recency tab: set the date scope and drop any entity leaf.
- *
- * Clearing the leaf mirrors what the breadcrumb's date crumbs already do — a
- * date jump that left `poRef` pinned would keep the operator inside a PO folder
- * while lighting up a date tab, which is the same false-position bug in the
- * other direction. `poFinder` is left alone: the search box owns it, and
- * clearing it here would desync the input.
- */
-export function applyRecencyTab(tab: PhotoLibraryRecencyTab): Partial<PhotoLibraryFilterState> {
-  const clearLeaf = { poRef: undefined, ticketId: undefined, receivingId: undefined } as const;
-  if (tab === 'today') return { ...applyDatePreset('today'), ...clearLeaf };
-  if (tab === 'last7') return { ...applyDatePreset('last7'), ...clearLeaf };
-  return { ...applyDatePreset('all'), ...clearLeaf, sort: 'recent' };
 }
 
 /**
@@ -323,7 +257,21 @@ export type PhotoLibraryDatePreset = 'all' | 'today' | 'yesterday' | 'last7' | '
 
 export type PhotoLibrarySortMode = 'recent' | 'oldest';
 
-export type PhotoLibraryViewMode = 'grid-sm' | 'grid-lg' | 'grid-ticket' | 'folders' | 'list';
+/**
+ * Library view modes.
+ *
+ * `folders` is GONE — the Year › Month › Week › Day › PO drill was a filesystem
+ * metaphor over a relational table, and it is replaced by the flat stream plus
+ * date/lifecycle facets. A stale `?view=folders` deep link or saved view now
+ * falls back to {@link DEFAULT_PHOTO_LIBRARY_VIEW} via
+ * {@link parsePhotoLibraryViewMode}, which is the honest degradation: the photos
+ * are all still reachable, just not as a descent.
+ *
+ * The server-side folder AGGREGATION is deliberately still alive — it backs the
+ * Media Library picker modal (`MediaLibraryPickerFolders`), a different surface
+ * with a different job. See `folder-level.ts` / `usePhotoLibraryFolders`.
+ */
+export type PhotoLibraryViewMode = 'grid-sm' | 'grid-lg' | 'grid-ticket' | 'list';
 
 /**
  * Canonical left→right view order. Single source for the `1` keyboard shortcut
@@ -334,28 +282,32 @@ export type PhotoLibraryViewMode = 'grid-sm' | 'grid-lg' | 'grid-ticket' | 'fold
 export const PHOTO_LIBRARY_VIEW_ORDER: readonly PhotoLibraryViewMode[] = [
   'grid-sm',
   'grid-lg',
-  'folders',
   'grid-ticket',
   'list',
 ];
 
-/** Display modes in the second-header toggle (grid size lives on row 3). */
-export const PHOTO_LIBRARY_HEADER_DISPLAY_MODES: readonly PhotoLibraryViewMode[] = ['list'];
-
 /**
- * Keyboard shortcut target for display modes — currently List only (`1`).
+ * Display modes in the second-header toggle, and the keyboard-shortcut target
+ * (`1` → List). Grid size lives on row 3.
+ *
+ * The `photoLibraryViewToggleModes(view, folderIsLeaf)` wrapper that used to
+ * front this constant is gone: it ignored BOTH arguments and returned this list
+ * verbatim. It was a folder-era seam that never grew a second case, so callers
+ * read the constant directly.
  */
-export function photoLibraryViewToggleModes(
-  _view: PhotoLibraryViewMode,
-  _folderIsLeaf: boolean,
-): readonly PhotoLibraryViewMode[] {
-  return PHOTO_LIBRARY_HEADER_DISPLAY_MODES;
-}
+export const PHOTO_LIBRARY_HEADER_DISPLAY_MODES: readonly PhotoLibraryViewMode[] = ['list'];
 
 /** Server page size for the library query (usePhotoLibrary requests this many per page). */
 export const PHOTO_LIBRARY_PAGE_SIZE = 48;
 
-/** Folders leaf contact sheet — newest N photos, then explicit Load more. */
+/**
+ * Folder-leaf contact sheet — newest N photos, then an explicit Load more.
+ *
+ * **Picker-only now.** The library page dropped its folder drill and always
+ * pages at {@link PHOTO_LIBRARY_PAGE_SIZE}; this small page size survives for
+ * the Media Library picker modal (`useMediaLibraryPickerPhotos`), where a folder
+ * tile expands into a peek rather than a full stream.
+ */
 export const PHOTO_LIBRARY_FOLDER_LEAF_PAGE_SIZE = 5;
 
 export const PHOTO_SOURCE_SCOPE_LABELS: Record<PhotoLibrarySourceScope, string> = {
@@ -443,15 +395,10 @@ export function receivingSourceExcludeForScope(scope: PhotoLibrarySourceScope): 
 export const DEFAULT_PHOTO_LIBRARY_VIEW: PhotoLibraryViewMode = 'grid-sm';
 
 export function parsePhotoLibraryViewMode(raw: string | null): PhotoLibraryViewMode {
-  if (
-    raw === 'grid-sm' ||
-    raw === 'grid-lg' ||
-    raw === 'grid-ticket' ||
-    raw === 'list' ||
-    raw === 'folders'
-  ) {
+  if (raw === 'grid-sm' || raw === 'grid-lg' || raw === 'grid-ticket' || raw === 'list') {
     return raw;
   }
+  // Absent, unknown, or the retired `folders` → the flat stream.
   return DEFAULT_PHOTO_LIBRARY_VIEW;
 }
 
@@ -576,36 +523,27 @@ export function parsePhotoLibraryFilters(params: URLSearchParams): PhotoLibraryF
   return next;
 }
 
+/**
+ * Display state = `view` + `page` only.
+ *
+ * There is deliberately no `?photoId=` record selection here. The library's
+ * open-a-photo surface is the shared fullscreen viewer, whose selection is
+ * EPHEMERAL by design (see `usePhotoGridLightbox`) — it opens on a tile click,
+ * pages left/right within that photo's group, and closes. The retired
+ * inspector's `?photoId=` went with it; re-adding a durable record param means
+ * re-answering what happens when a filter change evicts that photo from the
+ * result set, which is exactly the complexity the viewer avoids by staying
+ * ephemeral.
+ */
 export function parsePhotoLibraryDisplayParams(params: URLSearchParams): {
   view: PhotoLibraryViewMode;
   page: number;
-  photoId: number | null;
 } {
   const pageRaw = parseInt(params.get('page') ?? '1', 10);
   return {
     view: parsePhotoLibraryViewMode(params.get('view')),
     page: Number.isFinite(pageRaw) && pageRaw > 0 ? pageRaw : 1,
-    photoId: parsePhotoLibraryPhotoId(params.get('photoId')),
   };
-}
-
-/**
- * Inspected photo (`?photoId=`) — DISPLAY state, not a filter.
- *
- * It selects a record inside the current result set rather than narrowing that
- * set, so it lives beside `view`/`page` and is deliberately absent from
- * `PhotoLibraryFilterState`. Keeping it out of the filter bag matters: filters
- * are what a saved view snapshots and what resets the grid, and neither should
- * happen because someone opened an inspector.
- *
- * Negative ids are legal — an outbound document row carries the negated
- * `documents.id` (see `libraryDocumentId`) — so only 0 and non-numerics are
- * rejected.
- */
-export function parsePhotoLibraryPhotoId(raw: string | null): number | null {
-  if (!raw) return null;
-  const id = Number(raw);
-  return Number.isInteger(id) && id !== 0 ? id : null;
 }
 
 export function photoLibraryFiltersToParams(
@@ -660,7 +598,7 @@ export function photoLibraryFiltersToParams(
 
 export function photoLibraryUrlParams(
   filters: PhotoLibraryFilterState,
-  display: { view: PhotoLibraryViewMode; page: number; photoId?: number | null },
+  display: { view: PhotoLibraryViewMode; page: number },
   base?: URLSearchParams,
 ): URLSearchParams {
   const params = photoLibraryFiltersToParams(filters, base);
@@ -672,8 +610,6 @@ export function photoLibraryUrlParams(
   else params.delete('view');
   if (display.page > 1) params.set('page', String(display.page));
   else params.delete('page');
-  if (display.photoId) params.set('photoId', String(display.photoId));
-  else params.delete('photoId');
   return params;
 }
 

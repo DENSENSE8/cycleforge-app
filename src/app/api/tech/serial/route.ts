@@ -39,7 +39,14 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     // behavior, e.g. an 'update' that DELETEd before a later insert failed); the
     // sentinel is caught below and mapped to its original HTTP status.
     type HandlerOutcome =
-      | { kind: 'add'; serialNumbers: string[]; tsnId: number }
+      | {
+          kind: 'add';
+          serialNumbers: string[];
+          tsnId: number;
+          /** Non-null when the scan matched no order — serial held on an exception. */
+          ordersExceptionId: number | null;
+          attachedToOrder: boolean;
+        }
       | { kind: 'ok'; serialNumbers: string[] }
       | { kind: 'undo'; serialNumbers: string[]; removedSerial: string };
 
@@ -77,7 +84,18 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
 
         const serialNumbers = await getTechSerialsBySalId(client, salId);
         logAction = 'insert';
-        return { kind: 'add', serialNumbers, tsnId: ins.techSerialId };
+        // Tell the caller WHERE the serial landed. A scan whose tracking matched
+        // no order carries an `orders_exception_id` on its SAL, so the serial is
+        // held for reconciliation rather than attached to an order. Returning a
+        // bare `{success:true}` for both cases is what let the station render
+        // "1/1 · complete" over an orphaned write (audit CF-02, 2026-07-28).
+        return {
+          kind: 'add',
+          serialNumbers,
+          tsnId: ins.techSerialId,
+          ordersExceptionId: salCtx.ordersExceptionId,
+          attachedToOrder: salCtx.ordersExceptionId == null,
+        };
       }
 
       if (action === 'remove') {
@@ -181,7 +199,19 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     await publishTechLogChanged({ organizationId: ctx.organizationId, techId: staffId, action: logAction, source: 'tech.serial' });
 
     if (outcome.kind === 'add') {
-      return NextResponse.json({ success: true, serialNumbers: outcome.serialNumbers, tsnId: outcome.tsnId });
+      return NextResponse.json({
+        success: true,
+        serialNumbers: outcome.serialNumbers,
+        tsnId: outcome.tsnId,
+        attachedToOrder: outcome.attachedToOrder,
+        ordersExceptionId: outcome.ordersExceptionId,
+        ...(outcome.attachedToOrder
+          ? {}
+          : {
+              warning:
+                'Serial recorded against an open exception — the scanned tracking number matched no order.',
+            }),
+      });
     }
     if (outcome.kind === 'undo') {
       return NextResponse.json({ success: true, serialNumbers: outcome.serialNumbers, removedSerial: outcome.removedSerial });

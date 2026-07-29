@@ -3,7 +3,7 @@
 import { Check, ChevronUp, ChevronDown, Calendar, Clock } from '@/components/Icons';
 import { tableHeader } from '@/design-system/tokens/typography/presets';
 import { ColumnTypeGlyph } from '@/components/ui/table-column-config/column-type-glyph';
-import { gridHeaderCellAlignClass } from '@/design-system/components/grid/grid-header-align';
+import { gridHeaderCellAlignClass, resolveGridColumnAlign } from '@/design-system/components/grid/grid-header-align';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { emitToggleAll } from '@/lib/selection/table-selection';
 import { useTableSelection, useTableSelectionTotal } from '@/hooks/useTableSelection';
@@ -213,7 +213,7 @@ function IncomingHeaderCell({
       className={cn(
         'group/hcell relative gap-1 min-h-11',
         // `qty` cells are right-aligned (IncomingGridRow) — the header follows.
-        gridHeaderCellAlignClass(column.key === 'qty' ? 'end' : 'start'),
+        gridHeaderCellAlignClass(resolveGridColumnAlign(column)),
         incomingGridCell({ rule: !last, inset: 'grid' }),
         frozen && INCOMING_GRID_FROZEN_CELL,
         tableHeader,

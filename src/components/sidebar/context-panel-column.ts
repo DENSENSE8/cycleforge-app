@@ -1,0 +1,78 @@
+import { elevationCastClass } from '@/design-system/tokens/shadows';
+import { appCanvasClass } from '@/design-system/tokens/app-surface';
+import { cn } from '@/utils/_cn';
+
+/**
+ * Context-panel layout tokens — the route's own sidebar, in the CONTENT region.
+ *
+ * ```
+ *   ┌──────────────────────────────────────┐
+ *   │ ┌ context panel ┐ ┌ workspace ──────┐│
+ *   │ │  scan bar     │ │                 ││
+ *   │ │  recents rail │ │                 ││
+ *   └──────────────────────────────────────┘
+ *     content region (the nav spine is a separate surface entirely)
+ * ```
+ *
+ * **This was the station bench's shape, and it is now every route's.** A route's
+ * sidebar — the Media library's facet rail, Products' catalog picker, the
+ * receiving rails, the dashboard's order feed — is a component the PAGE mounts
+ * beside its workspace, not a body the navigator swaps in. Two consequences the
+ * old shape could not give:
+ *
+ * - **The rail survives the nav.** A bench needed this first (an operator scans
+ *   with the nav closed, which is most of the time), but it is just as true of a
+ *   picker: opening the page list should never take away the thing you were
+ *   picking from.
+ * - **The spine has nothing to collide with.** While the route's rail lived in
+ *   the nav aside, the page list had to paint over it, and a route with no rail
+ *   (the Media library) had the list paint over the work canvas instead. With the
+ *   rail in the content region there is exactly one left-edge surface.
+ *
+ * Formerly `station-column.ts` / `STATION_PANEL_*`, when the station benches were
+ * the only surfaces that mounted here.
+ */
+
+/**
+ * The in-DISPLAY context panel column (picker / rail / scan bar).
+ *
+ * A discrete floating slate: full radius, border on every edge, its own gutter
+ * from {@link CONTEXT_PANEL_HOST_CLASS}. It keeps its own internal scrollport,
+ * so the radius and shadow never move with the rail content. This is the ONLY
+ * card in the frame.
+ *
+ * Its cast goes LEFT ({@link elevationCastClass}) rather than straight down.
+ * The panel is pinned to the left of a wide frame, so its left edge is the one
+ * read against the canvas; a downward-only cast left that edge flat. Casting
+ * away from centre puts the whole app under one light in the middle of the
+ * screen.
+ */
+export const CONTEXT_PANEL_COLUMN_CLASS = cn(
+  // The gutter is the panel's OWN margin, not host padding. Host padding would
+  // also inset the workspace beside it, and the workspace must stay flush to
+  // the GlobalHeader — the station bookmark bar docks directly under that
+  // hairline with no gap (see display/station-workbench.md).
+  'm-2 flex w-[360px] shrink-0 flex-col overflow-hidden',
+  'border border-border-soft bg-surface-card rounded-2xl',
+  elevationCastClass('left'),
+);
+
+/**
+ * Host for {@link CONTEXT_PANEL_COLUMN_CLASS} + the workspace inside the content
+ * region: the **ground plane** the panel casts onto.
+ *
+ * `appCanvasClass` is load-bearing, not decoration. The panel is `bg-surface-card`
+ * (white); on a white host its overlay elevation has nothing to cast against and
+ * the card reads as a flat rectangle with a stray border. Canvas sits a real step
+ * below card white, which is what makes the depth read (see
+ * `tokens/shadows.ts` — "depth needs a ground plane").
+ *
+ * `overflow-hidden` stays on the host so the row never scrolls as a unit; both
+ * children own their own internal scrollports.
+ */
+export const CONTEXT_PANEL_HOST_CLASS = cn(
+  // No padding and no gap: the panel carries its own margin, so the workspace
+  // column beside it starts flush under the GlobalHeader.
+  'flex min-h-0 flex-1 overflow-hidden',
+  appCanvasClass,
+);

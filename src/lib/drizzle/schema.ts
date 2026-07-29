@@ -1083,6 +1083,16 @@ export const photos = pgTable('photos', {
   photoType: text('photo_type'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  /**
+   * Device-reported capture instant (2026-07-29b) — the camera shutter wall
+   * clock on the mobile photo studios, or File.lastModified on the desktop
+   * paths. NOT server-attested: it comes from the operator's device, so a
+   * drifted tablet clock yields a wrong-but-plausible value. `createdAt` stays
+   * the server-insert instant and the only attested time. NULL is correct and
+   * expected for desktop/legacy uploads and every pre-2026-07-29b row — a
+   * fabricated capture time would be worse than none in a carrier dispute.
+   */
+  clientCapturedAt: timestamp('client_captured_at', { withTimezone: true }),
   deletedFromBlobAt: timestamp('deleted_from_blob_at', { withTimezone: true }),
   poRef: text('po_ref'),
 });

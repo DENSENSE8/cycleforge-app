@@ -38,6 +38,10 @@ const TechSidebarPanel = dynamic(() => import('@/components/sidebar/TechSidebarP
 const PackerSidebarPanel = dynamic(() => import('@/components/sidebar/PackerSidebarPanel').then((m) => m.PackerSidebarPanel));
 const OutboundSidebarPanel = dynamic(() => import('@/components/sidebar/OutboundSidebarPanel').then((m) => m.OutboundSidebarPanel));
 const ReviewSidebarPanel = dynamic(() => import('@/components/sidebar/review/ReviewSidebarPanel').then((m) => m.ReviewSidebarPanel));
+// Static: Media library facet rail owns `scope-icons` + `date-tree`. A dynamic
+// import left those SoT modules invisible to knip (and paid no bundle win —
+// `/ops/photos` is the only consumer and already code-splits the page).
+import { PhotoLibrarySidebarPanel } from '@/components/photos/PhotoLibrarySidebarPanel';
 
 /**
  * Route-key dispatcher rendered inside the master-nav as the per-page context
@@ -94,12 +98,9 @@ export function SidebarContextPanel({ onBackToAppNav }: { onBackToAppNav?: () =>
     );
   }
 
-  // Media library owns its whole context in the workbench chrome header — the
-  // filter/date/view controls and the identifier search all live up there — so
-  // there is nothing for a sidebar to hold. `CONTEXT_PANEL_ROUTE_KEYS` omits
-  // `ops-photos` to match, which is what keeps the surface full-width instead of
-  // sitting beside a reserved column.
-  if (routeKey === 'ops-photos') return null;
+  // Media library: lifecycle scope + capture-day drill live in the resident rail;
+  // search / filters / media type / sort stay in the workbench chrome header.
+  if (routeKey === 'ops-photos') return <PhotoLibrarySidebarPanel />;
   if (routeKey === 'packer') return <PackerSidebarPanel />;
   if (routeKey === 'outbound') return <OutboundSidebarPanel />;
   if (routeKey === 'review') return <ReviewSidebarPanel />;

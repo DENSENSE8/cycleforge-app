@@ -125,7 +125,10 @@ export function MobileReceivingPhotoStudio({
       const existingCount = query.data?.photos?.length ?? 0;
       shots.forEach((s, index) => {
         photoUploadQueue.enqueue(
-          { ...scope, fileIndex: existingCount + index + 1 },
+          // capturedAtMs is the shutter clock stamped by the camera at frame
+          // grab — carried through the queue (and its localStorage mirror) so a
+          // photo that drains hours later still records when it was taken.
+          { ...scope, fileIndex: existingCount + index + 1, capturedAtMs: s.capturedAtMs },
           s.blob,
           s.previewUrl,
         );

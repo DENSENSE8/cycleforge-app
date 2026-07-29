@@ -5,11 +5,12 @@ import { CollapsibleGroupRow } from '@/components/ui/CollapsibleGroupRow';
 import { OrderIdChip, getLast4 } from '@/components/ui/CopyChip';
 import { GridCellDash, GridDateCellValue } from '@/components/ui/grid-cells';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { QUEUE_ROW } from '@/components/ui/queue-row-chrome';
+import { ledgerRowStateClass } from '@/components/ui/queue-row-chrome';
 import { conditionLabel } from '@/lib/conditions';
 import { conditionGradeTextClass } from '@/lib/condition-tone';
 import type { RowGroup } from '@/lib/group-rows';
 import { formatDateKeyShort } from '@/utils/date';
+import { gridCellAlignClass } from '@/design-system/components/grid';
 import { cn } from '@/utils/_cn';
 import { pickupMoney, type PickupLine } from '../pickup-lines';
 import {
@@ -22,7 +23,8 @@ import {
   type PickupGridColumn,
 } from './pickup-grid-layout';
 
-const dataCell = (rule = true) => pickupGridCell({ rule, inset: 'grid' });
+const dataCell = (col: PickupGridColumn, rule = true) =>
+  cn(pickupGridCell({ rule, inset: 'grid' }), gridCellAlignClass(col));
 
 /** Amber (Draft) / emerald (Done) status dot + chip tone. */
 function statusIsDone(orderStatus: string): boolean {
@@ -55,13 +57,11 @@ function StatusChip({ orderStatus }: { orderStatus: string }) {
  */
 const PickupGridLeafRow = memo(function PickupGridLeafRow({
   line,
-  index,
   isSelected,
   onSelectOrder,
   columns = PICKUP_GRID_COLUMNS,
 }: {
   line: PickupLine;
-  index: number;
   isSelected: boolean;
   onSelectOrder: (orderId: number) => void;
   columns?: readonly PickupGridColumn[];
@@ -90,7 +90,7 @@ const PickupGridLeafRow = memo(function PickupGridLeafRow({
         return (
           <div
             data-col="title"
-            className={cn(dataCell(rule), PICKUP_GRID_FROZEN_CELL, 'gap-1.5')}
+            className={cn(dataCell(col, rule), PICKUP_GRID_FROZEN_CELL, 'gap-1.5')}
             style={{ left: pickupGridFrozenLeft('title') }}
             data-frozen-edge
           >
@@ -105,7 +105,7 @@ const PickupGridLeafRow = memo(function PickupGridLeafRow({
         );
       case 'sku':
         return (
-          <div data-col="sku" className={dataCell(rule)}>
+          <div data-col="sku" className={dataCell(col, rule)}>
             {line.sku ? (
               <span className="min-w-0 truncate font-mono text-role-caption text-text-soft">
                 {line.sku}
@@ -117,7 +117,7 @@ const PickupGridLeafRow = memo(function PickupGridLeafRow({
         );
       case 'order':
         return (
-          <div data-col="order" className={dataCell(rule)}>
+          <div data-col="order" className={dataCell(col, rule)}>
             {line.po_number ? (
               <OrderIdChip
                 value={line.po_number}
@@ -133,13 +133,13 @@ const PickupGridLeafRow = memo(function PickupGridLeafRow({
         );
       case 'date':
         return (
-          <div data-col="date" className={dataCell(rule)}>
+          <div data-col="date" className={dataCell(col, rule)}>
             <GridDateCellValue label={dateLabel} tooltip={line.pickup_date} className="text-role-caption" />
           </div>
         );
       case 'qty':
         return (
-          <div data-col="qty" className={cn(dataCell(rule), 'justify-end')}>
+          <div data-col="qty" className={dataCell(col, rule)}>
             <span className="min-w-0 truncate tabular-nums text-role-caption text-text-muted">
               {line.quantity}
             </span>
@@ -147,7 +147,7 @@ const PickupGridLeafRow = memo(function PickupGridLeafRow({
         );
       case 'condition':
         return (
-          <div data-col="condition" className={dataCell(rule)}>
+          <div data-col="condition" className={dataCell(col, rule)}>
             <span
               className={cn(
                 'min-w-0 truncate text-role-eyebrow uppercase',
@@ -160,7 +160,7 @@ const PickupGridLeafRow = memo(function PickupGridLeafRow({
         );
       case 'price':
         return (
-          <div data-col="price" className={cn(dataCell(rule), 'justify-end')}>
+          <div data-col="price" className={dataCell(col, rule)}>
             <span className="tabular-nums text-role-caption font-semibold text-emerald-700">
               {pickupMoney(line.total_price)}
             </span>
@@ -168,12 +168,12 @@ const PickupGridLeafRow = memo(function PickupGridLeafRow({
         );
       case 'status':
         return (
-          <div data-col="status" className={dataCell(rule)}>
+          <div data-col="status" className={dataCell(col, rule)}>
             <StatusChip orderStatus={line.order_status} />
           </div>
         );
       default:
-        return <span className={dataCell(rule)} />;
+        return <span className={dataCell(col, rule)} />;
     }
   };
 
@@ -193,12 +193,7 @@ const PickupGridLeafRow = memo(function PickupGridLeafRow({
       }}
       className={cn(
         pickupGridRowShellClass(false, { scrollMinContent: true }),
-        'cursor-pointer border-b border-border-hairline px-0 py-0 transition-colors hover:bg-surface-hover',
-        isSelected
-          ? QUEUE_ROW.selectedClass
-          : index % 2 === 1
-            ? 'bg-surface-canvas'
-            : 'bg-surface-card',
+        ledgerRowStateClass(isSelected),
       )}
       style={{ gridTemplateColumns: pickupGridTemplate(columns) }}
     >
@@ -253,7 +248,7 @@ function PickupGridGroupSummary({
         return (
           <div
             data-col="title"
-            className={cn(dataCell(rule), PICKUP_GRID_FROZEN_CELL, 'gap-1.5')}
+            className={cn(dataCell(col, rule), PICKUP_GRID_FROZEN_CELL, 'gap-1.5')}
             style={{ left: pickupGridFrozenLeft('title') }}
             data-frozen-edge
           >
@@ -275,10 +270,10 @@ function PickupGridGroupSummary({
           </div>
         );
       case 'sku':
-        return <div data-col="sku" className={dataCell(rule)}><GridCellDash /></div>;
+        return <div data-col="sku" className={dataCell(col, rule)}><GridCellDash /></div>;
       case 'order':
         return (
-          <div data-col="order" className={dataCell(rule)}>
+          <div data-col="order" className={dataCell(col, rule)}>
             {first.po_number ? (
               <OrderIdChip
                 value={first.po_number}
@@ -294,13 +289,13 @@ function PickupGridGroupSummary({
         );
       case 'date':
         return (
-          <div data-col="date" className={dataCell(rule)}>
+          <div data-col="date" className={dataCell(col, rule)}>
             <GridDateCellValue label={dateLabel} tooltip={first.pickup_date} className="text-role-caption" />
           </div>
         );
       case 'qty':
         return (
-          <div data-col="qty" className={cn(dataCell(rule), 'justify-end')}>
+          <div data-col="qty" className={dataCell(col, rule)}>
             <span className="min-w-0 truncate tabular-nums text-role-caption font-semibold text-text-muted">
               {totalQty}
             </span>
@@ -308,7 +303,7 @@ function PickupGridGroupSummary({
         );
       case 'condition':
         return (
-          <div data-col="condition" className={dataCell(rule)}>
+          <div data-col="condition" className={dataCell(col, rule)}>
             <span className={cn('min-w-0 truncate text-role-eyebrow uppercase', conditionGradeTextClass(condGrade))}>
               {condDisplay}
             </span>
@@ -316,7 +311,7 @@ function PickupGridGroupSummary({
         );
       case 'price':
         return (
-          <div data-col="price" className={cn(dataCell(rule), 'justify-end')}>
+          <div data-col="price" className={dataCell(col, rule)}>
             <span className="tabular-nums text-role-caption font-semibold text-emerald-700">
               {pickupMoney(String(totalValue))}
             </span>
@@ -324,12 +319,12 @@ function PickupGridGroupSummary({
         );
       case 'status':
         return (
-          <div data-col="status" className={dataCell(rule)}>
+          <div data-col="status" className={dataCell(col, rule)}>
             <StatusChip orderStatus={first.order_status} />
           </div>
         );
       default:
-        return <span className={dataCell(rule)} />;
+        return <span className={dataCell(col, rule)} />;
     }
   };
 
@@ -384,11 +379,10 @@ export function PickupGridGroupRow({
   const [expanded, setExpanded] = useState(isOrderSelected);
   const isMulti = group.rows.length > 1;
 
-  const renderLeaf = (line: PickupLine, stripeIndex: number): ReactNode => (
+  const renderLeaf = (line: PickupLine): ReactNode => (
     <PickupGridLeafRow
       key={line.id}
       line={line}
-      index={stripeIndex}
       isSelected={isOrderSelected}
       onSelectOrder={onSelectOrder}
       columns={columns}
@@ -396,7 +390,7 @@ export function PickupGridGroupRow({
   );
 
   if (!isMulti) {
-    return <>{renderLeaf(group.rows[0], baseStripeIndex)}</>;
+    return <>{renderLeaf(group.rows[0])}</>;
   }
 
   return (
@@ -408,7 +402,7 @@ export function PickupGridGroupRow({
       onToggle={setExpanded}
       summary={<PickupGridGroupSummary group={group} onSelectOrder={onSelectOrder} columns={columns} />}
     >
-      {group.rows.map((line, i) => renderLeaf(line, baseStripeIndex + 1 + i))}
+      {group.rows.map((line) => renderLeaf(line))}
     </CollapsibleGroupRow>
   );
 }

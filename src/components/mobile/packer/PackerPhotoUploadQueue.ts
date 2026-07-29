@@ -36,6 +36,14 @@ export interface PackerPhotoScope {
    * without a schema change. Defaults to `packer_photo` (the spam-capture path).
    */
   photoType?: string | null;
+  /**
+   * Device-reported capture instant (epoch ms) from `CapturedShot.capturedAtMs`
+   * — stored as `photos.client_captured_at`, beside (never instead of)
+   * `created_at`. It rides in `scope` so `PersistedEntry.meta` carries it
+   * through a localStorage rehydration; see the receiving queue's `PhotoScope`
+   * for the full rationale. Optional: pre-2026-07-29 persisted entries have none.
+   */
+  capturedAtMs?: number | null;
 }
 
 export interface UploadEntry {
@@ -183,6 +191,7 @@ async function postPhoto(
     entityId: entry.scope.packerLogId,
     photoType: entry.scope.photoType ?? 'packer_photo',
     poRef: entry.scope.orderId ?? undefined,
+    clientCapturedAtMs: entry.scope.capturedAtMs ?? null,
   });
   return { id: result.id, url: result.url };
 }

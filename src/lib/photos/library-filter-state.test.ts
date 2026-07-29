@@ -1,8 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
-  applyDatePreset,
-  applyRecencyTab,
   applySourceScopeTab,
   clearStructuredPhotoFilters,
   countActivePhotoLibraryFilters,
@@ -15,23 +13,21 @@ import {
   isPhotoLibraryStage,
   parsePhotoLibraryDisplayParams,
   parsePhotoLibraryFilters,
-  parsePhotoLibraryPhotoId,
   parsePhotoLibraryViewMode,
   photoLibraryFiltersToParams,
   photoLibraryUrlParams,
-  recencyTabFromFilters,
   sourceScopeFromFilters,
   todayFoldersDateFilter,
   DEFAULT_PHOTO_LIBRARY_MEDIA_SCOPE,
   DEFAULT_PHOTO_LIBRARY_VIEW,
-  PHOTO_LIBRARY_RECENCY_TABS,
+  PHOTO_LIBRARY_HEADER_DISPLAY_MODES,
   PHOTO_LIBRARY_SCOPE_TAB_LABEL,
   PHOTO_LIBRARY_SCOPE_TABS,
   PHOTO_LIBRARY_VIEW_ORDER,
   PHOTO_LIBRARY_PAGE_SIZE,
   PHOTO_SEARCH_FIELDS,
   PHOTO_SEARCH_FIELD_LABELS,
-  photoLibraryViewToggleModes,
+  type PhotoLibrarySourceScope,
   type PhotoLibraryViewMode,
 } from '@/lib/photos/library-filter-state';
 
@@ -260,18 +256,20 @@ test('SKU is an explicit sidebar search field mapped to the sku finder kind', ()
   assert.equal(params.get('poFinderKind'), 'sku');
 });
 
-test('photoLibraryViewToggleModes lists list only — grid size is on row 3', () => {
-  assert.deepEqual(photoLibraryViewToggleModes('folders', true), ['list']);
-  assert.deepEqual(photoLibraryViewToggleModes('grid-sm', false), ['list']);
+test('the header display toggle lists List only — grid size is on row 3', () => {
+  assert.deepEqual(PHOTO_LIBRARY_HEADER_DISPLAY_MODES, ['list']);
 });
 
-test('PHOTO_LIBRARY_VIEW_ORDER lists the 5 view modes, unique, for the 1–5 shortcuts', () => {
-  assert.equal(PHOTO_LIBRARY_VIEW_ORDER.length, 5);
-  assert.equal(new Set(PHOTO_LIBRARY_VIEW_ORDER).size, 5);
-  const valid: PhotoLibraryViewMode[] = ['grid-sm', 'grid-lg', 'grid-ticket', 'folders', 'list'];
+test('PHOTO_LIBRARY_VIEW_ORDER lists the 4 surviving view modes, unique', () => {
+  // `folders` was the 3rd entry (digit "3") before the drill was retired.
+  assert.equal(PHOTO_LIBRARY_VIEW_ORDER.length, 4);
+  assert.equal(new Set(PHOTO_LIBRARY_VIEW_ORDER).size, 4);
+  const valid: PhotoLibraryViewMode[] = ['grid-sm', 'grid-lg', 'grid-ticket', 'list'];
   for (const mode of PHOTO_LIBRARY_VIEW_ORDER) assert.ok(valid.includes(mode));
-  // The digit shortcuts read position — folders is the 3rd option (key "3").
-  assert.equal(PHOTO_LIBRARY_VIEW_ORDER[2], 'folders');
+  assert.ok(
+    !(PHOTO_LIBRARY_VIEW_ORDER as readonly string[]).includes('folders'),
+    'the folder drill must not come back as a view mode',
+  );
 });
 
 test('PHOTO_LIBRARY_PAGE_SIZE matches the server request (no 24-vs-48 drift)', () => {
@@ -366,45 +364,32 @@ test('the facet tabs cover every source scope — no scope stranded off-strip', 
   assert.equal(new Set(PHOTO_LIBRARY_SCOPE_TABS).size, PHOTO_LIBRARY_SCOPE_TABS.length);
 });
 
-test('?photoId= is display state and survives a URL round-trip', () => {
-  const parsed = parsePhotoLibraryDisplayParams(new URLSearchParams('photoId=4210'));
-  assert.equal(parsed.photoId, 4210);
-  const params = photoLibraryUrlParams({}, { view: DEFAULT_PHOTO_LIBRARY_VIEW, page: 1, photoId: 4210 });
-  assert.equal(params.get('photoId'), '4210');
-  // No inspector open → the param is absent, not `null`/empty.
-  assert.equal(
-    photoLibraryUrlParams({}, { view: DEFAULT_PHOTO_LIBRARY_VIEW, page: 1, photoId: null }).get('photoId'),
-    null,
-  );
-});
+test('display state is view + page only — a stale ?photoId= is inert', () => {
+  // The retired inspector owned `?photoId=`. Opening a photo is now the shared
+  // fullscreen viewer, whose selection is ephemeral (usePhotoGridLightbox), so
+  // there is no durable record param to keep in sync with the result set.
+  const display = parsePhotoLibraryDisplayParams(new URLSearchParams('photoId=4210&page=3'));
+  assert.deepEqual(Object.keys(display).sort(), ['page', 'view']);
+  assert.equal(display.page, 3);
 
-test('?photoId= accepts a negative id (outbound documents) but rejects junk', () => {
-  // An outbound document row carries the NEGATED documents.id (libraryDocumentId),
-  // so a naive `id > 0` guard would make every document un-inspectable.
-  assert.equal(parsePhotoLibraryPhotoId('-88'), -88);
-  assert.equal(parsePhotoLibraryPhotoId('4210'), 4210);
-  assert.equal(parsePhotoLibraryPhotoId('0'), null);
-  assert.equal(parsePhotoLibraryPhotoId('abc'), null);
-  assert.equal(parsePhotoLibraryPhotoId('1.5'), null);
-  assert.equal(parsePhotoLibraryPhotoId(''), null);
-  assert.equal(parsePhotoLibraryPhotoId(null), null);
-});
-
-test('the inspected photo is NOT part of the filter bag', () => {
-  // It selects a record inside the result set rather than narrowing it. If it
-  // leaked into filters, saving a view would snapshot a transient selection and
-  // every inspector open would reset the grid to page 1.
+  // …and it never leaked into the filter bag either: an old deep link still
+  // resolves its real filters instead of erroring or narrowing on a dead param.
   const filters = parsePhotoLibraryFilters(new URLSearchParams('photoId=4210&sourceScope=claims'));
   assert.equal((filters as Record<string, unknown>).photoId, undefined);
   assert.equal(filters.sourceScope, 'claims');
   assert.equal(photoLibraryFiltersToParams(filters).get('photoId'), null);
+  assert.equal(
+    photoLibraryUrlParams(filters, { view: DEFAULT_PHOTO_LIBRARY_VIEW, page: 1 }).get('photoId'),
+    null,
+  );
 });
 
-test('an explicit ?view=folders still parses (legacy deep links + saved views)', () => {
-  // `folders` is retired as the DEFAULT but stays parseable until the hierarchy
-  // is deleted, so a bookmarked drill or a stored saved-view payload does not
-  // silently resolve to a different surface mid-migration.
-  assert.equal(parsePhotoLibraryViewMode('folders'), 'folders');
+test('a legacy ?view=folders deep link degrades to the flat stream', () => {
+  // The hierarchy is gone, so a bookmarked drill or a saved view stored with
+  // `view: 'folders'` must land somewhere real rather than throwing or painting
+  // an empty surface. Every photo it used to reach is still reachable — as a
+  // filter rather than a descent.
+  assert.equal(parsePhotoLibraryViewMode('folders'), DEFAULT_PHOTO_LIBRARY_VIEW);
 });
 
 test('a saved-view filter snapshot round-trips through parse + serialize', () => {
@@ -440,44 +425,16 @@ test('default media type landing is all-types recent (no scope or date pin)', ()
   assert.equal(countActivePhotoLibraryFilters(cleared), 0);
 });
 
-test('recencyTabFromFilters round-trips every tab it renders', () => {
-  assert.equal(recencyTabFromFilters({}), 'recent');
-  for (const tab of PHOTO_LIBRARY_RECENCY_TABS) {
-    assert.equal(recencyTabFromFilters(applyRecencyTab(tab)), tab, `${tab} must round-trip`);
-  }
-});
-
-test('every rendered recency tab is a distinct, reachable URL state', () => {
-  // The dropped `all` tab produced the same params as `recent` (both = no date
-  // pin), so it could never light up. Any future tab must be distinguishable.
-  const seen = new Map<string, string>();
-  for (const tab of PHOTO_LIBRARY_RECENCY_TABS) {
-    const params = photoLibraryFiltersToParams(applyRecencyTab(tab)).toString();
+test('every lifecycle tab is a distinct, reachable URL state', () => {
+  // Carried forward from the deleted recency-tab suite, which is what caught the
+  // original defect: the old `all` tab serialized byte-identically to `recent`
+  // (both = no date pin), so it could never light up. Generic over the tab list
+  // so a future facet cannot reintroduce a tab that is unreachable by URL.
+  const seen = new Map<string, PhotoLibrarySourceScope>();
+  for (const tab of PHOTO_LIBRARY_SCOPE_TABS) {
+    const params = photoLibraryFiltersToParams(applySourceScopeTab(tab)).toString();
     const collision = seen.get(params);
     assert.equal(collision, undefined, `${tab} collides with ${collision} (both → "${params}")`);
     seen.set(params, tab);
-  }
-});
-
-test('recencyTabFromFilters reports NO active tab where no tab owns the position', () => {
-  // A drill depth the 3 tabs cannot express — previously mislabelled "All".
-  assert.equal(recencyTabFromFilters({ dateFrom: '2026-01-01', dateTo: '2026-12-31' }), null);
-  assert.equal(recencyTabFromFilters({ dateFrom: '2026-01-01', dateTo: '2026-01-03' }), null);
-  // Yesterday is a real preset with no tab — previously mislabelled "Recent".
-  assert.equal(recencyTabFromFilters(applyDatePreset('yesterday')), null);
-  // Entity leaves and a live finder search are positions, not date ranges.
-  assert.equal(recencyTabFromFilters({ poRef: '14-14825-46707' }), null);
-  assert.equal(recencyTabFromFilters({ ticketId: '9599' }), null);
-  assert.equal(recencyTabFromFilters({ receivingId: '412' }), null);
-  assert.equal(recencyTabFromFilters({ poFinder: 'SN-1' }), null);
-});
-
-test('applyRecencyTab drops the entity leaf so the tab it lights up is true', () => {
-  for (const tab of PHOTO_LIBRARY_RECENCY_TABS) {
-    const next = { poRef: '14-1', ticketId: '9599', receivingId: '412', ...applyRecencyTab(tab) };
-    assert.equal(next.poRef, undefined);
-    assert.equal(next.ticketId, undefined);
-    assert.equal(next.receivingId, undefined);
-    assert.equal(recencyTabFromFilters(next), tab);
   }
 });

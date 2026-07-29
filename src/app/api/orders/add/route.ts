@@ -97,7 +97,30 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       orderId,
     }, ctx.organizationId);
 
-    // Insert the new order (tracking linked later via shipment_id when packer scans)
+    // Link the tracking number to a shipment BEFORE the insert, so a resolver
+    // failure aborts cleanly instead of leaving a half-created order that can
+    // never be scanned. `shipment_id` stays NULL when no tracking is supplied —
+    // that is the modeled "awaiting label" state (see the `awaitingOnly` scope
+    // in /api/orders), not an error.
+    const trackingRaw =
+      typeof shippingTrackingNumber === 'string' ? shippingTrackingNumber.trim() : '';
+    let shipmentId: number | null = null;
+    if (trackingRaw) {
+      try {
+        const resolved = await resolveShipmentId(trackingRaw, orgId);
+        shipmentId = resolved.shipmentId;
+      } catch (err) {
+        console.error('[orders/add] shipment resolution failed', err);
+        return NextResponse.json(
+          {
+            error:
+              'Could not link that tracking number. The order was not created — check the tracking number and try again.',
+          },
+          { status: 502 }
+        );
+      }
+    }
+
     const result = await tenantQuery(
       orgId,
       `INSERT INTO orders (
@@ -110,9 +133,11 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         sku_catalog_id,
         sale_amount,
         currency,
-        organization_id
-      ) VALUES ($1, $2, $3, $4, $5, NOW(), $6, $7, $8, $9::uuid)
-      RETURNING id, order_id, product_title, sku`,
+        organization_id,
+        shipment_id,
+        condition
+      ) VALUES ($1, $2, $3, $4, $5, NOW(), $6, $7, $8, $9::uuid, $10, $11)
+      RETURNING id, order_id, product_title, sku, shipment_id, condition`,
       [
         orderId,
         productTitle,
@@ -123,6 +148,8 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         saleAmountValue,
         currencyValue,
         ctx.organizationId,
+        shipmentId,
+        conditionValue,
       ]
     );
 

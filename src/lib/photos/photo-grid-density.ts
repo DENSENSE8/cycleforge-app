@@ -50,34 +50,21 @@ export function photoGridTileProps(
   };
 }
 
-/** Grid density + refresh — grid tile views only (not list). */
-export function photoLibraryShowsGridControls(
-  view: PhotoLibraryViewMode,
-  folderIsLeaf: boolean,
-): boolean {
-  if (view === 'list') return false;
-  if (view === 'folders') return folderIsLeaf;
-  return true;
-}
-
 /**
- * Multi-select entry — only where photo tiles actually render. There is nothing
- * to select at a folder drill level (year/month/week/day/entity paint folder
- * tiles, not photos).
+ * Grid density + refresh — grid tile views only (not list).
  *
- * The **view toggle is deliberately NOT gated by this** and always renders: it
- * is the only chrome affordance that escapes folder mode. Gating it made the
- * default landing state (`view=folders`, no dates → year tiles) a one-way trap
- * with no visible way out — the recency tabs don't touch `view`, so the only
- * exits were the search box, an undocumented digit shortcut, or hand-editing
- * `?view=`. See `PhotoDisplayControls`.
+ * The `folderIsLeaf` argument this used to take is gone with the folder drill:
+ * every surviving view paints photo tiles, so there is no longer a level at
+ * which the tile controls must hide.
+ *
+ * Its sibling `photoLibraryShowsSelectControl` was **deleted** rather than left
+ * returning a constant `true`. Multi-select was only ever gated because the
+ * drill's year/month/week/day levels painted folder tiles with nothing to
+ * select; with those gone the gate has no remaining case to express, and a
+ * predicate that cannot be false is just a prop to thread and a lie to read.
  */
-export function photoLibraryShowsSelectControl(
-  view: PhotoLibraryViewMode,
-  folderIsLeaf: boolean,
-): boolean {
-  if (view === 'folders') return folderIsLeaf;
-  return true;
+export function photoLibraryShowsGridControls(view: PhotoLibraryViewMode): boolean {
+  return view !== 'list';
 }
 
 /** Picker / embedded browse — photos visible at folder leaf or in search results. */

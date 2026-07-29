@@ -40,7 +40,6 @@ export function PhotoFlatGrid({
   onSelectTile,
   onPhotoContextMenu,
   openAt,
-  onInspect,
 }: PhotoGridViewProps & { view: PhotoLibraryViewMode; gridDensity: PhotoGridDensity }) {
   const showLabel = gridDensity === 'lg';
   const containerClass = photoGridLeafClass(gridDensity);
@@ -60,7 +59,6 @@ export function PhotoFlatGrid({
         selected={selected.has(photo.id)}
         onSelect={(mods) => onSelectTile(photo.id, mods)}
         onOpen={() => openAt(photo.id)}
-        onInspect={onInspect ? () => onInspect(photo.id) : undefined}
         onContextMenu={onPhotoContextMenu}
       />
     );

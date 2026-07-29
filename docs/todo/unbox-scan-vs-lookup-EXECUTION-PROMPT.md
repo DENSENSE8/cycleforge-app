@@ -195,13 +195,120 @@ branch cannot ship recording a lookup and then showing the editor.
 
 ---
 
+## 2d. Session 4 — four operator-reported fixes
+
+1. **A lookup no longer touches the sidebar rail.** `applyUnboxCartonOpened` was
+   upserting the carton onto Unboxed and purging the triage rails on *every*
+   open, so inspecting a weeks-old box bumped it to the top of the rail wearing
+   the freshly-arrived `0/?` face — and evicted it from Arrival because someone
+   *looked* at it. The rail writes now sit in the work branch only. The pending
+   `scan:{tracking}` stub is still dropped (our own artifact), and **touch-scan
+   still fires for both kinds** — it is what records `RECEIVING_LOOKUP_SCAN` for
+   the client short-circuit rungs, so skipping it would leave the inspection
+   unlogged. Regression test in `scan-apply.test.ts`; verified live (rail header,
+   row count and top-6 byte-identical across a lookup scan).
+2. **Receipt width = the station workbench column.** `max-w-lg` made it a narrow
+   floating dialog that did not line up with the identity bookmark above it. Now
+   `STATION_WORKBENCH_COLUMN` (measured 720px). `STATION_WORKBENCH_BODY_PAD_X`
+   was added to the workbench barrel — a surface that *replaces* the body needs
+   the column and the inset on different elements, and hand-writing
+   `px-4 sm:px-6` is exactly the drift `display/station-workbench.md` bans.
+3. **PO renders last-4** (`1811`), matching the TrackingChip beside it and every
+   other `PoChip` call site. Full number still copies.
+3b. **Facts are ONE band**, not a 2×2 grid — `flex items-center justify-between`.
+   720px fits all four across, so the grid was spending a second row on nothing.
+   `Fact` carries `min-w-0` + `whitespace-nowrap` so a long value shrinks in
+   place instead of pushing a sibling out or wrapping the band. Degrades
+   correctly to 3 facts on an unfound carton (no PO). Measured: band 54px tall,
+   no overflow, `space-between` in both cases.
+4. **Global search auto-opens a sole result of ANY type** — `soleHitHref` in the
+   search SoT. `shouldAutoOpenSearchOrder` only ever covered orders, so a search
+   settling on one carton parked the operator on a one-row list. Orders keep the
+   query-carrying `orderSearchHref`; the natural-language guard stays on that
+   branch only (for an identifier the hook's exact-match path owns navigation).
+   `globalSearchHref` also absorbed the two hand-rolled URL literals inside
+   `globalSearchHandoffHref` — one builder, existing tests unchanged.
+
+### ✅ Tension RESOLVED in §2e
+
+The receipt's **Open package details** → search → auto-open now lands on
+`/unbox?openReceivingId=<id>` — the Unbox **workspace**, i.e. the editor the
+receipt exists to steer away from. Both behaviours are individually correct and
+were both explicitly requested; they collide only when the sole hit *is* the
+carton you came from.
+
+The principled fix is the deferred **Phase 4 read-only `CartonInspector`**
+(§3.5): once a carton has a read-only surface, `searchHitHref('RECEIVING')`
+points there and the loop resolves itself. Do NOT special-case the search view
+to suppress auto-open for the origin record — that hides the real gap.
+
+---
+
+## 2e. Session 5 — Phase 4: the `CartonInspector` (D4)
+
+**`/carton/[id]` is the READ view of a carton.** `/unbox` stays the WORK view.
+That was the missing door: "what happened to this box?" and "change this box"
+shared one entrance, so `searchHitHref('RECEIVING')` — every search hit, ⌘K
+result, AI answer and timeline glyph — dropped the operator into the editor.
+
+### Composition, not a second carton renderer
+
+D4 was only allowed on one condition: **both shells compose the same dumb
+primitives.** So the inspector mounts what the Unbox bench mounts —
+
+| Layer | Primitive | Read-only how |
+|---|---|---|
+| Identity | `CartonContextCard` (entity-context SoT) | `classifyInteractive={false}`; every `onEdit*` / `onMakeClaim` **omitted**, which is how that SoT hides an affordance |
+| History | `WorkspaceTimelineTab` | unchanged — same Units / Tracking spines |
+| Photos | `ReceivingPhotosSection` | unchanged — same gallery |
+| Chips | `CopyChip` family | unchanged |
+
+It owns exactly two things: the provenance fact stack (derived purely in
+`carton-inspector-model.ts`) and the *absence* of an editor. **No new endpoint** —
+`GET /api/receiving/[id]` already returned the whole read model.
+
+`carton-inspector.guard.test.ts` encodes the condition executably: no write verb
+or mutation plumbing, no editor/terminal import, identity must compose the shared
+card with classify off, timeline/photos must be the shared primitives, and no
+hand-positioned timeline dots (the classic fork).
+
+### Timestamp trap worth knowing
+
+The carton milestone fields arrive from `to_char(ts::timestamp, …)` with the DB
+session on `America/Los_Angeles` — they are **warehouse wall-clock strings, not
+instants** (21:26:58Z is delivered as `2026-07-28 14:26:58`). `formatDateTimePST`
+parses that naive shape purely, so it is TZ-independent; anything that does
+`new Date(str)` on them shifts a second time. The guard bans `new Date` here.
+`events[].occurred_at` IS a real instant — same formatter, different branch.
+
+### One producer for the destination
+
+`global-entity-search.ts` was the last site hardcoding `/unbox?openReceivingId=`
+(its own comment already said "kept in sync with searchHitHref"). It now composes
+`searchHitHref`, so hybrid retrieval, the exact fast path, support-ticket search,
+ops-events timeline and the assistant read-tools all moved together. `/carton`
+also joins `page-context.ts` so search from the inspector boosts RECEIVING.
+
+### The loop, verified end-to-end
+
+scan an unboxed carton → receipt → **Open package details** → global search →
+sole hit auto-opens → **`/carton/49929`, read-only**. Traced twice; both runs
+land on the inspector, never the editor. The §2d tension is gone.
+
+Live check on carton 49929: provenance reads Scanned in / Opened / Unboxed /
+Received, each `2:2x PM` PDT with actor **Kai**; contents `1/1 units · 1/1 line
+complete` with SKU, PO chip, condition and serial; 7 receiving photos; timeline
+Units/Tracking spines. No console errors, no terminal dock.
+
+---
+
 ## 3. What is NOT done
 
 1. ~~Browser verification~~ / ~~lookup-po receipt gap~~ — **both DONE** (§2b, §2c).
 2. **D5 full "swap in place" — deliberately not done.** The queue-inspector exception needs `LineEditPanel` to re-seed transient state per carton. It does not: `unboxView` (:149), `classifyExpand` (:150), `pairingOpen` (:304) have **no reset keyed on `row.id`**, and the notes composer has no flush-before-swap. Killing the animation bought the throughput; removing the remount needs those resets first. Rationale is in the component header — do not delete it.
 3. **Triage carries both defects untouched** — `TriageLineWorkspace.tsx:71` has the identical `scanDriven` key expression, and uses `workbenchPaneSettle`. Left alone because Triage's loading model differs (skeleton, not empty-pane-first) and needs its own verification.
 4. **Phase 3 (D3: Queue as default tab, History search → view filter)** — **deferred until the modes→routes refactor lands.** Collides with `src/utils/unbox-workspace-state.ts` (`?unboxview=`) and `resolveUnboxReceivingTableMode` in `src/lib/receiving/receiving-modes.ts`, which is the mode registry itself.
-5. **Phase 4 (D4: read-only `CartonInspector` + search deep-links)** — deferred, same reason: `searchHitHref` sends `RECEIVING` → `/unbox?openReceivingId=`.
+5. ~~Phase 4 (D4)~~ — **DONE, see §2e.** `/carton/[id]` is live and `searchHitHref('RECEIVING')` points at it.
 6. **Q8 instrumentation** — partially free now (`RECEIVING_LOOKUP_SCAN` gives the "scans landing on already-unboxed cartons" rate). Still missing: time-from-scan-to-first-mutation. Land before deciding D3/D7 so they are measured, not argued.
 7. ~~No route-level test~~ — **DONE**: `lookup-scan-wiring.guard.test.ts` (§2b).
 

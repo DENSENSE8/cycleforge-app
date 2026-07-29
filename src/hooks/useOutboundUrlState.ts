@@ -3,22 +3,28 @@
 import { useCallback, useMemo } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
-  OUTBOUND_MODE_SCOPED_PARAMS,
+  OUTBOUND_MODE_PATHS,
   SHIPPING_PATH,
+  outboundModeFromPath,
   parseOutboundMode,
   parseOutboundSort,
   type OutboundMode,
   type OutboundSort,
 } from '@/components/outbound/outbound-sidebar-shared';
+import { OUTBOUND_MODE_ROUTE_PARAMS } from '@/lib/routing/outbound-routes';
+import { buildRouteUrl, parseRouteParams } from '@/lib/routing/route-params';
+import { routeParamsFor } from '@/lib/routing/registry';
 
 export function useOutboundUrlState() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
+  // Path-first: being on `/shipping/ready` IS ready mode. `?mode=` survives only
+  // as a read-fallback for a legacy link that has not been redirected yet.
   const mode = useMemo(
-    () => parseOutboundMode(searchParams.get('mode')),
-    [searchParams],
+    () => outboundModeFromPath(pathname) ?? parseOutboundMode(searchParams.get('mode')),
+    [pathname, searchParams],
   );
   const q = useMemo(() => String(searchParams.get('q') || '').trim(), [searchParams]);
   const open = useMemo(() => {
@@ -38,19 +44,18 @@ export function useOutboundUrlState() {
     [searchParams],
   );
 
-  // Prefer the shipping station path; never keep a client URL on legacy /outbound.
-  const basePath =
-    pathname === '/outbound' ||
-    pathname?.startsWith('/outbound/') ||
-    pathname?.startsWith(SHIPPING_PATH)
-      ? SHIPPING_PATH
-      : pathname || SHIPPING_PATH;
+  // In-surface edits stay on the mode's OWN route; never bounce to bare
+  // /shipping (which redirects) or to legacy /outbound.
+  const basePath = OUTBOUND_MODE_PATHS[mode] ?? SHIPPING_PATH;
 
   const replaceParams = useCallback(
     (mutate: (params: URLSearchParams) => void) => {
-      const params = new URLSearchParams(searchParams.toString());
+      // Boundary-parse first, so an in-surface edit patches only what this route
+      // owns — a stale key from a pasted link cannot ride along on the next edit.
+      const spec = routeParamsFor(basePath);
+      const raw = new URLSearchParams(searchParams.toString());
+      const params = spec ? parseRouteParams(spec, raw) : raw;
       mutate(params);
-      if (params.get('mode') === 'labels') params.delete('mode');
       const qs = params.toString();
       router.replace(qs ? `${basePath}?${qs}` : basePath, { scroll: false });
     },
@@ -59,13 +64,15 @@ export function useOutboundUrlState() {
 
   const updateMode = useCallback(
     (next: OutboundMode) => {
-      replaceParams((params) => {
-        for (const key of OUTBOUND_MODE_SCOPED_PARAMS) params.delete(key);
-        if (next === 'labels') params.delete('mode');
-        else params.set('mode', next);
-      });
+      // CONSTRUCT the target, never copy the current query string. This is what
+      // replaced OUTBOUND_MODE_SCOPED_PARAMS: there is no list of sixteen keys
+      // to remember to delete, because nothing rides along unless named here.
+      // The staff filter is the one deliberate carry — an operator preference,
+      // not mode state.
+      const staff = searchParams.get('staff') ?? searchParams.get('staffId');
+      router.push(buildRouteUrl(OUTBOUND_MODE_ROUTE_PARAMS[next], { staff }));
     },
-    [replaceParams],
+    [router, searchParams],
   );
 
   const setQ = useCallback(

@@ -105,9 +105,14 @@ type TabSwitchTabs = React.ComponentProps<typeof TabSwitch>['tabs'];
 type TabSwitchSolidTone = React.ComponentProps<typeof TabSwitch>['solidTone'];
 
 export interface WorkbenchChromeHeaderProps {
-  tabs: TabSwitchTabs;
-  activeTab: string;
-  onTabChange: (id: string) => void;
+  /**
+   * Lifecycle tab rail. Optional: a surface whose facets live in its resident
+   * sidebar rail (Media Library) has no tabs to render here, and an empty
+   * `TabSwitch` would leave a bare pill track floating in the band.
+   */
+  tabs?: TabSwitchTabs;
+  activeTab?: string;
+  onTabChange?: (id: string) => void;
   /** Solid-pill accent (forwarded to `TabSwitch`); defaults to its `inverse`. */
   solidTone?: TabSwitchSolidTone;
   /**
@@ -168,10 +173,11 @@ export function WorkbenchChromeHeader({
         first. Surfaces whose header already fits are unaffected: `min-w-0` only
         engages once the row would otherwise overflow.
       */}
+      {tabs && tabs.length > 0 ? (
       <TabSwitch
         tabs={tabs}
-        activeTab={activeTab}
-        onTabChange={onTabChange}
+        activeTab={activeTab ?? ''}
+        onTabChange={onTabChange ?? (() => {})}
         // `scrollable` is TabSwitch's own overflow mode — it sets the track to
         // `w-max` so tabs keep their natural width instead of compressing, and
         // scrolls the active tab into view. Hand-rolling `overflow-x-auto` here
@@ -183,6 +189,7 @@ export function WorkbenchChromeHeader({
         countStyle="plain"
         railClassName="rounded-full border border-border-default bg-surface-card p-1 shadow-sm"
       />
+      ) : null}
 
       <div className="min-w-0 flex-1" aria-hidden />
 

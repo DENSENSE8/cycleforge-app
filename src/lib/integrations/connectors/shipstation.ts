@@ -20,8 +20,9 @@
  * Lazily imported by the registry so the connection reader never bundles the
  * ShipStation client.
  */
-import pool from '@/lib/db';
 import type { OrgId } from '@/lib/tenancy/constants';
+import type { CanonicalOrderLine } from '@/lib/orders/canonical-order';
+import { ingestConnectorOrders } from './ingest-connector-orders';
 import { getSyncCursor, updateSyncCursor } from '@/lib/sync-cursors';
 import { getShipStationV1 } from '@/lib/shipping/shipstation/config';
 import type { ShipStationV1Order } from '@/lib/shipping/shipstation/orders-v1';
@@ -51,47 +52,33 @@ function mapStatus(orderStatus: string | null): string {
   return (orderStatus ?? '').toLowerCase() === 'shipped' ? 'shipped' : 'unassigned';
 }
 
-async function upsertOrder(orgId: OrgId, order: ShipStationV1Order): Promise<'created' | 'updated'> {
+/**
+ * Map a ShipStation order to a canonical line.
+ *
+ * ShipStation always produces a non-empty title (it falls back to
+ * `ShipStation order <n>`), which is why its upsert refreshed the title on
+ * every sync — reproduced here by the connector's `authoritative.productTitle`.
+ */
+function toCanonicalLine(order: ShipStationV1Order): CanonicalOrderLine {
   const { title, quantity } = summarizeItems(order);
-  const firstSku = order.items.find((it) => (it.sku ?? '').trim())?.sku?.trim() || '';
-
-  const result = await pool.query(
-    `INSERT INTO orders (
-       organization_id, order_id, product_title, condition, sku, status, status_history, notes,
-       quantity, account_source, order_date, sku_catalog_id, sale_amount, currency
-     ) VALUES (
-       $1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9, $10, $11, $12, $13, $14
-     )
-     ON CONFLICT ON CONSTRAINT idx_orders_unique_account_order DO UPDATE
-       SET product_title = COALESCE(NULLIF(EXCLUDED.product_title, ''), orders.product_title),
-           quantity   = COALESCE(NULLIF(orders.quantity, ''), EXCLUDED.quantity),
-           sku        = COALESCE(NULLIF(orders.sku, ''), EXCLUDED.sku),
-           order_date = COALESCE(orders.order_date, EXCLUDED.order_date),
-           sale_amount = COALESCE(orders.sale_amount, EXCLUDED.sale_amount),
-           currency   = COALESCE(NULLIF(orders.currency, ''), EXCLUDED.currency),
-           status = CASE
-             WHEN orders.status IS NULL OR orders.status = '' OR orders.status = 'unassigned' THEN EXCLUDED.status
-             ELSE orders.status
-           END
-       RETURNING (xmax = 0) AS inserted`,
-    [
-      orgId,
-      order.orderNumber,
-      title,
-      '',
-      firstSku,
-      mapStatus(order.orderStatus),
-      JSON.stringify([]),
-      '',
-      String(quantity),
-      ACCOUNT_SOURCE,
-      order.orderDate ?? null,
-      null,
-      order.orderTotal ?? null,
-      'USD',
-    ],
-  );
-  return result.rows[0]?.inserted ? 'created' : 'updated';
+  return {
+    externalOrderId: String(order.orderNumber ?? ''),
+    itemNumber: '',
+    sku: order.items.find((it) => (it.sku ?? '').trim())?.sku?.trim() || '',
+    productTitle: title,
+    condition: '',
+    quantity: String(quantity),
+    notes: '',
+    accountSource: ACCOUNT_SOURCE,
+    trackings: [],
+    shipByDate: null,
+    orderDate: order.orderDate ? new Date(order.orderDate) : null,
+    saleAmount: order.orderTotal != null ? String(order.orderTotal) : null,
+    currency: 'USD',
+    // awaiting_shipment lands in the outbound "needs a label" queue
+    // (unassigned); shipped is terminal.
+    status: mapStatus(order.orderStatus),
+  };
 }
 
 export async function shipstationSync(orgId: OrgId): Promise<SyncOutcome> {
@@ -105,11 +92,11 @@ export async function shipstationSync(orgId: OrgId): Promise<SyncOutcome> {
   }
 
   const cursorKey = `shipstation:orders:${orgId}`;
-  const since = (await getSyncCursor(cursorKey)) ?? new Date(Date.now() - FIRST_RUN_LOOKBACK_MS);
   let imported = 0;
   let updated = 0;
+  const since = (await getSyncCursor(cursorKey)) ?? new Date(Date.now() - FIRST_RUN_LOOKBACK_MS);
   let maxModified = since.getTime();
-  const errors: string[] = [];
+  const lines: CanonicalOrderLine[] = [];
 
   try {
     for (let page = 1; page <= MAX_PAGES; page++) {
@@ -122,12 +109,7 @@ export async function shipstationSync(orgId: OrgId): Promise<SyncOutcome> {
       for (const order of res.orders) {
         // Skip cancelled orders — they must never land in the labels queue.
         if ((order.orderStatus ?? '').toLowerCase() === 'cancelled') continue;
-        try {
-          if ((await upsertOrder(orgId, order)) === 'created') imported++;
-          else updated++;
-        } catch (e) {
-          errors.push(`${order.orderNumber}: ${e instanceof Error ? e.message : String(e)}`);
-        }
+        lines.push(toCanonicalLine(order));
         const ts = order.modifyDate ? Date.parse(order.modifyDate) : NaN;
         if (Number.isFinite(ts) && ts > maxModified) maxModified = ts;
       }
@@ -135,8 +117,14 @@ export async function shipstationSync(orgId: OrgId): Promise<SyncOutcome> {
       if (page >= res.pages) break;
     }
 
-    // Advance the watermark only on a clean run so a mid-page failure re-pulls.
-    if (errors.length === 0 && maxModified > since.getTime()) {
+    // One ingest for the whole run, so the cache bust + realtime publish fire
+    // once rather than per page.
+    const counts = await ingestConnectorOrders(orgId, ACCOUNT_SOURCE, lines);
+    imported = counts.imported;
+    updated = counts.updated;
+
+    // Advance the watermark only on a clean run so a failure re-pulls.
+    if (maxModified > since.getTime()) {
       await updateSyncCursor(cursorKey, new Date(maxModified));
     }
   } catch (e) {
@@ -144,10 +132,9 @@ export async function shipstationSync(orgId: OrgId): Promise<SyncOutcome> {
   }
 
   return {
-    ok: errors.length === 0,
+    ok: true,
     imported,
     updated,
-    error: errors.length ? errors.join('; ') : undefined,
     cursor: new Date(maxModified).toISOString(),
   };
 }

@@ -200,3 +200,147 @@ test.describe('Photo evidence policy — require_per_item blocks mark-received (
     }
   });
 });
+
+/**
+ * §4 soft block — the override half.
+ *
+ * The gate's verdict is unchanged; what changed is what the route does with a
+ * `!ok` verdict when the body carries `photo_policy_override`:
+ *   absent      → the same 409 as above (asserted in the sibling describe)
+ *   forged      → 400 INVALID_PHOTO_POLICY_OVERRIDE, before any mutation
+ *   PHOTO_WAIVED_* → 200, with `warnings[]` carrying the same code + blockers,
+ *                    plus a receiving_exceptions row and an audit row
+ *
+ * `receive_intent: 'local_receive'` on the waived call is deliberate: it still
+ * runs the gate (only `scan_only` skips it) but never issues a Zoho purchase
+ * receive, so a synthetic unmatched carton can be received for real without
+ * touching an external system. It is also exactly what the phone sends for an
+ * unmatched carton, so the path under test is a real one.
+ *
+ * NOT asserted here: the `receiving_exceptions` row and the audit row. Neither
+ * has a read endpoint, so they are covered by the unit suites instead
+ * (`src/lib/receiving/photo-policy-gate.test.ts` →
+ * `recordPhotoPolicyOverride` + the route-wiring guard).
+ *
+ * Same blast radius, same gate, same restore-in-finally discipline as above.
+ */
+test.describe('Photo evidence policy — a PHOTO_WAIVED_* override soft-blocks the gate', () => {
+  test.skip(!process.env.E2E_PHOTO_POLICY_GATE, 'Set E2E_PHOTO_POLICY_GATE=1 to run this org-setting-mutating test (see file docstring)');
+  test.skip(({ isMobile }) => isMobile, 'API test — desktop project only');
+
+  test('absent → 409; forged → 400; PHOTO_WAIVED_* → 200 with warnings[]', async ({ request }) => {
+    let receivingId: number | null = null;
+    let lineId: number | null = null;
+    let originalPolicy: string | null = null;
+
+    try {
+      originalPolicy = await getReceivingPhotoPolicy(request);
+      await setReceivingPhotoPolicy(request, 'require_per_item');
+
+      receivingId = await createUnmatchedCarton(request, 'override');
+      lineId = await addLine(request, receivingId, `E2E-OVERRIDE-${uniq()}`);
+      // Deliberately no item photo — the gate must block this line.
+
+      // (b) No override → the byte-identical 409. This is the control: without
+      // it, a green override assertion could just mean the gate never fired.
+      const blocked = await request.post('/api/receiving/mark-received-po', {
+        data: { receiving_id: receivingId, receive_intent: 'local_receive' },
+      });
+      expect(blocked.status(), await blocked.text()).toBe(409);
+      const blockedBody = await blocked.json();
+      expect(blockedBody.error).toBe('PHOTO_POLICY');
+      expect(Array.isArray(blockedBody.blockers)).toBeTruthy();
+      expect(blockedBody.blockers.length).toBeGreaterThan(0);
+
+      // (d) A forged code is rejected outright — never a silent waiver, and
+      // never a 409 that would tell the operator to go shoot more photos.
+      for (const forged of ['PHOTO_WAIVED_LOL', 'NO_PO', 'any']) {
+        const bad = await request.post('/api/receiving/mark-received-po', {
+          data: {
+            receiving_id: receivingId,
+            receive_intent: 'local_receive',
+            photo_policy_override: forged,
+          },
+        });
+        expect(bad.status(), `forged "${forged}": ${await bad.text()}`).toBe(400);
+        const badBody = await bad.json();
+        expect(badBody.error).toBe('INVALID_PHOTO_POLICY_OVERRIDE');
+        expect(Array.isArray(badBody.allowed)).toBeTruthy();
+        expect(badBody.allowed).toContain('PHOTO_WAIVED_NO_DEVICE');
+      }
+
+      // Still blocked after the rejected attempts — a forged override must not
+      // have mutated anything on its way out.
+      const stillBlocked = await request.post('/api/receiving/mark-received-po', {
+        data: { receiving_id: receivingId, receive_intent: 'local_receive' },
+      });
+      expect(stillBlocked.status(), await stillBlocked.text()).toBe(409);
+
+      // (a) A real override receives, and says what it waived.
+      const waived = await request.post('/api/receiving/mark-received-po', {
+        data: {
+          receiving_id: receivingId,
+          receive_intent: 'local_receive',
+          photo_policy_override: 'PHOTO_WAIVED_NO_DEVICE',
+        },
+      });
+      expect(waived.status(), await waived.text()).toBe(200);
+      const waivedBody = await waived.json();
+      expect(waivedBody.success).toBe(true);
+      expect(Array.isArray(waivedBody.warnings), JSON.stringify(waivedBody)).toBeTruthy();
+      const warning = waivedBody.warnings[0];
+      // Mirrors the 409 payload: same wire code, same blockers, plus the code
+      // the operator chose.
+      expect(warning.code).toBe('PHOTO_POLICY');
+      expect(warning.reason_code).toBe('PHOTO_WAIVED_NO_DEVICE');
+      expect(warning.blockers).toEqual(blockedBody.blockers);
+    } finally {
+      // Restore FIRST — shared org setting.
+      if (originalPolicy) {
+        await setReceivingPhotoPolicy(
+          request,
+          originalPolicy as 'optional' | 'require_one' | 'require_per_item',
+        ).catch(() => {});
+      }
+      await cleanupLine(request, lineId);
+      await cleanupCarton(request, receivingId);
+    }
+  });
+
+  test('a receive that PASSES the gate carries no warnings, override or not', async ({ request }) => {
+    // Guard against the inverse bug: a waiver announced on a receive that was
+    // never blocked would teach operators to ignore the warning.
+    let receivingId: number | null = null;
+    let lineId: number | null = null;
+    let originalPolicy: string | null = null;
+
+    try {
+      originalPolicy = await getReceivingPhotoPolicy(request);
+      await setReceivingPhotoPolicy(request, 'optional');
+
+      receivingId = await createUnmatchedCarton(request, 'nowarn');
+      lineId = await addLine(request, receivingId, `E2E-NOWARN-${uniq()}`);
+
+      const res = await request.post('/api/receiving/mark-received-po', {
+        data: {
+          receiving_id: receivingId,
+          receive_intent: 'local_receive',
+          photo_policy_override: 'PHOTO_WAIVED_NO_DEVICE',
+        },
+      });
+      expect(res.status(), await res.text()).toBe(200);
+      const body = await res.json();
+      expect(body.success).toBe(true);
+      expect(body.warnings, JSON.stringify(body)).toBeUndefined();
+    } finally {
+      if (originalPolicy) {
+        await setReceivingPhotoPolicy(
+          request,
+          originalPolicy as 'optional' | 'require_one' | 'require_per_item',
+        ).catch(() => {});
+      }
+      await cleanupLine(request, lineId);
+      await cleanupCarton(request, receivingId);
+    }
+  });
+});

@@ -8,6 +8,11 @@
  */
 
 import { shouldUseLocalReceiveOnly } from '@/lib/receiving/intake-items-routing';
+import {
+  readPhotoPolicyBlock,
+  readPhotoPolicyWaiver,
+  type PhotoPolicyWaiver,
+} from '@/lib/receiving/photo-policy-override-wire';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 
 export type CompleteCartonPhase = 'idle' | 'working' | 'blocked' | 'done' | 'error';
@@ -33,6 +38,13 @@ export interface CompleteCartonOutcome {
    * replay publishes nothing, so neither may leave the UI waiting forever.
    */
   awaitsSync: boolean;
+  /**
+   * Set when this receive went through on a photo-policy WAIVER (the operator
+   * picked a `PHOTO_WAIVED_*` reason). A waived receive must never render as a
+   * clean success — the carton is received carrying an open exception, and the
+   * bench is the last place that can still say so.
+   */
+  waiver: PhotoPolicyWaiver | null;
 }
 
 export const COMPLETE_CARTON_IDLE: CompleteCartonOutcome = {
@@ -42,6 +54,7 @@ export const COMPLETE_CARTON_IDLE: CompleteCartonOutcome = {
   updatedCount: 0,
   lineIds: [],
   awaitsSync: false,
+  waiver: null,
 };
 
 /** Shown when the gate blocks but sends no readable reason (shouldn't happen). */
@@ -106,11 +119,6 @@ export function completeCartonRequestBody(
   };
 }
 
-function readBlockers(value: unknown): string[] {
-  if (!Array.isArray(value)) return [];
-  return value.map((b) => String(b ?? '').trim()).filter(Boolean);
-}
-
 /** `receiving_lines[].id` → the ids the sync will publish verdicts for. */
 function readLineIds(value: unknown): number[] {
   if (!Array.isArray(value)) return [];
@@ -130,6 +138,11 @@ function readLineIds(value: unknown): number[] {
  * the operator shoots the missing photos and retries the same request. Folding
  * it into the generic error branch is what the old per-line QA loop did, which
  * is why the phone never surfaced the policy at all.
+ *
+ * Since the gate became a soft block, the same request can also come back 200
+ * carrying a `warnings[]` waiver — the receive happened, but on an override the
+ * operator consciously took. That is a THIRD outcome, not a success: it is
+ * reported as `done` with `waiver` set so the surface can say so out loud.
  */
 export function mapCompleteCartonResponse(
   status: number,
@@ -138,18 +151,17 @@ export function mapCompleteCartonResponse(
   const payload = (body ?? {}) as {
     success?: boolean;
     error?: string;
-    blockers?: unknown;
     updated_count?: unknown;
     receive_intent?: unknown;
     receiving_lines?: unknown;
   };
 
-  if (status === 409 && payload.error === 'PHOTO_POLICY') {
-    const blockers = readBlockers(payload.blockers);
+  const block = readPhotoPolicyBlock(status, body);
+  if (block) {
     return {
       ...COMPLETE_CARTON_IDLE,
       phase: 'blocked',
-      blockers: blockers.length > 0 ? blockers : [COMPLETE_CARTON_GENERIC_BLOCKER],
+      blockers: block.blockers.length > 0 ? block.blockers : [COMPLETE_CARTON_GENERIC_BLOCKER],
     };
   }
 
@@ -173,5 +185,6 @@ export function mapCompleteCartonResponse(
     // Only a real external receive publishes a verdict, and only for lines it
     // actually touched.
     awaitsSync: payload.receive_intent === 'zoho_receive' && lineIds.length > 0,
+    waiver: readPhotoPolicyWaiver(body),
   };
 }

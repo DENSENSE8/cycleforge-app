@@ -93,11 +93,10 @@ export function RepairGridView({
   );
 
   const renderLeaf = useCallback(
-    (repair: RSRecord, stripeIndex: number) => (
+    (repair: RSRecord) => (
       <RepairGridRow
         key={repair.id}
         repair={repair}
-        index={stripeIndex}
         isSelected={selectedId === repair.id}
         isChecked={selectedIds.has(repair.id)}
         onOpen={onOpen}
@@ -132,8 +131,8 @@ export function RepairGridView({
           onSortColumn={toggleColumnSort}
         />
       )}
-      renderGroup={(group, baseStripeIndex) => renderLeaf(group.rows[0], baseStripeIndex)}
-      renderRow={(row, stripeIndex) => renderLeaf(row, stripeIndex)}
+      renderGroup={(group) => renderLeaf(group.rows[0])}
+      renderRow={(row) => renderLeaf(row)}
     />
   );
 }

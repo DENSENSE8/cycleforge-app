@@ -106,6 +106,13 @@ export interface UploadPhotoInput {
   useStorageAdapter?: boolean;
   /** Legacy NAS/Blob URL when not uploading bytes server-side. */
   legacyUrl?: string | null;
+  /**
+   * Device-reported capture instant → `photos.client_captured_at`. NOT
+   * server-attested; `created_at` remains the attested insert time. Omit (or
+   * pass null) when the capture surface has no usable device timestamp —
+   * see `./capture-provenance.ts`.
+   */
+  clientCapturedAt?: Date | null;
 }
 
 export interface UploadPhotoResult {

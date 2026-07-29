@@ -38,14 +38,12 @@ export const STATION_FAMILY_ROOTS = [
 /** Same-line (or line-above) marker for a genuine non-column `max-w-3xl` use. */
 export const MAX_W_3XL_ESCAPE = 'ds-station-max-w-exempt';
 /**
- * Current `max-w-3xl` offenders in station-family dirs, all documented Shipping
- * port follow-ups (`docs/todo/station-workbench-port-FOLLOWUPS.md`):
- *   - components/tech/ActiveOrderWorkspace.tsx      (Shipping host body)
- *   - components/tech/shipping/terminal/shipping-terminal.tsx (dock maxWidth)
- * Shrink-only. Never raise. Migrate onto `STATION_WORKBENCH_*` from
- * `workbench-layout.ts`.
+ * Zero since the Shipping host fold (2026-07-28): `ActiveOrderWorkspace` now
+ * composes `StationPanelRoot` + `StationContextBar` + `StationWorkbench`, and
+ * the shipping dock track matches the 720 column. Shrink-only. Never raise —
+ * migrate onto `STATION_WORKBENCH_*` from `workbench-layout.ts`.
  */
-export const MAX_W_3XL_BASELINE = 2;
+export const MAX_W_3XL_BASELINE = 0;
 
 // ── Guard B — ambient wash single home ────────────────────────────────────────
 /** 3-blob wash fingerprint. After extraction it lives only in StationAmbientWash. */
@@ -71,6 +69,7 @@ export const STATION_WORKBENCH_REQUIRED = [
   'components/receiving/workspace/LineEditPanel.tsx',
   'components/receiving/triage/TriagePanel.tsx',
   'components/tech/TestingPanel.tsx',
+  'components/tech/ActiveOrderWorkspace.tsx',
   'components/outbound/labels/LabelsOrderWorkspace.tsx',
   'features/review/packer/PackerReviewMode.tsx',
   'components/packer/PackOrderPanel.tsx',
@@ -79,13 +78,12 @@ export const STATION_WORKBENCH_REQUIRED = [
 /**
  * Documented adoption gaps (port follow-ups) — station chrome but not yet on
  * `StationWorkbench`. Not asserted; listed so the exemption is explicit.
- *   - components/tech/shipping/ShippingScanWorkspace.tsx (until host fold)
- *   - components/tech/ActiveOrderWorkspace.tsx           (Shipping host)
  *   - components/repair/RepairIntakeForm.tsx             (until remount)
+ *
+ * `ShippingScanWorkspace` left this list in the 2026-07-28 host fold: it is no
+ * longer a panel root at all, just the `tabs` slot composer its host mounts.
  */
 export const STATION_WORKBENCH_ADOPTION_EXEMPT = [
-  'components/tech/shipping/ShippingScanWorkspace.tsx',
-  'components/tech/ActiveOrderWorkspace.tsx',
   'components/repair/RepairIntakeForm.tsx',
 ] as const;
 

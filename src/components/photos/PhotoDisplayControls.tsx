@@ -38,7 +38,6 @@ export function PhotoDisplayControls({
   density,
   onDensityChange,
   showDensity,
-  showSelect,
   selectionActive,
   onStartSelect,
   onRefresh,
@@ -49,7 +48,6 @@ export function PhotoDisplayControls({
   density: PhotoGridDensity;
   onDensityChange: (density: PhotoGridDensity) => void;
   showDensity: boolean;
-  showSelect: boolean;
   selectionActive: boolean;
   onStartSelect: () => void;
   onRefresh: () => void;
@@ -83,22 +81,21 @@ export function PhotoDisplayControls({
         </button>
       </HoverTooltip>
 
-      {/* Select (edit) — highlighted when active. */}
-      {showSelect ? (
-        <HoverTooltip label={selectionActive ? 'Done selecting' : 'Select'} placement="above" asChild>
-          <div className={cn(photoLibraryControlGroupClass, 'shrink-0')}>
-            <button
-              type="button"
-              aria-label={selectionActive ? 'Done selecting' : 'Select'}
-              aria-pressed={selectionActive}
-              onClick={onStartSelect}
-              className={cn('ds-raw-button', photoLibraryControlButtonClass(selectionActive, 'w-7'))}
-            >
-              <Pencil className="h-3.5 w-3.5" />
-            </button>
-          </div>
-        </HoverTooltip>
-      ) : null}
+      {/* Select (edit) — highlighted when active. Always rendered: every view
+          now paints photo tiles, so there is no level with nothing to select. */}
+      <HoverTooltip label={selectionActive ? 'Done selecting' : 'Select'} placement="above" asChild>
+        <div className={cn(photoLibraryControlGroupClass, 'shrink-0')}>
+          <button
+            type="button"
+            aria-label={selectionActive ? 'Done selecting' : 'Select'}
+            aria-pressed={selectionActive}
+            onClick={onStartSelect}
+            className={cn('ds-raw-button', photoLibraryControlButtonClass(selectionActive, 'w-7'))}
+          >
+            <Pencil className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      </HoverTooltip>
 
       {/*
         Display toggle — Icons (the flat photo stream) vs List. ALWAYS rendered,

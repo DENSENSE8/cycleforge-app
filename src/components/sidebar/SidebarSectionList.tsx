@@ -1,6 +1,8 @@
 'use client';
 
 import { SIDEBAR_GUTTER } from '@/components/layout/header-shell';
+import { QUEUE_ROW } from '@/components/ui/queue-row-chrome';
+import { cn } from '@/utils/_cn';
 import type { ReactNode } from 'react';
 
 export interface SidebarSection<TId extends string = string> {
@@ -26,6 +28,21 @@ interface SidebarSectionListProps<TId extends string = string> {
    * MasterNavHeader above the panel.
    */
   gutterClassName?: string;
+  /**
+   * Row register. `comfortable` (default) is the SETTINGS navigator shape —
+   * `py-3`, `text-sm`, a hairline under every row; right for Settings / Admin,
+   * where the list is the page's whole job and is read once.
+   *
+   * `ops` is the floor-rail shape: house one-row anatomy (`text-role-caption`,
+   * constant `py-1.5`), `divide-y` on the container rather than a border per
+   * row, and the canonical `QUEUE_ROW.selectedClass` ring. Use it when the list
+   * is a NAVIGATOR beside a working surface (the Media library's facet rail),
+   * where vertical budget and scan speed decide, not reading comfort.
+   *
+   * This exists because the two registers were one, and the ops consumer was
+   * paying settings-panel density for a rail it hits dozens of times a shift.
+   */
+  density?: 'comfortable' | 'ops';
 }
 
 interface RenderItem<TId extends string> {
@@ -56,17 +73,28 @@ export function SidebarSectionList<TId extends string = string>({
   onSelect,
   ariaLabel,
   gutterClassName = SIDEBAR_GUTTER,
+  density = 'comfortable',
 }: SidebarSectionListProps<TId>) {
   const items = buildRenderList(sections);
+  const ops = density === 'ops';
 
   return (
-    <nav className="h-full overflow-y-auto" aria-label={ariaLabel}>
+    <nav
+      className={cn('h-full overflow-y-auto', ops && 'divide-y divide-border-hairline')}
+      aria-label={ariaLabel}
+    >
       {items.map((item, idx) => {
         if (item.type === 'group') {
           return (
             <div
               key={`group:${item.group}:${idx}`}
-              className={`border-b border-border-hairline bg-surface-canvas ${gutterClassName} py-1.5 text-role-micro font-semibold uppercase tracking-wide text-text-soft`}
+              className={cn(
+                'bg-surface-canvas text-role-micro font-semibold uppercase tracking-wide text-text-soft',
+                gutterClassName,
+                'py-1.5',
+                // In `ops` the container owns the rules (`divide-y`).
+                !ops && 'border-b border-border-hairline',
+              )}
             >
               {item.group}
             </div>
@@ -80,20 +108,49 @@ export function SidebarSectionList<TId extends string = string>({
             type="button"
             onClick={() => onSelect(s.id)}
             aria-current={isActive ? 'page' : undefined}
-            className={`ds-raw-button group flex w-full items-start gap-3 border-b border-border-hairline ${gutterClassName} py-3 text-left transition ${
-              isActive ? 'bg-blue-50 text-blue-700' : 'text-text-default hover:bg-surface-hover'
-            }`}
+            className={cn(
+              'ds-raw-button group flex w-full text-left transition',
+              gutterClassName,
+              ops
+                ? // House one-row anatomy: constant height, ring selection — never
+                  // a size shift between states (ui-design-system.md → One row).
+                  'items-center gap-2 py-1.5'
+                : 'items-start gap-3 border-b border-border-hairline py-3',
+              isActive
+                ? ops
+                  ? QUEUE_ROW.selectedClass
+                  : 'bg-blue-50 text-blue-700'
+                : 'text-text-default hover:bg-surface-hover',
+            )}
           >
             {s.icon && (
               // Optional leading glyph (e.g. admin L2 sections — modes own icons).
-              <span className={`mt-0.5 flex w-5 shrink-0 justify-center ${isActive ? 'text-blue-600' : 'text-text-faint'}`}>
+              <span
+                className={cn(
+                  'flex w-5 shrink-0 justify-center',
+                  !ops && 'mt-0.5',
+                  isActive ? 'text-blue-600' : 'text-text-faint',
+                )}
+              >
                 {s.icon}
               </span>
             )}
             <span className="min-w-0 flex-1">
-              <span className="block text-sm font-semibold">{s.label}</span>
+              <span
+                className={cn(
+                  'block truncate',
+                  ops ? 'text-role-caption font-semibold' : 'text-sm font-semibold',
+                )}
+              >
+                {s.label}
+              </span>
               {s.description && (
-                <span className="block truncate text-role-caption font-medium text-text-soft">
+                <span
+                  className={cn(
+                    'block truncate font-medium text-text-soft',
+                    ops ? 'text-role-eyebrow uppercase tracking-widest' : 'text-role-caption',
+                  )}
+                >
                   {s.description}
                 </span>
               )}

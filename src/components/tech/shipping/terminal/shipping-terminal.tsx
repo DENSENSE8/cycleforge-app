@@ -12,6 +12,9 @@ import type { TerminalActionVm } from '@/lib/station-terminal';
 
 export type ShippingView = 'ship' | 'units' | 'timeline';
 
+/** Dock track width — matches STATION_WORKBENCH_COLUMN (720), like unbox-terminal. */
+const SHIPPING_DOCK_MAX = 'max-w-[720px]';
+
 export interface ShippingTerminalContext {
   /** Preview Start handler. */
   onStart: () => void;
@@ -31,7 +34,7 @@ export function resolveShippingTerminal(
     onClick: ctx.onStart,
     icon: <Play className="h-4 w-4 shrink-0" />,
     tone: 'accent',
-    maxWidth: 'max-w-3xl',
+    maxWidth: SHIPPING_DOCK_MAX,
     fullWidth: true,
     menuLabel: 'Order actions',
     menuTitle: 'More order actions',

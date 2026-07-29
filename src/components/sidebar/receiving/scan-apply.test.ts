@@ -110,3 +110,55 @@ describe('applyUnboxCartonOpened (the unbox-open chokepoint)', () => {
     assert.deepEqual(qc.getQueryData(railKey('triage-combined')), []);
   });
 });
+
+describe('applyUnboxCartonOpened — a LOOKUP is read-only against the rail', () => {
+  const TRACKING = '1Z999LOOKUP001';
+
+  it('does not upsert the carton or purge triage when the work is already done', () => {
+    const calls = stubFetch();
+    const qc = new QueryClient();
+    qc.setQueryData(railKey(UNBOX_RAIL_SEGMENT), [buildPendingScanStubRow(TRACKING)]);
+    for (const segment of TRIAGE_RAIL_SEGMENTS) {
+      qc.setQueryData(railKey(segment), [
+        { id: -42, receiving_id: 42, client_event_id: 'carton:42' },
+      ] satisfies ReceivingRailRow[]);
+    }
+
+    applyUnboxCartonOpened(qc, {
+      receivingId: 42,
+      trackingNumber: TRACKING,
+      railRow: { id: 7, receiving_id: 42, item_name: 'Widget', quantity_received: 1 } as ReceivingRailRow,
+      touchScan: { tracking: 'CARTON-OWN-TRACKING' },
+      // The carton was unboxed weeks ago — this scan is an inspection.
+      unboxedAt: '2026-07-10T18:03:00.000Z',
+    });
+
+    // The carton must NOT appear on the Unboxed rail: upserting it bumps a
+    // weeks-old box to the top as if it had just been opened.
+    const unboxed = qc.getQueryData<ReceivingRailRow[]>(railKey(UNBOX_RAIL_SEGMENT)) ?? [];
+    assert.equal(
+      unboxed.some((r) => r.client_event_id === receivingRailCartonKey(42)),
+      false,
+      'a lookup upserted the carton onto the Unboxed rail',
+    );
+
+    // Triage rails keep the carton — evicting it from Arrival because someone
+    // *looked* at the box is a real data loss for the next operator.
+    for (const segment of TRIAGE_RAIL_SEGMENTS) {
+      const rows = qc.getQueryData<ReceivingRailRow[]>(railKey(segment)) ?? [];
+      assert.equal(rows.length, 1, `a lookup purged the ${segment} rail`);
+    }
+
+    // Our own optimistic stub is still cleaned up — it is our artifact.
+    assert.equal(
+      unboxed.some((r) => r.client_event_id === pendingScanReconcileKey(TRACKING)),
+      false,
+      'the pending scan stub survived a lookup',
+    );
+
+    // touch-scan STILL fires: it is what records RECEIVING_LOOKUP_SCAN for the
+    // client short-circuit rungs. Skipping it leaves the inspection unlogged.
+    assert.equal(calls.length, 1);
+    assert.match(calls[0].url, /\/api\/receiving\/touch-scan/);
+  });
+});

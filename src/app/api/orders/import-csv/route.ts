@@ -6,6 +6,7 @@ import { orders as ordersTable } from '@/lib/drizzle/schema';
 import { withAuth } from '@/lib/auth/withAuth';
 import pool from '@/lib/db';
 import { recordAudit, AUDIT_ENTITY } from '@/lib/audit-logs';
+import { ingestCanonicalOrders } from '@/lib/orders/ingest-canonical-orders';
 
 /**
  * POST /api/orders/import-csv
@@ -19,10 +20,10 @@ import { recordAudit, AUDIT_ENTITY } from '@/lib/audit-logs';
  * Canonical fields: order_number (required), sku, quantity, customer_name,
  *                   tracking_number?, platform?
  *
- * Org scope is taken STRICTLY from ctx.organizationId — never the body. The
- * insert shape mirrors /api/import-orders (drizzle ignores keys that aren't real
- * `orders` columns); `quantity` and `account_source` are added because they are
- * real columns that hold two of the canonical fields.
+ * Org scope is taken STRICTLY from ctx.organizationId — never the body. Rows are
+ * normalized to `CanonicalOrderLine` and written by the shared order-ingest
+ * writer, so this lane gets tracking resolution, catalog linking, cache
+ * invalidation and the realtime publish for free.
  *
  * Idempotency: `orders` has no UNIQUE(organization_id, order_id) constraint, so
  * we dedupe within the batch and skip rows whose order_number already exists for
@@ -134,33 +135,43 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
     return true;
   });
 
-  // 4. Insert org-scoped (organizationId from ctx, NEVER the body). Insert shape
-  //    mirrors /api/import-orders; quantity + accountSource carry canonical data.
+  // 4. Hand the NEW rows to the shared order-ingest writer.
+  //
+  //    Only genuinely-new order numbers reach it (step 3 already skipped the
+  //    ones this org has). That is deliberate: the writer's default `orderId`
+  //    match also COLLAPSES DUPLICATES by deleting the losing rows, and a user
+  //    uploading a spreadsheet must never be able to delete existing orders.
+  //    Pre-filtering keeps this lane insert-only, exactly as before.
+  //
+  //    Going through the writer fixes a silent data-loss bug: this route used
+  //    to insert `shippingTrackingNumber` and `isShipped`, neither of which is
+  //    a real `orders` column any more (tracking lives in
+  //    shipping_tracking_numbers + shipment_links). Drizzle dropped both keys
+  //    without error, so every tracking number in an imported CSV was thrown
+  //    away. The writer resolves it to a shipment and links it properly.
   let inserted = 0;
   if (toInsert.length > 0) {
     try {
-      const result = await db
-        .insert(ordersTable)
-        .values(
-          toInsert.map(({ canonical }) => ({
-            organizationId: ctx.organizationId,
-            orderId: canonical.order_number,
-            productTitle: '',
-            sku: canonical.sku || '',
-            condition: '',
-            shippingTrackingNumber: canonical.tracking_number || '',
-            notes: canonical.customer_name ? `Customer: ${canonical.customer_name}` : '',
-            quantity: canonical.quantity || '1',
-            accountSource: canonical.platform || '',
-            status: 'unassigned',
-            statusHistory: [],
-            isShipped: false,
-            saleAmount: null,
-            currency: 'USD',
-          })),
-        )
-        .returning({ id: ordersTable.id });
-      inserted = result.length;
+      const result = await ingestCanonicalOrders(
+        toInsert.map(({ canonical }) => ({
+          externalOrderId: canonical.order_number,
+          itemNumber: '',
+          sku: canonical.sku || '',
+          productTitle: '',
+          condition: '',
+          quantity: canonical.quantity || '1',
+          notes: canonical.customer_name ? `Customer: ${canonical.customer_name}` : '',
+          accountSource: canonical.platform || '',
+          trackings: canonical.tracking_number ? [canonical.tracking_number] : [],
+          shipByDate: null,
+          orderDate: null,
+          saleAmount: null,
+          currency: null,
+          status: null,
+        })),
+        { orgId: ctx.organizationId, source: 'orders-import-csv' },
+      );
+      inserted = result.insertedOrders;
     } catch (error: any) {
       console.error('CSV order import insert error:', error);
       return NextResponse.json(

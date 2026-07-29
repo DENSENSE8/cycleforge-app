@@ -39,7 +39,6 @@ export function PhotoCard({
   selected,
   onSelect,
   onOpen,
-  onInspect,
   onContextMenu,
 }: {
   photo: LibraryPhoto;
@@ -51,14 +50,17 @@ export function PhotoCard({
   selectionActive: boolean;
   selected: boolean;
   onSelect: (mods: TileSelectMods) => void;
-  /** Open the shared fullscreen viewer at this photo (flat views only). */
-  onOpen?: () => void;
   /**
-   * Open the non-modal inspector for this photo. When supplied it takes over
-   * single-click and `onOpen` moves to double-click; when omitted (pickers,
-   * embedded grids with no rail) single-click still opens the viewer.
+   * Open the shared fullscreen viewer at this photo — the tile's PRIMARY click
+   * action on every surface that mounts one.
+   *
+   * There is deliberately no second, quieter "inspect" path competing for the
+   * same click. The viewer already carries the photo's full identity behind its
+   * details toggle ({@link PhotoContextPanel}) *and* left/right paging through
+   * the photo's group, so a side panel showing the same facts one photo at a
+   * time was strictly the weaker half of one surface.
    */
-  onInspect?: () => void;
+  onOpen?: () => void;
   /** Right-click handler — surfaces the per-photo action menu. */
   onContextMenu?: (photo: LibraryPhoto, e: ReactMouseEvent) => void;
 }) {
@@ -99,24 +101,11 @@ export function PhotoCard({
             onSelect({ shift: e.shiftKey });
           } else if (isDocument) {
             window.open(imageUrl, '_blank', 'noopener,noreferrer');
-          } else if (onInspect) {
-            // Single click = inspect (the common act: read this photo's evidence
-            // identity while its neighbours stay visible). Immersion is the
-            // double-click below, so this path must NOT be debounced — adding a
-            // dblclick-detection delay would put latency on the primary action.
-            onInspect();
           } else {
+            // Single click = the fullscreen viewer. One click, no debounce, no
+            // dblclick-detection delay in front of the tile's primary action.
             onOpen?.();
           }
-        }}
-        onDoubleClick={(e) => {
-          // Double click = full-screen lightbox. `onClick` has already fired and
-          // opened the inspector; that is intended — the inspector is non-modal
-          // and stays behind the viewer, so closing the viewer returns the
-          // operator to the record they were reading rather than to nothing.
-          if (isDocument || clickSelectsInstead(e, selectionActive)) return;
-          e.preventDefault();
-          onOpen?.();
         }}
       >
         {isDocument ? (

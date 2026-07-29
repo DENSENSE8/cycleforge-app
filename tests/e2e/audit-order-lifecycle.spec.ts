@@ -245,9 +245,22 @@ test.describe('AUDIT · outbound order lifecycle', () => {
     await page.waitForTimeout(3000);
     await page.screenshot({ path: 'test-results/audit-06-pack-queue.png', fullPage: true });
 
-    // Is our tested order in the ready-to-pack queue?
-    const inQueue = await page.getByText(ORDER_ID, { exact: false }).count();
-    console.log(`\n===== ${ORDER_ID} occurrences in pack queue: ${inQueue} =====`);
+    // Judge queue membership on the payload the queue renders FROM, fetched
+    // directly. Two reasons not to read the DOM or sniff responses: the grid is
+    // virtualized (~30 of 150 rows mounted), and a response listener races the
+    // async body read. This asserts the actual contract.
+    const queueRes = await request.get(
+      '/api/orders?fulfillmentScope=true&listShape=queue&limit=200',
+    );
+    const queueJson = await queueRes.json();
+    const queueRows: any[] = queueJson.orders ?? queueJson.data ?? queueJson.rows ?? [];
+    const row = queueRows.find((o) => o?.order_id === ORDER_ID);
+    const inQueue = row ? 1 : 0;
+
+    console.log(
+      `\n===== ready-to-pack queue: ${queueRows.length} rows · ${ORDER_ID} present: ${Boolean(row)}` +
+        `${row ? ` (has_tech_scan=${row.has_tech_scan})` : ''} =====`,
+    );
 
     const { body } = await lookupOrder(request, ORDER_ID);
     console.log('\n===== ORDER BEFORE PACK =====');

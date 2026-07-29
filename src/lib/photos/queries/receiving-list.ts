@@ -19,6 +19,13 @@ export interface ReceivingPhotoListRow {
   caption: string | null;
   uploadedBy: number | null;
   createdAt: string;
+  /**
+   * Device-reported shutter instant (`photos.client_captured_at`), BESIDE the
+   * server-INSERT `createdAt` — a queued mobile upload drains hours after the
+   * box was actually opened, and a concealed-damage dispute turns on which of
+   * the two you are looking at. Null for desktop/legacy rows.
+   */
+  clientCapturedAt: string | null;
 }
 
 interface DbRow {
@@ -29,6 +36,7 @@ interface DbRow {
   caption: string | null;
   uploaded_by: number | null;
   created_at: string;
+  client_captured_at: string | null;
 }
 
 const SELECT = `
@@ -43,7 +51,8 @@ const SELECT = `
   END AS receiving_id_resolved,
   p.photo_type AS caption,
   p.taken_by_staff_id AS uploaded_by,
-  p.created_at
+  p.created_at,
+  p.client_captured_at
 `;
 
 function mapRow(row: DbRow, contentUrl: (id: number) => string): ReceivingPhotoListRow {
@@ -57,6 +66,7 @@ function mapRow(row: DbRow, contentUrl: (id: number) => string): ReceivingPhotoL
     caption: row.caption,
     uploadedBy: row.uploaded_by != null ? Number(row.uploaded_by) : null,
     createdAt: row.created_at,
+    clientCapturedAt: row.client_captured_at ?? null,
   };
 }
 

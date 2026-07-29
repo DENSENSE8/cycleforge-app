@@ -20,6 +20,7 @@ const SEGMENT_SCOPE: Record<string, SearchEntityType[]> = {
   shipped: ['ORDER'],
   receiving: ['RECEIVING'], // also covers the nested `/receiving/history` surface
   unbox: ['RECEIVING'],
+  carton: ['RECEIVING'], // `/carton/[id]` — the read-only carton record (D4)
   triage: ['RECEIVING'],
   incoming: ['RECEIVING'],
   pickup: ['RECEIVING'], // Walk-In front-desk station (operator-surfaces Phase 9)

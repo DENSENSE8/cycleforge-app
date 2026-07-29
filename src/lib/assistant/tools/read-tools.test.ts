@@ -207,7 +207,7 @@ test('resolve_support_ticket: found path returns receiving href', async () => {
   assert.equal(data.found, true);
   assert.equal(data.receivingId, 99);
   assert.equal(data.label, '#4821');
-  assert.equal(data.href, '/unbox?openReceivingId=99');
+  assert.equal(data.href, '/carton/99');
 });
 
 test('permission gating: studio tools refused without studio.view; search needs assistant.chat', async () => {

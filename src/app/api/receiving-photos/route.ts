@@ -56,6 +56,8 @@ interface PhotoRow {
   caption: string | null;
   uploadedBy: number | null;
   createdAt: string;
+  /** Shutter clock (`photos.client_captured_at`), beside the server-INSERT time. */
+  clientCapturedAt: string | null;
 }
 
 function mapRow(row: {
@@ -67,6 +69,7 @@ function mapRow(row: {
   caption: string | null;
   uploadedBy: number | null;
   createdAt: string;
+  clientCapturedAt: string | null;
 }): PhotoRow {
   const isLine = row.entityType === 'RECEIVING_LINE';
   return {
@@ -77,6 +80,7 @@ function mapRow(row: {
     caption: row.caption || null,
     uploadedBy: row.uploadedBy,
     createdAt: row.createdAt,
+    clientCapturedAt: row.clientCapturedAt ?? null,
   };
 }
 
@@ -280,6 +284,9 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       caption,
       uploadedBy,
       createdAt: new Date().toISOString(),
+      // Upload response has no client shutter clock until the client posts one —
+      // null here matches the GET mapper's "unknown" sentinel.
+      clientCapturedAt: null,
     };
     await publishReceivingPhotoChanged({
       organizationId: ctx.organizationId as OrgId,
