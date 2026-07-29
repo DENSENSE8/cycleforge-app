@@ -111,7 +111,12 @@ export function PhotoLibrarySidebarPanel() {
         // and must NOT read the same. Before this split the rail printed "No
         // photos in view" while the first page was still in flight, and again
         // when the library endpoint was 500ing: both said the archive was empty.
-        query.isError ? (
+        // `failureCount` too, not just `isError`: with `refetchOnWindowFocus:
+        // 'always'` (Providers.tsx) a query with no data flips back to `pending`
+        // on every focus, so during a real outage `isError` is false at most
+        // sampled moments and the rail would spin forever. A fetch that has
+        // failed at least once is an error to the operator either way.
+        query.isError || query.failureCount > 0 ? (
           <p className="text-role-caption text-text-danger">
             Could not load capture days.
           </p>
