@@ -23,14 +23,14 @@ design guidance — it routes to the right ones and enforces the approval gate.
 
 1. **Never edit source files before the user approves scope** (Phase 2 → gate).
 2. **Never run `bolder`, `delight`, or `overdrive`** unless the user explicitly asks —
-   Cycle Forge UI is **Kinetic Ledger** utilitarian ops (see `.impeccable.md` + `AGENTS.md`).
+   Cycle Forge UI is **Kinetic Ledger** utilitarian ops (see `.impeccable.md` + `.claude/rules/kinetic-ledger.md`).
 3. **Compose rails when the job is sidebar pick+edit;** never fork `SidebarRailShell` /
    `RecentActivityRailBase`. Do not force dual-pane when data shape wants table/board/station/rollup.
 4. **Colors only from** `src/design-system/tokens/colors/semantic.ts` — no hardcoded hex.
 5. **One region contract per region** — never blend station / workbench / monitor / canvas.
 6. **Data shape → primary surface** — detail pane is optional context, not identity.
 7. **Presentation SoTs** — condition, chips, dates, capabilities, `SearchHit`; views stay dumb.
-8. **Pattern evolution + compound DS** (`AGENTS.md`): user prompt is a floor. Scan for
+8. **Pattern evolution + compound DS** (`.claude/rules/pattern-evolution.md`): user prompt is a floor. Scan for
    stronger *house* patterns, recommend promotions, grow single-consumer SoTs — do not
    invent foreign aesthetics or page-local shells. Prefer changes that increase reuse.
 
@@ -52,7 +52,7 @@ Do this once per session for the target. Do not skip.
    `context.mjs` may print `NO_PRODUCT_MD` when `PRODUCT.md` is absent; that is **not**
    a blocker when `.impeccable.md` exists. Continue with `.impeccable.md` + house rules.
 3. **Read house rules:**
-   - `AGENTS.md` → **Kinetic Ledger** + Pattern evolution + Compound design system
+   - `.claude/rules/kinetic-ledger.md` + `.claude/rules/pattern-evolution.md`
    - `.claude/rules/ui-design-system.md`
    - `.claude/rules/contextual-display.md` (contract → data shape → density)
    - `src/design-system/DESIGN_SYSTEM.md` (north star)
@@ -91,7 +91,7 @@ singleton transient → station card · singleton durable → fact stack · many
 
 ### 3) Density
 
-`floor` | `ops` | `rollup` | `studio` (see `AGENTS.md` / `ui-design-system.md`).
+`floor` | `ops` | `rollup` | `studio` (see `.claude/rules/kinetic-ledger.md` / `ui-design-system.md`).
 
 ### Conditional skills (read when signals match)
 

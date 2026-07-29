@@ -41,6 +41,8 @@ whale (bwip-js ~250 KB gz, the Neon driver) in every consumer's client bundle:
 - `src/lib/db.ts` carries `import 'server-only'` — a client-side path to it is a
   **build error** that prints the exact import chain. Fix the chain's altitude
   (split a light module); never remove the guard to make the build pass.
+- Perf tooling for this axis: `pnpm lighthouse:audit`
+  ([`docs/performance/LIGHTHOUSE.md`](../../docs/performance/LIGHTHOUSE.md)).
 - Route-key dispatchers that statically import every branch
   (`SidebarContextPanel` before the fix) put every feature's graph in the shared
   shell chunk — dispatch on `next/dynamic` imports instead.

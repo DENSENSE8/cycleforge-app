@@ -25,7 +25,8 @@ import {
 ```
 
 Reference implementation: `LineEditPanel` (Unbox). Sibling adopters:
-`TestingPanel`, `TriagePanel`, `ShippingScanWorkspace` / `UpNextActionDock`,
+`TestingPanel`, `TriagePanel`, `ActiveOrderWorkspace` (Shipping host —
+`ShippingScanWorkspace` is its `tabs` composer, `UpNextActionDock` its dock),
 `PackOrderPanel`, `RepairIntakeForm`, `LocalPickupEditPanel`.
 
 ---
@@ -37,7 +38,7 @@ This anatomy is now **mechanically enforced**, not soft. Ratchet/positive guards
 (config + baselines + allowlists: `station-workbench-chrome-config.ts`) and the
 registry-sync test `src/lib/station-terminal/station-terminal.test.ts` (Guard G).
 They run under `npm run verify`. **Baselines only shrink — never raise one to
-land a port** (root `AGENTS.md`).
+land a port** ([verify.md](../verify.md)).
 
 ### Tier model
 
@@ -83,8 +84,7 @@ land a port** (root `AGENTS.md`).
 - **Hand-built terminal VMs** (`TERMINAL_HAND_VM_ALLOWLIST`): `PackerReviewMode`,
   `SupportTicketFocus`, `LabelsOrderWorkspace` — registry slices are port follow-ups.
 - **`StationWorkbench` adoption gaps** (`STATION_WORKBENCH_ADOPTION_EXEMPT`):
-  `ShippingScanWorkspace`, `ActiveOrderWorkspace` (Shipping host fold),
-  `RepairIntakeForm` (remount).
+  `RepairIntakeForm` (remount). Shipping folded onto the SoT 2026-07-28.
 - **Pack** — intentionally terminal-exempt (no sticky dock); **Support orders** —
   `ShippedPanelEditorDock` footer instead of `StationTerminalDock`.
 

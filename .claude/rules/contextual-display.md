@@ -1,6 +1,6 @@
 # Contextual display rules — master index
 
-House identity is **Kinetic Ledger** (`AGENTS.md`, `ui-design-system.md`, `src/design-system/DESIGN_SYSTEM.md`).
+House identity is **Kinetic Ledger** ([kinetic-ledger.md](kinetic-ledger.md), `ui-design-system.md`, `src/design-system/DESIGN_SYSTEM.md`).
 This file is the **entry point** for **region contracts** and **data-driven surfaces**.
 
 **Contracts are not layout skins.** Station / Workbench / Monitor / Canvas answer *what may scan, select, edit, or observe* — not “must be sidebar + right pane” or “no grids.”

@@ -3,7 +3,7 @@
 > Inherits: [../ui-design-system.md](../ui-design-system.md) (Kinetic Ledger, density `rollup`), [monitor-and-canvas.md](monitor-and-canvas.md).  
 > Code SoT: `src/design-system/components/monitor/`.  
 > Golden page: `src/features/operations/workspace/OperationsAnalyticsView.tsx`.  
-> Root law: **Pattern evolution** + **Kinetic Ledger** in `AGENTS.md` (compose → grow SoT → compose again).
+> Root law: [pattern-evolution.md](../pattern-evolution.md) + [kinetic-ledger.md](../kinetic-ledger.md) (compose → grow SoT → compose again).
 
 **Recipe registry for observe/rollup density** — not the only way every surface looks, and not a layout religion
 for Workbench/Station. Agents building **Monitor rollup** regions **compose these blocks**.  
