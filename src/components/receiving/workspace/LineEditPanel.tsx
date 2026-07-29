@@ -32,6 +32,7 @@ import { ReceiveFeedbackRegion } from './ReceiveFeedbackRegion';
 import { WorkspaceActionFeedbackSlot } from './WorkspaceActionFeedbackSlot';
 import type { InlineActionFeedbackPayload } from './InlineActionFeedbackCard';
 import { ReceivingPhotoPeek } from './line-edit/ReceivingPhotoPeek';
+import { RECEIVING_PHOTO_LIST_INTENT_CARTON } from '@/lib/receiving/photo-intent';
 import { LineCartonContextSection } from './line-edit/LineCartonContextSection';
 import { useSyncedPoNote } from './line-edit/hooks/useSyncedPoNote';
 import { LineEditModals } from './line-edit/LineEditModals';
@@ -625,7 +626,7 @@ export function LineEditPanel({
             receivingId={row.receiving_id}
             staffId={Number(staffId) || 0}
             poRef={c.poNumber || null}
-            photoIntent="carton"
+            photoIntent={RECEIVING_PHOTO_LIST_INTENT_CARTON}
           />
         ) : null}
       </StationPanelRoot>
