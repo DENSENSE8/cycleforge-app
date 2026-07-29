@@ -12,7 +12,6 @@ import {
   defaultDirForReceivingGridSort,
   isReceivingGridFrozen,
   isReceivingGridSortable,
-  receivingContentMinWidthRem,
   type ReceivingGridColumn,
 } from '@/lib/receiving/receiving-grid-layout';
 
@@ -22,7 +21,6 @@ export function makeReceivingGridDescriptor(
   return makeGridSurfaceDescriptor<ReceivingLineRow, ReceivingGridColumn>(
     'receiving.browse',
     columns,
-    receivingContentMinWidthRem(columns),
     {
       isSortable: isReceivingGridSortable,
       sortDescFirst: (key) => defaultDirForReceivingGridSort(key) === 'desc',

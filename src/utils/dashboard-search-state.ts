@@ -12,12 +12,13 @@ import type { ShippedDetailsContext } from '@/utils/events';
 //   tested    → "Tested"   (ready to pack — has tech scan)
 //   packed    → "Packed"   (PACKED_STAGED — staged, not yet left the dock)
 //   shipped   → "Shipped"  (left warehouse / in carrier custody / delivered)
+//
+// `fba` is NOT a peer lifecycle tab: the strip in `OutboundWorkspaceHeader`
+// renders only the four above, and no nav entry or href constructs `?fba` —
+// it survives as a bookmark-reachable render path in `DashboardOrdersView`.
+// Whether it survives at all is gated on the `page-consolidation` verdict for
+// `/shipping/fba`; do not delete it here ahead of that (plan §10.2 row K).
 export type DashboardOrderView = 'unshipped' | 'tested' | 'packed' | 'shipped' | 'fba';
-/**
- * UI grouping for the dashboard view pills. Pending / Tested / Packed / Shipped
- * share outbound order data; FBA is a distinct data source and stays its own group.
- */
-export type DashboardViewGroup = 'orders' | 'fba';
 export type DashboardCacheEntry = readonly [unknown, unknown];
 
 export interface DashboardSelectionSnapshot {
@@ -74,10 +75,6 @@ export function getDashboardOrderViewFromSearch(
   // The Pending (awaiting test) mode. `?unshipped`, the legacy `?pending`, and the
   // bare default all resolve here.
   return 'unshipped';
-}
-
-export function getDashboardViewGroup(view: DashboardOrderView): DashboardViewGroup {
-  return view === 'fba' ? 'fba' : 'orders';
 }
 
 /**

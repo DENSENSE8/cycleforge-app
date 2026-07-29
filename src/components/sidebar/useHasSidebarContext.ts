@@ -1,33 +1,21 @@
 'use client';
 
-import { usePathname, useSearchParams } from 'next/navigation';
-import { getSidebarRouteKey, hasSidebarContextPanel } from '@/lib/sidebar-navigation';
-import {
-  getDashboardDomainFromSearch,
-  getDashboardModeFromSearch,
-} from '@/lib/dashboard/dashboard-domains';
+import { usePathname } from 'next/navigation';
+import { hasSidebarContextPanel } from '@/lib/sidebar-navigation';
 
 /**
  * Does the current location actually have a context panel to render?
  *
- * `hasSidebarContextPanel` answers it from the route key alone, which is right
- * for every route but one: the dashboard's Receiving mode is a Monitor, so
- * `DashboardOrdersContextPanel` returns `null` there even though the `dashboard`
- * key otherwise has a panel. That single exception lives here rather than in the
- * route-key contract, which would otherwise have to learn about params.
+ * It is now purely a route-key question. This hook used to carry one param-aware
+ * exception: `/dashboard?mode=inbound` reserved a 360px column whose panel
+ * returned `null`, so the answer had to inspect `?mode=`. Phase 1.1 of the
+ * dashboard IA rework gave the inbound domain a real picker (recents), so the
+ * exception has nothing left to except — and the hook stops being the one place
+ * that knew a route key could lie about its own panel.
  *
- * One consumer now: `ContextPanelLayout`, which uses it to decide whether to
- * mount the rail column beside the workspace at all. That single owner is the
- * point — while the answer was also feeding the nav spine's body choice, the two
- * could disagree, and `/dashboard?mode=inbound` held a 360px column whose body
- * had nothing to render.
+ * One consumer: `ContextPanelLayout`, which uses it to decide whether to mount
+ * the rail column beside the workspace at all.
  */
 export function useHasSidebarContext(): boolean {
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-  if (!hasSidebarContextPanel(pathname)) return false;
-  if (getSidebarRouteKey(pathname) !== 'dashboard') return true;
-  // Search keeps its recents sidebar; Receiving (inbound) has no order feed.
-  if (getDashboardModeFromSearch(searchParams) === 'search') return true;
-  return getDashboardDomainFromSearch(searchParams) !== 'inbound';
+  return hasSidebarContextPanel(usePathname());
 }

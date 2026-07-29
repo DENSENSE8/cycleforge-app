@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useCallback, useEffect, useState } from 'react';
-import { ChevronLeft, Wrench, X, Check, Printer, Loader2 } from '../Icons';
+import React, { useEffect, useState } from 'react';
+import { ChevronLeft, ChevronRight, Wrench, X, Check, Printer, Loader2 } from '../Icons';
 import { ProductSelector, type SelectedItem } from './ProductSelector';
 import { ReasonSelector } from './ReasonSelector';
 import { CustomerInfoForm, CONTACT_FIELDS } from './CustomerInfoForm';
@@ -15,8 +15,6 @@ import {
 import { FavoritesWorkspaceSection } from '@/components/sidebar/FavoritesWorkspaceSection';
 import { RepairPaperworkSheet } from './RepairPaperworkSheet';
 import { TextField, Button, IconButton } from '@/design-system/primitives';
-import { StationTerminalDock, useStationTerminalAction } from '@/components/station/terminal';
-import { resolveRepairTerminal } from './terminal/repair-terminal';
 import type { FavoriteSkuRecord } from '@/lib/favorites/sku-favorites';
 import { REPAIR_STEP_COPY, buildInitialFormData, isContactFieldValid, canSubmitRepairIntake, getRepairSubmitBlockReason, hasRepairIssue, isContactComplete, isProductSelected } from './repair-intake-logic';
 import { useRepairIntakeData } from './useRepairIntakeData';
@@ -44,9 +42,11 @@ interface RepairIntakeFormProps {
      * Headless kiosk variant (device principal, no staff session): a team member
      * fills this WITH the customer at the front desk. Hides staff-only
      * affordances whose endpoints a device token cannot reach — technician
-     * assignment, existing-customer PII search, the Zendesk link and print —
-     * and swaps Ecwid catalog search for a manual product field. Repair
-     * favorites load read-only from `/api/kiosk/repair/favorites`. Default off
+     * assignment, existing-customer PII search, the Zendesk link and print.
+     * The Ecwid category browser is the SAME `ProductSelector` staff use, just
+     * pointed at the device-authed `/api/kiosk/repair/*` twins and with manual
+     * entry suppressed — a kiosk repair always resolves to a real `-RS` SKU.
+     * Repair favorites load read-only from `/api/kiosk/repair/favorites`. Default off
      * = the unchanged /repair staff flow. Submit still goes through the injected
      * `onSubmit` (the kiosk host points it at the device-authed route).
      */
@@ -76,10 +76,17 @@ export interface RepairFormData {
 }
 
 const REPAIR_INTAKE_MAX_WIDTH = 'max-w-[720px]';
-const REPAIR_INTAKE_COLUMN_CLASS = `mx-auto w-full ${REPAIR_INTAKE_MAX_WIDTH}`;
 const SECTION_LABEL = 'text-role-micro uppercase tracking-[0.16em] text-text-soft';
 
 export function RepairIntakeForm({ onClose, onSubmit, initialData, favoriteSkuId, kioskMode = false }: RepairIntakeFormProps) {
+    // The kiosk runs full-screen on a front-desk tablet, so the 720px staff-modal
+    // column left ~40% of the glass empty while the catalog stacked one item per
+    // row. 960px is still a sane form measure for the contact/review steps (no
+    // per-step width change, so nothing reflows as you advance) but gives the
+    // category/product grids room for a second and third column.
+    const columnMaxWidth = kioskMode ? 'max-w-[960px]' : REPAIR_INTAKE_MAX_WIDTH;
+    const columnClass = `mx-auto w-full ${columnMaxWidth}`;
+
     const [currentStep, setCurrentStep] = useState<RepairIntakeStepKey>('product');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [submitError, setSubmitError] = useState<string | null>(null);
@@ -304,7 +311,9 @@ export function RepairIntakeForm({ onClose, onSubmit, initialData, favoriteSkuId
 
     const receiptProps = buildRepairIntakeReceiptProps(formData, issueText, today);
 
-    const stepTitle = REPAIR_STEP_COPY[currentStep].title;
+    const stepCopy = REPAIR_STEP_COPY[currentStep];
+    const stepTitle = stepCopy.title;
+    const canGoBack = currentStep !== 'product' || contactFieldIndex > 0;
 
     const isReviewStep = currentStep === 'review';
 
@@ -330,33 +339,8 @@ export function RepairIntakeForm({ onClose, onSubmit, initialData, favoriteSkuId
             ? 'Complete the required fields to continue'
             : undefined;
 
-    const buildTerminal = useCallback(
-        (kind: string) =>
-            resolveRepairTerminal(kind, {
-                label: primaryLabel,
-                onClick: isReviewStep ? handleSubmit : handleNext,
-                disabled: primaryDisabled,
-                loading: isSubmitting,
-                title: primaryTitle,
-                maxWidth: REPAIR_INTAKE_MAX_WIDTH,
-            }),
-        [
-            primaryLabel,
-            isReviewStep,
-            handleSubmit,
-            handleNext,
-            primaryDisabled,
-            isSubmitting,
-            primaryTitle,
-        ],
-    );
-
-    const terminalVm = useStationTerminalAction({
-        surface: 'pickup',
-        mode: 'repair',
-        tabId: null,
-        build: buildTerminal,
-    });
+    const stepNavButtonClass =
+        'shrink-0 rounded-lg border border-border-soft transition-colors hover:border-border-strong';
 
     // Post-submit: the repair is persisted and the Zendesk ticket is created.
     // Stay full-screen and present the exact paper to print — the customer never
@@ -374,7 +358,7 @@ export function RepairIntakeForm({ onClose, onSubmit, initialData, favoriteSkuId
         return (
             <div className="relative flex h-full w-full flex-col bg-surface-card text-text-default">
                 <header className="shrink-0 border-b border-border-hairline">
-                    <div className={`${REPAIR_INTAKE_COLUMN_CLASS} flex items-center justify-between gap-3 px-6 py-3`}>
+                    <div className={`${columnClass} flex items-center justify-between gap-3 px-6 py-3`}>
                         <div className="flex min-w-0 items-center gap-2.5">
                             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-surface-inverse text-white">
                                 <Check className="h-4 w-4" />
@@ -406,7 +390,7 @@ export function RepairIntakeForm({ onClose, onSubmit, initialData, favoriteSkuId
                 </main>
 
                 <div className="shrink-0 border-t border-border-hairline bg-surface-card">
-                    <div className={`${REPAIR_INTAKE_COLUMN_CLASS} flex items-center gap-3 px-6 py-3`}>
+                    <div className={`${columnClass} flex items-center gap-3 px-6 py-3`}>
                         {!kioskMode && submitted.zendeskTicketUrl ? (
                             <a
                                 href={submitted.zendeskTicketUrl}
@@ -444,66 +428,64 @@ export function RepairIntakeForm({ onClose, onSubmit, initialData, favoriteSkuId
 
     return (
         <div className="relative flex h-full w-full flex-col bg-surface-card text-text-default">
-            {/* Header — title row + stepper aligned to the 720px content column */}
+            {/*
+              Full-bleed chrome: wrench / doc+close pin to screen edges.
+              Stepper stays locked to the same waist as the body column
+              (`columnMaxWidth` + px-6) and is centered on the viewport so its
+              first/last labels sit flush with the step title below.
+            */}
             <header className="shrink-0 border-b border-border-hairline">
-                <div className={`${REPAIR_INTAKE_COLUMN_CLASS} px-6 py-3`}>
-                    <div className="relative flex items-center justify-between gap-3">
-                        <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
-                            {currentStep !== 'product' ? (
-                                <IconButton
-                                    onClick={handleBack}
-                                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border-soft transition-colors hover:border-border-strong"
-                                    ariaLabel="Go back"
-                                    icon={<ChevronLeft className="h-4 w-4" />}
-                                />
-                            ) : (
-                                <div
-                                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border-soft text-text-default"
-                                    aria-hidden
-                                >
-                                    <Wrench className="h-4 w-4" />
-                                </div>
-                            )}
-                            <div className="min-w-0">
-                                <p className="truncate text-role-eyebrow uppercase tracking-[0.18em] text-text-faint sm:text-role-micro">
-                                    Repair Intake
-                                </p>
-                                <h1
-                                    id="repair-intake-step-title"
-                                    className="truncate text-sm font-semibold tracking-tight text-text-default sm:text-role-body"
-                                >
-                                    {stepTitle}
-                                </h1>
-                            </div>
+                <div className="relative flex w-full items-center px-3 py-2.5 sm:px-4 sm:py-3">
+                    <div className="relative z-10 flex shrink-0 items-center justify-start gap-1">
+                        <div
+                            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border-soft text-text-default"
+                            aria-hidden
+                        >
+                            <Wrench className="h-4 w-4" />
                         </div>
-
-                        <div className="flex shrink-0 items-center gap-2">
-                            {/* Paperwork affordance — present on every step so the
-                                repair agreement is viewable at any point (acceptance B). */}
-                            <RepairPaperworkSheet
-                                active={showPaperwork}
-                                onToggle={() => setShowPaperwork((v) => !v)}
-                            />
+                        {canGoBack ? (
                             <IconButton
-                                onClick={onClose}
-                                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border-soft transition-colors hover:border-border-strong"
-                                ariaLabel="Close"
-                                icon={<X className="h-4 w-4" />}
+                                size="lg"
+                                onClick={handleBack}
+                                className="rounded-lg border border-border-soft transition-colors hover:border-border-strong"
+                                ariaLabel="Go back"
+                                icon={<ChevronLeft className="h-4 w-4" />}
+                            />
+                        ) : null}
+                    </div>
+
+                    <div className="pointer-events-none absolute inset-x-0 top-1/2 z-0 flex -translate-y-1/2 justify-center px-14 sm:px-16">
+                        {/* px-6 mirrors the body column's own inner padding — without it
+                            the stepper sat 24px left of "Repair Intake" at every width,
+                            because both share a max-width but only the body was inset. */}
+                        <div className={`pointer-events-auto w-full ${columnMaxWidth} px-6`}>
+                            <RepairIntakeStepper
+                                compact
+                                spread
+                                currentStep={currentStep}
+                                onStepClick={handleStepClick}
+                                canNavigateTo={(key) => {
+                                    if (key === 'product') return true;
+                                    if (key === 'issue') return canProceedFromProduct;
+                                    if (key === 'contact') return canProceedFromProduct && canProceedFromIssue;
+                                    return canProceedFromProduct && canProceedFromIssue && canProceedFromContact;
+                                }}
                             />
                         </div>
                     </div>
 
-                    <div className="mt-4">
-                        <RepairIntakeStepper
-                            spread
-                            currentStep={currentStep}
-                            onStepClick={handleStepClick}
-                            canNavigateTo={(key) => {
-                                if (key === 'product') return true;
-                                if (key === 'issue') return canProceedFromProduct;
-                                if (key === 'contact') return canProceedFromProduct && canProceedFromIssue;
-                                return canProceedFromProduct && canProceedFromIssue && canProceedFromContact;
-                            }}
+                    <div className="relative z-10 ml-auto flex shrink-0 items-center justify-end gap-1 sm:gap-2">
+                        {/* Paperwork — every step (acceptance B). Close is rightmost escape. */}
+                        <RepairPaperworkSheet
+                            active={showPaperwork}
+                            onToggle={() => setShowPaperwork((v) => !v)}
+                        />
+                        <IconButton
+                            size="lg"
+                            onClick={onClose}
+                            className="rounded-lg border border-border-soft transition-colors hover:border-border-strong"
+                            ariaLabel="Close"
+                            icon={<X className="h-4 w-4" />}
                         />
                     </div>
                 </div>
@@ -512,7 +494,12 @@ export function RepairIntakeForm({ onClose, onSubmit, initialData, favoriteSkuId
             {/* Step body — single centered column, no sidebar split */}
             <main
                 aria-labelledby="repair-intake-step-title"
-                className={`min-h-0 flex-1 overflow-y-auto ${showPaperwork ? 'bg-surface-sunken' : 'pb-28'}`}
+                // scrollbar-gutter reserves the scroll track on BOTH edges, so this
+                // column stays centered on the same axis as the header stepper (which
+                // has no scrollbar) — otherwise the body sits ~2px left. It also stops
+                // the whole step from shifting sideways as content crosses the scroll
+                // threshold between steps.
+                className={`min-h-0 flex-1 overflow-y-auto [scrollbar-gutter:stable_both-edges] ${showPaperwork ? 'bg-surface-sunken' : ''}`}
             >
                 {showPaperwork ? (
                     <div className="bg-surface-sunken px-4 py-4 sm:px-6 sm:py-5">
@@ -522,12 +509,55 @@ export function RepairIntakeForm({ onClose, onSubmit, initialData, favoriteSkuId
                     </div>
                 ) : (
                 <div
-                    className={`${REPAIR_INTAKE_COLUMN_CLASS} px-6 transition-all duration-300 ease-out motion-reduce:translate-y-0 motion-reduce:transition-none ${
+                    className={`${columnClass} px-6 transition-all duration-300 ease-out motion-reduce:translate-y-0 motion-reduce:transition-none ${
                         currentStep === 'review' ? 'py-4' : 'py-8'
                     } ${
                         stepRevealed ? 'translate-y-0 opacity-100' : 'translate-y-1 opacity-0'
                     }`}
                 >
+                    {currentStep !== 'review' && currentStep !== 'contact' ? (
+                        <div className="mb-6 flex items-start gap-3">
+                            <div className="min-w-0 flex-1 space-y-1">
+                                <p className="text-role-eyebrow uppercase tracking-[0.18em] text-text-faint">
+                                    Repair Intake
+                                </p>
+                                <h1
+                                    id="repair-intake-step-title"
+                                    className="text-xl font-semibold tracking-tight text-text-default sm:text-2xl"
+                                >
+                                    {stepTitle}
+                                </h1>
+                                <p className="text-sm font-semibold text-text-soft">{stepCopy.subtitle}</p>
+                            </div>
+                            <IconButton
+                                size="touch"
+                                onClick={handleNext}
+                                disabled={primaryDisabled}
+                                className={stepNavButtonClass}
+                                ariaLabel={primaryLabel}
+                                title={primaryTitle}
+                                icon={<ChevronRight className="h-5 w-5" />}
+                            />
+                        </div>
+                    ) : currentStep === 'contact' ? (
+                        <div className="mb-6 space-y-1">
+                            <p className="text-role-eyebrow uppercase tracking-[0.18em] text-text-faint">
+                                Repair Intake
+                            </p>
+                            <h1
+                                id="repair-intake-step-title"
+                                className="text-xl font-semibold tracking-tight text-text-default sm:text-2xl"
+                            >
+                                {stepTitle}
+                            </h1>
+                            <p className="text-sm font-semibold text-text-soft">{stepCopy.subtitle}</p>
+                        </div>
+                    ) : (
+                        <h1 id="repair-intake-step-title" className="sr-only">
+                            {stepTitle}
+                        </h1>
+                    )}
+
                     {currentStep === 'product' && (
                         <div className="relative space-y-8">
                             {isFetchingFavorite && (
@@ -549,25 +579,26 @@ export function RepairIntakeForm({ onClose, onSubmit, initialData, favoriteSkuId
                                         accent="blue"
                                         title="Common repairs"
                                         description=""
-                                        emptyLabel="No common repairs yet — enter the product below"
+                                        emptyLabel="No common repairs yet — search the catalog below"
                                         useLabel="Start repair"
                                         readOnly
                                         listUrl="/api/kiosk/repair/favorites"
                                         onUseFavorite={handleUseFavorite}
                                     />
 
-                                    <section className="space-y-3">
-                                        <p className={SECTION_LABEL}>Or enter product</p>
-                                        <TextField
-                                            label="Product / model"
-                                            value={formData.product.model}
-                                            onChange={(value) => setFormData(prev => ({
-                                                ...prev,
-                                                product: { type: value.trim() ? 'Other' : '', model: value, sourceSku: null },
-                                            }))}
-                                            tone="neutral"
-                                        />
-                                    </section>
+                                    {/* No "All products" eyebrow here — the selector opens
+                                        with its own search + CATEGORIES heading, so the
+                                        label only pushed search further down the page. */}
+                                    <ProductSelector
+                                        onSelect={(product) => setFormData(prev => ({ ...prev, product }))}
+                                        selectedProduct={formData.product.type ? formData.product : null}
+                                        onPriceChange={(price) => setFormData(prev => ({ ...prev, price }))}
+                                        selectedItems={selectedItems}
+                                        onSelectedItemsChange={handleSelectedItemsChange}
+                                        apiBasePath="/api/kiosk/repair"
+                                        hideManualEntry
+                                        flowInPage
+                                    />
                                 </div>
                             ) : (
                                 <>
@@ -728,19 +759,40 @@ export function RepairIntakeForm({ onClose, onSubmit, initialData, favoriteSkuId
                             )}
 
                             {!isExistingSearch && (
-                                <CustomerInfoForm
-                                    customer={formData.customer}
-                                    serialNumber={formData.serialNumber}
-                                    price={formData.price}
-                                    notes={formData.notes}
-                                    activeField={activeContactField}
-                                    fieldIndex={contactFieldIndex}
-                                    fieldCount={CONTACT_FIELDS.length}
-                                    onCustomerChange={updateCustomer}
-                                    onSerialNumberChange={(value) => setFormData(prev => ({ ...prev, serialNumber: value }))}
-                                    onPriceChange={(value) => setFormData(prev => ({ ...prev, price: value }))}
-                                    onNotesChange={(value) => setFormData(prev => ({ ...prev, notes: value }))}
-                                />
+                                <div className="flex items-start gap-3">
+                                    <IconButton
+                                        size="touch"
+                                        onClick={handleBack}
+                                        disabled={!canGoBack}
+                                        className={`mt-7 ${stepNavButtonClass}`}
+                                        ariaLabel="Go back"
+                                        icon={<ChevronLeft className="h-5 w-5" />}
+                                    />
+                                    <div className="min-w-0 flex-1">
+                                        <CustomerInfoForm
+                                            customer={formData.customer}
+                                            serialNumber={formData.serialNumber}
+                                            price={formData.price}
+                                            notes={formData.notes}
+                                            activeField={activeContactField}
+                                            fieldIndex={contactFieldIndex}
+                                            fieldCount={CONTACT_FIELDS.length}
+                                            onCustomerChange={updateCustomer}
+                                            onSerialNumberChange={(value) => setFormData(prev => ({ ...prev, serialNumber: value }))}
+                                            onPriceChange={(value) => setFormData(prev => ({ ...prev, price: value }))}
+                                            onNotesChange={(value) => setFormData(prev => ({ ...prev, notes: value }))}
+                                        />
+                                    </div>
+                                    <IconButton
+                                        size="touch"
+                                        onClick={handleNext}
+                                        disabled={primaryDisabled}
+                                        className={`mt-7 ${stepNavButtonClass}`}
+                                        ariaLabel={primaryLabel}
+                                        title={primaryTitle}
+                                        icon={<ChevronRight className="h-5 w-5" />}
+                                    />
+                                </div>
                             )}
                         </div>
                     )}
@@ -789,15 +841,23 @@ export function RepairIntakeForm({ onClose, onSubmit, initialData, favoriteSkuId
                                     Signature captured
                                 </div>
                             )}
+
+                            <div className="mt-4 flex justify-end">
+                                <Button
+                                    variant="brand"
+                                    size="md"
+                                    onClick={() => void handleSubmit()}
+                                    disabled={primaryDisabled}
+                                    title={primaryTitle}
+                                >
+                                    {primaryLabel}
+                                </Button>
+                            </div>
                         </div>
                     )}
                 </div>
                 )}
             </main>
-
-            {!showPaperwork && (
-                <StationTerminalDock vm={terminalVm} />
-            )}
         </div>
     );
 }

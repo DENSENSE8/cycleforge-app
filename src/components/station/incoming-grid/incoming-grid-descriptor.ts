@@ -11,7 +11,6 @@ import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import {
   INCOMING_GRID_COLUMNS,
   defaultDirForIncomingGridSort,
-  incomingContentMinWidthRem,
   isIncomingGridFrozen,
   isIncomingGridSortable,
   type IncomingGridColumn,
@@ -31,7 +30,6 @@ export function makeIncomingGridDescriptor(
   return makeGridSurfaceDescriptor<ReceivingLineRow, IncomingGridColumn>(
     'inbound.incoming',
     columns,
-    incomingContentMinWidthRem(columns),
     {
       isSortable: isIncomingGridSortable,
       sortDescFirst: (key) => defaultDirForIncomingGridSort(key) === 'desc',

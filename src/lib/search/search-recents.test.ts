@@ -99,12 +99,12 @@ test('clearSearchRecents(scope) only clears that scope; clearSearchRecents() cle
   assert.equal(listSearchRecents().length, 0);
 });
 
-test('recentRerunHref prefers explicit scopeHref, else Dashboard Search mode', () => {
+test('recentRerunHref prefers explicit scopeHref, else the /search route', () => {
   assert.equal(
     recentRerunHref({ query: 'a b', scopeHref: '/dashboard?unshipped&search=a%20b' }),
     '/dashboard?unshipped&search=a%20b',
   );
-  assert.equal(recentRerunHref({ query: 'a b' }), '/dashboard?mode=search&q=a%20b');
+  assert.equal(recentRerunHref({ query: 'a b' }), '/search?q=a%20b');
 });
 
 // ─── Legacy migration ───────────────────────────────────────────────────────

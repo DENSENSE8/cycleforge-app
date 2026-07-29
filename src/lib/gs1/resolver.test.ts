@@ -97,13 +97,13 @@ test('serial precedence — serial wins over GTIN-only', async () => {
   strictEqual(result.entityId, undefined);
 });
 
-test('internal GTIN-only with known SKU lands on /products/{sku}', async () => {
+test('internal GTIN-only with known SKU lands on /products/sku/{sku}', async () => {
   const result = await resolveGs1('/01/0614141000005', {
     isInternal: true,
     deps: deps({ getSkuCatalogByGtin: async () => ({ sku: 'CABLE-001' }) }),
   });
   strictEqual(result.kind, 'sku');
-  strictEqual(result.redirect, '/products/CABLE-001');
+  strictEqual(result.redirect, '/products/sku/CABLE-001');
   strictEqual(result.entityId, 'CABLE-001');
   strictEqual(result.matchedAi, '01');
 });
@@ -139,5 +139,5 @@ test('SKU is URL-encoded so a slash in the SKU does not break the redirect', asy
     isInternal: true,
     deps: deps({ getSkuCatalogByGtin: async () => ({ sku: 'WEIRD/SKU' }) }),
   });
-  strictEqual(result.redirect, '/products/WEIRD%2FSKU');
+  strictEqual(result.redirect, '/products/sku/WEIRD%2FSKU');
 });

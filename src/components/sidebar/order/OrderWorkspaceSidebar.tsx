@@ -5,9 +5,9 @@
  *
  *   • Recent — orders the operator opened (detail-stack history, kind=order)
  *   • Search — header-pill-driven order near-matches; selecting a hit navigates
- *     to Dashboard Search detail (`orderSearchHref` → `/dashboard?mode=search&openOrderId`)
- *
- * Legacy `/o/[id]?mode=search` redirects into Dashboard Search via OrderFullPageView.
+ *     to that order's ONE shell, `/o/[id]` ({@link orderRecordHref}). It used to
+ *     go to a mode-local Dashboard Search detail; that third order shell was
+ *     deleted with Search mode (dashboard IA rework Phase 1).
  * Query typing lives in the always-global header pill; this panel never mounts
  * its own search band (sidebar-search-bar.guard).
  */
@@ -28,7 +28,7 @@ import { useRecentDetailStacks } from '@/hooks/useRecentDetailStacks';
 import { useSearchRecents } from '@/hooks/useSearchRecents';
 import { removeDetailStack, type DetailStackEntry } from '@/lib/detail-stacks/history-store';
 import { formatRelativeTime } from '@/lib/search/search-recents';
-import { orderSearchHref } from '@/lib/search/search-hit';
+import { globalSearchHref, orderRecordHref } from '@/lib/search/search-hit';
 import type { AiSearchHit } from '@/lib/search/ai-search-client';
 import { cn } from '@/utils/_cn';
 
@@ -117,10 +117,8 @@ export function OrderWorkspaceSidebar() {
 
   const openOrder = useCallback(
     (id: string, replace = false) => {
-      const href = orderSearchHref(id, mode === 'search' ? q.trim() || undefined : undefined);
-      // Recent mode: plain /o/id (no search map params).
-      const target =
-        mode === 'search' ? href : `/o/${encodeURIComponent(id)}`;
+      // One order shell in both modes — `/o/[id]`.
+      const target = orderRecordHref(id);
       if (replace) router.replace(target);
       else router.push(target);
     },
@@ -188,7 +186,7 @@ export function OrderWorkspaceSidebar() {
           onSelectHit={handleSelectHit}
           searchRecents={searchRecents}
           onSelectRecent={(query) => {
-            router.push(orderSearchHref(query, query));
+            router.push(globalSearchHref(query));
           }}
           onRemoveRecent={removeSearchRecent}
           onClearRecents={() => clearSearchRecents('orders')}

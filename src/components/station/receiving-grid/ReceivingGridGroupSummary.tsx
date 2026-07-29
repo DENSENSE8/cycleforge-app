@@ -43,6 +43,7 @@ import {
 } from '@/lib/receiving/receiving-grid-layout';
 import { sourcePlatformMetaFromLabel } from '@/lib/source-platform';
 import { formatOpsStageTime } from '@/utils/date';
+import { gridCellAlignClass } from '@/design-system/components/grid';
 import { cn } from '@/utils/_cn';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { ReceivingPoSummary } from '@/components/station/ReceivingPoSummary';
@@ -140,7 +141,8 @@ export function ReceivingGridGroupSummary({
   );
   const serialValue = serials.size === 1 ? [...serials][0] : '';
 
-  const dataCell = (rule = true) => receivingGridCell({ rule, inset: 'grid' });
+  const dataCell = (col: ReceivingGridColumn, rule = true) =>
+    cn(receivingGridCell({ rule, inset: 'grid' }), gridCellAlignClass(col));
   const statusDot = isHistory
     ? 'bg-emerald-500'
     : getStatusDotBg(first.workflow_status, received, expected);
@@ -195,7 +197,7 @@ export function ReceivingGridGroupSummary({
         return (
           <div
             data-col="title"
-            className={cn(dataCell(rule), RECEIVING_GRID_FROZEN_CELL, 'gap-1.5')}
+            className={cn(dataCell(col, rule), RECEIVING_GRID_FROZEN_CELL, 'gap-1.5')}
             style={{ left: receivingGridFrozenLeft('title') }}
             data-frozen-edge
           >
@@ -207,7 +209,7 @@ export function ReceivingGridGroupSummary({
         );
       case 'date':
         return (
-          <div data-col="date" className={dataCell(rule)}>
+          <div data-col="date" className={dataCell(col, rule)}>
             <GridDateCellValue
               label={dateCell?.label}
               tooltip={dateCell?.tooltip}
@@ -217,7 +219,7 @@ export function ReceivingGridGroupSummary({
         );
       case 'qty':
         return (
-          <div data-col="qty" className={cn(dataCell(rule), 'justify-end')}>
+          <div data-col="qty" className={dataCell(col, rule)}>
             <span
               className={cn(
                 'min-w-0 truncate tabular-nums text-role-caption',
@@ -230,7 +232,7 @@ export function ReceivingGridGroupSummary({
         );
       case 'condition':
         return (
-          <div data-col="condition" className={dataCell(rule)}>
+          <div data-col="condition" className={dataCell(col, rule)}>
             <span
               className={cn(
                 'min-w-0 truncate text-role-eyebrow uppercase',
@@ -244,7 +246,7 @@ export function ReceivingGridGroupSummary({
         );
       case 'stage':
         return (
-          <div data-col="stage" className={dataCell(rule)}>
+          <div data-col="stage" className={dataCell(col, rule)}>
             {stageDisplay && stageDisplay !== '--:--' ? (
               <span className="truncate tabular-nums text-role-caption text-text-faint">
                 {stageDisplay}
@@ -256,13 +258,13 @@ export function ReceivingGridGroupSummary({
         );
       case 'platform':
         return (
-          <div data-col="platform" className={dataCell(rule)}>
+          <div data-col="platform" className={dataCell(col, rule)}>
             <GridPlatformMarkValue platformValue={platformMeta.value} label={markLabel} />
           </div>
         );
       case 'order':
         return (
-          <div data-col="order" className={dataCell(rule)}>
+          <div data-col="order" className={dataCell(col, rule)}>
             {poValue ? (
               <OrderIdChip
                 value={poValue}
@@ -276,13 +278,17 @@ export function ReceivingGridGroupSummary({
         );
       case 'tracking':
         return (
-          <div data-col="tracking" className={dataCell(rule)}>
+          <div data-col="tracking" className={dataCell(col, rule)}>
             {isPickup ? (
               <FulfillmentPickupPill dense />
             ) : trackings.size > 1 ? (
               <TrackingCountChip count={trackings.size} dense />
             ) : trackingValue ? (
-              <TrackingChip value={trackingValue} display={getLast4(trackingValue)} />
+              <TrackingChip
+                value={trackingValue}
+                display={getLast4(trackingValue)}
+                showIcon={!col.omitCellIcon}
+              />
             ) : (
               <GridCellDash />
             )}
@@ -290,7 +296,7 @@ export function ReceivingGridGroupSummary({
         );
       case 'serial':
         return (
-          <div data-col="serial" className={dataCell(rule)}>
+          <div data-col="serial" className={dataCell(col, rule)}>
             {serials.size > 1 ? (
               <SerialCountChip count={serials.size} dense />
             ) : serialValue ? (
@@ -301,7 +307,7 @@ export function ReceivingGridGroupSummary({
           </div>
         );
       default:
-        return <span className={dataCell(rule)} />;
+        return <span className={dataCell(col, rule)} />;
     }
   };
 

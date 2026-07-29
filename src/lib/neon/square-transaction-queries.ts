@@ -1,20 +1,30 @@
-import pool from '@/lib/db';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 
-// NOTE: `square_transactions` is tenant-owned but does NOT yet carry its own
-// `organization_id` column (see docs/tenancy/org-id-coverage.generated.md:
-// "tenant-owned-NEEDS-COL"), and it has no parent table to derive org from —
-// it is a top-level mirror of Square orders. So we cannot add an explicit
-// `AND organization_id = $n` predicate or stamp the column on INSERT here yet;
-// that work is blocked on the schema migration that adds the column.
-//
-// What we DO is route every call through the tenant-aware helpers when an
-// `orgId` is supplied so the `app.current_org` GUC is set for the duration of
-// the query. That makes these paths GUC-safe today and RLS-ready the moment the
-// column + FORCE policy land (Phase E). `orgId` is OPTIONAL so the out-of-fileset
-// callers (api/walk-in/receipt/[id], api/webhooks/square) keep byte-identical
-// raw-pool behavior until they are threaded too.
+/**
+ * `square_transactions` — tenant-scoped access.
+ *
+ * The table carries `organization_id NOT NULL`, FORCE row-level security, and
+ * the canonical `tenant_isolation` policy bound to `app.current_org`. Every
+ * query below therefore goes through the tenant helpers, which open the
+ * connection with `SET LOCAL app.current_org` for the duration of the statement.
+ *
+ * **`orgId` is REQUIRED on every export and there is deliberately no raw-pool
+ * fallback.** The app pool connects as a BYPASSRLS role today, so an unscoped
+ * `pool.query` here does not merely leave the GUC unset — it steps around the
+ * FORCE policy entirely and reads/writes across every tenant. A defaulted or
+ * optional org on a call that decides which tenant's money a row belongs to is
+ * a silent opt-out, and the sites you forget are exactly the ones the compiler
+ * stays quiet about (`.claude/rules/backend-patterns.md`). The explicit
+ * `organization_id` predicates below hold the line independently of whichever
+ * role the pool happens to connect as.
+ *
+ * ⚠️ DEPLOY ORDER: `insertSquareTransaction` conflicts on
+ * `(organization_id, square_order_id)`, which requires the composite unique
+ * added by `src/lib/migrations/2026-07-29a_square_transactions_tenant_contract.sql`.
+ * Apply that migration BEFORE deploying this module, or every upsert throws
+ * "no unique or exclusion constraint matching the ON CONFLICT specification".
+ */
 
 export interface SquareTransactionRecord {
   id: string;
@@ -51,14 +61,15 @@ export async function getSquareTransactions(params: {
   weekEnd?: string;
   orderSource?: string;
   limit?: number;
-}, orgId?: OrgId): Promise<SquareTransactionRecord[]> {
+}, orgId: OrgId): Promise<SquareTransactionRecord[]> {
   const { search, status, weekStart, weekEnd, orderSource, limit = 200 } = params;
   const safeLimit = Math.max(1, Math.min(500, limit));
 
-  // Hide soft-deleted (operator-removed) sales. Always applied.
-  const conditions: string[] = ['deleted_at IS NULL'];
-  const values: unknown[] = [];
-  let paramIndex = 1;
+  // Always applied: hide soft-deleted (operator-removed) sales, and scope to
+  // the caller's org explicitly rather than relying on the RLS policy alone.
+  const conditions: string[] = ['deleted_at IS NULL', 'organization_id = $1'];
+  const values: unknown[] = [orgId];
+  let paramIndex = 2;
 
   if (search) {
     conditions.push(
@@ -92,25 +103,24 @@ export async function getSquareTransactions(params: {
     paramIndex++;
   }
 
-  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+  const whereClause = `WHERE ${conditions.join(' AND ')}`;
 
   values.push(safeLimit);
   const sql = `SELECT * FROM square_transactions ${whereClause} ORDER BY created_at DESC LIMIT $${paramIndex}`;
-  const result = orgId
-    ? await tenantQuery<SquareTransactionRecord>(orgId, sql, values)
-    : await pool.query(sql, values);
+  const result = await tenantQuery<SquareTransactionRecord>(orgId, sql, values);
 
   return result.rows;
 }
 
 export async function getSquareTransactionById(
   id: string,
-  orgId?: OrgId,
+  orgId: OrgId,
 ): Promise<SquareTransactionRecord | null> {
-  const sql = 'SELECT * FROM square_transactions WHERE id = $1 LIMIT 1';
-  const result = orgId
-    ? await tenantQuery<SquareTransactionRecord>(orgId, sql, [id])
-    : await pool.query(sql, [id]);
+  const result = await tenantQuery<SquareTransactionRecord>(
+    orgId,
+    'SELECT * FROM square_transactions WHERE id = $1 AND organization_id = $2 LIMIT 1',
+    [id, orgId],
+  );
   return result.rows[0] || null;
 }
 
@@ -122,20 +132,16 @@ export async function getSquareTransactionById(
  */
 export async function softDeleteSquareTransaction(
   id: string,
-  orgId?: OrgId,
+  orgId: OrgId,
 ): Promise<SquareTransactionRecord | null> {
   const sql = `UPDATE square_transactions
         SET deleted_at = NOW()
-      WHERE id = $1 AND deleted_at IS NULL
+      WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL
       RETURNING *`;
-  if (orgId) {
-    return withTenantTransaction(orgId, async (client) => {
-      const result = await client.query<SquareTransactionRecord>(sql, [id]);
-      return result.rows[0] || null;
-    });
-  }
-  const result = await pool.query(sql, [id]);
-  return result.rows[0] || null;
+  return withTenantTransaction(orgId, async (client) => {
+    const result = await client.query<SquareTransactionRecord>(sql, [id, orgId]);
+    return result.rows[0] || null;
+  });
 }
 
 export async function insertSquareTransaction(data: {
@@ -157,20 +163,22 @@ export async function insertSquareTransaction(data: {
   notes?: string | null;
   created_by?: string | null;
   created_at?: string | null;
-}, orgId?: OrgId): Promise<SquareTransactionRecord> {
+}, orgId: OrgId): Promise<SquareTransactionRecord> {
   const sql = `INSERT INTO square_transactions (
+      organization_id,
       square_order_id, square_payment_id, square_customer_id,
       customer_name, customer_email, customer_phone,
       line_items, subtotal, tax, total, discount,
       status, payment_method, receipt_url, order_source,
       notes, created_by, created_at
     ) VALUES (
-      $1, $2, $3, $4, $5, $6,
-      $7::jsonb, $8, $9, $10, $11,
-      $12, $13, $14, $15,
-      $16, $17, COALESCE($18::timestamptz, now())
+      $1,
+      $2, $3, $4, $5, $6, $7,
+      $8::jsonb, $9, $10, $11, $12,
+      $13, $14, $15, $16,
+      $17, $18, COALESCE($19::timestamptz, now())
     )
-    ON CONFLICT (square_order_id) DO UPDATE SET
+    ON CONFLICT (organization_id, square_order_id) DO UPDATE SET
       square_payment_id = COALESCE(EXCLUDED.square_payment_id, square_transactions.square_payment_id),
       status = COALESCE(EXCLUDED.status, square_transactions.status),
       receipt_url = COALESCE(EXCLUDED.receipt_url, square_transactions.receipt_url),
@@ -178,6 +186,7 @@ export async function insertSquareTransaction(data: {
       synced_at = now()
     RETURNING *`;
   const values = [
+    orgId,
     data.square_order_id,
     data.square_payment_id ?? null,
     data.square_customer_id ?? null,
@@ -198,13 +207,8 @@ export async function insertSquareTransaction(data: {
     data.created_at ?? null,
   ];
 
-  if (orgId) {
-    return withTenantTransaction(orgId, async (client) => {
-      const result = await client.query<SquareTransactionRecord>(sql, values);
-      return result.rows[0];
-    });
-  }
-
-  const result = await pool.query<SquareTransactionRecord>(sql, values);
-  return result.rows[0];
+  return withTenantTransaction(orgId, async (client) => {
+    const result = await client.query<SquareTransactionRecord>(sql, values);
+    return result.rows[0];
+  });
 }

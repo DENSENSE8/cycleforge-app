@@ -221,3 +221,94 @@ Two specific oddities to rule on:
 6. **What you would NOT change**, and why. Include anything that looks redundant but is load-bearing.
 
 **Two standing instructions.** Where a recommendation collides with a house law in §7, cite it by number and argue the case — the laws are evolvable against a stated argument, not silently. And do not propose a message bus, a new microservice, an event-sourcing rewrite, or a vendor iPaaS unless you can show it deletes more than it adds; the goal is fewer moving parts than exist today, not a better-architected larger system.
+
+---
+
+# Run 3 — implementation + verification against the codebase (2026-07-29)
+
+Phases 1–3 of the Run 2 plan were implemented. Phase 4 was assessed and **rejected
+in full**. This section records what was verified, so the next run does not
+re-propose work that is wrong.
+
+## Implemented
+
+| Change | Result |
+|---|---|
+| `CanonicalOrderLine` normalization boundary | `src/lib/orders/canonical-order.ts` |
+| One domain writer | `src/lib/orders/ingest-canonical-orders.ts` |
+| Sheets adapter (pure, testable) | `src/lib/orders/sources/google-sheet-rows.ts` |
+| Ecwid adapter — positional arrays **deleted** | `src/lib/orders/sources/ecwid-orders.ts` |
+| Transfer job reduced to a Sheets reader | 1,406 → 306 lines |
+| 3 forked connector upserts collapsed | ShipStation · Shopify · Square → `ingest-connector-orders.ts` |
+| Dead routes deleted | `/api/sync-sheets` (702 lines), `/api/import-orders` (67) |
+| CSV import re-pointed onto the writer | `/api/orders/import-csv` |
+
+Raw `INSERT INTO orders` writers: **12 → 8**. Tests on the ingest path: **0 → 32**.
+
+**Deviation from the Run 2 plan, deliberately.** The plan said to delete
+`google-sheets-transfer-orders.ts` and re-map in the connectors. That file was not
+a Sheets mapper — it was the entire ingest pipeline (shipment linking, catalog
+hydration + chores, customer matching, duplicate collapse, deadlines, cache
+invalidation, realtime publish) *plus* a Sheets reader. Deleting it would have
+dropped all of that. It was split instead: the pipeline became the shared writer,
+the Sheets part became an adapter. Same end state, no lost correctness work.
+
+**Bugs found and fixed while extracting:**
+- `parseSaleAmount`: a non-numeric price cell (`"n/a"`) strips to `""`, and
+  `Number('')` is `0` — so junk cells resolved to a valid `'0'` and overwrote real
+  sale amounts on every sync.
+- `currency`: now `null` when a source has no currency column, so a sheet without
+  one can no longer rewrite every non-USD order to USD.
+- `/api/orders/import-csv` inserted `shippingTrackingNumber` and `isShipped`,
+  neither of which is still a real `orders` column. Drizzle drops unknown keys
+  silently, so **every tracking number in every imported CSV was discarded.**
+
+## Phase 3 — four routes on the deletion list are NOT ingest
+
+Verified before deleting; the plan mis-classified them by table, not by job.
+
+- **`/api/google-sheets/sync-shipstation-orders`** — exception reconciliation. It
+  acts only on orders with an open `orders_exceptions` row matching the tracking
+  (`skippedNoExceptionMatch` otherwise) and DELETEs those exception rows on match.
+- **`/api/orders/backfill/{ebay,ecwid}`** — verified **zero** `INSERT INTO orders`.
+  Update-only backfill of blank fields on existing orders.
+- **`/api/google-sheets/transfer-orders`, `/api/ecwid/transfer-orders`** — no longer
+  duplicated logic after the extraction (thin callers, 157 lines total). They carry
+  live per-phase progress and the full result detail (unresolved tracking, unmatched
+  catalog, skipped-row breakdown) that the importer UI renders; `SyncOutcome` reduces
+  that to two counters. **Prerequisite for retiring them: enrich `SyncOutcome`.**
+
+## Phase 4 — REJECTED, all three items
+
+1. **`order_line_items`** — the underlying observation is correct (`orders` is one
+   row per line), but **98 files** read `FROM orders` and the plan supplies no
+   consumer-migration path. A migration creating a table nothing writes to is worse
+   than none. Needs its own staged plan. Groundwork landed: `CanonicalOrder.lineCount`
+   records how many source lines were folded, so a later split can tell a genuine
+   single-line order from a collapsed multi-line one.
+
+2. **Move `deadline_at` → `orders.ship_by_date`** — **reverses a completed
+   migration.** `0000_baseline_through_2026-03.sql:1277`: *"Move order deadlines from
+   orders.ship_by_date to work_assignments.deadline_at and drop the legacy
+   orders.ship_by_date column."* The column does not exist; 53 read sites depend on
+   the current home. Strike this item.
+
+3. **`catalog_platform_links`** — **already exists as `sku_platform_ids`**
+   (`sku_catalog_id`, `platform`, `platform_sku`, `platform_item_id`, `account_name`,
+   `is_active`, `organization_id` — `schema.ts:2358`), documented in-repo as *"the
+   LIVE per-channel SKU→external-id mapping home"*, with 8+ consumers. The premise is
+   also wrong: Amazon/eBay/Ecwid channel ids never lived in `provider_item_id`. That
+   column is the single **inventory-ERP** linkage — its migration header states
+   *"platform_ids are channel crosswalks, not inventory"* — so scalar is correct.
+   Building this would fork an existing primitive (banned by `AGENTS.md` → Never).
+
+## Next, in priority order
+
+1. **Migrate `src/lib/ebay/sync.ts` and `src/lib/amazon/order-sync.ts` onto the
+   shared writer** — the two remaining marketplace connectors with their own
+   `INSERT INTO orders`. eBay is already an orders-capable connector on the seam
+   (`/api/cron/integrations/sync?providers=ebay,square`, every 15 min).
+2. **Enrich `SyncOutcome`** to carry the ingest detail, which unblocks retiring the
+   two NDJSON routes.
+3. **Retire the tenancy allowlist entry** for `ingest-canonical-orders.ts` by making
+   `orgId` required once the un-migrated cron callers are threaded.

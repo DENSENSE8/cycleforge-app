@@ -2,7 +2,9 @@
 
 /**
  * `useUrlColumnSort<K>` — the shared engine for URL-durable spreadsheet column
- * sort (`?sort=` + `?dir=`).
+ * sort (**`?colsort=` + `?coldir=`** — the constants in
+ * `@/lib/tables/grid-column-sort-params`, deliberately NOT `?sort=`/`?dir=`,
+ * which the station routes already use for SERVER ordering).
  *
  * Workbench law (`.claude/rules/display/workbench.md`): durable view state
  * lives in the URL, so a reload or a shared link reproduces the exact view.

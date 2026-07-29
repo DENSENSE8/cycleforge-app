@@ -33,6 +33,10 @@ import {
 import { cn } from '@/utils/_cn';
 import { setSerialEditHandoff } from '@/components/receiving/workspace/serialEditHandoff';
 import {
+  NoSerialControl,
+  type SerialAbsentState,
+} from '@/components/receiving/workspace/line-edit/NoSerialControl';
+import {
   dispatchSelectLine,
   type ReceivingLineRow,
 } from '@/components/station/ReceivingLinesTable';
@@ -99,6 +103,17 @@ interface Props {
   serialSplit?: PoLineSerialSplitContext;
   desc: PoLineDescProps;
   /**
+   * Waive (or un-waive) the serial for THIS line, from the collapsed row.
+   *
+   * The waiver has always been per-line in the DB (`receiving_line_testing.
+   * serial_absent`, upserted `ON CONFLICT (receiving_line_id)`), but the only
+   * control lived inside the ACTIVE row's editor — so marking three of five
+   * items as unserialized meant expanding each one in turn. The fact was
+   * per-item; only its reach was not. Omit to hide the affordance (read-only
+   * surfaces, or a caller that has no line to stamp).
+   */
+  onSerialAbsentChange?: (lineId: number, next: SerialAbsentState) => void;
+  /**
    * Enable framer `layout` position tracking. The accordion sets this false
    * while it lives in a hidden tab panel (`display:none`) so the rows don't fly
    * in from the origin when the panel is re-shown; the sibling-reorder layout
@@ -130,6 +145,7 @@ export function PoLineRow({
   renderTitleActions,
   serialSplit,
   desc,
+  onSerialAbsentChange,
   animateLayout = true,
 }: Props) {
   const rowBodyCollapse = useMotionPresence(framerPresence.collapseHeight);
@@ -139,6 +155,15 @@ export function PoLineRow({
   const chevronTransition = useMotionTransition(framerTransition.stationChevron);
 
   const descShown = desc.shownId === line.id;
+
+  /**
+   * Is this row's editor body actually on screen? It carries the product's own
+   * no-serial control (unit-list plus column, or beside the single-qty serial
+   * input), so the meta-row copy must stand down whenever this is true — exactly
+   * one toggle per line. Mirrors the body's own render gate below; keep the two
+   * in step if that gate changes.
+   */
+  const editorBodyVisible = !readOnly && isActive && !activeCollapsed && !!activeRowSlot;
 
   return (
     <motion.li
@@ -322,6 +347,29 @@ export function PoLineRow({
               // the slot reading as "loading" (not "no serial") and reserves the
               // chip footprint so the row doesn't reflow when they land.
               <SerialChipSkeleton width="w-fit max-w-full" dense />
+            ) : !readOnly && onSerialAbsentChange && !editorBodyVisible ? (
+              // The waiver's HOME is the product's own row, in the plus-icon
+              // column of the unit list (multi-qty) or beside the serial input
+              // (single-qty) — both live in the editor body below. This meta-row
+              // copy exists ONLY to give a collapsed sibling the same reach, so
+              // it is suppressed whenever that body is on screen. Rendering both
+              // put two identical toggles on one line, which is what made the
+              // control read as ambiguous.
+              //
+              // Also gated on the slot being empty, so it never competes with a
+              // real serial chip; once waived the control shows its own
+              // committed state.
+              // 'pill', not 'check': this rides in a dense meta row, where the
+              // 'check' variant's h-11 trailing-column button would blow out the
+              // row height. Its copy is the per-item one ("this item… cables,
+              // accessories, bulk parts"), which is also the right scope here —
+              // 'check' speaks for ALL units of a multi-qty line.
+              <NoSerialControl
+                variant="pill"
+                absent={line.serial_absent ?? false}
+                reason={line.serial_absent_reason ?? null}
+                onChange={(next) => onSerialAbsentChange(line.id, next)}
+              />
             ) : undefined
           }
           price={

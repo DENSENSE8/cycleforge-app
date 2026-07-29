@@ -3,7 +3,7 @@ import { describe, it } from 'node:test';
 import {
   isSearchOrderFactEmpty,
   isShipByBeforeCreated,
-} from '@/components/dashboard/search/search-order-overview-presence';
+} from '@/components/order-record/order-fact-presence';
 
 describe('isShipByBeforeCreated', () => {
   it('flags ship-by before created', () => {

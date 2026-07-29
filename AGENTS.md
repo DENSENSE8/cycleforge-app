@@ -15,7 +15,7 @@ product sentences (except the Integrations hub / deep links).
 
 | Concern | File |
 |---|---|
-| Lanes, branches, ports, work-log, commits, secrets | [`workflow-safety.md`](.claude/rules/workflow-safety.md) |
+| Lanes, branches, **the dev server (attach, never start)**, work-log, commits, secrets | [`workflow-safety.md`](.claude/rules/workflow-safety.md) |
 | **Source-of-truth invariants** (dates, tokens, shells, search, grids, …) | [`source-of-truth.md`](.claude/rules/source-of-truth.md) |
 | Compose → grow the SoT → compound; Always / Ask first / Never | [`pattern-evolution.md`](.claude/rules/pattern-evolution.md) |
 | Product UI identity + the five laws | [`kinetic-ledger.md`](.claude/rules/kinetic-ledger.md) |
@@ -31,6 +31,8 @@ product sentences (except the Integrations hub / deep links).
 Violating one of these is a bug even when the task "worked". Detail behind the links above.
 
 - **Never commit `.env`**, and never bypass the hooks in `.claude/settings.json`.
+- **Never start, restart, or kill a dev server.** The user's is already running on **`:3050`** —
+  attach to it. A broken dev server is a thing you report, not a thing you repair.
 - **The user manages commits.** Never `git stash`; stage only your own files; commit/push only when asked.
 - **Stay on the checkout's branch.** The worktree *is* the branch — no ad-hoc branches, no mid-session switches.
 - **One module per concern.** Read from the SoT; never inline, copy, or re-derive its mapping.

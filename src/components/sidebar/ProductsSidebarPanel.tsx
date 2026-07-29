@@ -24,10 +24,18 @@ import { Printer, FileText, Link2, Check, Package, PackageOpen, ShoppingCart, St
 import { PairingQueueList } from '@/components/products/pairing/PairingQueueList';
 import { PairingUnmatchedSection } from '@/components/products/pairing/PairingUnmatchedSection';
 import { AddOrPairSkuModal } from '@/components/products/pairing/AddOrPairSkuModal';
-import type { PairingQueueItem, PairingSort, UnmappedPlatformId } from '@/components/products/pairing/types';
+import { PAIRING_SORTS, type PairingQueueItem, type PairingSort, type UnmappedPlatformId } from '@/components/products/pairing/types';
+import {
+  parseProductsView,
+  productsViewParam,
+  type ProductsView,
+} from '@/components/products/products-view';
 import { LibraryBrowser } from '@/components/manuals/LibraryBrowser';
 import { ProductLabelsRecentRail } from '@/components/labels/ProductLabelsRecentRail';
 import { SearchBar } from '@/components/ui/SearchBar';
+import { PRODUCTS_ROUTE_PARAMS } from '@/lib/routing/query-mode-routes';
+import { buildRouteUrl } from '@/lib/routing/route-params';
+import { useSurfaceParamHygiene } from '@/hooks/useSurfaceParamHygiene';
 
 const PAIRING_SORT_ITEMS: HorizontalSliderItem[] = [
   { id: 'volume',     label: 'Ordered',      icon: ShoppingCart },
@@ -36,26 +44,21 @@ const PAIRING_SORT_ITEMS: HorizontalSliderItem[] = [
   { id: 'title',      label: 'A-Z', icon: List },
 ];
 
-function parsePairingSort(raw: string | null): PairingSort {
-  if (raw === 'confidence' || raw === 'count' || raw === 'title') return raw;
-  return 'volume';
-}
+const DEFAULT_PAIRING_SORT: PairingSort = 'volume';
 
-type View = 'manuals' | 'labels' | 'pairing' | 'qc' | 'kit' | 'catalog';
-function parseView(raw: string | null): View {
-  if (raw === 'labels') return 'labels';
-  if (raw === 'pairing') return 'pairing';
-  if (raw === 'qc') return 'qc';
-  if (raw === 'kit') return 'kit';
-  if (raw === 'catalog') return 'catalog';
-  return 'manuals';
+function parsePairingSort(raw: string | null): PairingSort {
+  const match = PAIRING_SORTS.find((sort) => sort === raw);
+  return match ?? DEFAULT_PAIRING_SORT;
 }
 
 export function ProductsSidebarPanel() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const masterNavEnabled = useMasterNavEnabled();
-  const view = parseView(searchParams.get('view'));
+  // Parse a pasted / bookmarked link at the boundary, so a URL that predates the
+  // /products spec cannot deliver another surface's params into this one.
+  useSurfaceParamHygiene();
+  const view = parseProductsView(searchParams.get('view'));
   const currentQuery = searchParams.get('q') || '';
   const pairingSort = parsePairingSort(searchParams.get('sort'));
 
@@ -97,9 +100,25 @@ export function ProductsSidebarPanel() {
     [updateParams],
   );
 
+  /**
+   * Switch the L2 view. **Constructs the target — never copies the current query
+   * string.** Patching `?view=` in place is what let a QC selection (`?skuId=`),
+   * a Pairing sort and a Labels history row ride into Catalog: every one of them
+   * validates fine against the destination, so no boundary parse could tell them
+   * from a real value. Nothing survives unless it is named here.
+   *
+   * The one deliberate carry is the staff filter — an operator preference, not
+   * view state, exactly as `useReceivingMode.updateMode` treats it.
+   */
   const handleViewChange = useCallback(
-    (id: string) => updateParams({ view: id === 'manuals' ? null : id }),
-    [updateParams],
+    (id: string) => {
+      const next: ProductsView = parseProductsView(id);
+      const staff = searchParams.get('staff') ?? searchParams.get('staffId');
+      router.replace(
+        buildRouteUrl(PRODUCTS_ROUTE_PARAMS, { view: productsViewParam(next), staff }),
+      );
+    },
+    [router, searchParams],
   );
 
   const handlePairingSortChange = useCallback(

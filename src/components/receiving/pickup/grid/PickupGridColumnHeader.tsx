@@ -1,8 +1,11 @@
 'use client';
 
-import { ChevronUp, ChevronDown } from '@/components/Icons';
 import { tableHeader } from '@/design-system/tokens/typography/presets';
 import { ColumnTypeGlyph } from '@/components/ui/table-column-config/column-type-glyph';
+import {
+  GridHeaderLabel,
+  gridHeaderAriaSort,
+} from '@/design-system/components/grid/GridHeaderLabel';
 import { gridHeaderCellAlignClass, resolveGridColumnAlign } from '@/design-system/components/grid/grid-header-align';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { cn } from '@/utils/_cn';
@@ -13,7 +16,6 @@ import {
   isPickupGridSortable,
   pickupGridCell,
   pickupGridFrozenLeft,
-  pickupGridHeaderShowsLabel,
   pickupGridRowShellClass,
   pickupGridTemplate,
   type PickupGridColumn,
@@ -94,46 +96,20 @@ function PickupHeaderCell({
   sortDir?: PickupGridSortDir | null;
   onSort?: () => void;
 }) {
-  const label = column.label ?? column.key;
-  const showTextLabel = pickupGridHeaderShowsLabel(column);
-  const visibleLabel = column.gridLabel ?? label;
   const frozen = isPickupGridFrozen(column.key);
 
   const glyph = column.type ? (
     <ColumnTypeGlyph type={column.type} className="h-3 w-3 text-text-faint" />
   ) : null;
 
-  const sortChevron =
-    isActiveSort && sortDir ? (
-      sortDir === 'asc' ? (
-        <ChevronUp className="h-3 w-3 shrink-0 text-text-muted opacity-80" aria-hidden />
-      ) : (
-        <ChevronDown className="h-3 w-3 shrink-0 text-text-muted opacity-80" aria-hidden />
-      )
-    ) : null;
+  // Tooltip copy only — the visible label is resolved inside GridHeaderLabel.
+  const label = column.label ?? column.key;
 
-  const inner = !showTextLabel ? (
-    <>
-      <span className="sr-only">{label}</span>
-      {glyph}
-      {sortChevron}
-    </>
-  ) : (
-    <>
-      {glyph}
-      <span className="min-w-0 truncate">{visibleLabel}</span>
-      {sortChevron}
-    </>
+  const inner = (
+    <GridHeaderLabel column={column} glyph={glyph} sortDir={isActiveSort ? sortDir : null} />
   );
 
-  const ariaSort =
-    isActiveSort && sortDir
-      ? sortDir === 'asc'
-        ? 'ascending'
-        : 'descending'
-      : sortActive
-        ? 'none'
-        : undefined;
+  const ariaSort = gridHeaderAriaSort(isActiveSort, sortDir, sortActive);
 
   const tip =
     isActiveSort && sortDir

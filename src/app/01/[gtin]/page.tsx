@@ -8,7 +8,7 @@ import { resolveGs1 } from '@/lib/gs1/resolver';
  * /01/[gtin] — GS1 Digital Link landing for a product class (no serial).
  *
  * Public: 302 to the storefront. Internal: hit the shared resolver, which
- * looks up the SKU and lands on /products/{sku}. Falls back to /inventory
+ * looks up the SKU and lands on /products/sku/{sku}. Falls back to /inventory
  * when the GTIN isn't registered.
  *
  * Auth detection mirrors withAuth: read the session cookie, look up the

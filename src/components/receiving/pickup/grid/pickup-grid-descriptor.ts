@@ -12,7 +12,6 @@ import {
   defaultDirForPickupGridSort,
   isPickupGridFrozen,
   isPickupGridSortable,
-  pickupContentMinWidthRem,
   type PickupGridColumn,
 } from './pickup-grid-layout';
 
@@ -27,7 +26,6 @@ export function makePickupGridDescriptor(
   return makeGridSurfaceDescriptor<PickupLine, PickupGridColumn>(
     'pickup.browse',
     columns,
-    pickupContentMinWidthRem(columns),
     {
       isSortable: isPickupGridSortable,
       sortDescFirst: (key) => defaultDirForPickupGridSort(key) === 'desc',

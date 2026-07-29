@@ -127,11 +127,11 @@ export async function POST(req: NextRequest) {
       const hasRepairSku = lineItems.some((li: any) => isRepairSku(li.sku));
       const orderSource = hasRepairSku ? 'repair_payment' : 'walk_in_sale';
 
-      // Thread the resolved org into the insert + the realtime publish so both
-      // run GUC-scoped (app.current_org). square_transactions is
-      // tenant-owned-NEEDS-COL — no organization_id column and no parent to
-      // derive from — so this only sets the GUC (RLS-ready once the column +
-      // FORCE policy land), it cannot stamp/filter a column yet.
+      // Thread the resolved org into the insert + the realtime publish. This is
+      // a session-less callback, so `orgId` here is the ONLY thing that decides
+      // which tenant owns the row: insertSquareTransaction stamps it into
+      // organization_id and conflicts on (organization_id, square_order_id),
+      // and the table's FORCE RLS policy binds to the same value via the GUC.
       await insertSquareTransaction({
         square_order_id: payment.order_id,
         square_payment_id: payment.id || null,

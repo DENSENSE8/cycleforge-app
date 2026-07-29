@@ -23,7 +23,11 @@ const PICKUP_TABLE_ID = 'pickup' as const;
 interface PickupGridViewProps {
   rows: PickupLine[];
   loading: boolean;
+  /** Settled with no pickup orders at all. */
   emptyMessage: string;
+  /** Settled with none matching the filter — a different answer (clear it). */
+  searchEmptyMessage?: string;
+  isSearching?: boolean;
   /** Highlight every product row of this LCPU order (sidebar selection). */
   selectedOrderId: number | null;
   onSelectOrder: (orderId: number) => void;
@@ -76,6 +80,8 @@ export function PickupGridView({
   rows,
   loading,
   emptyMessage,
+  searchEmptyMessage,
+  isSearching,
   selectedOrderId,
   onSelectOrder,
   columns = PICKUP_GRID_COLUMNS,
@@ -142,6 +148,8 @@ export function PickupGridView({
       onSortChange={setSort}
       loading={loading}
       emptyMessage={emptyMessage}
+      searchEmptyMessage={searchEmptyMessage}
+      isSearching={isSearching}
       scrollRef={scrollRef}
       testId="pickup-grid-body"
       renderColumnHeader={({ toggleColumnSort }) => (

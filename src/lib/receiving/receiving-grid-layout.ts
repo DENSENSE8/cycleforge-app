@@ -12,9 +12,12 @@
  * activity-axis stamp (Unboxed / Scanned / Tested).
  */
 
-import { gridHeaderLabelFits } from '@/design-system/components/grid/grid-header-align';
+import {
+  gridContentMinWidthRem,
+  gridHeaderShowsLabel,
+  gridTemplate,
+} from '@/design-system/components/grid/grid-column-geometry';
 import type { LedgerGridColumnModel } from '@/design-system/components/grid/grid-surface-descriptor';
-import { ordersQueueColVar } from '@/lib/dashboard-order-row-layout';
 
 export type ReceivingGridColumnKey =
   | 'select'
@@ -73,7 +76,11 @@ export const RECEIVING_GRID_COLUMNS: readonly ReceivingGridColumn[] = [
   },
   // Civil day of the activity-axis stamp — Pending/Incoming Date column recipe.
   { key: 'date', width: 'minmax(4.5rem, 4.5rem)', label: 'Date', gridLabel: 'Date', type: 'date', labelFitRem: 4.5 },
-  { key: 'qty', width: 'minmax(2.75rem, 2.75rem)', label: 'Qty', type: 'number', hideKey: 'qty', labelFitRem: 4.5 },
+  // 3.5rem / fit 3.5 matches the Pending grid exactly, so the header reads
+  // `Qty` instead of a bare `#`. The glyph fallback was ambiguous here: the
+  // type registry maps BOTH `number` and `id` to the hash mark, so a label-less
+  // qty column was indistinguishable from the Order column two tracks over.
+  { key: 'qty', width: 'minmax(3.5rem, 3.5rem)', label: 'Qty', type: 'number', hideKey: 'qty', labelFitRem: 3.5 },
   { key: 'condition', width: 'minmax(5.5rem, 5.5rem)', label: 'Cond', type: 'tag', hideKey: 'condition', tier: 'optional', labelFitRem: 4.5 },
   // Stage clock — hide with meta `rest`. The track is sized for the RUNTIME
   // label (`Unboxed` / `Scanned` / `Tested`, injected by the header's
@@ -99,32 +106,20 @@ export function isReceivingGridSortable(key: string): key is ReceivingGridColumn
   return (RECEIVING_GRID_SORTABLE_KEYS as readonly string[]).includes(key);
 }
 
-/** Parse rem floor from a track string. */
-function receivingGridColumnTrackRem(column: ReceivingGridColumn): number {
-  const m = column.width.match(/([\d.]+)rem/);
-  return m ? Number(m[1]) : 12;
-}
-
-export function receivingGridHeaderShowsLabel(column: ReceivingGridColumn): boolean {
-  const fit = column.labelFitRem ?? 4.5;
-  const trackRem = receivingGridColumnTrackRem(column);
-  if (trackRem < fit) return false;
-  // The label must ALSO fit — Unbox overrides `stage` with `Unboxed` at runtime
-  // over a track sized for `Stage`, and a clipped `UNBO…` is worse than the
-  // glyph. See `gridHeaderLabelFits`.
-  return gridHeaderLabelFits(trackRem, column.gridLabel ?? column.label ?? column.key);
-}
+// Geometry delegates to the shared waist — these stay as named aliases so the
+// surface's call sites keep reading receiving-flavoured names.
+export const receivingGridHeaderShowsLabel = gridHeaderShowsLabel;
 
 export function receivingContentMinWidthRem(
   columns: readonly ReceivingGridColumn[] = RECEIVING_GRID_COLUMNS,
 ): number {
-  return columns.reduce((sum, c) => sum + receivingGridColumnTrackRem(c), 0);
+  return gridContentMinWidthRem(columns);
 }
 
 export function receivingGridTemplate(
   columns: readonly ReceivingGridColumn[] = RECEIVING_GRID_COLUMNS,
 ): string {
-  return columns.map((c) => `var(${ordersQueueColVar(c.key)}, ${c.width})`).join(' ');
+  return gridTemplate(columns);
 }
 
 export function isReceivingGridFrozen(key: string): boolean {

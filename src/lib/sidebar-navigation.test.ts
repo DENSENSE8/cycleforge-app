@@ -9,6 +9,7 @@ import {
   getSidebarPageNav,
   getSidebarHref,
   getSidebarRouteKey,
+  hasSidebarContextPanel,
   applyModeTarget,
   resolveSidebarMode,
 } from '@/lib/sidebar-navigation';
@@ -163,8 +164,9 @@ test('mode round-trip resolves, preserving unrelated params only on un-migrated 
   }
 });
 
-// Dashboard L2 modes wipe Search-scoped selection so Receiving/Shipping never
-// inherit openOrderId/map/q from a prior Search handoff (and Search rail opens clean).
+// A dashboard L2 switch emits only its own delta, so a retired Search handoff
+// (`openOrderId`/`map`/`q`) can never ride along into a domain that has no use
+// for it — the guarantee that let the hand-written clear lists be deleted.
 test('dashboard modes clear Search-scoped openOrderId/map/q', () => {
   const page = SIDEBAR_PAGE_NAV.find((p) => p.id === 'dashboard');
   assert.ok(page?.modes);
@@ -323,16 +325,18 @@ test('resolver matches existing panel derivations for known deep-links', () => {
   assert.equal(resolveSidebarMode('outbound', at('/outbound', 'mode=ready')), 'ready');
   assert.equal(getSidebarRouteKey('/shipping'), 'outbound');
   assert.equal(getSidebarRouteKey('/outbound'), 'outbound');
-  // Dashboard: three L2 modes on `?mode=`. Shipping (id `outbound`) is the
-  // default — both `?shipped` and `?unshipped` (+ legacy `?pending` + bare)
-  // resolve to it. Receiving rides `?mode=inbound` (canonical) or the
-  // `?mode=receiving` alias; Search rides `?mode=search`.
-  // Warranty Logger moved to Support (`?mode=warranty`).
+  // Dashboard: TWO L2 modes on `?mode=`, one per domain. Shipping (id
+  // `outbound`) is the default — `?shipped`, `?unshipped`, legacy `?pending`,
+  // and bare all resolve to it. Receiving rides `?mode=inbound` (canonical) or
+  // the `?mode=receiving` alias. Warranty Logger moved to Support
+  // (`?mode=warranty`); Search graduated to its own `/search` route, so the
+  // retired `?mode=search` falls through to the default rather than naming a
+  // mode that no longer exists (the page client-redirects it).
   assert.equal(resolveSidebarMode('dashboard', at('/dashboard', 'shipped=')), 'outbound');
   assert.equal(resolveSidebarMode('dashboard', at('/dashboard')), 'outbound');
   assert.equal(resolveSidebarMode('dashboard', at('/dashboard', 'pending=')), 'outbound');
   assert.equal(resolveSidebarMode('dashboard', at('/dashboard', 'warranty=')), 'outbound');
-  assert.equal(resolveSidebarMode('dashboard', at('/dashboard', 'mode=search')), 'search');
+  assert.equal(resolveSidebarMode('dashboard', at('/dashboard', 'mode=search')), 'outbound');
   assert.equal(resolveSidebarMode('dashboard', at('/dashboard', 'mode=inbound')), 'receiving');
   assert.equal(resolveSidebarMode('dashboard', at('/dashboard', 'mode=receiving')), 'receiving');
   assert.equal(resolveSidebarMode('support', at('/support', 'mode=warranty')), 'warranty');
@@ -367,4 +371,18 @@ test('getSidebarRouteKey maps the dedicated order workspace to order', () => {
   assert.equal(getSidebarRouteKey('/o/6057'), 'order');
   assert.equal(getSidebarRouteKey('/o/12-34567-89012'), 'order');
   assert.equal(getSidebarRouteKey('/o'), 'order');
+});
+
+// `/search` is full-width BY DECLARATION, not because nothing claimed the path.
+// It resolved to `unknown` until 2026-07-29, which gave the right layout for the
+// wrong reason — a first-class route inheriting the fallback's behaviour. The
+// pair of assertions below is the decision: a real key, deliberately absent from
+// CONTEXT_PANEL_ROUTE_KEYS. If Phase 6 gives the results grid facets, flip the
+// second one and add 'search' to that set.
+test('/search declares its own route key and reserves no context column', () => {
+  assert.equal(getSidebarRouteKey('/search'), 'search');
+  assert.equal(getSidebarRouteKey('/search/anything'), 'search');
+  assert.equal(hasSidebarContextPanel('/search'), false);
+  // The fallback still exists and still means "nothing claims this path".
+  assert.equal(getSidebarRouteKey('/no-such-route'), 'unknown');
 });

@@ -18,6 +18,14 @@
  * anatomy regardless of viewport width.
  */
 
+import {
+  gridColVar,
+  gridColumnTrackRem,
+  gridContentMinWidthRem,
+  gridHeaderShowsLabel,
+  gridTemplate,
+} from '@/design-system/components/grid/grid-column-geometry';
+import type { LedgerGridColumnModel } from '@/design-system/components/grid/grid-surface-descriptor';
 import type { ColumnType } from '@/lib/tables/table-columns';
 
 /** Sticky column header docks at the scrollport top. */
@@ -44,7 +52,7 @@ export type OrdersQueueColumnKey =
  * cells all read, so a column's width, label, type, and hide-key live in ONE
  * place and can never drift apart.
  */
-export interface OrdersQueueColumn {
+export interface OrdersQueueColumn extends Omit<LedgerGridColumnModel, 'key' | 'width' | 'label'> {
   key: OrdersQueueColumnKey;
   /**
    * CSS grid track. Fact columns use `minmax(X, X)` so they never shrink below
@@ -101,7 +109,13 @@ export const ORDERS_QUEUE_COLUMNS: readonly OrdersQueueColumn[] = [
   // shows words rather than glyphs. `labelFitRem` stays as the graceful
   // degrade for a column the operator drag-resizes narrower than its label.
   { key: 'sla', width: 'minmax(7rem, 7rem)', label: 'Ship by', type: 'date', labelFitRem: 5 },
-  { key: 'qty', width: 'minmax(3.5rem, 3.5rem)', label: 'Qty', type: 'number', hideKey: 'qty', labelFitRem: 3.5 },
+  // `align: 'start'` OVERRIDES the numeric default, deliberately: a pick qty is
+  // `1` on nearly every row in a 3.5rem track, so right-alignment bought a ragged
+  // gutter mid-table and broke the left scan rhythm rather than aiding place-value
+  // comparison. Rationale in full at OrdersQueueTableRow's qty cell. Declared here
+  // so the header and the cell read the SAME exception — this is exactly the case
+  // the override field exists for, and deriving blindly regressed it once already.
+  { key: 'qty', width: 'minmax(3.5rem, 3.5rem)', label: 'Qty', type: 'number', align: 'start', hideKey: 'qty', labelFitRem: 3.5 },
   { key: 'condition', width: 'minmax(5.5rem, 5.5rem)', label: 'Cond', type: 'tag', hideKey: 'condition', labelFitRem: 4 },
   { key: 'order', width: 'minmax(4.5rem, 4.5rem)', label: 'Order', type: 'id', hideKey: 'orderid', labelFitRem: 4.5 },
   { key: 'tracking', width: 'minmax(5rem, 5rem)', label: 'Tracking', gridLabel: 'Track', type: 'location', hideKey: 'tracking', labelFitRem: 4.5 },
@@ -123,7 +137,13 @@ export const ORDERS_QUEUE_TESTED_COLUMNS: readonly OrdersQueueColumn[] = [
   { key: 'tester', width: 'minmax(6rem, 6rem)', label: 'Tester', type: 'text', labelFitRem: 4.5 },
   // Full `formatDateTimePST` string (MM/DD/YYYY h:mm:ss AM/PM) needs the widest track.
   { key: 'testedAt', width: 'minmax(10rem, 10rem)', label: 'Tested at', type: 'date', labelFitRem: 4.5 },
-  { key: 'qty', width: 'minmax(3.5rem, 3.5rem)', label: 'Qty', type: 'number', hideKey: 'qty', labelFitRem: 3.5 },
+  // `align: 'start'` OVERRIDES the numeric default, deliberately: a pick qty is
+  // `1` on nearly every row in a 3.5rem track, so right-alignment bought a ragged
+  // gutter mid-table and broke the left scan rhythm rather than aiding place-value
+  // comparison. Rationale in full at OrdersQueueTableRow's qty cell. Declared here
+  // so the header and the cell read the SAME exception — this is exactly the case
+  // the override field exists for, and deriving blindly regressed it once already.
+  { key: 'qty', width: 'minmax(3.5rem, 3.5rem)', label: 'Qty', type: 'number', align: 'start', hideKey: 'qty', labelFitRem: 3.5 },
   { key: 'condition', width: 'minmax(5.5rem, 5.5rem)', label: 'Cond', type: 'tag', hideKey: 'condition', labelFitRem: 4 },
   { key: 'order', width: 'minmax(4.5rem, 4.5rem)', label: 'Order', type: 'id', hideKey: 'orderid', labelFitRem: 4.5 },
   { key: 'tracking', width: 'minmax(5rem, 5rem)', label: 'Tracking', gridLabel: 'Track', type: 'location', hideKey: 'tracking', labelFitRem: 4.5 },
@@ -140,16 +160,10 @@ export function ordersQueueColumnsFor(
 }
 
 /** Parse the rem floor from a track (`minmax(3rem, 3rem)` / `3rem` / `minmax(12rem, 1fr)`). */
-export function ordersQueueColumnTrackRem(column: OrdersQueueColumn): number {
-  const m = column.width.match(/([\d.]+)rem/);
-  return m ? Number(m[1]) : 12;
-}
+export const ordersQueueColumnTrackRem = gridColumnTrackRem;
 
 /** Pending grid: whether the header should paint a visible short label (vs glyph-only). */
-export function ordersQueueHeaderShowsLabel(column: OrdersQueueColumn): boolean {
-  const fit = column.labelFitRem ?? 4.5;
-  return ordersQueueColumnTrackRem(column) >= fit;
-}
+export const ordersQueueHeaderShowsLabel = gridHeaderShowsLabel;
 
 /**
  * Sum of content-min rem floors for the given columns (or canonical set).
@@ -159,7 +173,7 @@ export function ordersQueueHeaderShowsLabel(column: OrdersQueueColumn): boolean 
 export function ordersQueueContentMinWidthRem(
   columns: readonly OrdersQueueColumn[] = ORDERS_QUEUE_COLUMNS,
 ): number {
-  return columns.reduce((sum, c) => sum + ordersQueueColumnTrackRem(c), 0);
+  return gridContentMinWidthRem(columns);
 }
 
 /**
@@ -203,9 +217,7 @@ const ORDERS_QUEUE_COLUMN_BY_KEY = new Map<string, OrdersQueueColumn>(
 
 /** CSS custom property that overrides a column's track width (px), keyed by the
  *  column key. Set on the grid surface; header + rows + group summary inherit it. */
-export function ordersQueueColVar(key: string): string {
-  return `--cf-col-${key}`;
-}
+export const ordersQueueColVar = gridColVar;
 
 /**
  * Sanitize a persisted per-staff column order into a full, safe key list:
@@ -263,9 +275,7 @@ export function orderedOrdersQueueColumns(
  * order or the tracks disagree.
  */
 export function ordersQueueGridTemplate(order?: readonly string[] | null): string {
-  return orderedOrdersQueueColumns(order)
-    .map((c) => `var(${ordersQueueColVar(c.key)}, ${c.width})`)
-    .join(' ');
+  return gridTemplate(orderedOrdersQueueColumns(order));
 }
 
 /**
@@ -277,7 +287,7 @@ export function ordersQueueGridTemplate(order?: readonly string[] | null): strin
 export function ordersQueueGridTemplateFor(
   columns: readonly OrdersQueueColumn[],
 ): string {
-  return columns.map((c) => `var(${ordersQueueColVar(c.key)}, ${c.width})`).join(' ');
+  return gridTemplate(columns);
 }
 
 /** Build the grid-surface style object that applies a persisted px-width map as

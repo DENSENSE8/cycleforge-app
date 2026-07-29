@@ -112,6 +112,37 @@ const nextConfig: NextConfig = {
             { source: '/shipping', has: [{ type: 'query', key: 'mode', value: 'fba' }], destination: '/shipping/fba', permanent: false },
             { source: '/shipping', has: [{ type: 'query', key: 'mode', value: 'scan-out' }], destination: '/shipping/scan-out', permanent: false },
             { source: '/shipping', has: [{ type: 'query', key: 'mode', value: 'labels' }], destination: '/shipping/labels', permanent: false },
+            // D2 — the product detail page moved under a static segment:
+            // `/products/:sku` → `/products/sku/:sku`. A BARE dynamic child
+            // cannot coexist with the view segments `/products` will grow,
+            // because static beats dynamic in Next.js: the day `/products/qc`
+            // exists as a page, the SKU literally named "qc" becomes
+            // unreachable. Every sibling surface already namespaces its dynamic
+            // child (/inventory/sku/:sku, /inventory/location/:barcode,
+            // /receiving/lines/:id), so this is the house shape, not a new one.
+            //
+            // The negative lookahead is what keeps this redirect from swallowing
+            // those future segments — without it, `/products/qc` would bounce to
+            // `/products/sku/qc` before the page could ever render.
+            //
+            // Each alternative is terminated by `(?:$|/)`, NOT by `$` alone.
+            // With `sku$` the exemption only covers the bare `/products/sku`, so
+            // `/products/sku/CABLE-001` — the redirect's own destination — still
+            // matched and rewrote to `/products/sku/sku/CABLE-001`, forever.
+            // Anchoring on "segment ends" instead of "path ends" fixes the loop
+            // and lets a view grow a nested child later.
+            //
+            // Keep the list in sync with PRODUCTS_VIEWS
+            // (src/components/products/products-view.ts); the guard in
+            // src/lib/routing/products-detail-redirect.guard.test.ts compiles
+            // this source and fails on drift or a self-match.
+            // `permanent: false` for the same reason as the shipping rules
+            // above — a 308 is cached by browsers forever.
+            {
+                source: '/products/:sku((?!(?:sku|catalog|manuals|labels|pairing|qc|kit)(?:$|/)).*)',
+                destination: '/products/sku/:sku',
+                permanent: false,
+            },
         ];
     },
     serverExternalPackages: [

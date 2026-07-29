@@ -17,6 +17,8 @@ import {
   upsertReceivingTriage,
   type CartonTriagePatch,
 } from '@/lib/receiving/streets/carton-street-write';
+import type { OrgId } from '@/lib/tenancy/constants';
+import { ensureLineUnitsSafe, fetchLineUnits } from '@/lib/receiving/ensure-line-units';
 
 const SOURCE_PLATFORMS = new Set([
   'zoho',
@@ -265,10 +267,37 @@ export async function GET(
       }
     }
 
-    const enrichedLines = lines.map((l) => ({
-      ...l,
-      serials: serialsByLine.get(Number(l.id)) ?? [],
-    }));
+    // Materialise `receiving_line_unit` then attach the shared wire shape so this
+    // carton open and /api/receiving-lines?include=serials cannot drift
+    // (per-unit-no-serial Phase 1–2). Best-effort — a materialisation failure
+    // must never fail the carton read.
+    if (lineIds.length > 0) {
+      await ensureLineUnitsSafe(
+        orgId as OrgId,
+        lines.map((l) => {
+          const lineId = Number(l.id);
+          const serials = serialsByLine.get(lineId) ?? [];
+          return {
+            lineId,
+            expectedQty: l.quantity_expected != null ? Number(l.quantity_expected) : null,
+            serialIds: serials
+              .map((s) => Number(s.id))
+              .filter((n) => Number.isFinite(n) && n > 0),
+          };
+        }),
+      );
+    }
+    const unitsByLine =
+      lineIds.length > 0 ? await fetchLineUnits(lineIds, orgId as OrgId) : new Map();
+
+    const enrichedLines = lines.map((l) => {
+      const lineId = Number(l.id);
+      return {
+        ...l,
+        serials: serialsByLine.get(lineId) ?? [],
+        units: unitsByLine.get(lineId) ?? [],
+      };
+    });
 
     // Aggregate PO list + per-PO line counts.
     const poMap = new Map<

@@ -214,7 +214,7 @@ export function GlobalSearchDropdown({
             </div>
 
             {state === 'recents' && (
-              <Link href="/dashboard?mode=search" onClick={onClose} className={FOOTER_LINK}>
+              <Link href="/search" onClick={onClose} className={FOOTER_LINK}>
                 <History className="h-3.5 w-3.5" /> View all recent searches
               </Link>
             )}

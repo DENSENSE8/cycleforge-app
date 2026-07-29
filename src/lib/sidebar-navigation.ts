@@ -43,6 +43,7 @@ import {
   Voicemail,
 } from '@/components/Icons';
 import { ADMIN_SECTION_OPTIONS } from '@/components/admin/admin-sections';
+import { DASHBOARD_INBOUND_PERMISSION } from '@/lib/dashboard/dashboard-domains';
 import { isParkedSurfaceBlocked, type ParkedSurfaceKey } from '@/lib/dogfood/parked-surfaces';
 import {
   PACKING_MODE_ICONS,
@@ -51,6 +52,7 @@ import {
   STATION_PAGE_ICONS,
   TECH_MODE_ICONS,
 } from '@/lib/nav/station-nav-icons';
+import { parseProductsView } from '@/components/products/products-view';
 import { parseWalkInHistoryMode } from '@/lib/walk-in/history-modes';
 import { OUTBOUND_MODE_PATHS, outboundModeFromPath } from '@/components/outbound/outbound-sidebar-shared';
 import { routeParamsFor } from '@/lib/routing/registry';
@@ -82,6 +84,7 @@ export type SidebarRouteKey =
   | 'audit-log'
   | 'manuals-library'
   | 'settings'
+  | 'search'
   | 'unknown';
 
 export type SidebarIconComponent = (props: { className?: string }) => JSX.Element;
@@ -391,6 +394,18 @@ export function getSidebarRouteKey(pathname: string | null): SidebarRouteKey {
   // /manuals now redirects to /products (see src/app/manuals/page.tsx)
   if (pathname === '/manuals' || pathname.startsWith('/manuals/')) return 'products';
   if (pathname === '/settings' || pathname.startsWith('/settings/')) return 'settings';
+  // `/search` renders FULL-WIDTH, and that is a decision, not an omission.
+  //
+  // It resolved to `unknown` until 2026-07-29 — which produced the right layout
+  // for the wrong reason: `unknown` is the fallback for a path nothing claims, so
+  // a first-class route was inheriting 404-shaped behaviour and would have kept
+  // it silently if the fallback ever changed. Declaring the key and leaving it
+  // out of CONTEXT_PANEL_ROUTE_KEYS says the same thing on purpose.
+  //
+  // Results are the whole surface and `?q=` is the whole state, so there is no
+  // picker to put in a 360px column. If Phase 6 gives the results grid facets or
+  // a filter rail, the change is one line: add 'search' to that set.
+  if (pathname === '/search' || pathname.startsWith('/search/')) return 'search';
   return 'unknown';
 }
 
@@ -579,32 +594,37 @@ const REVIEW = '/review';
 
 export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
   // ── Dashboard ─────────────────────────────────────────────────────────────
-  // Three L2 modes on `?mode=` (SoT `getDashboardModeFromSearch`), left → right:
-  //   • Search   (`?mode=search`)  — global search; sidebar shows per-staff recents.
+  // TWO L2 modes on `?mode=`, one per DOMAIN (SoT `getDashboardDomainFromSearch`):
   //   • Receiving(`?mode=inbound`) — inbound cartons; Triage (scanned) / Unbox
   //     (unboxed) table tabs, each with its own KPI + filters. `inbound` is the
   //     param value (kept for surface-isolation + legacy bookmarks); the pill/id
   //     is `receiving`. `?mode=receiving` is accepted as an alias by the resolver.
   //   • Shipping (bare / `?unshipped` / `?shipped`) — outbound orders (default).
   //     Id stays `outbound` so existing deep-links + tests resolve unchanged.
+  //
+  // There used to be a THIRD mode, Search (`?mode=search`). It was not a domain:
+  // it owned no table, its sidebar showed recents rather than a picker, and it
+  // carried a mode-local order-detail shell — a third way to look at an order.
+  // Cross-entity search graduated to its own route, `/search`, and the dashboard
+  // page client-redirects the retired param (dashboard IA rework Phase 1).
+  //
   // The Unshipped/Shipped split is a top-left TAB inside the outbound content
   // (`DashboardOrdersView`). Warranty Logger moved to Support (`?mode=warranty`);
-  // legacy `/dashboard?warranty=` redirects there from the dashboard page. Every
-  // switch clears the other modes' scoped params so each mode opens clean.
+  // legacy `/dashboard?warranty=` redirects there from the dashboard page. A mode
+  // switch emits only its own delta (`applyModeTarget` + DASHBOARD_ROUTE_PARAMS),
+  // so each domain opens clean with no hand-written clear list.
   {
     id: 'dashboard', label: 'Dashboard', href: DASHBOARD, icon: LayoutDashboard, kind: 'main', requires: 'dashboard.view',
     modes: [
-      // Every L2 switch clears Search-scoped selection (`openOrderId`/`map`/`q`)
-      // so Receiving/Shipping never inherit a Search handoff, and Search opens clean.
-      { id: 'search',   label: 'Search',   icon: Search, to: () => ({ pathname: DASHBOARD, params: { mode: 'search' } }) },
       // Lands on the Triage tab (scanned order) — `sort=scanned_newest` keeps the
       // header tab + the table's day-band axis in lockstep (both read `?sort`).
-      { id: 'receiving', label: 'Receiving', icon: Inbox, to: () => ({ pathname: DASHBOARD, params: { mode: 'inbound', sort: 'scanned_newest' } }) },
+      // `requires` (C10): a domain the operator can't see is ABSENT, not a
+      // disabled pill that opens onto a denial state.
+      { id: 'receiving', label: 'Receiving', icon: Inbox, requires: DASHBOARD_INBOUND_PERMISSION, to: () => ({ pathname: DASHBOARD, params: { mode: 'inbound', sort: 'scanned_newest' } }) },
       { id: 'outbound', label: 'Shipping', icon: Send,   to: () => ({ pathname: DASHBOARD, params: { unshipped: '' } }) },
     ],
     resolveMode: ({ params }) => {
       const m = String(params.get('mode') || '').trim().toLowerCase();
-      if (m === 'search') return 'search';
       if (m === 'inbound' || m === 'receiving') return 'receiving';
       // `?unshipped`, `?shipped`, legacy `?pending`, or nothing → Shipping.
       return 'outbound';
@@ -621,11 +641,16 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
   {
     id: 'operations', label: 'Operations', href: OPERATIONS, icon: Monitor, kind: 'main', requires: 'operations.view',
     modes: [
-      { id: 'live',      label: 'Live',      icon: Activity,  to: () => ({ pathname: OPERATIONS, params: { mode: null, signalsView: null, signalId: null, window: null, signalKind: null, q: null, open: null, section: null, range: null, segment: null, staffId: null, station: null } }) },
-      { id: 'analytics', label: 'Analytics', icon: BarChart3, to: () => ({ pathname: OPERATIONS, params: { mode: 'analytics', signalsView: null, signalId: null, window: null, signalKind: null, q: null, open: null, section: null, range: null, segment: null, staffId: null, station: null } }) },
-      { id: 'insights',  label: 'Insights',  icon: Sparkles,  to: () => ({ pathname: OPERATIONS, params: { mode: 'insights',  signalsView: null, signalId: null, window: null, signalKind: null, q: null, open: null, section: null, range: null, segment: null, staffId: null, station: null } }) },
-      { id: 'history',   label: 'History',   icon: History,   to: () => ({ pathname: OPERATIONS, params: { mode: 'history',   signalsView: null, signalId: null, window: null, signalKind: null, q: null, open: null, section: null, range: null, segment: null, staffId: null, station: null } }) },
-      { id: 'signals',   label: 'Signals',   icon: Zap,       to: () => ({ pathname: OPERATIONS, params: { mode: 'signals',   signalsView: null, signalId: null, window: null, signalKind: null, q: null, open: null, section: null, range: null, segment: null, staffId: null, station: null } }) },
+      // Each target used to null twelve sibling keys by hand — the largest of the
+      // nine deleted denylists, re-stated once per mode. `/operations` declares
+      // OPERATIONS_ROUTE_PARAMS, so `applyModeTarget` CONSTRUCTS from the delta
+      // and carries only `staff`; the nulls could not affect the result. Verified
+      // byte-identical before and after removal for all five modes.
+      { id: 'live',      label: 'Live',      icon: Activity,  to: () => ({ pathname: OPERATIONS, params: { mode: null } }) },
+      { id: 'analytics', label: 'Analytics', icon: BarChart3, to: () => ({ pathname: OPERATIONS, params: { mode: 'analytics' } }) },
+      { id: 'insights',  label: 'Insights',  icon: Sparkles,  to: () => ({ pathname: OPERATIONS, params: { mode: 'insights' } }) },
+      { id: 'history',   label: 'History',   icon: History,   to: () => ({ pathname: OPERATIONS, params: { mode: 'history' } }) },
+      { id: 'signals',   label: 'Signals',   icon: Zap,       to: () => ({ pathname: OPERATIONS, params: { mode: 'signals' } }) },
     ],
     resolveMode: ({ params }) => {
       const m = params.get('mode');
@@ -816,21 +841,25 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
     },
   },
   // ── Products ──────────────────────────────────────────────────────────────
-  // `?view=manuals|catalog|labels|pairing|qc|kit`; default `manuals` (param cleared).
+  // `?view=manuals|catalog|labels|pairing|qc|kit`; default `manuals` (param
+  // cleared). Vocabulary SoT: `@/components/products/products-view`.
+  //
+  // The targets used to null `platform` / `linkFilter` by hand — a two-key
+  // denylist that only ever covered the Catalog chrome, which is why `?skuId=`,
+  // `?sort=` and `?historyId=` still rode between views. `applyModeTarget` now
+  // constructs from PRODUCTS_ROUTE_PARAMS, so a view emits its own delta and
+  // there is nothing left to remember to clear.
   {
     id: 'products', label: 'Products', href: PRODUCTS, icon: Tags, kind: 'main', requires: 'sku_stock.view',
     modes: [
-      { id: 'catalog', label: 'Catalog', icon: Tags, to: () => ({ pathname: PRODUCTS, params: { view: 'catalog', platform: null, linkFilter: null } }) },
-      { id: 'manuals', label: 'Manuals', icon: FileText, to: () => ({ pathname: PRODUCTS, params: { view: null, platform: null, linkFilter: null } }) },
-      { id: 'labels',  label: 'Labels',  icon: Barcode,  to: () => ({ pathname: PRODUCTS, params: { view: 'labels', platform: null, linkFilter: null } }) },
-      { id: 'pairing', label: 'Pairing', icon: Link2,    to: () => ({ pathname: PRODUCTS, params: { view: 'pairing', platform: null, linkFilter: null } }) },
-      { id: 'qc',      label: 'QC',      icon: Check,     to: () => ({ pathname: PRODUCTS, params: { view: 'qc', platform: null, linkFilter: null } }) },
-      { id: 'kit',     label: 'Kit Parts', icon: PackageOpen, to: () => ({ pathname: PRODUCTS, params: { view: 'kit', platform: null, linkFilter: null } }) },
+      { id: 'catalog', label: 'Catalog', icon: Tags, to: () => ({ pathname: PRODUCTS, params: { view: 'catalog' } }) },
+      { id: 'manuals', label: 'Manuals', icon: FileText, to: () => ({ pathname: PRODUCTS, params: { view: null } }) },
+      { id: 'labels',  label: 'Labels',  icon: Barcode,  to: () => ({ pathname: PRODUCTS, params: { view: 'labels' } }) },
+      { id: 'pairing', label: 'Pairing', icon: Link2,    to: () => ({ pathname: PRODUCTS, params: { view: 'pairing' } }) },
+      { id: 'qc',      label: 'QC',      icon: Check,     to: () => ({ pathname: PRODUCTS, params: { view: 'qc' } }) },
+      { id: 'kit',     label: 'Kit Parts', icon: PackageOpen, to: () => ({ pathname: PRODUCTS, params: { view: 'kit' } }) },
     ],
-    resolveMode: ({ params }) => {
-      const v = params.get('view');
-      return v === 'catalog' || v === 'labels' || v === 'pairing' || v === 'qc' || v === 'kit' ? v : 'manuals';
-    },
+    resolveMode: ({ params }) => parseProductsView(params.get('view')),
   },
   // ── Testing ───────────────────────────────────────────────────────────────
   // Top-mode switch — Testing / Shipping (matches TECH_TOP_MODE_ITEMS).

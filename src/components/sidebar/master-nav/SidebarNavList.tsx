@@ -76,44 +76,40 @@ export function SidebarNavList({
     const PageIcon = page.icon;
     return (
       <div key={rowKey}>
-        <div
+        {/*
+          ONE bar, one control.
+
+          This used to be two buttons inside a shared wrapper — label on the
+          left, mode-count + chevron on the right — each with its own radius and
+          its own hover fill. On an expandable row both fired the SAME handler,
+          so the split bought nothing and cost plenty: hovering lit up half a
+          row, the count and caret read as a separate widget parked beside the
+          page rather than as that page's own metadata, and a keyboard user got
+          two tab stops to the same destination. The row is the affordance, so
+          the row is the button.
+        */}
+        <button
+          type="button"
+          onClick={() => (expandable ? onToggleRow(open ? null : rowKey) : onNavigate(page.id))}
+          aria-expanded={expandable ? open : undefined}
+          onMouseEnter={onRowHover ? () => onRowHover(page) : undefined}
+          aria-label={expandable ? `${page.label} — ${modeCount} modes` : `Go to ${page.label}`}
           className={cn(
-            'flex items-stretch overflow-hidden rounded-xl transition-colors',
-            isPageActive && 'bg-blue-600',
+            'ds-raw-button flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left transition-colors',
+            isPageActive ? 'bg-blue-600 text-white' : 'hover:bg-surface-canvas',
           )}
         >
-          {/* Left: the page itself — expands when it has modes, else navigates. */}
-          <button
-            type="button"
-            onClick={() => (expandable ? onToggleRow(open ? null : rowKey) : onNavigate(page.id))}
-            aria-expanded={expandable ? open : undefined}
-            onMouseEnter={onRowHover ? () => onRowHover(page) : undefined}
-            aria-label={expandable ? `${page.label} — ${modeCount} modes` : `Go to ${page.label}`}
-            className={cn(
-              'ds-raw-button flex min-w-0 flex-1 items-center gap-2.5 px-2.5 py-2 text-left transition-colors',
-              isPageActive ? 'text-white' : 'rounded-xl hover:bg-surface-canvas',
+          <PageIcon
+            className={navIconStrokeClass(
+              'page',
+              cn('h-4 w-4 shrink-0', isPageActive ? 'text-white' : 'text-text-muted'),
             )}
-          >
-            <PageIcon
-              className={navIconStrokeClass(
-                'page',
-                cn('h-4 w-4 shrink-0', isPageActive ? 'text-white' : 'text-text-muted'),
-              )}
-            />
-            <span className="min-w-0 flex-1 truncate text-role-body font-semibold">{page.label}</span>
-          </button>
-          {/* Right: expand / collapse this page's modes (no-op if 0/1 mode). */}
+          />
+          <span className="min-w-0 flex-1 truncate text-role-body font-semibold">{page.label}</span>
+          {/* Trailing metadata, inside the bar: how many modes, and which way
+              this row is currently folded. Never its own hit target. */}
           {expandable && (
-            <button
-              type="button"
-              onClick={() => onToggleRow(open ? null : rowKey)}
-              aria-expanded={open}
-              aria-label={`${modeCount} modes`}
-              className={cn(
-                'ds-raw-button flex shrink-0 items-center gap-1.5 px-2.5 py-2 transition-colors',
-                isPageActive ? 'text-white/90 hover:text-white' : 'rounded-xl hover:bg-surface-canvas',
-              )}
-            >
+            <span className="flex shrink-0 items-center gap-1.5" aria-hidden>
               <span
                 className={cn(
                   'text-role-caption font-semibold tabular-nums',
@@ -129,9 +125,9 @@ export function SidebarNavList({
               >
                 <ChevronDown className="h-4 w-4" />
               </motion.span>
-            </button>
+            </span>
           )}
-        </div>
+        </button>
         <AnimatePresence initial={false}>
           {open && page.modes && (
             <motion.div

@@ -1,8 +1,12 @@
 'use client';
 
-import { Check, ChevronUp, ChevronDown, Clock } from '@/components/Icons';
+import { Check, Clock } from '@/components/Icons';
 import { tableHeader } from '@/design-system/tokens/typography/presets';
 import { ColumnTypeGlyph } from '@/components/ui/table-column-config/column-type-glyph';
+import {
+  GridHeaderLabel,
+  gridHeaderAriaSort,
+} from '@/design-system/components/grid/GridHeaderLabel';
 import { gridHeaderCellAlignClass, resolveGridColumnAlign } from '@/design-system/components/grid/grid-header-align';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { emitToggleAll } from '@/lib/selection/table-selection';
@@ -12,7 +16,6 @@ import {
   RECEIVING_GRID_FROZEN_CELL,
   receivingGridCell,
   receivingGridFrozenLeft,
-  receivingGridHeaderShowsLabel,
   receivingGridRowShellClass,
   receivingGridTemplate,
   isReceivingGridFrozen,
@@ -154,9 +157,6 @@ function ReceivingHeaderCell({
   sortDir?: ReceivingGridSortDir | null;
   onSort?: () => void;
 }) {
-  const label = column.label ?? column.key;
-  const showTextLabel = receivingGridHeaderShowsLabel(column);
-  const visibleLabel = column.gridLabel ?? label;
   const frozen = isReceivingGridFrozen(column.key);
 
   const glyph =
@@ -166,37 +166,14 @@ function ReceivingHeaderCell({
       <ColumnTypeGlyph type={column.type} className="h-3 w-3 text-text-faint" />
     ) : null;
 
-  const sortChevron =
-    isActiveSort && sortDir ? (
-      sortDir === 'asc' ? (
-        <ChevronUp className="h-3 w-3 shrink-0 text-text-muted opacity-80" aria-hidden />
-      ) : (
-        <ChevronDown className="h-3 w-3 shrink-0 text-text-muted opacity-80" aria-hidden />
-      )
-    ) : null;
+  // Tooltip copy only — the visible label is resolved inside GridHeaderLabel.
+  const label = column.label ?? column.key;
 
-  const inner = !showTextLabel ? (
-    <>
-      <span className="sr-only">{label}</span>
-      {glyph}
-      {sortChevron}
-    </>
-  ) : (
-    <>
-      {glyph}
-      <span className="min-w-0 truncate">{visibleLabel}</span>
-      {sortChevron}
-    </>
+  const inner = (
+    <GridHeaderLabel column={column} glyph={glyph} sortDir={isActiveSort ? sortDir : null} />
   );
 
-  const ariaSort =
-    isActiveSort && sortDir
-      ? sortDir === 'asc'
-        ? 'ascending'
-        : 'descending'
-      : sortActive
-        ? 'none'
-        : undefined;
+  const ariaSort = gridHeaderAriaSort(isActiveSort, sortDir, sortActive);
 
   const tip =
     isActiveSort && sortDir

@@ -6,9 +6,8 @@
  * CRUD chrome is optional (`readOnly` hides it — kiosk device principal).
  */
 
-import { AlertTriangle, ChevronDown, Loader2, Plus } from '@/components/Icons';
+import { AlertTriangle, ChevronDown, ChevronRight, Loader2, Plus } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { Button } from '@/design-system/primitives/Button';
 import { IconButton } from '@/design-system/primitives/IconButton';
 import { fieldLabel } from '@/design-system/tokens/typography/presets';
 import { focusRing } from '@/design-system/tokens/focus-ring';
@@ -95,53 +94,47 @@ export function FavoritesQuickPickView({ f }: { f: FavoritesWorkspaceController 
                 const start = () => onUseFavorite(favorite);
 
                 return (
-                  <div
+                  // The whole card IS the hit target. It used to carry a bordered
+                  // footer button wired to this same `start()` handler — ~40px per
+                  // tile of pure duplication that also read as a second, different
+                  // action. The trailing chevron carries the "tappable" cue instead
+                  // (matching the sibling category rows), which touch surfaces need
+                  // since they have no hover state.
+                  /* ds-raw-button: card-face start hit target — not a Button shape */
+                  <button
                     key={`${favorite.workspaceKey}-${favorite.id}`}
-                    className="flex min-h-[7.5rem] flex-col overflow-hidden rounded-xl border border-border-soft bg-surface-card"
+                    type="button"
+                    onClick={start}
+                    className={cn(
+                      'group flex min-h-[5.5rem] flex-col overflow-hidden rounded-xl border border-border-soft bg-surface-card p-3.5 text-left transition-colors hover:border-blue-300 hover:bg-blue-50 active:bg-blue-100',
+                      focusRing('control', 'neutral'),
+                    )}
+                    aria-label={`${useLabel}: ${favorite.label}`}
                   >
-                    {/* ds-raw-button: card-face start hit target — not a Button shape */}
-                    <button
-                      type="button"
-                      onClick={start}
-                      className={cn(
-                        'flex flex-1 flex-col p-3.5 pb-2.5 text-left',
-                        focusRing('control', 'neutral'),
-                        'rounded-t-xl',
-                      )}
-                      aria-label={`${useLabel}: ${favorite.label}`}
-                    >
-                      <p className="text-sm font-medium leading-snug tracking-tight text-text-default">
+                    <div className="flex w-full items-start gap-2">
+                      <p className="min-w-0 flex-1 text-sm font-medium leading-snug tracking-tight text-text-default">
                         {favorite.label}
                       </p>
-                      <div className="mt-1.5 flex min-w-0 items-baseline gap-2">
-                        {priceLabel ? (
-                          <span className="shrink-0 text-role-micro tabular-nums text-text-muted">
-                            {priceLabel}
-                          </span>
-                        ) : null}
-                        {favorite.sku ? (
-                          <span className="min-w-0 truncate text-role-micro text-text-faint">
-                            {favorite.sku}
-                          </span>
-                        ) : null}
-                      </div>
-                      {issue ? (
-                        <p className="mt-1.5 line-clamp-2 text-role-micro leading-relaxed text-text-soft">
-                          {issue}
-                        </p>
-                      ) : null}
-                    </button>
-                    <div className="border-t border-border-hairline p-1.5">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={start}
-                        className="w-full justify-center text-role-micro font-semibold text-text-muted"
-                      >
-                        {useLabel}
-                      </Button>
+                      <ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-text-faint" />
                     </div>
-                  </div>
+                    <div className="mt-1.5 flex min-w-0 items-baseline gap-2">
+                      {priceLabel ? (
+                        <span className="shrink-0 text-role-micro tabular-nums text-text-muted">
+                          {priceLabel}
+                        </span>
+                      ) : null}
+                      {favorite.sku ? (
+                        <span className="min-w-0 truncate text-role-micro text-text-faint">
+                          {favorite.sku}
+                        </span>
+                      ) : null}
+                    </div>
+                    {issue ? (
+                      <p className="mt-1.5 line-clamp-2 text-role-micro leading-relaxed text-text-soft">
+                        {issue}
+                      </p>
+                    ) : null}
+                  </button>
                 );
               })}
             </div>

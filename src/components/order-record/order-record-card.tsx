@@ -14,7 +14,7 @@
  */
 
 import type { ReactNode } from 'react';
-import { isSearchOrderFactEmpty } from '@/components/dashboard/search/search-order-overview-presence';
+import { isSearchOrderFactEmpty } from '@/components/order-record/order-fact-presence';
 import { Panel } from '@/design-system/primitives';
 import { cn } from '@/utils/_cn';
 

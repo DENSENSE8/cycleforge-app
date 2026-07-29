@@ -38,7 +38,7 @@ import { OrderReturnsCard } from '@/components/order-record/OrderReturnsCard';
 import {
   isSearchOrderFactEmpty,
   isShipByBeforeCreated,
-} from '@/components/dashboard/search/search-order-overview-presence';
+} from '@/components/order-record/order-fact-presence';
 import { CustomerDetailsTab } from '@/components/shipped/CustomerDetailsTab';
 import { ShippingInformationSection } from '@/components/shipped/details-panel/ShippingInformationSection';
 import { ProductDetailsSection } from '@/components/shipped/details-panel/ProductDetailsSection';

@@ -281,13 +281,69 @@ renders a header button wired to `open-mobile-drawer`, which is a no-op on an
 `/m` route (mobile branch, nothing listening). Deleting a visible control from a
 mobile page is a product call, not cleanup.
 
+### Wave 4 — the layer became a column (2026-07-29)
+
+Waves 1–3 kept converging on the same shape and then stopped one step short.
+The spine ended up with **no scrim, no scroll lock, no focus trap, no
+`aria-modal`, and a transparent dismiss catcher** — every one of those a correct
+call on its own, and together a description of something that is not a layer at
+all. It was a permanent-feeling surface wearing a transient one's mechanics, and
+it still landed on the photo grid on `/ops/photos` and on the rail on a bench.
+
+`SidebarSlideOver` is deleted. `SidebarNavColumn` is a **resident push column** —
+a flex sibling of the header+content column that tweens its own width 0↔360, so
+opening the nav moves the frame right and covers nothing.
+
+What that removed, rather than moved:
+
+| | Slide-over | Push column |
+|---|---|---|
+| Mount | portal → `<body>`, `fixed inset-0 z-panel` | in flow, sibling of the content column |
+| Dismiss catcher | transparent full-frame click target | none — nothing underneath to click through |
+| Escape / overlay-stack | registered, owned Escape | neither; a column is not an overlay |
+| `SCAN_FOCUS_REQUESTED_EVENT` | closed (it covered the scan bar) | ignored — it never covers the bar, and closing would reflow the bench *at scan time* |
+| On navigate | auto-closed | stays open (the spine re-expands the new active page) |
+| Motion | spring on `x` | tween on `width` (`sidebarNavColumnMount`) |
+
+Three things worth keeping in mind next time:
+
+- **A spring is wrong on a push.** It overshoots, and here the overshoot is the
+  width every sibling lays out against — the workspace rubber-bands on each
+  open. `motionBezier.layout`, the curve the house already reserves for
+  geometry.
+- **Latch the mount; don't pin it either way.** Always-mounted pulls the nav
+  chunk into every desktop page load for a column that starts collapsed;
+  only-while-open empties the column a beat before it finishes collapsing.
+  Mount on first open, keep it after.
+- **The left-edge dwell strip is `fixed`, so it outranks an in-flow column.**
+  Left mounted while open, it silently ate clicks on the spine's leftmost 24px.
+  It now renders only while collapsed, which is the only time it has a job.
+
+The general rule this earned is in `display/motion-crossfade.md` — the deliberate
+push toggle is the one sanctioned layout animation, under three conditions.
+
+### Wave 4b — the page row is one bar
+
+The nav row was two buttons in a shared wrapper: label on the left, mode-count +
+chevron on the right, each with its own radius and hover fill. On an expandable
+row **both fired the same handler**, so the split bought nothing and cost three
+things — hovering lit half a row, the count read as a widget parked beside the
+page rather than as that page's own metadata, and a keyboard user got two tab
+stops to one destination. The row is the affordance, so the row is the button;
+the count and caret are `aria-hidden` trailing content inside it.
+
 ### Coverage
 
-`tests/e2e/sidebar-nav-overlay.spec.ts` — **18/18 desktop**. Asserts: nav hidden
-by default with the bench still on screen across all six station routes; classic
-routes still lead with their panel; the toggle pushes rather than covers; the nav
-column is flat chrome; the page list renders in flow; no mode strip on the bench;
-pre-expansion of the active page; row-click expands without navigating.
+`tests/e2e/sidebar-nav-column.spec.ts` (was `…-nav-overlay.spec.ts`). Asserts,
+across all six station routes and five classic ones: the column starts collapsed
+at width 0; opening it pushes the route's own panel right by **exactly** the
+spine width and never covers it; the toggle collapses it back to where it
+started; the header band starts after the spine (the tell that it is a sibling,
+not a layer); no dismiss catcher exists and the aside is never `position: fixed`;
+clicking the work surface leaves it open; a page row is a single control whose
+bar spans the list; plus the carried-over contracts — panel-less routes reserve
+nothing, pre-expansion of the active page, row-click expands without navigating,
+no mode strip on the bench, and the L2 modes menu stacking above the spine.
 
 ### Still open
 
@@ -296,9 +352,15 @@ pre-expansion of the active page; row-click expands without navigating.
   unverified, and the drawer is only reachable in a resized desktop window.
 - **Menus have no exit animation.** `AnchoredLayer` returns `null` when closed.
   Matches all ~10 existing consumers; growing the primitive is an ask-first change.
-- **Nav-hidden state does not persist.** Route-kind defaults only; a manual
-  toggle resets when crossing between station and non-station surfaces. Persisting
-  per staff (`staff_preferences`, like the column prefs) is the obvious next step.
+- **Nav-open state does not persist across a reload.** It survives navigation
+  now (Wave 4 dropped the auto-close), but a refresh returns to collapsed.
+  Persisting per staff (`staff_preferences`, like the column prefs) is the
+  obvious next step, and matters more now that the column is resident.
+- **Two 360px columns on a narrow desktop.** With the spine open beside a
+  route's own panel, a 1280px viewport leaves ~560px of workspace and the Media
+  library's chrome header starts to collide with its own view toggles. Fine at
+  1600+, but the pairing wants either a narrower spine or an icon-rail collapsed
+  state before this is called done at every width.
 - **~18 non-station routes still hold their context panel in the sidebar.** The
   scope call was "station routes first"; app-wide conversion is untouched.
 
@@ -307,12 +369,14 @@ pre-expansion of the active page; row-click expands without navigating.
 | Concern | Path |
 |---|---|
 | Shell / desktop frame / mobile drawer | `src/components/layout/ResponsiveLayout.tsx` |
-| Sidebar branch (station vs classic) | `src/components/sidebar/SidebarShell.tsx` |
-| Two-card station column tokens | `src/components/sidebar/station-column.ts` |
+| **Nav push column (the spine's desktop host)** | `src/components/sidebar/SidebarNavColumn.tsx` |
+| Spine width token (class + px twin) | `src/components/sidebar/sidebar-spine.ts` |
+| Spine chrome host | `src/components/sidebar/SidebarShell.tsx` |
+| Route panel beside the workspace | `src/components/sidebar/ContextPanelLayout.tsx` + `context-panel-column.ts` |
 | Nav container (router-wired) | `src/components/sidebar/master-nav/MasterNav.tsx` |
-| Nav presentation + `floating`/`docked` | `src/components/sidebar/master-nav/MasterNavView.tsx` |
+| Nav presentation (band + list + L2 menu) | `src/components/sidebar/master-nav/MasterNavView.tsx` |
 | Closed trigger band + MRU chips | `src/components/sidebar/master-nav/MasterNavHeader.tsx` |
-| L1 menu (groups, expandable modes) | `src/components/sidebar/master-nav/MasterNavDropdown.tsx` |
+| **L1 page rows (one bar per page)** | `src/components/sidebar/master-nav/SidebarNavList.tsx` |
 | Per-route panel dispatcher (code-split) | `src/components/sidebar/SidebarContextPanel.tsx` |
 | Receiving/Unbox sidebar composition | `src/components/sidebar/ReceivingSidebarPanel.tsx` |
 | Unbox/Triage rail selection | `src/components/sidebar/receiving/ReceivingRailBody.tsx` |

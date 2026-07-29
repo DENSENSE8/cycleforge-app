@@ -1,5 +1,21 @@
 # Nav / routing refactor — validated plan + fresh-session execution prompt
 
+> **⚠️ SUPERSEDED (2026-07-29) — do not execute from this file.**
+> Slices 1–4 and Slice 5's isolation tier have landed. Several instructions below
+> were disproved by the code: the namespaced-mode-id rename fixes a collision that
+> cannot happen, the `getSidebarRouteKey` collapse is inverted by
+> `ContextPanelLayout`, `warmActiveView` is correct as-is, D1 was answered by the
+> sidebar-spine work, and Slice 2's three `onSuccess` conversions are all blocked
+> on the same unstated precondition.
+>
+> **→ `docs/todo/nav-routing-refactor-FINISH-PROMPT.md`** carries what is done,
+> what is left, the repeatable migration method, and a record of exactly which
+> instructions here are wrong and why.
+>
+> Kept for lineage: §1's V1 correction (segments do not strip query params) is the
+> load-bearing insight and remains true.
+
+
 **Self-contained.** A new session needs only this file. Paste:
 
 > Read `docs/todo/nav-routing-refactor-EXECUTION-PROMPT.md` and execute Slice 1.

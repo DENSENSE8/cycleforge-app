@@ -8,11 +8,16 @@ import {
 
 export type RepairIntakeStepKey = 'product' | 'issue' | 'contact' | 'review';
 
-export const REPAIR_INTAKE_STEPS: ReadonlyArray<{ key: RepairIntakeStepKey; label: string }> = [
-  { key: 'product', label: 'Repair Service' },
-  { key: 'issue', label: 'Issue / Reason' },
-  { key: 'contact', label: 'Contact Information' },
-  { key: 'review', label: 'Review' },
+export const REPAIR_INTAKE_STEPS: ReadonlyArray<{
+  key: RepairIntakeStepKey;
+  label: string;
+  /** Compact chrome-row label — fits the single-row intake header. */
+  shortLabel: string;
+}> = [
+  { key: 'product', label: 'Repair Service', shortLabel: 'Service' },
+  { key: 'issue', label: 'Issue / Reason', shortLabel: 'Issue' },
+  { key: 'contact', label: 'Contact Information', shortLabel: 'Contact' },
+  { key: 'review', label: 'Review', shortLabel: 'Review' },
 ];
 
 /**
@@ -37,7 +42,7 @@ export function deriveRepairIntakeStepStates(
 
 interface RepairIntakeStepperProps {
   currentStep: RepairIntakeStepKey;
-  /** Inline header row — circles only, tighter spacing. */
+  /** Inline header row — short labels, tighter spacing. */
   compact?: boolean;
   /** Stretch connectors to fill the host column width (e.g. 720px). */
   spread?: boolean;
@@ -57,10 +62,14 @@ export function RepairIntakeStepper({
   canNavigateTo,
 }: RepairIntakeStepperProps) {
   const states = deriveRepairIntakeStepStates(currentStep);
+  const steps = REPAIR_INTAKE_STEPS.map((step) => ({
+    key: step.key,
+    label: compact ? step.shortLabel : step.label,
+  }));
 
   return (
     <LinearWorkflowStepper
-      steps={REPAIR_INTAKE_STEPS}
+      steps={steps}
       states={states}
       ariaLabel="Repair intake progress"
       size={compact || spread ? 'compact' : 'default'}

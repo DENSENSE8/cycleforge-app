@@ -43,18 +43,54 @@ test.describe('Grid Fields menu — per-staff columns', () => {
     await page.keyboard.press('Escape');
   };
 
+  /**
+   * The Reset control is a listbox OPTION, not a button.
+   * `ToolbarListboxOption` renders a `<button>` element but sets an explicit
+   * `role="option"`, and an explicit ARIA role wins over the implicit one — so
+   * `getByRole('button', …)` never matched it. That is what made the old
+   * `beforeEach` reset a silent no-op and left `qty` hidden in
+   * `staff_preferences` for every later spec in the run.
+   */
+  const resetOption = (page: Page) => page.getByRole('option', { name: /Reset to default/i });
+
+  /**
+   * Restore the descriptor default and PROVE it took.
+   *
+   * The previous version wrapped the click in `if (await reset.isVisible())`, so
+   * a locator that matched nothing skipped cleanup instead of failing. A cleanup
+   * step that can silently do nothing is worse than none: it reads as hygiene
+   * while leaving persisted state behind. `Reset to default` only renders when a
+   * delta exists (`dirtyCount > 0`), so its ABSENCE is the legitimate no-op —
+   * that case is allowed, and every other case must end at the default.
+   */
+  const restoreDefaults = async (page: Page) => {
+    await openMenu(page);
+    if (await resetOption(page).count()) {
+      await resetOption(page).click();
+      await page.waitForTimeout(250);
+    }
+    await closeMenu(page);
+    // Loud, not hopeful: `qty` is a `core` column and `serial` is `optional`,
+    // so this pair is the descriptor default by definition.
+    await expect(track(page, 'qty').first()).toBeVisible();
+    await expect(track(page, 'serial')).toHaveCount(0);
+  };
+
   test.beforeEach(async ({ page }) => {
     await page.goto(HISTORY_URL);
     await expect(grid(page)).toBeVisible();
-    // Start from the descriptor default so a leftover delta from a prior run
-    // cannot make these assertions lie.
-    await openMenu(page);
-    const reset = page.getByRole('button', { name: /Reset to default/i });
-    if (await reset.isVisible().catch(() => false)) {
-      await reset.click();
-      await page.waitForTimeout(200);
-    }
-    await closeMenu(page);
+    await restoreDefaults(page);
+  });
+
+  /**
+   * These tests persist a per-staff delta to the DATABASE, so without this they
+   * leak into every later spec that asserts on default columns — which is
+   * exactly how `ledger-grid-column-display` started failing on a hidden `qty`.
+   */
+  test.afterEach(async ({ page }) => {
+    await page.goto(HISTORY_URL);
+    await expect(grid(page)).toBeVisible();
+    await restoreDefaults(page);
   });
 
   test('opens lean — optional columns are absent until opted in', async ({ page }) => {
@@ -99,7 +135,7 @@ test.describe('Grid Fields menu — per-staff columns', () => {
     await expect(track(page, 'qty')).toHaveCount(0);
 
     await openMenu(page);
-    await page.getByRole('button', { name: /Reset to default/i }).click();
+    await resetOption(page).click();
     await page.waitForTimeout(250);
     await closeMenu(page);
 

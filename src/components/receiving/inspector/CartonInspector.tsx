@@ -53,15 +53,26 @@ import { PhotoThumb } from '@/components/photos/PhotoThumb';
 import { WorkspaceTimelineTab } from '@/components/station/workbench';
 import { openInUnboxHref } from '@/lib/receiving/surface-path';
 import { conditionLabel } from '@/lib/conditions';
+import { conditionGradeTextClass } from '@/lib/condition-tone';
+import { sourcePlatformLabel } from '@/lib/source-platform';
+import { receivingTypeMeta } from '@/lib/receiving/receiving-type-meta';
+import { workflowStageDot, workflowStageLabel } from '@/lib/receiving/workflow-stages';
+import { unitStatusChipClass } from '@/lib/unit-status';
 import { formatDateTimePST } from '@/utils/date';
 import { getLast4 } from '@/lib/copy-chip-format';
 import { cn } from '@/utils/_cn';
 import {
   buildCartonMilestones,
   cartonContentsSummary,
+  cartonFacts,
+  cartonFlags,
   cartonLifecycle,
+  cartonRecordMeta,
   cartonTimelineAnchor,
   collapseProvenance,
+  type CartonFact,
+  type CartonFlag,
+  type CartonInspectorEvent,
   type CartonInspectorPayload,
   type CartonLifecycle,
 } from './carton-inspector-model';
@@ -81,6 +92,88 @@ const HERO_DOT: Record<CartonLifecycle['tone'], string> = {
 
 function Eyebrow({ children }: { children: React.ReactNode }) {
   return <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">{children}</p>;
+}
+
+/** A titled band in the scrolling record. `trailing` holds the section's count/summary. */
+function Section({
+  title,
+  trailing,
+  children,
+  className,
+}: {
+  title: string;
+  trailing?: React.ReactNode;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <section className={cn('space-y-2', className)}>
+      <div className="flex items-baseline justify-between gap-3">
+        <Eyebrow>{title}</Eyebrow>
+        {trailing ? (
+          <span className="text-role-micro uppercase tracking-widest text-text-soft">{trailing}</span>
+        ) : null}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+const FLAG_TONE: Record<CartonFlag['tone'], string> = {
+  info: 'bg-blue-50 text-blue-700 ring-blue-200',
+  warning: 'bg-amber-50 text-amber-700 ring-amber-200',
+  danger: 'bg-rose-50 text-rose-700 ring-rose-200',
+};
+
+function FlagChip({ flag }: { flag: CartonFlag }) {
+  return (
+    <span
+      className={cn(
+        'rounded ring-1 ring-inset inset-chip text-role-micro uppercase tracking-widest',
+        FLAG_TONE[flag.tone],
+      )}
+    >
+      {flag.label}
+    </span>
+  );
+}
+
+/**
+ * Renders one fact by resolving its `kind` against the owning SoT.
+ *
+ * The model said WHICH resolver applies; the label and tone come from that
+ * module and nowhere else, so a grade renamed in `conditions.ts` renames here
+ * for free. This dispatch is the whole reason the model can stay import-free.
+ */
+function FactValue({ fact }: { fact: CartonFact }) {
+  switch (fact.kind) {
+    case 'condition':
+      return (
+        <span className={cn('text-role-caption', conditionGradeTextClass(fact.value))}>
+          {conditionLabel(fact.value, 'compact')}
+        </span>
+      );
+    case 'platform':
+      return <span className="text-role-caption text-text-default">{sourcePlatformLabel(fact.value)}</span>;
+    case 'receivingType':
+      return <span className="text-role-caption text-text-default">{receivingTypeMeta(fact.value).label}</span>;
+    default:
+      return <span className="truncate text-role-caption text-text-default">{fact.value}</span>;
+  }
+}
+
+/** Label above, value below — the house field-group shape, in a dense grid. */
+function FactGrid({ facts }: { facts: CartonFact[] }) {
+  return (
+    <div className="grid grid-cols-2 gap-x-6 gap-y-3 rounded-xl border border-border-soft bg-surface-card inset-card sm:grid-cols-3 xl:grid-cols-6">
+      {facts.map((f) => (
+        <div key={f.key} className="min-w-0 space-y-1">
+          <p className="text-role-micro uppercase tracking-widest text-text-soft">{f.label}</p>
+          <FactValue fact={f} />
+        </div>
+      ))}
+    </div>
+  );
 }
 
 function StateBox({ tone, children }: { tone: 'muted' | 'error'; children: React.ReactNode }) {
@@ -138,6 +231,9 @@ export function CartonInspector({ receivingId }: { receivingId: number }) {
   const receiving = data?.receiving;
   const photos = photoData?.photos ?? [];
   const lifecycle = useMemo(() => (receiving ? cartonLifecycle(receiving) : null), [receiving]);
+  const flags = useMemo(() => (receiving ? cartonFlags(receiving) : []), [receiving]);
+  const facts = useMemo(() => (receiving ? cartonFacts(receiving) : []), [receiving]);
+  const recordMeta = useMemo(() => (receiving ? cartonRecordMeta(receiving) : []), [receiving]);
 
   return (
     <div className="flex h-full min-h-0 w-full flex-col bg-surface-canvas">
@@ -145,7 +241,7 @@ export function CartonInspector({ receivingId }: { receivingId: number }) {
         <div className="flex min-w-0 items-center gap-4">
           <HoverTooltip label="Back" focusable={false}>
             <Link
-              href="/dashboard?mode=search"
+              href="/search"
               aria-label="Back to search"
               className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-text-muted hover:bg-surface-canvas hover:text-text-default"
             >
@@ -184,9 +280,19 @@ export function CartonInspector({ receivingId }: { receivingId: number }) {
               ) : null}
               {receiving.source_platform ? (
                 <span className="text-role-eyebrow uppercase tracking-widest text-text-soft">
-                  {receiving.source_platform}
+                  {sourcePlatformLabel(receiving.source_platform)}
                 </span>
               ) : null}
+            </div>
+          ) : null}
+
+          {/* Exceptions ride in the header — a reader must never have to scroll
+              to learn this is a return, or was never matched to a PO. */}
+          {flags.length > 0 ? (
+            <div className="flex shrink-0 items-center gap-1.5">
+              {flags.map((f) => (
+                <FlagChip key={f.key} flag={f} />
+              ))}
             </div>
           ) : null}
         </div>
@@ -210,7 +316,7 @@ export function CartonInspector({ receivingId }: { receivingId: number }) {
             </StateBox>
           </div>
         ) : (
-          <div className="space-y-5 px-6 py-5 pb-16">
+          <div className="space-y-6 px-6 py-5 pb-16">
             {/* ── Evidence leads. Zero clicks. ───────────────────────────── */}
             <EvidenceStrip
               photos={photos}
@@ -219,29 +325,89 @@ export function CartonInspector({ receivingId }: { receivingId: number }) {
               errored={photosError}
             />
 
-            {/* ── 60/40 at ≥1280px; stacks below that ────────────────────── */}
-            <div className="grid grid-cols-1 gap-5 xl:grid-cols-[3fr_2fr]">
-              <section className="space-y-2">
-                <div className="flex items-baseline justify-between gap-3">
-                  <Eyebrow>Contents</Eyebrow>
-                  <span className="text-role-micro uppercase tracking-widest text-text-soft">
-                    {cartonContentsSummary(data?.totals)}
-                  </span>
-                </div>
-                <CartonContents lines={data?.lines ?? []} />
-              </section>
+            {facts.length > 0 ? (
+              <Section title="Overview">
+                <FactGrid facts={facts} />
+              </Section>
+            ) : null}
 
-              <section className="space-y-5">
-                <div className="space-y-2">
-                  <Eyebrow>Handling</Eyebrow>
+            <Section title="Contents" trailing={cartonContentsSummary(data?.totals)}>
+              <CartonContents lines={data?.lines ?? []} />
+            </Section>
+
+            {/* Only when the carton spans more than one PO — for the ordinary
+                single-PO case the header chip already said it. */}
+            {(data?.purchase_orders?.length ?? 0) > 1 ? (
+              <Section title="Purchase orders" trailing={`${data!.purchase_orders!.length} POs`}>
+                <ul className="divide-y divide-border-soft rounded-xl border border-border-soft bg-surface-card">
+                  {data!.purchase_orders!.map((po) => (
+                    <li
+                      key={po.zoho_purchaseorder_id ?? po.zoho_purchaseorder_number ?? 'po'}
+                      className="flex items-center justify-between gap-3 px-3 py-1.5"
+                    >
+                      <span className="truncate text-role-caption text-text-default">
+                        {po.zoho_purchaseorder_number ?? 'Unnumbered PO'}
+                      </span>
+                      <span className="shrink-0 text-role-caption tabular-nums text-text-muted">
+                        {po.line_count} {po.line_count === 1 ? 'line' : 'lines'}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </Section>
+            ) : null}
+
+            {/* ── 60/40 at ≥1280px; stacks below that ────────────────────── */}
+            <div className="grid grid-cols-1 gap-6 xl:grid-cols-[3fr_2fr]">
+              <Section title="Activity" trailing={`${data?.events?.length ?? 0} events`}>
+                <CartonEvents events={data?.events ?? []} />
+              </Section>
+
+              <div className="space-y-6">
+                <Section title="Handling">
                   <CartonProvenance receiving={receiving} />
-                </div>
-                <div className="space-y-2">
-                  <Eyebrow>History</Eyebrow>
+                </Section>
+                <Section title="History">
                   <WorkspaceTimelineTab {...cartonTimelineAnchor(receiving)} />
-                </div>
-              </section>
+                </Section>
+              </div>
             </div>
+
+            {receiving.support_notes?.trim() ? (
+              <Section title="Notes">
+                <p className="whitespace-pre-wrap rounded-xl border border-border-soft bg-surface-card inset-card text-role-caption text-text-default">
+                  {receiving.support_notes.trim()}
+                </p>
+              </Section>
+            ) : null}
+
+            <Section title="Record">
+              <div className="space-y-3 rounded-xl border border-border-soft bg-surface-card inset-card">
+                <div className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-3 xl:grid-cols-4">
+                  {recordMeta.map((m) => (
+                    <div key={m.key} className="min-w-0 space-y-1">
+                      <p className="text-role-micro uppercase tracking-widest text-text-soft">{m.label}</p>
+                      <p className="truncate text-role-caption tabular-nums text-text-default">
+                        {m.key === 'created' || m.key === 'updated'
+                          ? formatDateTimePST(m.value)
+                          : m.value}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+                {receiving.listing_url?.trim() ? (
+                  <a
+                    href={receiving.listing_url.trim()}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 text-role-caption text-text-accent hover:underline"
+                  >
+                    Open the source listing
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  </a>
+                ) : null}
+              </div>
+            </Section>
           </div>
         )}
       </div>
@@ -391,6 +557,57 @@ function CartonProvenance({
   );
 }
 
+/**
+ * The carton's own event spine (`events[]`), which the unit-journey timeline
+ * beside it does not cover: carton-level transitions carry no serial, so they
+ * never appear in a per-unit journey. Rendering both is not duplication — they
+ * are different spines, and a carton whose only history is carton-level would
+ * otherwise look like it had none.
+ */
+function CartonEvents({ events }: { events: CartonInspectorEvent[] }) {
+  if (events.length === 0) {
+    return <StateBox tone="muted">No carton-level events were recorded.</StateBox>;
+  }
+  return (
+    <ul className="divide-y divide-border-soft rounded-xl border border-border-soft bg-surface-card">
+      {events.map((e) => {
+        const moved = e.prev_status && e.next_status && e.prev_status !== e.next_status;
+        return (
+          <li key={e.id} className="space-y-1 px-3 py-2">
+            <div className="flex items-start justify-between gap-3">
+              <span className="min-w-0 truncate text-role-caption font-semibold text-text-default">
+                {e.notes?.trim() || e.event_type || 'Event'}
+              </span>
+              <span className="shrink-0 whitespace-nowrap text-role-caption tabular-nums text-text-muted">
+                {formatDateTimePST(e.occurred_at)}
+              </span>
+            </div>
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-role-eyebrow uppercase tracking-widest text-text-soft">
+              {/* Raw tokens, deliberately. This column carries BOTH receiving-line
+                  stages (MATCHED → UNBOXED) and serial states (RECEIVED →
+                  STOCKED); no single label registry owns both, so resolving it
+                  through either one would print "Unknown" for half the rows.
+                  The stored token is already legible and cannot be misresolved. */}
+              {moved ? (
+                <span className="text-text-muted">
+                  {e.prev_status} → {e.next_status}
+                </span>
+              ) : null}
+              {e.station ? <span>{e.station}</span> : null}
+              {e.sku ? <span className="truncate">{e.sku}</span> : null}
+              {e.bin_name ? <span className="truncate">{e.bin_name}</span> : null}
+              {e.serial_number ? <SerialChip value={e.serial_number} /> : null}
+              {e.actor_name ? (
+                <span className="text-text-default">{e.actor_name}</span>
+              ) : null}
+            </div>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
 function CartonContents({ lines }: { lines: NonNullable<CartonInspectorPayload['lines']> }) {
   if (lines.length === 0) {
     return <StateBox tone="muted">No lines were recorded on this carton.</StateBox>;
@@ -402,18 +619,33 @@ function CartonContents({ lines }: { lines: NonNullable<CartonInspectorPayload['
         const received = line.quantity_received ?? 0;
         const serials = line.serials ?? [];
         return (
-          <li key={line.id} className="space-y-1 px-3 py-2">
+          <li key={line.id} className="space-y-1.5 px-3 py-2">
             <div className="flex items-start justify-between gap-3">
-              <span className="min-w-0 truncate text-role-caption font-semibold text-text-default">
-                {line.item_name?.trim() || line.sku?.trim() || 'Untitled line'}
+              <span className="flex min-w-0 items-center gap-2">
+                <span
+                  className={cn('h-2 w-2 shrink-0 rounded-full', workflowStageDot(line.workflow_status))}
+                />
+                <span className="min-w-0 truncate text-role-caption font-semibold text-text-default">
+                  {line.item_name?.trim() || line.sku?.trim() || 'Untitled line'}
+                </span>
               </span>
               <span className="shrink-0 text-role-caption tabular-nums text-text-muted">
                 {expected != null && expected > 0 ? `${received}/${expected}` : received}
               </span>
             </div>
+
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-role-eyebrow uppercase tracking-widest text-text-soft">
               {line.sku ? <span className="truncate">{line.sku}</span> : null}
-              {line.condition_grade ? <span>{conditionLabel(line.condition_grade, 'compact')}</span> : null}
+              {line.workflow_status ? <span>{workflowStageLabel(line.workflow_status)}</span> : null}
+              {line.condition_grade ? (
+                <span className={conditionGradeTextClass(line.condition_grade)}>
+                  {conditionLabel(line.condition_grade, 'compact')}
+                </span>
+              ) : null}
+              {line.qa_status ? <span>QA {line.qa_status}</span> : null}
+              {line.disposition_code ? <span>{line.disposition_code}</span> : null}
+              {line.receiving_type ? <span>{receivingTypeMeta(line.receiving_type).short}</span> : null}
+              {line.location_code ? <span className="truncate">{line.location_code}</span> : null}
               {line.zoho_purchaseorder_number ? (
                 <PoChip
                   value={line.zoho_purchaseorder_number}
@@ -421,10 +653,52 @@ function CartonContents({ lines }: { lines: NonNullable<CartonInspectorPayload['
                 />
               ) : null}
               {line.tracking_number ? <TrackingChip value={line.tracking_number} /> : null}
-              {serials.map((s) => (
-                <SerialChip key={s.id} value={s.serial_number} />
-              ))}
             </div>
+
+            {line.notes?.trim() ? (
+              <p className="truncate text-role-caption text-text-muted">{line.notes.trim()}</p>
+            ) : null}
+
+            {/* A serial's STATUS and LOCATION are the answer to "where is the
+                thing now" — the chip alone only proves it was recorded. */}
+            {serials.length > 0 ? (
+              <ul className="space-y-1 border-l-2 border-border-soft pl-3">
+                {serials.map((s) => (
+                  <li key={s.id} className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <SerialChip value={s.serial_number} />
+                    {/* A SERIAL's state (STOCKED, ALLOCATED, …) is a different
+                        vocabulary from a receiving line's stage — `unit-status.ts`
+                        is its SoT, and it is tone-only, so the token itself is
+                        the label (matching StatusPill everywhere else). */}
+                    {s.current_status ? (
+                      <span
+                        className={cn(
+                          'rounded ring-1 ring-inset inset-chip text-role-micro uppercase tracking-widest',
+                          unitStatusChipClass(s.current_status),
+                        )}
+                      >
+                        {s.current_status}
+                      </span>
+                    ) : null}
+                    {s.current_location ? (
+                      <span className="truncate text-role-eyebrow uppercase tracking-widest text-text-soft">
+                        {s.current_location}
+                      </span>
+                    ) : null}
+                    {s.condition_grade ? (
+                      <span
+                        className={cn(
+                          'text-role-eyebrow uppercase tracking-widest',
+                          conditionGradeTextClass(s.condition_grade),
+                        )}
+                      >
+                        {conditionLabel(s.condition_grade, 'compact')}
+                      </span>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            ) : null}
           </li>
         );
       })}

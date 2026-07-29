@@ -48,4 +48,15 @@ describe('resolveTicketIdForLink', () => {
   it('returns null for non-id query', () => {
     assert.equal(resolveTicketIdForLink('buyer email', rows), null);
   });
+
+  // Regression: this used to fall back to "the sole unlinked candidate", so a
+  // 12-digit FedEx tracking number (which parses as an id) seeded into the
+  // picker + a one-result search meant Enter linked an UNRELATED ticket.
+  it('never substitutes a different ticket for the typed id', () => {
+    const unrelated: TicketLinkCandidate[] = [
+      { id: 777, subject: 'Unrelated', status: 'open', linkedToThis: false },
+    ];
+    assert.equal(resolveTicketIdForLink('382803670296', unrelated), 382803670296);
+    assert.equal(resolveTicketIdForLink('#4821', unrelated), 4821);
+  });
 });

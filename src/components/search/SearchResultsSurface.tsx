@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * SearchResultsSurface — the shared results body for Dashboard Search mode.
+ * SearchResultsSurface — the shared results body for the `/search` route.
  * Controlled: the host owns the query (URL state); the surface owns retrieval
  * + grouped result rendering. No category pill strip — one unscoped retrieve.
  */
@@ -63,7 +63,7 @@ export function SearchResultsSurface({
     forKey: '',
   });
   const abortRef = useRef<AbortController | null>(null);
-  const pageContext = '/dashboard?mode=search';
+  const pageContext = '/search';
 
   // One unscoped retrieve per query — cross-entity page, grouped in the UI.
   useEffect(() => {

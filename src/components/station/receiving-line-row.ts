@@ -9,6 +9,37 @@
  * re-exports this type for backwards compatibility, so existing importers are
  * unaffected.
  */
+/**
+ * One materialised `receiving_line_unit` — an *expected physical unit* on the
+ * line, with its scanned serial resolved. The wire shape both
+ * /api/receiving-lines and /api/receiving/:id emit, built by the single reader
+ * `fetchLineUnits` (src/lib/receiving/ensure-line-units.ts) so the two
+ * endpoints cannot drift.
+ *
+ * Note the two `serial_absent` scopes, which are NOT interchangeable:
+ * `ReceivingLineRow.serial_absent` waives the WHOLE line
+ * (`receiving_line_testing`); this one waives THIS unit only. Both are live —
+ * see the precedence rule in derive-receiving-step-states.ts.
+ *
+ * Plan: docs/todo/per-unit-no-serial-EXECUTION-PROMPT.md §3.
+ */
+export interface ReceivingLineUnitView {
+  /** Durable unit identity — survives serial deletes and ordinal renumbering. */
+  id: number;
+  /** Display order within the line (1-based). Renumbered on reflow; NOT an identity. */
+  ordinal: number;
+  /** Linked `serial_units.id`, or null for a not-yet-scanned unit. */
+  serial_unit_id: number | null;
+  /** The linked serial's number; null when this unit has no serial yet. */
+  serial: string | null;
+  /** Operator waived the serial for THIS unit. Line-scoped waiver lives on the row. */
+  serial_absent: boolean;
+  /** Class-D `serial_absent_reason` vocabulary code; null when not waived. */
+  serial_absent_reason: string | null;
+  /** Per-unit grade that survives reload (durable home for today's local pendingGrade). */
+  condition_grade: string | null;
+}
+
 export interface ReceivingLineRow {
   id: number;
   receiving_id: number | null;
@@ -210,6 +241,16 @@ export interface ReceivingLineRow {
     /** Minted unit identity; presence = the unit has been labeled at least once. */
     unit_uid?: string | null;
   }> | null;
+  /**
+   * Materialised per-unit rows for this line (`receiving_line_unit`), ordinal
+   * order. Present only on the `?include=serials` reads that resolve them;
+   * **optional through Phase 3** so every existing consumer keeps compiling and
+   * the `serials[]` path above stays the live one until Phase 4 retires it.
+   *
+   * Empty array = the line has been read but has nothing to materialise (qty 0
+   * / unfound placeholder). `undefined` = this response didn't resolve units.
+   */
+  units?: ReceivingLineUnitView[] | null;
   /** Count of photos attached to this line's carton (from photos table, entity_type='RECEIVING'). */
   photo_count?: number;
   /** Filed Zendesk ticket # for this line (receiving_lines.zendesk_ticket), stored as "#<id>". */

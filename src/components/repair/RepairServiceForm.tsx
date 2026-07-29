@@ -10,9 +10,13 @@ import { useOrgLetterhead } from '@/hooks/useOrgLetterhead'
 export type RepairServiceFormProps = RepairReceiptProps & {
   /** `compact` — review-step preview: drop-off only, full column width. */
   density?: 'full' | 'compact';
-  /** `screen` — content-height on-screen preview; `print` — letter min-height. */
+  /** `screen` — A4 on-screen sheet; `print` — A4 min-height for print layout. */
   surface?: 'screen' | 'print';
 };
+
+/** ISO 216 A4 — on-screen / print sheet size (210mm × 297mm). */
+const A4_SHEET_CLASS =
+  'mx-auto w-[210mm] max-w-full min-h-[297mm] bg-surface-card font-sans text-text-default';
 
 function RepairSignatureLine({
   label,
@@ -48,6 +52,11 @@ const RepairServiceForm: React.FC<RepairServiceFormProps> = ({
   const isScreen = surface === 'screen'
   // On-screen preview — matches printed form letterhead from org settings.
   const letterhead = useOrgLetterhead()
+  const showLetterhead =
+    Boolean(letterhead.name) ||
+    Boolean(letterhead.addressLine1) ||
+    Boolean(letterhead.addressLine2) ||
+    Boolean(letterhead.phone)
 
   // Format contact display as "Name, Phone, Email"
   const contactDisplay = [name, contact].filter(Boolean).join(', ')
@@ -65,24 +74,28 @@ const RepairServiceForm: React.FC<RepairServiceFormProps> = ({
         isCompact
           ? 'w-full bg-surface-card px-4 py-3 font-sans text-text-default'
           : isScreen
-            ? 'mx-auto w-[8.5in] max-w-full bg-surface-card p-6 font-sans text-text-default'
-            : 'mx-auto min-h-[11in] w-[8.5in] bg-surface-card p-8 font-sans text-text-default print:p-6'
+            ? `${A4_SHEET_CLASS} p-6`
+            : `${A4_SHEET_CLASS} p-8 print:p-6`
       }
     >
 
-      {/* Header Section */}
-      <div className={`${headerGap} text-right`}>
-        <h2 className={isCompact ? 'text-sm font-semibold' : 'text-lg font-semibold'}>{letterhead.name}</h2>
-        {letterhead.addressLine1 ? (
-          <p className="text-xs sm:text-sm">{letterhead.addressLine1}</p>
-        ) : null}
-        {letterhead.addressLine2 ? (
-          <p className="text-xs sm:text-sm">{letterhead.addressLine2}</p>
-        ) : null}
-        {letterhead.phone ? (
-          <p className="text-xs sm:text-sm">Tel: {letterhead.phone}</p>
-        ) : null}
-      </div>
+      {/* Header Section — omit when letterhead is empty (e.g. kiosk / no org yet) */}
+      {showLetterhead ? (
+        <div className={`${headerGap} text-right`}>
+          {letterhead.name ? (
+            <h2 className={isCompact ? 'text-sm font-semibold' : 'text-lg font-semibold'}>{letterhead.name}</h2>
+          ) : null}
+          {letterhead.addressLine1 ? (
+            <p className="text-xs sm:text-sm">{letterhead.addressLine1}</p>
+          ) : null}
+          {letterhead.addressLine2 ? (
+            <p className="text-xs sm:text-sm">{letterhead.addressLine2}</p>
+          ) : null}
+          {letterhead.phone ? (
+            <p className="text-xs sm:text-sm">Tel: {letterhead.phone}</p>
+          ) : null}
+        </div>
+      ) : null}
 
       <RepairPaperTicketHeading displayTicket={displayTicket} compact={isCompact} />
 

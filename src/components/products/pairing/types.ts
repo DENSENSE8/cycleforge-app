@@ -26,7 +26,14 @@ export interface PairingQueueItem {
   } | null;
 }
 
-export type PairingSort = 'volume' | 'confidence' | 'count' | 'title';
+/**
+ * Pairing backlog orderings. `volume` is the default and stays out of the URL.
+ * The array is the source — the `/products` param spec and the sidebar's sort
+ * parser both read it, so adding an ordering is one edit, not three.
+ */
+export const PAIRING_SORTS = ['volume', 'confidence', 'count', 'title'] as const;
+
+export type PairingSort = (typeof PAIRING_SORTS)[number];
 
 export interface PairingQueueResponse {
   success: true;

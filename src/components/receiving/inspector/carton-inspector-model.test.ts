@@ -13,7 +13,10 @@ import assert from 'node:assert/strict';
 import {
   buildCartonMilestones,
   cartonContentsSummary,
+  cartonFacts,
+  cartonFlags,
   cartonLifecycle,
+  cartonRecordMeta,
   cartonTimelineAnchor,
   collapseProvenance,
   type CartonInspectorReceiving,
@@ -22,16 +25,27 @@ import { formatDateTimePST } from '@/utils/date';
 
 const RECEIVING: CartonInspectorReceiving = {
   id: 49929,
+  shipment_id: '43682',
   tracking: '874847124243',
   carrier: 'FedEx',
   source: 'unmatched',
   source_platform: null,
   intake_type: null,
   pairing_state: 'UNFOUND',
+  priority_lane: null,
   triage_complete: false,
+  triage_completed_at: null,
   is_return: false,
   return_platform: null,
+  return_reason: null,
+  needs_test: false,
+  target_channel: null,
+  qa_status: 'PENDING',
+  disposition_code: null,
+  condition_grade: null,
   staging_location_label: null,
+  local_pickup_order_id: null,
+  zoho_purchase_receive_id: null,
   zoho_purchaseorder_id: '5623409000003125066',
   zoho_purchaseorder_number: '19-14910-41811',
   listing_url: null,
@@ -45,6 +59,7 @@ const RECEIVING: CartonInspectorReceiving = {
   received_at: '2026-07-28 14:27:46',
   received_by_name: 'Kai',
   created_at: '2026-07-28 14:23:54',
+  updated_at: '2026-07-28 14:23:57',
 };
 
 test('buildCartonMilestones returns the lifecycle in order, with actors', () => {
@@ -175,4 +190,101 @@ test('collapseProvenance REFUSES on an unattributed step or a lone milestone', (
     ),
     null,
   );
+});
+
+// ── The comprehensive record: facts, flags, system meta ─────────────────────
+
+test('cartonFacts omits absent facts rather than emitting dashes', () => {
+  const facts = cartonFacts(RECEIVING);
+  const keys = facts.map((f) => f.key);
+
+  // Present on the fixture.
+  assert.ok(keys.includes('carrier'), 'carrier is set and must appear');
+  assert.ok(keys.includes('qaStatus'), 'qa_status is set and must appear');
+
+  // Null on the fixture — a grid of "—" reads as lost data, not as N/A.
+  for (const absent of ['platform', 'intakeType', 'staging', 'lane', 'targetChannel']) {
+    assert.equal(keys.includes(absent), false, `${absent} is null and must be omitted`);
+  }
+  assert.equal(facts.every((f) => f.value.length > 0), true, 'no fact may carry an empty value');
+});
+
+test('cartonFacts treats whitespace as absent', () => {
+  const keys = cartonFacts({ ...RECEIVING, carrier: '   ' }).map((f) => f.key);
+  assert.equal(keys.includes('carrier'), false, 'a blank string is not a fact');
+});
+
+test('cartonFacts tags each fact with the SoT that must resolve it', () => {
+  const byKey = new Map(cartonFacts({
+    ...RECEIVING,
+    source_platform: 'ebay',
+    intake_type: 'PO',
+    condition_grade: 'USED_A',
+  }).map((f) => [f.key, f.kind]));
+
+  // The model never carries the label itself — it names the resolver.
+  assert.equal(byKey.get('platform'), 'platform');
+  assert.equal(byKey.get('intakeType'), 'receivingType');
+  assert.equal(byKey.get('condition'), 'condition');
+  assert.equal(byKey.get('carrier'), 'text');
+
+  // qa_status is NOT a receiving workflow stage. Tagging it as one routed a
+  // valid "PENDING" through `workflowStageLabel` and printed "Unknown" on the
+  // live surface. Misresolving a value through the WRONG SoT is the same class
+  // of bug as inventing a map, and it fails silently.
+  assert.equal(byKey.get('qaStatus'), 'text');
+});
+
+test('cartonFlags surfaces UNFOUND — a carton never reconciled to an order', () => {
+  const keys = cartonFlags(RECEIVING).map((f) => f.key);
+  assert.ok(keys.includes('unfound'), 'pairing_state UNFOUND must be visible, not inferred');
+});
+
+test('cartonFlags stays silent on the normal case', () => {
+  const keys = cartonFlags({
+    ...RECEIVING,
+    pairing_state: 'MATCHED',
+    triage_complete: true,
+  }).map((f) => f.key);
+  assert.deepEqual(keys, [], 'an ordinary carton earns no exception badges');
+});
+
+test('cartonFlags reports incomplete triage ONLY once the box is open', () => {
+  // Not yet opened: triage_complete=false is just "not there yet", not a fault.
+  const unopened = cartonFlags({
+    ...RECEIVING,
+    pairing_state: 'MATCHED',
+    triage_complete: false,
+    unbox_opened_at: null,
+    unboxed_at: null,
+  }).map((f) => f.key);
+  assert.equal(unopened.includes('triage'), false, 'an unopened carton is not "triage incomplete"');
+
+  // Opened and still incomplete: a real inconsistency.
+  const opened = cartonFlags({
+    ...RECEIVING,
+    pairing_state: 'MATCHED',
+    triage_complete: false,
+  }).map((f) => f.key);
+  assert.ok(opened.includes('triage'), 'an opened carton with incomplete triage is a real signal');
+});
+
+test('cartonFlags carries return and needs-test states', () => {
+  const keys = cartonFlags({
+    ...RECEIVING,
+    is_return: true,
+    needs_test: true,
+  }).map((f) => f.key);
+  assert.ok(keys.includes('return'));
+  assert.ok(keys.includes('needsTest'));
+});
+
+test('cartonRecordMeta identifies the row and omits unset ids', () => {
+  const meta = cartonRecordMeta(RECEIVING);
+  const byKey = new Map(meta.map((m) => [m.key, m.value]));
+  assert.equal(byKey.get('id'), '49929');
+  assert.equal(byKey.get('shipment'), '43682');
+  assert.equal(byKey.get('poId'), '5623409000003125066');
+  // Null on the fixture.
+  assert.equal(byKey.has('receiveId'), false, 'an unset zoho receive id must be omitted');
 });
