@@ -3,11 +3,19 @@
 /**
  * Media Library workbench chrome — dashboard display-header recipe.
  *
- * Refinements only: search · filters · media type · sort · NAS. The lifecycle
- * facets (All · Unboxing · Pickups · Packing · Repair · Claims · Outbound) and
- * the capture-day drill are NAVIGATION — they live in the resident sidebar rail
- * ({@link PhotoLibrarySidebarPanel}), which is also what stops this single row
- * from overflowing and clipping the controls on its right.
+ * Refinements only: search · filters · sort · NAS. Everything that answers
+ * "WHICH media am I looking at" is NAVIGATION and lives in the resident sidebar
+ * rail ({@link PhotoLibrarySidebarPanel}): the lifecycle facets (All · Unboxing
+ * · Pickups · Packing · Repair · Claims · Outbound), the org's custom media
+ * types, outbound's document sub-filter, and the capture-day drill.
+ *
+ * **The media-type dropdown was removed from this row (2026-07-29), not
+ * relocated twice.** Its built-in half was a byte-for-byte duplicate of the
+ * rail's scope list — `BUILTIN_IMAGE_TYPES` keys ARE the source scopes — so two
+ * controls wrote `sourceScope` and could disagree. The parts the rail did not
+ * already cover (custom types, the add-type action, the outbound document
+ * chips) moved INTO the rail rather than being dropped, so nothing became
+ * unreachable. Do not reintroduce a scope control here.
  *
  * Density / refresh / select / icons-list stay on the breadcrumb path strip
  * ({@link PhotoLibraryHeader}) — those are in-view photo actions.
@@ -57,7 +65,6 @@ import type { StaffRecipient } from '@/components/quick-access/StaffRecipientLis
 import { PhotoLibraryFilterDropdown } from './PhotoLibraryFilterDropdown';
 import { PhotoLibraryNasBackup } from './PhotoLibraryNasBackup';
 import { PhotoLabelsSection } from './PhotoLabelsSection';
-import { PhotoMediaTypeMenu } from './PhotoMediaTypeMenu';
 import { PhotoSortMenu } from './PhotoSortMenu';
 import { MediaSavedViewsSection } from './MediaSavedViewsSection';
 
@@ -225,30 +232,6 @@ export function PhotoLibraryWorkspaceHeader({ className }: { className?: string 
               <PhotoLibraryNasBackup />
             </div>
           </WorkbenchFilterPopover>
-
-          <PhotoMediaTypeMenu
-            activeScope={activeScope}
-            activeImageType={filters.imageType ?? null}
-            activeDocumentType={filters.documentType ?? 'all'}
-            activeOutboundMedia={filters.outboundMedia ?? 'documents'}
-            inferredScope={null}
-            onSelect={({ scope, imageType }) =>
-              patch({
-                sourceScope: scope,
-                imageType,
-                documentType: scope === 'outbound' ? filters.documentType ?? 'all' : undefined,
-                outboundMedia: scope === 'outbound' ? filters.outboundMedia ?? 'documents' : undefined,
-                poRef: undefined,
-                label: undefined,
-              })
-            }
-            onDocumentTypeSelect={(documentType) =>
-              patch({ documentType, outboundMedia: 'documents' })
-            }
-            onPackPhotosSelect={() =>
-              patch({ outboundMedia: 'pack_photos', documentType: undefined })
-            }
-          />
 
           <PhotoSortMenu
             sort={filters.sort ?? 'recent'}

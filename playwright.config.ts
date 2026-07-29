@@ -1,5 +1,4 @@
 import path from 'path';
-import { execSync } from 'child_process';
 import dotenv from 'dotenv';
 import { defineConfig, devices } from '@playwright/test';
 
@@ -7,21 +6,16 @@ import { defineConfig, devices } from '@playwright/test';
 dotenv.config({ path: path.resolve(__dirname, '.env') });
 dotenv.config({ path: path.resolve(__dirname, '.env.local') });
 
-// Default to THIS worktree's dev port so E2E in a lane (e.g. cycleforge-fba:3020)
-// hits its own dev server, not main's :3000. Reuse the SoT resolver via its CLI
-// (Playwright transpiles this config to CJS and can't require the ESM .mjs).
+// The repo's dev port. Matches `pnpm dev`, `.claude/launch.json` and
+// `dev-tunnel-named.mjs` — :3000 belongs to another app on this machine, which is
+// why the whole repo sits on :3050.
+//
+// This used to shell out to a per-worktree port resolver so a lane could run its
+// own dev server. That resolver answered 3000 for main while everything else here
+// answered 3050, so E2E in the main checkout pointed at a port with nothing on it
+// unless you remembered PW_BASE_URL. One port, no resolution.
 // PW_BASE_URL still overrides everything.
-function worktreePort(): string {
-  try {
-    return execSync('node scripts/dev-worktree-port.mjs', {
-      cwd: __dirname,
-      encoding: 'utf8',
-    }).trim() || '3000';
-  } catch {
-    return '3000';
-  }
-}
-const BASE_URL = process.env.PW_BASE_URL || `http://localhost:${worktreePort()}`;
+const BASE_URL = process.env.PW_BASE_URL || 'http://localhost:3050';
 
 export default defineConfig({
   testDir: './tests/e2e',

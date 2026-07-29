@@ -27,7 +27,6 @@ import { execSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { resolveWorktreePort } from './dev-worktree-port.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..');
@@ -42,9 +41,16 @@ function git(cmd) {
   }
 }
 
+/**
+ * Which checkout this entry came from — the directory name, minus the repo
+ * prefix (`cycleforge-fba` → `fba`, the main checkout → `main`).
+ *
+ * This used to read the lane id out of `dev-worktrees.json` via the per-worktree
+ * port resolver, falling back to the directory name. The resolver went with the
+ * per-lane dev ports; the fallback was already the honest answer, and it works
+ * for a checkout that was never registered in that file.
+ */
 function currentLane() {
-  const { id } = resolveWorktreePort({ cwd: REPO_ROOT });
-  if (id) return id;
   const top = git('rev-parse --show-toplevel');
   return top ? path.basename(top).replace(/^cycleforge-/, '') || 'main' : 'main';
 }

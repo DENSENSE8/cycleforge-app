@@ -29,13 +29,14 @@ import { useGlobalWedgeScanner } from '@/hooks/useGlobalWedgeScanner';
 // lands.
 const DashboardSidebar = dynamic(() => import('@/components/DashboardSidebar'), {
   ssr: false,
-  // The spine owns no width — its host (resident column or slide-over) does — so
-  // the placeholder just fills that host while the chunk lands. The frame cannot
-  // jump, because the column's width never depended on the chunk.
+  // The spine owns no width — its host (the desktop push column or the mobile
+  // drawer) does — so the placeholder just fills that host while the chunk
+  // lands. The frame cannot jump, because the host's width never depended on
+  // the chunk.
   loading: () => <div className="h-full w-full" aria-hidden />,
 });
-const SidebarSlideOver = dynamic(
-  () => import('@/components/sidebar/SidebarSlideOver').then((m) => m.SidebarSlideOver),
+const SidebarNavColumn = dynamic(
+  () => import('@/components/sidebar/SidebarNavColumn').then((m) => m.SidebarNavColumn),
   { ssr: false },
 );
 
@@ -149,14 +150,16 @@ export function ResponsiveLayout({ children, kioskHost = false }: ResponsiveLayo
   const [drawerOpen, setDrawerOpen] = useState(false);
   // A route's OWN sidebar (picker / facet rail / bench) is no longer mounted
   // here at all: `ContextPanelLayout` renders it inside the content region,
-  // beside the workspace. The left aside is the nav spine and nothing else.
+  // beside the workspace. The left column is the nav spine and nothing else.
+  //
+  // It is a PUSH column (`SidebarNavColumn`), so it does not auto-close: it
+  // covers nothing, and a navigator that collapsed on the first row you clicked
+  // would reflow the frame twice per jump for no gain. Closing is the toggle,
+  // and nothing else. (The spine pre-expands the active page's modes on every
+  // route change, so staying open stays coherent with where you are.)
   const [navOpen, setNavOpen] = useState(false);
-  const closeNav = useCallback(() => setNavOpen(false), []);
-  // Close the transient spine on navigation — the route it opened for is gone.
-  useEffect(() => {
-    setNavOpen(false);
-  }, [pathname]);
-  // Desktop-only: while the spine is transient, resting the pointer at the far-left
+  const toggleNav = useCallback(() => setNavOpen((prev) => !prev), []);
+  // Desktop-only: while the spine is collapsed, resting the pointer at the far-left
   // edge for ~2s slides it in. `edgeArming` drives the progress sliver that fills
   // over the dwell as an "about to open" cue.
   const peekTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -307,12 +310,27 @@ export function ResponsiveLayout({ children, kioskHost = false }: ResponsiveLayo
       <div className="flex min-h-0 w-full flex-1 overflow-hidden">
         <GlobalWedgeScannerMount />
         <PhoneScanBridgeMount />
+
+        {/* The nav spine — the page list, and only the page list. It is a flex
+            SIBLING of the header+content column, so opening it moves the frame
+            right instead of painting over it. The route's own sidebar rides
+            inside `<main>`, so the two never contend for the same edge. */}
+        {!chromeless && (
+          <ErrorBoundary label="sidebar-nav-column" fallback={() => null}>
+            <Suspense fallback={null}>
+              <SidebarNavColumn open={navOpen}>
+                <DashboardSidebar />
+              </SidebarNavColumn>
+            </Suspense>
+          </ErrorBoundary>
+        )}
+
         <div className={cn('relative flex h-full min-w-0 flex-1 flex-col overflow-hidden', appChromeClass)}>
           {!chromeless && (
           <GlobalHeader
             canCollapseSidebar
-            sidebarCollapsed
-            onToggleSidebar={() => setNavOpen(true)}
+            sidebarCollapsed={!navOpen}
+            onToggleSidebar={toggleNav}
           />
           )}
           <main className={cn(chromeless ? 'flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden' : appContentShellClass)}>
@@ -324,8 +342,11 @@ export function ResponsiveLayout({ children, kioskHost = false }: ResponsiveLayo
         </div>
 
         {/* Left-edge reveal — rest the pointer against the far-left edge for
-            ~2s and the page list slides in. */}
-        {!chromeless && (
+            ~2s and the page list slides in. Only while it is collapsed: the
+            open column occupies that edge, and this strip is `fixed` above the
+            in-flow frame, so leaving it mounted would swallow clicks on the
+            spine's own left 24px. */}
+        {!chromeless && !navOpen && (
           <div
             className="fixed bottom-0 left-0 top-10 z-40 w-6"
             onMouseEnter={armSidebarPeek}
@@ -355,19 +376,6 @@ export function ResponsiveLayout({ children, kioskHost = false }: ResponsiveLayo
               )}
             </AnimatePresence>
           </div>
-        )}
-
-        {/* The nav spine — the page list, and only the page list. The route's own
-            sidebar rides in the content region, so this never lands on top of
-            it. */}
-        {!chromeless && (
-          <ErrorBoundary label="sidebar-slide-over" fallback={() => null}>
-            <Suspense fallback={null}>
-              <SidebarSlideOver open={navOpen} onClose={closeNav}>
-                <DashboardSidebar onNavigate={closeNav} />
-              </SidebarSlideOver>
-            </Suspense>
-          </ErrorBoundary>
         )}
 
         <CommandBar />

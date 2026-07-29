@@ -7,6 +7,7 @@ import { WORKSPACE_SECTION_TITLE_CLASS } from './WorkspaceSectionLabel';
 import type { ReceivingLineRow } from '@/components/station/ReceivingLinesTable';
 import { CartonAddAction } from './CartonAddAction';
 import { PoLineRow } from './PoLineRow';
+import { markReceivingSerialAbsent } from './receiving-label-helpers';
 import { usePoLinesData } from './hooks/usePoLinesData';
 import { usePoLineItemDescriptionEditor } from './hooks/usePoLineItemDescriptionEditor';
 import type { PoLineSerialSplitContext } from './PoLineTitleMenu';
@@ -224,6 +225,15 @@ export function PoLinesAccordion({
               activeSerialActions={activeSerialActions}
               activeRowSlot={activeRowSlot}
               renderTitleActions={renderTitleActions}
+              // The shell owns the mutation; the row stays presentational.
+              // `markReceivingSerialAbsent` is the single choke point — it fires
+              // the optimistic `receiving-line-updated` patch AND the durable
+              // POST, so a waiver set from a collapsed row and one set from the
+              // active editor are the same write and the stepper cannot disagree
+              // with either.
+              onSerialAbsentChange={(lineId, next) =>
+                markReceivingSerialAbsent(lineId, next)
+              }
               serialSplit={
                 serialSplit
                   ? { ...serialSplit, receivingId }

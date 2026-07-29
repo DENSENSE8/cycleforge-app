@@ -98,6 +98,11 @@ export const CACHE_NS = {
   receivingLinesCounts: 'receiving-lines-counts',
   /** `/api/receiving-lines/incoming/delivered-*` lanes (60s poll each). */
   receivingIncomingLanes: 'receiving-incoming-lanes',
+  /** Ecwid repair-service catalog (products + category tree). The live Ecwid
+   *  API has no local mirror for PRICE, so every category drill on the repair
+   *  intake / kiosk re-paged the whole store (~2-4s). Reference-class data:
+   *  a repair service's price/name changes far less often than the TTL. */
+  ecwidRepairCatalog: 'ecwid-repair-catalog',
 } as const;
 
 export type CacheNamespace = (typeof CACHE_NS)[keyof typeof CACHE_NS];

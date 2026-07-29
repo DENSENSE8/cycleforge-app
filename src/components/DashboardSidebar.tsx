@@ -19,8 +19,8 @@ export interface DashboardSidebarProps {
  * `dashboard-sidebar-hooks`; the chrome lives in `SidebarShell`. The route's own
  * sidebar is NOT here — it mounts beside the workspace via `ContextPanelLayout`.
  *
- * It owns **no geometry**. The host supplies the width — {@link SidebarSlideOver}
- * or the mobile drawer — so the two mounts cannot disagree about it.
+ * It owns **no geometry**. The host supplies the width — `SidebarNavColumn` on
+ * desktop or the mobile drawer — so the two mounts cannot disagree about it.
  */
 export default function DashboardSidebar({
   inDrawer = false,

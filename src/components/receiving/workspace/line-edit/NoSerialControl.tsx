@@ -5,6 +5,7 @@ import { AlertTriangle, Barcode, Boxes, Check, Tag, X } from '@/components/Icons
 import { Popover } from '@/design-system/primitives';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { useReasonVocabulary } from '@/hooks/useReasonVocabulary';
+import { NoSerialOfferCheck } from './NoSerialOfferCheck';
 import {
   SERIAL_ABSENT_REASON_FLOW,
   mergeSerialAbsentReasons,
@@ -146,12 +147,32 @@ export function NoSerialControl({
     setPickerOpen(false);
   };
 
-  // ── Offer state: no waiver yet — a single dashed icon token that invites it.
+  // ── Offer state: no waiver yet — an affordance that invites it.
   if (!absent) {
     const offerLabel =
       variant === 'check'
         ? 'No serial number for all units (same SKU, no serials available)'
         : 'Mark this item as having no serial number — cables, accessories, bulk parts';
+
+    // The 'check' variant stands in the multi-qty unit list's TRAILING ACTION
+    // column, directly above the per-row add buttons — so it is the same green
+    // check the single-qty row shows, at the same height as those buttons. It
+    // was a short dashed grey token, which sat out of line with the column and
+    // read as disabled chrome rather than the primary way to say "these have no
+    // serials". The 'pill' variant keeps the quiet token: it rides in a dense
+    // meta row, where an h-11 button would blow out the row.
+    if (variant === 'check') {
+      return (
+        <NoSerialOfferCheck
+          onClick={activate}
+          label={offerLabel}
+          disabled={disabled}
+          required={required}
+          width="w-11"
+        />
+      );
+    }
+
     return (
       <HoverTooltip label={required ? `Required — ${offerLabel}` : offerLabel} asChild>
         {/* ds-raw-button: bespoke dashed icon token, not a DS Button variant */}

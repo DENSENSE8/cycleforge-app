@@ -1,0 +1,65 @@
+-- ─────────────────────────────────────────────────────────────────────────────
+-- square_transactions: drop the global UNIQUE(square_order_id) — CONTRACT phase
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Phase 2 of the expand/contract pair started in
+-- 2026-07-29a_square_transactions_tenant_contract.sql, which added
+-- UNIQUE (organization_id, square_order_id) alongside the legacy global unique.
+--
+-- WHY THE GLOBAL UNIQUE MUST EVENTUALLY GO: it says no two tenants may ever
+-- mirror the same Square order id. That is wrong on its face once there is a
+-- second tenant, and under FORCE RLS + the app_tenant role it fails loudly and
+-- confusingly: tenant B's upsert collides with a tenant-A row that RLS makes
+-- invisible to it, so ON CONFLICT can neither see nor resolve the conflict and
+-- the insert simply throws a unique violation on a row that "does not exist".
+--
+-- PK is unaffected: square_transactions.id is a uuid PK and every reference
+-- points at it, never at square_order_id.
+--
+-- ⚠️ DO NOT APPLY STANDALONE, AND DO NOT APPLY BEFORE THE CODE IS EVERYWHERE.
+-- `ON CONFLICT (square_order_id)` requires a unique constraint on that column
+-- alone. Any still-deployed instance running the old code starts throwing
+-- "no unique or exclusion constraint matching the ON CONFLICT specification"
+-- the moment this lands. Apply only once every deployed instance is running
+-- the (organization_id, square_order_id) upsert from
+-- src/lib/neon/square-transaction-queries.ts.
+--
+-- Status: WRITTEN, UNAPPLIED. This is the deliberate ordering — phase 1 is safe
+-- to apply immediately; this one waits for the rollout to finish.
+
+DO $$
+DECLARE
+  c record;
+BEGIN
+  -- Refuse to drop the legacy constraint unless its replacement exists, so a
+  -- mis-ordered run cannot leave the table with no uniqueness at all.
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conrelid = 'square_transactions'::regclass
+      AND conname = 'square_transactions_org_order_key'
+  ) THEN
+    RAISE EXCEPTION 'square_transactions_org_order_key is missing — apply 2026-07-29a_square_transactions_tenant_contract.sql first';
+  END IF;
+
+  -- Drop any UNIQUE constraint defined on exactly (square_order_id), whatever
+  -- its name. Introspection keeps this robust + idempotent across databases.
+  --
+  -- NOTE the `::text` cast: pg_attribute.attname is type `name`, so a bare
+  -- array_agg yields name[] and comparing it to a text[] literal fails with
+  -- "operator does not exist: name[] = text[]". The sibling file
+  -- 2026-06-14_sku_catalog_composite_unique.sql.gated omits this cast and will
+  -- fail the same way when it is eventually applied.
+  FOR c IN
+    SELECT con.conname
+    FROM pg_constraint con
+    WHERE con.conrelid = 'square_transactions'::regclass
+      AND con.contype = 'u'
+      AND (
+        SELECT array_agg(att.attname::text ORDER BY att.attnum)
+        FROM unnest(con.conkey) k
+        JOIN pg_attribute att ON att.attrelid = con.conrelid AND att.attnum = k
+      ) = ARRAY['square_order_id']
+  LOOP
+    EXECUTE format('ALTER TABLE square_transactions DROP CONSTRAINT %I', c.conname);
+    RAISE NOTICE 'dropped legacy global unique %', c.conname;
+  END LOOP;
+END $$;

@@ -1532,6 +1532,50 @@ export const receivingLineTesting = pgTable('receiving_line_testing', {
   orgTechIdx: index('idx_receiving_line_testing_org_tech').on(table.organizationId, table.assignedTechId),
 }));
 
+/**
+ * One row per expected physical unit on a receiving line (migration
+ * 2026-07-29c). Durable id for per-unit serial_absent / condition_grade /
+ * serial_unit_id — the line-level waiver on receiving_line_testing.serial_absent
+ * stays and keeps its whole-line meaning. `ordinal` is display order only
+ * (renumbered when serials shift); never use it as identity. Plan:
+ * docs/todo/per-unit-no-serial-EXECUTION-PROMPT.md. Tenant-from-birth via
+ * enforce_tenant_isolation in the birth migration. Phase 0: model only —
+ * no reader/writer yet.
+ */
+export const receivingLineUnit = pgTable('receiving_line_unit', {
+  id: bigserial('id', { mode: 'number' }).primaryKey(),
+  organizationId: orgIdCol(),
+  receivingLineId: integer('receiving_line_id').notNull().references(() => receivingLines.id, { onDelete: 'cascade' }),
+  /** Display order within the line. Renumbered when serials shift — not an identity. */
+  ordinal: integer('ordinal').notNull(),
+  /** Optional link to a scanned serial; SET NULL on serial delete (unit row survives). */
+  serialUnitId: integer('serial_unit_id').references(() => serialUnits.id, { onDelete: 'set null' }),
+  serialAbsent: boolean('serial_absent').notNull().default(false),
+  /**
+   * Class-D `serial_absent_reason` vocabulary code for the per-unit waiver.
+   * App-layer validated (org-customizable), so no DB CHECK — mirrors
+   * receiving_line_testing.serial_absent_reason.
+   */
+  serialAbsentReason: text('serial_absent_reason'),
+  /** Nullable until the operator picks a grade; survives reload. */
+  conditionGrade: conditionGradeEnum('condition_grade'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  ordinalUx: uniqueIndex('ux_receiving_line_unit_ordinal').on(
+    table.organizationId,
+    table.receivingLineId,
+    table.ordinal,
+  ),
+  serialUx: uniqueIndex('ux_receiving_line_unit_serial')
+    .on(table.organizationId, table.serialUnitId)
+    .where(sql`serial_unit_id IS NOT NULL`),
+  lineIdx: index('idx_receiving_line_unit_line').on(table.organizationId, table.receivingLineId),
+}));
+
+export type ReceivingLineUnit = typeof receivingLineUnit.$inferSelect;
+export type NewReceivingLineUnit = typeof receivingLineUnit.$inferInsert;
+
 /** RETURN/TRADE_IN intake facts (return_platform, return_reason, source_order_id, rma_ref). 1:1. */
 export const receivingLineReturn = pgTable('receiving_line_return', {
   receivingLineId: integer('receiving_line_id').primaryKey().references(() => receivingLines.id, { onDelete: 'cascade' }),

@@ -19,6 +19,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Calendar as CalendarIcon, Copy, FileText, Printer, Trash2, User } from '@/components/Icons';
 import { useTableSelection } from '@/hooks/useTableSelection';
 import { useDeleteOrderRow } from '@/hooks/useDeleteOrderRow';
@@ -26,6 +27,7 @@ import { useOrderAssignment } from '@/hooks/useOrderAssignment';
 import { useWorkOrderAssignment } from '@/hooks/useWorkOrderAssignment';
 import { emitToggleAll } from '@/lib/selection/table-selection';
 import { DASHBOARD_ORDERS_SELECTION_SCOPE } from '@/lib/selection/dashboard-scopes';
+import { getDashboardDomainFromSearch } from '@/lib/dashboard/dashboard-domains';
 import { isPdfOutboundDocument } from '@/lib/documents/outbound-document-display';
 import { printOutboundDocuments, type PrintableOutboundDocument } from '@/lib/print/printOutboundDocuments';
 import { buildAssignmentRow } from '@/components/shipped/details-panel/shipped-details-logic';
@@ -106,6 +108,8 @@ export interface DashboardBulkSelection {
 export function useDashboardBulkSelection(
   orderView: DashboardOrderView,
 ): DashboardBulkSelection {
+  const searchParams = useSearchParams();
+  const domain = getDashboardDomainFromSearch(searchParams);
   const selectionEnabled = orderView !== 'fba';
   // Packed reuses the shipped row/delete path (packer records with packed_at).
   const isShippedView = orderView === 'shipped' || orderView === 'packed';
@@ -128,9 +132,16 @@ export function useDashboardBulkSelection(
 
   // Clear checks on view flip — row types + delete semantics differ. Also clear
   // when leaving a selectable surface (FBA) so a stale set never lingers.
+  //
+  // The DOMAIN switch clears too (dashboard IA rework 2.4): outbound rows are
+  // sales orders and inbound rows are receiving cartons, so a live multi-select
+  // does not survive the crossing. Carrying it would leave the selection bar
+  // offering "print a shipping label" over a set of cartons — the ids would
+  // even resolve, against the wrong table. Clearing is the only safe answer for
+  // a scope whose rows change entity.
   useEffect(() => {
     clearSelection();
-  }, [orderView, clearSelection]);
+  }, [orderView, domain, clearSelection]);
 
   const handleCopyDetails = useCallback((rows: DashSelectableRow[]) => {
     const text = rows

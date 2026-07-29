@@ -104,9 +104,11 @@ const ModesPanel = forwardRef<
  *   routes rendered the same rows in flow as a pushed-across column — two spatial
  *   models for one control.
  *
- * Now there is one: **the page list lives in {@link SidebarSlideOver} and
- * nowhere else.** `MasterNavDropdown` is deleted; {@link SidebarNavList} is the
- * same rows with no card chrome, because the slide-over already IS the card.
+ * Now there is one: **the page list lives in the nav spine and nowhere else**,
+ * and the spine is a resident push column (`SidebarNavColumn`) — opening it
+ * moves the frame right rather than covering it. `MasterNavDropdown` is
+ * deleted; {@link SidebarNavList} is the same rows with no card chrome, because
+ * the column already IS the surface.
  *
  * ## One body: the page list
  *

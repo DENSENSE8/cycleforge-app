@@ -38,12 +38,11 @@ import { useSearchRecents } from '@/hooks/useSearchRecents';
 import { GLOBAL_SEARCH_FOCUS_EVENT } from '@/lib/global-search-focus';
 import { isUnifiedHeaderSearchEnabled } from '@/lib/search/unified-header-search';
 import { recentRerunHref } from '@/lib/search/search-recents';
-import { dashboardSearchRerunHref } from '@/components/dashboard/search/dashboard-search-recents';
+import { searchRerunHref } from '@/lib/search/search-page-recents';
 import {
   globalSearchHandoffHref,
   journeyHandoffHref,
   looksLikeIdentifier,
-  orderSearchHref,
   orderRecordHref,
 } from '@/lib/search/search-hit';
 import { resolveSearchOrder } from '@/lib/search/resolve-search-order';
@@ -57,11 +56,11 @@ import {
 } from './header-shell';
 
 /**
- * Preview / keyboard hit → domain deep-link (orders → Dashboard Search detail).
- * Journey Trace is secondary (row affordance / ⌘Enter), never the primary href.
+ * Preview / keyboard hit → domain deep-link. An order goes to its ONE shell
+ * (`/o/[id]`); Journey Trace stays secondary (row affordance / ⌘Enter).
  */
-function hrefForPreviewHit(hit: AiSearchHit, query: string): string {
-  if (hit.entityType === 'order') return orderSearchHref(hit.id, query);
+function hrefForPreviewHit(hit: AiSearchHit): string {
+  if (hit.entityType === 'order') return orderRecordHref(hit.id);
   return hit.href;
 }
 
@@ -278,7 +277,7 @@ export function GlobalHeaderSearch() {
       }
       navigateSearchHref(
         router,
-        `/dashboard?mode=search&q=${encodeURIComponent(trimmedQuery)}&map=search`,
+        searchRerunHref(trimmedQuery),
         pathname,
       );
     })();
@@ -334,7 +333,7 @@ export function GlobalHeaderSearch() {
       }
       const hit = hits[activeIndex - 1];
       if (!hit) return false;
-      navigateSearchHref(router, hrefForPreviewHit(hit, trimmedQuery), pathname);
+      navigateSearchHref(router, hrefForPreviewHit(hit), pathname);
       return true;
     }
     return false;
@@ -406,7 +405,7 @@ export function GlobalHeaderSearch() {
                 // scopeHref re-runs the SEARCH (matching the miss branch below);
                 // topHit.href is the record itself. Previously both were the
                 // search href, so "rerun" and "reopen" were indistinguishable.
-                scopeHref: dashboardSearchRerunHref(trimmed),
+                scopeHref: searchRerunHref(trimmed),
                 topHit: {
                   title: resolved.order.product_title || resolved.order.order_id || trimmed,
                   href,
@@ -421,12 +420,12 @@ export function GlobalHeaderSearch() {
             pushRecent({
               query: trimmed,
               scope: 'global',
-              scopeHref: dashboardSearchRerunHref(trimmed),
+              scopeHref: searchRerunHref(trimmed),
             });
           }
           navigateSearchHref(
             router,
-            `/dashboard?mode=search&q=${encodeURIComponent(trimmed)}&map=search`,
+            searchRerunHref(trimmed),
             pathname,
           );
         })();
@@ -440,9 +439,9 @@ export function GlobalHeaderSearch() {
         pushRecent({
           query: trimmed,
           scope: 'global',
-          scopeHref: href.startsWith('/dashboard') ? href : dashboardSearchRerunHref(trimmed),
+          scopeHref: href.startsWith('/search') ? href : searchRerunHref(trimmed),
           topHit: top
-            ? { title: top.title, href: orderSearchHref(top.id, trimmed), entityType: 'order' }
+            ? { title: top.title, href: orderRecordHref(top.id), entityType: 'order' }
             : undefined,
         });
       }
@@ -560,7 +559,7 @@ export function GlobalHeaderSearch() {
             onNavigateHit={(hit, event) => {
               event.preventDefault();
               setFocused(false);
-              navigateSearchHref(router, hrefForPreviewHit(hit, trimmedQuery), pathname);
+              navigateSearchHref(router, hrefForPreviewHit(hit), pathname);
             }}
           />
         </div>

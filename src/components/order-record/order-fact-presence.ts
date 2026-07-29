@@ -1,5 +1,5 @@
 /**
- * Presence helpers for Search order Overview — facts drive which cells/cards
+ * Presence helpers for the order record Overview — facts drive which cells/cards
  * mount. Deep tabs keep the full schema with teaching empties.
  */
 

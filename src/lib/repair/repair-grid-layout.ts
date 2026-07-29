@@ -1,3 +1,8 @@
+import {
+  gridContentMinWidthRem,
+  gridHeaderShowsLabel,
+  gridTemplate,
+} from '@/design-system/components/grid/grid-column-geometry';
 /**
  * Repair queue spreadsheet column model — SoT for the `/repair` LedgerGrid.
  *
@@ -13,7 +18,6 @@
  */
 
 import type { ColumnType } from '@/lib/tables/table-columns';
-import { ordersQueueColVar } from '@/lib/dashboard-order-row-layout';
 import type { RSRecord } from '@/lib/neon/repair-service-queries';
 import { formatPhoneNumber } from '@/utils/phone';
 
@@ -85,27 +89,19 @@ export function isRepairGridSortable(key: string): key is RepairGridColumnKey {
   return (REPAIR_GRID_SORTABLE_KEYS as readonly string[]).includes(key);
 }
 
-/** Parse the rem floor from a track string (`minmax(7rem, 7rem)` / `7rem`). */
-function repairGridColumnTrackRem(column: RepairGridColumn): number {
-  const m = column.width.match(/([\d.]+)rem/);
-  return m ? Number(m[1]) : 12;
-}
 
-export function repairGridHeaderShowsLabel(column: RepairGridColumn): boolean {
-  const fit = column.labelFitRem ?? 4.5;
-  return repairGridColumnTrackRem(column) >= fit;
-}
+export const repairGridHeaderShowsLabel = gridHeaderShowsLabel;
 
 export function repairContentMinWidthRem(
   columns: readonly RepairGridColumn[] = REPAIR_GRID_COLUMNS,
 ): number {
-  return columns.reduce((sum, c) => sum + repairGridColumnTrackRem(c), 0);
+  return gridContentMinWidthRem(columns);
 }
 
 export function repairGridTemplate(
   columns: readonly RepairGridColumn[] = REPAIR_GRID_COLUMNS,
 ): string {
-  return columns.map((c) => `var(${ordersQueueColVar(c.key)}, ${c.width})`).join(' ');
+  return gridTemplate(columns);
 }
 
 export function isRepairGridFrozen(key: string): boolean {

@@ -174,6 +174,35 @@ If a facet has no SoT yet, **add or extend one** (pattern evolution) — do not 
 - Never hand-roll a `focus:ring-*`/`focus-visible:ring-*` recipe; compose `focusRing(...)`. Guard:
   `src/components/ui/focus-ring-tokens.guard.test.ts` (escape: same-line `ds-allow-focus`).
 
+## Link triggers (the "attach an X to this record" button)
+
+Reference: the Unbox unfound **Find ticket** action (`UnfoundMatchStrip`) → `TicketLinkPopover`.
+
+- **Pin the trigger to the section header, not inside the swapping region.** A
+  crossfading lane / tab body hides its own actions half the time — the Unbox
+  action grid held "Find ticket" behind the default `order` lane, so the button
+  did not exist at the one moment it was needed (the scan of an unfound carton).
+  Header actions bleed their hit-box with `-my-*` (`ui-design-system.md` →
+  eyebrow headers).
+- **Seed the picker from the record in hand** (`TicketLinkPopover initialQuery`
+  takes the carton's tracking number), and treat that seed as a **SEARCH TERM,
+  never a typed id** — a 12-digit FedEx number parses as a ticket id, which
+  rendered "Press Enter to link #382803670296" over a button that could only
+  404. The id path switches back on when the operator edits the box.
+- **Never substitute a different target for a typed id.**
+  `resolveTicketIdForLink` used to fall back to "the sole unlinked candidate",
+  so a seeded tracking number + a one-result search made Enter link an unrelated
+  ticket. Pinned by `ticket-link-query.test.ts`.
+- **The trigger stays neutral — it does not restate linked state.** Identity and
+  unlink live on the entity-context header (`ReceivingTicketChip` in
+  `StationContextBar`); a linked-looking trigger is a second place to read the
+  same fact and a second place to keep in sync.
+- **Route a receiving-anchored link through the receiving-gated endpoint.**
+  `/api/support/tickets/link` and `/api/receiving/zendesk-claim/link` share the
+  same `listCandidatesForAnchor` / `linkTicketToAnchor` waist and differ only in
+  permission — `integrations.zendesk` is ADMIN_ONLY in `scripts/seed-roles.mjs`,
+  so the support route 403s the floor operator these surfaces are built for.
+
 ## Depth elevation (flat · raised · overlay)
 
 - Source: `src/design-system/tokens/shadows.ts` — `elevationClass(role, intensity?)`.

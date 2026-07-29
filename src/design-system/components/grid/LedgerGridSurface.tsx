@@ -42,7 +42,24 @@ interface LedgerGridSurfaceProps<Row, K extends string> {
   renderGroup: (group: RowGroup<Row>, baseStripeIndex: number) => ReactNode;
   renderRow: (row: Row, stripeIndex: number) => ReactNode;
   loading: boolean;
+  /**
+   * Settled-with-no-rows copy. This is the "nothing here YET" answer — teach the
+   * next action, don't just say the list is empty.
+   */
   emptyMessage: string;
+  /**
+   * Settled-with-no-MATCHES copy, when a filter or search is narrowing the list.
+   *
+   * A separate answer from `emptyMessage`, per `display/workbench.md`: "no data
+   * yet" invites the create action, "no matches" invites clearing the filter, and
+   * showing the first when the second is true tells the operator their data is
+   * gone. `LedgerGrid` has always supported the split; this surface collapsed it
+   * to one message until 2026-07-29, so every descriptor-driven grid answered
+   * both questions the same way. Pass it whenever the surface has a search box.
+   */
+  searchEmptyMessage?: string;
+  /** True while a filter/search is active — picks {@link searchEmptyMessage}. */
+  isSearching?: boolean;
   /** Sticky day bands (Testing History). Auto-suppressed under a column sort. */
   showDayHeaders?: boolean;
   /** Mirror of the LedgerGrid scroll body (keyboard nav / scroll-to-top). */
@@ -59,6 +76,15 @@ interface LedgerGridSurfaceProps<Row, K extends string> {
   testId: string;
 }
 
+/** The house dashed teaching box — one shape for both settled-empty answers. */
+function GridEmptyBox({ message }: { message: string }) {
+  return (
+    <div className="mx-auto max-w-xs rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-6 text-center">
+      <p className="text-sm font-semibold text-text-soft">{message}</p>
+    </div>
+  );
+}
+
 export function LedgerGridSurface<Row, K extends string>({
   descriptor,
   orderGroupsByDate,
@@ -72,6 +98,8 @@ export function LedgerGridSurface<Row, K extends string>({
   renderRow,
   loading,
   emptyMessage,
+  searchEmptyMessage,
+  isSearching = false,
   showDayHeaders = false,
   scrollRef,
   className,
@@ -142,10 +170,10 @@ export function LedgerGridSurface<Row, K extends string>({
           columnHeader={renderColumnHeader({ toggleColumnSort })}
           renderGroup={renderGroup}
           renderRow={renderRow}
-          emptyState={
-            <div className="mx-auto max-w-xs rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-6 text-center">
-              <p className="text-sm font-semibold text-text-soft">{emptyMessage}</p>
-            </div>
+          emptyState={<GridEmptyBox message={emptyMessage} />}
+          isSearching={isSearching && Boolean(searchEmptyMessage)}
+          searchEmptyState={
+            searchEmptyMessage ? <GridEmptyBox message={searchEmptyMessage} /> : undefined
           }
         />
       )}

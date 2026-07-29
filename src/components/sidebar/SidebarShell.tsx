@@ -37,8 +37,8 @@ export function SidebarShell({
   return (
     <div
       className={cn(
-        // No edge or elevation here — the spine's host (slide-over / drawer)
-        // owns those, because there it really is a floating layer.
+        // No edge or elevation here — the spine's host (`SidebarNavColumn` on
+        // desktop, the drawer on mobile) owns those.
         'flex h-full w-full flex-col overflow-hidden',
         appChromeClass,
         // In the mobile drawer, inset the top so the header clears the notch.

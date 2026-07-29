@@ -28,11 +28,12 @@ export function RepairPaperworkSheet({ active, onToggle }: RepairPaperworkSheetP
   return (
     <HoverTooltip label={active ? 'Hide repair paperwork' : 'View repair paperwork'} asChild>
       <IconButton
+        size="lg"
         icon={<FileText className="h-4 w-4" />}
         onClick={onToggle}
         aria-pressed={active}
         ariaLabel={active ? 'Hide repair paperwork' : 'View repair paperwork'}
-        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border transition-colors ${
+        className={`rounded-lg border transition-colors ${
           active
             ? 'border-border-strong bg-surface-inverse text-white'
             : 'border-border-soft text-text-soft hover:border-border-strong hover:text-text-default'

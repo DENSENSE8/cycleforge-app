@@ -3,6 +3,7 @@
 import { useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { ManualLibrary } from '@/components/manuals/ManualLibrary';
+import { parseProductsView } from '@/components/products/products-view';
 
 // Lazy-load the labels workbench — pulls in the DataMatrix renderer + barcode
 // helpers + catalog list; not needed for the default Manuals view.
@@ -57,18 +58,26 @@ const ProductsCatalogWorkspace = dynamic(
 
 export function ProductsWorkspace() {
   const searchParams = useSearchParams();
-  const view = searchParams.get('view');
+  const view = parseProductsView(searchParams.get('view'));
 
-  if (view === 'labels') return <LabelsProductsWorkspace />;
-  if (view === 'pairing') return <ProductsPairingShell />;
-  // QC view: right pane shows the selected SKU's QC checklist (selection comes
-  // from the sidebar's QcProductPicker via `?skuId=`).
-  if (view === 'qc') return <QcChecklistWorkspace />;
-  // Kit Parts view: right pane shows the selected SKU's "what's in the box" BOM
-  // editor (selection comes from the sidebar's KitPartsPicker via `?skuId=`).
-  if (view === 'kit') return <KitPartsWorkspace />;
-  if (view === 'catalog') return <ProductsCatalogWorkspace />;
-  // Manuals (default) renders the PDF viewer in the main pane — selection
-  // comes from the sidebar's LibraryBrowser (`?id=`).
-  return <ManualLibrary />;
+  switch (view) {
+    case 'labels':
+      return <LabelsProductsWorkspace />;
+    case 'pairing':
+      return <ProductsPairingShell />;
+    // QC view: right pane shows the selected SKU's QC checklist (selection comes
+    // from the sidebar's QcProductPicker via `?skuId=`).
+    case 'qc':
+      return <QcChecklistWorkspace />;
+    // Kit Parts view: right pane shows the selected SKU's "what's in the box"
+    // BOM editor (selection comes from the sidebar's KitPartsPicker, `?skuId=`).
+    case 'kit':
+      return <KitPartsWorkspace />;
+    case 'catalog':
+      return <ProductsCatalogWorkspace />;
+    // Manuals (default) renders the PDF viewer in the main pane — selection
+    // comes from the sidebar's LibraryBrowser (`?id=`).
+    case 'manuals':
+      return <ManualLibrary />;
+  }
 }

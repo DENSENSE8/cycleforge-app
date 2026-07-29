@@ -85,9 +85,9 @@ test('get_operations_journey: found path returns trimmed events + href', async (
   if (!out.ok) return;
   const data = out.data as { found: boolean; href: string; events: unknown[] };
   assert.equal(data.found, true);
-  // Order deep-links go to Dashboard Search detail — SoT is
+  // Order deep-links go to the ONE order shell — SoT is
   // searchHitHref('ORDER', id) in src/lib/search/search-hit.ts.
-  assert.equal(data.href, '/dashboard?mode=search&openOrderId=99&map=search');
+  assert.equal(data.href, '/o/99');
   assert.equal(data.events.length, 1);
 });
 

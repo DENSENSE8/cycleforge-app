@@ -13,12 +13,17 @@
  * `RepairIntakeForm` in `kioskMode`), which submits device-authed to
  * `/api/kiosk/repair/submit` and shows its own confirmation. Sales + Pickup are
  * WIP tiles kept in the same SoT so re-enabling one is a status flip.
+ *
+ * Layout: square stage sized to the shorter viewport edge — iPad portrait /
+ * landscape / near-square all get one composed floor surface, not a landscape
+ * card floating in empty canvas.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { Button, Panel } from '@/design-system/primitives';
 import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cornerClass } from '@/design-system/tokens/radius';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 import { cn } from '@/utils/_cn';
 import type { RepairFormData, RepairSubmitResult } from '@/components/repair/RepairIntakeForm';
@@ -173,16 +178,39 @@ export default function KioskPage() {
     );
   }
 
+  const tileCount = liveServices.length;
+
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-surface-canvas px-6 py-10 text-text-default">
-      <div className="w-full max-w-2xl">
-        <header className="mb-8 text-center">
+    <div className="flex min-h-dvh flex-col items-center justify-center bg-surface-canvas px-4 py-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] text-text-default sm:px-6 sm:py-6 sm:pb-[max(1.5rem,env(safe-area-inset-bottom))]">
+      {/*
+        Square stage: sized to the shorter viewport edge so portrait iPad,
+        landscape iPad, and near-square desk mounts all get one composed floor —
+        not a thin landscape card in a sea of canvas. Setup lives INSIDE the
+        stage as a quiet footer — an absolute control below the stage was
+        reading as an accidental full-width dock bar in the leftover canvas.
+      */}
+      <div
+        className={cn(
+          'flex w-full flex-col',
+          'aspect-square max-h-[min(100dvh-1.5rem,100dvw-2rem)] max-w-[min(100dvh-1.5rem,100dvw-2rem)]',
+        )}
+        // Size container so clamp(...cqi...) type scales with the stage, not the viewport.
+        style={{ containerType: 'size' }}
+      >
+        <header className="shrink-0 text-center">
           <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">Welcome</p>
-          <h1 className="mt-1 text-3xl font-semibold tracking-tight">How can we help you today?</h1>
+          <h1 className="mt-2 text-balance text-[clamp(1.5rem,4.2cqi+0.75rem,2.5rem)] font-semibold leading-tight tracking-tight">
+            How can we help you today?
+          </h1>
         </header>
 
         {err && (
-          <div className="mb-6 rounded-xl border border-dashed border-rose-200 bg-rose-50 px-4 py-3 text-center text-sm font-semibold text-rose-700">
+          <div
+            className={cn(
+              'mt-4 shrink-0 border border-dashed border-rose-200 bg-rose-50 px-4 py-3 text-center text-sm font-semibold text-rose-700',
+              cornerClass('card'),
+            )}
+          >
             {err}
           </div>
         )}
@@ -190,64 +218,104 @@ export default function KioskPage() {
         {mode === 'ready' && (
           <div
             className={cn(
-              'grid grid-cols-1 gap-4',
-              liveServices.length > 1 && 'sm:grid-cols-3',
-              liveServices.length === 1 && 'mx-auto max-w-sm',
+              'mt-6 grid min-h-0 flex-1 gap-3 sm:mt-8 sm:gap-4',
+              // Square stage: 1 tile fills; 2+ tiles share a 2-col floor (never a 3-col strip).
+              tileCount === 1 ? 'grid-cols-1' : 'grid-cols-2',
+              // Odd count: last tile spans full width so the floor stays balanced.
+              tileCount > 1 && tileCount % 2 === 1 && '[&>*:last-child]:col-span-2',
             )}
           >
             {liveServices.map((s) => (
-              // ds-raw-button — bespoke full-height service tile, not a Button variant
+              // ds-raw-button — bespoke floor-density service tile, not a Button variant
               <button
                 key={s.id}
                 type="button"
                 onClick={() => openService(s.id)}
                 className={cn(
-                  'flex min-h-[9rem] flex-col items-center justify-center gap-2 rounded-2xl border border-border-soft bg-surface-card px-4 py-6 text-center shadow-sm transition hover:bg-surface-hover', // ds-allow-box — bespoke interactive service tile (not a static Panel)
+                  'group flex h-full min-h-0 w-full flex-col items-center justify-center gap-2 border border-border-soft bg-surface-card px-5 py-6 text-center shadow-sm transition-[background-color,transform] duration-150 ease-out', // ds-allow-box — bespoke interactive service tile (not a static Panel)
+                  'hover:bg-surface-hover active:scale-[0.985]',
+                  tileCount === 1 ? cornerClass('canvas') : cornerClass('card'),
+                  tileCount === 1 && 'gap-3 px-8 py-10 sm:gap-4 sm:px-10 sm:py-12',
                   focusRing('control', 'accent'),
                 )}
               >
-                <span className="text-lg font-semibold">{s.label}</span>
-                <span className="text-xs font-semibold text-text-soft">{s.blurb}</span>
+                <span
+                  className={cn(
+                    'font-semibold tracking-tight text-text-default',
+                    tileCount === 1
+                      ? 'text-[clamp(1.75rem,5cqi+0.5rem,2.75rem)] leading-tight'
+                      : 'text-[clamp(1.125rem,3.5cqi+0.35rem,1.5rem)] leading-snug',
+                  )}
+                >
+                  {s.label}
+                </span>
+                <span
+                  className={cn(
+                    'max-w-[22ch] font-semibold text-text-soft',
+                    tileCount === 1
+                      ? 'text-[clamp(0.9375rem,2.2cqi+0.35rem,1.25rem)]'
+                      : 'text-[clamp(0.75rem,1.8cqi+0.25rem,0.9375rem)]',
+                  )}
+                >
+                  {s.blurb}
+                </span>
               </button>
             ))}
           </div>
         )}
 
         {mode === 'pair' && (
-          <Panel padding="lg" className="mx-auto max-w-md">
-            <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">Tablet setup</p>
-            <h2 className="mt-1 text-xl font-semibold">Pair this tablet</h2>
-            <p className="mt-2 text-sm font-semibold text-text-soft">
-              A manager generates a setup code in Settings → Devices. Enter it below to pair this tablet.
-            </p>
-            <input
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-              placeholder="Setup code"
-              autoComplete="off"
-              autoCapitalize="off"
-              spellCheck={false}
-              className={cn(
-                'mt-4 w-full rounded-xl border border-border-soft bg-surface-canvas px-4 py-3 text-center text-lg font-semibold tracking-widest',
-                focusRing('field', 'accent'),
-              )}
-            />
-            <div className="mt-4 flex items-center justify-between gap-3">
-              <Button variant="ghost" onClick={() => { setMode('ready'); setErr(null); }}>
-                Cancel
-              </Button>
-              <Button onClick={() => void pair()} disabled={busy}>
-                {busy ? 'Pairing…' : 'Pair tablet'}
-              </Button>
-            </div>
-          </Panel>
+          <div className="mt-6 flex min-h-0 flex-1 items-center justify-center sm:mt-8">
+            <Panel padding="lg" elevation="raised" className="w-full max-w-md">
+              <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">Tablet setup</p>
+              <h2 className="mt-1 text-2xl font-semibold tracking-tight">Pair this tablet</h2>
+              <p className="mt-2 text-sm font-semibold text-text-soft">
+                A manager generates a setup code in Settings → Devices. Enter it below to pair this tablet.
+              </p>
+              <input
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                placeholder="Setup code"
+                autoComplete="off"
+                autoCapitalize="off"
+                spellCheck={false}
+                className={cn(
+                  'mt-5 w-full border border-border-soft bg-surface-canvas px-4 py-4 text-center text-xl font-semibold tracking-widest',
+                  cornerClass('field'),
+                  focusRing('field', 'accent'),
+                )}
+              />
+              <div className="mt-5 flex items-center justify-between gap-3">
+                <Button variant="ghost" size="lg" onClick={() => { setMode('ready'); setErr(null); }}>
+                  Cancel
+                </Button>
+                <Button size="lg" onClick={() => void pair()} disabled={busy}>
+                  {busy ? 'Pairing…' : 'Pair tablet'}
+                </Button>
+              </div>
+            </Panel>
+          </div>
         )}
 
         {mode === 'ready' && (
-          <div className="mt-10 text-center">
-            <Button variant="ghost" size="sm" onClick={() => { setMode('pair'); setErr(null); }}>
+          <div className="mt-4 flex shrink-0 justify-center pb-1 pt-1 sm:mt-5">
+            {/*
+              Quiet caption control — not Button chrome. A ghost Button pinned
+              under the square stage was reading as a full-width dock tab in the
+              leftover canvas. Keep this secondary and text-only so the service
+              tile stays the only floor CTA.
+            */}
+            {/* ds-raw-button — muted text link, not a Button variant */}
+            <button
+              type="button"
+              onClick={() => { setMode('pair'); setErr(null); }}
+              className={cn(
+                'min-h-11 px-4 py-2.5 text-role-caption font-semibold text-text-soft transition-colors hover:text-text-default',
+                focusRing('control', 'accent'),
+              )}
+            >
               Set up this tablet
-            </Button>
+            </button>
           </div>
         )}
       </div>

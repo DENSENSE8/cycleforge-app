@@ -1,9 +1,9 @@
 {
   "version": 1,
-  "generatedAt": "2026-07-29T06:48:02Z",
-  "totalRoutes": 880,
+  "generatedAt": "2026-07-29T17:53:01Z",
+  "totalRoutes": 882,
   "summary": {
-    "permissionGated": 750,
+    "permissionGated": 752,
     "authenticatedNoPermission": 46,
     "anonymousIntentional": 82,
     "serviceToService": 2,
@@ -2755,6 +2755,24 @@
         "POST"
       ],
       "gate": "withAuth (anonymous OK)",
+      "permission": null,
+      "exemptReason": null
+    },
+    {
+      "path": "/api/kiosk/repair/ecwid-categories/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withKioskAuth (device principal)",
+      "permission": null,
+      "exemptReason": null
+    },
+    {
+      "path": "/api/kiosk/repair/ecwid-products/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withKioskAuth (device principal)",
       "permission": null,
       "exemptReason": null
     },

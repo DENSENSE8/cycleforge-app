@@ -1,6 +1,7 @@
 import { randomUUID } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
-import { getSquareConfig, squareFetch, formatSquareErrors } from '@/lib/square/client';
+import { formatSquareErrors } from '@/lib/square/client';
+import { squareFetchForOrg } from '@/lib/square/server';
 import { isAllowedAdminOrigin } from '@/lib/security/allowed-origin';
 import { withAuth } from '@/lib/auth/withAuth';
 
@@ -14,7 +15,7 @@ interface CreateCheckoutBody {
  * POST /api/walk-in/terminal/checkout
  * Send a checkout request to a Square Terminal device.
  */
-export const POST = withAuth(async (req: NextRequest) => {
+export const POST = withAuth(async (req: NextRequest, ctx) => {
   try {
     if (!isAllowedAdminOrigin(req)) {
       return NextResponse.json({ error: 'Origin not allowed' }, { status: 403 });
@@ -29,7 +30,6 @@ export const POST = withAuth(async (req: NextRequest) => {
       );
     }
 
-    const cfg = getSquareConfig();
     const deviceId =
       body.device_id ||
       process.env.SQUARE_TERMINAL_DEVICE_ID?.trim() ||
@@ -59,9 +59,15 @@ export const POST = withAuth(async (req: NextRequest) => {
       },
     };
 
-    const result = await squareFetch<{ checkout?: Record<string, unknown> }>(
+    // Resolve the tenant's own Square connection (Nango token when connected,
+    // env fallback otherwise) rather than the env-global getSquareConfig().
+    // NOTE: /api/walk-in/sync still calls getSquareConfig() directly and needs
+    // the same treatment — it was left alone here only to keep this change
+    // inside its stated scope.
+    const result = await squareFetchForOrg<{ checkout?: Record<string, unknown> }>(
+      ctx.organizationId,
       '/terminals/checkouts',
-      { method: 'POST', body: checkoutBody, config: cfg },
+      { method: 'POST', body: checkoutBody },
     );
 
     if (!result.ok) {

@@ -38,6 +38,19 @@ import {
   type ZohoFactsInput,
 } from '@/lib/receiving/facts/narrow';
 import { acknowledgeUnbox } from '@/lib/receiving/acknowledge-unbox';
+import { ensureLineUnitsSafe, fetchLineUnits } from '@/lib/receiving/ensure-line-units';
+
+// `receiving_line_unit` materialises LAZILY, on the two BOUNDED `include=serials`
+// reads below — `?id=` (one line) and `?receiving_id=` (one carton), i.e. the
+// paths an operator takes to open a line. Deliberately NOT the paginated list
+// branch: `view=scanned&limit=500&include=serials` is a feed, and materialising
+// 500 lines nobody opened is exactly the waste the plan's "no bulk backfill"
+// call rules out. Best-effort by contract — a materialisation failure must never
+// fail the read; the next open re-plans from scratch.
+//
+// After materialising, both paths attach `units` via the shared `fetchLineUnits`
+// reader (Phase 2) so /api/receiving-lines and /api/receiving/:id cannot drift.
+// Plan: docs/todo/per-unit-no-serial-EXECUTION-PROMPT.md §4 Phases 1–2.
 
 // `fetchSerialsForLines` + the `LineSerial` shape are the authoritative
 // current-serials-per-line SoT, shared with the projection writer and the batch
@@ -172,6 +185,15 @@ export async function handleReceivingLinesGet(
       if (includeSerials) {
         const serialsByLine = await fetchSerialsForLines([normalized.id], orgId);
         (normalized as Record<string, unknown>).serials = serialsByLine.get(normalized.id) ?? [];
+        await ensureLineUnitsSafe(orgId, [
+          {
+            lineId: normalized.id,
+            expectedQty: normalized.quantity_expected,
+            serialIds: (serialsByLine.get(normalized.id) ?? []).map((s) => s.id),
+          },
+        ]);
+        const unitsByLine = await fetchLineUnits([normalized.id], orgId);
+        (normalized as Record<string, unknown>).units = unitsByLine.get(normalized.id) ?? [];
       }
       // Mobile `/receiving/lines/:id` historically read `receiving_lines[]`; desktop sidebar uses `receiving_line`.
       return NextResponse.json({
@@ -193,6 +215,21 @@ export async function handleReceivingLinesGet(
         const serialsByLine = await fetchSerialsForLines(normalizedRows.map((r) => r.id), orgId);
         for (const row of normalizedRows) {
           (row as Record<string, unknown>).serials = serialsByLine.get(row.id) ?? [];
+        }
+        await ensureLineUnitsSafe(
+          orgId,
+          normalizedRows.map((row) => ({
+            lineId: row.id,
+            expectedQty: row.quantity_expected,
+            serialIds: (serialsByLine.get(row.id) ?? []).map((s) => s.id),
+          })),
+        );
+        const unitsByLine = await fetchLineUnits(
+          normalizedRows.map((row) => row.id),
+          orgId,
+        );
+        for (const row of normalizedRows) {
+          (row as Record<string, unknown>).units = unitsByLine.get(row.id) ?? [];
         }
       }
       const receiving_package = pkgRes.rows[0]

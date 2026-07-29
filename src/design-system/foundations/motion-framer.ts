@@ -35,6 +35,8 @@ export const framerDuration = {
   workbenchPaneMount: 0.18,
   /** Photo viewer details column — one symmetric drawer toggle (open == close reversed) */
   photoContextPanelMount: 0.22,
+  /** Nav spine push column — one symmetric width toggle that reflows the frame */
+  sidebarNavColumnMount: 0.24,
   /** Global detail-stack overlay card (full-height flyout) — slow, soft enter/exit */
   detailStackOverlayMount: 0.4,
   /**
@@ -93,6 +95,21 @@ export const framerTransition = {
   photoContextPanelMount: {
     duration: framerDuration.photoContextPanelMount,
     ease: motionBezier.easeOut,
+  } satisfies Transition,
+
+  /**
+   * Nav spine push column — the left navigator's own width toggle, which
+   * reflows the whole content region (`SidebarNavColumn`).
+   *
+   * A tween, deliberately, where the old slide-OVER used a spring: a spring on a
+   * width overshoots past its target, and here the target is the width every
+   * sibling lays out against — the workspace would visibly rubber-band on every
+   * open. `motionBezier.layout` is the softer curve the house reserves for
+   * geometry (see `detailStackOverlayMount` / `sidebarExpand`).
+   */
+  sidebarNavColumnMount: {
+    duration: framerDuration.sidebarNavColumnMount,
+    ease: motionBezier.layout,
   } satisfies Transition,
 
   /** Detail-stack overlay card — pair with `framerPresence.detailStackOverlay` */

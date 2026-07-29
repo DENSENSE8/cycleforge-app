@@ -87,37 +87,23 @@ export function isUiEntityType(value: string): value is SearchHitEntityType {
  * SERIAL_UNIT uses the inventory workbench's `?unit=` view (ByUnitView →
  * /api/serial-units/:id, which accepts the numeric id).
  *
- * Order search detail — Dashboard Search mode with the order selected in the
- * main pane (`openOrderId`) and the Recent|Search map in the L2 sidebar.
- * Optional `q` keeps the header pill + Search-map list in sync; `map=search`
- * opens the near-match rail (default when arriving from header / ⌘K).
- * Pass `map: 'recent'` to preserve the Recent rail across canonicalize so the
- * sidebar mode does not flash Search↔Recent on every open.
+ * There is exactly ONE order shell: `/o/[orderId]` ({@link orderRecordHref}).
+ * A search hit for an order deep-links there like every other opener does —
+ * recents (`detailStackHref`), ⌘K, and the order rail already did. The former
+ * `orderSearchHref` built a third one (`/dashboard?mode=search&openOrderId=`,
+ * a mode-local detail shell beside the slide-in panel and the full page); it
+ * was deleted with Search mode (`docs/todo/dashboard-ia-rework-PLAN.md` X9a).
  */
-export function orderSearchHref(
-  orderId: string | number,
-  query?: string,
-  opts?: { map?: 'search' | 'recent' },
-): string {
-  const id = String(orderId).trim();
-  const sp = new URLSearchParams();
-  sp.set('mode', 'search');
-  sp.set('openOrderId', id);
-  sp.set('map', opts?.map === 'recent' ? 'recent' : 'search');
-  const q = query?.trim();
-  if (q) sp.set('q', q);
-  return `/dashboard?${sp.toString()}`;
-}
 
 /**
- * Canonical order-record href (`/o/[orderId]`) — the full order Workbench.
- *
- * Distinct from {@link orderSearchHref}, which is the Dashboard Search surface
- * *paired with its L2 hit-map rail*. Week 1 / D4a splits them by confidence:
- * an exact-identifier commit that resolves to one order jumps straight to the
- * record; fuzzy / natural-language / multi-result queries keep the rail, where
- * having more than one candidate is the point.
+ * The cross-entity search surface's route. One constant so the two builders
+ * below cannot drift (it used to be a `/dashboard` mode spelled out in ~10
+ * places). Deliberately NOT exported: callers compose {@link globalSearchHref}
+ * rather than re-assembling the path, and an unused export fails the knip gate.
  */
+const SEARCH_SURFACE_PATH = '/search';
+
+/** Canonical order-record href (`/o/[orderId]`) — the full order Workbench. */
 export function orderRecordHref(orderId: string | number): string {
   return `/o/${encodeURIComponent(String(orderId).trim())}`;
 }
@@ -125,10 +111,10 @@ export function orderRecordHref(orderId: string | number): string {
 export function searchHitHref(dbType: SearchEntityType, entityId: number): string {
   switch (dbType) {
     case 'ORDER':
-      // Dashboard Search detail page + L2 hit map. Shipping-mode slide-over
-      // stays the in-place board experience; search/⌘K always lands here.
+      // The one order shell. Shipping-mode slide-over stays the in-place board
+      // experience; search / ⌘K / recents always land on the record page.
       // Keep in sync with global-entity-search.ts.
-      return orderSearchHref(entityId);
+      return orderRecordHref(entityId);
     case 'SERIAL_UNIT':
       return `/inventory/units?unit=${entityId}`;
     case 'RECEIVING':
@@ -248,10 +234,8 @@ export function shouldAutoOpenSearchOrder(
  * operator on a one-row list they had to click. One row is not a choice.
  *
  * Returns null for 0 or 2+ hits (a real list — never force a destination), an
- * unusable id, or an entity vocabulary this build does not know. Orders are
- * deliberately NOT special-cased here: callers that want the query-carrying
- * `orderSearchHref` should keep using {@link shouldAutoOpenSearchOrder} first
- * and fall through to this.
+ * unusable id, or an entity vocabulary this build does not know. Orders need no
+ * special case any more: `searchHitHref('ORDER')` IS the order record page.
  */
 export function soleHitHref(
   hits: ReadonlyArray<{ id: number; entityType: string }>,
@@ -323,7 +307,7 @@ export function globalSearchHandoffHref(
   previewHits: ReadonlyArray<{ id: number; entityType: string }> = [],
 ): string {
   const trimmed = query.trim();
-  if (!trimmed) return '/dashboard?mode=search';
+  if (!trimmed) return SEARCH_SURFACE_PATH;
   const orderHits = previewHits.filter((h) => h.entityType === 'order');
   const orderOnly =
     previewHits.length > 0 && previewHits.every((h) => h.entityType === 'order');
@@ -334,10 +318,10 @@ export function globalSearchHandoffHref(
 
   if (isIdentifier || orderOnly) {
     const top = orderHits[0];
-    if (top) return orderSearchHref(top.id, trimmed);
+    if (top) return orderRecordHref(top.id);
     return globalSearchHref(trimmed);
   }
-  return globalSearchHref(trimmed, { map: false });
+  return globalSearchHref(trimmed);
 }
 
 /**
@@ -369,24 +353,17 @@ export function searchScopeHref(dbType: SearchEntityType, query: string): string
  *
  * Distinct from {@link searchScopeHref}, which narrows to one entity's list
  * surface and returns null for the types that have none (RECEIVING among them).
- * This is the "just search for this string" jump: `/dashboard?mode=search` runs
- * hybrid retrieval across every entity, so a PO number resolves to its carton,
- * its order, and its units without the caller knowing which surface owns them.
+ * This is the "just search for this string" jump: `/search` runs hybrid
+ * retrieval across every entity, so a PO number resolves to its carton, its
+ * order, and its units without the caller knowing which surface owns them.
  *
- * `map=search` marks the hit list as the navigation origin, so opening a result
- * returns here rather than to the recents map.
+ * It is its OWN route rather than a `/dashboard` mode: cross-entity results are
+ * not the outbound order workbench with a different filter, and the `?warranty=`
+ * precedent already showed the house answer for a surface that outgrew a mode.
  */
-export function globalSearchHref(
-  query: string,
-  opts?: { map?: 'search' | 'recent' | false },
-): string {
+export function globalSearchHref(query: string): string {
   const q = encodeURIComponent(query.trim());
-  const map = opts?.map === undefined ? 'search' : opts.map;
-  // `map: false` omits the origin marker — a natural-language search that was
-  // not handed off from anywhere has no origin to return to.
-  return map === false
-    ? `/dashboard?mode=search&q=${q}`
-    : `/dashboard?mode=search&q=${q}&map=${map}`;
+  return q ? `${SEARCH_SURFACE_PATH}?q=${q}` : SEARCH_SURFACE_PATH;
 }
 
 /** Human label for the surface searchScopeHref targets (UI action rows). */

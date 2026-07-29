@@ -12,7 +12,9 @@ import type { OrgLetterhead } from '@/lib/branding/letterhead';
 
 export function useOrgLetterhead(): OrgLetterhead {
   const { user } = useAuth();
-  const orgName = user?.organizationName || 'Workspace';
+  // Empty when unauthenticated (kiosk device principal) — never paint the
+  // product placeholder "Workspace" on customer repair paper.
+  const orgName = user?.organizationName?.trim() || '';
   const [letterhead, setLetterhead] = useState<OrgLetterhead>({
     name: orgName,
     addressLine1: '',

@@ -36,6 +36,53 @@ function anchorToParams(linkable: SupportContextLinkable): URLSearchParams {
   return sp;
 }
 
+/**
+ * GET url for link candidates. A **receiving** anchor goes through the
+ * receiving-gated twin of the link waist, not `/api/support/tickets/link`.
+ *
+ * Both routes call the SAME `listCandidatesForAnchor` / `linkTicketToAnchor`
+ * helpers (`src/lib/support/ticket-link.ts`) — they differ only in the
+ * permission they demand: `integrations.zendesk`, which is ADMIN_ONLY in the
+ * seeded role matrix (`scripts/seed-roles.mjs`), vs `receiving.mark_received`,
+ * which the `receiver` role holds. The receiving route exists precisely "so
+ * floor operators can claim without the broader Zendesk console permission" —
+ * so pointing a receiving anchor at the support route 403s exactly the operator
+ * the unfound "Find ticket by tracking" lane was built for.
+ */
+function candidatesUrl(linkable: SupportContextLinkable, query: string): string {
+  if (linkable.anchorType === 'receiving') {
+    const sp = new URLSearchParams();
+    sp.set('receivingId', String(linkable.receivingId ?? linkable.anchorId));
+    if (linkable.lineId != null) sp.set('lineId', String(linkable.lineId));
+    if (query) sp.set('query', query);
+    return `/api/receiving/zendesk-claim/link?${sp.toString()}`;
+  }
+  const sp = anchorToParams(linkable);
+  if (query) sp.set('query', query);
+  return `/api/support/tickets/link?${sp.toString()}`;
+}
+
+/** POST target + body for the link mutation — same route split as {@link candidatesUrl}. */
+function linkRequest(
+  linkable: SupportContextLinkable,
+  ticketId: number,
+): { url: string; body: unknown } {
+  if (linkable.anchorType === 'receiving') {
+    return {
+      url: '/api/receiving/zendesk-claim/link',
+      body: {
+        receivingId: linkable.receivingId ?? linkable.anchorId,
+        lineId: linkable.lineId ?? null,
+        ticketId,
+      },
+    };
+  }
+  return {
+    url: '/api/support/tickets/link',
+    body: { ticketId, anchor: anchorToBody(linkable) },
+  };
+}
+
 function anchorToBody(linkable: SupportContextLinkable) {
   if (linkable.anchorType === 'receiving') {
     return {
@@ -100,9 +147,7 @@ export function TicketLinkPopover({
     enabled: open && linkable.canLinkTicket,
     staleTime: 10_000,
     queryFn: async () => {
-      const sp = anchorToParams(linkable);
-      if (debounced) sp.set('query', debounced);
-      const res = await fetch(`/api/support/tickets/link?${sp.toString()}`);
+      const res = await fetch(candidatesUrl(linkable, debounced));
       const data = await res.json().catch(() => null);
       if (!res.ok || !data?.success) {
         throw new Error(data?.error || `link candidates ${res.status}`);
@@ -116,10 +161,11 @@ export function TicketLinkPopover({
 
   const link = useMutation({
     mutationFn: async (ticketId: number) => {
-      const res = await fetch('/api/support/tickets/link', {
+      const { url, body } = linkRequest(linkable, ticketId);
+      const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ticketId, anchor: anchorToBody(linkable) }),
+        body: JSON.stringify(body),
       });
       const data = await res.json().catch(() => null);
       if (!res.ok || !data?.success) {
@@ -142,7 +188,15 @@ export function TicketLinkPopover({
 
   const rows = candidates.data?.tickets ?? [];
   const hiddenLinked = candidates.data?.hiddenLinked ?? 0;
-  const parsedId = parseTicketIdQuery(query);
+
+  // A HOST-SEEDED query is a search term, never something the operator typed as
+  // an id — and `initialQuery` is a carrier tracking number, which for FedEx is
+  // 12 digits and therefore parses as one. Untouched, it rendered "Press Enter
+  // to link #382803670296" over an enabled button that could only ever 404.
+  // The id path switches back on the moment the operator edits the box.
+  const seed = initialQuery.trim();
+  const isUntouchedSeed = seed.length > 0 && query.trim() === seed;
+  const parsedId = isUntouchedSeed ? null : parseTicketIdQuery(query);
   const canSubmit =
     selectedId != null ||
     (parsedId != null && !candidates.isFetching && !candidates.isLoading);
@@ -153,6 +207,8 @@ export function TicketLinkPopover({
       link.mutate(selectedId);
       return;
     }
+    // No pick and no typed id — the seed alone must never link anything.
+    if (parsedId == null) return;
     const id = resolveTicketIdForLink(query, rows);
     if (id != null) link.mutate(id);
   };
@@ -202,7 +258,9 @@ export function TicketLinkPopover({
             {debounced
               ? parsedId != null
                 ? `Press Enter to link #${parsedId}`
-                : 'No tickets found — try pasting #ticket id'
+                : isUntouchedSeed
+                  ? `No ticket mentions ${seed} — edit to search, or paste a #ticket id`
+                  : 'No tickets found — try pasting #ticket id'
               : hiddenLinked > 0
                 ? `${hiddenLinked} recent ticket(s) already linked elsewhere — search by #`
                 : 'Recent tickets appear here — or paste #ticket id'}
@@ -237,6 +295,16 @@ export function TicketLinkPopover({
           </ul>
         )}
       </div>
+
+      {/* A tracking-number search whose only match is anchored to ANOTHER item
+          would otherwise render as "no tickets found" — the one conclusion the
+          operator must not draw. Anchor mode hides those rows (picking one would
+          re-anchor it), so name the count instead of swallowing it. */}
+      {hiddenLinked > 0 && rows.length > 0 ? (
+        <p className="mb-2 text-role-micro text-text-faint">
+          {hiddenLinked} more match{hiddenLinked === 1 ? '' : 'es'} already linked to another item
+        </p>
+      ) : null}
 
       <Button
         size="sm"

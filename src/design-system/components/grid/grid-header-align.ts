@@ -87,36 +87,6 @@ export function gridHeaderCellAlignClass(align: GridColumnAlign = 'start'): stri
   return gridColumnAlignClass(align);
 }
 
-/**
- * Does the header's RESOLVED label fit its track, or should the cell fall back
- * to the type glyph alone?
- *
- * The per-surface `*GridHeaderShowsLabel` predicates compare the track width to
- * a static `labelFitRem` threshold and never look at the label itself. That
- * holds only while the label is the one the column SoT declares — and Unbox
- * injects its stage label at runtime (`Unboxed` / `Scanned` / `Tested`) over a
- * track sized for the SoT's placeholder `Stage`. `4.5 >= 4.5` passed, so the
- * header rendered `Unboxed` into a 4.5rem cell and clipped it to `UNBO…`.
- *
- * A clipped header is strictly worse than a glyph: the glyph is a complete
- * symbol the operator can learn, while `UNBO…` is a word they have to decode
- * and can misread. So the threshold stays a floor, and the label must ALSO fit.
- *
- * The width estimate is deliberately conservative and unit-based rather than
- * measured: headers render at `text-role-eyebrow`, which binds the condensed
- * cut at ~10–11px with wide tracking, giving ≈0.42rem per uppercase character.
- * Reserved chrome is the type glyph (0.75rem), its gap, the sort chevron, and
- * the cell's horizontal inset ≈ 1.75rem total. Estimating avoids a layout read
- * in render; erring narrow costs a glyph fallback, erring wide costs a clipped
- * word, so it rounds toward the glyph.
- */
-const HEADER_CHAR_REM = 0.42;
-const HEADER_CHROME_REM = 1.75;
-
-export function gridHeaderLabelFits(trackRem: number, label: string): boolean {
-  return trackRem >= label.trim().length * HEADER_CHAR_REM + HEADER_CHROME_REM;
-}
-
 /** Value-cell justification for a column — the cell half of the same decision. */
 export function gridCellAlignClass(
   column: Pick<LedgerGridColumnModel, 'type' | 'align'>,

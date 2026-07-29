@@ -29,16 +29,20 @@ import { useDashboardViewWarmup } from '@/hooks/useDashboardViewWarmup';
 import { useDashboardRealtime } from '@/hooks/useDashboardRealtime';
 import { DashboardOrdersView } from '@/components/dashboard/DashboardOrdersView';
 import { DashboardReceivingView } from '@/components/dashboard/receiving/DashboardReceivingView';
-import { DashboardSearchView } from '@/components/dashboard/search/DashboardSearchView';
 import { DashboardOrderDetails } from '@/components/dashboard/DashboardOrderDetails';
 import { buildSupportWarrantyRedirectSearch } from '@/utils/dashboard-search-state';
-import { getDashboardModeFromSearch } from '@/lib/dashboard/dashboard-domains';
+import {
+  getDashboardDomainFromSearch,
+  isRetiredSearchMode,
+  retiredSearchModeTarget,
+} from '@/lib/dashboard/dashboard-domains';
 import { refreshDomain } from '@/lib/refresh/bus';
 
 function DashboardPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const mode = getDashboardModeFromSearch(searchParams);
+  const domain = getDashboardDomainFromSearch(searchParams);
+  const searchModeRetired = isRetiredSearchMode(searchParams);
   const { detailsEnabled, orderView, searchQuery, setOrderView } = useDashboardSearchController();
 
   // Legacy Warranty Logger lived on `/dashboard?warranty=` — permanent home is
@@ -49,7 +53,15 @@ function DashboardPageContent() {
     router.replace(qs ? `/support?${qs}` : '/support?mode=warranty');
   }, [router, searchParams]);
 
-  const isOutbound = mode === 'shipping';
+  // Retired Search mode (`?mode=search`) — same client-redirect mechanism as
+  // `?warranty=` above, for the same reason: Next `redirects()` emits 308 and
+  // cannot drop `mode` while preserving `q`.
+  useEffect(() => {
+    if (!searchModeRetired) return;
+    router.replace(retiredSearchModeTarget(searchParams));
+  }, [router, searchModeRetired, searchParams]);
+
+  const isOutbound = domain === 'outbound';
 
   const {
     selectionEnabled,
@@ -72,24 +84,14 @@ function DashboardPageContent() {
     refreshDomain('orders.outbound');
   }, []);
 
-  if (searchParams.has('warranty')) {
+  if (searchParams.has('warranty') || searchModeRetired) {
     return <div className="flex h-full w-full bg-surface-canvas" aria-busy />;
   }
 
-  // Search (`?mode=search`) — global search results as the visual display; the
-  // sidebar owns the query field + per-staff recents. No order panel.
-  if (mode === 'search') {
-    return (
-      <div className="flex min-h-0 w-full flex-1">
-        <DashboardSearchView />
-      </div>
-    );
-  }
-
-  // Receiving (`?mode=inbound`) is the inbound-cartons domain — Triage/Unbox
+  // Inbound (`?mode=inbound`) is the receiving-cartons domain — Triage/Unbox
   // table tabs. It owns its whole region (own chrome + own table) and never
   // mounts the outbound order panel, so the two domains can't intermix rows.
-  if (mode === 'receiving') {
+  if (domain === 'inbound') {
     return (
       <div className="flex min-h-0 w-full flex-1">
         <DashboardReceivingView />

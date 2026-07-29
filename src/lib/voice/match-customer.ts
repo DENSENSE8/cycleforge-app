@@ -57,17 +57,19 @@ const defaultDeps: MatchCustomerDeps = {
   },
   async lookupSquare(orgId, last10) {
     try {
-      // square_transactions is not org-scoped yet (see square-transaction-queries.ts);
-      // safe for single-tenant. Add `AND organization_id = $n` once the column lands.
+      // Explicit org predicate, not just the GUC: the app pool connects as a
+      // BYPASSRLS role, so square_transactions' FORCE policy does not constrain
+      // this read on its own (see square-transaction-queries.ts).
       const r = await tenantQuery<{ name: string | null; email: string | null; phone: string | null }>(
         orgId,
         `SELECT customer_name AS name, customer_email AS email, customer_phone AS phone
            FROM square_transactions
-          WHERE customer_phone IS NOT NULL
-            AND ${last10Sql('customer_phone')} = $1
+          WHERE organization_id = $1
+            AND customer_phone IS NOT NULL
+            AND ${last10Sql('customer_phone')} = $2
           ORDER BY created_at DESC
           LIMIT 1`,
-        [last10],
+        [orgId, last10],
       );
       const row = r.rows[0];
       return row ? { name: row.name, email: row.email, phone: row.phone, source: 'square' } : null;

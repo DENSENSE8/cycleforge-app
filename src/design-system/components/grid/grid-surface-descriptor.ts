@@ -17,6 +17,7 @@
  */
 
 import { createColumnHelper, type ColumnDef, type RowData } from '@tanstack/react-table';
+import { gridContentMinWidthRem } from './grid-column-geometry';
 import type { ColumnType } from '@/lib/tables/table-columns';
 
 /** Structural shape every house grid column model satisfies. */
@@ -146,13 +147,16 @@ export interface GridSurfaceDescriptor<Row, C extends LedgerGridColumnModel = Le
 export function makeGridSurfaceDescriptor<Row, C extends LedgerGridColumnModel>(
   id: string,
   columns: readonly C[],
-  contentMinWidthRem: number,
   defOptions?: BuildLedgerColumnDefsOptions<Row, C>,
 ): GridSurfaceDescriptor<Row, C> {
   return {
     id,
     columns,
     columnDefs: buildLedgerColumnDefs<Row, C>(columns, defOptions),
-    contentMinWidthRem,
+    // DERIVED, never passed in. All five surfaces handed this the sum of their
+    // own visible tracks, which is now one shared function — so the parameter
+    // could only ever be right or stale, and a stale one silently mis-sizes the
+    // h-scroll activation width against the template it is supposed to match.
+    contentMinWidthRem: gridContentMinWidthRem(columns),
   };
 }

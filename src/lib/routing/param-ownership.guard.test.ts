@@ -35,7 +35,13 @@ const ALL_SPECS = [
   ...QUERY_MODE_ROUTE_PARAMS,
 ];
 
-/** The governed surface trees — every family with declared param specs. */
+/**
+ * The governed surfaces — every family with declared param specs. An entry is a
+ * directory OR a single file, because a surface's params are not all read under
+ * one tree: every sidebar panel is a top-level file in `components/sidebar/`, so
+ * a directory-only list cannot see the one component that writes the mode URL.
+ * That is the half of a surface where the leak actually lives.
+ */
 const OWNED_TREES = [
   'components/receiving',
   'components/sidebar/receiving',
@@ -49,7 +55,17 @@ const OWNED_TREES = [
   'components/fba',
   'app/shipping',
   'components/support',
+  'components/sidebar/SupportSidebarPanel.tsx',
+  'components/sidebar/support',
   'app/support',
+  'components/products',
+  'components/sidebar/ProductsSidebarPanel.tsx',
+  'app/products',
+  'components/dashboard',
+  'components/sidebar/DashboardOrdersContextPanel.tsx',
+  'app/dashboard',
+  'app/search',
+  'components/search',
 ];
 
 /**
@@ -68,21 +84,30 @@ const OWNED_TREES = [
  */
 const UNDECLARED_READS: Readonly<Record<string, string>> = {};
 
-function walk(dir: string, out: string[] = []): string[] {
-  let entries: string[];
-  try {
-    entries = readdirSync(dir);
-  } catch {
+/** True for a source file the guard should read (not a test/spec sibling). */
+function isGoverned(path: string): boolean {
+  return /\.tsx?$/.test(path) && !/\.(test|spec)\.tsx?$/.test(path);
+}
+
+/**
+ * Every governed source file under `target`, which may be a directory or a
+ * single file. A missing path throws rather than resolving to zero files — a
+ * silently-empty tree is a guard that passes because it looked nowhere, which is
+ * indistinguishable from a clean surface.
+ */
+function walk(target: string, out: string[] = []): string[] {
+  const stat = statSync(target); // throws on a stale OWNED_TREES entry — deliberate
+  if (!stat.isDirectory()) {
+    if (isGoverned(target)) out.push(target);
     return out;
   }
-  for (const entry of entries) {
-    const full = join(dir, entry);
+  for (const entry of readdirSync(target)) {
+    const full = join(target, entry);
     if (statSync(full).isDirectory()) {
       walk(full, out);
       continue;
     }
-    if (!/\.tsx?$/.test(entry)) continue;
-    if (/\.(test|spec)\.tsx?$/.test(entry)) continue;
+    if (!isGoverned(entry)) continue;
     out.push(full);
   }
   return out;

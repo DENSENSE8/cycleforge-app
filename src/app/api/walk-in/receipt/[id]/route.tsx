@@ -50,7 +50,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     const segments = req.nextUrl.pathname.split('/').filter(Boolean);
     const id = segments[segments.length - 1] ?? '';
     const [sale, org] = await Promise.all([
-      getSquareTransactionById(id),
+      getSquareTransactionById(id, ctx.organizationId),
       getOrganization(ctx.organizationId),
     ]);
     if (!sale) {

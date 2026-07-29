@@ -363,20 +363,20 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       box-sizing: border-box;
     }
     html, body {
-      width: 8.5in;
-      height: 11in;
+      width: 210mm;
+      min-height: 297mm;
       margin: 0;
       padding: 0;
     }
     @media print {
       html, body {
-        width: 8.5in;
-        height: 11in;
+        width: 210mm;
+        min-height: 297mm;
         margin: 0;
         padding: 0;
       }
       @page {
-        size: 8.5in 11in;
+        size: A4;
         margin: 0;
       }
     }

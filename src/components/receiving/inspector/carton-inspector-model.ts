@@ -25,16 +25,27 @@
 /** Carton header as returned by `GET /api/receiving/[id]` (`receiving`). */
 export interface CartonInspectorReceiving {
   id: number;
+  shipment_id: string | null;
   tracking: string | null;
   carrier: string | null;
   source: string | null;
   source_platform: string | null;
   intake_type: string | null;
   pairing_state: string | null;
+  priority_lane: string | null;
   triage_complete: boolean | null;
+  triage_completed_at: string | null;
   is_return: boolean | null;
   return_platform: string | null;
+  return_reason: string | null;
+  needs_test: boolean | null;
+  target_channel: string | null;
+  qa_status: string | null;
+  disposition_code: string | null;
+  condition_grade: string | null;
   staging_location_label: string | null;
+  local_pickup_order_id: string | null;
+  zoho_purchase_receive_id: string | null;
   zoho_purchaseorder_id: string | null;
   zoho_purchaseorder_number: string | null;
   listing_url: string | null;
@@ -48,6 +59,15 @@ export interface CartonInspectorReceiving {
   received_at: string | null;
   received_by_name: string | null;
   created_at: string | null;
+  updated_at: string | null;
+}
+
+interface CartonInspectorSerial {
+  id: number;
+  serial_number: string;
+  current_status: string | null;
+  current_location: string | null;
+  condition_grade: string | null;
 }
 
 export interface CartonInspectorLine {
@@ -56,12 +76,37 @@ export interface CartonInspectorLine {
   item_name: string | null;
   quantity_expected: number | null;
   quantity_received: number | null;
+  qa_status: string | null;
+  disposition_code: string | null;
   condition_grade: string | null;
   workflow_status: string | null;
+  receiving_type: string | null;
+  location_code: string | null;
+  listing_reference: string | null;
+  notes: string | null;
   zoho_purchaseorder_number: string | null;
   /** Per-line tracking (a multi-tracking carton splits across lines). */
   tracking_number: string | null;
-  serials?: Array<{ id: number; serial_number: string; current_status: string | null }>;
+  serials?: CartonInspectorSerial[];
+}
+
+/**
+ * One row of `events[]`. Unlike the carton milestone stamps, `occurred_at` IS a
+ * real ISO instant — `formatDateTimePST` branches correctly for both, but do
+ * not assume the two are interchangeable elsewhere.
+ */
+export interface CartonInspectorEvent {
+  id: string;
+  occurred_at: string;
+  event_type: string | null;
+  actor_name: string | null;
+  station: string | null;
+  sku: string | null;
+  serial_number: string | null;
+  bin_name: string | null;
+  prev_status: string | null;
+  next_status: string | null;
+  notes: string | null;
 }
 
 export interface CartonInspectorTotals {
@@ -81,6 +126,128 @@ export interface CartonInspectorPayload {
   }>;
   lines?: CartonInspectorLine[];
   totals?: CartonInspectorTotals;
+  events?: CartonInspectorEvent[];
+}
+
+/**
+ * A displayable fact, with the presentation kind it must be resolved through.
+ *
+ * The model decides WHICH facts exist and what kind each is; the view resolves
+ * `kind` against the matching SoT (`conditionLabel`, `sourcePlatformMeta`,
+ * `receivingTypeMeta`, `workflowStage*`). Keeping the label/tone maps out of
+ * here is what lets this module stay import-free and testable, and it is the
+ * house rule either way — views assemble RESOLVED facts, they never invent maps,
+ * and the model never hardcodes a label a SoT already owns.
+ */
+export type CartonFactKind = 'text' | 'condition' | 'platform' | 'receivingType';
+
+export interface CartonFact {
+  key: string;
+  label: string;
+  /** The RAW stored value — the view resolves it per `kind`. */
+  value: string;
+  kind: CartonFactKind;
+}
+
+/** Non-empty string, or null. Blank and whitespace count as absent. */
+function present(value: string | null | undefined): string | null {
+  const v = typeof value === 'string' ? value.trim() : '';
+  return v.length > 0 ? v : null;
+}
+
+/**
+ * The at-a-glance fact set.
+ *
+ * **Absent facts are omitted, never rendered as `—`.** A carton legitimately has
+ * most of these empty, and a grid of dashes reads as "the system lost the data"
+ * rather than "this step does not apply here" — the same reasoning that omits
+ * unstamped milestones. The consequence is that the strip's length varies by
+ * carton, which is correct: a returned unit with a disposition genuinely has
+ * more to say than a plain PO carton.
+ */
+export function cartonFacts(receiving: CartonInspectorReceiving): CartonFact[] {
+  const out: CartonFact[] = [];
+  const add = (key: string, label: string, value: string | null, kind: CartonFactKind = 'text') => {
+    if (value) out.push({ key, label, value, kind });
+  };
+
+  add('platform', 'Platform', present(receiving.source_platform), 'platform');
+  add('intakeType', 'Intake type', present(receiving.intake_type), 'receivingType');
+  add('carrier', 'Carrier', present(receiving.carrier));
+  // Deliberately 'text'. `qa_status` (PENDING/PASSED/FAILED) is its own small
+  // vocabulary — NOT a receiving workflow stage. Routing it through
+  // `workflowStage*` rendered a valid "PENDING" as "Unknown", because that
+  // registry only knows line stages. Misresolving a value through the wrong SoT
+  // is the same class of bug as inventing a map; the raw token is legible and
+  // honest, and a QA label SoT should be added only once a second consumer
+  // needs one.
+  add('qaStatus', 'QA status', present(receiving.qa_status));
+  add('disposition', 'Disposition', present(receiving.disposition_code));
+  add('condition', 'Condition', present(receiving.condition_grade), 'condition');
+  add('staging', 'Staging location', present(receiving.staging_location_label));
+  add('lane', 'Priority lane', present(receiving.priority_lane));
+  add('targetChannel', 'Target channel', present(receiving.target_channel));
+  add('returnPlatform', 'Return platform', present(receiving.return_platform), 'platform');
+  add('returnReason', 'Return reason', present(receiving.return_reason));
+
+  return out;
+}
+
+/**
+ * Exception flags — the states a reader must not have to infer from a fact grid.
+ *
+ * Only genuinely notable states appear. `triage_complete: true` is the normal
+ * case and says nothing, so it is silent; `false` on a carton that has already
+ * been unboxed is a real inconsistency and is surfaced. This is the difference
+ * between a status readout and a signal.
+ */
+export interface CartonFlag {
+  key: string;
+  label: string;
+  tone: 'info' | 'warning' | 'danger';
+}
+
+export function cartonFlags(receiving: CartonInspectorReceiving): CartonFlag[] {
+  const flags: CartonFlag[] = [];
+
+  if (receiving.is_return) flags.push({ key: 'return', label: 'Return', tone: 'warning' });
+  if (receiving.needs_test) flags.push({ key: 'needsTest', label: 'Needs test', tone: 'info' });
+
+  // UNFOUND = arrived without a matching PO. Load-bearing on a claim: it says
+  // the carton was never reconciled against an order.
+  const pairing = present(receiving.pairing_state);
+  if (pairing && pairing.toUpperCase() === 'UNFOUND') {
+    flags.push({ key: 'unfound', label: 'No matched PO', tone: 'warning' });
+  }
+
+  // Only an inconsistency once the box is demonstrably open.
+  const opened = present(receiving.unbox_opened_at) || present(receiving.unboxed_at);
+  if (opened && receiving.triage_complete === false) {
+    flags.push({ key: 'triage', label: 'Triage incomplete', tone: 'warning' });
+  }
+
+  if (present(receiving.local_pickup_order_id)) {
+    flags.push({ key: 'pickup', label: 'Local pickup', tone: 'info' });
+  }
+
+  return flags;
+}
+
+/** System-record footer facts — the "which row is this, really" set. */
+export function cartonRecordMeta(receiving: CartonInspectorReceiving): CartonFact[] {
+  const out: CartonFact[] = [];
+  const add = (key: string, label: string, value: string | null) => {
+    if (value) out.push({ key, label, value, kind: 'text' });
+  };
+  add('id', 'Carton', String(receiving.id));
+  add('shipment', 'Shipment', present(receiving.shipment_id));
+  add('source', 'Source', present(receiving.source));
+  add('pairing', 'Pairing state', present(receiving.pairing_state));
+  add('poId', 'Zoho PO id', present(receiving.zoho_purchaseorder_id));
+  add('receiveId', 'Zoho receive id', present(receiving.zoho_purchase_receive_id));
+  add('created', 'Created', present(receiving.created_at));
+  add('updated', 'Updated', present(receiving.updated_at));
+  return out;
 }
 
 /** One "who did what, when" row. */

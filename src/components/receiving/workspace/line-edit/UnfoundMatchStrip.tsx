@@ -17,9 +17,12 @@
  *   • **Amazon return** (PackageCheck) — FETCH: reverse-tracking SP-API lookup.
  *   • **Find ticket** (TicketHelp) — search the helpdesk for a ticket matching
  *     this carton's TRACKING NUMBER and link the picked one to the carton/line.
- *     Composes the shared link waist (`TicketLinkPopover` →
- *     GET/POST /api/support/tickets/link), seeded with the tracking number —
- *     the reverse of "File ticket", which mints a new one.
+ *     Composes the shared link waist (`TicketLinkPopover`), seeded with the
+ *     tracking number — the reverse of "File ticket", which mints a new one.
+ *     It is the one action pinned to the **section header**, not just the
+ *     action grid: the grid is hidden behind the default `order` lane, so on the
+ *     scan of an unfound carton — the exact moment to check whether support
+ *     filed a ticket before the box arrived — no button was visible at all.
  */
 
 import {
@@ -127,6 +130,21 @@ export function UnfoundMatchStrip({
   const noReceiving = receivingId == null;
   const notice = pickMergedRefetchNotice(zoho, amazon);
 
+  // Where the ticket picker returns to when it closes. It opens from EITHER the
+  // always-visible header button (usually while the Order # lane is up, the
+  // default on scan) or the collapsed action grid — dumping the operator into
+  // the grid they never opened would lose their place mid-search.
+  const ticketReturnRef = useRef<'order' | 'actions'>('actions');
+  const closeTicketLane = () => setLane(ticketReturnRef.current);
+  const toggleTicketLane = () => {
+    if (lane === 'ticket') {
+      closeTicketLane();
+      return;
+    }
+    ticketReturnRef.current = lane === 'order' ? 'order' : 'actions';
+    setLane('ticket');
+  };
+
   const closeSearch = () => {
     setLane('actions');
     compare.reset();
@@ -142,7 +160,40 @@ export function UnfoundMatchStrip({
     <div
       className={showTopRule ? 'space-y-2 border-t border-border-hairline pt-3' : 'space-y-2'}
     >
-      <WorkspaceSectionTitle as="p">Auto-match</WorkspaceSectionTitle>
+      {/* The header keeps ONE always-visible action: find the helpdesk ticket
+          that already mentions this tracking number. It used to live only in the
+          collapsed action grid, which the default `order` lane hides — so on the
+          scan of an unfound carton (the exact moment an operator needs to check
+          whether a ticket was filed before the box arrived) there was no visible
+          button at all. Header action, so it survives every lane swap below. */}
+      <div className="flex min-w-0 items-center justify-between gap-2">
+        <WorkspaceSectionTitle as="p">Auto-match</WorkspaceSectionTitle>
+        {/* Stays plain/white in every state. The linked ticket's identity — and
+            its unlink — belong to the carton context header (ReceivingTicketChip
+            in StationContextBar), so restating "linked #N" here would be a second
+            place to read the same fact, and a second place to keep in sync. */}
+        <HoverTooltip
+          label={
+            hasTracking
+              ? 'Search the helpdesk for a ticket that already mentions this tracking number'
+              : 'Add a tracking number to this carton first'
+          }
+          asChild
+          focusable={false}
+        >
+          <Button
+            variant="secondary"
+            size="sm"
+            aria-pressed={lane === 'ticket'}
+            disabled={noReceiving || !hasTracking}
+            onClick={toggleTicketLane}
+            icon={<TicketHelp className="h-3.5 w-3.5 shrink-0" />}
+            className="-my-1 h-7 shrink-0 gap-1.5 px-2"
+          >
+            <span className="text-role-caption font-semibold">Find ticket</span>
+          </Button>
+        </HoverTooltip>
+      </div>
 
       <AnimatePresence mode="wait" initial={false}>
         {lane === 'ticket' ? (
@@ -151,10 +202,10 @@ export function UnfoundMatchStrip({
               receivingId={receivingId}
               lineId={lineId}
               trackingNumber={trimmedTracking}
-              onBack={() => setLane('actions')}
+              onBack={closeTicketLane}
               onLinked={() => {
                 onTicketChanged?.();
-                setLane('actions');
+                closeTicketLane();
               }}
             />
           </motion.div>
@@ -225,7 +276,7 @@ export function UnfoundMatchStrip({
                   : 'Add a tracking number to this carton first'
               }
               disabled={noReceiving || !hasTracking}
-              onClick={() => setLane('ticket')}
+              onClick={toggleTicketLane}
             />
           </motion.div>
         )}

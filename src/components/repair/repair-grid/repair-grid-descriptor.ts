@@ -11,7 +11,6 @@ import {
   defaultDirForRepairGridSort,
   isRepairGridFrozen,
   isRepairGridSortable,
-  repairContentMinWidthRem,
   type RepairGridColumn,
 } from '@/lib/repair/repair-grid-layout';
 
@@ -26,7 +25,6 @@ export function makeRepairGridDescriptor(
   return makeGridSurfaceDescriptor<RSRecord, RepairGridColumn>(
     'repair.queue',
     columns,
-    repairContentMinWidthRem(columns),
     {
       isSortable: isRepairGridSortable,
       sortDescFirst: (key) => defaultDirForRepairGridSort(key) === 'desc',

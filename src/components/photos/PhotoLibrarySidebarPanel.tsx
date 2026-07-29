@@ -1,14 +1,20 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { usePhotoLibrary } from '@/hooks/usePhotoLibrary';
 import { usePhotoLibraryUrlState } from '@/hooks/usePhotoLibraryUrlState';
+import { useImageTypes } from '@/hooks/useImageTypes';
 import { SidebarShell } from '@/components/layout/SidebarShell';
 import { SidebarSectionList } from '@/components/sidebar/SidebarSectionList';
-import { Loader2 } from '@/components/Icons';
+import { Folder, Loader2, Plus } from '@/components/Icons';
+import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { IconButton } from '@/design-system/primitives';
 import { QUEUE_ROW } from '@/components/ui/queue-row-chrome';
+import { toast } from '@/lib/toast';
 import { buildPhotoDateTree } from '@/lib/photos/date-tree';
 import { PHOTO_SCOPE_ICONS } from '@/lib/photos/scope-icons';
+import { OutboundDocumentTypeFilters } from './OutboundDocumentTypeFilters';
+import { BUILTIN_IMAGE_TYPE_KEYS } from '@/lib/photos/image-type-defs';
 import {
   applySourceScopeTab,
   PHOTO_LIBRARY_SCOPE_TABS,
@@ -27,12 +33,19 @@ import { cn } from '@/utils/_cn';
  * transient page-list spine painted straight over the photo grid instead of
  * landing on a reserved column like it does everywhere else.
  *
- * It holds the two NAVIGATIONAL facets — which lifecycle produced the media, and
- * which day it was captured. Everything that *refines* the resulting set (search,
- * structured filters, media type, sort, saved views, NAS backup) stays in the
- * workbench chrome header: refinements belong with the result they narrow, and
- * splitting them across two homes is what the previous, deleted photo sidebar
- * got wrong.
+ * It holds everything that answers **which media am I looking at** — the
+ * lifecycle scope that produced it, the org's own media types, and the day it
+ * was captured. Everything that *refines* the resulting set (search, structured
+ * filters, sort, saved views, NAS backup) stays in the workbench chrome header:
+ * refinements belong with the result they narrow, and splitting them across two
+ * homes is what the previous, deleted photo sidebar got wrong.
+ *
+ * **This rail is the ONLY writer of `sourceScope` / `imageType` (2026-07-29).**
+ * The chrome header's media-type dropdown wrote the same params from a second
+ * place — its built-in rows were the same six source scopes — so the two could
+ * disagree about what the operator had selected. It was deleted, and the parts
+ * it uniquely owned (custom types + add, outbound's document chips) live here
+ * now. Adding a scope control back to the header re-opens that split.
  *
  * The date tree is derived from the LOADED page stream (`buildPhotoDateTree`),
  * so it describes what is actually in view rather than promising a full-archive
@@ -45,20 +58,71 @@ export function PhotoLibrarySidebarPanel() {
   const { photos, isSettled, query } = usePhotoLibrary(filters);
 
   const activeScope = sourceScopeFromFilters(filters);
+  const { custom, isLoading: typesLoading, createType } = useImageTypes();
+  const [addingType, setAddingType] = useState(false);
 
   const scopeSections = useMemo(
-    () =>
-      PHOTO_LIBRARY_SCOPE_TABS.map((id: PhotoLibrarySourceScope) => {
+    () => [
+      ...PHOTO_LIBRARY_SCOPE_TABS.map((id: PhotoLibrarySourceScope) => {
         // Paired glyph + label — never a bare icon (ui-design-system.md → Icons).
         const Icon = PHOTO_SCOPE_ICONS[id];
         return {
-          id,
+          id: id as string,
           label: PHOTO_SOURCE_SCOPE_LABELS[id],
           icon: <Icon className="h-3.5 w-3.5" />,
         };
       }),
-    [],
+      // The org's own media types, in the SAME list as the built-ins: both
+      // answer "which media am I looking at", and the header menu that used to
+      // hold them is gone. They are a second GROUP, not a second control —
+      // built-ins are lifecycle-derived, custom ones are operator-defined.
+      ...custom.map((type) => ({
+        id: type.key,
+        label: type.label,
+        group: 'Custom types',
+        icon: <Folder className="h-3.5 w-3.5" />,
+      })),
+    ],
+    [custom],
   );
+
+  // One row is active at a time across BOTH groups: a custom type clears the
+  // lifecycle scope and vice versa (the media-type menu behaved this way too).
+  const activeSection = filters.imageType ?? activeScope;
+
+  const selectSection = (id: string) => {
+    if (id === 'all' || BUILTIN_IMAGE_TYPE_KEYS.has(id)) {
+      patch(applySourceScopeTab(id as PhotoLibrarySourceScope));
+      return;
+    }
+    patch({
+      imageType: id,
+      // Same clears the menu did: a custom type is its own scope, so no
+      // lifecycle-derived refinement survives the switch.
+      sourceScope: undefined,
+      stage: undefined,
+      label: undefined,
+      poRef: undefined,
+      ticketId: undefined,
+      receivingId: undefined,
+      documentType: undefined,
+      outboundMedia: undefined,
+    });
+  };
+
+  const addType = async () => {
+    const label = window.prompt('New media type name')?.trim();
+    if (!label) return;
+    setAddingType(true);
+    try {
+      const created = await createType.mutateAsync({ label });
+      selectSection(created.key);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to create media type');
+    } finally {
+      setAddingType(false);
+    }
+  };
 
   const dateTree = useMemo(() => buildPhotoDateTree(photos), [photos]);
 
@@ -86,18 +150,57 @@ export function PhotoLibrarySidebarPanel() {
       className="bg-surface-card"
       headerAbove={
         <div className="shrink-0 border-b border-border-hairline">
-          <p className="px-1.5 pt-2 text-role-eyebrow uppercase tracking-widest text-text-soft">
-            Sources
-          </p>
+          <div className="flex items-center justify-between gap-2 px-1.5 pt-2">
+            <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">Sources</p>
+            <HoverTooltip label="Add media type" asChild>
+              <IconButton
+                size="xs"
+                icon={
+                  addingType ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Plus className="h-3.5 w-3.5" />
+                  )
+                }
+                ariaLabel="Add media type"
+                onClick={() => void addType()}
+                disabled={addingType}
+                // Bleed the hit box so the affordance never grows the eyebrow row.
+                className="-my-1"
+              />
+            </HoverTooltip>
+          </div>
           <SidebarSectionList
             sections={scopeSections}
-            active={activeScope}
-            onSelect={(id) => patch(applySourceScopeTab(id as PhotoLibrarySourceScope))}
+            active={activeSection}
+            onSelect={selectSection}
             ariaLabel="Media scope"
             // A navigator beside a working surface, not a settings page — house
             // one-row anatomy and ring selection (see the prop's contract).
             density="ops"
           />
+          {typesLoading && custom.length === 0 ? (
+            <p className="flex items-center gap-2 px-1.5 py-1.5 text-role-caption text-text-faint">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading types…
+            </p>
+          ) : null}
+          {/* Outbound's document sub-filter only exists under that scope, so it
+              rides beneath the row that turns it on — the same conditional the
+              media-type menu carried, moved with the rest of it. */}
+          {activeScope === 'outbound' ? (
+            <div className="border-t border-border-hairline py-2">
+              <OutboundDocumentTypeFilters
+                documentType={filters.documentType ?? 'all'}
+                outboundMedia={filters.outboundMedia ?? 'documents'}
+                onSelectDocumentType={(documentType) =>
+                  patch({ documentType, outboundMedia: 'documents' })
+                }
+                onSelectPackPhotos={() =>
+                  patch({ outboundMedia: 'pack_photos', documentType: undefined })
+                }
+              />
+            </div>
+          ) : null}
         </div>
       }
       bodyClassName="pb-4"

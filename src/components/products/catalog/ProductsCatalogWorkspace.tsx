@@ -27,6 +27,7 @@ import {
 import { ToolbarSearchToggle } from '@/design-system/primitives/ToolbarSearchToggle';
 import { Button } from '@/design-system/primitives';
 import type { CatalogListRow } from '@/components/products/catalog/types';
+import { productDetailHref } from '@/components/products/products-view';
 import { CatalogGridView } from '@/components/products/catalog/catalog-grid/CatalogGridView';
 import {
   applyCatalogRefine,
@@ -197,7 +198,7 @@ export function ProductsCatalogWorkspace() {
 
   const onOpenRow = useCallback(
     (row: CatalogListRow) => {
-      router.push(`/products/${encodeURIComponent(row.sku)}`);
+      router.push(productDetailHref(row.sku));
     },
     [router],
   );

@@ -191,6 +191,10 @@ export const ReceivingGridRow = memo(function ReceivingGridRow({
 
   const productTitle = displayProductTitle(row);
   const quantityText = `${row.quantity_received}/${row.quantity_expected ?? '?'}`;
+  const quantityTip =
+    row.quantity_expected == null
+      ? `${row.quantity_received} received · expected count unknown (no PO line matched yet)`
+      : `${row.quantity_received} of ${row.quantity_expected} received`;
   const qtyExpected = row.quantity_expected ?? 0;
   const condGrade = (row.condition_grade || '').toUpperCase();
   const conditionLabel = conditionGradeTableLabel(row.condition_grade);
@@ -321,18 +325,24 @@ export const ReceivingGridRow = memo(function ReceivingGridRow({
       case 'qty':
         return (
           <div data-col="qty" className={dataCell(col, rule)}>
-            <span
-              className={cn(
-                'min-w-0 truncate tabular-nums text-role-caption',
-                qtyExpected > 1
-                  ? 'text-text-warning'
-                  : row.quantity_expected && row.quantity_received >= row.quantity_expected
-                    ? 'text-emerald-600'
-                    : 'text-text-muted',
-              )}
-            >
-              {quantityText}
-            </span>
+            {/* `received/expected`, and the `?` is load-bearing: an unfound PO has
+                no expected count, so `0/?` means "nothing received, and we do not
+                know what to expect" — not "zero of zero". Every other cryptic
+                value in this grid explains itself on hover; this one did not. */}
+            <HoverTooltip label={quantityTip} focusable={false}>
+              <span
+                className={cn(
+                  'min-w-0 truncate tabular-nums text-role-caption',
+                  qtyExpected > 1
+                    ? 'text-text-warning'
+                    : row.quantity_expected && row.quantity_received >= row.quantity_expected
+                      ? 'text-emerald-600'
+                      : 'text-text-muted',
+                )}
+              >
+                {quantityText}
+              </span>
+            </HoverTooltip>
           </div>
         );
       case 'condition':
@@ -354,7 +364,12 @@ export const ReceivingGridRow = memo(function ReceivingGridRow({
           <div data-col="stage" className={dataCell(col, rule)}>
             {stageDisplay && stageDisplay !== '--:--' ? (
               <HoverTooltip label={stageTip} focusable={false}>
-                <span className="truncate tabular-nums text-role-caption text-text-faint">
+                {/* `text-muted`, not `faint`: this is the stamp an operator reads
+                    when adjudicating "when was this unboxed, and by whom". At
+                    `faint` it dropped out entirely on a warehouse monitor viewed
+                    from a few feet — the quietest value on the row was the one
+                    the column exists to show. */}
+                <span className="truncate tabular-nums text-role-caption text-text-muted">
                   {stageDisplay}
                 </span>
               </HoverTooltip>

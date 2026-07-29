@@ -26,6 +26,21 @@ enters; never two on screen at once. Durations are **sub-300ms, ease-out by defa
 > Rule of thumb: if a transition touches `width`, `height`, `top`, `left`, or `padding`, it is wrong. Re-express it as
 > opacity + transform, or as `grid-template-rows` for height. Layout animation is the #1 source of jank here.
 
+**The one sanctioned layout animation: a deliberate PUSH toggle.** A panel that makes room for itself — the sidebar
+nav column (`framerTransition.sidebarNavColumnMount`), the photo viewer's details drawer
+(`photoContextPanelMount`), a `collapseHeight` reveal — animates its **own** `width`/`height` as a flex sibling,
+because "make room" *is* a reflow and has no transform-only spelling. Three conditions, all required:
+
+- **The operator asked for it.** It fires on an explicit toggle, once per request — not on selection, keystroke,
+  filter, or scan cadence. A surface that reflows on its own is still the bug this law exists to prevent.
+- **Tween, never spring.** A spring overshoots its target, and the target here is the width every sibling lays out
+  against — the work surface would rubber-band on each open. Use `motionBezier.layout`.
+- **The inner content is fixed-width and edge-anchored inside an `overflow-hidden` host**, so it slides out from
+  behind the frame edge instead of squashing its own rows while the host grows.
+
+Transform-only remains the law for everything that merely *moves* or *swaps*. If a panel can do its job by covering,
+it covers.
+
 ---
 
 ## Canonical crossfade recipe (the 7 steps)

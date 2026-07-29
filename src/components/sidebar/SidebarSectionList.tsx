@@ -80,7 +80,14 @@ export function SidebarSectionList<TId extends string = string>({
 
   return (
     <nav
-      className={cn('h-full overflow-y-auto', ops && 'divide-y divide-border-hairline')}
+      className={cn(
+        // `comfortable` IS the panel body (Settings / Admin), so it owns the
+        // height and the scrollport. `ops` is a PINNED block with siblings
+        // beneath it (the Media library's outbound chips, the capture-day
+        // tree), so it must size to its rows — `h-full` there made it claim the
+        // whole column and paint straight over everything below it.
+        ops ? 'divide-y divide-border-hairline' : 'h-full overflow-y-auto',
+      )}
       aria-label={ariaLabel}
     >
       {items.map((item, idx) => {

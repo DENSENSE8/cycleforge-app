@@ -1,3 +1,8 @@
+import {
+  gridContentMinWidthRem,
+  gridHeaderShowsLabel,
+  gridTemplate,
+} from '@/design-system/components/grid/grid-column-geometry';
 /**
  * Catalog spreadsheet column model — SoT for the Products Catalog LedgerGrid.
  *
@@ -9,7 +14,6 @@
  */
 
 import type { ColumnType } from '@/lib/tables/table-columns';
-import { ordersQueueColVar } from '@/lib/dashboard-order-row-layout';
 import type { CatalogListRow } from '@/components/products/catalog/types';
 
 export type CatalogGridColumnKey =
@@ -125,26 +129,19 @@ export function isCatalogGridSortable(key: string): key is CatalogGridColumnKey 
   return (CATALOG_GRID_SORTABLE_KEYS as readonly string[]).includes(key);
 }
 
-function catalogGridColumnTrackRem(column: CatalogGridColumn): number {
-  const m = column.width.match(/([\d.]+)rem/);
-  return m ? Number(m[1]) : 12;
-}
 
-export function catalogGridHeaderShowsLabel(column: CatalogGridColumn): boolean {
-  const fit = column.labelFitRem ?? 4.5;
-  return catalogGridColumnTrackRem(column) >= fit;
-}
+export const catalogGridHeaderShowsLabel = gridHeaderShowsLabel;
 
 export function catalogContentMinWidthRem(
   columns: readonly CatalogGridColumn[] = CATALOG_GRID_COLUMNS,
 ): number {
-  return columns.reduce((sum, c) => sum + catalogGridColumnTrackRem(c), 0);
+  return gridContentMinWidthRem(columns);
 }
 
 export function catalogGridTemplate(
   columns: readonly CatalogGridColumn[] = CATALOG_GRID_COLUMNS,
 ): string {
-  return columns.map((c) => `var(${ordersQueueColVar(c.key)}, ${c.width})`).join(' ');
+  return gridTemplate(columns);
 }
 
 export function isCatalogGridFrozen(key: string): boolean {

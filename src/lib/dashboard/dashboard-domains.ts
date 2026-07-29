@@ -1,7 +1,8 @@
 /**
- * Dashboard domain registry — the `/dashboard` mode axis.
+ * Dashboard domain registry — the `/dashboard` axis.
  *
- * The dashboard hosts two **domains**, and they never share a table:
+ * ONE axis, ONE name: **domain**. The dashboard hosts two, and they never share
+ * a table:
  *   • `outbound` — sales orders leaving the building (Pending · Packed ·
  *     Shipped lifecycle tabs, bare presence params `?unshipped` / `?shipped`).
  *   • `inbound`  — receiving cartons arriving at the dock (Unboxed · Scanned
@@ -12,42 +13,28 @@
  * `docs/todo/foh-boh-surface-split/04-inbound-history-dashboard-mode.md`
  * ("keep inbound cartons in their own domain switch").
  *
- * Pure data + functions (no React) so the page, the sidebar, and surface
- * isolation all read the same domain/mode contract.
- */
-
-type DashboardDomain = 'outbound' | 'inbound';
-
-/**
- * The `/dashboard` **mode** axis (the sidebar L2 rail — SoT
- * `SIDEBAR_PAGE_NAV` dashboard entry). Three modes ride the same `?mode=` param:
- *   • `search`    — global search (`?mode=search`); sidebar shows per-staff recents.
- *   • `receiving` — inbound cartons (`?mode=inbound`, alias `?mode=receiving`);
- *     Triage/Unbox table tabs. Maps onto the `inbound` DOMAIN below.
- *   • `shipping`  — outbound orders (bare / `?unshipped` / `?shipped`). Default.
+ * **"Mode" is no longer a second word for this.** The page used to carry a
+ * parallel `DashboardMode` ('search' | 'receiving' | 'shipping') whose three
+ * values mapped onto two domains plus a surface that was not a domain at all —
+ * so `receiving` mode *was* `inbound` domain and every reader had to know which
+ * vocabulary it was in. Search left the axis entirely for `/search`
+ * (`docs/todo/dashboard-ia-rework-PLAN.md` Phases 1–2), which is what let the
+ * axis collapse to exactly two values.
  *
- * Domain (outbound/inbound — never share a table) is the deeper concept the
- * page/header/warm read; MODE is the sidebar rail's vocabulary. `receiving` mode
- * IS the `inbound` domain, so downstream (InboundView, surface-isolation) keeps
- * reading `?mode=inbound` unchanged.
+ * The WIRE value stays `?mode=inbound` (bookmarks, surface-isolation, the
+ * `dashboard-inbound-mode` e2e spec) — renaming the param buys nothing and
+ * breaks every saved link. The sidebar rail keeps its own pill ids
+ * (`receiving` / `outbound`) in `SIDEBAR_PAGE_NAV`; those are labels, not a
+ * second model.
+ *
+ * Pure data + functions (no React) so the page, the sidebar, and surface
+ * isolation all read the same domain contract.
  */
-type DashboardMode = 'search' | 'receiving' | 'shipping';
 
-/** The mode axis rides on `?mode=` (absent = the default Shipping/outbound mode). */
+export type DashboardDomain = 'outbound' | 'inbound';
+
+/** The domain axis rides on `?mode=` (absent = the default outbound domain). */
 const DASHBOARD_DOMAIN_PARAM = 'mode';
-
-/**
- * Resolve the active sidebar mode from the URL. Mirrors the dashboard
- * `resolveMode` in `sidebar-navigation.ts` (whose id is `outbound` for Shipping).
- */
-export function getDashboardModeFromSearch(
-  searchParams: Pick<URLSearchParams, 'get'>,
-): DashboardMode {
-  const raw = String(searchParams.get(DASHBOARD_DOMAIN_PARAM) || '').trim().toLowerCase();
-  if (raw === 'search') return 'search';
-  if (raw === DASHBOARD_INBOUND_MODE || raw === 'receiving') return 'receiving';
-  return 'shipping';
-}
 
 /** `?mode=` value that selects the inbound (receiving cartons) domain. */
 export const DASHBOARD_INBOUND_MODE = 'inbound';
@@ -55,14 +42,47 @@ export const DASHBOARD_INBOUND_MODE = 'inbound';
 /** Mode-level gate: `/dashboard` is `dashboard.view`, but inbound shows receiving data. */
 export const DASHBOARD_INBOUND_PERMISSION = 'receiving.view';
 
+/**
+ * Resolve the active domain from the URL. `receiving` is accepted as a legacy
+ * alias for `inbound` (the sidebar pill id leaked into some saved links).
+ */
 export function getDashboardDomainFromSearch(
   searchParams: Pick<URLSearchParams, 'get'>,
 ): DashboardDomain {
   const raw = String(searchParams.get(DASHBOARD_DOMAIN_PARAM) || '').trim().toLowerCase();
-  return raw === DASHBOARD_INBOUND_MODE ? 'inbound' : 'outbound';
+  return raw === DASHBOARD_INBOUND_MODE || raw === 'receiving' ? 'inbound' : 'outbound';
 }
 
-// The inbound Triage/Unbox tab contract now lives with its view
+/**
+ * True when the URL still carries the retired Search mode. `/dashboard` client-
+ * redirects these (the `?warranty=` → `/support` precedent); Next `redirects()`
+ * emits 308 and cannot cleanly drop one param while preserving `q`.
+ */
+export function isRetiredSearchMode(
+  searchParams: Pick<URLSearchParams, 'get'>,
+): boolean {
+  return String(searchParams.get(DASHBOARD_DOMAIN_PARAM) || '').trim().toLowerCase() === 'search';
+}
+
+/**
+ * Where a retired `?mode=search` URL goes.
+ *   • `openOrderId` → that order's one shell, `/o/[id]`.
+ *   • `q`           → the cross-entity search route.
+ *   • bare          → the dashboard's default domain.
+ */
+export function retiredSearchModeTarget(
+  searchParams: Pick<URLSearchParams, 'get'>,
+): string {
+  const openOrderId = String(searchParams.get('openOrderId') || '').trim();
+  if (openOrderId) return `/o/${encodeURIComponent(openOrderId)}`;
+  const q = String(searchParams.get('q') || searchParams.get('dq') || '').trim();
+  if (q) return `/search?q=${encodeURIComponent(q)}`;
+  return '/dashboard';
+}
+
+// The inbound Triage/Unbox tab contract lives with its view
 // (`components/dashboard/receiving/dashboard-receiving-tabs.ts`), which reads the
-// `?sort=` axis (HISTORY_SORT_OPTIONS) directly. This module keeps only the
-// domain/mode resolvers the page + surface-isolation share.
+// `?sort=` axis (HISTORY_SORT_OPTIONS) directly. That axis is the INBOUND
+// domain's server ordering; the outbound display sort is `QueueSortSwitch`'s own
+// state and grid COLUMN sort is `?colsort=`/`?coldir=` (`useUrlColumnSort`) —
+// three different jobs, three different keys, never overloaded onto one.

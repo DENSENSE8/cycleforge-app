@@ -12,13 +12,13 @@ import {
 } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Pencil } from '@/components/Icons';
-import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { SerialChip } from '@/components/ui/CopyChip';
 import { TextField, IconButton } from '@/design-system/primitives';
 import { classifyInput } from '@/lib/scan-resolver';
 import { getLast4Serial } from '@/lib/copy-chip-format';
 import { ConditionPills } from './ConditionPills';
 import { ConditionBadge } from './ReceivingUnitRows';
+import { NoSerialOfferCheck } from './line-edit/NoSerialOfferCheck';
 
 interface SavedSerial {
   id?: number;
@@ -430,20 +430,15 @@ export function SerialCard({
             When the field is empty, a QUIET green-check no-serial OFFER. Otherwise
             the "+" add / Save submit. */}
         {noSerialActive ? null : !scan.trim() && !editing && onMarkNoSerial ? (
-          <HoverTooltip label="Mark this item as having no serial number" asChild>
-            {/* ds-raw-button: green-check no-serial offer toggle, not a DS Button */}
-            <button
-              type="button"
-              onClick={onMarkNoSerial}
-              aria-label="Mark this item as having no serial number"
-              aria-pressed={false}
-              className="inline-flex h-11 w-14 shrink-0 items-center justify-center rounded-xl border border-emerald-300 bg-emerald-50 text-emerald-600 shadow-sm transition-colors hover:bg-emerald-100"
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="h-5 w-5">
-                <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </button>
-          </HoverTooltip>
+          // Shared with the multi-qty unit list's all-units slot — one green
+          // check, so the affordance is identical whether the line is a 1-of or
+          // a 3-of. (Was bespoke markup here; the copy is what let the multi-qty
+          // side drift into a dashed grey token.)
+          <NoSerialOfferCheck
+            onClick={onMarkNoSerial}
+            label="Mark this item as having no serial number"
+            width="w-14"
+          />
         ) : (
           /* ds-raw-button: solid-emerald scan-submit CTA with add-glyph / Saving… text-swap */
           <button

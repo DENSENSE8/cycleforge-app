@@ -6,7 +6,6 @@
 import { makeGridSurfaceDescriptor, type GridSurfaceDescriptor } from '@/design-system/components/grid';
 import type { CatalogListRow } from '@/components/products/catalog/types';
 import {
-  catalogContentMinWidthRem,
   defaultDirForCatalogGridSort,
   isCatalogGridFrozen,
   isCatalogGridSortable,
@@ -24,7 +23,6 @@ export function makeCatalogGridDescriptor(
   return makeGridSurfaceDescriptor<CatalogListRow, CatalogGridColumn>(
     'products.catalog',
     columns,
-    catalogContentMinWidthRem(columns),
     {
       isSortable: isCatalogGridSortable,
       sortDescFirst: (key) => defaultDirForCatalogGridSort(key) === 'desc',

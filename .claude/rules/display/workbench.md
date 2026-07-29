@@ -146,6 +146,35 @@ The collection map is stable; only the **focus surface** moves.
   copy by `?mode=` so triage's "pick from the Unfound/Prioritize list" prompt never shows in Unbox — empty copy is
   structurally tied to the mode that owns it.
 
+### The four settled states — a collection has more than "data or not"
+
+"Loading vs empty" is two states for what is really four, and collapsing them is how a
+surface tells the operator something false. Every collection surface answers:
+
+| State | Means | Renders |
+|---|---|---|
+| **Loading** | not settled yet | skeleton at the **real geometry** — never a spinner over a table |
+| **Empty — absence** | settled, nothing exists yet | teaching box + the create/next action |
+| **Empty — no match** | settled, a filter excluded everything | teaching box + **clear the filter** |
+| **Degraded** | a source failed | the surface still renders; the failed part shows empty, it never 500s the record |
+
+- **Reserve the geometry while loading, and gate on ALL sources together.** A band fed by two
+  queries that each render as they settle **reflows under the operator's cursor**.
+  `DashboardAttentionStrip` holds one combined `isPending` gate for exactly this reason;
+  `LedgerGridSurface` renders `SkeletonList count={12} type="row"` inside the framed shell.
+- **Absence and no-match are different answers.** "No cartons yet" invites the create action;
+  "no cartons match" invites clearing the filter. Showing the first when the second is true
+  tells the operator their data is gone. Compose `LedgerGrid`'s `emptyState` /
+  `searchEmptyState` / `isSearching`, or `LedgerGridSurface`'s `emptyMessage` /
+  `searchEmptyMessage` / `isSearching`. *(The surface collapsed these to one message until
+  2026-07-29 — every descriptor-driven grid answered both questions identically.)*
+- **Settled-with-nothing can be a POSITIVE answer.** On a queue whose job is "what needs me",
+  zero is an all-clear, not an absence — say so (`DashboardAttentionStrip`'s all-clear line).
+  Reserve the dashed teaching box for absence.
+- **Degraded is not empty.** A failed sibling fetch renders its own region empty and leaves the
+  rest of the surface working — see *Degrade-not-fail* above. Only the **primary** resource
+  earns the retryable rose error state.
+
 ---
 
 ## Degrade-not-fail (per-sub-resource isolation)

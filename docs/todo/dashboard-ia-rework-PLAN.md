@@ -1,6 +1,19 @@
 # `/dashboard` IA rework — validated plan
 
-**Status:** plan only, no code changed. **Scope:** `/dashboard` only.
+**Status: Phases 1–3 SHIPPED 2026-07-29** (uncommitted, browser-verified). **The plan is not
+finished.**
+
+- **§9 — What shipped**: the as-built delta, including the three places the build deviated and why.
+- **§10 — Finishing this plan**: the ordered backlog, the gates, and an explicit definition of done.
+  Read this one if you are picking the work up.
+
+The largest remaining piece is **Phase 6 — the `/search` results surface**, which Phase 1 created and
+did not finish: evicting Search to its own route made its hand-rolled result list a first-class page
+with nowhere to hide. It is gated on
+[`search-results-grid-GEMINI-RESEARCH-BRIEFING.md`](search-results-grid-GEMINI-RESEARCH-BRIEFING.md),
+deliberately, because the three candidate shapes differ by an order of magnitude in cost.
+
+**Scope:** `/dashboard`, plus `/search` from Phase 1 onward (the route this plan created).
 **Inputs:** [`dashboard-modes-research-BRIEF.md`](dashboard-modes-research-BRIEF.md) (the ask) +
 the Gemini research response (`dashboard_architecture_brief.md`, external).
 **This doc supersedes the research response** where the two disagree; every correction below is
@@ -221,6 +234,60 @@ the `!masterNavEnabled` gate, not new UI.
 `/dashboard/outbound` · `/dashboard/inbound`. Feasible (X3) but buys little once Phase 2 lands, and
 carries the X3 blast radius. Revisit only if Phase 2 proves insufficient.
 
+### Phase 6 — `/search` results surface (NEW — created by Phase 1, gated on research)
+
+**Phase 1 moved Search to its own route; it did not upgrade it.** `/search` today mounts the same
+hand-rolled `SearchResultRow` list it had as a dashboard mode — a stack of per-entity cards whose
+rows are two-line prose blocks with a ragged right-hand chip run. Operator verdict: *"this list
+display looks terrible."*
+
+**This phase is the plan's own unfinished business, not a new initiative.** Evicting Search to a
+route is what made the results surface a first-class page with nowhere to hide, and §9's deviation
+list is silent on it because Phase 1 was scoped to *where* search lives, not *how it renders*.
+
+**Gate:** [`search-results-grid-GEMINI-RESEARCH-BRIEFING.md`](search-results-grid-GEMINI-RESEARCH-BRIEFING.md)
+(**Rev 2** — every claim re-verified against source; Rev 1 got two central facts wrong in the
+direction of making the job look easy, and both are recorded in its §12).
+
+**The four measured facts that decide this phase.** Each was confirmed by opening the file:
+
+1. **The facet bag is absent exactly where operators search most.** The doc arm emits a 7-key facet
+   bag (`hybrid-retrieval.ts:260-269`), but `exactResultToHit` (`:273-280`) spreads a parent-table
+   row with **no `facets` and `chips: []`**, and scores it `1000 - rank` — so it ranks **first**. An
+   identifier query therefore yields a **mixed** set: rows whose Status/Tracking/Condition/Date cells
+   are *structurally absent* sitting directly above rows where they are populated. **This is a
+   retrieval-layer prerequisite, not a UI problem** — hydrating facets on exact hits may have to land
+   before, or instead of, any grid work.
+2. **Per-entity column sets inside ONE `LedgerGrid` are not expressible.** It takes exactly one
+   `columnHeader: ReactNode` (`LedgerGrid.tsx:64`) in one sticky band, and its only banding axis is a
+   hard-coded date header (`FlatItem` header variant is `{ kind:'header'; date: string; count }`,
+   `VirtualGroupedSections.tsx:39`). "Per-entity sections" therefore means **N grid instances
+   stacked**, not one grid.
+3. **The house already has a sanctioned answer for divergent column shapes** —
+   `grid-surface-descriptor.ts:133`: *"Modes swap descriptors, not markup."* `OrdersGridView.tsx:151-155`
+   already swaps its whole canonical column set on a URL-derived facet. A **type facet that narrows
+   to one entity, with the descriptor swapped per type**, is house-legal by existing precedent rather
+   than by argument — and `/api/ai/retrieve` already accepts `entityTypes` server-side
+   (`schemas/ai-search.ts:19`), which `/search` simply never sends.
+4. **There is no filter model in the grid stack to "import."** `getFilteredRowModel` /
+   `columnFilters` / `globalFilter` / `getSortedRowModel` / `getGroupedRowModel` return **zero
+   matches across all of `src`**; `useGridSurface` wires only `getCoreRowModel()` with
+   `manualSorting: true`. Every consumer sorts client-side. So half the original ask ("properly
+   import filters and sorting logic") has nothing to import and is really "decide whether to build
+   one, and where."
+
+**Cost is much lower than the golden reference suggests.** There are 8 `LedgerGrid` consumers
+spanning an order of magnitude; the floor is `FbaBoardTable` / `StationListTable` at **~490 lines**
+(no descriptor, no `TableId`, no visibility hook), not the `orders-queue` golden at ~3,986. Price
+against the floor.
+
+**Also blocking, and cheap:** `/search` has no route-param spec at all
+(`routeParamsFor('/search')` returns `null`) and `TableId` is a closed 9-member union with no search
+entry — so a Fields menu means widening it. Both are §10.1 items.
+
+**Do not start Phase 6 before the briefing is answered.** The four shapes differ by an order of
+magnitude in cost and one of them (fix the retrieval hole first) may not be a UI task at all.
+
 ---
 
 ## 5. URL contract, before → after (through Phase 3)
@@ -239,17 +306,29 @@ Nothing that works today stops working. Only `?mode=search` changes shape, and i
 
 ---
 
-## 6. Decisions needed before Phases 4–5
+## 6. Decisions needed before Phases 4–6
 
 1. **Do we reverse the MasterNav consolidation?** The dormant in-sidebar rails make this cheap to
    *try* but it is a house-wide contract change (X2). Needs an explicit yes/no with rationale,
-   because it was already decided once in the other direction.
-2. **C9 — always-visible scoped search?** Contradicts a named SoT (X5). Needs a usability test or a
-   deliberate SoT amendment; not a dashboard-scoped call.
+   because it was already decided once in the other direction. **Gates Phase 4.** *Status: open.*
+2. **C9 — always-visible scoped search?** Contradicts a named SoT (X5). **Status: new evidence.**
+   The SoT's one sanctioned exception is `/ops/photos`, justified because there *"search **is** the
+   entry path, not a refinement."* That sentence describes `/search` at least as well. The rule's own
+   text says a second exception is Ask-first and *"if a third appears, the rule itself is wrong and
+   should be re-cut around 'is search the entry path or a refinement?'"* — so this is no longer a
+   yes/no about the dashboard, it is a question about whether the rule should be re-cut. Folded into
+   the Phase 6 briefing (§8 Q4/Q5) rather than decided here.
 3. **Saved views vs. hardcoded lifecycle tabs** (their open question #1, and C8). Real, but it
-   supersedes Phase 3 rather than fitting inside it — decide after Phase 3 ships.
-4. **Recents scope** — per-staff or per-tenant. Recommend per-staff (matches
-   `useStaffSearchRecents` today); their recommendation agrees.
+   supersedes Phase 3 rather than fitting inside it — decide after Phase 3 ships. *Status: open;
+   Phase 3 has now shipped, so this is decidable.*
+4. **Recents scope** — per-staff or per-tenant. **Status: RESOLVED — per-staff.** Shipped that way:
+   `useStaffSearchRecents` for query recents, and the `detailStackHref` history store (per-browser)
+   for opened-record recents.
+5. **Which shape does `/search` take?** — A (flat universal grid) · B (per-entity sections reusing
+   the existing families) · C (adapter into one row model). **Gates Phase 6.** *Status: out for
+   research.*
+6. **Is `/search` a Monitor or a Workbench?** Decides whether the results surface may grow selection
+   and bulk actions at all. *Status: out for research (Phase 6 briefing §6).*
 
 ---
 
@@ -274,3 +353,160 @@ Nothing that works today stops working. Only `?mode=search` changes shape, and i
   param-scoping helper (2.2) generalizes to Support, which has the same hand-written clear list
   (`SUPPORT_MODE_CLEAR_PARAMS`).
 - **Deferred (ask first):** Phase 4 rail reversal, C9 search chrome, saved views.
+
+*(§8 was written before Phases 1–3 shipped. The live, ordered backlog is §10.)*
+
+---
+
+## 9. What shipped (2026-07-29)
+
+Phases 1–3 landed. Every step below is uncommitted working-tree work on `main`.
+
+### Phase 1 — Search evicted
+
+| Step | As built |
+|---|---|
+| 1.1 | `DashboardRecentsPanel` (new) renders in **both** domains — full panel for inbound (which used to `return null`), capped footer under the outbound order feed. This also let `useHasSidebarContext` lose its one param-aware exception and shrink to a route-key read. |
+| 1.2 | `/search` is now a real route (it was a redirect *into* the mode — the S0 consolidation is hereby reversed for the results surface, deliberately; see the note in memory `search-consolidation-s0`). Recents scope moved to `src/lib/search/search-page-recents.ts`, keeping the stored bucket value `'dashboard'` so no operator's history is orphaned. |
+| 1.3 | **`orderSearchHref` is deleted.** `searchHitHref('ORDER')` now returns `orderRecordHref` → `/o/[id]`, which `detailStackHref` and ⌘K already used. That is X9(a) answered: one order shell. |
+| 1.4 | `?mode=search` client-redirects (the `?warranty=` mechanism, per X4). Contract is pure + unit-tested in `dashboard-domains.test.ts`. |
+| 1.5 | `src/components/dashboard/search/*` and `DashboardSearchSidebar` deleted. `search-order-overview-presence` was **rescued**, not deleted — `order-record-card` / `OrderRecordBody` still consume it; it moved to `src/components/order-record/order-fact-presence.ts`. |
+
+### Phase 2 — vocabulary + params
+
+- 2.1 `DashboardMode` is gone; `DashboardDomain` is the only axis. `?mode=inbound` stays the wire value.
+- **2.2 and 2.3 needed no work** — commit `3e42e8462` ("delete the last URL denylists") already landed
+  the mechanism: `applyModeTarget` CONSTRUCTS from the target's delta and `DASHBOARD_ROUTE_PARAMS`
+  declares the ownership. The plan predated that commit. The `?sort=` distinction is now documented in
+  `dashboard-domains.ts` rather than re-implemented.
+- 2.4 A domain switch clears the multi-select (`useDashboardBulkSelection`) — rows change entity, so
+  carrying it would aim outbound actions at cartons.
+
+### Phase 3 — rollup + typed states
+
+- 3.1/3.2 `DashboardAttentionStrip` (new): one band reading **across** both domains, above each
+  domain's own tiles. Tiles are links applying an ephemeral URL facet — never selection — and a unit
+  test asserts every href stays on a param `/dashboard` owns.
+- 3.3 Typed loading (reserved-geometry skeleton) + typed empty (all-clear) on that band. **Not yet
+  promoted to the grid family / `display/workbench.md`** — see deviations.
+- 3.4 The Receiving pill now carries `requires: 'receiving.view'`, so the domain is **absent**. The
+  in-view denial state became a redirect to `/dashboard` rather than a deletion: the pill being hidden
+  is navigation, not authorization, and a hand-typed `?mode=inbound` still has to go somewhere.
+
+### Follow-up landed 2026-07-29 — the dashboard param spec was incomplete
+
+Phase 2.2/2.3 recorded "needed no work" because commit `3e42e8462` had already landed
+`applyModeTarget` + `DASHBOARD_ROUTE_PARAMS`. That was right about the *mechanism* and wrong about
+the *contents* — the spec had never been checked against what the dashboard's own components read,
+because `components/dashboard` was not in the ownership guard's `OWNED_TREES`. Two defects followed:
+
+1. **Every lifecycle tab was dropped at the boundary.** `unshipped` / `pending` / `packed` / `tested`
+   / `shipped` / `fba` / `warranty` are **bare presence flags** written valueless and read with
+   `.has()` (`utils/dashboard-search-state.ts:58-78`), but were declared `paramText`, which rejects
+   the empty value. `?shipped` parsed to `""` and the tab silently reverted to Unshipped. They now
+   use a new `paramPresence` schema.
+2. **`?search=` and two filter facets were undeclared.** `searchScopeHref('ORDER')` hands off to
+   `/dashboard?search=`, which `PackedOrdersTable.tsx:42` reads; `OutboundFilterStrip` reads
+   `?attention=` and `?ustatus=`. None were in the spec.
+
+Neither had bitten yet **only** because `/dashboard` does not mount `useSurfaceParamHygiene()` —
+which is step 6 of the migration method, so the trap was armed for whoever graduated this surface
+next. `components/dashboard`, `app/dashboard`, `app/search` and `components/search` are now governed
+trees, and `route-params.test.ts` pins both fixes.
+
+**Method note for the rest of this plan:** the ownership guard reports only params that **no** spec
+declares. It will not tell you your route is missing `q` / `sort` / `search`, because another route
+owns them. Enumerate a surface's full read set separately before writing its spec.
+
+### Deviations from this plan (deliberate)
+
+1. **Recents in the outbound domain are a capped footer, not a co-equal panel.** Outbound already has
+   a full picker (the order feed); replacing or splitting it was out of scope and would have regressed
+   the Workbench master–detail recipe. The footer hides itself when there is nothing to re-open.
+2. **The inbound attention band rides in the chrome slot, not the scroll body.** That shell's body is
+   `overflow-y-hidden` because the lines table self-scrolls, so Zone A has no scroll port to scroll
+   away in there. Still exactly one *sticky* layer — chrome is a non-scrolling sibling (C5 upheld).
+3. **3.3's typed states are not yet promoted to the DS grid family.** They exist on the new band only.
+   Promoting them is the 2-call-site move named in §8 and is the right next task, not a Phase-3 fix.
+
+### Verification
+
+`tsc --noEmit` clean, `eslint` clean on every touched file, knip introduces no new unused exports,
+and the unit suites pass (`dashboard-domains`, `dashboard-attention`, `search-hit`, `search-recents`,
+`sidebar-navigation`, `param-ownership.guard`, `order-fact-presence`, plus the typography / spacing /
+focus-ring DS ratchets). No baseline was raised.
+
+Two e2e specs that asserted the deleted mode-local order shell
+(`dashboard-search-order-detail`, `dashboard-search-exact-open`) were deleted and replaced by
+`tests/e2e/dashboard-search-eviction.spec.ts`, which is fixture-free and shape-based so it runs on the
+QA project. **It has not been executed yet** — it needs a running app.
+
+**Pre-existing, not caused by this work:** `src/app/dashboard/../signin/page.tsx` is in a `UU` merge
+conflict from another session, so a whole-repo `npm run verify` cannot go green until that is resolved.
+`src/lib/assistant/tools/domain-read-tools.test.ts` also fails at `HEAD` (a `server-only` import
+reaching `src/lib/db.ts` — the bundle-altitude trap in `build-gotchas.md`); verified against a clean
+`HEAD` worktree.
+
+---
+
+## 10. Finishing this plan — the ordered backlog
+
+§9 records what shipped. This section is what is **left**, in dependency order, so the plan can be
+driven to done rather than left in a permanent "Phases 1–3 landed" state. Each row names its gate:
+work with no gate can start today.
+
+### 10.1 Unblocked — close these first (no decision needed)
+
+| # | Work | Why it is unfinished | Files |
+|---|---|---|---|
+| A | ~~**Declare a `/search` route-params spec.**~~ **DONE 2026-07-29** — `SEARCH_ROUTE_PARAMS` declares `?q=` and carries `staff`/`colsort`/`coldir`. Phase 6's sort/scope keys now fail the ownership guard on collision instead of silently doing nothing. | `src/lib/routing/query-mode-routes.ts` |
+| B | ~~**Decide `/search`'s `SidebarRouteKey`.**~~ **DONE 2026-07-29** — `/search` now declares its own `search` key and is deliberately absent from `CONTEXT_PANEL_ROUTE_KEYS`, so full-width is a decision rather than the `unknown` fallback leaking through. Pinned by a test; Phase 6 flips it by adding one set member. | `src/lib/sidebar-navigation.ts` |
+| C | ~~**Promote the typed empty/loading contract (3.3)**~~ **DONE 2026-07-29, but not as written.** The grid family already had typed loading + an `emptyState`/`searchEmptyState` split, so this was a reconciliation, not a port — see the follow-up note in §9. The **four settled states** are now house law in `display/workbench.md`; `LedgerGridSurface` passes the no-match answer through (it collapsed both to one message); Pickup is the first consumer. | `@/design-system/components/grid`, `display/workbench.md` |
+| D | ~~**Run `tests/e2e/dashboard-search-eviction.spec.ts`.**~~ **DONE 2026-07-29 — 6/6 green on `qa-desktop`.** The flagged assertion was worse than suspected: it was vacuous *three* ways (a mode entry is a button not a link; it is not in the DOM until the click-opened dropdown opens; the trigger is not mounted until the sidebar is shown), so it would have passed with Search fully restored. Rewritten to open the menu and assert a sibling mode is present before asserting Search is absent; mutation-tested. | `tests/e2e/` |
+| E | ~~**Fix the stale `useUrlColumnSort` docblock**~~ — **NOT A BUG (checked 2026-07-29).** The docblock already reads "**`?colsort=` + `?coldir=`** … deliberately NOT `?sort=`/`?dir=`". Nothing to fix; row closed. | `src/hooks/useUrlColumnSort.ts` |
+| F | ~~**Generalize the param-scoping win to `/support`**~~ **DONE 2026-07-29.** No hand-written clear list survives on any spec-backed route: `/operations` still carried 55 dead null entries across five modes (deleted, behaviour proven byte-identical). The rest — `/sourcing`, `/review`, `/inventory`, `/walk-in` — are **load-bearing**, because those routes have no spec yet and still copy-forward. A new invariant in `route-mode-registry.guard.test.ts` fails the moment a surface graduates while keeping its list. | `src/lib/sidebar-navigation.ts` |
+
+### 10.2 Gated on a decision
+
+| # | Work | Gate |
+|---|---|---|
+| G | **Phase 6 — the `/search` results surface** | §6 Q5 + Q6, via the Gemini briefing. **The largest remaining piece of this plan.** |
+| H | **Phase 4 — domain rail** | §6 Q1 (house-wide, Ask-first) — now also covered by [`dashboard-entity-axis-GEMINI-RESEARCH-BRIEFING.md`](dashboard-entity-axis-GEMINI-RESEARCH-BRIEFING.md) shape C, which asks whether the rail question is separable from the axis question at all |
+| I | **Saved views vs. hardcoded lifecycle tabs** | §6 Q3 — **out for research**: [`dashboard-entity-axis-GEMINI-RESEARCH-BRIEFING.md`](dashboard-entity-axis-GEMINI-RESEARCH-BRIEFING.md) §8 Q3–Q4. That brief also raises the prior question this plan did not: whether the top axis should stay `inbound\|outbound` (direction) or be re-cut by entity (`Orders · FBA · Repair · Sales`), since the answer changes how divergent each surface's facet set becomes |
+| J | **Phase 5 — sub-routes** | Only if Phase 2 proves insufficient. It has not; treat as closed unless evidence appears. |
+
+### 10.3 Deviations from §9 — confirm or fix
+
+Three deliberate deviations shipped. Each is defensible but none was ratified; decide whether they
+are the final shape or follow-ups:
+
+1. **Outbound recents are a capped footer**, not a co-equal panel (the order feed is already the
+   picker). Confirm, or give outbound a real two-zone panel.
+2. **The inbound attention band rides the chrome slot**, not the scroll body, because that shell's
+   body is `overflow-y-hidden`. Confirm, or restructure that shell so Zone A can scroll away in both
+   domains symmetrically.
+3. **`DashboardReceivingView` redirects on permission denial** rather than deleting the gate as 3.4
+   literally specified. The pill is absent (navigation) and the gate remains (authorization) — this
+   is the safer reading of C10 and should probably just be ratified in the plan text.
+
+### 10.4 Definition of done
+
+This plan is finished when **all** of the following hold:
+
+- [x] Phases 1–3 shipped and browser-verified (done 2026-07-29 — see §9)
+- [x] **§10.1 A–F closed** (2026-07-29). A/B/C/D/F done; E was not a bug. Two of the six
+      turned out to be defects rather than follow-through: C's contract was **missing a state**
+      (`LedgerGridSurface` collapsed no-data and no-match into one message) and D's spec was
+      **vacuous** (it would have passed with the retired mode fully restored).
+- [ ] §6 Q5 + Q6 answered → **Phase 6 shipped**, so `/search` is a first-class surface rather than a
+      relocated one
+- [ ] §6 Q1 answered yes-or-no **in writing** — if no, Phase 4 is deleted from this plan, not left
+      hanging
+- [ ] §6 Q3 answered → saved views scheduled or explicitly declined
+- [ ] §10.3 deviations ratified or fixed
+- [ ] `npm run verify` green on a tree where `src/app/signin/page.tsx` is no longer conflicted
+- [ ] This document's §9 updated one last time, then the whole plan moved out of `docs/todo/`
+
+**The plan is NOT done today.** Phases 1–3 are the load-bearing two-thirds; §10.1 is a half-day of
+follow-through; Phase 6 is the real remaining build and it is correctly blocked on research rather
+than guessed at.

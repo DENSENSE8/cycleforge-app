@@ -1,3 +1,9 @@
+import {
+  gridColumnTrackRem,
+  gridContentMinWidthRem,
+  gridHeaderShowsLabel,
+  gridTemplate,
+} from '@/design-system/components/grid/grid-column-geometry';
 /**
  * Incoming POS spreadsheet column model — SoT for `/incoming` LedgerGrid.
  *
@@ -10,7 +16,6 @@
  */
 
 import type { LedgerGridColumnModel } from '@/design-system/components/grid/grid-surface-descriptor';
-import { ordersQueueColVar } from '@/lib/dashboard-order-row-layout';
 
 export type IncomingGridColumnKey =
   | 'select'
@@ -72,7 +77,11 @@ export const INCOMING_GRID_COLUMNS: readonly IncomingGridColumn[] = [
   // Expected / PO civil date — Pending's "Ship by" / By track.
   { key: 'date', width: 'minmax(4.5rem, 4.5rem)', label: 'Expected', gridLabel: 'By', type: 'date', labelFitRem: 4.5 },
   { key: 'age', width: 'minmax(3rem, 3rem)', label: 'Age', type: 'date', labelFitRem: 4.5 },
-  { key: 'qty', width: 'minmax(2.75rem, 2.75rem)', label: 'Qty', type: 'number', hideKey: 'qty', labelFitRem: 4.5 },
+  // 3.5rem / fit 3.5 matches the Pending grid exactly, so the header reads
+  // `Qty` instead of a bare `#`. The glyph fallback was ambiguous here: the
+  // type registry maps BOTH `number` and `id` to the hash mark, so a label-less
+  // qty column was indistinguishable from the Order column two tracks over.
+  { key: 'qty', width: 'minmax(3.5rem, 3.5rem)', label: 'Qty', type: 'number', hideKey: 'qty', labelFitRem: 3.5 },
   { key: 'condition', width: 'minmax(5.5rem, 5.5rem)', label: 'Cond', type: 'tag', hideKey: 'condition', tier: 'optional', labelFitRem: 4.5 },
   // Receiving-specific delivery status (hide with meta `rest` in TableColumnConfig).
   // Icon + short Seller claim only (city stays in tooltip).
@@ -95,27 +104,21 @@ export function isIncomingGridSortable(key: string): key is IncomingGridColumnKe
   return (INCOMING_GRID_SORTABLE_KEYS as readonly string[]).includes(key);
 }
 
-/** Parse rem floor from a track string. */
-export function incomingGridColumnTrackRem(column: IncomingGridColumn): number {
-  const m = column.width.match(/([\d.]+)rem/);
-  return m ? Number(m[1]) : 12;
-}
+/** @deprecated Alias of the shared waist — kept for an existing test import. */
+export const incomingGridColumnTrackRem = gridColumnTrackRem;
 
-export function incomingGridHeaderShowsLabel(column: IncomingGridColumn): boolean {
-  const fit = column.labelFitRem ?? 4.5;
-  return incomingGridColumnTrackRem(column) >= fit;
-}
+export const incomingGridHeaderShowsLabel = gridHeaderShowsLabel;
 
 export function incomingContentMinWidthRem(
   columns: readonly IncomingGridColumn[] = INCOMING_GRID_COLUMNS,
 ): number {
-  return columns.reduce((sum, c) => sum + incomingGridColumnTrackRem(c), 0);
+  return gridContentMinWidthRem(columns);
 }
 
 export function incomingGridTemplate(
   columns: readonly IncomingGridColumn[] = INCOMING_GRID_COLUMNS,
 ): string {
-  return columns.map((c) => `var(${ordersQueueColVar(c.key)}, ${c.width})`).join(' ');
+  return gridTemplate(columns);
 }
 
 export function isIncomingGridFrozen(key: string): boolean {

@@ -50,6 +50,7 @@ import {
   GridDateCellValue,
   GridPlatformMarkValue,
 } from '@/components/ui/grid-cells';
+import { gridCellAlignClass } from '@/design-system/components/grid';
 import { cn } from '@/utils/_cn';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { ReceivingPoSummary } from '@/components/station/ReceivingPoSummary';
@@ -154,7 +155,8 @@ export function IncomingGridGroupSummary({
         )
       : undefined;
 
-  const dataCell = (rule = true) => incomingGridCell({ rule, inset: 'grid' });
+  const dataCell = (col: IncomingGridColumn, rule = true) =>
+    cn(incomingGridCell({ rule, inset: 'grid' }), gridCellAlignClass(col));
 
   const renderCell = (col: IncomingGridColumn, last: boolean): ReactNode => {
     const rule = !last;
@@ -206,7 +208,7 @@ export function IncomingGridGroupSummary({
         return (
           <div
             data-col="title"
-            className={cn(dataCell(rule), INCOMING_GRID_FROZEN_CELL, 'gap-1.5')}
+            className={cn(dataCell(col, rule), INCOMING_GRID_FROZEN_CELL, 'gap-1.5')}
             style={{ left: incomingGridFrozenLeft('title') }}
             data-frozen-edge
           >
@@ -224,7 +226,7 @@ export function IncomingGridGroupSummary({
         );
       case 'date':
         return (
-          <div data-col="date" className={dataCell(rule)}>
+          <div data-col="date" className={dataCell(col, rule)}>
             <GridDateCellValue
               label={dateCell?.label}
               tooltip={dateCell?.tooltip}
@@ -234,13 +236,13 @@ export function IncomingGridGroupSummary({
         );
       case 'age':
         return (
-          <div data-col="age" className={dataCell(rule)}>
+          <div data-col="age" className={dataCell(col, rule)}>
             {ageNode}
           </div>
         );
       case 'qty':
         return (
-          <div data-col="qty" className={cn(dataCell(rule), 'justify-end')}>
+          <div data-col="qty" className={dataCell(col, rule)}>
             <span
               className={cn(
                 'min-w-0 truncate tabular-nums text-role-caption',
@@ -253,7 +255,7 @@ export function IncomingGridGroupSummary({
         );
       case 'condition':
         return (
-          <div data-col="condition" className={dataCell(rule)}>
+          <div data-col="condition" className={dataCell(col, rule)}>
             <span
               className={cn(
                 'min-w-0 truncate text-role-eyebrow uppercase',
@@ -267,19 +269,19 @@ export function IncomingGridGroupSummary({
         );
       case 'status':
         return (
-          <div data-col="status" className={cn(dataCell(rule), 'gap-1')}>
+          <div data-col="status" className={cn(dataCell(col, rule), 'gap-1')}>
             <IncomingGridStatusCell row={first} />
           </div>
         );
       case 'platform':
         return (
-          <div data-col="platform" className={dataCell(rule)}>
+          <div data-col="platform" className={dataCell(col, rule)}>
             <GridPlatformMarkValue platformValue={platformMeta.value} label={markLabel} />
           </div>
         );
       case 'order':
         return (
-          <div data-col="order" className={dataCell(rule)}>
+          <div data-col="order" className={dataCell(col, rule)}>
             {poValue ? (
               <OrderIdChip
                 value={poValue}
@@ -293,20 +295,24 @@ export function IncomingGridGroupSummary({
         );
       case 'tracking':
         return (
-          <div data-col="tracking" className={dataCell(rule)}>
+          <div data-col="tracking" className={dataCell(col, rule)}>
             {isPickup ? (
               <FulfillmentPickupPill dense />
             ) : trackings.size > 1 ? (
               <TrackingCountChip count={trackings.size} dense />
             ) : trackingValue ? (
-              <TrackingChip value={trackingValue} display={getLast4(trackingValue)} />
+              <TrackingChip
+                value={trackingValue}
+                display={getLast4(trackingValue)}
+                showIcon={!col.omitCellIcon}
+              />
             ) : (
               trackingAction ?? <GridCellDash />
             )}
           </div>
         );
       default:
-        return <span className={dataCell(rule)} />;
+        return <span className={dataCell(col, rule)} />;
     }
   };
 

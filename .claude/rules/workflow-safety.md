@@ -19,13 +19,30 @@ the detail and rationale.
   branch inside an existing lane re-introduces exactly the collision the lanes exist to prevent.
 - Verify with `git branch --show-current` before committing.
 
-## Parallel lanes, own ports
+## The dev server — ATTACH, never start
 
-- `pnpm dev` auto-resolves this lane's port (main `:3000`, others `:3010+`); lanes run concurrently.
-- Tunnel is main-only (`pnpm dev:tunnel`, mobile testing).
+**The user owns the dev server. An agent never starts, stops, restarts, or kills one.**
+
+- **`main` lane dev server runs on `http://localhost:3050`.** It is already running. To look at the
+  app, attach to that origin — `preview_start { url: "http://localhost:3050" }`, or the
+  `cycleforge-dev` entry in `.claude/launch.json`, which is deliberately **command-less** so it
+  attaches instead of spawning.
+- **Never** run `pnpm dev`, `next dev`, or `preview_start { name }` for a config that carries a
+  command. **Never** `kill` / `pkill` a `next dev` process, and never delete `.next` or
+  `.next/dev/lock` to "fix" a server you did not start.
+  *Rationale (learned 2026-07-29): an agent restarted the dev server to clear a stale Tailwind cache.
+  That killed the server the user was working against, left a stale `.next/dev/lock` behind, and the
+  replacement died on the lock — costing more than the original problem. The user's terminal owns
+  that process's lifecycle; an agent that stops it takes away the one surface the user was watching.*
+- **A dev server in a bad state is a REPORT, not a repair.** Stale Tailwind content-glob cache after
+  a file move, a poisoned Turbopack transform, a port already bound — say what it is and ask the user
+  to restart. That restart is one keystroke for them and a foot-gun for you.
+- Other lanes/worktrees keep their own ports (`:3010+`); the same attach-only rule applies to each.
+  Tunnel is main-only (`pnpm dev:tunnel`, mobile testing).
 - Map: [`docs/portfolio/WORKTREE-LANES.md`](../../docs/portfolio/WORKTREE-LANES.md).
-- **Never start a dev server with a raw shell command** — it escapes the port resolver and collides
-  with whatever lane already owns that port.
+
+**Do** verify against the running server (`curl`, the Browser pane, Playwright pointed at `:3050`).
+**Don't** conclude a surface is broken because *you* could not reach it — check the port first.
 
 ## Cross-session memory
 

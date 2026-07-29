@@ -87,6 +87,23 @@ export const paramText: ParamSchema = z
 export const paramFlag: ParamSchema = paramEnum(['1', 'true'] as const);
 
 /**
+ * A **bare** presence flag — `?shipped`, `?packed` — read with `.has()`, not
+ * `.get()`. Normalizes every accepted spelling to the empty value, which is what
+ * `URLSearchParams` yields for a valueless key and what `.has()` tests for.
+ *
+ * Distinct from {@link paramFlag}, which requires a value: `paramFlag` (and
+ * `paramText`, which the dashboard lifecycle tabs used) both REJECT `''`, so a
+ * declared-but-valueless key was silently dropped by the boundary parse and the
+ * tab it selected reverted to the default. Use this whenever the surface asks
+ * `params.has(key)` rather than comparing a value.
+ */
+export const paramPresence: ParamSchema = z
+  .string()
+  .transform((raw) => raw.trim().toLowerCase())
+  .pipe(z.enum(['', '1', 'true']))
+  .transform(() => '');
+
+/**
  * Ambient params — owned by this registry rather than by a route, because they
  * are the same question on every surface that asks it (which staff member, which
  * column is sorted, which carton is open). A route opts in via `carries`.
@@ -138,6 +155,7 @@ export const SHARED_OWNED_KEYS: Readonly<Record<string, string>> = {
   view: 'A saved/named view within the surface. One question ("which view of this list"), per-route vocabularies.',
   range: 'A time-range facet over the surface\'s own data. Same question; each route validates its own windows.',
   plan: 'A focused plan/shipment id. Same id-shaped question on the FBA board and the Home plans rail.',
+  pending: 'A "pending" facet over the surface\'s own list — the Dashboard\'s legacy outbound-tab alias, and the Products catalog\'s pending-action refine flag. The two routes cannot both be current and each validates its own value shape, so a longer name would buy nothing; the entry leaves with the Dashboard alias.',
 };
 
 /** One route's param contract. */

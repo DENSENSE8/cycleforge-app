@@ -17,6 +17,7 @@
  * without a live Postgres. Default deps wire to the real query helpers.
  */
 
+import { productDetailHref } from '@/components/products/products-view';
 import { parseGs1DigitalLink, type Gs1Context } from './parser';
 import { getLocationByBarcode } from '../neon/location-queries';
 import { findByNormalizedSerial } from '../neon/serial-units-queries';
@@ -110,7 +111,7 @@ export async function resolveInternal(
     if (row?.sku) {
       return {
         kind: 'sku',
-        redirect: `/products/${encodeURIComponent(row.sku)}`,
+        redirect: productDetailHref(row.sku),
         entityId: row.sku,
         matchedAi: '01',
       };

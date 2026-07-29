@@ -96,11 +96,15 @@ export function PickupWorkspace({ selectedOrderId = null }: PickupWorkspaceProps
     [allRows],
   );
 
+  // Three settled answers, not one string (`display/workbench.md` → the four
+  // settled states). Absence invites waiting for the next order; no-match invites
+  // clearing the filter; a load failure is neither. The grid picks between the
+  // first two itself from `isSearching`, so the branch that stays here is only
+  // the failure case.
   const emptyMessage = isError
     ? 'Could not load local pickup orders.'
-    : normalizedQuery
-      ? 'No local pickup items match this search.'
-      : 'No local pickup orders yet.';
+    : 'No local pickup orders yet.';
+  const searchEmptyMessage = 'No local pickup items match this search.';
 
   return (
     <DashboardScrollShell
@@ -132,6 +136,8 @@ export function PickupWorkspace({ selectedOrderId = null }: PickupWorkspaceProps
           rows={visibleRows}
           loading={isLoading}
           emptyMessage={emptyMessage}
+          searchEmptyMessage={searchEmptyMessage}
+          isSearching={Boolean(normalizedQuery) && !isError}
           selectedOrderId={selectedOrderId}
           onSelectOrder={onSelectOrder}
         />

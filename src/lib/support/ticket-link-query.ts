@@ -20,7 +20,16 @@ export function parseTicketIdQuery(raw: string): number | null {
 
 /**
  * Resolve which ticket id to link for a paste/#id Enter path.
- * Prefer exact match among candidates; else single unlinked hit; else bare id.
+ * Prefer the exact match among candidates; else the bare id.
+ *
+ * **Never substitutes a different ticket.** This used to fall back to "the sole
+ * unlinked candidate" when the parsed id matched nothing, which silently linked
+ * ticket Y after the operator typed id X. Harmless-looking while every query was
+ * hand-typed; actively dangerous once the box is SEEDED with a carrier tracking
+ * number (`TicketLinkPopover initialQuery`) — a 12-digit FedEx number parses as
+ * an id, so a one-result tracking search turned Enter into "link that unrelated
+ * ticket". The bare-id fallback below stays: pasting an id the search cannot
+ * surface (e.g. one anchored elsewhere, hidden by anchor mode) is legitimate.
  */
 export function resolveTicketIdForLink(
   query: string,
@@ -29,9 +38,5 @@ export function resolveTicketIdForLink(
   const parsed = parseTicketIdQuery(query);
   if (parsed == null) return null;
   const exact = tickets.find((t) => t.id === parsed && !t.linkedToThis);
-  if (exact) return exact.id;
-  const unlinked = tickets.filter((t) => !t.linkedToThis);
-  if (unlinked.length === 1) return unlinked[0].id;
-  // exact returned above when present; here it is always undefined → bare id.
-  return parsed;
+  return exact ? exact.id : parsed;
 }

@@ -12,7 +12,6 @@ import {
   isUiEntityType,
   journeyHandoffHref,
   narrowSearchTitleDisplay,
-  orderSearchHref,
   searchHitHref,
   searchScopeHref,
   searchScopeLabel,
@@ -36,7 +35,7 @@ test('DB↔UI vocabulary round-trips for every discriminator value', () => {
 test('searchHitHref: every entity type deep-links to its record surface', () => {
   assert.equal(
     searchHitHref('ORDER', 42),
-    '/dashboard?mode=search&openOrderId=42&map=search',
+    '/o/42',
   );
   assert.equal(searchHitHref('SERIAL_UNIT', 9), '/inventory/units?unit=9');
   assert.equal(searchHitHref('RECEIVING', 3), '/carton/3');
@@ -45,20 +44,12 @@ test('searchHitHref: every entity type deep-links to its record surface', () => 
   assert.equal(searchHitHref('FBA_SHIPMENT', 2), '/fba?openShipmentId=2');
 });
 
-test('orderSearchHref: opens Dashboard Search detail with optional q', () => {
-  assert.equal(orderSearchHref(42), '/dashboard?mode=search&openOrderId=42&map=search');
-  assert.equal(
-    orderSearchHref(42, '111-6350504-7603458'),
-    '/dashboard?mode=search&openOrderId=42&map=search&q=111-6350504-7603458',
-  );
-  assert.equal(
-    orderSearchHref('111-6350504-7603458', '111-6350504-7603458'),
-    '/dashboard?mode=search&openOrderId=111-6350504-7603458&map=search&q=111-6350504-7603458',
-  );
-  assert.equal(
-    orderSearchHref(42, 'x', { map: 'recent' }),
-    '/dashboard?mode=search&openOrderId=42&map=recent&q=x',
-  );
+// One order shell: an ORDER hit resolves to the same href every other opener
+// uses. The retired `orderSearchHref` built a second one on a dashboard mode.
+test('searchHitHref: an ORDER hit is the order record page', () => {
+  assert.equal(searchHitHref('ORDER', 42), '/o/42');
+  assert.equal(orderRecordHref(42), '/o/42');
+  assert.equal(orderRecordHref(' 111-6350504-7603458 '), '/o/111-6350504-7603458');
 });
 
 test('shouldAutoOpenSearchOrder: exact sole ORDER hit only', () => {
@@ -181,41 +172,43 @@ test('globalSearchHandoffHref: identifier + one order hit jumps to the record (D
   );
   assert.equal(
     globalSearchHandoffHref('111-6350504-7603458', []),
-    '/dashboard?mode=search&q=111-6350504-7603458&map=search',
+    '/search?q=111-6350504-7603458',
   );
   // Zoho PO / identifier with no ORDER preview → Search results (not forced openOrderId).
   // 05-14897-15602 is a receiving carton PO in dogfood, not a sales order_id.
   assert.equal(
     globalSearchHandoffHref('05-14897-15602', []),
-    '/dashboard?mode=search&q=05-14897-15602&map=search',
+    '/search?q=05-14897-15602',
   );
   assert.equal(
     globalSearchHandoffHref('05-14897-15602', [{ id: 14897, entityType: 'order' }]),
     '/o/14897',
   );
-  // Identifier with SEVERAL order candidates → keep the search shell + hit-map
-  // rail. More than one candidate is exactly when the rail earns its place.
+  // Identifier with SEVERAL order candidates → the top one. There is no longer
+  // a "search shell + hit-map rail" to keep them in; the results ARE the list,
+  // and Enter commits to the best candidate rather than parking on a page the
+  // operator has to click again.
   assert.equal(
     globalSearchHandoffHref('05-14897-15602', [
       { id: 14897, entityType: 'order' },
       { id: 14898, entityType: 'order' },
     ]),
-    '/dashboard?mode=search&openOrderId=14897&map=search&q=05-14897-15602',
+    '/o/14897',
   );
   assert.equal(
     globalSearchHandoffHref('bose remote', [
       { id: 1, entityType: 'order' },
       { id: 2, entityType: 'order' },
     ]),
-    '/dashboard?mode=search&openOrderId=1&map=search&q=bose+remote',
+    '/o/1',
   );
-  assert.equal(globalSearchHandoffHref('bose remote', []), '/dashboard?mode=search&q=bose%20remote');
+  assert.equal(globalSearchHandoffHref('bose remote', []), '/search?q=bose%20remote');
   assert.equal(
     globalSearchHandoffHref('bose', [
       { id: 1, entityType: 'order' },
       { id: 2, entityType: 'sku' },
     ]),
-    '/dashboard?mode=search&q=bose',
+    '/search?q=bose',
   );
 });
 
@@ -225,7 +218,7 @@ test('globalSearchHandoffHref: Enter stays on work surfaces (never Trace)', () =
     globalSearchHandoffHref('SN-ABC-12345', [
       { id: 9, entityType: 'unit', facets: { serial_number: 'SN-ABC-12345' } },
     ]),
-    '/dashboard?mode=search&q=SN-ABC-12345&map=search',
+    '/search?q=SN-ABC-12345',
   );
   // Identifier matching one order → the canonical record (journey stays secondary / ⌘Enter).
   assert.equal(
@@ -340,16 +333,11 @@ test('soleHitHref: refuses an unusable id or an unknown vocabulary', () => {
   assert.equal(soleHitHref([{ id: 5, entityType: 'not_a_thing' }]), null);
 });
 
-test('globalSearchHref: cross-entity surface with the query pre-applied', () => {
-  assert.equal(
-    globalSearchHref('19-14910-41811'),
-    '/dashboard?mode=search&q=19-14910-41811&map=search',
-  );
+test('globalSearchHref: the /search route with the query pre-applied', () => {
+  assert.equal(globalSearchHref('19-14910-41811'), '/search?q=19-14910-41811');
   // Trimmed + encoded — a PO with a space or slash must not break the URL.
-  assert.equal(globalSearchHref('  a b/c '), '/dashboard?mode=search&q=a%20b%2Fc&map=search');
-  assert.equal(globalSearchHref('x', { map: 'recent' }), '/dashboard?mode=search&q=x&map=recent');
-  // `map: false` omits the origin marker — this is the shape
-  // globalSearchHandoffHref emits for a natural-language search, and it now
-  // composes this builder instead of hand-rolling the string a third time.
-  assert.equal(globalSearchHref('bose remote', { map: false }), '/dashboard?mode=search&q=bose%20remote');
+  assert.equal(globalSearchHref('  a b/c '), '/search?q=a%20b%2Fc');
+  assert.equal(globalSearchHref('bose remote'), '/search?q=bose%20remote');
+  // No query at all is the bare surface, never a dangling `?q=`.
+  assert.equal(globalSearchHref('   '), '/search');
 });

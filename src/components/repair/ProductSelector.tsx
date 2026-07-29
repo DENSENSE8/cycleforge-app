@@ -19,6 +19,27 @@ interface ProductSelectorProps {
   /** Controlled selected items — state lives in parent */
   selectedItems?: SelectedItem[];
   onSelectedItemsChange?: (items: SelectedItem[]) => void;
+  /**
+   * Route prefix for the `ecwid-categories` / `ecwid-products` pair. Staff use
+   * the default session-authed `/api/repair`; the kiosk passes
+   * `/api/kiosk/repair` for the device-authed twins (same response shapes).
+   */
+  apiBasePath?: string;
+  /**
+   * Hides the "Other -- Manual Entry" free-text escape hatch. The kiosk sets
+   * this so a walk-in repair always resolves to a real Ecwid SKU (pricing +
+   * downstream ticketing depend on it); staff keep manual entry for the
+   * one-off devices that genuinely aren't in the catalog.
+   */
+  hideManualEntry?: boolean;
+  /**
+   * Let the results flow in the page instead of scrolling inside a capped
+   * region. The default `max-h-[50vh]` box nests a second scrollbar inside an
+   * already-scrolling page — fine in the staff modal, but on the kiosk it
+   * halves the usable area and hides results behind a scroll the customer
+   * can't see. Mutually exclusive with `fillHeight`.
+   */
+  flowInPage?: boolean;
 }
 
 interface CategoryNode {
@@ -67,12 +88,12 @@ interface ProductsResponse {
   hasMore?: boolean;
 }
 
-const BREADCRUMB_START_LABEL = 'Start';
 const PRODUCT_PAGE_SIZE = 10;
 
 export function ProductSelector({
   onSelect, selectedProduct, onPriceChange, fillHeight,
   selectedItems: controlledItems, onSelectedItemsChange,
+  apiBasePath = '/api/repair', hideManualEntry = false, flowInPage = false,
 }: ProductSelectorProps) {
   const [categories, setCategories] = useState<CategoryNode[]>([]);
   const [products, setProducts] = useState<EcwidProduct[]>([]);
@@ -96,6 +117,12 @@ export function ProductSelector({
   const [productsOffset, setProductsOffset] = useState(0);
   const [hasMoreProducts, setHasMoreProducts] = useState(false);
   const [loadingMoreProducts, setLoadingMoreProducts] = useState(false);
+  // Whole-catalog pool, lazily loaded the first time someone types at the root
+  // level. Without it, searching from the root only filtered CATEGORY NAMES —
+  // typing a product ("Wave Radio II") found nothing until you had already
+  // drilled into the right category, which is backwards for a front-desk flow.
+  const [rootSearchPool, setRootSearchPool] = useState<EcwidProduct[] | null>(null);
+  const [loadingRootSearch, setLoadingRootSearch] = useState(false);
 
   const deriveSourceSku = (items: SelectedItem[]): string | null => {
     const candidate = items
@@ -119,7 +146,7 @@ export function ProductSelector({
 
     try {
       const query = parentId ? `?parentId=${encodeURIComponent(parentId)}` : '';
-      const response = await fetch(`/api/repair/ecwid-categories${query}`);
+      const response = await fetch(`${apiBasePath}/ecwid-categories${query}`);
       const payload = (await response.json()) as CategoriesResponse;
 
       if (!response.ok || !payload.success) {
@@ -147,7 +174,7 @@ export function ProductSelector({
     else setLoadingProducts(true);
     try {
       const response = await fetch(
-        `/api/repair/ecwid-products?categoryId=${encodeURIComponent(categoryId)}&limit=${PRODUCT_PAGE_SIZE}&offset=${offset}`,
+        `${apiBasePath}/ecwid-products?categoryId=${encodeURIComponent(categoryId)}&limit=${PRODUCT_PAGE_SIZE}&offset=${offset}`,
       );
       const payload = (await response.json()) as ProductsResponse;
       if (!response.ok || !payload.success) throw new Error(payload.error || 'Failed to load products');
@@ -170,7 +197,7 @@ export function ProductSelector({
     setError(null);
     if (!append) setSearch('');
     try {
-      const response = await fetch(`/api/repair/ecwid-products?mode=all&limit=${PRODUCT_PAGE_SIZE}&offset=${offset}`);
+      const response = await fetch(`${apiBasePath}/ecwid-products?mode=all&limit=${PRODUCT_PAGE_SIZE}&offset=${offset}`);
       const payload = (await response.json()) as ProductsResponse;
       if (!response.ok || !payload.success) throw new Error(payload.error || 'Failed to load products');
       const rows = Array.isArray(payload.products) ? payload.products : [];
@@ -202,6 +229,27 @@ export function ProductSelector({
 
   useEffect(() => { void fetchCategoryLevel(null); }, []);
 
+  // Lazy-load the full catalog once, on the first root-level keystroke. The
+  // server response is Redis-cached, so this is a single cheap round trip and
+  // every later keystroke filters in memory.
+  const isAtRootLevel = !currentCategoryId && !showAllProducts;
+  useEffect(() => {
+    if (!isAtRootLevel || search.trim().length < 2) return;
+    if (rootSearchPool || loadingRootSearch) return;
+
+    let cancelled = false;
+    setLoadingRootSearch(true);
+    fetch(`${apiBasePath}/ecwid-products?mode=all&limit=100&offset=0`)
+      .then((r) => r.json() as Promise<ProductsResponse>)
+      .then((payload) => {
+        if (cancelled || !payload.success) return;
+        setRootSearchPool(Array.isArray(payload.products) ? payload.products : []);
+      })
+      .catch(() => { /* search degrades to categories-only; never break the step */ })
+      .finally(() => { if (!cancelled) setLoadingRootSearch(false); });
+    return () => { cancelled = true; };
+  }, [isAtRootLevel, search, rootSearchPool, loadingRootSearch, apiBasePath]);
+
   // Sync selection + price to parent after state settles (avoids setState-during-render)
   const isInitialMount = useRef(true);
   useEffect(() => {
@@ -222,7 +270,12 @@ export function ProductSelector({
     return c.name.toLowerCase().includes(q) || c.fullPath.toLowerCase().includes(q);
   });
 
-  const filteredProducts = products.filter((p) => {
+  // At the root level a query searches the WHOLE catalog (rootSearchPool);
+  // inside a category it filters that category's own page, as before.
+  const productPool =
+    isAtRootLevel && search.trim().length >= 2 && rootSearchPool ? rootSearchPool : products;
+
+  const filteredProducts = productPool.filter((p) => {
     if (!search.trim()) return true;
     const q = search.toLowerCase();
     return p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q);
@@ -287,7 +340,7 @@ export function ProductSelector({
           icon={<ChevronLeft className="h-4 w-4" />}
         />
         <TextField
-          label={showAllProducts ? 'Search all repairs' : isAtRoot ? 'Search categories' : 'Search products'}
+          label={showAllProducts ? 'Search all repairs' : isAtRoot ? 'Search repairs or categories' : 'Search products'}
           value={search}
           onChange={setSearch}
           className="flex-1"
@@ -295,7 +348,8 @@ export function ProductSelector({
         />
       </div>
 
-      {/* Manual Entry + SKU pairing */}
+      {/* Manual Entry + SKU pairing — suppressed on the kiosk (catalog-only) */}
+      {!hideManualEntry && (
       <div className="space-y-2">
         {/* ds-raw-button: full-width selectable toggle card with title + conditional subtitle and active-state restyle — not a Button/IconButton shape */}
         <button
@@ -335,31 +389,33 @@ export function ProductSelector({
           </div>
         )}
       </div>
+      )}
 
-      {/* Breadcrumbs */}
+      {/* Breadcrumbs — the API trail already starts at the repair root, so there
+          is no separate "Start" crumb; the root IS the start. Crumb 0 resets to
+          the root level (keeping the "All Repairs" affordance visible). */}
       {(breadcrumbs.length > 0 || showAllProducts) && (
         <div className="flex flex-wrap items-center gap-1 text-role-eyebrow uppercase tracking-wide text-text-soft">
-          {/* ds-raw-button: inline breadcrumb text link (no chrome) — Button would add height/padding */}
-          <button
-            type="button"
-            onClick={() => void fetchCategoryLevel(null)}
-            className="transition-colors hover:text-blue-600"
-          >
-            {BREADCRUMB_START_LABEL}
-          </button>
-          {showAllProducts && (
+          {showAllProducts ? (
             <>
+              {/* ds-raw-button: inline breadcrumb text link (no chrome) — Button would add height/padding */}
+              <button
+                type="button"
+                onClick={() => void fetchCategoryLevel(null)}
+                className="transition-colors hover:text-blue-600"
+              >
+                {rootName}
+              </button>
               <ChevronRight className="h-3 w-3 flex-shrink-0 text-text-faint" />
               <span className="text-text-default">All Repairs</span>
             </>
-          )}
-          {!showAllProducts && breadcrumbs.map((b, i) => (
+          ) : breadcrumbs.map((b, i) => (
             <React.Fragment key={b.id}>
-              <ChevronRight className="h-3 w-3 flex-shrink-0 text-text-faint" />
+              {i > 0 && <ChevronRight className="h-3 w-3 flex-shrink-0 text-text-faint" />}
               {/* ds-raw-button: inline breadcrumb text link (no chrome) */}
               <button
                 type="button"
-                onClick={() => void fetchCategoryLevel(b.id)}
+                onClick={() => void fetchCategoryLevel(i === 0 ? null : b.id)}
                 className={`transition-colors hover:text-blue-600 ${i === breadcrumbs.length - 1 ? 'text-text-default' : ''}`}
               >
                 {b.name}
@@ -385,7 +441,11 @@ export function ProductSelector({
 
       {/* Content */}
       {!loading && !error && (
-        <div className={`${fillHeight ? 'flex-1' : 'max-h-[50vh]'} space-y-4 overflow-y-auto p-0.5`}>
+        <div
+          className={`space-y-4 p-0.5 ${
+            flowInPage ? '' : `${fillHeight ? 'flex-1' : 'max-h-[50vh]'} overflow-y-auto`
+          }`}
+        >
 
           {/* Sub-categories */}
           {!showAllProducts && filteredCategories.length > 0 && (
@@ -393,7 +453,14 @@ export function ProductSelector({
               <p className="text-role-eyebrow uppercase tracking-[0.15em] text-text-faint">
                 {isAtRoot ? 'Categories' : 'Sub-categories'}
               </p>
-              <div className="space-y-1.5">
+              {/* Category rows are short labels — stacking them one-per-row wasted
+                  the whole right half of the column. Auto-fill keeps one column on
+                  a narrow pane and fills wider ones (kiosk tablet) without a
+                  breakpoint guess. */}
+              <div
+                className="grid gap-1.5"
+                style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))' }}
+              >
                 {/* ds-raw-button: full-width category nav row card (title + chevron), not a Button shape */}
                 {filteredCategories.map((cat) => (
                   <button
@@ -413,7 +480,7 @@ export function ProductSelector({
                   <button
                     type="button"
                     onClick={() => void fetchAllProducts()}
-                    className="flex w-full items-center justify-between gap-3 rounded-xl border border-border-soft bg-surface-card p-3.5 text-left transition-all hover:border-blue-300 hover:bg-blue-50 active:bg-blue-100"
+                    className="flex w-full items-center justify-between gap-3 rounded-xl border border-blue-200 bg-blue-50/60 p-3.5 text-left transition-all hover:border-blue-300 hover:bg-blue-50 active:bg-blue-100"
                   >
                     <span className="truncate text-xs font-semibold text-text-default">
                       Pick Your Repair - All Repairs
@@ -426,12 +493,12 @@ export function ProductSelector({
           )}
 
           {/* Products grid */}
-          {(loadingProducts || filteredProducts.length > 0) && (
+          {(loadingProducts || loadingRootSearch || filteredProducts.length > 0) && (
             <div className="space-y-2">
               <p className="text-role-eyebrow uppercase tracking-[0.15em] text-text-faint">
-                {loadingProducts ? 'Loading products...' : 'Products'}
+                {loadingProducts || loadingRootSearch ? 'Loading products...' : 'Products'}
               </p>
-              {!loadingProducts && (
+              {!loadingProducts && !loadingRootSearch && (
                 <div
                   className="grid gap-2"
                   style={{ gridTemplateColumns: `repeat(auto-fill, minmax(148px, 1fr))` }}
