@@ -118,7 +118,15 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
       : null;
   const stage = effectiveReceivingPhotoStage({ stage: photoStage, receivingLineId: lineId });
   const isItemScope = stage === 'unbox_item';
-  const listIntent = receivingPhotoListIntentForScope({ stage, receivingLineId: lineId });
+  // The Unbox header pill/gallery reads the carton's WHOLE evidence set
+  // (package + unbox_carton + legacy), not just this session's unbox_carton
+  // shots — otherwise a carton whose photos predate the stage split shows a
+  // count of 0 here while the sidebar's denormalized total still says N. The
+  // WRITE target (below) stays pinned to `stage` so new captures still stamp
+  // `receiving_unbox_carton` correctly; only this read broadens. Triage's
+  // arrival-only pill and the line/item pill are unaffected.
+  const baseListIntent = receivingPhotoListIntentForScope({ stage, receivingLineId: lineId });
+  const listIntent = baseListIntent === 'unbox_carton' ? 'carton' : baseListIntent;
   const uploadTarget = useMemo(() => {
     try {
       return resolveReceivingPhotoTarget({ receivingId, receivingLineId: lineId, stage });

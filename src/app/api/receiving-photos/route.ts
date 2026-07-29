@@ -96,7 +96,10 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     const scope = params.get('scope');
     const photoIntentRaw = params.get('photoIntent');
     const photoIntent =
-      photoIntentRaw === 'package' || photoIntentRaw === 'item' || photoIntentRaw === 'unbox_carton'
+      photoIntentRaw === 'package' ||
+      photoIntentRaw === 'item' ||
+      photoIntentRaw === 'unbox_carton' ||
+      photoIntentRaw === 'carton'
         ? photoIntentRaw
         : 'all';
 

@@ -614,15 +614,18 @@ export function LineEditPanel({
         </AnimatePresence>
 
         {!showTicketEditor && row.receiving_id != null ? (
-          /* Carton evidence fan — the unbox carton-open record only. Arrival
-             (door) shots live in triage's peek. Item evidence
-             (RECEIVING_LINE + receiving_item) currently has NO desktop capture
-             surface — see the note in `photo-evidence-chain-INDEX`. */
+          /* Carton evidence fan — the carton's whole evidence set (arrival
+             package + unbox-carton + legacy), so a carton whose photos
+             predate the unbox_carton stage split still shows here instead of
+             reading empty. Item evidence (RECEIVING_LINE + receiving_item)
+             currently has NO desktop capture surface — see the note in
+             `photo-evidence-chain-INDEX`. New captures taken from this peek
+             still stamp `receiving_unbox_carton` (write path unaffected). */
           <ReceivingPhotoPeek
             receivingId={row.receiving_id}
             staffId={Number(staffId) || 0}
             poRef={c.poNumber || null}
-            photoIntent="unbox_carton"
+            photoIntent="carton"
           />
         ) : null}
       </StationPanelRoot>
