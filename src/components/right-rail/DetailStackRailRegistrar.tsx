@@ -15,6 +15,8 @@ export function DetailStackRailRegistrar({
   onClose,
   enabled = true,
   elevated,
+  modal,
+  ariaLabel,
   children,
 }: {
   /** Stable occupant id — doubles as the AnimatePresence key in RightRailHost. */
@@ -25,6 +27,11 @@ export function DetailStackRailRegistrar({
    *  workspace overlay) + a deeper backdrop. Use for detail stacks that open
    *  over a `panel`-band workspace (receiving Unbox/Triage). */
   elevated?: boolean;
+  /** `false` = non-modal inspector (no scrim / scroll lock; `role="region"`).
+   *  Defaults to modal so existing occupants are unchanged. */
+  modal?: boolean;
+  /** Accessible name for the aside — pass one whenever `modal` is false. */
+  ariaLabel?: string;
   children: ReactNode;
 }) {
   useRegisterRightPanel({
@@ -33,6 +40,8 @@ export function DetailStackRailRegistrar({
     node: children,
     onClose,
     elevated,
+    modal,
+    ariaLabel,
     enabled,
   });
   return null;

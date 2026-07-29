@@ -62,6 +62,27 @@ export interface RightRailPanel {
    *  backdrop. Opt-in per occupant — only surfaces that open OVER a `panel`-band
    *  workspace (receiving Unbox/Triage) need it. */
   elevated?: boolean;
+  /**
+   * Modality. **Defaults to `true`** so every occupant keeps the historical
+   * blocking behavior (scrim + `aria-modal` + body scroll lock) unless it opts
+   * out.
+   *
+   * `false` = a NON-MODAL inspector: no backdrop, no scroll lock, `role="region"`
+   * instead of `role="dialog"`, and the page underneath stays scrollable and
+   * clickable. That is the right contract for a pick-a-row-and-edit-it surface
+   * (the dashboard order inspector): the operator's context — sibling rows, KPI
+   * strip, lifecycle tabs — is exactly what a scrim would hide. Reserve `true`
+   * for occupants that genuinely block until dismissed.
+   *
+   * Note this ALSO fixes an a11y defect for opting-out occupants: the host has
+   * never installed a focus trap, so `aria-modal="true"` was a claim the DOM did
+   * not honor. Non-modal markup is the honest form; do not "fix" it by adding a
+   * trap (see `docs/todo/dashboard-inline-detail-editing-EXECUTION-PLAN.md` §3).
+   */
+  modal?: boolean;
+  /** Accessible name for the aside. Required in spirit for non-modal occupants
+   *  (`role="region"` needs a name); the host falls back to a generic label. */
+  ariaLabel?: string;
   /** Insertion order, for deterministic tie-breaking. */
   seq: number;
 }
@@ -107,6 +128,8 @@ export function registerRightRailPanel(input: {
   node: ReactNode;
   onClose?: () => void;
   elevated?: boolean;
+  modal?: boolean;
+  ariaLabel?: string;
 }): () => void {
   seq += 1;
   const mySeq = seq;
@@ -116,6 +139,8 @@ export function registerRightRailPanel(input: {
     node: input.node,
     onClose: input.onClose,
     elevated: input.elevated,
+    modal: input.modal,
+    ariaLabel: input.ariaLabel,
     seq: mySeq,
   });
   recomputeTop();
@@ -130,22 +155,32 @@ export function registerRightRailPanel(input: {
   };
 }
 
-/** Refresh a live occupant's node (new record ref; keeps its slot + seq). */
-export function updateRightRailPanelNode(
-  id: string,
-  node: ReactNode,
-  onClose?: () => void,
-  elevated?: boolean,
-): void {
+/**
+ * Refresh a live occupant's presentation (new record ref, close handler, band,
+ * modality, label) while keeping its slot + `seq` — so a content re-render never
+ * unmounts the occupant or retriggers the crossfade. No-ops when nothing changed
+ * and when the id holds no claim.
+ */
+export function updateRightRailPanelNode(input: {
+  id: string;
+  node: ReactNode;
+  onClose?: () => void;
+  elevated?: boolean;
+  modal?: boolean;
+  ariaLabel?: string;
+}): void {
+  const { id, node, onClose, elevated, modal, ariaLabel } = input;
   const current = panels.get(id);
   if (
     !current ||
     (current.node === node &&
       current.onClose === onClose &&
-      current.elevated === elevated)
+      current.elevated === elevated &&
+      current.modal === modal &&
+      current.ariaLabel === ariaLabel)
   )
     return;
-  panels.set(id, { ...current, node, onClose, elevated });
+  panels.set(id, { ...current, node, onClose, elevated, modal, ariaLabel });
   recomputeTop();
   emit();
 }

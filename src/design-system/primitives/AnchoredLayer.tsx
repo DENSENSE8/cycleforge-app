@@ -11,7 +11,7 @@ import {
 } from 'react';
 import { createPortal } from 'react-dom';
 import { cn } from '@/utils/_cn';
-import { useEscapeClose } from '@/design-system/hooks';
+import { useEscapeClose, useRegisterOverlay } from '@/design-system/hooks';
 import { zIndex, type ZIndexToken } from '@/design-system/tokens/z-index';
 
 // ─── AnchoredLayer ───────────────────────────────────────────────────────────
@@ -145,6 +145,11 @@ export function AnchoredLayer({
     setTarget(document.body);
   }, []);
 
+  // Claim keyboard ownership while open so ambient Escape owners (the outbound
+  // queue keyboard bridge, the right-rail inspector) stand down — otherwise the
+  // capture-phase queue listener closes the inspector and this panel stays up.
+  // See `src/lib/overlay-stack/store.ts`.
+  useRegisterOverlay(open);
   useEscapeClose(open && closeOnEscape, onClose);
 
   // Track the trigger rect so the portaled panel follows it. useLayoutEffect
