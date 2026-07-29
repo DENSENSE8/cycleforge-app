@@ -4,7 +4,6 @@ import {
   photoGridImageUrl,
   photoGridTileRatio,
   photoLibraryShowsGridControls,
-  photoLibraryShowsSelectControl,
   type PhotoGridDensity,
 } from '@/lib/photos/photo-grid-density';
 
@@ -25,17 +24,15 @@ test('large photo tiles retain their natural aspect layout', () => {
   assert.equal(photoGridTileRatio('lg'), 'natural');
 });
 
-test('Select is offered only where photo tiles actually render', () => {
-  // Folder drill levels paint folder tiles — nothing to select.
-  assert.equal(photoLibraryShowsSelectControl('folders', false), false);
-  assert.equal(photoLibraryShowsSelectControl('folders', true), true);
-  assert.equal(photoLibraryShowsSelectControl('list', false), true);
-  assert.equal(photoLibraryShowsSelectControl('grid-sm', false), true);
-});
+// `photoLibraryShowsSelectControl` was deleted with the folder drill: every
+// surviving view paints photo tiles, so the gate had no remaining case to
+// express. Its test goes with it rather than asserting a dead contract — see
+// the note on `photoLibraryShowsGridControls` in photo-grid-density.ts.
 
 test('density is offered only on photo tile grids', () => {
-  assert.equal(photoLibraryShowsGridControls('list', true), false);
-  assert.equal(photoLibraryShowsGridControls('folders', false), false);
-  assert.equal(photoLibraryShowsGridControls('folders', true), true);
-  assert.equal(photoLibraryShowsGridControls('grid-lg', false), true);
+  // `folderIsLeaf` is gone with the drill; the view alone decides now.
+  assert.equal(photoLibraryShowsGridControls('list'), false);
+  assert.equal(photoLibraryShowsGridControls('grid-sm'), true);
+  assert.equal(photoLibraryShowsGridControls('grid-lg'), true);
+  assert.equal(photoLibraryShowsGridControls('grid-ticket'), true);
 });
