@@ -24,13 +24,18 @@ import {
 } from './route-params';
 import { RECEIVING_ROUTE_PARAMS } from './receiving-routes';
 import { OUTBOUND_ROUTE_PARAMS } from './outbound-routes';
+import { QUERY_MODE_ROUTE_PARAMS } from './query-mode-routes';
 
 const SRC_ROOT = join(process.cwd(), 'src');
 
 /** Every migrated family the guard governs. */
-const ALL_SPECS = [...RECEIVING_ROUTE_PARAMS, ...OUTBOUND_ROUTE_PARAMS];
+const ALL_SPECS = [
+  ...RECEIVING_ROUTE_PARAMS,
+  ...OUTBOUND_ROUTE_PARAMS,
+  ...QUERY_MODE_ROUTE_PARAMS,
+];
 
-/** The receiving surface tree — where a receiving param may legitimately be read. */
+/** The governed surface trees — every family with declared param specs. */
 const OWNED_TREES = [
   'components/receiving',
   'components/sidebar/receiving',
@@ -43,6 +48,8 @@ const OWNED_TREES = [
   'components/outbound',
   'components/fba',
   'app/shipping',
+  'components/support',
+  'app/support',
 ];
 
 /**
@@ -52,9 +59,14 @@ const OWNED_TREES = [
  * `?? 'receive'` fallback, and a graduated route drops the param at the boundary
  * so those reads already see `null`. Dies with the `/receiving` sunset (Slice 4).
  */
-const UNDECLARED_READS: Readonly<Record<string, string>> = {
-  mode: 'Legacy /receiving ?mode= shell — reads are all `?? receive` fallbacks; dies at the /receiving sunset (Slice 4).',
-};
+/**
+ * Params read in a governed tree that no spec declares. **Shrink only.**
+ *
+ * Currently empty, and that is the point: `mode` was the last entry, and it left
+ * when `/support` and `/dashboard` declared it. An addition here is a claim that
+ * a param is read but owned by nobody — which is how the leak class starts.
+ */
+const UNDECLARED_READS: Readonly<Record<string, string>> = {};
 
 function walk(dir: string, out: string[] = []): string[] {
   let entries: string[];
@@ -139,7 +151,7 @@ test('every receiving route declares at least one param and a unique route', () 
   }
 });
 
-test('no raw param read in the receiving tree bypasses a spec', () => {
+test('no raw param read in a governed tree bypasses a spec', () => {
   const declared = new Set<string>([
     ...ALL_SPECS.flatMap((spec) => Object.keys(spec.owns)),
     ...Object.keys(AMBIENT_PARAMS),

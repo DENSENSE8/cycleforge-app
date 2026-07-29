@@ -66,34 +66,6 @@ export function parseOperationsMode(raw: string | null | undefined): OperationsM
  * URL params owned by a specific mode. Cleared on a mode switch so the next
  * mode lands on a clean default state (sidebar-mode law #4).
  */
-export const OPERATIONS_MODE_SCOPED_PARAMS = [
-  'q',        // search query (history)
-  'open',     // selected entity in the right pane
-  'section',  // analytics section anchor
-  'range',    // analytics time range
-  'segment',  // analytics series segment
-  'staffId',  // history actor filter
-  'station',  // legacy single-station filter (superseded by `stations`)
-  // ── Master Operations Journey (History mode) ──
-  'dim',      // journey dimension: order | serial | tracking | unit
-  'order',    // focused order number
-  'serial',   // focused serial
-  'tracking', // focused tracking number
-  'unit',     // focused serial_units.id (search handoff)
-  'from',     // date range start (ISO)
-  'until',    // date range end (ISO)
-  'stations', // multi-station filter (CSV)
-  'types',    // multi event-type filter (CSV)
-  'status',   // status filter
-  'sources',  // spine filter (CSV)
-  'view',     // history: saved-view id · plans: `live` for agentic-loop console
-  'cursor',   // browse keyset cursor (transient; cleared on filter change)
-  // ── Signals mode ──
-  'signalsView', // timeline (default) | browse
-  'signalId',    // selected signal in browse
-  'window',      // timeline time window
-  'signalKind',  // timeline kind filter
-] as const;
 
 // ── Master Operations Journey (History mode) ────────────────────────────────
 

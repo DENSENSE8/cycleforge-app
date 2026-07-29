@@ -105,30 +105,6 @@ export function dashboardOrderHref(orderPk: number): string {
  * URL params owned by a specific mode. Cleared on a mode switch so the next
  * mode lands on a clean default state (sidebar-mode law #4).
  */
-export const SUPPORT_MODE_SCOPED_PARAMS = [
-  'ticket', // tickets: selected Zendesk ticket
-  'tstatus', // tickets: workbench status tab (open | pending | hold | solved | all)
-  'tq', // tickets: workbench search query
-  'vm', // voicemail: selected voicemail (durable, deep-linkable)
-  'q', // search query (voicemail / calls / issues / orders)
-  'status', // voicemail follow-up OR issues status filter
-  'assignee', // voicemail assignee filter
-  'direction', // calls: inbound | outbound | missed
-  'range', // calls: time window
-  'search', // warranty: coverage + claims filter (shared with WarrantyWorkspace)
-  'open', // warranty: open claim id
-  'wstatus', // warranty: claim status filter
-  'wexp', // warranty: expiring-soon filter
-  'issueId', // issues: selected reported issue
-  'type', // issues: bug | suggestion | question
-  'reporter', // issues: reporter staff id
-  'openOrderId', // orders: selected order row pk
-  'createTicket', // orders: open New ticket create form (order-anchored)
-  'ustatus', // orders: To Ship lane filter
-  'attention', // orders: urgent-only
-  'stage', // orders: coarse server facet (legacy)
-  'staff', // orders: staff scope
-] as const;
 
 // ── Tickets mode — Zendesk status filter (workbench chrome tabs) ─────────────
 

@@ -104,7 +104,7 @@ export function ReceivingGridView({
 }: ReceivingGridViewProps) {
   // Column sort is DURABLE: `?colsort=`/`?coldir=` (workbench URL-as-state law),
   // so a reload or a shared link reproduces the operator's view. Mode switches
-  // clear it via MODE_SCOPED_PARAMS. TanStack still owns the asc↔desc cycle.
+  // clear it via the route's param spec. TanStack still owns the asc↔desc cycle.
   const {
     sort: columnSort,
     dir: sortDir,

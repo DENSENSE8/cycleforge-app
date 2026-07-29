@@ -55,7 +55,9 @@ test.describe('shipping mode segments', () => {
     // Land on Labels with a focused order, then switch away.
     await gotoAuthed(page, '/shipping/labels?open=123&sort=newest');
 
-    const spine = page.locator('[data-sidebar-slide-over]');
+    // The nav spine is a resident push column that starts collapsed; open it if
+    // this run has not already.
+    const spine = page.locator('[data-sidebar-nav-column][data-open="true"]');
     if ((await spine.count()) === 0) {
       await page.getByRole('button', { name: 'Show sidebar' }).click();
       await page.waitForTimeout(800);

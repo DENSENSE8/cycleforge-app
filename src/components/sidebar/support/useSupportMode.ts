@@ -12,10 +12,11 @@
 import { useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
-  SUPPORT_MODE_SCOPED_PARAMS,
   parseSupportMode,
   type SupportMode,
 } from './support-sidebar-shared';
+import { buildRouteUrl } from '@/lib/routing/route-params';
+import { routeParamsFor } from '@/lib/routing/registry';
 
 export interface SupportModeState {
   /** Active mode parsed from `?mode=` (defaults to `tickets`). */
@@ -31,12 +32,10 @@ export function useSupportMode(): SupportModeState {
 
   const updateMode = useCallback(
     (next: SupportMode) => {
-      const params = new URLSearchParams(searchParams.toString());
-      if (next === 'tickets') params.delete('mode');
-      else params.set('mode', next);
-      for (const key of SUPPORT_MODE_SCOPED_PARAMS) params.delete(key);
-      const qs = params.toString();
-      router.replace(qs ? `/support?${qs}` : '/support');
+      // CONSTRUCT the target; `tickets` is the default and carries no `mode`.
+      const spec = routeParamsFor('/support')!;
+      const staff = searchParams.get('staff') ?? searchParams.get('staffId');
+      router.replace(buildRouteUrl(spec, { mode: next === 'tickets' ? null : next, staff }));
     },
     [router, searchParams],
   );

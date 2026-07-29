@@ -7,7 +7,6 @@ import {
   parseTicketStatus,
   supportCreateTicketHref,
   supportOrdersHref,
-  SUPPORT_MODE_SCOPED_PARAMS,
 } from './support-sidebar-shared';
 
 describe('parseSupportMode', () => {
@@ -48,37 +47,6 @@ describe('support order hrefs', () => {
   });
 });
 
-describe('SUPPORT_MODE_SCOPED_PARAMS', () => {
-  it('includes orders-owned URL keys', () => {
-    for (const key of [
-      'openOrderId',
-      'createTicket',
-      'ustatus',
-      'attention',
-      'stage',
-      'staff',
-    ] as const) {
-      assert.ok(
-        (SUPPORT_MODE_SCOPED_PARAMS as readonly string[]).includes(key),
-        `expected ${key} in SUPPORT_MODE_SCOPED_PARAMS`,
-      );
-    }
-    assert.equal(
-      (SUPPORT_MODE_SCOPED_PARAMS as readonly string[]).includes('view'),
-      false,
-      'board|grid ?view= retired — not in scoped params',
-    );
-  });
-
-  it('includes tickets workbench URL keys', () => {
-    for (const key of ['ticket', 'tstatus', 'tq'] as const) {
-      assert.ok(
-        (SUPPORT_MODE_SCOPED_PARAMS as readonly string[]).includes(key),
-        `expected ${key} in SUPPORT_MODE_SCOPED_PARAMS`,
-      );
-    }
-  });
-});
 
 describe('parseTicketStatus', () => {
   it('defaults unknown / empty to open', () => {

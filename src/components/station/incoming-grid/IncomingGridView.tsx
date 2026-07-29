@@ -79,7 +79,7 @@ export function IncomingGridView({
   // NOT `?sort=` — that param is the Incoming SERVER ORDER BY vocabulary
   // (`useIncomingFilters`: zoho_newest / expected_soonest / …), and a header
   // click must never rewrite the API query. Mode switches clear both via
-  // MODE_SCOPED_PARAMS. TanStack still owns the asc↔desc cycle.
+  // the route's param spec. TanStack still owns the asc↔desc cycle.
   const {
     sort: columnSort,
     dir: sortDir,

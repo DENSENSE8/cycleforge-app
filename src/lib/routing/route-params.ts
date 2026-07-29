@@ -127,6 +127,17 @@ export const SHARED_OWNED_KEYS: Readonly<Record<string, string>> = {
   q: 'The surface\'s own list filter — one question ("narrow this list"), asked by every route that shows a list. Deliberately NOT the same key as History\'s namespaced `rh_q`, which searches a different feed with its own field/scope pair.',
   open: 'The focused record on a Shipping mode. Same question and same id space (an order id) across labels / ready / scan-out — a mode switch drops it anyway, since navigation constructs rather than copies.',
   new: 'Opens the surface\'s own intake form. One question per surface; the routes that use it cannot both be current, so there is no ambiguity to resolve with a longer name.',
+  mode: 'The L2 switch on a surface that has NOT graduated to segments. Shared by every such surface by definition; each entry disappears as its surface migrates, so this one shrinks on its own.',
+  openOrderId: 'The focused order. Same id space (an order id) wherever it appears — Support opens the same record the Dashboard does.',
+  type: 'A type/kind facet over the surface\'s own list. Same question, different vocabularies, so each route validates its own values.',
+  status: 'A status facet over the surface\'s own list. Same question; per-route values.',
+  search: 'A second search box on surfaces that already spend `q` on a different field (Repair\'s queue, Support\'s orders).',
+  attention: 'The needs-attention filter — one question ("only the rows that need me") on every queue that offers it.',
+  ustatus: 'Unit-status facet, shared by the two surfaces that show unit rows (Shipping Ready, Support).',
+  rtab: 'Right-pane tab within a workbench. Same question; the tab vocabularies differ per surface.',
+  view: 'A saved/named view within the surface. One question ("which view of this list"), per-route vocabularies.',
+  range: 'A time-range facet over the surface\'s own data. Same question; each route validates its own windows.',
+  plan: 'A focused plan/shipment id. Same id-shaped question on the FBA board and the Home plans rail.',
 };
 
 /** One route's param contract. */
