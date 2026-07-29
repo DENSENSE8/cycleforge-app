@@ -7,6 +7,7 @@ import { getPresentStaffForToday } from '@/lib/staffCache';
 import { staffHasRole } from '@/utils/staff';
 import { saveWorkOrder } from '@/lib/work-orders/saveWorkOrder';
 import type { WorkOrderRow } from '@/components/work-orders/types';
+import { refreshDomain } from '@/lib/refresh/bus';
 
 /**
  * WorkOrderAssignPopover — P1-WORK-01 acceptance A.
@@ -102,7 +103,7 @@ export function WorkOrderAssignPopover({
           deadlineAt: row.deadlineAt,
           notes: row.notes,
         });
-        window.dispatchEvent(new CustomEvent('app-refresh-data'));
+        refreshDomain('work-orders');
         onAssigned?.({ techId: nextTechId, packerId: nextPackerId });
       } catch (err: any) {
         setError(err?.message || 'Failed to save assignment');

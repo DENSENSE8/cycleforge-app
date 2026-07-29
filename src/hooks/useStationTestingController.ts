@@ -15,6 +15,8 @@ import { handleRepairScan } from './station/handleRepairScan';
 import { handleCommand } from './station/handleCommand';
 import { normalizeTrackingKey } from '@/lib/tracking-format';
 import { rebuildSkuSerialGroups } from '@/lib/tech/sku-serial-groups';
+import { refreshDomains } from '@/lib/refresh/bus';
+import { REFRESH_BUNDLES } from '@/lib/refresh/domains';
 
 // Re-export types consumed by external components — import paths unchanged.
 export type { StationInputMode, StationScanType };
@@ -209,7 +211,7 @@ export function useStationTestingController({
   // ── misc helpers ──────────────────────────────────────────────────────────────
   const triggerGlobalRefresh = () => {
     if (onComplete) onComplete();
-    window.dispatchEvent(new CustomEvent('app-refresh-data'));
+    refreshDomains(REFRESH_BUNDLES.outboundOrderWrite);
   };
 
   const clearFeedback = () => {

@@ -27,6 +27,7 @@ import {
 } from '@/components/station/receiving-delivered-not-unboxed';
 import { mergeReceivingPackageMetaIntoRow } from './receiving-lines-table-helpers';
 import type { ReceivingLineRow } from './receiving-line-row';
+import { useRefreshSignal } from '@/lib/refresh/bus';
 
 interface UseReceivingLinesDataArgs {
   mode: ReceivingModeDescriptor;
@@ -150,16 +151,16 @@ export function useReceivingLinesData({
   }, [isIncomingMode, data?.total, incomingPage, router, searchParams, pathname]);
 
   // Refresh signals → invalidate the list query.
+  useRefreshSignal('receiving.lines', () => {
+    queryClient.invalidateQueries({ queryKey: ['receiving-lines-table'] });
+  });
+
   useEffect(() => {
     const handler = () => {
       queryClient.invalidateQueries({ queryKey: ['receiving-lines-table'] });
     };
     window.addEventListener('receiving-entry-added', handler);
-    window.addEventListener('app-refresh-data', handler);
-    return () => {
-      window.removeEventListener('receiving-entry-added', handler);
-      window.removeEventListener('app-refresh-data', handler);
-    };
+    return () => window.removeEventListener('receiving-entry-added', handler);
   }, [queryClient]);
 
   // Optimistic line update — shallow-merge so a partial payload (e.g.

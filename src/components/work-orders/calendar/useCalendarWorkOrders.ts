@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import type { WorkOrderRow } from '@/components/work-orders/types';
+import { useRefreshSignal } from '@/lib/refresh/bus';
 
 /**
  * Loads work-order assignments whose deadline falls within [from, to) from the
@@ -41,13 +42,9 @@ export function useCalendarWorkOrders(from: Date, to: Date) {
     void load();
   }, [load]);
 
-  // A successful assign dispatches this event (saveWorkOrder fires it) — keep
-  // the calendar in sync with the queue without a manual refresh.
-  useEffect(() => {
-    const handler = () => void load();
-    window.addEventListener('app-refresh-data', handler);
-    return () => window.removeEventListener('app-refresh-data', handler);
-  }, [load]);
+  // A successful assign signals `work-orders` (saveWorkOrder does) — keep the
+  // calendar in sync with the queue without a manual refresh.
+  useRefreshSignal('work-orders', () => void load());
 
   return { rows, loading, error, refetch: load };
 }

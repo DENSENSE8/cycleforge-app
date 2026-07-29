@@ -1,16 +1,16 @@
 import type { Order } from '@/components/station/upnext/upnext-types';
 import type { TechRecord } from '@/hooks/useTechLogs';
+import type { RefreshDomain } from '@/lib/refresh/domains';
 
 /** React-query key for the shipping Up Next sidebar rail (queue / stock). */
 export function shippingRailQueryKey(feed: 'queue' | 'stock', techId: string) {
   return ['shipping-recent-rail', feed, techId] as const;
 }
 
-export const SHIPPING_RAIL_REFRESH_EVENTS = [
-  'app-refresh-data',
-  'dashboard-refresh',
-  'tech-log-added',
-] as const;
+export const SHIPPING_RAIL_REFRESH_EVENTS = ['tech-log-added'] as const;
+
+/** Refresh domains the shipping rail renders (was the two broadcast names). */
+export const SHIPPING_RAIL_REFRESH_DOMAINS = ['orders.outbound'] as const satisfies readonly RefreshDomain[];
 
 /** Normalize status so ShippingScanWorkspace opens the post-ship serial-edit path. */
 export function normalizeShippedRailStatus(

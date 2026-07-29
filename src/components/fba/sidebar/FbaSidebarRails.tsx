@@ -44,7 +44,8 @@ function FbaItemRail({ statuses, eyebrowTitle }: { statuses: string[]; eyebrowTi
         const set = new Set(statuses);
         return pending.filter((r) => set.has(String(r.item_status)));
       }}
-      refreshEvents={['app-refresh-data', 'fba-print-shipped', 'fba-plan-created']}
+      refreshEvents={['fba-print-shipped', 'fba-plan-created']}
+      refreshDomains={['orders.outbound']}
       selectedId={null}
       eyebrowTitle={eyebrowTitle}
       emptyText="Nothing here yet."
@@ -57,7 +58,7 @@ function FbaItemRail({ statuses, eyebrowTitle }: { statuses: string[]; eyebrowTi
       renderRowMain={(r) => (
         <>
           {/* ds-allow-title: truncation-only fallback on a non-interactive clipped <p> */}
-          <p className="truncate text-role-caption font-bold text-text-default" title={r.display_title}>
+          <p className="truncate text-role-caption font-semibold text-text-default" title={r.display_title}>
             {r.display_title || r.fnsku}
           </p>
           <p className="truncate text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
@@ -67,7 +68,7 @@ function FbaItemRail({ statuses, eyebrowTitle }: { statuses: string[]; eyebrowTi
       )}
       renderPopover={(r, { openWorkspace }) => (
         <div className="space-y-2 p-3.5">
-          <p className="text-sm font-black leading-snug text-text-default">{r.display_title || r.fnsku}</p>
+          <p className="text-sm font-semibold leading-snug text-text-default">{r.display_title || r.fnsku}</p>
           <div className="flex flex-wrap items-center gap-1.5">
             <span className="rounded bg-purple-100 px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest text-purple-700">
               {FBA_STATUS_LABEL[r.item_status] ?? r.item_status}
@@ -77,8 +78,8 @@ function FbaItemRail({ statuses, eyebrowTitle }: { statuses: string[]; eyebrowTi
             </span>
           </div>
           <dl className="space-y-1 border-t border-border-hairline pt-2 text-role-caption">
-            <div className="flex justify-between gap-3"><dt className="font-semibold text-text-soft">FNSKU</dt><dd className="font-mono font-black text-text-default">{r.fnsku}</dd></div>
-            {r.shipment_ref ? <div className="flex justify-between gap-3"><dt className="font-semibold text-text-soft">Plan</dt><dd className="font-black text-text-default">{r.shipment_ref}</dd></div> : null}
+            <div className="flex justify-between gap-3"><dt className="font-semibold text-text-soft">FNSKU</dt><dd className="font-mono font-semibold text-text-default">{r.fnsku}</dd></div>
+            {r.shipment_ref ? <div className="flex justify-between gap-3"><dt className="font-semibold text-text-soft">Plan</dt><dd className="font-semibold text-text-default">{r.shipment_ref}</dd></div> : null}
           </dl>
           <Button variant="primary" size="sm" onClick={openWorkspace} className="w-full">
             Find on board →

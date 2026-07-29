@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, type ReactNode } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Barcode, AlertCircle, Package } from '../Icons';
 import { getLast4 } from '../ui/CopyChip';
@@ -23,13 +23,14 @@ import { SupportContextHub } from '@/components/support/context';
 import { useAssistantContext } from '@/hooks/useAssistantContext';
 import { STATION_SKILL } from '@/lib/assistant/page-skills';
 import { dispatchPackActiveOrder } from '@/components/packer/usePackerOrderPane';
+import { PackActiveIdentityChips } from '@/components/packer/PackActiveIdentityChips';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAblyClient } from '@/contexts/AblyContext';
 import { safeChannelName, getStaffStationBridgeChannelName } from '@/lib/realtime/channels';
 import { useUnitPhotoRequestPublisher } from '@/components/sidebar/receiving/useUnitPhotoRequestPublisher';
-import { UnitPhotoRequestStatus } from '@/components/station/UnitPhotoRequestStatus';
-import { PackerPhotoRequestStatus } from '@/components/station/PackerPhotoRequestStatus';
 import { toast } from '@/lib/toast';
+import { refreshDomains } from '@/lib/refresh/bus';
+import { REFRESH_BUNDLES } from '@/lib/refresh/domains';
 
 interface ActivePackingOrder {
   orderRowId: number | null;
@@ -66,12 +67,26 @@ interface StationPackingProps {
   userId: string;
   userName: string;
   staffId: number | string;
-  todayCount: number;
+  /** Goal-bar count — standalone station page only (the sidebar has no goal bar). */
+  todayCount?: number;
   goal?: number;
   onComplete?: () => void;
   embedded?: boolean;
   /** Current pack mode selected in the sidebar mode rail. */
   packMode?: PackMode;
+  /**
+   * Recent-activity rail rendered below the scan band (the sidebar's
+   * `PackRecentPacksRail`). When set, the rail — not a compact card — is this
+   * station's activity surface: the active order shows as the rail's selected
+   * row and its detail lives in the workbench right pane. Matches the Unbox /
+   * Testing / Shipping sidebar anatomy.
+   */
+  railSlot?: ReactNode;
+  /**
+   * Pinned band below the rail's scroll port — the rail's client-side filter
+   * (`TechRailSearchBar`). Rendered only alongside `railSlot`.
+   */
+  railFooter?: ReactNode;
 }
 
 export default function StationPacking({
@@ -83,6 +98,8 @@ export default function StationPacking({
   onComplete,
   embedded = false,
   packMode = 'standard',
+  railSlot,
+  railFooter,
 }: StationPackingProps) {
   // Global-assistant context: station Q&A skill fragment (plan §-2.2).
   useAssistantContext({ page: 'packing-station', station: 'PACKING', skill: STATION_SKILL });
@@ -124,7 +141,7 @@ export default function StationPacking({
   }, [activeOrder, activeFba]);
 
   const { theme: themeColor, colors: themeColors, inputTheme: activeColor } = useStationTheme({ staffId });
-  const { normalizeTrackingQuery, normalizeTracking } = useLast8TrackingSearch();
+  const { normalizeTracking } = useLast8TrackingSearch();
 
   const { user } = useAuth();
   const authOrgId = user?.organizationId;
@@ -138,11 +155,6 @@ export default function StationPacking({
     getAblyClient,
     stationChannelName: unitPhotoChannelName,
   });
-  const [lastUnitPhotoRequest, setLastUnitPhotoRequest] = useState<{
-    serialUnitId: number;
-    unitKey: string | null;
-  } | null>(null);
-
   const handleSubmit = async (event?: React.FormEvent) => {
     if (event) event.preventDefault();
     const scan = inputValue.trim();
@@ -210,7 +222,6 @@ export default function StationPacking({
           packerLogId: priorPackerLogId,
           poRef: sku || displayKey,
         });
-        setLastUnitPhotoRequest({ serialUnitId, unitKey: displayKey });
         toast.success('Prepack unit ready', {
           description: 'Phone camera opened for packing photos.',
         });
@@ -242,7 +253,7 @@ export default function StationPacking({
             isNew: !!data.is_new || !!data.auto_added_to_plan,
           });
           onComplete?.();
-          window.dispatchEvent(new CustomEvent('app-refresh-data'));
+          refreshDomains(REFRESH_BUNDLES.outboundOrderWrite);
         }
       } else {
         // ── Regular packing path ───────────────────────────────────────────
@@ -278,7 +289,7 @@ export default function StationPacking({
               isNew: false,
             });
             onComplete?.();
-            window.dispatchEvent(new CustomEvent('app-refresh-data'));
+            refreshDomains(REFRESH_BUNDLES.outboundOrderWrite);
             return;
           }
         }
@@ -335,7 +346,7 @@ export default function StationPacking({
         if (data.packerRecord?.id) {
           window.dispatchEvent(new CustomEvent('packer-log-added', { detail: data.packerRecord }));
         }
-        window.dispatchEvent(new CustomEvent('app-refresh-data'));
+        refreshDomains(REFRESH_BUNDLES.outboundOrderWrite);
       }
     } catch (err: any) {
       setErrorMessage(err?.message || 'Scan failed');
@@ -354,7 +365,7 @@ export default function StationPacking({
           <div className={`${SIDEBAR_GUTTER} space-y-4 pt-4`}>
             <div className="space-y-0.5">
               <div className="flex items-center justify-between gap-2">
-                <h2 className="text-xl font-black text-text-default tracking-tighter">Welcome, {userName}</h2>
+                <h2 className="text-xl font-semibold text-text-default tracking-tighter">Welcome, {userName}</h2>
                 <div className="flex items-center gap-2">
                   <StaffFilterButton allLabel="My packs" align="end" />
                   <div className={`p-3 ${themeColors.bg} text-white rounded-2xl shadow-lg ${themeColors.shadow}`}>
@@ -398,32 +409,25 @@ export default function StationPacking({
           />
         </ScanBandShell>
 
-        <div className={SIDEBAR_GUTTER}>
-          {lastUnitPhotoRequest ? (
-            <UnitPhotoRequestStatus
-              serialUnitId={lastUnitPhotoRequest.serialUnitId}
-              unitKey={lastUnitPhotoRequest.unitKey}
-            />
-          ) : null}
-
-          {activeOrder &&
-          (activeOrder.scanType === 'ORDERS' || activeOrder.scanType === 'SKU') &&
-          activeOrder.packerLogId ? (
-            <PackerPhotoRequestStatus
-              packerLogId={activeOrder.packerLogId}
-              orderId={activeOrder.orderId}
-            />
-          ) : null}
-
-          {!embedded ? (
-            <p className="px-1 text-role-micro font-bold text-text-faint">
+        {/* Phone photo-request STATUS panels used to live here. The request is
+            still published to the operator's phone on a unit scan (and the
+            toast confirms it) — only the sidebar readout is gone, so the column
+            is scan band → transient feedback → rail. */}
+        {!embedded ? (
+          <div className={SIDEBAR_GUTTER}>
+            <p className="px-1 text-role-micro text-text-faint">
               Supports tracking, unit QR, FNSKU/ASIN (10 chars: <code className="font-mono">X00</code> or <code className="font-mono">B0</code> prefix), FBA, and{' '}
               <code className="font-mono">SKU:VALUE</code> scans.
             </p>
-          ) : null}
-        </div>
+          </div>
+        ) : null}
 
-        <div className={`flex-1 overflow-y-auto no-scrollbar ${SIDEBAR_GUTTER} pb-6 space-y-3`}>
+        {/* Transient scan feedback. With a rail below it this band is
+            content-height (`shrink-0`) and the rail owns the scroll port —
+            one scrolling region per column, same as the Unbox sidebar. */}
+        <div
+          className={`${railSlot ? 'shrink-0' : 'flex-1 overflow-y-auto no-scrollbar pb-6'} ${SIDEBAR_GUTTER} space-y-3`}
+        >
           <AnimatePresence mode="wait">
             {errorMessage && (
               <motion.div
@@ -433,7 +437,7 @@ export default function StationPacking({
                 className="p-4 bg-red-50 text-red-700 rounded-2xl border border-red-200 flex items-center gap-3"
               >
                 <AlertCircle className="w-5 h-5 flex-shrink-0" />
-                <p className="text-xs font-bold">{errorMessage}</p>
+                <p className="text-xs font-semibold">{errorMessage}</p>
               </motion.div>
             )}
 
@@ -462,23 +466,23 @@ export default function StationPacking({
                     <span className="text-role-micro font-mono text-purple-700">{activeFba.shipmentRef}</span>
                   )}
                 </div>
-                <h3 className="text-base font-black text-text-default leading-tight">{activeFba.productTitle}</h3>
+                <h3 className="text-base font-semibold text-text-default leading-tight">{activeFba.productTitle}</h3>
                 <div className="mt-3 flex items-stretch justify-between gap-3 rounded-xl border border-purple-100 bg-purple-50/40 px-3 py-2.5">
                   <HoverTooltip label={activeFba.fnsku} asChild>
                     <div className="min-w-0 flex-1">
                       <p className="text-role-micro text-purple-400 uppercase tracking-wider">FNSKU</p>
-                      <p className="text-sm font-mono font-black text-text-default tabular-nums">{getLast4(activeFba.fnsku)}</p>
+                      <p className="text-sm font-mono font-semibold text-text-default tabular-nums">{getLast4(activeFba.fnsku)}</p>
                     </div>
                   </HoverTooltip>
                   <div className="flex-1 text-center border-x border-purple-100/80 px-2">
                     <p className="text-role-micro text-text-faint uppercase tracking-wider">Planned</p>
-                    <p className="text-sm font-black text-text-default tabular-nums">
+                    <p className="text-sm font-semibold text-text-default tabular-nums">
                       {activeFba.plannedQty > 0 ? activeFba.plannedQty : '—'}
                     </p>
                   </div>
                   <div className="min-w-0 flex-1 text-right">
                     <p className="text-role-micro text-text-faint uppercase tracking-wider">Scanned</p>
-                    <p className="text-sm font-black text-text-default tabular-nums">
+                    <p className="text-sm font-semibold text-text-default tabular-nums">
                       {activeFba.combinedPackScannedQty}
                     </p>
                   </div>
@@ -487,9 +491,13 @@ export default function StationPacking({
             )}
           </AnimatePresence>
 
-          {/* Compact active-order chip — full checklist lives in PackOrderPanel. */}
+          {/* Active-order card — the standalone station page's own activity
+              surface. With a `railSlot` the rail is that surface instead: the
+              active order is its selected row and the checklist lives in the
+              workbench right pane, so this card would be a second, redundant
+              shape for the same job. */}
           <AnimatePresence mode="wait">
-            {activeOrder && !activeFba && (
+            {activeOrder && !activeFba && !railSlot && (
               <motion.div
                 key={activeOrder.tracking || activeOrder.orderId}
                 initial={{ opacity: 0, y: 10 }}
@@ -498,20 +506,14 @@ export default function StationPacking({
                 className="rounded-2xl border border-border-soft bg-surface-card px-3 py-2.5 shadow-sm"
               >
                 <div className="flex items-center justify-between gap-2">
-                  <p className="text-role-micro uppercase tracking-widest text-text-soft">
+                  <p className="shrink-0 text-role-eyebrow uppercase tracking-widest text-text-soft">
                     {activeOrder.scanType === 'UNIT'
                       ? 'Active unit'
                       : activeOrder.scanType === 'SKU'
                         ? 'Active SKU'
                         : 'Active order'}
                   </p>
-                  <span className="truncate font-mono text-role-micro text-text-muted">
-                    {activeOrder.scanType === 'SKU'
-                      ? activeOrder.sku || activeOrder.tracking || 'N/A'
-                      : activeOrder.orderId ||
-                        normalizeTrackingQuery(activeOrder.tracking) ||
-                        'N/A'}
-                  </span>
+                  <PackActiveIdentityChips activeOrder={activeOrder} />
                 </div>
                 <p className="mt-1 truncate text-role-caption font-semibold text-text-default">
                   {activeOrder.productTitle}
@@ -559,6 +561,14 @@ export default function StationPacking({
             )}
           </AnimatePresence>
         </div>
+
+        {/* Recent-activity rail — the single scroll port of this column. Its
+            bottom-anchored filter band rides in `railFooter` (below the scroll
+            port, same anatomy as the Testing / Shipping sidebars). */}
+        {railSlot ? (
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">{railSlot}</div>
+        ) : null}
+        {railSlot ? railFooter : null}
       </div>
     </div>
   );

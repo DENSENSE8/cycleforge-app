@@ -6,6 +6,7 @@ import { AlertTriangle, Clock, ShieldCheck, Zap } from '@/components/Icons';
 import { MetricLineRow, StatusBadge } from '@/design-system';
 import { Button } from '@/design-system/primitives';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { refreshDomain } from '@/lib/refresh/bus';
 
 type ZohoHealthResponse = {
   success: boolean;
@@ -62,7 +63,7 @@ export function ZohoInboundStatusBanner() {
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['zoho-health'] });
-      window.dispatchEvent(new CustomEvent('app-refresh-data'));
+      refreshDomain('receiving.lines');
     },
   });
 

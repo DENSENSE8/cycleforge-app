@@ -16,6 +16,7 @@
  */
 
 import { useSyncExternalStore } from 'react';
+import { refreshDomain } from '@/lib/refresh/bus';
 
 export interface SalesCartLine {
   key: string;
@@ -190,7 +191,7 @@ export async function checkout(): Promise<void> {
       isSubmitting: false,
       successMessage: 'Sent to terminal — waiting for payment',
     });
-    window.dispatchEvent(new CustomEvent('app-refresh-data'));
+    refreshDomain('replenish');
   } catch (err) {
     setState({
       isSubmitting: false,

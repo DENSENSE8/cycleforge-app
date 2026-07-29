@@ -21,6 +21,7 @@ import { filterShippingRailOrders } from '@/components/sidebar/tech/filter-shipp
 import {
   normalizeUpNextOrders,
   SHIPPING_RAIL_REFRESH_EVENTS,
+  SHIPPING_RAIL_REFRESH_DOMAINS,
   shippingRailQueryKey,
   sortOrdersByShipBy,
 } from './shipping-rail-shared';
@@ -119,6 +120,7 @@ export function ShippingRecentRail({
         queryKey={queryKey}
         fetchFn={loadRows}
         refreshEvents={[...SHIPPING_RAIL_REFRESH_EVENTS]}
+        refreshDomains={SHIPPING_RAIL_REFRESH_DOMAINS}
         selectedId={selectedOrderId}
         limit={50}
         pinSelectedLead

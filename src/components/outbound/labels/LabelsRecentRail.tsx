@@ -72,7 +72,7 @@ export function LabelsRecentRail() {
     <SidebarRecentRailBase<ShippedOrder>
       queryKey={printedQueryKey}
       fetchFn={printedFetch}
-      refreshEvents={['app-refresh-data']}
+      refreshDomains={['orders.outbound']}
       selectedId={open}
       limit={RAIL_LIMIT}
       eyebrowTitle="Labels printed"

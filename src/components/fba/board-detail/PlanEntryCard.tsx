@@ -9,6 +9,7 @@ import {
 import { sectionLabel } from '@/design-system/tokens/typography/presets';
 import { Button, DeferredQtyInput, IconButton } from '@/design-system/primitives';
 import { formatCreatedAt, formatPlanDate, type PlanEntry } from './board-detail-shared';
+import { refreshDomain } from '@/lib/refresh/bus';
 
 /* ── Entry Card (one plan row) ─────────────────────────────────────── */
 
@@ -54,7 +55,7 @@ export function PlanEntryCard({
     setDeleting(false);
     if (result.ok) {
       onDeleted();
-      window.dispatchEvent(new Event('app-refresh-data'));
+      refreshDomain('orders.outbound');
     } else {
       setDeleteError(result.error || 'Failed to remove');
     }
@@ -71,20 +72,20 @@ export function PlanEntryCard({
         <div className="flex min-w-0 flex-1 flex-col gap-0.5">
           <div className="flex items-center gap-2">
             <Calendar className="h-3 w-3 shrink-0 text-purple-500" />
-            <span className="text-role-caption font-black text-text-default">
+            <span className="text-role-caption font-semibold text-text-default">
               {entry.shipment_ref || formatPlanDate(entry.due_date)}
             </span>
           </div>
           <div className="flex items-center gap-3 pl-5 text-role-caption">
-            <span className="flex items-center gap-1 font-bold text-text-soft">
+            <span className="flex items-center gap-1 font-semibold text-text-soft">
               <ClipboardList className="h-3 w-3 text-purple-400" />
               <span className="tabular-nums">{entry.expected_qty}</span>
             </span>
-            <span className="flex items-center gap-1 font-bold text-emerald-700">
+            <span className="flex items-center gap-1 font-semibold text-emerald-700">
               <Check className="h-3 w-3 text-emerald-500" />
               <span className="tabular-nums">{entry.actual_qty}</span>
             </span>
-            <span className="text-role-micro font-bold text-text-faint">
+            <span className="text-role-micro text-text-faint">
               {formatCreatedAt(entry.plan_created_at)}
             </span>
           </div>
@@ -111,7 +112,7 @@ export function PlanEntryCard({
                 min={1}
                 max={9999}
                 onChange={(v) => void saveQty(v)}
-                className="h-10 w-16 rounded-lg border border-border-soft bg-surface-card text-center text-lg font-black tabular-nums text-text-default outline-none transition-colors focus:border-purple-400 focus:ring-2 focus:ring-purple-400/20 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                className="h-10 w-16 rounded-lg border border-border-soft bg-surface-card text-center text-lg font-semibold tabular-nums text-text-default outline-none transition-colors focus:border-purple-400 focus:ring-2 focus:ring-purple-400/20 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
               />
               <IconButton
                 icon={<Plus className="h-3.5 w-3.5" />}
@@ -128,25 +129,25 @@ export function PlanEntryCard({
             {entry.destination_fc && (
               <div className="flex justify-between gap-3">
                 <dt className="font-semibold text-text-soft">Destination FC</dt>
-                <dd className="font-black text-text-default">{entry.destination_fc}</dd>
+                <dd className="font-semibold text-text-default">{entry.destination_fc}</dd>
               </div>
             )}
             {entry.amazon_shipment_id && (
               <div className="flex justify-between gap-3">
                 <dt className="font-semibold text-text-soft">Amazon Shipment</dt>
-                <dd className="font-black text-text-default">{entry.amazon_shipment_id}</dd>
+                <dd className="font-semibold text-text-default">{entry.amazon_shipment_id}</dd>
               </div>
             )}
             {entry.condition && (
               <div className="flex justify-between gap-3">
                 <dt className="font-semibold text-text-soft">Condition</dt>
-                <dd className="font-black text-text-default">{entry.condition}</dd>
+                <dd className="font-semibold text-text-default">{entry.condition}</dd>
               </div>
             )}
             {entry.item_notes && (
               <div className="flex justify-between gap-3">
                 <dt className="font-semibold text-text-soft">Notes</dt>
-                <dd className="max-w-[200px] text-right font-bold text-text-muted">{entry.item_notes}</dd>
+                <dd className="max-w-[200px] text-right font-semibold text-text-muted">{entry.item_notes}</dd>
               </div>
             )}
           </dl>
@@ -156,7 +157,7 @@ export function PlanEntryCard({
               <p className={`mb-1.5 ${sectionLabel}`}>Tracking</p>
               <div className="space-y-0.5">
                 {entry.tracking_numbers.map((t, i) => (
-                  <p key={i} className="font-mono text-role-micro font-bold text-text-muted">
+                  <p key={i} className="font-mono text-role-micro text-text-muted">
                     {t.carrier && <span className="text-text-faint">{t.carrier} </span>}
                     {t.tracking_number}
                   </p>
@@ -171,13 +172,13 @@ export function PlanEntryCard({
               size="sm"
               icon={<Trash2 className="h-3 w-3" />}
               onClick={() => setConfirmDelete(true)}
-              className="h-auto gap-1.5 px-0 text-role-micro font-bold text-red-500 hover:bg-transparent hover:text-red-700"
+              className="h-auto gap-1.5 px-0 text-role-micro text-red-500 hover:bg-transparent hover:text-red-700"
             >
               Remove entry
             </Button>
           ) : (
             <div className="rounded-lg border border-red-200 bg-red-50 p-3">
-              <p className="text-role-caption font-bold text-red-800">
+              <p className="text-role-caption font-semibold text-red-800">
                 Remove this entry from {entry.shipment_ref || 'plan'}?
               </p>
               {deleteError && (

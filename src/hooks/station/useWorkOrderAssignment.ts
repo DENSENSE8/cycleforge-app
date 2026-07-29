@@ -7,6 +7,7 @@ import { saveWorkOrder } from '@/lib/work-orders/saveWorkOrder';
 import type { WorkOrderRow } from '@/components/work-orders/types';
 import type { AssignmentConfirmPayload } from '@/components/work-orders/WorkOrderAssignmentCard';
 import type { StaffOption } from '@/components/station/upnext/upnext-types';
+import { refreshDomain } from '@/lib/refresh/bus';
 
 
 export interface UseWorkOrderAssignmentReturn {
@@ -61,7 +62,7 @@ export function useWorkOrderAssignment(): UseWorkOrderAssignmentReturn {
         deadlineAt: payload.deadline,
         notes: row.notes,
       });
-      window.dispatchEvent(new CustomEvent('app-refresh-data'));
+      refreshDomain('work-orders');
     } catch (err: any) {
       window.alert(err?.message || 'Failed to save assignment');
     }

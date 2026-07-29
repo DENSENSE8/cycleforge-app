@@ -10,6 +10,7 @@ import { Button } from '@/design-system/primitives';
 import { AlertTriangle, RefreshCw } from '@/components/Icons';
 import { SearchBar } from '@/components/ui/SearchBar';
 import { SIDEBAR_GUTTER } from '@/components/layout/header-shell';
+import { refreshDomain, useRefreshSignal } from '@/lib/refresh/bus';
 
 type ReplenishTab = 'need' | 'fifo';
 
@@ -87,14 +88,7 @@ export function ReplenishSidebarPanel() {
 
   useEffect(() => { fetchCounts(); }, [fetchCounts]);
 
-  useEffect(() => {
-    window.addEventListener('dashboard-refresh', fetchCounts);
-    window.addEventListener('app-refresh-data', fetchCounts);
-    return () => {
-      window.removeEventListener('dashboard-refresh', fetchCounts);
-      window.removeEventListener('app-refresh-data', fetchCounts);
-    };
-  }, [fetchCounts]);
+  useRefreshSignal('replenish', fetchCounts);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -132,7 +126,7 @@ export function ReplenishSidebarPanel() {
       await fetch('/api/replenishment/sync', { method: 'POST' });
       window.setTimeout(() => {
         fetchCounts();
-        window.dispatchEvent(new CustomEvent('dashboard-refresh'));
+        refreshDomain('replenish');
       }, 1000);
     } catch {
       // Silently fail
@@ -204,14 +198,14 @@ export function ReplenishSidebarPanel() {
           <div className="mt-3 px-3 py-2.5 rounded-xl bg-red-50 border border-red-200">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-role-caption font-black uppercase tracking-wider text-red-700">
+                <p className="text-role-caption font-semibold uppercase tracking-wider text-red-700">
                   {urgentCount} need ordering
                 </p>
-                <p className="text-role-micro font-bold text-red-600/70 mt-0.5">
+                <p className="text-role-micro text-red-600/70 mt-0.5">
                   {urgentOrdersWaiting} order{urgentOrdersWaiting !== 1 ? 's' : ''} blocked
                 </p>
               </div>
-              <div className="text-2xl font-black text-red-700 tabular-nums">
+              <div className="text-2xl font-semibold text-red-700 tabular-nums">
                 {urgentCount}
               </div>
             </div>
@@ -236,7 +230,7 @@ export function ReplenishSidebarPanel() {
               <p className={`${fieldLabel} text-text-soft`}>Total Active</p>
               <p className={`${fieldLabel} text-text-faint mt-0.5`}>across all stages</p>
             </div>
-            <p className="text-2xl font-black text-text-default tabular-nums">
+            <p className="text-2xl font-semibold text-text-default tabular-nums">
               {counts.total_active}
             </p>
           </div>

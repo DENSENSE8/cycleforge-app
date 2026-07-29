@@ -83,5 +83,3 @@ export const FBA_FNSKU_STATION_SCANNED = 'fba-fnsku-station-scanned' as const;
 export const FBA_OPEN_CREATE_PLAN = 'fba-open-create-plan' as const;
 
 // ── Global refresh (shared across FBA + other pages) ────────────────────────
-export { APP_REFRESH_DATA } from '@/lib/app-events';
-export const DASHBOARD_REFRESH = 'dashboard-refresh' as const;

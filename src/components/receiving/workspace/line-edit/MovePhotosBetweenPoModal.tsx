@@ -23,6 +23,7 @@ import { cn } from '@/utils/_cn';
 import { reassignPhotoToReceiving } from '@/components/shipped/photo-gallery/photo-gallery-api';
 import { useClaimPhotos } from '../claim/hooks/useClaimPhotos';
 import { ClaimPhotoPicker } from '../claim/components/ClaimPhotoPicker';
+import { refreshDomains } from '@/lib/refresh/bus';
 
 interface PoListRow {
   po_id: string;
@@ -169,7 +170,7 @@ export function MovePhotosBetweenPoModal({
     }
     setBusy(false);
     if (moved > 0) {
-      window.dispatchEvent(new CustomEvent('app-refresh-data'));
+      refreshDomains(['receiving.lines', 'receiving.poLines']);
       onMoved?.();
       if (failed === 0) {
         finishAndClose({
@@ -222,7 +223,7 @@ export function MovePhotosBetweenPoModal({
       <div className="flex items-center justify-between border-b border-border-soft px-4 py-3">
         <div className="flex items-center gap-2">
           <ArrowLeftRight className="h-4 w-4 text-blue-600" />
-          <span className="text-sm font-bold text-text-default">Move photos</span>
+          <span className="text-sm font-semibold text-text-default">Move photos</span>
         </div>
         <IconButton
           onClick={onClose}
@@ -246,7 +247,7 @@ export function MovePhotosBetweenPoModal({
           >
             <AnimatedCheck size={56} />
             <div className="space-y-1">
-              <p className="text-base font-bold text-text-default">{successHeadline}</p>
+              <p className="text-base font-semibold text-text-default">{successHeadline}</p>
               <p className="text-sm text-text-soft">{successDetail}</p>
             </div>
           </motion.div>
@@ -316,7 +317,7 @@ export function MovePhotosBetweenPoModal({
                               className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left hover:bg-surface-hover"
                             >
                               <div className="min-w-0">
-                                <p className="truncate text-sm font-bold text-text-default">
+                                <p className="truncate text-sm font-semibold text-text-default">
                                   {r.po_number || r.po_id || `PO #${r.receiving_id}`}
                                 </p>
                                 <p className="text-xs text-text-soft">Carton #{r.receiving_id}</p>

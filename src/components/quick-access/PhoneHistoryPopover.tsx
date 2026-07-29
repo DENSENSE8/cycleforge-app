@@ -9,6 +9,7 @@ import { useAblyChannel } from '@/hooks/useAblyChannel';
 import { safeChannelName, getScanLogChannelName } from '@/lib/realtime/channels';
 import { cn } from '@/utils/_cn';
 import { QuickAccessPanelShell } from './QuickAccessPanelShell';
+import { useRefreshSignal } from '@/lib/refresh/bus';
 
 interface ScanHistoryEntry {
   id: number;
@@ -77,7 +78,7 @@ function PhotoStrip({ photos }: { photos: HistoryPhoto[] }) {
         </span>
       ))}
       {extra > 0 ? (
-        <span className="flex h-8 w-8 items-center justify-center rounded-md bg-surface-sunken text-role-micro font-bold text-text-soft ring-1 ring-border-soft">
+        <span className="flex h-8 w-8 items-center justify-center rounded-md bg-surface-sunken text-role-micro text-text-soft ring-1 ring-border-soft">
           +{extra}
         </span>
       ) : null}
@@ -124,7 +125,7 @@ function HistoryRow({
     >
       <span className="flex h-4 w-4 shrink-0 items-center justify-center text-text-muted">{icon}</span>
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-role-caption font-bold text-text-default">{title}</span>
+        <span className="block truncate text-role-caption font-semibold text-text-default">{title}</span>
         <span className="mt-0.5 flex flex-wrap items-center gap-1.5 text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
           {meta}
         </span>
@@ -189,11 +190,8 @@ export function PhoneHistoryPopover({ onClose }: PhoneHistoryPopoverProps) {
     void fetchHistory();
   }, [fetchScans, fetchHistory]);
 
-  useEffect(() => {
-    const handler = () => { void fetchHistory(); };
-    window.addEventListener('app-refresh-data', handler);
-    return () => window.removeEventListener('app-refresh-data', handler);
-  }, [fetchHistory]);
+  // The popover's history list IS the packer log feed (/api/packing-logs/history).
+  useRefreshSignal('packer.logs', () => { void fetchHistory(); });
 
   const scanLogChannel = safeChannelName(() => getScanLogChannelName(orgId!, staffId));
   useAblyChannel(

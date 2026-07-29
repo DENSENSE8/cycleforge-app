@@ -4,6 +4,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRealtimeInvalidation } from '@/hooks/useRealtimeInvalidation';
 import { useAblyChannel } from '@/hooks/useAblyChannel';
+import { useRefreshSignal } from '@/lib/refresh/bus';
+import type { RefreshDomain } from '@/lib/refresh/domains';
+
+/** Stable empty tuple so a feed without domains keeps a constant subscription key. */
+const EMPTY_DOMAINS: readonly RefreshDomain[] = [];
 
 /**
  * Shared mobile-feed behaviors, factored out of the two hand-rolled lists
@@ -138,8 +143,13 @@ export interface MobileFeedQueryOptions<T> {
     invalidation?: Parameters<typeof useRealtimeInvalidation>[0];
     /** Ably channel/event whose arrival should refetch this feed. */
     ably?: { channel: string; event: string; enabled?: boolean };
-    /** window CustomEvent names that should refetch (e.g. 'app-refresh-data'). */
+    /** Feed-specific window CustomEvent names that should refetch (e.g. 'packer-log-updated'). */
     windowEvents?: ReadonlyArray<string>;
+    /**
+     * Refresh domains this feed renders — refetches only for writes that
+     * touched its data. SoT: `@/lib/refresh/domains`.
+     */
+    refreshDomains?: ReadonlyArray<RefreshDomain>;
   };
 }
 
@@ -189,6 +199,8 @@ export function useMobileFeedQuery<T>(opts: MobileFeedQueryOptions<T>): MobileFe
     events.forEach((name) => window.addEventListener(name, handler));
     return () => events.forEach((name) => window.removeEventListener(name, handler));
   }, [realtime?.windowEvents, refetch]);
+
+  useRefreshSignal(realtime?.refreshDomains ?? EMPTY_DOMAINS, () => void refetch());
 
   return { data: data ?? [], isLoading, refetch };
 }

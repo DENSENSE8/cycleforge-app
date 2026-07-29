@@ -2,11 +2,12 @@ import type { ShippedOrder } from '@/types/orders';
 import type { Order } from '@/components/station/upnext/upnext-types';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import type { ReceivingDetailsLog } from '@/components/station/receiving-details-log';
+import { refreshDomains } from '@/lib/refresh/bus';
+import { REFRESH_BUNDLES } from '@/lib/refresh/domains';
 
 export function dispatchDashboardAndStationRefresh(): void {
   if (typeof window === 'undefined') return;
-  window.dispatchEvent(new CustomEvent('dashboard-refresh'));
-  window.dispatchEvent(new CustomEvent('app-refresh-data'));
+  refreshDomains(REFRESH_BUNDLES.outboundOrderWrite);
 }
 
 export interface ReceivingPhotoChangedPayload {
@@ -27,8 +28,7 @@ export interface ReceivingPhotoChangedPayload {
 export function dispatchReceivingPhotoChanged(payload: ReceivingPhotoChangedPayload): void {
   if (typeof window === 'undefined') return;
   window.dispatchEvent(new CustomEvent('receiving-photo.changed', { detail: payload }));
-  window.dispatchEvent(new CustomEvent('dashboard-refresh'));
-  window.dispatchEvent(new CustomEvent('app-refresh-data'));
+  refreshDomains(['receiving.lines', 'receiving.poLines']);
 }
 
 /** Merge a single row into the dashboard pending queue cache (no full table refetch). */

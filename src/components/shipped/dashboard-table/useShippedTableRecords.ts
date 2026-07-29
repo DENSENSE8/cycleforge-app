@@ -22,6 +22,7 @@ import {
 import { toSearchResultRecord } from '@/components/shipped/shipped-record-mappers';
 import type { PackerRecord } from '@/hooks/usePackerLogs';
 import type { ShippedTableFilters } from './useShippedTableFilters';
+import { useRefreshSignal } from '@/lib/refresh/bus';
 
 // Spine-first render (immediate paint): when enabled, the week/all-time queries
 // fetch the SPINE (cheap columns) so rows paint instantly, and the display-only
@@ -159,15 +160,12 @@ export function useShippedTableRecords(filters: ShippedTableFilters) {
   });
 
   // Refresh events from form submits / cross-pane mutations → invalidate.
+  useRefreshSignal('orders.outbound', () => {
+    queryClient.invalidateQueries({ queryKey: ['dashboard-table', 'shipped'] });
+    queryClient.invalidateQueries({ queryKey: ['shipped-table'] });
+  });
+
   useEventBridge({
-    'app-refresh-data': () => {
-      queryClient.invalidateQueries({ queryKey: ['dashboard-table', 'shipped'] });
-      queryClient.invalidateQueries({ queryKey: ['shipped-table'] });
-    },
-    'dashboard-refresh': () => {
-      queryClient.invalidateQueries({ queryKey: ['dashboard-table', 'shipped'] });
-      queryClient.invalidateQueries({ queryKey: ['shipped-table'] });
-    },
   });
 
   const fetchedRecords = allTimeMode ? allTimeQuery.data ?? [] : weekBuckets.rows;

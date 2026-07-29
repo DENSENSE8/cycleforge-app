@@ -16,6 +16,7 @@ import { deriveFulfillmentState, fulfillmentCountsFromCombos, type FulfillmentSt
 import { patchUnshippedOrderCache, invalidateUnshippedCounts } from '@/lib/queries/dashboard-cache-patch';
 import { SHIPPING_PATH } from '@/components/outbound/outbound-sidebar-shared';
 import type { ShippedOrder } from '@/types/orders';
+import { useRefreshSignal } from '@/lib/refresh/bus';
 
 /**
  * Pre-pack fulfillment queue — Dashboard Pending / Tested tabs (and pack/shipping
@@ -227,10 +228,6 @@ export function UnshippedTable({
   );
 
   useEffect(() => {
-    const handleRefresh = () => {
-      queryClient.invalidateQueries({ queryKey: ['dashboard-table', 'unshipped'] });
-      invalidateUnshippedCounts(queryClient);
-    };
     const handleAssignmentUpdated = (e: any) => {
       const detail = e?.detail || {};
       const orderIds = Array.isArray(detail.orderIds) ? detail.orderIds : [];
@@ -253,16 +250,17 @@ export function UnshippedTable({
       invalidateUnshippedCounts(queryClient);
     };
 
-    window.addEventListener('app-refresh-data' as any, handleRefresh as any);
-    window.addEventListener('dashboard-refresh' as any, handleRefresh as any);
     window.addEventListener('order-assignment-updated' as any, handleAssignmentUpdated as any);
 
     return () => {
-      window.removeEventListener('app-refresh-data' as any, handleRefresh as any);
-      window.removeEventListener('dashboard-refresh' as any, handleRefresh as any);
       window.removeEventListener('order-assignment-updated' as any, handleAssignmentUpdated as any);
     };
   }, [queryClient]);
+
+  useRefreshSignal('orders.outbound', () => {
+    queryClient.invalidateQueries({ queryKey: ['dashboard-table', 'unshipped'] });
+    invalidateUnshippedCounts(queryClient);
+  });
 
   const clearSearch = () => {
     const params = new URLSearchParams(searchParams.toString());

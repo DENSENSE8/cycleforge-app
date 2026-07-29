@@ -6,7 +6,7 @@ import type { DragStartEvent, DragEndEvent } from '@dnd-kit/core';
 import type { BundleItemAllocation, TrackingBundleDraft } from '@/components/fba/sidebar/FbaTrackingBundleCard';
 import { fbaPaths } from '@/lib/fba/api-paths';
 import { deleteFbaItem } from '@/lib/fba/patch';
-import { FBA_ACTIVE_SHIPMENTS_REFRESH, APP_REFRESH_DATA, FBA_FNSKU_SAVED } from '@/lib/fba/events';
+import { FBA_ACTIVE_SHIPMENTS_REFRESH, FBA_FNSKU_SAVED } from '@/lib/fba/events';
 import { useFbaEvent } from '@/components/fba/hooks/useFbaEvent';
 import { useFnskuSearch, type FnskuSearchResult } from '@/components/fba/hooks/useFnskuSearch';
 import { emitAppEvent, useResourceMutation } from '@/hooks';
@@ -24,6 +24,7 @@ import {
   type MoveUndoEntry,
   type UndoEntry,
 } from './shipment-editor-helpers';
+import { refreshDomain } from '@/lib/refresh/bus';
 
 /**
  * Owns the entire FBA shipment editor: amazon id + bundle drafts + working item
@@ -86,7 +87,7 @@ export function useShipmentEditor({
     {
       onSuccess: () => {
         emitAppEvent(FBA_ACTIVE_SHIPMENTS_REFRESH);
-        emitAppEvent(APP_REFRESH_DATA);
+        refreshDomain('orders.outbound');
         onChanged();
         onClose();
       },

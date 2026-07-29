@@ -30,6 +30,8 @@ import { framerGesture, framerPresence, framerTransition } from '@/design-system
 import type { ActiveStationOrder } from '@/hooks/useStationTestingController';
 import { looksLikeFnsku } from '@/lib/scan-resolver';
 import { CopyChip, getLast4 } from '@/components/ui/CopyChip';
+import { refreshDomains } from '@/lib/refresh/bus';
+import { REFRESH_BUNDLES } from '@/lib/refresh/domains';
 
 type Variant = 'order' | 'fba' | 'repair' | 'exception';
 
@@ -59,7 +61,7 @@ function IdentifierChip({
 
   if (variant === 'fba') {
     const value = String(activeOrder.fnsku || activeOrder.tracking || '').trim();
-    if (!value) return <span className="text-role-caption font-black text-text-muted">—</span>;
+    if (!value) return <span className="text-role-caption font-semibold text-text-muted">—</span>;
     return (
       <CopyChip
         value={value}
@@ -74,7 +76,7 @@ function IdentifierChip({
   }
 
   if (variant === 'exception' || (variant === 'order' && orderIdUnavailable)) {
-    if (!tracking) return <span className="text-role-caption font-black text-text-muted">—</span>;
+    if (!tracking) return <span className="text-role-caption font-semibold text-text-muted">—</span>;
     return (
       <CopyChip
         value={tracking}
@@ -88,7 +90,7 @@ function IdentifierChip({
     );
   }
 
-  if (!oid) return <span className="text-role-caption font-black text-text-muted">—</span>;
+  if (!oid) return <span className="text-role-caption font-semibold text-text-muted">—</span>;
   return (
     <CopyChip
       value={oid}
@@ -273,7 +275,7 @@ function FeedbackBody({
           },
         }),
       );
-      window.dispatchEvent(new CustomEvent('app-refresh-data'));
+      refreshDomains(REFRESH_BUNDLES.outboundOrderWrite);
     } catch (e) {
       console.error(e);
       window.alert('Could not undo.');
@@ -305,7 +307,7 @@ function FeedbackBody({
             initial={{ opacity: 0, scale: 0.92 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={framerTransition.quantityBump}
-            className="inline-flex shrink-0 items-center gap-1 rounded-md bg-emerald-50 px-1.5 py-0.5 text-[8.5px] font-black uppercase tracking-widest text-emerald-600 ring-1 ring-inset ring-emerald-200"
+            className="inline-flex shrink-0 items-center gap-1 rounded-md bg-emerald-50 px-1.5 py-0.5 text-[8.5px] font-semibold uppercase tracking-widest text-emerald-600 ring-1 ring-inset ring-emerald-200"
           >
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
             Active
@@ -330,11 +332,11 @@ function FeedbackBody({
             <span>/</span>
             <AnimatedStat value={qty} speed="fast" />
             {remaining > 0 ? (
-              <span className="ml-1 font-bold text-text-faint">
+              <span className="ml-1 font-semibold text-text-faint">
                 · <AnimatedStat value={remaining} speed="fast" className="inline" /> left
               </span>
             ) : (
-              <span className="ml-1 font-bold text-emerald-600">· complete</span>
+              <span className="ml-1 font-semibold text-emerald-600">· complete</span>
             )}
           </span>
         </div>
@@ -371,7 +373,7 @@ function FeedbackBody({
               <div className="mt-2 flex min-w-0 items-center gap-1.5 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1">
                 <Barcode className="h-3 w-3 shrink-0 text-emerald-600" />
                 <span className="shrink-0 text-role-eyebrow uppercase tracking-widest text-emerald-600">Last</span>
-                <span className="min-w-0 font-mono text-role-micro font-bold leading-tight text-emerald-900 [overflow-wrap:anywhere]">
+                <span className="min-w-0 font-mono text-role-micro leading-tight text-emerald-900 [overflow-wrap:anywhere]">
                   {lastSerial}
                 </span>
               </div>
@@ -387,7 +389,7 @@ function FeedbackBody({
             onClick={() => void handleUndoLastSerial()}
             whileTap={scanned >= 1 && !undoBusy ? framerGesture.tapPress : undefined}
             transition={framerTransition.stationSerialRow}
-            className="flex w-full min-h-[44px] items-center justify-center gap-2 rounded-lg text-role-caption font-black uppercase tracking-widest text-amber-800 transition-colors hover:bg-amber-50 active:bg-amber-100 disabled:pointer-events-none disabled:opacity-35 sm:min-h-0 sm:justify-start sm:py-1.5"
+            className="flex w-full min-h-[44px] items-center justify-center gap-2 rounded-lg text-role-caption font-semibold uppercase tracking-widest text-amber-800 transition-colors hover:bg-amber-50 active:bg-amber-100 disabled:pointer-events-none disabled:opacity-35 sm:min-h-0 sm:justify-start sm:py-1.5"
             title={
               variant === 'exception'
                 ? 'Remove the last scanned serial from this exceptions session'

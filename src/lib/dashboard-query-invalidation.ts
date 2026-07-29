@@ -1,5 +1,7 @@
 import type { QueryClient } from '@tanstack/react-query';
 import { qk } from '@/queries/keys';
+import { refreshDomains } from '@/lib/refresh/bus';
+import { REFRESH_BUNDLES } from '@/lib/refresh/domains';
 
 const DASHBOARD_TABLE_KEYS = [
   qk.dashboardTable.pending,
@@ -34,8 +36,10 @@ export async function invalidateDashboardOrderQueries(queryClient: QueryClient) 
   );
 }
 
-/** One global signal for components that are not on React Query yet. */
+/**
+ * Signal the outbound-order domains for components that are not on React Query
+ * yet (the orders import + sync paths call this after a bulk write).
+ */
 export function dispatchUsavRefreshData() {
-  if (typeof window === 'undefined') return;
-  window.dispatchEvent(new CustomEvent('app-refresh-data'));
+  refreshDomains(REFRESH_BUNDLES.outboundOrderWrite);
 }

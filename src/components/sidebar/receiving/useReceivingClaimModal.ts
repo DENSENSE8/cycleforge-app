@@ -10,6 +10,8 @@
 import { useCallback, useState } from 'react';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { toast } from '@/lib/toast';
+import { refreshDomains } from '@/lib/refresh/bus';
+import { REFRESH_BUNDLES } from '@/lib/refresh/domains';
 
 export interface ReceivingClaimModalController {
   /** The row whose claim modal is open, or null when closed. */
@@ -32,7 +34,7 @@ export function useReceivingClaimModal(): ReceivingClaimModalController {
     setClaimRow(null);
     // Nudge the rail + dashboard to refetch (the cron resolves the exception
     // once Zoho syncs; the ticket # lands on the carton now).
-    window.dispatchEvent(new CustomEvent('app-refresh-data'));
+    refreshDomains(REFRESH_BUNDLES.receivingWrite);
   }, []);
 
   return { claimRow, openClaim, closeClaim, onTicketCreated };

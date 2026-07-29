@@ -9,6 +9,7 @@ import { Button } from '@/design-system/primitives';
 import { FbaShipmentTracePanel } from './FbaShipmentTracePanel';
 import { stationThemeColors } from '@/utils/staff-colors';
 import type { StationTheme } from '@/utils/staff-colors';
+import { refreshDomain } from '@/lib/refresh/bus';
 
 
 type TrackingEntry = {
@@ -222,7 +223,7 @@ export function FbaShippedTable({ stationTheme = 'green', searchQuery = '', embe
 
       await load();
       window.dispatchEvent(new CustomEvent('fba-print-shipped'));
-      window.dispatchEvent(new CustomEvent('app-refresh-data'));
+      refreshDomain('orders.outbound');
     } catch (e: any) {
       setError(e?.message || 'Failed to save shipment');
     } finally {
@@ -254,7 +255,7 @@ export function FbaShippedTable({ stationTheme = 'green', searchQuery = '', embe
           line.id === item.id ? { ...line, fnsku: nextFnsku } : line,
         ),
       }));
-      window.dispatchEvent(new CustomEvent('app-refresh-data'));
+      refreshDomain('orders.outbound');
     } catch (e: any) {
       setError(e?.message || 'Failed to update FNSKU');
     } finally {
@@ -280,7 +281,7 @@ export function FbaShippedTable({ stationTheme = 'green', searchQuery = '', embe
 
       <div className="min-h-0 flex-1 overflow-y-auto">
         {grouped.length === 0 ? (
-          <div className="px-4 py-10 text-center text-role-caption font-bold uppercase tracking-wider text-text-faint">
+          <div className="px-4 py-10 text-center text-role-caption font-semibold uppercase tracking-wider text-text-faint">
             No shipped rows
           </div>
         ) : (
@@ -309,10 +310,10 @@ export function FbaShippedTable({ stationTheme = 'green', searchQuery = '', embe
                     className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-2 px-3 py-2 text-left hover:bg-surface-hover"
                   >
                     <div className="min-w-0">
-                      <p className="truncate font-mono text-role-caption font-black text-text-default">
+                      <p className="truncate font-mono text-role-caption font-semibold text-text-default">
                         {String(row.amazon_shipment_id || row.shipment_ref || `#${row.id}`).toUpperCase()}
                       </p>
-                      <p className="mt-0.5 truncate text-role-micro font-bold text-text-soft">
+                      <p className="mt-0.5 truncate text-role-micro text-text-soft">
                         UPS {String(primaryUps?.tracking_number || '—')} · {Number(row.shipped_items || 0)}/{Number(row.total_items || 0)}
                       </p>
                     </div>
@@ -334,7 +335,7 @@ export function FbaShippedTable({ stationTheme = 'green', searchQuery = '', embe
                                 [row.id]: { ...shipmentDraft, amazon: e.target.value.toUpperCase() },
                               }))
                             }
-                            className="h-9 w-full rounded-lg border border-border-default px-2 font-mono text-xs font-bold text-text-default outline-none focus:border-border-strong"
+                            className="h-9 w-full rounded-lg border border-border-default px-2 font-mono text-xs font-semibold text-text-default outline-none focus:border-border-strong"
                             placeholder="FBA17XXXXXXXX"
                           />
                         </label>
@@ -350,7 +351,7 @@ export function FbaShippedTable({ stationTheme = 'green', searchQuery = '', embe
                                 [row.id]: { ...shipmentDraft, ups: e.target.value.toUpperCase() },
                               }))
                             }
-                            className="h-9 w-full rounded-lg border border-border-default px-2 font-mono text-xs font-bold text-text-default outline-none focus:border-border-strong"
+                            className="h-9 w-full rounded-lg border border-border-default px-2 font-mono text-xs font-semibold text-text-default outline-none focus:border-border-strong"
                             placeholder="1Z..."
                           />
                         </label>
@@ -387,7 +388,7 @@ export function FbaShippedTable({ stationTheme = 'green', searchQuery = '', embe
                                     onChange={(e) =>
                                       setItemFnskuDrafts((prev) => ({ ...prev, [item.id]: e.target.value.toUpperCase() }))
                                     }
-                                    className="h-8 w-40 max-w-full rounded-md border border-border-default bg-surface-card px-2 font-mono text-role-caption font-bold text-text-default outline-none focus:border-border-strong"
+                                    className="h-8 w-40 max-w-full rounded-md border border-border-default bg-surface-card px-2 font-mono text-role-caption font-semibold text-text-default outline-none focus:border-border-strong"
                                   />
                                   <Button
                                     type="button"

@@ -5,6 +5,8 @@ import { useMutation } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { RefreshCw } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
+import { refreshDomains } from '@/lib/refresh/bus';
+import { REFRESH_BUNDLES } from '@/lib/refresh/domains';
 
 export function ZohoSyncCard({ embedded = false }: { embedded?: boolean }) {
   const [status, setStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
@@ -63,7 +65,7 @@ export function ZohoSyncCard({ embedded = false }: { embedded?: boolean }) {
         type: 'success',
         message: `Zoho sync finished. Processed ${data?.totals?.processed || 0}, synced ${data?.totals?.line_items_synced || 0} line items, created ${data?.totals?.created || 0}, updated ${data?.totals?.updated || 0}, failed ${data?.totals?.failed || 0}.`,
       });
-      window.dispatchEvent(new CustomEvent('app-refresh-data'));
+      refreshDomains(REFRESH_BUNDLES.receivingWrite);
     } catch (error: any) {
       setStatus({ type: 'error', message: error?.message || 'Zoho sync failed.' });
     }
@@ -79,7 +81,7 @@ export function ZohoSyncCard({ embedded = false }: { embedded?: boolean }) {
         type: 'success',
         message: `Imported purchase receive ${data?.purchase_receive_id || id}. Receiving #${data?.receiving_id || '-'} has ${data?.line_items_imported || 0} line item(s).`,
       });
-      window.dispatchEvent(new CustomEvent('app-refresh-data'));
+      refreshDomains(REFRESH_BUNDLES.receivingWrite);
     } catch (error: any) {
       setStatus({ type: 'error', message: error?.message || 'Zoho import failed.' });
     }
@@ -91,8 +93,8 @@ export function ZohoSyncCard({ embedded = false }: { embedded?: boolean }) {
     <div className={embedded ? 'space-y-4' : 'space-y-4 border border-border-soft bg-surface-card p-5'}>
       <div className={`flex items-center justify-between gap-3 ${embedded ? 'border-b border-border-soft pb-3' : ''}`}>
         <div>
-          <h2 className="text-sm font-black uppercase tracking-widest text-text-default">Zoho Receiving Sync</h2>
-          <p className="text-role-eyebrow font-bold text-text-soft mt-1">Refresh the Zoho token, sync expected PO lines, or import one purchase receive.</p>
+          <h2 className="text-sm font-semibold uppercase tracking-widest text-text-default">Zoho Receiving Sync</h2>
+          <p className="text-role-eyebrow text-text-soft mt-1">Refresh the Zoho token, sync expected PO lines, or import one purchase receive.</p>
         </div>
         <div className="flex items-center gap-2">
           <Button
@@ -123,7 +125,7 @@ export function ZohoSyncCard({ embedded = false }: { embedded?: boolean }) {
           value={purchaseReceiveId}
           onChange={(e) => setPurchaseReceiveId(e.target.value)}
           placeholder="Enter purchase receive ID"
-          className="flex-1 rounded-xl border border-border-soft bg-surface-canvas inset-field text-role-micro font-bold uppercase tracking-widest text-text-default outline-none focus:border-emerald-500"
+          className="flex-1 rounded-xl border border-border-soft bg-surface-canvas inset-field text-role-micro uppercase tracking-widest text-text-default outline-none focus:border-emerald-500"
         />
         <Button
           variant="primary"

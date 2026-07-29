@@ -12,6 +12,8 @@ import { useScanFeedback } from '@/lib/scan-feedback/useScanFeedback';
 import { shouldUseLocalReceiveOnly } from '@/lib/receiving/intake-items-routing';
 import { enqueuePendingZohoSync } from '@/lib/receiving/zoho-sync-toast-tracker';
 import { useAuth } from '@/contexts/AuthContext';
+import { refreshDomains } from '@/lib/refresh/bus';
+import { REFRESH_BUNDLES } from '@/lib/refresh/domains';
 
 // 'local_receive' = unfound carton: mark RECEIVED locally, never touch Zoho.
 // Distinct from 'scan_only', which stays SCANNED.
@@ -346,7 +348,7 @@ export function useReceiveAction(
           // move + tile counts a beat later. `app-refresh-data` stays for the
           // non-receiving listeners that also key off the global signal.
           deferInvalidateReceivingFeeds(queryClient);
-          window.dispatchEvent(new CustomEvent('app-refresh-data'));
+          refreshDomains(REFRESH_BUNDLES.receivingWrite);
 
           // Fire-and-forget workspace reconcile. Prefer narrow patches — a full
           // by-id/by-carton GET row must not ride `receiving-line-updated` onto

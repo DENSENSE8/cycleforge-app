@@ -40,6 +40,7 @@ import {
   matchesDoneQuery,
   type TriageDoneRow,
 } from './done-stub';
+import type { RefreshDomain } from '@/lib/refresh/domains';
 /** Unbox sidebar "Unboxed" rail — most recent cartons opened on the Unbox surface. */
 export const UNBOX_SIDEBAR_LIMIT = 50;
 
@@ -72,6 +73,8 @@ export interface ReceivingRailFeed {
   status: RailStatusId;
   /** Module-scope array — stable identity for the shell's refresh listener. */
   refreshEvents: string[];
+  /** Refresh domains this rail renders (see `@/lib/refresh/domains`). */
+  refreshDomains?: readonly RefreshDomain[];
   autoSelectFirstWhenEmpty?: boolean;
   /** false ONLY for the unbox Recent feed (strict unboxed_at order, no pin bounce). */
   pinSelectedLead?: boolean;
@@ -126,13 +129,12 @@ export interface ReceivingRailFeed {
 const TRIAGE_REFRESH: string[] = [
   'receiving-triage-refresh',
   'receiving-entry-added',
-  'app-refresh-data',
 ];
 
-const UNBOX_REFRESH: string[] = [
-  'receiving-unbox-refresh',
-  'app-refresh-data',
-];
+const UNBOX_REFRESH: string[] = ['receiving-unbox-refresh'];
+
+/** Both receiving rails render the lines list. */
+const RECEIVING_RAIL_DOMAINS = ['receiving.lines'] as const satisfies readonly RefreshDomain[];
 
 const notUnmatched = (r: ReceivingLineRow) => r.receiving_source !== 'unmatched';
 
@@ -427,6 +429,7 @@ const FEEDS = {
     autoSelectFirstWhenEmpty: false,
     limit: UNBOX_SIDEBAR_LIMIT,
     refreshEvents: UNBOX_REFRESH,
+    refreshDomains: RECEIVING_RAIL_DOMAINS,
     rowTitleMode: 'adaptive-po',
   },
   /**
@@ -446,6 +449,7 @@ const FEEDS = {
     autoSelectFirstWhenEmpty: false,
     limit: 50,
     refreshEvents: [...UNBOX_REFRESH, 'receiving-triage-refresh'],
+    refreshDomains: RECEIVING_RAIL_DOMAINS,
     rowTitleMode: 'adaptive-po',
     stampRailTitleContext: 'po',
   },
@@ -463,6 +467,7 @@ const FEEDS = {
     autoSelectFirstWhenEmpty: true,
     limit: 50,
     refreshEvents: TRIAGE_REFRESH,
+    refreshDomains: RECEIVING_RAIL_DOMAINS,
     rowTitleMode: 'adaptive-po',
     stampRailTitleContext: 'po',
   },
@@ -476,6 +481,7 @@ const FEEDS = {
     getActivityAt: getViewedAt,
     autoSelectFirstWhenEmpty: false,
     refreshEvents: UNBOX_REFRESH,
+    refreshDomains: RECEIVING_RAIL_DOMAINS,
   },
   /** Triage default — Prioritize ∪ Unfound, newest-scanned first. */
   triageCombined: {
@@ -489,6 +495,7 @@ const FEEDS = {
     autoSelectFirstWhenEmpty: true,
     limit: 200,
     refreshEvents: TRIAGE_REFRESH,
+    refreshDomains: RECEIVING_RAIL_DOMAINS,
   },
   /** Triage "Unfound" — cartons Zoho can't match to a PO yet. */
   triageUnfound: {
@@ -501,6 +508,7 @@ const FEEDS = {
     autoSelectFirstWhenEmpty: true,
     limit: 200,
     refreshEvents: TRIAGE_REFRESH,
+    refreshDomains: RECEIVING_RAIL_DOMAINS,
   },
   /** Triage "Done" — cartons staged + saved for unbox (triage_complete = true). */
   triageDone: {
@@ -513,6 +521,7 @@ const FEEDS = {
     autoSelectFirstWhenEmpty: true,
     limit: 200,
     refreshEvents: [...TRIAGE_REFRESH, 'receiving-triage-completed'],
+    refreshDomains: RECEIVING_RAIL_DOMAINS,
   },
 } satisfies Record<string, ReceivingRailFeed>;
 

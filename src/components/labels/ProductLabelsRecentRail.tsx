@@ -20,9 +20,11 @@ import {
   labelPrintFeedToRailVM,
 } from '@/components/labels/product-labels-rail-vm';
 import type { LabelPrintFeedItem } from '@/hooks/useLabelPrintFeed';
+import type { RefreshDomain } from '@/lib/refresh/domains';
 
 const PRODUCT_LABELS_RAIL_LIMIT = 12;
-const PRODUCT_LABELS_RAIL_REFRESH_EVENTS = ['app-refresh-data', 'labels-print-feed'] as const;
+const PRODUCT_LABELS_RAIL_REFRESH_EVENTS = ['labels-print-feed'] as const;
+const PRODUCT_LABELS_RAIL_REFRESH_DOMAINS = ['orders.outbound'] as const satisfies readonly RefreshDomain[];
 
 const getActivityAt = (row: LabelPrintFeedItem) => row.printed_at;
 
@@ -82,6 +84,7 @@ export function ProductLabelsRecentRail() {
       queryKey={queryKey}
       fetchFn={fetchFn}
       refreshEvents={[...PRODUCT_LABELS_RAIL_REFRESH_EVENTS]}
+      refreshDomains={PRODUCT_LABELS_RAIL_REFRESH_DOMAINS}
       selectedId={selectedId}
       limit={PRODUCT_LABELS_RAIL_LIMIT}
       pinSelectedLead={false}

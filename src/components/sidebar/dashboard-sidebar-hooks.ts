@@ -9,14 +9,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import { emitAppEvent, useEventBridge } from '@/hooks';
+import { useEventBridge } from '@/hooks';
 import type { ShippedFormData } from '@/components/shipped';
+import { refreshDomains } from '@/lib/refresh/bus';
+import { REFRESH_BUNDLES } from '@/lib/refresh/domains';
 
-/**
- * Below this width the mobile drawer is unavailable (the layout shows the
- * docked desktop sidebar instead). Matches the legacy DashboardSidebar value.
- */
-export const MOBILE_SIDEBAR_MIN_WIDTH = 420;
 
 /**
  * The signed-in user's permissions as a `Set` for O(1) lookups, or `undefined`
@@ -32,51 +29,6 @@ export function useAuthPermissions(): Set<string> | undefined {
   }, [isLoaded, user]);
 }
 
-export interface MobileSidebarState {
-  /** True when the viewport is in the narrow-but-not-phone band that uses the drawer. */
-  canShow: boolean;
-  /** Whether the drawer is currently open. */
-  isOpen: boolean;
-  open: () => void;
-  close: () => void;
-}
-
-/**
- * Owns the mobile sidebar drawer: availability (driven by a resize listener)
- * and open/closed state. The drawer auto-closes whenever it becomes
- * unavailable or the route (path or query) changes.
- */
-export function useMobileSidebar(): MobileSidebarState {
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const [canShow, setCanShow] = useState(false);
-  const [isOpen, setIsOpen] = useState(false);
-
-  useEffect(() => {
-    const syncAvailability = () => {
-      const nextCanShow =
-        window.innerWidth >= MOBILE_SIDEBAR_MIN_WIDTH && window.innerWidth < 768;
-      setCanShow(nextCanShow);
-      if (!nextCanShow) setIsOpen(false);
-    };
-
-    syncAvailability();
-    window.addEventListener('resize', syncAvailability);
-    return () => window.removeEventListener('resize', syncAvailability);
-  }, []);
-
-  // Close the drawer on any navigation — path changes *and* search-param
-  // updates (e.g. openOrderId changing during up/down navigation).
-  useEffect(() => {
-    if (!pathname) return;
-    setIsOpen(false);
-  }, [pathname, searchParams]);
-
-  const open = useCallback(() => setIsOpen(true), []);
-  const close = useCallback(() => setIsOpen(false), []);
-
-  return { canShow, isOpen, open, close };
-}
 
 /**
  * Wires the cross-pane `open-shipped-details` / `close-shipped-details` window
@@ -151,8 +103,7 @@ export function useShippedFormSubmit(
           return;
         }
         onSuccess();
-        emitAppEvent('dashboard-refresh');
-        emitAppEvent('app-refresh-data');
+        refreshDomains(REFRESH_BUNDLES.outboundOrderWrite);
       } catch {
         alert('Error submitting form. Please try again.');
       }
