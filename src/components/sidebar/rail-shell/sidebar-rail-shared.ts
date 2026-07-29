@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import type { PaintSurface } from '@/lib/observability/paint-timing';
 
 import { formatLaneAgeCompact } from '@/utils/date';
+import type { RefreshDomain } from '@/lib/refresh/domains';
 
 export function railRelativeTime(iso: string | null | undefined): string {
   return formatLaneAgeCompact(iso) ?? '—';
@@ -87,8 +88,18 @@ export interface SidebarRailShellProps<TRow> {
    * whole carton/log is removed and all its lines should vanish from the rail.
    */
   deleteGroupEvent?: string;
-  /** Events that trigger a full query invalidation. */
+  /**
+   * Domain-specific events that trigger a full query invalidation — the rail's
+   * OWN vocabulary (`fba-print-shipped`, `packer-log-updated`, …), not a
+   * cross-app broadcast.
+   */
   refreshEvents?: string[];
+  /**
+   * Refresh domains this rail renders. Same debounced invalidation as
+   * {@link refreshEvents}, but the rail only wakes for writes that actually
+   * touched its data. SoT: `@/lib/refresh/domains`.
+   */
+  refreshDomains?: readonly RefreshDomain[];
   /**
    * Client-side subtractive DISPLAY filter — row ids hidden for THIS viewer
    * (e.g. the staffer's rail-dismiss set). Applied AFTER fetch, so it is

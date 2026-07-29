@@ -7,6 +7,7 @@ import { getOrdersChannelName, getRepairsChannelName, getStationChannelName, get
 import { useAblyChannel } from '@/hooks/useAblyChannel';
 import { useAuth } from '@/contexts/AuthContext';
 import { isOutOfStock as orderIsOutOfStock } from '@/utils/order-out-of-stock';
+import { useRefreshSignal } from '@/lib/refresh/bus';
 
 interface UseUpNextDataOptions {
   techId: string;
@@ -257,16 +258,8 @@ export function useUpNextData({ techId, onAllCompleted }: UseUpNextDataOptions) 
   useAblyChannel(fbaChannelName, 'fba.catalog.changed', debouncedRefresh, !!fbaChannelName);
 
   // Mirror the real-time update strategy from the Pending grid: respond to
-  // broadcast refresh events so data stays in sync without waiting for the poll.
-  useEffect(() => {
-    const handleRefresh = () => refreshRef.current();
-    window.addEventListener('app-refresh-data', handleRefresh);
-    window.addEventListener('dashboard-refresh', handleRefresh);
-    return () => {
-      window.removeEventListener('app-refresh-data', handleRefresh);
-      window.removeEventListener('dashboard-refresh', handleRefresh);
-    };
-  }, []);
+  // refresh signals so data stays in sync without waiting for the poll.
+  useRefreshSignal('upnext', () => refreshRef.current());
 
   return {
     allOrders,

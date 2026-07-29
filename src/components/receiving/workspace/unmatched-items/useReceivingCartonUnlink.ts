@@ -6,6 +6,8 @@ import { toast } from '@/lib/toast';
 import { requestConfirm } from '@/design-system/components/confirm';
 import { dispatchReceivingCartonUnlinkPatch } from '@/components/station/receiving-lines-table-helpers';
 import { invalidateReceivingFeeds } from '@/lib/queries/receiving-queries';
+import { refreshDomains } from '@/lib/refresh/bus';
+import { REFRESH_BUNDLES } from '@/lib/refresh/domains';
 
 export interface ReceivingCartonUnlinkOptions {
   receivingId: number;
@@ -50,7 +52,7 @@ export function useReceivingCartonUnlink() {
         }
 
         dispatchReceivingCartonUnlinkPatch(receivingId, lineId);
-        window.dispatchEvent(new CustomEvent('app-refresh-data'));
+        refreshDomains(REFRESH_BUNDLES.receivingWrite);
         invalidateReceivingFeeds(queryClient);
         onSuccess?.();
         toast.success('Unlinked — back on the Unfound queue');

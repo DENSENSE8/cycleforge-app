@@ -8,6 +8,7 @@ import { useWorkOrderAssignment } from './useWorkOrderAssignment';
 import type { RepairQueueItem } from '@/components/station/upnext/upnext-types';
 import type { WorkOrderRow } from '@/components/work-orders/types';
 import type { AssignmentConfirmPayload } from '@/components/work-orders/WorkOrderAssignmentCard';
+import { refreshDomains } from '@/lib/refresh/bus';
 
 interface UseUpNextRepairCardOptions {
   repair: RepairQueueItem;
@@ -65,7 +66,7 @@ export function useUpNextRepairCard({ repair, techId, onRefresh }: UseUpNextRepa
         const data = await res.json().catch(() => ({}));
         throw new Error(data?.details || data?.error || 'Failed to save');
       }
-      window.dispatchEvent(new CustomEvent('app-refresh-data'));
+      refreshDomains(['repairs', 'upnext']);
       onRefresh?.();
     } catch (err: any) {
       window.alert(err?.message || 'Failed to save assignment');
@@ -88,7 +89,7 @@ export function useUpNextRepairCard({ repair, techId, onRefresh }: UseUpNextRepa
       if (!res.ok) throw new Error('Failed to save');
       setShowOosInput(false);
       setOosText('');
-      window.dispatchEvent(new CustomEvent('app-refresh-data'));
+      refreshDomains(['repairs', 'upnext']);
       onRefresh?.();
     } catch (err: any) {
       window.alert(err?.message || 'Failed to save out of stock');
@@ -120,7 +121,7 @@ export function useUpNextRepairCard({ repair, techId, onRefresh }: UseUpNextRepa
       if (!res.ok) throw new Error('Failed to mark repaired');
       setShowRepairedInput(false);
       setOutcomeText('');
-      window.dispatchEvent(new CustomEvent('app-refresh-data'));
+      refreshDomains(['repairs', 'upnext']);
       onRefresh?.();
     } catch (err: any) {
       window.alert(err?.message || 'Failed to mark repair as repaired');

@@ -6,6 +6,7 @@ import { invalidatePackerCounts } from '@/lib/queries/station-cache-patch';
 import { getStationChannelName, safeChannelName } from '@/lib/realtime/channels';
 import { useAblyChannel } from './useAblyChannel';
 import { useAuth } from '@/contexts/AuthContext';
+import { useRefreshSignal } from '@/lib/refresh/bus';
 
 export interface PackerRecord {
   id: number;
@@ -172,13 +173,9 @@ export function usePackerLogs(packerId: number, options: UsePackerLogsOptions = 
   }, [queryClient, packerId]);
 
   // ── Full invalidation for manual refreshes ────────────────────────────────
-  useEffect(() => {
-    const handleRefresh = () => {
-      queryClient.invalidateQueries({ queryKey: ['packer-logs', packerId] });
-    };
-    window.addEventListener('app-refresh-data', handleRefresh);
-    return () => window.removeEventListener('app-refresh-data', handleRefresh);
-  }, [queryClient, packerId]);
+  useRefreshSignal('packer.logs', () => {
+    queryClient.invalidateQueries({ queryKey: ['packer-logs', packerId] });
+  });
 
   return query;
 }

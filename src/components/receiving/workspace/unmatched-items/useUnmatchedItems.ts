@@ -40,6 +40,8 @@ import {
 import { dispatchLineUpdated } from '@/components/station/ReceivingLinesTable';
 import { dispatchUnboxRailLineUpdated } from '@/components/sidebar/receiving/unbox-rail-events';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import { refreshDomains } from '@/lib/refresh/bus';
+import { REFRESH_BUNDLES } from '@/lib/refresh/domains';
 
 /**
  * Owns an unmatched (no-Zoho-PO) carton's items section: fetching the carton's
@@ -159,7 +161,7 @@ export function useUnmatchedItems({
           toast.error(b?.error ?? `Could not set the receiving type (${res.status})`);
           return;
         }
-        window.dispatchEvent(new CustomEvent('app-refresh-data'));
+        refreshDomains(REFRESH_BUNDLES.receivingWrite);
         window.dispatchEvent(
           new CustomEvent('receiving-package-updated', {
             detail: { receiving_id: receivingId, ...payload },
@@ -576,7 +578,7 @@ export function useUnmatchedItems({
           | { zoho_purchaseorder_number: string | null; source: string | null; source_platform: string | null }
           | null
           | undefined;
-        window.dispatchEvent(new CustomEvent('app-refresh-data'));
+        refreshDomains(REFRESH_BUNDLES.receivingWrite);
         window.dispatchEvent(
           new CustomEvent('receiving-package-updated', {
             detail: {
@@ -604,7 +606,7 @@ export function useUnmatchedItems({
         toast.success(
           opts?.allowOffPo ? `Added off-PO · ${label}` : `Acknowledged · ${label}`,
         );
-        window.dispatchEvent(new CustomEvent('app-refresh-data'));
+        refreshDomains(REFRESH_BUNDLES.receivingWrite);
         // Upgrade an unfound stub / refresh the open panel — carton stays unmatched
         // unless the server promoted it (no source_order_id on catalog-only adds).
         onLinked?.({
@@ -670,7 +672,7 @@ export function useUnmatchedItems({
         // Re-evaluate carton-level state: if the operator just removed the
         // last line, the carton goes back to "unfound" and the queue may
         // want to re-surface it.
-        window.dispatchEvent(new CustomEvent('app-refresh-data'));
+        refreshDomains(REFRESH_BUNDLES.receivingWrite);
       } catch (err) {
         setLines(prev);
         toast.error(err instanceof Error ? err.message : 'Remove failed');

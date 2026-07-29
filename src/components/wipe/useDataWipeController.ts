@@ -7,6 +7,7 @@ import { safeRandomUUID } from '@/lib/safe-uuid';
 // client. This keeps the wipe-method enum a single source of truth without
 // dragging DB code into the browser bundle.
 import type { WipeMethod } from '@/lib/tech/recordDataWipe';
+import { refreshDomains } from '@/lib/refresh/bus';
 
 /**
  * Station controller for the Data-Wipe bench — the scan → resolve → active-card
@@ -228,7 +229,7 @@ export function useDataWipeController() {
         const kind: WipeOutcome['kind'] = success ? 'wiped' : 'failed';
         setOutcome({ kind, method: wipeMethod, idempotent: Boolean(data.idempotent), unit });
         playWipeCue(kind);
-        window.dispatchEvent(new CustomEvent('app-refresh-data'));
+        refreshDomains(['receiving.lines', 'upnext']);
 
         // Act-and-clear: the finished unit gets out of the way for the next scan.
         clearAutoHideTimer();

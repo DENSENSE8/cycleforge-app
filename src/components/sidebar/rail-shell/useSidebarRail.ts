@@ -13,6 +13,11 @@ import {
   parseReceivingPrependedDetail,
   receivingPrependMatchesRail,
 } from '@/lib/queries/receiving-queries';
+import { useRefreshSignal } from '@/lib/refresh/bus';
+import type { RefreshDomain } from '@/lib/refresh/domains';
+
+/** Stable empty tuple so a rail without domains keeps a constant subscription key. */
+const EMPTY_DOMAINS: readonly RefreshDomain[] = [];
 
 /** Stable empty exclusion set — a fresh `new Set()` each render would defeat memo identity. */
 const EMPTY_EXCLUDED: ReadonlySet<number> = new Set();
@@ -35,7 +40,8 @@ const RAIL_REFRESH_DEBOUNCE_MS = 350;
  * Returns a controller bag the thin {@link SidebarRailShell} renders from.
  */
 export function useSidebarRail<TRow>({
-  queryKey, fetchFn, updateEvent, deleteEvent, deleteGroupEvent, refreshEvents, navigateEvent,
+  queryKey, fetchFn, updateEvent, deleteEvent, deleteGroupEvent, refreshEvents, refreshDomains,
+  navigateEvent,
   excludedIds = EMPTY_EXCLUDED, loadSnapshot, persistSnapshot,
   selectedId, selectedRow = null, leadingRow = null, limit = 25,
   autoSelectFirstWhenEmpty = false,
@@ -252,6 +258,18 @@ export function useSidebarRail<TRow>({
     window.addEventListener('receiving-lines-prepended', handler);
     return () => window.removeEventListener('receiving-lines-prepended', handler);
   }, [getId, getGroupId, sortRowsByActivity, queryKey]);
+
+
+  // Same debounced reconciliation, driven by refresh DOMAINS instead of raw
+  // event names — the rail wakes only for writes that touched its data.
+  const domainRefreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useRefreshSignal(refreshDomains ?? EMPTY_DOMAINS, () => {
+    if (domainRefreshTimer.current) clearTimeout(domainRefreshTimer.current);
+    domainRefreshTimer.current = setTimeout(() => {
+      domainRefreshTimer.current = null;
+      queryClient.invalidateQueries({ queryKey });
+    }, RAIL_REFRESH_DEBOUNCE_MS);
+  });
 
   useEffect(() => {
     if (!refreshEvents || refreshEvents.length === 0) return;

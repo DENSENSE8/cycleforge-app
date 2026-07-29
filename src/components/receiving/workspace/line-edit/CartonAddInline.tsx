@@ -26,6 +26,8 @@ import {
   type CartonAddSelection,
   type CartonAddTab,
 } from '@/components/receiving/workspace/carton-add/carton-add-types';
+import { refreshDomains } from '@/lib/refresh/bus';
+import { REFRESH_BUNDLES } from '@/lib/refresh/domains';
 
 export function CartonAddInline({
   receivingId,
@@ -66,7 +68,7 @@ export function CartonAddInline({
     toast.success(allowOffPo ? `Added off-PO · ${sel.item_name || sel.sku || 'item'}` : 'Item added');
     // PoLinesAccordion invalidates its siblings query on this event; the feeds
     // refresh keeps the rails/table in sync.
-    window.dispatchEvent(new CustomEvent('app-refresh-data'));
+    refreshDomains(REFRESH_BUNDLES.receivingWrite);
     invalidateReceivingFeeds(queryClient);
   };
 
@@ -85,7 +87,7 @@ export function CartonAddInline({
               size="sm"
               icon={<Icon className="h-3.5 w-3.5" />}
               onClick={() => setTab(t)}
-              className="h-7 gap-1.5 px-2.5 text-role-micro font-bold uppercase tracking-wider"
+              className="h-7 gap-1.5 px-2.5 text-role-micro uppercase tracking-wider"
             >
               {label}
             </Button>

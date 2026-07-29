@@ -30,6 +30,7 @@ import {
   type ReceivingRailRowTitleMode,
 } from '@/lib/receiving/po-group-title';
 import { receivingRailReconcileId } from '@/lib/queries/receiving-queries';
+import type { RefreshDomain } from '@/lib/refresh/domains';
 
 export interface ApiResponse {
   success: boolean;
@@ -38,6 +39,8 @@ export interface ApiResponse {
 }
 
 export interface RecentActivityRailBaseProps {
+  /** Refresh domains this rail renders (see `@/lib/refresh/domains`). */
+  refreshDomains?: readonly RefreshDomain[];
   /** Currently selected line id — gets a highlight ring so the rail mirrors the workspace. */
   selectedLineId: number | null;
   /** Full selected row, when available — keeps the active line always present. */
@@ -213,6 +216,7 @@ export function RecentActivityRailBase({
   deleteEvent,
   deleteGroupEvent,
   refreshEvents,
+  refreshDomains,
   navigateEvent,
   eyebrowTitle,
   eyebrowSuffix,
@@ -251,6 +255,7 @@ export function RecentActivityRailBase({
       deleteEvent={deleteEvent}
       deleteGroupEvent={deleteGroupEvent}
       refreshEvents={refreshEvents}
+      refreshDomains={refreshDomains}
       navigateEvent={navigateEvent}
       selectedId={selectedLineId}
       selectedRow={selectedRow}
@@ -402,9 +407,9 @@ function ReceivingPopoverContent({
     <div className="space-y-3 p-3.5">
       <div>
         <div className="flex items-start gap-2">
-          <p className="flex-1 text-sm font-black leading-snug text-text-default">{title}</p>
+          <p className="flex-1 text-sm font-semibold leading-snug text-text-default">{title}</p>
           {groupSize > 1 ? (
-            <span className="shrink-0 rounded bg-indigo-100 inset-chip text-[8.5px] font-black uppercase tracking-widest text-indigo-700">PKG · {groupSize}</span>
+            <span className="shrink-0 rounded bg-indigo-100 inset-chip text-[8.5px] font-semibold uppercase tracking-widest text-indigo-700">PKG · {groupSize}</span>
           ) : null}
         </div>
         <div className="mt-1.5 flex flex-wrap items-center gap-1">
@@ -457,7 +462,7 @@ function ReceivingPopoverContent({
       <div>
         <div className="flex items-baseline justify-between">
           <span className="text-role-eyebrow uppercase tracking-widest text-text-faint">{qtyLabel}</span>
-          <span className={`text-role-caption font-black tabular-nums ${isComplete ? 'text-emerald-600' : 'text-text-muted'}`}>
+          <span className={`text-role-caption font-semibold tabular-nums ${isComplete ? 'text-emerald-600' : 'text-text-muted'}`}>
             {qtyCurrent}<span className="text-text-faint mx-0.5">/</span><span className="text-text-faint">{qtyTotal ?? '?'}</span>
           </span>
         </div>
@@ -492,7 +497,7 @@ function ReceivingPopoverContent({
       </div>
 
       <div className="flex items-center justify-between border-t border-border-hairline pt-2.5">
-        <span className="text-role-eyebrow font-bold uppercase tracking-widest text-text-faint">
+        <span className="text-role-eyebrow uppercase tracking-widest text-text-faint">
           {activityAt
             ? `${railRelativeTime(activityAt)} ago`
             : '—'}

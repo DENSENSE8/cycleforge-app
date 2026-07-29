@@ -15,13 +15,14 @@ import {
 } from '@/components/fba/sidebar/fbaShipmentTracking';
 import { fbaWorkspaceScanChrome } from '@/utils/staff-colors';
 import { useStationTheme } from '@/hooks/useStationTheme';
-import { FBA_SCAN_STATUS, FBA_ACTIVE_SHIPMENTS_REFRESH, APP_REFRESH_DATA } from '@/lib/fba/events';
+import { FBA_SCAN_STATUS, FBA_ACTIVE_SHIPMENTS_REFRESH } from '@/lib/fba/events';
 import { SIDEBAR_INTAKE_LABEL_CLASS } from '@/design-system/components/sidebar-intake/intakeFormClasses';
 import { framerTransition } from '@/design-system/foundations/motion-framer';
 import { Button } from '@/design-system/primitives';
+import { refreshDomain } from '@/lib/refresh/bus';
 
 const fieldBaseClass =
-  'mt-1 w-full rounded-xl border-2 border-border-emphasis bg-surface-card px-3 py-2.5 text-sm font-bold text-text-default outline-none transition-all placeholder:text-text-faint focus:border-transparent focus:ring-2 disabled:opacity-50';
+  'mt-1 w-full rounded-xl border-2 border-border-emphasis bg-surface-card px-3 py-2.5 text-sm font-semibold text-text-default outline-none transition-all placeholder:text-text-faint focus:border-transparent focus:ring-2 disabled:opacity-50';
 
 const TRACKING_PANEL_VARIANTS = {
   hidden: { opacity: 0 },
@@ -177,7 +178,7 @@ export function FbaWorkspaceScanField({
       clearSelection();
       window.dispatchEvent(new CustomEvent(FBA_SCAN_STATUS, { detail: 'Tracking saved' }));
       window.dispatchEvent(new CustomEvent(FBA_ACTIVE_SHIPMENTS_REFRESH));
-      window.dispatchEvent(new CustomEvent(APP_REFRESH_DATA));
+      refreshDomain('orders.outbound');
     } catch (err: any) {
       setSaveError(err?.message || 'Failed to save tracking');
     } finally {
@@ -273,7 +274,7 @@ export function FbaWorkspaceScanField({
                 type="button"
                 onClick={() => void onSaveTracking()}
                 disabled={saving || !trackingReady}
-                className={`h-auto w-full rounded-xl border-2 px-3 py-2.5 text-role-caption font-black uppercase tracking-[0.12em] ring-0 ${
+                className={`h-auto w-full rounded-xl border-2 px-3 py-2.5 text-role-caption font-semibold uppercase tracking-[0.12em] ring-0 ${
                   trackingReady && !saving
                     ? `${themeColors.border} ${themeColors.light} text-text-default hover:opacity-95`
                     : 'cursor-not-allowed border-border-soft bg-surface-sunken text-text-faint'

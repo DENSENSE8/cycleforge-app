@@ -38,6 +38,7 @@ import {
   fbaShipmentsQuery,
   type FBAShipmentLifecycleRow,
 } from '@/lib/queries/dashboard-queries';
+import { refreshDomain } from '@/lib/refresh/bus';
 
 function ReadinessBar({ ready, total }: { ready: number; total: number }) {
   const pct = total > 0 ? Math.round((ready / total) * 100) : 0;
@@ -49,7 +50,7 @@ function ReadinessBar({ ready, total }: { ready: number; total: number }) {
           style={{ width: `${pct}%` }}
         />
       </div>
-      <span className="text-role-micro font-bold tabular-nums text-text-soft">
+      <span className="text-role-micro tabular-nums text-text-soft">
         {ready}/{total}
       </span>
     </div>
@@ -79,8 +80,7 @@ function QtyCellWithRemove({ row }: { row: FBAShipmentLifecycleRow }) {
       const del = await fetch(fbaPaths.planItem(row.id, items[0].id), { method: 'DELETE' });
       if (del.ok) {
         await queryClient.invalidateQueries({ queryKey: ['dashboard-fba-shipments'] });
-        window.dispatchEvent(new CustomEvent('app-refresh-data'));
-        window.dispatchEvent(new CustomEvent('dashboard-refresh'));
+        refreshDomain('orders.outbound');
       }
     } finally {
       setBusy(false);
@@ -130,7 +130,7 @@ const COLUMNS: DataTableColumn<FBAShipmentLifecycleRow>[] = [
     header: 'Shipment Ref',
     cell: (row) => (
       <>
-        <span className="font-mono font-black text-text-fulfillment">{row.shipment_ref}</span>
+        <span className="font-mono font-semibold text-text-fulfillment">{row.shipment_ref}</span>
         {row.notes ? (
           <p className="max-w-[140px] truncate text-role-eyebrow font-normal text-text-soft">
             {row.notes}
@@ -212,7 +212,7 @@ export default function FbaShipmentsTable() {
   if (isError) {
     return (
       <div className="rounded-xl border border-dashed border-border-danger bg-surface-danger px-4 py-6 text-center">
-        <p className="text-role-caption font-black uppercase tracking-widest text-text-danger">
+        <p className="text-role-caption font-semibold uppercase tracking-widest text-text-danger">
           Failed to load FBA shipments
         </p>
       </div>

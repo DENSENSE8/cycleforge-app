@@ -11,13 +11,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import {
-  APP_REFRESH_DATA,
   FBA_PRINT_SHIPPED,
   FBA_BOARD_INJECT_ITEM,
   FBA_BOARD_REMOVE_ITEMS,
 } from '@/lib/fba/events';
 import type { FbaBoardItem } from '@/components/fba/FbaBoardTable';
 import type { CombineData } from './fba-page-helpers';
+import { useRefreshSignal } from '@/lib/refresh/bus';
 
 export interface FbaBoardData {
   board: CombineData;
@@ -55,9 +55,10 @@ export function useFbaBoard(): FbaBoardData {
     fetchBoard();
   }, [fetchBoard, refreshTrigger]);
 
+  useRefreshSignal('orders.outbound', () => fetchBoard());
+
   useEffect(() => {
     const handler = () => fetchBoard();
-    window.addEventListener(APP_REFRESH_DATA, handler);
     window.addEventListener(FBA_PRINT_SHIPPED, handler);
 
     // Select-mode auto-add: inject a single item without a full board refresh.
@@ -83,7 +84,6 @@ export function useFbaBoard(): FbaBoardData {
     window.addEventListener(FBA_BOARD_REMOVE_ITEMS, removeHandler);
 
     return () => {
-      window.removeEventListener(APP_REFRESH_DATA, handler);
       window.removeEventListener(FBA_PRINT_SHIPPED, handler);
       window.removeEventListener(FBA_BOARD_INJECT_ITEM, injectHandler);
       window.removeEventListener(FBA_BOARD_REMOVE_ITEMS, removeHandler);

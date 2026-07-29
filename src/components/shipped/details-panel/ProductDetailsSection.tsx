@@ -24,6 +24,7 @@ import { conditionLabel } from '@/lib/conditions';
 import { toast } from '@/lib/toast';
 
 import { normalizeCondition, type ConditionGrade } from '@/components/tech/StationConditionEditor';
+import { refreshDomain } from '@/lib/refresh/bus';
 
 // Per-platform CopyChip styling. Underline color matches the chip palette used
 // by SkuIdentity / order-platform.ts so the panel stays consistent with the
@@ -226,8 +227,7 @@ export function ProductDetailsSection({
   const showFnskuCatalog = isFnskuCatalogContext(shipped) && Boolean(fnskuCatalogValue);
 
   const refreshAfterCatalogSave = () => {
-    window.dispatchEvent(new CustomEvent('dashboard-refresh'));
-    window.dispatchEvent(new Event('app-refresh-data'));
+    refreshDomain('orders.outbound');
   };
 
   const canonicalSku = (skuIdentity.canonicalSku || shipped.sku || '').trim();
@@ -313,7 +313,7 @@ export function ProductDetailsSection({
     >
       {hasItemNumber ? (
         <div className="space-y-0">
-          <p className="truncate text-sm font-bold text-text-default">{itemNumberValue}</p>
+          <p className="truncate text-sm font-semibold text-text-default">{itemNumberValue}</p>
           <ContextualManualLinkRow
             sku={shipped.sku}
             itemNumber={itemNumberValue}

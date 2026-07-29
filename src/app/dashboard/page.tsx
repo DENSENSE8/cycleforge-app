@@ -33,6 +33,7 @@ import { DashboardSearchView } from '@/components/dashboard/search/DashboardSear
 import { DashboardOrderDetails } from '@/components/dashboard/DashboardOrderDetails';
 import { buildSupportWarrantyRedirectSearch } from '@/utils/dashboard-search-state';
 import { getDashboardModeFromSearch } from '@/lib/dashboard/dashboard-domains';
+import { refreshDomain } from '@/lib/refresh/bus';
 
 function DashboardPageContent() {
   const router = useRouter();
@@ -62,7 +63,7 @@ function DashboardPageContent() {
   useDashboardViewWarmup({ orderView, searchQuery, enabled: isOutbound });
 
   const refreshDashboard = useCallback(() => {
-    window.dispatchEvent(new CustomEvent('dashboard-refresh'));
+    refreshDomain('orders.outbound');
   }, []);
 
   if (searchParams.has('warranty')) {

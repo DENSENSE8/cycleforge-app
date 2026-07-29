@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { dispatchLineUpdated } from '@/components/station/ReceivingLinesTable';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { parseZendeskListingFromPoNotes } from '@/lib/zoho-po-prefill';
+import { refreshDomains } from '@/lib/refresh/bus';
+import { REFRESH_BUNDLES } from '@/lib/refresh/domains';
 
 /**
  * Refresh ↔ Zoho for a single receiving line. Always searches by tracking#
@@ -66,7 +68,7 @@ export function useZohoSync(
           dispatchLine(lineData.receiving_line as ReceivingLineRow);
         }
       } catch { /* line refetch best-effort */ }
-      window.dispatchEvent(new CustomEvent('app-refresh-data'));
+      refreshDomains(REFRESH_BUNDLES.receivingWrite);
 
       return (data?.zoho_notes ?? null) as string | null;
     } catch {
@@ -159,7 +161,7 @@ export function useZohoSync(
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ trackingNumber: tracking, staffId: Number(staffId) }),
         });
-        window.dispatchEvent(new CustomEvent('app-refresh-data'));
+        refreshDomains(REFRESH_BUNDLES.receivingWrite);
       }
 
       // Re-fetch the line so sidebar + table pick up every change.

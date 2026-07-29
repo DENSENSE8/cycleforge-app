@@ -15,6 +15,11 @@
  *     a support ticket inline. Back collapses to the compact action grid.
  *   • **Zoho** (RefreshCw) — FETCH: re-run the Zoho PO tracking search.
  *   • **Amazon return** (PackageCheck) — FETCH: reverse-tracking SP-API lookup.
+ *   • **Find ticket** (TicketHelp) — search the helpdesk for a ticket matching
+ *     this carton's TRACKING NUMBER and link the picked one to the carton/line.
+ *     Composes the shared link waist (`TicketLinkPopover` →
+ *     GET/POST /api/support/tickets/link), seeded with the tracking number —
+ *     the reverse of "File ticket", which mints a new one.
  */
 
 import {
@@ -67,10 +72,13 @@ import type {
   ShippedOrderSuggestion,
 } from '@/lib/receiving/returned-serial-link';
 import { diffSerials, pickClosestShippedSerial } from '@/lib/receiving/serial-diff';
+import { TicketLinkPopover } from '@/components/support/context/TicketLinkPopover';
 import { ClaimTicketReply } from '@/components/receiving/workspace/claim/components/ClaimTicketReply';
 import { useClaimTicketReply } from '@/components/receiving/workspace/claim/hooks/useClaimTicketReply';
 import type { FiledTicket } from '@/components/receiving/workspace/claim/claim-types';
 import { WorkspaceSectionTitle } from '../WorkspaceSectionLabel';
+import { refreshDomains } from '@/lib/refresh/bus';
+import { REFRESH_BUNDLES } from '@/lib/refresh/domains';
 
 type IconComponent = ComponentType<SVGProps<SVGSVGElement>>;
 
@@ -111,14 +119,16 @@ export function UnfoundMatchStrip({
   );
   const compare = useShippedOrderCompare();
   // Order # search is the primary lane — open by default. Back collapses to the
-  // compact action grid (Order # · Zoho · Amazon); Order # re-opens the search.
-  const [orderSearchOpen, setOrderSearchOpen] = useState(true);
-  const hasTracking = Boolean(trackingNumber?.trim());
+  // compact action grid (Order # · Zoho · Amazon · Find ticket); Order # re-opens
+  // the search, Find ticket opens the helpdesk ticket picker.
+  const [lane, setLane] = useState<'order' | 'ticket' | 'actions'>('order');
+  const trimmedTracking = (trackingNumber ?? '').trim();
+  const hasTracking = Boolean(trimmedTracking);
   const noReceiving = receivingId == null;
   const notice = pickMergedRefetchNotice(zoho, amazon);
 
   const closeSearch = () => {
-    setOrderSearchOpen(false);
+    setLane('actions');
     compare.reset();
   };
 
@@ -135,7 +145,20 @@ export function UnfoundMatchStrip({
       <WorkspaceSectionTitle as="p">Auto-match</WorkspaceSectionTitle>
 
       <AnimatePresence mode="wait" initial={false}>
-        {orderSearchOpen ? (
+        {lane === 'ticket' ? (
+          <motion.div key="ticket-search" {...stepPresence} transition={stepTransition}>
+            <TicketMatchLane
+              receivingId={receivingId}
+              lineId={lineId}
+              trackingNumber={trimmedTracking}
+              onBack={() => setLane('actions')}
+              onLinked={() => {
+                onTicketChanged?.();
+                setLane('actions');
+              }}
+            />
+          </motion.div>
+        ) : lane === 'order' ? (
           <motion.div key="order-search" {...stepPresence} transition={stepTransition}>
             <OrderSearchRow
               state={compare.state}
@@ -158,7 +181,7 @@ export function UnfoundMatchStrip({
             key="actions"
             {...stepPresence}
             transition={stepTransition}
-            className="grid grid-cols-1 gap-2 sm:grid-cols-3"
+            className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4"
           >
             {/* Order # is a different kind of action than its peers — it opens a
                 LOCAL search rather than firing a platform fetch — so it wears the
@@ -169,7 +192,7 @@ export function UnfoundMatchStrip({
               tone="blue"
               tooltip="Search our shipped records by order number"
               disabled={noReceiving}
-              onClick={() => setOrderSearchOpen(true)}
+              onClick={() => setLane('order')}
             />
             <StripButton
               icon={RefreshCw}
@@ -191,11 +214,24 @@ export function UnfoundMatchStrip({
               disabled={noReceiving || !hasTracking || busy}
               onClick={() => void checkAmazon()}
             />
+            {/* Reverse of "File ticket": find an EXISTING helpdesk ticket for
+                this carton by its tracking number and link it. */}
+            <StripButton
+              icon={TicketHelp}
+              label="Find ticket"
+              tooltip={
+                hasTracking
+                  ? 'Search the helpdesk for a ticket matching this tracking number'
+                  : 'Add a tracking number to this carton first'
+              }
+              disabled={noReceiving || !hasTracking}
+              onClick={() => setLane('ticket')}
+            />
           </motion.div>
         )}
       </AnimatePresence>
 
-      {!orderSearchOpen && notice ? <MergedNotice state={notice} /> : null}
+      {lane === 'actions' && notice ? <MergedNotice state={notice} /> : null}
     </div>
   );
 }
@@ -235,9 +271,64 @@ function StripButton({
         }`}
         icon={<Icon className="h-4 w-4 shrink-0" />}
       >
-        <span className="truncate text-role-caption font-bold">{label}</span>
+        <span className="truncate text-role-caption font-semibold">{label}</span>
       </Button>
     </HoverTooltip>
+  );
+}
+
+/**
+ * "Find ticket" lane — search the helpdesk for an EXISTING ticket about this
+ * carton and link it. The query is seeded with the carton's tracking number, so
+ * the operator lands on the matching ticket without typing (and can still edit
+ * the box or paste a `#id`).
+ *
+ * Composes the shared link waist rather than forking a second picker: the
+ * candidate list + link mutation are {@link TicketLinkPopover}
+ * (GET/POST `/api/support/tickets/link`, anchor = this receiving carton/line).
+ */
+function TicketMatchLane({
+  receivingId,
+  lineId,
+  trackingNumber,
+  onBack,
+  onLinked,
+}: {
+  receivingId: number | null;
+  lineId: number | null;
+  trackingNumber: string;
+  onBack: () => void;
+  onLinked: () => void;
+}) {
+  if (receivingId == null) return null;
+  return (
+    <div className="flex min-w-0 items-start gap-2">
+      <IconButton
+        type="button"
+        icon={<ChevronLeft className="h-4 w-4" />}
+        ariaLabel="Back to auto-match options"
+        tone="neutral"
+        onClick={onBack}
+        className="grid h-11 w-9 shrink-0 place-items-center rounded-lg ring-1 ring-inset ring-border-soft hover:bg-surface-canvas"
+      />
+      <div className="min-w-0 flex-1">
+        <TicketLinkPopover
+          open
+          title="Find ticket by tracking"
+          initialQuery={trackingNumber}
+          linkable={{
+            canLinkTicket: true,
+            anchorType: 'receiving',
+            anchorId: receivingId,
+            receivingId,
+            lineId: lineId ?? null,
+            trackingNumber,
+          }}
+          onClose={onBack}
+          onLinked={onLinked}
+        />
+      </div>
+    </div>
   );
 }
 
@@ -335,7 +426,7 @@ function OrderSearchRow({
         if (data.line_patch?.id) {
           dispatchUnboxRailLineUpdated(data.line_patch);
         }
-        window.dispatchEvent(new CustomEvent('app-refresh-data'));
+        refreshDomains(REFRESH_BUNDLES.receivingWrite);
         onLinked();
       } catch (err) {
         toast.error(err instanceof Error ? err.message : 'Network error');
@@ -467,11 +558,11 @@ function OrderSuggestList({
             <span className="min-w-0">
               {c.product_title ? (
                 // ds-allow-title
-                <span className="block truncate text-role-caption font-bold text-text-default">
+                <span className="block truncate text-role-caption font-semibold text-text-default">
                   {c.product_title}
                 </span>
               ) : (
-                <span className="block text-role-caption font-bold text-text-muted">Order</span>
+                <span className="block text-role-caption font-semibold text-text-muted">Order</span>
               )}
               {c.sku ? (
                 <span className="block truncate text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint">
@@ -568,11 +659,11 @@ function CompareResult({
         <div className="min-w-0">
           {order.product_title ? (
             // ds-allow-title
-            <p className="truncate text-role-caption font-bold text-text-default" title={order.product_title}>
+            <p className="truncate text-role-caption font-semibold text-text-default" title={order.product_title}>
               {order.product_title}
             </p>
           ) : (
-            <p className="text-role-caption font-bold text-text-muted">Order found</p>
+            <p className="text-role-caption font-semibold text-text-muted">Order found</p>
           )}
           {order.sku ? (
             <p className="truncate text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint">
@@ -715,7 +806,7 @@ function LogSerialButton({
       setStatus('logged');
       // Reflect the newly-paired serial on the carton/line surfaces.
       if (data.paired_to_line) {
-        window.dispatchEvent(new CustomEvent('app-refresh-data'));
+        refreshDomains(REFRESH_BUNDLES.receivingWrite);
         if (lineId != null) {
           window.dispatchEvent(
             new CustomEvent('receiving-line-updated', { detail: { id: lineId } }),
@@ -744,7 +835,7 @@ function LogSerialButton({
         className="shrink-0 gap-1.5 rounded-lg px-3"
         icon={status === 'logged' ? <Check className="h-4 w-4" /> : <Database className="h-4 w-4" />}
       >
-        <span className="text-role-caption font-bold">{status === 'logged' ? 'Logged' : 'Log serial'}</span>
+        <span className="text-role-caption font-semibold">{status === 'logged' ? 'Logged' : 'Log serial'}</span>
       </Button>
     </HoverTooltip>
   );
@@ -797,7 +888,7 @@ function SupportTicketPopover({
         className="shrink-0 gap-1.5 rounded-lg px-3"
         icon={<TicketHelp className="h-4 w-4 shrink-0" />}
       >
-        <span className="text-role-caption font-bold">{hasTicket ? 'Ticket' : 'File ticket'}</span>
+        <span className="text-role-caption font-semibold">{hasTicket ? 'Ticket' : 'File ticket'}</span>
       </Button>
       <Popover open={open} onClose={() => setOpen(false)} anchorRef={anchorRef} placement="bottom-end">
         <div
@@ -808,7 +899,7 @@ function SupportTicketPopover({
           <div className="flex items-center justify-between gap-2">
             <div className="flex min-w-0 items-center gap-1.5">
               <TicketHelp className="h-4 w-4 shrink-0 text-orange-500" />
-              <span className="truncate text-role-caption font-bold text-text-default">
+              <span className="truncate text-role-caption font-semibold text-text-default">
                 {hasTicket ? `Ticket ${ticketNumber ?? ''}`.trim() : 'New support ticket'}
               </span>
             </div>

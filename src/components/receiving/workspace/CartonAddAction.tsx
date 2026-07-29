@@ -11,6 +11,8 @@ import {
   type AssignedBox,
   type CartonAddSelection,
 } from '@/components/receiving/workspace/CartonAddPopover';
+import { refreshDomains } from '@/lib/refresh/bus';
+import { REFRESH_BUNDLES } from '@/lib/refresh/domains';
 
 /**
  * Carton add action — a `+` button (same shape as the unfound "+ Add item"
@@ -51,7 +53,7 @@ export function CartonAddAction({ receivingId, unitIds }: { receivingId: number;
       }
       toast.success(`Added off-PO · ${sel.item_name || sel.sku || 'item'}`);
       // The accordion invalidates its siblings query on this event.
-      window.dispatchEvent(new Event('app-refresh-data'));
+      refreshDomains(REFRESH_BUNDLES.receivingWrite);
       setOpen(false);
     },
     [receivingId],

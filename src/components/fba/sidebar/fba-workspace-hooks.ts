@@ -24,6 +24,7 @@ import {
   type FbaMode,
 } from '@/lib/fba/fba-modes';
 import type { PendingPlan } from '@/components/fba/sidebar/fba-sidebar-shared';
+import { useRefreshSignal } from '@/lib/refresh/bus';
 
 /** Patch shape for the FBA workspace URL search params (under /outbound?mode=fba). */
 export interface FbaParamPatch {
@@ -222,9 +223,9 @@ export function useFbaPlanData({ activeMode, refreshToken, orgId }: UseFbaPlanDa
     return () => clearInterval(interval);
   }, [activeMode, loadPendingPlans]);
 
+  useRefreshSignal('orders.outbound', () => loadPendingPlans());
+
   useEventBridge({
-    'app-refresh-data': () => loadPendingPlans(),
-    'dashboard-refresh': () => loadPendingPlans(),
     'fba-plan-created': () => loadPendingPlans(),
     'fba-print-shipped': () => loadPendingPlans(),
   });

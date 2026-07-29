@@ -7,6 +7,8 @@ import { RefreshCw, ShieldCheck } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { sectionLabel, fieldLabel } from '@/design-system/tokens/typography/presets';
+import { refreshDomains } from '@/lib/refresh/bus';
+import { REFRESH_BUNDLES } from '@/lib/refresh/domains';
 
 interface EbayAccount {
   id: number;
@@ -85,8 +87,7 @@ export function AwaitingEbayPanel({ onRefresh }: { onRefresh?: () => void }) {
     onSuccess: (data) => {
       addLog(`eBay: ${data.imported ?? 0} imported, ${data.updated ?? 0} updated`, 'success');
       onRefresh?.();
-      window.dispatchEvent(new CustomEvent('dashboard-refresh'));
-      window.dispatchEvent(new CustomEvent('app-refresh-data'));
+      refreshDomains(REFRESH_BUNDLES.outboundOrderWrite);
     },
     onError: (error: Error) => {
       addLog(`eBay sync: ${error.message}`, 'error');
@@ -98,8 +99,7 @@ export function AwaitingEbayPanel({ onRefresh }: { onRefresh?: () => void }) {
     onSuccess: (data) => {
       addLog(`Ecwid: ${data.imported ?? 0} imported, ${data.updated ?? 0} updated`, 'success');
       onRefresh?.();
-      window.dispatchEvent(new CustomEvent('dashboard-refresh'));
-      window.dispatchEvent(new CustomEvent('app-refresh-data'));
+      refreshDomains(REFRESH_BUNDLES.outboundOrderWrite);
     },
     onError: (error: Error) => {
       addLog(`Ecwid sync: ${error.message}`, 'error');
@@ -131,8 +131,7 @@ export function AwaitingEbayPanel({ onRefresh }: { onRefresh?: () => void }) {
         addLog('Integrity: no duplicates found', 'success');
       }
       onRefresh?.();
-      window.dispatchEvent(new CustomEvent('dashboard-refresh'));
-      window.dispatchEvent(new CustomEvent('app-refresh-data'));
+      refreshDomains(REFRESH_BUNDLES.outboundOrderWrite);
     },
     onError: (error: Error) => {
       addLog(`Integrity check: ${error.message}`, 'error');

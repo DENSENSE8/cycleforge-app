@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { fbaPaths } from '@/lib/fba/api-paths';
 import {
-  APP_REFRESH_DATA,
   FBA_PRINT_SHIPPED,
   FBA_ACTIVE_SHIPMENTS_REFRESH,
   FBA_OPEN_SHIPMENT_EDITOR,
@@ -12,6 +11,7 @@ import {
 import { useFbaEvent, useFbaEvents } from '@/components/fba/hooks/useFbaEvent';
 import type { ActiveShipment } from '@/lib/fba/types';
 import { parseShipment } from './active-shipments-shared';
+import { refreshDomain } from '@/lib/refresh/bus';
 
 /**
  * Owns the FBA active-shipments rail: fetching active + recently-shipped
@@ -76,14 +76,14 @@ export function useFbaActiveShipments() {
   useEffect(() => { void fetchShipments(); }, [fetchShipments]);
 
   const refreshEvents = useMemo(
-    () => [APP_REFRESH_DATA, FBA_PRINT_SHIPPED, FBA_ACTIVE_SHIPMENTS_REFRESH] as const,
+    () => [FBA_PRINT_SHIPPED, FBA_ACTIVE_SHIPMENTS_REFRESH] as const,
     [],
   );
   useFbaEvents(refreshEvents, () => void fetchShipments());
 
   const emitChanged = () => {
     window.dispatchEvent(new CustomEvent(FBA_ACTIVE_SHIPMENTS_REFRESH));
-    window.dispatchEvent(new CustomEvent(APP_REFRESH_DATA));
+    refreshDomain('orders.outbound');
   };
 
   return {

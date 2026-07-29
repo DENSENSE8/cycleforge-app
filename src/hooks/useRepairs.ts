@@ -1,12 +1,12 @@
 'use client';
 
-import { useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { qk } from '@/queries/keys';
 import { RSRecord, type RepairTab } from '@/lib/neon/repair-service-queries';
 import { useAblyChannel } from './useAblyChannel';
 import { getDbTableChannelName, getRepairsChannelName, safeChannelName } from '@/lib/realtime/channels';
 import { useAuth } from '@/contexts/AuthContext';
+import { useRefreshSignal } from '@/lib/refresh/bus';
 
 export function useRepairsTable(search?: string | null, tab: RepairTab = 'active') {
   const queryClient = useQueryClient();
@@ -41,13 +41,9 @@ export function useRepairsTable(search?: string | null, tab: RepairTab = 'active
     queryClient.invalidateQueries({ queryKey: qk.repairs.all });
   }, !!repairDbChannel);
 
-  useEffect(() => {
-    const handleRefresh = () => {
-      queryClient.invalidateQueries({ queryKey: qk.repairs.all });
-    };
-    window.addEventListener('app-refresh-data', handleRefresh);
-    return () => window.removeEventListener('app-refresh-data', handleRefresh);
-  }, [queryClient]);
+  useRefreshSignal('repairs', () => {
+    queryClient.invalidateQueries({ queryKey: qk.repairs.all });
+  });
 
   return query;
 }

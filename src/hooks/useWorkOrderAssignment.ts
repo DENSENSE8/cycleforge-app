@@ -14,13 +14,13 @@
  */
 
 import { useCallback, useState } from 'react';
-import { emitAppEvent } from '@/hooks';
 import { getPresentStaffForToday, type StaffMember } from '@/lib/staffCache';
 import { staffHasRole } from '@/utils/staff';
 import { toast } from '@/lib/toast';
 import type { WorkOrderRow } from '@/components/work-orders/types';
 import type { AssignmentConfirmPayload } from '@/components/work-orders/WorkOrderAssignmentCard';
 import type { StaffOption } from '@/design-system/components/work-order-assignment/work-order-assignment-shared';
+import { refreshDomain } from '@/lib/refresh/bus';
 
 export function useWorkOrderAssignment({
   onAssigned,
@@ -71,8 +71,7 @@ export function useWorkOrderAssignment({
           const data = await res.json().catch(() => ({}));
           throw new Error(data?.details || data?.error || 'Failed to save assignment');
         }
-        emitAppEvent('dashboard-refresh');
-        emitAppEvent('app-refresh-data');
+        refreshDomain('work-orders');
         onAssigned?.(row, payload);
       } catch (error) {
         toast.error(error instanceof Error ? error.message : 'Failed to save assignment');

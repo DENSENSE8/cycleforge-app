@@ -28,7 +28,7 @@ export default function RedesignedMobilePickQueue() {
   const { data, isLoading } = useMobileFeedQuery<ShippedOrder>({
     queryKey: PENDING_QUERY_KEY,
     queryFn: () => fetchPendingOrdersData({}),
-    realtime: { invalidation: { dashboard: true }, windowEvents: ['app-refresh-data', 'dashboard-refresh'] },
+    realtime: { invalidation: { dashboard: true }, refreshDomains: ['orders.outbound'] },
   });
 
   // Queue reads top-down in deadline/priority order — no reverse, no auto-scroll.
@@ -46,7 +46,7 @@ export default function RedesignedMobilePickQueue() {
         empty={
           <div className="flex h-full flex-col items-center justify-center gap-2 px-6 text-center">
             <Package className="mb-1 h-10 w-10 text-blue-200" />
-            <p className="text-xs font-black uppercase tracking-widest text-blue-300">Nothing pending</p>
+            <p className="text-xs font-semibold uppercase tracking-widest text-blue-300">Nothing pending</p>
             <p className="max-w-[260px] text-xs font-medium text-blue-700/50">
               No orders are waiting to be picked right now.
             </p>

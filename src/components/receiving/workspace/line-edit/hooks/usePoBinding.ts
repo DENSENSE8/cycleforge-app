@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { toast } from '@/lib/toast';
 import { dispatchLineUpdated } from '@/components/station/receiving-lines-table-helpers';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import { refreshDomains } from '@/lib/refresh/bus';
+import { REFRESH_BUNDLES } from '@/lib/refresh/domains';
 
 /** Trimmed PO# for a row — number wins over id. */
 function poValueOf(row: ReceivingLineRow): string {
@@ -80,7 +82,7 @@ export function usePoBinding(row: ReceivingLineRow) {
         if (next && row.receiving_source === 'unmatched') patch.receiving_source = 'zoho_po';
         dispatchLineUpdated(patch);
         toast.success(next ? `PO# saved (${next})` : 'PO# cleared');
-        window.dispatchEvent(new CustomEvent('app-refresh-data'));
+        refreshDomains(REFRESH_BUNDLES.receivingWrite);
         window.dispatchEvent(
           new CustomEvent('receiving-package-updated', {
             detail: { receiving_id: row.receiving_id, zoho_purchaseorder_number: next || null },

@@ -22,6 +22,7 @@ import {
 } from '@/components/station/tech-record-rail-vm';
 import {
   SHIPPING_RAIL_REFRESH_EVENTS,
+  SHIPPING_RAIL_REFRESH_DOMAINS,
   techRecordRailId,
   techRecordToPreviewOrder,
 } from './shipping-rail-shared';
@@ -114,6 +115,7 @@ export function ShippingStaffScanHistoryRail({ techId, filterText = '' }: Props)
       queryKey={queryKey}
       fetchFn={fetchFn}
       refreshEvents={[...SHIPPING_RAIL_REFRESH_EVENTS]}
+      refreshDomains={SHIPPING_RAIL_REFRESH_DOMAINS}
       selectedId={selectedOrderId}
       limit={SHIPPING_HISTORY_LIMIT}
       eyebrowTitle="History"

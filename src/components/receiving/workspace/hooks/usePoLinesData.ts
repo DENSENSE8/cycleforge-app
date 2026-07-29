@@ -12,6 +12,7 @@ import { shouldPreserveCachedSerials } from '@/lib/receiving/optimistic-return-l
 import type { ReceivingLineRow } from '@/components/station/ReceivingLinesTable';
 import type { LineSerial } from '@/lib/receiving/optimistic-serials';
 import { filterLinesByPoGroup } from '@/lib/receiving/po-group-title';
+import { useRefreshSignal } from '@/lib/refresh/bus';
 
 export interface ApiResponse {
   success: boolean;
@@ -247,11 +248,9 @@ export function usePoLinesData({
 
   // After a sibling click the workspace re-seeds. Invalidate so the new
   // workspace sees fresh siblings (in case a remote actor edited one).
-  useEffect(() => {
-    const handler = () => queryClient.invalidateQueries({ queryKey });
-    window.addEventListener('app-refresh-data', handler);
-    return () => window.removeEventListener('app-refresh-data', handler);
-  }, [queryClient, queryKey]);
+  useRefreshSignal('receiving.poLines', () => {
+    queryClient.invalidateQueries({ queryKey });
+  });
 
   // Single source of truth = the query cache. Original API order is preserved so
   // clicking a sibling feels like a local expand/collapse, not a "row jumps to

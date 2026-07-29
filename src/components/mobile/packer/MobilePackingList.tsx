@@ -30,7 +30,7 @@ export function MobilePackingList({ packerId, limit = 8 }: { packerId: string; l
       const json = await res.json();
       return Array.isArray(json) ? (json as PackerLogRow[]) : [];
     },
-    realtime: { windowEvents: ['packer-log-updated', 'app-refresh-data'] },
+    realtime: { windowEvents: ['packer-log-updated'], refreshDomains: ['packer.logs'] },
   });
 
   const { rows, scrollRef, freshIds } = useFeedWindow(data, { limit, anchor: 'bottom' });
@@ -58,7 +58,7 @@ export function MobilePackingList({ packerId, limit = 8 }: { packerId: string; l
         freshIds={freshIds}
         empty={
           <div className="flex h-full flex-col items-center justify-center gap-2 bg-surface-card px-6 text-center">
-            <p className="text-sm font-black uppercase tracking-[0.18em] text-text-muted">No pack history yet</p>
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-text-muted">No pack history yet</p>
             <p className="max-w-[260px] text-role-caption font-semibold text-text-soft">
               Pack something at a desktop station — recent entries will land here.
             </p>

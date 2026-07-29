@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/design-system/primitives';
 import { deleteFbaItem } from '@/lib/fba/patch';
 import type { PlanEntry } from './board-detail-shared';
+import { refreshDomain } from '@/lib/refresh/bus';
 
 /* ── Delete control (armed pattern matching DeleteOrderControl) ────── */
 
@@ -36,7 +37,7 @@ export function FbaDeleteControl({ entries, onDeleted }: { entries: PlanEntry[];
       if (errors.length > 0) {
         setError(errors.join('; '));
       } else {
-        window.dispatchEvent(new Event('app-refresh-data'));
+        refreshDomain('orders.outbound');
         onDeleted();
       }
     } catch {

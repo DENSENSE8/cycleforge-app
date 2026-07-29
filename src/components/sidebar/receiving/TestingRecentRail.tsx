@@ -6,6 +6,7 @@ import { workflowStage, workflowStageDot } from '@/lib/receiving/workflow-stages
 import { RecentActivityRailBase, type ApiResponse } from './RecentActivityRailBase';
 import { filterReceivingRailRows } from '@/components/sidebar/tech/filter-receiving-rail-rows';
 import { TESTING_RECEIVING_LINES_API } from '@/lib/surface-isolation';
+import type { RefreshDomain } from '@/lib/refresh/domains';
 
 /**
  * Color logic for the left status dot in Testing view. Colors come straight
@@ -30,10 +31,8 @@ function getTestingStatusDotLabel(row: ReceivingLineRow): string {
 /** Full invalidation triggers — module-scope so the shell's refresh-listener
  * effect keeps a stable identity and subscribes once (a fresh array literal each
  * render made it re-subscribe, risking a dropped event mid-swap). */
-const TESTING_TESTED_REFRESH_EVENTS = [
-  'app-refresh-data',
-  'testing-result-recorded',
-];
+const TESTING_TESTED_REFRESH_EVENTS = ['testing-result-recorded'];
+const TESTING_TESTED_REFRESH_DOMAINS = ['orders.outbound'] as const satisfies readonly RefreshDomain[];
 
 /**
  * Testing dock age axis = this tester's verdict time. `view=testing` folds
@@ -129,6 +128,7 @@ export function TestingRecentRail({
         // patches (serials / verdict) stay on that bus; dock membership +
         // tested qty reconcile via refreshEvents + allowlisted RQ helpers.
         refreshEvents={TESTING_TESTED_REFRESH_EVENTS}
+        refreshDomains={TESTING_TESTED_REFRESH_DOMAINS}
         navigateEvent="testing-navigate-rail"
         eyebrowTitle="Recent"
         eyebrowSuffix="You"

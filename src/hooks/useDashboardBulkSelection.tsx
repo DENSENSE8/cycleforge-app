@@ -42,6 +42,7 @@ const loadProductLabelPrinter = () => import('@/lib/print/printProductLabel');
 import { toast } from '@/lib/toast';
 import { requestConfirm } from '@/design-system/components/confirm';
 import type { DashboardOrderView } from '@/utils/dashboard-search-state';
+import { refreshDomain } from '@/lib/refresh/bus';
 
 /**
  * Minimal shape the dashboard selection bar needs from a row — satisfied by
@@ -162,7 +163,7 @@ export function useDashboardBulkSelection(
         );
         setShipByOpen(false);
         clearSelection();
-        window.dispatchEvent(new CustomEvent('dashboard-refresh'));
+        refreshDomain('orders.outbound');
       } catch (e) {
         toast.error(e instanceof Error ? e.message : 'Could not set the ship-by date');
       } finally {
@@ -254,7 +255,7 @@ export function useDashboardBulkSelection(
         toast.error(e instanceof Error ? e.message : 'Delete failed');
       } finally {
         clearSelection();
-        window.dispatchEvent(new CustomEvent('dashboard-refresh'));
+        refreshDomain('orders.outbound');
       }
     },
     [isShippedView, deleteOrderRow, clearSelection],
