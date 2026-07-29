@@ -6,7 +6,7 @@ import { ColumnTypeGlyph } from '@/components/ui/table-column-config/column-type
 import { gridHeaderShowsLabel } from './grid-column-geometry';
 import type { LedgerGridColumnModel } from './grid-surface-descriptor';
 
-export type GridHeaderSortDir = 'asc' | 'desc';
+type GridHeaderSortDir = 'asc' | 'desc';
 
 /**
  * The INSIDE of a ledger grid column header: type glyph → label (or the

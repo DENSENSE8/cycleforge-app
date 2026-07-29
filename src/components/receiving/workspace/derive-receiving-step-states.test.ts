@@ -82,3 +82,47 @@ test('no scan/condition steps: the stepper is exactly Photos → Serial → Prin
   assert.equal('scan' in states, false);
   assert.equal('condition' in states, false);
 });
+
+// ─── per-unit absent accounting (Phase 3) ────────────────────────────────────
+
+test('waive unit 2 of 3, scan none → Serial incomplete (1 of 3 accounted)', () => {
+  const flags = deriveReceivingStepFlags({
+    ...base,
+    quantityExpected: 3,
+    serialCount: 0,
+    perUnitAbsentCount: 1,
+  });
+  assert.equal(flags.serial, false);
+});
+
+test('waive unit 2, scan units 1 and 3 → Serial complete', () => {
+  const flags = deriveReceivingStepFlags({
+    ...base,
+    quantityExpected: 3,
+    serialCount: 2,
+    perUnitAbsentCount: 1,
+  });
+  assert.equal(flags.serial, true);
+});
+
+test('waive all 3 individually → complete without line-level serial_absent', () => {
+  const flags = deriveReceivingStepFlags({
+    ...base,
+    quantityExpected: 3,
+    serialCount: 0,
+    perUnitAbsentCount: 3,
+    serialAbsent: false,
+  });
+  assert.equal(flags.serial, true);
+});
+
+test('line-level waiver set, units untouched → complete (existing behaviour)', () => {
+  const flags = deriveReceivingStepFlags({
+    ...base,
+    quantityExpected: 3,
+    serialCount: 0,
+    perUnitAbsentCount: 0,
+    serialAbsent: true,
+  });
+  assert.equal(flags.serial, true);
+});

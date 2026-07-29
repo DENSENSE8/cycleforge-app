@@ -1,8 +1,4 @@
-import {
-  gridContentMinWidthRem,
-  gridHeaderShowsLabel,
-  gridTemplate,
-} from '@/design-system/components/grid/grid-column-geometry';
+import { gridTemplate } from '@/design-system/components/grid/grid-column-geometry';
 /**
  * Catalog spreadsheet column model — SoT for the Products Catalog LedgerGrid.
  *
@@ -129,14 +125,6 @@ export function isCatalogGridSortable(key: string): key is CatalogGridColumnKey 
   return (CATALOG_GRID_SORTABLE_KEYS as readonly string[]).includes(key);
 }
 
-
-export const catalogGridHeaderShowsLabel = gridHeaderShowsLabel;
-
-export function catalogContentMinWidthRem(
-  columns: readonly CatalogGridColumn[] = CATALOG_GRID_COLUMNS,
-): number {
-  return gridContentMinWidthRem(columns);
-}
 
 export function catalogGridTemplate(
   columns: readonly CatalogGridColumn[] = CATALOG_GRID_COLUMNS,

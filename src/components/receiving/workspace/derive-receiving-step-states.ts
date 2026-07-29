@@ -23,6 +23,13 @@ export interface DeriveReceivingStepStatesInput {
    * `receiving_line_testing.serial_absent` via `row.serial_absent`.
    */
   serialAbsent?: boolean;
+  /**
+   * Count of per-unit waivers on this line (`receiving_line_unit.serial_absent`).
+   * Accounts toward the Serial step alongside scanned serials. Independent of
+   * {@link serialAbsent} — do not back-fill one from the other
+   * (per-unit-no-serial-EXECUTION-PROMPT.md §3).
+   */
+  perUnitAbsentCount?: number;
 }
 
 /**
@@ -51,11 +58,16 @@ export interface DeriveReceivingStepStatesInput {
  */
 export function deriveReceivingStepFlags(input: DeriveReceivingStepStatesInput): Record<ReceivingStepKey, boolean> {
   const expected = input.quantityExpected ?? 0;
-  // The no-serial waiver completes the step outright — a cable/bulk/return with
-  // no serial is DONE, not "0 serials, still pending". Otherwise gate on count.
+  const perUnitAbsent = Math.max(0, Math.floor(Number(input.perUnitAbsentCount ?? 0)) || 0);
+  // Precedence (stated once — plan §3):
+  //   1. whole-line waiver → done
+  //   2. per-unit accounting: scanned + per-unit waived ≥ expected
+  //   3. expected===0 with at least one scanned serial (overage / unknown qty)
   const isSerialDone =
     !!input.serialAbsent ||
-    (expected > 0 ? input.serialCount >= expected : input.serialCount > 0);
+    (expected > 0
+      ? input.serialCount + perUnitAbsent >= expected
+      : input.serialCount > 0);
 
   return {
     photos: input.photoCount > 0,

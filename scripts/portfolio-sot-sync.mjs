@@ -371,9 +371,10 @@ function renderWorktreeBlock(worktrees, switcher) {
   lines.push('');
   lines.push('1. `git worktree add ../cycleforge-<id> -b <branch> main`');
   lines.push('2. Row appears after re-run of `portfolio-sot-sync.mjs`');
-  lines.push('3. Card in `dev-worktrees.json` (`script: dev:tunnel`, `appPort: 3000`)');
-  lines.push('4. Workstream row in §2 with matching WT-ID');
-  lines.push('5. Restart `pnpm dev:switcher`');
+  lines.push('3. Card in `dev-worktrees.json` (registry only \u2014 the per-lane port');
+  lines.push('   resolver was removed 2026-07-29; `pnpm dev` is a plain `next dev -p 3050`,');
+  lines.push('   so a second checkout that wants its own server passes `-p` explicitly)');
+  lines.push('4. Workstream row in \u00a72 with matching WT-ID');
   lines.push('');
   return lines.join('\n');
 }

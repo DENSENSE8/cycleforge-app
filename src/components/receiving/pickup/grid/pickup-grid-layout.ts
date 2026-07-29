@@ -1,8 +1,4 @@
-import {
-  gridContentMinWidthRem,
-  gridHeaderShowsLabel,
-  gridTemplate,
-} from '@/design-system/components/grid/grid-column-geometry';
+import { gridTemplate } from '@/design-system/components/grid/grid-column-geometry';
 /**
  * Local Pickup spreadsheet column model — the pickup-native sibling of
  * {@link RECEIVING_GRID_COLUMNS}. Pickup rows are LCPU order *items* (read-only:
@@ -87,14 +83,6 @@ export function isPickupGridFrozen(key: string): boolean {
   return PICKUP_GRID_LOCKED_KEYS.includes(key as PickupGridColumnKey);
 }
 
-
-export const pickupGridHeaderShowsLabel = gridHeaderShowsLabel;
-
-export function pickupContentMinWidthRem(
-  columns: readonly PickupGridColumn[] = PICKUP_GRID_COLUMNS,
-): number {
-  return gridContentMinWidthRem(columns);
-}
 
 /** CSS grid template — one `var(--cf-col-<key>, <width>)` track per column. */
 export function pickupGridTemplate(
