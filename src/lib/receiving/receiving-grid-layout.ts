@@ -12,11 +12,7 @@
  * activity-axis stamp (Unboxed / Scanned / Tested).
  */
 
-import {
-  gridContentMinWidthRem,
-  gridHeaderShowsLabel,
-  gridTemplate,
-} from '@/design-system/components/grid/grid-column-geometry';
+import { gridTemplate } from '@/design-system/components/grid/grid-column-geometry';
 import type { LedgerGridColumnModel } from '@/design-system/components/grid/grid-surface-descriptor';
 
 export type ReceivingGridColumnKey =
@@ -104,16 +100,6 @@ const RECEIVING_GRID_SORTABLE_KEYS: readonly ReceivingGridColumnKey[] = RECEIVIN
 
 export function isReceivingGridSortable(key: string): key is ReceivingGridColumnKey {
   return (RECEIVING_GRID_SORTABLE_KEYS as readonly string[]).includes(key);
-}
-
-// Geometry delegates to the shared waist — these stay as named aliases so the
-// surface's call sites keep reading receiving-flavoured names.
-export const receivingGridHeaderShowsLabel = gridHeaderShowsLabel;
-
-export function receivingContentMinWidthRem(
-  columns: readonly ReceivingGridColumn[] = RECEIVING_GRID_COLUMNS,
-): number {
-  return gridContentMinWidthRem(columns);
 }
 
 export function receivingGridTemplate(

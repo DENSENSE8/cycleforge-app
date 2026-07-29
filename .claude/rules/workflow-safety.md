@@ -6,8 +6,8 @@ the detail and rationale.
 ## One worktree lane per initiative
 
 - A distinct addition/surface gets its own worktree (`../cycleforge-<id>` on `topic/<id>`), registered
-  in [`docs/portfolio/WORKTREE-LANES.md`](../../docs/portfolio/WORKTREE-LANES.md) + `dev-worktrees.json`
-  (`pnpm dev:switcher`). Prefer the matching lane over piling unrelated work onto one branch.
+  in [`docs/portfolio/WORKTREE-LANES.md`](../../docs/portfolio/WORKTREE-LANES.md) + `dev-worktrees.json`.
+  Prefer the matching lane over piling unrelated work onto one branch.
 - `main` is the **integration / dogfood lane** (WS-DOGFOOD) — dogfood-surface fixes and integration,
   not large parked-surface builds (e.g. WS-HOME → the `home` worktree).
 - Docs stay in this monorepo; worktrees are **code lanes only**.
@@ -37,8 +37,12 @@ the detail and rationale.
 - **A dev server in a bad state is a REPORT, not a repair.** Stale Tailwind content-glob cache after
   a file move, a poisoned Turbopack transform, a port already bound — say what it is and ask the user
   to restart. That restart is one keystroke for them and a foot-gun for you.
-- Other lanes/worktrees keep their own ports (`:3010+`); the same attach-only rule applies to each.
-  Tunnel is main-only (`pnpm dev:tunnel`, mobile testing).
+- **`pnpm dev` is a plain `next dev -p 3050`** — one port for the repo, no resolution. The per-lane
+  port resolver (`dev-worktree*.mjs`, `pnpm dev:port` / `dev:switcher`) was deleted 2026-07-29: it
+  answered `:3000` for main while `launch.json`, `dev-tunnel-named.mjs` and this rule all said
+  `:3050`, so Playwright in the main checkout aimed at a dead port unless you set `PW_BASE_URL`.
+  A second checkout that wants its own server passes `-p` explicitly; the attach-only rule above
+  applies to it just the same. Tunnel is main-only (`pnpm dev:tunnel`, mobile testing).
 - Map: [`docs/portfolio/WORKTREE-LANES.md`](../../docs/portfolio/WORKTREE-LANES.md).
 
 **Do** verify against the running server (`curl`, the Browser pane, Playwright pointed at `:3050`).

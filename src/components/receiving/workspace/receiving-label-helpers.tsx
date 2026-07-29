@@ -151,3 +151,51 @@ export function markReceivingSerialAbsent(
     body: JSON.stringify({ absent, reason }),
   }).catch(() => {});
 }
+
+/**
+ * Record a per-unit no-serial waiver — the choke point for the multi-qty row
+ * green-check (UnitSlotList), so every caller persists the SAME durable fact
+ * and the stepper can never disagree with the control.
+ *
+ * Two effects, same contract as {@link markReceivingSerialAbsent}:
+ *   1. `dispatchLineUpdated` patches `units[]` on the shared bus so the Unbox
+ *      stepper (which derives from `row.units`) flips on the same frame.
+ *   2. POST /api/receiving/lines/[id]/units/[unitId]/serial-absent → the
+ *      DURABLE stamp on `receiving_line_unit`. Fire-and-forget; exact-value
+ *      toggle (set or clear). Never touches the line-level waiver.
+ */
+export function markReceivingUnitSerialAbsent(
+  lineId: number,
+  unitId: number,
+  { absent, reason }: { absent: boolean; reason: string | null },
+  currentUnits: ReadonlyArray<{
+    id: number;
+    ordinal: number;
+    serial_unit_id: number | null;
+    serial: string | null;
+    serial_absent: boolean;
+    serial_absent_reason: string | null;
+    condition_grade: string | null;
+  }> | null | undefined,
+): void {
+  if (typeof window === 'undefined' || !(lineId > 0) || !(unitId > 0)) return;
+  if (currentUnits) {
+    dispatchLineUpdated({
+      id: lineId,
+      units: currentUnits.map((u) =>
+        u.id === unitId
+          ? {
+              ...u,
+              serial_absent: absent,
+              serial_absent_reason: reason,
+            }
+          : u,
+      ),
+    });
+  }
+  void fetch(`/api/receiving/lines/${lineId}/units/${unitId}/serial-absent`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ absent, reason }),
+  }).catch(() => {});
+}

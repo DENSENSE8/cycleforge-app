@@ -112,6 +112,6 @@ export function gridTemplate(columns: readonly (TrackLike & { key: string })[]):
 const HEADER_CHAR_REM = 0.42;
 const HEADER_CHROME_REM = 1.75;
 
-export function gridHeaderLabelFits(trackRem: number, label: string): boolean {
+function gridHeaderLabelFits(trackRem: number, label: string): boolean {
   return trackRem >= label.trim().length * HEADER_CHAR_REM + HEADER_CHROME_REM;
 }

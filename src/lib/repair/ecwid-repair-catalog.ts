@@ -264,7 +264,7 @@ interface RepairCategoryLevel {
  * isn't under a repair root is ignored rather than honored — the tree can
  * never be walked outside the repair subtree.
  */
-export async function resolveRepairCategoryLevel(
+async function resolveRepairCategoryLevel(
   storeId: string,
   token: string,
   requestedParentIdRaw: string | null,
@@ -530,7 +530,7 @@ async function fetchProductsInCategory(
  * fetches — the difference between a visible stall and an instant drill on a
  * cold cache. Unpaginated; callers slice.
  */
-export async function fetchRepairRootProducts(storeId: string, token: string): Promise<EcwidProduct[]> {
+async function fetchRepairRootProducts(storeId: string, token: string): Promise<EcwidProduct[]> {
   const categories = await fetchAllEcwidCategories(storeId, token);
   const categoryMap = buildCategoryMap(categories);
   const configuredRootIds = parseConfiguredCategoryIds(process.env.ECWID_REPAIR_CATEGORY_IDS);

@@ -13,6 +13,8 @@ import { X } from '@/components/Icons';
 import { TextField, IconButton } from '@/design-system/primitives';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { ConditionBadge } from './ConditionBadge';
+import { NoSerialOfferCheck } from './line-edit/NoSerialOfferCheck';
+import { NoSerialControl, type SerialAbsentState } from './line-edit/NoSerialControl';
 
 export interface UnitLike {
   id: number;
@@ -21,16 +23,39 @@ export interface UnitLike {
   current_status?: string;
 }
 
+/** Materialised `receiving_line_unit` row as the slot list needs it. */
+export interface UnitSlotView {
+  id: number;
+  ordinal: number;
+  serial_unit_id: number | null;
+  serial: string | null;
+  serial_absent: boolean;
+  serial_absent_reason: string | null;
+  condition_grade: string | null;
+}
+
 interface Props {
-  /** How many unit rows to render (= expected qty, min saved/1). */
+  /** How many unit rows to render (= expected qty, min saved/1). Ignored when `units` is set. */
   total: number;
-  /** Saved serials in scan order. Index i → unit row i. */
+  /** Saved serials in scan order. Used for lookup when `units` is present; dense slots otherwise. */
   saved: ReadonlyArray<UnitLike>;
+  /**
+   * Materialised per-unit rows (ordinal order). When present, each row is keyed
+   * by unit identity — empty slots get a green-check offer, waived slots render
+   * the committed reason bar. Absent = legacy dense `saved[i]` behaviour.
+   */
+  units?: ReadonlyArray<UnitSlotView> | null;
   /** Currently selected (expanded) unit index. */
   selectedIndex: number;
   onSelect: (index: number) => void;
   disabled?: boolean;
   isSubmitting?: boolean;
+  /** Org enforces the serial checkpoint — the per-row check reads as required. */
+  requireSerialConfirmation?: boolean;
+  /** Fire when the operator taps the per-row green check (empty slot with a unit id). */
+  onMarkUnitNoSerial?: (unitId: number) => void;
+  /** Fire when the operator changes / clears a committed per-unit waiver. */
+  onUnitSerialAbsentChange?: (unitId: number, next: SerialAbsentState) => void;
   /** Rendered inside the expanded row, above the serial input (e.g. condition pills). */
   renderExpandedMeta?: (serial: UnitLike | null, index: number) => ReactNode;
   /**
@@ -63,6 +88,24 @@ function last4(sn: string): string {
   return v.length > 4 ? v.slice(-4) : v;
 }
 
+function resolveSerialForUnit(
+  unit: UnitSlotView,
+  saved: ReadonlyArray<UnitLike>,
+): UnitLike | null {
+  if (unit.serial_unit_id != null) {
+    const hit = saved.find((s) => s.id === unit.serial_unit_id);
+    if (hit) return hit;
+    if (unit.serial) {
+      return {
+        id: unit.serial_unit_id,
+        serial_number: unit.serial,
+        condition_grade: unit.condition_grade,
+      };
+    }
+  }
+  return null;
+}
+
 /**
  * Selectable per-unit list for multi-quantity lines. One unit is expanded
  * (the selected one) and shows its serial entry + an optional meta slot
@@ -74,10 +117,14 @@ function last4(sn: string): string {
 export function UnitSlotList({
   total,
   saved,
+  units = null,
   selectedIndex,
   onSelect,
   disabled = false,
   isSubmitting = false,
+  requireSerialConfirmation = false,
+  onMarkUnitNoSerial,
+  onUnitSerialAbsentChange,
   renderExpandedMeta,
   alwaysShowExpandedMeta = false,
   singleRowExpanded = false,
@@ -88,8 +135,19 @@ export function UnitSlotList({
   serialEditTarget = null,
   primaryInputRef,
 }: Props) {
-  const count = Math.max(total, saved.length, 1);
-  const rows = Array.from({ length: count }, (_, i) => ({ index: i, serial: saved[i] ?? null }));
+  const useUnits = Array.isArray(units) && units.length > 0;
+  const count = useUnits ? units!.length : Math.max(total, saved.length, 1);
+  const rows = useUnits
+    ? units!.map((unit, index) => ({
+        index,
+        unit,
+        serial: resolveSerialForUnit(unit, saved),
+      }))
+    : Array.from({ length: count }, (_, i) => ({
+        index: i,
+        unit: null as UnitSlotView | null,
+        serial: saved[i] ?? null,
+      }));
 
   // All-expanded (single-row) mode: every unit shows its own open serial input.
   // A committed scan hands focus straight to the next row's input *immediately*
@@ -102,8 +160,10 @@ export function UnitSlotList({
     const el = inputRefs.current[index];
     if (el && !el.disabled) el.focus();
   };
-  // First not-yet-scanned slot — autofocused on mount in all-expanded mode.
-  const firstEmptyIndex = saved.length < count ? saved.length : -1;
+  // First not-yet-scanned / not-waived slot — autofocused on mount in all-expanded mode.
+  const firstEmptyIndex = rows.findIndex(
+    ({ serial, unit }) => !serial && !(unit?.serial_absent),
+  );
   const primaryIndex = firstEmptyIndex >= 0 ? firstEmptyIndex : 0;
 
   const syncPrimaryInputRef = (index: number, el: HTMLInputElement | null) => {
@@ -117,20 +177,24 @@ export function UnitSlotList({
     if (!primaryInputRef || !singleRowExpanded) return;
     (primaryInputRef as MutableRefObject<HTMLInputElement | null>).current =
       inputRefs.current[primaryIndex] ?? null;
-  }, [primaryIndex, primaryInputRef, saved.length, singleRowExpanded]);
+  }, [primaryIndex, primaryInputRef, saved.length, singleRowExpanded, units]);
 
   return (
     <div className="flex min-w-0 flex-col divide-y divide-border-soft">
-      {rows.map(({ index, serial }) => {
+      {rows.map(({ index, serial, unit }) => {
         const expanded = singleRowExpanded || index === selectedIndex;
         return expanded ? (
           <ExpandedRow
-            key={`row-${serial?.id ?? `empty-${index}`}`}
+            key={`row-${unit?.id ?? serial?.id ?? `empty-${index}`}`}
             index={index}
             total={count}
             serial={serial}
+            unit={unit}
             disabled={disabled}
             isSubmitting={isSubmitting}
+            requireSerialConfirmation={requireSerialConfirmation}
+            onMarkUnitNoSerial={onMarkUnitNoSerial}
+            onUnitSerialAbsentChange={onUnitSerialAbsentChange}
             meta={renderExpandedMeta?.(serial, index)}
             alwaysShowMeta={alwaysShowExpandedMeta || singleRowExpanded}
             singleRow={singleRowExpanded}
@@ -155,10 +219,12 @@ export function UnitSlotList({
           />
         ) : (
           <CollapsedRow
-            key={serial?.id ?? `empty-${index}`}
+            key={unit?.id ?? serial?.id ?? `empty-${index}`}
             index={index}
             total={count}
             serial={serial}
+            waived={!!unit?.serial_absent}
+            waivedReason={unit?.serial_absent_reason ?? null}
             meta={renderCollapsedMeta?.(serial, index)}
             onSelect={() => onSelect(index)}
           />
@@ -194,12 +260,16 @@ function CollapsedRow({
   index,
   total,
   serial,
+  waived,
+  waivedReason,
   meta,
   onSelect,
 }: {
   index: number;
   total: number;
   serial: UnitLike | null;
+  waived: boolean;
+  waivedReason: string | null;
   meta: ReactNode;
   onSelect: () => void;
 }) {
@@ -225,6 +295,10 @@ function CollapsedRow({
             <span className="font-mono text-sm font-semibold tracking-tight text-text-default underline decoration-emerald-500 decoration-2 underline-offset-2">
               {last4(serial.serial_number)}
             </span>
+          ) : waived ? (
+            <span className="text-role-caption font-semibold uppercase tracking-widest text-emerald-700">
+              No serial{waivedReason ? ` · ${waivedReason.replace(/_/g, ' ').toLowerCase()}` : ''}
+            </span>
           ) : (
             <span className="text-role-caption font-semibold uppercase tracking-widest text-text-faint">
               Empty · tap to scan
@@ -240,8 +314,12 @@ function ExpandedRow({
   index,
   total,
   serial,
+  unit,
   disabled,
   isSubmitting,
+  requireSerialConfirmation,
+  onMarkUnitNoSerial,
+  onUnitSerialAbsentChange,
   meta,
   alwaysShowMeta = false,
   singleRow = false,
@@ -256,8 +334,12 @@ function ExpandedRow({
   index: number;
   total: number;
   serial: UnitLike | null;
+  unit: UnitSlotView | null;
   disabled: boolean;
   isSubmitting: boolean;
+  requireSerialConfirmation: boolean;
+  onMarkUnitNoSerial?: (unitId: number) => void;
+  onUnitSerialAbsentChange?: (unitId: number, next: SerialAbsentState) => void;
   meta: ReactNode;
   alwaysShowMeta?: boolean;
   /** Hide the `n/N` counter so the row mirrors the single-qty SerialCard. */
@@ -281,6 +363,15 @@ function ExpandedRow({
   // When the row's whole purpose is grading (Unbox), keep the pills visible
   // instead of hiding them behind hover/serial-focus.
   const showMeta = alwaysShowMeta || isFocused || isSubmitting || scan.length > 0;
+  const waived = !!unit?.serial_absent;
+  const unitId = unit?.id ?? null;
+  const canOfferNoSerial =
+    !waived &&
+    !serial &&
+    !editing &&
+    !scan.trim() &&
+    unitId != null &&
+    typeof onMarkUnitNoSerial === 'function';
 
   useEffect(() => {
     if (!serialEditTarget || serial?.id !== serialEditTarget.id) return;
@@ -332,7 +423,7 @@ function ExpandedRow({
               }`}
             >
               <div className={`${showMeta ? 'hidden' : 'block group-hover:hidden'}`}>
-                <ConditionBadge grade={serial?.condition_grade} />
+                <ConditionBadge grade={serial?.condition_grade ?? unit?.condition_grade} />
               </div>
               <div className={`${showMeta ? 'block' : 'hidden group-hover:block'}`}>
                 <div className="inline-flex items-center">
@@ -345,6 +436,19 @@ function ExpandedRow({
         ) : null}
 
         <div className="flex-1 min-w-0">
+          {waived && unitId != null && onUnitSerialAbsentChange ? (
+            // Committed per-unit waiver — replaces the input, matching single-qty
+            // SerialCard's noSerialSlot (full-width reason bar).
+            <NoSerialControl
+              absent
+              fullWidth
+              hideClear
+              reason={unit?.serial_absent_reason ?? null}
+              required={requireSerialConfirmation}
+              disabled={disabled}
+              onChange={(next) => onUnitSerialAbsentChange(unitId, next)}
+            />
+          ) : (
           <TextField
             ref={inputRef}
             label="Serial"
@@ -390,8 +494,20 @@ function ExpandedRow({
               ) : undefined
             }
           />
+          )}
         </div>
 
+        {waived ? null : canOfferNoSerial ? (
+          // Replaces the greyed-out empty-field `+` entirely — one green check,
+          // shared with the single-qty SerialCard (NoSerialOfferCheck).
+          <NoSerialOfferCheck
+            onClick={() => onMarkUnitNoSerial?.(unitId!)}
+            label="Mark this unit as having no serial number"
+            disabled={disabled}
+            required={requireSerialConfirmation}
+            width="w-11"
+          />
+        ) : (
         <HoverTooltip label={editing ? 'Save serial' : 'Add serial'} asChild>
           <IconButton
             onClick={submit}
@@ -405,6 +521,7 @@ function ExpandedRow({
             className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-surface-strong"
           />
         </HoverTooltip>
+        )}
       </div>
     </div>
   );

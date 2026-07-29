@@ -1,8 +1,4 @@
-import {
-  gridContentMinWidthRem,
-  gridHeaderShowsLabel,
-  gridTemplate,
-} from '@/design-system/components/grid/grid-column-geometry';
+import { gridTemplate } from '@/design-system/components/grid/grid-column-geometry';
 /**
  * Repair queue spreadsheet column model — SoT for the `/repair` LedgerGrid.
  *
@@ -89,14 +85,6 @@ export function isRepairGridSortable(key: string): key is RepairGridColumnKey {
   return (REPAIR_GRID_SORTABLE_KEYS as readonly string[]).includes(key);
 }
 
-
-export const repairGridHeaderShowsLabel = gridHeaderShowsLabel;
-
-export function repairContentMinWidthRem(
-  columns: readonly RepairGridColumn[] = REPAIR_GRID_COLUMNS,
-): number {
-  return gridContentMinWidthRem(columns);
-}
 
 export function repairGridTemplate(
   columns: readonly RepairGridColumn[] = REPAIR_GRID_COLUMNS,

@@ -2,7 +2,7 @@
   "port": 3099,
   "script": "dev",
   "appPort": 3000,
-  "_note": "Each lane runs its own `next dev` on its own appPort so lanes run in PARALLEL. `port` = switcher panel. `script` = plain `dev` (no per-lane tunnel; the Cloudflare tunnel is a main-only mobile-testing tool — run `pnpm dev:tunnel` there). `appPort` here is only the fallback for auto-discovered trees.",
+  "_note": "REGISTRY ONLY as of 2026-07-29 — nothing resolves a port from this file any more. `pnpm dev` is a plain `next dev -p 3050` (one port for the repo; :3000 belongs to another app on this machine), and the per-lane resolver + switcher (scripts/dev-worktree*.mjs, `pnpm dev:port`, `pnpm dev:switcher`) were deleted: the resolver answered :3000 for main while launch.json, dev-tunnel-named.mjs and .claude/rules/workflow-safety.md all said :3050, so Playwright in the main checkout aimed at a dead port. A second checkout that wants its own dev server passes `-p <port>` explicitly. The `appPort` values below are now documentation of who historically used which port, and are read only by scripts/portfolio-sot-sync.mjs to render the lane table. The Cloudflare tunnel stays main-only (`pnpm dev:tunnel`).",
   "trees": [
     {
       "id": "main",
