@@ -12,10 +12,11 @@
 import { useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
-  OPERATIONS_MODE_SCOPED_PARAMS,
   parseOperationsMode,
   type OperationsMode,
 } from './operations-sidebar-shared';
+import { buildRouteUrl } from '@/lib/routing/route-params';
+import { routeParamsFor } from '@/lib/routing/registry';
 
 export interface OperationsModeState {
   /** Active mode parsed from `?mode=` (defaults to `live`). */
@@ -31,12 +32,13 @@ export function useOperationsMode(): OperationsModeState {
 
   const updateMode = useCallback(
     (next: OperationsMode) => {
-      const params = new URLSearchParams(searchParams.toString());
-      if (next === 'live') params.delete('mode');
-      else params.set('mode', next);
-      for (const key of OPERATIONS_MODE_SCOPED_PARAMS) params.delete(key);
-      const qs = params.toString();
-      router.replace(qs ? `/operations?${qs}` : '/operations');
+      // CONSTRUCT the target. This replaced a 26-key denylist — six modes'
+      // filters, the Journey focus set and the Signals timeline — that a mode
+      // switch had to delete one by one. `live` is the default and carries no
+      // `mode`.
+      const spec = routeParamsFor('/operations')!;
+      const staff = searchParams.get('staff') ?? searchParams.get('staffId');
+      router.replace(buildRouteUrl(spec, { mode: next === 'live' ? null : next, staff }));
     },
     [router, searchParams],
   );

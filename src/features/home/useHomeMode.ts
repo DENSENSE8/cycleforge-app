@@ -11,7 +11,9 @@
 
 import { useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { HOME_MODE_SCOPED_PARAMS, parseHomeMode, type HomeMode } from './home-modes';
+import { parseHomeMode, type HomeMode } from './home-modes';
+import { buildRouteUrl } from '@/lib/routing/route-params';
+import { routeParamsFor } from '@/lib/routing/registry';
 
 export interface HomeModeState {
   /** Active mode parsed from `?mode=` (defaults to `today`). */
@@ -27,12 +29,12 @@ export function useHomeMode(): HomeModeState {
 
   const updateMode = useCallback(
     (next: HomeMode) => {
-      const params = new URLSearchParams(searchParams.toString());
-      if (next === 'today') params.delete('mode');
-      else params.set('mode', next);
-      for (const key of HOME_MODE_SCOPED_PARAMS) params.delete(key);
-      const qs = params.toString();
-      router.replace(qs ? `/?${qs}` : '/');
+      // CONSTRUCT the target — the current query string is never copied, so
+      // there is no HOME_MODE_SCOPED_PARAMS list to keep in step. `today` is the
+      // default and carries no `mode`.
+      const spec = routeParamsFor('/')!;
+      const staff = searchParams.get('staff') ?? searchParams.get('staffId');
+      router.replace(buildRouteUrl(spec, { mode: next === 'today' ? null : next, staff }));
     },
     [router, searchParams],
   );

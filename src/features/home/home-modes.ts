@@ -60,12 +60,3 @@ export function homeModeLabel(mode: HomeMode): string {
  *   ?open=   right-pane focus key           (tasks / collab)
  *   ?filter= inbox triage filter            (inbox)
  */
-export const HOME_MODE_SCOPED_PARAMS = [
-  'task',
-  'plan',
-  'view',
-  'q',
-  'open',
-  'scope',
-  'filter',
-] as const;

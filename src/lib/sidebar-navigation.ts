@@ -571,29 +571,6 @@ const WALK_IN = '/walk-in';
 const ADMIN = '/admin';
 const SHIPPING = '/shipping';
 const SUPPORT = '/support';
-/** Cleared on every Support L2 mode switch (mirrors SUPPORT_MODE_SCOPED_PARAMS). */
-const SUPPORT_MODE_CLEAR_PARAMS = {
-  ticket: null,
-  vm: null,
-  q: null,
-  status: null,
-  assignee: null,
-  direction: null,
-  range: null,
-  search: null,
-  open: null,
-  wstatus: null,
-  wexp: null,
-  issueId: null,
-  type: null,
-  reporter: null,
-  openOrderId: null,
-  ustatus: null,
-  attention: null,
-  stage: null,
-  staff: null,
-  view: null,
-} as const;
 // Packing graduated to its own first-class surface route (`/pack`,
 // operator-surfaces refactor Phase 7); its modes navigate there. Legacy
 // `/packer` still resolves (proxy redirect + shared page).
@@ -619,11 +596,11 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
     modes: [
       // Every L2 switch clears Search-scoped selection (`openOrderId`/`map`/`q`)
       // so Receiving/Shipping never inherit a Search handoff, and Search opens clean.
-      { id: 'search',   label: 'Search',   icon: Search, to: () => ({ pathname: DASHBOARD, params: { mode: 'search', q: null, openOrderId: null, map: null, type: null, unshipped: null, pending: null, shipped: null, fba: null, warranty: null, sort: null, rtab: null, open: null } }) },
+      { id: 'search',   label: 'Search',   icon: Search, to: () => ({ pathname: DASHBOARD, params: { mode: 'search' } }) },
       // Lands on the Triage tab (scanned order) — `sort=scanned_newest` keeps the
       // header tab + the table's day-band axis in lockstep (both read `?sort`).
-      { id: 'receiving', label: 'Receiving', icon: Inbox, to: () => ({ pathname: DASHBOARD, params: { mode: 'inbound', sort: 'scanned_newest', q: null, openOrderId: null, map: null, type: null, unshipped: null, pending: null, shipped: null, fba: null, warranty: null, dq: null, open: null } }) },
-      { id: 'outbound', label: 'Shipping', icon: Send,   to: () => ({ pathname: DASHBOARD, params: { mode: null, q: null, openOrderId: null, map: null, type: null, unshipped: '', pending: null, shipped: null, fba: null, warranty: null, dq: null, rtab: null } }) },
+      { id: 'receiving', label: 'Receiving', icon: Inbox, to: () => ({ pathname: DASHBOARD, params: { mode: 'inbound', sort: 'scanned_newest' } }) },
+      { id: 'outbound', label: 'Shipping', icon: Send,   to: () => ({ pathname: DASHBOARD, params: { unshipped: '' } }) },
     ],
     resolveMode: ({ params }) => {
       const m = String(params.get('mode') || '').trim().toLowerCase();
@@ -671,18 +648,18 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
     id: 'receiving', label: 'Receiving', href: UNBOX, icon: STATION_PAGE_ICONS.receiving, kind: 'station', requires: 'receiving.view',
     modes: [
       // Incoming now lives at its own route (`/incoming`).
-      { id: 'incoming', label: 'Incoming',     icon: RECEIVING_MODE_ICONS.incoming, to: () => ({ pathname: INCOMING, params: { mode: null } }) },
+      { id: 'incoming', label: 'Incoming',     icon: RECEIVING_MODE_ICONS.incoming, to: () => ({ pathname: INCOMING, params: {} }) },
       // Triage now lives at its own route (`/triage`); dropping `mode` avoids a
       // stale `?mode=` riding onto the surface path.
-      { id: 'triage',   label: 'Arrival',    icon: RECEIVING_MODE_ICONS.triage,   to: () => ({ pathname: TRIAGE, params: { mode: null } }) },
+      { id: 'triage',   label: 'Arrival',    icon: RECEIVING_MODE_ICONS.triage,   to: () => ({ pathname: TRIAGE, params: {} }) },
       // Unbox now lives at its own route (`/unbox`); dropping `mode` avoids a
       // stale `?mode=` riding onto the surface path.
-      { id: 'receive',  label: 'Unbox',        icon: RECEIVING_MODE_ICONS.receive,  to: () => ({ pathname: UNBOX, params: { mode: null } }) },
+      { id: 'receive',  label: 'Unbox',        icon: RECEIVING_MODE_ICONS.receive,  to: () => ({ pathname: UNBOX, params: {} }) },
       // Front-desk receiving work — two sibling modes, each on its own route.
       // (They were briefly one "Walk-In" station with a `?job=` switcher; that
       // model is gone — the jobs ARE modes. Sales lives on the Sales page.)
-      { id: 'pickup',   label: 'Local Pickup', icon: RECEIVING_MODE_ICONS.pickup,   to: () => ({ pathname: PICKUP, params: { mode: null, job: null } }) },
-      { id: 'repair',   label: 'Repair',       icon: RECEIVING_MODE_ICONS.repair,   to: () => ({ pathname: REPAIR, params: { mode: null, job: null } }) },
+      { id: 'pickup',   label: 'Local Pickup', icon: RECEIVING_MODE_ICONS.pickup,   to: () => ({ pathname: PICKUP, params: {} }) },
+      { id: 'repair',   label: 'Repair',       icon: RECEIVING_MODE_ICONS.repair,   to: () => ({ pathname: REPAIR, params: {} }) },
       // History is NOT a receiving mode — it graduated to a `/dashboard` mode
       // (plan lane 04). `/receiving/history` still resolves until that lands.
     ],
@@ -893,7 +870,7 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
   // Tickets console (default, param cleared) for deep-link back-compat.
   // Orders is the To Ship exception Workbench (notes / OOS + ticket hub).
   // Every switch clears mode-scoped params so each mode opens clean — see
-  // SUPPORT_MODE_SCOPED_PARAMS.
+  // the /support param spec.
   {
     id: 'support', label: 'Support', href: SUPPORT, icon: AlertCircle, kind: 'station', requires: 'integrations.zendesk',
     modes: [
@@ -903,7 +880,7 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
         icon: Inbox,
         to: () => ({
           pathname: SUPPORT,
-          params: { ...SUPPORT_MODE_CLEAR_PARAMS, mode: null },
+          params: { mode: null },
         }),
       },
       {
@@ -913,7 +890,7 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
         requires: 'orders.view',
         to: () => ({
           pathname: SUPPORT,
-          params: { ...SUPPORT_MODE_CLEAR_PARAMS, mode: 'orders' },
+          params: { mode: 'orders' },
         }),
       },
       {
@@ -922,7 +899,7 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
         icon: Voicemail,
         to: () => ({
           pathname: SUPPORT,
-          params: { ...SUPPORT_MODE_CLEAR_PARAMS, mode: 'voicemail' },
+          params: { mode: 'voicemail' },
         }),
       },
       {
@@ -931,7 +908,7 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
         icon: Phone,
         to: () => ({
           pathname: SUPPORT,
-          params: { ...SUPPORT_MODE_CLEAR_PARAMS, mode: 'calls' },
+          params: { mode: 'calls' },
         }),
       },
       {
@@ -941,7 +918,7 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
         requires: 'warranty.view',
         to: () => ({
           pathname: SUPPORT,
-          params: { ...SUPPORT_MODE_CLEAR_PARAMS, mode: 'warranty' },
+          params: { mode: 'warranty' },
         }),
       },
       {
@@ -951,7 +928,7 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
         requires: 'support.issues.view',
         to: () => ({
           pathname: SUPPORT,
-          params: { ...SUPPORT_MODE_CLEAR_PARAMS, mode: 'issues' },
+          params: { mode: 'issues' },
         }),
       },
     ],

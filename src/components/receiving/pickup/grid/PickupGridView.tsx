@@ -84,7 +84,7 @@ export function PickupGridView({
 
   // Column sort is DURABLE: `?colsort=`/`?coldir=` (workbench URL-as-state law),
   // so a reload or a shared link reproduces the operator's view. Receiving mode
-  // switches clear both via MODE_SCOPED_PARAMS. TanStack still owns asc↔desc.
+  // switches clear both via the route's param spec. TanStack still owns asc↔desc.
   const {
     sort: columnSort,
     dir: sortDir,

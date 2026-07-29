@@ -22,7 +22,7 @@ export interface WarrantyUrlState {
 /**
  * URL-state for the Warranty Logger mode: `?wstatus`, `?wexp`, `?open`. All mode
  * state lives in the URL (sidebar-mode contract); Support mode switches clear
- * these via SUPPORT_MODE_SCOPED_PARAMS.
+ * these via the /support param spec.
  */
 export function useWarrantyUrlState(): WarrantyUrlState {
   const pathname = usePathname();
