@@ -24,26 +24,35 @@ export const SELECTION_BAR_CONTROL_BOX =
 export const SELECTION_BAR_VIEWPORT_GAP = 'pb-4';
 
 /**
- * Bottom padding a **bounded** scroll host reserves so its last row clears the
+ * Bottom padding a **bounded** scroll host reserves so its content clears the
  * pinned capsule.
  *
- * Sized from what the host actually needs, not from the capsule's full height.
- * `WORKBENCH_TABLE_VIEWPORT` already stops ~45px short of the viewport bottom,
- * so at the default `pb-3` the last row clears the capsule by **2px** (measured
- * on Pending and Packed at viewport heights 560 / 720 / 900). The capsule is
- * not hiding rows today; what is missing is any RULE keeping it from doing so —
- * that 2px is a coincidence of the surrounding chrome, and a change to the
- * header, the KPI strip, or `WORKBENCH_BODY_COLUMN`'s padding flips it negative.
+ * Sized to the capsule's own footprint, deliberately: `h-10` control +
+ * `p-1.5` shell (50px measured) + the `pb-4` viewport gap = **68px** of the
+ * viewport bottom that the capsule owns. `pb-20` (5rem / 80px) covers it with
+ * room to spare, so the guarantee holds on the reserve alone.
  *
- * `pb-8` (2rem) turns the coincidence into ~22px of deliberate clearance for
- * 20px of extra inset. A full-capsule reserve (`pb-20`, 5rem) was measured too:
- * it buys 70px of clearance and costs ~1.5 rows of a warehouse monitor every
- * time a selection is live — the wrong trade for a gap that is already positive.
+ * It does NOT lean on the surrounding layout. Measured at 1440x900 with the
+ * page scrolled to the end, the bounded host's own bottom edge lands ~33px
+ * above the viewport bottom, so a reserve of ~35px would technically clear the
+ * capsule today — but only because the chrome above happens to push the host
+ * that far up. Sizing to the capsule instead keeps this correct when the
+ * header, the KPI strip, or `WORKBENCH_BODY_COLUMN`'s padding changes.
+ *
+ * Measured clearance between the grid's scrollport edge and the capsule top
+ * (Playwright, desktop 1440x900, grid scrolled to its end):
+ *   `pb-3`  (12px, the default) → **-23px**, the capsule covers ~half a row
+ *   `pb-8`  (32px)              → **-3px**, still overlapping
+ *   `pb-20` (80px)              → **+45px**
  *
  * It rides the density-aware spacing scale, so the reserve tracks the capsule
- * when `--cf-density` changes; a hand-picked `pb-[32px]` would not.
+ * when `--cf-density` changes; a hand-picked `pb-[80px]` would not.
  *
  * Only hosts a capsule can actually float over take this. A grid with no
  * selection gutter keeps its normal inset.
+ *
+ * Guarded by `tests/e2e/dashboard-bulk-bar-inset.spec.ts` — it asserts the
+ * scrollport edge clears the capsule, so shrinking this fails CI rather than
+ * silently putting rows back under the bar.
  */
-export const SELECTION_BAR_SCROLL_INSET = 'pb-8';
+export const SELECTION_BAR_SCROLL_INSET = 'pb-20';
