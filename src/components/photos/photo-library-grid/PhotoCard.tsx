@@ -13,7 +13,13 @@ import { focusRing } from '@/design-system/tokens/focus-ring';
 import { PhotoThumb } from '../PhotoThumb';
 import { PhotoLabelChips } from '../PhotoLabelChips';
 import { SelectionMark } from './SelectionMark';
-import { clickSelectsInstead, photoPrimaryLabel, documentPrimaryLabel } from './photo-grid-format';
+import {
+  clickSelectsInstead,
+  documentPrimaryLabel,
+  photoIdentityLine,
+  photoPrimaryLabel,
+  photoRefLabel,
+} from './photo-grid-format';
 import type { TileSelectMods } from './types';
 
 function documentTypeLabel(documentType?: string): string {
@@ -33,6 +39,7 @@ export function PhotoCard({
   selected,
   onSelect,
   onOpen,
+  onInspect,
   onContextMenu,
 }: {
   photo: LibraryPhoto;
@@ -46,11 +53,21 @@ export function PhotoCard({
   onSelect: (mods: TileSelectMods) => void;
   /** Open the shared fullscreen viewer at this photo (flat views only). */
   onOpen?: () => void;
+  /**
+   * Open the non-modal inspector for this photo. When supplied it takes over
+   * single-click and `onOpen` moves to double-click; when omitted (pickers,
+   * embedded grids with no rail) single-click still opens the viewer.
+   */
+  onInspect?: () => void;
   /** Right-click handler — surfaces the per-photo action menu. */
   onContextMenu?: (photo: LibraryPhoto, e: ReactMouseEvent) => void;
 }) {
   const isDocument = isLibraryDocument(photo);
+  // Title = short ref (ticket / PO); SKU · serial renders as its own meta line
+  // (house one-row anatomy); the full evidence name feeds the image alt.
   const primaryLabel = isDocument ? documentPrimaryLabel(photo) : photoPrimaryLabel(photo, scope);
+  const refLabel = isDocument ? primaryLabel : photoRefLabel(photo, scope);
+  const identityLine = isDocument ? null : photoIdentityLine(photo);
 
   return (
     <div
@@ -82,9 +99,24 @@ export function PhotoCard({
             onSelect({ shift: e.shiftKey });
           } else if (isDocument) {
             window.open(imageUrl, '_blank', 'noopener,noreferrer');
+          } else if (onInspect) {
+            // Single click = inspect (the common act: read this photo's evidence
+            // identity while its neighbours stay visible). Immersion is the
+            // double-click below, so this path must NOT be debounced — adding a
+            // dblclick-detection delay would put latency on the primary action.
+            onInspect();
           } else {
             onOpen?.();
           }
+        }}
+        onDoubleClick={(e) => {
+          // Double click = full-screen lightbox. `onClick` has already fired and
+          // opened the inspector; that is intended — the inspector is non-modal
+          // and stays behind the viewer, so closing the viewer returns the
+          // operator to the record they were reading rather than to nothing.
+          if (isDocument || clickSelectsInstead(e, selectionActive)) return;
+          e.preventDefault();
+          onOpen?.();
         }}
       >
         {isDocument ? (
@@ -117,7 +149,12 @@ export function PhotoCard({
           <div className="space-y-1 px-2.5 py-2">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0 flex-1">
-                <div className="truncate text-role-caption font-semibold text-text-default">{primaryLabel}</div>
+                <div className="truncate text-role-caption font-semibold text-text-default">{refLabel}</div>
+                {identityLine ? (
+                  <div className="truncate text-role-micro font-semibold tabular-nums text-text-muted">
+                    {identityLine}
+                  </div>
+                ) : null}
                 <div className="truncate text-role-micro text-text-soft">{formatDateTimePST(photo.createdAt)}</div>
               </div>
             </div>

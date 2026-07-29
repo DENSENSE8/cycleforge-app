@@ -69,7 +69,7 @@ export function IncomingChromeActions({
               ) : (
                 <RefreshCw className="h-3.5 w-3.5" />
               )}
-              <span className="text-role-eyebrow font-bold uppercase tracking-widest text-white">
+              <span className="text-role-eyebrow uppercase tracking-widest text-white">
                 {importing ? 'Syncing…' : 'Import'}
               </span>
             </button>
@@ -134,7 +134,7 @@ export function IncomingChromeActions({
           onClick={onAdd}
           ariaLabel="Add eBay purchase order"
           icon={<Plus />}
-          className="rounded-full font-bold uppercase tracking-widest bg-emerald-600 shadow-sm shadow-emerald-600/25 hover:bg-emerald-500 active:bg-emerald-700"
+          className="rounded-full font-semibold uppercase tracking-widest bg-emerald-600 shadow-sm shadow-emerald-600/25 hover:bg-emerald-500 active:bg-emerald-700"
         >
           Add
         </Button>

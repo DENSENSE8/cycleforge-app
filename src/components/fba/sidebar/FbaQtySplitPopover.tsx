@@ -50,7 +50,7 @@ export function FbaQtySplitPopover({
           min={1}
           max={maxQty}
           onChange={setMoveQty}
-          className="h-8 w-16 rounded-md border border-border-soft bg-surface-card text-center text-sm font-black tabular-nums outline-none"
+          className="h-8 w-16 rounded-md border border-border-soft bg-surface-card text-center text-sm font-semibold tabular-nums outline-none"
         />
         <span className={`${microBadge} text-text-faint`}>of {maxQty}</span>
       </div>
@@ -60,7 +60,7 @@ export function FbaQtySplitPopover({
           variant="primary"
           size="sm"
           onClick={() => onConfirm(moveQty)}
-          className="h-7 flex-1 text-role-micro font-bold uppercase tracking-wider"
+          className="h-7 flex-1 text-role-micro uppercase tracking-wider"
         >
           Move
         </Button>
@@ -68,7 +68,7 @@ export function FbaQtySplitPopover({
           variant="secondary"
           size="sm"
           onClick={onCancel}
-          className="h-7 flex-1 text-role-micro font-bold uppercase tracking-wider text-text-muted"
+          className="h-7 flex-1 text-role-micro uppercase tracking-wider text-text-muted"
         >
           Cancel
         </Button>

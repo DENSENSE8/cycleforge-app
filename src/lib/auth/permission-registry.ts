@@ -151,6 +151,12 @@ export const PERMISSIONS = [
   { id: 'operations.plans.manage',  category: 'ops', label: 'Create and manage ops plans' },
   { id: 'operations.plans.claim',   category: 'ops', label: 'Claim and complete assigned plan tasks' },
   { id: 'operations.tv.view',       category: 'ops', label: 'View operations TV / wall display' },
+  // Home Inbox: reading YOUR OWN notification feed, and managing YOUR OWN
+  // subscriptions. Neither grants sight of another staffer's inbox — the
+  // routes scope to ctx.staffId — and neither substitutes for the per-entity
+  // view permission, which is re-checked at read time in lib/notifications/inbox.ts.
+  { id: 'home.inbox.view',          category: 'ops', label: 'View personal notification inbox' },
+  { id: 'home.subscriptions.manage', category: 'ops', label: 'Manage personal subscriptions (follow / mute)' },
   { id: 'ai.search',                category: 'ops', label: 'AI search retrieval (⌘K hybrid search + Ask AI)' },
   { id: 'assistant.chat',           category: 'ops', label: 'Use the operations assistant (global AI dock)' },
   { id: 'photos.view',              category: 'ops', label: 'View media library' },

@@ -89,7 +89,7 @@ export function AdminSidebar({ activeSection, onSectionChange }: AdminSidebarPro
             >
               <ShieldCheck className="h-5 w-5 text-blue-600" />
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-black tracking-tight text-text-default uppercase tracking-wider">
+                <p className="truncate text-sm font-semibold tracking-tight text-text-default uppercase tracking-wider">
                   Admin{sectionLabel ? ` · ${sectionLabel}` : ''}
                 </p>
               </div>

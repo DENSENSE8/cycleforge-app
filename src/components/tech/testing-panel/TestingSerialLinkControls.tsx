@@ -157,7 +157,7 @@ export function TestingSerialLinkControls({
                   className="flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left transition-colors hover:bg-surface-hover disabled:opacity-40"
                 >
                   <span className="min-w-0">
-                    <span className="block truncate text-role-caption font-bold text-text-default">
+                    <span className="block truncate text-role-caption font-semibold text-text-default">
                       {s.item_name || s.sku || `Line #${s.id}`}
                     </span>
                     <span className="block truncate text-role-micro font-semibold uppercase tracking-widest text-text-faint">

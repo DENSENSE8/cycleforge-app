@@ -71,7 +71,7 @@ export function SyncStatusBanner({ status, onDismiss }: { status: ImportStatus |
                       transition={{ delay: 0.25 + i * 0.05 }}
                       className="text-center rounded-xl bg-surface-card/60 border border-emerald-100/60 py-1.5"
                     >
-                      <p className="text-sm font-black text-emerald-700 tabular-nums">{stat.value}</p>
+                      <p className="text-sm font-semibold text-emerald-700 tabular-nums">{stat.value}</p>
                       <p className={`${microBadge} text-emerald-500`}>{stat.label}</p>
                     </motion.div>
                   ))}
@@ -81,7 +81,7 @@ export function SyncStatusBanner({ status, onDismiss }: { status: ImportStatus |
                   <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="flex items-center gap-2 inset-field rounded-xl bg-blue-50/80 border border-blue-100/60">
                     <ShieldCheck className="w-3.5 h-3.5 text-blue-600 shrink-0" />
                     <p className={`${fieldLabel} text-blue-700`}>
-                      <span className="font-black">{status.details.exceptionsResolved}</span> exception{status.details.exceptionsResolved === 1 ? '' : 's'} auto-resolved
+                      <span className="font-semibold">{status.details.exceptionsResolved}</span> exception{status.details.exceptionsResolved === 1 ? '' : 's'} auto-resolved
                     </p>
                   </motion.div>
                 ) : null}
@@ -90,7 +90,7 @@ export function SyncStatusBanner({ status, onDismiss }: { status: ImportStatus |
                   <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45 }} className="flex items-center gap-2 inset-field rounded-xl bg-amber-50/80 border border-amber-200/60">
                     <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
                     <p className={`${fieldLabel} text-amber-700`}>
-                      <span className="font-black">{status.details.unresolvedTracking}</span> tracking number{status.details.unresolvedTracking === 1 ? '' : 's'} not recognized — check the sheet for malformed or doubled values
+                      <span className="font-semibold">{status.details.unresolvedTracking}</span> tracking number{status.details.unresolvedTracking === 1 ? '' : 's'} not recognized — check the sheet for malformed or doubled values
                     </p>
                   </motion.div>
                 ) : null}
@@ -99,7 +99,7 @@ export function SyncStatusBanner({ status, onDismiss }: { status: ImportStatus |
                   <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }} className="flex items-center gap-2 inset-field rounded-xl bg-amber-50/80 border border-amber-200/60">
                     <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
                     <p className={`${fieldLabel} text-amber-700`}>
-                      <span className="font-black">{status.details.skippedNoItemNumber}</span> row{status.details.skippedNoItemNumber === 1 ? '' : 's'} skipped — blank Item Number (listing id required to import)
+                      <span className="font-semibold">{status.details.skippedNoItemNumber}</span> row{status.details.skippedNoItemNumber === 1 ? '' : 's'} skipped — blank Item Number (listing id required to import)
                     </p>
                   </motion.div>
                 ) : null}
@@ -108,7 +108,7 @@ export function SyncStatusBanner({ status, onDismiss }: { status: ImportStatus |
                   <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.55 }} className="flex items-center gap-2 inset-field rounded-xl bg-amber-50/80 border border-amber-200/60">
                     <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
                     <p className={`${fieldLabel} text-amber-700`}>
-                      <span className="font-black">{status.details.unmatchedCatalog}</span> listing{status.details.unmatchedCatalog === 1 ? '' : 's'} imported without a catalog match — link them in Review · Catalog link
+                      <span className="font-semibold">{status.details.unmatchedCatalog}</span> listing{status.details.unmatchedCatalog === 1 ? '' : 's'} imported without a catalog match — link them in Review · Catalog link
                     </p>
                   </motion.div>
                 ) : null}

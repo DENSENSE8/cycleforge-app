@@ -234,7 +234,7 @@ export function ShippedActionsButton({ defaultDateKey }: ShippedActionsButtonPro
           <button
             type="button"
             aria-label="Shipped actions — sync fulfillment or print a pickup report"
-            className="ds-raw-button flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-role-caption font-bold text-text-muted ring-1 ring-inset ring-border-soft transition-colors hover:ring-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+            className="ds-raw-button flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-role-caption font-semibold text-text-muted ring-1 ring-inset ring-border-soft transition-colors hover:ring-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
           >
             {triggerBusy ? (
               <Loader2 className="h-4 w-4 shrink-0 animate-spin text-blue-500" />

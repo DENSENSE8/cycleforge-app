@@ -5,18 +5,20 @@ import {
   forwardRef,
   useCallback,
   useEffect,
-  useRef,
   useState,
+  useRef,
   type ReactNode,
 } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
-import { framerTransition } from '@/design-system/foundations/motion-framer';
+import { motion } from 'framer-motion';
+import { AnchoredLayer } from '@/design-system/primitives/AnchoredLayer';
+import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
 import { useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
 import { navIconStrokeClass } from '@/components/icons/nav-weight';
+import { SCAN_FOCUS_REQUESTED_EVENT } from '@/lib/scan-hotkey/store';
 import type { SidebarIconComponent, SidebarPageNav } from '@/lib/sidebar-navigation';
 import { cn } from '@/utils/_cn';
 import { MasterNavHeader, type MasterNavRecentModeChip } from './MasterNavHeader';
-import { MasterNavDropdown } from './MasterNavDropdown';
+import { SidebarNavList } from './SidebarNavList';
 
 /** Same-page L2 mode for the click dropdown under the header trigger. */
 export interface MasterNavPageModeChip {
@@ -29,10 +31,7 @@ export interface MasterNavPageModeChip {
   onSelect: () => void;
 }
 
-/**
- * Click-opened same-page modes menu. Direct AnimatePresence child so exit
- * timing is reliable.
- */
+/** Click-opened same-page modes menu. Portaled by {@link AnchoredLayer}. */
 const ModesPanel = forwardRef<
   HTMLDivElement,
   {
@@ -40,21 +39,18 @@ const ModesPanel = forwardRef<
     className?: string;
     /** Fired after a mode pick so the host can dismiss the panel. */
     onModeSelect?: () => void;
-    /** Drop the floating card chrome — see `MasterNavDropdown`'s `flat`. */
-    flat?: boolean;
   }
->(function ModesPanel({ modes, className, onModeSelect, flat = false }, ref) {
+>(function ModesPanel({ modes, className, onModeSelect }, ref) {
+  const transition = useMotionTransition(framerTransition.dropdownOpen);
   return (
     <motion.div
       ref={ref}
-      key="modes-panel"
-      initial={false}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={flat ? { opacity: 0 } : { opacity: 0, y: -4, scale: 0.99 }}
-      transition={{ duration: 0.12, ease: 'easeOut' }}
+      initial={framerPresence.dropdownPanel.initial}
+      animate={framerPresence.dropdownPanel.animate}
+      transition={transition}
       className={cn(
-        'max-h-[320px] overflow-y-auto p-1',
-        !flat && 'z-dropdown rounded-2xl border border-border-soft bg-surface-card shadow-xl shadow-slate-900/10',
+        'max-h-[320px] overflow-y-auto rounded-2xl border border-border-soft bg-surface-card p-1',
+        'shadow-xl shadow-slate-900/10',
         className,
       )}
       role="menu"
@@ -66,7 +62,7 @@ const ModesPanel = forwardRef<
         return (
           <Fragment key={mode.id}>
             {showGroupHeader && (
-              <p className="px-2.5 pb-0.5 pt-2 text-role-micro font-bold uppercase tracking-widest text-text-muted/70">
+              <p className="px-2.5 pb-0.5 pt-2 text-role-micro uppercase tracking-widest text-text-muted/70">
                 {mode.group}
               </p>
             )}
@@ -96,25 +92,46 @@ const ModesPanel = forwardRef<
 });
 
 /**
- * Presentational composite of the master nav — header trigger + a floating
- * dropdown. Fully state-driven so it wires to either local state (the
- * /design-demo showroom) or the live router (the {@link MasterNav} container).
+ * The **sidebar spine** — a 40px identity band over one swapping body.
  *
- * Two click menus hang off the header:
- * - **Top-left chevron** — the full nav dropdown (all pages, expandable mode lists).
- * - **Right-of-label chevron** — the active page's modes (fast L2 switch).
- * Opening either dismisses the other. No hover open.
+ * ## One grammar
  *
- * The dropdown closes on a click outside the header/menu or Escape. It floats
- * over the workspace body below (it never takes the whole panel over). The body
- * is supplied via `renderContext` (the sidebar) or omitted (the showroom card).
- * Because the menu stays within the panel's width/height, an `overflow-hidden`
- * host doesn't clip it.
+ * There used to be three ways to reach the page list, then two. Both are gone:
+ *
+ * - `layout="docked"` grew the nav card in flow (`height: 0 → auto`), pushing the
+ *   recents rail and the scan bar down while an operator was mid-task.
+ * - The `AnchoredLayer` **flyout** (`MasterNavDropdown` at `w-[28rem]`, portaled,
+ *   overhanging the work canvas) replaced it on classic routes, while station
+ *   routes rendered the same rows in flow as a pushed-across column — two spatial
+ *   models for one control.
+ *
+ * Now there is one: **the page list lives in {@link SidebarSlideOver} and
+ * nowhere else.** `MasterNavDropdown` is deleted; {@link SidebarNavList} is the
+ * same rows with no card chrome, because the slide-over already IS the card.
+ *
+ * ## Two mounts, one component, no swapping
+ *
+ * This renders a 40px identity band over exactly one body, and which body it is
+ * comes from where it was mounted — it never changes at runtime:
+ *
+ * - **Resident column** (`hasContext`) — the route's own sidebar: the Media
+ *   library's facet rail, Products' catalog picker, the receiving rails. The
+ *   band's chevron calls `onOpen`, which opens the slide-over; the column does
+ *   NOT swap its own body out from under the operator.
+ * - **Slide-over** — the page list, always.
+ *
+ * That separation is the point: a route's sidebar is its own component, not a
+ * state of the nav. An earlier pass had the column swap between picker and page
+ * list, which made the route's sidebar a mode of the navigator rather than a
+ * surface in its own right.
+ *
+ * L2 modes stay a portaled `panelPopover` menu off the band — a short list and a
+ * fast in-place switch is a different job from browsing every page, and it must
+ * paint above the spine it was triggered from.
  */
 export function MasterNavView({
   activePage,
   activeModeId,
-  open,
   onOpen,
   pageModes = [],
   recentModes = [],
@@ -123,14 +140,13 @@ export function MasterNavView({
   onToggleRow,
   onNavigate,
   onRowHover,
-  onRequestClose,
   renderContext,
-  layout = 'floating',
+  hasContext = false,
   className,
 }: {
   activePage: SidebarPageNav;
   activeModeId: string | null;
-  open: boolean;
+  /** Open the page-list slide-over. Only wired from the resident column's band. */
   onOpen: () => void;
   /** Same-page modes for the modes dropdown (modeful pages). */
   pageModes?: MasterNavPageModeChip[];
@@ -140,22 +156,17 @@ export function MasterNavView({
   expandedKey: string | null;
   onToggleRow: (key: string | null) => void;
   onNavigate: (pageId: string, modeId?: string) => void;
-  /** Hover hook per dropdown page row — warms the destination's data. */
+  /** Hover hook per page row — warms the destination's data. */
   onRowHover?: (page: SidebarPageNav) => void;
-  /** Dismiss the open menu (mouse leave / Escape). */
-  onRequestClose?: () => void;
-  /** The workspace body shown under the header; the dropdown floats over it. */
+  /** The route's own sidebar. Rendered as the body when `hasContext`. */
   renderContext?: () => ReactNode;
   /**
-   * `floating` (default) — menus are absolutely positioned and float over
-   * whatever is below. Used with `renderContext` (the classic sidebar panel) and
-   * standalone.
-   *
-   * `docked` — menus render **in flow**, expanding the host downward. The
-   * station column uses this: the nav card grows and pushes the recents card
-   * down instead of covering it. Ignores `renderContext`.
+   * Mounted as a route's resident column (body = `renderContext`) rather than as
+   * the slide-over (body = the page list). Also gates the band's nav chevron: in
+   * the slide-over the list is already on screen, so a trigger for it would be a
+   * dead control.
    */
-  layout?: 'floating' | 'docked';
+  hasContext?: boolean;
   className?: string;
 }) {
   const activeMode = activePage.modes?.find((m) => m.id === activeModeId);
@@ -166,196 +177,91 @@ export function MasterNavView({
       ? (activeMode ?? activePage.modes[0])?.icon
       : undefined;
 
-  const menuRef = useRef<HTMLDivElement>(null);
-  const modesPanelRef = useRef<HTMLDivElement>(null);
+  // The whole 40px band is the anchor, not either button: a click on the other
+  // trigger then reads as "on the anchor" to AnchoredLayer, so it does not
+  // self-dismiss and the explicit toggles below own mutual exclusion.
   const headerRef = useRef<HTMLDivElement>(null);
 
-  // ── Modes panel (click only) ──────────────────────────────────────────────
   const modeful = pageModes.length > 1;
   const [modesOpen, setModesOpen] = useState(false);
-  // Routed through the hook so `prefers-reduced-motion` collapses the height
-  // tween instead of animating layout for users who asked it not to.
-  const dockedExpandTransition = useMotionTransition(framerTransition.stationCollapse);
-
-  // Full nav always wins — dismiss modes when it opens.
-  useEffect(() => {
-    if (open) setModesOpen(false);
-  }, [open]);
+  const closeModes = useCallback(() => setModesOpen(false), []);
 
   // Dismiss modes after a mode/page jump (URL change).
   useEffect(() => {
     setModesOpen(false);
   }, [activePage.id, activeModeId]);
 
+  // Yield to the scan bench: the focus hotkey is neither a mousedown nor Escape,
+  // so AnchoredLayer cannot dismiss for it. Without this the caret would land in
+  // a scan bar sitting behind an open menu.
+  useEffect(() => {
+    const onScanFocus = () => setModesOpen(false);
+    window.addEventListener(SCAN_FOCUS_REQUESTED_EVENT, onScanFocus);
+    return () => window.removeEventListener(SCAN_FOCUS_REQUESTED_EVENT, onScanFocus);
+  }, []);
+
   const handleNavToggle = useCallback(() => {
     setModesOpen(false);
-    if (open) onRequestClose?.();
-    else onOpen();
-  }, [open, onOpen, onRequestClose]);
+    onOpen();
+  }, [onOpen]);
 
   const handleModesToggle = useCallback(() => {
     if (!modeful) return;
-    if (open) onRequestClose?.();
     setModesOpen((prev) => !prev);
-  }, [modeful, open, onRequestClose]);
-
-  // Close either menu on Escape or a click outside the header + open panel.
-  useEffect(() => {
-    if (!open && !modesOpen) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape') return;
-      if (open) onRequestClose?.();
-      setModesOpen(false);
-    };
-    const onPointerDown = (e: MouseEvent) => {
-      const target = e.target as Node;
-      if (headerRef.current?.contains(target)) return;
-      if (open && menuRef.current?.contains(target)) return;
-      if (modesOpen && modesPanelRef.current?.contains(target)) return;
-      if (open) onRequestClose?.();
-      setModesOpen(false);
-    };
-    document.addEventListener('keydown', onKey);
-    document.addEventListener('mousedown', onPointerDown);
-    return () => {
-      document.removeEventListener('keydown', onKey);
-      document.removeEventListener('mousedown', onPointerDown);
-    };
-  }, [open, modesOpen, onRequestClose]);
-
-  const header = (
-    <MasterNavHeader
-      label={headerLabel}
-      leadingIcon={headerIcon}
-      open={open}
-      onClick={handleNavToggle}
-      modesOpen={modesOpen && !open}
-      onModesClick={handleModesToggle}
-      showModesToggle={modeful}
-      recentModes={recentModes}
-    />
-  );
-
-  const modesPanel = (positionClass: string) => (
-    <AnimatePresence>
-      {modesOpen && !open && (
-        <ModesPanel
-          ref={modesPanelRef}
-          modes={pageModes}
-          className={positionClass}
-          onModeSelect={() => setModesOpen(false)}
-        />
-      )}
-    </AnimatePresence>
-  );
-
-  const dropdown = (
-    <div className="absolute inset-x-1 top-[40px] bottom-1 z-dropdown">
-      <MasterNavDropdown
-        ref={menuRef}
-        activePage={activePage}
-        activeModeId={activeModeId}
-        otherPages={otherPages}
-        expandedKey={expandedKey}
-        onToggleRow={onToggleRow}
-        onNavigate={onNavigate}
-        onRowHover={onRowHover}
-        className="max-h-full"
-      />
-    </div>
-  );
-
-  // Station column: menus expand the card downward, in flow, so the recents
-  // card below is pushed down rather than covered. Same shell, same width, same
-  // stacking band as that card — only the anchored edge differs. `height: auto`
-  // is the sanctioned layout animation for a low-frequency expand/collapse
-  // (see display/motion-crossfade.md); a nav menu open is exactly that.
-  if (layout === 'docked') {
-    const expanded = open || modesOpen;
-    return (
-      <div className={cn('flex min-h-0 flex-col', className)}>
-        <div ref={headerRef} className="shrink-0">
-          {header}
-        </div>
-        <AnimatePresence initial={false}>
-          {expanded && (
-            <motion.div
-              key={open ? 'nav-menu' : 'modes-menu'}
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={dockedExpandTransition}
-              className="min-h-0 overflow-hidden border-t border-border-hairline"
-            >
-              {open ? (
-                <MasterNavDropdown
-                  ref={menuRef}
-                  flat
-                  activePage={activePage}
-                  activeModeId={activeModeId}
-                  otherPages={otherPages}
-                  expandedKey={expandedKey}
-                  onToggleRow={onToggleRow}
-                  onNavigate={onNavigate}
-                  onRowHover={onRowHover}
-                />
-              ) : (
-                <ModesPanel
-                  ref={modesPanelRef}
-                  flat
-                  modes={pageModes}
-                  onModeSelect={() => setModesOpen(false)}
-                />
-              )}
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-    );
-  }
-
-  // With a context body (the sidebar), both menus live in the header band and
-  // float over the body below. Without one (the demo card), they float from
-  // the header. No master-nav top hairlines — the desktop content shell owns
-  // the soft radius join with the global header.
-  if (renderContext) {
-    return (
-      <div className={cn('relative isolate flex h-full min-h-0 flex-col', className)}>
-        <div ref={headerRef} className="relative z-20 shrink-0">
-          {header}
-        </div>
-        <div className="relative z-0 min-h-0 flex-1 overflow-hidden">{renderContext()}</div>
-        {modesPanel('absolute inset-x-1 top-[40px]')}
-        {/* Dropdown floats over the whole panel — anchored to the root (not the
-            ~40px header band) so its definite top/bottom give the inner menu a
-            height to scroll within. */}
-        <AnimatePresence>{open && dropdown}</AnimatePresence>
-      </div>
-    );
-  }
+  }, [modeful]);
 
   return (
-    <div className={cn('relative flex min-h-0 flex-col', className)}>
-      <div className="relative z-30 shrink-0">
-        <div ref={headerRef}>{header}</div>
-        {modesPanel('absolute inset-x-1 top-[calc(100%-1px)]')}
-        <AnimatePresence>
-          {open && (
-            <div className="absolute inset-x-1 top-[calc(100%-1px)]">
-              <MasterNavDropdown
-                ref={menuRef}
-                activePage={activePage}
-                activeModeId={activeModeId}
-                otherPages={otherPages}
-                expandedKey={expandedKey}
-                onToggleRow={onToggleRow}
-                onNavigate={onNavigate}
-                onRowHover={onRowHover}
-              />
-            </div>
-          )}
-        </AnimatePresence>
+    // `isolate` keeps the context panel's own sticky bands from leaking into the
+    // global stack. The modes menu is portaled, so it can't trap it.
+    <div className={cn('isolate flex h-full min-h-0 flex-col', className)}>
+      <div ref={headerRef} className="shrink-0 border-b border-border-hairline">
+        <MasterNavHeader
+          label={headerLabel}
+          leadingIcon={headerIcon}
+          open={false}
+          onClick={handleNavToggle}
+          // Only the resident column needs a way to reach the page list; inside
+          // the slide-over that list is already the body.
+          showNavToggle={hasContext}
+          modesOpen={modesOpen}
+          onModesClick={handleModesToggle}
+          showModesToggle={modeful}
+          recentModes={recentModes}
+        />
       </div>
+
+      {/* One body, fixed at mount. No crossfade, because nothing swaps. */}
+      {hasContext ? (
+        <div className="min-h-0 flex-1 overflow-hidden">{renderContext?.()}</div>
+      ) : (
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <SidebarNavList
+            activePage={activePage}
+            activeModeId={activeModeId}
+            otherPages={otherPages}
+            expandedKey={expandedKey}
+            onToggleRow={onToggleRow}
+            onNavigate={onNavigate}
+            onRowHover={onRowHover}
+          />
+        </div>
+      )}
+
+      {/*
+        L2 — pick a mode on the page you are already on. A short list of short
+        labels and a fast in-place switch, so it stays trigger-width
+        (`bottom-stretch`) and drops straight down from the band. `panelPopover`
+        (120) keeps it above the spine's own `panel` (100) band.
+      */}
+      <AnchoredLayer
+        open={modesOpen}
+        onClose={closeModes}
+        anchorRef={headerRef}
+        placement="bottom-stretch"
+        level="panelPopover"
+      >
+        <ModesPanel modes={pageModes} onModeSelect={closeModes} />
+      </AnchoredLayer>
     </div>
   );
 }

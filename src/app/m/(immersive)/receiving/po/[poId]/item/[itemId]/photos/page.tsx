@@ -23,6 +23,9 @@ function ItemPhotoPageInner(
   const itemId = Number(rawItemId);
   const searchParams = useSearchParams();
   const mode = searchParams.get('mode') === 'gallery' ? 'gallery' : 'capture';
+  // Phone-bridge echo id — a desktop `unbox_item` request threads it so each
+  // committed upload pings the requesting station (parity with /m/r/[id]).
+  const requestId = (searchParams.get('requestId') || '').trim() || null;
 
   const { data, isLoading, error } = useQuery<DetailResponse>({
     queryKey: ['receiving-po-detail', poId],
@@ -44,7 +47,7 @@ function ItemPhotoPageInner(
 
   if (isLoading) {
     return (
-      <div className="grid min-h-[100dvh] place-items-center text-role-caption font-bold uppercase tracking-widest text-white/60">
+      <div className="grid min-h-[100dvh] place-items-center text-role-caption font-semibold uppercase tracking-widest text-white/60">
         Opening camera…
       </div>
     );
@@ -53,12 +56,19 @@ function ItemPhotoPageInner(
   if (error || !item?.receiving_id) {
     return (
       <div className="grid min-h-[100dvh] place-items-center px-6 text-center">
-        <p className="text-role-caption font-bold text-white/70">This item isn&apos;t ready for photos yet.</p>
+        <p className="text-role-caption font-semibold text-white/70">This item isn&apos;t ready for photos yet.</p>
       </div>
     );
   }
 
-  const scope = { receivingId: item.receiving_id, receivingLineId: itemId, poRef };
+  // Item evidence: RECEIVING_LINE + receiving_item (stage explicit — this is
+  // the canonical unbox_item capture surface).
+  const scope = {
+    receivingId: item.receiving_id,
+    receivingLineId: itemId,
+    poRef,
+    stage: 'unbox_item' as const,
+  };
 
   return (
     <MobileReceivingPhotoStudio
@@ -69,6 +79,7 @@ function ItemPhotoPageInner(
       gallerySubtitle={headerLabel}
       backHref={itemDetailHref}
       returnHref={itemDetailHref}
+      requestId={requestId}
     />
   );
 }

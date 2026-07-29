@@ -16,6 +16,11 @@ import { resolvePhotoAccessUrl } from '@/lib/photos/resolve-access-url';
 import { attachPhotoWithLegacyUrl, deletePhoto } from '@/lib/photos/service';
 import { linkReceivingPhotoToClaim } from '@/lib/photos/claim-link';
 import { publishReceivingPhotoChanged } from '@/lib/realtime/publish';
+import {
+  RECEIVING_PHOTO_ITEM,
+  RECEIVING_PHOTO_PACKAGE,
+  validateReceivingPhotoWrite,
+} from '@/lib/receiving/photo-intent';
 
 export const dynamic = 'force-dynamic';
 
@@ -87,7 +92,9 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     const scope = params.get('scope');
     const photoIntentRaw = params.get('photoIntent');
     const photoIntent =
-      photoIntentRaw === 'package' || photoIntentRaw === 'item' ? photoIntentRaw : 'all';
+      photoIntentRaw === 'package' || photoIntentRaw === 'item' || photoIntentRaw === 'unbox_carton'
+        ? photoIntentRaw
+        : 'all';
 
     const lineId =
       lineIdRaw != null
@@ -223,9 +230,19 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     const entityType = receivingLineId != null ? 'RECEIVING_LINE' : 'RECEIVING';
     const entityId = receivingLineId ?? receivingId;
     const poRef = await resolvePoRef(entityType, entityId);
+
+    // Stage stamp: explicit `photoType` (validated against the stage SoT) or
+    // the scope default. `caption` is display text and never becomes
+    // photo_type — the old caption fallback let free text stain the stage
+    // vocabulary (docs/todo/photo-evidence-stage-sot-plan.md).
+    const requestedType = String(body?.photoType || '').trim().toLowerCase() || null;
+    if (requestedType) {
+      const violation = validateReceivingPhotoWrite({ entityType, photoType: requestedType });
+      if (violation) throw ApiError.badRequest(violation);
+    }
     const photoType =
-      caption ||
-      (receivingLineId != null ? 'receiving_item' : 'receiving_package');
+      requestedType ??
+      (receivingLineId != null ? RECEIVING_PHOTO_ITEM : RECEIVING_PHOTO_PACKAGE);
 
     let attached;
     try {

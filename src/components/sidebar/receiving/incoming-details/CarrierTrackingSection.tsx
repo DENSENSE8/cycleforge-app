@@ -127,7 +127,7 @@ export function CarrierTrackingSection({
                   </>
                 ) : null}
               </div>
-              <div className={`mt-1 flex items-center gap-2 text-base font-black ${tone.status}`}>
+              <div className={`mt-1 flex items-center gap-2 text-base font-semibold ${tone.status}`}>
                 <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${tone.dot}`} />
                 {headline}
               </div>

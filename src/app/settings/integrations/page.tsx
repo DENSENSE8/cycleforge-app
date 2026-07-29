@@ -199,7 +199,7 @@ export default async function IntegrationsPage({
           if (providers.length === 0) return null;
           return (
             <section key={category} className="space-y-3">
-              <h2 className="text-role-caption font-black uppercase tracking-[0.18em] text-text-faint">{category}</h2>
+              <h2 className="text-role-caption font-semibold uppercase tracking-[0.18em] text-text-faint">{category}</h2>
               <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
                 {providers.map((def) => {
                   const state = buildState(def);
@@ -221,7 +221,7 @@ export default async function IntegrationsPage({
         })}
 
         <section className="space-y-3">
-          <h2 className="text-role-caption font-black uppercase tracking-[0.18em] text-text-faint">Import</h2>
+          <h2 className="text-role-caption font-semibold uppercase tracking-[0.18em] text-text-faint">Import</h2>
           <div className="rounded-xl border border-border-soft bg-surface-card p-4">
             <CsvOrderImport />
           </div>

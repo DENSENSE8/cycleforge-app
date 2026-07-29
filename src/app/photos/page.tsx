@@ -64,7 +64,7 @@ export default function NasPhotosPreviewPage() {
             <p className="text-role-micro uppercase tracking-[0.22em] text-amber-400">
               NAS Photos · Preview (read-only, no attach)
             </p>
-            <p className="truncate text-sm font-black">/{dir || 'Photos'}</p>
+            <p className="truncate text-sm font-semibold">/{dir || 'Photos'}</p>
           </div>
           <code className="hidden shrink-0 rounded bg-glass/10 px-2 py-1 text-role-caption text-white/70 sm:block">
             {base}
@@ -80,7 +80,7 @@ export default function NasPhotosPreviewPage() {
       {/* Body */}
       {!configured ? (
         <div className="px-6 py-16 text-center">
-          <p className="text-lg font-black">NAS base URL not set</p>
+          <p className="text-lg font-semibold">NAS base URL not set</p>
           <p className="mx-auto mt-2 max-w-md text-sm text-white/60">
             Add{' '}
             <code className="rounded bg-glass/10 px-1.5 py-0.5">
@@ -98,18 +98,18 @@ export default function NasPhotosPreviewPage() {
         </div>
       ) : error ? (
         <div className="px-6 py-16 text-center">
-          <p className="text-role-caption font-bold text-rose-400">{error}</p>
+          <p className="text-role-caption font-semibold text-rose-400">{error}</p>
           {/* ds-raw-button: dark-theme translucent pill on the fixed stage backdrop — light-surface DS variants don't fit */}
           <button
             type="button"
             onClick={() => void load(dir)}
-            className="mt-4 rounded-full bg-glass/10 px-4 py-2 text-role-caption font-black uppercase tracking-widest active:bg-glass/20"
+            className="mt-4 rounded-full bg-glass/10 px-4 py-2 text-role-caption font-semibold uppercase tracking-widest active:bg-glass/20"
           >
             Retry
           </button>
         </div>
       ) : entries.length === 0 ? (
-        <p className="px-6 py-16 text-center text-role-caption font-bold text-white/60">
+        <p className="px-6 py-16 text-center text-role-caption font-semibold text-white/60">
           This folder is empty.
         </p>
       ) : (
@@ -166,7 +166,7 @@ export default function NasPhotosPreviewPage() {
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={zoom.url} alt={zoom.name} className="max-h-full max-w-full object-contain" />
-          <p className="absolute bottom-5 left-1/2 -translate-x-1/2 rounded-full bg-glass/10 px-4 py-1.5 text-role-caption font-bold">
+          <p className="absolute bottom-5 left-1/2 -translate-x-1/2 rounded-full bg-glass/10 px-4 py-1.5 text-role-caption font-semibold">
             {zoom.name}
           </p>
         </div>

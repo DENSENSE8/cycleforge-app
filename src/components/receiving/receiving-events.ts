@@ -65,6 +65,28 @@ export interface ReceivingEventDetail {
   };
   /** The in-flight scan resolved; clear the skeleton loader. */
   'receiving-scan-resolved': undefined;
+  /**
+   * The scan resolved to a carton whose unbox work is already DONE, so it was
+   * recorded as an inspection (`RECEIVING_LOOKUP_SCAN`) and claimed no work.
+   * The Unbox pane shows a read-only receipt over the editor.
+   */
+  'receiving-lookup-scan': UnboxLookupScanDetail;
+}
+
+/** Payload of `receiving-lookup-scan`. */
+export interface UnboxLookupScanDetail {
+  receivingId: number;
+  trackingNumber: string;
+  unboxedAt: string | null;
+  /**
+   * Who actually completed the unbox. Server-resolved rather than read off the
+   * workspace row: the receipt renders the instant the scan resolves, which on
+   * the stub-open rungs is before the row carries `unboxed_by_name`, so
+   * sourcing it from the row left the fact silently blank.
+   */
+  unboxedByName?: string | null;
+  /** PO number — the receipt's "open details" jump searches on it. */
+  poNumber?: string | null;
 }
 
 export type ReceivingEventName = keyof ReceivingEventDetail;

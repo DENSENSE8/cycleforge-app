@@ -255,7 +255,7 @@ export function SquareProductSearchPopover({ onSelect, onClose }: SquareProductS
                   Price
                 </label>
                 <div className="relative">
-                  <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-role-caption font-bold text-emerald-700">
+                  <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-role-caption font-semibold text-emerald-700">
                     $
                   </span>
                   <input
@@ -266,7 +266,7 @@ export function SquareProductSearchPopover({ onSelect, onClose }: SquareProductS
                     value={manualPrice}
                     onChange={(e) => setManualPrice(e.target.value)}
                     placeholder="0.00"
-                    className="h-9 w-full rounded-lg border border-border-soft bg-surface-card pl-6 pr-3 text-role-caption font-bold text-emerald-700 focus:border-emerald-500 focus:outline-none"
+                    className="h-9 w-full rounded-lg border border-border-soft bg-surface-card pl-6 pr-3 text-role-caption font-semibold text-emerald-700 focus:border-emerald-500 focus:outline-none"
                   />
                 </div>
               </div>
@@ -275,7 +275,7 @@ export function SquareProductSearchPopover({ onSelect, onClose }: SquareProductS
                 type="button"
                 disabled={manualSubmitting || submittingId != null || !manualTitle.trim()}
                 onClick={() => void handleManualSubmit()}
-                className="w-full rounded-lg bg-emerald-600 py-2.5 text-role-caption font-bold uppercase tracking-wider text-white transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-surface-strong"
+                className="w-full rounded-lg bg-emerald-600 py-2.5 text-role-caption font-semibold uppercase tracking-wider text-white transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-surface-strong"
               >
                 {manualSubmitting ? 'Adding…' : 'Add to sale'}
               </button>
@@ -356,12 +356,12 @@ function SalesResultRow({ name, sku, price, isSubmitting, disabled, onSelect }: 
           ) : null}
         </div>
 
-        <span className="shrink-0 text-role-caption font-black text-emerald-600">
+        <span className="shrink-0 text-role-caption font-semibold text-emerald-600">
           {formatCentsToDollars(price)}
         </span>
 
         {isSubmitting && (
-          <span className="text-role-micro font-bold uppercase tracking-wider text-emerald-600">
+          <span className="text-role-micro uppercase tracking-wider text-emerald-600">
             Adding…
           </span>
         )}

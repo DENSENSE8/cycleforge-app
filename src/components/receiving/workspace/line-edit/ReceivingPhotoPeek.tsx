@@ -20,6 +20,7 @@ import { useReceivingPhotosRealtimeRefresh } from '@/hooks/useReceivingPhotosRea
 import { useAuth } from '@/contexts/AuthContext';
 import { receivingPhotosQueryKey, refreshReceivingPhotos } from '@/lib/queries/receiving-queries';
 import { receivingPhotoMeta } from '@/components/shipped/photo-gallery/photo-gallery-utils';
+import type { ReceivingPhotoListIntent } from '@/lib/receiving/photo-intent';
 
 interface PhotoRow {
   id: number;
@@ -53,8 +54,11 @@ export const ReceivingPhotoPeek = memo(function ReceivingPhotoPeek({
   staffId: number;
   /** PO# for the info panel source ref + library deep link. */
   poRef?: string | null;
-  /** Triage shows package/box shots; unbox shows item interior shots. */
-  photoIntent?: 'package' | 'item' | 'all';
+  /**
+   * Stage filter from the intent SoT: triage peeks `package` (arrival), the
+   * unbox carton strip peeks `unbox_carton`, line peeks `item`.
+   */
+  photoIntent?: ReceivingPhotoListIntent;
 }) {
   const { user } = useAuth();
   const orgId = user?.organizationId;

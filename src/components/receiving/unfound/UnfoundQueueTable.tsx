@@ -72,7 +72,7 @@ export function UnfoundQueueTable() {
             <col style={{ width: '96px' }} />
           </colgroup>
           <thead className="sticky top-0 z-10 bg-surface-card shadow-sm">
-            <tr className="text-left text-role-micro font-bold uppercase tracking-wider text-text-soft">
+            <tr className="text-left text-role-micro uppercase tracking-wider text-text-soft">
               <th className="inset-field">Ticket</th>
               <th className="inset-field">Product Title</th>
               <th className="inset-field">USA Team Note</th>

@@ -270,15 +270,15 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
         <!-- Information Table -->
         <div class="border-t border-l border-black mb-6">${'' /* ds-allow-raw-neutral: print ink */}
           <div class="flex border-b border-r border-black">${'' /* ds-allow-raw-neutral: print ink */}
-            <div class="w-40 p-2 font-bold bg-surface-canvas border-r border-black">Product Title:</div>${'' /* ds-allow-raw-neutral: print ink */}
+            <div class="w-40 p-2 font-semibold bg-surface-canvas border-r border-black">Product Title:</div>${'' /* ds-allow-raw-neutral: print ink */}
             <div class="flex-1 p-2">${productTitle}</div>
           </div>
           <div class="flex border-b border-r border-black">${'' /* ds-allow-raw-neutral: print ink */}
-            <div class="w-40 p-2 font-bold bg-surface-canvas border-r border-black">SN & Issues:</div>${'' /* ds-allow-raw-neutral: print ink */}
+            <div class="w-40 p-2 font-semibold bg-surface-canvas border-r border-black">SN & Issues:</div>${'' /* ds-allow-raw-neutral: print ink */}
             <div class="flex-1 p-2">${serialNumber}, ${issue}</div>
           </div>
           <div class="flex border-b border-r border-black">${'' /* ds-allow-raw-neutral: print ink */}
-            <div class="w-40 p-2 font-bold bg-surface-canvas border-r border-black">Contact Info:</div>${'' /* ds-allow-raw-neutral: print ink */}
+            <div class="w-40 p-2 font-semibold bg-surface-canvas border-r border-black">Contact Info:</div>${'' /* ds-allow-raw-neutral: print ink */}
             <div class="flex-1 p-2">${contactDisplay}</div>
           </div>
         </div>
@@ -286,7 +286,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
         <!-- Price Section -->
         <div class="mb-6">
           <p class="text-lg font-medium mb-2">
-            <span class="font-bold text-emerald-600">$${price}</span> - Price Paid at Pick-up
+            <span class="font-semibold text-emerald-600">$${price}</span> - Price Paid at Pick-up
           </p>
           <p class="text-base font-medium">
             Card / Cash - Payment Method
@@ -299,7 +299,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
             Your Bose product has been received into our repair center. Under normal circumstances it will 
             be repaired within the next 3-10 working days and returned to you at the address above.
           </p>
-          <p class="font-bold border-b border-black inline-block">${'' /* ds-allow-raw-neutral: print ink */}
+          <p class="font-semibold border-b border-black inline-block">${'' /* ds-allow-raw-neutral: print ink */}
             There is a 30 day Warranty on all our repair services.
           </p>
         </div>
@@ -323,10 +323,10 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
         <!-- Internal Use Table -->
         <div class="border-t border-l border-black mb-3">${'' /* ds-allow-raw-neutral: print ink */}
           <div class="flex border-b border-r border-black bg-surface-canvas">${'' /* ds-allow-raw-neutral: print ink */}
-            <div class="flex-1 border-r border-black p-2 font-bold">Part Repaired</div>${'' /* ds-allow-raw-neutral: print ink */}
-            <div class="flex-1 border-r border-black p-2 font-bold">Detail</div>${'' /* ds-allow-raw-neutral: print ink */}
-            <div class="flex-1 border-r border-black p-2 font-bold">Who</div>${'' /* ds-allow-raw-neutral: print ink */}
-            <div class="flex-1 border-r border-black p-2 font-bold">Date</div>${'' /* ds-allow-raw-neutral: print ink */}
+            <div class="flex-1 border-r border-black p-2 font-semibold">Part Repaired</div>${'' /* ds-allow-raw-neutral: print ink */}
+            <div class="flex-1 border-r border-black p-2 font-semibold">Detail</div>${'' /* ds-allow-raw-neutral: print ink */}
+            <div class="flex-1 border-r border-black p-2 font-semibold">Who</div>${'' /* ds-allow-raw-neutral: print ink */}
+            <div class="flex-1 border-r border-black p-2 font-semibold">Date</div>${'' /* ds-allow-raw-neutral: print ink */}
           </div>
           ${actionRowsHtml}
         </div>
@@ -342,7 +342,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
               ? `<img src="${pickupSignatureUrl}" alt="Pickup signature for ${canonicalRsCode}" style="position:absolute;bottom:2px;left:0;height:90px;max-width:100%;width:auto;object-fit:contain;filter:contrast(2.2) brightness(0.55) saturate(0);" />`
               : '',
           })}
-          <p class="text-center font-bold text-xl mt-4">Enjoy your repaired unit!</p>
+          <p class="text-center font-semibold text-xl mt-4">Enjoy your repaired unit!</p>
         </div>
 
       </div>

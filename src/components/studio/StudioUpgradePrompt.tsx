@@ -20,7 +20,7 @@ export function StudioUpgradePrompt() {
           <Lock className="h-5 w-5" />
         </div>
         <div className="space-y-1">
-          <p className="text-sm font-bold text-text-default">Studio isn&apos;t included in your plan</p>
+          <p className="text-sm font-semibold text-text-default">Studio isn&apos;t included in your plan</p>
           <p className="text-role-caption text-text-soft">
             The Operations Studio lets you build, observe, and diagnose your whole operations
             graph. Upgrade your plan to unlock it for your team.
@@ -28,7 +28,7 @@ export function StudioUpgradePrompt() {
         </div>
         <Link
           href="/settings/billing"
-          className="inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-role-caption font-bold text-white transition-colors hover:bg-blue-700"
+          className="inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-role-caption font-semibold text-white transition-colors hover:bg-blue-700"
         >
           <Sparkles className="h-3.5 w-3.5" />
           View plans &amp; upgrade

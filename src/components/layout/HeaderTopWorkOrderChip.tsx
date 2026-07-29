@@ -125,7 +125,7 @@ export function HeaderTopWorkOrderChip() {
           <p className="text-role-eyebrow uppercase tracking-[0.18em] text-text-faint">
             Your next work order
           </p>
-          <p className="mt-1 text-role-body font-bold leading-tight tracking-tight text-text-default">
+          <p className="mt-1 text-role-body font-semibold leading-tight tracking-tight text-text-default">
             {top.title}
           </p>
           {top.subtitle ? (
@@ -142,7 +142,7 @@ export function HeaderTopWorkOrderChip() {
           {deadlineLabel ? (
             <span
               className={cn(
-                'rounded-full px-2 py-0.5 text-role-eyebrow font-bold uppercase tracking-wider',
+                'rounded-full px-2 py-0.5 text-role-eyebrow uppercase tracking-wider',
                 due.overdue ? 'bg-rose-50 text-rose-700' : 'bg-surface-sunken text-text-muted',
               )}
             >

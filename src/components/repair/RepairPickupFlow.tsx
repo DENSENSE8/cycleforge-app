@@ -106,10 +106,10 @@ export function RepairPickupFlow({ repair, onUpdate, onClose }: RepairPickupFlow
         <>
           <div className="shrink-0 flex items-center justify-between border-b border-border-hairline px-6 py-4">
             <div>
-              <h2 className="text-sm font-black uppercase tracking-tight text-text-default">
+              <h2 className="text-sm font-semibold uppercase tracking-tight text-text-default">
                 Pickup Confirmation
               </h2>
-              <p className="mt-0.5 text-role-micro font-bold text-text-soft">
+              <p className="mt-0.5 text-role-micro text-text-soft">
                 {rsCode} — {firstName} — {repair.product_title || 'Repair'} —{' '}
                 <span className="text-emerald-600">${repair.price || '0'}</span>
               </p>
@@ -177,7 +177,7 @@ export function RepairPickupFlow({ repair, onUpdate, onClose }: RepairPickupFlow
           </div>
 
           {error && (
-            <div className="shrink-0 border-t border-red-100 bg-red-50 px-6 py-2 text-role-caption font-bold text-red-600">
+            <div className="shrink-0 border-t border-red-100 bg-red-50 px-6 py-2 text-role-caption font-semibold text-red-600">
               {error}
             </div>
           )}
@@ -190,10 +190,10 @@ export function RepairPickupFlow({ repair, onUpdate, onClose }: RepairPickupFlow
             <div className="flex items-center gap-3">
               <Camera className="h-5 w-5 text-emerald-600" />
               <div>
-                <h2 className="text-sm font-black uppercase tracking-tight text-text-default">
+                <h2 className="text-sm font-semibold uppercase tracking-tight text-text-default">
                   Take a photo of this receipt to keep a copy
                 </h2>
-                <p className="mt-0.5 text-role-micro font-bold text-text-soft">
+                <p className="mt-0.5 text-role-micro text-text-soft">
                   {rsCode} — {firstName} — pickup complete
                 </p>
               </div>

@@ -6,12 +6,22 @@
  * control in the trailing CTA cluster (left of Import when present), never a
  * solid TabSwitch beside search. Used by Pending (To Ship) and Testing.
  * Options grow from {@link QUEUE_DISPLAY_SORT_OPTIONS}.
+ *
+ * The panel composes `ToolbarListbox*` (`@/design-system/primitives`) — the
+ * same rows as `GridFieldsMenu`, so the two trailing-cluster dropdowns read as
+ * one control. Selection is a leading checkmark, never a `bg-blue-50` fill.
  */
 
-import { useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { ArrowUpDown, ChevronDown } from '@/components/Icons';
 import { ToolbarButton } from '@/components/ui/ToolbarButton';
 import { Popover } from '@/design-system';
+import {
+  TOOLBAR_LISTBOX_PANEL_CLASS,
+  ToolbarListboxOption,
+  toolbarListboxOptionKeyDown,
+  toolbarListboxTriggerKeyDown,
+} from '@/design-system/primitives';
 import {
   QUEUE_DISPLAY_SORT_OPTIONS,
   type QueueDisplaySort,
@@ -42,40 +52,14 @@ export function QueueSortSwitch<T extends string = QueueDisplaySort>({
 
   const activeOption = useMemo(() => opts.find((o) => o.id === sort) ?? opts[0], [opts, sort]);
 
-  const handleSelect = (next: T) => {
-    if (next !== sort) onChange(next);
+  const dismiss = () => {
     setOpen(false);
     buttonRef.current?.focus();
   };
 
-  const handleButtonKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
-    if (event.key === 'ArrowDown' || event.key === 'ArrowUp' || event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault();
-      setOpen(true);
-    }
-  };
-
-  const handleOptionKeyDown = (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
-    const count = opts.length;
-    if (event.key === 'Escape') {
-      event.preventDefault();
-      setOpen(false);
-      buttonRef.current?.focus();
-      return;
-    }
-    if (event.key === 'ArrowDown') {
-      event.preventDefault();
-      listRef.current
-        ?.querySelector<HTMLButtonElement>(`[data-option-index="${(index + 1) % count}"]`)
-        ?.focus();
-      return;
-    }
-    if (event.key === 'ArrowUp') {
-      event.preventDefault();
-      listRef.current
-        ?.querySelector<HTMLButtonElement>(`[data-option-index="${(index - 1 + count) % count}"]`)
-        ?.focus();
-    }
+  const handleSelect = (next: T) => {
+    if (next !== sort) onChange(next);
+    dismiss();
   };
 
   return (
@@ -87,7 +71,7 @@ export function QueueSortSwitch<T extends string = QueueDisplaySort>({
         aria-expanded={open}
         aria-label={`Sort by: ${activeOption.label}`}
         onClick={() => setOpen((o) => !o)}
-        onKeyDown={handleButtonKeyDown}
+        onKeyDown={(event) => toolbarListboxTriggerKeyDown(event, () => setOpen(true))}
         className="normal-case tracking-wide"
       >
         <ArrowUpDown className="h-3.5 w-3.5 shrink-0" />
@@ -105,32 +89,23 @@ export function QueueSortSwitch<T extends string = QueueDisplaySort>({
         padded={false}
         role="listbox"
         aria-label={ariaLabel}
-        className="min-w-[9.5rem] rounded-lg p-0.5 shadow-md"
+        className={TOOLBAR_LISTBOX_PANEL_CLASS}
       >
         <ul ref={listRef} className="list-none">
-          {opts.map((o, index) => {
-            const active = sort === o.id;
-            return (
-              <li key={o.id} role="none">
-                <button
-                  type="button"
-                  role="option"
-                  aria-selected={active}
-                  data-option-index={index}
-                  onClick={() => handleSelect(o.id)}
-                  onKeyDown={(event) => handleOptionKeyDown(event, index)}
-                  className={cn(
-                    'ds-raw-button flex w-full items-center rounded-md px-2.5 py-1.5 text-left text-role-micro font-semibold transition-colors',
-                    active
-                      ? 'bg-blue-50 text-blue-700'
-                      : 'text-text-muted hover:bg-surface-sunken hover:text-text-default',
-                  )}
-                >
-                  {o.shortLabel}
-                </button>
-              </li>
-            );
-          })}
+          {opts.map((o, index) => (
+            <li key={o.id} role="none">
+              <ToolbarListboxOption
+                index={index}
+                selected={sort === o.id}
+                onClick={() => handleSelect(o.id)}
+                onKeyDown={(event) =>
+                  toolbarListboxOptionKeyDown(event, index, opts.length, listRef, dismiss)
+                }
+              >
+                {o.shortLabel}
+              </ToolbarListboxOption>
+            </li>
+          ))}
         </ul>
       </Popover>
     </div>

@@ -13,8 +13,8 @@ export function ZohoManagementPage() {
         <p className="text-role-micro uppercase tracking-[0.24em] text-text-soft">Connections</p>
         <div className="mt-2 flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <h2 className="text-sm font-black uppercase tracking-widest text-text-default">Inventory sync tools</h2>
-            <p className="mt-1 text-role-caption font-bold leading-relaxed text-text-soft">
+            <h2 className="text-sm font-semibold uppercase tracking-widest text-text-default">Inventory sync tools</h2>
+            <p className="mt-1 text-role-caption font-semibold leading-relaxed text-text-soft">
               Refresh the inventory connector&apos;s token, sync expected receiving lines, and import a single purchase receive from one place.
             </p>
             <p className="mt-1.5 text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint">

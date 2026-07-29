@@ -199,7 +199,7 @@ function PickerFolderTile({ tile, onOpen }: { tile: LibraryFolderTile; onOpen: (
         <div className="absolute left-3 right-2 top-0.5 h-3 rounded-t-md bg-surface-strong" aria-hidden="true" />
         <div className="relative h-full w-full overflow-hidden rounded-md border border-border-soft">
           <FolderTileCover photo={previewAsPhoto} />
-          <span className="absolute right-2 top-2 rounded-full bg-scrim/70 px-1.5 py-0.5 text-role-micro font-bold tabular-nums text-white">
+          <span className="absolute right-2 top-2 rounded-full bg-scrim/70 px-1.5 py-0.5 text-role-micro tabular-nums text-white">
             {tile.count}
           </span>
         </div>

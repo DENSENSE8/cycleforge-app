@@ -170,7 +170,7 @@ function LiveSidebar({ modeToggle }: { modeToggle: React.ReactNode }) {
             return (
               <div key={k.key} className="rounded-xl border border-border-soft bg-surface-card p-2.5">
                 <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">{k.label}</p>
-                <p className={cn('mt-0.5 text-xl font-black tabular-nums leading-none', k.tone)}>
+                <p className={cn('mt-0.5 text-xl font-semibold tabular-nums leading-none', k.tone)}>
                   {cell ? cell.value.toLocaleString() : isLoading ? '·' : '0'}
                 </p>
                 <DeltaPill delta={cell?.delta ?? 0} invert={k.key === 'repair'} />
@@ -228,8 +228,8 @@ function AnalyticsSidebar({ modeToggle }: { modeToggle: React.ReactNode }) {
       {modeToggle}
       <div className={cn('space-y-5 pt-3')}>
         <header>
-          <h2 className="text-xl font-black uppercase leading-none tracking-tighter text-text-default">Analytics</h2>
-          <p className="mt-1 text-role-eyebrow font-bold uppercase tracking-widest text-blue-600">
+          <h2 className="text-xl font-semibold uppercase leading-none tracking-tighter text-text-default">Analytics</h2>
+          <p className="mt-1 text-role-eyebrow uppercase tracking-widest text-blue-600">
             Trends · breakdowns · inventory health
           </p>
         </header>

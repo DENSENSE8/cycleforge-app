@@ -6,20 +6,15 @@ import { PhotoPeekFan, type PeekCard } from '@/components/receiving/workspace/li
 import { useUnitPhotosRealtimeRefresh } from '@/hooks/useUnitPhotosRealtimeRefresh';
 import { useAuth } from '@/contexts/AuthContext';
 import { photoContentUrl } from '@/lib/photos/display-url';
+import { unitTimelinePhotosKey, unitTimelinePhotosQuery } from '@/lib/timeline/journey-photos';
+import type { UnitTimelinePhotoRowSource } from '@/lib/timeline/unit-photos-events';
 import { Camera } from '@/components/Icons';
 
-interface TimelinePhotoRow {
-  photoId: number;
-  at: string | null;
-  source: 'testing' | 'unbox' | 'packing';
-  thumbUrl: string;
-  fullUrl: string;
-}
-
 /**
- * Pack / unbox workspace peek for a SERIAL_UNIT's photos — prefers packing
+ * Pack / testing workspace peek for a SERIAL_UNIT's photos — prefers one stage
  * bucket, falls back to all timeline photos so prepack packs still show
- * testing/unbox context.
+ * testing/inbound context. Shares the canonical unit-timeline-photos query
+ * (one cache entry per unit with the journey/timeline surfaces).
  */
 export const UnitPackPhotoPeek = memo(function UnitPackPhotoPeek({
   serialUnitId,
@@ -27,7 +22,7 @@ export const UnitPackPhotoPeek = memo(function UnitPackPhotoPeek({
   showEmptyState = true,
 }: {
   serialUnitId: number;
-  preferSource?: 'packing' | 'testing' | 'unbox' | 'all';
+  preferSource?: UnitTimelinePhotoRowSource | 'all';
   /** Inline photo tabs teach when empty; pane-corner overlays stay absent. */
   showEmptyState?: boolean;
 }) {
@@ -35,33 +30,17 @@ export const UnitPackPhotoPeek = memo(function UnitPackPhotoPeek({
   const staffId = user?.staffId ?? 0;
   const queryClient = useQueryClient();
 
-  const query = useQuery({
-    queryKey: ['unit-timeline-photos-peek', serialUnitId],
-    queryFn: async (): Promise<TimelinePhotoRow[]> => {
-      const res = await fetch(`/api/serial-units/${serialUnitId}/timeline-photos`, {
-        cache: 'no-store',
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const body = await res.json();
-      return Array.isArray(body?.photos) ? body.photos : [];
-    },
-    enabled: Number.isFinite(serialUnitId) && serialUnitId > 0,
-    staleTime: 10_000,
-  });
+  const query = useQuery(unitTimelinePhotosQuery(serialUnitId));
 
   useUnitPhotosRealtimeRefresh(serialUnitId, staffId, () => {
-    void queryClient.invalidateQueries({ queryKey: ['unit-timeline-photos-peek', serialUnitId] });
-    void query.refetch();
+    void queryClient.invalidateQueries({ queryKey: unitTimelinePhotosKey(serialUnitId) });
   });
 
   const cards = useMemo<PeekCard[]>(() => {
-    const photos = query.data ?? [];
-    const filtered =
-      preferSource === 'all'
-        ? photos
-        : photos.filter((p) => p.source === preferSource).length > 0
-          ? photos.filter((p) => p.source === preferSource)
-          : photos;
+    const photos = query.data?.photos ?? [];
+    const preferred =
+      preferSource === 'all' ? photos : photos.filter((p) => p.source === preferSource);
+    const filtered = preferred.length > 0 ? preferred : photos;
     return filtered.map((p) => ({
       id: String(p.photoId),
       imgUrl: p.thumbUrl || photoContentUrl(p.photoId, 'thumb'),

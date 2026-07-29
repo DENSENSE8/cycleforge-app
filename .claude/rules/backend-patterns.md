@@ -45,6 +45,32 @@ export const POST = withAuth(async (request, ctx) => {
 - Thread `clientEventId` through mutations into `inventory_events` (which has `UNIQUE(client_event_id)`), so a client
   retry (flaky mobile network) is a no-op instead of a double-effect. Re-entering the same state returns `idempotent: true`.
 
+## A safety classification is a REQUIRED parameter, never a defaulted one
+
+When a new argument decides *whether a write is allowed to claim something*
+(who did the work, whether a milestone fires, which surface a row belongs to),
+give it **no default**. A default is not a convenience here — it is a silent
+opt-out that every call site you did not visit takes automatically, and the
+compiler stays quiet about exactly the sites you missed.
+
+- **Don't:** `scanKind: UnboxScanKind = 'work'`. That shape shipped with 2 of 6
+  `stampUnboxOpened` call sites passing a value, so the 4 that reach a
+  pre-existing carton kept re-attributing an inspection as work — the precise
+  defect the parameter was added to fix. Same trap as `intakeSurface` defaulting
+  to `'triage'` in `recordReceivingScan`: a caller that drops it records every
+  Unbox scan as a door scan and the Unboxed rail silently stops being written.
+- **Do:** make it required, then let each site answer one narrow question
+  (`preexisting ? await classify(id) : 'work'`). Turning the miss into a compile
+  error is the enforcement; a comment asking callers to remember is not.
+- **Classify at the EARLIEST write, not the most obvious one.** Gating the
+  branch you were looking at is worthless if a shared resolver already wrote
+  first — `findScanByTracking` → `memoizeLookupHit` overwrote attribution before
+  any gated branch ran. Trace every write on the path, not just the one the
+  ticket names.
+- Pair it with a guard that walks the call sites (`lookup-scan-wiring.guard.test.ts`
+  parses the argument lists), so the next site added is caught by a test rather
+  than by an operator noticing their name on someone else's work.
+
 ## Tenant scoping via GUC
 
 - Wrap org-scoped writes in `withTenantTransaction(orgId, cb)` — it does `BEGIN; SET LOCAL app.current_org = $1; …`.

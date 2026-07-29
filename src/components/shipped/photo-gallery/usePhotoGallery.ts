@@ -18,6 +18,7 @@ import {
 } from './viewer-close-state';
 import { uploadPhotoClient } from '@/lib/photos/upload-client';
 import { toast } from '@/lib/toast';
+import { RECEIVING_PHOTO_PACKAGE } from '@/lib/receiving/photo-intent';
 import type { PhotoEntityType } from '@/lib/photos/types';
 import type { PhotoGalleryInput, PhotoItem } from './photo-gallery-utils';
 
@@ -455,11 +456,12 @@ export function usePhotoGallery(props: PhotoGalleryProps) {
   // Upload always attaches to the gallery's own entity. Prefer an explicit
   // target; otherwise derive it from a receiving-scoped gallery so receiving
   // surfaces get upload for free without a new call-site prop — never an
-  // arbitrary/unowned entity.
+  // arbitrary/unowned entity. Carton-scoped uploads stamp the package stage
+  // (a carton link may never carry `receiving_item` — stage SoT).
   const effectiveUploadTarget: PhotoUploadTarget | null =
     uploadTarget ??
     (typeof receivingId === 'number' && Number.isFinite(receivingId) && receivingId > 0
-      ? { entityType: 'RECEIVING', entityId: receivingId, photoType: 'receiving_item', poRef: orderId }
+      ? { entityType: 'RECEIVING', entityId: receivingId, photoType: RECEIVING_PHOTO_PACKAGE, poRef: orderId }
       : null);
   const canUpload = effectiveUploadTarget !== null;
 

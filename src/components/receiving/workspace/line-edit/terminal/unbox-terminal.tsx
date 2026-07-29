@@ -60,6 +60,11 @@ export function resolveUnboxReceiveTerminal(ctx: UnboxTerminalContext): Terminal
   const activeKind = r.activeLabelKind ?? r.selectedLabelKind ?? 'carton';
   const activeName =
     labelOpts.find((o) => o.key === activeKind)?.name ?? 'label';
+  // A received line's remaining bench job is the package label, so the primary
+  // prints instead of print-then-receive. Re-receive is not removed — it moves
+  // to the split menu (labelled "Receive again" by the controller) because a
+  // bounce-back re-receive is a real, supported flow.
+  const isReceived = r.isReceived === true;
 
   const labelMenuItems = labelOpts.map((opt) => ({
     label: opt.name,
@@ -80,7 +85,7 @@ export function resolveUnboxReceiveTerminal(ctx: UnboxTerminalContext): Terminal
     title: r.printThenReceiveTitle,
     disabled: r.combinedReviewDisabled,
     disabledReason: r.combinedReviewDisabledReason,
-    onClick: () => void r.handlePrintAndReceive(),
+    onClick: isReceived ? () => r.runPrintLabel() : () => void r.handlePrintAndReceive(),
     icon: <Printer className="h-4 w-4 shrink-0" />,
     tone: 'accent',
     menuLabel: r.splitMenuAriaLabel,

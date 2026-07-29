@@ -20,7 +20,7 @@ function MobilePageError(error: Error, reset: () => void) {
   return (
     <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center">
       <div className="w-full max-w-sm rounded-xl border border-dashed border-rose-200 bg-rose-50 px-4 py-6">
-        <p className="text-sm font-black uppercase tracking-[0.18em] text-rose-700">
+        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-rose-700">
           This screen hit an error
         </p>
         <p className="mt-2 break-words text-role-caption font-semibold text-rose-600">

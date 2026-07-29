@@ -19,7 +19,7 @@ export function EmptyState({ icon, title, description, action, className = '' }:
         </div>
       )}
       <div className="space-y-2">
-        <h3 className="text-lg font-black text-text-default">{title}</h3>
+        <h3 className="text-lg font-semibold text-text-default">{title}</h3>
         {description && (
           <p className="text-sm text-text-soft max-w-sm">{description}</p>
         )}

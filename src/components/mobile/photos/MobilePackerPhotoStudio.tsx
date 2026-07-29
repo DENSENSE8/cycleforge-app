@@ -243,7 +243,7 @@ function StudioHeader({ eyebrow, label }: { eyebrow: string; label: string }) {
   return (
     <div className="min-w-0">
       <p className="text-role-micro uppercase tracking-[0.22em] text-white/60">{eyebrow}</p>
-      <p className="truncate text-sm font-black text-white">{label}</p>
+      <p className="truncate text-sm font-semibold text-white">{label}</p>
     </div>
   );
 }
@@ -277,7 +277,7 @@ function PackVerifyConfirm({
       <div className="space-y-4">
         <div>
           <p className="text-role-micro uppercase tracking-[0.22em] text-white/60">Verify & finish</p>
-          <p className="truncate text-lg font-black text-white">
+          <p className="truncate text-lg font-semibold text-white">
             {orderId.startsWith('PL-') ? `Pack ${orderId}` : `Order ${orderId}`}
           </p>
         </div>
@@ -286,7 +286,7 @@ function PackVerifyConfirm({
           number from the slip to confirm it matches this order.
         </p>
         <label className="block space-y-1">
-          <span className="text-role-micro font-black uppercase tracking-widest text-white/60">
+          <span className="text-role-micro uppercase tracking-widest text-white/60">
             Tracking on slip
           </span>
           <input
@@ -305,7 +305,7 @@ function PackVerifyConfirm({
             type="button"
             onClick={onScanFromSlip}
             disabled={ocrBusy || submitting}
-            className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/15 px-3 py-2.5 text-role-caption font-bold text-white/80 disabled:opacity-60"
+            className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/15 px-3 py-2.5 text-role-caption font-semibold text-white/80 disabled:opacity-60"
           >
             {ocrBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
             {ocrBusy ? 'Reading slip…' : 'Read tracking from slip'}
@@ -318,7 +318,7 @@ function PackVerifyConfirm({
           type="button"
           onClick={onConfirm}
           disabled={submitting}
-          className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-3.5 text-base font-black text-white disabled:opacity-60"
+          className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-3.5 text-base font-semibold text-white disabled:opacity-60"
         >
           {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
           {submitting ? 'Submitting…' : 'Verify & finish'}
@@ -327,7 +327,7 @@ function PackVerifyConfirm({
           type="button"
           onClick={onBack}
           disabled={submitting}
-          className="w-full rounded-xl border border-white/15 px-4 py-3 text-sm font-bold text-white/80 disabled:opacity-60"
+          className="w-full rounded-xl border border-white/15 px-4 py-3 text-sm font-semibold text-white/80 disabled:opacity-60"
         >
           Back to box photos
         </button>

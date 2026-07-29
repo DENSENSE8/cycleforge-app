@@ -44,8 +44,9 @@ export const designTokens = {
     text2xl: fontSizes['2xl'],
     fontNormal: String(fontWeights.regular),
     fontMedium: String(fontWeights.medium),
+    // 600 is the ceiling — `fontBold`/`fontBlack` retired with the 700+ cuts
+    // (see typography/weights.ts).
     fontSemibold: String(fontWeights.semibold),
-    fontBold: String(fontWeights.bold),
   },
   // spacing intentionally absent: the density-aware scale (spacing.mjs) is
   // consumed by Tailwind directly; the old --space-* var emission had zero
@@ -77,6 +78,10 @@ export const designTokenCssVariables: Record<string, TokenValue> = {
   '--color-warning': designTokens.colors.warning,
   '--color-success': designTokens.colors.success,
   '--color-info': designTokens.colors.info,
+  // NOTE: the condensed cut is deliberately absent here. `--font-condensed` /
+  // `--ds-font-condensed` are declared ONLY in src/styles/globals.css, so the
+  // duplicated font chain this module still owns shrinks instead of growing
+  // (see FONT_CHAIN_EXCEPTION in src/app/head-token-order.guard.test.ts).
   '--font-sans': designTokens.typography.fontSans,
   '--font-mono': designTokens.typography.fontMono,
   '--text-xs': designTokens.typography.textXs,
@@ -87,8 +92,8 @@ export const designTokenCssVariables: Record<string, TokenValue> = {
   '--text-2xl': designTokens.typography.text2xl,
   '--font-normal': designTokens.typography.fontNormal,
   '--font-medium': designTokens.typography.fontMedium,
+  // 600 is the ceiling — `--font-bold` retired with the 700 cut (weights.ts).
   '--font-semibold': designTokens.typography.fontSemibold,
-  '--font-bold': designTokens.typography.fontBold,
   '--ds-motion-fast': motionDurations.fast,
   '--ds-motion-normal': motionDurations.normal,
   '--ds-ease-standard': motionEasings.standard,

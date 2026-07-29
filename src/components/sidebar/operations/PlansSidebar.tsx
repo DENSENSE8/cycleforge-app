@@ -123,7 +123,7 @@ export function PlansSidebar({ modeToggle }: { modeToggle: React.ReactNode }) {
                   )}
                 >
                   <div className="flex items-center justify-between gap-2">
-                    <p className="flex min-w-0 items-center gap-1.5 truncate text-role-caption font-bold text-text-default">
+                    <p className="flex min-w-0 items-center gap-1.5 truncate text-role-caption font-semibold text-text-default">
                       {isMasterPlan && (
                         <HoverTooltip label="Auto-synced from the agentic-loop master plan — open Live in the detail pane" focusable={false}>
                           <span className="inline-flex">
@@ -144,7 +144,7 @@ export function PlansSidebar({ modeToggle }: { modeToggle: React.ReactNode }) {
                   </div>
                   <div className="mt-1.5 flex items-center gap-2">
                     <ProgressBar percent={pct} />
-                    <span className="shrink-0 text-role-micro font-bold tabular-nums text-text-soft">{Math.round(pct)}%</span>
+                    <span className="shrink-0 text-role-micro tabular-nums text-text-soft">{Math.round(pct)}%</span>
                   </div>
                   <p className="mt-1 truncate text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint">
                     {plan.progress ? `${plan.progress.doneTasks}/${plan.progress.totalTasks} tasks` : '—'}

@@ -120,7 +120,7 @@ function ThreadRecordToggle({
         type="button"
         onClick={() => onChange(false)}
         className={cn(
-          'inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-role-caption font-bold transition',
+          'inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-role-caption font-semibold transition',
           !value
             ? 'bg-surface-card text-violet-700 shadow-sm'
             : 'text-text-soft hover:text-text-muted',
@@ -133,7 +133,7 @@ function ThreadRecordToggle({
         type="button"
         onClick={() => onChange(true)}
         className={cn(
-          'inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-role-caption font-bold transition',
+          'inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-role-caption font-semibold transition',
           value
             ? 'bg-surface-card text-emerald-700 shadow-sm'
             : 'text-text-soft hover:text-text-muted',

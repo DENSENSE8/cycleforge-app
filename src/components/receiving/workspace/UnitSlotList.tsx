@@ -222,7 +222,7 @@ function CollapsedRow({
         meta={meta}
         trailing={
           serial ? (
-            <span className="font-mono text-sm font-bold tracking-tight text-text-default underline decoration-emerald-500 decoration-2 underline-offset-2">
+            <span className="font-mono text-sm font-semibold tracking-tight text-text-default underline decoration-emerald-500 decoration-2 underline-offset-2">
               {last4(serial.serial_number)}
             </span>
           ) : (

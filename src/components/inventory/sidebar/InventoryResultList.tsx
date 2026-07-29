@@ -50,7 +50,7 @@ export function InventoryResultList({
                     <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
                         <Search className="w-6 h-6 text-blue-600" />
                     </div>
-                    <h3 className="text-sm font-black text-blue-900 uppercase tracking-tight mb-1">No matches</h3>
+                    <h3 className="text-sm font-semibold text-blue-900 uppercase tracking-tight mb-1">No matches</h3>
                     <p className={`${sectionLabel} text-blue-700 leading-relaxed`}>
                         Try a different field or clear filters.
                     </p>

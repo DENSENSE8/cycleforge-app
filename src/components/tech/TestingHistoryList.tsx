@@ -12,7 +12,7 @@ import {
 import { emitSelection, emitSelectionTotal, onToggleAll } from '@/lib/selection/table-selection';
 import { ReceivingGridView } from '@/components/station/receiving-grid/ReceivingGridView';
 import { StationPipelineBoard } from '@/components/station/StationPipelineBoard';
-import { STATION_PIPELINE_BOARDS, STATION_VIRTUAL_LIST } from '@/lib/station/flags';
+import { STATION_PIPELINE_BOARDS } from '@/lib/station/flags';
 import {
   LAYOUT_PARAM,
   SAVED_VIEW_PARAM_KEYS,
@@ -279,8 +279,7 @@ export function TestingHistoryList({
     return entries.sort((a, b) => a[0].localeCompare(b[0]));
   }, [displaySort]);
   const daySections = useMemo(() => toDaySections(rows), [rows, toDaySections]);
-  const boardEnabled =
-    mode === 'history' && STATION_VIRTUAL_LIST && STATION_PIPELINE_BOARDS;
+  const boardEnabled = mode === 'history' && STATION_PIPELINE_BOARDS;
   const layout = boardEnabled ? parseLayout(searchParams.get(LAYOUT_PARAM)) : 'all';
   const setLayout = useCallback(
     (next: 'board' | 'all') => {

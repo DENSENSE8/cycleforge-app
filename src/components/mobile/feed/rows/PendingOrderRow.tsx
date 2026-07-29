@@ -61,7 +61,7 @@ export function PendingOrderRow({
           <RowTitle dot={dotTone(daysLate)} dotTrack={META_COL.dotTrackWide} title={productTitle} />
         </div>
         {row.account_source && (
-          <span className="shrink-0 rounded-full border border-blue-100/60 bg-blue-50 px-2 py-0.5 text-[8.5px] font-black uppercase tracking-[0.1em] text-blue-500">
+          <span className="shrink-0 rounded-full border border-blue-100/60 bg-blue-50 px-2 py-0.5 text-[8.5px] font-semibold uppercase tracking-[0.1em] text-blue-500">
             {row.account_source}
           </span>
         )}

@@ -2,9 +2,10 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
-import type {
-  PhotoLibraryFilterState,
-  PhotoLibraryViewMode,
+import {
+  DEFAULT_PHOTO_LIBRARY_VIEW,
+  type PhotoLibraryFilterState,
+  type PhotoLibraryViewMode,
 } from '@/lib/photos/library-filter-state';
 
 /**
@@ -51,7 +52,9 @@ export function readMediaViewPayload(view: MediaSavedView): MediaViewPayload {
   return {
     schemaVersion: 1,
     filters: (bag?.filters as PhotoLibraryFilterState) ?? {},
-    view: (bag?.view as PhotoLibraryViewMode) ?? 'folders',
+    // A legacy view saved before `view` was persisted has no stored mode — land
+    // it on the current default rather than the retired folder drill.
+    view: (bag?.view as PhotoLibraryViewMode) ?? DEFAULT_PHOTO_LIBRARY_VIEW,
   };
 }
 

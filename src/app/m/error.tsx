@@ -36,8 +36,8 @@ export default function MobileError({
         <p className="text-role-micro uppercase tracking-[0.22em] text-rose-500">
           Something broke
         </p>
-        <h1 className="text-lg font-black text-text-default">This screen hit an error</h1>
-        <p className="max-w-xs text-role-caption font-bold text-text-soft">
+        <h1 className="text-lg font-semibold text-text-default">This screen hit an error</h1>
+        <p className="max-w-xs text-role-caption font-semibold text-text-soft">
           {error?.message || 'Unexpected error.'}
         </p>
       </div>

@@ -65,7 +65,7 @@ export function UnitDetailsPanel({ ref, onClose }: UnitDetailsPanelProps) {
             {summary ? (
                 <div className="border-b border-border-soft bg-surface-canvas px-5 py-4 space-y-4">
                     {summary.condition_grade === 'PARTS' ? (
-                        <span className="inline-flex items-center gap-1.5 rounded-md bg-amber-50 px-2 py-1 text-role-eyebrow font-bold uppercase tracking-wide text-amber-800 ring-1 ring-inset ring-amber-200">
+                        <span className="inline-flex items-center gap-1.5 rounded-md bg-amber-50 px-2 py-1 text-role-eyebrow uppercase tracking-wide text-amber-800 ring-1 ring-inset ring-amber-200">
                             Parts · Tech Room
                         </span>
                     ) : null}

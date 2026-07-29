@@ -300,7 +300,7 @@ export function IssuesDetail({
             </span>
             <CopyChip value={String(issue.id)} display={`#${issue.id}`} tone="id" dense />
           </div>
-          <h1 className="text-lg font-black tracking-tight text-text-default">{issue.title}</h1>
+          <h1 className="text-lg font-semibold tracking-tight text-text-default">{issue.title}</h1>
         </header>
 
         <IssueActions issue={issue} onDeleted={onBack} />

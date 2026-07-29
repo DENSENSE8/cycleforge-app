@@ -81,7 +81,7 @@ export function QuickAccessPopover({
             initials={staffName ? initials(staffName) : '·'}
           />
           <div className="min-w-0 flex-1">
-            <div className="truncate text-role-eyebrow font-bold uppercase tracking-[0.14em] text-text-faint">
+            <div className="truncate text-role-eyebrow uppercase tracking-[0.14em] text-text-faint">
               {user.organizationName}
             </div>
             <div className="truncate text-sm font-semibold text-text-default">
@@ -128,7 +128,7 @@ function StaffIdentityAvatar({ value, initials }: { value: string; initials: str
   return (
     <span
       aria-hidden
-      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-role-caption font-bold text-white ring-1 ring-border-soft"
+      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-role-caption font-semibold text-white ring-1 ring-border-soft"
       style={{ backgroundColor: value }}
     >
       {initials}

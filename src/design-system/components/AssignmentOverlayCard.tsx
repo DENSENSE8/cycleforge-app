@@ -89,7 +89,7 @@ export function AssignmentOverlayCard({
             // DialogTitle so the overlay has a real accessible name (Radix warns
             // without one); renders an <h2> — the modal's own top-level heading.
             <DialogTitle
-              className={`text-2xl font-black leading-[1.1] tracking-tight ${showHeaderGradient ? 'text-white' : 'text-text-default'} ${!headerEyebrow ? 'mt-1' : ''}`.trim()}
+              className={`text-2xl font-semibold leading-[1.1] tracking-tight ${showHeaderGradient ? 'text-white' : 'text-text-default'} ${!headerEyebrow ? 'mt-1' : ''}`.trim()}
             >
               {title}
             </DialogTitle>

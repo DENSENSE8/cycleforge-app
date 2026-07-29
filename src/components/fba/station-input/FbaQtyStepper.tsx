@@ -40,7 +40,7 @@ export function FbaQtyStepper({
           onSet(v);
         }}
         onClick={(e) => e.stopPropagation()}
-        className="h-7 w-10 border-x border-border-soft bg-surface-card text-center text-sm font-black tabular-nums text-text-default outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+        className="h-7 w-10 border-x border-border-soft bg-surface-card text-center text-sm font-semibold tabular-nums text-text-default outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
       />
       <IconButton
         type="button"

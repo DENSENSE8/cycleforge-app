@@ -10,7 +10,13 @@ import { useUIMode } from '@/design-system/providers/UIModeProvider';
 import { useBodyScrollLock } from '@/design-system/hooks';
 import { AlertTriangle, RotateCcw, X } from '@/components/Icons';
 import { Button, IconButton } from '@/design-system/primitives';
-import { isMobileAllowedPath } from '@/lib/sidebar-navigation';
+import { isMobileAllowedPath, isStationSurfaceRoute } from '@/lib/sidebar-navigation';
+import { useHasSidebarContext } from '@/components/sidebar/useHasSidebarContext';
+import { SIDEBAR_SPINE_WIDTH } from '@/components/sidebar/sidebar-spine';
+import {
+  STATION_PANEL_COLUMN_CLASS,
+  STATION_PANEL_HOST_CLASS,
+} from '@/components/sidebar/station-column';
 import { isClientPublicPath } from '@/contexts/AuthContext';
 import { GlobalHeader } from '@/components/layout/GlobalHeader';
 import { appContentShellClass } from '@/components/layout/header-shell';
@@ -27,10 +33,15 @@ import { useGlobalWedgeScanner } from '@/hooks/useGlobalWedgeScanner';
 // lands.
 const DashboardSidebar = dynamic(() => import('@/components/DashboardSidebar'), {
   ssr: false,
-  // Match the docked sidebar's real width (`w-[360px]` in DashboardSidebar) so
-  // the desktop frame doesn't jump ~104px when the chunk lands.
-  loading: () => <aside className="h-full w-[360px] shrink-0" aria-hidden />,
+  // The spine owns no width — its host (resident column or slide-over) does — so
+  // the placeholder just fills that host while the chunk lands. The frame cannot
+  // jump, because the column's width never depended on the chunk.
+  loading: () => <div className="h-full w-full" aria-hidden />,
 });
+const SidebarSlideOver = dynamic(
+  () => import('@/components/sidebar/SidebarSlideOver').then((m) => m.SidebarSlideOver),
+  { ssr: false },
+);
 
 // On-demand chrome, split out of the shell chunk. All three render nothing
 // until triggered (⌘K, scan event, Ably push), so deferring their JS past
@@ -39,6 +50,17 @@ const DashboardSidebar = dynamic(() => import('@/components/DashboardSidebar'), 
 const CommandBar = dynamic(() => import('@/components/CommandBar').then((m) => m.CommandBar), { ssr: false });
 const GlobalDesktopSkuScanner = dynamic(
   () => import('@/components/layout/GlobalDesktopSkuScanner').then((m) => m.GlobalDesktopSkuScanner),
+  { ssr: false },
+);
+// The station bench panel (scan bar + recents rail) now lives in the CONTENT
+// region rather than the sidebar, so it survives the nav being hidden. Its own
+// dispatcher is already per-route code-split, so this stays a thin boundary.
+const SidebarContextPanel = dynamic(
+  () => import('@/components/sidebar/SidebarContextPanel').then((m) => m.SidebarContextPanel),
+  { ssr: false },
+);
+const MasterNavProvider = dynamic(
+  () => import('@/components/sidebar/master-nav').then((m) => m.MasterNavProvider),
   { ssr: false },
 );
 const ReceivingPhoneBridgeMount = dynamic(
@@ -75,10 +97,10 @@ function GlobalWedgeScannerMount() {
  */
 function SidebarFallback({ reset }: { reset: () => void }) {
   return (
-    <aside className={cn('flex h-full w-[360px] shrink-0 flex-col border-r border-border-soft', appChromeClass)}>
+    <aside className={cn('flex h-full shrink-0 flex-col border-r border-border-soft', SIDEBAR_SPINE_WIDTH, appChromeClass)}>
       <div className="m-3 rounded-lg border border-dashed border-rose-200 bg-rose-50 px-3 py-4 text-center">
         <AlertTriangle className="mx-auto h-5 w-5 text-rose-500" />
-        <p className="mt-2 text-role-caption font-bold text-rose-700">Sidebar unavailable</p>
+        <p className="mt-2 text-role-caption font-semibold text-rose-700">Sidebar unavailable</p>
         <p className="mt-1 text-role-eyebrow font-semibold uppercase tracking-widest text-rose-500">
           The rest of the page still works
         </p>
@@ -100,6 +122,10 @@ function SidebarFallback({ reset }: { reset: () => void }) {
 
 interface ResponsiveLayoutProps {
   children: ReactNode;
+  /** True on a tenant kiosk host — see AuthContext's `kioskHost` prop. The
+   *  device page (`/` → `/kiosk`) owns its own full-bleed chrome; it must
+   *  never render the staff sidebar/header shell. */
+  kioskHost?: boolean;
 }
 
 // ─── Drawer animation ────────────────────────────────────────────────────────
@@ -130,7 +156,7 @@ const drawerTransition = {
  * Mobile:  sidebar hidden by default, accessible as a slide-out drawer
  *          from the left. Hamburger button exposed via `useSidebarDrawer`.
  */
-export function ResponsiveLayout({ children }: ResponsiveLayoutProps) {
+export function ResponsiveLayout({ children, kioskHost = false }: ResponsiveLayoutProps) {
   const { isMobile } = useUIMode();
   const pathname = usePathname();
   const router = useRouter();
@@ -138,10 +164,24 @@ export function ResponsiveLayout({ children }: ResponsiveLayoutProps) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   // Desktop-only: collapse the permanent left sidebar via the global header's
   // top-left toggle so the main content can run full-width.
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  // Desktop-only: while collapsed, resting the pointer at the far-left edge for
-  // ~2s re-opens the sidebar (it stays open until toggled again). `edgeArming`
-  // drives the progress sliver that fills over the dwell as a "about to open" cue.
+  // Station benches mount their scan bar + recents rail in the CONTENT region so
+  // those survive the nav being closed — which is most of the time at a bench.
+  const navOnlySurface = isStationSurfaceRoute(pathname);
+  /**
+   * Does this route have a sidebar of its OWN (a picker / facet rail)? If so it
+   * gets a resident column; if not, nothing is reserved and the surface runs
+   * full width. The page list is never here — it is the slide-over.
+   */
+  const routeHasSidebar = useHasSidebarContext();
+  const [navOpen, setNavOpen] = useState(false);
+  const closeNav = useCallback(() => setNavOpen(false), []);
+  // Close the transient spine on navigation — the route it opened for is gone.
+  useEffect(() => {
+    setNavOpen(false);
+  }, [pathname]);
+  // Desktop-only: while the spine is transient, resting the pointer at the far-left
+  // edge for ~2s slides it in. `edgeArming` drives the progress sliver that fills
+  // over the dwell as an "about to open" cue.
   const peekTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [edgeArming, setEdgeArming] = useState(false);
   const drawerRef = useRef<HTMLDivElement>(null);
@@ -159,8 +199,8 @@ export function ResponsiveLayout({ children }: ResponsiveLayoutProps) {
   // `/m` paths as mobile deterministically so SSR + first paint match the final
   // layout (no blank gate, no desktop→mobile flip).
   const onMobileRoute = !!pathname && pathname.startsWith('/m');
-  /** Auth / enroll / offline — no permanent sidebar; page owns full-bleed chrome. */
-  const chromeless = isClientPublicPath(pathname);
+  /** Auth / enroll / offline / kiosk-host — no permanent sidebar; page owns full-bleed chrome. */
+  const chromeless = isClientPublicPath(pathname) || kioskHost;
 
   const closeDrawer = useCallback(() => setDrawerOpen(false), []);
 
@@ -169,7 +209,7 @@ export function ResponsiveLayout({ children }: ResponsiveLayoutProps) {
     if (peekTimer.current) clearTimeout(peekTimer.current);
     setEdgeArming(true);
     peekTimer.current = setTimeout(() => {
-      setSidebarCollapsed(false);
+      setNavOpen(true);
       setEdgeArming(false);
     }, 2000);
   }, []);
@@ -290,13 +330,17 @@ export function ResponsiveLayout({ children }: ResponsiveLayoutProps) {
       <div className="flex min-h-0 w-full flex-1 overflow-hidden">
         <GlobalWedgeScannerMount />
         <PhoneScanBridgeMount />
-        {!chromeless && !sidebarCollapsed && (
+        {/* The route's OWN sidebar. Absent when the route has none, which is
+            what stops a panel-less surface reserving an empty column. */}
+        {!chromeless && routeHasSidebar && (
           <ErrorBoundary
             label="sidebar"
             fallback={(_e, reset) => <SidebarFallback reset={reset} />}
           >
             <Suspense fallback={null}>
-              <DashboardSidebar />
+              <aside className={cn('h-full shrink-0 overflow-hidden', SIDEBAR_SPINE_WIDTH)}>
+                <DashboardSidebar onOpenNav={() => setNavOpen(true)} />
+              </aside>
             </Suspense>
           </ErrorBoundary>
         )}
@@ -304,19 +348,36 @@ export function ResponsiveLayout({ children }: ResponsiveLayoutProps) {
           {!chromeless && (
           <GlobalHeader
             canCollapseSidebar
-            sidebarCollapsed={sidebarCollapsed}
-            onToggleSidebar={() => setSidebarCollapsed((v) => !v)}
+            sidebarCollapsed
+            onToggleSidebar={() => setNavOpen(true)}
           />
           )}
           <main className={cn(chromeless ? 'flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden' : appContentShellClass)}>
-            {children}
+            {navOnlySurface && !chromeless ? (
+              // Station bench: the scan bar + recents rail ride here, beside the
+              // workspace, so they stay on screen when the nav is hidden.
+              <div className={STATION_PANEL_HOST_CLASS}>
+                <div className={STATION_PANEL_COLUMN_CLASS}>
+                  {/* `enabled` keeps every panel's own mode pill-row suppressed
+                      (`useMasterNavEnabled()`): the nav owns page + mode, and a
+                      second mode strip at the top of the bench is noise. */}
+                  <MasterNavProvider enabled>
+                    <SidebarContextPanel />
+                  </MasterNavProvider>
+                </div>
+                <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+                  {children}
+                </div>
+              </div>
+            ) : (
+              children
+            )}
           </main>
         </div>
 
-        {/* Left-edge reveal — only when the sidebar is collapsed. Rest the
-            pointer against the far-left edge for ~2s and the sidebar re-opens
-            (and stays open until toggled again). */}
-        {sidebarCollapsed && !chromeless && (
+        {/* Left-edge reveal — rest the pointer against the far-left edge for
+            ~2s and the page list slides in. */}
+        {!chromeless && (
           <div
             className="fixed bottom-0 left-0 top-10 z-40 w-6"
             onMouseEnter={armSidebarPeek}
@@ -346,6 +407,19 @@ export function ResponsiveLayout({ children }: ResponsiveLayoutProps) {
               )}
             </AnimatePresence>
           </div>
+        )}
+
+        {/* The transient spine. Same component as the resident column — only the
+            host differs — so "open the sidebar" is one gesture and one surface on
+            every route. */}
+        {!chromeless && (
+          <ErrorBoundary label="sidebar-slide-over" fallback={() => null}>
+            <Suspense fallback={null}>
+              <SidebarSlideOver open={navOpen} onClose={closeNav}>
+                <DashboardSidebar navOnly onNavigate={closeNav} />
+              </SidebarSlideOver>
+            </Suspense>
+          </ErrorBoundary>
         )}
 
         <CommandBar />

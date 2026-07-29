@@ -225,7 +225,7 @@ export function PhotoLauncher({ g }: { g: PhotoGalleryController }) {
             <ImageIcon className="h-5 w-5 text-white" />
           </div>
           <div className="flex flex-col items-start">
-            <span className="text-sm font-bold text-text-default">{g.launcherTitle}</span>
+            <span className="text-sm font-semibold text-text-default">{g.launcherTitle}</span>
             <div className="flex items-center gap-2 mt-0.5">
               <span className="text-role-micro text-blue-600 uppercase tracking-wider">
                 {photoItems.length} {photoItems.length === 1 ? 'Photo' : 'Photos'}

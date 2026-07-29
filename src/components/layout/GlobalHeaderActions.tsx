@@ -119,7 +119,7 @@ export function GlobalHeaderActions({ variant = 'desktop' }: { variant?: 'deskto
               <span className={cn('relative inline-flex shrink-0 items-center justify-center', iconSize)}>
                 <Inbox className={iconSize} />
                 {inboxCount > 0 && (
-                  <span className="pointer-events-none absolute -right-1.5 -top-1.5 flex h-3 min-w-[12px] items-center justify-center rounded-full bg-rose-600 px-0.5 text-role-micro font-bold leading-none tabular-nums text-white ring-1 ring-white">
+                  <span className="pointer-events-none absolute -right-1.5 -top-1.5 flex h-3 min-w-[12px] items-center justify-center rounded-full bg-rose-600 px-0.5 text-role-micro leading-none tabular-nums text-white ring-1 ring-white">
                     {inboxCount > 9 ? '9+' : inboxCount}
                   </span>
                 )}
@@ -147,7 +147,7 @@ export function GlobalHeaderActions({ variant = 'desktop' }: { variant?: 'deskto
             aria-label="Account & quick access"
             aria-expanded={accountOpen}
             className={cn(
-              'flex items-center justify-center rounded-full font-bold transition-transform active:scale-95',
+              'flex items-center justify-center rounded-full font-semibold transition-transform active:scale-95',
               avatarSize,
               sc.bg,
               'text-white',

@@ -957,7 +957,7 @@ function StaffChoiceRowButton({ staff: s, disabled, onPick, isRecent }: StaffCho
       <span className="relative shrink-0">
         <span
           className={cn(
-            'flex h-10 w-10 items-center justify-center rounded-full text-role-caption font-black uppercase text-text-inverse',
+            'flex h-10 w-10 items-center justify-center rounded-full text-role-caption font-semibold uppercase text-text-inverse',
             !s.color_hex && 'bg-surface-inverse',
           )}
           style={s.color_hex ? { backgroundColor: s.color_hex } : undefined}

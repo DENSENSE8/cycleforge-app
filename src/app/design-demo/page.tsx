@@ -85,7 +85,7 @@ function Bay({ title, path, children }: { title: string; path: string; children:
   return (
     <section className="space-y-3">
       <header className="flex items-baseline justify-between gap-3 border-b border-border-soft pb-2">
-        <h2 className="text-sm font-black uppercase tracking-[0.14em] text-text-default">{title}</h2>
+        <h2 className="text-sm font-semibold uppercase tracking-[0.14em] text-text-default">{title}</h2>
         <code className="text-role-micro text-text-muted">{path}</code>
       </header>
       {children}
@@ -113,7 +113,7 @@ export default function DesignShowcasePage() {
     <div className="min-h-screen w-full bg-surface-canvas">
       <div className="mx-auto max-w-5xl space-y-10 px-6 py-10">
         <header className="space-y-1">
-          <h1 className="text-2xl font-black text-text-default">Design System · Showcase</h1>
+          <h1 className="text-2xl font-semibold text-text-default">Design System · Showcase</h1>
           <p className="text-sm text-text-muted">
             Standardized primitives on the live token set (P0-DS-01). Every surface below
             consumes semantic tokens + the shared motion presets.
@@ -124,7 +124,7 @@ export default function DesignShowcasePage() {
         <Bay title="Toolbar" path="design-system/primitives/Toolbar.tsx">
           <Panel padding="none" radius="xl" elevation="sm">
             <Toolbar
-              start={<span className="text-sm font-bold text-text-default">Inventory</span>}
+              start={<span className="text-sm font-semibold text-text-default">Inventory</span>}
               center={
                 <div className="flex items-center gap-1.5 rounded-lg border border-border-soft px-2.5 py-1 text-sm text-text-muted">
                   <Search className="h-3.5 w-3.5" /> Search units…
@@ -195,7 +195,7 @@ export default function DesignShowcasePage() {
         <Bay title="TabSwitch" path="design-system/components/TabSwitch.tsx">
           <Panel className="space-y-5">
             <div className="space-y-1.5">
-              <p className="text-role-micro font-black uppercase tracking-widest text-text-muted">
+              <p className="text-role-micro uppercase tracking-widest text-text-muted">
                 variant=&quot;solid&quot; · headline lifecycle switcher (dark pill)
               </p>
               <TabSwitch
@@ -209,7 +209,7 @@ export default function DesignShowcasePage() {
               />
             </div>
             <div className="space-y-1.5">
-              <p className="text-role-micro font-black uppercase tracking-widest text-text-muted">
+              <p className="text-role-micro uppercase tracking-widest text-text-muted">
                 variant=&quot;default&quot; · semantic tab-color text, sunken rail
               </p>
               <TabSwitch

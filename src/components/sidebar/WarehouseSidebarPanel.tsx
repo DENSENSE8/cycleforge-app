@@ -241,7 +241,7 @@ function BinsSidebarBody() {
         bin to see its full contents + history.
       </p>
       <div>
-        <h3 className="mb-2 text-role-micro font-bold uppercase tracking-[0.16em] text-text-soft">
+        <h3 className="mb-2 text-role-micro uppercase tracking-[0.16em] text-text-soft">
           Recent activity
         </h3>
         <RecentBinsActivity />
@@ -293,7 +293,7 @@ function MapSidebarBody() {
   return (
     <div className={`space-y-4 ${SIDEBAR_GUTTER} py-4`}>
       <div>
-        <h3 className="mb-2 text-role-micro font-bold uppercase tracking-[0.16em] text-text-soft">
+        <h3 className="mb-2 text-role-micro uppercase tracking-[0.16em] text-text-soft">
           View by
         </h3>
         <div className="grid grid-cols-2 gap-1">
@@ -318,7 +318,7 @@ function MapSidebarBody() {
       </div>
 
       <div>
-        <h3 className="mb-2 text-role-micro font-bold uppercase tracking-[0.16em] text-text-soft">
+        <h3 className="mb-2 text-role-micro uppercase tracking-[0.16em] text-text-soft">
           Legend
         </h3>
         <MapLegend mode={view === 'floorplan' ? 'fill' : view} />

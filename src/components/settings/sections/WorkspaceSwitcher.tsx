@@ -118,7 +118,7 @@ export function WorkspaceSwitcher() {
             key={m.organizationId}
             className="flex items-center gap-3 px-3 py-2.5"
           >
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-surface-strong text-xs font-bold text-text-muted">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-surface-strong text-xs font-semibold text-text-muted">
               {orgInitials(m.organizationName)}
             </div>
             <div className="min-w-0 flex-1">

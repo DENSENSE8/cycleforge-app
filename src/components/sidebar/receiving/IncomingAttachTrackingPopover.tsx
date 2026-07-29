@@ -344,7 +344,7 @@ export function IncomingAttachTrackingPopover({
                               /* ds-raw-button: text-left PO search result row (title + item count) — not a Button shape */
                               className="ds-raw-button flex w-full items-center justify-between gap-2 rounded-lg border border-border-soft px-2.5 py-2 text-left transition-colors hover:border-indigo-300 hover:bg-indigo-50"
                             >
-                              <span className="min-w-0 flex-1 truncate text-role-caption font-bold text-text-default">
+                              <span className="min-w-0 flex-1 truncate text-role-caption font-semibold text-text-default">
                                 {po.po_number || po.po_id}
                               </span>
                               <span className="shrink-0 tabular-nums text-role-micro font-semibold text-text-faint">
@@ -361,7 +361,7 @@ export function IncomingAttachTrackingPopover({
                 <>
                   {/* Selected PO header + change */}
                   <div className="mb-2 flex items-center justify-between gap-2 rounded-lg bg-surface-canvas inset-cozy">
-                    <span className="min-w-0 flex-1 truncate text-role-caption font-black text-text-default">
+                    <span className="min-w-0 flex-1 truncate text-role-caption font-semibold text-text-default">
                       {selected.po_number || selected.po_id}
                     </span>
                     {/* Row-anchored mode locks the PO — no "Change" back to search. */}
@@ -370,7 +370,7 @@ export function IncomingAttachTrackingPopover({
                         type="button"
                         onClick={reset}
                         /* ds-raw-button: compact inline text link (text-mini) inside a chip row — Button height/padding would bloat it */
-                        className="ds-raw-button shrink-0 text-role-micro font-bold uppercase tracking-wide text-indigo-600 hover:text-indigo-800"
+                        className="ds-raw-button shrink-0 text-role-micro uppercase tracking-wide text-indigo-600 hover:text-indigo-800"
                       >
                         Change
                       </button>
@@ -418,7 +418,7 @@ export function IncomingAttachTrackingPopover({
                               {b.carrier ? <span className="ml-1 text-text-faint">{b.carrier}</span> : null}
                             </span>
                             <span
-                              className={`shrink-0 text-role-micro font-bold uppercase tracking-wide ${
+                              className={`shrink-0 text-role-micro font-semibold uppercase tracking-wide ${
                                 b.is_delivered ? 'text-emerald-600' : 'text-text-faint'
                               }`}
                             >

@@ -129,7 +129,7 @@ export function NodeConfigForm({
           <div key={key} className="space-y-1">
             <label
               htmlFor={`nodecfg-${nodeId}-${key}`}
-              className="block text-role-micro font-bold uppercase tracking-wider text-text-faint"
+              className="block text-role-micro uppercase tracking-wider text-text-faint"
             >
               {title}
             </label>

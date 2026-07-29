@@ -28,7 +28,7 @@ export function LivePreviewBody({ zoneLetter, roomName, aisle, bay, level, posit
       <div className="min-w-0 flex-1 space-y-2">
         <div>
           <p className="text-role-micro font-semibold uppercase tracking-[0.14em] text-text-soft">Location code</p>
-          <p className="mt-0.5 whitespace-nowrap font-mono text-lg font-black tracking-tight text-text-default">{code}</p>
+          <p className="mt-0.5 whitespace-nowrap font-mono text-lg font-semibold tracking-tight text-text-default">{code}</p>
         </div>
         {roomName && (
           <div>

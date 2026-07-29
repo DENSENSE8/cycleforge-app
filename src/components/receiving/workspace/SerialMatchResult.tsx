@@ -181,7 +181,7 @@ export function SerialMatchResult({
               {matchedOrder.product_title ? (
                 // Truncation reveal of the full product title on a non-interactive clipped <p>.
                 // ds-allow-title
-                <p className="truncate text-role-caption font-bold text-emerald-900" title={matchedOrder.product_title}>
+                <p className="truncate text-role-caption font-semibold text-emerald-900" title={matchedOrder.product_title}>
                   {matchedOrder.product_title}
                 </p>
               ) : null}

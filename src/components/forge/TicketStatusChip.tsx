@@ -85,7 +85,7 @@ export function TicketStatusChip({ ticketId, status, rawStatus, href, resolution
         >
           <span className={`h-2 w-2 rounded-full ${dot}`} />
           {ticketId}
-          <span className="font-bold normal-case tracking-normal">{status ?? 'invalid'}</span>
+          <span className="font-semibold normal-case tracking-normal">{status ?? 'invalid'}</span>
           {resolutionCommit && status === 'deployed' && (
             <span className="font-mono font-semibold normal-case tracking-normal">{resolutionCommit.slice(0, 7)}</span>
           )}

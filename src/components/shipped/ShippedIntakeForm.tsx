@@ -206,19 +206,19 @@ export function ShippedIntakeForm({ onClose, onSubmit }: ShippedIntakeFormProps)
                 {lookupStatus === 'searching' ? (
                   <>
                     <Loader2 className="h-3 w-3 animate-spin text-blue-500" />
-                    <span className="font-bold text-blue-600">Searching...</span>
+                    <span className="font-semibold text-blue-600">Searching...</span>
                   </>
                 ) : null}
                 {lookupStatus === 'found' ? (
                   <>
                     <Check className="h-3 w-3 text-green-600" />
-                    <span className="font-bold text-green-600">Order found! Product title auto-filled.</span>
+                    <span className="font-semibold text-green-600">Order found! Product title auto-filled.</span>
                   </>
                 ) : null}
                 {lookupStatus === 'not-found' ? (
                   <>
                     <AlertCircle className="h-3 w-3 text-amber-600" />
-                    <span className="font-bold text-amber-600">
+                    <span className="font-semibold text-amber-600">
                       Order not found. Please enter product title manually.
                     </span>
                   </>
@@ -248,7 +248,7 @@ export function ShippedIntakeForm({ onClose, onSubmit }: ShippedIntakeFormProps)
             />
             <p className="text-role-eyebrow font-medium text-text-soft">
               Will be saved as:{' '}
-              <span className="font-bold">
+              <span className="font-semibold">
                 {replacementData.reason || '[Reason]'} - {replacementData.product_title || '[Product Title]'}
               </span>
             </p>

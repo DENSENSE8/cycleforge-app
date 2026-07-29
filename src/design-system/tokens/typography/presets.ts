@@ -7,22 +7,22 @@
 export const sectionLabel = 'text-role-micro uppercase tracking-[0.2em] text-text-soft' as const;
 
 /** Form field labels (e.g. "SKU *", "CONDITION") */
-export const fieldLabel = 'text-role-micro font-bold uppercase tracking-[0.16em] text-text-muted' as const;
+export const fieldLabel = 'text-role-micro uppercase tracking-[0.16em] text-text-muted' as const;
 
 /** Primary data values (e.g. product titles, names) */
-export const dataValue = 'text-sm font-bold text-text-default' as const;
+export const dataValue = 'text-sm font-semibold text-text-default' as const;
 
 /** Monospace data values (e.g. serial numbers, tracking codes, SKUs) */
-export const monoValue = 'text-sm font-bold font-mono text-text-default' as const;
+export const monoValue = 'text-sm font-semibold font-mono text-text-default' as const;
 
 /** Chip / badge text (e.g. CopyChip display, ID chips in card headers) */
-export const chipText = 'text-role-caption font-extrabold font-mono' as const;
+export const chipText = 'text-role-caption font-semibold font-mono' as const;
 
 /** PO line received/expected counts (e.g. accordion "1/3" meta) */
-export const qtyProgress = 'text-role-caption font-bold font-mono tabular-nums leading-none' as const;
+export const qtyProgress = 'text-role-caption font-semibold font-mono tabular-nums leading-none' as const;
 
 /** Card titles (e.g. OrderCard, FbaItemCard, RepairCard main heading) */
-export const cardTitle = 'text-base font-black text-text-default leading-tight' as const;
+export const cardTitle = 'text-base font-semibold text-text-default leading-tight' as const;
 
 /** Table column headers — quiet label chrome (override role-micro's 600 weight). */
 export const tableHeader =
@@ -32,7 +32,7 @@ export const tableHeader =
 export const tableCell = 'text-sm font-semibold text-text-default' as const;
 
 /** Micro badges (e.g. 8px uppercase labels, subtitle accents) */
-export const microBadge = 'text-role-micro font-bold uppercase' as const;
+export const microBadge = 'text-role-micro uppercase' as const;
 
 export const typographyPresets = {
   sectionLabel,

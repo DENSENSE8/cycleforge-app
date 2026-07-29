@@ -81,10 +81,10 @@ export default function UnshippedSidebar(props: UnshippedSidebarProps) {
           ) : null}
           {!hideSectionHeader ? (
             <motion.header variants={itemVariants} className={`${SIDEBAR_GUTTER} ${filterControl ? 'pt-2' : 'pt-6'}`}>
-              <h2 className="text-xl font-black tracking-tighter uppercase leading-none text-text-default">
+              <h2 className="text-xl font-semibold tracking-tighter uppercase leading-none text-text-default">
                 Shipping
               </h2>
-              <p className="text-role-eyebrow font-bold text-text-accent uppercase tracking-widest mt-1">
+              <p className="text-role-eyebrow text-text-accent uppercase tracking-widest mt-1">
                 Fulfillment queue
               </p>
             </motion.header>

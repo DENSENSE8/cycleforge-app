@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Camera, Loader2, Pencil, Plus, ZoomIn } from '@/components/Icons';
 import { PhotoGridDisplayControls } from '@/components/photos/PhotoGridDisplayControls';
 import {
@@ -17,6 +17,7 @@ import { usePhotoGallery } from '@/components/shipped/photo-gallery/usePhotoGall
 import { PhotoViewerPortal } from '@/components/shipped/photo-gallery/PhotoViewerPortal';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { IconButton } from '@/design-system/primitives';
+import { photoStageLabel, stageFromPhotoType } from '@/lib/photos/stages';
 import { toast } from '@/lib/toast';
 import { cn } from '@/utils/_cn';
 import { claimPhotoTileProps } from '../claim-helpers';
@@ -37,9 +38,25 @@ interface Props {
  * refetches so the new photos appear here live, pre-selected, without leaving
  * the modal. Checked photos attach to the Zendesk ticket; all PO photos are
  * saved to local storage regardless.
+ *
+ * Evidence preference (Plan 5): line-scoped item shots order FIRST (they are
+ * the claim's primary evidence per the identity law) and every tile carries a
+ * stage badge via `stageFromPhotoType` + `photoStageLabel`; arrival package
+ * shots stay selectable below for outer-damage claims. Selection behavior is
+ * unchanged — nothing preselected on first open (a line-first *preselect*
+ * default is a deliberate ask-first, not shipped here).
  */
 export function ClaimPhotoPicker({ photos, receivingId }: Props) {
   const { photos: list, selectedPhotoIds, togglePhoto, toggleSelectAll, refetch } = photos;
+  // Item (line-scoped) evidence first; groups keep the API's stable id order.
+  const ordered = useMemo(
+    () =>
+      [...list].sort(
+        (a, b) =>
+          (a.receivingLineId != null ? 0 : 1) - (b.receivingLineId != null ? 0 : 1),
+      ),
+    [list],
+  );
   const { user } = useAuth();
   const orgId = user?.organizationId;
   const staffId = user?.staffId ?? 0;
@@ -53,7 +70,8 @@ export function ClaimPhotoPicker({ photos, receivingId }: Props) {
   useReceivingPhotosRealtimeRefresh(receivingId, staffId, refetch, !!orgId && staffId > 0);
 
   const g = usePhotoGallery({
-    photos: list.map((p) => p.url),
+    // Same item-first order as the grid so viewer indexes line up.
+    photos: ordered.map((p) => p.url),
     launcherTitle: 'Claim photos',
   });
 
@@ -131,7 +149,7 @@ export function ClaimPhotoPicker({ photos, receivingId }: Props) {
             </span>
           ) : null}
         </span>
-        <span className="text-role-caption font-bold text-text-muted group-hover:text-blue-700">
+        <span className="text-role-caption font-semibold text-text-muted group-hover:text-blue-700">
           {sending ? 'Sending…' : 'No photos taken yet'}
         </span>
         <span className="max-w-xs text-role-micro font-medium leading-4 text-text-faint">
@@ -190,9 +208,16 @@ export function ClaimPhotoPicker({ photos, receivingId }: Props) {
       </div>
 
       <div className={photoGridLeafClass(gridDensity)}>
-        {list.map((p) => {
+        {ordered.map((p) => {
           const isSel = selectedPhotoIds.has(p.id);
           const tile = claimPhotoTileProps(p, gridDensity);
+          // Stage from the SoT: a line-linked row IS item evidence (entity
+          // wins); carton rows resolve by photo_type. Null (unclassifiable
+          // legacy stamps) simply renders no badge.
+          const stage = stageFromPhotoType(
+            p.receivingLineId != null ? 'RECEIVING_LINE' : 'RECEIVING',
+            p.photoType,
+          );
           return (
             <div
               key={p.id}
@@ -225,6 +250,11 @@ export function ClaimPhotoPicker({ photos, receivingId }: Props) {
                   <PhotoThumb src={tile.imageUrl} alt="" ratio={tile.ratio} className="rounded-lg" />
                 </button>
               </HoverTooltip>
+              {stage ? (
+                <span className="pointer-events-none absolute bottom-1 left-1 rounded bg-surface-card/90 px-1.5 py-0.5 text-role-micro font-semibold uppercase tracking-widest text-text-muted ring-1 ring-inset ring-border-soft">
+                  {photoStageLabel(stage)}
+                </span>
+              ) : null}
             </div>
           );
         })}

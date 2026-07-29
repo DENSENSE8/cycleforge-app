@@ -73,7 +73,7 @@ export function MobilePackageGroup({
           <ChevronDown
             className={`h-4 w-4 shrink-0 text-indigo-500 transition-transform ${open ? '' : '-rotate-90'}`}
           />
-          <span className="shrink-0 text-role-caption font-black uppercase tracking-widest text-indigo-600">
+          <span className="shrink-0 text-role-caption font-semibold uppercase tracking-widest text-indigo-600">
             {entry.label}
           </span>
         </button>
@@ -81,7 +81,7 @@ export function MobilePackageGroup({
           {entry.po ? <OrderIdChip value={entry.po} display={getLast4(entry.po)} dense /> : null}
           {entry.trk ? <TrackingChip value={entry.trk} display={getLast4(entry.trk)} dense /> : null}
           {entry.carrier ? (
-            <span className="shrink-0 text-role-eyebrow font-bold uppercase tracking-widest text-text-soft">
+            <span className="shrink-0 text-role-eyebrow uppercase tracking-widest text-text-soft">
               {entry.carrier}
             </span>
           ) : null}

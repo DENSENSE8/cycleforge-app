@@ -69,7 +69,7 @@ export default function ReleaseNotesPage() {
             <p className="text-role-eyebrow uppercase tracking-[0.25em] text-blue-600">
               What&apos;s new
             </p>
-            <h1 className="mt-2 text-3xl font-black tracking-tight text-text-default sm:text-4xl">
+            <h1 className="mt-2 text-3xl font-semibold tracking-tight text-text-default sm:text-4xl">
               Release Notes
             </h1>
             <p className="mt-2 text-sm text-text-muted">
@@ -94,7 +94,7 @@ export default function ReleaseNotesPage() {
             <div className="space-y-10">
               {groups.map(({ month, commits }) => (
                 <section key={month}>
-                  <h2 className="mb-3 text-xs font-bold uppercase tracking-wider text-text-soft">
+                  <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-text-soft">
                     {month}
                   </h2>
                   <ul className="overflow-hidden rounded-2xl border border-border-soft bg-surface-card divide-y divide-border-hairline">

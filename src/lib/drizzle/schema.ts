@@ -1,4 +1,4 @@
-import { pgTable, serial, text, varchar, boolean, timestamp, integer, smallint, date, primaryKey, jsonb, pgEnum, bigserial, bigint, uuid, numeric, real, uniqueIndex, index, customType } from 'drizzle-orm/pg-core';
+import { pgTable, serial, text, varchar, boolean, timestamp, integer, smallint, date, primaryKey, jsonb, pgEnum, bigserial, bigint, uuid, numeric, real, interval, uniqueIndex, index, customType } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
 // ─── Multi-tenancy Helper ─────────────
@@ -944,6 +944,34 @@ export const entityNotes = pgTable('entity_notes', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({
   lookupIdx: index('entity_notes_lookup').on(table.entityType, table.entityId),
+}));
+
+/**
+ * Internal operational annotations on an order ("box arrived damaged").
+ *
+ * A dedicated child table rather than a row in {@link entityNotes}, because that
+ * table keys on `entity_id UUID` while `orders.id` is `SERIAL` — a polymorphic
+ * table cannot span two primary-key types (migration 2026-07-28_order_notes.sql,
+ * decision D10).
+ *
+ * BOUNDARY: ops annotations only. The customer/support CONVERSATION lives in
+ * Entity Threads (`ThreadPanel entityType="ORDER"`), which is already mounted on
+ * the order record. Do not let the same note become writable in both.
+ */
+export const orderNotes = pgTable('order_notes', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  organizationId: orgIdCol(),
+  orderId: integer('order_id').notNull().references(() => orders.id, { onDelete: 'cascade' }),
+  noteText: text('note_text').notNull(),
+  authorStaffId: integer('author_staff_id').references(() => staff.id, { onDelete: 'set null' }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  orgOrderIdx: index('idx_order_notes_org_order').on(
+    table.organizationId,
+    table.orderId,
+    table.createdAt,
+  ),
 }));
 
 // Orders table - Updated schema (serial tracking moved to tech_serial_numbers)
@@ -4699,3 +4727,163 @@ export const searchRecents = pgTable('search_recents', {
 
 export type SearchRecentRow = typeof searchRecents.$inferSelect;
 export type NewSearchRecentRow = typeof searchRecents.$inferInsert;
+
+/**
+ * staff_subscriptions — per-staff subscription registry behind the Home Inbox
+ * (migration 2026-07-28c). ONE discriminated table for three kinds:
+ *   'entity' many-to-one (N staff watch carton 4412) ·
+ *   'rule'   one-to-many (a predicate: SKU + event keys) ·
+ *   'sla'    fires on an ABSENCE (armed by sla_event_key, disarmed by
+ *            sla_resolve_event_key, breaches after sla_breach_after) — evaluated
+ *            by a cron walker, never by the event tap.
+ * Predicates are REAL COLUMNS so the fan-out worker resolves recipients with one
+ * indexed join; `matchExtra` is variant config only and is never filtered on.
+ * `state` is three-valued on purpose: a boolean cannot distinguish "never
+ * subscribed" from "explicitly muted", so auto-subscribe would resurrect a muted
+ * row. Parent-delete integrity = the 7-trigger family in the birth migration.
+ */
+export const staffSubscriptions = pgTable('staff_subscriptions', {
+  id: bigserial('id', { mode: 'number' }).primaryKey(),
+  organizationId: orgIdCol(),
+  staffId: integer('staff_id').notNull().references(() => staff.id, { onDelete: 'cascade' }),
+  /** CHECK staff_subscriptions_kind_chk: entity | rule | sla */
+  subscriptionKind: text('subscription_kind').notNull(),
+  /** CHECK staff_subscriptions_state_chk: subscribed | auto | muted */
+  state: text('state').notNull().default('subscribed'),
+  /** CHECK staff_subscriptions_reason_chk: manual | acted | assigned | mentioned | rule | sla */
+  reason: text('reason').notNull().default('manual'),
+  /** CHECK staff_subscriptions_entity_type_chk (kind='entity' only): the
+   *  parent-backed subset of OPS_EVENT_ENTITY_TYPES — receiving |
+   *  receiving_line | serial_unit | order | fba_shipment | repair |
+   *  warranty_claim. 'shipment'/'other'/'ops_plan_task' are documented gaps. */
+  entityType: text('entity_type'),
+  entityId: bigint('entity_id', { mode: 'number' }),
+  /** kind='rule': exact event keys — wildcards are expanded at write time. */
+  matchEventKeys: text('match_event_keys').array(),
+  matchSku: text('match_sku'),
+  matchPlatform: text('match_platform'),
+  matchStation: text('match_station'),
+  matchSeverityMin: smallint('match_severity_min'),
+  /** Variant config ONLY — never a filter predicate (see the migration header). */
+  matchExtra: jsonb('match_extra'),
+  slaEventKey: text('sla_event_key'),
+  slaResolveEventKey: text('sla_resolve_event_key'),
+  slaBreachAfter: interval('sla_breach_after'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  entityUnique: uniqueIndex('ux_staff_subscriptions_entity')
+    .on(table.organizationId, table.staffId, table.entityType, table.entityId)
+    .where(sql`subscription_kind = 'entity'`),
+  entityLookupIdx: index('idx_staff_subscriptions_entity_lookup')
+    .on(table.organizationId, table.entityType, table.entityId)
+    .where(sql`subscription_kind = 'entity' AND state <> 'muted'`),
+  ruleSkuIdx: index('idx_staff_subscriptions_rule_sku')
+    .on(table.organizationId, table.matchSku)
+    .where(sql`subscription_kind = 'rule' AND state <> 'muted' AND match_sku IS NOT NULL`),
+  ruleEventKeysIdx: index('idx_staff_subscriptions_rule_event_keys')
+    .using('gin', table.matchEventKeys)
+    .where(sql`subscription_kind = 'rule' AND state <> 'muted'`),
+  slaIdx: index('idx_staff_subscriptions_sla')
+    .on(table.organizationId, table.slaEventKey)
+    .where(sql`subscription_kind = 'sla' AND state <> 'muted'`),
+  staffIdx: index('idx_staff_subscriptions_staff')
+    .on(table.organizationId, table.staffId, table.createdAt.desc()),
+}));
+
+export type StaffSubscription = typeof staffSubscriptions.$inferSelect;
+export type NewStaffSubscription = typeof staffSubscriptions.$inferInsert;
+
+/**
+ * notification_outbox — one row per ops_event, drained by a cron worker into
+ * staff_inbox_items (migration 2026-07-28d). Mirrors entity_search_outbox +
+ * its 2026-07-04a claim window so this repo has ONE outbox pattern.
+ * The enqueue trigger is deliberately DUMB (every ops_event lands here); the
+ * WORKER decides notifiability from the code SoT, so a DB-side "notifiable"
+ * list can never silently drift from the event vocabulary.
+ * `opsEventId` is FK-free by design — ops_events is append-only, and a FK would
+ * make this table a blocker on any future retention prune there.
+ */
+export const notificationOutbox = pgTable('notification_outbox', {
+  id: bigserial('id', { mode: 'number' }).primaryKey(),
+  organizationId: orgIdCol(),
+  opsEventId: bigint('ops_event_id', { mode: 'number' }).notNull(),
+  entityType: text('entity_type').notNull(),
+  entityId: bigint('entity_id', { mode: 'number' }).notNull(),
+  /** ops_events.event_type at enqueue time. */
+  eventKey: text('event_key').notNull(),
+  actorStaffId: integer('actor_staff_id'),
+  clientEventId: text('client_event_id'),
+  /** Copied from ops_events.payload — carries the collapse PARENT id. */
+  payload: jsonb('payload'),
+  /** The EVENT's time, never now(). */
+  occurredAt: timestamp('occurred_at', { withTimezone: true }).notNull(),
+  enqueuedAt: timestamp('enqueued_at', { withTimezone: true }).notNull().defaultNow(),
+  claimedAt: timestamp('claimed_at', { withTimezone: true }),
+  attempts: integer('attempts').notNull().default(0),
+  lastError: text('last_error'),
+  processedAt: timestamp('processed_at', { withTimezone: true }),
+}, (table) => ({
+  eventUnique: uniqueIndex('ux_notification_outbox_event').on(table.organizationId, table.opsEventId),
+  pendingIdx: index('idx_notification_outbox_pending').on(table.id).where(sql`processed_at IS NULL`),
+  processedIdx: index('idx_notification_outbox_processed').on(table.processedAt).where(sql`processed_at IS NOT NULL`),
+}));
+
+export type NotificationOutboxRow = typeof notificationOutbox.$inferSelect;
+export type NewNotificationOutboxRow = typeof notificationOutbox.$inferInsert;
+
+/**
+ * staff_inbox_items — the per-recipient ledger the Home Inbox renders
+ * (migration 2026-07-28d). Deliberately NOT staff_messages: that is the human
+ * DM store (sender_id NOT NULL, prerendered body, no entity anchor, no dedupe
+ * key). ActivityStreams-flavored: store the structured reference, render at
+ * READ time so a row never goes stale when the entity changes.
+ * Two distinct keys: `dedupKey` is idempotency (org-led unique — a global
+ * unique would let one tenant's row swallow another's notification);
+ * `collapseKey` is fatigue control, keyed on the CARTON not the line so a
+ * 200-line PO receive yields one row per watcher, not 200.
+ */
+export const staffInboxItems = pgTable('staff_inbox_items', {
+  id: bigserial('id', { mode: 'number' }).primaryKey(),
+  organizationId: orgIdCol(),
+  staffId: integer('staff_id').notNull().references(() => staff.id, { onDelete: 'cascade' }),
+  /** SET NULL, not CASCADE — unsubscribing must not erase delivered history. */
+  subscriptionId: bigint('subscription_id', { mode: 'number' }).references(() => staffSubscriptions.id, { onDelete: 'set null' }),
+  /** CHECK staff_inbox_items_entity_type_chk — same 7 values as the subscription table. */
+  entityType: text('entity_type').notNull(),
+  entityId: bigint('entity_id', { mode: 'number' }).notNull(),
+  eventKey: text('event_key').notNull(),
+  actorStaffId: integer('actor_staff_id').references(() => staff.id, { onDelete: 'set null' }),
+  /** CHECK staff_inbox_items_reason_chk — why this landed in YOUR inbox. */
+  reason: text('reason').notNull(),
+  /** Render hints only; never filtered on. */
+  payload: jsonb('payload'),
+  dedupKey: text('dedup_key').notNull(),
+  collapseKey: text('collapse_key').notNull(),
+  collapseCount: integer('collapse_count').notNull().default(1),
+  /** CHECK staff_inbox_items_state_chk: unread | read | done | snoozed.
+   *  Four states because Unread and Done are separate axes. */
+  state: text('state').notNull().default('unread'),
+  snoozedUntil: timestamp('snoozed_until', { withTimezone: true }),
+  /** The EVENT's time — orders the feed. */
+  occurredAt: timestamp('occurred_at', { withTimezone: true }).notNull(),
+  /** Newest event folded into this row by the collapse window. */
+  lastEventAt: timestamp('last_event_at', { withTimezone: true }).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  dedupUnique: uniqueIndex('ux_staff_inbox_items_dedup').on(table.organizationId, table.staffId, table.dedupKey),
+  collapseIdx: index('idx_staff_inbox_items_collapse')
+    .on(table.organizationId, table.staffId, table.collapseKey, table.lastEventAt.desc())
+    .where(sql`state IN ('unread','read')`),
+  feedIdx: index('idx_staff_inbox_items_feed')
+    .on(table.organizationId, table.staffId, table.state, table.occurredAt.desc(), table.id.desc()),
+  snoozedIdx: index('idx_staff_inbox_items_snoozed')
+    .on(table.organizationId, table.snoozedUntil)
+    .where(sql`state = 'snoozed'`),
+  entityIdx: index('idx_staff_inbox_items_entity')
+    .on(table.organizationId, table.entityType, table.entityId, table.occurredAt.desc()),
+}));
+
+export type StaffInboxItem = typeof staffInboxItems.$inferSelect;
+export type NewStaffInboxItem = typeof staffInboxItems.$inferInsert;

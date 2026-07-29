@@ -67,14 +67,14 @@ function SubCheckRow({
         >
           {checked && <Check className="h-2.5 w-2.5" />}
         </span>
-        <span className={`flex-1 text-role-micro font-bold ${checked ? 'text-emerald-700 line-through' : 'text-text-default'}`}>
+        <span className={`flex-1 text-role-micro font-semibold ${checked ? 'text-emerald-700 line-through' : 'text-text-default'}`}>
           {label}
         </span>
         {qty && qty > 1 ? (
           <span className="text-role-eyebrow tabular-nums text-text-soft">×{qty}</span>
         ) : null}
         {tag ? (
-          <span className="rounded-md bg-surface-sunken px-1 py-0.5 text-role-eyebrow font-bold uppercase text-text-soft">
+          <span className="rounded-md bg-surface-sunken px-1 py-0.5 text-role-eyebrow uppercase text-text-soft">
             {tag}
           </span>
         ) : null}
@@ -148,7 +148,7 @@ export function PackChecklistLineRow({
               )}
             </div>
             <div className="min-w-0 flex-1">
-              <p className={`truncate text-role-caption font-bold ${checked ? 'text-emerald-700 line-through' : 'text-text-default'}`}>
+              <p className={`truncate text-role-caption font-semibold ${checked ? 'text-emerald-700 line-through' : 'text-text-default'}`}>
                 {line.productTitle}
               </p>
               <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
@@ -203,19 +203,19 @@ export function PackChecklistLineRow({
                 {line.catalog.category ? (
                   <div>
                     <dt className="text-role-eyebrow uppercase tracking-widest text-text-faint">Category</dt>
-                    <dd className="text-role-caption font-bold text-text-default">{line.catalog.category}</dd>
+                    <dd className="text-role-caption font-semibold text-text-default">{line.catalog.category}</dd>
                   </div>
                 ) : null}
                 {line.catalog.upc ? (
                   <div>
                     <dt className="text-role-eyebrow uppercase tracking-widest text-text-faint">UPC</dt>
-                    <dd className="font-mono text-role-caption font-bold text-text-muted">{line.catalog.upc}</dd>
+                    <dd className="font-mono text-role-caption font-semibold text-text-muted">{line.catalog.upc}</dd>
                   </div>
                 ) : null}
                 {line.serials.length > 0 ? (
                   <div>
                     <dt className="text-role-eyebrow uppercase tracking-widest text-text-faint">Serials</dt>
-                    <dd className="font-mono text-role-micro font-bold text-text-default">{line.serials.join(', ')}</dd>
+                    <dd className="font-mono text-role-micro text-text-default">{line.serials.join(', ')}</dd>
                   </div>
                 ) : null}
               </dl>

@@ -15,7 +15,7 @@ export function ClaimModalHeader({ row, submitting, archiveSubmitting, onClose }
     <div className="flex shrink-0 items-center justify-between border-b border-border-hairline bg-surface-canvas px-4 py-3">
       <div>
         <p className="text-role-micro uppercase tracking-[0.14em] text-rose-700">File a claim</p>
-        <p className="mt-0.5 text-sm font-extrabold tracking-tight text-text-default">
+        <p className="mt-0.5 text-sm font-semibold tracking-tight text-text-default">
           {row.receiving_source === 'unmatched'
             ? 'Unfound'
             : row.zoho_purchaseorder_number

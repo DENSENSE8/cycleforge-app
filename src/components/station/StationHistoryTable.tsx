@@ -30,14 +30,13 @@ import { DateRangePickerPill } from '@/components/ui/DateRangeHeader';
 import { formatWeekRangeCompact } from '@/utils/date';
 
 /**
- * `StationHistoryTable<T>` — the Phase-2 cutover shell for the Tech / Packer
- * history tables (station-table-unification-plan §Phase 2). It renders the
- * surface's OWN row (`TechRecordRow` / `PackerRecordRow`, unchanged — they already
- * use the shared `RowTitle`/`RowMetaColumns`/`ChipColumns` primitives) through the
- * unified {@link StationListTable}, so the benches gain windowing (behind
- * `NEXT_PUBLIC_STATION_VIRTUAL_LIST`), the week band, the ⋮ menu (row density +
- * saved views), and a typed first-run empty — while the legacy
- * `StationWeekTable` stays the default until bake-in.
+ * `StationHistoryTable<T>` — the shell for the Tech / Packer history tables
+ * (station-table-unification-plan §Phase 2, cut over 2026-07-28). Rows render
+ * through the shared `OrdersQueueTableRow` (via {@link StationQueueRow}) inside
+ * the unified {@link StationListTable}, which composes the Workbench spreadsheet
+ * SoT `LedgerGrid` — the same grid the Queue tab uses. The benches get
+ * windowing, the week band, the ⋮ menu (row density + saved views), bulk
+ * select, and a typed first-run empty.
  *
  * Wraps the per-staff `TableColumnConfigProvider` + `TableDensityProvider` (both
  * keyed by `tableId`) so density + hidden-column prefs stay wired for rows.
@@ -52,14 +51,10 @@ export interface StationHistoryTableProps<T> {
   onResetWeek?: () => void;
   /** `[date, records]` bands, newest day first, each day's rows pre-sorted. */
   daySections: [string, T[]][];
-  /** Render one row (the surface's own `TechRecordRow` / `PackerRecordRow`). */
-  renderRow: (record: T, index: number) => ReactNode;
   /** Stable row key so windowing survives re-sorts. */
   getRowKey?: (record: T, index: number) => string;
   /** Per-staff column-config + density bag (`tech` | `packer`). */
   tableId: TableId;
-  /** Window rows via the virtualizer (gate with `NEXT_PUBLIC_STATION_VIRTUAL_LIST`). */
-  virtualized: boolean;
   /** Saved-views storage + params for the ⋮ menu. */
   savedViewsStorageKey: string;
   savedViewsParamKeys: readonly string[];
@@ -79,10 +74,10 @@ export interface StationHistoryTableProps<T> {
     toDaySections: (records: T[]) => [string, T[]][];
     getRowDate?: (row: T) => string | null | undefined;
   };
-  /** Converged rendering + bulk select (Phase 7). When set, rows render through
-   *  the shared `OrdersQueueTableRow` (via `StationQueueRow`) so they gain a
-   *  checkbox + a copy-TSV bulk bar; the legacy `renderRow` is bypassed. */
-  selection?: {
+  /** Converged rendering + bulk select (Phase 7): rows render through the shared
+   *  `OrdersQueueTableRow` (via `StationQueueRow`) with a checkbox + copy-TSV
+   *  bulk bar. */
+  selection: {
     scope: string;
     queueMode: StationSourceKind;
     /** Map a domain record → the queue-row shape (record-to-queue-row mapper). */
@@ -106,10 +101,8 @@ export function StationHistoryTable<T>({
   onNextWeek,
   onResetWeek,
   daySections,
-  renderRow,
   getRowKey,
   tableId,
-  virtualized,
   savedViewsStorageKey,
   savedViewsParamKeys,
   emptyMessage,
@@ -137,24 +130,19 @@ export function StationHistoryTable<T>({
   // Reconnect-only broad invalidate (the hot path is Ably/local cache patches).
   useStationReconnectSync();
 
-  // ── Bulk select + keyboard focus (converged rendering only) ───────────────
-  // Always-on when `selection` is provided — left gutter ☐, no week-band pencil.
-  const selectMode = Boolean(selection);
+  // ── Bulk select + keyboard focus ──────────────────────────────────────────
+  // Always on — left gutter ☐, no week-band pencil.
   const [focusedId, setFocusedId] = useState<number | null>(null);
   const orderedRecords = useMemo(() => daySections.flatMap(([, recs]) => recs), [daySections]);
-  const getRecordId = useCallback(
-    (r: T) => (selection ? selection.getRecordId(r) : 0),
-    [selection],
-  );
+  const getRecordId = useCallback((r: T) => selection.getRecordId(r), [selection]);
   const { selectedIds, toggle } = useTableSelectMode<T>({
-    scope: selection?.scope ?? 'station-noop',
-    selectMode,
+    scope: selection.scope,
+    selectMode: true,
     rows: orderedRecords,
     getId: getRecordId,
   });
 
   const copySelected = useCallback(async () => {
-    if (!selection) return;
     const chosen = orderedRecords.filter((r) => selectedIds.has(selection.getRecordId(r)));
     if (chosen.length === 0) return;
     const block = toTsvBlock(selection.copyHeader, chosen.map(selection.formatCopyRow));
@@ -165,18 +153,17 @@ export function StationHistoryTable<T>({
     }
   }, [selection, orderedRecords, selectedIds]);
 
-  // Converged renderRow: map each record → queue-row shape and render the shared
-  // OrdersQueueTableRow (checkbox + serial chip). Falls back to the legacy renderRow.
-  const convergedRenderRow = useCallback(
+  // Map each record → queue-row shape and render the shared OrdersQueueTableRow
+  // (checkbox + serial chip) — the same row the outbound Queue grid uses.
+  const renderRow = useCallback(
     (record: T, index: number) => {
-      if (!selection) return renderRow(record, index);
       const id = selection.getRecordId(record);
       return (
         <StationQueueRow
           record={selection.toQueueRow(record)}
           index={index}
           queueMode={selection.queueMode}
-          selectMode={selectMode}
+          selectMode
           isChecked={selectedIds.has(id)}
           isSelected={focusedId === id}
           isMobile={isMobile}
@@ -189,23 +176,22 @@ export function StationHistoryTable<T>({
         />
       );
     },
-    [selection, renderRow, selectMode, selectedIds, isMobile, visibleColumns, toggle],
+    [selection, selectedIds, isMobile, visibleColumns, toggle],
   );
 
-  const effectiveRenderRow = selection ? convergedRenderRow : renderRow;
-  const selectedCount = selection ? orderedRecords.filter((r) => selectedIds.has(selection.getRecordId(r))).length : 0;
+  const selectedCount = orderedRecords.filter((r) => selectedIds.has(selection.getRecordId(r))).length;
 
   // Keyboard focus → the row key to scroll to (works even when off-window).
   const focusedKey = useMemo(() => {
-    if (focusedId == null || !selection || !getRowKey) return null;
+    if (focusedId == null || !getRowKey) return null;
     const rec = orderedRecords.find((r) => selection.getRecordId(r) === focusedId);
     return rec ? getRowKey(rec, 0) : null;
   }, [focusedId, orderedRecords, selection, getRowKey]);
 
   // Deep link: select + scroll to the row named by the URL param (?techLogId=…).
-  const deepLinkValue = selection?.deepLinkParam ? searchParams.get(selection.deepLinkParam) : null;
+  const deepLinkValue = selection.deepLinkParam ? searchParams.get(selection.deepLinkParam) : null;
   useEffect(() => {
-    if (!selection || !deepLinkValue) return;
+    if (!deepLinkValue) return;
     const targetId = Number(deepLinkValue);
     if (Number.isFinite(targetId) && orderedRecords.some((r) => selection.getRecordId(r) === targetId)) {
       setFocusedId(targetId);
@@ -214,7 +200,7 @@ export function StationHistoryTable<T>({
 
   const onKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
-      if (!selection || orderedRecords.length === 0) return;
+      if (orderedRecords.length === 0) return;
       const curIdx = focusedId == null ? -1 : orderedRecords.findIndex((r) => selection.getRecordId(r) === focusedId);
       if (e.key === 'ArrowDown') {
         e.preventDefault();
@@ -257,9 +243,23 @@ export function StationHistoryTable<T>({
       {toolbarPortalTarget ? null : optionsMenu}
     </div>
   );
+  const weekPill = (
+    <DateRangePickerPill
+      label={formatWeekRangeCompact(weekRange.startStr, weekRange.endStr)}
+      count={totalCount}
+      weekNav={{ weekOffset, onPrev: onPrevWeek, onNext: onNextWeek }}
+    />
+  );
+  // House chrome recipe (Unbox · Shipped · FBA · Testing history): the week pill
+  // + ⋮ menu ride in the workbench chrome controls slot, so the table itself is
+  // a plain framed card with no second header band inside it. A caller with no
+  // portal target keeps the in-table `DateRangeHeader`.
   const portaledControls = toolbarPortalTarget
     ? createPortal(
-        <div className="flex items-center gap-2">{optionsMenu}</div>,
+        <div className="flex items-center gap-2">
+          {weekPill}
+          {optionsMenu}
+        </div>,
         toolbarPortalTarget,
       )
     : null;
@@ -267,15 +267,15 @@ export function StationHistoryTable<T>({
   // Bulk-action bar — pinned to the bottom of the table's relative region when
   // rows are selected. Copy-TSV + clear (Phase 7 §5.4).
   const bulkBar =
-    selection && selectedCount > 0 ? (
+    selectedCount > 0 ? (
       <div className="absolute inset-x-0 bottom-3 z-toast flex justify-center">
         <div className="flex items-center gap-2 rounded-full border border-border-soft bg-surface-card px-3 py-1.5 shadow-lg ring-1 ring-black/5">
-          <span className="text-role-caption font-bold text-text-muted">{selectedCount} selected</span>
+          <span className="text-role-caption font-semibold text-text-muted">{selectedCount} selected</span>
           {/* ds-raw-button: compact bulk-action capsule button */}
           <button
             type="button"
             onClick={() => void copySelected()}
-            className="inline-flex items-center gap-1 rounded-full bg-blue-600 px-2.5 py-1 text-role-caption font-bold text-white transition-colors hover:bg-blue-700"
+            className="inline-flex items-center gap-1 rounded-full bg-blue-600 px-2.5 py-1 text-role-caption font-semibold text-white transition-colors hover:bg-blue-700"
           >
             <Copy className="h-3.5 w-3.5" /> Copy
           </button>
@@ -303,32 +303,27 @@ export function StationHistoryTable<T>({
             bucket={pipeline.bucket}
             records={pipeline.records}
             loading={loading}
-            renderRow={effectiveRenderRow}
+            renderRow={renderRow}
             getRowKey={getRowKey}
             toDaySections={pipeline.toDaySections}
             getRowDate={pipeline.getRowDate}
-            headerStartSlot={
-              <div className="flex items-center gap-2">
-                <DateRangePickerPill
-                  label={formatWeekRangeCompact(weekRange.startStr, weekRange.endStr)}
-                  count={totalCount}
-                  weekNav={{
-                    weekOffset,
-                    onPrev: onPrevWeek,
-                    onNext: onNextWeek,
-                  }}
-                />
-              </div>
-            }
+            headerStartSlot={<div className="flex items-center gap-2">{weekPill}</div>}
             headerEndSlot={headerControls}
           />
         ) : (
           <div
-            className="relative flex min-h-0 flex-1 flex-col outline-none"
-            tabIndex={selection ? 0 : undefined}
-            onKeyDown={selection ? onKeyDown : undefined}
-            role={selection ? 'grid' : undefined}
-            aria-label={selection ? 'Station records' : undefined}
+            // `h-full` alongside `flex-1`: the pack/tech hosts lay this out in a
+            // fixed-height BLOCK container (`h-[calc(100dvh-13rem)]`), where
+            // `flex-1` resolves to nothing and the box grows to content — which
+            // collapses the virtualizer's viewport measurement and renders an
+            // empty grid. `h-full` bounds it under a block parent; `flex-1`
+            // still governs under a flex one. (The legacy StationWeekTable used
+            // `h-full` for exactly this reason.)
+            className="relative flex h-full min-h-0 flex-1 flex-col outline-none"
+            tabIndex={0}
+            onKeyDown={onKeyDown}
+            role="grid"
+            aria-label="Station records"
           >
             <StationListTable<T>
               loading={loading}
@@ -339,11 +334,12 @@ export function StationHistoryTable<T>({
               onNextWeek={onNextWeek}
               onResetWeek={onResetWeek}
               showWeekControls
+              hideHeader={Boolean(toolbarPortalTarget)}
               daySections={daySections}
               totalCount={totalCount}
-              renderRow={effectiveRenderRow}
+              renderRow={renderRow}
               getRowKey={getRowKey}
-              virtualized={virtualized}
+              virtualized
               scrollToKey={focusedKey}
               headerEndSlot={headerControls}
               emptyMessage={emptyMessage}

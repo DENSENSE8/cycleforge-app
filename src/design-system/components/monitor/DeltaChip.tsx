@@ -42,7 +42,7 @@ export function DeltaChip({
   return (
     <p
       className={cn(
-        'mt-1.5 inline-flex items-center gap-0.5 text-role-caption font-black tabular-nums',
+        'mt-1.5 inline-flex items-center gap-0.5 text-role-caption font-semibold tabular-nums',
         positive ? 'text-text-success' : 'text-text-danger',
         className,
       )}

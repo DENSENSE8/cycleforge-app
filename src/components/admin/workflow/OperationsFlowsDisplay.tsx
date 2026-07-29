@@ -60,7 +60,7 @@ export function OperationsFlowsDisplay() {
   return (
     <div className="h-full min-h-0 w-full overflow-auto bg-surface-canvas">
       <header className="border-b border-border-soft bg-surface-card px-6 py-4">
-        <h2 className="text-base font-bold tracking-tight text-text-default">Operations · System flows</h2>
+        <h2 className="text-base font-semibold tracking-tight text-text-default">Operations · System flows</h2>
         <p className="mt-0.5 text-xs text-text-soft">
           The {FLOWS.length} item flows currently implemented in the codebase, end to end. Each step shows the
           lifecycle stage, the station that owns it, the signal that marks it, and the route that performs it.
@@ -70,7 +70,7 @@ export function OperationsFlowsDisplay() {
       <div className="mx-auto max-w-3xl space-y-8 px-6 py-6">
         {sections.map((section) => (
           <div key={section.group}>
-            <h3 className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-text-faint">
+            <h3 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-text-faint">
               {section.group}
               <span className="rounded-full bg-surface-strong inset-chip text-role-micro font-semibold text-text-soft">
                 {section.flows.length}
@@ -94,7 +94,7 @@ function FlowCard({ flow, occupancy }: { flow: OpsFlow; occupancy: Occupancy }) 
       {/* Flow header */}
       <div className="border-b border-border-hairline px-5 py-3.5" style={{ borderLeft: `4px solid ${flow.color}` }}>
         <div className="flex items-center justify-between gap-3">
-          <h3 className="text-sm font-bold text-text-default">{flow.label}</h3>
+          <h3 className="text-sm font-semibold text-text-default">{flow.label}</h3>
           <div className="flex flex-wrap justify-end gap-1">
             {flow.stations.map((s) => (
               <span key={s} className="rounded-md bg-surface-sunken inset-chip text-role-micro font-semibold text-text-muted">
@@ -105,11 +105,11 @@ function FlowCard({ flow, occupancy }: { flow: OpsFlow; occupancy: Occupancy }) 
         </div>
         <p className="mt-1 text-xs text-text-soft">{flow.blurb}</p>
         <div className="mt-2 flex flex-wrap items-center gap-1">
-          <span className="text-role-micro font-bold uppercase tracking-wider text-text-faint">Source</span>
+          <span className="text-role-micro uppercase tracking-wider text-text-faint">Source</span>
           <span className="rounded border border-border-soft bg-surface-canvas inset-chip font-mono text-role-micro text-text-muted">{flow.source}</span>
         </div>
         <div className="mt-1 flex flex-wrap items-center gap-1">
-          <span className="text-role-micro font-bold uppercase tracking-wider text-text-faint">Implemented in</span>
+          <span className="text-role-micro uppercase tracking-wider text-text-faint">Implemented in</span>
           {flow.code.map((c) => (
             <span key={c} className="rounded border border-border-soft bg-surface-canvas inset-chip font-mono text-role-micro text-text-muted">
               {c}
@@ -128,7 +128,7 @@ function FlowCard({ flow, occupancy }: { flow: OpsFlow; occupancy: Occupancy }) 
               {/* Rail + node */}
               <div className="relative flex flex-col items-center">
                 <span
-                  className="z-10 mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-role-micro font-bold text-white ring-2 ring-white"
+                  className="z-10 mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-role-micro text-white ring-2 ring-white"
                   style={{ background: flow.color }}
                 >
                   {idx + 1}
@@ -140,7 +140,7 @@ function FlowCard({ flow, occupancy }: { flow: OpsFlow; occupancy: Occupancy }) 
               <div className="min-w-0 flex-1 pb-1">
                 <div className="flex flex-wrap items-center gap-2">
                   <span
-                    className="rounded-md px-2 py-0.5 text-role-caption font-bold"
+                    className="rounded-md px-2 py-0.5 text-role-caption font-semibold"
                     style={{ background: `${flow.color}18`, color: flow.color }}
                   >
                     {step.stage}
@@ -175,7 +175,7 @@ function FlowCard({ flow, occupancy }: { flow: OpsFlow; occupancy: Occupancy }) 
       {/* Off-path / branches */}
       {flow.offPath && flow.offPath.length > 0 && (
         <div className="border-t border-border-hairline bg-surface-canvas/60 px-5 py-3">
-          <p className="mb-1.5 text-role-micro font-bold uppercase tracking-wider text-text-faint">
+          <p className="mb-1.5 text-role-micro uppercase tracking-wider text-text-faint">
             Branches &amp; terminal states
           </p>
           <ul className="space-y-1">

@@ -136,7 +136,7 @@ export default function MobileReceivingPipelinePage() {
           className="flex h-11 w-11 items-center justify-center rounded-xl active:bg-surface-sunken outline-none"
         />
 
-        <h1 className="flex-1 text-lg font-black tracking-tight text-text-default">
+        <h1 className="flex-1 text-lg font-semibold tracking-tight text-text-default">
           Receiving
         </h1>
 
@@ -213,12 +213,12 @@ export default function MobileReceivingPipelinePage() {
             ))}
           </div>
         ) : error ? (
-          <p className="px-6 py-12 text-center text-role-caption font-bold text-rose-600">
+          <p className="px-6 py-12 text-center text-role-caption font-semibold text-rose-600">
             Couldn't load receiving lines. Pull to refresh.
           </p>
         ) : rows.length === 0 ? (
           <div className="px-6 py-16 text-center">
-            <p className="text-sm font-black uppercase tracking-[0.18em] text-text-muted">
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-text-muted">
               No matches
             </p>
             <p className="mt-1 text-role-caption font-semibold text-text-soft">

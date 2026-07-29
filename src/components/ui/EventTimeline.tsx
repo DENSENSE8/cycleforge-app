@@ -305,13 +305,13 @@ function groupBySerial(
 function DefaultGroupHeader({ group }: { group: SerialGroup }) {
   return (
     <div className="flex items-center gap-2">
-      <span className="text-role-micro font-bold uppercase tracking-[0.12em] text-text-faint">
+      <span className="text-role-micro uppercase tracking-[0.12em] text-text-faint">
         {group.ref ? `${REF_KIND_LABEL[group.ref.kind]} ` : ''}
       </span>
       {group.ref ? (
         <TimelineRefChip refItem={group.ref} />
       ) : (
-        <span className="text-role-micro font-bold uppercase tracking-[0.12em] text-text-faint">
+        <span className="text-role-micro uppercase tracking-[0.12em] text-text-faint">
           {group.label}
         </span>
       )}
@@ -526,7 +526,7 @@ export function EventTimeline({
                 className={
                   stationAnatomy
                     ? `${d.day} mb-1 pl-px text-role-micro font-medium uppercase tracking-[0.12em] text-text-faint`
-                    : `${d.day} mb-1.5 pl-px text-role-micro font-bold uppercase tracking-[0.12em] text-text-faint`
+                    : `${d.day} mb-1.5 pl-px text-role-micro uppercase tracking-[0.12em] text-text-faint`
                 }
               >
                 {dayKey}
@@ -596,7 +596,7 @@ export function EventTimeline({
                   <>
                     <div
                       className={`text-role-caption tracking-tight ${
-                        isLatest ? 'font-bold text-text-default' : 'font-semibold text-text-muted'
+                        isLatest ? 'font-semibold text-text-default' : 'font-semibold text-text-muted'
                       }`}
                     >
                       {item.title}
@@ -613,7 +613,7 @@ export function EventTimeline({
                   >
                     <span
                       className={`text-role-caption tracking-tight ${
-                        isLatest ? 'font-bold text-text-default' : 'font-semibold text-text-muted'
+                        isLatest ? 'font-semibold text-text-default' : 'font-semibold text-text-muted'
                       }`}
                     >
                       {item.title}
@@ -660,7 +660,7 @@ export function EventTimeline({
                     {item.badges.map((badge, bi) => (
                       <span
                         key={bi}
-                        className={`inline-flex items-center rounded px-1.5 py-0.5 text-role-eyebrow font-bold ${BADGE_TONE[badge.tone]}`}
+                        className={`inline-flex items-center rounded px-1.5 py-0.5 text-role-eyebrow ${BADGE_TONE[badge.tone]}`}
                       >
                         {badge.label}
                       </span>

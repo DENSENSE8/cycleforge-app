@@ -76,7 +76,7 @@ export function ZohoSplitPane() {
       />
 
       <header className="flex h-10 shrink-0 items-center justify-between border-b border-border-hairline bg-surface-canvas px-3">
-        <span className="text-role-caption font-black uppercase tracking-[0.18em] text-text-muted">
+        <span className="text-role-caption font-semibold uppercase tracking-[0.18em] text-text-muted">
           Zoho · Purchase Order
         </span>
         <IconButton
@@ -96,7 +96,7 @@ export function ZohoSplitPane() {
             href={url}
             target="_blank"
             rel="noreferrer"
-            className="rounded-md bg-blue-600 px-3 py-1.5 text-role-caption font-black uppercase tracking-[0.16em] text-white hover:bg-blue-700"
+            className="rounded-md bg-blue-600 px-3 py-1.5 text-role-caption font-semibold uppercase tracking-[0.16em] text-white hover:bg-blue-700"
           >
             Open in Zoho
           </a>

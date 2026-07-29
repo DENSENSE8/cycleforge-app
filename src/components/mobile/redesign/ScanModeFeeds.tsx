@@ -130,7 +130,7 @@ function FeedList({
     return (
       <div className="py-12 text-center opacity-40">
         <History className="mx-auto mb-3 h-10 w-10 text-blue-200" />
-        <p className="text-xs font-black uppercase tracking-widest text-blue-300">{empty}</p>
+        <p className="text-xs font-semibold uppercase tracking-widest text-blue-300">{empty}</p>
       </div>
     );
   }
@@ -230,7 +230,7 @@ export function ReceivingTriagePanel() {
           size="sm"
           textTransform="capitalize"
           className="w-40"
-          buttonClassName="flex h-8 w-full items-center gap-2 rounded-lg border border-border-default bg-surface-card pl-2.5 pr-9 text-left text-xs font-black capitalize tracking-wide text-blue-950 outline-none transition-colors hover:bg-surface-hover"
+          buttonClassName="flex h-8 w-full items-center gap-2 rounded-lg border border-border-default bg-surface-card pl-2.5 pr-9 text-left text-xs font-semibold capitalize tracking-wide text-blue-950 outline-none transition-colors hover:bg-surface-hover"
         />
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto">
@@ -288,7 +288,7 @@ export function TestingRecentPanel() {
       ) : rows.length === 0 ? (
         <div className="py-12 text-center opacity-40">
           <History className="mx-auto mb-3 h-10 w-10 text-blue-200" />
-          <p className="text-xs font-black uppercase tracking-widest text-blue-300">No tested units yet</p>
+          <p className="text-xs font-semibold uppercase tracking-widest text-blue-300">No tested units yet</p>
         </div>
       ) : (
         <div className="pb-2">
@@ -317,7 +317,7 @@ function TestingStatField({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-2xl bg-surface-canvas px-3 py-2.5">
       <p className="text-role-micro uppercase tracking-[0.15em] text-blue-300">{label}</p>
-      <p className="mt-1 truncate text-sm font-black tracking-tight text-blue-950">{value}</p>
+      <p className="mt-1 truncate text-sm font-semibold tracking-tight text-blue-950">{value}</p>
     </div>
   );
 }
@@ -394,11 +394,11 @@ function TestingRecentSheet({ line, onClose }: { line: ReceivingLineRow | null; 
                 <Package className="h-6 w-6" />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-lg font-black leading-snug tracking-tight text-blue-950">
+                <p className="text-lg font-semibold leading-snug tracking-tight text-blue-950">
                   {row.item_name ?? row.sku ?? 'Tested Item'}
                 </p>
                 {row.sku && (
-                  <p className="mt-0.5 truncate text-xs font-black uppercase tracking-wider text-blue-400">SKU {row.sku}</p>
+                  <p className="mt-0.5 truncate text-xs font-semibold uppercase tracking-wider text-blue-400">SKU {row.sku}</p>
                 )}
               </div>
             </div>
@@ -428,7 +428,7 @@ function TestingRecentSheet({ line, onClose }: { line: ReceivingLineRow | null; 
                       >
                         <div className="flex min-w-0 items-center gap-2">
                           <QrCode className="h-4 w-4 shrink-0 text-blue-300" />
-                          <span className="truncate font-mono text-sm font-bold text-blue-950">
+                          <span className="truncate font-mono text-sm font-semibold text-blue-950">
                             {s.serial_number || '—'}
                           </span>
                         </div>
@@ -448,7 +448,7 @@ function TestingRecentSheet({ line, onClose }: { line: ReceivingLineRow | null; 
                 </div>
               ) : (
                 <div className="rounded-2xl bg-surface-canvas px-4 py-6 text-center">
-                  <p className="text-xs font-black uppercase tracking-widest text-blue-300">No serials recorded</p>
+                  <p className="text-xs font-semibold uppercase tracking-widest text-blue-300">No serials recorded</p>
                 </div>
               )}
             </div>
@@ -469,7 +469,7 @@ function TestingRecentSheet({ line, onClose }: { line: ReceivingLineRow | null; 
                 <QrCode className="h-5 w-5" />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="truncate font-mono text-base font-black tracking-tight text-blue-950">
+                <p className="truncate font-mono text-base font-semibold tracking-tight text-blue-950">
                   {shownSerial.serial_number || '—'}
                 </p>
                 <span

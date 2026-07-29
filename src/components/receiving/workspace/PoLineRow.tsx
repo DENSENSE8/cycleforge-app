@@ -218,7 +218,7 @@ export function PoLineRow({
               text. ds-allow-title: native tooltip shows full value when
               truncated. Item description / unlink open from the title ⋮. */}
           <p
-            className="min-w-0 flex-1 truncate text-role-caption font-bold text-text-default"
+            className="min-w-0 flex-1 truncate text-role-caption font-semibold text-text-default"
             title={lineTitle}
           >
             {lineTitle}

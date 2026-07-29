@@ -111,7 +111,7 @@ function SupplierForm({ mode, supplier }: { mode: 'create' | 'edit'; supplier?: 
 
   return (
     <div className="mx-auto flex h-full max-w-lg flex-col gap-4 overflow-y-auto p-6">
-      <h2 className="text-lg font-bold text-text-default">{mode === 'create' ? 'New supplier' : form.name}</h2>
+      <h2 className="text-lg font-semibold text-text-default">{mode === 'create' ? 'New supplier' : form.name}</h2>
       {supplier?.ebay_seller_id ? <p className="-mt-2 text-role-caption text-text-soft">eBay seller · {supplier.ebay_seller_id}</p> : null}
       <Field label="Name" required><input className={inputCls} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></Field>
       <div className="grid grid-cols-2 gap-3">

@@ -88,7 +88,7 @@ export function ReplenishmentShippedFifoTab({ skuSearch }: ReplenishmentShippedF
                     <div className="grid grid-cols-[minmax(0,1.6fr)_70px_90px_90px_90px_90px_120px] gap-3 items-start">
                       {/* Item info */}
                       <div className="min-w-0">
-                        <p className="text-role-caption font-black text-text-default truncate">
+                        <p className="text-role-caption font-semibold text-text-default truncate">
                           {row.product_title || row.sku}
                         </p>
                         <p className={`${fieldLabel} mt-0.5 truncate`}>
@@ -96,7 +96,7 @@ export function ReplenishmentShippedFifoTab({ skuSearch }: ReplenishmentShippedF
                           {row.account_source && ` · ${row.account_source}`}
                         </p>
                         {!zohoLinked && (
-                          <p className="text-role-eyebrow font-bold text-amber-600 mt-0.5">Not linked to Zoho item</p>
+                          <p className="text-role-eyebrow text-amber-600 mt-0.5">Not linked to Zoho item</p>
                         )}
                       </div>
 
@@ -140,7 +140,7 @@ export function ReplenishmentShippedFifoTab({ skuSearch }: ReplenishmentShippedF
                               {(row.replenishment_status || '').replace(/_/g, ' ')}
                             </span>
                             {row.zoho_po_number && (
-                              <p className="text-role-eyebrow font-bold text-text-soft mt-1">PO {row.zoho_po_number}</p>
+                              <p className="text-role-eyebrow text-text-soft mt-1">PO {row.zoho_po_number}</p>
                             )}
                           </div>
                         ) : (

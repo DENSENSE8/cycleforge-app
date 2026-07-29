@@ -48,7 +48,7 @@ type ZohoResultRow = {
 };
 
 export function classifyReceiveResponse(r: ReceiveResponsePanelProps['response']): {
-  verdict: 'success' | 'skipped' | 'rate_limit' | 'circuit_open' | 'api_error' | 'http_error' | 'network';
+  verdict: 'success' | 'skipped' | 'rate_limit' | 'circuit_open' | 'api_error' | 'http_error' | 'network' | 'photo_policy';
   headline: string;
   detail: string;
   tone: 'emerald' | 'amber' | 'rose';
@@ -62,6 +62,24 @@ export function classifyReceiveResponse(r: ReceiveResponsePanelProps['response']
     };
   }
   const body = (r.body || {}) as Record<string, unknown>;
+  // Photo-policy insurance gate (WS-PHOTO Plan 5): a 409 with structured
+  // blockers from the mark-received routes. Amber, not rose — the fix is at
+  // the bench (take the required photos), not a system failure. Blockers come
+  // from the shared evaluator, so this copy matches the preflight disabled
+  // reason exactly.
+  const photoBlockers = Array.isArray(body.blockers)
+    ? (body.blockers as unknown[]).filter(
+        (b): b is string => typeof b === 'string' && b.trim().length > 0,
+      )
+    : [];
+  if (!r.ok && r.httpStatus === 409 && body.error === 'PHOTO_POLICY' && photoBlockers.length > 0) {
+    return {
+      verdict: 'photo_policy',
+      headline: 'Photos required before receive',
+      tone: 'amber',
+      detail: photoBlockers.join(' · '),
+    };
+  }
   if (!r.ok) {
     const zoho = (body.zoho || {}) as {
       attempted?: number;

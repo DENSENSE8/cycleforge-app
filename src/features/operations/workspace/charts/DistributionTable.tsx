@@ -78,7 +78,7 @@ export function DistributionTable({
                 </span>
               </span>
               <span className="relative flex items-center gap-4">
-                <span className="w-12 text-right text-role-caption font-bold tabular-nums text-text-default">
+                <span className="w-12 text-right text-role-caption font-semibold tabular-nums text-text-default">
                   {row.count.toLocaleString()}
                 </span>
                 <span className="w-10 text-right text-role-caption font-semibold tabular-nums text-text-soft">

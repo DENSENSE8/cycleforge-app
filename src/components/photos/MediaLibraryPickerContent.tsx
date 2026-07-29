@@ -338,7 +338,7 @@ export function MediaLibraryPickerContent({
               type="button"
               onClick={() => switchTab('browse')}
               className={cn(
-                'rounded-md px-3 py-1 text-role-caption font-bold transition',
+                'rounded-md px-3 py-1 text-role-caption font-semibold transition',
                 tab === 'browse' ? 'bg-surface-card text-blue-700 shadow-sm' : 'text-text-soft hover:text-text-muted',
               )}
             >
@@ -350,7 +350,7 @@ export function MediaLibraryPickerContent({
                 type="button"
                 onClick={() => switchTab('ticket')}
                 className={cn(
-                  'rounded-md px-3 py-1 text-role-caption font-bold transition',
+                  'rounded-md px-3 py-1 text-role-caption font-semibold transition',
                   tab === 'ticket' ? 'bg-surface-card text-blue-700 shadow-sm' : 'text-text-soft hover:text-text-muted',
                 )}
               >
@@ -363,7 +363,7 @@ export function MediaLibraryPickerContent({
                 type="button"
                 onClick={() => switchTab('carton')}
                 className={cn(
-                  'rounded-md px-3 py-1 text-role-caption font-bold transition',
+                  'rounded-md px-3 py-1 text-role-caption font-semibold transition',
                   tab === 'carton' ? 'bg-surface-card text-blue-700 shadow-sm' : 'text-text-soft hover:text-text-muted',
                 )}
               >
@@ -378,7 +378,7 @@ export function MediaLibraryPickerContent({
             <button
               type="button"
               onClick={backToTypes}
-              className="ds-raw-button inline-flex items-center gap-1 rounded-lg px-2 py-1 text-role-caption font-bold text-text-soft hover:bg-surface-sunken hover:text-text-default"
+              className="ds-raw-button inline-flex items-center gap-1 rounded-lg px-2 py-1 text-role-caption font-semibold text-text-soft hover:bg-surface-sunken hover:text-text-default"
             >
               <ChevronLeft className="h-3.5 w-3.5" />
               Media types

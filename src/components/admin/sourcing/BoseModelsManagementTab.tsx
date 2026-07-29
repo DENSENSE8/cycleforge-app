@@ -111,7 +111,7 @@ function CreateModelForm() {
 
   return (
     <div className="mx-auto flex h-full max-w-lg flex-col gap-4 overflow-y-auto p-6">
-      <h2 className="text-lg font-bold text-text-default">New Bose model</h2>
+      <h2 className="text-lg font-semibold text-text-default">New Bose model</h2>
       <Field label="Model number" required>
         <input className={inputCls} value={modelNumber} onChange={(e) => setModelNumber(e.target.value)} placeholder="e.g. 423816" />
       </Field>
@@ -202,7 +202,7 @@ function ModelEditCard({ model, onSaved, onDeleted }: { model: BoseModel; onSave
     <section className="rounded-xl border border-border-soft bg-surface-card p-5">
       <div className="mb-4 flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-bold text-text-default">{model.model_name}</h2>
+          <h2 className="text-lg font-semibold text-text-default">{model.model_name}</h2>
           <p className="text-role-caption text-text-soft">Model #{model.model_number}</p>
         </div>
       </div>
@@ -250,7 +250,7 @@ function CompatibilityManager({ modelId, parts, onChanged }: { modelId: number; 
 
   return (
     <section className="rounded-xl border border-border-soft bg-surface-card p-5">
-      <h3 className="mb-3 text-sm font-bold text-text-default">Compatible parts ({parts.length})</h3>
+      <h3 className="mb-3 text-sm font-semibold text-text-default">Compatible parts ({parts.length})</h3>
 
       {parts.length === 0 ? (
         <p className="mb-4 text-role-caption text-text-faint">No compatible parts linked yet.</p>

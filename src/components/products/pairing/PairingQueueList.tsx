@@ -65,7 +65,7 @@ export function PairingQueueList({ query, sort, selectedSku, onSelect }: Pairing
           </div>
         ) : items.length === 0 ? (
           <div className="px-4 py-12 text-center">
-            <p className="text-xs font-bold text-text-soft">
+            <p className="text-xs font-semibold text-text-soft">
               {debouncedQuery ? 'No matches' : 'All caught up'}
             </p>
             <p className="mt-1 text-role-micro text-text-faint">
@@ -114,15 +114,15 @@ function PairingQueueRow({
             // eslint-disable-next-line @next/next/no-img-element
             <img src={item.imageUrl} alt="" className="h-full w-full object-cover" />
           ) : (
-            <span className="text-role-micro font-bold text-text-faint">{item.sku.slice(0, 3)}</span>
+            <span className="text-role-micro text-text-faint">{item.sku.slice(0, 3)}</span>
           )}
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5">
-            <span className="truncate font-mono text-xs font-bold text-text-default">{item.sku}</span>
+            <span className="truncate font-mono text-xs font-semibold text-text-default">{item.sku}</span>
             {item.isActive === false && (
               <HoverTooltip label="This canonical SKU is inactive in the catalog" asChild focusable={false}>
-                <span className="inline-flex shrink-0 items-center rounded bg-surface-sunken px-1 text-role-eyebrow font-bold uppercase tracking-wider text-text-soft ring-1 ring-border-soft">
+                <span className="inline-flex shrink-0 items-center rounded bg-surface-sunken px-1 text-role-eyebrow uppercase tracking-wider text-text-soft ring-1 ring-border-soft">
                   inactive
                 </span>
               </HoverTooltip>
@@ -134,7 +134,7 @@ function PairingQueueRow({
                 asChild
                 focusable={false}
               >
-                <span className="inline-flex items-center rounded bg-amber-50 px-1 text-role-eyebrow font-bold uppercase tracking-wider text-amber-700 ring-1 ring-amber-200">
+                <span className="inline-flex items-center rounded bg-amber-50 px-1 text-role-eyebrow uppercase tracking-wider text-amber-700 ring-1 ring-amber-200">
                   {formatVolume(item.orderCount)} ord
                 </span>
               </HoverTooltip>

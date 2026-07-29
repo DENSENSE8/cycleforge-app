@@ -4,9 +4,16 @@ import { test, expect } from '@playwright/test';
  * Dashboard Search — human eBay-style order # exact-open (dogfood lock).
  *
  * Guards the dual-engine gap: `/api/orders/lookup` can miss or race while
- * `/api/ai/retrieve` still finds the ORDER. Identifier Enter must land on
- * `SearchOrderDetailShell` (spinner → detail), never stick on "1 result for…"
- * until the operator clicks the L2 sidebar.
+ * `/api/ai/retrieve` still finds the ORDER. A `?mode=search&q=` DEEP LINK must
+ * land on `SearchOrderDetailShell` (spinner → detail), never stick on
+ * "1 result for…" until the operator clicks the L2 sidebar.
+ *
+ * SCOPE (Week 1 / D4a): this covers the deep-link path only. Pressing Enter in
+ * the GLOBAL HEADER on an identifier that resolves to one order now navigates to
+ * `/o/[orderId]` (the canonical record) instead of this shell — a different
+ * path, deliberately. The search shell + hit-map rail remain correct for fuzzy,
+ * natural-language, and multi-candidate queries, which is what these specs
+ * exercise.
  *
  * Env (optional; defaults are known dogfood fixtures):
  *   PW_SEARCH_ORDER_HUMAN – human order # (default 27-14721-28101)

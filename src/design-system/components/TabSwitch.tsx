@@ -247,7 +247,7 @@ export function TabSwitch({
                 }}
                 onClick={() => onTabChange(tab.id)}
                 className={`relative z-10 ${tabFlexClass} min-w-[3rem] whitespace-nowrap rounded-full transition-colors duration-150 ${
-                  solid ? 'font-bold' : 'font-black uppercase tracking-widest'
+                  solid ? 'font-semibold' : 'font-semibold uppercase tracking-widest'
                 } ${
                   upNext
                     ? 'px-3 py-2 text-role-caption'

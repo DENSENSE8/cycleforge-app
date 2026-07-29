@@ -140,7 +140,7 @@ export default function StationFbaInput(props: StationFbaInputProps) {
             <Loader2 className="h-3 w-3 shrink-0 animate-spin text-text-faint" />
           ) : null}
           <p
-            className={`text-role-micro font-bold uppercase tracking-widest ${
+            className={`text-role-micro font-semibold uppercase tracking-widest ${
               c.planHint
                 ? 'text-emerald-600'
                 : c.selectedCount > 0

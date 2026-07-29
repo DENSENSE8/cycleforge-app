@@ -5,6 +5,7 @@ import { X, Share, Plus } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/design-system/primitives/Button';
 import { IconButton } from '@/design-system/primitives/IconButton';
+import { cornerClass } from '@/design-system/tokens/radius';
 import { PRODUCT_NAME } from '@/lib/branding/constants';
 
 type Platform = 'ios' | 'android' | null;
@@ -79,16 +80,16 @@ export function InstallPrompt() {
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: 80, opacity: 0 }}
           transition={{ type: 'spring', stiffness: 300, damping: 28 }}
-          className="fixed bottom-4 inset-x-4 z-banner rounded-[12px] bg-navy-800 text-white shadow-xl overflow-hidden"
+          className={`fixed bottom-4 inset-x-4 z-banner ${cornerClass('field')} bg-navy-800 text-white shadow-xl overflow-hidden`}
           style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
         >
           <div className="p-4">
             <div className="flex items-start justify-between gap-3 mb-3">
               <div>
-                <p className="text-role-eyebrow font-bold tracking-[0.18em] uppercase text-navy-300 font-sans mb-0.5">
+                <p className="text-role-eyebrow tracking-[0.18em] uppercase text-navy-300 font-sans mb-0.5">
                   {PRODUCT_NAME}
                 </p>
-                <p className="text-sm font-bold text-white font-sans">
+                <p className="text-sm font-semibold text-white font-sans">
                   Add to Home Screen
                 </p>
               </div>
@@ -119,7 +120,7 @@ export function InstallPrompt() {
                   variant="ghost"
                   size="md"
                   onClick={dismiss}
-                  className="flex-1 rounded-station border border-glass/20 text-role-caption font-bold tracking-wide uppercase text-white/70 hover:bg-glass/10 hover:text-white/70 touch-manipulation font-sans"
+                  className={`flex-1 ${cornerClass('control')} border border-glass/20 text-role-caption font-semibold tracking-wide uppercase text-white/70 hover:bg-glass/10 hover:text-white/70 touch-manipulation font-sans`}
                 >
                   Not now
                 </Button>
@@ -127,7 +128,7 @@ export function InstallPrompt() {
                   variant="secondary"
                   size="md"
                   onClick={install}
-                  className="flex-1 rounded-station ring-0 bg-surface-card text-navy-800 text-role-caption font-bold tracking-wide uppercase hover:bg-navy-50 touch-manipulation font-sans"
+                  className={`flex-1 ${cornerClass('control')} ring-0 bg-surface-card text-navy-800 text-role-caption font-semibold tracking-wide uppercase hover:bg-navy-50 touch-manipulation font-sans`}
                 >
                   Install
                 </Button>

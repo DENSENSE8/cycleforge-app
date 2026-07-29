@@ -161,7 +161,7 @@ export function WorkspaceCard({
           className={`flex items-center justify-between gap-2 overflow-visible px-5 pb-1 pt-4 ${layerClass}`}
         >
           {label ? (
-            <h3 className="min-w-0 shrink text-role-caption font-bold uppercase tracking-[0.14em] text-text-soft">
+            <h3 className="min-w-0 shrink text-role-caption font-semibold uppercase tracking-[0.14em] text-text-soft">
               {label}
             </h3>
           ) : (

@@ -267,14 +267,14 @@ export function ScanCameraMobile({
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
                   </svg>
                 </div>
-                <p className="text-sm font-bold text-white mb-1">Camera unavailable</p>
+                <p className="text-sm font-semibold text-white mb-1">Camera unavailable</p>
                 <p className="text-xs text-text-faint mb-4">
                   Enable camera access in your browser settings, or enter the code manually below.
                 </p>
                 <button
                   type="button"
                   onClick={attemptStartCamera}
-                  className="h-11 px-5 rounded-xl bg-blue-600 text-white text-role-caption font-black uppercase tracking-wider active:bg-blue-700 transition-colors"
+                  className="h-11 px-5 rounded-xl bg-blue-600 text-white text-role-caption font-semibold uppercase tracking-wider active:bg-blue-700 transition-colors"
                 >
                   Try Again
                 </button>
@@ -296,7 +296,7 @@ export function ScanCameraMobile({
                   autoCapitalize="characters"
                   className="
                     flex-1 h-11 rounded-xl bg-glass/10 border border-glass/20
-                    px-4 text-sm font-bold text-white placeholder:text-white/40
+                    px-4 text-sm font-semibold text-white placeholder:text-white/40
                     focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400/50
                   "
                 />
@@ -305,7 +305,7 @@ export function ScanCameraMobile({
                   disabled={!manualValue.trim()}
                   className="
                     h-11 px-4 rounded-xl bg-blue-600 text-white
-                    text-role-caption font-black uppercase tracking-wider
+                    text-role-caption font-semibold uppercase tracking-wider
                     disabled:opacity-40 active:bg-blue-700
                   "
                 >

@@ -31,6 +31,10 @@ import {
 
 const IDEMPOTENCY_ROUTE = 'receiving.mark-received-po';
 import { withAuth } from '@/lib/auth/withAuth';
+import { getOrganization } from '@/lib/tenancy/organizations';
+import type { OrgId } from '@/lib/tenancy/constants';
+import { getReceivingPhotoPolicy } from '@/lib/settings/accessors';
+import { evaluateReceivingPhotoPolicyGate } from '@/lib/receiving/photo-policy-gate';
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import { conditionLabel } from '@/lib/conditions';
 import { mergeSerialNoteIntoLineDescription } from '@/lib/zoho';
@@ -320,6 +324,35 @@ export const POST = withAuth(async (request, ctx) => {
         quantity_received: Number(r.quantity_received ?? 0),
         quantity_expected: r.quantity_expected,
       });
+    }
+
+    // Photo-policy gate (WS-PHOTO Plan 5): judge the carton's staged evidence
+    // BEFORE any mutation. scan_only is a local state flip, not a receive, and
+    // a pure verify/replay pass (no open lines) never newly blocks. On a block,
+    // RELEASE the idempotency claim instead of finalizing — PHOTO_POLICY is a
+    // fixable condition, so the same key must be able to retry after the
+    // operator adds the missing photos (a finalized claim would replay the 409
+    // forever). Default policy runs zero extra photo queries.
+    if (!skipZohoReceive && openForReceive.length > 0) {
+      const gateOrg = await getOrganization(ctx.organizationId as OrgId);
+      const photoPolicy = gateOrg ? getReceivingPhotoPolicy(gateOrg.settings) : 'optional';
+      if (photoPolicy !== 'optional') {
+        const gate = await evaluateReceivingPhotoPolicyGate({
+          organizationId: ctx.organizationId,
+          receivingId,
+          policy: photoPolicy,
+        });
+        if (!gate.ok) {
+          if (ownedClaim) {
+            await releaseIdempotencyClaim(pool, ownedClaim).catch(() => {});
+            ownedClaim = null;
+          }
+          return NextResponse.json(
+            { success: false, error: 'PHOTO_POLICY', blockers: gate.blockers },
+            { status: 409 },
+          );
+        }
+      }
     }
 
     /** When every line is already DONE locally, we still verify/receive in Zoho — load carton lines, skip receiveLineUnits. */

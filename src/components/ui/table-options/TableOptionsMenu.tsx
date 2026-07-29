@@ -83,7 +83,7 @@ function Segment<T extends string>({
             type="button"
             aria-pressed={active}
             onClick={() => onChange(o.id)}
-            className={`flex-1 rounded-md px-2 py-1 text-role-caption font-bold transition-colors ${
+            className={`flex-1 rounded-md px-2 py-1 text-role-caption font-semibold transition-colors ${
               active
                 ? 'bg-surface-accent text-text-accent'
                 : 'text-text-muted hover:bg-surface-hover'
@@ -181,7 +181,7 @@ function SavedViewsSection({ storageKey, paramKeys }: { storageKey: string; para
             <button
               type="submit"
               disabled={!draft.trim()}
-              className="shrink-0 rounded-md bg-blue-600 px-2 py-1 text-role-caption font-bold text-white transition-colors hover:bg-blue-700 disabled:opacity-40"
+              className="shrink-0 rounded-md bg-blue-600 px-2 py-1 text-role-caption font-semibold text-white transition-colors hover:bg-blue-700 disabled:opacity-40"
             >
               Save
             </button>

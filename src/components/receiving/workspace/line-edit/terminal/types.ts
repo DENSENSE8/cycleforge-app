@@ -57,6 +57,12 @@ export interface UnboxReceiveTerminalInput {
   canReceiveReview: boolean;
   canZohoReceive: boolean;
   isUnfound: boolean;
+  /**
+   * Line already reached DONE (`received_done_at` stamped). Collapses the dock
+   * primary to print-only; re-receive stays in the split menu. Optional so the
+   * legacy `LineReceiveActionBar` adapter keeps its current behaviour.
+   */
+  isReceived?: boolean;
   receiveMenuLabel: string;
   receiveMenuTitle?: string;
   handlePrintAndReceive: () => void | Promise<void>;

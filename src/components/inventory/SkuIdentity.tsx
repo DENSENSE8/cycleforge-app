@@ -88,7 +88,7 @@ export function SkuIdentity({
   if (variant === 'compact') {
     return (
       <div className={`flex flex-wrap items-center gap-1.5 ${className}`}>
-        <span className="font-mono text-sm font-bold tabular-nums text-text-default">{canonicalSku}</span>
+        <span className="font-mono text-sm font-semibold tabular-nums text-text-default">{canonicalSku}</span>
         <span className={`inline-flex items-center rounded-md border px-1.5 py-0.5 text-role-micro font-semibold uppercase tracking-wider ${platformChipClass('zoho')}`}>
           Zoho
         </span>
@@ -105,7 +105,7 @@ export function SkuIdentity({
         <p className="text-sm font-semibold leading-snug text-text-default">{productTitle}</p>
       )}
       <div className={`flex items-baseline gap-2 ${productTitle ? 'mt-1.5' : ''}`}>
-        <span className="font-mono text-2xl font-extrabold tabular-nums tracking-tight text-text-default">
+        <span className="font-mono text-2xl font-semibold tabular-nums tracking-tight text-text-default">
           {canonicalSku}
         </span>
         <span className={`inline-flex items-center rounded-md border px-1.5 py-0.5 text-role-micro font-semibold uppercase tracking-wider ${platformChipClass('zoho')}`}>

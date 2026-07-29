@@ -61,15 +61,26 @@ export function TicketLinkPopover({
   open,
   onClose,
   onLinked,
+  initialQuery = '',
+  title = 'Link ticket',
 }: {
   linkable: SupportContextLinkable;
   open: boolean;
   onClose: () => void;
   onLinked?: (ticketNumber: string) => void;
+  /**
+   * Seed the search box (and the first candidates fetch) with a known
+   * identifier — the Unbox unfound lane passes the carton's tracking number so
+   * the operator sees matching helpdesk tickets without typing. The box stays
+   * editable; closing resets back to this seed, not to empty.
+   */
+  initialQuery?: string;
+  /** Eyebrow label — the shared strip surfaces a scoped variant. */
+  title?: string;
 }) {
   const qc = useQueryClient();
-  const [query, setQuery] = useState('');
-  const [debounced, setDebounced] = useState('');
+  const [query, setQuery] = useState(initialQuery);
+  const [debounced, setDebounced] = useState(initialQuery.trim());
   const [selectedId, setSelectedId] = useState<number | null>(null);
 
   useEffect(() => {
@@ -79,10 +90,10 @@ export function TicketLinkPopover({
 
   useEffect(() => {
     if (!open) {
-      setQuery('');
+      setQuery(initialQuery);
       setSelectedId(null);
     }
-  }, [open]);
+  }, [open, initialQuery]);
 
   const candidates = useQuery({
     queryKey: ['ticket-link-candidates', linkable, debounced],
@@ -155,7 +166,7 @@ export function TicketLinkPopover({
   return (
     <div className="rounded-xl border border-border-soft bg-surface-card p-3 shadow-lg">
       <div className="mb-2 flex items-center justify-between gap-2">
-        <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">Link ticket</p>
+        <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">{title}</p>
         <button
           type="button"
           onClick={onClose}

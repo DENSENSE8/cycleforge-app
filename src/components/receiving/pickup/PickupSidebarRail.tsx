@@ -95,7 +95,7 @@ function PickupRailRowMain({ group }: { group: PickupOrderGroup }) {
         metaTrailing: (
           <HoverTooltip label={`${group.itemCount} item${group.itemCount === 1 ? '' : 's'}`} asChild focusable={false}>
             <span className="flex shrink-0 items-center gap-1.5 tabular-nums">
-              <span className={cn('font-black text-text-default')}>{pickupMoney(String(group.totalValue))}</span>
+              <span className={cn('font-semibold text-text-default')}>{pickupMoney(String(group.totalValue))}</span>
               <span className="text-text-faint">·</span>
               <span className="text-text-faint">{group.itemCount}</span>
             </span>

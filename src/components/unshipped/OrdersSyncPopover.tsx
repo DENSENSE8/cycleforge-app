@@ -67,7 +67,7 @@ export function OrdersSyncPopover({
                 <RefreshCw className="h-3.5 w-3.5" />
               )}
               {!iconOnly ? (
-                <span className="text-role-eyebrow font-bold uppercase tracking-widest text-white">
+                <span className="text-role-eyebrow uppercase tracking-widest text-white">
                   {sync.isTransferring ? 'Syncing…' : 'Import'}
                 </span>
               ) : null}
@@ -174,7 +174,7 @@ export function OrdersSyncPopover({
                           </span>
                           <span className="text-role-eyebrow text-text-accent">View details</span>
                         </div>
-                        <span className="text-role-caption font-mono font-bold tabular-nums text-text-accent">
+                        <span className="text-role-caption font-mono font-semibold tabular-nums text-text-accent">
                           {(sync.elapsedMs / 1000).toFixed(1)}s
                         </span>
                       </button>
@@ -188,7 +188,7 @@ export function OrdersSyncPopover({
                             : 'border-red-200 bg-red-50 text-red-700'
                         }`}
                       >
-                        <p className="text-role-eyebrow font-bold leading-relaxed">{sync.status.message}</p>
+                        <p className="text-role-eyebrow leading-relaxed">{sync.status.message}</p>
                       </div>
                     ) : null}
                   </>

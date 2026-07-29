@@ -38,7 +38,7 @@ function StatusChip({ orderStatus }: { orderStatus: string }) {
   return (
     <span
       className={cn(
-        'inline-flex items-center rounded px-1.5 py-0.5 text-role-micro font-black uppercase tracking-widest ring-1 ring-inset',
+        'inline-flex items-center rounded px-1.5 py-0.5 text-role-micro uppercase tracking-widest ring-1 ring-inset',
         done
           ? 'bg-emerald-50 text-emerald-700 ring-emerald-200'
           : 'bg-amber-50 text-amber-700 ring-amber-200',
@@ -161,7 +161,7 @@ const PickupGridLeafRow = memo(function PickupGridLeafRow({
       case 'price':
         return (
           <div data-col="price" className={cn(dataCell(rule), 'justify-end')}>
-            <span className="tabular-nums text-role-caption font-bold text-emerald-700">
+            <span className="tabular-nums text-role-caption font-semibold text-emerald-700">
               {pickupMoney(line.total_price)}
             </span>
           </div>
@@ -261,7 +261,7 @@ function PickupGridGroupSummary({
               className={cn('h-2 w-2 shrink-0 rounded-full', done ? 'bg-emerald-500' : 'bg-amber-400')}
               aria-hidden
             />
-            <span className="min-w-0 flex-1 truncate text-role-data font-bold text-text-default">
+            <span className="min-w-0 flex-1 truncate text-role-data font-semibold text-text-default">
               {first.po_number || `Order ${first.order_id}`}
             </span>
             {customer ? (
@@ -269,7 +269,7 @@ function PickupGridGroupSummary({
                 {customer}
               </span>
             ) : null}
-            <span className="shrink-0 rounded bg-surface-sunken px-1.5 py-0.5 text-role-micro font-black uppercase tracking-widest text-text-soft">
+            <span className="shrink-0 rounded bg-surface-sunken px-1.5 py-0.5 text-role-micro uppercase tracking-widest text-text-soft">
               {group.rows.length} item{group.rows.length === 1 ? '' : 's'}
             </span>
           </div>
@@ -301,7 +301,7 @@ function PickupGridGroupSummary({
       case 'qty':
         return (
           <div data-col="qty" className={cn(dataCell(rule), 'justify-end')}>
-            <span className="min-w-0 truncate tabular-nums text-role-caption font-black text-text-muted">
+            <span className="min-w-0 truncate tabular-nums text-role-caption font-semibold text-text-muted">
               {totalQty}
             </span>
           </div>
@@ -317,7 +317,7 @@ function PickupGridGroupSummary({
       case 'price':
         return (
           <div data-col="price" className={cn(dataCell(rule), 'justify-end')}>
-            <span className="tabular-nums text-role-caption font-black text-emerald-700">
+            <span className="tabular-nums text-role-caption font-semibold text-emerald-700">
               {pickupMoney(String(totalValue))}
             </span>
           </div>

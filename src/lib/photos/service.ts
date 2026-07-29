@@ -28,6 +28,8 @@ import pool from '@/lib/db';
 import { del as delBlob } from '@vercel/blob';
 import { enqueuePhotoJob } from './jobs';
 import { isAnalyzeOnUploadEnabled } from './analyze';
+import { validatePhotoWrite } from './stages';
+import { ApiError } from '@/lib/api';
 
 const MAX_BYTES = Number(process.env.PHOTOS_UPLOAD_MAX_BYTES || 8 * 1024 * 1024);
 const THUMB_MAX_PX = Number(process.env.PHOTOS_THUMB_MAX_PX || 256);
@@ -56,7 +58,22 @@ export interface AttachLegacyPhotoInput {
   idempotent?: boolean;
 }
 
+/**
+ * Write waist for the stage × entity matrix (`./stages.ts`): every upload /
+ * attach validates (entityType × photoType) here, so no capture surface can
+ * stamp e.g. `receiving_item` onto a carton. Violations map to HTTP 400 via
+ * the routes' `errorResponse`.
+ */
+function assertPhotoWriteAllowed(
+  entityType: PhotoEntityType,
+  photoType: string | null | undefined,
+): void {
+  const violation = validatePhotoWrite({ entityType, photoType });
+  if (violation) throw ApiError.badRequest(violation);
+}
+
 export async function uploadPhoto(input: UploadPhotoInput): Promise<UploadPhotoResult> {
+  assertPhotoWriteAllowed(input.entityType, input.photoType);
   if (input.useStorageAdapter !== false) {
     if (!isGcsConfigured()) {
       throw new Error(
@@ -72,6 +89,7 @@ export async function uploadPhoto(input: UploadPhotoInput): Promise<UploadPhotoR
 export async function attachPhotoWithLegacyUrl(
   input: AttachLegacyPhotoInput,
 ): Promise<UploadPhotoResult & { created: boolean }> {
+  assertPhotoWriteAllowed(input.entityType, input.photoType);
   const linkRole = input.linkRole ?? 'primary';
   return withTenantTransaction(input.organizationId, async (client) => {
     const existingId = await findPhotoByEntityLegacyUrl(client, {

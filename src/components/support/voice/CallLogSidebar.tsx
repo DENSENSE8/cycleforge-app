@@ -121,7 +121,7 @@ function SummaryCell({
         {icon}
         {label}
       </p>
-      <p className={cn('mt-0.5 text-xl font-black tabular-nums leading-none', emphasize ? 'text-rose-600' : 'text-text-default')}>
+      <p className={cn('mt-0.5 text-xl font-semibold tabular-nums leading-none', emphasize ? 'text-rose-600' : 'text-text-default')}>
         {value}
       </p>
     </div>

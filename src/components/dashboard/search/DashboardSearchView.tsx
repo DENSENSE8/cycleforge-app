@@ -29,6 +29,7 @@ import {
   looksLikeIdentifier,
   orderSearchHref,
   shouldAutoOpenSearchOrder,
+  soleHitHref,
 } from '@/lib/search/search-hit';
 import { useStaffSearchRecents } from '@/hooks/useStaffSearchRecents';
 import {
@@ -113,12 +114,27 @@ export function DashboardSearchView() {
   }, [q]);
   const handleResults = useCallback(
     (hits: AiSearchHit[]) => {
-      if (openOrderId || looksLikeIdentifier(q)) return;
-      if (!shouldAutoOpenSearchOrder(hits)) return;
+      if (openOrderId) return;
       const key = q.trim();
       if (!key || autoOpenQueryRef.current === key) return;
+
+      // Orders keep the query-carrying href so the detail knows its origin map.
+      // The natural-language guard stays here: for an identifier the hook's own
+      // exact-match path owns the navigation, and racing it double-navigates.
+      if (shouldAutoOpenSearchOrder(hits) && !looksLikeIdentifier(q)) {
+        autoOpenQueryRef.current = key;
+        router.replace(orderSearchHref(hits[0].id, q, { map: map === 'recent' ? 'recent' : 'search' }));
+        return;
+      }
+
+      // Any OTHER sole hit — a receiving carton, a unit, a repair — opens too.
+      // One row is not a choice, and this list previously made the operator
+      // click it. Identifier queries are included: the hook's exact-match path
+      // only ever resolved orders, so a sole carton hit was left parked here.
+      const href = soleHitHref(hits);
+      if (!href) return;
       autoOpenQueryRef.current = key;
-      router.replace(orderSearchHref(hits[0].id, q, { map: map === 'recent' ? 'recent' : 'search' }));
+      router.replace(href);
     },
     [openOrderId, q, map, router],
   );
@@ -130,7 +146,7 @@ export function DashboardSearchView() {
   if (resolution.phase === 'order') {
     return (
       <div className="flex min-h-0 w-full flex-1 flex-col">
-        <SearchOrderDetailShell order={resolution.order} initialSection="overview" />
+        <SearchOrderDetailShell order={resolution.order} />
       </div>
     );
   }

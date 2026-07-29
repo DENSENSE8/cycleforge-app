@@ -106,7 +106,7 @@ export function ExceptionsRow() {
       <div className="mb-4 flex items-end justify-between gap-4">
         <div>
           <span className={`${sectionLabel} !text-text-muted`}>Exceptions</span>
-          <h2 className="text-role-title sm:text-xl font-extrabold tracking-tight text-text-default mt-0.5">
+          <h2 className="text-role-title sm:text-xl tracking-tight text-text-default mt-0.5">
             What needs human eyes today
           </h2>
         </div>
@@ -139,10 +139,10 @@ export function ExceptionsRow() {
                 </span>
               )}
             </div>
-            <div className="text-3xl font-extrabold text-text-default leading-none tabular-nums">
+            <div className="text-3xl font-semibold text-text-default leading-none tabular-nums">
               {c.value}
             </div>
-            <p className="text-role-caption font-bold text-text-default mt-2">{c.label}</p>
+            <p className="text-role-caption font-semibold text-text-default mt-2">{c.label}</p>
             <p className="text-role-caption font-medium text-text-muted mt-0.5">{c.sub}</p>
           </motion.a>
         ))}

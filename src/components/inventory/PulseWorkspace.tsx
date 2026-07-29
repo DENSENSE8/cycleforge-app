@@ -88,7 +88,7 @@ export function PulseWorkspace({ unitId }: PulseWorkspaceProps) {
                         <div className="min-w-0 space-y-2">
                             {/* Product title on top; serial + SKU are copy chips
                                 (last-4, click to copy the full value) below. */}
-                            <h1 className="truncate text-2xl font-black tracking-tight text-text-default">
+                            <h1 className="truncate text-2xl font-semibold tracking-tight text-text-default">
                                 {heroTitle}
                             </h1>
                             <div className="flex flex-wrap items-center gap-2 text-sm">
@@ -101,7 +101,7 @@ export function PulseWorkspace({ unitId }: PulseWorkspaceProps) {
                                 {currentStatus ? (
                                     <span
                                         className={cn(
-                                            'rounded px-1.5 py-0.5 text-role-micro font-bold uppercase tracking-wide',
+                                            'rounded px-1.5 py-0.5 text-role-micro uppercase tracking-wide',
                                             inventoryStatusBadgeClass(currentStatus),
                                         )}
                                     >
@@ -118,7 +118,7 @@ export function PulseWorkspace({ unitId }: PulseWorkspaceProps) {
                             </p>
                             <div className="flex items-center gap-2 rounded-2xl border border-orange-100 bg-orange-50 px-4 py-2">
                                 <MapPin className="h-4 w-4 text-orange-600" />
-                                <span className="font-mono text-sm font-black text-orange-700">
+                                <span className="font-mono text-sm font-semibold text-orange-700">
                                     {currentLocation}
                                 </span>
                             </div>
@@ -127,9 +127,9 @@ export function PulseWorkspace({ unitId }: PulseWorkspaceProps) {
                 </div>
 
                 {/* Chain of custody */}
-                <h2 className="mb-3 flex items-center gap-2 text-role-caption font-black uppercase tracking-[0.2em] text-text-faint">
+                <h2 className="mb-3 flex items-center gap-2 text-role-caption font-semibold uppercase tracking-[0.2em] text-text-faint">
                     <History className="h-4 w-4" /> Chain of custody
-                    <span className="font-bold text-text-faint">· {events.length} events</span>
+                    <span className="font-semibold text-text-faint">· {events.length} events</span>
                 </h2>
 
                 {events.length === 0 ? (

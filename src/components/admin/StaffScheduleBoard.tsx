@@ -119,7 +119,7 @@ export function StaffScheduleBoard({
       {/* Header bar */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border-hairline px-5 py-3.5">
         <div className="flex items-center gap-2.5">
-          <h2 className="text-base font-bold tracking-tight text-text-default">Work calendar</h2>
+          <h2 className="text-base font-semibold tracking-tight text-text-default">Work calendar</h2>
           <span className="rounded-full bg-surface-inverse px-2.5 py-0.5 text-role-micro font-semibold uppercase tracking-[0.14em] text-white">
             9 AM – 5 PM
           </span>
@@ -145,14 +145,14 @@ export function StaffScheduleBoard({
                 }`}
               >
                 <div>
-                  <p className={`text-[10.5px] font-bold uppercase tracking-[0.14em] ${isToday ? 'text-amber-700' : 'text-text-soft'}`}>
+                  <p className={`text-[10.5px] font-semibold uppercase tracking-[0.14em] ${isToday ? 'text-amber-700' : 'text-text-soft'}`}>
                     {day.label}
                   </p>
-                  <p className={`mt-0.5 text-base font-bold tracking-tight ${isToday ? 'text-amber-900' : 'text-text-default'}`}>
+                  <p className={`mt-0.5 text-base font-semibold tracking-tight ${isToday ? 'text-amber-900' : 'text-text-default'}`}>
                     {formatDayNumber(day.date)}
                   </p>
                 </div>
-                <span className="rounded-full bg-surface-sunken px-2 py-0.5 text-role-micro font-bold tabular-nums text-text-muted">
+                <span className="rounded-full bg-surface-sunken px-2 py-0.5 text-role-micro tabular-nums text-text-muted">
                   {dayShifts.length}
                 </span>
               </div>
@@ -228,14 +228,14 @@ function ShiftAvatarPill({
       >
         <span
           aria-hidden
-          className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full text-role-eyebrow font-bold text-white ring-2 ring-white"
+          className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full text-role-eyebrow text-white ring-2 ring-white"
           style={{ backgroundColor: color }}
         >
           {initials(shift.staff_name)}
         </span>
         <span className="truncate text-role-caption font-semibold text-text-default">{shift.staff_name.split(/\s+/)[0]}</span>
         {isCovering && (
-          <span className="rounded-full bg-amber-100 inset-chip text-[8.5px] font-bold uppercase tracking-wide text-amber-800">
+          <span className="rounded-full bg-amber-100 inset-chip text-[8.5px] font-semibold uppercase tracking-wide text-amber-800">
             Cover
           </span>
         )}

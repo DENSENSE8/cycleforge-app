@@ -403,7 +403,7 @@ function EmailTriageItem({
         <div className="flex items-center gap-1.5">
           <span
             className={cn(
-              'truncate text-role-caption font-black',
+              'truncate text-role-caption font-semibold',
               email.done ? 'text-text-faint line-through' : 'text-text-default',
             )}
           >
@@ -696,7 +696,7 @@ export function EmailTriagePanel({ emails, onLinkTracking, className }: EmailTri
         {/* Bulk action bar — appears only with a selection (live mode). */}
         {selected.size > 0 && !isControlled ? (
           <div className="flex shrink-0 items-center gap-2 border-t border-border-soft bg-surface-card inset-field">
-            <span className="text-role-caption font-bold text-text-muted">{selected.size} selected</span>
+            <span className="text-role-caption font-semibold text-text-muted">{selected.size} selected</span>
             <Button
               type="button"
               variant="ghost"

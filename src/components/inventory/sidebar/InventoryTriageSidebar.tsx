@@ -175,7 +175,7 @@ export function InventoryTriageSidebar() {
                                     </span>
                                     <span
                                         className={cn(
-                                            'shrink-0 rounded px-1.5 py-0.5 text-role-eyebrow font-bold uppercase tracking-wide ring-1 ring-inset',
+                                            'shrink-0 rounded px-1.5 py-0.5 text-role-eyebrow uppercase tracking-wide ring-1 ring-inset',
                                             triageStatusChipClass(row.status),
                                         )}
                                     >

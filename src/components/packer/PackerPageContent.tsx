@@ -48,7 +48,7 @@ export function PackerPageContent({ packerId }: PackerPageContentProps) {
             className="flex h-11 w-11 items-center justify-center rounded-xl text-text-muted active:bg-surface-sunken"
           />
 
-          <h1 className="flex-1 text-lg font-black tracking-tight text-text-default">
+          <h1 className="flex-1 text-lg font-semibold tracking-tight text-text-default">
             Packing
           </h1>
 

@@ -121,7 +121,7 @@ export function BoxWorkbenchPanel({
       {/* Header — box identity + status + close. */}
       <div className="flex items-center gap-2 border-b border-border-soft px-4 py-3">
         <Package className="h-4 w-4 shrink-0 text-teal-600" />
-        <span className="min-w-0 flex-1 truncate text-role-caption font-bold text-text-default">
+        <span className="min-w-0 flex-1 truncate text-role-caption font-semibold text-text-default">
           {box?.code || `H-${handlingUnitId}`}
         </span>
         {box ? (
@@ -150,7 +150,7 @@ export function BoxWorkbenchPanel({
       {/* Rollup band — k/n tested + progress. */}
       <div className="border-b border-border-soft px-4 py-2.5">
         <div className="flex items-center justify-between gap-2">
-          <span className="text-role-caption font-bold text-text-muted">
+          <span className="text-role-caption font-semibold text-text-muted">
             {rollup.tested}/{rollup.total} tested
           </span>
           <HandlingUnitChip handlingUnitId={handlingUnitId} code={box?.code} unitCount={rollup.total} dense />

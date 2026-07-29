@@ -83,7 +83,7 @@ export function WalkInHistorySidebar() {
               <Icon className="h-4 w-4" />
             </span>
             <span className="min-w-0">
-              <span className="block text-sm font-bold text-text-default">{label}</span>
+              <span className="block text-sm font-semibold text-text-default">{label}</span>
               <span className="block text-role-micro text-text-soft">{hint}</span>
             </span>
           </button>

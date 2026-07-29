@@ -29,7 +29,7 @@ export function SuppliersPane() {
 
   return (
     <div className="mx-auto max-w-4xl p-6">
-      <h1 className="mb-4 text-xl font-bold text-text-default">Suppliers <span className="text-text-faint">({rows.length})</span></h1>
+      <h1 className="mb-4 text-xl font-semibold text-text-default">Suppliers <span className="text-text-faint">({rows.length})</span></h1>
       <ul className="space-y-2">
         {rows.map((s) => (
           <li key={s.id} className="flex items-center gap-3 rounded-xl border border-border-soft bg-surface-card p-3">
@@ -46,7 +46,7 @@ export function SuppliersPane() {
               <Stat label="watch" value={s.candidate_count} />
               <Stat label="acq" value={s.acquisition_count} />
               <div className="w-20">
-                <p className="text-sm font-bold text-text-default">{formatCents(s.spend_cents)}</p>
+                <p className="text-sm font-semibold text-text-default">{formatCents(s.spend_cents)}</p>
                 <p className="text-role-micro font-semibold uppercase tracking-wide text-text-faint">spend</p>
               </div>
             </div>
@@ -60,7 +60,7 @@ export function SuppliersPane() {
 function Stat({ label, value }: { label: string; value: number }) {
   return (
     <div className="w-12">
-      <p className="text-sm font-bold text-text-default">{value}</p>
+      <p className="text-sm font-semibold text-text-default">{value}</p>
       <p className="text-role-micro font-semibold uppercase tracking-wide text-text-faint">{label}</p>
     </div>
   );

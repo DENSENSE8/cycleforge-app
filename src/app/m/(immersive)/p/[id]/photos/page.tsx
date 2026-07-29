@@ -22,7 +22,7 @@ function PhotoPageInner() {
   if (!validPackerLogId) {
     return (
       <div className="flex min-h-[100dvh] items-center justify-center px-6 text-center">
-        <p className="text-role-caption font-bold text-white/70">Invalid packer log id</p>
+        <p className="text-role-caption font-semibold text-white/70">Invalid packer log id</p>
       </div>
     );
   }

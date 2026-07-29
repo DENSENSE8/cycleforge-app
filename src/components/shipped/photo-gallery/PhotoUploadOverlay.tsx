@@ -64,7 +64,7 @@ export function PhotoUploadOverlay({
       <div className="flex shrink-0 items-center justify-between border-b border-border-hairline bg-surface-canvas px-4 py-3">
         <div>
           <p className="text-role-micro uppercase tracking-[0.14em] text-blue-700">Photos</p>
-          <p className="mt-0.5 text-sm font-extrabold tracking-tight text-text-default">{title}</p>
+          <p className="mt-0.5 text-sm font-semibold tracking-tight text-text-default">{title}</p>
         </div>
         <IconButton
           onClick={onClose}
@@ -103,7 +103,7 @@ export function PhotoUploadOverlay({
             )}
           </span>
           <div className="space-y-1">
-            <p className="text-role-caption font-bold text-text-muted">
+            <p className="text-role-caption font-semibold text-text-muted">
               {uploading
                 ? 'Uploading…'
                 : dz.isDragging

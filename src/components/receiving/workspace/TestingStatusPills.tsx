@@ -70,7 +70,7 @@ const TEST_OPTS: Array<{
 ];
 
 const PILL_BASE =
-  'ds-raw-button inline-flex h-9 shrink-0 snap-start items-center whitespace-nowrap rounded-full px-4 text-role-caption font-black uppercase tracking-[0.1em] ring-1 ring-inset transition-all active:scale-[0.98]';
+  'ds-raw-button inline-flex h-9 shrink-0 snap-start items-center whitespace-nowrap rounded-full px-4 text-role-caption font-semibold uppercase tracking-[0.1em] ring-1 ring-inset transition-all active:scale-[0.98]';
 
 /**
  * Testing verdict picker. Mirrors {@link ConditionPills}' visual primitive

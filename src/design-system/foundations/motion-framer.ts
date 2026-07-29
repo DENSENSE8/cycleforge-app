@@ -43,6 +43,8 @@ export const framerDuration = {
    * big subtree, so it dissolves gently rather than snapping.
    */
   workbenchPaneSettle: 0.3,
+  /** Station carton→carton swap — scan cadence, enter only (exit is instant) */
+  stationCartonSwap: 0.12,
   /** Sidebar section expand/collapse */
   sidebarExpand: 0.26,
   /** Dropdown menu open/close */
@@ -107,6 +109,18 @@ export const framerTransition = {
    */
   workbenchPaneSettle: {
     duration: framerDuration.workbenchPaneSettle,
+    ease: motionBezier.easeOut,
+  } satisfies Transition,
+
+  /**
+   * Station carton→carton swap (scan cadence). The ENTER half only — the exit
+   * is zero-duration via `framerPresence.stationCartonSwap`, so `mode="wait"`
+   * introduces no empty-canvas gap between two physically different boxes.
+   * Pair with `framerPresence.stationCartonSwap`; consume through
+   * `useMotionTransition`. See `display/motion-crossfade.md`.
+   */
+  stationCartonSwapMount: {
+    duration: framerDuration.stationCartonSwap,
     ease: motionBezier.easeOut,
   } satisfies Transition,
 
@@ -507,6 +521,28 @@ export const framerPresence = {
     initial: { opacity: 0 },
     animate: { opacity: 1 },
     exit: { opacity: 0 },
+  },
+  /**
+   * Station carton→carton swap — a SIBLING of `workbenchPaneSettle`, not a
+   * replacement. The settle preset serves pointer-driven detail swaps (Review,
+   * Outbound, FBA, Packer, Triage); this one serves a scanner-driven bench,
+   * where the operator has already physically swapped the box and every
+   * millisecond of chrome is throughput cost.
+   *
+   * The exit carries its own zero-duration transition so `mode="wait"` — which
+   * must stay, since two absolutely-positioned panes running concurrently
+   * double-image — completes the exit immediately and the next carton paints
+   * on the following frame. Net: ~0.6s of empty canvas per scan becomes ~0.12s
+   * of enter fade, with no gap.
+   *
+   * Pair with `framerTransition.stationCartonSwapMount`; consume via
+   * `useMotionPresence` (which returns a plain opacity shape under reduced
+   * motion, where `useMotionTransition` already zeroes the duration).
+   */
+  stationCartonSwap: {
+    initial: { opacity: 0 },
+    animate: { opacity: 1 },
+    exit: { opacity: 0, transition: { duration: 0 } },
   },
   /**
    * Auth card shell — subtle opacity + y mount (no scale/blur). B2B auth surfaces

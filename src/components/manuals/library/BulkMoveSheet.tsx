@@ -38,7 +38,7 @@ export function BulkMoveSheet({
         <DialogHeader className="flex-row items-center justify-between space-y-0 border-b border-border-soft px-4 py-3">
           <div>
             <p className="text-role-micro uppercase tracking-[0.16em] text-text-soft">Bulk Move</p>
-            <DialogTitle className="mt-1 text-sm font-black">
+            <DialogTitle className="mt-1 text-sm font-semibold">
               Move {count} {count === 1 ? 'manual' : 'manuals'}
             </DialogTitle>
             <DialogDescription className="sr-only">

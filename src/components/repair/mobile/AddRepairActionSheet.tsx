@@ -100,7 +100,7 @@ export function AddRepairActionSheet({ repairId, onClose, onSaved }: Props) {
       <header className="shrink-0 flex items-center justify-between border-b border-border-soft px-4 py-3">
         {step === 'type' ? (
           <>
-            <h2 className="text-sm font-black uppercase tracking-wide text-text-default">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-text-default">
               Add action
             </h2>
             <Button variant="ghost" size="sm" onClick={onClose}>
@@ -112,7 +112,7 @@ export function AddRepairActionSheet({ repairId, onClose, onSaved }: Props) {
             <Button variant="ghost" size="sm" onClick={() => setStep('type')}>
               ← Back
             </Button>
-            <h2 className="text-sm font-black uppercase tracking-wide text-text-default">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-text-default">
               {actionType && TYPES.find((t) => t.id === actionType)?.label}
             </h2>
             {/* ds-raw-button: solid-orange repair-theme save CTA — no orange DS Button variant */}
@@ -120,7 +120,7 @@ export function AddRepairActionSheet({ repairId, onClose, onSaved }: Props) {
               type="button"
               onClick={handleSave}
               disabled={submitting}
-              className="rounded-lg bg-orange-500 px-3 py-1.5 text-role-caption font-black uppercase tracking-wide text-white shadow-sm active:bg-orange-600 disabled:opacity-50"
+              className="rounded-lg bg-orange-500 px-3 py-1.5 text-role-caption font-semibold uppercase tracking-wide text-white shadow-sm active:bg-orange-600 disabled:opacity-50"
             >
               {submitting ? 'Saving…' : 'Save'}
             </button>
@@ -142,7 +142,7 @@ export function AddRepairActionSheet({ repairId, onClose, onSaved }: Props) {
                 <span className="text-3xl leading-none" aria-hidden>
                   {t.emoji}
                 </span>
-                <p className="mt-1 text-sm font-black text-text-default">{t.label}</p>
+                <p className="mt-1 text-sm font-semibold text-text-default">{t.label}</p>
                 <p className="text-role-micro font-semibold text-text-soft leading-snug">{t.sub}</p>
               </button>
             ))}
@@ -258,7 +258,7 @@ function Field({
         autoFocus={autoFocus}
         autoComplete="off"
         spellCheck={false}
-        className={`w-full rounded-lg border border-border-default bg-surface-card px-3 py-2.5 text-sm font-bold text-text-default outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 ${
+        className={`w-full rounded-lg border border-border-default bg-surface-card px-3 py-2.5 text-sm font-semibold text-text-default outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 ${
           mono ? 'font-mono' : ''
         }`}
       />

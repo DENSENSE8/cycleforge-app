@@ -67,7 +67,7 @@ function IdentifierToggle({
             role="tab"
             aria-selected={active}
             onClick={() => onChange(o.value)}
-            className={`ds-raw-button rounded px-2 py-0.5 text-role-eyebrow font-bold uppercase tracking-[0.1em] transition-colors ${
+            className={`ds-raw-button rounded px-2 py-0.5 text-role-eyebrow font-semibold uppercase tracking-[0.1em] transition-colors ${
               active ? 'bg-surface-card text-text-muted shadow-sm' : 'text-text-faint hover:text-text-muted'
             }`}
           >
@@ -98,7 +98,7 @@ function FactCard({
           {icon}
         </span>
         <div className="min-w-0 flex-1">
-          <div className="truncate text-base font-bold text-text-default">{value}</div>
+          <div className="truncate text-base font-semibold text-text-default">{value}</div>
           {sub ? <p className="truncate text-role-micro font-medium text-text-soft">{sub}</p> : null}
         </div>
       </div>
@@ -185,20 +185,20 @@ export function AuditLogTraceClient() {
   return (
     <section className="flex h-full min-h-0 w-full flex-col overflow-hidden bg-surface-canvas">
       <div className="border-b border-border-soft bg-surface-card px-6 py-4">
-        <p className="text-role-micro font-bold uppercase tracking-widest text-emerald-700">First Trace</p>
-        <h2 className="mt-0.5 break-words text-base font-bold text-text-default">
+        <p className="text-role-micro uppercase tracking-widest text-emerald-700">First Trace</p>
+        <h2 className="mt-0.5 break-words text-base font-semibold text-text-default">
           {unit.product_title || unit.sku || unit.serial_number}
         </h2>
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <SerialChip value={unit.serial_number} width="w-fit" />
           {unit.sku ? <SkuSerialChip value={unit.sku} display={unit.sku} width="w-fit" /> : null}
           {unit.current_status ? (
-            <span className="inline-flex items-center rounded-full bg-surface-sunken px-2 py-0.5 text-role-micro font-bold uppercase tracking-wide text-text-muted">
+            <span className="inline-flex items-center rounded-full bg-surface-sunken px-2 py-0.5 text-role-micro uppercase tracking-wide text-text-muted">
               {unit.current_status}
             </span>
           ) : null}
           {unit.condition_grade ? (
-            <span className="inline-flex items-center rounded-full bg-blue-50 px-2 py-0.5 text-role-micro font-bold uppercase tracking-wide text-blue-700">
+            <span className="inline-flex items-center rounded-full bg-blue-50 px-2 py-0.5 text-role-micro uppercase tracking-wide text-blue-700">
               {unit.condition_grade}
             </span>
           ) : null}
@@ -241,7 +241,7 @@ export function AuditLogTraceClient() {
                   {order.order_id ? (
                     <OrderIdChip value={order.order_id} display={order.order_id} dense />
                   ) : (
-                    <span className="text-base font-bold text-text-default">Order</span>
+                    <span className="text-base font-semibold text-text-default">Order</span>
                   )}
                   {order.tracking_number ? (
                     <TrackingChip

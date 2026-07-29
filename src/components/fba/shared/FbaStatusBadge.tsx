@@ -115,7 +115,7 @@ export function FbaStatusBadge({
   return (
     <span
       aria-label={token.label}
-      className={`inline-flex items-center gap-1 rounded-lg border font-black uppercase tracking-widest ${pad} ${text} ${token.pill} ${className ?? ''}`}
+      className={`inline-flex items-center gap-1 rounded-lg border font-semibold uppercase tracking-widest ${pad} ${text} ${token.pill} ${className ?? ''}`}
     >
       <Icon className={`${iconSize} ${token.icon_tone}`} />
       {token.label}

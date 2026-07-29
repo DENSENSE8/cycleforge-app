@@ -204,7 +204,7 @@ export function HistoryBrowseFilters({ url }: { url: OperationsTimelineUrlState 
       </div>
 
       <div className="flex items-center justify-between border-t border-border-hairline pt-2">
-        <span className="text-role-eyebrow font-bold uppercase tracking-widest text-text-faint">
+        <span className="text-role-eyebrow uppercase tracking-widest text-text-faint">
           {url.activeFilterCount
             ? `${url.activeFilterCount} filter${url.activeFilterCount === 1 ? '' : 's'}`
             : 'No filters'}

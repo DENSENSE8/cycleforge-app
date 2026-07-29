@@ -340,6 +340,7 @@ export function useTrackingScan({
                     trackingNumber,
                     railRow: internal.pick ?? null,
                     touchScan: {},
+                    unboxedAt: internal.pick?.unboxed_at ?? null,
                   });
                 } else {
                   clearUnboxPendingRail();
@@ -421,6 +422,7 @@ export function useTrackingScan({
                   receivingId: cached.receivingId,
                   trackingNumber,
                   touchScan: { tracking: cached.row.tracking_number ?? trackingNumber },
+                  unboxedAt: cached.row.unboxed_at ?? null,
                 });
               } else {
                 void fetch('/api/receiving/touch-scan', {
@@ -478,6 +480,7 @@ export function useTrackingScan({
                 trackingNumber,
                 railRow: local.pick ?? null,
                 touchScan: {},
+                unboxedAt: local.pick?.unboxed_at ?? null,
               });
             } else {
               // Triage re-scan: stamp scanned_by only (no unbox-open semantics).

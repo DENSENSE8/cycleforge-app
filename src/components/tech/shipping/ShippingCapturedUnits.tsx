@@ -83,7 +83,7 @@ export function ShippingCapturedUnits({
                   }`}
                 >
                   <Check className="h-3 w-3 flex-shrink-0 text-emerald-600" />
-                  <span className="flex-1 font-mono text-xs font-bold text-emerald-700">{sn}</span>
+                  <span className="flex-1 font-mono text-xs font-semibold text-emerald-700">{sn}</span>
                   <div className="flex flex-shrink-0 items-center gap-1">
                     <AnimatePresence>
                       {isNew ? (
@@ -122,7 +122,7 @@ export function ShippingCapturedUnits({
           </AnimatePresence>
         </div>
         {serialError ? (
-          <p className="text-role-micro font-bold text-red-600">{serialError}</p>
+          <p className="text-role-micro text-red-600">{serialError}</p>
         ) : null}
       </div>
     </WorkspaceCard>

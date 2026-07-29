@@ -77,7 +77,7 @@ export function VoicemailDetail({ voicemailId, onBack }: { voicemailId: number; 
             variant="ghost"
             size="sm"
             onClick={onBack}
-            className="mt-2 h-auto px-0 text-role-eyebrow font-bold uppercase tracking-widest text-rose-600 hover:text-rose-700"
+            className="mt-2 h-auto px-0 text-role-eyebrow uppercase tracking-widest text-rose-600 hover:text-rose-700"
           >
             Back to the list
           </Button>
@@ -102,7 +102,7 @@ export function VoicemailDetail({ voicemailId, onBack }: { voicemailId: number; 
         />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <h1 className="truncate text-lg font-black tracking-tight text-text-default">{name}</h1>
+            <h1 className="truncate text-lg font-semibold tracking-tight text-text-default">{name}</h1>
             <span className={cn('inline-flex shrink-0 items-center gap-1 rounded px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest ring-1 ring-inset', tone.chip)}>
               <span className={cn('h-1.5 w-1.5 rounded-full', tone.dot)} aria-hidden />
               {VOICEMAIL_STATUS_LABEL[data.followupStatus]}
@@ -151,7 +151,7 @@ export function VoicemailDetail({ voicemailId, onBack }: { voicemailId: number; 
                 <User className="h-4 w-4" />
               </span>
               <div className="min-w-0">
-                <p className="truncate text-role-caption font-bold text-text-default">{data.matchedCustomerName}</p>
+                <p className="truncate text-role-caption font-semibold text-text-default">{data.matchedCustomerName}</p>
                 {number ? <p className="truncate text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">{formatPhoneNumber(number)}</p> : null}
               </div>
             </div>
@@ -170,7 +170,7 @@ export function VoicemailDetail({ voicemailId, onBack }: { voicemailId: number; 
               href={`/support?ticket=${data.linkedTicketId}`}
               className="flex items-center justify-between gap-2 rounded-xl border border-violet-200 bg-violet-50 px-3 py-2.5 transition-colors hover:bg-violet-100"
             >
-              <span className="inline-flex items-center gap-1.5 text-role-caption font-bold text-violet-800">
+              <span className="inline-flex items-center gap-1.5 text-role-caption font-semibold text-violet-800">
                 <Link2 className="h-3.5 w-3.5" /> {capabilityTitle('helpdesk')} ticket #{data.linkedTicketId}
               </span>
               <ExternalLink className="h-3.5 w-3.5 text-violet-500" />

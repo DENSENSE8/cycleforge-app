@@ -303,7 +303,7 @@ export function LineChecklistTab({
                     {idx + 1}
                   </span>
                   <span
-                    className={`flex-1 min-w-0 text-role-caption font-bold ${
+                    className={`flex-1 min-w-0 text-role-caption font-semibold ${
                       isDone ? 'text-emerald-800 line-through decoration-emerald-300' : 'text-text-default'
                     }`}
                   >
@@ -320,7 +320,7 @@ export function LineChecklistTab({
                       if (e.key === 'Enter') void renameStep(it.id, editLabel);
                       if (e.key === 'Escape') setEditingId(null);
                     }}
-                    className="min-w-0 flex-1 rounded-lg border border-border-soft bg-surface-card px-2 py-1 text-role-caption font-bold text-text-default"
+                    className="min-w-0 flex-1 rounded-lg border border-border-soft bg-surface-card px-2 py-1 text-role-caption font-semibold text-text-default"
                   />
                   <Button
                     variant="brand"
@@ -343,7 +343,7 @@ export function LineChecklistTab({
                   <span className="shrink-0 w-4 text-center text-role-micro text-text-faint tabular-nums">
                     {idx + 1}
                   </span>
-                  <span className="flex-1 min-w-0 truncate text-role-caption font-bold text-text-default">
+                  <span className="flex-1 min-w-0 truncate text-role-caption font-semibold text-text-default">
                     {it.step_label}
                   </span>
                   <HoverTooltip label="Rename step" asChild>
@@ -383,7 +383,7 @@ export function LineChecklistTab({
               if (e.key === 'Enter') void addStep(newLabel);
             }}
             placeholder="Add a checklist step…"
-            className="min-w-0 flex-1 rounded-lg border border-border-soft bg-surface-card inset-cozy text-role-caption font-bold text-text-default placeholder:text-text-faint"
+            className="min-w-0 flex-1 rounded-lg border border-border-soft bg-surface-card inset-cozy text-role-caption font-semibold text-text-default placeholder:text-text-faint"
           />
           <Button
             variant="primary"

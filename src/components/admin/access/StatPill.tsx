@@ -18,7 +18,7 @@ export function StatPill({ label, value, tone = 'gray' }: StatPillProps) {
   return (
     <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-role-caption font-medium ${t.bg}`}>
       <span className={`uppercase tracking-wider ${t.text}`}>{label}</span>
-      <span className={`tabular-nums font-bold ${t.value}`}>{value}</span>
+      <span className={`tabular-nums font-semibold ${t.value}`}>{value}</span>
     </span>
   );
 }

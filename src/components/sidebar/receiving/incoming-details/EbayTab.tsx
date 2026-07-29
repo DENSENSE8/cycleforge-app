@@ -166,7 +166,7 @@ export function EbayTab({ data }: { data: DetailsResponse }) {
                     className="flex items-center gap-2 rounded-lg border border-border-soft bg-surface-card inset-field hover:bg-surface-hover"
                   >
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-role-caption font-bold text-text-default">
+                      <p className="truncate text-role-caption font-semibold text-text-default">
                         {po.zoho_purchaseorder_number || `PO ${po.zoho_purchaseorder_id}`}
                       </p>
                       <p className="truncate text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">

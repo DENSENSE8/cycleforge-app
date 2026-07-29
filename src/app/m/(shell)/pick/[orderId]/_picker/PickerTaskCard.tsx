@@ -40,7 +40,7 @@ export function PickerTaskCard({
       >
         {/* Bin chip — the thing the worker looks for. */}
         <p className="text-xs font-semibold uppercase tracking-wider text-text-soft">Pick from bin</p>
-        <p className="mt-1 font-mono text-3xl font-extrabold tabular-nums tracking-tight text-blue-700">
+        <p className="mt-1 font-mono text-3xl font-semibold tabular-nums tracking-tight text-blue-700">
           {currentTask.bin ?? '—'}
         </p>
 
@@ -52,7 +52,7 @@ export function PickerTaskCard({
             platforms={currentTask.platforms}
           />
           <div className="mt-3 flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center rounded-xl border border-border-soft bg-surface-canvas px-3 py-1 text-sm font-bold tabular-nums text-text-default">
+            <span className="inline-flex items-center rounded-xl border border-border-soft bg-surface-canvas px-3 py-1 text-sm font-semibold tabular-nums text-text-default">
               Qty {currentTask.plannedQty}
             </span>
             {currentTask.conditionGrade && (
@@ -87,11 +87,11 @@ export function PickerTaskCard({
             >
               <div className="rounded-xl bg-surface-canvas px-3 py-2">
                 <dt className="font-semibold uppercase tracking-wider text-text-soft">Serial unit</dt>
-                <dd className="mt-0.5 font-mono font-bold text-text-default">#{currentTask.serialUnitId}</dd>
+                <dd className="mt-0.5 font-mono font-semibold text-text-default">#{currentTask.serialUnitId}</dd>
               </div>
               <div className="rounded-xl bg-surface-canvas px-3 py-2">
                 <dt className="font-semibold uppercase tracking-wider text-text-soft">Allocation</dt>
-                <dd className="mt-0.5 font-mono font-bold text-text-default">#{currentTask.allocationId}</dd>
+                <dd className="mt-0.5 font-mono font-semibold text-text-default">#{currentTask.allocationId}</dd>
               </div>
             </motion.dl>
           )}
@@ -103,16 +103,16 @@ export function PickerTaskCard({
           <p className="mb-2 text-xs font-semibold text-text-soft">
             Scan{' '}
             {currentTask.bin && (
-              <span className="font-mono font-bold text-text-muted">{currentTask.bin}</span>
+              <span className="font-mono font-semibold text-text-muted">{currentTask.bin}</span>
             )}
             {currentTask.bin && currentTask.serialNumber && ' or '}
             {currentTask.serialNumber && (
-              <span className="font-mono font-bold text-text-muted">
+              <span className="font-mono font-semibold text-text-muted">
                 serial {currentTask.serialNumber}
               </span>
             )}
             {!currentTask.bin && !currentTask.serialNumber && (
-              <span className="font-mono font-bold text-text-muted">{currentTask.sku}</span>
+              <span className="font-mono font-semibold text-text-muted">{currentTask.sku}</span>
             )}
           </p>
           <ScanSurface

@@ -87,7 +87,7 @@ export function SearchRecentsDropdown({
                 <span className="flex h-5 w-5 shrink-0 items-center justify-center">
                   <Search className="h-4 w-4 text-text-faint" />
                 </span>
-                <span className="min-w-0 flex-1 truncate text-role-caption font-bold text-text-default">
+                <span className="min-w-0 flex-1 truncate text-role-caption font-semibold text-text-default">
                   {entry.query}
                 </span>
                 <span className="shrink-0 text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint">

@@ -65,7 +65,7 @@ export function MediaLibraryPickerModal({
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <ImageIcon className="h-4 w-4 shrink-0 text-text-soft" />
-            <h2 className="text-sm font-bold text-text-default">{title}</h2>
+            <h2 className="text-sm font-semibold text-text-default">{title}</h2>
           </div>
           {subtitle ? <p className="mt-0.5 text-role-caption text-text-soft">{subtitle}</p> : null}
         </div>

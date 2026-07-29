@@ -187,7 +187,7 @@ export function VaultConnectSheet({
             {sections.map(([section, fields]) => (
               <div key={section || '_default'} className="space-y-3">
                 {section ? (
-                  <p className="text-role-micro font-black uppercase tracking-widest text-text-faint">{section}</p>
+                  <p className="text-role-micro uppercase tracking-widest text-text-faint">{section}</p>
                 ) : null}
                 {fields.map((field) => (
                   <CredentialField

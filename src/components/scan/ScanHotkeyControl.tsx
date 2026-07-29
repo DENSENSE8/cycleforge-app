@@ -127,7 +127,7 @@ export function ScanHotkeyControl({ children }: ScanHotkeyControlProps) {
           </div>
 
           <div className="mt-2 flex items-center gap-2">
-            <kbd className="rounded-md border border-blue-200 bg-blue-50 px-2 py-1 font-mono text-xs font-black text-blue-700">
+            <kbd className="rounded-md border border-blue-200 bg-blue-50 px-2 py-1 font-mono text-xs font-semibold text-blue-700">
               {hotkey}
             </kbd>
             <span className="text-xs font-semibold text-text-muted">

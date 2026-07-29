@@ -173,8 +173,8 @@ Token density presets also exist as `compact` / `standard` / `spacious` in `toke
 
 | `variant` | Rail | Active pill | Active text | Labels | Use for |
 |---|---|---|---|---|---|
-| `default` | `bg-surface-sunken` sunken track | light `bg-surface-card` pill | per-tab semantic hue (`color`) | uppercase, `font-black`, tracked | most in-app tab rows |
-| `solid` | light `bg-surface-card` + `border-border-default` | **dark `bg-surface-inverse` pill** | `text-text-inverse` (white) | title-case, `font-bold` | headline lifecycle switchers (Dashboard · Outbound) — high-contrast Linear-style control |
+| `default` | `bg-surface-sunken` sunken track | light `bg-surface-card` pill | per-tab semantic hue (`color`) | uppercase, `font-semibold`, tracked | most in-app tab rows |
+| `solid` | light `bg-surface-card` + `border-border-default` | **dark `bg-surface-inverse` pill** | `text-text-inverse` (white) | title-case, `font-semibold` | headline lifecycle switchers (Dashboard · Outbound) — high-contrast Linear-style control |
 | `upNext` | tinted station rail (`bg-surface-strong`) | light pill + station outline | semantic hue | uppercase | station up-next queue |
 
 - `countStyle`: `badge` (mini pill bubble, default) or `plain` (inline, same size as label — preferred for dense ops headers).
@@ -367,6 +367,6 @@ Migrate existing components to consume new design system primitives:
 3. **UpNextFilterBar** — replace inline AnimatePresence toggle with `OverlaySearch` component
 4. **Sidebar form sections** — replace inline label styling with `FormField` component
 5. **All expand/collapse patterns** — replace inline AnimatePresence+motion.div with `ExpandableSection` primitive
-6. **Typography** — replace hand-rolled `text-[10px] font-black uppercase tracking-[0.2em]` with `typographyPresets.sectionLabel` etc.
+6. **Typography** — replace hand-rolled `text-[10px] uppercase tracking-[0.2em]` with `typographyPresets.sectionLabel` etc.
 
 See `.design-system-rules.md` for complete auto-UX integration rules.

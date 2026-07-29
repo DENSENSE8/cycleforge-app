@@ -41,6 +41,17 @@ export const PACK_SLIP_PHOTO_TYPE = 'pack_slip';
 export const PACK_BOX_PHOTO_TYPE = 'pack_box';
 
 /**
+ * `photo_type` for verify-before-pack captures that are still unit-scoped
+ * (the serial-units photo POST `prepack` stage).
+ */
+export const UNIT_PREPACK_PHOTO_TYPE = 'prepack';
+
+/**
+ * `photo_type` for box-label shots the packing routes attach to a PACKER_LOG.
+ */
+export const PACKER_BOX_LABEL_PHOTO_TYPE = 'box_label';
+
+/**
  * Resolve the serial-units photo POST `stage` body field → canonical photo_type.
  * `shipout` (default) → packer_photo; `prepack` kept as a free-text stage label
  * for verify-before-pack captures that are still unit-scoped.
@@ -48,7 +59,7 @@ export const PACK_BOX_PHOTO_TYPE = 'pack_box';
 export function resolveUnitPhotoTypeFromStage(stage: string | null | undefined): string {
   const s = String(stage || 'shipout').trim().toLowerCase() || 'shipout';
   if (s === 'shipout' || s === 'pack' || s === 'packing') return UNIT_PACKING_PHOTO_TYPE;
-  if (s === 'prepack') return 'prepack';
+  if (s === UNIT_PREPACK_PHOTO_TYPE) return UNIT_PREPACK_PHOTO_TYPE;
   if (s === 'testing' || s === UNIT_TESTING_PHOTO_TYPE) return UNIT_TESTING_PHOTO_TYPE;
   return UNIT_PACKING_PHOTO_TYPE;
 }

@@ -76,7 +76,7 @@ export function UpNextActionButton({
       whileHover={disabled ? undefined : { scale: 1.02 }}
       whileTap={disabled ? undefined : { scale: 0.96 }}
       transition={{ duration: 0.16, ease: motionBezier.easeOut }}
-      className={`inline-flex items-center justify-center border font-black uppercase transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+      className={`inline-flex items-center justify-center border font-semibold uppercase transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
         fullWidth ? 'w-full' : ''
       } ${SIZE_CLASSES[size][mode]} ${TONE_CLASSES[tone][mode]} ${className}`}
     >

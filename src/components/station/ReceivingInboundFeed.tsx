@@ -78,7 +78,7 @@ function FeedRow({ log, isSelected, onClick, idx }: FeedRowProps) {
           </span>
         )}
         {log.unboxed_at && (
-          <span className="text-role-micro text-text-faint font-bold">
+          <span className="text-role-micro text-text-faint">
             Unboxed {formatDateTimePST(log.unboxed_at)}
           </span>
         )}
@@ -130,8 +130,8 @@ export function ReceivingInboundFeed({ onSelectLog }: ReceivingInboundFeedProps)
             <Package className="h-4 w-4 text-white" />
           </div>
           <div>
-            <p className="text-sm font-black text-text-default leading-none">Inbound Feed</p>
-            <p className="text-role-eyebrow font-bold uppercase tracking-widest text-text-faint mt-0.5">
+            <p className="text-sm font-semibold text-text-default leading-none">Inbound Feed</p>
+            <p className="text-role-eyebrow uppercase tracking-widest text-text-faint mt-0.5">
               Receiving Activity
             </p>
           </div>

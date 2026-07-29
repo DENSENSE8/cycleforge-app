@@ -88,7 +88,7 @@ export function ActiveShipmentCard({
           <div className="flex min-w-0 flex-col gap-0.5">
             <div className="flex min-w-0 items-baseline gap-1.5">
               <span className="inline-flex min-w-0 max-w-full items-center gap-0.5 leading-none">
-                <span className="truncate font-mono text-role-caption font-black leading-none text-text-default">
+                <span className="truncate font-mono text-role-caption font-semibold leading-none text-text-default">
                   {shipment.amazon_shipment_id || shipment.shipment_ref}
                 </span>
                 {editable && (
@@ -106,7 +106,7 @@ export function ActiveShipmentCard({
                   </HoverTooltip>
                 )}
               </span>
-              <span className="shrink-0 text-role-micro font-bold text-text-faint">
+              <span className="shrink-0 text-role-micro text-text-faint">
                 {shipment.items.length} SKU · {totalQty} units
               </span>
               <FbaStatusBadge
@@ -118,7 +118,7 @@ export function ActiveShipmentCard({
               />
             </div>
             <div className="flex min-w-0 items-center gap-1.5">
-              <p className="truncate font-mono text-role-micro font-bold text-text-faint">
+              <p className="truncate font-mono text-role-micro text-text-faint">
                 {shipment.tracking_numbers.length > 1
                   ? `${shipment.tracking_numbers.length} trackings`
                   : `${carrier ? `${carrier} · ` : ''}${primaryTracking}`}

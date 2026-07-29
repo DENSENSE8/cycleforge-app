@@ -215,7 +215,7 @@ function PackingDetailOverlay({
           type="button"
           /* ds-raw-button */
           onClick={onClose}
-          className="rounded-lg bg-blue-600 px-3 py-1.5 text-role-caption font-bold text-white hover:bg-blue-700"
+          className="rounded-lg bg-blue-600 px-3 py-1.5 text-role-caption font-semibold text-white hover:bg-blue-700"
         >
           Back to table
         </button>
@@ -253,7 +253,7 @@ function PairingDetailOverlay({ orderId, onClose }: { orderId: number; onClose: 
           type="button"
           /* ds-raw-button */
           onClick={onClose}
-          className="rounded-lg bg-blue-600 px-3 py-1.5 text-role-caption font-bold text-white hover:bg-blue-700"
+          className="rounded-lg bg-blue-600 px-3 py-1.5 text-role-caption font-semibold text-white hover:bg-blue-700"
         >
           Back to table
         </button>

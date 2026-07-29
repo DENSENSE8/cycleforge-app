@@ -28,7 +28,7 @@ export function IdentityCard({
   return (
     <section className={`rounded-2xl border ${borderClass} bg-surface-card p-5 shadow-sm`}>
       <div className="flex items-start gap-4">
-        <div className={`relative flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-full ${avatarBgClass} text-xl font-bold text-white ring-4 ring-white shadow`}>
+        <div className={`relative flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-full ${avatarBgClass} text-xl font-semibold text-white ring-4 ring-white shadow`}>
           {initials(staff.name)}
           {isAdmin && (
             // ds-allow-title (reviewed: absolutely-positioned badge)
@@ -49,7 +49,7 @@ export function IdentityCard({
           <div className="mt-1 flex items-center gap-2">
             <span className="text-role-caption text-text-faint">#{staff.id}</span>
             {isAdmin && (
-              <span className="inline-flex items-center rounded-full bg-amber-100 inset-chip text-role-eyebrow font-bold uppercase tracking-wider text-amber-900 ring-1 ring-amber-200">
+              <span className="inline-flex items-center rounded-full bg-amber-100 inset-chip text-role-eyebrow uppercase tracking-wider text-amber-900 ring-1 ring-amber-200">
                 All Access
               </span>
             )}
@@ -67,7 +67,7 @@ export function IdentityCard({
                     if (Number.isFinite(id) && id > 0) onSetRoles([id]);
                   }}
                   disabled={busyRoles}
-                  className="h-7 rounded-full bg-surface-sunken px-2.5 text-role-micro font-bold uppercase tracking-wider text-text-muted outline-none ring-1 ring-border-soft transition disabled:opacity-60"
+                  className="h-7 rounded-full bg-surface-sunken px-2.5 text-role-micro uppercase tracking-wider text-text-muted outline-none ring-1 ring-border-soft transition disabled:opacity-60"
                   style={primaryRole ? { color: primaryRole.color } : undefined}
                 >
                   {!primaryRole && <option value="">no roles</option>}
@@ -86,7 +86,7 @@ export function IdentityCard({
                 value={STATUS_OPTIONS.includes(staff.status as typeof STATUS_OPTIONS[number]) ? staff.status : 'active'}
                 onChange={(e) => onPatchBasic({ status: e.target.value })}
                 disabled={busyBasic}
-                className="h-7 rounded-full bg-surface-sunken px-2.5 text-role-micro font-bold uppercase tracking-wider text-text-muted outline-none ring-1 ring-border-soft transition"
+                className="h-7 rounded-full bg-surface-sunken px-2.5 text-role-micro uppercase tracking-wider text-text-muted outline-none ring-1 ring-border-soft transition"
               >
                 {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
               </select>

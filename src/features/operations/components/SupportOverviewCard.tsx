@@ -44,7 +44,7 @@ export function SupportOverviewCard() {
       <div className="mb-4 flex items-end justify-between gap-4">
         <div>
           <span className={`${sectionLabel} !text-text-muted`}>Customer support</span>
-          <h2 className="text-role-title sm:text-xl font-extrabold tracking-tight text-text-default mt-0.5">
+          <h2 className="text-role-title sm:text-xl tracking-tight text-text-default mt-0.5">
             Who needs a reply
           </h2>
         </div>
@@ -67,7 +67,7 @@ export function SupportOverviewCard() {
             <Headset className="w-5 h-5" />
           </div>
           <div className="flex-1">
-            <p className="text-role-data font-extrabold text-text-default tracking-tight">Zendesk tickets</p>
+            <p className="text-role-data font-semibold text-text-default tracking-tight">Zendesk tickets</p>
             <p className="text-role-caption font-medium text-text-muted">Open support queue</p>
           </div>
         </div>
@@ -78,7 +78,7 @@ export function SupportOverviewCard() {
           <div className="grid grid-cols-1 gap-3">
             {tiles.map((t) => (
               <div key={t.label} className={`rounded-xl p-3 ${t.ring}`}>
-                <div className="text-role-display font-extrabold text-text-default tabular-nums leading-none">
+                <div className="text-role-display text-text-default tabular-nums leading-none">
                   {isLoading ? '–' : t.value}
                 </div>
                 <p className={`text-role-micro uppercase tracking-[0.14em] mt-1.5 ${t.tone}`}>

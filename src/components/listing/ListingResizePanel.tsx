@@ -185,7 +185,7 @@ export function ListingResizePanel({
             variant="ghost"
             size="sm"
             onClick={() => window.open(url, '_blank', 'noopener,noreferrer')}
-            className="h-auto px-0 text-role-micro font-bold text-blue-600 hover:bg-transparent hover:text-blue-800"
+            className="h-auto px-0 text-role-micro text-blue-600 hover:bg-transparent hover:text-blue-800"
           >
             Open externally
           </Button>

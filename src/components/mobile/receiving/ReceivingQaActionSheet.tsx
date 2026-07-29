@@ -45,9 +45,12 @@ async function markAllLines(
   qaStatus: 'PASSED' | 'FAILED_FUNCTIONAL' | 'FAILED_DAMAGED' | 'FAILED_INCOMPLETE',
   dispositionCode: 'ACCEPT' | 'RTV' | 'HOLD',
   notes: string | null,
-): Promise<{ ok: number; failed: number }> {
+): Promise<{ ok: number; failed: number; photoBlockers: string[] | null }> {
   let ok = 0;
   let failed = 0;
+  // First PHOTO_POLICY 409's blockers — the org's photo policy judges the whole
+  // carton, so one set of reasons covers every blocked line.
+  let photoBlockers: string[] | null = null;
   for (const line of lines) {
     try {
       const res = await fetch('/api/receiving/mark-received', {
@@ -63,13 +66,24 @@ async function markAllLines(
           client_event_id: safeRandomUUID(),
         }),
       });
-      if (res.ok) ok += 1;
-      else failed += 1;
+      if (res.ok) {
+        ok += 1;
+      } else {
+        failed += 1;
+        if (photoBlockers === null) {
+          const body = (await res.json().catch(() => null)) as
+            | { error?: string; blockers?: string[] }
+            | null;
+          if (res.status === 409 && body?.error === 'PHOTO_POLICY' && Array.isArray(body.blockers)) {
+            photoBlockers = body.blockers;
+          }
+        }
+      }
     } catch {
       failed += 1;
     }
   }
-  return { ok, failed };
+  return { ok, failed, photoBlockers };
 }
 
 export function ReceivingQaActionSheet({ open, onClose, receivingId, lines, onMutated }: Props) {
@@ -81,11 +95,12 @@ export function ReceivingQaActionSheet({ open, onClose, receivingId, lines, onMu
 
   const runPass = async () => {
     setBusy(true);
-    const { ok, failed } = await markAllLines(lines, 'PASSED', 'ACCEPT', null);
+    const { ok, failed, photoBlockers } = await markAllLines(lines, 'PASSED', 'ACCEPT', null);
     setBusy(false);
     setConfirmPass(false);
     onClose();
-    if (failed > 0) toast.error(`Marked ${ok} passed · ${failed} failed`);
+    if (photoBlockers?.length) toast.error(`Photos required — ${photoBlockers.join(' · ')}`);
+    else if (failed > 0) toast.error(`Marked ${ok} passed · ${failed} failed`);
     else toast.success(`Marked ${ok} line${ok === 1 ? '' : 's'} as tested PASS`);
     onMutated?.();
   };
@@ -93,7 +108,7 @@ export function ReceivingQaActionSheet({ open, onClose, receivingId, lines, onMu
   const runFail = async () => {
     if (!confirmFail) return;
     setBusy(true);
-    const { ok, failed } = await markAllLines(
+    const { ok, failed, photoBlockers } = await markAllLines(
       lines,
       'FAILED_FUNCTIONAL',
       'RTV',
@@ -102,7 +117,8 @@ export function ReceivingQaActionSheet({ open, onClose, receivingId, lines, onMu
     setBusy(false);
     setConfirmFail(null);
     onClose();
-    if (failed > 0) toast.error(`Returned ${ok} · ${failed} failed`);
+    if (photoBlockers?.length) toast.error(`Photos required — ${photoBlockers.join(' · ')}`);
+    else if (failed > 0) toast.error(`Returned ${ok} · ${failed} failed`);
     else toast.success(`Marked ${ok} line${ok === 1 ? '' : 's'} as FAILED · return`);
     onMutated?.();
   };
@@ -116,7 +132,7 @@ export function ReceivingQaActionSheet({ open, onClose, receivingId, lines, onMu
             type="button"
             onClick={() => setConfirmPass(true)}
             disabled={busy || lineCount === 0}
-            className="ds-raw-button flex h-14 w-full items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-700 text-sm font-black uppercase tracking-wider text-white shadow-md shadow-emerald-600/30 transition-transform active:scale-[0.98] disabled:opacity-40"
+            className="ds-raw-button flex h-14 w-full items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-700 text-sm font-semibold uppercase tracking-wider text-white shadow-md shadow-emerald-600/30 transition-transform active:scale-[0.98] disabled:opacity-40"
           >
             Mark tested — PASS
           </button>
@@ -125,7 +141,7 @@ export function ReceivingQaActionSheet({ open, onClose, receivingId, lines, onMu
             type="button"
             onClick={() => setConfirmFail({ reason: '' })}
             disabled={busy || lineCount === 0}
-            className="ds-raw-button flex h-14 w-full items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 to-rose-700 text-sm font-black uppercase tracking-wider text-white shadow-md shadow-rose-600/30 transition-transform active:scale-[0.98] disabled:opacity-40"
+            className="ds-raw-button flex h-14 w-full items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 to-rose-700 text-sm font-semibold uppercase tracking-wider text-white shadow-md shadow-rose-600/30 transition-transform active:scale-[0.98] disabled:opacity-40"
           >
             Mark FAILED — return
           </button>

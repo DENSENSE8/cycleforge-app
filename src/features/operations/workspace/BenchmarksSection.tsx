@@ -124,7 +124,7 @@ export function BenchmarksSection({ rangeDays }: { rangeDays: number }) {
   if (query.isError || !query.data?.success) {
     return (
       <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50 inset-empty text-center">
-        <p className="text-role-caption font-bold text-rose-700">Could not load benchmarks.</p>
+        <p className="text-role-caption font-semibold text-rose-700">Could not load benchmarks.</p>
         <div className="mt-2">
           <Button variant="ghost" size="sm" onClick={() => query.refetch()}>
             Retry
@@ -140,7 +140,7 @@ export function BenchmarksSection({ rangeDays }: { rangeDays: number }) {
   if (!seeded) {
     return (
       <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas inset-empty text-center">
-        <p className="text-role-caption font-bold text-text-muted">No benchmarks seeded yet</p>
+        <p className="text-role-caption font-semibold text-text-muted">No benchmarks seeded yet</p>
         <p className="mt-1 text-role-micro leading-5 text-text-soft">
           Apply the insight_links seed migration to compare your numbers against the vertical.
         </p>
@@ -155,13 +155,13 @@ export function BenchmarksSection({ rangeDays }: { rangeDays: number }) {
           <div key={row.key} className="flex items-center gap-3 py-2.5">
             <div className="min-w-0 flex-1">
               <HoverTooltip label={row.basis}>
-                <p className="truncate text-role-caption font-bold text-text-default">{row.label}</p>
+                <p className="truncate text-role-caption font-semibold text-text-default">{row.label}</p>
               </HoverTooltip>
               <p className="truncate text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
                 Typical {row.typical}
               </p>
             </div>
-            <p className="text-role-caption font-black tabular-nums text-text-default">
+            <p className="text-role-caption font-semibold tabular-nums text-text-default">
               {row.you != null ? `${row.you}${row.youSuffix}` : '—'}
             </p>
             <span

@@ -87,6 +87,16 @@ Rails are a **recipe** for workbench pickers — not proof that every Workbench 
 - **Station (`floor`):** scan bar + single active-entity card; fact stacks and `divide-y` rows *inside* the card. No browse grids competing with scan focus.
 - **Workbench (`ops`):** primary = list **or** table **or** board **or** master–detail (data shape decides). Fact stacks for record bodies. Scroll region `flex-1 overflow-y-auto`; sticky chrome with `border-t`/`border-b` as needed.
   - **Scoped search chrome:** icon-first `ToolbarSearchToggle` (`@/design-system/primitives`) — collapsed at rest, expands on hover/focus. Never an always-open `SearchField` in the workbench header search slot.
+    - **Sanctioned exception — `/ops/photos` (Media Library), approved 2026-07-28.** The one surface
+      that mounts an always-open `SearchField` in the `WorkbenchChromeHeader` `search` slot.
+      **Why:** it is a photo-*evidence* archive whose primary job is exact-identifier retrieval
+      (pull the unboxing shots for a PO / serial / claim ticket to settle a damage or carrier
+      dispute). Everywhere else search *refines a list already on screen*, so collapsed-at-rest
+      correctly demotes it; here search **is** the entry path, and click-to-expand puts a gesture in
+      front of the surface's main job. **Scope:** this surface only — it does not license an
+      always-open field in any other chrome header. Adding a second exception is Ask-first; if a
+      third appears, the rule itself is wrong and should be re-cut around "is search the entry path
+      or a refinement?" rather than grown case by case.
   - **Display sort chrome:** quiet trailing dropdown (current value + caret), **left of Import** when present — never a solid `TabSwitch` beside search. SoT: `QueueSortSwitch` / Labels trailing sort. Rule: `.cursor/rules/workbench-sort-chrome.mdc`.
 - **Monitor (`rollup`):** vertical scroll shell + **named rollup zones** may use responsive CSS grid (`KpiStrip`, tri-panel of `SectionCard`s). Compose `@/design-system/components/monitor` — see [display/monitor-rollup-blocks.md](display/monitor-rollup-blocks.md).
 - **Canvas (`studio`):** spatial graph layout; inspector is secondary detail, not a second graph.
@@ -95,7 +105,7 @@ Field group = label above, value below:
 
 ```tsx
 <div className="space-y-1">
-  <p className="text-[10px] font-black uppercase">…</p>
+  <p className="text-role-micro uppercase">…</p>
   {value}
 </div>
 ```
@@ -113,8 +123,9 @@ Field group = label above, value below:
 ## One row anatomy
 
 - Left-aligned, content order: **title → meta → chips(right)**. Do not center or `flex-1`-stretch row content.
-  - Title: `truncate text-caption font-bold text-gray-900`.
-  - Meta: `truncate text-eyebrow font-semibold uppercase tracking-widest text-gray-500`.
+  - Title: `truncate text-role-caption font-semibold text-text-default`.
+  - Meta: `truncate text-role-eyebrow uppercase tracking-widest text-text-soft` (the role bakes 600 + condensed).
+  - Title vs meta separate by **color and case**, not by weight — both sit at 600 (see the weight cap below).
 - **Queue/station left edge** (`QUEUE_ROW` in `src/components/ui/queue-row-chrome.ts` + `META_COL` in `RowMetaColumns.tsx`):
   - Stack: `QUEUE_ROW.px` → optional select gutter (`QUEUE_ROW.selectGutter`) → `META_COL` dot track → title.
   - Meta indent via `metaIndentFor(track, selectMode)` — never hand-rolled `calc` or page-local `px-4`.
@@ -128,12 +139,40 @@ Field group = label above, value below:
 
 ## Eyebrow headers + chips (micro-typography scale)
 
-- Section/rail header = an eyebrow: `text-eyebrow font-black uppercase tracking-widest text-gray-500`, optional
-  right action slot. Use `leading-none` on suffixes so they don't inflate row height.
+- Section/rail header = an eyebrow: `text-role-eyebrow uppercase tracking-widest text-text-soft`, optional
+  right action slot. Use `leading-none` on suffixes so they don't inflate row height. **Don't add a weight class** —
+  `role-eyebrow` bakes 600 and the condensed cut.
 - Action buttons in a header bleed their hit-box with negative margin (`-my-0.5` / `-my-1.5`), they don't grow the row.
-- Chip/badge = 3 layers: `rounded {bg-x-50} {text-x-700} ring-1 ring-inset {ring-x-200} px-1.5 py-0.5
-  text-[8.5px|9px|10px] font-black uppercase tracking-widest`. Pills (`rounded-full`) drop vertical padding to keep row height.
+- Chip/badge = 3 layers: `rounded {bg-x-50} {text-x-700} ring-1 ring-inset {ring-x-200} inset-chip
+  text-role-micro uppercase tracking-widest`. Pills (`rounded-full`) drop vertical padding to keep row height.
 - **Typed identifiers** use the semantic `CopyChip` family — never interchange chip variants (see `DESIGN_SYSTEM.md`).
+
+## Type: one family, three cuts, capped at 600
+
+**Contextuality is width and role binding — never a second face.** IBM Plex is the whole system
+(`src/lib/fonts.ts`; stacks in `tokens/typography/families.ts`, mirrored in `styles/globals.css`):
+
+| Cut | Job | How you get it |
+|---|---|---|
+| **Sans** | display · title · body · data · caption | the default — `text-role-*` |
+| **Sans Condensed** | eyebrow · micro (dense chrome) | **intrinsic** to `text-role-eyebrow` / `text-role-micro` |
+| **Mono** | identifiers (serial · FNSKU · tracking · SKU) | `font-mono` / the `CopyChip` family |
+
+- **Pick a ROLE, not a family.** `text-role-eyebrow`/`-micro` bind the condensed cut themselves
+  (tailwind.config.ts CF Type plugin), so a 10–11px label stays legible without wrapping a grid column.
+  Writing `font-condensed` by hand to narrow arbitrary text is the fork — it drifts the moment someone
+  forgets it. `families.ts` deliberately has no `heading`/`display`/`label` slot.
+- **600 is the ceiling.** `font-bold`/`font-extrabold`/`font-black` are banned: at 10–14px on a 1080p
+  warehouse monitor 700+ bleeds counters shut, and `next/font` no longer loads a 700 cut, so a stray
+  `font-bold` renders as synthesized faux-bold. **Do:** `font-semibold`, or *no weight class at all*
+  when the role already bakes 600 (display · title · eyebrow · micro).
+- **Emphasis comes from contrast and tracking, not ink.** Need a title to out-rank its meta? Move the
+  meta to `text-text-soft` / uppercase-tracked, don't add weight.
+- **Numerals align by default** — `role-display`/`-title`/`-data` bind `tabular-nums` intrinsically; a
+  surface that genuinely wants proportional figures opts out with `proportional-nums`. Mono never
+  ligates (`fi`/`fl` in a serial would render a string the operator can't retype).
+- Guard: `typography-tokens.guard.test.ts` (raw px, retired tokens, the weight cap, the family
+  bindings). Genuine one-off: same-line `ds-allow-weight`. Codemod: `scripts/codemods/cap-font-weight.mjs`.
 
 ## Presentation kinds (data drives UI)
 

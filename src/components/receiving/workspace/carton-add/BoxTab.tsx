@@ -186,7 +186,7 @@ export function BoxTab({
                   className="ds-raw-button flex w-full items-center gap-2 rounded-lg border border-border-soft inset-field text-left transition-colors hover:border-teal-300 hover:bg-teal-50/60 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   <Package className="h-4 w-4 shrink-0 text-teal-600" />
-                  <span className="flex-1 truncate text-role-caption font-bold text-text-default">{b.code}</span>
+                  <span className="flex-1 truncate text-role-caption font-semibold text-text-default">{b.code}</span>
                   <span className="text-role-micro font-semibold uppercase tracking-wider text-text-soft">
                     {b.unit_count} {b.unit_count === 1 ? 'unit' : 'units'}
                     {b.location_name ? ` · ${b.location_name}` : ''}

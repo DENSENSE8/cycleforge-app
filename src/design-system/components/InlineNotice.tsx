@@ -51,7 +51,7 @@ export function InlineNotice({
         {icon ? <div className="mt-0.5 shrink-0">{icon}</div> : null}
         <div className="min-w-0">
           {title ? (
-            <p className={`font-black uppercase ${titleSizeClasses[size]}`}>
+            <p className={`font-semibold uppercase ${titleSizeClasses[size]}`}>
               {title}
             </p>
           ) : null}

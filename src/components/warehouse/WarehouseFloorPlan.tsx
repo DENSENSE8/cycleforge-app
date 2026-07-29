@@ -88,13 +88,13 @@ function ZoneNode({ data }: NodeProps<ZoneNodeT>) {
           </span>
         )}
       </span>
-      <span className="absolute right-3 top-2.5 text-role-eyebrow font-bold uppercase tracking-wider text-text-faint">
+      <span className="absolute right-3 top-2.5 text-role-eyebrow uppercase tracking-wider text-text-faint">
         {data.binCount} bin{data.binCount === 1 ? '' : 's'}
       </span>
       {data.colLabels.map((c, ci) => (
         <span
           key={c}
-          className="absolute text-center text-role-eyebrow font-bold uppercase tracking-wider text-text-faint"
+          className="absolute text-center text-role-eyebrow uppercase tracking-wider text-text-faint"
           style={{ left: data.relGridX + ci * (data.cell + data.gap), top: data.relGridY - 14, width: data.cell }}
         >
           {c}
@@ -103,7 +103,7 @@ function ZoneNode({ data }: NodeProps<ZoneNodeT>) {
       {data.rowLabels.map((r, ri) => (
         <span
           key={r}
-          className="absolute text-role-eyebrow font-bold uppercase tracking-wider text-text-faint"
+          className="absolute text-role-eyebrow uppercase tracking-wider text-text-faint"
           style={{ left: 12, top: data.relGridY + ri * (data.cell + data.gap) + data.cell / 2 - 6 }}
         >
           {r}

@@ -127,7 +127,7 @@ export function BlockConfigSheet({ open, instance, onClose, onApply }: BlockConf
             <span className="flex h-7 w-7 items-center justify-center rounded-md bg-surface-sunken text-text-muted">
               <StationIcon name={block.icon} className="h-4 w-4" />
             </span>
-            <h2 className="text-role-caption font-black uppercase tracking-wider text-text-muted">{block.label}</h2>
+            <h2 className="text-role-caption font-semibold uppercase tracking-wider text-text-muted">{block.label}</h2>
           </div>
           <div className="mt-2 flex gap-1">
             {tabs.map((t) => (
@@ -135,7 +135,7 @@ export function BlockConfigSheet({ open, instance, onClose, onApply }: BlockConf
                 key={t}
                 type="button"
                 onClick={() => setTab(t)}
-                className={`ds-raw-button rounded-md px-2.5 py-1 text-role-caption font-bold capitalize transition-colors ${
+                className={`ds-raw-button rounded-md px-2.5 py-1 text-role-caption font-semibold capitalize transition-colors ${
                   tab === t ? 'bg-surface-inverse text-white' : 'bg-surface-sunken text-text-muted hover:bg-surface-strong'
                 }`}
               >
@@ -165,7 +165,7 @@ export function BlockConfigSheet({ open, instance, onClose, onApply }: BlockConf
                   ))}
                 </select>
                 {sourceMeta && !has(sourceMeta.permission) ? (
-                  <p className="mt-1 text-role-micro font-bold text-amber-600">
+                  <p className="mt-1 text-role-micro text-amber-600">
                     Heads up: you don&apos;t hold {sourceMeta.permission} yourself — this block will be blank for you.
                   </p>
                 ) : null}
@@ -229,7 +229,7 @@ export function BlockConfigSheet({ open, instance, onClose, onApply }: BlockConf
                   <div className="space-y-2">
                     {block.roles.map((role) => (
                       <label key={role.key} className="block">
-                        <span className="mb-0.5 block text-role-micro font-bold text-text-soft">
+                        <span className="mb-0.5 block text-role-micro text-text-soft">
                           {role.label}
                           {role.required ? ' *' : ''}
                         </span>
@@ -330,12 +330,12 @@ export function BlockConfigSheet({ open, instance, onClose, onApply }: BlockConf
                             className="mt-0.5 h-4 w-4 accent-blue-600"
                           />
                           <span className="min-w-0 flex-1">
-                            <span className="block text-role-caption font-bold text-text-default">{a.label}</span>
-                            <span className="mt-0.5 inline-flex rounded bg-surface-canvas px-1 py-px font-mono text-role-micro font-bold text-text-soft ring-1 ring-inset ring-border-soft">
+                            <span className="block text-role-caption font-semibold text-text-default">{a.label}</span>
+                            <span className="mt-0.5 inline-flex rounded bg-surface-canvas px-1 py-px font-mono text-role-micro text-text-soft ring-1 ring-inset ring-border-soft">
                               {a.permission}
                             </span>
                             {!permitted ? (
-                              <span className="mt-0.5 block text-role-micro font-bold text-amber-600">
+                              <span className="mt-0.5 block text-role-micro text-amber-600">
                                 Staff without this permission won&apos;t see the button (the builder never grants it).
                               </span>
                             ) : null}

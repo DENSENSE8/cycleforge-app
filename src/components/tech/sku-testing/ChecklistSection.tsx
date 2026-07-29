@@ -49,7 +49,7 @@ export function ChecklistSection({
         <div className="flex items-center gap-2">
           {steps.length > 0 ? (
             <span
-              className={`rounded-md px-2 py-0.5 text-role-micro font-bold uppercase tracking-wider ${
+              className={`rounded-md px-2 py-0.5 text-role-micro font-semibold uppercase tracking-wider ${
                 canRecord && ed.done === steps.length
                   ? 'bg-emerald-50 text-emerald-700'
                   : 'bg-surface-sunken text-text-muted'
@@ -69,7 +69,7 @@ export function ChecklistSection({
                   size="sm"
                   loading={ed.bulkBusy}
                   onClick={() => void ed.bulkSet(ed.allDone ? 'clear' : 'pass')}
-                  className="gap-1 rounded-md px-2 text-role-micro font-bold uppercase tracking-wider text-emerald-600 hover:bg-emerald-50"
+                  className="gap-1 rounded-md px-2 text-role-micro uppercase tracking-wider text-emerald-600 hover:bg-emerald-50"
                 >
                   {ed.allDone ? 'Clear all' : 'Check all'}
                 </Button>
@@ -85,7 +85,7 @@ export function ChecklistSection({
               ed.setAdding((v) => !v);
               ed.setDraft('');
             }}
-            className="gap-1 rounded-md px-2 text-role-micro font-bold uppercase tracking-wider text-blue-600 hover:bg-blue-50"
+            className="gap-1 rounded-md px-2 text-role-micro uppercase tracking-wider text-blue-600 hover:bg-blue-50"
           >
             Add
           </Button>
@@ -126,7 +126,7 @@ export function ChecklistSection({
             size="sm"
             onClick={() => void ed.addStep()}
             disabled={ed.busy || !ed.draft.trim()}
-            className="shrink-0 rounded-md px-3 text-role-caption font-bold"
+            className="shrink-0 rounded-md px-3 text-role-caption font-semibold"
           >
             {ed.busy ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Add'}
           </Button>

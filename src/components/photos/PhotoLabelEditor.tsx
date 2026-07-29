@@ -123,7 +123,7 @@ export function PhotoLabelEditor({
       <DialogContent hideClose className="max-w-md gap-0 overflow-hidden p-0 sm:rounded-2xl">
         <DialogHeader className="flex flex-row items-center gap-2 space-y-0 border-b border-border-hairline px-4 py-3">
           <Tag className="h-4 w-4 text-text-soft" />
-          <DialogTitle className="text-sm font-bold text-text-default">
+          <DialogTitle className="text-sm font-semibold text-text-default">
             {single ? 'Edit labels' : `Label ${photos.length} photos`}
           </DialogTitle>
         </DialogHeader>

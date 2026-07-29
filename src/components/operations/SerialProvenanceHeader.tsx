@@ -38,7 +38,7 @@ export function SerialProvenanceHeader({
       {group.ref?.kind === 'serial' && serial ? (
         <SerialChip value={serial} width="w-auto" dense />
       ) : (
-        <span className="text-role-micro font-bold uppercase tracking-[0.12em] text-text-soft">
+        <span className="text-role-micro uppercase tracking-[0.12em] text-text-soft">
           {group.label}
         </span>
       )}
@@ -50,7 +50,7 @@ export function SerialProvenanceHeader({
       {provenance?.grade ? <ConditionGradeChip grade={provenance.grade} dense /> : null}
 
       {provenance?.status ? (
-        <span className="inline-flex items-center gap-1 text-role-eyebrow font-bold uppercase tracking-widest text-text-soft">
+        <span className="inline-flex items-center gap-1 text-role-eyebrow uppercase tracking-widest text-text-soft">
           <span className={`h-2 w-2 shrink-0 rounded-full ${serialStatusDot(provenance.status)}`} />
           {serialStatusLabel(provenance.status)}
         </span>

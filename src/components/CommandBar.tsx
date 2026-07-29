@@ -800,7 +800,7 @@ export function CommandBar() {
               </Command.List>
 
               {/* Footer */}
-              <div className="flex items-center justify-between gap-3 border-t border-border-hairline bg-surface-canvas/70 px-4 py-2 text-role-micro font-bold text-text-soft">
+              <div className="flex items-center justify-between gap-3 border-t border-border-hairline bg-surface-canvas/70 px-4 py-2 text-role-micro text-text-soft">
                 <div className="flex items-center gap-3">
                   <span className="inline-flex items-center gap-1">
                     <kbd className="rounded border border-border-soft bg-surface-card px-1 py-0.5 font-mono">↑↓</kbd>

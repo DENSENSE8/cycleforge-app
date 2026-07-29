@@ -87,13 +87,13 @@ export function SkuGraphDetailPanel({ node, onSelectRelated, onEditConnections }
             {node.tier}
           </span>
         </div>
-        <h2 className="mt-1.5 text-role-body font-bold text-text-default">{node.sku}</h2>
+        <h2 className="mt-1.5 text-role-body font-semibold text-text-default">{node.sku}</h2>
         <p className="text-role-caption text-text-soft">{node.product_title}</p>
       </div>
 
       <div className="rounded-xl bg-surface-canvas p-3">
         <div className="text-role-caption uppercase tracking-wide text-text-faint">In stock</div>
-        <div className="text-2xl font-bold tabular-nums text-text-default">{node.stock}</div>
+        <div className="text-2xl font-semibold tabular-nums text-text-default">{node.stock}</div>
       </div>
 
       <RelationList title="Parents" items={parents} onSelect={onSelectRelated} />

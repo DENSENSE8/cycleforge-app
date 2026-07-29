@@ -50,14 +50,14 @@ function RadialRing({ percentage, label, countLabel, color, ringBgColor }: Radia
           />
         </svg>
         <div className="absolute inset-0 flex items-center justify-center">
-          <span className="text-role-caption font-black text-text-default tracking-tighter tabular-nums">
+          <span className="text-role-caption font-semibold text-text-default tracking-tighter tabular-nums">
             {percentage}%
           </span>
         </div>
       </div>
       <div className="text-left space-y-0.5">
         <p className={`${sectionLabel} !text-text-muted`}>{label}</p>
-        <h4 className="text-role-data font-black text-text-default leading-tight pr-1">
+        <h4 className="text-role-data font-semibold text-text-default leading-tight pr-1">
           {countLabel}
         </h4>
       </div>
@@ -113,7 +113,7 @@ export function PerformanceGoals() {
             <span className="text-role-micro text-text-muted uppercase tracking-wider">
               Weekly Target
             </span>
-            <span className="text-role-body font-black text-text-default tabular-nums">
+            <span className="text-role-body font-semibold text-text-default tabular-nums">
               1,480{' '}
               <span className="text-role-caption text-text-muted font-medium">/ 1,800 units</span>
             </span>
@@ -137,7 +137,7 @@ export function PerformanceGoals() {
 
           <p className="text-role-caption text-text-muted font-medium leading-relaxed">
             You&apos;re on track to exceed last week by{' '}
-            <span className="font-extrabold text-text-default">8.4%</span> 🚀
+            <span className="font-semibold text-text-default">8.4%</span> 🚀
           </p>
         </div>
       </div>
@@ -163,7 +163,7 @@ export function PerformanceGoals() {
               <TrendingUp className="w-3.5 h-3.5 text-amber-600" />
             </div>
             <div className="text-left space-y-0.5">
-              <p className="text-role-caption font-bold text-text-default leading-snug">
+              <p className="text-role-caption font-semibold text-text-default leading-snug">
                 Replenish FBA inventory soon
               </p>
               <p className="text-role-micro text-text-muted font-semibold leading-normal mt-0.5">
@@ -181,7 +181,7 @@ export function PerformanceGoals() {
               <AlertCircle className="w-3.5 h-3.5 text-[#E07A5F]" />
             </div>
             <div className="text-left space-y-0.5">
-              <p className="text-role-caption font-bold text-text-default leading-snug">
+              <p className="text-role-caption font-semibold text-text-default leading-snug">
                 Critical Ticket Backlog
               </p>
               <p className="text-role-micro text-text-muted font-semibold leading-normal mt-0.5">

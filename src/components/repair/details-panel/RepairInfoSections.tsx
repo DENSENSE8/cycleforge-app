@@ -19,7 +19,7 @@ export function RepairCustomerSection({ repair }: { repair: RSRecord }) {
       <div className="space-y-3">
         <div>
           <span className="text-xs text-text-soft font-semibold block mb-1">Name</span>
-          <p className="font-bold text-sm text-text-default">
+          <p className="font-semibold text-sm text-text-default">
             {parts[0] || 'Not provided'}
           </p>
         </div>
@@ -45,7 +45,7 @@ export function RepairCustomerSection({ repair }: { repair: RSRecord }) {
         </div>
         <div>
           <span className="text-xs text-text-soft font-semibold block mb-1">Price</span>
-          <p className="font-bold text-sm text-emerald-600">{repair.price ? `$${repair.price}` : 'Not set'}</p>
+          <p className="font-semibold text-sm text-emerald-600">{repair.price ? `$${repair.price}` : 'Not set'}</p>
         </div>
       </div>
     </section>
@@ -59,7 +59,7 @@ export function RepairTechnicalSection({ repair }: { repair: RSRecord }) {
       <div className="space-y-3">
         <div>
           <span className="text-xs text-text-soft font-semibold block mb-1">Issue</span>
-          <p className="text-sm text-text-default font-bold leading-relaxed">{repair.issue || 'No issue described'}</p>
+          <p className="text-sm text-text-default font-semibold leading-relaxed">{repair.issue || 'No issue described'}</p>
         </div>
         <div>
           <span className="text-xs text-text-soft font-semibold block mb-1">Serial Number</span>

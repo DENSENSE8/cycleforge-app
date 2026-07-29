@@ -68,7 +68,7 @@ export function getLabelPrintStatusDotLabel(row: LabelPrintFeedItem): string {
 export function LabelPrintStatusChip({ status }: { status: string }) {
   return (
     <span
-      className={`rounded px-1.5 py-0.5 text-role-micro font-bold uppercase tracking-wider ${unitStatusBadgeClass(status)}`}
+      className={`rounded px-1.5 py-0.5 text-role-micro uppercase tracking-wider ${unitStatusBadgeClass(status)}`}
     >
       {status}
     </span>

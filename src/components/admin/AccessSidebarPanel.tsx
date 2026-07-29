@@ -192,7 +192,7 @@ export function AccessSidebarPanel({ basePath = '/settings/access' }: { basePath
             onClick={() => setParam((p) => {
               if (s === 'all') p.delete('accessStatus'); else p.set('accessStatus', s);
             })}
-            className={`flex-1 rounded-lg px-2 py-1 text-role-micro font-bold uppercase tracking-wider transition ${
+            className={`flex-1 rounded-lg px-2 py-1 text-role-micro font-semibold uppercase tracking-wider transition ${
               statusFilter === s ? 'bg-blue-600 text-white shadow-sm shadow-blue-200' : 'bg-surface-sunken text-text-muted hover:bg-surface-strong'
             }`}
           >
@@ -304,7 +304,7 @@ function StaffSidebarRow({ row, selected, onPick }: StaffSidebarRowProps) {
         }`}
       >
         <div className="relative flex-shrink-0">
-          <div className={`flex h-8 w-8 items-center justify-center rounded-full ${sc.bg} text-role-caption font-bold text-white`}>
+          <div className={`flex h-8 w-8 items-center justify-center rounded-full ${sc.bg} text-role-caption font-semibold text-white`}>
             {initials(row.name)}
           </div>
           {isAdmin && (
@@ -377,7 +377,7 @@ function SortableStaffSidebarRow({ row, selected, onPick }: StaffSidebarRowProps
           className="flex min-w-0 flex-1 items-center gap-2.5 text-left"
         >
           <div className="relative flex-shrink-0">
-            <div className={`flex h-8 w-8 items-center justify-center rounded-full ${sc.bg} text-role-caption font-bold text-white`}>
+            <div className={`flex h-8 w-8 items-center justify-center rounded-full ${sc.bg} text-role-caption font-semibold text-white`}>
               {initials(row.name)}
             </div>
             {isAdmin && (

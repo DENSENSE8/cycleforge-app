@@ -114,7 +114,7 @@ export function MobileReceivingFeedGallery({
         className="fixed inset-0 flex items-center justify-center bg-[#0a0a0b] px-6"
         style={{ zIndex: zLayer.modal + 1 }}
       >
-        <p className="text-center text-sm font-bold text-white/70">No photos yet.</p>
+        <p className="text-center text-sm font-semibold text-white/70">No photos yet.</p>
         <button
           type="button"
           onClick={onClose}

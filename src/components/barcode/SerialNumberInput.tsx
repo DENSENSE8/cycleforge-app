@@ -100,7 +100,7 @@ export function SerialNumberInput({
                         size="sm"
                         onClick={onChangeSku}
                         className={cn(
-                            'ml-auto h-auto px-0 font-black uppercase tracking-widest text-blue-600 hover:bg-transparent hover:text-blue-800',
+                            'ml-auto h-auto px-0 font-semibold uppercase tracking-widest text-blue-600 hover:bg-transparent hover:text-blue-800',
                             comfy ? 'text-role-micro' : 'text-role-eyebrow',
                         )}
                     >
@@ -145,13 +145,13 @@ export function SerialNumberInput({
                         {comfy && currentLocation && (
                             <p className="mt-2 text-role-caption font-mono text-text-soft">
                                 <span className="text-text-faint">LAST LOC </span>
-                                <span className="font-bold text-orange-600">{currentLocation}</span>
+                                <span className="font-semibold text-orange-600">{currentLocation}</span>
                             </p>
                         )}
                     </div>
                     <div className="text-right flex-shrink-0">
                         <p className={`uppercase tracking-widest text-text-soft ${comfy ? 'text-role-micro mb-1.5' : 'text-role-eyebrow mb-1'}`}>Stock</p>
-                        <span className={`font-black ${
+                        <span className={`font-semibold ${
                             comfy ? 'text-base px-2.5 py-1' : 'text-xs px-2 py-0.5'
                         } ${
                             parseInt(stock) > 0
@@ -181,7 +181,7 @@ export function SerialNumberInput({
                     {/* SN count badge */}
                     {serialNumbers.length > 0 && (
                         <div className={`flex items-center bg-blue-50 border-l border-border-soft ${comfy ? 'px-5' : 'px-4'}`}>
-                            <span className={`font-black text-blue-700 tabular-nums ${comfy ? 'text-xs' : 'text-role-caption'}`}>
+                            <span className={`font-semibold text-blue-700 tabular-nums ${comfy ? 'text-xs' : 'text-role-caption'}`}>
                                 {serialNumbers.length} SN{serialNumbers.length !== 1 ? 's' : ''}
                             </span>
                         </div>
@@ -225,7 +225,7 @@ export function SerialNumberInput({
                     <span className="flex items-center justify-center gap-2.5">
                         Continue →
                         {comfy && (
-                            <kbd className="rounded border border-glass/30 bg-glass/10 px-1.5 py-0.5 text-role-eyebrow font-mono font-bold tracking-tighter">⏎</kbd>
+                            <kbd className="rounded border border-glass/30 bg-glass/10 px-1.5 py-0.5 text-role-eyebrow font-mono tracking-tighter">⏎</kbd>
                         )}
                     </span>
                 )}

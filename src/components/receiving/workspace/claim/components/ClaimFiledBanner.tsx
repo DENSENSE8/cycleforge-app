@@ -39,13 +39,13 @@ export function ClaimFiledBanner({ filedTicket, mode, linkCommitted, unlinking, 
             ? 'Ticket linked'
             : 'Internal ticket filed'}
       </p>
-      <p className="text-role-caption font-bold text-text-default">{filedTicket.number}</p>
+      <p className="text-role-caption font-semibold text-text-default">{filedTicket.number}</p>
       {filedTicket.url ? (
         <a
           href={filedTicket.url}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-block text-role-micro font-bold uppercase tracking-wider text-blue-700 hover:text-blue-900"
+          className="inline-block text-role-micro uppercase tracking-wider text-blue-700 hover:text-blue-900"
         >
           Open in Zendesk ↗
         </a>

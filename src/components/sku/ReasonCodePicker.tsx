@@ -102,7 +102,7 @@ export function ReasonCodePicker({
         disabled={loading || reasons.length === 0}
         className={`mt-1 w-full rounded-md border border-border-default bg-surface-card px-2 ${
           compact ? 'py-1.5 text-role-caption' : 'py-2 text-sm'
-        } font-bold text-text-default focus:border-blue-500 focus:outline-none disabled:opacity-50`}
+        } font-semibold text-text-default focus:border-blue-500 focus:outline-none disabled:opacity-50`}
       >
         {loading && <option>Loading…</option>}
         {!loading &&
@@ -113,7 +113,7 @@ export function ReasonCodePicker({
           ))}
       </select>
       {selected?.requires_note && (
-        <p className="mt-1 text-role-micro font-bold uppercase tracking-widest text-amber-700">
+        <p className="mt-1 text-role-micro uppercase tracking-widest text-amber-700">
           Reason needs a note
         </p>
       )}

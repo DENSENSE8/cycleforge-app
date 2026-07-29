@@ -35,8 +35,8 @@ export default function RouteError({
         <p className="mt-3 text-role-eyebrow uppercase tracking-widest text-rose-500">
           Something broke
         </p>
-        <h1 className="mt-1 text-base font-black text-text-default">This page hit an error</h1>
-        <p className="mx-auto mt-2 max-w-sm text-role-caption font-bold text-text-soft">
+        <h1 className="mt-1 text-base font-semibold text-text-default">This page hit an error</h1>
+        <p className="mx-auto mt-2 max-w-sm text-role-caption font-semibold text-text-soft">
           {error?.message || 'Unexpected error.'}
           {error?.digest ? (
             <span className="block text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint">

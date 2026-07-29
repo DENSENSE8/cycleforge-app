@@ -149,7 +149,7 @@ export function MobileReceivingSwipeGallery({
   if (query.error) {
     return (
       <GalleryShell>
-        <p className="max-w-xs px-6 text-center text-sm font-bold text-white/70">
+        <p className="max-w-xs px-6 text-center text-sm font-semibold text-white/70">
           Couldn&apos;t load photos.
         </p>
       </GalleryShell>

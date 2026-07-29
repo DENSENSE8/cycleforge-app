@@ -40,7 +40,7 @@ export function ReceivingLinePicker({ rows, onPick, onCancel }: Props) {
               key={line.id}
               type="button"
               onClick={() => onPick(line)}
-              className={`ds-raw-button rounded border px-2 py-1 text-left text-role-micro font-bold transition-colors ${
+              className={`ds-raw-button rounded border px-2 py-1 text-left text-role-micro font-semibold transition-colors ${
                 open
                   ? 'border-blue-200 bg-surface-card text-blue-900 hover:bg-blue-100'
                   : 'border-border-soft bg-surface-canvas text-text-soft hover:bg-surface-sunken'

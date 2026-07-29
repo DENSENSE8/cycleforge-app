@@ -74,10 +74,10 @@ describe('ordersQueueRowShellClass / grid template', () => {
 });
 
 describe('ORDERS_QUEUE_COLUMNS — the column model header + template share', () => {
-  it('is the 8-column scan order and derives the CSS-var template (no drift)', () => {
+  it('is the 7-column scan order and derives the CSS-var template (no drift)', () => {
     assert.deepEqual(
       ORDERS_QUEUE_COLUMNS.map((c) => c.key),
-      ['select', 'title', 'date', 'age', 'qty', 'condition', 'order', 'tracking'],
+      ['select', 'title', 'sla', 'qty', 'condition', 'order', 'tracking'],
     );
     // Each track = its width CSS var with the model width as the fallback, so a
     // persisted/resized width overrides with zero template rebuild.
@@ -91,7 +91,7 @@ describe('ORDERS_QUEUE_COLUMNS — the column model header + template share', ()
   it('resize helpers: only data columns resize; widths → CSS vars', () => {
     assert.deepEqual(
       [...ORDERS_QUEUE_RESIZABLE_KEYS],
-      ['title', 'date', 'age', 'qty', 'condition', 'order', 'tracking'],
+      ['title', 'sla', 'qty', 'condition', 'order', 'tracking'],
       'select control gutter is not resizable',
     );
     assert.equal(ordersQueueColVar('title'), '--cf-col-title');
@@ -105,11 +105,11 @@ describe('ORDERS_QUEUE_COLUMNS — the column model header + template share', ()
   it('control gutters carry no label/type; every data column is typed + labelled', () => {
     const byKey = Object.fromEntries(ORDERS_QUEUE_COLUMNS.map((c) => [c.key, c]));
     assert.equal(byKey.select.label, undefined, 'select is a control gutter');
-    for (const k of ['title', 'date', 'age', 'qty', 'condition', 'order', 'tracking']) {
+    for (const k of ['title', 'sla', 'qty', 'condition', 'order', 'tracking']) {
       assert.ok(byKey[k].type, `${k} has a data-type glyph`);
       assert.ok(byKey[k].label, `${k} has a header label`);
     }
-    assert.equal(byKey.date.label, 'Ship by');
+    assert.equal(byKey.sla.label, 'Ship by');
   });
 
   it('hideable columns map to their TableColumnConfig keys (order → orderid)', () => {
@@ -153,7 +153,7 @@ describe('sanitizeOrdersQueueColumnOrder — persisted order → safe full order
     ]);
     assert.deepEqual(out, [
       'select', 'title',
-      'tracking', 'order', 'condition', 'qty', 'age', 'date',
+      'sla', 'tracking', 'order', 'condition', 'qty',
     ]);
   });
 
@@ -166,7 +166,7 @@ describe('sanitizeOrdersQueueColumnOrder — persisted order → safe full order
     assert.ok(!(out as string[]).includes('status'));
     assert.ok(!(out as string[]).includes('platform'));
     assert.deepEqual(out, [
-      'select', 'title', 'date', 'age', 'qty', 'condition', 'order', 'tracking',
+      'select', 'title', 'sla', 'qty', 'condition', 'order', 'tracking',
     ]);
   });
 
@@ -175,7 +175,7 @@ describe('sanitizeOrdersQueueColumnOrder — persisted order → safe full order
       'date', 'age', 'qty', 'condition', 'order', 'tracking',
     ]);
     assert.deepEqual(out, [
-      'select', 'title', 'date', 'age', 'qty', 'condition', 'order', 'tracking',
+      'select', 'title', 'sla', 'qty', 'condition', 'order', 'tracking',
     ]);
   });
 
@@ -200,12 +200,12 @@ describe('sanitizeOrdersQueueColumnOrder — persisted order → safe full order
   it('orderedOrdersQueueColumns + ordersQueueGridTemplate respect the order', () => {
     const order = ['tracking', 'date', 'age', 'qty', 'condition', 'order'];
     const cols = orderedOrdersQueueColumns(order);
-    assert.equal(cols[2].key, 'tracking', 'first movable column is the persisted first key');
+    assert.equal(cols[2].key, 'sla', 'missing canonical sla inserts before persisted movable keys');
     const template = ordersQueueGridTemplate(order);
     assert.ok(template.startsWith('var(--cf-col-select, minmax(2rem, 2rem)) var(--cf-col-title,'));
     assert.ok(
-      template.indexOf('--cf-col-tracking') < template.indexOf('--cf-col-date'),
-      'tracking track renders before date',
+      template.indexOf('--cf-col-sla') < template.indexOf('--cf-col-tracking'),
+      'sla track renders before tracking',
     );
     // No-arg call still yields the canonical template.
     assert.equal(ordersQueueGridTemplate(), ordersQueueGridTemplate(CANONICAL));
@@ -216,17 +216,17 @@ describe('orders queue content mins + adaptive headers + viewport collapse', () 
   it('fact tracks are hard minmax floors; title is the only flex track', () => {
     const byKey = Object.fromEntries(ORDERS_QUEUE_COLUMNS.map((c) => [c.key, c]));
     assert.ok(byKey.title.width.includes('1fr'), 'title flexes leftover space');
-    for (const k of ['date', 'age', 'qty', 'condition', 'order', 'tracking'] as const) {
+    for (const k of ['sla', 'qty', 'condition', 'order', 'tracking'] as const) {
       assert.match(byKey[k].width, /^minmax\([\d.]+rem, [\d.]+rem\)$/, `${k} is content-hard`);
     }
   });
 
   it('header shows a visible label only when the track rem ≥ labelFitRem', () => {
     const byKey = Object.fromEntries(ORDERS_QUEUE_COLUMNS.map((c) => [c.key, c]));
-    assert.equal(ordersQueueColumnTrackRem(byKey.age), 3);
-    assert.equal(ordersQueueHeaderShowsLabel(byKey.age), false, 'Age is glyph-only');
-    assert.equal(ordersQueueHeaderShowsLabel(byKey.tracking), false, 'Tracking is glyph-only');
-    assert.equal(ordersQueueHeaderShowsLabel(byKey.date), true, 'By fits 4.5rem');
+    assert.equal(ordersQueueColumnTrackRem(byKey.qty), 3.5);
+    assert.equal(ordersQueueHeaderShowsLabel(byKey.qty), true, 'Qty fits its label floor');
+    assert.equal(ordersQueueHeaderShowsLabel(byKey.tracking), true, 'Tracking fits its label floor');
+    assert.equal(ordersQueueHeaderShowsLabel(byKey.sla), true, 'Ship by fits 5rem floor');
     assert.equal(ordersQueueHeaderShowsLabel(byKey.condition), true, 'Cond fits');
     assert.equal(ordersQueueHeaderShowsLabel(byKey.title), true, 'Product fits');
   });
@@ -237,11 +237,11 @@ describe('orders queue content mins + adaptive headers + viewport collapse', () 
     assert.ok(sum > 30, 'full grid needs a real horizontal min');
   });
 
-  it('viewport force-hide collapses By → Qty → Cond as width tightens', () => {
+  it('viewport force-hide collapses Qty → Cond as width tightens (sla stays visible)', () => {
     assert.deepEqual([...ordersQueueViewportForceHidden(800)], []);
-    assert.deepEqual([...ordersQueueViewportForceHidden(700)], ['date']);
-    assert.deepEqual([...ordersQueueViewportForceHidden(600)], ['date', 'qty']);
-    assert.deepEqual([...ordersQueueViewportForceHidden(500)].sort(), ['condition', 'date', 'qty']);
+    assert.deepEqual([...ordersQueueViewportForceHidden(700)], []);
+    assert.deepEqual([...ordersQueueViewportForceHidden(600)], ['qty']);
+    assert.deepEqual([...ordersQueueViewportForceHidden(500)].sort(), ['condition', 'qty']);
   });
 
   it('scrollMinContent row shell shares --cf-orders-grid-w (locked columns)', () => {

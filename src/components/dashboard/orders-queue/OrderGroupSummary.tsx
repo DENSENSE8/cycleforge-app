@@ -191,9 +191,14 @@ export function OrderGroupSummary({
             </span>
           </div>
         );
-      case 'date':
+      case 'sla':
+        // A fold shares one ship-by day (it is one order), so the date is real
+        // here — but its children can be individually late, so the summary
+        // shows no aggregate lateness. Expanding the fold is what surfaces
+        // per-line urgency; inventing a fold-level `Nd` would be a claim the
+        // data does not support.
         return (
-          <div data-col="date" className={dataCell(rule)}>
+          <div data-col="sla" className={dataCell(rule)}>
             <GridDateCellValue
               label={groupDateCell?.label}
               tooltip={groupDateCell?.tooltip}
@@ -201,16 +206,10 @@ export function OrderGroupSummary({
             />
           </div>
         );
-      case 'age':
-        // No single age for a fold.
-        return (
-          <div data-col="age" className={cn(dataCell(rule), 'text-role-caption text-text-faint')} aria-hidden>
-            —
-          </div>
-        );
       case 'qty':
+        // Left-aligned to match the leaf-row qty cell (see its comment there).
         return (
-          <div data-col="qty" className={cn(dataCell(rule), gridSkin && 'justify-end')}>
+          <div data-col="qty" className={dataCell(rule)}>
             {/* Matches the leaf-row qty / Date-cell type scale. */}
             <span className={cn('min-w-0 truncate tabular-nums text-role-caption', orderRowQtyTone(qtySum))}>
               {qtySum}

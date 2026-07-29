@@ -41,7 +41,7 @@ export function StatusPill({ status }: { status: string | null }) {
   const v = (status || 'UNKNOWN').toUpperCase();
   return (
     <span
-      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-role-micro font-bold uppercase tracking-wide ${unitStatusBadgeClass(v)}`}
+      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-role-micro uppercase tracking-wide ${unitStatusBadgeClass(v)}`}
     >
       {v}
     </span>
@@ -52,7 +52,7 @@ export function ConditionPill({ grade }: { grade: string | null }) {
   if (!grade) return null;
   return (
     <span
-      className={`inline-flex items-center rounded-full px-2 py-0.5 text-role-micro font-bold uppercase tracking-wide ${conditionBadgeTone(grade)}`}
+      className={`inline-flex items-center rounded-full px-2 py-0.5 text-role-micro uppercase tracking-wide ${conditionBadgeTone(grade)}`}
     >
       {prettyLabel(grade)}
     </span>
@@ -94,7 +94,7 @@ export function IdentityCard({ unit }: { unit: UnitDetail }) {
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           {/* PRIMARY — product title */}
-          <p className="text-lg font-bold leading-snug text-text-default break-words">
+          <p className="text-lg font-semibold leading-snug text-text-default break-words">
             {unit.product_title || unit.sku || unit.serial_number}
           </p>
           {/* SKU on top, serial below — both copy chips. */}
@@ -163,7 +163,7 @@ export function LocationCard({
           <MapPin className="h-4 w-4" />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="truncate font-mono text-base font-bold text-text-default">
+          <p className="truncate font-mono text-base font-semibold text-text-default">
             {stocked ? location : 'Not stocked'}
           </p>
           <p className="truncate text-role-micro font-medium text-text-soft">{sub}</p>
@@ -186,7 +186,7 @@ export function OrderCard({ allocation }: { allocation: Allocation | null }) {
           <ShoppingCart className="h-4 w-4" />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="truncate font-mono text-base font-bold text-text-default">
+          <p className="truncate font-mono text-base font-semibold text-text-default">
             {allocation?.order_id ?? 'Unallocated'}
           </p>
           <p className="truncate text-role-micro font-medium text-text-soft">
@@ -286,10 +286,10 @@ function TimelineRow({
       </span>
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-          <span className="text-role-caption font-bold text-text-default">{prettyLabel(event.event_type)}</span>
+          <span className="text-role-caption font-semibold text-text-default">{prettyLabel(event.event_type)}</span>
           <span className="text-role-micro text-text-faint">{timeAgo(event.occurred_at)}</span>
           {event.station ? (
-            <span className="rounded bg-surface-sunken px-1.5 py-0.5 text-role-micro font-bold uppercase tracking-wider text-text-soft">
+            <span className="rounded bg-surface-sunken px-1.5 py-0.5 text-role-micro uppercase tracking-wider text-text-soft">
               {event.station}
             </span>
           ) : null}
@@ -332,9 +332,9 @@ export function AllocationsCard({ rows }: { rows: Allocation[] }) {
         {rows.map((a) => (
           <li key={a.id} className="px-5 py-3">
             <div className="flex items-baseline justify-between gap-3">
-              <span className="font-mono text-role-caption font-bold text-text-default">{a.order_id}</span>
+              <span className="font-mono text-role-caption font-semibold text-text-default">{a.order_id}</span>
               <span
-                className={`rounded px-1.5 py-0.5 text-role-micro font-bold uppercase tracking-wider ${
+                className={`rounded px-1.5 py-0.5 text-role-micro font-semibold uppercase tracking-wider ${
                   a.state === 'RELEASED'
                     ? 'bg-surface-sunken text-text-soft'
                     : 'bg-emerald-100 text-emerald-700'
@@ -366,7 +366,7 @@ export function ConditionsCard({ rows }: { rows: ConditionRow[] }) {
       <ul className="border-t border-border-hairline divide-y divide-border-hairline">
         {rows.map((c) => (
           <li key={c.id} className="px-5 py-3">
-            <div className="flex items-center gap-2 font-mono text-role-caption font-bold text-text-default">
+            <div className="flex items-center gap-2 font-mono text-role-caption font-semibold text-text-default">
               {c.prev_grade ?? '—'}
               <ChevronRight className="h-3 w-3 text-text-faint" />
               {c.new_grade}
@@ -398,7 +398,7 @@ export function TsnLinksCard({ rows }: { rows: TsnLink[] }) {
         {rows.map((t) => (
           <li key={t.id} className="px-5 py-3">
             <div className="flex items-baseline justify-between gap-3">
-              <span className="text-role-caption font-bold text-text-default">
+              <span className="text-role-caption font-semibold text-text-default">
                 {t.station_source || '—'}
                 {t.serial_type ? ` · ${t.serial_type}` : ''}
               </span>

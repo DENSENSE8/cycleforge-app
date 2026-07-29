@@ -132,7 +132,7 @@ export function InventoryPulseSidebar() {
                                 <div className="flex w-full items-start justify-between gap-2">
                                     <span
                                         className={cn(
-                                            'min-w-0 flex-1 truncate text-role-data font-bold',
+                                            'min-w-0 flex-1 truncate text-role-data font-semibold',
                                             active ? 'text-blue-900' : 'text-text-default',
                                         )}
                                     >
@@ -140,7 +140,7 @@ export function InventoryPulseSidebar() {
                                     </span>
                                     <span
                                         className={cn(
-                                            'shrink-0 rounded px-1.5 py-0.5 text-role-eyebrow font-bold uppercase tracking-wide',
+                                            'shrink-0 rounded px-1.5 py-0.5 text-role-eyebrow uppercase tracking-wide',
                                             inventoryStatusBadgeClass(row.current_status),
                                         )}
                                     >

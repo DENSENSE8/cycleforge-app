@@ -61,7 +61,7 @@ export function InventoryDetailPanelShell({
             <header className="flex items-start justify-between gap-3 border-b border-border-soft px-5 py-4">
                 <div className="min-w-0 flex-1">
                     <p className={`${microBadge} text-blue-600`}>{eyebrow}</p>
-                    <h2 className="mt-1 truncate text-xl font-black uppercase tracking-tight text-text-default">
+                    <h2 className="mt-1 truncate text-xl font-semibold uppercase tracking-tight text-text-default">
                         {title}
                     </h2>
                     {subtitle ? (

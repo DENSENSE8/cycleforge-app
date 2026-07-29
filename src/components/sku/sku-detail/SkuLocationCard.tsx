@@ -30,7 +30,7 @@ export function SkuLocationCard({ c, data }: { c: SkuDetailController; data: Sku
               c.setEditingLocation(true);
               c.setSelectedLocation(data.locations[0] || '');
             }}
-            className="text-role-micro font-bold uppercase tracking-wider text-blue-600 hover:text-blue-800"
+            className="text-role-micro uppercase tracking-wider text-blue-600 hover:text-blue-800"
           >
             Change
           </Button>
@@ -42,7 +42,7 @@ export function SkuLocationCard({ c, data }: { c: SkuDetailController; data: Sku
           <select
             value={c.selectedLocation}
             onChange={(e) => c.setSelectedLocation(e.target.value)}
-            className="h-10 flex-1 rounded-lg border border-border-default px-3 text-sm font-bold focus:border-blue-500"
+            className="h-10 flex-1 rounded-lg border border-border-default px-3 text-sm font-semibold focus:border-blue-500"
           >
             <option value="">Select location...</option>
             {Object.entries(locationsByRoom).map(([room, locs]) => (
@@ -58,7 +58,7 @@ export function SkuLocationCard({ c, data }: { c: SkuDetailController; data: Sku
             value={c.selectedLocation}
             onChange={(e) => c.setSelectedLocation(e.target.value)}
             placeholder="Or type custom..."
-            className="h-10 w-40 rounded-lg border border-border-default px-3 text-sm font-bold focus:border-blue-500"
+            className="h-10 w-40 rounded-lg border border-border-default px-3 text-sm font-semibold focus:border-blue-500"
           />
           <button
             onClick={c.handleLocationSave}
@@ -79,13 +79,13 @@ export function SkuLocationCard({ c, data }: { c: SkuDetailController; data: Sku
         <div className="flex flex-wrap gap-2">
           {data.locations.length > 0 ? (
             data.locations.map((loc) => (
-              <span key={loc} className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">
+              <span key={loc} className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
                 <MapPin className="h-3 w-3" />
                 {loc}
               </span>
             ))
           ) : (
-            <span className="text-xs font-bold text-text-faint">No location set</span>
+            <span className="text-xs font-semibold text-text-faint">No location set</span>
           )}
         </div>
       )}

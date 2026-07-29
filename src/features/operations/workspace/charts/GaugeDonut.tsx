@@ -152,12 +152,12 @@ export function GaugeDonut({
           return (
             <>
               <g style={hovered ? { fill: hovered.color } : undefined} className={hovered ? undefined : 'text-text-default'}>
-                <text x={cx} y={cy - r * 0.18} textAnchor="middle" fill={hovered ? hovered.color : 'currentColor'} className="text-2xl font-black tabular-nums">
+                <text x={cx} y={cy - r * 0.18} textAnchor="middle" fill={hovered ? hovered.color : 'currentColor'} className="text-2xl font-semibold tabular-nums">
                   {bigText}
                 </text>
               </g>
               <g className="text-text-faint">
-                <text x={cx} y={cy + 4} textAnchor="middle" fill="currentColor" className="text-role-micro font-bold uppercase tracking-[0.14em]">
+                <text x={cx} y={cy + 4} textAnchor="middle" fill="currentColor" className="text-role-micro uppercase tracking-[0.14em]">
                   {subText}
                 </text>
               </g>

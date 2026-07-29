@@ -18,10 +18,16 @@
  * {@link useGridFields} — optimistic, cross-device, rolled back on failure.
  */
 
-import { useRef, useState, type KeyboardEvent } from 'react';
-import { Check, ChevronDown, ColumnsThree, RotateCcw } from '@/components/Icons';
+import { useRef, useState } from 'react';
+import { ChevronDown, ColumnsThree, RotateCcw } from '@/components/Icons';
 import { ToolbarButton } from '@/components/ui/ToolbarButton';
 import { Popover } from '@/design-system';
+import {
+  TOOLBAR_LISTBOX_PANEL_CLASS,
+  ToolbarListboxOption,
+  toolbarListboxOptionKeyDown,
+  toolbarListboxTriggerKeyDown,
+} from '@/design-system/primitives';
 import { useGridFields } from '@/design-system/components/grid';
 import type { LedgerGridColumnModel } from '@/design-system/components/grid';
 import type { TableId } from '@/lib/tables/table-columns';
@@ -47,26 +53,9 @@ export function GridFieldsMenu<C extends LedgerGridColumnModel>({
   // nothing rather than an empty popover.
   if (fields.length === 0) return null;
 
-  const handleButtonKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
-    if (['ArrowDown', 'ArrowUp', 'Enter', ' '].includes(event.key)) {
-      event.preventDefault();
-      setOpen(true);
-    }
-  };
-
-  const handleOptionKeyDown = (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
-    const count = fields.length;
-    if (event.key === 'Escape') {
-      event.preventDefault();
-      setOpen(false);
-      buttonRef.current?.focus();
-      return;
-    }
-    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
-      event.preventDefault();
-      const next = event.key === 'ArrowDown' ? (index + 1) % count : (index - 1 + count) % count;
-      listRef.current?.querySelector<HTMLButtonElement>(`[data-option-index="${next}"]`)?.focus();
-    }
+  const dismiss = () => {
+    setOpen(false);
+    buttonRef.current?.focus();
   };
 
   return (
@@ -80,13 +69,13 @@ export function GridFieldsMenu<C extends LedgerGridColumnModel>({
           dirtyCount > 0 ? `Fields — ${dirtyCount} changed from default` : 'Fields'
         }
         onClick={() => setOpen((o) => !o)}
-        onKeyDown={handleButtonKeyDown}
+        onKeyDown={(event) => toolbarListboxTriggerKeyDown(event, () => setOpen(true))}
         className="normal-case tracking-wide"
       >
         <ColumnsThree className="h-3.5 w-3.5 shrink-0" />
         <span className="whitespace-nowrap">Fields</span>
         {dirtyCount > 0 ? (
-          <span className="rounded bg-surface-sunken px-1 text-role-micro font-black tabular-nums text-text-muted">
+          <span className="rounded bg-surface-sunken px-1 text-role-micro tabular-nums text-text-muted">
             {dirtyCount}
           </span>
         ) : null}
@@ -105,50 +94,35 @@ export function GridFieldsMenu<C extends LedgerGridColumnModel>({
         padded={false}
         role="listbox"
         aria-label="Grid fields"
-        className="min-w-[11rem] rounded-lg p-0.5 shadow-md"
+        className={TOOLBAR_LISTBOX_PANEL_CLASS}
       >
         <ul ref={listRef} className="list-none">
           {fields.map((field, index) => (
             <li key={field.key} role="none">
-              {/* ds-raw-button: mirrors QueueSortSwitch's listbox option anatomy. */}
-              <button
-                type="button"
-                role="option"
-                aria-selected={field.visible}
-                data-option-index={index}
-                data-field-key={field.key}
+              <ToolbarListboxOption
+                index={index}
+                selected={field.visible}
+                dataAttrs={{ 'data-field-key': field.key }}
                 // Keep the menu OPEN across toggles — curating columns is a
                 // multi-step task; close-per-click would make it a chore.
                 onClick={() => setFieldVisible(field.key, !field.visible)}
-                onKeyDown={(event) => handleOptionKeyDown(event, index)}
-                className={cn(
-                  'ds-raw-button flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-role-micro font-semibold transition-colors',
-                  field.visible
-                    ? 'text-text-default hover:bg-surface-sunken'
-                    : 'text-text-muted hover:bg-surface-sunken hover:text-text-default',
-                )}
+                onKeyDown={(event) =>
+                  toolbarListboxOptionKeyDown(event, index, fields.length, listRef, dismiss)
+                }
               >
-                <Check
-                  className={cn(
-                    'h-3.5 w-3.5 shrink-0 text-blue-600',
-                    field.visible ? 'opacity-100' : 'opacity-0',
-                  )}
-                />
-                <span className="truncate">{field.label}</span>
-              </button>
+                {field.label}
+              </ToolbarListboxOption>
             </li>
           ))}
           {dirtyCount > 0 ? (
             <li role="none" className="mt-0.5 border-t border-border-soft pt-0.5">
-              {/* ds-raw-button: same listbox option anatomy, reset affordance. */}
-              <button
-                type="button"
+              <ToolbarListboxOption
+                index={fields.length}
+                icon={<RotateCcw className="h-3.5 w-3.5 shrink-0" />}
                 onClick={() => reset()}
-                className="ds-raw-button flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-role-micro font-semibold text-text-muted transition-colors hover:bg-surface-sunken hover:text-text-default"
               >
-                <RotateCcw className="h-3.5 w-3.5 shrink-0" />
-                <span>Reset to default</span>
-              </button>
+                Reset to default
+              </ToolbarListboxOption>
             </li>
           ) : null}
         </ul>

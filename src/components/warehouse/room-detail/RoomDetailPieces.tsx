@@ -16,7 +16,7 @@ export function EmptyState({ loading, roomCount, onCreate }: EmptyStateProps) {
         <LayoutDashboard className="h-7 w-7 text-blue-600" />
       </div>
       <div className="space-y-1">
-        <h2 className="text-lg font-bold tracking-tight text-text-default">
+        <h2 className="text-lg font-semibold tracking-tight text-text-default">
           {loading ? 'Loading rooms…' : 'Pick a room to edit'}
         </h2>
         <p className="max-w-[42ch] text-sm leading-snug text-text-soft">
@@ -85,7 +85,7 @@ export function Stat({
         {icon}
         {label}
       </div>
-      <p className={`mt-1 text-lg font-bold tabular-nums leading-none ${valueClass}`}>
+      <p className={`mt-1 text-lg font-semibold tabular-nums leading-none ${valueClass}`}>
         {value}
       </p>
     </div>

@@ -92,18 +92,18 @@ export function ScanResultRow({
         </div>
         <div className="min-w-0">
           {item.title ? (
-            <p className="truncate text-sm font-black tracking-tight text-blue-950">{item.title}</p>
+            <p className="truncate text-sm font-semibold tracking-tight text-blue-950">{item.title}</p>
           ) : (
-            <p className="truncate font-mono text-sm font-black tracking-tight text-blue-950">{item.primary}</p>
+            <p className="truncate font-mono text-sm font-semibold tracking-tight text-blue-950">{item.primary}</p>
           )}
           <div className="mt-0.5 flex items-center gap-2">
             {item.serial && (
-              <span className="max-w-[44%] truncate font-mono text-role-micro font-bold uppercase tracking-wide text-emerald-600">
+              <span className="max-w-[44%] truncate font-mono text-role-micro uppercase tracking-wide text-emerald-600">
                 {item.serial}
               </span>
             )}
             {item.subtitle && (
-              <span className="truncate font-mono text-role-micro font-bold uppercase tracking-wide text-blue-400">
+              <span className="truncate font-mono text-role-micro uppercase tracking-wide text-blue-400">
                 {item.subtitle}
               </span>
             )}
@@ -115,9 +115,9 @@ export function ScanResultRow({
               {item.statusLabel}
             </span>
             {item.meta && (
-              <span className="shrink-0 text-role-eyebrow font-bold uppercase tracking-wider text-blue-300">{item.meta}</span>
+              <span className="shrink-0 text-role-eyebrow uppercase tracking-wider text-blue-300">{item.meta}</span>
             )}
-            <span className="shrink-0 text-role-eyebrow font-bold uppercase text-blue-200">
+            <span className="shrink-0 text-role-eyebrow uppercase text-blue-200">
               {atLabel === '--:--' ? '' : atLabel}
             </span>
           </div>

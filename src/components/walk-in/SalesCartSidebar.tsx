@@ -68,11 +68,11 @@ export function SalesCartSidebar() {
           onSelect={() => selectLine(line.key)}
           meta={
             line.sku ? (
-              <span className="ml-auto min-w-0 truncate font-black text-text-faint">
+              <span className="ml-auto min-w-0 truncate font-semibold text-text-faint">
                 {line.sku}
               </span>
             ) : line.isManual ? (
-              <span className="ml-auto font-black text-text-faint">Manual</span>
+              <span className="ml-auto font-semibold text-text-faint">Manual</span>
             ) : null
           }
         />

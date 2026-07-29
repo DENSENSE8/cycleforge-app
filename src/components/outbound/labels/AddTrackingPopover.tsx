@@ -171,7 +171,7 @@ export function AddTrackingPopover({ record }: { record: ShippedOrder }) {
             <span className={`${sectionLabel} text-violet-700`}>Add Tracking</span>
             <div className="flex items-center gap-1">
               {pos && pos.total > 0 ? (
-                <span className="text-role-eyebrow font-bold tabular-nums text-text-faint">{pos.index} / {pos.total}</span>
+                <span className="text-role-eyebrow tabular-nums text-text-faint">{pos.index} / {pos.total}</span>
               ) : null}
               <Popover.Close className="rounded p-0.5 text-text-faint hover:bg-surface-sunken hover:text-text-muted" aria-label="Close">
                 <X className="h-3.5 w-3.5" />
@@ -180,7 +180,7 @@ export function AddTrackingPopover({ record }: { record: ShippedOrder }) {
           </div>
 
           <div className="mb-3 rounded-xl bg-surface-canvas px-3 py-2">
-            <p className="truncate text-role-caption font-bold text-text-default">{record.product_title || 'Unknown product'}</p>
+            <p className="truncate text-role-caption font-semibold text-text-default">{record.product_title || 'Unknown product'}</p>
             <p className="mt-0.5 text-role-eyebrow font-semibold uppercase tracking-wide text-text-faint">
               {[platformLabel, record.order_id ? `#${record.order_id}` : null, `${orderRowConditionLabel(record.condition)} · ×${qty}`]
                 .filter(Boolean)
@@ -237,7 +237,7 @@ export function AddTrackingPopover({ record }: { record: ShippedOrder }) {
           />
 
           {status === 'error' ? (
-            <p className="mb-2 text-role-eyebrow font-bold text-red-600">Save failed — try again.</p>
+            <p className="mb-2 text-role-eyebrow text-red-600">Save failed — try again.</p>
           ) : null}
 
           <div className="flex items-center gap-1.5">

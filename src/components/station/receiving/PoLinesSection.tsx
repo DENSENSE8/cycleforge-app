@@ -63,7 +63,7 @@ function PoLineRow({ line }: { line: ReceivingLine }) {
 
   // Row 1 — full-width product title. No truncation; wraps as needed.
   const titleNode = (
-    <p className="text-role-caption font-bold text-text-default leading-snug">
+    <p className="text-role-caption font-semibold text-text-default leading-snug">
       {line.item_name || line.sku || `Line #${line.id}`}
     </p>
   );
@@ -84,7 +84,7 @@ function PoLineRow({ line }: { line: ReceivingLine }) {
       <div className="mt-1.5 flex items-center justify-between gap-3">
         <div className="flex min-w-0 flex-wrap items-center gap-1.5">
           <span
-            className={`flex shrink-0 items-center gap-0.5 text-role-caption font-black tabular-nums ${
+            className={`flex shrink-0 items-center gap-0.5 text-role-caption font-semibold tabular-nums ${
               qtyOk ? 'text-emerald-600' : 'text-text-muted'
             }`}
           >
@@ -111,7 +111,7 @@ function PoLineRow({ line }: { line: ReceivingLine }) {
             </span>
           ) : null}
           {line.assigned_tech_name ? (
-            <span className="truncate text-role-eyebrow font-bold text-text-faint">
+            <span className="truncate text-role-eyebrow text-text-faint">
               → {line.assigned_tech_name}
             </span>
           ) : null}
@@ -178,7 +178,7 @@ export function PoLinesSection({ receivingId, trackingNumber }: PoLinesSectionPr
 
       {lines.length === 0 ? (
         <div className="text-center py-4 space-y-2">
-          <p className="text-role-micro font-bold text-text-faint">No items linked yet.</p>
+          <p className="text-role-micro text-text-faint">No items linked yet.</p>
           <Button
             variant="primary"
             size="sm"
@@ -189,7 +189,7 @@ export function PoLinesSection({ receivingId, trackingNumber }: PoLinesSectionPr
             Search Zoho PO
           </Button>
           {markResult === 'err' && (
-            <p className="text-role-eyebrow text-red-500 font-bold">Search failed — try again</p>
+            <p className="text-role-eyebrow text-red-500">Search failed — try again</p>
           )}
         </div>
       ) : (

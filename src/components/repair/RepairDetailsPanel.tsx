@@ -79,7 +79,7 @@ export function RepairDetailsPanel({
                           c.setIsEditingTicket(false);
                         }
                       }}
-                      className="w-full border-none bg-transparent p-0 text-sm font-black uppercase tracking-tight text-text-default focus:ring-0"
+                      className="w-full border-none bg-transparent p-0 text-sm font-semibold uppercase tracking-tight text-text-default focus:ring-0"
                       placeholder="TK Number"
                       disabled={c.isSavingTicket}
                     />

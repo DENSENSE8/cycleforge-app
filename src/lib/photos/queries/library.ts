@@ -1,4 +1,12 @@
 import pool from '@/lib/db';
+import {
+  RECEIVING_PHOTO_LEGACY_PACKAGE,
+  RECEIVING_PHOTO_PACKAGE,
+  RECEIVING_PHOTO_UNBOX_CARTON,
+  type ReceivingPhotoStage,
+} from '@/lib/receiving/photo-intent';
+import { stageFromPhotoType, type PhotoEvidenceStage } from '../stages';
+import { isPhotoLibraryStage } from '../library-filter-state';
 import { mapPhotoRow } from './list-for-entity';
 import { dayLabel, weekRange, weekRangeLabel } from '@/lib/photos/date-hierarchy';
 
@@ -26,6 +34,13 @@ export interface LibraryFilters {
   photoType?: string | null;
   /** Photo label key — keep only photos assigned this label (photo_labels.key). */
   labelKey?: string | null;
+  /**
+   * Unboxing evidence-stage sub-filter. Predicates mirror
+   * `receivingPhotoIntentSql` (src/lib/receiving/photo-intent.ts): package /
+   * legacy / untyped carton shots = arrival, `receiving_unbox_carton` = carton,
+   * RECEIVING_LINE-linked = item (entity wins — the identity law).
+   */
+  stage?: ReceivingPhotoStage | null;
   // ── Business-ID filters (each resolves through photo_entity_links; verified
   //    join paths in 2026-* migrations). All tenant-scoped via p.organization_id.
   /** Shipping tracking number (receiving.shipment_id / packer_logs.shipment_id → shipping_tracking_numbers). */
@@ -53,9 +68,9 @@ export interface LibraryFilters {
   poFinderKind?: PoFinderKind | null;
 }
 
-export type PoFinderKind = 'order' | 'tracking' | 'serial' | 'po' | 'ticket' | 'any';
+export type PoFinderKind = 'order' | 'tracking' | 'serial' | 'po' | 'sku' | 'ticket' | 'any';
 
-const PO_FINDER_KINDS: readonly PoFinderKind[] = ['order', 'tracking', 'serial', 'po', 'ticket', 'any'];
+const PO_FINDER_KINDS: readonly PoFinderKind[] = ['order', 'tracking', 'serial', 'po', 'sku', 'ticket', 'any'];
 
 export function isPoFinderKind(value: unknown): value is PoFinderKind {
   return typeof value === 'string' && (PO_FINDER_KINDS as readonly string[]).includes(value);
@@ -95,6 +110,7 @@ export function libraryFiltersFromSearchParams(
     receivingSourceExclude: params.get('receivingSourceExclude'),
     staffId: params.get('staffId') ? Number(params.get('staffId')) : null,
     photoType: params.get('photoType'),
+    stage: isPhotoLibraryStage(params.get('stage')) ? (params.get('stage') as ReceivingPhotoStage) : null,
     labelKey: params.get('label'),
     hasAnalysis: hasAnalysisRaw === 'true' ? true : hasAnalysisRaw === 'false' ? false : null,
     damageDetected: damageRaw === 'true' ? true : damageRaw === 'false' ? false : null,
@@ -155,6 +171,37 @@ function trackingExists(params: unknown[], tracking: string): string {
 }
 
 /**
+ * Photos carrying the given SKU through a direct link path — a catalog `SKU`
+ * link, a serialized unit whose sku / catalog row matches, or a receiving line
+ * whose sku / catalog row matches (item evidence primary-links the LINE; the
+ * SKU string lives on it). `v` is an already-pushed ILIKE param placeholder.
+ * SoT rule respected: the typed value matches each scheme's own column —
+ * `items` and `sku_catalog` numbering schemes are never string-joined.
+ */
+function skuLinkedExistsSql(v: string): string {
+  return `EXISTS (
+        SELECT 1 FROM photo_entity_links l
+         WHERE l.photo_id = p.id
+           AND l.organization_id = p.organization_id
+           AND (
+             (l.entity_type = 'SKU' AND EXISTS (
+                SELECT 1 FROM sku_catalog sc
+                 WHERE sc.id = l.entity_id AND sc.sku ILIKE ${v}))
+          OR (l.entity_type = 'SERIAL_UNIT' AND EXISTS (
+                SELECT 1 FROM serial_units su
+                 LEFT JOIN sku_catalog sc ON sc.id = su.sku_catalog_id
+                 WHERE su.id = l.entity_id
+                   AND (su.sku ILIKE ${v} OR sc.sku ILIKE ${v})))
+          OR (l.entity_type = 'RECEIVING_LINE' AND EXISTS (
+                SELECT 1 FROM receiving_line rl
+                 LEFT JOIN sku_catalog sc ON sc.id = rl.sku_catalog_id
+                 WHERE rl.id = l.entity_id
+                   AND (rl.sku ILIKE ${v} OR sc.sku ILIKE ${v})))
+           )
+      )`;
+}
+
+/**
  * Unified PO-photo finder. Resolves a typed identifier of `kind` to the set of
  * `receiving_carton` cartons it belongs to, then matches photos linked to ANY of those
  * cartons (directly as RECEIVING, or via RECEIVING_LINE). The end goal: typing
@@ -205,6 +252,14 @@ function cartonResolverSql(kind: Exclude<PoFinderKind, 'any'>, v: string): strin
                  ON rz.receiving_line_id = rl.id AND rz.organization_id = rl.organization_id
          WHERE rl.organization_id = $1
            AND (rl.source_order_id ILIKE ${v} OR rz.zoho_purchaseorder_number ILIKE ${v})`;
+    case 'sku':
+      // Cartons containing a line with this SKU (line string or catalog row) —
+      // "show me every unboxing photo of the boxes this SKU arrived in."
+      return `
+        SELECT rl.receiving_id FROM receiving_line rl
+          LEFT JOIN sku_catalog sc ON sc.id = rl.sku_catalog_id
+         WHERE rl.organization_id = $1
+           AND (rl.sku ILIKE ${v} OR sc.sku ILIKE ${v})`;
     case 'po':
     default:
       return `
@@ -407,17 +462,23 @@ function poFinderExists(params: unknown[], kind: PoFinderKind, rawValue: string)
   if (kind === 'po') {
     return `(${poRefMatch} OR ${cartonExistsSql(cartonResolverSql('po', v))})`;
   }
+  if (kind === 'sku') {
+    // SKU scope: the cartons the SKU arrived in (unboxing evidence) plus every
+    // photo linked to the SKU directly — catalog links, its serialized units
+    // (testing / packing shots), and its receiving lines (item shots).
+    return `(${cartonExistsSql(cartonResolverSql('sku', v))} OR ${skuLinkedExistsSql(v)})`;
+  }
   if (kind === 'any') {
-    // The smart "All" scope: serial OR tracking OR order OR PO OR Zendesk ticket,
-    // plus free-text/OCR (po_ref + photo_analysis).
-    const cartons = (['serial', 'tracking', 'order', 'po'] as const)
+    // The smart "All" scope: serial OR tracking OR order OR PO OR SKU OR
+    // Zendesk ticket, plus free-text/OCR (po_ref + photo_analysis).
+    const cartons = (['serial', 'tracking', 'order', 'po', 'sku'] as const)
       .map((k) => cartonExistsSql(cartonResolverSql(k, v)))
       .join(' OR ');
     const ocrMatch = `EXISTS (
         SELECT 1 FROM photo_analysis a
          WHERE a.photo_id = p.id AND a.metadata::text ILIKE ${v})`;
     const ticketMatch = ticketFinderExists(params, rawValue);
-    return `(${poRefMatch} OR ${ocrMatch} OR ${ticketMatch} OR ${cartons})`;
+    return `(${poRefMatch} OR ${ocrMatch} OR ${ticketMatch} OR ${skuLinkedExistsSql(v)} OR ${cartons})`;
   }
   return cartonExistsSql(cartonResolverSql(kind, v));
 }
@@ -529,24 +590,12 @@ function buildLibraryWhere(filters: LibraryFilters): { clauses: string[]; params
       )`);
   }
   if (filters.sku) {
-    // SoT rule: never join the two SKU schemes on the string. Match the typed
-    // SKU against sku_catalog.sku (UNIQUE) ONLY, then resolve photos by catalog
-    // id — direct SKU links and via the serialized unit's sku_catalog_id.
+    // SoT rule: never join the two SKU schemes on the string. The typed SKU is
+    // matched against each scheme's OWN column (sku_catalog.sku, or the raw
+    // line/unit sku string) and photos resolve by id — catalog `SKU` links,
+    // serialized units, and receiving lines (item evidence lives on the line).
     params.push(filters.sku);
-    const sku = `$${params.length}`;
-    clauses.push(`
-      EXISTS (
-        SELECT 1 FROM photo_entity_links l
-         JOIN sku_catalog sc ON sc.sku ILIKE ${sku}
-         WHERE l.photo_id = p.id
-           AND l.organization_id = p.organization_id
-           AND (
-             (l.entity_type = 'SKU' AND l.entity_id = sc.id)
-             OR (l.entity_type = 'SERIAL_UNIT' AND EXISTS (
-                   SELECT 1 FROM serial_units su
-                    WHERE su.id = l.entity_id AND su.sku_catalog_id = sc.id))
-           )
-      )`);
+    clauses.push(skuLinkedExistsSql(`$${params.length}`));
   }
   if (filters.ticketId) {
     const digits = String(filters.ticketId).replace(/^#/, '').trim();
@@ -589,6 +638,30 @@ function buildLibraryWhere(filters: LibraryFilters): { clauses: string[]; params
     const kind = isPoFinderKind(filters.poFinderKind) ? filters.poFinderKind : 'po';
     clauses.push(poFinderExists(params, kind, filters.poFinder));
   }
+  // Unboxing evidence-stage sub-filter — predicates mirror
+  // `receivingPhotoIntentSql` (src/lib/receiving/photo-intent.ts) in the
+  // library's EXISTS-on-links shape. Package excludes the mis-stamped
+  // `receiving_item`-on-carton rows; item is entity-only (identity law).
+  if (filters.stage) {
+    const receivingLinkExists = (entityType: 'RECEIVING' | 'RECEIVING_LINE') => `
+      EXISTS (
+        SELECT 1 FROM photo_entity_links l
+         WHERE l.photo_id = p.id
+           AND l.organization_id = p.organization_id
+           AND l.entity_type = '${entityType}'
+      )`;
+    if (filters.stage === 'unbox_item') {
+      clauses.push(receivingLinkExists('RECEIVING_LINE'));
+    } else if (filters.stage === 'unbox_carton') {
+      params.push(RECEIVING_PHOTO_UNBOX_CARTON);
+      clauses.push(`(${receivingLinkExists('RECEIVING')} AND p.photo_type = $${params.length})`);
+    } else {
+      params.push([RECEIVING_PHOTO_PACKAGE, RECEIVING_PHOTO_LEGACY_PACKAGE, '']);
+      clauses.push(
+        `(${receivingLinkExists('RECEIVING')} AND COALESCE(p.photo_type, '') = ANY($${params.length}::text[]))`,
+      );
+    }
+  }
   // Local pickups create a `receiving` row with source='local_pickup'; scope to
   // (or exclude) those to split the RECEIVING entity into the two sidebar folders.
   if (filters.receivingSource) {
@@ -627,6 +700,27 @@ function buildLibraryWhere(filters: LibraryFilters): { clauses: string[]; params
   return { clauses, params };
 }
 
+/**
+ * Evidence stage of a library row, derived in TS from its linked entity types ×
+ * photo_type through the stage SoT (`stageFromPhotoType`) — never a SQL-side
+ * label map. Entity precedence follows the identity law: a RECEIVING_LINE link
+ * makes it item evidence even when a carton link rides along; unit / packer
+ * links resolve the testing / packing stages. First resolvable stage wins.
+ */
+const STAGE_ENTITY_PRECEDENCE = ['RECEIVING_LINE', 'RECEIVING', 'SERIAL_UNIT', 'PACKER_LOG'] as const;
+
+function deriveLibraryStage(
+  linkedEntityTypes: readonly string[],
+  photoType: string | null,
+): PhotoEvidenceStage | null {
+  for (const entityType of STAGE_ENTITY_PRECEDENCE) {
+    if (!linkedEntityTypes.includes(entityType)) continue;
+    const stage = stageFromPhotoType(entityType, photoType);
+    if (stage) return stage;
+  }
+  return null;
+}
+
 export async function listPhotoLibrary(filters: LibraryFilters) {
   const limit = Math.min(Math.max(filters.limit ?? 48, 1), 100);
   const { clauses, params } = buildLibraryWhere(filters);
@@ -662,6 +756,36 @@ export async function listPhotoLibrary(filters: LibraryFilters) {
                JOIN photo_labels lb ON lb.id = la.label_id
               WHERE la.photo_id = p.id
                 AND la.organization_id = p.organization_id) AS labels,
+            -- ── PO · SKU · serial identity (display join only — never writes a
+            --    second link; the dual-link decision is Ask-first). Line SKU wins
+            --    over unit SKU: item evidence primary-links the RECEIVING_LINE.
+            (SELECT COALESCE(rl.sku, sc.sku)
+               FROM photo_entity_links l
+               JOIN receiving_line rl ON rl.id = l.entity_id
+               LEFT JOIN sku_catalog sc ON sc.id = rl.sku_catalog_id
+              WHERE l.photo_id = p.id
+                AND l.organization_id = p.organization_id
+                AND l.entity_type = 'RECEIVING_LINE'
+              ORDER BY l.id
+              LIMIT 1) AS line_sku,
+            (SELECT json_build_object(
+                      'sku', COALESCE(su.sku, sc.sku),
+                      'serial', su.serial_number,
+                      'unitUid', su.unit_uid)
+               FROM photo_entity_links l
+               JOIN serial_units su ON su.id = l.entity_id
+               LEFT JOIN sku_catalog sc ON sc.id = su.sku_catalog_id
+              WHERE l.photo_id = p.id
+                AND l.organization_id = p.organization_id
+                AND l.entity_type = 'SERIAL_UNIT'
+              ORDER BY l.id
+              LIMIT 1) AS unit_identity,
+            -- Every linked entity type — the TS mapper derives the evidence
+            -- stage from (entity_type × photo_type) via stageFromPhotoType.
+            (SELECT array_agg(DISTINCT l.entity_type)
+               FROM photo_entity_links l
+              WHERE l.photo_id = p.id
+                AND l.organization_id = p.organization_id) AS linked_entity_types,
             -- Derived source scope (mirrors entityTypeForSourceScope + the
             -- receiving.source split) so the sidebar can highlight the image-type
             -- a folder's photos belong to even under the "All photos" scope.
@@ -703,6 +827,11 @@ export async function listPhotoLibrary(filters: LibraryFilters) {
       ? (labelsRaw as Array<{ id: number; key: string; label: string; color: string | null; icon: string | null }>)
       : [];
     const sourceScope = (row as { source_scope?: string | null }).source_scope ?? null;
+    const lineSku = (row as { line_sku?: string | null }).line_sku ?? null;
+    const unitIdentity =
+      (row as { unit_identity?: { sku?: string | null; serial?: string | null; unitUid?: string | null } | null })
+        .unit_identity ?? null;
+    const linkedEntityTypes = (row as { linked_entity_types?: string[] | null }).linked_entity_types ?? [];
     return {
       ...mapPhotoRow(row as Parameters<typeof mapPhotoRow>[0]),
       takenByStaffName: staffName ?? null,
@@ -711,6 +840,10 @@ export async function listPhotoLibrary(filters: LibraryFilters) {
       ticketId: ticketId != null && Number.isFinite(ticketId) ? ticketId : null,
       labels,
       sourceScope,
+      sku: lineSku ?? unitIdentity?.sku ?? null,
+      serialNumber: unitIdentity?.serial ?? null,
+      unitUid: unitIdentity?.unitUid ?? null,
+      stage: deriveLibraryStage(linkedEntityTypes, (row as { photo_type?: string | null }).photo_type ?? null),
     };
   });
   const hasMore = rows.length > limit;

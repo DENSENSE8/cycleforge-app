@@ -63,7 +63,7 @@ export function OutOfStockField({
           </span>
           <div className="flex items-center gap-2">
             <span
-              className={`text-role-eyebrow font-bold uppercase tracking-wide text-emerald-500 transition-opacity duration-300 ${
+              className={`text-role-eyebrow font-semibold uppercase tracking-wide text-emerald-500 transition-opacity duration-300 ${
                 showSaved ? 'opacity-100' : 'opacity-0'
               }`}
             >

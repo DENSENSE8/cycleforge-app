@@ -24,12 +24,14 @@ import { AppearanceApplier } from "../components/settings/AppearanceApplier";
 import { ReceivingZohoSyncToaster } from "../components/receiving/ReceivingZohoSyncToaster";
 import { UserIssueResolvedToaster } from "../components/providers/UserIssueResolvedToaster";
 import { getInitialAuthUser } from "@/lib/auth/server-session";
+import { headers } from "next/headers";
+import { isKioskHost } from "@/lib/tenancy/kiosk-host";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { PaintTimingHud } from "@/components/dev/PaintTimingHud";
 import { PostHogProvider } from "../components/analytics/PostHogProvider";
 import { PRODUCT_NAME } from "@/lib/branding/constants";
-import { ibmPlexMono, ibmPlexSans } from "@/lib/fonts";
+import { ibmPlexMono, ibmPlexSans, ibmPlexSansCondensed } from "@/lib/fonts";
 import { appChromeClass } from "@/design-system/tokens/app-surface";
 
 export default async function RootLayout({
@@ -43,6 +45,13 @@ export default async function RootLayout({
     // by each route as they adopt it — see docs/cycle-forge-branding-spec.md §3).
     const documentTitle = initialUser ? initialUser.organizationName : PRODUCT_NAME;
 
+    // A tenant kiosk host ({slug}.kiosk.app…) only ever serves `/` or `/kiosk`
+    // (proxy.ts 404s everything else) and never carries a staff session — the
+    // device is authed via withKioskAuth, not a cookie. Resolved server-side
+    // from the real Host header so client providers agree with SSR on first
+    // paint (no window-based host sniff, no hydration mismatch).
+    const kioskHost = isKioskHost((await headers()).get('host'));
+
     // suppressHydrationWarning on <html>: THEME_BOOT_SCRIPT (in <head> below)
     // stamps data-theme / data-color-scheme on <html> before hydration to avoid a
     // theme flash, so the SSR markup (no attrs) intentionally differs from the
@@ -50,7 +59,7 @@ export default async function RootLayout({
     return (
         <html
             lang="en"
-            className={`${ibmPlexSans.variable} ${ibmPlexMono.variable} h-full overflow-hidden`}
+            className={`${ibmPlexSans.variable} ${ibmPlexSansCondensed.variable} ${ibmPlexMono.variable} h-full overflow-hidden`}
             suppressHydrationWarning
         >
             <head>
@@ -91,7 +100,7 @@ export default async function RootLayout({
                     <OfflineBanner />
                     <PostHogProvider>
                     <Providers>
-                        <AuthProvider initial={initialUser}>
+                        <AuthProvider initial={initialUser} kioskHost={kioskHost}>
                             <AuthenticatedAblyProvider>
                                 <ActivityInboxProvider>
                                 <StaffColorsProvider>
@@ -100,7 +109,7 @@ export default async function RootLayout({
                                         <FbaWorkspaceProvider>
                                             <StudioWorkspaceProvider>
                                                 <AssistantProvider>
-                                                    <ResponsiveLayout>
+                                                    <ResponsiveLayout kioskHost={kioskHost}>
                                                         {children}
                                                     </ResponsiveLayout>
                                                 </AssistantProvider>

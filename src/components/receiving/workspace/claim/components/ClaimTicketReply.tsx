@@ -70,7 +70,7 @@ export function ClaimTicketReply({
               size="sm"
               onClick={onAttachPhotos}
               icon={<ImageIcon className="h-3.5 w-3.5" />}
-              className="gap-1.5 px-2 text-role-caption font-bold"
+              className="gap-1.5 px-2 text-role-caption font-semibold"
             >
               Photos
             </Button>

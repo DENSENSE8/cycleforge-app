@@ -23,6 +23,13 @@ const TO_RECEIVING: ReassignReceivingPhotoScope = {
   receivingLineId: null,
 };
 
+const TO_LINE: ReassignReceivingPhotoScope = {
+  entityType: 'RECEIVING_LINE',
+  entityId: 77,
+  receivingId: 20,
+  receivingLineId: 77,
+};
+
 function fakes(opts: {
   current?: ReassignReceivingPhotoScope | null;
   target?: ReassignReceivingPhotoScope | null;
@@ -33,6 +40,7 @@ function fakes(opts: {
     targetEntityType: 'RECEIVING' | 'RECEIVING_LINE';
     targetEntityId: number;
     poRef: string | null;
+    photoType: string | null;
   }> = [];
 
   const deps: ReassignReceivingPhotoDeps = {
@@ -69,6 +77,48 @@ test('reassignReceivingPhoto moves primary link to another receiving carton', as
   assert.equal(updates[0].targetEntityType, 'RECEIVING');
   assert.equal(updates[0].targetEntityId, 20);
   assert.equal(updates[0].poRef, 'PO_20');
+  // Carton → carton keeps the current stamp.
+  assert.equal(updates[0].photoType, null);
+});
+
+test('reassignReceivingPhoto remaps photo_type when a carton photo moves onto a line', async () => {
+  const { deps, updates } = fakes({
+    current: { ...FROM_RECEIVING, photoType: 'receiving_package' },
+    target: TO_LINE,
+  });
+  await reassignReceivingPhoto(
+    {
+      organizationId: ORG,
+      photoId: 99,
+      targetEntityType: 'RECEIVING_LINE',
+      targetEntityId: 77,
+    },
+    deps,
+  );
+
+  assert.equal(updates.length, 1);
+  assert.equal(updates[0].targetEntityType, 'RECEIVING_LINE');
+  assert.equal(updates[0].photoType, 'receiving_item');
+});
+
+test('reassignReceivingPhoto remaps a line item photo back to package on carton moves', async () => {
+  const { deps, updates } = fakes({
+    current: { ...TO_LINE, photoType: 'receiving_item' },
+    target: TO_RECEIVING,
+  });
+  await reassignReceivingPhoto(
+    {
+      organizationId: ORG,
+      photoId: 99,
+      targetEntityType: 'RECEIVING',
+      targetEntityId: 20,
+    },
+    deps,
+  );
+
+  assert.equal(updates.length, 1);
+  assert.equal(updates[0].targetEntityType, 'RECEIVING');
+  assert.equal(updates[0].photoType, 'receiving_package');
 });
 
 test('reassignReceivingPhoto is idempotent when target matches current link', async () => {

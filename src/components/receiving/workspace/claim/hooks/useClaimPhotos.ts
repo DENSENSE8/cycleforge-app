@@ -16,12 +16,21 @@ export interface UseClaimPhotos {
 interface ApiPhoto {
   id: number;
   photoUrl?: string;
+  /** Line-scoped item evidence carries its receiving_line id; carton shots are null. */
+  receivingLineId?: number | null;
+  /** The list SELECT aliases `photo_type` as `caption` — this IS the stage type. */
+  caption?: string | null;
 }
 
 function mapPhotos(data: { photos?: ApiPhoto[] } | null): ClaimPhoto[] {
   return (data?.photos ?? [])
     .filter((p) => !!p.photoUrl?.trim())
-    .map((p) => ({ id: p.id, url: normalizePhotoDisplayUrl(p.photoUrl as string) }));
+    .map((p) => ({
+      id: p.id,
+      url: normalizePhotoDisplayUrl(p.photoUrl as string),
+      receivingLineId: p.receivingLineId ?? null,
+      photoType: p.caption ?? null,
+    }));
 }
 
 /**

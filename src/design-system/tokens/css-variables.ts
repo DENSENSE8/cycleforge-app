@@ -1,7 +1,6 @@
 import { motionDurations, motionEasings } from '../foundations/motion';
 import { borderStyles, borderWidths } from './borders';
 import { baseColors, semanticColors } from './colors';
-import { radii } from './radii';
 import { shadows } from './shadows';
 import { fontFamilies } from './typography/families';
 import { fontSizes, letterSpacings, lineHeights } from './typography/sizes';
@@ -25,7 +24,10 @@ const designSystemTokenTree = {
   // spacing intentionally absent: the density-aware scale lives in
   // spacing.mjs and is consumed by Tailwind directly (theme.extend.spacing);
   // the old --ds-spacing-* var emission had zero readers.
-  radius: radii,
+  //
+  // radius intentionally absent for the SAME reason: the `rounded-*` classes
+  // come from Tailwind's own scale, so the --ds-radius-* vars this used to emit
+  // had zero readers too. The typed scale + role layer live in tokens/radius.ts.
   border: {
     width: borderWidths,
     style: borderStyles,

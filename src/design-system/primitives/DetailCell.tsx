@@ -16,8 +16,8 @@ export function DetailCell({ label, children, className = '' }: DetailCellProps)
       <div className="mb-1 text-text-soft">{label}</div>
       <div className={`${
         isMobile
-          ? 'text-role-caption font-bold text-text-default normal-case tracking-normal'
-          : 'text-role-caption font-bold text-text-default normal-case tracking-normal'
+          ? 'text-role-caption font-semibold text-text-default normal-case tracking-normal'
+          : 'text-role-caption font-semibold text-text-default normal-case tracking-normal'
       }`}>
         {children}
       </div>

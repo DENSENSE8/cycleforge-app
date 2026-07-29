@@ -25,7 +25,7 @@ function BinRedirectInner() {
   }, [barcode, router, searchParams]);
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-surface-canvas text-sm font-bold text-text-soft">
+    <div className="flex min-h-screen items-center justify-center bg-surface-canvas text-sm font-semibold text-text-soft">
       Opening bin…
     </div>
   );

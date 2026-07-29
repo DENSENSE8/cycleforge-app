@@ -57,7 +57,7 @@ export function WorkOrderCalendar() {
     <div className="flex flex-col gap-4">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <h1 className="text-lg font-black tracking-tight text-text-default">{monthLabel}</h1>
+          <h1 className="text-lg font-semibold tracking-tight text-text-default">{monthLabel}</h1>
           {loading ? <Spinner className="h-4 w-4" /> : null}
         </div>
         <div className="flex items-center gap-2">
@@ -105,7 +105,7 @@ export function WorkOrderCalendar() {
             >
               <div className="mb-1 flex items-center justify-between">
                 <span
-                  className={`inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-role-caption font-bold ${
+                  className={`inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-role-caption font-semibold ${
                     isToday
                       ? 'bg-blue-600 text-white'
                       : inMonth

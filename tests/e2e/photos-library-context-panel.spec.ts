@@ -77,6 +77,39 @@ test.describe('Photo library · viewer context panel', () => {
     }
   });
 
+  test('the panel surfaces SKU and evidence-stage identity when the row resolves them', async ({ page }) => {
+    const pageErrors: string[] = [];
+    page.on('pageerror', (err) => pageErrors.push(err.message));
+
+    await page.goto('/ops/photos?view=grid-sm');
+    await expect(page.getByText(/photos? in view/i)).toBeVisible();
+
+    const firstTile = page.getByTestId('photo-tile').first();
+    if (!(await firstTile.count())) test.skip(true, 'no photos seeded in this environment');
+
+    await firstTile.click();
+    await expect(page.getByTestId('photo-lightbox')).toBeVisible();
+    await page.getByRole('button', { name: /show photo details/i }).click();
+    await expect(page.getByTestId('photo-context-panel')).toBeVisible();
+
+    // SKU · serial · stage are display joins resolved by the library query —
+    // present only when the photo links to a receiving line / serialized unit.
+    // Assert defensively: when rendered, the values must be non-empty and the
+    // stage chip must speak the stage SoT vocabulary (photoStageLabel).
+    const skuField = page.getByTestId('photo-context-sku');
+    if (await skuField.count()) {
+      await expect(skuField).not.toBeEmpty();
+    }
+    const stageChip = page.getByTestId('photo-context-stage');
+    if (await stageChip.count()) {
+      await expect(stageChip).toHaveText(
+        /^(Arrival · package|Unbox · carton|Unbox · item|Testing|Packing)$/,
+      );
+    }
+
+    expect(pageErrors, `Uncaught page errors: ${pageErrors.join(' | ')}`).toHaveLength(0);
+  });
+
   test('grid views render a flat contact sheet and the masonry view without crashing', async ({ page }) => {
     const pageErrors: string[] = [];
     page.on('pageerror', (err) => pageErrors.push(err.message));

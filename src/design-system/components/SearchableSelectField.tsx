@@ -108,7 +108,7 @@ export function SearchableSelectField<T = unknown>({
         aria-label={ariaLabel ?? placeholder}
         onClick={() => setOpen((o) => !o)}
         className={cn(
-          'inline-flex h-8 w-full items-center gap-2 rounded-lg border bg-surface-card px-2.5 text-left text-role-micro font-bold transition-colors focus:outline-none focus:ring-2 disabled:cursor-not-allowed disabled:opacity-50',
+          'inline-flex h-8 w-full items-center gap-2 rounded-lg border bg-surface-card px-2.5 text-left text-role-micro transition-colors focus:outline-none focus:ring-2 disabled:cursor-not-allowed disabled:opacity-50',
           TONE_TRIGGER[tone],
           selected ? 'text-text-default' : 'text-text-faint',
           className,
@@ -138,13 +138,13 @@ export function SearchableSelectField<T = unknown>({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={searchPlaceholder}
-            className="w-full bg-transparent text-role-micro font-bold text-text-default outline-none placeholder:text-text-faint"
+            className="w-full bg-transparent text-role-micro text-text-default outline-none placeholder:text-text-faint"
           />
         </div>
 
         <div className="max-h-56 overflow-y-auto py-1">
           {filtered.length === 0 ? (
-            <p className="px-3 py-4 text-center text-role-eyebrow font-bold uppercase tracking-wider text-text-faint">
+            <p className="px-3 py-4 text-center text-role-eyebrow uppercase tracking-wider text-text-faint">
               {emptyMessage}
             </p>
           ) : (
@@ -170,9 +170,9 @@ export function SearchableSelectField<T = unknown>({
                     renderOption(opt, { active })
                   ) : (
                     <>
-                      <span className="min-w-0 flex-1 truncate text-role-micro font-bold">{opt.label}</span>
+                      <span className="min-w-0 flex-1 truncate text-role-micro">{opt.label}</span>
                       {opt.meta ? (
-                        <span className="shrink-0 text-role-eyebrow font-bold uppercase tracking-wide text-text-faint">
+                        <span className="shrink-0 text-role-eyebrow uppercase tracking-wide text-text-faint">
                           {opt.meta}
                         </span>
                       ) : null}

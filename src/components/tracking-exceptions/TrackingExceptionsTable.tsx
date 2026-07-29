@@ -207,13 +207,13 @@ export function TrackingExceptionsTable() {
         >
           {loading ? 'Loading…' : 'Reload'}
         </Button>
-        <span className="text-role-micro font-bold uppercase tracking-widest text-text-soft">
+        <span className="text-role-micro uppercase tracking-widest text-text-soft">
           {total} {total === 1 ? 'row' : 'rows'}
         </span>
       </div>
 
       {error && (
-        <div className="border-b border-red-200 bg-red-50 px-6 py-2 text-role-caption font-bold text-red-700">
+        <div className="border-b border-red-200 bg-red-50 px-6 py-2 text-role-caption font-semibold text-red-700">
           {error}
         </div>
       )}
@@ -222,7 +222,7 @@ export function TrackingExceptionsTable() {
       <div className="min-h-0 flex-1 overflow-auto">
         {!loading && !hasRows && (
           <div className="flex flex-col items-center justify-center px-6 py-24 text-center">
-            <p className="text-sm font-bold text-text-muted">No exceptions in this view.</p>
+            <p className="text-sm font-semibold text-text-muted">No exceptions in this view.</p>
             <p className="mt-1 text-role-caption font-semibold text-text-soft">
               Unmatched receiving scans are logged here automatically.
             </p>
@@ -393,7 +393,7 @@ function TrackingExceptionEditDialog({ row, onClose, onSave, onDelete }: EditDia
     >
       <DialogContent hideClose className="max-w-lg gap-0 overflow-hidden p-0 sm:rounded-xl">
         <DialogHeader className="space-y-0 border-b border-border-soft px-5 py-3">
-          <DialogTitle className="text-role-caption font-black uppercase tracking-widest text-text-default">
+          <DialogTitle className="text-role-caption font-semibold uppercase tracking-widest text-text-default">
             Edit exception #{row.id}
           </DialogTitle>
         </DialogHeader>
@@ -428,7 +428,7 @@ function TrackingExceptionEditDialog({ row, onClose, onSave, onDelete }: EditDia
             <select
               value={status}
               onChange={(e) => setStatus(e.target.value as TrackingExceptionRow['status'])}
-              className="mt-1 w-full rounded-md border border-border-soft bg-surface-card px-2 py-1.5 text-role-caption font-bold text-text-default focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500/10"
+              className="mt-1 w-full rounded-md border border-border-soft bg-surface-card px-2 py-1.5 text-role-caption font-semibold text-text-default focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500/10"
             >
               <option value="open">Open</option>
               <option value="resolved">Resolved</option>
@@ -448,7 +448,7 @@ function TrackingExceptionEditDialog({ row, onClose, onSave, onDelete }: EditDia
           </label>
 
           {err && (
-            <p className="rounded-md bg-red-50 px-3 py-2 text-role-caption font-bold text-red-700">{err}</p>
+            <p className="rounded-md bg-red-50 px-3 py-2 text-role-caption font-semibold text-red-700">{err}</p>
           )}
         </div>
 
@@ -465,7 +465,7 @@ function TrackingExceptionEditDialog({ row, onClose, onSave, onDelete }: EditDia
             </button>
           ) : (
             <div className="flex items-center gap-2">
-              <span className="text-role-micro font-bold uppercase tracking-widest text-red-700">
+              <span className="text-role-micro uppercase tracking-widest text-red-700">
                 Confirm delete?
               </span>
               <Button

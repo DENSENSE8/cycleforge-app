@@ -297,7 +297,7 @@ export function CopyChip({
       >
         {resolvedIcon ? <span className={`shrink-0 ${dense ? '[&_svg]:h-3 [&_svg]:w-3' : ''} ${resolvedIconClass ?? ''}`}>{resolvedIcon}</span> : null}
         <span
-          className={`${dense ? 'text-role-caption font-bold font-mono text-text-default' : monoValue} tracking-tight leading-none border-b-2 pb-0.5 text-left ${displayOverflowClass} ${resolvedUnderline} ${
+          className={`${dense ? 'text-role-caption font-semibold font-mono text-text-default' : monoValue} tracking-tight leading-none border-b-2 pb-0.5 text-left ${displayOverflowClass} ${resolvedUnderline} ${
             fitDisplayWidth ? 'min-w-0 shrink-0' : 'min-w-0 flex-1'
           }${editing ? ' animate-pulse text-text-muted' : ''}`}
         >
@@ -518,7 +518,7 @@ export function EmptySkuChipFace({ dense = true }: { dense?: boolean } = {}) {
         </span>
         <span
           className={`${
-            dense ? 'text-role-caption font-bold font-mono text-text-default' : monoValue
+            dense ? 'text-role-caption font-semibold font-mono text-text-default' : monoValue
           } tracking-tight leading-none border-b-2 pb-0.5 text-left ${tone.underline}`}
         >
           ----
@@ -738,7 +738,7 @@ function GroupCountChip({ count, tone, dense }: { count: number; tone: ChipTone;
             icon lands at the same x and the underline matches the sibling chips'
             width. Value sits right within that footprint; underline color matches
             the column's real chip. */}
-        <span className={`${dense ? 'text-role-caption' : 'text-sm'} w-[4ch] border-b-2 ${toneDef.underline} pb-0.5 text-right font-mono font-bold leading-none tracking-tight text-yellow-600`}>
+        <span className={`${dense ? 'text-role-caption' : 'text-sm'} w-[4ch] border-b-2 ${toneDef.underline} pb-0.5 text-right font-mono font-semibold leading-none tracking-tight text-yellow-600`}>
           ×{count}
         </span>
       </span>
@@ -867,7 +867,7 @@ export function AddValueChipFace({
     <span className={`inline-flex items-center gap-0.5 ${colorClass}`}>
       <span className={`shrink-0 ${dense ? '[&_svg]:h-3 [&_svg]:w-3' : ''}`}>{icon}</span>
       <span
-        className={`${labelSize} whitespace-nowrap border-b-2 border-dashed pb-0.5 font-bold leading-none tracking-tight ${underlineClass}`}
+        className={`${labelSize} whitespace-nowrap border-b-2 border-dashed pb-0.5 font-semibold leading-none tracking-tight ${underlineClass}`}
       >
         {label}
       </span>
@@ -939,7 +939,7 @@ export const PlatformChip = ({
           </span>
         ) : null}
         <span
-          className={`${showIcon ? 'min-w-[60px] text-center' : 'min-w-[3ch] text-left'} whitespace-nowrap border-b-2 pb-0.5 font-dm-sans text-sm font-bold leading-none tracking-tight ${resolvedUnderline} ${labelClass}`}
+          className={`${showIcon ? 'min-w-[60px] text-center' : 'min-w-[3ch] text-left'} whitespace-nowrap border-b-2 pb-0.5 font-dm-sans text-sm font-semibold leading-none tracking-tight ${resolvedUnderline} ${labelClass}`}
           aria-hidden={isEmpty}
         >
           {isEmpty ? '\u00a0' : label}

@@ -66,7 +66,7 @@ export function ShippedCarrierFilters({
         <StatusSelect value={statusCategory} onChange={a.setStatus} />
         {activeCount > 0 ? (
           // ds-raw-button: minimal inline text link with hover:underline, not a DS Button control
-          <button type="button" onClick={clearAll} className="text-xs font-bold text-text-soft underline-offset-2 hover:text-text-default hover:underline">
+          <button type="button" onClick={clearAll} className="text-xs font-semibold text-text-soft underline-offset-2 hover:text-text-default hover:underline">
             Clear
           </button>
         ) : null}
@@ -85,7 +85,7 @@ export function ShippedCarrierFilters({
           onClick={() => setOpen((o) => !o)}
           aria-expanded={open}
           aria-haspopup="dialog"
-          className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-role-caption font-bold ring-1 ring-inset transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500/40 ${
+          className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-role-caption font-semibold ring-1 ring-inset transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500/40 ${
             activeCount > 0 ? 'bg-blue-50 text-blue-700 ring-blue-200 hover:bg-blue-100' : 'bg-surface-card text-text-muted ring-border-soft hover:bg-surface-hover'
           }`}
         >
@@ -171,7 +171,7 @@ export function ShippedCarrierFilters({
 
             {activeCount > 0 ? (
               // ds-raw-button: minimal inline text link with hover:underline, not a DS Button control
-              <button type="button" onClick={clearAll} className="w-full text-center text-xs font-bold text-text-soft underline-offset-2 hover:text-text-default hover:underline">
+              <button type="button" onClick={clearAll} className="w-full text-center text-xs font-semibold text-text-soft underline-offset-2 hover:text-text-default hover:underline">
                 Clear filters
               </button>
             ) : null}
@@ -188,7 +188,7 @@ export function ShippedCarrierFilters({
               key={chip.key}
               type="button"
               onClick={chip.onRemove}
-              className="inline-flex items-center gap-1 rounded-full bg-blue-50 py-0.5 pl-2.5 pr-1.5 text-role-caption font-bold text-blue-700 ring-1 ring-inset ring-blue-200 transition-colors hover:bg-blue-100"
+              className="inline-flex items-center gap-1 rounded-full bg-blue-50 py-0.5 pl-2.5 pr-1.5 text-role-caption font-semibold text-blue-700 ring-1 ring-inset ring-blue-200 transition-colors hover:bg-blue-100"
             >
               {chip.label}
               <X className="h-3 w-3" />

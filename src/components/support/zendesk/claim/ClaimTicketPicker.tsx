@@ -37,7 +37,7 @@ export function ClaimTicketPicker({
       <div className="flex items-center justify-between gap-3 rounded-xl border border-blue-200 bg-blue-50/60 px-3.5 py-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <span className="text-role-caption font-black text-blue-700">#{ticket.id}</span>
+            <span className="text-role-caption font-semibold text-blue-700">#{ticket.id}</span>
             <span className={cn('rounded px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest', sb.className)}>
               {sb.label}
             </span>
@@ -50,7 +50,7 @@ export function ClaimTicketPicker({
           variant="ghost"
           size="sm"
           onClick={() => onPick(null)}
-          className="h-auto shrink-0 rounded-lg px-2 py-1 text-role-caption font-bold text-text-soft hover:bg-surface-card hover:text-text-default"
+          className="h-auto shrink-0 rounded-lg px-2 py-1 text-role-caption font-semibold text-text-soft hover:bg-surface-card hover:text-text-default"
         >
           Change
         </Button>
@@ -95,7 +95,7 @@ export function ClaimTicketPicker({
                 }
                 className="ds-raw-button flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left transition hover:bg-surface-hover"
               >
-                <span className="text-role-caption font-black text-text-faint">#{t.id}</span>
+                <span className="text-role-caption font-semibold text-text-faint">#{t.id}</span>
                 <span className="min-w-0 flex-1 truncate text-role-data font-medium text-text-default">
                   {t.subject || 'Untitled ticket'}
                 </span>

@@ -92,7 +92,7 @@ export function packerRecordToQueueRow(record: PackerRecord): QueueRowRecord {
     created_at: record.created_at,
     deadline_at: record.deadline_at ?? record.created_at,
     // Station-specific fields: packer rows show the FNSKU in the tracking column
-    // for FBA (no serial column) — see PackerRecordRow.
+    // for FBA (no serial column).
     scan_ref: record.scan_ref ?? null,
     fnsku: record.fnsku ?? null,
     fnsku_log_id: record.fnsku_log_id ?? null,

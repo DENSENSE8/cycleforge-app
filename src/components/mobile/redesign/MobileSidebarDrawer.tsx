@@ -208,7 +208,7 @@ export const MobileSidebarDrawer = ({
           >
             {/* Header */}
             <div className="flex shrink-0 items-center justify-between border-b border-border-hairline px-4 pb-3 pt-[calc(env(safe-area-inset-top)+0.75rem)]">
-              <span className="text-role-caption font-black uppercase tracking-[0.2em] text-blue-400">
+              <span className="text-role-caption font-semibold uppercase tracking-[0.2em] text-blue-400">
                 Menu
               </span>
               <IconButton
@@ -240,7 +240,7 @@ export const MobileSidebarDrawer = ({
                           {Icon ? (
                             <Icon className={`h-5 w-5 shrink-0 ${active ? 'text-blue-600' : 'text-text-faint'}`} />
                           ) : null}
-                          <span className="text-role-body font-bold tracking-tight">{item.label}</span>
+                          <span className="text-role-body font-semibold tracking-tight">{item.label}</span>
                         </button>
                       </li>
                     );
@@ -261,7 +261,7 @@ export const MobileSidebarDrawer = ({
                             : 'text-text-muted hover:bg-surface-hover'
                         }`}
                       >
-                        <span className="flex-1 text-role-body font-bold tracking-tight">{item.label}</span>
+                        <span className="flex-1 text-role-body font-semibold tracking-tight">{item.label}</span>
                         <motion.span animate={{ rotate: isOpen ? 180 : 0 }} transition={{ duration: 0.2 }}>
                           <ChevronDown className={`h-4 w-4 ${groupActive ? 'text-blue-400' : 'text-text-faint'}`} />
                         </motion.span>
@@ -318,7 +318,7 @@ export const MobileSidebarDrawer = ({
                 className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-text-soft transition-colors hover:bg-rose-50 active:scale-[0.98]"
               >
                 <Lock className="h-5 w-5 shrink-0 text-text-faint" />
-                <span className="text-role-body font-bold tracking-tight">Sign out</span>
+                <span className="text-role-body font-semibold tracking-tight">Sign out</span>
               </button>
             </div>
           </motion.aside>

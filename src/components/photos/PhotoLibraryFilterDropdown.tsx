@@ -2,11 +2,13 @@
 
 import { StaffRecipientList, type StaffRecipient } from '@/components/quick-access/StaffRecipientList';
 import { Button } from '@/design-system/primitives';
-import type { PhotoLibraryFilterState } from '@/lib/photos/library-filter-state';
+import { RECEIVING_PHOTO_STAGES } from '@/lib/receiving/photo-intent';
+import { photoStageLabel } from '@/lib/photos/stages';
+import { isPhotoLibraryStage, type PhotoLibraryFilterState } from '@/lib/photos/library-filter-state';
 
 const fieldClass =
-  'h-10 w-full rounded-xl border border-border-hairline bg-surface-canvas/50 px-3 text-role-caption font-bold text-text-default outline-none focus:border-blue-500 focus:bg-surface-card focus:ring-4 focus:ring-blue-500/10';
-const labelClass = 'mb-1.5 block text-role-caption font-black uppercase tracking-[0.2em] text-text-faint';
+  'h-10 w-full rounded-xl border border-border-hairline bg-surface-canvas/50 px-3 text-role-caption font-semibold text-text-default outline-none focus:border-blue-500 focus:bg-surface-card focus:ring-4 focus:ring-blue-500/10';
+const labelClass = 'mb-1.5 block text-role-caption font-semibold uppercase tracking-[0.2em] text-text-faint';
 
 interface PhotoLibraryFilterDropdownProps {
   filters: PhotoLibraryFilterState;
@@ -48,7 +50,7 @@ export function PhotoLibraryFilterDropdown({
               variant="ghost"
               size="sm"
               onClick={() => onPatch({ staffId: undefined })}
-              className="mt-2 h-auto w-full rounded-lg border border-dashed border-border-soft px-3 py-2 text-role-caption font-bold uppercase tracking-wider text-text-soft hover:bg-surface-card hover:text-text-default"
+              className="mt-2 h-auto w-full rounded-lg border border-dashed border-border-soft px-3 py-2 text-role-caption font-semibold uppercase tracking-wider text-text-soft hover:bg-surface-card hover:text-text-default"
             >
               Clear staff
             </Button>
@@ -83,11 +85,38 @@ export function PhotoLibraryFilterDropdown({
         </label>
       </div>
 
+      {/*
+        Evidence stage is an Unboxing-only sub-filter: `buildPhotoLibraryParams`
+        drops `?stage=` under any other scope, so offering it there would render
+        a control whose value can never survive a URL round-trip. Labels resolve
+        through `photoStageLabel` — never a second stage→label map.
+      */}
+      {filters.sourceScope === 'unboxing' ? (
+        <label className="block">
+          <span className={labelClass}>Evidence stage</span>
+          <select
+            className={fieldClass}
+            data-testid="photo-library-stage-filter"
+            value={filters.stage ?? ''}
+            onChange={(e) =>
+              onPatch({ stage: isPhotoLibraryStage(e.target.value) ? e.target.value : undefined })
+            }
+          >
+            <option value="">Any stage</option>
+            {RECEIVING_PHOTO_STAGES.map((stage) => (
+              <option key={stage} value={stage}>
+                {photoStageLabel(stage)}
+              </option>
+            ))}
+          </select>
+        </label>
+      ) : null}
+
       <Button
         type="button"
         variant="brand"
         onClick={onClose}
-        className="h-auto w-full rounded-2xl py-3.5 text-sm font-black uppercase tracking-widest"
+        className="h-auto w-full rounded-2xl py-3.5 text-sm font-semibold uppercase tracking-widest"
       >
         Done
       </Button>

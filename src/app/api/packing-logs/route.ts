@@ -16,16 +16,28 @@ import { ensureReplenishmentForOrder } from '@/lib/replenishment';
 import { withAuth } from '@/lib/auth/withAuth';
 import { mirrorLegacyPackToAllocations } from '@/lib/inventory/sync-legacy-pack';
 import { attachPhotoWithLegacyUrl } from '@/lib/photos/service';
+import { PACKER_BOX_LABEL_PHOTO_TYPE } from '@/lib/photos/types';
 import { writeLedgerDelta } from '@/lib/inventory/write-ledger-delta';
 import type { ScanClassification } from '@/utils/packer';
 
+/**
+ * LEGACY packer aliases — the old station UI sent packer "1/2/3", which meant
+ * staff 4/5/6. It maps a CLIENT-SUPPLIED legacy id only.
+ *
+ * NEVER run a server-trusted `ctx.staffId` through this map. Real staff ids 1,
+ * 2, and 3 exist (Michael / Thuc / Sang), so aliasing the session actor silently
+ * stamped their pack scans as staff 4/5/6 — the scans wrote fine but vanished
+ * from Pack → History, which filters `station_activity_logs.staff_id` by the
+ * signed-in staff and applies no alias. Use {@link sessionStaffId} for the actor.
+ */
 const LEGACY_PACKER_ALIAS_TO_STAFF_ID: Record<string, number> = {
     '1': 4,
     '2': 5,
     '3': 6,
 };
 
-function resolvePackerStaffId(rawId: string | number | null | undefined): number | null {
+/** Explicit legacy `?packerId=` filter values only — see the warning above. */
+function resolveLegacyPackerParam(rawId: string | number | null | undefined): number | null {
     const normalized = String(rawId ?? '').trim();
     if (!normalized) return null;
 
@@ -33,7 +45,12 @@ function resolvePackerStaffId(rawId: string | number | null | undefined): number
         return LEGACY_PACKER_ALIAS_TO_STAFF_ID[normalized];
     }
 
-    const numeric = Number(normalized);
+    return sessionStaffId(normalized);
+}
+
+/** The signed-in actor's staff id — a positive integer, never aliased. */
+function sessionStaffId(rawId: string | number | null | undefined): number | null {
+    const numeric = Number(String(rawId ?? '').trim());
     return Number.isInteger(numeric) && numeric > 0 ? numeric : null;
 }
 
@@ -92,8 +109,10 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     // (requires admin.view_logs); otherwise default to the signed-in staff.
     const packerIdParam = searchParams.get('packerId');
     const isAdminFilter = packerIdParam && ctx.permissions.has('admin.view_logs');
-    const packerId = (isAdminFilter && packerIdParam) || String(ctx.staffId);
-    const staffId = resolvePackerStaffId(packerId);
+    // Only the explicit legacy param may be aliased; the session actor never is.
+    const staffId = isAdminFilter && packerIdParam
+        ? resolveLegacyPackerParam(packerIdParam)
+        : sessionStaffId(ctx.staffId);
     const limit = parseInt(searchParams.get('limit') || '50');
     const offset = parseInt(searchParams.get('offset') || '0');
     if (!staffId) {
@@ -147,14 +166,15 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     try {
         const body = await req.json();
         const { trackingNumber, photos, createdAt, timestamp, packerName } = body;
-        // Server-trusted actor — body.packerId is ignored.
-        const packerId = ctx.staffId;
+        // Server-trusted actor — body.packerId is ignored, and the session id is
+        // NEVER run through the legacy alias map (that stamped staff 1/2/3's
+        // scans as 4/5/6 and hid them from Pack → History).
         const scanInput = String(trackingNumber || '').trim();
         if (!scanInput) {
             return NextResponse.json({ error: 'trackingNumber is required' }, { status: 400 });
         }
-        
-        const staffId = resolvePackerStaffId(packerId);
+
+        const staffId = sessionStaffId(ctx.staffId);
 
         if (!staffId) {
             return NextResponse.json({ error: 'Invalid packer ID' }, { status: 400 });
@@ -432,7 +452,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
                             entityType: 'PACKER_LOG',
                             entityId: notFoundPackerLogId,
                             legacyUrl: url,
-                            photoType: 'box_label',
+                            photoType: PACKER_BOX_LABEL_PHOTO_TYPE,
                             idempotent: true,
                         });
                     }
@@ -599,7 +619,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
                         entityType: 'PACKER_LOG',
                         entityId: foundPackerLogId,
                         legacyUrl: url,
-                        photoType: 'box_label',
+                        photoType: PACKER_BOX_LABEL_PHOTO_TYPE,
                         idempotent: true,
                     });
                 }
@@ -813,7 +833,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
                         entityType: 'PACKER_LOG',
                         entityId: nonOrderPackerLogId,
                         legacyUrl: url,
-                        photoType: 'box_label',
+                        photoType: PACKER_BOX_LABEL_PHOTO_TYPE,
                         idempotent: true,
                     });
             }

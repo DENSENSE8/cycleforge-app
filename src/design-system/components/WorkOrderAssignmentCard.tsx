@@ -69,7 +69,7 @@ export function WorkOrderAssignmentCard(props: WorkOrderAssignmentCardProps) {
   const headerEyebrow = (
     <div className="flex w-full min-w-0 items-center justify-between gap-3">
       <div className="flex min-h-[26px] min-w-0 flex-1 items-center">
-        <span className="truncate text-sm font-black uppercase tracking-[0.08em] leading-none text-text-soft">
+        <span className="truncate text-sm font-semibold uppercase tracking-[0.08em] leading-none text-text-soft">
           {assignmentHeaderContextText(row)}
         </span>
       </div>
@@ -104,7 +104,7 @@ export function WorkOrderAssignmentCard(props: WorkOrderAssignmentCardProps) {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.15 }}
-              className="break-words text-2xl font-black leading-tight tracking-tight text-text-default [overflow-wrap:anywhere]"
+              className="break-words text-2xl font-semibold leading-tight tracking-tight text-text-default [overflow-wrap:anywhere]"
               style={{
                 height: '100%',
                 overflowY: 'auto',
@@ -127,7 +127,7 @@ export function WorkOrderAssignmentCard(props: WorkOrderAssignmentCardProps) {
               emptyMessage="No technicians"
             />
             {staffContext && (staffContext.techniciansOff?.length || staffContext.techniciansInactive?.length) ? (
-              <p className="mt-1.5 text-role-eyebrow font-bold text-text-faint">
+              <p className="mt-1.5 text-role-eyebrow text-text-faint">
                 Unavailable: {[
                   ...(staffContext.techniciansOff || []).map((m) => `${m.name} (Off today)`),
                   ...(staffContext.techniciansInactive || []).map((m) => `${m.name} (Inactive)`),
@@ -146,7 +146,7 @@ export function WorkOrderAssignmentCard(props: WorkOrderAssignmentCardProps) {
               emptyMessage="No packers"
             />
             {staffContext && (staffContext.packersOff?.length || staffContext.packersInactive?.length) ? (
-              <p className="mt-1.5 text-role-eyebrow font-bold text-text-faint">
+              <p className="mt-1.5 text-role-eyebrow text-text-faint">
                 Unavailable: {[
                   ...(staffContext.packersOff || []).map((m) => `${m.name} (Off today)`),
                   ...(staffContext.packersInactive || []).map((m) => `${m.name} (Inactive)`),
@@ -167,7 +167,7 @@ export function WorkOrderAssignmentCard(props: WorkOrderAssignmentCardProps) {
                 setDeadline(next);
                 updateCurrentDraft({ deadline: next });
               }}
-              className="rounded-md border border-border-soft bg-surface-card px-2 py-1 text-role-micro font-bold text-text-default outline-none transition-colors focus:border-border-emphasis tabular-nums"
+              className="rounded-md border border-border-soft bg-surface-card px-2 py-1 text-role-micro text-text-default outline-none transition-colors focus:border-border-emphasis tabular-nums"
             />
           </div>
 

@@ -150,7 +150,7 @@ export function MobileBottomActionBar({
                       value={searchValue}
                       onChange={(e) => onSearchChange(e.target.value)}
                       placeholder={searchPlaceholder}
-                      className={`w-full h-12 rounded-2xl bg-surface-canvas text-sm font-bold text-text-default border border-border-soft outline-none focus:ring-4 focus:ring-${themeColor}-500/10 ${searchIcon ? 'pl-11' : 'pl-4'} pr-4`}
+                      className={`w-full h-12 rounded-2xl bg-surface-canvas text-sm font-semibold text-text-default border border-border-soft outline-none focus:ring-4 focus:ring-${themeColor}-500/10 ${searchIcon ? 'pl-11' : 'pl-4'} pr-4`}
                     />
                     {isLoading && <Loader2 className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-text-faint" />}
                   </div>

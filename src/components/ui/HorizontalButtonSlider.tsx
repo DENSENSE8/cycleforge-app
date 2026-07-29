@@ -313,7 +313,7 @@ export function HorizontalButtonSlider({
                   transition={framerTransition.sliderIndicator}
                   whileTap={isDisabled ? undefined : { scale: 0.96 }}
                   onClick={isDisabled ? undefined : () => onChange(item.id)}
-                  className={`group relative inline-flex snap-start items-center whitespace-nowrap rounded-full font-black uppercase transition-colors ring-1 ring-inset ${navSizeCls} ${stateClass}`}
+                  className={`group relative inline-flex snap-start items-center whitespace-nowrap rounded-full font-semibold uppercase transition-colors ring-1 ring-inset ${navSizeCls} ${stateClass}`}
                 >
                   {Icon ? (
                     <Icon
@@ -367,7 +367,7 @@ export function HorizontalButtonSlider({
                   transition={framerTransition.sliderIndicator}
                   whileTap={{ scale: 0.96 }}
                   onClick={() => onChange(item.id)}
-                  className={`group relative inline-flex snap-start items-center whitespace-nowrap rounded-full font-black uppercase transition-colors ${sizeCls} ${stateClass}`}
+                  className={`group relative inline-flex snap-start items-center whitespace-nowrap rounded-full font-semibold uppercase transition-colors ${sizeCls} ${stateClass}`}
                 >
                   {Icon ? <Icon className="h-3.5 w-3.5 shrink-0" /> : null}
                   <span className={`inline-block whitespace-nowrap ${Icon ? 'ml-1.5' : ''} max-w-[160px]`}>
@@ -391,7 +391,7 @@ export function HorizontalButtonSlider({
                   transition={framerTransition.sliderIndicator}
                   whileTap={{ scale: 0.95 }}
                   onClick={() => onChange(item.id)}
-                  className={`snap-start whitespace-nowrap rounded-full border font-black uppercase transition-colors ${sizeCls} ${
+                  className={`snap-start whitespace-nowrap rounded-full border font-semibold uppercase transition-colors ${sizeCls} ${
                     isActive
                       ? 'border-border-strong bg-surface-inverse text-white shadow-md shadow-gray-900/20'
                       : 'border-border-soft bg-surface-card text-text-muted hover:border-border-default hover:bg-surface-hover'
@@ -416,7 +416,7 @@ export function HorizontalButtonSlider({
                 transition={framerTransition.sliderIndicator}
                 whileTap={{ scale: 0.92 }}
                 onClick={() => onChange(item.id)}
-                className={`snap-start whitespace-nowrap rounded-full font-black uppercase transition-colors ring-1 ring-inset ${sizeCls} ${
+                className={`snap-start whitespace-nowrap rounded-full font-semibold uppercase transition-colors ring-1 ring-inset ${sizeCls} ${
                   isActive
                     ? `${tone.activeBg} ${tone.activeText} ${tone.ring}`
                     : 'bg-surface-card text-text-faint ring-border-soft hover:bg-surface-hover hover:text-text-muted'

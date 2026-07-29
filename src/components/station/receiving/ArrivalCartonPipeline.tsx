@@ -79,7 +79,7 @@ export function ArrivalCartonPipeline({ log }: { log: ReceivingDetailsLog }) {
 
   return (
     <div className="space-y-3">
-      <p className="text-sm font-bold text-text-default">{arrivalReadinessHeadline(states)}</p>
+      <p className="text-sm font-semibold text-text-default">{arrivalReadinessHeadline(states)}</p>
 
       <LinearWorkflowStepper
         steps={ARRIVAL_STEPS}

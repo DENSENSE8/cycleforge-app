@@ -288,7 +288,7 @@ export function NoSerialControl({
           type="button"
           role="menuitem"
           onClick={clear}
-          className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-role-caption font-bold text-rose-600 transition-colors hover:bg-rose-50"
+          className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-role-caption font-semibold text-rose-600 transition-colors hover:bg-rose-50"
         >
           <X className="h-4 w-4 shrink-0" />
           <span className="flex-1 truncate">Undo — has a serial</span>

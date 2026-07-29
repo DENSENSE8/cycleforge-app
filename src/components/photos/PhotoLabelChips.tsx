@@ -29,7 +29,7 @@ export function PhotoLabelChips({
         <span
           key={lbl.id}
           className={cn(
-            'inline-flex items-center gap-0.5 rounded px-1 py-0.5 text-[8.5px] font-black uppercase tracking-widest',
+            'inline-flex items-center gap-0.5 rounded px-1 py-0.5 text-[8.5px] font-semibold uppercase tracking-widest',
             labelChipClasses(lbl.color),
           )}
         >
@@ -38,7 +38,7 @@ export function PhotoLabelChips({
         </span>
       ))}
       {overflow > 0 ? (
-        <span className="inline-flex items-center rounded bg-surface-sunken px-1 py-0.5 text-[8.5px] font-black uppercase tracking-widest text-text-soft">
+        <span className="inline-flex items-center rounded bg-surface-sunken px-1 py-0.5 text-[8.5px] font-semibold uppercase tracking-widest text-text-soft">
           +{overflow}
         </span>
       ) : null}

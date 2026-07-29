@@ -82,7 +82,7 @@ export function ReceivingPhotosSection({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Camera className="h-4 w-4 text-text-muted" aria-hidden />
-          <h3 className="text-role-caption font-black uppercase tracking-widest text-text-default">
+          <h3 className="text-role-caption font-semibold uppercase tracking-widest text-text-default">
             {sectionTitle}
           </h3>
         </div>

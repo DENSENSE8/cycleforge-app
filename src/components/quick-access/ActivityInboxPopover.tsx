@@ -214,7 +214,7 @@ export function ActivityInboxPopover({ onClose }: ActivityInboxPopoverProps) {
                   <div className="min-w-0 flex-1">
                     <p
                       className={cn(
-                        'truncate text-role-caption font-bold text-text-default',
+                        'truncate text-role-caption font-semibold text-text-default',
                         navigable && 'group-hover:text-blue-700',
                       )}
                     >

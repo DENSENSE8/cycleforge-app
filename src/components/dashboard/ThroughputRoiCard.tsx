@@ -104,7 +104,7 @@ function RoiHero({ data, variant }: { data: OperationsRoiData; variant: Throughp
           <div className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-1">
             <AnimatedStat
               value={unitsThisWeek}
-              className={`font-black leading-none text-text-default ${sidebar ? 'text-2xl' : 'text-3xl'}`}
+              className={`font-semibold leading-none text-text-default ${sidebar ? 'text-2xl' : 'text-3xl'}`}
             />
             <span className="text-role-caption font-semibold uppercase tracking-wide text-text-faint">
               units
@@ -192,7 +192,7 @@ function SecondaryStat({
         <AnimatedStat
           value={value}
           format={format}
-          className={`mt-0.5 font-bold text-text-default ${compact ? 'text-sm' : 'text-base'}`}
+          className={`mt-0.5 font-semibold text-text-default ${compact ? 'text-sm' : 'text-base'}`}
         />
       </div>
     </HoverTooltip>
@@ -214,7 +214,7 @@ function StuckStat({ value, compact = false }: { value: number; compact?: boolea
           {attention ? <AlertTriangle className="h-3.5 w-3.5 text-amber-500" /> : null}
           <AnimatedStat
             value={value}
-            className={`font-bold ${compact ? 'text-sm' : 'text-base'} ${attention ? 'text-amber-700' : 'text-text-default'}`}
+            className={`font-semibold ${compact ? 'text-sm' : 'text-base'} ${attention ? 'text-amber-700' : 'text-text-default'}`}
           />
         </div>
       </div>

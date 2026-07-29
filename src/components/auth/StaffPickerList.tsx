@@ -194,7 +194,7 @@ function Row({ staff: s, onPick, onMessage, isRecent }: RowProps) {
           <span className={`absolute -right-0.5 -top-0.5 z-[1] h-2.5 w-2.5 rounded-full ${t.recentDot} ring-2 ring-white`} aria-hidden />
         )}
         <div
-          className={`flex h-11 w-11 items-center justify-center rounded-full text-sm font-bold text-white ring-4 ${t.avatarRing} transition-transform duration-150 group-hover:scale-[1.04]`}
+          className={`flex h-11 w-11 items-center justify-center rounded-full text-sm font-semibold text-white ring-4 ${t.avatarRing} transition-transform duration-150 group-hover:scale-[1.04]`}
           style={{ backgroundColor: getStaffColorHex(s) }}
         >
           {initials(s.name)}

@@ -41,7 +41,7 @@ export const STATION_SCAN_BAR_PAD_LEFT_NONE_ICON_CLASS = 'pl-[2.9375rem]';
  * Staff bottom-rule applied separately; work canvas owns elevation (border).
  */
 export const STATION_SCAN_BAR_INPUT_CLASS =
-  'box-border h-10 w-full rounded-none bg-transparent text-xs font-bold leading-normal text-text-default outline-none transition-[border-color] py-2 placeholder:text-text-faint';
+  'box-border h-10 w-full rounded-none bg-transparent text-xs font-semibold leading-normal text-text-default outline-none transition-[border-color] py-2 placeholder:text-text-faint';
 
 /** Unthemed fallback bottom rule (ThemedStationScanBar replaces via staff map). */
 export const STATION_SCAN_BAR_DEFAULT_BOTTOM_RULE_CLASS =

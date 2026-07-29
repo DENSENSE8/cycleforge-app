@@ -80,12 +80,12 @@ function PickerInner() {
               }
               className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-surface-sunken active:bg-surface-strong"
             />
-            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-blue-100 text-sm font-bold text-blue-800">
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-blue-100 text-sm font-semibold text-blue-800">
               {order.customerInitials}
             </span>
             <div className="min-w-0">
               <p className="text-xs font-semibold uppercase tracking-wider text-text-soft">Order</p>
-              <p className="truncate text-base font-bold text-text-default">{order.orderLabel}</p>
+              <p className="truncate text-base font-semibold text-text-default">{order.orderLabel}</p>
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">

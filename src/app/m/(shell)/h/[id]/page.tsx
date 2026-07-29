@@ -174,11 +174,11 @@ export default function MobileHandlingUnitPage() {
           className="rounded-lg p-1.5 active:bg-surface-sunken"
         />
         <Package className="h-5 w-5 text-teal-600" />
-        <div className="flex-1 truncate text-base font-extrabold tracking-tight text-text-default">
+        <div className="flex-1 truncate text-base font-semibold tracking-tight text-text-default">
           {box ? box.code : 'Box'}
         </div>
         {box && (
-          <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${handlingUnitStatusChipClass(box.status)}`}>
+          <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${handlingUnitStatusChipClass(box.status)}`}>
             {box.status}
           </span>
         )}
@@ -246,7 +246,7 @@ export default function MobileHandlingUnitPage() {
             <button
               onClick={submitAdd}
               disabled={!addInput.trim() || busy === 'add'}
-              className="flex items-center gap-1 rounded-lg bg-teal-600 px-3 py-2 text-sm font-bold text-white active:bg-teal-700 disabled:opacity-40"
+              className="flex items-center gap-1 rounded-lg bg-teal-600 px-3 py-2 text-sm font-semibold text-white active:bg-teal-700 disabled:opacity-40"
             >
               <Plus className="h-4 w-4" /> Add
             </button>
@@ -269,7 +269,7 @@ export default function MobileHandlingUnitPage() {
                     <span className="font-mono text-sm font-semibold text-text-default">
                       …{getLast4(u.serial_number)}
                     </span>
-                    <span className={`rounded px-1.5 py-0.5 text-role-micro font-bold ${unitStatusBadgeTone(u.current_status)}`}>
+                    <span className={`rounded px-1.5 py-0.5 text-role-micro ${unitStatusBadgeTone(u.current_status)}`}>
                       {u.current_status}
                     </span>
                   </div>

@@ -61,7 +61,7 @@ export function QueuePane() {
 
   return (
     <div className="mx-auto max-w-4xl p-6">
-      <h1 className="mb-4 text-xl font-bold text-text-default">Sourcing queue <span className="text-text-faint">({rows.length})</span></h1>
+      <h1 className="mb-4 text-xl font-semibold text-text-default">Sourcing queue <span className="text-text-faint">({rows.length})</span></h1>
       <ul className="space-y-2">
         {rows.map((a) => (
           <QueueAlertRow key={a.id} alert={a} patchStatus={(status) => patch.mutate({ id: a.id, status })} setTarget={setTarget} close={close} />
@@ -112,7 +112,7 @@ function QueueAlertRow({
   return (
     <li className="rounded-xl border border-border-soft bg-surface-card p-3">
       <div className="flex items-center gap-3">
-        <span className={`rounded-full px-2 py-0.5 text-role-micro font-bold uppercase ring-1 ${severityTone[alert.severity] ?? severityTone.info}`}>{alert.severity}</span>
+        <span className={`rounded-full px-2 py-0.5 text-role-micro uppercase ring-1 ${severityTone[alert.severity] ?? severityTone.info}`}>{alert.severity}</span>
         <span className={`rounded-full px-2 py-0.5 text-role-micro font-semibold ${demandSourceTone[alert.demand_source] ?? demandSourceTone.scan}`}>{DEMAND_SOURCE_LABEL[alert.demand_source] ?? alert.demand_source}</span>
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold text-text-default">

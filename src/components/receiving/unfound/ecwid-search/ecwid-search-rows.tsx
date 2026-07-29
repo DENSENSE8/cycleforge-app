@@ -87,7 +87,7 @@ export function ResultRow({ item, showOrderMeta, isSubmitting, disabled, onSelec
         </div>
 
         {isSubmitting && (
-          <span className="text-role-micro font-bold uppercase tracking-wider text-blue-600">
+          <span className="text-role-micro uppercase tracking-wider text-blue-600">
             Adding…
           </span>
         )}

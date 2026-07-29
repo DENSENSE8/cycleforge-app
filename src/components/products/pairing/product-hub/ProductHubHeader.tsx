@@ -15,9 +15,9 @@ export function ProductHubHeader({
 }) {
   return (
     <header className="flex h-10 shrink-0 items-center gap-2 border-b border-border-soft bg-surface-card px-4">
-      <h1 className="min-w-0 flex-1 truncate text-sm font-black tracking-tight text-text-default">{title || '—'}</h1>
+      <h1 className="min-w-0 flex-1 truncate text-sm font-semibold tracking-tight text-text-default">{title || '—'}</h1>
       <InventoryMasterChip providerItemId={providerItemId} providerLabel={providerLabel} />
-      <CopyableId value={sku} className="shrink-0 font-mono text-role-caption font-bold tracking-tight text-text-soft" />
+      <CopyableId value={sku} className="shrink-0 font-mono text-role-caption font-semibold tracking-tight text-text-soft" />
     </header>
   );
 }

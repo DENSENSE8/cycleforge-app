@@ -31,7 +31,7 @@ function LineBlock({ line }: { line: PackChecklistLineDto }) {
   const hasItems = line.kitParts.length > 0 || line.qcFlags.length > 0;
   return (
     <div className="space-y-1.5">
-      <p className="truncate text-role-caption font-bold text-text-default">
+      <p className="truncate text-role-caption font-semibold text-text-default">
         {line.productTitle}
         {line.quantity > 1 ? <span className="text-text-faint"> ×{line.quantity}</span> : null}
       </p>

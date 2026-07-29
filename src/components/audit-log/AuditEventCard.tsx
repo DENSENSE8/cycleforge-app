@@ -96,7 +96,7 @@ export function AuditEventCard({ event }: { event: AuditTimelineEvent }) {
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <span
-              className={`inline-flex items-center rounded-full px-2 py-0.5 text-role-micro font-bold uppercase tracking-wider ring-1 ${tone}`}
+              className={`inline-flex items-center rounded-full px-2 py-0.5 text-role-micro uppercase tracking-wider ring-1 ${tone}`}
             >
               {kindLabel(event.kind)}
             </span>

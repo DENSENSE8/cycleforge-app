@@ -227,10 +227,10 @@ export function OperationsAnalyticsView() {
                 <BarChart3 className="h-5 w-5" />
               </span>
               <div>
-                <h1 className="text-2xl font-black tracking-tight text-text-default leading-none">
+                <h1 className="text-2xl font-semibold tracking-tight text-text-default leading-none">
                   Operations Analytics
                 </h1>
-                <p className="mt-1 text-role-eyebrow font-bold uppercase tracking-widest text-text-soft">
+                <p className="mt-1 text-role-eyebrow uppercase tracking-widest text-text-soft">
                   {ANALYTICS_RANGE_LABELS[range]} · live floor + inventory
                 </p>
               </div>
@@ -277,7 +277,7 @@ export function OperationsAnalyticsView() {
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-role-eyebrow uppercase tracking-widest text-text-soft">Today</span>
             {packing ? (
-              <span className="text-xs font-black text-text-muted">
+              <span className="text-xs font-semibold text-text-muted">
                 Capacity {packing.capacity.daily_capacity_minutes.toLocaleString()} min ·{' '}
                 {packing.capacity.packer_headcount} packers
               </span>
@@ -307,20 +307,20 @@ export function OperationsAnalyticsView() {
               {packing.by_packer.map((r) => (
                 <div key={r.staff_id} className="grid grid-cols-6 gap-2 px-4 py-2 items-center">
                   <div className="col-span-2">
-                    <div className="text-sm font-black text-text-default">{r.staff_name || `#${r.staff_id}`}</div>
+                    <div className="text-sm font-semibold text-text-default">{r.staff_name || `#${r.staff_id}`}</div>
                     <button
                       type="button"
-                      className="mt-0.5 inline-flex items-center gap-1 text-xs font-black text-text-accent hover:opacity-80"
+                      className="mt-0.5 inline-flex items-center gap-1 text-xs font-semibold text-text-accent hover:opacity-80"
                       onClick={() => exportPackingReport(r.staff_id)}
                     >
                       <Download className="h-3.5 w-3.5" />
                       Download
                     </button>
                   </div>
-                  <div className="text-right tabular-nums text-sm font-black text-text-default">{r.small_count}</div>
-                  <div className="text-right tabular-nums text-sm font-black text-text-default">{r.medium_count}</div>
-                  <div className="text-right tabular-nums text-sm font-black text-text-default">{r.large_count}</div>
-                  <div className="text-right tabular-nums text-sm font-black text-text-default">{r.weighted_minutes}</div>
+                  <div className="text-right tabular-nums text-sm font-semibold text-text-default">{r.small_count}</div>
+                  <div className="text-right tabular-nums text-sm font-semibold text-text-default">{r.medium_count}</div>
+                  <div className="text-right tabular-nums text-sm font-semibold text-text-default">{r.large_count}</div>
+                  <div className="text-right tabular-nums text-sm font-semibold text-text-default">{r.weighted_minutes}</div>
                 </div>
               ))}
             </div>
@@ -503,7 +503,7 @@ function HealthTile({
         <Icon className="h-3.5 w-3.5" />
         <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">{label}</p>
       </div>
-      <p className={cn('mt-1.5 text-2xl font-black tabular-nums leading-none', valueClassName)}>
+      <p className={cn('mt-1.5 text-2xl font-semibold tabular-nums leading-none', valueClassName)}>
         {value === null ? '—' : `${value.toLocaleString()}${suffix}`}
       </p>
     </div>
@@ -557,7 +557,7 @@ function RoiSection() {
         </div>
       ) : !roi || !roi.hasData ? (
         <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-10 text-center">
-          <p className="text-role-caption font-bold text-text-muted">No throughput captured yet</p>
+          <p className="text-role-caption font-semibold text-text-muted">No throughput captured yet</p>
           <p className="mx-auto mt-1 max-w-md text-role-micro leading-5 text-text-soft">
             As units move through your stations and staff clock in, this fills with units per labor-hour and
             week-over-week lift — the proof your floor is getting faster.
@@ -571,7 +571,7 @@ function RoiSection() {
                 <TrendingUp className="h-3.5 w-3.5" />
                 <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">Units this week</p>
               </div>
-              <p className="mt-1.5 text-3xl font-black tabular-nums leading-none text-text-info">
+              <p className="mt-1.5 text-3xl font-semibold tabular-nums leading-none text-text-info">
                 {roi.unitsThisWeek.toLocaleString()}
               </p>
               <div className="mt-1.5">
@@ -588,7 +588,7 @@ function RoiSection() {
                 <Zap className="h-3.5 w-3.5" />
                 <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">Units / labor-hour</p>
               </div>
-              <p className="mt-1.5 text-3xl font-black tabular-nums leading-none text-text-success">
+              <p className="mt-1.5 text-3xl font-semibold tabular-nums leading-none text-text-success">
                 {roi.unitsPerLaborHour.toLocaleString()}
               </p>
               <p className="mt-1.5 text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint">
@@ -602,7 +602,7 @@ function RoiSection() {
               </div>
               <p
                 className={cn(
-                  'mt-1.5 text-3xl font-black tabular-nums leading-none',
+                  'mt-1.5 text-3xl font-semibold tabular-nums leading-none',
                   roi.unitsStuck > 0 ? 'text-text-warning' : 'text-text-default',
                 )}
               >
@@ -631,7 +631,7 @@ function RoiSection() {
                       title={prettyEventType(s.stage)}
                       meta={`${s.samples.toLocaleString()} runs`}
                       trailing={
-                        <span className="text-role-caption font-bold tabular-nums text-text-default">
+                        <span className="text-role-caption font-semibold tabular-nums text-text-default">
                           {formatHours(s.avgCycleHours)}
                         </span>
                       }

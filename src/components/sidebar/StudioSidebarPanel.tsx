@@ -126,7 +126,7 @@ export function StudioSidebarPanel() {
               className={`absolute left-0 right-0 z-panelPopover mt-1 ${SIDEBAR_GUTTER} `}
             >
               <div className="rounded-xl border border-border-soft bg-surface-card p-2 shadow-xl">
-                <p className="mb-1 px-1 text-role-micro font-bold uppercase tracking-wider text-text-faint">Lenses</p>
+                <p className="mb-1 px-1 text-role-micro uppercase tracking-wider text-text-faint">Lenses</p>
                 <div className="space-y-0.5">
                   {LENSES.map((l) => {
                     const disabled = editing && l.id === 'live';
@@ -145,7 +145,7 @@ export function StudioSidebarPanel() {
                   })}
                 </div>
 
-                <p className="mb-1 mt-2 px-1 text-role-micro font-bold uppercase tracking-wider text-text-faint">Zoom</p>
+                <p className="mb-1 mt-2 px-1 text-role-micro uppercase tracking-wider text-text-faint">Zoom</p>
                 <div className="space-y-0.5">
                   {ZOOMS.map((zoom) => (
                     <Row
@@ -223,7 +223,7 @@ function Row({
         <span className="block text-sm font-semibold">{label}</span>
         <span className="block text-role-caption text-text-soft">{detail}</span>
       </span>
-      {active && <span className="mt-0.5 shrink-0 text-xs font-bold text-blue-600">✓</span>}
+      {active && <span className="mt-0.5 shrink-0 text-xs font-semibold text-blue-600">✓</span>}
     </button>
   );
   return disabledHint ? (

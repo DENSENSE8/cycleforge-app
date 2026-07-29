@@ -201,7 +201,7 @@ export function AddOrPairSkuModal({ open, onClose, query, pending, onDone }: Pro
               <span className={`inline-flex items-center rounded border px-1.5 py-0 text-role-eyebrow font-semibold uppercase tracking-wider ${style.chip}`}>
                 {style.label}
               </span>
-              <span className="font-mono text-xs font-bold text-text-default">{identifier}</span>
+              <span className="font-mono text-xs font-semibold text-text-default">{identifier}</span>
               {pending.orderCount > 0 && (
                 <span className="text-role-micro font-semibold text-amber-700">
                   links {pending.orderCount} order{pending.orderCount === 1 ? '' : 's'}
@@ -231,7 +231,7 @@ export function AddOrPairSkuModal({ open, onClose, query, pending, onDone }: Pro
                   value={sku}
                   onChange={(e) => setSku(e.target.value)}
                   placeholder="e.g. 00326-P-2"
-                  className="w-full rounded-lg border border-border-soft bg-surface-canvas px-3 py-2 font-mono text-sm font-bold text-text-default outline-none focus:border-blue-300 focus:bg-surface-card focus:ring-2 focus:ring-blue-100"
+                  className="w-full rounded-lg border border-border-soft bg-surface-canvas px-3 py-2 font-mono text-sm font-semibold text-text-default outline-none focus:border-blue-300 focus:bg-surface-card focus:ring-2 focus:ring-blue-100"
                 />
               </Field>
               <Field label="Product title" required>
@@ -295,7 +295,7 @@ export function AddOrPairSkuModal({ open, onClose, query, pending, onDone }: Pro
                         className={`flex w-full items-center gap-2 px-3 py-2 text-left transition-colors ${isSel ? 'bg-emerald-50' : 'hover:bg-surface-hover'}`}
                       >
                         {isSel && <Check className="h-3.5 w-3.5 shrink-0 text-emerald-600" />}
-                        <span className="font-mono text-xs font-black text-text-default">{r.sku}</span>
+                        <span className="font-mono text-xs font-semibold text-text-default">{r.sku}</span>
                         <span className="truncate text-role-caption text-text-soft">{r.product_title}</span>
                       </button>
                     );
@@ -339,7 +339,7 @@ function ModeTab({ active, onClick, icon, label }: { active: boolean; onClick: (
     <button
       type="button"
       onClick={onClick}
-      className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-role-micro font-bold uppercase tracking-wider transition-colors ${
+      className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-role-micro font-semibold uppercase tracking-wider transition-colors ${
         active ? 'bg-surface-inverse text-white' : 'text-text-soft hover:bg-surface-sunken'
       }`}
     >
@@ -351,7 +351,7 @@ function ModeTab({ active, onClick, icon, label }: { active: boolean; onClick: (
 function Field({ label, required, children }: { label: string; required?: boolean; children: ReactNode }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-role-micro font-bold uppercase tracking-wider text-text-soft">
+      <span className="mb-1 block text-role-micro uppercase tracking-wider text-text-soft">
         {label}{required && <span className="text-red-400"> *</span>}
       </span>
       {children}

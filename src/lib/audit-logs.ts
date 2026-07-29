@@ -345,6 +345,9 @@ export const AUDIT_ACTION = {
   AI_SEARCH_ASK: 'ai_search.ask',
   // Personal UI preferences (e.g. configurable focus-scan hotkey)
   STAFF_PREFERENCE_UPDATE: 'staff_preference.update',
+  // Home Inbox — personal follow/mute on an entity, and inbox triage.
+  SUBSCRIPTION_TOGGLE: 'subscription.toggle',
+  INBOX_TRIAGE: 'inbox.triage',
   // Settings Registry — org/staff per-page setting change (docs/settings-registry.md)
   SETTINGS_UPDATE: 'settings.update',
   // Per-unit repair records

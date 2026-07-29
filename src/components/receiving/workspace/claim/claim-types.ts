@@ -69,6 +69,10 @@ export type LinkCandidate = TicketCandidate;
 export interface ClaimPhoto {
   id: number;
   url: string;
+  /** Line the photo primary-links (item evidence) — null for carton-scoped shots. */
+  receivingLineId: number | null;
+  /** Raw `photo_type` (the list API's `caption`) — stage via `stageFromPhotoType`. */
+  photoType: string | null;
 }
 
 /** The five create-flow steps, in order, for the linear header stepper. */

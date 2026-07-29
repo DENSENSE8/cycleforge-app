@@ -181,7 +181,7 @@ export function CellTextEditPopover({
           {hint}
         </p>
       ) : null}
-      <p className="mt-1 text-role-eyebrow font-bold uppercase tracking-widest text-text-faint">
+      <p className="mt-1 text-role-eyebrow uppercase tracking-widest text-text-faint">
         {multiline ? 'Enter save · Shift+Enter line · Esc cancel' : 'Enter to save · Esc to cancel'}
       </p>
     </Popover>
@@ -268,7 +268,7 @@ export function ConditionSelectPopover({
                 pick(opt.value);
               }}
               className={cn(
-                'ds-raw-button flex w-full items-center justify-between gap-2 px-2.5 py-1.5 text-left text-role-caption font-bold uppercase tracking-wide outline-none hover:bg-surface-hover focus-visible:bg-surface-hover',
+                'ds-raw-button flex w-full items-center justify-between gap-2 px-2.5 py-1.5 text-left text-role-caption font-semibold uppercase tracking-wide outline-none hover:bg-surface-hover focus-visible:bg-surface-hover',
                 conditionGradeTextClass(opt.value),
                 // Current grade reads in its own hue — soft toned wash + check.
                 isCurrent && conditionGradeTone(opt.value).badge,

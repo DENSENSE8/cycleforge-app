@@ -71,11 +71,11 @@ export function MobileToolbar({
 
         {/* Title block */}
         <div className="flex-1 min-w-0">
-          <h1 className="text-base font-black text-text-default tracking-tight truncate">
+          <h1 className="text-base font-semibold text-text-default tracking-tight truncate">
             {title}
           </h1>
           {subtitle && (
-            <p className="text-role-eyebrow font-bold uppercase tracking-[0.2em] text-text-soft truncate">
+            <p className="text-role-eyebrow uppercase tracking-[0.2em] text-text-soft truncate">
               {subtitle}
             </p>
           )}

@@ -134,6 +134,59 @@ test('resolveUnboxReceiveTerminal: primary label from controller', () => {
   assert.equal(printed, null);
 });
 
+test('resolveUnboxReceiveTerminal: received line prints instead of receiving', () => {
+  let printed = 0;
+  let printAndReceived = 0;
+  const vm = resolveUnboxReceiveTerminal(
+    mockCtx({
+      receive: {
+        ...mockCtx().receive,
+        isReceived: true,
+        // Controller copy for a received line.
+        printReceivePrimaryLabel: 'Print label',
+        receiveMenuLabel: 'Receive again',
+        runPrintLabel: () => {
+          printed += 1;
+        },
+        handlePrintAndReceive: () => {
+          printAndReceived += 1;
+        },
+      },
+    }),
+  );
+
+  assert.equal(vm.label, 'Print label');
+  vm.onClick();
+  // The whole point: pressing the primary must NOT re-receive the line.
+  assert.equal(printed, 1);
+  assert.equal(printAndReceived, 0);
+
+  // Re-receive stays reachable — a bounce-back is a supported flow.
+  assert.ok(vm.menu && vm.menu.some((m) => m.label === 'Receive again'));
+});
+
+test('resolveUnboxReceiveTerminal: un-received line still prints AND receives', () => {
+  let printed = 0;
+  let printAndReceived = 0;
+  const vm = resolveUnboxReceiveTerminal(
+    mockCtx({
+      receive: {
+        ...mockCtx().receive,
+        runPrintLabel: () => {
+          printed += 1;
+        },
+        handlePrintAndReceive: () => {
+          printAndReceived += 1;
+        },
+      },
+    }),
+  );
+
+  vm.onClick();
+  assert.equal(printAndReceived, 1);
+  assert.equal(printed, 0);
+});
+
 test('resolveUnboxReceiveTerminal: unfound hides Save all to inventory', () => {
   const vm = resolveUnboxReceiveTerminal(
     mockCtx({

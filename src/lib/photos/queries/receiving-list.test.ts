@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+  sqlCartonStagePhotoCount,
   sqlLineIdsPhotoCount,
   sqlLinePhotoCount,
   sqlPoLevelPhotoCount,
@@ -35,4 +36,22 @@ test('sqlLinePhotoCount counts a single receiving line', () => {
 test('sqlLineIdsPhotoCount accepts int array param', () => {
   const sql = sqlLineIdsPhotoCount('$2::int[]', 'rl.organization_id');
   assert.match(sql, /\$2::int\[\]/);
+});
+
+test('sqlCartonStagePhotoCount package pins entity + package types and excludes receiving_item', () => {
+  const sql = sqlCartonStagePhotoCount('$2::int', '$1', 'package');
+  // Entity AND type come from the intent fragment — never entity-only.
+  assert.match(sql, /l\.entity_type = 'RECEIVING'/);
+  assert.match(sql, /COALESCE\(p\.photo_type, ''\) IN \('receiving_package', 'receiving', ''\)/);
+  assert.match(sql, /\$2::int/);
+  // Mis-stamped item-on-carton rows must never count as arrival evidence.
+  assert.doesNotMatch(sql, /receiving_item/);
+  assert.doesNotMatch(sql, /receiving_unbox_carton/);
+});
+
+test('sqlCartonStagePhotoCount unbox_carton pins the exact unbox type', () => {
+  const sql = sqlCartonStagePhotoCount('$2::int', '$1', 'unbox_carton');
+  assert.match(sql, /l\.entity_type = 'RECEIVING'/);
+  assert.match(sql, /p\.photo_type = 'receiving_unbox_carton'/);
+  assert.doesNotMatch(sql, /'receiving_package'/);
 });

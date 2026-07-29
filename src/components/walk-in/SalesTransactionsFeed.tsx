@@ -87,7 +87,7 @@ export function SalesTransactionsFeed({
   if (isError) {
     return (
       <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50 px-4 py-8 text-center">
-        <p className="text-role-caption font-bold text-rose-700">
+        <p className="text-role-caption font-semibold text-rose-700">
           Couldn&apos;t load the transaction history.
         </p>
         <Button type="button" variant="secondary" size="sm" className="mt-2 gap-1.5" onClick={refetch}>

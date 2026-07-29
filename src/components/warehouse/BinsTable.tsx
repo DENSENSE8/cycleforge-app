@@ -92,7 +92,7 @@ export function BinsTable({ rows, loading, selected, onSelectChange, onRowClick 
     <div className="rounded-xl border border-border-soft bg-surface-card overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
-          <thead className="bg-surface-canvas text-left text-role-micro font-bold uppercase tracking-wider text-text-soft">
+          <thead className="bg-surface-canvas text-left text-role-micro uppercase tracking-wider text-text-soft">
             <tr>
               <th className="w-10 px-3 py-2">
                 <input

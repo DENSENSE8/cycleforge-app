@@ -16,6 +16,8 @@ import {
 import { useNasConfig } from '@/hooks/useNasConfig';
 import { useRealtimeInvalidation } from '@/hooks/useRealtimeInvalidation';
 import { useScopedReceivingPhotos } from '@/hooks/useScopedReceivingPhotos';
+import { photoStageLabel } from '@/lib/photos/stages';
+import { effectiveReceivingPhotoStage } from '@/lib/receiving/photo-scope';
 import { useAblyClient } from '@/contexts/AblyContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { safeChannelName, getPhoneBridgeChannelName } from '@/lib/realtime/channels';
@@ -62,9 +64,14 @@ export function MobileReceivingPhotoStudio({
   const notifyStaffId = user?.staffId ?? 0;
   const phoneChannelName = safeChannelName(() => getPhoneBridgeChannelName(orgId!, notifyStaffId));
 
+  // Stage-typed carton captures list PO-level (RECEIVING-entity) photos only —
+  // item shots never mix into a carton gallery/prior strip. Stage-less legacy
+  // callers (old gallery routes) keep the historical `all` union.
   const { priorPhotos, deletePhoto, query } = useScopedReceivingPhotos({
     ...scope,
-    photosListScope: scope.photosListScope ?? (scope.receivingLineId != null ? undefined : 'all'),
+    photosListScope:
+      scope.photosListScope ??
+      (scope.receivingLineId != null ? undefined : scope.stage ? 'po' : 'all'),
   });
 
   const returnToCaller = useCallback(() => {
@@ -148,9 +155,14 @@ export function MobileReceivingPhotoStudio({
       header={
         <div className="min-w-0">
           <p className="text-role-micro uppercase tracking-[0.22em] text-white/60">
-            Add unboxing photos
+            {/* Stage eyebrow from the display-label SoT — 'Arrival · package' /
+                'Unbox · carton' / 'Unbox · item'. Legacy stage-less callers keep
+                the old copy. */}
+            {scope.stage || scope.receivingLineId != null
+              ? photoStageLabel(effectiveReceivingPhotoStage(scope))
+              : 'Add unboxing photos'}
           </p>
-          <p className="truncate text-sm font-black text-white">{headerLabel}</p>
+          <p className="truncate text-sm font-semibold text-white">{headerLabel}</p>
         </div>
       }
     />

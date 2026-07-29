@@ -91,8 +91,8 @@ function SecondaryTile({
           </span>
         )}
       </div>
-      <AnimatedStat value={value} className="mt-2 text-role-display font-extrabold leading-none text-text-default" />
-      <p className="mt-1.5 text-role-caption font-bold text-text-default">{label}</p>
+      <AnimatedStat value={value} className="mt-2 text-role-display leading-none text-text-default" />
+      <p className="mt-1.5 text-role-caption font-semibold text-text-default">{label}</p>
       <p className="mt-0.5 text-role-micro font-medium text-text-muted">{sub}</p>
     </motion.div>
   );

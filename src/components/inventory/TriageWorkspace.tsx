@@ -137,14 +137,14 @@ export function TriageWorkspace({ selectedId }: TriageWorkspaceProps) {
                 <div className="flex items-center gap-3">
                     <span
                         className={cn(
-                            'rounded-full px-3 py-1 text-role-caption font-bold uppercase tracking-wider',
+                            'rounded-full px-3 py-1 text-role-caption font-semibold uppercase tracking-wider',
                             triageStatusBadgeClass(data.status),
                         )}
                     >
                         {data.status}
                     </span>
                     <div className="mx-1 h-4 w-px bg-surface-strong" />
-                    <div className="flex items-center gap-2 text-role-caption font-bold text-text-soft">
+                    <div className="flex items-center gap-2 text-role-caption font-semibold text-text-soft">
                         <Clock className="h-3.5 w-3.5 text-text-faint" />
                         Opened {formatWhen(data.created_at)}
                     </div>
@@ -156,7 +156,7 @@ export function TriageWorkspace({ selectedId }: TriageWorkspaceProps) {
                                 type="button"
                                 onClick={() => patch.mutate({ status: 'resolved' })}
                                 disabled={patch.isPending}
-                                className="ds-raw-button flex items-center gap-2 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-60"
+                                className="ds-raw-button flex items-center gap-2 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
                             >
                                 <Check className="h-3.5 w-3.5" /> Resolve
                             </button>
@@ -188,10 +188,10 @@ export function TriageWorkspace({ selectedId }: TriageWorkspaceProps) {
                 <div className="mx-auto max-w-4xl space-y-8">
                     {/* Summary */}
                     <div className="space-y-1">
-                        <h1 className="font-mono text-3xl font-black tracking-tight text-text-default">
+                        <h1 className="font-mono text-3xl font-semibold tracking-tight text-text-default">
                             {data.tracking_number}
                         </h1>
-                        <p className="text-lg font-bold text-text-soft">
+                        <p className="text-lg font-semibold text-text-soft">
                             {data.exception_reason || 'Exception'}
                         </p>
                     </div>
@@ -228,7 +228,7 @@ export function TriageWorkspace({ selectedId }: TriageWorkspaceProps) {
 
                     {/* Notes */}
                     <div className="space-y-3">
-                        <h3 className="text-xs font-black uppercase tracking-widest text-text-faint">Notes</h3>
+                        <h3 className="text-xs font-semibold uppercase tracking-widest text-text-faint">Notes</h3>
                         <textarea
                             value={notes}
                             onChange={(e) => setNotes(e.target.value)}
@@ -269,7 +269,7 @@ function Field({
             <p className="text-role-micro uppercase tracking-widest text-text-faint">{label}</p>
             <div className="flex items-center gap-2">
                 {icon}
-                <span className="text-sm font-black text-text-default">{children}</span>
+                <span className="text-sm font-semibold text-text-default">{children}</span>
             </div>
         </div>
     );

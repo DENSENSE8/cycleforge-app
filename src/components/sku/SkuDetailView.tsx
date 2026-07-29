@@ -44,8 +44,8 @@ export default function SkuDetailView({ sku, variant = 'page', onClose }: SkuDet
   if (c.error && !data) {
     return wrapPanel(
       <div className="flex h-full flex-col items-center justify-center bg-surface-canvas px-6">
-        <p className="mb-4 text-sm font-bold text-red-600">{c.error}</p>
-        <Button variant="ghost" onClick={c.handleClose} className="text-sm font-bold text-blue-600 underline">
+        <p className="mb-4 text-sm font-semibold text-red-600">{c.error}</p>
+        <Button variant="ghost" onClick={c.handleClose} className="text-sm font-semibold text-blue-600 underline">
           Back to SKU Stock
         </Button>
       </div>,
@@ -79,7 +79,7 @@ export default function SkuDetailView({ sku, variant = 'page', onClose }: SkuDet
             onDeleted={c.handleClose}
             label="Deactivate SKU"
             armedLabel="Click again to deactivate"
-            className="inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-md border border-rose-200 bg-rose-50 text-role-caption font-bold text-rose-700 transition-colors hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-md border border-rose-200 bg-rose-50 text-role-caption font-semibold text-rose-700 transition-colors hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
           />
         </div>
       ) : null}

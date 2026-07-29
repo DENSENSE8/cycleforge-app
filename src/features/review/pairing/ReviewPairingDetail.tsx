@@ -102,10 +102,10 @@ export function ReviewPairingDetail({
       <div className="shrink-0 border-b border-border-hairline bg-surface-card px-5 py-3">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-role-eyebrow font-black uppercase tracking-widest text-text-soft">
+            <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">
               Review · Pairing
             </p>
-            <p className="truncate text-role-title font-black text-text-default">
+            <p className="truncate text-role-title text-text-default">
               {live.order_id || `Order #${live.id}`}
             </p>
             {live.product_title ? (
@@ -120,7 +120,7 @@ export function ReviewPairingDetail({
 
       <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-4">
         <section className="space-y-1.5">
-          <p className="text-role-eyebrow font-black uppercase tracking-widest text-text-soft">Line</p>
+          <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">Line</p>
           <p className="text-role-caption font-semibold text-text-default">
             {sku ? (
               <>
@@ -147,7 +147,7 @@ export function ReviewPairingDetail({
         </section>
 
         <section className="space-y-1.5">
-          <p className="text-role-eyebrow font-black uppercase tracking-widest text-text-soft">
+          <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">
             Scan or enter serial
           </p>
           <input

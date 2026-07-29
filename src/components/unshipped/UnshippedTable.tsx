@@ -31,6 +31,10 @@ export interface UnshippedTableProps extends DashboardSearchSectionProps {
   testedBy?: number;
   /** Pencil multi-select: rows render checkboxes; chrome owns the Select toggle. */
   selectMode?: boolean;
+  /** Reserve bottom room for the pinned bulk-selection capsule. Forwarded to
+   *  the bounded host in {@link UnshippedShelfBoard}; pass `bulkBarVisible`
+   *  from `useDashboardBulkSelection`. */
+  bulkBarInset?: boolean;
   /** Portal board toolbar controls into the dashboard outbound floating row. */
   toolbarPortalTarget?: HTMLElement | null;
   /**
@@ -96,6 +100,7 @@ export function UnshippedTable({
   searchResultLabel = 'orders to ship',
   clearSearchLabel = 'Show All Pending Orders',
   selectMode = false,
+  bulkBarInset = false,
   toolbarPortalTarget,
   onOpenRecord,
   fulfillmentLane,
@@ -357,6 +362,7 @@ export function UnshippedTable({
       loading={query.isLoading}
       searchValue={searchQuery}
       selectMode={selectMode}
+      bulkBarInset={bulkBarInset}
       onOpenRecord={(record) => {
         if (onOpenRecord) {
           onOpenRecord(record);

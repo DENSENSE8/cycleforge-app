@@ -15,11 +15,3 @@ export type { MobileBottomActionBarProps } from './MobileBottomActionBar';
 
 export { MobileScanSheet } from './MobileScanSheet';
 export type { MobileScanSheetProps } from './MobileScanSheet';
-
-export {
-  MobileBoxedNavChevron,
-  dispatchOpenMobileAppDrawer,
-  mobileBoxedNavButtonClass,
-  mobileBoxedNavCellClass,
-} from './MobileBoxedNavButton';
-export type { MobileBoxedNavChevronProps } from './MobileBoxedNavButton';

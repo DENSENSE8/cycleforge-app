@@ -56,11 +56,11 @@ export function ReceivingReturnBanner({
             <p className="text-role-eyebrow uppercase tracking-wider text-amber-800">
               Return detected
             </p>
-            <p className="mt-0.5 truncate font-mono text-role-micro font-bold text-text-default">
+            <p className="mt-0.5 truncate font-mono text-role-micro text-text-default">
               {ret.serial_number}
             </p>
             {ret.sku && (
-              <p className="truncate text-role-eyebrow font-bold text-text-muted">{ret.sku}</p>
+              <p className="truncate text-role-eyebrow text-text-muted">{ret.sku}</p>
             )}
             {ret.order_id && (
               <p className="truncate text-role-micro uppercase tracking-wider text-emerald-600">

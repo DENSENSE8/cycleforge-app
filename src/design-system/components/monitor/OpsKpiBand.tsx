@@ -94,7 +94,7 @@ export function OpsKpiBandEmpty({
     <div className="flex items-center gap-3 rounded-xl border border-dashed border-border-soft bg-surface-card px-4 py-5">
       {icon ?? <CheckCircle className="h-5 w-5 shrink-0 text-text-success" />}
       <div className="min-w-0">
-        <p className="text-role-caption font-bold text-text-default">{title}</p>
+        <p className="text-role-caption font-semibold text-text-default">{title}</p>
         <p className="mt-0.5 text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint">
           {description}
         </p>
@@ -112,7 +112,7 @@ export function OpsKpiBandError({
 }) {
   return (
     <div className="rounded-xl border border-dashed border-border-danger bg-fill-danger px-4 py-8 text-center">
-      <p className="text-role-caption font-bold text-text-danger">{message}</p>
+      <p className="text-role-caption font-semibold text-text-danger">{message}</p>
       <Button variant="secondary" size="sm" onClick={onRetry} className="mt-2">
         <RefreshCw className="h-3.5 w-3.5" />
         Try again

@@ -83,7 +83,7 @@ export function ProductsPairingShell() {
     return (
       <div className="flex h-full items-center justify-center bg-surface-canvas px-6 text-center">
         <div>
-          <p className="text-sm font-bold text-text-muted">Pick a product to start pairing</p>
+          <p className="text-sm font-semibold text-text-muted">Pick a product to start pairing</p>
           <p className="mt-1 text-xs text-text-soft">
             The sidebar lists canonical SKUs with pending suggestions across one or more platforms.
           </p>
@@ -104,7 +104,7 @@ export function ProductsPairingShell() {
     return (
       <div className="flex h-full items-center justify-center bg-surface-canvas px-6 text-center">
         <div>
-          <p className="text-sm font-bold text-text-muted">{resolveError || 'Not found'}</p>
+          <p className="text-sm font-semibold text-text-muted">{resolveError || 'Not found'}</p>
           <p className="mt-1 text-xs text-text-soft">
             Pick another product from the sidebar.
           </p>

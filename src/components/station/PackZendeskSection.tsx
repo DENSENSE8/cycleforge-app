@@ -220,7 +220,7 @@ function PackZendeskBody({
                   <span className="shrink-0 font-mono text-role-eyebrow tabular-nums text-text-soft">
                     #{t.id}
                   </span>
-                  <span className="min-w-0 flex-1 truncate text-role-caption font-bold text-text-default">
+                  <span className="min-w-0 flex-1 truncate text-role-caption font-semibold text-text-default">
                     {t.subject || 'Untitled ticket'}
                   </span>
                   <span className="shrink-0 rounded bg-surface-sunken px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest text-text-soft">

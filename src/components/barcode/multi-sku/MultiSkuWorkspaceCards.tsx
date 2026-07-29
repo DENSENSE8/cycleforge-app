@@ -75,7 +75,7 @@ export function AutoUnitQuantityField({
           const next = Number(event.target.value);
           onChange(Number.isFinite(next) ? Math.max(1, Math.min(100, Math.trunc(next))) : 1);
         }}
-        className={`h-11 w-24 shrink-0 rounded-xl border border-border-soft bg-surface-card text-center font-mono text-base font-bold tabular-nums text-text-default ${accent.focusRing}`}
+        className={`h-11 w-24 shrink-0 rounded-xl border border-border-soft bg-surface-card text-center font-mono text-base font-semibold tabular-nums text-text-default ${accent.focusRing}`}
       />
     </div>
   );
@@ -190,7 +190,7 @@ export function ProductContextCard({ title, stock, imageUrl, isLoading }: Produc
         )}
       </div>
 
-      <span className={`shrink-0 rounded-lg px-2.5 py-1 text-sm font-bold tabular-nums ring-1 ${stockClass}`}>
+      <span className={`shrink-0 rounded-lg px-2.5 py-1 text-sm font-semibold tabular-nums ring-1 ${stockClass}`}>
         {stock || '0'} <span className="text-role-micro font-semibold uppercase tracking-wider">stock</span>
       </span>
     </section>
@@ -292,7 +292,7 @@ export function PreviewCardModern({
       <div className="space-y-2 rounded-xl bg-surface-canvas p-5 ring-1 ring-border-soft/50">
         <div>
           <p className="text-role-micro font-semibold uppercase tracking-[0.14em] text-text-soft">SKU</p>
-          <p className="font-mono text-base font-bold text-text-default">{uniqueSku}</p>
+          <p className="font-mono text-base font-semibold text-text-default">{uniqueSku}</p>
         </div>
         <div>
           <p className="text-role-micro font-semibold uppercase tracking-[0.14em] text-text-soft">

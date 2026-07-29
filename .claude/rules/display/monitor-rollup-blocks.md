@@ -110,8 +110,8 @@ Constants: `MONITOR_SECTION_CARD_CLASS` / `MONITOR_SECTION_CARD_PADDED` / `MONIT
 
 ### KPI tile anatomy
 
-1. **Eyebrow label** — `text-eyebrow font-black uppercase tracking-widest text-text-soft`
-2. **Hero number** — `text-3xl font-black tabular-nums`
+1. **Eyebrow label** — `text-role-eyebrow uppercase tracking-widest text-text-soft` (role bakes 600 + condensed)
+2. **Hero number** — `text-3xl font-semibold tabular-nums` (600 is the cap — see `ui-design-system.md` → Type)
 3. **Delta chip** — `DeltaChip` (theme `text-text-success` / `text-text-danger`)
 
 ### List rows inside cards

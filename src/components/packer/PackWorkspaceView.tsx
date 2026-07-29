@@ -17,6 +17,7 @@ import { PackWorkspaceHeader } from '@/components/packer/PackWorkspaceHeader';
 import {
   WORKBENCH_BODY_COLUMN,
   WORKBENCH_CHROME_COLUMN,
+  WORKBENCH_TABLE_VIEWPORT,
 } from '@/components/dashboard/workbench-shell';
 import { ContextualSelectionBar } from '@/design-system/components/ContextualSelectionBar';
 import { DASHBOARD_ORDERS_SELECTION_SCOPE } from '@/lib/selection/dashboard-scopes';
@@ -36,7 +37,7 @@ export function PackWorkspaceView({ packerId }: { packerId: number }) {
   const { packView, setPackView } = usePackWorkspaceTab();
   const { newOpen, openNew, closeNew } = useNewOrderParam();
   const [controlsEl, setControlsEl] = useState<HTMLDivElement | null>(null);
-  const { selectMode, selectedRows, selectionActions } =
+  const { selectMode, selectedRows, selectionActions, bulkBarVisible } =
     useDashboardBulkSelection('unshipped');
 
   const paneMotionProps = {
@@ -49,7 +50,11 @@ export function PackWorkspaceView({ packerId }: { packerId: number }) {
   };
 
   return (
-    <div className="relative h-full min-h-0 w-full overflow-hidden">
+    // Flex column (not a bare block): `DashboardScrollShell` is `flex-1`, which
+    // is inert outside a flex parent — the shell then collapsed to content
+    // height and the white work canvas showed through below it. Mirrors
+    // Unbox/Triage.
+    <div className="relative flex h-full min-h-0 w-full flex-col overflow-hidden">
     <DashboardScrollShell
       className="h-full bg-transparent"
       chrome={
@@ -73,14 +78,20 @@ export function PackWorkspaceView({ packerId }: { packerId: number }) {
             <motion.div key={packView} {...paneMotionProps} className="flex min-w-0 flex-col">
               <Suspense fallback={<TableFallback />}>
                 {packView === 'history' ? (
-                  <PackerTable
-                    packedBy={Number.isFinite(packerId) ? packerId : 0}
-                    toolbarPortalTarget={controlsEl}
-                  />
+                  // Bounded host so the framed card's bottom edge (and its
+                  // raised elevation) stay on screen and the table self-scrolls
+                  // instead of growing the page — same as the Queue grid.
+                  <div className={`${WORKBENCH_TABLE_VIEWPORT} pb-3`}>
+                    <PackerTable
+                      packedBy={Number.isFinite(packerId) ? packerId : 0}
+                      toolbarPortalTarget={controlsEl}
+                    />
+                  </div>
                 ) : (
                   <UnshippedTable
                     strictSearchScope
                     selectMode={selectMode}
+                    bulkBarInset={bulkBarVisible}
                     toolbarPortalTarget={controlsEl}
                     onOpenRecord={handleOpenQueueRecord}
                     searchEmptyTitle="No ready-to-pack orders"

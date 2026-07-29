@@ -76,18 +76,18 @@ export function MobilePackingRow({ row, variant, fresh = false, onTap, photosHre
       {(hasSlip || hasBox || outcome || (!isExpanded && photoCount > 0)) && (
         <div className="pointer-events-none mt-1 flex flex-wrap items-center gap-1.5 pl-[calc(0.5rem+0.5rem)]">
           {hasSlip ? (
-            <span className="rounded bg-surface-sunken px-1.5 py-0.5 text-role-micro font-black uppercase tracking-widest text-text-muted ring-1 ring-inset ring-border-soft">
+            <span className="rounded bg-surface-sunken px-1.5 py-0.5 text-role-micro uppercase tracking-widest text-text-muted ring-1 ring-inset ring-border-soft">
               Slip
             </span>
           ) : null}
           {hasBox ? (
-            <span className="rounded bg-surface-sunken px-1.5 py-0.5 text-role-micro font-black uppercase tracking-widest text-text-muted ring-1 ring-inset ring-border-soft">
+            <span className="rounded bg-surface-sunken px-1.5 py-0.5 text-role-micro uppercase tracking-widest text-text-muted ring-1 ring-inset ring-border-soft">
               Box
             </span>
           ) : null}
           {outcome ? <OutcomeChip outcome={outcome} /> : null}
           {!isExpanded && !hasSlip && !hasBox && photoCount > 0 ? (
-            <span className="rounded bg-surface-sunken px-1.5 py-0.5 text-role-micro font-black uppercase tracking-widest text-text-muted ring-1 ring-inset ring-border-soft tabular-nums">
+            <span className="rounded bg-surface-sunken px-1.5 py-0.5 text-role-micro uppercase tracking-widest text-text-muted ring-1 ring-inset ring-border-soft tabular-nums">
               ×{photoCount}
             </span>
           ) : null}
@@ -99,7 +99,7 @@ export function MobilePackingRow({ row, variant, fresh = false, onTap, photosHre
           href={photosHref}
           prefetch={false}
           aria-label="Take photos"
-          className="pointer-events-auto mt-3 inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-blue-600 text-white text-role-caption font-black uppercase tracking-[0.18em] shadow-[0_6px_14px_-6px_rgba(37,99,235,0.55)] transition-transform active:scale-[0.98] active:bg-blue-700"
+          className="pointer-events-auto mt-3 inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-blue-600 text-white text-role-caption font-semibold uppercase tracking-[0.18em] shadow-[0_6px_14px_-6px_rgba(37,99,235,0.55)] transition-transform active:scale-[0.98] active:bg-blue-700"
         >
           <Camera className="h-5 w-5" />
           {photoCount > 0 ? (

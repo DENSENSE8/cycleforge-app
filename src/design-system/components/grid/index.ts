@@ -11,3 +11,5 @@ export type { GridSurfaceDescriptor, LedgerGridColumnModel } from './grid-surfac
 // module, not the barrel — they exist for the guard tests and for anything that
 // needs the rule without React. Surfaces compose the two hooks.
 export { useGridColumnVisibility, useGridFields } from './useGridColumnVisibility';
+export { gridHeaderCellAlignClass } from './grid-header-align';
+export type { GridHeaderAlign } from './grid-header-align';

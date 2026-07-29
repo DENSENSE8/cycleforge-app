@@ -113,7 +113,7 @@ export function VoicemailQueue({ modeToggle = null }: { modeToggle?: ReactNode }
         )}
       </div>
 
-      <div className="flex shrink-0 items-center gap-1.5 border-t border-border-hairline px-3 py-2 text-role-micro font-bold uppercase tracking-widest text-text-faint">
+      <div className="flex shrink-0 items-center gap-1.5 border-t border-border-hairline px-3 py-2 text-role-micro uppercase tracking-widest text-text-faint">
         <Voicemail className="h-3 w-3" />
         {openCount > 0 ? `${openCount} open follow-up${openCount === 1 ? '' : 's'}` : 'Follow-up queue'}
       </div>
@@ -162,14 +162,14 @@ function VoicemailRow({
           <span className="flex items-center gap-1.5">
             <span
               className={cn(
-                'min-w-0 flex-1 truncate text-role-caption font-bold text-text-default',
+                'min-w-0 flex-1 truncate text-role-caption font-semibold text-text-default',
                 !vm.isRead && 'after:ml-1 after:inline-block after:h-1.5 after:w-1.5 after:rounded-full after:bg-blue-500 after:align-middle',
               )}
             >
               {name}
             </span>
             {vm.linkedTicketId ? (
-              <span className="inline-flex shrink-0 items-center gap-0.5 rounded bg-violet-50 px-1 py-0.5 text-[8.5px] font-black uppercase tracking-widest text-violet-700 ring-1 ring-inset ring-violet-200">
+              <span className="inline-flex shrink-0 items-center gap-0.5 rounded bg-violet-50 px-1 py-0.5 text-[8.5px] font-semibold uppercase tracking-widest text-violet-700 ring-1 ring-inset ring-violet-200">
                 <Link2 className="h-2.5 w-2.5" />#{vm.linkedTicketId}
               </span>
             ) : null}
@@ -185,7 +185,7 @@ function VoicemailRow({
             </span>
           ) : null}
           {vm.assignedStaffName ? (
-            <span className={cn('mt-1 inline-block rounded px-1 py-0.5 text-[8.5px] font-black uppercase tracking-widest ring-1 ring-inset', tone.chip)}>
+            <span className={cn('mt-1 inline-block rounded px-1 py-0.5 text-[8.5px] font-semibold uppercase tracking-widest ring-1 ring-inset', tone.chip)}>
               {vm.assignedStaffName}
             </span>
           ) : null}

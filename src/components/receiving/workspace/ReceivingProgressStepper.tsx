@@ -37,7 +37,7 @@ export function LinearWorkflowStepper({
   const connectorPt = compact ? 'pt-1.5' : 'pt-2';
   const stepGap = compact ? 'gap-0.5' : 'gap-1';
   const labelClass = compact
-    ? 'text-role-eyebrow font-bold uppercase leading-none tracking-[0.1em]'
+    ? 'text-role-eyebrow uppercase leading-none tracking-[0.1em]'
     : 'text-role-micro uppercase leading-none tracking-[0.12em]';
 
   return (
@@ -48,7 +48,7 @@ export function LinearWorkflowStepper({
           const prevState = idx > 0 ? (states[steps[idx - 1].key] ?? 'pending') : null;
           const labelTone =
             s === 'active'
-              ? 'text-text-default font-black'
+              ? 'text-text-default font-semibold'
               : s === 'done'
                 ? 'text-text-faint'
                 : 'text-text-faint/70';
@@ -125,7 +125,7 @@ function StepDot({
   if (state === 'active') {
     return (
       <span
-        className={`flex shrink-0 items-center justify-center rounded-full bg-surface-card font-black text-blue-700 ring-2 ring-blue-500 ${sizeClass} ${
+        className={`flex shrink-0 items-center justify-center rounded-full bg-surface-card font-semibold text-blue-700 ring-2 ring-blue-500 ${sizeClass} ${
           compact ? 'text-role-micro' : 'text-role-eyebrow'
         }`}
       >

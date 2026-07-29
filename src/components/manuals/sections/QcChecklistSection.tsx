@@ -250,7 +250,7 @@ export function QcChecklistSection({ catalogId, qcChecks, onRefresh }: QcCheckli
             }`}
           >
             <span className="shrink-0 w-5 text-center text-role-micro text-text-faint tabular-nums">{idx + 1}</span>
-            <span className={`flex-1 min-w-0 truncate text-role-caption font-bold ${isDraft ? 'text-text-soft' : 'text-text-default'}`}>
+            <span className={`flex-1 min-w-0 truncate text-role-caption font-semibold ${isDraft ? 'text-text-soft' : 'text-text-default'}`}>
               {check.step_label}
             </span>
             {summary && (
@@ -313,7 +313,7 @@ export function QcChecklistSection({ catalogId, qcChecks, onRefresh }: QcCheckli
                 value={stepLabel}
                 onChange={(e) => setStepLabel(e.target.value)}
                 placeholder="Check step description"
-                className="w-full rounded-lg border border-border-soft bg-surface-canvas px-2.5 py-1.5 text-role-caption font-bold text-text-default placeholder:text-text-faint"
+                className="w-full rounded-lg border border-border-soft bg-surface-canvas px-2.5 py-1.5 text-role-caption font-semibold text-text-default placeholder:text-text-faint"
               />
               <div className="flex gap-2">
                 <HoverTooltip label="Category badge" asChild>
@@ -353,14 +353,14 @@ export function QcChecklistSection({ catalogId, qcChecks, onRefresh }: QcCheckli
                     value={passMin}
                     onChange={(e) => setPassMin(e.target.value)}
                     placeholder="Pass min"
-                    className="flex-1 rounded-lg border border-border-soft bg-surface-canvas px-2.5 py-1.5 text-role-caption font-bold text-text-default placeholder:text-text-faint"
+                    className="flex-1 rounded-lg border border-border-soft bg-surface-canvas px-2.5 py-1.5 text-role-caption font-semibold text-text-default placeholder:text-text-faint"
                   />
                   <input
                     type="number"
                     value={passMax}
                     onChange={(e) => setPassMax(e.target.value)}
                     placeholder="Pass max"
-                    className="flex-1 rounded-lg border border-border-soft bg-surface-canvas px-2.5 py-1.5 text-role-caption font-bold text-text-default placeholder:text-text-faint"
+                    className="flex-1 rounded-lg border border-border-soft bg-surface-canvas px-2.5 py-1.5 text-role-caption font-semibold text-text-default placeholder:text-text-faint"
                   />
                   {valueKind !== 'PERCENT' && (
                     <input
@@ -368,7 +368,7 @@ export function QcChecklistSection({ catalogId, qcChecks, onRefresh }: QcCheckli
                       value={valueUnit}
                       onChange={(e) => setValueUnit(e.target.value)}
                       placeholder="Unit"
-                      className="w-20 rounded-lg border border-border-soft bg-surface-canvas px-2.5 py-1.5 text-role-caption font-bold text-text-default placeholder:text-text-faint"
+                      className="w-20 rounded-lg border border-border-soft bg-surface-canvas px-2.5 py-1.5 text-role-caption font-semibold text-text-default placeholder:text-text-faint"
                     />
                   )}
                 </div>
@@ -380,7 +380,7 @@ export function QcChecklistSection({ catalogId, qcChecks, onRefresh }: QcCheckli
                   value={valueEnumText}
                   onChange={(e) => setValueEnumText(e.target.value)}
                   placeholder="Choices, comma-separated (e.g. A, B, C)"
-                  className="w-full rounded-lg border border-border-soft bg-surface-canvas px-2.5 py-1.5 text-role-caption font-bold text-text-default placeholder:text-text-faint"
+                  className="w-full rounded-lg border border-border-soft bg-surface-canvas px-2.5 py-1.5 text-role-caption font-semibold text-text-default placeholder:text-text-faint"
                 />
               )}
 

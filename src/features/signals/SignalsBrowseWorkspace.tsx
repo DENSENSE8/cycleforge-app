@@ -103,7 +103,7 @@ export function SignalsBrowseWorkspace() {
                   signalId === s.id ? 'bg-blue-50 ring-1 ring-inset ring-blue-400' : 'hover:bg-surface-hover',
                 )}
               >
-                <span className="truncate text-role-caption font-bold text-text-default">{kindLabel(s.signal_kind)}</span>
+                <span className="truncate text-role-caption font-semibold text-text-default">{kindLabel(s.signal_kind)}</span>
                 <span className="truncate text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
                   {entityLabel(s.entity_type)} #{s.entity_id}
                   {shortTime(s.occurred_at) ? ` · ${shortTime(s.occurred_at)}` : ''}
@@ -155,7 +155,7 @@ export function SignalsBrowseWorkspace() {
                 ) : (
                   <>
                 <div className="space-y-1">
-                  <p className="text-lg font-black tracking-tight text-text-default">{kindLabel(detail.signal_kind)}</p>
+                  <p className="text-lg font-semibold tracking-tight text-text-default">{kindLabel(detail.signal_kind)}</p>
                   <p className="text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
                     {entityLabel(detail.entity_type)} #{detail.entity_id}
                   </p>

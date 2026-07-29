@@ -22,6 +22,7 @@ function isRepairServiceSku(value: unknown): boolean {
 
 type ColIndices = {
   shipByDate: number;
+  orderDate: number;
   orderNumber: number;
   itemNumber: number;
   itemTitle: number;
@@ -147,7 +148,13 @@ export async function fetchEcwidTransferRows(
       row[colIndices.usavSku] = sku;
       row[colIndices.condition] = '';
       row[colIndices.tracking] = tracking;
-      row[colIndices.shipByDate] = orderDate;
+      // Ecwid has no ship-by concept, so this slot stays EMPTY. It previously
+      // received `orderDate`, which made every Ecwid order due at the instant
+      // the customer checked out — overdue before it was even ingested, and
+      // the reason Ecwid showed the worst average lateness of any channel
+      // (15 days) while nothing was actually wrong with its fulfilment.
+      // An unknown ship-by is null; the placement fact goes to its own column.
+      if (colIndices.orderDate >= 0) row[colIndices.orderDate] = orderDate;
       row[colIndices.note] = notes;
       row[colIndices.platform] = 'ecwid';
 

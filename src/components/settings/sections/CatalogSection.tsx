@@ -14,7 +14,7 @@ export function CatalogSection() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-lg font-bold text-text-default">Platforms &amp; Types</h2>
+        <h2 className="text-lg font-semibold text-text-default">Platforms &amp; Types</h2>
         <p className="mt-1 text-sm text-text-soft">
           The sales channels, storefront accounts, and receiving flow types your team picks from
           across receiving and orders. Add, rename, reorder, hide, or delete your own — built-in

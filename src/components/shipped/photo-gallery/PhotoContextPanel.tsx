@@ -3,7 +3,7 @@
 import { motion } from 'framer-motion';
 import {
   AlertTriangle, Barcode, Calendar, ChevronRight, ExternalLink, FileText, Hash,
-  Image as ImageIcon, Layers, Package, Sparkles, Truck, User,
+  Image as ImageIcon, Layers, Package, Sparkles, Tag, Truck, User,
 } from '../../Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { IconButton } from '@/design-system/primitives';
@@ -12,6 +12,8 @@ import { useZendeskTicketSubject } from '@/hooks/useZendeskTicketSubject';
 import { usePhotoReceivingContext } from '@/hooks/usePhotoReceivingContext';
 import { framerTransition } from '@/design-system/foundations/motion-framer';
 import { useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
+import { photoStageLabel } from '@/lib/photos/stages';
+import type { PhotoIdentityMeta } from '@/components/photos/photo-library-types';
 import {
   describePhotoWorkflow,
   resolveLinkedEntityDisplay,
@@ -79,11 +81,17 @@ export function PhotoContextPanel({
   const WorkflowIcon = WORKFLOW_ICONS[workflow.kind];
 
   // Discrete provenance identifiers, shown as their own fields so the viewer
-  // surfaces the WHOLE picture (PO + claim + serial + tracking) instead of one
-  // "Linked to" line. Each is suppressed when it's already the primary headline
-  // above, so nothing reads twice.
+  // surfaces the WHOLE picture (PO + claim + SKU + serial + tracking) instead
+  // of one "Linked to" line. Each is suppressed when it's already the primary
+  // headline above, so nothing reads twice.
   const ctx = receivingCtx.data;
-  const serials = ctx?.serials ?? [];
+  // Library rows thread SKU · serial · stage through the gallery meta
+  // (photo-grid-format → libraryPhotoMeta); non-library callers simply omit it.
+  const identity: PhotoIdentityMeta = (meta ?? {}) as PhotoIdentityMeta;
+  const stage = identity.stage ?? null;
+  const sku = identity.sku?.trim() || null;
+  const metaSerial = identity.serialNumber?.trim() || null;
+  const serials = ctx?.serials?.length ? ctx.serials : metaSerial ? [metaSerial] : [];
   const tracking = ctx?.tracking ?? null;
   const claimRaw = ctx?.claim ?? (meta?.ticketId != null ? `#${meta.ticketId}` : null);
   const claimDisplay = claimRaw ? (claimRaw.startsWith('#') ? claimRaw : `#${claimRaw}`) : null;
@@ -93,12 +101,13 @@ export function PhotoContextPanel({
   const primaryIsPo = workflow.kind === 'unboxing' && !!poRef;
   const showClaimField = !!claimDisplay && !primaryIsClaim;
   const showPoField = !!poDisplay && !primaryIsPo;
-  const hasIdentifiers = showClaimField || showPoField || serials.length > 0 || !!tracking;
+  const hasIdentifiers =
+    showClaimField || showPoField || !!sku || serials.length > 0 || !!tracking;
 
   const analysisNode = meta?.damageDetected
-    ? <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-500/15 px-2 py-0.5 text-xs font-bold text-rose-200 ring-1 ring-inset ring-rose-400/30"><AlertTriangle className="h-3.5 w-3.5" /> Damage detected</span>
+    ? <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-500/15 px-2 py-0.5 text-xs font-semibold text-rose-200 ring-1 ring-inset ring-rose-400/30"><AlertTriangle className="h-3.5 w-3.5" /> Damage detected</span>
     : meta?.hasAnalysis
-      ? <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-bold text-emerald-200 ring-1 ring-inset ring-emerald-400/30"><Sparkles className="h-3.5 w-3.5" /> Analyzed · clear</span>
+      ? <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-semibold text-emerald-200 ring-1 ring-inset ring-emerald-400/30"><Sparkles className="h-3.5 w-3.5" /> Analyzed · clear</span>
       : <span className="text-xs text-text-faint">Not analyzed yet</span>;
 
   return (
@@ -140,20 +149,30 @@ export function PhotoContextPanel({
       <section className="space-y-3" aria-labelledby="photo-provenance-type">
         <div className="space-y-1.5">
           <ProvenanceLabel>Type</ProvenanceLabel>
-          <span
-            id="photo-provenance-type"
-            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-black uppercase tracking-wider ring-1 ring-inset ${workflow.tone}`}
-          >
-            <WorkflowIcon className="h-3.5 w-3.5" />
-            {workflow.label}
-          </span>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span
+              id="photo-provenance-type"
+              className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold uppercase tracking-wider ring-1 ring-inset ${workflow.tone}`}
+            >
+              <WorkflowIcon className="h-3.5 w-3.5" />
+              {workflow.label}
+            </span>
+            {stage ? (
+              <span
+                data-testid="photo-context-stage"
+                className="inline-flex items-center rounded-full bg-surface-sunken px-2.5 py-1 text-xs font-semibold uppercase tracking-wider text-text-soft ring-1 ring-inset ring-border-soft"
+              >
+                {photoStageLabel(stage)}
+              </span>
+            ) : null}
+          </div>
         </div>
 
         <div className="space-y-1.5">
           <ProvenanceLabel>Linked to</ProvenanceLabel>
           {linked.primary ? (
             <div className="space-y-0.5">
-              <p data-testid="photo-context-ref" className="text-base font-bold leading-snug text-white">
+              <p data-testid="photo-context-ref" className="text-base font-semibold leading-snug text-white">
                 {linked.primary}
               </p>
               {linked.secondary ? (
@@ -180,7 +199,7 @@ export function PhotoContextPanel({
         <a
           data-testid="photo-context-source-link"
           href={navLink.href}
-          className="flex items-center justify-center gap-2 rounded-lg border border-glass/15 bg-glass/10 px-3 py-2 text-sm font-bold text-white transition-colors hover:bg-glass/20"
+          className="flex items-center justify-center gap-2 rounded-lg border border-glass/15 bg-glass/10 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-glass/20"
         >
           <ExternalLink className="h-4 w-4 shrink-0" />
           {navLink.label}
@@ -200,6 +219,13 @@ export function PhotoContextPanel({
           {showPoField ? (
             <Field icon={<Package className="h-3.5 w-3.5" />} label="Purchase order">
               <span className="font-semibold text-white">{poDisplay}</span>
+            </Field>
+          ) : null}
+          {sku ? (
+            <Field icon={<Tag className="h-3.5 w-3.5" />} label="SKU">
+              <span data-testid="photo-context-sku" className="font-semibold tabular-nums text-white">
+                {sku}
+              </span>
             </Field>
           ) : null}
           {serials.length > 0 ? (

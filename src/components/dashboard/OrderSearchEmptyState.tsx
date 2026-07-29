@@ -43,8 +43,8 @@ export function OrderSearchEmptyState({
       <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-surface-sunken">
         <Search className="h-5 w-5 text-text-faint" />
       </div>
-      <h3 className="mb-1 text-sm font-black uppercase tracking-tight text-text-default">{title}</h3>
-      <p className="text-role-micro font-bold uppercase leading-relaxed tracking-widest text-text-muted">
+      <h3 className="mb-1 text-sm font-semibold uppercase tracking-tight text-text-default">{title}</h3>
+      <p className="text-role-micro uppercase leading-relaxed tracking-widest text-text-muted">
         No {resultLabel} match &quot;{query}&quot;
       </p>
       <Button

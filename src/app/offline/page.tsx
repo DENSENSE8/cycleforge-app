@@ -42,7 +42,7 @@ export default function OfflinePage() {
         <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-amber-50">
           <span aria-hidden className="text-3xl">📶</span>
         </div>
-        <h1 className="text-xl font-black text-text-default">No signal</h1>
+        <h1 className="text-xl font-semibold text-text-default">No signal</h1>
         <p className="text-sm font-semibold leading-snug text-text-muted">
           {retrying
             ? 'Reconnecting…'
@@ -63,7 +63,7 @@ export default function OfflinePage() {
             Retry
           </Button>
         </div>
-        <p className="pt-4 text-role-micro font-bold uppercase tracking-widest text-text-faint">
+        <p className="pt-4 text-role-micro uppercase tracking-widest text-text-faint">
           {online ? 'online' : 'offline'}
         </p>
       </div>

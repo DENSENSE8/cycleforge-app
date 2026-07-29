@@ -46,7 +46,7 @@ export function MyDayContextPane({ selected }: { selected: SelectedItem | null }
             transition={transition}
             className="rounded-xl border border-dashed border-border-soft bg-surface-sunken px-4 py-8 text-center"
           >
-            <p className="text-role-caption font-bold text-text-muted">
+            <p className="text-role-caption font-semibold text-text-muted">
               Select a task to see details and open the right station.
             </p>
           </motion.div>
@@ -66,7 +66,7 @@ function WorkOrderDetail({ row }: { row: WorkOrderRow }) {
         <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">
           {assignmentHeaderContextText(row)}
         </p>
-        <h2 className="text-h3 font-bold text-text-default">{row.title}</h2>
+        <h2 className="text-h3 font-semibold text-text-default">{row.title}</h2>
         <p className="text-role-caption font-medium text-text-muted">{row.subtitle}</p>
       </div>
 
@@ -97,7 +97,7 @@ function InterruptDetail({ item }: { item: MyDayInterrupt }) {
         <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">
           Needs attention
         </p>
-        <h2 className="text-h3 font-bold text-text-default">{item.title}</h2>
+        <h2 className="text-h3 font-semibold text-text-default">{item.title}</h2>
         <p className="text-role-caption font-medium text-text-muted">{item.subtitle}</p>
       </div>
 

@@ -17,8 +17,8 @@ export function RackBuilderMobile({ c, variant }: { c: RackLabelPrinterControlle
       <header className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h1 className={variant === 'sidebar'
-            ? 'text-base font-bold tracking-tight text-text-default'
-            : 'text-2xl font-bold tracking-tight text-text-default'}
+            ? 'text-base font-semibold tracking-tight text-text-default'
+            : 'text-2xl font-semibold tracking-tight text-text-default'}
           >
             {variant === 'sidebar' ? 'Build a rack label' : 'Rack Label Printer'}
           </h1>

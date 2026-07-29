@@ -35,7 +35,7 @@ test.describe('Dashboard order inspector — non-modal', () => {
 
     // Click a display-only track (Age): the editable cells (title / qty / date /
     // condition) stopPropagation to open their own in-cell editor instead.
-    await rows.nth(0).locator('[data-col="age"]').click();
+    await rows.nth(0).locator('[data-col="title"]').click();
 
     const inspector = page.locator('aside[role="region"]');
     await expect(inspector).toBeVisible({ timeout: 20_000 });
@@ -93,7 +93,7 @@ test.describe('Dashboard order inspector — non-modal', () => {
     const row = table.locator('[data-order-row-id]').first();
     await expect(row).toBeVisible({ timeout: 20_000 });
 
-    await row.locator('[data-col="age"]').click();
+    await row.locator('[data-col="title"]').click();
     const inspector = page.locator('aside[role="region"]');
     await expect(inspector).toBeVisible({ timeout: 20_000 });
 
@@ -130,7 +130,7 @@ test.describe('Dashboard order inspector — non-modal', () => {
       await expect(table).toBeVisible({ timeout: 20_000 });
       const row = table.locator('[data-order-row-id]').first();
       await expect(row).toBeVisible({ timeout: 20_000 });
-      await row.locator('[data-col="age"]').click();
+      await row.locator('[data-col="title"]').click();
       await expect(inspector).toBeVisible({ timeout: 20_000 });
     };
 
@@ -187,7 +187,7 @@ test.describe('Dashboard order inspector — non-modal', () => {
     await expect(rows.first()).toBeVisible({ timeout: 20_000 });
     test.skip((await rows.count()) < 2, 'needs at least two pending rows');
 
-    await rows.nth(0).locator('[data-col="age"]').click();
+    await rows.nth(0).locator('[data-col="title"]').click();
     const inspector = page.locator('aside[role="region"]');
     await expect(inspector).toBeVisible({ timeout: 20_000 });
     const firstLabel = await inspector.getAttribute('aria-label');
@@ -232,7 +232,7 @@ test.describe('Dashboard order inspector — non-modal', () => {
     await expect(table).toBeVisible({ timeout: 20_000 });
     const row = table.locator('[data-order-row-id]').first();
     await expect(row).toBeVisible({ timeout: 20_000 });
-    await row.locator('[data-col="age"]').click();
+    await row.locator('[data-col="title"]').click();
 
     const inspector = page.locator('aside[role="region"]');
     await expect(inspector).toBeVisible({ timeout: 20_000 });

@@ -25,11 +25,11 @@ export function PairedReviewCollapsedStrip({
         </span>
         <div className="flex min-w-0 flex-1 items-center justify-end gap-2">
           {selectedCount > 0 ? (
-            <span className="truncate text-role-micro font-bold tabular-nums text-text-soft">
+            <span className="truncate text-role-micro tabular-nums text-text-soft">
               {selectedCount} · {collapsedTotalQty}
             </span>
           ) : lockedFbaId ? (
-            <span className="truncate font-mono text-role-micro font-bold text-emerald-700">{lockedFbaId}</span>
+            <span className="truncate font-mono text-role-micro text-emerald-700">{lockedFbaId}</span>
           ) : (
             <span className="text-role-micro font-semibold text-text-faint">Tap to expand</span>
           )}

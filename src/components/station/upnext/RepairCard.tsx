@@ -58,7 +58,7 @@ export function RepairCard({ repair, techId, isExpanded, onToggleExpand, onRefre
         {/* ── Row 1 — ticket id · customer · trailing chevron. ── */}
         <div className="flex items-center justify-between gap-2">
           <div className="flex min-w-0 items-center gap-1.5 text-role-caption font-semibold text-text-soft">
-            <span className="font-mono font-bold text-orange-700">
+            <span className="font-mono font-semibold text-orange-700">
               #{card.ticketShort}
             </span>
             <span className="text-text-faint">·</span>
@@ -68,7 +68,7 @@ export function RepairCard({ repair, techId, isExpanded, onToggleExpand, onRefre
             {card.isUnassigned && (
               <>
                 <span className="text-text-faint">·</span>
-                <span className="font-bold text-orange-600">Unassigned</span>
+                <span className="font-semibold text-orange-600">Unassigned</span>
               </>
             )}
           </div>
@@ -89,10 +89,10 @@ export function RepairCard({ repair, techId, isExpanded, onToggleExpand, onRefre
 
         {/* ── Row 3 — date pill + urgency phrase. ── */}
         <div className="mt-1.5 flex items-center gap-1.5 text-role-caption">
-          <span className="inline-flex items-center rounded-md bg-orange-50 px-1.5 py-0.5 font-bold text-orange-700">
+          <span className="inline-flex items-center rounded-md bg-orange-50 px-1.5 py-0.5 font-semibold text-orange-700">
             {formatMonthDay(card.displayDate) || '—'}
           </span>
-          <span className={`font-bold tracking-tight ${daysLateTone}`}>
+          <span className={`font-semibold tracking-tight ${daysLateTone}`}>
             {urgencyText}
           </span>
         </div>
@@ -184,7 +184,7 @@ export function RepairCard({ repair, techId, isExpanded, onToggleExpand, onRefre
                           onClick={stopProp}
                           placeholder="What was repaired?"
                           rows={3}
-                          className="w-full resize-none rounded-lg border border-emerald-200 bg-surface-card px-3 py-2.5 text-xs font-bold leading-relaxed text-text-default shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] focus:outline-none focus:ring-2 focus:ring-emerald-400 placeholder:text-text-faint"
+                          className="w-full resize-none rounded-lg border border-emerald-200 bg-surface-card px-3 py-2.5 text-xs font-semibold leading-relaxed text-text-default shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] focus:outline-none focus:ring-2 focus:ring-emerald-400 placeholder:text-text-faint"
                           autoFocus
                         />
                         <div className="grid grid-cols-2 gap-2">

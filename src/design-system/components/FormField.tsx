@@ -39,7 +39,7 @@ export function FormField({
         isVertical ? 'flex flex-col gap-1.5' : 'flex items-center gap-3'
       } ${className}`.trim()}
     >
-      <label className="text-role-micro font-bold uppercase tracking-[0.16em] text-text-muted flex items-center gap-1">
+      <label className="text-role-micro uppercase tracking-[0.16em] text-text-muted flex items-center gap-1">
         {label}
         {required && <span className="text-red-500">*</span>}
         {optionalHint && !required && (

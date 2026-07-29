@@ -41,6 +41,8 @@ interface PhotoLibraryGridProps {
   onToggleGroupSelection?: (ids: number[]) => void;
   /** Right-click a photo tile — the page opens the contextual action menu. */
   onPhotoContextMenu?: (photo: LibraryPhoto, e: ReactMouseEvent) => void;
+  /** Open the non-modal inspector (single click); the viewer moves to double-click. */
+  onInspect?: (id: number) => void;
   /** Called after a photo is deleted from the folder viewer so the list refreshes. */
   onPhotoDeleted?: (photoId: number) => void;
   isLoading: boolean;
@@ -71,6 +73,7 @@ export function PhotoLibraryGrid({
   onSelectTile,
   onToggleGroupSelection,
   onPhotoContextMenu,
+  onInspect,
   onPhotoDeleted,
   isLoading,
   isSettled = !isLoading,
@@ -213,6 +216,7 @@ export function PhotoLibraryGrid({
         onSelectTile={onSelectTile}
         onPhotoContextMenu={onPhotoContextMenu}
         openAt={openAt}
+        onInspect={onInspect}
       />
       {lightbox}
     </div>

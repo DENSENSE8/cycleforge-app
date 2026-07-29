@@ -114,7 +114,7 @@ export default function ReplenishmentPage() {
       <header className="mb-6 flex items-center justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wider text-text-soft">Warehouse</p>
-          <h1 className="text-2xl font-bold text-text-default">Replenishment</h1>
+          <h1 className="text-2xl font-semibold text-text-default">Replenishment</h1>
           <p className="mt-1 text-sm text-text-soft">
             Move stock from RESERVE to PICK_FACE bins when forward stock runs low.
           </p>
@@ -197,7 +197,7 @@ function Section({ title, count, tone, tasks, actionLabel, onAction, onCancel, w
             <li key={t.id} className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-mono text-sm font-bold text-text-default">{t.sku}</span>
+                  <span className="font-mono text-sm font-semibold text-text-default">{t.sku}</span>
                   <span
                     className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold uppercase tracking-wide ${replenishmentStatusBadgeClass(t.status)}`}
                   >
@@ -219,7 +219,7 @@ function Section({ title, count, tone, tasks, actionLabel, onAction, onCancel, w
                   </span>
                   <span>
                     <span className="text-text-faint">Qty</span>{' '}
-                    <span className="font-bold tabular-nums">{t.qty}</span>
+                    <span className="font-semibold tabular-nums">{t.qty}</span>
                   </span>
                 </div>
               </div>
@@ -258,7 +258,7 @@ function EmptyState() {
           <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
         </svg>
       </div>
-      <p className="mt-3 text-base font-bold text-emerald-900">All pick faces stocked</p>
+      <p className="mt-3 text-base font-semibold text-emerald-900">All pick faces stocked</p>
       <p className="mt-1 text-sm text-emerald-800/80">
         The detector will create new tasks when forward bins drop below their minimum.
       </p>

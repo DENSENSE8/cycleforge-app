@@ -307,7 +307,7 @@ export function ProductSelector({
               : 'border border-border-soft bg-surface-canvas text-text-default hover:border-blue-300 hover:bg-blue-50'
           }`}
         >
-          <div className="text-xs font-bold uppercase tracking-wide">Other -- Manual Entry</div>
+          <div className="text-xs font-semibold uppercase tracking-wide">Other -- Manual Entry</div>
           {selectedProduct?.type === 'Other' && (
             <div className="mt-1 truncate text-role-micro font-semibold opacity-90">{selectedProduct.model}</div>
           )}
@@ -371,14 +371,14 @@ export function ProductSelector({
 
       {/* Loading */}
       {loading && (
-        <div className="rounded-xl border border-border-soft bg-surface-canvas p-4 text-xs font-bold text-text-faint uppercase tracking-wide">
+        <div className="rounded-xl border border-border-soft bg-surface-canvas p-4 text-xs font-semibold text-text-faint uppercase tracking-wide">
           Loading...
         </div>
       )}
 
       {/* Error */}
       {!loading && error && (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-xs font-bold text-red-700">
+        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-xs font-semibold text-red-700">
           {error}
         </div>
       )}
@@ -402,7 +402,7 @@ export function ProductSelector({
                     onClick={() => void fetchCategoryLevel(cat.id)}
                     className="flex w-full items-center justify-between gap-3 rounded-xl border border-border-soft bg-surface-card p-3.5 text-left transition-all hover:border-blue-300 hover:bg-blue-50 active:bg-blue-100"
                   >
-                    <span className="truncate text-xs font-bold text-text-default">
+                    <span className="truncate text-xs font-semibold text-text-default">
                       {cat.name}
                     </span>
                     <ChevronRight className="h-4 w-4 flex-shrink-0 text-text-faint" />
@@ -415,7 +415,7 @@ export function ProductSelector({
                     onClick={() => void fetchAllProducts()}
                     className="flex w-full items-center justify-between gap-3 rounded-xl border border-border-soft bg-surface-card p-3.5 text-left transition-all hover:border-blue-300 hover:bg-blue-50 active:bg-blue-100"
                   >
-                    <span className="truncate text-xs font-bold text-text-default">
+                    <span className="truncate text-xs font-semibold text-text-default">
                       Pick Your Repair - All Repairs
                     </span>
                     <ChevronRight className="h-4 w-4 flex-shrink-0 text-text-faint" />
@@ -478,17 +478,17 @@ export function ProductSelector({
 
                         {/* Info */}
                         <div className={`flex flex-1 flex-col justify-between gap-1.5 p-2.5 ${selected ? 'bg-blue-600' : 'bg-surface-card'}`}>
-                          <p className={`text-xs font-bold leading-tight ${selected ? 'text-white' : 'text-text-default'}`}>
+                          <p className={`text-xs font-semibold leading-tight ${selected ? 'text-white' : 'text-text-default'}`}>
                             {product.name}
                           </p>
                           <div className="flex items-end justify-between gap-1">
-                            <span className={`text-sm font-black ${
+                            <span className={`text-sm font-semibold ${
                               selected ? 'text-blue-100' : product.price !== null ? 'text-emerald-600' : 'text-text-faint'
                             }`}>
                               {product.price !== null ? `$${product.price.toFixed(2)}` : '--'}
                             </span>
                             {product.sku && (
-                              <span className={`max-w-[55%] truncate text-right text-role-eyebrow font-bold ${selected ? 'text-blue-200' : 'text-text-faint'}`}>
+                              <span className={`max-w-[55%] truncate text-right text-role-eyebrow font-semibold ${selected ? 'text-blue-200' : 'text-text-faint'}`}>
                                 {product.sku}
                               </span>
                             )}
@@ -516,7 +516,7 @@ export function ProductSelector({
 
           {/* Empty state */}
           {!loadingProducts && filteredCategories.length === 0 && filteredProducts.length === 0 && (
-            <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs font-bold text-amber-700">
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs font-semibold text-amber-700">
               {search.trim() ? 'No results match your search.' : 'No items found at this level.'}
             </div>
           )}
@@ -530,7 +530,7 @@ export function ProductSelector({
             {selectedItems.map((item) => (
               <div key={item.id} className="flex items-center justify-between gap-2 rounded-lg bg-surface-card px-3 py-2">
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-role-micro font-bold text-text-default">{item.name}</p>
+                  <p className="truncate text-role-micro text-text-default">{item.name}</p>
                   {item.sku && <p className="text-role-eyebrow font-semibold text-text-faint">{item.sku}</p>}
                 </div>
                 <div className="flex flex-shrink-0 items-center gap-2">

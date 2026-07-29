@@ -67,7 +67,7 @@ export function LiveFeedCard({ feed, isLoading, ablyStatus = 'connected' }: Live
           <span className={`${sectionLabel} !text-text-muted`}>
             Live feed
           </span>
-          <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight text-text-default mt-1">
+          <h2 className="text-xl sm:text-2xl font-semibold tracking-tight text-text-default mt-1">
             What’s happening on the floor
           </h2>
         </div>
@@ -129,7 +129,7 @@ export function LiveFeedCard({ feed, isLoading, ablyStatus = 'connected' }: Live
                           {label}
                         </span>
                         {row.source && (
-                          <span className="text-role-micro font-bold text-text-soft uppercase">
+                          <span className="text-role-micro text-text-soft uppercase">
                             · {row.source}
                           </span>
                         )}
@@ -141,7 +141,7 @@ export function LiveFeedCard({ feed, isLoading, ablyStatus = 'connected' }: Live
                         <p className="text-role-micro font-medium mt-0.5 truncate text-text-muted">
                           by{' '}
                           <span
-                            className="font-bold"
+                            className="font-semibold"
                             style={{ color: getStaffColorHex({ id: row.staff_id ?? null }) }}
                           >
                             {row.actor_name}

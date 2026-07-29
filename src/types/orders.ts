@@ -80,6 +80,14 @@ export interface ShippedOrder {
   station_activity_log_id?: number | null;
   /** FK to customers — linked buyer (e.g. Amazon MFN shipping contact). */
   customer_id?: number | null;
+  /**
+   * Marketplace buyer checkout note (`orders.buyer_note`, migration 2026-07-03p).
+   * Mirrored raw by the channel sync and projected into `entity_signals`; this
+   * is the display path onto the order record. Present on `SELECT *` reads
+   * (`getOrderById`); absent from leaner queue projections, so every consumer
+   * must render it presence-driven.
+   */
+  buyer_note?: string | null;
   /** Amazon fulfillment channel: 'AFN' (FBA) | 'MFN'. Null for non-Amazon. */
   fulfillment_channel?: string | null;
   row_source?: 'order' | 'exception';

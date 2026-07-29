@@ -282,7 +282,7 @@ export default function MobileUnitPage() {
           <p className="text-role-eyebrow uppercase tracking-[0.18em] text-text-faint">
             Unit
           </p>
-          <p className="truncate font-mono text-role-caption font-bold text-text-default">
+          <p className="truncate font-mono text-role-caption font-semibold text-text-default">
             {unit.serial_number}
           </p>
         </div>
@@ -301,17 +301,17 @@ export default function MobileUnitPage() {
           )}
           <div className="mt-2 flex flex-wrap items-center gap-2">
             {unit.sku ? (
-              <span className="rounded bg-surface-sunken px-2 py-0.5 font-mono text-role-micro font-bold text-text-muted">
+              <span className="rounded bg-surface-sunken px-2 py-0.5 font-mono text-role-micro text-text-muted">
                 {unit.sku}
               </span>
             ) : null}
             {unit.condition_grade ? (
-              <span className="rounded bg-surface-sunken px-2 py-0.5 text-role-micro font-bold uppercase tracking-wider text-text-muted">
+              <span className="rounded bg-surface-sunken px-2 py-0.5 text-role-micro uppercase tracking-wider text-text-muted">
                 {unit.condition_grade.replace(/_/g, ' ')}
               </span>
             ) : null}
             {unit.current_location ? (
-              <span className="flex items-center gap-1 rounded bg-emerald-50 px-2 py-0.5 font-mono text-role-micro font-bold text-emerald-700">
+              <span className="flex items-center gap-1 rounded bg-emerald-50 px-2 py-0.5 font-mono text-role-micro text-emerald-700">
                 <MapPin className="h-3 w-3" />
                 {unit.current_location}
               </span>
@@ -412,7 +412,7 @@ function ActionButton({
     <button
       type="button"
       onClick={onClick}
-      className={`flex items-center justify-center gap-2 rounded-2xl px-4 py-3 text-role-caption font-bold shadow-sm transition-colors ${
+      className={`flex items-center justify-center gap-2 rounded-2xl px-4 py-3 text-role-caption font-semibold shadow-sm transition-colors ${
         active
           ? 'bg-blue-600 text-white'
           : 'bg-surface-card text-text-default ring-1 ring-border-soft hover:bg-surface-hover'
@@ -512,7 +512,7 @@ function Timeline({ events }: { events: TimelineEvent[] }) {
           {sorted.map((e) => (
             <li key={e.id} className="px-4 py-2.5">
               <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                <span className="text-role-caption font-bold text-text-default">
+                <span className="text-role-caption font-semibold text-text-default">
                   {e.event_type.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase())}
                 </span>
                 <span className="text-role-micro text-text-faint">{timeAgo(e.occurred_at)} ago</span>
@@ -520,7 +520,7 @@ function Timeline({ events }: { events: TimelineEvent[] }) {
                   <span className="text-role-micro font-medium text-text-soft">{e.actor_name}</span>
                 ) : null}
                 {e.station ? (
-                  <span className="rounded bg-surface-sunken px-1.5 py-0.5 text-role-micro font-bold uppercase tracking-wider text-text-soft">
+                  <span className="rounded bg-surface-sunken px-1.5 py-0.5 text-role-micro uppercase tracking-wider text-text-soft">
                     {e.station}
                   </span>
                 ) : null}
@@ -545,7 +545,7 @@ function StatusPill({ status }: { status: string | null }) {
   const v = (status || 'UNKNOWN').toUpperCase();
   return (
     <span
-      className={`shrink-0 inline-flex items-center rounded-full px-2.5 py-0.5 text-role-micro font-bold uppercase tracking-wide ${unitStatusBadgeTone(v)}`}
+      className={`shrink-0 inline-flex items-center rounded-full px-2.5 py-0.5 text-role-micro uppercase tracking-wide ${unitStatusBadgeTone(v)}`}
     >
       {v}
     </span>

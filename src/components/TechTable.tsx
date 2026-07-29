@@ -5,11 +5,8 @@ import { useEventBridge } from '@/hooks';
 import { type TechRecord } from '@/hooks/useTechLogs';
 import { useTechTableController } from '@/hooks/station/useTechTableController';
 import { useStationDetailsSelection } from '@/hooks/station/useStationDetailsSelection';
-import { StationWeekTable } from '@/components/station/StationWeekTable';
 import { StationHistoryTable } from '@/components/station/StationHistoryTable';
-import { TechRecordRow } from '@/components/station/TechRecordRow';
 import { techRecordToDetail, getTechDetailId } from '@/components/station/tech-record-mappers';
-import { STATION_VIRTUAL_LIST } from '@/lib/station/flags';
 import { SAVED_VIEW_PARAM_KEYS, SAVED_VIEW_STORAGE_KEY } from '@/lib/station/table-url-params';
 import { Calendar, Clock, Package } from '@/components/Icons';
 import { toPSTDateKey } from '@/utils/date';
@@ -87,7 +84,6 @@ export function TechTable({
     weekOffset, setWeekOffset, weekRange,
     groupedRecords, loading, isRefreshing,
     getRowKey, setRemovedRowKeys,
-    scrollRef,
   } = useTechTableController({ staffId });
 
   // Week-scoped day bands (newest day first, each day newest-first).
@@ -142,81 +138,41 @@ export function TechTable({
     },
   });
 
-  const renderRow = useCallback(
-    (record: TechRecord, index: number) => (
-      <TechRecordRow key={getRowKey(record)} record={record} index={index} onOpen={openDetails} />
-    ),
-    [getRowKey, openDetails],
-  );
-
-  // Flag-gated cutover: the unified virtualized shell (week band + ⋮ menu + density
-  // + per-staff columns) once `NEXT_PUBLIC_STATION_VIRTUAL_LIST=1`; the legacy
-  // `StationWeekTable` stays the default until bake-in. Same rows either way.
-  if (STATION_VIRTUAL_LIST) {
-    return (
-      <>
-        <StationHistoryTable<TechRecord>
-          loading={loading}
-          isRefreshing={isRefreshing}
-          weekRange={weekRange}
-          weekOffset={weekOffset}
-          onPrevWeek={() => setWeekOffset(weekOffset + 1)}
-          onNextWeek={() => setWeekOffset(Math.max(0, weekOffset - 1))}
-          onResetWeek={() => setWeekOffset(0)}
-          daySections={daySections}
-          renderRow={renderRow}
-          getRowKey={(record) => getRowKey(record)}
-          tableId="tech"
-          virtualized
-          savedViewsStorageKey={SAVED_VIEW_STORAGE_KEY.tech_history}
-          savedViewsParamKeys={SAVED_VIEW_PARAM_KEYS.tech_history}
-          emptyMessage="No tech records found"
-          firstRunEmpty={<ContextualEmptyState state="no-work" />}
-          toolbarPortalTarget={toolbarPortalTarget}
-          pipeline={{
-            records: orderedRecords,
-            lanes: TECH_LANES,
-            bucket: techBucket,
-            prefsKey: 'techHistoryBoard',
-            toDaySections: toLaneDaySections,
-            getRowDate: (r) => r.created_at,
-          }}
-          selection={{
-            scope: TECH_HISTORY_SELECTION_SCOPE,
-            queueMode: 'tech',
-            toQueueRow: techRecordToQueueRow,
-            getRecordId: (r) => r.id,
-            onOpen: openDetails,
-            formatCopyRow: formatTechCopyRow,
-            copyHeader: TECH_COPY_HEADER,
-            deepLinkParam: 'techLogId',
-          }}
-        />
-      </>
-    );
-  }
-
   return (
-    <>
-      <StationWeekTable
-        loading={loading}
-        isRefreshing={isRefreshing}
-        weekRange={weekRange}
-        weekOffset={weekOffset}
-        onPrevWeek={() => setWeekOffset(weekOffset + 1)}
-        onNextWeek={() => setWeekOffset(Math.max(0, weekOffset - 1))}
-        daySections={daySections}
-        emptyMessage="No tech records found"
-        firstRunEmpty={<ContextualEmptyState state="no-work" />}
-        scrollRef={scrollRef}
-        renderRow={renderRow}
-        tableId="tech"
-        toolbarPortalTarget={toolbarPortalTarget}
-        savedViews={{
-          storageKey: SAVED_VIEW_STORAGE_KEY.tech_history,
-          paramKeys: SAVED_VIEW_PARAM_KEYS.tech_history,
-        }}
-      />
-    </>
+    <StationHistoryTable<TechRecord>
+      loading={loading}
+      isRefreshing={isRefreshing}
+      weekRange={weekRange}
+      weekOffset={weekOffset}
+      onPrevWeek={() => setWeekOffset(weekOffset + 1)}
+      onNextWeek={() => setWeekOffset(Math.max(0, weekOffset - 1))}
+      onResetWeek={() => setWeekOffset(0)}
+      daySections={daySections}
+      getRowKey={(record) => getRowKey(record)}
+      tableId="tech"
+      savedViewsStorageKey={SAVED_VIEW_STORAGE_KEY.tech_history}
+      savedViewsParamKeys={SAVED_VIEW_PARAM_KEYS.tech_history}
+      emptyMessage="No tech records found"
+      firstRunEmpty={<ContextualEmptyState state="no-work" />}
+      toolbarPortalTarget={toolbarPortalTarget}
+      pipeline={{
+        records: orderedRecords,
+        lanes: TECH_LANES,
+        bucket: techBucket,
+        prefsKey: 'techHistoryBoard',
+        toDaySections: toLaneDaySections,
+        getRowDate: (r) => r.created_at,
+      }}
+      selection={{
+        scope: TECH_HISTORY_SELECTION_SCOPE,
+        queueMode: 'tech',
+        toQueueRow: techRecordToQueueRow,
+        getRecordId: (r) => r.id,
+        onOpen: openDetails,
+        formatCopyRow: formatTechCopyRow,
+        copyHeader: TECH_COPY_HEADER,
+        deepLinkParam: 'techLogId',
+      }}
+    />
   );
 }

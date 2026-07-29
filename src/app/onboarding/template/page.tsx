@@ -120,7 +120,7 @@ export default function OnboardingTemplatePage() {
             <Sparkles className="h-3.5 w-3.5" />
             Get started
           </span>
-          <h1 className="text-xl font-bold text-text-default">Choose how you run ops</h1>
+          <h1 className="text-xl font-semibold text-text-default">Choose how you run ops</h1>
           <p className="text-role-caption text-text-soft">
             Start from a proven workflow template for your kind of shop. You can edit it any
             time in the Studio — this just gives your operation a live starting point.
@@ -223,7 +223,7 @@ export default function OnboardingTemplatePage() {
                       </span>
                       <span className="min-w-0 flex-1">
                         <span className="flex items-center gap-2">
-                          <span className="truncate text-role-caption font-bold text-text-default">
+                          <span className="truncate text-role-caption font-semibold text-text-default">
                             {t.name}
                           </span>
                           {rec ? (

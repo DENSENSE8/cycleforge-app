@@ -38,7 +38,7 @@ function IdentityChip({ label, tone = 'neutral' }: { label: string; tone?: ChipT
   return (
     <span
       className={cn(
-        'inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-role-micro font-bold uppercase tracking-widest ring-1 ring-inset',
+        'inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-role-micro uppercase tracking-widest ring-1 ring-inset',
         CHIP_TONE[tone],
       )}
     >
@@ -98,7 +98,7 @@ export function SearchOrderDetailHeader({ order }: { order: ShippedOrder }) {
           <button
             type="button"
             onClick={() => void handleCopyOrder()}
-            className="block max-w-full truncate text-left text-role-body font-bold text-text-default transition-colors hover:text-blue-700"
+            className="block max-w-full truncate text-left text-role-body font-semibold text-text-default transition-colors hover:text-blue-700"
             aria-label={`Copy ${showExceptions ? 'Exceptions' : 'Order #'} ${orderIdDisplay}`}
           >
             {orderIdDisplay}
@@ -123,7 +123,7 @@ export function SearchOrderDetailHeader({ order }: { order: ShippedOrder }) {
             <button
               type="button"
               onClick={() => void handleCopy(tracking, 'Tracking')}
-              className="inline-flex shrink-0 items-center gap-1 rounded-full bg-surface-sunken px-2 py-0.5 font-mono text-role-micro font-bold tabular-nums text-text-soft ring-1 ring-inset ring-border-soft transition-colors hover:text-text-default"
+              className="inline-flex shrink-0 items-center gap-1 rounded-full bg-surface-sunken px-2 py-0.5 font-mono text-role-micro tabular-nums text-text-soft ring-1 ring-inset ring-border-soft transition-colors hover:text-text-default"
               aria-label={`Copy tracking ${tracking}`}
             >
               <MapPin className="h-3 w-3 text-blue-500" />

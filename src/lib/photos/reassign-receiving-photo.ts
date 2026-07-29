@@ -1,5 +1,6 @@
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import { resolvePoRef } from './resolve-po-ref';
+import { remapReceivingPhotoTypeOnMove } from '@/lib/receiving/photo-intent';
 import type { PhotoEntityType } from './types';
 
 export class PhotoReassignError extends Error {
@@ -24,6 +25,8 @@ export interface ReassignReceivingPhotoScope {
   entityId: number;
   receivingId: number;
   receivingLineId: number | null;
+  /** Current photo_type — populated by loadPrimaryLink (drives the stage remap on cross-entity moves). */
+  photoType?: string | null;
 }
 
 export interface ReassignReceivingPhotoResult {
@@ -49,6 +52,8 @@ export interface ReassignReceivingPhotoDeps {
     targetEntityType: 'RECEIVING' | 'RECEIVING_LINE';
     targetEntityId: number;
     poRef: string | null;
+    /** New photo_type for the destination stage, or null to keep the current stamp. */
+    photoType: string | null;
   }) => Promise<void>;
   /** Resolve denorm po_ref for the target entity (DB-backed in production). */
   resolvePoRef: (
@@ -65,11 +70,13 @@ async function loadPrimaryLinkImpl(
     const res = await client.query<{
       entity_type: string;
       entity_id: string;
+      photo_type: string | null;
       receiving_id_resolved: string | null;
     }>(
       `SELECT
          l.entity_type,
          l.entity_id,
+         p.photo_type,
          CASE
            WHEN l.entity_type = 'RECEIVING' THEN l.entity_id
            WHEN l.entity_type = 'RECEIVING_LINE' THEN rl.receiving_id
@@ -99,6 +106,7 @@ async function loadPrimaryLinkImpl(
       entityId,
       receivingId,
       receivingLineId: entityType === 'RECEIVING_LINE' ? entityId : null,
+      photoType: row.photo_type,
     };
   });
 }
@@ -149,6 +157,7 @@ async function updateAssignmentImpl(input: {
   targetEntityType: PhotoEntityType;
   targetEntityId: number;
   poRef: string | null;
+  photoType: string | null;
 }): Promise<void> {
   await withTenantTransaction(input.organizationId, async (client) => {
     const updated = await client.query(
@@ -168,12 +177,15 @@ async function updateAssignmentImpl(input: {
     if (updated.rowCount === 0) {
       throw new PhotoReassignError('Primary photo link not found', 404);
     }
+    // photoType null = keep the current stamp (COALESCE); the remap only ever
+    // sets concrete stage types, never clears one.
     await client.query(
       `UPDATE photos
           SET po_ref = $3,
+              photo_type = COALESCE($4, photo_type),
               updated_at = NOW()
         WHERE id = $1 AND organization_id = $2`,
-      [input.photoId, input.organizationId, input.poRef],
+      [input.photoId, input.organizationId, input.poRef, input.photoType],
     );
   });
 }
@@ -220,12 +232,21 @@ export async function reassignReceivingPhoto(
   }
 
   const poRef = await deps.resolvePoRef(input.targetEntityType, input.targetEntityId);
+  // Cross-entity moves remap the stamp to the destination stage (carton→line
+  // becomes item evidence; line→carton falls back to package) so a move can
+  // never re-create the entity×type mis-stamps the write waist rejects.
+  const photoType = remapReceivingPhotoTypeOnMove({
+    fromEntityType: current.entityType,
+    toEntityType: target.entityType,
+    photoType: current.photoType ?? null,
+  });
   await deps.updateAssignment({
     organizationId: input.organizationId,
     photoId: input.photoId,
     targetEntityType: input.targetEntityType,
     targetEntityId: input.targetEntityId,
     poRef,
+    photoType,
   });
 
   return {

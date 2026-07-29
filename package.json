@@ -149,7 +149,8 @@
     "test:assistant": "tsx --test src/lib/assistant/*.test.ts src/lib/assistant/tools/*.test.ts src/lib/assistant/mutations/*.test.ts src/lib/surfaces/feed-writes.test.ts src/lib/workflow/draft-graph-writes.test.ts",
     "test:universal-feed": "tsx --test src/lib/receiving/rail-exclusions.test.ts src/lib/receiving/rail/exclusion-feed-key.test.ts src/lib/receiving/feed-membership-projection.test.ts src/lib/timeline/entity-signals.test.ts src/lib/studio/template-catalog.test.ts src/lib/mcp/tool-server.test.ts",
     "lighthouse:audit": "node scripts/lighthouse-audit.mjs",
-    "lighthouse:check": "node scripts/lighthouse-audit.mjs --tier 1 --check"
+    "lighthouse:check": "node scripts/lighthouse-audit.mjs --tier 1 --check",
+    "e2e:install": "playwright install chromium webkit"
   },
   "dependencies": {
     "@ai-sdk/openai-compatible": "^3.0.7",

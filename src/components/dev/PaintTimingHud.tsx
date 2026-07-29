@@ -64,7 +64,7 @@ export function PaintTimingHud() {
       aria-live="polite"
       aria-label="Paint timing debug HUD"
     >
-      <p className="mb-1 text-role-eyebrow font-bold uppercase tracking-widest text-text-faint">
+      <p className="mb-1 text-role-eyebrow uppercase tracking-widest text-text-faint">
         Paint timing
       </p>
       {vitals.length > 0 ? (
@@ -78,7 +78,7 @@ export function PaintTimingHud() {
       )}
       {marks.length > 0 ? (
         <>
-          <p className="mb-1 mt-2 text-role-eyebrow font-bold uppercase tracking-widest text-text-faint">
+          <p className="mb-1 mt-2 text-role-eyebrow uppercase tracking-widest text-text-faint">
             Unbox surfaces
           </p>
           <ul className="space-y-0.5 text-text-muted">

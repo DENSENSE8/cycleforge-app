@@ -32,7 +32,7 @@ export function UnitPhotoRequestStatus({
         Photo request sent → phone
         {unitKey ? <span className="text-text-faint"> · {unitKey}</span> : null}
       </p>
-      <span className="shrink-0 text-role-micro font-bold tabular-nums text-text-faint">
+      <span className="shrink-0 text-role-micro tabular-nums text-text-faint">
         {count} captured
       </span>
     </div>

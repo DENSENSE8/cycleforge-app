@@ -129,7 +129,7 @@ export function PhotoAnalysisProviderPanel() {
     <div className="rounded-xl border border-border-soft bg-surface-card p-4 shadow-sm">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-sm font-bold text-text-default">AI analysis engine</p>
+          <p className="text-sm font-semibold text-text-default">AI analysis engine</p>
           <p className="text-role-caption text-text-soft">
             Which model reads your photos when they&apos;re enriched for search and claims.
           </p>
@@ -167,7 +167,7 @@ export function PhotoAnalysisProviderPanel() {
                 />
                 <span className="min-w-0 flex-1">
                   <span className="flex items-center gap-2">
-                    <span className="text-role-caption font-bold text-text-default">{opt.label}</span>
+                    <span className="text-role-caption font-semibold text-text-default">{opt.label}</span>
                     <span
                       className={`rounded inset-chip text-role-eyebrow uppercase tracking-widest ring-1 ring-inset ${
                         PRIVACY_CHIP[opt.privacy]

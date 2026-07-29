@@ -399,10 +399,10 @@ export const INPUT_CLASS =
  */
 
 export const TYPE_PRODUCT_TITLE_CLASS =
-  'text-sm font-extrabold leading-snug tracking-tight text-text-default break-words';
+  'text-sm font-semibold leading-snug tracking-tight text-text-default break-words';
 
 export const TYPE_PRODUCT_TITLE_COMPACT_CLASS =
-  'text-sm font-extrabold leading-snug tracking-tight text-text-default break-words line-clamp-3';
+  'text-sm font-semibold leading-snug tracking-tight text-text-default break-words line-clamp-3';
 
 export const TYPE_SECTION_TITLE_CLASS =
   'shrink-0 text-role-micro uppercase tracking-wider';

@@ -205,7 +205,7 @@ export function InlineSerialAdder({
                 // non-interactive chip span (display is shortened to last-12).
                 <span
                   key={s.id ?? `${sn}-${idx}`}
-                  className="inline-flex items-center gap-1.5 rounded-md bg-emerald-50 px-2 py-0.5 font-mono text-role-caption font-bold text-emerald-800 ring-1 ring-inset ring-emerald-200"
+                  className="inline-flex items-center gap-1.5 rounded-md bg-emerald-50 px-2 py-0.5 font-mono text-role-caption font-semibold text-emerald-800 ring-1 ring-inset ring-emerald-200"
                   title={sn}
                 >
                   <span className="truncate max-w-[160px]">

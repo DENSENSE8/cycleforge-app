@@ -15,7 +15,7 @@
  * WIP tiles kept in the same SoT so re-enabling one is a status flip.
  */
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { Button, Panel } from '@/design-system/primitives';
 import { focusRing } from '@/design-system/tokens/focus-ring';
@@ -63,6 +63,16 @@ export default function KioskPage() {
   const repairIdemKey = useRef<string | null>(null);
 
   const liveServices = SERVICES.filter((s) => s.status === 'live');
+
+  // Dev-only convenience: silently exchange a fixed dogfood-org pairing for
+  // this browser on mount, so a local kiosk.localhost tab never needs the
+  // manual "Set up this tablet" code. The route itself is hard-gated (404s
+  // in production or when the two env vars aren't set), so this is a no-op
+  // everywhere except an opted-in local dev box.
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'production') return;
+    void fetch('/api/kiosk/dev-autopair', { method: 'POST' }).catch(() => {});
+  }, []);
 
   const openService = useCallback((service: Service) => {
     setErr(null);
@@ -167,8 +177,8 @@ export default function KioskPage() {
     <div className="flex min-h-screen flex-col items-center justify-center bg-surface-canvas px-6 py-10 text-text-default">
       <div className="w-full max-w-2xl">
         <header className="mb-8 text-center">
-          <p className="text-role-eyebrow font-black uppercase tracking-widest text-text-soft">Welcome</p>
-          <h1 className="mt-1 text-3xl font-black tracking-tight">How can we help you today?</h1>
+          <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">Welcome</p>
+          <h1 className="mt-1 text-3xl font-semibold tracking-tight">How can we help you today?</h1>
         </header>
 
         {err && (
@@ -196,7 +206,7 @@ export default function KioskPage() {
                   focusRing('control', 'accent'),
                 )}
               >
-                <span className="text-lg font-black">{s.label}</span>
+                <span className="text-lg font-semibold">{s.label}</span>
                 <span className="text-xs font-semibold text-text-soft">{s.blurb}</span>
               </button>
             ))}
@@ -205,8 +215,8 @@ export default function KioskPage() {
 
         {mode === 'pair' && (
           <Panel padding="lg" className="mx-auto max-w-md">
-            <p className="text-role-eyebrow font-black uppercase tracking-widest text-text-soft">Tablet setup</p>
-            <h2 className="mt-1 text-xl font-black">Pair this tablet</h2>
+            <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">Tablet setup</p>
+            <h2 className="mt-1 text-xl font-semibold">Pair this tablet</h2>
             <p className="mt-2 text-sm font-semibold text-text-soft">
               A manager generates a setup code in Settings → Devices. Enter it below to pair this tablet.
             </p>
@@ -218,7 +228,7 @@ export default function KioskPage() {
               autoCapitalize="off"
               spellCheck={false}
               className={cn(
-                'mt-4 w-full rounded-xl border border-border-soft bg-surface-canvas px-4 py-3 text-center text-lg font-bold tracking-widest',
+                'mt-4 w-full rounded-xl border border-border-soft bg-surface-canvas px-4 py-3 text-center text-lg font-semibold tracking-widest',
                 focusRing('field', 'accent'),
               )}
             />

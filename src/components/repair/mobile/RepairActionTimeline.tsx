@@ -84,7 +84,7 @@ export function RepairActionTimeline({ repairId, refreshKey }: Props) {
         <p className="text-role-micro uppercase tracking-[0.16em] text-text-soft">
           What was repaired
         </p>
-        <span className="text-role-micro font-bold text-text-faint">
+        <span className="text-role-micro text-text-faint">
           {actions.length} action{actions.length === 1 ? '' : 's'}
         </span>
       </div>
@@ -101,7 +101,7 @@ export function RepairActionTimeline({ repairId, refreshKey }: Props) {
 
       {!loading && actions.length === 0 && !error && (
         <div className="rounded-lg border border-dashed border-border-default bg-surface-card p-6 text-center">
-          <p className="text-sm font-bold text-text-muted">No actions logged yet.</p>
+          <p className="text-sm font-semibold text-text-muted">No actions logged yet.</p>
           <p className="mt-1 text-role-caption text-text-soft">
             Tap the + button to record the first one.
           </p>
@@ -125,13 +125,13 @@ export function RepairActionTimeline({ repairId, refreshKey }: Props) {
                   </span>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-baseline justify-between gap-2">
-                      <p className="text-sm font-black text-text-default">
+                      <p className="text-sm font-semibold text-text-default">
                         {TYPE_LABEL[a.action_type] || a.action_type}
                         {a.part_name ? (
-                          <span className="ml-1.5 font-bold text-text-muted">— {a.part_name}</span>
+                          <span className="ml-1.5 font-semibold text-text-muted">— {a.part_name}</span>
                         ) : null}
                       </p>
-                      <span className="text-role-micro font-bold text-text-soft shrink-0">
+                      <span className="text-role-micro text-text-soft shrink-0">
                         {formatAgo(a.created_at)}
                       </span>
                     </div>
@@ -168,7 +168,7 @@ export function RepairActionTimeline({ repairId, refreshKey }: Props) {
                       </p>
                     )}
 
-                    <div className="mt-2 flex items-center gap-2 text-role-micro font-bold text-text-soft">
+                    <div className="mt-2 flex items-center gap-2 text-role-micro text-text-soft">
                       {a.staff_name && <span>{a.staff_name}</span>}
                       {a.duration_min != null && (
                         <>

@@ -27,7 +27,7 @@ export function EmailTab({ data }: { data: DetailsResponse }) {
             </span>
           </div>
           {e.email_subject ? (
-            <div className="mt-1 text-role-caption font-bold text-text-default">{e.email_subject}</div>
+            <div className="mt-1 text-role-caption font-semibold text-text-default">{e.email_subject}</div>
           ) : null}
           {e.snippet ? (
             <p className="mt-1 line-clamp-3 whitespace-pre-wrap text-role-caption leading-relaxed text-text-muted">{e.snippet}</p>
@@ -44,14 +44,14 @@ export function EmailTab({ data }: { data: DetailsResponse }) {
             <div key={`w-${e.gmail_msg_id}`} className="border-l-2 border-border-soft pl-3">
               <div className="flex items-center gap-2">
                 {e.status ? (
-                  <span className="text-role-eyebrow font-bold uppercase tracking-wide text-text-soft">{e.status}</span>
+                  <span className="text-role-eyebrow uppercase tracking-wide text-text-soft">{e.status}</span>
                 ) : null}
                 <span className="ml-auto whitespace-nowrap text-role-eyebrow font-semibold text-text-faint">
                   {fmtDateTime(e.email_received)}
                 </span>
               </div>
               {e.email_subject ? (
-                <div className="mt-0.5 text-role-caption font-bold text-text-default">{e.email_subject}</div>
+                <div className="mt-0.5 text-role-caption font-semibold text-text-default">{e.email_subject}</div>
               ) : null}
             </div>
           ))}

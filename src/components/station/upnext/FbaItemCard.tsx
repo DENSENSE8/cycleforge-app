@@ -66,14 +66,14 @@ export function FbaItemCard({ item, isExpanded, onToggleExpand }: FbaItemCardPro
                   e.stopPropagation();
                   if (card.asinUrl) window.open(card.asinUrl, '_blank', 'noopener,noreferrer');
                 }}
-                className="ds-raw-button inline-flex items-center gap-1 rounded font-mono font-bold text-purple-700 hover:text-blue-600"
+                className="ds-raw-button inline-flex items-center gap-1 rounded font-mono font-semibold text-purple-700 hover:text-blue-600"
                 aria-label="Open FBA item on Amazon"
               >
                 #{card.fnskuLast4}
                 <ExternalLink className="h-3 w-3 text-text-faint group-hover:text-blue-400" />
               </button>
             ) : (
-              <span className="font-mono font-bold text-purple-700">
+              <span className="font-mono font-semibold text-purple-700">
                 #{card.fnskuLast4}
               </span>
             )}
@@ -105,13 +105,13 @@ export function FbaItemCard({ item, isExpanded, onToggleExpand }: FbaItemCardPro
 
         {/* ── Row 3 — ship-by pill + urgency phrase + qty pill. ── */}
         <div className="mt-1.5 flex items-center gap-1.5 text-role-caption">
-          <span className="inline-flex items-center rounded-md bg-purple-50 px-1.5 py-0.5 font-bold text-purple-700">
+          <span className="inline-flex items-center rounded-md bg-purple-50 px-1.5 py-0.5 font-semibold text-purple-700">
             {formatMonthDay(card.displayShipBy) || '—'}
           </span>
-          <span className={`font-bold tracking-tight ${daysLateTone}`}>
+          <span className={`font-semibold tracking-tight ${daysLateTone}`}>
             {urgencyText}
           </span>
-          <span className="ml-auto rounded bg-amber-100 px-1.5 font-mono text-role-micro font-bold text-amber-700">
+          <span className="ml-auto rounded bg-amber-100 px-1.5 font-mono text-role-micro text-amber-700">
             ×{card.qtyLabel}
           </span>
         </div>

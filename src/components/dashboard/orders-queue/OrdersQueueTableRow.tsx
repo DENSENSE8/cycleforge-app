@@ -68,6 +68,7 @@ import {
   GridCellDash,
   GridDateCellValue,
   GridDateTimeCellValue,
+  GridSlaCellValue,
   GridStaffCellValue,
 } from '@/components/ui/grid-cells';
 import { useOrderAssignment, type OrderAssignPayload } from '@/hooks/useOrderAssignment';
@@ -133,8 +134,10 @@ export interface OrdersQueueTableRowProps {
   onRowClick: (record: ShippedOrder, event?: { shiftKey: boolean }) => void;
 }
 
-/** In-cell / popover editors this row can host (one open at a time). */
-type RowEditField = 'title' | 'qty' | 'date' | 'condition' | 'note' | 'link';
+/** In-cell / popover editors this row can host (one open at a time).
+ *  `title` is deliberately absent — the product title is a read-only identity
+ *  anchor in the collection map; correction lives at the record plane. */
+type RowEditField = 'qty' | 'date' | 'condition' | 'note' | 'link';
 
 /**
  * Pending / fulfillment queue row — Sheets-like WMS grid:
@@ -254,6 +257,16 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   // stay armed regardless of `selectMode`.
   const gridEditable = gridSkin && !isMobile;
   const canEditNotes = canOos;
+
+  // Zebra is OFF under the airtable skin. That skin already draws a full cell
+  // rule grid (right + bottom on every cell) inside a raised card frame, so a
+  // stripe is a THIRD separation system — and its fill (`surface-canvas`) is a
+  // page-canvas value tuned as a ground plane for floating cards, not a row
+  // tint, so at that luminance step the shaded rows read as a different
+  // surface rather than the same one alternately banded. Rules + hover carry
+  // row tracking here. Board / Packed / mobile keep the stripe: they have no
+  // cell rules, which is the condition zebra actually exists for.
+  const stripeRow = useAlternateStripe && !gridSkin;
 
   const animatePresence = !disableEnterAnimation;
   const animateLayout = !disableLayoutAnimation;
@@ -393,6 +406,20 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
       laneAgeLabel={showLaneAge ? laneAgeLabel : null}
       laneAgeHours={laneAgeHours}
       tooltip={ageTooltip}
+      className={densityClasses.metaText}
+    />
+  );
+
+  // Desktop grid: one fused cell. Mobile keeps `dateNode` / `ageNode` separate
+  // in the meta row, where they are already on their own lines.
+  const slaNode = (
+    <GridSlaCellValue
+      dateLabel={dateCellData?.label}
+      dateTooltip={dateCellData?.tooltip}
+      daysLate={daysLate}
+      laneAgeLabel={showLaneAge ? laneAgeLabel : null}
+      laneAgeHours={laneAgeHours}
+      ageTooltip={ageTooltip}
       className={densityClasses.metaText}
     />
   );
@@ -682,13 +709,19 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
           <div
             data-col="title"
             ref={titleCellRef}
-            className={cn(dataCell(rule), ORDERS_QUEUE_FROZEN_CELL, 'gap-1.5', gridEditable && focusRing('cell'))}
+            // NOT an editable cell. The product title is a catalog fact that
+            // arrives from the marketplace listing, not an operator-authored
+            // value — and it is this row's only identity anchor, so a text
+            // caret on it (previously armed by click, Enter, F2, *or any
+            // printable key*) put a destructive typo one keystroke away.
+            // Identity columns stay read-only in the collection map;
+            // correction happens at the record plane, which house law already
+            // requires to be a complete superset of editable fields.
+            // No focus ring here either: the ring is the tell that a cell
+            // edits, and clicks must fall through to the row (open record).
+            className={cn(dataCell(rule), ORDERS_QUEUE_FROZEN_CELL, 'gap-1.5')}
             style={{ left: ordersQueueFrozenLeft('title') }}
             data-frozen-edge
-            {...cellTriggerProps('title', {
-              typing: true,
-              label: `Edit title — ${record.product_title || 'Unknown Product'}`,
-            })}
           >
             {oosIndicator}
             {/* Status chip lives in the Status column on gridSkin; board/mobile keep the title-dot. */}
@@ -702,34 +735,17 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
             </span>
             {expandAffordance}
             {noteIndicator}
-            {editing === 'title' && gridEditable ? (
-              <LedgerCellEditor
-                initialValue={String(record.product_title || '')}
-                replaceWith={editSeed}
-                ariaLabel="Edit product title"
-                onCommit={(next) =>
-                  commitAssign({ productTitle: next }, 'Title updated', 'Failed to update title')
-                }
-                onClose={closeEditor}
-              />
-            ) : null}
           </div>
         );
-      case 'date':
+      case 'sla':
         return (
           <div
-            data-col="date"
+            data-col="sla"
             ref={dateCellRef}
             className={cn(dataCell(rule), gridEditable && cn('relative', focusRing('cell')))}
             {...cellTriggerProps('date', { label: 'Edit ship-by date' })}
           >
-            {dateNode}
-          </div>
-        );
-      case 'age':
-        return (
-          <div data-col="age" className={dataCell(rule)}>
-            {ageNode}
+            {slaNode}
           </div>
         );
       case 'tester':
@@ -756,16 +772,15 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
         );
       }
       case 'qty':
+        // Left-aligned like every other track (no `justify-end`).
+        // Right-alignment buys place-value scanning when magnitudes vary; a
+        // pick quantity is `1` on nearly every row in a 2.75rem track, so it
+        // bought a ragged gutter mid-table instead and broke the left rhythm.
+        // `tabular-nums` below still keeps digits from jumping during an edit.
         return (
           <div
             data-col="qty"
-            className={cn(
-              dataCell(rule),
-              gridEditable && cn('relative', focusRing('cell')),
-              // Numbers right-align (place-value scan) — grid skin only; the
-              // board keeps its legacy left alignment.
-              gridSkin && 'justify-end',
-            )}
+            className={cn(dataCell(rule), gridEditable && cn('relative', focusRing('cell')))}
             {...cellTriggerProps('qty', { typing: true, label: `Edit quantity (${qty})` })}
           >
             {/* Same type scale as the Date / Age cells — numerals must not
@@ -803,9 +818,14 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
           >
             {gridEditable ? (
               hasConditionValue ? (
-                // Pill-as-trigger (Airtable single-select): SoT-toned soft pill
-                // + caret IS the dropdown button — pure select semantics, no
-                // copy action.
+                // Quiet tag, not a pill. The filled pill was three paint layers
+                // (fill + ring + caret) per row, floating mid-track against the
+                // airtable cell rules — it read as a centered object rather than
+                // a value aligned with the column above it. A dot carries the
+                // same SoT hue in one layer and lets the label start at the
+                // cell's text edge like every other track. The caret is
+                // hover/focus-only: the whole cell is the trigger, so a
+                // permanent one is chrome the resting state doesn't need.
                 <button
                   type="button"
                   aria-label={`Change condition — ${conditionGradeTableLabel(conditionValue)}`}
@@ -816,13 +836,22 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
                     openEditor('condition');
                   }}
                   className={cn(
-                    'ds-raw-button inline-flex min-w-0 max-w-full items-center gap-0.5 rounded-full inset-chip text-role-micro uppercase tracking-widest ring-1 ring-inset transition-colors',
-                    conditionGradeTone(conditionValue).badge,
+                    'ds-raw-button group/cond inline-flex min-w-0 max-w-full items-center gap-1 rounded text-role-micro uppercase tracking-widest text-text-default transition-colors',
                     focusRing('cell'),
                   )}
                 >
+                  <span
+                    className={cn(
+                      'h-1.5 w-1.5 shrink-0 rounded-full',
+                      conditionGradeTone(conditionValue).dotClass,
+                    )}
+                    aria-hidden
+                  />
                   <span className="min-w-0 truncate">{conditionGradeTableLabel(conditionValue)}</span>
-                  <ChevronDown className="h-3 w-3 shrink-0 opacity-70" />
+                  <ChevronDown
+                    className="h-3 w-3 shrink-0 text-text-faint opacity-0 transition-opacity group-hover/row:opacity-100 group-focus-visible/cond:opacity-100"
+                    aria-hidden
+                  />
                 </button>
               ) : (
                 // Quiet set-affordance for empty cells (Canva-sheet `Not set ⌄`).
@@ -956,20 +985,20 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
             ? 'py-2.5 hover:bg-blue-50/50'
             : cn('hover:bg-surface-hover', densityClasses.rowPadding)),
         gridSkin && 'hover:bg-surface-hover',
-        // Idle zebra: opaque canvas/card on grid (frozen pane inherits row bg);
-        // translucent canvas allowed only off-grid. Selection overrides stripe.
+        // Idle zebra (off-grid only — see `stripeRow`): opaque canvas where the
+        // caller asks, translucent otherwise. Selection overrides stripe.
         isStagedRow
           ? (selectMode ? isChecked : isSelected)
             ? 'bg-blue-50/80'
-            : useAlternateStripe
-              ? opaqueStripe || gridSkin
+            : stripeRow
+              ? opaqueStripe
                 ? 'bg-surface-canvas'
                 : 'bg-surface-canvas/40'
               : 'bg-surface-card'
           : (selectMode ? isChecked : isSelected)
             ? QUEUE_ROW.selectedClass
-            : useAlternateStripe
-              ? opaqueStripe || gridSkin
+            : stripeRow
+              ? opaqueStripe
                 ? 'bg-surface-canvas'
                 : 'bg-surface-canvas/40'
               : 'bg-surface-card',

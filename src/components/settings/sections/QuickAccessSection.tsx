@@ -120,7 +120,7 @@ export function QuickAccessSection() {
 
         <div className="rounded-2xl border border-border-soft bg-surface-card">
           <div className="border-b border-border-hairline px-4 pb-1 pt-3">
-            <h3 className="text-role-caption font-bold uppercase tracking-wider text-text-soft">FAB appearance</h3>
+            <h3 className="text-role-caption font-semibold uppercase tracking-wider text-text-soft">FAB appearance</h3>
           </div>
           <div className="px-4">
             <ToggleRow

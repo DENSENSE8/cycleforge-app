@@ -13,6 +13,13 @@ interface PackerScanReadyPayload {
   variant?: string;
   scannedValue?: string;
   order?: { orderId?: string } | null;
+  /**
+   * Present on a MANUAL re-send from the desktop pack identity bar
+   * ({@link PackSendToPhoneButton}). Fresh per click, so it keys the dedupe
+   * instead of `packerLogId:scannedValue` — an operator asking for the camera
+   * again on the same pack must always reopen it.
+   */
+  requestId?: string;
 }
 
 /**
@@ -42,7 +49,9 @@ export function PackerScanReadyCamera() {
       const packerLogId = Number(data.packerLogId);
       if (!Number.isFinite(packerLogId) || packerLogId <= 0) return;
 
-      const key = `${packerLogId}:${data.scannedValue || ''}`;
+      const key = data.requestId
+        ? `req:${data.requestId}`
+        : `${packerLogId}:${data.scannedValue || ''}`;
       if (lastKeyRef.current === key) return;
       lastKeyRef.current = key;
 

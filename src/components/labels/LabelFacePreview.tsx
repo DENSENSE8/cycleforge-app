@@ -52,7 +52,7 @@ export function LabelFacePreview({
         </div>
       ) : null}
       {model.hri ? (
-        <span className="font-mono text-role-micro font-extrabold leading-none tracking-wide text-text-default">
+        <span className="font-mono text-role-micro leading-none tracking-wide text-text-default">
           {model.hri}
         </span>
       ) : null}
@@ -65,12 +65,12 @@ export function LabelFacePreview({
       <div className={shell}>
         <div className="flex min-h-[6rem] flex-nowrap items-stretch gap-4">
           <div className="min-w-0 flex flex-1 flex-col justify-between">
-            <span className="line-clamp-2 text-role-micro font-bold leading-snug tracking-tight text-text-default">
+            <span className="line-clamp-2 text-role-micro leading-snug tracking-tight text-text-default">
               {model.topLeft}
             </span>
             <div className="flex items-baseline justify-between gap-2 text-role-micro leading-none">
-              <span className="font-black text-text-default">{model.bottomLeft}</span>
-              <span className="shrink-0 tabular-nums font-black text-text-default">
+              <span className="font-semibold text-text-default">{model.bottomLeft}</span>
+              <span className="shrink-0 tabular-nums font-semibold text-text-default">
                 {model.bottomRight}
               </span>
             </div>
@@ -87,8 +87,8 @@ export function LabelFacePreview({
       <div className="flex min-h-[6rem] flex-nowrap items-stretch gap-4">
         <div className="min-w-0 flex flex-1 flex-col justify-between">
           <div className="flex items-baseline justify-between gap-2 text-base leading-none">
-            <span className="truncate font-bold text-text-default">{model.topLeft}</span>
-            <span className="shrink-0 tabular-nums font-bold text-text-default">
+            <span className="truncate font-semibold text-text-default">{model.topLeft}</span>
+            <span className="shrink-0 tabular-nums font-semibold text-text-default">
               {model.topRight}
             </span>
           </div>
@@ -98,8 +98,8 @@ export function LabelFacePreview({
             </span>
           </div>
           <div className="flex items-baseline justify-between gap-2 text-base leading-none">
-            <span className="font-black text-text-default">{model.bottomLeft}</span>
-            <span className="shrink-0 tabular-nums font-black text-text-default">
+            <span className="font-semibold text-text-default">{model.bottomLeft}</span>
+            <span className="shrink-0 tabular-nums font-semibold text-text-default">
               {model.bottomRight}
             </span>
           </div>

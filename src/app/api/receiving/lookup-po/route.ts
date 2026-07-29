@@ -23,6 +23,13 @@ import { registerShipmentPermissive } from '@/lib/shipping/sync-shipment';
 import { isReceivingUnifiedInbound } from '@/lib/feature-flags';
 import { recordReceivingScan, type ReceivingIntakeSurface } from '@/lib/receiving/record-scan';
 import { recordUnboxScanOpened } from '@/lib/receiving/unbox-scan-opened';
+import {
+  recordUnboxLookupScan,
+  resolveUnboxScanKind,
+  resolveUnboxScanState,
+  type UnboxScanState,
+} from '@/lib/receiving/unbox-lookup-scan';
+import type { UnboxScanKind } from '@/lib/receiving/unbox-scan-kind';
 import { resolveShipmentForScan } from '@/lib/receiving/resolve-shipment-for-scan';
 import type { ReceivingExceptionCode } from '@/lib/receiving/exception-codes';
 import {
@@ -210,11 +217,20 @@ async function memoizeLookupHit(
   receivingSource: string,
   staffId: number | null,
   carrier: string,
-  intakeSurface: ReceivingIntakeSurface = 'triage',
+  intakeSurface: ReceivingIntakeSurface,
+  orgId: string,
 ): Promise<number> {
   const scanSource: 'zoho_po' | 'unmatched' = receivingSource === 'zoho_po' ? 'zoho_po' : 'unmatched';
+  // This helper runs ONLY for a carton that already exists — resolving one is
+  // literally what `findScanByTracking` just did — which makes it the EARLIEST
+  // write on the lookup-po path and therefore the first place an inspection can
+  // rename the operator who actually unboxed the box. Classifying downstream
+  // (the ticket / dedup branches) is too late: the overwrite already happened
+  // here. Fails open to `work` inside `resolveUnboxScanKind`.
+  const scanKind = await resolveUnboxScanKind(orgId, receivingId, intakeSurface);
   return recordReceivingScan(receivingId, trackingNumber, carrier, staffId, scanSource, {
     intakeSurface,
+    scanKind,
   });
 }
 
@@ -255,6 +271,7 @@ async function findScanByTracking(
       staffId,
       carrier,
       intakeSurface,
+      orgId,
     );
     return { scan_id, receiving_id: resolved.receivingId };
   }
@@ -744,9 +761,14 @@ async function recordScan(
   staffId: number | null,
   source: 'zoho_po' | 'unmatched',
   intakeSurface: ReceivingIntakeSurface = 'triage',
+  // Required at every call site (see the `stampUnboxOpened` note): these paths
+  // reach cartons that `upsertMatchedReceiving` / the preassigned re-scan
+  // branch resolved rather than created, so `work` cannot be assumed.
+  scanKind: UnboxScanKind = 'work',
 ): Promise<number> {
   return recordReceivingScan(receivingId, trackingNumber, carrier, staffId, source, {
     intakeSurface,
+    scanKind,
   });
 }
 
@@ -818,12 +840,83 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
     // Server-trusted actor from the verified session cookie.
     const staffId = ctx.staffId;
     const intakeSurface = body?.intakeSurface === 'unbox' ? 'unbox' : 'triage';
+    /**
+     * The lookup verdict has to reach the RESPONSE, not just the writes: the
+     * pane decides between the read-only receipt and the work editor from what
+     * comes back. Remembered here because the branch that classifies and the
+     * branch that returns are often far apart.
+     */
+    let lookupScanState: UnboxScanState | null = null;
+
+    /**
+     * Is this scan WORK on the carton, or a LOOKUP of already-finished work?
+     * Only meaningful for a PRE-EXISTING carton — a carton created by this very
+     * request is definitionally unworked, so those paths never pay for the read.
+     */
+    const scanStateFor = async (receivingId: number): Promise<UnboxScanState> => {
+      const state = await resolveUnboxScanState(ctx.organizationId, receivingId, intakeSurface);
+      if (state.kind === 'lookup') lookupScanState = state;
+      return state;
+    };
+
+    const scanKindFor = async (receivingId: number): Promise<UnboxScanKind> =>
+      (await scanStateFor(receivingId)).kind;
+
+    /**
+     * Lookup facts for a carton-opening response. Spread LAST so it wins, and
+     * absent entirely on a work scan — the client tests `scan_kind === 'lookup'`,
+     * so an always-present field would have to lie on the work path.
+     */
+    const lookupResponseFields = () =>
+      lookupScanState
+        ? {
+            scan_kind: 'lookup' as const,
+            unboxed_at: lookupScanState.unboxedAt,
+            unboxed_by_name: lookupScanState.unboxedByName,
+            po_number: lookupScanState.poNumber,
+          }
+        : {};
+
+    /**
+     * Most branches reach `stampUnboxOpened` with a carton they may or may not
+     * have just created — `upsertMatchedReceiving` / `createOrGetTestReceiving`
+     * both report that as `preexisting`, and the zero-line re-scan branch
+     * carries a `preassignedReceivingId` forward. Route every such site through
+     * here so "did I just create this?" is the ONLY question a caller answers.
+     */
+    const scanKindForMaybeExisting = (
+      receivingId: number,
+      preexisting: boolean,
+    ): Promise<UnboxScanKind> =>
+      preexisting ? scanKindFor(receivingId) : Promise.resolve('work');
+
+    /**
+     * `scanKind` is REQUIRED, deliberately. It defaulted to `'work'` while only
+     * two of the six call sites passed one, so the four that reach a
+     * pre-existing carton silently kept claiming work on an inspection — the
+     * exact defect this classification exists to close. A required parameter
+     * turns that miss into a compile error. Pinned by
+     * `lookup-scan-wiring.guard.test.ts`.
+     */
     const stampUnboxOpened = async (
       receivingId: number,
       scanId: number | null,
       tracking: string,
+      scanKind: UnboxScanKind,
     ) => {
       if (intakeSurface !== 'unbox') return;
+      // A lookup neither opens nor re-opens: `opened_at` is COALESCE-once so it
+      // would not move anyway, but UNBOX_SCAN_OPENED is a work event and must
+      // not fire for an inspection.
+      if (scanKind === 'lookup') {
+        await recordUnboxLookupScan({
+          organizationId: ctx.organizationId,
+          receivingId,
+          actorStaffId: staffId,
+          trackingNumber: tracking,
+        });
+        return;
+      }
       await recordUnboxScanOpened(ctx.organizationId, receivingId, staffId, scanId, tracking);
     };
 
@@ -871,15 +964,16 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
             [hit.receivingId, ctx.organizationId],
           );
           const recvSource = String(recvSourceRes.rows[0]?.source || 'unmatched');
+          const hitScanKind = await scanKindFor(hit.receivingId);
           const scanId = await recordReceivingScan(
             hit.receivingId,
             rawTracking,
             carrier,
             staffId,
             recvSource === 'zoho_po' ? 'zoho_po' : 'unmatched',
-            { intakeSurface },
+            { intakeSurface, scanKind: hitScanKind },
           );
-          await stampUnboxOpened(hit.receivingId, scanId, rawTracking);
+          await stampUnboxOpened(hit.receivingId, scanId, rawTracking, hitScanKind);
           const poIdsSet = new Set<string>();
           for (const l of lines) {
             if (l.zoho_purchaseorder_id) poIdsSet.add(l.zoho_purchaseorder_id);
@@ -904,6 +998,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
           }
           return NextResponse.json({
             success: true,
+            ...lookupResponseFields(),
             receiving_id: hit.receivingId,
             scan_id: scanId,
             preexisting: true,
@@ -997,11 +1092,16 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
       // unfound carton is created.
       if (poId) {
 
-      const { receivingId } = await upsertMatchedReceiving(poId, carrier, staffId, ctx.organizationId, intakeSurface);
+      const { receivingId, preexisting: orderPreexisting } = await upsertMatchedReceiving(poId, carrier, staffId, ctx.organizationId, intakeSurface);
       const linked = await linkLocalPoLinesToReceiving(poId, receivingId, ctx.organizationId);
+      // `upsertMatchedReceiving` returns an EXISTING carton when this PO was
+      // scanned before, so this site can land on finished work. Classify ONCE
+      // and give the same verdict to both writes — the attribution upsert and
+      // the open stamp must never disagree about what this scan was.
+      const orderScanKind = await scanKindForMaybeExisting(receivingId, orderPreexisting);
       // Local adopt only — never live-import PO lines on the scan hot path.
-      const orderScanId = await recordScan(receivingId, trackingNumber, carrier, staffId, 'zoho_po', intakeSurface);
-      await stampUnboxOpened(receivingId, orderScanId, trackingNumber);
+      const orderScanId = await recordScan(receivingId, trackingNumber, carrier, staffId, 'zoho_po', intakeSurface, orderScanKind);
+      await stampUnboxOpened(receivingId, orderScanId, trackingNumber, orderScanKind);
       await applyIntakeClassification(receivingId, classification, ctx.organizationId);
 
       const [lines, receiving_package] = await Promise.all([
@@ -1046,6 +1146,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
       return NextResponse.json({
         success: true,
         receiving_id: receivingId,
+        ...lookupResponseFields(),
         preexisting: linked > 0,
         deduped: false,
         matched: lines.length > 0,
@@ -1092,15 +1193,19 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
           [existingScan.receiving_id, ctx.organizationId],
         );
         const recvSource = String(recvSourceRes.rows[0]?.source || 'unmatched');
+        // "Re-attribute this dock event to the current operator" is right for a
+        // work scan and wrong for an inspection — this is the dedup path, so
+        // the carton already exists and may long since be unboxed.
+        const dedupScanKind = await scanKindFor(existingScan.receiving_id);
         const dedupScanId = await recordReceivingScan(
           existingScan.receiving_id,
           trackingNumber,
           carrier,
           staffId,
           recvSource === 'zoho_po' ? 'zoho_po' : 'unmatched',
-          { intakeSurface },
+          { intakeSurface, scanKind: dedupScanKind },
         );
-        await stampUnboxOpened(existingScan.receiving_id, dedupScanId, trackingNumber);
+        await stampUnboxOpened(existingScan.receiving_id, dedupScanId, trackingNumber, dedupScanKind);
         const poIdsSet = new Set<string>();
         for (const l of lines) {
           if (l.zoho_purchaseorder_id) poIdsSet.add(l.zoho_purchaseorder_id);
@@ -1125,6 +1230,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
         }
         return NextResponse.json({
           success: true,
+          ...lookupResponseFields(),
           receiving_id: existingScan.receiving_id,
           scan_id: existingScan.scan_id,
           preexisting: true,
@@ -1173,7 +1279,14 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
         ctx.organizationId,
       );
       await applyIntakeClassification(receivingId, classification, ctx.organizationId);
-      await stampUnboxOpened(receivingId, scanId, trackingNumber);
+      // `createOrGetTestReceiving` is get-or-create: a repeat TEST scan resolves
+      // the carton from the previous run, which may already be unboxed.
+      await stampUnboxOpened(
+        receivingId,
+        scanId,
+        trackingNumber,
+        await scanKindForMaybeExisting(receivingId, preexisting),
+      );
       const [lines, receiving_package] = await Promise.all([
         fetchLines(receivingId, ctx.organizationId),
         fetchReceivingPackage(receivingId, ctx.organizationId),
@@ -1213,6 +1326,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
       });
       return NextResponse.json({
         success: true,
+        ...lookupResponseFields(),
         receiving_id: receivingId,
         scan_id: scanId,
         preexisting,
@@ -1299,6 +1413,9 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
           await upsertMatchedReceiving(primaryPoId, carrier, staffId, ctx.organizationId, intakeSurface));
       }
 
+      // Promoted-in-place or upserted: every branch above can resolve a carton
+      // that existed before this scan, so classify before claiming work.
+      const matchedScanKind = await scanKindForMaybeExisting(primaryReceivingId, preexisting);
       const scanId = preassignedScanId ?? await recordScan(
         primaryReceivingId,
         trackingNumber,
@@ -1306,8 +1423,9 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
         staffId,
         'zoho_po',
         intakeSurface,
+        matchedScanKind,
       );
-      await stampUnboxOpened(primaryReceivingId, scanId, trackingNumber);
+      await stampUnboxOpened(primaryReceivingId, scanId, trackingNumber, matchedScanKind);
       // If the scan was attached to a different receiving row (rare race
       // between promote and upsert fallback), re-parent it now. Failure here
       // leaves an orphan scan pointing at the stale receiving row — log it
@@ -1345,14 +1463,25 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
       const secondaryReceivingIds: number[] = [];
       for (const poId of poIds.slice(1)) {
         try {
-          const { receivingId: extraReceivingId } = await upsertMatchedReceiving(
-            poId,
+          const { receivingId: extraReceivingId, preexisting: extraPreexisting } =
+            await upsertMatchedReceiving(
+              poId,
+              carrier,
+              staffId,
+              ctx.organizationId,
+              intakeSurface,
+            );
+          // Same upsert, same hazard: a secondary PO's carton may already be
+          // unboxed, and it gets no `stampUnboxOpened` to compensate.
+          await recordScan(
+            extraReceivingId,
+            trackingNumber,
             carrier,
             staffId,
-            ctx.organizationId,
+            'zoho_po',
             intakeSurface,
+            await scanKindForMaybeExisting(extraReceivingId, extraPreexisting),
           );
-          await recordScan(extraReceivingId, trackingNumber, carrier, staffId, 'zoho_po', intakeSurface);
           await linkLocalPoLinesToReceiving(poId, extraReceivingId, ctx.organizationId);
           secondaryPoIds.push(poId);
           secondaryReceivingIds.push(extraReceivingId);
@@ -1458,6 +1587,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
 
       return NextResponse.json({
         success: true,
+        ...lookupResponseFields(),
         receiving_id: primaryReceivingId,
         scan_id: scanId,
         preexisting,
@@ -1510,6 +1640,13 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
       ({ receivingId: unmatchedReceivingId, shipmentId: unmatchedShipmentId } =
         await createUnmatchedReceiving(trackingNumber, carrier, staffId, ctx.organizationId, intakeSurface));
     }
+    // A PREASSIGNED id is a pre-existing carton (the zero-line re-scan branch
+    // above carried it forward), so it may long since have been unboxed. A
+    // freshly created unfound carton is unworked by construction.
+    const unmatchedScanKind = await scanKindForMaybeExisting(
+      unmatchedReceivingId,
+      preassignedReceivingId != null,
+    );
     const unmatchedScanId = preassignedScanId ?? await recordScan(
       unmatchedReceivingId,
       trackingNumber,
@@ -1517,8 +1654,9 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
       staffId,
       'unmatched',
       intakeSurface,
+      unmatchedScanKind,
     );
-    await stampUnboxOpened(unmatchedReceivingId, unmatchedScanId, trackingNumber);
+    await stampUnboxOpened(unmatchedReceivingId, unmatchedScanId, trackingNumber, unmatchedScanKind);
 
     const exceptionReason = 'not_found' as const;
     const exception = await upsertOpenTrackingException({
@@ -1571,6 +1709,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
 
     return NextResponse.json({
       success: true,
+      ...lookupResponseFields(),
       receiving_id: unmatchedReceivingId,
       scan_id: unmatchedScanId,
       exception_id: exception?.id ?? null,

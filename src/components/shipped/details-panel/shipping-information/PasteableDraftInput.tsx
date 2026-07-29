@@ -27,7 +27,7 @@ export function PasteableDraftInput({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className={`h-10 w-full border-0 bg-transparent px-3 text-sm font-bold text-text-default outline-none ${inputClassName}`}
+        className={`h-10 w-full border-0 bg-transparent px-3 text-sm font-semibold text-text-default outline-none ${inputClassName}`}
       />
     </div>
   );

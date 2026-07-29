@@ -55,7 +55,7 @@ export function ManualsSection({
         emptyTitle: 'Manual file unavailable',
         emptyHint: 'Re-pair from the library or open the Products manuals library.',
         meta: m.type ? (
-          <span className="text-role-eyebrow font-bold uppercase tracking-widest text-text-faint">
+          <span className="text-role-eyebrow uppercase tracking-widest text-text-faint">
             {m.type}
           </span>
         ) : null,

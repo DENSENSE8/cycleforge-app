@@ -172,7 +172,7 @@ export function OperationsHistoryView() {
               <History className="h-5 w-5" />
             </span>
             <div>
-              <h1 className="text-2xl font-black tracking-tight text-text-default leading-none">
+              <h1 className="text-2xl font-semibold tracking-tight text-text-default leading-none">
                 {focused
                   ? `${dimLabel} record`
                   : region === 'browse'
@@ -196,13 +196,13 @@ export function OperationsHistoryView() {
                       icon={<X />}
                       onClick={() => url.setEntity('')}
                       ariaLabel="Clear record"
-                      className="text-role-eyebrow font-bold uppercase tracking-widest text-text-faint hover:text-text-muted"
+                      className="text-role-eyebrow uppercase tracking-widest text-text-faint hover:text-text-muted"
                     >
                       Clear
                     </Button>
                   </>
                 ) : (
-                  <p className="text-role-eyebrow font-bold uppercase tracking-widest text-text-soft">
+                  <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">
                     {region === 'browse'
                       ? 'Recent operations — filter in the sidebar or open a record'
                       : 'Paste a record number to begin'}

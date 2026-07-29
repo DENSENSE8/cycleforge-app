@@ -33,7 +33,7 @@ export function MobilePhotoCountBadge({
   const inner = (
     <span
       className={cn(
-        'inline-flex shrink-0 items-center gap-0.5 font-black tabular-nums',
+        'inline-flex shrink-0 items-center gap-0.5 font-semibold tabular-nums',
         textSize,
         hasPhotos ? 'text-blue-600' : 'text-text-faint',
         className,

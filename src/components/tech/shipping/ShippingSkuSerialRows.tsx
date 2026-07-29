@@ -139,7 +139,7 @@ function SkuSerialGroupBlock({
     <div className="rounded-xl border border-border-soft bg-surface-card px-3 py-2.5">
       {/* PoLineRow contract: title above meta chips. */}
       <p
-        className="min-w-0 truncate text-role-caption font-bold text-text-default"
+        className="min-w-0 truncate text-role-caption font-semibold text-text-default"
         title={title}
       >
         {title}
@@ -182,7 +182,7 @@ function SkuSerialGroupBlock({
               ? Array.from({ length: Math.min(showEmpty, 3) }, (_, i) => (
                   <span
                     key={`empty-${i}`}
-                    className="inline-flex h-6 min-w-[3.5rem] items-center justify-center rounded-md border border-dashed border-border-soft px-1.5 text-role-micro font-bold text-text-faint"
+                    className="inline-flex h-6 min-w-[3.5rem] items-center justify-center rounded-md border border-dashed border-border-soft px-1.5 text-role-micro text-text-faint"
                   >
                     —
                   </span>

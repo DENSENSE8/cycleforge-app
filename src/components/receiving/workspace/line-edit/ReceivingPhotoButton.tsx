@@ -1,7 +1,11 @@
 'use client';
 
 /**
- * Compact carton-photos control for the condensed CartonContextCard row.
+ * Compact receiving-photos control for station chrome. Carton-scoped by
+ * default (the condensed CartonContextCard identity row); pass
+ * `photoStage="unbox_item"` + `receivingLineId` for the unbox active-line item
+ * camera — same pill, scoped to RECEIVING_LINE + `receiving_item` per the
+ * stage SoT (`@/lib/receiving/photo-scope`).
  *
  * One pill: camera pinned left + (count when photos exist, else "+") pinned
  * right. Click always sends a capture request to the paired phone. Hover
@@ -31,6 +35,12 @@ import { toast } from '@/lib/toast';
 import { receivingPhotoToGalleryInput } from '@/components/shipped/photo-gallery/photo-gallery-utils';
 import { buildUnboxingCartonLibraryHref } from '@/components/shipped/photo-gallery/photo-context-provenance';
 import { STATION_CONTEXT_PHOTO_PILL_CLASS } from '@/components/station/entity-context/station-context-action-pill';
+import type { ReceivingPhotoStage } from '@/lib/receiving/photo-intent';
+import {
+  effectiveReceivingPhotoStage,
+  receivingPhotoListIntentForScope,
+  resolveReceivingPhotoTarget,
+} from '@/lib/receiving/photo-scope';
 
 interface PhotoRow {
   id: number;
@@ -53,6 +63,10 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
   receivingId,
   staffId,
   poRef,
+  photoStage = 'arrival_package',
+  receivingLineId = null,
+  poRouteRef = null,
+  galleryPlacement = 'below',
   onSendToTicket,
 }: {
   receivingId: number;
@@ -60,6 +74,31 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
   /** Carton PO#/order ref — stamped onto each photo's meta so the viewer's
    *  details panel shows the linked PO (parity with ReceivingPhotoPeek). */
   poRef?: string | null;
+  /**
+   * Capture stage this pill stamps: triage chrome keeps the default arrival
+   * package; the unbox header passes `unbox_carton`; the unbox active-line
+   * camera passes `unbox_item` together with `receivingLineId`.
+   */
+  photoStage?: ReceivingPhotoStage;
+  /**
+   * Active receiving line — makes this pill the ITEM camera (RECEIVING_LINE +
+   * `receiving_item`): line-scoped count/gallery/upload, and phone requests
+   * carry the line id. Entity wins: a line id forces the item stage.
+   */
+  receivingLineId?: number | null;
+  /**
+   * Zoho PO id (or number) used ONLY to route an item phone request to
+   * `/m/receiving/po/{ref}/item/{line}/photos`. Without it the phone action is
+   * disabled for item scope (device upload still works) — `poRef` may be a
+   * sales-order ref the mobile PO route can't resolve.
+   */
+  poRouteRef?: string | null;
+  /**
+   * Where the hover gallery card opens relative to the pill. Header pills keep
+   * the default `below`; bottom-anchored chrome (the unbox item cluster) passes
+   * `above` so the card never runs off the pane edge.
+   */
+  galleryPlacement?: 'below' | 'above';
   /** Opens SendPhotoNoteModal — ticket icon in the photo dropdown toolbar. */
   onSendToTicket?: () => void;
 }) {
@@ -67,18 +106,46 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
   const { user } = useAuth();
   const orgId = user?.organizationId;
   const queryClient = useQueryClient();
-  const queryKey = receivingPhotosQueryKey(receivingId);
+
+  // Normalize scope through the stage SoT (entity wins — a line id is item
+  // evidence regardless of the prop combination), then derive the write target
+  // and the list intent from that one normalized stage.
+  const lineId =
+    receivingLineId != null && Number.isFinite(receivingLineId) && receivingLineId > 0
+      ? receivingLineId
+      : null;
+  const stage = effectiveReceivingPhotoStage({ stage: photoStage, receivingLineId: lineId });
+  const isItemScope = stage === 'unbox_item';
+  const listIntent = receivingPhotoListIntentForScope({ stage, receivingLineId: lineId });
+  const uploadTarget = useMemo(() => {
+    try {
+      return resolveReceivingPhotoTarget({ receivingId, receivingLineId: lineId, stage });
+    } catch {
+      return null; // incoherent scope — the query below is disabled too
+    }
+  }, [receivingId, lineId, stage]);
+
+  // Scope the cache key: a line pill must not share an entry with its carton.
+  const queryKey = useMemo(
+    () => [...receivingPhotosQueryKey(receivingId), listIntent, lineId ?? 'carton'] as const,
+    [receivingId, listIntent, lineId],
+  );
 
   const { data } = useQuery<PhotosPayload>({
     queryKey,
     queryFn: async () => {
-      const res = await fetch(`/api/receiving-photos?receivingId=${receivingId}`, {
+      const params = new URLSearchParams({
+        receivingId: String(receivingId),
+        photoIntent: listIntent,
+      });
+      if (lineId != null) params.set('receivingLineId', String(lineId));
+      const res = await fetch(`/api/receiving-photos?${params.toString()}`, {
         cache: 'no-store',
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return res.json();
     },
-    enabled: Number.isFinite(receivingId) && receivingId > 0,
+    enabled: Number.isFinite(receivingId) && receivingId > 0 && uploadTarget !== null,
     staleTime: 10_000,
   });
 
@@ -93,15 +160,30 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
 
   const [phoneSending, setPhoneSending] = useState(false);
 
+  // An item capture routes to `/m/receiving/po/{ref}/item/{line}/photos`, which
+  // needs a PO route ref. Without one the phone leg is unavailable (device
+  // upload via the hover strip still works) — better than sending the operator's
+  // phone to a route it cannot resolve.
+  const routeRef = String(poRouteRef ?? '').trim();
+  const canSendToPhone = !isItemScope || routeRef.length > 0;
+
   const handleRequestOnPhone = useCallback(async () => {
     if (!orgId || staffId <= 0) {
       toast.error('Sign in on your phone to take photos');
       return;
     }
+    if (!canSendToPhone) {
+      toast.error('Link a PO to capture item photos on the phone');
+      return;
+    }
     setPhoneSending(true);
     try {
       const client = await getClient();
-      await publishReceivingPhotoRequest(client, orgId, staffId, receivingId);
+      await publishReceivingPhotoRequest(client, orgId, staffId, receivingId, {
+        stage,
+        receivingLineId: lineId,
+        poRef: routeRef || null,
+      });
       toast.success('Sent to phone');
     } catch (err) {
       console.warn('receiving-photo-button: photo request publish failed', err);
@@ -109,7 +191,7 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
     } finally {
       setPhoneSending(false);
     }
-  }, [getClient, orgId, receivingId, staffId]);
+  }, [getClient, orgId, receivingId, staffId, stage, lineId, routeRef, canSendToPhone]);
 
   const photos = useMemo(
     () =>
@@ -155,13 +237,20 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
   // Radius shared with Claim via {@link STATION_CONTEXT_PHOTO_PILL_CLASS}.
   const btnClass = STATION_CONTEXT_PHOTO_PILL_CLASS;
 
+  const noun = isItemScope ? 'item' : 'carton';
+  const phoneHint = canSendToPhone ? 'send to phone' : 'hover to upload';
+
   const title = hasGallery
-    ? `${count} photo${count === 1 ? '' : 's'} · send to phone`
-    : 'Send to phone · hover for upload';
+    ? `${count} ${noun} photo${count === 1 ? '' : 's'} · ${phoneHint}`
+    : canSendToPhone
+      ? `Send to phone · hover for upload`
+      : `Hover to upload ${noun} photos`;
 
   const ariaLabel = hasGallery
-    ? `${count} carton photo${count === 1 ? '' : 's'}; send to phone or hover for gallery`
-    : 'Send capture request to phone; hover for upload options';
+    ? `${count} ${noun} photo${count === 1 ? '' : 's'}; ${phoneHint} or hover for gallery`
+    : canSendToPhone
+      ? 'Send capture request to phone; hover for upload options'
+      : `Hover for ${noun} upload options`;
 
   const handlePillClick = useCallback(() => {
     void handleRequestOnPhone();
@@ -173,7 +262,11 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
       variant="ghost"
       size="sm"
       onClick={handlePillClick}
+      // Item scope with no PO route ref: the phone leg has nowhere to land, but
+      // the pill must stay hoverable for device upload — so it is click-inert,
+      // not `disabled` (a disabled button swallows the hover the strip needs).
       disabled={phoneSending}
+      aria-disabled={!canSendToPhone || undefined}
       ariaLabel={ariaLabel}
       aria-expanded={showGalleryPeek}
       icon={<Camera className="h-4 w-4" />}
@@ -207,14 +300,26 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
       )}
 
       {showGalleryPeek ? (
-        // `pt-1.5` bridges the gap so the pointer stays inside the hover target
-        // while moving from the pill to the gallery card.
-        <div className="absolute right-0 top-full z-30 pt-1.5">
+        // The padding bridges the gap so the pointer stays inside the hover
+        // target while moving from the pill to the gallery card — on whichever
+        // side the card opens.
+        <div
+          className={
+            galleryPlacement === 'above'
+              ? 'absolute bottom-full right-0 z-30 pb-1.5'
+              : 'absolute right-0 top-full z-30 pt-1.5'
+          }
+        >
           <div className="w-fit max-w-[80vw] rounded-xl border border-blue-200 bg-surface-card p-0.5 shadow-xl">
             <PhotoGallery
               photos={photos}
               orderId={`RCV-${receivingId}`}
               receivingId={receivingId}
+              // Explicit target: without it a receiving gallery derives
+              // RECEIVING + `receiving_package`, so an ITEM pill's hover-upload
+              // would stamp carton evidence onto a line camera (and the write
+              // waist would 400 it). The resolver already encodes the matrix.
+              uploadTarget={uploadTarget ?? undefined}
               allowReassign
               launcherLayout="toolbar"
               toolbarShowLabel={false}

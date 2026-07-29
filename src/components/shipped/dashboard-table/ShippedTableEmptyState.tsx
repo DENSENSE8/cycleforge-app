@@ -68,7 +68,7 @@ export function ShippedTableEmptyState({
         </>
       ) : idleEmpty ? (
         <div className="mx-auto max-w-sm rounded-xl border border-dashed border-border-soft bg-surface-canvas px-5 py-7 text-center">
-          <p className="text-role-caption font-bold text-text-default">{idleEmpty.title}</p>
+          <p className="text-role-caption font-semibold text-text-default">{idleEmpty.title}</p>
           <p className="mt-1.5 text-role-caption text-text-muted">{idleEmpty.body}</p>
           {idleEmpty.actionLabel && idleEmpty.onAction ? (
             <Button

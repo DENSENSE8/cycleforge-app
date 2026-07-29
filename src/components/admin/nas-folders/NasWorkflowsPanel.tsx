@@ -9,7 +9,7 @@ export function NasWorkflowsPanel({ c }: { c: StationNasFoldersController }) {
   return (
     <div className="space-y-3 rounded-2xl border border-border-soft bg-surface-card p-4">
       <div>
-        <p className="text-role-caption font-black text-text-default">Workflow folders</p>
+        <p className="text-role-caption font-semibold text-text-default">Workflow folders</p>
         <p className="mt-0.5 text-role-micro text-text-faint">
           Synology mount paths on the office Mac and active subfolders for receiving photos, outbound
           labels, and claim archives. Root paths here replace <code className="font-mono">NAS_ROOT_*</code> in{' '}
@@ -22,8 +22,8 @@ export function NasWorkflowsPanel({ c }: { c: StationNasFoldersController }) {
         {TARGETS.map((target) => (
           <div key={target.key} className="grid gap-2 py-3 first:pt-0 last:pb-0 md:grid-cols-[8.5rem_1fr]">
             <div>
-              <p className="text-role-caption font-black text-text-default">{target.label}</p>
-              <p className="text-role-micro font-bold uppercase tracking-widest text-text-faint">{target.key}</p>
+              <p className="text-role-caption font-semibold text-text-default">{target.label}</p>
+              <p className="text-role-micro uppercase tracking-widest text-text-faint">{target.key}</p>
             </div>
             <div className="grid gap-2">
               <input
@@ -59,7 +59,7 @@ export function NasWorkflowsPanel({ c }: { c: StationNasFoldersController }) {
       </div>
 
       <div className="flex items-center justify-end gap-3">
-        {targetsDirty ? <span className="text-role-micro font-bold uppercase tracking-widest text-amber-600">Unsaved changes</span> : null}
+        {targetsDirty ? <span className="text-role-micro uppercase tracking-widest text-amber-600">Unsaved changes</span> : null}
         <Button
           type="button"
           variant="primary"

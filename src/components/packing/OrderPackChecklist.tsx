@@ -160,7 +160,7 @@ export function OrderPackChecklist({
 
       {readiness.requiredTotal > 0 ? (
         <div
-          className={`flex items-center gap-1.5 border-t px-3 py-2 text-role-eyebrow font-bold ${
+          className={`flex items-center gap-1.5 border-t px-3 py-2 text-role-eyebrow font-semibold ${
             readiness.allRequiredIn
               ? 'border-emerald-100 bg-emerald-50 text-emerald-700'
               : readiness.blocked

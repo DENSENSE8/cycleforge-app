@@ -86,14 +86,14 @@ export function PhotoLibraryToolbar<T>({
 
   return (
     <div className="flex h-[40px] shrink-0 items-center gap-2 border-b border-border-soft bg-surface-canvas/80 px-4 backdrop-blur-sm lg:px-6">
-      <span className="shrink-0 text-xs font-bold tabular-nums text-text-muted">
+      <span className="shrink-0 text-xs font-semibold tabular-nums text-text-muted">
         {shownCount} selected
       </span>
       <Button
         variant="ghost"
         size="sm"
         onClick={allSelected ? onClear : onSelectAll}
-        className="h-7 shrink-0 rounded-md px-1.5 py-0.5 text-role-caption font-bold uppercase tracking-wider text-blue-600 hover:bg-blue-50 hover:text-blue-700"
+        className="h-7 shrink-0 rounded-md px-1.5 py-0.5 text-role-caption font-semibold uppercase tracking-wider text-blue-600 hover:bg-blue-50 hover:text-blue-700"
       >
         {allSelected ? 'Clear' : `Select all ${total}`}
       </Button>
@@ -103,7 +103,7 @@ export function PhotoLibraryToolbar<T>({
             variant="ghost"
             size="sm"
             onClick={onSelectAllMatching}
-            className="h-7 shrink-0 rounded-md px-1.5 py-0.5 text-role-caption font-bold uppercase tracking-wider text-blue-600 hover:bg-blue-50 hover:text-blue-700"
+            className="h-7 shrink-0 rounded-md px-1.5 py-0.5 text-role-caption font-semibold uppercase tracking-wider text-blue-600 hover:bg-blue-50 hover:text-blue-700"
           >
             Select all matching
           </Button>
@@ -155,7 +155,7 @@ export function PhotoLibraryToolbar<T>({
             >
               <Trash2 className="h-4 w-4 shrink-0" />
               {deleteArmed ? (
-                <span className="text-xs font-bold uppercase tracking-wider">
+                <span className="text-xs font-semibold uppercase tracking-wider">
                   {deleting ? 'Deleting…' : 'Confirm'}
                 </span>
               ) : null}

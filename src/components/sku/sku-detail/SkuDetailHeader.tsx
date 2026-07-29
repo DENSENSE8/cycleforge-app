@@ -29,8 +29,8 @@ export function SkuDetailHeader({ c, data }: { c: SkuDetailController; data: Sku
       </div>
       {data.ecwid?.price != null && (
         <div className="text-right">
-          <p className="text-lg font-black text-text-default">${data.ecwid.price.toFixed(2)}</p>
-          <p className={`text-role-micro font-bold uppercase tracking-wider ${data.ecwid.inStock ? 'text-emerald-600' : 'text-red-500'}`}>
+          <p className="text-lg font-semibold text-text-default">${data.ecwid.price.toFixed(2)}</p>
+          <p className={`text-role-micro font-semibold uppercase tracking-wider ${data.ecwid.inStock ? 'text-emerald-600' : 'text-red-500'}`}>
             {data.ecwid.inStock ? 'In Stock' : 'Out of Stock'}
           </p>
         </div>

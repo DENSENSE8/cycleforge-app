@@ -48,7 +48,7 @@ export function ShippingInfoEditModal({
           <DialogDescription className="text-role-micro uppercase tracking-[0.24em] text-text-soft">
             Shipping Info
           </DialogDescription>
-          <DialogTitle className="mt-1 text-lg font-black tracking-tight text-text-default">
+          <DialogTitle className="mt-1 text-lg font-semibold tracking-tight text-text-default">
             Edit Order Details
           </DialogTitle>
         </DialogHeader>
@@ -63,7 +63,7 @@ export function ShippingInfoEditModal({
                   value={draft.shipByDate}
                   onChange={(e) => setDraft((current) => ({ ...current, shipByDate: e.target.value }))}
                   placeholder="MM-DD-YY"
-                  className="h-10 w-full rounded-xl border border-border-soft bg-surface-card px-3 text-sm font-bold text-text-default outline-none transition-colors focus:border-blue-400"
+                  className="h-10 w-full rounded-xl border border-border-soft bg-surface-card px-3 text-sm font-semibold text-text-default outline-none transition-colors focus:border-blue-400"
                 />
               </label>
               <label className="block">
@@ -73,7 +73,7 @@ export function ShippingInfoEditModal({
                   value={draft.orderNumber}
                   onChange={(e) => setDraft((current) => ({ ...current, orderNumber: e.target.value }))}
                   placeholder="Enter order ID"
-                  className="h-10 w-full rounded-xl border border-border-soft bg-surface-card px-3 text-sm font-bold text-text-default outline-none transition-colors focus:border-blue-400"
+                  className="h-10 w-full rounded-xl border border-border-soft bg-surface-card px-3 text-sm font-semibold text-text-default outline-none transition-colors focus:border-blue-400"
                 />
               </label>
             </div>
@@ -228,7 +228,7 @@ export function ShippingInfoEditModal({
             </div>
           ) : null}
 
-          {error ? <p className="text-sm font-bold text-red-600">{error}</p> : null}
+          {error ? <p className="text-sm font-semibold text-red-600">{error}</p> : null}
         </div>
 
         <DialogFooter className="border-t border-border-hairline px-5 py-4 sm:justify-end">

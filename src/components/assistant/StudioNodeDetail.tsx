@@ -53,7 +53,7 @@ export function StudioNodeDetail() {
       </div>
 
       <div className="mt-1.5 space-y-1">
-        <p className="truncate text-role-caption font-bold text-text-default">{meta?.label ?? node.type}</p>
+        <p className="truncate text-role-caption font-semibold text-text-default">{meta?.label ?? node.type}</p>
         <p className="truncate text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
           {node.type}
           {meta?.category ? ` · ${meta.category}` : ''}

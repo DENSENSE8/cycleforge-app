@@ -58,7 +58,7 @@ export function StudioLibrary({
   return (
     <div className="space-y-5 p-4">
       <section>
-        <h3 className="mb-2 text-role-micro font-bold uppercase tracking-wider text-text-faint">Node types</h3>
+        <h3 className="mb-2 text-role-micro uppercase tracking-wider text-text-faint">Node types</h3>
         {palette.length === 0 ? (
           <p className="text-xs text-text-faint">No node types registered.</p>
         ) : (
@@ -113,7 +113,7 @@ export function StudioLibrary({
       </section>
 
       <section>
-        <h3 className="mb-2 text-role-micro font-bold uppercase tracking-wider text-text-faint">Stations</h3>
+        <h3 className="mb-2 text-role-micro uppercase tracking-wider text-text-faint">Stations</h3>
         <ul className="space-y-1">
           {STATIONS.map((s) => (
             <HoverTooltip key={s.key} label={s.blurb} asChild>
@@ -129,7 +129,7 @@ export function StudioLibrary({
       {/* ─── Templates (ST6 / Phase E4) — system blueprints to clone ─── */}
       {templates.length > 0 && (
         <section className="border-t border-border-hairline pt-4">
-          <h3 className="mb-2 text-role-micro font-bold uppercase tracking-wider text-text-faint">Templates</h3>
+          <h3 className="mb-2 text-role-micro uppercase tracking-wider text-text-faint">Templates</h3>
           <ul className="space-y-1.5">
             {templates.map((t) => {
               const importing = importingTemplateId === t.id;
@@ -181,11 +181,11 @@ export function StudioLibrary({
 
       {/* ─── Issues rail (ST3) — the operation's linter output ─── */}
       <section className="border-t border-border-hairline pt-4">
-        <h3 className="mb-2 flex items-center gap-1.5 text-role-micro font-bold uppercase tracking-wider text-text-faint">
+        <h3 className="mb-2 flex items-center gap-1.5 text-role-micro uppercase tracking-wider text-text-faint">
           Issues
           <span
             className={[
-              'rounded-full px-1.5 py-0.5 text-role-micro font-bold',
+              'rounded-full px-1.5 py-0.5 text-role-micro',
               issues.some((d) => d.severity === 'error')
                 ? 'bg-rose-100 text-rose-700'
                 : issues.length
@@ -208,7 +208,7 @@ export function StudioLibrary({
                     onClick={() => d.nodeId && onFocusIssue(d.nodeId)}
                     className="ds-raw-button w-full rounded-lg border border-border-hairline bg-surface-canvas/60 px-2 py-1.5 text-left transition-colors hover:border-border-soft hover:bg-surface-sunken"
                   >
-                    <span className={`mr-1.5 text-role-caption font-bold ${g.cls}`}>{g.glyph}</span>
+                    <span className={`mr-1.5 text-role-caption font-semibold ${g.cls}`}>{g.glyph}</span>
                     <span className="text-role-caption leading-tight text-text-muted">{d.message}</span>
                     {d.fix && <span className="mt-0.5 block text-role-micro text-text-faint">↳ {d.fix}</span>}
                   </button>

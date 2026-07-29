@@ -170,7 +170,7 @@ export function ManifestWorkbenchPanel({
       {/* Header */}
       <div className="flex items-center gap-2 border-b border-border-soft px-4 py-3">
         <Package className="h-4 w-4 shrink-0 text-violet-600" />
-        <span className="min-w-0 flex-1 truncate font-mono text-role-caption font-bold text-text-default">
+        <span className="min-w-0 flex-1 truncate font-mono text-role-caption font-semibold text-text-default">
           {manifest?.manifest_uid || String(manifestRef)}
         </span>
         {manifest ? (
@@ -197,7 +197,7 @@ export function ManifestWorkbenchPanel({
 
       {/* Actions */}
       <div className="flex items-center gap-2 border-b border-border-soft px-4 py-2">
-        <span className="text-role-caption font-bold text-text-muted">
+        <span className="text-role-caption font-semibold text-text-muted">
           {items.length} unit{items.length === 1 ? '' : 's'}
         </span>
         <div className="ml-auto flex items-center gap-1.5">

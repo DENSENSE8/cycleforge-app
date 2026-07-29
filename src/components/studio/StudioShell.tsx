@@ -109,7 +109,7 @@ export function StudioShell() {
       {/* ─── Header: title · version switcher · draft controls · in-flight count ─── */}
       <header className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-border-soft bg-surface-card px-4 py-2.5">
         <div className="min-w-0">
-          <h1 className="text-sm font-bold tracking-tight text-text-default">Operations Studio</h1>
+          <h1 className="text-sm font-semibold tracking-tight text-text-default">Operations Studio</h1>
           <p className="text-role-caption text-text-faint">
             {editing ? 'Editing a draft — changes go live on publish' : 'Viewing · edits happen on a draft'}
           </p>
@@ -192,7 +192,7 @@ export function StudioShell() {
               </Button>
             ) : (
               <>
-                <span className="rounded-md bg-amber-100 px-2 py-1 text-role-caption font-bold uppercase tracking-wide text-amber-700">
+                <span className="rounded-md bg-amber-100 px-2 py-1 text-role-caption font-semibold uppercase tracking-wide text-amber-700">
                   Draft v{graph.definition.version}
                 </span>
                 {/* Add a sticky-note (Phase E3) — only on a draft (the active
@@ -365,7 +365,7 @@ export function StudioShell() {
             )}
           >
             <div className="flex shrink-0 items-center justify-between border-b border-border-hairline px-3 py-2">
-              <span className="text-role-micro font-bold uppercase tracking-wider text-text-faint">Inspector</span>
+              <span className="text-role-micro uppercase tracking-wider text-text-faint">Inspector</span>
               <HoverTooltip label="Hide inspector" asChild>
                 <IconButton
                   type="button"

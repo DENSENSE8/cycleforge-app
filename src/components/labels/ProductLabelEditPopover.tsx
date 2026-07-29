@@ -128,7 +128,7 @@ export function ProductLabelEditPopover({
           variant="ghost"
           size="sm"
           onClick={onClose}
-          className="text-role-micro font-bold uppercase tracking-wider"
+          className="text-role-micro uppercase tracking-wider"
         >
           Cancel
         </Button>
@@ -140,7 +140,7 @@ export function ProductLabelEditPopover({
             onApplyAndPrint(draft);
             onClose();
           }}
-          className="text-role-micro font-bold uppercase tracking-wider"
+          className="text-role-micro uppercase tracking-wider"
         >
           Save &amp; print
         </Button>

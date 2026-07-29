@@ -11,7 +11,7 @@ function ImmersivePageError(error: Error, reset: () => void) {
         <p className="text-role-micro uppercase tracking-[0.22em] text-rose-400">
           Camera error
         </p>
-        <p className="mt-2 text-sm font-bold text-white/80">
+        <p className="mt-2 text-sm font-semibold text-white/80">
           {error.message || 'Something went wrong.'}
         </p>
       </div>

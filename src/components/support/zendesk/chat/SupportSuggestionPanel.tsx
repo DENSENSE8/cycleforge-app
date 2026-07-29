@@ -102,7 +102,7 @@ export function SupportSuggestionPanel({
             {result.sources.slice(0, 4).map((src) => (
               <span
                 key={src}
-                className="inline-flex max-w-[12rem] items-center gap-1 truncate rounded bg-blue-50 px-1.5 py-0.5 text-role-eyebrow font-bold text-blue-700 ring-1 ring-inset ring-blue-200"
+                className="inline-flex max-w-[12rem] items-center gap-1 truncate rounded bg-blue-50 px-1.5 py-0.5 text-role-eyebrow text-blue-700 ring-1 ring-inset ring-blue-200"
                 title={src}
               >
                 <FileText className="h-3 w-3 shrink-0" />

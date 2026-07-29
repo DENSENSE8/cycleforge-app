@@ -12,8 +12,8 @@ export function StationFoldersPanel({ c }: { c: StationNasFoldersController }) {
         {STATIONS.map((s) => (
           <div key={s.key} className="flex items-center gap-3 px-4 py-3">
             <div className="w-36 shrink-0">
-              <p className="text-role-caption font-black text-text-default">{s.label}</p>
-              <p className="text-role-micro font-bold uppercase tracking-widest text-text-faint">{s.key}</p>
+              <p className="text-role-caption font-semibold text-text-default">{s.label}</p>
+              <p className="text-role-micro uppercase tracking-widest text-text-faint">{s.key}</p>
             </div>
             <div className="min-w-0 flex-1">
               <input
@@ -42,7 +42,7 @@ export function StationFoldersPanel({ c }: { c: StationNasFoldersController }) {
       </div>
 
       <div className="flex items-center justify-end gap-3">
-        {dirty ? <span className="text-role-micro font-bold uppercase tracking-widest text-amber-600">Unsaved changes</span> : null}
+        {dirty ? <span className="text-role-micro uppercase tracking-widest text-amber-600">Unsaved changes</span> : null}
         <Button
           variant="primary"
           size="md"

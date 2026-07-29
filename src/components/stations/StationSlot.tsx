@@ -76,7 +76,7 @@ function SortableBlockRow({ inst, onConfigure, onRemove }: SortableBlockRowProps
           <GripVertical className="h-3.5 w-3.5" />
         </button>
         <StationIcon name={blockDef?.icon ?? 'Box'} className="h-3.5 w-3.5 text-text-faint" />
-        <span className="flex-1 truncate text-role-micro font-bold text-text-muted">
+        <span className="flex-1 truncate text-role-micro text-text-muted">
           {blockDef?.label ?? inst.block}
         </span>
         <HoverTooltip label="Configure source, display & actions" asChild>

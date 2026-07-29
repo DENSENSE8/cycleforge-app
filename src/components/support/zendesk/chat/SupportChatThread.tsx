@@ -187,7 +187,7 @@ export function SupportChatThread({
                     <Globe className="h-2.5 w-2.5" /> Public
                   </span>
                 ) : null}
-                <span className="font-bold text-text-muted">{a.name}</span>
+                <span className="font-semibold text-text-muted">{a.name}</span>
                 {a.email && a.email !== a.name ? (
                   <span className="truncate text-text-faint">· {a.email}</span>
                 ) : null}

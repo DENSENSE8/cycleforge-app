@@ -33,9 +33,9 @@ export function SerialNumbersRow({
       }
     >
       {serials.length > 0 ? (
-        <p className="truncate font-mono text-sm font-bold text-text-default">{serialsCsv}</p>
+        <p className="truncate font-mono text-sm font-semibold text-text-default">{serialsCsv}</p>
       ) : (
-        <p className="text-sm font-bold text-text-faint">N/A</p>
+        <p className="text-sm font-semibold text-text-faint">N/A</p>
       )}
     </DetailsPanelRow>
   );

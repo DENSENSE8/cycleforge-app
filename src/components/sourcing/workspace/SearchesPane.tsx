@@ -42,7 +42,7 @@ export function SearchesPane() {
 
   return (
     <div className="mx-auto max-w-4xl p-6">
-      <h1 className="mb-4 text-xl font-bold text-text-default">Standing searches <span className="text-text-faint">({rows.length})</span></h1>
+      <h1 className="mb-4 text-xl font-semibold text-text-default">Standing searches <span className="text-text-faint">({rows.length})</span></h1>
 
       {/* Create */}
       <form

@@ -117,9 +117,9 @@ function ActivityList({ rows, emptyHint }: { rows: ActivityRow[]; emptyHint: str
             <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${dot}`} />
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
-                <span className="text-role-caption font-bold uppercase tracking-wide text-text-default">{label}</span>
+                <span className="text-role-caption font-semibold uppercase tracking-wide text-text-default">{label}</span>
                 {row.source ? (
-                  <span className="rounded-full bg-surface-card inset-chip text-role-eyebrow font-bold uppercase tracking-wider text-text-muted">
+                  <span className="rounded-full bg-surface-card inset-chip text-role-eyebrow uppercase tracking-wider text-text-muted">
                     {row.source}
                   </span>
                 ) : null}
@@ -175,10 +175,10 @@ function RepairList({ emptyHint }: { emptyHint: string }) {
           <li key={r.id} className="flex items-start gap-3 px-4 py-3">
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
-                <span className="rounded-md bg-surface-card px-2 py-0.5 font-mono text-role-micro font-bold text-text-default">
+                <span className="rounded-md bg-surface-card px-2 py-0.5 font-mono text-role-micro text-text-default">
                   #{r.ticket_number}
                 </span>
-                <span className={`rounded-full px-2 py-0.5 text-role-eyebrow font-bold uppercase tracking-wider ${statusTone}`}>
+                <span className={`rounded-full px-2 py-0.5 text-role-eyebrow uppercase tracking-wider ${statusTone}`}>
                   {r.status}
                 </span>
               </div>
@@ -213,7 +213,7 @@ export function KpiDetailsModal({ kind, value, activityFeed, onClose }: KpiDetai
           <>
             <DialogHeader className="flex flex-row items-start justify-between gap-3 space-y-0 px-5 pb-3 pt-5 pr-12">
               <div className="min-w-0">
-                <DialogTitle className="text-role-title font-extrabold leading-tight text-text-default">
+                <DialogTitle className="text-role-title leading-tight text-text-default">
                   {meta.title}
                 </DialogTitle>
                 <DialogDescription className="mt-0.5 text-role-caption font-medium leading-snug text-text-muted">
@@ -221,7 +221,7 @@ export function KpiDetailsModal({ kind, value, activityFeed, onClose }: KpiDetai
                 </DialogDescription>
               </div>
               {typeof value === 'number' ? (
-                <span className={`shrink-0 rounded-full px-2.5 py-1 text-role-caption font-extrabold tabular-nums ${TONE_RING[meta.tone]}`}>
+                <span className={`shrink-0 rounded-full px-2.5 py-1 text-role-caption font-semibold tabular-nums ${TONE_RING[meta.tone]}`}>
                   {value.toLocaleString()}
                 </span>
               ) : null}

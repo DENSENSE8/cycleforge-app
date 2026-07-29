@@ -11,6 +11,7 @@
 
 import { useCallback } from 'react';
 import { randomId } from '@/components/sidebar/receiving/receiving-sidebar-shared';
+import { buildReceivingPhotoRequestPayload } from '@/lib/realtime/receiving-photo-request';
 import type { useAblyClient } from '@/contexts/AblyContext';
 
 type AblyGetClient = ReturnType<typeof useAblyClient>['getClient'];
@@ -40,12 +41,16 @@ export function usePhotoRequestPublisher({
         const client = await getAblyClient();
         if (!client) return;
         const ch = client.channels.get(stationChannelName);
-        await ch.publish('receiving_photo_request', {
-          receiving_id: receivingId,
-          tracking,
-          request_id: randomId(),
-          requested_by_staff_id: staffIdNum,
-        });
+        // Door scan → arrival evidence. The shared payload builder keeps this
+        // in the same v2 shape as the station pills (stage + optional line).
+        await ch.publish(
+          'receiving_photo_request',
+          buildReceivingPhotoRequestPayload(receivingId, staffIdNum, {
+            stage: 'arrival_package',
+            tracking,
+            requestId: randomId(),
+          }),
+        );
       } catch (err) {
         console.warn('receiving-sidebar: photo request publish failed', err);
       }

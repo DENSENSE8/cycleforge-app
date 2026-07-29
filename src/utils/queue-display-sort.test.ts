@@ -25,7 +25,7 @@ describe('queue-display-sort', () => {
     assert.equal(parseQueueDisplaySortDir('asc', 'title'), 'asc');
     assert.equal(parseQueueDisplaySortDir('desc', 'title'), 'desc');
     assert.equal(parseQueueDisplaySortDir(null, 'title'), 'asc');
-    assert.equal(parseQueueDisplaySortDir(null, 'age'), 'desc');
+    assert.equal(parseQueueDisplaySortDir(null, 'sla'), 'asc');
     assert.equal(parseQueueDisplaySortDir('nope', 'qty'), 'asc');
   });
 
@@ -48,18 +48,18 @@ describe('queue-display-sort', () => {
     applyQueueDisplaySortParam(params, 'title', 'desc');
     assert.equal(params.get('dir'), 'desc');
 
-    applyQueueDisplaySortParam(params, 'age', 'desc');
-    assert.equal(params.get('sort'), 'age');
-    assert.equal(params.has('dir'), false);
+    applyQueueDisplaySortParam(params, 'sla', 'desc');
+    assert.equal(params.get('sort'), 'sla');
+    assert.equal(params.get('dir'), 'desc');
 
-    applyQueueDisplaySortParam(params, 'age', 'asc');
-    assert.equal(params.get('dir'), 'asc');
+    applyQueueDisplaySortParam(params, 'sla', 'asc');
+    assert.equal(params.has('dir'), false);
   });
 
   it('identifies column sorts and default dirs', () => {
     assert.equal(isQueueColumnSort('title'), true);
     assert.equal(isQueueColumnSort('priority'), false);
-    assert.equal(defaultDirForQueueSort('age'), 'desc');
+    assert.equal(defaultDirForQueueSort('sla'), 'asc');
     assert.equal(defaultDirForQueueSort('qty'), 'asc');
     assert.equal(defaultDirForQueueSort('priority'), null);
     assert.equal(flipQueueDisplaySortDir('asc'), 'desc');

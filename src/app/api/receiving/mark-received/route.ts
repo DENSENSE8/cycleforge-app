@@ -24,7 +24,11 @@ import { registerShipmentPermissive } from '@/lib/shipping/sync-shipment';
 import { transition, type SerialState } from '@/lib/inventory/state-machine';
 import { transitionReceivingLine } from '@/lib/receiving/state-machine';
 import { getOrganization } from '@/lib/tenancy/organizations';
-import { getReceivingDefaultPutawayBin } from '@/lib/settings/accessors';
+import { getReceivingDefaultPutawayBin, getReceivingPhotoPolicy } from '@/lib/settings/accessors';
+import {
+  evaluateReceivingPhotoPolicyGate,
+  isPreReceiveWorkflowStatus,
+} from '@/lib/receiving/photo-policy-gate';
 import type { OrgId } from '@/lib/tenancy/constants';
 import {
   isPlacementParityObserve,
@@ -551,6 +555,7 @@ export const POST = withAuth(async (request, ctx) => {
     const beforeRes = await tenantQuery(
       ctx.organizationId,
       `SELECT rl.quantity_received, rl.quantity_expected, rl.workflow_status,
+              rl.receiving_id AS line_receiving_id,
               rlt.qa_status::text AS qa_status,
               rlt.disposition_code::text AS disposition_code,
               rlt.condition_grade::text AS condition_grade
@@ -563,10 +568,42 @@ export const POST = withAuth(async (request, ctx) => {
       quantity_received: number | null;
       quantity_expected: number | null;
       workflow_status: string | null;
+      line_receiving_id: number | null;
       qa_status: string | null;
       disposition_code: string | null;
       condition_grade: string | null;
     }>)[0] ?? null;
+
+    // WS-PHOTO Plan 5 — `receiving.photoPolicy` completion-insurance gate,
+    // judged BEFORE any mutation (the line/serial/event writes below and the
+    // PO_RECEIVE audit stay untouched on the happy path). Fast path: the
+    // `optional` default reads the per-instance-cached org row and runs ZERO
+    // photo queries — behavior byte-identical to the ungated route. The
+    // already-received skip runs BEFORE the gate so a replay/bounce-back of a
+    // line that already advanced past the pre-receive stages (UNBOXED Zoho
+    // retry, testing re-receive) can never newly 409 on missing photos. A
+    // missing line skips too — the folded UPDATE below stays the 404 authority.
+    if (beforeRow) {
+      const gateOrg = await getOrganization(ctx.organizationId as OrgId);
+      const photoPolicy = gateOrg ? getReceivingPhotoPolicy(gateOrg.settings) : 'optional';
+      if (photoPolicy !== 'optional') {
+        const gate = await evaluateReceivingPhotoPolicyGate({
+          organizationId: ctx.organizationId,
+          // The line's own carton is the evidence scope — org-scoped truth from
+          // the row, never the body's claim (which may be absent: the mobile QA
+          // sheet posts only receiving_line_id).
+          receivingId: beforeRow.line_receiving_id ?? null,
+          policy: photoPolicy,
+          alreadyReceived: !isPreReceiveWorkflowStatus(beforeRow.workflow_status),
+        });
+        if (!gate.ok) {
+          return NextResponse.json(
+            { success: false, error: 'PHOTO_POLICY', blockers: gate.blockers },
+            { status: 409 },
+          );
+        }
+      }
+    }
 
     // 1. Update the line locally. When Zoho receive is required, sit at
     //    UNBOXED (physically processed, Zoho receive pending) until

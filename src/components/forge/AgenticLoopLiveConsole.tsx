@@ -190,7 +190,7 @@ export function AgenticLoopLiveConsole({ showRuns = true }: { showRuns?: boolean
                 <section key={run.id} className="rounded-lg border border-border-soft bg-surface-card p-4">
                   <div className="mb-3 flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="truncate text-role-caption font-bold text-text-default">{run.feature_request}</p>
+                      <p className="truncate text-role-caption font-semibold text-text-default">{run.feature_request}</p>
                       <p className="mt-0.5 truncate text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint">
                         {run.run_uid}
                         {run.branch ? ` · ${run.branch}` : ''}

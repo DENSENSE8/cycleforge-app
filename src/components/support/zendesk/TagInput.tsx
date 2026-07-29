@@ -41,7 +41,7 @@ export function TagInput({
       {tags.map((t) => (
         <span
           key={t}
-          className="inline-flex items-center gap-1 rounded bg-surface-sunken px-1.5 py-0.5 text-role-caption font-bold text-text-muted"
+          className="inline-flex items-center gap-1 rounded bg-surface-sunken px-1.5 py-0.5 text-role-caption font-semibold text-text-muted"
         >
           <Tag className="h-3 w-3 text-text-faint" />
           {t}

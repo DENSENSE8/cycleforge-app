@@ -247,8 +247,16 @@ export function PackOrderPanel({ activeOrder, onClose }: PackOrderPanelProps) {
     >
       <StationContextBar
         identity={
-          <motion.div initial="hidden" animate="show" variants={revealContainer}>
-            <motion.div variants={revealItem}>
+          // w-full on both reveal wrappers — the identity Panel is a flex row, so
+          // a shrink-wrapped wrapper would collapse CartonContextCard's `w-full`
+          // and strand the chips at the left edge instead of right-aligned.
+          <motion.div
+            initial="hidden"
+            animate="show"
+            variants={revealContainer}
+            className="w-full min-w-0"
+          >
+            <motion.div variants={revealItem} className="w-full min-w-0">
               <PackOrderIdentity activeOrder={activeOrder} />
             </motion.div>
           </motion.div>
