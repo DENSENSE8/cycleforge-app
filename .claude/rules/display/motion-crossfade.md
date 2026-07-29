@@ -134,6 +134,32 @@ hard cut.
 
 ---
 
+## The exception: a queue-processing inspector swaps in place
+
+**Rule:** key the crossfade on the entity id — *except* for an inspector whose job is
+walking a queue record by record. There, key on a **stable occupant id** and swap the
+content in place, with **no exit animation at all**.
+
+`RightRailHost` keys its `AnimatePresence mode="wait"` on the occupant id, and the
+right-rail store states that the id "must change only when the slot content genuinely
+swaps to a different entity" — so a per-record id (`detail:order:<id>`) made every
+`j`/`k` step a full exit-then-enter: ~0.4s out, ~0.4s in, with an **empty slot between**.
+Arrowing down a queue is the core loop on that surface, and a blank gap per step is the
+wrong cost. The dashboard order inspector therefore registers the stable id `detail:order`
+and lets the store's node-update path (which exists precisely for this) swap the record.
+
+**Preconditions — do not take this exception without them:**
+- The panel must fully **re-seed** on record change: every editable field re-reads from
+  the incoming record and transient view state (open tab, open sub-form) resets.
+- Any **dirty draft must be flushed for the outgoing record first**, while the save
+  closure still points at it — otherwise instant swap silently discards typed work.
+- Navigating **without editing must write nothing**. Guard that with a test; a misfiring
+  flush writes one record's field onto another.
+
+**Per-entity crossfade stays the default for every other occupant** (assistant ⇄ SKU
+detail ⇄ repair claim …). This is a scoped exception, not a host change — it is achieved
+purely by id stability, and `mode="wait"` is left alone.
+
 ## RESOLVED — the named `workbenchPane` preset
 
 The Workbench / Monitor right-pane swap now has a shared preset: **`framerPresence.workbenchPane`**

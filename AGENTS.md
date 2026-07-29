@@ -36,6 +36,7 @@ Each concern has one module — never inline or re-derive:
 | Condition labels / tones | `src/lib/conditions.ts`, `src/lib/condition-tone.ts` |
 | Z-index | `src/design-system/tokens/z-index.ts` |
 | Spacing scale + intents | `src/design-system/tokens/spacing.mjs` |
+| Typefaces (sans · condensed · mono) | `src/lib/fonts.ts` + `src/design-system/tokens/typography/families.ts` — ONE macro-family (IBM Plex), three cuts. Condensed is **intrinsic** to `text-role-eyebrow`/`-micro`; never hand-write `font-condensed`. Weights capped at **600** — `font-bold`/`-extrabold`/`-black` are banned (the 700 cut isn't loaded) |
 | Focus affordance | `src/design-system/tokens/focus-ring.ts` (`focusRing`) |
 | Depth elevation (flat · raised · overlay) | `src/design-system/tokens/shadows.ts` (`elevationClass`) |
 | Ops table / spreadsheet surface shell | `src/design-system/tokens/table-surface.ts` (`TABLE_SURFACE_*` + `TABLE_FROZEN_HEADER_CLASS`) — rounded-xl + raised + sunken header; never hand-roll |
@@ -43,6 +44,9 @@ Each concern has one module — never inline or re-derive:
 | Grid column sort (URL-durable) | `@/hooks/useUrlColumnSort` → `?colsort=`/`?coldir=`. Never reuse `?sort=`/`?dir=` on station routes — taken by server ordering |
 | Surface / box shell | `Panel` / `SectionCard` / `CardShell` (never hand-roll the shell) |
 | Dialog / AlertDialog | `@/design-system/components` `Dialog` / `AlertDialog` (+ `requestConfirm` / `ConfirmDialogHost`) — never hand-roll `fixed inset-0` scrims; floor confirms stay on `ConfirmSheet` |
+| Right-edge detail slot + modality | `RightRailHost` + `src/lib/right-rail/store.ts` — ONE owner of the slot; panels register occupants, never a private `fixed right-0 z-panel`. `modal` is per-occupant and **defaults true**; pass `modal={false}` for a non-modal inspector (no scrim / scroll lock, `role="region"`) — the right contract for pick-a-row-and-edit-it. Resize tokens: `DETAIL_STACK_RESIZE` |
+| Keyboard ownership (Escape) | `src/lib/overlay-stack/store.ts` — the **innermost open overlay owns Escape**. `AnchoredLayer` registers every house Popover/menu/editor; ambient owners (queue keyboard, right-rail host) stand down on `hasOpenOverlay()`. Never let a capture-phase listener `stopPropagation()` a key an open overlay should handle |
+| Collection-surface action planes | `.claude/rules/display/workbench.md` — in-cell · row-scoped · multi-select · record, one primary plane each. **Actions diverge by lifecycle stage; column layout and grid components diverge only by data domain.** The record plane stays a complete superset wherever the in-cell plane is conditionally unavailable |
 | Switch / Checkbox | `@/design-system/primitives` `Switch` / `Checkbox` |
 | Dropdown / Context menu | `@/design-system/primitives` `DropdownMenu` / `ContextMenu` |
 | Station entity-context header | `@/components/station/entity-context` (`CartonContextCard` + `StationContextBar`) — Unbox/Triage/Testing/Shipping |
