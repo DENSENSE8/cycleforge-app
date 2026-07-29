@@ -7,7 +7,7 @@
  * useDashboardBulkSelection. Extracted from the dashboard page.
  */
 
-import { Suspense, useState } from 'react';
+import { Suspense, useState, type ReactNode } from 'react';
 import dynamic from 'next/dynamic';
 import { UnshippedTable } from '@/components/unshipped/UnshippedTable';
 import { PackedOrdersTable } from '@/components/dashboard/PackedOrdersTable';
@@ -51,6 +51,8 @@ interface DashboardOrdersViewProps {
   selectionEnabled: boolean;
   selectedRows: DashSelectableRow[];
   selectionActions: SelectionAction<DashSelectableRow>[];
+  /** Modal surfaces the bulk actions open (assignment carousel, ship-by picker). */
+  selectionOverlays?: ReactNode;
 }
 
 export function DashboardOrdersView({
@@ -60,6 +62,7 @@ export function DashboardOrdersView({
   selectionEnabled,
   selectedRows,
   selectionActions,
+  selectionOverlays,
 }: DashboardOrdersViewProps) {
   const showOutboundChrome =
     isPrePackOrderView(orderView) || orderView === 'packed' || orderView === 'shipped';
@@ -127,12 +130,15 @@ export function DashboardOrdersView({
       </div>
 
       {selectionEnabled ? (
-        <ContextualSelectionBar
-          scope={DASHBOARD_ORDERS_SELECTION_SCOPE}
-          rows={selectedRows}
-          actions={selectionActions}
-          pinToViewport
-        />
+        <>
+          <ContextualSelectionBar
+            scope={DASHBOARD_ORDERS_SELECTION_SCOPE}
+            rows={selectedRows}
+            actions={selectionActions}
+            pinToViewport
+          />
+          {selectionOverlays}
+        </>
       ) : null}
     </DashboardScrollShell>
   );

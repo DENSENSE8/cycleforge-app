@@ -32,6 +32,7 @@ import { ShippingEntityContextHeader } from '@/components/tech/shipping/Shipping
 import { OrderDocumentsSection } from '@/components/shipped/OrderDocumentsSection';
 import { OrderTimelineSection } from '@/components/shipped/OrderTimelineSection';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { isPdfOutboundDocument } from '@/lib/documents/outbound-document-display';
 import { Button, Panel } from '@/design-system/primitives';
 import { CheckCircle, FileText, History, Printer } from '@/components/Icons';
 import { sourcePlatformLabel } from '@/lib/source-platform';
@@ -43,13 +44,6 @@ import type { OutboundDocument, OutboundDocumentsResponse } from '@/lib/document
 import type { TerminalActionVm } from '@/lib/station-terminal';
 import type { ActiveStationOrder } from '@/hooks/station/types';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
-
-/** application/pdf (or unknown-but-`.pdf`-named) → iframe; else raster image. */
-function isPdfDocument(doc: OutboundDocument): boolean {
-  const mime = doc.data.mimeType?.toLowerCase() ?? '';
-  if (mime) return mime.includes('pdf');
-  return /\.pdf(\?|$)/i.test(doc.data.url);
-}
 
 function isEcwidOrder(order: ShippedOrder): boolean {
   return (order.account_source ?? '').toLowerCase().includes('ecwid');
@@ -100,16 +94,16 @@ function DocTypeStatusRow({
     <div className="flex items-center justify-between gap-3 rounded-lg border border-border-soft/70 bg-surface-card px-3 py-2.5">
       <span className="text-role-caption font-semibold text-text-default">{label}</span>
       {loading ? (
-        <span className="text-role-micro font-bold uppercase tracking-wider text-text-faint">
+        <span className="text-role-micro uppercase tracking-wider text-text-faint">
           Fetching…
         </span>
       ) : attached ? (
-        <span className="inline-flex items-center gap-1 text-role-micro font-bold uppercase tracking-wider text-emerald-600">
+        <span className="inline-flex items-center gap-1 text-role-micro uppercase tracking-wider text-emerald-600">
           <CheckCircle className="h-3.5 w-3.5" />
           Attached
         </span>
       ) : (
-        <span className="text-role-micro font-bold uppercase tracking-wider text-text-faint">
+        <span className="text-role-micro uppercase tracking-wider text-text-faint">
           Missing
         </span>
       )}
@@ -148,7 +142,7 @@ export function LabelsOrderWorkspace({ orderId, onClose }: LabelsOrderWorkspaceP
   const printableDocs = useMemo((): PrintableOutboundDocument[] => {
     return [label, slip]
       .filter((d): d is OutboundDocument => Boolean(d))
-      .map((d) => ({ id: d.id, isPdf: isPdfDocument(d) }));
+      .map((d) => ({ id: d.id, isPdf: isPdfOutboundDocument(d) }));
   }, [label, slip]);
 
   const slideItems = useMemo((): DocumentSlideItem[] => {
@@ -157,11 +151,11 @@ export function LabelsOrderWorkspace({ orderId, onClose }: LabelsOrderWorkspaceP
         id: 'shipping_label',
         title: 'Shipping Label',
         src: docContentSrc(label),
-        mimeHint: label ? (isPdfDocument(label) ? 'pdf' : 'image') : 'pdf',
+        mimeHint: label ? (isPdfOutboundDocument(label) ? 'pdf' : 'image') : 'pdf',
         count: label ? 1 : undefined,
         emptyHint: 'Attach or fetch one from the Documents tab',
         meta: label?.data.platform ? (
-          <span className="text-role-eyebrow font-bold uppercase tracking-widest text-text-faint">
+          <span className="text-role-eyebrow uppercase tracking-widest text-text-faint">
             {sourcePlatformLabel(label.data.platform)}
           </span>
         ) : null,
@@ -170,12 +164,12 @@ export function LabelsOrderWorkspace({ orderId, onClose }: LabelsOrderWorkspaceP
         id: 'packing_slip',
         title: 'Packing Slip',
         src: docContentSrc(slip),
-        mimeHint: slip ? (isPdfDocument(slip) ? 'pdf' : 'image') : 'pdf',
+        mimeHint: slip ? (isPdfOutboundDocument(slip) ? 'pdf' : 'image') : 'pdf',
         count: slip ? 1 : undefined,
         loading: slipAutoFetching && !slip,
         emptyHint: 'Attach or fetch one from the Documents tab',
         meta: slip?.data.platform ? (
-          <span className="text-role-eyebrow font-bold uppercase tracking-widest text-text-faint">
+          <span className="text-role-eyebrow uppercase tracking-widest text-text-faint">
             {sourcePlatformLabel(slip.data.platform)}
           </span>
         ) : null,
