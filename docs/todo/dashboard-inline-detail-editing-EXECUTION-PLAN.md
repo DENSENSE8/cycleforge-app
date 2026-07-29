@@ -252,11 +252,53 @@ Collapse the inert selection gutter on the FBA board. No selection, no bar.
 
 ---
 
-## 9. Open — needs a decision before its slice
+## 9. Receiving Triage / Unbox — RESOLVED 2026-07-28 (the question was wrong)
 
-**Receiving Triage (surface 6) and Unbox (surface 7) were never properly matrixed** across two rounds. R2 returned placeholders ("custom domain mechanisms apply"), and neither round ruled on whether Triage's separate, non-shared selection mechanism should converge on the shared `useTableSelectMode` bus, or whether a one-action ("Dismiss") bulk bar is worth keeping.
+Two research rounds returned placeholders here. That is partly our fault: **round 1 §4b
+described the receiving *domain's* selection mechanisms as if they were the dashboard's
+inbound tabs.** They are not. Measured on `/dashboard?mode=inbound`:
 
-These are a different data domain (inbound cartons, not orders) and by D12 they legitimately diverge in *actions*. Two options: (a) round 3 scoped to those two surfaces; (b) decide internally, since inbound already has its own owner. **Phases 1–5 do not depend on this** — Triage/Unbox inherit Phase 1's modality only if we pass `modal={false}` on their registrars, which this plan deliberately does not do.
+| Claim in round 1 | Measured reality |
+|---|---|
+| "Triage — a separate, non-shared edit-mode/bulk mechanism" | `TriageWorkspaceView` is mounted by `TriageLineWorkspace` — the **station workspace**, not the dashboard |
+| "Unbox — gated checkboxes; bulk bar whose only action is Dismiss" | `ReceivingBulkActionBar` is mounted by **`ReceivingSidebarPanel`** — the sidebar rail, not the dashboard |
+| Two surfaces (6 and 7) | **One** table. `DashboardReceivingView` renders `<ReceivingLinesTable />` with **no props**, and the Triage/Unbox tab *is* the `?sort=` value (`scanned_newest` vs `unboxed_newest`) |
+
+**Measured in the running app** (24 rows, 1440×900):
+
+- **0 checkboxes.** `selectMode` defaults to `false` and nothing passes it, so there is no
+  selection gutter and no bulk bar — the multi-select plane does not exist here.
+- **Row click does nothing.** URL unchanged, no inspector, not even a selected style. It
+  calls `dispatchSelectLine`, a cross-pane event with **no listener on this page** (the
+  consumers are the receiving sidebar / workspace). The row plane is **inert**.
+- The only live affordance is one in-cell editor: **Edit product title**.
+
+### The ruling
+
+**The dashboard's inbound mode is a Monitor region, not a Workbench** — an append-only
+receiving-activity feed, read-mostly, filters (`?sort=`, week band, All/Unfound) as its
+only state. It should not grow selection or a bulk bar; per the ratified rule it already
+satisfies "real selection OR a collapsed gutter" by having neither. **No matrix rows are
+owed for surfaces 6–7**, which is why both research rounds had nothing to say.
+
+The real defect is smaller and worth fixing on its own: **a row click is a dead
+affordance.** Two acceptable resolutions —
+
+- **(a) Wire it, recommended.** Open the carton record in the right rail. `IncomingDetailsPanel`
+  is already a right-rail occupant, so post-Phase-1 it can register `modal={false}` and get
+  the same non-modal inspector the order lanes have. Cost: one registrar prop + a listener
+  on this page. This makes the record plane real and leaves the other three planes empty,
+  which is the correct shape for a Monitor with a drill-down.
+- **(b) Make rows non-interactive** — drop the click handler and the hover/selected styling
+  so the surface stops implying an affordance it does not have.
+
+Do **not** promote it to a Workbench with selection + bulk actions: the inbound mutation
+surface (`/api/receiving/**` — `advance`, `condition`, `putaway`, `move`, `acknowledge-unbox`,
+`triage/complete`, `zendesk-claim/*`, …) is scan-driven Station work that belongs at the
+bench, not batch-applied from a history feed.
+
+**Round 3 is not needed.** If inbound wants its own action model, that is a receiving-lane
+brief about the station/sidebar surfaces, not this dashboard one.
 
 ---
 
