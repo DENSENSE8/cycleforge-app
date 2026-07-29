@@ -21,19 +21,17 @@ import { test, expect, type Page } from '@playwright/test';
 /** `STATION_SURFACE_ROUTE_KEYS` — bench in the content region, no sidebar column. */
 const STATION_ROUTES = ['/unbox', '/triage', '/shipping', '/test', '/pack', '/review'] as const;
 
-/**
- * Routes that have a sidebar of their own — resident column.
- *
- * `/ops/photos` is here deliberately. It was the motivating *empty* column, and
- * then it grew a real facet rail (saved views / date / labels) once the folder
- * hierarchy became a flat stream. Both states are correct; what matters is that
- * flipping between them is one entry in `CONTEXT_PANEL_ROUTE_KEYS` rather than a
- * shell change, so it is worth locking the current answer in a test.
- */
-const SIDEBAR_ROUTES = ['/dashboard', '/products', '/operations', '/inventory', '/ops/photos'] as const;
+/** Routes that have a sidebar of their own — resident column. */
+const SIDEBAR_ROUTES = ['/dashboard', '/products', '/operations', '/inventory'] as const;
 
-/** Routes with no sidebar of their own — must never reserve a column. */
-const PANEL_LESS_ROUTES = ['/reports', '/release-notes'] as const;
+/**
+ * Routes with no sidebar of their own — must never reserve a column.
+ *
+ * `/ops/photos` leads the list because it is the case that started this: the
+ * Media library owns its whole context in the workbench chrome header, so a
+ * sidebar there is 360px of blank chrome beside the grid.
+ */
+const PANEL_LESS_ROUTES = ['/ops/photos', '/reports', '/release-notes'] as const;
 
 const PAGES_MENU = '[role="menu"][aria-label="Pages"]';
 const MODES_MENU = '[role="menu"][aria-label="Modes"]';
