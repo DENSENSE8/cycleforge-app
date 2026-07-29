@@ -43,14 +43,6 @@ export function setReceivingHistoryUrlParams(
   return next;
 }
 
-export function clearReceivingHistoryUrlParams(searchParams: URLSearchParams) {
-  const next = new URLSearchParams(searchParams.toString());
-  next.delete(RECEIVING_HISTORY_URL_PARAMS.q);
-  next.delete(RECEIVING_HISTORY_URL_PARAMS.field);
-  next.delete(RECEIVING_HISTORY_URL_PARAMS.scope);
-  return next;
-}
-
 export interface ReceivingHistoryFieldConfig {
   id: ReceivingHistorySearchField;
   label: string;
