@@ -34,8 +34,9 @@ export interface StationListTableProps<TRecord> {
   /** Count shown in the header (dated, visible records). */
   totalCount: number;
 
-  /** Render one row at the given zebra-stripe index. */
-  renderRow: (record: TRecord, stripeIndex: number) => ReactNode;
+  /** Render one row at the given zebra-stripe index. `rowIndex` (virtualized
+   *  path only) is the absolute index inside the grid's `role="table"`. */
+  renderRow: (record: TRecord, stripeIndex: number, rowIndex?: number) => ReactNode;
   /** Grouped mode: render one order group (singleton/multi-product fold). */
   renderGroup?: (group: RowGroup<TRecord>, baseStripeIndex: number) => ReactNode;
   /** Stable key for a flat row (id) so windowing survives re-sorts. */

@@ -120,8 +120,10 @@ export interface OrdersQueueTableRowProps {
    * a table — `role="row"` there would be an orphaned role.
    */
   rowIndex?: number;
-  /** Grid skin only — toggle this row's selection from the gutter checkbox
-   *  (stops propagation, so it never opens the record). */
+  /** Toggle this row's selection from the gutter checkbox (stops propagation, so
+   *  it never opens the record). Supplying it makes the gutter INTERACTIVE — the
+   *  row click stays "open the record", so without this there is no way to
+   *  select. Grid skin renders the control regardless, for the select-all UI. */
   onToggleSelect?: (record: ShippedOrder, event: { shiftKey: boolean }) => void;
   /** Grid skin only — true when this row is the ONLY checked row. Surfaces the
    *  row info-edit dropdown (Notes · OOS · Details) on the Product cell. */
@@ -659,7 +661,12 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
       onClick={(e) => (selectMode || gridSkin) && e.stopPropagation()}
     >
       {gridSkin || selectMode ? (
-        gridSkin ? (
+        // Interactive whenever the caller can actually handle a toggle. It used
+        // to be `gridSkin` only, which left every non-gridSkin selectMode
+        // consumer with an inert `<span>` that LOOKED like a checkbox: the row
+        // itself carried `role="checkbox"`, but its click handler only ever
+        // calls `onRowClick`, so selection was unreachable (station history).
+        gridSkin || onToggleSelect ? (
           <button
             type="button"
             role="checkbox"

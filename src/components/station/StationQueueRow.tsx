@@ -22,6 +22,7 @@ import type { StationSourceKind } from '@/lib/station/record-to-queue-row';
 export function StationQueueRow({
   record,
   index,
+  rowIndex,
   queueMode,
   selectMode,
   isChecked,
@@ -33,6 +34,10 @@ export function StationQueueRow({
 }: {
   record: QueueRowRecord;
   index: number;
+  /** Absolute row index inside the LedgerGrid `role="table"`. Supplying it is
+   *  what makes the row claim `role="row"` + `aria-selected` instead of
+   *  doubling as a `role="checkbox"` — the gutter checkbox owns selection. */
+  rowIndex?: number;
   queueMode: StationSourceKind;
   selectMode: boolean;
   isChecked: boolean;
@@ -75,6 +80,7 @@ export function StationQueueRow({
   return (
     <OrdersQueueTableRow
       record={record}
+      rowIndex={rowIndex}
       isSelected={isSelected}
       selectMode={selectMode}
       isChecked={isChecked}
