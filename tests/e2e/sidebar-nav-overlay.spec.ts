@@ -40,7 +40,17 @@ const SLIDE_OVER = '[data-sidebar-slide-over]';
 /** GlobalHeader's sidebar control — the leftmost header button. */
 const SIDEBAR_TOGGLE = 'header button';
 /** The in-display station panel (scan bar + recents rail). */
-const STATION_PANEL = 'main [class*="w-\\[360px\\]"]';
+/**
+ * The station bench panel, by IDENTITY rather than by width.
+ *
+ * This used to be `main [class*="w-\\[360px\\]"]` — a selector keyed to a literal
+ * arbitrary Tailwind width, so restyling the bench silently broke a test about
+ * whether the bench renders at all. Note the width is NOT the spine's
+ * `SIDEBAR_SPINE_WIDTH`: the nav spine and the bench panel are two different
+ * measurements that happen to both be 360px today, and binding the test to
+ * either class would re-create the same coupling in a new place.
+ */
+const STATION_PANEL = 'main [data-station-panel]';
 
 async function gotoSurface(page: Page, route: string) {
   await page.goto(route, { waitUntil: 'domcontentloaded' });

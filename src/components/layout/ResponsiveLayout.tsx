@@ -357,7 +357,10 @@ export function ResponsiveLayout({ children, kioskHost = false }: ResponsiveLayo
               // Station bench: the scan bar + recents rail ride here, beside the
               // workspace, so they stay on screen when the nav is hidden.
               <div className={STATION_PANEL_HOST_CLASS}>
-                <div className={STATION_PANEL_COLUMN_CLASS}>
+                {/* `data-station-panel` is the bench panel's identity hook, so a
+                    test can ask "did the bench render?" without keying off its
+                    width class — see `sidebar-nav-overlay.spec.ts`. */}
+                <div className={STATION_PANEL_COLUMN_CLASS} data-station-panel>
                   {/* `enabled` keeps every panel's own mode pill-row suppressed
                       (`useMasterNavEnabled()`): the nav owns page + mode, and a
                       second mode strip at the top of the bench is noise. */}
