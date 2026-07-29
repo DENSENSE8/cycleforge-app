@@ -5,11 +5,8 @@ import { type PackerRecord } from '@/hooks/usePackerLogs';
 import { useStaffFilter } from '@/hooks/useStaffFilter';
 import { usePackerTableController } from '@/hooks/station/usePackerTableController';
 import { useStationDetailsSelection } from '@/hooks/station/useStationDetailsSelection';
-import { StationWeekTable } from '@/components/station/StationWeekTable';
 import { StationHistoryTable } from '@/components/station/StationHistoryTable';
-import { PackerRecordRow } from '@/components/station/PackerRecordRow';
 import { packerRecordToDetail, getPackerDetailId } from '@/components/station/packer-record-mappers';
-import { STATION_VIRTUAL_LIST } from '@/lib/station/flags';
 import { SAVED_VIEW_PARAM_KEYS, SAVED_VIEW_STORAGE_KEY } from '@/lib/station/table-url-params';
 import { AlertTriangle, Calendar, Clock, Package } from '@/components/Icons';
 import { toPSTDateKey } from '@/utils/date';
@@ -24,7 +21,6 @@ import {
 import { packerRecordToQueueRow } from '@/lib/station/record-to-queue-row';
 import { formatPackerCopyRow, PACKER_COPY_HEADER } from '@/lib/station/format-station-copy-row';
 import { PACKER_HISTORY_SELECTION_SCOPE } from '@/lib/selection/station-scopes';
-import { ContextualEmptyState } from '@/components/ui/ContextualEmptyState';
 
 const PACKER_LANE_ICON: Record<PackerLaneIconKey, React.ComponentType<{ className?: string }>> = {
   clock: Clock,
@@ -66,7 +62,6 @@ export function PackerTable({ packedBy, toolbarPortalTarget = null }: PackerTabl
     orderedRecords,
     loading,
     isRefreshing,
-    scrollRef,
   } = usePackerTableController({ staffId: staffFilterId ?? packedBy });
 
   // Day bands (newest day first, each day newest-first) for rendering. The
@@ -104,81 +99,45 @@ export function PackerTable({ packedBy, toolbarPortalTarget = null }: PackerTabl
       .map(([date, recs2]) => [date, [...recs2].sort(byNewestCreated)] as [string, PackerRecord[]]);
   }, []);
 
-  const renderRow = useCallback(
-    (record: PackerRecord, index: number, date: string) => (
-      <PackerRecordRow
-        key={
-          record.id != null
-            ? `pkr-${record.id}`
-            : `pkr-${date}-${index}-${record.shipping_tracking_number || record.scan_ref || record.order_id || 'row'}`
-        }
-        record={record}
-        index={index}
-        onOpen={openDetails}
-      />
-    ),
-    [openDetails],
-  );
-
-  // Flag-gated cutover to the unified virtualized shell — same rows, adds windowing
-  // + week band + ⋮ (density + saved views) + per-staff columns. Legacy default.
-  if (STATION_VIRTUAL_LIST) {
-    return (
-      <StationHistoryTable<PackerRecord>
-        loading={loading}
-        isRefreshing={isRefreshing}
-        weekRange={weekRange}
-        weekOffset={weekOffset}
-        onPrevWeek={() => setWeekOffset(weekOffset + 1)}
-        onNextWeek={() => setWeekOffset(Math.max(0, weekOffset - 1))}
-        onResetWeek={() => setWeekOffset(0)}
-        daySections={daySections}
-        renderRow={(record, index) => renderRow(record, index, '')}
-        getRowKey={(record, index) => (record.id != null ? `pkr-${record.id}` : `pkr-${index}`)}
-        tableId="packer"
-        virtualized
-        toolbarPortalTarget={toolbarPortalTarget}
-        savedViewsStorageKey={SAVED_VIEW_STORAGE_KEY.packer_history}
-        savedViewsParamKeys={SAVED_VIEW_PARAM_KEYS.packer_history}
-        emptyMessage="No packer records found"
-        firstRunEmpty={<ContextualEmptyState state="no-work" />}
-        pipeline={{
-          records: orderedRecords,
-          lanes: PACKER_LANES,
-          bucket: packerBucket,
-          prefsKey: 'packerHistoryBoard',
-          toDaySections: toLaneDaySections,
-          getRowDate: (r) => r.created_at,
-        }}
-        selection={{
-          scope: PACKER_HISTORY_SELECTION_SCOPE,
-          queueMode: 'packer',
-          toQueueRow: packerRecordToQueueRow,
-          getRecordId: (r) => r.id,
-          onOpen: openDetails,
-          formatCopyRow: formatPackerCopyRow,
-          copyHeader: PACKER_COPY_HEADER,
-          deepLinkParam: 'packLogId',
-        }}
-      />
-    );
-  }
-
   return (
-    <StationWeekTable
+    <StationHistoryTable<PackerRecord>
       loading={loading}
       isRefreshing={isRefreshing}
       weekRange={weekRange}
       weekOffset={weekOffset}
       onPrevWeek={() => setWeekOffset(weekOffset + 1)}
       onNextWeek={() => setWeekOffset(Math.max(0, weekOffset - 1))}
+      onResetWeek={() => setWeekOffset(0)}
       daySections={daySections}
-      emptyMessage="No packer records found"
-      firstRunEmpty={<ContextualEmptyState state="no-work" />}
-      scrollRef={scrollRef}
-      renderRow={renderRow}
+      getRowKey={(record, index) => (record.id != null ? `pkr-${record.id}` : `pkr-${index}`)}
       tableId="packer"
       toolbarPortalTarget={toolbarPortalTarget}
+      savedViewsStorageKey={SAVED_VIEW_STORAGE_KEY.packer_history}
+      savedViewsParamKeys={SAVED_VIEW_PARAM_KEYS.packer_history}
+      // History is WEEK-scoped, so an empty view is a no-results state, not a
+      // first run — hence no `firstRunEmpty`. Passing one also suppressed the
+      // shell's "back to this week" reset button (it only renders on the
+      // emptyMessage branch), and the state it passed was the Home task-inbox
+      // "No work assigned" — work-assignment copy on a scan-history surface.
+      emptyMessage="No packs recorded this week"
+      pipeline={{
+        records: orderedRecords,
+        lanes: PACKER_LANES,
+        bucket: packerBucket,
+        prefsKey: 'packerHistoryBoard',
+        toDaySections: toLaneDaySections,
+        getRowDate: (r) => r.created_at,
+      }}
+      selection={{
+        scope: PACKER_HISTORY_SELECTION_SCOPE,
+        queueMode: 'packer',
+        toQueueRow: packerRecordToQueueRow,
+        getRecordId: (r) => r.id,
+        onOpen: openDetails,
+        formatCopyRow: formatPackerCopyRow,
+        copyHeader: PACKER_COPY_HEADER,
+        deepLinkParam: 'packLogId',
+      }}
     />
   );
 }

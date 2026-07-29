@@ -1,59 +1,19 @@
 /**
  * Module-level cache for staff daily goals.
  *
- * Per-staff goals (used by station sidebars) are cached for 5 minutes — they
- * are admin-configured and almost never change during a shift.
- *
  * The full goals list (used by GoalsAnalyticsTab) includes live today/week
- * counts, so it uses a shorter 30-second TTL.
+ * counts, so it uses a 30-second TTL.
  *
  * Call invalidateStaffGoalsCache() after any PUT to /api/staff-goals so the
  * next read gets fresh data.
+ *
+ * (A per-staff `getStaffGoalById` fetcher lived here for the station sidebars'
+ * goal bars; the Packing sidebar was its last caller and now shows the recent-
+ * packs rail instead. Re-add it from git history if a sidebar needs a single
+ * staffer's goal again.)
  */
 
-const PER_STAFF_TTL_MS = 5 * 60 * 1000; // 5 minutes
 const ALL_GOALS_TTL_MS = 30 * 1000;      // 30 seconds (live counts)
-
-// ── Per-staff goal ────────────────────────────────────────────────────────────
-
-interface PerStaffEntry {
-  value: number;   // daily_goal
-  expiresAt: number;
-}
-
-/** Cache key = "staffId:station" */
-const _perStaffCache = new Map<string, PerStaffEntry>();
-const _perStaffPromises = new Map<string, Promise<number>>();
-
-function perStaffKey(staffId: string, station: string = 'TECH'): string {
-  return `${staffId}:${station}`;
-}
-
-/** Returns the daily_goal for a single staff member + station (defaults to 50 on error). */
-export function getStaffGoalById(staffId: string, station: string = 'TECH'): Promise<number> {
-  const key = perStaffKey(staffId, station);
-  const cached = _perStaffCache.get(key);
-  if (cached && Date.now() < cached.expiresAt) return Promise.resolve(cached.value);
-
-  let promise = _perStaffPromises.get(key);
-  if (!promise) {
-    promise = fetch(`/api/staff-goals?staffId=${encodeURIComponent(staffId)}&station=${encodeURIComponent(station)}`)
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data: { daily_goal?: number } | null) => {
-        const goal = Number(data?.daily_goal);
-        const value = Number.isFinite(goal) && goal > 0 ? goal : 50;
-        _perStaffCache.set(key, { value, expiresAt: Date.now() + PER_STAFF_TTL_MS });
-        _perStaffPromises.delete(key);
-        return value;
-      })
-      .catch(() => {
-        _perStaffPromises.delete(key);
-        return 50;
-      });
-    _perStaffPromises.set(key, promise);
-  }
-  return promise;
-}
 
 // ── Full goals list (with live today/week counts) ─────────────────────────────
 
@@ -112,23 +72,12 @@ export function getAllStaffGoals(station?: string): Promise<GoalRow[]> {
 
 /**
  * Call after a PUT to /api/staff-goals.
- * Pass staffId to invalidate only that entry, or omit to clear everything.
+ *
+ * `staffId` is accepted for call-site clarity but no longer narrows the clear —
+ * the only remaining cache is the full goals list, which any single-staff edit
+ * invalidates anyway.
  */
-export function invalidateStaffGoalsCache(staffId?: string): void {
-  // Always clear the full list caches
+export function invalidateStaffGoalsCache(_staffId?: string): void {
   _allGoalsCache.clear();
   _allGoalsPromises.clear();
-
-  if (staffId) {
-    // Clear all station variants for this staff
-    for (const key of _perStaffCache.keys()) {
-      if (key.startsWith(`${staffId}:`)) {
-        _perStaffCache.delete(key);
-        _perStaffPromises.delete(key);
-      }
-    }
-  } else {
-    _perStaffCache.clear();
-    _perStaffPromises.clear();
-  }
 }

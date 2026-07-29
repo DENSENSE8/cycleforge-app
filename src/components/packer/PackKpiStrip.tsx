@@ -97,16 +97,21 @@ function StripSkeleton({ reservedSlots }: { reservedSlots: number }) {
   );
 }
 
-function StripAllClear({ mode }: { mode: PackWorkspaceTab }) {
-  const copy =
-    mode === 'queue'
-      ? { title: 'Nothing ready to pack.', hint: 'Orders land here after the tech scan (TESTED).' }
-      : { title: 'No packs in this week.', hint: 'Scans from the pack station appear in History.' };
+/**
+ * Queue-only all-clear. History does NOT use this: an empty history week shows
+ * its KPI tiles at zero and lets the table own the empty statement, so the
+ * surface never prints "no packs" twice.
+ */
+function StripAllClear() {
+  const copy = {
+    title: 'Nothing ready to pack.',
+    hint: 'Orders land here after the tech scan (TESTED).',
+  };
   return (
     <div className="flex items-center gap-3 rounded-xl border border-dashed border-border-soft bg-surface-card px-4 py-5">
       <CheckCircle className="h-5 w-5 shrink-0 text-text-success" />
       <div className="min-w-0">
-        <p className="text-role-caption font-bold text-text-default">{copy.title}</p>
+        <p className="text-role-caption font-semibold text-text-default">{copy.title}</p>
         <p className="mt-0.5 text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint">
           {copy.hint}
         </p>
@@ -154,7 +159,7 @@ function QueueStrip() {
   if (query.isPending || roiPending) {
     return <StripSkeleton reservedSlots={4} />;
   }
-  if (tiles.length === 0) return <StripAllClear mode="queue" />;
+  if (tiles.length === 0) return <StripAllClear />;
 
   return (
     <div className={TILE_BAND_CLASS}>
@@ -194,7 +199,10 @@ function HistoryStrip({ packerId }: { packerId: number }) {
   }
 
   const weekTotal = Number(query.data?.total ?? 0);
-  if (weekTotal <= 0 && packedToday <= 0) return <StripAllClear mode="history" />;
+  // A zero week renders the tiles AT ZERO rather than swapping in an empty-state
+  // banner: "Packed today 0 / This week 0" is the metric, the strip keeps a
+  // stable shape, and the history table below already owns the one "no packs
+  // this week" statement. Two components saying it was the duplicate empty.
 
   return (
     <div className={TILE_BAND_CLASS}>
