@@ -3,6 +3,7 @@
 import {
   useLayoutEffect,
   useRef,
+  useState,
   type CSSProperties,
   type MutableRefObject,
   type ReactNode,
@@ -64,7 +65,10 @@ interface LedgerGridProps<T> {
   /** Grouped mode: render one fold (singleton row or multi-child disclosure). */
   renderGroup?: (group: RowGroup<T>, baseStripeIndex: number) => ReactNode;
   /** Render one leaf row at the given zebra-stripe index. */
-  renderRow: (record: T, stripeIndex: number) => ReactNode;
+  /** `rowIndex` is the ABSOLUTE index across the flattened stream — pass it to a
+   *  row that renders inside this `role="table"` so it can claim `role="row"`
+   *  with a correct `aria-rowindex` (only a window is ever in the DOM). */
+  renderRow: (record: T, stripeIndex: number, rowIndex?: number) => ReactNode;
   /** Stable key for flat `daySections` rows (windowing across re-sorts). */
   getRowKey?: (record: T, dayIndex: number) => string;
   /** Scroll a flat row into view by `getRowKey` value. */
@@ -129,6 +133,20 @@ export function LedgerGrid<T>({
 }: LedgerGridProps<T>) {
   const bodyRef = useRef<HTMLDivElement>(null);
   const headerRef = useRef<HTMLDivElement>(null);
+
+  // Self-scrolling mode windows against our OWN `bodyRef`, which is still null on
+  // the first render — so the virtualizer would initialize with no scroll element
+  // and hand back zero items. Attaching a ref does not re-render, so nothing ever
+  // re-reads it and the grid stays permanently blank (it only "worked" when an
+  // unrelated re-render happened to land after mount, which made this look
+  // intermittent). One post-mount render lets `getScrollElement()` see the node.
+  // Ancestor-scroll consumers are unaffected: their ref belongs to a parent that
+  // is already mounted when this child first renders.
+  const [, forceScrollElementRead] = useState(0);
+  useLayoutEffect(() => {
+    if (scrollParentRef) return;
+    forceScrollElementRead((n) => n + 1);
+  }, [scrollParentRef]);
 
   // Mirror the scroll body onto an optional caller ref (receiving keyboard nav).
   useLayoutEffect(() => {

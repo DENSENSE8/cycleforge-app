@@ -156,12 +156,13 @@ export function StationHistoryTable<T>({
   // Map each record → queue-row shape and render the shared OrdersQueueTableRow
   // (checkbox + serial chip) — the same row the outbound Queue grid uses.
   const renderRow = useCallback(
-    (record: T, index: number) => {
+    (record: T, index: number, rowIndex?: number) => {
       const id = selection.getRecordId(record);
       return (
         <StationQueueRow
           record={selection.toQueueRow(record)}
           index={index}
+          rowIndex={rowIndex}
           queueMode={selection.queueMode}
           selectMode
           isChecked={selectedIds.has(id)}
