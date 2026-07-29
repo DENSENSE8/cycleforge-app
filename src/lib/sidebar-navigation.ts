@@ -1054,8 +1054,24 @@ export function applyModeTarget(
     else params.set(key, value);
   }
   const spec = routeParamsFor(target.pathname);
-  const next = spec ? parseRouteParams(spec, params) : params;
-  return { pathname: target.pathname, search: next.toString() };
+  if (!spec) return { pathname: target.pathname, search: params.toString() };
+
+  // Rule 1 — CONSTRUCT, do not copy. Boundary-parsing the copied string is not
+  // enough on its own: sibling modes legitimately own keys of the same name
+  // (`open`, `sort`, `q` across the four Shipping modes), so a parse cannot tell
+  // a stale `?open=` carried from Labels from a real one for Ready. It kept the
+  // value and the focused order followed the operator into the next mode.
+  //
+  // So a mode switch emits the target's OWN delta and nothing else — except the
+  // staff filter, which is an operator preference rather than mode state (the
+  // same single carry `updateMode` makes in the receiving and outbound hooks).
+  const next = new URLSearchParams();
+  const staff = params.get('staff') ?? params.get('staffId');
+  if (staff) next.set('staff', staff);
+  for (const [key, value] of Object.entries(target.params ?? {})) {
+    if (value !== null) next.set(key, value);
+  }
+  return { pathname: target.pathname, search: parseRouteParams(spec, next).toString() };
 }
 
 /**

@@ -141,17 +141,20 @@ test('mode round-trip resolves, preserving unrelated params only on un-migrated 
         if (!('openOrderId' in delta)) assert.equal(params.get('openOrderId'), '42', `${page.id} dropped openOrderId`);
         if (!('q' in delta)) assert.equal(params.get('q'), 'widget', `${page.id} dropped q`);
       } else {
+        // A migrated destination CONSTRUCTS its URL, so neither param rides
+        // along — not even `q`, which Pickup does own. Ownership governs what a
+        // route may HOLD, not what a navigation may carry into it; sibling modes
+        // sharing a key (`open`/`sort`/`q`) is exactly why copy-then-parse was
+        // not enough.
         assert.equal(
           params.get('openOrderId'),
           null,
-          `${target.pathname} declares no openOrderId — it must not ride along`,
+          `${target.pathname} must not carry openOrderId across a mode switch`,
         );
-        // `q` survives only where the destination actually owns it (Pickup).
-        const owned = 'q' in spec.owns;
         assert.equal(
           params.get('q'),
-          owned ? 'widget' : null,
-          `${target.pathname} ${owned ? 'owns' : 'does not own'} ?q= — got ${params.get('q')}`,
+          null,
+          `${target.pathname} must not carry ?q= across a mode switch`,
         );
       }
 
