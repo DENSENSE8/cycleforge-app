@@ -318,9 +318,9 @@ const CONTEXT_PANEL_ROUTE_KEYS = new Set<SidebarRouteKey>([
   'warehouse',
   'walk-in',
   'manuals-library',
-  // Media library — gained a spine body when the folder drill became a faceted
-  // flat stream (saved views / date presets / labels). See MediaLibrarySidebarPanel.
-  'ops-photos',
+  // Deliberately NOT here: `ops-photos`. The Media library owns its whole
+  // context in the workbench chrome header, so it has no sidebar and reserves no
+  // column — the empty-column case this contract exists to express.
 ]);
 
 /** True when this route's spine holds a context panel — see {@link CONTEXT_PANEL_ROUTE_KEYS}. */

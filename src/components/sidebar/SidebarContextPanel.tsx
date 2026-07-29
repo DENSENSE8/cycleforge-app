@@ -34,7 +34,6 @@ const ProductsSidebarPanel = dynamic(() => import('@/components/sidebar/Products
 const WarehouseSidebarPanel = dynamic(() => import('@/components/sidebar/WarehouseSidebarPanel').then((m) => m.WarehouseSidebarPanel));
 const WalkInSidebarPanel = dynamic(() => import('@/components/sidebar/WalkInSidebarPanel').then((m) => m.WalkInSidebarPanel));
 const ManualsLibrarySidebar = dynamic(() => import('@/components/manuals/ManualsLibrarySidebar').then((m) => m.ManualsLibrarySidebar));
-const MediaLibrarySidebarPanel = dynamic(() => import('@/components/sidebar/MediaLibrarySidebarPanel').then((m) => m.MediaLibrarySidebarPanel));
 const TechSidebarPanel = dynamic(() => import('@/components/sidebar/TechSidebarPanel').then((m) => m.TechSidebarPanel));
 const PackerSidebarPanel = dynamic(() => import('@/components/sidebar/PackerSidebarPanel').then((m) => m.PackerSidebarPanel));
 const OutboundSidebarPanel = dynamic(() => import('@/components/sidebar/OutboundSidebarPanel').then((m) => m.OutboundSidebarPanel));
@@ -95,13 +94,12 @@ export function SidebarContextPanel({ onBackToAppNav }: { onBackToAppNav?: () =>
     );
   }
 
-  // Media library. This used to return `null` — "owns its whole context in the
-  // workbench chrome header, so it has no spine body." That was true of the
-  // folder-drill era: the breadcrumb WAS the navigation. Replacing the hierarchy
-  // with a faceted flat stream gave the rail a real job (saved views, date
-  // presets, labels), so the column is now resident. `CONTEXT_PANEL_ROUTE_KEYS`
-  // must list `ops-photos` for this branch to ever be reached.
-  if (routeKey === 'ops-photos') return <MediaLibrarySidebarPanel />;
+  // Media library owns its whole context in the workbench chrome header — the
+  // filter/date/view controls and the identifier search all live up there — so
+  // there is nothing for a sidebar to hold. `CONTEXT_PANEL_ROUTE_KEYS` omits
+  // `ops-photos` to match, which is what keeps the surface full-width instead of
+  // sitting beside a reserved column.
+  if (routeKey === 'ops-photos') return null;
   if (routeKey === 'packer') return <PackerSidebarPanel />;
   if (routeKey === 'outbound') return <OutboundSidebarPanel />;
   if (routeKey === 'review') return <ReviewSidebarPanel />;
