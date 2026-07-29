@@ -24,16 +24,26 @@ export const SELECTION_BAR_CONTROL_BOX =
 export const SELECTION_BAR_VIEWPORT_GAP = 'pb-4';
 
 /**
- * Bottom padding a **bounded** scroll host must reserve so its last row clears
- * the pinned capsule.
+ * Bottom padding a **bounded** scroll host reserves so its last row clears the
+ * pinned capsule.
  *
- * `h-10` control + `p-1.5` capsule shell + `pb-4` viewport gap ≈ 4.25rem;
- * `pb-20` (5rem) is the next scale step up and leaves a row of breathing room.
- * Every value here rides the density-aware spacing scale, so the reserve tracks
- * the capsule itself when `--cf-density` changes — a hand-picked `pb-[68px]`
- * would not.
+ * Sized from what the host actually needs, not from the capsule's full height.
+ * `WORKBENCH_TABLE_VIEWPORT` already stops ~45px short of the viewport bottom,
+ * so at the default `pb-3` the last row clears the capsule by **2px** (measured
+ * on Pending and Packed at viewport heights 560 / 720 / 900). The capsule is
+ * not hiding rows today; what is missing is any RULE keeping it from doing so —
+ * that 2px is a coincidence of the surrounding chrome, and a change to the
+ * header, the KPI strip, or `WORKBENCH_BODY_COLUMN`'s padding flips it negative.
  *
- * Only hosts that a capsule can actually float over take this. A grid with no
+ * `pb-8` (2rem) turns the coincidence into ~22px of deliberate clearance for
+ * 20px of extra inset. A full-capsule reserve (`pb-20`, 5rem) was measured too:
+ * it buys 70px of clearance and costs ~1.5 rows of a warehouse monitor every
+ * time a selection is live — the wrong trade for a gap that is already positive.
+ *
+ * It rides the density-aware spacing scale, so the reserve tracks the capsule
+ * when `--cf-density` changes; a hand-picked `pb-[32px]` would not.
+ *
+ * Only hosts a capsule can actually float over take this. A grid with no
  * selection gutter keeps its normal inset.
  */
-export const SELECTION_BAR_SCROLL_INSET = 'pb-20';
+export const SELECTION_BAR_SCROLL_INSET = 'pb-8';
