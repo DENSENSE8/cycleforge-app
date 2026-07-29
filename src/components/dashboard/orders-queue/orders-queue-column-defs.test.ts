@@ -25,11 +25,11 @@ import {
  */
 
 describe('orders-queue mode column sets (TanStack ColumnDefs)', () => {
-  it('fulfillment.default matches the canonical 8-column scan order', () => {
+  it('fulfillment.default matches the canonical 7-column scan order', () => {
     const defs = ordersQueueColumnDefsFor('fulfillment.default');
     assert.deepEqual(
       defs.map((d) => d.id),
-      ['select', 'title', 'date', 'age', 'qty', 'condition', 'order', 'tracking'],
+      ['select', 'title', 'sla', 'qty', 'condition', 'order', 'tracking'],
     );
     assert.deepEqual(
       defs.map((d) => d.id),
@@ -38,11 +38,11 @@ describe('orders-queue mode column sets (TanStack ColumnDefs)', () => {
     );
   });
 
-  it('fulfillment.tested surfaces Tester + Tested at after Age (no Status / Platform)', () => {
+  it('fulfillment.tested surfaces Tester + Tested at after Ship by (no Status / Platform)', () => {
     const defs = ordersQueueColumnDefsFor('fulfillment.tested');
     assert.deepEqual(
       defs.map((d) => d.id),
-      ['select', 'title', 'date', 'age', 'tester', 'testedAt', 'qty', 'condition', 'order', 'tracking'],
+      ['select', 'title', 'sla', 'tester', 'testedAt', 'qty', 'condition', 'order', 'tracking'],
     );
     assert.ok(!defs.some((d) => d.id === 'status'), 'Status pill is not on the TESTED tab');
     assert.ok(!defs.some((d) => d.id === 'platform'), 'Platform column is retired');
@@ -71,8 +71,9 @@ describe('orders-queue mode column sets (TanStack ColumnDefs)', () => {
     assert.equal(byId.tester.enableSorting, false, 'tester is outside the ?sort vocabulary');
     assert.equal(byId.testedAt.enableSorting, false, 'testedAt is outside the ?sort vocabulary');
     assert.equal(byId.title.enableSorting, true);
-    assert.equal(byId.age.enableSorting, true);
-    assert.equal(byId.age.sortDescFirst, true, 'Age activates most-late-first');
+    assert.equal(byId.sla.enableSorting, true);
+    // Ascending ship-by IS most-late-first, so no column activates DESC first.
+    assert.notEqual(byId.sla.sortDescFirst, true, 'Ship by activates ascending');
   });
 
   it('locked identity pane (select · title) can never hide; the rest can', () => {
@@ -107,7 +108,7 @@ describe('ORDERS_QUEUE_TESTED_COLUMNS — house geometry for the TESTED lane', (
   it('sanitize against the TESTED canonical keeps tester/testedAt and inserts them for stale orders', () => {
     // A persisted order saved before the TESTED columns existed:
     const out = sanitizeOrdersQueueColumnOrder(
-      ['date', 'age', 'status', 'qty', 'condition', 'platform', 'order', 'tracking'],
+      ['date', 'age', 'status', 'qty', 'condition', 'platform', 'order', 'tracking'] as never[],
       ORDERS_QUEUE_TESTED_COLUMNS,
     );
     assert.ok((out as string[]).includes('tester'), 'tester inserted at canonical slot');

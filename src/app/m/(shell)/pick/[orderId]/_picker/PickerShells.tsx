@@ -17,7 +17,7 @@ export function ErrorShell({ error, onBack }: { error: string; onBack: () => voi
   return (
     <div className="grid min-h-full place-items-center bg-surface-canvas px-6 py-10 text-center">
       <div>
-        <p className="text-base font-bold text-red-700">Could not load picker</p>
+        <p className="text-base font-semibold text-red-700">Could not load picker</p>
         <p className="mt-2 text-sm text-text-muted">{error}</p>
         <Button variant="brand" size="lg" className="mt-5" onClick={onBack}>
           Back to queue
@@ -31,7 +31,7 @@ export function EmptyShell({ onBack }: { onBack: () => void }) {
   return (
     <div className="grid min-h-full place-items-center bg-surface-canvas px-6 py-10 text-center">
       <div>
-        <p className="text-base font-bold text-text-muted">Nothing to pick</p>
+        <p className="text-base font-semibold text-text-muted">Nothing to pick</p>
         <p className="mt-2 text-sm text-text-soft">All allocations for this order are already picked or shipped.</p>
         <Button variant="brand" size="lg" className="mt-5" onClick={onBack}>
           Back to queue
@@ -49,7 +49,7 @@ export function CompleteCard({ onBack }: { onBack: () => void }) {
           <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
         </svg>
       </div>
-      <p className="mt-3 text-base font-bold text-emerald-900">Pick complete</p>
+      <p className="mt-3 text-base font-semibold text-emerald-900">Pick complete</p>
       <p className="mt-1 text-sm text-emerald-800/80">Cart is ready to hand off to the pack station.</p>
       {/* ds-raw-button: solid-emerald success CTA inside the emerald complete card — keep the bespoke emerald tone */}
       <button

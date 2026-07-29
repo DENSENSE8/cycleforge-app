@@ -63,7 +63,7 @@ export function WalkInCartSidebar({
         <p className="text-role-eyebrow uppercase tracking-widest text-emerald-500">
           {eyebrow}
         </p>
-        <h3 className="mt-0.5 text-role-caption font-black uppercase tracking-tight text-text-default">
+        <h3 className="mt-0.5 text-role-caption font-semibold uppercase tracking-tight text-text-default">
           {title}
         </h3>
       </div>
@@ -72,7 +72,7 @@ export function WalkInCartSidebar({
         {isEmpty ? (
           <div className="mt-2 rounded-xl border border-dashed border-border-soft bg-surface-canvas/60 p-4 text-center">
             <ShoppingCart className="mx-auto mb-1 h-5 w-5 text-text-faint" />
-            <p className="text-role-micro font-bold text-text-faint">
+            <p className="text-role-micro text-text-faint">
               Add items from the panel →
             </p>
           </div>
@@ -90,12 +90,12 @@ export function WalkInCartSidebar({
               <span className="text-role-micro uppercase tracking-wider text-text-soft">
                 Subtotal
               </span>
-              <span className="text-sm font-black text-emerald-600">{subtotal}</span>
+              <span className="text-sm font-semibold text-emerald-600">{subtotal}</span>
             </div>
           ) : null}
           {footer}
           {error ? (
-            <p className="text-center text-role-eyebrow font-bold text-red-600">
+            <p className="text-center text-role-eyebrow text-red-600">
               {error}
             </p>
           ) : null}
@@ -165,13 +165,13 @@ export function WalkInCartRow({
             <Package className="h-5 w-5 text-text-faint" />
           )}
         </div>
-        <p className="min-w-0 flex-1 truncate text-role-caption font-bold leading-snug text-text-default">
+        <p className="min-w-0 flex-1 truncate text-role-caption font-semibold leading-snug text-text-default">
           {title}
         </p>
       </div>
       <div className="mt-1.5 flex items-center gap-2 text-role-eyebrow">
-        <span className="font-black text-emerald-700">{price}</span>
-        <span className="font-black text-text-soft">x{quantity}</span>
+        <span className="font-semibold text-emerald-700">{price}</span>
+        <span className="font-semibold text-text-soft">x{quantity}</span>
         {meta}
       </div>
     </motion.button>

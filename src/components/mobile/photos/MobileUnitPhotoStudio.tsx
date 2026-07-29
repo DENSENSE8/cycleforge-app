@@ -147,7 +147,7 @@ export function MobileUnitPhotoStudio({
           <p className="text-role-micro uppercase tracking-[0.22em] text-white/60">
             {stage === 'packing' ? 'Add packing photos' : 'Add testing photos'}
           </p>
-          <p className="truncate text-sm font-black text-white">{headerLabel}</p>
+          <p className="truncate text-sm font-semibold text-white">{headerLabel}</p>
         </div>
       }
     />

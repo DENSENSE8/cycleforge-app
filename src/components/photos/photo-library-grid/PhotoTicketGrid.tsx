@@ -37,7 +37,7 @@ export function PhotoTicketGrid({
               <span className="truncate text-sm font-semibold text-text-default">
                 {group.label}
               </span>
-              <span className="shrink-0 rounded-full bg-surface-sunken px-1.5 py-0.5 text-role-micro font-bold tabular-nums text-text-soft">
+              <span className="shrink-0 rounded-full bg-surface-sunken px-1.5 py-0.5 text-role-micro tabular-nums text-text-soft">
                 {group.photos.length}
               </span>
               <time className="shrink-0 text-role-micro tabular-nums text-text-faint">

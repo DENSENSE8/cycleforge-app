@@ -51,7 +51,7 @@ export function ZendeskSelect({
             ? 'h-10 min-h-10 rounded-xl px-3 text-role-data font-semibold outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100'
             : isDense
               ? 'inline-flex max-w-[9rem] gap-1 rounded-md px-2 py-1 text-role-micro font-semibold'
-              : 'inline-flex max-w-[180px] gap-1.5 rounded-lg px-2.5 py-1.5 text-role-caption font-bold',
+              : 'inline-flex max-w-[180px] gap-1.5 rounded-lg px-2.5 py-1.5 text-role-caption font-semibold',
         )}
       >
         <span className="truncate">{selected ? selected.label : placeholder}</span>
@@ -89,7 +89,7 @@ export function ZendeskSelect({
                 o.value === value ? 'bg-surface-canvas' : ''
               }`}
             >
-              <span className="text-role-caption font-bold text-text-default">{o.label}</span>
+              <span className="text-role-caption font-semibold text-text-default">{o.label}</span>
               {o.sublabel ? <span className="text-role-micro text-text-soft">{o.sublabel}</span> : null}
             </button>
           ))}

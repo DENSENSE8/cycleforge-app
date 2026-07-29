@@ -281,7 +281,7 @@ export function FolderPathPicker({ value, onChange }: FolderPathPickerProps) {
                     <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-indigo-50 text-indigo-500 ring-1 ring-inset ring-indigo-100">
                       <FolderGlyph className="h-3 w-3" />
                     </span>
-                    <span className="min-w-0 flex-1 truncate text-role-caption font-black text-text-default">
+                    <span className="min-w-0 flex-1 truncate text-role-caption font-semibold text-text-default">
                       {node.name}
                       <span className="ml-1 font-mono text-role-micro font-semibold text-text-faint">
                         {fullPath}
@@ -318,7 +318,7 @@ export function FolderPathPicker({ value, onChange }: FolderPathPickerProps) {
                   <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-indigo-50 text-indigo-500 ring-1 ring-inset ring-indigo-100">
                     <FolderGlyph className="h-3 w-3" />
                   </span>
-                  <span className="min-w-0 flex-1 truncate text-role-caption font-black text-text-default">
+                  <span className="min-w-0 flex-1 truncate text-role-caption font-semibold text-text-default">
                     {node.name}
                   </span>
                   <span className="text-role-micro font-semibold text-text-faint">

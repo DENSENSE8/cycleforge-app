@@ -18,6 +18,7 @@ import { ShippingWorkspaceHeader } from '@/components/tech/shipping/ShippingWork
 import {
   WORKBENCH_BODY_COLUMN,
   WORKBENCH_CHROME_COLUMN,
+  WORKBENCH_TABLE_VIEWPORT,
 } from '@/components/dashboard/workbench-shell';
 import { ContextualSelectionBar } from '@/design-system/components/ContextualSelectionBar';
 import { DASHBOARD_ORDERS_SELECTION_SCOPE } from '@/lib/selection/dashboard-scopes';
@@ -53,7 +54,7 @@ export function ShippingWorkspaceView({ techId }: ShippingWorkspaceViewProps) {
   // Pending reuses the dashboard To Ship selection scope + actions (always-on
   // left-gutter select). Keep the hook on `unshipped` for every tab so selectMode
   // stays live when Pending remounts (FBA / History don't mount a selectable table).
-  const { selectMode, selectedRows, selectionActions } =
+  const { selectMode, selectedRows, selectionActions, bulkBarVisible } =
     useDashboardBulkSelection('unshipped');
 
   // Tab bodies crossfade as the singular focus surface (chrome + KPI strip stay
@@ -64,7 +65,10 @@ export function ShippingWorkspaceView({ techId }: ShippingWorkspaceViewProps) {
   };
 
   return (
-    <div className="relative h-full min-h-0 w-full overflow-hidden">
+    // Flex column (not a bare block): `DashboardScrollShell` is `flex-1`, which
+    // is inert outside a flex parent — the shell then collapses to content
+    // height and the work canvas shows through below it. Mirrors Unbox/Triage.
+    <div className="relative flex h-full min-h-0 w-full flex-col overflow-hidden">
     <DashboardScrollShell
       className="h-full"
       // Pinned chrome (outside the scroll port) is the one top bar; the KPI
@@ -102,15 +106,21 @@ export function ShippingWorkspaceView({ techId }: ShippingWorkspaceViewProps) {
                     <FbaShipmentsTable />
                   </div>
                 ) : shipTab === 'history' ? (
-                  <TechTable
-                    testedBy={Number.isFinite(parsedTechId) ? parsedTechId : 0}
-                    staffScope="url-or-self"
-                    toolbarPortalTarget={controlsEl}
-                  />
+                  // Bounded host so the framed card's bottom edge (and its
+                  // raised elevation) stay on screen and the table self-scrolls
+                  // instead of growing the page — same as the Pending grid.
+                  <div className={`${WORKBENCH_TABLE_VIEWPORT} pb-3`}>
+                    <TechTable
+                      testedBy={Number.isFinite(parsedTechId) ? parsedTechId : 0}
+                      staffScope="url-or-self"
+                      toolbarPortalTarget={controlsEl}
+                    />
+                  </div>
                 ) : (
                   <UnshippedTable
                     strictSearchScope
                     selectMode={selectMode}
+                    bulkBarInset={bulkBarVisible}
                     toolbarPortalTarget={controlsEl}
                   />
                 )}

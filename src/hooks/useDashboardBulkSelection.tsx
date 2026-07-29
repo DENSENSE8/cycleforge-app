@@ -58,6 +58,30 @@ export type DashSelectableRow = {
   packer_log_id?: number | null;
 };
 
+/**
+ * Legacy clipboard write for non-secure contexts (plain-HTTP LAN). Deprecated
+ * in the spec but universally implemented, and the only path available when
+ * `navigator.clipboard` is absent. Returns false when even this is refused.
+ */
+function copyViaExecCommand(text: string): boolean {
+  if (typeof document === 'undefined') return false;
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    // Off-screen but focusable — `display:none` would make the selection fail.
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed';
+    ta.style.top = '-9999px';
+    document.body.appendChild(ta);
+    ta.select();
+    const copied = document.execCommand('copy');
+    document.body.removeChild(ta);
+    return copied;
+  } catch {
+    return false;
+  }
+}
+
 export interface DashboardBulkSelection {
   /** True on the surfaces that support selection (Unshipped / Packed / Shipped). */
   selectionEnabled: boolean;
@@ -70,6 +94,13 @@ export interface DashboardBulkSelection {
   /** Modal surfaces some actions open (assignment carousel, ship-by picker).
    *  The page renders this beside the bar — never inside the capsule. */
   selectionOverlays: ReactNode;
+  /**
+   * True while the pinned capsule is actually on screen. Bounded table hosts
+   * thread this into `workbenchTableViewportClass({ bulkBarInset })` so their
+   * last row clears it. Derived HERE rather than at each page so the bar's
+   * visibility and the space reserved for it can never disagree.
+   */
+  bulkBarVisible: boolean;
 }
 
 export function useDashboardBulkSelection(
@@ -118,10 +149,21 @@ export function useDashboardBulkSelection(
       toast.error('Nothing to copy on the selected row(s)');
       return;
     }
-    void navigator.clipboard?.writeText(text).then(
-      () => toast.success(`Copied ${rows.length} row${rows.length === 1 ? '' : 's'}`),
-      () => toast.error('Copy failed'),
-    );
+    const ok = () => toast.success(`Copied ${rows.length} row${rows.length === 1 ? '' : 's'}`);
+    // `navigator.clipboard` is undefined outside a secure context — which is
+    // exactly how the floor reaches this app (plain-HTTP LAN host). The old
+    // `navigator.clipboard?.writeText(…).then(…)` short-circuited the WHOLE
+    // chain there: no copy, no toast, no error. The button looked broken
+    // because it silently was.
+    if (navigator.clipboard?.writeText) {
+      void navigator.clipboard.writeText(text).then(ok, () => {
+        if (!copyViaExecCommand(text)) toast.error('Copy failed');
+        else ok();
+      });
+      return;
+    }
+    if (copyViaExecCommand(text)) ok();
+    else toast.error('Copy is unavailable on this connection — select the text manually');
   }, []);
 
   // ─── Assign tester / packer ────────────────────────────────────────────────
@@ -135,6 +177,8 @@ export function useDashboardBulkSelection(
   const handleAssign = useCallback(
     async (rows: DashSelectableRow[]) => {
       if (rows.length === 0) return;
+      // loadStaff() toasts its own failure; returning quietly here would leave
+      // the operator with an unexplained no-op after the roster fetch died.
       if (!(await loadStaff())) return;
       // Pre-pack rows broadcast the full `ShippedOrder`; the narrow
       // DashSelectableRow type is just what the BAR needs to render.
@@ -194,7 +238,14 @@ export function useDashboardBulkSelection(
       .map((d) => ({ id: d.id, isPdf: isPdfOutboundDocument(d) }));
 
     if (docs.length === 0) {
-      toast.error('No shipping labels on the selected order(s)');
+      // "No labels" and "the documents endpoint failed" are different problems
+      // for the operator — one is a data gap, the other is retryable.
+      const unreachable = settled.filter((r) => r.status === 'rejected').length;
+      toast.error(
+        unreachable === ids.length
+          ? 'Could not read the shipping documents — retry in a moment'
+          : 'No shipping labels on the selected order(s)',
+      );
       return;
     }
     // The printer takes the whole array — one job, not one dialog per order.
@@ -204,19 +255,24 @@ export function useDashboardBulkSelection(
   }, []);
 
   const handlePrintLabels = useCallback((rows: DashSelectableRow[]) => {
-    void loadProductLabelPrinter().then(({ printProductLabel, printProductLabels }) => {
-      let printed = 0;
-      for (const r of rows) {
-        const sku = String(r.sku || '').trim();
-        if (!sku) continue;
-        const serial = String(r.serial_number || '').trim();
-        if (serial) printProductLabels({ sku, serialNumbers: [serial] });
-        else printProductLabel({ sku });
-        printed += 1;
-      }
-      if (printed > 0) toast.success(`Printing ${printed} label${printed === 1 ? '' : 's'}`);
-      else toast.error('No SKU on the selected row(s)');
-    });
+    void loadProductLabelPrinter()
+      .then(({ printProductLabel, printProductLabels }) => {
+        let printed = 0;
+        for (const r of rows) {
+          const sku = String(r.sku || '').trim();
+          if (!sku) continue;
+          const serial = String(r.serial_number || '').trim();
+          if (serial) printProductLabels({ sku, serialNumbers: [serial] });
+          else printProductLabel({ sku });
+          printed += 1;
+        }
+        if (printed > 0) toast.success(`Printing ${printed} label${printed === 1 ? '' : 's'}`);
+        else toast.error('No SKU on the selected row(s)');
+      })
+      // The label printer is a lazy chunk (bwip-js). A failed chunk fetch — a
+      // stale deploy, an offline floor tablet — otherwise rejects into nothing
+      // and the operator just sees a button that does not print.
+      .catch(() => toast.error('Could not load the label printer — reload and retry'));
   }, []);
 
   const handleDelete = useCallback(
@@ -336,5 +392,17 @@ export function useDashboardBulkSelection(
     </>
   );
 
-  return { selectionEnabled, selectMode, selectedRows, selectionActions, selectionOverlays };
+  // Mirrors ContextualSelectionBar's own mount condition (`visible` defaults to
+  // count > 0, and it renders null when no action can fire).
+  const bulkBarVisible =
+    selectionEnabled && selectedRows.length > 0 && selectionActions.length > 0;
+
+  return {
+    selectionEnabled,
+    selectMode,
+    selectedRows,
+    selectionActions,
+    selectionOverlays,
+    bulkBarVisible,
+  };
 }

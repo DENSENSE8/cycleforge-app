@@ -67,7 +67,7 @@ function TaskListRow({
         <HoverTooltip label={dot.label} focusable={false}>
           <span className={cn('h-2 w-2 shrink-0 rounded-full', dot.dot)} />
         </HoverTooltip>
-        <span className="truncate text-role-caption font-bold text-gray-900">{item.title}</span>
+        <span className="truncate text-role-caption font-semibold text-gray-900">{item.title}</span>
       </div>
       {meta ? (
         <span className="truncate pl-4 text-role-eyebrow font-semibold uppercase tracking-widest text-gray-500">
@@ -99,7 +99,7 @@ function TaskDetail({ item }: { item: HomeTaskItem }) {
         <div className="flex items-start gap-2">
           <span className={cn('mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full', dot.dot)} />
           <div className="min-w-0">
-            <h2 className="text-lg font-bold text-text-strong">{item.title}</h2>
+            <h2 className="text-lg font-semibold text-text-strong">{item.title}</h2>
             {item.subtitle ? <p className="mt-0.5 text-sm text-text-muted">{item.subtitle}</p> : null}
           </div>
         </div>
@@ -215,7 +215,7 @@ export function HomeTasksMode() {
             </div>
           ) : isError ? (
             <div className="px-4 py-6">
-              <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50 px-4 py-6 text-center text-role-caption font-bold text-rose-700">
+              <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50 px-4 py-6 text-center text-role-caption font-semibold text-rose-700">
                 Could not load tasks. Try refreshing.
               </div>
             </div>

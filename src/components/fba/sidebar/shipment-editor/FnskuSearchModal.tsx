@@ -57,7 +57,7 @@ export function FnskuSearchModal({
           <div className="mb-2 flex items-center justify-between">
             <div>
               <p className="text-role-micro uppercase tracking-[0.16em] text-purple-600">Add FNSKU</p>
-              <DialogTitle className="mt-0.5 text-sm font-black">Search shipment catalog</DialogTitle>
+              <DialogTitle className="mt-0.5 text-sm font-semibold">Search shipment catalog</DialogTitle>
               <DialogDescription className="sr-only">
                 Search the shipment catalog by FNSKU, ASIN, SKU, or product title.
               </DialogDescription>

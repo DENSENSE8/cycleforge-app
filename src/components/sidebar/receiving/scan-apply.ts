@@ -35,6 +35,39 @@ import {
 } from '@/components/sidebar/receiving/receiving-sidebar-shared';
 import { filterLinesByPoGroup } from '@/lib/receiving/po-group-title';
 import type { ScanApplyCtx } from './scan-types';
+import { emitReceiving } from '@/components/receiving/receiving-events';
+import type { UnboxLookupScanDetail } from '@/components/receiving/receiving-events';
+
+/**
+ * Announce that this scan was an INSPECTION of finished work, not work.
+ * The right pane listens and shows a read-only receipt instead of the editor —
+ * the "already done" state, per the Station rule that an outcome is a big card
+ * state, never a corner toast. Routed through the TYPED bus (`emitReceiving`),
+ * not a raw CustomEvent — see `receiving-events.ts`.
+ */
+/**
+ * Read the lookup verdict off a lookup-po response.
+ *
+ * Returns `{}` on a work scan so a spread adds nothing — `applyUnboxCartonOpened`
+ * announces on a truthy `unboxedAt`, which is exactly the condition the server
+ * uses to call it a lookup, so the two can't disagree.
+ */
+function lookupScanFieldsFrom(d: LookupPoData): {
+  unboxedAt?: string | null;
+  unboxedByName?: string | null;
+  poNumber?: string | null;
+} {
+  if (d.scan_kind !== 'lookup') return {};
+  return {
+    unboxedAt: typeof d.unboxed_at === 'string' ? d.unboxed_at : null,
+    unboxedByName: typeof d.unboxed_by_name === 'string' ? d.unboxed_by_name : null,
+    poNumber: typeof d.po_number === 'string' ? d.po_number : null,
+  };
+}
+
+function announceUnboxLookupScan(detail: UnboxLookupScanDetail): void {
+  emitReceiving('receiving-lookup-scan', detail);
+}
 
 /** After a scan opens a carton: unbox arms the serial field; triage keeps the tracking scan bar hot. */
 export function refocusScanInput(
@@ -71,15 +104,51 @@ export function applyUnboxCartonOpened(
     railRow?: ReceivingLineRow | null;
     /** Fire touch-scan; `tracking` overrides the scanned value (Phase-0 uses the carton's own). */
     touchScan?: { tracking?: string };
+    /**
+     * The resolved carton's `unboxed_at`, when the rung already knows it (the
+     * cache / local-tracking / internal-code rungs all resolve a real row).
+     * Non-null means the work is already done, so this scan is an INSPECTION —
+     * announce it optimistically so the pane shows a receipt instead of the
+     * work editor. The server is authoritative and confirms below.
+     */
+    unboxedAt?: string | null;
+    /** Receipt facts, when the rung's payload already carries them. */
+    unboxedByName?: string | null;
+    poNumber?: string | null;
   },
 ): void {
+  // Always drop the pre-resolve `scan:{tracking}` stub — that row is OUR
+  // optimistic artifact, so clearing it is cleanup, not a mutation of the
+  // operator's rail.
   removePendingScanRailRow(queryClient, pendingScanReconcileKey(args.trackingNumber));
-  if (args.railRow) {
-    upsertReceivingRailRows(queryClient, [
-      { ...args.railRow, client_event_id: receivingRailCartonKey(args.receivingId) },
-    ]);
+
+  if (args.unboxedAt) {
+    // READ-ONLY against the rail. A lookup claimed nothing server-side, so it
+    // must not reshape the operator's rail either: upserting the carton bumps a
+    // weeks-old box to the top of Unboxed as if it had just been opened, and
+    // the synthetic rail row paints it with the freshly-arrived `0/?` face.
+    // Purging the triage rails is worse — it evicts a carton from Arrival on
+    // the strength of someone merely *looking* at it.
+    announceUnboxLookupScan({
+      receivingId: args.receivingId,
+      trackingNumber: args.trackingNumber,
+      unboxedAt: args.unboxedAt,
+      unboxedByName: args.unboxedByName ?? null,
+      poNumber: args.poNumber ?? null,
+    });
+  } else {
+    if (args.railRow) {
+      upsertReceivingRailRows(queryClient, [
+        { ...args.railRow, client_event_id: receivingRailCartonKey(args.receivingId) },
+      ]);
+    }
+    purgeTriageRailsAfterUnboxOpen(queryClient, args.receivingId);
   }
-  purgeTriageRailsAfterUnboxOpen(queryClient, args.receivingId);
+
+  // `touchScan` still fires for BOTH kinds — it is what records the
+  // RECEIVING_LOOKUP_SCAN event for the client short-circuit rungs. Skipping it
+  // on a lookup would leave the inspection unlogged entirely.
+
   if (args.touchScan) {
     void fetch('/api/receiving/touch-scan', {
       method: 'POST',
@@ -89,7 +158,23 @@ export function applyUnboxCartonOpened(
         tracking_number: args.touchScan.tracking ?? args.trackingNumber,
         intakeSurface: 'unbox',
       }),
-    }).catch(() => {});
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        // Server is the authority on WORK vs LOOKUP (it reads the carton's own
+        // milestone). Covers the rungs that opened from a stub and never had
+        // `unboxed_at` client-side.
+        if (data?.scan_kind === 'lookup') {
+          announceUnboxLookupScan({
+            receivingId: args.receivingId,
+            trackingNumber: args.trackingNumber,
+            unboxedAt: typeof data.unboxed_at === 'string' ? data.unboxed_at : null,
+            unboxedByName: typeof data.unboxed_by_name === 'string' ? data.unboxed_by_name : null,
+            poNumber: typeof data.po_number === 'string' ? data.po_number : null,
+          });
+        }
+      })
+      .catch(() => {});
   }
 }
 
@@ -216,12 +301,16 @@ export function applyMatchedCarton(ctx: ScanApplyCtx, d: LookupPoData): void {
   if (ctx.intakeSurface === 'unbox') {
     // Server already stamped unbox_opened (lookup-po intakeSurface): run the
     // open chokepoint — pending-stub drop, Unboxed upsert, Arrival purge.
+    // `lookupScanFieldsFrom` is why a lookup that resolves through lookup-po
+    // (rather than the touch-scan short-circuits) shows the receipt at all —
+    // this path posts no touch-scan, so the response IS the only signal.
     applyUnboxCartonOpened(ctx.queryClient, {
       receivingId: poCtx.receiving_id,
       trackingNumber: ctx.trackingNumber,
       railRow: unboxRailLine
         ? buildUnboxRailMatchedRow(poCtx.receiving_id, ctx.trackingNumber, unboxRailLine)
         : null,
+      ...lookupScanFieldsFrom(d),
     });
   } else if (unboxRailLine) {
     const now = new Date().toISOString();
@@ -391,6 +480,7 @@ export function applyUnmatchedCarton(ctx: ScanApplyCtx, d: LookupPoData): void {
       receivingId: unmatchedReceivingId,
       trackingNumber: ctx.trackingNumber,
       railRow: buildUnboxRailUnmatchedRow(unmatchedReceivingId, ctx.trackingNumber),
+      ...lookupScanFieldsFrom(d),
     });
   }
 

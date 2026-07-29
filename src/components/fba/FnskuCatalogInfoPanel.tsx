@@ -127,7 +127,7 @@ export function FnskuCatalogInfoPanel({
             ) : null
           }
         >
-          <p className="whitespace-pre-wrap break-words text-sm font-bold text-text-default">
+          <p className="whitespace-pre-wrap break-words text-sm font-semibold text-text-default">
             {productTitle || <span className="text-text-faint">No title</span>}
           </p>
         </DetailsPanelRow>
@@ -147,7 +147,7 @@ export function FnskuCatalogInfoPanel({
             ) : null
           }
         >
-          <p className="text-sm font-bold text-text-default">
+          <p className="text-sm font-semibold text-text-default">
             {condition || <span className="text-text-faint">—</span>}
           </p>
         </DetailsPanelRow>
@@ -155,7 +155,7 @@ export function FnskuCatalogInfoPanel({
           {fnskuTrimmed ? (
             <FnskuChip value={fnskuTrimmed} />
           ) : (
-            <p className="font-mono text-sm font-bold text-text-faint">—</p>
+            <p className="font-mono text-sm font-semibold text-text-faint">—</p>
           )}
         </DetailsPanelRow>
         <DetailsPanelRow
@@ -174,7 +174,7 @@ export function FnskuCatalogInfoPanel({
             ) : null
           }
         >
-          <p className="font-mono text-sm font-bold text-text-default">
+          <p className="font-mono text-sm font-semibold text-text-default">
             {asin || <span className="text-text-faint">—</span>}
           </p>
         </DetailsPanelRow>
@@ -195,7 +195,7 @@ export function FnskuCatalogInfoPanel({
             ) : null
           }
         >
-          <p className="font-mono text-sm font-bold text-text-default">
+          <p className="font-mono text-sm font-semibold text-text-default">
             {sku || <span className="text-text-faint">—</span>}
           </p>
         </DetailsPanelRow>

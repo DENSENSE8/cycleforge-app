@@ -41,7 +41,7 @@ export function StationsCard({ stations, borderClass, busy, onSave }: StationsCa
               onSave({ primary: p, secondary: stations.secondary.filter((s) => s !== p) });
             }}
             disabled={busy}
-            className="h-8 rounded-full bg-surface-sunken px-3 text-role-micro font-bold uppercase tracking-wider text-text-muted outline-none ring-1 ring-border-soft transition disabled:opacity-60"
+            className="h-8 rounded-full bg-surface-sunken px-3 text-role-micro uppercase tracking-wider text-text-muted outline-none ring-1 ring-border-soft transition disabled:opacity-60"
           >
             <option value="">— none (auto from employee code) —</option>
             {STATION_OPTIONS.map((st) => (
@@ -87,7 +87,7 @@ export function StationsCard({ stations, borderClass, busy, onSave }: StationsCa
                     }
                   >
                     {STATION_LABELS[st]}
-                    {isPrimary && <span className="text-role-eyebrow font-bold uppercase tracking-wider opacity-70">primary</span>}
+                    {isPrimary && <span className="text-role-eyebrow uppercase tracking-wider opacity-70">primary</span>}
                   </button>
                 </HoverTooltip>
               );

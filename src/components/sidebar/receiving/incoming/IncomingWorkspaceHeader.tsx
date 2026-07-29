@@ -239,26 +239,26 @@ export function IncomingWorkspaceHeader({
                         key={c.carrier}
                         className="grid grid-cols-[minmax(0,1fr)_2.25rem_2.75rem_2.25rem_2.25rem] items-center gap-x-1 border-t border-border-hairline px-2 py-1 text-role-caption"
                       >
-                        <span className="truncate font-bold text-text-muted">
+                        <span className="truncate font-semibold text-text-muted">
                           {c.carrier === 'UNKNOWN' ? 'Other' : c.carrier}
                         </span>
                         <span
-                          className={`text-right font-bold tabular-nums ${c.in_transit ? 'text-blue-600' : 'text-text-faint'}`}
+                          className={`text-right font-semibold tabular-nums ${c.in_transit ? 'text-blue-600' : 'text-text-faint'}`}
                         >
                           {c.in_transit}
                         </span>
                         <span
-                          className={`text-right font-bold tabular-nums ${c.tracking_unavailable ? 'text-violet-600' : 'text-text-faint'}`}
+                          className={`text-right font-semibold tabular-nums ${c.tracking_unavailable ? 'text-violet-600' : 'text-text-faint'}`}
                         >
                           {c.tracking_unavailable}
                         </span>
                         <span
-                          className={`text-right font-bold tabular-nums ${c.delivered_unscanned ? 'text-emerald-600' : 'text-text-faint'}`}
+                          className={`text-right font-semibold tabular-nums ${c.delivered_unscanned ? 'text-emerald-600' : 'text-text-faint'}`}
                         >
                           {c.delivered_unscanned}
                         </span>
                         <span
-                          className={`text-right font-bold tabular-nums ${c.carrier_mismatch ? 'text-red-600' : 'text-text-faint'}`}
+                          className={`text-right font-semibold tabular-nums ${c.carrier_mismatch ? 'text-red-600' : 'text-text-faint'}`}
                         >
                           {c.carrier_mismatch}
                         </span>

@@ -4,6 +4,7 @@ import {
   sourceScopeFromFilters,
 } from './library-filter-state';
 import { claimsTicketLabel } from '@/lib/photos/display-names';
+import { photoStageLabel } from '@/lib/photos/stages';
 
 export const PHOTO_LIBRARY_DEFAULT_SUBTITLE =
   'Browse receiving, packing, and unit photos';
@@ -55,7 +56,17 @@ export function describePhotoLibraryContext(filters: PhotoLibraryFilterState): {
   subtitle: string;
 } {
   const source = sourceScopeFromFilters(filters);
-  if (source !== 'all' && !filters.receivingId && !filters.poRef && !filters.ticketId) {
+  const hasNarrowerFilter =
+    !!filters.receivingId || !!filters.poRef || !!filters.ticketId || !!filters.sku || !!filters.serial;
+  if (source !== 'all' && !hasNarrowerFilter) {
+    // Stage sub-filter under Unboxing gets the stage's own header — label
+    // resolved through the stage SoT, never an inline map.
+    if (source === 'unboxing' && filters.stage) {
+      return {
+        title: photoStageLabel(filters.stage),
+        subtitle: 'Unboxing evidence at this stage',
+      };
+    }
     return {
       title: PHOTO_SOURCE_SCOPE_LABELS[source],
       subtitle: PHOTO_LIBRARY_DEFAULT_SUBTITLE,
@@ -67,6 +78,18 @@ export function describePhotoLibraryContext(filters: PhotoLibraryFilterState): {
     return {
       title: claimsTicketLabel(filters.ticketId),
       subtitle: 'Photos linked to this Zendesk claim',
+    };
+  }
+  if (filters.sku) {
+    return {
+      title: `SKU ${filters.sku}`,
+      subtitle: 'Photos linked to this SKU across intake, testing, and packing',
+    };
+  }
+  if (filters.serial) {
+    return {
+      title: `Serial ${filters.serial}`,
+      subtitle: 'Photos linked to this serialized unit',
     };
   }
   if (filters.poRef) {

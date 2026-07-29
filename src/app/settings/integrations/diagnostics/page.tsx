@@ -87,7 +87,7 @@ function EmptyBox({ children }: { children: React.ReactNode }) {
 
 function Eyebrow({ children }: { children: React.ReactNode }) {
   return (
-    <h2 className="text-role-caption font-black uppercase tracking-[0.18em] text-text-faint">{children}</h2>
+    <h2 className="text-role-caption font-semibold uppercase tracking-[0.18em] text-text-faint">{children}</h2>
   );
 }
 
@@ -210,7 +210,7 @@ export default async function IntegrationsDiagnosticsPage() {
                   >
                     <span aria-hidden className={`h-2 w-2 shrink-0 rounded-full ${STATE_DOT[c.state]}`} />
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-role-caption font-bold text-text-default">
+                      <p className="truncate text-role-caption font-semibold text-text-default">
                         {providerLabel(c.provider)}
                         {c.scope ? <span className="font-normal text-text-faint"> · {c.scope}</span> : null}
                       </p>
@@ -252,7 +252,7 @@ export default async function IntegrationsDiagnosticsPage() {
                 {credentialUsage.map((r, i) => (
                   <div key={`${r.provider}-${r.operation}-${r.outcome}-${i}`} className="flex items-center gap-3 px-4 py-2">
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-role-caption font-bold text-text-default">
+                      <p className="truncate text-role-caption font-semibold text-text-default">
                         {providerLabel(r.provider)}
                         <span className="font-normal text-text-faint"> · {r.operation}</span>
                       </p>
@@ -261,7 +261,7 @@ export default async function IntegrationsDiagnosticsPage() {
                       <Chip tone={OUTCOME_CHIP[r.outcome] ?? 'bg-surface-sunken text-text-muted ring-border-soft'}>
                         {r.outcome}
                       </Chip>
-                      <span className="w-10 text-right text-role-caption font-bold tabular-nums text-text-muted">
+                      <span className="w-10 text-right text-role-caption font-semibold tabular-nums text-text-muted">
                         ×{r.n}
                       </span>
                       <span className="w-20 text-right text-role-micro font-semibold tabular-nums text-text-faint">
@@ -286,7 +286,7 @@ export default async function IntegrationsDiagnosticsPage() {
                 {cronRuns.map((r, i) => (
                   <div key={`${r.job}-${i}`} className="flex items-center gap-3 px-4 py-2">
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-role-caption font-bold text-text-default">{r.job}</p>
+                      <p className="truncate text-role-caption font-semibold text-text-default">{r.job}</p>
                       {r.error ? (
                         <p className="truncate text-role-eyebrow font-semibold uppercase tracking-widest text-rose-700">
                           {r.error}

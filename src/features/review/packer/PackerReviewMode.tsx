@@ -186,7 +186,7 @@ export function PackerReviewMode({
                           loading="lazy"
                         />
                         {kind ? (
-                          <span className="absolute bottom-1 left-1 rounded bg-scrim/70 px-1 py-0.5 text-role-micro font-black uppercase tracking-widest text-white">
+                          <span className="absolute bottom-1 left-1 rounded bg-scrim/70 px-1 py-0.5 text-role-micro uppercase tracking-widest text-white">
                             {kind}
                           </span>
                         ) : null}
@@ -208,7 +208,7 @@ export function PackerReviewMode({
                 <p className="mb-2 truncate text-role-caption text-text-muted">{row.productTitle}</p>
               ) : null}
               <div className="flex flex-wrap items-center gap-2">
-                <span className="truncate font-mono text-role-caption font-bold text-text-default">
+                <span className="truncate font-mono text-role-caption font-semibold text-text-default">
                   {tracking || 'No tracking captured'}
                 </span>
                 <VerifyBadge
@@ -368,17 +368,17 @@ function VerifyBadge({
   if (!hasTracking) return null;
   if (loading) {
     return (
-      <span className="inline-flex items-center gap-1 rounded bg-surface-sunken px-1.5 py-0.5 text-role-micro font-black uppercase tracking-widest text-text-muted ring-1 ring-inset ring-border-soft">
+      <span className="inline-flex items-center gap-1 rounded bg-surface-sunken px-1.5 py-0.5 text-role-micro uppercase tracking-widest text-text-muted ring-1 ring-inset ring-border-soft">
         <Loader2 className="h-3 w-3 animate-spin" /> Checking
       </span>
     );
   }
   return found ? (
-    <span className="inline-flex items-center gap-1 rounded bg-emerald-50 px-1.5 py-0.5 text-role-micro font-black uppercase tracking-widest text-emerald-700 ring-1 ring-inset ring-emerald-200">
+    <span className="inline-flex items-center gap-1 rounded bg-emerald-50 px-1.5 py-0.5 text-role-micro uppercase tracking-widest text-emerald-700 ring-1 ring-inset ring-emerald-200">
       <Check className="h-3 w-3" /> Order matched
     </span>
   ) : (
-    <span className="inline-flex items-center gap-1 rounded bg-amber-50 px-1.5 py-0.5 text-role-micro font-black uppercase tracking-widest text-amber-700 ring-1 ring-inset ring-amber-200">
+    <span className="inline-flex items-center gap-1 rounded bg-amber-50 px-1.5 py-0.5 text-role-micro uppercase tracking-widest text-amber-700 ring-1 ring-inset ring-amber-200">
       <AlertTriangle className="h-3 w-3" /> Not matched
     </span>
   );

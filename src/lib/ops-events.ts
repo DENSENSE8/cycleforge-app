@@ -18,20 +18,16 @@ import pool from '@/lib/db';
  * that test also asserts every registry opsEventEntityType is covered here — so
  * the DB CHECK and this code list can never drift. Adding a value = extend this
  * array + the CHECK (new migration) in the same PR.
+ *
+ * ALTITUDE: the array itself now lives in the dependency-free
+ * `./ops-event-types` (this module imports the Neon pool, so pure consumers —
+ * client bundles, the notification vocabulary, DB-free tests — must not have to
+ * pull that graph in to read a list of strings). It is re-exported here so
+ * every existing `from '@/lib/ops-events'` import keeps resolving unchanged.
+ * See .claude/rules/build-gotchas.md → bundle altitude.
  */
-export const OPS_EVENT_ENTITY_TYPES = [
-  'receiving',
-  'receiving_line',
-  'serial_unit',
-  'shipment',
-  'order',
-  'fba_shipment',
-  'repair',
-  'warranty_claim',
-  'other',
-] as const;
-
-export type OpsEntityType = (typeof OPS_EVENT_ENTITY_TYPES)[number];
+export { OPS_EVENT_ENTITY_TYPES, type OpsEntityType } from './ops-event-types';
+import type { OpsEntityType } from './ops-event-types';
 
 export interface RecordOpsEventInput {
   organizationId: string;

@@ -102,7 +102,7 @@ function StatusPill({ status }: { status: string | null }) {
   const v = status || 'EXPECTED';
   return (
     <span
-      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-bold uppercase tracking-wide ${workflowStageBadge(v)}`}
+      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold uppercase tracking-wide ${workflowStageBadge(v)}`}
     >
       {workflowStatusTableLabel(v)}
     </span>
@@ -201,14 +201,14 @@ function CartonPageInner() {
       <header className="sticky top-0 z-10 bg-surface-card border-b border-border-soft px-4 py-3">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-xs font-black uppercase tracking-[0.16em] text-text-soft">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-text-soft">
               Package
             </p>
-            <h1 className="truncate text-lg font-black text-text-default">
+            <h1 className="truncate text-lg font-semibold text-text-default">
               RCV-{receivingId}
             </h1>
             {data?.purchase_orders && data.purchase_orders.length > 0 ? (
-              <p className="mt-0.5 truncate font-mono text-role-caption font-bold text-text-muted">
+              <p className="mt-0.5 truncate font-mono text-role-caption font-semibold text-text-muted">
                 PO{' '}
                 {data.purchase_orders
                   .map((p) => p.zoho_purchaseorder_number || p.zoho_purchaseorder_id)
@@ -220,7 +220,7 @@ function CartonPageInner() {
             <ScanAgainBar />
             <NetworkChip compact />
             {carton ? (
-              <span className="inline-flex items-center rounded-full bg-surface-inverse px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-white">
+              <span className="inline-flex items-center rounded-full bg-surface-inverse px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-white">
                 {platformLabel(carton)}
               </span>
             ) : null}
@@ -277,7 +277,7 @@ function CartonPageInner() {
                 label="Progress"
                 value={
                   <span>
-                    <span className="font-mono font-black">
+                    <span className="font-mono font-semibold">
                       {data.totals.received}
                     </span>
                     <span className="text-text-faint"> / </span>
@@ -311,7 +311,7 @@ function CartonPageInner() {
         {/* ─── Lines (the bundle split — one card per part) ─── */}
         {!loading && lines.length > 0 && (
           <section>
-            <p className="px-1 mb-2 text-xs font-black uppercase tracking-[0.16em] text-text-soft">
+            <p className="px-1 mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-text-soft">
               Lines ({lines.length})
             </p>
             <div className="space-y-2">
@@ -338,7 +338,7 @@ function CartonPageInner() {
                           className={`h-2 w-2 shrink-0 rounded-full ${getStatusDotBg(line.workflow_status, received, expected)}`}
                         />
                       </HoverTooltip>
-                      <p className="truncate text-sm font-bold text-text-default">
+                      <p className="truncate text-sm font-semibold text-text-default">
                         {line.item_name || line.sku || `Line #${line.id}`}
                       </p>
                     </div>
@@ -346,11 +346,11 @@ function CartonPageInner() {
                     <div className="mt-1 flex flex-wrap items-center gap-1.5 pl-4">
                       <StatusPill status={line.workflow_status} />
                       {line.condition_grade && (
-                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-role-micro font-bold uppercase tracking-wide ${conditionBadgeTone(line.condition_grade)}`}>
+                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-role-micro uppercase tracking-wide ${conditionBadgeTone(line.condition_grade)}`}>
                           {conditionGradeTableLabel(line.condition_grade)}
                         </span>
                       )}
-                      <span className={`text-role-caption font-black uppercase tracking-widest ${isComplete ? 'text-emerald-600' : 'text-text-muted'}`}>
+                      <span className={`text-role-caption font-semibold uppercase tracking-widest ${isComplete ? 'text-emerald-600' : 'text-text-muted'}`}>
                         {received}/{expected ?? '?'}
                       </span>
                     </div>
@@ -370,7 +370,7 @@ function CartonPageInner() {
                           <span
                             key={s.id}
                             title={s.serial_number}
-                            className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-mono text-role-micro font-bold ${unitStatusBadgeTone(s.current_status)}`}
+                            className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-mono text-role-micro ${unitStatusBadgeTone(s.current_status)}`}
                           >
                             …{getLast4(s.serial_number)}
                             {s.current_location ? (
@@ -379,7 +379,7 @@ function CartonPageInner() {
                           </span>
                         ))}
                         {line.serials.length > 4 && (
-                          <span className="text-xs font-bold text-text-soft">
+                          <span className="text-xs font-semibold text-text-soft">
                             +{line.serials.length - 4} more
                           </span>
                         )}
@@ -401,7 +401,7 @@ function CartonPageInner() {
         {/* ─── Recent activity timeline ─── */}
         {!loading && events.length > 0 && (
           <section className="rounded-lg border border-border-soft bg-surface-card p-3 shadow-sm">
-            <p className="mb-2 text-xs font-black uppercase tracking-[0.16em] text-text-soft">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-text-soft">
               Recent activity ({events.length})
             </p>
             <ul className="space-y-2">
@@ -409,7 +409,7 @@ function CartonPageInner() {
                 <li key={ev.id} className="flex items-start gap-2 text-role-caption">
                   <span className="mt-[3px] inline-block h-1.5 w-1.5 rounded-full bg-border-emphasis shrink-0" />
                   <div className="min-w-0 flex-1">
-                    <p className="font-bold text-text-default">
+                    <p className="font-semibold text-text-default">
                       {ev.event_type.replace(/_/g, ' ')}
                       {ev.sku ? (
                         <span className="ml-1 font-mono text-text-muted">
@@ -448,7 +448,7 @@ function CartonPageInner() {
           size="lg"
           onClick={() => setActionsOpen(true)}
           disabled={loading || lines.length === 0}
-          className="h-12 w-full rounded-2xl bg-gradient-to-br from-blue-500 to-blue-700 font-black uppercase tracking-wider shadow-md shadow-blue-600/30"
+          className="h-12 w-full rounded-2xl bg-gradient-to-br from-blue-500 to-blue-700 font-semibold uppercase tracking-wider shadow-md shadow-blue-600/30"
         >
           {lines.length === 0 ? 'No lines to update' : `Update ${lines.length} line${lines.length === 1 ? '' : 's'}`}
         </Button>
@@ -484,11 +484,11 @@ function Row({
 }) {
   return (
     <div className="flex items-baseline justify-between gap-3 px-4 py-2.5">
-      <span className="text-xs font-black uppercase tracking-[0.16em] text-text-soft">
+      <span className="text-xs font-semibold uppercase tracking-[0.16em] text-text-soft">
         {label}
       </span>
       <div className="text-right min-w-0">
-        <p className="truncate text-sm font-bold text-text-default">{value}</p>
+        <p className="truncate text-sm font-semibold text-text-default">{value}</p>
         {hint ? (
           <p className="mt-0.5 truncate text-xs font-semibold text-text-soft">
             {hint}

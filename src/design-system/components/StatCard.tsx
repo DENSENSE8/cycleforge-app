@@ -98,13 +98,13 @@ export function StatCard({
         ) : typeof value === 'number' ? (
           <AnimatedStat
             value={value}
-            className="text-2xl font-black tracking-tight text-text-default"
+            className="text-2xl font-semibold tracking-tight text-text-default"
           />
         ) : (
           <motion.span
             initial={{ opacity: 0, y: 5 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-2xl font-black tracking-tight text-text-default tabular-nums"
+            className="text-2xl font-semibold tracking-tight text-text-default tabular-nums"
           >
             {value}
           </motion.span>
@@ -114,7 +114,7 @@ export function StatCard({
           <motion.span 
             initial={{ opacity: 0, x: -5 }}
             animate={{ opacity: 1, x: 0 }}
-            className={`text-role-caption font-black tabular-nums flex items-center gap-0.5 ${delta >= 0 ? 'text-text-success' : 'text-text-danger'}`}
+            className={`text-role-caption font-semibold tabular-nums flex items-center gap-0.5 ${delta >= 0 ? 'text-text-success' : 'text-text-danger'}`}
           >
             <span className="text-role-micro font-normal">{delta > 0 ? '▲' : '▼'}</span>
             {Math.abs(delta)}%

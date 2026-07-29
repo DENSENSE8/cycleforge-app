@@ -48,7 +48,7 @@ export function Calendar({ className, classNames, ...props }: CalendarProps) {
         range_middle:
           'bg-blue-50 text-blue-700 [&_button]:hover:bg-blue-100',
         today:
-          '[&_button]:font-bold [&_button]:ring-1 [&_button]:ring-inset [&_button]:ring-blue-200',
+          '[&_button]:font-semibold [&_button]:ring-1 [&_button]:ring-inset [&_button]:ring-blue-200',
         outside: 'opacity-40',
         disabled: 'opacity-30 pointer-events-none',
         hidden: 'invisible',

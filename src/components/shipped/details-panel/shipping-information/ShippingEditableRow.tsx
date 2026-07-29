@@ -101,16 +101,16 @@ export function ShippingEditableRow({
           }}
           placeholder={placeholder}
           autoFocus
-          className="h-8 w-full border-0 bg-transparent px-0 text-sm font-bold text-text-default outline-none ring-0"
+          className="h-8 w-full border-0 bg-transparent px-0 text-sm font-semibold text-text-default outline-none ring-0"
         />
       ) : (
         allowEdit ? (
           // ds-raw-button: full-width text-left value row that enters inline edit on click, not a standard action button
           <button type="button" onClick={() => setIsEditing(true)} className="block w-full py-0 text-left">
-            <p className="truncate text-sm font-bold text-text-default">{displayValue || placeholder}</p>
+            <p className="truncate text-sm font-semibold text-text-default">{displayValue || placeholder}</p>
           </button>
         ) : (
-          <p className="truncate text-sm font-bold text-text-default">{displayValue || placeholder}</p>
+          <p className="truncate text-sm font-semibold text-text-default">{displayValue || placeholder}</p>
         )
       )}
     </DetailsPanelRow>

@@ -5,13 +5,11 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useAblyChannel } from '@/hooks/useAblyChannel';
 import { useAuth } from '@/contexts/AuthContext';
 import { safeChannelName, getStaffStationBridgeChannelName } from '@/lib/realtime/channels';
-
-interface PhotoRequestPayload {
-  receiving_id?: number;
-  tracking?: string | null;
-  request_id?: string;
-  requested_by_staff_id?: number;
-}
+import {
+  mobileCaptureHrefForRequest,
+  normalizeReceivingPhotoRequest,
+  type ReceivingPhotoRequestMessage,
+} from '@/lib/receiving/photo-scope';
 
 /**
  * Phone-side receiver for the desktop scan → camera flow. When the receiving
@@ -47,23 +45,24 @@ export function ReceivingPhotoRequestCamera() {
   pathnameRef.current = pathname;
 
   const handleRequest = useCallback(
-    (msg: { data?: PhotoRequestPayload }) => {
-      const id = Number(msg?.data?.receiving_id);
-      if (!Number.isFinite(id) || id <= 0) return;
+    (msg: { data?: ReceivingPhotoRequestMessage }) => {
+      // Stage-aware v2 payloads route by stage; legacy v1 messages (no stage)
+      // normalize to an arrival capture — same page as before.
+      const request = normalizeReceivingPhotoRequest(msg?.data);
+      if (!request) return;
 
-      const requestId = String(msg?.data?.request_id || '').trim();
-      if (requestId && lastRequestRef.current === requestId) return;
-      lastRequestRef.current = requestId || null;
+      if (request.requestId && lastRequestRef.current === request.requestId) return;
+      lastRequestRef.current = request.requestId;
 
       // Already on a capture surface — don't yank the operator out of an
       // in-progress camera/upload session for the previous carton.
       if (pathnameRef.current?.endsWith('/photos')) return;
 
-      // The capture page resolves the PO title + poRef from the receiving id,
-      // so we only need the id + requestId (the latter drives the per-photo
-      // `receiving_photo_uploaded` echo back to the desktop).
-      const qs = requestId ? `?requestId=${encodeURIComponent(requestId)}` : '';
-      router.push(`/m/r/${id}/photos${qs}`);
+      // Carton stages open /m/r/{id}/photos; unbox_item opens the PO item
+      // capture with the line id. The capture page resolves the PO title +
+      // poRef itself; requestId drives the per-photo `receiving_photo_uploaded`
+      // echo back to the desktop.
+      router.push(mobileCaptureHrefForRequest(request));
     },
     [router],
   );

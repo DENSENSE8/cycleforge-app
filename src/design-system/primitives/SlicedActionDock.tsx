@@ -266,7 +266,7 @@ export function SlicedActionDock({
                       if (!item.keepOpen) closeMenu();
                     }}
                     className={cn(
-                      'flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-role-caption font-black uppercase tracking-wider transition-colors hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-35',
+                      'flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-role-caption font-semibold uppercase tracking-wider transition-colors hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-35',
                       item.selected ? 'bg-surface-hover text-text-default' : 'text-text-default',
                     )}
                   >
@@ -291,7 +291,7 @@ export function SlicedActionDock({
             disabled={isDisabled}
             title={title}
             className={cn(
-              'inline-flex min-w-0 items-center justify-center gap-2 bg-transparent text-sm font-bold text-white outline-none transition-[filter] focus-visible:z-30 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/70 disabled:cursor-not-allowed disabled:opacity-60',
+              'inline-flex min-w-0 items-center justify-center gap-2 bg-transparent text-sm font-semibold text-white outline-none transition-[filter] focus-visible:z-30 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/70 disabled:cursor-not-allowed disabled:opacity-60',
               segmentH,
               radiusR,
               embedded ? 'px-3.5' : 'px-5',
@@ -316,7 +316,7 @@ export function SlicedActionDock({
           data-embedded={embedded ? 'true' : undefined}
           data-segments="primary"
           className={cn(
-            'inline-flex items-center justify-center gap-2.5 text-sm font-bold text-white outline-none transition-[filter] focus-visible:ring-2 focus-visible:ring-white/70 disabled:cursor-not-allowed disabled:opacity-60',
+            'inline-flex items-center justify-center gap-2.5 text-sm font-semibold text-white outline-none transition-[filter] focus-visible:ring-2 focus-visible:ring-white/70 disabled:cursor-not-allowed disabled:opacity-60',
             segmentH,
             embedded ? 'px-4' : 'px-6',
             trackChrome,

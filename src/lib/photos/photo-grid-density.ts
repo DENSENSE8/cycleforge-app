@@ -60,8 +60,19 @@ export function photoLibraryShowsGridControls(
   return true;
 }
 
-/** Folders/List toggle in the primary header — photo surfaces, not folder drill tiles. */
-export function photoLibraryShowsSecondHeaderControls(
+/**
+ * Multi-select entry — only where photo tiles actually render. There is nothing
+ * to select at a folder drill level (year/month/week/day/entity paint folder
+ * tiles, not photos).
+ *
+ * The **view toggle is deliberately NOT gated by this** and always renders: it
+ * is the only chrome affordance that escapes folder mode. Gating it made the
+ * default landing state (`view=folders`, no dates → year tiles) a one-way trap
+ * with no visible way out — the recency tabs don't touch `view`, so the only
+ * exits were the search box, an undocumented digit shortcut, or hand-editing
+ * `?view=`. See `PhotoDisplayControls`.
+ */
+export function photoLibraryShowsSelectControl(
   view: PhotoLibraryViewMode,
   folderIsLeaf: boolean,
 ): boolean {

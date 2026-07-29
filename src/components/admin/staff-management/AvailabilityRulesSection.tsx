@@ -66,7 +66,7 @@ export function AvailabilityRulesSection({
               <select
                 value={availabilityDraft.isAllowed ? 'allowed' : 'blocked'}
                 onChange={(e) => setAvailabilityDraft((prev) => ({ ...prev, isAllowed: e.target.value === 'allowed' }))}
-                className="h-9 w-full border border-amber-200 bg-surface-card px-3 text-sm font-bold text-text-default outline-none focus:border-amber-400"
+                className="h-9 w-full border border-amber-200 bg-surface-card px-3 text-sm font-semibold text-text-default outline-none focus:border-amber-400"
               >
                 <option value="allowed">Allowed</option>
                 <option value="blocked">Blocked</option>
@@ -78,7 +78,7 @@ export function AvailabilityRulesSection({
                 type="date"
                 value={availabilityDraft.effectiveStartDate}
                 onChange={(e) => setAvailabilityDraft((prev) => ({ ...prev, effectiveStartDate: e.target.value }))}
-                className="h-9 w-full border border-amber-200 bg-surface-card px-3 text-sm font-bold text-text-default outline-none focus:border-amber-400"
+                className="h-9 w-full border border-amber-200 bg-surface-card px-3 text-sm font-semibold text-text-default outline-none focus:border-amber-400"
               />
             </label>
             <label className="space-y-1">
@@ -87,7 +87,7 @@ export function AvailabilityRulesSection({
                 type="date"
                 value={availabilityDraft.effectiveEndDate}
                 onChange={(e) => setAvailabilityDraft((prev) => ({ ...prev, effectiveEndDate: e.target.value }))}
-                className="h-9 w-full border border-amber-200 bg-surface-card px-3 text-sm font-bold text-text-default outline-none focus:border-amber-400"
+                className="h-9 w-full border border-amber-200 bg-surface-card px-3 text-sm font-semibold text-text-default outline-none focus:border-amber-400"
               />
             </label>
             <label className="space-y-1 md:col-span-1">
@@ -96,7 +96,7 @@ export function AvailabilityRulesSection({
                 type="text"
                 value={availabilityDraft.reason}
                 onChange={(e) => setAvailabilityDraft((prev) => ({ ...prev, reason: e.target.value }))}
-                className="h-9 w-full border border-amber-200 bg-surface-card px-3 text-sm font-bold text-text-default outline-none focus:border-amber-400"
+                className="h-9 w-full border border-amber-200 bg-surface-card px-3 text-sm font-semibold text-text-default outline-none focus:border-amber-400"
                 placeholder="Optional note"
               />
             </label>
@@ -221,7 +221,7 @@ export function AvailabilityRulesSection({
                       Edit
                     </Button>
                     {bucket.extraRulesCount > 0 && (
-                      <div className="mt-1 text-role-micro font-bold text-amber-700">
+                      <div className="mt-1 text-role-micro text-amber-700">
                         +{bucket.extraRulesCount} window
                       </div>
                     )}

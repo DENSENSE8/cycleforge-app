@@ -34,6 +34,7 @@ const ProductsSidebarPanel = dynamic(() => import('@/components/sidebar/Products
 const WarehouseSidebarPanel = dynamic(() => import('@/components/sidebar/WarehouseSidebarPanel').then((m) => m.WarehouseSidebarPanel));
 const WalkInSidebarPanel = dynamic(() => import('@/components/sidebar/WalkInSidebarPanel').then((m) => m.WalkInSidebarPanel));
 const ManualsLibrarySidebar = dynamic(() => import('@/components/manuals/ManualsLibrarySidebar').then((m) => m.ManualsLibrarySidebar));
+const MediaLibrarySidebarPanel = dynamic(() => import('@/components/sidebar/MediaLibrarySidebarPanel').then((m) => m.MediaLibrarySidebarPanel));
 const TechSidebarPanel = dynamic(() => import('@/components/sidebar/TechSidebarPanel').then((m) => m.TechSidebarPanel));
 const PackerSidebarPanel = dynamic(() => import('@/components/sidebar/PackerSidebarPanel').then((m) => m.PackerSidebarPanel));
 const OutboundSidebarPanel = dynamic(() => import('@/components/sidebar/OutboundSidebarPanel').then((m) => m.OutboundSidebarPanel));
@@ -77,7 +78,9 @@ export function SidebarContextPanel({ onBackToAppNav }: { onBackToAppNav?: () =>
   if (routeKey === 'products') return <ProductsSidebarPanel />;
   if (routeKey === 'warehouse') return <WarehouseSidebarPanel />;
   if (routeKey === 'walk-in') return <WalkInSidebarPanel embedded hideSectionHeader />;
-  if (routeKey === 'repair') return <WalkInSidebarPanel embedded hideSectionHeader />;
+  // (No `repair` branch: `/repair` is a Receiving MODE and resolves to the
+  // `receiving` key — see getSidebarRouteKey. The branch that used to sit here
+  // could never be reached.)
   if (routeKey === 'manuals-library') return <ManualsLibrarySidebar />;
 
   if (routeKey === 'tech') {
@@ -92,7 +95,13 @@ export function SidebarContextPanel({ onBackToAppNav }: { onBackToAppNav?: () =>
     );
   }
 
-  if (routeKey === 'ops-photos') return null;
+  // Media library. This used to return `null` — "owns its whole context in the
+  // workbench chrome header, so it has no spine body." That was true of the
+  // folder-drill era: the breadcrumb WAS the navigation. Replacing the hierarchy
+  // with a faceted flat stream gave the rail a real job (saved views, date
+  // presets, labels), so the column is now resident. `CONTEXT_PANEL_ROUTE_KEYS`
+  // must list `ops-photos` for this branch to ever be reached.
+  if (routeKey === 'ops-photos') return <MediaLibrarySidebarPanel />;
   if (routeKey === 'packer') return <PackerSidebarPanel />;
   if (routeKey === 'outbound') return <OutboundSidebarPanel />;
   if (routeKey === 'review') return <ReviewSidebarPanel />;

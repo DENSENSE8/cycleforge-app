@@ -217,7 +217,7 @@ export function IssuesQueue({ modeToggle = null }: { modeToggle?: ReactNode }) {
                   )}
                 >
                   <span className="flex w-full min-w-0 items-center gap-2">
-                    <span className="min-w-0 flex-1 truncate text-role-caption font-bold text-text-default">
+                    <span className="min-w-0 flex-1 truncate text-role-caption font-semibold text-text-default">
                       {issue.title}
                     </span>
                     <span className="flex shrink-0 items-center gap-1.5">

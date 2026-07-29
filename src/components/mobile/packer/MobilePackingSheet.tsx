@@ -73,13 +73,13 @@ export function MobilePackingSheet({ row, open, onClose }: MobilePackingSheetPro
         <div className="flex flex-col gap-2">
           <div className="flex min-w-0 items-center gap-2">
             <span className={`h-2 w-2 shrink-0 rounded-full ${getSourceDotBg(row)}`} />
-            <div className="line-clamp-2 text-sm font-bold text-text-default">
+            <div className="line-clamp-2 text-sm font-semibold text-text-default">
               {productTitle}
             </div>
           </div>
 
           <div className="flex items-center gap-2 pl-4">
-            <span className="shrink-0 text-role-caption font-black uppercase tracking-widest">
+            <span className="shrink-0 text-role-caption font-semibold uppercase tracking-widest">
               <span className={quantity > 1 ? 'text-text-warning' : 'text-text-muted'}>
                 {quantity}
               </span>

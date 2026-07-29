@@ -55,8 +55,8 @@ export function CallLogView() {
   return (
     <div className="mx-auto h-full w-full max-w-3xl overflow-y-auto px-6 py-6">
       <header className="mb-2 flex items-baseline justify-between gap-3">
-        <h1 className="text-xl font-black uppercase tracking-tighter text-text-default">Call log</h1>
-        <p className="text-role-eyebrow font-bold uppercase tracking-widest text-blue-600">
+        <h1 className="text-xl font-semibold uppercase tracking-tighter text-text-default">Call log</h1>
+        <p className="text-role-eyebrow uppercase tracking-widest text-blue-600">
           {directionLabel} · live
         </p>
       </header>

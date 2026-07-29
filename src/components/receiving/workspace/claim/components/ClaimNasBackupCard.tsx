@@ -83,7 +83,7 @@ export function ClaimNasBackupCard({
         {folder ? (
           <>
             {' '}
-            → <span className="font-bold">/{folder}</span>
+            → <span className="font-semibold">/{folder}</span>
           </>
         ) : null}
         {backupOk ? (

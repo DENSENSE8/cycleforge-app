@@ -96,7 +96,7 @@ export default function InviteAcceptPage() {
 
         {preview.state === 'invalid' && (
           <div className="space-y-2 py-6 text-center">
-            <h1 className="text-lg font-bold text-text-default">Invitation unavailable</h1>
+            <h1 className="text-lg font-semibold text-text-default">Invitation unavailable</h1>
             <p className="text-sm text-text-soft">
               {preview.reason === 'expired' ? 'This invitation has expired.' :
                preview.reason === 'accepted' ? 'This invitation has already been used.' :
@@ -114,10 +114,10 @@ export default function InviteAcceptPage() {
             className="space-y-4"
           >
             <header className="space-y-1">
-              <p className="text-role-eyebrow font-bold uppercase tracking-[0.14em] text-text-faint">
+              <p className="text-role-eyebrow uppercase tracking-[0.14em] text-text-faint">
                 You&rsquo;re invited to
               </p>
-              <h1 className="text-lg font-bold text-text-default">{preview.organizationName}</h1>
+              <h1 className="text-lg font-semibold text-text-default">{preview.organizationName}</h1>
               <p className="text-sm text-text-soft">
                 {preview.email}{preview.role ? ` · ${preview.role.replace(/_/g, ' ')}` : ''}
               </p>

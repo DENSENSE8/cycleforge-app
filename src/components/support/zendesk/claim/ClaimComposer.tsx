@@ -61,7 +61,7 @@ export function ClaimComposer({ c }: { c: ZendeskClaimController }) {
           <div className="space-y-2.5 rounded-xl bg-surface-canvas/80 p-3.5 ring-1 ring-inset ring-border-hairline">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-role-caption font-bold text-text-muted">First message</p>
+                <p className="text-role-caption font-semibold text-text-muted">First message</p>
                 <p className="text-role-caption text-text-soft">
                   {c.createPublic ? 'Emails the requester below.' : 'Internal note — nobody is emailed.'}
                 </p>

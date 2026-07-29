@@ -50,7 +50,7 @@ export function ReceivingProductLabelPreview({ sku, title, serialNumber, embedde
   const inner = (
     <div className={innerShell}>
       <div className="min-w-0 flex-1">
-        <p className="font-mono text-base font-black tracking-tight text-text-default">{sku.trim()}</p>
+        <p className="font-mono text-base font-semibold tracking-tight text-text-default">{sku.trim()}</p>
         {title.trim() ? (
           <p className="mt-1 line-clamp-3 text-role-caption text-text-soft leading-snug">{title}</p>
         ) : null}

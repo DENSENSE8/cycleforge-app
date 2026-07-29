@@ -165,7 +165,7 @@ export function ActiveOrderWorkspace({
               eyebrow={`${label} · ${stateLabel}`}
               value={orderIdDisplay}
               valueTitle={orderIdDisplay}
-              valueClassName="truncate text-sm font-black tracking-tight text-text-default"
+              valueClassName="truncate text-sm font-semibold tracking-tight text-text-default"
             />
           </>
         }
@@ -198,7 +198,7 @@ export function ActiveOrderWorkspace({
               <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
                 <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-600" />
                 <div className="space-y-0.5">
-                  <p className="text-role-caption font-bold text-amber-800">
+                  <p className="text-role-caption font-semibold text-amber-800">
                     Substitution pending approval
                   </p>
                   <p className="text-role-micro font-semibold text-amber-700">

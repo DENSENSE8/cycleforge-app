@@ -38,7 +38,7 @@ function StatTile({ label, value, sub }: { label: string; value: string; sub?: s
   return (
     <div className="rounded-xl border border-border-soft bg-surface-card p-3">
       <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">{label}</p>
-      <p className="mt-1 text-lg font-bold text-text-default">{value}</p>
+      <p className="mt-1 text-lg font-semibold text-text-default">{value}</p>
       {sub ? <p className="text-role-caption text-text-faint">{sub}</p> : null}
     </div>
   );
@@ -161,7 +161,7 @@ export function AnalyticsPane() {
   return (
     <div className="mx-auto max-w-4xl space-y-4 p-6">
       <div className="flex items-center justify-between gap-3">
-        <h1 className="text-xl font-bold text-text-default">Sourcing analytics</h1>
+        <h1 className="text-xl font-semibold text-text-default">Sourcing analytics</h1>
         {rangeButtons}
       </div>
 

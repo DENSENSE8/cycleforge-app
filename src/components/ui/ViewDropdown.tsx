@@ -130,7 +130,7 @@ export function ViewDropdown<T extends string>({
           }}
           className={`ds-raw-button ${
             buttonClassName ||
-            `flex items-center ${isSm ? 'h-10 text-xs' : 'h-14 text-sm'} w-full border-b border-border-emphasis bg-surface-card px-4 pr-12 text-left ${caseClass} tracking-wide text-text-default outline-none transition-colors hover:bg-surface-hover ${ibmPlexSans.className} font-bold`
+            `flex items-center ${isSm ? 'h-10 text-xs' : 'h-14 text-sm'} w-full border-b border-border-emphasis bg-surface-card px-4 pr-12 text-left ${caseClass} tracking-wide text-text-default outline-none transition-colors hover:bg-surface-hover ${ibmPlexSans.className} font-semibold`
           }`}
         >
           {SelectedIcon ? <SelectedIcon className="mr-2 h-4 w-4 shrink-0 text-blue-600" /> : null}
@@ -184,7 +184,7 @@ export function ViewDropdown<T extends string>({
                       className={`ds-raw-button flex ${isSm ? 'h-9' : 'h-11'} w-full items-center gap-2 ${
                         isBoxy ? 'px-3' : 'px-4'
                       } text-left ${
-                        optionClassName || (isSm ? 'text-xs font-bold tracking-wide' : 'text-sm font-bold tracking-wide')
+                        optionClassName || (isSm ? 'text-xs font-semibold tracking-wide' : 'text-sm font-semibold tracking-wide')
                       } ${caseClass} transition-colors ${ibmPlexSans.className} text-text-default hover:bg-surface-hover`}
                     >
                       {OptionIcon ? <OptionIcon className="h-4 w-4 shrink-0 text-blue-600" /> : null}

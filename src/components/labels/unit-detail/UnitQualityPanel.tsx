@@ -138,15 +138,15 @@ function QualityCard({ quality, grade }: { quality: QualityScore | null; grade: 
     <section className={`${CARD} p-5`}>
       <div className="mb-3 flex items-center justify-between">
         <h3 className={HEAD}>Quality</h3>
-        <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-role-micro font-bold uppercase tracking-wider ring-1 ${tone}`}>
+        <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-role-micro uppercase tracking-wider ring-1 ${tone}`}>
           <ShieldCheck className="h-3 w-3" /> {quality.risk_level} risk
         </span>
       </div>
       <div className="flex items-end gap-3">
-        <span className="text-4xl font-black tabular-nums text-text-default">{quality.quality_score}</span>
+        <span className="text-4xl font-semibold tabular-nums text-text-default">{quality.quality_score}</span>
         <span className="pb-1 text-role-caption font-semibold text-text-faint">/ 100</span>
         <div className="ml-auto text-right text-role-micro text-text-faint">
-          {grade ? <div className="font-bold text-text-muted">{grade}</div> : null}
+          {grade ? <div className="font-semibold text-text-muted">{grade}</div> : null}
           {quality.ebay_condition_id ? <div>eBay cond {quality.ebay_condition_id}</div> : null}
         </div>
       </div>
@@ -283,16 +283,16 @@ function FailureTagsCard({
                 <AlertTriangle className={`mt-0.5 h-4 w-4 shrink-0 ${isOpen ? 'text-rose-500' : 'text-text-faint'}`} />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <span className={`text-role-caption font-bold ${isOpen ? 'text-text-default' : 'text-text-faint line-through'}`}>
+                    <span className={`text-role-caption font-semibold ${isOpen ? 'text-text-default' : 'text-text-faint line-through'}`}>
                       {t.label ?? t.code ?? `Mode #${t.failure_mode_id}`}
                     </span>
                     {t.severity && (
-                      <span className={`rounded-full border px-1.5 py-0.5 text-role-micro font-bold uppercase ${qualitySeverityToneClass(t.severity)}`}>
+                      <span className={`rounded-full border px-1.5 py-0.5 text-role-micro uppercase ${qualitySeverityToneClass(t.severity)}`}>
                         {t.severity}
                       </span>
                     )}
                     {!isOpen && (
-                      <span className="text-role-micro font-bold uppercase tracking-wider text-emerald-600">{t.resolution_status}</span>
+                      <span className="text-role-micro uppercase tracking-wider text-emerald-600">{t.resolution_status}</span>
                     )}
                   </div>
                   <div className="mt-0.5 text-role-micro text-text-soft">
@@ -453,10 +453,10 @@ function RepairRowItem({
   return (
     <li className="px-5 py-3">
       <div className="flex items-center gap-2">
-        <span className={`rounded-md px-1.5 py-0.5 text-role-micro font-bold uppercase tracking-wider ${repairOutcomeToneClass(repair.status)}`}>
+        <span className={`rounded-md px-1.5 py-0.5 text-role-micro uppercase tracking-wider ${repairOutcomeToneClass(repair.status)}`}>
           {repair.status.replace(/_/g, ' ')}
         </span>
-        <span className="min-w-0 flex-1 truncate text-role-caption font-bold text-text-default">{repair.summary}</span>
+        <span className="min-w-0 flex-1 truncate text-role-caption font-semibold text-text-default">{repair.summary}</span>
         {repair.cost_cents != null && <span className="text-role-micro font-semibold text-text-soft">{dollars(repair.cost_cents)}</span>}
       </div>
       <div className="mt-0.5 text-role-micro text-text-soft">

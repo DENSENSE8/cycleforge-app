@@ -78,13 +78,13 @@ export function StaffEditCard({
             the name/role badge. */}
         <div className="mb-6 flex items-center gap-4">
           <div
-            className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-full text-xl font-bold text-white shadow-lg shadow-gray-900/15 ring-4 ring-white transition-colors"
+            className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-full text-xl font-semibold text-white shadow-lg shadow-gray-900/15 ring-4 ring-white transition-colors"
             style={{ backgroundColor: editColorHex }}
           >
             {member.name.split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]?.toUpperCase() ?? '').join('')}
           </div>
           <div className="min-w-0 flex-1">
-            <h3 className="truncate text-xl font-bold tracking-tight text-text-default">{member.name}</h3>
+            <h3 className="truncate text-xl font-semibold tracking-tight text-text-default">{member.name}</h3>
             <div className="mt-1 flex flex-wrap items-center gap-1.5">
               <span className="inline-flex items-center rounded-full bg-surface-sunken px-2.5 py-0.5 text-role-micro font-semibold uppercase tracking-[0.14em] text-text-muted">{member.role}</span>
               {member.employee_id ? (

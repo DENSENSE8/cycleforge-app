@@ -47,7 +47,7 @@ export function SuggestionRow({
           <span className={`inline-flex h-2 w-2 shrink-0 rounded-full ${dotColor}`} />
         </HoverTooltip>
         <div className="min-w-0 flex-1">
-          <div className="flex min-w-0 items-center gap-1.5 font-mono text-xs font-bold text-text-default">
+          <div className="flex min-w-0 items-center gap-1.5 font-mono text-xs font-semibold text-text-default">
             <CopyableId value={value} />
             {secondary ? (
               <>
@@ -60,7 +60,7 @@ export function SuggestionRow({
                 {candidate.accountName}
               </span>
             )}
-            <span className="ml-auto shrink-0 text-role-micro font-bold text-text-muted">{candidate.confidence}</span>
+            <span className="ml-auto shrink-0 text-role-micro text-text-muted">{candidate.confidence}</span>
           </div>
           {rowTitle && <p className="truncate text-role-micro text-text-muted">{rowTitle}</p>}
           <p className="truncate text-role-eyebrow font-medium uppercase tracking-wider text-text-faint">{candidate.reason}</p>

@@ -78,7 +78,7 @@ function AgentCard({ agent, index }: { agent: LocalAgentState; index: number }) 
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <p className="truncate text-role-body font-extrabold tracking-tight text-text-default">
+            <p className="truncate text-role-body font-semibold tracking-tight text-text-default">
               {meta.name}
             </p>
             <span
@@ -88,7 +88,7 @@ function AgentCard({ agent, index }: { agent: LocalAgentState; index: number }) 
               {tone.label}
             </span>
           </div>
-          <p className="mt-0.5 text-role-micro font-bold uppercase tracking-[0.12em] text-text-muted">
+          <p className="mt-0.5 text-role-micro uppercase tracking-[0.12em] text-text-muted">
             {meta.stage}
           </p>
         </div>
@@ -123,7 +123,7 @@ export function OperationsAgentsRow() {
       <div className="mb-5 flex items-end justify-between gap-4">
         <div>
           <span className={`${sectionLabel} !text-text-muted`}>Local agents</span>
-          <h2 className="mt-1 text-xl font-extrabold tracking-tight text-text-default sm:text-2xl">
+          <h2 className="mt-1 text-xl font-semibold tracking-tight text-text-default sm:text-2xl">
             Agents paired to the workflow
           </h2>
         </div>

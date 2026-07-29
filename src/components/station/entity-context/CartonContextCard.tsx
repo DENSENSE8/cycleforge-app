@@ -92,6 +92,7 @@ export function CartonContextCard({
   onClassifyPillOpen,
   onMakeClaim,
   showStaffPhotoRow = true,
+  photoStage = 'arrival_package',
   listingLink,
   showListing = true,
   listingEditOpen = false,
@@ -163,6 +164,13 @@ export function CartonContextCard({
   onMakeClaim?: () => void;
   /** Photos + Claim row. Hidden in triage (unbox-only). */
   showStaffPhotoRow?: boolean;
+  /**
+   * Carton capture stage the header photo pill stamps (stage SoT): triage
+   * keeps the arrival-package default; unbox chrome passes `unbox_carton`.
+   * Item evidence never comes from this card — it is line-scoped, so the
+   * active-line camera owns it.
+   */
+  photoStage?: 'arrival_package' | 'unbox_carton';
   listingLink: string;
   /** Hide the listing slot for stations whose active entity has no storefront listing. */
   showListing?: boolean;
@@ -617,6 +625,7 @@ export function CartonContextCard({
                 receivingId={receivingId}
                 staffId={Number(staffId) || 0}
                 poRef={effectiveOrder || null}
+                photoStage={photoStage}
                 onSendToTicket={onSendToTicket}
               />
             ) : null}

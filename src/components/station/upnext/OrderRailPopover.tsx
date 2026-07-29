@@ -42,7 +42,7 @@ export function OrderRailPopover({
     <div className="space-y-3 p-3.5">
       <div>
         <div className="flex items-start gap-2">
-          <p className="flex-1 text-sm font-black leading-snug text-text-default">{title}</p>
+          <p className="flex-1 text-sm font-semibold leading-snug text-text-default">{title}</p>
           {condition ? (
             <span className="shrink-0 rounded bg-surface-sunken px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest text-text-muted ring-1 ring-inset ring-border-soft">
               {condition}
@@ -50,7 +50,7 @@ export function OrderRailPopover({
           ) : null}
         </div>
         <div className="mt-1 flex min-w-0 items-center gap-1.5 text-role-caption font-semibold text-text-soft">
-          <span className="font-mono font-bold text-text-muted">#{getLast4(orderId)}</span>
+          <span className="font-mono font-semibold text-text-muted">#{getLast4(orderId)}</span>
           <span className="text-text-faint">·</span>
           <span className="truncate">{channel}</span>
           {assignee ? (
@@ -64,12 +64,12 @@ export function OrderRailPopover({
 
       <div className="flex items-center justify-between border-t border-border-hairline pt-3">
         <div className="flex items-center gap-1.5 text-role-caption">
-          <span className="inline-flex items-center rounded-md bg-surface-sunken px-1.5 py-0.5 font-bold text-text-muted">
+          <span className="inline-flex items-center rounded-md bg-surface-sunken px-1.5 py-0.5 font-semibold text-text-muted">
             {shipBy}
           </span>
-          <span className={`font-bold tracking-tight ${urgencyTone}`}>{urgencyText}</span>
+          <span className={`font-semibold tracking-tight ${urgencyTone}`}>{urgencyText}</span>
         </div>
-        <span className="rounded bg-surface-sunken px-1.5 py-0.5 font-mono text-role-micro font-bold text-text-muted">
+        <span className="rounded bg-surface-sunken px-1.5 py-0.5 font-mono text-role-micro text-text-muted">
           ×{quantity}
         </span>
       </div>
@@ -89,7 +89,7 @@ export function OrderRailPopover({
       ) : null}
 
       <div className="flex items-center justify-between border-t border-border-hairline pt-2.5">
-        <span className="text-role-eyebrow font-bold uppercase tracking-widest text-text-faint">
+        <span className="text-role-eyebrow uppercase tracking-widest text-text-faint">
           {railRelativeTime(order.created_at)} ago
         </span>
         <button

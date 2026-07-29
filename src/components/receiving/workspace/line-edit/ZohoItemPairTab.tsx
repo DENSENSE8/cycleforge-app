@@ -28,7 +28,7 @@ export function ZohoItemPairTab({
           <Search className="h-4 w-4" aria-hidden />
         </span>
         <div className="min-w-0">
-          <p className="text-role-caption font-black uppercase leading-none tracking-widest text-blue-900">
+          <p className="text-role-caption font-semibold uppercase leading-none tracking-widest text-blue-900">
             Search &amp; add inventory SKU
           </p>
           <p className="mt-1 text-xs leading-snug text-blue-700">

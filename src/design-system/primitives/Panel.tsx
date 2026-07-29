@@ -2,6 +2,7 @@
 
 import { forwardRef, type HTMLAttributes, type ReactNode } from 'react';
 import { cn } from '@/utils/_cn';
+import { elevationClass } from '@/design-system/tokens/shadows';
 
 // ─── Panel ───────────────────────────────────────────────────────────────────
 //
@@ -13,14 +14,24 @@ import { cn } from '@/utils/_cn';
 // Token-first: surface / border colors come from the semantic CSS-variable
 // tokens (`bg-surface-card`, `border-border-soft`) so the panel themes for free
 // (light/dark) without per-component `dark:` classes. Radius + shadow map onto
-// the design-system scale (`radii`, `shadows`).
+// the design-system scale (`radius`, `shadows`).
 //
 // Do NOT hand-roll `rounded-2xl border border-border-soft bg-surface-card shadow-sm`
 // again — reach for <Panel> (and <PanelHeader> / <PanelFooter>) instead.
 
 export type PanelPadding = 'none' | 'sm' | 'md' | 'lg';
 export type PanelRadius = 'lg' | 'xl' | '2xl';
-export type PanelElevation = 'none' | 'sm' | 'md';
+/**
+ * `none` / `sm` / `md` are the original raw-shadow steps, kept byte-identical so
+ * no existing Panel moves.
+ *
+ * `raised` / `overlay` are the house **elevation ROLES** (`tokens/shadows.ts`) —
+ * role = interaction plane, not shadow size. They resolve through
+ * {@link elevationClass}, so they carry the ambient+key+cast stack and re-ramp
+ * under dark themes; the raw steps do neither. **Prefer a role.** A panel that
+ * floats over other content is `overlay`; an in-flow card is `raised`.
+ */
+export type PanelElevation = 'none' | 'sm' | 'md' | 'raised' | 'overlay';
 
 const PADDING: Record<PanelPadding, string> = {
   none: 'p-0',
@@ -41,6 +52,8 @@ const ELEVATION: Record<PanelElevation, string> = {
   none: '',
   sm: 'shadow-sm',
   md: 'shadow-md',
+  raised: elevationClass('raised'),
+  overlay: elevationClass('overlay'),
 };
 
 export interface PanelProps extends HTMLAttributes<HTMLDivElement> {
@@ -93,7 +106,7 @@ export function PanelHeader({ title, subtitle, actions, className }: PanelHeader
   return (
     <div className={cn('flex items-start justify-between gap-3', className)}>
       <div className="min-w-0">
-        <div className="text-base font-black leading-tight text-text-default">{title}</div>
+        <div className="text-base font-semibold leading-tight text-text-default">{title}</div>
         {subtitle && <div className="mt-0.5 text-sm text-text-muted">{subtitle}</div>}
       </div>
       {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}

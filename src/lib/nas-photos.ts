@@ -12,6 +12,10 @@
 
 import type { PhotoScope } from '@/components/mobile/receiving/PhotoUploadQueue';
 import {
+  effectiveReceivingPhotoStage,
+  resolveReceivingPhotoTarget,
+} from '@/lib/receiving/photo-scope';
+import {
   isSameOriginNasProxyUrl,
   normalizePhotoDisplayUrl,
 } from '@/lib/nas-photo-url';
@@ -177,6 +181,15 @@ export interface AttachResult {
  * capture PUT so the operator's Cloudflare Access cookie rides along).
  */
 export async function attachNasPhoto(scope: PhotoScope, photoUrl: string): Promise<AttachResult> {
+  // Stage → explicit photo_type stamp via the scope SoT. A stage-less legacy
+  // scope resolves to exactly the endpoint's old defaults (line → item, carton
+  // → package), so pre-stage callers attach identically; staged scopes make
+  // `receiving_unbox_carton` attachable.
+  const target = resolveReceivingPhotoTarget({
+    receivingId: scope.receivingId,
+    receivingLineId: scope.receivingLineId ?? null,
+    stage: effectiveReceivingPhotoStage(scope),
+  });
   let res: Response;
   try {
     res = await fetch('/api/receiving-photos', {
@@ -186,6 +199,7 @@ export async function attachNasPhoto(scope: PhotoScope, photoUrl: string): Promi
         receivingId: scope.receivingId,
         receivingLineId: scope.receivingLineId ?? null,
         photoUrl,
+        photoType: target.photoType,
       }),
     });
   } catch {

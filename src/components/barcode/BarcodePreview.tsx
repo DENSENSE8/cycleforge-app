@@ -79,7 +79,7 @@ export function BarcodePreview({
                     <div className={`flex items-center bg-surface-canvas ${comfy ? 'px-7 py-7 gap-5' : 'px-5 py-5 gap-4'}`}>
                         <div className="min-w-0 flex-1 space-y-1">
                             <p className={`leading-snug text-text-muted ${comfy ? 'text-xs' : 'text-role-caption'}`}>{title}</p>
-                            <p className={`font-mono font-black tracking-tight text-text-default break-all ${comfy ? 'text-base' : 'text-sm'}`}>{uniqueSku}</p>
+                            <p className={`font-mono font-semibold tracking-tight text-text-default break-all ${comfy ? 'text-base' : 'text-sm'}`}>{uniqueSku}</p>
                             {mode !== 'reprint' && serialNumbers.length > 0 && (
                                 <p className={`text-text-soft font-mono ${comfy ? 'text-role-caption' : 'text-role-micro'}`}>
                                     SN · {getSerialLast6(serialNumbers)}
@@ -104,7 +104,7 @@ export function BarcodePreview({
                     <div className="px-5 py-5 space-y-3">
                         <div>
                             <p className="text-role-eyebrow uppercase tracking-widest text-text-soft mb-1">SKU</p>
-                            <p className="text-sm font-black font-mono text-text-default">{sku}</p>
+                            <p className="text-sm font-semibold font-mono text-text-default">{sku}</p>
                         </div>
                         <div>
                             <p className="text-role-eyebrow uppercase tracking-widest text-text-soft mb-1">
@@ -164,7 +164,7 @@ export function BarcodePreview({
                         <Check className={comfy ? 'h-5 w-5' : 'h-4 w-4'} />
                         {ctaLabel}
                         {comfy && (mode === 'print' || mode === 'auto-unit' || mode === 'reprint') && (
-                            <kbd className="rounded border border-glass/30 bg-glass/10 px-1.5 py-0.5 text-role-eyebrow font-mono font-bold tracking-tighter">⌘P</kbd>
+                            <kbd className="rounded border border-glass/30 bg-glass/10 px-1.5 py-0.5 text-role-eyebrow font-mono tracking-tighter">⌘P</kbd>
                         )}
                     </span>
                 )}

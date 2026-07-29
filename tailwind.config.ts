@@ -181,6 +181,11 @@ const config: Config = {
             },
             fontFamily: {
                 sans: ['var(--ds-font-sans)', 'IBM Plex Sans', 'system-ui', 'sans-serif'],
+                // Dense-chrome cut. You should almost never write `font-condensed`
+                // by hand — `text-role-eyebrow` / `text-role-micro` bind it
+                // intrinsically (plugin below). Reach for the ROLE whose job is
+                // dense chrome, not for the family.
+                condensed: ['var(--ds-font-condensed)', 'IBM Plex Sans Condensed', 'IBM Plex Sans', 'system-ui', 'sans-serif'],
                 mono: ['var(--ds-font-mono)', 'IBM Plex Mono', 'ui-monospace', 'monospace'],
             },
             fontSize: {
@@ -212,9 +217,13 @@ const config: Config = {
             // tighten together with type. `extend` merges per key: keys in
             // spacing.mjs become density-aware, unlisted keys stay stock.
             spacing: spacingScale,
-            borderRadius: {
-                station: '8px',
-            },
+            // borderRadius is deliberately NOT extended — the radius scale stays
+            // 100% Tailwind stock. The one alias that lived here (`station: 8px`)
+            // was an exact duplicate of `rounded-lg`, and being an unregistered
+            // custom key it could not conflict-resolve in `cn()` (see _cn.ts),
+            // so it and a primitive's own `rounded-*` both survived and CSS order
+            // picked silently. Semantic corners come from `cornerClass(role)`
+            // (src/design-system/tokens/radius.ts), which returns stock classes.
             // Elevation ladder — the role → box-shadow SoT consumed via
             // elevationClass() (src/design-system/tokens/shadows.ts). Values
             // are CSS vars (globals.css) so dark-family themes ramp the alpha
@@ -228,6 +237,7 @@ const config: Config = {
                 'elev-soft': 'var(--ds-elev-soft)',
                 'elev-raised': 'var(--ds-elev-raised)',
                 'elev-overlay': 'var(--ds-elev-overlay)',
+                'elev-overlay-left': 'var(--ds-elev-overlay-left)',
             },
             zIndex: zIndexScale,
         },
@@ -253,6 +263,33 @@ const config: Config = {
                 ".stack-section": { display: "flex", flexDirection: "column", gap: s["6"] },
                 ".row-gap": { display: "flex", alignItems: "center", gap: s["2"] },
                 ".row-tight": { display: "flex", alignItems: "center", gap: s["1.5"] },
+            });
+        }),
+        // CF Type — INTRINSIC role bindings (contextual-font-system, 2026-07-28).
+        //
+        // A role bundles size + line-height + tracking + weight in `fontSize`
+        // above; Tailwind's fontSize options cannot carry a family or a numeric
+        // variant, so the remaining two bindings are added here against the SAME
+        // class names. Different properties, so the two rules compose regardless
+        // of emission order.
+        //
+        // WHY these two bindings are intrinsic rather than opt-in classes:
+        //   · Contextuality in this product is width, not face-swapping. The
+        //     eyebrow/micro roles ARE the dense-chrome job, so the condensed cut
+        //     belongs to the role — an opt-in `font-condensed` beside the role
+        //     would drift the moment someone forgets it.
+        //   · Numerals in data/title/display sit in columns that must align. If
+        //     tabular-ness is opt-in it is missing exactly where a scan-reading
+        //     operator notices (a qty column that shimmies row to row).
+        // A surface that genuinely wants proportional figures opts out with
+        // Tailwind's own `proportional-nums`, which wins on specificity order.
+        plugin(({ addUtilities }) => {
+            addUtilities({
+                ".text-role-eyebrow": { fontFamily: "var(--ds-font-condensed)" },
+                ".text-role-micro": { fontFamily: "var(--ds-font-condensed)" },
+                ".text-role-display": { fontVariantNumeric: "tabular-nums" },
+                ".text-role-title": { fontVariantNumeric: "tabular-nums" },
+                ".text-role-data": { fontVariantNumeric: "tabular-nums" },
             });
         }),
     ],

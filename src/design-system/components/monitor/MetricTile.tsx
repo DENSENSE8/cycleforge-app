@@ -108,7 +108,7 @@ export function MetricTile({
       <MetricRing
         fraction={fraction}
         toneClass={toneClass}
-        center={<span className={cn('text-lg font-black tabular-nums', toneClass)}>{value}</span>}
+        center={<span className={cn('text-lg font-semibold tabular-nums', toneClass)}>{value}</span>}
       />
       {delta !== undefined ? (
         <DeltaChip delta={delta} invert={deltaInvert} vsLabel={deltaVsLabel ?? 'vs last wk'} className="mt-0" />

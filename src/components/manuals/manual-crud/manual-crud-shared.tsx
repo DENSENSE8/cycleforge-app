@@ -48,7 +48,7 @@ export function ModalShell({
         <DialogHeader className="flex-row items-center justify-between space-y-0 border-b border-border-soft px-4 py-3">
           <div>
             <p className="text-role-micro uppercase tracking-[0.16em] text-text-soft">{eyebrow}</p>
-            <DialogTitle className="mt-1 text-sm font-black">{title}</DialogTitle>
+            <DialogTitle className="mt-1 text-sm font-semibold">{title}</DialogTitle>
             <DialogDescription className="sr-only">
               {eyebrow}: {title}
             </DialogDescription>

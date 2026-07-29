@@ -151,7 +151,7 @@ function MessageBubble({
               <Globe className="h-2.5 w-2.5" /> Public
             </span>
           )}
-          <span className="font-bold text-text-muted">{name}</span>
+          <span className="font-semibold text-text-muted">{name}</span>
           <span className="text-text-faint">
             · <Time iso={m.createdAt} />
           </span>
@@ -223,7 +223,7 @@ function StatusControl({
   const pill = (
     <span
       className={cn(
-        'inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-role-eyebrow font-black uppercase tracking-widest ring-1 ring-inset',
+        'inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-role-eyebrow uppercase tracking-widest ring-1 ring-inset',
         tone.bg, tone.text, tone.ring,
       )}
     >
@@ -285,14 +285,14 @@ function AssigneeControl({
 
   const name = assignment?.assignedStaffName?.trim() || (assignment ? 'Assigned' : null);
   const chip = name ? (
-    <span className="inline-flex items-center gap-1.5 rounded-full bg-surface-strong px-2 py-0.5 text-role-eyebrow font-bold uppercase tracking-widest text-text-muted">
-      <span className="flex h-4 w-4 items-center justify-center rounded-full bg-blue-100 text-role-micro font-black text-blue-700">
+    <span className="inline-flex items-center gap-1.5 rounded-full bg-surface-strong px-2 py-0.5 text-role-eyebrow uppercase tracking-widest text-text-muted">
+      <span className="flex h-4 w-4 items-center justify-center rounded-full bg-blue-100 text-role-micro text-blue-700">
         {initials(name)}
       </span>
       {name}
     </span>
   ) : (
-    <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-role-eyebrow font-bold uppercase tracking-widest text-text-faint ring-1 ring-inset ring-border-soft">
+    <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-role-eyebrow uppercase tracking-widest text-text-faint ring-1 ring-inset ring-border-soft">
       <User className="h-3 w-3" /> Unassigned
     </span>
   );
@@ -327,7 +327,7 @@ function AssigneeControl({
                 onClick={() => { setOpen(false); onAssign(s.id); }}
                 className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-role-caption text-text-default hover:bg-surface-sunken"
               >
-                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-surface-strong text-role-micro font-black text-text-muted">
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-surface-strong text-role-micro text-text-muted">
                   {initials(s.name)}
                 </span>
                 <span className="truncate">{s.name}</span>
@@ -398,7 +398,7 @@ function ConnectionChip({ connection: c }: { connection: ThreadConnectionRow }) 
   } else {
     const Icon = CONNECTION_ICON[c.entityType] ?? Tag;
     chip = (
-      <span className="inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-role-eyebrow font-bold uppercase tracking-wide text-text-muted ring-1 ring-inset ring-border-soft">
+      <span className="inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-role-eyebrow uppercase tracking-wide text-text-muted ring-1 ring-inset ring-border-soft">
         <Icon className="h-3 w-3" />
         <span className="max-w-[9rem] truncate normal-case tracking-normal font-mono">
           {getLast4(c.label)}

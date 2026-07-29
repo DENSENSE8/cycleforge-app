@@ -95,13 +95,13 @@ export function NasPhotoPicker({ scope, onClose, onAttached }: NasPhotoPickerPro
           <p className="text-role-micro uppercase tracking-[0.22em] text-white/60">
             Select from NAS
           </p>
-          <p className="truncate text-sm font-black text-white">/{dir || 'Photos'}</p>
+          <p className="truncate text-sm font-semibold text-white">/{dir || 'Photos'}</p>
         </div>
         <Button
           type="button"
           variant="ghost"
           onClick={onClose}
-          className="h-auto rounded-full bg-glass/10 px-3.5 py-2 text-role-caption font-black uppercase tracking-widest text-white hover:bg-glass/20 hover:text-white active:bg-glass/20"
+          className="h-auto rounded-full bg-glass/10 px-3.5 py-2 text-role-caption font-semibold uppercase tracking-widest text-white hover:bg-glass/20 hover:text-white active:bg-glass/20"
         >
           Close
         </Button>
@@ -113,7 +113,7 @@ export function NasPhotoPicker({ scope, onClose, onAttached }: NasPhotoPickerPro
         <button
           type="button"
           onClick={goUp}
-          className="border-b border-glass/10 px-4 py-2 text-left text-role-caption font-bold uppercase tracking-widest text-blue-400 active:bg-glass/5"
+          className="border-b border-glass/10 px-4 py-2 text-left text-role-caption font-semibold uppercase tracking-widest text-blue-400 active:bg-glass/5"
         >
           ↑ Up a folder
         </button>
@@ -129,18 +129,18 @@ export function NasPhotoPicker({ scope, onClose, onAttached }: NasPhotoPickerPro
           </div>
         ) : error ? (
           <div className="px-6 py-12 text-center">
-            <p className="text-role-caption font-bold text-rose-400">{error}</p>
+            <p className="text-role-caption font-semibold text-rose-400">{error}</p>
             <Button
               type="button"
               variant="ghost"
               onClick={() => void load(dir)}
-              className="mt-4 h-auto rounded-full bg-glass/10 px-4 py-2 text-role-caption font-black uppercase tracking-widest text-white hover:bg-glass/20 hover:text-white active:bg-glass/20"
+              className="mt-4 h-auto rounded-full bg-glass/10 px-4 py-2 text-role-caption font-semibold uppercase tracking-widest text-white hover:bg-glass/20 hover:text-white active:bg-glass/20"
             >
               Retry
             </Button>
           </div>
         ) : entries.length === 0 ? (
-          <p className="px-6 py-12 text-center text-role-caption font-bold text-white/70">
+          <p className="px-6 py-12 text-center text-role-caption font-semibold text-white/70">
             This folder is empty.
           </p>
         ) : (
@@ -156,7 +156,7 @@ export function NasPhotoPicker({ scope, onClose, onAttached }: NasPhotoPickerPro
                     className="ds-raw-button flex w-full items-center gap-3 px-4 py-3 text-left active:bg-glass/5"
                   >
                     <span className="text-lg">📁</span>
-                    <span className="truncate text-sm font-bold">{f.name}</span>
+                    <span className="truncate text-sm font-semibold">{f.name}</span>
                   </button>
                 ))}
               </div>
@@ -182,7 +182,7 @@ export function NasPhotoPicker({ scope, onClose, onAttached }: NasPhotoPickerPro
                         className={`absolute inset-0 h-full w-full object-cover ${isSel ? 'opacity-50' : ''}`}
                       />
                       {isSel ? (
-                        <span className="absolute right-1 top-1 grid h-6 w-6 place-items-center rounded-full bg-blue-600 text-xs font-black text-white">
+                        <span className="absolute right-1 top-1 grid h-6 w-6 place-items-center rounded-full bg-blue-600 text-xs font-semibold text-white">
                           ✓
                         </span>
                       ) : null}

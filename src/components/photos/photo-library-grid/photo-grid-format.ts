@@ -1,11 +1,13 @@
-import type { LibraryPhoto } from '../photo-library-types';
+import type { LibraryPhoto, PhotoIdentityMeta } from '../photo-library-types';
 import type { PhotoLibrarySourceScope } from '@/lib/photos/library-filter-state';
 import type { PhotoGalleryInput, PhotoMeta } from '@/components/shipped/photo-gallery/photo-gallery-utils';
 import {
   photoFileName,
   photoGroupHeaderLabel,
   photoGroupKey,
+  photoIdentityLine,
   photoPrimaryLabel,
+  photoRefLabel,
   UNLINKED_PHOTO_GROUP_KEY,
 } from '@/lib/photos/display-names';
 
@@ -51,7 +53,7 @@ export function groupPhotosByTicket(
   return order.map((key) => map.get(key)!);
 }
 
-export { photoFileName, photoPrimaryLabel };
+export { photoFileName, photoIdentityLine, photoPrimaryLabel, photoRefLabel };
 
 export function documentPrimaryLabel(photo: LibraryPhoto): string {
   if (photo.filename?.trim()) return photo.filename.trim();
@@ -64,8 +66,15 @@ export function documentPrimaryLabel(photo: LibraryPhoto): string {
   return photo.poRef?.trim() ? `Order ${photo.poRef}` : `Document ${Math.abs(photo.id)}`;
 }
 
-/** Project a `LibraryPhoto` into the gallery's context-panel meta. */
-function libraryPhotoMeta(photo: LibraryPhoto, scope: PhotoLibrarySourceScope): PhotoMeta {
+/**
+ * Project a `LibraryPhoto` into the gallery's context-panel meta. The identity
+ * extension (SKU · serial · stage) rides along structurally so the viewer panel
+ * can surface it — `PhotoMeta` itself stays untouched (see PhotoContextPanel).
+ */
+function libraryPhotoMeta(
+  photo: LibraryPhoto,
+  scope: PhotoLibrarySourceScope,
+): PhotoMeta & PhotoIdentityMeta {
   return {
     poRef: photo.poRef,
     photoType: photo.photoType,
@@ -77,6 +86,10 @@ function libraryPhotoMeta(photo: LibraryPhoto, scope: PhotoLibrarySourceScope): 
     hasAnalysis: photo.hasAnalysis ?? null,
     caption: photo.caption ?? null,
     sourceScope: scope,
+    sku: photo.sku ?? null,
+    serialNumber: photo.serialNumber ?? null,
+    unitUid: photo.unitUid ?? null,
+    stage: photo.stage ?? null,
   };
 }
 

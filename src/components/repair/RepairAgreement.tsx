@@ -34,10 +34,10 @@ export function RepairAgreement({ formData, onSignatureChange }: RepairAgreement
       <div className="flex items-start justify-between">
         <div>
           <p className="text-role-micro uppercase tracking-[0.2em] text-orange-600 mb-0.5">Agreement</p>
-          <h3 className="text-sm font-black text-text-default uppercase tracking-tight">
+          <h3 className="text-sm font-semibold text-text-default uppercase tracking-tight">
             Repair Service Agreement
           </h3>
-          <p className="text-role-eyebrow font-bold text-text-soft uppercase tracking-wide mt-0.5">
+          <p className="text-role-eyebrow text-text-soft uppercase tracking-wide mt-0.5">
             Drop-Off Authorization
           </p>
         </div>
@@ -85,7 +85,7 @@ export function RepairAgreement({ formData, onSignatureChange }: RepairAgreement
       <div className="space-y-2 rounded-xl border border-border-soft bg-surface-canvas px-4 py-3 text-role-caption leading-relaxed text-text-muted">
         <p>
           Your Bose product has been received into our repair center. Under normal circumstances it will
-          be repaired within the next <span className="font-black text-text-default">3–10 working days</span> and returned to you.
+          be repaired within the next <span className="font-semibold text-text-default">3–10 working days</span> and returned to you.
         </p>
         <p className="text-role-micro uppercase tracking-wide text-text-default">
           30-Day Warranty on all repair services.
@@ -110,7 +110,7 @@ function DetailRow({ label, value, highlight, isLast }: { label: string; value: 
       <span className="text-role-eyebrow uppercase tracking-wide text-text-soft bg-surface-canvas px-3 py-2.5 w-20 shrink-0 flex items-center border-r border-border-soft">
         {label}
       </span>
-      <span className={`flex-1 text-xs font-bold px-3 py-2.5 flex items-center ${highlight ? 'text-orange-700 bg-orange-50' : 'text-text-default bg-surface-card'}`}>
+      <span className={`flex-1 text-xs font-semibold px-3 py-2.5 flex items-center ${highlight ? 'text-orange-700 bg-orange-50' : 'text-text-default bg-surface-card'}`}>
         {value || '—'}
       </span>
     </div>

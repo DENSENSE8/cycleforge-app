@@ -167,7 +167,7 @@ export function AuditLogFilterDropdown({ onClose }: { onClose: () => void }) {
   return (
     <div className="space-y-6">
       <div>
-        <p className="mb-3 text-role-caption font-black uppercase tracking-[0.2em] text-text-faint">Date Range</p>
+        <p className="mb-3 text-role-caption font-semibold uppercase tracking-[0.2em] text-text-faint">Date Range</p>
         <div className="grid grid-cols-3 gap-2">
           {/* ds-raw-button: segmented date-preset toggle with custom active fill (bg-blue-500) */}
           {presetOptions.map((opt) => (
@@ -175,7 +175,7 @@ export function AuditLogFilterDropdown({ onClose }: { onClose: () => void }) {
               key={opt.id}
               type="button"
               onClick={() => actions.applyPreset(opt.id)}
-              className={`rounded-xl border px-3 py-2 text-role-micro font-bold uppercase tracking-wider transition-all ${
+              className={`rounded-xl border px-3 py-2 text-role-micro font-semibold uppercase tracking-wider transition-all ${
                 state.preset === opt.id
                   ? 'border-blue-500 bg-blue-500 text-white shadow-md shadow-blue-500/20'
                   : 'border-border-hairline bg-surface-canvas/50 text-text-muted hover:border-border-soft hover:bg-surface-card'
@@ -193,19 +193,19 @@ export function AuditLogFilterDropdown({ onClose }: { onClose: () => void }) {
             type="date"
             value={customStart}
             onChange={(e) => actions.setCustomStart(e.target.value)}
-            className="h-10 rounded-xl border border-border-hairline bg-surface-canvas/50 px-3 text-role-caption font-bold text-text-default outline-none focus:border-blue-500 focus:bg-surface-card focus:ring-4 focus:ring-blue-500/10"
+            className="h-10 rounded-xl border border-border-hairline bg-surface-canvas/50 px-3 text-role-caption font-semibold text-text-default outline-none focus:border-blue-500 focus:bg-surface-card focus:ring-4 focus:ring-blue-500/10"
           />
           <input
             type="date"
             value={customEnd}
             onChange={(e) => actions.setCustomEnd(e.target.value)}
-            className="h-10 rounded-xl border border-border-hairline bg-surface-canvas/50 px-3 text-role-caption font-bold text-text-default outline-none focus:border-blue-500 focus:bg-surface-card focus:ring-4 focus:ring-blue-500/10"
+            className="h-10 rounded-xl border border-border-hairline bg-surface-canvas/50 px-3 text-role-caption font-semibold text-text-default outline-none focus:border-blue-500 focus:bg-surface-card focus:ring-4 focus:ring-blue-500/10"
           />
         </div>
       )}
 
       <div>
-        <p className="mb-3 text-role-caption font-black uppercase tracking-[0.2em] text-text-faint">Staff Member</p>
+        <p className="mb-3 text-role-caption font-semibold uppercase tracking-[0.2em] text-text-faint">Staff Member</p>
         <StaffCombobox value={state.staffId} onChange={actions.setStaffId} />
       </div>
 
@@ -214,7 +214,7 @@ export function AuditLogFilterDropdown({ onClose }: { onClose: () => void }) {
           variant="brand"
           size="lg"
           onClick={onClose}
-          className="h-auto w-full rounded-2xl py-3.5 text-sm font-black uppercase tracking-widest"
+          className="h-auto w-full rounded-2xl py-3.5 text-sm font-semibold uppercase tracking-widest"
         >
           Done
         </Button>
@@ -337,7 +337,7 @@ export function AuditLogFilterStrip() {
             key={opt.id}
             type="button"
             onClick={() => applyPreset(opt.id)}
-            className={`flex-1 rounded-md px-1.5 py-1 text-role-micro font-bold uppercase tracking-wider transition ${
+            className={`flex-1 rounded-md px-1.5 py-1 text-role-micro font-semibold uppercase tracking-wider transition ${
               preset === opt.id
                 ? 'bg-emerald-600 text-white shadow-sm shadow-emerald-200'
                 : 'bg-surface-sunken text-text-muted hover:bg-surface-strong'

@@ -39,10 +39,11 @@ function accessorFor(key: OrdersQueueColumn['key']): (row: ShippedOrder) => unkn
   switch (key) {
     case 'title':
       return (row) => String(row.product_title ?? '');
-    case 'date':
+    case 'sla':
+      // Ship-by is the fused column's sort/group value (deadline → created
+      // fallback). Lateness is derived from the same instant, so one accessor
+      // serves both halves of the cell.
       return (row) => queueRowShipBySource(row);
-    case 'age':
-      return (row) => row.deadline_at ?? null;
     case 'status':
       return (row) => {
         const r = row as QueueRowRecord;
@@ -78,8 +79,9 @@ function defsFor(mode: OrdersQueueColumnMode): ColumnDef<ShippedOrder, unknown>[
   return buildLedgerColumnDefs<ShippedOrder, OrdersQueueColumn>(ordersQueueColumnsFor(mode), {
     // URL `?sort=` stays the durable sort vocabulary — only its columns sort.
     isSortable: isQueueColumnSort,
-    // Age activates most-late-first (matches `defaultDirForQueueSort`).
-    sortDescFirst: (key) => key === 'age',
+    // No column activates DESC first — ascending ship-by is already
+    // most-late-first (matches `defaultDirForQueueSort`).
+    sortDescFirst: () => false,
     isLocked: isOrdersQueueFrozen,
     accessorFor,
   });

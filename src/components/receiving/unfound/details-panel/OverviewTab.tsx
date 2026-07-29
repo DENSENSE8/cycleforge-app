@@ -99,13 +99,13 @@ export function OverviewTab({
                   href={url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 font-mono text-role-caption font-bold text-emerald-700 underline-offset-2 hover:underline"
+                  className="inline-flex items-center gap-1 font-mono text-role-caption font-semibold text-emerald-700 underline-offset-2 hover:underline"
                 >
                   {row.zendesk_ticket_id}
                   <ExternalLink className="h-3 w-3" />
                 </a>
               ) : (
-                <p className="font-mono text-role-caption font-bold text-emerald-700">
+                <p className="font-mono text-role-caption font-semibold text-emerald-700">
                   {row.zendesk_ticket_id}
                 </p>
               );

@@ -197,7 +197,7 @@ export function DateRangePickerField({
                 setOpen(false);
               }}
               disabled={!draft?.from}
-              className="rounded-md bg-blue-600 px-3 py-1 text-role-caption font-black uppercase tracking-wider text-white shadow-sm transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-surface-strong"
+              className="rounded-md bg-blue-600 px-3 py-1 text-role-caption font-semibold uppercase tracking-wider text-white shadow-sm transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-surface-strong"
             >
               Apply
             </button>

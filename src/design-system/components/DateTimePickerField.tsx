@@ -87,7 +87,7 @@ export function DateTimePickerField({
           type="button"
           disabled={disabled}
           className={cn(
-            'inline-flex h-8 w-full items-center gap-2 rounded-lg border bg-surface-card px-2.5 text-left text-role-micro font-bold transition-colors focus:outline-none focus:ring-2 disabled:cursor-not-allowed disabled:opacity-50',
+            'inline-flex h-8 w-full items-center gap-2 rounded-lg border bg-surface-card px-2.5 text-left text-role-micro transition-colors focus:outline-none focus:ring-2 disabled:cursor-not-allowed disabled:opacity-50',
             TONE_TRIGGER[tone],
             hasValue ? 'text-text-default' : 'text-text-faint',
             className,
@@ -124,13 +124,13 @@ export function DateTimePickerField({
                 type="time"
                 value={timeValue}
                 onChange={(e) => handleTimeChange(e.target.value)}
-                className="h-8 rounded-md border border-border-soft bg-surface-card px-2 text-role-micro font-bold text-text-default outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                className="h-8 rounded-md border border-border-soft bg-surface-card px-2 text-role-micro text-text-default outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
               />
             </label>
             <button
               type="button"
               onClick={() => setOpen(false)}
-              className="rounded-md bg-blue-600 px-3 py-1 text-role-caption font-black uppercase tracking-wider text-white shadow-sm transition-colors hover:bg-blue-700"
+              className="rounded-md bg-blue-600 px-3 py-1 text-role-caption font-semibold uppercase tracking-wider text-white shadow-sm transition-colors hover:bg-blue-700"
             >
               Done
             </button>

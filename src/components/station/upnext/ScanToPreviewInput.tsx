@@ -104,7 +104,7 @@ export function ScanToPreviewInput({ orders }: { orders: any[] }) {
           Selected
         </span>
       ) : (
-        <kbd className="hidden rounded bg-surface-sunken px-1 py-px text-role-eyebrow font-bold text-text-soft sm:inline-flex">
+        <kbd className="hidden rounded bg-surface-sunken px-1 py-px text-role-eyebrow text-text-soft sm:inline-flex">
           ↵
         </kbd>
       )}

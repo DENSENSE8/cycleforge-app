@@ -56,7 +56,7 @@ export function MatchCard({ candidate, onLink, linking, anyLinking }: MatchCardP
             <span className="text-role-eyebrow uppercase tracking-widest text-text-faint">
               Helpdesk
             </span>
-            <span className="font-mono text-role-caption font-bold text-text-muted">#{candidate.id}</span>
+            <span className="font-mono text-role-caption font-semibold text-text-muted">#{candidate.id}</span>
             {candidate.url ? (
               <HoverTooltip label="Open ticket in Zendesk" focusable={false}>
                 <a
@@ -74,7 +74,7 @@ export function MatchCard({ candidate, onLink, linking, anyLinking }: MatchCardP
           </div>
 
           {/* Title: ticket subject */}
-          <p className="mt-0.5 truncate text-role-caption font-bold text-text-default">
+          <p className="mt-0.5 truncate text-role-caption font-semibold text-text-default">
             {candidate.subject || 'Untitled ticket'}
           </p>
 

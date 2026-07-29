@@ -109,6 +109,19 @@ export function orderSearchHref(
   return `/dashboard?${sp.toString()}`;
 }
 
+/**
+ * Canonical order-record href (`/o/[orderId]`) — the full order Workbench.
+ *
+ * Distinct from {@link orderSearchHref}, which is the Dashboard Search surface
+ * *paired with its L2 hit-map rail*. Week 1 / D4a splits them by confidence:
+ * an exact-identifier commit that resolves to one order jumps straight to the
+ * record; fuzzy / natural-language / multi-result queries keep the rail, where
+ * having more than one candidate is the point.
+ */
+export function orderRecordHref(orderId: string | number): string {
+  return `/o/${encodeURIComponent(String(orderId).trim())}`;
+}
+
 export function searchHitHref(dbType: SearchEntityType, entityId: number): string {
   switch (dbType) {
     case 'ORDER':
@@ -224,6 +237,30 @@ export function shouldAutoOpenSearchOrder(
   return hits.length === 1 && hits[0]?.entityType === 'order';
 }
 
+/**
+ * Sole-result auto-open, ANY entity type — the destination for a settled list
+ * of exactly one hit.
+ *
+ * {@link shouldAutoOpenSearchOrder} only ever covered orders, so a search that
+ * resolved to a single receiving carton / unit / repair still parked the
+ * operator on a one-row list they had to click. One row is not a choice.
+ *
+ * Returns null for 0 or 2+ hits (a real list — never force a destination), an
+ * unusable id, or an entity vocabulary this build does not know. Orders are
+ * deliberately NOT special-cased here: callers that want the query-carrying
+ * `orderSearchHref` should keep using {@link shouldAutoOpenSearchOrder} first
+ * and fall through to this.
+ */
+export function soleHitHref(
+  hits: ReadonlyArray<{ id: number; entityType: string }>,
+): string | null {
+  if (hits.length !== 1) return null;
+  const hit = hits[0];
+  if (!hit || !Number.isFinite(hit.id) || hit.id <= 0) return null;
+  if (!isUiEntityType(hit.entityType)) return null;
+  return searchHitHref(toDbEntityType(hit.entityType), hit.id);
+}
+
 /** Minimal hit fields used to confirm a sole ORDER matches an identifier query. */
 type SoleOrderMatchHit = {
   id: number;
@@ -265,11 +302,18 @@ export function soleMatchingOrderHit(
 }
 
 /**
- * Header Enter / "See all" handoff. Order preview hit → Dashboard Search order
- * detail. Identifier with no ORDER hit → Search results list (receiving PO /
- * tracking / serial may match other entities — never force openOrderId, which
- * dead-ends on "Order not found"). Cross-entity NL → results list.
- * Journey Trace is a **secondary** action (`journeyHandoffHref` / ⌘Enter) —
+ * Header Enter / "See all" handoff.
+ *
+ * D4a — confidence decides the destination:
+ *   • identifier query resolving to **exactly one** ORDER → `/o/[id]`, the
+ *     canonical record. Typing a full order number is unambiguous intent; a
+ *     results list of one is a failure to recognize it.
+ *   • identifier with several ORDER hits, or no ORDER hit at all (receiving PO /
+ *     tracking / serial may match other entities) → Search results list with the
+ *     hit-map rail. Never force `openOrderId`, which dead-ends on "not found".
+ *   • cross-entity natural language → results list.
+ *
+ * Journey Trace stays a **secondary** action (`journeyHandoffHref` / ⌘Enter) —
  * never the Enter default.
  */
 export function globalSearchHandoffHref(
@@ -281,12 +325,17 @@ export function globalSearchHandoffHref(
   const orderHits = previewHits.filter((h) => h.entityType === 'order');
   const orderOnly =
     previewHits.length > 0 && previewHits.every((h) => h.entityType === 'order');
-  if (looksLikeIdentifier(trimmed) || orderOnly) {
+  const isIdentifier = looksLikeIdentifier(trimmed);
+
+  // One confident hit → the record itself.
+  if (isIdentifier && orderHits.length === 1) return orderRecordHref(orderHits[0].id);
+
+  if (isIdentifier || orderOnly) {
     const top = orderHits[0];
     if (top) return orderSearchHref(top.id, trimmed);
-    return `/dashboard?mode=search&q=${encodeURIComponent(trimmed)}&map=search`;
+    return globalSearchHref(trimmed);
   }
-  return `/dashboard?mode=search&q=${encodeURIComponent(trimmed)}`;
+  return globalSearchHref(trimmed, { map: false });
 }
 
 /**
@@ -311,6 +360,31 @@ export function searchScopeHref(dbType: SearchEntityType, query: string): string
     default:
       return null; // RECEIVING / REPAIR / FBA_SHIPMENT: no URL-searchable list yet
   }
+}
+
+/**
+ * The GLOBAL cross-entity search surface with a query pre-applied.
+ *
+ * Distinct from {@link searchScopeHref}, which narrows to one entity's list
+ * surface and returns null for the types that have none (RECEIVING among them).
+ * This is the "just search for this string" jump: `/dashboard?mode=search` runs
+ * hybrid retrieval across every entity, so a PO number resolves to its carton,
+ * its order, and its units without the caller knowing which surface owns them.
+ *
+ * `map=search` marks the hit list as the navigation origin, so opening a result
+ * returns here rather than to the recents map.
+ */
+export function globalSearchHref(
+  query: string,
+  opts?: { map?: 'search' | 'recent' | false },
+): string {
+  const q = encodeURIComponent(query.trim());
+  const map = opts?.map === undefined ? 'search' : opts.map;
+  // `map: false` omits the origin marker — a natural-language search that was
+  // not handed off from anywhere has no origin to return to.
+  return map === false
+    ? `/dashboard?mode=search&q=${q}`
+    : `/dashboard?mode=search&q=${q}&map=${map}`;
 }
 
 /** Human label for the surface searchScopeHref targets (UI action rows). */

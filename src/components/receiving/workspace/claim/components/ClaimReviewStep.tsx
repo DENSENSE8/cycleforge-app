@@ -43,7 +43,7 @@ export function ClaimReviewStep({ c }: { c: ReceivingClaimController }) {
   return (
     <div className="divide-y divide-border-hairline space-y-0 [&>section]:py-3 [&>section:first-child]:pt-0 [&>div]:py-3">
       <ReviewBlock icon={<Tag className="h-3.5 w-3.5" />} label="Claim type">
-        <span className="text-role-caption font-bold uppercase tracking-wide text-rose-700">
+        <span className="text-role-caption font-semibold uppercase tracking-wide text-rose-700">
           {claimLabel}
         </span>
       </ReviewBlock>
@@ -82,7 +82,7 @@ export function ClaimReviewStep({ c }: { c: ReceivingClaimController }) {
         hint={template.previewLoading ? 'updating…' : undefined}
       >
         <div className="overflow-hidden rounded-lg border border-border-soft">
-          <p className="border-b border-border-soft inset-field text-role-caption font-bold text-text-default">
+          <p className="border-b border-border-soft inset-field text-role-caption font-semibold text-text-default">
             {subject || <span className="font-medium text-rose-500">No subject yet</span>}
           </p>
           <p className="max-h-40 overflow-y-auto break-words inset-field text-role-caption font-medium leading-5 text-text-muted">
@@ -123,7 +123,7 @@ export function ClaimReviewStep({ c }: { c: ReceivingClaimController }) {
       <ReviewBlock icon={<Archive className="h-3.5 w-3.5" />} label="Local backup">
         <p className="text-role-caption font-medium text-text-muted">
           {photos.photos.length || 0} {photos.photos.length === 1 ? 'photo' : 'photos'} → folder
-          named after the <span className="font-bold text-text-default">Ticket #</span>
+          named after the <span className="font-semibold text-text-default">Ticket #</span>
         </p>
       </ReviewBlock>
 

@@ -1,11 +1,11 @@
 {
   "version": 1,
-  "generatedAt": "2026-07-25T02:04:53Z",
-  "totalRoutes": 877,
+  "generatedAt": "2026-07-29T05:25:36Z",
+  "totalRoutes": 882,
   "summary": {
-    "permissionGated": 748,
+    "permissionGated": 752,
     "authenticatedNoPermission": 46,
-    "anonymousIntentional": 81,
+    "anonymousIntentional": 82,
     "serviceToService": 2,
     "ungatedRead": 0,
     "ungatedWrite": 0
@@ -1490,6 +1490,15 @@
       "exemptReason": "cron endpoint"
     },
     {
+      "path": "/api/cron/notification-outbox/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "NONE",
+      "permission": null,
+      "exemptReason": "cron endpoint"
+    },
+    {
       "path": "/api/cron/photos/analyze/route.ts",
       "methods": [
         "GET",
@@ -2471,6 +2480,24 @@
       "exemptReason": null
     },
     {
+      "path": "/api/inbox/[id]/route.ts",
+      "methods": [
+        "PATCH"
+      ],
+      "gate": "withAuth",
+      "permission": "home.inbox.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/inbox/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "home.inbox.view",
+      "exemptReason": null
+    },
+    {
       "path": "/api/inbox/support/route.ts",
       "methods": [
         "GET"
@@ -2693,6 +2720,15 @@
       ],
       "gate": "withAuth",
       "permission": "sku_stock.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/kiosk/dev-autopair/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withAuth (anonymous OK)",
+      "permission": null,
       "exemptReason": null
     },
     {
@@ -6957,6 +6993,16 @@
       ],
       "gate": "withAuth",
       "permission": "studio.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/subscriptions/toggle/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "home.subscriptions.manage",
       "exemptReason": null
     },
     {

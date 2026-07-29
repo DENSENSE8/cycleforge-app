@@ -6,7 +6,7 @@ function SummaryCell({ label, value, tone = 'gray' }: { label: string; value: nu
   return (
     <div className="border border-border-soft bg-surface-card px-3 py-2.5">
       <p className={sectionLabel}>{label}</p>
-      <p className={`mt-1 text-xl font-black tracking-tight ${valueClass}`}>{value}</p>
+      <p className={`mt-1 text-xl font-semibold tracking-tight ${valueClass}`}>{value}</p>
     </div>
   );
 }

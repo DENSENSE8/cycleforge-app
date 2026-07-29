@@ -5,6 +5,11 @@ import {
   blobToBase64DataUrl,
   downscaleImageTo720,
 } from '@/lib/image/downscale';
+import {
+  receivingPhotoTypeForStage,
+  receivingUploadStage,
+  type ReceivingPhotoStage,
+} from '@/lib/receiving/photo-intent';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 
 /**
@@ -21,9 +26,12 @@ import { safeRandomUUID } from '@/lib/safe-uuid';
  *                              backgrounded-then-killed tab rehydrates the
  *                              queue and auto-resumes anything in `queued`.
  *
- * Scope: pass `{ receivingId, receivingLineId? }`. When `receivingLineId` is
- * present the photo posts as an item-level (RECEIVING_LINE) record; otherwise
- * it lands at the PO level (RECEIVING).
+ * Scope: pass `{ receivingId, receivingLineId?, stage? }`. When
+ * `receivingLineId` is present the photo posts as an item-level
+ * (RECEIVING_LINE) record; otherwise it lands at the PO level (RECEIVING),
+ * stamped `receiving_package` vs `receiving_unbox_carton` by `stage`
+ * (missing stage = the legacy arrival capture — rehydrated pre-stage entries
+ * keep their old stamp).
  */
 
 export type UploadState = 'queued' | 'uploading' | 'done' | 'failed';
@@ -40,6 +48,17 @@ export interface PhotoScope {
   poRef?: string | null;
   /** One-based clean filename suffix for captured photos, e.g. PO123_3.jpg. */
   fileIndex?: number | null;
+  /**
+   * Evidence stage this capture belongs to (stage × entity matrix:
+   * `src/lib/receiving/photo-intent.ts`). Decides the stamped `photo_type`,
+   * which the receive-time photo policy judges — `require_one` counts ONLY
+   * `arrival_package`, so a bench stamping the wrong stage silently defeats
+   * that gate. Resolved through `receivingUploadStage()`, which defaults a
+   * carton shot to `unbox_carton` (this is the unbox bench's pipeline) and
+   * forces any line shot to `unbox_item`. A door/triage surface photographing
+   * the box AS IT ARRIVED must set `'arrival_package'` explicitly.
+   */
+  stage?: ReceivingPhotoStage;
   /**
    * When `receivingLineId` is unset: `all` loads PO + every line (matches
    * `photo_count` badges); `po` loads PO-level entity photos only.
@@ -205,12 +224,18 @@ async function postPhotoViaAdapter(
 ): Promise<{ id: number; url: string }> {
   const entityType = entry.scope.receivingLineId != null ? 'RECEIVING_LINE' : 'RECEIVING';
   const entityId = entry.scope.receivingLineId ?? entry.scope.receivingId;
+  // Stage → photo_type via the SoT, never a local map. The old inline ternary
+  // stamped EVERY carton shot `receiving_package` (arrival evidence) even when
+  // it was taken at the unbox bench after the box was opened — which both left
+  // `receiving_unbox_carton` with zero writers and let a post-opening photo
+  // satisfy the `require_one` arrival gate.
+  const stage = receivingUploadStage(entry.scope.receivingLineId, entry.scope.stage);
   const { uploadPhotoClient } = await import('@/lib/photos/upload-client');
   const result = await uploadPhotoClient({
     file: blob,
     entityType,
     entityId,
-    photoType: entityType === 'RECEIVING_LINE' ? 'receiving_item' : 'receiving_package',
+    photoType: receivingPhotoTypeForStage(stage),
     poRef: entry.scope.poRef ?? undefined,
   });
   return { id: result.id, url: result.url };

@@ -130,7 +130,7 @@ export function ShippingInformationSection({
       />
 
       <div className="flex items-center justify-between">
-        <h3 className="text-xs font-black uppercase tracking-[0.2em] text-text-default">Order Details</h3>
+        <h3 className="text-xs font-semibold uppercase tracking-[0.2em] text-text-default">Order Details</h3>
         <div className="flex items-center gap-1">
           {onCopyAll ? (
             <HoverTooltip label="Copy all order details" asChild>
@@ -172,7 +172,7 @@ export function ShippingInformationSection({
                   aria-pressed={isUrgent}
                   aria-label={isUrgent ? 'Clear urgent flag' : 'Mark as urgent'}
                   className={cn(
-                    'inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-role-micro font-black uppercase tracking-widest leading-none transition-colors disabled:opacity-40',
+                    'inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-role-micro uppercase tracking-widest leading-none transition-colors disabled:opacity-40',
                     isUrgent
                       ? 'bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200'
                       : 'text-text-faint hover:bg-surface-sunken hover:text-amber-600',
@@ -193,7 +193,7 @@ export function ShippingInformationSection({
 
         {showShippingTimestamp ? (
           <DetailsPanelRow label="Shipped">
-            <p className="text-sm font-bold text-text-default">
+            <p className="text-sm font-semibold text-text-default">
               {packedAtSource ? formatDateTimePST(packedAtSource) : 'N/A'}
             </p>
           </DetailsPanelRow>
@@ -233,7 +233,7 @@ export function ShippingInformationSection({
                         tracking: draftValue || null,
                       })
                     }
-                    className="ds-raw-button rounded text-role-eyebrow font-black uppercase tracking-widest text-text-info hover:underline"
+                    className="ds-raw-button rounded text-role-eyebrow uppercase tracking-widest text-text-info hover:underline"
                   >
                     Link ticket
                   </button>
@@ -263,10 +263,10 @@ export function ShippingInformationSection({
         {prepackedSku ? <PrepackedSkuRow sku={prepackedSku} /> : null}
 
         {ef.isSaving ? (
-          <p className="pt-2 text-role-micro font-bold uppercase tracking-wide text-text-info">Saving shipping updates...</p>
+          <p className="pt-2 text-role-micro uppercase tracking-wide text-text-info">Saving shipping updates...</p>
         ) : null}
         {ef.isSavingShipByDate ? (
-          <p className="pt-1 text-role-micro font-bold uppercase tracking-wide text-text-info">Saving ship by date...</p>
+          <p className="pt-1 text-role-micro uppercase tracking-wide text-text-info">Saving ship by date...</p>
         ) : null}
       </div>
 

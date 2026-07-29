@@ -128,7 +128,7 @@ export function SupportChatHeader({
           ) : null}
           <span
             className={cn(
-              'flex shrink-0 items-center justify-center rounded-full bg-surface-sunken font-black text-text-soft',
+              'flex shrink-0 items-center justify-center rounded-full bg-surface-sunken font-semibold text-text-soft',
               compact ? 'h-7 w-7 text-role-micro' : 'h-9 w-9 text-role-caption',
             )}
           >
@@ -152,7 +152,7 @@ export function SupportChatHeader({
                         }
                       }}
                       className={cn(
-                        'min-w-0 flex-1 rounded-md border border-blue-300 bg-surface-card px-2 py-0.5 font-bold tracking-tight text-text-default outline-none focus:ring-2 focus:ring-blue-100',
+                        'min-w-0 flex-1 rounded-md border border-blue-300 bg-surface-card px-2 py-0.5 font-semibold tracking-tight text-text-default outline-none focus:ring-2 focus:ring-blue-100',
                         compact ? 'text-role-caption' : 'text-role-body',
                       )}
                     />
@@ -182,7 +182,7 @@ export function SupportChatHeader({
                       onClick={startEditTitle}
                       aria-label="Click to edit title"
                       className={cn(
-                        'min-w-0 truncate text-left font-bold tracking-tight text-text-default transition hover:text-blue-700',
+                        'min-w-0 truncate text-left font-semibold tracking-tight text-text-default transition hover:text-blue-700',
                         compact ? 'text-role-caption' : 'text-role-body',
                       )}
                     >

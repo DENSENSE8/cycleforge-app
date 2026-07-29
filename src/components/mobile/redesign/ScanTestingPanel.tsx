@@ -194,7 +194,7 @@ export function ScanTestingPanel({ query }: { query: string }) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center px-6 py-12 text-center opacity-50">
         <ShieldCheck className="mb-3 h-10 w-10 text-blue-200" />
-        <p className="text-xs font-black uppercase tracking-widest text-blue-300">Scan a PO label to test</p>
+        <p className="text-xs font-semibold uppercase tracking-widest text-blue-300">Scan a PO label to test</p>
       </div>
     );
   }
@@ -208,7 +208,7 @@ export function ScanTestingPanel({ query }: { query: string }) {
   if (state === 'empty' || state === 'error') {
     return (
       <div className="px-6 py-12 text-center">
-        <p className="text-xs font-black uppercase tracking-widest text-rose-400">
+        <p className="text-xs font-semibold uppercase tracking-widest text-rose-400">
           {state === 'empty' ? 'No PO found for that label' : 'Lookup failed'}
         </p>
       </div>
@@ -217,7 +217,7 @@ export function ScanTestingPanel({ query }: { query: string }) {
 
   return (
     <div className="px-3 pb-32">
-      <p className="px-1 pb-2 pt-1 text-role-caption font-black uppercase tracking-[0.2em] text-blue-400">
+      <p className="px-1 pb-2 pt-1 text-role-caption font-semibold uppercase tracking-[0.2em] text-blue-400">
         PO Items · {lines.length}
       </p>
       <div className="flex flex-col gap-3">
@@ -232,9 +232,9 @@ export function ScanTestingPanel({ query }: { query: string }) {
           const cond = conditionGradeTableLabel(line.condition_grade);
           return (
             <div key={line.id} className="rounded-2xl border border-blue-100 bg-surface-card p-4 shadow-[0_8px_24px_-12px_rgba(15,23,42,0.18)]">
-              <p className="text-base font-black leading-snug tracking-tight text-blue-950">{title}</p>
+              <p className="text-base font-semibold leading-snug tracking-tight text-blue-950">{title}</p>
               <div className="mt-2 flex items-center gap-2">
-                <span className="flex shrink-0 items-center gap-1 whitespace-nowrap text-role-caption font-black uppercase tracking-widest text-text-soft">
+                <span className="flex shrink-0 items-center gap-1 whitespace-nowrap text-role-caption font-semibold uppercase tracking-widest text-text-soft">
                   <span className="text-text-default">{qty}</span>
                   <span className="text-text-faint">·</span>
                   <span>{cond}</span>

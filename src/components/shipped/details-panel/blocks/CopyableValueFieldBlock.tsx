@@ -110,7 +110,7 @@ export function CopyableValueFieldBlock({
           className={`group/field flex items-center justify-between gap-3 px-0 py-0 transition-all ${!isEmpty ? 'cursor-pointer hover:text-text-muted' : 'cursor-default'}`}
         >
           <p
-            className={`flex-1 text-sm font-bold text-text-default ${noTruncate ? 'whitespace-normal break-words leading-snug' : twoLineValue ? 'break-all leading-4' : 'truncate'} ${valueClassName || 'font-mono'}`}
+            className={`flex-1 text-sm font-semibold text-text-default ${noTruncate ? 'whitespace-normal break-words leading-snug' : twoLineValue ? 'break-all leading-4' : 'truncate'} ${valueClassName || 'font-mono'}`}
             style={
               !noTruncate && twoLineValue
                 ? {
@@ -151,7 +151,7 @@ export function CopyableValueFieldBlock({
         className={`group/field flex items-center justify-between gap-3 rounded-xl border border-border-hairline bg-surface-canvas px-4 py-2.5 transition-all ${!isEmpty ? 'cursor-pointer hover:bg-surface-sunken active:scale-[0.98]' : 'cursor-default'}`}
       >
         <p
-          className={`flex-1 text-sm font-bold text-text-default ${twoLineValue ? 'break-all leading-4' : 'truncate'} ${valueClassName || 'font-mono'}`}
+          className={`flex-1 text-sm font-semibold text-text-default ${twoLineValue ? 'break-all leading-4' : 'truncate'} ${valueClassName || 'font-mono'}`}
           style={
             twoLineValue
               ? {

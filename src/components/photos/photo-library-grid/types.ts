@@ -32,4 +32,9 @@ export interface PhotoGridViewProps {
   onPhotoContextMenu?: (photo: LibraryPhoto, e: ReactMouseEvent) => void;
   /** Open the shared fullscreen viewer at this photo. */
   openAt: (id: number) => void;
+  /**
+   * Open the non-modal inspector for a photo. Optional so embedded grids
+   * (pickers, claim attach) that have no right rail keep click → viewer.
+   */
+  onInspect?: (id: number) => void;
 }

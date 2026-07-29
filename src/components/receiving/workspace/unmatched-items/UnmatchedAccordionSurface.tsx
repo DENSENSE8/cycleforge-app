@@ -399,13 +399,13 @@ export function UnmatchedAccordionSurface(props: UnmatchedItemsSectionProps) {
                   {c.linkedOrderNumber ? (
                     <>
                       {' '}This carton is still paired to order{' '}
-                      <span className="font-mono font-bold">{c.linkedOrderNumber}</span>.
+                      <span className="font-mono font-semibold">{c.linkedOrderNumber}</span>.
                     </>
                   ) : null}
                 </>
               ) : c.linkedOrderNumber ? (
                 <>
-                  Order <span className="font-mono font-bold">{c.linkedOrderNumber}</span> is paired to this
+                  Order <span className="font-mono font-semibold">{c.linkedOrderNumber}</span> is paired to this
                   carton but no line items were imported. Unlink to clear the pairing and scan the serial again.
                 </>
               ) : (
@@ -527,7 +527,7 @@ export function UnmatchedAccordionSurface(props: UnmatchedItemsSectionProps) {
       <div className="space-y-2">
         {suppressHeader ? null : (
           <div className="flex items-center justify-between gap-2">
-            <h3 className="text-role-caption font-bold uppercase tracking-[0.14em] text-text-soft">
+            <h3 className="text-role-caption font-semibold uppercase tracking-[0.14em] text-text-soft">
               PO items · {c.lines.length}
             </h3>
             <div className="flex items-center gap-1.5">

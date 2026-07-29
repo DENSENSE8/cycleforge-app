@@ -7,7 +7,13 @@ import { TicketNasBackupButton } from '../TicketNasBackupButton';
 import { PhotoThumb } from '../PhotoThumb';
 import { GroupSelectionMark } from './GroupSelectionMark';
 import { SelectionMark } from './SelectionMark';
-import { clickSelectsInstead, groupPhotosByTicket, photoFileName, photoPrimaryLabel } from './photo-grid-format';
+import {
+  clickSelectsInstead,
+  groupPhotosByTicket,
+  photoFileName,
+  photoIdentityLine,
+  photoPrimaryLabel,
+} from './photo-grid-format';
 import type { PhotoGridViewProps } from './types';
 
 /** List view — PO/ticket-grouped vertical rosters with space between each link group. */
@@ -51,7 +57,7 @@ export function PhotoListView({
                 <span className="truncate text-role-eyebrow uppercase tracking-widest text-text-soft">
                   {group.label}
                 </span>
-                <span className="shrink-0 rounded-full bg-surface-sunken px-1.5 py-0.5 text-role-micro font-bold tabular-nums text-text-soft">
+                <span className="shrink-0 rounded-full bg-surface-sunken px-1.5 py-0.5 text-role-micro tabular-nums text-text-soft">
                   {group.photos.length}
                 </span>
                 {showNasBackup && ticketNumber ? (
@@ -76,8 +82,10 @@ export function PhotoListView({
                 ]
                   .filter(Boolean)
                   .join(' · ');
+                // Under group headers the shared PO/ticket ref lives in the
+                // header — the row keeps its own SKU · serial identity line.
                 const subtitle = showGroupHeaders
-                  ? statusLabel
+                  ? [photoIdentityLine(photo), statusLabel].filter(Boolean).join(' · ')
                   : [metaLabel, statusLabel].filter(Boolean).join(' · ');
                 return (
                   <li key={photo.id} className="group relative">

@@ -216,7 +216,7 @@ function EventRow({ ev }: { ev: ReceivingAuditEvent }) {
     <li className="flex items-start gap-2 text-role-caption">
       <span className="mt-[3px] inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-border-emphasis" aria-hidden />
       <div className="min-w-0 flex-1">
-        <p className="font-bold text-text-default">
+        <p className="font-semibold text-text-default">
           {ev.event_type.replace(/_/g, ' ')}
           {ev.bin_name ? (
             <span className="ml-1 font-semibold text-text-muted">→ {ev.bin_name}</span>
@@ -262,7 +262,7 @@ function SerialBatchRow({
         <button
           type="button"
           onClick={() => setExpanded((v) => !v)}
-          className="ds-raw-button flex items-center gap-1 text-left font-bold text-text-default hover:text-text-muted"
+          className="ds-raw-button flex items-center gap-1 text-left font-semibold text-text-default hover:text-text-muted"
           aria-expanded={expanded}
         >
           <span>{label}</span>

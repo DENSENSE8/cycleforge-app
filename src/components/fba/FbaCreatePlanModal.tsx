@@ -110,7 +110,7 @@ export function FbaCreatePlanModal({ stationTheme = 'blue' }: { stationTheme?: S
             <p className={`text-role-micro uppercase tracking-[0.16em] ${chrome.sectionLabel}`}>
               New plan
             </p>
-            <DialogTitle className="mt-1 text-sm font-black">
+            <DialogTitle className="mt-1 text-sm font-semibold">
               Create FBA shipment plan
             </DialogTitle>
             <DialogDescription className="sr-only">

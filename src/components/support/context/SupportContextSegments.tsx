@@ -42,7 +42,7 @@ export function SupportContextSegments({
             aria-selected={active}
             onClick={() => onChange(s.id)}
             className={cn(
-              'ds-raw-button rounded-full px-2.5 py-1 text-role-eyebrow font-black uppercase tracking-widest transition-colors',
+              'ds-raw-button rounded-full px-2.5 py-1 text-role-eyebrow uppercase tracking-widest transition-colors',
               active
                 ? 'bg-surface-card text-text-default shadow-sm'
                 : 'text-text-soft hover:text-text-muted',

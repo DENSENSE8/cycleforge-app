@@ -56,7 +56,7 @@ export function ReturnScanCard({
             <ChevronDown className="h-3.5 w-3.5 text-text-faint" aria-hidden />
           </span>
           <p
-            className="min-w-0 flex-1 truncate text-role-caption font-bold text-text-default"
+            className="min-w-0 flex-1 truncate text-role-caption font-semibold text-text-default"
             title={title}
           >
             {title}

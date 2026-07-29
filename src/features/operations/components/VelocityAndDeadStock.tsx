@@ -71,7 +71,7 @@ function TierDonut({ counts }: { counts: Record<string, number> }) {
         })}
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-role-display font-extrabold text-text-default tabular-nums leading-none">{total}</span>
+        <span className="text-role-display text-text-default tabular-nums leading-none">{total}</span>
         <span className="text-role-eyebrow uppercase tracking-[0.16em] text-text-muted mt-1">
           SKUs scored
         </span>
@@ -115,7 +115,7 @@ export function VelocityAndDeadStock() {
       <div className="mb-4 flex items-end justify-between gap-4">
         <div>
           <span className={`${sectionLabel} !text-text-muted`}>Inventory motion · 30 days</span>
-          <h2 className="text-role-title sm:text-xl font-extrabold tracking-tight text-text-default mt-0.5">
+          <h2 className="text-role-title sm:text-xl tracking-tight text-text-default mt-0.5">
             What’s moving, what isn’t
           </h2>
         </div>
@@ -128,7 +128,7 @@ export function VelocityAndDeadStock() {
           animate={{ opacity: 1, y: 0 }}
           className="bg-surface-card rounded-2xl border border-border-soft p-5 shadow-[0_2px_12px_rgba(161,140,90,0.04)]"
         >
-          <p className="text-role-caption font-extrabold text-text-default tracking-tight mb-4">Velocity tier mix</p>
+          <p className="text-role-caption font-semibold text-text-default tracking-tight mb-4">Velocity tier mix</p>
           <TierDonut counts={tierCounts} />
           <div className="grid grid-cols-2 gap-2 mt-5">
             {(['A', 'B', 'C', 'D'] as const).map((t) => {
@@ -136,10 +136,10 @@ export function VelocityAndDeadStock() {
               return (
                 <div key={t} className="flex items-center gap-2">
                   <span className={`w-2 h-2 rounded-full ${tone.bg}`} />
-                  <span className="text-role-micro font-bold uppercase tracking-[0.12em] text-text-muted">
+                  <span className="text-role-micro uppercase tracking-[0.12em] text-text-muted">
                     {tone.label}
                   </span>
-                  <span className="ml-auto text-role-caption font-extrabold text-text-default tabular-nums">
+                  <span className="ml-auto text-role-caption font-semibold text-text-default tabular-nums">
                     {tierCounts[t] ?? 0}
                   </span>
                 </div>
@@ -157,8 +157,8 @@ export function VelocityAndDeadStock() {
           className="block lg:col-span-1 bg-surface-card rounded-2xl border border-border-soft p-5 shadow-[0_2px_12px_rgba(161,140,90,0.04)] hover:shadow-[0_4px_18px_rgba(161,140,90,0.08)] transition-shadow"
         >
           <div className="flex items-baseline justify-between mb-4">
-            <p className="text-role-caption font-extrabold text-text-default tracking-tight">Top movers</p>
-            <span className="text-role-micro font-bold text-text-muted uppercase tracking-[0.14em]">30d</span>
+            <p className="text-role-caption font-semibold text-text-default tracking-tight">Top movers</p>
+            <span className="text-role-micro text-text-muted uppercase tracking-[0.14em]">30d</span>
           </div>
           {velocity.data === null ? (
             <p className="text-role-caption text-text-muted py-2">Source unavailable.</p>
@@ -170,7 +170,7 @@ export function VelocityAndDeadStock() {
                 <li key={row.sku} className="flex items-center gap-3">
                   <span className="text-role-micro text-text-muted tabular-nums w-8">{row.out_qty}</span>
                   <div className="min-w-0 flex-1">
-                    <p className="text-role-caption font-bold text-text-default truncate leading-tight">{row.product_title || row.sku}</p>
+                    <p className="text-role-caption font-semibold text-text-default truncate leading-tight">{row.product_title || row.sku}</p>
                     <p className="text-role-micro font-medium text-text-muted font-mono truncate">{row.sku}</p>
                   </div>
                   {row.velocity_tier && (
@@ -197,10 +197,10 @@ export function VelocityAndDeadStock() {
           className="block bg-surface-card rounded-2xl border border-border-soft p-5 shadow-[0_2px_12px_rgba(161,140,90,0.04)] hover:shadow-[0_4px_18px_rgba(161,140,90,0.08)] transition-shadow"
         >
           <div className="flex items-baseline justify-between mb-3">
-            <p className="text-role-caption font-extrabold text-text-default tracking-tight">Dead stock</p>
-            <span className="text-role-micro font-bold text-text-muted uppercase tracking-[0.14em]">≥ 90d</span>
+            <p className="text-role-caption font-semibold text-text-default tracking-tight">Dead stock</p>
+            <span className="text-role-micro text-text-muted uppercase tracking-[0.14em]">≥ 90d</span>
           </div>
-          <div className="text-4xl font-extrabold text-text-default leading-none tabular-nums">
+          <div className="text-4xl font-semibold text-text-default leading-none tabular-nums">
             {dead.isLoading ? '–' : deadCount}
           </div>
           <p className="text-role-caption font-medium text-text-muted mt-2">
@@ -215,7 +215,7 @@ export function VelocityAndDeadStock() {
               <p className="text-role-micro uppercase tracking-[0.14em] text-text-muted mb-1">
                 Oldest item
               </p>
-              <p className="text-role-caption font-bold text-text-default truncate">{deadRows[0].product_title || deadRows[0].sku}</p>
+              <p className="text-role-caption font-semibold text-text-default truncate">{deadRows[0].product_title || deadRows[0].sku}</p>
               <p className="text-role-micro text-text-muted font-mono truncate">{deadRows[0].sku}</p>
             </div>
           )}

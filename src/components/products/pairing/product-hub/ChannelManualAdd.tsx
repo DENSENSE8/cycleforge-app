@@ -68,7 +68,7 @@ export function ChannelManualAdd({
         size="sm"
         onClick={() => setOpen(true)}
         icon={<Plus className="h-3 w-3" />}
-        className="mt-1.5 h-auto gap-1 px-0 text-role-eyebrow font-bold uppercase tracking-wider text-text-faint hover:bg-transparent hover:text-blue-600"
+        className="mt-1.5 h-auto gap-1 px-0 text-role-eyebrow uppercase tracking-wider text-text-faint hover:bg-transparent hover:text-blue-600"
       >
         Add {platformStyle(platform).label} identifier
       </Button>
@@ -86,7 +86,7 @@ export function ChannelManualAdd({
           variant="ghost"
           size="sm"
           onClick={close}
-          className="text-role-micro font-bold uppercase tracking-wider text-text-soft hover:bg-surface-card"
+          className="text-role-micro uppercase tracking-wider text-text-soft hover:bg-surface-card"
         >
           Cancel
         </Button>
@@ -97,7 +97,7 @@ export function ChannelManualAdd({
           disabled={saving || (!itemNumber.trim() && !sku.trim())}
           loading={saving}
           icon={<Link2 className="h-3.5 w-3.5" />}
-          className="text-role-micro font-bold uppercase tracking-wider"
+          className="text-role-micro uppercase tracking-wider"
         >
           Add
         </Button>

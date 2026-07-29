@@ -68,7 +68,7 @@ export function OperationsTvBoard() {
       <TvFrame>
         <div className="flex flex-1 items-center justify-center gap-3 text-text-faint">
           <Loader2 className="h-6 w-6 animate-spin" />
-          <span className="text-lg font-bold">Loading operations board…</span>
+          <span className="text-lg font-semibold">Loading operations board…</span>
         </div>
       </TvFrame>
     );
@@ -90,7 +90,7 @@ export function OperationsTvBoard() {
       <TvFrame>
         <div className="mx-auto mt-16 max-w-xl rounded-2xl border border-dashed border-rose-200 bg-rose-50 px-6 py-10 text-center">
           <AlertTriangle className="mx-auto h-8 w-8 text-rose-500" />
-          <p className="mt-3 text-lg font-black text-rose-700">Couldn’t load the operations board</p>
+          <p className="mt-3 text-lg font-semibold text-rose-700">Couldn’t load the operations board</p>
           <p className="mt-1 text-sm font-semibold text-rose-500">Retrying automatically…</p>
         </div>
       </TvFrame>
@@ -125,9 +125,9 @@ function StatusPill({ online, degraded, updatedAt }: { online: boolean; degraded
     <div className="flex items-center gap-3">
       <span className="inline-flex items-center gap-2 rounded-full border border-border-soft bg-surface-card px-3 py-1.5">
         <span className={cn('h-2.5 w-2.5 rounded-full', tone.dot, !degraded && online && 'animate-pulse')} aria-hidden />
-        <span className={cn('text-role-caption font-black uppercase tracking-widest', tone.text)}>{tone.label}</span>
+        <span className={cn('text-role-caption font-semibold uppercase tracking-widest', tone.text)}>{tone.label}</span>
       </span>
-      <span className="text-role-caption font-bold uppercase tracking-widest text-text-faint">
+      <span className="text-role-caption font-semibold uppercase tracking-widest text-text-faint">
         Updated {formatTime12hPST(updatedAt)}
       </span>
     </div>
@@ -145,8 +145,8 @@ function TvBoardBody({ board, online, degraded }: { board: TvBoard; online: bool
           <Activity className="h-7 w-7" />
         </span>
         <div>
-          <h1 className="text-3xl font-black leading-none tracking-tight text-text-default">On-time board</h1>
-          <p className="mt-1.5 text-role-caption font-bold uppercase tracking-widest text-text-soft">
+          <h1 className="text-3xl font-semibold leading-none tracking-tight text-text-default">On-time board</h1>
+          <p className="mt-1.5 text-role-caption font-semibold uppercase tracking-widest text-text-soft">
             Operations · {formatDateKeyShort(board.dateKey)}
           </p>
         </div>
@@ -238,7 +238,7 @@ function TaskLane({
     return (
       <div className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-8 text-center">
         <EmptyIcon className="h-5 w-5 text-text-faint" />
-        <span className="text-role-caption font-bold text-text-faint">{emptyLabel}</span>
+        <span className="text-role-caption font-semibold text-text-faint">{emptyLabel}</span>
       </div>
     );
   }
@@ -247,7 +247,7 @@ function TaskLane({
       {tasks.map((t) => (
         <MonitorListRow
           key={t.id}
-          title={<span className="text-lg font-bold text-text-default">{t.title}</span>}
+          title={<span className="text-lg font-semibold text-text-default">{t.title}</span>}
           meta={
             <span className="text-role-caption font-semibold uppercase tracking-widest text-text-soft">
               {t.station} · {t.planTitle}
@@ -256,11 +256,11 @@ function TaskLane({
           }
           trailing={
             overdue ? (
-              <span className="rounded-full border border-border-danger bg-surface-danger px-2.5 py-1 text-role-caption font-black uppercase tracking-widest text-text-danger">
+              <span className="rounded-full border border-border-danger bg-surface-danger px-2.5 py-1 text-role-caption font-semibold uppercase tracking-widest text-text-danger">
                 {t.daysLate}d late
               </span>
             ) : (
-              <span className="text-role-caption font-black uppercase tracking-widest text-text-info">
+              <span className="text-role-caption font-semibold uppercase tracking-widest text-text-info">
                 {t.dueAt ? formatTime12hPST(t.dueAt) : 'Today'}
               </span>
             )
@@ -275,10 +275,10 @@ function StationTile({ station }: { station: TvBoardStation }) {
   const hasOverdue = station.overdue > 0;
   return (
     <div className="rounded-2xl border border-border-soft bg-surface-card p-4">
-      <p className="text-role-caption font-black uppercase tracking-widest text-text-soft">{station.station}</p>
+      <p className="text-role-caption font-semibold uppercase tracking-widest text-text-soft">{station.station}</p>
       <p
         className={cn(
-          'mt-1.5 text-4xl font-black tabular-nums leading-none',
+          'mt-1.5 text-4xl font-semibold tabular-nums leading-none',
           hasOverdue ? 'text-text-danger' : station.open > 0 ? 'text-text-default' : 'text-text-faint',
         )}
       >
@@ -312,14 +312,14 @@ function PlanProgressRow({ plan }: { plan: TvBoardPlan }) {
     <div className="rounded-xl border border-border-soft bg-surface-canvas p-3.5">
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
-          <p className="truncate text-base font-bold text-text-default">{plan.title}</p>
+          <p className="truncate text-base font-semibold text-text-default">{plan.title}</p>
           <p className="mt-0.5 text-role-micro font-semibold uppercase tracking-widest text-text-faint">
             {SOURCE_LABEL[plan.source]} · {plan.done}/{plan.total} done
           </p>
         </div>
         <span
           className={cn(
-            'shrink-0 text-2xl font-black tabular-nums leading-none',
+            'shrink-0 text-2xl font-semibold tabular-nums leading-none',
             done ? 'text-text-success' : 'text-text-default',
           )}
         >
@@ -342,7 +342,7 @@ function TeachingEmpty({ title, detail }: { title: string; detail: string }) {
   return (
     <div className="mx-auto mt-16 max-w-xl rounded-2xl border border-dashed border-border-soft bg-surface-canvas px-6 py-10 text-center">
       <Activity className="mx-auto h-8 w-8 text-text-faint" />
-      <p className="mt-3 text-lg font-black text-text-default">{title}</p>
+      <p className="mt-3 text-lg font-semibold text-text-default">{title}</p>
       <p className="mt-1.5 text-sm font-semibold text-text-soft">{detail}</p>
     </div>
   );

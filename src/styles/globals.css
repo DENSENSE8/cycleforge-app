@@ -6,9 +6,15 @@
    dark-scheme raw-neutral compatibility remap below. */
 :root {
   /* ── Typeface chain — this block is the SoT ──────────────────────────────
-     `next/font` sets `--font-ibm-plex-sans` / `--font-ibm-plex-mono` on <html>
-     (`src/lib/fonts.ts`); these resolve them into full stacks. Stacks mirror
+     `next/font` sets `--font-ibm-plex-sans` / `--font-ibm-plex-condensed` /
+     `--font-ibm-plex-mono` on <html> (`src/lib/fonts.ts`); these resolve them
+     into full stacks. Stacks mirror
      `src/design-system/tokens/typography/families.ts` byte-for-byte.
+
+     Three cuts of ONE macro-family (IBM Plex). The condensed cut is bound
+     intrinsically by the `text-role-eyebrow` / `text-role-micro` utilities
+     (tailwind.config.ts plugin) — never reach for `font-condensed` by hand to
+     narrow arbitrary text; pick the role whose job is dense chrome.
 
      Both spellings are load-bearing and NEITHER has a fallback at its reader:
        --font-sans     → `body` + `.font-dm-sans` (src/app/globals.css)
@@ -29,8 +35,10 @@
      always beats this one at equal specificity. Pinned by
      `src/app/head-token-order.guard.test.ts`. */
   --font-sans: var(--font-ibm-plex-sans), 'IBM Plex Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-condensed: var(--font-ibm-plex-condensed), 'IBM Plex Sans Condensed', var(--font-ibm-plex-sans), 'IBM Plex Sans', system-ui, sans-serif;
   --font-mono: var(--font-ibm-plex-mono), 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   --ds-font-sans: var(--font-sans);
+  --ds-font-condensed: var(--font-condensed);
   --ds-font-mono: var(--font-mono);
   /* CF Type density (search-and-dense-ui-refactor plan §2.3). Scales every
      role-* font-size; default 1 = comfortable (no change). A container opts
@@ -73,6 +81,14 @@
     0 0 4px rgba(2, 6, 23, 0.06),
     0 4px 10px -2px rgba(2, 6, 23, 0.1),
     0 24px 48px -16px rgba(2, 6, 23, 0.24);
+  /* Same ink, cast LEFT: for a surface sitting left of the frame's centre, so
+     the whole app reads as lit from the middle of the screen. Ambient stays
+     zero-offset (it is what makes the top/right edges read at all); only the
+     key + cast layers gain a negative x. */
+  --ds-elev-overlay-left:
+    0 0 4px rgba(2, 6, 23, 0.06),
+    -4px 4px 10px -2px rgba(2, 6, 23, 0.1),
+    -20px 24px 48px -16px rgba(2, 6, 23, 0.24);
 }
 
 html[data-color-scheme='dark'] {
@@ -88,6 +104,10 @@ html[data-color-scheme='dark'] {
     0 0 4px rgba(0, 0, 0, 0.4),
     0 4px 10px -2px rgba(0, 0, 0, 0.5),
     0 24px 48px -16px rgba(0, 0, 0, 0.7);
+  --ds-elev-overlay-left:
+    0 0 4px rgba(0, 0, 0, 0.4),
+    -4px 4px 10px -2px rgba(0, 0, 0, 0.5),
+    -20px 24px 48px -16px rgba(0, 0, 0, 0.7);
 }
 
 /* ─── Page wash (Appearance → Page background / data-app-wash) ─────────────

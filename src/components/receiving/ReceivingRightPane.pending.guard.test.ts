@@ -45,9 +45,15 @@ test('ReceivingRightPane routes Unbox to UnboxLineWorkspace', () => {
   assert.match(CODE, /mode === 'receive'/);
 });
 
-test('UnboxLineWorkspace remounts workspace shell on scan-driven open', () => {
-  assert.match(UNBOX_CODE, /scanDriven/);
-  assert.match(UNBOX_CODE, /scan-\$/);
+test('UnboxLineWorkspace keys the overlay on CARTON identity, not the entry route', () => {
+  // The shell must still remount when a scan lands on a DIFFERENT carton (the
+  // empty-pane-first policy above) — but the identity is the carton, not "was
+  // this open scan-driven". Keying on the entry route made one carton
+  // exit-then-enter against itself (scan → rail-click) and remount mid-scan
+  // when the pending stub upgraded to the matched row. Behaviour contract lives
+  // in workspace-pane-key.test.ts; this guard only pins the wiring.
+  assert.match(UNBOX_CODE, /resolveWorkspacePaneSlot/);
+  assert.equal(UNBOX_CODE.includes('workspace.scanDriven'), false);
 });
 
 test('useTrackingScan opens optimistic unmatched pane at Unbox t=0', () => {

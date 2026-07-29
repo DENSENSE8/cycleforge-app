@@ -66,7 +66,7 @@ export function PhotosPlatformPanel() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-lg font-bold text-text-default">Photo platform</h2>
+        <h2 className="text-lg font-semibold text-text-default">Photo platform</h2>
         <p className="mt-1 text-sm text-text-soft">
           GCS storage, NAS cold mirror, and analysis job counts for this organization.
         </p>
@@ -85,10 +85,10 @@ export function PhotosPlatformPanel() {
             key={card.label}
             className="rounded-xl border border-border-soft bg-surface-card px-4 py-3 shadow-sm"
           >
-            <p className="text-role-micro font-bold uppercase tracking-wider text-text-faint">
+            <p className="text-role-micro uppercase tracking-wider text-text-faint">
               {card.label}
             </p>
-            <p className="mt-1 text-2xl font-black tabular-nums text-text-default">{card.value}</p>
+            <p className="mt-1 text-2xl font-semibold tabular-nums text-text-default">{card.value}</p>
           </div>
         ))}
       </div>
@@ -98,7 +98,7 @@ export function PhotosPlatformPanel() {
       <div className="rounded-xl border border-border-soft bg-surface-card p-4 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-sm font-bold text-text-default">NAS mirror backlog</p>
+            <p className="text-sm font-semibold text-text-default">NAS mirror backlog</p>
             <p className="text-role-caption text-text-soft">
               Enqueues mirror jobs for GCS photos older than the configured threshold.
             </p>
@@ -115,7 +115,7 @@ export function PhotosPlatformPanel() {
 
       {data.byMonth.length > 0 ? (
         <div className="rounded-xl border border-border-soft bg-surface-card p-4 shadow-sm">
-          <p className="text-sm font-bold text-text-default">Uploads by month</p>
+          <p className="text-sm font-semibold text-text-default">Uploads by month</p>
           <ul className="mt-3 space-y-1.5">
             {data.byMonth.map((row) => (
               <li

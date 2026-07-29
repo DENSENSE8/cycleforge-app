@@ -103,6 +103,72 @@ export function GridAgeCellValue({
 }
 
 /**
+ * Fused ship-by commitment cell — the absolute civil day and the relative
+ * urgency in one track (`Jun 17 · 41d`), replacing the adjacent Date + Age
+ * pair. The day stays quiet (`text-text-muted`); only the lateness carries
+ * tone, so a column of on-time rows reads calm and a late one pops.
+ *
+ * **Date-only, deliberately.** `deadline_at` is a `timestamptz`, but every
+ * writer puts a date-only value in it: the ShipStation ingest path
+ * (`parseShipDate`) returns `YYYY-MM-DD` on every branch, which Postgres
+ * coerces to midnight, and the FBA path hardcodes a `23:59:59` end-of-day
+ * sentinel. Rendering a time here would print `12:00 AM` on nearly every row —
+ * not merely false precision but an inverted reading (midnight says "due at
+ * the START of the day" when the fact is "due sometime that day"). A real
+ * time-of-day needs a carrier-cutoff primitive that does not exist yet; add
+ * that first, then this cell.
+ */
+export function GridSlaCellValue({
+  dateLabel,
+  dateTooltip,
+  daysLate,
+  laneAgeLabel,
+  laneAgeHours,
+  ageTooltip,
+  className,
+}: {
+  dateLabel?: string | null;
+  dateTooltip?: string | null;
+  daysLate: number | null;
+  laneAgeLabel?: string | null;
+  laneAgeHours?: number | null;
+  ageTooltip?: string;
+  className?: string;
+}) {
+  const base = 'tabular-nums normal-case tracking-normal';
+  const age =
+    daysLate !== null ? (
+      <span className={cn(base, getDaysLateTone(daysLate), className)}>{daysLate}d</span>
+    ) : laneAgeLabel ? (
+      <span className={cn(base, getLaneAgeTone(laneAgeHours ?? null), className)}>
+        {laneAgeLabel}
+      </span>
+    ) : null;
+
+  if (!dateLabel) return age ?? <GridCellDash />;
+
+  return (
+    <HoverTooltip
+      label={[dateTooltip ?? dateLabel, ageTooltip].filter(Boolean).join(' · ')}
+      focusable={false}
+    >
+      <span className="flex min-w-0 items-baseline gap-1">
+        <span className={cn(base, 'shrink-0 text-text-muted', className)}>{dateLabel}</span>
+        {age ? (
+          <>
+            {/* Quiet separator — never a second tone-carrying mark. */}
+            <span className="shrink-0 text-text-faint" aria-hidden>
+              ·
+            </span>
+            {age}
+          </>
+        ) : null}
+      </span>
+    </HoverTooltip>
+  );
+}
+
+/**
  * Fixed platform brand mark — display variant (tooltip + sr-only label), the
  * shape the station grids and group summaries share. The Pending leaf row keeps
  * its richer `OrderIdentityChips` mark (listing link + hover menu) — that is a

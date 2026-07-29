@@ -25,7 +25,7 @@ function RefChip({ value, kind }: { value: unknown; kind: FieldKind | undefined 
           ? 'bg-emerald-50 text-emerald-700 ring-emerald-200'
           : 'bg-surface-canvas text-text-muted ring-border-soft';
   return (
-    <span className={`inline-flex max-w-[9rem] items-center truncate rounded px-1 py-px font-mono text-role-micro font-bold ring-1 ring-inset ${tone}`}>
+    <span className={`inline-flex max-w-[9rem] items-center truncate rounded px-1 py-px font-mono text-role-micro ring-1 ring-inset ${tone}`}>
       {String(value)}
     </span>
   );
@@ -127,7 +127,7 @@ export function ChecklistBlock({
             )}
 
             <div className="min-w-0 flex-1">
-              <p className={`truncate text-role-caption font-bold text-text-default ${done ? 'line-through' : ''}`}>
+              <p className={`truncate text-role-caption font-semibold text-text-default ${done ? 'line-through' : ''}`}>
                 {String((titleKey && row[titleKey]) ?? '—')}
               </p>
               <div className="mt-0.5 flex items-center gap-1.5">
@@ -153,7 +153,7 @@ export function ChecklistBlock({
                         disabled={pending}
                         onClick={() => void runAction(a.def.id, row)}
                         ariaLabel={a.def.label}
-                        className={`h-auto rounded px-1.5 py-0.5 text-role-micro font-bold ring-inset ${
+                        className={`h-auto rounded px-1.5 py-0.5 text-role-micro font-semibold ring-inset ${
                           isDone
                             ? 'bg-emerald-50 text-emerald-700 ring-emerald-200 hover:bg-emerald-100'
                             : 'bg-surface-card text-text-muted ring-border-soft hover:bg-surface-hover'

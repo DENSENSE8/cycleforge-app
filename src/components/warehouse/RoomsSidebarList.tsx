@@ -257,7 +257,7 @@ export function RoomsSidebarList() {
       <div className="border-b border-border-hairline bg-gradient-to-b from-white to-gray-50/50 px-4 pt-4 pb-3">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
-            <h2 className="text-lg font-bold tracking-tight text-text-default">Rooms</h2>
+            <h2 className="text-lg font-semibold tracking-tight text-text-default">Rooms</h2>
             <p className="mt-0.5 text-role-caption font-medium text-text-soft">
               {loading
                 ? 'Loading…'

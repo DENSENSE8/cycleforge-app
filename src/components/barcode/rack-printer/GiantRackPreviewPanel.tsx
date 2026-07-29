@@ -38,7 +38,7 @@ export function GiantRackPreviewPanel({ zoneLetter, aisle, bay, level, gln }: Gi
           <p className="text-role-caption font-semibold uppercase tracking-[0.14em] text-text-soft">
             {orgWarehouseLabel(user?.organizationName || 'Workspace', 'Rack')}
           </p>
-          <p className="mt-1.5 whitespace-nowrap font-mono text-2xl font-bold leading-none tracking-tight text-text-default">
+          <p className="mt-1.5 whitespace-nowrap font-mono text-2xl font-semibold leading-none tracking-tight text-text-default">
             {code}
           </p>
           <p className="mt-1.5 text-role-caption font-medium leading-snug text-text-muted">

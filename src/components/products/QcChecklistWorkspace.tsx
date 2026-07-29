@@ -90,13 +90,13 @@ export function QcChecklistWorkspace() {
           )}
         </span>
         <div className="min-w-0 flex-1">
-          <h1 className="truncate text-lg font-black text-text-default">
+          <h1 className="truncate text-lg font-semibold text-text-default">
             {catalog.product_title || catalog.sku}
           </h1>
           <div className="mt-1 flex items-center gap-2">
             <span className="font-mono text-role-caption text-text-soft">{catalog.sku}</span>
             {catalog.category && (
-              <span className="rounded-full bg-surface-sunken px-2 py-0.5 text-role-micro font-bold uppercase tracking-wider text-text-soft">
+              <span className="rounded-full bg-surface-sunken px-2 py-0.5 text-role-micro uppercase tracking-wider text-text-soft">
                 {catalog.category}
               </span>
             )}
@@ -112,7 +112,7 @@ export function QcChecklistWorkspace() {
             iconRight={<ChevronRight />}
             onClick={() => router.replace(`/products?view=kit&skuId=${catalog.id}`)}
             ariaLabel="View what's in this product's box"
-            className="h-auto shrink-0 gap-1 rounded-full bg-surface-canvas px-3 py-1 text-role-micro font-bold uppercase tracking-wider text-text-soft ring-1 ring-border-soft hover:bg-surface-sunken hover:text-text-muted"
+            className="h-auto shrink-0 gap-1 rounded-full bg-surface-canvas px-3 py-1 text-role-micro uppercase tracking-wider text-text-soft ring-1 ring-border-soft hover:bg-surface-sunken hover:text-text-muted"
           >
             {kit?.parts.length ?? 0} kit
           </Button>

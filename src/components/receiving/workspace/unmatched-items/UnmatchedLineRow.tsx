@@ -238,7 +238,7 @@ export function UnmatchedLineRow({
           />
         ) : null}
         <div className="min-w-0 flex-1">
-          <div className="truncate text-role-caption font-bold text-text-default">
+          <div className="truncate text-role-caption font-semibold text-text-default">
             {line.item_name ?? line.sku ?? `Line ${line.id}`}
           </div>
           {/* Same fixed-column meta as PoLineRow: qty | SKU | condition | serial. */}

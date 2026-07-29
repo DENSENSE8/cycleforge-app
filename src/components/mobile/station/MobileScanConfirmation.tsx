@@ -125,16 +125,16 @@ export function MobileScanConfirmation({
       <div className="bg-surface-card rounded-t-3xl shadow-2xl px-5 pt-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
         {/* ── Header: "Detected as" + badge ── */}
         <div className="mb-4">
-          <p className="text-xs font-black uppercase tracking-[0.2em] text-text-faint mb-2">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-text-faint mb-2">
             Detected As
           </p>
           <div className="flex items-center gap-3">
-            <span className={`inline-flex items-center gap-2 rounded-xl border px-3.5 py-2.5 text-role-caption font-black uppercase tracking-wide ${config.badge}`}>
+            <span className={`inline-flex items-center gap-2 rounded-xl border px-3.5 py-2.5 text-role-caption font-semibold uppercase tracking-wide ${config.badge}`}>
               <ActiveIcon className="h-4 w-4" />
               {config.label}
             </span>
             {carrier && (
-              <span className="text-xs font-black text-text-soft uppercase tracking-wider">
+              <span className="text-xs font-semibold text-text-soft uppercase tracking-wider">
                 {carrier.replace(/_/g, ' ')}
               </span>
             )}
@@ -143,17 +143,17 @@ export function MobileScanConfirmation({
 
         {/* ── Scanned value ── */}
         <div className="bg-surface-canvas rounded-2xl border border-border-soft px-4 py-3 mb-4">
-          <p className="text-xs font-black uppercase tracking-[0.15em] text-text-faint mb-1">
+          <p className="text-xs font-semibold uppercase tracking-[0.15em] text-text-faint mb-1">
             Scanned Value
           </p>
-          <p className="text-base font-mono font-black text-text-default break-all leading-snug">
+          <p className="text-base font-mono font-semibold text-text-default break-all leading-snug">
             {scannedValue}
           </p>
         </div>
 
         {/* ── Override pills ── */}
         <div className="mb-5">
-          <p className="text-xs font-black uppercase tracking-[0.15em] text-text-soft mb-2">
+          <p className="text-xs font-semibold uppercase tracking-[0.15em] text-text-soft mb-2">
             Not right? It&apos;s a:
           </p>
           <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
@@ -167,7 +167,7 @@ export function MobileScanConfirmation({
                   key={type}
                   type="button"
                   onClick={() => setCurrentType(type)}
-                  className={`ds-raw-button flex items-center gap-1.5 rounded-full border px-3.5 min-h-[44px] text-xs font-black uppercase tracking-wider transition-all active:scale-95 whitespace-nowrap ${
+                  className={`ds-raw-button flex items-center gap-1.5 rounded-full border px-3.5 min-h-[44px] text-xs font-semibold uppercase tracking-wider transition-all active:scale-95 whitespace-nowrap ${
                     isActive ? pillConfig.badge : 'bg-surface-sunken text-text-soft border-border-soft'
                   }`}
                 >

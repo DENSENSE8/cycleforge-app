@@ -150,7 +150,7 @@ export function EmailPoLinkTab({
               </div>
               {em.email_subject ? (
                 // ds-allow-title: truncation-only native title on a clipped, non-interactive <p>
-                <p className="mt-0.5 truncate text-role-caption font-bold text-text-default" title={em.email_subject}>
+                <p className="mt-0.5 truncate text-role-caption font-semibold text-text-default" title={em.email_subject}>
                   {em.email_subject}
                 </p>
               ) : null}
@@ -165,7 +165,7 @@ export function EmailPoLinkTab({
                     const isLinking = linkingKey === key;
                     return (
                       <div key={key} className="flex items-center justify-between gap-2">
-                        <span className="truncate font-mono text-role-caption font-bold text-text-default">
+                        <span className="truncate font-mono text-role-caption font-semibold text-text-default">
                           {po}
                         </span>
                         <PairingLinkButton

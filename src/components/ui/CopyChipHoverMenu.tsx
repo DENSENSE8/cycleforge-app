@@ -190,7 +190,7 @@ export function CopyChipHoverMenu({
                       close();
                     }}
                     className={cn(
-                      'flex w-full items-center gap-2 px-3 py-1.5 text-left text-role-caption font-bold uppercase tracking-widest disabled:cursor-not-allowed disabled:opacity-40',
+                      'flex w-full items-center gap-2 px-3 py-1.5 text-left text-role-caption font-semibold uppercase tracking-widest disabled:cursor-not-allowed disabled:opacity-40',
                       i > 0 ? 'border-t border-border-hairline' : '',
                       toneClass,
                     )}

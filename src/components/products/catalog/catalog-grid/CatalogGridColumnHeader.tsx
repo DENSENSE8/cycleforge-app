@@ -3,6 +3,7 @@
 import { Check, ChevronUp, ChevronDown } from '@/components/Icons';
 import { tableHeader } from '@/design-system/tokens/typography/presets';
 import { ColumnTypeGlyph } from '@/components/ui/table-column-config/column-type-glyph';
+import { gridHeaderCellAlignClass } from '@/design-system/components/grid/grid-header-align';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { emitToggleAll } from '@/lib/selection/table-selection';
 import { useTableSelection, useTableSelectionTotal } from '@/hooks/useTableSelection';
@@ -190,7 +191,8 @@ function CatalogHeaderCell({
       aria-sort={ariaSort}
       onClick={onSort}
       className={cn(
-        'group/hcell relative min-h-11 justify-start gap-1',
+        'group/hcell relative min-h-11 gap-1',
+        gridHeaderCellAlignClass(),
         (column.key === 'channels' ||
           column.key === 'manuals' ||
           column.key === 'qc' ||

@@ -10,20 +10,18 @@ import { publishStockLedgerEvent } from '@/lib/realtime/publish';
 import { withAuth } from '@/lib/auth/withAuth';
 import { mirrorLegacyPackToAllocations } from '@/lib/inventory/sync-legacy-pack';
 import { attachPhotoWithLegacyUrl } from '@/lib/photos/service';
+import { PACKER_BOX_LABEL_PHOTO_TYPE } from '@/lib/photos/types';
 
-const LEGACY_PACKER_ALIAS_TO_STAFF_ID: Record<string, number> = {
-  '1': 4,
-  '2': 5,
-  '3': 6,
-};
-
-function resolvePackerStaffId(rawId: string | number | null | undefined): number | null {
-  const normalized = String(rawId ?? '').trim();
-  if (!normalized) return null;
-  if (LEGACY_PACKER_ALIAS_TO_STAFF_ID[normalized]) {
-    return LEGACY_PACKER_ALIAS_TO_STAFF_ID[normalized];
-  }
-  const numeric = Number(normalized);
+/**
+ * The signed-in actor's staff id — a positive integer, never aliased.
+ *
+ * The legacy packer alias map (1→4, 2→5, 3→6) used to run here. It must NEVER
+ * touch a server-trusted `ctx.staffId`: staff 1/2/3 are real people, so aliasing
+ * the actor stamped their pack work as someone else's and hid it from Pack →
+ * History (which filters by the signed-in staff and applies no alias).
+ */
+function sessionStaffId(rawId: string | number | null | undefined): number | null {
+  const numeric = Number(String(rawId ?? '').trim());
   return Number.isInteger(numeric) && numeric > 0 ? numeric : null;
 }
 
@@ -55,7 +53,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       return NextResponse.json({ error: 'packerPhotosUrl must be a non-empty array' }, { status: 400 });
     }
 
-    const staffId = resolvePackerStaffId(packedBy);
+    const staffId = sessionStaffId(packedBy);
 
     if (!staffId) {
       return NextResponse.json({ error: 'Invalid packer ID' }, { status: 400 });
@@ -192,7 +190,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
             entityType: 'PACKER_LOG',
             entityId: packerLogId,
             legacyUrl: url,
-            photoType: 'box_label',
+            photoType: PACKER_BOX_LABEL_PHOTO_TYPE,
             idempotent: true,
           });
         }

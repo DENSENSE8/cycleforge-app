@@ -65,13 +65,16 @@ export async function recomputeCartonSourceLink(
   // Promote an UNMATCHED, PO-less carton to its line's PO so it stops lying.
   // A carton already matched to a real Zoho PO is canonical — never touched.
   if (isUnmatched && !carton.zoho_purchaseorder_id) {
+    // Line-level Zoho identity lives in receiving_line_zoho (Wave-3 inversion —
+    // receiving_line's own zoho_* columns are dropped).
     const zohoLinked = await db.query(
-      `SELECT zoho_purchaseorder_id, zoho_purchaseorder_number
-         FROM receiving_line
-        WHERE receiving_id = $1
-          AND zoho_purchaseorder_id IS NOT NULL
-          AND btrim(zoho_purchaseorder_id) <> ''
-        ORDER BY id ASC
+      `SELECT rz.zoho_purchaseorder_id, rz.zoho_purchaseorder_number
+         FROM receiving_line rl
+         JOIN receiving_line_zoho rz ON rz.receiving_line_id = rl.id
+        WHERE rl.receiving_id = $1
+          AND rz.zoho_purchaseorder_id IS NOT NULL
+          AND btrim(rz.zoho_purchaseorder_id) <> ''
+        ORDER BY rl.id ASC
         LIMIT 1`,
       [receivingId],
     );

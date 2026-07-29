@@ -82,7 +82,7 @@ export function FbaTrackingGroupDisplay({
         ) : (
           <div className="flex items-center gap-1.5 text-blue-500">
             <MapPin className="h-3 w-3" />
-            <span className="font-mono text-role-caption font-black">No tracking</span>
+            <span className="font-mono text-role-caption font-semibold">No tracking</span>
           </div>
         )}
         <span className="ml-auto shrink-0 text-role-micro tabular-nums text-blue-400/80">

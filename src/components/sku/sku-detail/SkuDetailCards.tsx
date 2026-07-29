@@ -36,7 +36,7 @@ export function SkuDetailCards({ c, data }: { c: SkuDetailController; data: SkuD
             )}
             <div>
               <p className={fieldLabel}>Status</p>
-              <span className={`inline-block rounded-full px-2 py-0.5 text-role-micro font-bold uppercase ${data.catalog.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-600'}`}>
+              <span className={`inline-block rounded-full px-2 py-0.5 text-role-micro font-semibold uppercase ${data.catalog.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-600'}`}>
                 {data.catalog.isActive ? 'Active' : 'Inactive'}
               </span>
             </div>
@@ -53,7 +53,7 @@ export function SkuDetailCards({ c, data }: { c: SkuDetailController; data: SkuD
               href={`https://my.ecwid.com/store/${process.env.NEXT_PUBLIC_ECWID_STORE_ID || ''}#product:id=${data.ecwid.id}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1 text-role-micro font-bold uppercase tracking-wider text-blue-600 hover:text-blue-800"
+              className="flex items-center gap-1 text-role-micro uppercase tracking-wider text-blue-600 hover:text-blue-800"
             >
               Open in Ecwid
               <ExternalLink className="h-3 w-3" />
@@ -81,13 +81,13 @@ export function SkuDetailCards({ c, data }: { c: SkuDetailController; data: SkuD
               >
                 <img src={photo.url} alt={`SKU photo ${photo.id}`} className="h-full w-full object-cover" loading="lazy" decoding="async" />
                 {photo.photoType && (
-                  <span className="absolute bottom-1 left-1 rounded bg-scrim/60 px-1.5 py-0.5 text-role-micro font-bold uppercase text-white">{photo.photoType}</span>
+                  <span className="absolute bottom-1 left-1 rounded bg-scrim/60 px-1.5 py-0.5 text-role-micro uppercase text-white">{photo.photoType}</span>
                 )}
               </button>
             ))}
           </div>
         ) : (
-          <p className="text-xs font-bold text-text-faint">No photos for this SKU</p>
+          <p className="text-xs font-semibold text-text-faint">No photos for this SKU</p>
         )}
       </div>
 
@@ -104,13 +104,13 @@ export function SkuDetailCards({ c, data }: { c: SkuDetailController; data: SkuD
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0 flex-1">
                     {row.serial_number && (
-                      <button onClick={() => c.handleCopy(row.serial_number!, `serial-${row.id}`)} className="ds-raw-button text-role-caption font-bold font-mono text-text-default hover:text-blue-600 transition-colors block">
+                      <button onClick={() => c.handleCopy(row.serial_number!, `serial-${row.id}`)} className="ds-raw-button text-role-caption font-semibold font-mono text-text-default hover:text-blue-600 transition-colors block">
                         SN: {row.serial_number}
                         {c.copiedField === `serial-${row.id}` && <Check className="inline h-3 w-3 ml-1 text-emerald-500" />}
                       </button>
                     )}
                     {row.shipping_tracking_number && (
-                      <button onClick={() => c.handleCopy(row.shipping_tracking_number!, `tracking-${row.id}`)} className="ds-raw-button text-role-caption font-bold font-mono text-text-soft hover:text-blue-600 transition-colors block">
+                      <button onClick={() => c.handleCopy(row.shipping_tracking_number!, `tracking-${row.id}`)} className="ds-raw-button text-role-caption font-semibold font-mono text-text-soft hover:text-blue-600 transition-colors block">
                         Tracking: {row.shipping_tracking_number}
                         {c.copiedField === `tracking-${row.id}` && <Check className="inline h-3 w-3 ml-1 text-emerald-500" />}
                       </button>
@@ -119,16 +119,16 @@ export function SkuDetailCards({ c, data }: { c: SkuDetailController; data: SkuD
                   </div>
                   <div className="text-right flex-shrink-0">
                     {row.location && (
-                      <span className="inline-flex items-center rounded-full bg-blue-50 px-2 py-0.5 text-role-eyebrow font-bold uppercase tracking-wider text-blue-700">{row.location}</span>
+                      <span className="inline-flex items-center rounded-full bg-blue-50 px-2 py-0.5 text-role-eyebrow uppercase tracking-wider text-blue-700">{row.location}</span>
                     )}
-                    <p className="text-role-micro font-bold text-text-faint mt-1">{formatDate(row.updated_at || row.created_at)}</p>
+                    <p className="text-role-micro text-text-faint mt-1">{formatDate(row.updated_at || row.created_at)}</p>
                   </div>
                 </div>
               </div>
             ))}
           </div>
         ) : (
-          <p className="text-xs font-bold text-text-faint">No inventory records</p>
+          <p className="text-xs font-semibold text-text-faint">No inventory records</p>
         )}
       </div>
 
@@ -143,12 +143,12 @@ export function SkuDetailCards({ c, data }: { c: SkuDetailController; data: SkuD
             {data.ledger.map((entry) => (
               <div key={entry.id} className="flex items-center justify-between rounded-lg bg-surface-canvas px-3 py-2">
                 <div className="flex items-center gap-2">
-                  <span className={`text-sm font-black ${entry.delta > 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                  <span className={`text-sm font-semibold ${entry.delta > 0 ? 'text-emerald-600' : 'text-red-600'}`}>
                     {entry.delta > 0 ? `+${entry.delta}` : entry.delta}
                   </span>
-                  <span className="rounded-full bg-surface-strong px-2 py-0.5 text-role-eyebrow font-bold uppercase tracking-wider text-text-muted">{entry.reason}</span>
+                  <span className="rounded-full bg-surface-strong px-2 py-0.5 text-role-eyebrow uppercase tracking-wider text-text-muted">{entry.reason}</span>
                 </div>
-                <span className="text-role-micro font-bold text-text-faint">{formatDate(entry.created_at)}</span>
+                <span className="text-role-micro text-text-faint">{formatDate(entry.created_at)}</span>
               </div>
             ))}
           </div>
@@ -165,12 +165,12 @@ export function SkuDetailCards({ c, data }: { c: SkuDetailController; data: SkuD
           <div className="space-y-1">
             {data.transfers.map((t) => (
               <div key={t.id} className="flex items-center justify-between rounded-lg bg-surface-canvas px-3 py-2">
-                <div className="flex items-center gap-2 text-xs font-bold">
+                <div className="flex items-center gap-2 text-xs font-semibold">
                   <span className="text-text-faint">{t.from_location || '—'}</span>
                   <span className="text-text-faint">&rarr;</span>
                   <span className="text-blue-700">{t.to_location}</span>
                 </div>
-                <span className="text-role-micro font-bold text-text-faint">{formatDate(t.created_at)}</span>
+                <span className="text-role-micro text-text-faint">{formatDate(t.created_at)}</span>
               </div>
             ))}
           </div>

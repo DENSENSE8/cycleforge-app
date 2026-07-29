@@ -5,7 +5,7 @@ import { usePackerLogs, type PackerRecord } from '@/hooks/usePackerLogs';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
-export function isFbaPackerRecord(record: PackerRecord): boolean {
+function isFbaPackerRecord(record: PackerRecord): boolean {
   return (
     isFbaOrder(record.order_id, record.account_source) ||
     String(record.tracking_type || '').toUpperCase() === 'FNSKU'

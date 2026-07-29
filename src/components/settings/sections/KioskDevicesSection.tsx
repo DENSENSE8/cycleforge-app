@@ -149,7 +149,7 @@ export function KioskDevicesSection() {
 
       {/* Enroll */}
       <div className="rounded-xl border border-border-soft bg-surface-card p-4">
-        <p className="text-role-caption font-black uppercase tracking-widest text-text-soft">Enroll a tablet</p>
+        <p className="text-role-caption font-semibold uppercase tracking-widest text-text-soft">Enroll a tablet</p>
         <div className="mt-3 flex flex-col gap-2 sm:flex-row">
           <input
             value={label}
@@ -168,10 +168,10 @@ export function KioskDevicesSection() {
 
         {freshCode && (
           <div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-3">
-            <p className="text-role-caption font-black uppercase tracking-widest text-emerald-700">
+            <p className="text-role-caption font-semibold uppercase tracking-widest text-emerald-700">
               Pairing code — shown once
             </p>
-            <p className="mt-1 select-all font-mono text-xl font-black tracking-widest text-emerald-800">
+            <p className="mt-1 select-all font-mono text-xl font-semibold tracking-widest text-emerald-800">
               {freshCode.code}
             </p>
             <p className="mt-1 text-xs font-semibold text-emerald-700">
@@ -207,7 +207,7 @@ export function KioskDevicesSection() {
                 <tr key={row.id}>
                   <td className="px-3 py-2 font-medium text-text-default">{row.label}</td>
                   <td className="px-3 py-2">
-                    <span className={`rounded-full px-2 py-0.5 text-xs font-black uppercase tracking-widest ring-1 ring-inset ${STATUS_TONE[row.status]}`}>
+                    <span className={`rounded-full px-2 py-0.5 text-xs font-semibold uppercase tracking-widest ring-1 ring-inset ${STATUS_TONE[row.status]}`}>
                       {STATUS_LABEL[row.status]}
                     </span>
                   </td>

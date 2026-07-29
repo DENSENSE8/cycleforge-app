@@ -57,7 +57,7 @@ export function StudioStationPreview({
         </Button>
         <span className="text-text-faint">/</span>
         <div className="min-w-0">
-          <p className="truncate text-sm font-bold text-text-default">
+          <p className="truncate text-sm font-semibold text-text-default">
             {station?.label ?? `${nodeLabel} · station`}
           </p>
           <p className="truncate text-role-caption text-text-faint">
@@ -66,7 +66,7 @@ export function StudioStationPreview({
               : `bound to “${nodeLabel}”`}
           </p>
         </div>
-        <span className="ml-auto rounded-full bg-surface-sunken px-2 py-0.5 text-role-micro font-bold uppercase tracking-wide text-text-soft">
+        <span className="ml-auto rounded-full bg-surface-sunken px-2 py-0.5 text-role-micro uppercase tracking-wide text-text-soft">
           Read-only
         </span>
       </div>
@@ -102,7 +102,7 @@ export function StudioStationPreview({
           <div className="mx-auto max-w-2xl space-y-4">
             {station.slots.map((slot) => (
               <section key={slot.slot}>
-                <h3 className="mb-1.5 text-role-micro font-bold uppercase tracking-wider text-text-faint">
+                <h3 className="mb-1.5 text-role-micro uppercase tracking-wider text-text-faint">
                   {SLOT_LABELS[slot.slot] ?? slot.slot}
                 </h3>
                 <div className="space-y-2">
@@ -110,7 +110,7 @@ export function StudioStationPreview({
                     <div key={b.id} className="rounded-xl border border-border-soft bg-surface-card p-3 shadow-sm">
                       <div className="flex items-center gap-2">
                         <Icon name={b.blockIcon} className="h-4 w-4 shrink-0 text-text-soft" />
-                        <span className="text-sm font-bold text-text-default">{b.blockLabel}</span>
+                        <span className="text-sm font-semibold text-text-default">{b.blockLabel}</span>
                         <span className="font-mono text-role-micro text-text-faint">{b.block}</span>
                         {b.doneWhen && (
                           <HoverTooltip label={`A row checks off when “${b.doneWhen}” succeeds`} asChild>

@@ -51,8 +51,14 @@ function DashboardPageContent() {
 
   const isOutbound = mode === 'shipping';
 
-  const { selectionEnabled, selectMode, selectedRows, selectionActions, selectionOverlays } =
-    useDashboardBulkSelection(orderView);
+  const {
+    selectionEnabled,
+    selectMode,
+    selectedRows,
+    selectionActions,
+    selectionOverlays,
+    bulkBarVisible,
+  } = useDashboardBulkSelection(orderView);
 
   // Only the outbound (Shipping) mode resolves/opens the order panel — receiving
   // rows are cartons and search rows are hits, never orders.
@@ -102,6 +108,7 @@ function DashboardPageContent() {
         selectedRows={selectedRows}
         selectionActions={selectionActions}
         selectionOverlays={selectionOverlays}
+        bulkBarVisible={bulkBarVisible}
         />
       </div>
 

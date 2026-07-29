@@ -40,7 +40,7 @@ export function AboutSection() {
 
       <Panel padding="lg">
         <div className="mb-5">
-          <div className="text-xl font-bold text-text-default">{PRODUCT_NAME}</div>
+          <div className="text-xl font-semibold text-text-default">{PRODUCT_NAME}</div>
           <div className="text-sm text-text-muted">v{pkg.version}</div>
         </div>
 

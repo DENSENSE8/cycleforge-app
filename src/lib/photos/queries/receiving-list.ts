@@ -1,4 +1,8 @@
 import pool from '@/lib/db';
+import {
+  receivingPhotoIntentSql,
+  type ReceivingPhotoListIntent,
+} from '@/lib/receiving/photo-intent';
 
 const LINK_JOINS = `
   INNER JOIN photo_entity_links l ON l.photo_id = p.id AND l.organization_id = p.organization_id
@@ -62,8 +66,8 @@ export async function listReceivingPhotos(input: {
   receivingId: number;
   lineId?: number | null;
   scope?: 'po' | 'all';
-  /** Filter by capture intent — triage box shots vs unbox item shots. */
-  photoIntent?: 'package' | 'item' | 'all';
+  /** Filter by capture stage — arrival package vs unbox carton vs item shots. */
+  photoIntent?: ReceivingPhotoListIntent;
   contentUrl?: (id: number) => string;
 }): Promise<ReceivingPhotoListRow[]> {
   const toUrl = input.contentUrl ?? ((id: number) => `/api/photos/${id}/content`);
@@ -95,13 +99,10 @@ export async function listReceivingPhotos(input: {
       )`;
   }
 
-  const intent = input.photoIntent ?? 'all';
-  const intentSql =
-    intent === 'package'
-      ? ` AND (l.entity_type = 'RECEIVING' OR COALESCE(p.photo_type, '') IN ('receiving_package', 'receiving'))`
-      : intent === 'item'
-        ? ` AND (l.entity_type = 'RECEIVING_LINE' OR COALESCE(p.photo_type, '') = 'receiving_item')`
-        : '';
+  // Stage filter from the SoT — package/unbox_carton pin BOTH entity and type
+  // (so mis-typed item-on-carton rows never leak into package peeks); item is
+  // entity-only (line evidence is item evidence by the identity law).
+  const intentSql = receivingPhotoIntentSql(input.photoIntent ?? 'all');
 
   const res = await pool.query<DbRow>(
     `SELECT ${SELECT}
@@ -154,6 +155,30 @@ export function sqlPoLevelPhotoCount(receivingIdExpr: string, orgIdExpr: string)
       AND ${receivingIdExpr} IS NOT NULL
       AND l.entity_type = 'RECEIVING'
       AND l.entity_id = ${receivingIdExpr})`;
+}
+
+/**
+ * Stage-filtered carton photo count — {@link sqlPoLevelPhotoCount} with the
+ * entity AND photo_type pinned via `receivingPhotoIntentSql`, so `package`
+ * counts only arrival shots (`receiving_package` + legacy `receiving` +
+ * untyped '') and `unbox_carton` only `receiving_unbox_carton`.
+ *
+ * The `require_one` photo-policy gate (WS-PHOTO Plan 5) MUST count through
+ * this, never the entity-only po-level count: that one also counts
+ * unbox-carton shots and pre-SoT mis-stamped item-on-carton rows, so it
+ * over-reports arrival evidence.
+ */
+export function sqlCartonStagePhotoCount(
+  receivingIdExpr: string,
+  orgIdExpr: string,
+  intent: Extract<ReceivingPhotoListIntent, 'package' | 'unbox_carton'>,
+): string {
+  return `(SELECT COUNT(DISTINCT p.id)
+     FROM photos p
+     INNER JOIN photo_entity_links l ON l.photo_id = p.id AND l.organization_id = p.organization_id
+    WHERE p.organization_id = ${orgIdExpr}
+      AND ${receivingIdExpr} IS NOT NULL
+      AND l.entity_id = ${receivingIdExpr}${receivingPhotoIntentSql(intent)})`;
 }
 
 export function sqlLinePhotoCount(lineIdExpr: string, orgIdExpr: string): string {

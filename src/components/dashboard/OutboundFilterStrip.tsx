@@ -226,7 +226,7 @@ function ToShipExactFilters({ mode }: { mode: 'unshipped' | 'tested' }) {
 
   return (
     <div className="flex min-w-0 shrink-0 items-center gap-1.5">
-      <HoverTooltip label="Urgent / expedited · 4 / U" asChild>
+      <HoverTooltip label="Urgent" asChild>
         <ToolbarButton
           iconOnly
           active={urgentOnly}
@@ -238,12 +238,11 @@ function ToShipExactFilters({ mode }: { mode: 'unshipped' | 'tested' }) {
         </ToolbarButton>
       </HoverTooltip>
 
-      <WorkbenchFilterPopover
-        open={open}
-        onOpenChange={setOpen}
-        hot={laneHot}
-        label="Filters · 1 Pending · 2 Tested · 3 Blocked · 4 Urgent · A Clear"
-      >
+      {/* Just "Filters" — the trigger tooltip does NOT enumerate hotkeys. The
+          menu already prints each shortcut as a `kbd` chip on the row it acts
+          on, so a trigger-level list is a second copy that drifts (it still
+          named Pending/Tested tab jumps long after those became tabs). */}
+      <WorkbenchFilterPopover open={open} onOpenChange={setOpen} hot={laneHot} label="Filters">
         <WorkbenchFilterGroupLabel>Filters</WorkbenchFilterGroupLabel>
         <WorkbenchFilterMenuRow
           label={mode === 'tested' ? 'All tested' : 'All on tab'}

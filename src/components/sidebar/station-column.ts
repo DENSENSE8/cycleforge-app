@@ -1,59 +1,69 @@
-import { elevationClass } from '@/design-system/tokens/shadows';
+import { elevationCastClass } from '@/design-system/tokens/shadows';
 import { appCanvasClass } from '@/design-system/tokens/app-surface';
 import { cn } from '@/utils/_cn';
 
 /**
- * Station sidebar column — the **two-card** layout SoT.
+ * Station surface layout tokens.
  *
- * On station surfaces the 360px column is not one flat panel. It is a gray
- * backdrop holding two elevated cards that share one shell, mirrored:
+ * The scan bar and recents rail live in the CONTENT region
+ * ({@link STATION_PANEL_COLUMN_CLASS}), beside the workspace — they have to stay
+ * on screen when the nav is closed, which is most of the time at a bench.
  *
  * ```
- *   ┌───────────────────────┐  ← flush to top, rounded BOTTOM corners
- *   │  nav (expands down)   │
- *   ├───────────────────────┤
- *   │                       │  gray backdrop shows between them
- *   │  recents + scan bar   │
- *   │  (pushed down as nav  │
- *   │   expands)            │
- *   └───────────────────────┘  ← flush to bottom, rounded TOP corners
+ *   ┌──────────────────────────────────────┐
+ *   │ ┌ station panel ┐ ┌ workspace ──────┐│
+ *   │ │  scan bar     │ │                 ││
+ *   │ │  recents rail │ │                 ││
+ *   └──────────────────────────────────────┘
+ *     content region (the nav is a slide-over over the top)
  * ```
  *
- * Same width, same elevation, same stacking band — the only difference is which
- * edge each is flush against. They are **flex siblings**, not absolutely
- * positioned, which is what makes "nav expands → recents card gets pushed down
- * and shrinks" fall out of normal layout instead of needing offset math.
+ * `STATION_COLUMN_CLASS` used to live here — the flat nav-only sidebar that
+ * station routes pushed the content across for. It is gone: the nav is now one
+ * slide-over on every route (`SidebarSlideOver`), so there is no station-shaped
+ * nav column left to style. The bench half of the model is unchanged.
  */
 
-/** Gray backdrop + gutter. Cards float on this; it is not a card itself. */
-export const STATION_COLUMN_CLASS = cn(
-  'flex h-full w-full flex-col gap-1 overflow-hidden px-2',
+/**
+ * The in-DISPLAY station panel column (scan bar + recents rail).
+ *
+ * A discrete floating slate: full radius, border on every edge, its own gutter
+ * from {@link STATION_PANEL_HOST_CLASS}. It keeps its own internal scrollport,
+ * so the radius and shadow never move with the rail content. This is the ONLY
+ * card in the station frame.
+ *
+ * Its cast goes LEFT ({@link elevationCastClass}) rather than straight down.
+ * The panel is pinned to the left of a wide frame, so its left edge is the one
+ * read against the canvas; a downward-only cast left that edge flat. Casting
+ * away from centre puts the whole app under one light in the middle of the
+ * screen.
+ */
+export const STATION_PANEL_COLUMN_CLASS = cn(
+  // The gutter is the panel's OWN margin, not host padding. Host padding would
+  // also inset the workspace beside it, and the workspace must stay flush to
+  // the GlobalHeader — the station bookmark bar docks directly under that
+  // hairline with no gap (see display/station-workbench.md).
+  'm-2 flex w-[360px] shrink-0 flex-col overflow-hidden',
+  'border border-border-soft bg-surface-card rounded-2xl',
+  elevationCastClass('left'),
+);
+
+/**
+ * Host for {@link STATION_PANEL_COLUMN_CLASS} + the workspace inside the content
+ * region: the **ground plane** the panel casts onto.
+ *
+ * `appCanvasClass` is load-bearing, not decoration. The panel is `bg-surface-card`
+ * (white); on a white host its overlay elevation has nothing to cast against and
+ * the card reads as a flat rectangle with a stray border. Canvas sits a real step
+ * below card white, which is what makes the depth read (see
+ * `tokens/shadows.ts` — "depth needs a ground plane").
+ *
+ * `overflow-hidden` stays on the host so the row never scrolls as a unit; both
+ * children own their own internal scrollports.
+ */
+export const STATION_PANEL_HOST_CLASS = cn(
+  // No padding and no gap: the panel carries its own margin, so the workspace
+  // column beside it starts flush under the GlobalHeader.
+  'flex min-h-0 flex-1 overflow-hidden',
   appCanvasClass,
-);
-
-/** Shared card chrome. Anchored variants below pick the flush edge. */
-const STATION_COLUMN_CARD_BASE = cn(
-  'flex min-h-0 w-full flex-col overflow-hidden',
-  'border border-border-soft bg-surface-card',
-  elevationClass('overlay'),
-);
-
-/**
- * Top card (nav). Flush to the top of the column, so it drops its top border
- * and rounds only its bottom corners. Content-height — it grows downward as the
- * nav menu opens and pushes {@link STATION_COLUMN_CARD_BOTTOM} down.
- */
-export const STATION_COLUMN_CARD_TOP = cn(
-  STATION_COLUMN_CARD_BASE,
-  'shrink-0 rounded-b-2xl border-t-0',
-);
-
-/**
- * Bottom card (recents + scan bar). Flush to the bottom of the page, so it
- * drops its bottom border and rounds only its top corners. `flex-1 min-h-0` so
- * it absorbs whatever height the nav card leaves.
- */
-export const STATION_COLUMN_CARD_BOTTOM = cn(
-  STATION_COLUMN_CARD_BASE,
-  'min-h-0 flex-1 rounded-t-2xl border-b-0',
 );

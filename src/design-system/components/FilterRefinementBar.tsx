@@ -68,7 +68,7 @@ export function FilterRefinementBar({
     ? `flex h-[40px] w-full items-center gap-2.5 bg-surface-card px-3 transition-colors hover:bg-surface-hover ${
         isOpen || hasActive ? 'text-blue-600' : 'text-text-soft'
       }`
-    : `flex w-full items-center gap-3 rounded-2xl border px-5 py-3 text-role-data font-bold tracking-tight transition-all ${
+    : `flex w-full items-center gap-3 rounded-2xl border px-5 py-3 text-role-data font-semibold tracking-tight transition-all ${
         isOpen
           ? 'border-blue-500/50 bg-surface-card shadow-[0_0_20px_rgba(59,130,246,0.12)] ring-1 ring-blue-500/20'
           : hasActive
@@ -101,7 +101,7 @@ export function FilterRefinementBar({
           <motion.span 
             initial={{ scale: 0.5, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            className={`flex items-center justify-center rounded-full bg-blue-600 font-black text-white shadow-sm shadow-blue-600/20 ${
+            className={`flex items-center justify-center rounded-full bg-blue-600 font-semibold text-white shadow-sm shadow-blue-600/20 ${
               isSidebar ? 'h-4 min-w-[16px] px-1 text-role-eyebrow' : 'h-5 min-w-[20px] px-1.5 text-role-micro'
             }`}
           >
@@ -172,7 +172,7 @@ export function FilterRefinementBar({
                 whileHover={{ scale: 1.03 }}
                 whileTap={{ scale: 0.97 }}
                 className={cn(
-                  'group inline-flex items-center gap-2 rounded-xl px-3.5 py-1.5 text-role-caption font-bold shadow-sm ring-1 ring-inset transition-all',
+                  'group inline-flex items-center gap-2 rounded-xl px-3.5 py-1.5 text-role-caption font-semibold shadow-sm ring-1 ring-inset transition-all',
                   ref.pillClassName ??
                     'bg-surface-card text-text-default ring-border-soft hover:ring-blue-300',
                 )}
@@ -197,7 +197,7 @@ export function FilterRefinementBar({
                 layout
                 type="button"
                 onClick={onClearAll}
-                className="ml-1 text-role-caption font-black uppercase tracking-widest text-text-faint hover:text-red-500 transition-colors"
+                className="ml-1 text-role-caption font-semibold uppercase tracking-widest text-text-faint hover:text-red-500 transition-colors"
               >
                 Clear all
               </motion.button>

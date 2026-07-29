@@ -131,12 +131,12 @@ export function ReplenishmentNeedTable({ skuSearch, statusFilter }: Replenishmen
                         <HoverTooltip label="Needs reorder" asChild>
                           <span className="h-2 w-2 rounded-full bg-red-500 shrink-0" />
                         </HoverTooltip>
-                        <div className="text-role-caption font-bold text-text-default truncate">
+                        <div className="text-role-caption font-semibold text-text-default truncate">
                           {row.item_name || 'Unknown Item'}
                         </div>
                       </div>
                       <div className="mt-0.5 flex items-center gap-2">
-                        <div className="text-role-micro font-bold text-text-soft uppercase tracking-widest truncate min-w-0 flex-1 pl-4">
+                        <div className="text-role-micro text-text-soft uppercase tracking-widest truncate min-w-0 flex-1 pl-4">
                           <span className="text-red-600">{qtyToOrder}</span>
                           {' • '}
                           {row.vendor_name || 'No Vendor'}

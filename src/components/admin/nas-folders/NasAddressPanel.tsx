@@ -10,7 +10,7 @@ export function NasAddressPanel({ c }: { c: StationNasFoldersController }) {
       <div className="space-y-3 rounded-2xl border border-border-soft bg-surface-card p-4">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <p className="text-role-caption font-black text-text-default">NAS address</p>
+            <p className="text-role-caption font-semibold text-text-default">NAS address</p>
             <p className="mt-0.5 text-role-micro text-text-faint">
               Base URL of the NAS file server (Cloudflare-fronted, no trailing slash). Photos are
               written and read against the active one.
@@ -36,7 +36,7 @@ export function NasAddressPanel({ c }: { c: StationNasFoldersController }) {
         {(['prod', 'test'] as const).map((slot) => (
           <div key={slot} className="flex items-center gap-3">
             <div className="w-24 shrink-0">
-              <p className="text-role-caption font-black text-text-default">{slot === 'prod' ? 'Production' : 'Testing'}</p>
+              <p className="text-role-caption font-semibold text-text-default">{slot === 'prod' ? 'Production' : 'Testing'}</p>
               {servers.active === slot ? (
                 <span className="text-role-micro uppercase tracking-widest text-emerald-600">● Active</span>
               ) : null}
@@ -53,7 +53,7 @@ export function NasAddressPanel({ c }: { c: StationNasFoldersController }) {
         ))}
 
         <div className="flex items-center justify-end gap-3">
-          {serversDirty ? <span className="text-role-micro font-bold uppercase tracking-widest text-amber-600">Unsaved changes</span> : null}
+          {serversDirty ? <span className="text-role-micro uppercase tracking-widest text-amber-600">Unsaved changes</span> : null}
           <Button
             type="button"
             variant="primary"

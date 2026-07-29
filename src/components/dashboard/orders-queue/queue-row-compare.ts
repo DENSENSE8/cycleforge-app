@@ -5,7 +5,6 @@
 
 import { CONDITION_GRADES, resolveConditionGrade } from '@/lib/conditions';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
-import { getDaysLateNullable } from '@/utils/date';
 import type { QueueDisplaySortColumn, QueueDisplaySortDir } from '@/utils/queue-display-sort';
 import {
   queueRowShipBySource,
@@ -40,12 +39,6 @@ function qtyValue(record: QueueRowRecord): number {
   return Number.isFinite(n) ? n : 0;
 }
 
-function ageValue(record: ShippedOrder): number {
-  const days = getDaysLateNullable(record.deadline_at as string | null | undefined);
-  // No deadline → treat as least late (-1) so they sink under overdue rows on desc.
-  return days ?? -1;
-}
-
 function shipByTime(record: ShippedOrder): number {
   const src = queueRowShipBySource(record);
   return src ? new Date(src).getTime() : Number.POSITIVE_INFINITY;
@@ -72,11 +65,14 @@ export function compareQueueColumnRows(
         sensitivity: 'base',
       });
       break;
-    case 'date':
+    case 'sla':
+      // Sort on the ABSOLUTE ship-by, not on derived lateness — ascending
+      // already IS most-overdue-first (an overdue row has an earlier ship-by),
+      // and it keeps the sort key identical to the value the cell displays,
+      // including the `created_at` fallback. Sorting on `getDaysLateNullable`
+      // instead would rank a fallback row as "never late" while the cell shows
+      // it a date, so the column would order by something it doesn't show.
       primary = shipByTime(a) - shipByTime(b);
-      break;
-    case 'age':
-      primary = ageValue(a) - ageValue(b);
       break;
     case 'qty':
       primary = qtyValue(ra) - qtyValue(rb);

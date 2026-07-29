@@ -54,7 +54,7 @@ export function ReceivingAssignmentCard({ item }: ReceivingAssignmentCardProps) 
     >
       <div className="flex items-center justify-between mb-4 px-3">
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1.5 text-sm font-black text-text-default">
+          <div className="flex items-center gap-1.5 text-sm font-semibold text-text-default">
             <Package className="w-4 h-4 text-teal-600" />
             <span>{ago || 'Receiving'}</span>
           </div>
@@ -67,17 +67,17 @@ export function ReceivingAssignmentCard({ item }: ReceivingAssignmentCardProps) 
       <div className="mb-4 px-3">
         <div className="mb-1.5 flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0">
-            <span className="text-sm font-black text-text-default">{item.line_count || 1}</span>
-            <span className="text-sm font-black uppercase tracking-wider text-text-soft">-</span>
-            <span className="text-sm font-black uppercase truncate text-text-default">
+            <span className="text-sm font-semibold text-text-default">{item.line_count || 1}</span>
+            <span className="text-sm font-semibold uppercase tracking-wider text-text-soft">-</span>
+            <span className="text-sm font-semibold uppercase truncate text-text-default">
               {workflowStatusTableLabel(item.workflow_status)}
             </span>
           </div>
-          <span className="text-sm font-mono font-black text-text-default px-1.5 py-0.5 rounded border border-border-default">
+          <span className="text-sm font-mono font-semibold text-text-default px-1.5 py-0.5 rounded border border-border-default">
             #{item.receiving_id}
           </span>
         </div>
-        <h4 className="text-base font-black text-text-default leading-tight">
+        <h4 className="text-base font-semibold text-text-default leading-tight">
           {item.tracking_number || 'Receiving Assignment'}
         </h4>
       </div>

@@ -25,6 +25,14 @@ interface LineCartonContextSectionProps {
   staffId: string;
   c: UnboxLineController;
   /**
+   * Carton photo-pill stage (stage SoT) forwarded to {@link CartonContextCard}.
+   * The card renders identically in unbox and triage — both show the staff
+   * photo row and Claim — but the capture STAGE differs: triage is the arrival
+   * pass (`arrival_package`), unbox photographs the opened box
+   * (`unbox_carton`).
+   */
+  photoStage?: 'arrival_package' | 'unbox_carton';
+  /**
    * Serial-resolved outbound (return) order#. When the carton has no PO# of its
    * own, this fills the top-row PO#/order chip (last-4) — the lifted linkage
    * identity that replaces the standalone LINKAGE panel.
@@ -87,6 +95,7 @@ export function LineCartonContextSection({
   onEditListing,
   trackingEditOpen = false,
   listingEditOpen = false,
+  photoStage = 'arrival_package',
 }: LineCartonContextSectionProps) {
   void expandClassifyWhenPending;
 
@@ -100,6 +109,7 @@ export function LineCartonContextSection({
       onClassifyPillOpen={onClassifyPillOpen}
       density={density}
       showStaffPhotoRow
+      photoStage={photoStage}
       onMakeClaim={() => c.openClaimModal('create')}
       listingLink={c.listingLink}
       listingOpenHref={c.listingOpenHref}

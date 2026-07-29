@@ -104,7 +104,7 @@ export default function MobilePoDetailPage(props: { params: Promise<{ poId: stri
         ) : (
           <>
             <div className="flex items-center gap-2">
-              <p className="text-xl font-black tracking-tight text-text-default">
+              <p className="text-xl font-semibold tracking-tight text-text-default">
                 PO {header.po_number || header.po_id}
               </p>
               <span
@@ -115,7 +115,7 @@ export default function MobilePoDetailPage(props: { params: Promise<{ poId: stri
                 {header.status}
               </span>
             </div>
-            <p className="mt-1 text-role-caption font-bold text-text-muted">
+            <p className="mt-1 text-role-caption font-semibold text-text-muted">
               {header.qty_received}/{header.qty_expected || '?'} received
               {' · '}
               {header.open_items} open
@@ -137,7 +137,7 @@ export default function MobilePoDetailPage(props: { params: Promise<{ poId: stri
               key={t}
               type="button"
               onClick={() => setTab(t)}
-              className={`h-12 flex-1 text-role-caption font-black uppercase tracking-[0.18em] transition-colors ${
+              className={`h-12 flex-1 text-role-caption font-semibold uppercase tracking-[0.18em] transition-colors ${
                 active ? 'text-text-default' : 'text-text-faint'
               }`}
             >
@@ -156,7 +156,7 @@ export default function MobilePoDetailPage(props: { params: Promise<{ poId: stri
 
       {/* Tab content */}
       {error ? (
-        <p className="px-6 py-12 text-center text-role-caption font-bold text-rose-600">
+        <p className="px-6 py-12 text-center text-role-caption font-semibold text-rose-600">
           Couldn't load PO {poId}.
         </p>
       ) : tab === 'items' ? (
@@ -174,7 +174,7 @@ export default function MobilePoDetailPage(props: { params: Promise<{ poId: stri
 function ItemsList({ poId, items }: { poId: string; items: PoItem[] }) {
   if (items.length === 0) {
     return (
-      <p className="px-6 py-10 text-center text-role-caption font-bold text-text-soft">
+      <p className="px-6 py-10 text-center text-role-caption font-semibold text-text-soft">
         No purchase order items yet.
       </p>
     );
@@ -206,10 +206,10 @@ function ItemsList({ poId, items }: { poId: string; items: PoItem[] }) {
                 )}
               </div>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-black tracking-tight text-text-default">
+                <p className="truncate text-sm font-semibold tracking-tight text-text-default">
                   {it.item_name || it.sku || 'Untitled item'}
                 </p>
-                <p className="mt-0.5 text-role-caption font-bold text-text-soft">
+                <p className="mt-0.5 text-role-caption font-semibold text-text-soft">
                   {it.sku ? `${it.sku} · ` : ''}
                   {it.quantity_received}/{it.quantity_expected ?? '?'}
                   {' · '}
@@ -220,7 +220,7 @@ function ItemsList({ poId, items }: { poId: string; items: PoItem[] }) {
                   </span>
                 </p>
               </div>
-              <span className="inline-flex items-center gap-1 rounded-full bg-surface-sunken px-2 py-0.5 text-role-caption font-black text-text-muted">
+              <span className="inline-flex items-center gap-1 rounded-full bg-surface-sunken px-2 py-0.5 text-role-caption font-semibold text-text-muted">
                 <Camera className="h-3.5 w-3.5" />
                 {it.item_photo_count}
               </span>
@@ -236,7 +236,7 @@ function ItemsList({ poId, items }: { poId: string; items: PoItem[] }) {
 function PoPhotosTab({ header, staffId }: { header: PoHeader | undefined; staffId: number }) {
   if (!header?.receiving_id) {
     return (
-      <p className="px-6 py-10 text-center text-role-caption font-bold text-text-soft">
+      <p className="px-6 py-10 text-center text-role-caption font-semibold text-text-soft">
         No receiving package yet — scan tracking from desktop first.
       </p>
     );

@@ -110,6 +110,9 @@ const EXACT: Record<string, TimelineGlyphSpec> = {
   buyer_note: { id: 'team-note', tooltip: 'Team note' },
   SIGNAL_RECORDED: { id: 'signal', tooltip: 'Signal' },
   UNIT_SUBSTITUTED: { id: 'shipping', tooltip: 'Shipping' },
+  // Photo-evidence spine (src/lib/photos/stages.ts). Arrival is the pre-unbox
+  // package shot, so it rides the receiving glyph rather than unbox.
+  ARRIVAL_PHOTOS: { id: 'receiving', tooltip: 'Arrival' },
   UNBOX_PHOTOS: { id: 'unbox', tooltip: 'Unbox' },
   TEST_PHOTOS: { id: 'testing', tooltip: 'Testing' },
   PACK_PHOTOS: { id: 'packing', tooltip: 'Packing' },

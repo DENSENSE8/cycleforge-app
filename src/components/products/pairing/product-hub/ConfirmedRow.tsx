@@ -38,7 +38,7 @@ export function ConfirmedRow({
     >
       <Check className={`h-3.5 w-3.5 shrink-0 ${willUnpair ? 'text-orange-500' : 'text-emerald-600'}`} />
       <div className="min-w-0 flex-1">
-        <div className="flex min-w-0 items-center gap-1.5 font-mono text-xs font-bold text-text-default">
+        <div className="flex min-w-0 items-center gap-1.5 font-mono text-xs font-semibold text-text-default">
           <CopyableId value={value} />
           {secondary ? (
             <>

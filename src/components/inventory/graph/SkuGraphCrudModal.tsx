@@ -61,7 +61,7 @@ export function SkuGraphCrudModal({ focused, onClose }: SkuGraphCrudModalProps) 
     >
       <DialogContent className="flex max-h-[85vh] max-w-lg flex-col overflow-hidden">
         <DialogHeader>
-          <DialogTitle className="text-role-body font-bold">Edit Connections</DialogTitle>
+          <DialogTitle className="text-role-body font-semibold">Edit Connections</DialogTitle>
           <DialogDescription>{focused.sku}</DialogDescription>
         </DialogHeader>
 

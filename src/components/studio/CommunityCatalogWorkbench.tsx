@@ -99,7 +99,7 @@ export function CommunityCatalogWorkbench() {
       {/* Eyebrow header */}
       <header className="flex items-center gap-2 border-b border-border-hairline px-5 py-3">
         <Globe className="h-4 w-4 text-text-accent" />
-        <h1 className="text-role-caption font-bold text-text-default">Community catalog</h1>
+        <h1 className="text-role-caption font-semibold text-text-default">Community catalog</h1>
         <span className="ml-auto rounded-full bg-surface-sunken px-2 py-0.5 text-role-eyebrow uppercase tracking-widest text-text-soft">
           {templates?.length ?? 0} template{templates?.length === 1 ? '' : 's'}
         </span>
@@ -155,7 +155,7 @@ export function CommunityCatalogWorkbench() {
                           isSel ? 'bg-blue-50 ring-1 ring-inset ring-blue-400' : 'hover:bg-surface-hover',
                         ].join(' ')}
                       >
-                        <span className="truncate text-role-caption font-bold text-text-default">{t.name}</span>
+                        <span className="truncate text-role-caption font-semibold text-text-default">{t.name}</span>
                         <span className="truncate text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint">
                           {t.category ?? 'Uncategorized'} · {t.nodeCount} step{t.nodeCount === 1 ? '' : 's'}
                         </span>
@@ -184,7 +184,7 @@ export function CommunityCatalogWorkbench() {
                   <span className="inline-flex items-center gap-1.5 text-role-eyebrow uppercase tracking-widest text-text-accent">
                     <Globe className="h-3.5 w-3.5" /> {selected.category ?? 'Uncategorized'}
                   </span>
-                  <h2 className="text-lg font-bold text-text-default">{selected.name}</h2>
+                  <h2 className="text-lg font-semibold text-text-default">{selected.name}</h2>
                   <p className="font-mono text-role-eyebrow uppercase tracking-widest text-text-faint">{selected.slug}</p>
                 </div>
 

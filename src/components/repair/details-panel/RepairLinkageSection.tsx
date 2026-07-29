@@ -56,7 +56,7 @@ export function RepairLinkageSection({ c }: { c: RepairDetailsController }) {
           variant="secondary"
           onClick={c.handleSaveLinks}
           disabled={!c.linksDirty || c.savingLink}
-          className="w-full border border-blue-200 bg-blue-50 text-blue-700 ring-0 text-sm font-black uppercase tracking-wider hover:border-blue-300 hover:bg-blue-100"
+          className="w-full border border-blue-200 bg-blue-50 text-blue-700 ring-0 text-sm font-semibold uppercase tracking-wider hover:border-blue-300 hover:bg-blue-100"
         >
           {c.savingLink ? 'Saving…' : 'Save Links'}
         </Button>

@@ -155,7 +155,7 @@ function ItemBlock({ item }: { item: TraceItem }) {
           {item.actual_qty}/{item.expected_qty}
         </span>
       </div>
-      <p className="mb-2 truncate text-role-caption font-bold text-text-muted">
+      <p className="mb-2 truncate text-role-caption font-semibold text-text-muted">
         {item.display_title || 'No title'}
       </p>
 
@@ -168,7 +168,7 @@ function ItemBlock({ item }: { item: TraceItem }) {
       ) : null}
 
       {item.units.length === 0 ? (
-        <p className="py-2 text-center text-role-caption font-bold text-text-faint">
+        <p className="py-2 text-center text-role-caption font-semibold text-text-faint">
           No serialized units linked to this FNSKU
         </p>
       ) : (
@@ -239,7 +239,7 @@ export function FbaShipmentTracePanel({ shipmentId, className }: FbaShipmentTrac
       <div className="mb-2 flex items-center justify-between gap-2">
         <p className={sectionLabel}>Shipment Trace</p>
         {summary ? (
-          <span className="flex items-center gap-2 text-role-micro font-bold text-text-soft">
+          <span className="flex items-center gap-2 text-role-micro text-text-soft">
             <span className="inline-flex items-center gap-1">
               <Boxes className="h-3 w-3" />
               {summary.traced_unit_count}/{summary.unit_count} traced

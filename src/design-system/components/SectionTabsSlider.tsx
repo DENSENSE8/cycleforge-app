@@ -175,7 +175,7 @@ export function SectionTabsSlider({
                     selected ? 'text-accent-bg' : 'text-text-muted',
                   )}
                 />
-                <span className="min-w-0 flex-1 truncate text-role-caption font-bold">
+                <span className="min-w-0 flex-1 truncate text-role-caption font-semibold">
                   {tab.label}
                 </span>
                 {tab.count != null && tab.count > 0 ? (
@@ -215,7 +215,7 @@ export function SectionTabsSlider({
               </div>
             ) : null}
             {showLabel && activeTab ? (
-              <span className="truncate text-role-eyebrow font-black uppercase tracking-widest text-text-muted">
+              <span className="truncate text-role-eyebrow uppercase tracking-widest text-text-muted">
                 {activeTab.label}
               </span>
             ) : null}

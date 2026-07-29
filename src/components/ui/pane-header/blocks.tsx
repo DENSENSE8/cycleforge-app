@@ -28,7 +28,7 @@ export const paneHeaderLabelEyebrowClass =
   'text-role-eyebrow uppercase tracking-widest text-text-faint';
 
 export const paneHeaderLabelValueClass =
-  'truncate text-sm font-black tracking-tight text-text-default';
+  'truncate text-sm font-semibold tracking-tight text-text-default';
 
 export function PaneHeaderLabel({
   eyebrow,
@@ -52,7 +52,7 @@ export function PaneHeaderLabel({
 // Single bold title — matches the WeekHeader "today" / sticky-date display.
 
 const paneHeaderHighContrastTitleClass =
-  'text-sm font-black uppercase tracking-widest text-text-default';
+  'text-sm font-semibold uppercase tracking-widest text-text-default';
 
 interface PaneHeaderTitleProps {
   children: ReactNode;
@@ -350,7 +350,7 @@ interface PaneHeaderActionBarProps {
 }
 
 const PANE_HEADER_ACTION_BTN_CLASS =
-  'inline-flex h-7 items-center gap-1 rounded-md px-1.5 text-role-micro font-bold uppercase tracking-widest text-text-soft transition-colors hover:bg-surface-hover hover:text-text-default disabled:cursor-not-allowed disabled:opacity-40';
+  'inline-flex h-7 items-center gap-1 rounded-md px-1.5 text-role-micro uppercase tracking-widest text-text-soft transition-colors hover:bg-surface-hover hover:text-text-default disabled:cursor-not-allowed disabled:opacity-40';
 
 const PANE_HEADER_ACTION_NAV_CLASS =
   'inline-flex h-7 w-7 items-center justify-center rounded-md text-text-soft transition-colors hover:bg-surface-hover hover:text-text-default disabled:cursor-not-allowed disabled:opacity-40';

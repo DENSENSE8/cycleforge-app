@@ -57,7 +57,7 @@ export default function SubstitutionDemoPage() {
       <div className="grid max-w-5xl grid-cols-1 gap-8 lg:grid-cols-2">
         {/* Advisory panel (live, mock submit) */}
         <div className="space-y-2">
-          <p className="text-role-eyebrow font-bold uppercase tracking-widest text-text-faint">Advisory · interactive</p>
+          <p className="text-role-eyebrow uppercase tracking-widest text-text-faint">Advisory · interactive</p>
           <SubstitutePanel
             orderLabel="#A-10472"
             original={{ sku: 'SKU-BLK-200', condition: 'USED_A', serial: 'SN-ORD-100' }}
@@ -76,7 +76,7 @@ export default function SubstitutionDemoPage() {
         {/* Block-until-approved + error states + timeline */}
         <div className="space-y-6">
           <div className="space-y-2">
-            <p className="text-role-eyebrow font-bold uppercase tracking-widest text-text-faint">Block-until-approved · error</p>
+            <p className="text-role-eyebrow uppercase tracking-widest text-text-faint">Block-until-approved · error</p>
             <SubstitutePanel
               orderLabel="#A-10488"
               original={{ sku: 'SKU-9', condition: 'USED_A', serial: 'SN-ORD-200' }}
@@ -91,7 +91,7 @@ export default function SubstitutionDemoPage() {
           </div>
 
           <div className="rounded-xl border border-border-soft bg-surface-card p-4">
-            <p className="mb-2 text-role-eyebrow font-bold uppercase tracking-widest text-text-faint">Empty state</p>
+            <p className="mb-2 text-role-eyebrow uppercase tracking-widest text-text-faint">Empty state</p>
             <OrderAmendmentsSection rows={[]} />
           </div>
         </div>

@@ -1,12 +1,16 @@
 'use client';
 
 /**
- * OrderFullPageView — dedicated `/o/[orderId]` order workspace detail pane.
+ * OrderFullPageView — `/o/[orderId]`, the canonical order record (Week 1, D1).
  *
- * Two layouts share one detail SoT (`ShippedDetailsHeader` + `ShippedDetailsBody`):
+ * Chrome is `ShippedDetailsHeader` (identity + action bar, `showTabs={false}`)
+ * over `OrderRecordBody` — one vertical scroll, main column + right rail — with
+ * the editor dock, delete, and assignment card unchanged. The eight-tab strip is
+ * gone; every section is on one page.
+ *
+ * Two layouts share it:
  *   • `workbench` — sidebar owns navigation; no back/close chrome
- *   • `standalone` — same tabbed body (deep links / QR / embedded search);
- *     no browser-history back button
+ *   • `standalone` — same body (deep links / QR); no browser-history back button
  */
 
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
@@ -19,20 +23,19 @@ import { PackoutChecklistCard } from '@/components/shipped/PackoutChecklistCard'
 import { WorkOrderAssignmentCard } from '@/components/work-orders/WorkOrderAssignmentCard';
 import { usePanelActions } from '@/hooks/usePanelActions';
 import { type PaneHeaderActionBarAction } from '@/components/ui/pane-header';
-import type { DetailsStackDurationData } from '@/components/shipped/stacks/types';
 import { buildAssignmentRow, buildShippedHeaderQuickActions, deriveShippedHeaderMeta } from '@/components/shipped/details-panel/shipped-details-logic';
 import { useOrderAssignment } from '@/hooks/useOrderAssignment';
 import { toast } from '@/lib/toast';
 import {
   useShippedAssignment,
   useShippedCopyActions,
-  useShippedDeletion,
   useShippedDetailState,
   useShippedPanelViewState,
 } from '@/components/shipped/details-panel/shipped-details-hooks';
 import { ShippedDetailsHeader } from '@/components/shipped/details-panel/ShippedDetailsHeader';
-import { ShippedDetailsBody } from '@/components/shipped/details-panel/ShippedDetailsBody';
-import { orderSearchHref } from '@/lib/search/search-hit';
+import { ShippedPanelEditorDock } from '@/components/shipped/details-panel/ShippedPanelEditorDock';
+import { DeleteOrderControl } from '@/components/shipped/stacks/DeleteOrderControl';
+import { OrderRecordBody } from '@/components/order-record/OrderRecordBody';
 import {
   resolveSearchOrder,
   type ResolvedSearchOrder,
@@ -74,34 +77,20 @@ export function OrderFullPageView({
   layout?: OrderFullPageLayout;
 }) {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [resolved, setResolved] = useState<Resolved | null>(null);
 
-  // Legacy search handoff: `/o/[id]?mode=search` → Dashboard Search detail.
-  useEffect(() => {
-    if (searchParams.get('mode') !== 'search') return;
-    const q = searchParams.get('q') ?? undefined;
-    router.replace(orderSearchHref(orderId, q ?? undefined));
-  }, [searchParams, orderId, router]);
+  // NOTE (Week 1, D1): `/o/[orderId]` is the canonical order record. It used to
+  // bounce `?mode=search` traffic back to `/dashboard?mode=search` — which made
+  // the most complete surface unreachable from search. That redirect is gone;
+  // `?mode=search` now only hints which section opens first (see journeyFirst).
 
   const load = useCallback(async () => {
     setResolved(await resolveSearchOrder(orderId));
   }, [orderId]);
 
   useEffect(() => {
-    if (searchParams.get('mode') === 'search') return;
     void load();
-  }, [load, searchParams]);
-
-  if (searchParams.get('mode') === 'search') {
-    return (
-      <div className="flex h-full min-h-0 flex-1 items-center justify-center bg-surface-canvas">
-        <span className="flex items-center gap-2 text-role-caption font-semibold text-text-muted">
-          <Loader2 className="h-4 w-4 animate-spin" /> Opening search detail…
-        </span>
-      </div>
-    );
-  }
+  }, [load]);
 
   if (resolved === null) {
     return (
@@ -164,9 +153,8 @@ function OrderFullPageLoaded({
   layout: OrderFullPageLayout;
 }) {
   const searchParams = useSearchParams();
-  const [durationData] = useState<DetailsStackDurationData>({});
   // layout reserved for future chrome differences (workbench vs deep-link);
-  // both share the tabbed header/body today.
+  // both share the same header + single-scroll record body today.
   void layout;
 
   // Header search deep-links land with `?mode=search` — open Timeline / Item Journey first.
@@ -205,7 +193,9 @@ function OrderFullPageLoaded({
     shipped,
     meta.orderIdDisplay,
   );
-  const { isDeleteArmed, isDeleting, handleDelete } = useShippedDeletion(shipped, onReload);
+  // Delete on this surface runs through `DeleteOrderControl` (the dashboard-context
+  // path the tabbed body also used here); `useShippedDeletion` served the
+  // `context="shipped"` button, which this record page never rendered.
   const assignOrder = useOrderAssignment();
   const isUrgent = Boolean((shipped as { is_urgent?: unknown }).is_urgent);
   const {
@@ -266,6 +256,9 @@ function OrderFullPageLoaded({
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-surface-canvas">
+      {/* D3: identity + action bar only — the eight-tab strip is replaced by the
+          single scroll below. Editing chrome (dock, delete, assignment) is
+          unchanged; only the body's shape changed. */}
       <ShippedDetailsHeader
         orderIdDisplay={meta.orderIdDisplay}
         showExceptionsFallback={meta.showExceptionsFallback}
@@ -275,52 +268,69 @@ function OrderFullPageLoaded({
         showCustomerTab
         showDocumentsTab
         showWarrantyTab
+        showTabs={false}
         activeSection={activeSection}
         onSectionChange={setActiveSection}
       />
 
-      <div className="shrink-0 border-b border-border-hairline px-6 py-3">
-        <PackoutChecklistCard
-          orderRowId={shipped.id ? Number(shipped.id) : null}
-          sku={shipped.sku}
-          condition={shipped.condition}
-          productTitle={shipped.product_title}
-        />
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        <div className="mx-auto w-full max-w-6xl px-6 py-6">
+          <div className="mb-6">
+            <PackoutChecklistCard
+              orderRowId={shipped.id ? Number(shipped.id) : null}
+              sku={shipped.sku}
+              condition={shipped.condition}
+              productTitle={shipped.product_title}
+            />
+          </div>
+
+          <OrderRecordBody
+            order={shipped}
+            density="full"
+            documentsReadOnly
+            copiedAll={copiedAll}
+            onCopyAll={handleCopyAll}
+            onUpdate={onReload}
+            onAssign={meta.canEditAssignment ? openAssignmentCard : undefined}
+            editableShippingFields={{
+              orderNumber,
+              itemNumber,
+              trackingNumber: shippingTrackingNumber,
+              shipByDate,
+              isSaving: isSavingInlineFields,
+              isSavingShipByDate,
+              onOrderNumberChange: setOrderNumber,
+              onItemNumberChange: setItemNumber,
+              onTrackingNumberChange: setShippingTrackingNumber,
+              onShipByDateChange: setShipByDate,
+              onBlur: () => { void saveInlineFields(); },
+              onShipByDateBlur: () => { void saveShipByDate(shipByDate); },
+            }}
+          />
+
+          <section className="pt-6">
+            <DeleteOrderControl
+              orderId={shipped.id}
+              packerLogId={(shipped as { packer_log_id?: number }).packer_log_id ?? null}
+              stationActivityLogId={
+                (shipped as { station_activity_log_id?: number }).station_activity_log_id
+                ?? (shipped as { sal_id?: number }).sal_id
+                ?? null
+              }
+              trackingType={shipped.tracking_type}
+              onDeleted={onReload}
+            />
+          </section>
+        </div>
       </div>
 
-      <ShippedDetailsBody
-        context="dashboard"
-        isFulfillmentPanel={false}
-        isLabelsPanel={false}
-        showDashboardExtras
-        activeSection={activeSection}
+      <ShippedPanelEditorDock
         shipped={shipped}
-        durationData={durationData}
-        copiedAll={copiedAll}
-        onCopyAll={handleCopyAll}
-        onUpdate={onReload}
         activeInput={activeInput}
         setActiveInput={setActiveInput}
-        stackActionBar={{
-          onClose: () => undefined,
-          onMoveUp: () => undefined,
-          onMoveDown: () => undefined,
-          onAssign: meta.canEditAssignment ? openAssignmentCard : undefined,
-        }}
-        editableFields={{
-          orderNumber,
-          itemNumber,
-          trackingNumber: shippingTrackingNumber,
-          shipByDate,
-          isSavingInlineFields,
-          isSavingShipByDate,
-          setOrderNumber,
-          setItemNumber,
-          setTrackingNumber: setShippingTrackingNumber,
-          setShipByDate,
-          onSaveInline: saveInlineFields,
-          onSaveShipByDate: saveShipByDate,
-        }}
+        showMarkAsShipped
+        showOutOfStock
+        showNotes
         notes={notes}
         setNotes={setNotes}
         isSavingNotes={isSavingNotes}
@@ -332,13 +342,11 @@ function OrderFullPageLoaded({
         onSaveOutOfStock={(checked) => {
           void handleSaveOutOfStock(checked, () => setActiveInput('none'));
         }}
+        shippingTrackingNumber={shippingTrackingNumber}
         onMarkShippedSuccess={() => {
           setActiveInput('none');
           onReload();
         }}
-        isDeleteArmed={isDeleteArmed}
-        isDeletingOrder={isDeleting}
-        onDeleteOrder={handleDelete}
       />
 
       <AnimatePresence>

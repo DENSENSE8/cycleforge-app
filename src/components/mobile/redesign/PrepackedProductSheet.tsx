@@ -286,7 +286,7 @@ export function PrepackedProductSheet({ scanned, onClose }: { scanned: string | 
               <div className="min-w-0 flex-1">
                 {/* PRIMARY — product title; SKU + serial below as copy chips
                     (same primitives as the desktop identity card). */}
-                <p className="text-lg font-black leading-snug tracking-tight text-blue-950">{title}</p>
+                <p className="text-lg font-semibold leading-snug tracking-tight text-blue-950">{title}</p>
                 <div className="mt-1.5 space-y-1">
                   {sku && (
                     <ChipRow label="SKU">
@@ -305,13 +305,13 @@ export function PrepackedProductSheet({ scanned, onClose }: { scanned: string | 
             {/* Raw label identifiers — the scanned QR/unit id + GTIN. */}
             <div className="flex flex-wrap items-center gap-2">
               {parsed && (
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-950 px-3 py-1 text-role-caption font-black uppercase tracking-wider text-white">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-950 px-3 py-1 text-role-caption font-semibold uppercase tracking-wider text-white">
                   <Box className="h-3.5 w-3.5" />
                   {parsed.display}
                 </span>
               )}
               {gtin && (
-                <span className="rounded-full bg-surface-sunken px-3 py-1 text-role-caption font-bold tracking-wide text-text-soft">
+                <span className="rounded-full bg-surface-sunken px-3 py-1 text-role-caption font-semibold tracking-wide text-text-soft">
                   GTIN {gtin}
                 </span>
               )}
@@ -352,7 +352,7 @@ export function PrepackedProductSheet({ scanned, onClose }: { scanned: string | 
               </div>
             ) : (
               <div className="rounded-2xl border border-amber-100 bg-amber-50/60 px-4 py-3">
-                <p className="text-xs font-bold leading-relaxed text-amber-700">
+                <p className="text-xs font-semibold leading-relaxed text-amber-700">
                   {data.source === 'unknown'
                     ? 'Could not resolve this label to a product.'
                     : 'Unit not individually tracked yet — receive/test it first to assign a location.'}
@@ -369,18 +369,18 @@ export function PrepackedProductSheet({ scanned, onClose }: { scanned: string | 
                     <div key={e.id} className="flex items-start gap-3 rounded-2xl border border-blue-50 bg-surface-card px-3 py-2.5">
                       <History className="mt-0.5 h-4 w-4 shrink-0 text-blue-300" />
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-black tracking-tight text-blue-950">{humanizeEvent(e.event_type)}</p>
+                        <p className="text-sm font-semibold tracking-tight text-blue-950">{humanizeEvent(e.event_type)}</p>
                         <p className="truncate text-role-caption font-semibold text-blue-400">
                           {[e.station, e.next_status, e.notes].filter(Boolean).join(' · ') || '—'}
                         </p>
                       </div>
-                      <span className="shrink-0 text-role-caption font-bold text-blue-300">{formatWhen(e.occurred_at)}</span>
+                      <span className="shrink-0 text-role-caption font-semibold text-blue-300">{formatWhen(e.occurred_at)}</span>
                     </div>
                   ))}
                 </div>
               ) : (
                 <div className="flex flex-col items-center gap-2 rounded-2xl bg-surface-canvas px-4 py-6 text-center">
-                  <p className="text-xs font-black uppercase tracking-widest text-blue-300">
+                  <p className="text-xs font-semibold uppercase tracking-widest text-blue-300">
                     {tracked ? 'No history yet' : 'No history for untracked units'}
                   </p>
                   {/* Show the serial even with no events — mirrors the desktop
@@ -420,7 +420,7 @@ export function PrepackedProductSheet({ scanned, onClose }: { scanned: string | 
         {moving && (
           <div className="mt-3 flex items-center justify-center gap-2 text-blue-400">
             <Loader2 className="h-4 w-4 animate-spin" />
-            <span className="text-xs font-bold uppercase tracking-wider">Moving…</span>
+            <span className="text-xs font-semibold uppercase tracking-wider">Moving…</span>
           </div>
         )}
       </BottomSheet>
@@ -437,7 +437,7 @@ export function PrepackedProductSheet({ scanned, onClose }: { scanned: string | 
               <p className="text-role-micro uppercase tracking-[0.22em] text-white/60">
                 Pack photos
               </p>
-              <p className="truncate text-sm font-black text-white">{title}</p>
+              <p className="truncate text-sm font-semibold text-white">{title}</p>
             </div>
           }
         />
@@ -464,7 +464,7 @@ function StatField({ label, value, icon }: { label: string; value: string; icon?
       <p className="text-role-micro uppercase tracking-[0.15em] text-blue-300">{label}</p>
       <div className="mt-1 flex items-center gap-1">
         {icon}
-        <p className="truncate text-sm font-black tracking-tight text-blue-950">{value}</p>
+        <p className="truncate text-sm font-semibold tracking-tight text-blue-950">{value}</p>
       </div>
     </div>
   );

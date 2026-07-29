@@ -158,7 +158,7 @@ export function AuditTimeline(props: Props) {
     <section className={compact ? 'space-y-2' : 'space-y-3'}>
       {!noHeader && (
         <header className="flex items-baseline justify-between">
-          <h2 className="text-xs font-bold uppercase tracking-[0.16em] text-text-soft">
+          <h2 className="text-xs font-semibold uppercase tracking-[0.16em] text-text-soft">
             History
           </h2>
           {!loading && events.length > 0 && (
@@ -197,7 +197,7 @@ export function AuditTimeline(props: Props) {
                 <div className="min-w-0">
                   <HoverTooltip label={ev.source} asChild>
                     <span
-                      className={`inline-block rounded-sm px-1.5 py-px text-role-eyebrow font-bold uppercase tracking-wider ${SOURCE_BADGE[ev.source]}`}
+                      className={`inline-block rounded-sm px-1.5 py-px text-role-eyebrow uppercase tracking-wider ${SOURCE_BADGE[ev.source]}`}
                     >
                       {SOURCE_LABEL[ev.source]}
                     </span>

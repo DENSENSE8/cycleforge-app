@@ -61,7 +61,7 @@ export function ReadyQueueTable({
     return (
       <div className="flex min-h-[240px] items-center justify-center">
         <div className="inset-empty rounded-xl border border-dashed border-border-danger bg-surface-danger text-center">
-          <p className="text-role-caption font-bold text-text-danger">
+          <p className="text-role-caption font-semibold text-text-danger">
             Could not load recently-tested history
           </p>
           <Button
@@ -136,7 +136,7 @@ function ReadyRow({ hit }: { hit: AllocationHit }) {
   return (
     <tr className="hover:bg-surface-hover">
       <td className="max-w-[280px] px-3 py-3">
-        <p className="truncate text-role-caption font-bold text-text-default">
+        <p className="truncate text-role-caption font-semibold text-text-default">
           {hit.title || hit.sku || `Unit #${hit.entityId}`}
         </p>
         <p className="truncate text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
@@ -182,7 +182,7 @@ function ReadyRow({ hit }: { hit: AllocationHit }) {
             hit.reasons.map((reason) => (
               <span
                 key={reason}
-                className="rounded bg-surface-sunken px-1.5 py-0.5 text-role-micro font-black uppercase tracking-widest text-text-muted ring-1 ring-inset ring-border-soft"
+                className="rounded bg-surface-sunken px-1.5 py-0.5 text-role-micro uppercase tracking-widest text-text-muted ring-1 ring-inset ring-border-soft"
               >
                 {ALLOCATION_REASON_LABELS[reason]}
               </span>
@@ -225,7 +225,7 @@ function ReadyRow({ hit }: { hit: AllocationHit }) {
             Stage FBA
           </Link>
         ) : hit.allocationState === 'READY' && hit.disposition === 'PREBOX_STOCK' ? (
-          <span className="text-role-caption font-black uppercase tracking-widest text-text-success">
+          <span className="text-role-caption font-semibold uppercase tracking-widest text-text-success">
             Pre-box & stock
           </span>
         ) : (

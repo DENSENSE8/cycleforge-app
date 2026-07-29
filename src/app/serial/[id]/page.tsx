@@ -68,7 +68,7 @@ function StatusPill({ status }: { status: string | null }) {
   const v = (status || 'UNKNOWN').toUpperCase();
   return (
     <span
-      className={`inline-flex items-center rounded-full px-2 py-0.5 text-role-micro font-bold uppercase tracking-wide ${unitStatusBadgeTone(v)}`}
+      className={`inline-flex items-center rounded-full px-2 py-0.5 text-role-micro uppercase tracking-wide ${unitStatusBadgeTone(v)}`}
     >
       {v}
     </span>
@@ -221,11 +221,11 @@ function UnitPageInner() {
         <div className="mt-2 flex justify-end">
           <StatusPill status={unit?.current_status ?? null} />
         </div>
-        <h1 className="mt-2 truncate font-mono text-base font-black text-text-default">
+        <h1 className="mt-2 truncate font-mono text-base font-semibold text-text-default">
           {unit?.serial_number || unitParam}
         </h1>
         {unit?.sku && (
-          <p className="mt-1 font-mono text-role-caption font-bold text-text-muted">
+          <p className="mt-1 font-mono text-role-caption font-semibold text-text-muted">
             {unit.sku}
           </p>
         )}
@@ -234,7 +234,7 @@ function UnitPageInner() {
             {unit.product_title}
           </p>
         )}
-        <div className="mt-2 flex items-center justify-between text-role-caption font-bold">
+        <div className="mt-2 flex items-center justify-between text-role-caption font-semibold">
           <span className="text-text-muted">
             {unit?.current_location ? `Loc: ${unit.current_location}` : 'No location'}
           </span>
@@ -248,7 +248,7 @@ function UnitPageInner() {
 
       {flash && (
         <div
-          className={`px-4 py-2 text-sm font-bold text-center ${
+          className={`px-4 py-2 text-sm font-semibold text-center ${
             flash.kind === 'ok'
               ? 'bg-emerald-50 text-emerald-700'
               : 'bg-rose-50 text-rose-700'
@@ -291,7 +291,7 @@ function UnitPageInner() {
                   type="button"
                   disabled={!!busy || !unit.current_receiving_line_id}
                   onClick={() => postStatus('TEST_PASS')}
-                  className="rounded-md bg-emerald-600 px-3 py-3 text-sm font-bold text-white active:bg-emerald-700 disabled:opacity-50"
+                  className="rounded-md bg-emerald-600 px-3 py-3 text-sm font-semibold text-white active:bg-emerald-700 disabled:opacity-50"
                 >
                   Pass
                 </button>
@@ -321,7 +321,7 @@ function UnitPageInner() {
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') submitPutaway();
                   }}
-                  className="flex-1 rounded-md border border-border-default px-3 py-3 text-base font-mono font-bold text-text-default focus:border-blue-500 focus:outline-none"
+                  className="flex-1 rounded-md border border-border-default px-3 py-3 text-base font-mono font-semibold text-text-default focus:border-blue-500 focus:outline-none"
                 />
                 <Button
                   variant="brand"
@@ -358,7 +358,7 @@ function UnitPageInner() {
                     <li key={ev.id} className="flex items-start gap-2 text-role-caption">
                       <span className="mt-[3px] inline-block h-1.5 w-1.5 rounded-full bg-border-emphasis shrink-0" />
                       <div className="min-w-0 flex-1">
-                        <p className="font-bold text-text-default">
+                        <p className="font-semibold text-text-default">
                           {ev.event_type.replace(/_/g, ' ')}
                           {ev.next_status ? (
                             <span className="ml-1 text-text-soft">→ {ev.next_status}</span>

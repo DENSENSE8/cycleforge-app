@@ -96,7 +96,7 @@ export function FbaQuickAddFnskuModal({ stationTheme = 'blue' }: { stationTheme?
         <div className="flex items-center justify-between border-b border-border-soft px-4 py-3">
           <div>
             <p className={`text-role-micro uppercase tracking-[0.16em] ${chrome.sectionLabel}`}>Quick add</p>
-            <h2 className="mt-1 text-sm font-black text-text-default">Add FNSKU details</h2>
+            <h2 className="mt-1 text-sm font-semibold text-text-default">Add FNSKU details</h2>
           </div>
           <IconButton
             type="button"

@@ -299,7 +299,7 @@ export function CatalogManagerList({
                     variant="ghost"
                     size="sm"
                     onClick={() => void setActive(e, true)}
-                    className="h-auto rounded px-2 py-0.5 text-role-micro font-bold uppercase tracking-wider text-blue-600 hover:bg-blue-50"
+                    className="h-auto rounded px-2 py-0.5 text-role-micro uppercase tracking-wider text-blue-600 hover:bg-blue-50"
                   >
                     Restore
                   </Button>
@@ -330,7 +330,7 @@ export function CatalogManagerList({
           disabled={!editable || !adding.trim() || busyId != null}
           loading={busyId === 'new'}
           icon={<Plus className="h-3.5 w-3.5" />}
-          className="text-role-micro font-bold uppercase tracking-wider"
+          className="text-role-micro uppercase tracking-wider"
         >
           Add
         </Button>

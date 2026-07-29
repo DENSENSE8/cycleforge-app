@@ -61,7 +61,7 @@ export function ReasonSelector({
                                 }`}>
                                     {isSelected && <Check className="h-3 w-3 text-text-default" />}
                                 </div>
-                                <span className="text-xs font-bold uppercase tracking-wide">
+                                <span className="text-xs font-semibold uppercase tracking-wide">
                                     {reason}
                                 </span>
                             </button>

@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import { MobileReceivingPhotoStudio } from '@/components/mobile/photos/MobileReceivingPhotoStudio';
+import { parseReceivingCartonPhotoStage } from '@/lib/receiving/photo-scope';
 
 function PhotoPageInner() {
   const params = useParams<{ id: string }>();
@@ -10,6 +11,9 @@ function PhotoPageInner() {
   const receivingId = Number(params?.id);
   const mode = searchParams.get('mode') === 'gallery' ? 'gallery' : 'capture';
   const requestId = (searchParams.get('requestId') || '').trim() || null;
+  // Carton capture stage from the phone-bridge/deep link. Missing/unknown →
+  // arrival_package (legacy default); item requests never land here.
+  const stage = parseReceivingCartonPhotoStage(searchParams.get('stage'));
   const titleParam = (searchParams.get('title') || '').trim();
   const poRefParam = (searchParams.get('poRef') || '').trim() || null;
   const backParam = (searchParams.get('back') || '').trim();
@@ -54,12 +58,21 @@ function PhotoPageInner() {
   if (!validReceivingId) {
     return (
       <div className="flex min-h-[100dvh] items-center justify-center px-6 text-center">
-        <p className="text-sm font-bold text-white/70">Invalid receiving id</p>
+        <p className="text-sm font-semibold text-white/70">Invalid receiving id</p>
       </div>
     );
   }
 
-  const scope = { receivingId, receivingLineId: null as number | null, poRef, photosListScope: 'all' as const };
+  // Stage-typed carton scope: uploads stamp receiving_package vs
+  // receiving_unbox_carton; the gallery/prior strip lists PO-level photos only
+  // (item shots stay in their line galleries).
+  const scope = {
+    receivingId,
+    receivingLineId: null as number | null,
+    poRef,
+    stage,
+    photosListScope: 'po' as const,
+  };
 
   return (
     <MobileReceivingPhotoStudio

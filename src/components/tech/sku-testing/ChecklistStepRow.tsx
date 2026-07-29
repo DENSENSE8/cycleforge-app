@@ -41,7 +41,7 @@ export function ChecklistStepRow({
           disabled={!canRecord || recording || isEditing || isValueStep}
           aria-pressed={checked}
           aria-label={recordHint}
-          className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border text-xs font-black transition-all duration-150 active:scale-95 ${
+          className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border text-xs font-semibold transition-all duration-150 active:scale-95 ${
             checked ? 'border-emerald-600 bg-emerald-600 text-white' : 'border-border-default bg-surface-card text-transparent'
           } ${!canRecord ? 'cursor-default opacity-90' : ''}`}
         >
@@ -66,7 +66,7 @@ export function ChecklistStepRow({
               onClick={() => void ed.saveEdit()}
               disabled={ed.busy}
               ariaLabel="Save step"
-              icon={ed.busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <span className="text-xs font-black">✓</span>}
+              icon={ed.busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <span className="text-xs font-semibold">✓</span>}
               className="rounded-md p-1 text-emerald-600 hover:bg-emerald-50"
             />
             <IconButton

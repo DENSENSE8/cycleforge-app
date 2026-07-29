@@ -42,7 +42,7 @@ export function MobileTopBar({ title, subtitle, backHref, right }: MobileTopBarP
             {subtitle}
           </p>
         ) : null}
-        <p className="truncate text-base font-black tracking-tight text-text-default">
+        <p className="truncate text-base font-semibold tracking-tight text-text-default">
           {title}
         </p>
       </div>

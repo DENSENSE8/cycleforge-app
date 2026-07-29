@@ -279,7 +279,7 @@ export default function RedesignedMobileReceive({
     <div className={`h-full ${TOKENS.colors.background} flex flex-col`}>
       {/* Input Section */}
       <div className="px-6 pt-4 pb-4">
-        <h1 className="mb-4 text-xl font-black tracking-tight text-blue-950">{title}</h1>
+        <h1 className="mb-4 text-xl font-semibold tracking-tight text-blue-950">{title}</h1>
         {/* Input Bar */}
         <div className="flex flex-col gap-4">
           {surface === 'triage' ? (
@@ -294,7 +294,7 @@ export default function RedesignedMobileReceive({
                   <button
                     key={o.value}
                     onClick={() => selectIntake(o.value)}
-                    className={`ds-raw-button shrink-0 rounded-full border px-3 py-1.5 text-role-caption font-black uppercase tracking-wider transition-all active:scale-95 ${intakeToneClass(o.tone, active)}`}
+                    className={`ds-raw-button shrink-0 rounded-full border px-3 py-1.5 text-role-caption font-semibold uppercase tracking-wider transition-all active:scale-95 ${intakeToneClass(o.tone, active)}`}
                   >
                     {o.label}
                   </button>
@@ -315,7 +315,7 @@ export default function RedesignedMobileReceive({
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && lookup(input)}
               placeholder="Scan or enter tracking..."
-              className="w-full bg-surface-card border border-blue-100 rounded-[24px] pl-11 pr-14 py-5 text-base font-bold text-blue-950 focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all shadow-sm placeholder:text-blue-300"
+              className="w-full bg-surface-card border border-blue-100 rounded-[24px] pl-11 pr-14 py-5 text-base font-semibold text-blue-950 focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all shadow-sm placeholder:text-blue-300"
             />
             <IconButton
               ariaLabel="Look up tracking"
@@ -393,7 +393,7 @@ export default function RedesignedMobileReceive({
               <button
                 key={key}
                 onClick={() => setFilter(key)}
-                className={`ds-raw-button flex shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-role-caption font-black uppercase tracking-wider transition-all active:scale-95 ${tone}`}
+                className={`ds-raw-button flex shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-role-caption font-semibold uppercase tracking-wider transition-all active:scale-95 ${tone}`}
               >
                 {label}
                 <span className={`tabular-nums ${active ? 'opacity-90' : 'opacity-50'}`}>{count}</span>
@@ -409,7 +409,7 @@ export default function RedesignedMobileReceive({
           empty={
             <div className="py-12 text-center opacity-40">
               <PackageCheck className="mx-auto mb-3 h-10 w-10 text-blue-200" />
-              <p className="text-xs font-black uppercase tracking-widest text-blue-300">
+              <p className="text-xs font-semibold uppercase tracking-widest text-blue-300">
                 {filter === 'all' ? 'Scan tracking to begin...' : `No ${filter} packages`}
               </p>
             </div>

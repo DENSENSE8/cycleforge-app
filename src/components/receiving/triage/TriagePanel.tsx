@@ -324,11 +324,13 @@ export function TriagePanel({
         />
 
         {row.receiving_id != null ? (
+          /* Triage is the ARRIVAL pass — the peek shows package (door) evidence
+             only; unbox carton/item shots belong to the unbox surfaces. */
           <ReceivingPhotoPeek
             receivingId={row.receiving_id}
             staffId={Number(staffId) || 0}
             poRef={row.zoho_purchaseorder_number || row.zoho_purchaseorder_id || null}
-            photoIntent="all"
+            photoIntent="package"
           />
         ) : null}
       </StationPanelRoot>

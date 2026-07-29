@@ -80,9 +80,9 @@ export function ParkedSurface({
             Work in progress
           </p>
           {!isSidebar ? (
-            <h1 className="text-lg font-black text-text-default">{meta.label}</h1>
+            <h1 className="text-lg font-semibold text-text-default">{meta.label}</h1>
           ) : (
-            <h2 className="text-role-caption font-bold text-text-default">{meta.label}</h2>
+            <h2 className="text-role-caption font-semibold text-text-default">{meta.label}</h2>
           )}
           <p className={isSidebar ? 'text-xs font-medium text-text-muted' : 'text-sm font-medium text-text-muted'}>
             {meta.blurb}
@@ -100,8 +100,8 @@ export function ParkedSurface({
             href={meta.primaryCta.href}
             className={
               isSidebar
-                ? 'inline-flex items-center justify-center rounded-lg bg-blue-600 px-2.5 py-1.5 text-xs font-bold text-white hover:bg-blue-500'
-                : 'inline-flex items-center justify-center rounded-lg bg-blue-600 px-3.5 py-2 text-sm font-bold text-white shadow-sm shadow-blue-600/25 hover:bg-blue-500'
+                ? 'inline-flex items-center justify-center rounded-lg bg-blue-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-blue-500'
+                : 'inline-flex items-center justify-center rounded-lg bg-blue-600 px-3.5 py-2 text-sm font-semibold text-white shadow-sm shadow-blue-600/25 hover:bg-blue-500'
             }
           >
             {meta.primaryCta.label}
@@ -111,8 +111,8 @@ export function ParkedSurface({
               href={meta.secondaryCta.href}
               className={
                 isSidebar
-                  ? 'inline-flex items-center justify-center rounded-lg bg-surface-card px-2.5 py-1.5 text-xs font-bold text-text-default ring-1 ring-inset ring-border-soft hover:bg-surface-canvas'
-                  : 'inline-flex items-center justify-center rounded-lg bg-surface-card px-3.5 py-2 text-sm font-bold text-text-default ring-1 ring-inset ring-border-soft hover:bg-surface-canvas'
+                  ? 'inline-flex items-center justify-center rounded-lg bg-surface-card px-2.5 py-1.5 text-xs font-semibold text-text-default ring-1 ring-inset ring-border-soft hover:bg-surface-canvas'
+                  : 'inline-flex items-center justify-center rounded-lg bg-surface-card px-3.5 py-2 text-sm font-semibold text-text-default ring-1 ring-inset ring-border-soft hover:bg-surface-canvas'
               }
             >
               {meta.secondaryCta.label}

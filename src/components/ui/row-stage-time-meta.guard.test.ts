@@ -45,16 +45,28 @@ describe('row stage-time meta alignment', () => {
     );
   });
 
-  it('OrdersQueue age column stays on SoT tracks', () => {
+  it('OrdersQueue ship-by column stays on SoT tracks', () => {
     const ordersQueue = readSibling('../dashboard/orders-queue/OrdersQueueTableRow.tsx');
 
     assert.ok(
       ordersQueue.includes('ordersQueueGridTemplate'),
       'OrdersQueueTableRow must use the fixed orders-queue column grid',
     );
+    // The separate Date + Age pair fused into one `sla` track. The invariant
+    // the old assertion protected — the row still shows days-late urgency —
+    // is unchanged; it just lives in the fused cell now. Pin BOTH halves so a
+    // future edit can't quietly drop the urgency half and keep the date.
     assert.ok(
-      ordersQueue.includes('data-col="age"') || ordersQueue.includes('getDaysLateTone'),
-      'OrdersQueueTableRow must render age / days-late in the Age column',
+      ordersQueue.includes('data-col="sla"'),
+      'OrdersQueueTableRow must render the fused ship-by (sla) column',
+    );
+    assert.ok(
+      ordersQueue.includes('GridSlaCellValue'),
+      'the sla cell must compose the shared SoT presenter, not a local date+age',
+    );
+    assert.ok(
+      readSibling('./grid-cells.tsx').includes('getDaysLateTone'),
+      'GridSlaCellValue must keep resolving lateness tone through the date SoT',
     );
   });
 });

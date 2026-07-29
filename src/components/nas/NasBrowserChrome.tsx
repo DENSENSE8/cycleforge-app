@@ -130,7 +130,7 @@ export function NasFolderCard({
       >
         <FolderIcon className="h-4 w-4" />
       </span>
-      <span className={`min-w-0 flex-1 truncate text-role-caption font-black ${dark ? 'text-white' : 'text-text-default'}`}>
+      <span className={`min-w-0 flex-1 truncate text-role-caption font-semibold ${dark ? 'text-white' : 'text-text-default'}`}>
         {name}
       </span>
       <ChevronRightTiny

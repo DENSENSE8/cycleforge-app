@@ -162,7 +162,7 @@ export default function RedesignedMobileUniversalScan() {
       <div className="px-4 pt-2 pb-1.5">
         <div className="mb-1.5 flex items-center gap-1.5 px-1">
           <ActiveIcon className="h-4 w-4 text-blue-600" />
-          <h1 className="text-base font-black tracking-tight text-blue-950">{active.label}</h1>
+          <h1 className="text-base font-semibold tracking-tight text-blue-950">{active.label}</h1>
         </div>
         <HorizontalButtonSlider
           variant="segmented"
@@ -231,7 +231,7 @@ export default function RedesignedMobileUniversalScan() {
                 empty={
                   <div className="py-12 text-center opacity-40">
                     <History className="mx-auto mb-3 h-10 w-10 text-blue-200" />
-                    <p className="text-xs font-black uppercase tracking-widest text-blue-300">
+                    <p className="text-xs font-semibold uppercase tracking-widest text-blue-300">
                       No recently printed products…
                     </p>
                   </div>

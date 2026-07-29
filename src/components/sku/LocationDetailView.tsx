@@ -253,7 +253,7 @@ export function LocationDetailView({ barcode }: LocationDetailViewProps) {
                 <p className="truncate text-role-caption font-semibold text-text-muted">{subtitle}</p>
               )}
               {location.barcode && (
-                <p className="truncate font-mono text-role-caption font-bold text-text-soft">{location.barcode}</p>
+                <p className="truncate font-mono text-role-caption font-semibold text-text-soft">{location.barcode}</p>
               )}
             </div>
           ) : undefined
@@ -271,17 +271,17 @@ export function LocationDetailView({ barcode }: LocationDetailViewProps) {
               <p className="text-role-micro uppercase tracking-[0.16em] text-blue-700">
                 Cycle count active
               </p>
-              <p className="mt-0.5 truncate text-sm font-bold text-blue-900">
+              <p className="mt-0.5 truncate text-sm font-semibold text-blue-900">
                 {activeCampaign.data.name}
               </p>
-              <p className="text-role-caption font-bold text-blue-700">
+              <p className="text-role-caption font-semibold text-blue-700">
                 {activeCampaign.data.pending} pending
                 {activeCampaign.data.review > 0
                   ? ` · ${activeCampaign.data.review} in review`
                   : ''}
               </p>
             </div>
-            <span className="shrink-0 rounded-md bg-blue-600 px-3 py-1.5 text-xs font-bold text-white">
+            <span className="shrink-0 rounded-md bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white">
               Start count
             </span>
           </button>
@@ -316,7 +316,7 @@ export function LocationDetailView({ barcode }: LocationDetailViewProps) {
                     className="ds-raw-button flex w-full items-start gap-3 rounded-lg border border-border-soft bg-surface-card px-4 py-3 text-left shadow-sm active:bg-surface-hover"
                   >
                     <div className="min-w-0 flex-1">
-                      <p className="font-mono text-sm font-black text-text-default">
+                      <p className="font-mono text-sm font-semibold text-text-default">
                         {row.sku}
                       </p>
                       {row.productTitle && (
@@ -324,7 +324,7 @@ export function LocationDetailView({ barcode }: LocationDetailViewProps) {
                           {row.productTitle}
                         </p>
                       )}
-                      <p className="mt-1 text-role-micro font-bold uppercase tracking-widest text-text-faint">
+                      <p className="mt-1 text-role-micro uppercase tracking-widest text-text-faint">
                         Counted {formatAgo(row.lastCounted)} ago
                         {row.minQty != null && row.maxQty != null
                           ? ` · ${row.minQty}–${row.maxQty}`
@@ -333,10 +333,10 @@ export function LocationDetailView({ barcode }: LocationDetailViewProps) {
                       </p>
                     </div>
                     <div className="text-right shrink-0">
-                      <p className="text-2xl font-black tabular-nums text-text-default">
+                      <p className="text-2xl font-semibold tabular-nums text-text-default">
                         {row.qty}
                       </p>
-                      <p className="mt-0.5 text-role-eyebrow font-bold uppercase tracking-widest text-text-faint">
+                      <p className="mt-0.5 text-role-eyebrow uppercase tracking-widest text-text-faint">
                         tap to edit
                       </p>
                     </div>

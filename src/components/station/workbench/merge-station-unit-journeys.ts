@@ -3,18 +3,30 @@
  * instead of N {@link SerialJourneySection} embeds.
  *
  * Each serial's journey events go through {@link mergeJourney} (same adapters
- * as Operations History), then rows are namespaced, sorted newest-first, and
- * given a serial {@link TimelineRef} so {@link EventTimeline} renders the
- * shared {@link SerialChip} (last-4 via CopyChip SoT).
+ * as Operations History), its stage photo rows fold in via
+ * {@link mergeJourneyWithUnitPhotos} (station density: collapsed per-stage
+ * thumbs, capped — never full galleries), then rows are namespaced, sorted
+ * newest-first, and given a serial {@link TimelineRef} so {@link EventTimeline}
+ * renders the shared {@link SerialChip} (last-4 via CopyChip SoT).
  */
 
 import { mergeJourney, type JourneyEvent } from '@/lib/timeline/journey';
+import { mergeJourneyWithUnitPhotos } from '@/lib/timeline/journey-photos';
 import { collapseTimeline } from '@/lib/timeline/collapse';
 import type { TimelineItem } from '@/lib/timeline/types';
+import type { UnitTimelinePhotoRow } from '@/lib/timeline/unit-photos-events';
+
+/** Station density: collapsed per-stage thumbs (subtitle keeps the true count). */
+const STATION_PHOTO_MEDIA_LIMIT = 4;
 
 export type SerialJourneyBucket = {
   serial: string;
   events: JourneyEvent[];
+  /**
+   * Five-stage photo rows for this serial's unit (optional — absent/failed
+   * photo fetches degrade to an events-only journey for that serial).
+   */
+  photos?: UnitTimelinePhotoRow[];
 };
 
 /**
@@ -25,11 +37,14 @@ export type SerialJourneyBucket = {
 export function mergeStationUnitJourneys(buckets: SerialJourneyBucket[]): TimelineItem[] {
   const merged: TimelineItem[] = [];
 
-  for (const { serial, events } of buckets) {
+  for (const { serial, events, photos } of buckets) {
     const sn = serial.trim();
     if (!sn) continue;
     const { items } = mergeJourney(events);
-    for (const item of items) {
+    const withMedia = mergeJourneyWithUnitPhotos(items, photos, {
+      mediaLimit: STATION_PHOTO_MEDIA_LIMIT,
+    });
+    for (const item of withMedia) {
       merged.push({
         ...item,
         id: `serial:${sn}:${item.id}`,

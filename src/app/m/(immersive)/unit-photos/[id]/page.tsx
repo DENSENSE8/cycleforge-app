@@ -37,7 +37,7 @@ function UnitPhotoPageInner() {
   if (!validId) {
     return (
       <div className="flex min-h-[100dvh] items-center justify-center px-6 text-center">
-        <p className="text-sm font-bold text-white/70">Invalid unit id</p>
+        <p className="text-sm font-semibold text-white/70">Invalid unit id</p>
       </div>
     );
   }

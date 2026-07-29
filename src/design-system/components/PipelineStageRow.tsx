@@ -43,25 +43,25 @@ export function PipelineStageRow({
       <div className="min-w-0">
         <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">{label}</p>
         {hasAt && staffName ? (
-          <p className="truncate text-sm font-bold text-text-default">{staffName}</p>
+          <p className="truncate text-sm font-semibold text-text-default">{staffName}</p>
         ) : (
-          <p className="text-sm font-bold text-text-faint">—</p>
+          <p className="text-sm font-semibold text-text-faint">—</p>
         )}
       </div>
       {hasAt ? (
         <div className="shrink-0 text-right tabular-nums">
-          <p className="text-role-eyebrow font-bold uppercase tracking-widest text-text-muted">
+          <p className="text-role-eyebrow uppercase tracking-widest text-text-muted">
             {formatDatePST(at, { withLeadingZeros: true })}
           </p>
-          <p className={`text-sm font-bold ${muted ? 'text-text-muted' : 'text-text-default'}`}>
+          <p className={`text-sm font-semibold ${muted ? 'text-text-muted' : 'text-text-default'}`}>
             {formatStageClockTimePST(at)}
           </p>
           {note ? (
-            <p className="text-role-eyebrow font-bold uppercase tracking-widest text-text-faint">{note}</p>
+            <p className="text-role-eyebrow uppercase tracking-widest text-text-faint">{note}</p>
           ) : null}
         </div>
       ) : (
-        <p className="shrink-0 text-role-eyebrow font-bold uppercase tracking-widest text-text-faint">
+        <p className="shrink-0 text-role-eyebrow uppercase tracking-widest text-text-faint">
           {emptyFallback}
         </p>
       )}

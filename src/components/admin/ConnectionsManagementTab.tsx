@@ -67,7 +67,7 @@ export function ConnectionsManagementTab() {
     <section className="flex h-full min-h-0 w-full flex-col border border-border-soft bg-surface-card">
       <div className={mainStickyHeaderClass}>
         <div className={`${mainStickyHeaderShellRowClass} px-6`}>
-          <p className="truncate text-role-caption font-black uppercase tracking-[0.2em] text-text-default">Connection Activity</p>
+          <p className="truncate text-role-caption font-semibold uppercase tracking-[0.2em] text-text-default">Connection Activity</p>
           <div className="flex items-center gap-4 text-role-micro uppercase tracking-widest text-text-soft">
             <Button
               variant="ghost"
@@ -87,7 +87,7 @@ export function ConnectionsManagementTab() {
       <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
         <div className="mb-4 border border-border-soft bg-surface-canvas px-4 py-3">
           <p className={`${sectionLabel} text-text-default`}>Recent Activity</p>
-          <p className="mt-1 text-role-caption font-bold text-text-soft">
+          <p className="mt-1 text-role-caption font-semibold text-text-soft">
             Every sync, import, and upload run from the sidebar writes a result here so you can confirm what happened.
           </p>
           <Button
@@ -102,8 +102,8 @@ export function ConnectionsManagementTab() {
 
         {logs.length === 0 ? (
           <div className="border border-dashed border-border-soft px-5 py-10 text-center">
-            <p className="text-role-caption font-black uppercase tracking-[0.24em] text-text-soft">No Connection Activity Yet</p>
-            <p className="mt-2 text-role-caption font-bold text-text-soft">
+            <p className="text-role-caption font-semibold uppercase tracking-[0.24em] text-text-soft">No Connection Activity Yet</p>
+            <p className="mt-2 text-role-caption font-semibold text-text-soft">
               Run a sync or upload from the sidebar to see results here.
             </p>
           </div>
@@ -126,10 +126,10 @@ export function ConnectionsManagementTab() {
                   </p>
                 </div>
                 <div>
-                  <p className="text-role-caption font-black uppercase tracking-widest text-text-default">{log.title}</p>
-                  <p className="mt-1 text-role-caption font-bold leading-relaxed text-text-muted">{log.detail}</p>
+                  <p className="text-role-caption font-semibold uppercase tracking-widest text-text-default">{log.title}</p>
+                  <p className="mt-1 text-role-caption font-semibold leading-relaxed text-text-muted">{log.detail}</p>
                 </div>
-                <div className="text-role-micro font-bold uppercase tracking-wide text-text-soft md:text-right">
+                <div className="text-role-micro uppercase tracking-wide text-text-soft md:text-right">
                   {log.createdAt}
                 </div>
               </div>

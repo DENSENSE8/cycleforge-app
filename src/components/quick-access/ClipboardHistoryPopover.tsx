@@ -162,7 +162,7 @@ export function ClipboardHistoryPopover({ onClose }: ClipboardHistoryPopoverProp
                   >
                     <span className={cn('mt-1.5 h-2 w-2 shrink-0 rounded-full', dot)} aria-hidden />
                     <span className="min-w-0 flex-1">
-                      <span className="block break-all text-role-caption font-bold text-text-default">
+                      <span className="block break-all text-role-caption font-semibold text-text-default">
                         {value}
                       </span>
                       {meta.tags.length > 0 || meta.time ? (

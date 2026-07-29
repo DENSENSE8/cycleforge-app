@@ -29,7 +29,7 @@ export function MetricLineRow({
         <p className="text-role-eyebrow uppercase tracking-[0.10rem] leading-none text-text-soft">
           {label}
         </p>
-        <div className="mt-1 text-sm font-bold text-text-default">{value}</div>
+        <div className="mt-1 text-sm font-semibold text-text-default">{value}</div>
         {meta ? <div className="mt-1 text-role-micro text-text-muted">{meta}</div> : null}
       </div>
       {action}

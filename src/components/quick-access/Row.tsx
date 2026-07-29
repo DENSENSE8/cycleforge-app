@@ -43,7 +43,7 @@ export function Row({
       ) : null}
       <span className="min-w-0 flex-1">
         <span
-          className={`block truncate text-role-caption font-bold ${
+          className={`block truncate text-role-caption font-semibold ${
             active ? 'text-blue-700' : 'text-text-default'
           }`}
         >

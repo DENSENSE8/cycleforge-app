@@ -78,7 +78,7 @@ function SortableBlockRow({
           icon={<GripVertical className="h-3.5 w-3.5" />}
         />
         <StationIcon name={blockDef?.icon ?? 'Box'} className="h-3.5 w-3.5 text-text-faint" />
-        <span className="flex-1 truncate text-role-micro font-bold text-text-muted">
+        <span className="flex-1 truncate text-role-micro text-text-muted">
           {blockDef?.label ?? inst.block}
         </span>
         <HoverTooltip label="Configure source, display & actions" asChild>
@@ -180,7 +180,7 @@ export function StudioNodeStationEditor({
         </Button>
         <span className="text-text-faint">/</span>
         <div className="min-w-0">
-          <p className="truncate text-sm font-bold text-text-default">
+          <p className="truncate text-sm font-semibold text-text-default">
             {station?.label ?? `${nodeLabel} · station`}
           </p>
           <p className="truncate text-role-caption text-text-faint">
@@ -200,7 +200,7 @@ export function StudioNodeStationEditor({
             {station ? 'Edit station' : 'Bind a station'}
           </Button>
         ) : (
-          <span className="ml-auto rounded-full bg-amber-100 px-2 py-0.5 text-role-micro font-bold uppercase tracking-wide text-amber-700">
+          <span className="ml-auto rounded-full bg-amber-100 px-2 py-0.5 text-role-micro uppercase tracking-wide text-amber-700">
             Editing draft
           </span>
         )}
@@ -214,7 +214,7 @@ export function StudioNodeStationEditor({
             }
           >
             <div className="mb-1.5 flex items-center justify-between px-1">
-              <h3 className="text-role-micro font-bold uppercase tracking-wider text-text-faint">
+              <h3 className="text-role-micro uppercase tracking-wider text-text-faint">
                 Queue{e.editing ? ' · editing' : ''}
               </h3>
               {e.editing ? (

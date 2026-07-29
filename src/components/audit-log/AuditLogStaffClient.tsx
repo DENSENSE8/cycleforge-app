@@ -95,10 +95,10 @@ export function AuditLogStaffClient() {
   return (
     <section className={cn('flex h-full min-h-0 w-full flex-col overflow-hidden', appCanvasClass)}>
       <div className={cn('border-b border-border-soft px-6 py-4', appChromeClass)}>
-        <p className="text-role-micro font-bold uppercase tracking-widest text-emerald-700">
+        <p className="text-role-micro uppercase tracking-widest text-emerald-700">
           Staff audit
         </p>
-        <h2 className="mt-0.5 text-base font-bold text-text-default">
+        <h2 className="mt-0.5 text-base font-semibold text-text-default">
           {detail.staff.name ?? `#${detail.staff.id}`}
         </h2>
         {detail.staff.role && (
@@ -143,7 +143,7 @@ function EventRow({ event }: { event: StaffEvent }) {
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <span
-              className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-role-micro font-bold uppercase tracking-wider ring-1 ${meta.tone}`}
+              className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-role-micro uppercase tracking-wider ring-1 ${meta.tone}`}
             >
               <meta.Icon className="h-3 w-3" />
               {meta.label}

@@ -88,6 +88,7 @@ export function toShippedOrderFromApi(raw: Record<string, unknown> | null | unde
     ship_by_date: asNullableString(raw.ship_by_date) ?? asNullableString(raw.deadline_at),
     deadline_at: asNullableString(raw.deadline_at),
     customer_id: asNullableNumber(raw.customer_id),
+    buyer_note: asNullableString(raw.buyer_note),
     shipment_status: asNullableString(raw.shipment_status),
     latest_status_label: asNullableString(raw.latest_status_label),
     is_shipped: Boolean(raw.is_shipped),

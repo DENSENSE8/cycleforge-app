@@ -24,7 +24,7 @@ export function ClaimConfirmStep({ c }: { c: ReceivingClaimController }) {
             {isDryRun ? 'Ticket draft (simulated)' : 'Internal ticket filed'}
           </p>
         </div>
-        <p className="text-role-caption font-bold text-text-default">{filedTicket?.number ?? '—'}</p>
+        <p className="text-role-caption font-semibold text-text-default">{filedTicket?.number ?? '—'}</p>
         {subject ? (
           <p className="flex items-center gap-1.5 truncate text-role-caption font-medium text-text-muted">
             <FileText className="h-3 w-3 shrink-0" />
@@ -36,7 +36,7 @@ export function ClaimConfirmStep({ c }: { c: ReceivingClaimController }) {
             href={filedTicket.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-role-micro font-bold uppercase tracking-wider text-blue-700 hover:text-blue-900"
+            className="inline-flex items-center gap-1 text-role-micro uppercase tracking-wider text-blue-700 hover:text-blue-900"
           >
             Open in Zendesk <ExternalLink className="h-3 w-3" />
           </a>

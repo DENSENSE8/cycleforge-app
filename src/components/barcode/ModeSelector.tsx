@@ -131,7 +131,7 @@ export function ModeSelector({ mode, onModeChange, orientation = 'horizontal' }:
                                 <Icon className="h-4 w-4" />
                             </span>
                             <span className="relative z-10 flex min-w-0 flex-col">
-                                <span className={`text-role-caption font-black uppercase tracking-[0.14em] ${isActive ? 'text-text-default' : 'text-text-muted'}`}>
+                                <span className={`text-role-caption font-semibold uppercase tracking-[0.14em] ${isActive ? 'text-text-default' : 'text-text-muted'}`}>
                                     {label}
                                 </span>
                                 <span className="truncate text-role-micro font-semibold text-text-soft">

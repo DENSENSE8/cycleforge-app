@@ -109,7 +109,7 @@ export function FbaFnskuScanToast({ pendingPlans, stationTheme }: FbaFnskuScanTo
               <p className="text-role-micro uppercase tracking-[0.14em] text-purple-800">
                 Station FNSKU scan
               </p>
-              <p className="mt-0.5 truncate font-mono text-role-caption font-black text-text-default">
+              <p className="mt-0.5 truncate font-mono text-role-caption font-semibold text-text-default">
                 {detail.fnsku}
               </p>
               {detail.productTitle ? (
@@ -117,7 +117,7 @@ export function FbaFnskuScanToast({ pendingPlans, stationTheme }: FbaFnskuScanTo
               ) : null}
 
               {addedMsg ? (
-                <p className="mt-1.5 text-role-micro font-bold text-emerald-700">{addedMsg}</p>
+                <p className="mt-1.5 text-role-micro text-emerald-700">{addedMsg}</p>
               ) : pendingPlans.length === 0 ? (
                 <p className="mt-1.5 text-role-micro text-text-soft">No open plans to add to.</p>
               ) : pendingPlans.length === 1 ? (
@@ -136,7 +136,7 @@ export function FbaFnskuScanToast({ pendingPlans, stationTheme }: FbaFnskuScanTo
                   <select
                     value={selectedPlanId}
                     onChange={(e) => setSelectedPlanId(e.target.value)}
-                    className="rounded-lg border border-purple-200 bg-surface-card px-2 py-1 text-role-micro font-bold text-text-default outline-none focus:border-purple-400"
+                    className="rounded-lg border border-purple-200 bg-surface-card px-2 py-1 text-role-micro text-text-default outline-none focus:border-purple-400"
                   >
                     <option value="">Pick plan…</option>
                     {pendingPlans.map((p) => (

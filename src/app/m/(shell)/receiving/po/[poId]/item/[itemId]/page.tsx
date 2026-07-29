@@ -123,13 +123,13 @@ export default function MobilePurchaseOrderItemDetailPage(
                 )}
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-base font-black tracking-tight text-text-default">
+                <p className="text-base font-semibold tracking-tight text-text-default">
                   {item.item_name || 'Untitled item'}
                 </p>
-                <p className="mt-0.5 text-role-caption font-bold uppercase tracking-wider text-text-soft">
+                <p className="mt-0.5 text-role-caption font-semibold uppercase tracking-wider text-text-soft">
                   {item.sku ? `SKU ${item.sku}` : 'No SKU'}
                 </p>
-                <p className="mt-1 flex flex-wrap gap-x-2 gap-y-1 text-role-caption font-bold text-text-muted">
+                <p className="mt-1 flex flex-wrap gap-x-2 gap-y-1 text-role-caption font-semibold text-text-muted">
                   <span>{item.quantity_received}/{item.quantity_expected ?? '?'}</span>
                   {item.workflow_status ? (
                     <span
@@ -153,14 +153,14 @@ export default function MobilePurchaseOrderItemDetailPage(
       {/* Photos block */}
       <section className="px-4 py-4">
         <div className="mb-2 flex items-center justify-between">
-          <p className="text-role-caption font-black uppercase tracking-[0.18em] text-text-muted">
+          <p className="text-role-caption font-semibold uppercase tracking-[0.18em] text-text-muted">
             Photos ({photos.length})
           </p>
           {photos.length > 0 ? (
             <Link
               href={galleryHref}
               prefetch={false}
-              className="text-role-caption font-black uppercase tracking-wider text-blue-600 active:text-blue-700"
+              className="text-role-caption font-semibold uppercase tracking-wider text-blue-600 active:text-blue-700"
             >
               View all
             </Link>
@@ -170,7 +170,7 @@ export default function MobilePurchaseOrderItemDetailPage(
           <Link
             href={captureHref}
             prefetch={false}
-            className="flex h-24 items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-border-soft bg-surface-canvas text-role-caption font-black uppercase tracking-[0.18em] text-text-soft active:bg-surface-sunken"
+            className="flex h-24 items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-border-soft bg-surface-canvas text-role-caption font-semibold uppercase tracking-[0.18em] text-text-soft active:bg-surface-sunken"
           >
             <Camera className="h-5 w-5" /> Take first photo
           </Link>
@@ -199,8 +199,8 @@ export default function MobilePurchaseOrderItemDetailPage(
 
       {/* Details block */}
       {item ? (
-        <section className="border-t border-border-hairline px-4 py-4 text-role-caption font-bold">
-          <p className="mb-2 text-role-caption font-black uppercase tracking-[0.18em] text-text-muted">
+        <section className="border-t border-border-hairline px-4 py-4 text-role-caption font-semibold">
+          <p className="mb-2 text-role-caption font-semibold uppercase tracking-[0.18em] text-text-muted">
             Details
           </p>
           <dl className="space-y-1.5">
@@ -214,7 +214,7 @@ export default function MobilePurchaseOrderItemDetailPage(
       ) : null}
 
       {error ? (
-        <p className="px-6 py-10 text-center text-role-caption font-bold text-rose-600">
+        <p className="px-6 py-10 text-center text-role-caption font-semibold text-rose-600">
           Couldn't load this item.
         </p>
       ) : null}
@@ -232,7 +232,7 @@ function Row({ label, value }: { label: string; value: string }) {
       <dt className="text-role-micro uppercase tracking-wider text-text-soft">
         {label}
       </dt>
-      <dd className="truncate text-right text-role-caption font-bold text-text-default">{value}</dd>
+      <dd className="truncate text-right text-role-caption font-semibold text-text-default">{value}</dd>
     </div>
   );
 }

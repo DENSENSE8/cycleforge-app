@@ -22,6 +22,7 @@ export * from './Panel';
 export * from './PanelRow';
 export * from './Popover';
 export * from './Toolbar';
+export * from './ToolbarListbox';
 export * from './SearchField';
 export * from './Switch';
 export * from './ToolbarSearchToggle';

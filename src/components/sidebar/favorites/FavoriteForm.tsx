@@ -42,14 +42,14 @@ export function FavoriteForm({ f }: { f: FavoritesWorkspaceController }) {
                 >
                   {isSelected && <Check className="mt-0.5 h-3 w-3 shrink-0 text-blue-600" />}
                   <div className="min-w-0 flex-1">
-                    <p className={`text-role-caption font-black leading-snug tracking-tight ${isSelected ? 'text-blue-700' : 'text-text-default'}`}>
+                    <p className={`text-role-caption font-semibold leading-snug tracking-tight ${isSelected ? 'text-blue-700' : 'text-text-default'}`}>
                       {product.name}
                     </p>
                     <div className="mt-0.5 flex w-full min-w-0 items-center justify-start gap-2">
-                      <span className="shrink-0 text-role-micro font-bold tabular-nums text-emerald-600">
+                      <span className="shrink-0 text-role-micro tabular-nums text-emerald-600">
                         {product.price != null ? `$${product.price.toFixed(2)}` : ''}
                       </span>
-                      <span className={`min-w-0 truncate text-role-micro font-bold uppercase tracking-[0.14em] ${isSelected ? 'text-blue-500' : 'text-text-soft'}`}>
+                      <span className={`min-w-0 truncate text-role-micro font-semibold uppercase tracking-[0.14em] ${isSelected ? 'text-blue-500' : 'text-text-soft'}`}>
                         {product.sku || 'No SKU'}
                       </span>
                     </div>
@@ -68,12 +68,12 @@ export function FavoriteForm({ f }: { f: FavoritesWorkspaceController }) {
       {/* Selected product — two rows */}
       {selectedProduct && (
         <div className="rounded-xl border border-blue-200 bg-surface-card inset-field">
-          <p className="text-role-caption font-black leading-snug text-blue-900">{selectedProduct.name}</p>
+          <p className="text-role-caption font-semibold leading-snug text-blue-900">{selectedProduct.name}</p>
           <div className="mt-0.5 flex w-full min-w-0 items-center justify-start gap-2">
-            <span className="shrink-0 text-role-micro font-bold tabular-nums text-emerald-600">
+            <span className="shrink-0 text-role-micro tabular-nums text-emerald-600">
               {selectedProduct.price != null ? `$${selectedProduct.price.toFixed(2)}` : ''}
             </span>
-            <span className="min-w-0 truncate text-role-micro font-bold uppercase tracking-[0.14em] text-blue-500">
+            <span className="min-w-0 truncate text-role-micro uppercase tracking-[0.14em] text-blue-500">
               {selectedProduct.sku || 'No SKU'}
             </span>
           </div>

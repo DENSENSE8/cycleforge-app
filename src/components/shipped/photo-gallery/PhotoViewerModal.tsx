@@ -139,7 +139,7 @@ export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
             className="pointer-events-none absolute inset-3 z-40 flex flex-col items-center justify-center gap-3 rounded-3xl border-2 border-dashed border-white/70 bg-scrim/70 backdrop-blur-md"
           >
             <Upload className="h-10 w-10 text-white" />
-            <p className="text-sm font-black uppercase tracking-widest text-white">Drop to upload</p>
+            <p className="text-sm font-semibold uppercase tracking-widest text-white">Drop to upload</p>
           </motion.div>
         ) : null}
       </AnimatePresence>
@@ -159,7 +159,7 @@ export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
       >
         <div className="pointer-events-auto flex shrink-0 items-center gap-3">
           <div className="rounded-full border border-glass/20 bg-glass/10 px-4 py-2 backdrop-blur-md">
-            <span className="text-sm font-black text-white">
+            <span className="text-sm font-semibold text-white">
               {currentIndex + 1} / {photoItems.length}
             </span>
           </div>
@@ -179,7 +179,7 @@ export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
                 icon={<ZoomOut className="h-4 w-4 text-white" />}
               />
             </HoverTooltip>
-            <span className="min-w-[44px] text-center text-xs font-bold tabular-nums text-white">
+            <span className="min-w-[44px] text-center text-xs font-semibold tabular-nums text-white">
               {Math.round(zoomLevel * 100)}%
             </span>
             <HoverTooltip label="Zoom in (+)" asChild>
@@ -410,7 +410,7 @@ export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
               >
                 <Trash2 className="h-5 w-5" />
                 {g.deleteArmed && (
-                  <span className="text-xs font-bold uppercase tracking-wider">
+                  <span className="text-xs font-semibold uppercase tracking-wider">
                     {g.deletingPhoto ? 'Deleting…' : 'Confirm'}
                   </span>
                 )}
@@ -432,7 +432,7 @@ export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
       <div className="relative flex flex-1 items-center justify-center overflow-hidden" onClick={handleBackdropClick}>
       {g.deleteError && (
         <div
-          className="absolute top-24 left-1/2 z-20 -translate-x-1/2 rounded-full border border-red-300 bg-red-600/90 px-4 py-2 text-xs font-bold text-white shadow-lg backdrop-blur-md"
+          className="absolute top-24 left-1/2 z-20 -translate-x-1/2 rounded-full border border-red-300 bg-red-600/90 px-4 py-2 text-xs font-semibold text-white shadow-lg backdrop-blur-md"
           role="alert"
         >
           {g.deleteError}
@@ -441,7 +441,7 @@ export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
 
       {g.uploading && (
         <div
-          className="absolute top-24 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-full border border-glass/20 bg-scrim/80 px-4 py-2 text-xs font-bold text-white shadow-lg backdrop-blur-md"
+          className="absolute top-24 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-full border border-glass/20 bg-scrim/80 px-4 py-2 text-xs font-semibold text-white shadow-lg backdrop-blur-md"
           role="status"
         >
           <Loader2 className="h-4 w-4 animate-spin" />
@@ -451,7 +451,7 @@ export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
 
       {g.uploadError && !g.uploading && (
         <div
-          className="absolute top-24 left-1/2 z-20 -translate-x-1/2 rounded-full border border-red-300 bg-red-600/90 px-4 py-2 text-xs font-bold text-white shadow-lg backdrop-blur-md"
+          className="absolute top-24 left-1/2 z-20 -translate-x-1/2 rounded-full border border-red-300 bg-red-600/90 px-4 py-2 text-xs font-semibold text-white shadow-lg backdrop-blur-md"
           role="alert"
         >
           {g.uploadError}
@@ -487,7 +487,7 @@ export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
         ) : photoItems[currentIndex]?.status === 'error' ? (
           <div className="flex h-96 w-full max-w-2xl flex-col items-center justify-center rounded-2xl border-2 border-red-500/30 bg-red-900/20">
             <AlertCircle className="mb-4 h-16 w-16 text-red-400" />
-            <p className="text-lg font-bold text-red-300">Failed to load image</p>
+            <p className="text-lg font-semibold text-red-300">Failed to load image</p>
           </div>
         ) : photoItems[currentIndex]?.thumbUrl ? (
           // Instant low-res placeholder while the full image preloads — never a

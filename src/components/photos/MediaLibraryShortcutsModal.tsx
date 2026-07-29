@@ -88,7 +88,7 @@ export function MediaLibraryShortcutsModal({ open, onClose }: { open: boolean; o
     >
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-role-caption font-bold">Keyboard shortcuts</DialogTitle>
+          <DialogTitle className="text-role-caption font-semibold">Keyboard shortcuts</DialogTitle>
           <DialogDescription className="sr-only">
             Grid and photo viewer keyboard shortcuts for the media library.
           </DialogDescription>

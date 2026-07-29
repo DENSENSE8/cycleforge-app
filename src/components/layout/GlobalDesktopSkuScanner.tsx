@@ -128,7 +128,7 @@ export function GlobalDesktopSkuScanner() {
             placeholder="Enter SKU manually..."
             autoComplete="off"
             autoCapitalize="characters"
-            className="h-11 flex-1 rounded-xl border border-glass/20 bg-glass/10 px-4 text-sm font-bold text-white placeholder:text-white/40 focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-400/50"
+            className="h-11 flex-1 rounded-xl border border-glass/20 bg-glass/10 px-4 text-sm font-semibold text-white placeholder:text-white/40 focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-400/50"
           />
           <Button type="submit" variant="primary" className="h-11">
             Go

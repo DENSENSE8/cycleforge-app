@@ -84,7 +84,7 @@ export function StudioInspector({
       <div className="space-y-4 p-4">
         <section>
           <PaneHeading text="Workflow" />
-          <p className="text-sm font-bold text-text-default">{definition.name}</p>
+          <p className="text-sm font-semibold text-text-default">{definition.name}</p>
           <div className="mt-1 flex items-center gap-1.5">
             <span className="rounded bg-surface-sunken px-1.5 py-0.5 text-role-micro font-semibold text-text-muted">
               v{definition.version}
@@ -138,7 +138,7 @@ export function StudioInspector({
     <div className="space-y-4 p-4">
       <section>
         <PaneHeading text="Node" />
-        <p className="text-sm font-bold text-text-default">{node.meta?.label ?? node.type}</p>
+        <p className="text-sm font-semibold text-text-default">{node.meta?.label ?? node.type}</p>
         <p className="font-mono text-role-caption text-text-faint">{node.type}</p>
         {node.meta && (
           <span className="mt-1 inline-block rounded bg-surface-sunken px-1.5 py-0.5 text-role-micro font-semibold uppercase tracking-wide text-text-soft">
@@ -150,7 +150,7 @@ export function StudioInspector({
       {live && (
         <section>
           <PaneHeading text="In flight now" />
-          <p className="text-sm font-bold text-blue-700">{live.total}</p>
+          <p className="text-sm font-semibold text-blue-700">{live.total}</p>
           <p className="text-role-caption text-text-soft">
             {live.active} active · {live.blocked} parked
             {live.error > 0 && <span className="font-semibold text-rose-600"> · {live.error} in error</span>}
@@ -288,7 +288,7 @@ export function StudioInspector({
               .filter((d) => d.severity !== 'info')
               .map((d) => (
                 <li key={d.id} className="text-role-caption leading-tight">
-                  <span className={d.severity === 'error' ? 'font-bold text-rose-600' : 'font-bold text-amber-600'}>
+                  <span className={d.severity === 'error' ? 'font-semibold text-rose-600' : 'font-semibold text-amber-600'}>
                     {d.severity === 'error' ? '✖' : '⚠'}
                   </span>{' '}
                   <span className="text-text-muted">{d.message}</span>
@@ -331,7 +331,7 @@ export function StudioInspector({
 }
 
 function PaneHeading({ text }: { text: string }) {
-  return <h3 className="mb-1.5 text-role-micro font-bold uppercase tracking-wider text-text-faint">{text}</h3>;
+  return <h3 className="mb-1.5 text-role-micro uppercase tracking-wider text-text-faint">{text}</h3>;
 }
 
 function PaneHint({ text }: { text: string }) {
@@ -369,7 +369,7 @@ function BottlenecksSection({
                 onClick={() => onFocus?.(b.nodeId)}
                 className="flex w-full items-start gap-2 rounded-md px-1.5 py-1 text-left transition-colors hover:bg-surface-hover"
               >
-                <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-rose-100 text-role-micro font-bold text-rose-700">
+                <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-rose-100 text-role-micro text-rose-700">
                   {i + 1}
                 </span>
                 <span className="min-w-0 flex-1">
@@ -423,7 +423,7 @@ function CoverageSection({ people }: { people: PeopleNodeCoverage }) {
                     href={`/admin?section=staff_schedule&staffId=${s.id}`}
                     className="flex items-center gap-2 rounded-md px-1.5 py-1 transition-colors hover:bg-surface-hover"
                   >
-                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-violet-100 text-role-eyebrow font-bold text-violet-700">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-violet-100 text-role-eyebrow text-violet-700">
                     {staffInitials(s.name)}
                   </span>
                   <span className="min-w-0 flex-1">
@@ -433,7 +433,7 @@ function CoverageSection({ people }: { people: PeopleNodeCoverage }) {
                     )}
                   </span>
                   {s.isPrimary && (
-                    <span className="shrink-0 rounded bg-violet-50 px-1.5 py-0.5 text-role-eyebrow font-bold uppercase tracking-wide text-violet-700 ring-1 ring-inset ring-violet-200">
+                    <span className="shrink-0 rounded bg-violet-50 px-1.5 py-0.5 text-role-eyebrow uppercase tracking-wide text-violet-700 ring-1 ring-inset ring-violet-200">
                       Primary
                     </span>
                   )}
@@ -466,21 +466,21 @@ function FlowMetricsSection({
       <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs">
         <div>
           <p className="text-role-micro font-semibold uppercase tracking-wide text-text-faint">In queue</p>
-          <p className="font-bold text-text-default tabular-nums">{metrics.currentWip}</p>
+          <p className="font-semibold text-text-default tabular-nums">{metrics.currentWip}</p>
         </div>
         <div>
           <p className="text-role-micro font-semibold uppercase tracking-wide text-text-faint">Runs</p>
-          <p className="font-bold text-text-default tabular-nums">{metrics.runCount}</p>
+          <p className="font-semibold text-text-default tabular-nums">{metrics.runCount}</p>
         </div>
         <div>
           <p className="text-role-micro font-semibold uppercase tracking-wide text-text-faint">Median dwell</p>
-          <p className="font-bold text-text-default tabular-nums">
+          <p className="font-semibold text-text-default tabular-nums">
             {metrics.dwellMedianS != null ? formatDuration(metrics.dwellMedianS) : '—'}
           </p>
         </div>
         <div>
           <p className="text-role-micro font-semibold uppercase tracking-wide text-text-faint">p90 dwell</p>
-          <p className="font-bold text-text-default tabular-nums">
+          <p className="font-semibold text-text-default tabular-nums">
             {metrics.dwellP90S != null ? formatDuration(metrics.dwellP90S) : '—'}
           </p>
         </div>

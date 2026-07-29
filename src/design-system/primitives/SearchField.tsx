@@ -342,7 +342,7 @@ export function SearchField({
           onPaste={handleNativePaste}
           placeholder={placeholder}
           autoFocus={autoFocus}
-          className={`w-full border-0 bg-transparent px-0 font-bold text-text-default outline-none placeholder:font-medium placeholder:text-text-faint ${sizeClasses.input}`.trim()}
+          className={`w-full border-0 bg-transparent px-0 font-semibold text-text-default outline-none placeholder:font-medium placeholder:text-text-faint ${sizeClasses.input}`.trim()}
         />
 
         {/* Trailing row: prefix → spinner/pending/clear/paste → suffix */}

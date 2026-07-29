@@ -57,10 +57,10 @@ export function MobilePoQrScanSheet({ isOpen, onClose, onDecode }: MobilePoQrSca
         >
           <div className="flex-shrink-0 flex items-center justify-between px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-2 bg-surface-card border-b border-border-soft">
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-black uppercase tracking-[0.2em] text-text-soft">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-text-soft">
                 Scan PO
               </p>
-              <p className="mt-1 text-xs font-bold text-text-muted">
+              <p className="mt-1 text-xs font-semibold text-text-muted">
                 Point at the PO barcode or QR
               </p>
             </div>
@@ -85,7 +85,7 @@ export function MobilePoQrScanSheet({ isOpen, onClose, onDecode }: MobilePoQrSca
 
             {scanner.scanStatus === 'error' && (
               <div className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center bg-surface-card">
-                <p className="text-sm font-bold text-text-default mb-1">Camera unavailable</p>
+                <p className="text-sm font-semibold text-text-default mb-1">Camera unavailable</p>
                 <p className="text-xs text-text-soft mb-4 max-w-[260px]">
                   {scanner.error || 'Enable camera access in your browser settings.'}
                 </p>

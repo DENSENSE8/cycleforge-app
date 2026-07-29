@@ -55,7 +55,7 @@ export function PhotoLabelsSection({
               size="sm"
               onClick={() => onSelect(undefined)}
               icon={<X className="h-3.5 w-3.5" />}
-              className="-my-1 h-7 gap-1 px-2 text-role-micro font-bold uppercase tracking-wider text-text-faint hover:text-text-muted"
+              className="-my-1 h-7 gap-1 px-2 text-role-micro uppercase tracking-wider text-text-faint hover:text-text-muted"
             >
               Clear
             </Button>

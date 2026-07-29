@@ -45,10 +45,11 @@ import { PhotoLibraryToolbar } from './PhotoLibraryToolbar';
 import { PhotoLibraryWorkspaceHeader } from './PhotoLibraryWorkspaceHeader';
 import { PhotoLibraryTicketNasBackup } from './PhotoLibraryTicketNasBackup';
 import { PhotoLabelEditor } from './PhotoLabelEditor';
+import { PhotoInspectorPanel } from './PhotoInspectorPanel';
 import { MediaLibraryShortcutsModal } from './MediaLibraryShortcutsModal';
 import {
   photoLibraryShowsGridControls,
-  photoLibraryShowsSecondHeaderControls,
+  photoLibraryShowsSelectControl,
 } from '@/lib/photos/photo-grid-density';
 
 /** Fixed share-link lifetime (24h) for copied links + share pages. */
@@ -65,7 +66,7 @@ import { isLibraryDocument, libraryDocumentId } from './photo-library-types';
 
 /** Right pane: workbench chrome + folders grid. Filters live in the header. */
 export function PhotoLibraryPage() {
-  const { filters, display, setView, patch } = usePhotoLibraryUrlState();
+  const { filters, display, setView, patch, setInspectedPhotoId } = usePhotoLibraryUrlState();
   const { view } = display;
   const foldersBrowse = useMemo(
     () =>
@@ -225,7 +226,7 @@ export function PhotoLibraryPage() {
     [view, folderIsLeaf],
   );
   const showGridControls = photoLibraryShowsGridControls(view, folderIsLeaf);
-  const showSecondHeaderControls = photoLibraryShowsSecondHeaderControls(view, folderIsLeaf);
+  const showSelectControl = photoLibraryShowsSelectControl(view, folderIsLeaf);
 
   const refreshLibrary = useCallback(() => {
     // Folders browse disables the photo infinite query — refetching it no-ops.
@@ -266,6 +267,16 @@ export function PhotoLibraryPage() {
     setSelectMode(false);
     clear();
   }, [clear]);
+
+  // The inspected photo, resolved from `?photoId=` against the loaded rows.
+  // Resolving against `photos` (rather than fetching by id) keeps the inspector
+  // a pure projection of what the grid already has — no second request, and no
+  // way for it to show a photo the current filters exclude.
+  const inspectedPhoto = useMemo(
+    () => photos.find((p) => p.id === display.photoId) ?? null,
+    [photos, display.photoId],
+  );
+  const closeInspector = useCallback(() => setInspectedPhotoId(null), [setInspectedPhotoId]);
 
   // Reset selection when the BROWSE SCOPE changes — a folder drill, breadcrumb
   // jump, source-scope switch, or search. Selection is keyed by id and (by
@@ -674,9 +685,8 @@ export function PhotoLibraryPage() {
                 onViewChange={handleViewChange}
                 density={gridDensity}
                 onDensityChange={setGridDensity}
-                showToggle={showSecondHeaderControls}
                 showDensity={showGridControls}
-                showSelect={showSecondHeaderControls}
+                showSelect={showSelectControl}
                 selectionActive={selectionActive}
                 onStartSelect={() => setSelectMode(true)}
                 onRefresh={refreshLibrary}
@@ -721,6 +731,7 @@ export function PhotoLibraryPage() {
               e.preventDefault();
               setCtxMenu({ photo, x: e.clientX, y: e.clientY });
             }}
+            onInspect={setInspectedPhotoId}
             isLoading={foldersIsLeaf || view !== 'folders' ? query.isLoading : foldersQuery.isLoading}
             isSettled={
               foldersIsLeaf || view !== 'folders' ? isSettled : foldersQuery.isSettled
@@ -746,7 +757,7 @@ export function PhotoLibraryPage() {
               onLoadMore={() => void query.fetchNextPage()}
             />
           ) : view !== 'folders' && !query.isLoading && photos.length > 0 ? (
-            <p className="mt-6 text-center text-role-micro font-bold uppercase tracking-widest text-text-faint">
+            <p className="mt-6 text-center text-role-micro uppercase tracking-widest text-text-faint">
               {`Showing all ${photos.length} photo${photos.length === 1 ? '' : 's'}`}
             </p>
           ) : null}
@@ -780,6 +791,15 @@ export function PhotoLibraryPage() {
           scopeImageType={filters.imageType}
           onClose={() => setLabelEditorPhotos(null)}
         />
+      ) : null}
+
+      {/* Non-modal inspector — registers the single right-rail slot. Renders
+          nothing inline; RightRailHost owns the geometry. Mounted ONLY while a
+          photo is selected: see the note in PhotoInspectorPanel — an
+          always-mounted registrar with `enabled=false` leaves an invisible
+          click-blocking aside behind. */}
+      {inspectedPhoto ? (
+        <PhotoInspectorPanel photo={inspectedPhoto} onClose={closeInspector} />
       ) : null}
 
       <MediaLibraryShortcutsModal open={showShortcuts} onClose={() => setShowShortcuts(false)} />
@@ -820,7 +840,7 @@ function PhotoLibraryLoadMoreSentinel({
   return (
     <div
       ref={sentinelRef}
-      className="flex items-center justify-center py-6 text-role-micro font-bold uppercase tracking-widest text-text-faint"
+      className="flex items-center justify-center py-6 text-role-micro uppercase tracking-widest text-text-faint"
     >
       {isFetchingNextPage ? (
         <>

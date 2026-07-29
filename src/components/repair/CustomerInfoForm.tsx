@@ -130,7 +130,7 @@ export function CustomerInfoForm({
                         inputMode="decimal"
                         required
                         tone="emerald"
-                        inputClassName="font-black text-emerald-600"
+                        inputClassName="font-semibold text-emerald-600"
                     />
 
                     <TextField

@@ -101,7 +101,7 @@ export function orderToRailVM(order: Order, facts: OrderRailFacts): RailRowVM {
   return {
     eyebrow: (
       <>
-        <span className="font-mono font-bold text-text-muted">#{shortId}</span>
+        <span className="font-mono font-semibold text-text-muted">#{shortId}</span>
         <span className="text-text-faint">·</span>
         <span className="truncate">{channel}</span>
         {assigneeLabel ? (
@@ -116,10 +116,10 @@ export function orderToRailVM(order: Order, facts: OrderRailFacts): RailRowVM {
     // No native `title=` tooltip — the rich hover popover is the preview.
     meta: (
       <span className="flex items-center gap-1.5">
-        <span className="inline-flex items-center rounded-md bg-surface-sunken px-1.5 py-0.5 font-bold text-text-muted">
+        <span className="inline-flex items-center rounded-md bg-surface-sunken px-1.5 py-0.5 font-semibold text-text-muted">
           {shipByMonthDay}
         </span>
-        <span className={`font-bold tracking-tight ${daysLateTextTone}`}>{urgencyText}</span>
+        <span className={`font-semibold tracking-tight ${daysLateTextTone}`}>{urgencyText}</span>
       </span>
     ),
     metaTrailing: (
@@ -131,7 +131,7 @@ export function orderToRailVM(order: Order, facts: OrderRailFacts): RailRowVM {
             {order.condition}
           </span>
         ) : null}
-        <span className={`rounded px-1.5 font-mono text-role-micro font-bold ${qtyBadgeClasses}`}>
+        <span className={`rounded px-1.5 font-mono text-role-micro ${qtyBadgeClasses}`}>
           ×{facts.quantity}
         </span>
       </>

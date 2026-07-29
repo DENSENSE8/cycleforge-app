@@ -160,6 +160,31 @@ and lets the store's node-update path (which exists precisely for this) swap the
 detail ⇄ repair claim …). This is a scoped exception, not a host change — it is achieved
 purely by id stability, and `mode="wait"` is left alone.
 
+## The station-cadence sibling: `stationCartonSwap`
+
+**A scanner-driven bench does not get the pointer-driven pane preset.** Unbox
+swaps between *physically different cartons* at scan cadence, where
+`workbenchPaneSettle` (0.3s each way, `mode="wait"`) cost **~0.6s of empty
+canvas per scan** — the browse table underneath is `visibility: hidden`, so the
+operator watched the app background between boxes.
+
+**`framerPresence.stationCartonSwap` + `framerTransition.stationCartonSwapMount`**
+is the sibling for that job: identical opacity shape, but the **exit carries its
+own `{ duration: 0 }`** so `mode="wait"` completes it immediately and only the
+enter fades (0.12s). Net: no gap.
+
+- **`mode="wait"` stays.** Two absolutely-positioned panes animating
+  concurrently double-image; that is not a fix.
+- **This is a sibling, not a replacement.** `workbenchPaneSettle` keeps serving
+  its six pointer-driven consumers (Review, Outbound, FBA, Packer, Triage, …).
+  Do not retune the shared preset for a station's problem.
+- **Killing the animation is NOT the same as killing the remount.** The
+  queue-inspector exception below (swap in place, stable occupant id) has
+  preconditions — full re-seed on record change, dirty-draft flush for the
+  outgoing record. `LineEditPanel` does not meet them today (`unboxView`,
+  `classifyExpand`, `pairingOpen` have no reset keyed on `row.id`; the notes
+  composer has no flush-before-swap). Take the cheap win, leave the remount.
+
 ## RESOLVED — the named `workbenchPane` preset
 
 The Workbench / Monitor right-pane swap now has a shared preset: **`framerPresence.workbenchPane`**

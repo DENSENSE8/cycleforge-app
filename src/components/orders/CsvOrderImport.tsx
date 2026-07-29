@@ -176,20 +176,20 @@ export function CsvOrderImport() {
       <div className="space-y-4">
         <div className="flex items-center gap-2">
           <CheckCircle className="h-5 w-5 text-emerald-600" />
-          <h3 className="text-role-caption font-bold text-text-default">Import complete</h3>
+          <h3 className="text-role-caption font-semibold text-text-default">Import complete</h3>
         </div>
         <div className="divide-y divide-border-hairline rounded-xl border border-border-soft">
           <div className="flex items-center justify-between px-4 py-2.5">
             <span className="text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">Inserted</span>
-            <span className="text-role-caption font-bold text-emerald-700">{result.inserted}</span>
+            <span className="text-role-caption font-semibold text-emerald-700">{result.inserted}</span>
           </div>
           <div className="flex items-center justify-between px-4 py-2.5">
             <span className="text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">Skipped (duplicates)</span>
-            <span className="text-role-caption font-bold text-text-muted">{result.skipped}</span>
+            <span className="text-role-caption font-semibold text-text-muted">{result.skipped}</span>
           </div>
           <div className="flex items-center justify-between px-4 py-2.5">
             <span className="text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">Errors</span>
-            <span className="text-role-caption font-bold text-rose-700">{result.errors.length}</span>
+            <span className="text-role-caption font-semibold text-rose-700">{result.errors.length}</span>
           </div>
         </div>
 
@@ -223,7 +223,7 @@ export function CsvOrderImport() {
           description="Upload a CSV export from any channel. You'll map its columns to order fields on the next step."
           action={
             <label className="inline-flex cursor-pointer">
-              <span className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-blue-600 px-3 text-role-caption font-bold text-white shadow-sm shadow-blue-600/25 hover:bg-blue-500">
+              <span className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-blue-600 px-3 text-role-caption font-semibold text-white shadow-sm shadow-blue-600/25 hover:bg-blue-500">
                 <Upload className="h-4 w-4" /> Choose CSV file
               </span>
               <input
@@ -254,7 +254,7 @@ export function CsvOrderImport() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 min-w-0">
           <FileText className="h-4 w-4 shrink-0 text-text-soft" />
-          <span className="truncate text-role-caption font-bold text-text-default">{fileName}</span>
+          <span className="truncate text-role-caption font-semibold text-text-default">{fileName}</span>
           <span className="shrink-0 text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
             {rows.length} rows
           </span>
@@ -271,7 +271,7 @@ export function CsvOrderImport() {
             return (
               <div key={field.key} className="flex items-center justify-between gap-3 px-4 py-2.5">
                 <div className="min-w-0">
-                  <p className="truncate text-role-caption font-bold text-text-default">
+                  <p className="truncate text-role-caption font-semibold text-text-default">
                     {field.label}
                     {field.required && <span className="ml-1 text-rose-600">*</span>}
                   </p>

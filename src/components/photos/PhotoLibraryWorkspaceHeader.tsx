@@ -3,11 +3,29 @@
 /**
  * Media Library workbench chrome — dashboard display-header recipe.
  *
- * Left:  recency tabs (Recent · Today · Last 7 · All).
+ * Left:  lifecycle facet tabs (All · Unboxing · Pickups · Packing · Repair ·
+ *        Claims · Outbound). Date is a filter, not a tab — see
+ *        `PHOTO_LIBRARY_SCOPE_TABS`.
  * Right: search · filters · media type · sort · NAS.
  *
  * Density / refresh / select / icons-list stay on the breadcrumb path strip
- * ({@link PhotoLibraryHeader}) — those are in-folder photo actions.
+ * ({@link PhotoLibraryHeader}) — those are in-view photo actions.
+ *
+ * ## Scoped house-law exception: the search field is always open
+ *
+ * The DS search SoT is `ToolbarSearchToggle` — collapsed at rest, expanding on
+ * hover/focus (`.claude/rules/ui-design-system.md` → Workbench scoped search
+ * chrome). **This surface deliberately overrides that**, approved 2026-07-28.
+ *
+ * Rationale: /ops/photos is a photo-EVIDENCE archive whose #1 job is exact
+ * identifier retrieval — pulling the unboxing shots for a specific PO, serial,
+ * or claim ticket to settle a damage dispute or carrier claim. On every other
+ * workbench, search refines a list the operator is already reading, so
+ * collapsed-at-rest correctly demotes it. Here it IS the primary entry path, and
+ * a click-to-expand puts a gesture in front of the surface's main job.
+ *
+ * The exception is scoped to this surface and recorded in the rules file — it
+ * does not license an always-open field in any other `WorkbenchChromeHeader`.
  */
 
 import { useEffect, useMemo, useState } from 'react';
@@ -18,17 +36,17 @@ import {
   WorkbenchFilterGroupLabel,
   WorkbenchFilterPopover,
 } from '@/components/dashboard/workbench-filter-popover';
-import { ToolbarSearchToggle } from '@/components/ui/ToolbarSearchToggle';
+import { SearchField } from '@/design-system/primitives';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDebounce } from '@/hooks';
 import { usePhotoLibraryUrlState } from '@/hooks/usePhotoLibraryUrlState';
 import {
-  applyRecencyTab,
-  PHOTO_LIBRARY_RECENCY_TAB_LABEL,
-  PHOTO_LIBRARY_RECENCY_TABS,
-  recencyTabFromFilters,
+  applySourceScopeTab,
+  DEFAULT_PHOTO_LIBRARY_VIEW,
+  PHOTO_LIBRARY_SCOPE_TAB_LABEL,
+  PHOTO_LIBRARY_SCOPE_TABS,
   sourceScopeFromFilters,
-  type PhotoLibraryRecencyTab,
+  type PhotoLibrarySourceScope,
 } from '@/lib/photos/library-filter-state';
 import {
   parsePhotoLibraryTicketSearch,
@@ -46,7 +64,13 @@ import { PhotoMediaTypeMenu } from './PhotoMediaTypeMenu';
 import { PhotoSortMenu } from './PhotoSortMenu';
 import { MediaSavedViewsSection } from './MediaSavedViewsSection';
 
-const SEARCH_PLACEHOLDER = 'Filter PO, order, tracking, serial, or ticket…';
+/**
+ * Kept short on purpose. The field is always open (see the exception above) and
+ * shares a header row with seven lifecycle tabs, so it is intrinsically narrow —
+ * a longer placeholder just truncates mid-word and teaches nothing. The full
+ * identifier vocabulary lives in the search field-scope menu.
+ */
+const SEARCH_PLACEHOLDER = 'PO, order, tracking, serial…';
 
 export function PhotoLibraryWorkspaceHeader({ className }: { className?: string }) {
   const { filters, display, patch, setDatePreset, clearStructured, applyView } =
@@ -66,7 +90,6 @@ export function PhotoLibraryWorkspaceHeader({ className }: { className?: string 
   });
 
   const activeScope = sourceScopeFromFilters(filters);
-  const activeTab = recencyTabFromFilters(filters);
 
   const [searchInput, setSearchInput] = useState(() =>
     photoLibrarySearchFace({ ...filters, sourceScope: activeScope }),
@@ -133,13 +156,13 @@ export function PhotoLibraryWorkspaceHeader({ className }: { className?: string 
     refinements.length > 0;
   const structuredCount = photoLibraryStructuredFilterCount(filters);
 
-  const tabs = PHOTO_LIBRARY_RECENCY_TABS.map((id: PhotoLibraryRecencyTab) => ({
+  // Lifecycle facets. Unlike the date tabs these replaced, EVERY position maps to
+  // exactly one tab — `sourceScopeFromFilters` defaults to 'all' — so the strip
+  // can never be in the "no tab owns this" state the recency tabs had to model.
+  const tabs = PHOTO_LIBRARY_SCOPE_TABS.map((id: PhotoLibrarySourceScope) => ({
     id,
-    label: PHOTO_LIBRARY_RECENCY_TAB_LABEL[id],
-    color: (id === 'recent' ? 'blue' : id === 'today' ? 'orange' : 'emerald') as
-      | 'blue'
-      | 'orange'
-      | 'emerald',
+    label: PHOTO_LIBRARY_SCOPE_TAB_LABEL[id],
+    color: 'blue' as const,
   }));
 
   const savable =
@@ -149,22 +172,30 @@ export function PhotoLibraryWorkspaceHeader({ className }: { className?: string 
     !!filters.imageType ||
     !!filters.label ||
     (!!filters.sourceScope && filters.sourceScope !== 'all') ||
-    display.view !== 'folders';
+    display.view !== DEFAULT_PHOTO_LIBRARY_VIEW;
 
   return (
     <WorkbenchChromeHeader
       tabs={tabs}
-      activeTab={activeTab}
-      onTabChange={(id) => patch(applyRecencyTab(id as PhotoLibraryRecencyTab))}
+      activeTab={activeScope}
+      onTabChange={(id) => patch(applySourceScopeTab(id as PhotoLibrarySourceScope))}
       solidTone="accent"
       className={className}
       search={
-        <ToolbarSearchToggle
+        // Always-open by design — see the scoped house-law exception in this
+        // file's header comment. Do NOT "fix" this back to ToolbarSearchToggle.
+        <SearchField
           value={searchInput}
           onChange={setSearchInput}
           onClear={() => setSearchInput('')}
           placeholder={SEARCH_PLACEHOLDER}
           tone="blue"
+          // Intrinsically sized, and it must SHRINK: WorkbenchChromeHeader's
+          // control row is `shrink-0`, so a `w-72` field pushed the row past the
+          // viewport and clipped itself (the collapsed ToolbarSearchToggle this
+          // replaced was icon-sized, so the row never had to budget for it).
+          // `min-w-0` lets it give way before anything overflows.
+          className="w-44 min-w-0 xl:w-60"
         />
       }
       right={

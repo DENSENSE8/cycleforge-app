@@ -21,6 +21,7 @@ import {
   type SkuCatalogTitleMatch,
 } from '@/lib/neon/sku-catalog-queries';
 import { and, desc, eq, inArray } from 'drizzle-orm';
+import { toPSTDateKey, warehouseDayUtcBounds } from '@/utils/date';
 
 /**
  * USAV's hardcoded source sheet — the transitional default used when no per-org
@@ -132,6 +133,13 @@ function failJson(status: number, body: Record<string, unknown>): never {
 
 const FIXED_COL_INDICES_DEFAULT = {
   shipByDate: 0,
+  /**
+   * When the order was PLACED — a distinct fact from `shipByDate` (when it is
+   * due). Absent (-1) from the legacy fixed layout; the sheet may bind it by
+   * header, and the Ecwid adapter fills it from the store's `createDate`.
+   * Lands in `orders.order_date`, which existed unused until this binding.
+   */
+  orderDate: -1,
   orderNumber: 1,
   itemNumber: 2,
   itemTitle: 3,
@@ -155,6 +163,7 @@ const REQUIRED_SHEET_HEADER_BINDINGS: { field: keyof typeof FIXED_COL_INDICES_DE
 /** Optional columns — missing headers leave index at -1 (absent), not a sync failure. */
 const OPTIONAL_SHEET_COLUMN_BINDINGS: { field: keyof typeof FIXED_COL_INDICES_DEFAULT; candidates: string[] }[] = [
   { field: 'shipByDate', candidates: ['Ship by date', 'Ship Date', 'Due Date'] },
+  { field: 'orderDate', candidates: ['Order date', 'Order Date', 'Sale date', 'Sale Date', 'Date sold'] },
   { field: 'quantity', candidates: ['Quantity', 'Qty'] },
   { field: 'usavSku', candidates: ['USAV SKU', 'SKU', 'Internal SKU'] },
   { field: 'condition', candidates: ['Condition'] },
@@ -193,12 +202,6 @@ function compactUpdateValues(values: Record<string, unknown>) {
       return true;
     })
   );
-}
-
-function getTodayDate() {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return today;
 }
 
 async function upsertOrderDeadline(orderId: number, deadlineAt: Date | null, orgId?: OrgId) {
@@ -491,6 +494,13 @@ export async function runGoogleSheetsTransferOrders(
         // creds are the dogfood store's) — any other org without a vault row
         // fails closed here and the catch below degrades the Ecwid phase.
         const ecwidVault = await getIntegrationCredentials<EcwidCredentials>(effectiveOrgId, 'ecwid');
+        // The adapter sizes its synthetic row from `max(colIndices)`, so a
+        // field left at -1 has nowhere to land. The sheet has no order-date
+        // column today, so give the fact a carrier slot past the sheet's own
+        // columns — sheet rows simply read blank there.
+        if (colIndices.orderDate < 0) {
+          colIndices.orderDate = Math.max(...Object.values(colIndices)) + 1;
+        }
         const ecwidRows = await fetchEcwidTransferRows(
           colIndices,
           ecwidVault?.storeId && ecwidVault?.apiToken
@@ -973,9 +983,37 @@ export async function runGoogleSheetsTransferOrders(
       const row = group.row;
       const existingOrder = latestOrderByOrderId.get(orderId);
       const rawShipByDate = colIndices.shipByDate >= 0 ? (row[colIndices.shipByDate] || '') : '';
-      const parsedShipByDate = rawShipByDate ? new Date(rawShipByDate) : null;
-      const sheetShipByDate = parsedShipByDate && !Number.isNaN(parsedShipByDate.getTime()) ? parsedShipByDate : null;
-      const effectiveShipByDate = sheetShipByDate ?? getTodayDate();
+      // Resolve the sheet cell as a WAREHOUSE civil day, then take that day's
+      // END as the instant. Two bugs lived here:
+      //
+      //  1. `new Date('2026-07-15')` parses as UTC midnight, which is 5pm the
+      //     PREVIOUS day in the warehouse zone — every date-only ship-by landed
+      //     a day early. `toPSTDateKey` normalizes the sheet's shapes
+      //     (`YYYY-MM-DD`, `M/D/YYYY`, a datetime) to one civil key instead.
+      //  2. A blank cell fell back to `getTodayDate()`, stamping the import day
+      //     as the deadline — so the order was born already at its due date and
+      //     read as overdue from the next morning on. 61% of the live Pending
+      //     queue carried a deadline equal to its own creation date because of
+      //     it, and NOTHING in the queue could ever be on time. A missing
+      //     ship-by is unknown, not "due today": leave it null and let the
+      //     display fall back to the created date, which it already does.
+      //
+      // End-of-day (not midnight) because a ship-by is a deadline — the order
+      // is on time until that warehouse day closes. Matches the FBA path's
+      // existing `23:59:59` convention.
+      const shipByDateKey = rawShipByDate ? toPSTDateKey(rawShipByDate) : '';
+      const shipByBounds = shipByDateKey ? warehouseDayUtcBounds(shipByDateKey) : null;
+      const sheetShipByDate = shipByBounds ? new Date(shipByBounds.endIso) : null;
+      const effectiveShipByDate = sheetShipByDate;
+
+      // WHEN THE ORDER WAS PLACED — a separate fact from when it is due, and the
+      // one Ecwid actually knows. Kept as a true instant (Ecwid's `createDate`
+      // carries a real time), so it is NOT rounded to a warehouse day the way
+      // the civil-day ship-by is.
+      const rawOrderDate = colIndices.orderDate >= 0 ? (row[colIndices.orderDate] || '') : '';
+      const parsedOrderDate = rawOrderDate ? new Date(String(rawOrderDate)) : null;
+      const effectiveOrderDate =
+        parsedOrderDate && !Number.isNaN(parsedOrderDate.getTime()) ? parsedOrderDate : null;
       const rawSheetTitle = String(row[colIndices.itemTitle] || '').trim();
       const rawSheetSku = colIndices.usavSku >= 0 ? String(row[colIndices.usavSku] || '').trim() : '';
       const rawSheetItemNumber = colIndices.itemNumber >= 0 ? String(row[colIndices.itemNumber] || '').trim() : '';
@@ -1178,6 +1216,9 @@ export async function runGoogleSheetsTransferOrders(
             saleAmount: sheetSaleAmount,
             currency: sheetCurrency,
             skuCatalogId: sheetSkuCatalogId,
+            // Placement instant when the source knows it (Ecwid always does).
+            // `orders.order_date` has existed unused; this is its first writer.
+            orderDate: effectiveOrderDate,
           },
         });
       }

@@ -102,7 +102,7 @@ export const OperationsMatrix: React.FC = () => {
       {/* Header */}
       <div className="flex items-center justify-between border-b border-border-soft pb-6 mb-6">
         <div>
-          <h2 className="text-xl font-bold text-text-default tracking-tight">
+          <h2 className="text-xl font-semibold text-text-default tracking-tight">
             Operations Hub
           </h2>
           <p className="text-sm text-text-muted font-medium mt-0.5">
@@ -128,7 +128,7 @@ export const OperationsMatrix: React.FC = () => {
                 >
                   <Icon className="h-5 w-5" />
                 </div>
-                <h3 className="text-sm font-bold text-text-default">
+                <h3 className="text-sm font-semibold text-text-default">
                   {domain.title}
                 </h3>
               </div>
@@ -167,7 +167,7 @@ export const OperationsMatrix: React.FC = () => {
 
                       {link.badge ? (
                         <span
-                          className={`text-role-micro uppercase tracking-widest font-bold px-2 py-1 rounded-full ${domain.tone.badgeClass}`}
+                          className={`text-role-micro uppercase tracking-widest px-2 py-1 rounded-full ${domain.tone.badgeClass}`}
                         >
                           {link.badge}
                         </span>

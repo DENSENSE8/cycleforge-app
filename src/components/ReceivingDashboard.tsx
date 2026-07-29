@@ -52,8 +52,16 @@ export default function ReceivingDashboard() {
   const { mode, isTriageMode, isIncomingMode, isRepairMode, isTableOnlyMode, incomingView } =
     useReceivingDashboardMode();
 
-  const { workspace, setWorkspace, nav, setNav, scanInFlight, restorePending } =
-    useReceivingWorkspacePane();
+  const {
+    workspace,
+    setWorkspace,
+    nav,
+    setNav,
+    scanInFlight,
+    restorePending,
+    lookupReceipt,
+    clearLookupReceipt,
+  } = useReceivingWorkspacePane();
 
   const {
     overlayLog,
@@ -107,6 +115,8 @@ export default function ReceivingDashboard() {
         nav={nav}
         scanInFlight={scanInFlight}
         restorePending={restorePending}
+        lookupReceipt={lookupReceipt}
+        onClearLookupReceipt={clearLookupReceipt}
         staffId={staffId}
         incomingDetails={incomingDetails}
         onCloseIncoming={() => {

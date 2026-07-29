@@ -47,7 +47,7 @@ export function ZendeskClaimModal(props: ZendeskClaimModalProps) {
             <p className="text-role-micro uppercase tracking-widest text-rose-500">
               {onPickStep ? 'Step 1 · Photos' : 'Support'}
             </p>
-            <h2 className="text-role-body font-bold tracking-tight text-text-default">
+            <h2 className="text-role-body font-semibold tracking-tight text-text-default">
               {c.result
                 ? 'Done'
                 : onPickStep

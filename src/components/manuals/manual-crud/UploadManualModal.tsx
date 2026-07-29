@@ -163,12 +163,12 @@ export function UploadManualModal({
         {file ? (
           <>
             <Check className="h-5 w-5 text-emerald-600" />
-            <p className="text-role-caption font-black text-emerald-900">{file.name}</p>
+            <p className="text-role-caption font-semibold text-emerald-900">{file.name}</p>
             <p className="text-role-micro font-semibold text-emerald-700">{(file.size / 1024).toFixed(1)} KB · click to swap</p>
           </>
         ) : (
           <>
-            <p className="text-role-caption font-black text-text-muted">Drop a PDF or Word doc here, or click to pick</p>
+            <p className="text-role-caption font-semibold text-text-muted">Drop a PDF or Word doc here, or click to pick</p>
             <p className="text-role-micro font-semibold text-text-soft">Word files (.doc/.docx) are converted to PDF automatically · Max 50MB</p>
           </>
         )}

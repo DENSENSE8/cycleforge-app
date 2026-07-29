@@ -115,7 +115,7 @@ function UnshippedSegments() {
               )}
             >
               <Icon className={cn('h-3.5 w-3.5 shrink-0', isActive ? 'text-blue-600' : 'text-text-faint')} />
-              <span className="min-w-0 flex-1 truncate text-role-caption font-bold">{row.label}</span>
+              <span className="min-w-0 flex-1 truncate text-role-caption font-semibold">{row.label}</span>
               {row.count != null ? (
                 <span
                   className={cn(
@@ -167,7 +167,7 @@ function ShippedSegments() {
                 exceptionsOnly ? 'text-blue-600' : 'text-amber-500',
               )}
             />
-            <span className="min-w-0 flex-1 truncate text-role-caption font-bold">Needs attention</span>
+            <span className="min-w-0 flex-1 truncate text-role-caption font-semibold">Needs attention</span>
           </button>
         </li>
         <li>
@@ -182,7 +182,7 @@ function ShippedSegments() {
             )}
           >
             <User className={cn('h-3.5 w-3.5 shrink-0', mineActive ? 'text-blue-600' : 'text-text-faint')} />
-            <span className="min-w-0 flex-1 truncate text-role-caption font-bold">My queue</span>
+            <span className="min-w-0 flex-1 truncate text-role-caption font-semibold">My queue</span>
           </button>
         </li>
       </ul>
@@ -210,7 +210,7 @@ function PackedSegments() {
             )}
           >
             <User className={cn('h-3.5 w-3.5 shrink-0', mineActive ? 'text-blue-600' : 'text-text-faint')} />
-            <span className="min-w-0 flex-1 truncate text-role-caption font-bold">My queue</span>
+            <span className="min-w-0 flex-1 truncate text-role-caption font-semibold">My queue</span>
           </button>
         </li>
       </ul>

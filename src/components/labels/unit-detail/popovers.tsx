@@ -146,7 +146,7 @@ function StatTile({ label, value, icon }: { label: string; value: number; icon: 
     <div className="flex flex-1 items-center gap-2 rounded-lg bg-surface-canvas px-3 py-2 ring-1 ring-border-soft/60">
       <span className="text-text-faint">{icon}</span>
       <div className="min-w-0">
-        <p className="text-lg font-bold leading-none text-text-default tabular-nums">{value}</p>
+        <p className="text-lg font-semibold leading-none text-text-default tabular-nums">{value}</p>
         <p className="mt-0.5 text-role-micro font-semibold uppercase tracking-wider text-text-faint">{label}</p>
       </div>
     </div>
@@ -174,7 +174,7 @@ function Row({
         {icon}
       </span>
       <div className="min-w-0 flex-1">
-        <p className="truncate font-mono text-role-caption font-bold text-text-default">{title}</p>
+        <p className="truncate font-mono text-role-caption font-semibold text-text-default">{title}</p>
         <p className="truncate text-role-micro font-medium text-text-soft">{sub}</p>
       </div>
     </div>
@@ -333,7 +333,7 @@ function ProductMiniRow({
         </span>
       </span>
       {trailing ? (
-        <span className="shrink-0 rounded bg-surface-sunken px-1.5 py-0.5 font-mono text-role-micro font-bold text-text-muted">
+        <span className="shrink-0 rounded bg-surface-sunken px-1.5 py-0.5 font-mono text-role-micro text-text-muted">
           {trailing}
         </span>
       ) : null}

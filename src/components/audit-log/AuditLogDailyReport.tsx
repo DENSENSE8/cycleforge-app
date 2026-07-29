@@ -133,10 +133,10 @@ export function AuditLogDailyReport({ section }: { section: Section }) {
   return (
     <section className="flex h-full min-h-0 w-full flex-col overflow-hidden bg-surface-canvas">
       <div className="border-b border-border-soft bg-surface-card px-6 py-4">
-        <p className="text-role-micro font-bold uppercase tracking-widest text-emerald-700">
+        <p className="text-role-micro uppercase tracking-widest text-emerald-700">
           {section} audit · daily report
         </p>
-        <h2 className="mt-0.5 text-base font-bold text-text-default">
+        <h2 className="mt-0.5 text-base font-semibold text-text-default">
           {rangeLabel(new URLSearchParams(searchParams.toString()))}
         </h2>
         <div className="mt-2 flex flex-wrap gap-3">
@@ -280,7 +280,7 @@ export function AuditLogDailyReport({ section }: { section: Section }) {
 function Card({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="rounded-xl border border-border-soft bg-surface-card p-4">
-      <p className="text-role-micro font-bold uppercase tracking-widest text-text-soft">{title}</p>
+      <p className="text-role-micro uppercase tracking-widest text-text-soft">{title}</p>
       <div className="mt-2">{children}</div>
     </div>
   );

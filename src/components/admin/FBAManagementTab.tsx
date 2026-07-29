@@ -199,14 +199,14 @@ export function FBAManagementTab(_props: FBAManagementTabProps = {}) {
           <div className="mx-auto max-w-2xl space-y-5">
             <header className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <p className="text-role-micro font-bold uppercase tracking-widest text-text-soft">FNSKU</p>
-                <h2 className="mt-0.5 break-all font-mono text-xl font-bold text-text-default">
+                <p className="text-role-micro uppercase tracking-widest text-text-soft">FNSKU</p>
+                <h2 className="mt-0.5 break-all font-mono text-xl font-semibold text-text-default">
                   {detail.fnsku}
                 </h2>
               </div>
               <div className="flex flex-shrink-0 items-center gap-2">
                 <span
-                  className={`inline-flex rounded-full px-2.5 py-1 text-role-micro font-bold uppercase tracking-wider ${
+                  className={`inline-flex rounded-full px-2.5 py-1 text-role-micro font-semibold uppercase tracking-wider ${
                     isStub ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'
                   }`}
                 >
@@ -307,11 +307,11 @@ export function FBAManagementTab(_props: FBAManagementTabProps = {}) {
       <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
         <DialogContent hideClose className="max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-role-caption font-bold uppercase tracking-wider">
+            <DialogTitle className="text-role-caption font-semibold uppercase tracking-wider">
               Delete FNSKU
             </DialogTitle>
             <DialogDescription className="text-role-caption leading-relaxed">
-              Remove <span className="font-mono font-bold">{selectedFnsku}</span> from the catalog?
+              Remove <span className="font-mono font-semibold">{selectedFnsku}</span> from the catalog?
               It will no longer appear in the FNSKU directory. Re-adding or re-uploading the same
               FNSKU restores it.
             </DialogDescription>
@@ -346,14 +346,14 @@ export function FBAManagementTab(_props: FBAManagementTabProps = {}) {
       <Dialog open={isUploadInfoOpen} onOpenChange={setIsUploadInfoOpen}>
         <DialogContent hideClose className="max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-role-caption font-bold uppercase tracking-wider">
+            <DialogTitle className="text-role-caption font-semibold uppercase tracking-wider">
               Upload FNSKU CSV
             </DialogTitle>
             <DialogDescription className="text-role-caption leading-relaxed">
-              Include <span className="font-bold">fnsku</span>,{' '}
-              <span className="font-bold">product_title</span>,{' '}
-              <span className="font-bold">asin</span>, and <span className="font-bold">sku</span>{' '}
-              columns. Rows with duplicate <span className="font-bold">fnskus</span> in the same
+              Include <span className="font-semibold">fnsku</span>,{' '}
+              <span className="font-semibold">product_title</span>,{' '}
+              <span className="font-semibold">asin</span>, and <span className="font-semibold">sku</span>{' '}
+              columns. Rows with duplicate <span className="font-semibold">fnskus</span> in the same
               file are skipped.
             </DialogDescription>
           </DialogHeader>
@@ -385,7 +385,7 @@ export function FBAManagementTab(_props: FBAManagementTabProps = {}) {
       <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
         <DialogContent hideClose className="max-w-lg">
           <DialogHeader>
-            <DialogTitle className="text-role-caption font-bold uppercase tracking-wider">
+            <DialogTitle className="text-role-caption font-semibold uppercase tracking-wider">
               Add FNSKU Mapping
             </DialogTitle>
             <DialogDescription className="text-role-caption">
@@ -465,7 +465,7 @@ export function FBAManagementTab(_props: FBAManagementTabProps = {}) {
 function FieldRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="grid grid-cols-[120px_1fr] items-center gap-3">
-      <p className="text-role-micro font-bold uppercase tracking-widest text-text-soft">{label}</p>
+      <p className="text-role-micro uppercase tracking-widest text-text-soft">{label}</p>
       {children}
     </div>
   );
@@ -474,7 +474,7 @@ function FieldRow({ label, children }: { label: string; children: React.ReactNod
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="space-y-1">
-      <span className="block text-role-micro font-bold uppercase tracking-wider text-text-muted">
+      <span className="block text-role-micro uppercase tracking-wider text-text-muted">
         {label}
       </span>
       {children}

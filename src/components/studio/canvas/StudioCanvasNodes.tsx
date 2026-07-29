@@ -98,7 +98,7 @@ export function ProcessNode({ data }: NodeProps) {
       {gaps.length > 0 && (
         <span
           className={[
-            'absolute -left-2 -top-2 z-10 flex h-6 min-w-6 items-center justify-center rounded-full px-1 text-role-caption font-bold text-white shadow',
+            'absolute -left-2 -top-2 z-10 flex h-6 min-w-6 items-center justify-center rounded-full px-1 text-role-caption font-semibold text-white shadow',
             gapErrors.length > 0 ? 'bg-rose-600' : 'bg-amber-500',
           ].join(' ')}
           title={gaps.map((d) => d.message).join('\n')}
@@ -108,7 +108,7 @@ export function ProcessNode({ data }: NodeProps) {
       )}
       {live && live.total > 0 && (
         <span
-          className={`absolute -right-2 -top-2 z-10 flex h-6 min-w-6 items-center justify-center rounded-full ${heat ? HEAT_BADGE[heat.level] : 'bg-blue-600'} px-1.5 text-role-caption font-bold text-white shadow`}
+          className={`absolute -right-2 -top-2 z-10 flex h-6 min-w-6 items-center justify-center rounded-full ${heat ? HEAT_BADGE[heat.level] : 'bg-blue-600'} px-1.5 text-role-caption font-semibold text-white shadow`}
           title={heat && heat.reasons.length > 0 ? heat.reasons.join(' · ') : `${live.total} in flight`}
         >
           {live.total}
@@ -116,7 +116,7 @@ export function ProcessNode({ data }: NodeProps) {
       )}
       {live && live.error > 0 && (
         <span
-          className="absolute -left-2 -top-2 z-10 flex h-5 min-w-5 items-center justify-center rounded-full bg-rose-600 px-1 text-role-micro font-bold text-white shadow"
+          className="absolute -left-2 -top-2 z-10 flex h-5 min-w-5 items-center justify-center rounded-full bg-rose-600 px-1 text-role-micro text-white shadow"
           title={`${live.error} item(s) parked in error — needs triage`}
         >
           !{live.error}
@@ -124,7 +124,7 @@ export function ProcessNode({ data }: NodeProps) {
       )}
       {flowHeat && (flow!.currentWip > 0 || flow!.runCount > 0) && (
         <span
-          className={`absolute -right-2 -top-2 z-10 flex h-6 min-w-6 items-center justify-center rounded-full ${HEAT_BADGE[flowHeat.level]} px-1.5 text-role-caption font-bold text-white shadow`}
+          className={`absolute -right-2 -top-2 z-10 flex h-6 min-w-6 items-center justify-center rounded-full ${HEAT_BADGE[flowHeat.level]} px-1.5 text-role-caption font-semibold text-white shadow`}
           title={flowHeat.reasons.length > 0 ? flowHeat.reasons.join(' · ') : `${flow!.runCount} runs`}
         >
           {flow!.currentWip}
@@ -134,7 +134,7 @@ export function ProcessNode({ data }: NodeProps) {
         <span
           className={`absolute -right-2 -top-2 z-10 flex h-6 min-w-6 items-center justify-center rounded-full ${
             people.coverage > 0 ? 'bg-violet-600' : 'bg-amber-500'
-          } px-1.5 text-role-caption font-bold text-white shadow`}
+          } px-1.5 text-role-caption font-semibold text-white shadow`}
           title={
             people.coverage > 0
               ? `${people.coverage} staff scoped to ${people.station}`
@@ -151,7 +151,7 @@ export function ProcessNode({ data }: NodeProps) {
       >
         <NodeIcon name={node.meta?.icon} className="h-4 w-4 shrink-0 text-text-soft" />
         <div className="min-w-0">
-          <p className="truncate text-xs font-bold text-text-default">{node.meta?.label ?? node.type}</p>
+          <p className="truncate text-xs font-semibold text-text-default">{node.meta?.label ?? node.type}</p>
           <p className="truncate font-mono text-role-micro text-text-faint">{node.type}</p>
         </div>
         {staticRole ? (
@@ -299,7 +299,7 @@ export function ProcessNode({ data }: NodeProps) {
                   asChild
                 >
                   <span
-                    className={`flex h-5 w-5 items-center justify-center rounded-full text-[8.5px] font-bold ${
+                    className={`flex h-5 w-5 items-center justify-center rounded-full text-[8.5px] font-semibold ${
                       s.isPrimary
                         ? 'bg-violet-600 text-white'
                         : 'bg-violet-100 text-violet-700 ring-1 ring-inset ring-violet-200'
@@ -359,11 +359,11 @@ export function DepartmentNode({ data }: NodeProps) {
     <div className="relative w-52 cursor-zoom-in rounded-2xl border-2 bg-surface-card px-4 py-3 shadow-sm" style={{ borderColor: d.color }}>
       <Handle type="target" position={Position.Left} className="!bg-surface-strong" />
       {d.inFlight != null && d.inFlight > 0 && (
-        <span className="absolute -right-2 -top-2 z-10 flex h-6 min-w-6 items-center justify-center rounded-full bg-blue-600 px-1.5 text-role-caption font-bold text-white shadow">
+        <span className="absolute -right-2 -top-2 z-10 flex h-6 min-w-6 items-center justify-center rounded-full bg-blue-600 px-1.5 text-role-caption font-semibold text-white shadow">
           {d.inFlight}
         </span>
       )}
-      <p className="text-sm font-bold" style={{ color: d.color }}>
+      <p className="text-sm font-semibold" style={{ color: d.color }}>
         {d.label}
       </p>
       <p className="mt-0.5 text-role-caption text-text-soft">

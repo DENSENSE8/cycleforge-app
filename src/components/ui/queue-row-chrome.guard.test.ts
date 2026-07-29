@@ -44,7 +44,6 @@ describe('queue-row left-edge chrome', () => {
       ['ReceivingLineOrderRow', '../station/ReceivingLineOrderRow.tsx'],
       ['ReceivingPoSummary', '../station/ReceivingPoSummary.tsx'],
       ['OrdersQueueTableRow', '../dashboard/orders-queue/OrdersQueueTableRow.tsx'],
-      ['StationRecordShell', '../station/StationRecordShell.tsx'],
     ] as const;
 
     for (const [name, path] of files) {
@@ -60,15 +59,12 @@ describe('queue-row left-edge chrome', () => {
           `${name} must use the orders-queue columnar shell`,
         );
         assert.ok(src.includes('metaIndentFor('), `${name} must keep metaIndentFor for mobile`);
-      } else if (name !== 'ReceivingPoSummary' && name !== 'StationRecordShell') {
+      } else if (name !== 'ReceivingPoSummary') {
         assert.ok(src.includes('QUEUE_ROW.px'), `${name} must apply QUEUE_ROW.px`);
         assert.ok(src.includes('metaIndentFor('), `${name} must call metaIndentFor(`);
       }
       if (name === 'ReceivingPoSummary') {
         assert.ok(src.includes("metaIndentFor('wide'"), `${name} must use wide metaIndentFor`);
-      }
-      if (name === 'StationRecordShell') {
-        assert.ok(src.includes('QUEUE_ROW.px'), `${name} must apply QUEUE_ROW.px`);
       }
       assert.doesNotMatch(
         src,

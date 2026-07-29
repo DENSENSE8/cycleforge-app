@@ -234,7 +234,7 @@ export function SupportTicketDetail({
           >
             <div className="flex flex-col items-center gap-2 text-blue-700">
               <Upload className="h-7 w-7" />
-              <p className="text-sm font-bold">Drop photo to add to ticket #{ticketId}</p>
+              <p className="text-sm font-semibold">Drop photo to add to ticket #{ticketId}</p>
               <p className="text-role-caption font-semibold text-blue-500">Uploads to the library, attaches on your next reply</p>
             </div>
           </motion.div>

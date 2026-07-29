@@ -69,7 +69,7 @@ export function UnallocatedDropZone({
 
       {items.length === 0 ? (
         <div className="border-t border-border-hairline px-3 py-2">
-          <p className="text-center text-role-eyebrow font-bold text-text-faint">
+          <p className="text-center text-role-eyebrow text-text-faint">
             All items allocated to boxes
           </p>
         </div>

@@ -136,7 +136,7 @@ export function RackDetailView({ code }: RackDetailViewProps) {
               className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border-soft bg-surface-card hover:bg-surface-hover"
               icon={<ChevronLeft className="h-4 w-4" />}
             />
-            <p className="font-mono text-base font-black leading-none tracking-tight text-text-default">
+            <p className="font-mono text-base font-semibold leading-none tracking-tight text-text-default">
               {dashedCode}
             </p>
           </>
@@ -286,7 +286,7 @@ function RackFace({ loading, positions, level, onCellClick }: RackFaceProps) {
   return (
     <div className="rounded-2xl border border-border-soft bg-surface-card p-3 shadow-sm">
       <div className="mb-2 flex items-center justify-between px-1">
-        <p className="text-role-micro font-bold uppercase tracking-[0.16em] text-text-soft">
+        <p className="text-role-micro uppercase tracking-[0.16em] text-text-soft">
           Level {noPad(level)} · {positions.length} position{positions.length === 1 ? '' : 's'}
         </p>
         <FillLegend />
@@ -345,11 +345,11 @@ function PositionCell({ row, onClick }: { row: BinsOverviewRow; onClick: () => v
       className={`relative flex h-28 w-24 shrink-0 flex-col items-stretch overflow-hidden rounded-2xl border text-left transition-all active:scale-[0.97] ${containerClass}`}
     >
       <div className="flex items-start justify-between px-2.5 pt-2">
-        <span className="font-mono text-lg font-black tabular-nums leading-none text-text-default">
+        <span className="font-mono text-lg font-semibold tabular-nums leading-none text-text-default">
           {pos}
         </span>
         {row.is_over_capacity && (
-          <span className="rounded-full bg-red-500 px-1.5 py-0.5 text-role-micro font-bold uppercase tracking-wider text-white">
+          <span className="rounded-full bg-red-500 px-1.5 py-0.5 text-role-micro uppercase tracking-wider text-white">
             !
           </span>
         )}
@@ -362,7 +362,7 @@ function PositionCell({ row, onClick }: { row: BinsOverviewRow; onClick: () => v
           </p>
         ) : (
           <>
-            <p className="text-role-caption font-bold tabular-nums text-text-default">
+            <p className="text-role-caption font-semibold tabular-nums text-text-default">
               {row.total_qty}
             </p>
             <p className="text-[9.5px] text-text-soft">
@@ -396,7 +396,7 @@ function NeighborLevel({
 }) {
   return (
     <div>
-      <p className="mb-1.5 text-role-micro font-bold uppercase tracking-[0.16em] text-text-soft">
+      <p className="mb-1.5 text-role-micro uppercase tracking-[0.16em] text-text-soft">
         Level {noPad(level)} · {positions.length}
       </p>
       <div className="flex gap-1.5 overflow-x-auto pb-1 [scrollbar-width:thin]">
@@ -444,7 +444,7 @@ function RackList({
               i > 0 ? 'border-t border-border-hairline' : ''
             }`}
           >
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-surface-sunken font-mono text-base font-bold tabular-nums text-text-default">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-surface-sunken font-mono text-base font-semibold tabular-nums text-text-default">
               {pos}
             </span>
             <div className="min-w-0 flex-1">
@@ -465,7 +465,7 @@ function RackList({
               )}
             </div>
             {hasIssue && (
-              <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-role-micro font-bold uppercase tracking-wider text-amber-800">
+              <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-role-micro uppercase tracking-wider text-amber-800">
                 Issue
               </span>
             )}

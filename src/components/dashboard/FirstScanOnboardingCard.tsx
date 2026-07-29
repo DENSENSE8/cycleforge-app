@@ -92,7 +92,7 @@ function FirstScanOnboardingCardInner({ variant }: { variant: FirstScanVariant }
         </span>
 
         {/* Headline + one-line explainer of the seeded flow. */}
-        <h2 className="mt-2 text-lg font-black leading-tight text-text-default">
+        <h2 className="mt-2 text-lg font-semibold leading-tight text-text-default">
           Let&apos;s process your first unit
         </h2>
         <p className="mt-1 text-role-caption font-medium text-text-muted">

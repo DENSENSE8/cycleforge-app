@@ -63,7 +63,7 @@ function randomId(): string {
 function StatusPill({ status }: { status: string | null }) {
   const v = status || 'EXPECTED';
   return (
-    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-role-micro font-bold uppercase tracking-wide ${workflowStageBadge(v)}`}>
+    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-role-micro uppercase tracking-wide ${workflowStageBadge(v)}`}>
       {workflowStatusTableLabel(v)}
     </span>
   );
@@ -290,19 +290,19 @@ function LinePageInner() {
               className={`h-2 w-2 shrink-0 rounded-full ${getStatusDotBg(line?.workflow_status, received, expected)}`}
             />
           </HoverTooltip>
-          <h1 className="truncate text-sm font-bold text-text-default">
+          <h1 className="truncate text-sm font-semibold text-text-default">
             {line?.item_name || line?.sku || `Line #${lineId}`}
           </h1>
         </div>
         <div className="mt-1 flex flex-wrap items-center gap-1.5 pl-4">
           <StatusPill status={line?.workflow_status ?? null} />
           {line?.condition_grade && (
-            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-role-micro font-bold uppercase tracking-wide ${conditionBadgeTone(line.condition_grade)}`}>
+            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-role-micro uppercase tracking-wide ${conditionBadgeTone(line.condition_grade)}`}>
               {conditionGradeTableLabel(line.condition_grade)}
             </span>
           )}
           <span
-            className={`text-role-caption font-black uppercase tracking-widest ${isComplete ? 'text-emerald-600' : 'text-text-muted'}`}
+            className={`text-role-caption font-semibold uppercase tracking-widest ${isComplete ? 'text-emerald-600' : 'text-text-muted'}`}
           >
             {received}/{expected ?? '?'}
           </span>
@@ -321,7 +321,7 @@ function LinePageInner() {
 
       {flash && (
         <div
-          className={`px-4 py-2 text-sm font-bold text-center ${
+          className={`px-4 py-2 text-sm font-semibold text-center ${
             flash.kind === 'ok'
               ? 'bg-emerald-50 text-emerald-700'
               : 'bg-rose-50 text-rose-700'
@@ -397,7 +397,7 @@ function LinePageInner() {
               onKeyDown={(e) => {
                 if (e.key === 'Enter') submitSerial();
               }}
-              className="flex-1 rounded-md border border-border-default px-3 py-3 text-base font-mono font-bold text-text-default focus:border-blue-500 focus:outline-none"
+              className="flex-1 rounded-md border border-border-default px-3 py-3 text-base font-mono font-semibold text-text-default focus:border-blue-500 focus:outline-none"
             />
             <Button
               variant="brand"
@@ -416,7 +416,7 @@ function LinePageInner() {
                 <span
                   key={s.id}
                   title={s.serial_number}
-                  className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-mono text-role-micro font-bold ${unitStatusBadgeTone(s.current_status)}`}
+                  className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-mono text-role-micro ${unitStatusBadgeTone(s.current_status)}`}
                 >
                   …{getLast4(s.serial_number)}
                   <span className="opacity-50">·</span>
@@ -443,7 +443,7 @@ function LinePageInner() {
               onKeyDown={(e) => {
                 if (e.key === 'Enter') submitPutaway();
               }}
-              className="flex-1 rounded-md border border-border-default px-3 py-3 text-base font-mono font-bold text-text-default focus:border-blue-500 focus:outline-none"
+              className="flex-1 rounded-md border border-border-default px-3 py-3 text-base font-mono font-semibold text-text-default focus:border-blue-500 focus:outline-none"
             />
             <Button
               variant="brand"
@@ -484,7 +484,7 @@ function LinePageInner() {
                 <li key={ev.id} className="flex items-start gap-2 text-role-caption">
                   <span className="mt-[3px] inline-block h-1.5 w-1.5 rounded-full bg-border-emphasis shrink-0" />
                   <div className="min-w-0 flex-1">
-                    <p className="font-bold text-text-default">
+                    <p className="font-semibold text-text-default">
                       {ev.event_type.replace(/_/g, ' ')}
                       {ev.bin_name ? (
                         <span className="ml-1 font-semibold text-text-muted">

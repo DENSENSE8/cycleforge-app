@@ -4,7 +4,10 @@
  * Station-density unit journeys for {@link WorkspaceTimelineTab}.
  *
  * One {@link TimelineSection} / {@link EventTimeline} feed for the carton —
- * not N Operations-style {@link SerialJourneySection} embeds.
+ * not N Operations-style {@link SerialJourneySection} embeds. Each serial's
+ * stage photo rows (arrival / unbox / testing / packing) fold in as collapsed
+ * per-stage thumb rows; a failed photo fetch degrades that serial to
+ * events-only (never blocks the feed).
  *
  * Station two-line anatomy (`metaTrail` + `refInline`):
  *   1. Primary — event outcome ("Tested — Fail")
@@ -17,6 +20,7 @@ import { useQueries } from '@tanstack/react-query';
 import { Loader2 } from '@/components/Icons';
 import { TimelineSection } from '@/components/ui/TimelineSection';
 import { operationsJourneyFocusedQuery } from '@/lib/queries/operations-journey-queries';
+import { unitTimelinePhotosQuery } from '@/lib/timeline/journey-photos';
 import { serialJourneyFilters } from '@/lib/serial/serial-journey';
 import { mergeStationUnitJourneys } from './merge-station-unit-journeys';
 
@@ -40,6 +44,15 @@ export function StationUnitJourneys({
     })),
   });
 
+  // Photo spine — per-serial unit ids come from the journey responses' entity
+  // summaries (no extra resolve round-trip); unresolved ids keep the query
+  // disabled. Shared cache key with the unit detail pane.
+  const photoQueries = useQueries({
+    queries: list.map((_, i) =>
+      unitTimelinePhotosQuery(queries[i]?.data?.entity?.serialUnitIds?.[0] ?? null),
+    ),
+  });
+
   const loading = serialsLoading || (list.length > 0 && queries.some((q) => q.isLoading));
   const failed = list.length > 0 && queries.every((q) => q.isError);
 
@@ -49,10 +62,15 @@ export function StationUnitJourneys({
         list.map((serial, i) => ({
           serial,
           events: queries[i]?.data?.events ?? [],
+          photos: photoQueries[i]?.data?.photos,
         })),
       ),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- query data identity
-    [list, queries.map((q) => q.dataUpdatedAt).join(',')],
+    [
+      list,
+      queries.map((q) => q.dataUpdatedAt).join(','),
+      photoQueries.map((q) => q.dataUpdatedAt).join(','),
+    ],
   );
 
   if (serialsLoading && list.length === 0) {

@@ -27,10 +27,10 @@ export const ORDERS_QUEUE_COL_HEADER_STICKY = 'top-0';
 export type OrdersQueueColumnKey =
   | 'select'
   | 'title'
-  | 'date'
+  /** Fused ship-by commitment + lateness. Replaced the `date` + `age` pair. */
+  | 'sla'
   | 'qty'
   | 'condition'
-  | 'age'
   | 'status'
   | 'tester'
   | 'testedAt'
@@ -78,9 +78,14 @@ export interface OrdersQueueColumn {
  * `orderid` config key (the grid column is `order`; the hide-registry key is
  * `orderid`).
  *
- * **Date** = absolute civil ship-by (deadline → created fallback) — compact cell.
- * **Age** = relative urgency (`Nd` / lane age) with SLA tone — docks directly
- * after Date so when + how-late scan as one pair.
+ * **Ship by** (`sla`) = the fused commitment cell: absolute civil ship-by
+ * (deadline → created fallback) **and** relative urgency (`Nd` / lane age) with
+ * SLA tone, in one track. They were adjacent columns answering one operator
+ * question ("when is this due, and how late is it") and sorted on effectively
+ * the same key, so the pair cost a track and a header (the unreadable `BY`)
+ * while forcing a cross-column scan. Fusing frees that width for real labels.
+ * The cell is **date-only** — see {@link GridSlaCellValue} for why there is no
+ * time-of-day here.
  * Status + Platform columns retired — lifecycle tabs (Pending · Tested) own the
  * lane; listing open stays on the product-cell hover link.
  * The old free-text `notes` column and the replenishment `stock` column are
@@ -92,14 +97,14 @@ export interface OrdersQueueColumn {
 export const ORDERS_QUEUE_COLUMNS: readonly OrdersQueueColumn[] = [
   { key: 'select', width: 'minmax(2rem, 2rem)' },
   { key: 'title', width: 'minmax(12rem, 1fr)', label: 'Product', type: 'text', labelFitRem: 8 },
-  // Content-sized floors (cell values) — headers go glyph-only below labelFitRem.
-  { key: 'date', width: 'minmax(4.5rem, 4.5rem)', label: 'Ship by', gridLabel: 'By', type: 'date', labelFitRem: 4.5 },
-  { key: 'age', width: 'minmax(3rem, 3rem)', label: 'Age', type: 'date', labelFitRem: 4.5 },
-  { key: 'qty', width: 'minmax(2.75rem, 2.75rem)', label: 'Qty', type: 'number', hideKey: 'qty', labelFitRem: 4.5 },
-  { key: 'condition', width: 'minmax(5.5rem, 5.5rem)', label: 'Cond', type: 'tag', hideKey: 'condition', labelFitRem: 4.5 },
-  { key: 'order', width: 'minmax(3.75rem, 3.75rem)', label: 'Order', type: 'id', hideKey: 'orderid', labelFitRem: 4.5 },
-  // Glyph-only header (pin) — track sized for last-4 chips / + label icon.
-  { key: 'tracking', width: 'minmax(3.75rem, 3.75rem)', label: 'Tracking', type: 'location', hideKey: 'tracking', labelFitRem: 4.5 },
+  // Every fact track is sized to fit its own short label, so the default view
+  // shows words rather than glyphs. `labelFitRem` stays as the graceful
+  // degrade for a column the operator drag-resizes narrower than its label.
+  { key: 'sla', width: 'minmax(7rem, 7rem)', label: 'Ship by', type: 'date', labelFitRem: 5 },
+  { key: 'qty', width: 'minmax(3.5rem, 3.5rem)', label: 'Qty', type: 'number', hideKey: 'qty', labelFitRem: 3.5 },
+  { key: 'condition', width: 'minmax(5.5rem, 5.5rem)', label: 'Cond', type: 'tag', hideKey: 'condition', labelFitRem: 4 },
+  { key: 'order', width: 'minmax(4.5rem, 4.5rem)', label: 'Order', type: 'id', hideKey: 'orderid', labelFitRem: 4.5 },
+  { key: 'tracking', width: 'minmax(5rem, 5rem)', label: 'Tracking', gridLabel: 'Track', type: 'location', hideKey: 'tracking', labelFitRem: 4.5 },
 ] as const;
 
 /**
@@ -114,15 +119,14 @@ export const ORDERS_QUEUE_COLUMNS: readonly OrdersQueueColumn[] = [
 export const ORDERS_QUEUE_TESTED_COLUMNS: readonly OrdersQueueColumn[] = [
   { key: 'select', width: 'minmax(2rem, 2rem)' },
   { key: 'title', width: 'minmax(12rem, 1fr)', label: 'Product', type: 'text', labelFitRem: 8 },
-  { key: 'date', width: 'minmax(4.5rem, 4.5rem)', label: 'Ship by', gridLabel: 'By', type: 'date', labelFitRem: 4.5 },
-  { key: 'age', width: 'minmax(3rem, 3rem)', label: 'Age', type: 'date', labelFitRem: 4.5 },
+  { key: 'sla', width: 'minmax(7rem, 7rem)', label: 'Ship by', type: 'date', labelFitRem: 5 },
   { key: 'tester', width: 'minmax(6rem, 6rem)', label: 'Tester', type: 'text', labelFitRem: 4.5 },
   // Full `formatDateTimePST` string (MM/DD/YYYY h:mm:ss AM/PM) needs the widest track.
   { key: 'testedAt', width: 'minmax(10rem, 10rem)', label: 'Tested at', type: 'date', labelFitRem: 4.5 },
-  { key: 'qty', width: 'minmax(2.75rem, 2.75rem)', label: 'Qty', type: 'number', hideKey: 'qty', labelFitRem: 4.5 },
-  { key: 'condition', width: 'minmax(5.5rem, 5.5rem)', label: 'Cond', type: 'tag', hideKey: 'condition', labelFitRem: 4.5 },
-  { key: 'order', width: 'minmax(3.75rem, 3.75rem)', label: 'Order', type: 'id', hideKey: 'orderid', labelFitRem: 4.5 },
-  { key: 'tracking', width: 'minmax(3.75rem, 3.75rem)', label: 'Tracking', type: 'location', hideKey: 'tracking', labelFitRem: 4.5 },
+  { key: 'qty', width: 'minmax(3.5rem, 3.5rem)', label: 'Qty', type: 'number', hideKey: 'qty', labelFitRem: 3.5 },
+  { key: 'condition', width: 'minmax(5.5rem, 5.5rem)', label: 'Cond', type: 'tag', hideKey: 'condition', labelFitRem: 4 },
+  { key: 'order', width: 'minmax(4.5rem, 4.5rem)', label: 'Order', type: 'id', hideKey: 'orderid', labelFitRem: 4.5 },
+  { key: 'tracking', width: 'minmax(5rem, 5rem)', label: 'Tracking', gridLabel: 'Track', type: 'location', hideKey: 'tracking', labelFitRem: 4.5 },
 ] as const;
 
 /** Mode ids for the orders-queue column model (per-lane layouts, plan Phase A). */
@@ -160,31 +164,33 @@ export function ordersQueueContentMinWidthRem(
 
 /**
  * Viewport priority collapse (DevExtreme-style): when the scrollport is tight,
- * force-hide secondary columns in order By → Qty → Cond. Never touches Age /
- * Order / Tracking / Product. Ephemeral — not written to staff prefs.
+ * force-hide secondary columns in order Qty → Cond. Ephemeral — not written to
+ * staff prefs.
  *
- * Breakpoints are px widths of the LedgerGrid scrollport (16px rem assumed).
+ * **`sla` is protected and must stay that way.** The old order dropped `date`
+ * first, which was safe only because `age` still carried the urgency fact one
+ * track over. Now that the two are fused, dropping `sla` would take the
+ * deadline AND the lateness off a dispatch queue at exactly the width where
+ * the operator is most likely on a small screen. Title / SLA / Order /
+ * Tracking are never force-hidden.
+ *
+ * Breakpoints are px widths of the LedgerGrid scrollport (16px rem assumed),
+ * each stepped down by the one collapse stage the fusion removed.
  */
 const ORDERS_QUEUE_VIEWPORT_COLLAPSE_ORDER: readonly OrdersQueueColumnKey[] = [
-  'date',
   'qty',
   'condition',
 ] as const;
 
 /** Show all columns at/above this scrollport width. */
-const VIEWPORT_SHOW_ALL_PX = 720;
-/** Hide By (date) below this. */
-const VIEWPORT_HIDE_DATE_PX = 640;
-/** Hide By + Qty below this. */
-const VIEWPORT_HIDE_DATE_QTY_PX = 560;
+const VIEWPORT_SHOW_ALL_PX = 640;
+/** Hide Qty below this. */
+const VIEWPORT_HIDE_QTY_PX = 560;
 
 export function ordersQueueViewportForceHidden(widthPx: number): ReadonlySet<OrdersQueueColumnKey> {
   if (!Number.isFinite(widthPx) || widthPx >= VIEWPORT_SHOW_ALL_PX) return new Set();
-  if (widthPx >= VIEWPORT_HIDE_DATE_PX) {
+  if (widthPx >= VIEWPORT_HIDE_QTY_PX) {
     return new Set<OrdersQueueColumnKey>(ORDERS_QUEUE_VIEWPORT_COLLAPSE_ORDER.slice(0, 1));
-  }
-  if (widthPx >= VIEWPORT_HIDE_DATE_QTY_PX) {
-    return new Set<OrdersQueueColumnKey>(ORDERS_QUEUE_VIEWPORT_COLLAPSE_ORDER.slice(0, 2));
   }
   return new Set<OrdersQueueColumnKey>(ORDERS_QUEUE_VIEWPORT_COLLAPSE_ORDER);
 }

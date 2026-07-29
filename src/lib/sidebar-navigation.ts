@@ -318,6 +318,9 @@ const CONTEXT_PANEL_ROUTE_KEYS = new Set<SidebarRouteKey>([
   'warehouse',
   'walk-in',
   'manuals-library',
+  // Media library — gained a spine body when the folder drill became a faceted
+  // flat stream (saved views / date presets / labels). See MediaLibrarySidebarPanel.
+  'ops-photos',
 ]);
 
 /** True when this route's spine holds a context panel — see {@link CONTEXT_PANEL_ROUTE_KEYS}. */

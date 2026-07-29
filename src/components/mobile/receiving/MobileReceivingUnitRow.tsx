@@ -86,10 +86,6 @@ export function MobileReceivingUnitRow({
 
   const price = (row.unit_price || '').toString().trim();
   const detailFields = buildUnitFields(row);
-  const serialsCsv = (row.serials ?? [])
-    .map((s) => (s.serial_number || '').trim())
-    .filter(Boolean)
-    .join(', ');
 
   return (
     <div
@@ -104,7 +100,7 @@ export function MobileReceivingUnitRow({
         disabled={!onOpenSheet}
         className="ds-raw-button block w-full text-left disabled:cursor-default"
       >
-        <p className="text-base font-bold leading-snug text-text-default">{title}</p>
+        <p className="text-base font-semibold leading-snug text-text-default">{title}</p>
       </button>
 
       {/* Meta row. */}
@@ -118,7 +114,7 @@ export function MobileReceivingUnitRow({
           <HoverTooltip label={workflowLabel} asChild focusable={false}>
             <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${dot}`} aria-hidden />
           </HoverTooltip>
-          <span className={`shrink-0 text-base font-bold tabular-nums ${qtyColor}`}>{qtyText}</span>
+          <span className={`shrink-0 text-base font-semibold tabular-nums ${qtyColor}`}>{qtyText}</span>
         </button>
 
         {/* Main row shows ONLY the price (sized to match the qty). SKU + condition
@@ -164,15 +160,19 @@ export function MobileReceivingUnitRow({
               row) plus PO + tracking + serial. PO + tracking are omitted for
               package items (shown once on the package header) so nothing dupes. */}
           <div className={`flex flex-wrap items-center gap-2 px-0.5 pb-1 ${CHIP_SCALE}`}>
+            {/* No serial chip: a line's serials render as ONE comma-joined
+                value, so a multi-unit carton turns this row into a wall of
+                digits. Serials stay on the per-unit surfaces that can show
+                them one at a time. */}
             <ReceivingIdentityChips
               row={row}
               includeSku
               includePo={!headerSharesPoTracking}
               includeTracking={!headerSharesPoTracking}
+              includeSerial={false}
               sku={row.sku}
               po={row.zoho_purchaseorder_number || row.zoho_purchaseorder_id}
               tracking={row.tracking_number}
-              serialsCsv={serialsCsv}
               className="flex flex-wrap items-center gap-2"
             />
             <ConditionGradeChip grade={row.condition_grade} />
@@ -206,7 +206,7 @@ export function MobileReceivingUnitRow({
             >
               <span className="inline-flex items-center gap-1.5 leading-none">
                 <ImageIcon className="h-7 w-7" />
-                <span className="text-xl font-black tabular-nums">{photoCount}</span>
+                <span className="text-xl font-semibold tabular-nums">{photoCount}</span>
               </span>
             </button>
           ) : (
@@ -222,7 +222,7 @@ export function MobileReceivingUnitRow({
             >
               <span className="inline-flex items-center gap-1.5 leading-none">
                 <ImageIcon className="h-7 w-7" />
-                <span className="text-xl font-black tabular-nums">{photoCount}</span>
+                <span className="text-xl font-semibold tabular-nums">{photoCount}</span>
               </span>
             </Link>
           )}

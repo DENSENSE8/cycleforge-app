@@ -1,17 +1,8 @@
 'use client';
 
-import type { ReactNode } from 'react';
-import { usePathname } from 'next/navigation';
-import { X } from '@/components/Icons';
-import { IconButton } from '@/design-system/primitives';
 import { MasterNav, MasterNavProvider } from '@/components/sidebar/master-nav';
 import { SidebarContextPanel } from '@/components/sidebar/SidebarContextPanel';
-import {
-  STATION_COLUMN_CARD_BOTTOM,
-  STATION_COLUMN_CARD_TOP,
-  STATION_COLUMN_CLASS,
-} from '@/components/sidebar/station-column';
-import { isStationSurfaceRoute } from '@/lib/sidebar-navigation';
+import { useHasSidebarContext } from '@/components/sidebar/useHasSidebarContext';
 import { appChromeClass } from '@/design-system/tokens/app-surface';
 import { cn } from '@/utils/_cn';
 
@@ -20,74 +11,57 @@ export interface SidebarShellProps {
   permissions: Set<string> | undefined;
   /** Restrict the nav for mobile devices. */
   mobileRestricted: boolean;
-  /** Called when the user navigates (e.g. to close a drawer). */
+  /** Called when the user navigates (e.g. to close the slide-over). */
   onNavigate?: () => void;
   /** Inset the top for the mobile drawer notch / status bar. */
   inDrawer?: boolean;
+  /**
+   * Render the page list instead of the route's own sidebar. Set by the
+   * slide-over; the resident column leaves it off.
+   */
+  navOnly?: boolean;
+  /** Open the page-list slide-over (from the resident column's band chevron). */
+  onOpenNav?: () => void;
 }
 
 /**
- * The master sidebar column.
+ * Host for the 40px identity band plus one body.
  *
- * - **Station surfaces** ({@link isStationSurfaceRoute}) → the two-card column
- *   (`station-column.ts`): a gray backdrop with the **nav card** flush to the
- *   top and the **station card** (recents + scan bar) flush to the bottom.
- *   Same shell, same width, same elevation, mirrored radii. They are flex
- *   siblings, so opening a nav menu expands the top card downward and pushes
- *   the station card down — the menus never cover the scan bar.
- * - **Everywhere else** → the classic single panel: master nav with the context
- *   panel as its body and menus floating over it.
+ * Two mounts, and the body is decided by which one you are in — it never swaps:
  *
- * The **mobile drawer always keeps the classic panel**, on every route:
- * `GlobalHeader` doesn't exist on the mobile branch, so the drawer is the only
- * nav path there and it should not be re-shaped by desktop station chrome.
+ * - **Resident column** — the route's OWN sidebar (`SidebarContextPanel`): the
+ *   Media library's facet rail, Products' picker, the receiving rails. Present
+ *   whenever the route has one, absent when it doesn't, which is what stops a
+ *   panel-less surface reserving 360px of blank chrome.
+ * - **Slide-over** (`navOnly`) — the page list, and only the page list.
  *
- * `MasterNavProvider` stays on both paths — ~14 route panels read
- * `useMasterNavEnabled()` to suppress their own mode pill-row.
+ * Station benches keep their scan bar + recents rail in the CONTENT region
+ * instead, so they survive the nav being closed — `useHasSidebarContext` reports
+ * false for them and they render no column here.
  *
- * See docs/design-system/master-sidebar-nav-migration-plan.md.
+ * `MasterNavProvider` marks that the nav owns page + mode, so ~14 route panels
+ * suppress their own mode pill-row (`useMasterNavEnabled`).
  */
 export function SidebarShell({
   permissions,
   mobileRestricted,
   onNavigate,
   inDrawer = false,
+  navOnly = false,
+  onOpenNav,
 }: SidebarShellProps) {
-  const pathname = usePathname();
-  const stationColumn = !inDrawer && isStationSurfaceRoute(pathname);
-
-  if (stationColumn) {
-    return (
-      <aside className={STATION_COLUMN_CLASS}>
-        <MasterNavProvider enabled>
-          <div className={STATION_COLUMN_CARD_TOP}>
-            {/* `docked`: menus render in flow and grow this card downward. */}
-            <MasterNav
-              permissions={permissions}
-              mobileRestricted={mobileRestricted}
-              onNavigate={onNavigate}
-              layout="docked"
-            />
-          </div>
-
-          <div className={STATION_COLUMN_CARD_BOTTOM}>
-            <SidebarContextPanel />
-          </div>
-        </MasterNavProvider>
-      </aside>
-    );
-  }
+  const routeHasContext = useHasSidebarContext();
+  const hasContext = !navOnly && routeHasContext;
 
   return (
-    <aside
+    <div
       className={cn(
-        // No border-r / drop shadow — content shell (`appContentShellClass`) owns
-        // the soft join (rounded-tl + depth-edge hairline). A sidebar shadow
-        // casts a gray strip into that cutout and competes with content depth.
+        // No border-r / drop shadow when resident — the content shell
+        // (`appContentShellClass`) owns the soft join. The slide-over adds its
+        // own edge + elevation, because there it really is a floating layer.
         'flex h-full w-full flex-col overflow-hidden',
         appChromeClass,
-        // In the mobile drawer, inset the top so the header clears the notch /
-        // status bar (parity with the old drawer trigger).
+        // In the mobile drawer, inset the top so the header clears the notch.
         inDrawer && 'pt-[max(3.5rem,calc(env(safe-area-inset-top)+2.75rem))]',
       )}
     >
@@ -97,38 +71,11 @@ export function SidebarShell({
           mobileRestricted={mobileRestricted}
           onNavigate={onNavigate}
           renderContext={() => <SidebarContextPanel />}
+          hasContext={hasContext}
+          onOpenNav={onOpenNav}
           className="flex-1 min-h-0"
         />
       </MasterNavProvider>
-    </aside>
-  );
-}
-
-export interface MobileSidebarOverlayProps {
-  onClose: () => void;
-  children: ReactNode;
-}
-
-/**
- * Full-screen mobile drawer overlay: a tap-to-dismiss backdrop, the sidebar
- * shell, and an explicit close button.
- */
-export function MobileSidebarOverlay({ onClose, children }: MobileSidebarOverlayProps) {
-  return (
-    <div className="md:hidden fixed inset-0 z-panel">
-      <button
-        type="button"
-        className="ds-raw-button absolute inset-0 bg-scrim/35"
-        onClick={onClose}
-        aria-label="Close sidebar overlay"
-      />
-      <div className="relative h-full max-w-[94vw]">{children}</div>
-      <IconButton
-        onClick={onClose}
-        ariaLabel="Close sidebar"
-        icon={<X className="h-5 w-5" />}
-        className="absolute top-4 right-4 h-11 w-11 rounded-2xl bg-surface-card border border-border-emphasis text-text-muted shadow-lg shadow-gray-900/10 flex items-center justify-center"
-      />
     </div>
   );
 }

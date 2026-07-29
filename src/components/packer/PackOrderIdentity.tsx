@@ -4,13 +4,16 @@
  * Packing adapter for the station entity-context header SoT
  * (`CartonContextCard` via `@/components/station/entity-context`).
  *
- * Maps an active pack order onto the condensed identity row (order# · tracking).
+ * Maps an active pack order onto the condensed identity row (order# · tracking)
+ * plus the manual send-to-phone pill — the packing counterpart of the Unbox
+ * carton photo pill, which lives in the same trailing position.
  * Read-only — pack session identity comes from the scan / queue select.
  */
 
-import { useEffect, useState } from 'react';
 import { CartonContextCard } from '@/components/station/entity-context';
 import { getTrackingUrl } from '@/utils/order-links';
+import { packListingIdentity } from '@/components/packer/pack-listing-identity';
+import { PackSendToPhoneButton } from '@/components/packer/PackSendToPhoneButton';
 import type { PackActiveOrderPane } from '@/components/packer/usePackerOrderPane';
 
 export function PackOrderIdentity({
@@ -28,41 +31,55 @@ export function PackOrderIdentity({
         ? orderId || sku || '—'
         : orderId || tracking || '—';
 
-  const [listingLink, setListingLink] = useState('');
-  const [platformValue, setPlatformValue] = useState('');
-  const [receivingType, setReceivingType] = useState('');
+  // Listing + platform derive from the scanned item number (shared SoT with the
+  // sidebar active-order chips) — read-only, so no local edit state.
+  const { listingLink, listingOpenHref, platformValue } = packListingIdentity(sku || orderId);
 
-  useEffect(() => {
-    setListingLink('');
-    setPlatformValue('');
-    setReceivingType('');
-  }, [activeOrder.orderRowId, activeOrder.orderId, activeOrder.tracking]);
+  const packerLogId = Number(activeOrder.packerLogId);
+  const canSendToPhone = Number.isFinite(packerLogId) && packerLogId > 0;
 
   return (
-    <CartonContextCard
-      density="bar"
-      receivingId={null}
-      staffId=""
-      isUnmatched={false}
-      showStaffPhotoRow={false}
-      listingLink={listingLink}
-      listingOpenHref={null}
-      listingLinks={[]}
-      poOpenHref={null}
-      trackingOpenHref={tracking ? getTrackingUrl(tracking) : null}
-      poDisplay={poDisplay}
-      linkedOrderNumber={orderId || null}
-      lineId={null}
-      zendeskTrimmed=""
-      zendeskHref={null}
-      zendeskChipDisplay=""
-      primaryTrackingTrimmed={tracking}
-      filledExtraTrackingsCount={0}
-      isLocalPickup={false}
-      platformValue={platformValue}
-      onPlatformSelect={setPlatformValue}
-      receivingType={receivingType}
-      onTypeSelect={setReceivingType}
-    />
+    <div className="flex w-full min-w-0 items-center gap-2">
+      <div className="min-w-0 flex-1">
+        <CartonContextCard
+          density="bar"
+          receivingId={null}
+          staffId=""
+          isUnmatched={false}
+          showStaffPhotoRow={false}
+          // Classify is a receiving concern — a pack session's platform is
+          // derived from the scanned item number, so the bar carries identity
+          // chips only.
+          showClassifyControls={false}
+          listingLink={listingLink}
+          listingOpenHref={listingOpenHref}
+          listingLinks={[]}
+          poOpenHref={null}
+          trackingOpenHref={tracking ? getTrackingUrl(tracking) : null}
+          poDisplay={poDisplay}
+          linkedOrderNumber={orderId || null}
+          lineId={null}
+          zendeskTrimmed=""
+          zendeskHref={null}
+          zendeskChipDisplay=""
+          primaryTrackingTrimmed={tracking}
+          filledExtraTrackingsCount={0}
+          isLocalPickup={false}
+          platformValue={platformValue}
+          onPlatformSelect={() => {}}
+          receivingType=""
+          onTypeSelect={() => {}}
+        />
+      </div>
+
+      {/* Trailing photo pill — same slot Unbox gives ReceivingPhotoButton. */}
+      {canSendToPhone ? (
+        <PackSendToPhoneButton
+          packerLogId={packerLogId}
+          orderId={orderId || null}
+          tracking={tracking || null}
+        />
+      ) : null}
+    </div>
   );
 }

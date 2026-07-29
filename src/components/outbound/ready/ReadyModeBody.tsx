@@ -21,7 +21,7 @@ export function ReadyModeBody() {
         </p>
         <Link
           href={fbaOutboundHref()}
-          className="inline-flex text-role-caption font-black uppercase tracking-widest text-violet-700 hover:underline"
+          className="inline-flex text-role-caption font-semibold uppercase tracking-widest text-violet-700 hover:underline"
         >
           Open FBA prep →
         </Link>

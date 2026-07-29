@@ -33,14 +33,14 @@ export function ScoutPane() {
   return (
     <div className="mx-auto max-w-4xl p-6">
       <header className="mb-5">
-        <h1 className="text-xl font-bold text-text-default">{data.model.model_name}</h1>
+        <h1 className="text-xl font-semibold text-text-default">{data.model.model_name}</h1>
         <p className="text-role-caption text-text-soft">
           Model #{data.model.model_number}{data.model.family ? ` · ${data.model.family}` : ''}
           {data.resolvedBy ? <span className="ml-2 rounded-full bg-surface-sunken px-1.5 py-0.5 text-role-micro font-semibold text-text-soft">matched by {data.resolvedBy.replace('_', ' ')}</span> : null}
         </p>
       </header>
 
-      <h2 className="mb-2 text-sm font-bold text-text-default">Compatible parts ({data.parts.length})</h2>
+      <h2 className="mb-2 text-sm font-semibold text-text-default">Compatible parts ({data.parts.length})</h2>
       {data.parts.length === 0 ? (
         <p className="text-role-caption text-text-faint">No compatible parts linked. Add them in Admin › Models.</p>
       ) : (

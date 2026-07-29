@@ -58,7 +58,7 @@ export function SystemSyncActivityTab() {
     <div className="mx-auto w-full max-w-5xl space-y-5 px-6 py-6">
       <header className="flex items-center justify-between">
         <div>
-          <h1 className="flex items-center gap-2 text-xl font-black tracking-tight text-text-default">
+          <h1 className="flex items-center gap-2 text-xl font-semibold tracking-tight text-text-default">
             <Activity className="h-5 w-5 text-text-faint" /> System sync activity
           </h1>
           <p className="mt-0.5 text-role-caption text-text-soft">
@@ -156,7 +156,7 @@ function JobCard({
         <span className={`mt-1 h-2 w-2 shrink-0 rounded-full ${DOT[job.health]}`} aria-hidden />
         {/* ds-raw-button: text-left multi-line master-detail select row (label + schedule meta) */}
         <button type="button" onClick={onSelect} className="min-w-0 flex-1 text-left">
-          <div className="truncate text-role-caption font-bold text-text-default">{job.label}</div>
+          <div className="truncate text-role-caption font-semibold text-text-default">{job.label}</div>
           <div className="truncate text-role-micro text-text-soft">
             {job.schedule ?? 'unscheduled'} · {rel(last?.finishedAt ?? last?.startedAt ?? null)}
           </div>
@@ -192,12 +192,12 @@ function RunRow({ run }: { run: CronRunRow }) {
         onClick={() => hasDetail && setOpen((o) => !o)}
         className="flex w-full items-center gap-3 text-left"
       >
-        <span className={`rounded-full inset-chip text-role-micro font-bold ${syncRunStatusChipClass(run.status)}`}>
+        <span className={`rounded-full inset-chip text-role-micro ${syncRunStatusChipClass(run.status)}`}>
           {run.status}
         </span>
-        <span className="min-w-0 flex-1 truncate text-role-caption font-bold text-text-default">{run.job}</span>
+        <span className="min-w-0 flex-1 truncate text-role-caption font-semibold text-text-default">{run.job}</span>
         {run.trigger === 'manual' && (
-          <span className="shrink-0 rounded bg-surface-sunken inset-chip text-role-micro font-bold text-text-soft">manual</span>
+          <span className="shrink-0 rounded bg-surface-sunken inset-chip text-role-micro text-text-soft">manual</span>
         )}
         <span className="shrink-0 text-role-micro tabular-nums text-text-faint">{dur(run.duration_ms)}</span>
         <span className="shrink-0 text-role-micro tabular-nums text-text-faint">{rel(run.started_at)}</span>

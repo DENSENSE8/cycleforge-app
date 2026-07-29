@@ -76,7 +76,7 @@ const DEFAULT_INACTIVE =
   'border-border-soft bg-surface-card/70 text-text-muted hover:border-border-default hover:bg-surface-hover';
 
 const EMPTY_FACE = (
-  <span className="text-role-micro font-black text-current" aria-hidden>
+  <span className="text-role-micro text-current" aria-hidden>
     —
   </span>
 );

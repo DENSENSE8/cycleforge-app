@@ -81,7 +81,7 @@ export function DataWipeStation({ staffId, userName }: DataWipeStationProps) {
               <ShieldCheck className="h-4 w-4" />
             </span>
             <div className="min-w-0">
-              <h1 className="text-role-caption font-black uppercase leading-none tracking-widest text-text-default">
+              <h1 className="text-role-caption font-semibold uppercase leading-none tracking-widest text-text-default">
                 Data Wipe Station
               </h1>
               <p className="mt-1 truncate text-role-eyebrow font-semibold uppercase leading-none tracking-widest text-text-faint">
@@ -105,7 +105,7 @@ export function DataWipeStation({ staffId, userName }: DataWipeStationProps) {
         />
 
         <div className="mx-auto w-full max-w-2xl px-4 pb-3 sm:px-6">
-          <p className="px-1 text-role-micro font-bold text-text-faint">
+          <p className="px-1 text-role-micro text-text-faint">
             Scan a device serial or its printed unit label, pick the erasure method, then record{' '}
             <span className="text-emerald-600">Wiped</span> or{' '}
             <span className="text-amber-600">Wipe&nbsp;failed</span>.
@@ -183,7 +183,7 @@ function ActiveUnitCard({
       </div>
 
       <div className="space-y-2">
-        <h2 className="truncate text-base font-black leading-tight text-text-default">
+        <h2 className="truncate text-base font-semibold leading-tight text-text-default">
           {unit.productTitle || unit.sku || 'Serial unit'}
         </h2>
         <div className="flex flex-wrap items-center gap-1.5">
@@ -294,7 +294,7 @@ function OutcomeCard({ outcome }: { outcome: WipeOutcome }) {
           >
             {wiped ? 'Data wiped' : 'Wipe failed'}
           </p>
-          <h2 className="truncate text-lg font-black leading-tight text-text-default">
+          <h2 className="truncate text-lg font-semibold leading-tight text-text-default">
             {wiped ? 'Routed to grading' : 'Routed to repair'}
           </h2>
         </div>
@@ -310,7 +310,7 @@ function OutcomeCard({ outcome }: { outcome: WipeOutcome }) {
         ) : null}
       </div>
 
-      <p className="mt-3 text-role-micro font-bold text-text-faint">Clearing for the next scan…</p>
+      <p className="mt-3 text-role-micro text-text-faint">Clearing for the next scan…</p>
     </div>
   );
 }
@@ -321,7 +321,7 @@ function EmptyState() {
   return (
     <div className="rounded-2xl border border-dashed border-border-soft bg-surface-canvas px-4 py-10 text-center">
       <Cpu className="mx-auto h-6 w-6 text-text-faint" />
-      <p className="mt-3 text-role-caption font-bold text-text-muted">Scan a unit to begin a secure wipe</p>
+      <p className="mt-3 text-role-caption font-semibold text-text-muted">Scan a unit to begin a secure wipe</p>
       <p className="mt-1 text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint">
         Device serial or printed unit label
       </p>
@@ -333,7 +333,7 @@ function ResolveErrorState({ message, onRetry }: { message: string; onRetry: () 
   return (
     <div className="rounded-2xl border border-dashed border-rose-200 bg-rose-50 px-4 py-8 text-center">
       <AlertTriangle className="mx-auto h-6 w-6 text-rose-400" />
-      <p className="mt-3 text-role-caption font-bold text-rose-700">{message}</p>
+      <p className="mt-3 text-role-caption font-semibold text-rose-700">{message}</p>
       <Button
         variant="secondary"
         size="sm"

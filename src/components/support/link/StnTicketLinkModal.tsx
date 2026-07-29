@@ -125,10 +125,10 @@ export function StnTicketLinkModal({
     >
       <div className="flex items-start justify-between gap-3 border-b border-border-soft inset-field">
         <div className="min-w-0">
-          <p className="text-role-eyebrow font-black uppercase tracking-widest text-text-soft">
+          <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">
             Link support ticket
           </p>
-          <p className="truncate text-role-caption font-bold text-text-default">
+          <p className="truncate text-role-caption font-semibold text-text-default">
             {trackingNumber ? trackingNumber : `Shipment #${shipmentId}`}
           </p>
         </div>

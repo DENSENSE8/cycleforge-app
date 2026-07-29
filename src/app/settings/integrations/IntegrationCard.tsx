@@ -233,7 +233,7 @@ export function IntegrationCard({
   return (
     <div id={def.key} className="flex h-full scroll-mt-6 flex-col rounded-2xl border border-border-soft bg-surface-card p-4 shadow-sm shadow-gray-900/[0.02]">
       <div className="flex items-start gap-3">
-        <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-role-body font-black ${def.badge}`}>
+        <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-role-body font-semibold ${def.badge}`}>
           {monogram(def.label)}
         </span>
         <div className="min-w-0 flex-1">
@@ -253,7 +253,7 @@ export function IntegrationCard({
           {capabilities.length > 0 && (
             <div className="mt-1.5 flex flex-wrap gap-1">
               {capabilities.map((cap) => (
-                <span key={cap} className="rounded bg-surface-sunken px-1.5 py-0.5 text-role-micro font-bold uppercase tracking-wider text-text-faint">
+                <span key={cap} className="rounded bg-surface-sunken px-1.5 py-0.5 text-role-micro uppercase tracking-wider text-text-faint">
                   {cap}
                 </span>
               ))}
@@ -289,7 +289,7 @@ export function IntegrationCard({
                 <span className="min-w-0 flex-1 truncate text-role-caption font-medium text-text-default">{acct.label}</span>
               )}
               {def.connect === 'ebay' && acct.role === 'buyer' && (
-                <span className="shrink-0 rounded bg-indigo-50 px-1.5 py-0.5 text-[8.5px] font-black uppercase tracking-widest text-indigo-700 ring-1 ring-inset ring-indigo-200">Purchasing</span>
+                <span className="shrink-0 rounded bg-indigo-50 px-1.5 py-0.5 text-[8.5px] font-semibold uppercase tracking-widest text-indigo-700 ring-1 ring-inset ring-indigo-200">Purchasing</span>
               )}
               {acct.detail && def.connect !== 'ebay' && <span className="shrink-0 text-role-caption text-text-faint">{acct.detail}</span>}
               {canManage && def.connect === 'amazon' && acct.id != null && (

@@ -30,7 +30,7 @@ export function ManualsLibrarySidebar() {
     <div className="flex h-full w-full flex-col bg-gradient-to-b from-white to-gray-50">
       {/* Header */}
       <div className={`${sidebarHeaderBandClass} ${sidebarHeaderRowClass}`}>
-        <p className="truncate text-role-caption font-black uppercase tracking-[0.2em] text-text-default">
+        <p className="truncate text-role-caption font-semibold uppercase tracking-[0.2em] text-text-default">
           Manuals Library
         </p>
         <span className="text-role-micro uppercase tracking-[0.18em] text-text-soft">

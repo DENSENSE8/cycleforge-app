@@ -46,7 +46,7 @@ export function FbaBoardDetailPanel({
 
         {/* Row 2: title */}
         <div className="px-6 pt-1.5 pb-2 border-b border-border-soft h-[100px]">
-          <h2 className="line-clamp-4 text-lg font-black leading-snug tracking-tight text-text-default">
+          <h2 className="line-clamp-4 text-lg font-semibold leading-snug tracking-tight text-text-default">
             {headerTitle}
           </h2>
         </div>
@@ -66,11 +66,11 @@ export function FbaBoardDetailPanel({
         {/* Row 4: FNSKU + totals */}
         <div className="flex items-center justify-between px-6 pt-2 pb-2">
           <div className="flex items-center gap-4 text-role-caption">
-            <span className="flex items-center gap-1 font-bold text-text-muted">
+            <span className="flex items-center gap-1 font-semibold text-text-muted">
               <ClipboardList className="h-3 w-3 text-purple-500" />
               <span className="tabular-nums">{totalExpected}</span>
             </span>
-            <span className="flex items-center gap-1 font-bold text-emerald-700">
+            <span className="flex items-center gap-1 font-semibold text-emerald-700">
               <Check className="h-3 w-3 text-emerald-500" />
               <span className="tabular-nums">{totalActual}</span>
             </span>
@@ -101,7 +101,7 @@ export function FbaBoardDetailPanel({
             <dl className="space-y-1 text-role-caption">
               <div className="flex items-center justify-between gap-4">
                 <dt className="font-semibold text-text-soft">Plans</dt>
-                <dd className="font-black text-text-default">{entries.length}</dd>
+                <dd className="font-semibold text-text-default">{entries.length}</dd>
               </div>
             </dl>
           </section>
@@ -119,7 +119,7 @@ export function FbaBoardDetailPanel({
                 <Loader2 className="h-5 w-5 animate-spin text-text-faint" />
               </div>
             ) : entries.length === 0 ? (
-              <p className="py-4 text-center text-role-caption font-bold text-text-faint">
+              <p className="py-4 text-center text-role-caption font-semibold text-text-faint">
                 No active plan entries
               </p>
             ) : (
@@ -145,7 +145,7 @@ export function FbaBoardDetailPanel({
                 <Loader2 className="h-4 w-4 animate-spin text-text-faint" />
               </div>
             ) : scanLogs.length === 0 ? (
-              <p className="py-2 text-center text-role-caption font-bold text-text-faint">No scans yet</p>
+              <p className="py-2 text-center text-role-caption font-semibold text-text-faint">No scans yet</p>
             ) : (
               <div className="space-y-1.5">
                 {scanLogs.map((log) => (
@@ -157,7 +157,7 @@ export function FbaBoardDetailPanel({
                       <span className="shrink-0 rounded px-1.5 py-0.5 text-role-eyebrow uppercase tracking-wider bg-purple-100 text-purple-700">
                         {scanActionLabel(log.source_stage, log.event_type)}
                       </span>
-                      <span className="truncate text-role-caption font-bold text-text-muted">
+                      <span className="truncate text-role-caption font-semibold text-text-muted">
                         {log.staff_name || 'Unknown'}
                       </span>
                     </div>
@@ -184,7 +184,7 @@ export function FbaBoardDetailPanel({
                         .map((t) => [t.tracking_number, t]),
                     ).values(),
                   ).map((t, i) => (
-                    <p key={i} className="font-mono text-role-caption font-bold text-text-muted">
+                    <p key={i} className="font-mono text-role-caption font-semibold text-text-muted">
                       {t.carrier && <span className="text-text-soft">{t.carrier} </span>}
                       {t.tracking_number}
                     </p>

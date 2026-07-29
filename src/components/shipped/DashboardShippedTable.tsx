@@ -23,8 +23,7 @@ import { useOutboundQueueKeyboard } from '@/hooks/useOutboundQueueKeyboard';
 import { ShippedTableEmptyState } from '@/components/shipped/dashboard-table/ShippedTableEmptyState';
 import { DateRangePickerPill } from '@/components/ui/DateRangeHeader';
 import { OrdersGridView } from '@/components/dashboard/orders-queue/OrdersGridView';
-import { WORKBENCH_TABLE_VIEWPORT } from '@/components/dashboard/workbench-shell';
-import { cn } from '@/utils/_cn';
+import { workbenchTableViewportClass } from '@/components/dashboard/workbench-shell';
 import {
   derivedPackerRecordToQueueRow,
 } from '@/components/shipped/shipped-record-mappers';
@@ -38,6 +37,10 @@ export interface DashboardShippedTableProps {
   embedded?: boolean;
   /** Pencil multi-select: rows render checkboxes; chrome owns the Select toggle. */
   selectMode?: boolean;
+  /** Reserve bottom room for the pinned bulk-selection capsule (see
+   *  `workbenchTableViewportClass`). Ignored when `embedded` — that shell is a
+   *  flex child with no bounded host of its own. */
+  bulkBarInset?: boolean;
   bannerTitle?: DashboardSearchSectionProps['bannerTitle'];
   bannerSubtitle?: DashboardSearchSectionProps['bannerSubtitle'];
   searchEmptyTitle?: DashboardSearchSectionProps['searchEmptyTitle'];
@@ -58,6 +61,7 @@ export function DashboardShippedTable({
   testedBy,
   embedded = false,
   selectMode = false,
+  bulkBarInset = false,
   searchEmptyTitle = 'No shipped orders found',
   searchResultLabel = 'shipped orders',
   clearSearchLabel = 'Show All Shipped Orders',
@@ -174,7 +178,7 @@ export function DashboardShippedTable({
         className={
           embedded
             ? 'flex min-h-0 flex-1 flex-col'
-            : cn(WORKBENCH_TABLE_VIEWPORT, 'pb-3')
+            : workbenchTableViewportClass({ bulkBarInset })
         }
         data-testid="column-table-body"
       >

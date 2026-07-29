@@ -13,7 +13,7 @@ export function EmptySlate({ label, color = 'gray' }: { label: string; color?: '
       className={`rounded-2xl px-4 py-3 border ${bg}`}
     >
       <div className="flex items-center justify-between gap-3">
-        <p className={`text-xs font-bold uppercase tracking-widest ${text}`}>{label}</p>
+        <p className={`text-xs font-semibold uppercase tracking-widest ${text}`}>{label}</p>
         <Package className={`w-5 h-5 flex-shrink-0 ${icon}`} />
       </div>
     </motion.div>

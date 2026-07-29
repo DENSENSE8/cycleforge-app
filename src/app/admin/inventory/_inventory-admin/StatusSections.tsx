@@ -68,7 +68,7 @@ export function PreflightSection({ preflight, preflightAllOk }: { preflight: Pre
               <div className="min-w-0 flex-1">
                 <div className="flex items-baseline gap-3">
                   <span className="text-sm font-medium text-text-default">{c.label}</span>
-                  <span className={`text-role-micro font-bold uppercase tracking-wider ${
+                  <span className={`text-role-micro font-semibold uppercase tracking-wider ${
                     c.status === 'pass' ? 'text-green-700' :
                     c.status === 'warn' ? 'text-amber-700' :
                     'text-red-700'

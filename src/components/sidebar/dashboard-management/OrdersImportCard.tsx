@@ -71,7 +71,7 @@ export function OrdersImportCard({ imp, canImportOrders }: { imp: OrdersImportCo
                 key={Math.floor(elapsedMs / 1000)}
                 initial={{ opacity: 0.5, y: -4 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="text-role-caption font-mono font-bold text-blue-500 tabular-nums"
+                className="text-role-caption font-mono font-semibold text-blue-500 tabular-nums"
               >
                 {(elapsedMs / 1000).toFixed(1)}s
               </motion.span>

@@ -160,7 +160,7 @@ export function ScanInputDesktop({
             spellCheck={false}
             className={`
               flex-1 bg-transparent border-0 outline-none
-              h-10 text-sm font-bold text-text-default
+              h-10 text-sm font-semibold text-text-default
               placeholder:text-text-faint placeholder:font-medium
               ${icon ? 'pl-1' : 'pl-3.5'} pr-3
             `.trim()}

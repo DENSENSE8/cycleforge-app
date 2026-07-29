@@ -61,7 +61,7 @@ export function OperationsSidebarPanel() {
     <AdminSidebarShell
       filters={<FilterChips value={lens} onChange={setLens} />}
       stats={
-        <p className="text-role-micro font-bold uppercase tracking-wider text-text-soft">
+        <p className="text-role-micro uppercase tracking-wider text-text-soft">
           {STATIONS.length} stations · {IDENTIFIERS.length} identifiers
         </p>
       }
@@ -112,7 +112,7 @@ function FilterChips({ value, onChange }: { value: Lens; onChange: (l: Lens) => 
           key={opt.value}
           type="button"
           onClick={() => onChange(opt.value)}
-          className={`flex-1 rounded-lg px-2 py-1 text-role-micro font-bold uppercase tracking-wider transition ${
+          className={`flex-1 rounded-lg px-2 py-1 text-role-micro font-semibold uppercase tracking-wider transition ${
             value === opt.value
               ? 'bg-blue-600 text-white shadow-sm shadow-blue-200'
               : 'bg-surface-sunken text-text-muted hover:bg-surface-strong'
@@ -128,7 +128,7 @@ function FilterChips({ value, onChange }: { value: Lens; onChange: (l: Lens) => 
 function Group({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section>
-      <h3 className="mb-1.5 px-2 text-role-micro font-bold uppercase tracking-wider text-text-faint">{title}</h3>
+      <h3 className="mb-1.5 px-2 text-role-micro uppercase tracking-wider text-text-faint">{title}</h3>
       <ul className="space-y-1">{children}</ul>
     </section>
   );
@@ -186,7 +186,7 @@ function RowShell({
 function DetailBlock({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <p className="mb-1 text-role-micro font-bold uppercase tracking-wider text-text-faint">{label}</p>
+      <p className="mb-1 text-role-micro uppercase tracking-wider text-text-faint">{label}</p>
       <div className="flex flex-wrap gap-1">{children}</div>
     </div>
   );
@@ -227,7 +227,7 @@ function IdentifierRow({ id, open, onToggle, onJump }: { id: OpsIdentifier; open
         ))}
       </DetailBlock>
       <div>
-        <p className="mb-1 text-role-micro font-bold uppercase tracking-wider text-text-faint">Travels through</p>
+        <p className="mb-1 text-role-micro uppercase tracking-wider text-text-faint">Travels through</p>
         <ul className="space-y-1">
           {id.travels.map((t, idx) => (
             <li key={`${t.station}-${idx}`} className="flex items-start gap-2">

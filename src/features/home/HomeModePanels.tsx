@@ -37,7 +37,7 @@ function HomeModePlaceholder({
       <div className="mx-auto max-w-3xl px-4 py-8">
         <div className="rounded-2xl border border-border-soft bg-surface-card p-6 shadow-sm">
           <p className="text-role-micro uppercase tracking-widest text-text-soft">{eyebrow}</p>
-          <h2 className="mt-1 text-lg font-bold text-text-strong">{title}</h2>
+          <h2 className="mt-1 text-lg font-semibold text-text-strong">{title}</h2>
           <p className="mt-2 text-sm leading-relaxed text-text-muted">{blurb}</p>
 
           {wires && wires.length > 0 ? (

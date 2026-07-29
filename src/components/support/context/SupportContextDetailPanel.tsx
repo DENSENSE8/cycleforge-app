@@ -36,7 +36,7 @@ export function SupportContextDetailPanel({
             <p className="text-role-eyebrow uppercase tracking-widest text-text-faint">
               Ticket #{ticketId}
             </p>
-            <h2 className="text-role-body font-bold tracking-tight text-text-default">
+            <h2 className="text-role-body font-semibold tracking-tight text-text-default">
               Support context
             </h2>
           </div>

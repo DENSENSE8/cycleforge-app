@@ -279,7 +279,7 @@ export function AppearanceSection() {
               >
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-sm font-semibold">{TIME_FORMAT_LABELS[tf]}</span>
-                  <span className="text-role-caption font-bold tabular-nums text-text-soft">{sample}</span>
+                  <span className="text-role-caption font-semibold tabular-nums text-text-soft">{sample}</span>
                 </div>
                 <div className="mt-1 text-role-caption text-text-soft">{TIME_FORMAT_HINTS[tf]}</div>
               </button>
@@ -353,7 +353,7 @@ export function AppearanceSection() {
               >
                 <WashPreviewMini wash={name} />
                 <span className="mt-2 flex items-center justify-between px-0.5">
-                  <span className="text-role-caption font-bold text-text-default">{preset.label}</span>
+                  <span className="text-role-caption font-semibold text-text-default">{preset.label}</span>
                   {isActive ? (
                     <span className="h-2 w-2 rounded-full bg-blue-500" aria-hidden />
                   ) : null}
@@ -403,7 +403,7 @@ export function AppearanceSection() {
                       >
                         <ThemePreviewMini palette={palette} />
                         <span className="mt-2 flex items-center justify-between px-0.5">
-                          <span className="text-role-caption font-bold text-text-default">{palette.label}</span>
+                          <span className="text-role-caption font-semibold text-text-default">{palette.label}</span>
                           {isActive ? (
                             <span className="h-2 w-2 rounded-full bg-blue-500" aria-hidden />
                           ) : null}

@@ -77,7 +77,7 @@ function PackagePairingHeader({
           focusRing('control', 'accent'),
         )}
       >
-        <h3 className="min-w-0 shrink text-role-caption font-bold uppercase tracking-[0.14em] text-text-soft">
+        <h3 className="min-w-0 shrink text-role-caption font-semibold uppercase tracking-[0.14em] text-text-soft">
           Package Pairing
         </h3>
         <ChevronRight
@@ -91,7 +91,7 @@ function PackagePairingHeader({
     );
   }
   return (
-    <h3 className="min-w-0 shrink text-role-caption font-bold uppercase tracking-[0.14em] text-text-soft">
+    <h3 className="min-w-0 shrink text-role-caption font-semibold uppercase tracking-[0.14em] text-text-soft">
       Package Pairing
     </h3>
   );
@@ -377,7 +377,7 @@ function ArrivalMatchingCard({
         <span className="text-role-eyebrow uppercase tracking-widest text-violet-700">
           Claim ticket
         </span>
-        <p className="truncate text-role-caption font-bold font-mono text-text-default">
+        <p className="truncate text-role-caption font-semibold font-mono text-text-default">
           {pkg.zendeskTicket}
         </p>
       </div>

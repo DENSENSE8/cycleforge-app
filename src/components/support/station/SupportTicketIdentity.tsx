@@ -54,7 +54,7 @@ export function SupportTicketIdentity({
       <HoverTooltip label={dot.label} focusable={false}>
         <span className={cn('h-2 w-2 shrink-0 rounded-full', dot.cls)} aria-hidden />
       </HoverTooltip>
-      <p className="min-w-0 flex-1 truncate text-role-caption font-bold text-text-default">
+      <p className="min-w-0 flex-1 truncate text-role-caption font-semibold text-text-default">
         {subject}
       </p>
       <SupportTicketIdMark label={displayLabel} />

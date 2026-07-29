@@ -43,7 +43,7 @@ export function WatchlistPane() {
 
   return (
     <div className="mx-auto max-w-4xl p-6">
-      <h1 className="mb-4 text-xl font-bold text-text-default">Watchlist <span className="text-text-faint">({rows.length})</span></h1>
+      <h1 className="mb-4 text-xl font-semibold text-text-default">Watchlist <span className="text-text-faint">({rows.length})</span></h1>
       <ul className="space-y-2">
         {rows.map((c) => (
           <li key={c.id} className="flex items-center gap-3 rounded-xl border border-border-soft bg-surface-card p-3">

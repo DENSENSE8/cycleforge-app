@@ -132,7 +132,7 @@ export function ContextualManualLinkRow({
             setSaveState('idle');
           }}
           placeholder="Item number"
-          className="h-8 w-full border-0 bg-transparent px-0 text-sm font-bold uppercase tracking-wide text-text-default outline-none"
+          className="h-8 w-full border-0 bg-transparent px-0 text-sm font-semibold uppercase tracking-wide text-text-default outline-none"
         />
       ) : null}
       <div className="flex items-center gap-2">

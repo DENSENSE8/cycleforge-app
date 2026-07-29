@@ -11,8 +11,8 @@ export type QueueDisplaySortComposite = 'priority' | 'newest' | 'deadline';
 
 export type QueueDisplaySortColumn =
   | 'title'
-  | 'date'
-  | 'age'
+  /** Fused ship-by + lateness column (replaced the `date` / `age` pair). */
+  | 'sla'
   | 'qty'
   | 'condition'
   | 'order'
@@ -24,8 +24,7 @@ export type QueueDisplaySortDir = 'asc' | 'desc';
 
 const QUEUE_COLUMN_SORTS: readonly QueueDisplaySortColumn[] = [
   'title',
-  'date',
-  'age',
+  'sla',
   'qty',
   'condition',
   'order',
@@ -33,6 +32,17 @@ const QUEUE_COLUMN_SORTS: readonly QueueDisplaySortColumn[] = [
 ] as const;
 
 const COLUMN_SORT_SET = new Set<string>(QUEUE_COLUMN_SORTS);
+
+/**
+ * Retired `?sort=` values kept readable so shared/bookmarked links survive.
+ * `date` and `age` were adjacent columns over one fact (the deadline) and now
+ * resolve to the fused `sla` column. Parse-only — never written back out, so
+ * these drain from live URLs on the next sort interaction.
+ */
+const RETIRED_COLUMN_SORT_ALIASES: Readonly<Record<string, QueueDisplaySortColumn>> = {
+  date: 'sla',
+  age: 'sla',
+};
 
 export function isQueueColumnSort(sort: string): sort is QueueDisplaySortColumn {
   return COLUMN_SORT_SET.has(sort);
@@ -42,11 +52,16 @@ function isQueueCompositeSort(sort: string): sort is QueueDisplaySortComposite {
   return sort === 'priority' || sort === 'newest' || sort === 'deadline';
 }
 
-/** Default direction when first activating a column sort. */
+/**
+ * Default direction when first activating a column sort.
+ *
+ * `sla` stays ASC and that is deliberate: ascending ship-by already puts the
+ * most-overdue row on top (an overdue row has an EARLIER commitment), so the
+ * urgency default needs no direction flip. The retired `age` column needed
+ * `desc` only because it sorted a derived days-late count, where bigger = later.
+ */
 export function defaultDirForQueueSort(sort: QueueDisplaySort): QueueDisplaySortDir | null {
   if (!isQueueColumnSort(sort)) return null;
-  // Most-late-first matches urgency scanning on the Age column.
-  if (sort === 'age') return 'desc';
   return 'asc';
 }
 
@@ -60,8 +75,7 @@ export const QUEUE_DISPLAY_SORT_OPTIONS: readonly {
   { id: 'newest', label: 'Newest first', shortLabel: 'Newest' },
   { id: 'deadline', label: 'By ship-by date', shortLabel: 'Deadline' },
   { id: 'title', label: 'Product title', shortLabel: 'Product' },
-  { id: 'date', label: 'Ship by date', shortLabel: 'Ship by' },
-  { id: 'age', label: 'Days late', shortLabel: 'Age' },
+  { id: 'sla', label: 'Ship by (most late first)', shortLabel: 'Ship by' },
   { id: 'qty', label: 'Quantity', shortLabel: 'Qty' },
   { id: 'condition', label: 'Condition', shortLabel: 'Cond' },
   { id: 'order', label: 'Order number', shortLabel: 'Order' },
@@ -71,6 +85,7 @@ export const QUEUE_DISPLAY_SORT_OPTIONS: readonly {
 export function parseQueueDisplaySort(raw: string | null | undefined): QueueDisplaySort {
   if (raw && isQueueCompositeSort(raw)) return raw;
   if (raw && isQueueColumnSort(raw)) return raw;
+  if (raw && RETIRED_COLUMN_SORT_ALIASES[raw]) return RETIRED_COLUMN_SORT_ALIASES[raw];
   return 'priority';
 }
 

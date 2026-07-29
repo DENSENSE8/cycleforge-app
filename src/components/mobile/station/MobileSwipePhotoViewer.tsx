@@ -444,7 +444,7 @@ export function MobileSwipePhotoViewer({
           >
             <div className="flex items-center justify-between px-4 pt-[max(0.75rem,env(safe-area-inset-top))]">
               <span
-                className={`${GLASS_CHROME} flex h-11 items-center justify-center px-3 text-sm font-black tabular-nums tracking-wider text-white`}
+                className={`${GLASS_CHROME} flex h-11 items-center justify-center px-3 text-sm font-semibold tabular-nums tracking-wider text-white`}
               >
                 {index + 1} / {slides.length}
               </span>
@@ -465,7 +465,7 @@ export function MobileSwipePhotoViewer({
                       className={`h-5 w-5 shrink-0 ${deleteArmed ? 'text-white' : 'text-red-500'}`}
                     />
                     {deleteArmed ? (
-                      <span className="text-role-caption font-black uppercase tracking-wider">
+                      <span className="text-role-caption font-semibold uppercase tracking-wider">
                         {deleting ? 'Deleting…' : 'Confirm'}
                       </span>
                     ) : null}

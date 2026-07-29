@@ -103,7 +103,7 @@ export function OrderWarrantySection({ order }: { order: ShippedOrder }) {
                   className="flex items-center justify-between gap-3 px-4 py-2.5 transition hover:bg-surface-hover"
                 >
                   <div className="min-w-0">
-                    <p className="truncate text-role-caption font-bold text-text-default">
+                    <p className="truncate text-role-caption font-semibold text-text-default">
                       {claim.productTitle || claim.sku || claim.serialNumber || claim.claimNumber}
                     </p>
                     <p className="mt-0.5 truncate font-mono text-role-micro text-text-faint">

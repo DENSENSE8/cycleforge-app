@@ -26,7 +26,7 @@ export function StaffSigningIn({ staff }: StaffSigningInProps) {
   return (
     <div className="flex w-full max-w-md flex-col items-center gap-5 text-center">
       <div
-        className={`flex h-16 w-16 items-center justify-center rounded-full text-lg font-bold text-white ring-4 ${ring}`}
+        className={`flex h-16 w-16 items-center justify-center rounded-full text-lg font-semibold text-white ring-4 ${ring}`}
         style={{ backgroundColor: getStaffColorHex(staff) }}
       >
         {initials(staff.name)}

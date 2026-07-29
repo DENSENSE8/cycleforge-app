@@ -121,7 +121,7 @@ export function OutboundSavedViewsList({
             <button
               type="submit"
               disabled={!draft.trim()}
-              className="ds-raw-button shrink-0 rounded-md bg-blue-600 px-2.5 py-1.5 text-role-caption font-bold text-white transition-colors hover:bg-blue-700 disabled:opacity-40"
+              className="ds-raw-button shrink-0 rounded-md bg-blue-600 px-2.5 py-1.5 text-role-caption font-semibold text-white transition-colors hover:bg-blue-700 disabled:opacity-40"
             >
               Save
             </button>

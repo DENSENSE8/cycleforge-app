@@ -8,11 +8,25 @@ export const dynamic = 'force-dynamic';
 /**
  * GET /api/serial-units/[id]/timeline-photos
  *
- * The unit's photos for its detail-pane photo timeline, in two tagged buckets:
- * testing-scan photos (SERIAL_UNIT · testing_photo) and the paired receiving
- * UNBOX photos reached via serial_unit_provenance → receiving_lines. Read-only.
+ * The unit's photo evidence for its timeline surfaces, in FIVE stage-tagged
+ * buckets (`UnitTimelinePhotoSource`, mirroring `PHOTO_EVIDENCE_STAGES` in
+ * `src/lib/photos/stages.ts`):
+ *
+ *   • `arrival`      — origin parent carton (via serial_unit_provenance →
+ *                      receiving line) with a PACKAGE photo_type
+ *                      (`receiving_package` / legacy `receiving` / untyped '').
+ *   • `unbox_carton` — parent carton + `receiving_unbox_carton`.
+ *   • `unbox_item`   — origin RECEIVING_LINE links (entity-only, identity law).
+ *   • `testing`      — SERIAL_UNIT + `testing_photo`.
+ *   • `packing`      — SERIAL_UNIT + `packer_photo` (± legacy shipout/prepack)
+ *                      ∪ PACKER_LOG dual-links.
+ *
+ * Mis-stamped legacy rows (`receiving_item` on a RECEIVING carton link) match
+ * no bucket — deliberately unclassifiable as stage evidence. Each row also
+ * carries the unit's `serial` / `sku` for cross-entity chrome. Read-only.
  * The `[id]` segment resolves numeric id / serial / minted unit_uid, org-scoped.
- * See docs/todo/packer-testing-photo-scan-timeline-plan.md.
+ * See docs/todo/photo-evidence-journey-timeline-plan.md (+ the original
+ * packer-testing-photo-scan-timeline-plan.md).
  */
 
 function extractIdSegment(pathname: string): string {

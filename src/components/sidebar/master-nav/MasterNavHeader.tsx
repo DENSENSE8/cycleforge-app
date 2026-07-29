@@ -43,6 +43,7 @@ export function MasterNavHeader({
   modesOpen = false,
   onModesClick,
   showModesToggle = false,
+  showNavToggle = true,
   recentModes = [],
   className,
 }: {
@@ -57,6 +58,12 @@ export function MasterNavHeader({
   onModesClick?: () => void;
   /** Show the modes control (icon + name + chevron) as a click target. */
   showModesToggle?: boolean;
+  /**
+   * Show the left chevron that opens the full page menu. False when the page
+   * list is already rendered in flow beneath this band (the nav-only sidebar),
+   * where a trigger for an always-visible list is just a dead control.
+   */
+  showNavToggle?: boolean;
   recentModes?: MasterNavRecentModeChip[];
   className?: string;
 }) {
@@ -72,7 +79,7 @@ export function MasterNavHeader({
       ) : null}
       <span
         data-master-nav-label
-        className="min-w-0 truncate text-role-body font-bold tracking-tight text-text-default"
+        className="min-w-0 truncate text-role-body font-semibold tracking-tight text-text-default"
       >
         {label}
       </span>
@@ -81,25 +88,29 @@ export function MasterNavHeader({
 
   return (
     <div className={cn('flex h-[40px] w-full min-w-0 items-stretch', className)}>
-      {/* Top-left: full page nav */}
-      <button
-        type="button"
-        onClick={onClick}
-        aria-expanded={open}
-        aria-label={open ? 'Close navigation menu' : 'Open navigation menu'}
-        className={cn(
-          'ds-raw-button flex shrink-0 items-center justify-center text-text-muted transition-colors hover:bg-surface-canvas hover:text-text-default',
-          SIDEBAR_MASTER_NAV_CHEVRON_PAD_X,
-        )}
-      >
-        <ChevronDown
-          className={cn(SIDEBAR_MASTER_NAV_GLYPH, 'transition-transform duration-200', open && 'rotate-180')}
-          aria-hidden
-        />
-      </button>
+      {/* Top-left: full page nav. Omitted when the list is already in flow. */}
+      {showNavToggle && (
+        <>
+          <button
+            type="button"
+            onClick={onClick}
+            aria-expanded={open}
+            aria-label={open ? 'Close navigation menu' : 'Open navigation menu'}
+            className={cn(
+              'ds-raw-button flex shrink-0 items-center justify-center text-text-muted transition-colors hover:bg-surface-canvas hover:text-text-default',
+              SIDEBAR_MASTER_NAV_CHEVRON_PAD_X,
+            )}
+          >
+            <ChevronDown
+              className={cn(SIDEBAR_MASTER_NAV_GLYPH, 'transition-transform duration-200', open && 'rotate-180')}
+              aria-hidden
+            />
+          </button>
 
-      {/* Hairline between full-nav chevron and mode identity */}
-      <div className="my-2 w-px shrink-0 self-stretch bg-border-hairline" aria-hidden />
+          {/* Hairline between full-nav chevron and mode identity */}
+          <div className="my-2 w-px shrink-0 self-stretch bg-border-hairline" aria-hidden />
+        </>
+      )}
 
       {/* Name of now — whole control opens modes when the page is modeful */}
       {showModesToggle ? (
@@ -162,6 +173,7 @@ export function MasterNavHeader({
           })}
         </div>
       )}
+
     </div>
   );
 }

@@ -376,7 +376,7 @@ test.describe('Pending grid · TanStack + TESTED mode (mocked feed)', () => {
     await expect(checkbox).toHaveAttribute('aria-checked', 'false');
 
     // C3 — clicking the row body (a non-editable cell) opens the record.
-    await row.locator('[data-col="age"]').click();
+    await row.locator('[data-col="title"]').click();
     await expect
       .poll(
         () =>
@@ -508,26 +508,27 @@ test.describe('Pending grid · TanStack + TESTED mode (mocked feed)', () => {
     await expect(oosRow.locator('[data-indicator="oos"]')).toBeVisible();
   });
 
-  test('H1/H2: tight scrollport force-hides By → Qty → Ch. and widening restores them', async ({ page }) => {
+  test('H1/H2: tight scrollport force-hides Qty → Cond and widening restores them', async ({ page }) => {
     await mockOrdersFeed(page, fixtureRows());
     await page.goto('/dashboard?unshipped', { waitUntil: 'domcontentloaded' });
 
     const table = grid(page);
     await expect(table.locator('[data-order-row-id]').first()).toBeVisible({ timeout: 20_000 });
     const headerRow = headerRowIn(table);
-    await expect(headerRow.locator('[data-col="date"]')).toHaveCount(1);
+    await expect(headerRow.locator('[data-col="qty"]')).toHaveCount(1);
 
     // Tighten until the grid's own scrollport crosses the collapse breakpoints.
-    await page.setViewportSize({ width: 720, height: 900 });
+    await page.setViewportSize({ width: 600, height: 900 });
     await expect
       .poll(
-        async () => headerRow.locator('[data-col="date"]').count(),
-        { timeout: 10_000, message: 'By (date) force-hides on a tight scrollport' },
+        async () => headerRow.locator('[data-col="qty"]').count(),
+        { timeout: 10_000, message: 'Qty force-hides on a tight scrollport' },
       )
       .toBe(0);
-    // The priority ladder never touches Age / Order / Tracking / Product.
-    // Cond may collapse on very tight viewports (By → Qty → Cond).
-    await expect(headerRow.locator('[data-col="age"]')).toHaveCount(1);
+    // The priority ladder never touches Ship by / Order / Tracking / Product —
+    // `sla` in particular carries BOTH the deadline and the lateness now, so
+    // collapsing it would blind the dispatch queue on a small screen.
+    await expect(headerRow.locator('[data-col="sla"]')).toHaveCount(1);
     await expect(headerRow.locator('[data-col="tracking"]')).toHaveCount(1);
     await expect(headerRow.locator('[data-col="title"]')).toHaveCount(1);
 
@@ -535,11 +536,11 @@ test.describe('Pending grid · TanStack + TESTED mode (mocked feed)', () => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await expect
       .poll(
-        async () => headerRow.locator('[data-col="date"]').count(),
-        { timeout: 10_000, message: 'widening restores the By column' },
+        async () => headerRow.locator('[data-col="qty"]').count(),
+        { timeout: 10_000, message: 'widening restores the Qty column' },
       )
       .toBe(1);
-    await expect(headerRow.locator('[data-col="qty"]')).toHaveCount(1);
+    await expect(headerRow.locator('[data-col="sla"]')).toHaveCount(1);
     await expect(headerRow.locator('[data-col="condition"]')).toHaveCount(1);
   });
 

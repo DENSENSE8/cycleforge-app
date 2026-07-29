@@ -81,7 +81,7 @@ function StripSkeleton({ slots }: { slots: number }) {
 function StripError({ onRetry }: { onRetry: () => void }) {
   return (
     <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50 px-4 py-6 text-center">
-      <p className="text-role-caption font-bold text-rose-700">Couldn&apos;t load labels metrics.</p>
+      <p className="text-role-caption font-semibold text-rose-700">Couldn&apos;t load labels metrics.</p>
       <button
         type="button"
         onClick={onRetry}

@@ -66,6 +66,30 @@ export const ELEVATION_CLASS = {
   string | Record<RaisedIntensity, string>
 >;
 
+/**
+ * Directional overlay cast — `overlay` ink thrown to one SIDE instead of
+ * straight down.
+ *
+ * The default ladder models a light directly above the frame, which is right
+ * for anything centred. A surface pinned to one edge of a wide frame reads
+ * wrong under it: its outer edge is the one the operator sees against the
+ * canvas, and a purely downward cast leaves that edge flat. Casting away from
+ * the frame's centre puts the app under a single light in the middle of the
+ * screen, so an off-centre panel looks lifted rather than pasted on.
+ *
+ * The zero-offset AMBIENT layer is preserved (same rule as the base ladder —
+ * drop it and the top/inner edges go flat); only the key + cast layers gain a
+ * negative x. Values live in globals.css (`--ds-elev-overlay-left`) so
+ * dark-family themes ramp the alpha with everything else.
+ *
+ * Never hand-roll a `shadow-* shadow-scrim/*` pair for this — add the side here.
+ */
+export function elevationCastClass(side: 'left'): string {
+  // Only `left` exists today (the station panel). A `right` sibling is a var in
+  // globals.css + a case here — widen this union when a surface needs it.
+  return side === 'left' ? 'shadow-elev-overlay-left' : '';
+}
+
 export function elevationClass(role: 'flat' | 'overlay'): string;
 export function elevationClass(
   role: 'raised',

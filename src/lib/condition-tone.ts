@@ -14,6 +14,14 @@ export type ConditionGradeTone = {
   chipUnderline: string;
   /** {@link CopyChip} icon color — matches active pill hue. */
   chipIconClass: string;
+  /**
+   * Solid dot fill for a quiet-tag cell (`bg-*`), matching the active pill hue.
+   * The grid enum cells render a dot + plain label instead of a filled pill:
+   * at `ops` density a per-row pill is three paint layers (fill + ring + text)
+   * fighting the airtable cell rules, while a dot carries the same hue in one.
+   * Use this — never re-derive a fill from {@link ConditionGradeTone.text}.
+   */
+  dotClass: string;
 };
 
 /**
@@ -29,6 +37,7 @@ export const CONDITION_GRADE_TONE: Record<ConditionGrade, ConditionGradeTone> = 
     text: 'text-text-warning',
     chipUnderline: 'border-yellow-500',
     chipIconClass: 'inline-flex items-center justify-center text-text-warning',
+    dotClass: 'bg-yellow-500',
   },
   LIKE_NEW: {
     active: 'bg-teal-600 text-white shadow-sm shadow-teal-200 ring-teal-700',
@@ -37,6 +46,7 @@ export const CONDITION_GRADE_TONE: Record<ConditionGrade, ConditionGradeTone> = 
     text: 'text-teal-600',
     chipUnderline: 'border-teal-600',
     chipIconClass: 'inline-flex items-center justify-center text-teal-600',
+    dotClass: 'bg-teal-600',
   },
   REFURBISHED: {
     active: 'bg-indigo-600 text-white shadow-sm shadow-indigo-200 ring-indigo-700',
@@ -45,6 +55,7 @@ export const CONDITION_GRADE_TONE: Record<ConditionGrade, ConditionGradeTone> = 
     text: 'text-indigo-600',
     chipUnderline: 'border-indigo-600',
     chipIconClass: 'inline-flex items-center justify-center text-indigo-600',
+    dotClass: 'bg-indigo-600',
   },
   USED_A: {
     active: 'bg-emerald-600 text-white shadow-sm shadow-emerald-200 ring-emerald-700',
@@ -53,6 +64,7 @@ export const CONDITION_GRADE_TONE: Record<ConditionGrade, ConditionGradeTone> = 
     text: 'text-emerald-600',
     chipUnderline: 'border-emerald-500',
     chipIconClass: 'inline-flex items-center justify-center text-emerald-600',
+    dotClass: 'bg-emerald-600',
   },
   USED_B: {
     active: 'bg-blue-600 text-white shadow-sm shadow-blue-200 ring-blue-700',
@@ -61,6 +73,7 @@ export const CONDITION_GRADE_TONE: Record<ConditionGrade, ConditionGradeTone> = 
     text: 'text-blue-600',
     chipUnderline: 'border-blue-500',
     chipIconClass: 'inline-flex items-center justify-center text-blue-600',
+    dotClass: 'bg-blue-600',
   },
   USED_C: {
     // ds-allow-raw-neutral: identity/tone hue — USED_C's slate among emerald/blue/amber grade hues, not chrome
@@ -70,6 +83,7 @@ export const CONDITION_GRADE_TONE: Record<ConditionGrade, ConditionGradeTone> = 
     text: 'text-text-muted',
     chipUnderline: 'border-slate-600', // ds-allow-raw-neutral: identity/tone hue — USED_C slate underline
     chipIconClass: 'inline-flex items-center justify-center text-text-muted',
+    dotClass: 'bg-slate-700', // ds-allow-raw-neutral: identity/tone hue — USED_C slate dot
   },
   PARTS: {
     active: 'bg-amber-700 text-white shadow-sm shadow-amber-200 ring-amber-800',
@@ -78,6 +92,7 @@ export const CONDITION_GRADE_TONE: Record<ConditionGrade, ConditionGradeTone> = 
     text: 'text-amber-700',
     chipUnderline: 'border-amber-600',
     chipIconClass: 'inline-flex items-center justify-center text-amber-700',
+    dotClass: 'bg-amber-700',
   },
 };
 
@@ -150,7 +165,7 @@ export function conditionGradeChipStyleOrPending(code: string | null | undefined
 /** Tailwind classes for a single condition picker pill. */
 export function conditionPillClass(gradeValue: string, isActive: boolean): string {
   const tone = conditionGradeTone(gradeValue);
-  return `inline-flex h-9 shrink-0 items-center justify-center whitespace-nowrap rounded-full px-4 text-role-caption font-black uppercase tracking-[0.1em] ring-1 ring-inset transition-colors active:scale-[0.98] ${
+  return `inline-flex h-9 shrink-0 items-center justify-center whitespace-nowrap rounded-full px-4 text-role-caption font-semibold uppercase tracking-[0.1em] ring-1 ring-inset transition-colors active:scale-[0.98] ${
     isActive ? tone.active : tone.inactive
   }`;
 }

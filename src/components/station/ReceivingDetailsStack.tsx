@@ -215,7 +215,7 @@ export function ReceivingDetailsStack({ log, onClose, onUpdated, onDeleted }: Re
             disabled={isOpeningEditor || form.isSaving}
             loading={isOpeningEditor}
             icon={<Edit />}
-            className="text-role-caption font-black uppercase tracking-wider"
+            className="text-role-caption font-semibold uppercase tracking-wider"
           >
             {isOpeningEditor ? 'Working…' : primaryCta.label}
           </Button>

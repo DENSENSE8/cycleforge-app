@@ -171,7 +171,7 @@ export default function RedesignedMobileOrderDetail({ orderId }: { orderId: stri
         </div>
         <MobileCard className="mt-10 py-12 text-center">
           <Package className="mx-auto mb-3 h-10 w-10 text-blue-200" />
-          <p className="text-sm font-black text-blue-950">Order not found</p>
+          <p className="text-sm font-semibold text-blue-950">Order not found</p>
           <p className="mt-1 text-xs font-medium text-blue-700/50">
             Couldn&apos;t load <span className="font-mono">{orderId}</span>.
           </p>
@@ -231,7 +231,7 @@ export default function RedesignedMobileOrderDetail({ orderId }: { orderId: stri
       <div className="grid grid-cols-2 gap-4 mt-2">
         {/* Product Card */}
         <BentoItem title="Product" icon={Package} className="col-span-2" variant="glass">
-          <p className="text-base font-black text-blue-950 leading-snug tracking-tight">{order.product}</p>
+          <p className="text-base font-semibold text-blue-950 leading-snug tracking-tight">{order.product}</p>
           <div className="mt-4 flex flex-wrap items-center gap-2">
             {order.sku && (
               <span className="text-role-micro uppercase tracking-wider bg-blue-50 text-blue-600 px-2.5 py-1 rounded-lg border border-blue-100 font-mono">
@@ -254,7 +254,7 @@ export default function RedesignedMobileOrderDetail({ orderId }: { orderId: stri
           <SectionHeader title="Activity Timeline" />
           <MobileCard className="py-5">
             {order.activity.length === 0 ? (
-              <p className="py-2 text-center text-role-caption font-bold uppercase tracking-widest text-blue-200">
+              <p className="py-2 text-center text-role-caption font-semibold uppercase tracking-widest text-blue-200">
                 No recorded activity yet
               </p>
             ) : (
@@ -269,10 +269,10 @@ export default function RedesignedMobileOrderDetail({ orderId }: { orderId: stri
                       {i === 0 && <div className="absolute -inset-1.5 bg-blue-400/20 rounded-full animate-ping" />}
                     </div>
                     <div className="min-w-0">
-                      <p className="text-xs font-black text-blue-950 uppercase tracking-tight">
+                      <p className="text-xs font-semibold text-blue-950 uppercase tracking-tight">
                         {[ev.work_type, ev.status].filter(Boolean).join(' · ') || 'Update'}
                       </p>
-                      <p className="text-role-micro font-bold text-blue-300 uppercase tracking-widest mt-1 flex items-center gap-1.5">
+                      <p className="text-role-micro text-blue-300 uppercase tracking-widest mt-1 flex items-center gap-1.5">
                         <Clock className="h-3 w-3" />
                         {fmtDateTime(ev.event_at)}
                         {ev.actor_name ? ` • ${ev.actor_name}` : ''}

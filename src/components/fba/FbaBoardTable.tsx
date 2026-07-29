@@ -411,7 +411,7 @@ export function FbaBoardTable({
                 )}
               </div>
               <div className="min-w-0 align-middle">
-                <p className="truncate text-role-caption font-bold text-gray-900">
+                <p className="truncate text-role-caption font-semibold text-gray-900">
                   {item.display_title || '—'}
                 </p>
                 {item.sku ? (
@@ -424,7 +424,7 @@ export function FbaBoardTable({
                 <FnskuChip value={item.fnsku} />
               </div>
               <div className="align-middle">
-                <span className="tabular-nums text-role-caption font-bold text-text-default">
+                <span className="tabular-nums text-role-caption font-semibold text-text-default">
                   {item.actual_qty}
                   <span className="text-text-faint"> / </span>
                   {item.expected_qty}

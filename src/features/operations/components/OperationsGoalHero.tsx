@@ -67,7 +67,7 @@ function BigGoalRing({ percent, toneClass }: { percent: number; toneClass: strin
         </g>
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-3xl font-extrabold leading-none tabular-nums tracking-tight text-text-default">
+        <span className="text-3xl font-semibold leading-none tabular-nums tracking-tight text-text-default">
           {clamped}%
         </span>
         <span className="mt-0.5 text-role-eyebrow uppercase tracking-[0.18em] text-text-muted">
@@ -128,13 +128,13 @@ export function OperationsGoalHero({ staffProgress, isLoading }: OperationsGoalH
             <span className="inline-flex items-center gap-1.5 text-role-micro uppercase tracking-[0.2em] text-text-muted">
               <Flag className="h-3 w-3" /> Today’s goal
             </span>
-            <h1 className="mt-1.5 text-2xl font-extrabold leading-none tracking-tight text-text-default sm:text-3xl">
+            <h1 className="mt-1.5 text-2xl font-semibold leading-none tracking-tight text-text-default sm:text-3xl">
               <AnimatedStat value={totals.current} className="tabular-nums" />
               <span className="text-text-soft">
                 {' '}
                 / <AnimatedStat value={totals.goal} className="inline tabular-nums" />
               </span>
-              <span className="ml-2 text-role-body font-bold text-text-muted">units</span>
+              <span className="ml-2 text-role-body font-semibold text-text-muted">units</span>
             </h1>
             <div className="mt-2.5 flex flex-wrap items-center gap-2">
               <span
@@ -143,7 +143,7 @@ export function OperationsGoalHero({ staffProgress, isLoading }: OperationsGoalH
                 {tone.label}
               </span>
               {totals.goal > 0 ? (
-                <span className="inline-flex items-center gap-1 text-role-caption font-bold tabular-nums text-text-muted">
+                <span className="inline-flex items-center gap-1 text-role-caption font-semibold tabular-nums text-text-muted">
                   <span className={tone.toneClass}>
                     <TrendingUp className="h-3 w-3" />
                   </span>
@@ -156,7 +156,7 @@ export function OperationsGoalHero({ staffProgress, isLoading }: OperationsGoalH
               )}
               {totals.staff > 0 && (
                 <span className="text-role-caption font-semibold tabular-nums text-text-muted">
-                  · <span className="font-extrabold text-text-default">{totals.onTrack}</span>/
+                  · <span className="font-semibold text-text-default">{totals.onTrack}</span>/
                   {totals.staff} on track
                 </span>
               )}
@@ -175,7 +175,7 @@ export function OperationsGoalHero({ staffProgress, isLoading }: OperationsGoalH
                     <span className="truncate text-role-micro uppercase tracking-[0.12em] text-text-muted">
                       {s.station}
                     </span>
-                    <span className="text-role-micro font-bold tabular-nums text-text-muted">
+                    <span className="text-role-micro tabular-nums text-text-muted">
                       <AnimatedStat value={s.current} className="inline" />/
                       <AnimatedStat value={s.goal} className="inline" />
                     </span>

@@ -1,6 +1,7 @@
 'use client';
 
 import { GRID_HEADER_ROW_INDEX } from '@/design-system/components/grid/grid-row-index';
+import { gridHeaderCellAlignClass } from '@/design-system/components/grid/grid-header-align';
 
 import {
   DndContext,
@@ -19,7 +20,7 @@ import {
   useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Check, Calendar, Clock, ChevronUp, ChevronDown } from '@/components/Icons';
+import { Check, Calendar, ChevronUp, ChevronDown } from '@/components/Icons';
 import { tableHeader } from '@/design-system/tokens/typography/presets';
 import { elevationClass } from '@/design-system/tokens/shadows';
 import { TABLE_FROZEN_HEADER_CLASS } from '@/design-system/tokens/table-surface';
@@ -349,12 +350,11 @@ function HeaderCell({
   // Board look: glyph only on the roomy flexible (fr) columns — a glyph would
   // crowd the narrow fact columns' labels (skin-scoping guardrail).
   const showGlyph = gridSkin ? Boolean(column.type) : column.width.includes('fr');
-  // Date = calendar; Age = clock — both share ColumnType `date` otherwise.
+  // Ship by = calendar (the commitment is a day, not a duration — the clock
+  // glyph left with the retired Age column).
   const glyph = !showGlyph ? null :
-    column.key === 'date' ? (
+    column.key === 'sla' ? (
       <Calendar className="h-3 w-3 shrink-0 text-text-faint" aria-hidden />
-    ) : column.key === 'age' ? (
-      <Clock className="h-3 w-3 shrink-0 text-text-faint" aria-hidden />
     ) : column.type ? (
       <ColumnTypeGlyph type={column.type} className={gridSkin ? 'h-3 w-3 text-text-faint' : undefined} />
     ) : null;
@@ -400,7 +400,9 @@ function HeaderCell({
       aria-sort={ariaSort}
       className={cn(
         'group/hcell relative',
-        gridSkin ? 'justify-start gap-1' : 'justify-center',
+        // Every header aligns with its data (SoT). Pending data tracks are all
+        // left-aligned, so no column passes `end` here.
+        gridSkin ? cn(gridHeaderCellAlignClass(), 'gap-1') : 'justify-center',
         !gridSkin && glyph && 'gap-1',
         ordersQueueGridCell({ rule: !last, inset: cellInset }),
         frozen && ORDERS_QUEUE_FROZEN_CELL,

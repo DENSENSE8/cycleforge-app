@@ -82,11 +82,11 @@ export function DateRangePickerPill({
         className,
       )}
     >
-      <span className="text-role-caption font-black uppercase tracking-widest text-text-default">{label}</span>
+      <span className="text-role-caption font-semibold uppercase tracking-widest text-text-default">{label}</span>
       {count != null ? (
         <>
           <span aria-hidden className="text-text-faint">•</span>
-          <span className="text-role-caption font-bold tabular-nums text-text-soft">{count}</span>
+          <span className="text-role-caption font-semibold tabular-nums text-text-soft">{count}</span>
         </>
       ) : null}
     </span>
@@ -199,7 +199,7 @@ export function DateRangePickerPill({
                     onSelectCustomRange({ startStr: fmtKey(draft.from), endStr: fmtKey(draft.to ?? draft.from) });
                     setOpen(false);
                   }}
-                  className="rounded-md bg-blue-600 px-3 py-1 text-role-caption font-black uppercase tracking-wider text-white shadow-sm transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-surface-strong"
+                  className="rounded-md bg-blue-600 px-3 py-1 text-role-caption font-semibold uppercase tracking-wider text-white shadow-sm transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-surface-strong"
                 >
                   Apply
                 </button>

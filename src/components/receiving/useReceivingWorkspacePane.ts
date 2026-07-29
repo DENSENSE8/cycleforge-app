@@ -22,6 +22,8 @@ import { emitReceiving } from '@/components/receiving/receiving-events';
 import { dispatchSelectLine, mergeReceivingPackageMetaIntoRow } from '@/components/station/receiving-lines-table-helpers';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import type { ScanIntakeSurface } from '@/lib/receiving/scan';
+import type { UnboxLookupScanDetail } from '@/components/receiving/receiving-events';
+import { useReceivingEvents } from '@/hooks/useReceivingEvents';
 import {
   receivingSurfaceBasePath,
   UNBOX_SURFACE_ROUTE,
@@ -58,6 +60,13 @@ export interface ReceivingWorkspacePane {
    * carton fetch lands.
    */
   restorePending: boolean;
+  /**
+   * The last scan resolved to a carton whose unbox work is already DONE, so it
+   * was recorded as a lookup, not work. The pane shows a read-only receipt over
+   * the editor until the operator dismisses it or opens anyway.
+   */
+  lookupReceipt: UnboxLookupScanDetail | null;
+  clearLookupReceipt: () => void;
 }
 
 export function useReceivingWorkspacePane(): ReceivingWorkspacePane {
@@ -86,6 +95,21 @@ export function useReceivingWorkspacePane(): ReceivingWorkspacePane {
   const [restorePending, setRestorePending] = useState<boolean>(() =>
     shouldRestoreOpenReceiving(isUnboxSurface, searchParams.get('openReceivingId')),
   );
+  const [lookupReceipt, setLookupReceipt] = useState<UnboxLookupScanDetail | null>(null);
+  const clearLookupReceipt = useCallback(() => setLookupReceipt(null), []);
+
+  // A scan of an already-unboxed carton. Announced twice on some rungs (an
+  // optimistic client classification, then the authoritative server one) — the
+  // second is a harmless re-set of the same carton. Typed bus, not raw
+  // listeners (`receiving-events.ts` + its ratchet guard).
+  useReceivingEvents({
+    'receiving-lookup-scan': (detail) => {
+      if (!detail || typeof detail.receivingId !== 'number') return;
+      setLookupReceipt(detail);
+    },
+    // Any deselect / close retires a stale receipt.
+    'receiving-clear-line': () => setLookupReceipt(null),
+  });
 
   // Pending open key we've written locally but whose router.replace may still
   // be in flight — prevents the deep-link effect from re-fetching mid-sync.
@@ -396,5 +420,14 @@ export function useReceivingWorkspacePane(): ReceivingWorkspacePane {
     return () => window.removeEventListener('receiving-entry-deleted', handler);
   }, [recoverRightPane]);
 
-  return { workspace, setWorkspace, nav, setNav, scanInFlight, restorePending };
+  return {
+    workspace,
+    setWorkspace,
+    nav,
+    setNav,
+    scanInFlight,
+    restorePending,
+    lookupReceipt,
+    clearLookupReceipt,
+  };
 }

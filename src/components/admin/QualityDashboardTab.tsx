@@ -65,7 +65,7 @@ export function QualityDashboardTab() {
   return (
     <div className="mx-auto w-full max-w-5xl space-y-5 px-6 py-6">
       <header>
-        <h1 className="text-xl font-black tracking-tight text-text-default">Quality &amp; Risk</h1>
+        <h1 className="text-xl font-semibold tracking-tight text-text-default">Quality &amp; Risk</h1>
         <p className="mt-0.5 text-role-caption text-text-soft">
           Graded units, open failures, and repair throughput across inventory.
         </p>
@@ -92,11 +92,11 @@ export function QualityDashboardTab() {
             <ul className="border-t border-border-hairline divide-y divide-border-hairline">
               {data.top_failures.map((f) => (
                 <li key={f.id} className="flex items-center gap-2 px-5 py-2.5">
-                  <span className="min-w-0 flex-1 truncate text-role-caption font-bold text-text-default">{f.label}</span>
-                  <span className={`rounded-full border inset-chip text-role-micro font-bold uppercase ${qualitySeverityToneClass(f.severity)}`}>
+                  <span className="min-w-0 flex-1 truncate text-role-caption font-semibold text-text-default">{f.label}</span>
+                  <span className={`rounded-full border inset-chip text-role-micro uppercase ${qualitySeverityToneClass(f.severity)}`}>
                     {f.severity}
                   </span>
-                  <span className="w-8 text-right text-role-caption font-black tabular-nums text-text-default">{f.open_count}</span>
+                  <span className="w-8 text-right text-role-caption font-semibold tabular-nums text-text-default">{f.open_count}</span>
                 </li>
               ))}
             </ul>
@@ -121,7 +121,7 @@ export function QualityDashboardTab() {
               Object.entries(data.repairs.by_status).map(([status, n]) => (
                 <li key={status} className="flex items-center justify-between px-5 py-2 text-role-caption">
                   <span className="font-medium capitalize text-text-muted">{status.replace(/_/g, ' ')}</span>
-                  <span className="font-black tabular-nums text-text-default">{n}</span>
+                  <span className="font-semibold tabular-nums text-text-default">{n}</span>
                 </li>
               ))
             )}
@@ -140,9 +140,9 @@ export function QualityDashboardTab() {
           <ul className="border-t border-border-hairline divide-y divide-border-hairline">
             {data.high_risk_units.map((u) => (
               <li key={u.serial_unit_id} className="flex items-center gap-3 px-5 py-2.5">
-                <span className="w-10 text-right text-role-caption font-black tabular-nums text-rose-600">{u.quality_score}</span>
+                <span className="w-10 text-right text-role-caption font-semibold tabular-nums text-rose-600">{u.quality_score}</span>
                 <div className="min-w-0 flex-1">
-                  <div className="truncate text-role-caption font-bold text-text-default">
+                  <div className="truncate text-role-caption font-semibold text-text-default">
                     {u.unit_uid || u.serial_number}
                     {u.sku ? <span className="ml-2 font-mono text-role-micro font-medium text-text-faint">{u.sku}</span> : null}
                   </div>
@@ -153,7 +153,7 @@ export function QualityDashboardTab() {
                   )}
                 </div>
                 {u.grade ? (
-                  <span className="shrink-0 rounded-full bg-surface-sunken px-2 py-0.5 text-role-micro font-bold text-text-muted">{u.grade}</span>
+                  <span className="shrink-0 rounded-full bg-surface-sunken px-2 py-0.5 text-role-micro text-text-muted">{u.grade}</span>
                 ) : null}
               </li>
             ))}
@@ -168,10 +168,10 @@ function Tile({ label, value, accent, icon }: { label: string; value: number | s
   return (
     <div className="rounded-2xl bg-surface-card p-4 shadow-sm ring-1 ring-border-soft/60">
       <div className="flex items-center justify-between">
-        <span className="text-role-micro font-bold uppercase tracking-wider text-text-faint">{label}</span>
+        <span className="text-role-micro uppercase tracking-wider text-text-faint">{label}</span>
         {icon}
       </div>
-      <div className={`mt-1 text-2xl font-black tabular-nums ${accent}`}>{value}</div>
+      <div className={`mt-1 text-2xl font-semibold tabular-nums ${accent}`}>{value}</div>
     </div>
   );
 }
@@ -179,8 +179,8 @@ function Tile({ label, value, accent, icon }: { label: string; value: number | s
 function MiniStat({ label, value }: { label: string; value: number | string }) {
   return (
     <div className="bg-surface-card px-4 py-3 text-center">
-      <div className="text-lg font-black tabular-nums text-text-default">{value}</div>
-      <div className="text-role-micro font-bold uppercase tracking-wider text-text-faint">{label}</div>
+      <div className="text-lg font-semibold tabular-nums text-text-default">{value}</div>
+      <div className="text-role-micro uppercase tracking-wider text-text-faint">{label}</div>
     </div>
   );
 }

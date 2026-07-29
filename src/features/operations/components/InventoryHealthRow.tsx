@@ -43,7 +43,7 @@ export function InventoryHealthRow() {
       <div className="mb-4 flex items-end justify-between gap-4">
         <div>
           <span className={`${sectionLabel} !text-text-muted`}>Inventory health</span>
-          <h2 className="text-role-title sm:text-xl font-extrabold tracking-tight text-text-default mt-0.5">
+          <h2 className="text-role-title sm:text-xl tracking-tight text-text-default mt-0.5">
             Where the warehouse needs attention
           </h2>
         </div>
@@ -73,7 +73,7 @@ export function InventoryHealthRow() {
                   </span>
                 )}
               </div>
-              <div className="text-3xl font-extrabold text-text-default leading-none tabular-nums">
+              <div className="text-3xl font-semibold text-text-default leading-none tabular-nums">
                 {isLoading ? '–' : (value ?? 0)}
               </div>
               <p className="text-role-caption font-medium text-text-muted mt-1.5 leading-tight">{c.label}</p>

@@ -128,7 +128,7 @@ export function SupportDetailsStack({
                 </Field>
                 <Field label="Ticket">
                   <HoverTooltip label={ticketFace.value} placement="below">
-                    <span className="font-mono font-bold tabular-nums text-text-default">
+                    <span className="font-mono font-semibold tabular-nums text-text-default">
                       {ticketFace.display}
                     </span>
                   </HoverTooltip>

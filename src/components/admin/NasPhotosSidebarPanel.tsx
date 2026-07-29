@@ -10,7 +10,7 @@ export function NasPhotosSidebarPanel() {
   return (
     <AdminSidebarShell
       stats={
-        <p className="text-role-micro font-bold uppercase tracking-wider text-text-soft">
+        <p className="text-role-micro uppercase tracking-wider text-text-soft">
           Endpoint · workflows · stations · platform
         </p>
       }

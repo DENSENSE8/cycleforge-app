@@ -43,6 +43,13 @@ export interface ShippedDetailsHeaderProps {
   onSectionChange: (section: ShippedActiveSection) => void;
   /** Opens the full-page order view (/o/[id]). Omitted → the expand control hides. */
   onOpenFullPage?: () => void;
+  /**
+   * Week 1 / D3: order-record surfaces render one vertical scroll
+   * (`OrderRecordBody`) instead of the eight-tab strip, so they suppress the
+   * tab row and keep only identity + the action bar. Legacy contexts
+   * (station / packer / labels / staged / fulfillment) keep tabs — default true.
+   */
+  showTabs?: boolean;
 }
 
 export function ShippedDetailsHeader({
@@ -60,6 +67,7 @@ export function ShippedDetailsHeader({
   activeSection,
   onSectionChange,
   onOpenFullPage,
+  showTabs = true,
 }: ShippedDetailsHeaderProps) {
   // Close lives on RightRailHost (backdrop / Esc); prop retained for call sites.
   void _onClose;
@@ -115,21 +123,23 @@ export function ShippedDetailsHeader({
               nextTitle="Move down a row"
             />
           </div>
-          <PaneHeaderTabs<ShippedActiveSection>
-            dense
-            tabs={[
-              { value: 'shipping' as const, label: 'Shipping' },
-              { value: 'product' as const, label: 'Product' },
-              ...(showDocumentsTab ? [{ value: 'documents' as const, label: 'Documents' }] : []),
-              { value: 'timeline' as const, label: 'Timeline' },
-              ...(showCustomerTab ? [{ value: 'customer' as const, label: 'Customer' }] : []),
-              ...(showWarrantyTab ? [{ value: 'warranty' as const, label: 'Warranty' }] : []),
-              { value: 'conversation' as const, label: 'Conversation' },
-            ]}
-            value={activeSection}
-            onChange={onSectionChange}
-            className="px-6"
-          />
+          {showTabs ? (
+            <PaneHeaderTabs<ShippedActiveSection>
+              dense
+              tabs={[
+                { value: 'shipping' as const, label: 'Shipping' },
+                { value: 'product' as const, label: 'Product' },
+                ...(showDocumentsTab ? [{ value: 'documents' as const, label: 'Documents' }] : []),
+                { value: 'timeline' as const, label: 'Timeline' },
+                ...(showCustomerTab ? [{ value: 'customer' as const, label: 'Customer' }] : []),
+                ...(showWarrantyTab ? [{ value: 'warranty' as const, label: 'Warranty' }] : []),
+                { value: 'conversation' as const, label: 'Conversation' },
+              ]}
+              value={activeSection}
+              onChange={onSectionChange}
+              className="px-6"
+            />
+          ) : null}
         </>
       }
     />

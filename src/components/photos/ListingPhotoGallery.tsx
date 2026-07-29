@@ -235,7 +235,7 @@ function ListingPhotoPicker({
         <DialogHeader className="flex-row items-center justify-between space-y-0 border-b border-border-hairline px-4 py-3">
           <div className="flex items-center gap-2">
             <ImageIcon className="h-4 w-4 text-text-soft" />
-            <DialogTitle className="text-sm font-bold">Add listing photos</DialogTitle>
+            <DialogTitle className="text-sm font-semibold">Add listing photos</DialogTitle>
             <DialogDescription className="sr-only">
               Select photos linked to this SKU or unit to add to the listing gallery.
             </DialogDescription>

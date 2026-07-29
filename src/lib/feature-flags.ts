@@ -495,3 +495,22 @@ export async function isOpsTvBoard(orgId: OrgId): Promise<boolean> {
   return resolveForOrg(orgId, 'ops_tv_board', 'OPS_TV_BOARD');
 }
 
+
+/**
+ * Home Inbox — per-staff subscriptions + notification feed (Phase 1 of
+ * docs/todo/home-triage-subscriptions-*.md). Per-org, async, env-fallback.
+ *
+ * Gates the whole vertical slice: the `inbox` Home mode, `GET /api/inbox`,
+ * `PATCH /api/inbox/[id]`, `POST /api/subscriptions/toggle`, and the
+ * SubscribeToggle bell on entity surfaces. Default OFF — dogfood-first: enable
+ * per org (organization_feature_flags(flag='home_inbox')) or globally via
+ * HOME_INBOX=true.
+ *
+ * The fan-out worker is deliberately NOT gated: it drains the outbox for every
+ * org regardless, so an org that flips the flag on sees its recent history
+ * already delivered rather than an empty inbox that only fills going forward.
+ * Nothing is exposed while off — the routes 404 and the mode is hidden.
+ */
+export async function isHomeInbox(orgId: OrgId): Promise<boolean> {
+  return resolveForOrg(orgId, 'home_inbox', 'HOME_INBOX');
+}

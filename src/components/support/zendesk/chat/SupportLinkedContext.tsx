@@ -66,7 +66,7 @@ export function SupportLinkedContext({
 
       {entity?.type ? (
         <div className="mt-2 inline-flex items-center gap-2 rounded-lg border border-border-soft bg-surface-card px-2.5 py-1.5">
-          <span className={`font-bold text-text-muted ${compact ? 'text-role-micro' : 'text-role-caption'}`}>
+          <span className={`font-semibold text-text-muted ${compact ? 'text-role-micro' : 'text-role-caption'}`}>
             {ENTITY_LABELS[entity.type] ?? entity.type}
           </span>
           {entity.id ? (

@@ -77,7 +77,7 @@ export function KpiTile({
     >
       <p
         className={cn(
-          'font-black uppercase tracking-widest text-text-soft',
+          'font-semibold uppercase tracking-widest text-text-soft',
           wall ? 'text-role-caption' : 'text-role-eyebrow',
         )}
       >
@@ -85,7 +85,7 @@ export function KpiTile({
       </p>
       <p
         className={cn(
-          'mt-1.5 font-black tabular-nums leading-none text-text-default',
+          'mt-1.5 font-semibold tabular-nums leading-none text-text-default',
           wall ? 'text-5xl lg:text-6xl' : 'text-3xl',
           valueClassName,
         )}

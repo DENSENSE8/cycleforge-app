@@ -86,7 +86,7 @@ function BinPageInner() {
             <p className="text-role-micro uppercase tracking-[0.16em] text-text-soft">
               Bin
             </p>
-            <h1 className="truncate text-lg font-black text-text-default">
+            <h1 className="truncate text-lg font-semibold text-text-default">
               {bin?.location.name || barcode}
             </h1>
             {subtitle && (
@@ -97,7 +97,7 @@ function BinPageInner() {
           </div>
           <div className="flex flex-col items-end gap-1.5">
             {bin?.location.capacity != null && (
-              <span className="inline-flex items-center rounded-full bg-surface-sunken px-2 py-0.5 text-role-micro font-bold text-text-muted">
+              <span className="inline-flex items-center rounded-full bg-surface-sunken px-2 py-0.5 text-role-micro text-text-muted">
                 Cap {bin.location.capacity}
               </span>
             )}
@@ -143,7 +143,7 @@ function BinPageInner() {
                       >
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0 flex-1">
-                            <p className="font-mono text-sm font-black text-text-default truncate">
+                            <p className="font-mono text-sm font-semibold text-text-default truncate">
                               {row.sku}
                             </p>
                             {row.productTitle && (
@@ -153,11 +153,11 @@ function BinPageInner() {
                             )}
                           </div>
                           <div className="text-right shrink-0">
-                            <p className="text-base font-black tabular-nums text-text-default">
+                            <p className="text-base font-semibold tabular-nums text-text-default">
                               {row.qty}
                             </p>
                             {row.minQty != null && row.maxQty != null && (
-                              <p className="text-role-micro font-bold text-text-soft">
+                              <p className="text-role-micro text-text-soft">
                                 {row.minQty}–{row.maxQty}
                               </p>
                             )}

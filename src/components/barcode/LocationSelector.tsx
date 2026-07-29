@@ -168,7 +168,7 @@ export function LocationSelector({
         <div className="flex items-center gap-2 px-5 py-2.5 bg-surface-canvas border-b border-border-soft">
           <MapPin className="h-3 w-3 text-orange-500" />
           <span className="text-role-eyebrow uppercase tracking-widest text-text-soft">Current:</span>
-          <span className="text-xs font-black font-mono text-orange-600">{currentLocation}</span>
+          <span className="text-xs font-semibold font-mono text-orange-600">{currentLocation}</span>
         </div>
       )}
 
@@ -180,7 +180,7 @@ export function LocationSelector({
             value={selectedRoom}
             onChange={(z) => { setSelectedZone(z); if (!z) onChange(''); }}
             variant="boxy"
-            buttonClassName="h-14 w-full border-b border-border-emphasis bg-surface-card px-5 pr-12 text-left text-sm font-bold uppercase tracking-wide text-text-default outline-none transition-colors hover:bg-surface-hover"
+            buttonClassName="h-14 w-full border-b border-border-emphasis bg-surface-card px-5 pr-12 text-left text-sm font-semibold uppercase tracking-wide text-text-default outline-none transition-colors hover:bg-surface-hover"
           />
         </div>
         <HoverTooltip label={showAdd ? 'Cancel' : 'Add new location'} asChild>
@@ -282,7 +282,7 @@ export function LocationSelector({
               const rm = rooms.find((z) => z.room === selectedRoom || z.name === selectedRoom);
               onChange(rm?.name || selectedRoom);
             }}
-            className={`w-full h-10 rounded-lg text-sm font-bold transition-colors ${
+            className={`w-full h-10 rounded-lg text-sm font-semibold transition-colors ${
               value === selectedRoom
                 ? 'bg-blue-600 text-white'
                 : 'bg-surface-sunken text-text-muted hover:bg-blue-50'
@@ -320,7 +320,7 @@ function AddForm({
           placeholder="Location name *"
           autoFocus
           autoComplete="off"
-          className="flex-1 h-9 rounded-lg border border-border-default px-3 text-sm font-bold focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-surface-card"
+          className="flex-1 h-9 rounded-lg border border-border-default px-3 text-sm font-semibold focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-surface-card"
         />
         <input
           type="text"
@@ -329,7 +329,7 @@ function AddForm({
           onKeyDown={handleAddKeyDown}
           placeholder="Room (optional)"
           autoComplete="off"
-          className="w-32 h-9 rounded-lg border border-border-default px-3 text-sm font-bold focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-surface-card"
+          className="w-32 h-9 rounded-lg border border-border-default px-3 text-sm font-semibold focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-surface-card"
         />
         <Button
           type="button"
@@ -344,7 +344,7 @@ function AddForm({
         />
       </div>
       {createError && (
-        <p className="text-role-micro font-bold text-red-600">{createError.message}</p>
+        <p className="text-role-micro text-red-600">{createError.message}</p>
       )}
     </div>
   );

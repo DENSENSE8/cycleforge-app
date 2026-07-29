@@ -11,7 +11,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { createPortal } from 'react-dom';
 import { OrdersGridView } from '@/components/dashboard/orders-queue/OrdersGridView';
-import { WORKBENCH_TABLE_VIEWPORT } from '@/components/dashboard/workbench-shell';
+import { workbenchTableViewportClass } from '@/components/dashboard/workbench-shell';
 import { packedOrdersQuery } from '@/lib/queries/dashboard-queries';
 import { DASHBOARD_ORDERS_SELECTION_SCOPE } from '@/lib/selection/dashboard-scopes';
 import { dispatchOpenShippedDetails, dispatchCloseShippedDetails } from '@/utils/events';
@@ -19,17 +19,20 @@ import { StaffFilterButton } from '@/components/ui/StaffFilterButton';
 import { useEventBridge } from '@/hooks';
 import { parseStaffParam } from '@/hooks/useStaffFilter';
 import { useOutboundQueueKeyboard } from '@/hooks/useOutboundQueueKeyboard';
-import { cn } from '@/utils/_cn';
 import type { ShippedOrder } from '@/types/orders';
 import { useRefreshSignal } from '@/lib/refresh/bus';
 
 export interface PackedOrdersTableProps {
   selectMode?: boolean;
+  /** Reserve bottom room for the pinned bulk-selection capsule (see
+   *  `workbenchTableViewportClass`). Pass the host's `bulkBarVisible`. */
+  bulkBarInset?: boolean;
   toolbarPortalTarget?: HTMLElement | null;
 }
 
 export function PackedOrdersTable({
   selectMode = false,
+  bulkBarInset = false,
   toolbarPortalTarget,
 }: PackedOrdersTableProps) {
   const pathname = usePathname();
@@ -111,7 +114,7 @@ export function PackedOrdersTable({
           {toolbar}
         </div>
       )}
-      <div className={cn(WORKBENCH_TABLE_VIEWPORT, 'pb-3')}>
+      <div className={workbenchTableViewportClass({ bulkBarInset })}>
         <OrdersGridView
           ariaLabel="Packed orders"
           records={records as ShippedOrder[]}

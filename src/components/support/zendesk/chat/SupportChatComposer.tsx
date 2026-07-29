@@ -199,7 +199,7 @@ export function SupportChatComposer({
               size="sm"
               onClick={() => setLibraryOpen(true)}
               icon={<ImageIcon className="h-3.5 w-3.5" />}
-              className={cn('gap-1.5 px-2 font-bold', hideSendBar ? 'text-role-micro' : 'text-role-caption')}
+              className={cn('gap-1.5 px-2 font-semibold', hideSendBar ? 'text-role-micro' : 'text-role-caption')}
             >
               Library
             </Button>
@@ -209,7 +209,7 @@ export function SupportChatComposer({
             size="sm"
             onClick={picker.openPicker}
             icon={<Paperclip className="h-3.5 w-3.5" />}
-            className={cn('gap-1.5 px-2 font-bold', hideSendBar ? 'text-role-micro' : 'text-role-caption')}
+            className={cn('gap-1.5 px-2 font-semibold', hideSendBar ? 'text-role-micro' : 'text-role-caption')}
           >
             Attach
           </Button>

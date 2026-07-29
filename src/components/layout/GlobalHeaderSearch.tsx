@@ -44,6 +44,7 @@ import {
   journeyHandoffHref,
   looksLikeIdentifier,
   orderSearchHref,
+  orderRecordHref,
 } from '@/lib/search/search-hit';
 import { resolveSearchOrder } from '@/lib/search/resolve-search-order';
 import type { AiSearchHit } from '@/lib/search/ai-search-client';
@@ -270,7 +271,9 @@ export function GlobalHeaderSearch() {
     void (async () => {
       const resolved = await resolveSearchOrder(trimmedQuery);
       if (resolved.status === 'ok') {
-        navigateSearchHref(router, orderSearchHref(resolved.order.id, trimmedQuery), pathname);
+        // D4a: an identifier that resolves to one order is a confident hit —
+        // jump to the canonical record, not the search shell + rail.
+        navigateSearchHref(router, orderRecordHref(resolved.order.id), pathname);
         return;
       }
       navigateSearchHref(
@@ -394,12 +397,16 @@ export function GlobalHeaderSearch() {
         void (async () => {
           const resolved = await resolveSearchOrder(trimmed);
           if (resolved.status === 'ok') {
-            const href = orderSearchHref(resolved.order.id, trimmed);
+            // D4a: one confident hit → the canonical record, not the search shell.
+            const href = orderRecordHref(resolved.order.id);
             if (unifiedOn) {
               pushRecent({
                 query: trimmed,
                 scope: 'global',
-                scopeHref: href,
+                // scopeHref re-runs the SEARCH (matching the miss branch below);
+                // topHit.href is the record itself. Previously both were the
+                // search href, so "rerun" and "reopen" were indistinguishable.
+                scopeHref: dashboardSearchRerunHref(trimmed),
                 topHit: {
                   title: resolved.order.product_title || resolved.order.order_id || trimmed,
                   href,

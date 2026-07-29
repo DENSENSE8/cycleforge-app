@@ -14,13 +14,13 @@ export function SkuStockCard({ c, data }: { c: SkuDetailController; data: SkuDet
           variant="ghost"
           size="sm"
           onClick={() => c.setShowSetMode(!c.showSetMode)}
-          className="text-role-micro font-bold uppercase tracking-wider text-blue-600 hover:text-blue-800"
+          className="text-role-micro uppercase tracking-wider text-blue-600 hover:text-blue-800"
         >
           {c.showSetMode ? 'Quick Adjust' : 'Set Exact'}
         </Button>
       </div>
 
-      {c.error && <p className="mb-2 text-xs font-bold text-red-500">{c.error}</p>}
+      {c.error && <p className="mb-2 text-xs font-semibold text-red-500">{c.error}</p>}
 
       {c.showSetMode ? (
         <div className="flex items-center gap-2">
@@ -30,7 +30,7 @@ export function SkuStockCard({ c, data }: { c: SkuDetailController; data: SkuDet
             value={c.absoluteQty}
             onChange={(e) => c.setAbsoluteQty(e.target.value)}
             placeholder={String(data.stock.qty)}
-            className="h-10 w-24 rounded-lg border border-border-default px-3 text-center text-sm font-bold focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+            className="h-10 w-24 rounded-lg border border-border-default px-3 text-center text-sm font-semibold focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
           />
           <Button
             variant="primary"
@@ -52,7 +52,7 @@ export function SkuStockCard({ c, data }: { c: SkuDetailController; data: SkuDet
               className="flex h-10 w-10 items-center justify-center rounded-lg bg-surface-card text-red-600 shadow-sm hover:bg-red-50 transition-colors"
             />
             <div className="w-16 text-center">
-              <span className="text-2xl font-black text-text-default">{data.stock.qty}</span>
+              <span className="text-2xl font-semibold text-text-default">{data.stock.qty}</span>
             </div>
             <IconButton
               icon={<Plus className="h-4 w-4" />}
@@ -69,7 +69,7 @@ export function SkuStockCard({ c, data }: { c: SkuDetailController; data: SkuDet
               value={c.adjustDelta || ''}
               onChange={(e) => c.setAdjustDelta(parseInt(e.target.value, 10) || 0)}
               placeholder="±"
-              className="h-10 w-16 rounded-lg border border-border-default px-2 text-center text-sm font-bold focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              className="h-10 w-16 rounded-lg border border-border-default px-2 text-center text-sm font-semibold focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
             />
             <Button
               variant="brand"
@@ -84,7 +84,7 @@ export function SkuStockCard({ c, data }: { c: SkuDetailController; data: SkuDet
           <select
             value={c.adjustReason}
             onChange={(e) => c.setAdjustReason(e.target.value)}
-            className="h-10 rounded-lg border border-border-default px-2 text-xs font-bold text-text-muted focus:border-blue-500"
+            className="h-10 rounded-lg border border-border-default px-2 text-xs font-semibold text-text-muted focus:border-blue-500"
           >
             {c.reasonOptions.map((r) => (
               <option key={r.code} value={r.code}>{r.label}</option>

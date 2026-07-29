@@ -88,13 +88,13 @@ export function SupportTicketsRecentRail({ modeToggle = null }: { modeToggle?: R
                 >
                   <div className="flex items-center gap-2">
                     <span className={cn('h-2 w-2 shrink-0 rounded-full', dot)} />
-                    <span className="min-w-0 flex-1 truncate text-role-data font-bold text-text-default">
+                    <span className="min-w-0 flex-1 truncate text-role-data font-semibold text-text-default">
                       {r.subject || `(no subject)`}
                     </span>
                     {pb ? (
                       <span
                         className={cn(
-                          'shrink-0 rounded px-1 py-0.5 text-[8.5px] font-black uppercase tracking-widest',
+                          'shrink-0 rounded px-1 py-0.5 text-[8.5px] font-semibold uppercase tracking-widest',
                           pb.className,
                         )}
                       >

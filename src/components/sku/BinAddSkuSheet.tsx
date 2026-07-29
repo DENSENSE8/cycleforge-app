@@ -213,13 +213,13 @@ export function BinAddSkuSheet({
           icon={selected ? '←' : <X className="mx-auto h-4 w-4" />}
           onClick={() => (selected ? setSelected(null) : onClose())}
           ariaLabel="Back"
-          className="h-10 w-10 rounded-md border border-border-default bg-surface-card text-sm font-bold text-text-muted active:bg-surface-hover"
+          className="h-10 w-10 rounded-md border border-border-default bg-surface-card text-sm font-semibold text-text-muted active:bg-surface-hover"
         />
         <div className="min-w-0 flex-1">
           <p className="text-role-micro uppercase tracking-[0.16em] text-text-soft">
             Add to bin
           </p>
-          <p className="truncate font-mono text-sm font-black text-text-default">
+          <p className="truncate font-mono text-sm font-semibold text-text-default">
             {binBarcode}
           </p>
         </div>
@@ -238,7 +238,7 @@ export function BinAddSkuSheet({
                 placeholder="Search storefront SKU or product title"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                className="min-w-0 flex-1 bg-transparent text-sm font-bold text-text-default outline-none placeholder:font-medium placeholder:text-text-faint"
+                className="min-w-0 flex-1 bg-transparent text-sm font-semibold text-text-default outline-none placeholder:font-medium placeholder:text-text-faint"
               />
               {loading && <Loader2 className="h-4 w-4 animate-spin text-text-faint" />}
             </div>
@@ -256,7 +256,7 @@ export function BinAddSkuSheet({
               </p>
             )}
             {!debounced.trim() && (
-              <p className="px-2 py-8 text-center text-role-caption font-bold uppercase tracking-widest text-text-faint">
+              <p className="px-2 py-8 text-center text-role-caption font-semibold uppercase tracking-widest text-text-faint">
                 Type a few characters to search
               </p>
             )}
@@ -277,7 +277,7 @@ export function BinAddSkuSheet({
                       className="ds-raw-button flex w-full items-start gap-3 rounded-lg border border-border-soft bg-surface-card px-4 py-3 text-left shadow-sm active:bg-surface-hover"
                     >
                       <div className="min-w-0 flex-1">
-                        <p className="font-mono text-sm font-black text-text-default">
+                        <p className="font-mono text-sm font-semibold text-text-default">
                           {sku}
                         </p>
                         {row.product_title && (
@@ -287,12 +287,12 @@ export function BinAddSkuSheet({
                         )}
                       </div>
                       {row.source === 'stock' ? (
-                        <span className="shrink-0 rounded-full bg-surface-sunken px-2 py-0.5 text-role-micro font-bold text-text-muted">
+                        <span className="shrink-0 rounded-full bg-surface-sunken px-2 py-0.5 text-role-micro text-text-muted">
                           {row.stock ?? 0} on hand
                         </span>
                       ) : (
                         <HoverTooltip label="Not yet in stock — will create the entry on first put" asChild>
-                          <span className="shrink-0 rounded-full bg-blue-100 px-2 py-0.5 text-role-micro font-bold text-blue-700">
+                          <span className="shrink-0 rounded-full bg-blue-100 px-2 py-0.5 text-role-micro text-blue-700">
                             Storefront only
                           </span>
                         </HoverTooltip>
@@ -307,7 +307,7 @@ export function BinAddSkuSheet({
       ) : (
         <main className="flex-1 overflow-auto px-4 py-6">
           <div className="rounded-lg border border-border-soft bg-surface-card p-4 shadow-sm">
-            <p className="font-mono text-base font-black text-text-default">
+            <p className="font-mono text-base font-semibold text-text-default">
               {selected.sku}
             </p>
             {selected.product_title && (
@@ -315,7 +315,7 @@ export function BinAddSkuSheet({
                 {selected.product_title}
               </p>
             )}
-            <p className="mt-2 text-role-micro font-bold uppercase tracking-widest text-text-faint">
+            <p className="mt-2 text-role-micro uppercase tracking-widest text-text-faint">
               Currently {selected.stock ?? 0} total on hand
             </p>
           </div>
@@ -331,12 +331,12 @@ export function BinAddSkuSheet({
               value={qtyDraft}
               onChange={(e) => setQtyDraft(e.target.value)}
               autoFocus
-              className="mt-2 w-full rounded-md border border-border-default px-3 py-3 text-center font-mono text-2xl font-black text-text-default focus:border-blue-500 focus:outline-none"
+              className="mt-2 w-full rounded-md border border-border-default px-3 py-3 text-center font-mono text-2xl font-semibold text-text-default focus:border-blue-500 focus:outline-none"
             />
           </label>
 
           {error && (
-            <p className="mt-3 text-sm font-bold text-rose-600">{error}</p>
+            <p className="mt-3 text-sm font-semibold text-rose-600">{error}</p>
           )}
 
           <div className="mt-6 grid grid-cols-2 gap-2">

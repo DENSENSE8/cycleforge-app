@@ -150,7 +150,7 @@ export function SetPinPad({ staff, onSubmit, onBack }: SetPinPadProps) {
       <div className="relative">
         <div className={`absolute -inset-3 rounded-full bg-gradient-radial ${t.haloFrom} to-transparent blur-2xl opacity-70`} aria-hidden />
         <div
-          className="relative flex h-20 w-20 items-center justify-center rounded-full text-2xl font-bold text-white shadow-lg shadow-gray-900/10 ring-4 ring-white"
+          className="relative flex h-20 w-20 items-center justify-center rounded-full text-2xl font-semibold text-white shadow-lg shadow-gray-900/10 ring-4 ring-white"
           style={{ backgroundColor: getStaffColorHex(staff) }}
         >
           {initials(staff.name)}

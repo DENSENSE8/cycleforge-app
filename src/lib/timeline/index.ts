@@ -6,6 +6,7 @@ export { inventoryEventsToTimeline, type InventoryTimelineRow } from './inventor
 export { techEventsToTimeline, type TechTimelineRow } from './tech-events';
 export { stationActivityToTimeline, type StationActivityRow } from './station-activity-events';
 export { warrantyEventsToTimeline, type WarrantyEventRow } from './warranty-events';
+export { rmaEventsToTimeline, type RmaTimelineRow } from './rma-events';
 export { callEventsToTimeline, type CallEventTimelineRow } from './call-events';
 export { amendmentsToTimeline, type AmendmentTimelineRow } from './amendment-events';
 export { opsEventsToTimeline, type OpsEventRow } from './ops-events';

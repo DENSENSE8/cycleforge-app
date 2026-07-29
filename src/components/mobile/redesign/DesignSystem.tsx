@@ -127,7 +127,7 @@ export const BentoItem = ({
 export const MobilePageHeader = ({ title, subtitle, action }: { title: string, subtitle?: string, action?: React.ReactNode }) => (
   <header className="flex flex-col gap-1 py-4 px-1">
     <div className="flex items-center justify-between">
-      <h1 className="text-2xl font-black tracking-tight text-blue-950 leading-tight">{title}</h1>
+      <h1 className="text-2xl font-semibold tracking-tight text-blue-950 leading-tight">{title}</h1>
       {action && <div>{action}</div>}
     </div>
     {subtitle && <p className="text-sm font-medium text-blue-700/60 leading-relaxed">{subtitle}</p>}
@@ -139,12 +139,12 @@ export const MobilePageHeader = ({ title, subtitle, action }: { title: string, s
  */
 export const SectionHeader = ({ title, actionLabel, onAction }: { title: string, actionLabel?: string, onAction?: () => void }) => (
   <div className="flex items-center justify-between px-1 mb-3">
-    <span className="text-role-caption font-black uppercase tracking-[0.2em] text-blue-400">{title}</span>
+    <span className="text-role-caption font-semibold uppercase tracking-[0.2em] text-blue-400">{title}</span>
     {actionLabel && (
       <Button
         variant="ghost"
         onClick={onAction}
-        className="h-auto px-0 text-role-caption font-bold uppercase tracking-wider text-blue-600 hover:bg-transparent hover:text-blue-600"
+        className="h-auto px-0 text-role-caption font-semibold uppercase tracking-wider text-blue-600 hover:bg-transparent hover:text-blue-600"
       >
         {actionLabel}
       </Button>
@@ -168,7 +168,7 @@ export const GlassButton = ({
   variant?: 'primary' | 'secondary' | 'ghost' | 'blue',
   icon?: React.ComponentType<{ className?: string }>
 }) => {
-  const baseStyles = "h-14 px-6 rounded-2xl flex items-center justify-center gap-3 font-black uppercase tracking-wider text-sm transition-all active:scale-[0.97]";
+  const baseStyles = "h-14 px-6 rounded-2xl flex items-center justify-center gap-3 font-semibold uppercase tracking-wider text-sm transition-all active:scale-[0.97]";
   const variants = {
     primary: "bg-blue-600 text-white shadow-xl shadow-blue-600/20",
     blue: "bg-blue-950 text-white shadow-xl shadow-blue-950/20",

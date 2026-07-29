@@ -61,7 +61,7 @@ export function InventoryFilterDropdown({
             {/* Section: Search Field */}
             <div>
                 <div className="mb-3 flex items-center justify-between">
-                    <p className={`${microBadge} text-text-faint font-black uppercase tracking-[0.2em]`}>Search By</p>
+                    <p className={`${microBadge} text-text-faint font-semibold uppercase tracking-[0.2em]`}>Search By</p>
                     {collapseFieldSelector ? (
                         <Button
                             variant="ghost"
@@ -107,7 +107,7 @@ export function InventoryFilterDropdown({
             {bucketOptions.length > 0 && (
                 <div>
                     <div className="mb-3 flex items-center justify-between pt-4 border-t border-border-hairline">
-                        <p className={`${microBadge} text-text-faint font-black uppercase tracking-[0.2em]`}>Status Filters</p>
+                        <p className={`${microBadge} text-text-faint font-semibold uppercase tracking-[0.2em]`}>Status Filters</p>
                         {buckets.length > 0 ? (
                             <Button
                                 variant="ghost"
@@ -202,7 +202,7 @@ export function InventorySidebarFilters({
                     <SlidersHorizontal className="h-4 w-4" />
                     Filters
                     {activeBucketCount > 0 ? (
-                        <span className="rounded-full bg-blue-600 px-1.5 py-0.5 text-role-eyebrow font-bold text-white">
+                        <span className="rounded-full bg-blue-600 px-1.5 py-0.5 text-role-eyebrow text-white">
                             {activeBucketCount}
                         </span>
                     ) : null}

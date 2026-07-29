@@ -380,10 +380,10 @@ export function RepairIntakeForm({ onClose, onSubmit, initialData, favoriteSkuId
                                 <Check className="h-4 w-4" />
                             </span>
                             <div className="min-w-0">
-                                <p className="truncate text-role-eyebrow font-bold uppercase tracking-[0.18em] text-text-faint sm:text-role-micro">
+                                <p className="truncate text-role-eyebrow uppercase tracking-[0.18em] text-text-faint sm:text-role-micro">
                                     Repair submitted
                                 </p>
-                                <h1 className="truncate text-sm font-black tracking-tight text-text-default sm:text-role-body">
+                                <h1 className="truncate text-sm font-semibold tracking-tight text-text-default sm:text-role-body">
                                     {chromeLabel}
                                 </h1>
                             </div>
@@ -465,12 +465,12 @@ export function RepairIntakeForm({ onClose, onSubmit, initialData, favoriteSkuId
                                 </div>
                             )}
                             <div className="min-w-0">
-                                <p className="truncate text-role-eyebrow font-bold uppercase tracking-[0.18em] text-text-faint sm:text-role-micro">
+                                <p className="truncate text-role-eyebrow uppercase tracking-[0.18em] text-text-faint sm:text-role-micro">
                                     Repair Intake
                                 </p>
                                 <h1
                                     id="repair-intake-step-title"
-                                    className="truncate text-sm font-black tracking-tight text-text-default sm:text-role-body"
+                                    className="truncate text-sm font-semibold tracking-tight text-text-default sm:text-role-body"
                                 >
                                     {stepTitle}
                                 </h1>
@@ -606,7 +606,7 @@ export function RepairIntakeForm({ onClose, onSubmit, initialData, favoriteSkuId
                             {productSelected && (
                                 <div className="space-y-1">
                                     <p className={SECTION_LABEL}>Selected product</p>
-                                    <p className="text-sm font-bold text-text-default">{formData.product.model}</p>
+                                    <p className="text-sm font-semibold text-text-default">{formData.product.model}</p>
                                 </div>
                             )}
 
@@ -624,7 +624,7 @@ export function RepairIntakeForm({ onClose, onSubmit, initialData, favoriteSkuId
                                     htmlFor="repair-tech-select"
                                     className={`block ${SECTION_LABEL}`}
                                 >
-                                    Assign technician <span className="font-bold lowercase text-text-faint">(optional)</span>
+                                    Assign technician <span className="font-semibold lowercase text-text-faint">(optional)</span>
                                 </label>
                                 <select
                                     id="repair-tech-select"
@@ -709,7 +709,7 @@ export function RepairIntakeForm({ onClose, onSubmit, initialData, favoriteSkuId
                                                         selectedCustomerId === customer.id ? 'bg-surface-canvas' : 'bg-surface-card'
                                                     }`}
                                                 >
-                                                    <span className="truncate font-bold text-text-default">{customer.name}</span>
+                                                    <span className="truncate font-semibold text-text-default">{customer.name}</span>
                                                     <span className="truncate text-text-muted">{customer.phone || '—'}</span>
                                                     <div className="text-right">
                                                         <Button

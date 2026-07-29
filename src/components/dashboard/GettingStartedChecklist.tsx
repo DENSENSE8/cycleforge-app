@@ -133,7 +133,7 @@ function GettingStartedChecklistInner({ variant }: { variant: ChecklistVariant }
               return (
                 <div key={step.id} className="flex items-center gap-2 py-1.5">
                   <Check className="h-3.5 w-3.5 shrink-0 text-text-success" />
-                  <span className="truncate text-role-caption font-bold text-text-faint">
+                  <span className="truncate text-role-caption font-semibold text-text-faint">
                     {step.label}
                   </span>
                 </div>
@@ -150,7 +150,7 @@ function GettingStartedChecklistInner({ variant }: { variant: ChecklistVariant }
                   className="h-3.5 w-3.5 shrink-0 rounded-full ring-1 ring-inset ring-border-soft"
                 />
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-role-caption font-bold text-text-default">
+                  <span className="block truncate text-role-caption font-semibold text-text-default">
                     {step.label}
                   </span>
                   <span className="block truncate text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">

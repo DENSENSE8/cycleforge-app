@@ -12,7 +12,7 @@
  *
  * Keys MUST match the real column keys the rows emit:
  *   chip group → ChipColumn.key: 'platform' | 'orderid' | 'tracking' | 'serial'
- *                (see station-chip-columns.tsx / ChipColumns)
+ *                (see ChipColumns)
  *   meta group → RowMetaColumns slot keys: 'qty' | 'condition' | 'rest'
  *
  * A registry entry whose key isn't present on a given row is harmless — the

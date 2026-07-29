@@ -141,7 +141,7 @@ export function MediaSavedViewsSection({
               <button
                 type="button"
                 onClick={() => onApply(readMediaViewPayload(view))}
-                className="min-w-0 flex-1 truncate text-left text-role-caption font-bold text-text-default hover:text-blue-700"
+                className="min-w-0 flex-1 truncate text-left text-role-caption font-semibold text-text-default hover:text-blue-700"
                 title={view.name}
               >
                 {view.name}

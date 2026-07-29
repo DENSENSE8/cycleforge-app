@@ -4,6 +4,7 @@ import { recordOpsEvent } from '@/lib/ops-events';
 import { resolveSurfaceWorkflowNodeId } from '@/lib/stations/surface-workflow-node';
 import { upsertReceivingTriage } from '@/lib/receiving/streets/carton-street-write';
 import { promoteShipmentTicketToReceiving } from '@/lib/support/ticket-link';
+import type { UnboxScanKind } from '@/lib/receiving/unbox-scan-kind';
 
 export type ReceivingScanSource = 'zoho_po' | 'unmatched';
 
@@ -13,6 +14,18 @@ export type ReceivingIntakeSurface = 'triage' | 'unbox';
 export interface RecordReceivingScanOptions {
   /** Default `triage` — only triage (door) scans stamp received_at/received_by. */
   intakeSurface?: ReceivingIntakeSurface;
+  /**
+   * Default `work`. `lookup` = the operator scanned an ALREADY-UNBOXED carton to
+   * inspect it, so this call must not claim the work:
+   *   - `scanned_at` / `scanned_by` are preserved (the row is UNIQUE per
+   *     (tracking_number, receiving_id), so overwriting them renamed whoever
+   *     actually unboxed the carton to whoever last looked at it),
+   *   - no `TRACKING_SCANNED` ops event (that is the work event),
+   *   - no triage door stamp.
+   * The lookup itself is recorded by `recordUnboxLookupScan` as its own
+   * append-only event. Classify with `resolveUnboxScanKind`.
+   */
+  scanKind?: UnboxScanKind;
 }
 
 /**
@@ -76,16 +89,28 @@ export async function recordReceivingScan(
   options: RecordReceivingScanOptions = {},
 ): Promise<number> {
   const intakeSurface: ReceivingIntakeSurface = options.intakeSurface ?? 'triage';
+  const scanKind: UnboxScanKind = options.scanKind ?? 'work';
+  const isLookup = scanKind === 'lookup';
+
+  // A lookup keeps the existing attribution. `receiving_scans` is UNIQUE on
+  // (tracking_number, receiving_id) — one row per carton+tracking, NOT an
+  // append-only log — so the work branch's `SET scanned_at/scanned_by` is what
+  // let an inspection scan rename the original worker. On a first-ever row for
+  // this tracking the INSERT still records the operator (nothing to preserve).
+  const conflictSet = isLookup
+    ? `SET carrier = COALESCE(EXCLUDED.carrier, receiving_scans.carrier),
+           intake_surface = COALESCE(receiving_scans.intake_surface, EXCLUDED.intake_surface)`
+    : `SET scanned_at = EXCLUDED.scanned_at,
+           scanned_by = EXCLUDED.scanned_by,
+           carrier = COALESCE(EXCLUDED.carrier, receiving_scans.carrier),
+           intake_surface = COALESCE(receiving_scans.intake_surface, EXCLUDED.intake_surface)`;
 
   const result = await pool.query<{ id: number }>(
     `INSERT INTO receiving_scans
        (receiving_id, tracking_number, carrier, scanned_at, scanned_by, source, organization_id, intake_surface)
      VALUES ($1, $2, $3, NOW(), $4, $5, (SELECT organization_id FROM receiving_carton WHERE id = $1), $6)
      ON CONFLICT (tracking_number, receiving_id) DO UPDATE
-       SET scanned_at = EXCLUDED.scanned_at,
-           scanned_by = EXCLUDED.scanned_by,
-           carrier = COALESCE(EXCLUDED.carrier, receiving_scans.carrier),
-           intake_surface = COALESCE(receiving_scans.intake_surface, EXCLUDED.intake_surface)
+       ${conflictSet}
      RETURNING id`,
     [receivingId, trackingNumber, carrier || null, staffId, source, intakeSurface],
   );
@@ -99,7 +124,10 @@ export async function recordReceivingScan(
   const orgId = orgRow.rows[0]?.organization_id ?? null;
 
   try {
-    if (orgId) {
+    // TRACKING_SCANNED is the WORK event. A lookup records its own
+    // RECEIVING_LOOKUP_SCAN event instead (recordUnboxLookupScan), so the two
+    // never blur in throughput or actor-attribution reads.
+    if (orgId && !isLookup) {
       // Phase 2 (ops-events unification): stamp the tenant's Studio-node
       // "where" axis. The scan's surface maps 1:1 onto a SURFACE_REGISTRY key
       // (triage door scan vs unbox bench scan); best-effort → null when the
@@ -137,7 +165,7 @@ export async function recordReceivingScan(
   // inversion: the stamp lands DIRECTLY on the receiving_triage street table
   // (COALESCE-once inside the helper — a re-scan never re-stamps the door);
   // the spine columns are no longer written and are dropped in Wave 4.
-  if (intakeSurface === 'triage' && orgId) {
+  if (intakeSurface === 'triage' && orgId && !isLookup) {
     await upsertReceivingTriage(pool, orgId, receivingId, {
       doorReceivedAt: 'now', // rendered as SQL NOW() by the helper
       doorReceivedBy: staffId,

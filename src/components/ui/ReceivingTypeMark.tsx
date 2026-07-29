@@ -54,7 +54,7 @@ export function ReceivingTypeMark({
   if (empty || !meta.value) {
     return (
       <span className={cn(MARK_BOX, 'text-text-faint', className)} aria-hidden>
-        <span className="text-role-micro font-black">—</span>
+        <span className="text-role-micro">—</span>
       </span>
     );
   }

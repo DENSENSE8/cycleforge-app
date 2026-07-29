@@ -100,12 +100,18 @@ const AuthCtx = createContext<AuthContextValue>({
 
 interface ProviderProps {
   initial?: AuthSessionUser | null;
+  /** True when this request is on a tenant kiosk host ({slug}.kiosk.app…),
+   *  resolved server-side in the root layout. A kiosk device is never
+   *  session-authed (see withKioskAuth) — /api/auth/session doesn't even
+   *  exist on that host's allowlist — so skip the fetch entirely and treat
+   *  every kiosk-host page as public, never bouncing to /signin. */
+  kioskHost?: boolean;
   children: React.ReactNode;
 }
 
-export function AuthProvider({ initial = null, children }: ProviderProps) {
+export function AuthProvider({ initial = null, kioskHost = false, children }: ProviderProps) {
   const [user, setUser] = useState<AuthSessionUser | null>(initial);
-  const [isLoaded, setIsLoaded] = useState<boolean>(initial !== null);
+  const [isLoaded, setIsLoaded] = useState<boolean>(initial !== null || kioskHost);
   const router = useRouter();
   const pathname = usePathname();
 
@@ -154,17 +160,17 @@ export function AuthProvider({ initial = null, children }: ProviderProps) {
   }, []);
 
   useEffect(() => {
-    if (initial === null) {
+    if (!kioskHost && initial === null) {
       void refresh();
     }
-  }, [initial, refresh]);
+  }, [initial, kioskHost, refresh]);
 
   // Client-side fallback gate. The Next.js proxy at src/proxy.ts is the source
   // of truth, but it can only check for cookie *presence* — a stale cookie
   // that points to a revoked/expired/idle-killed session sails past the proxy.
   // When AuthContext hydrates with user:null on a non-public path, bounce to
   // /signin and preserve the current path as ?next= so we land back here.
-  const onPublicPath = isClientPublicPath(pathname);
+  const onPublicPath = isClientPublicPath(pathname) || kioskHost;
   const mustRedirect = isLoaded && !user && !onPublicPath;
 
   useEffect(() => {
@@ -202,7 +208,7 @@ function RedirectingSplash() {
     <div className="fixed inset-0 z-splash flex items-center justify-center bg-surface-card">
       <div className="flex flex-col items-center gap-3 text-text-soft">
         <div className="h-6 w-6 animate-spin rounded-full border-2 border-border-soft border-t-text-muted" />
-        <p className="text-role-caption font-bold uppercase tracking-widest">Redirecting to sign-in…</p>
+        <p className="text-role-caption font-semibold uppercase tracking-widest">Redirecting to sign-in…</p>
       </div>
     </div>
   );

@@ -158,7 +158,7 @@ export function QueueTableRow({
             className="h-4 w-4"
           />
           {justSaved ? (
-            <span className="text-role-micro font-bold uppercase tracking-wider text-emerald-600">
+            <span className="text-role-micro uppercase tracking-wider text-emerald-600">
               Saved
             </span>
           ) : null}
@@ -166,7 +166,7 @@ export function QueueTableRow({
       </td>
       <td className="inset-field text-right">
         {row.zendesk_ticket_id ? (
-          <span className="text-role-micro font-bold uppercase tracking-wider text-emerald-600">
+          <span className="text-role-micro uppercase tracking-wider text-emerald-600">
             Synced
           </span>
         ) : (
@@ -177,7 +177,7 @@ export function QueueTableRow({
               icon={<ExternalLink />}
               onClick={() => void onPush(row)}
               disabled={pushing}
-              className="gap-1 rounded-md border border-blue-200 px-2 py-1 text-role-micro font-bold uppercase tracking-wider text-blue-600 hover:bg-blue-50"
+              className="gap-1 rounded-md border border-blue-200 px-2 py-1 text-role-micro uppercase tracking-wider text-blue-600 hover:bg-blue-50"
             >
               {pushing ? '…' : 'Push'}
             </Button>

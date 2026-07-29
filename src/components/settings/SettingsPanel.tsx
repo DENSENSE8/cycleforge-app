@@ -111,7 +111,7 @@ function PanelSection({ title, subtitle, defs, byKey, variant, onChange }: Secti
   return (
     <section className="space-y-3">
       <header>
-        <h3 className="text-sm font-bold uppercase tracking-widest text-text-soft">{title}</h3>
+        <h3 className="text-sm font-semibold uppercase tracking-widest text-text-soft">{title}</h3>
         <p className="mt-0.5 text-role-caption text-text-soft">{subtitle}</p>
       </header>
       <div className="space-y-4">

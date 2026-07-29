@@ -268,14 +268,14 @@ export function BinStockNumpadSheet({
           type="button"
           onClick={onClose}
           ariaLabel="Back"
-          icon={<span className="text-sm font-bold text-text-muted">←</span>}
+          icon={<span className="text-sm font-semibold text-text-muted">←</span>}
           className="h-11 w-11 rounded-md border border-border-default bg-surface-card active:bg-surface-hover"
         />
         <div className="min-w-0 flex-1 text-center">
           <p className="text-role-micro uppercase tracking-[0.18em] text-text-soft">
             Edit stock
           </p>
-          <p className="truncate font-mono text-sm font-black text-text-default">
+          <p className="truncate font-mono text-sm font-semibold text-text-default">
             {row.sku}
           </p>
         </div>
@@ -283,7 +283,7 @@ export function BinStockNumpadSheet({
           type="button"
           onClick={onOpenDetails}
           ariaLabel="Details"
-          icon={<span className="text-sm font-bold text-text-muted">⋯</span>}
+          icon={<span className="text-sm font-semibold text-text-muted">⋯</span>}
           className="h-11 w-11 rounded-md border border-border-default bg-surface-card active:bg-surface-hover"
         />
       </header>
@@ -291,7 +291,7 @@ export function BinStockNumpadSheet({
       {/* ── Body ── */}
       <main className="flex-1 overflow-auto px-4 py-5 space-y-5">
         {title && (
-          <p className="text-center text-role-caption leading-snug font-bold text-text-muted">
+          <p className="text-center text-role-caption leading-snug font-semibold text-text-muted">
             {title}
           </p>
         )}
@@ -303,7 +303,7 @@ export function BinStockNumpadSheet({
             variant="ghost"
             onClick={() => setMode('minus')}
             aria-pressed={mode === 'minus'}
-            className={`h-auto w-full justify-center rounded-none py-3 text-base font-black ${
+            className={`h-auto w-full justify-center rounded-none py-3 text-base font-semibold ${
               mode === 'minus'
                 ? 'bg-rose-600 text-white'
                 : 'bg-surface-card text-text-muted'
@@ -316,7 +316,7 @@ export function BinStockNumpadSheet({
             variant="ghost"
             onClick={() => setMode('plus')}
             aria-pressed={mode === 'plus'}
-            className={`h-auto w-full justify-center rounded-none py-3 text-base font-black ${
+            className={`h-auto w-full justify-center rounded-none py-3 text-base font-semibold ${
               mode === 'plus'
                 ? 'bg-emerald-600 text-white'
                 : 'bg-surface-card text-text-muted'
@@ -332,7 +332,7 @@ export function BinStockNumpadSheet({
             <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">
               On hand
             </p>
-            <p className="mt-1 font-mono text-3xl font-black text-text-default">
+            <p className="mt-1 font-mono text-3xl font-semibold text-text-default">
               {row.qty}
             </p>
           </div>
@@ -341,7 +341,7 @@ export function BinStockNumpadSheet({
               Change
             </p>
             <p
-              className={`mt-1 font-mono text-3xl font-black ${
+              className={`mt-1 font-mono text-3xl font-semibold ${
                 mode === 'minus' ? 'text-rose-600' : 'text-emerald-600'
               }`}
             >
@@ -353,7 +353,7 @@ export function BinStockNumpadSheet({
             <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">
               After
             </p>
-            <p className="mt-1 font-mono text-3xl font-black text-text-default">
+            <p className="mt-1 font-mono text-3xl font-semibold text-text-default">
               {projected}
             </p>
           </div>
@@ -374,7 +374,7 @@ export function BinStockNumpadSheet({
               placeholder="Reason note (required)"
               value={noteDraft}
               onChange={(e) => setNoteDraft(e.target.value)}
-              className="w-full rounded-md border border-amber-300 bg-amber-50 px-2 py-1.5 text-role-caption font-bold text-text-default placeholder:font-medium placeholder:text-amber-700/70 focus:border-amber-500 focus:outline-none"
+              className="w-full rounded-md border border-amber-300 bg-amber-50 px-2 py-1.5 text-role-caption font-semibold text-text-default placeholder:font-medium placeholder:text-amber-700/70 focus:border-amber-500 focus:outline-none"
             />
           )}
           {reason?.requires_photo && (
@@ -383,7 +383,7 @@ export function BinStockNumpadSheet({
                 type="button"
                 variant="ghost"
                 onClick={() => setCameraOpen(true)}
-                className={`h-auto flex-1 justify-center rounded-md px-2 py-2 text-role-caption font-black uppercase tracking-widest ${
+                className={`h-auto flex-1 justify-center rounded-md px-2 py-2 text-role-caption font-semibold uppercase tracking-widest ${
                   pendingShots.length > 0
                     ? 'bg-emerald-600 text-white'
                     : 'border border-amber-400 bg-amber-100 text-amber-800'
@@ -408,7 +408,7 @@ export function BinStockNumpadSheet({
                     setPendingShots([]);
                   }}
                   ariaLabel="Discard photos"
-                  className="h-auto justify-center rounded-md border border-border-default bg-surface-card px-2 py-2 text-role-caption font-bold text-text-muted"
+                  className="h-auto justify-center rounded-md border border-border-default bg-surface-card px-2 py-2 text-role-caption font-semibold text-text-muted"
                 >
                   Clear
                 </Button>
@@ -434,7 +434,7 @@ export function BinStockNumpadSheet({
                 variant="ghost"
                 onClick={() => pressKey(key)}
                 ariaLabel={typeof key === 'string' ? key : `digit ${key}`}
-                className={`h-16 w-full justify-center rounded-lg text-3xl font-black ${
+                className={`h-16 w-full justify-center rounded-lg text-3xl font-semibold ${
                   isAction
                     ? 'bg-surface-strong text-text-muted'
                     : 'bg-surface-card border border-border-default text-text-default'
@@ -447,14 +447,14 @@ export function BinStockNumpadSheet({
         </div>
 
         {error && (
-          <p className="text-center text-sm font-bold text-rose-600">{error}</p>
+          <p className="text-center text-sm font-semibold text-rose-600">{error}</p>
         )}
       </main>
 
       {/* ── Confirmation flash ── */}
       {flash && (
         <div className="pointer-events-none fixed inset-x-0 bottom-24 z-panelOverlay flex justify-center">
-          <div className="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-4 py-2 text-sm font-black text-white shadow-lg">
+          <div className="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-lg">
             <Check className="h-4 w-4" />
             {flash}
           </div>
@@ -469,7 +469,7 @@ export function BinStockNumpadSheet({
           size="lg"
           onClick={confirm}
           disabled={busy || numericDraft <= 0}
-          className={`h-auto w-full justify-center rounded-lg py-4 text-lg font-black text-white shadow-md ${
+          className={`h-auto w-full justify-center rounded-lg py-4 text-lg font-semibold text-white shadow-md ${
             mode === 'minus'
               ? 'bg-rose-600 active:bg-rose-700'
               : 'bg-emerald-600 active:bg-emerald-700'
@@ -491,7 +491,7 @@ export function BinStockNumpadSheet({
               <p className="text-role-eyebrow uppercase tracking-[0.2em] text-white/60">
                 Evidence
               </p>
-              <p className="truncate text-sm font-black text-white">{row.sku}</p>
+              <p className="truncate text-sm font-semibold text-white">{row.sku}</p>
             </div>
           }
           onDone={(shots) => {

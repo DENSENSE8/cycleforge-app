@@ -91,10 +91,10 @@ export function AuditLogTechClient() {
   return (
     <section className="flex h-full min-h-0 w-full flex-col overflow-hidden bg-surface-canvas">
       <div className="border-b border-border-soft bg-surface-card px-6 py-4">
-        <p className="text-role-micro font-bold uppercase tracking-widest text-emerald-700">
+        <p className="text-role-micro uppercase tracking-widest text-emerald-700">
           Tech audit
         </p>
-        <h2 className="mt-0.5 break-all font-mono text-base font-bold text-text-default">
+        <h2 className="mt-0.5 break-all font-mono text-base font-semibold text-text-default">
           {detail.tracking}
         </h2>
         {detail.sku_summary && (

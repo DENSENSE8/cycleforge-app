@@ -65,7 +65,7 @@ export function OrderPipelineSection({ shipped }: { shipped: ShippedOrder }) {
       {/* Teaching callout — the operator's next action. Replaces the row of
           empty "PENDING …" stamps a fully-pending order used to show. The
           extra top padding keeps it clear of the stepper labels above. */}
-      <p className="pt-1 text-sm font-bold text-text-default">{nextStep}</p>
+      <p className="pt-1 text-sm font-semibold text-text-default">{nextStep}</p>
 
       {/* Milestone rows appear ONLY for stamped stages — an unstamped stage
           lives solely as a gray dot in the stepper above (progressive

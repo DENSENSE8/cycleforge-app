@@ -162,7 +162,7 @@ export function IncomingSyncDialog({
                     {s.rows.map((r) => (
                       <div key={r.k} className="flex items-baseline justify-between gap-2">
                         <dt className={`${fieldLabel} text-text-soft`}>{r.k}</dt>
-                        <dd className="text-sm font-bold tabular-nums text-text-default">{r.v}</dd>
+                        <dd className="text-sm font-semibold tabular-nums text-text-default">{r.v}</dd>
                       </div>
                     ))}
                   </dl>

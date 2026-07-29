@@ -67,7 +67,7 @@ export function RolePermissionsSection({
         </header>
         {PERMISSION_CATEGORIES.map((cat) => (
           <div key={cat.id} className="border-b border-border-hairline last:border-b-0">
-            <div className="bg-surface-canvas/60 px-5 py-2 text-role-micro font-bold uppercase tracking-widest text-text-soft">{cat.label}</div>
+            <div className="bg-surface-canvas/60 px-5 py-2 text-role-micro uppercase tracking-widest text-text-soft">{cat.label}</div>
             <ul className="divide-y divide-border-hairline">
               {cat.permissions.map((perm) => (
                 <PermissionToggle

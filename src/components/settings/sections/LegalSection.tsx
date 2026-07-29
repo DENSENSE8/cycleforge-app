@@ -36,7 +36,7 @@ export function LegalSection() {
   return (
     <div className="space-y-6">
       <header className="space-y-1">
-        <h2 className="text-xl font-bold text-text-default">Legal &amp; Policies</h2>
+        <h2 className="text-xl font-semibold text-text-default">Legal &amp; Policies</h2>
         <p className="text-sm text-text-muted">{LEGAL_INDEX_BLURB}</p>
       </header>
 

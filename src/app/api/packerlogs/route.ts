@@ -11,6 +11,7 @@ import { withAuth } from '@/lib/auth/withAuth';
 import { fetchPackerLogRows, type PackerLogsTrackingFilter } from '@/lib/neon/packer-logs-week';
 import { computePackerLogEnrichment } from '@/lib/neon/packer-log-enrichment';
 import { attachPhotoWithLegacyUrl } from '@/lib/photos/service';
+import { PACKER_BOX_LABEL_PHOTO_TYPE } from '@/lib/photos/types';
 import { withTenantTransaction } from '@/lib/tenancy/db';
 
 export const GET = withAuth(async (req: NextRequest, ctx) => {
@@ -115,7 +116,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
                         entityType: 'PACKER_LOG',
                         entityId: packerLogId,
                         legacyUrl: url,
-                        photoType: 'box_label',
+                        photoType: PACKER_BOX_LABEL_PHOTO_TYPE,
                         idempotent: true,
                     });
                 }

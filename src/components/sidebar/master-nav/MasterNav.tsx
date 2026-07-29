@@ -44,42 +44,33 @@ export function MasterNav({
   permissions,
   mobileRestricted = false,
   renderContext,
+  hasContext = false,
+  onOpenNav,
   onNavigate,
-  layout,
   className,
 }: {
   permissions?: ReadonlySet<string>;
   mobileRestricted?: boolean;
-  /** Fired after a page/mode pick (e.g. to close the mobile drawer). */
+  /** Fired after a page/mode pick (e.g. to close the slide-over). */
   onNavigate?: () => void;
-  /** The workspace body shown below the header when closed. */
+  /** The route's context panel — the spine's resting body when `hasContext`. */
   renderContext?: () => ReactNode;
-  /** Menu placement — see {@link MasterNavView}'s `layout`. */
-  layout?: 'floating' | 'docked';
+  /** Mounted as a route's resident column — see {@link MasterNavView}. */
+  hasContext?: boolean;
+  /** Open the page-list slide-over (wired from the resident column's band). */
+  onOpenNav?: () => void;
   className?: string;
 }) {
   const { pageId, modeId } = useActiveSidebarMode();
   const navigate = useSidebarModeNav();
   const { recents: recentModeRefs, pushRecent: pushRecentMode } = useRecentModes();
 
-  const [open, setOpen] = useState(false);
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
-
-  const closeMenu = useCallback(() => {
-    setOpen(false);
-    setExpandedKey(null);
-  }, []);
 
   // Pin page+mode for header jump chips (name-of-now stays the label).
   useEffect(() => {
     pushRecentMode(pageId, modeId);
   }, [pageId, modeId, pushRecentMode]);
-
-  // Close the menu whenever the route resolves to a new page/mode.
-  useEffect(() => {
-    setOpen(false);
-    setExpandedKey(null);
-  }, [pageId, modeId]);
 
   // Per-org nav override applied (Phase 4). Falls back to the static defaults
   // when no override is published — behavior is unchanged until an org opts in.
@@ -125,11 +116,22 @@ export function MasterNav({
 
   const otherPages = useMemo(() => pages, [pages]);
 
+  // Row keys are `${group kind}-${page id}` (see SidebarNavList.renderRow).
+  const activeRowKey = activePage ? `${activePage.kind ?? 'bottom'}-${activePage.id}` : null;
+
+  // The page you are ON opens with its modes already expanded, so revealing the
+  // sidebar shows where you are AND the sibling modes you can reach — one look,
+  // no click. Re-runs on page change only, so a manual expand elsewhere in the
+  // list survives until you navigate.
+  useEffect(() => {
+    setExpandedKey(activeRowKey);
+  }, [activeRowKey]);
+
   const handleNavigate = useCallback(
     (nextPageId: string, nextModeId?: string) => {
       navigate(nextPageId, nextModeId);
-      setOpen(false);
-      setExpandedKey(null);
+      // Expansion is owned by the active-page effect above — clearing it here
+      // would collapse the row a beat before the new route re-expands it.
       onNavigate?.();
     },
     [navigate, onNavigate],
@@ -199,8 +201,7 @@ export function MasterNav({
     <MasterNavView
       activePage={activePage}
       activeModeId={modeId}
-      open={open}
-      onOpen={() => setOpen(true)}
+      onOpen={() => onOpenNav?.()}
       pageModes={pageModes}
       recentModes={recentModes}
       otherPages={otherPages}
@@ -208,9 +209,8 @@ export function MasterNav({
       onToggleRow={setExpandedKey}
       onNavigate={handleNavigate}
       onRowHover={handleRowHover}
-      onRequestClose={closeMenu}
       renderContext={renderContext}
-      layout={layout}
+      hasContext={hasContext}
       className={className}
     />
   );

@@ -146,7 +146,7 @@ function CurrentGoalEntry({
             {row.name[0]}
           </div>
           <div className="min-w-0">
-            <p className="truncate text-role-caption font-bold text-text-default">{row.name}</p>
+            <p className="truncate text-role-caption font-semibold text-text-default">{row.name}</p>
             <p className="truncate text-role-eyebrow font-medium uppercase tracking-[0.12em] text-text-faint">
               {row.station}
             </p>

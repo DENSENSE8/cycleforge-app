@@ -45,7 +45,7 @@ export function GoalRing({
       </svg>
       <div className="absolute inset-0 flex items-center justify-center">
         <span
-          className="font-extrabold tabular-nums tracking-tight text-text-default"
+          className="font-semibold tabular-nums tracking-tight text-text-default"
           style={{ fontSize: Math.max(7, size * 0.3) }}
         >
           {clamped}

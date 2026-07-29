@@ -5,6 +5,7 @@
  * cycle). `PhotoLibraryPage` re-exports it for backwards compatibility.
  */
 import type { PhotoLibrarySourceScope } from '@/lib/photos/library-filter-state';
+import type { PhotoEvidenceStage } from '@/lib/photos/stages';
 
 /** A label chip carried on a library photo (subset of PhotoLabel for rendering). */
 export interface LibraryPhotoLabel {
@@ -16,7 +17,24 @@ export interface LibraryPhotoLabel {
   icon?: string | null;
 }
 
-export interface LibraryPhoto {
+/**
+ * PO-adjacent evidence identity resolved by the library query (display join
+ * only — no SKU dual-links are written). Carried on `LibraryPhoto` and threaded
+ * into the fullscreen viewer's context-panel meta so the panel can render
+ * SKU · serial · stage without a second fetch.
+ */
+export interface PhotoIdentityMeta {
+  /** Resolved SKU — receiving line first (item evidence), then serialized unit. */
+  sku?: string | null;
+  /** Serial of the directly linked unit (testing / packing captures). */
+  serialNumber?: string | null;
+  /** USAV-minted unit identity, when the linked unit carries one. */
+  unitUid?: string | null;
+  /** Evidence stage derived via `stageFromPhotoType` — label via `photoStageLabel`. */
+  stage?: PhotoEvidenceStage | null;
+}
+
+export interface LibraryPhoto extends PhotoIdentityMeta {
   id: number;
   /** `document` when this row is an outbound PDF/label (negative id = document table id). */
   kind?: 'photo' | 'document';

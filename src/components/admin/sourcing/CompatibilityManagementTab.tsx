@@ -76,7 +76,7 @@ export function CompatibilityManagementTab() {
   return (
     <div className="flex h-full flex-col overflow-y-auto p-6">
       <div className="mx-auto w-full max-w-4xl">
-        <h2 className="mb-4 text-lg font-bold text-text-default">
+        <h2 className="mb-4 text-lg font-semibold text-text-default">
           Compatibility edges <span className="text-text-faint">({rows.length})</span>
         </h2>
         <div className="overflow-hidden rounded-xl border border-border-soft bg-surface-card">

@@ -90,7 +90,6 @@ export function MobileReceivingRow({
   const poValue = (row.zoho_purchaseorder_number || row.zoho_purchaseorder_id || '').toString().trim();
   const trackingValue = (row.tracking_number || '').trim();
   const skuValue = (row.sku || '').trim();
-  const serialsCsv = (row.serials ?? []).map((s) => (s.serial_number || '').trim()).filter(Boolean).join(', ');
   const photoCount = row.photo_count ?? 0;
   const isExpanded = variant === 'expanded';
 
@@ -155,7 +154,10 @@ export function MobileReceivingRow({
         />
         <div className="ml-auto flex min-w-0 flex-1 items-center justify-end gap-1 overflow-hidden">
           <div className="min-w-0 overflow-hidden">
-            <ReceivingIdentityChips row={row} po={poValue} sku={skuValue} tracking={trackingValue} serialsCsv={serialsCsv} asColumns dense />
+            {/* Serial chip omitted — one comma-joined value for every unit on
+                the carton is unreadable on a phone row (same call as the unbox
+                feed + carton sheet). */}
+            <ReceivingIdentityChips row={row} po={poValue} sku={skuValue} tracking={trackingValue} includeSerial={false} asColumns dense />
           </div>
           {!isExpanded ? (
             <MobileRowPhotoActions

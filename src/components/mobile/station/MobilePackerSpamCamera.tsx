@@ -393,7 +393,7 @@ export function MobilePackerSpamCamera({
             <div className="h-16 w-16 rounded-full bg-glass/10 flex items-center justify-center mb-4">
               <Camera className="h-8 w-8 text-white/50" />
             </div>
-            <p className="text-sm font-bold text-white mb-1">Camera unavailable</p>
+            <p className="text-sm font-semibold text-white mb-1">Camera unavailable</p>
             <p className="text-xs text-white/50 mb-4 max-w-xs">
               {cameraError === 'permission-denied'
                 ? 'Enable camera access in your browser settings, then tap Try Again.'
@@ -403,7 +403,7 @@ export function MobilePackerSpamCamera({
               type="button"
               variant="primary"
               onClick={attemptStart}
-              className="h-11 px-5 rounded-xl text-role-caption font-black uppercase tracking-wider"
+              className="h-11 px-5 rounded-xl text-role-caption font-semibold uppercase tracking-wider"
             >
               Try Again
             </Button>
@@ -413,7 +413,7 @@ export function MobilePackerSpamCamera({
                 type="button"
                 variant="primary"
                 onClick={handleUseTestPhoto}
-                className="mt-3 h-11 px-5 rounded-xl bg-amber-500 text-black text-role-caption font-black uppercase tracking-wider hover:bg-amber-600 active:bg-amber-600"
+                className="mt-3 h-11 px-5 rounded-xl bg-amber-500 text-black text-role-caption font-semibold uppercase tracking-wider hover:bg-amber-600 active:bg-amber-600"
               >
                 Use Test Photo · Dev
               </Button>
@@ -444,7 +444,7 @@ export function MobilePackerSpamCamera({
                 <p className="text-role-micro uppercase tracking-[0.22em] text-white/60">
                   Add photos
                 </p>
-                <p className="text-sm font-black text-white">
+                <p className="text-sm font-semibold text-white">
                   {shots.length}/{maxPhotos}
                 </p>
               </>
@@ -462,14 +462,14 @@ export function MobilePackerSpamCamera({
 
       {/* ── Cap reached banner ── */}
       {atCap && cameraLive && (
-        <div className="absolute top-[max(4.5rem,calc(env(safe-area-inset-top)+3.5rem))] left-1/2 z-10 -translate-x-1/2 px-3 py-1.5 rounded-full bg-amber-500/95 text-xs font-black uppercase tracking-wider text-white shadow-lg">
+        <div className="absolute top-[max(4.5rem,calc(env(safe-area-inset-top)+3.5rem))] left-1/2 z-10 -translate-x-1/2 px-3 py-1.5 rounded-full bg-amber-500/95 text-xs font-semibold uppercase tracking-wider text-white shadow-lg">
           Max {maxPhotos} photos
         </div>
       )}
 
       {/* ── Quality-gate coaching (plan §2c) ── */}
       {gateHint && cameraLive && !atCap && (
-        <div className="absolute top-[max(4.5rem,calc(env(safe-area-inset-top)+3.5rem))] left-1/2 z-10 w-[min(92vw,22rem)] -translate-x-1/2 rounded-2xl bg-amber-500/95 px-3 py-2 text-center text-xs font-bold text-white shadow-lg">
+        <div className="absolute top-[max(4.5rem,calc(env(safe-area-inset-top)+3.5rem))] left-1/2 z-10 w-[min(92vw,22rem)] -translate-x-1/2 rounded-2xl bg-amber-500/95 px-3 py-2 text-center text-xs font-semibold text-white shadow-lg">
           {gateHint}
         </div>
       )}

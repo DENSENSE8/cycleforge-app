@@ -112,7 +112,7 @@ export function ExpandableComposerField({
         aria-label={expandTitle}
       >
         <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border-hairline px-4 py-3">
-          <h2 className="text-sm font-bold text-text-default">{expandTitle}</h2>
+          <h2 className="text-sm font-semibold text-text-default">{expandTitle}</h2>
           <IconButton
             type="button"
             onClick={() => setExpanded(false)}

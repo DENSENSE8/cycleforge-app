@@ -353,14 +353,14 @@ const VERDICT_BADGE: Record<TestingVerdict, { label: string; tone: string }> = {
 function VerdictBadge({ verdict }: { verdict: TestingVerdict | null }) {
   if (!verdict) {
     return (
-      <span className="text-role-micro font-bold uppercase tracking-widest text-text-faint">
+      <span className="text-role-micro uppercase tracking-widest text-text-faint">
         untested
       </span>
     );
   }
   const { label, tone } = VERDICT_BADGE[verdict];
   return (
-    <span className={`text-role-micro font-bold uppercase tracking-widest ${tone}`}>
+    <span className={`text-role-micro uppercase tracking-widest ${tone}`}>
       {label}
     </span>
   );

@@ -158,7 +158,7 @@ export function StaffScheduleSidebarPanel() {
                 }
                 leading={
                   <div
-                    className="flex h-8 w-8 items-center justify-center rounded-full text-role-caption font-bold text-white"
+                    className="flex h-8 w-8 items-center justify-center rounded-full text-role-caption font-semibold text-white"
                     style={{ backgroundColor: getStaffColorHex(row) }}
                   >
                     {initials(row.name)}

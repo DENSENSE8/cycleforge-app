@@ -64,7 +64,7 @@ function ReportsPageInner() {
                 type="button"
                 onClick={() => setTab(t.id)}
                 aria-pressed={tab === t.id}
-                className={`rounded-md px-3 py-1.5 text-xs font-bold ${
+                className={`rounded-md px-3 py-1.5 text-xs font-semibold ${
                   tab === t.id
                     ? 'bg-surface-inverse text-white'
                     : 'border border-border-default bg-surface-card text-text-muted'
@@ -84,7 +84,7 @@ function ReportsPageInner() {
           </div>
         )}
         {error && (
-          <p className="px-3 py-6 text-center text-sm font-bold text-rose-600">{error}</p>
+          <p className="px-3 py-6 text-center text-sm font-semibold text-rose-600">{error}</p>
         )}
         {!loading && !error && rows.length === 0 && (
           <p className="px-3 py-10 text-center text-sm font-semibold text-text-soft">
@@ -116,7 +116,7 @@ function ReportTable({ tab, rows }: { tab: Tab; rows: Array<Record<string, unkno
         <tbody>
           {rows.map((r, i) => (
             <tr key={String(r.bin_id)} className={i % 2 ? 'bg-surface-canvas/40' : ''}>
-              <td className="px-3 py-1.5 font-mono font-bold">
+              <td className="px-3 py-1.5 font-mono font-semibold">
                 {String(r.barcode ?? r.bin_name ?? '')}
               </td>
               <td className="px-3 py-1.5 text-text-muted">{String(r.room ?? '—')}</td>
@@ -125,7 +125,7 @@ function ReportTable({ tab, rows }: { tab: Tab; rows: Array<Record<string, unkno
                   ? `${(Number(r.fill_ratio) * 100).toFixed(0)}%`
                   : '—'}
               </td>
-              <td className="px-3 py-1.5 text-right font-mono font-black">{Number(r.in_bin)}</td>
+              <td className="px-3 py-1.5 text-right font-mono font-semibold">{Number(r.in_bin)}</td>
               <td className="px-3 py-1.5 text-right font-mono text-text-muted">
                 {r.capacity != null ? Number(r.capacity) : '—'}
               </td>
@@ -154,12 +154,12 @@ function ReportTable({ tab, rows }: { tab: Tab; rows: Array<Record<string, unkno
         <tbody>
           {rows.map((r, i) => (
             <tr key={String(r.sku)} className={i % 2 ? 'bg-surface-canvas/40' : ''}>
-              <td className="px-3 py-1.5 font-black">{String(r.velocity_tier)}</td>
-              <td className="px-3 py-1.5 font-mono font-bold">{String(r.sku)}</td>
+              <td className="px-3 py-1.5 font-semibold">{String(r.velocity_tier)}</td>
+              <td className="px-3 py-1.5 font-mono font-semibold">{String(r.sku)}</td>
               <td className="px-3 py-1.5 text-text-muted truncate max-w-md">
                 {String(r.product_title ?? '—')}
               </td>
-              <td className="px-3 py-1.5 text-right font-mono font-black text-rose-600">
+              <td className="px-3 py-1.5 text-right font-mono font-semibold text-rose-600">
                 {Number(r.out_qty)}
               </td>
               <td className="px-3 py-1.5 text-right font-mono text-emerald-600">
@@ -187,11 +187,11 @@ function ReportTable({ tab, rows }: { tab: Tab; rows: Array<Record<string, unkno
       <tbody>
         {rows.map((r, i) => (
           <tr key={String(r.sku)} className={i % 2 ? 'bg-surface-canvas/40' : ''}>
-            <td className="px-3 py-1.5 font-mono font-bold">{String(r.sku)}</td>
+            <td className="px-3 py-1.5 font-mono font-semibold">{String(r.sku)}</td>
             <td className="px-3 py-1.5 text-text-muted truncate max-w-md">
               {String(r.product_title ?? '—')}
             </td>
-            <td className="px-3 py-1.5 text-right font-mono font-black">{Number(r.stock)}</td>
+            <td className="px-3 py-1.5 text-right font-mono font-semibold">{Number(r.stock)}</td>
             <td className="px-3 py-1.5 text-right font-mono text-rose-600">
               {Number(r.days_dormant)}
             </td>

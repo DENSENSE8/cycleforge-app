@@ -28,6 +28,10 @@ import { Button, IconButton } from '@/design-system/primitives';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { TimelineSection } from '@/components/ui/TimelineSection';
 import { mergeJourney, countRoundTrips } from '@/lib/timeline/journey';
+import {
+  mergeJourneyWithUnitPhotos,
+  unitTimelinePhotosQuery,
+} from '@/lib/timeline/journey-photos';
 import { operationsJourneyFocusedQuery } from '@/lib/queries/operations-journey-queries';
 import {
   buildSerialJourneyHref,
@@ -36,9 +40,25 @@ import {
   serialJourneyFilters,
 } from '@/lib/serial/serial-journey';
 
+/** Compact density = collapsed per-stage thumbs, not full galleries. */
+const COMPACT_PHOTO_MEDIA_LIMIT = 4;
+
 export interface SerialJourneySectionProps {
   /** The serial number to render the journey for. Empty ⇒ a quiet "no serial" state. */
   serialNumber: string;
+  /**
+   * Known `serial_units.id` — skips the resolve step for the photo spine. When
+   * omitted, the id is resolved from the journey response's entity summary
+   * (`entity.serialUnitIds`) at zero extra request cost.
+   */
+  serialUnitId?: number | null;
+  /**
+   * Merge the unit's stage photo rows (arrival / unbox / testing / packing)
+   * into the journey (default true). Set false when a dedicated photo timeline
+   * (`SerialUnitTimelineSection`) is mounted beside this journey on the same
+   * pane — one mount owns media.
+   */
+  withPhotos?: boolean;
   title?: string;
   density?: 'comfortable' | 'compact';
   /** Show the deep link to the full-page Operations ▸ History journey (default true). */
@@ -73,6 +93,8 @@ function HeaderAction({
 
 export function SerialJourneySection({
   serialNumber,
+  serialUnitId,
+  withPhotos = true,
   title = 'Item Journey',
   density = 'comfortable',
   linkToFull = true,
@@ -88,7 +110,27 @@ export function SerialJourneySection({
   });
 
   const events = query.data?.events ?? [];
-  const { items } = useMemo(() => mergeJourney(events), [events]);
+  const { items: journeyItems } = useMemo(() => mergeJourney(events), [events]);
+
+  // Photo spine — the unit's stage photo rows, merged at their stage
+  // timestamps. Unit id comes from the prop or the journey's entity summary;
+  // passing null keeps the query disabled (unknown unit / withPhotos off).
+  const resolvedUnitId =
+    serialUnitId ?? query.data?.entity?.serialUnitIds?.[0] ?? null;
+  const photosQuery = useQuery(
+    unitTimelinePhotosQuery(withPhotos ? resolvedUnitId : null),
+  );
+
+  // Degrade-not-fail: a failed/absent photo fetch renders events-only.
+  const items = useMemo(
+    () =>
+      mergeJourneyWithUnitPhotos(
+        journeyItems,
+        photosQuery.data?.photos,
+        density === 'compact' ? { mediaLimit: COMPACT_PHOTO_MEDIA_LIMIT } : undefined,
+      ),
+    [journeyItems, photosQuery.data?.photos, density],
+  );
 
   const count = items.length;
   const loading = serial.length > 0 && query.isLoading;
@@ -105,7 +147,7 @@ export function SerialJourneySection({
     return (
       <section className={className ?? 'mx-8 mt-2 border-t border-border-hairline pt-4 pb-8'}>
         <header className="mb-3">
-          <h3 className="text-role-eyebrow font-bold uppercase tracking-[0.14em] text-text-faint">{title}</h3>
+          <h3 className="text-role-eyebrow uppercase tracking-[0.14em] text-text-faint">{title}</h3>
         </header>
         <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50 px-4 py-6 text-center text-role-caption font-semibold text-rose-600">
           Could not load this serial&rsquo;s journey.

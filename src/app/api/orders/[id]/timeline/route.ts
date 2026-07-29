@@ -2,16 +2,31 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireRoutePerm } from '@/lib/auth/dynamic-route-guard';
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import { readInventorySpine } from '@/lib/audit-log/inventory-spine';
+import {
+  listUnitTimelinePhotos,
+  type UnitTimelinePhoto,
+} from '@/lib/photos/queries/unit-timeline-photos';
 
 /**
  * GET /api/orders/[id]/timeline — the order's event trail, newest first.
  * Feeds the shared `EventTimeline` in the order details panel.
  *
- * Two spines, merged client-side in `OrderTimelineSection`:
+ * Spines, merged client-side in `OrderTimelineSection`:
  *   • `events`    — order-anchored `audit_logs` (tracking added, label printed,
  *                   packed, shipped, edits…). Matches `lower(entity_type)='order'`
  *                   since callers historically wrote the uppercase 'ORDER' literal
  *                   while AUDIT_ENTITY.ORDER is 'order'.
+ *                   `before_data` ships ONLY to `admin.view_logs` holders — the
+ *                   client's `diffChanges` needs BOTH snapshots, so withholding
+ *                   `before` is what suppresses the field-level diff for everyone
+ *                   else while still showing that an edit happened.
+ *   • `carrier`   — `shipment_tracking_events` for the order's shipment (Week 2).
+ *                   The physical scan trail: accepted → in transit → out for
+ *                   delivery → delivered/exception. Previously the record showed
+ *                   only a single latest-status badge and none of the history.
+ *   • `rma`       — `rma_authorizations` for this order: authorized / received /
+ *                   dispositioned / closed. FK'd to `orders(id)` since 2026-05-23
+ *                   and read by nothing until now.
  *   • `lifecycle` — the tech VERDICT, which is unit-anchored (not order-anchored),
  *                   so it never lands in the order's audit feed. We resolve the
  *                   order's allocated serial units → their `inventory_events`
@@ -23,9 +38,17 @@ import { readInventorySpine } from '@/lib/audit-log/inventory-spine';
  *                   SAL. We pull TECH-station rows (the "tech scan" the panel was
  *                   missing) + OUTBOUND ship-out, excluding PACK (audit owns it,
  *                   avoiding a duplicate "Packed").
+ *   • `unitPhotos` — the five-stage photo evidence rows (arrival / unbox carton /
+ *                   unbox item / testing / packing — `UnitTimelinePhotoSource`)
+ *                   for the order's allocated serial units, each row carrying
+ *                   the unit's serial for client-side serial grouping. A failed
+ *                   photo sub-fetch degrades to [] — it never 500s the timeline.
  *
  * Read-only; gated by `orders.view`.
  */
+
+/** Photo-spine fan-out cap: enough for every real order, bounded for bulk ones. */
+const PHOTO_SPINE_UNIT_CAP = 20;
 
 function parseId(raw: string): number | null {
   const id = Number(raw);
@@ -53,6 +76,10 @@ export async function GET(
     // inventory_events via a guessed order id. We 404 (not 403) so we don't
     // reveal that an order with that id exists in another tenant.
     const orgId = gate.ctx.organizationId;
+    // Field-level audit diffs are admin-only (Operations History §3.2 Option B).
+    // We select `before_data` conditionally rather than nulling it after the
+    // fact so a non-admin's snapshot never enters this process's memory.
+    const canViewAudit = gate.ctx.permissions.has('admin.view_logs');
     const txResult = await withTenantTransaction(orgId, async (client) => {
       const owner = await client.query<{ organization_id: string | null; shipment_id: number | null }>(
         `SELECT organization_id, shipment_id FROM orders WHERE id = $1 AND organization_id = $2`,
@@ -73,7 +100,9 @@ export async function GET(
       // PACK_COMPLETED, avoiding a duplicate "Packed").
       const [result, alloc, stationEvents] = await Promise.all([
         client.query(
-          `SELECT al.id, al.created_at, al.action, al.after_data, al.metadata, s.name AS actor_name
+          `SELECT al.id, al.created_at, al.action, al.after_data, al.metadata,
+                  ${canViewAudit ? 'al.before_data' : 'NULL::jsonb AS before_data'},
+                  s.name AS actor_name
              FROM audit_logs al
              LEFT JOIN staff s ON s.id = al.actor_staff_id
             WHERE lower(al.entity_type) = 'order' AND al.entity_id = $1
@@ -123,13 +152,13 @@ export async function GET(
           : Promise.resolve({ rows: [] as any[] }),
       ]);
 
-      return { notFound: false as const, result, alloc, stationEvents };
+      return { notFound: false as const, result, alloc, stationEvents, shipmentId };
     });
 
     if (txResult.notFound) {
       return NextResponse.json({ error: 'Order not found' }, { status: 404 });
     }
-    const { result, alloc, stationEvents } = txResult;
+    const { result, alloc, stationEvents, shipmentId } = txResult;
 
     // TEST_* spine needs the resolved unit ids from the allocation query above,
     // so it runs after that group resolves. Degrades to [] for orders with no
@@ -153,6 +182,24 @@ export async function GET(
           orgId,
         )
       : [];
+
+    // Photo evidence spine — the stage photo buckets per allocated unit, flat
+    // (each row carries the unit's serial from the query's serial_units join,
+    // so the client groups by serial without a second lookup). Capped fan-out;
+    // degrade-not-fail: a photo failure never takes down the timeline.
+    let unitPhotos: UnitTimelinePhoto[] = [];
+    if (serialUnitIds.length > 0) {
+      try {
+        const lists = await Promise.all(
+          serialUnitIds
+            .slice(0, PHOTO_SPINE_UNIT_CAP)
+            .map((unitId) => listUnitTimelinePhotos(orgId, unitId)),
+        );
+        unitPhotos = lists.flat();
+      } catch (photoErr: any) {
+        console.warn('[GET /api/orders/[id]/timeline] photo spine degraded:', photoErr?.message);
+      }
+    }
 
     // Thread spine — entity-anchored conversation messages (THREAD_MESSAGE) for
     // this order surface as read rows on the merged history (D4). Guarded: the
@@ -186,7 +233,66 @@ export async function GET(
       }
     }
 
-    return NextResponse.json({ success: true, events: result.rows, lifecycle, stationEvents: stationEvents.rows, threadMessages });
+    // Carrier spine — the shipment's physical scan trail. `shipment_tracking_events`
+    // is GLOBAL by design (no organization_id; a tracking number is carrier-global),
+    // so tenant isolation rides on `shipmentId`, which came from the org-checked
+    // order row above — never from the request. Degrades to [] on its own.
+    let carrierEvents: any[] = [];
+    if (shipmentId != null) {
+      try {
+        const carrier = await withTenantTransaction(orgId, (client) =>
+          client.query(
+            `SELECT id, event_occurred_at, normalized_status_category,
+                    external_status_label, external_status_description,
+                    event_city, event_state, exception_description, signed_by
+               FROM shipment_tracking_events
+              WHERE shipment_id = $1
+              ORDER BY event_occurred_at DESC NULLS LAST, id DESC
+              LIMIT 200`,
+            [shipmentId],
+          ),
+        );
+        carrierEvents = carrier.rows;
+      } catch (carrierErr: any) {
+        console.warn('[GET /api/orders/[id]/timeline] carrier spine degraded:', carrierErr?.message);
+      }
+    }
+
+    // RMA spine — returns/RTV authorized against this order. Org-scoped
+    // (`rma_authorizations` is NOT NULL + FORCE RLS since 2026-06-22g).
+    let rmaEvents: any[] = [];
+    try {
+      const rma = await withTenantTransaction(orgId, (client) =>
+        client.query(
+          `SELECT r.id, r.rma_number, r.direction, r.status,
+                  r.authorized_at, r.closed_at, r.expected_carrier, r.notes,
+                  s.name AS actor_name
+             FROM rma_authorizations r
+             LEFT JOIN staff s ON s.id = r.created_by_staff_id
+            WHERE r.order_id = $1
+              AND r.organization_id = $2
+            ORDER BY r.authorized_at DESC
+            LIMIT 50`,
+          [id, orgId],
+        ),
+      );
+      rmaEvents = rma.rows;
+    } catch (rmaErr: any) {
+      if (rmaErr?.code !== '42P01') {
+        console.warn('[GET /api/orders/[id]/timeline] rma spine degraded:', rmaErr?.message);
+      }
+    }
+
+    return NextResponse.json({
+      success: true,
+      events: result.rows,
+      lifecycle,
+      stationEvents: stationEvents.rows,
+      threadMessages,
+      carrierEvents,
+      rmaEvents,
+      unitPhotos,
+    });
   } catch (error: any) {
     console.error('[GET /api/orders/[id]/timeline] error:', error);
     return NextResponse.json(

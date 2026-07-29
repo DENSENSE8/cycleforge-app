@@ -24,11 +24,22 @@ describe('compareQueueColumnRows', () => {
     assert.ok(compareQueueColumnRows(a, b, 'title', 'desc') > 0);
   });
 
-  it('sorts ship-by date ascending', () => {
+  it('sorts the fused ship-by column ascending = most overdue first', () => {
     const sooner = row({ id: 1, deadline_at: '2026-07-01T00:00:00.000Z' });
     const later = row({ id: 2, deadline_at: '2026-07-10T00:00:00.000Z' });
-    assert.ok(compareQueueColumnRows(sooner, later, 'date', 'asc') < 0);
-    assert.ok(compareQueueColumnRows(sooner, later, 'date', 'desc') > 0);
+    // ASC (the column default) leads with the earlier commitment, which is by
+    // definition the more overdue row — no direction flip needed for urgency.
+    assert.ok(compareQueueColumnRows(sooner, later, 'sla', 'asc') < 0);
+    assert.ok(compareQueueColumnRows(sooner, later, 'sla', 'desc') > 0);
+  });
+
+  it('sorts deadline-less rows by the same created_at fallback the cell shows', () => {
+    // The cell falls back to created_at when there is no deadline, so the sort
+    // must use that same instant — otherwise the column orders by a value the
+    // operator cannot see.
+    const sooner = row({ id: 1, deadline_at: null, created_at: '2026-07-01T00:00:00.000Z' });
+    const later = row({ id: 2, deadline_at: null, created_at: '2026-07-10T00:00:00.000Z' });
+    assert.ok(compareQueueColumnRows(sooner, later, 'sla', 'asc') < 0);
   });
 
   it('sorts qty numerically', () => {

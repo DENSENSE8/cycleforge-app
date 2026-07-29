@@ -55,7 +55,7 @@ function TaskRowItem({ task }: { task: TaskRow }) {
       <div className="min-w-0 flex-1">
         <p
           className={cn(
-            'truncate text-role-caption font-bold',
+            'truncate text-role-caption font-semibold',
             canceled ? 'text-text-faint line-through' : done ? 'text-text-muted' : 'text-text-default',
           )}
         >
@@ -87,7 +87,7 @@ function PhaseSection({ phase }: { phase: PhaseWithTasks }) {
           {phase.station}
         </span>
         <ProgressBar percent={pct} className="w-24" />
-        <span className="text-role-micro font-bold tabular-nums text-text-soft">{Math.round(pct)}%</span>
+        <span className="text-role-micro tabular-nums text-text-soft">{Math.round(pct)}%</span>
       </div>
       <ul className="divide-y divide-border-hairline">
         {phase.tasks.map((t) => (
@@ -193,7 +193,7 @@ export function OperationsPlansView() {
               <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-surface-sunken">
                 <ClipboardList className="h-6 w-6 text-text-faint" />
               </span>
-              <p className="mt-4 text-role-caption font-bold text-text-default">Select a plan from the sidebar</p>
+              <p className="mt-4 text-role-caption font-semibold text-text-default">Select a plan from the sidebar</p>
               <p className="mx-auto mt-1 max-w-sm text-role-caption text-text-muted">
                 Plans track phased work across stations. The agentic-loop master plan syncs here automatically —
                 open it and switch to Live for the shared MDX and plan agent.
@@ -242,7 +242,7 @@ export function OperationsPlansView() {
                 {!showLive && (
                   <div className="flex items-center gap-3">
                     <ProgressBar percent={data.plan.progress?.percentComplete ?? 0} className="flex-1" />
-                    <span className="text-role-caption font-bold tabular-nums text-text-muted">
+                    <span className="text-role-caption font-semibold tabular-nums text-text-muted">
                       {data.plan.progress ? `${data.plan.progress.doneTasks}/${data.plan.progress.totalTasks}` : '—'}
                     </span>
                   </div>

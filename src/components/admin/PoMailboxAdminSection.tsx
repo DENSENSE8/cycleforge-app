@@ -59,7 +59,7 @@ function SubTab({ active, onClick, children }: { active: boolean; onClick: () =>
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className={`rounded-md px-3 py-1.5 text-sm font-bold transition-colors ${
+      className={`rounded-md px-3 py-1.5 text-sm font-semibold transition-colors ${
         active ? 'bg-surface-inverse text-white' : 'text-text-muted hover:bg-surface-sunken'
       }`}
     >

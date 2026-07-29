@@ -15,9 +15,10 @@
 
 import type { ReactNode } from 'react';
 import * as Popover from '@radix-ui/react-popover';
-import { Check, Filter } from '@/components/Icons';
+import { Filter } from '@/components/Icons';
 import { ToolbarButton } from '@/components/ui/ToolbarButton';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { ToolbarListboxOption } from '@/design-system/primitives';
 import { cn } from '@/utils/_cn';
 
 export function WorkbenchFilterPopover({
@@ -60,7 +61,9 @@ export function WorkbenchFilterPopover({
           align="end"
           sideOffset={6}
           className={cn(
-            'z-dropdown overflow-hidden rounded-lg border border-border-soft bg-surface-card p-1 shadow-lg ring-1 ring-black/5 focus:outline-none',
+            // Panel chrome matches the house `Popover` the sibling toolbar
+            // dropdowns use (p-0.5 + shadow-md), so the three read as one menu.
+            'z-dropdown overflow-hidden rounded-lg border border-border-soft bg-surface-card p-0.5 shadow-md ring-1 ring-black/5 focus:outline-none',
             contentClassName ?? 'w-56',
           )}
         >
@@ -74,7 +77,8 @@ export function WorkbenchFilterPopover({
 /** Section eyebrow inside a {@link WorkbenchFilterPopover}. */
 export function WorkbenchFilterGroupLabel({ children }: { children: ReactNode }) {
   return (
-    <p className="px-2 pb-1 pt-1.5 text-role-eyebrow uppercase tracking-widest text-text-faint">
+    // px-2.5 aligns the eyebrow with the row label gutter below it.
+    <p className="px-2.5 pb-1 pt-1.5 text-role-eyebrow uppercase tracking-widest text-text-faint">
       {children}
     </p>
   );
@@ -85,6 +89,13 @@ export function WorkbenchFilterDivider() {
   return <div className="my-1 h-px bg-surface-sunken" />;
 }
 
+/**
+ * One filter row. Composes {@link ToolbarListboxOption} — the same anatomy as
+ * `QueueSortSwitch` / `GridFieldsMenu`, so all three trailing-cluster dropdowns
+ * read as one control: an active row is a **leading blue check**, never a
+ * `bg-surface-accent` fill. The status dot moves in beside the label; count and
+ * shortcut ride the trailing slot.
+ */
 export function WorkbenchFilterMenuRow({
   label,
   count,
@@ -101,28 +112,30 @@ export function WorkbenchFilterMenuRow({
   shortcut?: string;
 }) {
   return (
-    <button
-      type="button"
+    <ToolbarListboxOption
+      // A filter is independently on/off, not one choice among a listbox.
+      semantics="toggle"
+      selected={active}
       onClick={onClick}
-      aria-pressed={active}
-      className={cn(
-        'ds-raw-button flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-role-caption font-semibold transition-colors',
-        active ? 'bg-surface-accent text-text-accent' : 'text-text-muted hover:bg-surface-hover',
-      )}
+      leading={leading ?? <span className="w-2 shrink-0" aria-hidden />}
+      trailing={
+        count === undefined && !shortcut ? null : (
+          <span className="flex shrink-0 items-center gap-2">
+            {typeof count === 'number' ? (
+              <span className={cn('tabular-nums', active ? 'text-text-soft' : 'text-text-faint')}>
+                {count > 99 ? '99+' : count}
+              </span>
+            ) : null}
+            {shortcut ? (
+              <kbd className="hidden rounded bg-surface-sunken px-1 text-role-micro text-text-faint sm:inline">
+                {shortcut}
+              </kbd>
+            ) : null}
+          </span>
+        )
+      }
     >
-      {leading ?? <span className="w-2 shrink-0" aria-hidden />}
-      <span className="min-w-0 flex-1 truncate">{label}</span>
-      {typeof count === 'number' ? (
-        <span className={cn('tabular-nums', active ? 'text-text-accent/80' : 'text-text-faint')}>
-          {count > 99 ? '99+' : count}
-        </span>
-      ) : null}
-      {shortcut ? (
-        <kbd className="hidden rounded bg-surface-sunken px-1 text-role-micro font-bold text-text-faint sm:inline">
-          {shortcut}
-        </kbd>
-      ) : null}
-      {active ? <Check className="h-3.5 w-3.5 shrink-0" /> : <span className="w-3.5 shrink-0" aria-hidden />}
-    </button>
+      {label}
+    </ToolbarListboxOption>
   );
 }

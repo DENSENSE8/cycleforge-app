@@ -171,7 +171,7 @@ export function SidebarRailShell<TRow>(props: SidebarRailShellProps<TRow>) {
                   // title — which made the suffixed rail (Unfound) ~2px taller than
                   // the action-button rail (Found). Tight leading lets the title
                   // govern the row height so both eyebrows align.
-                  <p className="text-[8.5px] font-bold uppercase leading-none tracking-widest text-text-faint">{eyebrowSuffix}</p>
+                  <p className="text-[8.5px] font-semibold uppercase leading-none tracking-widest text-text-faint">{eyebrowSuffix}</p>
                 )}
             {editMode.enabled ? (
               <RailEditPencil active={editMode.active} onToggle={editMode.toggleActive} />

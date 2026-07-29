@@ -62,7 +62,7 @@ export function FolderButton({
         <FolderIcon className="h-4 w-4" />
       </div>
       <div className="pointer-events-none relative min-w-0 flex-1">
-        <p className="truncate text-role-caption font-black text-text-default">
+        <p className="truncate text-role-caption font-semibold text-text-default">
           {highlight ? <HighlightedText text={highlight.label} indices={highlight.indices} /> : node.name}
         </p>
         <p className="mt-0.5 text-role-micro font-semibold text-text-soft">

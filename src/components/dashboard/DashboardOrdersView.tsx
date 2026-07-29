@@ -53,6 +53,9 @@ interface DashboardOrdersViewProps {
   selectionActions: SelectionAction<DashSelectableRow>[];
   /** Modal surfaces the bulk actions open (assignment carousel, ship-by picker). */
   selectionOverlays?: ReactNode;
+  /** The pinned capsule is on screen — the bounded table host reserves its
+   *  height so the last row is not stranded underneath it. */
+  bulkBarVisible?: boolean;
 }
 
 export function DashboardOrdersView({
@@ -63,6 +66,7 @@ export function DashboardOrdersView({
   selectedRows,
   selectionActions,
   selectionOverlays,
+  bulkBarVisible = false,
 }: DashboardOrdersViewProps) {
   const showOutboundChrome =
     isPrePackOrderView(orderView) || orderView === 'packed' || orderView === 'shipped';
@@ -108,11 +112,13 @@ export function DashboardOrdersView({
             {orderView === 'shipped' ? (
               <DashboardShippedTable
                 selectMode={selectMode}
+                bulkBarInset={bulkBarVisible}
                 toolbarPortalTarget={outboundControlsEl}
               />
             ) : orderView === 'packed' ? (
               <PackedOrdersTable
                 selectMode={selectMode}
+                bulkBarInset={bulkBarVisible}
                 toolbarPortalTarget={outboundControlsEl}
               />
             ) : orderView === 'fba' ? (
@@ -121,6 +127,7 @@ export function DashboardOrdersView({
               <UnshippedTable
                 strictSearchScope
                 selectMode={selectMode}
+                bulkBarInset={bulkBarVisible}
                 toolbarPortalTarget={outboundControlsEl}
                 fulfillmentLane={orderView === 'tested' ? 'tested' : 'pending'}
               />

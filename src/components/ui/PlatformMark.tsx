@@ -17,7 +17,7 @@ import { PLATFORM_BRAND_ICON_VIEWBOX } from '@/lib/platform-brand-icons';
 
 /** Shared transparent footprint — icon / lettermark all center here. */
 const MARK_BOX =
-  'inline-flex h-5 w-5 shrink-0 items-center justify-center text-role-micro font-black uppercase leading-none tracking-tight';
+  'inline-flex h-5 w-5 shrink-0 items-center justify-center text-role-micro uppercase leading-none tracking-tight';
 
 /** Inner mark footprint — ~16px so bare icons stay scannable without tile pad. */
 const MARK_INNER = 'h-4 w-4 shrink-0';

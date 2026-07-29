@@ -1,7 +1,14 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { toast } from '@/lib/toast';
+import { receivingPhotosQueryKey } from '@/lib/queries/receiving-queries';
+import {
+  deriveReceivingPhotoStageCounts,
+  evaluateReceivingPhotoPolicy,
+} from '@/lib/receiving/photo-policy';
+import type { ReceivingPhotoPolicy } from '@/lib/settings/accessors';
 import {
   printReceivingLabel,
   markReceivingLabelPrinted,
@@ -521,6 +528,17 @@ export function useUnboxLineController(
 
   const canPrintReview = labelOptions.length > 0;
   const canReceiveReview = row.receiving_id != null;
+  // Fully received ⇔ the line reached DONE. `received_done_at` is stamped by a
+  // DB trigger on that transition, so EVERY write path gets it for free — this
+  // bench, mark-received-po, the phone, and the Zoho-received reconcile — and
+  // none of them can drift.
+  //
+  // Deliberately NOT `workflow_status === 'UNBOXED'`: that state is ambiguous.
+  // `/api/receiving/match` advances a merely-linked line to UNBOXED, and a
+  // failed Zoho receive parks a line there ("inventory committed, Zoho
+  // pending"). Both must keep the Receive CTA — the first was never received,
+  // the second needs a retry.
+  const isReceived = Boolean((row.received_done_at || '').trim());
   // Zoho receive is only valid for matched cartons; unfound stays local-only.
   const canZohoReceive = canReceiveReview && !isUnfound;
   // Optional org gate: Receive stays blocked until the operator captures a serial
@@ -534,22 +552,101 @@ export function useUnboxLineController(
     );
   const serialWaived = serialAbsent && Boolean(serialAbsentReason);
   const serialConfirmed = !requireSerialConfirmation || hasCapturedSerial || serialWaived;
-  const combinedReviewDisabled = !canReceiveReview || !canPrintReview || !serialConfirmed;
+  // Org photo policy (`receiving.photoPolicy`, WS-PHOTO Plan 5) — same
+  // settings-page cache as the serial gate above, so reading it costs no extra
+  // request. Unknown/loading values degrade to 'optional' (never block on a
+  // setting we can't see; the server gate is the backstop).
+  const photoPolicyRaw = useSetting<ReceivingPhotoPolicy>('receiving', 'receiving.photoPolicy').value;
+  const photoPolicy: ReceivingPhotoPolicy =
+    photoPolicyRaw === 'require_one' || photoPolicyRaw === 'require_per_item'
+      ? photoPolicyRaw
+      : 'optional';
+  // Preflight evidence = the carton photo list the entity-header photo pill
+  // already keeps warm (same queryKey → same cache entry; rows carry
+  // receivingLineId + caption = photo_type). Enabled only when the policy can
+  // actually block, so the 'optional' default adds zero fetches.
+  const photoPolicyQueryEnabled =
+    photoPolicy !== 'optional' && row.receiving_id != null && row.receiving_id > 0;
+  const { data: photoPolicyPhotos } = useQuery<{
+    photos?: Array<{ id: number; receivingLineId: number | null; caption: string | null }>;
+  }>({
+    queryKey: receivingPhotosQueryKey(row.receiving_id ?? -1),
+    queryFn: async () => {
+      const res = await fetch(`/api/receiving-photos?receivingId=${row.receiving_id}`, {
+        cache: 'no-store',
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.json();
+    },
+    enabled: photoPolicyQueryEnabled,
+    staleTime: 10_000,
+  });
+  // Stage-bucketed counts from the shared derivation (the client twin of the
+  // server gate's SQL assembly) — null while the policy is optional or the
+  // photo list hasn't loaded, so readiness chrome can tell "0" from "unknown".
+  const photoStageCounts = useMemo(
+    () =>
+      photoPolicyQueryEnabled && photoPolicyPhotos?.photos
+        ? deriveReceivingPhotoStageCounts(photoPolicyPhotos.photos)
+        : null,
+    [photoPolicyQueryEnabled, photoPolicyPhotos],
+  );
+  /** THIS line's item-photo count; null = unknown (policy optional / not loaded). */
+  const lineItemPhotoCount =
+    photoStageCounts != null ? photoStageCounts.itemCountsByLineId.get(row.id) ?? 0 : null;
+  // Mirror of the server gate (mark-received 409) through the SAME evaluator —
+  // blocker copy is never re-derived here. Client scope: carton stage counts +
+  // THIS line's item count; sibling-line gaps are the server gate's job.
+  // Degrade-not-block: while the photo list is unknown the control stays
+  // enabled and a server 409 renders in the receive feedback region.
+  const photoPolicyDisabledReason = useMemo(() => {
+    if (!photoStageCounts) return null;
+    const verdict = evaluateReceivingPhotoPolicy({
+      policy: photoPolicy,
+      cartonPhotoCounts: photoStageCounts.cartonPhotoCounts,
+      linePhotoCounts: [{ lineId: row.id, sku: row.sku ?? null, itemCount: lineItemPhotoCount ?? 0 }],
+    });
+    return verdict.ok ? null : verdict.blockers[0] ?? null;
+  }, [photoStageCounts, photoPolicy, row.id, row.sku, lineItemPhotoCount]);
+  // Once received the primary action is print-only, so the receive-side gates
+  // (shipment link, serial confirmation, photo policy) must stop blocking it —
+  // otherwise a received line with no serial could never reprint its label.
+  const combinedReviewDisabled = isReceived
+    ? !canPrintReview
+    : !canReceiveReview || !canPrintReview || !serialConfirmed || photoPolicyDisabledReason != null;
   // Bench-visible reason for the disabled Receive bar. A hover `title` is
   // invisible to an operator standing at a station — the bar renders this
   // line above the pill so the blocker names itself.
-  const combinedReviewDisabledReason = !canReceiveReview
-    ? 'Link this carton to a shipment to receive'
-    : !canPrintReview
-      ? 'Add a PO number or SKU before printing and receiving'
-      : !serialConfirmed
-        ? 'Scan a serial — or mark “No serial” with a reason — to receive'
-        : null;
+  const combinedReviewDisabledReason = isReceived
+    ? !canPrintReview
+      ? 'Add a PO number or SKU before printing'
+      : null
+    : !canReceiveReview
+      ? 'Link this carton to a shipment to receive'
+      : !canPrintReview
+        ? 'Add a PO number or SKU before printing and receiving'
+        : !serialConfirmed
+          ? 'Scan a serial — or mark “No serial” with a reason — to receive'
+          : photoPolicyDisabledReason;
   // itemTotal is PO-scoped (workspace nav / useReceivingWorkspaceBridge) so
   // "Receive all" never claims lines from a different PO on a mixed carton.
   const isSinglePoItem = itemTotal === 1;
-  const receiveMenuLabel = isSinglePoItem ? 'Receive' : 'Receive all';
-  const printReceivePrimaryLabel = isUnfound ? 'Receive locally' : receiveMenuLabel;
+  // Re-receive stays reachable in the split menu — a bounce-back (line pulled
+  // into testing, corrected qty) is a real flow — but it names itself so the
+  // operator can't mistake it for the first receive.
+  const receiveMenuLabel = isReceived
+    ? 'Receive again'
+    : isSinglePoItem
+      ? 'Receive'
+      : 'Receive all';
+  // Received ⇒ the bench's remaining job is the package label, so the primary
+  // collapses to Print. This is the same CTA regardless of which surface did
+  // the receiving (this bench, the PO bulk route, or the phone).
+  const printReceivePrimaryLabel = isReceived
+    ? 'Print label'
+    : isUnfound
+      ? 'Receive locally'
+      : receiveMenuLabel;
   // Unfound cartons have no Zoho/scan options in the menu — just print-only and
   // a local "receive all". Keep the menu copy honest so it matches what's shown.
   const splitMenuAriaLabel = isUnfound
@@ -567,8 +664,9 @@ export function useUnboxLineController(
     : row.receiving_id == null
       ? 'Line must be linked to a shipment'
       : undefined;
-  const printThenReceiveTitle =
-    row.receiving_id == null && !scanValue.trim() && !(row.sku || '').trim()
+  const printThenReceiveTitle = isReceived
+    ? 'Already received — print the package label'
+    : row.receiving_id == null && !scanValue.trim() && !(row.sku || '').trim()
       ? 'Need a shipment link or SKU to continue'
       : isUnfound
         ? 'Print label (if available), then receive locally — unfound carton, external inventory is not touched'
@@ -728,7 +826,8 @@ export function useUnboxLineController(
     labelOptions, labelSelectOptions, selectedLabelKind, setSelectedLabelKind, activeLabelKind,
     activeLabelFace, unitInput,     asListedDraftDefaults, buildAsListedPayload, applyAsListedAndPrint,
     asListedPayload, ticketPayload, applyUnitAndPrint,
-    canPrintReview, canReceiveReview, canZohoReceive, isUnfound, combinedReviewDisabled, combinedReviewDisabledReason, requireSerialConfirmation,
+    canPrintReview, canReceiveReview, canZohoReceive, isUnfound, isReceived, combinedReviewDisabled, combinedReviewDisabledReason, requireSerialConfirmation,
+    photoPolicy, lineItemPhotoCount,
     receiveMenuLabel, receiveMenuTitle, printReceivePrimaryLabel, splitMenuAriaLabel, splitMenuHoverTitle, printThenReceiveTitle,
     // claim / RETURN flow
     claimModalOpen, setClaimModalOpen, claimModalInitialMode, openClaimModal,

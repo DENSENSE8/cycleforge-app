@@ -150,7 +150,7 @@ export function PreboxWizard({
       <div className="flex shrink-0 items-center justify-between border-b border-border-hairline bg-surface-canvas px-4 py-3">
         <div className="flex min-w-0 items-center gap-2">
           <Package className="h-4 w-4 shrink-0 text-violet-600" />
-          <p className="truncate text-sm font-extrabold tracking-tight text-text-default">
+          <p className="truncate text-sm font-semibold tracking-tight text-text-default">
             Create prebox label
           </p>
         </div>

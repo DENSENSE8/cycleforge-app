@@ -1,7 +1,7 @@
 /**
  * Adapter: a History {@link TechRecord} → shared `RailRowVM` slots for the
- * Shipping sidebar personal recent rail. Matches TechRecordRow identity
- * (title / qty·condition) — not the old order ship-out chrome.
+ * Shipping sidebar personal recent rail. Matches the station history row's
+ * identity (title / qty·condition) — not the old order ship-out chrome.
  */
 
 import type { TechRecord } from '@/hooks/useTechLogs';

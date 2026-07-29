@@ -247,7 +247,7 @@ function OutboundStripAllClear({ mode }: { mode: 'shipped' | 'unshipped' }) {
     <div className="flex items-center gap-3 rounded-xl border border-dashed border-border-soft bg-surface-card px-4 py-5">
       <CheckCircle className="h-5 w-5 shrink-0 text-text-success" />
       <div className="min-w-0">
-        <p className="text-role-caption font-bold text-text-default">{copy.title}</p>
+        <p className="text-role-caption font-semibold text-text-default">{copy.title}</p>
         <p className="mt-0.5 text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint">{copy.hint}</p>
       </div>
     </div>
@@ -258,7 +258,7 @@ function OutboundStripAllClear({ mode }: { mode: 'shipped' | 'unshipped' }) {
 function OutboundStripError({ onRetry }: { onRetry: () => void }) {
   return (
     <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50 px-4 py-8 text-center">
-      <p className="text-role-caption font-bold text-rose-700">Couldn&apos;t load outbound metrics.</p>
+      <p className="text-role-caption font-semibold text-rose-700">Couldn&apos;t load outbound metrics.</p>
       <button
         type="button"
         onClick={onRetry}

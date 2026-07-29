@@ -22,6 +22,9 @@
 import type { HTMLAttributes, ReactNode, Ref } from 'react';
 import { TabSwitch } from '@/design-system/components/TabSwitch';
 import { MONITOR_SECTION_CARD_SCROLL_CLASS } from '@/design-system/components/monitor';
+// Dependency-free geometry module on purpose — importing the capsule component
+// itself would pull framer-motion + the icon set into every layout consumer.
+import { SELECTION_BAR_SCROLL_INSET } from '@/design-system/components/selection-bar-geometry';
 import { cn } from '@/utils/_cn';
 
 /** Centered max-width gutter column — the one horizontal-inset SoT (chrome + body share it). */
@@ -48,6 +51,31 @@ export const WORKBENCH_TABLE_VIEWPORT = 'h-[calc(100dvh-13rem)] min-h-[24rem] mi
 
 /** {@link WORKBENCH_TABLE_VIEWPORT} for lanes with **no KPI strip** (Review). */
 export const WORKBENCH_TABLE_VIEWPORT_NO_KPI = 'h-[calc(100dvh-8rem)] min-h-[24rem] min-w-0';
+
+/** Bottom inset a bounded table host uses when nothing floats over it. */
+const WORKBENCH_TABLE_VIEWPORT_INSET = 'pb-3';
+
+/**
+ * {@link WORKBENCH_TABLE_VIEWPORT} plus the right bottom inset for the lane.
+ *
+ * The bounded host is what makes this necessary: the grid sizes itself to the
+ * host's CONTENT box and self-scrolls inside it, so its last row ends exactly
+ * at the host's bottom edge — under the pinned bulk-selection capsule, which is
+ * `fixed` to the viewport. Padding the page's outer scroll body does nothing
+ * here; only the bounded host can move that edge.
+ *
+ * `bulkBarInset` is per-render, not permanent: reserving the capsule's height
+ * on every grid all the time would cost ~1.5 rows of a warehouse monitor for a
+ * bar that is usually not there.
+ */
+export function workbenchTableViewportClass(
+  opts: { bulkBarInset?: boolean; noKpi?: boolean } = {},
+): string {
+  return cn(
+    opts.noKpi ? WORKBENCH_TABLE_VIEWPORT_NO_KPI : WORKBENCH_TABLE_VIEWPORT,
+    opts.bulkBarInset ? SELECTION_BAR_SCROLL_INSET : WORKBENCH_TABLE_VIEWPORT_INSET,
+  );
+}
 
 /**
  * Padded, boxed table pane — the gutter column + one monitor card wrapping a
@@ -129,11 +157,27 @@ export function WorkbenchChromeHeader({
         className,
       )}
     >
+      {/*
+        The tab rail may SHRINK and scroll; the controls block may not.
+
+        Both used to be `shrink-0`, so a header with enough tabs (Media Library
+        runs seven lifecycle facets) overflowed its own row and clipped the right
+        controls — filter / sort / media-type menus — clean off the viewport with
+        no way to reach them. Navigation degrading to a scrollable strip is
+        recoverable; an action you cannot see or click is not, so the tabs yield
+        first. Surfaces whose header already fits are unaffected: `min-w-0` only
+        engages once the row would otherwise overflow.
+      */}
       <TabSwitch
         tabs={tabs}
         activeTab={activeTab}
         onTabChange={onTabChange}
-        className="w-auto shrink-0"
+        // `scrollable` is TabSwitch's own overflow mode — it sets the track to
+        // `w-max` so tabs keep their natural width instead of compressing, and
+        // scrolls the active tab into view. Hand-rolling `overflow-x-auto` here
+        // instead would leave the track at `w-full`, squeezing labels mid-word.
+        scrollable
+        className="w-auto min-w-0 shrink"
         variant="solid"
         solidTone={solidTone}
         countStyle="plain"
@@ -142,7 +186,7 @@ export function WorkbenchChromeHeader({
 
       <div className="min-w-0 flex-1" aria-hidden />
 
-      <div className="flex min-w-0 shrink-0 items-center gap-2">
+      <div className="flex shrink-0 items-center gap-2">
         {search}
         {right}
         <div ref={controlsSlotRef} className="flex shrink-0 items-center gap-2" {...controlsSlotProps} />

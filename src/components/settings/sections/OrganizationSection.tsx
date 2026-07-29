@@ -76,17 +76,17 @@ function ActiveWorkspaceCard() {
     <div className="space-y-3 rounded-2xl border border-border-soft bg-surface-card p-5 shadow-sm">
       <h3 className="text-sm font-semibold text-text-default">Active workspace</h3>
       <div className="flex items-center gap-3">
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-surface-inverse text-sm font-bold text-white">
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-surface-inverse text-sm font-semibold text-white">
           {orgInitials(user.organizationName)}
         </div>
         <div className="min-w-0 flex-1">
-          <div className="truncate text-sm font-bold text-text-default">{user.organizationName}</div>
+          <div className="truncate text-sm font-semibold text-text-default">{user.organizationName}</div>
           <div className="truncate text-xs text-text-soft">
             {user.organizationSlug ?? '—'}
             {user.organizationPlan ? ` · ${user.organizationPlan} plan` : ''}
           </div>
         </div>
-        <span className="shrink-0 rounded-full bg-emerald-50 px-2 py-0.5 text-role-eyebrow font-bold uppercase tracking-wide text-emerald-700">
+        <span className="shrink-0 rounded-full bg-emerald-50 px-2 py-0.5 text-role-eyebrow uppercase tracking-wide text-emerald-700">
           Current
         </span>
       </div>
@@ -107,7 +107,7 @@ function ActiveWorkspaceCard() {
                 onClick={() => void switchTo(m.organizationId, m.organizationName)}
                 className="ds-raw-button flex w-full items-center gap-3 px-3 py-2.5 text-left transition hover:bg-surface-hover disabled:opacity-50"
               >
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-surface-strong text-xs font-bold text-text-muted">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-surface-strong text-xs font-semibold text-text-muted">
                   {orgInitials(m.organizationName)}
                 </div>
                 <div className="min-w-0 flex-1">
@@ -422,7 +422,7 @@ export function OrganizationSection() {
   return (
     <section className="space-y-6">
       <header>
-        <h2 className="text-lg font-bold text-text-default">Organization</h2>
+        <h2 className="text-lg font-semibold text-text-default">Organization</h2>
         <p className="mt-1 text-sm text-text-soft">
           Workspace-wide defaults for time, money, sign-in policy, and warranty terms.
         </p>

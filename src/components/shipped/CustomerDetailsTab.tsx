@@ -6,6 +6,7 @@ import { User, Mail, MapPin, Copy, Check } from '@/components/Icons';
 import { sectionLabel, fieldLabel, dataValue } from '@/design-system/tokens/typography/presets';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { Button } from '@/design-system/primitives';
+import { cn } from '@/utils/_cn';
 
 interface CustomerRecord {
   id: number;
@@ -27,6 +28,12 @@ interface CustomerRecord {
 
 interface CustomerDetailsTabProps {
   customerId?: number | null;
+  /**
+   * Drop the panel-level `mx-8` gutter when the host already owns padding
+   * (Search order detail renders this inside a `SearchOrderCard`). Default
+   * keeps the slide-over / full-page gutter so existing call sites are unchanged.
+   */
+  bare?: boolean;
 }
 
 function fullName(c: CustomerRecord): string {
@@ -41,8 +48,9 @@ function addressLines(c: CustomerRecord): string[] {
   return [street, cityLine, c.shipping_country || ''].map((s) => s.trim()).filter(Boolean);
 }
 
-export function CustomerDetailsTab({ customerId }: CustomerDetailsTabProps) {
+export function CustomerDetailsTab({ customerId, bare = false }: CustomerDetailsTabProps) {
   const [copied, setCopied] = useState<string | null>(null);
+  const gutter = bare ? undefined : 'mx-8';
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['customer', customerId],
@@ -85,7 +93,7 @@ export function CustomerDetailsTab({ customerId }: CustomerDetailsTabProps) {
 
   if (!customerId) {
     return (
-      <section className="mx-8">
+      <section className={gutter}>
         <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas/60 px-4 py-8 text-center">
           <User className="mx-auto mb-2 h-5 w-5 text-text-faint" />
           <p className={`${fieldLabel} text-text-faint`}>No customer linked</p>
@@ -99,7 +107,7 @@ export function CustomerDetailsTab({ customerId }: CustomerDetailsTabProps) {
 
   if (isLoading) {
     return (
-      <section className="mx-8">
+      <section className={gutter}>
         <div className="h-32 animate-pulse rounded-xl bg-surface-sunken" />
       </section>
     );
@@ -107,8 +115,8 @@ export function CustomerDetailsTab({ customerId }: CustomerDetailsTabProps) {
 
   if (isError || !data) {
     return (
-      <section className="mx-8">
-        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-6 text-center text-xs font-bold text-red-600">
+      <section className={gutter}>
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-6 text-center text-xs font-semibold text-red-600">
           Failed to load customer.
         </div>
       </section>
@@ -122,7 +130,7 @@ export function CustomerDetailsTab({ customerId }: CustomerDetailsTabProps) {
   const hasAnything = !!name || !!data.email || !!phone || lines.length > 0;
 
   return (
-    <section className="mx-8 space-y-3">
+    <section className={cn(gutter, 'space-y-3')}>
       <div className="divide-y divide-border-hairline overflow-hidden rounded-xl border border-border-soft bg-surface-card">
         {name && field('name', 'Name', name, <User className="h-3.5 w-3.5" />)}
         {data.email && field('email', 'Email', data.email, <Mail className="h-3.5 w-3.5" />)}
@@ -143,7 +151,7 @@ export function CustomerDetailsTab({ customerId }: CustomerDetailsTabProps) {
       )}
 
       {!hasAnything && (
-        <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas/60 px-4 py-6 text-center text-xs font-bold text-text-faint">
+        <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas/60 px-4 py-6 text-center text-xs font-semibold text-text-faint">
           Customer linked, but no contact details captured yet.
         </div>
       )}

@@ -115,7 +115,7 @@ export function CartonUnitsRollupBody({
                   }`}
                 >
                   <div className="flex items-baseline justify-between gap-2">
-                    <span className="min-w-0 truncate text-role-caption font-bold text-text-default">
+                    <span className="min-w-0 truncate text-role-caption font-semibold text-text-default">
                       {receivingWorkspaceLineTitle(line)}
                     </span>
                     <span className="shrink-0 text-role-eyebrow font-semibold uppercase tracking-widest text-text-muted">

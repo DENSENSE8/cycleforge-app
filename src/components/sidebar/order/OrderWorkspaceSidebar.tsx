@@ -239,7 +239,7 @@ function RecentOrdersList({
                 className="min-w-0 flex-1 px-2 py-1.5 text-left"
                 aria-current={selected ? 'page' : undefined}
               >
-                <p className="truncate text-role-caption font-bold text-text-default">{entry.label}</p>
+                <p className="truncate text-role-caption font-semibold text-text-default">{entry.label}</p>
                 <p className="truncate text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint">
                   {when ? `Opened ${when}` : `Order · ${entry.id}`}
                 </p>

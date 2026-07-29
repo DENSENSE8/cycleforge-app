@@ -34,6 +34,7 @@ import type {
   WorkspaceState,
 } from '@/components/receiving/useReceivingWorkspacePane';
 import type { IncomingDetailsTarget } from '@/components/receiving/useReceivingDetailOverlays';
+import type { UnboxLookupScanDetail } from '@/components/receiving/receiving-events';
 
 interface ReceivingRightPaneProps {
   mode: string;
@@ -52,6 +53,9 @@ interface ReceivingRightPaneProps {
   scanInFlight: { tracking: string; startedAt: number; surface: ScanIntakeSurface } | null;
   /** Deep-link restore resolving — Unbox shows the workspace skeleton, not browse. */
   restorePending: boolean;
+  /** Last scan hit an already-unboxed carton — Unbox shows a read-only receipt. */
+  lookupReceipt: UnboxLookupScanDetail | null;
+  onClearLookupReceipt: () => void;
   staffId: string;
   incomingDetails: IncomingDetailsTarget | null;
   onCloseIncoming: () => void;
@@ -71,6 +75,8 @@ export function ReceivingRightPane({
   nav,
   scanInFlight,
   restorePending,
+  lookupReceipt,
+  onClearLookupReceipt,
   staffId,
   incomingDetails,
   onCloseIncoming,
@@ -123,6 +129,8 @@ export function ReceivingRightPane({
           workspace={workspace}
           nav={nav}
           restorePending={restorePending}
+          lookupReceipt={lookupReceipt}
+          onClearLookupReceipt={onClearLookupReceipt}
           onCloseWorkspace={onCloseWorkspace}
         />
       </RightPaneOverlayHost>

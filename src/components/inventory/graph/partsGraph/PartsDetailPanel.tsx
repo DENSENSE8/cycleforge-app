@@ -25,7 +25,7 @@ function StatTile({ label, value }: { label: string; value: number | string }) {
   return (
     <div className="rounded-xl bg-surface-canvas p-3">
       <div className="text-role-caption uppercase tracking-wide text-text-faint">{label}</div>
-      <div className="text-2xl font-bold tabular-nums text-text-default">{value}</div>
+      <div className="text-2xl font-semibold tabular-nums text-text-default">{value}</div>
     </div>
   );
 }
@@ -91,7 +91,7 @@ export function PartsDetailPanel({ meta }: { meta: PartsNodeMeta | null }) {
           <span className={cn('rounded-md px-1.5 py-0.5 text-role-micro font-semibold uppercase ring-1', TIER_BADGE.base)}>
             Base unit
           </span>
-          <h2 className="mt-1.5 text-role-body font-bold text-text-default">{base.base}</h2>
+          <h2 className="mt-1.5 text-role-body font-semibold text-text-default">{base.base}</h2>
           {base.baseUnit ? (
             <p className="text-role-caption text-text-soft">{base.baseUnit.name || base.baseUnit.sku}</p>
           ) : (
@@ -148,7 +148,7 @@ export function PartsDetailPanel({ meta }: { meta: PartsNodeMeta | null }) {
             {review.label}
           </span>
         </div>
-        <h2 className="mt-1.5 text-role-body font-bold text-text-default">{part.logicalLabel}</h2>
+        <h2 className="mt-1.5 text-role-body font-semibold text-text-default">{part.logicalLabel}</h2>
         <p className="text-role-caption text-text-soft">Base unit {part.base}</p>
       </div>
 

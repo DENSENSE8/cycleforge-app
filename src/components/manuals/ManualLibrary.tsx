@@ -242,7 +242,7 @@ function ManualViewer({ manual }: { manual: ManualDetail }) {
     <div className="flex h-full w-full flex-col bg-surface-canvas">
       <div className="flex shrink-0 items-start justify-between gap-4 border-b border-border-soft bg-surface-card px-6 py-4">
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-black text-text-default">
+          <p className="truncate text-sm font-semibold text-text-default">
             {manual.display_name || manual.file_name || `Manual #${manual.id}`}
           </p>
           {manual.product_title && (
@@ -366,7 +366,7 @@ function EmptyViewer() {
       <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-surface-card shadow-sm ring-1 ring-border-hairline">
         <FileText className="h-6 w-6 text-text-faint" />
       </div>
-      <p className="text-sm font-black text-text-default">Select a manual to preview</p>
+      <p className="text-sm font-semibold text-text-default">Select a manual to preview</p>
       <p className="mt-1 max-w-sm text-role-caption font-medium text-text-soft">
         Use the sidebar to search by product title, folder, or file name. PDFs render inline.
       </p>

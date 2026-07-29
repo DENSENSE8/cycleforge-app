@@ -113,10 +113,10 @@ export function AuditLogSkuClient() {
   return (
     <section className="flex h-full min-h-0 w-full flex-col overflow-hidden bg-surface-canvas">
       <div className="border-b border-border-soft bg-surface-card px-6 py-4">
-        <p className="text-role-micro font-bold uppercase tracking-widest text-emerald-700">
+        <p className="text-role-micro uppercase tracking-widest text-emerald-700">
           SKU audit
         </p>
-        <h2 className="mt-0.5 font-mono text-base font-bold text-text-default">{detail.sku}</h2>
+        <h2 className="mt-0.5 font-mono text-base font-semibold text-text-default">{detail.sku}</h2>
         {detail.item_name && (
           <p className="mt-1 text-role-caption text-text-soft">{detail.item_name}</p>
         )}
@@ -159,7 +159,7 @@ function EventRow({ event }: { event: SkuEvent }) {
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <span
-              className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-role-micro font-bold uppercase tracking-wider ring-1 ${meta.tone}`}
+              className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-role-micro uppercase tracking-wider ring-1 ${meta.tone}`}
             >
               <meta.Icon className="h-3 w-3" />
               {meta.label}

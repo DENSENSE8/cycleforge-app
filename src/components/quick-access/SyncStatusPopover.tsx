@@ -56,10 +56,10 @@ export function SyncStatusPopover({ onClose }: { onClose: () => void }) {
     <div className="w-[360px] overflow-hidden rounded-xl border border-border-soft bg-surface-card shadow-xl">
       <header className="flex items-center justify-between border-b border-border-hairline px-4 py-2.5">
         <div className="flex items-center gap-2">
-          <span className="text-role-caption font-black text-text-default">Sync status</span>
+          <span className="text-role-caption font-semibold text-text-default">Sync status</span>
           {data && (
             <span
-              className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-role-micro font-bold ${
+              className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-role-micro font-semibold ${
                 data.health === 'failed'
                   ? 'bg-rose-50 text-rose-700'
                   : data.health === 'stale'
@@ -74,7 +74,7 @@ export function SyncStatusPopover({ onClose }: { onClose: () => void }) {
         <Link
           href="/admin?section=system_sync"
           onClick={onClose}
-          className="text-role-micro font-bold text-blue-600 hover:underline"
+          className="text-role-micro text-blue-600 hover:underline"
         >
           View all
         </Link>
@@ -105,7 +105,7 @@ function JobRow({ job, running, onRun }: { job: CronJobStatus; running: boolean;
     <li className="group flex items-center gap-2.5 px-4 py-2">
       <span className={`h-2 w-2 shrink-0 rounded-full ${DOT[job.health]}`} aria-hidden />
       <div className="min-w-0 flex-1">
-        <div className="truncate text-role-caption font-bold text-text-default">{job.label}</div>
+        <div className="truncate text-role-caption font-semibold text-text-default">{job.label}</div>
         <div className="truncate text-role-micro text-text-soft">
           {HEALTH_LABEL[job.health]} · {relative(last?.finishedAt ?? last?.startedAt ?? null)}
           {last?.durationMs != null ? ` · ${(last.durationMs / 1000).toFixed(1)}s` : ''}

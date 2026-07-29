@@ -108,7 +108,7 @@ export function TicketPicker({
                       isSel ? 'bg-rose-50' : 'hover:bg-surface-hover'
                     } ${t.linkedToThis ? 'cursor-default opacity-60' : ''}`}
                   >
-                    <span className="shrink-0 font-mono text-role-caption font-bold text-text-default">#{t.id}</span>
+                    <span className="shrink-0 font-mono text-role-caption font-semibold text-text-default">#{t.id}</span>
                     <span
                       className={`shrink-0 rounded-full inset-chip text-role-eyebrow uppercase tracking-wider ${badge.className}`}
                     >

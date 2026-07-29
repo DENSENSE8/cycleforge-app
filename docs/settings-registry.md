@@ -181,7 +181,7 @@ UI, storage, validation, audit, permission gating, and plan-gating are automatic
 
 | key | control | entitlement | decision point |
 |---|---|---|---|
-| `receiving.photoPolicy` | segmented (optional / require_one / require_per_item) | — | `api/receiving/mark-received` |
+| `receiving.photoPolicy` | segmented (optional / require_one / require_per_item) | — | `api/receiving/mark-received` (**wired**: 409 + structured blockers; unbox receive-bar preflight mirrors it) |
 | `receiving.nasBackup` | segmented (off / mirror / direct) | direct → `nasArchive` | `lib/photos/mirror-nas.ts` |
 | `receiving.autoTicket` | segmented (off / on_qa_fail / on_unfound) | `automations` | **new** trigger (deferred) |
 | `receiving.defaultPutawayBin` | text | — | `mark-received` (replaces env) |
@@ -225,10 +225,12 @@ gate today), so its trigger is built separately from this framework.
   settings-page home. Behaviorally wired into decision points: `defaultPutawayBin` (server,
   mark-received), `confirmSerialRemoval` (client, ActiveLineConditionSerial), `autoFocusSerial` +
   `autoPushPhoneCamera` + `accordionExpand` (client, `useTrackingScan` via stable refs synced by
-  effect), `nasBackup` (server, mirror-selection SQL gate).
+  effect), `nasBackup` (server, mirror-selection SQL gate), `photoPolicy` (server 409 photo gate in
+  mark-received via `evaluateReceivingPhotoPolicy` + stage-aware counts, mirrored by the unbox
+  receive preflight — WS-PHOTO Wave 2).
 - **Deferred (need a product call, not just plumbing):** `defaultScanMode` (arming a mode would
   override the dash→PO# auto-detect), `defaultLandingMode` (sync-hook would flicker — wants a
-  server-resolve/redirect), `photoPolicy` + `autoPrintLabel` (touch the blocking receive/print
-  path), `scanSound` / `scanHaptics` (no existing audio to gate).
+  server-resolve/redirect), `autoPrintLabel` (touches the blocking print path), `scanSound` /
+  `scanHaptics` (no existing audio to gate).
 - **Phase 2:** in-context ⚙ gears per archetype; push more pages' behaviors into the registry.
 - **Phase 3:** the `receiving.autoTicket` trigger (net-new behavior) + upgrade-prompt polish.

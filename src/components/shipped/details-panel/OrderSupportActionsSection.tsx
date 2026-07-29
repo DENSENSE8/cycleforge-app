@@ -33,7 +33,7 @@ export function OrderSupportActionsSection({
 
   return (
     <section aria-label="Support actions" className="space-y-2">
-      <p className="text-role-eyebrow font-bold uppercase tracking-widest text-text-soft">
+      <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">
         Support
       </p>
       <div className="flex flex-wrap gap-2">

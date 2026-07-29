@@ -27,6 +27,7 @@ import { AgenticLoopLiveConsole } from '@/components/forge/AgenticLoopLiveConsol
 import { HOME_MODE_ITEMS, homeModeLabel, type HomeMode } from './home-modes';
 import { useHomeMode } from './useHomeMode';
 import { HomeTasksMode } from './HomeTasksMode';
+import { HomeInboxMode } from './HomeInboxMode';
 import { HomeCollabPanel, HomeBriefPanel } from './HomeModePanels';
 
 export function HomeWorkspace() {
@@ -39,7 +40,7 @@ export function HomeWorkspace() {
           <div className="flex items-baseline gap-2">
             <p className="text-role-micro uppercase tracking-widest text-text-soft">Home</p>
             <span className="text-text-soft/60">·</span>
-            <h1 className="text-sm font-bold text-text-strong">{homeModeLabel(mode)}</h1>
+            <h1 className="text-sm font-semibold text-text-strong">{homeModeLabel(mode)}</h1>
           </div>
           <HorizontalButtonSlider
             items={HOME_MODE_ITEMS}
@@ -55,6 +56,7 @@ export function HomeWorkspace() {
 
       <div className="min-h-0 flex-1 overflow-hidden">
         {mode === 'today' && <MyDayWorkspace />}
+        {mode === 'inbox' && <HomeInboxMode />}
         {mode === 'forge' && (
           <div className="h-full overflow-hidden px-4 py-4">
             <AgenticLoopLiveConsole />

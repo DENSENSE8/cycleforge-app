@@ -128,7 +128,7 @@ export function AuditLogSidebarPanel() {
           <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 mb-3">
             <User className="h-6 w-6" />
           </div>
-          <p className="text-role-caption font-bold text-text-default mb-1">Staff Audit Feed</p>
+          <p className="text-role-caption font-semibold text-text-default mb-1">Staff Audit Feed</p>
           <p className="text-role-caption text-text-soft max-w-[180px] mx-auto">
             Select a staff member in the filters above to load their cross-section audit feed.
           </p>

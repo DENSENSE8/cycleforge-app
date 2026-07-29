@@ -1,7 +1,7 @@
 import { isFbaOrder } from './order-platform';
 
 /** Canonical dot types shown before the product title in log tables. */
-export type SourceDotType = 'fba' | 'sku' | 'orders';
+type SourceDotType = 'fba' | 'sku' | 'orders';
 
 /**
  * Determine which colored dot to display based on record metadata.

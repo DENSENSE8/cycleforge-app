@@ -117,7 +117,7 @@ export function SellerMessageMenuItem({
       onClick={onClick}
       aria-label="Seller message draft"
       aria-expanded={active}
-      className="flex w-full items-center gap-2 border-t border-border-hairline px-3 py-1.5 text-left text-role-caption font-bold uppercase tracking-widest text-blue-700 hover:bg-blue-50"
+      className="flex w-full items-center gap-2 border-t border-border-hairline px-3 py-1.5 text-left text-role-caption font-semibold uppercase tracking-widest text-blue-700 hover:bg-blue-50"
     >
       <MessageSquare className="h-3.5 w-3.5 shrink-0 text-blue-600" />
       Message

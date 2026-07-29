@@ -10,10 +10,10 @@
  * rail and the Operations rail stay one pattern.
  */
 
-import { Activity, ClipboardList, MessageSquare, Zap, Sparkles } from '@/components/Icons';
+import { Activity, ClipboardList, Inbox, MessageSquare, Zap, Sparkles } from '@/components/Icons';
 import type { HorizontalSliderItem } from '@/components/ui/HorizontalButtonSlider';
 
-export type HomeMode = 'today' | 'tasks' | 'collab' | 'forge' | 'brief';
+export type HomeMode = 'today' | 'inbox' | 'tasks' | 'collab' | 'forge' | 'brief';
 
 /**
  * The top-level mode rail. `today` is the default and stays on the bare `/`
@@ -23,6 +23,10 @@ export type HomeMode = 'today' | 'tasks' | 'collab' | 'forge' | 'brief';
  */
 export const HOME_MODE_ITEMS: HorizontalSliderItem[] = [
   { id: 'today', label: 'Today', icon: Activity },
+  // Inbox sits second: it is the "what changed on things I follow" companion to
+  // Today's "what should I do next", so the two personal-triage modes are
+  // adjacent rather than split by the structured-work modes.
+  { id: 'inbox', label: 'Inbox', icon: Inbox },
   { id: 'tasks', label: 'Tasks', icon: ClipboardList },
   { id: 'collab', label: 'Collab', icon: MessageSquare },
   { id: 'forge', label: 'Plan', icon: Zap },
@@ -32,7 +36,11 @@ export const HOME_MODE_ITEMS: HorizontalSliderItem[] = [
 export const DEFAULT_HOME_MODE: HomeMode = 'today';
 
 export function parseHomeMode(raw: string | null | undefined): HomeMode {
-  return raw === 'tasks' || raw === 'collab' || raw === 'forge' || raw === 'brief'
+  return raw === 'inbox' ||
+    raw === 'tasks' ||
+    raw === 'collab' ||
+    raw === 'forge' ||
+    raw === 'brief'
     ? raw
     : 'today';
 }
@@ -45,10 +53,19 @@ export function homeModeLabel(mode: HomeMode): string {
  * URL params owned by a specific mode. Cleared on a mode switch so each mode
  * lands on a clean default (sidebar-mode law #4). These are the selection SoT
  * for the follow-up wiring phases (plan §3.1):
- *   ?task=  selected `ops_plan_tasks.id`   (tasks / collab)
- *   ?plan=  selected `ops_plans.id`        (tasks)
- *   ?view=  forge sub-view, e.g. `live`    (forge)
- *   ?q=     mode-scoped search             (today / tasks)
- *   ?open=  right-pane focus key           (tasks / collab)
+ *   ?task=   selected `ops_plan_tasks.id`   (tasks / collab)
+ *   ?plan=   selected `ops_plans.id`        (tasks)
+ *   ?view=   forge sub-view, e.g. `live`    (forge)
+ *   ?q=      mode-scoped search             (today / tasks)
+ *   ?open=   right-pane focus key           (tasks / collab)
+ *   ?filter= inbox triage filter            (inbox)
  */
-export const HOME_MODE_SCOPED_PARAMS = ['task', 'plan', 'view', 'q', 'open', 'scope'] as const;
+export const HOME_MODE_SCOPED_PARAMS = [
+  'task',
+  'plan',
+  'view',
+  'q',
+  'open',
+  'scope',
+  'filter',
+] as const;

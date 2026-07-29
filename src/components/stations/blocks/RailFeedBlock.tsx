@@ -26,7 +26,7 @@ function RefChip({ value, kind }: { value: unknown; kind: FieldKind | undefined 
           ? 'bg-emerald-50 text-emerald-700 ring-emerald-200'
           : 'bg-surface-canvas text-text-muted ring-border-soft';
   return (
-    <span className={`inline-flex max-w-[9rem] items-center truncate rounded px-1 py-px font-mono text-role-micro font-bold ring-1 ring-inset ${tone}`}>
+    <span className={`inline-flex max-w-[9rem] items-center truncate rounded px-1 py-px font-mono text-role-micro ring-1 ring-inset ${tone}`}>
       {String(value)}
     </span>
   );
@@ -96,7 +96,7 @@ export function RailFeedBlock({ rows, isLoading, mapping, fieldKinds, display }:
                 }`}
               >
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-role-caption font-bold text-text-default">
+                  <p className="truncate text-role-caption font-semibold text-text-default">
                     {String((titleKey && row[titleKey]) ?? '—')}
                   </p>
                   <div className="mt-0.5 flex items-center gap-1.5">

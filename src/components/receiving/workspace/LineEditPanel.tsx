@@ -32,6 +32,8 @@ import { ReceiveFeedbackRegion } from './ReceiveFeedbackRegion';
 import { WorkspaceActionFeedbackSlot } from './WorkspaceActionFeedbackSlot';
 import type { InlineActionFeedbackPayload } from './InlineActionFeedbackCard';
 import { ReceivingPhotoPeek } from './line-edit/ReceivingPhotoPeek';
+import { ReceivingPhotoButton } from './line-edit/ReceivingPhotoButton';
+import { SerialChip, SkuSerialChip } from '@/components/ui/CopyChip';
 import { LineCartonContextSection } from './line-edit/LineCartonContextSection';
 import { useSyncedPoNote } from './line-edit/hooks/useSyncedPoNote';
 import { LineEditModals } from './line-edit/LineEditModals';
@@ -277,6 +279,7 @@ export function LineEditPanel({
           canReceiveReview: c.canReceiveReview,
           canZohoReceive: c.canZohoReceive,
           isUnfound: c.isUnfound,
+          isReceived: c.isReceived,
           receiveMenuLabel: c.receiveMenuLabel,
           receiveMenuTitle: c.receiveMenuTitle,
           handlePrintAndReceive: () => void c.handlePrintAndReceive(),
@@ -448,6 +451,7 @@ export function LineEditPanel({
           onClassifyPillOpen={openClassifyFromHeader}
           trackingEditOpen={activeUnboxView === 'tracking'}
           listingEditOpen={activeUnboxView === 'listings'}
+          photoStage="unbox_carton"
         />
       }
       moreDetails={moreDetails}
@@ -482,6 +486,7 @@ export function LineEditPanel({
                     onClassifyPillOpen={openClassifyFromHeader}
                     trackingEditOpen={activeUnboxView === 'tracking'}
                     listingEditOpen={activeUnboxView === 'listings'}
+                    photoStage="unbox_carton"
                   />
                 }
                 moreDetails={moreDetails}
@@ -601,12 +606,43 @@ export function LineEditPanel({
         </AnimatePresence>
 
         {!showTicketEditor && row.receiving_id != null ? (
-          <ReceivingPhotoPeek
-            receivingId={row.receiving_id}
-            staffId={Number(staffId) || 0}
-            poRef={c.poNumber || null}
-            photoIntent="all"
-          />
+          <>
+            {/* Carton evidence fan — the unbox carton-open record only.
+                Arrival (door) shots live in triage's peek; item shots in the
+                line cluster below (stage matrix, photo-evidence-chain-INDEX). */}
+            <ReceivingPhotoPeek
+              receivingId={row.receiving_id}
+              staffId={Number(staffId) || 0}
+              poRef={c.poNumber || null}
+              photoIntent="unbox_carton"
+            />
+            {/* Active-line ITEM capture — SKU · serial identity chrome beside a
+                line-scoped camera pill (RECEIVING_LINE + receiving_item). Floats
+                in the photo corner below the carton fan; mirrors the fan's
+                bottom-anchor idiom so it clears the terminal dock. */}
+            <div className="pointer-events-none absolute inset-y-0 right-3 z-20 flex items-end">
+              <div className="pointer-events-auto mb-[calc(22%+0.75rem)] flex items-center gap-1.5 rounded-xl border border-border-soft bg-surface-card p-1 pl-2 shadow-lg">
+                <span className="text-role-micro uppercase tracking-widest text-text-soft">
+                  Item
+                </span>
+                {row.sku ? (
+                  <SkuSerialChip value={row.sku} display={row.sku} width="w-auto shrink-0" />
+                ) : null}
+                {latestRowSerial ? (
+                  <SerialChip value={latestRowSerial} width="w-auto shrink-0" dense />
+                ) : null}
+                <ReceivingPhotoButton
+                  receivingId={row.receiving_id}
+                  staffId={Number(staffId) || 0}
+                  poRef={c.poNumber || null}
+                  photoStage="unbox_item"
+                  receivingLineId={row.id}
+                  poRouteRef={row.zoho_purchaseorder_id || row.zoho_purchaseorder_number || null}
+                  galleryPlacement="above"
+                />
+              </div>
+            </div>
+          </>
         ) : null}
       </StationPanelRoot>
 

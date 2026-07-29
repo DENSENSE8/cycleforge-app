@@ -8,8 +8,8 @@ import {
 export type ConditionGradeStyleSize = 'compact' | 'meta';
 
 const SIZE_CLASS: Record<ConditionGradeStyleSize, string> = {
-  compact: 'text-role-micro font-bold uppercase tracking-widest',
-  meta: 'text-sm font-bold uppercase tracking-widest',
+  compact: 'text-role-micro uppercase tracking-widest',
+  meta: 'text-sm font-semibold uppercase tracking-widest',
 };
 
 /**

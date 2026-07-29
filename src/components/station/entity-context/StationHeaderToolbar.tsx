@@ -197,7 +197,7 @@ export function StationHeaderToolbar({
                     onClick?.();
                     setOverflowOpen(false);
                   }}
-                  className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-role-micro font-bold uppercase tracking-widest text-text-soft transition-colors hover:bg-surface-hover hover:text-text-default disabled:cursor-not-allowed disabled:opacity-40"
+                  className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-role-micro uppercase tracking-widest text-text-soft transition-colors hover:bg-surface-hover hover:text-text-default disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   {m.icon}
                   {m.label}
@@ -262,7 +262,7 @@ export function StationHeaderToolbar({
               type="button"
               onClick={onBackToBrowse}
               aria-label="Back to all tested lines"
-              className="inline-flex h-7 items-center gap-1 rounded-md px-1.5 text-role-micro font-bold uppercase tracking-widest text-text-soft transition-colors hover:bg-surface-hover hover:text-text-default"
+              className="inline-flex h-7 items-center gap-1 rounded-md px-1.5 text-role-micro uppercase tracking-widest text-text-soft transition-colors hover:bg-surface-hover hover:text-text-default"
             >
               <ChevronLeft className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">All lines</span>

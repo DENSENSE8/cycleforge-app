@@ -5,6 +5,8 @@ import { recomputeEnrichmentForOrders } from '@/lib/neon/packer-log-enrichment';
 import { invalidateAllOrdersApiCaches } from '@/lib/orders/invalidation';
 import { publishOrderChanged } from '@/lib/realtime/publish';
 import { resolveOrCreateSkuCatalogId } from '@/lib/neon/sku-catalog-queries';
+import { resolveShipmentId } from '@/lib/shipping/resolve';
+import { CONDITION_GRADES } from '@/lib/conditions';
 import { withAuth } from '@/lib/auth/withAuth';
 import { wouldExceedPlanCeiling, planLimitResponseBody } from '@/lib/billing/plan-ceilings';
 
@@ -23,6 +25,12 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       status = 'unassigned',
       saleAmount,
       currency,
+      // The intake form marks BOTH of these required and has always sent them;
+      // until 2026-07-28 this handler destructured neither, so the operator's
+      // tracking number and condition grade were accepted and silently dropped
+      // (order landed with shipment_id NULL → unscannable at every station).
+      shippingTrackingNumber,
+      condition,
     } = body;
 
     // Validate required fields
@@ -32,6 +40,18 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         { status: 400 }
       );
     }
+
+    // Condition is optional here (webhook/cron ingestion often has none), but a
+    // supplied value must be a canonical grade from the SoT — never free text,
+    // which is how `orders.condition` accumulated 'good' / 'Very Good' / ''.
+    const conditionRaw = typeof condition === 'string' ? condition.trim().toUpperCase() : '';
+    if (conditionRaw && !(CONDITION_GRADES as readonly string[]).includes(conditionRaw)) {
+      return NextResponse.json(
+        { error: `condition must be one of: ${CONDITION_GRADES.join(', ')}` },
+        { status: 400 }
+      );
+    }
+    const conditionValue = conditionRaw || null;
 
     // sale_amount is optional; when supplied it must be a finite number.
     if (saleAmount != null && !Number.isFinite(Number(saleAmount))) {

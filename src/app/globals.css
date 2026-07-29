@@ -1,5 +1,6 @@
 @import '../styles/globals.css';
-/* Typefaces: next/font self-hosts IBM Plex Sans + Mono (`src/lib/fonts.ts`). */
+/* Typefaces: next/font self-hosts IBM Plex Sans + Sans Condensed + Mono
+   (`src/lib/fonts.ts`). */
 
 @tailwind base;
 @tailwind components;
@@ -7,6 +8,19 @@
 
 .font-dm-sans {
   font-family: var(--font-sans);
+}
+
+/* Identifier legibility: the mono cut never ligates. IBM Plex Mono ships `fi`
+   / `fl` ligatures that fuse two characters into one glyph — in a serial,
+   FNSKU, tracking number, or SKU that means an operator reading the screen
+   transcribes a string that is not the one stored. Scoped to the mono family
+   (the `font-mono` utility + code elements), so prose keeps its ligatures. */
+.font-mono,
+code,
+kbd,
+samp,
+pre {
+  font-variant-ligatures: none;
 }
 
 /* `--background` / `--foreground` are OWNED by the theme registry

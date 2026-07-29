@@ -57,7 +57,7 @@ export function PhoneSignInQrButton({
             <DialogDescription className="text-role-micro uppercase tracking-widest text-text-soft">
               Scan to open on your phone
             </DialogDescription>
-            <DialogTitle className="text-sm font-black text-text-default">
+            <DialogTitle className="text-sm font-semibold text-text-default">
               Point your camera at the code
             </DialogTitle>
           </DialogHeader>
