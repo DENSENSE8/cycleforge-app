@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useEventBridge } from '@/hooks';
 import { getOpenShippedDetailsPayload } from '@/utils/events';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
@@ -33,19 +33,39 @@ export function useOrdersQueueSelection({
   onCloseRecord,
 }: UseOrdersQueueSelectionOptions): OrdersQueueSelection {
   const [selectedRecord, setSelectedRecord] = useState<ShippedOrder | null>(null);
+  /**
+   * The selected id, but only once we have actually seen it in this queue.
+   * "Absent from the visible rows" means two very different things — the row was
+   * removed while the operator watched it, or the rows simply are not here yet —
+   * and only the first should close the detail.
+   */
+  const seenSelectedIdRef = useRef<number | null>(null);
 
   // Re-resolve (or drop) the selection whenever the visible records change so
   // the open detail tracks the latest row object — or closes if it's gone.
   useEffect(() => {
-    if (!selectedRecord) return;
-    const nextSelected = visibleRecords.find((record) => Number(record.id) === Number(selectedRecord.id));
-    if (nextSelected && nextSelected !== selectedRecord) {
-      setSelectedRecord(nextSelected);
+    if (!selectedRecord) {
+      seenSelectedIdRef.current = null;
       return;
     }
-    if (!nextSelected) {
+    const selectedId = Number(selectedRecord.id);
+    const nextSelected = visibleRecords.find((record) => Number(record.id) === selectedId);
+    if (nextSelected) {
+      seenSelectedIdRef.current = selectedId;
+      if (nextSelected !== selectedRecord) setSelectedRecord(nextSelected);
+      return;
+    }
+    // Not in the visible set. Closing here is only correct for a row that WAS in
+    // this queue and left it (deleted, shipped on, filtered out under the
+    // operator). On a deep link or a reload, `?openOrderId=` resolves and opens
+    // the record before the queue's own fetch lands, so this effect used to fire
+    // on boot: it dispatched close-shipped-details, whose handler strips
+    // `openOrderId` from the URL — and the record the operator reloaded onto
+    // silently vanished, taking the durable selection with it.
+    if (seenSelectedIdRef.current === selectedId) {
       onCloseRecord?.(selectedRecord);
       setSelectedRecord(null);
+      seenSelectedIdRef.current = null;
     }
   }, [onCloseRecord, selectedRecord, visibleRecords]);
 
