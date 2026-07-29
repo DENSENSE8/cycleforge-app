@@ -2,18 +2,24 @@
 
 @AGENTS.md
 
-**`AGENTS.md` (imported above) is the constitution** — hard rules, SoT invariants, Kinetic Ledger,
-pattern evolution, backend patterns, build gotchas. It is portable across agents (Grok, Codex, Cursor,
-Claude). This file adds **only** the Claude-native layer: which deep rules load on demand, plus
-Claude-only tooling. **Don't restate `AGENTS.md` here** — that duplication is what bloats every session.
+**`AGENTS.md` (imported above) is the constitution** — a ~45-line **map**: the product frame, one link
+per concern, and the hard laws as one-liners. It is portable across agents (Grok, Codex, Cursor,
+Claude) and deliberately holds **no** detail: every rationale, table, and edge case lives in a
+`.claude/rules/*` file it links. This file adds **only** the Claude-native layer: which deep rules load
+on demand, plus Claude-only tooling. **Don't restate `AGENTS.md` here** — that duplication is what
+bloats every session.
 
 ## Deep rules — load on demand (NOT auto-loaded)
 
-Read the file when the task touches its concern. `AGENTS.md` carries the always-on summary of each;
-these hold the detail + rationale:
+Read the file when the task touches its concern. `AGENTS.md` links each of these; they hold the detail
++ rationale:
 
-- `.claude/rules/source-of-truth.md` — full SoT invariant list + rationale (compact table is in `AGENTS.md`).
-- `.claude/rules/build-gotchas.md` — Turbopack `.ts` z-index import, Tailwind content globs.
+- `.claude/rules/workflow-safety.md` — worktree lanes, branch discipline, ports, work-log, commits, secrets.
+- `.claude/rules/source-of-truth.md` — **the** SoT invariant list + rationale (no compact twin elsewhere).
+- `.claude/rules/pattern-evolution.md` — compose → grow the SoT → compound; Always / Ask first / Never.
+- `.claude/rules/kinetic-ledger.md` — product UI identity + the five laws.
+- `.claude/rules/verify.md` — gates, DS ratchets, E2E-on-the-QA-org, how to measure.
+- `.claude/rules/build-gotchas.md` — Turbopack `.ts` z-index import, Tailwind content globs, bundle altitude.
 - `.claude/rules/ui-design-system.md` + `.claude/rules/contextual-display.md` (+ `display/*`) — region contracts, density, one-row anatomy, motion.
 - `.claude/rules/backend-patterns.md` — route skeleton, `transition()`, audit, tenant GUC, `Deps` injection.
 - `.claude/rules/polymorphic-tables.md` — new polymorphic / typed-fact table contract.
@@ -30,7 +36,7 @@ A session's always-on cost = `CLAUDE.md` + everything it `@import`s (`grep '^@' 
 
 ## Pattern evolution (the one discipline to hold in mind)
 
-Full law: **`AGENTS.md` → Pattern evolution + Compound design system**. In one line:
+Full law: **`.claude/rules/pattern-evolution.md`**. In one line:
 **compose from the named SoT / registry first; grow the SoT when it is wrong or weaker than a sibling
 (especially single-consumer, low blast radius); never freeze on a conservative reskin.** The user
 prompt is a floor, not a ceiling — but hard safety (tenant, status machine, secrets, search waist)

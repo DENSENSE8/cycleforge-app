@@ -3,7 +3,7 @@
 House identity is **Kinetic Ledger** — data-first reseller ops: dense, state-colored, scan-aware, multi-tenant.
 **Legible throughput** over document calm. Calm chrome (Linear discipline), not document-IA as the product shape.
 
-Always-on constitution: root **`AGENTS.md` → Kinetic Ledger**.  
+House identity: [kinetic-ledger.md](kinetic-ledger.md).  
 Region contracts + data→surface: [contextual-display.md](contextual-display.md).  
 Token inventory: `src/design-system/DESIGN_SYSTEM.md`.
 

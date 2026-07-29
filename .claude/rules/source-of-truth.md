@@ -1,12 +1,14 @@
 # Source-of-truth invariants
 
 Each concern below has exactly one source module. Read from it; never inline, copy, or re-derive the mapping.
-Summarized in the root `CLAUDE.md`; this file holds the detail and rationale.
+
+**This is the only list.** Root [`AGENTS.md`](../../AGENTS.md) links here rather than carrying a compact
+twin — a second table drifts from this one the first time a row changes in just one place.
 
 ## Presentation kinds (UI waist — data drives display)
 
 Views **assemble** resolved facts; they do **not** invent label maps, hues, or chip types. When rendering domain
-fields, pick the presentation kind and import from the SoT below (Kinetic Ledger law 4 — `AGENTS.md`).
+fields, pick the presentation kind and import from the SoT below (Kinetic Ledger law 4 — [kinetic-ledger.md](kinetic-ledger.md)).
 
 | Facet / kind | Source |
 |---|---|
@@ -27,6 +29,10 @@ fields, pick the presentation kind and import from the SoT below (Kinetic Ledger
 | Focus affordance | `src/design-system/tokens/focus-ring.ts` (`focusRing(archetype, tone)`) |
 | Depth elevation (flat · raised · overlay) | `src/design-system/tokens/shadows.ts` (`elevationClass`) |
 | Ops table / spreadsheet surface shell | `src/design-system/tokens/table-surface.ts` (`TABLE_SURFACE_*` + `TABLE_FROZEN_HEADER_CLASS`) |
+| Grid column visibility (per-staff) | `@/design-system/components/grid` `useGridColumnVisibility` / `useGridFields` + `GridFieldsMenu` — see **Grid column visibility + sort** below |
+| Grid column sort (URL-durable) | `@/hooks/useUrlColumnSort` → `?colsort=` / `?coldir=` — see **Grid column visibility + sort** below |
+| Collection-surface action planes | `display/workbench.md` — in-cell · row-scoped · multi-select · record, one primary plane each |
+| Station Workbench shell / column / wash | `@/components/station/workbench` (`StationWorkbench`, `StationPanelRoot` + `StationAmbientWash`, `STATION_WORKBENCH_*`) — rule: `display/station-workbench.md` |
 | Surface / box shell | `Panel` (generic) · `SectionCard` (monitor) · `CardShell` (rows) — never hand-roll |
 | Dialog / AlertDialog | `@/design-system/components/Dialog` · `AlertDialog` · `requestConfirm` / `ConfirmDialogHost` — never hand-roll `fixed inset-0` scrims for new modals; station floor confirms stay on `ConfirmSheet` |
 | Switch / Checkbox | `@/design-system/primitives` `Switch` / `Checkbox` |
@@ -80,6 +86,30 @@ If a facet has no SoT yet, **add or extend one** (pattern evolution) — do not 
   (`z-panel`, `z-modal`, `z-panelPopover`, `z-toast`, `z-tooltip`).
 - **Toasts:** `@/lib/toast` + `AppToaster` (`toast-theme.ts`) — light semantic fills; never Sonner `richColors`.
 - Never hardcode `z-[NNN]` or inline numeric `zIndex`. Add/adjust a named token instead.
+
+## Grid column visibility + sort
+
+- **Visibility resolves in exactly ONE place** — `useGridColumnVisibility` (descriptor `tier` + staff
+  delta + viewport force-hide → the visible track list, which the header, rows, summaries and the grid
+  template all consume). Column `tier: 'core' | 'optional'` is the default-set SoT: grids open **lean**,
+  staff opt in from `GridFieldsMenu`, and prefs persist as a **delta** in
+  `staff_preferences.tableColumns[tableId]`.
+- **Never call `useIsColumnHidden()` from a grid family** — it is the retired cell-granularity path
+  that left an empty ruled band instead of removing the track; it survives only for
+  `ChipColumns` / `RowMetaColumns`.
+- **Sort is URL-durable** via `useUrlColumnSort` → `?colsort=` / `?coldir=`. **Never reuse
+  `?sort=` / `?dir=` on station routes** — those are taken by server ordering, and colliding on them
+  makes the grid and the query disagree about what "sorted" means.
+
+## Collection-surface action planes
+
+- Four planes, one primary each: **in-cell** (cell-anchored editor) · **row-scoped** (hover controls +
+  single-row menu) · **multi-select** (`ContextualSelectionBar`) · **record** (detail inspector / full
+  page). Full decision table: [`display/workbench.md`](display/workbench.md).
+- **Actions diverge by lifecycle stage; column layout and grid components diverge only by data domain.**
+- The **record plane stays a complete superset** wherever the in-cell plane is conditionally
+  unavailable (mobile, non-airtable skin) — otherwise a field becomes unreachable on the surface that
+  cannot show its primary plane.
 
 ## Right-rail modality (the detail slot)
 

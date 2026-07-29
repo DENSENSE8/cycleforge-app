@@ -8,7 +8,7 @@ allowed-tools: Read, Grep, Glob, Edit, Write, Bash
 
 **Scope:** pages that already use (or correctly need) the **sidebar map + focus pane** Workbench
 recipe for mode-scoped pick+edit. This is **not** “every Cycle Forge surface is dual-pane” —
-Kinetic Ledger (`AGENTS.md`) allows tables, boards, stations, and rollups as primary surfaces.
+Kinetic Ledger (`.claude/rules/kinetic-ledger.md`) allows tables, boards, stations, and rollups as primary surfaces.
 
 When you are adding a feature, view, list, tab, filter, or search **to a sidebar-driven page**,
 follow this contract. If the job is Station, pure Monitor, Canvas, or a table/board-primary Workbench
