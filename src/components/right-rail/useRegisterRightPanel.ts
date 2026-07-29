@@ -29,10 +29,15 @@ export function useRegisterRightPanel(opts: {
   onClose?: () => void;
   /** When true, render in the elevated `detailStack` band + deeper backdrop. */
   elevated?: boolean;
+  /** Modality — defaults to `true`. Pass `false` for a non-modal inspector
+   *  (no scrim, no scroll lock, `role="region"`). See `RightRailPanel.modal`. */
+  modal?: boolean;
+  /** Accessible name for the aside — pass one when `modal` is false. */
+  ariaLabel?: string;
   /** When false the component makes no claim (e.g. an unopened dock). */
   enabled?: boolean;
 }): void {
-  const { id, priority, node, onClose, elevated, enabled = true } = opts;
+  const { id, priority, node, onClose, elevated, modal, ariaLabel, enabled = true } = opts;
 
   // Stable claim: registers once per (id, priority, enabled) change, unregisters
   // on unmount / disable. Deliberately excludes `node` so content updates don't
@@ -41,12 +46,12 @@ export function useRegisterRightPanel(opts: {
   // effect below so a content re-render never remounts the occupant.
   useEffect(() => {
     if (!enabled) return undefined;
-    return registerRightRailPanel({ id, priority, node, onClose, elevated });
-  }, [id, priority, enabled, elevated]);
+    return registerRightRailPanel({ id, priority, node, onClose, elevated, modal, ariaLabel });
+  }, [id, priority, enabled, elevated, modal, ariaLabel]);
 
   // Keep the live occupant's node fresh (no-ops if the claim isn't active).
   useEffect(() => {
     if (!enabled) return;
-    updateRightRailPanelNode(id, node, onClose, elevated);
-  }, [id, node, onClose, elevated, enabled]);
+    updateRightRailPanelNode({ id, node, onClose, elevated, modal, ariaLabel });
+  }, [id, node, onClose, elevated, modal, ariaLabel, enabled]);
 }

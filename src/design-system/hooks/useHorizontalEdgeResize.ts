@@ -36,6 +36,11 @@ interface UseHorizontalEdgeResizeOptions {
   maxWidthPad?: number;
   /** Disable drag (fixed width). */
   enabled?: boolean;
+  /** Accessible name for the drag handle. Defaults to the document-pane wording
+   *  this hook was lifted from; pass one when the pane is not a document. */
+  label?: string;
+  /** `data-testid` on the handle. Defaults to the document-pane id. */
+  testId?: string;
 }
 
 interface HorizontalEdgeHandleProps {
@@ -59,6 +64,8 @@ export function useHorizontalEdgeResize({
   minWidth = DEFAULT_MIN_WIDTH,
   maxWidthPad = DEFAULT_MAX_WIDTH_PAD,
   enabled = true,
+  label = 'Resize document panel',
+  testId = 'document-slide-over-resize',
 }: UseHorizontalEdgeResizeOptions = {}) {
   const [width, setWidthState] = useState(() =>
     readPersistedWidth(storageKey, defaultWidth, minWidth),
@@ -153,9 +160,9 @@ export function useHorizontalEdgeResize({
   const edgeHandleProps: HorizontalEdgeHandleProps = {
     role: 'separator',
     'aria-orientation': 'vertical',
-    'aria-label': 'Resize document panel',
+    'aria-label': label,
     'aria-valuenow': Math.round(width),
-    'data-testid': 'document-slide-over-resize',
+    'data-testid': testId,
     tabIndex: enabled ? 0 : -1,
     onPointerDown,
   };

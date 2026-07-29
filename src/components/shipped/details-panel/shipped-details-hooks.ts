@@ -1,15 +1,12 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
-import { emitAppEvent } from '@/hooks';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ShippedOrder } from '@/lib/neon/orders-queries';
 import { buildShippedCopyInfo } from '@/utils/copyallshipped';
 import { useDeleteOrderRow } from '@/hooks';
 import { useOrderFieldSave } from '@/hooks/useOrderFieldSave';
-import { staffHasRole } from '@/utils/staff';
-import { getPresentStaffForToday, type StaffMember } from '@/lib/staffCache';
+import { useWorkOrderAssignment } from '@/hooks/useWorkOrderAssignment';
 import { WorkOrderAssignmentCard, type AssignmentConfirmPayload } from '@/components/work-orders/WorkOrderAssignmentCard';
-import type { WorkOrderRow } from '@/components/work-orders/types';
 import type { ShippedActiveSection } from '@/components/shipped/ShippedDetailsPanelContent';
 import type { ShippedActiveInput } from '@/components/shipped/stacks/types';
 import { resolveDeleteRequest, toMonthDayYearCurrent } from '@/components/shipped/details-panel/shipped-details-logic';
@@ -53,7 +50,37 @@ export function useShippedDetailState(initialShipped: ShippedOrder, onUpdate: ()
     resetRefs,
   } = fieldSave;
 
+  // Latest-refs so the re-seed effect below can flush the OUTGOING record's note
+  // without taking `notes` / `saveNotes` as deps (which would re-run the re-seed
+  // on every keystroke and wipe the draft being typed).
+  const notesRef = useRef(notes);
+  notesRef.current = notes;
+  const saveNotesRef = useRef(saveNotes);
+  saveNotesRef.current = saveNotes;
+  /** The note this panel last seeded from a record — the dirty-check baseline. */
+  const seededNotesRef = useRef(String(initialShipped.notes || ''));
+  const seededIdRef = useRef(Number(initialShipped.id));
+
   useEffect(() => {
+    // Record swapped under a MOUNTED panel (queue j/k navigation, or a row click
+    // while the inspector is open). The re-seed below overwrites `notes` with the
+    // incoming record's value, so an unsaved draft for the order we are leaving
+    // would vanish silently. Flush it first — `saveNotes` still closes over the
+    // OUTGOING orderId at this point, because `setShipped` has not run yet.
+    //
+    // Fire-and-forget on purpose: this is a throughput queue, so navigation is
+    // never blocked and never prompts. A failed save surfaces through the shared
+    // toast path in `useOrderFieldSave`.
+    const nextId = Number(initialShipped.id);
+    if (seededIdRef.current !== nextId) {
+      const draft = notesRef.current.trim();
+      if (draft !== seededNotesRef.current.trim()) {
+        void saveNotesRef.current(draft);
+      }
+    }
+    seededIdRef.current = nextId;
+    seededNotesRef.current = String(initialShipped.notes || '');
+
     setShipped(initialShipped);
     const preferredDate = String(initialShipped.ship_by_date || '').trim() || initialShipped.created_at || '';
     setShipByDate(toMonthDayYearCurrent(preferredDate));
@@ -239,74 +266,32 @@ export interface UseShippedAssignmentOptions {
  * (optimistically updating the local order and firing refresh events).
  */
 export function useShippedAssignment({ shipped: _shipped, setShipped, onUpdate }: UseShippedAssignmentOptions) {
-  const [staff, setStaff] = useState<StaffMember[]>([]);
   const [showAssignmentCard, setShowAssignmentCard] = useState(false);
 
-  const technicianOptions = staff
-    .filter((member) => staffHasRole(member, 'technician'))
-    .map((member) => ({ id: Number(member.id), name: member.name }))
-    .sort((a, b) => a.name.localeCompare(b.name));
-  const packerOptions = staff
-    .filter((member) => staffHasRole(member, 'packer'))
-    .map((member) => ({ id: Number(member.id), name: member.name }));
+  // Staff options + the /api/work-orders write live in the shared waist, so the
+  // dashboard bulk bar and this panel can never drift into two writers.
+  const { technicianOptions, packerOptions, loadStaff, confirmAssignment } = useWorkOrderAssignment({
+    onAssigned: (_row, payload) => {
+      setShipped((current) => ({
+        ...current,
+        tester_id: payload.techId,
+        packer_id: payload.packerId,
+        ship_by_date: payload.deadline ?? current.ship_by_date,
+        deadline_at: payload.deadline ?? current.deadline_at,
+      }));
+      onUpdate();
+    },
+  });
 
   const openAssignmentCard = useCallback(async () => {
-    try {
-      const members = await getPresentStaffForToday();
-      setStaff(members);
-      setShowAssignmentCard(true);
-    } catch {
-      window.alert('Failed to load staff.');
-    }
-  }, []);
-
-  const handleAssignmentConfirm = useCallback(
-    async (row: WorkOrderRow, payload: AssignmentConfirmPayload) => {
-      const nextStatus = payload.status ?? (payload.techId && payload.packerId ? 'ASSIGNED' : 'OPEN');
-
-      try {
-        const res = await fetch('/api/work-orders', {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            entityType: row.entityType,
-            entityId: row.entityId,
-            assignedTechId: payload.techId,
-            assignedPackerId: payload.packerId,
-            status: nextStatus,
-            priority: row.priority,
-            deadlineAt: payload.deadline,
-            notes: row.notes,
-          }),
-        });
-        if (!res.ok) {
-          const data = await res.json().catch(() => ({}));
-          throw new Error(data?.details || data?.error || 'Failed to save assignment');
-        }
-
-        setShipped((current) => ({
-          ...current,
-          tester_id: payload.techId,
-          packer_id: payload.packerId,
-          ship_by_date: payload.deadline ?? current.ship_by_date,
-          deadline_at: payload.deadline ?? current.deadline_at,
-        }));
-        emitAppEvent('dashboard-refresh');
-        emitAppEvent('app-refresh-data');
-        onUpdate();
-      } catch (error: any) {
-        window.alert(error?.message || 'Failed to save assignment');
-      }
-    },
-    [onUpdate, setShipped],
-  );
+    if (await loadStaff()) setShowAssignmentCard(true);
+  }, [loadStaff]);
 
   return {
-    staff,
     showAssignmentCard,
     setShowAssignmentCard,
     openAssignmentCard,
-    handleAssignmentConfirm,
+    handleAssignmentConfirm: confirmAssignment,
     technicianOptions,
     packerOptions,
   };

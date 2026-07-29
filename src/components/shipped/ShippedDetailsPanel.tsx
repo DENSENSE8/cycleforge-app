@@ -22,6 +22,8 @@ import {
 } from './details-panel/shipped-details-hooks';
 import { ShippedDetailsHeader } from './details-panel/ShippedDetailsHeader';
 import { ShippedDetailsBody } from './details-panel/ShippedDetailsBody';
+import { ShippedPanelEditorDock } from './details-panel/ShippedPanelEditorDock';
+import { OrderRecordBody } from '@/components/order-record/OrderRecordBody';
 
 export type { ShippedActiveInput };
 
@@ -39,6 +41,14 @@ export function ShippedDetailsPanel({
   context = 'dashboard',
 }: ShippedDetailsPanelProps) {
   const router = useRouter();
+  /**
+   * D2/D2a — the order-record surfaces render the shared single-scroll
+   * `OrderRecordBody`; every other context keeps the legacy tabbed
+   * `ShippedDetailsBody`. Station / packer / labels / staged / fulfillment are
+   * a different job (several are Station-contract at `floor` density) and get a
+   * variant designed on their own terms, not this retrofitted.
+   */
+  const isOrderRecord = context === 'dashboard';
   const isFulfillmentPanel = context === 'queue' || context === 'fulfillment';
   const isLabelsPanel = context === 'labels';
   const isStagedPanel = context === 'staged';
@@ -165,7 +175,30 @@ export function ShippedDetailsPanel({
   };
 
   return (
-    <DetailStackRailRegistrar id={`detail:order:${shipped.id}`} onClose={onClose}>
+    // Non-modal inspector: picking a row and editing it is a pick+edit job, not a
+    // blocking decision, so the queue underneath stays scrollable / clickable and
+    // nothing dims. The scrim used to hide exactly the context the operator needs
+    // (sibling rows, KPI strip, lifecycle tabs). Every other right-rail occupant
+    // keeps the modal default.
+    <DetailStackRailRegistrar
+      // STABLE id — deliberately NOT keyed on the record. The host keys its
+      // `AnimatePresence mode="wait"` on the occupant id, so a per-record id made
+      // every row→row step a full exit-then-enter: ~0.4s out, ~0.4s in, with an
+      // empty slot in between. Arrowing down a queue is the core loop here, and
+      // a blank gap per step is the wrong cost. With one stable id the occupant
+      // stays mounted and its node is swapped in place (the store's
+      // `updateRightRailPanelNode` path, which exists for exactly this).
+      //
+      // Safe because the panel fully re-seeds on record change: every editable
+      // field re-reads from the incoming record, the open tab resets, and any
+      // dirty note is flushed for the outgoing order first (see
+      // `useShippedDetailState`). Per-entity crossfade remains the default for
+      // every OTHER occupant — this is a scoped exception, not a host change.
+      id="detail:order"
+      onClose={onClose}
+      modal={false}
+      ariaLabel={`Order ${meta.orderIdDisplay} details`}
+    >
       <div className="flex h-full min-h-0 flex-col overflow-hidden">
         <ShippedDetailsHeader
           orderIdDisplay={meta.orderIdDisplay}
@@ -181,11 +214,66 @@ export function ShippedDetailsPanel({
           showCustomerTab={false}
           showWarrantyTab={false}
           showDocumentsTab={showDocumentsTab}
+          showTabs={!isOrderRecord}
           activeSection={activeSection}
           onSectionChange={setActiveSection}
           onOpenFullPage={() => router.push(`/o/${shipped.id}`)}
         />
 
+        {isOrderRecord ? (
+          <>
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              <div className="px-4 py-4">
+                <OrderRecordBody
+                  order={shipped}
+                  density="compact"
+                  documentsReadOnly
+                  copiedAll={copiedAll}
+                  onCopyAll={handleCopyAll}
+                  onUpdate={onUpdate}
+                  onAssign={meta.canEditAssignment ? openAssignmentCard : undefined}
+                  editableShippingFields={{
+                    orderNumber,
+                    itemNumber,
+                    trackingNumber: shippingTrackingNumber,
+                    shipByDate,
+                    isSaving: isSavingInlineFields,
+                    isSavingShipByDate,
+                    onOrderNumberChange: setOrderNumber,
+                    onItemNumberChange: setItemNumber,
+                    onTrackingNumberChange: setShippingTrackingNumber,
+                    onShipByDateChange: setShipByDate,
+                    onBlur: () => { void saveInlineFields(); },
+                    onShipByDateBlur: () => { void saveShipByDate(shipByDate); },
+                  }}
+                />
+              </div>
+            </div>
+
+            <ShippedPanelEditorDock
+              shipped={shipped}
+              activeInput={activeInput}
+              setActiveInput={setActiveInput}
+              showMarkAsShipped
+              showOutOfStock
+              showNotes
+              notes={notes}
+              setNotes={setNotes}
+              isSavingNotes={isSavingNotes}
+              onSaveNotes={() => { void handleSaveNotes(() => setActiveInput('none')); }}
+              isOutOfStock={isOutOfStock}
+              isSavingOutOfStock={isSavingOutOfStock}
+              onSaveOutOfStock={(checked) => {
+                void handleSaveOutOfStock(checked, () => setActiveInput('none'));
+              }}
+              shippingTrackingNumber={shippingTrackingNumber}
+              onMarkShippedSuccess={() => {
+                setActiveInput('none');
+                onUpdate();
+              }}
+            />
+          </>
+        ) : (
         <ShippedDetailsBody
           context={context}
           isFulfillmentPanel={isFulfillmentPanel}
@@ -232,6 +320,7 @@ export function ShippedDetailsPanel({
           isDeletingOrder={isDeleting}
           onDeleteOrder={handleDelete}
         />
+        )}
 
         <AnimatePresence>
           {showAssignmentCard && meta.canEditAssignment ? (

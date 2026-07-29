@@ -9,8 +9,29 @@ export const DETAIL_STACK_LAYOUT = {
   headerOffsetPx: 40,
 } as const;
 
-export function detailStackAsideStyle(): CSSProperties {
-  const { insetPx, widthPx } = DETAIL_STACK_LAYOUT;
+/**
+ * Drag-to-resize contract for NON-MODAL detail inspectors (the dashboard order
+ * inspector). Modal occupants keep the fixed {@link DETAIL_STACK_LAYOUT} width.
+ *
+ * `maxWidthPad` is the viewport the panel must leave behind, and it is derived,
+ * not taste: the docked sidebar is 360px and the Pending grid's own minimum
+ * content width is ~596px (the sum of its column tracks — below that it
+ * horizontal-scrolls and starts force-hiding columns). 360 + 596 ≈ 960, so at
+ * 1440 the inspector caps near 480px and the queue stays readable; at 1920 it
+ * can reach ~960. Sizing past that trades the collection map for the record,
+ * which is the trade this whole surface exists to avoid.
+ */
+export const DETAIL_STACK_RESIZE = {
+  storageKey: 'detail-inspector-width',
+  defaultWidthPx: DETAIL_STACK_LAYOUT.widthPx,
+  minWidthPx: 360,
+  maxWidthPadPx: 960,
+} as const;
+
+/** @param widthPx overrides the fixed default (resizable non-modal inspectors). */
+export function detailStackAsideStyle(widthPx?: number): CSSProperties {
+  const { insetPx, widthPx: defaultWidthPx } = DETAIL_STACK_LAYOUT;
+  const width = widthPx ?? defaultWidthPx;
   // Floats near the top-right of the viewport with an even gap on every side —
   // ABOVE the (backdrop-dimmed) global header, not below it. `top: insetPx`
   // moves it up; `right: insetPx` pulls it in off the flush edge (over to the
@@ -20,7 +41,7 @@ export function detailStackAsideStyle(): CSSProperties {
     top: insetPx,
     right: insetPx,
     bottom: insetPx,
-    width: `min(${widthPx}px, calc(100vw - ${insetPx * 2}px))`,
+    width: `min(${width}px, calc(100vw - ${insetPx * 2}px))`,
   };
 }
 

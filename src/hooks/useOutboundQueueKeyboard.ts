@@ -13,6 +13,7 @@
  */
 
 import { useEffect, useRef } from 'react';
+import { hasOpenOverlay } from '@/lib/overlay-stack/store';
 import {
   dispatchCloseShippedDetails,
   dispatchNavigateShippedDetails,
@@ -66,6 +67,13 @@ export function useOutboundQueueKeyboard({
     const onKey = (e: KeyboardEvent) => {
       if (e.metaKey || e.ctrlKey || e.altKey || e.repeat) return;
       if (isTypingTarget(e.target) || isTypingTarget(document.activeElement)) return;
+      // The innermost open overlay owns the keyboard. This listener is CAPTURE
+      // phase, so without this bail-out its `stopPropagation()` would swallow
+      // Escape (and j/k) before an open popover / menu / cell editor ever sees
+      // it — closing the inspector while the popover stayed on screen. The
+      // typing-target test above only covers input/textarea editors, never
+      // button-and-menu popovers. See `src/lib/overlay-stack/store.ts`.
+      if (hasOpenOverlay()) return;
 
       const code = e.code;
 
@@ -129,6 +137,11 @@ export function useOutboundQueueKeyboard({
       if (code === 'Enter') {
         // Don't steal Enter from buttons/links.
         if (e.target instanceof HTMLButtonElement || e.target instanceof HTMLAnchorElement) return;
+        // Don't steal Enter from a FOCUSED ROW either. Rows are `tabIndex={0}`
+        // and handle Enter/Space themselves to open the record they belong to;
+        // this branch only knows how to open `orderedRecords[0]`, so capturing
+        // here opened the wrong order whenever the operator had tabbed down.
+        if (e.target instanceof Element && e.target.closest('[data-order-row-id]')) return;
         if (selectedRef.current != null) return;
         const first = orderedRef.current[0] as ShippedOrder | undefined;
         if (!first) return;
