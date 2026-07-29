@@ -169,4 +169,28 @@ When a **DS-ratchet** gate fails, migrate to the DS primitive
 the documented `ds-*` escape for a genuine one-off — **never** raise a baseline
 count or `--no-verify` past it.
 
+### E2E runs against the QA org, never the dogfood org
+
+**A test asserts against `QA_ORG_ID`, not the dogfood tenant.** Point new
+Playwright specs at the `qa-desktop` project (storage state
+`tests/.auth/qa-admin.json`) and assert on the `QA_FIXTURE_*` constants from
+`src/lib/tenancy/qa-org.ts` — never on whatever rows USAV happens to have today.
+
+- **Why:** the dogfood org is a live warehouse. Its row counts, lifecycle mix,
+  and feature flags change under the test between runs, so a dogfood-backed spec
+  fails for reasons that have nothing to do with the change under review — and,
+  worse, passes vacuously when a lane happens to be empty. The QA tenant is
+  provisioned to a fixed org UUID with deterministic SKUs / PO / orders and its
+  gated flags force-enabled, so a spec exercises the same surface every run.
+- **Do:** `pnpm provision:qa-org` (idempotent, safe to re-run) →
+  `npx playwright test <spec> --project=qa-desktop`. Seed what a spec needs by
+  extending the fixtures in `qa-org.ts` + `scripts/provision-qa-org.ts`.
+- **Don't:** hardcode a tenant UUID in a spec, read the org id from a session,
+  or `test.skip` around missing dogfood data — the skip hides the coverage gap
+  that using the QA org would have closed.
+- **Dogfood-only exception:** a spec that exists *because* of production-shaped
+  data (a migration backfill probe, a live-integration smoke test) may run on
+  `desktop` — say so in the spec's header comment and keep its assertions
+  shape-based, never count-based.
+
 Do not invent new search engines, audit APIs, or status transitions outside the SoT modules above. **Do** improve those SoT modules when they are incomplete or inconsistent — that is pattern evolution, not invention.
