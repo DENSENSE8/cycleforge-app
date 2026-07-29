@@ -38,8 +38,12 @@ export const RECEIVING_LINE_PHOTO_TYPES = [RECEIVING_PHOTO_ITEM] as const;
 export const RECEIVING_PHOTO_STAGES = ['arrival_package', 'unbox_carton', 'unbox_item'] as const;
 export type ReceivingPhotoStage = (typeof RECEIVING_PHOTO_STAGES)[number];
 
-/** List-filter intent for receiving photo queries (`all` = no stage filter). */
-export type ReceivingPhotoListIntent = 'package' | 'unbox_carton' | 'item' | 'all';
+/**
+ * List-filter intent for receiving photo queries (`all` = no stage filter).
+ * `carton` = every RECEIVING-entity photo regardless of sub-stage — see
+ * {@link RECEIVING_PHOTO_LIST_INTENT_CARTON}.
+ */
+export type ReceivingPhotoListIntent = 'package' | 'unbox_carton' | 'item' | 'all' | 'carton';
 
 function norm(photoType: string | null | undefined): string {
   return String(photoType ?? '').trim().toLowerCase();
@@ -107,6 +111,18 @@ export function receivingUploadStage(
   return hint === 'arrival_package' || hint === 'unbox_carton' ? hint : 'unbox_carton';
 }
 
+/**
+ * Broadened carton-display intent: every RECEIVING-entity photo regardless of
+ * capture sub-stage (package/legacy/unbox_carton). Distinct from `unbox_carton`
+ * on purpose — the photo-policy gate (`sqlCartonStagePhotoCount`) must keep
+ * counting `unbox_carton` strictly (arrival evidence must never satisfy an
+ * unbox-carton requirement), so this value is additive and never substituted
+ * into that gate's type signature. Use it only for read/display surfaces that
+ * want to show a carton's whole evidence set (e.g. the Unbox header pill and
+ * carton photo peek) rather than one capture sub-stage.
+ */
+export const RECEIVING_PHOTO_LIST_INTENT_CARTON = 'carton' as const;
+
 /** List-filter intent for a receiving stage. */
 export function photoIntentFromStage(
   stage: ReceivingPhotoStage,
@@ -155,6 +171,8 @@ export function receivingPhotoIntentSql(intent: ReceivingPhotoListIntent): strin
       return ` AND l.entity_type = 'RECEIVING' AND COALESCE(p.photo_type, '') IN ('${RECEIVING_PHOTO_PACKAGE}', '${RECEIVING_PHOTO_LEGACY_PACKAGE}', '')`;
     case 'unbox_carton':
       return ` AND l.entity_type = 'RECEIVING' AND p.photo_type = '${RECEIVING_PHOTO_UNBOX_CARTON}'`;
+    case 'carton':
+      return ` AND l.entity_type = 'RECEIVING'`;
     case 'item':
       return ` AND l.entity_type = 'RECEIVING_LINE'`;
     case 'all':
