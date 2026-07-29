@@ -49,6 +49,7 @@ export function ActiveLineConditionSerial({
   onSerialAbsentChange,
   requireSerialConfirmation,
   serialInputRef,
+  units = null,
 }: {
   serials: ActiveRowSerial[];
   lineId: number;
@@ -64,6 +65,8 @@ export function ActiveLineConditionSerial({
   onSerialAbsentChange: (next: SerialAbsentState) => void;
   /** Org enforces the serial checkpoint — surfaces the "required" hint. */
   requireSerialConfirmation: boolean;
+  /** Materialised per-unit rows for the multi-qty green-check (Phase 3). */
+  units?: import('../UnitSlotList').UnitSlotView[] | null;
   /** RETURN match CTA — pair the order + open the prefilled claim. */
   onFileReturnClaim?: (matchedOrder: SerialMatchedOrder | null) => void;
   /** Programmatic focus target for the dock Add serial handoff. */
@@ -113,10 +116,13 @@ export function ActiveLineConditionSerial({
           <ReceivingUnitRows
             lineId={lineId}
             saved={serials as UnitSerial[]}
+            units={units}
             quantityExpected={quantityExpected ?? 1}
             lineCondition={cond}
+            defaultAbsentReason={serialAbsentReason}
             disabled={!receivingId}
             isSubmitting={serialSubmitting}
+            requireSerialConfirmation={requireSerialConfirmation}
             serialInputRef={serialInputRef}
             serialEditTarget={editingSerial?.id != null ? (editingSerial as UnitSerial) : null}
             onAddSerial={(sn, grade) => onSubmitSerial(sn, grade)}

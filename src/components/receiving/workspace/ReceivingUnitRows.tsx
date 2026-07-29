@@ -2,8 +2,10 @@
 
 import { useCallback, useEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { ConditionPills } from './ConditionPills';
-import { UnitSlotList, type UnitLike } from './UnitSlotList';
+import { UnitSlotList, type UnitLike, type UnitSlotView } from './UnitSlotList';
 import { ConditionBadge } from './ConditionBadge';
+import { markReceivingUnitSerialAbsent } from './receiving-label-helpers';
+import type { SerialAbsentState } from './line-edit/NoSerialControl';
 
 export type UnitSerial = UnitLike;
 
@@ -12,12 +14,22 @@ interface Props {
   lineId: number;
   /** Saved serials for the line, in scan order. Index i → unit row i. */
   saved: ReadonlyArray<UnitSerial>;
-  /** Expected qty — drives how many unit rows render. */
+  /**
+   * Materialised `receiving_line_unit` rows (ordinal order). When present, each
+   * row gets a durable id for the per-unit no-serial check. Optional through
+   * Phase 3 — absent means legacy dense `saved[i]` slots (no per-row check).
+   */
+  units?: ReadonlyArray<UnitSlotView> | null;
+  /** Expected qty — drives how many unit rows render when `units` is absent. */
   quantityExpected: number;
   /** Line-level grade, used as the default for not-yet-graded units. */
   lineCondition: string | null | undefined;
+  /** Line-level last-used absent reason — default for a new per-unit waiver. */
+  defaultAbsentReason?: string | null;
   disabled?: boolean;
   isSubmitting?: boolean;
+  /** Org enforces the serial checkpoint — per-row check reads as required. */
+  requireSerialConfirmation?: boolean;
   /** Scan a serial into a slot, stamping the grade chosen for that slot. */
   onAddSerial: (serial: string, conditionGrade: string | null) => void | Promise<void>;
   onDeleteSerial: (serialUnitId: number) => void;
@@ -59,10 +71,13 @@ interface Props {
 export function ReceivingUnitRows({
   lineId,
   saved,
+  units = null,
   quantityExpected,
   lineCondition,
+  defaultAbsentReason = null,
   disabled = false,
   isSubmitting = false,
+  requireSerialConfirmation = false,
   onAddSerial,
   onDeleteSerial,
   onReplaceSerial,
@@ -73,17 +88,30 @@ export function ReceivingUnitRows({
   noSerialControl,
   serialInputRef,
 }: Props) {
-  const total = Math.max(quantityExpected, saved.length, 1);
+  const total = Math.max(quantityExpected, saved.length, units?.length ?? 0, 1);
 
-  // Default selection: the first not-yet-scanned slot, else the first unit.
-  const firstEmpty = saved.length < total ? saved.length : 0;
+  // Default selection: the first not-yet-scanned / not-waived slot, else the first unit.
+  const firstEmpty = (() => {
+    if (units && units.length > 0) {
+      const idx = units.findIndex((u) => !u.serial_absent && u.serial_unit_id == null);
+      return idx >= 0 ? idx : 0;
+    }
+    return saved.length < total ? saved.length : 0;
+  })();
   const [selectedIndex, setSelectedIndex] = useState(firstEmpty);
 
   // Grade chosen for empty slots before their serial is scanned, keyed by slot.
   const [pendingGrade, setPendingGrade] = useState<Record<number, string>>({});
+  // Last reason used on a per-unit waiver — defaults the next green-check click
+  // (plan §9 lean: allow per-unit reason, default picker to last-used).
+  const [lastAbsentReason, setLastAbsentReason] = useState<string | null>(defaultAbsentReason);
 
   const gradeFor = (serial: UnitSerial | null, index: number): string | null =>
-    serial?.condition_grade ?? pendingGrade[index] ?? lineCondition ?? null;
+    serial?.condition_grade ??
+    units?.[index]?.condition_grade ??
+    pendingGrade[index] ??
+    lineCondition ??
+    null;
 
   // Surface the selected unit's effective grade to the parent (for the label
   // preview / print). Recomputed whenever the selection, that unit's saved or
@@ -96,7 +124,8 @@ export function ReceivingUnitRows({
   // guard so the new line's selected grade is always reported even if it equals
   // the previous line's last emitted value.
   useEffect(() => {
-    setSelectedIndex(saved.length < total ? saved.length : 0);
+    setSelectedIndex(firstEmpty);
+    setLastAbsentReason(defaultAbsentReason);
     lastEmittedRef.current = undefined;
     // Only re-seed on line change, not on every serial add.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -110,9 +139,12 @@ export function ReceivingUnitRows({
 
   useEffect(() => {
     if (serialEditTarget?.id == null) return;
-    const idx = saved.findIndex((s) => s.id === serialEditTarget.id);
+    const idx =
+      units && units.length > 0
+        ? units.findIndex((u) => u.serial_unit_id === serialEditTarget.id)
+        : saved.findIndex((s) => s.id === serialEditTarget.id);
     if (idx >= 0) setSelectedIndex(idx);
-  }, [serialEditTarget?.id, saved]);
+  }, [serialEditTarget?.id, saved, units]);
 
   // "All units" master picker: stamp every unit to one grade in a single tap.
   // The line-level default covers empty/ungraded slots (via gradeFor), and each
@@ -129,9 +161,31 @@ export function ReceivingUnitRows({
     [onConditionChange, onSetUnitGrade, saved],
   );
 
+  const commitUnitAbsent = useCallback(
+    (unitId: number, next: SerialAbsentState) => {
+      if (next.absent && next.reason) setLastAbsentReason(next.reason);
+      markReceivingUnitSerialAbsent(lineId, unitId, next, units);
+    },
+    [lineId, units],
+  );
+
+  const markUnitNoSerial = useCallback(
+    (unitId: number) => {
+      const reason = lastAbsentReason ?? defaultAbsentReason ?? 'NOT_SERIALIZED';
+      commitUnitAbsent(unitId, { absent: true, reason });
+    },
+    [commitUnitAbsent, lastAbsentReason, defaultAbsentReason],
+  );
+
   // Reflect the shared grade when every unit agrees; show indeterminate (no
   // active pill) when units are mixed, so the master never misreports state.
-  const effectiveGrades = Array.from({ length: total }, (_, i) => gradeFor(saved[i] ?? null, i));
+  const effectiveGrades = Array.from({ length: total }, (_, i) => {
+    const serial =
+      units && units.length > 0
+        ? saved.find((s) => s.id === units[i]?.serial_unit_id) ?? null
+        : saved[i] ?? null;
+    return gradeFor(serial, i);
+  });
   const masterValue = effectiveGrades.every((g) => g === effectiveGrades[0]) ? effectiveGrades[0] : null;
 
   return (
@@ -149,10 +203,14 @@ export function ReceivingUnitRows({
       <UnitSlotList
         total={total}
         saved={saved}
+        units={units}
         selectedIndex={selectedIndex}
         onSelect={setSelectedIndex}
         disabled={disabled}
         isSubmitting={isSubmitting}
+        requireSerialConfirmation={requireSerialConfirmation}
+        onMarkUnitNoSerial={units && units.length > 0 ? markUnitNoSerial : undefined}
+        onUnitSerialAbsentChange={units && units.length > 0 ? commitUnitAbsent : undefined}
         // Render the active unit exactly like a single-qty SerialCard row:
         // inline condition pills, no n/N counter, no pending badge.
         singleRowExpanded
@@ -171,7 +229,13 @@ export function ReceivingUnitRows({
         renderCollapsedMeta={(serial, index) => (
           <ConditionBadge grade={gradeFor(serial, index)} />
         )}
-        onAddSerial={(index, sn) => onAddSerial(sn, gradeFor(saved[index] ?? null, index))}
+        onAddSerial={(index, sn) => {
+          const serial =
+            units && units.length > 0
+              ? saved.find((s) => s.id === units[index]?.serial_unit_id) ?? null
+              : saved[index] ?? null;
+          return onAddSerial(sn, gradeFor(serial, index));
+        }}
         onDeleteSerial={(s) => onDeleteSerial(s.id)}
         onReplaceSerial={(original, next) => onReplaceSerial(original, next)}
         serialEditTarget={serialEditTarget}
