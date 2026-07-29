@@ -93,15 +93,21 @@ export function resolveLiveReceivingMode(
   return 'receive';
 }
 
-/** Strip params that belong to the other surface family. */
+/**
+ * Strip params that belong to the other surface family.
+ *
+ * **The receiving half is gone.** A graduated receiving surface now declares the
+ * params it owns (`@/lib/routing/receiving-routes`) and drops everything else at
+ * the boundary, so there is nothing left to enumerate here — arriving on
+ * `/unbox` with `?view=testing` loses it because `/unbox` never claimed it, not
+ * because someone remembered to list it. Only the Testing direction survives,
+ * and only until `/test` gets its own spec (Slice 5).
+ */
 export function stripCrossSurfaceParams(
   pathname: string | null | undefined,
   params: URLSearchParams,
 ): URLSearchParams {
   const next = new URLSearchParams(params.toString());
-  if (isReceivingSurfacePath(pathname)) {
-    for (const key of TESTING_SCOPED_PARAMS) next.delete(key);
-  }
   if (isTestingSurfacePath(pathname)) {
     next.delete('mode');
     next.delete('unboxview');

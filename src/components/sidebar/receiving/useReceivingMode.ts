@@ -12,7 +12,6 @@
 
 import { useEffect } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
-import { clearReceivingHistoryUrlParams } from '@/lib/receiving-history-search';
 import {
   UNBOX_SURFACE_ROUTE,
   TRIAGE_SURFACE_ROUTE,
@@ -22,11 +21,9 @@ import {
   HISTORY_SURFACE_ROUTE,
   receivingSurfaceBasePath,
 } from '@/lib/receiving/surface-path';
-import { stripCrossSurfaceParams } from '@/lib/surface-isolation';
-import {
-  GRID_COLUMN_DIR_PARAM,
-  GRID_COLUMN_SORT_PARAM,
-} from '@/lib/tables/grid-column-sort-params';
+import { RECEIVING_MODE_ROUTE_PARAMS } from '@/lib/routing/receiving-routes';
+import { routeParamsFor } from '@/lib/routing/registry';
+import { buildRouteUrl, parseRouteParams } from '@/lib/routing/route-params';
 import type { ReceivingMode } from '@/components/sidebar/receiving/receiving-sidebar-shared';
 import {
   normalizeTriageWorkspaceTabParams,
@@ -36,45 +33,6 @@ import {
 
 /** Unbox sub-view from `?unboxview=` — internal to this hook (URL ↔ state). */
 type UnboxView = 'recent' | 'queue' | 'viewed';
-
-/**
- * Sub-view + filter params that belong to exactly one mode. Stripped on every
- * mode switch so a selection from mode A never bleeds into mode B (the project's
- * cross-mode isolation rule): `unboxview` (receive), `triview` (triage),
- * `incview` + the Incoming filter set `state`/`sort`/`po_from`/`po_to`/`page`
- * (incoming). History's own params (`q`/`field`/`scope`) keep their
- * entering-history carve-out via `clearReceivingHistoryUrlParams`.
- */
-const MODE_SCOPED_PARAMS = [
-  'unboxview',
-  'triview',
-  'incview',
-  'state',
-  'sort',
-  'dir',
-  // Spreadsheet COLUMN sort (`useUrlColumnSort`) — a separate axis from the
-  // server `sort` above, and just as mode-scoped: a column sort picked in
-  // Unbox names columns History may not even have.
-  GRID_COLUMN_SORT_PARAM,
-  GRID_COLUMN_DIR_PARAM,
-  'po_from',
-  'po_to',
-  'page',
-  // Walk-In station job + repair deep-links (must not ride into Unbox/History).
-  'job',
-  'new',
-  'openRepair',
-  'search',
-  'tab',
-  // Triage's carton-list filter (D1, docs/receiving-triage-redesign-plan.md
-  // §0.6). A separate param from History's own `q` (kept independent so this
-  // change can't touch History's existing q/field/scope deep-link handling).
-  'triq',
-  // Unbox inline support-ticket editor toggle (docs/todo/
-  // receiving-inline-ticket-editor-plan.md). Line/mode-scoped — a mode switch
-  // must never carry a stale ticket editor into a different surface.
-  'ticketView',
-] as const;
 
 export interface ReceivingModeState {
   /** Active sidebar mode parsed from `?mode=` (defaults to `receive`). */
@@ -103,33 +61,6 @@ export interface ReceivingModeState {
   updateTriageQuery: (next: string) => void;
 }
 
-/**
- * Canonical base path for a receiving mode. `receive` (Unbox) and `triage`
- * (Receiving) have graduated to their own top-level surface routes; every other
- * mode still lives on `/receiving` as a `?mode=` sub-view during the migration.
- * Extend this map as each surface graduates (Phase 5).
- */
-function basePathForMode(mode: ReceivingMode): string {
-  if (mode === 'receive') return UNBOX_SURFACE_ROUTE;
-  if (mode === 'triage') return TRIAGE_SURFACE_ROUTE;
-  if (mode === 'incoming') return INCOMING_SURFACE_ROUTE;
-  if (mode === 'pickup') return PICKUP_SURFACE_ROUTE;
-  if (mode === 'repair') return REPAIR_SURFACE_ROUTE;
-  if (mode === 'history') return HISTORY_SURFACE_ROUTE;
-  return '/receiving';
-}
-
-/** True for a mode whose own route carries no `?mode=` — being there IS the mode. */
-function isGraduatedMode(mode: ReceivingMode): boolean {
-  return (
-    mode === 'receive' ||
-    mode === 'triage' ||
-    mode === 'incoming' ||
-    mode === 'pickup' ||
-    mode === 'repair' ||
-    mode === 'history'
-  );
-}
 
 export function useReceivingMode(): ReceivingModeState {
   const router = useRouter();
@@ -206,39 +137,43 @@ export function useReceivingMode(): ReceivingModeState {
     }
   }, [mode, isScanSurface]);
 
+  /**
+   * The current URL's params, boundary-parsed for the surface we are ON. Foreign
+   * keys and values that fail their schema are already gone, so an in-surface
+   * edit can patch this without re-deriving what belongs here.
+   */
+  const surfaceParams = (): URLSearchParams => {
+    const spec = routeParamsFor(currentBasePath);
+    const raw = new URLSearchParams(searchParams.toString());
+    return spec ? parseRouteParams(spec, raw) : raw;
+  };
+
+  const replaceOnSurface = (params: URLSearchParams) => {
+    const qs = params.toString();
+    router.replace(qs ? `${currentBasePath}?${qs}` : currentBasePath, { scroll: false });
+  };
+
   const updateMode = (nextMode: ReceivingMode) => {
-    const nextParams = stripCrossSurfaceParams(
-      basePathForMode(nextMode),
-      new URLSearchParams(searchParams.toString()),
-    );
-    // Strip mode-scoped sub-view/filter params so the target mode starts at its
-    // own clean default — a stale `unboxview`/`triview`/Incoming filter must not
-    // ride along into a different mode.
-    for (const key of MODE_SCOPED_PARAMS) nextParams.delete(key);
-    const base = basePathForMode(nextMode);
-    if (isGraduatedMode(nextMode)) {
-      // Unbox/Triage are their own surface routes now; being there IS the mode,
-      // so drop the `mode` param rather than carrying `?mode=receive|triage`.
-      nextParams.delete('mode');
-      const cleared = clearReceivingHistoryUrlParams(nextParams);
-      const qs = cleared.toString();
-      router.replace(qs ? `${base}?${qs}` : base);
-      return;
-    }
-    nextParams.set('mode', nextMode);
-    const finalParams =
-      nextMode !== 'history' ? clearReceivingHistoryUrlParams(nextParams) : nextParams;
-    router.replace(`${base}?${finalParams.toString()}`);
+    // The target URL is CONSTRUCTED from a declared set — the current query
+    // string is never copied forward. That is what replaced `MODE_SCOPED_PARAMS`:
+    // there is no list of keys to remember to delete, because nothing rides
+    // along unless it is named right here.
+    //
+    // The one deliberate carry is the staff filter: it is an operator-level
+    // preference ("show me my cartons"), not mode state, and losing it on every
+    // rail click was never the intent of the isolation rule.
+    const staff = searchParams.get('staff') ?? searchParams.get('staffId');
+    router.replace(buildRouteUrl(RECEIVING_MODE_ROUTE_PARAMS[nextMode], { staff }));
   };
 
   const updateStaff = (id: number) => {
-    const nextParams = new URLSearchParams(searchParams.toString());
+    const nextParams = surfaceParams();
     // Canonical staff-filter param is `staff` (useStaffFilter's
     // STAFF_FILTER_PARAM). `staffId` was receiving's legacy divergence — readers
     // keep it as a read-fallback for old links, but writes emit `staff` only.
     nextParams.delete('staffId');
     nextParams.set('staff', String(id));
-    router.replace(`${currentBasePath}?${nextParams.toString()}`);
+    replaceOnSurface(nextParams);
   };
 
   const updateUnboxView = (next: UnboxView, opts?: { clearLine?: boolean }) => {
@@ -249,10 +184,10 @@ export function useReceivingMode(): ReceivingModeState {
     if (opts?.clearLine !== false) {
       window.dispatchEvent(new CustomEvent('receiving-clear-line'));
     }
-    const nextParams = new URLSearchParams(searchParams.toString());
+    const nextParams = surfaceParams();
     if (next === 'recent') nextParams.delete('unboxview');
     else nextParams.set('unboxview', next);
-    router.replace(`${currentBasePath}?${nextParams.toString()}`);
+    replaceOnSurface(nextParams);
   };
 
   const updateTriageView = (next: TriageWorkspaceTab, opts?: { clearLine?: boolean }) => {
@@ -260,18 +195,18 @@ export function useReceivingMode(): ReceivingModeState {
     if (opts?.clearLine !== false) {
       window.dispatchEvent(new CustomEvent('receiving-clear-line'));
     }
-    const nextParams = new URLSearchParams(searchParams.toString());
+    const nextParams = surfaceParams();
     normalizeTriageWorkspaceTabParams(nextParams, next);
-    router.replace(`${currentBasePath}?${nextParams.toString()}`);
+    replaceOnSurface(nextParams);
   };
 
   const updateTriageQuery = (next: string) => {
     const trimmed = next.trim();
     if (trimmed === triageQuery) return;
-    const nextParams = new URLSearchParams(searchParams.toString());
+    const nextParams = surfaceParams();
     if (!trimmed) nextParams.delete('triq');
     else nextParams.set('triq', trimmed);
-    router.replace(`${currentBasePath}?${nextParams.toString()}`);
+    replaceOnSurface(nextParams);
   };
 
   return {

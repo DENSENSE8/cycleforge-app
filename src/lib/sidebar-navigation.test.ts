@@ -12,6 +12,7 @@ import {
   applyModeTarget,
   resolveSidebarMode,
 } from '@/lib/sidebar-navigation';
+import { routeParamsFor } from '@/lib/routing/registry';
 
 test('getSidebarNavItems returns the full sidebar list by default (parked sub-routes filtered)', () => {
   // A row that rides a parked surface (`parkedSurface`, e.g. studio-catalog on
@@ -115,9 +116,15 @@ test('every mode round-trips: resolveMode(apply(to(mode))) === mode', () => {
   }
 });
 
-// Round-trip must also hold when unrelated query params are already present —
-// `applyModeTarget` preserves them, and the resolver must ignore them.
-test('mode round-trip preserves unrelated params and still resolves', () => {
+// Round-trip must also hold when unrelated query params are already present.
+//
+// Two contracts now, by destination. An UN-MIGRATED route still copies forward,
+// so unrelated params survive (the legacy behaviour, and the leak). A route with
+// a param spec (`@/lib/routing/registry`) boundary-parses instead, so a param it
+// never declared is DROPPED — that is the whole point of the nav/routing slice,
+// and `openOrderId=42` landing on `/unbox` was the bug. Either way the mode must
+// still resolve.
+test('mode round-trip resolves, preserving unrelated params only on un-migrated routes', () => {
   for (const page of SIDEBAR_PAGE_NAV) {
     for (const mode of page.modes!) {
       const target = mode.to();
@@ -128,8 +135,26 @@ test('mode round-trip preserves unrelated params and still resolves', () => {
       const seed = new URLSearchParams('openOrderId=42&q=widget');
       const { pathname, search } = applyModeTarget({ pathname: page.href, params: seed }, target);
       const params = new URLSearchParams(search);
-      if (!('openOrderId' in delta)) assert.equal(params.get('openOrderId'), '42', `${page.id} dropped openOrderId`);
-      if (!('q' in delta)) assert.equal(params.get('q'), 'widget', `${page.id} dropped q`);
+      const spec = routeParamsFor(target.pathname);
+
+      if (!spec) {
+        if (!('openOrderId' in delta)) assert.equal(params.get('openOrderId'), '42', `${page.id} dropped openOrderId`);
+        if (!('q' in delta)) assert.equal(params.get('q'), 'widget', `${page.id} dropped q`);
+      } else {
+        assert.equal(
+          params.get('openOrderId'),
+          null,
+          `${target.pathname} declares no openOrderId — it must not ride along`,
+        );
+        // `q` survives only where the destination actually owns it (Pickup).
+        const owned = 'q' in spec.owns;
+        assert.equal(
+          params.get('q'),
+          owned ? 'widget' : null,
+          `${target.pathname} ${owned ? 'owns' : 'does not own'} ?q= — got ${params.get('q')}`,
+        );
+      }
+
       assert.equal(resolveSidebarMode(page.id, { pathname, params }), mode.id);
     }
   }

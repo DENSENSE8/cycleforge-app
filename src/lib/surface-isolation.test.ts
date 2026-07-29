@@ -29,12 +29,13 @@ test('isTestingApiView recognises testing feeds only', () => {
   assert.equal(isTestingApiView('recent'), false);
 });
 
-test('stripCrossSurfaceParams removes testing state on receiving paths', () => {
-  const params = new URLSearchParams('view=testing&testTab=returns&mode=receive&recvId=1');
+// The receiving direction moved to the route-param specs — a graduated surface
+// drops `view`/`testTab` because it never declared them, not because this
+// function lists them. Asserted at its new owner, in routing/route-params.test.ts.
+test('stripCrossSurfaceParams no longer strips on receiving paths', () => {
+  const params = new URLSearchParams('view=testing&testTab=returns&recvId=1');
   const next = stripCrossSurfaceParams('/unbox', params);
-  assert.equal(next.get('view'), null);
-  assert.equal(next.get('testTab'), null);
-  assert.equal(next.get('recvId'), '1');
+  assert.equal(next.toString(), params.toString());
 });
 
 test('stripCrossSurfaceParams removes receiving mode on testing paths', () => {

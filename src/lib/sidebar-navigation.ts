@@ -52,6 +52,8 @@ import {
   TECH_MODE_ICONS,
 } from '@/lib/nav/station-nav-icons';
 import { parseWalkInHistoryMode } from '@/lib/walk-in/history-modes';
+import { routeParamsFor } from '@/lib/routing/registry';
+import { parseRouteParams } from '@/lib/routing/route-params';
 
 export type SidebarRouteKey =
   | 'home'
@@ -281,6 +283,46 @@ const STATION_SURFACE_ROUTE_KEYS = new Set<SidebarRouteKey>([
 
 export function isStationSurfaceRoute(pathname: string | null): boolean {
   return STATION_SURFACE_ROUTE_KEYS.has(getSidebarRouteKey(pathname));
+}
+
+/**
+ * Route keys whose sidebar spine carries a per-route **context panel** — a
+ * picker / rail that is the route's primary navigator (Products' catalog list,
+ * the dashboard order feed, Inventory's tabs, …). Exactly the keys
+ * {@link getSidebarRouteKey} maps to a panel in `SidebarContextPanel`, minus the
+ * station keys (their bench renders in the CONTENT region, not the spine).
+ *
+ * This is the **declared contract** the shell was missing: before it existed the
+ * only way to learn whether a route had a panel was to mount it, so every route
+ * reserved a 360px column and a panel-less surface (Media library, /reports,
+ * every scan deep-link) rendered 360px of empty chrome beside its content.
+ *
+ * It drives ONE thing: the **default pin state** of the spine. Whether a body
+ * actually renders stays the panel's own call at render time — a mode-scoped
+ * `null` (e.g. `/dashboard?mode=inbound`) falls back to the nav list rather than
+ * going blank, so this set never has to model params.
+ */
+const CONTEXT_PANEL_ROUTE_KEYS = new Set<SidebarRouteKey>([
+  'dashboard',
+  'order',
+  'admin',
+  'operations',
+  'studio',
+  'ai-chat',
+  'settings',
+  'audit-log',
+  'fba',
+  'inventory',
+  'sourcing',
+  'products',
+  'warehouse',
+  'walk-in',
+  'manuals-library',
+]);
+
+/** True when this route's spine holds a context panel — see {@link CONTEXT_PANEL_ROUTE_KEYS}. */
+export function hasSidebarContextPanel(pathname: string | null): boolean {
+  return CONTEXT_PANEL_ROUTE_KEYS.has(getSidebarRouteKey(pathname));
 }
 
 export function getSidebarRouteKey(pathname: string | null): SidebarRouteKey {
@@ -974,6 +1016,16 @@ export function getSidebarHref(pageId: string): string | null {
  * Apply a mode's `ModeNavTarget` to the current location, returning the next
  * `{ pathname, search }`. `search` has no leading `?`. Pure — does not touch the
  * router. The eventual nav hook decides push-vs-replace around this.
+ *
+ * **This copy-then-hand-delete is the leak.** It carries the whole namespace to
+ * the destination and relies on each surface having remembered to list every key
+ * that should not have come along — which is what the four denylists were, and
+ * why `?triq=` from Triage arrived on `/unbox`.
+ *
+ * A destination that has migrated to a route param spec
+ * (`@/lib/routing/registry`) ends with a **boundary parse**: it keeps only the
+ * params that route declares, so nothing can ride along whether or not anyone
+ * remembered it. Un-migrated routes keep the legacy behaviour until their slice.
  */
 export function applyModeTarget(
   current: { pathname: string; params: Pick<URLSearchParams, 'toString'> },
@@ -984,7 +1036,9 @@ export function applyModeTarget(
     if (value === null) params.delete(key);
     else params.set(key, value);
   }
-  return { pathname: target.pathname, search: params.toString() };
+  const spec = routeParamsFor(target.pathname);
+  const next = spec ? parseRouteParams(spec, params) : params;
+  return { pathname: target.pathname, search: next.toString() };
 }
 
 /**
