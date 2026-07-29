@@ -20,6 +20,9 @@ fields, pick the presentation kind and import from the SoT below (Kinetic Ledger
 | Cross-entity search row | `SearchHit` / `src/lib/search/search-hit.ts` + hybrid retrieval |
 | Lifecycle / status dots | lifecycle tone registries / `workflowStageDot` (do not invent status maps) |
 | Z-index | `src/design-system/tokens/z-index.ts` |
+| Typeface cuts (sans · condensed · mono) | `src/lib/fonts.ts` + `typography/families.ts` (stacks mirrored in `styles/globals.css`) |
+| Type role → size/leading/tracking/weight/family/numerals | `tailwind.config.ts` `fontSize['role-*']` + the CF Type plugin |
+| Font weight ceiling (600) | `typography/weights.ts` (`MAX_FONT_WEIGHT`) |
 | Spacing scale + intents | `src/design-system/tokens/spacing.mjs` (+ `Stack`/`Inset`/`Row` primitives) |
 | Focus affordance | `src/design-system/tokens/focus-ring.ts` (`focusRing(archetype, tone)`) |
 | Depth elevation (flat · raised · overlay) | `src/design-system/tokens/shadows.ts` (`elevationClass`) |
@@ -29,7 +32,9 @@ fields, pick the presentation kind and import from the SoT below (Kinetic Ledger
 | Switch / Checkbox | `@/design-system/primitives` `Switch` / `Checkbox` |
 | Dropdown / Context menu | `@/design-system/primitives` `DropdownMenu` / `ContextMenu` |
 | App chrome / canvas / wash / work-canvas depth | `src/design-system/tokens/app-surface.ts` + `appContentShellClass` (`appWorkCanvasEdgeClass` owns the depth-edge hairline on every desktop page) |
-| Global detail-stack overlay shell | `@/design-system/shells/detail-stack` (`DETAIL_STACK_LAYOUT`, `detailStackAsideClassName`, …) |
+| Global detail-stack overlay shell | `@/design-system/shells/detail-stack` (`DETAIL_STACK_LAYOUT`, `DETAIL_STACK_RESIZE`, `detailStackAsideClassName`, `detailStackAsideStyle(widthPx?)`, …) |
+| Right-edge slot occupancy + modality | `RightRailHost` + `src/lib/right-rail/store.ts` — see **Right-rail modality** below |
+| Keyboard ownership (Escape / ambient hotkeys) | `src/lib/overlay-stack/store.ts` (+ `useRegisterOverlay` / `useAnyOverlayOpen`) — see **Escape ownership** below |
 | Station entity-context header | `@/components/station/entity-context` (`CartonContextCard` + `StationContextBar`) — Unbox / Triage / Testing / Shipping active-order |
 | Workbench chrome scoped search | `@/design-system/primitives/ToolbarSearchToggle` — collapsed Search icon; expands on hover / focus / click (or when query non-empty); composes `SearchField`. Never mount an always-open `SearchField` in a `WorkbenchChromeHeader` `search` slot. |
 | Station composer dock (chat-style notes) | `@/design-system/primitives` `StationComposerDock` — Unbox overview carton notes in the dock band; Receive/Print rides in its `trailingAction` as `<StationTerminalDock embedded>` (bare `SlicedActionDock` track — `slicedActionDockWrapperClass()` is the placement SoT; Send suppressed, Enter/blur still save). One shell, never composer + a second CTA row. Never hand-roll a mid-canvas ChatGPT prompt shell for station notes. |
@@ -75,6 +80,61 @@ If a facet has no SoT yet, **add or extend one** (pattern evolution) — do not 
   (`z-panel`, `z-modal`, `z-panelPopover`, `z-toast`, `z-tooltip`).
 - **Toasts:** `@/lib/toast` + `AppToaster` (`toast-theme.ts`) — light semantic fills; never Sonner `richColors`.
 - Never hardcode `z-[NNN]` or inline numeric `zIndex`. Add/adjust a named token instead.
+
+## Right-rail modality (the detail slot)
+
+- **One owner:** `RightRailHost` renders exactly the top occupant of
+  `src/lib/right-rail/store.ts`. Panels register via `useRegisterRightPanel` /
+  `DetailStackRailRegistrar` and own **no** geometry. Never add a private
+  `fixed right-0 z-panel w-[420px]` element — that is the exact bug the store exists to fix.
+- **Modality is per occupant, `modal` defaults to `true`** so every existing panel keeps
+  blocking behavior. Pass `modal={false}` for a non-modal **inspector**: no scrim, no
+  `backdrop-blur`, no body scroll lock, `role="region"` + `ariaLabel` instead of
+  `role="dialog" aria-modal`. That is the correct contract for a pick-a-row-and-edit-it
+  surface — the operator's context (sibling rows, KPI strip, lifecycle tabs) is exactly
+  what a scrim would hide. Reserve modal for surfaces that genuinely block until dismissed.
+- **Do not "fix" a non-modal occupant by adding a focus trap.** The host has never
+  installed one, so `aria-modal="true"` was a claim the DOM did not honor; non-modal
+  markup is the honest form.
+- **Non-modal occupants are resizable** via `DETAIL_STACK_RESIZE` + `useHorizontalEdgeResize`
+  (left-edge handle *inside* the card — the aside clips at its rounded corners). The width
+  cap is derived, not taste: viewport − (sidebar + the grid's own min content width).
+  Modal occupants keep the fixed `DETAIL_STACK_LAYOUT.widthPx`.
+- **A queue-processing inspector registers a STABLE occupant id** (`detail:order`, not
+  `detail:order:<id>`) so record→record navigation swaps content in place instead of
+  playing exit-then-enter with an empty slot between. See `display/motion-crossfade.md`.
+
+## Escape ownership (overlay stack)
+
+- Source: `src/lib/overlay-stack/store.ts` + `useRegisterOverlay` / `useAnyOverlayOpen`.
+- **The innermost open editor or overlay owns Escape** — not "any input". A text editor
+  holds focus, so a typing-target test hides the bug; button/menu popovers do not.
+- `AnchoredLayer` registers while open, which covers every house Popover / DropdownMenu /
+  ContextMenu / cell editor / Calendar. A bespoke portaled overlay must register too.
+- Ambient owners stand down while the stack is non-empty. **Capture-phase listeners are the
+  hazard:** capture runs before bubble, and `stopPropagation()` there stops the bubble
+  listeners from ever running — which is how a queue-level Escape silently closed the
+  inspector while the popover stayed on screen.
+
+## Typefaces + the weight cap
+
+- **One macro-family (IBM Plex), three cuts.** `sans` (display/title/body/data/caption) ·
+  `condensed` (eyebrow/micro) · `mono` (identifiers). Loaded in `src/lib/fonts.ts`, stacks in
+  `typography/families.ts`, mirrored byte-for-byte in `styles/globals.css`. There is deliberately
+  **no** `heading`/`display`/`label` slot — pick a ROLE, not a family.
+- **The condensed cut is bound to the role, not opted into.** `text-role-eyebrow` /
+  `text-role-micro` carry `font-family: var(--ds-font-condensed)` from the CF Type plugin in
+  `tailwind.config.ts`, so 10–11px chrome stays legible without wrapping a grid column. Writing
+  `font-condensed` by hand to narrow arbitrary text is the fork this binding exists to prevent.
+- **600 is the hard ceiling** (`MAX_FONT_WEIGHT`). `font-bold` / `font-extrabold` / `font-black`
+  are banned; the 700+ cuts are not loaded, so a stray one is synthesized faux-bold. Use
+  `font-semibold`, or no weight class at all where the role bakes 600. Emphasis comes from color
+  contrast and tracking. Genuine one-off: same-line `ds-allow-weight`.
+- **Numerals:** `role-display`/`-title`/`-data` bind `tabular-nums` intrinsically (opt out with
+  `proportional-nums`); the mono cut never ligates, so a serial is always retypable.
+- Guard: `src/components/ui/typography-tokens.guard.test.ts`. Codemod:
+  `scripts/codemods/cap-font-weight.mjs`. Printed media (`lib/print/**`, repair paper) is exempt —
+  different substrate.
 
 ## Focus affordance
 

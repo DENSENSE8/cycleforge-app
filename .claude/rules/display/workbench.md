@@ -214,6 +214,51 @@ The collection map is stable; only the **focus surface** moves.
 
 ---
 
+## Action planes — where an action lives
+
+Every operator action on a collection surface belongs to exactly **one primary plane**:
+
+| Plane | Mechanism | For |
+|---|---|---|
+| **In-cell** | cell-anchored editor / popover (`LedgerCellEditor`, house `Popover`) | single-value, highly-typed fields — qty, date, grade, short text |
+| **Row-scoped** | hover controls + the single-selected row info menu | one-click record affordances (notes, out-of-stock, open) |
+| **Multi-select** | `ContextualSelectionBar` + `SelectionAction[]` | anything meaningful on N records at once |
+| **Record** | the detail inspector / full record page | relational, multi-step, or side-effectful work |
+
+- **Plane redundancy is REQUIRED where the primary plane is conditionally unavailable.** In-cell editing on the
+  outbound grid is gated `gridSkin && !isMobile`, and the inspector body is shared with `/o/[orderId]`, so the
+  record plane must stay a **complete superset** of editable fields. Ship-by and condition appearing both in-cell
+  and in the inspector is the contract, **not** duplication to clean up. Only make a field plane-exclusive when its
+  plane is *unconditionally* available.
+- **Actions diverge by lifecycle stage; column layout and grid components diverge only by data domain.** All four
+  outbound tabs (Pending · Tested · Packed · Shipped) render one grid with one persisted column layout, but
+  "assign a tester" is meaningless on Shipped and "print a shipping label" is meaningless on Pending. Scope each
+  action with `SelectionAction.enabled` / `minSelected` / `maxSelected` — `ContextualSelectionBar` drops actions
+  that cannot fire, so lifecycle scoping needs no new chrome and never renders a dead button.
+- **A surface gets real selection OR a collapsed gutter — never an inert one** that consumes the 2rem track with
+  nothing wired to it.
+- **Bulk ≠ a batch-edit panel.** For per-record judgement over a set, compose the existing
+  `WorkOrderAssignmentCard` carousel (prev/next + confirm→advance). Reserve a true single-write bulk mutation
+  (one date onto N orders) for values that genuinely are identical across the set.
+
+## Keyboard ownership — the innermost overlay wins
+
+A collection surface usually has three live keyboard owners: a capture-phase queue listener, the detail
+inspector, and whatever popover is open. Capture beats bubble, and `stopPropagation()` in capture stops the
+bubble listeners from ever running — so an ambient owner can silently swallow Escape from the overlay that
+should have handled it.
+
+- **The innermost open editor or overlay owns Escape.** Not "any input" — a text editor holds focus so a
+  typing-target test hides the bug, but button/menu popovers do not.
+- Overlays register with `src/lib/overlay-stack/store.ts` (`useRegisterOverlay`, called by `AnchoredLayer`, so
+  every house Popover / DropdownMenu / ContextMenu / Calendar participates for free). Ambient owners stand down
+  while `hasOpenOverlay()` / `useAnyOverlayOpen()`.
+- **A capture-phase listener must not claim a key the focused element already handles.** Grid rows are
+  `tabIndex={0}` and handle Enter/Space for *their own* record; a queue-level Enter branch that only knows how to
+  open `records[0]` has to bail when the event target is inside a row.
+
+---
+
 ## Gap notes (to close)
 
 - **Add a cmd-K launcher** that fuzzy-jumps to `?skuId=` and fires CRUD actions (command-palette pattern:
