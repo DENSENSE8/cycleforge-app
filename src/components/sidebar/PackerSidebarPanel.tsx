@@ -1,12 +1,11 @@
 'use client';
 
-import { useEffect, useMemo } from 'react';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import StationPacking from '@/components/station/StationPacking';
+import { PackRecentPacksRail } from '@/components/sidebar/packer/PackRecentPacksRail';
+import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
 import { AlertTriangle, Box, Boxes } from '@/components/Icons';
-import { getCurrentPSTDateKey, toPSTDateKey } from '@/utils/date';
-import { getStaffGoalById } from '@/lib/staffGoalsCache';
 import { useAuth } from '@/contexts/AuthContext';
 import { HorizontalButtonSlider, type HorizontalSliderItem } from '@/components/ui/HorizontalButtonSlider';
 import { SIDEBAR_GUTTER } from '@/components/layout/header-shell';
@@ -26,13 +25,12 @@ export function PackerSidebarPanel() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const [history, setHistory] = useState<any[]>([]);
-  const [dailyGoal, setDailyGoal] = useState(50);
   const { user } = useAuth();
   const staffIdNum = user?.staffId ?? 0;
   const packerId = String(staffIdNum);
   const staffDirectory = useActiveStaffDirectory();
   const masterNavEnabled = useMasterNavEnabled();
+  const [railFilter, setRailFilter] = useState('');
 
   // Pack mode — persisted via ?packMode= URL param so refresh/sharing preserves it.
   const rawMode = searchParams.get('packMode') ?? 'standard';
@@ -48,47 +46,6 @@ export function PackerSidebarPanel() {
 
   const packerMember = staffDirectory.find((m) => String(m.id) === packerId);
   const packerName = packerMember?.name || 'Packer';
-
-  useEffect(() => {
-    if (staffIdNum <= 0) return;
-
-    let cancelled = false;
-    const fetchHistory = async () => {
-      try {
-        const res = await fetch(`/api/packerlogs?packerId=${packerId}&limit=100`);
-        if (!res.ok || cancelled) return;
-        const data = await res.json();
-        if (!cancelled && Array.isArray(data)) setHistory(data);
-      } catch {
-        // no-op
-      }
-    };
-
-    getStaffGoalById(packerId).then((g) => { if (!cancelled) setDailyGoal(g); }).catch(() => {});
-    fetchHistory();
-
-    return () => { cancelled = true; };
-  }, [packerId, staffIdNum]);
-
-  const todayCount = useMemo(() => {
-    if (history.length === 0) return 0;
-    const todayDate = getCurrentPSTDateKey();
-    return history.filter(
-      (item) => toPSTDateKey(item.created_at || item.timestamp || item.packedAt || '') === todayDate,
-    ).length;
-  }, [history]);
-
-  const refreshHistory = async () => {
-    if (staffIdNum <= 0) return;
-    try {
-      const res = await fetch(`/api/packerlogs?packerId=${packerId}&limit=100`);
-      if (!res.ok) return;
-      const data = await res.json();
-      if (Array.isArray(data)) setHistory(data);
-    } catch {
-      // no-op
-    }
-  };
 
   return (
     <div className="h-full flex flex-col overflow-hidden">
@@ -112,10 +69,15 @@ export function PackerSidebarPanel() {
           userId={packerId}
           userName={packerName}
           staffId={packerId}
-          todayCount={todayCount}
-          goal={dailyGoal}
-          onComplete={refreshHistory}
           packMode={packMode}
+          railSlot={<PackRecentPacksRail packerId={staffIdNum} filterText={railFilter} />}
+          railFooter={
+            <TechRailSearchBar
+              value={railFilter}
+              onChange={setRailFilter}
+              placeholder="Filter recent packs…"
+            />
+          }
         />
       </div>
     </div>
