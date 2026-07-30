@@ -41,6 +41,7 @@ function parseTicketId(raw: string): number | null {
 
 import { useTicketThread, threadKey } from '@/components/support/TicketThreadCard';
 import { invalidateSupportContextCaches } from '@/hooks';
+import { entitySupportTicketQueryKey } from '@/hooks/useEntitySupportTicket';
 import {
   invalidateReceivingFeeds,
   patchReceivingRailTicketByCarton,
@@ -164,7 +165,9 @@ function TicketThreadPanel({
   const qc = useQueryClient();
   const { data, isLoading, isError, error } = useTicketThread(ticketId, open);
 
-  const unlink = useMutation<{ removed: boolean }, Error>({
+  const unlink = useMutation<{ removed: boolean; shipmentUnpairWarning: string | null }, Error, void, {
+    previousTicketQueries: Array<[readonly unknown[], unknown]>;
+  }>({
     mutationFn: async () => {
       if (receivingId == null || ticketId == null) {
         throw new Error('Missing receiving link');
@@ -181,23 +184,49 @@ function TicketThreadPanel({
       if (!res.ok || !json?.success) {
         throw new Error(ticketApiError(json, `Request failed (${res.status})`));
       }
-      return { removed: !!json.removed };
+      return {
+        removed: !!json.removed,
+        shipmentUnpairWarning:
+          typeof json.shipmentUnpairWarning === 'string' ? json.shipmentUnpairWarning : null,
+      };
     },
-    onSuccess: () => {
+    // Optimistic — clear the chip immediately. Do NOT invalidate/refetch here:
+    // a mid-flight by-entity refetch still sees ticket_links / photo dual-links
+    // and would resurrect the orange chip before DELETE commits.
+    onMutate: async () => {
+      await qc.cancelQueries({ queryKey: ['support-ticket'] });
+      const previousTicketQueries = qc.getQueriesData({ queryKey: ['support-ticket'] });
       if (ticketId != null) qc.removeQueries({ queryKey: threadKey(ticketId) });
-      // Chip display comes from useEntitySupportTicket — bust that cache here so
-      // every host (Unbox / Testing / Triage) drops the orange ticket number.
-      invalidateSupportContextCaches(qc);
-      // Unboxed rail ignores receiving-line-updated — clear the Ticket flag on
-      // every rail cache by carton, then refetch feeds.
+      qc.setQueryData(entitySupportTicketQueryKey(lineId, receivingId, null), null);
       if (receivingId != null) {
+        qc.setQueryData(entitySupportTicketQueryKey(null, receivingId, null), null);
         patchReceivingRailTicketByCarton(qc, receivingId, null);
       }
-      invalidateReceivingFeeds(qc);
-      toast.success('Ticket unlinked');
+      if (lineId != null) {
+        qc.setQueryData(entitySupportTicketQueryKey(lineId, null, null), null);
+      }
       onUnlinked();
+      return { previousTicketQueries };
     },
-    onError: (err) => toast.error(err.message || 'Could not unlink the ticket'),
+    onSuccess: ({ shipmentUnpairWarning }) => {
+      invalidateSupportContextCaches(qc);
+      invalidateReceivingFeeds(qc);
+      if (shipmentUnpairWarning) {
+        toast.warning(shipmentUnpairWarning, { duration: 8000 });
+      } else {
+        toast.success('Ticket unlinked');
+      }
+    },
+    onError: (err, _vars, ctx) => {
+      toast.error(err.message || 'Could not unlink the ticket');
+      // Roll back the optimistic clear — restore cached by-entity rows, then
+      // refetch so a failed unlink doesn't leave the chip permanently hidden.
+      for (const [key, data] of ctx?.previousTicketQueries ?? []) {
+        qc.setQueryData(key, data);
+      }
+      invalidateSupportContextCaches(qc);
+      if (receivingId != null) invalidateReceivingFeeds(qc);
+    },
   });
 
   const ticketNumber =

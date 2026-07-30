@@ -18,6 +18,7 @@
  * anatomy regardless of viewport width.
  */
 
+import { GRID_IDENTITY_COLUMN_KEYS } from '@/design-system/components/grid/grid-column-editability';
 import {
   gridColVar,
   gridColumnTrackRem,
@@ -26,7 +27,6 @@ import {
   gridTemplate,
 } from '@/design-system/components/grid/grid-column-geometry';
 import type { LedgerGridColumnModel } from '@/design-system/components/grid/grid-surface-descriptor';
-import type { ColumnType } from '@/lib/tables/table-columns';
 
 /** Sticky column header docks at the scrollport top. */
 export const ORDERS_QUEUE_COL_HEADER_STICKY = 'top-0';
@@ -51,31 +51,22 @@ export type OrdersQueueColumnKey =
  * the sticky header (label + type glyph + per-column menu), and the body/group
  * cells all read, so a column's width, label, type, and hide-key live in ONE
  * place and can never drift apart.
+ *
+ * EXTENDS the house model rather than re-declaring it. `width` / `label` /
+ * `gridLabel` / `labelFitRem` / `type` / `hideKey` were all copied out with
+ * their own JSDoc here, which is how a Pending-only field could drift from the
+ * same field on every other surface — and why `align` and `omitCellIcon` had to
+ * be added in five places before this. Every shared field is inherited; only
+ * `key` narrows.
+ *
+ * House conventions this surface relies on (all enforced by the shared model +
+ * geometry waist, not by this declaration): fact columns use `minmax(X, X)` so
+ * they never shrink below cell content, `title` is the only flex track, and a
+ * track narrower than its `labelFitRem` degrades to glyph + `sr-only` rather
+ * than a truncated word.
  */
-export interface OrdersQueueColumn extends Omit<LedgerGridColumnModel, 'key' | 'width' | 'label'> {
+export interface OrdersQueueColumn extends Omit<LedgerGridColumnModel, 'key'> {
   key: OrdersQueueColumnKey;
-  /**
-   * CSS grid track. Fact columns use `minmax(X, X)` so they never shrink below
-   * cell content (Airtable/AG Grid). Only `title` flexes (`minmax(12rem, 1fr)`).
-   */
-  width: string;
-  /** Header label; omitted for the select control gutter (no label). */
-  label?: string;
-  /**
-   * Compact header text for the Pending grid skin when the track is wide enough
-   * ({@link labelFitRem}). Full {@link label} stays in the tooltip / board header.
-   */
-  gridLabel?: string;
-  /**
-   * Pending grid: show {@link gridLabel} (or `label`) beside the type glyph when
-   * the track’s rem floor is ≥ this value; otherwise glyph + sr-only + tooltip
-   * (never truncated `A…`). Default 4.5.
-   */
-  labelFitRem?: number;
-  /** Data-type → header glyph (Airtable-style); omitted for control gutters. */
-  type?: ColumnType;
-  /** The `TableColumnConfig` key this column hides under, when hideable. */
-  hideKey?: string;
 }
 
 /**
@@ -109,13 +100,7 @@ export const ORDERS_QUEUE_COLUMNS: readonly OrdersQueueColumn[] = [
   // shows words rather than glyphs. `labelFitRem` stays as the graceful
   // degrade for a column the operator drag-resizes narrower than its label.
   { key: 'sla', width: 'minmax(7rem, 7rem)', label: 'Ship by', type: 'date', labelFitRem: 5 },
-  // `align: 'start'` OVERRIDES the numeric default, deliberately: a pick qty is
-  // `1` on nearly every row in a 3.5rem track, so right-alignment bought a ragged
-  // gutter mid-table and broke the left scan rhythm rather than aiding place-value
-  // comparison. Rationale in full at OrdersQueueTableRow's qty cell. Declared here
-  // so the header and the cell read the SAME exception — this is exactly the case
-  // the override field exists for, and deriving blindly regressed it once already.
-  { key: 'qty', width: 'minmax(3.5rem, 3.5rem)', label: 'Qty', type: 'number', align: 'start', hideKey: 'qty', labelFitRem: 3.5 },
+  { key: 'qty', width: 'minmax(3.5rem, 3.5rem)', label: 'Qty', type: 'number', hideKey: 'qty', labelFitRem: 3.5 },
   { key: 'condition', width: 'minmax(5.5rem, 5.5rem)', label: 'Cond', type: 'tag', hideKey: 'condition', labelFitRem: 4 },
   { key: 'order', width: 'minmax(4.5rem, 4.5rem)', label: 'Order', type: 'id', hideKey: 'orderid', labelFitRem: 4.5 },
   { key: 'tracking', width: 'minmax(5rem, 5rem)', label: 'Tracking', gridLabel: 'Track', type: 'location', hideKey: 'tracking', labelFitRem: 4.5 },
@@ -137,13 +122,7 @@ export const ORDERS_QUEUE_TESTED_COLUMNS: readonly OrdersQueueColumn[] = [
   { key: 'tester', width: 'minmax(6rem, 6rem)', label: 'Tester', type: 'text', labelFitRem: 4.5 },
   // Full `formatDateTimePST` string (MM/DD/YYYY h:mm:ss AM/PM) needs the widest track.
   { key: 'testedAt', width: 'minmax(10rem, 10rem)', label: 'Tested at', type: 'date', labelFitRem: 4.5 },
-  // `align: 'start'` OVERRIDES the numeric default, deliberately: a pick qty is
-  // `1` on nearly every row in a 3.5rem track, so right-alignment bought a ragged
-  // gutter mid-table and broke the left scan rhythm rather than aiding place-value
-  // comparison. Rationale in full at OrdersQueueTableRow's qty cell. Declared here
-  // so the header and the cell read the SAME exception — this is exactly the case
-  // the override field exists for, and deriving blindly regressed it once already.
-  { key: 'qty', width: 'minmax(3.5rem, 3.5rem)', label: 'Qty', type: 'number', align: 'start', hideKey: 'qty', labelFitRem: 3.5 },
+  { key: 'qty', width: 'minmax(3.5rem, 3.5rem)', label: 'Qty', type: 'number', hideKey: 'qty', labelFitRem: 3.5 },
   { key: 'condition', width: 'minmax(5.5rem, 5.5rem)', label: 'Cond', type: 'tag', hideKey: 'condition', labelFitRem: 4 },
   { key: 'order', width: 'minmax(4.5rem, 4.5rem)', label: 'Order', type: 'id', hideKey: 'orderid', labelFitRem: 4.5 },
   { key: 'tracking', width: 'minmax(5rem, 5rem)', label: 'Tracking', gridLabel: 'Track', type: 'location', hideKey: 'tracking', labelFitRem: 4.5 },
@@ -309,14 +288,16 @@ export const ORDERS_QUEUE_RESIZABLE_KEYS: readonly string[] = ORDERS_QUEUE_COLUM
 ).map((c) => c.key);
 
 /**
- * The locked identity pane — select · title — one SoT for BOTH invariants:
+ * The locked identity pane — select · title — one SoT for THREE invariants:
  *   • **frozen**: pinned on the left while date…tracking scroll horizontally;
  *   • **immovable**: never drag-reorderable, and no other column may cross it
- *     (AG Grid `lockPosition` semantics; Airtable primary-field precedent).
- * Keeping the two sets identical is what keeps {@link ordersQueueFrozenLeft}'s
- * offset math valid under any persisted order.
+ *     (AG Grid `lockPosition` semantics; Airtable primary-field precedent);
+ *   • **read-only in the collection map**: never mounts `LedgerCellEditor`
+ *     ({@link GRID_IDENTITY_COLUMN_KEYS} / `isGridColumnInCellEditable`).
+ * Keeping freeze + lock + editability identical is what keeps
+ * {@link ordersQueueFrozenLeft}'s offset math valid under any persisted order.
  */
-export const ORDERS_QUEUE_LOCKED_KEYS: readonly string[] = ['select', 'title'];
+export const ORDERS_QUEUE_LOCKED_KEYS: readonly string[] = GRID_IDENTITY_COLUMN_KEYS;
 
 /** Whether a column is part of the frozen (and immovable) identity pane. */
 export function isOrdersQueueFrozen(key: string): boolean {

@@ -13,12 +13,9 @@ import type { ShippedDetailsContext } from '@/utils/events';
 //   packed    → "Packed"   (PACKED_STAGED — staged, not yet left the dock)
 //   shipped   → "Shipped"  (left warehouse / in carrier custody / delivered)
 //
-// `fba` is NOT a peer lifecycle tab: the strip in `OutboundWorkspaceHeader`
-// renders only the four above, and no nav entry or href constructs `?fba` —
-// it survives as a bookmark-reachable render path in `DashboardOrdersView`.
-// Whether it survives at all is gated on the `page-consolidation` verdict for
-// `/shipping/fba`; do not delete it here ahead of that (plan §10.2 row K).
-export type DashboardOrderView = 'unshipped' | 'tested' | 'packed' | 'shipped' | 'fba';
+// Vestigial `?fba` was deleted 2026-07-29 (IA row L): FBA owns `/shipping/fba`.
+// Old bookmarks fall through to the Pending tab.
+export type DashboardOrderView = 'unshipped' | 'tested' | 'packed' | 'shipped';
 export type DashboardCacheEntry = readonly [unknown, unknown];
 
 export interface DashboardSelectionSnapshot {
@@ -44,12 +41,29 @@ export interface DashboardAssignmentUpdateDetail {
  * Build the Support warranty deep-link from a legacy `/dashboard?warranty=` URL.
  * Preserves open claim + filters + search for bookmark compatibility.
  */
+/**
+ * Params the legacy `?warranty=` redirect forwards to Support.
+ *
+ * Named rather than inline so `dashboard-search-state.test.ts` can assert every
+ * one is declared by DASHBOARD_ROUTE_PARAMS. They are **hand-off** keys — read on
+ * `/dashboard` only to be forwarded — and an undeclared hand-off key is dropped
+ * the moment `/dashboard` mounts `useSurfaceParamHygiene()`, which would quietly
+ * strip an old bookmark's open claim and filters on the way to Support. Same
+ * defect class as `/walk-in`'s legacy deep-links and the `/fba` redirect.
+ */
+export const SUPPORT_WARRANTY_FORWARDED_PARAMS = [
+  'open',
+  'wstatus',
+  'wexp',
+  'search',
+] as const;
+
 export function buildSupportWarrantyRedirectSearch(
   searchParams: Pick<URLSearchParams, 'get'>
 ): string {
   const next = new URLSearchParams();
   next.set('mode', 'warranty');
-  for (const key of ['open', 'wstatus', 'wexp', 'search'] as const) {
+  for (const key of SUPPORT_WARRANTY_FORWARDED_PARAMS) {
     const value = searchParams.get(key);
     if (value) next.set(key, value);
   }
@@ -61,19 +75,18 @@ export function getDashboardOrderViewFromSearch(
 ): DashboardOrderView {
   if (searchParams.has('shipped')) return 'shipped';
   if (searchParams.has('packed')) return 'packed';
-  if (searchParams.has('fba')) return 'fba';
   if (searchParams.has('tested')) return 'tested';
   // Legacy bookmark: Pending tab + `?ustatus=TESTED` → Tested lifecycle tab.
   const ustatus = String(searchParams.get('ustatus') || '').trim().toUpperCase();
   if (ustatus === 'TESTED' && (searchParams.has('unshipped') || searchParams.has('pending') || !searchParams.has('shipped'))) {
     // Only rewrite when we're on the pre-pack surface (default / unshipped / pending).
-    if (!searchParams.has('packed') && !searchParams.has('shipped') && !searchParams.has('fba')) {
+    if (!searchParams.has('packed') && !searchParams.has('shipped')) {
       return 'tested';
     }
   }
   // Legacy `?warranty` is redirected to Support by the dashboard page; treat as unshipped.
   // The Pending (awaiting test) mode. `?unshipped`, the legacy `?pending`, and the
-  // bare default all resolve here.
+  // bare default all resolve here. Legacy `?fba` also falls through here.
   return 'unshipped';
 }
 
@@ -88,10 +101,7 @@ export function getDashboardPendingLayoutFromSearch(
 }
 
 /** Display labels for the outbound lifecycle slider (industry-standard wording). */
-export const DASHBOARD_ORDER_VIEW_LABEL: Record<
-  Exclude<DashboardOrderView, 'fba'>,
-  string
-> = {
+export const DASHBOARD_ORDER_VIEW_LABEL: Record<DashboardOrderView, string> = {
   unshipped: 'Pending',
   tested: 'Tested',
   packed: 'Packed',

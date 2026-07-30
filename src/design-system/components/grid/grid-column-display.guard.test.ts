@@ -74,9 +74,16 @@ const GRID_HEADERS = ALL_GRID_FILES.filter((f) => code(f).includes('gridHeaderCe
  * Files that render VALUE cells (leaf rows, group summaries, group rows).
  * Headers also carry `data-col`, so they are excluded — they are held to the
  * header rules below instead, and have no row shell to fill.
+ *
+ * Match by filename role (`*Row` / `*Summary`), not bare `data-col=` — resize
+ * handles and other header chrome also stamp `data-col` and must not be held
+ * to the cell-align SoT.
  */
 const GRID_ROWS = ALL_GRID_FILES.filter(
-  (f) => /data-col=/.test(code(f)) && !GRID_HEADERS.includes(f),
+  (f) =>
+    /(Row|Summary)\.tsx$/.test(f) &&
+    /data-col=/.test(code(f)) &&
+    !GRID_HEADERS.includes(f),
 );
 
 test('the guard actually discovered the grid families', () => {
@@ -147,6 +154,33 @@ test('no grid row hand-types a CELL justification', () => {
   }
 });
 
+test('every grid value-cell file composes gridCellAlignClass', () => {
+  // Hard SoT: digit / order-ID tracks end-align; word tracks start-align —
+  // resolved once via resolveGridColumnAlign. A row file that paints cells
+  // without gridCellAlignClass will silently left-align every numeric track.
+  for (const file of GRID_ROWS) {
+    assert.ok(
+      code(file).includes('gridCellAlignClass'),
+      `${file} renders grid cells but never calls gridCellAlignClass — compose it on every data cell so header and body share resolveGridColumnAlign.`,
+    );
+  }
+});
+
+test('every typed grid header composes gridHeaderCellAlignClass', () => {
+  const headerFiles = ALL_GRID_FILES.filter((f) => /ColumnHeader\.tsx$/.test(f));
+  assert.ok(headerFiles.length >= 5, `expected grid ColumnHeader files, got ${headerFiles.length}`);
+  for (const file of headerFiles) {
+    assert.ok(
+      code(file).includes('gridHeaderCellAlignClass'),
+      `${file} is a column header but never calls gridHeaderCellAlignClass — headers must resolve the same align as their cells.`,
+    );
+    assert.ok(
+      code(file).includes('resolveGridColumnAlign'),
+      `${file} must pass resolveGridColumnAlign(column) into gridHeaderCellAlignClass.`,
+    );
+  }
+});
+
 test('no header re-decides alignment from a column key', () => {
   for (const file of GRID_HEADERS) {
     const src = code(file);
@@ -212,4 +246,36 @@ test('the row-state SoT stays zebra-free', () => {
     false,
     'zebra came back in the row-state SoT itself',
   );
+});
+
+/**
+ * Identity columns (`select` · `title`) are collection-map read-only — see
+ * `grid-column-editability.ts`. Incoming / Unbox used to mount a title
+ * `LedgerCellEditor` after the dashboard stopped; that is the exact drift this
+ * guard pins shut.
+ */
+test('no grid row mounts an in-cell title editor', () => {
+  for (const file of GRID_ROWS) {
+    const src = code(file);
+    assert.equal(
+      src.includes('editingTitle'),
+      false,
+      `${file} re-introduced title in-cell editing (editingTitle). Identity columns stay read-only in the collection map — use isGridColumnInCellEditable / GRID_IDENTITY_COLUMN_KEYS.`,
+    );
+    assert.equal(
+      src.includes('openTitleEditor'),
+      false,
+      `${file} re-introduced title in-cell editing (openTitleEditor). Identity columns stay read-only in the collection map.`,
+    );
+    assert.equal(
+      src.includes('commitTitle'),
+      false,
+      `${file} re-introduced title in-cell editing (commitTitle). Identity columns stay read-only in the collection map.`,
+    );
+    assert.equal(
+      /Edit title —/.test(src),
+      false,
+      `${file} arms a title cell as editable (aria "Edit title —"). Identity clicks must fall through to the row.`,
+    );
+  }
 });

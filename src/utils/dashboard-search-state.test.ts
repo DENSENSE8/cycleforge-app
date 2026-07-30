@@ -1,6 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { routeParamsFor } from '@/lib/routing/registry';
+import { parseRouteParams } from '@/lib/routing/route-params';
 import {
+  SUPPORT_WARRANTY_FORWARDED_PARAMS,
   buildSupportWarrantyRedirectSearch,
   extractOrdersFromDashboardCacheEntry,
   findDashboardSelectedOrderInCache,
@@ -19,7 +22,8 @@ test('getDashboardOrderViewFromSearch prefers explicit view params', () => {
   assert.equal(getDashboardOrderViewFromSearch(new URLSearchParams('tested=')), 'tested');
   // Legacy ?pending resolves to the merged 'unshipped' mode (Pending).
   assert.equal(getDashboardOrderViewFromSearch(new URLSearchParams('pending=')), 'unshipped');
-  assert.equal(getDashboardOrderViewFromSearch(new URLSearchParams('fba=')), 'fba');
+  // Vestigial ?fba deleted (IA row L) — falls through to Pending.
+  assert.equal(getDashboardOrderViewFromSearch(new URLSearchParams('fba=')), 'unshipped');
 });
 
 test('getDashboardOrderViewFromSearch rewrites legacy ustatus=TESTED to tested tab', () => {
@@ -191,4 +195,27 @@ test('patchDashboardSelectedOrderFromAssignment updates only matching selected o
   assert.equal(next?.shipping_tracking_number, 'BBB');
   assert.equal(next?.item_number, 'NEW-ITEM');
   assert.equal(patchDashboardSelectedOrderFromAssignment(current, { orderIds: [88], testerId: 9 }), current);
+});
+
+test('every param the retired-front-door redirects forward is declared by /dashboard', () => {
+  // `/dashboard` reads these off the URL solely to forward them — to Support for
+  // `?warranty=`, and to the FBA board for `?fba`. An undeclared hand-off key is
+  // dropped the instant this route mounts `useSurfaceParamHygiene()` (step 6 of
+  // the migration method, still open per nav-routing-refactor-FINISH-PROMPT §3.3),
+  // which would silently strip the bookmark's open claim, filters, or intent.
+  //
+  // `wstatus`/`wexp` were undeclared before 2026-07-30 — a latent break waiting
+  // for whoever graduated the dashboard. `fba` became one when IA row L removed it
+  // from the lifecycle-tab set while the redirect kept reading it.
+  const spec = routeParamsFor('/dashboard')!;
+  const undeclared = [...SUPPORT_WARRANTY_FORWARDED_PARAMS, 'fba', 'warranty'].filter(
+    (key) => !parseRouteParams(spec, new URLSearchParams(`${key}=1`)).has(key),
+  );
+  assert.deepEqual(
+    undeclared,
+    [],
+    'These keys ride a /dashboard redirect but are not declared by DASHBOARD_ROUTE_PARAMS, ' +
+      'so the boundary parse will drop them the moment the surface mounts the hygiene hook. ' +
+      'Declare them in src/lib/routing/query-mode-routes.ts.',
+  );
 });

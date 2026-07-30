@@ -1,15 +1,23 @@
+'use client';
+
 import { motion } from 'framer-motion';
 import { framerPresence, framerTransition } from '@/design-system';
+import {
+  useMotionPresence,
+  useMotionTransition,
+} from '@/design-system/foundations/motion-framer-hooks';
 import { Package } from '@/components/Icons';
 
 export function EmptySlate({ label, color = 'gray' }: { label: string; color?: 'gray' | 'green' | 'purple' | 'teal' | 'red' }) {
+  const presence = useMotionPresence(framerPresence.upNextRow);
+  const transition = useMotionTransition(framerTransition.upNextRowMount);
   const bg   = color === 'green' ? 'bg-emerald-50 border-emerald-100' : color === 'purple' ? 'bg-purple-50 border-purple-100' : color === 'teal' ? 'bg-teal-50 border-teal-100' : color === 'red' ? 'bg-red-50 border-red-100' : 'bg-surface-canvas border-border-soft';
   const text = color === 'green' ? 'text-emerald-500' : color === 'purple' ? 'text-purple-500' : color === 'teal' ? 'text-teal-500' : color === 'red' ? 'text-red-500' : 'text-text-soft';
   const icon = color === 'green' ? 'text-emerald-300' : color === 'purple' ? 'text-purple-200' : color === 'teal' ? 'text-teal-200' : color === 'red' ? 'text-red-200' : 'text-text-soft';
   return (
     <motion.div
-      {...framerPresence.upNextRow}
-      transition={framerTransition.upNextRowMount}
+      {...presence}
+      transition={transition}
       className={`rounded-2xl px-4 py-3 border ${bg}`}
     >
       <div className="flex items-center justify-between gap-3">

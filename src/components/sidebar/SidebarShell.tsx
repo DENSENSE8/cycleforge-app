@@ -1,6 +1,6 @@
 'use client';
 
-import { MasterNav, MasterNavProvider } from '@/components/sidebar/master-nav';
+import { MasterNav } from '@/components/sidebar/master-nav';
 import { appChromeClass } from '@/design-system/tokens/app-surface';
 import { cn } from '@/utils/_cn';
 
@@ -25,8 +25,6 @@ export interface SidebarShellProps {
  * to share this column, so opening one took away the other, and a route with no
  * picker (the Media library) left the navigator painting over the work canvas.
  *
- * `MasterNavProvider` marks that the nav owns page + mode, so ~14 route panels
- * suppress their own mode pill-row (`useMasterNavEnabled`).
  */
 export function SidebarShell({
   permissions,
@@ -45,14 +43,12 @@ export function SidebarShell({
         inDrawer && 'pt-[max(3.5rem,calc(env(safe-area-inset-top)+2.75rem))]',
       )}
     >
-      <MasterNavProvider enabled>
-        <MasterNav
-          permissions={permissions}
-          mobileRestricted={mobileRestricted}
-          onNavigate={onNavigate}
-          className="flex-1 min-h-0"
-        />
-      </MasterNavProvider>
+      <MasterNav
+        permissions={permissions}
+        mobileRestricted={mobileRestricted}
+        onNavigate={onNavigate}
+        className="flex-1 min-h-0"
+      />
     </div>
   );
 }

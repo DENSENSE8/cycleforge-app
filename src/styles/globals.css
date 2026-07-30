@@ -612,15 +612,15 @@ html[data-color-scheme='dark'] .react-flow__attribution a { color: #94a3b8; }
   box-shadow: 0 4px 10px -6px rgba(15, 23, 42, 0.16);
 }
 
-/* Sticky header band — quiet sunken fill (table-surface SoT) above white body.
+/* Sticky header band — card-white (table-surface SoT); borders carry hierarchy.
    Must stay opaque above virtualized absolute rows. */
 [data-cf-grid] [data-grid-col-header] {
-  background-color: var(--ds-color-surface-sunken);
+  background-color: var(--ds-color-background-surface);
 }
 
 /* Frozen identity cells in the sticky header stack above scrolling header tracks. */
 [data-cf-grid] [data-grid-col-header] .sticky {
-  background-color: var(--ds-color-surface-sunken);
+  background-color: var(--ds-color-background-surface);
 }
 
 /* Ancestor-scroll + h-scroll split (Pending): the header band sits OUTSIDE the
@@ -639,7 +639,7 @@ html[data-color-scheme='dark'] .react-flow__attribution a { color: #94a3b8; }
 
 /* ── Ops spreadsheet skin (LedgerGrid) — continuous airtable grid ──
    ONE line color (`border-default`) through header AND body so column rules
-   stay visible on the sunken frozen band (light `border-subtle` ≡
+   stay visible on the card-white frozen band (light `border-subtle` ≡
    `surface-strong` and would erase header verticals). Outer frame is
    `[data-table-surface]` (rounded-xl + overflow-hidden + raised). Opt-in via
    `data-grid-skin="airtable"`. Never border-strong (the black cage). */
@@ -675,10 +675,10 @@ html[data-color-scheme='dark'] .react-flow__attribution a { color: #94a3b8; }
   border-bottom-width: 0;
 }
 
-/* Frozen header band — quiet sunken over white body (matches TABLE_FROZEN_HEADER). */
+/* Frozen header band — card-white (matches TABLE_FROZEN_HEADER). */
 [data-grid-skin='airtable'] [data-grid-col-header],
 [data-grid-skin='airtable'] [data-grid-col-header] [role='row'],
 [data-grid-skin='airtable'] [data-grid-col-header] .sticky {
-  background-color: var(--ds-color-surface-sunken);
+  background-color: var(--ds-color-background-surface);
   backdrop-filter: none;
 }

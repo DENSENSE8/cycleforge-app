@@ -51,34 +51,21 @@ test.describe('Search eviction from /dashboard', () => {
     expect(new URL(page.url()).pathname).toBe('/search');
   });
 
-  test('the dashboard modes menu no longer offers a Search mode', async ({ page }) => {
-    test.skip(isMobile(), 'the L2 modes menu is a desktop-chrome surface');
+  test('the dashboard page list no longer offers a Search mode', async ({ page }) => {
+    test.skip(isMobile(), 'the spine page list is a desktop-chrome surface');
     await page.goto('/dashboard?unshipped=');
     await page.waitForLoadState('domcontentloaded');
 
-    // The modes menu is a CLICK-OPENED dropdown inside the sidebar spine, and
-    // its entries are `role="menuitem"` buttons within `role="menu"` named
-    // "Modes" (`MasterNavView.tsx` ModesPanel).
-    //
-    // This test previously asserted `getByRole('link', { name: /^search$/i })
-    // .toHaveCount(0)` against the unopened page. That was vacuous three times
-    // over: a mode entry is a BUTTON not a link, it is not in the DOM until the
-    // dropdown opens, and the dropdown's trigger is not mounted until the
-    // sidebar is shown. It would have passed with a Search mode fully restored.
-    // (The global header DOES carry a `button "Search"` — so an unscoped
-    // by-name query would fail for the wrong reason. Scope to the menu.)
     const showSidebar = page.getByRole('button', { name: /show sidebar/i });
     if (await showSidebar.isVisible().catch(() => false)) await showSidebar.click();
 
-    await page.getByRole('button', { name: /open modes menu/i }).click();
-    const modes = page.getByRole('menu', { name: 'Modes' });
-    await expect(modes).toBeVisible({ timeout: 15_000 });
+    const pages = page.getByRole('menu', { name: 'Pages' });
+    await expect(pages).toBeVisible({ timeout: 15_000 });
 
-    // Assert the menu really rendered its entries BEFORE asserting an absence —
-    // otherwise a menu that failed to open would satisfy the count-0 check.
-    await expect(modes.getByRole('menuitem', { name: /^shipping$/i })).toHaveCount(1);
-    // …and the retired mode is gone from the nav registry, not just the page.
-    await expect(modes.getByRole('menuitem', { name: /^search$/i })).toHaveCount(0);
+    // On dashboard the active page row auto-expands its L2 modes in the spine.
+    await expect(pages.getByRole('button', { name: /^shipping$/i })).toHaveCount(1);
+    await expect(pages.getByRole('button', { name: /^receiving$/i })).toHaveCount(1);
+    await expect(pages.getByRole('button', { name: /^search$/i })).toHaveCount(0);
   });
 
   test('the inbound domain renders a context panel instead of an empty column', async ({ page }) => {

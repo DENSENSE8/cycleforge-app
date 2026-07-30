@@ -246,7 +246,7 @@ export async function claimOrReplay<B extends Record<string, unknown>>(
  */
 export async function withIdempotencyClaim<B extends Record<string, unknown>>(
   db: Pick<Pool, 'query'>,
-  params: ClaimParams & { idempotencyKey: string | null },
+  params: Omit<ClaimParams, 'idempotencyKey'> & { idempotencyKey: string | null },
   produce: () => Promise<{ status: number; body: B }>,
 ): Promise<IdempotencyClaimResult<B>> {
   if (!params.idempotencyKey) {

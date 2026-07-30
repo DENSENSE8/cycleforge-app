@@ -8,11 +8,12 @@
  * drifting literal would show up as the panel changing size between them.
  *
  * **This is the NAV spine only.** The route's context panel
- * (`CONTEXT_PANEL_COLUMN_CLASS`) is 360px too, and deliberately does not consume
- * this: they are two measurements that happen to agree today, not one shared
- * one. Wiring the panel to this token would mean widening the nav silently
- * widens every route's rail beside the workspace — a different surface, a
- * different job.
+ * (`CONTEXT_PANEL_WIDTH_PX` / `CONTEXT_PANEL_COLUMN_CLASS`) defaults to 360px
+ * too, and deliberately does not consume this: they are two measurements that
+ * happen to agree today, not one shared one. Receiving can drag-resize its
+ * rail via `CONTEXT_PANEL_RESIZE`; wiring the panel to this spine token would
+ * still mean widening the nav silently widens every route's default rail —
+ * a different surface, a different job.
  */
 export const SIDEBAR_SPINE_WIDTH = 'w-[360px]';
 

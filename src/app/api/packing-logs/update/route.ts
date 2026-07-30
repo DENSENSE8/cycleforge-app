@@ -8,9 +8,11 @@ import { createStationActivityLog } from '@/lib/station-activity';
 import { recordAudit, AUDIT_ACTION } from '@/lib/audit-logs';
 import { publishStockLedgerEvent } from '@/lib/realtime/publish';
 import { withAuth } from '@/lib/auth/withAuth';
+import { readIdempotencyKey, withIdempotencyClaim } from '@/lib/api-idempotency';
 import { mirrorLegacyPackToAllocations } from '@/lib/inventory/sync-legacy-pack';
 import { attachPhotoWithLegacyUrl } from '@/lib/photos/service';
 import { PACKER_BOX_LABEL_PHOTO_TYPE } from '@/lib/photos/types';
+import pool from '@/lib/db';
 
 /**
  * The signed-in actor's staff id — a positive integer, never aliased.
@@ -25,13 +27,34 @@ function sessionStaffId(rawId: string | number | null | undefined): number | nul
   return Number.isInteger(numeric) && numeric > 0 ? numeric : null;
 }
 
+const PACKING_LOGS_UPDATE_ROUTE = 'packing-logs.update';
+
 /**
  * Update packer_logs table (mobile app after photos are uploaded).
  * Shipped state is now derived from shipping_tracking_numbers, not stored on orders.
+ *
+ * Idempotency: prefer a client `Idempotency-Key` over the 5-minute photo-EXISTS
+ * heuristic — same key replays the cached body without a second INSERT.
  */
 export const POST = withAuth(async (req: NextRequest, ctx) => {
+  const body = await req.json().catch(() => null);
+  if (!body || typeof body !== 'object') {
+    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
+  }
+
+  const idempotencyKey = readIdempotencyKey(
+    req,
+    body.idempotencyKey ?? body.clientEventId ?? body.client_event_id ?? null,
+  );
+
+  const out = await withIdempotencyClaim(pool, {
+    orgId: ctx.organizationId,
+    idempotencyKey,
+    route: PACKING_LOGS_UPDATE_ROUTE,
+    staffId: sessionStaffId(ctx.staffId),
+  }, async () => {
+    const res = await (async (): Promise<NextResponse> => {
   try {
-    const body = await req.json();
     const {
       shippingTrackingNumber,
       trackingType,
@@ -379,4 +402,11 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       details: error.message
     }, { status: 500 });
   }
+    })();
+    return {
+      status: res.status,
+      body: (await res.json()) as Record<string, unknown>,
+    };
+  });
+  return NextResponse.json(out.body, { status: out.status });
 }, { permission: 'packing.complete_order' });

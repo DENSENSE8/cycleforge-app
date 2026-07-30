@@ -13,7 +13,6 @@ import { KpiTile, metricIntentTextClass, MONITOR_KPI_TILE_CLASS } from '@/design
 import {
   resolveShippingMetrics,
   splitShippingAttention,
-  ZERO_SHIPPING_FBA,
   ZERO_SHIPPING_HISTORY,
   type ComputedMetric,
 } from '@/lib/tech/shipping-metrics';
@@ -146,7 +145,6 @@ function QueueStrip() {
   const metrics = resolveShippingMetrics({
     mode: 'pending',
     unshipped,
-    fba: ZERO_SHIPPING_FBA,
     history: ZERO_SHIPPING_HISTORY,
     roi,
   });

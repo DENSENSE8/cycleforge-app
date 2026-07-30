@@ -1,5 +1,6 @@
 import { ReceivingSurfacePage } from '@/components/receiving/ReceivingSurfacePage';
 import { SurfaceGate } from '@/components/surfaces/SurfaceGate';
+import { SurfaceParamHygiene } from '@/components/routing/SurfaceParamHygiene';
 
 /**
  * `/incoming` — the Incoming operator surface (POs Zoho says are issued but not
@@ -12,8 +13,11 @@ import { SurfaceGate } from '@/components/surfaces/SurfaceGate';
  */
 export default function IncomingPage() {
   return (
-    <SurfaceGate surfaceKey="incoming">
-      <ReceivingSurfacePage mobileTitle="Incoming" />
-    </SurfaceGate>
+    <>
+      <SurfaceParamHygiene />
+      <SurfaceGate surfaceKey="incoming">
+        <ReceivingSurfacePage mobileTitle="Incoming" />
+      </SurfaceGate>
+    </>
   );
 }

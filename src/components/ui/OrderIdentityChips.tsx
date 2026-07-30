@@ -317,7 +317,7 @@ export function useOrderIdentityCellNodes({
     <OrderIdChipPlaceholder plain={plain} />
   ) : (
     <CopyChipHoverMenu menuLabel="Order number actions" items={orderItems} onOpenChange={handleMenuOpenChange}>
-      <OrderIdChip value={orderId} display={getLast4(orderId)} plain={plain} />
+      <OrderIdChip value={orderId} display={getLast4(orderId)} plain={plain} fitDisplayWidth />
     </CopyChipHoverMenu>
   );
 

@@ -7,8 +7,9 @@
  *    Every station that shows inbound carton **or** Shipping active-order chrome
  *    composes this — never fork a parallel header.
  * 2. **Bookmark chrome** — {@link StationContextBar} + {@link StationMoreDetails}:
- *    sticky identity bookmark + corner utilities flush under GlobalHeader
- *    (`density="bar"`). Mount **above** StationWorkbench; do not put identity in
+ *    absolute-float identity shell + corner utilities over the work canvas
+ *    (`stationContextBarHostClass`; `density="bar"`). Mount as a sibling above
+ *    StationWorkbench with `reserveIdentityClearance`; do not put identity in
  *    the workbench `entityContext` / `toolbar` slots for Unbox-family stations.
  *    Mid-canvas secondary jumps use {@link StationRightEdgeAction} on the panel
  *    root with `stationRightEdgeActionHostClass` — not inside `moreDetails`.
@@ -42,6 +43,8 @@ export { StationRightEdgeAction } from './StationRightEdgeAction';
 export { StationHeaderToolbar } from './StationHeaderToolbar';
 export {
   stationRightEdgeActionHostClass,
+  stationContextBarHostClass,
+  STATION_IDENTITY_SCROLL_CLEARANCE,
 } from './station-bookmark';
 export {
   WORKSPACE_MODES,

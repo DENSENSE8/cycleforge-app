@@ -113,7 +113,23 @@ async function lookupOrdersBySerial(serial: string, organizationId: string): Pro
       organizationId,
       `SELECT DISTINCT o.id, o.order_id, o.sku, o.product_title, o.status, o.quantity, o.account_source
        FROM orders o
-       JOIN tech_serial_numbers tsn ON tsn.shipment_id = o.shipment_id
+       JOIN tech_serial_numbers tsn ON (
+         tsn.organization_id = o.organization_id
+         AND (
+           tsn.order_id = o.id
+           OR (
+             tsn.order_id IS NULL
+             AND tsn.shipment_id IS NOT NULL
+             AND tsn.shipment_id = o.shipment_id
+             AND NOT EXISTS (
+               SELECT 1 FROM orders o2
+               WHERE o2.shipment_id = o.shipment_id
+                 AND o2.organization_id = o.organization_id
+                 AND o2.id <> o.id
+             )
+           )
+         )
+       )
        WHERE UPPER(tsn.serial_number) = $1
          AND o.organization_id = $2
        ORDER BY o.id DESC
@@ -127,7 +143,23 @@ async function lookupOrdersBySerial(serial: string, organizationId: string): Pro
         organizationId,
         `SELECT DISTINCT o.id, o.order_id, o.sku, o.product_title, o.status, o.quantity, o.account_source
          FROM orders o
-         JOIN tech_serial_numbers tsn ON tsn.shipment_id = o.shipment_id
+         JOIN tech_serial_numbers tsn ON (
+         tsn.organization_id = o.organization_id
+         AND (
+           tsn.order_id = o.id
+           OR (
+             tsn.order_id IS NULL
+             AND tsn.shipment_id IS NOT NULL
+             AND tsn.shipment_id = o.shipment_id
+             AND NOT EXISTS (
+               SELECT 1 FROM orders o2
+               WHERE o2.shipment_id = o.shipment_id
+                 AND o2.organization_id = o.organization_id
+                 AND o2.id <> o.id
+             )
+           )
+         )
+       )
          WHERE UPPER(tsn.serial_number) LIKE $1
            AND o.organization_id = $2
          ORDER BY o.id DESC
@@ -142,7 +174,23 @@ async function lookupOrdersBySerial(serial: string, organizationId: string): Pro
         organizationId,
         `SELECT DISTINCT o.id, o.order_id, o.sku, o.product_title, o.status, o.quantity, o.account_source
          FROM orders o
-         JOIN tech_serial_numbers tsn ON tsn.shipment_id = o.shipment_id
+         JOIN tech_serial_numbers tsn ON (
+         tsn.organization_id = o.organization_id
+         AND (
+           tsn.order_id = o.id
+           OR (
+             tsn.order_id IS NULL
+             AND tsn.shipment_id IS NOT NULL
+             AND tsn.shipment_id = o.shipment_id
+             AND NOT EXISTS (
+               SELECT 1 FROM orders o2
+               WHERE o2.shipment_id = o.shipment_id
+                 AND o2.organization_id = o.organization_id
+                 AND o2.id <> o.id
+             )
+           )
+         )
+       )
          WHERE UPPER(tsn.serial_number) LIKE $1
            AND o.organization_id = $2
          ORDER BY o.id DESC

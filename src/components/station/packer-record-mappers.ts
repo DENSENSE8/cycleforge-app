@@ -27,13 +27,21 @@ export function packerRecordToPackPane(record: PackerRecord): PackActiveOrderPan
   const qtyRaw = Number(record.quantity ?? 1);
   const orderRowIdRaw = Number(record.order_row_id ?? 0);
   const packerLogIdRaw = Number(record.packer_log_id ?? 0);
+  const orderId = String(record.order_id || '').trim();
+  const orderRowId = Number.isFinite(orderRowIdRaw) && orderRowIdRaw > 0 ? orderRowIdRaw : null;
+  const isUnknownOrder =
+    String(record.row_source || '').trim().toLowerCase() === 'exception' ||
+    Boolean(String(record.exception_reason || '').trim()) ||
+    (!orderId && !orderRowId);
 
   return {
-    orderRowId: Number.isFinite(orderRowIdRaw) && orderRowIdRaw > 0 ? orderRowIdRaw : null,
-    orderId: String(record.order_id || '').trim(),
-    productTitle: String(record.product_title || '').trim() || 'Unknown product',
+    orderRowId,
+    orderId,
+    productTitle: isUnknownOrder
+      ? 'Unknown order'
+      : String(record.product_title || '').trim() || 'Unknown product',
     qty: Number.isFinite(qtyRaw) && qtyRaw > 0 ? qtyRaw : 1,
-    condition: String(record.condition || '').trim() || 'N/A',
+    condition: String(record.condition || '').trim() || '—',
     tracking: String(record.shipping_tracking_number || '').trim(),
     sku: String(record.sku || '').trim() || undefined,
     scanType,
@@ -42,6 +50,7 @@ export function packerRecordToPackPane(record: PackerRecord): PackActiveOrderPan
     // Rail selection is pointer-driven, not a scan — keeps the overlay's
     // remount key on the `row-` axis (see PackOrderWorkspace).
     scanDriven: false,
+    isUnknownOrder,
   };
 }
 

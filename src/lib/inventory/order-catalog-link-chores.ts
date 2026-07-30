@@ -57,25 +57,56 @@ async function ensureUnpairedPlatformListing(
   );
 
   if (existing.rows[0]) {
+    // platform_sku is filled in only when NO sibling listing already claims it.
+    //
+    // `ux_sku_platform_ids_platform_sku` is UNIQUE on (platform, platform_sku,
+    // account_name) — i.e. it asserts a SKU appears in at most one listing per
+    // platform+account. A reseller multi-lists ONE product across many listings
+    // by design (sku_catalog_id 327 currently has 7), so filling this column
+    // blind made the second listing of the same SKU abort the whole import.
+    // 1,654 rows still carry a NULL platform_sku (712 of them ebay/USAV) and are
+    // exempt from the index only while they stay NULL — so the import was
+    // walking into the violation one row at a time.
+    //
+    // The identity of a listing is platform_item_id, not the SKU, so declining
+    // the fill loses no identity — it only skips a lookup convenience.
+    // Dropping that wrong index is the real fix and needs an owner-applied
+    // migration (see 2026-07-29f + its .gated contract half).
     await tenantQuery(
       orgId,
-      `UPDATE sku_platform_ids
+      `UPDATE sku_platform_ids t
        SET listing_title = COALESCE(NULLIF($1, ''), listing_title),
-           platform_sku = COALESCE(platform_sku, $2),
+           platform_sku = CASE
+             WHEN t.platform_sku IS NOT NULL THEN t.platform_sku
+             WHEN $2::text IS NULL THEN t.platform_sku
+             WHEN EXISTS (
+               SELECT 1 FROM sku_platform_ids o
+                WHERE o.platform = $5
+                  AND o.platform_sku = $2
+                  AND COALESCE(o.account_name, '') = COALESCE($6, '')
+                  AND o.id <> t.id
+             ) THEN t.platform_sku
+             ELSE $2
+           END,
            is_active = true,
            display_name = COALESCE(NULLIF($1, ''), display_name)
-       WHERE id = $3 AND organization_id = $4`,
-      [listingTitle, platformSku, existing.rows[0].id, orgId],
+       WHERE t.id = $3 AND t.organization_id = $4`,
+      [listingTitle, platformSku, existing.rows[0].id, orgId, platform, accountName],
     );
     return;
   }
 
+  // DO NOTHING matches every sibling writer (pairing-queries, sync-ecwid-products).
+  // This is also the race partner of the SELECT above: two orders in one import
+  // touching the same listing both miss, and the loser must be a no-op rather
+  // than aborting the import's transaction.
   await tenantQuery(
     orgId,
     `INSERT INTO sku_platform_ids
        (sku_catalog_id, platform, platform_sku, platform_item_id, account_name,
         listing_title, display_name, is_active, organization_id)
-     VALUES (NULL, $1, $2, $3, $4, $5, $5, true, $6)`,
+     VALUES (NULL, $1, $2, $3, $4, $5, $5, true, $6)
+     ON CONFLICT DO NOTHING`,
     [platform, platformSku, itemNumber, accountName, listingTitle, orgId],
   );
 }

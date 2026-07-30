@@ -5,6 +5,7 @@ import {
   useEffect,
   useRef,
   useState,
+  type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
 } from 'react';
 
@@ -13,14 +14,40 @@ const DEFAULT_MIN_WIDTH = 320;
 /** Keep at least this many px of main content visible while dragging. */
 const DEFAULT_MAX_WIDTH_PAD = 240;
 
-function readPersistedWidth(key: string | undefined, fallback: number, minWidth: number): number {
+/**
+ * Which edge of the panel owns the drag handle.
+ *
+ * - `leading` — left-edge handle on a **right-anchored** pane (document /
+ *   detail stack). Dragging left grows; dragging right shrinks.
+ * - `trailing` — right-edge handle on a **left-anchored** pane (context
+ *   panel / receiving rail). Dragging right grows; dragging left shrinks.
+ */
+type HorizontalEdge = 'leading' | 'trailing';
+
+/** Pure drag math — exported so unit tests cover both edges without mounting. */
+export function widthFromEdgeDrag(
+  startWidth: number,
+  startX: number,
+  clientX: number,
+  edge: HorizontalEdge,
+): number {
+  const delta = clientX - startX;
+  return edge === 'trailing' ? startWidth + delta : startWidth - delta;
+}
+
+function readPersistedWidth(
+  key: string | undefined,
+  fallback: number,
+  minWidth: number,
+  maxWidthPad: number,
+): number {
   if (!key || typeof window === 'undefined') return fallback;
   try {
     const raw = window.localStorage.getItem(key);
     if (!raw) return fallback;
     const parsed = Number(raw);
     if (!Number.isFinite(parsed) || parsed < minWidth) return fallback;
-    const cap = Math.max(minWidth, window.innerWidth - DEFAULT_MAX_WIDTH_PAD);
+    const cap = Math.max(minWidth, window.innerWidth - maxWidthPad);
     return Math.min(parsed, cap);
   } catch {
     return fallback;
@@ -36,6 +63,11 @@ interface UseHorizontalEdgeResizeOptions {
   maxWidthPad?: number;
   /** Disable drag (fixed width). */
   enabled?: boolean;
+  /**
+   * Which edge of the panel owns the handle. Defaults to `leading` (the
+   * right-anchored document/detail panes this hook was lifted from).
+   */
+  edge?: HorizontalEdge;
   /** Accessible name for the drag handle. Defaults to the document-pane wording
    *  this hook was lifted from; pass one when the pane is not a document. */
   label?: string;
@@ -51,12 +83,19 @@ interface HorizontalEdgeHandleProps {
   'data-testid': string;
   tabIndex: number;
   onPointerDown: (e: ReactPointerEvent<HTMLDivElement>) => void;
+  /** Double-click snaps back to `defaultWidth` (and persists). */
+  onDoubleClick: (e: ReactMouseEvent<HTMLDivElement>) => void;
 }
 
 /**
- * Pixel-width drag for a right-edge slide-over (left-edge handle).
- * Dragging left grows the panel; dragging right shrinks it.
- * Lifted from ZohoSplitPane — shared SoT for horizontal document panes.
+ * Pixel-width drag for a horizontally resizable pane.
+ *
+ * Default (`edge: 'leading'`): right-edge slide-over with a left-edge handle —
+ * dragging left grows the panel. Pass `edge: 'trailing'` for a left-anchored
+ * column with a right-edge handle (dragging right grows).
+ *
+ * Lifted from ZohoSplitPane — shared SoT for horizontal document panes and
+ * the receiving context-panel rail.
  */
 export function useHorizontalEdgeResize({
   storageKey,
@@ -64,14 +103,16 @@ export function useHorizontalEdgeResize({
   minWidth = DEFAULT_MIN_WIDTH,
   maxWidthPad = DEFAULT_MAX_WIDTH_PAD,
   enabled = true,
+  edge = 'leading',
   label = 'Resize document panel',
   testId = 'document-slide-over-resize',
 }: UseHorizontalEdgeResizeOptions = {}) {
-  const [width, setWidthState] = useState(() =>
-    readPersistedWidth(storageKey, defaultWidth, minWidth),
-  );
+  // Start at the design default so SSR HTML and the first client paint agree;
+  // localStorage hydrates in the effect below (avoids a width mismatch).
+  const [width, setWidthState] = useState(defaultWidth);
   const [isDragging, setIsDragging] = useState(false);
   const widthRef = useRef(width);
+  const edgeRef = useRef(edge);
   const dragRef = useRef<{ startX: number; startWidth: number } | null>(null);
 
   useEffect(() => {
@@ -79,9 +120,13 @@ export function useHorizontalEdgeResize({
   }, [width]);
 
   useEffect(() => {
+    edgeRef.current = edge;
+  }, [edge]);
+
+  useEffect(() => {
     if (!storageKey) return;
-    setWidthState(readPersistedWidth(storageKey, defaultWidth, minWidth));
-  }, [storageKey, defaultWidth, minWidth]);
+    setWidthState(readPersistedWidth(storageKey, defaultWidth, minWidth, maxWidthPad));
+  }, [storageKey, defaultWidth, minWidth, maxWidthPad]);
 
   const clamp = useCallback(
     (next: number) => {
@@ -129,9 +174,14 @@ export function useHorizontalEdgeResize({
     if (!isDragging) return;
     const onMove = (ev: PointerEvent) => {
       if (!dragRef.current) return;
-      // Dragging left (negative deltaX from start) grows a right-anchored pane.
-      const next = dragRef.current.startWidth - (ev.clientX - dragRef.current.startX);
-      setWidth(next);
+      setWidth(
+        widthFromEdgeDrag(
+          dragRef.current.startWidth,
+          dragRef.current.startX,
+          ev.clientX,
+          edgeRef.current,
+        ),
+      );
     };
     const onUp = () => stopDrag();
     window.addEventListener('pointermove', onMove);
@@ -157,6 +207,18 @@ export function useHorizontalEdgeResize({
     [enabled],
   );
 
+  const onDoubleClick = useCallback(
+    (e: ReactMouseEvent<HTMLDivElement>) => {
+      if (!enabled) return;
+      e.preventDefault();
+      e.stopPropagation();
+      // Cancel any drag the first click of the double-click started.
+      if (dragRef.current) stopDrag();
+      setWidth(defaultWidth);
+    },
+    [enabled, defaultWidth, setWidth, stopDrag],
+  );
+
   const edgeHandleProps: HorizontalEdgeHandleProps = {
     role: 'separator',
     'aria-orientation': 'vertical',
@@ -165,6 +227,7 @@ export function useHorizontalEdgeResize({
     'data-testid': testId,
     tabIndex: enabled ? 0 : -1,
     onPointerDown,
+    onDoubleClick,
   };
 
   return { width, setWidth, isDragging, edgeHandleProps };

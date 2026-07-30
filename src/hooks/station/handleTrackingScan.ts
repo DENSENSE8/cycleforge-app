@@ -74,16 +74,17 @@ export async function handleTrackingScan(
       inlineMicrocopy: trackingMicrocopy,
     });
 
-    const serialCount = data.order.serialNumbers?.length || 0;
-    ctx.setSuccessMessage(
-      serialCount > 0
-        ? `Order loaded: ${serialCount} serial${serialCount !== 1 ? 's' : ''} already scanned`
-        : 'Order loaded - ready to scan serials',
-    );
-
+    // Exception sessions are amber-card honesty — never a success flash that
+    // reads as "order loaded" (Station §6 / CF-02). Matched orders may whisper.
     if (data.orderFound === false) {
       ctx.clearManuals();
     } else {
+      const serialCount = data.order.serialNumbers?.length || 0;
+      ctx.setSuccessMessage(
+        serialCount > 0
+          ? `Order loaded: ${serialCount} serial${serialCount !== 1 ? 's' : ''} already scanned`
+          : 'Order loaded - ready to scan serials',
+      );
       void ctx.resolveManual(data.order.sku, data.order.itemNumber ?? null);
     }
 

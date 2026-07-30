@@ -4,7 +4,11 @@
  */
 
 import { redirect } from 'next/navigation';
-import { fbaOutboundHref, resolveFbaMode } from '@/lib/fba/fba-modes';
+import {
+  FBA_LEGACY_REDIRECT_FORWARDED_PARAMS,
+  fbaOutboundHref,
+  resolveFbaMode,
+} from '@/lib/fba/fba-modes';
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
@@ -28,7 +32,7 @@ export default async function FbaRedirectPage({
   );
   const openShipmentId = first(raw.openShipmentId);
   const extra: Record<string, string | null> = {};
-  for (const key of ['q', 'r', 'plan', 'draft', 'main', 'details'] as const) {
+  for (const key of FBA_LEGACY_REDIRECT_FORWARDED_PARAMS) {
     const v = first(raw[key]);
     if (v) extra[key] = v;
   }

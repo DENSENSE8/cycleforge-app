@@ -15,7 +15,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { AnimatePresence, LayoutGroup, motion } from 'framer-motion';
+import { AnimatePresence, LayoutGroup, motion, useReducedMotion } from 'framer-motion';
 import {
   AlertTriangle,
   Barcode,
@@ -27,11 +27,16 @@ import {
 } from '@/components/Icons';
 import { AnimatedStat } from '@/design-system/components/AnimatedStat';
 import { framerGesture, framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
+import {
+  useMotionPresence,
+  useMotionTransition,
+} from '@/design-system/foundations/motion-framer-hooks';
 import type { ActiveStationOrder } from '@/hooks/useStationTestingController';
 import { looksLikeFnsku } from '@/lib/scan-resolver';
 import { CopyChip, getLast4 } from '@/components/ui/CopyChip';
 import { refreshDomains } from '@/lib/refresh/bus';
 import { REFRESH_BUNDLES } from '@/lib/refresh/domains';
+import { toast } from '@/lib/toast';
 
 type Variant = 'order' | 'fba' | 'repair' | 'exception';
 
@@ -192,6 +197,9 @@ export function ActiveOrderScanFeedback({ activeOrder }: Props) {
   const [lastSerial, setLastSerial] = useState<string | null>(null);
   const prevTrackingRef = useRef<string | null>(null);
   const prevCountRef = useRef(0);
+  const shouldReduce = useReducedMotion();
+  const collapsePresence = useMotionPresence(framerPresence.collapseHeight);
+  const collapseTransition = useMotionTransition(framerTransition.stationCollapse);
 
   useEffect(() => {
     if (!activeOrder) {
@@ -222,11 +230,11 @@ export function ActiveOrderScanFeedback({ activeOrder }: Props) {
       {activeOrder ? (
         <motion.div
           key={activeOrder.tracking || activeOrder.orderId}
-          layout="position"
-          initial={framerPresence.collapseHeight.initial}
-          animate={framerPresence.collapseHeight.animate}
-          exit={framerPresence.collapseHeight.exit}
-          transition={framerTransition.stationCollapse}
+          layout={shouldReduce ? false : 'position'}
+          initial={collapsePresence.initial}
+          animate={collapsePresence.animate}
+          exit={collapsePresence.exit}
+          transition={collapseTransition}
           className="overflow-hidden pb-1 sm:pb-0"
         >
           <FeedbackBody activeOrder={activeOrder} lastSerial={lastSerial} />
@@ -244,6 +252,12 @@ function FeedbackBody({
   lastSerial: string | null;
 }) {
   const [undoBusy, setUndoBusy] = useState(false);
+  const shouldReduce = useReducedMotion();
+  const cardPresence = useMotionPresence(framerPresence.stationCard);
+  const cardTransition = useMotionTransition(framerTransition.stationCardMount);
+  const chipTransition = useMotionTransition(framerTransition.quantityBump);
+  const serialPresence = useMotionPresence(framerPresence.stationSerialRow);
+  const serialTransition = useMotionTransition(framerTransition.stationSerialRow);
   const variant = inferVariant(activeOrder);
   const { Icon, label, tint, border, bar } = VARIANTS[variant];
   /** Tracking resolved to no order — nothing scanned here attaches to a record. */
@@ -253,6 +267,7 @@ function FeedbackBody({
   const remaining = Math.max(0, qty - scanned);
   const progressPct = Math.min(100, Math.round((scanned / qty) * 100));
   const trackingKey = String(activeOrder.tracking || '').trim();
+  const microcopy = String(activeOrder.inlineMicrocopy || '').trim();
   const salId =
     activeOrder.salId != null && Number.isFinite(Number(activeOrder.salId)) && Number(activeOrder.salId) > 0
       ? Number(activeOrder.salId)
@@ -264,7 +279,7 @@ function FeedbackBody({
     try {
       const result = await postUndoForActiveOrder(activeOrder);
       if (!result.ok) {
-        window.alert(result.error || 'Could not undo.');
+        toast.error(result.error || 'Could not undo.');
         return;
       }
       window.dispatchEvent(
@@ -280,7 +295,7 @@ function FeedbackBody({
       refreshDomains(REFRESH_BUNDLES.outboundOrderWrite);
     } catch (e) {
       console.error(e);
-      window.alert('Could not undo.');
+      toast.error('Could not undo.');
     } finally {
       setUndoBusy(false);
     }
@@ -289,10 +304,10 @@ function FeedbackBody({
   return (
     <LayoutGroup id={`active-order-feedback-${activeOrder.tracking || activeOrder.orderId}`}>
       <motion.div
-        layout
-        initial={framerPresence.stationCard.initial}
-        animate={framerPresence.stationCard.animate}
-        transition={framerTransition.stationCardMount}
+        layout={!shouldReduce}
+        initial={cardPresence.initial}
+        animate={cardPresence.animate}
+        transition={cardTransition}
         className={`min-w-0 rounded-xl border bg-surface-card px-3 py-2.5 shadow-sm max-sm:mb-0.5 ${border}`}
       >
         {/* Row 1 — identity + status (primary). Undo is separated to footer (Material / HIG). */}
@@ -309,10 +324,10 @@ function FeedbackBody({
               record. Rendering the emerald Active chip here is what let a
               technician believe an orphaned serial had been captured. */}
           <motion.span
-            layout
-            initial={{ opacity: 0, scale: 0.92 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={framerTransition.quantityBump}
+            layout={!shouldReduce}
+            initial={shouldReduce ? { opacity: 0 } : { opacity: 0, scale: 0.92 }}
+            animate={shouldReduce ? { opacity: 1 } : { opacity: 1, scale: 1 }}
+            transition={chipTransition}
             className={`inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-[8.5px] font-semibold uppercase tracking-widest ring-1 ring-inset ${
               isException
                 ? 'bg-amber-50 text-amber-700 ring-amber-300'
@@ -332,11 +347,11 @@ function FeedbackBody({
               className={`h-full ${bar} rounded-full`}
               initial={false}
               animate={{ width: `${progressPct}%` }}
-              transition={{
-                type: 'spring',
-                damping: 28,
-                stiffness: 320,
-              }}
+              transition={
+                shouldReduce
+                  ? { duration: 0 }
+                  : { type: 'spring', damping: 28, stiffness: 320 }
+              }
             />
           </div>
           <span className="inline-flex shrink-0 items-baseline text-role-micro text-text-muted">
@@ -367,7 +382,16 @@ function FeedbackBody({
               {scanned} serial{scanned === 1 ? '' : 's'} held — no order matched
             </span>
             <span className="text-role-eyebrow normal-case tracking-normal text-amber-700">
-              Recorded against an exception for reconciliation, not attached to an order.
+              {microcopy ||
+                'Recorded against an exception for reconciliation, not attached to an order.'}
+            </span>
+          </div>
+        ) : isException ? (
+          <div className="mt-2 flex flex-wrap items-center gap-1.5 rounded-md border border-amber-300 bg-amber-50 px-2 py-1">
+            <AlertTriangle className="h-3 w-3 shrink-0 text-amber-700" />
+            <span className="text-role-eyebrow normal-case tracking-normal text-amber-800">
+              {microcopy ||
+                'Order not in system — tracking logged for reconciliation. Scan serials to hold them against this exception.'}
             </span>
           </div>
         ) : trackingKey && scanned > 0 ? (
@@ -392,10 +416,10 @@ function FeedbackBody({
           {lastSerial ? (
             <motion.div
               key={lastSerial}
-              initial={framerPresence.stationSerialRow.initial}
-              animate={framerPresence.stationSerialRow.animate}
-              exit={framerPresence.stationSerialRow.exit}
-              transition={framerTransition.stationSerialRow}
+              initial={serialPresence.initial}
+              animate={serialPresence.animate}
+              exit={serialPresence.exit}
+              transition={serialTransition}
               className="overflow-hidden"
             >
               <div className="mt-2 flex min-w-0 items-center gap-1.5 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1">
@@ -415,8 +439,10 @@ function FeedbackBody({
             type="button"
             disabled={undoBusy || scanned < 1}
             onClick={() => void handleUndoLastSerial()}
-            whileTap={scanned >= 1 && !undoBusy ? framerGesture.tapPress : undefined}
-            transition={framerTransition.stationSerialRow}
+            whileTap={
+              shouldReduce || scanned < 1 || undoBusy ? undefined : framerGesture.tapPress
+            }
+            transition={serialTransition}
             className="flex w-full min-h-[44px] items-center justify-center gap-2 rounded-lg text-role-caption font-semibold uppercase tracking-widest text-amber-800 transition-colors hover:bg-amber-50 active:bg-amber-100 disabled:pointer-events-none disabled:opacity-35 sm:min-h-0 sm:justify-start sm:py-1.5"
             title={
               variant === 'exception'

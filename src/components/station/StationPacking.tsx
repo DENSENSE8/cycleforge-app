@@ -2,6 +2,11 @@
 
 import React, { useEffect, useRef, useState, type ReactNode } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
+import {
+  useMotionPresence,
+  useMotionTransition,
+} from '@/design-system/foundations/motion-framer-hooks';
 import { Barcode, AlertCircle, Package } from '../Icons';
 import { getLast4 } from '../ui/CopyChip';
 import { useStationTheme } from '@/hooks/useStationTheme';
@@ -31,6 +36,7 @@ import { useUnitPhotoRequestPublisher } from '@/components/sidebar/receiving/use
 import { toast } from '@/lib/toast';
 import { refreshDomains } from '@/lib/refresh/bus';
 import { REFRESH_BUNDLES } from '@/lib/refresh/domains';
+import { safeRandomUUID } from '@/lib/safe-uuid';
 
 interface ActivePackingOrder {
   orderRowId: number | null;
@@ -44,6 +50,8 @@ interface ActivePackingOrder {
   serialUnitId?: number | null;
   unitKey?: string | null;
   packerLogId?: number | null;
+  /** Exception Path B — tracking not found in orders. */
+  isUnknownOrder?: boolean;
 }
 
 interface ActiveFbaScan {
@@ -103,6 +111,8 @@ export default function StationPacking({
 }: StationPackingProps) {
   // Global-assistant context: station Q&A skill fragment (plan §-2.2).
   useAssistantContext({ page: 'packing-station', station: 'PACKING', skill: STATION_SKILL });
+  const cardPresence = useMotionPresence(framerPresence.stationCard);
+  const cardTransition = useMotionTransition(framerTransition.stationCardMount);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -137,6 +147,7 @@ export default function StationPacking({
       unitKey: activeOrder.unitKey,
       packerLogId: activeOrder.packerLogId,
       scanDriven: true,
+      isUnknownOrder: activeOrder.isUnknownOrder,
     });
   }, [activeOrder, activeFba]);
 
@@ -295,15 +306,20 @@ export default function StationPacking({
         }
 
         const normalizedScan = isTrackingInput ? normalizeTracking(scan) : scan;
+        const idempotencyKey = safeRandomUUID();
         const res = await fetch('/api/packing-logs', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'Idempotency-Key': idempotencyKey,
+          },
           body: JSON.stringify({
             trackingNumber: normalizedScan,
             photos: [],
             packerId: String(userId),
             packerName: userName,
             createdAt: formatPSTTimestamp(),
+            idempotencyKey,
           }),
         });
         const data = await res.json();
@@ -328,10 +344,18 @@ export default function StationPacking({
           const skuValue = String(data?.sku || '').trim();
           const orderRowIdRaw = Number(data?.orderRowId);
           const packerLogIdRaw = Number(data?.packerLogId ?? data?.packerRecord?.id);
+          const orderId = String(data?.orderId || '').trim();
+          const orderRowId =
+            Number.isFinite(orderRowIdRaw) && orderRowIdRaw > 0 ? orderRowIdRaw : null;
+          // Exception Path B: API returns a warning and no order identity.
+          const isUnknownOrder =
+            Boolean(String(data?.warning || '').trim()) || (!orderId && !orderRowId);
           setActiveOrder({
-            orderRowId: Number.isFinite(orderRowIdRaw) && orderRowIdRaw > 0 ? orderRowIdRaw : null,
-            orderId: String(data?.orderId || '').trim(),
-            productTitle: String(data?.productTitle || '').trim() || 'Unknown product',
+            orderRowId,
+            orderId,
+            productTitle: isUnknownOrder
+              ? 'Unknown order'
+              : String(data?.productTitle || '').trim() || 'Unknown product',
             qty: Math.max(1, Number(data?.qty ?? data?.quantity ?? data?.orderQty ?? 1) || 1),
             condition: String(data?.condition || '').trim() || 'N/A',
             tracking: String(data?.shippingTrackingNumber || scan).trim(),
@@ -339,6 +363,7 @@ export default function StationPacking({
             sku: skuValue || undefined,
             packerLogId:
               Number.isFinite(packerLogIdRaw) && packerLogIdRaw > 0 ? packerLogIdRaw : null,
+            isUnknownOrder,
           });
         }
 
@@ -431,9 +456,8 @@ export default function StationPacking({
           <AnimatePresence mode="wait">
             {errorMessage && (
               <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
+                {...cardPresence}
+                transition={cardTransition}
                 className="p-4 bg-red-50 text-red-700 rounded-2xl border border-red-200 flex items-center gap-3"
               >
                 <AlertCircle className="w-5 h-5 flex-shrink-0" />
@@ -448,9 +472,8 @@ export default function StationPacking({
             {activeFba && (
               <motion.div
                 key={activeFba.fnsku}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 10 }}
+                {...cardPresence}
+                transition={cardTransition}
                 className="p-4 bg-surface-card rounded-2xl border border-purple-200 shadow-sm"
               >
                 <div className="flex items-center justify-between gap-3 mb-2">
@@ -500,9 +523,8 @@ export default function StationPacking({
             {activeOrder && !activeFba && !railSlot && (
               <motion.div
                 key={activeOrder.tracking || activeOrder.orderId}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 10 }}
+                {...cardPresence}
+                transition={cardTransition}
                 className="rounded-2xl border border-border-soft bg-surface-card px-3 py-2.5 shadow-sm"
               >
                 <div className="flex items-center justify-between gap-2">
@@ -537,6 +559,8 @@ export default function StationPacking({
                       isLoading={checklistLoading}
                       variant="station"
                       className="mt-3"
+                      isUnknownOrder={Boolean(activeOrder.isUnknownOrder)}
+                      unknownCondition={activeOrder.condition}
                     />
                     <div className="mt-3 border-t border-border-hairline pt-3">
                       <SupportContextHub

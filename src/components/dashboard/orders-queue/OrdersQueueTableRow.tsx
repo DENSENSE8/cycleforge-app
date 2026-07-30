@@ -8,7 +8,7 @@ import { AlertTriangle, Check, ChevronDown, FileText, Link2, Maximize2, Plus } f
 import { useRouter } from 'next/navigation';
 import { useOrderIdentityCellNodes, OrderIdentityChips } from '@/components/ui/OrderIdentityChips';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { LedgerCellEditor } from '@/design-system/components/grid';
+import { gridCellAlignClass, LedgerCellEditor } from '@/design-system/components/grid';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import {
   CellTextEditPopover,
@@ -373,7 +373,8 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
 
   const gridTemplate = isMobile ? undefined : ordersQueueGridTemplateFor(columns);
   const cellInset = gridSkin ? ('grid' as const) : ('cell' as const);
-  const dataCell = (rule = true) => ordersQueueGridCell({ rule, inset: cellInset });
+  const dataCell = (col: OrdersQueueColumn, rule = true) =>
+    cn(ordersQueueGridCell({ rule, inset: cellInset }), gridCellAlignClass(col));
 
   // Mobile keeps the right-packed icon cluster.
   const chipsNode = <OrderIdentityChips {...identityChipProps} variant="icons" isMobile={isMobile} />;
@@ -716,17 +717,14 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
           <div
             data-col="title"
             ref={titleCellRef}
-            // NOT an editable cell. The product title is a catalog fact that
-            // arrives from the marketplace listing, not an operator-authored
-            // value — and it is this row's only identity anchor, so a text
-            // caret on it (previously armed by click, Enter, F2, *or any
-            // printable key*) put a destructive typo one keystroke away.
-            // Identity columns stay read-only in the collection map;
-            // correction happens at the record plane, which house law already
-            // requires to be a complete superset of editable fields.
-            // No focus ring here either: the ring is the tell that a cell
-            // edits, and clicks must fall through to the row (open record).
-            className={cn(dataCell(rule), ORDERS_QUEUE_FROZEN_CELL, 'gap-1.5')}
+            // Identity column — collection-map read-only
+            // (`isGridColumnInCellEditable` / GRID_IDENTITY_COLUMN_KEYS). The
+            // product title is a catalog fact + this row's identity anchor; a
+            // text caret (click / Enter / F2 / printable) put a destructive
+            // typo one keystroke away. Correction happens at the record plane.
+            // No focus ring: the ring is the tell that a cell edits, and
+            // clicks must fall through to the row (open record).
+            className={cn(dataCell(col, rule), ORDERS_QUEUE_FROZEN_CELL, 'gap-1.5')}
             style={{ left: ordersQueueFrozenLeft('title') }}
             data-frozen-edge
           >
@@ -749,7 +747,7 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
           <div
             data-col="sla"
             ref={dateCellRef}
-            className={cn(dataCell(rule), gridEditable && cn('relative', focusRing('cell')))}
+            className={cn(dataCell(col, rule), gridEditable && cn('relative', focusRing('cell')))}
             {...cellTriggerProps('date', { label: 'Edit ship-by date' })}
           >
             {slaNode}
@@ -759,14 +757,14 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
         // TESTED lane (plan §9): scan actor → assignee → staff-id lookup, all
         // normalized upstream into `testerDisplay` ('---' when truly missing).
         return (
-          <div data-col="tester" className={dataCell(rule)}>
+          <div data-col="tester" className={dataCell(col, rule)}>
             <GridStaffCellValue name={testerDisplay} className={densityClasses.metaText} />
           </div>
         );
       case 'testedAt': {
         const testedAtRaw = queueRowTestedAtRaw(record);
         return (
-          <div data-col="testedAt" className={dataCell(rule)}>
+          <div data-col="testedAt" className={dataCell(col, rule)}>
             {testedAtRaw ? (
               <GridDateTimeCellValue
                 raw={testedAtRaw}
@@ -779,15 +777,10 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
         );
       }
       case 'qty':
-        // Left-aligned like every other track (no `justify-end`).
-        // Right-alignment buys place-value scanning when magnitudes vary; a
-        // pick quantity is `1` on nearly every row in a 2.75rem track, so it
-        // bought a ragged gutter mid-table instead and broke the left rhythm.
-        // `tabular-nums` below still keeps digits from jumping during an edit.
         return (
           <div
             data-col="qty"
-            className={cn(dataCell(rule), gridEditable && cn('relative', focusRing('cell')))}
+            className={cn(dataCell(col, rule), gridEditable && cn('relative', focusRing('cell')))}
             {...cellTriggerProps('qty', { typing: true, label: `Edit quantity (${qty})` })}
           >
             {/* Same type scale as the Date / Age cells — numerals must not
@@ -821,7 +814,7 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
           <div
             data-col="condition"
             ref={conditionCellRef}
-            className={cn(dataCell(rule), 'text-role-eyebrow uppercase text-text-muted')}
+            className={cn(dataCell(col, rule), 'text-role-eyebrow uppercase text-text-muted')}
           >
             {gridEditable ? (
               hasConditionValue ? (
@@ -889,7 +882,7 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
         );
       case 'order':
         return (
-          <div data-col="order" className={dataCell(rule)}>
+          <div data-col="order" className={dataCell(col, rule)}>
             {identityNodes.order}
           </div>
         );
@@ -900,7 +893,7 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
         // Icon-only keeps the tracking track as narrow as last-4 chips.
         // The paste-from-clipboard chip stays a Labels/board-only tool.
         return (
-          <div data-col="tracking" className={dataCell(rule)}>
+          <div data-col="tracking" className={dataCell(col, rule)}>
             {gridSkin && !trackingRaw ? (
               <HoverTooltip label="No label yet — create it at the shipping station" focusable={false}>
                 <button
@@ -927,7 +920,7 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
           </div>
         );
       default:
-        return <span className={dataCell(rule)} />;
+        return <span className={dataCell(col, rule)} />;
     }
   };
 

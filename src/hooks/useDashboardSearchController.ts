@@ -46,7 +46,7 @@ export function useDashboardSearchController() {
   );
   const showIntakeForm = searchParams.get('new') === 'true';
   // FBA renders its own detail surface, not the shipped/unshipped panel.
-  const detailsEnabled = orderView !== 'fba';
+  const detailsEnabled = true;
 
   const updateSearch = useCallback((mutate: (params: URLSearchParams) => void, nextPathname = '/dashboard') => {
     const nextParams = new URLSearchParams(searchParams.toString());

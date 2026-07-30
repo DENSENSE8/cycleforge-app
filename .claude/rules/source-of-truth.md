@@ -29,11 +29,14 @@ fields, pick the presentation kind and import from the SoT below (Kinetic Ledger
 | Focus affordance | `src/design-system/tokens/focus-ring.ts` (`focusRing(archetype, tone)`) |
 | Depth elevation (flat · raised · overlay) | `src/design-system/tokens/shadows.ts` (`elevationClass`) |
 | Ops table / spreadsheet surface shell | `src/design-system/tokens/table-surface.ts` (`TABLE_SURFACE_*` + `TABLE_FROZEN_HEADER_CLASS`) |
+| Grid column justification (end vs start) | `@/design-system/components/grid` `resolveGridColumnAlign` / `gridCellAlignClass` / `gridHeaderCellAlignClass` — see **Grid column justification** below |
+| Grid identity columns (freeze · lock · never in-cell edit) | `@/design-system/components/grid` `GRID_IDENTITY_COLUMN_KEYS` / `isGridColumnInCellEditable` |
 | Grid column visibility (per-staff) | `@/design-system/components/grid` `useGridColumnVisibility` / `useGridFields` + `GridFieldsMenu` — see **Grid column visibility + sort** below |
 | Grid column sort (URL-durable) | `@/hooks/useUrlColumnSort` → `?colsort=` / `?coldir=` — see **Grid column visibility + sort** below |
 | Collection-surface action planes | `display/workbench.md` — in-cell · row-scoped · multi-select · record, one primary plane each |
 | Station Workbench shell / column / wash | `@/components/station/workbench` (`StationWorkbench`, `StationPanelRoot` + `StationAmbientWash`, `STATION_WORKBENCH_*`) — rule: `display/station-workbench.md` |
 | Surface / box shell | `Panel` (generic) · `SectionCard` (monitor) · `CardShell` (rows) — never hand-roll |
+| Honest absence (missing fact) | `GridCellDash` / ledger `fallback` default `—` — never invent `"N/A"` on ledger/grid primitives |
 | Dialog / AlertDialog | `@/design-system/components/Dialog` · `AlertDialog` · `requestConfirm` / `ConfirmDialogHost` — never hand-roll `fixed inset-0` scrims for new modals; station floor confirms stay on `ConfirmSheet` |
 | Switch / Checkbox | `@/design-system/primitives` `Switch` / `Checkbox` |
 | Dropdown / Context menu | `@/design-system/primitives` `DropdownMenu` / `ContextMenu` |
@@ -48,7 +51,8 @@ fields, pick the presentation kind and import from the SoT below (Kinetic Ledger
 | Buttons | `src/design-system/primitives` `Button` |
 | Product icon glyphs | `@/components/Icons` (`src/components/icons/*`) — never duplicate nav primitives |
 | Station page + L2 mode nav icons | `src/lib/nav/station-nav-icons.ts` + semantic wrappers `src/components/icons/stations.tsx` — mode glyphs unique via `MODE_ICON_GLYPH_KEYS` |
-| Top-band chrome icon **display** (glyph box) | `src/components/layout/header-shell.ts` (`TOP_CHROME_ICON_GLYPH` for GlobalHeader; `SIDEBAR_MRU_GLYPH` for MasterNav MRU) — native SVG stroke only; do not layer `navIconStrokeClass` on header/MRU chips (muddies dense glyphs). Glyph *identity* stays Icons / station-nav |
+| Top-band chrome icon **display** (glyph box) | `src/components/layout/header-shell.ts` (`TOP_CHROME_ICON_GLYPH` for GlobalHeader Mode / Recents / WO / goal) — native SVG stroke only; do not layer `navIconStrokeClass` on header chips (muddies dense glyphs). Glyph *identity* stays Icons / station-nav |
+| L2 Mode + Recents (page modes + cross-page MRU) | `HeaderModeSwitcher` + `HeaderRecentsSwitcher` in `GlobalHeader` — data = `SIDEBAR_PAGE_NAV` / `useSidebarModeNav` / `useRecentModes`. Never a sidebar pill-band twin; no MRU chips in `MasterNavHeader`. |
 
 If a facet has no SoT yet, **add or extend one** (pattern evolution) — do not fork a page-local map “just for this screen.”
 
@@ -85,6 +89,10 @@ If a facet has no SoT yet, **add or extend one** (pattern evolution) — do not 
 - Source: `src/design-system/tokens/z-index.ts`, wired into Tailwind as named utilities
   (`z-panel`, `z-modal`, `z-panelPopover`, `z-toast`, `z-tooltip`).
 - **Toasts:** `@/lib/toast` + `AppToaster` (`toast-theme.ts`) — light semantic fills; never Sonner `richColors`.
+- **Never `alert()` / `window.alert()`** — native alerts steal keyboard-wedge focus on station benches and are a
+  data-loss vector. Station pass/fail belongs on the active card (`.claude/rules/display/station.md` §6); elsewhere
+  use `@/lib/toast` or a blocking DS modal/`confirm` primitive. Guard: `src/components/ui/alert.guard.test.ts`
+  (shrink-only; escape `ds-allow-alert` on the same line or line above).
 - Never hardcode `z-[NNN]` or inline numeric `zIndex`. Add/adjust a named token instead.
 
 ## Grid column visibility + sort
@@ -101,6 +109,23 @@ If a facet has no SoT yet, **add or extend one** (pattern evolution) — do not 
   `?sort=` / `?dir=` on station routes** — those are taken by server ordering, and colliding on them
   makes the grid and the query disagree about what "sorted" means.
 
+## Grid column justification
+
+- Source: `src/design-system/components/grid/grid-header-align.ts`
+  (`resolveGridColumnAlign` · `gridCellAlignClass` · `gridHeaderCellAlignClass`).
+- **Hard rule — digit tracks end, word tracks start.** Header and cell resolve the SAME decision
+  from the column model; never re-decide with a per-surface ternary or a hand-typed
+  `justify-end` / `text-right` on the cell.
+  | Type | Align | Examples |
+  |---|---|---|
+  | `number` · `id` · `location` · `date` | **end** | Qty · price · **order ID** · SKU · serial · ticket · tracking last-4 · ship-by / age |
+  | `text` · `longtext` · `tag` · `external` | **start** | Product title · condition · status · platform · tester name |
+- Explicit `align` on the column model is the ONLY override — use it when a column's *type*
+  is numeric-looking for the header glyph but the *cell* is prose (receiving `stage`) or a
+  categorical chip (catalog `inventory`). Declare the exception once on the layout SoT.
+- Guard: `grid-column-display.guard.test.ts` (+ `grid-header-align.test.ts`). Every LedgerGrid
+  row / summary / header must compose the SoT helpers — never fork alignment per surface.
+
 ## Collection-surface action planes
 
 - Four planes, one primary each: **in-cell** (cell-anchored editor) · **row-scoped** (hover controls +
@@ -110,6 +135,9 @@ If a facet has no SoT yet, **add or extend one** (pattern evolution) — do not 
 - The **record plane stays a complete superset** wherever the in-cell plane is conditionally
   unavailable (mobile, non-airtable skin) — otherwise a field becomes unreachable on the surface that
   cannot show its primary plane.
+- **Identity columns (`select` · `title`)** — frozen, immovable, and **never in-cell editable**
+  (`GRID_IDENTITY_COLUMN_KEYS` / `isGridColumnInCellEditable` in
+  `src/design-system/components/grid/grid-column-editability.ts`). Correction at the record plane.
 
 ## Right-rail modality (the detail slot)
 
@@ -237,8 +265,9 @@ Reference: the Unbox unfound **Find ticket** action (`UnfoundMatchStrip`) → `T
     `elevationClass('raised')`.
   - `TABLE_SURFACE_CLIP_CLASS` — surface + `overflow-hidden` (**the one recipe** — clips
     airtable cell paints at the corner curve). `TABLE_SURFACE_SCROLLPORT_CLASS` aliases it.
-  - `TABLE_FROZEN_HEADER_CLASS` — `bg-surface-sunken` frozen header over white body rows
-    (quiet band; never `surface-strong` — equals `border-subtle` in light and erases header grid).
+  - `TABLE_FROZEN_HEADER_CLASS` — `bg-surface-card` frozen header (same plane as
+    body rows; borders carry hierarchy — never `surface-strong`, which equals
+    `border-subtle` in light and erases header grid).
 - Airtable skin (`data-grid-skin="airtable"`): continuous RIGHT+BOTTOM cell rules
   (`border-default`) through **header and body**; shell owns the outer perimeter
   (drop trailing column right rule).
@@ -292,6 +321,13 @@ Reference: the Unbox unfound **Find ticket** action (`UnfoundMatchStrip`) → `T
 - Condition meta chips use `ConditionGradeChip` → `src/lib/condition-tone.ts` for per-grade underline/icon hue.
 - `resolveSerialDisplay` / `resolveChipDisplay` are the label SoT for serials/chips.
 
+## Honest absence (missing facts)
+
+- Grid cells: `GridCellDash` → `—` (never blank, never `"N/A"`).
+- Ledger details: `LedgerValue` / `DateTimeValue` default `fallback` is `—`.
+- Dense condition meta tracks may still use `EMPTY_META_DASH` (`--`) from `conditions.ts` for optical alignment.
+- Do not introduce new `"N/A"` defaults on ledger/grid primitives; migrate call sites toward `—` / omit-fact.
+
 ## Buttons
 
 - Canonical `Button` (5 variants) lives in `src/design-system/primitives`. `PrimaryButton` is now a thin alias.
@@ -307,9 +343,11 @@ Reference: the Unbox unfound **Find ticket** action (`UnfoundMatchStrip`) → `T
   public waist).
 - Condensed one-row anatomy: listing · PO# / order# · tracking · CLAIM · photos · platform/type/priority.
   Editors slide below on demand — do not regroup into stacked form sections.
-- **Bookmark chrome:** mount identity as `density="bar"` inside `StationContextBar` above
-  `StationWorkbench`; corner utilities go in `StationMoreDetails` (embedded `LineEditToolbar`).
-  Do not put carton identity in the workbench `entityContext` / `toolbar` slots.
+- **Bookmark chrome:** mount identity as `density="bar"` inside `StationContextBar` as an
+  absolute float over the work canvas (`stationContextBarHostClass` — no in-flow gray shelf);
+  pair with `StationWorkbench` `reserveIdentityClearance`. Corner utilities go in
+  `StationMoreDetails` (embedded `LineEditToolbar`). Do not put carton identity in the
+  workbench `entityContext` / `toolbar` slots.
 - **Compose for Unbox / Triage / Testing / Shipping (active order)** via thin adapters
   (`LineCartonContextSection`, `TestingCartonHeader`, `ShippingEntityContextHeader`,
   `PackOrderIdentity`, `PickupEntityContextHeader`).

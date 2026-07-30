@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { PaneHeaderTabs } from '@/components/ui/pane-header';
 import { LinearWorkflowStepper } from '@/components/receiving/workspace/ReceivingProgressStepper';
 import { CLAIM_WIZARD_STEPS, LINK_WIZARD_STEPS, type ClaimModalMode } from '../claim-types';
@@ -6,10 +7,21 @@ import type { ReceivingClaimController } from '../hooks/useReceivingClaimControl
 /**
  * New-ticket / Link-existing mode tabs, plus a linear progress stepper for the
  * active flow — create: Photos → Ticket → Review → Filed → Seller; link: Find →
- * Linked → Seller. The stepper is the stable map: clicking a reached step jumps
- * to it; only the body below crossfades.
+ * Photos → Ticket → Review → Linked → Seller. The Seller dot is dropped from
+ * either stepper on a 'return' claim (`c.sellerStepApplicable`) — there's no
+ * marketplace seller to message. The stepper is the stable map: clicking a
+ * reached step jumps to it; only the body below crossfades.
  */
 export function ClaimWizardNav({ c }: { c: ReceivingClaimController }) {
+  const claimSteps = useMemo(
+    () => CLAIM_WIZARD_STEPS.filter((s) => s.key !== 'seller' || c.sellerStepApplicable),
+    [c.sellerStepApplicable],
+  );
+  const linkSteps = useMemo(
+    () => LINK_WIZARD_STEPS.filter((s) => s.key !== 'seller' || c.sellerStepApplicable),
+    [c.sellerStepApplicable],
+  );
+
   return (
     <div className="space-y-2.5 border-b border-border-hairline pb-2.5">
       <div className="flex justify-start">
@@ -25,7 +37,7 @@ export function ClaimWizardNav({ c }: { c: ReceivingClaimController }) {
 
       {c.mode === 'create' ? (
         <LinearWorkflowStepper
-          steps={CLAIM_WIZARD_STEPS}
+          steps={claimSteps}
           states={c.claimStepStates}
           ariaLabel="Claim progress"
           size="compact"
@@ -35,11 +47,11 @@ export function ClaimWizardNav({ c }: { c: ReceivingClaimController }) {
         />
       ) : (
         <LinearWorkflowStepper
-          steps={LINK_WIZARD_STEPS}
+          steps={linkSteps}
           states={c.linkStepStates}
           ariaLabel="Link claim progress"
           size="compact"
-          className="mx-auto w-full max-w-xs px-2"
+          className="mx-auto w-full max-w-md px-2"
           onStepClick={c.handleLinkStepClick}
           isStepDisabled={c.isLinkStepDisabled}
         />

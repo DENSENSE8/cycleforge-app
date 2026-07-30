@@ -8,6 +8,7 @@ import type { WorkOrderRow } from '@/components/work-orders/types';
 import type { AssignmentConfirmPayload } from '@/components/work-orders/WorkOrderAssignmentCard';
 import type { StaffOption } from '@/components/station/upnext/upnext-types';
 import { refreshDomain } from '@/lib/refresh/bus';
+import { toast } from '@/lib/toast';
 
 
 export interface UseWorkOrderAssignmentReturn {
@@ -64,7 +65,7 @@ export function useWorkOrderAssignment(): UseWorkOrderAssignmentReturn {
       });
       refreshDomain('work-orders');
     } catch (err: any) {
-      window.alert(err?.message || 'Failed to save assignment');
+      toast.error(err?.message || 'Failed to save assignment');
     }
   }, []);
 

@@ -1,7 +1,7 @@
 # DOC catalog — machine-generated SoT
 
 > **Do not hand-edit.** Regenerate: `node scripts/portfolio-sot-sync.mjs`  
-> Generated: `2026-07-29T20:18:36.418Z` · Files: **289** · Repo: `cycleforge-app`  
+> Generated: `2026-07-30T04:49:32.808Z` · Files: **299** · Repo: `cycleforge-app`  
 > Parent index: [INDEX.md](./INDEX.md)
 
 Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*** id  
@@ -13,7 +13,7 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 
 | WT-ID | Absolute path | Branch | HEAD (short) | Exists |
 |-------|---------------|--------|--------------|--------|
-| `main` | `/Users/icecube/repos/cycleforge-app` | `main` | `c4c1308d0` | yes |
+| `main` | `/Users/icecube/repos/cycleforge-app` | `main` | `22f3d6bda` | yes |
 | `ai-chat` | `/Users/icecube/repos/cycleforge-ai-chat` | `topic/ai-chat` | `3f55b275e` | yes |
 | `fba` | `/Users/icecube/repos/cycleforge-fba` | `topic/fba` | `3f55b275e` | yes |
 | `glass` | `/Users/icecube/repos/cycleforge-glass` | `glass-design-system` | `a331b1247` | yes |
@@ -191,6 +191,7 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 | `DOC-TODO-AGENTIC-LOOP-MASTER-PLAN-C913` | `WS-ALP` | [`todo/agentic-loop-master-plan.md`](../todo/agentic-loop-master-plan.md) |
 | `DOC-TODO-ALL-TABLES-IMPROVEMENTS-EXECUTION-PROMPT-7E82` | `WS-TODO-MISC` | [`todo/all-tables-improvements-EXECUTION-PROMPT.md`](../todo/all-tables-improvements-EXECUTION-PROMPT.md) |
 | `DOC-TODO-BETA-INTAKE-FUNNEL-PLAN-6D32` | `WS-BETA` | [`todo/beta-intake-funnel-plan.md`](../todo/beta-intake-funnel-plan.md) |
+| `DOC-TODO-CARTON-INSPECTOR-D4-ROOT-FIX-HANDOFF-A727` | `WS-TODO-MISC` | [`todo/carton-inspector-D4-ROOT-FIX-HANDOFF.md`](../todo/carton-inspector-D4-ROOT-FIX-HANDOFF.md) |
 | `DOC-TODO-CARTON-INSPECTOR-REBUILD-HANDOFF-DDA8` | `WS-TODO-MISC` | [`todo/carton-inspector-REBUILD-HANDOFF.md`](../todo/carton-inspector-REBUILD-HANDOFF.md) |
 | `DOC-TODO-CARTON-INSPECTOR-UX-GEMINI-RESEARCH-BRIEFING-326B` | `WS-TODO-MISC` | [`todo/carton-inspector-ux-GEMINI-RESEARCH-BRIEFING.md`](../todo/carton-inspector-ux-GEMINI-RESEARCH-BRIEFING.md) |
 | `DOC-TODO-CLASSIFY-OPTION-ICON-FACES-HANDOFF-C3C4` | `WS-TODO-MISC` | [`todo/classify-option-icon-faces-handoff.md`](../todo/classify-option-icon-faces-handoff.md) |
@@ -201,7 +202,10 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 | `DOC-TODO-CONTEXTUAL-SIDEBAR-IA-GEMINI-RESEARCH-BRIEFING-DD4E` | `WS-TODO-MISC` | [`todo/contextual-sidebar-ia-GEMINI-RESEARCH-BRIEFING.md`](../todo/contextual-sidebar-ia-GEMINI-RESEARCH-BRIEFING.md) |
 | `DOC-TODO-CYCLEFORGE-SYNC-FROM-USAV-2026-07-10-4707` | `WS-SYNC` | [`todo/cycleforge-sync-from-usav-2026-07-10.md`](../todo/cycleforge-sync-from-usav-2026-07-10.md) |
 | `DOC-TODO-DASHBOARD-ENTITY-AXIS-GEMINI-RESEARCH-BRIEFING-B384` | `WS-TODO-MISC` | [`todo/dashboard-entity-axis-GEMINI-RESEARCH-BRIEFING.md`](../todo/dashboard-entity-axis-GEMINI-RESEARCH-BRIEFING.md) |
+| `DOC-TODO-DASHBOARD-IA-RESEARCH-BRIEFING-HKL-CCB9` | `WS-TODO-MISC` | [`todo/dashboard-ia-research-briefing-HKL.md`](../todo/dashboard-ia-research-briefing-HKL.md) |
+| `DOC-TODO-DASHBOARD-IA-REWORK-HANDOFF-1970` | `WS-TODO-MISC` | [`todo/dashboard-ia-rework-HANDOFF.md`](../todo/dashboard-ia-rework-HANDOFF.md) |
 | `DOC-TODO-DASHBOARD-IA-REWORK-PLAN-D92F` | `WS-TODO-MISC` | [`todo/dashboard-ia-rework-PLAN.md`](../todo/dashboard-ia-rework-PLAN.md) |
+| `DOC-TODO-DASHBOARD-IA-ROWS-HKL-GEMINI-RESEARCH-BRIEFING-C22C` | `WS-TODO-MISC` | [`todo/dashboard-ia-rows-HKL-GEMINI-RESEARCH-BRIEFING.md`](../todo/dashboard-ia-rows-HKL-GEMINI-RESEARCH-BRIEFING.md) |
 | `DOC-TODO-DASHBOARD-INLINE-DETAIL-EDITING-EXECUTION-PLAN-58BA` | `WS-TODO-MISC` | [`todo/dashboard-inline-detail-editing-EXECUTION-PLAN.md`](../todo/dashboard-inline-detail-editing-EXECUTION-PLAN.md) |
 | `DOC-TODO-DASHBOARD-INLINE-DETAIL-EDITING-GEMINI-FOLLOWUP-3A01` | `WS-TODO-MISC` | [`todo/dashboard-inline-detail-editing-GEMINI-FOLLOWUP.md`](../todo/dashboard-inline-detail-editing-GEMINI-FOLLOWUP.md) |
 | `DOC-TODO-DASHBOARD-INLINE-DETAIL-EDITING-GEMINI-RESEARCH--A493` | `WS-TODO-MISC` | [`todo/dashboard-inline-detail-editing-GEMINI-RESEARCH-BRIEFING.md`](../todo/dashboard-inline-detail-editing-GEMINI-RESEARCH-BRIEFING.md) |
@@ -210,6 +214,9 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 | `DOC-TODO-DASHBOARD-SEARCH-EXACT-OPEN-HANDOFF-E040` | `WS-TODO-MISC` | [`todo/dashboard-search-exact-open-handoff.md`](../todo/dashboard-search-exact-open-handoff.md) |
 | `DOC-TODO-DETAIL-SURFACE-IA-GEMINI-RESEARCH-BRIEFING-9ABA` | `WS-TODO-MISC` | [`todo/detail-surface-IA-GEMINI-RESEARCH-BRIEFING.md`](../todo/detail-surface-IA-GEMINI-RESEARCH-BRIEFING.md) |
 | `DOC-TODO-DISPLAY-CONVERGENCE-LOG-ABE1` | `WS-TODO-MISC` | [`todo/display-convergence-log.md`](../todo/display-convergence-log.md) |
+| `DOC-TODO-DOCK-RECEIVING-VS-UNBOX-GEMINI-RESEARCH-BRIEFING-BACD` | `WS-TODO-MISC` | [`todo/dock-receiving-vs-unbox-GEMINI-RESEARCH-BRIEFING.md`](../todo/dock-receiving-vs-unbox-GEMINI-RESEARCH-BRIEFING.md) |
+| `DOC-TODO-EBAY-DELIVERED-NOT-UNBOXED-PLAN-85A5` | `WS-TODO-MISC` | [`todo/ebay-delivered-not-unboxed-PLAN.md`](../todo/ebay-delivered-not-unboxed-PLAN.md) |
+| `DOC-TODO-EBAY-DELIVERED-NOT-UNBOXED-RESEARCH-BRIEF-67BD` | `WS-TODO-MISC` | [`todo/ebay-delivered-not-unboxed-RESEARCH-BRIEF.md`](../todo/ebay-delivered-not-unboxed-RESEARCH-BRIEF.md) |
 | `DOC-TODO-ENTITY-THREADS-CONVERSATION-EXECUTION-PROMPT-46E8` | `WS-TODO-MISC` | [`todo/entity-threads-conversation-EXECUTION-PROMPT.md`](../todo/entity-threads-conversation-EXECUTION-PROMPT.md) |
 | `DOC-TODO-ENTITY-THREADS-CONVERSATION-PLAN-55D2` | `WS-TODO-MISC` | [`todo/entity-threads-conversation-plan.md`](../todo/entity-threads-conversation-plan.md) |
 | `DOC-TODO-FABLE5-DS-PRUNE-ALIGNMENT-PLAN-6A5C` | `WS-TODO-MISC` | [`todo/fable5-ds-prune-alignment-plan.md`](../todo/fable5-ds-prune-alignment-plan.md) |
@@ -232,6 +239,8 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 | `DOC-TODO-INTEGRATIONS-OAUTH-CONNECTION-PLAN-281D` | `WS-INT` | [`todo/integrations-oauth-connection-plan.md`](../todo/integrations-oauth-connection-plan.md) |
 | `DOC-TODO-INVERTED-STATION-OUTBOUND-BRIEFING-FOR-GEMINI-BC4E` | `WS-TODO-MISC` | [`todo/inverted-station-outbound-BRIEFING-FOR-GEMINI.md`](../todo/inverted-station-outbound-BRIEFING-FOR-GEMINI.md) |
 | `DOC-TODO-JOURNEY-HOP-EMITTERS-PLAN-B8CE` | `WS-TODO-MISC` | [`todo/journey-hop-emitters-plan.md`](../todo/journey-hop-emitters-plan.md) |
+| `DOC-TODO-KINETIC-LEDGER-STATION-SAFETY-EXECUTION-PROMPT-DECE` | `WS-TODO-MISC` | [`todo/kinetic-ledger-station-safety-EXECUTION-PROMPT.md`](../todo/kinetic-ledger-station-safety-EXECUTION-PROMPT.md) |
+| `DOC-TODO-KINETIC-LEDGER-STATION-SAFETY-PLAN-97BC` | `WS-TODO-MISC` | [`todo/kinetic-ledger-station-safety-PLAN.md`](../todo/kinetic-ledger-station-safety-PLAN.md) |
 | `DOC-TODO-KIOSK-COUNTER-TRANSACTION-PLAN-0689` | `WS-TODO-MISC` | [`todo/kiosk-counter-transaction-PLAN.md`](../todo/kiosk-counter-transaction-PLAN.md) |
 | `DOC-TODO-KIOSK-SALES-INTAKE-GEMINI-RESEARCH-BRIEFING-5DAF` | `WS-TODO-MISC` | [`todo/kiosk-sales-intake-GEMINI-RESEARCH-BRIEFING.md`](../todo/kiosk-sales-intake-GEMINI-RESEARCH-BRIEFING.md) |
 | `DOC-TODO-LOCAL-PICKUP-LEDGERGRID-PORT-HANDOFF-1268` | `WS-TODO-MISC` | [`todo/local-pickup-ledgergrid-port-HANDOFF.md`](../todo/local-pickup-ledgergrid-port-HANDOFF.md) |
@@ -282,6 +291,7 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 | `DOC-TODO-RECEIVING-INLINE-TICKET-EDITOR-PLAN-A5F0` | `WS-TODO-MISC` | [`todo/receiving-inline-ticket-editor-plan.md`](../todo/receiving-inline-ticket-editor-plan.md) |
 | `DOC-TODO-RECEIVING-LIST-SQL-FLOOR-OPTIMIZATION-6ACF` | `WS-TODO-MISC` | [`todo/receiving-list-sql-floor-optimization.md`](../todo/receiving-list-sql-floor-optimization.md) |
 | `DOC-TODO-RECEIVING-SERIAL-IMMEDIATE-DISPLAY-PLAN-8946` | `WS-TODO-MISC` | [`todo/receiving-serial-immediate-display-plan.md`](../todo/receiving-serial-immediate-display-plan.md) |
+| `DOC-TODO-REPAIR-CHAIN-CLOSURE-GEMINI-RESEARCH-BRIEFING-94CE` | `WS-TODO-MISC` | [`todo/repair-chain-closure-GEMINI-RESEARCH-BRIEFING.md`](../todo/repair-chain-closure-GEMINI-RESEARCH-BRIEFING.md) |
 | `DOC-TODO-REVERSIBILITY-FIXES-PLAN-41B8` | `WS-INT` | [`todo/reversibility-fixes-plan.md`](../todo/reversibility-fixes-plan.md) |
 | `DOC-TODO-SAAS-COMMERCIALIZATION-PLAN-090C` | `WS-SAAS` | [`todo/saas-commercialization-plan.md`](../todo/saas-commercialization-plan.md) |
 | `DOC-TODO-SAAS-PRODUCTION-READINESS-AUDIT-2026-07-08-38B5` | `WS-SAAS` | [`todo/saas-production-readiness-audit-2026-07-08.md`](../todo/saas-production-readiness-audit-2026-07-08.md) |
@@ -594,7 +604,7 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 - `DOC-TEN-SLICE-TEMPLATE-5BE0` — [`tenancy/SLICE_TEMPLATE.md`](../tenancy/SLICE_TEMPLATE.md)
 - `DOC-TEN-TABLES-9F18` — [`tenancy/_analysis/tables.md`](../tenancy/_analysis/tables.md)
 
-### `WS-TODO-MISC` (117)
+### `WS-TODO-MISC` (127)
 
 - `DOC-TODO-00-INDEX-9E1E` — [`todo/kiosk-counter-transaction/00-INDEX.md`](../todo/kiosk-counter-transaction/00-INDEX.md)
 - `DOC-TODO-01-RECEIVING-BOH-SLIM-4C77` — [`todo/foh-boh-surface-split/01-receiving-boh-slim.md`](../todo/foh-boh-surface-split/01-receiving-boh-slim.md)
@@ -609,13 +619,17 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 - `DOC-TODO-05-NAV-PERMISSION-REDIRECTS-AE24` — [`todo/foh-boh-surface-split/05-nav-permission-redirects.md`](../todo/foh-boh-surface-split/05-nav-permission-redirects.md)
 - `DOC-TODO-06-WALK-IN-KIOSK-AUTH-F4B9` — [`todo/foh-boh-surface-split/06-walk-in-kiosk-auth.md`](../todo/foh-boh-surface-split/06-walk-in-kiosk-auth.md)
 - `DOC-TODO-ALL-TABLES-IMPROVEMENTS-EXECUTION-PROMPT-7E82` — [`todo/all-tables-improvements-EXECUTION-PROMPT.md`](../todo/all-tables-improvements-EXECUTION-PROMPT.md)
+- `DOC-TODO-CARTON-INSPECTOR-D4-ROOT-FIX-HANDOFF-A727` — [`todo/carton-inspector-D4-ROOT-FIX-HANDOFF.md`](../todo/carton-inspector-D4-ROOT-FIX-HANDOFF.md)
 - `DOC-TODO-CARTON-INSPECTOR-REBUILD-HANDOFF-DDA8` — [`todo/carton-inspector-REBUILD-HANDOFF.md`](../todo/carton-inspector-REBUILD-HANDOFF.md)
 - `DOC-TODO-CARTON-INSPECTOR-UX-GEMINI-RESEARCH-BRIEFING-326B` — [`todo/carton-inspector-ux-GEMINI-RESEARCH-BRIEFING.md`](../todo/carton-inspector-ux-GEMINI-RESEARCH-BRIEFING.md)
 - `DOC-TODO-CLASSIFY-OPTION-ICON-FACES-HANDOFF-C3C4` — [`todo/classify-option-icon-faces-handoff.md`](../todo/classify-option-icon-faces-handoff.md)
 - `DOC-TODO-CONTEXTUAL-FONT-SYSTEM-GEMINI-RESEARCH-BRIEFING-2EB3` — [`todo/contextual-font-system-GEMINI-RESEARCH-BRIEFING.md`](../todo/contextual-font-system-GEMINI-RESEARCH-BRIEFING.md)
 - `DOC-TODO-CONTEXTUAL-SIDEBAR-IA-GEMINI-RESEARCH-BRIEFING-DD4E` — [`todo/contextual-sidebar-ia-GEMINI-RESEARCH-BRIEFING.md`](../todo/contextual-sidebar-ia-GEMINI-RESEARCH-BRIEFING.md)
 - `DOC-TODO-DASHBOARD-ENTITY-AXIS-GEMINI-RESEARCH-BRIEFING-B384` — [`todo/dashboard-entity-axis-GEMINI-RESEARCH-BRIEFING.md`](../todo/dashboard-entity-axis-GEMINI-RESEARCH-BRIEFING.md)
+- `DOC-TODO-DASHBOARD-IA-RESEARCH-BRIEFING-HKL-CCB9` — [`todo/dashboard-ia-research-briefing-HKL.md`](../todo/dashboard-ia-research-briefing-HKL.md)
+- `DOC-TODO-DASHBOARD-IA-REWORK-HANDOFF-1970` — [`todo/dashboard-ia-rework-HANDOFF.md`](../todo/dashboard-ia-rework-HANDOFF.md)
 - `DOC-TODO-DASHBOARD-IA-REWORK-PLAN-D92F` — [`todo/dashboard-ia-rework-PLAN.md`](../todo/dashboard-ia-rework-PLAN.md)
+- `DOC-TODO-DASHBOARD-IA-ROWS-HKL-GEMINI-RESEARCH-BRIEFING-C22C` — [`todo/dashboard-ia-rows-HKL-GEMINI-RESEARCH-BRIEFING.md`](../todo/dashboard-ia-rows-HKL-GEMINI-RESEARCH-BRIEFING.md)
 - `DOC-TODO-DASHBOARD-INLINE-DETAIL-EDITING-EXECUTION-PLAN-58BA` — [`todo/dashboard-inline-detail-editing-EXECUTION-PLAN.md`](../todo/dashboard-inline-detail-editing-EXECUTION-PLAN.md)
 - `DOC-TODO-DASHBOARD-INLINE-DETAIL-EDITING-GEMINI-FOLLOWUP-3A01` — [`todo/dashboard-inline-detail-editing-GEMINI-FOLLOWUP.md`](../todo/dashboard-inline-detail-editing-GEMINI-FOLLOWUP.md)
 - `DOC-TODO-DASHBOARD-INLINE-DETAIL-EDITING-GEMINI-RESEARCH--A493` — [`todo/dashboard-inline-detail-editing-GEMINI-RESEARCH-BRIEFING.md`](../todo/dashboard-inline-detail-editing-GEMINI-RESEARCH-BRIEFING.md)
@@ -624,6 +638,9 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 - `DOC-TODO-DASHBOARD-SEARCH-EXACT-OPEN-HANDOFF-E040` — [`todo/dashboard-search-exact-open-handoff.md`](../todo/dashboard-search-exact-open-handoff.md)
 - `DOC-TODO-DETAIL-SURFACE-IA-GEMINI-RESEARCH-BRIEFING-9ABA` — [`todo/detail-surface-IA-GEMINI-RESEARCH-BRIEFING.md`](../todo/detail-surface-IA-GEMINI-RESEARCH-BRIEFING.md)
 - `DOC-TODO-DISPLAY-CONVERGENCE-LOG-ABE1` — [`todo/display-convergence-log.md`](../todo/display-convergence-log.md)
+- `DOC-TODO-DOCK-RECEIVING-VS-UNBOX-GEMINI-RESEARCH-BRIEFING-BACD` — [`todo/dock-receiving-vs-unbox-GEMINI-RESEARCH-BRIEFING.md`](../todo/dock-receiving-vs-unbox-GEMINI-RESEARCH-BRIEFING.md)
+- `DOC-TODO-EBAY-DELIVERED-NOT-UNBOXED-PLAN-85A5` — [`todo/ebay-delivered-not-unboxed-PLAN.md`](../todo/ebay-delivered-not-unboxed-PLAN.md)
+- `DOC-TODO-EBAY-DELIVERED-NOT-UNBOXED-RESEARCH-BRIEF-67BD` — [`todo/ebay-delivered-not-unboxed-RESEARCH-BRIEF.md`](../todo/ebay-delivered-not-unboxed-RESEARCH-BRIEF.md)
 - `DOC-TODO-ENTITY-THREADS-CONVERSATION-EXECUTION-PROMPT-46E8` — [`todo/entity-threads-conversation-EXECUTION-PROMPT.md`](../todo/entity-threads-conversation-EXECUTION-PROMPT.md)
 - `DOC-TODO-ENTITY-THREADS-CONVERSATION-PLAN-55D2` — [`todo/entity-threads-conversation-plan.md`](../todo/entity-threads-conversation-plan.md)
 - `DOC-TODO-FABLE5-DS-PRUNE-ALIGNMENT-PLAN-6A5C` — [`todo/fable5-ds-prune-alignment-plan.md`](../todo/fable5-ds-prune-alignment-plan.md)
@@ -643,6 +660,8 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 - `DOC-TODO-INCOMING-GRID-PO-SELECT-STATUS-HANDOFF-27AD` — [`todo/incoming-grid-po-select-status-handoff.md`](../todo/incoming-grid-po-select-status-handoff.md)
 - `DOC-TODO-INVERTED-STATION-OUTBOUND-BRIEFING-FOR-GEMINI-BC4E` — [`todo/inverted-station-outbound-BRIEFING-FOR-GEMINI.md`](../todo/inverted-station-outbound-BRIEFING-FOR-GEMINI.md)
 - `DOC-TODO-JOURNEY-HOP-EMITTERS-PLAN-B8CE` — [`todo/journey-hop-emitters-plan.md`](../todo/journey-hop-emitters-plan.md)
+- `DOC-TODO-KINETIC-LEDGER-STATION-SAFETY-EXECUTION-PROMPT-DECE` — [`todo/kinetic-ledger-station-safety-EXECUTION-PROMPT.md`](../todo/kinetic-ledger-station-safety-EXECUTION-PROMPT.md)
+- `DOC-TODO-KINETIC-LEDGER-STATION-SAFETY-PLAN-97BC` — [`todo/kinetic-ledger-station-safety-PLAN.md`](../todo/kinetic-ledger-station-safety-PLAN.md)
 - `DOC-TODO-KIOSK-COUNTER-TRANSACTION-PLAN-0689` — [`todo/kiosk-counter-transaction-PLAN.md`](../todo/kiosk-counter-transaction-PLAN.md)
 - `DOC-TODO-KIOSK-SALES-INTAKE-GEMINI-RESEARCH-BRIEFING-5DAF` — [`todo/kiosk-sales-intake-GEMINI-RESEARCH-BRIEFING.md`](../todo/kiosk-sales-intake-GEMINI-RESEARCH-BRIEFING.md)
 - `DOC-TODO-LOCAL-PICKUP-LEDGERGRID-PORT-HANDOFF-1268` — [`todo/local-pickup-ledgergrid-port-HANDOFF.md`](../todo/local-pickup-ledgergrid-port-HANDOFF.md)
@@ -685,6 +704,7 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 - `DOC-TODO-RECEIVING-INLINE-TICKET-EDITOR-PLAN-A5F0` — [`todo/receiving-inline-ticket-editor-plan.md`](../todo/receiving-inline-ticket-editor-plan.md)
 - `DOC-TODO-RECEIVING-LIST-SQL-FLOOR-OPTIMIZATION-6ACF` — [`todo/receiving-list-sql-floor-optimization.md`](../todo/receiving-list-sql-floor-optimization.md)
 - `DOC-TODO-RECEIVING-SERIAL-IMMEDIATE-DISPLAY-PLAN-8946` — [`todo/receiving-serial-immediate-display-plan.md`](../todo/receiving-serial-immediate-display-plan.md)
+- `DOC-TODO-REPAIR-CHAIN-CLOSURE-GEMINI-RESEARCH-BRIEFING-94CE` — [`todo/repair-chain-closure-GEMINI-RESEARCH-BRIEFING.md`](../todo/repair-chain-closure-GEMINI-RESEARCH-BRIEFING.md)
 - `DOC-TODO-SEARCH-JOURNEY-HANDOFF-PLAN-C10D` — [`todo/search-journey-handoff-plan.md`](../todo/search-journey-handoff-plan.md)
 - `DOC-TODO-SEARCH-RESULTS-GRID-GEMINI-RESEARCH-BRIEFING-BAA6` — [`todo/search-results-grid-GEMINI-RESEARCH-BRIEFING.md`](../todo/search-results-grid-GEMINI-RESEARCH-BRIEFING.md)
 - `DOC-TODO-SHIPPED-ORDER-DISPLAY-ROI-PLAN-CC7A` — [`todo/shipped-order-display-roi-plan.md`](../todo/shipped-order-display-roi-plan.md)

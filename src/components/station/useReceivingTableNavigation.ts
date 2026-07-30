@@ -4,14 +4,14 @@
  * Keyboard / sidebar navigation for the receiving-lines table:
  *   - `receiving-navigate-table` (sidebar chevrons / arrow keys) steps the LINE
  *     selection prev/next through the visible rows (single-select only).
- *   - `receiving-navigate-detail-overlay` steps by parent RECEIVING LOG, re-opening
- *     the details overlay for the next unique receiving_id.
+ *   - `receiving-navigate-detail-overlay` steps by parent RECEIVING LOG, opening
+ *     the carton READ inspector (`/carton/[id]`) for the next unique receiving_id.
  *   - keeps the active row scrolled into view when selection changes.
- * Extracted from ReceivingLinesTable; behaviour is unchanged.
+ * Extracted from ReceivingLinesTable; behaviour is unchanged aside from 2a.
  */
 
 import { useEffect } from 'react';
-import { receivingLineRowToDetailsSeed } from '@/lib/receiving/receiving-details-overlay';
+import { dispatchReceivingDetailsOverlay } from '@/utils/events';
 import type { ReceivingLineRow } from './receiving-line-row';
 
 interface UseReceivingTableNavigationArgs {
@@ -84,18 +84,7 @@ export function useReceivingTableNavigation({
       const nextReceivingId = uniqueReceivingIds[nextIndex];
       if (nextReceivingId == null) return;
 
-      const seedRow = orderedVisibleRows.find(
-        (row) => Number(row.receiving_id) === nextReceivingId,
-      );
-
-      window.dispatchEvent(
-        new CustomEvent('receiving-open-details-overlay', {
-          detail: {
-            receivingId: nextReceivingId,
-            seed: seedRow ? receivingLineRowToDetailsSeed(seedRow) : undefined,
-          },
-        }),
-      );
+      dispatchReceivingDetailsOverlay(nextReceivingId);
     };
     window.addEventListener('receiving-navigate-detail-overlay', handler);
     return () => window.removeEventListener('receiving-navigate-detail-overlay', handler);

@@ -1,7 +1,9 @@
 /**
- * Shipping workspace KPI registry — pure descriptors for Pending / FBA / History
+ * Shipping workspace KPI registry — pure descriptors for Pending / History
  * strips on `/test` Shipping mode. Sibling of `outbound-metrics.ts`; composes the
  * same `ComputedMetric` shape so Monitor `KpiTile`s stay one family.
+ *
+ * FBA metrics removed 2026-07-29 (IA row L) — FBA owns `/shipping/fba`.
  */
 
 import type { MetricIntent } from '@/design-system/components/monitor';
@@ -15,14 +17,6 @@ import type { ShippingWorkspaceTab } from '@/utils/shipping-workspace-state';
 
 export type { ComputedMetric };
 
-export interface ShippingFbaCounts {
-  planned: number;
-  tested: number;
-  packed: number;
-  outOfStock: number;
-  labeled: number;
-}
-
 export interface ShippingHistoryCounts {
   /** Scans in the loaded week window. */
   weekTotal: number;
@@ -35,7 +29,6 @@ export interface ShippingHistoryCounts {
 export interface ShippingMetricCtx {
   mode: ShippingWorkspaceTab;
   unshipped: { total: number; pending: number; tested: number; blocked: number };
-  fba: ShippingFbaCounts;
   history: ShippingHistoryCounts;
   /** Org ROI rollup — Pending packed/stuck tiles; null when ungated / no data. */
   roi?: OperationsRoiData | null;
@@ -142,80 +135,6 @@ export const SHIPPING_METRICS: ShippingMetricDef[] = [
     compute: ({ roi }) => computeRoiPackedMetric(roi ?? null),
   },
 
-  // ── FBA (ship-readiness) ────────────────────────────────────────────────
-  {
-    id: 'fba-labeled',
-    label: 'Labeled',
-    modes: ['fba'],
-    compute: ({ fba }) => {
-      if (fba.labeled <= 0) return null;
-      const denom = fba.planned + fba.tested + fba.packed + fba.labeled + fba.outOfStock;
-      return tile(
-        'fba-labeled',
-        'Labeled',
-        fba.labeled.toLocaleString(),
-        share(fba.labeled, denom),
-        'good',
-        1,
-        { status: 'Ready to ship', tooltip: `FBA items with labels assigned (${fba.labeled}).` },
-      );
-    },
-  },
-  {
-    id: 'fba-packed',
-    label: 'Packed',
-    modes: ['fba'],
-    compute: ({ fba }) => {
-      if (fba.packed <= 0) return null;
-      const denom = fba.planned + fba.tested + fba.packed + fba.labeled + fba.outOfStock;
-      return tile(
-        'fba-packed',
-        'Packed',
-        fba.packed.toLocaleString(),
-        share(fba.packed, denom),
-        'neutral',
-        1,
-        { status: 'In progress', tooltip: `FBA items packed, awaiting label (${fba.packed}).` },
-      );
-    },
-  },
-  {
-    id: 'fba-oos',
-    label: 'Out of stock',
-    modes: ['fba'],
-    compute: ({ fba }) => {
-      if (fba.outOfStock <= 0) return null;
-      const denom = fba.planned + fba.tested + fba.packed + fba.labeled + fba.outOfStock;
-      return tile(
-        'fba-oos',
-        'Out of stock',
-        fba.outOfStock.toLocaleString(),
-        share(fba.outOfStock, denom),
-        'bad',
-        3,
-        { status: 'Blocked', tooltip: `FBA items marked out of stock (${fba.outOfStock}).` },
-      );
-    },
-  },
-  {
-    id: 'fba-planned',
-    label: 'Planned',
-    modes: ['fba'],
-    compute: ({ fba }) => {
-      if (fba.planned <= 0) return null;
-      const denom = fba.planned + fba.tested + fba.packed + fba.labeled + fba.outOfStock;
-      return tile(
-        'fba-planned',
-        'Planned',
-        fba.planned.toLocaleString(),
-        share(fba.planned, denom),
-        'neutral',
-        0,
-        { tooltip: `FBA items still in plan (${fba.planned}).` },
-      );
-    },
-  },
-
   // ── History (tech scan-out throughput) ──────────────────────────────────
   {
     id: 'hist-today',
@@ -296,14 +215,6 @@ export function splitShippingAttention(metrics: ComputedMetric[]): {
   const other = metrics.filter((m) => m.severity <= 0 && m.delta === undefined);
   return { attention, rest: [...trend, ...other] };
 }
-
-export const ZERO_SHIPPING_FBA: ShippingFbaCounts = {
-  planned: 0,
-  tested: 0,
-  packed: 0,
-  outOfStock: 0,
-  labeled: 0,
-};
 
 export const ZERO_SHIPPING_HISTORY: ShippingHistoryCounts = {
   weekTotal: 0,

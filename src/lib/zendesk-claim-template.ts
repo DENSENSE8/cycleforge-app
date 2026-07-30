@@ -254,8 +254,11 @@ export async function buildReceivingClaimTemplate(
       : typeLabel || 'Unknown';
   // Include the PO# in the title when one is present (it's the operator's
   // primary handle); omit it for unfound cartons where there is no real PO.
+  // No leading "Claim // " segment — the modal header ("File a claim") and
+  // the Zendesk ticket type already say this is a claim, so restating it here
+  // just doubles up the same word in the Subject field.
   const poSegment = hasPo ? ` // PO ${poRef}` : '';
-  const subject = `Claim // ${subjectPlatform} // ${CLAIM_TYPE_LABEL[claimType]}${poSegment} // TRK#${trackingRef}`;
+  const subject = `${subjectPlatform} // ${CLAIM_TYPE_LABEL[claimType]}${poSegment} // TRK#${trackingRef}`;
 
   const unboxedByName = String(carton.unboxed_by_name ?? '').trim();
   const unboxedAtText = formatUnboxedAt(carton.unboxed_at);

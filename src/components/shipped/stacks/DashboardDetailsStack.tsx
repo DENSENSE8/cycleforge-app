@@ -8,6 +8,7 @@ import { dispatchCloseShippedDetails } from '@/utils/events';
 import { useOrderFieldSave } from '@/hooks/useOrderFieldSave';
 import { CustomerDetailsTab } from '../CustomerDetailsTab';
 import { Button } from '@/design-system/primitives';
+import { toast } from '@/lib/toast';
 
 export function DashboardDetailsStack({
   shipped,
@@ -92,7 +93,7 @@ export function DashboardDetailsStack({
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data?.success) {
-        window.alert(data?.error || 'Failed to undo latest scan.');
+        toast.error(data?.error || 'Failed to undo latest scan.');
         return;
       }
 
@@ -107,7 +108,7 @@ export function DashboardDetailsStack({
       dispatchCloseShippedDetails();
     } catch (error) {
       console.error(error);
-      window.alert('Failed to undo latest scan.');
+      toast.error('Failed to undo latest scan.');
     } finally {
       setIsUndoing(false);
     }

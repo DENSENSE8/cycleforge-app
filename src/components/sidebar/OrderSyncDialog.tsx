@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { AlertTriangle, Check, Loader2, X } from '@/components/Icons';
+import { AlertTriangle, Check, ChevronDown, Loader2, X } from '@/components/Icons';
+import { focusRing } from '@/design-system/tokens/focus-ring';
 import { RightPaneOverlay } from '@/components/ui/RightPaneOverlay';
 import { TabSwitch } from '@/design-system/components/TabSwitch';
 import { Button, IconButton } from '@/design-system/primitives';
@@ -14,6 +15,7 @@ import type {
   OrderExceptionResolutionDetail,
   SyncTaskStatus,
   TransferOrderDetail,
+  TransferSkippedRow,
   TransferTabState,
 } from '@/lib/orders-sync/types';
 
@@ -62,6 +64,10 @@ function TransferTab({ tab, label }: { tab: TransferTabState; label: string }) {
   const totalUpdated = tab.updated ?? details?.updated.length ?? 0;
   const totalDeleted = tab.deleted ?? details?.deleted.length ?? 0;
   const unknownTitles = details?.unknownTitle ?? [];
+  const skippedRows = details?.skippedRows ?? [];
+  const recoveredRows = details?.recoveredRows ?? [];
+  // Blank padding is counted but never listed, so it is reported from stats.
+  const blankRowCount = tab.stats?.skippedBlankRow ?? 0;
 
   if (tab.status === 'idle') {
     return (
@@ -138,10 +144,50 @@ function TransferTab({ tab, label }: { tab: TransferTabState; label: string }) {
         </div>
       )}
 
+      {recoveredRows.length > 0 && (
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 px-3 py-2.5">
+          <p className={`${microBadge} text-emerald-700`}>
+            {recoveredRows.length} row{recoveredRows.length === 1 ? '' : 's'} recovered by listing title
+          </p>
+          <p className={`${fieldLabel} mt-0.5 normal-case tracking-normal text-emerald-700`}>
+            The Item Number cell was blank, but the listing title matched an existing listing exactly —
+            so these imported with their real listing id instead of being skipped.
+          </p>
+          <ul className="mt-1.5 divide-y divide-emerald-100 rounded-lg border border-emerald-100 bg-surface-card">
+            {recoveredRows.map((row) => (
+              <li key={`rec:${row.sheetRow}`} className="flex items-center gap-2 px-2.5 py-1.5">
+                <span className="w-[76px] shrink-0">
+                  {row.orderId ? (
+                    <OrderIdChip value={row.orderId} display={getLast4(row.orderId)} />
+                  ) : (
+                    <span className="pl-1.5 font-mono text-role-micro text-text-faint">—</span>
+                  )}
+                </span>
+                <span className="min-w-0 flex-1 truncate text-role-caption text-text-muted">
+                  {row.productTitle}
+                </span>
+                <span className="w-16 shrink-0 truncate text-right text-role-micro uppercase tracking-wide text-text-soft">
+                  {row.platform || '—'}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <SkippedRowsPanel rows={skippedRows} blankCount={blankRowCount} />
+
       {tab.status === 'running' && noRows ? (
         <p className={`${fieldLabel} text-text-soft`}>Waiting for {label} to finish…</p>
       ) : noRows ? (
-        <p className={`${fieldLabel} text-text-soft`}>No changes — already up to date.</p>
+        // "Already up to date" is only true when nothing was DECLINED either.
+        // It used to print unconditionally, so a run that read 46 rows and
+        // skipped 34 of them reported itself as a clean no-op.
+        <p className={`${fieldLabel} text-text-soft`}>
+          {skippedRows.length > 0
+            ? `No rows imported — every eligible row was already up to date, and ${skippedRows.length} were skipped (above).`
+            : 'No changes — already up to date.'}
+        </p>
       ) : (
         <div className="overflow-hidden rounded-xl border border-border-soft">
           <DetailTable
@@ -226,6 +272,154 @@ function formatExistingProvenance(row: TransferOrderDetail): string | null {
   if (src) return `from ${src}`;
   if (datePart) return `first seen ${datePart}`;
   return null;
+}
+
+/**
+ * How each skip reason is presented. Two axes matter to an operator:
+ * whether the row is FIXABLE by editing the sheet, and how loud it should be.
+ *
+ * `ecwid` is deliberately quiet — those orders arrive through the Ecwid API, so
+ * listing them as a problem sends someone to fix a cell that should stay empty.
+ * `blankRow` never reaches here at all (counted, never listed).
+ */
+const SKIP_REASON_META: Record<
+  TransferSkippedRow['reason'],
+  { label: string; hint: string; tone: 'amber' | 'gray'; actionable: boolean }
+> = {
+  noItemNumber: {
+    label: 'Missing Item Number',
+    hint: 'Real orders with tracking — add the Item Number cell and re-import.',
+    tone: 'amber',
+    actionable: true,
+  },
+  noTracking: {
+    label: 'Missing tracking',
+    hint: 'Labels work needs a real shipment, so these wait for a tracking number.',
+    tone: 'amber',
+    actionable: true,
+  },
+  noOrderId: {
+    label: 'Missing Order Number',
+    hint: 'A row with content but no order number — usually a note or a partial entry.',
+    tone: 'amber',
+    actionable: true,
+  },
+  ecwid: {
+    label: 'Ecwid (imported separately)',
+    hint: 'Not a problem — these come in through the Ecwid connector, not the sheet.',
+    tone: 'gray',
+    actionable: false,
+  },
+  fbaShipment: {
+    label: 'FBA inbound shipments',
+    hint: 'Not sales — one row per box of an Amazon inbound shipment. Nothing to fix.',
+    tone: 'gray',
+    actionable: false,
+  },
+  blankRow: {
+    label: 'Empty rows',
+    hint: 'Spreadsheet padding.',
+    tone: 'gray',
+    actionable: false,
+  },
+};
+
+/**
+ * The rows the import DECLINED. Every other block in this dialog describes what
+ * landed; on a live tab this is routinely the largest group, and before it
+ * existed a run that skipped 34 of 46 rows rendered as "No changes — already up
+ * to date."
+ */
+function SkippedRowsPanel({ rows, blankCount }: { rows: TransferSkippedRow[]; blankCount: number }) {
+  const [open, setOpen] = useState(false);
+  if (rows.length === 0 && blankCount === 0) return null;
+
+  const byReason = new Map<TransferSkippedRow['reason'], TransferSkippedRow[]>();
+  for (const row of rows) {
+    const list = byReason.get(row.reason) ?? [];
+    list.push(row);
+    byReason.set(row.reason, list);
+  }
+
+  // Actionable groups first, largest first — the operator's work queue order.
+  const groups = Array.from(byReason.entries()).sort(([aR, aRows], [bR, bRows]) => {
+    const aAct = SKIP_REASON_META[aR].actionable ? 0 : 1;
+    const bAct = SKIP_REASON_META[bR].actionable ? 0 : 1;
+    return aAct !== bAct ? aAct - bAct : bRows.length - aRows.length;
+  });
+
+  const actionable = rows.filter((r) => SKIP_REASON_META[r.reason].actionable).length;
+
+  return (
+    <div className="rounded-xl border border-border-soft bg-surface-canvas/60">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className={`flex w-full items-center justify-between gap-2 inset-field text-left ${focusRing('control', 'accent')}`}
+      >
+        <span className="flex items-center gap-2">
+          <AlertTriangle className={`h-4 w-4 ${actionable > 0 ? 'text-amber-600' : 'text-text-faint'}`} />
+          <span className={sectionLabel}>
+            {rows.length} row{rows.length === 1 ? '' : 's'} skipped
+            {actionable > 0 ? ` · ${actionable} need${actionable === 1 ? 's' : ''} a fix` : ''}
+          </span>
+        </span>
+        <ChevronDown className={`h-4 w-4 text-text-faint transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+
+      {open && (
+        <div className="flex flex-col gap-3 border-t border-border-hairline inset-field">
+          {groups.map(([reason, group]) => {
+            const meta = SKIP_REASON_META[reason];
+            return (
+              <div key={reason}>
+                <p
+                  className={`${microBadge} ${meta.tone === 'amber' ? 'text-amber-700' : 'text-text-soft'}`}
+                >
+                  {group.length} · {meta.label}
+                </p>
+                <p className={`${fieldLabel} mt-0.5 normal-case tracking-normal text-text-soft`}>
+                  {meta.hint}
+                </p>
+                <ul className="mt-1.5 divide-y divide-border-hairline rounded-lg border border-border-hairline bg-surface-card">
+                  {group.map((row) => (
+                    <li
+                      key={`${row.reason}:${row.sheetRow}`}
+                      className="flex items-center gap-2 px-2.5 py-1.5"
+                    >
+                      {/* Order → title → platform. The order number is the
+                          identity the operator searches by, so it leads and
+                          carries the house copy affordance (click = full id on
+                          the clipboard) rather than being a dead mono string. */}
+                      <span className="w-[76px] shrink-0">
+                        {row.orderId ? (
+                          <OrderIdChip value={row.orderId} display={getLast4(row.orderId)} />
+                        ) : (
+                          <span className="pl-1.5 font-mono text-role-micro text-text-faint">—</span>
+                        )}
+                      </span>
+                      <span className="min-w-0 flex-1 truncate text-role-caption text-text-muted">
+                        {row.productTitle || <span className="text-text-faint">(no title)</span>}
+                      </span>
+                      <span className="w-16 shrink-0 truncate text-right text-role-micro uppercase tracking-wide text-text-soft">
+                        {row.platform || '—'}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            );
+          })}
+
+          {blankCount > 0 && (
+            <p className={`${fieldLabel} text-text-faint normal-case tracking-normal`}>
+              Plus {blankCount} empty row{blankCount === 1 ? '' : 's'} (spreadsheet padding) — nothing to fix.
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 function DetailTable({

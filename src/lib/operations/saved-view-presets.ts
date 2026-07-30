@@ -6,8 +6,9 @@ import type { JourneyUrlFilters } from '@/components/sidebar/operations/useOpera
  *
  * Chosen over per-org **seeded DB rows**: Cycle Forge is multi-tenant, so a code
  * constant applies to every org with no seed step and no migration (a new tenant
- * gets them for free). User-created views still live in `operations_saved_views`
- * and render *below* these; the sidebar merges the two lists. A system view is
+ * gets them for free). User-created views still live in `saved_views`
+ * (`surface = 'operations'`) and render *below* these; the sidebar merges the
+ * two lists. A system view is
  * applied via `?view=sys:<id>` (the `sys:` prefix can never collide with a user
  * view's numeric id).
  *

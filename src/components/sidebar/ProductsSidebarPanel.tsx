@@ -1,41 +1,31 @@
 'use client';
 
 /**
- * Sidebar surface for `/products`. Hosts:
- *   - View toggle — Catalog · Manuals (default) · Labels · Pairing · QC · Kit.
- *   - Catalog: short MDM blurb (list lives in the main pane).
- *   - Manuals: LibraryBrowser (search + file tree).
- *   - Labels: Printed recent rail only (catalog browse lives in the right-pane
- *     workbench — Axis-5 Unbox / outbound Labels split).
- *   - Pairing / QC / Kit: sidebar pickers driving the right pane via URL.
+ * Sidebar surface for `/products`. Hosts pickers / rails per view. L2 views
+ * (Catalog · Manuals · Labels · Pairing · QC · Kit) live in GlobalHeader
+ * (`HeaderModeSwitcher` ← SIDEBAR_PAGE_NAV) — no sidebar mode rail twin.
  *
  * Mounted by DashboardSidebar when routeKey === 'products'.
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { sidebarHeaderPillRowClass, SIDEBAR_GUTTER } from '@/components/layout/header-shell';
+import { SIDEBAR_GUTTER } from '@/components/layout/header-shell';
 import { SidebarShell } from '@/components/layout/SidebarShell';
 import { appChromeClass } from '@/design-system/tokens/app-surface';
 import { HorizontalButtonSlider, type HorizontalSliderItem } from '@/components/ui/HorizontalButtonSlider';
-import { useMasterNavEnabled } from '@/components/sidebar/master-nav';
 import { useSkuCatalogSearch, type SkuCatalogItem } from '@/hooks/useSkuCatalogSearch';
-import { Printer, FileText, Link2, Check, Package, PackageOpen, ShoppingCart, Star, Sparkles, List, Tags } from '@/components/Icons';
+import { ShoppingCart, Star, Sparkles, List, Package, Check } from '@/components/Icons';
 import { PairingQueueList } from '@/components/products/pairing/PairingQueueList';
 import { PairingUnmatchedSection } from '@/components/products/pairing/PairingUnmatchedSection';
 import { AddOrPairSkuModal } from '@/components/products/pairing/AddOrPairSkuModal';
 import { PAIRING_SORTS, type PairingQueueItem, type PairingSort, type UnmappedPlatformId } from '@/components/products/pairing/types';
 import {
   parseProductsView,
-  productsViewParam,
-  type ProductsView,
 } from '@/components/products/products-view';
 import { LibraryBrowser } from '@/components/manuals/LibraryBrowser';
 import { ProductLabelsRecentRail } from '@/components/labels/ProductLabelsRecentRail';
 import { SearchBar } from '@/components/ui/SearchBar';
-import { PRODUCTS_ROUTE_PARAMS } from '@/lib/routing/query-mode-routes';
-import { buildRouteUrl } from '@/lib/routing/route-params';
-import { useSurfaceParamHygiene } from '@/hooks/useSurfaceParamHygiene';
 
 const PAIRING_SORT_ITEMS: HorizontalSliderItem[] = [
   { id: 'volume',     label: 'Ordered',      icon: ShoppingCart },
@@ -54,25 +44,11 @@ function parsePairingSort(raw: string | null): PairingSort {
 export function ProductsSidebarPanel() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const masterNavEnabled = useMasterNavEnabled();
   // Parse a pasted / bookmarked link at the boundary, so a URL that predates the
   // /products spec cannot deliver another surface's params into this one.
-  useSurfaceParamHygiene();
   const view = parseProductsView(searchParams.get('view'));
   const currentQuery = searchParams.get('q') || '';
   const pairingSort = parsePairingSort(searchParams.get('sort'));
-
-  const viewItems = useMemo<HorizontalSliderItem[]>(
-    () => [
-      { id: 'catalog', label: 'Catalog',       icon: Tags },
-      { id: 'manuals', label: 'Manuals',       icon: FileText },
-      { id: 'labels',  label: 'Labels', icon: Printer },
-      { id: 'pairing', label: 'Pairing',       icon: Link2 },
-      { id: 'qc',      label: 'QC Checklist',  icon: Check },
-      { id: 'kit',     label: 'Kit Parts',     icon: PackageOpen },
-    ],
-    [],
-  );
 
   const [searchInput, setSearchInput] = useState(currentQuery);
   useEffect(() => {
@@ -100,27 +76,6 @@ export function ProductsSidebarPanel() {
     [updateParams],
   );
 
-  /**
-   * Switch the L2 view. **Constructs the target — never copies the current query
-   * string.** Patching `?view=` in place is what let a QC selection (`?skuId=`),
-   * a Pairing sort and a Labels history row ride into Catalog: every one of them
-   * validates fine against the destination, so no boundary parse could tell them
-   * from a real value. Nothing survives unless it is named here.
-   *
-   * The one deliberate carry is the staff filter — an operator preference, not
-   * view state, exactly as `useReceivingMode.updateMode` treats it.
-   */
-  const handleViewChange = useCallback(
-    (id: string) => {
-      const next: ProductsView = parseProductsView(id);
-      const staff = searchParams.get('staff') ?? searchParams.get('staffId');
-      router.replace(
-        buildRouteUrl(PRODUCTS_ROUTE_PARAMS, { view: productsViewParam(next), staff }),
-      );
-    },
-    [router, searchParams],
-  );
-
   const handlePairingSortChange = useCallback(
     (id: string) => updateParams({ sort: id === 'volume' ? null : id }),
     [updateParams],
@@ -144,19 +99,6 @@ export function ProductsSidebarPanel() {
       className={appChromeClass}
       headerAbove={
         <>
-          {!masterNavEnabled ? (
-            <div className={sidebarHeaderPillRowClass}>
-              <HorizontalButtonSlider
-                items={viewItems}
-                value={view}
-                onChange={handleViewChange}
-                variant="nav"
-                dense
-                className="w-full"
-                aria-label="Products view"
-              />
-            </div>
-          ) : null}
           {/* Labels + Catalog own browse search in the workbench chrome. */}
           {!isLabels && !isCatalog ? (
             <div className={`${SIDEBAR_GUTTER} pt-3 pb-2`}>

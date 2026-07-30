@@ -98,11 +98,14 @@ export function useLineSerials({
         // pattern). That response cannot reproduce Unboxed's `unbox_opened_at`
         // axis — normalizeRow fills null — and blanks the rail age on open /
         // return-serial attach. Accordion + rail chips take the narrow dual-write.
+        // Pass units from the same include=serials payload so multi-qty rows
+        // get durable unit ids for the per-unit green-check (Phase 3).
         publishLineSerials(
           queryClient,
           line.receiving_id ?? row.receiving_id,
           line.id,
           line.serials ?? [],
+          line.units ?? [],
         );
       }
     } catch {

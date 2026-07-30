@@ -1,4 +1,5 @@
 import { PackerSurfacePage } from '@/components/packer/PackerSurfacePage';
+import { SurfaceParamHygiene } from '@/components/routing/SurfaceParamHygiene';
 
 /**
  * `/pack` — the Packing operator surface as a first-class, semantic route
@@ -7,5 +8,10 @@ import { PackerSurfacePage } from '@/components/packer/PackerSurfacePage';
  * `/pack` and `/packer` UA-rewrite to the `/m/pack` mobile shell.
  */
 export default function PackPage() {
-  return <PackerSurfacePage fallbackPath="/pack" />;
+  return (
+    <>
+      <SurfaceParamHygiene />
+      <PackerSurfacePage fallbackPath="/pack" />
+    </>
+  );
 }

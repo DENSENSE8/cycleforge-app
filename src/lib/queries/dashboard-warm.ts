@@ -6,7 +6,6 @@ import {
   unshippedOrdersQuery,
   dashboardShippedQuery,
   packedOrdersQuery,
-  fbaShipmentsQuery,
 } from '@/lib/queries/dashboard-queries';
 
 /**
@@ -29,9 +28,6 @@ export function warmActiveView(
 
   if (view === 'unshipped' || view === 'tested') {
     return queryClient.prefetchQuery(unshippedOrdersQuery({ searchQuery, strictSearchScope: true }));
-  }
-  if (view === 'fba') {
-    return queryClient.prefetchQuery(fbaShipmentsQuery());
   }
   // Packed uses the first-class stagedOnly orders path (not week packerlogs).
   if (view === 'packed') {

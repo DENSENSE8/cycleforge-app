@@ -72,8 +72,7 @@ async function resolveOrderAnchors(
   orgId: OrgId,
   orderRow: { id: number; order_id: string | null; shipment_id: number | null },
 ): Promise<EntityAnchors> {
-  // Serial set = allocation path ∪ tech-serial-by-shipment path (they can
-  // disagree; the journey wants both for completeness).
+  // Serial set = allocation path ∪ tech-serial (order_id prefer; sole-shipment dual-read).
   const serialRes = await client.query<{ serial_unit_id: number | null; serial_number: string | null }>(
     `SELECT serial_unit_id, serial_number FROM (
         SELECT oua.serial_unit_id, su.serial_number
@@ -83,7 +82,21 @@ async function resolveOrderAnchors(
         UNION
         SELECT tsn.serial_unit_id, tsn.serial_number
           FROM tech_serial_numbers tsn
-         WHERE tsn.shipment_id = $3 AND tsn.organization_id = $2
+         WHERE tsn.organization_id = $2
+           AND (
+             tsn.order_id = $1
+             OR (
+               tsn.order_id IS NULL
+               AND $3::int IS NOT NULL
+               AND tsn.shipment_id = $3
+               AND NOT EXISTS (
+                 SELECT 1 FROM orders o2
+                 WHERE o2.shipment_id = $3
+                   AND o2.organization_id = $2
+                   AND o2.id <> $1
+               )
+             )
+           )
      ) s
      LIMIT 500`,
     [orderRow.id, orgId, orderRow.shipment_id],

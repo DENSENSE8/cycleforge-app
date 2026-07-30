@@ -48,6 +48,11 @@ export interface AttachTechSerialInput {
   ordersExceptionId?: number | null;
   fnskuLogId?: number | null;
   /**
+   * CF-03: orders.id this serial was attached to. Null for exception / FBA /
+   * receiving paths that are not order-bound. Prefer over shipment_id joins.
+   */
+  orderId?: number | null;
+  /**
    * Tenant scope. `organization_id` is NOT NULL with a session-aware default
    * (`current_setting('app.current_org')` → fallback org), so it is bound ONLY
    * when explicitly provided — omitting it lets the DB default apply, which is
@@ -89,6 +94,7 @@ export async function attachTechSerial(
     'receiving_line_id', 'shipment_id', 'scan_ref', 'notes',
     'fnsku', 'source_sku_id', 'fba_shipment_id', 'fba_shipment_item_id',
     'context_station_activity_log_id', 'orders_exception_id', 'serial_unit_id',
+    'order_id',
   ];
   const vals: unknown[] = [
     input.serialNumber.toUpperCase(),
@@ -106,6 +112,7 @@ export async function attachTechSerial(
     input.contextStationActivityLogId ?? null,
     input.ordersExceptionId ?? null,
     input.serialUnitId ?? null,
+    input.orderId ?? null,
   ];
   // fnsku_log_id is plain-nullable — always safe to bind.
   if (input.fnskuLogId !== undefined) {

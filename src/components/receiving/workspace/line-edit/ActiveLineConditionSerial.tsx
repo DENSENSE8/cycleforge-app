@@ -7,6 +7,8 @@ import { SerialMatchResult, type SerialMatchedOrder } from '../SerialMatchResult
 import { ReceivingUnitRows, type UnitSerial } from '../ReceivingUnitRows';
 import type { ActiveRowSerial } from '../PoLinesAccordion';
 import { NoSerialControl, type SerialAbsentState } from './NoSerialControl';
+import type { UnitSlotView } from '../UnitSlotList';
+import { markAllEmptyReceivingUnitsSerialAbsent } from '../receiving-label-helpers';
 import { useSetting } from '@/hooks/useSettings';
 import { requestConfirm } from '@/design-system/components/confirm';
 
@@ -66,7 +68,7 @@ export function ActiveLineConditionSerial({
   /** Org enforces the serial checkpoint — surfaces the "required" hint. */
   requireSerialConfirmation: boolean;
   /** Materialised per-unit rows for the multi-qty green-check (Phase 3). */
-  units?: import('../UnitSlotList').UnitSlotView[] | null;
+  units?: UnitSlotView[] | null;
   /** RETURN match CTA — pair the order + open the prefilled claim. */
   onFileReturnClaim?: (matchedOrder: SerialMatchedOrder | null) => void;
   /** Programmatic focus target for the dock Add serial handoff. */
@@ -144,6 +146,7 @@ export function ActiveLineConditionSerial({
             onConditionChange={onConditionChange}
             onActiveConditionChange={onActiveConditionChange}
             // Icon-only no-serial toggle in the top-right of the unit list.
+            // Line-level waiver also stamps empty unit rows (qty roll-up / bulk).
             noSerialControl={
               <NoSerialControl
                 variant="check"
@@ -151,7 +154,16 @@ export function ActiveLineConditionSerial({
                 reason={serialAbsentReason}
                 required={requireSerialConfirmation}
                 disabled={!receivingId}
-                onChange={onSerialAbsentChange}
+                onChange={(next) => {
+                  onSerialAbsentChange(next);
+                  if (next.absent && next.reason) {
+                    markAllEmptyReceivingUnitsSerialAbsent(
+                      lineId,
+                      next.reason,
+                      units,
+                    );
+                  }
+                }}
               />
             }
           />

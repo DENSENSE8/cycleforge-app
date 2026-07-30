@@ -1,15 +1,21 @@
 'use client';
 
 /**
- * Station chrome — bookmark tabs flush under GlobalHeader.
+ * Station chrome — floating identity shell + corner utilities.
  *
- * Identity bookmark uses {@link STATION_WORKBENCH_IDENTITY_COLUMN} — the same
- * max-width + horizontal pad as StationWorkbench body — so CartonContextCard
+ * Identity uses {@link STATION_WORKBENCH_IDENTITY_COLUMN} — the same max-width
+ * + horizontal pad as StationWorkbench body — so CartonContextCard
  * density=bar matches the line-edit tabs/cards edge-for-edge.
  *
+ * Placement: absolute overlay at the panel top
+ * ({@link stationContextBarHostClass}) — no in-flow canvas band behind the
+ * shell. Hosts must reserve top scroll clearance
+ * ({@link STATION_IDENTITY_SCROLL_CLEARANCE} via StationWorkbench
+ * `reserveIdentityClearance`).
+ *
  *   1. Identity — centered workbench column, full width of that column
- *   2. More details — {@link StationMoreDetails}, absolute flush to
- *      the work-canvas top + right edges (out of flow so identity stays centered)
+ *   2. More details — {@link StationMoreDetails}, absolute at the
+ *      work-canvas top + right edges (out of flow so identity stays centered)
  */
 
 import type { ReactNode } from 'react';
@@ -19,10 +25,9 @@ import { STATION_WORKBENCH_IDENTITY_COLUMN } from '@/components/station/workbenc
 import {
   stationBookmarkPadClass,
   stationBookmarkPanelClass,
+  stationContextBarHostClass,
+  stationMoreDetailsHostClass,
 } from './station-bookmark';
-
-/** Top-right corner slot — edge-to-edge with the work canvas (no inset). */
-const MORE_DETAILS_CORNER_CLASS = 'absolute top-0 right-0 flex items-start';
 
 export function StationContextBar({
   identity,
@@ -37,15 +42,13 @@ export function StationContextBar({
 }) {
   return (
     <div
-      className={cn('relative z-10 w-full shrink-0', className)}
+      className={cn(stationContextBarHostClass, className)}
       data-testid="station-context-bar"
     >
       <div
         className={cn(
           STATION_WORKBENCH_IDENTITY_COLUMN,
-          // items-start keeps the identity bookmark flush to the canvas top
-          // (same plane as more-details); items-center would float a top gap.
-          'flex items-start justify-center',
+          'pointer-events-auto flex items-start justify-center',
         )}
       >
         <Panel
@@ -67,7 +70,7 @@ export function StationContextBar({
       </div>
       {moreDetails != null ? (
         <div
-          className={MORE_DETAILS_CORNER_CLASS}
+          className={stationMoreDetailsHostClass}
           data-testid="station-more-details-slot"
         >
           {moreDetails}

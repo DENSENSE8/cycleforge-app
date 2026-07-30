@@ -39,8 +39,6 @@ const SIDEBAR_ROUTES = [
 const PANEL_LESS_ROUTES = ['/reports', '/release-notes'] as const;
 
 const PAGES_MENU = '[role="menu"][aria-label="Pages"]';
-const MODES_MENU = '[role="menu"][aria-label="Modes"]';
-const MODES_TRIGGER = 'button[aria-label="Open modes menu"]';
 /** The push column's host. Present from first paint; `data-open` is the state. */
 const NAV_COLUMN = '[data-sidebar-nav-column]';
 const NAV_COLUMN_OPEN = '[data-sidebar-nav-column][data-open="true"]';
@@ -276,34 +274,24 @@ test.describe('sidebar spine — one grammar, a push column, no empty columns', 
     ).toBeGreaterThan(Math.round(listBox.width) - 24);
   });
 
-  test('/unbox: no mode strip rides on top of the station panel', async ({ page }) => {
+  test('/unbox: L2 mode control lives in GlobalHeader, not the sidebar rail', async ({ page }) => {
     await gotoSurface(page, '/unbox');
-    // MasterNavProvider suppresses every panel's own pill-row: the nav owns
-    // page + mode, and a second mode strip on the bench is noise.
     await expect(page.locator('main [aria-label="Receiving mode"]')).toHaveCount(0);
+    await expect(page.locator('header [aria-label^="Receiving mode"]')).toHaveCount(1);
+    await expect(page.locator('header [aria-label="Recents"]')).toHaveCount(1);
   });
 
-  test('/unbox: L2 modes opens as a portaled menu ABOVE the spine', async ({ page }) => {
+  test('/products: L2 Mode + Recents live in GlobalHeader', async ({ page }) => {
+    await gotoSurface(page, '/products');
+    await expect(page.locator('main [aria-label="Products view"]')).toHaveCount(0);
+    await expect(page.locator('header [aria-label^="Products mode"]')).toHaveCount(1);
+    await expect(page.locator('header [aria-label="Recents"]')).toHaveCount(1);
+  });
+
+  test('/unbox: the spine header has no modes dropdown trigger', async ({ page }) => {
     await gotoSurface(page, '/unbox');
     await toggleSpine(page);
-
-    await page.locator(MODES_TRIGGER).first().click();
-    const modes = page.locator(MODES_MENU);
-    await expect(modes).toBeVisible();
-
-    // `panelPopover` (120) over the in-flow spine — a menu triggered from inside
-    // the column must never paint behind it.
-    const stacked = await page.evaluate(
-      ({ modesSel, columnSel }) => {
-        const menu = document.querySelector(modesSel);
-        const column = document.querySelector(columnSel);
-        if (!menu || !column) return null;
-        const z = (el: Element) => Number(getComputedStyle(el).zIndex) || 0;
-        return z(menu.closest('[style*="z-index"]') ?? menu) > z(column);
-      },
-      { modesSel: MODES_MENU, columnSel: NAV_COLUMN },
-    );
-    expect(stacked, 'modes menu must stack above the spine').toBe(true);
+    await expect(page.getByRole('button', { name: /open modes menu/i })).toHaveCount(0);
   });
 
   test('/products: the page list arrives beside the route sidebar, not over it', async ({ page }) => {

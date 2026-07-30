@@ -3,11 +3,11 @@
 /**
  * Operations master-page sidebar — the single contextual panel for `/operations`.
  *
- * It owns the five-mode switcher (Live · Analytics · Insights · History · Signals) and,
- * per mode, local filters / quick-nav (History paste-a-number, Signals note filter).
- * Cross-entity search lives in the global header → Dashboard Search. The right pane
- * (OperationsWorkspace) is purely visual and reacts to the same `?mode=` /
- * `?range=` / `?section=` URL params.
+ * L2 modes (Live · Analytics · Insights · History · Signals) live in GlobalHeader
+ * (`HeaderModeSwitcher`). Per mode, this panel owns local filters / quick-nav
+ * (History paste-a-number, Signals note filter). Cross-entity search lives in the
+ * global header → Dashboard Search. The right pane (OperationsWorkspace) is purely
+ * visual and reacts to the same `?mode=` / `?range=` / `?section=` URL params.
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -20,8 +20,6 @@ import { IconButton } from '@/design-system/primitives';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { SidebarNavOverlaySlider } from '@/components/sidebar/SidebarNavOverlaySlider';
 import { HorizontalButtonSlider } from '@/components/ui/HorizontalButtonSlider';
-import { OperationsModeToggle } from '@/components/sidebar/operations/OperationsModeToggle';
-import { useMasterNavEnabled } from '@/components/sidebar/master-nav/MasterNavContext';
 import { sectionLabel } from '@/design-system/tokens/typography/presets';
 import {
   Activity,
@@ -44,7 +42,6 @@ import {
   JOURNEY_DIMENSION_ITEMS,
   parseAnalyticsRange,
   type AnalyticsRange,
-  type OperationsMode,
 } from '@/components/sidebar/operations/operations-sidebar-shared';
 import { useOperationsMode } from '@/components/sidebar/operations/useOperationsMode';
 import { useOperationsTimelineUrlState } from '@/components/sidebar/operations/useOperationsTimelineUrlState';
@@ -84,28 +81,22 @@ const INSIGHTS_PROMPTS = [
 ];
 
 export function OperationsSidebarPanel() {
-  const { mode, updateMode } = useOperationsMode();
-  const masterNavEnabled = useMasterNavEnabled();
+  const { mode } = useOperationsMode();
 
-  // Panel-local mode pills are suppressed when the master-nav header cluster
-  // owns L2 switching (`useMasterNavEnabled`).
-  const modeToggle = masterNavEnabled ? null : (
-    <OperationsModeToggle value={mode} onChange={(id) => updateMode(id as OperationsMode)} />
-  );
-
-  if (mode === 'analytics') return <AnalyticsSidebar modeToggle={modeToggle} />;
-  if (mode === 'insights') return <InsightsSidebar modeToggle={modeToggle} />;
-  if (mode === 'history') return <HistorySidebar modeToggle={modeToggle} />;
-  if (mode === 'signals') return <SignalsSidebar modeToggle={modeToggle} />;
+  if (mode === 'analytics') return <AnalyticsSidebar />;
+  if (mode === 'insights') return <InsightsSidebar />;
+  if (mode === 'history') return <HistorySidebar />;
+  if (mode === 'signals') return <SignalsSidebar />;
+  if (mode === 'reconciliation') return <ReconciliationSidebar />;
   // `plans` is no longer an Operations mode — forge/plans moved to Home and the
   // right pane redirects `?mode=plans` there (HOME-OPS §3.2). No plan-edit chrome
   // renders in Operations; a stale `?mode=plans` bookmark falls through to Live.
-  return <LiveSidebar modeToggle={modeToggle} />;
+  return <LiveSidebar />;
 }
 
 // ── Live ────────────────────────────────────────────────────────────────────
 
-function LiveSidebar({ modeToggle }: { modeToggle: React.ReactNode }) {
+function LiveSidebar() {
   const [q, setQ] = useState('');
   // Read-only view of the shared dashboard cache. The right-pane
   // OperationsDashboard owns the fetch + Ably subscription (Live mode mounts
@@ -145,21 +136,18 @@ function LiveSidebar({ modeToggle }: { modeToggle: React.ReactNode }) {
   return (
     <SidebarShell
       headerAbove={
-        <>
-          {modeToggle}
-          {/* In-context list filter — local base SearchBar; the global header
-              pill stays global (search any order across the app). */}
-          <div className={`${SIDEBAR_GUTTER} pt-3 pb-2`}>
-            <SearchBar
-              size="compact"
-              variant="blue"
-              value={q}
-              onChange={setQ}
-              onClear={() => setQ('')}
-              placeholder="Filter live activity…"
-            />
-          </div>
-        </>
+        /* In-context list filter — local base SearchBar; the global header
+            pill stays global (search any order across the app). */
+        <div className={`${SIDEBAR_GUTTER} pt-3 pb-2`}>
+          <SearchBar
+            size="compact"
+            variant="blue"
+            value={q}
+            onChange={setQ}
+            onClear={() => setQ('')}
+            placeholder="Filter live activity…"
+          />
+        </div>
       }
       bodyClassName="pt-0 pb-6"
     >
@@ -207,7 +195,7 @@ function LiveSidebar({ modeToggle }: { modeToggle: React.ReactNode }) {
 
 // ── Analytics ─────────────────────────────────────────────────────────────────
 
-function AnalyticsSidebar({ modeToggle }: { modeToggle: React.ReactNode }) {
+function AnalyticsSidebar() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const range = parseAnalyticsRange(searchParams.get('range'));
@@ -225,7 +213,6 @@ function AnalyticsSidebar({ modeToggle }: { modeToggle: React.ReactNode }) {
 
   return (
     <SidebarShell bodyClassName="pt-0 pb-6">
-      {modeToggle}
       <div className={cn('space-y-5 pt-3')}>
         <header>
           <h2 className="text-xl font-semibold uppercase leading-none tracking-tighter text-text-default">Analytics</h2>
@@ -287,10 +274,9 @@ function AnalyticsSidebar({ modeToggle }: { modeToggle: React.ReactNode }) {
 
 // ── Insights (AI) ─────────────────────────────────────────────────────────────
 
-function InsightsSidebar({ modeToggle }: { modeToggle: React.ReactNode }) {
+function InsightsSidebar() {
   return (
     <SidebarShell bodyClassName="pt-0 pb-6">
-      {modeToggle}
       <div className={cn('space-y-5 pt-3')}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -359,7 +345,7 @@ const SIGNALS_WINDOWS: Array<{ id: string; label: string; days: number | null }>
 const SIGNALS_FILTER_SELECT_CLASS =
   'w-full rounded-md border border-border-soft bg-surface-card px-2 py-1.5 text-role-caption font-semibold text-text-muted focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-400';
 
-function SignalsSidebar({ modeToggle }: { modeToggle: React.ReactNode }) {
+function SignalsSidebar() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const signalsView = parseSignalsView(searchParams.get('signalsView'));
@@ -389,7 +375,6 @@ function SignalsSidebar({ modeToggle }: { modeToggle: React.ReactNode }) {
 
   return (
     <SidebarShell
-      headerAbove={modeToggle}
       headerRows={[
         <HorizontalButtonSlider
           key="signals-view"
@@ -468,7 +453,7 @@ function SignalsSidebar({ modeToggle }: { modeToggle: React.ReactNode }) {
 
 // ── History ───────────────────────────────────────────────────────────────────
 
-function HistorySidebar({ modeToggle }: { modeToggle: React.ReactNode }) {
+function HistorySidebar() {
   const url = useOperationsTimelineUrlState();
   // Browse-feed filters show when the browse region is on-screen (not focused
   // on a record). The URL setters they drive already exist.
@@ -484,27 +469,24 @@ function HistorySidebar({ modeToggle }: { modeToggle: React.ReactNode }) {
   return (
     <SidebarShell
       headerAbove={
-        <>
-          {modeToggle}
-          <div className={`${SIDEBAR_GUTTER} pt-3 pb-2`}>
-            <SearchBar
-              size="compact"
-              variant="blue"
-              value={draft}
-              onChange={setDraft}
-              onClear={() => {
-                setDraft('');
-                url.setEntity('');
-              }}
-              onSearch={(v) => {
-                const t = v.trim();
-                if (t) url.setEntity(t);
-              }}
-              placeholder="Paste order, serial, or tracking…"
-              debounceMs={300}
-            />
-          </div>
-        </>
+        <div className={`${SIDEBAR_GUTTER} pt-3 pb-2`}>
+          <SearchBar
+            size="compact"
+            variant="blue"
+            value={draft}
+            onChange={setDraft}
+            onClear={() => {
+              setDraft('');
+              url.setEntity('');
+            }}
+            onSearch={(v) => {
+              const t = v.trim();
+              if (t) url.setEntity(t);
+            }}
+            placeholder="Paste order, serial, or tracking…"
+            debounceMs={300}
+          />
+        </div>
       }
       bodyClassName="pt-0"
     >
@@ -515,6 +497,23 @@ function HistorySidebar({ modeToggle }: { modeToggle: React.ReactNode }) {
         aria-label="Journey dimension"
       />
       {showFilters ? <HistoryBrowseFilters url={url} /> : null}
+    </SidebarShell>
+  );
+}
+
+// ── Reconciliation ────────────────────────────────────────────────────────────
+
+function ReconciliationSidebar() {
+  return (
+    <SidebarShell bodyClassName="pt-0 pb-6">
+      <div className={cn('space-y-3 pt-3', SIDEBAR_GUTTER)}>
+        <p className={cn(sectionLabel)}>Reconcile</p>
+        <p className="text-role-caption leading-5 text-text-muted">
+          Serial↔order binding risks and unmatched tracking holds. The right pane lists smear
+          candidates (unbound tech serials on multi-order cartons) and open{' '}
+          <span className="font-semibold text-text-soft">orders_exceptions</span>.
+        </p>
+      </div>
     </SidebarShell>
   );
 }

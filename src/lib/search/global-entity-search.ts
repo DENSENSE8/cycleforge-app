@@ -28,7 +28,7 @@ export interface GlobalSearchResult {
 
 export async function searchOrders(orgId: OrgId, query: string, limit: number): Promise<GlobalSearchResult[]> {
   // Mirror the unshipped/shipped order search: match order_id, title, SKU, the
-  // order's serial number(s) (tech_serial_numbers, joined via shipment_id) and
+  // order's serial number(s) (tech_serial_numbers, order-grain join) and
   // the carrier tracking number, plus a last-8-digit fallback so a partial
   // order/tracking number still resolves. Serials are aggregated per order so a
   // single row comes back even when an order has many tested units.
@@ -47,7 +47,23 @@ export async function searchOrders(orgId: OrgId, query: string, limit: number): 
             COALESCE(STRING_AGG(DISTINCT tsn.serial_number, ', '), '') AS serial_number,
             MAX(stn.tracking_number_raw)                              AS tracking_number
      FROM orders o
-     LEFT JOIN tech_serial_numbers tsn       ON tsn.shipment_id = o.shipment_id
+     LEFT JOIN tech_serial_numbers tsn       ON (
+       tsn.organization_id = o.organization_id
+       AND (
+         tsn.order_id = o.id
+         OR (
+           tsn.order_id IS NULL
+           AND o.shipment_id IS NOT NULL
+           AND tsn.shipment_id = o.shipment_id
+           AND NOT EXISTS (
+             SELECT 1 FROM orders o2
+             WHERE o2.shipment_id = o.shipment_id
+               AND o2.organization_id = o.organization_id
+               AND o2.id <> o.id
+           )
+         )
+       )
+     )
      LEFT JOIN shipping_tracking_numbers stn ON stn.id = o.shipment_id
      WHERE o.organization_id = $1
        AND (

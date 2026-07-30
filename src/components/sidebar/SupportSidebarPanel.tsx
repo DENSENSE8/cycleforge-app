@@ -4,7 +4,6 @@ import { useCallback, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import { useMasterNavEnabled } from '@/components/sidebar/master-nav/MasterNavContext';
 import { appChromeClass } from '@/design-system/tokens/app-surface';
 import { SupportTicketsRecentRail } from '@/components/support/zendesk/queue/SupportTicketsRecentRail';
 import { VoicemailQueue } from '@/components/support/voice/VoicemailQueue';
@@ -12,8 +11,6 @@ import { CallLogSidebar } from '@/components/support/voice/CallLogSidebar';
 import { WarrantyLoggerSidebar } from '@/components/warranty/WarrantyLoggerSidebar';
 import { IssuesQueue } from '@/components/support/issues/IssuesQueue';
 import UnshippedSidebar from '@/components/unshipped/UnshippedSidebar';
-import { SupportModeToggle } from '@/components/sidebar/support/SupportModeToggle';
-import type { SupportMode } from '@/components/sidebar/support/support-sidebar-shared';
 import { useSupportMode } from '@/components/sidebar/support/useSupportMode';
 
 /**
@@ -29,15 +26,11 @@ import { useSupportMode } from '@/components/sidebar/support/useSupportMode';
  * - warranty  → Warranty Logger claim picker + search (Workbench); body shows
  *   coverage card + claims table + claim detail (`?open=`).
  * - issues    → Reported-Issues list (Workbench); selecting one sets `?issueId=`.
- *
- * Panel-local mode pills are suppressed when the master-nav drives switching
- * (`useMasterNavEnabled`) — same gate Operations uses.
  */
 export function SupportSidebarPanel() {
   const { has, isLoaded } = useAuth();
   const queryClient = useQueryClient();
   const { mode, updateMode } = useSupportMode();
-  const masterNavEnabled = useMasterNavEnabled();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -118,10 +111,6 @@ export function SupportSidebarPanel() {
     }
   }, [canTickets, canOrders, canWarranty, canIssues, isLoaded, mode, updateMode]);
 
-  const modeToggle = masterNavEnabled ? null : (
-    <SupportModeToggle value={mode} onChange={(id) => updateMode(id as SupportMode)} />
-  );
-
   return (
     <div className={`flex h-full min-h-0 flex-col ${appChromeClass}`}>
       {mode === 'orders' ? (
@@ -129,7 +118,6 @@ export function SupportSidebarPanel() {
           <UnshippedSidebar
             embedded
             hideSectionHeader
-            filterControl={modeToggle}
             searchValue={ordersSearch}
             onSearchChange={setOrdersSearch}
           />
@@ -141,7 +129,6 @@ export function SupportSidebarPanel() {
       ) : mode === 'warranty' ? (
         canWarranty ? (
           <WarrantyLoggerSidebar
-            filterControl={modeToggle}
             searchValue={warrantySearch}
             onSearchChange={setWarrantySearch}
           />
@@ -152,18 +139,18 @@ export function SupportSidebarPanel() {
         )
       ) : mode === 'issues' ? (
         canIssues ? (
-          <IssuesQueue modeToggle={modeToggle} />
+          <IssuesQueue />
         ) : (
           <div className="flex h-full items-center justify-center p-6 text-center text-role-caption font-semibold text-text-soft">
             Requires the “View reported issues console” permission.
           </div>
         )
       ) : mode === 'voicemail' ? (
-        <VoicemailQueue modeToggle={modeToggle} />
+        <VoicemailQueue />
       ) : mode === 'calls' ? (
-        <CallLogSidebar modeToggle={modeToggle} />
+        <CallLogSidebar />
       ) : (
-        <SupportTicketsRecentRail modeToggle={modeToggle} />
+        <SupportTicketsRecentRail />
       )}
     </div>
   );

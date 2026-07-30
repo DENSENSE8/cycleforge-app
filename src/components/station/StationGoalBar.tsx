@@ -2,6 +2,8 @@
 
 import { motion } from 'framer-motion';
 import { AnimatedStat } from '@/design-system/components/AnimatedStat';
+import { framerTransition } from '@/design-system/foundations/motion-framer';
+import { useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
 import {
   getStationGoalBarThemeClasses,
   type StationTheme,
@@ -28,6 +30,7 @@ export default function StationGoalBar({
   const themedClasses = theme ? getStationGoalBarThemeClasses(theme) : null;
   const progressTextClass = themedClasses?.textClass ?? 'text-text-default';
   const progressFillClass = themedClasses?.fillClass ?? 'bg-surface-inverse';
+  const progressTransition = useMotionTransition(framerTransition.stationCardMount);
 
   return (
     <div className="space-y-1.5 px-1">
@@ -44,6 +47,7 @@ export default function StationGoalBar({
         <motion.div
           initial={{ width: 0 }}
           animate={{ width: `${progressPercent}%` }}
+          transition={progressTransition}
           className={`h-full ${progressFillClass} rounded-full`}
         />
       </div>

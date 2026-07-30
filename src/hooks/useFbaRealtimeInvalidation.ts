@@ -23,7 +23,6 @@ export function useFbaRealtimeInvalidation(enabled = true) {
     queryClient.invalidateQueries({ queryKey: qk.fba.board });
     queryClient.invalidateQueries({ queryKey: qk.fba.stageCounts });
     queryClient.invalidateQueries({ queryKey: qk.fba.shipments });
-    queryClient.invalidateQueries({ queryKey: qk.dashboardFbaShipments });
   }, !!fbaChannel && enabled);
 
   useAblyChannel(fbaChannel, 'fba.catalog.changed', () => {

@@ -28,7 +28,8 @@ export function useManualsData(): UseManualsData {
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
+    // Initial state is already loading:true. Do not flip loading on background
+    // refetches (manuals-updated) — keep existing rows/thumbs visible.
     fetchManuals()
       .then((rows) => {
         if (!cancelled) setManuals(rows);

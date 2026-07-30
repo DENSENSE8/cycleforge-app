@@ -4,9 +4,9 @@
  * `OrdersGridView`).
  *
  * **One recipe:** rounded-xl card + raised lift + `overflow-hidden` so cell grid
- * lines and fills clip cleanly at the corners. Frozen header is a quiet sunken
- * band ({@link TABLE_FROZEN_HEADER_CLASS}); airtable skin draws continuous column
- * rules through header + body.
+ * lines and fills clip cleanly at the corners. Frozen header is card-white
+ * ({@link TABLE_FROZEN_HEADER_CLASS}); airtable skin draws continuous column
+ * rules through header + body — borders carry hierarchy, not fill contrast.
  *
  * Pending / Packed both use {@link TABLE_SURFACE_CLIP_CLASS}. Page-scroll sticky
  * + rounded clip fought each other — the card clips; the column header sticks
@@ -33,10 +33,10 @@ export const TABLE_SURFACE_CLASS = [
 export const TABLE_SURFACE_CLIP_CLASS = `${TABLE_SURFACE_CLASS} overflow-hidden`;
 
 /**
- * Frozen column-header band — quiet sunken fill over white body rows so
- * airtable column rules (`border-default`) stay visible. Pair with opaque
- * sticky stacking; do not use translucent / blur fills under virtualized
- * absolute rows. Never `surface-strong` here — in light it equals
+ * Frozen column-header band — card-white (same plane as body rows). Hierarchy
+ * comes from airtable `border-default` rules, not a sunken fill. Pair with
+ * opaque sticky stacking; do not use translucent / blur fills under
+ * virtualized absolute rows. Never `surface-strong` here — in light it equals
  * `border-subtle` and erases the header grid.
  */
-export const TABLE_FROZEN_HEADER_CLASS = 'bg-surface-sunken';
+export const TABLE_FROZEN_HEADER_CLASS = 'bg-surface-card';

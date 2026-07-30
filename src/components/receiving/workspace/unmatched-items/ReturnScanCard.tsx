@@ -21,6 +21,9 @@ import { NoSerialControl } from '@/components/receiving/workspace/line-edit/NoSe
  * the accordion immediately — there is no inline recording loader.
  *
  * Shown only when the carton has 0 lines, so it never stands beside a line row.
+ *
+ * Packing also imports this chrome for unknown-order sessions (`body="none"`)
+ * so the empty pack checklist matches Unbox's Unfound PO accordion row.
  */
 export function ReturnScanCard({
   condition,
@@ -31,6 +34,7 @@ export function ReturnScanCard({
   requireSerialConfirmation,
   onSerialAbsentChange,
   title = 'Unfound PO',
+  body = 'serial',
 }: {
   condition: string;
   onConditionChange: (next: string) => void;
@@ -41,6 +45,11 @@ export function ReturnScanCard({
   onSerialAbsentChange?: (next: { absent: boolean; reason: string | null }) => void;
   /** Line title above the meta row — defaults to the unfound stub label. */
   title?: string;
+  /**
+   * `serial` — Unbox return-scan body (default).
+   * `none` — chrome only (packing unknown-order empty row).
+   */
+  body?: 'serial' | 'none';
 }) {
   return (
     <div
@@ -69,47 +78,49 @@ export function ReturnScanCard({
           condition={<ConditionGradeChip grade={condition} dense />}
         />
       </div>
-      <div className="min-w-0 overflow-hidden border-t border-blue-200/60">
-        <div className="min-w-0 px-3 pb-1 pt-1">
-          <SerialCard
-            embedded
-            saved={[]}
-            expected={null}
-            isSubmitting={false}
-            showSavedChips={false}
-            condition={condition}
-            onConditionChange={onConditionChange}
-            onAdd={onAdd}
-            noSerialActive={serialAbsent ?? false}
-            onMarkNoSerial={
-              onSerialAbsentChange
-                ? () =>
-                    onSerialAbsentChange(
-                      serialAbsent
-                        ? { absent: false, reason: null }
-                        : { absent: true, reason: serialAbsentReason ?? 'NOT_SERIALIZED' },
-                    )
-                : undefined
-            }
-            noSerialSlot={
-              onSerialAbsentChange ? (
-                // fullWidth + hideClear: the committed bar fills the field (same
-                // width as the Serial input) and the SerialCard trailing green-check
-                // owns the on/off toggle — so "checked" and "acknowledged" stay
-                // the same width.
-                <NoSerialControl
-                  absent
-                  fullWidth
-                  hideClear
-                  reason={serialAbsentReason ?? null}
-                  required={requireSerialConfirmation ?? false}
-                  onChange={onSerialAbsentChange}
-                />
-              ) : undefined
-            }
-          />
+      {body === 'serial' ? (
+        <div className="min-w-0 overflow-hidden border-t border-blue-200/60">
+          <div className="min-w-0 px-3 pb-1 pt-1">
+            <SerialCard
+              embedded
+              saved={[]}
+              expected={null}
+              isSubmitting={false}
+              showSavedChips={false}
+              condition={condition}
+              onConditionChange={onConditionChange}
+              onAdd={onAdd}
+              noSerialActive={serialAbsent ?? false}
+              onMarkNoSerial={
+                onSerialAbsentChange
+                  ? () =>
+                      onSerialAbsentChange(
+                        serialAbsent
+                          ? { absent: false, reason: null }
+                          : { absent: true, reason: serialAbsentReason ?? 'NOT_SERIALIZED' },
+                      )
+                  : undefined
+              }
+              noSerialSlot={
+                onSerialAbsentChange ? (
+                  // fullWidth + hideClear: the committed bar fills the field (same
+                  // width as the Serial input) and the SerialCard trailing green-check
+                  // owns the on/off toggle — so "checked" and "acknowledged" stay
+                  // the same width.
+                  <NoSerialControl
+                    absent
+                    fullWidth
+                    hideClear
+                    reason={serialAbsentReason ?? null}
+                    required={requireSerialConfirmation ?? false}
+                    onChange={onSerialAbsentChange}
+                  />
+                ) : undefined
+              }
+            />
+          </div>
         </div>
-      </div>
+      ) : null}
     </div>
   );
 }

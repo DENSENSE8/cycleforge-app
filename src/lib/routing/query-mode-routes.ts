@@ -19,6 +19,12 @@ import {
 } from '@/components/products/catalog/catalog-url-state';
 import { PAIRING_SORTS } from '@/components/products/pairing/types';
 import { parseProductsView } from '@/components/products/products-view';
+import { parseSourcingAnalyticsRange } from '@/components/sourcing/sourcing-shared';
+import { parsePickupTab, parseRepairTab, parseSalesTab } from '@/lib/walk-in/history-modes';
+import { parseReviewPackingTab } from '@/lib/packing/review-packing-tabs';
+import { parsePackWorkspaceTab } from '@/utils/pack-workspace-state';
+import { parseShippingWorkspaceTab } from '@/utils/shipping-workspace-state';
+import { parseTestingWorkspaceTab } from '@/utils/testing-workspace-state';
 import {
   defineRouteParams,
   paramDateKey,
@@ -32,7 +38,7 @@ import {
 } from './route-params';
 
 /** Operator-level bits every workbench accepts on arrival. */
-const WORKBENCH_CARRIES = ['staff', 'staffId', 'colsort', 'coldir'] as const;
+const WORKBENCH_CARRIES = ['staff', 'staffId', 'colsort', 'coldir', 'pane', 'layout', 'density', 'weekOffset'] as const;
 
 /**
  * `/support` — Tickets · Orders · Voicemail · Calls · Warranty · Issues.
@@ -107,8 +113,22 @@ const DASHBOARD_ROUTE_PARAMS = defineRouteParams({
     packed: paramPresence,
     tested: paramPresence,
     shipped: paramPresence,
-    fba: paramPresence,
     warranty: paramPresence,
+    /**
+     * HAND-OFF keys — read on this route only to be forwarded, never rendered.
+     *
+     * `fba` stopped being a lifecycle tab in IA row L (FBA owns `/shipping/fba`),
+     * and `wstatus`/`wexp` belong to Support's warranty board. But `/dashboard`
+     * still READS all three off the URL to build its retired-front-door
+     * redirects (`isRetiredFbaView`, `buildSupportWarrantyRedirectSearch`), so
+     * they must survive the boundary parse or the redirect silently loses what
+     * the bookmark asked for. Declaring a key you do not render feels wrong and
+     * is exactly right: `/walk-in` shipped this bug first, and the read guard
+     * cannot catch it because another route already owns the keys.
+     */
+    fba: paramPresence,
+    wstatus: paramText,
+    wexp: paramText,
     /** Grid + inspector state. */
     open: paramPositiveInt,
     sort: paramText,
@@ -156,7 +176,7 @@ const HOME_ROUTE_PARAMS = defineRouteParams({
 const OPERATIONS_ROUTE_PARAMS = defineRouteParams({
   route: '/operations',
   owns: {
-    mode: paramEnum(['analytics', 'insights', 'history', 'signals', 'plans'] as const),
+    mode: paramEnum(['analytics', 'insights', 'history', 'signals', 'plans', 'reconciliation'] as const),
     /** Shared filter band. */
     q: paramText,
     open: paramPositiveInt,
@@ -229,6 +249,264 @@ export const PRODUCTS_ROUTE_PARAMS = defineRouteParams({
 });
 
 /**
+ * `/sourcing` — Queue · Scout · Watchlist · Searches · Suppliers · Analytics.
+ *
+ * Had a clear list in two places and both were incomplete, which is the whole
+ * argument for constructing. `SourcingSidebarPanel.goMode` deleted `q`, `status`
+ * and `type`; the nav targets in `sidebar-navigation.ts` deleted `mode`, `q` and
+ * `status`. Neither deleted `by` or `range`, so Scout's search-field toggle
+ * (`?by=serial`) and the Analytics window (`?range=1y`) rode into every sibling
+ * mode — two lists to keep in sync, both missing the same two keys.
+ */
+export const SOURCING_ROUTE_PARAMS = defineRouteParams({
+  route: '/sourcing',
+  owns: {
+    /**
+     * Queue is the default and rides the bare URL, so it is deliberately absent.
+     * `lookup` / `alerts` are legacy spellings `resolveSourcingMode` still
+     * aliases (→ scout / → queue); they stay declared so an old bookmark
+     * survives the boundary parse and reaches that resolver rather than being
+     * dropped here and silently landing on Queue.
+     */
+    mode: paramEnum([
+      'scout',
+      'watchlist',
+      'searches',
+      'suppliers',
+      'analytics',
+      'lookup',
+      'alerts',
+    ] as const),
+    /** Sidebar filter box — Scout's model/serial query and Suppliers' name filter. */
+    q: paramText,
+    /** Which field Scout's query searches. The key no clear list remembered. */
+    by: paramEnum(['model', 'serial'] as const),
+    /** Queue + Watchlist status facet. */
+    status: paramText,
+    /** Suppliers type facet (`ebay_seller` · `distributor` · `salvage` · `oem` · …). */
+    type: paramText,
+    /** Analytics window — composes the existing parser rather than re-listing it. */
+    range: paramRoundTrip(parseSourcingAnalyticsRange),
+  },
+  carries: WORKBENCH_CARRIES,
+});
+
+/**
+ * `/test` — the Testing station's Workbench half (Shipping | Testing).
+ *
+ * The route is `/test`; `/tech` is a legacy alias the proxy redirects, so it
+ * deliberately gets no spec of its own — a second spec would double-own `ship`
+ * and `testTab` and force two new `SHARED_OWNED_KEYS` entries for a route that
+ * only exists to redirect.
+ *
+ * **`ship` and `testTab` are why this surface needed a careful enumeration.**
+ * Both are read through a CONSTANT (`searchParams.get(SHIPPING_WORKSPACE_TAB_PARAM)`)
+ * from a module outside every surface tree (`@/utils/*-workspace-state`), so the
+ * `.get('literal')` grep in the migration method finds neither — and neither does
+ * the ownership guard, whose regex also only matches literals. They were found by
+ * reading `useTechRightView`'s docblock and then confirming it against the code.
+ * Enumerate constant-keyed reads separately; see the method note in
+ * `docs/todo/nav-routing-refactor-FINISH-PROMPT.md` §3.1.
+ */
+export const TEST_ROUTE_PARAMS = defineRouteParams({
+  route: '/test',
+  owns: {
+    /**
+     * Top-level pane. Absent = Shipping (the default), so it is not listed.
+     * `testing-history` is a legacy spelling `useTechRightView` still folds into
+     * `testing`; kept declared so an old link survives the boundary parse.
+     */
+    view: paramEnum(['testing', 'testing-history', 'receiving'] as const),
+    /** Workspace search box (Testing history + the KPI strip both read it). */
+    search: paramText,
+    /** Shipping-mode workspace tab — composes the tab SoT, never a re-typed list. */
+    ship: paramRoundTrip(parseShippingWorkspaceTab),
+    /** Testing-mode workspace tab — same, from its own SoT. */
+    testTab: paramRoundTrip(parseTestingWorkspaceTab),
+  },
+  carries: WORKBENCH_CARRIES,
+});
+
+/**
+ * `/walk-in` — the Sales hub (Sales · Local Pickup).
+ *
+ * The nav targets nulled `tab` and `category` by hand. `category` is NOT declared
+ * here on purpose: it is a dead legacy key that only `proxy.ts`
+ * (`resolveWalkInRepairModeRedirect`) still reads, server-side and before this
+ * spec ever applies, to send `?category=repair` to `/repair` — after which it
+ * deletes the key itself. Nothing on the client reads it, so declaring it would
+ * preserve a param with no reader.
+ */
+export const WALK_IN_ROUTE_PARAMS = defineRouteParams({
+  route: '/walk-in',
+  owns: {
+    /** Sales is the surface identity and rides the bare URL, so only Pickup is listed. */
+    mode: paramEnum(['pickup'] as const),
+    /**
+     * Sub-tab, with a vocabulary **per mode** — Pickup (`draft`/`completed`) and
+     * Sales (`today`/`all`), chosen by `WalkInHistoryHub` from the active mode.
+     *
+     * The Repair vocabulary (`incoming`/`active`/`done`) is in the union because
+     * `useWalkInTaskRedirect` FORWARDS `?tab=done|incoming` on to
+     * `/pickup?job=repair` — not because anything on this page renders a repair
+     * tab. (`WalkInStationPane`, the one component that would, is only reachable
+     * through `WalkInSurfacePage`, a dead file in `knip-baseline.json`.)
+     *
+     * Accept the union by round-tripping each existing parser rather than
+     * re-listing seven values that live in three SoTs.
+     */
+    tab: paramRoundTrip((raw) =>
+      parsePickupTab(raw) === raw || parseSalesTab(raw) === raw || parseRepairTab(raw) === raw
+        ? raw
+        : null,
+    ),
+    /**
+     * Legacy task deep-links, read by `useWalkInTaskRedirect` and forwarded to
+     * `/pickup?job=repair`. **They must be declared even though this page never
+     * renders them** — the redirect reads them from the URL, so dropping them at
+     * the boundary would silently turn a `?new=true` link into a plain history
+     * page. The read guard above cannot catch this: `/repair` already declares all
+     * three, so nothing looked undeclared (its documented "some spec, not the
+     * reading route's spec" limit).
+     */
+    openRepair: paramPositiveInt,
+    new: paramEnum(['true'] as const),
+    search: paramText,
+  },
+  carries: WORKBENCH_CARRIES,
+});
+
+/**
+ * `/inventory` — Ledger · Triage · Pulse · Graph · Replenish.
+ *
+ * One spec covers the sub-routes too (`/inventory/triage`, `/inventory/pulse`,
+ * `/inventory/graph`): the registry prefix-matches, and all of them share
+ * `useInventoryUrlState`, so they genuinely read one param set rather than four.
+ *
+ * Replaces the `{ mode, section, open }` null-map repeated across all five nav
+ * targets — which, like every other clear list this refactor has opened, was
+ * incomplete: it never nulled `sku`, `bin`, `unit`, `state`, `condition`, `q`,
+ * `field` or `filter`, so a Ledger selection and its whole filter set rode into
+ * Graph.
+ *
+ * Five of these keys are legitimately shared with a sibling route and are
+ * declared in `SHARED_OWNED_KEYS`; each is the same question over a different
+ * vocabulary, which is what that list exists for.
+ *
+ * `open` is `paramText`, NOT `paramPositiveInt` — `useInventoryUrlState` documents
+ * it as a "pending detail-panel selection key" and reads it as an opaque string,
+ * so the id-shaped schema every other route uses for `open` would drop it.
+ */
+export const INVENTORY_ROUTE_PARAMS = defineRouteParams({
+  route: '/inventory',
+  owns: {
+    /** Legacy `?mode=` form; Triage/Pulse also have real routes. */
+    mode: paramEnum(['ledger', 'triage', 'pulse', 'replenish'] as const),
+    /** Only `replenish` is meaningful — it selects the Replenish mode. */
+    section: paramEnum(['replenish'] as const),
+    /** Sidebar search box + its tab-scoped field and bucket multi-select. */
+    q: paramText,
+    field: paramText,
+    filter: paramText,
+    /** Detail-panel selection key (opaque, see above). */
+    open: paramText,
+    /** The three legacy viewport selectors — one wins, in unit -> sku -> bin order. */
+    sku: paramText,
+    bin: paramText,
+    unit: paramText,
+    /** Comma-separated multi-selects read through `parseList`. */
+    state: paramText,
+    condition: paramText,
+    /**
+     * SKU-graph direction. `parents`/`children`/`tree` are `SkuGraphMode`; `parts`
+     * is the fourth live value, read by `InventoryGraphRouter` to swap in the
+     * parts view — it is absent from the type, so a round-trip on `SkuGraphMode`
+     * would silently drop it.
+     */
+    view: paramEnum(['parents', 'children', 'tree', 'parts'] as const),
+  },
+  carries: WORKBENCH_CARRIES,
+});
+
+/**
+ * `/review` — Packing · Pairing · Catalog link (the Packer Review Station).
+ *
+ * Replaces the widest of the remaining clear lists: all three nav targets nulled
+ * `rtab`, `packerLogId`, `orderId` and `choreId` inline, so each mode "opened
+ * clean" only because someone had listed its siblings' keys four times.
+ */
+const REVIEW_ROUTE_PARAMS = defineRouteParams({
+  route: '/review',
+  owns: {
+    /** Packing is the default and rides the bare URL, so only the other two. */
+    mode: paramEnum(['pairing', 'catalog-link'] as const),
+    /** Packing table tab — composes the tab SoT rather than re-listing it. */
+    rtab: paramRoundTrip(parseReviewPackingTab),
+    /** Focused record, one per mode; all three are `Number(...)`-parsed ids. */
+    packerLogId: paramPositiveInt,
+    orderId: paramPositiveInt,
+    choreId: paramPositiveInt,
+    /** The table search box, shared by all three modes' tables. */
+    search: paramText,
+  },
+  carries: WORKBENCH_CARRIES,
+});
+
+/**
+ * `/pack` — the packing station workbench.
+ *
+ * The route is `/pack`; `/packer` is a legacy alias the proxy normalizes (same
+ * shape as `/test` vs `/tech`), so it deliberately gets no spec of its own.
+ *
+ * `packview` is read through a CONSTANT (`PACK_WORKSPACE_TAB_PARAM`) from
+ * `@/utils/pack-workspace-state`, outside every surface tree — the same blind
+ * spot that hid `?ship=` / `?testTab=` on `/test`. It was excused in the
+ * ownership guard's `UNDECLARED_PARAM_CONSTANTS` only because `/pack` had no
+ * spec; declaring it here is what lets that entry go.
+ */
+const PACK_ROUTE_PARAMS = defineRouteParams({
+  route: '/pack',
+  owns: {
+    /** Workbench tab — composes the tab SoT. */
+    packview: paramRoundTrip(parsePackWorkspaceTab),
+    /** Pack mode; `standard` is the default and is omitted from the URL. */
+    packMode: paramEnum(['fragile', 'multi'] as const),
+    /** Unit-status facet on the pack queue. */
+    ustatus: paramText,
+  },
+  carries: WORKBENCH_CARRIES,
+});
+
+/**
+ * `/warehouse` — Labels · Racks · Rooms · Bins · Map.
+ *
+ * The nav targets carried `{ tab }` and nothing else, so every sibling's state
+ * (`room`, `code`, `serial`, `q`, `status`, the `edit`/`new` form toggles) rode
+ * a tab switch. Constructing drops them by omission.
+ */
+export const WAREHOUSE_ROUTE_PARAMS = defineRouteParams({
+  route: '/warehouse',
+  owns: {
+    /** Labels is the default and rides the bare URL. */
+    tab: paramEnum(['racks', 'rooms', 'bins', 'map'] as const),
+    /** Selected room / rack / bin code. */
+    room: paramText,
+    code: paramText,
+    /** Bin-filter chrome. */
+    q: paramText,
+    status: paramText,
+    showEmpty: paramFlag,
+    view: paramText,
+    /** A scanned serial handed to the location lookup. */
+    serial: paramText,
+    /** Form toggles — open the create form, or edit the selected record. */
+    new: paramEnum(['true'] as const),
+    edit: paramFlag,
+  },
+  carries: WORKBENCH_CARRIES,
+});
+
+/**
  * `/search` — the cross-entity results surface Phase 1 of the dashboard IA
  * rework evicted out of `?mode=search`.
  *
@@ -255,6 +533,13 @@ export const QUERY_MODE_ROUTE_PARAMS: readonly RouteParamsSpec[] = [
   DASHBOARD_ROUTE_PARAMS,
   OPERATIONS_ROUTE_PARAMS,
   PRODUCTS_ROUTE_PARAMS,
+  SOURCING_ROUTE_PARAMS,
+  TEST_ROUTE_PARAMS,
+  WALK_IN_ROUTE_PARAMS,
+  INVENTORY_ROUTE_PARAMS,
+  REVIEW_ROUTE_PARAMS,
+  PACK_ROUTE_PARAMS,
+  WAREHOUSE_ROUTE_PARAMS,
   SEARCH_ROUTE_PARAMS,
   // `/` is the shortest prefix in the registry, so it must never shadow another
   // route — the registry sorts longest-first, which keeps it last in practice.

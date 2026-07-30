@@ -33,7 +33,9 @@ import { DashboardOrderDetails } from '@/components/dashboard/DashboardOrderDeta
 import { buildSupportWarrantyRedirectSearch } from '@/utils/dashboard-search-state';
 import {
   getDashboardDomainFromSearch,
+  isRetiredFbaView,
   isRetiredSearchMode,
+  retiredFbaViewTarget,
   retiredSearchModeTarget,
 } from '@/lib/dashboard/dashboard-domains';
 import { refreshDomain } from '@/lib/refresh/bus';
@@ -43,6 +45,7 @@ function DashboardPageContent() {
   const searchParams = useSearchParams();
   const domain = getDashboardDomainFromSearch(searchParams);
   const searchModeRetired = isRetiredSearchMode(searchParams);
+  const fbaViewRetired = isRetiredFbaView(searchParams);
   const { detailsEnabled, orderView, searchQuery, setOrderView } = useDashboardSearchController();
 
   // Legacy Warranty Logger lived on `/dashboard?warranty=` — permanent home is
@@ -52,6 +55,14 @@ function DashboardPageContent() {
     const qs = buildSupportWarrantyRedirectSearch(searchParams);
     router.replace(qs ? `/support?${qs}` : '/support?mode=warranty');
   }, [router, searchParams]);
+
+  // Retired `?fba` lifecycle tab — FBA's home is `/shipping/fba` (IA row L).
+  // Deleting the view member alone let an old bookmark fall through to Pending;
+  // this sends it where FBA actually lives. Third instance of the same mechanism.
+  useEffect(() => {
+    if (!fbaViewRetired) return;
+    router.replace(retiredFbaViewTarget());
+  }, [router, fbaViewRetired]);
 
   // Retired Search mode (`?mode=search`) — same client-redirect mechanism as
   // `?warranty=` above, for the same reason: Next `redirects()` emits 308 and
@@ -84,7 +95,7 @@ function DashboardPageContent() {
     refreshDomain('orders.outbound');
   }, []);
 
-  if (searchParams.has('warranty') || searchModeRetired) {
+  if (searchParams.has('warranty') || searchModeRetired || fbaViewRetired) {
     return <div className="flex h-full w-full bg-surface-canvas" aria-busy />;
   }
 

@@ -11,6 +11,10 @@ import {
   DetailGrid,
   DetailCell,
 } from '@/design-system';
+import {
+  useMotionPresence,
+  useMotionTransition,
+} from '@/design-system/foundations/motion-framer-hooks';
 import { Check, Settings } from '@/components/Icons';
 import { OutOfStockField } from '@/components/ui/OutOfStockField';
 import { WorkOrderAssignmentCard } from '@/components/work-orders/WorkOrderAssignmentCard';
@@ -45,6 +49,10 @@ export function RepairCard({ repair, techId, isExpanded, onToggleExpand, onRefre
   const stopProp = (e: React.MouseEvent) => e.stopPropagation();
   const urgencyText = describeUrgency(card.daysLate);
   const daysLateTone = getDaysLateTone(card.daysLate);
+  const collapsePresence = useMotionPresence(framerPresence.collapseHeight);
+  const collapseTransition = useMotionTransition(framerTransition.upNextCollapse);
+  const rowPresence = useMotionPresence(framerPresence.upNextRow);
+  const rowTransition = useMotionTransition(framerTransition.upNextRowMount);
 
   return (
     <>
@@ -111,8 +119,8 @@ export function RepairCard({ repair, techId, isExpanded, onToggleExpand, onRefre
           {isExpanded && (
             <motion.div
               key="repair-expanded"
-              {...framerPresence.collapseHeight}
-              transition={framerTransition.upNextCollapse}
+              {...collapsePresence}
+              transition={collapseTransition}
               className="overflow-hidden"
             >
               <div className="mt-2.5 border-t border-orange-100 pt-2.5" onClick={stopProp}>
@@ -153,8 +161,8 @@ export function RepairCard({ repair, techId, isExpanded, onToggleExpand, onRefre
                 <AnimatePresence initial={false}>
                   {card.showOosInput && (
                     <motion.div
-                      {...framerPresence.collapseHeight}
-                      transition={framerTransition.upNextCollapse}
+                      {...collapsePresence}
+                      transition={collapseTransition}
                       className="overflow-hidden"
                     >
                       <OutOfStockField
@@ -173,8 +181,8 @@ export function RepairCard({ repair, techId, isExpanded, onToggleExpand, onRefre
                 <AnimatePresence initial={false}>
                   {card.showRepairedInput && (
                     <motion.div
-                      {...framerPresence.upNextRow}
-                      transition={framerTransition.upNextRowMount}
+                      {...rowPresence}
+                      transition={rowTransition}
                       className="overflow-hidden pt-0.5"
                     >
                       <div className="flex flex-col gap-2 rounded-xl border border-emerald-200 bg-emerald-50/40 p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.88),inset_0_0_0_1px_rgba(16,185,129,0.06)]">

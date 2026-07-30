@@ -66,6 +66,28 @@ const OWNED_TREES = [
   'app/dashboard',
   'app/search',
   'components/search',
+  'components/sourcing',
+  'components/sidebar/SourcingSidebarPanel.tsx',
+  'app/sourcing',
+  'components/tech',
+  'components/sidebar/TechSidebarPanel.tsx',
+  'app/test',
+  'app/tech',
+  'components/walk-in',
+  'components/sidebar/WalkInSidebarPanel.tsx',
+  'app/walk-in',
+  'components/inventory',
+  'components/sidebar/InventorySidebarPanel.tsx',
+  'app/inventory',
+  'app/review',
+  'features/review',
+  'app/pack',
+  'app/packer',
+  'components/packer',
+  'components/sidebar/PackerSidebarPanel.tsx',
+  'app/warehouse',
+  'components/warehouse',
+  'components/sidebar/WarehouseSidebarPanel.tsx',
 ];
 
 /**
@@ -83,6 +105,47 @@ const OWNED_TREES = [
  * a param is read but owned by nobody — which is how the leak class starts.
  */
 const UNDECLARED_READS: Readonly<Record<string, string>> = {};
+
+/**
+ * Param-name constants that are deliberately NOT declared by any spec, with the
+ * reason. **Shrink only** — an entry here is a claim that the key is unreachable
+ * on every spec-backed route, which is a much narrower claim than it looks.
+ */
+const UNDECLARED_PARAM_CONSTANTS: Readonly<Record<string, string>> = {
+  focusShippedSearch: 'Not a URL param the app reads — `utils/events.ts` sets it on an outgoing href for a one-shot focus handoff; no `searchParams.get` reads it back.',
+};
+
+/**
+ * Every `X_PARAM = 'key'` constant in `src`, so the guard can check the keys that
+ * are read through a CONSTANT rather than a string literal.
+ *
+ * This exists because the literal-only {@link GET_CALL} regex has a structural
+ * blind spot, and it cost two real defects (both found 2026-07-29, both fixed):
+ * `RouteShell`'s `?pane=` and the station-table contract's `?layout=` /
+ * `?density=` / `?weekOffset=`. All four are read as
+ * `searchParams.get(SOME_CONSTANT)` from shared modules that live outside every
+ * surface tree, so no `OWNED_TREES` entry and no literal grep could ever see
+ * them — while the routes that mount `useSurfaceParamHygiene()` dropped them on
+ * arrival. The mobile pane toggle snapped back to History, and applying a saved
+ * view reverted instantly.
+ *
+ * A guard that cannot fail is worse than no guard: this one closes the class by
+ * asserting the DECLARATION side, which is decidable, instead of trying to
+ * resolve every dynamic read.
+ *
+ * **Known limit — it checks "some spec declares this key", not "the route that
+ * reads it declares it".** Resolving which routes render a given shared module
+ * would need an import graph. So a key declared by one route but read on a
+ * different, spec-backed route still slips through. Station `SCOPE_PARAM` is the
+ * live example: `?scope=` is declared only by `/` (Home), and if
+ * `useStationStaffScope` ever gained a consumer on `/test` the value would be
+ * dropped there with this guard still green. It stays safe today only because
+ * that hook has zero consumers and both it and `parseScope` already sit in
+ * `knip-baseline.json` as dead exports. When Pack or a station table starts
+ * reading scope for real, declare it on that route.
+ */
+const PARAM_CONSTANT_DECL =
+  /^\s*(?:export\s+)?const\s+[A-Z][A-Z0-9_]*_PARAM(?:S)?\s*(?::[^=]*)?=\s*'([a-zA-Z_][a-zA-Z0-9_]*)'/gm;
 
 /** True for a source file the guard should read (not a test/spec sibling). */
 function isGoverned(path: string): boolean {
@@ -210,4 +273,44 @@ test('no raw param read in a governed tree bypasses a spec', () => {
 
   const stale = Object.keys(UNDECLARED_READS).filter((key) => !seenUndeclared.has(key));
   assert.deepEqual(stale, [], 'These UNDECLARED_READS entries are gone — delete them.');
+});
+
+test('every *_PARAM constant is declared by a spec, or excused with a reason', () => {
+  const declared = new Set<string>([
+    ...ALL_SPECS.flatMap((spec) => Object.keys(spec.owns)),
+    ...Object.keys(AMBIENT_PARAMS),
+  ]);
+
+  const offenders: string[] = [];
+  const seen = new Set<string>();
+
+  for (const file of walk(SRC_ROOT)) {
+    const source = readFileSync(file, 'utf8');
+    for (const match of source.matchAll(PARAM_CONSTANT_DECL)) {
+      const key = match[1]!;
+      if (declared.has(key)) continue;
+      if (key in UNDECLARED_PARAM_CONSTANTS) {
+        seen.add(key);
+        continue;
+      }
+      offenders.push(`${relative(SRC_ROOT, file)} declares ?${key}= but no spec owns it`);
+    }
+  }
+
+  assert.deepEqual(
+    [...new Set(offenders)].sort(),
+    [],
+    'A *_PARAM constant names a URL param no spec declares. Because the read goes ' +
+      'through the constant, the literal-only read guard above cannot see it — and ' +
+      'on any route that mounts useSurfaceParamHygiene() the param is DROPPED on ' +
+      'arrival, so the control silently reverts. Declare it on the owning route, ' +
+      'or in AMBIENT_PARAMS when a shared shell owns the question.',
+  );
+
+  const stale = Object.keys(UNDECLARED_PARAM_CONSTANTS).filter((key) => !seen.has(key));
+  assert.deepEqual(
+    stale,
+    [],
+    'These UNDECLARED_PARAM_CONSTANTS entries no longer match any constant — delete them.',
+  );
 });

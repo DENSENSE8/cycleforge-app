@@ -53,8 +53,11 @@ export interface TableColumnSpec {
   group: TableColumnGroup;
   /** Data-type → header glyph (optional; grids that render typed headers set it). */
   type?: ColumnType;
-  /** Horizontal content alignment (e.g. numbers right-align). Optional. */
-  align?: 'start' | 'end';
+  // NO `align` here. It existed on this registry, was never set by any entry and
+  // never read by any consumer — a field that looked like the alignment SoT while
+  // the real decision was being re-typed as a ternary in five headers. Alignment
+  // now lives on `LedgerGridColumnModel.align`, derived from `type` by
+  // `resolveGridColumnAlign`. This registry is the Fields-menu vocabulary only.
 }
 
 /** Stable ids for every shared list table that supports column config. */

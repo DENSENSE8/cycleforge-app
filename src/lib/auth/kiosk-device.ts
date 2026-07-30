@@ -26,6 +26,8 @@ import type { NextRequest } from 'next/server';
 import pool from '@/lib/db';
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import { verifyStaffPin, PinError } from '@/lib/auth/pin';
+import { effectivePermissionsForStaff } from '@/lib/auth/role-store';
+import type { PermissionString } from '@/lib/auth/permissions-shared';
 import type { OrgId } from '@/lib/tenancy/constants';
 
 /** Device-token cookie. Distinct from the staff `cf_sid` so a kiosk can never present a staff session. */
@@ -243,18 +245,44 @@ export async function revokeKioskDevice(orgId: OrgId, deviceId: number): Promise
 /**
  * Resolve a staff PIN presented for a privileged kiosk action into a verified
  * `staffId`, org-scoped so a PIN only authorizes within the device's own org.
- * Base intake stays anonymous; only refund / repair-approval / price-override
- * style actions call this, and the returned id is what `recordAudit` attributes
- * the write to (the device stays the `via`). Returns null on any bad PIN.
+ * Base intake stays anonymous; only refund / repair-approval / price-override /
+ * take-payment style actions call this, and the returned id is what
+ * `recordAudit` attributes the write to (the device stays the `via`).
+ *
+ * `requiredPermission` is a REQUIRED argument with no default, deliberately.
+ * It decides whether a valid PIN is *enough* to authorize the action, which is a
+ * safety classification — and a defaulted safety classification is a silent
+ * opt-out that every call site you did not visit takes automatically, with the
+ * compiler staying quiet about exactly the ones you missed
+ * (`.claude/rules/backend-patterns.md`). Pass an explicit `null` to mean "a
+ * valid PIN is sufficient" so that choice is visible at the call site.
+ *
+ * Returns null on a bad PIN, an unknown staff, OR a staff who authenticated
+ * correctly but does not hold the permission. The caller cannot distinguish —
+ * a step-up prompt must not tell an unattended room which PINs are real.
  */
 export async function resolveKioskStepUp(
   orgId: OrgId,
   staffId: number,
   pin: string,
+  requiredPermission: PermissionString | null,
 ): Promise<number | null> {
   if (!Number.isFinite(staffId) || staffId <= 0 || !pin) return null;
   try {
     const row = await verifyStaffPin(staffId, pin, orgId);
+    if (requiredPermission) {
+      const permissions = await effectivePermissionsForStaff(row.id, {}, orgId);
+      if (!permissions.has(requiredPermission)) {
+        // Authenticated, but not authorized for THIS action. Log it — a real
+        // person tried to take an action their role does not cover, and that is
+        // worth seeing; returning null silently would hide it entirely.
+        console.warn('[kiosk-stepup] permission denied', {
+          staffId: row.id,
+          requiredPermission,
+        });
+        return null;
+      }
+    }
     return row.id;
   } catch (err) {
     if (err instanceof PinError) return null;

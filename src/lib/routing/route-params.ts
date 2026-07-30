@@ -25,6 +25,8 @@
 
 import { z } from 'zod';
 
+import { isTableDensity } from '@/lib/tables/table-density';
+
 /** A param's value contract. Output must be a string — URLs hold strings. */
 export type ParamSchema = z.ZodType<string>;
 
@@ -127,6 +129,47 @@ export const AMBIENT_PARAMS = {
   lineId: paramPositiveInt,
   /** Carton whose workspace pane is open (restored across a reload). */
   openReceivingId: paramPositiveInt,
+  /**
+   * Which pane a MOBILE `RouteShell` is showing (`actions` | `history`).
+   *
+   * Ambient because a shared design-system shell owns it, not a route:
+   * `RouteShell` (`@/design-system/components/RouteShell`) is mounted by
+   * `/test`, `/shipping`, `/support`, `/sourcing`, `/walk-in` and the receiving
+   * surfaces, and asks the identical question on each.
+   *
+   * **This was a live mobile defect, not a precaution.** `RouteShell` reads it
+   * through a CONSTANT (`searchParams.get(PANE_PARAM)`) from a file outside every
+   * surface tree, so neither the migration method's `.get('literal')` grep nor the
+   * ownership guard's literal-only regex could see it — and no spec declared it.
+   * On the two surfaces that already mounted `useSurfaceParamHygiene()` AND a
+   * `RouteShell` (`/test`, receiving), tapping the mobile "Actions" tab wrote
+   * `?pane=actions` and the hygiene hook stripped it on the next commit, snapping
+   * the pane straight back to History.
+   */
+  pane: paramEnum(['actions', 'history'] as const),
+  /**
+   * The station-table URL contract (`@/lib/station/table-url-params`) — the same
+   * three questions on every station/history table, so they are ambient for the
+   * same reason `colsort`/`coldir` are.
+   *
+   * **These were dropped on arrival, which broke saved views outright.**
+   * `SAVED_VIEW_PARAM_KEYS` captures `layout` / `density` / `weekOffset` for
+   * `tech_history`, `testing_history`, `receiving_history` and
+   * `receiving_incoming`; applying a saved view wrote them and the hygiene hook
+   * on `/receiving/history`, `/incoming` and `/test` stripped every one, so the
+   * view appeared to apply and then silently reverted. Like `pane`, all three are
+   * read through CONSTANTS from modules outside any surface tree, so neither the
+   * `.get('literal')` grep nor the ownership guard's regex could see them.
+   *
+   * Station `scope` is deliberately NOT here: `useStationStaffScope` has zero
+   * consumers and `SCOPE_PARAM`/`parseScope` already sit in `knip-baseline.json`
+   * as dead exports. `?scope=` stays owned by `/` (Home), whose vocabulary is a
+   * different question with its own local parser.
+   */
+  layout: paramRoundTrip((raw) => (raw === 'board' || raw === 'all' ? raw : null)),
+  density: paramRoundTrip((raw) => (isTableDensity(raw) ? raw : null)),
+  /** Week navigation offset. Only positive values are ever written (0 = deleted). */
+  weekOffset: paramPositiveInt,
 } as const satisfies Record<string, ParamSchema>;
 
 export type AmbientParamKey = keyof typeof AMBIENT_PARAMS;
@@ -156,6 +199,16 @@ export const SHARED_OWNED_KEYS: Readonly<Record<string, string>> = {
   range: 'A time-range facet over the surface\'s own data. Same question; each route validates its own windows.',
   plan: 'A focused plan/shipment id. Same id-shaped question on the FBA board and the Home plans rail.',
   pending: 'A "pending" facet over the surface\'s own list — the Dashboard\'s legacy outbound-tab alias, and the Products catalog\'s pending-action refine flag. The two routes cannot both be current and each validates its own value shape, so a longer name would buy nothing; the entry leaves with the Dashboard alias.',
+  wstatus: 'Warranty-claim status. Owned by `/support`, which renders the warranty board, and by `/dashboard`, which reads it ONLY to forward a legacy `?warranty=` bookmark on to Support (`buildSupportWarrantyRedirectSearch`). A hand-off, not a second warranty surface — the entry leaves when that redirect is sunset.',
+  wexp: 'Warranty-expiry filter; same `/support` + `/dashboard` hand-off as `wstatus`, and leaves with it.',
+  serial: 'A scanned serial number. Same identifier space on Operations (the journey focus dimension) and Warehouse (the location lookup) — both answer "which unit", so a longer name would not disambiguate anything.',
+  state: 'A state facet over the surface\'s own list — Incoming\'s carrier delivery state, Inventory\'s unit lifecycle states (a comma list). Same question, per-route vocabularies.',
+  section: 'A named section of the surface — Operations\' analytics scroll anchor, and Inventory\'s `replenish` mode selector. Both name "which part of this page"; each validates its own values.',
+  unit: 'A focused serial-unit. Same id space on Operations (journey focus) and Inventory (the by-unit viewport), so a longer name would not disambiguate anything.',
+  sku: 'A focused SKU string — Products Pairing and the Inventory by-sku viewport address the same identifier. (Distinct from `skuId`, the sku_catalog row id.)',
+  filter: 'The surface\'s own named filter set — Home\'s feed filter and Inventory\'s bucket multi-select. One question, per-route vocabularies.',
+  openRepair: 'A focused repair order id. Same id space on `/repair`, which renders it, and on `/walk-in`, which only reads it to forward the legacy deep-link to `/pickup?job=repair` — the hand-off is the reason the key is deliberately identical on both sides.',
+  tab: 'Sub-tab within the surface, shared by `/repair` and `/walk-in` BY DESIGN rather than by accident: `resolveWalkInRepairModeRedirect` in proxy.ts sends `/walk-in?mode=repair&tab=X` to `/repair?tab=X` and deliberately preserves `tab` so a queue deep-link survives the hop. Renaming either side would break that continuity. Vocabularies stay per-route (Pickup draft/completed · Sales today/all · Repair incoming/active/done).',
 };
 
 /** One route's param contract. */

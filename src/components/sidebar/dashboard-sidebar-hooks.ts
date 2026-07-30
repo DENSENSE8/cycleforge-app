@@ -13,6 +13,8 @@ import { useEventBridge } from '@/hooks';
 import type { ShippedFormData } from '@/components/shipped';
 import { refreshDomains } from '@/lib/refresh/bus';
 import { REFRESH_BUNDLES } from '@/lib/refresh/domains';
+import { safeRandomUUID } from '@/lib/safe-uuid';
+import { toast } from '@/lib/toast';
 
 
 /**
@@ -77,11 +79,17 @@ export function useShippedFormSubmit(
   return useCallback(
     async (data: ShippedFormData) => {
       try {
+        // Per-submit key so a flaky-network retry of the same click replays
+        // instead of inserting a second order (see orders.add idempotency).
+        const idempotencyKey = safeRandomUUID();
         const response =
           data.mode === 'add_order'
             ? await fetch('/api/orders/add', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Idempotency-Key': idempotencyKey,
+                },
                 body: JSON.stringify({
                   orderId: data.order_id,
                   productTitle: data.product_title,
@@ -89,6 +97,7 @@ export function useShippedFormSubmit(
                   sku: data.sku || null,
                   accountSource: 'Manual',
                   condition: data.condition,
+                  idempotencyKey,
                 }),
               })
             : await fetch('/api/shipped/submit', {
@@ -99,13 +108,13 @@ export function useShippedFormSubmit(
 
         const result = await response.json();
         if (!result.success) {
-          alert(result.error || 'Failed to submit form. Please try again.');
+          toast.error(result.error || 'Failed to submit form. Please try again.');
           return;
         }
         onSuccess();
         refreshDomains(REFRESH_BUNDLES.outboundOrderWrite);
       } catch {
-        alert('Error submitting form. Please try again.');
+        toast.error('Error submitting form. Please try again.');
       }
     },
     [onSuccess],

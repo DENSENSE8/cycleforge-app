@@ -44,6 +44,9 @@ export const POST = withAuth(async (request, ctx) => {
 
 - Thread `clientEventId` through mutations into `inventory_events` (which has `UNIQUE(client_event_id)`), so a client
   retry (flaky mobile network) is a no-op instead of a double-effect. Re-entering the same state returns `idempotent: true`.
+- HTTP request replay for barcode lifecycle writes uses [`api-idempotency.ts`](../../src/lib/api-idempotency.ts)
+  (`readIdempotencyKey` + `withIdempotencyClaim` / claim-or-replay). Covered routes include receiving
+  `mark-received-po`, `tech.serial`, `orders.add`, `packing-logs` (+ `/update`), and `packerlogs` POST.
 
 ## A safety classification is a REQUIRED parameter, never a defaulted one
 

@@ -651,6 +651,7 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
       { id: 'insights',  label: 'Insights',  icon: Sparkles,  to: () => ({ pathname: OPERATIONS, params: { mode: 'insights' } }) },
       { id: 'history',   label: 'History',   icon: History,   to: () => ({ pathname: OPERATIONS, params: { mode: 'history' } }) },
       { id: 'signals',   label: 'Signals',   icon: Zap,       to: () => ({ pathname: OPERATIONS, params: { mode: 'signals' } }) },
+      { id: 'reconciliation', label: 'Reconcile', icon: Link2, to: () => ({ pathname: OPERATIONS, params: { mode: 'reconciliation' } }) },
     ],
     resolveMode: ({ params }) => {
       const m = params.get('mode');
@@ -658,6 +659,7 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
       if (m === 'insights') return 'insights';
       if (m === 'history') return 'history';
       if (m === 'signals') return 'signals';
+      if (m === 'reconciliation') return 'reconciliation';
       return 'live';
     },
   },
@@ -710,11 +712,17 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
   {
     id: 'sourcing', label: 'Sourcing', href: SOURCING, icon: Search, kind: 'main', requires: 'sourcing.view',
     modes: [
-      { id: 'queue',     label: 'Queue',     icon: AlertCircle, to: () => ({ pathname: SOURCING, params: { mode: null, q: null, status: null } }) },
-      { id: 'scout',     label: 'Scout',     icon: Search,      to: () => ({ pathname: SOURCING, params: { mode: 'scout', q: null, status: null } }) },
-      { id: 'watchlist', label: 'Watchlist', icon: Star,        to: () => ({ pathname: SOURCING, params: { mode: 'watchlist', q: null, status: null } }) },
-      { id: 'searches',  label: 'Searches',  icon: Clock,       to: () => ({ pathname: SOURCING, params: { mode: 'searches', q: null, status: null } }) },
-      { id: 'suppliers', label: 'Suppliers', icon: Link2,       to: () => ({ pathname: SOURCING, params: { mode: 'suppliers', q: null, status: null } }) },
+      // Each target used to null `q` and `status` by hand — and forgot `by` and
+      // `range`, so Scout's field toggle and the Analytics window leaked into
+      // every sibling mode. `/sourcing` declares SOURCING_ROUTE_PARAMS, so
+      // `applyModeTarget` CONSTRUCTS from the delta and carries only `staff`;
+      // the nulls could not affect the result. Verified byte-identical before
+      // and after removal for all five modes.
+      { id: 'queue',     label: 'Queue',     icon: AlertCircle, to: () => ({ pathname: SOURCING, params: { mode: null } }) },
+      { id: 'scout',     label: 'Scout',     icon: Search,      to: () => ({ pathname: SOURCING, params: { mode: 'scout' } }) },
+      { id: 'watchlist', label: 'Watchlist', icon: Star,        to: () => ({ pathname: SOURCING, params: { mode: 'watchlist' } }) },
+      { id: 'searches',  label: 'Searches',  icon: Clock,       to: () => ({ pathname: SOURCING, params: { mode: 'searches' } }) },
+      { id: 'suppliers', label: 'Suppliers', icon: Link2,       to: () => ({ pathname: SOURCING, params: { mode: 'suppliers' } }) },
     ],
     resolveMode: ({ params }) => {
       const m = params.get('mode');
@@ -789,9 +797,14 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
   {
     id: 'review', label: 'Review', href: REVIEW, icon: ClipboardList, kind: 'station', requires: 'packing.review',
     modes: [
-      { id: 'packer', label: 'Packing', icon: PackageCheck, to: () => ({ pathname: REVIEW, params: { mode: null, rtab: null, packerLogId: null, orderId: null, choreId: null } }) },
-      { id: 'pairing', label: 'Pairing', icon: Link2, to: () => ({ pathname: REVIEW, params: { mode: 'pairing', rtab: null, packerLogId: null, orderId: null, choreId: null } }) },
-      { id: 'catalog-link', label: 'Catalog link', icon: Tags, to: () => ({ pathname: REVIEW, params: { mode: 'catalog-link', rtab: null, packerLogId: null, orderId: null, choreId: null } }) },
+      // Each target used to null `rtab`/`packerLogId`/`orderId`/`choreId` inline —
+      // the widest of the remaining clear lists, re-stated once per mode.
+      // `/review` declares REVIEW_ROUTE_PARAMS, so `applyModeTarget` CONSTRUCTS
+      // from the delta and carries only `staff`; the nulls could not affect the
+      // result. Verified byte-identical before and after removal for all three.
+      { id: 'packer', label: 'Packing', icon: PackageCheck, to: () => ({ pathname: REVIEW, params: { mode: null } }) },
+      { id: 'pairing', label: 'Pairing', icon: Link2, to: () => ({ pathname: REVIEW, params: { mode: 'pairing' } }) },
+      { id: 'catalog-link', label: 'Catalog link', icon: Tags, to: () => ({ pathname: REVIEW, params: { mode: 'catalog-link' } }) },
     ],
     resolveMode: ({ params }) => {
       const m = params.get('mode');
@@ -806,11 +819,22 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
     modes: [
       // `open: null` on every switch so a selection (exception/unit id) from one
       // mode never leaks into another's right pane.
-      { id: 'ledger',    label: 'Ledger',    icon: Clipboard,  to: () => ({ pathname: INVENTORY, params: { mode: null, section: null, open: null } }) },
-      { id: 'triage',    label: 'Triage',    icon: Zap,        to: () => ({ pathname: `${INVENTORY}/triage`, params: { mode: null, section: null, open: null } }) },
-      { id: 'pulse',     label: 'Pulse',     icon: TrendingUp, to: () => ({ pathname: `${INVENTORY}/pulse`, params: { mode: null, section: null, open: null } }) },
-      { id: 'graph',     label: 'Graph',     icon: Layers,     to: () => ({ pathname: `${INVENTORY}/graph`, params: { mode: null, section: null, open: null } }) },
-      { id: 'replenish', label: 'Replenish', icon: History,    to: () => ({ pathname: INVENTORY, params: { section: 'replenish', mode: null, open: null } }) },
+      // Each target used to null `mode`, `section` and `open` by hand — and missed
+      // `sku`/`bin`/`unit`/`state`/`condition`/`q`/`field`/`filter`, so a Ledger
+      // selection and its filter set rode into Graph. `/inventory` declares
+      // INVENTORY_ROUTE_PARAMS, so `applyModeTarget` CONSTRUCTS from the delta and
+      // carries only `staff`; the nulls could not affect the result. Verified
+      // byte-identical before and after removal for all five modes.
+      // Inventory's modes live in the PATH (`/inventory`, `/inventory/triage`, …),
+      // so there is no switch param to set — and because the route now declares a
+      // spec, `applyModeTarget` CONSTRUCTS and the old `{ mode, section, open }`
+      // nulls could not affect the result. An empty delta is the honest form: the
+      // path is the mode, `staff` is the only carry.
+      { id: 'ledger',    label: 'Ledger',    icon: Clipboard,  to: () => ({ pathname: INVENTORY, params: {} }) },
+      { id: 'triage',    label: 'Triage',    icon: Zap,        to: () => ({ pathname: `${INVENTORY}/triage`, params: {} }) },
+      { id: 'pulse',     label: 'Pulse',     icon: TrendingUp, to: () => ({ pathname: `${INVENTORY}/pulse`, params: {} }) },
+      { id: 'graph',     label: 'Graph',     icon: Layers,     to: () => ({ pathname: `${INVENTORY}/graph`, params: {} }) },
+      { id: 'replenish', label: 'Replenish', icon: History,    to: () => ({ pathname: INVENTORY, params: { section: 'replenish' } }) },
     ],
     resolveMode: ({ pathname, params }) => {
       // Path-based modes (consistent with graph). Legacy `?mode=` still resolves.
@@ -829,6 +853,10 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
   {
     id: 'warehouse', label: 'Warehouse', href: WAREHOUSE, icon: Warehouse, kind: 'main', requires: 'sku_stock.view',
     modes: [
+      // `{ tab: null }` on the default mode reads as "drop the switch", not as a
+      // clear list — and now that /warehouse declares a spec, every sibling's
+      // state (`room`, `code`, `serial`, `q`, `status`, the form toggles) is
+      // dropped by construction rather than by nobody having listed it.
       { id: 'labels', label: 'Labels', icon: Printer,  to: () => ({ pathname: WAREHOUSE, params: { tab: null } }) },
       { id: 'racks',  label: 'Racks',  icon: Layers,   to: () => ({ pathname: WAREHOUSE, params: { tab: 'racks' } }) },
       { id: 'rooms',  label: 'Rooms',  icon: DoorOpen, to: () => ({ pathname: WAREHOUSE, params: { tab: 'rooms' } }) },
@@ -888,8 +916,12 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
   {
     id: 'walk-in', label: 'Sales', href: WALK_IN, icon: SalesPage, kind: 'main', requires: 'walk_in.view',
     modes: [
-      { id: 'pickup', label: 'Local Pickup', icon: ShoppingCart, to: () => ({ pathname: WALK_IN, params: { mode: 'pickup', tab: null, category: null } }) },
-      { id: 'sales',  label: 'Sales',        icon: SalesPrice,   to: () => ({ pathname: WALK_IN, params: { mode: null, tab: null, category: null } }) },
+      // Both targets used to null `tab` and legacy `category` by hand. `/walk-in`
+      // declares WALK_IN_ROUTE_PARAMS, so `applyModeTarget` CONSTRUCTS from the
+      // delta and carries only `staff`; the nulls could not affect the result.
+      // Verified byte-identical before and after removal for both modes.
+      { id: 'pickup', label: 'Local Pickup', icon: ShoppingCart, to: () => ({ pathname: WALK_IN, params: { mode: 'pickup' } }) },
+      { id: 'sales',  label: 'Sales',        icon: SalesPrice,   to: () => ({ pathname: WALK_IN, params: { mode: null } }) },
     ],
     // Reads the new `?mode=`, falling back to legacy `?category=` for old links.
     resolveMode: ({ params }) => parseWalkInHistoryMode(params.get('mode') ?? params.get('category')),

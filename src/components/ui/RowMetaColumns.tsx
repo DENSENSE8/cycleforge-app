@@ -298,12 +298,12 @@ export function RowMetaColumns({
       style={{ paddingLeft: indent, gridTemplateColumns: tracks.join(' ') }}
     >
       {showQty ? (
-        <span data-col="qty" className="truncate font-mono tabular-nums normal-case tracking-normal">
+        <span data-col="qty" className="truncate text-right font-mono tabular-nums normal-case tracking-normal">
           {qty}
         </span>
       ) : null}
       {showCondition ? (
-        <span data-col="condition" className="min-w-0 truncate">
+        <span data-col="condition" className="min-w-0 truncate text-left">
           {condition}
         </span>
       ) : null}

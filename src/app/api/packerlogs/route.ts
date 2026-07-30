@@ -6,8 +6,9 @@ import { eq } from 'drizzle-orm';
 import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
 import { resolveShipmentId } from '@/lib/shipping/resolve';
 import { createStationActivityLog } from '@/lib/station-activity';
-import { createAuditLog } from '@/lib/audit-logs';
+import { recordAudit, AUDIT_ACTION } from '@/lib/audit-logs';
 import { withAuth } from '@/lib/auth/withAuth';
+import { readIdempotencyKey, withIdempotencyClaim } from '@/lib/api-idempotency';
 import { fetchPackerLogRows, type PackerLogsTrackingFilter } from '@/lib/neon/packer-logs-week';
 import { computePackerLogEnrichment } from '@/lib/neon/packer-log-enrichment';
 import { attachPhotoWithLegacyUrl } from '@/lib/photos/service';
@@ -63,8 +64,23 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
 }, { permission: 'packing.view' });
 
 export const POST = withAuth(async (req: NextRequest, ctx) => {
+    const body = await req.json().catch(() => null);
+    if (!body || typeof body !== 'object') {
+        return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
+    }
+
+    const idempotencyKey = readIdempotencyKey(
+        req,
+        body.idempotencyKey ?? body.clientEventId ?? body.client_event_id ?? null,
+    );
+
+    const out = await withIdempotencyClaim(pool, {
+        orgId: ctx.organizationId,
+        idempotencyKey,
+        route: 'packerlogs.post',
+        staffId: ctx.staffId ?? null,
+    }, async () => {
     try {
-        const body = await req.json();
         // Server-trusted actor — body.packedBy is ignored.
         const packedBy = ctx.staffId;
 
@@ -95,14 +111,14 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
             },
         });
         if ((body.trackingType || 'ORDERS') === 'ORDERS') {
-            await createAuditLog(pool, {
-                actorStaffId: packedBy,
+            await recordAudit(pool, ctx, req, {
                 source: 'api.packerlogs.post',
-                action: 'PACK_COMPLETED',
+                action: AUDIT_ACTION.PACK_COMPLETED,
                 entityType: shipmentId ? 'SHIPMENT' : 'PACKER_LOG',
                 entityId: String(shipmentId ?? packerLogId ?? body.shippingTrackingNumber ?? 'unknown'),
                 stationActivityLogId: salId,
-                metadata: {
+                method: 'scan',
+                extra: {
                     tracking_type: body.trackingType || 'ORDERS',
                 },
             });
@@ -138,11 +154,20 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
                 ),
             );
         }
-        return NextResponse.json(newLog[0]);
+        const row = newLog[0];
+        return {
+            status: 200,
+            body: (row ? { ...row } : { success: true }) as Record<string, unknown>,
+        };
     } catch (error: any) {
         console.error('Error creating packer log:', error);
-        return NextResponse.json({ error: 'Failed to create log', details: error.message }, { status: 500 });
+        return {
+            status: 500,
+            body: { error: 'Failed to create log', details: error.message },
+        };
     }
+    });
+    return NextResponse.json(out.body, { status: out.status });
 }, { permission: 'packing.complete_order' });
 
 export const PUT = withAuth(async (req: NextRequest) => {

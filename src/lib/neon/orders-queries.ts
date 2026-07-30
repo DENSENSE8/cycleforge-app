@@ -273,7 +273,23 @@ const ORDER_SERIALS_CTE = `
         AND so.shipment_id = o.shipment_id
     ) ship_out ON true
     LEFT JOIN staff shipped_out_staff ON shipped_out_staff.id = ship_out.shipped_out_by
-    LEFT JOIN tech_serial_numbers tsn ON tsn.shipment_id = o.shipment_id AND o.shipment_id IS NOT NULL
+    LEFT JOIN tech_serial_numbers tsn ON /* CF-03 */ (
+      tsn.organization_id = o.organization_id
+      AND (
+        tsn.order_id = o.id
+        OR (
+          tsn.order_id IS NULL
+          AND o.shipment_id IS NOT NULL
+          AND tsn.shipment_id = o.shipment_id
+          AND NOT EXISTS (
+            SELECT 1 FROM orders o2
+            WHERE o2.shipment_id = o.shipment_id
+              AND o2.organization_id = o.organization_id
+              AND o2.id <> o.id
+          )
+        )
+      )
+    )
     WHERE COALESCE(stn.is_carrier_accepted OR stn.is_in_transit
             OR stn.is_out_for_delivery OR stn.is_delivered, false)
     GROUP BY o.id, o.organization_id, o.shipment_id, wa_deadline.deadline_at, o.order_id, o.product_title, o.quantity,
@@ -486,7 +502,23 @@ export async function getPackedOrdersForAi(opts: {
         ORDER BY created_at DESC LIMIT 1
       ) wa_t ON true
       LEFT JOIN shipping_tracking_numbers stn ON stn.id = o.shipment_id
-      LEFT JOIN tech_serial_numbers tsn ON tsn.shipment_id = o.shipment_id AND o.shipment_id IS NOT NULL
+      LEFT JOIN tech_serial_numbers tsn ON /* CF-03 */ (
+      tsn.organization_id = o.organization_id
+      AND (
+        tsn.order_id = o.id
+        OR (
+          tsn.order_id IS NULL
+          AND o.shipment_id IS NOT NULL
+          AND tsn.shipment_id = o.shipment_id
+          AND NOT EXISTS (
+            SELECT 1 FROM orders o2
+            WHERE o2.shipment_id = o.shipment_id
+              AND o2.organization_id = o.organization_id
+              AND o2.id <> o.id
+          )
+        )
+      )
+    )
       LEFT JOIN staff s_packer ON s_packer.id = pl.packed_by
       LEFT JOIN staff s_tester ON s_tester.id = wa_t.assigned_tech_id
       LEFT JOIN staff s_tested ON s_tested.id = tsn.tested_by
@@ -684,7 +716,23 @@ export async function getShippedOrderById(id: number, orgId?: OrgId): Promise<Sh
             AND sal.activity_type = 'SERIAL_ADDED'
           ORDER BY sal.created_at DESC NULLS LAST, sal.id DESC LIMIT 1
         ) test_sal ON true
-        LEFT JOIN tech_serial_numbers tsn ON tsn.shipment_id = o.shipment_id AND o.shipment_id IS NOT NULL
+        LEFT JOIN tech_serial_numbers tsn ON /* CF-03 */ (
+      tsn.organization_id = o.organization_id
+      AND (
+        tsn.order_id = o.id
+        OR (
+          tsn.order_id IS NULL
+          AND o.shipment_id IS NOT NULL
+          AND tsn.shipment_id = o.shipment_id
+          AND NOT EXISTS (
+            SELECT 1 FROM orders o2
+            WHERE o2.shipment_id = o.shipment_id
+              AND o2.organization_id = o.organization_id
+              AND o2.id <> o.id
+          )
+        )
+      )
+    )
         WHERE o.id = $1
           ${orgClause}
           AND COALESCE(stn.is_carrier_accepted OR stn.is_in_transit
@@ -1306,7 +1354,23 @@ export async function getActiveOrders(options?: {
          AND pl.tracking_type = 'ORDERS'
        ORDER BY pl.created_at DESC NULLS LAST, pl.id DESC LIMIT 1
      ) pl ON true
-     LEFT JOIN tech_serial_numbers tsn ON tsn.shipment_id = o.shipment_id AND o.shipment_id IS NOT NULL
+     LEFT JOIN tech_serial_numbers tsn ON /* CF-03 */ (
+      tsn.organization_id = o.organization_id
+      AND (
+        tsn.order_id = o.id
+        OR (
+          tsn.order_id IS NULL
+          AND o.shipment_id IS NOT NULL
+          AND tsn.shipment_id = o.shipment_id
+          AND NOT EXISTS (
+            SELECT 1 FROM orders o2
+            WHERE o2.shipment_id = o.shipment_id
+              AND o2.organization_id = o.organization_id
+              AND o2.id <> o.id
+          )
+        )
+      )
+    )
      WHERE ${conditions.join(' AND ')}
      GROUP BY o.id, o.shipment_id, wa_deadline.deadline_at, o.order_id, o.product_title, o.quantity,
               o.condition, o.item_number, stn.tracking_number_raw, o.sku, o.is_out_of_stock,

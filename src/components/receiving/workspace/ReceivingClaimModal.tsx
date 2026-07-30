@@ -36,6 +36,14 @@ import type { ReceivingClaimController } from './claim/hooks/useReceivingClaimCo
  * handed to `onTicketCreated`, which the parent uses to auto-fill the Support
  * FlowSection.
  *
+ * The link flow (attach an EXISTING ticket) runs the same Photos → Ticket →
+ * Review arc once a ticket is picked — Find → Photos → Ticket → Review →
+ * Linked → Seller — reusing the identical photo-picker, subject/body/
+ * recipients editor, and review summary components; "Ticket" prefills the
+ * subject from the linked ticket's own title. Review posts a comment (with
+ * attached photos) to that ticket instead of filing a new one. Seller is
+ * skipped for both flows on a 'return' claim (`c.sellerStepApplicable`).
+ *
  * Thin composition layer — all state/effects/data live in
  * {@link useReceivingClaimController} and the per-step components under
  * `./claim/`.
@@ -92,6 +100,12 @@ function ClaimStepBody({ c }: { c: ReceivingClaimController }) {
         {c.mode === 'link' ? (
           c.linkStep === 'find' ? (
             <ClaimLinkFindStep c={c} />
+          ) : c.linkStep === 'photos' ? (
+            <ClaimPhotosStep c={c} />
+          ) : c.linkStep === 'compose' ? (
+            <ClaimComposeStep c={c} />
+          ) : c.linkStep === 'review' ? (
+            <ClaimReviewStep c={c} />
           ) : c.linkStep === 'linked' ? (
             <ClaimLinkedStep c={c} />
           ) : (

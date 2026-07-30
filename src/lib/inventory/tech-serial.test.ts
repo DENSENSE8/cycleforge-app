@@ -48,6 +48,7 @@ test('attachTechSerial upper-cases, applies defaults, and binds the FK', async (
   equal(params[3], 'RECEIVING', 'station_source');
   equal(params[4], 11, 'receiving_line_id');
   equal(params[14], 5, 'serial_unit_id is always bound (anti-drift)');
+  equal(params[15], null, 'order_id null when omitted');
 });
 
 test('attachTechSerial defaults station_source to TECH and serial_unit_id to null', async () => {
@@ -56,10 +57,11 @@ test('attachTechSerial defaults station_source to TECH and serial_unit_id to nul
   const { params } = exec.calls[0];
   equal(params[3], 'TECH', 'default station_source');
   equal(params[14], null, 'serial_unit_id null when omitted');
+  equal(params[15], null, 'order_id null when omitted');
   // Null-coalesced optionals — no undefined leaks into the driver.
   deepEqual(
     params.map((p) => p === undefined),
-    new Array(15).fill(false),
+    new Array(16).fill(false),
     'no undefined params',
   );
 });
@@ -69,7 +71,7 @@ test('organization_id is bound only when provided (preserves the NOT NULL defaul
   const a = captureExecutor();
   await attachTechSerial({ serialNumber: 's' }, a as unknown as Exec);
   ok(!/organization_id/.test(a.calls[0].text), 'no organization_id column when omitted');
-  equal(a.calls[0].params.length, 15, 'just the 15 core params');
+  equal(a.calls[0].params.length, 16, 'just the 16 core params');
 
   // Provided → column appended, value is the last param.
   const b = captureExecutor();
@@ -79,8 +81,18 @@ test('organization_id is bound only when provided (preserves the NOT NULL defaul
   );
   ok(/fnsku_log_id/.test(b.calls[0].text), 'fnsku_log_id column present');
   ok(/organization_id/.test(b.calls[0].text), 'organization_id column present');
-  equal(b.calls[0].params[15], 88, 'fnsku_log_id bound after the core 15');
-  equal(b.calls[0].params[16], 'org-123', 'organization_id bound last');
+  equal(b.calls[0].params[16], 88, 'fnsku_log_id bound after the core 16');
+  equal(b.calls[0].params[17], 'org-123', 'organization_id bound last');
+});
+
+test('attachTechSerial stamps CF-03 order_id when provided', async () => {
+  const exec = captureExecutor();
+  await attachTechSerial(
+    { serialNumber: 's', orderId: 42, organizationId: 'org-1' },
+    exec as unknown as Exec,
+  );
+  ok(/order_id/.test(exec.calls[0].text), 'order_id column present');
+  equal(exec.calls[0].params[15], 42, 'order_id bound');
 });
 
 // ─── Source guards: the call sites use the helper, not a raw INSERT ──────────

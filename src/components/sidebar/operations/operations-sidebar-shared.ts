@@ -10,54 +10,39 @@
  * Pure data only — no JSX.
  */
 
-import { Activity, BarChart3, Sparkles, History, Barcode, MapPin, PackageCheck, Zap } from '@/components/Icons';
+import { Barcode, MapPin, PackageCheck } from '@/components/Icons';
 import type { HorizontalSliderItem } from '@/components/ui/HorizontalButtonSlider';
 import type { JourneyDimension } from '@/lib/timeline/journey';
 
 // ── Sidebar mode switcher ───────────────────────────────────────────────────
 
-export type OperationsMode = 'live' | 'analytics' | 'insights' | 'history' | 'signals' | 'plans';
+export type OperationsMode = 'live' | 'analytics' | 'insights' | 'history' | 'signals' | 'plans' | 'reconciliation';
 
 /**
  * `live` is the default and stays on the bare `/operations` path (no `?mode=`)
  * for deep-link + realtime back-compat — it renders the existing floor
  * dashboard. The other modes flip `?mode=`.
  *
- * - live      → real-time operations (the existing OperationsDashboard)
- * - analytics → deep analytics dashboard (trends, breakdowns, inventory health)
- * - insights  → AI assistant, pre-scoped to live ops/inventory context
- * - history   → forensic "what happened" (Monitor). Two URL-driven regions:
- *               Browse (org-wide filterable event feed over SAL / inventory_events
- *               / audit_logs / carrier / warranty — gated by
- *               NEXT_PUBLIC_OPERATIONS_HISTORY_BROWSE, default off) and Trace
- *               (a focused ?order= / ?serial= / ?tracking= journey). Absorbs the
- *               legacy /audit-log display over time. See
- *               docs/operations-history-consolidation-plan.md.
- * - signals   → entity_signals timeline + browse — the "why did this outcome
- *               happen" layer. Deliberately a SEPARATE mode (plan Decision D2):
- *               Studio-anchored, registry-extensible, cross-linked to History,
- *               never merged into the History event firehose.
- * - plans     → strategic ops plans (ops_plans tables) — staff home for plan
- *               progress over /api/ops-plans: list (sidebar) → phases + tasks
- *               (Workbench). Bridged agentic-loop plan can deepen with
- *               ?view=live (Monitor MDX + plan agent). Live via
- *               `ops_plans:changes` — no polling. `/forge` redirects here.
+ * - live            → real-time operations (the existing OperationsDashboard)
+ * - analytics       → deep analytics dashboard (trends, breakdowns, inventory health)
+ * - insights        → AI assistant, pre-scoped to live ops/inventory context
+ * - history         → forensic "what happened" (Monitor)
+ * - signals         → entity_signals timeline + browse
+ * - plans           → legacy redirect to Home
+ * - reconciliation  → CF-03 smear candidates + open tracking exceptions (Monitor)
+ *
+ * L2 mode list + icons live in SIDEBAR_PAGE_NAV (GlobalHeader Mode switcher).
  */
-export const OPERATIONS_MODE_ITEMS: HorizontalSliderItem[] = [
-  { id: 'live',      label: 'Live',      icon: Activity },
-  { id: 'analytics', label: 'Analytics', icon: BarChart3 },
-  { id: 'insights',  label: 'Insights',  icon: Sparkles },
-  { id: 'history',   label: 'History',   icon: History },
-  { id: 'signals',   label: 'Signals',   icon: Zap },
-  // 'plans' removed as a primary Operations mode — forge/plans moved to Home
-  // (HOME-OPS plan §3.2). `?mode=plans` still resolves via the URL SoT and is
-  // redirected to Home by OperationsWorkspace, so bookmarks keep working.
-];
 
 export const DEFAULT_OPERATIONS_MODE: OperationsMode = 'live';
 
 export function parseOperationsMode(raw: string | null | undefined): OperationsMode {
-  return raw === 'analytics' || raw === 'insights' || raw === 'history' || raw === 'signals' || raw === 'plans'
+  return raw === 'analytics' ||
+    raw === 'insights' ||
+    raw === 'history' ||
+    raw === 'signals' ||
+    raw === 'plans' ||
+    raw === 'reconciliation'
     ? raw
     : 'live';
 }

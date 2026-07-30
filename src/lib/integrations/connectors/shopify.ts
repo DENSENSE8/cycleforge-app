@@ -30,7 +30,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
 import type { CanonicalOrderLine } from '@/lib/orders/canonical-order';
 import { ingestConnectorOrders } from './ingest-connector-orders';
 import { getIntegrationCredentials, type ShopifyCredentials } from '@/lib/integrations/credentials';
-import { isNangoConfigured, nangoProxy } from '@/lib/integrations/nango';
+import { getNangoConnection, isNangoConfigured, nangoProxy } from '@/lib/integrations/nango';
 import { getSyncCursor, updateSyncCursor } from '@/lib/sync-cursors';
 import type { HealthResult, SyncOutcome } from './types';
 
@@ -83,7 +83,21 @@ async function shopifyGraphql<T>(
 ): Promise<T> {
   let body: GraphqlResponse<T>;
 
-  if (isNangoConfigured()) {
+  // Branch on whether THIS ORG has a Nango connection — not on whether Nango is
+  // configured process-wide. `isNangoConfigured()` only reports that
+  // NANGO_SECRET_KEY is present, which is true on every environment that has
+  // ever connected any Nango provider (Square, today). It said nothing about
+  // Shopify, so a Shopify-on-vault org took the Nango branch and died in
+  // nangoProxy with "No Nango connection for shopify" — while the vault
+  // fallback below sat unreachable in the `else`.
+  //
+  // Shopify cannot even obtain a connection marker yet: the connect flow gates
+  // on NANGO_BACKED_PROVIDERS (src/lib/integrations/nango-providers.ts), which
+  // lists only `square`. So this branch is currently always false and the vault
+  // path is the live one — as intended until the Nango dashboard config lands.
+  const nangoConn = isNangoConfigured() ? await getNangoConnection(orgId, 'shopify') : null;
+
+  if (nangoConn) {
     body = await nangoProxy<GraphqlResponse<T>>(orgId, 'shopify', {
       endpoint: '/graphql.json',
       method: 'POST',

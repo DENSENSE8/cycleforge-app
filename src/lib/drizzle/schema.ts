@@ -2059,6 +2059,8 @@ export const techSerialNumbers = pgTable('tech_serial_numbers', {
     () => stationActivityLogs.id,
     { onDelete: 'set null' },
   ),
+  /** CF-03: orders.id this serial was attached to — prefer over shipment_id joins. */
+  orderId: integer('order_id').references(() => orders.id, { onDelete: 'set null' }),
   /** FK to serial_units master, added 2026-04-11. Nullable for legacy/batch-import rows. */
   serialUnitId: integer('serial_unit_id'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
@@ -2315,7 +2317,19 @@ export type NewCycleForgeRunStep = typeof cycleForgeRunSteps.$inferInsert;
 
 export const skuCatalog = pgTable('sku_catalog', {
   id: serial('id').primaryKey(),
-  sku: text('sku').notNull().unique(),
+  organizationId: orgIdCol(),
+  /**
+   * Unique PER ORG (`sku_catalog_org_sku_key`, added 2026-06-28j), NOT globally.
+   *
+   * The legacy global `sku_catalog_sku_key UNIQUE (sku)` still coexists on the
+   * live table until the `.gated` phase-2 drop
+   * (2026-06-14_sku_catalog_composite_unique.sql.gated) lands, so BOTH
+   * constraints are real today. Modeled as the per-org composite because that is
+   * the one upserts arbitrate on and the one that survives the drop — a bare
+   * `.unique()` here claimed the global constraint was the SKU's identity, which
+   * is wrong the moment there is a second tenant.
+   */
+  sku: text('sku').notNull(),
   productTitle: text('product_title').notNull(),
   category: text('category'),
   upc: text('upc'),
@@ -2343,7 +2357,9 @@ export const skuCatalog = pgTable('sku_catalog', {
   providerItemId: text('provider_item_id'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-});
+}, (table) => ({
+  orgSkuUnique: uniqueIndex('sku_catalog_org_sku_key').on(table.organizationId, table.sku),
+}));
 
 // ─── Packing profiles (polymorphic) ─────────────────────────────────────────
 
@@ -2455,6 +2471,15 @@ export const platformListings = pgTable('platform_listings', {
   listingQuantity: integer('listing_quantity'),
   listingCondition: text('listing_condition'),
   upc: text('upc'),
+  // ── Local catalog projection (2026-07-29e) ──
+  /** Provider category MEMBERSHIP. A real array + GIN, not jsonb: "which
+   *  products are in category X" IS the drill query, so it is a queryable
+   *  business fact. The TREE itself lives in platformCatalogCategories. */
+  categoryExternalIds: text('category_external_ids').array().notNull().default([]),
+  thumbnailUrl: text('thumbnail_url'),
+  /** Availability as the PROVIDER reports it — distinct from `isActive`
+   *  (whether we consider the listing live). Enabled-but-out-of-stock is real. */
+  inStock: boolean('in_stock').notNull().default(true),
   platformMetadata: jsonb('platform_metadata'),
   /** PENDING | SYNCED | ERROR */
   syncStatus: text('sync_status').notNull().default('PENDING'),
@@ -2469,6 +2494,55 @@ export const platformListings = pgTable('platform_listings', {
 
 export type PlatformListing = typeof platformListings.$inferSelect;
 export type NewPlatformListing = typeof platformListings.$inferInsert;
+
+/**
+ * The provider category TREE (2026-07-29e) — its own table, not columns on
+ * platformListings.
+ *
+ * A category node is a distinct entity with identity, a parent link, a name and
+ * a path, so it does not belong on a listing. The decisive argument is EMPTY
+ * BRANCHES: the picker has to render a category that currently holds zero
+ * products, and a listing-shaped store cannot represent one — there is no
+ * listing row to hang it off. Storing the tree per-listing would also duplicate
+ * every node once per product in it.
+ *
+ * `depth` and `fullPath` are denormalized on write: both are pure functions of
+ * the parent chain, and precomputing turns every breadcrumb render from a
+ * recursive walk into a column read. The writer owns keeping them true.
+ *
+ * Repair-ROOT membership is deliberately NOT stored — root resolution reads
+ * ECWID_REPAIR_CATEGORY_IDS (or name-matches) at read time, so re-pointing the
+ * root stays a config change instead of a re-sync.
+ */
+export const platformCatalogCategories = pgTable('platform_catalog_categories', {
+  id: bigserial('id', { mode: 'number' }).primaryKey(),
+  organizationId: orgIdCol(),
+  /** CHECK platform_catalog_categories_platform_chk:
+   *  ecwid | square | ebay | amazon | shopify. */
+  platform: text('platform').notNull(),
+  externalId: text('external_id').notNull(),
+  /** NULL = a provider-root category. */
+  parentExternalId: text('parent_external_id'),
+  name: text('name').notNull(),
+  fullPath: text('full_path').notNull().default(''),
+  depth: integer('depth').notNull().default(0),
+  sortOrder: integer('sort_order').notNull().default(0),
+  isActive: boolean('is_active').notNull().default(true),
+  syncedAt: timestamp('synced_at', { withTimezone: true }).notNull().defaultNow(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  naturalUnique: uniqueIndex('ux_platform_catalog_categories_natural')
+    .on(table.organizationId, table.platform, table.externalId),
+  parentIdx: index('idx_platform_catalog_categories_parent')
+    .on(table.organizationId, table.platform, table.parentExternalId),
+  rootsIdx: index('idx_platform_catalog_categories_roots')
+    .on(table.organizationId, table.platform)
+    .where(sql`parent_external_id IS NULL`),
+}));
+
+export type PlatformCatalogCategory = typeof platformCatalogCategories.$inferSelect;
+export type NewPlatformCatalogCategory = typeof platformCatalogCategories.$inferInsert;
 
 export const skuKitParts = pgTable('sku_kit_parts', {
   id: serial('id').primaryKey(),
@@ -4941,3 +5015,144 @@ export const staffInboxItems = pgTable('staff_inbox_items', {
 
 export type StaffInboxItem = typeof staffInboxItems.$inferSelect;
 export type NewStaffInboxItem = typeof staffInboxItems.$inferInsert;
+
+// ─── Counter transactions (kiosk unified Sales + Repair) ─────────────────────
+//
+// Birth migration: 2026-07-29d_counter_transactions.sql.
+//
+// The header for ONE counter visit, joining an optional square_transactions
+// receipt (a financial snapshot) to an optional repair_service work record (a
+// long-lived state machine). Never one mixed-line order — see
+// docs/todo/kiosk-counter-transaction-PLAN.md §1 D1.
+//
+// The `counter_transaction_id` columns this migration adds to repair_service and
+// square_transactions are intentionally NOT modeled on those existing pgTable
+// blocks here: this file is edited concurrently by other lanes, so the counter
+// work stays in one appended region. Add them to those blocks when a Drizzle
+// query actually needs them.
+export const counterTransactions = pgTable('counter_transactions', {
+  id: bigserial('id', { mode: 'number' }).primaryKey(),
+  organizationId: orgIdCol(),
+  customerId: integer('customer_id'),
+  /** The `via` principal, for audit. Deliberately NOT a FK — kiosk devices get
+   *  revoked, and attribution must outlive the device. */
+  kioskDeviceId: bigint('kiosk_device_id', { mode: 'number' }),
+  /** Resolved public order number from a prior-order match (order # + phone). */
+  priorOrderRef: text('prior_order_ref'),
+  supportTicketId: bigint('support_ticket_id', { mode: 'number' }),
+  /** Staged provider order id — the join key the payment webhook uses to find
+   *  this header (the square_transactions row does not exist until payment). */
+  stagedSquareOrderId: text('staged_square_order_id'),
+  subtotalCents: integer('subtotal_cents').notNull().default(0),
+  totalCents: integer('total_cents').notNull().default(0),
+  /** CHECK counter_transactions_status_chk: staged | paid | partially_paid |
+   *  abandoned | voided. Mirrored by COUNTER_TRANSACTION_STATUSES in
+   *  src/lib/counter/counter-transaction-types.ts — keep the two in lockstep. */
+  status: text('status').notNull().default('staged'),
+  /** Idempotency anchor for the WHOLE transaction, not just the ticket call. */
+  clientEventId: uuid('client_event_id'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  clientEventUnique: uniqueIndex('ux_counter_transactions_client_event')
+    .on(table.organizationId, table.clientEventId)
+    .where(sql`client_event_id IS NOT NULL`),
+  orgCreatedIdx: index('idx_counter_transactions_org_created')
+    .on(table.organizationId, table.createdAt.desc()),
+  stagedOrderUnique: uniqueIndex('ux_counter_transactions_staged_order')
+    .on(table.organizationId, table.stagedSquareOrderId)
+    .where(sql`staged_square_order_id IS NOT NULL`),
+}));
+
+export type CounterTransaction = typeof counterTransactions.$inferSelect;
+export type NewCounterTransaction = typeof counterTransactions.$inferInsert;
+
+// ─── Helpdesk work outbox ───────────────────────────────────────────────────
+//
+// Birth migration: 2026-07-29d_counter_transactions.sql. Shape follows
+// entity_search_outbox (2026-07-03d): claim → attempts → dead-letter past a cap.
+//
+// Exists because submit-repair-intake.ts wraps its ticket call in a
+// log-and-continue catch, so a helpdesk outage produced a repair with
+// ticket_number = NULL, no retry, and no reconciliation surface. Not blocking
+// the counter is correct; having no compensating mechanism is not.
+export const ticketWorkOutbox = pgTable('ticket_work_outbox', {
+  id: bigserial('id', { mode: 'number' }).primaryKey(),
+  organizationId: orgIdCol(),
+  /** CHECK ticket_work_outbox_work_type_chk: CREATE_TICKET | ATTACH_TICKET | POST_REPLY. */
+  workType: text('work_type').notNull(),
+  /** CHECK ticket_work_outbox_entity_type_chk: REPAIR | RECEIVING |
+   *  RECEIVING_LINE | SHIPMENT | ORDER — mirrors ticket_links' vocabulary. */
+  entityType: text('entity_type').notNull(),
+  entityId: bigint('entity_id', { mode: 'number' }).notNull(),
+  counterTransactionId: bigint('counter_transaction_id', { mode: 'number' }),
+  /** Provider ticket id for ATTACH / REPLY; NULL for CREATE (which produces it).
+   *  CHECK ticket_work_outbox_provider_ticket_chk enforces that pairing. */
+  providerTicketId: bigint('provider_ticket_id', { mode: 'number' }),
+  /** Variant config ONLY (create-ticket field bag, or the reply body).
+   *  Queryable business facts are real columns above. */
+  payload: jsonb('payload').notNull().default({}),
+  enqueuedAt: timestamp('enqueued_at', { withTimezone: true }).notNull().defaultNow(),
+  attempts: integer('attempts').notNull().default(0),
+  lastError: text('last_error'),
+  claimedAt: timestamp('claimed_at', { withTimezone: true }),
+  processedAt: timestamp('processed_at', { withTimezone: true }),
+}, (table) => ({
+  // COALESCE on providerTicketId because NULLs never collide in a unique index,
+  // which would otherwise let duplicate CREATE_TICKET rows through.
+  pendingUnique: uniqueIndex('ux_ticket_work_outbox_pending')
+    .on(
+      table.organizationId,
+      table.workType,
+      table.entityType,
+      table.entityId,
+      sql`COALESCE(provider_ticket_id, -1)`,
+    )
+    .where(sql`processed_at IS NULL AND claimed_at IS NULL`),
+  pendingIdx: index('idx_ticket_work_outbox_pending')
+    .on(table.id)
+    .where(sql`processed_at IS NULL`),
+  processedIdx: index('idx_ticket_work_outbox_processed').on(table.processedAt),
+}));
+
+export type TicketWorkOutboxRow = typeof ticketWorkOutbox.$inferSelect;
+export type NewTicketWorkOutboxRow = typeof ticketWorkOutbox.$inferInsert;
+
+// ─── Polymorphic saved views ────────────────────────────────────────────────
+//
+// Birth migration: 2026-07-29g_saved_views.sql. Unifies operations_saved_views,
+// media_library_saved_views, and the former localStorage useSavedViews hook.
+// Discriminator CHECK (`saved_views_surface_chk`) must stay in lockstep with
+// SAVED_VIEW_SURFACES in src/lib/saved-views/surfaces.ts.
+export const savedViews = pgTable('saved_views', {
+  id: bigserial('id', { mode: 'number' }).primaryKey(),
+  organizationId: orgIdCol(),
+  staffId: integer('staff_id').notNull().references(() => staff.id, { onDelete: 'cascade' }),
+  /** CHECK saved_views_surface_chk — see SAVED_VIEW_SURFACES. */
+  surface: text('surface').notNull(),
+  name: text('name').notNull(),
+  filters: jsonb('filters').notNull().default({}),
+  isShared: boolean('is_shared').notNull().default(false),
+  sortOrder: integer('sort_order').notNull().default(0),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  orgStaffSurfaceNameUnique: uniqueIndex('saved_views_org_staff_surface_name_uniq').on(
+    table.organizationId,
+    table.staffId,
+    table.surface,
+    table.name,
+  ),
+  orgStaffSurfaceIdx: index('idx_saved_views_org_staff_surface').on(
+    table.organizationId,
+    table.staffId,
+    table.surface,
+    table.sortOrder,
+  ),
+  orgSurfaceSharedIdx: index('idx_saved_views_org_surface_shared')
+    .on(table.organizationId, table.surface)
+    .where(sql`is_shared = true`),
+}));
+
+export type SavedViewsRow = typeof savedViews.$inferSelect;
+export type NewSavedViewsRow = typeof savedViews.$inferInsert;

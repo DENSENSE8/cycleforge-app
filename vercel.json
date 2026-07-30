@@ -44,6 +44,10 @@
       "schedule": "10,25,40,55 * * * *"
     },
     {
+      "path": "/api/cron/receiving/claims-escalation",
+      "schedule": "0 16 * * *"
+    },
+    {
       "path": "/api/cron/zoho/incoming-po-sync",
       "schedule": "*/15 * * * *"
     },
@@ -74,6 +78,14 @@
     {
       "path": "/api/cron/notification-outbox",
       "schedule": "1,3,5,7,9,11,13,15,17,19,21,23,25,27,29,31,33,35,37,39,41,43,45,47,49,51,53,55,57,59 * * * *"
+    },
+    {
+      "path": "/api/cron/ticket-outbox",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/catalog-projection",
+      "schedule": "20 * * * *"
     },
     {
       "path": "/api/cron/amazon/orders-sync",

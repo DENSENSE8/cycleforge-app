@@ -58,10 +58,24 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       FROM orders o
       LEFT JOIN shipping_tracking_numbers stn ON stn.id = o.shipment_id
       LEFT JOIN LATERAL (
-        SELECT tested_by FROM tech_serial_numbers
-        WHERE shipment_id = o.shipment_id AND tested_by IS NOT NULL
-          AND organization_id = $2
-        ORDER BY created_at DESC LIMIT 1
+        SELECT tested_by FROM tech_serial_numbers tsn
+        WHERE tsn.tested_by IS NOT NULL
+          AND tsn.organization_id = $2
+          AND (
+            tsn.order_id = o.id
+            OR (
+              tsn.order_id IS NULL
+              AND o.shipment_id IS NOT NULL
+              AND tsn.shipment_id = o.shipment_id
+              AND NOT EXISTS (
+                SELECT 1 FROM orders o2
+                WHERE o2.shipment_id = o.shipment_id
+                  AND o2.organization_id = o.organization_id
+                  AND o2.id <> o.id
+              )
+            )
+          )
+        ORDER BY tsn.created_at DESC LIMIT 1
       ) tt ON TRUE
       LEFT JOIN staff ts ON ts.id = tt.tested_by
       LEFT JOIN LATERAL (

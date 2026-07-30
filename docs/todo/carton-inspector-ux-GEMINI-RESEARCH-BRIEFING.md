@@ -190,10 +190,19 @@ Shape **E** deserves real consideration and is stated as D8. The prior brief alr
 **Proposed:** share the read model, presentation SoTs and atoms; let assembly diverge; move the guard down a layer.
 **Counter:** this is precisely how two renderings of one entity drift apart, which is the failure mode the rule was written to prevent. If assembly may diverge, what mechanically stops the drift?
 
+> **LAW (2026-07-29).** D6 is locked. Share `carton-inspector-model` + atoms only. Never require Unbox
+> layout panels / identity cards. Guard asserts intent (no writes, evidence at zero clicks, disposition
+> truth), not frozen component names. See [`pattern-evolution.md`](../../.claude/rules/pattern-evolution.md)
+> (read/work pairs) and [`carton-inspector-D4-ROOT-FIX-HANDOFF.md`](carton-inspector-D4-ROOT-FIX-HANDOFF.md).
+
 ### D7 — Which surface shape (§6 A–E)?
 **Current:** A (full route), chosen without re-reading D4's actual proposal.
 **Proposed:** B or C — keep the operator in place.
 **Counter:** deep-linkability is a real requirement (search, ⌘K, AI answers, scanned short-links all produce hrefs). A rail inspector that cannot be linked to breaks those. Can B be made deep-linkable without becoming A?
+
+> **RESOLVED by product decision 2a (2026-07-29).** Canonical route stays `/carton/[id]`. Editable
+> `ReceivingDetailsStack` is retired as the carton-detail answer — openers navigate to the read
+> inspector. Not a second rail twin; one assembly owns “look up this carton.”
 
 ### D8 — Should this surface exist at all?
 **Current:** it exists because the editor is unsafe to open casually.

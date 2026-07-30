@@ -12,12 +12,12 @@ import { test, expect, type Page } from '@playwright/test';
  * These assert the guarantee end-to-end, through the real router and the real
  * hygiene hook — the unit tests pin the mechanism, this pins the behaviour.
  *
- * Desktop-only: the station nav column (and therefore the mode rail) does not
- * render on the mobile receiving surface, which is a photo feed.
+ * Desktop-only: receiving L2 Mode lives in GlobalHeader (Unbox pilot); the
+ * mobile receiving surface is a photo feed without that chrome.
  */
 
 test.describe('receiving param isolation', () => {
-  test.skip(({ isMobile }) => !!isMobile, 'station nav column is a desktop surface');
+  test.skip(({ isMobile }) => !!isMobile, 'header mode switcher is a desktop surface');
 
   /** Query params on the current URL, as a plain object. */
   const paramsOf = (page: Page): Record<string, string> =>
@@ -35,14 +35,10 @@ test.describe('receiving param isolation', () => {
     }
   }
 
-  /** Click a receiving mode in the station nav column, revealing it if collapsed. */
+  /** Open GlobalHeader Mode and pick a receiving mode by label. */
   async function switchMode(page: Page, label: string): Promise<void> {
-    const sidebar = page.locator('aside');
-    const modeButton = sidebar.getByRole('button', { name: label, exact: true }).first();
-    if (!(await modeButton.isVisible().catch(() => false))) {
-      await page.getByRole('button', { name: 'Show sidebar' }).click();
-    }
-    await modeButton.click();
+    await page.locator('header [aria-label^="Receiving mode"]').click();
+    await page.getByRole('menu', { name: 'Receiving modes' }).getByRole('menuitem', { name: label, exact: true }).click();
   }
 
   test('a foreign param cannot survive landing on a receiving surface', async ({ page }) => {

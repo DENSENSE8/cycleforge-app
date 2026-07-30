@@ -12,6 +12,8 @@ import {
     type InventoryTab,
 } from '@/lib/inventory-search';
 import type { InventoryViewState } from './types';
+import { INVENTORY_ROUTE_PARAMS } from '@/lib/routing/query-mode-routes';
+import { parseRouteParams } from '@/lib/routing/route-params';
 
 function parseList(raw: string | null): string[] {
     if (!raw) return [];
@@ -164,10 +166,20 @@ export function useInventoryUrlState() {
                 sp.delete('mode');
 
                 if (next.mode !== sidebar.mode) {
-                    sp.delete('field');
-                    sp.delete('filter');
-                    sp.delete('q');
-                    sp.delete('open');
+                    // CONSTRUCT the destination — rule 1 of the isolation contract
+                    // (`@/lib/routing/route-params`). This replaces a four-key
+                    // clear list (`field`/`filter`/`q`/`open`) that also let the
+                    // viewport selectors through, so `?sku=`/`?bin=`/`?unit=` and
+                    // the state/condition multi-selects rode a mode switch.
+                    //
+                    // That made the two paths to the same job DISAGREE: the nav
+                    // rail's `applyModeTarget` already constructed and carried only
+                    // `staff`, while this in-app switch carried the selection. Two
+                    // shapes for one job is the fork the contract bans, so this
+                    // side moves to match the nav — a mode switch opens clean.
+                    const delta = new URLSearchParams();
+                    const staff = sp.get('staff') ?? sp.get('staffId');
+                    if (staff) delta.set('staff', staff);
 
                     const targetPath =
                         next.mode === 'triage'
@@ -175,7 +187,7 @@ export function useInventoryUrlState() {
                             : next.mode === 'pulse'
                               ? `${INVENTORY_PATH}/pulse`
                               : INVENTORY_PATH;
-                    const qs = sp.toString();
+                    const qs = parseRouteParams(INVENTORY_ROUTE_PARAMS, delta).toString();
                     router.push(qs ? `${targetPath}?${qs}` : targetPath);
                     return;
                 }

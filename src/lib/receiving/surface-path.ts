@@ -62,3 +62,12 @@ export function openInUnboxHref(receivingId: number, lineId?: number): string {
   }
   return `${UNBOX_SURFACE_ROUTE}?${params.toString()}`;
 }
+
+/**
+ * Canonical READ carton URL (decision 2a). Search / ⌘K / overlay openers /
+ * assistant recents land here — not the editable ReceivingDetailsStack.
+ * Keep in sync with `searchHitHref('RECEIVING', id)`.
+ */
+export function cartonReadHref(receivingId: number): string {
+  return `/carton/${receivingId}`;
+}

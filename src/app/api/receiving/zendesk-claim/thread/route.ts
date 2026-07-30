@@ -12,6 +12,7 @@ import {
 import { markdownToHtml } from '@/lib/support/markdown';
 import { getTicketEntity } from '@/lib/zendesk-links';
 import { zendeskTicketUrl } from '@/lib/zendesk-ticket-url';
+import { uploadClaimPhotosToHelpdesk } from '@/lib/receiving-claim-attach';
 
 export const dynamic = 'force-dynamic';
 
@@ -118,13 +119,27 @@ const PostBody = z.object({
   public: z.boolean().optional().default(false),
   /** CC emails — only applied on public replies. */
   emailCcs: z.array(z.string().trim().email()).max(50).optional(),
+  /**
+   * Operator-edited ticket subject (the link-flow "Ticket" step's Subject
+   * field, prefilled from the ticket's current title). Applied to the ticket
+   * only when it differs from what's already there.
+   */
+  subject: z.string().trim().min(1).max(300).optional(),
+  /** Receiving carton id — required (with attachPhotoIds) to resolve photos. */
+  receivingId: z.number().int().positive().optional(),
+  /** Photo row ids to upload as real Zendesk attachments on this comment. */
+  attachPhotoIds: z.array(z.number().int().positive()).max(50).optional(),
 });
 
 /**
- * POST → add a reply to a receiving claim's Zendesk ticket. The default is an
- * internal note (`public: false`); a public reply (`public: true`) emails the
- * customer. Same entity-link guard as the GET so this can only post to tickets
- * linked to one of THIS org's receiving cartons/lines.
+ * POST → add a reply to a receiving claim's Zendesk ticket, optionally
+ * attaching selected carton photos and/or updating the ticket subject in the
+ * same request (the link-flow's Photos → Ticket → Review steps land here,
+ * mirroring the create-flow claim route's upload + file shape). The comment
+ * defaults to an internal note (`public: false`); a public reply
+ * (`public: true`) emails the customer. Same entity-link guard as the GET so
+ * this can only post to tickets linked to one of THIS org's receiving
+ * cartons/lines.
  */
 export const POST = withAuth(async (req: NextRequest, ctx) => {
   const context = 'POST /api/receiving/zendesk-claim/thread';
@@ -141,21 +156,44 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       parsed.public && parsed.emailCcs?.length
         ? parsed.emailCcs.map((user_email) => ({ user_email, action: 'put' as const }))
         : undefined;
-    const ticket = await helpdesk.addComment(
-      parsed.ticketId,
-      {
+
+    const ids = parsed.attachPhotoIds ?? [];
+    const uploads =
+      ids.length > 0 && parsed.receivingId
+        ? await uploadClaimPhotosToHelpdesk({
+            helpdesk,
+            organizationId: ctx.organizationId,
+            receivingId: parsed.receivingId,
+            photoIds: ids,
+            fileLabel: `TICKET-${parsed.ticketId}`,
+          })
+        : [];
+
+    // One PUT carries the subject change, the comment (+ uploads), and the CC
+    // list — updateTicket accepts all three, so a linked-ticket update never
+    // needs a second round trip the way addComment-then-updateTicket would.
+    const ticket = await helpdesk.updateTicket(parsed.ticketId, {
+      ...(parsed.subject ? { subject: parsed.subject } : {}),
+      comment: {
         body: parsed.body,
         html_body: markdownToHtml(parsed.body),
         public: parsed.public,
+        uploads: uploads.length ? uploads : undefined,
       },
-      emailCcs ? { emailCcs } : undefined,
-    );
+      ...(emailCcs ? { email_ccs: emailCcs } : {}),
+    });
     if (!ticket) throw ApiError.notFound('Helpdesk ticket', parsed.ticketId);
 
     return NextResponse.json({
       success: true,
       public: parsed.public,
-      ticket: { id: ticket.id, status: String(ticket.status ?? ''), url: zendeskTicketUrl(ticket.id) },
+      attachCount: uploads.length,
+      ticket: {
+        id: ticket.id,
+        subject: ticket.subject ?? null,
+        status: String(ticket.status ?? ''),
+        url: zendeskTicketUrl(ticket.id),
+      },
     });
   } catch (err) {
     return mapZendeskError(err, context);

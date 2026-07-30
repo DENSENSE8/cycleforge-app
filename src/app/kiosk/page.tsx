@@ -8,11 +8,24 @@
  * through the httpOnly `cf_kiosk` device token via withKioskAuth.
  *
  * A team member is always at the counter filling this out WITH the customer —
- * so it is HEADLESS (no self-service "checked in" step, no staff PIN). Tapping a
- * live service opens the real intake form (currently Repair → the shared
- * `RepairIntakeForm` in `kioskMode`), which submits device-authed to
- * `/api/kiosk/repair/submit` and shows its own confirmation. Sales + Pickup are
- * WIP tiles kept in the same SoT so re-enabling one is a status flip.
+ * so base intake is HEADLESS (no self-service "checked in" step, no staff PIN).
+ * Tapping a live service opens its real intake form; each owns its own submit and
+ * confirmation, and `onClose` returns here.
+ *
+ *   Repair → `RepairIntakeForm` (kioskMode) → `/api/kiosk/repair/submit`
+ *   Sales  → `CounterIntakeForm`            → `/api/kiosk/intake`
+ *
+ * The two are SIBLINGS on purpose: a repair-only drop-off keeps its leaner flow,
+ * while a counter visit that mixes goods and service needs a cart, a receipt
+ * preview and a payment hand-off. Both share `submitRepairIntake` underneath —
+ * the sales path composes it via `submitCounterTransaction` — so the repair
+ * record they create can never drift.
+ *
+ * Taking payment is the one PRIVILEGED action here: it requires a staff PIN
+ * step-up by someone holding `walk_in.take_payment`, and even then the tablet only
+ * STAGES an order. No card details are ever entered on this device.
+ *
+ * Pickup remains a WIP tile in the same SoT so enabling it is a status flip.
  *
  * Layout: square stage sized to the shorter viewport edge — iPad portrait /
  * landscape / near-square all get one composed floor surface, not a landscape
@@ -27,11 +40,22 @@ import { cornerClass } from '@/design-system/tokens/radius';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 import { cn } from '@/utils/_cn';
 import type { RepairFormData, RepairSubmitResult } from '@/components/repair/RepairIntakeForm';
+import type {
+  CounterTransactionInput,
+  CounterTransactionResult,
+} from '@/lib/counter/counter-transaction-types';
 
 // Lazy-load the intake form so the welcome screen stays light; it only loads
 // when a team member opens a service.
 const RepairIntakeForm = dynamic(
   () => import('@/components/repair/RepairIntakeForm').then((m) => m.RepairIntakeForm),
+  { ssr: false },
+);
+
+// The counter transaction (retail + service in one visit). A SIBLING of the
+// repair form, not a replacement: repair-only drop-off keeps its own leaner flow.
+const CounterIntakeForm = dynamic(
+  () => import('@/components/counter/CounterIntakeForm').then((m) => m.CounterIntakeForm),
   { ssr: false },
 );
 
@@ -51,7 +75,11 @@ interface ServiceTile {
 // that reuses this exact tile grammar — never a second tile design.
 const SERVICES: ReadonlyArray<ServiceTile> = [
   { id: 'repair', label: 'Repair Drop-off', blurb: 'Check in a device for service', status: 'live' },
-  { id: 'sales', label: 'Buy / Sell', blurb: 'Start a counter sale or trade-in', status: 'wip' },
+  // Live as of the counter-transaction work: taps into CounterIntakeForm, which
+  // submits through /api/kiosk/intake. The square_transactions tenancy contract
+  // (migration 2026-07-29a) is a HARD prerequisite for this being 'live' — it is
+  // applied, so a kiosk sale can no longer write across orgs.
+  { id: 'sales', label: 'Buy / Sell', blurb: 'Start a counter sale or trade-in', status: 'live' },
   { id: 'pickup', label: 'Order Pickup', blurb: 'Collect a ready order', status: 'wip' },
 ];
 
@@ -66,6 +94,8 @@ export default function KioskPage() {
   // Idempotency key for the in-flight repair submission — persists across failed
   // retries (dedupes the Zendesk ticket) and clears on success/close.
   const repairIdemKey = useRef<string | null>(null);
+  /** Same contract as `repairIdemKey`, for the counter transaction path. */
+  const counterIdemKey = useRef<string | null>(null);
 
   const liveServices = SERVICES.filter((s) => s.status === 'live');
 
@@ -87,6 +117,7 @@ export default function KioskPage() {
   const closeService = useCallback(() => {
     setActiveService(null);
     repairIdemKey.current = null;
+    counterIdemKey.current = null;
   }, []);
 
   const submitRepair = useCallback(async (data: RepairFormData): Promise<RepairSubmitResult> => {
@@ -142,6 +173,63 @@ export default function KioskPage() {
     }
   }, []);
 
+  /**
+   * Submit a counter transaction through the unified device-authed path.
+   *
+   * The idempotency key is minted ONCE per attempt-chain and re-sent on retry, so
+   * a flaky tablet connection cannot double-charge or double-ticket: the server's
+   * `ux_counter_transactions_client_event` collapses the replay. It is cleared
+   * only on success or on closing the form.
+   */
+  const submitCounter = useCallback(
+    async (
+      input: Omit<CounterTransactionInput, 'clientEventId'>,
+      opts: { takePayment: boolean },
+    ): Promise<CounterTransactionResult> => {
+      if (!counterIdemKey.current) counterIdemKey.current = safeRandomUUID();
+      const res = await fetch('/api/kiosk/intake', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'Idempotency-Key': counterIdemKey.current,
+        },
+        body: JSON.stringify({
+          service: 'sales',
+          customer: input.customer,
+          retailLines: input.retailLines,
+          serviceLine: input.service,
+          priorOrder: input.priorOrder,
+          ticketWork: input.ticketWork,
+          takePayment: opts.takePayment,
+        }),
+      });
+
+      if (res.status === 401) {
+        setActiveService(null);
+        setErr('This tablet needs to be paired before intake. A manager can set it up in Settings → Devices.');
+        setMode('pair');
+        throw new Error('This tablet is not paired yet.');
+      }
+
+      const body = (await res.json().catch(() => ({}))) as {
+        transaction?: CounterTransactionResult;
+        error?: string;
+      };
+
+      if (res.status === 403 && body.error?.includes('STEPUP')) {
+        // Taking payment needs a manager's PIN; the device cannot authorize it.
+        throw new Error('A manager needs to authorize payment on this tablet.');
+      }
+      if (!res.ok || !body.transaction) {
+        throw new Error(body.error?.trim() || `Could not complete this transaction (${res.status}).`);
+      }
+
+      counterIdemKey.current = null;
+      return body.transaction;
+    },
+    [],
+  );
+
   const pair = useCallback(async () => {
     if (code.trim().length < 8) {
       setErr('Enter the full setup code.');
@@ -174,6 +262,20 @@ export default function KioskPage() {
     return (
       <div className="fixed inset-0 z-panelOverlay bg-surface-card">
         <RepairIntakeForm kioskMode onClose={closeService} onSubmit={submitRepair} />
+      </div>
+    );
+  }
+
+  if (activeService === 'sales') {
+    return (
+      <div className="fixed inset-0 z-panelOverlay bg-surface-card">
+        {/* `/api/kiosk/repair` = the device-authed catalog twins (same response
+            shapes as the staff pair). */}
+        <CounterIntakeForm
+          apiBasePath="/api/kiosk/repair"
+          onClose={closeService}
+          onSubmit={submitCounter}
+        />
       </div>
     );
   }

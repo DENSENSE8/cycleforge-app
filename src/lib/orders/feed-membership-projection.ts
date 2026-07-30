@@ -89,8 +89,32 @@ export async function projectOrdersUnshippedMemberships(
            o.organization_id,
            o.shipment_id,
            (EXISTS (
+             SELECT 1 FROM tech_serial_numbers tsn
+             WHERE tsn.order_id = o.id
+               AND tsn.organization_id = o.organization_id
+           ) OR EXISTS (
              SELECT 1 FROM station_activity_logs sal
-             WHERE sal.shipment_id IS NOT NULL AND sal.shipment_id = o.shipment_id
+             WHERE sal.organization_id = o.organization_id
+               AND sal.activity_type IN ('TRACKING_SCANNED', 'FNSKU_SCANNED')
+               AND (
+                 (sal.metadata->>'order_row_id') ~ '^[0-9]+$'
+                   AND (sal.metadata->>'order_row_id')::int = o.id
+                 OR sal.metadata->>'order_id' = o.order_id
+               )
+           ) OR (
+             o.shipment_id IS NOT NULL
+             AND NOT EXISTS (
+               SELECT 1 FROM orders o2
+               WHERE o2.shipment_id = o.shipment_id
+                 AND o2.organization_id = o.organization_id
+                 AND o2.id <> o.id
+             )
+             AND EXISTS (
+               SELECT 1 FROM station_activity_logs sal
+               WHERE sal.shipment_id IS NOT NULL AND sal.shipment_id = o.shipment_id
+                 AND sal.organization_id = o.organization_id
+                 AND sal.activity_type IN ('TRACKING_SCANNED', 'FNSKU_SCANNED')
+             )
            )) AS has_tech_scan,
            o.is_out_of_stock,
            COALESCE(wa.deadline_at, o.created_at) AS occurred_at,
@@ -112,8 +136,23 @@ export async function projectOrdersUnshippedMemberships(
        AND COALESCE(o.fulfillment_channel, '') <> 'AFN'
        AND NOT EXISTS (
          SELECT 1 FROM station_activity_logs sal
-         WHERE sal.shipment_id IS NOT NULL AND sal.shipment_id = o.shipment_id
+         WHERE sal.organization_id = o.organization_id
            AND sal.activity_type IN (${sql.raw(sqlInList(PACK_ACTIVITY_TYPES))})
+           AND (
+             (sal.metadata->>'order_row_id') ~ '^[0-9]+$'
+               AND (sal.metadata->>'order_row_id')::int = o.id
+             OR sal.metadata->>'order_id' = o.order_id
+             OR (
+               sal.shipment_id IS NOT NULL AND sal.shipment_id = o.shipment_id
+               AND (sal.metadata->>'order_row_id') IS NULL
+               AND NOT EXISTS (
+                 SELECT 1 FROM orders o2
+                 WHERE o2.shipment_id = o.shipment_id
+                   AND o2.organization_id = o.organization_id
+                   AND o2.id <> o.id
+               )
+             )
+           )
        )
        AND COALESCE(wa.deadline_at, o.created_at) >= NOW() - make_interval(days => ${days})
   `);

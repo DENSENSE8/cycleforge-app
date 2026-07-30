@@ -2,6 +2,13 @@
  * Grid column justification SoT — **one decision per column, read by both the
  * header and the cell.**
  *
+ * ## Hard rule (also in `AGENTS.md` + `source-of-truth.md`)
+ *
+ * - **Digit tracks end-align** — `number` · `id` (order ID, SKU, serial, ticket) ·
+ *   `location` (tracking) · `date` (ship-by, age, civil day).
+ * - **Word tracks start-align** — `text` · `longtext` · `tag` (condition, status) ·
+ *   `external` (platform).
+ *
  * Alignment used to be decided twice per column, in two files, in two
  * vocabularies: a `column.key === 'qty' ? 'end' : 'start'` ternary in each
  * surface's header, and a hand-typed `justify-end` on each surface's cell. That
@@ -22,7 +29,7 @@
  * which is exactly when the label drops. A glyph is a label; it belongs over
  * its data like any other.
  *
- * Guard: `grid-column-align.guard.test.ts`.
+ * Guard: `grid-column-display.guard.test.ts` · `grid-header-align.test.ts`.
  */
 
 import type { ColumnType } from '@/lib/tables/table-columns';
@@ -30,8 +37,6 @@ import type { LedgerGridColumnModel } from './grid-surface-descriptor';
 
 export type GridColumnAlign = 'start' | 'end';
 
-/** @deprecated Name kept for existing imports; prefer {@link GridColumnAlign}. */
-export type GridHeaderAlign = GridColumnAlign;
 
 /**
  * Data type → justification. The full ruling, so no surface has to guess:
@@ -39,25 +44,29 @@ export type GridHeaderAlign = GridColumnAlign;
  * | Type | Align | Why |
  * |---|---|---|
  * | `number` | `end` | Magnitudes compare down a column by their ones place; right-aligning is what makes a column of figures scannable (and `role-data` already binds `tabular-nums`, so the digits form a true grid). |
- * | `id` | `start` | An identifier is a LABEL that happens to be digits — an order number or a last-4 chip is never summed or compared for magnitude. Right-aligning it implies an arithmetic relationship that does not exist. |
- * | `location` | `start` | A tracking number is an identifier with a destination, same reasoning as `id`. |
+ * | `id` | `end` | Order / ticket / SKU / serial tracks are fixed-width digit (or digit-led) labels — end-align keeps the ones place stacked the same way as qty and price, so a column of last-4s scans as one vertical edge. |
+ * | `location` | `end` | Tracking last-4s are the same class of digit label as `id`; they share the right edge with Order beside them. |
+ * | `date` | `end` | Civil days, SLA (`Jul 21 · 42d`), and age tracks are compact numeral runs — end-align stacks the day / duration edge for scan, matching the numeric fact cluster. |
  * | `text` · `longtext` | `start` | Prose reads from the left edge; a ragged left edge destroys the scan line. |
  * | `tag` · `external` | `start` | A chip or brand mark is a categorical label, not a quantity. |
- * | `date` | `start` | Civil days render as fixed-width compact labels (`Jul 21`), so the left edge is already the alignment axis; right-aligning them would fight the adjacent text columns for no gain. |
  *
  * Deliberately NOT a `center` case. Centering breaks the vertical alignment
  * axis every other column establishes, and the house one-row anatomy has no
  * centered content.
+ *
+ * A column whose *type* is numeric-looking but whose *content* is prose (e.g.
+ * receiving `stage`, typed `date` only for the clock glyph) sets
+ * `align: 'start'` on the model — once, where the column is declared.
  */
 const ALIGN_BY_TYPE: Record<ColumnType, GridColumnAlign> = {
   number: 'end',
-  id: 'start',
-  location: 'start',
+  id: 'end',
+  location: 'end',
+  date: 'end',
   text: 'start',
   longtext: 'start',
   tag: 'start',
   external: 'start',
-  date: 'start',
 };
 
 /**
@@ -74,22 +83,24 @@ export function resolveGridColumnAlign(
   return column.type ? ALIGN_BY_TYPE[column.type] : 'start';
 }
 
-/** Flex justification class for a header cell or a value cell. */
-export function gridColumnAlignClass(align: GridColumnAlign = 'start'): string {
+/**
+ * Flex justification class. Module-private on purpose: exporting THREE names for
+ * one decision ("which do I call?") is how the header and cell halves drifted
+ * apart in the first place. Callers take one of the two below — a header passes
+ * a resolved align, a cell passes the column.
+ */
+function alignClass(align: GridColumnAlign): string {
   return align === 'end' ? 'justify-end' : 'justify-start';
 }
 
-/**
- * Header justification. Kept as a named export because every `*GridColumnHeader`
- * composes it; it is now a thin alias so header and cell cannot diverge.
- */
+/** Header justification — pass `resolveGridColumnAlign(column)`, never a literal. */
 export function gridHeaderCellAlignClass(align: GridColumnAlign = 'start'): string {
-  return gridColumnAlignClass(align);
+  return alignClass(align);
 }
 
 /** Value-cell justification for a column — the cell half of the same decision. */
 export function gridCellAlignClass(
   column: Pick<LedgerGridColumnModel, 'type' | 'align'>,
 ): string {
-  return gridColumnAlignClass(resolveGridColumnAlign(column));
+  return alignClass(resolveGridColumnAlign(column));
 }

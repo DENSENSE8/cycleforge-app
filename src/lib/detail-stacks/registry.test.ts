@@ -33,7 +33,7 @@ test('detailStackHref: shipments canonicalize to /fba', () => {
   );
 });
 
-test('detailStackHref: receiving keeps the surface path + mode params', () => {
+test('detailStackHref: receiving deep-links to the read carton inspector', () => {
   assert.equal(
     detailStackHref({
       kind: 'receiving',
@@ -41,7 +41,7 @@ test('detailStackHref: receiving keeps the surface path + mode params', () => {
       path: '/unbox',
       search: 'mode=receive&openReceivingId=12',
     }),
-    '/unbox?mode=receive&openReceivingId=99',
+    '/carton/99',
   );
 });
 

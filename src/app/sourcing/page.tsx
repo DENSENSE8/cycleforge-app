@@ -9,11 +9,13 @@
  * enforced by middleware via ROUTE_PERMISSIONS ('/sourcing' → 'sourcing.view').
  */
 
+import { Suspense } from 'react';
 import { RouteShell } from '@/design-system/components/RouteShell';
 import { SourcingSidebarPanel } from '@/components/sidebar/SourcingSidebarPanel';
 import { SourcingWorkspace } from '@/components/sourcing/SourcingWorkspace';
+import { SurfaceParamHygiene } from '@/components/routing/SurfaceParamHygiene';
 
-export default function SourcingPage() {
+function SourcingPageContent() {
   return (
     <RouteShell
       actions={<SourcingSidebarPanel />}
@@ -21,5 +23,16 @@ export default function SourcingPage() {
       actionsLabel="Sourcing"
       historyLabel="Results"
     />
+  );
+}
+
+export default function SourcingPage() {
+  return (
+    <>
+      <SurfaceParamHygiene />
+      <Suspense>
+        <SourcingPageContent />
+      </Suspense>
+    </>
   );
 }

@@ -8,8 +8,9 @@ import { test, expect } from '@playwright/test';
 
 const ORDER = process.env.AUDIT_ORDER || '22-14547-57454';
 
-// DIAGNOSTIC, NOT A GATE — reads live data and asserts on an unfixed defect
-// (CF-04, shipment-grain queue exclusion). Opt in: AUDIT_DIAGNOSTIC=1.
+// DIAGNOSTIC against QA org — CF-04 queue exclusion is order-grain in
+// `order-grain-sql.ts` (CI-gated). This probe validates a named AUDIT_ORDER.
+// Opt in: AUDIT_DIAGNOSTIC=1.
 test.skip(process.env.AUDIT_DIAGNOSTIC !== '1', 'diagnostic probe — set AUDIT_DIAGNOSTIC=1 to run');
 
 test('Pack queue membership for a tested order', async ({ page }) => {

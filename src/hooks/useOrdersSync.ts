@@ -8,6 +8,7 @@ import type {
   ExceptionsTabState,
   OrderExceptionResolutionDetail,
   SyncPhase,
+  TransferOrderDetail,
   TransferOrderDetails,
   TransferTabState,
 } from '@/lib/orders-sync/types';
@@ -55,6 +56,41 @@ function phaseSummary(phase: SyncPhase, count?: number): string {
 
 function emptyTransferDetails(): TransferOrderDetails {
   return { inserted: [], updated: [], deleted: [], unknownTitle: [], unresolvedTracking: [], unmatchedCatalog: [] };
+}
+
+/**
+ * Narrow the connector's opaque `SyncOutcome.details` to TransferOrderDetails.
+ *
+ * The field crosses an HTTP boundary as untyped JSON and is typed `unknown` on
+ * the contract (it is provider-shaped by design), so every bucket is checked
+ * for being an array rather than trusted. A provider that sends no detail — or
+ * a malformed one — degrades to empty lists instead of throwing inside a
+ * setState and taking the dialog down with it.
+ */
+function coerceTransferDetails(value: unknown): TransferOrderDetails {
+  const empty = emptyTransferDetails();
+  if (!value || typeof value !== 'object') return empty;
+  const src = value as Record<string, unknown>;
+  // Scoped to the TransferOrderDetail-shaped buckets. `skippedRows` holds a
+  // different row type and is narrowed separately below — a single generic
+  // helper over every key would widen the return to the union of both.
+  type DetailBucket = Exclude<keyof TransferOrderDetails, 'skippedRows' | 'recoveredRows'>;
+  const bucket = (key: DetailBucket): TransferOrderDetail[] =>
+    Array.isArray(src[key]) ? (src[key] as TransferOrderDetail[]) : [];
+  return {
+    inserted: bucket('inserted'),
+    updated: bucket('updated'),
+    deleted: bucket('deleted'),
+    unknownTitle: bucket('unknownTitle'),
+    unresolvedTracking: bucket('unresolvedTracking'),
+    unmatchedCatalog: bucket('unmatchedCatalog'),
+    skippedRows: Array.isArray(src.skippedRows)
+      ? (src.skippedRows as TransferOrderDetails['skippedRows'])
+      : [],
+    recoveredRows: Array.isArray(src.recoveredRows)
+      ? (src.recoveredRows as TransferOrderDetails['recoveredRows'])
+      : [],
+  };
 }
 
 export function useOrdersSync() {
@@ -158,13 +194,32 @@ export function useOrdersSync() {
       // #region agent log
       fetch('http://127.0.0.1:7336/ingest/8bd437e7-bc3e-4c78-9dcf-4ca4496a96b4',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'7d3d46'},body:JSON.stringify({sessionId:'7d3d46',runId:'pre-fix',hypothesisId:'A',location:'useOrdersSync.ts:runConnectorSync:setter',message:'UI tab state will force empty details',data:{provider,success,ins,upd,forcingEmptyDetails:true,detailRowCount:(Array.isArray((data as any).details?.inserted)?(data as any).details.inserted.length:0)},timestamp:Date.now()})}).catch(()=>{});
       // #endregion
+      // Render the connector's real per-row detail. This used to be a hardcoded
+      // emptyTransferDetails(), so OrderSyncDialog — whose whole body is the
+      // inserted/updated/unmatched-catalog lists — drew nothing no matter what
+      // the import did. SyncOutcome now carries `details`; fall back to empty
+      // only for a provider that genuinely sends none.
+      const detailsFromSync = coerceTransferDetails(data.details);
+
+      // Surface the skip breakdown in the summary. Without it, "every row was
+      // skipped for a blank Item Number" and "the sheet is already imported"
+      // both read as a bare "Up to date", which is the single most misleading
+      // thing this panel can say.
+      const stats = (data.stats ?? {}) as Record<string, number>;
+      const skipped =
+        (stats.skippedNoItemNumber ?? 0) +
+        (stats.skippedNoTracking ?? 0) +
+        (stats.skippedNoOrderId ?? 0);
+      if (skipped > 0) parts.push(`${skipped} skipped`);
+
       setter({
         status: success ? 'done' : 'error',
         summary: success
           ? (parts.length > 0 ? (parts.join(', ') as string) : 'Up to date')
           : lastError || 'Failed',
         error: success ? undefined : lastError || 'Failed',
-        details: emptyTransferDetails(),
+        details: detailsFromSync,
+        stats,
         inserted: ins,
         updated: upd,
         phase: 'done',

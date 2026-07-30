@@ -4,6 +4,10 @@
 
 > Read `docs/todo/nav-routing-refactor-FINISH-PROMPT.md` and execute item 1.
 
+**Picking up mid-refactor?** [`url-isolation-session-HANDOFF.md`](url-isolation-session-HANDOFF.md) is
+the entry point for the 2026-07-29/30 session: what shipped uncommitted, the decisions owed, and the
+three traps that each cost a wrong conclusion. This file stays the method + backlog.
+
 **Supersedes `nav-routing-refactor-EXECUTION-PROMPT.md`.** That file planned Slices
 1–5; Slices 1–4 and Slice 5's isolation tier have landed, and several of its
 remaining items were disproved by the code. Do not work from it — §4 below records
@@ -38,6 +42,7 @@ never bought isolation. Never write that they do.
 | `applyModeTarget` constructs instead of copying | `8240762da` |
 | Last denylists deleted; Support/Dashboard/Operations/Home construct (Slices 4–5 isolation tier) | `3e42e8462` |
 | `/products` isolation tier + D2 detail-route move | uncommitted |
+| Isolation tier for `/sourcing` `/test` `/walk-in` `/inventory` `/review` `/pack` `/warehouse`; `pane` + station-table params ambient; `SurfaceParamHygiene`; `surface-param-isolation.spec.ts` | uncommitted |
 
 **Nine denylists, ~86 enumerated keys, all gone.** `MODE_SCOPED_PARAMS` (17),
 `OUTBOUND_MODE_SCOPED_PARAMS` (16), `SUPPORT_MODE_CLEAR_PARAMS` (20),
@@ -82,28 +87,153 @@ not optional.
 7. **Update the specs that assert the old URLs in the same change** — never leave
    one asserting a dead contract.
 
+**Step 6 has a placement rule: mount the hygiene hook in the surface's
+`layout.tsx`.** Two wrong homes, both found by the e2e probe rather than review:
+
+- **A sidebar panel is the wrong host, and the failure is MOBILE-ONLY.** On
+  desktop `SidebarContextPanel` mounts the panel by route key, so the parse runs
+  and everything looks fine. On mobile the panel rides `RouteShell`'s `actions`
+  slot and mobile renders one pane at a time, defaulting to `history` — so the
+  panel never mounts and the parse never runs. **Confirmed live on `/products`**:
+  a probe param survived every mobile load. `/products` and all six receiving
+  routes were moved to route level 2026-07-29 and the panel hooks deleted.
+  (`/sourcing` looked like the same bug but was actually PARKED — the stand-in
+  replaces the panel too. Two different causes, one symptom.)
+- **A root `page.tsx` covers only that one path.** A spec governs its sub-routes
+  by prefix, so `/inventory`'s hook in `app/inventory/page.tsx` left all twelve
+  siblings (`graph`, `triage`, `pulse`, `bins`, `units`, …) unparsed.
+  `/inventory/graph` kept an undeclared param.
+
+A `layout.tsx` is the one host always mounted for every path under the surface.
+`src/app/shipping/layout.tsx` was the precedent; `app/inventory/layout.tsx`,
+`app/warehouse/layout.tsx`, `app/products/layout.tsx` and `app/receiving/layout.tsx`
+now match it. **If the spec's route has children, the hook goes in the layout**;
+a leaf route (`/review`, `/walk-in`, the graduated scan pages) mounts it on the
+page. Always via **`@/components/routing/SurfaceParamHygiene`**, which handles the
+`Suspense` boundary and works from an async server-component page — its docblock
+is the placement SoT.
+
+**Measure the parse with a POLL, never a fixed sleep.** An ad-hoc probe with
+`waitForTimeout(2200)` reported `/triage`, `/incoming` and `/repair` as unparsed;
+at 20s of polling all three were fine. Dev-mode first compile is slow enough to
+fake a failure, which nearly sent a second round of "fixes" after code that was
+already correct.
+
+**Step 7 needs a settle PROBE, or the e2e lies.** A "this param survived" test
+asserted right after `goto` passes vacuously: the param is still on the URL only
+because the hook's effect has not fired. "Poll until the URL stops changing" is
+*also* wrong — two consecutive reads match before the effect runs. Attach a key no
+spec declares (`__isolation_probe`), poll until it disappears, and only then
+assert: its removal is proof the parse ran. That mistake cost a full debugging
+cycle chasing two "failures" that were the harness, not the code.
+
+**Step 1.5 — the hand-off sweep.** Before writing the spec, ask what the surface
+reads *without rendering*: a redirect hook, a proxy rule, an outgoing href
+builder. `/walk-in` reads `openRepair` / `new` / `search` purely to forward them,
+and the ownership guard was green while the spec dropped all three (`/repair`
+declares them, so nothing looked undeclared). **A param a surface only hands off
+still has to be declared**, or the hygiene hook strips it before the hand-off
+runs. Grep the surface's hooks for `searchParams.get` even when the page body has
+none.
+
 ---
 
 ## 3. What is left, in priority order
 
-### 3.1 The isolation tier is NOT finished — 8 surfaces still leak
+### 3.1 The isolation tier — **COMPLETE** (2026-07-30)
 
 > **Corrected 2026-07-29.** This section previously read "They are already
 > isolated. The remaining benefit is … not correctness." **That was wrong**, and
 > it is the most expensive error in this file, because it retires the highest-
 > value work left. Do not restore it.
 
-`fba`, `inventory`, `packer`, `review`, `sourcing`, `tech`, `walk-in`,
-`warehouse` still switch mode by `?mode=` **and none of them has a param spec.**
-`applyModeTarget` only constructs when `routeParamsFor(target.pathname)` resolves;
-with no spec it falls through to the legacy copy-forward, so the whole query
-string still rides along. Check before assuming otherwise:
+**All eight surfaces are resolved.** Seven have specs; `/fba` correctly has none —
+it is a server-side `redirect()`, not a surface, so it gets the alias treatment
+(`/tech`, `/packer`). **Do not "finish the tier" by giving it one.** What a
+redirect needs instead is the hand-off guarantee, now pinned by
+`fba-modes.test.ts`: every key it forwards must be declared by `/shipping/fba`. `applyModeTarget` only
+constructs when `routeParamsFor(target.pathname)` resolves; with no spec it falls
+through to the legacy copy-forward, so the whole query string still rides along.
+Check before assuming otherwise:
 
 ```bash
 npx tsx -e "import {routeParamsFor} from './src/lib/routing/registry';
-for (const p of ['/fba','/inventory','/packer','/review','/sourcing','/tech','/walk-in','/warehouse'])
+for (const p of ['/fba','/pack','/review','/warehouse','/inventory','/walk-in','/test','/sourcing'])
   console.log(p, routeParamsFor(p)?.route ?? 'NO SPEC — still copy-forward')"
 ```
+
+**Seven surfaces DONE (2026-07-29), uncommitted:** `sourcing` · `test` · `walk-in` ·
+`inventory` · `review` · `pack` · `warehouse`. `/packer` and `/tech` correctly stay
+NO SPEC — they are legacy aliases the proxy normalizes, and giving an alias its own
+spec would double-own its keys for a route that only redirects. Notes worth carrying:
+
+- **`/sourcing`** had a clear list in *two* places — `SourcingSidebarPanel.goMode`
+  and the nav targets — and **both forgot `by` and `range`**, so Scout's field
+  toggle and the Analytics window leaked into every sibling mode. Two lists to
+  keep in sync, both wrong the same way. Nav nulls removed after proving the five
+  mode URLs byte-identical.
+  **Caveat, found only by running the e2e:** `/sourcing` is in
+  `PARKED_SURFACE_KEYS`, so the route renders the `ParkedSurface` stand-in and
+  `SourcingPage` never mounts. The leak was real in code but **not
+  operator-reachable**, and the boundary parse is unobservable until the surface
+  unparks — so its two e2e cases are `test.skip`ped with that reason rather than
+  asserting something impossible. A spec on a parked surface is still correct
+  groundwork (parked `/operations` and `/` have had one since Slice 5), just do
+  not describe it as a live fix. **`/fba` is parked too** — factor that in before
+  spending a pass on it.
+- **`/tech` is not the route — `/test` is** (`TECH = '/test'`;
+  `src/app/tech/page.tsx` is a legacy alias the proxy redirects). The spec is on
+  `/test`, and `/tech` deliberately has **no** spec: a second one would
+  double-own `ship`/`testTab` and force two new `SHARED_OWNED_KEYS` entries for a
+  route that only redirects. `TechSidebarPanel.updateTopMode` therefore uses
+  `parseRouteParams(TEST_ROUTE_PARAMS, delta)` + `basePath` rather than
+  `buildRouteUrl`, which would rewrite the legacy path.
+- That pass is also where the **constant-keyed blind spot** and the two live
+  defects it hid (`?pane=`, and the station-table `?layout=`/`?density=`/
+  `?weekOffset=` that broke saved views) were found — see §2's note. The station
+  ones were **pre-existing on receiving**, fixed in the same change because the
+  fix is one ambient declaration each.
+- **`/walk-in` is the case that proves the read guard's limit.** It reads
+  `openRepair`, `new` and `search` *only* to forward a legacy deep-link on to
+  `/pickup?job=repair` (`useWalkInTaskRedirect`) — it never renders them. The
+  ownership guard stayed **green** while the spec omitted all three, because
+  `/repair` already declares them, so nothing looked undeclared. Mounting the
+  hygiene hook with that spec would have turned every `?new=true` link into a
+  plain history page. **When a surface only reads a param to hand it off, it
+  still has to declare it.** Also: `?category=` is deliberately NOT declared (it
+  is proxy-only, read server-side then deleted, with no client reader), and `?job=`
+  needed nothing because its only readers hang off `WalkInSurfacePage.tsx`, a dead
+  file in `knip-baseline.json`. `?tab=` needed a `SHARED_OWNED_KEYS` entry — the
+  proxy intentionally preserves it across the `/walk-in` → `/repair` hop, so the
+  shared key is a designed hand-off, not a collision.
+
+- **`/inventory` needed five `SHARED_OWNED_KEYS` entries** (`state`, `section`,
+  `unit`, `sku`, `filter`) — ratified by the user 2026-07-29 on the grounds that
+  each is the same question over a per-route vocabulary, the rationale the other
+  19 entries already use. Renaming instead would have broken live bookmarks. Its
+  in-app mode switch also **disagreed with the nav rail**: `applyModeTarget`
+  constructed and carried only `staff`, while `setSidebarUrl({ mode })` cleared
+  four keys and let `sku`/`bin`/`unit`/`state`/`condition` through. Both now
+  construct, so a mode switch opens clean either way — that was a real behaviour
+  change, deliberately taken to remove two shapes for one job.
+
+- **`/warehouse` had the most instructive clear list of the whole refactor.**
+  `setTab` stripped `status`/`q`/`room` when leaving Bins and `code` when leaving
+  Racks — a *conditional* denylist — but never `serial`, `showEmpty`, `view`,
+  `new` or `edit`. So a scanned serial and the Map toggles rode every tab switch,
+  and each filter added to any tab was one more leak nobody would remember. It is
+  the clearest argument in the codebase for construct-don't-copy.
+- **`/pack` closed a `UNDECLARED_PARAM_CONSTANTS` excuse.** `packview` was excused
+  only because `/pack` had no spec; declaring it let the entry go, so that
+  allowlist shrank as designed. `focusShippedSearch` is the only entry left, and it
+  is not a param anything reads back.
+- **`/review` needed no new shared keys** (`packerLogId`/`orderId`/`choreId` are
+  unique to it); `/warehouse` needed exactly one, `serial`. Total ratified shared
+  additions across the pass: `tab`, `openRepair`, `state`, `section`, `unit`,
+  `sku`, `filter`, `serial`.
+- **Mount the parse via `@/components/routing/SurfaceParamHygiene`**, not the raw
+  hook — it handles the Suspense boundary and works from an async server-component
+  page. Its docblock is the placement SoT.
 
 `/products` was the ninth and is now done — it is the worked example. Its leak
 was real and reproducible: QC → Catalog carried `skuId`, `q`, `historyId` and
@@ -133,6 +263,36 @@ Two traps the `/products` pass turned up, both worth checking on the next surfac
   ```bash
   grep -rhno "\.get('[a-zA-Z_][a-zA-Z0-9_]*')" <surface dirs> | sed "s/.*\.get('//;s/')//" | sort -u
   ```
+- **That grep — and the guard's own regex — are blind to CONSTANT-keyed reads,
+  and this is the trap that has cost the most.** A param read as
+  `searchParams.get(SOME_CONSTANT)` matches no literal pattern, and the modules
+  that do it (`@/utils/*-workspace-state`, `@/lib/station/table-url-params`,
+  `@/design-system/components/RouteShell`) sit **outside every surface tree**, so
+  no `OWNED_TREES` entry reaches them either. The `/test` pass (2026-07-29) found
+  **four live drops** this way, all invisible to a green guard:
+  - `?ship=` / `?testTab=` — the Testing/Shipping workspace tabs.
+  - `?pane=` — `RouteShell`'s MOBILE pane toggle. Already broken on `/test` and
+    the receiving surfaces: tapping "Actions" wrote the param and the hygiene
+    hook stripped it, so the pane snapped back to History.
+  - `?layout=` / `?density=` / `?weekOffset=` — the station-table contract.
+    `SAVED_VIEW_PARAM_KEYS` captures these for four station surfaces, so
+    **applying a saved view on `/receiving/history`, `/incoming` or `/test`
+    reverted instantly**. Pre-existing, not introduced by that pass.
+
+  Always run the constant sweep too, and resolve each hit to a route:
+  ```bash
+  grep -rnE "^\s*(export )?const [A-Z][A-Z0-9_]*_PARAM(S)? *(:[^=]*)?= *'[a-zA-Z_][a-zA-Z0-9_]*'" src --include="*.ts" --include="*.tsx" | grep -vE "\.test\.|\.spec\."
+  ```
+  `param-ownership.guard.test.ts` now asserts every `*_PARAM` constant's key is
+  declared by some spec (or excused in `UNDECLARED_PARAM_CONSTANTS` with a
+  reason), which closes the class. **Read its "Known limit" note** — it checks
+  *some* spec, not *the reading route's* spec, so a key owned by one route and
+  read on another spec-backed route still slips through.
+- **A shared shell's param is usually AMBIENT, not owned.** `pane`, `layout`,
+  `density`, `weekOffset` joined `staff`/`colsort`/`coldir` in `AMBIENT_PARAMS`
+  because a design-system component asks the identical question on every surface.
+  Declaring such a key per-route would need a `SHARED_OWNED_KEYS` entry per
+  owner, and that list is supposed to shrink.
 
 Reference implementation: `/shipping` (Slice 3). Note what it taught —
 `SidebarContextPanel` mounts the panel by route key, so a segment's `page.tsx`
@@ -170,25 +330,32 @@ lookahead to `PRODUCTS_VIEWS` and holds the 307 until D3.
 Products segments are now unblocked. Inventory / dashboard were never blocked by
 this.
 
-### 3.3 Blocker for the `/dashboard` migration — presence flags die at the boundary
+### 3.3 `/dashboard` — the last surface that does not boundary-parse
 
-`DASHBOARD_ROUTE_PARAMS` declares `unshipped` / `shipped` / `pending` / `fba` /
-`warranty` as `paramText`, but the app writes them as **valueless presence
-flags** (`?shipped`, `params: { unshipped: '' }`) and reads them with `.has()`.
-`paramText` requires `min(1)`, so the boundary parse drops every one of them:
+**The presence-flag blocker is FIXED** (`paramPresence` shipped 2026-07-29), so the
+original reason not to mount the hook is gone. But `/dashboard` **still does not
+mount `useSurfaceParamHygiene()`** — verified 2026-07-30 by probe:
+`/dashboard?triq=BOX-9&unshipped` keeps `triq`, a Triage param. Step 6 of the
+method is genuinely unfinished on the highest-traffic surface in the app.
 
-```bash
-npx tsx -e "import {routeParamsFor} from './src/lib/routing/registry';
-import {parseRouteParams} from './src/lib/routing/route-params';
-const s = routeParamsFor('/dashboard');
-console.log(JSON.stringify(parseRouteParams(s, new URLSearchParams('shipped')).toString()))"  # => ""
-```
+**It is now DE-RISKED but not done.** Three hand-off keys were undeclared and would
+have been stripped the moment the hook mounted — each silently breaking a retired
+front door:
 
-Latent today only because `/dashboard` does not mount `useSurfaceParamHygiene()`.
-**§2 step 6 adds exactly that**, at which point a pasted `/dashboard?shipped`
-silently lands on Unshipped. Add a presence-flag schema that accepts `''` (and
-decide whether the canonical written form becomes `?shipped=1`) **before**
-graduating the dashboard, not after.
+- **`wstatus` / `wexp`** — forwarded by `buildSupportWarrantyRedirectSearch` to
+  Support. A **pre-existing** latent break, waiting for whoever graduated the
+  dashboard.
+- **`fba`** — IA row L removed it from the lifecycle-tab set while the `?fba`
+  redirect kept reading it, so closing row L *created* the landmine.
+
+All three are now declared (`query-mode-routes.ts`, in a commented HAND-OFF block)
+and pinned by `dashboard-search-state.test.ts` against
+`SUPPORT_WARRANTY_FORWARDED_PARAMS` — mutation-verified in both directions.
+
+**Before mounting the hook, do the two sweeps anyway.** The declared hand-offs cover
+only the redirects this pass looked at; `components/dashboard` is a large tree and
+the CONSTANT sweep (§2) has not been run against it. Three bugs this refactor
+already shipped came from skipping exactly that step on a smaller surface.
 
 ### 3.4 D3 — the 307 → 308 sunset
 

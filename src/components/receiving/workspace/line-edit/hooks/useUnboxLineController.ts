@@ -550,8 +550,17 @@ export function useUnboxLineController(
     (row.serials ?? []).some(
       (s) => String((s as { serial_number?: string | null }).serial_number ?? '').trim().length > 0,
     );
+  const perUnitAbsentCount = (row.units ?? []).filter((u) => u.serial_absent).length;
+  const expectedQty = row.quantity_expected ?? 0;
+  const serialAccounted =
+    (row.serials ?? []).filter((s) =>
+      String((s as { serial_number?: string | null }).serial_number ?? '').trim(),
+    ).length + perUnitAbsentCount;
   const serialWaived = serialAbsent && Boolean(serialAbsentReason);
-  const serialConfirmed = !requireSerialConfirmation || hasCapturedSerial || serialWaived;
+  const unitsSatisfied =
+    expectedQty > 0 ? serialAccounted >= expectedQty : hasCapturedSerial;
+  const serialConfirmed =
+    !requireSerialConfirmation || unitsSatisfied || serialWaived;
   // Org photo policy (`receiving.photoPolicy`, WS-PHOTO Plan 5) — same
   // settings-page cache as the serial gate above, so reading it costs no extra
   // request. Unknown/loading values degrade to 'optional' (never block on a

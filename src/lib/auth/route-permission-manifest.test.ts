@@ -237,6 +237,18 @@ test('regression: stations routes are gated (station builder, ops-studio layer 2
   );
 });
 
+test('regression: dashboard.view gates the generic saved-views API', () => {
+  const paths = routesGatedBy('dashboard.view').map((r) => r.path);
+  assert.ok(
+    paths.includes('/api/saved-views/route.ts'),
+    'dashboard.view should gate GET/POST /api/saved-views',
+  );
+  assert.ok(
+    paths.includes('/api/saved-views/[id]/route.ts'),
+    'dashboard.view should gate PATCH/DELETE /api/saved-views/[id]',
+  );
+});
+
 test('regression: studio.view gates the Operations Studio graph feed (ST1)', () => {
   const paths = routesGatedBy('studio.view').map((r) => r.path);
   assert.ok(
@@ -612,6 +624,27 @@ test('kiosk intake is a device-principal gate (withKioskAuth), no staff permissi
   assert.ok(r.gate.includes('withKioskAuth'), `expected withKioskAuth gate, got ${r.gate}`);
   // It is a device-authed WRITE — must never be an ungated (gate: NONE) route.
   assert.notEqual(r.gate, 'NONE');
+});
+
+test('walk_in.take_payment is a registered permission', () => {
+  assert.equal(isKnownPermission('walk_in.take_payment'), true);
+});
+
+test('taking counter payment is NOT gated by a route permission — it is a PIN step-up', () => {
+  // The counter write path is device-authed, so there is no staff session for
+  // withAuth to check a permission against. `walk_in.take_payment` is instead
+  // verified inside resolveKioskStepUp against the PIN'd staff's effective
+  // permissions. This test pins that architecture: if someone later "fixes" the
+  // route to require the permission via withAuth, the device principal breaks and
+  // the whole unattended-tablet model goes with it.
+  const r = routeByPath('/api/kiosk/intake/route.ts');
+  assert.ok(r, 'intake route should be in the manifest');
+  assert.equal(r.permission, null, 'device-authed: no route-level staff permission');
+  assert.equal(
+    routesGatedBy('walk_in.take_payment').length,
+    0,
+    'walk_in.take_payment is a step-up permission, not a route gate',
+  );
 });
 
 test('kiosk pair is public + capability-gated (the pairing code is the capability)', () => {

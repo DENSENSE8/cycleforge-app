@@ -1,6 +1,3 @@
-import { SHIPPING_MODE_ICONS } from '@/lib/nav/station-nav-icons';
-import type { HorizontalSliderItem } from '@/components/ui/HorizontalButtonSlider';
-
 export type OutboundMode = 'labels' | 'scan-out' | 'ready' | 'fba';
 
 /** Canonical Shipping station path. Legacy `/outbound` permanently redirects here. */
@@ -29,14 +26,6 @@ export function outboundModeFromPath(pathname: string | null | undefined): Outbo
   }
   return null;
 }
-
-export const OUTBOUND_MODE_ITEMS: HorizontalSliderItem[] = [
-  { id: 'labels', label: 'Labels', icon: SHIPPING_MODE_ICONS.labels },
-  { id: 'ready', label: 'Ready', icon: SHIPPING_MODE_ICONS.ready },
-  { id: 'fba', label: 'FBA', icon: SHIPPING_MODE_ICONS.fba },
-  // Scan out sits last (rightmost) — dock ship-confirm, the end-of-line action.
-  { id: 'scan-out', label: 'Scan out', icon: SHIPPING_MODE_ICONS['scan-out'] },
-];
 
 export type OutboundSort = 'priority' | 'newest';
 

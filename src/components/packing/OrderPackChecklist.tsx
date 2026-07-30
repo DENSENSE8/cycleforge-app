@@ -5,6 +5,7 @@ import { Check, AlertCircle, Info, Loader2 } from '@/components/Icons';
 import { evaluateKitReadiness, type PackingEnforcement } from '@/lib/packing/kit-readiness';
 import type { PackChecklistLineDto } from '@/lib/packing/order-pack-checklist';
 import { usePackingCheckPersist } from '@/hooks/usePackingCheckPersist';
+import { ReturnScanCard } from '@/components/receiving/workspace/unmatched-items/ReturnScanCard';
 import { PackChecklistLineRow } from './PackChecklistLineRow';
 
 interface OrderPackChecklistProps {
@@ -17,6 +18,13 @@ interface OrderPackChecklistProps {
   className?: string;
   /** Highlight + expand this line (e.g. after SKU scan on mobile). */
   highlightOrderRowId?: number | null;
+  /**
+   * Exception Path B — show Unbox Unfound-style accordion chrome titled
+   * "Unknown order" when there are no checklist lines.
+   */
+  isUnknownOrder?: boolean;
+  /** Condition chip on the unknown-order empty row. */
+  unknownCondition?: string;
 }
 
 function lineKey(line: PackChecklistLineDto): string {
@@ -36,6 +44,8 @@ export function OrderPackChecklist({
   isLoading = false,
   className,
   highlightOrderRowId,
+  isUnknownOrder = false,
+  unknownCondition = 'N/A',
 }: OrderPackChecklistProps) {
   const [tickedLines, setTickedLines] = useState<Set<string>>(new Set());
   const [tickedKitParts, setTickedKitParts] = useState<Set<number>>(new Set());
@@ -107,7 +117,20 @@ export function OrderPackChecklist({
     );
   }
 
-  if (lines.length === 0) return null;
+  if (lines.length === 0) {
+    if (!isUnknownOrder) return null;
+    return (
+      <div className={className}>
+        <ReturnScanCard
+          title="Unknown order"
+          body="none"
+          condition={unknownCondition || 'N/A'}
+          onConditionChange={() => {}}
+          onAdd={() => {}}
+        />
+      </div>
+    );
+  }
 
   return (
     <div

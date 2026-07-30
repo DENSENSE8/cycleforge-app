@@ -7,6 +7,7 @@
  * via each panel's DetailStackRailRegistrar.
  */
 
+import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 import dynamic from 'next/dynamic';
 import { Loader2 } from '@/components/Icons';
@@ -17,6 +18,7 @@ import {
   getActiveDetailStack,
   subscribeActiveDetailStack,
 } from '@/lib/detail-stacks/open-store';
+import { cartonReadHref } from '@/lib/receiving/surface-path';
 import { dispatchDashboardAndStationRefresh } from '@/utils/events';
 import { toast } from '@/lib/toast';
 
@@ -26,10 +28,6 @@ const ShippedDetailsPanel = dynamic(
 );
 const UnshippedDetailsPanel = dynamic(
   () => import('@/components/unshipped/UnshippedDetailsPanel').then((m) => m.UnshippedDetailsPanel),
-  { ssr: false },
-);
-const ReceivingDetailsStack = dynamic(
-  () => import('@/components/station/ReceivingDetailsStack').then((m) => m.ReceivingDetailsStack),
   { ssr: false },
 );
 const FbaBoardDetailPanel = dynamic(
@@ -53,6 +51,7 @@ function DetailStackLoadingShell({ stackId, onClose }: { stackId: string; onClos
 }
 
 export function GlobalDetailStackHost() {
+  const router = useRouter();
   const active = useSyncExternalStore(subscribeActiveDetailStack, getActiveDetailStack, () => null);
   const [loaded, setLoaded] = useState<LoadedDetailStack | null>(null);
   const [loading, setLoading] = useState(false);
@@ -66,12 +65,25 @@ export function GlobalDetailStackHost() {
     dispatchDashboardAndStationRefresh();
   }, []);
 
+  // Decision 2a: receiving "look" lands on the read inspector — never remount
+  // editable ReceivingDetailsStack from the global host.
+  useEffect(() => {
+    if (!active || active.kind !== 'receiving') return;
+    const id = Number(active.id);
+    closeDetailStack();
+    setLoaded(null);
+    if (Number.isFinite(id) && id > 0) {
+      router.push(cartonReadHref(id));
+    }
+  }, [active, router]);
+
   useEffect(() => {
     if (!active) {
       setLoaded(null);
       setLoading(false);
       return;
     }
+    if (active.kind === 'receiving') return;
 
     let cancelled = false;
     setLoading(true);
@@ -93,7 +105,7 @@ export function GlobalDetailStackHost() {
     };
   }, [active]);
 
-  if (!active) return null;
+  if (!active || active.kind === 'receiving') return null;
 
   if (loading || !loaded) {
     return <DetailStackLoadingShell stackId={`${active.kind}:${active.id}`} onClose={handleClose} />;
@@ -111,17 +123,6 @@ export function GlobalDetailStackHost() {
         context="dashboard"
         onClose={handleClose}
         onUpdate={handleUpdate}
-      />
-    );
-  }
-
-  if (loaded.kind === 'receiving') {
-    return (
-      <ReceivingDetailsStack
-        log={loaded.log}
-        onClose={handleClose}
-        onUpdated={handleUpdate}
-        onDeleted={() => handleClose()}
       />
     );
   }

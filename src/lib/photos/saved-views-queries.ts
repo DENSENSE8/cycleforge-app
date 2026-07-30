@@ -1,56 +1,39 @@
 import 'server-only';
 
-import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
+import {
+  createSavedView,
+  deleteSavedView,
+  getSavedView,
+  listSavedViews,
+  updateSavedView,
+  type SavedViewRow,
+} from '@/lib/saved-views/saved-views-queries';
 
 /**
- * Server-backed saved views for the Media Library (/ops/photos). Personal presets
- * owned by a staff member within an org (optionally shared org-wide). Every query
- * is org-scoped; mutations are additionally ownership-scoped (`staff_id = $me`) so
- * a user can only edit/delete their own views. See
- * `2026-07-01_media_library_saved_views.sql`. Mirrors the Operations pattern
- * (`src/lib/operations/saved-views-queries.ts`).
+ * Media Library saved views — thin wrappers over the polymorphic
+ * `saved_views` table with `surface = 'media_library'`. Preserves the
+ * historical function names so `/api/photos/saved-views` and
+ * `useMediaLibrarySavedViews` stay unchanged.
  */
 
-export interface MediaSavedView {
-  id: number;
-  name: string;
-  filters: Record<string, unknown>;
-  is_shared: boolean;
-  sort_order: number;
-  staff_id: number;
-  created_at: string;
-  updated_at: string;
-}
+export type MediaSavedView = SavedViewRow;
 
-const COLS = `id, name, filters, is_shared, sort_order, staff_id, created_at, updated_at`;
+const SURFACE = 'media_library' as const;
 
 /** Views visible to a staffer: their own + any org-shared views. */
 export async function listMediaSavedViews(
   orgId: OrgId,
   staffId: number,
 ): Promise<MediaSavedView[]> {
-  const { rows } = await tenantQuery<MediaSavedView>(
-    orgId,
-    `SELECT ${COLS}
-       FROM media_library_saved_views
-      WHERE organization_id = $1 AND (staff_id = $2 OR is_shared = true)
-      ORDER BY sort_order ASC, name ASC`,
-    [orgId, staffId],
-  );
-  return rows;
+  return listSavedViews(orgId, staffId, SURFACE);
 }
 
 export async function getMediaSavedView(
   id: number,
   orgId: OrgId,
 ): Promise<MediaSavedView | null> {
-  const { rows } = await tenantQuery<MediaSavedView>(
-    orgId,
-    `SELECT ${COLS} FROM media_library_saved_views WHERE id = $1 AND organization_id = $2`,
-    [id, orgId],
-  );
-  return rows[0] ?? null;
+  return getSavedView(id, orgId, SURFACE);
 }
 
 export async function createMediaSavedView(
@@ -58,14 +41,7 @@ export async function createMediaSavedView(
   orgId: OrgId,
   staffId: number,
 ): Promise<MediaSavedView> {
-  const { rows } = await tenantQuery<MediaSavedView>(
-    orgId,
-    `INSERT INTO media_library_saved_views (organization_id, staff_id, name, filters, is_shared, sort_order)
-     VALUES ($1, $2, $3, $4::jsonb, $5, $6)
-     RETURNING ${COLS}`,
-    [orgId, staffId, input.name, JSON.stringify(input.filters ?? {}), input.isShared ?? false, input.sortOrder ?? 0],
-  );
-  return rows[0];
+  return createSavedView({ ...input, surface: SURFACE }, orgId, staffId);
 }
 
 /** Ownership-scoped update — only the creating staffer can edit. */
@@ -80,27 +56,7 @@ export async function updateMediaSavedView(
     sortOrder?: number;
   },
 ): Promise<MediaSavedView | null> {
-  const { rows } = await tenantQuery<MediaSavedView>(
-    orgId,
-    `UPDATE media_library_saved_views
-        SET name       = COALESCE($4, name),
-            filters    = COALESCE($5::jsonb, filters),
-            is_shared  = COALESCE($6, is_shared),
-            sort_order = COALESCE($7, sort_order),
-            updated_at = now()
-      WHERE id = $1 AND organization_id = $2 AND staff_id = $3
-      RETURNING ${COLS}`,
-    [
-      id,
-      orgId,
-      staffId,
-      patch.name ?? null,
-      patch.filters ? JSON.stringify(patch.filters) : null,
-      patch.isShared ?? null,
-      patch.sortOrder ?? null,
-    ],
-  );
-  return rows[0] ?? null;
+  return updateSavedView(id, orgId, staffId, patch, SURFACE);
 }
 
 /** Ownership-scoped hard delete (disposable presets, no audit trail to keep). */
@@ -109,10 +65,5 @@ export async function deleteMediaSavedView(
   orgId: OrgId,
   staffId: number,
 ): Promise<boolean> {
-  const { rowCount } = await tenantQuery(
-    orgId,
-    `DELETE FROM media_library_saved_views WHERE id = $1 AND organization_id = $2 AND staff_id = $3`,
-    [id, orgId, staffId],
-  );
-  return (rowCount ?? 0) > 0;
+  return deleteSavedView(id, orgId, staffId, SURFACE);
 }

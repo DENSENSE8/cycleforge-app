@@ -1,24 +1,29 @@
 'use client';
 
-import { Fragment, memo, useCallback, useState, type KeyboardEvent, type MouseEvent, type ReactNode } from 'react';
+import { Fragment, memo, type ReactNode } from 'react';
 import { Check } from '@/components/Icons';
+import { FulfillmentPickupPill } from '@/components/receiving/ReceivingIdentityChips';
 import {
   conditionGradeTableLabel,
   getStatusDotBg,
 } from '@/components/station/receiving-constants';
-import { FulfillmentPickupPill } from '@/components/receiving/ReceivingIdentityChips';
+import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import { resolveReceivingLineSerialsCsv } from '@/components/station/receiving-line-serials';
+import {
+  resolveReceivingRowStageStamp,
+  type ReceivingActivityAxis,
+} from '@/components/station/receiving-lines-table-helpers';
+import { ReceivingLineOrderRow } from '@/components/station/ReceivingLineOrderRow';
 import { OrderIdChip, SerialChip, TrackingChip, getLast4 } from '@/components/ui/CopyChip';
-import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import {
   GridCellDash,
   GridDateCellValue,
   GridPlatformMarkValue,
 } from '@/components/ui/grid-cells';
+import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { ledgerRowStateClass } from '@/components/ui/queue-row-chrome';
-import { LedgerCellEditor } from '@/design-system/components/grid';
-import { focusRing } from '@/design-system/tokens/focus-ring';
+import { gridCellAlignClass } from '@/design-system/components/grid';
 import { usePlatformMeta } from '@/hooks/useCatalog';
-import { useTimeFormat } from '@/lib/time-format/useTimeFormat';
 import { conditionGradeTextClass } from '@/lib/condition-tone';
 import { EMPTY_META_DASH, EMPTY_META_DASH_ALIGN_CLASS } from '@/lib/conditions';
 import {
@@ -26,6 +31,7 @@ import {
   fulfillmentModeLabel,
   isLocalPickupFulfillment,
 } from '@/lib/receiving/fulfillment-mode';
+import { getReceivingPoIdentityParts } from '@/lib/receiving/po-group-title';
 import {
   RECEIVING_GRID_COLUMNS,
   RECEIVING_GRID_FROZEN_CELL,
@@ -36,19 +42,9 @@ import {
   type ReceivingGridColumn,
 } from '@/lib/receiving/receiving-grid-layout';
 import { sourcePlatformMetaFromLabel } from '@/lib/source-platform';
-import { toast } from '@/lib/toast';
+import { useTimeFormat } from '@/lib/time-format/useTimeFormat';
 import { formatDateTimePST, formatOpsStageTime } from '@/utils/date';
-import { gridCellAlignClass } from '@/design-system/components/grid';
 import { cn } from '@/utils/_cn';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
-import { ReceivingLineOrderRow } from '@/components/station/ReceivingLineOrderRow';
-import {
-  dispatchLineUpdated,
-  resolveReceivingRowStageStamp,
-  type ReceivingActivityAxis,
-} from '@/components/station/receiving-lines-table-helpers';
-import { resolveReceivingLineSerialsCsv } from '@/components/station/receiving-line-serials';
-import { getReceivingPoIdentityParts } from '@/lib/receiving/po-group-title';
 import { receivingActivityDateCell } from './receiving-grid-date';
 
 interface ReceivingGridRowProps {
@@ -122,57 +118,6 @@ export const ReceivingGridRow = memo(function ReceivingGridRow({
 }: ReceivingGridRowProps) {
   useTimeFormat();
   const resolvePlatformMeta = usePlatformMeta();
-  const [editingTitle, setEditingTitle] = useState(false);
-  const [editSeed, setEditSeed] = useState<string | null>(null);
-
-  const closeTitleEditor = useCallback(() => {
-    setEditingTitle(false);
-    setEditSeed(null);
-  }, []);
-
-  const openTitleEditor = useCallback((seed: string | null = null) => {
-    setEditSeed(seed);
-    setEditingTitle(true);
-  }, []);
-
-  const commitTitle = useCallback(
-    async (next: string) => {
-      const trimmed = next.trim();
-      if (!trimmed) return;
-      const catalogId = row.sku_catalog_id;
-      dispatchLineUpdated({
-        id: row.id,
-        item_name: trimmed,
-        catalog_product_title: trimmed,
-        zoho_item_title: trimmed,
-      });
-
-      try {
-        const lineRes = await fetch('/api/receiving-lines', {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id: row.id, item_name: trimmed }),
-        });
-        const lineData = await lineRes.json().catch(() => null);
-        if (!lineRes.ok || !lineData?.success) {
-          throw new Error(lineData?.error || 'Failed to update title');
-        }
-
-        if (catalogId != null && Number.isFinite(catalogId) && catalogId > 0) {
-          await fetch(`/api/sku-catalog/${catalogId}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ productTitle: trimmed }),
-          });
-        }
-
-        toast.success('Title updated');
-      } catch (e) {
-        toast.error(e instanceof Error ? e.message : 'Failed to update title');
-      }
-    },
-    [row.id, row.sku_catalog_id],
-  );
 
   if (isMobile) {
     return (
@@ -217,32 +162,6 @@ export const ReceivingGridRow = memo(function ReceivingGridRow({
 
   const dataCell = (col: ReceivingGridColumn, rule = true) =>
     cn(receivingGridCell({ rule, inset: 'grid' }), gridCellAlignClass(col));
-  const gridEditable = !isMobile;
-
-  const titleTriggerProps = gridEditable
-    ? {
-        tabIndex: 0 as const,
-        'aria-label': `Edit title — ${productTitle}`,
-        onClick: (e: MouseEvent) => {
-          e.stopPropagation();
-          openTitleEditor();
-        },
-        onKeyDown: (e: KeyboardEvent) => {
-          if (e.key === 'Enter' || e.key === 'F2') {
-            e.preventDefault();
-            e.stopPropagation();
-            openTitleEditor();
-          } else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
-            e.preventDefault();
-            e.stopPropagation();
-            openTitleEditor(e.key);
-          } else if (e.key === 'Escape') {
-            e.stopPropagation();
-            (e.currentTarget as HTMLElement).blur();
-          }
-        },
-      }
-    : {};
 
   const statusDot = isHistory
     ? 'bg-emerald-500'
@@ -282,34 +201,21 @@ export const ReceivingGridRow = memo(function ReceivingGridRow({
           </div>
         );
       case 'title':
+        // Identity column — collection-map read-only
+        // (`isGridColumnInCellEditable` / GRID_IDENTITY_COLUMN_KEYS). Clicks
+        // fall through to the row (open record); title correction is rematch /
+        // catalog at the record plane, not an in-cell caret.
         return (
           <div
             data-col="title"
-            className={cn(
-              dataCell(col, rule),
-              RECEIVING_GRID_FROZEN_CELL,
-              'relative gap-1.5',
-              gridEditable && focusRing('cell'),
-            )}
+            className={cn(dataCell(col, rule), RECEIVING_GRID_FROZEN_CELL, 'gap-1.5')}
             style={{ left: receivingGridFrozenLeft('title') }}
             data-frozen-edge
-            {...titleTriggerProps}
           >
             <span className={cn('h-2 w-2 shrink-0 rounded-full', statusDot)} aria-hidden />
             <span className="min-w-0 flex-1 truncate text-role-data text-text-default">
               {productTitle}
             </span>
-            {editingTitle && gridEditable ? (
-              <LedgerCellEditor
-                initialValue={productTitle === 'Unnamed inbound line' ? '' : productTitle}
-                replaceWith={editSeed}
-                ariaLabel="Edit product title"
-                onCommit={(next) => {
-                  void commitTitle(next);
-                }}
-                onClose={closeTitleEditor}
-              />
-            ) : null}
           </div>
         );
       case 'date':
@@ -439,11 +345,9 @@ export const ReceivingGridRow = memo(function ReceivingGridRow({
       aria-pressed={selectMode ? undefined : isSelected}
       aria-label={`Select receiving line ${row.id}`}
       onClick={() => {
-        if (editingTitle) return;
         onSelect();
       }}
       onKeyDown={(event) => {
-        if (editingTitle) return;
         if (event.key === 'Enter' || event.key === ' ') {
           event.preventDefault();
           onSelect();

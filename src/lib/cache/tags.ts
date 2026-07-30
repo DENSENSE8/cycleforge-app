@@ -86,7 +86,7 @@ export const CACHE_NS = {
   // fbaBoard / fbaToday / skuCatalog) are ALREADY invalidated by existing writers.
   /** `/api/fba/stage-counts` — GROUP BY status over fba_shipment_items (120s poll). */
   fbaStageCounts: 'fba-stage-counts',
-  /** `/api/dashboard/fba-shipments` — shipments rollup (60s poll). */
+  /** Legacy dashboard FBA shipments rollup — route deleted 2026-07-29 (IA row L). */
   fbaDashboard: 'fba-dashboard',
   /** `/api/sku-catalog/search` — reference catalog search (debounced per-keystroke). */
   skuCatalogSearch: 'sku-catalog-search',

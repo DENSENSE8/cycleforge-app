@@ -23,7 +23,8 @@ export interface CreateAuditLogParams {
   metadata?: Record<string, unknown>;
 }
 
-export async function createAuditLog(
+/** Internal insert — callers use {@link recordAudit}. */
+async function createAuditLog(
   db: Queryable,
   params: CreateAuditLogParams,
 ): Promise<number | null> {
@@ -149,6 +150,8 @@ export const AUDIT_ENTITY = {
   OPERATIONS_SAVED_VIEW: 'operations_saved_view',
   // Media library (/ops/photos) — server-backed filter/view presets
   MEDIA_SAVED_VIEW: 'media_saved_view',
+  // Polymorphic saved_views — dashboard/station generic API
+  SAVED_VIEW: 'saved_view',
   // Voice (Nextiva) — Support ▸ Voicemail / Calls
   VOICEMAIL: 'voicemail',
   CALL_EVENT: 'call_event',
@@ -188,6 +191,21 @@ export const AUDIT_ACTION = {
    * completion-insurance gate was waived to do it.
    */
   RECEIVING_PHOTO_POLICY_OVERRIDE: 'receiving.photo_policy.override',
+  /**
+   * An operator declared a carrier-delivered carton's goods LOST — written off
+   * rather than received. `reason_code` carries a `LOST_IN_TRANSIT` / `EMPTY_BOX` /
+   * `MISDELIVERED` / `STOLEN` code from the receiving-exception system registry
+   * (never free text), and the same act writes an OPEN `receiving_exceptions` row.
+   * Distinct from PO_RECEIVE (the goods arrived) and from the OS&D SHORT/DAMAGED
+   * codes (the goods arrived, imperfectly).
+   */
+  RECEIVING_LOSS_WRITE_OFF:  'receiving.loss.write_off',
+  /**
+   * The written-off carton turned up — the loss exception is resolved and the line
+   * returns to the delivered-not-unboxed lane. The append-only exception row keeps
+   * the original write-off in history; this is not a delete.
+   */
+  RECEIVING_LOSS_REOPEN:     'receiving.loss.reopen',
   /**
    * Operator-driven PO relink — make the website authoritative over Zoho. Writes
    * the chosen PO (and optional SKU correction) onto the line + carton, even when
@@ -494,6 +512,10 @@ export const AUDIT_ACTION = {
   MEDIA_SAVED_VIEW_CREATE: 'media.saved_view.create',
   MEDIA_SAVED_VIEW_UPDATE: 'media.saved_view.update',
   MEDIA_SAVED_VIEW_DELETE: 'media.saved_view.delete',
+  // Polymorphic saved_views — dashboard/station generic API
+  SAVED_VIEW_CREATE: 'saved_view.create',
+  SAVED_VIEW_UPDATE: 'saved_view.update',
+  SAVED_VIEW_DELETE: 'saved_view.delete',
   // Voice (Nextiva) — Support ▸ Voicemail / Calls
   VOICEMAIL_FOLLOWUP_RESOLVED: 'voicemail.followup.resolved',
   VOICEMAIL_LINKED:            'voicemail.linked',
@@ -527,6 +549,9 @@ export const AUDIT_REASON_REQUIRED: ReadonlySet<string> = new Set([
   // Waiving the photo-evidence gate IS the override — it is meaningless
   // without the PHOTO_WAIVED_* code that says why.
   AUDIT_ACTION.RECEIVING_PHOTO_POLICY_OVERRIDE,
+  // Writing goods off as lost is the one receiving act that ends with no
+  // inventory — "which kind of lost" is the whole record.
+  AUDIT_ACTION.RECEIVING_LOSS_WRITE_OFF,
 ]);
 
 // ── Server-trusted wrapper ─────────────────────────────────────────────────

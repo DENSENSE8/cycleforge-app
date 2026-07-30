@@ -168,6 +168,10 @@ export const PERMISSIONS = [
   { id: 'walk_in.view',             category: 'ops', label: 'View walk-ins' },
   { id: 'walk_in.intake',           category: 'ops', label: 'Intake walk-in' },
   { id: 'walk_in.enroll_kiosk',     category: 'ops', label: 'Enroll / revoke kiosk device' },
+  // Taking money at the counter is a PRIVILEGED action, separate from intake:
+  // an unattended tablet authorizes a drop-off on its own, but a charge needs a
+  // real person who holds this. Checked at the kiosk PIN step-up.
+  { id: 'walk_in.take_payment',     category: 'ops', label: 'Take counter payment' },
   { id: 'stations.manage',          category: 'ops', label: 'Customize station pages (blocks, publish)' },
   { id: 'studio.view',              category: 'ops', label: 'View Operations Studio' },
   // Step-up is enforced on the PUBLISH route only (withAuth stepUp: true) so

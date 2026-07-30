@@ -90,7 +90,6 @@ export { useOrderFieldSave } from './useOrderFieldSave';
 export { usePackerLogs } from './usePackerLogs';
 export type { PackerRecord, UsePackerLogsOptions } from './usePackerLogs';
 export { useRealtimeInvalidation } from './useRealtimeInvalidation';
-export { useReceivingDetailForm } from './useReceivingDetailForm';
 export {
   useRepairsTable,
 } from './useRepairs';

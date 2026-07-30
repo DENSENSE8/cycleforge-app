@@ -15,6 +15,10 @@ import {
   ExternalLinkButton,
   IconButton,
 } from '@/design-system';
+import {
+  useMotionPresence,
+  useMotionTransition,
+} from '@/design-system/foundations/motion-framer-hooks';
 import { ExternalLink, Settings } from '@/components/Icons';
 import { InlineQtyPrefix } from '@/components/ui/QtyBadge';
 import { WorkOrderAssignmentCard } from '@/components/work-orders/WorkOrderAssignmentCard';
@@ -43,6 +47,8 @@ function describeUrgency(daysLate: number | null | undefined): string {
 
 export function FbaItemCard({ item, isExpanded, onToggleExpand }: FbaItemCardProps) {
   const card = useUpNextFbaCard({ item });
+  const collapsePresence = useMotionPresence(framerPresence.collapseHeight);
+  const collapseTransition = useMotionTransition(framerTransition.upNextCollapse);
   const urgencyText = describeUrgency(card.daysLate as number | null);
   const daysLateTone = getDaysLateTone(card.daysLate as number | null);
   const canOpenAsin = !!card.asinUrl;
@@ -121,8 +127,8 @@ export function FbaItemCard({ item, isExpanded, onToggleExpand }: FbaItemCardPro
           {isExpanded && (
             <motion.div
               key="expanded-fba-item"
-              {...framerPresence.collapseHeight}
-              transition={framerTransition.upNextCollapse}
+              {...collapsePresence}
+              transition={collapseTransition}
               className="overflow-hidden"
             >
               <div className="mt-2.5 border-t border-purple-100 pt-2.5" onClick={(e) => e.stopPropagation()}>

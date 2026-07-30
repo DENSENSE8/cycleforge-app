@@ -1,4 +1,5 @@
 import type { ReceivingLineRow } from '@/components/station/ReceivingLinesTable';
+import type { ReceivingLineUnitView } from '@/components/station/receiving-line-row';
 
 // `id` is optional to stay structurally compatible with the chip menu's
 // `SavedSerial` (whose id is optional). Callbacks guard with `if (s.id == null)`.
@@ -35,6 +36,13 @@ export interface ActiveRowSlotContext {
    * is fed from a different fetch cadence).
    */
   serials: ActiveRowSerial[];
+  /**
+   * Materialised `receiving_line_unit` rows for the active line — same
+   * accordion SoT as `serials`. Drives the per-unit green-check no-serial
+   * offer; the panel's outer `row.units` is usually unhydrated table data
+   * and must not be used here (per-unit-no-serial Phase 3).
+   */
+  units: ReceivingLineUnitView[];
 }
 
 export type ActiveRowSlot =

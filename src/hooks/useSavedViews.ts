@@ -2,17 +2,30 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { surfaceFromStorageKey } from '@/lib/saved-views/surfaces';
 
 /**
- * `useSavedViews` — the storage + URL-apply core extracted from
- * {@link import('@/components/sidebar/SavedViewsControl').SavedViewsControl} so
- * BOTH the legacy sidebar control and the new table ⋮ menu
- * ({@link import('@/components/ui/table-options/TableOptionsMenu').TableOptionsMenu})
- * share ONE implementation (station-table-unification-plan §3.2 refactor). A
- * "view" is a named, encoded subset of the surface's `paramKeys`; views persist
- * in localStorage and apply by writing those params into the URL, so an applied
- * view is shareable/bookmarkable.
+ * `useSavedViews` — the ONE storage + URL-apply core behind every generic
+ * saved-views surface (dashboard outbound + station/testing history). A "view"
+ * is a named, encoded subset of the surface's `paramKeys`; views persist in the
+ * polymorphic `saved_views` table (via `/api/saved-views`) and apply by writing
+ * those params into the URL, so an applied view is shareable/bookmarkable.
+ *
+ * Consumers — exactly TWO, each supplying only `storageKey` + `paramKeys` and its
+ * own UI: `OutboundSavedViewsList` (dashboard outbound sidebar, per lifecycle
+ * mode) and `TableOptionsMenu` (station + testing history ⋮ menu). Ops and Media
+ * Library keep their dedicated hooks/routes (`useOperationsSavedViews`,
+ * `useMediaLibrarySavedViews`).
+ *
+ * **Saved views are operator-defined facet combinations. They are NOT the
+ * lifecycle strip** — that boundary is the rule in
+ * `.claude/rules/display/workbench.md` → Tabs vs. saved views. Do not add a
+ * saved view that merely reproduces one lifecycle tab.
+ *
+ * The `storageKey` prop is preserved for call-site stability; it maps to a DB
+ * `surface` via `src/lib/saved-views/surfaces.ts` (no longer writes localStorage).
  */
+
 export interface SavedView {
   id: string;
   name: string;
@@ -36,6 +49,28 @@ export interface UseSavedViewsResult {
   removeView: (id: string) => void;
 }
 
+type ServerView = {
+  id: number;
+  name: string;
+  filters: Record<string, unknown>;
+};
+
+function toClientView(row: ServerView): SavedView {
+  const query = typeof row.filters?.query === 'string' ? row.filters.query : '';
+  return { id: String(row.id), name: row.name, query };
+}
+
+async function reqJson(url: string, method: string, body?: unknown) {
+  const res = await fetch(url, {
+    method,
+    headers: body ? { 'Content-Type': 'application/json' } : undefined,
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(json?.error || `Request failed (${res.status})`);
+  return json;
+}
+
 export function useSavedViews({
   storageKey,
   paramKeys,
@@ -46,30 +81,34 @@ export function useSavedViews({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const surface = surfaceFromStorageKey(storageKey);
 
   const [views, setViews] = useState<SavedView[]>([]);
 
-  // Load + persist (tolerant of malformed storage, like RecentSearchesList).
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(storageKey);
-      setViews(raw ? (JSON.parse(raw) as SavedView[]) : []);
-    } catch {
+    if (!surface) {
       setViews([]);
+      return;
     }
-  }, [storageKey]);
-
-  const persist = useCallback(
-    (next: SavedView[]) => {
-      setViews(next);
+    let cancelled = false;
+    (async () => {
       try {
-        localStorage.setItem(storageKey, JSON.stringify(next));
+        const res = await fetch(`/api/saved-views?surface=${encodeURIComponent(surface)}`);
+        if (!res.ok) {
+          if (!cancelled) setViews([]);
+          return;
+        }
+        const json = await res.json();
+        const rows: ServerView[] = Array.isArray(json?.views) ? json.views : [];
+        if (!cancelled) setViews(rows.map(toClientView));
       } catch {
-        /* private mode / quota — keep in-memory */
+        if (!cancelled) setViews([]);
       }
-    },
-    [storageKey],
-  );
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [surface]);
 
   // Encode only the params that define a view, in a stable order so equality is
   // reliable regardless of how they sit in the live URL.
@@ -100,17 +139,65 @@ export function useSavedViews({
   const saveView = useCallback(
     (name: string) => {
       const trimmed = name.trim();
-      if (!trimmed) return;
-      const next: SavedView[] = [
-        ...views.filter((v) => v.name.toLowerCase() !== trimmed.toLowerCase()),
-        { id: `${Date.now().toString(36)}-${views.length}`, name: trimmed, query: currentQuery },
-      ];
-      persist(next);
+      if (!trimmed || !surface) return;
+      const filters = { query: currentQuery };
+      const existing = views.find((v) => v.name.toLowerCase() === trimmed.toLowerCase());
+
+      void (async () => {
+        try {
+          if (existing) {
+            const json = await reqJson(`/api/saved-views/${existing.id}`, 'PATCH', {
+              name: trimmed,
+              filters,
+            });
+            const updated = json?.view
+              ? toClientView(json.view as ServerView)
+              : { ...existing, name: trimmed, query: currentQuery };
+            setViews((prev) =>
+              prev
+                .filter(
+                  (v) => v.id === existing.id || v.name.toLowerCase() !== trimmed.toLowerCase(),
+                )
+                .map((v) => (v.id === existing.id ? updated : v)),
+            );
+          } else {
+            const json = await reqJson('/api/saved-views', 'POST', {
+              surface,
+              name: trimmed,
+              filters,
+            });
+            if (json?.view) {
+              const created = toClientView(json.view as ServerView);
+              setViews((prev) => [
+                ...prev.filter((v) => v.name.toLowerCase() !== trimmed.toLowerCase()),
+                created,
+              ]);
+            }
+          }
+        } catch (err) {
+          console.error('[useSavedViews] save failed:', err);
+        }
+      })();
     },
-    [views, currentQuery, persist],
+    [views, currentQuery, surface],
   );
 
-  const removeView = useCallback((id: string) => persist(views.filter((v) => v.id !== id)), [views, persist]);
+  const removeView = useCallback(
+    (id: string) => {
+      if (!surface) return;
+      const prev = views;
+      setViews(prev.filter((v) => v.id !== id));
+      void (async () => {
+        try {
+          await reqJson(`/api/saved-views/${id}`, 'DELETE');
+        } catch (err) {
+          console.error('[useSavedViews] remove failed:', err);
+          setViews(prev);
+        }
+      })();
+    },
+    [views, surface],
+  );
 
   return { views, currentQuery, activeView, hasActiveFilters, applyView, saveView, removeView };
 }

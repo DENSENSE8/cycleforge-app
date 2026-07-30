@@ -1,5 +1,6 @@
 import { ReceivingSurfacePage } from '@/components/receiving/ReceivingSurfacePage';
 import { SurfaceGate } from '@/components/surfaces/SurfaceGate';
+import { SurfaceParamHygiene } from '@/components/routing/SurfaceParamHygiene';
 
 /**
  * `/repair` — Repair intake, a Receiving mode with its own graduated route (the
@@ -16,8 +17,11 @@ import { SurfaceGate } from '@/components/surfaces/SurfaceGate';
  */
 export default function RepairPage() {
   return (
-    <SurfaceGate surfaceKey="repair">
-      <ReceivingSurfacePage mobileTitle="Repair" />
-    </SurfaceGate>
+    <>
+      <SurfaceParamHygiene />
+      <SurfaceGate surfaceKey="repair">
+        <ReceivingSurfacePage mobileTitle="Repair" />
+      </SurfaceGate>
+    </>
   );
 }

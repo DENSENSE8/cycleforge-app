@@ -8,6 +8,7 @@ import { ShippedDetailsPanelContent } from '../ShippedDetailsPanelContent';
 import { dispatchCloseShippedDetails, dispatchDashboardAndStationRefresh } from '@/utils/events';
 import { toPSTDateKey } from '@/utils/date';
 import { useOrderFieldSave } from '@/hooks/useOrderFieldSave';
+import { toast } from '@/lib/toast';
 
 export function TechDetailsStack({
   shipped,
@@ -153,7 +154,7 @@ export function TechDetailsStack({
       dispatchCloseShippedDetails();
     } catch (error) {
       console.error('Failed to delete tech records:', error);
-      window.alert('Failed to delete tech records. Please try again.');
+      toast.error('Failed to delete tech records. Please try again.');
     } finally {
       setIsDeleting(false);
     }

@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
       // sku_catalog); tenantQuery GUC-wraps the read so RLS can backstop.
       const result = await tenantQuery(
         orgId,
-        `SELECT id, sku, item_number, product_title, display_name, google_file_id, source_url, relative_path, folder_path, file_name, status, assigned_at, assigned_by, type, updated_at
+        `SELECT id, sku, item_number, product_title, display_name, google_file_id, source_url, thumbnail_url, relative_path, folder_path, file_name, status, assigned_at, assigned_by, type, updated_at
          FROM product_manuals
          WHERE is_active = TRUE
            AND ($2::text IS NULL OR status = $2)
@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
     // sku_catalog); tenantQuery GUC-wraps the read so RLS can backstop.
     const result = await tenantQuery(
       orgId,
-      `SELECT id, sku, item_number, product_title, display_name, google_file_id, source_url, relative_path, folder_path, file_name, status, assigned_at, assigned_by, type, updated_at
+      `SELECT id, sku, item_number, product_title, display_name, google_file_id, source_url, thumbnail_url, relative_path, folder_path, file_name, status, assigned_at, assigned_by, type, updated_at
        FROM product_manuals
        WHERE is_active = TRUE
          AND ($4::text IS NULL OR status = $4)
@@ -95,6 +95,7 @@ function normalizeRow(row: any) {
     display_name: row.display_name || null,
     google_file_id: String(row.google_file_id || ''),
     source_url: row.source_url || null,
+    thumbnail_url: row.thumbnail_url || null,
     relative_path: row.relative_path || null,
     folder_path: row.folder_path || null,
     file_name: row.file_name || null,

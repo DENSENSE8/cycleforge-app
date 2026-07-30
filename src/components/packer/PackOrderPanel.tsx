@@ -114,6 +114,8 @@ export function PackOrderPanel({ activeOrder, onClose }: PackOrderPanelProps) {
               resetKey={resetKey}
               isLoading={isLoading}
               variant="panel"
+              isUnknownOrder={Boolean(activeOrder.isUnknownOrder)}
+              unknownCondition={activeOrder.condition}
             />
           ),
         },
@@ -219,6 +221,8 @@ export function PackOrderPanel({ activeOrder, onClose }: PackOrderPanelProps) {
       activeOrder.tracking,
       activeOrder.scanType,
       activeOrder.serialUnitId,
+      activeOrder.isUnknownOrder,
+      activeOrder.condition,
       checklist,
       hasRollup,
       hasTimelineTab,

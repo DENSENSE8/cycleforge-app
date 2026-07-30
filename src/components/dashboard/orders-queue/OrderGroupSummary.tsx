@@ -29,6 +29,7 @@ import {
   type OrdersQueueColumn,
 } from '@/lib/dashboard-order-row-layout';
 import { GridDateCellValue } from '@/components/ui/grid-cells';
+import { gridCellAlignClass } from '@/design-system/components/grid';
 import { formatQueueRowDateCell, formatSalePrice, queueRowShipBySource, type QueueRowRecord } from './helpers';
 import { orderRowQtyTone } from '@/lib/condition-tone';
 import { orderRowConditionLabel, EMPTY_META_DASH } from '@/lib/conditions';
@@ -128,7 +129,9 @@ export function OrderGroupSummary({
       </button>
     </HoverTooltip>
   ) : null;
-  const orderCell = orderId ? <OrderIdChip value={orderId} display={getLast4(orderId)} plain /> : null;
+  const orderCell = orderId ? (
+    <OrderIdChip value={orderId} display={getLast4(orderId)} plain fitDisplayWidth />
+  ) : null;
   const trackingCell =
     trackings.size > 1 ? (
       <TrackingCountChip count={trackings.size} dense={isMobile} />
@@ -163,7 +166,8 @@ export function OrderGroupSummary({
   }
 
   const cellInset = gridSkin ? ('grid' as const) : ('cell' as const);
-  const dataCell = (rule = true) => ordersQueueGridCell({ rule, inset: cellInset });
+  const dataCell = (col: OrdersQueueColumn, rule = true) =>
+    cn(ordersQueueGridCell({ rule, inset: cellInset }), gridCellAlignClass(col));
 
   // Per-column registry — mirrors OrdersQueueTableRow's, minus editors.
   const renderCell = (col: OrdersQueueColumn, last: boolean): ReactNode => {
@@ -182,7 +186,7 @@ export function OrderGroupSummary({
         return (
           <div
             data-col="title"
-            className={cn(dataCell(rule), ORDERS_QUEUE_FROZEN_CELL)}
+            className={cn(dataCell(col, rule), ORDERS_QUEUE_FROZEN_CELL)}
             style={{ left: ordersQueueFrozenLeft('title') }}
             data-frozen-edge
           >
@@ -198,7 +202,7 @@ export function OrderGroupSummary({
         // per-line urgency; inventing a fold-level `Nd` would be a claim the
         // data does not support.
         return (
-          <div data-col="sla" className={dataCell(rule)}>
+          <div data-col="sla" className={dataCell(col, rule)}>
             <GridDateCellValue
               label={groupDateCell?.label}
               tooltip={groupDateCell?.tooltip}
@@ -207,9 +211,8 @@ export function OrderGroupSummary({
           </div>
         );
       case 'qty':
-        // Left-aligned to match the leaf-row qty cell (see its comment there).
         return (
-          <div data-col="qty" className={dataCell(rule)}>
+          <div data-col="qty" className={dataCell(col, rule)}>
             {/* Matches the leaf-row qty / Date-cell type scale. */}
             <span className={cn('min-w-0 truncate tabular-nums text-role-caption', orderRowQtyTone(qtySum))}>
               {qtySum}
@@ -218,7 +221,7 @@ export function OrderGroupSummary({
         );
       case 'condition':
         return (
-          <div data-col="condition" className={cn(dataCell(rule), 'text-role-eyebrow uppercase text-text-muted')}>
+          <div data-col="condition" className={cn(dataCell(col, rule), 'text-role-eyebrow uppercase text-text-muted')}>
             <span className="min-w-0 truncate">
               <RowConditionMeta condition={conditionText} />
             </span>
@@ -226,18 +229,18 @@ export function OrderGroupSummary({
         );
       case 'order':
         return (
-          <div data-col="order" className={dataCell(rule)}>
+          <div data-col="order" className={dataCell(col, rule)}>
             {orderCell}
           </div>
         );
       case 'tracking':
         return (
-          <div data-col="tracking" className={dataCell(rule)}>
+          <div data-col="tracking" className={dataCell(col, rule)}>
             {trackingCell}
           </div>
         );
       default:
-        return <span className={dataCell(rule)} />;
+        return <span className={dataCell(col, rule)} />;
     }
   };
 

@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
+import pool from '@/lib/db';
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
 import { publishTechLogChanged } from '@/lib/realtime/publish';
+import {
+  getApiIdempotencyResponse,
+  readIdempotencyKey,
+  saveApiIdempotencyResponse,
+} from '@/lib/api-idempotency';
 import {
   getTechSerialsBySalId,
   insertTechSerialForSalContext,
@@ -11,6 +17,8 @@ import {
 import { withAuth } from '@/lib/auth/withAuth';
 
 type Action = 'add' | 'remove' | 'update' | 'undo';
+
+const ROUTE = 'tech.serial';
 
 export const POST = withAuth(async (req: NextRequest, ctx) => {
   const body = await req.json().catch(() => null);
@@ -26,6 +34,14 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
   }
   if (!Number.isFinite(salId) || salId <= 0) {
     return NextResponse.json({ success: false, error: 'salId is required' }, { status: 400 });
+  }
+
+  const idemKey = readIdempotencyKey(req, body.idempotencyKey ?? body.clientEventId ?? null);
+  if (idemKey) {
+    const hit = await getApiIdempotencyResponse(pool, ctx.organizationId, idemKey, ROUTE);
+    if (hit) {
+      return NextResponse.json(hit.response_body, { status: hit.status_code });
+    }
   }
 
   try {
@@ -190,7 +206,18 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       });
     } catch (err) {
       if (err instanceof HandlerError) {
-        return NextResponse.json({ success: false, error: err.message }, { status: err.status });
+        const failBody = { success: false, error: err.message };
+        if (idemKey && err.status < 500) {
+          await saveApiIdempotencyResponse(pool, {
+            orgId: ctx.organizationId,
+            idempotencyKey: idemKey,
+            route: ROUTE,
+            staffId,
+            statusCode: err.status,
+            responseBody: failBody,
+          });
+        }
+        return NextResponse.json(failBody, { status: err.status });
       }
       throw err;
     }
@@ -198,8 +225,9 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     await invalidateCacheTags(['tech-logs', 'orders-next']);
     await publishTechLogChanged({ organizationId: ctx.organizationId, techId: staffId, action: logAction, source: 'tech.serial' });
 
+    let okBody: Record<string, unknown>;
     if (outcome.kind === 'add') {
-      return NextResponse.json({
+      okBody = {
         success: true,
         serialNumbers: outcome.serialNumbers,
         tsnId: outcome.tsnId,
@@ -211,12 +239,24 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
               warning:
                 'Serial recorded against an open exception — the scanned tracking number matched no order.',
             }),
+      };
+    } else if (outcome.kind === 'undo') {
+      okBody = { success: true, serialNumbers: outcome.serialNumbers, removedSerial: outcome.removedSerial };
+    } else {
+      okBody = { success: true, serialNumbers: outcome.serialNumbers };
+    }
+
+    if (idemKey) {
+      await saveApiIdempotencyResponse(pool, {
+        orgId: ctx.organizationId,
+        idempotencyKey: idemKey,
+        route: ROUTE,
+        staffId,
+        statusCode: 200,
+        responseBody: okBody,
       });
     }
-    if (outcome.kind === 'undo') {
-      return NextResponse.json({ success: true, serialNumbers: outcome.serialNumbers, removedSerial: outcome.removedSerial });
-    }
-    return NextResponse.json({ success: true, serialNumbers: outcome.serialNumbers });
+    return NextResponse.json(okBody);
   } catch (error: any) {
     console.error('Error in tech serial:', error);
     return NextResponse.json({ success: false, error: 'Failed', details: error.message }, { status: 500 });

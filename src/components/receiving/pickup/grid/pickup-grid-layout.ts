@@ -1,4 +1,3 @@
-import { gridTemplate } from '@/design-system/components/grid/grid-column-geometry';
 /**
  * Local Pickup spreadsheet column model — the pickup-native sibling of
  * {@link RECEIVING_GRID_COLUMNS}. Pickup rows are LCPU order *items* (read-only:
@@ -10,10 +9,13 @@ import { gridTemplate } from '@/design-system/components/grid/grid-column-geomet
  *
  * Frozen pane = `select` (empty gutter, keeps the station left rhythm) + `title`
  * (the flexing product cell). `order` is the LCPU PO# — the one-to-many fold key.
+ * Title is identity — never in-cell editable ({@link GRID_IDENTITY_COLUMN_KEYS}).
  */
 
-import type { ColumnType } from '@/lib/tables/table-columns';
+import { GRID_IDENTITY_COLUMN_KEYS } from '@/design-system/components/grid/grid-column-editability';
+import { gridTemplate } from '@/design-system/components/grid/grid-column-geometry';
 import { ordersQueueColVar } from '@/lib/dashboard-order-row-layout';
+import type { ColumnType } from '@/lib/tables/table-columns';
 
 export type PickupGridColumnKey =
   | 'select'
@@ -33,6 +35,8 @@ export interface PickupGridColumn {
   gridLabel?: string;
   labelFitRem?: number;
   type?: ColumnType;
+  /** Justification override — see {@link LedgerGridColumnModel.align}. */
+  align?: 'start' | 'end';
   /** Staff-preference key (`staff_preferences.tableColumns.pickup`). */
   hideKey?: string;
   /** `core` ships ON (opt-out); `optional` ships OFF (opt-in via Fields). */
@@ -63,13 +67,18 @@ export const PICKUP_GRID_COLUMNS: readonly PickupGridColumn[] = [
   { key: 'sku', width: 'minmax(7rem, 7rem)', label: 'SKU', type: 'id', hideKey: 'sku', tier: 'optional', labelFitRem: 4.5 },
   { key: 'order', width: 'minmax(9rem, 9rem)', label: 'Order', type: 'id', hideKey: 'order', labelFitRem: 4.5 },
   { key: 'date', width: 'minmax(5.5rem, 5.5rem)', label: 'Date', type: 'date', hideKey: 'date', labelFitRem: 4.5 },
-  { key: 'qty', width: 'minmax(2.75rem, 2.75rem)', label: 'Qty', type: 'number', hideKey: 'qty', tier: 'optional', labelFitRem: 4.5 },
+  // 3.5rem / fit 3.5 matches Pending, Unbox and Incoming so the header reads `Qty`
+  // rather than a bare `#` — the type registry maps both `number` and `id` to the
+  // hash mark, so a label-less numeric column is indistinguishable from an id one.
+  { key: 'qty', width: 'minmax(3.5rem, 3.5rem)', label: 'Qty', type: 'number', hideKey: 'qty', tier: 'optional', labelFitRem: 3.5 },
   { key: 'condition', width: 'minmax(5.5rem, 5.5rem)', label: 'Cond', type: 'tag', hideKey: 'condition', tier: 'optional', labelFitRem: 4.5 },
   { key: 'price', width: 'minmax(5rem, 5rem)', label: 'Price', type: 'number', hideKey: 'price', tier: 'optional', labelFitRem: 4.5 },
   { key: 'status', width: 'minmax(5rem, 5rem)', label: 'Status', type: 'tag', hideKey: 'status', labelFitRem: 4.5 },
 ] as const;
 
-const PICKUP_GRID_LOCKED_KEYS: readonly PickupGridColumnKey[] = ['select', 'title'];
+const PICKUP_GRID_LOCKED_KEYS: readonly PickupGridColumnKey[] = [
+  ...GRID_IDENTITY_COLUMN_KEYS,
+];
 
 const PICKUP_GRID_SORTABLE_KEYS: readonly PickupGridColumnKey[] = PICKUP_GRID_COLUMNS.filter(
   (c) => c.sortable !== false && c.key !== 'select',

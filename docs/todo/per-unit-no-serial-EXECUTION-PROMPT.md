@@ -1,7 +1,7 @@
 # Per-unit "no serial" — execution plan
 
-**Status:** PLAN ONLY. Nothing built. Needs a go/no-go on §3 before any code.
-**Lane:** `main`. **Migration:** yes (one new table). **Blast radius:** contained — see §7.
+**Status:** Phases 0–4 implemented (2026-07-29). Observe live on a multi-qty carton before treating as done.
+**Lane:** `main`. **Migration:** `2026-07-29c_receiving_line_unit.sql`. **Blast radius:** contained — see §7.
 
 ---
 

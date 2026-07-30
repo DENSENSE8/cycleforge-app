@@ -32,6 +32,30 @@ export interface TransferOrderDetails {
    * sku_catalog / sku_platform_ids. Enqueued on Review · Catalog link.
    */
   unmatchedCatalog: TransferOrderDetail[];
+  /**
+   * Rows the eligibility gate dropped BEFORE ingestion, with the reason. Every
+   * other bucket here describes a row that made it in; this is the only record
+   * of the ones that did not, and on a live tab it is routinely the largest
+   * group. Blank spreadsheet padding is counted but never listed.
+   */
+  skippedRows?: TransferSkippedRow[];
+  /**
+   * Rows that WOULD have been skipped for a blank Item Number but were revived
+   * by an exact listing-title match. Shown so an inferred listing id is
+   * auditable rather than silent.
+   */
+  recoveredRows?: TransferSkippedRow[];
+}
+
+/** A sheet row the import declined, described so an operator can go fix it. */
+export interface TransferSkippedRow {
+  /** 1-based spreadsheet row, so the operator can jump straight to it. */
+  sheetRow: number;
+  reason: 'blankRow' | 'fbaShipment' | 'noOrderId' | 'noTracking' | 'noItemNumber' | 'ecwid';
+  orderId: string;
+  platform: string;
+  productTitle: string;
+  tracking: string;
 }
 
 export interface OrderExceptionResolutionDetail {
@@ -47,6 +71,13 @@ export interface TransferTabState {
   status: SyncTaskStatus;
   summary?: string;
   details?: TransferOrderDetails | null;
+  /**
+   * Raw counter bag passed straight through from `SyncOutcome.stats` (the
+   * connector seam). Carries the run's row/skip breakdown so the panel can say
+   * WHY an import moved nothing — the named fields below stay as the typed,
+   * UI-facing view of the same numbers.
+   */
+  stats?: Record<string, number>;
   error?: string;
   tabName?: string;
   inserted?: number;

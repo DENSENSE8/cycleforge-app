@@ -32,6 +32,11 @@ export interface PackActiveOrderPane {
   packerLogId?: number | null;
   /** True when the sidebar scan opened the overlay (affects remount key). */
   scanDriven?: boolean;
+  /**
+   * Pack scan missed the orders table (exception Path B) — show Unfound-style
+   * chrome and the "Unknown order" accordion empty row.
+   */
+  isUnknownOrder?: boolean;
 }
 
 export function usePackerOrderPane() {

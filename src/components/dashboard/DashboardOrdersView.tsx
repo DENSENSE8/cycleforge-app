@@ -39,10 +39,6 @@ const DashboardShippedTable = dynamic(
   () => import('@/components/shipped').then((m) => m.DashboardShippedTable),
   { ssr: false, loading: TableFallback },
 );
-const FbaShipmentsTable = dynamic(() => import('@/components/fba/FbaShipmentsTable'), {
-  ssr: false,
-  loading: TableFallback,
-});
 
 interface DashboardOrdersViewProps {
   orderView: DashboardOrderView;
@@ -126,8 +122,6 @@ export function DashboardOrdersView({
                 bulkBarInset={bulkBarVisible}
                 toolbarPortalTarget={outboundControlsEl}
               />
-            ) : orderView === 'fba' ? (
-              <FbaShipmentsTable />
             ) : (
               <UnshippedTable
                 strictSearchScope

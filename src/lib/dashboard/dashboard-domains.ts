@@ -31,6 +31,8 @@
  * isolation all read the same domain contract.
  */
 
+import { FBA_OUTBOUND_PATH } from '@/lib/fba/fba-modes';
+
 export type DashboardDomain = 'outbound' | 'inbound';
 
 /** The domain axis rides on `?mode=` (absent = the default outbound domain). */
@@ -62,6 +64,35 @@ export function isRetiredSearchMode(
   searchParams: Pick<URLSearchParams, 'get'>,
 ): boolean {
   return String(searchParams.get(DASHBOARD_DOMAIN_PARAM) || '').trim().toLowerCase() === 'search';
+}
+
+/**
+ * True when the URL still carries the retired `?fba` lifecycle tab.
+ *
+ * Row L of the IA rework deleted `'fba'` from `DashboardOrderView` because FBA
+ * fails the top-axis predicate — it already owns `/shipping/fba`. Deleting the
+ * member alone made an old `?fba` bookmark fall THROUGH to the Pending tab, which
+ * is neither of the two outcomes the plan weighed ("Shipping mode vs. 404") and
+ * silently discards what the operator asked for. So `?fba` joins `?warranty=` and
+ * `?mode=search` as a client-redirected retired front door — the established
+ * mechanism for exactly this, and for the same reason: Next `redirects()` emits a
+ * permanently-cached 308 and cannot drop one param while preserving others.
+ */
+export function isRetiredFbaView(
+  searchParams: Pick<URLSearchParams, 'has'>,
+): boolean {
+  return searchParams.has('fba');
+}
+
+/**
+ * Where a retired `?fba` URL goes: FBA's real home.
+ *
+ * Carries nothing across. The dashboard's `?open=` is an ORDER id and the FBA
+ * board's `openShipmentId` is a SHIPMENT id — forwarding one as the other would
+ * focus an unrelated record, which is worse than opening clean.
+ */
+export function retiredFbaViewTarget(): string {
+  return FBA_OUTBOUND_PATH;
 }
 
 /**

@@ -14,6 +14,7 @@ import { recordAudit, AUDIT_ACTION } from '@/lib/audit-logs';
 import { publishActivityLogged, publishOrderChanged, publishPackerLogChanged, publishPackerScanReady } from '@/lib/realtime/publish';
 import { ensureReplenishmentForOrder } from '@/lib/replenishment';
 import { withAuth } from '@/lib/auth/withAuth';
+import { readIdempotencyKey, withIdempotencyClaim } from '@/lib/api-idempotency';
 import { mirrorLegacyPackToAllocations } from '@/lib/inventory/sync-legacy-pack';
 import { attachPhotoWithLegacyUrl } from '@/lib/photos/service';
 import { PACKER_BOX_LABEL_PHOTO_TYPE } from '@/lib/photos/types';
@@ -162,9 +163,29 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     }
 }, { permission: 'packing.view' });
 
+const PACKING_LOGS_POST_ROUTE = 'packing-logs.post';
+
 export const POST = withAuth(async (req: NextRequest, ctx) => {
+    const body = await req.json().catch(() => null);
+    if (!body || typeof body !== 'object') {
+        return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
+    }
+
+    const idempotencyKey = readIdempotencyKey(
+        req,
+        body.idempotencyKey ?? body.clientEventId ?? body.client_event_id ?? null,
+    );
+
+    // Request-level idempotency (client UUID). Natural shipment_id dedup still
+    // helps order re-scans; non-order / SKU path always INSERTs without a key.
+    const out = await withIdempotencyClaim(pool, {
+        orgId: ctx.organizationId,
+        idempotencyKey,
+        route: PACKING_LOGS_POST_ROUTE,
+        staffId: sessionStaffId(ctx.staffId),
+    }, async () => {
+        const res = await (async (): Promise<NextResponse> => {
     try {
-        const body = await req.json();
         const { trackingNumber, photos, createdAt, timestamp, packerName } = body;
         // Server-trusted actor — body.packerId is ignored, and the session id is
         // NEVER run through the legacy alias map (that stamped staff 1/2/3's
@@ -652,6 +673,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
                     // classification check), so no CLEAN size/tier applies.
                     tracking_type: classification.trackingType,
                     order_id: order.order_id ?? null,
+                    order_row_id: Number(order.id),
                 },
                 createdAt: foundCreatedAt,
             });
@@ -891,6 +913,13 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
             details: error.message
         }, { status: 500 });
     }
+        })();
+        return {
+            status: res.status,
+            body: (await res.json()) as Record<string, unknown>,
+        };
+    });
+    return NextResponse.json(out.body, { status: out.status });
 }, { permission: 'packing.complete_order' });
 
 function normalizeScanTimestamp(input: any): string | null {

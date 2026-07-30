@@ -19,8 +19,8 @@ describe('table-surface SoT', () => {
     );
   });
 
-  it('uses a quiet sunken frozen header so airtable column rules stay visible', () => {
-    assert.equal(TABLE_FROZEN_HEADER_CLASS, 'bg-surface-sunken');
+  it('uses a card-white frozen header; borders carry hierarchy', () => {
+    assert.equal(TABLE_FROZEN_HEADER_CLASS, 'bg-surface-card');
   });
 
   it('clips every ops table with overflow-hidden (one recipe)', () => {

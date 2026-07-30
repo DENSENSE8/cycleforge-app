@@ -5,17 +5,66 @@
  *
  * Dedicated list feed because view=incoming excludes SHIPMENT_SCANNED rows, so
  * scanned-but-not-unboxed would never appear in the main lines table.
+ *
+ * Each row carries TWO independent clocks, and they must not be conflated:
+ *   - `age_band`      — internal dwell SLA (dock-to-stock), shared bands from
+ *                       delivered-unscanned. Applies to every row.
+ *   - `claim_by_date` — an EXTERNAL hard deadline that expires whether or not the
+ *                       warehouse acts. eBay-only; NULL elsewhere.
  */
 
-import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import {
   NOT_ZOHO_RECEIVED_PREDICATE,
   SHIPMENT_SCANNED_PREDICATE,
+  deliveredUnscannedAgeBandSql,
+  type DeliveredUnscannedAgeBand,
 } from '@/lib/receiving/delivered-unscanned';
+import { NO_OPEN_LOSS_EXCEPTION_PREDICATE } from '@/lib/receiving/exception-codes';
 
-export const DELIVERED_NOT_UNBOXED_WINDOW_DAYS = 30;
+/**
+ * Feed window — deliberately WIDER than {@link EBAY_CLAIM_WINDOW_DAYS}.
+ *
+ * At the previous 30 days these two numbers were equal, so a carton aged out of
+ * this feed on exactly the day its eBay claim expired: the last chance to act was
+ * never on screen while it was still actionable. The extra 15 days keep the
+ * expired-claim tail visible and auditable.
+ */
+export const DELIVERED_NOT_UNBOXED_WINDOW_DAYS = 45;
 export const DELIVERED_NOT_UNBOXED_CAP = 100;
+
+/**
+ * eBay Money Back Guarantee: an item-not-received must be reported within 30 days
+ * of the latest estimated delivery date. A vendor PO has no equivalent hard
+ * deadline, so the claim clock is eBay-only (NULL elsewhere) rather than a blanket
+ * +30d stamped on every inbound line.
+ */
+export const EBAY_CLAIM_WINDOW_DAYS = 30;
+
+/**
+ * SQL for the eBay claim deadline (aliases `rl`, `mirror`, `stn`) — NULL on any
+ * non-eBay line.
+ *
+ * Anchors on the vendor-promised delivery date when one exists and otherwise on
+ * the actual carrier delivery instant, converted to the WAREHOUSE civil day.
+ * Never a bare `stn.delivered_at::date`: that buckets by UTC and shifts every
+ * late-afternoon Pacific delivery a day forward, which on a 30-day deadline is a
+ * silent off-by-one (`.claude/rules/source-of-truth.md` → Dates & times).
+ *
+ * An eBay line normally has no `zoho_po_mirror` row, so in practice this resolves
+ * to delivered-day + N; the COALESCE keeps the estimated-delivery preference
+ * correct for the case where a mirror row does exist.
+ *
+ * @param daysParam positional placeholder carrying the window (e.g. `'$4'`)
+ */
+export function ebayClaimByDateSql(daysParam: string): string {
+  return `CASE WHEN rl.inbound_source_type = 'ebay' THEN (
+             COALESCE(
+               mirror.expected_delivery_date,
+               timezone('America/Los_Angeles', stn.delivered_at)::date
+             ) + (${daysParam} || ' days')::interval
+           )::date::text ELSE NULL END`;
+}
 
 /**
  * Shared not-unboxed guard (aliases `rl`, `r`). Wave-2 reader cutover: the
@@ -37,6 +86,8 @@ export const NOT_UNBOXED_PREDICATE = `COALESCE(rl.quantity_received, 0) = 0
 
 export interface DeliveredNotUnboxedItem {
   receiving_line_id: number;
+  /** Parent carton FK — null on a line not yet linked to one. Ticket-anchor input. */
+  receiving_id: number | null;
   shipment_id: number | null;
   carrier: string | null;
   tracking_number_raw: string | null;
@@ -50,9 +101,17 @@ export interface DeliveredNotUnboxedItem {
   sku: string | null;
   workflow_status: string | null;
   was_scanned: boolean;
+  /** Hours-since-delivered SLA band — the shared bands owned by delivered-unscanned. */
+  age_band: DeliveredUnscannedAgeBand | null;
+  /** eBay claim deadline as a civil date (`YYYY-MM-DD`); NULL for non-eBay lines. */
+  claim_by_date: string | null;
 }
 
 export async function getDeliveredNotUnboxedCount(orgId: OrgId): Promise<number> {
+  // Lazy, like the delivered-unscanned sibling: keeps this module's pure SQL
+  // fragments importable without instantiating the Neon pool at module load
+  // (`.claude/rules/build-gotchas.md` → bundle altitude).
+  const { tenantQuery } = await import('@/lib/tenancy/db');
   const { rows } = await tenantQuery<{ n: number }>(
     orgId,
     `SELECT COUNT(DISTINCT COALESCE(rz.zoho_purchaseorder_id, rl.id::text))::int AS n
@@ -77,6 +136,9 @@ export async function getDeliveredNotUnboxedCount(orgId: OrgId): Promise<number>
         AND stn.is_delivered = true
         AND stn.delivered_at > NOW() - ($2 || ' days')::interval
         AND ${NOT_UNBOXED_PREDICATE}
+        -- Exit rule: a written-off line leaves the lane. Keyed on the exception's
+        -- OPEN status, so resolving it (the carton turned up) returns the row.
+        AND ${NO_OPEN_LOSS_EXCEPTION_PREDICATE}
         AND (
           rz.zoho_purchaseorder_id IS NOT NULL AND ${NOT_ZOHO_RECEIVED_PREDICATE}
           OR rl.inbound_source_type = 'ebay'
@@ -87,10 +149,15 @@ export async function getDeliveredNotUnboxedCount(orgId: OrgId): Promise<number>
 }
 
 export async function listDeliveredNotUnboxed(orgId: OrgId): Promise<DeliveredNotUnboxedItem[]> {
+  const { tenantQuery } = await import('@/lib/tenancy/db');
   const { rows } = await tenantQuery<DeliveredNotUnboxedItem>(
     orgId,
     `SELECT DISTINCT ON (rl.id)
             rl.id                              AS receiving_line_id,
+            -- The line's OWN carton FK, not r.id: the r join is a loose
+            -- multi-condition match (source_order_id / zoho PO), so r.id can name a
+            -- sibling carton. A ticket must anchor to this line's actual carton.
+            rl.receiving_id                    AS receiving_id,
             stn.id                             AS shipment_id,
             stn.carrier,
             stn.tracking_number_raw,
@@ -104,7 +171,9 @@ export async function listDeliveredNotUnboxed(orgId: OrgId): Promise<DeliveredNo
             rl.item_name,
             rl.sku,
             rl.workflow_status::text           AS workflow_status,
-            (${SHIPMENT_SCANNED_PREDICATE})    AS was_scanned
+            (${SHIPMENT_SCANNED_PREDICATE})    AS was_scanned,
+            ${deliveredUnscannedAgeBandSql('stn.delivered_at')} AS age_band,
+            ${ebayClaimByDateSql('$4')}        AS claim_by_date
        FROM receiving_line rl
        LEFT JOIN receiving_line_zoho rz
          ON rz.receiving_line_id = rl.id
@@ -126,13 +195,21 @@ export async function listDeliveredNotUnboxed(orgId: OrgId): Promise<DeliveredNo
         AND stn.is_delivered = true
         AND stn.delivered_at > NOW() - ($2 || ' days')::interval
         AND ${NOT_UNBOXED_PREDICATE}
+        -- Exit rule: a written-off line leaves the lane. Keyed on the exception's
+        -- OPEN status, so resolving it (the carton turned up) returns the row.
+        AND ${NO_OPEN_LOSS_EXCEPTION_PREDICATE}
         AND (
           rz.zoho_purchaseorder_id IS NOT NULL AND ${NOT_ZOHO_RECEIVED_PREDICATE}
           OR rl.inbound_source_type = 'ebay'
         )
       ORDER BY rl.id, stn.delivered_at DESC NULLS LAST
       LIMIT $3`,
-    [orgId, String(DELIVERED_NOT_UNBOXED_WINDOW_DAYS), DELIVERED_NOT_UNBOXED_CAP],
+    [
+      orgId,
+      String(DELIVERED_NOT_UNBOXED_WINDOW_DAYS),
+      DELIVERED_NOT_UNBOXED_CAP,
+      String(EBAY_CLAIM_WINDOW_DAYS),
+    ],
   );
   return rows;
 }

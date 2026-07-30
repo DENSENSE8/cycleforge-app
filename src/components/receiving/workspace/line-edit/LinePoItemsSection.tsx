@@ -213,7 +213,7 @@ export function LinePoItemsSection({
           void c.deleteSerialUnit(s.id, lineId);
         },
       }}
-      activeRowSlot={({ serials }) => !serialScan ? null : (
+      activeRowSlot={({ serials, units }) => !serialScan ? null : (
         <ActiveLineConditionSerial
           serials={serials}
           lineId={row.id}
@@ -238,6 +238,7 @@ export function LinePoItemsSection({
           serialAbsentReason={c.serialAbsentReason}
           requireSerialConfirmation={c.requireSerialConfirmation}
           onSerialAbsentChange={({ absent, reason }) => c.commitSerialAbsent({ absent, reason })}
+          units={units}
           serialInputRef={c.serialRef}
         />
       )}

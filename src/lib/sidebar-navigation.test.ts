@@ -129,9 +129,12 @@ test('mode round-trip resolves, preserving unrelated params only on un-migrated 
   for (const page of SIDEBAR_PAGE_NAV) {
     for (const mode of page.modes!) {
       const target = mode.to();
-      // A mode legitimately sets/clears its OWN params (e.g. sourcing's lookup
-      // clears `q`/`status`). `applyModeTarget` only preserves params the mode's
-      // delta doesn't touch — so assert preservation for those keys only.
+      // A mode legitimately sets/clears its OWN params (e.g. Review's Pairing
+      // clears `rtab`/`packerLogId`). `applyModeTarget` only preserves params
+      // the mode's delta doesn't touch — so assert preservation for those keys
+      // only. Such a clear list is load-bearing ONLY while the route has no
+      // spec; `route-mode-registry.guard.test.ts` fails the moment one graduates
+      // while keeping it.
       const delta = target.params ?? {};
       const seed = new URLSearchParams('openOrderId=42&q=widget');
       const { pathname, search } = applyModeTarget({ pathname: page.href, params: seed }, target);

@@ -34,6 +34,33 @@ import { useClaimTicketReply } from './useClaimTicketReply';
  * instead of an opaque wall. Matches the house pattern used across admin/
  * favorites API callers (`details || error || fallback`).
  */
+/**
+ * Reads the operator's accumulated claim-CC history. Tolerates the legacy
+ * single-email string this key used to hold (`receiving-claim:last-cc-email`)
+ * so an existing stored value seeds the new list rather than being dropped.
+ */
+function readStoredCcEmails(storageKey: string): string[] {
+  let stored: string | null;
+  try {
+    stored = window.localStorage.getItem(storageKey);
+  } catch {
+    return [];
+  }
+  if (!stored) return [];
+  try {
+    const parsed: unknown = JSON.parse(stored);
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .map((v) => String(v ?? '').trim())
+      .filter(Boolean)
+      .filter((v, i, arr) => arr.indexOf(v) === i);
+  } catch {
+    // Not JSON — the legacy single-email string.
+    const trimmed = stored.trim();
+    return trimmed ? [trimmed] : [];
+  }
+}
+
 function apiErrorText(data: unknown, fallback: string): string {
   const d = (data ?? {}) as { error?: unknown; details?: unknown };
   const details = typeof d.details === 'string' ? d.details.trim() : '';
@@ -83,7 +110,7 @@ export function useReceivingClaimController({
   onTicketCreated,
   onTicketUnlinked,
 }: ClaimModalProps) {
-  const LAST_CC_EMAIL_STORAGE_KEY = 'receiving-claim:last-cc-email';
+  const LAST_CC_EMAIL_STORAGE_KEY = 'receiving-claim:cc-emails';
   const receivingId = row.receiving_id;
   // `undefined` override = default to the row's own line; an explicit value
   // (incl. `null` for a carton-level claim) wins. Placeholder / unfound stub
@@ -156,18 +183,28 @@ export function useReceivingClaimController({
   const [linking, setLinking] = useState(false);
   const [unlinking, setUnlinking] = useState(false);
   const [linkCommitted, setLinkCommitted] = useState(false);
+  // The Photos → Ticket → Review sub-flow that runs after a ticket is linked
+  // (mirrors the create flow's submit): posts the comment + attaches photos to
+  // the EXISTING ticket rather than filing a new one.
+  const [linkUpdating, setLinkUpdating] = useState(false);
+  const [linkUpdatePosted, setLinkUpdatePosted] = useState(false);
 
   // ── Composed sub-hooks ───────────────────────────────────────────────────
   const photos = useClaimPhotos(open, receivingId);
   const template = useClaimTemplate({
     open,
-    // Keep the preview warm across every pre-file step so Review can render it.
+    // Keep the preview warm across every pre-file/pre-update step so Review
+    // can render it — the create and link Photos/Ticket/Review steps share
+    // this exact gate.
     active:
-      mode === 'create' &&
-      (createStep === 'photos' || createStep === 'compose' || createStep === 'review'),
+      (mode === 'create' &&
+        (createStep === 'photos' || createStep === 'compose' || createStep === 'review')) ||
+      (mode === 'link' &&
+        (linkStep === 'photos' || linkStep === 'compose' || linkStep === 'review')),
     receivingId,
     lineId,
     claimType,
+    linkedTicketId: mode === 'link' ? filedTicket?.id ?? null : null,
   });
   const search = useClaimTicketSearch({
     open,
@@ -202,13 +239,7 @@ export function useReceivingClaimController({
     setDraftBody(null);
     setClaimType(initialClaimType);
     setNotePublic(true);
-    try {
-      const stored = window.localStorage.getItem(LAST_CC_EMAIL_STORAGE_KEY);
-      const email = stored ? stored.trim() : '';
-      setCcEmails(email ? [email] : []);
-    } catch {
-      setCcEmails([]);
-    }
+    setCcEmails(readStoredCcEmails(LAST_CC_EMAIL_STORAGE_KEY));
     // `crypto.randomUUID` only exists in a secure context (HTTPS / localhost);
     // over a plain-HTTP LAN IP it's undefined. `randomId` falls back safely.
     idempotencyKey.current = randomId();
@@ -217,18 +248,31 @@ export function useReceivingClaimController({
     setLinkStep('find');
     setFiledTicket(null);
     setLinkCommitted(false);
+    setLinkUpdatePosted(false);
     setTestResult(null);
     setTestSellerPreview(null);
     setArchiveState(null);
     setIsDryRun(false);
   }, [open, receivingId, lineId, initialClaimType, prefillReason, initialMode]);
 
-  // Persist the last-used CC email for the next claim.
+  // Remember every CC email ever entered (accumulated, not just this session's
+  // set) so the next claim on any carton auto-fills from the operator's full
+  // history — removing a chip from the current form doesn't forget it.
   useEffect(() => {
-    if (!open) return;
-    const last = ccEmails.at(-1)?.trim() ?? '';
+    if (!open || !ccEmails.length) return;
     try {
-      if (last) window.localStorage.setItem(LAST_CC_EMAIL_STORAGE_KEY, last);
+      const known = new Set(readStoredCcEmails(LAST_CC_EMAIL_STORAGE_KEY));
+      let changed = false;
+      for (const email of ccEmails) {
+        const trimmed = email.trim();
+        if (trimmed && !known.has(trimmed)) {
+          known.add(trimmed);
+          changed = true;
+        }
+      }
+      if (changed) {
+        window.localStorage.setItem(LAST_CC_EMAIL_STORAGE_KEY, JSON.stringify([...known]));
+      }
     } catch {
       // Best-effort only.
     }
@@ -253,13 +297,18 @@ export function useReceivingClaimController({
   const sellerStepReady = !!filedTicket || mode === 'link';
   // The compose draft must be complete before Review/Submit are reachable.
   const composeComplete = !!template.subject.trim() && !!template.description.trim();
+  // A 'return' claim has no marketplace seller to message — the seller step
+  // (and its dot on the stepper) is skipped entirely for either wizard.
+  const sellerStepApplicable = claimType !== 'return';
 
   // ── Linear wizard navigation (create mode) ───────────────────────────────
   // A step is reachable when every step before it is satisfied: confirm/seller
-  // require a filed ticket; review requires a complete compose draft.
+  // require a filed ticket; review requires a complete compose draft; seller
+  // is also skipped entirely for a 'return' claim.
   const isCreateStepDisabled = (key: string): boolean => {
     const target = key as CreateClaimStep;
-    if (target === 'confirm' || target === 'seller') return !filedTicket;
+    if (target === 'seller') return !filedTicket || !sellerStepApplicable;
+    if (target === 'confirm') return !filedTicket;
     if (target === 'review') return !composeComplete && !filedTicket;
     return false;
   };
@@ -285,10 +334,16 @@ export function useReceivingClaimController({
   };
 
   // ── Link-flow navigation (link mode) ─────────────────────────────────────
-  // linked/seller are only reachable once the ticket is committed.
+  // photos/compose/review are only reachable once a ticket is linked; linked
+  // additionally requires the update (comment + photos) to have been posted;
+  // seller requires both AND is skipped entirely for a 'return' claim.
   const isLinkStepDisabled = (key: string): boolean => {
     const target = key as LinkClaimStep;
-    if (target === 'linked' || target === 'seller') return !linkCommitted;
+    if (target === 'find') return false;
+    if (!linkCommitted) return true;
+    if (target === 'review') return !composeComplete;
+    if (target === 'linked') return !linkUpdatePosted;
+    if (target === 'seller') return !linkUpdatePosted || !sellerStepApplicable;
     return false;
   };
 
@@ -303,12 +358,28 @@ export function useReceivingClaimController({
     if (idx > 0) setLinkStep(LINK_STEP_ORDER[idx - 1]);
   };
 
+  /** Link "Next" — photos → compose → review (Post to ticket lives on review). */
+  const goLinkNext = () => {
+    if (linkStep === 'photos') {
+      setLinkStep('compose');
+    } else if (linkStep === 'compose') {
+      if (composeComplete) setLinkStep('review');
+    }
+  };
+
   // ── Wizard navigation ────────────────────────────────────────────────────
   const handleModeChange = (next: ClaimModalMode) => {
     setMode(next);
     if (next === 'link') {
-      setLinkStep(linkCommitted ? 'linked' : 'find');
+      // Resume wherever the link sub-flow left off; a fresh link starts at Find.
       seller.resetBootstrap();
+      if (!linkCommitted) {
+        setLinkStep('find');
+      } else if (!linkUpdatePosted) {
+        setLinkStep('photos');
+      } else {
+        setLinkStep('linked');
+      }
     } else {
       setCreateStep(filedTicket ? 'confirm' : 'photos');
     }
@@ -347,7 +418,10 @@ export function useReceivingClaimController({
     if (mode === 'link') {
       setFiledTicket({ number: `#${t.id}`, url: t.url, id: t.id });
       setLinkCommitted(false);
-      if (ticketChanged) seller.resetDraftState();
+      if (ticketChanged) {
+        seller.resetDraftState();
+        setLinkUpdatePosted(false);
+      }
     }
   };
 
@@ -355,6 +429,7 @@ export function useReceivingClaimController({
     search.setSelectedTicket(null);
     setFiledTicket(null);
     setLinkCommitted(false);
+    setLinkUpdatePosted(false);
     seller.resetDraftState();
     // Deselecting / unlinking always returns to the picker step.
     setLinkStep('find');
@@ -706,10 +781,12 @@ export function useReceivingClaimController({
       });
       onTicketCreated(String(data.ticketNumber));
       setLinkCommitted(true);
+      setLinkUpdatePosted(false);
       setFiledTicket({ number: String(data.ticketNumber), url, id: selected.id });
-      // Land on the "Linked" confirmation step (local backup + continue to seller).
+      // Land on Photos — same Photos → Ticket → Review arc the create flow
+      // runs, ending in a comment (+ attached photos) posted to THIS ticket.
       seller.resetBootstrap();
-      setLinkStep('linked');
+      setLinkStep('photos');
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Network error');
     } finally {
@@ -743,6 +820,49 @@ export function useReceivingClaimController({
     }
   };
 
+  // Link flow's Review step "submit": posts the composed subject/body as a
+  // comment on the ALREADY-LINKED ticket, attaching the selected photos —
+  // the same subject/body/recipients/photo-selection UI as the create flow,
+  // but updating the existing ticket instead of filing a new one.
+  const submitLinkUpdate = async () => {
+    if (linkUpdating || !filedTicket?.id || !receivingId) return;
+    setLinkUpdating(true);
+    try {
+      const res = await fetch('/api/receiving/zendesk-claim/thread', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ticketId: filedTicket.id,
+          receivingId,
+          body: template.readDescription().trim(),
+          subject: template.readSubject().trim(),
+          public: notePublic,
+          emailCcs: notePublic && ccEmails.length ? ccEmails : undefined,
+          attachPhotoIds: [...photos.selectedPhotoIds],
+        }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.success) {
+        toast.error(apiErrorText(data, 'Could not update the ticket'));
+        return;
+      }
+      toast.success(
+        notePublic
+          ? `Ticket ${filedTicket.number} updated — customer emailed`
+          : `Ticket ${filedTicket.number} updated`,
+      );
+      setLinkUpdatePosted(true);
+      setLinkStep('linked');
+      // Mirror the create flow's auto-backup so the "Linked" confirmation
+      // shows the same local-backup card either way.
+      void archiveToNas();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Network error');
+    } finally {
+      setLinkUpdating(false);
+    }
+  };
+
   return {
     // props passthrough
     row,
@@ -767,6 +887,7 @@ export function useReceivingClaimController({
     linkStep,
     linkStepStates,
     sellerStepReady,
+    sellerStepApplicable,
     composeComplete,
     handleModeChange,
     handleClaimStepClick,
@@ -777,6 +898,7 @@ export function useReceivingClaimController({
     goBack,
     goNext,
     goLinkBack,
+    goLinkNext,
     continueToSeller,
     selectLinkTicket,
     handleBannerUnlink,
@@ -801,6 +923,9 @@ export function useReceivingClaimController({
     unlinking,
     linkCommitted,
     submitLink,
+    linkUpdating,
+    linkUpdatePosted,
+    submitLinkUpdate,
     // sub-hooks
     photos,
     template,

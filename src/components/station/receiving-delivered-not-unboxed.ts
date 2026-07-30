@@ -19,6 +19,10 @@ export interface DeliveredNotUnboxedItem {
   sku: string | null;
   workflow_status: string | null;
   was_scanned: boolean;
+  /** Mirrors SoT age bands — `lt_24h` | `h24_48` | `gt_48h`. */
+  age_band?: 'lt_24h' | 'h24_48' | 'gt_48h' | null;
+  /** eBay claim deadline (civil date); null for non-eBay lines. */
+  claim_by_date?: string | null;
 }
 
 export interface DeliveredNotUnboxedResponse {
@@ -60,6 +64,8 @@ export function deliveredNotUnboxedToRow(item: DeliveredNotUnboxedItem): Receivi
     receiving_type: 'PO',
     notes: null,
     delivery_state: item.was_scanned ? 'DELIVERED_NOT_UNBOXED' : 'DELIVERED_UNOPENED',
+    delivered_age_band: item.age_band ?? null,
+    claim_by_date: item.claim_by_date ?? null,
     po_date: item.po_date,
     expected_delivery_date: item.expected_delivery_date,
     vendor_name: item.vendor_name,
@@ -67,7 +73,11 @@ export function deliveredNotUnboxedToRow(item: DeliveredNotUnboxedItem): Receivi
     last_activity_at: item.delivered_at,
     image_url: null,
     source_platform: null,
-    is_priority: false,
+    // Same rank-0 rule as the delivered-unscanned sibling: >48h dwell is the
+    // urgency signal. The claim clock is deliberately NOT folded in here — it is
+    // a separate deadline and gets its own display, not a second meaning for
+    // `is_priority` (which would make the flag mean different things per feed).
+    is_priority: item.age_band === 'gt_48h',
     priority_tier: null,
     receiving_source: 'unmatched',
     serials: [],

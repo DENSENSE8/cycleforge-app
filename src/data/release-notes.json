@@ -1,7 +1,497 @@
 {
-  "generatedAt": "2026-07-20T08:51:49.491Z",
-  "count": 196,
+  "generatedAt": "2026-07-30T05:59:51.205Z",
+  "count": 198,
   "commits": [
+    {
+      "sha": "22f3d6bda31ef4e675a0f7e77d26bbe9ad291c6e",
+      "shortSha": "22f3d6bda",
+      "date": "2026-07-29T15:25:27-07:00",
+      "author": "DENSENSE8",
+      "subject": "fix(receiving): wire RECEIVING_PHOTO_LIST_INTENT_CARTON at its call sites",
+      "body": "Use the named constant instead of the bare 'carton' string literal in the\ntwo display surfaces that broadened to it — knip flagged the export as\ndead since nothing imported it.\n\nCo-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>",
+      "type": "fix",
+      "title": "wire RECEIVING_PHOTO_LIST_INTENT_CARTON at its call sites"
+    },
+    {
+      "sha": "6c73da935b9dca38fe544fac6a1e6514561d8f4d",
+      "shortSha": "6c73da935",
+      "date": "2026-07-29T15:21:54-07:00",
+      "author": "DENSENSE8",
+      "subject": "fix(receiving): broaden Unbox photo pill/peek to the carton's whole evidence set",
+      "body": "The Unbox header pill and carton photo peek filtered strictly to\nreceiving_unbox_carton-typed photos, so any carton whose evidence predates\nthat stage split (nearly every existing carton org-wide) read empty there\nwhile the sidebar rail's denormalized total still showed the real count.\nAdds an additive 'carton' read-intent (entity-pinned, no sub-stage filter)\nfor these two display surfaces only — Triage's arrival-only pill, the\nper-line item pill, and the require_one/require_per_item photo-policy gate\n(which must keep counting unbox_carton strictly) are untouched. New\ncaptures from the header/peek still stamp receiving_unbox_carton correctly.\n\nCo-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>",
+      "type": "fix",
+      "title": "broaden Unbox photo pill/peek to the carton's whole evidence set"
+    },
+    {
+      "sha": "52b9b0f907c033bc54cd283f57bd7b694b8a5a75",
+      "shortSha": "52b9b0f90",
+      "date": "2026-07-29T13:23:08-07:00",
+      "author": "DENSENSE8",
+      "subject": "fix(receiving): wire per-unit no-serial through ReceivingUnitRows",
+      "body": "Connect the materialised units prop and markReceivingUnitSerialAbsent choke\npoint so the multi-qty green-check persists and knip sees the new exports live.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
+      "type": "fix",
+      "title": "wire per-unit no-serial through ReceivingUnitRows"
+    },
+    {
+      "sha": "28bbab04d401a88a39e22232d70aac9b68fe914c",
+      "shortSha": "28bbab04d",
+      "date": "2026-07-29T13:21:42-07:00",
+      "author": "DENSENSE8",
+      "subject": "fix(knip): drop unused grid layout aliases and unexported repair helpers",
+      "body": "Remove dead re-exports left after the shared grid geometry waist, and keep\nEcwid repair catalog internals private so the knip gate stays green for push.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
+      "type": "fix",
+      "title": "drop unused grid layout aliases and unexported repair helpers"
+    },
+    {
+      "sha": "c4c1308d034d21e85a378e3fe2af721c7eef6f7f",
+      "shortSha": "c4c1308d0",
+      "date": "2026-07-29T13:17:18-07:00",
+      "author": "DENSENSE8",
+      "subject": "feat(dogfood): ship receiving line units, nav/search, grids, and Square tenancy expand",
+      "body": "Land the per-unit receiving foundation (receiving_line_unit + ensureLineUnits),\nsidebar nav column, search surface cleanup, ledger grid header SoT, repair catalog\nextract, and Square org-scoped upsert expand — leave the gated unique drop unapplied.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
+      "type": "feature",
+      "title": "ship receiving line units, nav/search, grids, and Square tenancy expand"
+    },
+    {
+      "sha": "3e42e84627853f63aea1145a39db22ea2a1f6959",
+      "shortSha": "3e42e8462",
+      "date": "2026-07-29T10:47:54-07:00",
+      "author": "DENSENSE8",
+      "subject": "refactor(nav): delete the last URL denylists — every mode switch constructs",
+      "body": "Slices 4 + 5 of the nav/routing refactor, isolation tier. Support, Dashboard,\nOperations and Home now declare the params they own, so `applyModeTarget` and\ntheir own `updateMode` hooks CONSTRUCT the target URL instead of copying the\ncurrent one and deleting whatever someone remembered to list.\n\nThat empties the last five denylists — and with the earlier slices, every one in\nthe repo is now gone:\n\n  MODE_SCOPED_PARAMS (receiving)        17 keys\n  OUTBOUND_MODE_SCOPED_PARAMS           16\n  SUPPORT_MODE_CLEAR_PARAMS             20\n  SUPPORT_MODE_SCOPED_PARAMS             —\n  OPERATIONS_MODE_SCOPED_PARAMS         26\n  HOME_MODE_SCOPED_PARAMS                7\n  dashboard per-target null-maps         —\n  clearReceivingHistoryUrlParams         —\n  stripCrossSurfaceParams (receiving)    —\n\nNone of these surfaces moved to route segments, and none had to. That is the\nthrough-line: isolation is the spec plus construct-don't-copy. Segments buy\nlayout ownership and code-splitting; they never bought this.\n\nThe ownership guard earned its place twice more. It found three params Support\nactually reads (`createTicket`, `tq`, `tstatus`) that no spec declared — they\nwould have been dropped on arrival, a worse bug than the leak being fixed — and\na `view` declaration nothing reads. `UNDECLARED_READS` is now empty: `mode` was\nits last entry and left when these specs claimed it.\n\nThree of the plan's Slice-4 items are deliberately NOT done, because the repo\nmoved past them: namespaced mode ids fix a collision that cannot happen (every\nlookup is page-scoped and recents key `${pageId}:${modeId}`); collapsing\n`getSidebarRouteKey` is inverted by ContextPanelLayout, which dispatches panels\nby route key across 17 call sites; and `warmActiveView` correctly reads the\nsearch string while the Dashboard is still a query-mode surface.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "type": "refactor",
+      "title": "delete the last URL denylists — every mode switch constructs"
+    },
+    {
+      "sha": "86ed48808e86c217d12894dbd5698c13586ae3dc",
+      "shortSha": "86ed48808",
+      "date": "2026-07-29T00:04:24-07:00",
+      "author": "DENSENSE8",
+      "subject": "fix(photos): treat a failed capture-day fetch as an error even while refetching",
+      "body": "With refetchOnWindowFocus: always, an outage query can flip back to pending\non focus and leave isError false — the rail spun forever. failureCount > 0\nkeeps the error chrome visible.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
+      "type": "fix",
+      "title": "treat a failed capture-day fetch as an error even while refetching"
+    },
+    {
+      "sha": "8240762da526835bc5829c297e209a75f6e6d36c",
+      "shortSha": "8240762da",
+      "date": "2026-07-29T00:02:43-07:00",
+      "author": "DENSENSE8",
+      "subject": "fix(nav): construct mode URLs from the target delta, never copy sibling params",
+      "body": "Mode switches were boundary-parsing a copied search string, so shared keys\n(?open=, ?q=, ?sort=) rode from Labels into Ready. Emit only the destination\ndelta (+ staff preference), then parse. Closes the photo-evidence read-back\nwork-log note as well.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
+      "type": "fix",
+      "title": "construct mode URLs from the target delta, never copy sibling params"
+    },
+    {
+      "sha": "c77ec0d1c31661053aa74a60fd2f390f2dbc6267",
+      "shortSha": "c77ec0d1c",
+      "date": "2026-07-29T00:00:15-07:00",
+      "author": "DENSENSE8",
+      "subject": "feat(dogfood): ship order ingest, shipping routes, carton inspector, and photo evidence hardening",
+      "body": "Grand summary of the post-push dogfood wave (plus cleanup of accidental\ndebug artifacts that slipped into the prior main push). Builds on 7 local\ncommits already ahead of origin (AGENTS.md map, E2E QA-org pointer, LedgerGrid\nscroll/select, bulk-bar reserve measurement).\n\nOrder ingest\n- Extract CanonicalOrder + ingestCanonicalOrders as the shared write waist\n- Collapse ShipStation/Shopify/Square/CSV/Sheets onto that writer\n- Delete dead /api/sync-sheets + /api/import-orders; CSV now keeps tracking numbers\n\nShipping station\n- Mode is the path: /shipping/{labels,ready,fba,scan-out} workspaces\n- Retire OutboundWorkspace ?mode= shell and OUTBOUND_MODE_SCOPED_PARAMS denylist\n- Param ownership SoT via outbound-routes + route-params\n\nReceiving & photo evidence\n- Photo policy override sheet + reason-code seed; gate tests expanded\n- Client capture provenance (client_captured_at migration + upload round-trip)\n- CartonInspector rebuild (/carton/[id]) — evidence-led filmstrip + lifecycle hero\n- Unbox lookup receipt / sole-hit search land on the read view, not the editor\n\nMedia library\n- Facet rail (PhotoLibrarySidebarPanel) owns lifecycle + day navigation\n- Drop PhotoInspectorPanel + date-folder tree; tile click reopens fullscreen viewer\n\nShell & grids\n- ContextPanelLayout / context-panel-column replace station-column\n- Grid column display guard; header-align SoT across ledger families\n- Tech/Shipping active-order pane on Station Workbench SoT\n\nAlso: ReasonChipPicker, SubstituteReasonPicker reuse, E2E photo-policy + CF02\nspecs, route-permissions refresh. verify green. Dropped .cursor/debug-* and\n.claude/launch.json from the tree.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
+      "type": "feature",
+      "title": "ship order ingest, shipping routes, carton inspector, and photo evidence hardening"
+    },
+    {
+      "sha": "3dd4a61c59fa4a568e4826ff2c73195396861147",
+      "shortSha": "3dd4a61c5",
+      "date": "2026-07-28T23:16:28-07:00",
+      "author": "DENSENSE8",
+      "subject": "docs(agents): make AGENTS.md a 46-line map, move the detail into linked rules",
+      "body": "AGENTS.md was 196 lines and is @imported by CLAUDE.md, so all of it was\nalways-on context in every session — including a 27-row SoT table that was a\ncompact twin of .claude/rules/source-of-truth.md. That duplication is exactly\nwhat CLAUDE.md's own \"keep the always-on layer slim\" rule forbids: a second\ntable drifts from the first the moment a row changes in one place.\n\nAGENTS.md now carries only what an agent must know before it knows what it is\ndoing: the product frame, one link per concern, and the hard laws as one-liners.\nEverything else moved to .claude/rules/, loaded on demand:\n\n  workflow-safety.md    lanes, branch discipline, ports, work-log, commits, secrets\n  pattern-evolution.md  compose -> grow the SoT -> compound; Always/Ask first/Never\n  kinetic-ledger.md     product UI identity + the five laws\n  verify.md             gates, DS ratchets, E2E-on-the-QA-org, how to measure\n\nThe SoT table did not survive as a summary anywhere — source-of-truth.md is now\nthe only list, and gained the four rows that had lived only in AGENTS.md (grid\ncolumn visibility, URL-durable grid sort, collection-surface action planes,\nStation Workbench shell), plus prose sections for the first three.\n\nRepointed every cross-reference that named a moved AGENTS.md section (CLAUDE.md,\nui-design-system, contextual-display, monitor-rollup-blocks, station-workbench,\nimprove-ui + sidebar-mode skills). Verified: all relative links in AGENTS.md /\nCLAUDE.md / .claude/rules resolve, and 44 distinctive law tokens from the old\nfile all still appear somewhere in the new corpus.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "type": "docs",
+      "title": "make AGENTS.md a 46-line map, move the detail into linked rules"
+    },
+    {
+      "sha": "fece7bb5d35f5f24abbbeb6498eb14062dbd1282",
+      "shortSha": "fece7bb5d",
+      "date": "2026-07-28T23:07:52-07:00",
+      "author": "DENSENSE8",
+      "subject": "docs(agents): point E2E at the QA org, not the dogfood tenant",
+      "body": "The dogfood org is a live warehouse: row counts, lifecycle mix, and feature\nflags change under a spec between runs, so a dogfood-backed test fails for\nreasons unrelated to the change under review — and passes vacuously when a lane\nhappens to be empty. Several specs already paper over this with `test.skip`\nguards on missing rows, which hides the coverage gap rather than closing it.\n\nThe QA sandbox already exists and solves this: a fixed QA_ORG_ID, deterministic\nSKU / PO / order fixtures, gated flags force-enabled, provisioned idempotently\nby `pnpm provision:qa-org`, with a `qa-desktop` Playwright project wired to\ntests/.auth/qa-admin.json. Only 2 of 106 specs use it.\n\nRecords the rule plus the one exception (specs that exist *because* of\nproduction-shaped data), so new specs land on qa-desktop by default. Migrating\nthe existing dogfood-backed specs is follow-up work, not part of this commit.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "type": "docs",
+      "title": "point E2E at the QA org, not the dogfood tenant"
+    },
+    {
+      "sha": "941387d2a10d33b422bd52606e904115f5680205",
+      "shortSha": "941387d2a",
+      "date": "2026-07-28T23:06:24-07:00",
+      "author": "DENSENSE8",
+      "subject": "fix(dashboard): restore the full bulk-bar reserve — pb-8 still covered rows",
+      "body": "Reverts the pb-8 tuning from ba20f62f8 and adds the e2e guard that caught it.\n\nThat commit claimed the capsule cleared the last row by 2px at the default\npb-3, so a small reserve was enough. The measurement behind it came from an\nin-app browser pane whose rects were distorted (the capsule's bottom read past\ninnerHeight). Playwright, desktop 1440x900, grid scrolled to its end:\n\n  pb-3  (default) → scrollport 855 vs capsule 837 → -18px, ~half a row covered\n  pb-8            → scrollport 835 vs capsule 832 →  -3px, still covering\n  pb-20           → scrollport 787 vs capsule 832 → +45px\n\nSo the original overlap was real and pb-8 does not clear it.\n\npb-20 is sized to the capsule's own footprint (50px capsule + 16px viewport\ngap = 68px) rather than to whatever the surrounding chrome happens to leave, so\nthe guarantee does not depend on the header, the KPI strip, or\nWORKBENCH_BODY_COLUMN's padding staying put.\n\nThe spec asserts the grid's SCROLLPORT edge against the capsule top, not the\nlast row: the grid is virtualized, so the last row in the DOM belongs to the\nrender window and can sit below the fold (a first draft measuring it reported a\nbogus -447px). Rows are clipped by the port, so the port edge is the lowest\npixel any row can occupy. Pending and Packed are both covered — they reach the\nbounded host through independent prop chains.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "type": "fix",
+      "title": "restore the full bulk-bar reserve — pb-8 still covered rows"
+    },
+    {
+      "sha": "de440c482fbe8bf8913de3df4e4d199c281c2524",
+      "shortSha": "de440c482",
+      "date": "2026-07-28T23:05:22-07:00",
+      "author": "DENSENSE8",
+      "subject": "fix(grid): make the self-scrolling LedgerGrid render, and its rows selectable",
+      "body": "Station History was the first surface to mount a LedgerGrid that windows\nagainst its OWN body instead of an ancestor scroll region, which surfaced\ntwo defects that had been latent while the path sat dark behind a flag.\n\n- The virtualizer took its scroll element from `bodyRef.current`, which is\n  null on first render. Attaching a ref does not re-render, so nothing ever\n  re-read it and the grid stayed permanently blank — no rows AND no empty\n  state. It only appeared to work when an unrelated re-render happened to\n  land after mount, which is what made it look intermittent. One post-mount\n  render, gated to the self-scrolling case, lets getScrollElement() see the\n  node. Ancestor-scroll consumers are untouched: their ref belongs to a\n  parent that is already mounted when the grid first renders.\n\n- Selection was unreachable. The gutter rendered an interactive checkbox\n  only under `gridSkin`; every other selectMode consumer got an inert\n  <span> that looked identical, while the row's own click handler only ever\n  calls onRowClick. The control is now interactive whenever the caller\n  supplies onToggleSelect — reaching for gridSkin instead would have\n  dragged in Sheets-style in-cell editors, which do not belong on a\n  scan-log surface.\n\nThreading the virtualizer's absolute `rowIndex` through to the row also\nfixes an a11y defect: without it the row claimed role=\"checkbox\" inside a\nrole=\"table\", i.e. a table with no rows at all. It is now role=\"row\" with\naria-selected and a correct aria-rowindex.\n\nVerified on /pack and /test?ship=history: 28 of 90 rows windowed, day bands\nintact, select → \"1 selected\" → \"2 selected\", and row click still opens the\nrecord without disturbing selection.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "type": "fix",
+      "title": "make the self-scrolling LedgerGrid render, and its rows selectable"
+    },
+    {
+      "sha": "61fe4821a607e8c5da398edf82c9437b27db5047",
+      "shortSha": "61fe4821a",
+      "date": "2026-07-28T23:00:44-07:00",
+      "author": "DENSENSE8",
+      "subject": "test(photos): drop the grid-control tests that outlived their contract",
+      "body": "`photoLibraryShowsSelectControl` was deleted with the folder drill — every\nsurviving view paints photo tiles, so the gate had no remaining case to express\n— but this spec still imported and called it, so the suite threw\n`photoLibraryShowsSelectControl is not a function`.\n\nIts sibling had drifted the same way: `photoLibraryShowsGridControls` dropped\nits `folderIsLeaf` argument, and `'folders'` is no longer in\n`PhotoLibraryViewMode` at all, so those assertions tested a dead signature\nagainst a dead value.\n\nThe select-control test is deleted rather than propped up — resurrecting a\npredicate that cannot be false to keep a test green is the lie its own deletion\nnote warned about. The density test is rewritten against the one-argument\ncontract across all four live view modes.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "type": "test",
+      "title": "drop the grid-control tests that outlived their contract"
+    },
+    {
+      "sha": "7dac1f12282155a5dc7b4edc5ad7680f6807aa24",
+      "shortSha": "7dac1f122",
+      "date": "2026-07-28T23:00:44-07:00",
+      "author": "DENSENSE8",
+      "subject": "test(nav): identify the station bench by a hook, not by its width class",
+      "body": "`STATION_PANEL` selected `main [class*=\"w-\\[360px\\]\"]`, so a test asking \"did\nthe bench render?\" answered by measuring it. Restyling the panel turned that\ninto a red test pointing at nothing — measured on the running app: swap the\nwidth and the old selector drops from 1 match to 0 while the element is still\non screen, untouched.\n\nThe bench now carries `data-station-panel`, matching the `data-sidebar-*` hooks\nthis spec already selects on, and the selector asks about identity instead.\n\nNOT wired to `SIDEBAR_SPINE_WIDTH`, despite both being 360px. That token is the\nNAV spine's width; the bench is a different element in a different region, and\nbinding them would mean widening the nav silently widens the bench beside the\nworkspace. `sidebar-spine.ts` claimed in prose to own \"the station panel\" — true\nof the nav column that the slide-over refactor deleted, misleading now, and an\nactive invitation to make exactly that mistake. Corrected there too.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "type": "test",
+      "title": "identify the station bench by a hook, not by its width class"
+    },
+    {
+      "sha": "ba20f62f857b60329829d67dec775c085c0c1c89",
+      "shortSha": "ba20f62f8",
+      "date": "2026-07-28T22:54:20-07:00",
+      "author": "DENSENSE8",
+      "subject": "fix(ds): size the bulk-bar scroll reserve from measurement, not capsule height",
+      "body": "The bounded workbench table host already stops ~45px short of the viewport\nbottom, so at the default `pb-3` the last grid row cleared the pinned selection\ncapsule by 2px (measured on Pending and Packed at viewport heights 560/720/900).\nThe capsule was not hiding rows. What was missing is any RULE keeping it from\ndoing so: that 2px is a coincidence of the surrounding chrome, and a change to\nthe header, the KPI strip, or WORKBENCH_BODY_COLUMN's padding flips it negative.\n\n`pb-8` turns the coincidence into ~22px of deliberate clearance for 20px of\nextra inset. The full-capsule reserve (`pb-20`) was measured too: 70px of\nclearance at the cost of ~1.5 rows of a warehouse monitor every time a selection\nis live — the wrong trade for a gap that is already positive.\n\nThe rationale is recorded in the constant's doc comment so the next tuning pass\ndoes not have to re-derive it.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "type": "fix",
+      "title": "size the bulk-bar scroll reserve from measurement, not capsule height"
+    },
+    {
+      "sha": "fc2d05d95a7af2b692dcf221d8193786ad4d3214",
+      "shortSha": "fc2d05d95",
+      "date": "2026-07-28T22:45:25-07:00",
+      "author": "DENSENSE8",
+      "subject": "fix(nav): drop the Media library sidebar",
+      "body": "The Media library owns its whole context in the workbench chrome header —\nfilters, date, view toggle and identifier search all live up there — so a\nsidebar has nothing to hold. It briefly grew one when the folder drill became a\nfaceted flat stream; that rail duplicated controls the header already owned,\nwhich is the two-shapes-for-one-job case house law bans.\n\n`CONTEXT_PANEL_ROUTE_KEYS` drops `ops-photos` and the dispatcher goes back to\n`null`, so the route reserves no column and the grid runs full width. The e2e\nsuite already guards it as the lead entry in PANEL_LESS_ROUTES.\n\nRemoving a route's sidebar is one line in the contract plus its dispatcher\nbranch — no shell change — which was the point of declaring the capability.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "type": "fix",
+      "title": "drop the Media library sidebar"
+    },
+    {
+      "sha": "610f6797d194871d07790d447c4115285bf3c8af",
+      "shortSha": "610f6797d",
+      "date": "2026-07-28T22:35:32-07:00",
+      "author": "DENSENSE8",
+      "subject": "fix(nav): the sidebar spine is a navigator, not a modal",
+      "body": "Opening the nav painted `bg-scrim/40 backdrop-blur-[2px]` over the work surface\nand locked body scroll, so on the dashboard it read as a modal takeover — and\nthe thing it dimmed was the order grid the operator was navigating *from*.\n\nThat is the call the right rail already made: modality is for surfaces that\ngenuinely block until dismissed, and a nav panel never does\n(`source-of-truth.md` → Right-rail modality). The dashboard's right-edge\ninspector is non-modal for exactly this reason, so a modal panel on the left of\nthe same surface was the inconsistency, not the standard.\n\nThe scrim becomes a transparent light-dismiss catcher: one click outside still\ncloses, which is the right contract for a panel you leave as soon as you have\nchosen. Keeping the catcher rather than a document-level outside-click listener\nalso avoids racing the header toggle into close-then-reopen. Body scroll lock is\ngone (`overflow: hidden` on body is the app shell's own baseline either way).\n\n`role=\"dialog\" aria-modal=\"true\"` → `role=\"navigation\"`. This never installed a\nfocus trap and must not: the station scan hotkey force-focuses a bar behind this\npanel, which is why it closes on SCAN_FOCUS_REQUESTED_EVENT. `aria-modal`\nwithout containment was a claim the DOM did not honor.\n\n`data-sidebar-scrim` → `data-sidebar-dismiss`, and the spec that clicked it is\nupdated in the same change rather than left asserting a dead contract. Adds a\ntest pinning the non-modality so a scrim cannot come back silently.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "type": "fix",
+      "title": "the sidebar spine is a navigator, not a modal"
+    },
+    {
+      "sha": "7768f6c059e5d43eb6ad63da6df6d29fa03ba773",
+      "shortSha": "7768f6c05",
+      "date": "2026-07-28T22:32:19-07:00",
+      "author": "DENSENSE8",
+      "subject": "feat(dogfood): ship the July dashboard, nav, receiving, and media-library wave on main",
+      "body": "Grand summary of the accumulated dogfood lane — builds on the prior 13 local\ncommits (dashboard non-modal inspector, overlay Escape ownership, sidebar nav\nwaves 1–3, grid column visibility, typed refresh domains, a11y grid headers).\n\nDashboard & orders\n- Non-modal resizable order inspector with stable occupant id, lifecycle bulk\n  actions, and reload-safe ?openOrderId= deep links\n- Order record body unified across /o/[id], dashboard search, and slide-over\n- Week-2 timeline spine: carrier tracking + RMA events with lens filter\n- Pending grid: fused Ship-by (sla) column replaces date+age pair; queue sort\n  vocabulary + column-model tests updated\n- Pack sidebar: recently-packed rail with filter bar; retired Active-order card\n\nNavigation & shell\n- Station column: nav-only sidebar (hidden by default, push layout), scan bar +\n  recents in content region; wide L1 flyout over canvas; mode rows expand inline\n- Deleted dead mobile drawer chain; scan-focus watchdog dismisses menus before\n  hotkey focus; spline on sidebar mode rows\n\nDesign system\n- Contextual font system: IBM Plex sans/condensed/mono, weights capped at 600,\n  tabular nums on data roles; codemod + guard across ~1900 sites\n- Radius SoT: tokens/radii.ts → radius.ts, cornerClass() ladder, ratchet guard\n- ToolbarListbox primitive for workbench dropdowns; elevation-backed Panel roles\n\nReceiving & photos\n- Photo evidence policy gate (require_one / require_per_item) on mark-received\n  routes + client preflight in unbox line controller; stage-typed mobile uploads\n  (arrival_package vs unbox_carton vs unbox_item)\n- Unbox scan-vs-lookup: attribution no longer claims work on pre-existing\n  cartons; lookup receipt with scan_kind verdict + global search jump\n- Phone Complete carton + zohoReceive reconciliation; lookup-scan wiring guard\n- Media library: capture-day groups, recency tabs, PhotoInspectorPanel on\n  non-modal right rail, library filter state expansion + E2E deep links\n\nPlatform & backend\n- Home inbox + staff subscriptions + notification outbox cron/API\n- order_notes + photo_entity_links ORDER type migrations; order_date timestamptz\n- Route-permissions manifest + knip baseline refreshed; verify green\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
+      "type": "feature",
+      "title": "ship the July dashboard, nav, receiving, and media-library wave on main"
+    },
+    {
+      "sha": "11e5d39ad32a3f7d42af25720a0bcd85fdbf4e80",
+      "shortSha": "11e5d39ad",
+      "date": "2026-07-28T22:27:59-07:00",
+      "author": "DENSENSE8",
+      "subject": "feat(pack): give the Packing sidebar a recent-packs rail",
+      "body": "/pack's sidebar showed a single \"Active order\" card; every other station\n(Unbox, Triage, Testing, Shipping) already has a history rail. Packing was\nthe last one without. PackRecentPacksRail composes SidebarRecentRailBase —\nthe same shell — rather than forking a list.\n\nRows come from usePackerLogs(packerId, { weekRange }), so the rail shares the\npage's prefetched `packer-logs` cache with the History table and inherits its\nAbly + `packer-log-added` live patches instead of opening a second query.\nSelection dispatches `pack-active-order-changed`; the existing\nPackOrderWorkspace crossfade does the rest.\n\npacker_logs.id is NOT unique per station_activity_logs row — the dual-link\npath attaches a unit-QR scan to the active order's packer log, so two rows\ncan share one packer_log_id. Rail row ids are therefore sal.id\n(packerRecordRailId), and pane->row selection resolves by finding the row\nwhose packer_log_id matches. Keying rows by the log id produced duplicate\nReact key warnings.\n\nAlso fixes two stacked History empty-state bugs. PackerTable passed the Home\ntask-inbox empty (\"No work assigned\") as firstRunEmpty, which additionally\nsuppressed the shell's \"back to this week\" reset button — that only renders\non the emptyMessage branch. History is week-scoped, so an empty week is a\nno-results state, not a first run. Removing it exposed a duplicate:\nPackKpiStrip's HistoryStrip swapped its tiles for a second \"No packs in this\nweek\" banner at zero. Tiles now render at 0 and the table owns the one empty\nline.\n\nDrops the panel's dead todayCount/goal fetch — a redundant 100-row\n/api/packerlogs call per mount that only fed the !embedded goal bar — which\norphaned getStaffGoalById in staffGoalsCache.ts.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "type": "feature",
+      "title": "give the Packing sidebar a recent-packs rail"
+    },
+    {
+      "sha": "6ec8441399d5acb0dc6d7e22e96fdfac82ec4a5e",
+      "shortSha": "6ec844139",
+      "date": "2026-07-28T22:05:38-07:00",
+      "author": "DENSENSE8",
+      "subject": "feat(nav): give the sidebar mode rows a spline",
+      "body": "A run of indented mode rows reads as a wall of text: the eye has to parse each\nlabel to learn which page it belongs to. One hairline descending from the parent\nrow groups them by Gestalt continuity, so the run reads as *that page's*\nchildren at a glance — and the eye can skip the whole group when it is not the\none it wants. `ml-4` lands the line under the page icon so it reads as\ndescending from the row rather than floating in the gutter.\n\nReplaces a bare pl-3 indent, which needed a ds-allow-spacing escape it no longer\nneeds — the spline is entirely on the density-aware scale and the semantic\nborder token, so it follows data-theme with no page-local color.\n\nNOTE: SidebarNavList is not yet reachable from MasterNavView on this branch, so\nthe spline is inert at HEAD until the master-nav refactor that introduced this\nfile lands.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "type": "feature",
+      "title": "give the sidebar mode rows a spline"
+    },
+    {
+      "sha": "aacb0a8f97de11c1988b8310590cd72d0a7e36c5",
+      "shortSha": "aacb0a8f9",
+      "date": "2026-07-28T22:05:27-07:00",
+      "author": "DENSENSE8",
+      "subject": "refactor(refresh): replace the global refresh broadcasts with typed domains",
+      "body": "There was never an ['app-data'] query key. `app-refresh-data` was one global\nbroadcast with ten listeners spanning eight unrelated data domains, so every\nemit — a Zoho sync, a photo move, a walk-in cart change — woke the repair list,\nthe packer logs, the replenish counts, the work-order calendar and the phone\nhistory alike. `dashboard-refresh` was a second, overlapping copy of the same\nidea.\n\nEach site now names the domains its write actually touched, and only those\nlisteners run. Both broadcast names are deleted, along with the APP_REFRESH_DATA\nand DASHBOARD_REFRESH constants.\n\nThe plan estimated 38 emit sites; the real total was ~70 across five mechanisms —\ndispatchEvent(new CustomEvent(…)), bare new Event(…), emitAppEvent(APP_REFRESH_DATA),\ndeclarative event-name arrays consumed by useSidebarRail / useMobileFeed, and\nuseEventBridge handler maps. The last four were invisible to a grep for the\nfirst. Both generic hooks gained a `refreshDomains` input beside their existing\n`refreshEvents` / `windowEvents`, so per-feature events keep their own vocabulary.\n\n`phone.history` turned out to be the packer-log feed under another name\n(/api/packing-logs/history) and was collapsed into `packer.logs`.\n\nGuarded: every domain needs at least one emitter AND one listener, no bundle may\ncover every domain, and the retired names cannot come back. Verified in the\nrunning app — the two riskiest mappings (walk-in sale → replenish, data wipe →\nreceiving.lines) each refetch their pane and leave the other seven domains alone.\n\nLeft in place deliberately, against the plan: receiving-package-updated carries a\npayload used for optimistic setState patching (moving it to onSuccess would\nREMOVE optimistic patching); receiving-scan-resolved is imperative scan-flow\nsignalling; sku-pairing-updated's listeners are hand-rolled fetch+useState with\nno cache to invalidate; and receiving-clear-line is not redundant after the param\nwork — two of its three emitters are in-surface tab switches that keep recvId.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "type": "refactor",
+      "title": "replace the global refresh broadcasts with typed domains"
+    },
+    {
+      "sha": "90a94c37cd8db32ecbf3e2e98a6fb68d06808662",
+      "shortSha": "90a94c37c",
+      "date": "2026-07-28T22:04:11-07:00",
+      "author": "DENSENSE8",
+      "subject": "fix(receiving): isolate URL params by route ownership, not denylists",
+      "body": "The Triage→Unbox leak was never routing. `applyModeTarget` copied the whole\nquery string to the destination and then hand-deleted whatever someone had\nremembered to list — which is what MODE_SCOPED_PARAMS and the receiving half of\nstripCrossSurfaceParams were. Every param added between the last edit and the\nnext bug was a silent leak.\n\nIsolation is now (a) construct the target URL from a declared set instead of\ncopying, and (b) parse at the boundary against a per-route zod schema that drops\nwhat the route never claimed. Route segments do NOT strip query params — Next.js\nstrips nothing — so they are not, and must never be described as, the mechanism.\n\nThree denylists deleted: MODE_SCOPED_PARAMS, the receiving half of\nstripCrossSurfaceParams, and clearReceivingHistoryUrlParams (dead once mode\nswitches construct). Vocabularies compose their existing SoT via paramRoundTrip\nrather than copying the value lists.\n\nGuards: param-ownership (one owner per param, plus a shrink-only ratchet on\nundeclared reads), route-mode-registry, and an e2e that fails on the reported\nbug — it did fail on the first run against the hook-only fix, which is how the\nreal culprit (the master nav's applyModeTarget) was found.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "type": "fix",
+      "title": "isolate URL params by route ownership, not denylists"
+    },
+    {
+      "sha": "0b4d756e69bb38831cc87ffb85e86bc356e4b03d",
+      "shortSha": "0b4d756e6",
+      "date": "2026-07-28T19:31:16-07:00",
+      "author": "DENSENSE8",
+      "subject": "docs(plan): resolve §9 — the dashboard's inbound tabs are a Monitor, not two Workbenches",
+      "body": "Two research rounds returned placeholders for \"Triage\" and \"Unbox\" because the\nquestion carried a false premise from our own round-1 brief: it described the\nreceiving DOMAIN's selection mechanisms as if they were the dashboard's inbound\ntabs. TriageWorkspaceView belongs to the station workspace and the \"Dismiss\"\nbulk bar to the sidebar rail — neither is on the dashboard.\n\nMeasured instead: DashboardReceivingView renders <ReceivingLinesTable /> with no\nprops, the Triage/Unbox tab literally IS the ?sort= value, and in the running app\nthe surface has 0 checkboxes, a row click that changes nothing (dispatchSelectLine\nhas no listener on that page), and exactly one live affordance — an in-cell\nproduct-title editor.\n\nSo it is one read-mostly activity feed, i.e. a Monitor region: no selection, no\nbulk bar, no matrix rows owed. The real defect is that the row click is a dead\naffordance; recommended fix is to open the carton record in the right rail\n(IncomingDetailsPanel is already an occupant, so it can go non-modal like the\norder inspector), or else make rows non-interactive.\n\nExplicitly NOT promoting it to a Workbench: the inbound mutation surface is\nscan-driven Station work that belongs at the bench, not batch-applied from a\nhistory feed. No round 3 needed.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "type": "docs",
+      "title": "resolve §9 — the dashboard's inbound tabs are a Monitor, not two Workbenches"
+    },
+    {
+      "sha": "65959a02c520828e40d7497bf01b1749929da7d4",
+      "shortSha": "65959a02c",
+      "date": "2026-07-28T19:22:29-07:00",
+      "author": "DENSENSE8",
+      "subject": "docs(rules): file the inspector, action-plane and Escape-ownership laws",
+      "body": "Rules for what the preceding commits established, plus the two research\nbriefings and the execution plan they came from.\n\nAGENTS.md gets three one-line SoT rows (right-edge slot + modality, keyboard\nownership, action planes) per its own \"keep the always-on layer slim\" rule;\ndetail lives on demand:\n\n- source-of-truth.md — Right-rail modality (one owner; modal defaults true;\n  what non-modal means; don't add a focus trap; derived resize cap; stable\n  occupant id) and Escape ownership (capture-vs-bubble named, so the fix\n  isn't undone by someone re-adding a stopPropagation).\n- display/workbench.md — the four action planes, the plane-redundancy rule\n  (the record plane stays a superset wherever in-cell editing is gated), the\n  lifecycle-divergence law, selection-or-collapsed-gutter, bulk != batch-edit.\n- display/motion-crossfade.md — the stable-occupant-id exception, written WITH\n  its three preconditions (full re-seed, flush the outgoing draft, write\n  nothing when navigating unedited) so it cannot be cargo-culted onto a panel\n  that does not re-seed.\n\nThe plan records two things worth keeping: push/squeeze was declined on the\nmerits (not on arithmetic — with the sidebar collapsed it fits), and column\nocclusion is structurally unsolved because title is the 1fr track.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "type": "docs",
+      "title": "file the inspector, action-plane and Escape-ownership laws"
+    },
+    {
+      "sha": "7dc8554d5e3ddbe47b31385793f70cd0d764f3d4",
+      "shortSha": "7dc8554d5",
+      "date": "2026-07-28T19:22:17-07:00",
+      "author": "DENSENSE8",
+      "subject": "test(dashboard): e2e for the non-modal inspector and bulk actions",
+      "body": "Nine specs across the two files, each pinned to a behaviour that regressed or\ncould regress silently:\n\ninspector — no scrim / no scroll lock / role=region (and elementFromPoint over\na row proves nothing intercepts pointer events, rather than asserting a click\nthat the panel legitimately covers); the innermost overlay owning Escape;\nresize clamping to the derived cap and surviving a page load; a MutationObserver\nproving the occupant is never unmounted during a record swap, plus a request\nlistener proving an unedited swap writes NOTHING (a misfiring notes flush would\nput one order's note on another); ?openOrderId= surviving a reload; Enter on a\nfocused row opening that row.\n\nbulk actions — pre-pack vs post-pack action sets, assign opening the carousel\n(not a batch-edit form), and ship-by scoping its copy to the selection while\nwriting nothing until a date is picked.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "type": "test",
+      "title": "e2e for the non-modal inspector and bulk actions"
+    },
+    {
+      "sha": "2bdaf4689392390e4ddc3fae1ac36e8dc9fcde78",
+      "shortSha": "2bdaf4689",
+      "date": "2026-07-28T19:22:08-07:00",
+      "author": "DENSENSE8",
+      "subject": "feat(dashboard): lifecycle-scoped bulk actions",
+      "body": "The selection bar shipped five actions, two of which were toasts (\"Send to\nstaff\", \"Send to phone\"), on top of a mutation waist that already accepts\norderIds[]. Both stubs are deleted and three real actions replace them:\n\n- Assign tester / packer — composes the existing WorkOrderAssignmentCard\n  carousel (prev/next + confirm->advance) rather than a batch-edit panel;\n  assignment is a per-order judgement and the card already models that walk.\n- Set ship-by date — one date onto N orders through useOrderAssignment's\n  existing orderIds[] support. A dialog, not a bar-anchored popover: the\n  selection bar exposes no anchor, and teaching it one would grow a shared\n  primitive's API for a single call site.\n- Print shipping labels — printOutboundDocuments already takes an array, so\n  N orders produce one print job; each document fetch fails independently so\n  one missing label does not cost the run.\n\nActions now declare the lanes they belong to. Pending/Tested get assign,\nship-by and PRODUCT labels (SKU+serial, the physical-prep label — previously\nmislabelled \"Print labels\" and offered on every lane); Packed/Shipped get the\nshipping document. ContextualSelectionBar drops what cannot fire, so scoping\nshows up as absent buttons, never disabled ones.\n\n`isPdfDocument` was page-local in LabelsOrderWorkspace; it moves to a\ndependency-free display module typed off `documents/types` (not the DB module)\nso a client bundle importing one predicate does not inherit a server graph.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "type": "feature",
+      "title": "lifecycle-scoped bulk actions"
+    },
+    {
+      "sha": "8b6505f647ebd79e968acaddfbf57ffb066f71b0",
+      "shortSha": "8b6505f64",
+      "date": "2026-07-28T19:21:54-07:00",
+      "author": "DENSENSE8",
+      "subject": "fix(dashboard): keep ?openOrderId= across a reload",
+      "body": "Reloading the dashboard with a record open dropped it: the URL went from\n`?unshipped=&openOrderId=5660` back to `?unshipped=`, the session snapshot was\ncleared, and no panel mounted. That breaks the Workbench law that selection is\ndurable and URL-addressable.\n\nRoot cause (traced by instrumenting dispatchEvent + history.replaceState, not\ninferred): the queue's stale-selection cleanup. On boot `?openOrderId=`\nresolves and dispatches open-shipped-details BEFORE the queue's own rows have\narrived, so `visibleRecords.find(...)` misses. The effect read that as \"the\nrecord left the queue\", called onCloseRecord -> close-shipped-details ->\nclearSelectedOrder(true), which strips the param. A pure race; nothing was\nwrong with the record.\n\nThe effect now distinguishes \"rows are not here yet\" from \"the row left\" — it\nonly closes a selection it has actually SEEN in this queue. Rows that are\ndeleted or filtered out under the operator still close exactly as before,\nbecause those were seen first.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "type": "fix",
+      "title": "keep ?openOrderId= across a reload"
+    },
+    {
+      "sha": "369a651abbef19aeafbbcbf0a624ea73679ad46e",
+      "shortSha": "369a651ab",
+      "date": "2026-07-28T19:21:44-07:00",
+      "author": "DENSENSE8",
+      "subject": "fix(scan-hotkey): ignore Shift+<hotkey> so Shift+F2 cannot double-fire",
+      "body": "The global focus-scan listener bailed on metaKey/ctrlKey/altKey but not\nshiftKey. The Pending grid binds Shift+F2 to the in-cell note editor (Sheets'\ninsert-note key) and only calls preventDefault(), so the event still reached\nthis window listener: a staffer who rebinds their scan hotkey to F2 got both\n— the note editor opened AND the scan bar stole focus.\n\nShift+<hotkey> is a different chord and belongs to whoever bound it. A\nkeyboard wedge never emits one, so nothing real is lost.\n\n(The default binding is `Insert`, not F2 — F1–F12 and ScrollLock are\nselectable, which is how this stayed latent.)\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "type": "fix",
+      "title": "ignore Shift+<hotkey> so Shift+F2 cannot double-fire"
+    },
+    {
+      "sha": "edd3367adca5aae843f2141519c76de166aa6df3",
+      "shortSha": "edd3367ad",
+      "date": "2026-07-28T19:21:37-07:00",
+      "author": "DENSENSE8",
+      "subject": "feat(dashboard): non-modal, resizable order inspector",
+      "body": "The details panel opened as a modal: aria-modal + body scroll lock + a\nfull-viewport scrim that dimmed and blurred the sidebar, KPI strip, lifecycle\ntabs and every sibling row — exactly the context an operator needs while\nediting one record. Reading and lightly editing a row mid-queue is a\nnon-modal job.\n\nModality is now a per-occupant contract on the right-rail store (`modal`,\ndefault true so all ~11 occupants are unchanged). `RightRailHost` resolves it\nfor the scroll lock, the backdrop, and role/aria, replacing the hardcoded\n`isAssistantDock` identity check. Only ShippedDetailsPanel opts out.\n\nNote this also ends an a11y falsehood: the host has never installed a focus\ntrap, so `aria-modal=\"true\"` was a claim the DOM did not honor. Non-modal\nmarkup is the honest form — do not \"fix\" it by adding a trap.\n\nAlso in this commit, because they touch the same two files and cannot be\nsplit without hunk surgery:\n\n- Escape ownership. A capture-phase queue listener ran before every\n  bubble-phase `useEscapeClose` and called stopPropagation(), so Escape inside\n  an open condition popover or row menu closed the INSPECTOR and left the\n  popover up. New overlay-stack store: the innermost open overlay owns\n  Escape. AnchoredLayer registers, so every house Popover / menu / cell\n  editor / Calendar participates; ambient owners stand down.\n- Capture-phase Enter no longer hijacks a focused row (it only knew how to\n  open records[0], so tabbing down and pressing Enter opened the wrong order).\n- Drag-to-resize for non-modal occupants, min 360 / default 420, width\n  persisted globally. The cap is derived, not taste: viewport minus the 360px\n  sidebar and the grid's ~596px min content width.\n- Instant record swap. The occupant id is the AnimatePresence key, so a\n  per-record id made every j/k step exit-then-enter — ~0.8s of empty slot on\n  the surface's core loop. A stable `detail:order` id swaps content in place;\n  the panel already re-seeds every field, and an unsaved note is now flushed\n  for the OUTGOING order first.\n- `useWorkOrderAssignment` extracted from `useShippedAssignment` so the staff\n  load and the /api/work-orders write have one writer.\n\nKnown limitation: resize does not reveal the occluded columns and cannot.\n`title` is the 1fr column, so it absorbs all slack and the fixed tracks sit\nflush against the table's right edge — where the panel floats.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "type": "feature",
+      "title": "non-modal, resizable order inspector"
+    },
+    {
+      "sha": "f86a17a6b50e6747823e27df53f1a93b39818ec8",
+      "shortSha": "f86a17a6b",
+      "date": "2026-07-28T00:34:37-07:00",
+      "author": "DENSENSE8",
+      "subject": "feat(a11y): absolute ARIA row numbering for the virtualized grid",
+      "body": "Only a WINDOW of rows is ever in the DOM, so a screen reader previously had no\nrow structure at all and no way to know where it was: role=\"table\" with no rows.\nThis adds the row half — role=\"row\" + aria-rowindex on every row, aria-rowcount\non the table.\n\nIndices are computed as if every fold were EXPANDED and never renumber. That is\nthe ARIA-recommended behaviour for collapsible rows, not a shortcut: keeping\nindices stable while aria-rowcount holds the total is what stops a user losing\ntheir place. The practical payoff is that nothing needs to know a fold's\nexpanded state, so `CollapsibleGroupRow`'s state stays where it is.\n\ngrid-row-index.ts owns the math (9 unit tests) and BOTH the count and the index\nwalk consume it, so aria-rowcount can never drift from the indices.\n\nTwo elements had to stop claiming an interactive role, because an element has\nexactly one role and a table whose rows are `button`/`checkbox` has no rows:\n\n  • CollapsibleGroupRow's summary → role=\"row\"; aria-expanded is valid on row,\n    which is how expandable rows are modelled, so the disclosure is unchanged.\n  • OrdersQueueTableRow → role=\"row\"; selection moves to aria-selected, and the\n    real checkbox in the select cell is untouched, so nothing is lost.\n\nBoth are gated on being inside a table (`inTable`), so neither can become an\norphaned role if reused outside one. The virtualizer's positioning wrapper is\nrole=\"presentation\" — a generic div between table and row breaks the required\ncontext chain.\n\nWired end-to-end on the Orders/Pending path as the proving consumer. The other\nfive station grids are unaffected: rowIndex is optional, so they keep their\ncurrent behaviour until threaded.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "type": "feature",
+      "title": "absolute ARIA row numbering for the virtualized grid"
+    },
+    {
+      "sha": "c86ed611f5f7cf51aa32d21ee0a0b1ea3c2b2b03",
+      "shortSha": "c86ed611f",
+      "date": "2026-07-28T00:13:17-07:00",
+      "author": "DENSENSE8",
+      "subject": "fix(a11y): drop the orphaned role=\"row\" from StationRowColumnHeader",
+      "body": "This is a VISUAL column guide over legacy two-zone queue rows\n(dashboardOrderRowShellClass), not a table header:\n\n  • its own HeaderCells emit no role=\"columnheader\", so the row owned no cells;\n  • the rows it labels carry no table semantics at all;\n  • StationListTable renders it standalone on the empty and non-virtualized\n    paths, where it had no table/rowgroup ancestor — an orphaned role, and\n    therefore spec-invalid (WAI-ARIA 1.2 §5.3.2 required context role).\n\nRemoving it is the honest change: AT users still get the header text, without a\nclaimed structure that isn't there. Restore the role only alongside real\ncolumnheader cells AND a guaranteed table context.\n\nE2E selectors are unaffected — they match [role=\"row\"]:has([data-col=\"title\"])\n(the modern grid headers, which carry data-col) or the real <table> in settings.\n\nShrinks the guard allowlist from 7 to 6. No orphaned row/columnheader roles\nremain anywhere in src.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "type": "fix",
+      "title": "drop the orphaned role=\"row\" from StationRowColumnHeader"
+    },
+    {
+      "sha": "986ae12c83a41b88849a220200410d0b062322c5",
+      "shortSha": "986ae12c8",
+      "date": "2026-07-28T00:09:32-07:00",
+      "author": "DENSENSE8",
+      "subject": "fix(a11y): give grid column headers valid ARIA context",
+      "body": "The six LedgerGrid column headers asserted role=\"row\" + role=\"columnheader\"\ninside a plain <div>. Both roles have a REQUIRED context role (WAI-ARIA 1.2\n§5.3.2): row needs rowgroup/table/grid/treegrid, columnheader needs a row in a\ntable/grid. With no such ancestor the markup was spec-invalid partial table\nsemantics — worse than no roles, because it claims a structure that isn't there.\n\nLedgerGrid now supplies the missing context: role=\"table\" on the surface\n(omitted while empty) and role=\"rowgroup\" on the sticky header band.\n\nrole=\"table\", NOT role=\"grid\", is deliberate. ARIA grid is a composite widget;\nasserting it obligates the full APG keyboard contract (roving tabindex,\narrow-key cell navigation, Home/End, Ctrl+Home/End), which this shell does not\nimplement. table is the honest claim for tabular content whose cells may hold\nwidgets.\n\nAlso names every table: ariaLabel is REQUIRED on both composers every product\nsurface mounts (LedgerGridSurface, OrdersGridView) so a new grid cannot ship\nanonymous. StationListTable takes it optional and falls back to bannerTitle —\nit is wrapped by generic station adapters where a required prop would cascade.\n\nKnown remaining gap, deliberately not closed here: body rows still carry no\nrole=\"row\"/aria-rowindex, so a virtualized list exposes no row structure. That\nneeds a decision on how folded groups map to ARIA and an absolute-index\ncontract through the virtualizer — see the follow-up brief, section 4.\n\nGuard: grid-aria-roles.guard.test.ts pins the container/header half, fails if\nthe role is \"upgraded\" to grid without the keyboard model, and tracks the one\nremaining orphan (StationRowColumnHeader on StationListTable's non-virtualized\npath) on a shrink-only allowlist.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "type": "fix",
+      "title": "give grid column headers valid ARIA context"
+    },
+    {
+      "sha": "2fd298e7a0aae42de01e89f731b2eecac5e82dd2",
+      "shortSha": "2fd298e7a",
+      "date": "2026-07-27T22:42:30-07:00",
+      "author": "DENSENSE8",
+      "subject": "docs: add station-column point-and-fix prompt and outbound briefing notes",
+      "body": "Update work-log entry alongside two new planning docs for follow-up agent work.\n\nCo-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>",
+      "type": "docs",
+      "title": "add station-column point-and-fix prompt and outbound briefing notes"
+    },
+    {
+      "sha": "26636b1ce15323764742bb841e8cb81ac4fa324f",
+      "shortSha": "26636b1ce",
+      "date": "2026-07-26T23:03:11-07:00",
+      "author": "DENSENSE8",
+      "subject": "feat(sidebar): two-card station column + flat desktop frame",
+      "body": "Replaces the floating rail-dock experiment with a two-card sidebar column on\nstation surfaces, and flattens the desktop frame chrome.\n\nStation column (src/components/sidebar/station-column.ts):\n- Gray canvas backdrop holding two elevated cards that share one shell,\n  mirrored: nav card flush to the top (rounded-b, border-t-0), station card\n  (recents + scan bar) flush to the bottom (rounded-t, border-b-0). Same width,\n  elevation and stacking band; only the flush edge differs.\n- They are flex siblings, so opening a nav menu expands the top card downward\n  and pushes the station card down instead of covering it -- no offset math.\n\nMasterNav gains layout=\"docked\" (MasterNavView): menus render in flow and grow\nthe host, with a `flat` variant on MasterNavDropdown / ModesPanel that drops\ntheir floating card chrome so a card never nests in a card. The height tween\nroutes through useMotionTransition so reduced motion does not animate layout.\n\nColumn selection is isStationSurfaceRoute() over the kind:'station' route keys.\nThat is a known over-sweep -- it also catches /incoming, /pickup, /repair and\n/receiving/history (workbench/monitor in SURFACE_REGISTRY) and mis-treats\n/support and /review as scan benches. Fix is planned in\ndocs/todo/station-column-archetype-split-plan.md: drive the column off\nSURFACE_REGISTRY.archetype plus a new collection:'catalog'|'queue' field, and\ngive backlog surfaces a queue band that never registers an F2 scan target.\n\nDesktop frame:\n- appContentShellClass drops rounded-tl-2xl + the canvas edge stroke; the corner\n  is square and the canvas background runs flat into it.\n- GlobalHeader now owns the single flat border-b hairline (inverting its old\n  \"no border-b here\" contract). DesktopShell's dead rounded-tl-none override\n  removed.\n\nAlso: ScanBandShell gets shrink-0 on its motion wrapper -- the inner band had\nit, the wrapper did not, so a height-capped host squashed the 40px band.\n\nRemoves the src/components/layout/station-rail portal module: once the dock IS\nthe sidebar column, the panel renders directly into the card and the portal +\nprovider are dead weight.\n\nverify: lint / typecheck / unit + DS guards / knip / route-auth / schema drift\nall green. Not browser-verified (the app is behind a sign-in wall).\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "type": "feature",
+      "title": "two-card station column + flat desktop frame"
+    },
+    {
+      "sha": "ebd999d9cfd76010d30f418e09cb70623c56cb00",
+      "shortSha": "ebd999d9c",
+      "date": "2026-07-26T21:43:21-07:00",
+      "author": "DENSENSE8",
+      "subject": "feat: grid column visibility/sort waist, station rail dock, and nav mode filtering",
+      "body": "Grid surface:\n- useGridColumnVisibility + GridFieldsMenu — descriptor `tier` ('core'|'optional')\n  is the default-set SoT; staff prefs persist as a delta in staff_preferences.\n- useUrlColumnSort + grid-column-sort-params — URL-durable column sort via\n  ?colsort=/?coldir=, keeping ?sort= free for server ordering on station routes.\n- grid-column-tier guard + grid-column-visibility tests + grid-fields-menu e2e.\n\nStation rail:\n- station-rail/ dock — floating rail host frame over the work canvas, wired to\n  the owning sidebar panel by DOM portal (not JSX-in-context) so a scan or an\n  optimistic patch never re-renders the layout shell.\n\nNav:\n- filterPageModes() — per-mode `requires` filtering shared by MasterNav and the\n  CommandBar Modes group, so mode surfaces match page-body permission filtering.\n\nAuth:\n- ProviderSignInButton + platform-oauth-types.\n\nGuards:\n- head-token-order + dialog-shell guard tests.\n\nChores:\n- gitignore electron-builder output dirs (desktop-dist/, desktop-dist2/) — 2.2 GB\n  of installer artifacts; the existing rule covered *.exe but not the output dirs.\n- station-rail barrel: drop the unused useStationRailDock re-export (module-internal;\n  StationRailDock.tsx imports it directly) — clears the knip gate without a baseline bump.\n- docs: page-consolidation + contextual-sidebar IA research briefings, token\n  consolidation plan, master-nav relocation prompt.\n\nverify: PASSED (lint, typecheck, 3145 unit tests, knip, route-auth 877 routes, schema drift).\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "type": "feature",
+      "title": "grid column visibility/sort waist, station rail dock, and nav mode filtering"
+    },
+    {
+      "sha": "ed0eaa969025b5ad39fecb5813a191594004b910",
+      "shortSha": "ed0eaa969",
+      "date": "2026-07-25T11:11:46-07:00",
+      "author": "DENSENSE8",
+      "subject": "feat: pickup ledger grid, catalog-link review chores, and photo/claim polish",
+      "body": "Port local pickup to LedgerGrid, add order↔catalog link review + transfer-sheet eligibility, and harden photo library ticket search plus Unbox claim/ticket pairing.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
+      "type": "feature",
+      "title": "pickup ledger grid, catalog-link review chores, and photo/claim polish"
+    },
+    {
+      "sha": "f2108f5a77fbbea7c1c7a0effb4cc3914251c254",
+      "shortSha": "f2108f5a7",
+      "date": "2026-07-24T11:39:58-07:00",
+      "author": "DENSENSE8",
+      "subject": "fix(receiving): tolerant claim-link ids and photo pill capture-only click",
+      "body": "Co-authored-by: Cursor <cursoragent@cursor.com>",
+      "type": "fix",
+      "title": "tolerant claim-link ids and photo pill capture-only click"
+    },
+    {
+      "sha": "0a733989545156be1970b507facd3db7aff60864",
+      "shortSha": "0a7339895",
+      "date": "2026-07-24T11:38:34-07:00",
+      "author": "DENSENSE8",
+      "subject": "fix(receiving): normalize placeholder line ids before claim link/create",
+      "body": "Co-authored-by: Cursor <cursoragent@cursor.com>",
+      "type": "fix",
+      "title": "normalize placeholder line ids before claim link/create"
+    },
+    {
+      "sha": "fccf52954552d93036e27f9055299b53d97d5917",
+      "shortSha": "fccf52954",
+      "date": "2026-07-24T11:37:01-07:00",
+      "author": "DENSENSE8",
+      "subject": "chore: work-log support create CTA and simplify claim-host openCreate",
+      "body": "Co-authored-by: Cursor <cursoragent@cursor.com>",
+      "type": "chore",
+      "title": "work-log support create CTA and simplify claim-host openCreate"
+    },
+    {
+      "sha": "1cfd2fcdd89d940b85331ed2a9999fbf6b7e1460",
+      "shortSha": "1cfd2fcdd",
+      "date": "2026-07-24T11:35:20-07:00",
+      "author": "DENSENSE8",
+      "subject": "feat: station workbench chrome, catalog/repair ledger grids, and pickup + support polish",
+      "body": "Unify Unbox-family panes on StationPanelRoot/ComposerDock, port catalog and repair to LedgerGrid, rewrite local pickup into receiving, and ship support ticket linkages, NAS ticket archive, and out-of-stock order facts.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
+      "type": "feature",
+      "title": "station workbench chrome, catalog/repair ledger grids, and pickup + support polish"
+    },
+    {
+      "sha": "7facbec1859dbdec5993a3116d1f6b8881fc663f",
+      "shortSha": "7facbec18",
+      "date": "2026-07-23T08:53:12-07:00",
+      "author": "DENSENSE8",
+      "subject": "feat: ledger grids, products catalog, and DS shell SoT",
+      "body": "Unify pending/incoming/receiving on LedgerGridSurface; ship products\ncatalog + labels workspace; promote Dialog/menus/Switch/Checkbox;\neBay OAuth, Amazon refresh, and receiving-type presentation SoT.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
+      "type": "feature",
+      "title": "ledger grids, products catalog, and DS shell SoT"
+    },
+    {
+      "sha": "eb56e97489175cd1843a6f3c4ac7934e40ef8e3a",
+      "shortSha": "eb56e9748",
+      "date": "2026-07-22T09:28:55-07:00",
+      "author": "DENSENSE8",
+      "subject": "feat: pending grid editors, media library folders API, and unbox identity polish",
+      "body": "Ship dogfood WIP: Sheets-style grid editors with platform favicons and corner note/OOS anchors; media library folders-first aggregation + picker parity; slim CartonContextCard with tracking/listings tabs; support ticket create host; scan-dock column unification; PhotoViewerPortal dismiss SoT; park Operations behind dogfood wall.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
+      "type": "feature",
+      "title": "pending grid editors, media library folders API, and unbox identity polish"
+    },
+    {
+      "sha": "fdd29799507021a779bc2b8b8c93525555ffa401",
+      "shortSha": "fdd297995",
+      "date": "2026-07-21T20:32:17-07:00",
+      "author": "DENSENSE8",
+      "subject": "feat: pending grid ledger, support station, DocumentSlideOver, and arrival triage",
+      "body": "Ship dogfood WIP: grid-only Pending queue with sort switch, in-cell editors, and replenishment stock column; DocumentSlideOver SoT for PDF preview; Support ticket focus workbench + ticket_links rekey; arrival triage pipeline and sidebar rail alignment; outbound Import/Add chrome; typed receiving event bus; photo library recency tabs.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
+      "type": "feature",
+      "title": "pending grid ledger, support station, DocumentSlideOver, and arrival triage"
+    },
+    {
+      "sha": "947234841f1b6e219ecf33fbfd641ff84af0d7f8",
+      "shortSha": "947234841",
+      "date": "2026-07-21T12:27:52-07:00",
+      "author": "DENSENSE8",
+      "subject": "fix(unbox): stop Line # stubs on Unboxed rail; ship dogfood WIP",
+      "body": "Identity-only workspace upserts no longer prepend onto an empty Unboxed\ncache (product title + qty stay on scan/fetch membership). Also lands\nsupport orders, review packing, search order detail, station SoT, and\npending-grid polish already in the working tree.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
+      "type": "fix",
+      "title": "stop Line # stubs on Unboxed rail; ship dogfood WIP"
+    },
+    {
+      "sha": "360180701a5d271dee5987acb8ad797c7d4c2b05",
+      "shortSha": "360180701",
+      "date": "2026-07-21T09:24:41-07:00",
+      "author": "DENSENSE8",
+      "subject": "feat(orders): Airtable grid skin for Pending grid + fix Incoming click-to-open regression",
+      "body": "Pending → Grid view (LedgerGrid) opts into a closed white spreadsheet skin via\n`data-grid-skin=\"airtable\"`: strong themeable gridlines on every cell, opaque\nheader, always-live Airtable-style hover-select checkboxes in the gutter\n(selection works without the pencil; row-body click still opens). Threads\n`gridSkin` through OrdersGridView → column header, table row, and the collapsed\nmulti-product group summary (emits `data-grid-summary-row` so the scoped CSS\ndraws its gridlines too). The vertical shelf-board never opts in — its\nfaint-hairline look is untouched.\n\nFix the Incoming click-to-open regression: `?openReceivingId=` is Unbox-only, so\na stale value that rode a mode switch onto Incoming/Triage must not restore and\npop the details panel on load. New `shouldRestoreOpenReceiving()` gates the\nrestore READ on `isUnboxSurface`, symmetric with the Unbox-only WRITE side; adds\nunit coverage and an e2e spec.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+      "type": "feature",
+      "title": "Airtable grid skin for Pending grid + fix Incoming click-to-open regression"
+    },
+    {
+      "sha": "9d174573d67b9c317abd472aa44108521acf9f2e",
+      "shortSha": "9d174573d",
+      "date": "2026-07-21T00:03:58-07:00",
+      "author": "DENSENSE8",
+      "subject": "feat: pack review station, station entity-context SoT, eBay vault, and receiving rail polish",
+      "body": "Add pack verification APIs, review workspace, and LedgerGrid; consolidate station context chrome; migrate eBay tokens to vault; improve unbox/triage rails, dashboard search, mobile packer photos, and Ecwid outbound docs.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
+      "type": "feature",
+      "title": "pack review station, station entity-context SoT, eBay vault, and receiving rail polish"
+    },
+    {
+      "sha": "6b7aab4cec4f493175b4ad1b19ece6745283336c",
+      "shortSha": "6b7aab4ce",
+      "date": "2026-07-20T08:13:05-07:00",
+      "author": "DENSENSE8",
+      "subject": "fix(ci): sync package-lock for lighthouse tooling deps",
+      "body": "Restore npm ci so CI can install and Deploy production can run again after\nlighthouse/chrome-launcher/bundle-analyzer and web-vitals were added without a lockfile update.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
+      "type": "fix",
+      "title": "sync package-lock for lighthouse tooling deps"
+    },
+    {
+      "sha": "960cf54d2661f100dbadccda6383562d53aa64cc",
+      "shortSha": "960cf54d2",
+      "date": "2026-07-20T02:03:38-07:00",
+      "author": "DENSENSE8",
+      "subject": "feat: search order detail, resizable pending grid, photos, kiosk, and eBay incoming",
+      "body": "Add dashboard search order detail shell with uniform tabs, resizable To Ship pending columns persisted per staff, photo upload overlay and move-PO modal consolidation, kiosk tablet intake E2E plus routing/revoke fixes, eBay buyer→incoming sync hardening, stagger v2 rail motion, CartonContextCard polish, and Tier-1 LCP shell-SSR ungate.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
+      "type": "feature",
+      "title": "search order detail, resizable pending grid, photos, kiosk, and eBay incoming"
+    },
     {
       "sha": "b766dd58f001e8c84941913f026a1eb7900c1958",
       "shortSha": "b766dd58f",
@@ -1491,476 +1981,6 @@
       "body": "Completes the originally-scoped MLX/M5 research as a comparison appendix:\ncorrects '48GB = M5 Pro (not base M5)', confirms from-scratch is impractical\non one Mac, documents mlx_lm.lora LoRA/QLoRA + the train->fuse->export path,\nand lands on a dev-on-Mac / serve-on-CUDA-5070-Ti hybrid (fused safetensors\nas the interchange unit; final production fine-tune on the GPU). Verified\nvia a third adversarial research sweep.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>\nClaude-Session: https://claude.ai/code/session_01TgL8KsQwmxpUz17jN2aGds",
       "type": "docs",
       "title": "add MLX/M5 alternative-hardware appendix to local-LLM plan"
-    },
-    {
-      "sha": "3b024acbae3ff914ac778016ae1b02c38fcca710",
-      "shortSha": "3b024acba",
-      "date": "2026-06-22T17:08:40-07:00",
-      "author": "usavsolutionsinc",
-      "subject": "docs: add MLX/M5 alternative-hardware appendix to local-LLM plan",
-      "body": "Completes the originally-scoped MLX/M5 research as a comparison appendix:\ncorrects '48GB = M5 Pro (not base M5)', confirms from-scratch is impractical\non one Mac, documents mlx_lm.lora LoRA/QLoRA + the train->fuse->export path,\nand lands on a dev-on-Mac / serve-on-CUDA-5070-Ti hybrid (fused safetensors\nas the interchange unit; final production fine-tune on the GPU). Verified\nvia a third adversarial research sweep.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>\nClaude-Session: https://claude.ai/code/session_01TgL8KsQwmxpUz17jN2aGds",
-      "type": "docs",
-      "title": "add MLX/M5 alternative-hardware appendix to local-LLM plan"
-    },
-    {
-      "sha": "e62c95206d0c28b44308536c6000556e51a61958",
-      "shortSha": "e62c95206",
-      "date": "2026-06-22T17:01:42-07:00",
-      "author": "usavsolutionsinc",
-      "subject": "docs: add local-LLM (5070 Ti) + capability-advisor plan",
-      "body": "Comprehensive plan for the contextual capability model (four-layer:\nentitlement/inventory/assignment/device), adaptive-chrome mobile nav,\nthe next-best-investment advisor (tabular decision + grounded LLM prose,\nvetted product catalog), and a specialized local LLM served on the\nRTX 5070 Ti (Blackwell/CUDA) to negate per-tenant cloud LLM calls.\nGrounded in two verified deep-research sweeps + a repo code-seam map.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>\nClaude-Session: https://claude.ai/code/session_01TgL8KsQwmxpUz17jN2aGds",
-      "type": "docs",
-      "title": "add local-LLM (5070 Ti) + capability-advisor plan"
-    },
-    {
-      "sha": "15bd781ddb33c40994c4f22686b26f1f1b312bae",
-      "shortSha": "15bd781dd",
-      "date": "2026-06-22T17:01:42-07:00",
-      "author": "usavsolutionsinc",
-      "subject": "docs: add local-LLM (5070 Ti) + capability-advisor plan",
-      "body": "Comprehensive plan for the contextual capability model (four-layer:\nentitlement/inventory/assignment/device), adaptive-chrome mobile nav,\nthe next-best-investment advisor (tabular decision + grounded LLM prose,\nvetted product catalog), and a specialized local LLM served on the\nRTX 5070 Ti (Blackwell/CUDA) to negate per-tenant cloud LLM calls.\nGrounded in two verified deep-research sweeps + a repo code-seam map.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>\nClaude-Session: https://claude.ai/code/session_01TgL8KsQwmxpUz17jN2aGds",
-      "type": "docs",
-      "title": "add local-LLM (5070 Ti) + capability-advisor plan"
-    },
-    {
-      "sha": "9b9877fe9d0a2278b80f3c5bc8e1d4046438acfd",
-      "shortSha": "9b9877fe9",
-      "date": "2026-06-22T16:47:35-07:00",
-      "author": "usavsolutionsinc",
-      "subject": "feat: FedEx GS1 tracking canonicalization, tenancy hardening sweep, repair print flow",
-      "body": "- tracking-format: add stripFedexConcatPrefix + extractCanonicalTracking so scanned\n  GS1-128/\"96\" concat barcodes and pasted human tracking numbers resolve to the same\n  key — fixing receive/reconcile mismatches that last-8 suffix matching couldn't cover\n- tenancy sweep: thread orgId through ~35 API routes, order-intake, serial-attach,\n  replenishment (tasks now stamp organization_id), markUnitListed, inventory events, and\n  supporting lib helpers; remove legacy raw-pool fallback paths where orgId is now required\n- repair intake: onSubmit resolves RepairSubmitResult; on success, stay in full-screen\n  overlay and show printable paperwork — never reveal walk-in dashboard to customer\n- docs: regenerated route-audit + route-scoping-audit; add tracking-canonicalization plan\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>\nClaude-Session: https://claude.ai/code/session_01Xx9BGPFk6odzL6otyWDAr9",
-      "type": "feature",
-      "title": "FedEx GS1 tracking canonicalization, tenancy hardening sweep, repair print flow"
-    },
-    {
-      "sha": "3352ac296bd0f9bd8fb18a0fe84a2c117757e5a6",
-      "shortSha": "3352ac296",
-      "date": "2026-06-22T16:47:35-07:00",
-      "author": "usavsolutionsinc",
-      "subject": "feat: FedEx GS1 tracking canonicalization, tenancy hardening sweep, repair print flow",
-      "body": "- tracking-format: add stripFedexConcatPrefix + extractCanonicalTracking so scanned\n  GS1-128/\"96\" concat barcodes and pasted human tracking numbers resolve to the same\n  key — fixing receive/reconcile mismatches that last-8 suffix matching couldn't cover\n- tenancy sweep: thread orgId through ~35 API routes, order-intake, serial-attach,\n  replenishment (tasks now stamp organization_id), markUnitListed, inventory events, and\n  supporting lib helpers; remove legacy raw-pool fallback paths where orgId is now required\n- repair intake: onSubmit resolves RepairSubmitResult; on success, stay in full-screen\n  overlay and show printable paperwork — never reveal walk-in dashboard to customer\n- docs: regenerated route-audit + route-scoping-audit; add tracking-canonicalization plan\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>\nClaude-Session: https://claude.ai/code/session_01Xx9BGPFk6odzL6otyWDAr9",
-      "type": "feature",
-      "title": "FedEx GS1 tracking canonicalization, tenancy hardening sweep, repair print flow"
-    },
-    {
-      "sha": "8d68b72290913919e188cffee4f6b2cdd77fea4a",
-      "shortSha": "8d68b7229",
-      "date": "2026-06-22T10:12:44-07:00",
-      "author": "usavsolutionsinc",
-      "subject": "Fix receiving line edit toolbar handler contract",
-      "body": "",
-      "type": "fix",
-      "title": "Fix receiving line edit toolbar handler contract"
-    },
-    {
-      "sha": "c9db6fe8ab8e86201a3068ad9b25b4941a94739f",
-      "shortSha": "c9db6fe8a",
-      "date": "2026-06-22T10:12:44-07:00",
-      "author": "usavsolutionsinc",
-      "subject": "Fix receiving line edit toolbar handler contract",
-      "body": "",
-      "type": "fix",
-      "title": "Fix receiving line edit toolbar handler contract"
-    },
-    {
-      "sha": "6bab4e127c061899486f2bcf07097298d860b653",
-      "shortSha": "6bab4e127",
-      "date": "2026-06-22T09:56:14-07:00",
-      "author": "usavsolutionsinc",
-      "subject": "Integrate photo library and receiving updates",
-      "body": "",
-      "type": "other",
-      "title": "Integrate photo library and receiving updates"
-    },
-    {
-      "sha": "ef93108730205bfbef6ab2b96ac403739b38969f",
-      "shortSha": "ef9310873",
-      "date": "2026-06-22T09:56:14-07:00",
-      "author": "usavsolutionsinc",
-      "subject": "Integrate photo library and receiving updates",
-      "body": "",
-      "type": "other",
-      "title": "Integrate photo library and receiving updates"
-    },
-    {
-      "sha": "38a7336fdfcf6b476cd7fe56217aea57d76b88bc",
-      "shortSha": "38a7336fd",
-      "date": "2026-06-22T08:39:55-07:00",
-      "author": "DENSENSE8",
-      "subject": "photo library updates UX and UI, folder first",
-      "body": "",
-      "type": "other",
-      "title": "photo library updates UX and UI, folder first"
-    },
-    {
-      "sha": "ba83ebe92ae6c06b37ac27bbd1e95252c476f132",
-      "shortSha": "ba83ebe92",
-      "date": "2026-06-22T08:39:55-07:00",
-      "author": "DENSENSE8",
-      "subject": "photo library updates UX and UI, folder first",
-      "body": "",
-      "type": "other",
-      "title": "photo library updates UX and UI, folder first"
-    },
-    {
-      "sha": "c6bb865aa947b8b10409d7c26e3b873d1ef82eb6",
-      "shortSha": "c6bb865aa",
-      "date": "2026-06-22T08:27:35-07:00",
-      "author": "DENSENSE8",
-      "subject": "feat: identity layer, studio workflows, tenancy hardening, and UI chassis refactor",
-      "body": "Ship global accounts with passkey auth and org switching; expand Operations\nStudio (templates, node-bound stations, simulation); route inventory status\nchanges through guarded transition(); enforce tenant isolation across APIs and\nmigrations; refactor receiving sidebar/station chassis and design-system\nprimitives; add staff preferences, audit trace, and integration credential\nscoping. Remove tracked .env.local, legacy scripts/docs, and debug artifacts.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
-      "type": "feature",
-      "title": "identity layer, studio workflows, tenancy hardening, and UI chassis refactor"
-    },
-    {
-      "sha": "0eaf4a990e6b9eaec77dbff6de176e8ba05034ff",
-      "shortSha": "0eaf4a990",
-      "date": "2026-06-22T08:27:35-07:00",
-      "author": "DENSENSE8",
-      "subject": "feat: identity layer, studio workflows, tenancy hardening, and UI chassis refactor",
-      "body": "Ship global accounts with passkey auth and org switching; expand Operations\nStudio (templates, node-bound stations, simulation); route inventory status\nchanges through guarded transition(); enforce tenant isolation across APIs and\nmigrations; refactor receiving sidebar/station chassis and design-system\nprimitives; add staff preferences, audit trace, and integration credential\nscoping. Remove tracked .env.local, legacy scripts/docs, and debug artifacts.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
-      "type": "feature",
-      "title": "identity layer, studio workflows, tenancy hardening, and UI chassis refactor"
-    },
-    {
-      "sha": "725c0d39376ccd9efdcbb1b5f97130d18df4a1ba",
-      "shortSha": "725c0d393",
-      "date": "2026-06-21T21:46:18-07:00",
-      "author": "DENSENSE8",
-      "subject": "feat(fba): route ship-units SHIPPED through guarded transition() (Phase 1.3)",
-      "body": "fba/ship-units no longer hand-writes serial_units→SHIPPED. The status change +\nthe SHIPPED event go through transition(input, client, ctx.organizationId) — which\nalso fixes the previously org-unscoped serial UPDATE. The PACKED/LABELED audit\nevents + the sku_stock_ledger SOLD decrement are untouched (the money side does\nnot move through transition).\n\nAllow-list: add FBA direct-ship edges STOCKED/GRADED/TESTED→SHIPPED (ALLOCATED/\nPICKED→SHIPPED already existed) — FBA ships sellable units straight to Amazon\n(link-unit normally allocates first). A non-sellable source (IN_REPAIR/SCRAPPED/…)\nis NOT modeled and is now correctly rejected rather than force-shipped (a latent\nbug — you should never ship a broken unit to FBA).\n\nReview-driven hardening: pre-validate ALL units against the guard BEFORE mutating\nany, returning a 409 listing every unshippable unit — true all-or-nothing with\nclear observability, instead of an opaque mid-loop 500. (Idempotency is preserved\nby the existing `current_status <> 'SHIPPED'` query filter, which excludes\nalready-shipped units on retry.)\n\nUnconditional transition()-only (SoT hook forbids a raw fallback). +guard tests.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
-      "type": "feature",
-      "title": "route ship-units SHIPPED through guarded transition() (Phase 1.3)"
-    },
-    {
-      "sha": "cb43adbe81e9baaabaf66f64b02dad73e6118400",
-      "shortSha": "cb43adbe8",
-      "date": "2026-06-21T21:46:18-07:00",
-      "author": "DENSENSE8",
-      "subject": "feat(fba): route ship-units SHIPPED through guarded transition() (Phase 1.3)",
-      "body": "fba/ship-units no longer hand-writes serial_units→SHIPPED. The status change +\nthe SHIPPED event go through transition(input, client, ctx.organizationId) — which\nalso fixes the previously org-unscoped serial UPDATE. The PACKED/LABELED audit\nevents + the sku_stock_ledger SOLD decrement are untouched (the money side does\nnot move through transition).\n\nAllow-list: add FBA direct-ship edges STOCKED/GRADED/TESTED→SHIPPED (ALLOCATED/\nPICKED→SHIPPED already existed) — FBA ships sellable units straight to Amazon\n(link-unit normally allocates first). A non-sellable source (IN_REPAIR/SCRAPPED/…)\nis NOT modeled and is now correctly rejected rather than force-shipped (a latent\nbug — you should never ship a broken unit to FBA).\n\nReview-driven hardening: pre-validate ALL units against the guard BEFORE mutating\nany, returning a 409 listing every unshippable unit — true all-or-nothing with\nclear observability, instead of an opaque mid-loop 500. (Idempotency is preserved\nby the existing `current_status <> 'SHIPPED'` query filter, which excludes\nalready-shipped units on retry.)\n\nUnconditional transition()-only (SoT hook forbids a raw fallback). +guard tests.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
-      "type": "feature",
-      "title": "route ship-units SHIPPED through guarded transition() (Phase 1.3)"
-    },
-    {
-      "sha": "d5cad04352e810221b4effc61f7062cdf3f1ce45",
-      "shortSha": "d5cad0435",
-      "date": "2026-06-21T21:28:59-07:00",
-      "author": "DENSENSE8",
-      "subject": "feat(inventory): route returns-intake through guarded transition() (Phase 1.3)",
-      "body": "processReturnsIntake no longer hand-writes serial_units→RETURNED + a manual\nRETURNED INSERT. The status change + the RETURNED event (scan_token=tracking,\nstock_ledger_id=ledger, rich payload all preserved) go through transition()\n(executor pattern on the tx client, org-scoped via input.organizationId). The\nallocation flip (SHIPPED→RETURNED) and the +1 RETURN_CUSTOMER ledger stay outside\nit. SHIPPED/STOCKED/RMA→RETURNED are modeled; an unmodeled source throws and rolls\nback the whole batch — consistent with the existing all-or-nothing intake\ncontract (zero mutations committed, operator fixes input and retries).\n\nUnconditional transition()-only (SoT hook forbids a raw fallback). Reviewed clean.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
-      "type": "feature",
-      "title": "route returns-intake through guarded transition() (Phase 1.3)"
-    },
-    {
-      "sha": "5199dd2e6c92bca1da6f07a03f4a16280119d712",
-      "shortSha": "5199dd2e6",
-      "date": "2026-06-21T21:28:59-07:00",
-      "author": "DENSENSE8",
-      "subject": "feat(inventory): route returns-intake through guarded transition() (Phase 1.3)",
-      "body": "processReturnsIntake no longer hand-writes serial_units→RETURNED + a manual\nRETURNED INSERT. The status change + the RETURNED event (scan_token=tracking,\nstock_ledger_id=ledger, rich payload all preserved) go through transition()\n(executor pattern on the tx client, org-scoped via input.organizationId). The\nallocation flip (SHIPPED→RETURNED) and the +1 RETURN_CUSTOMER ledger stay outside\nit. SHIPPED/STOCKED/RMA→RETURNED are modeled; an unmodeled source throws and rolls\nback the whole batch — consistent with the existing all-or-nothing intake\ncontract (zero mutations committed, operator fixes input and retries).\n\nUnconditional transition()-only (SoT hook forbids a raw fallback). Reviewed clean.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
-      "type": "feature",
-      "title": "route returns-intake through guarded transition() (Phase 1.3)"
-    },
-    {
-      "sha": "8a3a59bd7ccfd67d33d7fbf850cea1992597c45d",
-      "shortSha": "8a3a59bd7",
-      "date": "2026-06-21T21:28:59-07:00",
-      "author": "DENSENSE8",
-      "subject": "feat(orders): route order-release through guarded transition() (Phase 1.3)",
-      "body": "orders/[id]/release no longer hand-writes serial_units.current_status. Per\nallocation, the status return to STOCKED + the RELEASED event go through the\nguarded transition() (executor pattern on the withTenantTransaction client,\norg-scoped); the allocation-close UPDATE stays outside it. The non-outbound\ndefensive case (no status change) keeps recordInventoryEvent. Exactly one\ninventory_event per unit either way.\n\nAllow-list: add the order-release rewind edges PICKED/PACKED/LABELED/STAGED →\nSTOCKED (ALLOCATED→STOCKED already existed) so cancelling an order mid-fulfilment\nreturns each unit to stock without the guard rejecting. +guard test.\n\nUnconditional transition()-only (SoT hook forbids a raw fallback). Reviewed clean.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
-      "type": "feature",
-      "title": "route order-release through guarded transition() (Phase 1.3)"
-    },
-    {
-      "sha": "4de95b31afbf520e14961277a17ba6cbd91b3083",
-      "shortSha": "4de95b31a",
-      "date": "2026-06-21T21:28:59-07:00",
-      "author": "DENSENSE8",
-      "subject": "feat(orders): route order-release through guarded transition() (Phase 1.3)",
-      "body": "orders/[id]/release no longer hand-writes serial_units.current_status. Per\nallocation, the status return to STOCKED + the RELEASED event go through the\nguarded transition() (executor pattern on the withTenantTransaction client,\norg-scoped); the allocation-close UPDATE stays outside it. The non-outbound\ndefensive case (no status change) keeps recordInventoryEvent. Exactly one\ninventory_event per unit either way.\n\nAllow-list: add the order-release rewind edges PICKED/PACKED/LABELED/STAGED →\nSTOCKED (ALLOCATED→STOCKED already existed) so cancelling an order mid-fulfilment\nreturns each unit to stock without the guard rejecting. +guard test.\n\nUnconditional transition()-only (SoT hook forbids a raw fallback). Reviewed clean.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
-      "type": "feature",
-      "title": "route order-release through guarded transition() (Phase 1.3)"
-    },
-    {
-      "sha": "58e77ceeb5c65ce4dfe601a364af1e0e943da646",
-      "shortSha": "58e77ceeb",
-      "date": "2026-06-21T21:15:51-07:00",
-      "author": "DENSENSE8",
-      "subject": "fix(inventory): parts-sort status+location in one tx; narrow transition db param",
-      "body": "Adversarial review of the parts-sort conversion found an atomicity regression:\ntransition() committed the STOCKED status+event in its own tx, then the\ncurrent_location move ran as a separate autocommit — a failure between them left\nthe unit STOCKED but not relocated. Wrap both in ONE transaction (the caller's\nclient when provided, else our own via neon-client transaction()), so status +\nevent + location commit together.\n\nAlso narrow transition()'s db param from PoolClient to Pick<PoolClient,'query'>\n(the executor path only uses .query) — removes the unsafe cast in parts-sort and\nlets any caller thread a partial tx client without one. Backward-compatible: a\nfull PoolClient still satisfies the narrower type.\n\n(hold conversion reviewed clean — no findings.)\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
-      "type": "fix",
-      "title": "parts-sort status+location in one tx; narrow transition db param"
-    },
-    {
-      "sha": "46ca3b1b2c8fb3c3c5793a920537d9b393cfea83",
-      "shortSha": "46ca3b1b2",
-      "date": "2026-06-21T21:15:51-07:00",
-      "author": "DENSENSE8",
-      "subject": "fix(inventory): parts-sort status+location in one tx; narrow transition db param",
-      "body": "Adversarial review of the parts-sort conversion found an atomicity regression:\ntransition() committed the STOCKED status+event in its own tx, then the\ncurrent_location move ran as a separate autocommit — a failure between them left\nthe unit STOCKED but not relocated. Wrap both in ONE transaction (the caller's\nclient when provided, else our own via neon-client transaction()), so status +\nevent + location commit together.\n\nAlso narrow transition()'s db param from PoolClient to Pick<PoolClient,'query'>\n(the executor path only uses .query) — removes the unsafe cast in parts-sort and\nlets any caller thread a partial tx client without one. Backward-compatible: a\nfull PoolClient still satisfies the narrower type.\n\n(hold conversion reviewed clean — no findings.)\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
-      "type": "fix",
-      "title": "parts-sort status+location in one tx; narrow transition db param"
-    },
-    {
-      "sha": "54d18a0f177fbf4203227a8bf90f866444f0af0f",
-      "shortSha": "54d18a0f1",
-      "date": "2026-06-21T21:04:35-07:00",
-      "author": "DENSENSE8",
-      "subject": "feat(inventory): route parts-sort through guarded transition() (Phase 1.3)",
-      "body": "sortSerialUnitToParts no longer hand-writes serial_units.current_status + a\nmanual PUTAWAY INSERT. Split per the SoT rule:\n  - transition() owns the STOCKED status change + the PUTAWAY event (binId,\n    prevBinId, payload preserved; it adds prev_status the legacy event omitted).\n  - a separate location-only UPDATE sets current_location (not part of the\n    status transition; no current_status, so the SoT guard permits it).\n\nBest-effort contract preserved: the common from-states\n(GRADED/RECEIVED/TESTED/RETURNED → STOCKED) are guard-clean; an odd source\n(e.g. mid-repair) is declined → returns {sorted:false, reason:'blocked'} +\nlog, so the caller's grade write still succeeds. DB errors still propagate to\nthe caller's existing try/catch exactly as before. Unconditional (no flag) —\nsame SoT-hook constraint as the hold conversion.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
-      "type": "feature",
-      "title": "route parts-sort through guarded transition() (Phase 1.3)"
-    },
-    {
-      "sha": "46c6f2beee4037884eadb5f0a5df209bbed509ee",
-      "shortSha": "46c6f2bee",
-      "date": "2026-06-21T21:04:35-07:00",
-      "author": "DENSENSE8",
-      "subject": "feat(inventory): route parts-sort through guarded transition() (Phase 1.3)",
-      "body": "sortSerialUnitToParts no longer hand-writes serial_units.current_status + a\nmanual PUTAWAY INSERT. Split per the SoT rule:\n  - transition() owns the STOCKED status change + the PUTAWAY event (binId,\n    prevBinId, payload preserved; it adds prev_status the legacy event omitted).\n  - a separate location-only UPDATE sets current_location (not part of the\n    status transition; no current_status, so the SoT guard permits it).\n\nBest-effort contract preserved: the common from-states\n(GRADED/RECEIVED/TESTED/RETURNED → STOCKED) are guard-clean; an odd source\n(e.g. mid-repair) is declined → returns {sorted:false, reason:'blocked'} +\nlog, so the caller's grade write still succeeds. DB errors still propagate to\nthe caller's existing try/catch exactly as before. Unconditional (no flag) —\nsame SoT-hook constraint as the hold conversion.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
-      "type": "feature",
-      "title": "route parts-sort through guarded transition() (Phase 1.3)"
-    },
-    {
-      "sha": "00b6f9cb0b0a960ebde37c418a70c3882d75d0f5",
-      "shortSha": "00b6f9cb0",
-      "date": "2026-06-21T20:55:17-07:00",
-      "author": "DENSENSE8",
-      "subject": "feat(inventory): route hold/release through guarded transition() (Phase 1.3)",
-      "body": "First Phase 1.3 conversion (the strangler backlog of ~20 raw current_status\nUPDATEs). holdUnit + releaseUnit no longer hand-write serial_units.current_status\n+ a manual inventory_events INSERT — they go through the guarded transition()\nchokepoint on the helper's own tx client (executor pattern). transition() emits\nthe HELD / RELEASED_HOLD event itself.\n\n- state-machine: model ON_HOLD's outgoing edges as exactly hold.ts'\n  RESTORABLE_STATUSES, so guarded release never rejects (entry to ON_HOLD stays\n  universal via the to===ON_HOLD special-case). +guard tests.\n- events: add HELD / RELEASED_HOLD to InventoryEventType (additive — already in\n  the DB via the old raw INSERTs; lets transition() emit them).\n\nNOTE — deviation from the flag-gated pattern, forced by the source-of-truth hook\n(.claude/hooks/sot-guard.sh): the rule forbids ANY raw current_status UPDATE in a\nfile, so a flag-OFF raw fallback is impossible. This conversion is therefore\nUNCONDITIONAL (not behind UNIFIED_ENGINE_APPLY_TRANSITION). It is behavior-\nequivalent for legitimate flows: hold's to=ON_HOLD is universal-entry and\nrelease's destination is always a RESTORABLE_STATUSES member (now modeled), so\nthe guard never rejects; the HELD/RELEASED_HOLD events match the legacy shape.\nOrg-scoping of hold.ts stays a tracked tenancy follow-up (no orgId threaded yet).\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
-      "type": "feature",
-      "title": "route hold/release through guarded transition() (Phase 1.3)"
-    },
-    {
-      "sha": "26c3185784d6c00f4f146b332a0af4ff80a9d45b",
-      "shortSha": "26c318578",
-      "date": "2026-06-21T20:55:17-07:00",
-      "author": "DENSENSE8",
-      "subject": "feat(inventory): route hold/release through guarded transition() (Phase 1.3)",
-      "body": "First Phase 1.3 conversion (the strangler backlog of ~20 raw current_status\nUPDATEs). holdUnit + releaseUnit no longer hand-write serial_units.current_status\n+ a manual inventory_events INSERT — they go through the guarded transition()\nchokepoint on the helper's own tx client (executor pattern). transition() emits\nthe HELD / RELEASED_HOLD event itself.\n\n- state-machine: model ON_HOLD's outgoing edges as exactly hold.ts'\n  RESTORABLE_STATUSES, so guarded release never rejects (entry to ON_HOLD stays\n  universal via the to===ON_HOLD special-case). +guard tests.\n- events: add HELD / RELEASED_HOLD to InventoryEventType (additive — already in\n  the DB via the old raw INSERTs; lets transition() emit them).\n\nNOTE — deviation from the flag-gated pattern, forced by the source-of-truth hook\n(.claude/hooks/sot-guard.sh): the rule forbids ANY raw current_status UPDATE in a\nfile, so a flag-OFF raw fallback is impossible. This conversion is therefore\nUNCONDITIONAL (not behind UNIFIED_ENGINE_APPLY_TRANSITION). It is behavior-\nequivalent for legitimate flows: hold's to=ON_HOLD is universal-entry and\nrelease's destination is always a RESTORABLE_STATUSES member (now modeled), so\nthe guard never rejects; the HELD/RELEASED_HOLD events match the legacy shape.\nOrg-scoping of hold.ts stays a tracked tenancy follow-up (no orgId threaded yet).\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
-      "type": "feature",
-      "title": "route hold/release through guarded transition() (Phase 1.3)"
-    },
-    {
-      "sha": "12a0af3d4fc209b1bee0cc17b090e0dd0bd4275b",
-      "shortSha": "12a0af3d4",
-      "date": "2026-06-21T20:31:55-07:00",
-      "author": "DENSENSE8",
-      "subject": "fix(workflow): applyTransition preserves receiving_id + scan_token on the event",
-      "body": "Review found the chokepoint event dropped receiving_id (carton linkage) and\nscan_token vs the legacy recordInventoryEvent path — an audit-trail divergence\non the flag-ON path. transition() already supports both; thread them through\napplyTransition (happy + identity paths) and pass them from the receiving\nline-status route. +test assertions.\n\n(Reviewer also flagged the decline-path as a 'double-write' — that's a false\npremise: transition() runs the guard BEFORE its UPDATE and returns ok:false\nwithout writing, so the fallback writes exactly once. The guard-bypass-on-decline\nis the intentional strangler parity-net: preserve the legacy outcome + log,\nobserve, then tighten — returning 409 on flag-flip would wedge unmodeled flows.)\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
-      "type": "fix",
-      "title": "applyTransition preserves receiving_id + scan_token on the event"
-    },
-    {
-      "sha": "8537597d399ed353bfc95a8cf0c073a164629beb",
-      "shortSha": "8537597d3",
-      "date": "2026-06-21T20:31:55-07:00",
-      "author": "DENSENSE8",
-      "subject": "fix(workflow): applyTransition preserves receiving_id + scan_token on the event",
-      "body": "Review found the chokepoint event dropped receiving_id (carton linkage) and\nscan_token vs the legacy recordInventoryEvent path — an audit-trail divergence\non the flag-ON path. transition() already supports both; thread them through\napplyTransition (happy + identity paths) and pass them from the receiving\nline-status route. +test assertions.\n\n(Reviewer also flagged the decline-path as a 'double-write' — that's a false\npremise: transition() runs the guard BEFORE its UPDATE and returns ok:false\nwithout writing, so the fallback writes exactly once. The guard-bypass-on-decline\nis the intentional strangler parity-net: preserve the legacy outcome + log,\nobserve, then tighten — returning 409 on flag-flip would wedge unmodeled flows.)\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
-      "type": "fix",
-      "title": "applyTransition preserves receiving_id + scan_token on the event"
-    },
-    {
-      "sha": "be0481d3513b9698ce816c27e3de11843f5eece0",
-      "shortSha": "be0481d35",
-      "date": "2026-06-21T20:21:57-07:00",
-      "author": "DENSENSE8",
-      "subject": "feat(receiving): route lines/[id]/status through the guarded chokepoint (Phase 1.2)",
-      "body": "This was the clearest dual-spine drift (DISCOVERY §6): a raw, unguarded\nserial_units UPDATE + a separate non-atomic inventory_event + a receiving_lines\nwrite, all over the BYPASSRLS owner pool with no org scoping and no tap.\n\n- Serial status change now routes through applyTransition(skipTap) behind\n  UNIFIED_ENGINE_APPLY_TRANSITION: guard + atomic event in one tx. skipTap\n  because recordTestVerdict is the canonical test-verdict tapper (no double\n  advance). On guard-decline (e.g. RTV RETURNED from a receiving state isn't\n  modeled) it logs + falls back to the legacy raw write (strangler parity-net),\n  so nothing wedges.\n- Org-scope EVERY query (line load, prior-serial load, receiving_lines UPDATE,\n  legacy serial UPDATE, inventory_event) — closes the same pre-existing\n  cross-tenant gap the review flagged elsewhere. Byte-identical for legitimate\n  single-org traffic when the flag is off.\n- applyTransition: tapEvent is now optional (omit with skipTap for write-only\n  call sites) so skipTap callers don't pass a misleading placeholder event.\n\nmark-received-po + scan-serial are NOT dual-spine routes — they delegate status\nwrites to helpers (attachSerialToLine / receiveLineUnits) and already tap\nunit_received; their helper-level consolidation belongs to Phase 1.3.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
-      "type": "feature",
-      "title": "route lines/[id]/status through the guarded chokepoint (Phase 1.2)"
-    },
-    {
-      "sha": "c2277ef88dc437d746c59b2ee5cc34756ba30cfe",
-      "shortSha": "c2277ef88",
-      "date": "2026-06-21T20:21:57-07:00",
-      "author": "DENSENSE8",
-      "subject": "feat(receiving): route lines/[id]/status through the guarded chokepoint (Phase 1.2)",
-      "body": "This was the clearest dual-spine drift (DISCOVERY §6): a raw, unguarded\nserial_units UPDATE + a separate non-atomic inventory_event + a receiving_lines\nwrite, all over the BYPASSRLS owner pool with no org scoping and no tap.\n\n- Serial status change now routes through applyTransition(skipTap) behind\n  UNIFIED_ENGINE_APPLY_TRANSITION: guard + atomic event in one tx. skipTap\n  because recordTestVerdict is the canonical test-verdict tapper (no double\n  advance). On guard-decline (e.g. RTV RETURNED from a receiving state isn't\n  modeled) it logs + falls back to the legacy raw write (strangler parity-net),\n  so nothing wedges.\n- Org-scope EVERY query (line load, prior-serial load, receiving_lines UPDATE,\n  legacy serial UPDATE, inventory_event) — closes the same pre-existing\n  cross-tenant gap the review flagged elsewhere. Byte-identical for legitimate\n  single-org traffic when the flag is off.\n- applyTransition: tapEvent is now optional (omit with skipTap for write-only\n  call sites) so skipTap callers don't pass a misleading placeholder event.\n\nmark-received-po + scan-serial are NOT dual-spine routes — they delegate status\nwrites to helpers (attachSerialToLine / receiveLineUnits) and already tap\nunit_received; their helper-level consolidation belongs to Phase 1.3.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
-      "type": "feature",
-      "title": "route lines/[id]/status through the guarded chokepoint (Phase 1.2)"
-    },
-    {
-      "sha": "bb8583d5366c0741362fcc19e79c974eca977c8e",
-      "shortSha": "bb8583d53",
-      "date": "2026-06-21T20:17:44-07:00",
-      "author": "DENSENSE8",
-      "subject": "feat(workflow): applyTransition skipTap (guarded write + event, no graph advance)",
-      "body": "Adds an opt-out of the engine tap for call sites that mutate a unit's status but\naren't the canonical driver of its graph position (the receiving line-status\nroute — its test pass/fail is already tapped by recordTestVerdict, so a second\ntap would be redundant). Still does the guarded transition() write + atomic\ninventory_event + idempotent-identity handling; just suppresses tapWorkflow. +2 tests.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
-      "type": "feature",
-      "title": "applyTransition skipTap (guarded write + event, no graph advance)"
-    },
-    {
-      "sha": "9606e5fbcba93d755b865358d926212e696e755b",
-      "shortSha": "9606e5fbc",
-      "date": "2026-06-21T20:17:44-07:00",
-      "author": "DENSENSE8",
-      "subject": "feat(workflow): applyTransition skipTap (guarded write + event, no graph advance)",
-      "body": "Adds an opt-out of the engine tap for call sites that mutate a unit's status but\naren't the canonical driver of its graph position (the receiving line-status\nroute — its test pass/fail is already tapped by recordTestVerdict, so a second\ntap would be redundant). Still does the guarded transition() write + atomic\ninventory_event + idempotent-identity handling; just suppresses tapWorkflow. +2 tests.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
-      "type": "feature",
-      "title": "applyTransition skipTap (guarded write + event, no graph advance)"
-    },
-    {
-      "sha": "a4a66fab2e823d8692dfeaf4a3188c89b36a984b",
-      "shortSha": "a4a66fab2",
-      "date": "2026-06-21T20:01:13-07:00",
-      "author": "DENSENSE8",
-      "subject": "fix(tenancy): org-scope recordTestVerdict + engine store reads/writes",
-      "body": "Adversarial review surfaced a pre-existing cross-tenant gap (the BYPASSRLS class\ntracked by the Phase C sweep): recordTestVerdict and the workflow store query\nserial_units / item_workflow_state by id alone over the owner `pool`/neon-http\nconnection, so RLS is inert and a cross-org id is accepted. The Phase 1.1\nconversion made it flag-asymmetric (the new chokepoint path scopes via\ntransition(); the default legacy path didn't). Close it consistently:\n\n- recordTestVerdict: thread organizationId (conditional, like transition()) into\n  the step-1 SELECT (the gate — cross-org id now reads as 404), the legacy\n  UPDATE, the line tally, and the rollup UPDATE. Fetch organization_id up front\n  and stamp testing_results directly instead of a re-SELECT subquery (which\n  raced a concurrent delete to the fallback org).\n- store.ts loadState/moveTo/setStatus: add the org predicate (orgId already in\n  the closure; matches the established recordRun stamp) so a cross-org id reads\n  as not-enrolled rather than leaking/mutating another tenant's position.\n\ntap.ts's pre-read stays unscoped by design — it discovers the unit's org for\nlib-level taps; advance() then uses that org, which loadState now re-scopes.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
-      "type": "fix",
-      "title": "org-scope recordTestVerdict + engine store reads/writes"
-    },
-    {
-      "sha": "f3ee9bd2e9d47b3e78bac067823b501b1d66a823",
-      "shortSha": "f3ee9bd2e",
-      "date": "2026-06-21T20:01:13-07:00",
-      "author": "DENSENSE8",
-      "subject": "fix(tenancy): org-scope recordTestVerdict + engine store reads/writes",
-      "body": "Adversarial review surfaced a pre-existing cross-tenant gap (the BYPASSRLS class\ntracked by the Phase C sweep): recordTestVerdict and the workflow store query\nserial_units / item_workflow_state by id alone over the owner `pool`/neon-http\nconnection, so RLS is inert and a cross-org id is accepted. The Phase 1.1\nconversion made it flag-asymmetric (the new chokepoint path scopes via\ntransition(); the default legacy path didn't). Close it consistently:\n\n- recordTestVerdict: thread organizationId (conditional, like transition()) into\n  the step-1 SELECT (the gate — cross-org id now reads as 404), the legacy\n  UPDATE, the line tally, and the rollup UPDATE. Fetch organization_id up front\n  and stamp testing_results directly instead of a re-SELECT subquery (which\n  raced a concurrent delete to the fallback org).\n- store.ts loadState/moveTo/setStatus: add the org predicate (orgId already in\n  the closure; matches the established recordRun stamp) so a cross-org id reads\n  as not-enrolled rather than leaking/mutating another tenant's position.\n\ntap.ts's pre-read stays unscoped by design — it discovers the unit's org for\nlib-level taps; advance() then uses that org, which loadState now re-scopes.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
-      "type": "fix",
-      "title": "org-scope recordTestVerdict + engine store reads/writes"
-    },
-    {
-      "sha": "9da4573d3af75b7c1feb247e866e67785676ac29",
-      "shortSha": "9da4573d3",
-      "date": "2026-06-21T19:48:04-07:00",
-      "author": "DENSENSE8",
-      "subject": "fix(workflow): applyTransition idempotency must not swallow expectedFrom drift",
-      "body": "transition() runs the expectedFrom drift check BEFORE the guard's identity\ncheck, so with optimistic concurrency a 409 — even one where from===to — is a\ndrift rejection the caller asked to fail on, not an idempotent re-entry. Only\ntreat from===to as an idempotent re-entry when no expectedFrom was supplied;\notherwise surface the 409 (no event, no tap). recordTestVerdict doesn't use\nexpectedFrom, so this is a latent-edge hardening for future callers + a test.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
-      "type": "fix",
-      "title": "applyTransition idempotency must not swallow expectedFrom drift"
-    },
-    {
-      "sha": "951d603aa977d4f89ced70cd265e65d39a32f610",
-      "shortSha": "951d603aa",
-      "date": "2026-06-21T19:48:04-07:00",
-      "author": "DENSENSE8",
-      "subject": "fix(workflow): applyTransition idempotency must not swallow expectedFrom drift",
-      "body": "transition() runs the expectedFrom drift check BEFORE the guard's identity\ncheck, so with optimistic concurrency a 409 — even one where from===to — is a\ndrift rejection the caller asked to fail on, not an idempotent re-entry. Only\ntreat from===to as an idempotent re-entry when no expectedFrom was supplied;\notherwise surface the 409 (no event, no tap). recordTestVerdict doesn't use\nexpectedFrom, so this is a latent-edge hardening for future callers + a test.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
-      "type": "fix",
-      "title": "applyTransition idempotency must not swallow expectedFrom drift"
-    },
-    {
-      "sha": "518bea7365aa46c052b9ce9b9adb2fe93a9de612",
-      "shortSha": "518bea736",
-      "date": "2026-06-21T19:45:34-07:00",
-      "author": "DENSENSE8",
-      "subject": "test(tech-serial): repoint stale TSN call-site assertion to recordTestVerdict",
-      "body": "The per-unit test verdict's tech_serial_numbers write moved from the route into\nthe extracted recordTestVerdict lib (relational-reuse refactor), but this guard's\nCALL_SITES still pointed at the thin HTTP route — a pre-existing failure (the\nroute only delegates and never calls attachTechSerial directly). Repoint to\nsrc/lib/tech/recordTestVerdict.ts where the canonical TSN write actually lives.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
-      "type": "test",
-      "title": "repoint stale TSN call-site assertion to recordTestVerdict"
-    },
-    {
-      "sha": "770236b6e49118f6070b31613d170a05f418e1b0",
-      "shortSha": "770236b6e",
-      "date": "2026-06-21T19:45:34-07:00",
-      "author": "DENSENSE8",
-      "subject": "test(tech-serial): repoint stale TSN call-site assertion to recordTestVerdict",
-      "body": "The per-unit test verdict's tech_serial_numbers write moved from the route into\nthe extracted recordTestVerdict lib (relational-reuse refactor), but this guard's\nCALL_SITES still pointed at the thin HTTP route — a pre-existing failure (the\nroute only delegates and never calls attachTechSerial directly). Repoint to\nsrc/lib/tech/recordTestVerdict.ts where the canonical TSN write actually lives.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
-      "type": "test",
-      "title": "repoint stale TSN call-site assertion to recordTestVerdict"
-    },
-    {
-      "sha": "b8e54313356533dacc9ffb5b0a6ae7abbae87bc0",
-      "shortSha": "b8e543133",
-      "date": "2026-06-21T19:43:27-07:00",
-      "author": "DENSENSE8",
-      "subject": "feat(tech): route recordTestVerdict through applyTransition behind a flag (Phase 1.1)",
-      "body": "recordTestVerdict is the reference call site for the unified-engine chokepoint.\nBehind UNIFIED_ENGINE_APPLY_TRANSITION (default OFF → byte-identical legacy path):\n\n- ON  → status write + inventory_event + engine tap go through one guarded\n        applyTransition() call. The tsn audit, testing_results feed, and line\n        rollup stay as domain side-effects around it.\n- OFF → the existing raw UPDATE + appendInventoryEvent + end-of-fn tap, unchanged.\n\nA guard rejection (held/shipped/illegal source state) now throws GuardRejectedError\n→ the route returns 409 instead of silently force-writing; 404 (vanished unit)\nreturns null as before. Idempotent re-entry (unit already at target) still records\nthe event + taps via applyTransition's identity path.\n\nGuard: add GRADED→TESTED so a PASS on an already-graded unit is allowed (TESTED\nand GRADED are sibling test-result states) — completes the test-bench from-state\ncoverage so legitimate verdicts never 409.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
-      "type": "feature",
-      "title": "route recordTestVerdict through applyTransition behind a flag (Phase 1.1)"
-    },
-    {
-      "sha": "2eca23ab6ca4eaa0595eb0df1bdf543523d87e4a",
-      "shortSha": "2eca23ab6",
-      "date": "2026-06-21T19:43:27-07:00",
-      "author": "DENSENSE8",
-      "subject": "feat(tech): route recordTestVerdict through applyTransition behind a flag (Phase 1.1)",
-      "body": "recordTestVerdict is the reference call site for the unified-engine chokepoint.\nBehind UNIFIED_ENGINE_APPLY_TRANSITION (default OFF → byte-identical legacy path):\n\n- ON  → status write + inventory_event + engine tap go through one guarded\n        applyTransition() call. The tsn audit, testing_results feed, and line\n        rollup stay as domain side-effects around it.\n- OFF → the existing raw UPDATE + appendInventoryEvent + end-of-fn tap, unchanged.\n\nA guard rejection (held/shipped/illegal source state) now throws GuardRejectedError\n→ the route returns 409 instead of silently force-writing; 404 (vanished unit)\nreturns null as before. Idempotent re-entry (unit already at target) still records\nthe event + taps via applyTransition's identity path.\n\nGuard: add GRADED→TESTED so a PASS on an already-graded unit is allowed (TESTED\nand GRADED are sibling test-result states) — completes the test-bench from-state\ncoverage so legitimate verdicts never 409.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
-      "type": "feature",
-      "title": "route recordTestVerdict through applyTransition behind a flag (Phase 1.1)"
-    },
-    {
-      "sha": "f5a25632009204c0677a7ec41f01ca92dcdb69e1",
-      "shortSha": "f5a256320",
-      "date": "2026-06-21T19:38:03-07:00",
-      "author": "DENSENSE8",
-      "subject": "feat(workflow): applyTransition() mutate-and-tap chokepoint (Phase 1.1)",
-      "body": "The single helper that collapses load→decide→guard→write-status→record-event→\ntap (the ~26-handler shotgun). It COMPOSES the pieces that already exist rather\nthan reinventing them:\n  transition()  -> FOR UPDATE · guard · UPDATE serial_units · inventory_event (atomic, org-aware)\n  tapWorkflow() -> fire-and-forget engine observe / graph advance\n\n- Idempotent re-entry: from===to (transition's 'identity' 409) still records the\n  event (client_event_id de-dupes) and taps -> idempotent:true. Genuine guard\n  rejections (409) / not-found (404) do NOT tap.\n- Collaborators injected (default = real impls) so it's unit-tested with fakes.\n\nGuard widening (state-machine.ts): add the real test-bench edges recordTestVerdict\nperforms so PASS/TEST_AGAIN flow THROUGH the guard instead of a raw UPDATE —\nIN_TEST→TESTED (the PASS happy path), REPAIR_DONE→TESTED, TESTED→IN_TEST. Resolves\nthe brief-divergence in favor of TESTED (the established pass state; condition\nGRADED is a separate axis). Additive = strictly more permissive, no caller affected.\n\nTests: applyTransition (happy/identity/reject/404) + guard allow-list edges.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
-      "type": "feature",
-      "title": "applyTransition() mutate-and-tap chokepoint (Phase 1.1)"
-    },
-    {
-      "sha": "f3b781652c3e522f3489ec3323cffed63d7802c3",
-      "shortSha": "f3b781652",
-      "date": "2026-06-21T19:38:03-07:00",
-      "author": "DENSENSE8",
-      "subject": "feat(workflow): applyTransition() mutate-and-tap chokepoint (Phase 1.1)",
-      "body": "The single helper that collapses load→decide→guard→write-status→record-event→\ntap (the ~26-handler shotgun). It COMPOSES the pieces that already exist rather\nthan reinventing them:\n  transition()  -> FOR UPDATE · guard · UPDATE serial_units · inventory_event (atomic, org-aware)\n  tapWorkflow() -> fire-and-forget engine observe / graph advance\n\n- Idempotent re-entry: from===to (transition's 'identity' 409) still records the\n  event (client_event_id de-dupes) and taps -> idempotent:true. Genuine guard\n  rejections (409) / not-found (404) do NOT tap.\n- Collaborators injected (default = real impls) so it's unit-tested with fakes.\n\nGuard widening (state-machine.ts): add the real test-bench edges recordTestVerdict\nperforms so PASS/TEST_AGAIN flow THROUGH the guard instead of a raw UPDATE —\nIN_TEST→TESTED (the PASS happy path), REPAIR_DONE→TESTED, TESTED→IN_TEST. Resolves\nthe brief-divergence in favor of TESTED (the established pass state; condition\nGRADED is a separate axis). Additive = strictly more permissive, no caller affected.\n\nTests: applyTransition (happy/identity/reject/404) + guard allow-list edges.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
-      "type": "feature",
-      "title": "applyTransition() mutate-and-tap chokepoint (Phase 1.1)"
-    },
-    {
-      "sha": "d91674281cf85277362114ae74cf47270f21f73c",
-      "shortSha": "d91674281",
-      "date": "2026-06-21T19:34:49-07:00",
-      "author": "DENSENSE8",
-      "subject": "feat(studio): recovery panel surfaces + unparks stuck workflow items (Phase 1.0)",
-      "body": "Self-contained StudioRecoveryPanel rendered in the Inspector's workflow-summary\n(no-node) view: lists blocked|error items for the active definition (GET\n/api/studio/items/stuck) with a one-click Recover (POST .../recover). Stays\nquiet when nothing is parked; optimistically drops a recovered row and lets the\nengine's db-event reconcile the Live counts. The richer triage view (filters,\nbulk) remains the Studio §2 roadmap item.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
-      "type": "feature",
-      "title": "recovery panel surfaces + unparks stuck workflow items (Phase 1.0)"
-    },
-    {
-      "sha": "8291de2e1c19e4654e5a51d07f4b67373aca5b69",
-      "shortSha": "8291de2e1",
-      "date": "2026-06-21T19:34:49-07:00",
-      "author": "DENSENSE8",
-      "subject": "feat(studio): recovery panel surfaces + unparks stuck workflow items (Phase 1.0)",
-      "body": "Self-contained StudioRecoveryPanel rendered in the Inspector's workflow-summary\n(no-node) view: lists blocked|error items for the active definition (GET\n/api/studio/items/stuck) with a one-click Recover (POST .../recover). Stays\nquiet when nothing is parked; optimistically drops a recovered row and lets the\nengine's db-event reconcile the Live counts. The richer triage view (filters,\nbulk) remains the Studio §2 roadmap item.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
-      "type": "feature",
-      "title": "recovery panel surfaces + unparks stuck workflow items (Phase 1.0)"
-    },
-    {
-      "sha": "707dcaa3399be361e474be10c5aac4eecb3e3d7f",
-      "shortSha": "707dcaa33",
-      "date": "2026-06-21T19:32:22-07:00",
-      "author": "DENSENSE8",
-      "subject": "feat(workflow): unpark/recovery path for stuck items (Phase 1.0)",
-      "body": "advanceItem() parks units as blocked (await) or error (throw/unknown type),\nbut nothing reset them — errored units silently died. Adds the recovery path:\n\n- recoverItem() (src/lib/workflow/recover.ts): tenant-scoped reset of one\n  blocked|error item_workflow_state row back to active. Writes an\n  inventory_events NOTE (timeline) + a workflow_runs 'unpark' row (engine log),\n  then a best-effort emitWorkflowEvent so the Live lens refetches. Leaves\n  serial_units.current_status untouched — only the engine's position was stuck.\n- POST /api/studio/items/[id]/recover — HTTP shell + formal audit row\n  (action 'workflow.item.recover' as a string literal; no audit-logs constant\n  churn while that file is mid-edit by concurrent work).\n- GET  /api/studio/items/stuck — the per-item triage feed (blocked|error) the\n  Live lens only counts in aggregate.\n- New permission studio.recover (non-destructive, no step-up: a re-park is one\n  scan away) so a floor lead can unpark without graph-edit rights.\n\nManifest regen (docs/security/route-permissions.json) is left to the owning\naudit-route-auth:emit flow (concurrently mid-regen), not bundled here.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
-      "type": "feature",
-      "title": "unpark/recovery path for stuck items (Phase 1.0)"
-    },
-    {
-      "sha": "3f85ac6502eea1f72b4b0c2aa1ddbdd9acdfdd93",
-      "shortSha": "3f85ac650",
-      "date": "2026-06-21T19:32:22-07:00",
-      "author": "DENSENSE8",
-      "subject": "feat(workflow): unpark/recovery path for stuck items (Phase 1.0)",
-      "body": "advanceItem() parks units as blocked (await) or error (throw/unknown type),\nbut nothing reset them — errored units silently died. Adds the recovery path:\n\n- recoverItem() (src/lib/workflow/recover.ts): tenant-scoped reset of one\n  blocked|error item_workflow_state row back to active. Writes an\n  inventory_events NOTE (timeline) + a workflow_runs 'unpark' row (engine log),\n  then a best-effort emitWorkflowEvent so the Live lens refetches. Leaves\n  serial_units.current_status untouched — only the engine's position was stuck.\n- POST /api/studio/items/[id]/recover — HTTP shell + formal audit row\n  (action 'workflow.item.recover' as a string literal; no audit-logs constant\n  churn while that file is mid-edit by concurrent work).\n- GET  /api/studio/items/stuck — the per-item triage feed (blocked|error) the\n  Live lens only counts in aggregate.\n- New permission studio.recover (non-destructive, no step-up: a re-park is one\n  scan away) so a floor lead can unpark without graph-edit rights.\n\nManifest regen (docs/security/route-permissions.json) is left to the owning\naudit-route-auth:emit flow (concurrently mid-regen), not bundled here.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
-      "type": "feature",
-      "title": "unpark/recovery path for stuck items (Phase 1.0)"
-    },
-    {
-      "sha": "bc004f89057dc1f34f9325afd6338d0845d952dc",
-      "shortSha": "bc004f890",
-      "date": "2026-06-21T19:24:05-07:00",
-      "author": "DENSENSE8",
-      "subject": "feat(workflow): real per-unit AdvanceLock replacing NULL_LOCK (Phase 1.0)",
-      "body": "Best-effort Upstash Redis mutex keyed wf:advance:{serialUnitId}, wired into\nthe production advance() path. Mirrors api-guard.ts's REST /pipeline shape.\n\nFailure policy (the lock narrows races; engine idempotency is the backstop):\n- Redis unconfigured -> acquire() true / release() no-op (== NULL_LOCK), so\n  dev/CI/preview are unaffected.\n- SET NX miss (already held) -> acquire() false -> 2nd concurrent advance noops.\n- Redis error/timeout -> acquire() true (fail OPEN), never stalls a tap.\n\nShort TTL auto-expires a crashed holder; release is a token-checked\ncompare-and-delete (Lua) so we never free a lock a later advance re-acquired.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
-      "type": "feature",
-      "title": "real per-unit AdvanceLock replacing NULL_LOCK (Phase 1.0)"
-    },
-    {
-      "sha": "6e3da94635e6df01a6c335844257137de496f518",
-      "shortSha": "6e3da9463",
-      "date": "2026-06-21T19:24:05-07:00",
-      "author": "DENSENSE8",
-      "subject": "feat(workflow): real per-unit AdvanceLock replacing NULL_LOCK (Phase 1.0)",
-      "body": "Best-effort Upstash Redis mutex keyed wf:advance:{serialUnitId}, wired into\nthe production advance() path. Mirrors api-guard.ts's REST /pipeline shape.\n\nFailure policy (the lock narrows races; engine idempotency is the backstop):\n- Redis unconfigured -> acquire() true / release() no-op (== NULL_LOCK), so\n  dev/CI/preview are unaffected.\n- SET NX miss (already held) -> acquire() false -> 2nd concurrent advance noops.\n- Redis error/timeout -> acquire() true (fail OPEN), never stalls a tap.\n\nShort TTL auto-expires a crashed holder; release is a token-checked\ncompare-and-delete (Lua) so we never free a lock a later advance re-acquired.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
-      "type": "feature",
-      "title": "real per-unit AdvanceLock replacing NULL_LOCK (Phase 1.0)"
     }
   ]
 }

@@ -50,10 +50,19 @@ const SCAN_SURFACE_CARRIES = [
   'openReceivingId',
   'colsort',
   'coldir',
+  // Every receiving route renders `ReceivingSurfacePage` → `RouteShell`, so the
+  // mobile pane toggle applies to all six. Without this the hygiene hook that
+  // `ReceivingSidebarPanel` mounts stripped `?pane=actions` the moment the
+  // operator tapped it.
+  'pane',
+  // `ReceivingLinesTable` reads `?layout=` and mounts `TableDensityProvider`.
+  'layout',
+  'density',
+  'weekOffset',
 ] as const;
 
 /** Ambient set for the browse surfaces — a grid, no scan-selected carton. */
-const BROWSE_SURFACE_CARRIES = ['staff', 'staffId', 'colsort', 'coldir'] as const;
+const BROWSE_SURFACE_CARRIES = ['staff', 'staffId', 'colsort', 'coldir', 'pane', 'layout', 'density', 'weekOffset'] as const;
 
 /**
  * Server ORDER BY for the two feeds that share the History vocabulary — the

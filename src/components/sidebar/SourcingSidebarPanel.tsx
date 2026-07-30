@@ -1,8 +1,8 @@
 'use client';
 
 /**
- * Sidebar for /sourcing. Owns the per-mode search/filter inputs; the right
- * pane (SourcingWorkspace) is the visual display.
+ * Sidebar for /sourcing. Owns per-mode search/filter inputs. L2 modes live in
+ * GlobalHeader (`HeaderModeSwitcher` ← SIDEBAR_PAGE_NAV) — no mode rail twin.
  *
  * URL-state contract:
  *   ?mode=scout|watchlist           (bare = queue, the default demand surface)
@@ -16,8 +16,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { SidebarShell } from '@/components/layout/SidebarShell';
 import { sidebarHeaderPillRowClass, SIDEBAR_GUTTER } from '@/components/layout/header-shell';
 import { HorizontalButtonSlider, type HorizontalSliderItem } from '@/components/ui/HorizontalButtonSlider';
-import { useMasterNavEnabled } from '@/components/sidebar/master-nav';
-import { resolveSourcingMode, SOURCING_MODE_ITEMS } from '@/components/sourcing/sourcing-shared';
+import { resolveSourcingMode } from '@/components/sourcing/sourcing-shared';
 import { SearchBar } from '@/components/ui/SearchBar';
 
 const BY_ITEMS: HorizontalSliderItem[] = [
@@ -46,7 +45,6 @@ const SUPPLIER_TYPE_ITEMS: HorizontalSliderItem[] = [
 export function SourcingSidebarPanel() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const masterNavEnabled = useMasterNavEnabled();
   const mode = resolveSourcingMode(searchParams.get('mode'));
 
   const setParam = useCallback(
@@ -59,22 +57,10 @@ export function SourcingSidebarPanel() {
     [router, searchParams],
   );
 
-  const goMode = (next: string) =>
-    setParam((p) => {
-      if (next === 'queue') p.delete('mode');
-      else p.set('mode', next);
-      // Cross-mode params don't carry over.
-      p.delete('q');
-      p.delete('status');
-      p.delete('type');
-    });
-
   const q = searchParams.get('q') ?? '';
   const by = searchParams.get('by') === 'serial' ? 'serial' : 'model';
   const status = searchParams.get('status') ?? '';
 
-  // In-context list filter — local base SearchBar, only in the modes that have
-  // a query filter (scout, suppliers). The global header pill stays global.
   const onQueryChange = (v: string) =>
     setParam((p) => { if (v.trim()) p.set('q', v.trim()); else p.delete('q'); });
   const searchBar = (placeholder: string) => (
@@ -90,26 +76,10 @@ export function SourcingSidebarPanel() {
     </div>
   );
 
-  const modeRail = !masterNavEnabled ? (
-    <div className={sidebarHeaderPillRowClass}>
-      <HorizontalButtonSlider
-        items={SOURCING_MODE_ITEMS}
-        value={mode}
-        onChange={goMode}
-        variant="nav"
-        dense
-        className="w-full"
-        aria-label="Sourcing mode"
-      />
-    </div>
-  ) : null;
-
-  // ── Scout: search + serial/model toggle ───────────────────────────────────
   if (mode === 'scout') {
     return (
       <SidebarShell
         headerRows={[
-          modeRail,
           searchBar(by === 'serial' ? 'Scan or type a serial…' : 'Filter model number or name…'),
           <div key="by" className={sidebarHeaderPillRowClass}>
             <HorizontalButtonSlider
@@ -131,10 +101,9 @@ export function SourcingSidebarPanel() {
     );
   }
 
-  // ── Searches: no filter, just the mode rail + a hint ──────────────────────
   if (mode === 'searches') {
     return (
-      <SidebarShell headerRows={[modeRail]}>
+      <SidebarShell>
         <p className="px-3 py-4 text-role-caption text-text-soft">
           Standing searches the scour watcher re-runs on a cadence to auto-fill the watchlist. Add one, then run, pause, or remove it.
         </p>
@@ -142,10 +111,9 @@ export function SourcingSidebarPanel() {
     );
   }
 
-  // ── Analytics: read-only rollup; range filter lives in the pane (?range=) ──
   if (mode === 'analytics') {
     return (
-      <SidebarShell headerRows={[modeRail]}>
+      <SidebarShell>
         <p className="px-3 py-4 text-role-caption text-text-soft">
           Acquisition spend, cost vs target, demand fill-rate, and time-to-source. Pick a range in the pane — the view is read-only.
         </p>
@@ -153,13 +121,11 @@ export function SourcingSidebarPanel() {
     );
   }
 
-  // ── Suppliers: name search + type filter ──────────────────────────────────
   if (mode === 'suppliers') {
     const type = searchParams.get('type') || 'all';
     return (
       <SidebarShell
         headerRows={[
-          modeRail,
           searchBar('Filter suppliers…'),
           <div key="type" className={sidebarHeaderPillRowClass}>
             <HorizontalButtonSlider
@@ -181,7 +147,6 @@ export function SourcingSidebarPanel() {
     );
   }
 
-  // ── Queue / Watchlist: status filter ──────────────────────────────────────
   const statusItems = mode === 'queue' ? ALERT_STATUS_ITEMS : WATCH_STATUS_ITEMS;
   const sentinel = mode === 'queue' ? 'live' : 'all';
   const activeStatus = status === '' ? sentinel : status;
@@ -189,7 +154,6 @@ export function SourcingSidebarPanel() {
   return (
     <SidebarShell
       headerRows={[
-        modeRail,
         <div key="status" className={sidebarHeaderPillRowClass}>
           <HorizontalButtonSlider
             items={statusItems}

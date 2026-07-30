@@ -12,6 +12,7 @@
  * activity-axis stamp (Unboxed / Scanned / Tested).
  */
 
+import { GRID_IDENTITY_COLUMN_KEYS } from '@/design-system/components/grid/grid-column-editability';
 import { gridTemplate } from '@/design-system/components/grid/grid-column-geometry';
 import type { LedgerGridColumnModel } from '@/design-system/components/grid/grid-surface-descriptor';
 
@@ -78,20 +79,27 @@ export const RECEIVING_GRID_COLUMNS: readonly ReceivingGridColumn[] = [
   // qty column was indistinguishable from the Order column two tracks over.
   { key: 'qty', width: 'minmax(3.5rem, 3.5rem)', label: 'Qty', type: 'number', hideKey: 'qty', labelFitRem: 3.5 },
   { key: 'condition', width: 'minmax(5.5rem, 5.5rem)', label: 'Cond', type: 'tag', hideKey: 'condition', tier: 'optional', labelFitRem: 4.5 },
-  // Stage clock — hide with meta `rest`. The track is sized for the RUNTIME
-  // label (`Unboxed` / `Scanned` / `Tested`, injected by the header's
-  // `stageLabel` prop), not for the placeholder `Stage` declared here: at
-  // 4.5rem the 7-character stage names clipped to `UNBO…`. 5rem clears the
-  // longest of them (`gridHeaderLabelFits`), and the label-aware fit test now
-  // degrades to the clock glyph rather than clipping if a longer one appears.
-  { key: 'stage', width: 'minmax(5rem, 5rem)', label: 'Stage', type: 'date', hideKey: 'rest', labelFitRem: 4.5 },
+  // Stage clock — hide with meta `rest`. Sized for the RUNTIME label (`Unboxed` /
+  // `Scanned` / `Tested`, injected by the header's `stageLabel` prop), not for the
+  // placeholder `Stage` declared here.
+  //
+  // Measured: inset 16px + one mark slot 16px + `UNBOXED` 45.6px = 77.6px in an
+  // 80px track. It clipped to `UNBO…` only because a sorted header used to draw
+  // the type glyph AND the chevron (93.6px); the header now reuses one mark slot,
+  // so 5rem holds all three stage words in either sort state.
+  //
+  // `type: 'date'` only so the header draws the clock glyph — the cell is a
+  // prose stage word, so `align: 'start'` overrides the numeric `date → end` default.
+  { key: 'stage', width: 'minmax(5rem, 5rem)', label: 'Stage', type: 'date', align: 'start', hideKey: 'rest', labelFitRem: 4.5 },
   { key: 'platform', width: 'minmax(3rem, 3rem)', label: 'Platform', gridLabel: 'Ch.', type: 'external', hideKey: 'platform', tier: 'optional', labelFitRem: 4.5 },
   { key: 'order', width: 'minmax(4.5rem, 4.5rem)', label: 'Order', type: 'id', hideKey: 'orderid', labelFitRem: 4.5 },
   { key: 'tracking', width: 'minmax(5.75rem, 5.75rem)', label: 'Tracking', type: 'location', omitCellIcon: true, hideKey: 'tracking', labelFitRem: 4.5 },
   { key: 'serial', width: 'minmax(5.75rem, 5.75rem)', label: 'Serial', type: 'id', hideKey: 'serial', tier: 'optional', labelFitRem: 4.5 },
 ] as const;
 
-const RECEIVING_GRID_LOCKED_KEYS: readonly ReceivingGridColumnKey[] = ['select', 'title'];
+const RECEIVING_GRID_LOCKED_KEYS: readonly ReceivingGridColumnKey[] = [
+  ...GRID_IDENTITY_COLUMN_KEYS,
+];
 
 /** Data columns that support click-to-sort (excludes select). */
 const RECEIVING_GRID_SORTABLE_KEYS: readonly ReceivingGridColumnKey[] = RECEIVING_GRID_COLUMNS.filter(

@@ -1,5 +1,24 @@
 import { randomUUID } from 'crypto';
 import { formatPSTTimestamp } from '@/utils/date';
+import { resolveEcwidCreds } from '@/lib/ecwid/client';
+import {
+  buildProjectedCategories,
+  toProjectedListing,
+  writeProjection,
+  type ProjectedCategoryInput,
+  type ProjectedListingInput,
+  type ProjectionWriteResult,
+} from '@/lib/repair/catalog-projection';
+// Aliased: this module already has its own `fetchAllEcwidProducts` and a
+// differently-shaped local `EcwidProduct` (the Square-sync payload, which has no
+// thumbnail / stock / category fields). Two distinct jobs, two distinct shapes.
+import {
+  fetchAllEcwidCategories as fetchCatalogCategories,
+  fetchAllEcwidProducts as fetchCatalogProducts,
+  type EcwidCategory as EcwidCategoryShape,
+  type EcwidProduct as EcwidCatalogProduct,
+} from '@/lib/repair/ecwid-repair-catalog';
+import type { OrgId } from '@/lib/tenancy/constants';
 
 const ECWID_BASE_URL = 'https://app.ecwid.com/api/v3';
 const SQUARE_PRODUCTION_BASE_URL = 'https://connect.squareup.com/v2';
@@ -87,6 +106,130 @@ export interface EcwidSquareSyncResult {
   warnings: string[];
   errors: string[];
   timestamp: string;
+}
+
+// ── Local catalog projection (2026-07-29e) ──────────────────────────────────
+//
+// Refreshes the priced, category-navigable mirror the counter reads from. Lives
+// in THIS module rather than a new service because this is already the
+// Ecwid→local sync home; a second sync service for the same storefront is the
+// fork the plan bans.
+//
+// Unlike syncEcwidToSquare (env-global, historically), this half is ORG-SCOPED
+// and vault-first via resolveEcwidCreds — a projection row carries an
+// organization_id, so guessing the tenant from env was never an option here.
+
+export interface EcwidProjectionResult {
+  ok: boolean;
+  orgId: OrgId;
+  listingsSeen: number;
+  categoriesSeen: number;
+  listingsUpserted: number;
+  categoriesUpserted: number;
+  listingsDeactivated: number;
+  categoriesDeactivated: number;
+  /** Wall-clock of the vendor walk, so a regression is visible in the response. */
+  fetchMs: number;
+  writeMs: number;
+  error?: string;
+}
+
+export interface EcwidProjectionDeps {
+  resolveCreds(orgId: OrgId): Promise<{ storeId: string; apiToken: string } | null>;
+  fetchCategories(storeId: string, token: string): Promise<EcwidCategoryShape[]>;
+  fetchProducts(storeId: string, token: string): Promise<EcwidCatalogProduct[]>;
+  write(
+    orgId: OrgId,
+    listings: ProjectedListingInput[],
+    categories: ProjectedCategoryInput[],
+  ): Promise<ProjectionWriteResult>;
+  now(): number;
+}
+
+const defaultProjectionDeps: EcwidProjectionDeps = {
+  resolveCreds: (orgId) => resolveEcwidCreds(orgId),
+  fetchCategories: (storeId, token) => fetchCatalogCategories(storeId, token),
+  fetchProducts: (storeId, token) => fetchCatalogProducts(storeId, token),
+  write: (orgId, listings, categories) => writeProjection(orgId, listings, categories),
+  now: () => Date.now(),
+};
+
+/**
+ * Rebuild one org's local catalog projection from the provider.
+ *
+ * Never throws: this runs from a cron and a connections-panel button, and a
+ * vendor outage must leave the PREVIOUS projection intact and readable rather
+ * than half-wiping it. On failure the existing rows are untouched — the readers
+ * keep serving a slightly stale catalog, which is exactly the staleness contract.
+ */
+export async function projectEcwidCatalog(
+  orgId: OrgId,
+  deps: EcwidProjectionDeps = defaultProjectionDeps,
+): Promise<EcwidProjectionResult> {
+  const base: EcwidProjectionResult = {
+    ok: false,
+    orgId,
+    listingsSeen: 0,
+    categoriesSeen: 0,
+    listingsUpserted: 0,
+    categoriesUpserted: 0,
+    listingsDeactivated: 0,
+    categoriesDeactivated: 0,
+    fetchMs: 0,
+    writeMs: 0,
+  };
+
+  try {
+    const creds = await deps.resolveCreds(orgId);
+    if (!creds) {
+      return { ...base, error: 'No catalog provider connected for this organization.' };
+    }
+
+    const fetchStart = deps.now();
+    // Categories and products are independent reads — serializing them would
+    // just add the slower one to the faster one for no benefit.
+    const [categories, products] = await Promise.all([
+      deps.fetchCategories(creds.storeId, creds.apiToken),
+      deps.fetchProducts(creds.storeId, creds.apiToken),
+    ]);
+    const fetchMs = deps.now() - fetchStart;
+
+    // A provider that answers 200-with-nothing must not wipe a good projection.
+    // Deactivating every row on an empty read is indistinguishable from a real
+    // empty storefront at the DB layer, and the failure mode is a blank picker.
+    if (products.length === 0 && categories.length === 0) {
+      return {
+        ...base,
+        fetchMs,
+        error: 'Provider returned an empty catalog — projection left unchanged.',
+      };
+    }
+
+    const listingRows = products.map(toProjectedListing);
+    const categoryRows = buildProjectedCategories(categories);
+
+    const writeStart = deps.now();
+    const written = await deps.write(orgId, listingRows, categoryRows);
+    const writeMs = deps.now() - writeStart;
+
+    return {
+      ok: true,
+      orgId,
+      listingsSeen: products.length,
+      categoriesSeen: categories.length,
+      listingsUpserted: written.listingsUpserted,
+      categoriesUpserted: written.categoriesUpserted,
+      listingsDeactivated: written.listingsDeactivated,
+      categoriesDeactivated: written.categoriesDeactivated,
+      fetchMs,
+      writeMs,
+    };
+  } catch (err) {
+    return {
+      ...base,
+      error: err instanceof Error ? err.message : 'Catalog projection failed.',
+    };
+  }
 }
 
 export async function syncEcwidToSquare(options?: { dryRun?: boolean; batchSize?: number }): Promise<EcwidSquareSyncResult> {

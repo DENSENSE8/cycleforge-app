@@ -15,6 +15,7 @@ import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { ConditionBadge } from './ConditionBadge';
 import { NoSerialOfferCheck } from './line-edit/NoSerialOfferCheck';
 import { NoSerialControl, type SerialAbsentState } from './line-edit/NoSerialControl';
+import { unitRowVisibleWindow } from './line-receive-mode';
 
 export interface UnitLike {
   id: number;
@@ -81,6 +82,14 @@ interface Props {
   serialEditTarget?: UnitLike | null;
   /** Mirrors the first empty slot (or row 0) for dock → scan handoff. */
   primaryInputRef?: RefObject<HTMLInputElement | null>;
+  /**
+   * Hard cap on how many unit rows mount in the DOM. When total exceeds this,
+   * only a window that keeps `selectedIndex` visible is rendered. Pair with
+   * {@link overflowSlot} for the "+N more" CTA / manage overlay.
+   */
+  maxVisible?: number;
+  /** Rendered after the visible window when rows are capped (overflow CTA). */
+  overflowSlot?: ReactNode;
 }
 
 function last4(sn: string): string {
@@ -134,10 +143,12 @@ export function UnitSlotList({
   onReplaceSerial,
   serialEditTarget = null,
   primaryInputRef,
+  maxVisible,
+  overflowSlot,
 }: Props) {
   const useUnits = Array.isArray(units) && units.length > 0;
   const count = useUnits ? units!.length : Math.max(total, saved.length, 1);
-  const rows = useUnits
+  const allRows = useUnits
     ? units!.map((unit, index) => ({
         index,
         unit,
@@ -149,6 +160,17 @@ export function UnitSlotList({
         serial: saved[i] ?? null,
       }));
 
+  // Cap DOM rows: keep a window that includes the selected unit so scan-advance
+  // never mounts hundreds of ExpandedRow nodes for bulk commodities.
+  const cap = maxVisible != null && maxVisible > 0 ? maxVisible : allRows.length;
+  const { start: windowStart, end: windowEnd } = unitRowVisibleWindow(
+    allRows.length,
+    selectedIndex,
+    cap,
+  );
+  const rows = allRows.slice(windowStart, windowEnd);
+  const isCapped = maxVisible != null && maxVisible > 0 && allRows.length > maxVisible;
+
   // All-expanded (single-row) mode: every unit shows its own open serial input.
   // A committed scan hands focus straight to the next row's input *immediately*
   // (the write is queued and processed in the background by useLineSerials), so
@@ -158,10 +180,15 @@ export function UnitSlotList({
   const inputRefs = useRef<Array<HTMLInputElement | null>>([]);
   const focusRow = (index: number) => {
     const el = inputRefs.current[index];
-    if (el && !el.disabled) el.focus();
+    if (el && !el.disabled) {
+      el.focus();
+      return;
+    }
+    // Next row may be outside the visible window — select it so the window slides.
+    if (index >= 0 && index < count) onSelect(index);
   };
   // First not-yet-scanned / not-waived slot — autofocused on mount in all-expanded mode.
-  const firstEmptyIndex = rows.findIndex(
+  const firstEmptyIndex = allRows.findIndex(
     ({ serial, unit }) => !serial && !(unit?.serial_absent),
   );
   const primaryIndex = firstEmptyIndex >= 0 ? firstEmptyIndex : 0;
@@ -180,56 +207,71 @@ export function UnitSlotList({
   }, [primaryIndex, primaryInputRef, saved.length, singleRowExpanded, units]);
 
   return (
-    <div className="flex min-w-0 flex-col divide-y divide-border-soft">
-      {rows.map(({ index, serial, unit }) => {
-        const expanded = singleRowExpanded || index === selectedIndex;
-        return expanded ? (
-          <ExpandedRow
-            key={`row-${unit?.id ?? serial?.id ?? `empty-${index}`}`}
-            index={index}
-            total={count}
-            serial={serial}
-            unit={unit}
-            disabled={disabled}
-            isSubmitting={isSubmitting}
-            requireSerialConfirmation={requireSerialConfirmation}
-            onMarkUnitNoSerial={onMarkUnitNoSerial}
-            onUnitSerialAbsentChange={onUnitSerialAbsentChange}
-            meta={renderExpandedMeta?.(serial, index)}
-            alwaysShowMeta={alwaysShowExpandedMeta || singleRowExpanded}
-            singleRow={singleRowExpanded}
-            serialEditTarget={
-              serialEditTarget?.id != null && serial?.id === serialEditTarget.id
-                ? serialEditTarget
-                : null
-            }
-            inputRef={
-              singleRowExpanded
-                ? (el) => {
-                    syncPrimaryInputRef(index, el);
-                  }
-                : undefined
-            }
-            autoFocusInput={singleRowExpanded && index === firstEmptyIndex}
-            onFocusRow={singleRowExpanded ? () => onSelect(index) : undefined}
-            onAdvance={singleRowExpanded ? () => focusRow(index + 1) : undefined}
-            onAddSerial={(sn) => onAddSerial(index, sn)}
-            onDeleteSerial={onDeleteSerial}
-            onReplaceSerial={onReplaceSerial}
-          />
-        ) : (
-          <CollapsedRow
-            key={unit?.id ?? serial?.id ?? `empty-${index}`}
-            index={index}
-            total={count}
-            serial={serial}
-            waived={!!unit?.serial_absent}
-            waivedReason={unit?.serial_absent_reason ?? null}
-            meta={renderCollapsedMeta?.(serial, index)}
-            onSelect={() => onSelect(index)}
-          />
-        );
-      })}
+    <div className="flex min-w-0 flex-col">
+      <div
+        className="flex min-w-0 flex-col divide-y divide-border-soft"
+        data-unit-slot-list
+        data-unit-slot-count={rows.length}
+        data-unit-slot-total={count}
+      >
+        {rows.map(({ index, serial, unit }) => {
+          const expanded = singleRowExpanded || index === selectedIndex;
+          return expanded ? (
+            <ExpandedRow
+              key={`row-${unit?.id ?? serial?.id ?? `empty-${index}`}`}
+              index={index}
+              total={count}
+              serial={serial}
+              unit={unit}
+              disabled={disabled}
+              isSubmitting={isSubmitting}
+              requireSerialConfirmation={requireSerialConfirmation}
+              onMarkUnitNoSerial={onMarkUnitNoSerial}
+              onUnitSerialAbsentChange={onUnitSerialAbsentChange}
+              meta={renderExpandedMeta?.(serial, index)}
+              alwaysShowMeta={alwaysShowExpandedMeta || singleRowExpanded}
+              singleRow={singleRowExpanded}
+              serialEditTarget={
+                serialEditTarget?.id != null && serial?.id === serialEditTarget.id
+                  ? serialEditTarget
+                  : null
+              }
+              inputRef={
+                singleRowExpanded
+                  ? (el) => {
+                      syncPrimaryInputRef(index, el);
+                    }
+                  : undefined
+              }
+              autoFocusInput={
+                singleRowExpanded &&
+                index === firstEmptyIndex &&
+                index >= windowStart &&
+                index < windowEnd
+              }
+              onFocusRow={singleRowExpanded ? () => onSelect(index) : undefined}
+              onAdvance={singleRowExpanded ? () => focusRow(index + 1) : undefined}
+              onAddSerial={(sn) => onAddSerial(index, sn)}
+              onDeleteSerial={onDeleteSerial}
+              onReplaceSerial={onReplaceSerial}
+            />
+          ) : (
+            <CollapsedRow
+              key={unit?.id ?? serial?.id ?? `empty-${index}`}
+              index={index}
+              total={count}
+              serial={serial}
+              waived={!!unit?.serial_absent}
+              waivedReason={unit?.serial_absent_reason ?? null}
+              meta={renderCollapsedMeta?.(serial, index)}
+              onSelect={() => onSelect(index)}
+            />
+          );
+        })}
+      </div>
+      {isCapped && overflowSlot ? (
+        <div className="border-t border-border-soft px-1 pt-2">{overflowSlot}</div>
+      ) : null}
     </div>
   );
 }

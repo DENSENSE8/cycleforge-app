@@ -7,6 +7,7 @@ import { logRouteMetric } from '@/lib/route-metrics';
 import { SHIPPED_BY_CARRIER_SQL } from '@/lib/sql-fragments';
 import { SHIPMENT_STATUS_CATEGORIES } from '@/lib/order-lifecycle';
 import { PACK_ACTIVITY_TYPES, sqlInList } from '@/lib/station-activity';
+import { sqlOrderHasPackScan, sqlOrderHasTechScan } from '@/lib/orders/order-grain-sql';
 import { withAuth } from '@/lib/auth/withAuth';
 
 let replenishmentSchemaCheck:
@@ -455,17 +456,29 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
         COALESCE((
           SELECT STRING_AGG(tsn.serial_number, ',' ORDER BY tsn.created_at)
           FROM tech_serial_numbers tsn
-          WHERE o.shipment_id IS NOT NULL
-            AND tsn.shipment_id = o.shipment_id
-            AND tsn.organization_id = o.organization_id
+          WHERE tsn.organization_id = o.organization_id
             AND tsn.serial_number IS NOT NULL
             AND BTRIM(tsn.serial_number) <> ''
+            AND (
+              tsn.order_id = o.id
+              OR (
+                tsn.order_id IS NULL
+                AND o.shipment_id IS NOT NULL
+                AND tsn.shipment_id = o.shipment_id
+                AND NOT EXISTS (
+                  SELECT 1 FROM orders o2
+                  WHERE o2.shipment_id = o.shipment_id
+                    AND o2.organization_id = o.organization_id
+                    AND o2.id <> o.id
+                )
+              )
+            )
         ), '') AS serial_number,
         staff_test_assignee.name AS tester_name,
         staff_test_assignee.name AS tested_by_name,
         staff_pack_assignee.name AS packer_name,
         staff_packed_by.name     AS packed_by_name,
-        (COALESCE(sal_scan.scan_count, 0) > 0) AS has_tech_scan,
+        ${sqlOrderHasTechScan('o')} AS has_tech_scan,
         o.sku_catalog_id,
         sc.image_url AS catalog_image_url,
         sc.category AS catalog_category
@@ -558,15 +571,10 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     }
 
     if (packedOnly) {
-      sql += ` AND EXISTS (
-        SELECT 1 FROM station_activity_logs sal
-        WHERE sal.shipment_id IS NOT NULL AND sal.shipment_id = o.shipment_id
-      )`;
+      // CF-04: order-grain pack fact (not any SAL on the shared shipment).
+      sql += ` AND ${sqlOrderHasPackScan('o')}`;
     } else if (excludePacked) {
-      sql += ` AND NOT EXISTS (
-        SELECT 1 FROM station_activity_logs sal
-        WHERE sal.shipment_id IS NOT NULL AND sal.shipment_id = o.shipment_id
-      )`;
+      sql += ` AND NOT ${sqlOrderHasPackScan('o')}`;
     }
 
     if (awaitingOnly) {
@@ -575,17 +583,9 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
 
     if (fulfillmentScope) {
       sql += ` AND o.shipment_id IS NOT NULL`;
-      // Exclude only PACK events (PACKED_STAGED → Outbound · Scan-out). A tech
-      // scan writes a TRACKING_SCANNED row into station_activity_logs; that row
-      // must NOT drop the order from this dataset, or it would vanish from the
-      // board entirely instead of moving to the TESTED lane (derived client-side
-      // from has_tech_scan via resolveFulfillmentLane). Carrier-shipped orders
-      // are already excluded by the `!includeShipped` branch above.
-      sql += ` AND NOT EXISTS (
-        SELECT 1 FROM station_activity_logs sal
-        WHERE sal.shipment_id IS NOT NULL AND sal.shipment_id = o.shipment_id
-          AND sal.activity_type IN (${sqlInList(PACK_ACTIVITY_TYPES)})
-      )`;
+      // CF-04: exclude only when THIS order has a pack fact — not when a sibling
+      // sharing the carton was packed (shipment-grain NOT EXISTS was the vanish bug).
+      sql += ` AND NOT ${sqlOrderHasPackScan('o')}`;
     }
 
     if (stagedOnly) {
@@ -614,20 +614,11 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       params.push(statusCategoryFilter);
     }
 
-    // Coarse stage facet, server-side (Phase 1). Mirrors the `has_tech_scan`
-    // SELECT alias (any station_activity_logs row for the shipment): within the
-    // fulfillment scope PACK events are already excluded, so an existing row is a
-    // tech scan. Fulfillment STATE / lane (ustatus) stays client-side (Decision 8).
+    // CF-04 / CF-03: stage facet is order-grain (not any SAL on the shared carton).
     if (stageFilter === 'tested') {
-      sql += ` AND EXISTS (
-        SELECT 1 FROM station_activity_logs sal
-        WHERE sal.shipment_id IS NOT NULL AND sal.shipment_id = o.shipment_id
-      )`;
+      sql += ` AND ${sqlOrderHasTechScan('o')}`;
     } else if (stageFilter === 'pending') {
-      sql += ` AND NOT EXISTS (
-        SELECT 1 FROM station_activity_logs sal
-        WHERE sal.shipment_id IS NOT NULL AND sal.shipment_id = o.shipment_id
-      )`;
+      sql += ` AND NOT ${sqlOrderHasTechScan('o')}`;
     }
 
     if (exceptionsOnly) {

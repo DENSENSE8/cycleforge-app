@@ -40,7 +40,13 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
   const syntheticReq = new NextRequest(req.url, {
     method: 'POST',
     headers,
-    body: JSON.stringify({ action: 'add', salId, serial, techId }),
+    body: JSON.stringify({
+      action: 'add',
+      salId,
+      serial,
+      techId,
+      idempotencyKey: body.idempotencyKey ?? body.clientEventId ?? undefined,
+    }),
   });
 
   return unifiedSerial(syntheticReq, { params: Promise.resolve({}) });

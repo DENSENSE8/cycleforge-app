@@ -4,7 +4,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight } from '../Icons';
 import { Button, IconButton, TextField } from '@/design-system/primitives';
 
-interface ProductSelection {
+export interface ProductSelection {
   type: string;
   model: string;
   sourceSku?: string | null;

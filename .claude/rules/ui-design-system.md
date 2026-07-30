@@ -171,6 +171,10 @@ Field group = label above, value below:
 - **Numerals align by default** — `role-display`/`-title`/`-data` bind `tabular-nums` intrinsically; a
   surface that genuinely wants proportional figures opts out with `proportional-nums`. Mono never
   ligates (`fi`/`fl` in a serial would render a string the operator can't retype).
+- **LedgerGrid column justification is a hard SoT** — digit / order-ID / date / tracking tracks
+  **end**-align; word / tag / platform tracks **start**-align. Resolve via
+  `resolveGridColumnAlign` (`grid-header-align.ts`); never hand-type `justify-end` on a cell.
+  Full table: [source-of-truth.md](source-of-truth.md) → Grid column justification.
 - Guard: `typography-tokens.guard.test.ts` (raw px, retired tokens, the weight cap, the family
   bindings). Genuine one-off: same-line `ds-allow-weight`. Codemod: `scripts/codemods/cap-font-weight.mjs`.
 
@@ -200,14 +204,14 @@ Full waist: [source-of-truth.md](source-of-truth.md).
 ## Icons: structural and paired, never decorative
 
 - Import from `@/components/Icons`. Always pair an icon with text (e.g. `<Check className="h-3.5 w-3.5"/> Resolve`),
-  except the status dot — and **MasterNav MRU jump chips** (icon-only with `HoverTooltip`; mode or page SoT glyph).
-- **Nav chrome law:** MasterNav L1 page rows (and modeless MRU jumps) render SoT page icons
-  (lighter stroke); L2 modes (dropdown, hover, header “now”, mode MRU, scan rails) keep glyphs
+  except the status dot — and **GlobalHeader Mode / Recents** (icon-only with `HoverTooltip`; active mode or History glyph).
+- **Nav chrome law:** MasterNav L1 page rows render SoT page icons
+  (lighter stroke); L2 modes (GlobalHeader Mode menu, header “now” identity, scan rails) keep glyphs
   with heavier stroke. CommandBar Pages / mobile page rows stay label-only until those surfaces
-  are migrated. Stroke SoT: `nav-weight.tsx`. **Exception — closed-header MRU chips + GlobalHeader
-  actions:** native SVG stroke only (`SIDEBAR_MRU_GLYPH` / `TOP_CHROME_ICON_GLYPH` in
-  `header-shell.ts`); force page stroke on MRU when mode wrappers would otherwise
-  bake mode weight — keep mode stroke ≤ 2.25 (`nav-weight.tsx`); 2.75 muddies dense glyphs.
+  are migrated. Stroke SoT: `nav-weight.tsx`. **Exception — GlobalHeader icon
+  actions:** native SVG stroke only (`TOP_CHROME_ICON_GLYPH` in
+  `header-shell.ts`); keep mode stroke ≤ 2.25 (`nav-weight.tsx`); 2.75 muddies dense glyphs.
+  Cross-page MRU is the GlobalHeader Recents popover (`HeaderRecentsSwitcher`) — never spine chips.
 - Size by context: row dot `h-2 w-2` · field/inline `h-3.5 w-3.5` · button/loader `h-4 w-4` (`Loader2 animate-spin`).
 - **Icon buttons own their box via `IconButton size`** (`xs` 24 · `sm` 28 · `md` 32 · `lg` 36 · `touch` 44px —
   `src/design-system/primitives/IconButton.tsx`), never a hand-set `h-N w-N` on the button. Omit `size` only for a

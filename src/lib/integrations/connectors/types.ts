@@ -100,6 +100,26 @@ export interface SyncOutcome {
   error?: string;
   /** Incremental watermark to persist for the next run. */
   cursor?: unknown;
+  /**
+   * Provider-shaped per-row result detail, passed through verbatim to the
+   * caller (the route returns the whole outcome as JSON). Opaque here on
+   * purpose: the contract stays provider-agnostic, and each surface narrows it
+   * to its own type — the Sheets/Ecwid importer reads it as
+   * `TransferOrderDetails` (src/lib/orders-sync/types.ts).
+   *
+   * This field is the prerequisite orders-transfer.ts named for retiring the
+   * legacy NDJSON routes. Without it a connector sync reduces a whole import to
+   * two counters, and OrderSyncDialog — which renders per-row inserted/updated/
+   * unmatched-catalog lists — has literally nothing to draw.
+   */
+  details?: unknown;
+  /**
+   * Counters a surface may show beside the totals — most importantly the
+   * "why did nothing import" story (rows skipped for no item number, no
+   * tracking, no order id). Silently dropping these is what turns a fully
+   * skipped import into a blank "up to date" panel.
+   */
+  stats?: Record<string, number>;
 }
 
 /** One channel-listing stock/price push (bidirectional sync — Hub → Spoke). */
