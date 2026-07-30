@@ -7,6 +7,7 @@ import { RouteShell } from '@/design-system/components/RouteShell';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { useRealtimeInvalidation } from '@/hooks/useRealtimeInvalidation';
 import { useWalkInTaskRedirect } from '@/hooks/useWalkInTaskRedirect';
+import { useSurfaceParamHygiene } from '@/hooks/useSurfaceParamHygiene';
 
 /**
  * `/walk-in` — front-desk history Monitor (recent repairs / sales / pickups).
@@ -15,6 +16,10 @@ import { useWalkInTaskRedirect } from '@/hooks/useWalkInTaskRedirect';
  * to the station via `useWalkInTaskRedirect`.
  */
 function WalkInPageContent() {
+  // Boundary-parse on arrival. WALK_IN_ROUTE_PARAMS declares the legacy
+  // deep-link keys (`openRepair`, `new`, `search`, `tab`) precisely so this hook
+  // cannot strip them out from under the redirect below.
+  useSurfaceParamHygiene();
   const redirecting = useWalkInTaskRedirect();
   useRealtimeInvalidation({ repair: true, walkIn: true });
 

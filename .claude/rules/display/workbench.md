@@ -46,19 +46,23 @@ When using the sidebar map, three structural slots, in this order:
 
 | Slot | Owns | Reference |
 |---|---|---|
-| **Sidebar picker** (the stable map) | searchable master list + mode rail | `ProductsSidebarPanel.tsx` via `src/components/layout/SidebarShell.tsx` |
-| **Mode rail** | `?view=`/`?mode=` switcher pinned in the sidebar header | `HorizontalButtonSlider` `variant="nav"` `dense` |
+| **Sidebar picker** (the stable map) | searchable master list (filters / sub-tabs as needed) | `ProductsSidebarPanel.tsx` via `src/components/layout/SidebarShell.tsx` |
+| **L2 Mode + Recents** | page mode switcher + cross-page MRU | `GlobalHeader` → `HeaderModeSwitcher` / `HeaderRecentsSwitcher` (data = `SIDEBAR_PAGE_NAV` via `useSidebarModeNav`) |
 | **Right pane** (the workspace) | the selected record's detail/editor; crossfades on selection change | `QcChecklistWorkspace.tsx`, `KitPartsWorkspace.tsx` |
 
 - **Compose `src/components/layout/SidebarShell.tsx`; never hand-position search.** It owns the outer
   `flex h-full flex-col overflow-hidden` column, renders `<SidebarSearchBar>` itself from the `search` prop (the
   `sidebar-search-bar.guard.test.ts` guard keeps `SidebarSearchBar` out of other components — migration in progress),
-  and stacks `headerAbove` (mode rail) → search →
-  `headerRows[]` (sub-tabs) → `children` (the single `flex-1 overflow-y-auto` body). The panel supplies slots, not
+  and stacks `headerAbove` → search →
+  `headerRows[]` (sub-tabs / facet filters) → `children` (the single `flex-1 overflow-y-auto` body). The panel supplies slots, not
   layout — that's what kept the 40px search band from drifting per page.
-- **The mode rail lives with the map** (sidebar header), not buried in the detail surface. `ProductsSidebarPanel.tsx` passes the view slider
-  as `headerAbove` and conditional sub-tab/sort rows (`labelsView`, `pairingSort`) as `headerRows`. Each is a
-  `HorizontalButtonSlider` `variant="nav" dense` (32px pill in a 40px band).
+- **L2 Mode lives in GlobalHeader, not the sidebar.** Closed = active-mode icon (32px);
+  open = `AnchoredLayer` listing that page's `SIDEBAR_PAGE_NAV` modes. Recents is the adjacent
+  History icon (collapsed by default) over `useRecentModes`. **Never** remount a full-width
+  `HorizontalButtonSlider` mode rail as a twin of the header control. Nested / secondary sliders
+  (pairing sort, sourcing status, FBA plan/combine, inventory triage filters) may stay in the
+  sidebar — those are not page L2. Spine identity (`MasterNavHeader`) is display-only — **no MRU
+  chips** in the nav band.
 - **Anti-mix — never invert the sidebar.** Related/similar is progressive disclosure *below* the picker, never replacing the map.
 - **Responsive fallback is list-OR-detail, not both.** On a narrow viewport, show the picker *or* the detail, never a
   cramped two-up. (M3 list-detail / WinUI List/Details patterns.)
@@ -104,6 +108,72 @@ When using the sidebar map, three structural slots, in this order:
   Products, but most filter/field state still lives in component `useState`. Push **all** durable filter/sort/search
   state into `searchParams` so a shared link reproduces the exact view. (This is the cross-cutting "URL is the state
   SoT for durable views" rule.)
+
+---
+
+## The top axis is DIRECTION, not entity
+
+Ratified 2026-07-29 (`docs/todo/dashboard-ia-rework-PLAN.md` §10.2 rows H + I).
+
+A multi-domain Workbench page's top axis splits by **physical direction of flow**
+(`?mode=inbound` | `outbound`) — never by entity type (`Orders · FBA · Repair · Sales`).
+
+**The predicate for what earns a top-axis slot** — all three, or it is not a slot:
+
+1. It **owns a distinct collection surface** (its own `LedgerGrid`/`GridSurfaceDescriptor`), not a
+   filtered view of a sibling's.
+2. It is a **Workbench region** — pointer-driven pick+edit. A scanner-driven surface fails here.
+3. It has **no home elsewhere**. A domain that already owns a page or an L2 mode does not get a
+   second front door.
+
+Worked verdicts: **Orders** passes. **Receiving** fails (2) — it is a scanner-driven Station at
+`/unbox`; the dashboard's `inbound` domain is its pointer-driven *counterpart*, not the Station
+itself, and merging them is the anti-mix regression this whole doc opens with. **FBA** and **Repair**
+fail (3) — FBA lives at `/shipping/fba` (legacy `/shipping?mode=fba` redirects there), Repair is a
+Receiving mode. **Sales** fails (3) and is also directionally incoherent — a walk-in sale is commerce,
+neither inbound nor outbound.
+
+**Why direction beats entity here.** An entity axis reads cleaner on a nav diagram and is the right
+default for a *catalog* console (Shopify, Linear), where every top-level value is the same kind of
+thing: a pointer-driven list you filter. This app's entities are not the same kind of thing — one of
+them is a scan bench. Direction also matches what a 1–15 person floor physically switches between
+(the dock vs. the ship station), so the axis names a place the operator stands rather than a schema
+the operator has to translate.
+
+**Consequence — an axis value that stops owning a table is a deletion candidate, not a tab.**
+The vestigial `'fba'` member of `DashboardOrderView` was deleted 2026-07-29 (IA row L): FBA owns
+`/shipping/fba`, and no nav entry constructs `?fba`.
+
+## Tabs vs. saved views — the boundary rule
+
+Both ship, and they are not two ways to do one thing. The line is **who defines the set**:
+
+| | Hardcoded tabs | Saved views |
+|---|---|---|
+| Defined by | the **system** | the **operator** |
+| Represents | a mutually-exclusive lifecycle **state transition** | a named **facet combination** |
+| Example | Pending → Tested → Packed → Shipped | "late eBay units, oldest first" |
+| Cardinality | fixed, 3–5, same for every staffer | open-ended, per staffer |
+| Lives in | the lifecycle strip (`WorkbenchChromeHeader` left) | the sidebar filter map / table ⋮ menu |
+
+**The test:** if adding one more of them would require a **migration or a status-machine change**, it
+is a tab. If it is just a different combination of params the surface already reads, it is a saved
+view.
+
+- **Never ship a saved view that reproduces one lifecycle tab** ("all Packed orders") — that is the
+  duplication this rule exists to prevent, and it desyncs the moment the tab's query changes.
+- **Never grow the tab strip to hold a filter** ("Late", "eBay only"). A tab that is a filter is a
+  saved view wearing tab chrome, and it costs every staffer strip width to serve one workflow.
+- **One core, many faces.** `useSavedViews` (`src/hooks/useSavedViews.ts`) is the single
+  storage + URL-apply implementation; a surface supplies only `storageKey` + `paramKeys` and its own
+  UI. Exactly two consumers: `OutboundSavedViewsList` (dashboard sidebar) and `TableOptionsMenu`
+  (station + testing history ⋮). Never fork the apply-to-URL logic for a new surface.
+- **Known split-brain (Ask-first to close):** `useSavedViews` persists to **localStorage**, so a
+  dashboard view does not follow a staffer to a second device — while `operations_saved_views` and
+  `media_library_saved_views` are server-backed, org-scoped and staff-owned. Three implementations,
+  one concept. The fix is a polymorphic `saved_views` waist (org-scoped, `staff_id`-owned,
+  `is_shared`), but it is a live-table migration, so it stays Ask-first
+  (`.claude/rules/pattern-evolution.md`) rather than something a UI task does in passing.
 
 ---
 
@@ -254,6 +324,14 @@ Every operator action on a collection surface belongs to exactly **one primary p
 | **Multi-select** | `ContextualSelectionBar` + `SelectionAction[]` | anything meaningful on N records at once |
 | **Record** | the detail inspector / full record page | relational, multi-step, or side-effectful work |
 
+- **Identity columns are collection-map read-only.** `select` · `title`
+  (`GRID_IDENTITY_COLUMN_KEYS` / `isGridColumnInCellEditable` in
+  `src/design-system/components/grid/grid-column-editability.ts`) never mount
+  `LedgerCellEditor` or a cell focus ring. Title is the row's identity anchor
+  (and usually a catalog / listing fact); a caret armed by click / Enter / F2 /
+  printable put a destructive typo one keystroke away. Correction happens at the
+  **record** plane (rematch, catalog, order detail). Guard:
+  `grid-column-display.guard.test.ts` → "no grid row mounts an in-cell title editor".
 - **Plane redundancy is REQUIRED where the primary plane is conditionally unavailable.** In-cell editing on the
   outbound grid is gated `gridSkin && !isMobile`, and the inspector body is shared with `/o/[orderId]`, so the
   record plane must stay a **complete superset** of editable fields. Ship-by and condition appearing both in-cell

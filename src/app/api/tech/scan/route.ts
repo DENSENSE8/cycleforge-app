@@ -434,7 +434,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         staffId: testedBy,
         shipmentId: matchedShipmentId,
         scanRef: resolved.scanRef ?? value,
-        metadata: { source: stationSource, order_found: true, order_id: order.order_id, tracking: trackingValue },
+        metadata: { source: stationSource, order_found: true, order_id: order.order_id, order_row_id: Number(order.id), tracking: trackingValue },
         createdAt: testDateTime,
       });
 

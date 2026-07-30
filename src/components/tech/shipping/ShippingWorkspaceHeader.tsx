@@ -1,13 +1,12 @@
 'use client';
 
 /**
- * Shipping workspace chrome — tabs left (Pending · FBA | History), filters +
+ * Shipping workspace chrome — tabs left (Pending | History), filters +
  * controls portal right. Mirrors OutboundWorkspaceHeader for `/test` Shipping.
  * Row select lives in the table left gutter (always on), not chrome.
  */
 
 import { useMemo, type ReactNode, type Ref } from 'react';
-import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import {
   OutboundExactFilters,
@@ -23,9 +22,8 @@ import {
   SHIPPING_WORKSPACE_TAB_LABEL,
   type ShippingWorkspaceTab,
 } from '@/utils/shipping-workspace-state';
-import { ChevronRight } from '@/components/Icons';
 
-const TABS: ShippingWorkspaceTab[] = ['pending', 'fba', 'history'];
+const TABS: ShippingWorkspaceTab[] = ['pending', 'history'];
 
 export interface ShippingWorkspaceHeaderProps {
   tab: ShippingWorkspaceTab;
@@ -53,10 +51,7 @@ export function ShippingWorkspaceHeader({
         id,
         label: SHIPPING_WORKSPACE_TAB_LABEL[id],
         count: id === 'pending' ? queueCounts?.total : undefined,
-        color: (id === 'pending' ? 'blue' : id === 'fba' ? 'orange' : 'emerald') as
-          | 'blue'
-          | 'orange'
-          | 'emerald',
+        color: (id === 'pending' ? 'blue' : 'emerald') as 'blue' | 'emerald',
         dividerBefore: id === 'history',
       })),
     [queueCounts?.total],
@@ -76,17 +71,6 @@ export function ShippingWorkspaceHeader({
         />
       ),
       right: <OutboundExactFilters mode="unshipped" />,
-    },
-    fba: {
-      right: (
-        <Link
-          href="/shipping?mode=fba"
-          className="inline-flex h-8 items-center gap-1.5 rounded-full border border-border-soft bg-surface-card px-3 text-role-caption font-semibold text-text-muted transition-colors hover:bg-surface-hover hover:text-text-default"
-        >
-          FBA station
-          <ChevronRight className="h-3.5 w-3.5 opacity-70" />
-        </Link>
-      ),
     },
     history: {
       right: (

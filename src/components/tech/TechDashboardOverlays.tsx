@@ -1,27 +1,19 @@
 'use client';
 
 /**
- * Page-level overlays for the tech dashboard: the receiving details stack (when
- * an inbound log is selected), the repair details panel + its loading veil (from
- * repair-card clicks), and the single-line support-claim modal (from the
- * testing browse bulk bar). Pure presentational; state + handlers come from the
- * dashboard's hooks. Extracted from TechDashboard; behaviour is unchanged.
+ * Page-level overlays for the tech dashboard: repair details + testing claim
+ * modal. Carton "look" navigates to `/carton/[id]` (decision 2a) — editable
+ * ReceivingDetailsStack is no longer mounted from the inbound feed.
  */
 
 import { AnimatePresence } from 'framer-motion';
 import { ReceivingClaimModal } from '@/components/receiving/workspace/ReceivingClaimModal';
-import { ReceivingDetailsStack } from '@/components/station/ReceivingDetailsStack';
 import { RepairDetailsPanel } from '@/components/repair/RepairDetailsPanel';
 import { toast } from '@/lib/toast';
-import type { ReceivingDetailsLog } from '@/components/station/receiving-details-log';
 import type { ReceivingLineRow } from '@/components/station/ReceivingLinesTable';
 import type { TechRepairPanel } from '@/components/tech/useTechDetailOverlays';
 
 interface TechDashboardOverlaysProps {
-  selectedLog: ReceivingDetailsLog | null;
-  onCloseLog: () => void;
-  onLogUpdated: () => void;
-  onLogDeleted: () => void;
   repairPanel: TechRepairPanel | null;
   onCloseRepair: () => void;
   loadingRepair: boolean;
@@ -31,10 +23,6 @@ interface TechDashboardOverlaysProps {
 }
 
 export function TechDashboardOverlays({
-  selectedLog,
-  onCloseLog,
-  onLogUpdated,
-  onLogDeleted,
   repairPanel,
   onCloseRepair,
   loadingRepair,
@@ -44,19 +32,6 @@ export function TechDashboardOverlays({
 }: TechDashboardOverlaysProps) {
   return (
     <>
-      {/* ReceivingDetailsStack — shown when a receiving log is selected from the inbound feed */}
-      <AnimatePresence>
-        {selectedLog && (
-          <ReceivingDetailsStack
-            log={selectedLog}
-            onClose={onCloseLog}
-            onUpdated={onLogUpdated}
-            onDeleted={onLogDeleted}
-          />
-        )}
-      </AnimatePresence>
-
-      {/* RepairDetailsPanel — triggered by repair card clicks anywhere on the page */}
       {loadingRepair && (
         <div className="fixed inset-0 bg-scrim/20 z-panelBackdrop flex items-center justify-center pointer-events-none">
           <div className="w-8 h-8 border-4 border-orange-400 border-t-transparent rounded-full animate-spin pointer-events-auto" />

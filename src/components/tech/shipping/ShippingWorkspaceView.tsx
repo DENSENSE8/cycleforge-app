@@ -2,7 +2,7 @@
 
 /**
  * Shipping mode Workbench on `/test` — sticky KPI strip + unified header
- * (Pending · FBA | History) + tab body. Mirrors DashboardOrdersView chrome
+ * (Pending | History) + tab body. Mirrors DashboardOrdersView chrome
  * while the sidebar keeps Station scan / Up Next I/O.
  */
 
@@ -31,11 +31,6 @@ function TableFallback() {
   return <div className="min-h-[240px] flex-1 bg-surface-canvas" aria-hidden />;
 }
 
-const FbaShipmentsTable = dynamic(() => import('@/components/fba/FbaShipmentsTable'), {
-  ssr: false,
-  loading: TableFallback,
-});
-
 const TechTable = dynamic(
   () => import('@/components/TechTable').then((m) => m.TechTable),
   { ssr: false, loading: TableFallback },
@@ -53,7 +48,7 @@ export function ShippingWorkspaceView({ techId }: ShippingWorkspaceViewProps) {
   const parsedTechId = parseInt(techId, 10);
   // Pending reuses the dashboard To Ship selection scope + actions (always-on
   // left-gutter select). Keep the hook on `unshipped` for every tab so selectMode
-  // stays live when Pending remounts (FBA / History don't mount a selectable table).
+  // stays live when Pending remounts (History doesn't mount a selectable table).
   const { selectMode, selectedRows, selectionActions, bulkBarVisible } =
     useDashboardBulkSelection('unshipped');
 
@@ -97,15 +92,7 @@ export function ShippingWorkspaceView({ techId }: ShippingWorkspaceViewProps) {
           <AnimatePresence mode="wait" initial={false}>
             <motion.div key={shipTab} {...paneMotionProps} className="flex min-w-0 flex-col">
               <Suspense fallback={<div className="min-h-[240px] bg-surface-canvas" aria-hidden />}>
-                {shipTab === 'fba' ? (
-                  <div className="flex min-w-0 flex-col gap-3">
-                    <p className="text-role-caption text-text-soft">
-                      Shipment-grain FBA lifecycle board. Plan, combine, and hand off at the FBA
-                      station (top-right link).
-                    </p>
-                    <FbaShipmentsTable />
-                  </div>
-                ) : shipTab === 'history' ? (
+                {shipTab === 'history' ? (
                   // Bounded host so the framed card's bottom edge (and its
                   // raised elevation) stay on screen and the table self-scrolls
                   // instead of growing the page — same as the Pending grid.

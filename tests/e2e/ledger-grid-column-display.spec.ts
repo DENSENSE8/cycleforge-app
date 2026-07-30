@@ -194,6 +194,50 @@ test.describe('ledger grid column display SoT', () => {
     expect(overflow!.scroll).toBeLessThanOrEqual(overflow!.client + 1);
   });
 
+  test('D4b — no header clips WHILE SORTED, and geometry is constant', async ({ page }) => {
+    // The gap that let `UNBO…` ship twice: D4 only ever checked the IDLE header.
+    // A sorted header used to draw the type glyph AND a chevron, needing a third
+    // rem the track did not have. The header now reuses ONE mark slot, so this
+    // asserts both halves — nothing clips, and the width does not move.
+    const header = () => page.locator('[role="columnheader"]');
+    const measure = () =>
+      header().evaluateAll((els) =>
+        els.map((el) => {
+          const label = [...el.querySelectorAll('span')].find(
+            (s) => !(s.className || '').includes('sr-only') && (s.textContent ?? '').trim(),
+          );
+          return {
+            col: el.getAttribute('data-col') ?? '',
+            width: Math.round(el.getBoundingClientRect().width),
+            marks: el.querySelectorAll('svg').length,
+            clipped: label ? label.scrollWidth > label.clientWidth + 1 : false,
+          };
+        }),
+      );
+
+    const before = await measure();
+    expect(before.length).toBeGreaterThan(3);
+
+    // Sort each sortable column in turn; a clip only appears in the sorted state.
+    for (const { col } of before) {
+      if (!col || col === 'select') continue;
+      const cell = page.locator(`[role="columnheader"][data-col="${col}"]`).first();
+      if (!(await cell.count())) continue;
+      await cell.click();
+      await page.waitForTimeout(120);
+
+      const now = await measure();
+      for (const cell of now) {
+        expect(cell.clipped, `header "${cell.col}" clipped while "${col}" is sorted`).toBe(false);
+        // Exactly one mark in every state — the chevron REPLACES the type glyph
+        // rather than joining it, which is what keeps the width constant.
+        expect(cell.marks, `header "${cell.col}" drew ${cell.marks} marks`).toBeLessThanOrEqual(1);
+      }
+      // Sorting must not reflow the track widths.
+      expect(now.map((c) => c.width)).toEqual(before.map((c) => c.width));
+    }
+  });
+
   test('fold rows obey the same contract as leaf rows', async ({ page }) => {
     // The regression this spec exists for: a grouped PO renders a SUMMARY row,
     // which is a different component and was missed by the first migration.

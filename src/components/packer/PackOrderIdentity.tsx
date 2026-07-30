@@ -45,7 +45,7 @@ export function PackOrderIdentity({
           density="bar"
           receivingId={null}
           staffId=""
-          isUnmatched={false}
+          isUnmatched={Boolean(activeOrder.isUnknownOrder)}
           showStaffPhotoRow={false}
           // Classify is a receiving concern — a pack session's platform is
           // derived from the scanned item number, so the bar carries identity

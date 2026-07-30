@@ -1,5 +1,10 @@
 # Handoff — Carton inspector rebuild (Gemini UX verdicts), mid-flight
 
+> **SUPERSEDED (2026-07-29).** Do not resume this doc.  
+> Canonical handoff (decision **2a** locked — read inspector replaces `ReceivingDetailsStack`):  
+> [`carton-inspector-D4-ROOT-FIX-HANDOFF.md`](carton-inspector-D4-ROOT-FIX-HANDOFF.md).  
+> §0 below is historical (Identity already deleted; industry redesign was built then **reversed**).
+
 **Lane:** `main` (integration/dogfood). Stay on it — no branch, no worktree, never `git stash`.
 **State:** uncommitted. The user manages commits.
 **Read first:** [`carton-inspector-ux-GEMINI-RESEARCH-BRIEFING.md`](carton-inspector-ux-GEMINI-RESEARCH-BRIEFING.md) (the brief + measurements) and the Gemini verdicts pasted into the session, summarized in §2 below.

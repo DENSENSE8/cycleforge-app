@@ -223,8 +223,21 @@ export async function fetchPackerLogRows(
         LEFT JOIN LATERAL (
             SELECT MIN(tsn.tested_by)::int AS tested_by
             FROM tech_serial_numbers tsn
-            WHERE o.shipment_id IS NOT NULL
-              AND tsn.shipment_id = o.shipment_id
+            WHERE tsn.organization_id = o.organization_id
+              AND (
+                tsn.order_id = o.id
+                OR (
+                  tsn.order_id IS NULL
+                  AND o.shipment_id IS NOT NULL
+                  AND tsn.shipment_id = o.shipment_id
+                  AND NOT EXISTS (
+                    SELECT 1 FROM orders o2
+                    WHERE o2.shipment_id = o.shipment_id
+                      AND o2.organization_id = o.organization_id
+                      AND o2.id <> o.id
+                  )
+                )
+              )
         ) test_data ON TRUE`
     : '';
 
@@ -590,8 +603,21 @@ export async function fetchPackerLogRows(
             MIN(tsn.tested_by)::int AS tested_by,
             MIN(tsn.created_at)::text AS test_date_time
         FROM tech_serial_numbers tsn
-        WHERE o.shipment_id IS NOT NULL
-          AND tsn.shipment_id = o.shipment_id
+        WHERE tsn.organization_id = o.organization_id
+          AND (
+            tsn.order_id = o.id
+            OR (
+              tsn.order_id IS NULL
+              AND o.shipment_id IS NOT NULL
+              AND tsn.shipment_id = o.shipment_id
+              AND NOT EXISTS (
+                SELECT 1 FROM orders o2
+                WHERE o2.shipment_id = o.shipment_id
+                  AND o2.organization_id = o.organization_id
+                  AND o2.id <> o.id
+              )
+            )
+          )
     ) test_data ON TRUE
     LEFT JOIN staff tested_staff ON tested_staff.id = test_data.tested_by
     LEFT JOIN staff tester_staff ON tester_staff.id = wa_t.assigned_tech_id
@@ -784,8 +810,21 @@ export async function fetchPackerLogRows(
             MIN(tsn.tested_by)::int AS tested_by,
             MIN(tsn.created_at)::text AS test_date_time
         FROM tech_serial_numbers tsn
-        WHERE o.shipment_id IS NOT NULL
-          AND tsn.shipment_id = o.shipment_id
+        WHERE tsn.organization_id = o.organization_id
+          AND (
+            tsn.order_id = o.id
+            OR (
+              tsn.order_id IS NULL
+              AND o.shipment_id IS NOT NULL
+              AND tsn.shipment_id = o.shipment_id
+              AND NOT EXISTS (
+                SELECT 1 FROM orders o2
+                WHERE o2.shipment_id = o.shipment_id
+                  AND o2.organization_id = o.organization_id
+                  AND o2.id <> o.id
+              )
+            )
+          )
     ) test_data ON TRUE
     LEFT JOIN staff tested_staff ON tested_staff.id = test_data.tested_by
     ${testerStaffJoin}

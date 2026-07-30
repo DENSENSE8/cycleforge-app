@@ -5,7 +5,10 @@ finished.**
 
 - **§9 — What shipped**: the as-built delta, including the three places the build deviated and why.
 - **§10 — Finishing this plan**: the ordered backlog, the gates, and an explicit definition of done.
-  Read this one if you are picking the work up.
+
+> **Picking this up? Start with [`dashboard-ia-rework-HANDOFF.md`](dashboard-ia-rework-HANDOFF.md).**
+> It is the self-contained entry point — what is closed, the four remaining rows with their gates, and
+> the traps that cost the last two sessions time. This document stays the record of *why*.
 
 The largest remaining piece is **Phase 6 — the `/search` results surface**, which Phase 1 created and
 did not finish: evicting Search to its own route made its hand-rolled result list a first-class page
@@ -471,23 +474,35 @@ work with no gate can start today.
 | # | Work | Gate |
 |---|---|---|
 | G | **Phase 6 — the `/search` results surface** | §6 Q5 + Q6, via the Gemini briefing. **The largest remaining piece of this plan.** |
-| H | **Phase 4 — domain rail** | §6 Q1 (house-wide, Ask-first) — now also covered by [`dashboard-entity-axis-GEMINI-RESEARCH-BRIEFING.md`](dashboard-entity-axis-GEMINI-RESEARCH-BRIEFING.md) shape C, which asks whether the rail question is separable from the axis question at all |
-| I | **Saved views vs. hardcoded lifecycle tabs** | §6 Q3 — **out for research**: [`dashboard-entity-axis-GEMINI-RESEARCH-BRIEFING.md`](dashboard-entity-axis-GEMINI-RESEARCH-BRIEFING.md) §8 Q3–Q4. That brief also raises the prior question this plan did not: whether the top axis should stay `inbound\|outbound` (direction) or be re-cut by entity (`Orders · FBA · Repair · Sales`), since the answer changes how divergent each surface's facet set becomes |
+| H | ~~**Phase 4 — domain rail**~~ **DECIDED 2026-07-29.** Persistent in-sidebar L2 rail; tear out ModesPanel / `MasterNavProvider`; keep MasterNav L1. Ship the 10 panels that already have dormant rails; tracked follow-ups for dashboard/review/walk-in rails + Inventory 2→5. Two-shapes Never does not block SoT upgrades with lagging call sites. Research: [`dashboard-ia-research-briefing-HKL.md`](dashboard-ia-research-briefing-HKL.md). | — |
+| I | ~~**Saved views vs. hardcoded lifecycle tabs**~~ **DECIDED 2026-07-29.** Both ship, split by *who defines the set* — system-defined lifecycle transitions are tabs, operator-defined facet combinations are saved views. The top axis stays **direction** (`inbound\|outbound`), not entity: an entity axis would put the scanner-driven Receiving Station on the same strip as pointer-driven Workbenches, and FBA/Repair/Sales each already own a home. Rule + the three-part predicate for a top-axis slot: [`.claude/rules/display/workbench.md`](../../.claude/rules/display/workbench.md) → *The top axis is DIRECTION* + *Tabs vs. saved views*. **Two corrections to the briefing that answered this:** (a) there is no `DashboardViewGroup` / `viewGroup` type anywhere in the tree — the only emergent artifact is the vestigial `'fba'` member of `DashboardOrderView`; (b) `SavedViewsControl` was **not** "live and generic" — it shipped with zero call sites and sat in `knip-baseline.json`; the control actually on screen is `OutboundSavedViewsList`. The dead popover is deleted and the baseline shrank by one. | — |
 | J | **Phase 5 — sub-routes** | Only if Phase 2 proves insufficient. It has not; treat as closed unless evidence appears. |
+| K | ~~**Unify the three saved-views implementations**~~ **DECIDED 2026-07-29.** Shape A: polymorphic `saved_views` (`surface` CHECK, `is_shared`). Explicit waiver of polymorphic-tables’ “does not migrate existing.” Port `useSavedViews` off localStorage. Research: [`dashboard-ia-research-briefing-HKL.md`](dashboard-ia-research-briefing-HKL.md). | — |
+| L | ~~**Delete the vestigial `?fba` dashboard path**~~ **DECIDED 2026-07-29.** Canonical `/shipping/fba` → `FbaWorkspace`; keep `/fba` redirect; delete `/dashboard?fba` (fall through to Pending) and `FbaShipmentsTable` after `/test` Shipping FBA tab cleanup. Research: [`dashboard-ia-research-briefing-HKL.md`](dashboard-ia-research-briefing-HKL.md). | — |
 
-### 10.3 Deviations from §9 — confirm or fix
+### 10.3 Deviations from §9 — RATIFIED 2026-07-29
 
-Three deliberate deviations shipped. Each is defensible but none was ratified; decide whether they
-are the final shape or follow-ups:
+Three deliberate deviations shipped. All three were verified against current code and are ratified
+as the final shape — none needs a follow-up:
 
-1. **Outbound recents are a capped footer**, not a co-equal panel (the order feed is already the
-   picker). Confirm, or give outbound a real two-zone panel.
-2. **The inbound attention band rides the chrome slot**, not the scroll body, because that shell's
-   body is `overflow-y-hidden`. Confirm, or restructure that shell so Zone A can scroll away in both
-   domains symmetrically.
+1. **Outbound recents are a capped footer**, not a co-equal panel — **ratified.**
+   `DashboardRecentsFooter` (`src/components/sidebar/dashboard/DashboardRecentsPanel.tsx:141–166`)
+   caps at 5 entries in its own `max-h-40 overflow-y-auto` box and returns `null` when empty; the
+   in-code comment states it explicitly: pinned under the outbound order feed, which is already the
+   domain's picker (`DashboardOrdersView.tsx` — `UnshippedTable`/`PackedOrdersTable`/
+   `DashboardShippedTable`). The co-equal `DashboardRecentsPanel` form stays inbound-only.
+2. **The inbound attention band rides the chrome slot**, not the scroll body — **ratified.**
+   `DashboardReceivingView.tsx:62–77` passes `className="overflow-y-hidden"` to `DashboardScrollShell`
+   and mounts `DashboardAttentionStrip domain="inbound"` in the `chrome` prop, with an inline comment
+   explaining `ReceivingLinesTable` self-scrolls so the body has no scroll port of its own. Outbound's
+   sibling (`DashboardOrdersView.tsx:77–113`) keeps the shell's default `overflow-y-auto` and puts its
+   `DashboardAttentionStrip domain="outbound"` in the scrollable body — the asymmetry is a consequence
+   of one domain owning a self-scrolling table and the other not, not an oversight.
 3. **`DashboardReceivingView` redirects on permission denial** rather than deleting the gate as 3.4
-   literally specified. The pill is absent (navigation) and the gate remains (authorization) — this
-   is the safer reading of C10 and should probably just be ratified in the plan text.
+   literally specified — **ratified.** `DashboardReceivingView.tsx:52–59` computes `denied` from
+   `useAuth().has(DASHBOARD_INBOUND_PERMISSION)` and `router.replace('/dashboard')`s when denied,
+   with a comment framing this as "the gate itself stays." The pill is absent (navigation-only removal
+   per 3.4) while authorization is still enforced — the safer reading of C10.
 
 ### 10.4 Definition of done
 
@@ -500,13 +515,23 @@ This plan is finished when **all** of the following hold:
       **vacuous** (it would have passed with the retired mode fully restored).
 - [ ] §6 Q5 + Q6 answered → **Phase 6 shipped**, so `/search` is a first-class surface rather than a
       relocated one
-- [ ] §6 Q1 answered yes-or-no **in writing** — if no, Phase 4 is deleted from this plan, not left
-      hanging
-- [ ] §6 Q3 answered → saved views scheduled or explicitly declined
-- [ ] §10.3 deviations ratified or fixed
-- [ ] `npm run verify` green on a tree where `src/app/signin/page.tsx` is no longer conflicted
+- [x] §6 Q1 answered **yes** (2026-07-29) → row H: persistent L2 rail; ModesPanel out
+- [x] **§6 Q3 answered** (2026-07-29) → row I ratified into house law: tabs = system-defined lifecycle
+      transitions, saved views = operator-defined facet combinations, top axis stays **direction**.
+- [x] **§10.3 deviations ratified** (2026-07-29) — all three verified against current code, no
+      follow-up work needed (see §10.3)
+- [x] **`npm run verify` green** (2026-07-29) — `src/app/signin/page.tsx` is no longer conflicted (no
+      conflict markers, no unmerged paths) and the full gate passes on this tree. The 20 tenancy-
+      isolation findings it reports are **advisory, not blocking**, and are all pre-existing API
+      routes unrelated to this plan.
+- [x] **Row K ratified** (2026-07-29) — polymorphic `saved_views` (Shape A)
+- [x] **Row L resolved** (2026-07-29) — `/shipping/fba` canonical; delete `?fba` + `FbaShipmentsTable`
 - [ ] This document's §9 updated one last time, then the whole plan moved out of `docs/todo/`
 
-**The plan is NOT done today.** Phases 1–3 are the load-bearing two-thirds; §10.1 is a half-day of
-follow-through; Phase 6 is the real remaining build and it is correctly blocked on research rather
-than guessed at.
+**As of 2026-07-29 H/K/L are ratified** ([`dashboard-ia-research-briefing-HKL.md`](dashboard-ia-research-briefing-HKL.md)).
+What remains gated on research is **row G** (Phase 6 `/search`) — do not guess the shape.
+
+If you want unblocked work in this machinery instead, the URL-isolation refactor
+([`nav-routing-refactor-FINISH-PROMPT.md`](nav-routing-refactor-FINISH-PROMPT.md)) has eight
+un-isolated surfaces and is correctness work with no gate — see the handoff §5. It is **adjacent, not
+part of this plan**.

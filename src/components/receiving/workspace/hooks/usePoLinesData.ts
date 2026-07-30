@@ -107,39 +107,51 @@ export function usePoLinesData({
   );
 
   // Primary query = sibling METADATA only (sku / price / condition / qty), no
-  // serials — so every sibling row paints without waiting on the heavy serial
-  // resolution. Serials are overlaid onto THIS cache by the hydration query
-  // below, keeping `row.serials` the single SoT every consumer reads.
+  // serials/units — so every sibling row paints without waiting on the heavy
+  // serial resolution. Serials + units are overlaid onto THIS cache by the
+  // hydration query below, keeping `row.serials` / `row.units` the single SoT
+  // every consumer reads.
   const { data } = useQuery<ApiResponse>({
     queryKey,
     queryFn: async () => {
       const res = await fetch(`/api/receiving-lines?receiving_id=${receivingId}`);
       if (!res.ok) throw new Error('Failed to fetch siblings');
       const fresh: ApiResponse = await res.json();
-      // Never blank serials on a metadata refetch: carry forward anything
+      // Never blank serials/units on a metadata refetch: carry forward anything
       // already known — optimistic scans + prior hydration live on this cache;
       // the serials query's own cache covers a "serials resolved first" race.
       const prevSerials = new Map<number, ReceivingLineRow['serials']>();
+      const prevUnits = new Map<number, ReceivingLineRow['units']>();
       for (const r of queryClient.getQueryData<ApiResponse>(serialsKey)?.receiving_lines ?? []) {
         if (r.serials != null) prevSerials.set(r.id, r.serials);
+        if (r.units != null) prevUnits.set(r.id, r.units);
       }
       for (const r of queryClient.getQueryData<ApiResponse>(queryKey)?.receiving_lines ?? []) {
         if (r.serials != null) prevSerials.set(r.id, r.serials); // main wins (holds in-flight optimistic)
+        if (r.units != null) prevUnits.set(r.id, r.units);
       }
-      if (prevSerials.size > 0) {
+      if (prevSerials.size > 0 || prevUnits.size > 0) {
         fresh.receiving_lines = fresh.receiving_lines.map((r) => {
-          const cached = prevSerials.get(r.id);
+          let next = r;
+          const cachedSerials = prevSerials.get(r.id);
           // Empty `[]` from an unpopulated serial_projection is NOT authoritative
           // — treat it like null so optimistic / hydrated chips survive refetch.
           if (
+            cachedSerials != null &&
             shouldPreserveCachedSerials(
               r.serials as LineSerial[] | null | undefined,
-              cached as LineSerial[] | undefined,
+              cachedSerials as LineSerial[] | undefined,
             )
           ) {
-            return { ...r, serials: cached } as ReceivingLineRow;
+            next = { ...next, serials: cachedSerials } as ReceivingLineRow;
           }
-          return r;
+          // Units materialise only on include=serials; a lines-only refetch
+          // never carries them — always preserve a non-null cached list.
+          const cachedUnits = prevUnits.get(r.id);
+          if (cachedUnits != null && (r.units == null || r.units.length === 0)) {
+            next = { ...next, units: cachedUnits } as ReceivingLineRow;
+          }
+          return next;
         });
       }
       return fresh;
@@ -155,9 +167,10 @@ export function usePoLinesData({
     refetchOnWindowFocus: false,
   });
 
-  // Parallel serial hydration — the heavy `include=serials` resolution runs on
-  // its own cache so the metadata query never waits for it. On resolve, overlay
-  // serials onto the shared siblings cache (the single `row.serials` SoT).
+  // Parallel serial+units hydration — the heavy `include=serials` resolution
+  // runs on its own cache so the metadata query never waits for it. On resolve,
+  // overlay serials AND units onto the shared siblings cache (per-unit no-serial
+  // Phase 2–3: units drive the multi-qty green check).
   const serialsQuery = useQuery<ApiResponse>({
     queryKey: serialsKey,
     queryFn: async () => {
@@ -172,30 +185,57 @@ export function usePoLinesData({
     refetchOnWindowFocus: false,
   });
 
-  // Overlay resolved serials onto the metadata cache. Runs only when the serials
-  // query's data changes (not on every metadata write), so it never re-applies
-  // stale server serials over a just-confirmed optimistic scan. A row with an
-  // in-flight optimistic serial is skipped — the scan path owns it until its own
-  // reconcile lands.
+  // Overlay resolved serials + units onto the metadata cache. Runs only when the
+  // serials query's data changes (not on every metadata write), so it never
+  // re-applies stale server serials over a just-confirmed optimistic scan. A row
+  // with an in-flight optimistic serial is skipped for serials — the scan path
+  // owns them until its own reconcile lands — but units still overlay (they are
+  // independent of the optimistic serial flag).
   const serialRows = serialsQuery.data?.receiving_lines;
   useEffect(() => {
     if (!serialRows) return;
-    const serialsById = new Map<number, ReceivingLineRow['serials']>(
-      serialRows.map((r) => [r.id, (r.serials ?? []) as ReceivingLineRow['serials']]),
+    const byId = new Map(
+      serialRows.map((r) => [
+        r.id,
+        {
+          serials: (r.serials ?? []) as ReceivingLineRow['serials'],
+          units: (r.units ?? []) as ReceivingLineRow['units'],
+        },
+      ]),
     );
     queryClient.setQueryData<ApiResponse>(queryKey, (prev) => {
       if (!prev?.receiving_lines) return prev;
       let changed = false;
       const next = prev.receiving_lines.map((r) => {
-        if (!serialsById.has(r.id)) return r;
+        const incoming = byId.get(r.id);
+        if (!incoming) return r;
         const hasInFlight = (r.serials ?? []).some(
           (s) => readOptimisticFlag(s as { _optimistic?: 'adding' | 'removing' }) != null,
         );
-        if (hasInFlight) return r;
-        const incoming = serialsById.get(r.id) ?? [];
-        if (r.serials === incoming) return r;
-        changed = true;
-        return { ...r, serials: incoming } as ReceivingLineRow;
+        let patched = r;
+        if (!hasInFlight && r.serials !== incoming.serials) {
+          changed = true;
+          patched = { ...patched, serials: incoming.serials } as ReceivingLineRow;
+        }
+        // Always overlay units when the hydration payload differs — empty-field
+        // green-check needs durable unit ids even while a serial scan is in flight.
+        if (incoming.units != null && r.units !== incoming.units) {
+          const sameLength =
+            Array.isArray(r.units) &&
+            r.units.length === incoming.units.length &&
+            r.units.every(
+              (u, i) =>
+                u.id === incoming.units![i]?.id &&
+                u.serial_absent === incoming.units![i]?.serial_absent &&
+                u.serial_unit_id === incoming.units![i]?.serial_unit_id &&
+                u.condition_grade === incoming.units![i]?.condition_grade,
+            );
+          if (!sameLength) {
+            changed = true;
+            patched = { ...patched, units: incoming.units } as ReceivingLineRow;
+          }
+        }
+        return patched;
       });
       return changed ? { ...prev, receiving_lines: next } : prev;
     });

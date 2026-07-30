@@ -16,15 +16,10 @@ import {
   Inbox,
   Layers,
   Lock,
-  MessageSquare,
-  Package,
   Phone,
   PhoneIncoming,
   PhoneMissed,
   PhoneOutgoing,
-  ShieldCheck,
-  TicketHelp,
-  Voicemail,
 } from '@/components/Icons';
 import type { HorizontalSliderItem } from '@/components/ui/HorizontalButtonSlider';
 
@@ -52,15 +47,9 @@ export type SupportMode =
  *   pick an in-app feedback row → fact stack (`?issueId=`).
  * - orders    → To Ship exception loop (Workbench + Station focus pane):
  *   lane filter → notes / OOS → order detail + SupportContextHub (`?openOrderId=`).
+ *
+ * L2 mode list + icons live in SIDEBAR_PAGE_NAV (GlobalHeader Mode switcher).
  */
-export const SUPPORT_MODE_ITEMS: HorizontalSliderItem[] = [
-  { id: 'tickets', label: 'Tickets', icon: TicketHelp },
-  { id: 'orders', label: 'Orders', icon: Package },
-  { id: 'voicemail', label: 'Voicemail', icon: Voicemail },
-  { id: 'calls', label: 'Calls', icon: Phone },
-  { id: 'warranty', label: 'Warranty', icon: ShieldCheck },
-  { id: 'issues', label: 'Issues', icon: MessageSquare },
-];
 
 export const DEFAULT_SUPPORT_MODE: SupportMode = 'tickets';
 

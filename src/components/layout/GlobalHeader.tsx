@@ -5,6 +5,8 @@ import { useHeader } from '@/contexts/HeaderContext';
 import { useAuth, isClientPublicPath } from '@/contexts/AuthContext';
 import { GlobalHeaderActions } from './GlobalHeaderActions';
 import { HeaderGoalChip } from './HeaderGoalChip';
+import { HeaderModeSwitcher } from './HeaderModeSwitcher';
+import { HeaderRecentsSwitcher } from './HeaderRecentsSwitcher';
 import { HeaderTopWorkOrderChip } from './HeaderTopWorkOrderChip';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { IconButton } from '@/design-system/primitives';
@@ -25,6 +27,10 @@ import { cn } from '@/utils/_cn';
  * Zone contract (left → right) — facts drive chrome; empty middle is OK when
  * the station/workbench band below already owns surface context:
  *   - **Toggle** — sidebar collapse (route-gated)
+ *   - **Mode / Recents** — house L2 + MRU ({@link HeaderModeSwitcher} /
+ *     {@link HeaderRecentsSwitcher}); Mode returns null on modeless pages.
+ *     Data = {@link SIDEBAR_PAGE_NAV} via `useSidebarModeNav` — never a
+ *     sidebar pill twin.
  *   - **Next** — {@link HeaderTopWorkOrderChip} (work-order icon → popover; hidden when none)
  *   - **Pace** — {@link HeaderGoalChip} (progress ring → checklist popover)
  *   - **Context** — page `panelContent` via {@link useHeader}
@@ -104,6 +110,8 @@ export function GlobalHeader({
             </HoverTooltip>
           </div>
         )}
+        <HeaderModeSwitcher />
+        <HeaderRecentsSwitcher />
         <HeaderTopWorkOrderChip />
         <HeaderGoalChip />
       </div>

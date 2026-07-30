@@ -1,4 +1,3 @@
-import { gridTemplate } from '@/design-system/components/grid/grid-column-geometry';
 /**
  * Catalog spreadsheet column model — SoT for the Products Catalog LedgerGrid.
  *
@@ -9,8 +8,10 @@ import { gridTemplate } from '@/design-system/components/grid/grid-column-geomet
  * geometry from {@link ORDERS_QUEUE_COLUMNS}'s helpers.
  */
 
-import type { ColumnType } from '@/lib/tables/table-columns';
+import { GRID_IDENTITY_COLUMN_KEYS } from '@/design-system/components/grid/grid-column-editability';
+import { gridTemplate } from '@/design-system/components/grid/grid-column-geometry';
 import type { CatalogListRow } from '@/components/products/catalog/types';
+import type { ColumnType } from '@/lib/tables/table-columns';
 
 export type CatalogGridColumnKey =
   | 'select'
@@ -30,6 +31,8 @@ export interface CatalogGridColumn {
   gridLabel?: string;
   labelFitRem?: number;
   type?: ColumnType;
+  /** Justification override — see {@link LedgerGridColumnModel.align}. */
+  align?: 'start' | 'end';
   /** Staff-preference key (`staff_preferences.tableColumns.catalog`). */
   hideKey?: string;
   /** `core` ships ON (opt-out); `optional` ships OFF (opt-in via Fields). */
@@ -63,7 +66,10 @@ export const CATALOG_GRID_COLUMNS: readonly CatalogGridColumn[] = [
     key: 'inventory',
     width: 'minmax(6.5rem, 6.5rem)',
     label: 'Inventory',
+    // Typed `id` for the header glyph, but the cell is a linkage chip — keep
+    // start so it does not join the numeric end-align cluster.
     type: 'id',
+    align: 'start',
     hideKey: 'inventory',
     labelFitRem: 5,
   },
@@ -98,7 +104,8 @@ export const CATALOG_GRID_COLUMNS: readonly CatalogGridColumn[] = [
   },
   {
     key: 'orders',
-    width: 'minmax(4.5rem, 4.5rem)',
+    // 4.75rem: 'Orders' is 6 chars ≈ 2.52rem + 2rem header chrome. See incoming `status`.
+    width: 'minmax(4.75rem, 4.75rem)',
     label: 'Orders',
     type: 'number',
     hideKey: 'orders',
@@ -115,7 +122,9 @@ export const CATALOG_GRID_COLUMNS: readonly CatalogGridColumn[] = [
   },
 ] as const;
 
-const CATALOG_GRID_LOCKED_KEYS: readonly CatalogGridColumnKey[] = ['select', 'title'];
+const CATALOG_GRID_LOCKED_KEYS: readonly CatalogGridColumnKey[] = [
+  ...GRID_IDENTITY_COLUMN_KEYS,
+];
 
 const CATALOG_GRID_SORTABLE_KEYS: readonly CatalogGridColumnKey[] = CATALOG_GRID_COLUMNS.filter(
   (c) => c.sortable !== false && c.key !== 'select',

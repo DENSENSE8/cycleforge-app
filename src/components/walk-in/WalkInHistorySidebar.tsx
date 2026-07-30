@@ -1,13 +1,13 @@
 'use client';
 
 /**
- * Sales sidebar — the desk mode rail + Walk-In station deep-links.
+ * Sales sidebar — Walk-In station deep-links.
  *
- * The **mode rail** (`WalkInModeSlider` → `?mode=`) is the surface's primary
- * navigation: Local Pickup · Sales. The per-mode **table tabs** live in
- * the page chrome (`WalkInDeskHeader` → `WorkbenchChromeHeader`) — modes ≠ tabs.
+ * L2 modes (Local Pickup · Sales) live in GlobalHeader (`HeaderModeSwitcher` →
+ * `?mode=`). Per-mode **table tabs** live in the page chrome
+ * (`WalkInDeskHeader` → `WorkbenchChromeHeader`) — modes ≠ tabs.
  *
- * Below the rail sits the one thing a history Monitor can't do — start work.
+ * Below sits the one thing a history Monitor can't do — start work.
  * Sales is observe-only; every action here hands off to the station (Repair
  * intake → Receiving `/repair`).
  */
@@ -15,7 +15,6 @@
 import { useRouter } from 'next/navigation';
 import { DollarSign, Package, ShoppingCart, Wrench } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
-import { WalkInModeSlider } from '@/components/walk-in/WalkInModeSlider';
 import { walkInStationHref } from '@/lib/walk-in/jobs';
 import { sectionLabel, cardTitle } from '@/design-system/tokens/typography/presets';
 import { SIDEBAR_GUTTER } from '@/components/layout/header-shell';
@@ -57,9 +56,6 @@ export function WalkInHistorySidebar() {
         <p className="mt-1 text-role-micro text-text-soft">
           Every completed front-desk transaction. Start a new job on the station.
         </p>
-        <div className="mt-3">
-          <WalkInModeSlider />
-        </div>
       </div>
 
       <div className={`min-h-0 flex-1 space-y-2 overflow-y-auto ${SIDEBAR_GUTTER} py-3`}>

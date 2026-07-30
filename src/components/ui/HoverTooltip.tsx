@@ -20,8 +20,10 @@ const MARGIN = 8;
  *
  * Renders the bubble in a body portal positioned from the trigger's rect, so it
  * is never clipped by an `overflow` container (e.g. a scrolling sidebar) and
- * appears instantly — unlike the native `title` attribute (slow, unstyled) and
- * unlike SiteTooltipProvider (which always shows a copy affordance).
+ * appears instantly by default — unlike the native `title` attribute (slow,
+ * unstyled) and unlike SiteTooltipProvider (which always shows a copy affordance).
+ * Pass {@link openDelayMs} when the trigger sits on a transit path (e.g. a
+ * resize-edge handle) so a cross-hover does not flash the label.
  *
  * The bubble is measured once mounted, then clamped to the viewport (8px margin)
  * and flipped above/below as needed, so it NEVER renders off the page.
@@ -33,6 +35,7 @@ export function HoverTooltip({
   focusable = true,
   asChild = false,
   placement = 'auto',
+  openDelayMs = 0,
 }: {
   label: string;
   children: ReactNode;
@@ -53,15 +56,28 @@ export function HoverTooltip({
    * viewport-clamped).
    */
   placement?: 'auto' | 'above' | 'below';
+  /**
+   * Dwell before showing on mouse enter. `0` (default) = instant. Focus still
+   * shows immediately — keyboard users are not crossing the trigger.
+   */
+  openDelayMs?: number;
 }) {
   const triggerRef = useRef<HTMLElement | null>(null);
   const bubbleRef = useRef<HTMLSpanElement | null>(null);
+  const openTimerRef = useRef<number | null>(null);
   const placementRef = useRef(placement);
   placementRef.current = placement;
   // Trigger rect captured on open; the bubble is positioned off-screen+hidden
   // first so we can measure it, then clamped into view in the layout effect.
   const [anchor, setAnchor] = useState<DOMRect | null>(null);
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+
+  const clearOpenTimer = useCallback(() => {
+    if (openTimerRef.current != null) {
+      window.clearTimeout(openTimerRef.current);
+      openTimerRef.current = null;
+    }
+  }, []);
 
   const show = useCallback(() => {
     const r = triggerRef.current?.getBoundingClientRect();
@@ -72,10 +88,24 @@ export function HoverTooltip({
       setPos(null);
     }
   }, []);
+
   const hide = useCallback(() => {
+    clearOpenTimer();
     setAnchor(null);
     setPos(null);
-  }, []);
+  }, [clearOpenTimer]);
+
+  const scheduleShow = useCallback(() => {
+    clearOpenTimer();
+    if (openDelayMs <= 0) {
+      show();
+      return;
+    }
+    openTimerRef.current = window.setTimeout(() => {
+      openTimerRef.current = null;
+      show();
+    }, openDelayMs);
+  }, [clearOpenTimer, openDelayMs, show]);
 
   useLayoutEffect(() => {
     if (!anchor || anchor.width < 2 || anchor.height < 2 || !bubbleRef.current) return;
@@ -161,7 +191,7 @@ export function HoverTooltip({
       <>
         {cloneElement(child, {
           ref: setRef,
-          onMouseEnter: compose(p.onMouseEnter, show),
+          onMouseEnter: compose(p.onMouseEnter, scheduleShow),
           onMouseLeave: compose(p.onMouseLeave, hide),
           ...(focusable
             ? { onFocus: compose(p.onFocus, show), onBlur: compose(p.onBlur, hide) }
@@ -176,7 +206,7 @@ export function HoverTooltip({
     <span
       ref={triggerRef}
       className={className}
-      onMouseEnter={show}
+      onMouseEnter={scheduleShow}
       onMouseLeave={hide}
       onFocus={focusable ? show : undefined}
       onBlur={focusable ? hide : undefined}

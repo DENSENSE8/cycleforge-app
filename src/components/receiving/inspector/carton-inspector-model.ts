@@ -1,12 +1,10 @@
 /**
  * Carton inspector — the pure read model.
  *
- * The inspector is the READ view of a carton; `/unbox` is the WORK view. D4's
- * verdict allowed that split on one condition: **both shells compose the same
- * dumb primitives**, or we have forked a second rendering of a carton and will
- * maintain two half-correct ones. This module is the read half of keeping that
- * promise — it derives display facts and nothing else. No fetching, no writes,
- * no component imports, so the derivation is testable with zero DB and zero DOM.
+ * The inspector is the READ view of a carton; `/unbox` is the WORK view.
+ * Decision D6: share this read model + atoms with the work surface; assembly
+ * may diverge. This module derives display facts and nothing else — no
+ * fetching, no writes, no component imports.
  *
  * Shape mirrors `GET /api/receiving/[id]`, which already returns the whole
  * carton read model (identity + milestones + lines + serials + events). The
@@ -304,9 +302,9 @@ export function buildCartonMilestones(
  * stamps here — rather than making the operator infer it from four timestamp
  * rows — is what lets the surface lead with an answer instead of an audit log.
  */
-export type CartonLifecycleState = 'expected' | 'scanned' | 'opened' | 'unboxed' | 'received';
+type CartonLifecycleState = 'expected' | 'scanned' | 'opened' | 'unboxed' | 'received';
 
-export interface CartonLifecycle {
+interface CartonLifecycle {
   state: CartonLifecycleState;
   label: string;
   /** Semantic TONE, not a class — the view maps it (views stay dumb). */
@@ -387,4 +385,141 @@ export function cartonContentsSummary(totals: CartonInspectorTotals | undefined 
   const { expected, received, lines, lines_complete: complete } = totals;
   const unitPart = expected > 0 ? `${received}/${expected} units` : `${received} units`;
   return `${unitPart} · ${complete}/${lines} ${lines === 1 ? 'line' : 'lines'} complete`;
+}
+
+/**
+ * Exception codes that outrank lifecycle "done" on the read surface.
+ *
+ * A carton can be stamped received and still be unsettled — UNFOUND pairing,
+ * triage never finished after open, opened with zero lines, or needs-test with
+ * QA still PENDING. The header must never say "complete" while any of these
+ * hold (acceptance: disposition truth).
+ */
+export type CartonExceptionKey =
+  | 'unfound'
+  | 'triage_incomplete'
+  | 'no_lines'
+  | 'qa_pending';
+
+export interface CartonException {
+  key: CartonExceptionKey;
+  label: string;
+  /** Short next-action hint for the findings rail. */
+  ctaHint: string;
+  tone: 'warning' | 'danger' | 'info';
+}
+
+export function cartonExceptions(
+  receiving: CartonInspectorReceiving,
+  totals: CartonInspectorTotals | undefined | null,
+): CartonException[] {
+  const out: CartonException[] = [];
+  const pairing = present(receiving.pairing_state);
+  if (pairing && pairing.toUpperCase() === 'UNFOUND') {
+    out.push({
+      key: 'unfound',
+      label: 'No matched PO',
+      ctaHint: 'Record or match contents in Unbox',
+      tone: 'warning',
+    });
+  }
+
+  const opened = present(receiving.unbox_opened_at) || present(receiving.unboxed_at);
+  if (opened && receiving.triage_complete === false) {
+    out.push({
+      key: 'triage_incomplete',
+      label: 'Triage incomplete',
+      ctaHint: 'Finish triage or clear the flag in Unbox',
+      tone: 'warning',
+    });
+  }
+
+  if (opened && (!totals || totals.lines === 0)) {
+    out.push({
+      key: 'no_lines',
+      label: 'No contents recorded',
+      ctaHint: 'Open Unbox and record what was in the carton',
+      tone: 'danger',
+    });
+  }
+
+  if (receiving.needs_test && present(receiving.qa_status)?.toUpperCase() === 'PENDING') {
+    out.push({
+      key: 'qa_pending',
+      label: 'QA pending',
+      ctaHint: 'Needs test — QA still pending',
+      tone: 'info',
+    });
+  }
+
+  return out;
+}
+
+/**
+ * Operator-facing disposition — the answer the header leads with.
+ *
+ * `complete` only when lifecycle says done AND there are zero exceptions.
+ * Otherwise: unmatched (UNFOUND present), needs_action (other exceptions), or
+ * in_progress (lifecycle not done, no blocking exceptions yet).
+ */
+export type CartonDispositionState = 'complete' | 'unmatched' | 'needs_action' | 'in_progress';
+
+export interface CartonDisposition {
+  state: CartonDispositionState;
+  label: string;
+  tone: 'success' | 'warning' | 'danger' | 'info' | 'neutral';
+  /** True only when it is honest to show a "complete / work complete" chip. */
+  settled: boolean;
+  exceptions: CartonException[];
+  lifecycle: CartonLifecycle;
+}
+
+export function cartonDisposition(
+  receiving: CartonInspectorReceiving,
+  totals: CartonInspectorTotals | undefined | null,
+): CartonDisposition {
+  const lifecycle = cartonLifecycle(receiving);
+  const exceptions = cartonExceptions(receiving, totals);
+
+  if (exceptions.some((e) => e.key === 'unfound')) {
+    return {
+      state: 'unmatched',
+      label: 'Unmatched',
+      tone: 'warning',
+      settled: false,
+      exceptions,
+      lifecycle,
+    };
+  }
+
+  if (exceptions.length > 0) {
+    return {
+      state: 'needs_action',
+      label: 'Needs action',
+      tone: exceptions.some((e) => e.tone === 'danger') ? 'danger' : 'warning',
+      settled: false,
+      exceptions,
+      lifecycle,
+    };
+  }
+
+  if (lifecycle.done) {
+    return {
+      state: 'complete',
+      label: lifecycle.label,
+      tone: 'success',
+      settled: true,
+      exceptions,
+      lifecycle,
+    };
+  }
+
+  return {
+    state: 'in_progress',
+    label: lifecycle.label,
+    tone: lifecycle.tone === 'neutral' ? 'neutral' : 'info',
+    settled: false,
+    exceptions,
+    lifecycle,
+  };
 }

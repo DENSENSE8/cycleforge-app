@@ -6,6 +6,7 @@ import { ShippedDetailsPanelContent } from '../ShippedDetailsPanelContent';
 import { DetailsStackProps } from './types';
 import { dispatchCloseShippedDetails, dispatchDashboardAndStationRefresh } from '@/utils/events';
 import { Button } from '@/design-system/primitives';
+import { toast } from '@/lib/toast';
 
 export function PackerDetailsStack({
   shipped,
@@ -75,7 +76,7 @@ export function PackerDetailsStack({
       dispatchCloseShippedDetails();
     } catch (error) {
       console.error('Failed to delete packer log:', error);
-      window.alert('Failed to delete packer log. Please try again.');
+      toast.error('Failed to delete packer log. Please try again.');
     } finally {
       setIsDeleting(false);
     }

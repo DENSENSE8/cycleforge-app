@@ -208,6 +208,22 @@ export function isReceivingReturnAutolink(): boolean {
 }
 
 /**
+ * Auto-file a helpdesk ticket when an eBay purchase's item-not-received claim
+ * window is about to close while the carton sits delivered-but-never-unboxed
+ * (docs/todo/ebay-delivered-not-unboxed-PLAN.md Phase 4).
+ *
+ * **Default OFF, deliberately.** This is the only path in the initiative that
+ * creates OUTWARD-FACING artifacts — real tickets in the tenant's helpdesk, which
+ * may notify people. A new automation that files tickets on a live warehouse must
+ * be switched on by a human who has first read a dry run, not by a deploy. The cron
+ * still runs while it is off and reports exactly what it *would* file, so the
+ * decision is made on real numbers. Set RECEIVING_CLAIMS_ESCALATION=true to arm it.
+ */
+export function isReceivingClaimsEscalation(): boolean {
+  return readBoolEnv('RECEIVING_CLAIMS_ESCALATION');
+}
+
+/**
  * Unified-engine chokepoint cutover (UNIFIED-ENGINE-MASTER-PLAN §1.1). When ON,
  * domain handlers route their serial-unit status change + inventory event +
  * engine tap through the single guarded applyTransition() chokepoint instead of

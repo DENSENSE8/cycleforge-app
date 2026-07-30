@@ -1,11 +1,13 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useQuery } from '@tanstack/react-query';
 import { Loader2, Package } from '@/components/Icons';
 import { QA_BADGE, COND_LABEL } from './receiving-constants';
 import { formatDateTimePST } from '@/utils/date';
+import { cartonReadHref } from '@/lib/receiving/surface-path';
 import type { ReceivingDetailsLog } from './receiving-details-log';
 
 interface FeedLog extends ReceivingDetailsLog {
@@ -89,12 +91,12 @@ function FeedRow({ log, isSelected, onClick, idx }: FeedRowProps) {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-interface ReceivingInboundFeedProps {
-  /** Called when a row is clicked — parent should open ReceivingDetailsStack */
-  onSelectLog?: (log: ReceivingDetailsLog) => void;
-}
-
-export function ReceivingInboundFeed({ onSelectLog }: ReceivingInboundFeedProps) {
+/**
+ * Inbound feed — row click opens the carton READ inspector (`/carton/[id]`).
+ * Decision 2a: no longer mounts editable ReceivingDetailsStack.
+ */
+export function ReceivingInboundFeed() {
+  const router = useRouter();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [section, setSection] = useState<'testing' | 'unboxed'>('testing');
 
@@ -116,9 +118,11 @@ export function ReceivingInboundFeed({ onSelectLog }: ReceivingInboundFeedProps)
   const rows = section === 'testing' ? needsTesting : recentlyUnboxed;
 
   const handleRowClick = (log: FeedLog) => {
-    const nextId = selectedId === log.id ? null : log.id;
-    setSelectedId(nextId);
-    if (nextId && onSelectLog) onSelectLog(log);
+    const id = Number(log.id);
+    setSelectedId(log.id);
+    if (Number.isFinite(id) && id > 0) {
+      router.push(cartonReadHref(id));
+    }
   };
 
   return (

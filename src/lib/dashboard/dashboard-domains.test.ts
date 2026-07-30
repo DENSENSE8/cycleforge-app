@@ -8,9 +8,12 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { FBA_OUTBOUND_PATH } from '@/lib/fba/fba-modes';
 import {
   getDashboardDomainFromSearch,
+  isRetiredFbaView,
   isRetiredSearchMode,
+  retiredFbaViewTarget,
   retiredSearchModeTarget,
 } from './dashboard-domains';
 
@@ -60,4 +63,20 @@ test('retiredSearchModeTarget: an open order wins, then the query, then the defa
   assert.equal(retiredSearchModeTarget(sp('mode=search&map=recent')), '/dashboard');
   // Whitespace-only params are not a query.
   assert.equal(retiredSearchModeTarget(sp('mode=search&q=%20%20')), '/dashboard');
+});
+
+test('a retired ?fba bookmark redirects to FBA\'s real home, not the Pending tab', () => {
+  // Row L deleted `'fba'` from DashboardOrderView. Without this redirect the
+  // bookmark fell THROUGH to Pending — neither of the outcomes the plan weighed,
+  // and a silent discard of what the operator asked for.
+  assert.equal(isRetiredFbaView(new URLSearchParams('fba')), true);
+  assert.equal(isRetiredFbaView(new URLSearchParams('fba=')), true);
+  assert.equal(isRetiredFbaView(new URLSearchParams('shipped')), false);
+  assert.equal(isRetiredFbaView(new URLSearchParams('')), false);
+
+  // The target is the FBA path SoT, never a hardcoded string, and it carries
+  // nothing: `?open=` here is an ORDER id while the board's `openShipmentId` is a
+  // SHIPMENT id, so forwarding it would focus an unrelated record.
+  assert.equal(retiredFbaViewTarget(), FBA_OUTBOUND_PATH);
+  assert.ok(!retiredFbaViewTarget().includes('?'));
 });

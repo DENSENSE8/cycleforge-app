@@ -98,19 +98,33 @@ export function gridTemplate(columns: readonly (TrackLike & { key: string })[]):
 }
 
 /**
- * Does a header's resolved label fit its track, or should it degrade to the
- * type glyph? Lives here rather than beside the alignment SoT because it is a
- * width calculation, and it is the only consumer.
+ * Does a header's resolved label fit its track, or must it degrade to the type
+ * glyph? The invariant is **never clip; degrade** — a glyph is a complete symbol
+ * an operator learns, a truncated word has to be decoded and can be misread.
  *
- * Deliberately estimated, not measured: headers render at `text-role-eyebrow`,
- * which binds the condensed cut at ~10–11px with wide tracking (~0.42rem per
- * uppercase character). Reserved chrome is the type glyph, its gap, the sort
- * chevron and the cell inset (~1.75rem). Measuring would mean a layout read in
- * render; erring narrow costs a glyph fallback, erring wide costs a clipped
- * word, so the estimate rounds toward the glyph.
+ * The constants are calibrated against MEASURED render metrics (Chrome, 16px
+ * root, `/unbox` header), not guessed:
+ *
+ * | Part | Measured | rem |
+ * |---|---|---|
+ * | cell inset (`px-2` both sides) | 16px | 1.00 |
+ * | type glyph + its gap | 12px + 4px | 1.00 |
+ * | sort chevron + its gap | 12px + 4px | 1.00 |
+ * | `UNBOXED` at role-eyebrow (10px condensed, 0.6px tracking) | 45.6px / 7 chars | 0.407/char |
+ *
+ * So base chrome is **2rem** (inset + glyph) and the char cost rounds up to
+ * `0.42` to stay conservative. The earlier `1.75` under-reserved by 20px and
+ * silently assumed the chevron was free — which is exactly how `UNBOXED` shipped
+ * clipped once the column was sorted (77.6px fit in 80px, but 93.6px with the
+ * chevron did not).
+ *
+ * There is no separate chevron budget: `GridHeaderLabel` renders ONE mark slot,
+ * swapping the type glyph for the sort chevron while a column is sorted. That is
+ * what keeps this a two-term calculation and keeps header geometry identical
+ * across sort states.
  */
 const HEADER_CHAR_REM = 0.42;
-const HEADER_CHROME_REM = 1.75;
+const HEADER_CHROME_REM = 2;
 
 function gridHeaderLabelFits(trackRem: number, label: string): boolean {
   return trackRem >= label.trim().length * HEADER_CHAR_REM + HEADER_CHROME_REM;

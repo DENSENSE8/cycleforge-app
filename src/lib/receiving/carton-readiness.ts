@@ -1,21 +1,21 @@
 import { workflowStage } from '@/lib/receiving/workflow-stages';
 import type { ReceivingDetailsLog } from '@/components/station/receiving-details-log';
 
-export type CartonPipelineKey = 'scanned' | 'unboxed' | 'received';
-export type CartonPipelineState = 'done' | 'active' | 'pending';
+type CartonPipelineKey = 'scanned' | 'unboxed' | 'received';
+type CartonPipelineState = 'done' | 'active' | 'pending';
 
-export type CartonReadinessStage =
+type CartonReadinessStage =
   | 'awaiting_scan'
   | 'awaiting_unbox'
   | 'awaiting_receive'
   | 'lines_in_progress'
   | 'carton_received';
 
-export type CartonReadinessCta = 'continue_unbox' | 'match_po' | 'none';
+type CartonReadinessCta = 'continue_unbox' | 'match_po' | 'none';
 
-export type CartonReadinessPillTone = 'neutral' | 'blue' | 'amber' | 'emerald';
+type CartonReadinessPillTone = 'neutral' | 'blue' | 'amber' | 'emerald';
 
-export type CartonReadiness = {
+type CartonReadiness = {
   stage: CartonReadinessStage;
   headline: string;
   nextStep: string;
@@ -26,7 +26,7 @@ export type CartonReadiness = {
   linesComplete?: number;
 };
 
-export type ReceivingMatchLine = {
+type ReceivingMatchLine = {
   quantity_expected?: number | null;
   quantity_received?: number | null;
   workflow_status?: string | null;
@@ -36,7 +36,7 @@ function hasStamp(value: string | null | undefined): boolean {
   return Boolean(value && String(value).trim());
 }
 
-export function summarizeReceivingMatchLines(
+function summarizeReceivingMatchLines(
   lines: ReadonlyArray<ReceivingMatchLine> | null | undefined,
 ): { lineCount: number; linesComplete: number; slowestWorkflowStatus: string | null } {
   const arr = Array.isArray(lines) ? lines : [];

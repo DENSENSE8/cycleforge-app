@@ -14,17 +14,13 @@ import {
   HELPDESK_NOT_CONNECTED_MESSAGE,
 } from '@/lib/integrations/helpdesk';
 import {
-  readPhotoBytes,
   archiveClaimToFolder,
   archiveClaimViaAgent,
   poReceivingLink,
   resolveClaimArchivePhotoUrl,
 } from '@/lib/receiving-claim-photos';
-import { readPhotoBytesById } from '@/lib/photos/read-bytes';
-import {
-  getReceivingPhotosByIds,
-  listAllReceivingPhotoIds,
-} from '@/lib/photos/queries/receiving-list';
+import { uploadClaimPhotosToHelpdesk } from '@/lib/receiving-claim-attach';
+import { listAllReceivingPhotoIds } from '@/lib/photos/queries/receiving-list';
 import { createSharePack } from '@/lib/photos/share-packs';
 import { linkPhoto } from '@/lib/photos/service';
 import { buildExternalId, linkTicket } from '@/lib/zendesk-links';
@@ -185,35 +181,16 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         // Upload the operator's selected photos to Zendesk as real file
         // attachments (not links). Scoped to this carton's photos for safety;
         // best-effort per file so one unreadable photo never blocks the claim.
-        const uploads: string[] = [];
         const ids = Array.isArray(body.attachPhotoIds)
           ? body.attachPhotoIds.map(Number).filter((n) => Number.isFinite(n) && n > 0)
           : [];
-        if (ids.length > 0) {
-          const photoRows = await getReceivingPhotosByIds({
-            organizationId: ctx.organizationId,
-            receivingId,
-            photoIds: ids,
-          });
-          let seq = 0;
-          for (const row of photoRows) {
-            let pb = await readPhotoBytesById(row.id, ctx.organizationId);
-            if (!pb) pb = await readPhotoBytes(String(row.url || ''));
-            if (!pb) continue;
-            seq += 1;
-            const ext = (
-              /\.([A-Za-z0-9]+)$/.exec(pb.filename)?.[1] ||
-              pb.contentType.split('/')[1] ||
-              'jpg'
-            ).toLowerCase();
-            const fileName = `${fileLabel}_${String(seq).padStart(3, '0')}.${ext}`;
-            try {
-              uploads.push(await helpdesk.uploadAttachment(fileName, pb.bytes, pb.contentType));
-            } catch (upErr) {
-              console.warn('[zendesk-claim] photo upload failed', row.id, upErr);
-            }
-          }
-        }
+        const uploads = await uploadClaimPhotosToHelpdesk({
+          helpdesk,
+          organizationId: ctx.organizationId,
+          receivingId,
+          photoIds: ids,
+          fileLabel,
+        });
 
         // Create the ticket directly via the Zendesk REST API. external_id is set
         // at creation so the support workspace can resolve this claim. Selected

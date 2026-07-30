@@ -23,6 +23,12 @@ interface Params {
   receivingId: number | null | undefined;
   lineId: number | null | undefined;
   claimType: ClaimType;
+  /**
+   * The link flow's already-linked ticket id. When set, the subject seeds
+   * from THAT ticket's real title (not the generated PO template) — the
+   * operator is updating an existing ticket, not naming a new one.
+   */
+  linkedTicketId?: number | null;
 }
 
 /**
@@ -31,7 +37,14 @@ interface Params {
  * changes, and stops overwriting a field once the operator has touched it.
  * "Reset to template" clears the touched flags and forces a refetch.
  */
-export function useClaimTemplate({ open, active, receivingId, lineId, claimType }: Params): UseClaimTemplate {
+export function useClaimTemplate({
+  open,
+  active,
+  receivingId,
+  lineId,
+  claimType,
+  linkedTicketId,
+}: Params): UseClaimTemplate {
   const [subject, setSubject] = useState('');
   const [description, setDescription] = useState('');
   const [previewLoading, setPreviewLoading] = useState(false);
@@ -91,6 +104,30 @@ export function useClaimTemplate({ open, active, receivingId, lineId, claimType 
       ctrl.abort();
     };
   }, [open, active, receivingId, lineId, claimType, resetNonce]);
+
+  // Link flow: once a ticket is linked, prefill Subject from ITS real title
+  // instead of the generated PO template — the operator is updating an
+  // existing ticket, not naming a new one. Runs after (and so wins over) the
+  // preview fetch above; the body still comes from the generated template.
+  useEffect(() => {
+    if (!open || !active || !linkedTicketId) return;
+    const ctrl = new AbortController();
+    fetch(`/api/receiving/zendesk-claim/thread?ticketId=${linkedTicketId}`, { signal: ctrl.signal })
+      .then((r) => r.json().catch(() => null))
+      .then((data) => {
+        const ticketSubject =
+          typeof data?.ticket?.subject === 'string' ? data.ticket.subject.trim() : '';
+        if (!subjectTouched.current && ticketSubject) {
+          setSubject(ticketSubject);
+        }
+      })
+      .catch(() => {
+        /* best-effort — the generated/template subject still stands */
+      });
+    return () => {
+      ctrl.abort();
+    };
+  }, [open, active, linkedTicketId, resetNonce]);
 
   const onSubjectChange = (v: string) => {
     subjectTouched.current = true;

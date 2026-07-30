@@ -18,6 +18,17 @@ export const NANGO_BACKED_PROVIDERS: Partial<Record<IntegrationProvider, string>
   // Pilot: Square's OAuth connect flow was the one real gap. Note the Nango
   // catalog key is "squareup", not "square".
   square: 'squareup',
+  // Shopify declares authKind 'nango' in the connector registry, so it must
+  // appear here or its hosted connect flow is unreachable — the session route
+  // rejects any provider absent from this map, meaning the org could never get
+  // a connection marker and shopifySync always threw "No Nango connection".
+  // Pinned by registry-parity.test.ts.
+  //
+  // PREREQUISITE (external, not code): a Shopify integration with this exact
+  // config key and the `read_orders` scope must exist in the Nango dashboard
+  // before the connect button can complete. Until then orgs stay on the vault
+  // paste-key path, which shopifyGraphql now falls back to correctly.
+  shopify: 'shopify',
 };
 
 export function isNangoBackedProvider(provider: string): provider is IntegrationProvider {

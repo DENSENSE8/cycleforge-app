@@ -5,6 +5,7 @@ import { parsePositiveInt } from '@/utils/number';
 import { TECH_EMPLOYEE_IDS } from '@/utils/staff';
 import { isTransientDbError, queryWithRetry } from '@/lib/db-retry';
 import { withAuth } from '@/lib/auth/withAuth';
+import { sqlOrderHasTechScan } from '@/lib/orders/order-grain-sql';
 
 /**
  * GET /api/orders/next - Get next order(s) for the signed-in tech.
@@ -70,43 +71,8 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     );
 
     // $1 = techIdScope array — used for the assignment visibility filter throughout
-    // Hide from up-next when any station_activity_log is tied to this shipment, OR when
-    // a TECH scan row matches the order's tracking via scan_ref (same idea as /api/tech-logs
-    // order_match) — otherwise SAL rows with NULL shipment_id still show in TechTable but
-    // would not match `sal.shipment_id = o.shipment_id`.
-    // sal.scan_ref / tracking match on normalized tracking strings, which can
-    // collide across tenants — scope the SAL row to this order's org.
-    const techSalTrackingMatch = `
-      sal.station = 'TECH'
-      AND sal.organization_id = o.organization_id
-      AND sal.activity_type IN ('TRACKING_SCANNED', 'SERIAL_ADDED', 'FNSKU_SCANNED')
-      AND stn.id IS NOT NULL
-      AND stn.tracking_number_raw IS NOT NULL
-      AND BTRIM(stn.tracking_number_raw) <> ''
-      AND COALESCE(sal.scan_ref, sal_stn.tracking_number_raw, '') <> ''
-      AND BTRIM(COALESCE(sal.scan_ref, sal_stn.tracking_number_raw, '')) <> ''
-      AND RIGHT(regexp_replace(UPPER(stn.tracking_number_raw), '[^A-Z0-9]', '', 'g'), 18) =
-          RIGHT(regexp_replace(UPPER(COALESCE(sal.scan_ref, sal_stn.tracking_number_raw, '')), '[^A-Z0-9]', '', 'g'), 18)
-    `;
-    // NOT EXISTS(A OR B) ≡ NOT EXISTS(A) AND NOT EXISTS(B). Splitting lets the
-    // cheap, indexed shipment_id arm (idx_station_activity_logs_shipment_id) run
-    // first and short-circuit — most orders already have a linked shipment scan,
-    // so the expensive regex tracking-match arm is never evaluated for them.
-    const noTechScanClause = `
-      NOT EXISTS (
-        SELECT 1
-        FROM station_activity_logs sal
-        WHERE sal.shipment_id IS NOT NULL
-          AND sal.shipment_id = o.shipment_id
-          AND sal.organization_id = o.organization_id
-      )
-      AND NOT EXISTS (
-        SELECT 1
-        FROM station_activity_logs sal
-        LEFT JOIN shipping_tracking_numbers sal_stn ON sal_stn.id = sal.shipment_id
-        WHERE ${techSalTrackingMatch}
-      )
-    `;
+    // CF-04: order-grain tech scan — sibling orders sharing a carton stay in Up Next.
+    const noTechScanClause = `NOT ${sqlOrderHasTechScan('o')}`;
 
     // Joins shared by both the count query and the main query
     const sharedJoins = `
@@ -141,19 +107,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       ) wa_deadline ON TRUE
       LEFT JOIN staff staff_t ON staff_t.id = wa_t.assigned_tech_id AND staff_t.organization_id = o.organization_id
       LEFT JOIN LATERAL (
-        SELECT EXISTS (
-          SELECT 1
-          FROM station_activity_logs sal
-          LEFT JOIN shipping_tracking_numbers sal_stn ON sal_stn.id = sal.shipment_id
-          WHERE (
-            sal.shipment_id IS NOT NULL
-            AND sal.shipment_id = o.shipment_id
-            AND sal.organization_id = o.organization_id
-          )
-          OR (
-            ${techSalTrackingMatch}
-          )
-        ) AS has_scan
+        SELECT ${sqlOrderHasTechScan('o')} AS has_scan
       ) sal_scan ON true
     `;
 

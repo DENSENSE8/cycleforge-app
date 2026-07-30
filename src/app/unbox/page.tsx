@@ -1,5 +1,6 @@
 import { ReceivingSurfacePage } from '@/components/receiving/ReceivingSurfacePage';
 import { SurfaceGate } from '@/components/surfaces/SurfaceGate';
+import { SurfaceParamHygiene } from '@/components/routing/SurfaceParamHygiene';
 
 /**
  * `/unbox` — the Unbox operator surface as a first-class, semantic route
@@ -13,8 +14,11 @@ import { SurfaceGate } from '@/components/surfaces/SurfaceGate';
  */
 export default function UnboxPage() {
   return (
-    <SurfaceGate surfaceKey="unbox">
-      <ReceivingSurfacePage mobileTitle="Unbox" surface="unbox" />
-    </SurfaceGate>
+    <>
+      <SurfaceParamHygiene />
+      <SurfaceGate surfaceKey="unbox">
+        <ReceivingSurfacePage mobileTitle="Unbox" surface="unbox" />
+      </SurfaceGate>
+    </>
   );
 }

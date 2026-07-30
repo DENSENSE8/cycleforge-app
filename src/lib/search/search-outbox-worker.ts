@@ -87,7 +87,23 @@ const LOADER_SQL: Record<SearchEntityType, string> = {
            MAX(stn.tracking_number_raw)                              AS tracking_number,
            MAX(NULLIF(stn.carrier, 'UNKNOWN'))                       AS carrier
     FROM orders o
-    LEFT JOIN tech_serial_numbers tsn       ON tsn.shipment_id = o.shipment_id
+    LEFT JOIN tech_serial_numbers tsn       ON (
+      tsn.organization_id = o.organization_id
+      AND (
+        tsn.order_id = o.id
+        OR (
+          tsn.order_id IS NULL
+          AND o.shipment_id IS NOT NULL
+          AND tsn.shipment_id = o.shipment_id
+          AND NOT EXISTS (
+            SELECT 1 FROM orders o2
+            WHERE o2.shipment_id = o.shipment_id
+              AND o2.organization_id = o.organization_id
+              AND o2.id <> o.id
+          )
+        )
+      )
+    )
     LEFT JOIN shipping_tracking_numbers stn ON stn.id = o.shipment_id
     WHERE o.organization_id = $1 AND o.id = ANY($2::bigint[])
     GROUP BY o.id`,

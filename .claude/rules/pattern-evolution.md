@@ -21,7 +21,10 @@ it never blocks serving a new one. When jobs differ, add the sibling and share t
 3. **Promote, then compose** — improve the registry so the *next* caller inherits the better pattern.
 4. Pair every hard "don't" with a concrete "do" (prefer / extend / import X) — bare prohibition lists
    cause conservative half-fixes.
-5. **Recommend even when you only implement the asked slice** — a short note:
+5. **Read/work pairs share the read model + atoms only.** Carton **read** (`/carton`) vs Unbox
+   **work**: never require shared layout panels or identity cards. A new assembly for the read job is
+   correct. Anti-pattern name: **lobotomized work chrome** (work panels with edits stripped).
+6. **Recommend even when you only implement the asked slice** — a short note:
 
    ```markdown
    ### Compound opportunities

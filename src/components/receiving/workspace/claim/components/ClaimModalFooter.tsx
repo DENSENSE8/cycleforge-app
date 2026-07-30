@@ -34,14 +34,14 @@ function SellerActions({ c }: { c: ReceivingClaimController }) {
 /** Contextual footer actions — varies by wizard step and mode. */
 export function ClaimModalFooter({ c }: { c: ReceivingClaimController }) {
   const { search } = c;
-  const busy = c.submitting || c.archiveSubmitting || c.linking || c.unlinking;
+  const busy = c.submitting || c.archiveSubmitting || c.linking || c.unlinking || c.linkUpdating;
   const isCreate = c.mode === 'create';
   const step = c.createStep;
   const linkStep = c.linkStep;
 
   const showBack = isCreate
     ? step === 'compose' || step === 'review'
-    : linkStep === 'linked' || linkStep === 'seller';
+    : linkStep === 'photos' || linkStep === 'compose' || linkStep === 'review' || linkStep === 'linked' || linkStep === 'seller';
   const onBack = isCreate ? c.goBack : c.goLinkBack;
 
   return (
@@ -104,9 +104,15 @@ export function ClaimModalFooter({ c }: { c: ReceivingClaimController }) {
         ) : null}
 
         {isCreate && step === 'confirm' ? (
-          <Button type="button" variant="primary" size="md" onClick={c.continueToSeller}>
-            Continue to seller →
-          </Button>
+          c.sellerStepApplicable ? (
+            <Button type="button" variant="primary" size="md" onClick={c.continueToSeller}>
+              Continue to seller →
+            </Button>
+          ) : (
+            <Button type="button" variant="primary" size="md" onClick={c.onClose}>
+              Done
+            </Button>
+          )
         ) : null}
 
         {isCreate && step === 'seller' ? <SellerActions c={c} /> : null}
@@ -129,10 +135,49 @@ export function ClaimModalFooter({ c }: { c: ReceivingClaimController }) {
           </Button>
         ) : null}
 
-        {!isCreate && linkStep === 'linked' ? (
-          <Button type="button" variant="primary" size="md" onClick={c.continueToSeller}>
-            Continue to seller →
+        {!isCreate && linkStep === 'photos' ? (
+          <Button type="button" variant="primary" size="md" onClick={c.goLinkNext}>
+            Next: Ticket →
           </Button>
+        ) : null}
+
+        {!isCreate && linkStep === 'compose' ? (
+          c.composeComplete ? (
+            <Button type="button" variant="primary" size="md" onClick={c.goLinkNext} disabled={!c.composeComplete}>
+              Next: Review →
+            </Button>
+          ) : (
+            <HoverTooltip label="Add a subject and body first" asChild>
+              <Button type="button" variant="primary" size="md" onClick={c.goLinkNext} disabled={!c.composeComplete}>
+                Next: Review →
+              </Button>
+            </HoverTooltip>
+          )
+        ) : null}
+
+        {!isCreate && linkStep === 'review' ? (
+          <Button
+            type="button"
+            variant="danger"
+            size="md"
+            onClick={c.submitLinkUpdate}
+            disabled={c.linkUpdating || !c.row.receiving_id || !c.composeComplete}
+            icon={c.linkUpdating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Link2 className="h-3.5 w-3.5" />}
+          >
+            {c.linkUpdating ? 'Posting…' : 'Update ticket & back up →'}
+          </Button>
+        ) : null}
+
+        {!isCreate && linkStep === 'linked' ? (
+          c.sellerStepApplicable ? (
+            <Button type="button" variant="primary" size="md" onClick={c.continueToSeller}>
+              Continue to seller →
+            </Button>
+          ) : (
+            <Button type="button" variant="primary" size="md" onClick={c.onClose}>
+              Done
+            </Button>
+          )
         ) : null}
 
         {!isCreate && linkStep === 'seller' ? <SellerActions c={c} /> : null}

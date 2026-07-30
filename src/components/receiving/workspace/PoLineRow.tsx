@@ -424,7 +424,10 @@ export function PoLineRow({
                 </HoverTooltip>
               </div>
             ) : typeof activeRowSlot === 'function'
-              ? activeRowSlot({ serials: line.serials ?? [] })
+              ? activeRowSlot({
+                  serials: line.serials ?? [],
+                  units: line.units ?? [],
+                })
               : activeRowSlot}
           </div>
         </motion.div>

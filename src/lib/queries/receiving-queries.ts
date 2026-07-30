@@ -336,13 +336,20 @@ export function writeReceivingSiblingLine<L extends { id: number }>(
  * the shared choke point for matched (`useLineSerials`) and unfound
  * (`useActiveUnfoundLineSerials`) optimistic serial CRUD. Maps an existing row;
  * does not insert (use {@link writeReceivingSiblingLine} for new lines).
+ *
+ * Optional `units` patches materialised `receiving_line_unit` rows in the same
+ * write — used by by-id `include=serials` refresh so the multi-qty green check
+ * keeps durable unit ids. Omit `units` on serial-only optimistic CRUD so a
+ * scan confirm never blanks a previously hydrated units list.
  */
 export function publishLineSerials(
   queryClient: QueryClient,
   receivingId: number | null | undefined,
   lineId: number,
   serials: unknown[],
+  units?: unknown[] | null,
 ): void {
+  const unitsPatch = units !== undefined ? { units } : {};
   if (receivingId != null && Number.isFinite(receivingId) && receivingId > 0) {
     queryClient.setQueryData<ReceivingSiblingsCache>(
       receivingSiblingsQueryKey(receivingId),
@@ -351,7 +358,7 @@ export function publishLineSerials(
           ? {
               ...prev,
               receiving_lines: prev.receiving_lines.map((r) =>
-                r.id === lineId ? { ...r, serials } : r,
+                r.id === lineId ? { ...r, serials, ...unitsPatch } : r,
               ),
             }
           : prev,
@@ -360,7 +367,7 @@ export function publishLineSerials(
   if (typeof window !== 'undefined') {
     window.dispatchEvent(
       new CustomEvent('receiving-line-updated', {
-        detail: { id: lineId, serials },
+        detail: { id: lineId, serials, ...unitsPatch },
       }),
     );
   }

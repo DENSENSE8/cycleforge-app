@@ -1,12 +1,12 @@
 'use client';
 
 /**
- * Station utilities — top-right corner bookmark tab.
+ * Station utilities — top-right floating shell.
  *
  * Hosts refresh · more · info via {@link StationHeaderToolbar} (Unbox + Arrival).
- * Rendered flush to the work-canvas top + right edges in {@link StationContextBar}
- * so the centered identity bookmark stays true-center. No top/right hairline —
- * left + bottom stroke only ({@link stationMoreDetailsPanelClass}).
+ * Rendered at the work-canvas top + right edges in
+ * {@link StationContextBar} so the centered identity shell stays true-center.
+ * Full radius + full hairline ({@link stationMoreDetailsPanelClass}).
  * Pad + gap match GlobalHeader icon rail.
  */
 

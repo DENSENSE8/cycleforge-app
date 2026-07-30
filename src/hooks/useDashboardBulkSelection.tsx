@@ -110,11 +110,11 @@ export function useDashboardBulkSelection(
 ): DashboardBulkSelection {
   const searchParams = useSearchParams();
   const domain = getDashboardDomainFromSearch(searchParams);
-  const selectionEnabled = orderView !== 'fba';
+  const selectionEnabled = true;
   // Packed reuses the shipped row/delete path (packer records with packed_at).
   const isShippedView = orderView === 'shipped' || orderView === 'packed';
   /** Pre-pack lanes — work is still ahead of the unit (assign, date, prep labels). */
-  const isPrePack = orderView !== 'shipped' && orderView !== 'packed' && orderView !== 'fba';
+  const isPrePack = orderView !== 'shipped' && orderView !== 'packed';
   /** Post-pack lanes — the shipping document exists and can be reprinted. */
   const isPostPack = orderView === 'packed' || orderView === 'shipped';
   // Always-on left gutter when the surface supports selection (To Ship / Packed /

@@ -20,6 +20,7 @@ import { OperationsDashboard } from '@/features/operations/components/Operations
 import { OperationsAnalyticsView } from './OperationsAnalyticsView';
 import { OperationsInsightsView } from './OperationsInsightsView';
 import { OperationsHistoryView } from './OperationsHistoryView';
+import { OperationsReconciliationView } from './OperationsReconciliationView';
 import { OperationsTvBoard } from './OperationsTvBoard';
 import { SignalsWorkspace } from '@/features/signals/SignalsWorkspace';
 
@@ -58,6 +59,7 @@ export function OperationsWorkspace() {
   if (mode === 'insights') return <OperationsInsightsView />;
   if (mode === 'history') return <OperationsHistoryView />;
   if (mode === 'signals') return <SignalsWorkspace />;
+  if (mode === 'reconciliation') return <OperationsReconciliationView />;
   if (mode === 'plans') return <OperationsPlansRedirect />;
   return <OperationsDashboard />;
 }

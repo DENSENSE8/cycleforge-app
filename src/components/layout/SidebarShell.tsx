@@ -16,9 +16,10 @@ import { FilterRefinementBar, type FilterRefinementBarProps } from '@/design-sys
  * The shell owns the structure so panels supply only slots, never layout:
  *
  *   h-full flex flex-col overflow-hidden     ← outer column (never scrolls)
- *     headerAbove                            ← pinned: filterControl / eyebrow / mode rail
+ *     headerAbove                            ← pinned: filterControl / eyebrow / facet filters
  *     <FilterRefinementBar/> (optional)      ← the glassmorphic filter pill
- *     headerRows[]  (each a 40px pill band)  ← pinned: tabs / field scopes / chips
+ *     headerRows[]  (each a 40px pill band)  ← pinned: sub-tabs / field scopes / chips
+ *                                            (NOT page L2 — that lives in GlobalHeader)
  *     headerBelow                            ← pinned, non-banded, OUTSIDE the scroll
  *     children  (flex-1 overflow-y-auto)     ← the only scrolling region
  *     footer                                 ← pinned bottom, OUTSIDE the scroll

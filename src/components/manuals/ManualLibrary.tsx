@@ -105,10 +105,15 @@ export function ManualLibrary() {
     };
   }, [id, reloadToken]);
 
-  // Re-fetch when ANY modal fires a manuals-update event — covers edits to
-  // this manual + replaces (new source_url to swap into the iframe).
+  // Re-fetch when a modal fires manuals-updated (edit / replace / delete).
+  // Thumbnail-only saves skip the viewer reload — the PDF URL did not change
+  // and bumping reloadToken would clear+remount the iframe for no reason.
   useEffect(() => {
-    const onUpdated = () => setReloadToken((n) => n + 1);
+    const onUpdated = (e: Event) => {
+      const detail = (e as CustomEvent<{ thumbnailOnly?: boolean }>).detail;
+      if (detail?.thumbnailOnly) return;
+      setReloadToken((n) => n + 1);
+    };
     window.addEventListener('manuals-updated', onUpdated);
     return () => window.removeEventListener('manuals-updated', onUpdated);
   }, []);
@@ -130,10 +135,17 @@ export function ManualLibrary() {
       try {
         const res = await fetch('/api/product-manuals/thumbnail', { method: 'POST', body: form });
         if (!res.ok) return;
-        // Refresh the local row + tell the sidebar so its FileButton picks
-        // up the new thumbnail URL without a full page reload.
-        setReloadToken((n) => n + 1);
-        window.dispatchEvent(new CustomEvent('manuals-updated'));
+        const json = await res.json().catch(() => ({}));
+        const thumbnailUrl =
+          typeof json?.thumbnailUrl === 'string' ? json.thumbnailUrl : null;
+        if (cancelled || !thumbnailUrl) return;
+        // Patch local state only — do not bump reloadToken (that re-fetches
+        // the row and cache-busts the PDF iframe for a thumb-only write).
+        setManual((prev) => (prev && prev.id === manual.id ? { ...prev, thumbnail_url: thumbnailUrl } : prev));
+        // Tell the sidebar so its FileButton picks up the new thumbnail URL.
+        window.dispatchEvent(
+          new CustomEvent('manuals-updated', { detail: { thumbnailOnly: true } }),
+        );
       } catch {
         // Best-effort — the next viewer to open this manual will retry.
       }
@@ -141,15 +153,19 @@ export function ManualLibrary() {
     return () => { cancelled = true; };
   }, [manual]);
 
+  // Only render a row whose id matches ?id= — avoids one-frame flash of the
+  // previous PDF when the operator switches manuals before the fetch lands.
+  const resolved = manual && id && manual.id === id ? manual : null;
+
   if (!id) return <EmptyViewer />;
-  if (loading && !manual) {
-    return (
-      <div className="flex h-full w-full items-center justify-center bg-surface-canvas">
-        <Loader2 className="h-6 w-6 animate-spin text-text-faint" />
-      </div>
-    );
-  }
-  if (!manual) {
+  if (!resolved) {
+    if (loading || (manual != null && manual.id !== id)) {
+      return (
+        <div className="flex h-full w-full items-center justify-center bg-surface-canvas">
+          <Loader2 className="h-6 w-6 animate-spin text-text-faint" />
+        </div>
+      );
+    }
     return (
       <div className="flex h-full w-full flex-col items-center justify-center bg-surface-canvas px-8 text-center">
         <FileText className="mb-3 h-10 w-10 text-text-faint" />
@@ -157,7 +173,7 @@ export function ManualLibrary() {
       </div>
     );
   }
-  return <ManualViewer manual={manual} />;
+  return <ManualViewer manual={resolved} />;
 }
 
 function ManualViewer({ manual }: { manual: ManualDetail }) {

@@ -105,8 +105,24 @@ export const GET = withAuth(async (request: NextRequest, ctx) => {
         (
           SELECT array_agg(DISTINCT tsn.serial_number ORDER BY tsn.serial_number)
           FROM tech_serial_numbers tsn
-          WHERE tsn.shipment_id = o.shipment_id AND tsn.serial_number IS NOT NULL
+          WHERE tsn.serial_number IS NOT NULL
             AND tsn.organization_id = o.organization_id
+            AND (
+              -- CF-03: prefer explicit order bind
+              tsn.order_id = o.id
+              -- Dual-read sunset: legacy shipment-grain only when sole order on carton
+              OR (
+                tsn.order_id IS NULL
+                AND tsn.shipment_id IS NOT NULL
+                AND tsn.shipment_id = o.shipment_id
+                AND NOT EXISTS (
+                  SELECT 1 FROM orders o2
+                  WHERE o2.shipment_id = o.shipment_id
+                    AND o2.organization_id = o.organization_id
+                    AND o2.id <> o.id
+                )
+              )
+            )
         ),
         ARRAY[]::text[]
       ) AS serials

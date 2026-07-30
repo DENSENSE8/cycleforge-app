@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { AlertCircle } from '@/components/Icons';
 import { ShippingRecentRail } from '@/components/sidebar/shipping/ShippingRecentRail';
 import { ShippingScanBar } from '@/components/sidebar/tech/ShippingScanBar';
 import { ScanBandShell } from '@/components/station/scan-bar';
@@ -16,6 +18,11 @@ import { safeChannelName, getStaffStationBridgeChannelName } from '@/lib/realtim
 import { useUnitPhotoRequestPublisher } from '@/components/sidebar/receiving/useUnitPhotoRequestPublisher';
 import { UnitPhotoRequestStatus } from '@/components/station/UnitPhotoRequestStatus';
 import { scannedUnitKey } from '@/lib/barcode-routing';
+import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
+import {
+  useMotionPresence,
+  useMotionTransition,
+} from '@/design-system/foundations/motion-framer-hooks';
 
 interface StationTestingProps {
   userId: string;
@@ -95,6 +102,7 @@ export default function StationTesting({
     triggerGlobalRefresh,
     clearFeedback,
     reopenLastActiveOrderCard,
+    errorMessage,
   } = useStationTestingController({
     userId,
     userName,
@@ -211,6 +219,9 @@ export default function StationTesting({
     ],
   );
 
+  const failPresence = useMotionPresence(framerPresence.stationCard);
+  const failTransition = useMotionTransition(framerTransition.stationCardMount);
+
   /* ── Flush 40px scan band (same ScanBandShell as Unbox / Shipping). ── */
   const scanBar = (
     <ShippingScanBar
@@ -228,6 +239,22 @@ export default function StationTesting({
 
   const feedbackBelow = (
     <div className={SIDEBAR_GUTTER}>
+      <AnimatePresence mode="wait">
+        {errorMessage && !activeOrder ? (
+          <motion.div
+            key="station-fail"
+            initial={failPresence.initial}
+            animate={failPresence.animate}
+            exit={failPresence.exit}
+            transition={failTransition}
+            role="alert"
+            className="mb-2 flex items-center gap-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-rose-800 shadow-sm"
+          >
+            <AlertCircle className="h-5 w-5 shrink-0" aria-hidden />
+            <p className="text-role-caption font-semibold">{errorMessage}</p>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
       <ActiveOrderScanFeedback activeOrder={activeOrder} />
       {lastUnitPhotoRequest ? (
         <UnitPhotoRequestStatus

@@ -4,9 +4,16 @@ import React, { useEffect, useState } from 'react';
 import { WifiOff, RefreshCw } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/design-system/primitives';
+import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
+import {
+  useMotionPresence,
+  useMotionTransition,
+} from '@/design-system/foundations/motion-framer-hooks';
 
 export function OfflineBanner() {
   const [isOffline, setIsOffline] = useState(false);
+  const presence = useMotionPresence(framerPresence.collapseHeight);
+  const transition = useMotionTransition(framerTransition.upNextCollapse);
 
   useEffect(() => {
     // Initial state
@@ -28,10 +35,8 @@ export function OfflineBanner() {
       {isOffline && (
         <motion.div
           key="offline-banner"
-          initial={{ height: 0, opacity: 0 }}
-          animate={{ height: 'auto', opacity: 1 }}
-          exit={{ height: 0, opacity: 0 }}
-          transition={{ duration: 0.2 }}
+          {...presence}
+          transition={transition}
           className="overflow-hidden"
         >
           <div className="flex items-center justify-between px-4 py-2.5 bg-navy-900 text-white">

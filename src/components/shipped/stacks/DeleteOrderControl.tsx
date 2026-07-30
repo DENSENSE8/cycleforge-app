@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Trash2 } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
 import { useDeleteOrderRow } from '@/hooks';
+import { toast } from '@/lib/toast';
 
 interface DeleteOrderControlProps {
   orderId: number;
@@ -65,7 +66,7 @@ export function DeleteOrderControl({
       onDeleted();
     } catch (error) {
       console.error('Failed to permanently delete order:', error);
-      window.alert('Failed to permanently delete order. Please try again.');
+      toast.error('Failed to permanently delete order. Please try again.');
     }
   };
 

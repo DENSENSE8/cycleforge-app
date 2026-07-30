@@ -116,7 +116,7 @@ export function registerScanTarget(focus: () => void): () => void {
  * agnostic (no React import), and any overlay anywhere may need to yield to a
  * scan without registering itself here.
  */
-export const SCAN_FOCUS_REQUESTED_EVENT = 'scan-focus-requested';
+const SCAN_FOCUS_REQUESTED_EVENT = 'scan-focus-requested';
 
 function focusTopTarget(): void {
   if (isBrowser()) {

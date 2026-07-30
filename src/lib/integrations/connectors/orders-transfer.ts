@@ -9,30 +9,35 @@
  * The NDJSON routes (/api/google-sheets/transfer-orders,
  * /api/ecwid/transfer-orders) stay in place deliberately. They are no longer
  * duplicated logic — after the ingest extraction they only call the job — and
- * they carry two things this non-streaming seam cannot: live per-phase progress
- * during a long sheet import, and the full result detail (unresolved tracking,
- * unmatched catalog, skipped-row breakdown) that the importer UI renders.
- * `SyncOutcome` below reduces all of that to two counters, so routing the
- * importer through here would visibly degrade it. Enriching `SyncOutcome` to
- * carry the detail is the prerequisite for retiring those routes.
+ * they still carry one thing this non-streaming seam cannot: live per-phase
+ * progress during a long sheet import.
+ *
+ * RESOLVED (2026-07-29) — result DETAIL is no longer the other gap. This header
+ * used to warn that `SyncOutcome` "reduces all of that to two counters, so
+ * routing the importer through here would visibly degrade it", and naming
+ * enrichment as the prerequisite for retiring those routes. The chrome popover
+ * (OrdersSyncPopover → useOrdersSync) was routed here anyway, before that work
+ * landed — so OrderSyncDialog, whose entire body is the per-row inserted /
+ * updated / unmatched-catalog lists, rendered blank for every run, and a sheet
+ * whose rows were all skipped for a blank Item Number looked exactly like an
+ * up-to-date one. `SyncOutcome` now carries `details` + `stats` (the skip
+ * breakdown), and `toOutcome` passes both through. Live-progress streaming is
+ * the only remaining reason those routes exist.
  */
 import type { OrgId } from '@/lib/tenancy/constants';
 import {
   GoogleSheetsTransferOrdersJobError,
   resolveTransferSourceSpreadsheetId,
   runGoogleSheetsTransferOrders,
-  type GoogleSheetsTransferOrdersJobResult,
 } from '@/lib/jobs/google-sheets-transfer-orders';
 import type { SyncOutcome } from './types';
 
-function toOutcome(r: GoogleSheetsTransferOrdersJobResult): SyncOutcome {
-  return {
-    ok: true,
-    imported: r.insertedOrders,
-    // Field updates + tracking attaches both count as "updated" rows.
-    updated: r.updatedOrdersFields + r.updatedOrdersTracking,
-  };
-}
+// The pure job-result → SyncOutcome mapping lives in a dependency-free sibling
+// so it stays importable from a unit test: this module reaches `@/lib/db` (and
+// its `server-only` guard) through the transfer job, which makes anything
+// beside it unloadable outside a server context. Bundle-altitude recipe from
+// build-gotchas.md.
+import { toOutcome } from './orders-transfer-outcome';
 
 function toError(e: unknown): SyncOutcome {
   if (e instanceof GoogleSheetsTransferOrdersJobError) {

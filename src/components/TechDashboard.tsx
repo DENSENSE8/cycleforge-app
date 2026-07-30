@@ -53,13 +53,9 @@ export default function TechDashboard({ techId }: TechDashboardProps) {
   const { activeOrderPane, setActiveOrderPane, previewOrder, setPreviewOrder } = useTechOrderPanes();
 
   const {
-    selectedLog,
-    setSelectedLog,
     repairPanel,
     setRepairPanel,
     loadingRepair,
-    handleLogUpdated,
-    handleLogDeleted,
   } = useTechDetailOverlays();
 
   return (
@@ -78,7 +74,6 @@ export default function TechDashboard({ techId }: TechDashboardProps) {
               onCloseActiveOrder={() => setActiveOrderPane(null)}
               previewOrder={previewOrder}
               onClosePreview={() => setPreviewOrder(null)}
-              onSelectLog={setSelectedLog}
             />
             {browseActive ? (
               <ContextualSelectionBar
@@ -94,10 +89,6 @@ export default function TechDashboard({ techId }: TechDashboardProps) {
       <StationDetailsHandler viewMode="history" />
 
       <TechDashboardOverlays
-        selectedLog={selectedLog}
-        onCloseLog={() => setSelectedLog(null)}
-        onLogUpdated={handleLogUpdated}
-        onLogDeleted={handleLogDeleted}
         repairPanel={repairPanel}
         onCloseRepair={() => setRepairPanel(null)}
         loadingRepair={loadingRepair}

@@ -25,15 +25,29 @@ export const CREATE_STEP_ORDER: readonly CreateClaimStep[] = [
 ] as const;
 
 /**
- * Linear link-flow wizard — the "Link existing" tab. One job per step:
- *   find   → search + select an existing Zendesk ticket
- *   linked → confirm the link + (optionally) back up carton photos to local storage
- *   seller → the seller-facing message
+ * Linear link-flow wizard — the "Link existing" tab. Mirrors the create-flow
+ * wizard once a ticket is picked, so photos/subject/body/recipients render
+ * and behave identically in either flow:
+ *   find    → search + select an existing Zendesk ticket
+ *   photos  → acknowledge/select evidence photos to attach to the ticket
+ *   compose → edit the ticket subject (prefilled from the ticket's own title)
+ *             + body + recipients, same as the create flow
+ *   review  → read-only summary, then post the comment (+ photos) to the ticket
+ *   linked  → update-posted confirmation + local-backup card
+ *   seller  → the seller-facing message (skipped for a 'return' claim — see
+ *             `sellerStepApplicable` on the controller)
  */
-export type LinkClaimStep = 'find' | 'linked' | 'seller';
+export type LinkClaimStep = 'find' | 'photos' | 'compose' | 'review' | 'linked' | 'seller';
 
 /** The fixed left-to-right order of the link-flow steps. */
-export const LINK_STEP_ORDER: readonly LinkClaimStep[] = ['find', 'linked', 'seller'] as const;
+export const LINK_STEP_ORDER: readonly LinkClaimStep[] = [
+  'find',
+  'photos',
+  'compose',
+  'review',
+  'linked',
+  'seller',
+] as const;
 
 /** The ticket that has been filed or linked for the current claim. */
 export interface FiledTicket {
@@ -84,9 +98,12 @@ export const CLAIM_WIZARD_STEPS = [
   { key: 'seller', label: 'Seller' },
 ] as const;
 
-/** The three link-flow steps, in order, for the linear header stepper. */
+/** The link-flow steps, in order, for the linear header stepper. */
 export const LINK_WIZARD_STEPS = [
   { key: 'find', label: 'Find' },
+  { key: 'photos', label: 'Photos' },
+  { key: 'compose', label: 'Ticket' },
+  { key: 'review', label: 'Review' },
   { key: 'linked', label: 'Linked' },
   { key: 'seller', label: 'Seller' },
 ] as const;

@@ -1,17 +1,24 @@
 'use client';
 
-import { Fragment, memo, useCallback, useState, type KeyboardEvent, type MouseEvent, type ReactNode } from 'react';
+import { Fragment, memo, type ReactNode } from 'react';
 import { Check } from '@/components/Icons';
+import { FulfillmentPickupPill } from '@/components/receiving/ReceivingIdentityChips';
+import { IncomingAttachTrackingButton } from '@/components/station/IncomingAttachTrackingButton';
 import {
   conditionGradeTableLabel,
   getStatusDotBg,
 } from '@/components/station/receiving-constants';
-import { IncomingAttachTrackingButton } from '@/components/station/IncomingAttachTrackingButton';
-import { FulfillmentPickupPill } from '@/components/receiving/ReceivingIdentityChips';
+import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import { ReceivingLineOrderRow } from '@/components/station/ReceivingLineOrderRow';
 import { OrderIdChip, TrackingChip, getLast4 } from '@/components/ui/CopyChip';
+import {
+  GridAgeCellValue,
+  GridCellDash,
+  GridDateCellValue,
+  GridPlatformMarkValue,
+} from '@/components/ui/grid-cells';
 import { ledgerRowStateClass } from '@/components/ui/queue-row-chrome';
-import { LedgerCellEditor } from '@/design-system/components/grid';
-import { focusRing } from '@/design-system/tokens/focus-ring';
+import { gridCellAlignClass } from '@/design-system/components/grid';
 import { usePlatformMeta } from '@/hooks/useCatalog';
 import { conditionGradeTextClass } from '@/lib/condition-tone';
 import { EMPTY_META_DASH, EMPTY_META_DASH_ALIGN_CLASS } from '@/lib/conditions';
@@ -31,7 +38,6 @@ import {
   type IncomingGridColumn,
 } from '@/lib/receiving/incoming-grid-layout';
 import { sourcePlatformMetaFromLabel } from '@/lib/source-platform';
-import { toast } from '@/lib/toast';
 import {
   formatDateKeyMedium,
   formatDateKeyShort,
@@ -40,17 +46,7 @@ import {
   getLaneAgeHours,
   toPSTDateKey,
 } from '@/utils/date';
-import {
-  GridAgeCellValue,
-  GridCellDash,
-  GridDateCellValue,
-  GridPlatformMarkValue,
-} from '@/components/ui/grid-cells';
-import { gridCellAlignClass } from '@/design-system/components/grid';
 import { cn } from '@/utils/_cn';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
-import { ReceivingLineOrderRow } from '@/components/station/ReceivingLineOrderRow';
-import { dispatchLineUpdated } from '@/components/station/receiving-lines-table-helpers';
 import { IncomingGridStatusCell } from './IncomingGridStatusCell';
 
 interface IncomingGridRowProps {
@@ -101,63 +97,6 @@ export const IncomingGridRow = memo(function IncomingGridRow({
   columns = INCOMING_GRID_COLUMNS,
 }: IncomingGridRowProps) {
   const resolvePlatformMeta = usePlatformMeta();
-  const [editingTitle, setEditingTitle] = useState(false);
-  const [editSeed, setEditSeed] = useState<string | null>(null);
-
-  const closeTitleEditor = useCallback(() => {
-    setEditingTitle(false);
-    setEditSeed(null);
-  }, []);
-
-  const openTitleEditor = useCallback((seed: string | null = null) => {
-    setEditSeed(seed);
-    setEditingTitle(true);
-  }, []);
-
-  const commitTitle = useCallback(
-    async (next: string) => {
-      const trimmed = next.trim();
-      if (!trimmed) return;
-      const catalogId = row.sku_catalog_id;
-      // Optimistic: bump every cascade field so the cell shows the edit immediately
-      // (list payloads prefer catalog_product_title over item_name).
-      dispatchLineUpdated({
-        id: row.id,
-        item_name: trimmed,
-        catalog_product_title: trimmed,
-        zoho_item_title: trimmed,
-      });
-
-      try {
-        const lineRes = await fetch('/api/receiving-lines', {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id: row.id, item_name: trimmed }),
-        });
-        const lineData = await lineRes.json().catch(() => null);
-        if (!lineRes.ok || !lineData?.success) {
-          throw new Error(lineData?.error || 'Failed to update title');
-        }
-
-        if (catalogId != null && Number.isFinite(catalogId) && catalogId > 0) {
-          const catRes = await fetch(`/api/sku-catalog/${catalogId}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ productTitle: trimmed }),
-          });
-          // Catalog manage may be gated — line item_name already persisted.
-          if (!catRes.ok) {
-            // Keep optimistic catalog title so the grid doesn't snap back.
-          }
-        }
-
-        toast.success('Title updated');
-      } catch (e) {
-        toast.error(e instanceof Error ? e.message : 'Failed to update title');
-      }
-    },
-    [row.id, row.sku_catalog_id],
-  );
 
   if (isMobile) {
     return (
@@ -229,38 +168,6 @@ export const IncomingGridRow = memo(function IncomingGridRow({
     />
   );
 
-  // Pending Sheets contract (OrdersQueueTableRow): in-cell editing stays armed
-  // regardless of selectMode — checkbox gutter toggles selection; title click
-  // edits. Mobile keeps the legacy stack (display-only).
-  const gridEditable = !isMobile;
-
-  // Pending navigate-mode cell trigger — click → edit (stopPropagation so the
-  // row doesn't open); Enter/F2 → edit in place; printable → replace content.
-  const titleTriggerProps = gridEditable
-    ? {
-        tabIndex: 0 as const,
-        'aria-label': `Edit title — ${productTitle}`,
-        onClick: (e: MouseEvent) => {
-          e.stopPropagation();
-          openTitleEditor();
-        },
-        onKeyDown: (e: KeyboardEvent) => {
-          if (e.key === 'Enter' || e.key === 'F2') {
-            e.preventDefault();
-            e.stopPropagation();
-            openTitleEditor();
-          } else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
-            e.preventDefault();
-            e.stopPropagation();
-            openTitleEditor(e.key);
-          } else if (e.key === 'Escape') {
-            e.stopPropagation();
-            (e.currentTarget as HTMLElement).blur();
-          }
-        },
-      }
-    : {};
-
   const statusDot = getStatusDotBg(
     row.workflow_status,
     row.quantity_received,
@@ -301,36 +208,21 @@ export const IncomingGridRow = memo(function IncomingGridRow({
           </div>
         );
       case 'title':
+        // Identity column — collection-map read-only
+        // (`isGridColumnInCellEditable` / GRID_IDENTITY_COLUMN_KEYS). Clicks
+        // fall through to the row (open record); title correction is rematch /
+        // catalog at the record plane, not an in-cell caret.
         return (
           <div
             data-col="title"
-            className={cn(
-              dataCell(col, rule),
-              INCOMING_GRID_FROZEN_CELL,
-              // `relative` required for LedgerCellEditor absolute overlay (Pending
-              // date/qty cells; title sticky alone is not enough under nest folds).
-              'relative gap-1.5',
-              gridEditable && focusRing('cell'),
-            )}
+            className={cn(dataCell(col, rule), INCOMING_GRID_FROZEN_CELL, 'gap-1.5')}
             style={{ left: incomingGridFrozenLeft('title') }}
             data-frozen-edge
-            {...titleTriggerProps}
           >
             <span className={cn('h-2 w-2 shrink-0 rounded-full', statusDot)} aria-hidden />
             <span className="min-w-0 flex-1 truncate text-role-data text-text-default">
               {productTitle}
             </span>
-            {editingTitle && gridEditable ? (
-              <LedgerCellEditor
-                initialValue={productTitle === 'Unnamed inbound line' ? '' : productTitle}
-                replaceWith={editSeed}
-                ariaLabel="Edit product title"
-                onCommit={(next) => {
-                  void commitTitle(next);
-                }}
-                onClose={closeTitleEditor}
-              />
-            ) : null}
           </div>
         );
       case 'date':
@@ -437,11 +329,9 @@ export const IncomingGridRow = memo(function IncomingGridRow({
       aria-pressed={selectMode ? undefined : isSelected}
       aria-label={`Select receiving line ${row.id}`}
       onClick={() => {
-        if (editingTitle) return;
         onSelect();
       }}
       onKeyDown={(event) => {
-        if (editingTitle) return;
         if (event.key === 'Enter' || event.key === ' ') {
           event.preventDefault();
           onSelect();

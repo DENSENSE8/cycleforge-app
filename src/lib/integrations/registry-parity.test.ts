@@ -2,7 +2,8 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { PROVIDER_CATALOG } from '@/app/settings/integrations/registry';
 import { VAULT_UPSERT_PROVIDERS } from './credential-schemas';
-import { getConnector } from './connectors/registry';
+import { getConnector, listConnectors } from './connectors/registry';
+import { isNangoBackedProvider } from './nango-providers';
 
 describe('integration registry parity', () => {
   it('every catalog provider has a connector entry', () => {
@@ -15,6 +16,22 @@ describe('integration registry parity', () => {
   it('every vault upsert provider has a connector entry', () => {
     for (const key of VAULT_UPSERT_PROVIDERS) {
       assert.ok(getConnector(key), `missing connector for vault upsert provider ${key}`);
+    }
+  });
+
+  // Regression: shopify shipped with authKind 'nango' but was never added to
+  // NANGO_BACKED_PROVIDERS, so its hosted connect flow was unreachable (the
+  // session route rejects any provider absent from that map) and it could never
+  // obtain a connection marker. Nothing failed loudly — the connector simply
+  // threw "No Nango connection" at sync time.
+  it("every authKind 'nango' connector is registered in NANGO_BACKED_PROVIDERS", () => {
+    for (const connector of listConnectors()) {
+      if (connector.authKind !== 'nango') continue;
+      assert.ok(
+        isNangoBackedProvider(connector.provider),
+        `connector ${connector.provider} declares authKind 'nango' but is missing from ` +
+          'NANGO_BACKED_PROVIDERS — its hosted connect flow is unreachable',
+      );
     }
   });
 

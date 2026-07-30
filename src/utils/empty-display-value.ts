@@ -11,7 +11,7 @@ export function missingItemNumberLabel(
   _orderId: string,
   _accountSource: string | null | undefined,
 ): string {
-  return 'N/A';
+  return '—';
 }
 
 export type StationOrderVariant = 'order' | 'fba' | 'repair';
@@ -21,5 +21,5 @@ export function missingItemNumberLabelForStation(
   _variant: StationOrderVariant,
   _accountSource?: string | null,
 ): string {
-  return 'N/A';
+  return '—';
 }

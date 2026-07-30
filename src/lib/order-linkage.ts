@@ -157,12 +157,25 @@ async function resolveOrderAnchor(
         [orgId, norm],
       );
       if (r.rows[0]) return { row: r.rows[0], matchedBy: 'serial' };
-      // Fallback: legacy tech_serial_numbers via shipment_id.
+      // Fallback: legacy tech_serial_numbers via explicit order_id, then sole-shipment dual-read.
       const r2 = await deps.query<OrderAnchorRow>(
         orgId,
         `SELECT ${ORDER_COLS}
            FROM tech_serial_numbers tsn
-           JOIN orders o ON o.shipment_id = tsn.shipment_id
+           JOIN orders o ON (
+             o.id = tsn.order_id
+             OR (
+               tsn.order_id IS NULL
+               AND o.shipment_id = tsn.shipment_id
+               AND tsn.shipment_id IS NOT NULL
+               AND NOT EXISTS (
+                 SELECT 1 FROM orders o2
+                 WHERE o2.shipment_id = tsn.shipment_id
+                   AND o2.organization_id = o.organization_id
+                   AND o2.id <> o.id
+               )
+             )
+           )
           WHERE o.organization_id = $1 AND tsn.serial_number = $2
           ORDER BY o.id DESC LIMIT 1`,
         [orgId, norm],
@@ -332,12 +345,27 @@ export async function resolveOrderLinkage(
   let serials: LinkageSerial[] = sres.rows
     .filter((s) => !!s.serial)
     .map((s) => ({ serialUnitId: Number(s.serial_unit_id), serial: String(s.serial), state: s.state }));
-  if (serials.length === 0 && row.shipment_id != null) {
+  if (serials.length === 0) {
+    // CF-03: prefer order_id; dual-read sole-shipment only for legacy null binds.
     const tsn = await deps.query<{ serial_number: string | null }>(
       orgId,
-      `SELECT DISTINCT serial_number FROM tech_serial_numbers
-        WHERE shipment_id = $1 AND serial_number IS NOT NULL`,
-      [row.shipment_id],
+      `SELECT DISTINCT serial_number FROM tech_serial_numbers tsn
+        WHERE tsn.serial_number IS NOT NULL
+          AND (
+            tsn.order_id = $1
+            OR (
+              tsn.order_id IS NULL
+              AND tsn.shipment_id IS NOT NULL
+              AND tsn.shipment_id = $2
+              AND NOT EXISTS (
+                SELECT 1 FROM orders o2
+                WHERE o2.shipment_id = tsn.shipment_id
+                  AND o2.organization_id = $3
+                  AND o2.id <> $1
+              )
+            )
+          )`,
+      [orderPk, row.shipment_id, orgId],
     );
     serials = tsn.rows
       .filter((t) => !!t.serial_number)

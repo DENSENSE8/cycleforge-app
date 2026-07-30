@@ -42,8 +42,23 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
         ORDER BY CASE wa.status WHEN 'IN_PROGRESS' THEN 1 WHEN 'ASSIGNED' THEN 2 WHEN 'OPEN' THEN 3 WHEN 'DONE' THEN 4 ELSE 5 END,
                  wa.updated_at DESC, wa.id DESC LIMIT 1
       ) wa_deadline ON TRUE
-      LEFT JOIN tech_serial_numbers tsn ON o.shipment_id = tsn.shipment_id AND o.shipment_id IS NOT NULL
-        AND tsn.organization_id = o.organization_id
+      LEFT JOIN tech_serial_numbers tsn ON (
+        tsn.organization_id = o.organization_id
+        AND (
+          tsn.order_id = o.id
+          OR (
+            tsn.order_id IS NULL
+            AND o.shipment_id IS NOT NULL
+            AND tsn.shipment_id = o.shipment_id
+            AND NOT EXISTS (
+              SELECT 1 FROM orders o2
+              WHERE o2.shipment_id = o.shipment_id
+                AND o2.organization_id = o.organization_id
+                AND o2.id <> o.id
+            )
+          )
+        )
+      )
       LEFT JOIN shipping_tracking_numbers stn ON stn.id = o.shipment_id
       WHERE o.account_source IS NOT NULL AND o.organization_id = $1
       GROUP BY o.id, o.order_id, o.product_title, o.sku, o.account_source, o.order_date,

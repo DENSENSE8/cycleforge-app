@@ -152,6 +152,16 @@ export function markReceivingSerialAbsent(
   }).catch(() => {});
 }
 
+type LineUnitWire = {
+  id: number;
+  ordinal: number;
+  serial_unit_id: number | null;
+  serial: string | null;
+  serial_absent: boolean;
+  serial_absent_reason: string | null;
+  condition_grade: string | null;
+};
+
 /**
  * Record a per-unit no-serial waiver — the choke point for the multi-qty row
  * green-check (UnitSlotList), so every caller persists the SAME durable fact
@@ -168,15 +178,7 @@ export function markReceivingUnitSerialAbsent(
   lineId: number,
   unitId: number,
   { absent, reason }: { absent: boolean; reason: string | null },
-  currentUnits: ReadonlyArray<{
-    id: number;
-    ordinal: number;
-    serial_unit_id: number | null;
-    serial: string | null;
-    serial_absent: boolean;
-    serial_absent_reason: string | null;
-    condition_grade: string | null;
-  }> | null | undefined,
+  currentUnits: ReadonlyArray<LineUnitWire> | null | undefined,
 ): void {
   if (typeof window === 'undefined' || !(lineId > 0) || !(unitId > 0)) return;
   if (currentUnits) {
@@ -198,4 +200,128 @@ export function markReceivingUnitSerialAbsent(
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ absent, reason }),
   }).catch(() => {});
+}
+
+/**
+ * Persist a per-unit condition grade on `receiving_line_unit` — Phase 4
+ * replacement for the ephemeral `pendingGrade` map. Same two-effect contract
+ * as {@link markReceivingUnitSerialAbsent}: optimistic `units[]` bus patch,
+ * then durable PATCH. Does NOT write `serial_units` — callers dual-call
+ * `setUnitGrade` when a serial is already linked.
+ */
+export function markReceivingUnitCondition(
+  lineId: number,
+  unitId: number,
+  conditionGrade: string,
+  currentUnits: ReadonlyArray<LineUnitWire> | null | undefined,
+): void {
+  if (typeof window === 'undefined' || !(lineId > 0) || !(unitId > 0)) return;
+  const grade = String(conditionGrade || '').trim().toUpperCase();
+  if (!grade) return;
+  if (currentUnits) {
+    dispatchLineUpdated({
+      id: lineId,
+      units: currentUnits.map((u) =>
+        u.id === unitId ? { ...u, condition_grade: grade } : u,
+      ),
+    });
+  }
+  void fetch(`/api/receiving/lines/${lineId}/units/${unitId}/condition`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ condition_grade: grade }),
+  }).catch(() => {});
+}
+
+/**
+ * Stamp every materialised unit on a line to one grade — the "All units"
+ * master picker. One bus patch (so intermediate frames aren't half-updated),
+ * then one durable PATCH per unit.
+ */
+export function markAllReceivingUnitsCondition(
+  lineId: number,
+  conditionGrade: string,
+  currentUnits: ReadonlyArray<LineUnitWire> | null | undefined,
+): void {
+  if (typeof window === 'undefined' || !(lineId > 0)) return;
+  const grade = String(conditionGrade || '').trim().toUpperCase();
+  if (!grade || !currentUnits || currentUnits.length === 0) return;
+  dispatchLineUpdated({
+    id: lineId,
+    units: currentUnits.map((u) => ({ ...u, condition_grade: grade })),
+  });
+  for (const u of currentUnits) {
+    void fetch(`/api/receiving/lines/${lineId}/units/${u.id}/condition`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ condition_grade: grade }),
+    }).catch(() => {});
+  }
+}
+
+/**
+ * Stamp units by ordinal with a primary grade for the first `primaryCount`
+ * rows and an optional secondary grade for the remainder — the qty-rollup
+ * exception split (e.g. 480 NEW / 20 PARTS) without rendering N unit rows.
+ */
+export function markReceivingUnitsConditionSplit(
+  lineId: number,
+  primaryGrade: string,
+  primaryCount: number,
+  secondaryGrade: string | null,
+  currentUnits: ReadonlyArray<LineUnitWire> | null | undefined,
+): void {
+  if (typeof window === 'undefined' || !(lineId > 0)) return;
+  const primary = String(primaryGrade || '').trim().toUpperCase();
+  const secondary = secondaryGrade
+    ? String(secondaryGrade).trim().toUpperCase()
+    : null;
+  if (!primary || !currentUnits || currentUnits.length === 0) return;
+  const cut = Math.max(0, Math.min(Math.floor(primaryCount), currentUnits.length));
+  const next = currentUnits.map((u, i) => ({
+    ...u,
+    condition_grade: i < cut ? primary : secondary ?? primary,
+  }));
+  dispatchLineUpdated({ id: lineId, units: next });
+  for (const u of next) {
+    if (!u.condition_grade) continue;
+    void fetch(`/api/receiving/lines/${lineId}/units/${u.id}/condition`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ condition_grade: u.condition_grade }),
+    }).catch(() => {});
+  }
+}
+
+/**
+ * Waive serials on every empty (no serial linked) unit — qty-rollup bulk
+ * "no serial" path. Leaves units that already have a serial untouched.
+ * One bus patch, then one POST per empty unit.
+ */
+export function markAllEmptyReceivingUnitsSerialAbsent(
+  lineId: number,
+  reason: string,
+  currentUnits: ReadonlyArray<LineUnitWire> | null | undefined,
+): void {
+  if (typeof window === 'undefined' || !(lineId > 0)) return;
+  const code = String(reason || '').trim() || 'BULK';
+  if (!currentUnits || currentUnits.length === 0) return;
+  const targets = currentUnits.filter((u) => u.serial_unit_id == null);
+  if (targets.length === 0) return;
+  const targetIds = new Set(targets.map((u) => u.id));
+  dispatchLineUpdated({
+    id: lineId,
+    units: currentUnits.map((u) =>
+      targetIds.has(u.id)
+        ? { ...u, serial_absent: true, serial_absent_reason: code }
+        : u,
+    ),
+  });
+  for (const u of targets) {
+    void fetch(`/api/receiving/lines/${lineId}/units/${u.id}/serial-absent`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ absent: true, reason: code }),
+    }).catch(() => {});
+  }
 }

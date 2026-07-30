@@ -5,7 +5,7 @@
  * write sites (lookup-po, mark-received) and the Unfound triage chip/filter
  * agree by construction. Mirrors the migration 2026-06-08_receiving_exception_code.
  *
- * This registry now carries TWO sub-vocabularies under the one
+ * This registry now carries THREE sub-vocabularies under the one
  * `flow_context = 'receiving_exception'`:
  *
  *  1. **OS&D codes** (`NO_PO` … `RETURN_NO_ORDER`) — what was wrong with the
@@ -15,9 +15,21 @@
  *     Narrowed by `PHOTO_POLICY_OVERRIDE_CODES` so the receive routes validate
  *     an override against the override vocabulary ONLY: an operator must not be
  *     able to waive the photo gate with `NO_PO`, and an OS&D write must not be
- *     able to claim a photo waiver. Both halves stay a SYSTEM vocabulary (they
- *     are behavior-bearing); tenants may relabel them via the seeded
- *     `reason_codes` rows, never add to them.
+ *     able to claim a photo waiver.
+ *  3. **Loss codes** (`LOST_IN_TRANSIT` … `STOLEN`) — the goods are not here and
+ *     are not coming. Narrowed by `LOSS_EXCEPTION_CODES` for the same reason.
+ *
+ * All three stay a SYSTEM vocabulary (they are behavior-bearing); tenants may
+ * relabel them via the seeded `reason_codes` rows, never add to them.
+ *
+ * ⚠ **Array position IS the `sort_order` contract.** `seedOrgCatalog`
+ * (`src/lib/neon/catalog-queries.ts`) walks `RECEIVING_EXCEPTION_CODES` assigning
+ * 10, 20, 30 … and the seed migrations `2026-06-28d` (10–60), `2026-07-29b`
+ * (70–110) and `2026-07-29i` (120–150) HARDCODE the numbers that walk produces.
+ * A new code therefore goes at the **END** of the composed array — never spliced
+ * into an earlier sub-vocabulary, which would renumber every code after it and
+ * silently desync pre-existing orgs from newly-seeded ones. Pinned by
+ * `exception-codes.test.ts`.
  */
 
 /** OS&D sub-vocabulary — what was wrong with the shipment itself. */
@@ -52,14 +64,48 @@ export const PHOTO_POLICY_OVERRIDE_CODES = [
   'PHOTO_WAIVED_DEFERRED',
 ] as const;
 
-/** Both sub-vocabularies, in seed order. */
+/**
+ * Loss sub-vocabulary — the goods are NOT here and are not coming, so the line is
+ * written off rather than received. Set on the delivered-not-unboxed lane when a
+ * carrier-delivered carton never physically materialized (or arrived empty).
+ *
+ * **Not for a merely late shipment.** A box that is delivered and simply hasn't
+ * been opened yet is the normal state of that lane — it carries an age band, not
+ * an exception code. These codes are the terminal answer.
+ *
+ * Narrow + route-validated for the same reason as `PHOTO_POLICY_OVERRIDE_CODES`: a
+ * write-off is a safety classification, so the resolution route validates against
+ * THIS list only — an operator must not be able to write a carton off as `SHORT`,
+ * and an OS&D write must not be able to claim a loss.
+ *
+ * Appended at the END of the composed array (not into `OSD_EXCEPTION_CODES`, where
+ * they logically belong) to preserve the existing `sort_order` numbering — see the
+ * array-position warning in the file header.
+ */
+export const LOSS_EXCEPTION_CODES = [
+  'LOST_IN_TRANSIT',
+  'EMPTY_BOX',
+  'MISDELIVERED',
+  'STOLEN',
+] as const;
+
+/** All three sub-vocabularies, in seed order. Order is the `sort_order` contract. */
 export const RECEIVING_EXCEPTION_CODES = [
   ...OSD_EXCEPTION_CODES,
   ...PHOTO_POLICY_OVERRIDE_CODES,
+  ...LOSS_EXCEPTION_CODES,
 ] as const;
 
 export type ReceivingExceptionCode = (typeof RECEIVING_EXCEPTION_CODES)[number];
 export type PhotoPolicyOverrideCode = (typeof PHOTO_POLICY_OVERRIDE_CODES)[number];
+/**
+ * Deliberately module-private: nothing outside this file NAMES it, and an
+ * exported-but-unconsumed type is dead code (knip gate). `isLossExceptionCode`
+ * still narrows correctly for callers, and the write-off path carries its own
+ * module-local alias off `LOSS_EXCEPTION_CODES`. Export it only when a consumer
+ * genuinely needs to annotate with it.
+ */
+type LossExceptionCode = (typeof LOSS_EXCEPTION_CODES)[number];
 
 export function isReceivingExceptionCode(v: string | null | undefined): v is ReceivingExceptionCode {
   return v != null && (RECEIVING_EXCEPTION_CODES as readonly string[]).includes(v);
@@ -67,6 +113,15 @@ export function isReceivingExceptionCode(v: string | null | undefined): v is Rec
 
 export function isPhotoPolicyOverrideCode(v: string | null | undefined): v is PhotoPolicyOverrideCode {
   return v != null && (PHOTO_POLICY_OVERRIDE_CODES as readonly string[]).includes(v);
+}
+
+/**
+ * Validate a write-off reason. The loss-resolution path validates against THIS
+ * guard, never `isReceivingExceptionCode` — the whole point of the narrow slice is
+ * that an OS&D code cannot be used to write a carton off.
+ */
+export function isLossExceptionCode(v: string | null | undefined): v is LossExceptionCode {
+  return v != null && (LOSS_EXCEPTION_CODES as readonly string[]).includes(v);
 }
 
 interface ExceptionMeta {
@@ -132,7 +187,54 @@ export const RECEIVING_EXCEPTION_META: Record<ReceivingExceptionCode, ExceptionM
     tone: 'bg-amber-100 text-amber-700 ring-amber-200',
     description: 'Received now; the required photos will be attached to this carton later.',
   },
+  // Loss family shares ONE heavier rose step (200/800/300) so a terminal write-off
+  // reads as a distinct severity from the recoverable rose-100 CARRIER_MISMATCH.
+  // The hue says "delivery went wrong"; the weight says "this is the final answer".
+  LOST_IN_TRANSIT: {
+    label: 'Lost',
+    tone: 'bg-rose-200 text-rose-800 ring-rose-300',
+    description: 'Carrier marked the carton delivered but it never reached the dock.',
+  },
+  EMPTY_BOX: {
+    label: 'Empty box',
+    tone: 'bg-rose-200 text-rose-800 ring-rose-300',
+    description: 'Carton arrived and was opened — the item was not inside.',
+  },
+  MISDELIVERED: {
+    label: 'Misdelivered',
+    tone: 'bg-rose-200 text-rose-800 ring-rose-300',
+    description: 'Carrier delivered to the wrong address, suite, or mailroom.',
+  },
+  STOLEN: {
+    label: 'Stolen',
+    tone: 'bg-rose-200 text-rose-800 ring-rose-300',
+    description: 'Confirmed theft after the carrier delivery scan.',
+  },
 };
+
+/**
+ * SQL predicate (aliases `rl`) — TRUE when a line has NO open loss exception, i.e.
+ * it has not been written off. The delivered-not-unboxed feed's exit rule.
+ *
+ * Keys off `receiving_exceptions.status = 'OPEN'` rather than the denormalized
+ * `receiving_line.exception_code`, which makes the write-off **reversible for
+ * free**: `resolveReceivingExceptions()` flips the row to RESOLVED and the line
+ * returns to the lane. (The column cannot express that — `transitionReceivingLine`
+ * writes `exception_code = COALESCE($5, exception_code)`, so it can set but never
+ * clear.) The append-only exception row keeps the original write-off in history.
+ *
+ * A pure string with no DB import, co-located with the vocabulary it is derived
+ * from — same shape as `INBOUND_SOURCE_SYSTEMS` / `INBOUND_SHIPMENT_PREDICATE` in
+ * `delivered-unscanned.ts`. Interpolation is safe: the values are this module's own
+ * `[A-Z_]` literals, never caller input.
+ */
+export const NO_OPEN_LOSS_EXCEPTION_PREDICATE = `NOT EXISTS (
+             SELECT 1 FROM receiving_exceptions re_loss
+              WHERE re_loss.receiving_line_id = rl.id
+                AND re_loss.organization_id = rl.organization_id
+                AND re_loss.status = 'OPEN'
+                AND re_loss.exception_code IN (${LOSS_EXCEPTION_CODES.map((c) => `'${c}'`).join(',')})
+           )`;
 
 /** Display label for an exception code (empty string when none/unknown). */
 export function receivingExceptionLabel(code: string | null | undefined): string {

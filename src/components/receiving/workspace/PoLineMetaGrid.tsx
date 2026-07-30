@@ -14,6 +14,12 @@ import { EmptySkuChipFace } from '@/components/ui/CopyChip';
  * with underlined identity chips (icon + label + border-b). Qty gets the same
  * `pb-0.5` as chip labels so its baseline sits with the chip text, not above
  * the underline band.
+ *
+ * Justification follows the house LedgerGrid rule for digit tracks
+ * (qty · sku · price) end-align; word tracks (condition) start-align.
+ * Serial chips start-align next to condition — the serial column is the
+ * flex `1fr` slack absorber, so end-align would park the chip at the far
+ * right against the price (CopyChip SerialChip in this slot).
  */
 export function PoLineMetaGrid({
   qty,
@@ -53,19 +59,19 @@ export function PoLineMetaGrid({
         ].join(' '),
       }}
     >
-      <span data-col="qty" className="flex min-w-0 items-center truncate tabular-nums pb-0.5">
+      <span data-col="qty" className="flex min-w-0 items-center justify-end truncate tabular-nums pb-0.5">
         {qty}
       </span>
-      <span data-col="sku" className="flex min-w-0 items-center truncate">
+      <span data-col="sku" className="flex min-w-0 items-center justify-end truncate">
         {sku ?? <EmptySkuChipFace dense />}
       </span>
-      <span data-col="condition" className="flex min-w-0 items-center truncate">
+      <span data-col="condition" className="flex min-w-0 items-center justify-start truncate">
         {condition}
       </span>
-      <span data-col="serial" className="flex min-w-0 items-center gap-1 truncate">
+      <span data-col="serial" className="flex min-w-0 items-center justify-start gap-1 truncate">
         {serial ?? <span className="text-text-faint/40">—</span>}
       </span>
-      <span className="flex justify-self-end items-center text-right tabular-nums" data-col="price">
+      <span className="flex justify-self-end items-center justify-end text-right tabular-nums" data-col="price">
         {price ?? null}
       </span>
     </div>

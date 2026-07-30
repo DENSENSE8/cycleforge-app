@@ -46,35 +46,50 @@ export function GridHeaderLabel({
   const fullLabel = label ?? column.label ?? column.key;
   const visibleLabel = label ?? column.gridLabel ?? column.label ?? column.key;
   const showLabel = gridHeaderShowsLabel(column, visibleLabel);
+  const sorted = sortDir != null;
 
-  const resolvedGlyph =
-    glyph ?? (column.type ? <ColumnTypeGlyph type={column.type} className="h-3 w-3 text-text-faint" /> : null);
-
-  const chevron = sortDir ? (
+  /**
+   * ONE 16px mark slot, whatever the state.
+   *
+   * The header budget is inset (1rem) + mark (1rem) + label. Rendering the type
+   * glyph AND a sort chevron needs a THIRD rem, which `UNBOXED` in a 5rem track
+   * did not have — measured 93.6px into an 80px cell, clipping to `UNBO…`.
+   *
+   * Widening every sortable column instead would have cost a rem each, and
+   * reserving the chevron unconditionally measured out as four more labels
+   * (Date · Qty · Order · Tracking) collapsing to glyphs. So the chevron REUSES
+   * the mark slot: while a column is sorted, the sort direction is the more
+   * useful of the two marks — the data type is exactly what you already know
+   * about a column you chose to sort by, and it returns when the sort moves on.
+   *
+   * Net: geometry is constant across sort states, no label ever clips, and no
+   * label vanishes when the operator sorts.
+   */
+  const mark = sorted ? (
     sortDir === 'asc' ? (
       <ChevronUp className="h-3 w-3 shrink-0 text-text-muted opacity-80" aria-hidden />
     ) : (
       <ChevronDown className="h-3 w-3 shrink-0 text-text-muted opacity-80" aria-hidden />
     )
-  ) : null;
+  ) : (
+    glyph ?? (column.type ? <ColumnTypeGlyph type={column.type} className="h-3 w-3 text-text-soft" /> : null)
+  );
 
   if (!showLabel) {
     return (
       <>
         {/* The column still has to be nameable to a screen reader when the
-            visual label degrades to a glyph. */}
+            visual label degrades to a mark. */}
         <span className="sr-only">{fullLabel}</span>
-        {resolvedGlyph}
-        {chevron}
+        {mark}
       </>
     );
   }
 
   return (
     <>
-      {resolvedGlyph}
+      {mark}
       <span className="min-w-0 truncate">{visibleLabel}</span>
-      {chevron}
     </>
   );
 }

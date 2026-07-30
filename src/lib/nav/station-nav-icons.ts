@@ -55,7 +55,7 @@ export const RECEIVING_MODE_ICONS = {
   repair: ReceivingModeRepair,
 } as const satisfies Record<string, NavIconComponent>;
 
-/** Testing sidebar top-mode pills (`TECH_TOP_MODE_ITEMS`, SIDEBAR_PAGE_NAV tech modes). */
+/** Testing sidebar body mode (`TechSidebarTopMode`; L2 lives in GlobalHeader). */
 export const TECH_MODE_ICONS = {
   testing: TechModeTesting,
   shipping: TechModeShippingQueue,

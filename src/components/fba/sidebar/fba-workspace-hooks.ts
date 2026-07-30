@@ -26,7 +26,7 @@ import {
 import type { PendingPlan } from '@/components/fba/sidebar/fba-sidebar-shared';
 import { useRefreshSignal } from '@/lib/refresh/bus';
 
-/** Patch shape for the FBA workspace URL search params (under /outbound?mode=fba). */
+/** Patch shape for the FBA workspace URL search params (under `/shipping/fba`). */
 export interface FbaParamPatch {
   q?: string;
   r?: string;
@@ -39,8 +39,7 @@ export interface FbaParamPatch {
 
 /**
  * URL-driven workspace state: the active FBA sub-mode (`fbaMode`), the refresh
- * token, and the shipped-search box. Writes always land on `/shipping?mode=fba`
- * so FBA stays nested under Outbound (surface split).
+ * token, and the shipped-search box. Writes always land on `/shipping/fba`.
  */
 export function useFbaWorkspaceUrlState() {
   const router = useRouter();
@@ -55,8 +54,8 @@ export function useFbaWorkspaceUrlState() {
   const updateFbaParams = useCallback(
     (patch: FbaParamPatch) => {
       const params = new URLSearchParams(searchParams.toString());
-      // Always host under Outbound FBA mode (never write bare /fba).
-      params.set('mode', 'fba');
+      // Path owns the FBA mode — strip legacy `?mode=fba` if it still rides along.
+      params.delete('mode');
       if (patch.q !== undefined) {
         if (patch.q.trim()) params.set('q', patch.q.trim());
         else params.delete('q');
@@ -88,7 +87,7 @@ export function useFbaWorkspaceUrlState() {
         else params.delete('details');
       }
       const q = params.toString();
-      router.replace(q ? `${FBA_OUTBOUND_PATH}?${q}` : `${FBA_OUTBOUND_PATH}?mode=fba`);
+      router.replace(q ? `${FBA_OUTBOUND_PATH}?${q}` : FBA_OUTBOUND_PATH);
     },
     [router, searchParams],
   );

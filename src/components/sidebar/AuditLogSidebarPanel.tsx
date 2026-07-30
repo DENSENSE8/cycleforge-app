@@ -4,26 +4,20 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 import { sectionLabel } from '@/design-system/tokens/typography/presets';
 import { User } from '@/components/Icons';
-import { HorizontalButtonSlider } from '@/components/ui/HorizontalButtonSlider';
 import { useAuditLogFilterRefinements, AuditLogFilterDropdown } from '@/components/audit-log/AuditLogFilterStrip';
 import { SIDEBAR_GUTTER } from '@/components/layout/header-shell';
 import { SidebarShell } from '@/components/layout/SidebarShell';
 import { SearchBar } from '@/components/ui/SearchBar';
-import {
-  AUDIT_SECTIONS,
-  AUDIT_SECTION_ITEMS,
-  SECTION_OWNED_PARAMS,
-  type AuditSection,
-} from './audit-log-panel/audit-log-panel-shared';
+import { AUDIT_SECTIONS } from './audit-log-panel/audit-log-panel-shared';
 import { ReceivingPOPicker } from './audit-log-panel/ReceivingPOPicker';
 import { PackingTrackingPicker, TechSessionPicker, SkuPicker } from './audit-log-panel/AuditSectionPickers';
 import { TraceSerialPicker } from './audit-log-panel/TraceSerialPicker';
 
 /**
- * Audit-log sidebar — thin composition shell. Section nav + the shared search /
- * filter chrome live here; each section's list-picker is a presentational
- * component under `./audit-log-panel/` (Packing/Tech/SKU share one generic
- * {@link useAuditSectionList}-backed picker).
+ * Audit-log sidebar — thin composition shell. Search / filter chrome live here;
+ * L2 section nav lives in GlobalHeader. Each section's list-picker is a
+ * presentational component under `./audit-log-panel/` (Packing/Tech/SKU share
+ * one generic {@link useAuditSectionList}-backed picker).
  */
 export function AuditLogSidebarPanel() {
   const pathname = usePathname() || '';
@@ -38,14 +32,6 @@ export function AuditLogSidebarPanel() {
   const { refinements, clearAll } = useAuditLogFilterRefinements();
 
   const isTrace = activeSection?.id === 'trace';
-
-  const switchSection = (target: AuditSection) => {
-    // Preserve shared filters (day/start/end/staffId) across section changes.
-    const params = new URLSearchParams(searchParams.toString());
-    for (const p of SECTION_OWNED_PARAMS) params.delete(p);
-    const qs = params.toString();
-    router.push(qs ? `${target.href}?${qs}` : target.href);
-  };
 
   return (
     <SidebarShell
@@ -87,19 +73,6 @@ export function AuditLogSidebarPanel() {
         onClearAll: clearAll,
         renderDropdown: (onClose) => <AuditLogFilterDropdown onClose={onClose} />,
       }}
-      headerRows={[
-        <HorizontalButtonSlider
-          key="sections"
-          items={AUDIT_SECTION_ITEMS}
-          value={activeSection?.id ?? 'receiving'}
-          onChange={(nextId) => {
-            const target = AUDIT_SECTIONS.find((s) => s.id === nextId);
-            if (target?.available) switchSection(target);
-          }}
-          variant="nav"
-          aria-label="Audit log section"
-        />,
-      ]}
       bodyClassName="pt-0 pb-6"
     >
       {activeSection?.id === 'trace' ? (
@@ -135,7 +108,7 @@ export function AuditLogSidebarPanel() {
         </div>
       ) : (
         <div className="inset-empty text-center text-xs text-text-faint">
-          Select a section above.
+          Select a section in the header.
         </div>
       )}
     </SidebarShell>

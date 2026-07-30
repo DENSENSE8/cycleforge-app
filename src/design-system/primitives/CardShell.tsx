@@ -1,7 +1,7 @@
 'use client';
 
 import { forwardRef, type ReactNode } from 'react';
-import { motion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 import { useUIModeOptional } from '../providers/UIModeProvider';
 import {
   framerPresence,
@@ -10,6 +10,10 @@ import {
   framerTransitionMobile,
   framerGesture,
 } from '../foundations/motion-framer';
+import {
+  useMotionPresence,
+  useMotionTransition,
+} from '../foundations/motion-framer-hooks';
 import { staggerRevealItem } from './StaggerReveal';
 
 type CardTone = 'emerald' | 'red' | 'orange' | 'purple' | 'teal' | 'gray';
@@ -147,12 +151,16 @@ export const CardShell = forwardRef<HTMLDivElement, CardShellProps>(function Car
       : 'bg-surface-card'
   } ${showActiveBorder ? border.active : `${border.idle} active:${border.active}`}`;
 
-  const presence = isMobile ? framerPresenceMobile.mobileCard : framerPresence.upNextRow;
-  const transition = isMobile ? framerTransitionMobile.mobileCardMount : framerTransition.upNextRowMount;
+  const shouldReduce = useReducedMotion();
+  const rawPresence = isMobile ? framerPresenceMobile.mobileCard : framerPresence.upNextRow;
+  const rawTransition = isMobile ? framerTransitionMobile.mobileCardMount : framerTransition.upNextRowMount;
+  const presence = useMotionPresence(rawPresence);
+  const transition = useMotionTransition(rawTransition);
   // Linear + rail variants intentionally suppress the lift/scale hover gesture
   // so rows don't jump and neighbours never shift. Hover state is bg-only.
   const flatRow = variant === 'linear' || variant === 'rail';
-  const hoverGesture = !isMobile && flatRow ? undefined : framerGesture.cardHover;
+  const hoverGesture =
+    shouldReduce || (!isMobile && flatRow) ? undefined : framerGesture.cardHover;
 
   // `stagger`: omit own initial/animate/transition so the card inherits the
   // parent stagger-reveal container's hidden→show timeline (the scan-bar spring
@@ -165,10 +173,10 @@ export const CardShell = forwardRef<HTMLDivElement, CardShellProps>(function Car
   return (
     <motion.div
       ref={ref}
-      layout
+      layout={!shouldReduce}
       {...entranceProps}
       whileHover={hoverGesture}
-      whileTap={framerGesture.tapPress}
+      whileTap={shouldReduce ? undefined : framerGesture.tapPress}
       onClick={onClick}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}

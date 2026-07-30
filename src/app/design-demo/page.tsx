@@ -66,10 +66,10 @@ const DEMO_ROWS: DemoUnit[] = [
 ];
 
 const DEMO_COLUMNS: DataTableColumn<DemoUnit>[] = [
-  { key: 'serial', header: 'Serial', cell: (r) => <span className="font-mono">{r.serial}</span> },
-  { key: 'sku', header: 'SKU', cell: (r) => <span className="font-mono">{r.sku}</span> },
+  { key: 'serial', header: 'Serial', align: 'right', cell: (r) => <span className="font-mono">{r.serial}</span> },
+  { key: 'sku', header: 'SKU', align: 'right', cell: (r) => <span className="font-mono">{r.sku}</span> },
   { key: 'condition', header: 'Condition', cell: (r) => r.condition },
-  { key: 'status', header: 'Status', align: 'right', cell: (r) => <StatusBadge status={r.status} /> },
+  { key: 'status', header: 'Status', cell: (r) => <StatusBadge status={r.status} /> },
 ];
 
 const DEMO_TIMELINE: TimelineItem[] = [

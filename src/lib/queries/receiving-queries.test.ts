@@ -116,3 +116,46 @@ test('spine phase: keys as a spine leaf under the SAME full key', () => {
     assert.deepEqual([...spineKey], [...fullKey, 'spine'], mode.id);
   }
 });
+
+test('publishLineSerials patches units when provided and leaves them alone when omitted', async () => {
+  const { QueryClient } = await import('@tanstack/react-query');
+  const {
+    publishLineSerials,
+    receivingSiblingsQueryKey,
+  } = await import('./receiving-queries');
+
+  const qc = new QueryClient();
+  const receivingId = 42;
+  const lineId = 7;
+  const units = [
+    {
+      id: 1,
+      ordinal: 1,
+      serial_unit_id: null,
+      serial: null,
+      serial_absent: false,
+      serial_absent_reason: null,
+      condition_grade: null,
+    },
+  ];
+  qc.setQueryData(receivingSiblingsQueryKey(receivingId), {
+    success: true,
+    receiving_lines: [{ id: lineId, serials: [], units }],
+  });
+
+  publishLineSerials(qc, receivingId, lineId, [{ id: 99, serial_number: 'ABC' }]);
+  const afterSerialOnly = qc.getQueryData<{
+    receiving_lines: Array<{ serials: unknown; units: unknown }>;
+  }>(receivingSiblingsQueryKey(receivingId));
+  assert.deepEqual(afterSerialOnly?.receiving_lines[0]?.serials, [
+    { id: 99, serial_number: 'ABC' },
+  ]);
+  assert.deepEqual(afterSerialOnly?.receiving_lines[0]?.units, units);
+
+  const nextUnits = [{ ...units[0], serial_absent: true, serial_absent_reason: 'NOT_SERIALIZED' }];
+  publishLineSerials(qc, receivingId, lineId, [], nextUnits);
+  const afterUnits = qc.getQueryData<{
+    receiving_lines: Array<{ serials: unknown; units: unknown }>;
+  }>(receivingSiblingsQueryKey(receivingId));
+  assert.deepEqual(afterUnits?.receiving_lines[0]?.units, nextUnits);
+});

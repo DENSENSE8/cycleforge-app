@@ -17,6 +17,10 @@
  */
 
 import { tenantQuery } from '@/lib/tenancy/db';
+import {
+  unlinkReceivingClaimPhotosFromTicket as unlinkReceivingClaimPhotosFromTicketCore,
+  type UnlinkReceivingClaimPhotosFromTicketDeps,
+} from './claim-photo-unlink';
 import { linkPhoto } from './service';
 import type { PhotoEntityType } from './types';
 
@@ -102,4 +106,57 @@ export async function linkReceivingPhotoToClaim(input: {
     );
     return null;
   }
+}
+
+/**
+ * Reverse of claim dual-linking for a carton/line: drop `ZENDESK_TICKET`
+ * `claim_evidence` rows on photos that still belong to this receiving carton
+ * (or any of its lines). See {@link unlinkReceivingClaimPhotosFromTicket}.
+ */
+const defaultUnlinkReceivingClaimPhotosDeps: UnlinkReceivingClaimPhotosFromTicketDeps = {
+  deleteTicketPhotoLinks: async ({ orgId, ticketId, receivingId, lineId }) => {
+    const res = await tenantQuery<{ id: string }>(
+      orgId,
+      `DELETE FROM photo_entity_links AS pel_z
+        WHERE pel_z.organization_id = $1
+          AND pel_z.entity_type = 'ZENDESK_TICKET'
+          AND pel_z.entity_id = $2
+          AND EXISTS (
+            SELECT 1
+              FROM photo_entity_links AS pel_recv
+             WHERE pel_recv.photo_id = pel_z.photo_id
+               AND pel_recv.organization_id = pel_z.organization_id
+               AND (
+                 (pel_recv.entity_type = 'RECEIVING' AND pel_recv.entity_id = $3)
+                 OR (
+                   pel_recv.entity_type = 'RECEIVING_LINE'
+                   AND (
+                     ($4::bigint IS NOT NULL AND pel_recv.entity_id = $4)
+                     OR pel_recv.entity_id IN (
+                       SELECT rl.id
+                         FROM receiving_line rl
+                        WHERE rl.receiving_id = $3
+                          AND rl.organization_id = $1
+                     )
+                   )
+                 )
+               )
+          )
+        RETURNING pel_z.id`,
+      [orgId, ticketId, receivingId, lineId ?? null],
+    );
+    return res.rowCount ?? 0;
+  },
+};
+
+export async function unlinkReceivingClaimPhotosFromTicket(
+  args: {
+    orgId: string;
+    ticketId: number;
+    receivingId: number;
+    lineId?: number | null;
+  },
+  deps: UnlinkReceivingClaimPhotosFromTicketDeps = defaultUnlinkReceivingClaimPhotosDeps,
+): Promise<{ cleared: number }> {
+  return unlinkReceivingClaimPhotosFromTicketCore(args, deps);
 }

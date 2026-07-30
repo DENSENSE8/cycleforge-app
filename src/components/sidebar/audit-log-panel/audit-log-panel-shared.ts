@@ -1,5 +1,4 @@
 import { ClipboardList, Package, FileText, Search, User, Activity } from '@/components/Icons';
-import { type HorizontalSliderItem } from '@/components/ui/HorizontalButtonSlider';
 
 // ─── Section nav ───────────────────────────────────────────────────────────
 
@@ -24,13 +23,6 @@ export const AUDIT_SECTIONS: AuditSection[] = [
 // section switch. The shared filter strip's params (day/start/end/staffId)
 // persist across sections by design.
 export const SECTION_OWNED_PARAMS = ['po', 'tracking', 'session', 'sku', 'serial'] as const;
-
-export const AUDIT_SECTION_ITEMS: HorizontalSliderItem[] = AUDIT_SECTIONS.map((s) => ({
-  id: s.id,
-  label: s.label,
-  icon: s.icon,
-  disabled: !s.available,
-}));
 
 // ─── PO list types ─────────────────────────────────────────────────────────
 

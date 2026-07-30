@@ -34,9 +34,15 @@ import {
 import type { SyncProgress, TransferOrderDetails } from '@/lib/orders-sync/types';
 import {
   emptyTransferSheetSkipCounts,
+  evaluateTransferSheetRowEligibility,
   filterEligibleTransferSheetRows,
   type TransferSheetSkipCounts,
+  type TransferSheetSkippedRow,
 } from '@/lib/jobs/transfer-sheet-eligibility';
+import {
+  batchResolveListingsByTitle,
+  listingTitleMatchKey,
+} from '@/lib/neon/sku-catalog-queries';
 
 export type { TransferOrderDetail, TransferOrderDetails } from '@/lib/orders-sync/types';
 
@@ -105,10 +111,26 @@ export interface GoogleSheetsTransferOrdersJobResult {
   ecwidApiRows?: number;
   skippedRows?: number;
   /** Sheet-path eligibility skips (raw Item Number / tracking / order id / Ecwid). */
+  skippedBlankRow?: number;
+  skippedFbaShipment?: number;
   skippedNoOrderId?: number;
   skippedNoTracking?: number;
   skippedNoItemNumber?: number;
   skippedEcwid?: number;
+  /**
+   * The skipped rows themselves (capped, blank padding excluded) so the
+   * importer UI can show WHICH orders were dropped and why, instead of a
+   * number the operator cannot act on.
+   */
+  skippedRowDetails?: TransferSheetSkippedRow[];
+  /**
+   * Rows that WOULD have been skipped for a blank Item Number but were revived
+   * by an exact listing-title match. Surfaced so the recovery is auditable
+   * rather than silent — an operator should be able to see which listing id
+   * the import inferred, and for which order.
+   */
+  recoveredByTitle?: number;
+  recoveredRowDetails?: TransferSheetSkippedRow[];
   durationMs: number;
   details: TransferOrderDetails;
 }
@@ -120,6 +142,9 @@ interface SheetFetchResult {
   lines: CanonicalOrderLine[];
   totalRows: number;
   skips: TransferSheetSkipCounts;
+  skippedRows: TransferSheetSkippedRow[];
+  /** Rows whose blank Item Number was filled from an exact listing-title match. */
+  recoveredRows: TransferSheetSkippedRow[];
 }
 
 /** Newest `Sheet_MM_DD_YYYY` tab, or the explicitly named one. */
@@ -144,10 +169,83 @@ function pickTargetTab(tabTitles: string[], manualSheetName?: string): string {
   return dateTabs[0].title;
 }
 
+/**
+ * Fill a blank Item Number from an EXACT existing listing title, before the
+ * eligibility gate sees the row.
+ *
+ * The gate's rule ("raw Item Number or the row is trash") was written against
+ * FUZZY catalog title-matching, which can only name a product and then has to
+ * guess which of its listings the order came from. This resolves the LISTING
+ * itself by exact title, and refuses on ambiguity — so a row is only revived
+ * when its actual `platform_item_id` is already in the crosswalk. That keeps
+ * the gate's intent (nothing unlinkable lands in orders) while recovering the
+ * ~60% of blank rows whose listing we demonstrably already know.
+ *
+ * Only `noItemNumber` rows are candidates: blank padding, FBA shipments, Ecwid
+ * rows and rows missing an order id or tracking stay skipped for their own
+ * reasons and are never resurrected here.
+ */
+async function backfillItemNumbersFromListingTitles(
+  dataRows: SheetRow[],
+  colIndices: ReturnType<typeof bindSheetColumns>['colIndices'],
+  orgId: OrgId,
+): Promise<{ rows: SheetRow[]; recovered: TransferSheetSkippedRow[] }> {
+  const gateCols = {
+    orderNumber: colIndices.orderNumber,
+    tracking: colIndices.tracking,
+    itemNumber: colIndices.itemNumber,
+    platform: colIndices.platform,
+    itemTitle: colIndices.itemTitle,
+  };
+  const readCell = (row: SheetRow, index: number) =>
+    index < 0 ? '' : String(row[index] ?? '').trim();
+
+  const candidates: Array<{ index: number; title: string; platform: string }> = [];
+  dataRows.forEach((row, index) => {
+    if (evaluateTransferSheetRowEligibility(row, gateCols) !== 'noItemNumber') return;
+    const title = readCell(row, colIndices.itemTitle);
+    if (!title) return;
+    candidates.push({ index, title, platform: readCell(row, colIndices.platform) });
+  });
+
+  if (candidates.length === 0 || colIndices.itemNumber < 0) {
+    return { rows: dataRows, recovered: [] };
+  }
+
+  const matches = await batchResolveListingsByTitle(
+    candidates.map(({ title, platform }) => ({ title, platform })),
+    orgId,
+  );
+
+  // Copy-on-write: only the rows that actually resolve are replaced, so the
+  // caller's array is never mutated under it.
+  const rows = dataRows.slice();
+  const recovered: TransferSheetSkippedRow[] = [];
+
+  for (const { index, title, platform } of candidates) {
+    const match = matches.get(listingTitleMatchKey(title, platform));
+    if (!match?.platformItemId) continue;
+    const next = rows[index].slice() as SheetRow;
+    next[colIndices.itemNumber] = match.platformItemId;
+    rows[index] = next;
+    recovered.push({
+      sheetRow: index + 2,
+      reason: 'noItemNumber',
+      orderId: readCell(rows[index], colIndices.orderNumber),
+      platform,
+      productTitle: title,
+      tracking: readCell(rows[index], colIndices.tracking),
+    });
+  }
+
+  return { rows, recovered };
+}
+
 async function fetchSheetLines(
   sourceSpreadsheetId: string,
   manualSheetName: string | undefined,
   progress: SyncProgress,
+  orgId: OrgId,
 ): Promise<SheetFetchResult> {
   progress({ type: 'phase', phase: 'fetching_sheet' });
   const sheets = googleSheets({ version: 'v4', auth: getGoogleAuth() });
@@ -181,13 +279,24 @@ async function fetchSheetLines(
     });
   }
 
-  // Gate on the RAW sheet Item Number (not catalog title-match backfill) so
-  // unlinkable blank-item_number trash never lands in orders.
-  const filtered = filterEligibleTransferSheetRows(sourceRows.slice(1), {
+  // Recover a blank Item Number from an EXACT existing listing title first —
+  // see backfillItemNumbersFromListingTitles. Anything it cannot resolve
+  // unambiguously stays blank and is dropped by the gate below, which still
+  // reads the RAW cell: fuzzy catalog title-matching must never resurrect a row.
+  const { rows: dataRows, recovered } = await backfillItemNumbersFromListingTitles(
+    sourceRows.slice(1),
+    colIndices,
+    orgId,
+  );
+
+  const filtered = filterEligibleTransferSheetRows(dataRows, {
     orderNumber: colIndices.orderNumber,
     tracking: colIndices.tracking,
     itemNumber: colIndices.itemNumber,
     platform: colIndices.platform,
+    // Title is display-only here — it is what makes a skipped row recognizable
+    // to the operator who has to go fix it.
+    itemTitle: colIndices.itemTitle,
   });
 
   return {
@@ -195,6 +304,8 @@ async function fetchSheetLines(
     lines: mapSheetRowsToCanonicalLines(filtered.eligible, colIndices),
     totalRows: sourceRows.length - 1,
     skips: filtered.skips,
+    skippedRows: filtered.skippedRows,
+    recoveredRows: recovered,
   };
 }
 
@@ -235,7 +346,7 @@ export async function runGoogleSheetsTransferOrders(
     const sheet =
       source === 'ecwid'
         ? null
-        : await fetchSheetLines(sourceSpreadsheetId, manualSheetName, progress);
+        : await fetchSheetLines(sourceSpreadsheetId, manualSheetName, progress, effectiveOrgId);
     const ecwidLines = source === 'sheets' ? [] : await fetchEcwidLines(effectiveOrgId, progress);
 
     const tabName = sheet?.tabName ?? '(ecwid-api)';
@@ -259,6 +370,9 @@ export async function runGoogleSheetsTransferOrders(
         ecwidApiRows: ecwidLines.length,
         skippedRows: sheet?.totalRows ?? 0,
         ...skips,
+        skippedRowDetails: sheet?.skippedRows ?? [],
+        recoveredByTitle: sheet?.recoveredRows?.length ?? 0,
+        recoveredRowDetails: sheet?.recoveredRows ?? [],
         durationMs: Date.now() - startedAt,
         details: {
           inserted: [],
@@ -280,7 +394,11 @@ export async function runGoogleSheetsTransferOrders(
 
     return {
       success: true,
-      rowCount: result.insertedOrders,
+      // Rows READ from the sheet tab — not a second copy of insertedOrders,
+      // which is what this used to return. That made the field report 0 on any
+      // run that inserted nothing, so "we read 46 rows and imported none of
+      // them" was indistinguishable from "the sheet was empty".
+      rowCount: sheet?.totalRows ?? 0,
       processedRows: result.processedOrders,
       insertedOrders: result.insertedOrders,
       updatedOrdersTracking: result.updatedOrdersTracking,
@@ -292,6 +410,18 @@ export async function runGoogleSheetsTransferOrders(
       tabName,
       ecwidApiRows: ecwidLines.length,
       ...skips,
+      // Total rows the eligibility gate dropped. Only the zero-line early
+      // return used to set this, so the normal path reported `skippedRows: 0`
+      // while the per-reason counters beside it were non-zero.
+      skippedRows:
+        skips.skippedBlankRow +
+        skips.skippedNoOrderId +
+        skips.skippedNoTracking +
+        skips.skippedNoItemNumber +
+        skips.skippedEcwid,
+      skippedRowDetails: sheet?.skippedRows ?? [],
+      recoveredByTitle: sheet?.recoveredRows?.length ?? 0,
+      recoveredRowDetails: sheet?.recoveredRows ?? [],
       durationMs: Date.now() - startedAt,
       details: result.details,
     };

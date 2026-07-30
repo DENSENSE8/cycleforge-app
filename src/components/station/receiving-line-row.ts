@@ -162,6 +162,13 @@ export interface ReceivingLineRow {
    */
   delivered_age_band?: 'lt_24h' | 'h24_48' | 'gt_48h' | null;
   /**
+   * eBay claim deadline (civil date, `YYYY-MM-DD`) — the date after which an
+   * item-not-received can no longer be filed. A SECOND, external clock, distinct
+   * from `delivered_age_band`: it expires whether or not the warehouse acts. Set
+   * on delivered-not-unboxed rows sourced from eBay; null everywhere else.
+   */
+  claim_by_date?: string | null;
+  /**
    * Universal Incoming purchase identity (receiving_lines spine cache; Incoming
    * view only). `inbound_source_type` badges the row's source ('zoho' | 'ebay' | …);
    * `source_order_id` is the external order id (the eBay order#) shown when the

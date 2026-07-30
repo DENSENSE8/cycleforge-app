@@ -400,8 +400,8 @@ function HeaderCell({
       aria-sort={ariaSort}
       className={cn(
         'group/hcell relative',
-        // Every header aligns with its data (SoT). Pending data tracks are all
-        // left-aligned, so no column passes `end` here.
+        // Every header aligns with its data (SoT) — numeric / id / date / tracking
+        // tracks resolve `end`; prose / tag / external stay `start`.
         gridSkin ? cn(gridHeaderCellAlignClass(resolveGridColumnAlign(column)), 'gap-1') : 'justify-center',
         !gridSkin && glyph && 'gap-1',
         ordersQueueGridCell({ rule: !last, inset: cellInset }),

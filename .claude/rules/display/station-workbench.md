@@ -122,27 +122,30 @@ Tracking / Timeline. Neither Support nor Ticket mounts the Linkage strip
 | Layer | Role | SoT |
 |---|---|---|
 | **1. Progress stepper** | Completeness checklist (Photos → Serial → Print), not a wizard lock | `LinearWorkflowStepper` + `deriveLinearStepStates` — lives in parent shell (`ReceivingLineWorkspace`), not inside `StationWorkbench` |
-| **2. Station bookmark chrome** | Sticky identity bookmark + corner utilities flush under GlobalHeader | `StationContextBar` + `StationMoreDetails` + `CartonContextCard` `density="bar"` via `@/components/station/entity-context` |
+| **2. Station bookmark chrome** | Absolute-float identity shell + corner utilities over the work canvas (no in-flow gray band) | `StationContextBar` (`stationContextBarHostClass`) + `StationMoreDetails` + `CartonContextCard` `density="bar"`; pair with `StationWorkbench` `reserveIdentityClearance` |
 | **2b. Mid-canvas edge jump** | Secondary surface jump (e.g. Triage → Open in Unbox) — not the terminal CTA | `StationRightEdgeAction` + `stationRightEdgeActionHostClass` on the panel `relative` root (~`top-1/4` right). Never nest under `moreDetails`; never use `SlicedActionDock` for this |
 | **3. Section tabs** | Labeled section displays (`TabSwitch` strip + overflow menu) that own bar + mounted panels; `rightSlot` for contextual controls | `SectionTabsSlider` + `buildSectionTabs` + `PairingTogglePill` / `ExternalLinkPill` |
 | **4. Tab body** | Whole contextual display per tab (form state survives via mounted panels) | Station-specific content; bridges register dock state |
 | **5. Feedback / footer** | Inline action feedback (scroll) + receive band (between body and dock) | `WorkspaceActionFeedbackSlot`, `ReceiveFeedbackRegion` |
-| **6. Terminal dock band** | Optional chat-style notes composer + tab-aware primary CTA | `STATION_TERMINAL_REGISTRY` → `StationTerminalDock` → `SlicedActionDock`. **Unbox overview = ONE shell**: `StationComposerDock` with the CTA in its `trailingAction` (`<StationTerminalDock embedded>`), blue Send suppressed. Full-width band elsewhere |
+| **6. Terminal dock band** | Optional chat-style notes composer + tab-aware primary CTA | `STATION_TERMINAL_REGISTRY` → `StationTerminalDock` → `SlicedActionDock`. **Unbox overview = ONE floating shell**: `StationComposerDock` via `slicedActionDockWrapperClass({ docked: false })` (absolute over the canvas + `reserveScrollClearance`) with the CTA in its `trailingAction` (`<StationTerminalDock embedded>`), blue Send suppressed. Full-width in-flow band elsewhere |
 
 ```
 Parent shell
-├── StationContextBar          ← identity (density=bar) + StationMoreDetails (embedded LineEditToolbar)
+├── StationContextBar          ← absolute-float identity + StationMoreDetails
 ├── StationRightEdgeAction     ← optional mid-canvas jump (Triage Open in Unbox); panel-root absolute
-└── StationWorkbench
+└── StationWorkbench           ← reserveIdentityClearance (top) + optional terminal clearance (bottom)
     ├── scroll: tabs → feedback  (entityContext/toolbar unused for Unbox-family)
     ├── footer (optional sticky band)
-    └── dock                   ← overview: StationComposerDock (notes) with the
-                                 embedded Receive/Print split in trailingAction;
+    └── dock                   ← overview: StationComposerDock (notes) floating
+                                 over the canvas (absolute; not an in-flow shelf)
+                                 with embedded Receive/Print in trailingAction;
                                  other tabs: full-width StationTerminalDock
 ```
 
-**Unbox overview dock — one elevated shell, never two cards.** The composer is
-the only surface in the band; the receive split-CTA rides in its footer:
+**Unbox overview dock — one elevated shell, never two cards.** The composer
+floats over the scroll canvas (`slicedActionDockWrapperClass({ docked: false })`
++ `reserveScrollClearance`); it is the only surface in the band, and the receive
+split-CTA rides in its footer:
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -169,11 +172,12 @@ there for Unbox-family stations — mount it in `StationContextBar` instead.
 
 Overlays (photo peek, modals) compose **around** `StationWorkbench`, not inside it.
 
-Unbox overview mounts carton notes in the **dock band** via `StationComposerDock`
+Unbox overview mounts carton notes as an **absolute float over the canvas** via
+`StationComposerDock` + `slicedActionDockWrapperClass({ docked: false })`
 (ChatGPT-style prompt chrome) with the Receive/Print split-CTA **inside** that
-composer's footer (`trailingAction`) — not a mid-canvas nested notes card, and
-not a second CTA row beneath it. Label preview stays in the scroll body. Other
-Unbox tabs keep a full-width centered terminal.
+composer's footer (`trailingAction`) — not a mid-canvas nested notes card, not
+an in-flow shelf/lip band, and not a second CTA row beneath it. Label preview
+stays in the scroll body. Other Unbox tabs keep a full-width centered terminal.
 
 ---
 
@@ -217,8 +221,9 @@ one body pad via `WorkspaceCard` `variant="glass"` + `bodyDensity="nested"`
 | `WORKSPACE_NESTED_FIELD_PAD` | `inset-field` (`px-3 py-2`) | Default inset pad (Label, PO note, claim) |
 | `WORKSPACE_NESTED_OVERLAY_CORNER` | `right-1.5 top-1.5` | Default overlay inset (Label Edit, claim insert rail) |
 
-Unbox overview carton notes use **`StationComposerDock`** in the terminal dock
-band (not nested-field chrome).
+Unbox overview carton notes use **`StationComposerDock`** floating over the
+terminal dock edge (absolute band via `slicedActionDockWrapperClass({ docked: false })`,
+not nested-field chrome and not an in-flow shelf).
 
 **Do not** force this recipe onto flush entity chrome (`CartonContextCard`
 `px-0 py-0`), Shipping solid pairing cards, ShippedNotesComposer, or admin

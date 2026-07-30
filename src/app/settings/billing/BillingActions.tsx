@@ -11,6 +11,7 @@
 import { useCallback, useState } from 'react';
 import type { PlatformPlan } from '@/lib/tenancy/constants';
 import { Button } from '@/design-system/primitives';
+import { toast } from '@/lib/toast';
 
 interface BillingActionsProps {
   hasStripeCustomer: boolean;
@@ -27,7 +28,7 @@ export function BillingActions({ hasStripeCustomer }: BillingActionsProps) {
       if (r.ok && data.url) {
         window.location.href = data.url as string;
       } else {
-        alert(`Couldn't open billing portal: ${data.error || r.status}`);
+        toast.error(`Couldn't open billing portal: ${data.error || r.status}`);
       }
     } finally {
       setBusy(false);
@@ -66,7 +67,7 @@ export function UpgradeButton({ plan }: UpgradeButtonProps) {
       if (r.ok && data.url) {
         window.location.href = data.url as string;
       } else {
-        alert(`Couldn't start checkout: ${data.error || r.status}`);
+        toast.error(`Couldn't start checkout: ${data.error || r.status}`);
       }
     } finally {
       setBusy(false);

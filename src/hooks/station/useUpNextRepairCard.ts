@@ -9,6 +9,7 @@ import type { RepairQueueItem } from '@/components/station/upnext/upnext-types';
 import type { WorkOrderRow } from '@/components/work-orders/types';
 import type { AssignmentConfirmPayload } from '@/components/work-orders/WorkOrderAssignmentCard';
 import { refreshDomains } from '@/lib/refresh/bus';
+import { toast } from '@/lib/toast';
 
 interface UseUpNextRepairCardOptions {
   repair: RepairQueueItem;
@@ -69,7 +70,7 @@ export function useUpNextRepairCard({ repair, techId, onRefresh }: UseUpNextRepa
       refreshDomains(['repairs', 'upnext']);
       onRefresh?.();
     } catch (err: any) {
-      window.alert(err?.message || 'Failed to save assignment');
+      toast.error(err?.message || 'Failed to save assignment');
     }
   }, [onRefresh]);
 
@@ -92,7 +93,7 @@ export function useUpNextRepairCard({ repair, techId, onRefresh }: UseUpNextRepa
       refreshDomains(['repairs', 'upnext']);
       onRefresh?.();
     } catch (err: any) {
-      window.alert(err?.message || 'Failed to save out of stock');
+      toast.error(err?.message || 'Failed to save out of stock');
     } finally {
       setOosSaving(false);
     }
@@ -124,7 +125,7 @@ export function useUpNextRepairCard({ repair, techId, onRefresh }: UseUpNextRepa
       refreshDomains(['repairs', 'upnext']);
       onRefresh?.();
     } catch (err: any) {
-      window.alert(err?.message || 'Failed to mark repair as repaired');
+      toast.error(err?.message || 'Failed to mark repair as repaired');
     } finally {
       setRepairedSaving(false);
     }

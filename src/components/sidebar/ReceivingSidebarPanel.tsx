@@ -23,10 +23,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
-import { useSurfaceParamHygiene } from '@/hooks/useSurfaceParamHygiene';
 import { useAblyClient } from '@/contexts/AblyContext';
 import { useStationTheme } from '@/hooks/useStationTheme';
-import { useMasterNavEnabled } from '@/components/sidebar/master-nav';
 import {
   safeChannelName,
   getPhoneBridgeChannelName,
@@ -41,7 +39,6 @@ import { ReceivingReturnBanner } from '@/components/sidebar/ReceivingReturnBanne
 import { ReceivingLinePicker } from '@/components/sidebar/receiving/ReceivingLinePicker';
 import { IncomingSidebarPanel } from '@/components/sidebar/receiving/IncomingSidebarPanel';
 
-import { ReceivingModeSwitcher } from '@/components/sidebar/receiving/ReceivingModeSwitcher';
 import { TriageScanBand, UnboxScanBand } from '@/components/sidebar/receiving/ReceivingScanBands';
 import { TriageCartonSearchBar } from '@/components/sidebar/receiving/TriageCartonSearchBar';
 import { ReceivingRailBody } from '@/components/sidebar/receiving/ReceivingRailBody';
@@ -62,9 +59,7 @@ import { usePhotoRequestPublisher } from '@/components/sidebar/receiving/usePhot
 import { useRailEditMode } from '@/components/sidebar/receiving/useRailEditMode';
 
 export function ReceivingSidebarPanel() {
-  useSurfaceParamHygiene();
   const queryClient = useQueryClient();
-  const masterNavEnabled = useMasterNavEnabled();
 
   // Identity is server-derived (the proxy redirects unauthenticated traffic to
   // /signin), so `user` is non-null whenever this sidebar renders.
@@ -92,7 +87,6 @@ export function ReceivingSidebarPanel() {
     unboxView,
     triageQuery: triageListQuery,
     isScanSurface,
-    updateMode,
     updateUnboxView,
     updateTriageQuery,
   } = useReceivingMode();
@@ -248,7 +242,8 @@ export function ReceivingSidebarPanel() {
         setMany={setManyRailSelected}
         toggleActive={toggleRailEditMode}
       >
-        {!masterNavEnabled && <ReceivingModeSwitcher mode={mode} onChange={updateMode} />}
+        {/* L2 Mode + Recents live in GlobalHeader house-wide
+            (HeaderModeSwitcher). Do not remount ReceivingModeSwitcher. */}
 
         {mode === 'incoming' ? (
           // Incoming PO sync + email-triage band. Search / filters / Select live

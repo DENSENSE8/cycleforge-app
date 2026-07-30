@@ -72,6 +72,12 @@ export function detailStackHref(entry: {
     return `/o/${encodeURIComponent(entry.id)}`;
   }
 
+  // Receiving cartons: read inspector owns "look up this carton" (decision 2a).
+  // Do not remount editable ReceivingDetailsStack via openReceivingId.
+  if (entry.kind === 'receiving') {
+    return `/carton/${encodeURIComponent(entry.id)}`;
+  }
+
   const def = DETAIL_STACK_DEFS[entry.kind];
   const basePath = DETAIL_STACK_CANONICAL_PATH[entry.kind] ?? entry.path;
   const params = new URLSearchParams(entry.search ?? '');

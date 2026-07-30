@@ -5,6 +5,7 @@ import { getPrimaryPhotoStorage } from '@/lib/photos/storage/resolve-primary';
 import { getStorageAdapter } from '@/lib/photos/storage/registry';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { nasOrgHeader } from '@/lib/nas-agent-client';
+import { searchHitHref } from '@/lib/search/search-hit';
 
 /**
  * Server-side reader for a receiving photo's raw bytes, so the claim route can
@@ -313,13 +314,13 @@ export async function archiveClaimViaAgent(opts: {
 }
 
 /**
- * Canonical "view the PO receiving" link, built from the request origin so it
- * points at whatever host the operator is actually on (LAN URL on the LAN, the
- * public URL otherwise). Routes to the desktop receiving workspace, which
- * focuses the carton via `?recvId=` (ReceivingLinesTable deep-link) — claims
- * are worked from the desktop station, NOT the phone view (/m/r/:id), which is
- * the wrong surface for whoever opens the ticket later.
+ * Canonical "view the receiving record" link, built from the request origin
+ * so it points at whatever host the operator is actually on (LAN URL on the
+ * LAN, the public URL otherwise). Uses the same read view a global-search hit
+ * for this carton opens (`searchHitHref('RECEIVING', id)` → `/carton/:id`) —
+ * whoever opens the ticket later (support, a seller, another operator) lands
+ * on a read-only record, not the `/unbox` work editor.
  */
 export function poReceivingLink(req: NextRequest, receivingId: number): string {
-  return `${req.nextUrl.origin}/unbox?recvId=${receivingId}`;
+  return `${req.nextUrl.origin}${searchHitHref('RECEIVING', receivingId)}`;
 }

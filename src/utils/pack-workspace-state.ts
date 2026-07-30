@@ -14,13 +14,21 @@ export const PACK_WORKSPACE_TAB_LABEL: Record<PackWorkspaceTab, string> = {
 
 const VALID: ReadonlySet<string> = new Set(['queue', 'history']);
 
+/**
+ * Raw-string form of {@link getPackWorkspaceTabFromSearch}, for callers that hold
+ * a value rather than a `URLSearchParams` — notably the `/pack` param spec
+ * (`@/lib/routing/query-mode-routes`), which composes this via `paramRoundTrip`
+ * so the route contract cannot drift from `VALID`.
+ */
+export function parsePackWorkspaceTab(raw: string | null): PackWorkspaceTab {
+  const value = String(raw || '').trim().toLowerCase();
+  return VALID.has(value) ? (value as PackWorkspaceTab) : 'queue';
+}
+
 export function getPackWorkspaceTabFromSearch(
   searchParams: Pick<URLSearchParams, 'get'>,
 ): PackWorkspaceTab {
-  const raw = String(searchParams.get(PACK_WORKSPACE_TAB_PARAM) || '')
-    .trim()
-    .toLowerCase();
-  return VALID.has(raw) ? (raw as PackWorkspaceTab) : 'queue';
+  return parsePackWorkspaceTab(searchParams.get(PACK_WORKSPACE_TAB_PARAM));
 }
 
 /**

@@ -118,7 +118,7 @@ Density defaults: Station → `floor`; Workbench collection edit → `ops`; Moni
 2. **Table or board + optional inspector** — collection is primary (orders queue, FBA board); context opens on selection.
 3. **Fact stack / form** — single durable record focused without a heavy dual pane.
 
-Do **not** force recipe (1) when the data is a board or wide table. When using a sidebar picker, **compose the rail, never fork**; mode rail lives with the picker; related/similar is progressive disclosure below the map, never an inverted sidebar.
+Do **not** force recipe (1) when the data is a board or wide table. When using a sidebar picker, **compose the rail, never fork**; **L2 Mode + Recents live in GlobalHeader** (`HeaderModeSwitcher` / `HeaderRecentsSwitcher`); related/similar is progressive disclosure below the map, never an inverted sidebar.
 
 References: `ProductsWorkspace.tsx`, `QcChecklistWorkspace.tsx`, `SidebarRailShell.tsx`, `ReceivingRightPane.tsx`, FBA/order boards.
 
@@ -161,7 +161,7 @@ References: `ProductsWorkspace.tsx`, `QcChecklistWorkspace.tsx`, `SidebarRailShe
 2. **SCAN:** wedge/camera → Enter → classify (`station-scan-routing.ts`) → domain handler.
 3. **RESOLVE → SET ACTIVE:** active card mounts via `AnimatePresence mode="wait"` keyed on entity id — opacity + small-y. Previous exits first.
 4. **RE-FOCUS:** clear + re-focus; watchdog on blur/visibilitychange.
-5. **ACT:** scan-to-confirm; optimistic UI; `clientEventId` idempotency; 409 → big pass/fail, not a quiet toast.
+5. **ACT:** scan-to-confirm; optimistic UI; `clientEventId` / `idempotencyKey` honored server-side; 409 → big rose fail card (not a quiet toast / not `alert()`); unmatched tracking → amber exception card (continue scanning, never emerald Active).
 6. **CLEAR:** ephemeral — never URL selection.
 7. **STATION-DOWN:** `OfflineBanner`; degrade-not-block.
 
@@ -174,7 +174,7 @@ References: `ProductsWorkspace.tsx`, `QcChecklistWorkspace.tsx`, `SidebarRailShe
 5. **EDIT → PERSIST:** house CRUD route; optimistic with rollback; deletes confirm-then-commit; `clientEventId`.
 6. **STATE:** mode-scoped params clear on mode change. Prefer URL for filters/sort/search (partial today).
 
-**Master–detail recipe notes:** compose `SidebarShell` / `SidebarRailShell`; mode rail in sidebar header; `ReceivingRightPane` is a reference for pane crossfade with cache-preserving `display:none`.
+**Master–detail recipe notes:** compose `SidebarShell` / `SidebarRailShell`; L2 Mode in GlobalHeader; `ReceivingRightPane` is a reference for pane crossfade with cache-preserving `display:none`.
 
 **Monitor / Canvas** lifecycles: [display/monitor-and-canvas.md](display/monitor-and-canvas.md).
 

@@ -18,6 +18,8 @@ export type TechSerialSalContext = {
   fbaShipmentItemId: number | null;
   fnskuLogId: number | null;
   isFbaLike: boolean;
+  /** CF-03: resolved orders.id from SAL metadata / sole-shipment fallback. */
+  orderId: number | null;
 };
 
 type ResolveTechSerialSalContextResult =
@@ -66,7 +68,7 @@ export async function resolveTechSerialSalContext(
 ): Promise<ResolveTechSerialSalContextResult> {
   const salResult = await db.query(
     `SELECT id, staff_id, shipment_id, scan_ref, fnsku, orders_exception_id,
-            fba_shipment_id, fba_shipment_item_id
+            fba_shipment_id, fba_shipment_item_id, metadata
      FROM station_activity_logs
      WHERE id = $1 AND organization_id = $2
      LIMIT 1`,
@@ -86,6 +88,7 @@ export async function resolveTechSerialSalContext(
     orders_exception_id: number | null;
     fba_shipment_id: number | null;
     fba_shipment_item_id: number | null;
+    metadata: Record<string, unknown> | null;
   };
 
   const fnskuLogResult = await db.query(
@@ -103,13 +106,43 @@ export async function resolveTechSerialSalContext(
     : null;
 
   const fnsku = row.fnsku ? String(row.fnsku).trim().toUpperCase() : null;
+  const shipmentId = row.shipment_id != null ? Number(row.shipment_id) : null;
+  const meta = row.metadata && typeof row.metadata === 'object' ? row.metadata : {};
+
+  // CF-03: resolve orders.id for this Testing session.
+  let orderId: number | null = null;
+  const metaRowId = Number(meta.order_row_id);
+  if (Number.isFinite(metaRowId) && metaRowId > 0) {
+    orderId = metaRowId;
+  } else {
+    const metaOrderExt = typeof meta.order_id === 'string' ? meta.order_id.trim() : '';
+    if (metaOrderExt) {
+      const byExt = await db.query<{ id: number }>(
+        `SELECT id FROM orders
+          WHERE organization_id = $1 AND order_id = $2
+          LIMIT 1`,
+        [orgId, metaOrderExt],
+      );
+      if (byExt.rows[0]?.id) orderId = Number(byExt.rows[0].id);
+    }
+  }
+  // Sole-order shipment fallback when metadata lacked an order bind.
+  if (orderId == null && shipmentId != null && row.orders_exception_id == null) {
+    const sole = await db.query<{ id: number }>(
+      `SELECT id FROM orders
+        WHERE organization_id = $1 AND shipment_id = $2
+        LIMIT 2`,
+      [orgId, shipmentId],
+    );
+    if (sole.rows.length === 1) orderId = Number(sole.rows[0].id);
+  }
 
   return {
     ok: true,
     ctx: {
       salId: Number(row.id),
       staffId: row.staff_id != null ? Number(row.staff_id) : null,
-      shipmentId: row.shipment_id != null ? Number(row.shipment_id) : null,
+      shipmentId,
       scanRef: row.scan_ref ? String(row.scan_ref) : null,
       fnsku,
       ordersExceptionId: row.orders_exception_id != null ? Number(row.orders_exception_id) : null,
@@ -117,6 +150,7 @@ export async function resolveTechSerialSalContext(
       fbaShipmentItemId: row.fba_shipment_item_id != null ? Number(row.fba_shipment_item_id) : null,
       fnskuLogId,
       isFbaLike: Boolean(fnsku || row.fba_shipment_id != null || row.fba_shipment_item_id != null || fnskuLogId),
+      orderId,
     },
   };
 }
@@ -171,6 +205,7 @@ export async function insertTechSerialForSalContext(
       serialNumber: serial,
       organizationId: params.organizationId,
       shipmentId: params.salContext.shipmentId,
+      orderId: params.salContext.orderId,
       sourceSkuId: params.sourceSkuId ?? null,
       ordersExceptionId: params.salContext.ordersExceptionId,
       serialType,

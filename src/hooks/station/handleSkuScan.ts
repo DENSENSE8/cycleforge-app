@@ -1,4 +1,5 @@
 import { mergeSkuSerialGroups } from '@/lib/tech/sku-serial-groups';
+import { toast } from '@/lib/toast';
 import type { ScanHandlerContext } from './types';
 
 /**
@@ -81,7 +82,7 @@ export async function handleSkuScan(input: string, ctx: ScanHandlerContext): Pro
     );
 
     if (data.notes) {
-      setTimeout(() => alert(`Notes for SKU:\n\n${data.notes}`), 150);
+      setTimeout(() => toast.info(`Notes for SKU: ${data.notes}`), 150);
     }
 
     ctx.queryClient.invalidateQueries({ queryKey: ['tech-logs'] });

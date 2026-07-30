@@ -111,7 +111,23 @@ async function resolveOrder(
 
   const bySerialTech = await runResolve(
     q,
-    `JOIN tech_serial_numbers tsn ON tsn.shipment_id = o.shipment_id
+    `JOIN tech_serial_numbers tsn ON (
+         tsn.organization_id = o.organization_id
+         AND (
+           tsn.order_id = o.id
+           OR (
+             tsn.order_id IS NULL
+             AND tsn.shipment_id IS NOT NULL
+             AND tsn.shipment_id = o.shipment_id
+             AND NOT EXISTS (
+               SELECT 1 FROM orders o2
+               WHERE o2.shipment_id = o.shipment_id
+                 AND o2.organization_id = o.organization_id
+                 AND o2.id <> o.id
+             )
+           )
+         )
+       )
      WHERE UPPER(TRIM(tsn.serial_number)) = UPPER(TRIM($1))`,
     [q],
     orgId,

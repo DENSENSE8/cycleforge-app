@@ -46,7 +46,13 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
   const syntheticReq = new NextRequest(req.url, {
     method: 'POST',
     headers,
-    body: JSON.stringify({ action: 'add', salId, serial, techId }),
+    body: JSON.stringify({
+      action: 'add',
+      salId,
+      serial,
+      techId,
+      idempotencyKey: body.idempotencyKey ?? body.clientEventId ?? undefined,
+    }),
   });
 
   const res = await unifiedSerial(syntheticReq, { params: Promise.resolve({}) });
@@ -63,6 +69,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
   // was written) and let the client fall back gracefully.
   const serialNumbers: string[] = Array.isArray(data.serialNumbers) ? data.serialNumbers : [];
   const tracking = String(salRow?.scan_ref || '').trim();
+  const attachedToOrder = data.attachedToOrder !== false;
   let order = null;
   try {
     const orderRow = await withTenantConnection(orgId, (client) =>
@@ -77,17 +84,22 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     order = buildOrderPayload(orderRow, {
       tracking: orderRow?.shipping_tracking_number || tracking,
       serialNumbers,
-      orderFound: Boolean(orderRow),
+      orderFound: Boolean(orderRow) && attachedToOrder,
     });
   } catch (err) {
     console.error('add-serial-to-last order resolve failed:', err);
   }
 
   const quantity = Number(order?.quantity) || 1;
+  const orderFound = Boolean(order) && attachedToOrder;
   return NextResponse.json({
     success: true,
     serialNumbers,
     order,
-    isComplete: serialNumbers.length >= quantity,
+    attachedToOrder,
+    ordersExceptionId: data.ordersExceptionId ?? null,
+    warning: data.warning,
+    // Never celebrate "complete" for an exception hold session.
+    isComplete: orderFound && serialNumbers.length >= quantity,
   });
 }, { permission: 'tech.scan_serial' });

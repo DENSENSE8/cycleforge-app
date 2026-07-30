@@ -33,6 +33,7 @@ export async function handleSerialScan(input: string, ctx: ScanHandlerContext): 
       // The serial is persisted server-side regardless; only card restoration
       // depends on the resolved `order`. Degrade-not-block if it's absent.
       const order = data.order;
+      const attachedToOrder = data.attachedToOrder !== false;
       if (order) {
         ctx.syncActiveOrderState({
           id: order.id ?? null,
@@ -50,7 +51,10 @@ export async function handleSerialScan(input: string, ctx: ScanHandlerContext): 
           quantity: order.quantity || 1,
           shipByDate: order.shipByDate ?? null,
           createdAt: order.createdAt ?? null,
-          orderFound: order.orderFound !== false,
+          orderFound: order.orderFound !== false && attachedToOrder,
+          sourceType: attachedToOrder ? undefined : 'exception',
+          inlineMicrocopy:
+            typeof data.warning === 'string' ? data.warning : undefined,
           scanSessionId:
             typeof data.scanSessionId === 'string'
               ? data.scanSessionId
@@ -58,11 +62,15 @@ export async function handleSerialScan(input: string, ctx: ScanHandlerContext): 
         });
       }
 
-      ctx.setSuccessMessage(`Serial ${input.toUpperCase()} added ✓ (${restoredSerials.length} total)`);
+      ctx.setSuccessMessage(
+        attachedToOrder
+          ? `Serial ${input.toUpperCase()} added ✓ (${restoredSerials.length} total)`
+          : `Serial ${input.toUpperCase()} held on exception (${restoredSerials.length} total)`,
+      );
       // Fire-and-forget: if the raw scan is a printed unit label, request phone
       // photos for that unit. Gated + resolved by the host; no-op otherwise.
       ctx.onUnitLabelScanned?.(input);
-      if (data.isComplete) {
+      if (data.isComplete && attachedToOrder) {
         confetti({ particleCount: 100, spread: 70 });
       }
       ctx.queryClient.invalidateQueries({ queryKey: ['tech-logs'] });
@@ -124,6 +132,7 @@ export async function handleSerialScan(input: string, ctx: ScanHandlerContext): 
     }
 
     const nextSerials = Array.isArray(data.serialNumbers) ? data.serialNumbers : contextOrder.serialNumbers;
+    const attachedToOrder = data.attachedToOrder !== false;
     const nextOrder = {
       ...contextOrder,
       serialNumbers: nextSerials,
@@ -132,6 +141,10 @@ export async function handleSerialScan(input: string, ctx: ScanHandlerContext): 
         contextOrder.sku,
         finalSerial,
       ),
+      orderFound: attachedToOrder ? contextOrder.orderFound : false,
+      sourceType: attachedToOrder ? contextOrder.sourceType : 'exception' as const,
+      inlineMicrocopy:
+        typeof data.warning === 'string' ? data.warning : contextOrder.inlineMicrocopy,
       scanSessionId:
         typeof data.scanSessionId === 'string'
           ? data.scanSessionId
@@ -140,12 +153,16 @@ export async function handleSerialScan(input: string, ctx: ScanHandlerContext): 
 
     ctx.syncActiveOrderState(nextOrder);
 
-    ctx.setSuccessMessage(`Serial ${finalSerial} added ✓ (${data.serialNumbers.length} total)`);
+    ctx.setSuccessMessage(
+      attachedToOrder
+        ? `Serial ${finalSerial} added ✓ (${data.serialNumbers.length} total)`
+        : `Serial ${finalSerial} held on exception (${data.serialNumbers.length} total)`,
+    );
     // Fire-and-forget: if the raw scan is a printed unit label, request phone
     // photos for that unit. Gated + resolved by the host; no-op otherwise.
     ctx.onUnitLabelScanned?.(input);
 
-    if (data.isComplete) {
+    if (data.isComplete && attachedToOrder) {
       confetti({ particleCount: 100, spread: 70 });
     }
 

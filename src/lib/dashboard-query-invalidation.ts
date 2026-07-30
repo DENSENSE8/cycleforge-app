@@ -10,7 +10,6 @@ const DASHBOARD_TABLE_KEYS = [
   qk.dashboardTable.shippedFba,
   qk.shippedTable,
   qk.dashboardStockZoho,
-  qk.dashboardFbaShipments,
 ];
 
 /**

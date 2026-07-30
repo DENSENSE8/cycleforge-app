@@ -448,6 +448,128 @@ export async function batchResolveSkuCatalogByTitles(
   return out;
 }
 
+interface ListingTitleMatch {
+  platformItemId: string;
+  platform: string;
+  listingTitle: string;
+  skuCatalogId: number | null;
+}
+
+/**
+ * Resolve a sheet row's Item Number from an EXACT listing title.
+ *
+ * Why exact, and why this table:
+ *
+ *  - `batchResolveSkuCatalogByTitles` answers "which PRODUCT is this" against
+ *    `sku_catalog`, then a caller has to pick one of that product's listings —
+ *    `batchPlatformItemIdsByCatalogIds` takes the newest by id, which is the
+ *    wrong listing whenever a SKU is multi-listed (one live SKU has 7). This
+ *    function answers "which LISTING is this" directly, so no arbitrary pick
+ *    happens at all.
+ *  - It is also where the data actually is: 5,482 of 5,506 `sku_platform_ids`
+ *    rows carry a `listing_title`, while only 259 are paired to a catalog SKU.
+ *    Marketplace listing titles are copied verbatim into the sheet, so an exact
+ *    normalized compare hits — measured on the 2026-07-29 tab, 6 of 10 blank
+ *    Item Number rows matched at similarity 1.000.
+ *
+ * NO fuzzy threshold: a near-miss here would write a WRONG listing id onto a
+ * real order, and `platform_item_id` is the key orders join on. Exact or skip.
+ *
+ * AMBIGUITY IS A NON-MATCH: if a normalized title maps to more than one
+ * distinct `platform_item_id` within the scope, the row is left unresolved
+ * rather than guessed — that is the precise failure this function exists to
+ * avoid repeating.
+ *
+ * Scoped per (normalized title, platform) so an eBay row can never adopt an
+ * Amazon listing id. Rows whose sheet platform is blank match org-wide, still
+ * subject to the uniqueness rule.
+ */
+export async function batchResolveListingsByTitle(
+  inputs: Array<{ title: string; platform: string }>,
+  orgId: OrgId,
+): Promise<Map<string, ListingTitleMatch>> {
+  const out = new Map<string, ListingTitleMatch>();
+  const norm = (t: string) => t.trim().toLowerCase();
+  const key = (title: string, platform: string) => `${norm(platform)} ${norm(title)}`;
+
+  const wanted = new Map<string, { title: string; platform: string }>();
+  for (const input of inputs) {
+    const title = input.title.trim();
+    if (!title) continue;
+    wanted.set(key(title, input.platform), { title, platform: input.platform.trim() });
+  }
+  if (wanted.size === 0) return out;
+
+  const titles = Array.from(new Set(Array.from(wanted.values()).map((w) => norm(w.title))));
+
+  // Group in SQL so ambiguity is decided by the database rather than by
+  // whichever row happened to sort first.
+  const { rows } = await tenantQuery<{
+    norm_title: string;
+    platform: string;
+    item_ids: string[];
+    listing_title: string;
+    sku_catalog_id: number | null;
+  }>(
+    orgId,
+    `SELECT LOWER(BTRIM(listing_title))         AS norm_title,
+            LOWER(BTRIM(platform))              AS platform,
+            ARRAY_AGG(DISTINCT BTRIM(platform_item_id)) AS item_ids,
+            MIN(listing_title)                  AS listing_title,
+            MIN(sku_catalog_id)                 AS sku_catalog_id
+       FROM sku_platform_ids
+      WHERE organization_id = $2
+        AND is_active = true
+        AND listing_title IS NOT NULL AND BTRIM(listing_title) <> ''
+        AND platform_item_id IS NOT NULL AND BTRIM(platform_item_id) <> ''
+        AND LOWER(BTRIM(listing_title)) = ANY($1::text[])
+      GROUP BY 1, 2`,
+    [titles, orgId],
+  );
+
+  // (normalized title, platform) → the single item id, when there is only one.
+  const byTitlePlatform = new Map<string, ListingTitleMatch>();
+  // (normalized title) → org-wide candidates, for rows with no sheet platform.
+  const byTitleAny = new Map<string, ListingTitleMatch[]>();
+
+  for (const row of rows) {
+    const ids = (row.item_ids || []).filter(Boolean);
+    const match: ListingTitleMatch = {
+      platformItemId: ids[0] ?? '',
+      platform: row.platform || '',
+      listingTitle: row.listing_title || '',
+      skuCatalogId: row.sku_catalog_id ?? null,
+    };
+    if (ids.length === 1) {
+      byTitlePlatform.set(`${row.platform} ${row.norm_title}`, match);
+    }
+    const anyList = byTitleAny.get(row.norm_title) ?? [];
+    // Push one entry per distinct id so a title split across two listings —
+    // even on different platforms — reads as ambiguous org-wide.
+    for (const id of ids) anyList.push({ ...match, platformItemId: id });
+    byTitleAny.set(row.norm_title, anyList);
+  }
+
+  for (const [k, { title, platform }] of wanted) {
+    const nt = norm(title);
+    if (platform) {
+      const hit = byTitlePlatform.get(`${norm(platform)} ${nt}`);
+      if (hit) out.set(k, hit);
+      continue;
+    }
+    const candidates = byTitleAny.get(nt) ?? [];
+    const distinct = new Set(candidates.map((c) => c.platformItemId));
+    if (distinct.size === 1 && candidates[0]) out.set(k, candidates[0]);
+  }
+
+  return out;
+}
+
+/** Stable lookup key for {@link batchResolveListingsByTitle} results. */
+export function listingTitleMatchKey(title: string, platform: string): string {
+  return `${platform.trim().toLowerCase()} ${title.trim().toLowerCase()}`;
+}
+
 /**
  * Best-effort platform_item_id per sku_catalog row (for backfilling orders.item_number
  * when a sheet import matched by title but carries no listing id).

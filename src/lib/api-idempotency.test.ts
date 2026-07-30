@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   claimOrReplay,
   finalizeIdempotencyClaim,
+  readIdempotencyKey,
   releaseIdempotencyClaim,
   withIdempotencyClaim,
 } from './api-idempotency';
@@ -156,4 +157,52 @@ test('withIdempotencyClaim: a 5xx releases the claim so a later retry can run', 
   const b = await withIdempotencyClaim(db, P, produce);
   assert.equal(b.status, 200);
   assert.equal(attempt, 2);
+});
+
+test('readIdempotencyKey prefers Idempotency-Key header over body', () => {
+  const req = new Request('https://example.test/api', {
+    headers: { 'Idempotency-Key': ' from-header ' },
+  });
+  assert.equal(readIdempotencyKey(req, 'from-body'), 'from-header');
+  assert.equal(readIdempotencyKey(req, null), 'from-header');
+});
+
+test('readIdempotencyKey falls back to body key when header absent', () => {
+  const req = new Request('https://example.test/api');
+  assert.equal(readIdempotencyKey(req, '  body-key  '), 'body-key');
+  assert.equal(readIdempotencyKey(req, '   '), null);
+  assert.equal(readIdempotencyKey(req, null), null);
+});
+
+test('withIdempotencyClaim: same key returns identical JSON body on replay', async () => {
+  const db = makeFakeDb();
+  const payload = { success: true, order: { id: 42, order_id: 'CF-1' } };
+  let inserts = 0;
+  const produce = async () => {
+    inserts += 1;
+    return { status: 200, body: payload };
+  };
+
+  const first = await withIdempotencyClaim(db, { ...P, route: 'orders.add' }, produce);
+  const second = await withIdempotencyClaim(db, { ...P, route: 'orders.add' }, produce);
+  assert.equal(inserts, 1);
+  assert.equal(first.cached, false);
+  assert.equal(second.cached, true);
+  assert.deepEqual(second.body, payload);
+  assert.equal(second.status, first.status);
+});
+
+test('withIdempotencyClaim: packing-logs route key replays without second produce', async () => {
+  const db = makeFakeDb();
+  let inserts = 0;
+  const produce = async () => {
+    inserts += 1;
+    return { status: 200, body: { success: true, packerLogId: 9 } };
+  };
+  const params = { ...P, route: 'packing-logs.post', idempotencyKey: 'pack-scan-1' };
+  await withIdempotencyClaim(db, params, produce);
+  const replay = await withIdempotencyClaim(db, params, produce);
+  assert.equal(inserts, 1);
+  assert.equal(replay.cached, true);
+  assert.deepEqual(replay.body, { success: true, packerLogId: 9 });
 });

@@ -47,6 +47,7 @@ import {
   StationHeaderToolbar,
   StationMoreDetails,
 } from '@/components/station/entity-context';
+import { STATION_IDENTITY_SCROLL_CLEARANCE } from '@/components/station/entity-context/station-bookmark';
 import { StationTerminalDock, useStationTerminalAction } from '@/components/station/terminal';
 import {
   StationWorkbench,
@@ -55,6 +56,7 @@ import {
   ExternalLinkPill,
   STATION_WORKBENCH_COLUMN,
 } from '@/components/station/workbench';
+import { slicedActionDockWrapperClass } from '@/design-system/primitives';
 import { usePoNoteTabState } from './line-edit/terminal/usePoNoteTabState';
 import { resolveUnboxTerminal } from './line-edit/terminal/unbox-terminal';
 import { buildUnboxTabs, UnboxSectionTabs } from './line-edit/terminal/unbox-tabs';
@@ -129,6 +131,7 @@ export function LineEditPanel({
   );
   const rowSerials = Array.isArray(row.serials) ? row.serials : [];
   const serialCount = rowSerials.length;
+  const perUnitAbsentCount = (row.units ?? []).filter((u) => u.serial_absent).length;
   // Resolve the returned unit's OUTBOUND order (closed-loop linkage) from the
   // live scan input, falling back to the newest serial already on the line so
   // the identity persists after the scan bar clears. The resolved order# lands
@@ -141,10 +144,11 @@ export function LineEditPanel({
         photoCount,
         serialCount,
         serialAbsent: !!row.serial_absent,
+        perUnitAbsentCount,
         quantityExpected: row.quantity_expected ?? 0,
         labelPrinted,
       }),
-    [photoCount, serialCount, row.serial_absent, row.quantity_expected, labelPrinted],
+    [photoCount, serialCount, row.serial_absent, perUnitAbsentCount, row.quantity_expected, labelPrinted],
   );
 
   const [unboxView, setUnboxView] = useState<UnboxView>('overview');
@@ -490,7 +494,9 @@ export function LineEditPanel({
                 }
                 moreDetails={moreDetails}
               />
-              <div className="relative z-0 min-h-0 flex-1 overflow-hidden">
+              <div
+                className={`relative z-0 min-h-0 flex-1 overflow-hidden ${STATION_IDENTITY_SCROLL_CLEARANCE}`}
+              >
                 <SupportTicketDetail
                   ticketId={ticketId!}
                   onBack={() => setTicketView(false)}
@@ -511,6 +517,9 @@ export function LineEditPanel({
               <StationWorkbench
                 ambientWash={false}
                 className="relative z-0 flex-1 bg-transparent"
+                // Overview notes float over the canvas — reserve clearance so
+                // scroll content is not hidden under the absolute composer.
+                reserveScrollClearance={activeUnboxView === 'overview'}
                 tabs={
                   <motion.div
                     initial={false}
@@ -568,12 +577,14 @@ export function LineEditPanel({
                   ) : null
                 }
                 dock={
-                  // Overview: ONE elevated shell — the receive split-CTA rides
-                  // inside the notes composer footer (no second dock row).
-                  // Other tabs keep the full-width terminal band.
+                  // Overview: ONE elevated shell floating over the canvas —
+                  // receive split-CTA rides in the notes composer footer
+                  // (no second dock row). Placement SoT =
+                  // slicedActionDockWrapperClass({ docked: false }).
+                  // Other tabs keep the full-width in-flow terminal band.
                   activeUnboxView === 'overview' ? (
-                    <div className="shrink-0 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 sm:px-6">
-                      <div className={STATION_WORKBENCH_COLUMN}>
+                    <div className={slicedActionDockWrapperClass({ docked: false })}>
+                      <div className={`pointer-events-auto ${STATION_WORKBENCH_COLUMN}`}>
                         {terminalVm?.disabled && terminalVm.disabledReason ? (
                           <p
                             role="status"

@@ -1,4 +1,3 @@
-import { gridTemplate } from '@/design-system/components/grid/grid-column-geometry';
 /**
  * Repair queue spreadsheet column model — SoT for the `/repair` LedgerGrid.
  *
@@ -13,8 +12,10 @@ import { gridTemplate } from '@/design-system/components/grid/grid-column-geomet
  * second width system (mirrors Incoming's re-export block).
  */
 
-import type { ColumnType } from '@/lib/tables/table-columns';
+import { GRID_IDENTITY_COLUMN_KEYS } from '@/design-system/components/grid/grid-column-editability';
+import { gridTemplate } from '@/design-system/components/grid/grid-column-geometry';
 import type { RSRecord } from '@/lib/neon/repair-service-queries';
+import type { ColumnType } from '@/lib/tables/table-columns';
 import { formatPhoneNumber } from '@/utils/phone';
 
 export type RepairGridColumnKey =
@@ -34,6 +35,8 @@ export interface RepairGridColumn {
   gridLabel?: string;
   labelFitRem?: number;
   type?: ColumnType;
+  /** Justification override — see {@link LedgerGridColumnModel.align}. */
+  align?: 'start' | 'end';
   /** Staff-preference key (`staff_preferences.tableColumns.repair`). */
   hideKey?: string;
   /** `core` ships ON (opt-out); `optional` ships OFF (opt-in via Fields). */
@@ -74,7 +77,9 @@ export const REPAIR_GRID_COLUMNS: readonly RepairGridColumn[] = [
   { key: 'ticket', width: 'minmax(5rem, 5rem)', label: 'Ticket', type: 'id', hideKey: 'ticket', labelFitRem: 4.5 },
 ] as const;
 
-const REPAIR_GRID_LOCKED_KEYS: readonly RepairGridColumnKey[] = ['select', 'title'];
+const REPAIR_GRID_LOCKED_KEYS: readonly RepairGridColumnKey[] = [
+  ...GRID_IDENTITY_COLUMN_KEYS,
+];
 
 /** Data columns that support click-to-sort (excludes the select gutter). */
 const REPAIR_GRID_SORTABLE_KEYS: readonly RepairGridColumnKey[] = REPAIR_GRID_COLUMNS.filter(

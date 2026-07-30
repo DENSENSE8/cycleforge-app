@@ -19,7 +19,6 @@ import { ReceivingInboundFeed } from '@/components/station/ReceivingInboundFeed'
 import { ActiveOrderWorkspace } from '@/components/tech/ActiveOrderWorkspace';
 import { TestingLineWorkspace } from '@/components/tech/TestingLineWorkspace';
 import { previewOrderToActiveShape } from '@/components/tech/tech-dashboard-helpers';
-import type { ReceivingDetailsLog } from '@/components/station/receiving-details-log';
 import type { Order } from '@/components/station/upnext/upnext-types';
 import type { TechActiveOrderPane } from '@/components/tech/useTechOrderPanes';
 import type { TechRightViewMode } from '@/components/tech/useTechRightView';
@@ -35,7 +34,6 @@ interface TechRightPaneProps {
   onCloseActiveOrder: () => void;
   previewOrder: Order | null;
   onClosePreview: () => void;
-  onSelectLog: (log: ReceivingDetailsLog) => void;
 }
 
 export function TechRightPane({
@@ -49,12 +47,11 @@ export function TechRightPane({
   onCloseActiveOrder,
   previewOrder,
   onClosePreview,
-  onSelectLog,
 }: TechRightPaneProps) {
   // Canonical right-pane fade; centralizes prefers-reduced-motion via the hook.
   const tabFade = useMotionPresence(framerPresence.tableRow);
   if (rightViewMode === 'receiving') {
-    return <ReceivingInboundFeed onSelectLog={onSelectLog} />;
+    return <ReceivingInboundFeed />;
   }
 
   if (rightViewMode === 'testing') {

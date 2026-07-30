@@ -1,11 +1,11 @@
 {
   "version": 1,
-  "generatedAt": "2026-07-29T17:53:01Z",
-  "totalRoutes": 882,
+  "generatedAt": "2026-07-30T06:04:52Z",
+  "totalRoutes": 890,
   "summary": {
-    "permissionGated": 752,
-    "authenticatedNoPermission": 46,
-    "anonymousIntentional": 82,
+    "permissionGated": 755,
+    "authenticatedNoPermission": 48,
+    "anonymousIntentional": 85,
     "serviceToService": 2,
     "ungatedRead": 0,
     "ungatedWrite": 0
@@ -1400,6 +1400,15 @@
       "exemptReason": "cron endpoint"
     },
     {
+      "path": "/api/cron/catalog-projection/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "NONE",
+      "permission": null,
+      "exemptReason": "cron endpoint"
+    },
+    {
       "path": "/api/cron/cleanup/route.ts",
       "methods": [
         "GET"
@@ -1527,6 +1536,15 @@
       "exemptReason": "cron endpoint"
     },
     {
+      "path": "/api/cron/receiving/claims-escalation/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "NONE",
+      "permission": null,
+      "exemptReason": "cron endpoint"
+    },
+    {
       "path": "/api/cron/receiving/incoming-tracking-sync/route.ts",
       "methods": [
         "GET"
@@ -1644,6 +1662,15 @@
       "exemptReason": "cron endpoint"
     },
     {
+      "path": "/api/cron/ticket-outbox/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "NONE",
+      "permission": null,
+      "exemptReason": "cron endpoint"
+    },
+    {
       "path": "/api/cron/workflow-node-stats/route.ts",
       "methods": [
         "GET"
@@ -1733,15 +1760,6 @@
       ],
       "gate": "requireRoutePerm",
       "permission": "cycle_count.view",
-      "exemptReason": null
-    },
-    {
-      "path": "/api/dashboard/fba-shipments/route.ts",
-      "methods": [
-        "GET"
-      ],
-      "gate": "withAuth",
-      "permission": "fba.view",
       "exemptReason": null
     },
     {
@@ -3262,6 +3280,15 @@
       ],
       "gate": "getCurrentUser (ad-hoc)",
       "permission": null,
+      "exemptReason": null
+    },
+    {
+      "path": "/api/operations/reconciliation/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "operations.view",
       "exemptReason": null
     },
     {
@@ -4916,6 +4943,16 @@
       "exemptReason": null
     },
     {
+      "path": "/api/receiving/lines/[id]/loss/route.ts",
+      "methods": [
+        "DELETE",
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "receiving.mark_received",
+      "exemptReason": null
+    },
+    {
       "path": "/api/receiving/lines/[id]/move/route.ts",
       "methods": [
         "POST"
@@ -4967,6 +5004,24 @@
       ],
       "gate": "requireRoutePerm",
       "permission": "receiving.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/receiving/lines/[id]/units/[unitId]/condition/route.ts",
+      "methods": [
+        "PATCH"
+      ],
+      "gate": "withAuth (no permission)",
+      "permission": null,
+      "exemptReason": null
+    },
+    {
+      "path": "/api/receiving/lines/[id]/units/[unitId]/serial-absent/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withAuth (no permission)",
+      "permission": null,
       "exemptReason": null
     },
     {
@@ -5751,6 +5806,26 @@
       ],
       "gate": "withAuth",
       "permission": "sku_stock.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/saved-views/[id]/route.ts",
+      "methods": [
+        "DELETE",
+        "PATCH"
+      ],
+      "gate": "requireRoutePerm",
+      "permission": "dashboard.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/saved-views/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "dashboard.view",
       "exemptReason": null
     },
     {

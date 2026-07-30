@@ -10,6 +10,7 @@ import { WorkOrderAssignmentCard, type AssignmentConfirmPayload } from '@/compon
 import type { ShippedActiveSection } from '@/components/shipped/ShippedDetailsPanelContent';
 import type { ShippedActiveInput } from '@/components/shipped/stacks/types';
 import { resolveDeleteRequest, toMonthDayYearCurrent } from '@/components/shipped/details-panel/shipped-details-logic';
+import { toast } from '@/lib/toast';
 
 // Re-exported so consumers of WorkOrderAssignmentCard's confirm payload can find it here.
 export type { AssignmentConfirmPayload };
@@ -247,7 +248,7 @@ export function useShippedDeletion(shipped: ShippedOrder, onUpdate: () => void) 
       onUpdate();
     } catch (error) {
       console.error('Failed to delete shipped order:', error);
-      window.alert('Failed to permanently delete order. Please try again.');
+      toast.error('Failed to permanently delete order. Please try again.');
     }
   }, [shipped, isDeleteArmed, deleteOrderMutation, onUpdate]);
 

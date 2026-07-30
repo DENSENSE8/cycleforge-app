@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Shipping workspace attention strip — Monitor KPIs for Pending / FBA / History
+ * Shipping workspace attention strip — Monitor KPIs for Pending / History
  * on `/test` Shipping mode. Same tile anatomy as OutboundKpiStrip.
  *
  * Pending tiles that map to a fulfillment lane click-to-toggle `?ustatus` via
@@ -13,15 +13,12 @@ import { useMemo, type ReactNode } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { unshippedQueueCountsQuery } from '@/lib/queries/dashboard-queries';
-import { qk } from '@/queries/keys';
 import { KpiTile, metricIntentTextClass, MONITOR_KPI_TILE_CLASS } from '@/design-system/components/monitor';
 import {
   resolveShippingMetrics,
   splitShippingAttention,
-  ZERO_SHIPPING_FBA,
   ZERO_SHIPPING_HISTORY,
   type ComputedMetric,
-  type ShippingFbaCounts,
   type ShippingHistoryCounts,
 } from '@/lib/tech/shipping-metrics';
 import type { ShippingWorkspaceTab } from '@/utils/shipping-workspace-state';
@@ -116,9 +113,7 @@ function StripAllClear({ mode }: { mode: ShippingWorkspaceTab }) {
   const copy =
     mode === 'pending'
       ? { title: 'The queue is clear.', hint: 'Blocked units, backlog, and week throughput surface here.' }
-      : mode === 'fba'
-        ? { title: 'Nothing needs attention.', hint: 'Labeled, packed, and out-of-stock FBA items surface here.' }
-        : { title: 'No scan-outs in view.', hint: 'Today and week throughput surface here.' };
+      : { title: 'No scan-outs in view.', hint: 'Today and week throughput surface here.' };
   return (
     <div className="flex items-center gap-3 rounded-xl border border-dashed border-border-soft bg-surface-card px-4 py-5">
       <CheckCircle className="h-5 w-5 shrink-0 text-text-success" />
@@ -145,39 +140,6 @@ function StripError({ onRetry }: { onRetry: () => void }) {
       </button>
     </div>
   );
-}
-
-function useFbaStageCounts(): {
-  fba: ShippingFbaCounts;
-  isPending: boolean;
-  isError: boolean;
-  refetch: () => void;
-} {
-  const query = useQuery({
-    queryKey: qk.fba.stageCounts,
-    queryFn: async () => {
-      const res = await fetch('/api/fba/stage-counts', { cache: 'no-store' });
-      if (!res.ok) throw new Error('Failed to load FBA stage counts');
-      const data = await res.json();
-      const c = (data?.counts ?? {}) as Record<string, number>;
-      return {
-        planned: Number(c.PLANNED) || 0,
-        tested: Number(c.TESTED) || 0,
-        packed: Number(c.PACKED) || 0,
-        outOfStock: Number(c.OUT_OF_STOCK) || 0,
-        labeled: Number(c.LABEL_ASSIGNED) || 0,
-      } satisfies ShippingFbaCounts;
-    },
-    staleTime: 60_000,
-  });
-  return {
-    fba: query.data ?? ZERO_SHIPPING_FBA,
-    isPending: query.isPending,
-    isError: query.isError,
-    refetch: () => {
-      void query.refetch();
-    },
-  };
 }
 
 function summarizeHistory(records: TechRecord[]): ShippingHistoryCounts {
@@ -246,7 +208,6 @@ function PendingStrip() {
   const metrics = resolveShippingMetrics({
     mode: 'pending',
     unshipped,
-    fba: ZERO_SHIPPING_FBA,
     history: ZERO_SHIPPING_HISTORY,
     roi,
   });
@@ -261,27 +222,6 @@ function PendingStrip() {
       onRetry={() => {
         void query.refetch();
       }}
-    />
-  );
-}
-
-function FbaStrip() {
-  const { fba, isPending, isError, refetch } = useFbaStageCounts();
-  const metrics = resolveShippingMetrics({
-    mode: 'fba',
-    unshipped: EMPTY_UNSHIPPED,
-    fba,
-    history: ZERO_SHIPPING_HISTORY,
-    roi: null,
-  });
-  return (
-    <StripLayout
-      mode="fba"
-      metrics={metrics}
-      isPending={isPending}
-      isError={isError}
-      reservedSlots={2}
-      onRetry={refetch}
     />
   );
 }
@@ -301,7 +241,6 @@ function HistoryStrip({ techId }: { techId?: number }) {
   const metrics = resolveShippingMetrics({
     mode: 'history',
     unshipped: EMPTY_UNSHIPPED,
-    fba: ZERO_SHIPPING_FBA,
     history,
     roi: null,
   });
@@ -331,8 +270,6 @@ export function ShippingKpiStrip({
     <section aria-label="Shipping attention" className="shrink-0">
       {mode === 'pending' ? (
         <PendingStrip />
-      ) : mode === 'fba' ? (
-        <FbaStrip />
       ) : (
         <HistoryStrip techId={techId} />
       )}

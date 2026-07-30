@@ -41,6 +41,7 @@ Violating one of these is a bug even when the task "worked". Detail behind the l
 - **`orgId` comes from `ctx`, never the body**; org-scoped writes go through `withTenantTransaction`.
 - **Never build a second search engine, audit API, or status transition** outside the SoT modules.
 - **Color, spacing, type, z-index, elevation, focus come from tokens** — no page-local hex, no raw `z-[N]`.
+- **LedgerGrid justification:** digit / order-ID / date / tracking columns **end**-align; word / tag columns **start**-align — `resolveGridColumnAlign` only (never a per-cell `justify-*`).
 - **`npm run verify` before a task is done** — and never raise a ratchet baseline to make it pass.
 - **E2E asserts against the QA org**, not the dogfood tenant.
 

@@ -1,17 +1,13 @@
 'use client';
 
 /**
- * Detail-overlay state for the tech dashboard: the selected receiving log (from
- * inbound-feed row clicks) and the repair panel (from repair-card clicks
- * anywhere on the page), plus the receiving-log query invalidations. Owns the
- * `open-repair-details` + `receiving-select-log` window-event bridges. Extracted
- * from TechDashboard; behaviour is unchanged.
+ * Detail-overlay state for the tech dashboard: the repair panel (from repair-card
+ * clicks). Carton "look" navigates to `/carton/[id]` from the inbound feed
+ * (decision 2a) — editable ReceivingDetailsStack is no longer mounted here.
  */
 
-import { useCallback, useEffect, useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
 import type { RSRecord } from '@/lib/neon/repair-service-queries';
-import type { ReceivingDetailsLog } from '@/components/station/receiving-details-log';
 
 interface OpenRepairDetail {
   repairId: number;
@@ -26,18 +22,12 @@ export interface TechRepairPanel {
 }
 
 export interface TechDetailOverlays {
-  selectedLog: ReceivingDetailsLog | null;
-  setSelectedLog: React.Dispatch<React.SetStateAction<ReceivingDetailsLog | null>>;
   repairPanel: TechRepairPanel | null;
   setRepairPanel: React.Dispatch<React.SetStateAction<TechRepairPanel | null>>;
   loadingRepair: boolean;
-  handleLogUpdated: () => void;
-  handleLogDeleted: () => void;
 }
 
 export function useTechDetailOverlays(): TechDetailOverlays {
-  const queryClient = useQueryClient();
-  const [selectedLog, setSelectedLog] = useState<ReceivingDetailsLog | null>(null);
   const [repairPanel, setRepairPanel] = useState<TechRepairPanel | null>(null);
   const [loadingRepair, setLoadingRepair] = useState(false);
 
@@ -63,36 +53,9 @@ export function useTechDetailOverlays(): TechDetailOverlays {
     return () => window.removeEventListener('open-repair-details', handleOpenRepair);
   }, []);
 
-  // receiving-select-log events (fired by ReceivingInboundFeed row clicks).
-  useEffect(() => {
-    const handleSelectLog = (e: Event) => {
-      const custom = e as CustomEvent<ReceivingDetailsLog>;
-      if (custom.detail) setSelectedLog(custom.detail);
-    };
-    window.addEventListener('receiving-select-log', handleSelectLog);
-    return () => window.removeEventListener('receiving-select-log', handleSelectLog);
-  }, []);
-
-  const handleLogUpdated = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: ['receiving-logs'] });
-    queryClient.invalidateQueries({ queryKey: ['receiving-inbound-feed'] });
-    queryClient.invalidateQueries({ queryKey: ['receiving-pending-unboxing'] });
-  }, [queryClient]);
-
-  const handleLogDeleted = useCallback(() => {
-    setSelectedLog(null);
-    queryClient.invalidateQueries({ queryKey: ['receiving-logs'] });
-    queryClient.invalidateQueries({ queryKey: ['receiving-inbound-feed'] });
-    queryClient.invalidateQueries({ queryKey: ['receiving-pending-unboxing'] });
-  }, [queryClient]);
-
   return {
-    selectedLog,
-    setSelectedLog,
     repairPanel,
     setRepairPanel,
     loadingRepair,
-    handleLogUpdated,
-    handleLogDeleted,
   };
 }

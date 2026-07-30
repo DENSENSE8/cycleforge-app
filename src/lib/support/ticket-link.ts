@@ -9,6 +9,7 @@ import {
   requireHelpdeskProvider,
 } from '@/lib/integrations/helpdesk';
 import { recordOpsEvent } from '@/lib/ops-events';
+import { unlinkReceivingClaimPhotosFromTicket } from '@/lib/photos/claim-link';
 import { listAllReceivingPhotoIds } from '@/lib/photos/queries/receiving-list';
 import { registerShipmentPermissive } from '@/lib/shipping/sync-shipment';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
@@ -47,7 +48,9 @@ export type TicketLinkAnchorInput =
   | { type: 'receiving'; receivingId: number; lineId?: number | null }
   | { type: 'tracking'; trackingNumber: string }
   | { type: 'shipment'; shipmentId: number }
-  | { type: 'order'; orderId: number };
+  | { type: 'order'; orderId: number }
+  /** A repair work record is the anchor for a counter-service ticket (plan D6). */
+  | { type: 'repair'; repairId: number };
 
 export interface ResolvedTicketLinkAnchor extends TicketLinkAnchor {
   /** Human label for the anchor (tracking last-4, receiving id, …). */
@@ -116,6 +119,27 @@ export async function resolveTicketLinkAnchor(
     const picked = pickTicketLinkAnchor({ shipmentId: input.shipmentId });
     if (!picked) throw ApiError.badRequest('shipmentId is required');
     return { ...picked, label: `shipment #${picked.entityId}` };
+  }
+
+  if (input.type === 'repair') {
+    const picked = pickTicketLinkAnchor({ repairId: input.repairId });
+    if (!picked) throw ApiError.badRequest('repairId is required');
+    // Label with the operator-facing RS number when it resolves; the bare id is
+    // a DB key nobody at the counter can read off a work order.
+    const rs = await tenantQuery<{ ticket_number: string | null }>(
+      orgId,
+      `SELECT ticket_number FROM repair_service
+        WHERE id = $1 AND organization_id = $2
+        LIMIT 1`,
+      [input.repairId, orgId],
+    );
+    if (rs.rows.length === 0) {
+      throw ApiError.notFound('Repair', input.repairId);
+    }
+    return {
+      ...picked,
+      label: rs.rows[0].ticket_number?.trim() || `repair #${picked.entityId}`,
+    };
   }
 
   if (input.type === 'tracking') {
@@ -692,8 +716,35 @@ export async function unlinkTicketFromAnchor(args: {
   // Returns the RESOLVED entity too, so the route can audit what was actually
   // detached rather than re-resolving the anchor (or, worse, auditing the ticket
   // id as if it were the entity id).
-}): Promise<{ removed: boolean; entityType: TicketLinkEntityType; entityId: number }> {
-  const resolved = await resolveTicketLinkAnchor(args.orgId, args.anchor);
+}): Promise<{
+  removed: boolean;
+  entityType: TicketLinkEntityType;
+  entityId: number;
+  /**
+   * Set when the carton's tracking (STN) reference could not be cleared —
+   * the ticket_links RECEIVING/RECEIVING_LINE row is gone, but a stale
+   * SHIPMENT reference can survive and keep the ticket resolving via the
+   * tracking number. Best-effort: the caller should surface this rather than
+   * silently reporting a clean unlink.
+   */
+  shipmentUnpairWarning: string | null;
+}> {
+  let resolved = await resolveTicketLinkAnchor(args.orgId, args.anchor);
+  // Target the entity ACTUALLY linked to this ticket, not a freshly re-derived
+  // guess. `pickTicketLinkAnchor` prefers RECEIVING_LINE whenever a lineId is
+  // present — but a carton originally claimed at the RECEIVING (package) level
+  // can gain a real line later (an unfound carton gets matched to a PO), so a
+  // later unlink call that still passes that lineId resolves to a DIFFERENT
+  // (entityType, entityId) than what's stored on `ticket_links`. The DELETE
+  // then matches zero rows: the ticket_links row survives, the chip keeps
+  // showing "linked", and the STN unpair below (keyed off the real ticketId)
+  // can drift out of sync with it too. Ground truth beats re-derivation.
+  if (args.anchor.type === 'receiving') {
+    const actual = await getTicketEntity(args.orgId, args.ticketId);
+    if (actual && (actual.type === 'RECEIVING' || actual.type === 'RECEIVING_LINE')) {
+      resolved = { entityType: actual.type, entityId: actual.id, label: resolved.label };
+    }
+  }
   let removed = await unlinkTicket({
     orgId: args.orgId,
     zendeskTicketId: args.ticketId,
@@ -714,6 +765,7 @@ export async function unlinkTicketFromAnchor(args: {
 
   // Link always pairs the carton's STN; unlink must reverse that or the
   // package chip keeps resolving via ticketFromShipmentLink.
+  let shipmentUnpairWarning: string | null = null;
   if (args.anchor.type === 'receiving') {
     try {
       const unpaired = await unpairTicketShipmentFromReceiving({
@@ -725,6 +777,23 @@ export async function unlinkTicketFromAnchor(args: {
       if (unpaired?.removed) removed = true;
     } catch (unpairErr) {
       console.warn('[ticket-link] STN unpair after receiving unlink failed', unpairErr);
+      shipmentUnpairWarning =
+        'Ticket unlinked, but the tracking-number reference could not be cleared — it may still show as linked there.';
+    }
+
+    // Claim photos keep a ZENDESK_TICKET dual-link for media-library grouping.
+    // Clear those too — otherwise getPrimarySupportTicketForReceiving's photo
+    // fallback resurrects the carton ticket chip after ticket_links are gone.
+    try {
+      const photoClear = await unlinkReceivingClaimPhotosFromTicket({
+        orgId: args.orgId,
+        ticketId: args.ticketId,
+        receivingId: args.anchor.receivingId,
+        lineId: args.anchor.lineId ?? null,
+      });
+      if (photoClear.cleared > 0) removed = true;
+    } catch (photoErr) {
+      console.warn('[ticket-link] claim-photo ticket unlink failed', photoErr);
     }
   }
 
@@ -764,7 +833,12 @@ export async function unlinkTicketFromAnchor(args: {
     console.warn('[ticket-link] zendesk_ticket column clear failed', colErr);
   }
 
-  return { removed, entityType: resolved.entityType, entityId: resolved.entityId };
+  return {
+    removed,
+    entityType: resolved.entityType,
+    entityId: resolved.entityId,
+    shipmentUnpairWarning,
+  };
 }
 
 export function isHelpdeskNotConnected(err: unknown): boolean {

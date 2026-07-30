@@ -120,7 +120,7 @@ export const DELETE = withAuth(async (req: NextRequest, ctx) => {
     });
     if (!parsed.success) return validationFailed(formatZodIssues(parsed.error));
 
-    const { removed } = await unlinkTicketFromAnchor({
+    const { removed, shipmentUnpairWarning } = await unlinkTicketFromAnchor({
       orgId: ctx.organizationId,
       ticketId: parsed.data.ticketId,
       anchor: {
@@ -129,7 +129,7 @@ export const DELETE = withAuth(async (req: NextRequest, ctx) => {
         lineId: parsed.data.lineId,
       },
     });
-    return NextResponse.json({ success: true, removed });
+    return NextResponse.json({ success: true, removed, shipmentUnpairWarning });
   } catch (err) {
     if (isHelpdeskNotConnected(err)) return notConfigured(context);
     return errorResponse(err, context);

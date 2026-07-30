@@ -11,10 +11,9 @@ import { test, expect } from '@playwright/test';
 
 const SERIAL = `SNCTL${process.env.AUDIT_STAMP || String(Date.now()).slice(-7)}`;
 
-// DIAGNOSTIC, NOT A GATE. This spec attaches a serial to a REAL order picked
-// from live data, so a plain `playwright test` run would mutate production rows
-// (and, until CF-03 is fixed, smear that serial across every order sharing the
-// shipment). Opt in explicitly: AUDIT_MUTATE_REAL_DATA=1.
+// DIAGNOSTIC mutate against QA org only — sibling smear is gated in CI by
+// `order-grain-sql.test.ts` + `tsn-order-grain.guard.test.ts` (order_id prefer).
+// Opt in explicitly: AUDIT_MUTATE_REAL_DATA=1 (never dogfood tenant).
 test.skip(
   process.env.AUDIT_MUTATE_REAL_DATA !== '1',
   'mutates real order data — set AUDIT_MUTATE_REAL_DATA=1 to run, and clean up after',

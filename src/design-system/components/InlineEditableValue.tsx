@@ -36,7 +36,7 @@ interface InlineEditableValueProps {
 
 export function InlineEditableValue({
   value,
-  placeholder = 'N/A',
+  placeholder = '—',
   onChange,
   onBlur,
   onSubmit,

@@ -569,7 +569,23 @@ export async function fetchShippedContext(params: IntentParams, orgId: OrgId): P
         STRING_AGG(DISTINCT s.name, ', ') FILTER (WHERE s.name IS NOT NULL) AS tested_by
       FROM orders o
       JOIN shipping_tracking_numbers stn ON stn.id = o.shipment_id
-      LEFT JOIN tech_serial_numbers tsn ON tsn.shipment_id = o.shipment_id
+      LEFT JOIN tech_serial_numbers tsn ON /* CF-03 */ (
+      tsn.organization_id = o.organization_id
+      AND (
+        tsn.order_id = o.id
+        OR (
+          tsn.order_id IS NULL
+          AND o.shipment_id IS NOT NULL
+          AND tsn.shipment_id = o.shipment_id
+          AND NOT EXISTS (
+            SELECT 1 FROM orders o2
+            WHERE o2.shipment_id = o.shipment_id
+              AND o2.organization_id = o.organization_id
+              AND o2.id <> o.id
+          )
+        )
+      )
+    )
       LEFT JOIN staff s ON s.id = tsn.tested_by
       WHERE o.organization_id = $1
         AND (${orderCondition} OR ${trackingCondition})

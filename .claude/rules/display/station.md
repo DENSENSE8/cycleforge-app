@@ -42,7 +42,7 @@ Top-to-bottom, a station is four parts and nothing more:
 | Part | Module | Rule |
 |---|---|---|
 | **Focus-locked scan bar** (top, sticky) | `StationScanBar` / `ThemedStationScanBar` (`src/components/station/scan-bar/`) | One input, auto-focused, the *only* primary control. |
-| **Entity-context header** (active carton / line / ship order) | `CartonContextCard` + `StationContextBar` via `@/components/station/entity-context` | Sticky bookmark identity (`density="bar"`) under GlobalHeader. Unbox golden; Triage/Testing/Shipping/Pack/Pickup compose via thin adapters. Never fork. |
+| **Entity-context header** (active carton / line / ship order) | `CartonContextCard` + `StationContextBar` via `@/components/station/entity-context` | Absolute-float identity shell (`density="bar"`) over the work canvas. Unbox golden; Triage/Testing/Shipping/Pack/Pickup compose via thin adapters. Never fork. |
 | **Single active-entity card** (replaces on scan) | `ActiveOrderScanFeedback`, `PackChecklist`, `StationPacking` | One card; the new scan's card *replaces* the previous one. |
 | **Minimal chrome / goal HUD** | `StationGoalBar` (composed in `StationPacking`) | Ambient throughput only; never a control surface. |
 | **Station-down banner** (singleton, app root) | `OfflineBanner` (`src/components/layout/OfflineBanner.tsx`) | First-class, non-blocking, mounted once. |
@@ -131,11 +131,22 @@ The bar is dumb; classification is a pure layer.
   never disagree. *Rationale: the checklist guards correctness without ever requiring the operator to leave the scan
   loop — a fresh SKU clears every tick (`resetKey`).*
 - **Make pass/fail a big card state, not a toast.** `ActiveOrderScanFeedback` shows the running progress meter
-  (`scanned/qty`, `complete`), a pulsing "Active" status chip, and a transient "Last serial" row on each new scan —
-  all inside the active card. Status tones derive from semantic tokens / the lifecycle dot registry
+  (`scanned/qty`, `complete`), a status chip, and a transient "Last serial" row on each new scan — all inside the
+  active card. Status tones derive from semantic tokens / the lifecycle dot registry
   (`workflowStageDot`, `src/lib/receiving/workflow-stages.ts`), never ad-hoc hues. *Rationale: an operator three feet
   from the screen with their hands full needs a glanceable card state; a 4-second corner toast is invisible at the
   bench.*
+- **Pass and fail are mutually exclusive chip states on the active card.** Emerald **Active** / **· complete** only
+  when the scan is linked to a real order. Unmatched tracking (`orderFound: false` / `sourceType: 'exception'`) is an
+  amber **No order** / **· not linked** exception session — never green Active, never "N units paired", never a success
+  flash that implies the record was found. Hard rejects (HTTP error / 409 / ambiguous partial) clear or revert the card
+  and show a **big rose fail card** in the same feedback slot (`StationTesting` / `StationPacking`), not a corner toast
+  and not `window.alert`. *Rationale: silent success is the CF-02 anti-pattern; WMS "hard interrupt" modals are the
+  opposite extreme — they steal scanner focus. House Station uses honest card states and keeps the bar focus-locked.*
+- **Exception sessions stay in the scan loop.** Unmatched tracking opens a hold-bucket card (`orders_exceptions`); the
+  operator may keep scanning serials into that session for later reconciliation. That is *continue-with-honesty*, not
+  a Zebra-style blocking dismiss overlay. *Rationale: throughput + durable exception fact > modal interrupt that drops
+  wedge focus.*
 - **Add a non-visual cue for the eyes-down operator.** Pair the visual pass/fail with an audio/haptic confirmation
   (success vs reject tone). *Rationale: the operator is looking at product, not the screen — sound closes the loop when
   the eyes can't.*
@@ -144,11 +155,15 @@ The bar is dumb; classification is a pure layer.
 
 ## 7. Optimistic act + idempotency
 
-- **Mint a per-scan `clientEventId` and thread it through the mutation.** The controller generates one per scan
-  (`newStationIdempotencyKey` → `crypto.randomUUID()` in `useStationTestingController`) and passes it into the scan
-  handlers' context. *Rationale: a flaky-network retry (or a wedge double-fire) carries the same key, so the server
-  collapses it to a no-op via `UNIQUE(client_event_id)` on `inventory_events` (../backend-patterns.md) — re-entering
-  the same state returns `idempotent: true`.*
+- **Mint a per-scan `clientEventId` / `idempotencyKey` and thread it through the mutation.** The controller generates
+  one per scan (`newStationIdempotencyKey` → `crypto.randomUUID()` in `useStationTestingController`) and passes it into
+  the scan handlers' context (body and/or `Idempotency-Key` header). *Rationale: a flaky-network retry (or a wedge
+  double-fire) carries the same key, so the server collapses it to a no-op.*
+- **The server must honor the key the client already mints.** Station mutation routes (`/api/tech/scan`,
+  `/api/tech/serial` + wrappers, receiving unbox) read via `readIdempotencyKey` and persist through
+  `api_idempotency_responses` (`src/lib/api-idempotency.ts`). A client that sends `idempotencyKey` while the route
+  drops it is a SoT bug — optimistic UI is unsafe without the server contract. *Rationale: the Station ACT step assumes
+  retries are free; without route-level replay they are not.*
 - **Render the acted state immediately and increment the HUD optimistically; reconcile against the server result.**
   The progress meter bumps on the local serial count (`ActiveOrderScanFeedback`) before the server confirms.
   *Rationale: at scan cadence the operator can't wait a round-trip per scan; optimistic UI sits *on top of* the
@@ -187,12 +202,15 @@ The bar is dumb; classification is a pure layer.
   one entity dissolves into the next — there is no list to crossfade, so never animate one.*
 - **Route presets through the motion hooks so reduced-motion is automatic.** `useMotionTransition` /
   `useMotionPresence` (`src/design-system/foundations/motion-framer-hooks.ts`) collapse x/y to 0 under
-  `prefers-reduced-motion`, leaving a pure opacity crossfade. *Rationale: WCAG 2.3.3 — reduced-motion is "replace slides
-  with crossfades," not "no motion," and it must be free, not per-component.*
+  `prefers-reduced-motion`, leaving a pure opacity crossfade. **Primitives that own entrance motion — especially
+  `CardShell` and `ActiveOrderScanFeedback` — must call these hooks**; raw `framerPresence.*` / `framerTransition.*`
+  without the bridge is a WCAG 2.3.3 regression. *Rationale: reduced-motion is "replace slides with crossfades," not
+  "no motion," and it must be free at the primitive, not per call site.*
 - **Keep flourishes minimal on a high-frequency scan stream.** The scan-sweep shimmer in `StationScanBar` is a brief
   `motionBezier.easeOut` sweep; the active card uses opacity + transform only. **Never animate layout** (width/height/
-  padding) on the card — for height use `grid-template-rows` / the collapse preset. *Rationale: at scan cadence,
-  layout animation thrashes and reads as lag; opacity+transform stays on the compositor.*
+  padding) on the card — for height use `grid-template-rows` / the collapse preset. Under reduced motion, suppress
+  `layout` props on station cards. *Rationale: at scan cadence, layout animation thrashes and reads as lag;
+  opacity+transform stays on the compositor.*
 
 ---
 
@@ -227,7 +245,13 @@ The phone station is **not a distinct archetype** — it is this same Station we
 - **Don't animate layout on the active card.** Opacity + transform only; height via `grid-template-rows` / the collapse
   preset (§9).
 - **Don't make selection URL-addressable.** Station selection is ephemeral state; `?id=` is a Workbench (§5).
-- **Don't surface pass/fail as a generic corner toast.** Use the big active-card state + an audio/haptic cue (§6).
+- **Don't surface pass/fail as a generic corner toast or `window.alert`.** Use the big active-card state + an
+  audio/haptic cue (§6). Alerts steal scanner focus — toast waist is `@/lib/toast` for non-card feedback only.
+- **Don't paint emerald Active / · complete over an unmatched or exception session.** That is silent success (§6).
+- **Don't invent a hard-dismiss modal that blocks the next scan** for unmatched tracking. Exception = honest amber
+  card + continue; 409/reject = rose fail card (§6–§7).
+- **Don't bypass `useMotionTransition` / `useMotionPresence` on station card primitives** (§9).
+- **Don't drop a client-minted `idempotencyKey` on the server** (§7).
 - **Don't block the bench on infra.** Printer/scale/network down → distinct non-blocking banner + durable queue, never a
   gated scan (§8).
 - **Don't invent hex or hardcode `z-[NNN]`.** Color from `src/design-system/tokens/colors/semantic.ts`, z-index from the
@@ -244,7 +268,8 @@ The phone station is **not a distinct archetype** — it is this same Station we
 | Selection | ephemeral, one at a time, **never** in the URL |
 | What crossfades | the **active card** (`framerPresence.stationCard`, `mode="wait"`) |
 | Confirm model | scan-to-confirm (`PackChecklist`), optimistic + `clientEventId` idempotency |
-| Feedback | big card pass/fail + audio/haptic, not a toast |
+| Feedback | big card pass/fail (emerald Active vs amber No order vs rose fail) + audio/haptic; never toast/`alert()` |
+| Idempotency | client mints key; server **must** honor via `api_idempotency_responses` |
 | Down state | `OfflineBanner` singleton + durable queue; degrade-not-block |
 | Mobile | same Station on `MobileShell` via `ScanInput`; same endpoints/keys |
 

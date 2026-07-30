@@ -3,25 +3,16 @@
 /**
  * Warehouse sidebar panel.
  *
- * Mounted on /warehouse. The dashboard chrome owns the title. This panel
- * renders:
+ * Mounted on /warehouse. The dashboard chrome owns the title. L2 tabs
+ * (Labels · Rooms · Bins · Map · …) live in GlobalHeader. This panel renders:
  *   - The SKU/bin finder (always visible)
- *   - Pills with counts: Labels · Rooms · Bins · Map
  *   - Tab-specific body: a small contextual hint per tab. Every workspace
  *     (rooms board, location label printer, bins table, warehouse map) lives in
  *     the main area via WarehouseShell so it can use the full content width.
  */
 
-import { useCallback, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { sidebarHeaderPillRowClass, SIDEBAR_GUTTER } from '@/components/layout/header-shell';
-import {
-  HorizontalButtonSlider,
-  type HorizontalSliderItem,
-} from '@/components/ui/HorizontalButtonSlider';
-import { Printer, MapPin, Layers, Database, Package } from '@/components/Icons';
-import { useMasterNavEnabled } from '@/components/sidebar/master-nav';
-import { useLocations } from '@/hooks/useLocations';
+import { SIDEBAR_GUTTER } from '@/components/layout/header-shell';
 import { useWarehouseSkuSearch, looksLikeBinBarcode } from '@/hooks/useWarehouseSkuSearch';
 import { MapLegend, type MapViewMode } from '@/components/warehouse/WarehouseMap';
 import { RoomsSidebarList } from '@/components/warehouse/RoomsSidebarList';
@@ -52,44 +43,11 @@ export function WarehouseSidebarPanel() {
 }
 
 function WarehouseSidebarInner() {
-  const router = useRouter();
   const searchParams = useSearchParams();
-  const masterNavEnabled = useMasterNavEnabled();
   const { user } = useAuth();
   const tab = parseTab(searchParams.get('tab'));
-  const { rooms, bins } = useLocations();
   const { query: roomQuery, setQuery: setRoomQuery } = useRoomFinder();
   const skuSearch = useWarehouseSkuSearch();
-
-  const setTab = useCallback(
-    (next: InventoryTab) => {
-      const params = new URLSearchParams(searchParams.toString());
-      params.set('tab', next);
-      // Strip filter params that don't apply to the new tab so the URL
-      // doesn't leak Bins filters into Map view, etc.
-      if (next !== 'bins') {
-        params.delete('status');
-        params.delete('q');
-        params.delete('room');
-      }
-      if (next !== 'racks') {
-        params.delete('code');
-      }
-      router.replace(`/warehouse?${params.toString()}`);
-    },
-    [router, searchParams],
-  );
-
-  const tabItems: HorizontalSliderItem[] = useMemo(
-    () => [
-      { id: 'labels', label: 'Labels', icon: Printer },
-      { id: 'racks',  label: 'Racks',  icon: Layers },
-      { id: 'rooms',  label: 'Rooms',  icon: Database, count: rooms.length },
-      { id: 'bins',   label: 'Bins',   icon: Package,             count: bins.length },
-      { id: 'map',    label: 'Map',    icon: MapPin },
-    ],
-    [rooms.length, bins.length],
-  );
 
   // Tabs that display a list of rooms in the sidebar (and therefore want
   // the top search bar to filter rooms instead of running a global SKU/bin
@@ -114,39 +72,25 @@ function WarehouseSidebarInner() {
     <SidebarShell
       className={appChromeClass}
       headerAbove={
-        <>
-          {!masterNavEnabled && (
-            <div className={sidebarHeaderPillRowClass}>
-              <HorizontalButtonSlider
-                variant="nav"
-                items={tabItems}
-                value={tab}
-                onChange={(id) => setTab(id as InventoryTab)}
-                aria-label="Warehouse section"
-                className="w-full"
-              />
-            </div>
-          )}
-          {/* In-context list filter — local base SearchBar. Room-finder tabs
-              filter the room list; other tabs run the SKU/bin lookup. The
-              global header pill stays global. */}
-          <div className={`${SIDEBAR_GUTTER} pt-3 pb-2`}>
-            <SearchBar
-              size="compact"
-              variant="blue"
-              value={isRoomFinderTab ? roomQuery : skuSearch.value}
-              onChange={
-                isRoomFinderTab
-                  ? setRoomQuery
-                  : (v) => { skuSearch.setValue(v); skuSearch.setOpen(true); }
-              }
-              onClear={isRoomFinderTab ? () => setRoomQuery('') : skuSearch.handleClear}
-              onSearch={isRoomFinderTab ? undefined : (v) => skuSearch.handleSearch(v)}
-              placeholder={isRoomFinderTab ? roomFinderPlaceholder : 'Filter product, SKU, or bin barcode…'}
-              isSearching={isRoomFinderTab ? undefined : skuSearch.loading}
-            />
-          </div>
-        </>
+        /* In-context list filter — local base SearchBar. Room-finder tabs
+            filter the room list; other tabs run the SKU/bin lookup. The
+            global header pill stays global. */
+        <div className={`${SIDEBAR_GUTTER} pt-3 pb-2`}>
+          <SearchBar
+            size="compact"
+            variant="blue"
+            value={isRoomFinderTab ? roomQuery : skuSearch.value}
+            onChange={
+              isRoomFinderTab
+                ? setRoomQuery
+                : (v) => { skuSearch.setValue(v); skuSearch.setOpen(true); }
+            }
+            onClear={isRoomFinderTab ? () => setRoomQuery('') : skuSearch.handleClear}
+            onSearch={isRoomFinderTab ? undefined : (v) => skuSearch.handleSearch(v)}
+            placeholder={isRoomFinderTab ? roomFinderPlaceholder : 'Filter product, SKU, or bin barcode…'}
+            isSearching={isRoomFinderTab ? undefined : skuSearch.loading}
+          />
+        </div>
       }
       bodyClassName="flex flex-col overflow-hidden p-0"
     >

@@ -43,16 +43,23 @@ function git(cmd) {
 
 /**
  * Which checkout this entry came from — the directory name, minus the repo
- * prefix (`cycleforge-fba` → `fba`, the main checkout → `main`).
+ * prefix (`cycleforge-fba` → `fba`).
  *
  * This used to read the lane id out of `dev-worktrees.json` via the per-worktree
- * port resolver, falling back to the directory name. The resolver went with the
- * per-lane dev ports; the fallback was already the honest answer, and it works
- * for a checkout that was never registered in that file.
+ * port resolver, which went with the per-lane dev ports. The directory name is
+ * the honest replacement and works for a checkout that file never listed — with
+ * ONE mapping that must not be dropped: the integration checkout is the
+ * directory `cycleforge-app`, but its lane has always been `main`
+ * (`docs/agent-log/entries/main.md`). Without this, entries silently start a
+ * second `app.md` log and the history splits in two.
  */
+const REPO_DIR_LANE = { app: 'main' };
+
 function currentLane() {
   const top = git('rev-parse --show-toplevel');
-  return top ? path.basename(top).replace(/^cycleforge-/, '') || 'main' : 'main';
+  if (!top) return 'main';
+  const dir = path.basename(top).replace(/^cycleforge-/, '') || 'main';
+  return REPO_DIR_LANE[dir] ?? dir;
 }
 
 function sanitizeLane(lane) {

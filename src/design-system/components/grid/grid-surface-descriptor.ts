@@ -17,6 +17,7 @@
  */
 
 import { createColumnHelper, type ColumnDef, type RowData } from '@tanstack/react-table';
+import { isGridIdentityColumn } from './grid-column-editability';
 import { gridContentMinWidthRem } from './grid-column-geometry';
 import type { ColumnType } from '@/lib/tables/table-columns';
 
@@ -83,7 +84,7 @@ interface BuildLedgerColumnDefsOptions<Row, C extends LedgerGridColumnModel> {
   isSortable?: (key: C['key']) => boolean;
   /** Keys whose first activation sorts descending (e.g. Age → most-late-first). */
   sortDescFirst?: (key: C['key']) => boolean;
-  /** Locked identity keys (select · title) — never hideable. */
+  /** Locked identity keys — never hideable (defaults to {@link isGridIdentityColumn}). */
   isLocked?: (key: C['key']) => boolean;
   /**
    * State-math accessor per key (sort/group value — never display markup).
@@ -99,7 +100,7 @@ export function buildLedgerColumnDefs<Row, C extends LedgerGridColumnModel>(
   {
     isSortable = () => false,
     sortDescFirst = () => false,
-    isLocked = (key) => key === 'select' || key === 'title',
+    isLocked = (key) => isGridIdentityColumn(key),
     accessorFor,
   }: BuildLedgerColumnDefsOptions<Row, C> = {},
 ): ColumnDef<Row, unknown>[] {

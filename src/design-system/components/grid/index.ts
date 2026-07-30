@@ -13,8 +13,13 @@ export type { GridSurfaceDescriptor, LedgerGridColumnModel } from './grid-surfac
 export { useGridColumnVisibility, useGridFields } from './useGridColumnVisibility';
 export {
   gridCellAlignClass,
-  gridColumnAlignClass,
   gridHeaderCellAlignClass,
   resolveGridColumnAlign,
 } from './grid-header-align';
-export type { GridColumnAlign, GridHeaderAlign } from './grid-header-align';
+export type { GridColumnAlign } from './grid-header-align';
+export {
+  GRID_IDENTITY_COLUMN_KEYS,
+  isGridColumnInCellEditable,
+  isGridIdentityColumn,
+} from './grid-column-editability';
+export type { GridIdentityColumnKey } from './grid-column-editability';

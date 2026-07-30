@@ -9,7 +9,7 @@ export function shippedOrderToPackPane(record: ShippedOrder): PackActiveOrderPan
     orderId: String(record.order_id || '').trim(),
     productTitle: String(record.product_title || '').trim() || 'Unknown product',
     qty: Number.isFinite(qtyRaw) && qtyRaw > 0 ? qtyRaw : 1,
-    condition: String(record.condition || '').trim() || 'N/A',
+    condition: String(record.condition || '').trim() || '—',
     tracking: String(record.shipping_tracking_number || '').trim(),
     sku: String(record.sku || '').trim() || undefined,
     scanType: 'ORDERS',

@@ -1,10 +1,11 @@
 'use client';
 
-import { motion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 import { ExternalLink, Package } from '@/components/Icons';
 import { framerGesture, staggerRevealItem } from '@/design-system';
 import type { ReceivingQueueItem } from './upnext-types';
 import { workflowStatusTableLabel } from '@/components/station/receiving-constants';
+import { dispatchReceivingDetailsOverlay } from '@/utils/events';
 
 const WORKFLOW_COLORS: Record<string, string> = {
   EXPECTED:      'bg-surface-sunken text-text-soft border-border-soft',
@@ -35,11 +36,10 @@ interface ReceivingAssignmentCardProps {
 export function ReceivingAssignmentCard({ item }: ReceivingAssignmentCardProps) {
   const statusCls = WORKFLOW_COLORS[item.workflow_status ?? ''] || 'bg-surface-sunken text-text-soft border-border-soft';
   const ago = assignedAgo(item.assigned_at);
+  const reduceMotion = useReducedMotion();
 
   const openReceiving = () => {
-    window.dispatchEvent(new CustomEvent('open-receiving-details', {
-      detail: { receivingId: item.receiving_id, assignmentId: item.assignment_id },
-    }));
+    dispatchReceivingDetailsOverlay(item.receiving_id);
   };
 
   return (
@@ -47,8 +47,8 @@ export function ReceivingAssignmentCard({ item }: ReceivingAssignmentCardProps) 
       key={`recv-${item.assignment_id}`}
       variants={staggerRevealItem}
       exit="exit"
-      whileHover={framerGesture.cardHover}
-      whileTap={framerGesture.tapPress}
+      whileHover={reduceMotion ? undefined : framerGesture.cardHover}
+      whileTap={reduceMotion ? undefined : framerGesture.tapPress}
       onClick={openReceiving}
       className="border-b-2 px-0 py-3 border-teal-300 bg-surface-card hover:border-teal-500 transition-colors cursor-pointer"
     >

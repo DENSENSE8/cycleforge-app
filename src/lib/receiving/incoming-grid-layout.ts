@@ -1,9 +1,3 @@
-import {
-  gridColumnTrackRem,
-  gridContentMinWidthRem,
-  gridHeaderShowsLabel,
-  gridTemplate,
-} from '@/design-system/components/grid/grid-column-geometry';
 /**
  * Incoming POS spreadsheet column model — SoT for `/incoming` LedgerGrid.
  *
@@ -15,6 +9,13 @@ import {
  * PO as order). Status stays its own column — never folded into Product Title.
  */
 
+import { GRID_IDENTITY_COLUMN_KEYS } from '@/design-system/components/grid/grid-column-editability';
+import {
+  gridColumnTrackRem,
+  gridContentMinWidthRem,
+  gridHeaderShowsLabel,
+  gridTemplate,
+} from '@/design-system/components/grid/grid-column-geometry';
 import type { LedgerGridColumnModel } from '@/design-system/components/grid/grid-surface-descriptor';
 
 export type IncomingGridColumnKey =
@@ -85,7 +86,10 @@ export const INCOMING_GRID_COLUMNS: readonly IncomingGridColumn[] = [
   { key: 'condition', width: 'minmax(5.5rem, 5.5rem)', label: 'Cond', type: 'tag', hideKey: 'condition', tier: 'optional', labelFitRem: 4.5 },
   // Receiving-specific delivery status (hide with meta `rest` in TableColumnConfig).
   // Icon + short Seller claim only (city stays in tooltip).
-  { key: 'status', width: 'minmax(4.5rem, 4.5rem)', label: 'Status', type: 'tag', hideKey: 'rest', labelFitRem: 4.5 },
+  // 4.75rem, not 4.5: at 6 characters the label needs 2.52rem of glyph-metric
+  // width plus the 2rem header chrome (inset + one mark slot). 4.5 missed it by a
+  // hair and silently degraded to a glyph-only header.
+  { key: 'status', width: 'minmax(4.75rem, 4.75rem)', label: 'Status', type: 'tag', hideKey: 'rest', labelFitRem: 4.5 },
   { key: 'platform', width: 'minmax(3rem, 3rem)', label: 'Platform', gridLabel: 'Ch.', type: 'external', hideKey: 'platform', tier: 'optional', labelFitRem: 4.5 },
   // Wide enough for plain last-4 mono (no truncate ellipsis).
   { key: 'order', width: 'minmax(4.5rem, 4.5rem)', label: 'Order', type: 'id', hideKey: 'orderid', labelFitRem: 4.5 },
@@ -93,7 +97,9 @@ export const INCOMING_GRID_COLUMNS: readonly IncomingGridColumn[] = [
   { key: 'tracking', width: 'minmax(5.75rem, 5.75rem)', label: 'Tracking', type: 'location', omitCellIcon: true, hideKey: 'tracking', labelFitRem: 4.5 },
 ] as const;
 
-export const INCOMING_GRID_LOCKED_KEYS: readonly IncomingGridColumnKey[] = ['select', 'title'];
+export const INCOMING_GRID_LOCKED_KEYS: readonly IncomingGridColumnKey[] = [
+  ...GRID_IDENTITY_COLUMN_KEYS,
+];
 
 /** Data columns that support click-to-sort (excludes select). */
 export const INCOMING_GRID_SORTABLE_KEYS: readonly IncomingGridColumnKey[] = INCOMING_GRID_COLUMNS.filter(

@@ -7,6 +7,7 @@ import { Star } from '@/components/Icons';
 import { jsonFetch, formatCents } from '../sourcing-shared';
 import type { WatchCandidate } from './sourcing-workspace-types';
 import { Centered, Empty } from './WorkspaceShared';
+import { toast } from '@/lib/toast';
 
 /** Watchlist — saved secondary-market candidates with import/reject. */
 export function WatchlistPane() {
@@ -36,7 +37,7 @@ export function WatchlistPane() {
   if (rows.length === 0) return <Empty icon={<Star className="h-6 w-6" />} title="Watchlist is empty" hint="Save results from the Scout tab to track candidates here, then import them into inventory." />;
 
   const doImport = (c: WatchCandidate) => {
-    if (!c.sku_id) { window.alert('This candidate has no linked SKU — link one before importing.'); return; }
+    if (!c.sku_id) { toast.warning('This candidate has no linked SKU — link one before importing.'); return; }
     const reason = window.prompt('Reason / note for this import?');
     if (reason?.trim()) importCandidate.mutate({ id: c.id, skuId: c.sku_id, reason: reason.trim() });
   };

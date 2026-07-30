@@ -15,7 +15,7 @@ export const STATION_WORKBENCH_COLUMN = 'mx-auto w-full min-w-0 max-w-[720px]';
 export const STATION_WORKBENCH_BODY_PAD_X = 'px-4 sm:px-6';
 
 /**
- * Sticky identity bookmark column ({@link StationContextBar}) —
+ * Floating identity column ({@link StationContextBar}) —
  * same max-width + horizontal pad as the workbench body content.
  */
 export const STATION_WORKBENCH_IDENTITY_COLUMN =
@@ -24,10 +24,17 @@ export const STATION_WORKBENCH_IDENTITY_COLUMN =
 /** Header rows (stepper, toolbar) — align with PaneHeaderActionBar + stepper track. */
 export const STATION_WORKBENCH_HEADER_COLUMN = `${STATION_WORKBENCH_COLUMN} px-6 sm:px-8`;
 
-/** Scroll body cards — align with LineEditPanel hero column. */
+/**
+ * Scroll body cards — align with LineEditPanel hero column.
+ * Top clearance assumes a floating {@link StationContextBar}
+ * (`STATION_IDENTITY_SCROLL_CLEARANCE`); bottom assumes absolute terminal dock.
+ */
 export const STATION_WORKBENCH_BODY_COLUMN =
-  `${STATION_WORKBENCH_COLUMN} space-y-4 ${STATION_WORKBENCH_BODY_PAD_X} py-5 pb-32`;
+  `${STATION_WORKBENCH_COLUMN} space-y-4 ${STATION_WORKBENCH_BODY_PAD_X} pt-14 pb-32`;
 
-/** Docked terminal band — lighter bottom padding (in-flow dock, not absolute float). */
+/**
+ * Docked terminal band — lighter bottom padding (in-flow dock, not absolute float).
+ * Top clearance still assumes floating identity.
+ */
 export const STATION_WORKBENCH_BODY_DOCKED =
-  `${STATION_WORKBENCH_COLUMN} space-y-4 ${STATION_WORKBENCH_BODY_PAD_X} py-5 pb-6`;
+  `${STATION_WORKBENCH_COLUMN} space-y-4 ${STATION_WORKBENCH_BODY_PAD_X} pt-14 pb-6`;

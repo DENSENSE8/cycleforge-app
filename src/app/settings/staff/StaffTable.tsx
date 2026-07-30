@@ -19,6 +19,7 @@ import {
   DialogTitle,
 } from '@/design-system/components/Dialog';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { toast } from '@/lib/toast';
 
 interface StaffRow {
   id: number;
@@ -77,7 +78,7 @@ export function StaffTable({ initialStaff }: StaffTableProps) {
       });
       if (!r.ok) {
         const data = await r.json().catch(() => ({}));
-        alert(`Couldn't deactivate: ${data.error || r.status}`);
+        toast.error(`Couldn't deactivate: ${data.error || r.status}`);
         return;
       }
       await refresh();
@@ -103,9 +104,9 @@ export function StaffTable({ initialStaff }: StaffTableProps) {
       if (!r.ok) {
         const data = await r.json().catch(() => ({}));
         if (data.error === 'STEP_UP_REQUIRED') {
-          alert('This change needs step-up verification. Re-authenticate (PIN/passkey) and try again.');
+          toast.warning('This change needs step-up verification. Re-authenticate (PIN/passkey) and try again.');
         } else {
-          alert(`Couldn't update auth policy: ${data.error || r.status}`);
+          toast.error(`Couldn't update auth policy: ${data.error || r.status}`);
         }
         return;
       }

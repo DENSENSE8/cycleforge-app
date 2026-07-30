@@ -25,7 +25,7 @@ import {
 } from './route-params';
 
 /** Every shipping mode reads the same operator-level bits. */
-const SHIPPING_CARRIES = ['staff', 'staffId', 'colsort', 'coldir'] as const;
+const SHIPPING_CARRIES = ['staff', 'staffId', 'colsort', 'coldir', 'pane', 'layout', 'density', 'weekOffset'] as const;
 
 /** Search box + display sort are the same question on all four modes. */
 const SHIPPING_COMMON = {

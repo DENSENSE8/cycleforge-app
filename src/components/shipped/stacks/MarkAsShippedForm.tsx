@@ -7,6 +7,7 @@ import { FILTER_DROPDOWN_LABEL_CLASS } from '@/design-system/components/FilterDr
 import { DateTimePickerField } from '@/design-system/components/DateTimePickerField';
 import { SearchableSelectField } from '@/design-system/components/SearchableSelectField';
 import { type StaffRecipient } from '@/components/quick-access/StaffRecipientList';
+import { safeRandomUUID } from '@/lib/safe-uuid';
 
 interface MarkAsShippedFormProps {
   shippingTrackingNumber: string;
@@ -35,15 +36,20 @@ export function MarkAsShippedForm({
 
     setIsMarkingShipped(true);
     try {
+      const idempotencyKey = safeRandomUUID();
       const response = await fetch('/api/packing-logs', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Idempotency-Key': idempotencyKey,
+        },
         body: JSON.stringify({
           trackingNumber,
           photos: [],
           packerId: selectedPackerId,
           timestamp: packedDate.toISOString(),
           packerName: getStaffName(selectedPackerId),
+          idempotencyKey,
         }),
       });
       const data = await response.json().catch(() => null);

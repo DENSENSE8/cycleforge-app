@@ -208,52 +208,6 @@ export function dashboardShippedWeekQuery({
 }
 
 /**
- * FBA shipment lifecycle row.
- *
- * `due_date` is a **civil date key** (`YYYY-MM-DD`, cast to text in SQL) — a
- * calendar day with no time. Format it with `formatDateKeyShort`; never reparse
- * it through `new Date(...)` (date SoT).
- *
- * `ready_items` counts every item past PLANNED (TESTED | PACKED |
- * LABEL_ASSIGNED | SHIPPED) — the route emits the whole progressed set, so the
- * UI reads one field instead of re-summing per-status counts.
- */
-export interface FBAShipmentLifecycleRow {
-  id: number;
-  shipment_ref: string;
-  destination_fc: string | null;
-  due_date: string | null;
-  status: 'PLANNED' | 'TESTED' | 'PACKED' | 'LABEL_ASSIGNED' | 'SHIPPED';
-  notes: string | null;
-  shipped_at: string | null;
-  created_at: string;
-  created_by_name: string | null;
-  assigned_tech_name: string | null;
-  assigned_packer_name: string | null;
-  total_items: number;
-  ready_items: number;
-  total_expected_qty: number;
-  total_actual_qty: number;
-}
-
-export async function fetchFbaShipments(): Promise<{ rows: FBAShipmentLifecycleRow[] }> {
-  const res = await fetch('/api/dashboard/fba-shipments?limit=500');
-  if (!res.ok) throw new Error('Failed to fetch FBA shipments');
-  const data = await res.json();
-  return { rows: Array.isArray(data?.rows) ? data.rows : [] };
-}
-
-/** FBA shipment lifecycle board. Matches `FBAShipmentsTable`. */
-export function fbaShipmentsQuery() {
-  return queryOptions({
-    queryKey: ['dashboard-fba-shipments'],
-    queryFn: fetchFbaShipments,
-    staleTime: 60_000,
-    gcTime: 5 * 60 * 1000,
-  });
-}
-
-/**
  * Warranty Logger claim list. Shared by the warranty sidebar AND the right-pane
  * table so both hit one cache key (same factory rule as the order tables above).
  */

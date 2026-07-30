@@ -3,10 +3,12 @@ import { ClaimFiledBanner } from './ClaimFiledBanner';
 import { ClaimNasBackupCard } from './ClaimNasBackupCard';
 
 /**
- * Link step 2 — Linked. Mirrors the create "Filed" confirmation: the linked
- * ticket banner plus the shared local-backup card (link mode doesn't auto-archive
- * on link, so this is where the operator backs up the carton photos to the
- * ticket folder). The footer carries "Continue to seller".
+ * Link step 5 — Linked. Mirrors the create "Filed" confirmation: the ticket
+ * banner plus the shared local-backup card. Reached after Review posts the
+ * comment (+ attached photos) to the linked ticket, which also auto-triggers
+ * the local backup (`submitLinkUpdate` → `archiveToNas`) — this card shows
+ * that result, with a manual retry if it was partial. The footer carries
+ * "Continue to seller" (or "Done" when the claim type is 'return').
  */
 export function ClaimLinkedStep({ c }: { c: ReceivingClaimController }) {
   return (

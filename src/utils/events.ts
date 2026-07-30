@@ -185,28 +185,21 @@ export function dispatchReceivingWorkspaceNavState(
   );
 }
 
-export type ReceivingDetailsOverlayDetail = {
-  receivingId: number;
-  /** Row/list fields for instant overlay render before the enrich fetch lands. */
-  seed?: Partial<ReceivingDetailsLog>;
-};
-
 /**
- * Surface the existing `ReceivingDetailsStack` overlay on-demand. The
- * workspace's `i` info button dispatches this; ReceivingDashboard listens and
- * mounts the overlay with the matching log.
+ * Open the carton READ inspector (`/carton/[id]`). Decision 2a: this replaces
+ * mounting editable `ReceivingDetailsStack` as the default "look" action.
+ * Mutation stays on Unbox (and other explicit work surfaces).
+ *
+ * Callers that previously listened for `receiving-open-details-overlay` should
+ * navigate here instead; the event is kept only as a legacy name for openers.
  */
 export function dispatchReceivingDetailsOverlay(
   receivingId: number,
-  seed?: ReceivingDetailsOverlayDetail['seed'],
+  _seed?: Partial<ReceivingDetailsLog>,
 ): void {
   if (typeof window === 'undefined') return;
   if (!Number.isFinite(receivingId) || receivingId <= 0) return;
-  window.dispatchEvent(
-    new CustomEvent('receiving-open-details-overlay', {
-      detail: { receivingId, seed } satisfies ReceivingDetailsOverlayDetail,
-    }),
-  );
+  window.location.assign(`/carton/${receivingId}`);
 }
 
 // ── Dashboard shipped search ─────────────────────────────────────────────────

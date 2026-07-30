@@ -11,11 +11,11 @@ Golden: `receiving/workspace/LineEditPanel.tsx`. Full rule + tiers:
 (+ `station-terminal.test.ts`). Baselines shrink only — never raise one to pass.
 
 ## Always
-- Identity: `StationContextBar` + entity-context adapter `density="bar"` **above** `StationWorkbench`.
+- Identity: `StationContextBar` absolute-float over the canvas (`stationContextBarHostClass`) + entity-context adapter `density="bar"` **above** `StationWorkbench` (`reserveIdentityClearance`).
 - Outer shell: `StationPanelRoot` (owns `bg-surface-canvas` column + `StationAmbientWash`).
 - Column: `STATION_WORKBENCH_*` (720px + `px-4 sm:px-6`) from `workbench-layout.ts`.
 - Terminal: `useStationTerminalAction` + `STATION_TERMINAL_REGISTRY` (or `TERMINAL_HAND_VM_ALLOWLIST` + follow-up).
-- Unbox overview notes: `StationComposerDock` in the dock band (+ compact `SlicedActionDock` `align="end"`) — not a mid-canvas nested notes card.
+- Unbox overview notes: `StationComposerDock` floating over the canvas via `slicedActionDockWrapperClass({ docked: false })` (+ compact `SlicedActionDock` `align="end"` embedded) — not a mid-canvas nested notes card or in-flow shelf.
 - Tabs: `buildSectionTabs` + `SectionTabsSlider`. Mid-canvas jump: `StationRightEdgeAction`.
 
 ## Never

@@ -70,7 +70,7 @@ interface LedgerValueProps {
   variant?: LedgerValueVariant;
   tier?: LedgerValueTier;
   tone?: LedgerValueTone;
-  /** Shown when `value` is empty. Default "N/A". */
+  /** Shown when `value` is empty. Default `—` (honest absence; never "N/A"). */
   fallback?: string;
   /** Truncate with ellipsis (needs a bounded parent width). */
   truncate?: boolean;
@@ -93,7 +93,7 @@ interface LedgerValueProps {
  * <LedgerValue value={techName} truncate />                       // name (default)
  * <LedgerValue value={order.id} variant="id" nowrap />            // scan-compare id
  * <LedgerValue value={daysLate} variant="number" tone="danger" /> // aligned figure
- * <LedgerValue value={null} />                                    // → faint "N/A"
+ * <LedgerValue value={null} />                                    // → faint "—"
  */
 export function LedgerValue({
   value,
@@ -101,7 +101,7 @@ export function LedgerValue({
   variant = 'text',
   tier = 'default',
   tone = 'default',
-  fallback = 'N/A',
+  fallback = '—',
   truncate = false,
   nowrap = false,
   className = '',

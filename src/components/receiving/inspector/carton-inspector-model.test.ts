@@ -13,6 +13,8 @@ import assert from 'node:assert/strict';
 import {
   buildCartonMilestones,
   cartonContentsSummary,
+  cartonDisposition,
+  cartonExceptions,
   cartonFacts,
   cartonFlags,
   cartonLifecycle,
@@ -287,4 +289,84 @@ test('cartonRecordMeta identifies the row and omits unset ids', () => {
   assert.equal(byKey.get('poId'), '5623409000003125066');
   // Null on the fixture.
   assert.equal(byKey.has('receiveId'), false, 'an unset zoho receive id must be omitted');
+});
+
+// ── Disposition truth (exceptions outrank lifecycle.done) ───────────────────
+
+test('cartonDisposition: received + UNFOUND + triage + 0 lines is NOT complete', () => {
+  // Screenshot failure mode: lifecycle says received/done, but exceptions remain.
+  const d = cartonDisposition(RECEIVING, {
+    expected: 0,
+    received: 0,
+    lines: 0,
+    lines_complete: 0,
+  });
+  assert.equal(d.settled, false, 'must never show work-complete while exceptions hold');
+  assert.equal(d.state, 'unmatched');
+  assert.ok(d.exceptions.some((e) => e.key === 'unfound'));
+  assert.ok(d.exceptions.some((e) => e.key === 'triage_incomplete'));
+  assert.ok(d.exceptions.some((e) => e.key === 'no_lines'));
+  assert.equal(d.lifecycle.done, true, 'lifecycle can still be done — disposition overrides');
+});
+
+test('cartonExceptions: opened with lines but UNFOUND still flags unmatched', () => {
+  const ex = cartonExceptions(
+    { ...RECEIVING, triage_complete: true },
+    { expected: 1, received: 1, lines: 1, lines_complete: 1 },
+  );
+  assert.deepEqual(
+    ex.map((e) => e.key),
+    ['unfound'],
+  );
+});
+
+test('cartonDisposition: settled only when lifecycle.done and zero exceptions', () => {
+  const d = cartonDisposition(
+    {
+      ...RECEIVING,
+      pairing_state: 'MATCHED',
+      triage_complete: true,
+      needs_test: false,
+      qa_status: 'PASSED',
+    },
+    { expected: 1, received: 1, lines: 1, lines_complete: 1 },
+  );
+  assert.equal(d.state, 'complete');
+  assert.equal(d.settled, true);
+  assert.equal(d.exceptions.length, 0);
+});
+
+test('cartonDisposition: needs_test + QA PENDING blocks complete', () => {
+  const d = cartonDisposition(
+    {
+      ...RECEIVING,
+      pairing_state: 'MATCHED',
+      triage_complete: true,
+      needs_test: true,
+      qa_status: 'PENDING',
+    },
+    { expected: 1, received: 1, lines: 1, lines_complete: 1 },
+  );
+  assert.equal(d.settled, false);
+  assert.equal(d.state, 'needs_action');
+  assert.ok(d.exceptions.some((e) => e.key === 'qa_pending'));
+});
+
+test('cartonDisposition: in_progress when lifecycle not done and no exceptions', () => {
+  const d = cartonDisposition(
+    {
+      ...RECEIVING,
+      pairing_state: 'MATCHED',
+      triage_complete: true,
+      needs_test: false,
+      qa_status: null,
+      received_at: null,
+      unboxed_at: null,
+      unbox_opened_at: null,
+    },
+    { expected: 0, received: 0, lines: 0, lines_complete: 0 },
+  );
+  assert.equal(d.state, 'in_progress');
+  assert.equal(d.settled, false);
+  assert.equal(d.lifecycle.state, 'scanned');
 });

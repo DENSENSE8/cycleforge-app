@@ -470,7 +470,7 @@ export function UnmatchedAccordionSurface(props: UnmatchedItemsSectionProps) {
               void lineId;
             },
           }}
-          activeRowSlot={({ serials }) => {
+          activeRowSlot={({ serials, units }) => {
             if (!showSerialScan || !resolvedActiveLine) return null;
             return (
               <ActiveLineConditionSerial
@@ -502,6 +502,7 @@ export function UnmatchedAccordionSurface(props: UnmatchedItemsSectionProps) {
                 serialAbsentReason={serialAbsentReason ?? null}
                 requireSerialConfirmation={requireSerialConfirmation ?? false}
                 onSerialAbsentChange={(next) => onSerialAbsentChange?.(next)}
+                units={units}
               />
             );
           }}

@@ -2,7 +2,8 @@
 
 /**
  * Job rail on the Walk-In station: Sales · Local Pickup · Repair.
- * Same chrome language as ReceivingModeSwitcher.
+ * Same chrome language as other sidebar mode rails (`HorizontalButtonSlider`
+ * segmented pills). Receiving L2 now lives in GlobalHeader (Unbox pilot).
  *
  * Jobs the operator can't open are dropped from the rail (Repair needs
  * `repair.view` — see `WALK_IN_JOB_PERMISSIONS`), the same way master nav

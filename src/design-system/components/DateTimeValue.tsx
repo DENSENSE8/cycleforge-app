@@ -6,7 +6,7 @@ import { useTimeFormat } from '@/lib/time-format/useTimeFormat';
 interface DateTimeValueProps {
   /** Raw timestamp (ISO / slash / Date). Formatted to PST `MM/DD/YYYY h:mm:ss AM/PM`. */
   value: string | Date | null | undefined;
-  /** Shown when the value is empty / invalid. Default "N/A". */
+  /** Shown when the value is empty / invalid. Default `—` (honest absence). */
   fallback?: string;
   className?: string;
 }
@@ -21,8 +21,11 @@ interface DateTimeValueProps {
  * columns: the DATE pinned left (so a stacked column of dates all start at the
  * same x) and the TIME filling the rest, right-aligned (so the times sit to the
  * right with their AM/PM edges flush). Tabular figures keep digits equal width.
+ *
+ * Empty / invalid timestamps still come from `formatDateTimePST` as `"N/A"`;
+ * this component maps that sentinel to the honest absence glyph (`—`).
  */
-export function DateTimeValue({ value, fallback = 'N/A', className = '' }: DateTimeValueProps) {
+export function DateTimeValue({ value, fallback = '—', className = '' }: DateTimeValueProps) {
   // Subscribe so a 12h↔24h toggle re-renders the ledger instantly.
   useTimeFormat();
   const formatted = formatDateTimePST(value ?? null);

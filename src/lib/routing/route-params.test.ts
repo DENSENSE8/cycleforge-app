@@ -170,7 +170,7 @@ test('a bare dashboard lifecycle flag survives the boundary parse', () => {
   // `?shipped` (no `=`) is what the app writes and what `.has()` reads. Under
   // the old `paramText` declaration every one of these parsed to "" and the
   // lifecycle tab silently reverted to Unshipped.
-  for (const flag of ['unshipped', 'pending', 'packed', 'tested', 'shipped', 'fba', 'warranty']) {
+  for (const flag of ['unshipped', 'pending', 'packed', 'tested', 'shipped', 'warranty']) {
     assert.equal(parse(flag), `${flag}=`, `?${flag} must survive as a presence flag`);
   }
   // Every accepted spelling normalizes to the bare form `.has()` tests for.
@@ -198,5 +198,132 @@ test('routeParamsFor resolves the longest route first', () => {
   // Bare `/receiving` and the unfound sub-tree stay un-owned for now.
   assert.equal(routeParamsFor('/receiving'), null);
   assert.equal(routeParamsFor('/receiving/unfound'), null);
-  assert.equal(routeParamsFor('/test'), null);
+  // `/fba` is the last un-migrated surface — and it is PARKED, so a spec there
+  // would be groundwork with no observable behaviour (see the sourcing note in
+  // docs/todo/nav-routing-refactor-FINISH-PROMPT.md §3.1).
+  assert.equal(routeParamsFor('/fba'), null);
+  // `/pack` is the canonical packing route; `/packer` is a legacy alias the proxy
+  // normalizes, so it deliberately has no spec of its own.
+  assert.equal(routeParamsFor('/pack')?.route, '/pack');
+  assert.equal(routeParamsFor('/packer'), null);
+  assert.equal(routeParamsFor('/review')?.route, '/review');
+  assert.equal(routeParamsFor('/warehouse')?.route, '/warehouse');
+  // `/inventory` owns its sub-routes by prefix — they share one param set via
+  // `useInventoryUrlState`, so one spec is correct rather than four.
+  assert.equal(routeParamsFor('/inventory')?.route, '/inventory');
+  assert.equal(routeParamsFor('/inventory/graph')?.route, '/inventory');
+  assert.equal(routeParamsFor('/inventory/triage')?.route, '/inventory');
+});
+
+test('/sourcing owns the two keys both of its clear lists forgot', () => {
+  const spec = routeParamsFor('/sourcing')!;
+  assert.equal(spec.route, '/sourcing');
+  const parse = (qs: string) => parseRouteParams(spec, new URLSearchParams(qs)).toString();
+
+  // `by` (Scout's field toggle) and `range` (the Analytics window) were absent
+  // from BOTH the panel's `goMode` deletes and the nav targets' null-maps, so
+  // they leaked across every mode switch. Declared, they now survive a paste
+  // and are dropped by construction on a switch.
+  assert.equal(parse('by=serial'), 'by=serial');
+  assert.equal(parse('range=1y'), 'range=1y');
+  // Values outside each vocabulary are still refused.
+  assert.equal(parse('by=hacked'), '');
+  assert.equal(parse('range=7d'), '');
+  // Legacy mode aliases survive to `resolveSourcingMode`, which folds them.
+  assert.equal(parse('mode=lookup'), 'mode=lookup');
+  assert.equal(parse('mode=alerts'), 'mode=alerts');
+});
+
+test('/test owns the tab params that are read through a CONSTANT', () => {
+  // `ship` / `testTab` are read as `searchParams.get(SHIPPING_WORKSPACE_TAB_PARAM)`
+  // from `@/utils/*-workspace-state` — outside any surface tree and not a string
+  // literal, so neither the method's grep nor the ownership guard can see them.
+  // This test is the standing check that they stayed declared.
+  const spec = routeParamsFor('/test')!;
+  assert.equal(spec.route, '/test');
+  const parse = (qs: string) => parseRouteParams(spec, new URLSearchParams(qs)).toString();
+
+  assert.equal(parse('ship=history'), 'ship=history');
+  // Legacy ship=fba rejected — FBA owns `/shipping/fba` (IA row L).
+  assert.equal(parse('ship=fba'), '');
+  assert.equal(parse('testTab=returns'), 'testTab=returns');
+  assert.equal(parse('ship=bogus'), '');
+  // `/tech` is a legacy alias the proxy redirects; it deliberately has no spec
+  // of its own, so it must not resolve to `/test`'s.
+  assert.equal(routeParamsFor('/tech'), null);
+});
+
+test('the mobile RouteShell pane param is ambient on every shell that mounts it', () => {
+  // A live defect until 2026-07-29: `RouteShell` is a shared DS component read
+  // through a constant, so no route declared `?pane=` and the hygiene hook
+  // stripped it the instant the operator tapped the mobile Actions tab.
+  for (const route of ['/test', '/sourcing', '/support', '/unbox', '/receiving/history']) {
+    const spec = routeParamsFor(route)!;
+    assert.equal(
+      parseRouteParams(spec, new URLSearchParams('pane=actions')).get('pane'),
+      'actions',
+      `${route} drops ?pane= — its carries list is missing the ambient key`,
+    );
+  }
+  // Still a closed vocabulary.
+  const spec = routeParamsFor('/test')!;
+  assert.equal(parseRouteParams(spec, new URLSearchParams('pane=bogus')).toString(), '');
+});
+
+test('/walk-in keeps the legacy deep-link keys its redirect reads', () => {
+  const spec = routeParamsFor('/walk-in')!;
+  const parse = (qs: string) => parseRouteParams(spec, new URLSearchParams(qs)).toString();
+
+  // `useWalkInTaskRedirect` reads these off the URL and forwards them to
+  // `/pickup?job=repair`. Undeclared, the hygiene hook this page mounts would
+  // strip them and a `?new=true` link would land on a plain history page. The
+  // read guard could not catch it — `/repair` declares all three, so nothing
+  // looked undeclared.
+  assert.equal(parse('new=true'), 'new=true');
+  assert.equal(parse('openRepair=42'), 'openRepair=42');
+  assert.equal(parse('search=abc'), 'search=abc');
+  // Repair tab values are forwarded too, so they must survive here.
+  assert.equal(parse('tab=done'), 'tab=done');
+  // Per-mode tab vocabularies (Pickup / Sales) also round-trip.
+  assert.equal(parse('tab=draft'), 'tab=draft');
+  assert.equal(parse('tab=today'), 'tab=today');
+  assert.equal(parse('tab=bogus'), '');
+  // Sales is the default mode and is dropped from the URL.
+  assert.equal(parse('mode=sales'), '');
+  assert.equal(parse('mode=pickup'), 'mode=pickup');
+  // Legacy `?category=` is proxy-only (server-side, before this parse) and has
+  // no client reader, so it is deliberately NOT declared.
+  assert.equal(parse('category=repairs'), '');
+});
+
+test('/inventory declares the whole set its URL-state SoT reads', () => {
+  const spec = routeParamsFor('/inventory')!;
+  const parse = (qs: string) => parseRouteParams(spec, new URLSearchParams(qs)).toString();
+
+  // The old nav clear list nulled only `mode`/`section`/`open`, so everything
+  // below rode a mode switch into the next mode.
+  assert.equal(parse('sku=CABLE-001'), 'sku=CABLE-001');
+  assert.equal(parse('bin=A1'), 'bin=A1');
+  assert.equal(parse('unit=9'), 'unit=9');
+  assert.equal(parse('state=IN_STOCK,SOLD'), 'state=IN_STOCK%2CSOLD');
+  assert.equal(parse('condition=used'), 'condition=used');
+  assert.equal(parse('field=serial'), 'field=serial');
+  assert.equal(parse('filter=a,b'), 'filter=a%2Cb');
+
+  // `open` here is an opaque selection KEY, not an id — `paramPositiveInt` (what
+  // every other route uses for `open`) would have dropped it.
+  assert.equal(parse('open=bin:A1'), 'open=bin%3AA1');
+
+  // Graph direction accepts `parts`, which is absent from `SkuGraphMode` but is
+  // read by `InventoryGraphRouter`.
+  assert.equal(parse('view=parts'), 'view=parts');
+  assert.equal(parse('view=tree'), 'view=tree');
+  assert.equal(parse('view=nope'), '');
+
+  // `section` only ever means Replenish here.
+  assert.equal(parse('section=replenish'), 'section=replenish');
+  assert.equal(parse('section=velocity'), '');
+
+  // A sibling surface's state still dies at the boundary.
+  assert.equal(parse('triq=BOX-9&unboxview=queue'), '');
 });

@@ -109,7 +109,13 @@ export function normalizeReceivingTicketEntityRefs(args: {
   return { lineId, receivingId };
 }
 
-export type TicketLinkEntityType = 'SHIPMENT' | 'RECEIVING' | 'RECEIVING_LINE';
+/**
+ * `ticket_links.entity_type` is unconstrained free text in the DB and its schema
+ * comment already lists eleven live values, `'REPAIR'` among them. This union is
+ * the TYPED surface over that column — widening it makes an already-representable
+ * value reachable through the API; it is not a data change.
+ */
+export type TicketLinkEntityType = 'SHIPMENT' | 'RECEIVING' | 'RECEIVING_LINE' | 'REPAIR';
 
 export interface TicketLinkAnchor {
   entityType: TicketLinkEntityType;
@@ -120,15 +126,22 @@ export interface TicketLinkAnchor {
  * Pick the single primary ticket_links entity for a Zendesk ticket.
  * One ticket → one entity (UNIQUE on org + zendesk_ticket_id).
  *
- * Priority: line > carton > shipment (STN). Prefer the richest receiving
- * context when a carton is open; fall back to SHIPMENT for pre-intake
- * tracking links (support / packing surfaces).
+ * Priority: repair > line > carton > shipment (STN). A repair outranks the
+ * receiving context because a counter repair is what the ticket is ABOUT — the
+ * work record is the anchor, and any sale or prior order is a reference (plan
+ * D6). Otherwise prefer the richest receiving context when a carton is open, and
+ * fall back to SHIPMENT for pre-intake tracking links (support / packing).
  */
 export function pickTicketLinkAnchor(args: {
+  repairId?: number | null;
   lineId?: number | null;
   receivingId?: number | null;
   shipmentId?: number | null;
 }): TicketLinkAnchor | null {
+  const repairId = args.repairId ?? null;
+  if (repairId != null && Number.isFinite(repairId) && repairId > 0) {
+    return { entityType: 'REPAIR', entityId: repairId };
+  }
   const { lineId, receivingId } = normalizeReceivingTicketEntityRefs({
     lineId: args.lineId ?? null,
     receivingId: args.receivingId ?? null,

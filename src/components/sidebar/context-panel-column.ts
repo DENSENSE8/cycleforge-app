@@ -34,6 +34,28 @@ import { cn } from '@/utils/_cn';
  */
 
 /**
+ * Default context-panel width in px. The Tailwind twin lives on
+ * {@link CONTEXT_PANEL_COLUMN_CLASS} (`w-[360px]`); keep them adjacent — change
+ * one, change the other. Numeric form feeds drag-to-resize
+ * ({@link CONTEXT_PANEL_RESIZE}) and inline `style={{ width }}` overrides.
+ */
+export const CONTEXT_PANEL_WIDTH_PX = 360;
+
+/**
+ * Drag-to-resize contract for the receiving context-panel rail (left-anchored,
+ * right-edge handle via `useHorizontalEdgeResize` `edge: 'trailing'`).
+ *
+ * `maxWidthPad` leaves at least a station workbench column (~720) plus gutters
+ * for the canvas beside the rail.
+ */
+export const CONTEXT_PANEL_RESIZE = {
+  storageKey: 'context-panel-width',
+  defaultWidthPx: CONTEXT_PANEL_WIDTH_PX,
+  minWidthPx: 300,
+  maxWidthPadPx: 760,
+} as const;
+
+/**
  * The in-DISPLAY context panel column (picker / rail / scan bar).
  *
  * A discrete floating slate: full radius, border on every edge, its own gutter
@@ -46,13 +68,18 @@ import { cn } from '@/utils/_cn';
  * read against the canvas; a downward-only cast left that edge flat. Casting
  * away from centre puts the whole app under one light in the middle of the
  * screen.
+ *
+ * `relative` anchors the trailing-edge resize grip (receiving only — a short
+ * outside pill; see {@link ContextPanelLayout}). `w-[360px]` is the fixed
+ * default; receiving overrides it with an inline width from
+ * {@link CONTEXT_PANEL_RESIZE}.
  */
 export const CONTEXT_PANEL_COLUMN_CLASS = cn(
   // The gutter is the panel's OWN margin, not host padding. Host padding would
   // also inset the workspace beside it, and the workspace must stay flush to
   // the GlobalHeader — the station bookmark bar docks directly under that
   // hairline with no gap (see display/station-workbench.md).
-  'm-2 flex w-[360px] shrink-0 flex-col overflow-hidden',
+  'relative m-2 flex w-[360px] shrink-0 flex-col overflow-hidden',
   'border border-border-soft bg-surface-card rounded-2xl',
   elevationCastClass('left'),
 );

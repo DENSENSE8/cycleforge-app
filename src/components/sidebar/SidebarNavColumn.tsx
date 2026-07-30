@@ -60,7 +60,7 @@ import { cn } from '@/utils/_cn';
  *   not one, and registering would make ambient owners (the queue keyboard, the
  *   right-rail host) stand down for a panel that is not blocking them.
  * - **No dismiss catcher.** There is nothing underneath to click through.
- * - **No stand-down on `SCAN_FOCUS_REQUESTED_EVENT`.** The slide-over had to
+ * - **No stand-down on scan-focus-requested.** The slide-over had to
  *   close for the scan hotkey because it was covering the bar the hotkey
  *   focuses. A push column never covers it — and auto-closing would reflow the
  *   bench at the exact instant the operator scans, which is strictly worse than

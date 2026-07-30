@@ -17,7 +17,6 @@ import { usePhotoGallery } from '@/components/shipped/photo-gallery/usePhotoGall
 import { PhotoViewerPortal } from '@/components/shipped/photo-gallery/PhotoViewerPortal';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { IconButton } from '@/design-system/primitives';
-import { photoStageLabel, stageFromPhotoType } from '@/lib/photos/stages';
 import { toast } from '@/lib/toast';
 import { cn } from '@/utils/_cn';
 import { claimPhotoTileProps } from '../claim-helpers';
@@ -40,9 +39,8 @@ interface Props {
  * saved to local storage regardless.
  *
  * Evidence preference (Plan 5): line-scoped item shots order FIRST (they are
- * the claim's primary evidence per the identity law) and every tile carries a
- * stage badge via `stageFromPhotoType` + `photoStageLabel`; arrival package
- * shots stay selectable below for outer-damage claims. Selection behavior is
+ * the claim's primary evidence per the identity law); arrival package shots
+ * stay selectable below for outer-damage claims. Selection behavior is
  * unchanged — nothing preselected on first open (a line-first *preselect*
  * default is a deliberate ask-first, not shipped here).
  */
@@ -211,13 +209,6 @@ export function ClaimPhotoPicker({ photos, receivingId }: Props) {
         {ordered.map((p) => {
           const isSel = selectedPhotoIds.has(p.id);
           const tile = claimPhotoTileProps(p, gridDensity);
-          // Stage from the SoT: a line-linked row IS item evidence (entity
-          // wins); carton rows resolve by photo_type. Null (unclassifiable
-          // legacy stamps) simply renders no badge.
-          const stage = stageFromPhotoType(
-            p.receivingLineId != null ? 'RECEIVING_LINE' : 'RECEIVING',
-            p.photoType,
-          );
           return (
             <div
               key={p.id}
@@ -250,11 +241,6 @@ export function ClaimPhotoPicker({ photos, receivingId }: Props) {
                   <PhotoThumb src={tile.imageUrl} alt="" ratio={tile.ratio} className="rounded-lg" />
                 </button>
               </HoverTooltip>
-              {stage ? (
-                <span className="pointer-events-none absolute bottom-1 left-1 rounded bg-surface-card/90 px-1.5 py-0.5 text-role-micro font-semibold uppercase tracking-widest text-text-muted ring-1 ring-inset ring-border-soft">
-                  {photoStageLabel(stage)}
-                </span>
-              ) : null}
             </div>
           );
         })}
