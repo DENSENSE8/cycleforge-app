@@ -28,6 +28,8 @@ interface ReceivingPhotosSectionProps {
   sectionTitle?: string;
   /** Primary line on the same launcher affordance shipped uses for packing. */
   launcherTitle?: string;
+  /** Look-up / carton-read: view only — no upload, delete, or PO reassign. */
+  readOnly?: boolean;
 }
 
 export function ReceivingPhotosSection({
@@ -36,16 +38,25 @@ export function ReceivingPhotosSection({
   downloadLabel,
   sectionTitle = 'Receiving photos',
   launcherTitle = 'View Receiving Photos',
+  readOnly = false,
 }: ReceivingPhotosSectionProps) {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const staffId = user?.staffId ?? 0;
   const queryKey = ['receiving-photos', receivingId] as const;
-  const { data: photos, isFetching } = useQuery<ReceivingPhoto[]>({
+  const {
+    data: photos,
+    isFetching,
+    isError: photosError,
+  } = useQuery<ReceivingPhoto[]>({
     queryKey,
     queryFn: async () => {
       const res = await fetch(`/api/receiving-photos?receivingId=${receivingId}`);
-      if (!res.ok) return [];
+      if (!res.ok) {
+        // Read surfaces must not collapse a failed fetch into "no photos".
+        if (readOnly) throw new Error(`Failed to load photos for receiving ${receivingId}`);
+        return [];
+      }
       const data = await res.json().catch(() => null);
       // Some routes return the array directly, others wrap it as `{ photos }`,
       // and stale cached entries may have been a different shape. Normalize
@@ -58,7 +69,7 @@ export function ReceivingPhotosSection({
     },
     // 30s poll is the pickup path for photos uploaded elsewhere (e.g. mobile
     // packer). React Query pauses this while the tab is hidden by default.
-    refetchInterval: 30_000,
+    refetchInterval: readOnly ? false : 30_000,
     staleTime: 20_000,
   });
 
@@ -66,7 +77,7 @@ export function ReceivingPhotosSection({
     Number(receivingId),
     staffId,
     () => queryClient.invalidateQueries({ queryKey }),
-    staffId > 0,
+    !readOnly && staffId > 0,
   );
 
   // Defensive — `photos` should always be an array per the queryFn, but a
@@ -76,7 +87,12 @@ export function ReceivingPhotosSection({
   const photosArr: ReceivingPhoto[] = Array.isArray(photos) ? photos : [];
   const galleryPhotos = photosArr
     .filter((p) => !!p.photoUrl)
-    .map((p) => receivingPhotoToGalleryInput(p, { poRef }));
+    .map((p) =>
+      readOnly
+        ? // URL-only — omit numeric ids so delete/upload stay off the look-up surface.
+          { url: p.photoUrl }
+        : receivingPhotoToGalleryInput(p, { poRef }),
+    );
   const loadingEmpty = isFetching && galleryPhotos.length === 0;
 
   return (
@@ -90,7 +106,9 @@ export function ReceivingPhotosSection({
         </div>
       </div>
 
-      {loadingEmpty ? (
+      {photosError ? (
+        <p className="text-role-caption text-text-danger">Photos unavailable</p>
+      ) : loadingEmpty ? (
         <div className="grid grid-cols-3 gap-2 rounded-xl border border-border-hairline bg-surface-canvas p-2">
           <div className="h-16 rounded-lg bg-surface-sunken" aria-hidden />
           <div className="h-16 rounded-lg bg-surface-sunken" aria-hidden />
@@ -101,12 +119,16 @@ export function ReceivingPhotosSection({
         <PhotoGallery
           photos={galleryPhotos}
           orderId={downloadLabel ?? `recv-${receivingId}`}
-          launcherTitle={launcherTitle}
-          receivingId={Number(receivingId)}
-          allowReassign
-          onPhotoDeleted={() => queryClient.invalidateQueries({ queryKey })}
-          onPhotoReassigned={() => queryClient.invalidateQueries({ queryKey })}
-          onPhotoUploaded={() => queryClient.invalidateQueries({ queryKey })}
+          launcherTitle={readOnly ? (launcherTitle === 'View Receiving Photos' ? 'Photos' : launcherTitle) : launcherTitle}
+          {...(readOnly
+            ? {}
+            : {
+                receivingId: Number(receivingId),
+                allowReassign: true,
+                onPhotoDeleted: () => queryClient.invalidateQueries({ queryKey }),
+                onPhotoReassigned: () => queryClient.invalidateQueries({ queryKey }),
+                onPhotoUploaded: () => queryClient.invalidateQueries({ queryKey }),
+              })}
         />
       )}
     </div>

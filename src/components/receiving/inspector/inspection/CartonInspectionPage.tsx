@@ -6,16 +6,16 @@
  * Shares the read model + atoms with Unbox. Never imports workbench editors
  * (decision D6 / anti-pattern: lobotomized work chrome).
  *
- * Photos open the shared viewer SoT (`usePhotoGallery` + `PhotoViewerPortal`)
- * from a thumbnail strip under disposition — never a page-local EvidenceStage /
- * lightbox or a hand-rolled “N photos” count button. Work escape is one quiet
- * header control via `openInUnboxHref` — no "Open in Unbox" spam.
+ * Progress reuses the details-stack carton pipeline (`ReceivingCartonPipeline`
+ * + stage rows) on a Panel surface; photos use the same
+ * `ReceivingPhotosSection` (read-only) below the stepper. Work escape is one
+ * quiet header control via `openInUnboxHref` — no "Open in Unbox" spam.
  */
 
 import { useCallback, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
-import { IconButton } from '@/design-system/primitives';
+import { IconButton, Panel } from '@/design-system/primitives';
 import {
   ChevronLeft,
   ChevronRight,
@@ -27,16 +27,11 @@ import {
 } from '@/components/Icons';
 import { PoChip, SerialChip, TrackingChip } from '@/components/ui/CopyChip';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { usePhotoGallery } from '@/components/shipped/photo-gallery/usePhotoGallery';
-import { PhotoLauncher } from '@/components/shipped/photo-gallery/PhotoLauncher';
-import { PhotoViewerPortal } from '@/components/shipped/photo-gallery/PhotoViewerPortal';
-import type { PhotoGalleryInput } from '@/components/shipped/photo-gallery/photo-gallery-utils';
 import { WorkspaceTimelineTab } from '@/components/station/workbench';
 import { ReceivingAuditModal } from '@/components/receiving/workspace/ReceivingAuditModal';
-import {
-  LinearWorkflowStepper,
-  type LinearStep,
-} from '@/components/receiving/workspace/ReceivingProgressStepper';
+import { ReceivingCartonPipeline } from '@/components/station/receiving/ReceivingCartonPipeline';
+import { ReceivingPhotosSection } from '@/components/station/receiving/ReceivingPhotosSection';
+import type { ReceivingDetailsLog } from '@/components/station/receiving-details-log';
 import { deriveCartonReadiness } from '@/lib/receiving/carton-readiness';
 import {
   HEADER_ICON_BTN_CLASS,
@@ -78,18 +73,6 @@ import {
   type CartonInspectorReceiving,
 } from '../carton-inspector-model';
 
-const PIPELINE_STEPS: ReadonlyArray<LinearStep> = [
-  { key: 'scanned', label: 'Scanned' },
-  { key: 'unboxed', label: 'Unboxed' },
-  { key: 'received', label: 'Received' },
-];
-
-interface ReceivingPhoto {
-  id: number;
-  photoUrl: string;
-  caption: string | null;
-}
-
 const DISPOSITION_DOT: Record<CartonDisposition['tone'], string> = {
   neutral: 'bg-text-soft',
   info: 'bg-blue-500',
@@ -109,6 +92,46 @@ const EXCEPTION_TONE: Record<CartonException['tone'], string> = {
   warning: 'border-amber-200 bg-amber-50/80',
   danger: 'border-rose-200 bg-rose-50/80',
 };
+
+function toReceivingDetailsLog(receiving: CartonInspectorReceiving): ReceivingDetailsLog {
+  return {
+    id: String(receiving.id),
+    timestamp: receiving.created_at ?? '',
+    tracking: receiving.tracking ?? undefined,
+    source: receiving.source,
+    source_platform: receiving.source_platform,
+    intake_type: receiving.intake_type,
+    qa_status: receiving.qa_status,
+    disposition_code: receiving.disposition_code,
+    condition_grade: receiving.condition_grade,
+    is_return: receiving.is_return ?? undefined,
+    return_platform: receiving.return_platform,
+    return_reason: receiving.return_reason,
+    needs_test: receiving.needs_test ?? undefined,
+    target_channel: receiving.target_channel,
+    received_at: receiving.received_at,
+    received_by: receiving.received_by ?? null,
+    received_by_name: receiving.received_by_name,
+    unboxed_at: receiving.unboxed_at,
+    unboxed_by: receiving.unboxed_by ?? null,
+    unboxed_by_name: receiving.unboxed_by_name,
+    tracking_scanned_at: receiving.tracking_scanned_at,
+    tracking_scanned_by: receiving.tracking_scanned_by ?? null,
+    tracking_scanned_by_name: receiving.tracking_scanned_by_name,
+    unbox_opened_at: receiving.unbox_opened_at,
+    unbox_opened_by: receiving.unbox_opened_by ?? null,
+    unbox_opened_by_name: receiving.unbox_opened_by_name,
+    zoho_purchase_receive_id: receiving.zoho_purchase_receive_id,
+    zoho_purchaseorder_id: receiving.zoho_purchaseorder_id,
+    zoho_purchaseorder_number: receiving.zoho_purchaseorder_number,
+    listing_url: receiving.listing_url,
+    staging_location_label: receiving.staging_location_label,
+    priority_lane: receiving.priority_lane,
+    pairing_state: receiving.pairing_state,
+    triage_complete: receiving.triage_complete,
+    triage_completed_at: receiving.triage_completed_at,
+  };
+}
 
 function FlagChip({ flag }: { flag: CartonFlag }) {
   return (
@@ -143,27 +166,16 @@ function FactValue({ fact }: { fact: CartonFact }) {
 export function CartonInspectionPage({ receivingId }: { receivingId: number }) {
   const enabled = Number.isFinite(receivingId) && receivingId > 0;
 
-  const { data, isLoading, isError } = useQuery<CartonInspectorPayload>({
+  const {
+    data,
+    isLoading,
+    isError,
+  } = useQuery<CartonInspectorPayload>({
     queryKey: ['carton-inspector', receivingId],
     queryFn: async () => {
       const res = await fetch(`/api/receiving/${receivingId}`, { cache: 'no-store' });
       if (!res.ok) throw new Error(`Failed to load carton ${receivingId}`);
       return (await res.json()) as CartonInspectorPayload;
-    },
-    enabled,
-    staleTime: 30_000,
-  });
-
-  const {
-    data: photoData,
-    isLoading: photosLoading,
-    isError: photosError,
-  } = useQuery<{ photos: ReceivingPhoto[] }>({
-    queryKey: ['receiving-photos', String(receivingId)],
-    queryFn: async () => {
-      const res = await fetch(`/api/receiving-photos?receivingId=${receivingId}`);
-      if (!res.ok) throw new Error(`Failed to load photos for carton ${receivingId}`);
-      return (await res.json()) as { photos: ReceivingPhoto[] };
     },
     enabled,
     staleTime: 30_000,
@@ -182,17 +194,6 @@ export function CartonInspectionPage({ receivingId }: { receivingId: number }) {
   const facts = useMemo(() => (receiving ? cartonFacts(receiving) : []), [receiving]);
   const recordMeta = useMemo(() => (receiving ? cartonRecordMeta(receiving) : []), [receiving]);
 
-  // URL-only inputs — omit numeric ids so the shared viewer stays read-only
-  // (no delete/upload). Mutations belong on Unbox, not the look-up surface.
-  const galleryPhotos = useMemo<PhotoGalleryInput[]>(
-    () => (photoData?.photos ?? []).map((p) => ({ url: p.photoUrl })),
-    [photoData?.photos],
-  );
-  const photos = photoData?.photos ?? [];
-  const gallery = usePhotoGallery({
-    photos: galleryPhotos,
-    launcherLayout: 'thumbnails',
-  });
   const [auditOpen, setAuditOpen] = useState(false);
   const [copyingAll, setCopyingAll] = useState(false);
 
@@ -230,22 +231,6 @@ export function CartonInspectionPage({ receivingId }: { receivingId: number }) {
         onAudit={() => setAuditOpen(true)}
       />
 
-      {photosError ? (
-        <div className="shrink-0 border-b border-border-soft bg-surface-card px-6 py-2">
-          <HoverTooltip label="Could not load photos — retry before relying on them for a claim">
-            <span className="text-role-caption text-text-danger">Photos unavailable</span>
-          </HoverTooltip>
-        </div>
-      ) : photosLoading && photos.length === 0 ? (
-        <div className="flex shrink-0 items-center gap-2 border-b border-border-soft bg-surface-card px-6 py-2 text-role-caption text-text-muted">
-          <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading photos…
-        </div>
-      ) : photos.length > 0 ? (
-        <div className="shrink-0 border-b border-border-soft bg-surface-card px-6 py-2">
-          <PhotoLauncher g={gallery} />
-        </div>
-      ) : null}
-
       <div className="min-h-0 flex-1 overflow-y-auto">
         {isLoading ? (
           <div className="flex items-center gap-2 px-6 py-10 text-role-caption text-text-muted">
@@ -259,7 +244,7 @@ export function CartonInspectionPage({ receivingId }: { receivingId: number }) {
           </div>
         ) : (
           <div className="space-y-5 px-6 py-5 pb-16">
-            {/* Col 1: contents · activity · record; col 2: stepper · history · findings. */}
+            {/* Col 1: contents · activity · record; col 2: pipeline · photos · history · findings. */}
             <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
               <ContentsColumn
                 receiving={receiving}
@@ -277,7 +262,6 @@ export function CartonInspectionPage({ receivingId }: { receivingId: number }) {
         )}
       </div>
 
-      <PhotoViewerPortal g={gallery} />
       <ReceivingAuditModal
         open={auditOpen}
         onClose={() => setAuditOpen(false)}
@@ -530,20 +514,25 @@ function ProgressRail({
   disposition: CartonDisposition;
 }) {
   const readiness = useMemo(() => deriveCartonReadiness(receiving), [receiving]);
-  const states = readiness.pipelineStates;
+  const log = useMemo(() => toReceivingDetailsLog(receiving), [receiving]);
 
   return (
     <section className="space-y-5">
       <div className="space-y-2">
         <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">Progress</p>
-        <LinearWorkflowStepper
-          steps={PIPELINE_STEPS}
-          states={states}
-          ariaLabel="Carton progress"
-          className="w-full"
-          size="compact"
-        />
+        <Panel padding="sm" radius="xl" elevation="none">
+          <ReceivingCartonPipeline log={log} readiness={readiness} />
+        </Panel>
       </div>
+
+      <ReceivingPhotosSection
+        receivingId={String(receiving.id)}
+        poRef={receiving.zoho_purchaseorder_number || receiving.zoho_purchaseorder_id || null}
+        downloadLabel={`recv-${receiving.id}`}
+        sectionTitle="Receiving photos"
+        launcherTitle="Photos"
+        readOnly
+      />
 
       <div className="space-y-2">
         <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">History</p>

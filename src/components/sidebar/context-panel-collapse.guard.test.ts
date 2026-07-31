@@ -1,9 +1,11 @@
 /**
  * Source guard: receiving context-panel collapse uses the SoT storage key +
- * DS IconButton affordances (no page-local twin / raw collapse button).
+ * DS edge-resize `onCollapse` (no page-local twin / raw collapse button /
+ * restored ContextPanelCollapseCue).
  *
  * SoT: context-panel-column.ts → CONTEXT_PANEL_COLLAPSE
- * Layout: ContextPanelLayout.tsx + ContextPanelCollapseCue.tsx
+ * Layout: ContextPanelLayout.tsx → HorizontalEdgeResizeHandle.onCollapse
+ * Edge: design-system/components/HorizontalEdgeResizeHandle.tsx
  *
  * Run: node --test --import tsx \
  *        src/components/sidebar/context-panel-collapse.guard.test.ts
@@ -24,14 +26,14 @@ function code(src: string): string {
 }
 
 const LAYOUT_SRC = code(sourceOf('./ContextPanelLayout.tsx'));
-const CUE_SRC = code(sourceOf('./ContextPanelCollapseCue.tsx'));
 const COLUMN_SRC = code(sourceOf('./context-panel-column.ts'));
+const HANDLE_SRC = code(
+  sourceOf('../../design-system/components/HorizontalEdgeResizeHandle.tsx'),
+);
 
 test('CONTEXT_PANEL_COLLAPSE storage key is the SoT', () => {
   assert.equal(CONTEXT_PANEL_COLLAPSE.storageKey, 'context-panel-collapsed');
   assert.ok(CONTEXT_PANEL_COLLAPSE.stripWidthPx > 0);
-  assert.ok(CONTEXT_PANEL_COLLAPSE.cueOutsetPx > 0);
-  assert.ok(CONTEXT_PANEL_COLLAPSE.gutterHitPx > 0);
 });
 
 test('context-panel-column exports collapse strip class + tokens', () => {
@@ -42,24 +44,25 @@ test('context-panel-column exports collapse strip class + tokens', () => {
 test('ContextPanelLayout persists via CONTEXT_PANEL_COLLAPSE.storageKey', () => {
   assert.match(LAYOUT_SRC, /CONTEXT_PANEL_COLLAPSE\.storageKey/);
   assert.match(LAYOUT_SRC, /useLocalStorage/);
-  assert.match(LAYOUT_SRC, /ContextPanelCollapseCue/);
   assert.match(LAYOUT_SRC, /CONTEXT_PANEL_COLLAPSE_STRIP_CLASS/);
+});
+
+test('collapse lives on HorizontalEdgeResizeHandle.onCollapse (not a cue twin)', () => {
+  assert.match(LAYOUT_SRC, /onCollapse=\{/);
+  assert.match(LAYOUT_SRC, /HorizontalEdgeResizeHandle/);
+  assert.doesNotMatch(LAYOUT_SRC, /ContextPanelCollapseCue/);
+  assert.match(HANDLE_SRC, /onCollapse\?:/);
+  assert.match(HANDLE_SRC, /edge-resize-collapse/);
 });
 
 test('collapse / expand affordances use IconButton (not raw buttons)', () => {
   assert.match(LAYOUT_SRC, /IconButton/);
   assert.match(LAYOUT_SRC, /ChevronRight/);
-  assert.match(CUE_SRC, /IconButton/);
-  assert.match(CUE_SRC, /ChevronLeft/);
-  // Cue module must not hand-roll a second collapse control.
+  assert.match(HANDLE_SRC, /IconButton/);
+  assert.match(HANDLE_SRC, /ChevronLeft/);
   assert.equal(
-    (CUE_SRC.match(/<button\b/g) ?? []).length,
+    (HANDLE_SRC.match(/<button\b/g) ?? []).length,
     0,
-    'ContextPanelCollapseCue must not contain a raw <button>',
+    'HorizontalEdgeResizeHandle must not contain a raw <button>',
   );
-});
-
-test('collapse cue resolves rail rows via data-rail-row', () => {
-  assert.match(CUE_SRC, /data-rail-row/);
-  assert.match(CUE_SRC, /data-context-panel-collapse-gutter/);
 });

@@ -59,9 +59,10 @@ const SidebarContextPanel = dynamic(
  * Receiving (Unbox / Triage / Incoming / Pickup / Repair) is drag-resizable on
  * the rail's right edge via {@link useHorizontalEdgeResize} +
  * {@link HorizontalEdgeResizeHandle}; width persists in localStorage
- * ({@link CONTEXT_PANEL_RESIZE}). The same family can collapse via a row-aligned
- * gutter cue ({@link CONTEXT_PANEL_COLLAPSE}) — width-drawer to 0 + slim expand
- * strip. Other routes keep the fixed {@link CONTEXT_PANEL_WIDTH_PX} column.
+ * ({@link CONTEXT_PANEL_RESIZE}). The same family can collapse via
+ * `onCollapse` on that trailing edge handle ({@link CONTEXT_PANEL_COLLAPSE}) —
+ * width-drawer to 0 + slim expand strip. Other routes keep the fixed
+ * {@link CONTEXT_PANEL_WIDTH_PX} column.
  *
  * Renders `children` untouched when the route has no panel, so a panel-less
  * surface still reserves nothing.
@@ -90,8 +91,6 @@ export function ContextPanelLayout({ children }: { children: ReactNode }) {
   );
   const isCollapsed = isResizable && collapsed;
   const transition = useMotionTransition(framerTransition.sidebarNavColumnMount);
-  const panelRef = useRef<HTMLDivElement>(null);
-  const hostRef = useRef<HTMLDivElement>(null);
 
   if (!hasPanel) return <>{children}</>;
 
@@ -133,16 +132,14 @@ export function ContextPanelLayout({ children }: { children: ReactNode }) {
           isDragging={isDragging}
           edge="trailing"
           placement="outset"
+          onCollapse={() => setCollapsed(true)}
         />
       ) : null}
     </>
   );
 
   return (
-    <div
-      ref={hostRef}
-      className={cn(CONTEXT_PANEL_HOST_CLASS, isResizable && 'relative')}
-    >
+    <div className={cn(CONTEXT_PANEL_HOST_CLASS, isResizable && 'relative')}>
       {isResizable && isCollapsed ? (
         <div
           className={CONTEXT_PANEL_COLLAPSE_STRIP_CLASS}
@@ -165,7 +162,6 @@ export function ContextPanelLayout({ children }: { children: ReactNode }) {
           "did the route's rail render?" without keying off its width class. */}
       {isResizable ? (
         <motion.div
-          ref={panelRef}
           className={cn(
             CONTEXT_PANEL_COLUMN_CLASS,
             // Outset grip sits outside the card; clip content on an inner shell
@@ -190,15 +186,6 @@ export function ContextPanelLayout({ children }: { children: ReactNode }) {
         </div>
       )}
       <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">{children}</div>
-      {/* Host sibling (after workspace) so the gutter cue paints above the
-          canvas and is not clipped by the card shell. */}
-      {isResizable && !isCollapsed ? (
-        <ContextPanelCollapseCue
-          panelRef={panelRef}
-          hostRef={hostRef}
-          onCollapse={() => setCollapsed(true)}
-        />
-      ) : null}
     </div>
   );
 }

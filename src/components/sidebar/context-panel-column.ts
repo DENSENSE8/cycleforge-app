@@ -58,22 +58,15 @@ export const CONTEXT_PANEL_RESIZE = {
 /**
  * Collapse contract for the receiving context-panel rail (scan + recents).
  *
- * Open: row/gutter hover reveals a collapse cue outside the card's trailing
- * edge ({@link ContextPanelCollapseCue}). Collapsed: width-drawer to 0 + a
- * slim expand strip on the canvas ({@link CONTEXT_PANEL_COLLAPSE_STRIP_CLASS}).
- * Persists beside {@link CONTEXT_PANEL_RESIZE} — receiving family only.
+ * Open: collapse chevron on the trailing {@link HorizontalEdgeResizeHandle}
+ * (`onCollapse`). Collapsed: width-drawer to 0 + a slim expand strip on the
+ * canvas ({@link CONTEXT_PANEL_COLLAPSE_STRIP_CLASS}). Persists beside
+ * {@link CONTEXT_PANEL_RESIZE} — receiving family only.
  */
 export const CONTEXT_PANEL_COLLAPSE = {
   storageKey: 'context-panel-collapsed',
   /** Slim expand strip width when the rail is parked (Tailwind twin: `w-8`). */
   stripWidthPx: 32,
-  /**
-   * Hit/gutter width outside the card for the collapse cue. Starts past the
-   * resize pill so the two affordances do not fight.
-   */
-  gutterHitPx: 28,
-  /** Offset from the card's right edge to the cue center (clears resize pill). */
-  cueOutsetPx: 14,
 } as const;
 
 /**
