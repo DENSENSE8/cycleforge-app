@@ -35,11 +35,27 @@ export function widthFromEdgeDrag(
   return edge === 'trailing' ? startWidth + delta : startWidth - delta;
 }
 
+/** Viewport pad + optional absolute px cap — shared by hydrate + drag clamp. */
+export function edgeResizeWidthCap(
+  minWidth: number,
+  maxWidthPad: number,
+  maxWidth: number | undefined,
+  viewportWidth: number | undefined,
+): number {
+  const viewportCap =
+    viewportWidth == null
+      ? maxWidth ?? Number.POSITIVE_INFINITY
+      : Math.max(minWidth, viewportWidth - maxWidthPad);
+  if (maxWidth == null) return viewportCap;
+  return Math.max(minWidth, Math.min(maxWidth, viewportCap));
+}
+
 function readPersistedWidth(
   key: string | undefined,
   fallback: number,
   minWidth: number,
   maxWidthPad: number,
+  maxWidth?: number,
 ): number {
   if (!key || typeof window === 'undefined') return fallback;
   try {
@@ -47,7 +63,7 @@ function readPersistedWidth(
     if (!raw) return fallback;
     const parsed = Number(raw);
     if (!Number.isFinite(parsed) || parsed < minWidth) return fallback;
-    const cap = Math.max(minWidth, window.innerWidth - maxWidthPad);
+    const cap = edgeResizeWidthCap(minWidth, maxWidthPad, maxWidth, window.innerWidth);
     return Math.min(parsed, cap);
   } catch {
     return fallback;
@@ -61,6 +77,11 @@ interface UseHorizontalEdgeResizeOptions {
   minWidth?: number;
   /** Leave at least this many px of viewport for the main surface. */
   maxWidthPad?: number;
+  /**
+   * Absolute px ceiling (e.g. Ticket push chat column). Combined with
+   * {@link maxWidthPad} — the tighter of the two wins.
+   */
+  maxWidth?: number;
   /** Disable drag (fixed width). */
   enabled?: boolean;
   /**
@@ -103,6 +124,7 @@ export function useHorizontalEdgeResize({
   defaultWidth = DEFAULT_WIDTH,
   minWidth = DEFAULT_MIN_WIDTH,
   maxWidthPad = DEFAULT_MAX_WIDTH_PAD,
+  maxWidth,
   enabled = true,
   edge = 'leading',
   label = 'Resize document panel',
@@ -126,18 +148,19 @@ export function useHorizontalEdgeResize({
 
   useEffect(() => {
     if (!storageKey) return;
-    setWidthState(readPersistedWidth(storageKey, defaultWidth, minWidth, maxWidthPad));
-  }, [storageKey, defaultWidth, minWidth, maxWidthPad]);
+    setWidthState(
+      readPersistedWidth(storageKey, defaultWidth, minWidth, maxWidthPad, maxWidth),
+    );
+  }, [storageKey, defaultWidth, minWidth, maxWidthPad, maxWidth]);
 
   const clamp = useCallback(
     (next: number) => {
-      if (typeof window === 'undefined') {
-        return Math.max(minWidth, next);
-      }
-      const cap = Math.max(minWidth, window.innerWidth - maxWidthPad);
+      const viewportWidth = typeof window === 'undefined' ? undefined : window.innerWidth;
+      const cap = edgeResizeWidthCap(minWidth, maxWidthPad, maxWidth, viewportWidth);
+      if (!Number.isFinite(cap)) return Math.max(minWidth, next);
       return Math.max(minWidth, Math.min(cap, next));
     },
-    [minWidth, maxWidthPad],
+    [minWidth, maxWidthPad, maxWidth],
   );
 
   const setWidth = useCallback(

@@ -898,7 +898,10 @@ export function legacyBuildListSql(searchParams: URLSearchParams, opts: LegacySq
         ? incomingOrderBy
         : view === 'all' || view === 'activity'
           ? (historySort === 'unboxed_newest'
-              ? `ORDER BY ru.unboxed_at::text DESC NULLS LAST, rl.id DESC`
+              // Match Unboxed sidebar first-open axis: opened_at, then unboxed_at.
+              // Re-scans must not reorder (opened_at is COALESCE-once); legacy rows
+              // without an open stamp still sort by unbox-complete time.
+              ? `ORDER BY COALESCE(ru.opened_at::text, unbox_open.unbox_opened_at::text, ru.unboxed_at::text) DESC NULLS LAST, rl.id DESC`
               : historySort === 'received_newest'
                 // "Received" = the line's terminal DONE transition. Not yet-DONE
                 // lines have a NULL received_done_at and sort last.
@@ -956,7 +959,10 @@ export function legacyBuildListSql(searchParams: URLSearchParams, opts: LegacySq
             WHERE rs.receiving_id = r.id
          ) rs_agg ON TRUE`
       : '';
-    const unboxOpenedJoin = view === 'unbox_opened'
+    // First-open axis for Unboxed rail + History `unboxed_newest` (same stamp the
+    // sidebar ages/sorts on). ops MAX only fills legacy rows missing ru.opened_at.
+    const unboxOpenedJoin =
+      view === 'unbox_opened' || view === 'activity' || view === 'all'
       ? `LEFT JOIN LATERAL (
             SELECT MAX(oe_uo.occurred_at) AS unbox_opened_at
             FROM ops_events oe_uo
@@ -966,10 +972,8 @@ export function legacyBuildListSql(searchParams: URLSearchParams, opts: LegacySq
               AND oe_uo.event_type = 'UNBOX_SCAN_OPENED'
          ) unbox_open ON TRUE`
       : '';
-    // First-class "opened for unbox" axis for the unbox rail (label + sort). Only
-    // joined for view=unbox_opened (see unboxOpenedJoin); the column is the query
-    // SoT, the ops_event the legacy fallback — same COALESCE the Overview uses.
-    const unboxOpenedSelect = view === 'unbox_opened'
+    const unboxOpenedSelect =
+      view === 'unbox_opened' || view === 'activity' || view === 'all'
       ? `, COALESCE(ru.opened_at, unbox_open.unbox_opened_at)::text AS unbox_opened_at`
       : '';
 
@@ -1516,6 +1520,13 @@ export function legacyBuildUnboxOpenedPlaceholdersSql(searchParams: URLSearchPar
                 WHERE rl.receiving_id = r.id
                   AND rl.organization_id = r.organization_id
              )
+             AND NOT EXISTS (
+               SELECT 1 FROM unfound_overlay uo
+                WHERE uo.organization_id = r.organization_id
+                  AND uo.source_kind = 'unmatched_receiving'
+                  AND uo.source_id = r.id::text
+                  AND uo.checked IS TRUE
+             )
              ${unboxSearchSql}
            ORDER BY COALESCE(ru.opened_at::text, unbox_open.unbox_opened_at::text) DESC NULLS LAST,
                     r.id DESC
@@ -1531,6 +1542,13 @@ export function legacyBuildUnboxOpenedPlaceholdersSql(searchParams: URLSearchPar
                 SELECT 1 FROM receiving_line rl
                  WHERE rl.receiving_id = r.id
                    AND rl.organization_id = r.organization_id
+              )
+              AND NOT EXISTS (
+                SELECT 1 FROM unfound_overlay uo
+                 WHERE uo.organization_id = r.organization_id
+                   AND uo.source_kind = 'unmatched_receiving'
+                   AND uo.source_id = r.id::text
+                   AND uo.checked IS TRUE
               )
               ${unboxSearchSql}`;
   return {

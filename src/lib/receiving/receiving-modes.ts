@@ -81,7 +81,8 @@ export interface ReceivingSortOption {
 /**
  * History sort axes — each maps to a lifecycle timestamp for day-banding,
  * within-day order, and the server ORDER BY:
- *   • unboxed_newest — receiving.unboxed_at (default).
+ *   • unboxed_newest — first Unbox-open (`unbox_opened_at`), then unbox-complete
+ *     (`unboxed_at`). Matches the Unboxed sidebar age/sort axis.
  *   • scanned_newest — first tracking scan / door scan.
  */
 export const HISTORY_SORT_OPTIONS = [

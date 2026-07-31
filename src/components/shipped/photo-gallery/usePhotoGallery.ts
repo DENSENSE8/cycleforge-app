@@ -81,7 +81,11 @@ export interface PhotoGalleryProps {
    * fullscreen viewer at that photo. `default` — the shipped launcher button.
    */
   launcherLayout?: 'default' | 'toolbar' | 'thumbnails';
-  /** Toolbar row label (`N photos`). Off when the parent already shows the count. */
+  /**
+   * Optional count header (`N photos`) above the vertical action rows.
+   * Off when the parent already shows the count (e.g. camera pill). Does not
+   * gate per-action titles on the toolbar rows.
+   */
   toolbarShowLabel?: boolean;
   /** Called after a successful DELETE /api/photos/[id] (parents invalidate cache). */
   onPhotoDeleted?: (photoId: number) => void;

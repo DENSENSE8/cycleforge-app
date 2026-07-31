@@ -25,8 +25,6 @@ import { StationTerminalDock, useStationTerminalAction } from '@/components/stat
 import { PairingTogglePill, StationPanelRoot, StationWorkbench } from '@/components/station/workbench';
 import {
   StationContextBar,
-  StationHeaderToolbar,
-  StationMoreDetails,
   StationRightEdgeAction,
   stationRightEdgeActionHostClass,
 } from '@/components/station/entity-context';
@@ -60,6 +58,8 @@ import {
   TriageSectionTabs,
   type TriageView,
 } from './build-triage-tabs';
+import { hasRealZohoPoId } from '@/lib/receiving/intake-items-routing';
+import { dispatchReceivingOpenPairingPo } from '@/utils/events';
 
 export function TriagePanel({
   row,
@@ -79,6 +79,15 @@ export function TriagePanel({
   const [activeTab, setActiveTab] = useState<TriageView>('overview');
   const [pairingOpen, setPairingOpen] = useState(false);
   const togglePairing = useCallback(() => setPairingOpen((v) => !v), []);
+  const openPoPairing = useCallback(() => {
+    if (pairingOpen) {
+      setPairingOpen(false);
+      return;
+    }
+    setActiveTab('overview');
+    setPairingOpen(true);
+    requestAnimationFrame(() => dispatchReceivingOpenPairingPo());
+  }, [pairingOpen]);
   const [classifyExpand, setClassifyExpand] = useState<{
     dimension: 'urgency' | 'platform' | 'type';
     requestId: number;
@@ -277,27 +286,13 @@ export function TriagePanel({
               showClassifyControls
               classifyInteractive
               onClassifyPillOpen={openClassifyFromHeader}
+              onEditPo={!hasRealZohoPoId(row) ? openPoPairing : undefined}
+              poEditOpen={pairingOpen && !hasRealZohoPoId(row)}
+              // Triage is the ARRIVAL pass — the one surface that owns this
+              // stage. Explicit so its correctness doesn't ride on a default.
+              photoStage="arrival_package"
               density="bar"
             />
-          }
-          moreDetails={
-            <StationMoreDetails>
-              <StationHeaderToolbar
-                mode="triage"
-                embedded
-                receivingId={row.receiving_id ?? null}
-                zohoSyncing={c.zohoSyncing}
-                busy={c.saving || c.platformSaving}
-                copyingAll={c.copyingAll}
-                handlers={{
-                  refresh: () => void c.syncWithZoho(),
-                  share: () => void c.handleShare(),
-                  audit: () => c.setAuditOpen(true),
-                  copy: () => void c.handleCopyAll(),
-                  movePhotos: () => c.openMovePhotos(),
-                }}
-              />
-            </StationMoreDetails>
           }
         />
         {openInUnboxEdge}

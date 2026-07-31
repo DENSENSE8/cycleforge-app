@@ -15,7 +15,9 @@ function PoPhotoPageInner(props: { params: Promise<{ poId: string }> }) {
   const poId = decodeURIComponent(rawPoId || '');
   const searchParams = useSearchParams();
   const mode = searchParams.get('mode') === 'gallery' ? 'gallery' : 'capture';
-  // Carton capture stage (?stage=unbox_carton mid-unbox); default arrival.
+  // Carton capture stage (?stage=arrival_package for the door pass); default
+  // unbox_carton — the safe default, since this generic PO capture page is
+  // reached from the bench far more often than the dock.
   const stage = parseReceivingCartonPhotoStage(searchParams.get('stage'));
 
   const { data, isLoading, error } = useQuery<DetailResponse>({

@@ -752,6 +752,8 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
                 packerRecord: foundRecord,
                 photosCount: Array.isArray(photos) ? photos.length : 0,
                 message: 'Order packed successfully',
+                /** Station triggers PoPC via POST .../documents/print (keeps this txn short). */
+                printBundleSuggested: true,
             });
         }
 

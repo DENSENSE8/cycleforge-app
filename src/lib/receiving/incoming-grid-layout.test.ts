@@ -13,7 +13,7 @@ import {
   isIncomingGridFrozen,
   isIncomingGridSortable,
 } from '@/lib/receiving/incoming-grid-layout';
-import { RECEIVING_GRID_COLUMNS } from '@/lib/receiving/receiving-grid-layout';
+import { TABLE_COLUMNS } from '@/lib/tables/table-columns';
 import { compareIncomingGridRows } from '@/lib/receiving/incoming-grid-compare';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 
@@ -64,24 +64,25 @@ describe('INCOMING_GRID_COLUMNS — matches Pending SoT scan order', () => {
     }
   });
 
-  it('keeps tier in lockstep with RECEIVING_GRID_COLUMNS on shared hideKeys', () => {
-    // Incoming mounts under `TableColumnConfigProvider tableId="receiving"`, so
-    // `qty`/`condition`/`rest`/`platform`/`orderid`/`tracking` are the SAME
-    // stored pref keys Unbox / History use. Tier is what the delta is read
-    // against — one key with two tiers means one stored value with two meanings.
-    const receivingTier = new Map(
-      RECEIVING_GRID_COLUMNS.filter((c) => c.hideKey).map((c) => [c.hideKey!, c.tier ?? 'core']),
+  it('owns a distinct incoming TableId (not shared with receiving)', () => {
+    // Split 2026-07-30 — Incoming and Unbox/History no longer share prefs.
+    // Tiers may diverge; the old key-for-key lockstep is retired.
+    assert.ok(TABLE_COLUMNS.incoming);
+    assert.ok(TABLE_COLUMNS.receiving);
+    assert.notEqual(
+      TABLE_COLUMNS.incoming,
+      TABLE_COLUMNS.receiving,
+      'incoming and receiving must be separate registry entries',
     );
-    for (const col of INCOMING_GRID_COLUMNS) {
-      if (!col.hideKey) continue;
-      const sibling = receivingTier.get(col.hideKey);
-      if (sibling === undefined) continue; // Incoming-only key.
-      assert.equal(
-        col.tier ?? 'core',
-        sibling,
-        `hideKey '${col.hideKey}' must carry the same tier on both receiving-family grids`,
-      );
-    }
+    // Incoming has no serial track in its Fields vocabulary.
+    assert.equal(
+      TABLE_COLUMNS.incoming.some((c) => c.key === 'serial'),
+      false,
+    );
+    assert.equal(
+      TABLE_COLUMNS.receiving.some((c) => c.key === 'serial'),
+      true,
+    );
   });
 
   it('never marks a column optional without a hideKey', () => {

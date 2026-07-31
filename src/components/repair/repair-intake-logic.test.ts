@@ -11,9 +11,9 @@ import {
 
 // ─── buildInitialFormData ─────────────────────────────────────────────────────
 
-test('buildInitialFormData: empty defaults, price 130', () => {
+test('buildInitialFormData: empty defaults, no invented price', () => {
   const data = buildInitialFormData();
-  assert.equal(data.price, '130');
+  assert.equal(data.price, '');
   assert.deepEqual(data.repairReasons, []);
   assert.equal(data.assignedTechId, null);
   assert.equal(data.signatureDataUrl, null);
@@ -40,10 +40,10 @@ test('isContactFieldValid: required fields gate on non-empty trimmed value', () 
   assert.equal(isContactFieldValid('name', { ...baseForm, customer: { ...baseForm.customer, name: 'Jo' } }), true);
 });
 
-test('isContactFieldValid: extras require a serial (price defaults to 130)', () => {
-  // price defaults to '130', so extras gate only on the serial number
+test('isContactFieldValid: extras require serial and a real price', () => {
   assert.equal(isContactFieldValid('extras', baseForm), false);
-  assert.equal(isContactFieldValid('extras', { ...baseForm, serialNumber: 'SN1' }), true);
+  assert.equal(isContactFieldValid('extras', { ...baseForm, serialNumber: 'SN1' }), false);
+  assert.equal(isContactFieldValid('extras', { ...baseForm, serialNumber: 'SN1', price: '130' }), true);
   assert.equal(isContactFieldValid('extras', { ...baseForm, serialNumber: 'SN1', price: '' }), false);
 });
 

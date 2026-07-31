@@ -9,13 +9,17 @@ export type KpiTileProps = {
   label: string;
   /** Hero number or preformatted string. */
   value: ReactNode;
-  /** Optional signed % delta under the hero. */
+  /** Optional signed % delta — renders compact top-right next to the label. */
   delta?: number;
   invertDelta?: boolean;
   /** Extra classes on the hero number (tone). Prefer theme text tokens. */
   valueClassName?: string;
-  /** Optional footer under the tile (replaces default DeltaChip when set). */
+  /**
+   * @deprecated No longer rendered — status footers were the old third row.
+   * Kept so call sites compile while strips stop passing them.
+   */
   footer?: ReactNode;
+  /** @deprecated Compact delta has no vs-label; kept for call-site compatibility. */
   deltaVsLabel?: string;
   className?: string;
   /**
@@ -32,7 +36,7 @@ export type KpiTileProps = {
 };
 
 /**
- * KPI tile anatomy: eyebrow label → hero number → delta chip.
+ * KPI tile anatomy: eyebrow + compact delta (top-right) → hero number.
  * Compose inside {@link KpiStrip}; do not nest cards inside the tile.
  */
 export function KpiTile({
@@ -41,8 +45,8 @@ export function KpiTile({
   delta,
   invertDelta = false,
   valueClassName,
-  footer,
-  deltaVsLabel,
+  footer: _footer,
+  deltaVsLabel: _deltaVsLabel,
   className,
   size = 'default',
   onOpen,
@@ -75,14 +79,19 @@ export function KpiTile({
       role={clickable ? 'button' : undefined}
       tabIndex={clickable ? 0 : undefined}
     >
-      <p
-        className={cn(
-          'font-semibold uppercase tracking-widest text-text-soft',
-          wall ? 'text-role-caption' : 'text-role-eyebrow',
-        )}
-      >
-        {label}
-      </p>
+      <div className="flex items-start justify-between gap-3">
+        <p
+          className={cn(
+            'min-w-0 font-semibold uppercase tracking-widest text-text-soft',
+            wall ? 'text-role-caption' : 'text-role-eyebrow',
+          )}
+        >
+          {label}
+        </p>
+        {delta !== undefined ? (
+          <DeltaChip delta={delta} invert={invertDelta} compact />
+        ) : null}
+      </div>
       <p
         className={cn(
           'mt-1.5 font-semibold tabular-nums leading-none text-text-default',
@@ -92,11 +101,6 @@ export function KpiTile({
       >
         {value}
       </p>
-      {footer !== undefined ? (
-        footer
-      ) : delta !== undefined ? (
-        <DeltaChip delta={delta} invert={invertDelta} vsLabel={deltaVsLabel} />
-      ) : null}
     </div>
   );
 }

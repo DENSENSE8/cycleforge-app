@@ -1,45 +1,32 @@
 'use client';
 
 /**
- * `/search` — the cross-entity search surface.
- *
- * Search used to be a `/dashboard` MODE, which over-weighted it: it consumed
- * one of three L2 slots, owned a mode-local order-detail shell (a third way to
- * look at an order), and left the dashboard's own context panel showing a
- * recents list that had nothing to do with the order workbench underneath.
- * `docs/todo/dashboard-ia-rework-PLAN.md` Phase 1 evicts it to its own route —
- * the same move `?warranty=` → `/support` already made.
+ * `/search` — cross-entity search Workbench (master–detail).
  *
  * Contract:
- *   • `?q=` is the query (typed in the global header — entry-path search).
- *   • Client refine: `?etype=` / `?hstat=` over the retrieved top-50.
- *   • Display sort: carried `?colsort=relevance|date` (relevance omitted).
- *   • Results are the display; there is no detail shell here. A hit opens its
- *     own record surface (`searchHitHref`) — for an order that is `/o/[id]`.
- *   • A SOLE hit is not a choice: it redirects straight to that record.
- *   • Empty `q` teaches, and offers this staff member's recent queries.
+ *   • `?q=` is the query (global header + rail SearchBar both sync via URL).
+ *   • `?sel=type:id` is durable selection — main pane embeds that entity shell.
+ *   • Client refine: `?etype=` / `?hstat=` / `?colsort=` over the retrieved top-50.
+ *   • Hit list lives in the context rail (`SearchSidebarPanel`); this page is
+ *     the detail workspace only.
+ *   • A SOLE / exact identifier hit sets `?sel=` in-page (does not navigate away).
+ *     Canonical `searchHitHref` remains for hit-row / notification deep links.
+ *   • Empty land auto-reruns this staff member's most recent query.
  *
- * Region contract: Monitor-ish observe over a retrieval, but with no durable
- * selection of its own — the filter (`?q=`) IS the state.
+ * Region contract: Workbench master–detail
+ * (`.claude/rules/display/workbench.md`).
  */
 
-import { Suspense, useCallback, useEffect, useMemo, useRef } from 'react';
+import { Suspense, useEffect, useMemo, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Loader2, Search } from '@/components/Icons';
-import { SearchResultsSurface } from '@/components/search/SearchResultsSurface';
-import { SearchRecentsDropdown } from '@/components/search/SearchRecentsDropdown';
+import { Loader2 } from '@/components/Icons';
+import { SearchDetailWorkspace } from '@/components/search/SearchDetailWorkspace';
 import { useStaffSearchRecents } from '@/hooks/useStaffSearchRecents';
-import { soleHitHref } from '@/lib/search/search-hit';
 import { SEARCH_RECENTS_SCOPE, searchRerunHref } from '@/lib/search/search-page-recents';
 import {
-  SEARCH_ETYPE_PARAM,
-  SEARCH_HSTAT_PARAM,
-  SEARCH_SORT_PARAM,
-  parseSearchDisplaySort,
-  parseSearchEtype,
-  parseSearchHstat,
-} from '@/lib/search/search-refine';
-import type { AiSearchHit } from '@/lib/search/ai-search-client';
+  SEARCH_SEL_PARAM,
+  parseSearchSel,
+} from '@/lib/search/search-selection';
 
 function SearchPageFallback() {
   return (
@@ -55,31 +42,21 @@ function SearchPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const q = (searchParams.get('q') ?? '').trim();
-  const etype = useMemo(
-    () => parseSearchEtype(searchParams.get(SEARCH_ETYPE_PARAM)),
-    [searchParams],
-  );
-  const hstat = useMemo(
-    () => parseSearchHstat(searchParams.get(SEARCH_HSTAT_PARAM)),
-    [searchParams],
-  );
-  const sort = useMemo(
-    () => parseSearchDisplaySort(searchParams.get(SEARCH_SORT_PARAM)),
+  const sel = useMemo(
+    () => parseSearchSel(searchParams.get(SEARCH_SEL_PARAM)),
     [searchParams],
   );
 
-  const {
-    push: pushRecent,
-    recents,
-    remove: removeRecent,
-    clear: clearRecents,
-  } = useStaffSearchRecents({ scope: SEARCH_RECENTS_SCOPE });
+  const { push: pushRecent, recents, isLoading: recentsLoading } = useStaffSearchRecents({
+    scope: SEARCH_RECENTS_SCOPE,
+  });
 
+  // Record every distinct query against staff recents (DB).
   const lastRecorded = useRef<string>('');
   useEffect(() => {
     if (!q || q === lastRecorded.current) return;
     lastRecorded.current = q;
-    pushRecent({
+    void pushRecent({
       query: q,
       scope: SEARCH_RECENTS_SCOPE,
       scopeLabel: 'Search',
@@ -87,62 +64,22 @@ function SearchPageContent() {
     });
   }, [q, pushRecent]);
 
-  // Sole-hit convenience open. One row is not a choice — but guard against
-  // re-firing for the same query after the operator navigates back.
-  const autoOpenedRef = useRef<string | null>(null);
+  // Empty land → auto-rerun the most recent staff query once recents settle.
+  const autoReranRef = useRef(false);
   useEffect(() => {
-    autoOpenedRef.current = null;
-  }, [q]);
+    if (q || recentsLoading || autoReranRef.current) return;
+    const latest = recents[0]?.query?.trim();
+    if (!latest) return;
+    autoReranRef.current = true;
+    router.replace(searchRerunHref(latest));
+  }, [q, recents, recentsLoading, router]);
 
-  const handleResults = useCallback(
-    (hits: AiSearchHit[]) => {
-      const key = q;
-      if (!key || autoOpenedRef.current === key) return;
-      const href = soleHitHref(hits);
-      if (!href) return;
-      autoOpenedRef.current = key;
-      router.replace(href);
-    },
-    [q, router],
-  );
-
-  if (!q) {
-    return (
-      <div className="mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col gap-4 overflow-y-auto px-6 py-10">
-        <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas inset-empty text-center">
-          <Search className="mx-auto mb-2 h-5 w-5 text-text-faint" />
-          <p className="text-role-caption font-semibold text-text-muted">Search everything</p>
-          <p className="mt-1 text-role-micro font-medium text-text-faint">
-            Type an order #, PO, tracking, serial, SKU, or customer in the header search.
-          </p>
-        </div>
-        <SearchRecentsDropdown
-          recents={recents}
-          onSelect={(entry) => router.push(searchRerunHref(entry.query))}
-          onRemove={removeRecent}
-          onClearAll={() => void clearRecents()}
-        />
-      </div>
-    );
-  }
-
-  return (
-    <div className="mx-auto flex min-h-0 w-full max-w-5xl flex-1 flex-col space-y-4 overflow-y-auto px-6 py-4">
-      <SearchResultsSurface
-        scope="global"
-        query={q}
-        etype={etype}
-        hstat={hstat}
-        sort={sort}
-        onResults={handleResults}
-      />
-    </div>
-  );
+  return <SearchDetailWorkspace sel={sel} hasQuery={Boolean(q)} />;
 }
 
 export default function SearchPage() {
   return (
-    <div className="flex min-h-0 w-full flex-1">
+    <div className="flex min-h-0 w-full flex-1 overflow-hidden">
       <Suspense fallback={<SearchPageFallback />}>
         <SearchPageContent />
       </Suspense>

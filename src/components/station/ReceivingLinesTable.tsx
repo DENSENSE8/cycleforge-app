@@ -237,7 +237,7 @@ export default function ReceivingLinesTable({
       />
     );
     return (
-      <TableColumnConfigProvider tableId="receiving">
+      <TableColumnConfigProvider tableId={isIncomingMode ? 'incoming' : 'receiving'}>
         <div className="flex h-full min-w-0 overflow-hidden bg-surface-card">
           {isIncomingMode ? (
             <StationPipelineBoard<ReceivingLineRow, ReceivingIncomingLane>
@@ -330,7 +330,7 @@ export default function ReceivingLinesTable({
   // Select live in the header; the sidebar keeps Incoming PO sync + email triage.
   if (isIncomingMode) {
     return (
-      <TableColumnConfigProvider tableId="receiving">
+      <TableColumnConfigProvider tableId="incoming">
         <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-surface-canvas">
           <div className={`relative z-header shrink-0 ${WORKBENCH_CHROME_COLUMN}`}>
             <IncomingWorkspaceHeader

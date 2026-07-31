@@ -56,7 +56,7 @@
     "test:receiving-exceptions": "tsx --test src/lib/receiving/exceptions.test.ts",
     "test:shipment-links": "tsx --test src/lib/shipping/shipment-links.test.ts",
     "test:shipstation": "tsx --test src/lib/shipping/shipstation/client.test.ts src/lib/shipping/shipstation/rate-request.test.ts",
-    "test:documents": "tsx --test src/lib/documents/*.test.ts",
+    "test:documents": "node --import tsx --import ./scripts/register-server-only-shim.cjs --test src/lib/documents/*.test.ts",
     "test:zip": "tsx --test src/lib/zip/*.test.ts",
     "test:sync-hash": "tsx --test src/lib/integrations/sync-hash.test.ts",
     "test:workflow": "tsx --test src/lib/workflow/*.test.ts",

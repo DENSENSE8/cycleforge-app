@@ -10,7 +10,9 @@
  *   • compact  — sidebar quick-jumps / rails. Title-first; no chip wall.
  *   • dropdown — header combobox preview. Same narrow anatomy, tighter pad.
  *   • comfortable — full /search Monitor feed. Strict CSS Grid tracks
- *     (Entity · Match · Status · Condition · Reference · Platform · Age).
+ *     (Glyph · Id · Match · Tracking · Age). Glyph = blue Package /
+ *     PackageOpen leftmost. Id = OrderIdChip last-4. Match = title only.
+ *     Tracking = TrackingChip last-4 on the right.
  *
  * Narrow law (compact | dropdown): title + subtitle own the width; status is a
  * leading dot when known; trailing EntityTag and status/platform chips stay
@@ -26,26 +28,35 @@
 import type { MouseEvent as ReactMouseEvent, ReactNode } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Search, ChevronRight, Camera, History } from '@/components/Icons';
+import { Search, Camera, History } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { IconButton } from '@/design-system/primitives';
-import { TrackingChip, SerialChip, getLast4, getLast4Serial } from '@/components/ui/CopyChip';
-import { PlatformMark } from '@/components/ui/PlatformMark';
+import {
+  TrackingChip,
+  SerialChip,
+  OrderIdChip,
+  OrderIdChipPlaceholder,
+  getLast4,
+  getLast4Serial,
+} from '@/components/ui/CopyChip';
 import { formatRelativeTime } from '@/lib/search/search-recents';
 import { journeyHandoffHref, narrowSearchTitleDisplay } from '@/lib/search/search-hit';
 import type { AiSearchHit } from '@/lib/search/ai-search-client';
 import type { NearMatchPackout } from '@/hooks/useNearMatchPackout';
-import { conditionLabel } from '@/lib/conditions';
-import { conditionGradeTone } from '@/lib/condition-tone';
-import { sourcePlatformLabel } from '@/lib/source-platform';
 import { cn } from '@/utils/_cn';
 import {
   CHIP_TONE_CLASSES,
   ENTITY_ICONS,
+  ENTITY_TONE,
   orderStatusTone,
   type ChipTone,
 } from './search-result-chips';
 import { SEARCH_RESULT_GRID, SEARCH_RESULT_ROW_PAD } from './search-result-grid';
+import {
+  identityKindFor,
+  orderIdFromHit,
+  unitSerialFromHit,
+} from '@/lib/search/search-result-identity';
 
 export type SearchRowDensity = 'compact' | 'comfortable' | 'dropdown';
 
@@ -99,23 +110,13 @@ function isNarrowDensity(density: SearchRowDensity): boolean {
   return density === 'compact' || density === 'dropdown';
 }
 
-// UI entity type → chip tone for the leading tile + type tag (sanctioned 5-tone
-// families only — no new colours). Two entities may share a tone.
-const ENTITY_TONE: Record<string, ChipTone> = {
-  order: 'blue',
-  unit: 'emerald',
-  receiving: 'amber',
-  sku: 'gray',
-  repair: 'rose',
-  fba: 'blue',
-};
-// Leading icon-tile classes per tone (soft fill + coloured glyph).
-const TILE_BY_TONE: Record<ChipTone, string> = {
-  gray: 'bg-surface-sunken text-text-soft',
-  blue: 'bg-blue-50 text-blue-600',
-  emerald: 'bg-emerald-50 text-emerald-600',
-  amber: 'bg-amber-50 text-amber-600',
-  rose: 'bg-rose-50 text-rose-600',
+// Comfortable glyph tone — colour on the icon only (no padded tile).
+const GLYPH_BY_TONE: Record<ChipTone, string> = {
+  gray: 'text-text-soft',
+  blue: 'text-blue-600',
+  emerald: 'text-emerald-600',
+  amber: 'text-amber-600',
+  rose: 'text-rose-600',
 };
 
 function Chip({ label, tone }: { label: string; tone: ChipTone | string }) {
@@ -143,7 +144,9 @@ function SearchTitle({
   const text = (
     <span
       className={cn(
-        'block truncate font-semibold text-text-default',
+        'truncate font-semibold text-text-default',
+        // Narrow rails stack title above meta (`block`); comfortable is one-line.
+        density === 'comfortable' ? 'inline' : 'block',
         TITLE_BY_DENSITY[density],
         info.abbreviated && 'font-mono tabular-nums',
       )}
@@ -210,14 +213,7 @@ function TrackingMeta({
   );
 }
 
-function unitSerialFromHit(hit: AiSearchHit): string {
-  const fromFacet = hit.facets?.serial_number?.trim() ?? '';
-  if (fromFacet) return fromFacet;
-  if (hit.entityType !== 'unit') return '';
-  return (hit.subtitle ?? '').split(' · ')[0]?.trim() || '';
-}
-
-/** Monitor feed — one aligned grid for every entity type. */
+/** Monitor feed — Glyph | Id | Match | Tracking | Age. */
 function ComfortableAlignedRow({
   hit,
   active,
@@ -228,17 +224,13 @@ function ComfortableAlignedRow({
 }: SearchResultRowProps) {
   const density: SearchRowDensity = 'comfortable';
   const facets = hit.facets ?? {};
-  const statusRaw = facets.status ?? null;
-  const status = statusRaw ? orderStatusTone(statusRaw) : null;
-  const condition = facets.condition_grade?.trim() || null;
-  const platform = facets.source_platform?.trim() || null;
   const tracking = facets.tracking_number?.trim() || null;
-  const carrier = facets.carrier?.trim() || null;
   const serial = unitSerialFromHit(hit);
+  const orderId = orderIdFromHit(hit);
+  const identityKind = identityKindFor(hit, orderId, serial, tracking);
   const whenSource = packout?.timeAt ?? facets.happened_at ?? null;
   const when = whenSource ? formatRelativeTime(whenSource) : null;
   const whenLabel = packout?.timeAt ? packout.timeLabel : null;
-  const conditionTone = condition ? conditionGradeTone(condition) : null;
   const journey = journeyActionFor(hit, density, showJourneyAction);
 
   return (
@@ -255,81 +247,60 @@ function ComfortableAlignedRow({
         active && ROW_ACTIVE,
       )}
     >
-      {/* 1. Entity */}
-      <span className="flex min-w-0 items-center gap-1.5">
-        <EntityTile entityType={hit.entityType} density={density} />
-        <span className="text-role-micro uppercase text-text-soft">{hit.entityType}</span>
+      {/* 1. Glyph — Package (order) / PackageOpen (receiving), both blue */}
+      <span className="flex items-center justify-center">
+        <HoverTooltip label={hit.entityType} focusable={false}>
+          <span className="flex items-center justify-center">
+            <EntityTile entityType={hit.entityType} density={density} />
+          </span>
+        </HoverTooltip>
       </span>
 
-      {/* 2. Match */}
-      <span className="min-w-0">
-        <SearchTitle
-          title={hit.title}
-          density={density}
-          forceFull={hit.entityType === 'order'}
-        />
-        {hit.subtitle && (
-          <span className="mt-0.5 block truncate text-role-eyebrow uppercase text-text-soft">
-            {hit.subtitle}
-          </span>
+      {/* 2. Id — order/PO last-4 (never tracking) */}
+      <span className="flex min-w-0 items-center justify-start">
+        {identityKind === 'order' ? (
+          <OrderIdChip
+            value={orderId}
+            display={getLast4(orderId)}
+            dense
+            truncateDisplay={false}
+            fitDisplayWidth
+          />
+        ) : identityKind === 'serial' ? (
+          <SerialChip value={serial} dense width="w-fit max-w-full shrink-0" />
+        ) : (
+          <OrderIdChipPlaceholder />
         )}
-        {hit.matchField ? (
-          <span className="mt-0.5 block truncate text-role-micro text-text-faint">
-            {hit.matchField}
-          </span>
-        ) : null}
-        {packout && packout.photoCount > 0 && (
-          <span className="mt-0.5 inline-flex items-center gap-0.5 tabular-nums text-role-micro uppercase text-emerald-600">
+      </span>
+
+      {/* 3. Match — title only */}
+      <span className="flex min-w-0 items-center gap-2">
+        <span className="min-w-0 flex-1 truncate">
+          <SearchTitle
+            title={hit.title}
+            density={density}
+            forceFull={hit.entityType === 'order' || hit.entityType === 'receiving'}
+          />
+        </span>
+        {packout && packout.photoCount > 0 ? (
+          <span className="inline-flex shrink-0 items-center gap-0.5 tabular-nums text-role-micro uppercase text-emerald-600">
             <Camera className="h-3 w-3" />
             {packout.photoCount}
             {packout.packerName ? ` · ${packout.packerName}` : ''}
           </span>
-        )}
-      </span>
-
-      {/* 3. Status */}
-      <span className="min-w-0 truncate">
-        {statusRaw && status ? <Chip label={statusRaw} tone={status.tone} /> : null}
-      </span>
-
-      {/* 4. Condition */}
-      <span className="min-w-0 truncate">
-        {condition && conditionTone ? (
-          <span
-            className={cn(
-              'inline-flex shrink-0 rounded px-1.5 py-0.5 text-role-micro uppercase ring-1 ring-inset',
-              conditionTone.badge,
-            )}
-          >
-            {conditionLabel(condition, 'table')}
-          </span>
         ) : null}
       </span>
 
-      {/* 5. Reference — tracking XOR serial (polymorphic; never both columns) */}
+      {/* 4. Tracking — right-side last-4 (orders + receiving); serial only when no tracking */}
       <span className="min-w-0 truncate">
         {tracking ? (
-          <span className="inline-flex max-w-full items-center gap-1">
-            {carrier ? (
-              <span className="shrink-0 text-role-eyebrow uppercase text-text-faint">{carrier}</span>
-            ) : null}
-            <TrackingChip value={tracking} dense />
-          </span>
-        ) : serial ? (
+          <TrackingChip value={tracking} display={getLast4(tracking)} dense />
+        ) : identityKind !== 'serial' && serial ? (
           <SerialChip value={serial} dense width="w-fit max-w-full shrink-0" />
         ) : null}
       </span>
 
-      {/* 6. Platform */}
-      <span className="flex justify-center">
-        {platform ? (
-          <HoverTooltip label={sourcePlatformLabel(platform)} focusable={false}>
-            <PlatformMark platformValue={platform} />
-          </HoverTooltip>
-        ) : null}
-      </span>
-
-      {/* 7. Age + journey overlay (journey does not steal a track) */}
+      {/* 5. Age + journey overlay */}
       <span className="relative flex min-w-0 items-center justify-end gap-1">
         {when ? (
           <span className="truncate text-role-eyebrow uppercase tabular-nums text-text-faint">
@@ -479,7 +450,7 @@ function UnitRow({
   );
 }
 
-/** The coloured leading tile (comfortable) or bare glyph (compact). */
+/** The coloured leading glyph (comfortable) or bare glyph (compact). */
 function EntityTile({ entityType, density }: { entityType: string; density: SearchRowDensity }) {
   const Icon = ENTITY_ICONS[entityType] || Search;
   const tone = ENTITY_TONE[entityType] ?? 'gray';
@@ -496,8 +467,13 @@ function EntityTile({ entityType, density }: { entityType: string; density: Sear
     );
   }
   return (
-    <span className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-lg', TILE_BY_TONE[tone])}>
-      <Icon className="h-5 w-5" />
+    <span
+      className={cn(
+        'flex h-5 w-5 shrink-0 items-center justify-center',
+        GLYPH_BY_TONE[tone],
+      )}
+    >
+      <Icon className="h-4 w-4" />
     </span>
   );
 }
@@ -585,9 +561,6 @@ function GenericRow({
         <TrackingMeta tracking={tracking} carrier={carrier} />
       )}
       {journeyActionFor(hit, density, showJourneyAction)}
-      {density === 'compact' && (
-        <ChevronRight className="h-3.5 w-3.5 shrink-0 text-text-faint opacity-0 transition-opacity group-hover:opacity-100" />
-      )}
     </Link>
   );
 }

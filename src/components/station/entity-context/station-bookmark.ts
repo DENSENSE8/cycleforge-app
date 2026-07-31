@@ -90,19 +90,12 @@ export const stationBookmarkGapClass = HEADER_ICON_GAP;
  * Pair with `pointer-events-auto`.
  *
  * When Ticket push squeezes Unbox, mount More details on the **pane** outer
- * host instead via {@link stationMoreDetailsPaneHostClass} so the icons do
- * not slide left with the Unbox column.
+ * host instead — same insets as {@link STATION_BOOKMARK_CANVAS_INSET_TOP} +
+ * {@link STATION_BOOKMARK_CANVAS_INSET_RIGHT} with `z-raised` on that host —
+ * so the icons do not slide left with the Unbox column.
  */
 export const stationMoreDetailsHostClass =
   `pointer-events-auto absolute top-0 ${STATION_BOOKMARK_CANVAS_INSET_RIGHT} flex items-start`;
-
-/**
- * Pane-anchored More details — same canvas top + right gutters as the identity
- * bar, but relative to the receiving right-pane outer host (Unbox + Ticket).
- * Use when Ticket push would otherwise move a column-scoped `right-2` slot.
- */
-export const stationMoreDetailsPaneHostClass =
-  `pointer-events-auto absolute ${STATION_BOOKMARK_CANVAS_INSET_TOP} ${STATION_BOOKMARK_CANVAS_INSET_RIGHT} z-raised flex items-start`;
 
 /**
  * Scroll-body top clearance when {@link StationContextBar} floats absolute

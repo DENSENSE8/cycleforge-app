@@ -184,6 +184,7 @@ describe('grid ARIA structure', () => {
     const ALLOWED = new Set([
       'CatalogGridColumnHeader.tsx',
       'IncomingGridColumnHeader.tsx',
+      'LedgerGridColumnHeader.tsx',
       'OrdersQueueColumnHeader.tsx',
       'PickupGridColumnHeader.tsx',
       'ReceivingGridColumnHeader.tsx',

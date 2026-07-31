@@ -22,17 +22,30 @@ interface RepairPaperworkSheetProps {
   active: boolean;
   /** Flip between the step body and the document view. */
   onToggle: () => void;
+  /** When true, the control is inert (e.g. no product selected yet). */
+  disabled?: boolean;
 }
 
-export function RepairPaperworkSheet({ active, onToggle }: RepairPaperworkSheetProps) {
+export function RepairPaperworkSheet({
+  active,
+  onToggle,
+  disabled = false,
+}: RepairPaperworkSheetProps) {
+  const label = disabled
+    ? 'Select a product to preview paperwork'
+    : active
+      ? 'Hide repair paperwork'
+      : 'View repair paperwork';
+
   return (
-    <HoverTooltip label={active ? 'Hide repair paperwork' : 'View repair paperwork'} asChild>
+    <HoverTooltip label={label} asChild>
       <IconButton
         size="lg"
         icon={<FileText className="h-4 w-4" />}
         onClick={onToggle}
+        disabled={disabled}
         aria-pressed={active}
-        ariaLabel={active ? 'Hide repair paperwork' : 'View repair paperwork'}
+        ariaLabel={label}
         className={`rounded-lg border transition-colors ${
           active
             ? 'border-border-strong bg-surface-inverse text-white'

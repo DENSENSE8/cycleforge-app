@@ -19,7 +19,7 @@ import {
   useMotionTransition,
 } from '@/design-system/foundations/motion-framer-hooks';
 import { zIndex } from '@/design-system/tokens/z-index';
-import { appWorkCanvasClass } from '@/design-system/tokens/app-surface';
+import { appWorkCanvasLayoutClass } from '@/design-system/tokens/app-surface';
 import { cn } from '@/utils/_cn';
 import type { ScanIntakeSurface } from '@/lib/receiving/scan';
 import type {
@@ -50,7 +50,7 @@ export function TriageLineWorkspace({
     !!scanInFlight && scanInFlight.surface === 'triage' && !showOverlay;
 
   return (
-    <div className={cn(appWorkCanvasClass, 'h-full')}>
+    <div className={cn(appWorkCanvasLayoutClass, 'h-full')}>
       <div
         className={`flex h-full min-h-0 w-full flex-col ${showOverlay ? 'pointer-events-none' : ''}`}
         aria-hidden={showOverlay ? true : undefined}

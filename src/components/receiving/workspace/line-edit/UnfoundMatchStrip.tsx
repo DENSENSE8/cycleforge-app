@@ -78,7 +78,6 @@ import { TicketLinkPopover } from '@/components/support/context/TicketLinkPopove
 import { ClaimTicketReply } from '@/components/receiving/workspace/claim/components/ClaimTicketReply';
 import { useClaimTicketReply } from '@/components/receiving/workspace/claim/hooks/useClaimTicketReply';
 import type { FiledTicket } from '@/components/receiving/workspace/claim/claim-types';
-import { WorkspaceSectionTitle } from '../WorkspaceSectionLabel';
 import { refreshDomains } from '@/lib/refresh/bus';
 import { REFRESH_BUNDLES } from '@/lib/refresh/domains';
 
@@ -153,8 +152,6 @@ export function UnfoundMatchStrip({
     <div
       className={showTopRule ? 'space-y-2 border-t border-border-hairline pt-2' : 'space-y-2'}
     >
-      <WorkspaceSectionTitle as="p">Auto-match</WorkspaceSectionTitle>
-
       <AnimatePresence mode="wait" initial={false}>
         {lane === 'ticket' ? (
           <motion.div key="ticket-search" {...stepPresence} transition={stepTransition}>

@@ -3,6 +3,7 @@ import { tenantQuery } from '@/lib/tenancy/db';
 import { errorResponse } from '@/lib/api';
 import { withAuth } from '@/lib/auth/withAuth';
 import { sqlReceivingPhotoCount } from '@/lib/photos/queries/receiving-list';
+import { parsePoListSearch } from '@/lib/receiving/po-list-search';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,6 +14,7 @@ export const dynamic = 'force-dynamic';
  * per PO with header fields the list screen needs:
  *   - po_id / po_number
  *   - receiving_id (so photo endpoints stay PO-keyed via the carton row)
+ *   - tracking_number (carton shipment tracking, when present)
  *   - aggregate counts (items, qty expected/received)
  *   - status summary, photo count, last activity timestamp
  *
@@ -21,7 +23,8 @@ export const dynamic = 'force-dynamic';
  *   ?view=received  → every line is DONE/RECEIVED
  *   ?view=today     → received_at >= today (warehouse local)
  *   default         → all PO-bearing lines, newest activity first
- *   ?search=…       → matches PO number, vendor field (when present), SKU
+ *   ?search=…       → PO number, SKU, item name, tracking #, or carton QR
+ *                     (`R-<id>` / `#R-<id>` / legacy `RCV-<id>`)
  */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
   try {
@@ -43,15 +46,25 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     idx++;
 
     if (search) {
-      conditions.push(
-        `(rz.zoho_purchaseorder_number ILIKE $${idx}
-          OR rz.zoho_purchaseorder_id ILIKE $${idx}
-          OR rl.sku ILIKE $${idx}
-          OR rl.item_name ILIKE $${idx}
-          OR r.zoho_purchaseorder_number ILIKE $${idx})`,
-      );
-      values.push(`%${search}%`);
-      idx++;
+      const { needle, receivingId } = parsePoListSearch(search);
+      if (receivingId != null) {
+        // Carton QR / printed handle — exact receiving_id, not ILIKE on "R-50292".
+        conditions.push(`(r.id = $${idx} OR rl.receiving_id = $${idx})`);
+        values.push(receivingId);
+        idx++;
+      } else {
+        conditions.push(
+          `(rz.zoho_purchaseorder_number ILIKE $${idx}
+            OR rz.zoho_purchaseorder_id ILIKE $${idx}
+            OR rl.sku ILIKE $${idx}
+            OR rl.item_name ILIKE $${idx}
+            OR r.zoho_purchaseorder_number ILIKE $${idx}
+            OR COALESCE(stn.tracking_number_raw, '') ILIKE $${idx}
+            OR COALESCE(stn.tracking_number_normalized, '') ILIKE $${idx})`,
+        );
+        values.push(`%${needle}%`);
+        idx++;
+      }
     }
 
     if (view === 'today') {
@@ -73,6 +86,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
            COALESCE(rz.zoho_purchaseorder_number,
                     r.zoho_purchaseorder_number, '') AS po_number,
            MAX(rl.receiving_id)                     AS receiving_id,
+           MAX(stn.tracking_number_raw)             AS tracking_number,
            MAX(r.source_platform)                   AS source_platform,
            MAX(rt.door_received_at::text)           AS received_at,
            MAX(rl.updated_at::text)                 AS last_activity,
@@ -97,6 +111,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
                AND r.zoho_purchaseorder_id = rz.zoho_purchaseorder_id
                AND r.organization_id = rl.organization_id)
          )
+         LEFT JOIN shipping_tracking_numbers stn ON stn.id = r.shipment_id
          LEFT JOIN receiving_triage rt
               ON rt.receiving_id = r.id
              AND rt.organization_id = r.organization_id
@@ -130,6 +145,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       po_id: String(row.po_id || ''),
       po_number: String(row.po_number || ''),
       receiving_id: row.receiving_id != null ? Number(row.receiving_id) : null,
+      tracking_number: (row.tracking_number as string | null) ?? null,
       source_platform: (row.source_platform as string | null) ?? null,
       received_at: (row.received_at as string | null) ?? null,
       last_activity: (row.last_activity as string | null) ?? null,

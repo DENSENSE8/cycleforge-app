@@ -160,6 +160,10 @@
       "schedule": "45 4 * * *"
     },
     {
+      "path": "/api/cron/documents/ensure-outbound?limit=25",
+      "schedule": "*/15 * * * *"
+    },
+    {
       "path": "/api/cron/photos/drive-mirror?limit=25",
       "schedule": "0 5 * * *"
     },

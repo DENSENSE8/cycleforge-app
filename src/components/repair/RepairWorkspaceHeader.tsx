@@ -88,6 +88,7 @@ export function RepairWorkspaceHeader() {
 
   return (
     <WorkbenchChromeHeader
+      density="band"
       tabs={REPAIR_TABS}
       activeTab={chromeTab}
       onTabChange={setTab}

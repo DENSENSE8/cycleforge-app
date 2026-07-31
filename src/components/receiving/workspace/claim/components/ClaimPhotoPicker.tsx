@@ -1,6 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
-import { Camera, Loader2, Pencil, Plus, ZoomIn } from '@/components/Icons';
-import { PhotoGridDisplayControls } from '@/components/photos/PhotoGridDisplayControls';
+import { Camera, Loader2, Pencil, Plus, RefreshCw, ZoomIn } from '@/components/Icons';
 import {
   photoLibraryControlButtonClass,
   photoLibraryControlGroupClass,
@@ -10,7 +9,6 @@ import { PhotoThumb } from '@/components/photos/PhotoThumb';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAblyClient } from '@/contexts/AblyContext';
 import { useReceivingPhotosRealtimeRefresh } from '@/hooks/useReceivingPhotosRealtimeRefresh';
-import { usePhotoGridDensity } from '@/hooks/usePhotoGridDensity';
 import { publishReceivingPhotoRequest } from '@/lib/realtime/receiving-photo-request';
 import { photoGridLeafClass } from '@/lib/photos/photo-grid-density';
 import { usePhotoGallery } from '@/components/shipped/photo-gallery/usePhotoGallery';
@@ -21,6 +19,12 @@ import { toast } from '@/lib/toast';
 import { cn } from '@/utils/_cn';
 import { claimPhotoTileProps } from '../claim-helpers';
 import type { UseClaimPhotos } from '../hooks/useClaimPhotos';
+
+/**
+ * Large grid density on open — natural-height tiles (former ColumnsOne
+ * control). No density toggle; the claim panel body scrolls.
+ */
+const CLAIM_PHOTO_GRID_DENSITY = 'lg' as const;
 
 interface Props {
   photos: UseClaimPhotos;
@@ -35,8 +39,11 @@ interface Props {
  * operator's paired phone (`publishReceivingPhotoRequest`), the phone captures,
  * and the uploads stream back over Ably — `useReceivingPhotosRealtimeRefresh`
  * refetches so the new photos appear here live, pre-selected, without leaving
- * the modal. Checked photos attach to the Zendesk ticket; all PO photos are
- * saved to local storage regardless.
+ * the claim panel. Checked photos attach to the Zendesk ticket; all PO photos
+ * are saved to local storage regardless.
+ *
+ * Grid is fixed to large density (natural-height tiles) on open — the claim
+ * panel body scrolls, so the library density toggle is omitted here.
  *
  * Evidence preference (Plan 5): line-scoped item shots order FIRST (they are
  * the claim's primary evidence per the identity law); arrival package shots
@@ -61,7 +68,6 @@ export function ClaimPhotoPicker({ photos, receivingId }: Props) {
   const { getClient } = useAblyClient();
   const [sending, setSending] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const { density: gridDensity, setDensity: setGridDensity } = usePhotoGridDensity();
 
   // Live-refresh the grid when the phone's captures land (phone-bridge upload or
   // station NAS attach), matching this carton.
@@ -160,7 +166,7 @@ export function ClaimPhotoPicker({ photos, receivingId }: Props) {
   }
 
   return (
-    <div>
+    <div className="min-h-0">
       <div className="mb-2 flex items-center justify-between">
         <div className="flex min-w-0 items-center gap-1.5">
           <HoverTooltip label="Expand — view all photos closely" asChild>
@@ -176,12 +182,24 @@ export function ClaimPhotoPicker({ photos, receivingId }: Props) {
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-1">
-          <PhotoGridDisplayControls
-            density={gridDensity}
-            onDensityChange={setGridDensity}
-            onRefresh={() => void handleRefresh()}
-            isRefreshing={refreshing}
-          />
+          <HoverTooltip label="Refresh photos" asChild>
+            <button
+              type="button"
+              aria-label="Refresh photos"
+              disabled={refreshing}
+              onClick={() => void handleRefresh()}
+              className={cn(
+                'ds-raw-button flex h-8 w-8 items-center justify-center rounded-lg border border-border-soft bg-surface-card text-text-soft transition-colors',
+                'hover:bg-surface-sunken hover:text-text-default disabled:cursor-not-allowed disabled:opacity-60',
+              )}
+            >
+              {refreshing ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <RefreshCw className="h-3.5 w-3.5" />
+              )}
+            </button>
+          </HoverTooltip>
           {sendToPhoneControl}
           <HoverTooltip
             label={selectedPhotoIds.size === list.length ? 'Clear all' : 'Select all'}
@@ -205,10 +223,10 @@ export function ClaimPhotoPicker({ photos, receivingId }: Props) {
         </div>
       </div>
 
-      <div className={photoGridLeafClass(gridDensity)}>
+      <div className={photoGridLeafClass(CLAIM_PHOTO_GRID_DENSITY)}>
         {ordered.map((p) => {
           const isSel = selectedPhotoIds.has(p.id);
-          const tile = claimPhotoTileProps(p, gridDensity);
+          const tile = claimPhotoTileProps(p, CLAIM_PHOTO_GRID_DENSITY);
           return (
             <div
               key={p.id}

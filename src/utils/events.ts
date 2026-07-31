@@ -163,6 +163,18 @@ export function dispatchReceivingWorkspaceClose(): void {
 }
 
 /**
+ * Open Package Pairing on the PO tab (search + LINK). Hosts expand the pairing
+ * hub first, then dispatch so {@link CartonMatchHub} can select `zoho_po` and
+ * scroll into view — same waist as `receiving-open-pairing-add` (Store tab).
+ */
+export const RECEIVING_OPEN_PAIRING_PO_EVENT = 'receiving-open-pairing-po';
+
+export function dispatchReceivingOpenPairingPo(): void {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new CustomEvent(RECEIVING_OPEN_PAIRING_PO_EVENT));
+}
+
+/**
  * Nav state mirror — sidebar dispatches this whenever `scanMatchedRows` or the
  * current line index changes so the workspace header can render Prev/Next
  * chevrons + Line N of M without lifting the scanMatchedRows array up. The
@@ -192,29 +204,16 @@ export type ReceivingDetailsOverlayDetail = {
 };
 
 /**
- * Open the receiving details panel (`ReceivingDetailsStack`) on-demand.
- * Station Info buttons (Unbox / Arrival / Testing), history overlay nav, and
- * assignment cards dispatch this; ReceivingDashboard listens and mounts the
- * rail panel. Search / ⌘K / assistant recents still use `/carton/[id]`
- * (`cartonReadHref`) as the durable read door.
+ * Open event for `ReceivingDetailsStack` (`receiving-open-details-overlay`).
+ * Observe openers navigate to `/carton/[id]` instead; the dashboard listener
+ * remains for any residual custom-event opens. Ticket mutual-exclusion still
+ * closes via {@link dispatchReceivingDetailsOverlayClose}.
  */
-export function dispatchReceivingDetailsOverlay(
-  receivingId: number,
-  seed?: ReceivingDetailsOverlayDetail['seed'],
-): void {
-  if (typeof window === 'undefined') return;
-  if (!Number.isFinite(receivingId) || receivingId <= 0) return;
-  window.dispatchEvent(
-    new CustomEvent('receiving-open-details-overlay', {
-      detail: { receivingId, seed } satisfies ReceivingDetailsOverlayDetail,
-    }),
-  );
-}
 
 /**
  * Close the receiving details float (`detail:receiving`). Dispatched when Unbox
- * Ticket opens (`?ticketView=1` push column) so details and Ticket stay mutually
- * exclusive (one coherent right-edge surface at a time).
+ * Ticket (`?ticketView=1`) or Claim (`?claimView=1`) opens so details and the
+ * station push column stay mutually exclusive (one coherent right-edge surface).
  */
 export function dispatchReceivingDetailsOverlayClose(): void {
   if (typeof window === 'undefined') return;

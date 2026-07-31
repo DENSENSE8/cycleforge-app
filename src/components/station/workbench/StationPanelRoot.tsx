@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { appSurfaceFillClass } from '@/design-system/components/AppSurfaceFill';
 import { cn } from '@/utils/_cn';
 import { StationAmbientWash } from './StationAmbientWash';
 
@@ -28,7 +29,9 @@ export function StationPanelRoot({
   className?: string;
 }) {
   return (
-    <div className={cn('relative flex h-full min-h-0 flex-col bg-surface-canvas', className)}>
+    <div
+      className={cn('relative flex h-full min-h-0 flex-col', appSurfaceFillClass('canvas'), className)}
+    >
       {wash ? <StationAmbientWash /> : null}
       {children}
     </div>

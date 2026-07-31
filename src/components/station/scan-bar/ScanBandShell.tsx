@@ -33,6 +33,7 @@ export function ScanBandShell({
 
   return (
     <motion.div
+      data-station-scan-band
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={mountTransition}
@@ -40,6 +41,8 @@ export function ScanBandShell({
       // child of its host column, and in a height-capped host (the floating rail
       // dock) an auto-shrink wrapper squashes the 40px band even though the band
       // itself is `shrink-0`.
+      // `data-station-scan-band` is the identity hook for chrome that must share
+      // this band's Y (e.g. context-panel collapse cue).
       className="shrink-0"
     >
       <ScanBandGlowHost themeColor={themeColor} className={cn(receivingScanBandClass)}>

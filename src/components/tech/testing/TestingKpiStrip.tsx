@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, type ReactNode } from 'react';
+import { useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -38,23 +38,11 @@ interface ApiResponse {
 
 function MetricKpiTile({ metric }: { metric: ComputedMetric }) {
   const tone = metricIntentTextClass(metric.intent);
-  const footer: ReactNode = metric.status ? (
-    <span
-      className={cn(
-        'mt-1.5 inline-flex items-center gap-1.5 text-role-eyebrow font-semibold uppercase tracking-widest',
-        tone,
-      )}
-    >
-      <span className="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true" />
-      {metric.status}
-    </span>
-  ) : undefined;
   const tile = (
     <KpiTile
       label={metric.label}
       value={metric.value}
       valueClassName={metric.intent === 'warn' || metric.intent === 'bad' ? tone : undefined}
-      footer={footer}
       className="h-full"
     />
   );
@@ -72,10 +60,12 @@ function StripSkeleton() {
     <div className={cn(TILE_BAND_CLASS, 'animate-pulse')} aria-busy="true" aria-live="polite">
       <span className="sr-only">Loading testing metrics…</span>
       {Array.from({ length: 3 }).map((_, index) => (
-        <div key={index} className={cn(MONITOR_KPI_TILE_CLASS, TILE_CELL_CLASS, 'h-24')}>
-          <div className="h-2.5 w-16 rounded-full bg-surface-strong" />
+        <div key={index} className={cn(MONITOR_KPI_TILE_CLASS, TILE_CELL_CLASS, 'h-20')}>
+          <div className="flex items-start justify-between gap-3">
+            <div className="h-2.5 w-16 rounded-full bg-surface-strong" />
+            <div className="h-2.5 w-8 rounded-full bg-surface-strong" />
+          </div>
           <div className="mt-2 h-7 w-14 rounded bg-surface-strong" />
-          <div className="mt-2.5 h-2.5 w-20 rounded-full bg-surface-strong" />
         </div>
       ))}
     </div>

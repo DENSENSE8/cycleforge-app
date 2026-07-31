@@ -262,7 +262,7 @@ function getLevelCategories(params: {
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
-interface RepairCategoryNode {
+export interface RepairCategoryNode {
   id: string;
   name: string;
   parentId: string | null;
@@ -272,7 +272,7 @@ interface RepairCategoryNode {
   fullPath: string;
 }
 
-interface RepairCategoryLevel {
+export interface RepairCategoryLevel {
   roots: Array<{ id: string | null; name: string }>;
   currentParentId: string | null;
   breadcrumbs: Array<{ id: string; name: string }>;

@@ -76,6 +76,9 @@ export const PATCH = withAuth(async (req: NextRequest, ctx) => {
     if (typeof brand.primaryColor === 'string' && /^#[0-9a-fA-F]{6}$/.test(brand.primaryColor.trim())) {
       nextBrand.primaryColor = brand.primaryColor.trim();
     }
+    if (typeof brand.attractMediaUrl === 'string' && brand.attractMediaUrl.trim()) {
+      nextBrand.attractMediaUrl = brand.attractMediaUrl.trim();
+    }
     patch.brand = nextBrand;
   }
   if (b.letterhead != null && typeof b.letterhead === 'object' && !Array.isArray(b.letterhead)) {

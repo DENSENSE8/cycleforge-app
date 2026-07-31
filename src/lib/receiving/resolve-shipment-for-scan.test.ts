@@ -6,31 +6,44 @@ import {
 } from './resolve-shipment-for-scan';
 
 // ─── Deps fakes ───────────────────────────────────────────────────────────────
-// The resolver issues at most two queries: an EXACT normalized join (SQL holds
-// `tracking_number_normalized = $1`) and, only on a miss, a LAST-8 fallback (SQL
-// holds `RIGHT(regexp_replace`). The fake routes canned rows by inspecting the
-// SQL and records every call + warning so we can assert on both the result AND
-// what the resolver threaded into the DB — DB-free.
+ // Ladder: EXACT → LAST-8 → DIGIT-PREFIX. Fake routes by SQL shape.
 
 interface Captured {
   exactParams: unknown[] | null;
   last8Params: unknown[] | null;
+  digitPrefixParams: unknown[] | null;
   warnings: Array<{ msg: string; meta?: Record<string, unknown> }>;
 }
 
-function fakes(rows: { exact?: unknown[]; last8?: unknown[] }): {
+function fakes(rows: {
+  exact?: unknown[];
+  last8?: unknown[];
+  digitPrefix?: unknown[];
+}): {
   deps: ResolveShipmentDeps;
   captured: Captured;
 } {
-  const captured: Captured = { exactParams: null, last8Params: null, warnings: [] };
+  const captured: Captured = {
+    exactParams: null,
+    last8Params: null,
+    digitPrefixParams: null,
+    warnings: [],
+  };
   const deps: ResolveShipmentDeps = {
     query: async <T>(_orgId: string | undefined, sql: string, params: unknown[]) => {
-      if (sql.includes('tracking_number_normalized = $1')) {
+      if (sql.includes('WHERE stn.tracking_number_normalized = $1')) {
         captured.exactParams = params;
         return { rows: (rows.exact ?? []) as T[] };
       }
-      captured.last8Params = params;
-      return { rows: (rows.last8 ?? []) as T[] };
+      if (sql.includes('RIGHT(regexp_replace')) {
+        captured.last8Params = params;
+        return { rows: (rows.last8 ?? []) as T[] };
+      }
+      if (sql.includes("LIKE $1 || '%'")) {
+        captured.digitPrefixParams = params;
+        return { rows: (rows.digitPrefix ?? []) as T[] };
+      }
+      throw new Error(`unexpected resolver SQL: ${sql.slice(0, 120)}`);
     },
     warn: (msg, meta) => captured.warnings.push({ msg, meta }),
   };
@@ -52,8 +65,9 @@ test('exact normalized hit → matchKind "exact", no last-8 query, no warning', 
     receivingSource: 'zoho_po',
     matchKind: 'exact',
   });
-  // Exact won — the last-8 fallback must NOT have run.
+  // Exact won — later rungs must NOT have run.
   assert.equal(captured.last8Params, null);
+  assert.equal(captured.digitPrefixParams, null);
   assert.equal(captured.warnings.length, 0);
 });
 
@@ -89,26 +103,58 @@ test('exact miss + single last-8 carton → matchKind "last8" and a logged fallb
   assert.equal(res.receivingId, 50);
   // The fallback MUST be logged — last-8 is ambiguous (live collision groups).
   assert.equal(captured.warnings.length, 1);
-  assert.match(captured.warnings[0].msg, /last-8 fallback/);
+  assert.match(captured.warnings[0]!.msg, /last-8 fallback/);
+  assert.equal(captured.digitPrefixParams, null);
 });
 
-test('exact miss + ambiguous last-8 (≥2 cartons) → matchKind "none" (drop to Zoho)', async () => {
-  const { deps } = fakes({
+test('exact miss + ambiguous last-8 (≥2) + digit-prefix miss → matchKind "none"', async () => {
+  const { deps, captured } = fakes({
     exact: [],
     last8: [
       { shipment_id: 5, receiving_id: 50, receiving_source: 'zoho_po' },
       { shipment_id: 6, receiving_id: 60, receiving_source: 'zoho_po' },
     ],
+    digitPrefix: [],
   });
   const res = await resolveShipmentForScan('382141152045', ORG, deps);
   assert.equal(res.matchKind, 'none');
   assert.equal(res.receivingId, null);
   assert.equal(res.shipmentId, null);
+  assert.ok(captured.digitPrefixParams);
 });
 
 test('exact miss + last-8 miss → matchKind "none"', async () => {
-  const { deps } = fakes({ exact: [], last8: [] });
+  const { deps } = fakes({ exact: [], last8: [], digitPrefix: [] });
   const res = await resolveShipmentForScan('382141152045', ORG, deps);
+  assert.equal(res.matchKind, 'none');
+});
+
+test('exact + last-8 miss + single digit-prefix → matchKind "digit_prefix"', async () => {
+  const { deps, captured } = fakes({
+    exact: [],
+    last8: [],
+    digitPrefix: [{ shipment_id: 43164, receiving_id: 49932, receiving_source: 'zoho_po' }],
+  });
+  const res = await resolveShipmentForScan('LX088692799IL', ORG, deps);
+  assert.equal(res.matchKind, 'digit_prefix');
+  assert.equal(res.receivingId, 49932);
+  assert.equal(res.shipmentId, 43164);
+  assert.equal(captured.warnings.length, 1);
+  assert.match(captured.warnings[0]!.msg, /digit-prefix/);
+  // Digits of LX088692799IL
+  assert.deepEqual(captured.digitPrefixParams, ['088692799', ORG]);
+});
+
+test('digit-prefix ambiguous (≥2) → matchKind "none"', async () => {
+  const { deps } = fakes({
+    exact: [],
+    last8: [],
+    digitPrefix: [
+      { shipment_id: 1, receiving_id: 10, receiving_source: 'zoho_po' },
+      { shipment_id: 2, receiving_id: 20, receiving_source: 'zoho_po' },
+    ],
+  });
+  const res = await resolveShipmentForScan('LX088692799IL', ORG, deps);
   assert.equal(res.matchKind, 'none');
 });
 
@@ -120,6 +166,7 @@ test('empty / unnormalizable input short-circuits with no DB calls', async () =>
   assert.equal(res.matchKind, 'none');
   assert.equal(captured.exactParams, null);
   assert.equal(captured.last8Params, null);
+  assert.equal(captured.digitPrefixParams, null);
 });
 
 test('without an orgId the queries carry no org param (un-scoped legacy callers)', async () => {

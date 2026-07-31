@@ -3,10 +3,9 @@
 /**
  * OrderFullPageView — `/o/[orderId]`, the canonical order record (Week 1, D1).
  *
- * Chrome is `ShippedDetailsHeader` (identity + action bar, `showTabs={false}`)
- * over `OrderRecordBody` — one vertical scroll, main column + right rail — with
- * the editor dock, delete, and assignment card unchanged. The eight-tab strip is
- * gone; every section is on one page.
+ * Chrome is `OrderIdentityHeader` (order # + status + platform + actions) over
+ * the concise `OrderRecordBody` — one vertical scroll, main column + right rail —
+ * with the editor dock, delete, and assignment card unchanged.
  *
  * Two layouts share it:
  *   • `workbench` — sidebar owns navigation; no back/close chrome
@@ -32,14 +31,15 @@ import {
   useShippedDetailState,
   useShippedPanelViewState,
 } from '@/components/shipped/details-panel/shipped-details-hooks';
-import { ShippedDetailsHeader } from '@/components/shipped/details-panel/ShippedDetailsHeader';
 import { ShippedPanelEditorDock } from '@/components/shipped/details-panel/ShippedPanelEditorDock';
 import { DeleteOrderControl } from '@/components/shipped/stacks/DeleteOrderControl';
+import { OrderIdentityHeader } from '@/components/order-record/OrderIdentityHeader';
 import { OrderRecordBody } from '@/components/order-record/OrderRecordBody';
 import {
   resolveSearchOrder,
   type ResolvedSearchOrder,
 } from '@/lib/search/resolve-search-order';
+import { getAccountSourceLabel } from '@/utils/order-links';
 
 export type OrderFullPageLayout = 'standalone' | 'workbench';
 
@@ -185,7 +185,8 @@ function OrderFullPageLoaded({
   } = useShippedDetailState(order, onReload);
 
   const meta = deriveShippedHeaderMeta(shipped);
-  const { activeSection, setActiveSection, activeInput, setActiveInput } = useShippedPanelViewState({
+  const platformLabel = getAccountSourceLabel(shipped.order_id, shipped.account_source);
+  const { activeInput, setActiveInput } = useShippedPanelViewState({
     initialShipped: order,
     journeyFirst,
   });
@@ -256,26 +257,20 @@ function OrderFullPageLoaded({
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-surface-canvas">
-      {/* D3: identity + action bar only — the eight-tab strip is replaced by the
-          single scroll below. Editing chrome (dock, delete, assignment) is
-          unchanged; only the body's shape changed. */}
-      <ShippedDetailsHeader
+      <OrderIdentityHeader
         orderIdDisplay={meta.orderIdDisplay}
         showExceptionsFallback={meta.showExceptionsFallback}
+        statusLabel={meta.statusLabel}
+        statusTone={meta.statusTone}
+        platformLabel={platformLabel}
         copiedOrderId={copiedOrderId}
         onCopyOrderId={handleCopyOrderId}
         actions={headerBarActions}
-        showCustomerTab
-        showDocumentsTab
-        showWarrantyTab
-        showTabs={false}
-        activeSection={activeSection}
-        onSectionChange={setActiveSection}
       />
 
       <div className="min-h-0 flex-1 overflow-y-auto">
-        <div className="mx-auto w-full max-w-6xl px-6 py-6">
-          <div className="mb-6">
+        <div className="mx-auto w-full max-w-6xl px-4 py-4 sm:px-5">
+          <div className="mb-4">
             <PackoutChecklistCard
               orderRowId={shipped.id ? Number(shipped.id) : null}
               sku={shipped.sku}
@@ -308,7 +303,7 @@ function OrderFullPageLoaded({
             }}
           />
 
-          <section className="pt-6">
+          <section className="pt-4">
             <DeleteOrderControl
               orderId={shipped.id}
               packerLogId={(shipped as { packer_log_id?: number }).packer_log_id ?? null}

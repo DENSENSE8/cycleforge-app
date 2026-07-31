@@ -148,6 +148,7 @@ export function HistoryWorkspaceHeader({
 
   return (
     <WorkbenchChromeHeader
+      density="band"
       tabs={tabs}
       activeTab={searchScope}
       onTabChange={setScope}

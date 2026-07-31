@@ -94,7 +94,7 @@ Target: **shell + FilterBand + optional KpiStrip + 1–4 SectionCards**. Not a 1
 | `MonitorPageShell` | `monitor/MonitorPageShell.tsx` | Full-height scroll shell + max-width column; optional first-load stagger |
 | `FilterBand` | `monitor/FilterBand.tsx` | Ephemeral filter row; **URL params only** |
 | `KpiStrip` | `monitor/KpiStrip.tsx` | **2×2 → 4-col** responsive grid of tiles |
-| `KpiTile` | `monitor/KpiTile.tsx` | Eyebrow → hero number → delta |
+| `KpiTile` | `monitor/KpiTile.tsx` | Eyebrow + compact delta (top-right) → hero number |
 | `SectionCard` | `monitor/SectionCard.tsx` | Eyebrow + icon + title + optional headline/meta + body |
 | `MonitorListBlock` / `MonitorListRow` | `monitor/MonitorListBlock.tsx` | `divide-y` leaderboard / recent activity |
 | `DeltaChip` | `monitor/DeltaChip.tsx` | Signed % with invert-for-“lower is better” |
@@ -110,9 +110,11 @@ Constants: `MONITOR_SECTION_CARD_CLASS` / `MONITOR_SECTION_CARD_PADDED` / `MONIT
 
 ### KPI tile anatomy
 
-1. **Eyebrow label** — `text-role-eyebrow uppercase tracking-widest text-text-soft` (role bakes 600 + condensed)
-2. **Hero number** — `text-3xl font-semibold tabular-nums` (600 is the cap — see `ui-design-system.md` → Type)
-3. **Delta chip** — `DeltaChip` (theme `text-text-success` / `text-text-danger`)
+1. **Eyebrow label** — `text-role-eyebrow uppercase tracking-widest text-text-soft` (role bakes 600 + condensed), start-aligned
+2. **Compact delta** (optional) — `DeltaChip compact` top-right (`+20%` / theme success/danger; no icon, no vs-label)
+3. **Hero number** — `text-3xl font-semibold tabular-nums` under the label (600 is the cap — see `ui-design-system.md` → Type)
+
+No status / footer third row under the hero.
 
 ### List rows inside cards
 

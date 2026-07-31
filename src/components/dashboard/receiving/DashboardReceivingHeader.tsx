@@ -154,6 +154,7 @@ export function DashboardReceivingHeader({ controlsSlotRef, className }: Dashboa
 
   return (
     <WorkbenchChromeHeader
+      density="band"
       tabs={tabs}
       activeTab={tab}
       onTabChange={setTab}

@@ -8,7 +8,8 @@
  * extracted from LineEditPanel so the panel stays a short composition surface.
  *
  * Listing / tracking Edit navigate to Unbox SectionTabsSlider tabs (parent
- * passes `onEdit*` + `*EditOpen`). PO# is copy/open-only.
+ * passes `onEdit*` + `*EditOpen`). PO# Edit opens Package Pairing → PO when
+ * the carton has no real Zoho PO id (`onEditPo`).
  */
 
 import { CartonContextCard } from '@/components/station/entity-context';
@@ -25,19 +26,29 @@ interface LineCartonContextSectionProps {
   staffId: string;
   c: UnboxLineController;
   /**
-   * Carton photo-pill stage (stage SoT) forwarded to {@link CartonContextCard}.
-   * The card renders identically in unbox and triage — both show the staff
-   * photo row and Claim — but the capture STAGE differs: triage is the arrival
-   * pass (`arrival_package`), unbox photographs the opened box
-   * (`unbox_carton`).
+   * Carton photo-pill stage (stage SoT) forwarded to {@link CartonContextCard}
+   * — required, never defaulted (a defaulted safety classification is how
+   * bench photos silently became arrival evidence; see
+   * `.claude/rules/backend-patterns.md`). The card renders identically in
+   * unbox and triage — both show the staff photo row and Claim — but the
+   * capture STAGE differs: triage passes `arrival_package` explicitly, unbox
+   * passes `unbox_carton`.
    */
-  photoStage?: 'arrival_package' | 'unbox_carton';
+  photoStage: 'arrival_package' | 'unbox_carton';
   /**
    * Serial-resolved outbound (return) order#. When the carton has no PO# of its
    * own, this fills the top-row PO#/order chip (last-4) — the lifted linkage
    * identity that replaces the standalone LINKAGE panel.
    */
   linkedOrderNumber?: string | null;
+  /**
+   * Toggle the Unbox Claim push column (`?claimView=1`). When set, Claim opens
+   * and closes the slide-out (same grammar as Ticket History). Falls back to
+   * `c.openClaimModal('create')` when omitted (Testing / non-Unbox hosts).
+   */
+  onToggleClaimView?: () => void;
+  /** True while the Claim push column is open. */
+  claimViewActive?: boolean;
   /**
    * Toggle the inline support-ticket editor (`?ticketView=1`). Passed through to
    * the carton card's reply-toggle button (unbox-only opt-in). Omit to hide it.
@@ -70,10 +81,14 @@ interface LineCartonContextSectionProps {
   onEditTracking?: () => void;
   /** Switch Unbox workspace to the Listings tab. */
   onEditListing?: () => void;
+  /** Open Package Pairing → PO tab (link / import a Zoho PO). */
+  onEditPo?: () => void;
   /** Pulse tracking chip while Tracking tab is active. */
   trackingEditOpen?: boolean;
   /** Pulse listing chip while Listings tab is active. */
   listingEditOpen?: boolean;
+  /** Pulse PO chip while Package Pairing (PO) is open. */
+  poEditOpen?: boolean;
 }
 
 // The carton-context card (photos + claim) is identical in unbox and triage —
@@ -84,6 +99,8 @@ export function LineCartonContextSection({
   staffId,
   c,
   linkedOrderNumber = null,
+  onToggleClaimView,
+  claimViewActive = false,
   onToggleTicketView,
   ticketViewActive = false,
   expandClassifyWhenPending = true,
@@ -93,9 +110,11 @@ export function LineCartonContextSection({
   density = 'card',
   onEditTracking,
   onEditListing,
+  onEditPo,
   trackingEditOpen = false,
   listingEditOpen = false,
-  photoStage = 'arrival_package',
+  poEditOpen = false,
+  photoStage,
 }: LineCartonContextSectionProps) {
   void expandClassifyWhenPending;
 
@@ -110,7 +129,8 @@ export function LineCartonContextSection({
       density={density}
       showStaffPhotoRow
       photoStage={photoStage}
-      onMakeClaim={() => c.openClaimModal('create')}
+      onMakeClaim={onToggleClaimView ?? (() => c.openClaimModal('create'))}
+      claimViewActive={claimViewActive}
       listingLink={c.listingLink}
       listingOpenHref={c.listingOpenHref}
       listingLinks={c.listingLinks}
@@ -119,6 +139,8 @@ export function LineCartonContextSection({
       poOpenHref={c.poOpenHref}
       trackingOpenHref={c.trackingOpenHref}
       poDisplay={c.poNumber}
+      onEditPo={onEditPo}
+      poEditOpen={poEditOpen}
       linkedOrderNumber={linkedOrderNumber}
       lineId={row.id ?? null}
       zendeskTrimmed={c.zendeskTrimmed}

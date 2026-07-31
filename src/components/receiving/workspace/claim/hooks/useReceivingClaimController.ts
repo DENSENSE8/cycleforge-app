@@ -9,14 +9,14 @@ import { defaultReceivingClaimType } from '@/lib/receiving-claim-type';
 import type { HorizontalSliderItem } from '@/components/ui/HorizontalButtonSlider';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import {
+  claimWizardOrderForMode,
+  claimWizardStartStep,
   claimWizardStepStates,
-  linkWizardStepStates,
-  CREATE_STEP_ORDER,
-  LINK_STEP_ORDER,
   type ArchiveState,
   type ClaimModalMode,
-  type CreateClaimStep,
-  type LinkClaimStep,
+  type ClaimWizardStep,
+  type LinkCommitStatus,
+  type LinkUpdateStatus,
   type FiledTicket,
   type LinkCandidate,
 } from '../claim-types';
@@ -139,8 +139,7 @@ export function useReceivingClaimController({
   // ── Wizard / mode state ──────────────────────────────────────────────────
   const [claimType, setClaimType] = useState<ClaimType>(initialClaimType);
   const [mode, setMode] = useState<ClaimModalMode>('create');
-  const [createStep, setCreateStep] = useState<CreateClaimStep>('photos');
-  const [linkStep, setLinkStep] = useState<LinkClaimStep>('find');
+  const [step, setStep] = useState<ClaimWizardStep>('photos');
   const [filedTicket, setFiledTicket] = useState<FiledTicket | null>(null);
   const [reason, setReason] = useState('');
 
@@ -157,20 +156,6 @@ export function useReceivingClaimController({
   const [draftBody, setDraftBody] = useState<string | null>(null);
   const [archiveSubmitting, setArchiveSubmitting] = useState(false);
 
-  // ── Dry-run test state (no Zendesk ticket / local backup / DB side-effects) ─
-  // True once the operator filed via the dry-run path: the confirm/seller steps
-  // render against the '#TEST' sentinel and suppress any real side-effect.
-  const [isDryRun, setIsDryRun] = useState(false);
-  const [testCreating, setTestCreating] = useState(false);
-  const [testResult, setTestResult] = useState<{
-    subject: string;
-    description: string;
-    attachCount: number;
-  } | null>(null);
-  const [testSellerLoading, setTestSellerLoading] = useState(false);
-  const [testSellerPreview, setTestSellerPreview] = useState<{ message: string; model: string } | null>(
-    null,
-  );
   // Local backup result — set by both the auto-backup on ticket creation and the
   // manual "Back up locally" action, so the confirm step can DISPLAY whether the
   // backup landed (and offer a retry when it failed/was partial).
@@ -180,27 +165,20 @@ export function useReceivingClaimController({
   const idempotencyKey = useRef('');
 
   // ── Link-flow submit state ───────────────────────────────────────────────
-  const [linking, setLinking] = useState(false);
+  const [linkCommitStatus, setLinkCommitStatus] = useState<LinkCommitStatus>('idle');
   const [unlinking, setUnlinking] = useState(false);
-  const [linkCommitted, setLinkCommitted] = useState(false);
   // The Photos → Ticket → Review sub-flow that runs after a ticket is linked
   // (mirrors the create flow's submit): posts the comment + attaches photos to
   // the EXISTING ticket rather than filing a new one.
-  const [linkUpdating, setLinkUpdating] = useState(false);
-  const [linkUpdatePosted, setLinkUpdatePosted] = useState(false);
+  const [linkUpdateStatus, setLinkUpdateStatus] = useState<LinkUpdateStatus>('idle');
 
   // ── Composed sub-hooks ───────────────────────────────────────────────────
   const photos = useClaimPhotos(open, receivingId);
   const template = useClaimTemplate({
     open,
     // Keep the preview warm across every pre-file/pre-update step so Review
-    // can render it — the create and link Photos/Ticket/Review steps share
-    // this exact gate.
-    active:
-      (mode === 'create' &&
-        (createStep === 'photos' || createStep === 'compose' || createStep === 'review')) ||
-      (mode === 'link' &&
-        (linkStep === 'photos' || linkStep === 'compose' || linkStep === 'review')),
+    // can render it — Photos/Ticket/Review share this exact gate in both modes.
+    active: step === 'photos' || step === 'compose' || step === 'review',
     receivingId,
     lineId,
     claimType,
@@ -212,10 +190,8 @@ export function useReceivingClaimController({
     receivingId,
     lineId,
   });
-  // The seller step is the last step of EITHER wizard — gate the seller hook's
-  // auto-draft on whichever mode is active so a link-mode selection no longer
-  // drafts prematurely (it only drafts once we actually reach the seller step).
-  const sellerActive = mode === 'create' ? createStep === 'seller' : linkStep === 'seller';
+  // Gate the seller hook's auto-draft on reaching the seller step.
+  const sellerActive = step === 'seller';
   const seller = useClaimSellerMessage({
     open,
     mode,
@@ -244,15 +220,11 @@ export function useReceivingClaimController({
     // over a plain-HTTP LAN IP it's undefined. `randomId` falls back safely.
     idempotencyKey.current = randomId();
     setMode(initialMode);
-    setCreateStep('photos');
-    setLinkStep('find');
+    setStep(claimWizardStartStep(initialMode));
     setFiledTicket(null);
-    setLinkCommitted(false);
-    setLinkUpdatePosted(false);
-    setTestResult(null);
-    setTestSellerPreview(null);
+    setLinkCommitStatus('idle');
+    setLinkUpdateStatus('idle');
     setArchiveState(null);
-    setIsDryRun(false);
   }, [open, receivingId, lineId, initialClaimType, prefillReason, initialMode]);
 
   // Remember every CC email ever entered (accumulated, not just this session's
@@ -290,10 +262,9 @@ export function useReceivingClaimController({
     [hasPo],
   );
   const claimStepStates = useMemo(
-    () => claimWizardStepStates(createStep, filedTicket, mode),
-    [createStep, filedTicket, mode],
+    () => claimWizardStepStates(step, mode),
+    [step, mode],
   );
-  const linkStepStates = useMemo(() => linkWizardStepStates(linkStep), [linkStep]);
   const sellerStepReady = !!filedTicket || mode === 'link';
   // The compose draft must be complete before Review/Submit are reachable.
   const composeComplete = !!template.subject.trim() && !!template.description.trim();
@@ -301,69 +272,44 @@ export function useReceivingClaimController({
   // (and its dot on the stepper) is skipped entirely for either wizard.
   const sellerStepApplicable = claimType !== 'return';
 
-  // ── Linear wizard navigation (create mode) ───────────────────────────────
-  // A step is reachable when every step before it is satisfied: confirm/seller
-  // require a filed ticket; review requires a complete compose draft; seller
-  // is also skipped entirely for a 'return' claim.
-  const isCreateStepDisabled = (key: string): boolean => {
-    const target = key as CreateClaimStep;
-    if (target === 'seller') return !filedTicket || !sellerStepApplicable;
-    if (target === 'confirm') return !filedTicket;
-    if (target === 'review') return !composeComplete && !filedTicket;
+  // ── Linear wizard navigation ─────────────────────────────────────────────
+  // Create: filed/seller require a filed ticket; review needs compose (or filed).
+  // Link: photos+ only after commit; filed/seller after update posted; seller
+  // skipped for 'return'.
+  const isStepDisabled = (key: string): boolean => {
+    const target = key as ClaimWizardStep;
+    if (mode === 'create') {
+      if (target === 'seller') return !filedTicket || !sellerStepApplicable;
+      if (target === 'filed') return !filedTicket;
+      if (target === 'review') return !composeComplete && !filedTicket;
+      return false;
+    }
+    if (target === 'find') return false;
+    if (linkCommitStatus !== 'committed') return true;
+    if (target === 'review') return !composeComplete;
+    if (target === 'filed') return linkUpdateStatus !== 'posted';
+    if (target === 'seller') return linkUpdateStatus !== 'posted' || !sellerStepApplicable;
     return false;
   };
 
-  const goToStep = (next: CreateClaimStep) => {
-    if (isCreateStepDisabled(next)) return;
-    setCreateStep(next);
+  const goToStep = (next: ClaimWizardStep) => {
+    if (isStepDisabled(next)) return;
+    setStep(next);
   };
 
-  /** Footer "Back" — one step left in the create order (no-op on the first). */
+  /** Footer "Back" — one step left in the mode order (no-op on the first). */
   const goBack = () => {
-    const idx = CREATE_STEP_ORDER.indexOf(createStep);
-    if (idx > 0) setCreateStep(CREATE_STEP_ORDER[idx - 1]);
+    const order = claimWizardOrderForMode(mode);
+    const idx = order.indexOf(step);
+    if (idx > 0) setStep(order[idx - 1]);
   };
 
   /** Footer "Next" — photos → compose → review (Submit lives on review). */
   const goNext = () => {
-    if (createStep === 'photos') {
-      setCreateStep('compose');
-    } else if (createStep === 'compose') {
-      if (composeComplete) setCreateStep('review');
-    }
-  };
-
-  // ── Link-flow navigation (link mode) ─────────────────────────────────────
-  // photos/compose/review are only reachable once a ticket is linked; linked
-  // additionally requires the update (comment + photos) to have been posted;
-  // seller requires both AND is skipped entirely for a 'return' claim.
-  const isLinkStepDisabled = (key: string): boolean => {
-    const target = key as LinkClaimStep;
-    if (target === 'find') return false;
-    if (!linkCommitted) return true;
-    if (target === 'review') return !composeComplete;
-    if (target === 'linked') return !linkUpdatePosted;
-    if (target === 'seller') return !linkUpdatePosted || !sellerStepApplicable;
-    return false;
-  };
-
-  const handleLinkStepClick = (key: string) => {
-    if (isLinkStepDisabled(key)) return;
-    setLinkStep(key as LinkClaimStep);
-  };
-
-  /** Link "Back" — one step left in the link order (no-op on the first). */
-  const goLinkBack = () => {
-    const idx = LINK_STEP_ORDER.indexOf(linkStep);
-    if (idx > 0) setLinkStep(LINK_STEP_ORDER[idx - 1]);
-  };
-
-  /** Link "Next" — photos → compose → review (Post to ticket lives on review). */
-  const goLinkNext = () => {
-    if (linkStep === 'photos') {
-      setLinkStep('compose');
-    } else if (linkStep === 'compose') {
-      if (composeComplete) setLinkStep('review');
+    if (step === 'photos') {
+      setStep('compose');
+    } else if (step === 'compose') {
+      if (composeComplete) setStep('review');
     }
   };
 
@@ -373,34 +319,25 @@ export function useReceivingClaimController({
     if (next === 'link') {
       // Resume wherever the link sub-flow left off; a fresh link starts at Find.
       seller.resetBootstrap();
-      if (!linkCommitted) {
-        setLinkStep('find');
-      } else if (!linkUpdatePosted) {
-        setLinkStep('photos');
+      if (linkCommitStatus !== 'committed') {
+        setStep('find');
+      } else if (linkUpdateStatus !== 'posted') {
+        setStep('photos');
       } else {
-        setLinkStep('linked');
+        setStep('filed');
       }
     } else {
-      setCreateStep(filedTicket ? 'confirm' : 'photos');
+      setStep(filedTicket ? 'filed' : 'photos');
     }
   };
 
-  const handleClaimStepClick = (key: string) => {
-    goToStep(key as CreateClaimStep);
+  const handleStepClick = (key: string) => {
+    goToStep(key as ClaimWizardStep);
   };
 
-  /**
-   * Confirmation → seller, for whichever wizard is active. In a real create flow
-   * the seller hook auto-bootstraps; for a dry run ('#TEST') the hook skips its
-   * fetch, so we draft a throwaway preview here instead.
-   */
+  /** Filed → seller. */
   const continueToSeller = () => {
-    if (mode === 'link') {
-      setLinkStep('seller');
-      return;
-    }
-    setCreateStep('seller');
-    if (filedTicket?.number === '#TEST') void draftTestSellerMessage();
+    setStep('seller');
   };
 
   const selectLinkTicket = (t: LinkCandidate | null) => {
@@ -408,7 +345,7 @@ export function useReceivingClaimController({
       search.setSelectedTicket(null);
       if (mode === 'link') {
         setFiledTicket(null);
-        setLinkCommitted(false);
+        setLinkCommitStatus('idle');
         seller.resetDraftState();
       }
       return;
@@ -417,10 +354,10 @@ export function useReceivingClaimController({
     search.setSelectedTicket(t);
     if (mode === 'link') {
       setFiledTicket({ number: `#${t.id}`, url: t.url, id: t.id });
-      setLinkCommitted(false);
+      setLinkCommitStatus('idle');
       if (ticketChanged) {
         seller.resetDraftState();
-        setLinkUpdatePosted(false);
+        setLinkUpdateStatus('idle');
       }
     }
   };
@@ -428,15 +365,15 @@ export function useReceivingClaimController({
   const deselectLinkedTicket = () => {
     search.setSelectedTicket(null);
     setFiledTicket(null);
-    setLinkCommitted(false);
-    setLinkUpdatePosted(false);
+    setLinkCommitStatus('idle');
+    setLinkUpdateStatus('idle');
     seller.resetDraftState();
     // Deselecting / unlinking always returns to the picker step.
-    setLinkStep('find');
+    setStep('find');
   };
 
   const handleBannerUnlink = () => {
-    if (linkCommitted) {
+    if (linkCommitStatus === 'committed') {
       void unlinkCommittedTicket();
       return;
     }
@@ -525,7 +462,7 @@ export function useReceivingClaimController({
         url: ticketUrl,
         id: ticketId,
       });
-      setCreateStep('confirm');
+      setStep('filed');
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Network error');
     } finally {
@@ -581,187 +518,11 @@ export function useReceivingClaimController({
     }
   };
 
-  // ── Dry-run tests: rehearse the flow without filing/saving anything ───────
-  const submitTestCreate = async () => {
-    if (testCreating || submitting || !receivingId) return;
-    setTestCreating(true);
-    try {
-      const res = await fetch('/api/receiving/zendesk-claim', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          dryRun: true,
-          receivingId,
-          lineId,
-          claimType,
-          reason: reason.trim(),
-          subject: template.readSubject().trim(),
-          description: template.readDescription().trim(),
-          attachPhotoIds: [...photos.selectedPhotoIds],
-          notePublic,
-          ccEmails,
-        }),
-      });
-      const data = await res.json().catch(() => null);
-      if (!res.ok || !data?.success) {
-        toast.error(apiErrorText(data, 'Test create failed'));
-        return;
-      }
-      setTestResult({
-        subject: String(data.subject ?? ''),
-        description: String(data.description ?? ''),
-        attachCount: Number(data.attachCount ?? 0),
-      });
-      toast.success('Test create OK — no ticket was filed');
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Network error');
-    } finally {
-      setTestCreating(false);
-    }
-  };
-
-  const submitTestSeller = async () => {
-    if (testSellerLoading || !receivingId) return;
-    const subject = template.readSubject().trim();
-    const description = template.readDescription().trim();
-    if (!subject || !description) {
-      toast.error('Add a subject and body before testing the seller message');
-      return;
-    }
-    setTestSellerLoading(true);
-    try {
-      const res = await fetch('/api/receiving/zendesk-claim/assist-seller', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          dryRun: true,
-          receivingId,
-          lineId,
-          claimType,
-          reason: reason.trim(),
-          subject,
-          description,
-          zendeskTicketNumber: '#TEST',
-        }),
-      });
-      const data = await res.json().catch(() => null);
-      if (!res.ok || !data?.success) {
-        toast.error(apiErrorText(data, 'Test seller message failed'));
-        return;
-      }
-      setTestSellerPreview({
-        message: typeof data.sellerMessage === 'string' ? data.sellerMessage : '',
-        model: typeof data.model === 'string' ? data.model : '',
-      });
-      if (data.linksStripped) {
-        toast.warning('Links were removed (marketplace TOS)', { duration: 5000 });
-      }
-      toast.success('Test seller message drafted — not saved');
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Network error');
-    } finally {
-      setTestSellerLoading(false);
-    }
-  };
-
-  const clearTestOutputs = () => {
-    setTestResult(null);
-    setTestSellerPreview(null);
-  };
-
-  // Dry-run "File ticket": exercise the REAL Review → Confirm → Seller arc with
-  // zero side-effects. The endpoint short-circuits on `dryRun` (returns the
-  // assembled subject/body + a '#TEST' ticket; no Zendesk/local/DB writes), so we
-  // land on the confirm step with a synthetic ticket + local backup result to inspect.
-  const submitDryRun = async () => {
-    if (testCreating || submitting || !receivingId) return;
-    const subject = template.readSubject().trim();
-    const description = template.readDescription().trim();
-    if (!subject || !description) return;
-    setTestCreating(true);
-    try {
-      const res = await fetch('/api/receiving/zendesk-claim', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          dryRun: true,
-          receivingId,
-          lineId,
-          claimType,
-          reason: reason.trim(),
-          subject,
-          description,
-          attachPhotoIds: [...photos.selectedPhotoIds],
-          notePublic,
-          ccEmails,
-        }),
-      });
-      const data = await res.json().catch(() => null);
-      if (!res.ok || !data?.success) {
-        toast.error(apiErrorText(data, 'Dry run failed'));
-        return;
-      }
-      const attachCount = Number(data.attachCount ?? photos.selectedPhotoIds.size);
-      setIsDryRun(true);
-      setFiledTicket({ number: '#TEST', url: null, id: null });
-      // Synthesise the local backup result the real backup would have produced,
-      // so the confirmation's backup card renders exactly as it would in production.
-      setArchiveState({
-        ok: true,
-        copied: photos.photos.length,
-        total: photos.photos.length,
-        folder: 'TEST',
-        warning: null,
-      });
-      setCreateStep('confirm');
-      toast.success(`Dry run OK — no ticket filed (${attachCount} would attach)`);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Network error');
-    } finally {
-      setTestCreating(false);
-    }
-  };
-
-  // Draft a seller-message PREVIEW for the '#TEST' sentinel via Hermes dry-run.
-  // Nothing is persisted (the seller hook also recognises '#TEST'); this just
-  // fills the seller step so the operator can rehearse it end-to-end.
-  const draftTestSellerMessage = async () => {
-    if (!receivingId) return;
-    const subject = template.readSubject().trim();
-    const description = template.readDescription().trim();
-    if (!subject || !description) return;
-    setTestSellerLoading(true);
-    try {
-      const res = await fetch('/api/receiving/zendesk-claim/assist-seller', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          dryRun: true,
-          receivingId,
-          lineId,
-          claimType,
-          reason: reason.trim(),
-          subject,
-          description,
-          zendeskTicketNumber: '#TEST',
-        }),
-      });
-      const data = await res.json().catch(() => null);
-      if (res.ok && data?.success && typeof data.sellerMessage === 'string') {
-        seller.setSellerMessage(data.sellerMessage);
-      }
-    } catch {
-      /* best-effort preview — the step still renders without a draft */
-    } finally {
-      setTestSellerLoading(false);
-    }
-  };
-
   // ── Link flow: attach an existing ticket to this carton/line ─────────────
   const submitLink = async () => {
-    if (linking || !search.selectedTicket || !receivingId) return;
+    if (linkCommitStatus === 'linking' || !search.selectedTicket || !receivingId) return;
     const selected = search.selectedTicket;
-    setLinking(true);
+    setLinkCommitStatus('linking');
     try {
       const res = await fetch('/api/receiving/zendesk-claim/link', {
         method: 'POST',
@@ -771,6 +532,7 @@ export function useReceivingClaimController({
       const data = await res.json().catch(() => null);
       if (!res.ok || !data?.success) {
         toast.error(apiErrorText(data, 'Could not link the ticket'));
+        setLinkCommitStatus('idle');
         return;
       }
       const url = typeof data.ticketUrl === 'string' ? data.ticketUrl : null;
@@ -780,17 +542,16 @@ export function useReceivingClaimController({
           : undefined,
       });
       onTicketCreated(String(data.ticketNumber));
-      setLinkCommitted(true);
-      setLinkUpdatePosted(false);
+      setLinkCommitStatus('committed');
+      setLinkUpdateStatus('idle');
       setFiledTicket({ number: String(data.ticketNumber), url, id: selected.id });
       // Land on Photos — same Photos → Ticket → Review arc the create flow
       // runs, ending in a comment (+ attached photos) posted to THIS ticket.
       seller.resetBootstrap();
-      setLinkStep('photos');
+      setStep('photos');
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Network error');
-    } finally {
-      setLinking(false);
+      setLinkCommitStatus('idle');
     }
   };
 
@@ -825,8 +586,8 @@ export function useReceivingClaimController({
   // the same subject/body/recipients/photo-selection UI as the create flow,
   // but updating the existing ticket instead of filing a new one.
   const submitLinkUpdate = async () => {
-    if (linkUpdating || !filedTicket?.id || !receivingId) return;
-    setLinkUpdating(true);
+    if (linkUpdateStatus === 'posting' || !filedTicket?.id || !receivingId) return;
+    setLinkUpdateStatus('posting');
     try {
       const res = await fetch('/api/receiving/zendesk-claim/thread', {
         method: 'POST',
@@ -844,6 +605,7 @@ export function useReceivingClaimController({
       const data = await res.json().catch(() => null);
       if (!res.ok || !data?.success) {
         toast.error(apiErrorText(data, 'Could not update the ticket'));
+        setLinkUpdateStatus('idle');
         return;
       }
       toast.success(
@@ -851,15 +613,14 @@ export function useReceivingClaimController({
           ? `Ticket ${filedTicket.number} updated — customer emailed`
           : `Ticket ${filedTicket.number} updated`,
       );
-      setLinkUpdatePosted(true);
-      setLinkStep('linked');
-      // Mirror the create flow's auto-backup so the "Linked" confirmation
+      setLinkUpdateStatus('posted');
+      setStep('filed');
+      // Mirror the create flow's auto-backup so the filed confirmation
       // shows the same local-backup card either way.
       void archiveToNas();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Network error');
-    } finally {
-      setLinkUpdating(false);
+      setLinkUpdateStatus('idle');
     }
   };
 
@@ -870,8 +631,8 @@ export function useReceivingClaimController({
     onClose,
     // wizard
     mode,
-    createStep,
-    setCreateStep,
+    step,
+    setStep,
     filedTicket,
     claimType,
     setClaimType,
@@ -884,21 +645,15 @@ export function useReceivingClaimController({
     archiveSubmitting,
     claimTypeItems,
     claimStepStates,
-    linkStep,
-    linkStepStates,
     sellerStepReady,
     sellerStepApplicable,
     composeComplete,
     handleModeChange,
-    handleClaimStepClick,
-    handleLinkStepClick,
-    isCreateStepDisabled,
-    isLinkStepDisabled,
+    handleStepClick,
+    isStepDisabled,
     goToStep,
     goBack,
     goNext,
-    goLinkBack,
-    goLinkNext,
     continueToSeller,
     selectLinkTicket,
     handleBannerUnlink,
@@ -907,24 +662,12 @@ export function useReceivingClaimController({
     draftBody,
     submitInternal,
     archiveToNas,
-    // dry-run tests
-    isDryRun,
-    testCreating,
-    testResult,
-    testSellerLoading,
-    testSellerPreview,
-    submitTestCreate,
-    submitTestSeller,
-    clearTestOutputs,
-    submitDryRun,
     archiveState,
     // link flow
-    linking,
+    linkCommitStatus,
     unlinking,
-    linkCommitted,
     submitLink,
-    linkUpdating,
-    linkUpdatePosted,
+    linkUpdateStatus,
     submitLinkUpdate,
     // sub-hooks
     photos,

@@ -1,23 +1,15 @@
 'use client';
 
 /**
- * Page-level modals for the LineEditPanel: the carton audit log (when the line
- * is linked to a shipment) and the support-claim modal. Pure wiring from the
- * controller bag; extracted from LineEditPanel so the panel stays a short
- * composition surface. Behaviour is unchanged.
+ * Page-level modals for the LineEditPanel: carton audit log, photo note, move
+ * photos. Claim opens as the Unbox push column (`ReceivingClaimStack`) — not
+ * here.
  */
 
-import { useQueryClient } from '@tanstack/react-query';
 import { ReceivingAuditModal } from '../ReceivingAuditModal';
-import { ReceivingClaimModal } from '../ReceivingClaimModal';
 import { SendPhotoNoteModal } from '../SendPhotoNoteModal';
 import { MovePhotosBetweenPoModal } from './MovePhotosBetweenPoModal';
-import { dispatchLineUpdated, type ReceivingLineRow } from '@/components/station/ReceivingLinesTable';
-import { invalidateSupportContextCaches } from '@/hooks';
-import {
-  invalidateReceivingFeeds,
-  patchReceivingRailTicketByCarton,
-} from '@/lib/queries/receiving-queries';
+import type { ReceivingLineRow } from '@/components/station/ReceivingLinesTable';
 import type { UnboxLineController } from './unbox-line-controller';
 
 interface LineEditModalsProps {
@@ -26,7 +18,6 @@ interface LineEditModalsProps {
 }
 
 export function LineEditModals({ row, c }: LineEditModalsProps) {
-  const qc = useQueryClient();
   return (
     <>
       {row.receiving_id != null ? (
@@ -46,38 +37,6 @@ export function LineEditModals({ row, c }: LineEditModalsProps) {
         open={c.movePhotosOpen}
         receivingId={row.receiving_id}
         onClose={() => c.setMovePhotosOpen(false)}
-      />
-      <ReceivingClaimModal
-        open={c.claimModalOpen}
-        row={row}
-        initialMode={c.claimModalInitialMode}
-        prefillReason={c.returnClaimPrefill ?? undefined}
-        onClose={() => {
-          c.setClaimModalOpen(false);
-          c.setReturnClaimPrefill(null);
-        }}
-        onTicketCreated={(ticketNumber) => {
-          void c.invalidateSupportTicket();
-          invalidateSupportContextCaches(qc);
-          if (row.receiving_id != null) {
-            patchReceivingRailTicketByCarton(qc, row.receiving_id, ticketNumber);
-          }
-          dispatchLineUpdated({
-            id: row.id,
-            zendesk_ticket: ticketNumber,
-            notes: row.notes,
-          });
-          invalidateReceivingFeeds(qc);
-        }}
-        onTicketUnlinked={() => {
-          void c.invalidateSupportTicket();
-          invalidateSupportContextCaches(qc);
-          if (row.receiving_id != null) {
-            patchReceivingRailTicketByCarton(qc, row.receiving_id, null);
-          }
-          dispatchLineUpdated({ id: row.id, zendesk_ticket: null, notes: row.notes });
-          invalidateReceivingFeeds(qc);
-        }}
       />
     </>
   );

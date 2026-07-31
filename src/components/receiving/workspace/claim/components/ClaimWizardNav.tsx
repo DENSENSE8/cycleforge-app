@@ -1,25 +1,20 @@
 import { useMemo } from 'react';
 import { PaneHeaderTabs } from '@/components/ui/pane-header';
 import { LinearWorkflowStepper } from '@/components/receiving/workspace/ReceivingProgressStepper';
-import { CLAIM_WIZARD_STEPS, LINK_WIZARD_STEPS, type ClaimModalMode } from '../claim-types';
+import { claimWizardStepsForMode, type ClaimModalMode } from '../claim-types';
 import type { ReceivingClaimController } from '../hooks/useReceivingClaimController';
 
 /**
  * New-ticket / Link-existing mode tabs, plus a linear progress stepper for the
- * active flow — create: Photos → Ticket → Review → Filed → Seller; link: Find →
- * Photos → Ticket → Review → Linked → Seller. The Seller dot is dropped from
- * either stepper on a 'return' claim (`c.sellerStepApplicable`) — there's no
- * marketplace seller to message. The stepper is the stable map: clicking a
- * reached step jumps to it; only the body below crossfades.
+ * active flow. Create: Photos → Ticket → Review → Filed → Seller; link: Find →
+ * Photos → Ticket → Review → Linked → Seller. The Seller dot is dropped on a
+ * 'return' claim. The stepper is the stable map: clicking a reached step jumps
+ * to it; only the body below crossfades.
  */
 export function ClaimWizardNav({ c }: { c: ReceivingClaimController }) {
-  const claimSteps = useMemo(
-    () => CLAIM_WIZARD_STEPS.filter((s) => s.key !== 'seller' || c.sellerStepApplicable),
-    [c.sellerStepApplicable],
-  );
-  const linkSteps = useMemo(
-    () => LINK_WIZARD_STEPS.filter((s) => s.key !== 'seller' || c.sellerStepApplicable),
-    [c.sellerStepApplicable],
+  const steps = useMemo(
+    () => claimWizardStepsForMode(c.mode, c.sellerStepApplicable),
+    [c.mode, c.sellerStepApplicable],
   );
 
   return (
@@ -35,27 +30,15 @@ export function ClaimWizardNav({ c }: { c: ReceivingClaimController }) {
         />
       </div>
 
-      {c.mode === 'create' ? (
-        <LinearWorkflowStepper
-          steps={claimSteps}
-          states={c.claimStepStates}
-          ariaLabel="Claim progress"
-          size="compact"
-          className="mx-auto w-full max-w-md px-2"
-          onStepClick={c.handleClaimStepClick}
-          isStepDisabled={c.isCreateStepDisabled}
-        />
-      ) : (
-        <LinearWorkflowStepper
-          steps={linkSteps}
-          states={c.linkStepStates}
-          ariaLabel="Link claim progress"
-          size="compact"
-          className="mx-auto w-full max-w-md px-2"
-          onStepClick={c.handleLinkStepClick}
-          isStepDisabled={c.isLinkStepDisabled}
-        />
-      )}
+      <LinearWorkflowStepper
+        steps={steps}
+        states={c.claimStepStates}
+        ariaLabel={c.mode === 'link' ? 'Link claim progress' : 'Claim progress'}
+        size="compact"
+        className="mx-auto w-full max-w-md px-2"
+        onStepClick={c.handleStepClick}
+        isStepDisabled={c.isStepDisabled}
+      />
     </div>
   );
 }

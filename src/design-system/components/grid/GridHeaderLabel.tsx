@@ -12,13 +12,10 @@ type GridHeaderSortDir = 'asc' | 'desc';
  * The INSIDE of a ledger grid column header: type glyph → label (or the
  * screen-reader-only label when the track is too narrow) → sort chevron.
  *
- * All five `*GridColumnHeader` components carried this block byte-identically,
- * along with the label-resolution and `aria-sort` ternaries. Only the OUTER
- * cell differs per surface (its `*GridCell` class, frozen offset, and sticky
- * behaviour), so that is deliberately left with each header — extracting the
- * whole component would have forced five genuinely different chrome shapes
- * through one prop bag, which is the trade that makes shared components worse
- * than the duplication they replace.
+ * Shared INNER label/chevron block. OUTER sticky row/cell chrome lives in
+ * {@link LedgerGridColumnHeader} (Receiving / Incoming adapters; Orders still
+ * deferred — resize/reorder recipe). Domain wrappers inject layout APIs +
+ * glyph/label overrides; they must not re-fork this inner block.
  *
  * The narrow-track fallback is a GLYPH, never a truncated word: a glyph is a
  * complete symbol an operator learns, while `UNBO…` has to be decoded and can

@@ -112,16 +112,27 @@ html[data-color-scheme='dark'] {
 
 /* ─── Page wash (Appearance → Page background / data-app-wash) ─────────────
    Stops mix theme canvas/surface so dark themes don’t keep light-only hex.
-   Light authoring refs live in src/design-system/tokens/app-surface.ts. */
+   Light authoring refs live in src/design-system/tokens/app-surface.ts.
+
+   GROUND-PLANE RULE: no stop may resolve to `background-surface` (card white).
+   A wash host is the ground plane that cards cast onto — `tokens/shadows.ts`
+   ("depth needs a ground plane") requires canvas to sit a real step BELOW card
+   white (light: #eef2f7 vs #ffffff). `mint`/`cool` used to terminate on
+   `background-surface`, so past their stop the page ground WAS card white:
+   a `bg-surface-card` rail sat white-on-white with only its 1px border to
+   separate it, and `elevationCastClass` had nothing to cast onto — the exact
+   "every surface merged into one sheet" regression that rule was written for.
+   Terminate on canvas instead; the preset's character lives in `--ds-wash-from`.
+   (`slate` still opens on `background-surface` — same defect, inverted.) */
 :root,
 html[data-app-wash='mint'] {
   --ds-wash-from: color-mix(in srgb, var(--ds-color-background-canvas) 72%, #f5fbfa);
-  --ds-wash-to: var(--ds-color-background-surface);
+  --ds-wash-to: var(--ds-color-background-canvas);
   --ds-wash-stop: 22%;
 }
 html[data-app-wash='cool'] {
   --ds-wash-from: color-mix(in srgb, var(--ds-color-background-canvas) 70%, #f8fbfb);
-  --ds-wash-to: var(--ds-color-background-surface);
+  --ds-wash-to: var(--ds-color-background-canvas);
   --ds-wash-stop: 16%;
 }
 html[data-app-wash='slate'] {

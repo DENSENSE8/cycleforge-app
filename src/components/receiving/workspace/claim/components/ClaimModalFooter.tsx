@@ -23,7 +23,7 @@ function SellerActions({ c }: { c: ReceivingClaimController }) {
         variant="primary"
         size="md"
         onClick={() => void seller.finishSellerStep()}
-        disabled={seller.aiLoading || (c.mode === 'link' && !c.linkCommitted)}
+        disabled={seller.aiLoading || (c.mode === 'link' && c.linkCommitStatus !== 'committed')}
       >
         Finish seller msg
       </Button>
@@ -34,15 +34,22 @@ function SellerActions({ c }: { c: ReceivingClaimController }) {
 /** Contextual footer actions — varies by wizard step and mode. */
 export function ClaimModalFooter({ c }: { c: ReceivingClaimController }) {
   const { search } = c;
-  const busy = c.submitting || c.archiveSubmitting || c.linking || c.unlinking || c.linkUpdating;
+  const busy =
+    c.submitting ||
+    c.archiveSubmitting ||
+    c.linkCommitStatus === 'linking' ||
+    c.unlinking ||
+    c.linkUpdateStatus === 'posting';
   const isCreate = c.mode === 'create';
-  const step = c.createStep;
-  const linkStep = c.linkStep;
+  const step = c.step;
 
   const showBack = isCreate
     ? step === 'compose' || step === 'review'
-    : linkStep === 'photos' || linkStep === 'compose' || linkStep === 'review' || linkStep === 'linked' || linkStep === 'seller';
-  const onBack = isCreate ? c.goBack : c.goLinkBack;
+    : step === 'photos' ||
+      step === 'compose' ||
+      step === 'review' ||
+      step === 'filed' ||
+      step === 'seller';
 
   return (
     <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border-hairline bg-surface-canvas px-4 py-2.5">
@@ -55,7 +62,7 @@ export function ClaimModalFooter({ c }: { c: ReceivingClaimController }) {
             type="button"
             variant="secondary"
             size="md"
-            onClick={onBack}
+            onClick={c.goBack}
             disabled={busy}
             icon={<ChevronLeft className="h-3.5 w-3.5" />}
           >
@@ -103,7 +110,7 @@ export function ClaimModalFooter({ c }: { c: ReceivingClaimController }) {
           </Button>
         ) : null}
 
-        {isCreate && step === 'confirm' ? (
+        {isCreate && step === 'filed' ? (
           c.sellerStepApplicable ? (
             <Button type="button" variant="primary" size="md" onClick={c.continueToSeller}>
               Continue to seller →
@@ -118,16 +125,16 @@ export function ClaimModalFooter({ c }: { c: ReceivingClaimController }) {
         {isCreate && step === 'seller' ? <SellerActions c={c} /> : null}
 
         {/* ── Link flow ───────────────────────────────────────────────── */}
-        {!isCreate && linkStep === 'find' ? (
+        {!isCreate && step === 'find' ? (
           <Button
             type="button"
             variant={search.selectedTicket ? 'danger' : 'primary'}
             size="md"
             onClick={c.submitLink}
-            disabled={c.linking || !c.row.receiving_id || !search.selectedTicket}
-            icon={c.linking ? <Loader2 className="h-4 w-4 animate-spin" /> : <Link2 className="h-3.5 w-3.5" />}
+            disabled={c.linkCommitStatus === 'linking' || !c.row.receiving_id || !search.selectedTicket}
+            icon={c.linkCommitStatus === 'linking' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Link2 className="h-3.5 w-3.5" />}
           >
-            {c.linking
+            {c.linkCommitStatus === 'linking'
               ? 'Linking…'
               : search.selectedTicket
                 ? `Link ticket #${search.selectedTicket.id} →`
@@ -135,40 +142,40 @@ export function ClaimModalFooter({ c }: { c: ReceivingClaimController }) {
           </Button>
         ) : null}
 
-        {!isCreate && linkStep === 'photos' ? (
-          <Button type="button" variant="primary" size="md" onClick={c.goLinkNext}>
+        {!isCreate && step === 'photos' ? (
+          <Button type="button" variant="primary" size="md" onClick={c.goNext}>
             Next: Ticket →
           </Button>
         ) : null}
 
-        {!isCreate && linkStep === 'compose' ? (
+        {!isCreate && step === 'compose' ? (
           c.composeComplete ? (
-            <Button type="button" variant="primary" size="md" onClick={c.goLinkNext} disabled={!c.composeComplete}>
+            <Button type="button" variant="primary" size="md" onClick={c.goNext} disabled={!c.composeComplete}>
               Next: Review →
             </Button>
           ) : (
             <HoverTooltip label="Add a subject and body first" asChild>
-              <Button type="button" variant="primary" size="md" onClick={c.goLinkNext} disabled={!c.composeComplete}>
+              <Button type="button" variant="primary" size="md" onClick={c.goNext} disabled={!c.composeComplete}>
                 Next: Review →
               </Button>
             </HoverTooltip>
           )
         ) : null}
 
-        {!isCreate && linkStep === 'review' ? (
+        {!isCreate && step === 'review' ? (
           <Button
             type="button"
             variant="danger"
             size="md"
             onClick={c.submitLinkUpdate}
-            disabled={c.linkUpdating || !c.row.receiving_id || !c.composeComplete}
-            icon={c.linkUpdating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Link2 className="h-3.5 w-3.5" />}
+            disabled={c.linkUpdateStatus === 'posting' || !c.row.receiving_id || !c.composeComplete}
+            icon={c.linkUpdateStatus === 'posting' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Link2 className="h-3.5 w-3.5" />}
           >
-            {c.linkUpdating ? 'Posting…' : 'Update ticket & back up →'}
+            {c.linkUpdateStatus === 'posting' ? 'Posting…' : 'Update ticket & back up →'}
           </Button>
         ) : null}
 
-        {!isCreate && linkStep === 'linked' ? (
+        {!isCreate && step === 'filed' ? (
           c.sellerStepApplicable ? (
             <Button type="button" variant="primary" size="md" onClick={c.continueToSeller}>
               Continue to seller →
@@ -180,7 +187,7 @@ export function ClaimModalFooter({ c }: { c: ReceivingClaimController }) {
           )
         ) : null}
 
-        {!isCreate && linkStep === 'seller' ? <SellerActions c={c} /> : null}
+        {!isCreate && step === 'seller' ? <SellerActions c={c} /> : null}
       </div>
     </div>
   );

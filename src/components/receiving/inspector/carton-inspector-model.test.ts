@@ -20,7 +20,6 @@ import {
   cartonLifecycle,
   cartonRecordMeta,
   cartonTimelineAnchor,
-  collapseProvenance,
   type CartonInspectorReceiving,
 } from './carton-inspector-model';
 import { formatDateTimePST } from '@/utils/date';
@@ -165,35 +164,6 @@ test('cartonLifecycle exposes a TONE, never a class — views stay dumb', () => 
   }
 });
 
-test('collapseProvenance folds a one-person session to a single line', () => {
-  const c = collapseProvenance(buildCartonMilestones(RECEIVING));
-  assert.deepEqual(c, {
-    actor: 'Kai',
-    firstAt: '2026-07-28 14:23:54',
-    lastAt: '2026-07-28 14:27:46',
-    steps: 4,
-  });
-});
-
-test('collapseProvenance REFUSES when more than one person touched it', () => {
-  // Multi-actor attribution is the content — collapsing it hides exactly what
-  // the surface exists to prove.
-  const m = buildCartonMilestones({ ...RECEIVING, unboxed_by_name: 'Sam' });
-  assert.equal(collapseProvenance(m), null);
-});
-
-test('collapseProvenance REFUSES on an unattributed step or a lone milestone', () => {
-  assert.equal(collapseProvenance(buildCartonMilestones({ ...RECEIVING, unboxed_by_name: null })), null);
-  assert.equal(
-    collapseProvenance(
-      buildCartonMilestones({
-        ...RECEIVING, tracking_scanned_at: null, unbox_opened_at: null, received_at: null,
-      }),
-    ),
-    null,
-  );
-});
-
 // ── The comprehensive record: facts, flags, system meta ─────────────────────
 
 test('cartonFacts omits absent facts rather than emitting dashes', () => {
@@ -237,9 +207,31 @@ test('cartonFacts tags each fact with the SoT that must resolve it', () => {
   assert.equal(byKey.get('qaStatus'), 'text');
 });
 
-test('cartonFlags surfaces UNFOUND — a carton never reconciled to an order', () => {
+test('cartonFlags suppresses UNFOUND when a PO is already linked', () => {
+  // Fixture has pairing_state UNFOUND AND a Zoho PO — link wins over stale pairing.
   const keys = cartonFlags(RECEIVING).map((f) => f.key);
-  assert.ok(keys.includes('unfound'), 'pairing_state UNFOUND must be visible, not inferred');
+  assert.equal(keys.includes('unfound'), false, 'linked PO must suppress No matched PO');
+});
+
+test('cartonFlags surfaces UNFOUND only when no PO is linked', () => {
+  const keys = cartonFlags({
+    ...RECEIVING,
+    zoho_purchaseorder_id: null,
+    zoho_purchaseorder_number: null,
+  }).map((f) => f.key);
+  assert.ok(keys.includes('unfound'), 'pairing_state UNFOUND with no PO must be visible');
+});
+
+test('cartonFlags suppresses UNFOUND when a line carries the PO', () => {
+  const keys = cartonFlags(
+    {
+      ...RECEIVING,
+      zoho_purchaseorder_id: null,
+      zoho_purchaseorder_number: null,
+    },
+    [{ zoho_purchaseorder_number: '19-14910-41811' }],
+  ).map((f) => f.key);
+  assert.equal(keys.includes('unfound'), false, 'line-level PO must suppress No matched PO');
 });
 
 test('cartonFlags stays silent on the normal case', () => {
@@ -293,8 +285,9 @@ test('cartonRecordMeta identifies the row and omits unset ids', () => {
 
 // ── Disposition truth (exceptions outrank lifecycle.done) ───────────────────
 
-test('cartonDisposition: received + UNFOUND + triage + 0 lines is NOT complete', () => {
-  // Screenshot failure mode: lifecycle says received/done, but exceptions remain.
+test('cartonDisposition: received + linked PO + triage + 0 lines is NOT complete', () => {
+  // Lifecycle says received/done, but triage/no-lines still block settled.
+  // Stale UNFOUND does not win when a PO is linked — lead with Needs action.
   const d = cartonDisposition(RECEIVING, {
     expected: 0,
     received: 0,
@@ -302,22 +295,35 @@ test('cartonDisposition: received + UNFOUND + triage + 0 lines is NOT complete',
     lines_complete: 0,
   });
   assert.equal(d.settled, false, 'must never show work-complete while exceptions hold');
-  assert.equal(d.state, 'unmatched');
-  assert.ok(d.exceptions.some((e) => e.key === 'unfound'));
+  assert.equal(d.state, 'needs_action');
+  assert.equal(d.exceptions.some((e) => e.key === 'unfound'), false);
   assert.ok(d.exceptions.some((e) => e.key === 'triage_incomplete'));
   assert.ok(d.exceptions.some((e) => e.key === 'no_lines'));
   assert.equal(d.lifecycle.done, true, 'lifecycle can still be done — disposition overrides');
 });
 
-test('cartonExceptions: opened with lines but UNFOUND still flags unmatched', () => {
+test('cartonExceptions: UNFOUND with no PO still flags unmatched', () => {
   const ex = cartonExceptions(
-    { ...RECEIVING, triage_complete: true },
+    {
+      ...RECEIVING,
+      triage_complete: true,
+      zoho_purchaseorder_id: null,
+      zoho_purchaseorder_number: null,
+    },
     { expected: 1, received: 1, lines: 1, lines_complete: 1 },
   );
   assert.deepEqual(
     ex.map((e) => e.key),
     ['unfound'],
   );
+});
+
+test('cartonExceptions: linked PO suppresses unmatched even when pairing is UNFOUND', () => {
+  const ex = cartonExceptions(
+    { ...RECEIVING, triage_complete: true },
+    { expected: 1, received: 1, lines: 1, lines_complete: 1 },
+  );
+  assert.deepEqual(ex.map((e) => e.key), []);
 });
 
 test('cartonDisposition: settled only when lifecycle.done and zero exceptions', () => {

@@ -59,6 +59,12 @@ export interface GlobalSearchDropdownProps {
   onRemoveRecent: (id: string) => void;
   onClearRecents: () => void;
   onNavigateHit: (hit: AiSearchHit, event: ReactMouseEvent) => void;
+  /**
+   * Pointer entered/left the portaled panel. Host uses these with field hover
+   * to keep empty-query recents open across the anchor → portal bridge.
+   */
+  onHoverStart?: () => void;
+  onHoverEnd?: () => void;
 }
 
 const GLASS =
@@ -87,6 +93,8 @@ export function GlobalSearchDropdown({
   onRemoveRecent,
   onClearRecents,
   onNavigateHit,
+  onHoverStart,
+  onHoverEnd,
 }: GlobalSearchDropdownProps) {
   const presence = useMotionPresence(framerPresence.dropdownPanel);
   const transition = useMotionTransition(framerTransition.dropdownOpen);
@@ -116,6 +124,8 @@ export function GlobalSearchDropdown({
             exit={presence.exit}
             transition={transition}
             className={GLASS}
+            onMouseEnter={onHoverStart}
+            onMouseLeave={onHoverEnd}
             // Keep the input focused when a row is clicked (prevents a blur
             // that would close the dropdown before navigation). Skip for
             // buttons/links so Clear / remove affordances work on first click.

@@ -34,8 +34,12 @@ export const WORKBENCH_GUTTERS = 'mx-auto w-full max-w-[1440px] min-w-0 px-4 sm:
  *  Unbox / Triage beside a floated scan dock use this same column so the 40px
  *  band face shares a Y row with `receivingScanBandClass` (panel outer `m-2`). */
 export const WORKBENCH_CHROME_COLUMN = cn(WORKBENCH_GUTTERS, 'py-2');
-/** Scroll-body column: KPI strip (scrolls away) then the framed ops table. */
-export const WORKBENCH_BODY_COLUMN = cn('relative flex flex-col', WORKBENCH_GUTTERS, 'pb-8 pt-4');
+/**
+ * Scroll-body column: KPI strip (scrolls away) then the framed ops table.
+ * `pt-2` + chrome `py-2` = 1rem chrome→KPI, matching the KPI wrapper’s `mb-4`
+ * so both seams around the strip are equal.
+ */
+export const WORKBENCH_BODY_COLUMN = cn('relative flex flex-col', WORKBENCH_GUTTERS, 'pb-8 pt-2');
 
 /**
  * Bounded host for a framed ops table that sits **under the KPI strip**

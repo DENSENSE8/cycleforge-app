@@ -986,7 +986,11 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
                 : 'bg-surface-canvas/40'
               : 'bg-surface-card'
           : (selectMode ? isChecked : isSelected)
-            ? QUEUE_ROW.selectedClass
+            ? // Airtable skin: fill only (selectedLedgerClass). List/board keeps
+              // the inset ring — ring fights cell rules under gridSkin.
+              gridSkin
+              ? QUEUE_ROW.selectedLedgerClass
+              : QUEUE_ROW.selectedClass
             : stripeRow
               ? opaqueStripe
                 ? 'bg-surface-canvas'

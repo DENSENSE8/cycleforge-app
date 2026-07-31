@@ -2,7 +2,7 @@
  * Source guard: WorkbenchChromeHeader density="band" stays a single-surface
  * 40px face (h-10 + p-0.5 inset, flat TabSwitch rail — no nested border/shadow
  * card). TabSwitch size="sm" uses concentric nestedCorner + nav caption type.
- * Cascade: Unbox + Triage on band; Incoming stays default hug.
+ * Cascade: every lifecycle WorkbenchChromeHeader consumer uses density="band".
  *
  * Run: node --test --import tsx \
  *        src/components/dashboard/workbench-chrome-band.guard.test.ts
@@ -14,6 +14,33 @@ import { join } from 'node:path';
 import { describe, it } from 'node:test';
 
 const ROOT = process.cwd();
+
+/** Every mount that must pass density="band" (house standard). */
+const BAND_CONSUMERS = [
+  'src/components/receiving/unbox/UnboxWorkspaceHeader.tsx',
+  'src/components/receiving/triage/TriageWorkspaceHeader.tsx',
+  'src/components/sidebar/receiving/incoming/IncomingWorkspaceHeader.tsx',
+  'src/components/sidebar/receiving/HistoryWorkspaceHeader.tsx',
+  'src/components/dashboard/OutboundWorkspaceHeader.tsx',
+  'src/components/packer/PackWorkspaceHeader.tsx',
+  'src/components/tech/testing/TestingWorkspaceHeader.tsx',
+  'src/components/tech/shipping/ShippingWorkspaceHeader.tsx',
+  'src/components/outbound/labels/LabelsWorkspaceHeader.tsx',
+  'src/components/outbound/ready/ReadyWorkspaceHeader.tsx',
+  'src/components/fba/FbaWorkspaceHeader.tsx',
+  'src/components/walk-in/WalkInDeskHeader.tsx',
+  'src/components/dashboard/receiving/DashboardReceivingHeader.tsx',
+  'src/components/repair/RepairWorkspaceHeader.tsx',
+  'src/components/photos/PhotoLibraryWorkspaceHeader.tsx',
+  'src/components/labels/LabelsProductsWorkspaceHeader.tsx',
+  'src/components/support/zendesk/SupportTicketsBoard.tsx',
+  'src/components/support/orders/SupportOrdersBoard.tsx',
+  'src/components/receiving/pickup/PickupWorkspace.tsx',
+  'src/components/products/catalog/ProductsCatalogWorkspace.tsx',
+  'src/features/review/pairing/ReviewPairingTable.tsx',
+  'src/features/review/ReviewPackingTable.tsx',
+  'src/features/review/catalog-link/ReviewCatalogLinkTable.tsx',
+] as const;
 
 function src(rel: string): string {
   return readFileSync(join(ROOT, rel), 'utf8');
@@ -68,24 +95,16 @@ describe('TabSwitch size="sm" (band companion)', () => {
 });
 
 describe('band cascade consumers', () => {
-  it('Unbox uses density="band" without leading tab icons', () => {
+  for (const rel of BAND_CONSUMERS) {
+    it(`${rel} uses density="band"`, () => {
+      const body = code(src(rel));
+      assert.match(body, /density=["']band["']/);
+    });
+  }
+
+  it('Unbox has no leading tab icons', () => {
     const unbox = code(src('src/components/receiving/unbox/UnboxWorkspaceHeader.tsx'));
-    assert.match(unbox, /density=["']band["']/);
     assert.doesNotMatch(unbox, /\bUNBOX_TAB_ICON\b/);
     assert.doesNotMatch(unbox, /\bicon:\s*UNBOX_TAB_ICON/);
-  });
-
-  it('Triage uses density="band"', () => {
-    const triage = code(
-      src('src/components/receiving/triage/TriageWorkspaceHeader.tsx'),
-    );
-    assert.match(triage, /density=["']band["']/);
-  });
-
-  it('Incoming stays default hug (no density="band")', () => {
-    const incoming = code(
-      src('src/components/sidebar/receiving/incoming/IncomingWorkspaceHeader.tsx'),
-    );
-    assert.doesNotMatch(incoming, /density=["']band["']/);
   });
 });

@@ -66,7 +66,9 @@ export function isContactFieldValid(field: ContactFieldKey, data: RepairFormData
   }
 }
 
-/** Seed the form state from optional initial data (price defaults to 130). */
+/** Seed the form state from optional initial data.
+ *  Price starts empty — the catalog projection (or staff override) must supply it.
+ *  An invented default like `130` is an audit smell and is intentionally gone. */
 export function buildInitialFormData(initialData?: Partial<RepairFormData>): RepairFormData {
   return {
     product: {
@@ -82,7 +84,7 @@ export function buildInitialFormData(initialData?: Partial<RepairFormData>): Rep
       email: initialData?.customer?.email || '',
     },
     serialNumber: initialData?.serialNumber || '',
-    price: initialData?.price || '130',
+    price: initialData?.price || '',
     notes: initialData?.notes || '',
     assignedTechId: initialData?.assignedTechId ?? null,
     assignedTechName: initialData?.assignedTechName || '',

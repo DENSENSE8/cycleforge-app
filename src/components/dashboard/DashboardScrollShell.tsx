@@ -44,7 +44,11 @@ export function DashboardScrollShell({ children, className, chrome }: DashboardS
 
   return (
     <DashboardScrollContext.Provider value={scrollRef}>
-      <div className="relative flex min-h-0 min-w-0 flex-1 flex-col bg-surface-canvas">
+      {/* No ground fill here — `appContentShellClass` (the `<main>`) owns the
+          single page ground, and under receiving the context host paints the
+          wash on top of it. An opaque canvas fill at this level covered that
+          wash and left a tone seam at the rail edge. */}
+      <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
         {chrome ? (
           <div
             className="relative shrink-0"
@@ -58,7 +62,7 @@ export function DashboardScrollShell({ children, className, chrome }: DashboardS
           ref={scrollRef}
           data-testid="dashboard-scroll"
           className={cn(
-            'relative flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto overflow-x-clip bg-surface-canvas',
+            'relative flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto overflow-x-clip',
             className,
           )}
         >

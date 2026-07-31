@@ -7,9 +7,11 @@
  * Presentational: the host owns storage (useSearchRecents) and placement (the
  * header AnchoredLayer). Rows are real links to each recent's re-run target
  * (recentRerunHref) so middle-click / new-tab behave, with an `onSelect` hook
- * so the host can also set the header value + close. Single-line anatomy:
- * query left, relative time right; the remove affordance is a sibling button
- * (never nested in the link).
+ * so the host can also set the header value + close. Anatomy: when a recent
+ * resolved to an order, title is primary and the query (order # / tracking)
+ * sits on a quiet secondary line; otherwise the query is primary. Relative
+ * time sits right. The remove affordance is a sibling button (never nested in
+ * the link).
  */
 
 import Link from 'next/link';
@@ -47,9 +49,9 @@ export function SearchRecentsDropdown({
 
   return (
     <div className={className}>
-      <div className="flex items-center justify-between px-3 pb-1 pt-2">
-        <p className="flex items-center gap-1.5 text-role-eyebrow uppercase tracking-widest text-text-faint">
-          <Clock className="h-3 w-3" />
+      <div className="flex items-center justify-between px-3 pb-0.5 pt-1.5">
+        <p className="flex items-center gap-1 text-role-micro uppercase tracking-widest text-text-faint">
+          <Clock className="h-2.5 w-2.5" />
           Recent searches
         </p>
         {onClearAll && (
@@ -61,7 +63,7 @@ export function SearchRecentsDropdown({
               e.stopPropagation();
               onClearAll();
             }}
-            className="-my-0.5 text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint hover:text-text-muted"
+            className="-my-0.5 text-role-micro font-semibold uppercase tracking-widest text-text-faint hover:text-text-muted"
           >
             Clear
           </button>
@@ -70,6 +72,10 @@ export function SearchRecentsDropdown({
       <ul className="divide-y divide-border-hairline">
         {recents.map((entry, index) => {
           const active = asOptions && index === activeIndex;
+          const orderTitle =
+            entry.topHit?.entityType === 'order' && entry.topHit.title.trim()
+              ? entry.topHit.title.trim()
+              : null;
           return (
             <li key={entry.id} className="group relative flex items-center">
               <Link
@@ -81,24 +87,28 @@ export function SearchRecentsDropdown({
                 className={cn(
                   'flex min-w-0 flex-1 items-center gap-3 px-3 py-1.5 text-left hover:bg-surface-hover',
                   active && 'bg-blue-50 ring-1 ring-inset ring-blue-400',
-                  onRemove && 'pr-9',
+                  onRemove && 'pr-7',
                 )}
               >
                 <span className="flex h-5 w-5 shrink-0 items-center justify-center">
                   <Search className="h-4 w-4 text-text-faint" />
                 </span>
-                <span className="min-w-0 flex-1 truncate text-role-caption font-semibold text-text-default">
-                  {entry.query}
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-role-caption font-semibold text-text-default">
+                    {orderTitle ?? entry.query}
+                  </span>
+                  {orderTitle ? (
+                    <span className="mt-0.5 block truncate text-role-micro font-medium text-text-faint">
+                      {entry.query}
+                    </span>
+                  ) : null}
                 </span>
                 <span className="shrink-0 text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint">
                   {formatRelativeTime(entry.timestamp)}
                 </span>
-                <ChevronRight
-                  className={cn(
-                    'h-3.5 w-3.5 shrink-0 text-text-faint transition-opacity',
-                    onRemove ? 'opacity-0 group-hover:opacity-0' : 'opacity-0 group-hover:opacity-100',
-                  )}
-                />
+                {!onRemove && (
+                  <ChevronRight className="h-3.5 w-3.5 shrink-0 text-text-faint opacity-0 transition-opacity group-hover:opacity-100" />
+                )}
               </Link>
               {onRemove && (
                 <IconButton
@@ -110,7 +120,7 @@ export function SearchRecentsDropdown({
                     e.stopPropagation();
                     onRemove(entry.id);
                   }}
-                  className="absolute right-2 text-text-faint opacity-0 transition-opacity hover:bg-surface-sunken hover:text-text-muted group-hover:opacity-100"
+                  className="absolute right-1 text-text-faint opacity-0 transition-opacity hover:bg-surface-sunken hover:text-text-muted group-hover:opacity-100"
                 />
               )}
             </li>

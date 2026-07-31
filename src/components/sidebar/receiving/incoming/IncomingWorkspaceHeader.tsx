@@ -144,6 +144,7 @@ export function IncomingWorkspaceHeader({
   return (
     <>
       <WorkbenchChromeHeader
+        density="band"
         tabs={tabs}
         activeTab={activeSource}
         onTabChange={setSource}
@@ -249,7 +250,7 @@ export function IncomingWorkspaceHeader({
                 ariaLabel="Sort incoming POs"
               />
             }
-            fields={<GridFieldsMenu tableId="receiving" columns={INCOMING_GRID_COLUMNS} />}
+            fields={<GridFieldsMenu tableId="incoming" columns={INCOMING_GRID_COLUMNS} />}
             actions={
               <IncomingChromeActions
                 onImportZoho={() => {

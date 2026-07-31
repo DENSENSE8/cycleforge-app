@@ -168,6 +168,7 @@ export function ReviewPackingTable({ onOpenRow, onCloseRow }: ReviewPackingTable
         chrome={
           <div className={WORKBENCH_CHROME_COLUMN}>
             <WorkbenchChromeHeader
+              density="band"
               tabs={PACKING_TABS}
               activeTab={tab}
               onTabChange={setTab}

@@ -448,6 +448,10 @@ export const AUDIT_ACTION = {
   ORDER_DOCUMENT_ATTACH: 'order.document.attach',
   ORDER_DOCUMENT_FETCH:  'order.document.fetch',
   ORDER_DOCUMENT_DELETE: 'order.document.delete',
+  /** JIT pack Phase 1 — print bundle at pack-confirm (PrintNode or browser fallback). */
+  ORDER_DOCUMENT_BUNDLE_PRINT: 'order.document.bundle_print',
+  /** Explicit reprint of an already-printed pack bundle (never re-buys postage). */
+  ORDER_DOCUMENT_BUNDLE_REPRINT: 'order.document.bundle_reprint',
   // Orders-exceptions reconciliation sweep (writes orders + orders_exceptions)
   ORDERS_EXCEPTIONS_SYNC: 'orders_exceptions.sync',
   /** Manual tracking edit on a single open `orders_exceptions` row. */

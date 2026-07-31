@@ -29,6 +29,7 @@ fields, pick the presentation kind and import from the SoT below (Kinetic Ledger
 | Focus affordance | `src/design-system/tokens/focus-ring.ts` (`focusRing(archetype, tone)`) |
 | Depth elevation (flat · raised · overlay) | `src/design-system/tokens/shadows.ts` (`elevationClass`) |
 | Ops table / spreadsheet surface shell | `src/design-system/tokens/table-surface.ts` (`TABLE_SURFACE_*` + `TABLE_FROZEN_HEADER_CLASS`) |
+| Sticky LedgerGrid column-header row (select-all · sort · frozen · tip) | `@/design-system/components/grid` `LedgerGridColumnHeader` + layout API — Receiving / Incoming adapters thin; **Orders deferred** (resize/reorder recipe). Inner label: `GridHeaderLabel` |
 | Grid column justification (end vs start) | `@/design-system/components/grid` `resolveGridColumnAlign` / `gridCellAlignClass` / `gridHeaderCellAlignClass` — see **Grid column justification** below |
 | Grid identity columns (freeze · lock · never in-cell edit) | `@/design-system/components/grid` `GRID_IDENTITY_COLUMN_KEYS` / `isGridColumnInCellEditable` |
 | Grid column visibility (per-staff) | `@/design-system/components/grid` `useGridColumnVisibility` / `useGridFields` + `GridFieldsMenu` — see **Grid column visibility + sort** below |
@@ -38,17 +39,17 @@ fields, pick the presentation kind and import from the SoT below (Kinetic Ledger
 | Surface / box shell | `Panel` (generic) · `SectionCard` (monitor) · `CardShell` (rows) — never hand-roll |
 | Honest absence (missing fact) | `GridCellDash` / ledger `fallback` default `—` — never invent `"N/A"` on ledger/grid primitives |
 | Photo gallery viewer | `@/components/shipped/photo-gallery` — `usePhotoGallery` + `PhotoViewerPortal` → `PhotoViewerModal` (composed launcher: `PhotoGallery` / `launcherLayout`). Never a page-local lightbox or `createPortal`+`AnimatePresence` fork around the modal. Read surfaces pass `{ url }` only (omit numeric `id` / upload targets so delete/upload stay off). |
-| Carton read surface | `/carton/[id]` → `CartonInspector` → `inspection/CartonInspectionPage` + `carton-inspector-model.ts`. Read model + atoms only (D6 / `pattern-evolution.md`). Photos = header control → viewer SoT above. Work escape = one quiet `openInUnboxHref` control — never `"Open in Unbox"` spam on findings/header. IA: disposition header; col1 handling·activity·record; col2 findings. Not Station Workbench — recipe: `display/carton-read.md`. |
+| Carton read surface | `/carton/[id]` → `CartonInspector` → `inspection/CartonInspectionPage` + `carton-inspector-model.ts`. Read model + atoms only (D6 / `pattern-evolution.md`). Photos = thumbnail strip → viewer SoT above. Work escape = one quiet `openInUnboxHref` control — never `"Open in Unbox"` spam on findings/header. IA: disposition header; col1 contents·activity·record; col2 pipeline stepper·history·findings. Linked PO suppresses Unmatched. Not Station Workbench — recipe: `display/carton-read.md`. |
 | Dialog / AlertDialog | `@/design-system/components/Dialog` · `AlertDialog` · `requestConfirm` / `ConfirmDialogHost` — never hand-roll `fixed inset-0` scrims for new modals; station floor confirms stay on `ConfirmSheet` |
 | Switch / Checkbox | `@/design-system/primitives` `Switch` / `Checkbox` |
 | Dropdown / Context menu | `@/design-system/primitives` `DropdownMenu` / `ContextMenu` |
-| App chrome / canvas / wash / work-canvas depth | `src/design-system/tokens/app-surface.ts` + `appContentShellClass` (`appWorkCanvasEdgeClass` owns the depth-edge hairline on every desktop page) |
+| App chrome / canvas / wash / work-canvas depth | `src/design-system/tokens/app-surface.ts` + `appContentShellClass` (`appWorkCanvasEdgeClass` owns the depth-edge hairline on every desktop page). Receiving rail+workspace share `CONTEXT_PANEL_HOST` ground (`context-panel-column.ts`); Unbox/Triage under that host use `appWorkCanvasLayoutClass` (no full-bleed card sibling) |
 | Global detail-stack overlay shell | `@/design-system/shells/detail-stack` (`DETAIL_STACK_LAYOUT`, `DETAIL_STACK_RESIZE`, `detailStackAsideClassName`, `detailStackAsideStyle(widthPx?)`, …) |
 | Right-edge slot occupancy + modality | `RightRailHost` + `src/lib/right-rail/store.ts` — see **Right-rail modality** below |
 | Keyboard ownership (Escape / ambient hotkeys) | `src/lib/overlay-stack/store.ts` (+ `useRegisterOverlay` / `useAnyOverlayOpen`) — see **Escape ownership** below |
 | Station entity-context header | `@/components/station/entity-context` (`CartonContextCard` + `StationContextBar`) — Unbox / Triage / Testing / Shipping active-order |
 | Workbench chrome scoped search | `@/design-system/primitives/ToolbarSearchToggle` — collapsed Search icon; expands on hover / focus / click (or when query non-empty); composes `SearchField`. Never mount an always-open `SearchField` in a `WorkbenchChromeHeader` `search` slot **when search refines an on-screen list**. **Entry-path exceptions:** `/ops/photos` (always-open chrome field) and `/search` (global header stays expanded + synced to `?q=`) — rationale in `ui-design-system.md` → Scoped search chrome. |
-| Station composer dock (chat-style notes) | `@/design-system/primitives` `StationComposerDock` — Unbox overview carton notes **and** Unbox/Support/Testing Ticket reply (`SupportTicketComposerDock` → `SupportChatComposer` `variant="station-dock"`) in the dock band; primary CTA rides in `trailingAction` as `<StationTerminalDock embedded>` (bare `SlicedActionDock` track — `slicedActionDockWrapperClass()` is the placement SoT; Send suppressed, Enter still commits). One shell, never sticky composer + a second CTA row. Never hand-roll a mid-canvas ChatGPT prompt shell for station notes/replies. |
+| Station composer dock (chat-style notes) | `@/design-system/primitives` `StationComposerDock` — Unbox overview carton notes **and** all ticket reply chrome (`SupportChatComposer`: inline under thread **and** `variant="station-dock"` via `SupportTicketComposerDock`). Same elevated white shell + auto-grow height; ticket footer = VisibilityToggle · Library (`+`) · Attach (paperclip) · Send (or `trailingAction` as `<StationTerminalDock embedded>` — Send suppressed, Enter still commits). Placement SoT for floating docks: `slicedActionDockWrapperClass()`. Never hand-roll a second sticky/amber ticket composer beside this shell. |
 | Resizable document PDF slide-over | `@/design-system/components/DocumentSlideOver` (+ `DocumentPreviewFrame`, `useHorizontalEdgeResize`) — Labels Print, Testing manuals |
 | Horizontal pane edge resize grip | `@/design-system/components/HorizontalEdgeResizeHandle` (+ `useHorizontalEdgeResize`) — receiving context rail + non-modal detail inspectors (`RightRailHost`); never hand-roll a second pill/strip for the same job |
 | Recent-rail scrollport / more-below lip | `@/components/sidebar/rail-shell/SidebarRailScrollport` (+ `useMoreBelow` / `SCROLL_MORE_BELOW_CLASS` in `tokens/scroll-edge.ts`) — station + SidebarShell-hosted recent feeds; never hand-roll a second bottom fade. `SidebarRailShell` is content-sized and does **not** own vertical scroll |
@@ -57,8 +58,9 @@ fields, pick the presentation kind and import from the SoT below (Kinetic Ledger
 | Station page + L2 mode nav icons | `src/lib/nav/station-nav-icons.ts` + semantic wrappers `src/components/icons/stations.tsx` — mode glyphs unique via `MODE_ICON_GLYPH_KEYS` |
 | Top-band chrome icon **display** (glyph box) | `src/components/layout/header-shell.ts` (`TOP_CHROME_ICON_GLYPH` for GlobalHeader Mode / Recents / WO / goal) — native SVG stroke only; do not layer `navIconStrokeClass` on header chips (muddies dense glyphs). Glyph *identity* stays Icons / station-nav |
 | L2 Mode + Recents (page modes + cross-page MRU) | `HeaderModeSwitcher` + `HeaderRecentsSwitcher` in `GlobalHeader` — data = `SIDEBAR_PAGE_NAV` / `useSidebarModeNav` / `useRecentModes`. Never a sidebar pill-band twin; no MRU chips in `MasterNavHeader`. |
-| Stations Floor / Desk (spine L1 sub-eyebrows) | `STATION_GROUPS` + required `stationGroup` on `kind: 'station'` rows in `sidebar-navigation.ts`; `SidebarNavList` renders static micro-eyebrows. Floor = pipeline scan benches; Desk = Review/Support. Guard: `station-nav-groups.guard.test.ts`. Law: `display/workbench.md`. |
-| Main Overview / Library (spine L1 sub-eyebrows) | `MAIN_GROUPS` + required `mainGroup` on `kind: 'main'` rows in `sidebar-navigation.ts`; `SidebarNavList` nests micro-eyebrows. Overview = day boards; Library = media/catalog. Guard: `main-nav-groups.guard.test.ts`. Law: `display/workbench.md`. |
+| Stations Floor / Desk (spine section drills) | `STATION_GROUPS` + required `stationGroup` on `kind: 'station'` rows in `sidebar-navigation.ts`; membership via `SPINE_DRILLS` / `spineDrillIdForPage`. Floor = pipeline scan benches; Desk = Review/Support. Type: page/mode destinations = `text-role-caption` (see spine type ladder in `display/workbench.md`). Guard: `station-nav-groups.guard.test.ts`. |
+| Main Overview / Library (spine section drills) | `MAIN_GROUPS` + required `mainGroup` on `kind: 'main'` rows in `sidebar-navigation.ts`; membership via `SPINE_DRILLS` / `spineDrillIdForPage`. Overview = day boards; Library = catalog (Media is top-pinned). Type: same caption destinations + idle modes `text-text-default` (active mode blue). Guard: `main-nav-groups.guard.test.ts`. Law: `display/workbench.md`. |
+| MasterNav spine type ladder | Identity `MasterNavHeader` = `text-role-body`; page/drill/mode labels = `text-role-caption` (pages semibold, modes medium); counts = `text-role-micro`. Never sentence-case `text-role-eyebrow` for destinations. Idle pages whisper muted; idle modes stay default ink. Law: `display/workbench.md`. Guard: `main-nav-groups.guard.test.ts`. |
 | Stock drill-in (spine) | `STOCK_DRILL` + `kind: 'stock'` rows; root chevron row → back + Products → Inventory → Warehouse. Stations stay static (no drill). Motion: `framerPresence.spineDrill` / `framerTransition.spineDrill` (opacity-only ≤150ms; no horizontal slide). Auto-drill must not steal focus. Guard: `main-nav-groups.guard.test.ts`. Brief: `docs/todo/spine-drill-in-vercel-GEMINI-RESEARCH-BRIEFING.md`. Law: `display/workbench.md` + `display/motion-crossfade.md`. |
 
 If a facet has no SoT yet, **add or extend one** (pattern evolution) — do not fork a page-local map “just for this screen.”
@@ -152,9 +154,10 @@ If a facet has no SoT yet, **add or extend one** (pattern evolution) — do not 
   MasterNav) is a **resident push column** — it dictates permanent workspace
   layout, so opening it moves the frame. Right-rail **record inspectors** are
   **non-modal floats** (`modal={false}`): same inset card, no scrim, no layout
-  squeeze. Never push/squeeze a dense LedgerGrid or station column for a
+  squeeze.   Never push/squeeze a dense LedgerGrid or station column for a
   transient peek — at 1440px the arithmetic does not permit it. Modal remains
-  reserved for blocking wizards and destructive confirms (claims, delete, …).
+  reserved for blocking wizards and destructive confirms (delete, …) — **not**
+  Unbox Claim (station push, same family as Ticket).
 - **One owner:** `RightRailHost` renders exactly the top occupant of
   `src/lib/right-rail/store.ts`. Panels register via `useRegisterRightPanel` /
   `DetailStackRailRegistrar` and own **no** geometry. Never add a private
@@ -170,27 +173,33 @@ If a facet has no SoT yet, **add or extend one** (pattern evolution) — do not 
   `z-panel` workspace overlays — elevated z without the scrim). Receiving details
   also pass `closeOnOutsideClick` so an invisible dismiss layer restores click-off
   close without darkening; dashboard leaves that flag off so the grid stays live.
-  **Unbox Ticket** is not a RightRailHost occupant — it is a station-scoped
-  **right-edge push** column (`ReceivingTicketStack`) that reuses detail-stack
-  **surface** tokens (`DETAIL_STACK_ASIDE_SURFACE` / rounded inset card) while
-  squeezing the Unbox workbench in-flow. **Single host ⇒ mutual exclusion with
-  receiving details:** opening Ticket suspends `detail:receiving` (and opening
-  More details clears `?ticketView=1`); do not nest both as peers.
-- **Do not "fix" a non-modal occupant by adding a focus trap.** The host has never
+  **Unbox Ticket** and **Unbox Claim** are not RightRailHost occupants — they are
+  station-scoped **right-edge push** columns (`ReceivingTicketStack` /
+  `ReceivingClaimStack`) that reuse detail-stack **surface** tokens
+  (`DETAIL_STACK_ASIDE_SURFACE` / rounded inset card) while squeezing the Unbox
+  workbench in-flow. **One right-edge secondary surface at a time:** Ticket
+  (`?ticketView=1`), Claim (`?claimView=1`), and `detail:receiving` are mutually
+  exclusive — opening any one clears/suspends the others; do not nest them as peers.- **Do not "fix" a non-modal occupant by adding a focus trap.** The host has never
   installed one, so `aria-modal="true"` was a claim the DOM did not honor; non-modal
   markup is the honest form.
 - **Non-modal occupants are resizable** via `DETAIL_STACK_RESIZE` + `useHorizontalEdgeResize`
   + `HorizontalEdgeResizeHandle` (`edge: 'leading'`, `placement: 'outset'` — grip outside the
   left border; aside uses `overflow-visible` with an inner clip shell, same as the receiving
   rail). The width cap is derived, not taste: viewport − (sidebar + the grid's own min content
-  width). Modal occupants keep the fixed `DETAIL_STACK_LAYOUT.widthPx`. Ticket push reuses
-  the same resize grammar with a station-scoped storage key /
-  `maxWidthPad` tuned to leave Unbox usable.
+  width).   Modal occupants keep the fixed `DETAIL_STACK_LAYOUT.widthPx`. Ticket /
+  Claim push reuse the same resize grammar with station-scoped storage keys,
+  absolute `maxWidth` (chat / wizard ceilings), and `maxWidthPad` tuned to leave
+  Unbox usable; dismiss uses the same edge `onCollapse` chevron as the receiving
+  context rail; Ticket closed + linked shows an in-flow expand strip
+  (`ReceivingTicketExpandControl` / `CONTEXT_PANEL_COLLAPSE_STRIP_CLASS`).
+  **Gutter is host padding** (`TICKET_PUSH_HOST_PAD_CLASS` = `py-2 pr-2` on the
+  LineEditPanel overflow host) — not child margin — because `overflow-hidden`
+  clips trailing margins and made the card look flush to the display edge.
 - **A queue-processing inspector registers a STABLE occupant id** (`detail:order`,
   `detail:receiving` — not `detail:order:<id>` / `detail:receiving:<id>`) so
   record→record navigation swaps content in place instead of playing exit-then-enter
-  with an empty slot between. See `display/motion-crossfade.md`. (Ticket is push, not
-  a rail occupant id.)
+  with an empty slot between. See `display/motion-crossfade.md`. (Ticket / Claim
+  are push, not rail occupant ids.)
 
 ## Escape ownership (overlay stack)
 

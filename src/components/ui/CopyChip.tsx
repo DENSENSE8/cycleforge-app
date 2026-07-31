@@ -340,6 +340,9 @@ export const OrderIdChip = ({
     dense={dense}
     truncateDisplay={truncateDisplay}
     fitDisplayWidth={fitDisplayWidth}
+    // Empty → `'----'` face (resolveChipDisplay); disable copy so the button
+    // stays full-opacity instead of the no-value disabled fade.
+    disableCopy={isEmptyDisplayValue(value)}
   />
 );
 
@@ -421,7 +424,9 @@ export const TrackingChip = ({
     tone="tracking"
     icon={showIcon ? undefined : null}
     width={width}
-    disableCopy={disableCopy}
+    // Empty → `'----'` face; disable copy so the button stays full-opacity
+    // instead of the no-value disabled fade.
+    disableCopy={disableCopy || isEmptyDisplayValue(value)}
     disableTooltip={disableTooltip}
     outerPad={showIcon ? 'chip' : 'flush'}
     fitDisplayWidth={fitDisplayWidth}

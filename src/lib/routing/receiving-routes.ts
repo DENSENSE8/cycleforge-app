@@ -83,6 +83,10 @@ export const UNBOX_ROUTE_PARAMS = defineRouteParams({
     unboxview: paramEnum(['recent', 'queue', 'viewed'] as const),
     /** Inline support-ticket editor toggle — line-scoped, never rides a mode switch. */
     ticketView: paramFlag,
+    /** Unbox Claim push column — mutually exclusive with ticketView. */
+    claimView: paramFlag,
+    /** Claim wizard tab when claimView is on — omit / create = New ticket; link = Link existing. */
+    claimMode: paramEnum(['create', 'link'] as const),
     /** Server ORDER BY for the History tab (`UnboxWorkspaceHeader` reads + writes it). */
     sort: historySortParam(),
     /** Stock-image preview for the photo peek — no NAS captures needed. */

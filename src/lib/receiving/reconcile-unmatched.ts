@@ -40,6 +40,7 @@ import { resolveReceivingExceptionsByReceivingId } from '@/lib/tracking-exceptio
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import { claimOrAbsorbZohoPoShell } from '@/lib/receiving/claim-zoho-po-shell';
 import { attachBoxToReceiving } from '@/lib/receiving/attach-box';
+import { reparentReceivingCartonPhotos } from '@/lib/receiving/reparent-carton-photos';
 import type { TxClient } from '@/lib/receiving/relink-po';
 import {
   canonicalizeTrackingKey,
@@ -294,7 +295,8 @@ export async function reconcileUnmatchedReceiving(
       promoted = true;
       winningReceivingId = receivingId;
     } else if (claim.action === 'conflict') {
-      // Busy shell owns the PO — attach this box's tracking and re-parent scans.
+      // Busy shell owns the PO — attach this box's tracking, re-parent scans +
+      // photos, and dismiss the orphan from Unfound / Unbox Recent.
       const tracking = (rec.receiving_tracking_number || '').trim();
       if (tracking && orgId) {
         await attachBoxToReceiving({
@@ -309,24 +311,44 @@ export async function reconcileUnmatchedReceiving(
           );
         });
       }
-      await pool.query(
-        `UPDATE receiving_scans
-            SET receiving_id = $1, source = 'zoho_po'
-          WHERE receiving_id = $2
-            AND ($3::uuid IS NULL OR organization_id = $3::uuid)`,
-        [claim.shellReceivingId, receivingId, orgId],
-      ).catch(() => undefined);
-      try {
-        await pool.query(
-          `INSERT INTO unfound_overlay
-             (organization_id, source_kind, source_id, checked, checked_at)
-           VALUES ($1, 'unmatched_receiving', $2, TRUE, NOW())
-           ON CONFLICT (organization_id, source_kind, source_id) DO UPDATE
-             SET checked = TRUE,
-                 checked_at = COALESCE(unfound_overlay.checked_at, NOW())`,
-          [orgId, String(receivingId)],
-        );
-      } catch { /* best-effort */ }
+      if (orgId) {
+        await withTenantTransaction(orgId, async (client) => {
+          await client.query(
+            `UPDATE receiving_scans
+                SET receiving_id = $1, source = 'zoho_po'
+              WHERE receiving_id = $2 AND organization_id = $3`,
+            [claim.shellReceivingId, receivingId, orgId],
+          );
+          await reparentReceivingCartonPhotos(
+            {
+              orgId,
+              fromReceivingId: receivingId,
+              toReceivingId: claim.shellReceivingId,
+            },
+            client as unknown as TxClient,
+          );
+          await client.query(
+            `UPDATE receiving_unbox
+                SET opened_at = NULL, unboxed_at = NULL
+              WHERE receiving_id = $1 AND organization_id = $2`,
+            [receivingId, orgId],
+          );
+          await client.query(
+            `INSERT INTO unfound_overlay
+               (organization_id, source_kind, source_id, checked, checked_at)
+             VALUES ($1, 'unmatched_receiving', $2, TRUE, NOW())
+             ON CONFLICT (organization_id, source_kind, source_id) DO UPDATE
+               SET checked = TRUE,
+                   checked_at = COALESCE(unfound_overlay.checked_at, NOW())`,
+            [orgId, String(receivingId)],
+          );
+        }).catch((err) => {
+          console.warn(
+            `[reconcile-unmatched] orphan absorb side-effects failed receiving=${receivingId}:`,
+            err instanceof Error ? err.message : err,
+          );
+        });
+      }
 
       winningReceivingId = claim.shellReceivingId;
       promoted = true;

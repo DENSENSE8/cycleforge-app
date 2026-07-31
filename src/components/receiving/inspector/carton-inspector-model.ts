@@ -205,16 +205,33 @@ export interface CartonFlag {
   tone: 'info' | 'warning' | 'danger';
 }
 
-export function cartonFlags(receiving: CartonInspectorReceiving): CartonFlag[] {
+/**
+ * True when the carton (or any line) already points at a PO. Stale
+ * `pairing_state === 'UNFOUND'` must not outrank a real PO link on the read surface.
+ */
+function cartonHasLinkedPo(
+  receiving: CartonInspectorReceiving,
+  lines?: ReadonlyArray<Pick<CartonInspectorLine, 'zoho_purchaseorder_number'>> | null,
+): boolean {
+  if (present(receiving.zoho_purchaseorder_id) || present(receiving.zoho_purchaseorder_number)) {
+    return true;
+  }
+  return Boolean(lines?.some((l) => present(l.zoho_purchaseorder_number)));
+}
+
+export function cartonFlags(
+  receiving: CartonInspectorReceiving,
+  lines?: ReadonlyArray<Pick<CartonInspectorLine, 'zoho_purchaseorder_number'>> | null,
+): CartonFlag[] {
   const flags: CartonFlag[] = [];
 
   if (receiving.is_return) flags.push({ key: 'return', label: 'Return', tone: 'warning' });
   if (receiving.needs_test) flags.push({ key: 'needsTest', label: 'Needs test', tone: 'info' });
 
-  // UNFOUND = arrived without a matching PO. Load-bearing on a claim: it says
-  // the carton was never reconciled against an order.
+  // UNFOUND = arrived without a matching PO. Suppress when a PO is already linked
+  // (carton or line) — pairing_state can lag behind the link.
   const pairing = present(receiving.pairing_state);
-  if (pairing && pairing.toUpperCase() === 'UNFOUND') {
+  if (pairing && pairing.toUpperCase() === 'UNFOUND' && !cartonHasLinkedPo(receiving, lines)) {
     flags.push({ key: 'unfound', label: 'No matched PO', tone: 'warning' });
   }
 
@@ -339,30 +356,6 @@ export function cartonLifecycle(
 }
 
 /**
- * Collapse a single-actor, single-session lifecycle to one line.
- *
- * Four rows reading `Kai` four times with second precision is an audit log, not
- * an answer — and the audit log is the SECONDARY read (see the expander). When
- * one person did every step, the honest summary is who + the span.
- * Returns null when more than one actor touched it, because then the per-step
- * attribution IS the content and must not be hidden.
- */
-export function collapseProvenance(
-  milestones: CartonMilestone[],
-): { actor: string; firstAt: string; lastAt: string; steps: number } | null {
-  if (milestones.length < 2) return null;
-  const actors = new Set(milestones.map((m) => m.byName).filter((n): n is string => !!n));
-  if (actors.size !== 1) return null;
-  if (milestones.some((m) => !m.byName)) return null;
-  return {
-    actor: [...actors][0],
-    firstAt: milestones[0].at,
-    lastAt: milestones[milestones.length - 1].at,
-    steps: milestones.length,
-  };
-}
-
-/**
  * Anchor for the shared `WorkspaceTimelineTab` (the SAME timeline the Unbox
  * workbench mounts). Passing the PO id lets it use the Incoming-details cache
  * instead of a second carrier fetch.
@@ -412,10 +405,11 @@ export interface CartonException {
 export function cartonExceptions(
   receiving: CartonInspectorReceiving,
   totals: CartonInspectorTotals | undefined | null,
+  lines?: ReadonlyArray<Pick<CartonInspectorLine, 'zoho_purchaseorder_number'>> | null,
 ): CartonException[] {
   const out: CartonException[] = [];
   const pairing = present(receiving.pairing_state);
-  if (pairing && pairing.toUpperCase() === 'UNFOUND') {
+  if (pairing && pairing.toUpperCase() === 'UNFOUND' && !cartonHasLinkedPo(receiving, lines)) {
     out.push({
       key: 'unfound',
       label: 'No matched PO',
@@ -459,8 +453,8 @@ export function cartonExceptions(
  * Operator-facing disposition — the answer the header leads with.
  *
  * `complete` only when lifecycle says done AND there are zero exceptions.
- * Otherwise: unmatched (UNFOUND present), needs_action (other exceptions), or
- * in_progress (lifecycle not done, no blocking exceptions yet).
+ * Otherwise: unmatched (UNFOUND with no linked PO), needs_action (other
+ * exceptions), or in_progress (lifecycle not done, no blocking exceptions yet).
  */
 export type CartonDispositionState = 'complete' | 'unmatched' | 'needs_action' | 'in_progress';
 
@@ -477,9 +471,10 @@ export interface CartonDisposition {
 export function cartonDisposition(
   receiving: CartonInspectorReceiving,
   totals: CartonInspectorTotals | undefined | null,
+  lines?: ReadonlyArray<Pick<CartonInspectorLine, 'zoho_purchaseorder_number'>> | null,
 ): CartonDisposition {
   const lifecycle = cartonLifecycle(receiving);
-  const exceptions = cartonExceptions(receiving, totals);
+  const exceptions = cartonExceptions(receiving, totals, lines);
 
   if (exceptions.some((e) => e.key === 'unfound')) {
     return {

@@ -3,6 +3,7 @@ import { withAuth } from '@/lib/auth/withAuth';
 import { tenantQuery } from '@/lib/tenancy/db';
 import { getQcChecks } from '@/lib/neon/sku-catalog-queries';
 import { resolveLineCatalog } from '@/lib/receiving/line-catalog';
+import { listManualDocumentsForSku } from '@/lib/documents/manual-documents';
 
 /**
  * GET /api/receiving-lines/[id]/testing-bundle
@@ -12,6 +13,9 @@ import { resolveLineCatalog } from '@/lib/receiving/line-catalog';
  * crosswalk). Returns the checklist *template* steps and the SKU's paired
  * manuals (Vercel Blob `source_url`). Per-unit checklist results are loaded
  * separately via /api/serial-units/[id]/checklist once a serial is scanned.
+ *
+ * Phase 3 dual-read: prefer documents linked to SKU; merge product_manuals for
+ * pairs not yet promoted. Response includes optional `document_id`.
  *
  * `skuCatalogId: null` means the SKU has no catalog row yet — the panel shows a
  * "create catalog entry" action that hits the qc-checks POST (create-on-demand).
@@ -29,9 +33,6 @@ export const GET = withAuth(async (request, ctx) => {
   }
 
   try {
-    // [id] read gate: scope the line→catalog resolution to ctx.organizationId so
-    // a foreign tenant's lineId resolves to no row (404 below) instead of
-    // leaking that line's SKU/title and reaching its catalog.
     const resolved = await resolveLineCatalog(lineId, ctx.organizationId);
     if (!resolved) {
       return NextResponse.json({ ok: false, error: 'line not found' }, { status: 404 });
@@ -48,9 +49,6 @@ export const GET = withAuth(async (request, ctx) => {
       });
     }
 
-    // sku_catalog is tenant-owned — only resolve the row if it belongs to this
-    // org (404-on-mismatch behavior preserved below: a foreign catalog id yields
-    // no rows and the response falls back to the resolved line's own title).
     const cat = await tenantQuery<{ category: string | null; product_title: string | null }>(
       ctx.organizationId,
       `SELECT category, product_title FROM sku_catalog WHERE id = $1 AND organization_id = $2`,
@@ -58,13 +56,17 @@ export const GET = withAuth(async (request, ctx) => {
     );
     const category = cat.rows[0]?.category ?? null;
 
-    const [checklist, manuals] = await Promise.all([
-      // Execution view — only published steps reach the tech.
+    const [checklist, docManuals, legacyManuals] = await Promise.all([
       getQcChecks(resolved.skuCatalogId, category, { publishedOnly: true }),
-      // product_manuals has no organization_id column (child-scoped to
-      // sku_catalog) — GUC-wrap via tenantQuery and scope through its parent's
-      // org so a foreign catalog id can't surface another tenant's manuals.
-      tenantQuery(
+      listManualDocumentsForSku(ctx.organizationId, resolved.skuCatalogId),
+      tenantQuery<{
+        id: number;
+        display_name: string | null;
+        type: string | null;
+        source_url: string | null;
+        thumbnail_url: string | null;
+        file_name: string | null;
+      }>(
         ctx.organizationId,
         `SELECT pm.id, pm.display_name, pm.type, pm.source_url, pm.thumbnail_url, pm.file_name
            FROM product_manuals pm
@@ -75,6 +77,56 @@ export const GET = withAuth(async (request, ctx) => {
         [resolved.skuCatalogId, ctx.organizationId],
       ),
     ]);
+
+    const byPmId = new Map<
+      number,
+      {
+        id: number;
+        display_name: string | null;
+        type: string | null;
+        source_url: string | null;
+        thumbnail_url: string | null;
+        file_name: string | null;
+        document_id: number | null;
+      }
+    >();
+
+    for (const d of docManuals) {
+      const pmId = d.productManualId ?? d.documentId;
+      byPmId.set(pmId, {
+        id: pmId,
+        display_name: d.displayName,
+        type: d.manualType,
+        source_url: d.sourceUrl,
+        thumbnail_url: null,
+        file_name: d.fileName,
+        document_id: d.documentId,
+      });
+    }
+
+    for (const m of legacyManuals.rows) {
+      const existing = byPmId.get(Number(m.id));
+      if (existing) {
+        byPmId.set(Number(m.id), {
+          ...existing,
+          display_name: existing.display_name || m.display_name,
+          type: existing.type || m.type,
+          source_url: existing.source_url || m.source_url,
+          thumbnail_url: m.thumbnail_url,
+          file_name: existing.file_name || m.file_name,
+        });
+        continue;
+      }
+      byPmId.set(Number(m.id), {
+        id: Number(m.id),
+        display_name: m.display_name,
+        type: m.type,
+        source_url: m.source_url,
+        thumbnail_url: m.thumbnail_url,
+        file_name: m.file_name,
+        document_id: null,
+      });
+    }
 
     return NextResponse.json({
       ok: true,
@@ -92,7 +144,7 @@ export const GET = withAuth(async (request, ctx) => {
         pass_min: c.pass_min ?? null,
         pass_max: c.pass_max ?? null,
       })),
-      manuals: manuals.rows,
+      manuals: Array.from(byPmId.values()),
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'failed to load testing bundle';

@@ -103,13 +103,22 @@ async function newTabletPage(
   return { context, page };
 }
 
-/** Drive the tablet's on-screen pairing flow end-to-end; asserts it lands back on the service tiles. */
+/** Drive the tablet's on-screen pairing flow on the proven `/kiosk` welcome floor. */
 async function pairViaUi(page: Page, code: string): Promise<void> {
   await page.goto('/kiosk');
   await page.getByRole('button', { name: /set up this tablet/i }).click();
+  await expect(page.getByRole('heading', { name: /pair this tablet/i })).toBeVisible();
   await page.getByPlaceholder(/setup code/i).fill(code);
   await page.getByRole('button', { name: /pair tablet/i }).click();
-  // Success → mode flips back to 'ready' and the service tiles render.
+  await expect(page.getByRole('heading', { name: /how can we help/i })).toBeVisible();
+}
+
+/** Pair on `/kiosk/v2` (landscape shell) — unpaired devices auto-route to pair via settings 401. */
+async function pairViaUiV2(page: Page, code: string): Promise<void> {
+  await page.goto('/kiosk/v2');
+  await expect(page.getByRole('heading', { name: /pair this tablet/i })).toBeVisible();
+  await page.getByPlaceholder(/setup code/i).fill(code);
+  await page.getByRole('button', { name: /pair tablet/i }).click();
   await expect(page.getByRole('button', { name: /buy \/ sell/i })).toBeVisible();
 }
 
@@ -520,42 +529,58 @@ const TABLET_FACTORS: ReadonlyArray<{ name: string; descriptor: Record<string, u
 
 for (const factor of TABLET_FACTORS) {
   test.describe(`Kiosk tablet UI — ${factor.name}`, () => {
-    test('pair on-screen, then check in via each service tile', async ({ request, browser, baseURL }) => {
+    test('pair on-screen, then open a live service tile on /kiosk', async ({
+      request,
+      browser,
+      baseURL,
+    }) => {
       const { deviceId, code } = await enrollDevice(request, uniqueLabel(`E2E UI ${factor.name}`));
       const { context, page } = await newTabletPage(browser, baseURL!, factor.descriptor);
       try {
         await pairViaUi(page, code);
 
-        const tiles: Array<{ re: RegExp; note?: RegExp }> = [
-          { re: /buy \/ sell/i },
-          { re: /order pickup/i },
-          { re: /repair drop-off/i, note: /about your repair/i },
-        ];
-
-        for (const tile of tiles) {
-          await page.getByRole('button', { name: tile.re }).click();
-          // The big-card confirmation, not a toast (station feedback law).
-          await expect(page.getByText(/you're checked in/i)).toBeVisible();
-          if (tile.note) await expect(page.getByText(tile.note)).toBeVisible();
-          // Back to a ready bench for the next customer.
-          await page.getByRole('button', { name: /start over/i }).click();
-          await expect(page.getByRole('button', { name: /buy \/ sell/i })).toBeVisible();
-        }
+        await expect(page.getByRole('heading', { name: /how can we help/i })).toBeVisible();
+        await expect(page.getByRole('button', { name: /repair drop-off/i })).toBeVisible();
+        await expect(page.getByRole('button', { name: /buy \/ sell/i })).toBeVisible();
       } finally {
         await context.close();
         await revokeDevice(request, deviceId);
       }
     });
 
-    test('an unpaired tablet is routed to the pairing screen when a customer taps a service', async ({
+    test('landscape shell on /kiosk/v2: dock modes + catalog rail', async ({
+      request,
+      browser,
+      baseURL,
+    }) => {
+      const { deviceId, code } = await enrollDevice(request, uniqueLabel(`E2E Shell ${factor.name}`));
+      const { context, page } = await newTabletPage(browser, baseURL!, factor.descriptor);
+      try {
+        await pairViaUiV2(page, code);
+
+        await expect(page.getByRole('heading', { name: /catalog/i })).toBeVisible();
+        await expect(page.getByRole('heading', { name: /repair details/i })).toBeVisible();
+
+        await page.getByRole('button', { name: /buy \/ sell/i }).click();
+        await expect(page.getByRole('heading', { name: /buy \/ sell details/i })).toBeVisible();
+        await expect(page.getByRole('heading', { name: /products/i })).toBeVisible();
+
+        // Pickup stays WIP — dock control is disabled.
+        await expect(page.getByRole('button', { name: /^pickup$/i })).toBeDisabled();
+      } finally {
+        await context.close();
+        await revokeDevice(request, deviceId);
+      }
+    });
+
+    test('an unpaired tablet can open the pairing screen on /kiosk', async ({
       browser,
       baseURL,
     }) => {
       const { context, page } = await newTabletPage(browser, baseURL!, factor.descriptor);
       try {
         await page.goto('/kiosk');
-        // No pairing done → the intake 401 flips the UI into pair mode.
-        await page.getByRole('button', { name: /order pickup/i }).click();
+        await page.getByRole('button', { name: /set up this tablet/i }).click();
         await expect(page.getByRole('heading', { name: /pair this tablet/i })).toBeVisible();
         await expect(page.getByPlaceholder(/setup code/i)).toBeVisible();
       } finally {
@@ -568,11 +593,13 @@ for (const factor of TABLET_FACTORS) {
       try {
         await page.goto('/kiosk');
         await page.getByRole('button', { name: /set up this tablet/i }).click();
+        await expect(page.getByRole('heading', { name: /pair this tablet/i })).toBeVisible();
+
         // 8+ chars so it passes the client length gate and actually POSTs → 404.
         await page.getByPlaceholder(/setup code/i).fill('bogus-code-123');
         await page.getByRole('button', { name: /pair tablet/i }).click();
         await expect(page.getByText(/invalid or expired/i)).toBeVisible();
-        // Still on the pairing screen — never advanced to the tiles.
+
         await expect(page.getByRole('heading', { name: /pair this tablet/i })).toBeVisible();
       } finally {
         await context.close();

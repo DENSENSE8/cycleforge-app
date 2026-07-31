@@ -40,7 +40,7 @@ export function OrderFactRow({
   const empty = isSearchOrderFactEmpty(value);
   if (omitWhenEmpty && empty) return null;
   return (
-    <div className={cn('flex min-w-0 flex-col gap-1', span && 'sm:col-span-2')}>
+    <div className={cn('flex min-w-0 flex-col gap-0.5', span && 'sm:col-span-2')}>
       <dt className="text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint">
         {label}
       </dt>
@@ -70,7 +70,7 @@ export function OrderFactList({
   cols?: 1 | 2;
 }) {
   return (
-    <dl className={cn('grid grid-cols-1 gap-x-8 gap-y-4', cols === 2 && 'sm:grid-cols-2')}>
+    <dl className={cn('grid grid-cols-1 gap-x-6 gap-y-2.5', cols === 2 && 'sm:grid-cols-2')}>
       {children}
     </dl>
   );
@@ -92,12 +92,12 @@ export function OrderRecordCard({
 }) {
   const hasHeader = Boolean(title || description || actions);
   return (
-    <Panel padding="lg" className={cn('stack-section', className)}>
+    <Panel padding="sm" className={cn('stack-tight', className)}>
       {hasHeader ? (
-        <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
             {title ? (
-              <h3 className="text-role-body font-semibold text-text-default">{title}</h3>
+              <h3 className="text-role-caption font-semibold text-text-default">{title}</h3>
             ) : null}
             {description ? (
               <p className="mt-0.5 text-role-micro font-medium text-text-muted">{description}</p>

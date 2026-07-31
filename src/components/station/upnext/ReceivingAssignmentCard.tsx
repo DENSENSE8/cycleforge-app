@@ -1,11 +1,12 @@
 'use client';
 
 import { motion, useReducedMotion } from 'framer-motion';
+import { useRouter } from 'next/navigation';
 import { ExternalLink, Package } from '@/components/Icons';
 import { framerGesture, staggerRevealItem } from '@/design-system';
 import type { ReceivingQueueItem } from './upnext-types';
 import { workflowStatusTableLabel } from '@/components/station/receiving-constants';
-import { dispatchReceivingDetailsOverlay } from '@/utils/events';
+import { cartonReadHref } from '@/lib/receiving/surface-path';
 
 const WORKFLOW_COLORS: Record<string, string> = {
   EXPECTED:      'bg-surface-sunken text-text-soft border-border-soft',
@@ -34,12 +35,13 @@ interface ReceivingAssignmentCardProps {
 }
 
 export function ReceivingAssignmentCard({ item }: ReceivingAssignmentCardProps) {
+  const router = useRouter();
   const statusCls = WORKFLOW_COLORS[item.workflow_status ?? ''] || 'bg-surface-sunken text-text-soft border-border-soft';
   const ago = assignedAgo(item.assigned_at);
   const reduceMotion = useReducedMotion();
 
   const openReceiving = () => {
-    dispatchReceivingDetailsOverlay(item.receiving_id);
+    router.push(cartonReadHref(item.receiving_id));
   };
 
   return (

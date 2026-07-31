@@ -5,6 +5,7 @@ import { describe, it } from 'node:test';
 import {
   QUEUE_ROW,
   QUEUE_ROW_META_INDENT,
+  ledgerRowStateClass,
   metaIndentFor,
   queueGroupNestClass,
 } from '@/components/ui/queue-row-chrome';
@@ -93,6 +94,28 @@ describe('queue-row left-edge chrome', () => {
       src,
       /flex w-full flex-col px-2/,
       'OrdersGridView must not add list-body px-2',
+    );
+  });
+
+  it('ledgerRowStateClass is fill-only (no inset ring under airtable)', () => {
+    const selected = ledgerRowStateClass(true);
+    assert.ok(selected.includes('bg-blue-50'), 'selected ledger row must wash blue');
+    assert.ok(
+      !selected.includes('ring-inset'),
+      'selected ledger row must not use ring-inset (airtable L-glow)',
+    );
+    assert.equal(QUEUE_ROW.selectedLedgerClass, 'bg-blue-50');
+    assert.ok(
+      QUEUE_ROW.selectedClass.includes('ring-inset'),
+      'list selectedClass keeps the inset ring',
+    );
+  });
+
+  it('OrdersQueueTableRow gridSkin selection uses selectedLedgerClass', () => {
+    const src = readSibling('../dashboard/orders-queue/OrdersQueueTableRow.tsx');
+    assert.ok(
+      src.includes('QUEUE_ROW.selectedLedgerClass'),
+      'Pending gridSkin must compose selectedLedgerClass (fill-only)',
     );
   });
 });

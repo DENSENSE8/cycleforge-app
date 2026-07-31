@@ -117,7 +117,8 @@ async function fetchOrderByNumericId(id: number): Promise<ResolvedSearchOrder> {
 }
 
 /**
- * Resolve Search / `/o` openOrderId — numeric pk or human order # / tracking.
+ * Resolve Search / `/o` openOrderId — numeric pk, human order #, or carrier
+ * tracking (`/api/orders/lookup` falls through to tracking when order_id misses).
  */
 export async function resolveSearchOrder(orderId: string): Promise<ResolvedSearchOrder> {
   const raw = decodeURIComponent(orderId || '').trim();

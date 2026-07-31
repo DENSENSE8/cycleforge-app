@@ -52,4 +52,18 @@ describe('SearchResultRow narrow-rail chrome', () => {
       'SearchResultRow must use narrowSearchTitleDisplay for rail titles',
     );
   });
+
+  it('does not paint a compact GenericRow chevron (row is already a Link)', () => {
+    const genericStart = src.indexOf('function GenericRow');
+    const genericEnd = src.indexOf('export function SearchResultRow');
+    const genericSrc =
+      genericStart >= 0 && genericEnd > genericStart
+        ? src.slice(genericStart, genericEnd)
+        : '';
+    assert.doesNotMatch(
+      genericSrc,
+      /ChevronRight/,
+      'GenericRow must not mount a hover ChevronRight — the row Link is the affordance',
+    );
+  });
 });

@@ -136,6 +136,7 @@ export function FbaWorkspaceHeader({
 
   return (
     <WorkbenchChromeHeader
+      density="band"
       tabs={tabs}
       activeTab={tab}
       onTabChange={(id) => onSelectTab(id as FbaMode)}

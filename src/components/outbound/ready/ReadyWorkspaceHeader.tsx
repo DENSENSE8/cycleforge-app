@@ -52,6 +52,7 @@ export function ReadyWorkspaceHeader({
 
   return (
     <WorkbenchChromeHeader
+      density="band"
       tabs={tabs}
       activeTab={tab}
       onTabChange={(id) => onSelectTab(id as ReadyWorkspaceTab)}

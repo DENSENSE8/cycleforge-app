@@ -148,6 +148,7 @@ interface OrgProfileResponse {
     name?: string;
     logoUrl?: string;
     primaryColor?: string;
+    attractMediaUrl?: string;
   };
   letterhead: {
     addressLine1: string;
@@ -587,6 +588,16 @@ export function OrganizationSection() {
             onChange={(e) => setDraft({ ...draft, brand: { ...draft.brand, primaryColor: e.target.value } })}
             className={FIELD_CLS}
             placeholder="#2563EB"
+          />
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-xs font-medium text-text-muted">Kiosk attract media URL</span>
+          <input
+            type="url"
+            value={draft.brand.attractMediaUrl ?? ''}
+            onChange={(e) => setDraft({ ...draft, brand: { ...draft.brand, attractMediaUrl: e.target.value } })}
+            className={FIELD_CLS}
+            placeholder="https://… (public image or muted video URL — Blob upload later)"
           />
         </label>
       </div>

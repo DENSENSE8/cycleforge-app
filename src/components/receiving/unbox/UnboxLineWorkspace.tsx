@@ -5,10 +5,19 @@
  * workspace crossfades over it (TestingLineWorkspace pattern).
  *
  * Motion is the STATION cadence preset (`stationCartonSwap`), not the pointer
- * `workbenchPaneSettle` its siblings use: the exit is instant and only the
- * enter fades (~0.12s), so scanning the next box no longer costs ~0.6s of empty
- * canvas. The remount is deliberately KEPT — it is what guarantees the editor
- * re-seeds cleanly per carton (see the note on in-place swaps below).
+ * `workbenchPaneSettle` its siblings use. Exit is instant.
+ *
+ * - Browse→first open: `mode="wait"` + enter fade (~0.12s).
+ * - Carton→carton (rail PO switch / next scan): `mode="sync"` + hard-cut enter
+ *   (`initial={false}`). The new opaque pane mounts on top while the old one
+ *   exits underneath — `mode="wait"` would remove A before mounting B and
+ *   punch a white hole through the card host while the underlay stays
+ *   `visibility: hidden`. Concurrent *semi-transparent* fades still
+ *   double-image; opaque cover-replace does not.
+ *
+ * Remount is deliberately KEPT — it re-seeds the editor cleanly per carton
+ * (see in-place swap note below). Overlay shell paints `bg-surface-canvas`
+ * to match the station body (not card white).
  *
  * The crossfade is keyed on CARTON identity (`workspace-pane-key.ts`), not on
  * how the carton was opened. A scan landing on a different box still remounts
@@ -22,9 +31,9 @@
  * in-place carton swap would carry the open tab and sub-form across two
  * different boxes — and the notes composer's dirty draft has no
  * flush-before-swap, which is exactly how one carton's note lands on another.
- * The remount is what guarantees a clean re-seed. Killing the *animation*
- * (above) buys the throughput without taking that risk; removing the *remount*
- * needs those resets first.
+ * The remount is what guarantees a clean re-seed. Sync + opaque cover-replace
+ * buys zero-flash rail switches without taking that risk; removing the
+ * *remount* needs those resets first.
  */
 
 import { useRef } from 'react';
@@ -47,7 +56,8 @@ import {
   type WorkspacePaneSlot,
 } from '@/components/receiving/workspace-pane-key';
 import { zIndex } from '@/design-system/tokens/z-index';
-import { appWorkCanvasClass } from '@/design-system/tokens/app-surface';
+import { appWorkCanvasLayoutClass } from '@/design-system/tokens/app-surface';
+import { AppSurfaceFill, appSurfaceFillClass } from '@/design-system/components/AppSurfaceFill';
 import { cn } from '@/utils/_cn';
 import type {
   NavState,
@@ -94,6 +104,13 @@ export function UnboxLineWorkspace({
     showOverlay && workspace ? resolveWorkspacePaneSlot(paneSlotRef.current, workspace.row) : null;
   const paneKey = paneSlotRef.current?.key ?? 'carton:none';
 
+  // Carton→carton while the overlay is already open: sync + hard-cut so the
+  // new opaque pane covers the old one — `mode="wait"` would uncover the host
+  // between exit and enter. Browse→first open still uses wait + enter fade.
+  const overlayWasOpenRef = useRef(false);
+  const cartonSwapHardCut = showOverlay && overlayWasOpenRef.current;
+  overlayWasOpenRef.current = showOverlay;
+
   // Read-only "already unboxed" receipt — shown over the editor when THIS
   // carton is the one the lookup scan resolved to. Scoped by carton id so a
   // stale receipt can never sit over a different box.
@@ -101,7 +118,7 @@ export function UnboxLineWorkspace({
     !!lookupReceipt && !!row && lookupReceipt.receivingId === row.receiving_id;
 
   return (
-    <div className={cn(appWorkCanvasClass, 'h-full')}>
+    <div className={cn(appWorkCanvasLayoutClass, 'h-full')}>
       <div
         className={`flex h-full min-h-0 w-full flex-col ${showOverlay ? 'pointer-events-none' : ''}`}
         aria-hidden={showOverlay ? true : undefined}
@@ -115,21 +132,36 @@ export function UnboxLineWorkspace({
         )}
       </div>
 
-      <AnimatePresence initial={false} mode="wait">
+      {/* Defensive canvas plate under the keyed overlay — matches station fill
+          so any residual gap is not card white. Primary zero-flash contract is
+          sync + opaque cover-replace on carton→carton (below). */}
+      {showOverlay ? (
+        <AppSurfaceFill
+          tone="canvas"
+          style={{ zIndex: zIndex.panel }}
+          data-testid="unbox-overlay-plate"
+        />
+      ) : null}
+
+      <AnimatePresence
+        initial={false}
+        mode={cartonSwapHardCut ? 'sync' : 'wait'}
+      >
         {showOverlay && workspace ? (
           <motion.div
             key={paneKey}
-            initial={panePresence.initial}
+            initial={cartonSwapHardCut ? false : panePresence.initial}
             animate={panePresence.animate}
             exit={panePresence.exit}
             transition={paneTransition}
-            style={{ zIndex: zIndex.panel }}
-            className="absolute inset-0 flex min-h-0 flex-col bg-surface-card"
+            // Entering sibling stacks above the exiting one under sync.
+            style={{ zIndex: zIndex.panel + (cartonSwapHardCut ? 1 : 0) }}
+            className={cn('absolute inset-0 flex min-h-0 flex-col', appSurfaceFillClass('canvas'))}
           >
             {showLookupReceipt && lookupReceipt ? (
               // Covers the editor rather than replacing it, so "Open anyway" is
               // instant (dismiss the cover) and the editor never re-mounts.
-              <div className="absolute inset-0 z-10 bg-surface-canvas">
+              <div className={cn('absolute inset-0 z-10', appSurfaceFillClass('canvas'))}>
                 <UnboxLookupReceipt
                   receipt={lookupReceipt}
                   unboxedByName={workspace.row.unboxed_by_name ?? null}

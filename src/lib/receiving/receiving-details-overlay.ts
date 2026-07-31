@@ -1,5 +1,4 @@
 import type { ReceivingDetailsLog } from '@/components/station/receiving-details-log';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 
 type CartonApiRow = ReceivingDetailsLog & {
   id?: number | string;
@@ -31,43 +30,6 @@ export function receivingDetailsInstantSeed(
     ...seed,
     id,
     timestamp,
-  };
-}
-
-/** Map a history-table row into overlay seed fields the panel can render immediately. */
-export function receivingLineRowToDetailsSeed(row: ReceivingLineRow): Partial<ReceivingDetailsLog> {
-  const receivingId = row.receiving_id;
-  if (receivingId == null) return {};
-
-  return {
-    id: String(receivingId),
-    timestamp: row.received_at ?? row.last_activity_at ?? row.created_at ?? new Date().toISOString(),
-    tracking: row.tracking_number ?? undefined,
-    status: row.carrier ?? undefined,
-    source: row.receiving_source ?? undefined,
-    source_platform: row.source_platform ?? row.source_platform_pill ?? undefined,
-    intake_type: row.carton_intake_type ?? row.intake_type ?? undefined,
-    qa_status: row.qa_status,
-    disposition_code: row.disposition_code,
-    condition_grade: row.condition_grade,
-    needs_test: row.needs_test,
-    assigned_tech_id: row.assigned_tech_id,
-    // "Received" = terminal DONE time; "Unboxed" = first unbox scan (carton stamp).
-    received_at: row.received_done_at ?? undefined,
-    unboxed_at: row.unboxed_at ?? undefined,
-    unboxed_by_name: row.unboxed_by_name ?? undefined,
-    received_by_name: row.received_by_name ?? undefined,
-    tracking_scanned_at: row.scanned_at ?? undefined,
-    tracking_scanned_by_name: row.scanned_by_name ?? undefined,
-    zoho_purchase_receive_id: row.zoho_purchase_receive_id ?? undefined,
-    zoho_purchaseorder_id: row.zoho_purchaseorder_id ?? undefined,
-    zoho_purchaseorder_number: row.zoho_purchaseorder_number ?? undefined,
-    listing_url: row.receiving_listing_url ?? undefined,
-    staging_location_id: row.staging_location_id ?? undefined,
-    priority_lane: row.priority_lane ?? undefined,
-    pairing_state: row.pairing_state ?? undefined,
-    triage_complete: row.triage_complete ?? undefined,
-    triage_completed_at: row.triage_completed_at ?? undefined,
   };
 }
 

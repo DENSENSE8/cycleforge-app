@@ -235,6 +235,7 @@ Full recipe: [display/motion-crossfade.md](display/motion-crossfade.md). Auth st
 - **[`display/monitor-rollup-blocks.md`](display/monitor-rollup-blocks.md)** — Rollup block registry (`rollup` density).
 - **[`display/motion-crossfade.md`](display/motion-crossfade.md)** — Motion / singular focus crossfade.
 - **[`display/auth-step-panel.md`](display/auth-step-panel.md)** — Compact multi-step auth panels.
+- **[`display/kiosk-shell.md`](display/kiosk-shell.md)** — Landscape front-desk kiosk (attract, left catalog rail, bottom mode dock). Not a Station.
 - **[`display/reference-timeline.md`](display/reference-timeline.md)** — Event-stream primary or secondary surface.
 
 ---

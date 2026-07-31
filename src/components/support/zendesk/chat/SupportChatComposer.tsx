@@ -2,9 +2,10 @@
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { Image as ImageIcon, Mail, Paperclip, Send, X } from '@/components/Icons';
-import { Button, IconButton, StationComposerDock } from '@/design-system/primitives';
+import { Mail, Paperclip, Plus, X } from '@/components/Icons';
+import { IconButton, StationComposerDock } from '@/design-system/primitives';
 import { VisibilityToggle } from '@/components/ui/VisibilityToggle';
+import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { usePhotoDropzone } from '@/hooks/usePhotoDropzone';
 import { useSupportReply } from '@/hooks/useSupportReply';
 import { useZendeskAgents, zendeskKeys } from '@/hooks/useZendeskQueries';
@@ -13,20 +14,24 @@ import { useAuth } from '@/contexts/AuthContext';
 import { markdownToHtml } from '@/lib/support/markdown';
 import { cn } from '@/utils/_cn';
 import type { ThreadComposerBridge } from '@/components/threads/ThreadPanel';
+import {
+  NOTE_INSERT_TRIGGER_BTN,
+  NOTE_OVERLAY_ICON,
+  NOTE_OVERLAY_ICON_BTN,
+} from '@/components/receiving/workspace/note-composer-helpers';
 import { SupportPhotoLibraryPicker } from './SupportPhotoLibraryPicker';
-import { ExpandableComposerField } from './ExpandableComposerField';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /**
  * Chat composer — public reply / internal note toggle, CC collaborators, photo
- * attach (via the ticket-level drop overlay or the Attach button), ⌘↵ to send.
+ * attach (via the ticket-level drop overlay or the Attach control), Enter to send.
  * Internal notes auto-sign with the current staffer's name for attribution.
  * Posts through {@link useSupportReply} (the shared photo→ticket pipeline).
  *
- * Station dock variant (`variant="station-dock"`) uses {@link StationComposerDock}
- * — one elevated shell with the terminal CTA in `trailingAction` (Unbox overview
- * compound). Console / inline keeps the sticky card chrome.
+ * Always uses {@link StationComposerDock} — same elevated white shell as carton
+ * notes. Station compound docks pass `trailingAction` (terminal CTA replaces
+ * blue Send; Enter still commits).
  */
 export function SupportChatComposer({
   ticketId,
@@ -34,7 +39,6 @@ export function SupportChatComposer({
   staging,
   seedBody,
   seedToken,
-  hideSendBar = false,
   receivingId,
   onBridgeChange,
   variant = 'inline',
@@ -47,22 +51,16 @@ export function SupportChatComposer({
   seedBody?: string;
   /** Bump this to re-apply seedBody even if the text is unchanged. */
   seedToken?: number;
-  /**
-   * Station ticket inclusion — drop the "Signs as / Add note" footer bar.
-   * Send remains available via ⌘↵ (see textarea placeholder).
-   * Ignored when `variant="station-dock"` (dock owns send via trailingAction).
-   */
-  hideSendBar?: boolean;
   /** Carton context for media library “Current carton” tab. */
   receivingId?: number;
   /** Exposes the embedded composer to a station terminal dock. */
   onBridgeChange?: (bridge: ThreadComposerBridge | null) => void;
   /**
-   * `inline` — sticky card under the thread (console / non-station).
-   * `station-dock` — {@link StationComposerDock} shell for the floating dock band.
+   * `inline` — under the thread (console / Unbox Ticket column).
+   * `station-dock` — floating dock band with optional `trailingAction`.
    */
   variant?: 'inline' | 'station-dock';
-  /** Terminal CTA embedded in the station-dock footer (replaces blue Send). */
+  /** Terminal CTA embedded in the dock footer (replaces blue Send). */
   trailingAction?: ReactNode;
 }) {
   const [body, setBody] = useState('');
@@ -183,16 +181,6 @@ export function SupportChatComposer({
     staging.staged,
   ]);
 
-  // Contextual QoL microcopy in the footer (the ⌘↵ + formatting hints live in
-  // the textarea placeholder, so they're omitted here to avoid duplication).
-  const hint = staging.uploading
-    ? 'Uploading photo…'
-    : staging.staged.length
-      ? `${staging.staged.length} photo${staging.staged.length === 1 ? '' : 's'} ready to attach`
-      : isPublic
-        ? `Drag photos to attach${ccs.length ? ` · ${ccs.length} cc` : ''}`
-        : `${staffName ? `Signs as — ${staffName} · ` : ''}Not emailed`;
-
   const libraryPicker = canBrowseLibrary ? (
     <SupportPhotoLibraryPicker
       ticketId={ticketId}
@@ -210,42 +198,35 @@ export function SupportChatComposer({
   const attachActions = (
     <div className="flex items-center gap-0.5">
       {canBrowseLibrary ? (
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setLibraryOpen(true)}
-          icon={<ImageIcon className="h-3.5 w-3.5" />}
-          className={cn(
-            'gap-1.5 px-2 font-semibold',
-            stationDock || hideSendBar ? 'text-role-micro' : 'text-role-caption',
-          )}
-        >
-          Library
-        </Button>
+        <HoverTooltip label="Library" asChild>
+          {/* ds-raw-button */}
+          <button
+            type="button"
+            aria-label="Library"
+            onClick={() => setLibraryOpen(true)}
+            className={NOTE_INSERT_TRIGGER_BTN}
+          >
+            <Plus className={NOTE_OVERLAY_ICON} />
+          </button>
+        </HoverTooltip>
       ) : null}
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={picker.openPicker}
-        icon={<Paperclip className="h-3.5 w-3.5" />}
-        className={cn(
-          'gap-1.5 px-2 font-semibold',
-          stationDock || hideSendBar ? 'text-role-micro' : 'text-role-caption',
-        )}
-      >
-        Attach
-      </Button>
+      <HoverTooltip label="Attach" asChild>
+        {/* ds-raw-button */}
+        <button
+          type="button"
+          aria-label="Attach"
+          onClick={picker.openPicker}
+          className={`${NOTE_OVERLAY_ICON_BTN} text-text-faint transition hover:bg-surface-card hover:text-text-muted hover:shadow-sm hover:ring-1 hover:ring-border-soft`}
+        >
+          <Paperclip className={NOTE_OVERLAY_ICON} />
+        </button>
+      </HoverTooltip>
       <input ref={picker.inputRef} {...picker.inputProps} />
     </div>
   );
 
   const ccStrip = isPublic ? (
-    <div
-      className={cn(
-        'flex flex-wrap items-center gap-1.5 rounded-lg border border-border-soft bg-surface-canvas/60 px-2 py-1.5',
-        stationDock ? 'mb-2' : 'mb-2.5',
-      )}
-    >
+    <div className="mb-2 flex flex-wrap items-center gap-1.5 rounded-lg border border-border-soft bg-surface-canvas/60 px-2 py-1.5">
       <span className="inline-flex items-center gap-1 text-role-micro uppercase tracking-widest text-text-faint">
         <Mail className="h-3 w-3" /> Cc
       </span>
@@ -290,7 +271,7 @@ export function SupportChatComposer({
 
   const stagedThumbs =
     staging.staged.length > 0 ? (
-      <div className={cn('flex flex-wrap gap-2', stationDock ? 'mb-2' : 'mb-2.5')}>
+      <div className="mb-2 flex flex-wrap gap-2">
         {staging.staged.map((s) => (
           <div
             key={s.tempId}
@@ -322,126 +303,50 @@ export function SupportChatComposer({
       </div>
     ) : null;
 
+  const busy = !canPost || reply.isPending || staging.uploading;
+
+  const dock = (
+    <>
+      {ccStrip}
+      {stagedThumbs}
+      {libraryPicker}
+      <StationComposerDock
+        value={body}
+        onChange={setBody}
+        onCommit={submit}
+        commitDisabled={busy ? true : undefined}
+        placeholder={
+          isPublic
+            ? 'Reply to the customer… (Enter to send)'
+            : 'Internal note — not emailed… (Enter to send)'
+        }
+        ariaLabel={isPublic ? 'Public reply' : 'Internal note'}
+        commitAriaLabel={isPublic ? 'Send reply' : 'Add note'}
+        commitTooltip={
+          isPublic ? 'Send reply (Enter)' : 'Add note (Enter) · Shift+Enter for newline'
+        }
+        footerStart={
+          <VisibilityToggle
+            value={isPublic}
+            onChange={setIsPublic}
+            internalLabel="Internal"
+            publicLabel="Public"
+            className="scale-90 origin-left"
+          />
+        }
+        footerEnd={attachActions}
+        trailingAction={trailingAction}
+        textareaRef={composerRef}
+        animateMount={stationDock}
+      />
+    </>
+  );
+
   if (stationDock) {
-    const busy = !canPost || reply.isPending || staging.uploading;
-    return (
-      <div className="w-full">
-        {ccStrip}
-        {stagedThumbs}
-        {libraryPicker}
-        <StationComposerDock
-          value={body}
-          onChange={setBody}
-          onCommit={submit}
-          commitDisabled={busy ? true : undefined}
-          placeholder={
-            isPublic
-              ? 'Reply to the customer… (Enter to send)'
-              : 'Internal note — not emailed… (Enter to send)'
-          }
-          ariaLabel={isPublic ? 'Public reply' : 'Internal note'}
-          commitAriaLabel={isPublic ? 'Send reply' : 'Add note'}
-          commitTooltip={
-            isPublic ? 'Send reply (Enter)' : 'Add note (Enter) · Shift+Enter for newline'
-          }
-          footerStart={
-            <>
-              <VisibilityToggle
-                value={isPublic}
-                onChange={setIsPublic}
-                internalLabel="Internal"
-                publicLabel="Public"
-                className="scale-90 origin-left"
-              />
-              {attachActions}
-            </>
-          }
-          trailingAction={trailingAction}
-          textareaRef={composerRef}
-        />
-      </div>
-    );
+    return <div className="w-full">{dock}</div>;
   }
 
   return (
-    <div
-      className={cn(
-        'shrink-0 border-t border-border-hairline bg-surface-card',
-        hideSendBar ? 'px-3 py-2' : 'px-4 py-3',
-      )}
-    >
-      <div className={cn('flex items-center justify-between', hideSendBar ? 'mb-1.5' : 'mb-2.5')}>
-        <VisibilityToggle
-          value={isPublic}
-          onChange={setIsPublic}
-          internalLabel="Internal note"
-          publicLabel="Public reply"
-        />
-        {attachActions}
-      </div>
-
-      {libraryPicker}
-      {ccStrip}
-      {stagedThumbs}
-
-      <div
-        className={cn(
-          'rounded-xl border bg-surface-card transition',
-          isPublic
-            ? 'border-border-soft focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100'
-            : 'border-amber-300 bg-amber-50/30 focus-within:ring-2 focus-within:ring-amber-100',
-        )}
-      >
-        <ExpandableComposerField
-          inputRef={composerRef}
-          value={body}
-          onChange={setBody}
-          rows={hideSendBar ? 2 : 3}
-          placeholder={
-            isPublic ? 'Reply to the customer…  (⌘↵ to send)' : 'Internal note — not emailed…  (⌘↵ to send)'
-          }
-          expandTitle={isPublic ? 'Compose public reply' : 'Compose internal note'}
-          onKeyDown={(e) => {
-            if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') submit();
-          }}
-          textareaClassName={cn(
-            'rounded-xl',
-            hideSendBar ? 'px-3 py-2 text-role-micro leading-snug' : 'px-3.5 py-2.5 text-role-caption leading-relaxed',
-          )}
-          expandFooter={
-            hideSendBar ? undefined : (
-              <>
-                <span className="text-role-caption text-text-faint">{hint}</span>
-                <Button
-                  variant={isPublic ? 'primary' : 'secondary'}
-                  size="sm"
-                  loading={reply.isPending}
-                  disabled={!body.trim() || staging.uploading}
-                  onClick={submit}
-                  icon={<Send className="h-3.5 w-3.5" />}
-                >
-                  {isPublic ? 'Send reply' : 'Add note'}
-                </Button>
-              </>
-            )
-          }
-        />
-        {hideSendBar ? null : (
-          <div className="flex items-center justify-between border-t border-border-hairline px-3 py-2">
-            <span className="text-role-caption text-text-faint">{hint}</span>
-            <Button
-              variant={isPublic ? 'primary' : 'secondary'}
-              size="sm"
-              loading={reply.isPending}
-              disabled={!body.trim() || staging.uploading}
-              onClick={submit}
-              icon={<Send className="h-3.5 w-3.5" />}
-            >
-              {isPublic ? 'Send reply' : 'Add note'}
-            </Button>
-          </div>
-        )}
-      </div>
-    </div>
+    <div className="shrink-0 border-t border-border-hairline bg-surface-canvas/40 px-3 py-2">{dock}</div>
   );
 }

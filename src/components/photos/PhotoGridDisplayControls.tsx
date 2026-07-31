@@ -27,8 +27,8 @@ export interface PhotoGridDisplayControlsProps {
 }
 
 /**
- * Top-right grid density + optional refresh — shared by the media library header,
- * folder leaf views, and embedded pickers (support attach, Zendesk claim).
+ * Top-right grid density + optional refresh — shared by the media library header
+ * and folder leaf views. Claim attach uses a fixed density (scrollable push panel).
  */
 export function PhotoGridDisplayControls({
   density,

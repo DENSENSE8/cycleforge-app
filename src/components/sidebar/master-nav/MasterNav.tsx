@@ -6,6 +6,7 @@ import {
   APP_SIDEBAR_NAV,
   filterPageModes,
   getSidebarPageNav,
+  spineDrillIdForPage,
   type MainGroupId,
   type SidebarNavItem,
   type SidebarPageNav,
@@ -73,7 +74,6 @@ function toPageNav(item: SidebarNavItem): SidebarPageNav {
 export function MasterNav({
   permissions,
   mobileRestricted = false,
-  onOpenNav,
   onNavigate,
   className,
 }: {
@@ -81,8 +81,6 @@ export function MasterNav({
   mobileRestricted?: boolean;
   /** Fired after a page/mode pick (e.g. to close the slide-over). */
   onNavigate?: () => void;
-  /** Open the page-list spine (wired from the band's chevron, where shown). */
-  onOpenNav?: () => void;
   className?: string;
 }) {
   const { pageId, modeId } = useActiveSidebarMode();
@@ -121,8 +119,11 @@ export function MasterNav({
 
   const otherPages = useMemo(() => pages, [pages]);
 
-  // Row keys are `${group kind}-${page id}` (see SidebarNavList.renderRow).
-  const activeRowKey = activePage ? `${activePage.kind ?? 'bottom'}-${activePage.id}` : null;
+  // Row keys are `${drillId|top|bottom}-${page id}` (see SidebarNavList.renderRow).
+  const activeSection = spineDrillIdForPage(activePage);
+  const activeRowKey = activePage
+    ? `${activeSection ?? activePage.kind ?? 'bottom'}-${activePage.id}`
+    : null;
 
   // The page you are ON opens with its modes already expanded, so revealing the
   // sidebar shows where you are AND the sibling modes you can reach — one look,
@@ -132,19 +133,19 @@ export function MasterNav({
     setExpandedKey(activeRowKey);
   }, [activeRowKey]);
 
-  // Enter Stock drill when navigating onto a stock page from elsewhere.
-  // Manual Back leaves the root map while the URL can stay on Stock — do not
-  // force-reopen until the next Main/Stations → Stock transition.
-  const prevKindRef = useRef<SidebarPageNav['kind']>(undefined);
+  // Enter the matching section drill when navigating onto a page from another
+  // section (or from a top/footer pin). Manual Back leaves the root map while the
+  // URL can stay in-section — do not force-reopen until the next cross-section
+  // transition.
+  const prevSectionRef = useRef<SpineDrillId | null>(null);
   useEffect(() => {
-    const kind = activePage?.kind;
-    if (kind === 'stock' && prevKindRef.current !== 'stock') {
-      setDrillId('stock');
-    } else if (kind !== 'stock') {
+    if (activeSection && activeSection !== prevSectionRef.current) {
+      setDrillId(activeSection);
+    } else if (!activeSection) {
       setDrillId(null);
     }
-    prevKindRef.current = kind;
-  }, [activePage?.kind]);
+    prevSectionRef.current = activeSection;
+  }, [activeSection]);
 
   const handleNavigate = useCallback(
     (nextPageId: string, nextModeId?: string) => {
@@ -171,7 +172,6 @@ export function MasterNav({
     <MasterNavView
       activePage={activePage}
       activeModeId={modeId}
-      onOpen={() => onOpenNav?.()}
       otherPages={otherPages}
       expandedKey={expandedKey}
       onToggleRow={setExpandedKey}

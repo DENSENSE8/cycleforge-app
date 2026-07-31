@@ -13,10 +13,7 @@ import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { WorkspaceCard } from '@/design-system/components';
 import { IconButton } from '@/design-system/primitives';
 import { WorkspaceFieldLabel } from '@/components/receiving/workspace/WorkspaceSectionLabel';
-import {
-  RECEIVING_SCAN_RULE_LINE_CLASS,
-  TRACKING_ADD_BTN_CLASS,
-} from '@/components/sidebar/receiving/receiving-sidebar-shared';
+import { RECEIVING_SCAN_RULE_LINE_CLASS } from '@/components/sidebar/receiving/receiving-sidebar-shared';
 
 export function TrackingNumbersTab({
   trackingEdit,
@@ -46,7 +43,7 @@ export function TrackingNumbersTab({
   return (
     <WorkspaceCard variant="glass" overflow="visible" bodyDensity="nested">
       <div className="space-y-3">
-        <div className="flex min-w-0 items-center justify-between gap-2">
+        <div className="flex w-full min-w-0 items-center justify-between gap-2">
           <WorkspaceFieldLabel className="whitespace-nowrap">Tracking numbers</WorkspaceFieldLabel>
           <HoverTooltip
             label={
@@ -58,11 +55,12 @@ export function TrackingNumbersTab({
           >
             <IconButton
               type="button"
+              size="xs"
+              tone="neutral"
               onClick={addExtraRow}
               disabled={extraTrackings.length >= 1}
               ariaLabel="Add second tracking number to this PO"
-              className={TRACKING_ADD_BTN_CLASS}
-              icon={<Plus className="h-3 w-3" />}
+              icon={<Plus className="h-3.5 w-3.5" />}
             />
           </HoverTooltip>
         </div>
@@ -93,16 +91,17 @@ export function TrackingNumbersTab({
 
         {extraTrackings.map((t, i) => (
           <div key={i} className="group relative min-w-0">
-            <div className="mb-1.5 flex items-center justify-between gap-2">
+            <div className="mb-1.5 flex w-full items-center justify-between gap-2">
               <WorkspaceFieldLabel className="whitespace-nowrap">
                 Extra box {i + 1}
               </WorkspaceFieldLabel>
               <HoverTooltip label="Remove extra tracking row" asChild>
                 <IconButton
                   type="button"
+                  size="xs"
                   onClick={() => setExtraTrackings((xs) => xs.filter((_, j) => j !== i))}
                   ariaLabel="Remove extra tracking row"
-                  className="rounded p-0.5 text-text-faint hover:bg-red-50 hover:text-red-600"
+                  className="text-text-faint hover:bg-red-50 hover:text-red-600"
                   icon={<X className="h-3.5 w-3.5" />}
                 />
               </HoverTooltip>

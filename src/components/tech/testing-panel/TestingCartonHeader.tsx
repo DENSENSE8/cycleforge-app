@@ -63,6 +63,10 @@ export function TestingCartonHeader({
       onPrioritySelect={(tier) => void c.handlePrioritySelect(tier)}
       onExitToList={() => dispatchSelectLine(null)}
       onSendToTicket={() => c.setPhotoNoteOpen(true)}
+      // Testing is always downstream of Unbox — a carton reaching this bench
+      // has necessarily already been opened, so its carton photos are
+      // unbox-stage evidence, never arrival.
+      photoStage="unbox_carton"
       density="bar"
     />
   );

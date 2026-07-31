@@ -1,60 +1,21 @@
 'use client';
 
-import { AnimatePresence, motion } from 'framer-motion';
 import { RightPaneOverlay } from '@/components/ui/RightPaneOverlay';
-import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
-import {
-  useMotionPresence,
-  useMotionTransition,
-} from '@/design-system/foundations/motion-framer-hooks';
-import {
-  useReceivingClaimController,
-  type ClaimModalProps,
-} from './claim/hooks/useReceivingClaimController';
-import { ClaimModalHeader } from './claim/components/ClaimModalHeader';
-import { ClaimWizardNav } from './claim/components/ClaimWizardNav';
-import { ClaimPhotosStep } from './claim/components/ClaimPhotosStep';
-import { ClaimComposeStep } from './claim/components/ClaimComposeStep';
-import { ClaimReviewStep } from './claim/components/ClaimReviewStep';
-import { ClaimConfirmStep } from './claim/components/ClaimConfirmStep';
-import { ClaimSellerStep } from './claim/components/ClaimSellerStep';
-import { ClaimLinkFindStep } from './claim/components/ClaimLinkFindStep';
-import { ClaimLinkedStep } from './claim/components/ClaimLinkedStep';
-import { ClaimModalFooter } from './claim/components/ClaimModalFooter';
-import type { ReceivingClaimController } from './claim/hooks/useReceivingClaimController';
+import type { ClaimModalProps } from './claim/hooks/useReceivingClaimController';
+import { ReceivingClaimPanel } from './ReceivingClaimPanel';
 
 /**
- * Make-a-claim modal. Filed against the current receiving carton (and
- * optionally the active line). Posts to /api/receiving/zendesk-claim which
- * creates the ticket directly via the Zendesk REST API. A second mode links
- * an EXISTING Zendesk ticket instead (/api/receiving/zendesk-claim/link);
- * tickets already linked to other items are hidden from that picker.
+ * Make-a-claim centered overlay — Testing / dashboard / triage hosts.
+ * Unbox mounts the same wizard body in {@link ReceivingClaimStack} (push column).
  *
- * The create flow is a linear five-step wizard — Photos → Ticket → Review →
- * Filed → Seller — where each step owns one job. The progress stepper is the
- * stable map; only the step body below crossfades. On success, the ticket # is
- * handed to `onTicketCreated`, which the parent uses to auto-fill the Support
- * FlowSection.
- *
- * The link flow (attach an EXISTING ticket) runs the same Photos → Ticket →
- * Review arc once a ticket is picked — Find → Photos → Ticket → Review →
- * Linked → Seller — reusing the identical photo-picker, subject/body/
- * recipients editor, and review summary components; "Ticket" prefills the
- * subject from the linked ticket's own title. Review posts a comment (with
- * attached photos) to that ticket instead of filing a new one. Seller is
- * skipped for both flows on a 'return' claim (`c.sellerStepApplicable`).
- *
- * Thin composition layer — all state/effects/data live in
- * {@link useReceivingClaimController} and the per-step components under
- * `./claim/`.
+ * Posts to /api/receiving/zendesk-claim (create) or /link (existing ticket).
+ * Wizard state lives in {@link useReceivingClaimController}.
  */
 export function ReceivingClaimModal(props: ClaimModalProps) {
-  const c = useReceivingClaimController(props);
-
   return (
     <RightPaneOverlay
-      open={c.open}
-      onClose={c.onClose}
+      open={props.open}
+      onClose={props.onClose}
       align="center"
       resizable
       storageKey="receiving-claim-modal-size"
@@ -63,66 +24,7 @@ export function ReceivingClaimModal(props: ClaimModalProps) {
       className="-mt-8 h-[min(86vh,44rem)] w-[min(94vw,52rem)]"
       aria-label="File a claim"
     >
-      <ClaimModalHeader
-        row={c.row}
-        submitting={c.submitting}
-        archiveSubmitting={c.archiveSubmitting}
-        onClose={c.onClose}
-      />
-
-      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3 text-role-data">
-        <ClaimWizardNav c={c} />
-        <ClaimStepBody c={c} />
-      </div>
-
-      <ClaimModalFooter c={c} />
+      <ReceivingClaimPanel {...props} />
     </RightPaneOverlay>
-  );
-}
-
-/** Crossfades the active step body keyed on the step id; the stepper stays put. */
-function ClaimStepBody({ c }: { c: ReceivingClaimController }) {
-  const presence = useMotionPresence(framerPresence.workbenchPane);
-  const transition = useMotionTransition(framerTransition.workbenchPaneMount);
-  // Key the crossfade on the active step of whichever wizard is running.
-  const stepKey = c.mode === 'link' ? `link:${c.linkStep}` : `create:${c.createStep}`;
-
-  return (
-    <AnimatePresence mode="wait" initial={false}>
-      <motion.div
-        key={stepKey}
-        initial={presence.initial}
-        animate={presence.animate}
-        exit={presence.exit}
-        transition={transition}
-        className="space-y-3 pt-3"
-      >
-        {c.mode === 'link' ? (
-          c.linkStep === 'find' ? (
-            <ClaimLinkFindStep c={c} />
-          ) : c.linkStep === 'photos' ? (
-            <ClaimPhotosStep c={c} />
-          ) : c.linkStep === 'compose' ? (
-            <ClaimComposeStep c={c} />
-          ) : c.linkStep === 'review' ? (
-            <ClaimReviewStep c={c} />
-          ) : c.linkStep === 'linked' ? (
-            <ClaimLinkedStep c={c} />
-          ) : (
-            <ClaimSellerStep c={c} />
-          )
-        ) : c.createStep === 'photos' ? (
-          <ClaimPhotosStep c={c} />
-        ) : c.createStep === 'compose' ? (
-          <ClaimComposeStep c={c} />
-        ) : c.createStep === 'review' ? (
-          <ClaimReviewStep c={c} />
-        ) : c.createStep === 'confirm' ? (
-          <ClaimConfirmStep c={c} />
-        ) : (
-          <ClaimSellerStep c={c} />
-        )}
-      </motion.div>
-    </AnimatePresence>
   );
 }

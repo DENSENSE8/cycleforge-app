@@ -102,6 +102,7 @@ export function SupportOrdersBoard() {
       chrome={
         <div className={WORKBENCH_CHROME_COLUMN}>
           <WorkbenchChromeHeader
+            density="band"
             tabs={tabs}
             activeTab="unshipped"
             onTabChange={() => {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, type ReactNode } from 'react';
+import { useMemo } from 'react';
 import {
   KpiTile,
   metricIntentTextClass,
@@ -27,28 +27,15 @@ import {
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import type { UnboxWorkspaceTab } from '@/utils/unbox-workspace-state';
 import { toPSTDateKey } from '@/utils/date';
-import { cn } from '@/utils/_cn';
 import { useSurfacePaintMark } from '@/lib/observability/paint-timing';
 
 function MetricKpiTile({ metric }: { metric: ComputedMetric }) {
   const tone = metricIntentTextClass(metric.intent);
-  const footer: ReactNode = metric.status ? (
-    <span
-      className={cn(
-        'mt-1.5 inline-flex items-center gap-1.5 text-role-eyebrow font-semibold uppercase tracking-widest',
-        tone,
-      )}
-    >
-      <span className="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true" />
-      {metric.status}
-    </span>
-  ) : undefined;
   const tile = (
     <KpiTile
       label={metric.label}
       value={metric.value}
       valueClassName={metric.intent === 'warn' || metric.intent === 'bad' ? tone : undefined}
-      footer={footer}
       className="h-full"
     />
   );

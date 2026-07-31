@@ -30,6 +30,9 @@
  * Layout: square stage sized to the shorter viewport edge — iPad portrait /
  * landscape / near-square all get one composed floor surface, not a landscape
  * card floating in empty canvas.
+ *
+ * Landscape shell QA lives at `/kiosk/v2` (attract + left rail + bottom dock)
+ * until E2E is green — see `docs/todo/kiosk-landscape-shell-PLAN.md`.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -44,6 +47,7 @@ import type {
   CounterTransactionInput,
   CounterTransactionResult,
 } from '@/lib/counter/counter-transaction-types';
+import { KIOSK_SERVICES, type KioskServiceId } from '@/lib/kiosk/services';
 
 // Lazy-load the intake form so the welcome screen stays light; it only loads
 // when a team member opens a service.
@@ -59,29 +63,8 @@ const CounterIntakeForm = dynamic(
   { ssr: false },
 );
 
-type Service = 'sales' | 'pickup' | 'repair';
+type Service = KioskServiceId;
 type Mode = 'ready' | 'pair';
-
-interface ServiceTile {
-  id: Service;
-  label: string;
-  blurb: string;
-  /** Only `live` services render today; `wip` ones stay here to reuse this tile. */
-  status: 'live' | 'wip';
-}
-
-// Single SoT for every front-desk service tile. Sales + Pickup are WIP: they
-// stay in this array so bringing one online is a one-line `status: 'live'` flip
-// that reuses this exact tile grammar — never a second tile design.
-const SERVICES: ReadonlyArray<ServiceTile> = [
-  { id: 'repair', label: 'Repair Drop-off', blurb: 'Check in a device for service', status: 'live' },
-  // Live as of the counter-transaction work: taps into CounterIntakeForm, which
-  // submits through /api/kiosk/intake. The square_transactions tenancy contract
-  // (migration 2026-07-29a) is a HARD prerequisite for this being 'live' — it is
-  // applied, so a kiosk sale can no longer write across orgs.
-  { id: 'sales', label: 'Buy / Sell', blurb: 'Start a counter sale or trade-in', status: 'live' },
-  { id: 'pickup', label: 'Order Pickup', blurb: 'Collect a ready order', status: 'wip' },
-];
 
 const REPAIR_SUBMIT_TIMEOUT_MS = 60_000;
 
@@ -97,7 +80,7 @@ export default function KioskPage() {
   /** Same contract as `repairIdemKey`, for the counter transaction path. */
   const counterIdemKey = useRef<string | null>(null);
 
-  const liveServices = SERVICES.filter((s) => s.status === 'live');
+  const liveServices = KIOSK_SERVICES.filter((s) => s.status === 'live');
 
   // Dev-only convenience: silently exchange a fixed dogfood-org pairing for
   // this browser on mount, so a local kiosk.localhost tab never needs the

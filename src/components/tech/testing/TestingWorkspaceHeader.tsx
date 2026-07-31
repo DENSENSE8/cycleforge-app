@@ -1,7 +1,7 @@
 'use client';
 
 import type { Ref } from 'react';
-import { WorkbenchChromeHeader } from '@/components/dashboard/workbench-shell';
+import { WorkbenchChromeHeader, WorkbenchTrailingCluster } from '@/components/dashboard/workbench-shell';
 import { QueueSortSwitch } from '@/components/dashboard/QueueSortSwitch';
 import { ToolbarSearchToggle } from '@/components/ui/ToolbarSearchToggle';
 import { StaffFilterButton } from '@/components/ui/StaffFilterButton';
@@ -40,6 +40,7 @@ export function TestingWorkspaceHeader({
 
   return (
     <WorkbenchChromeHeader
+      density="band"
       tabs={tabs}
       activeTab={tab}
       onTabChange={(id) => onSelectTab(id as TestingWorkspaceTab)}
@@ -72,7 +73,13 @@ export function TestingWorkspaceHeader({
           />
         ) : undefined
       }
-      trailing={showSort ? <QueueSortSwitch sort={sort} onChange={setSort} /> : undefined}
+      trailing={
+        showSort ? (
+          <WorkbenchTrailingCluster
+            sort={<QueueSortSwitch sort={sort} onChange={setSort} />}
+          />
+        ) : undefined
+      }
     />
   );
 }

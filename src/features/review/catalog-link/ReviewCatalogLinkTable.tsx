@@ -162,6 +162,7 @@ export function ReviewCatalogLinkTable() {
         chrome={
           <div className={WORKBENCH_CHROME_COLUMN}>
             <WorkbenchChromeHeader
+              density="band"
               tabs={SECTION_TABS}
               activeTab={section}
               onTabChange={setSection}

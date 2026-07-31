@@ -38,6 +38,7 @@ const TechSidebarPanel = dynamic(() => import('@/components/sidebar/TechSidebarP
 const PackerSidebarPanel = dynamic(() => import('@/components/sidebar/PackerSidebarPanel').then((m) => m.PackerSidebarPanel));
 const OutboundSidebarPanel = dynamic(() => import('@/components/sidebar/OutboundSidebarPanel').then((m) => m.OutboundSidebarPanel));
 const ReviewSidebarPanel = dynamic(() => import('@/components/sidebar/review/ReviewSidebarPanel').then((m) => m.ReviewSidebarPanel));
+const SearchSidebarPanel = dynamic(() => import('@/components/sidebar/search/SearchSidebarPanel').then((m) => m.SearchSidebarPanel));
 // Static: Media library facet rail owns `scope-icons` + `date-tree`. A dynamic
 // import left those SoT modules invisible to knip (and paid no bundle win —
 // `/ops/photos` is the only consumer and already code-splits the page).
@@ -104,6 +105,7 @@ export function SidebarContextPanel({ onBackToAppNav }: { onBackToAppNav?: () =>
   if (routeKey === 'packer') return <PackerSidebarPanel />;
   if (routeKey === 'outbound') return <OutboundSidebarPanel />;
   if (routeKey === 'review') return <ReviewSidebarPanel />;
+  if (routeKey === 'search') return <SearchSidebarPanel />;
 
   return null;
 }

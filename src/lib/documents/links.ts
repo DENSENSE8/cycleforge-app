@@ -61,7 +61,7 @@ export async function createDocumentEntityLink(
   return withTenantTransaction<DocumentEntityLinkRow>(orgId, run);
 }
 
-/** All links for one document (both ORDER and SHIPMENT rows, if present). */
+/** All links for one document (ORDER / SHIPMENT / SKU / SERIAL_UNIT). */
 export async function listLinksForDocument(
   orgId: OrgId,
   documentId: number,
@@ -81,7 +81,7 @@ export async function listLinksForDocument(
   return withTenantTransaction<DocumentEntityLinkRow[]>(orgId, run);
 }
 
-/** Document ids linked to one entity (ORDER or SHIPMENT), newest first. */
+/** Document ids linked to one entity (ORDER / SHIPMENT / SKU / SERIAL_UNIT), newest first. */
 export async function listDocumentIdsForEntity(
   orgId: OrgId,
   entityType: DocumentEntityType,

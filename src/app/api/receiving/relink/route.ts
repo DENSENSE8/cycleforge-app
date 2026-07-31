@@ -86,6 +86,8 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
     zoho_purchaseorder_id: result.poId,
     zoho_purchaseorder_number: result.poNumber,
     scope: effectiveScope,
+    ...(result.pairedOnto != null ? { paired_onto: result.pairedOnto } : {}),
+    ...(result.photosMoved != null ? { photos_moved: result.photosMoved } : {}),
   });
 }, {
   permission: 'receiving.scan_po',
@@ -98,7 +100,13 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
       return r?.receiving_id ?? null;
     },
     extra: ({ response, body }) => {
-      const r = response as { zoho_purchaseorder_id?: string; lines_updated?: number; scope?: string } | null;
+      const r = response as {
+        zoho_purchaseorder_id?: string;
+        lines_updated?: number;
+        scope?: string;
+        paired_onto?: number;
+        photos_moved?: number;
+      } | null;
       const b = body as { zoho_purchaseorder_number?: string; sku?: string } | null;
       return {
         zoho_purchaseorder_id: r?.zoho_purchaseorder_id ?? null,
@@ -106,6 +114,8 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
         sku_corrected: b?.sku ? true : false,
         lines_updated: r?.lines_updated ?? 0,
         scope: r?.scope ?? null,
+        paired_onto: r?.paired_onto ?? null,
+        photos_moved: r?.photos_moved ?? null,
       };
     },
   },

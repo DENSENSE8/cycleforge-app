@@ -1,7 +1,7 @@
 # Fields altitude — trailing cluster SoT
 
-**Status:** Done (2026-07-30). Research ratified; Wave 1 + Wave 2 shipped in this checkout.
-  Shared `tableId: "receiving"` prefs split remains Ask-first.
+**Status:** Done (2026-07-30). Research ratified; Wave 1 + Wave 2 + receiving
+  prefs split (`incoming` vs `receiving` tableId) shipped.
 **Lane:** current checkout — no ad-hoc branch.
 **Product frame:** Cycle Forge multi-tenant reseller-ops SaaS. USAV is dogfood only.
 **Research:** [`table-action-bar-fields-GEMINI-RESEARCH-BRIEFING.md`](./table-action-bar-fields-GEMINI-RESEARCH-BRIEFING.md)
@@ -74,7 +74,7 @@ Guard: `src/components/dashboard/workbench-trailing-cluster.guard.test.ts`.
 
 - [x] Host `UnboxWorkspaceHeader` owns Fields in `trailing`
 - [x] `ReceivingLinesTable` portal injects **week pill only** into `controlsSlot`
-- [ ] Shared `tableId: "receiving"` prefs namespace split — **Ask-first** (Incoming vs History/Unbox descriptors diverge)
+- [x] Shared `tableId: "receiving"` prefs namespace split — Incoming → `incoming`; History/Unbox keep `receiving`
 
 ---
 
@@ -83,7 +83,7 @@ Guard: `src/components/dashboard/workbench-trailing-cluster.guard.test.ts`.
 | Risk | Mitigation |
 |---|---|
 | Sticky stacking | Rejected in D1 — never a second sticky band in the scroll port |
-| Shared `receiving` prefs | Documented Ask-first; do not invent a second prefs system here |
+| Shared `receiving` prefs | **Fixed:** Incoming uses `tableId: "incoming"`; Unbox/History keep `receiving`. Pre-split Incoming deltas under `receiving` stay there (History/Unbox only) — operators re-tune Incoming Fields once. |
 | Unbox `createPortal` | Portal only week pill; Fields stays in host trailing |
 | Selection-plane merge | D4 — `ContextualSelectionBar` remains bottom |
 

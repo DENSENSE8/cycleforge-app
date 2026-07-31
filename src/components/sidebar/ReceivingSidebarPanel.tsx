@@ -42,6 +42,7 @@ import { SidebarRailScrollport } from '@/components/sidebar/rail-shell/SidebarRa
 
 import { TriageScanBand, UnboxScanBand } from '@/components/sidebar/receiving/ReceivingScanBands';
 import { TriageCartonSearchBar } from '@/components/sidebar/receiving/TriageCartonSearchBar';
+import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
 import { ReceivingRailBody } from '@/components/sidebar/receiving/ReceivingRailBody';
 import { ReceivingBulkActionBar } from '@/components/sidebar/receiving/ReceivingBulkActionBar';
 import { RepairSidebarPanel } from '@/components/sidebar/RepairSidebarPanel';
@@ -147,6 +148,8 @@ export function ReceivingSidebarPanel() {
   const [triageQuery, setTriageQuery] = useState('');
   /** Pre-resolve row pinned at the top of the Triage list (tracking # title). */
   const [triageLeadingRow, setTriageLeadingRow] = useState<ReceivingLineRow | null>(null);
+  /** Client-side Unboxed rail filter (mirrors Testing/Shipping TechRailSearchBar). */
+  const [unboxRailFilter, setUnboxRailFilter] = useState('');
   const scanInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -346,6 +349,7 @@ export function ReceivingSidebarPanel() {
                 selectedLine={selectedLine}
                 triageLeadingRow={triageLeadingRow}
                 triageFilterText={mode === 'triage' ? triageListQuery : ''}
+                unboxFilterText={mode === 'receive' ? unboxRailFilter : ''}
               />
             </SidebarRailScrollport>
 
@@ -356,6 +360,17 @@ export function ReceivingSidebarPanel() {
                 collides with the selection action bar. */}
             {mode === 'triage' && !railEditMode ? (
               <TriageCartonSearchBar value={triageListQuery} onChange={updateTriageQuery} />
+            ) : null}
+
+            {/* Unboxed rail filter — same bottom-anchored TechRailSearchBar as
+                Testing/Shipping. Hidden while bulk-editing (bulk bar owns the
+                footer). Mode id is `receive` (Unbox surface). */}
+            {mode === 'receive' && !railEditMode ? (
+              <TechRailSearchBar
+                value={unboxRailFilter}
+                onChange={setUnboxRailFilter}
+                placeholder="Filter unboxed…"
+              />
             ) : null}
 
             {/* Edit-mode bulk dismiss — rides at the very bottom of the rail. */}

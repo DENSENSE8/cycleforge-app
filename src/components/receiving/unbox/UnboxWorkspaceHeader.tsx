@@ -344,8 +344,8 @@ export function UnboxWorkspaceHeader({
       }
       trailing={
         /* Fields in host trailing — not portaled from ReceivingLinesTable
-           (table-action-bar-fields PLAN Phase 2). Shared tableId `receiving`
-           with History is Ask-first to split. */
+           (table-action-bar-fields PLAN Phase 2). Prefs: tableId `receiving`
+           (History/Unbox); Incoming owns distinct `incoming`. */
         <WorkbenchTrailingCluster
           fields={<GridFieldsMenu tableId="receiving" columns={RECEIVING_GRID_COLUMNS} />}
         />

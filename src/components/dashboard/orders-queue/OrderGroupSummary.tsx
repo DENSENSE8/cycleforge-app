@@ -129,15 +129,15 @@ export function OrderGroupSummary({
       </button>
     </HoverTooltip>
   ) : null;
-  const orderCell = orderId ? (
+  const orderCell = (
     <OrderIdChip value={orderId} display={getLast4(orderId)} plain fitDisplayWidth />
-  ) : null;
+  );
   const trackingCell =
     trackings.size > 1 ? (
       <TrackingCountChip count={trackings.size} dense={isMobile} />
-    ) : trackingValue ? (
+    ) : (
       <TrackingOrSkuScanChip value={trackingValue} plain />
-    ) : null;
+    );
 
   if (isMobile) {
     return (

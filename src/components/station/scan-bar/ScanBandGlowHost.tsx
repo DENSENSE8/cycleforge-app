@@ -26,6 +26,7 @@ import {
 } from '@/design-system/foundations/motion-framer';
 import { useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
 import { scanBandGlowGradientClass } from '@/components/sidebar/receiving/useScanBandHalo';
+import { appSurfaceFillClass } from '@/design-system/components/AppSurfaceFill';
 import type { StationTheme } from '@/hooks/useStationTheme';
 import { cn } from '@/utils/_cn';
 
@@ -109,7 +110,12 @@ export function ScanBandGlowHost({
 
   return (
     <div
-      className={cn(className, 'relative isolate overflow-hidden bg-white')}
+      // Chrome fill defaults to the shared SoT (`appSurfaceFillClass('chrome')`,
+      // theme-correct — the old hardcoded `bg-white` stayed white even under a
+      // dark theme). Listed before `className` so a caller's own tone (all
+      // current callers pass `receivingScanBandClass`, which resolves to the
+      // same fill) still wins the `cn()` merge.
+      className={cn('relative isolate overflow-hidden', appSurfaceFillClass('chrome'), className)}
       onFocusCapture={handleFocusCapture}
       onBlurCapture={handleBlurCapture}
       onPointerDownCapture={handlePointerDownCapture}

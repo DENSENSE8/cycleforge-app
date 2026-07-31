@@ -1,11 +1,17 @@
 'use client';
 
-import { useState, type ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { format, formatDistanceToNow, parseISO } from 'date-fns';
 import { motion, useReducedMotion, type Variants } from 'framer-motion';
 import { motionBezier } from '@/design-system/foundations/motion-framer';
-import type { TimelineItem, TimelineTone, TimelineRef, TimelineGroupKey } from '@/lib/timeline/types';
+import type {
+  TimelineItem,
+  TimelineMedia,
+  TimelineTone,
+  TimelineRef,
+  TimelineGroupKey,
+} from '@/lib/timeline/types';
 import { TIMELINE_OTHER_BAND_KEY } from '@/lib/timeline/types';
 import { isRawStatusTrailSubtitle } from '@/lib/timeline/station-subtitle';
 import { resolveTimelineGlyph } from '@/lib/timeline/timeline-glyphs';
@@ -22,6 +28,9 @@ import {
   BinChip,
   getLast4,
 } from '@/components/ui/CopyChip';
+import { usePhotoGallery } from '@/components/shipped/photo-gallery/usePhotoGallery';
+import { PhotoViewerPortal } from '@/components/shipped/photo-gallery/PhotoViewerPortal';
+import type { PhotoGalleryInput } from '@/components/shipped/photo-gallery/photo-gallery-utils';
 
 /**
  * Shared, domain-agnostic event timeline — the vertical day-banded trail used by
@@ -49,6 +58,45 @@ const DENSITY: Record<Density, { pb: string; day: string; glyphTop: string }> = 
   comfortable: { pb: 'pb-4', day: 'mt-5 first:mt-0', glyphTop: 'top-0' },
   compact: { pb: 'pb-3', day: 'mt-4 first:mt-0', glyphTop: 'top-px' },
 };
+
+/**
+ * Inline timeline thumbs → shared photo-gallery SoT (never a new browser tab).
+ * Read surface: `{ url, thumbUrl }` only so delete/upload stay off.
+ */
+function TimelineMediaStrip({ media }: { media: TimelineMedia[] }) {
+  const photos = useMemo<PhotoGalleryInput[]>(
+    () => media.map((m) => ({ url: m.fullUrl, thumbUrl: m.thumbUrl })),
+    [media],
+  );
+  const gallery = usePhotoGallery({ photos });
+  const { openViewer } = gallery;
+
+  return (
+    <>
+      <div className="mt-1.5 flex gap-1.5 overflow-x-auto pb-0.5">
+        {media.map((m, index) => (
+          <button
+            key={m.photoId}
+            type="button"
+            // ds-raw-button: photo thumb open — not a DS Button surface
+            className="ds-raw-button block shrink-0 overflow-hidden rounded-md ring-1 ring-inset ring-border-hairline transition-opacity hover:opacity-90"
+            onClick={() => openViewer(index)}
+            aria-label={m.caption ? `View ${m.caption} photo` : 'View photo'}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={m.thumbUrl}
+              alt={m.caption ?? 'photo'}
+              loading="lazy"
+              className="h-12 w-12 object-cover"
+            />
+          </button>
+        ))}
+      </div>
+      {photos.length > 0 ? <PhotoViewerPortal g={gallery} /> : null}
+    </>
+  );
+}
 
 function fmt(value: string | null | undefined, pattern: string): string {
   if (!value) return '—';
@@ -689,27 +737,7 @@ export function EventTimeline({
                   </div>
                 ) : null}
 
-                {item.media?.length ? (
-                  <div className="mt-1.5 flex gap-1.5 overflow-x-auto pb-0.5">
-                    {item.media.map((m) => (
-                      <a
-                        key={m.photoId}
-                        href={m.fullUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="block shrink-0 overflow-hidden rounded-md ring-1 ring-inset ring-border-hairline transition-opacity hover:opacity-90"
-                      >
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={m.thumbUrl}
-                          alt={m.caption ?? 'photo'}
-                          loading="lazy"
-                          className="h-12 w-12 object-cover"
-                        />
-                      </a>
-                    ))}
-                  </div>
-                ) : null}
+                {item.media?.length ? <TimelineMediaStrip media={item.media} /> : null}
               </div>
             </div>
           </motion.li>

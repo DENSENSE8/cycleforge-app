@@ -15,6 +15,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, useReducedMotion, type Variants } from 'framer-motion';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   staggerRevealContainer,
   STAGGER_REVEAL_STEP,
@@ -30,17 +31,26 @@ import { useSyncedPoNote } from './line-edit/hooks/useSyncedPoNote';
 import { LineEditModals } from './line-edit/LineEditModals';
 import { useUnboxLineController } from './line-edit/hooks/useUnboxLineController';
 import { useReceivingTicketView } from './line-edit/hooks/useReceivingTicketView';
-import { ReceivingTicketStack } from './ReceivingTicketStack';
+import { useReceivingClaimView } from './line-edit/hooks/useReceivingClaimView';
+import {
+  ReceivingTicketExpandControl,
+  ReceivingTicketStack,
+  TICKET_PUSH_HOST_PAD_CLASS,
+} from './ReceivingTicketStack';
+import { ReceivingClaimStack } from './ReceivingClaimStack';
+import { cn } from '@/utils/_cn';
 import { dispatchLineUpdated, type ReceivingLineRow } from '@/components/station/ReceivingLinesTable';
 import { useReturnOrderLinkage } from './line-edit/hooks/useReturnOrderLinkage';
 import { isLocalPickupFulfillment } from '@/lib/receiving/fulfillment-mode';
 import { useReceivingPhotoCount } from '@/hooks/useReceivingPhotoCount';
+import { invalidateSupportContextCaches } from '@/hooks';
+import {
+  invalidateReceivingFeeds,
+  patchReceivingRailTicketByCarton,
+} from '@/lib/queries/receiving-queries';
 import { activeReceivingStepKey } from './ReceivingProgressStepper';
 import {
   StationContextBar,
-  StationHeaderToolbar,
-  StationMoreDetails,
-  stationMoreDetailsPaneHostClass,
 } from '@/components/station/entity-context';
 import { StationTerminalDock, useStationTerminalAction } from '@/components/station/terminal';
 import {
@@ -60,6 +70,8 @@ import type {
   ConversationTabBridge,
   UnitsTabBridge,
 } from './line-edit/terminal/unbox-tab-bridges';
+import { hasRealZohoPoId } from '@/lib/receiving/intake-items-routing';
+import { dispatchReceivingOpenPairingPo } from '@/utils/events';
 
 const LABEL_PRINTED_KEY = (lineId: number) => `receiving-label-printed:${lineId}`;
 
@@ -90,7 +102,15 @@ export function LineEditPanel({
 }) {
   // All state, effects, and handlers live in the controller — this panel is pure
   // composition. See useUnboxLineController / useReceivingLineCore.
-  const c = useUnboxLineController(row, staffId, { itemTotal });
+  const qc = useQueryClient();
+  const { claimView, claimMode, setClaimView } = useReceivingClaimView(row.id);
+  const onOpenClaim = useCallback(
+    (mode: 'create' | 'link') => {
+      setClaimView(true, mode);
+    },
+    [setClaimView],
+  );
+  const c = useUnboxLineController(row, staffId, { itemTotal, onOpenClaim });
   const [actionFeedback, setActionFeedback] = useState<InlineActionFeedbackPayload | null>(null);
   // Shared PO-note save (overwrite + push to inventory) — used by the notes
   // composer's push button and the standalone inventory-notes tab dock.
@@ -233,8 +253,41 @@ export function LineEditPanel({
 
   const { ticketView, setTicketView } = useReceivingTicketView(row.id);
   const ticketId = c.providerTicketId;
-  const showTicketStack = ticketView && ticketId != null;
+  const showTicketStack = ticketView && ticketId != null && !claimView;
+  const showClaimStack = claimView;
   const toggleTicketView = () => setTicketView(!ticketView);
+
+  const closeClaimView = useCallback(() => {
+    setClaimView(false);
+    c.setReturnClaimPrefill(null);
+  }, [setClaimView, c]);
+
+  const onClaimTicketCreated = useCallback(
+    (ticketNumber: string) => {
+      void c.invalidateSupportTicket();
+      invalidateSupportContextCaches(qc);
+      if (row.receiving_id != null) {
+        patchReceivingRailTicketByCarton(qc, row.receiving_id, ticketNumber);
+      }
+      dispatchLineUpdated({
+        id: row.id,
+        zendesk_ticket: ticketNumber,
+        notes: row.notes,
+      });
+      invalidateReceivingFeeds(qc);
+    },
+    [c, qc, row.id, row.notes, row.receiving_id],
+  );
+
+  const onClaimTicketUnlinked = useCallback(() => {
+    void c.invalidateSupportTicket();
+    invalidateSupportContextCaches(qc);
+    if (row.receiving_id != null) {
+      patchReceivingRailTicketByCarton(qc, row.receiving_id, null);
+    }
+    dispatchLineUpdated({ id: row.id, zendesk_ticket: null, notes: row.notes });
+    invalidateReceivingFeeds(qc);
+  }, [c, qc, row.id, row.notes, row.receiving_id]);
 
   useEffect(() => {
     if (ticketView && !c.supportTicketLoading && ticketId == null) {
@@ -317,6 +370,18 @@ export function LineEditPanel({
   const togglePairing = useCallback(() => setPairingOpen((v) => !v), []);
   const editPoControl = <PairingTogglePill open={pairingOpen} onToggle={togglePairing} />;
 
+  /** Carton `# ----` / Link PO → Overview + expand Package Pairing on the PO tab.
+   *  Click again while open closes Package Pairing. */
+  const openPoPairing = useCallback(() => {
+    if (pairingOpen) {
+      setPairingOpen(false);
+      return;
+    }
+    setUnboxView('overview');
+    setPairingOpen(true);
+    requestAnimationFrame(() => dispatchReceivingOpenPairingPo());
+  }, [pairingOpen]);
+
   useEffect(() => {
     setActionFeedback(null);
   }, [row.id]);
@@ -397,25 +462,8 @@ export function LineEditPanel({
     ],
   );
 
-  const moreDetails = (
-    <StationMoreDetails>
-      <StationHeaderToolbar
-        mode="unbox"
-        embedded
-        receivingId={row.receiving_id ?? null}
-        zohoSyncing={c.zohoSyncing}
-        busy={c.saving || c.platformSaving}
-        copyingAll={c.copyingAll}
-        handlers={{
-          refresh: () => void c.syncWithZoho(),
-          share: () => void c.handleShare(),
-          audit: () => c.setAuditOpen(true),
-          copy: () => void c.handleCopyAll(),
-          movePhotos: () => c.openMovePhotos(),
-        }}
-      />
-    </StationMoreDetails>
-  );
+  const showTicketExpand = !showClaimStack && !showTicketStack && ticketId != null;
+  const showRightPushChrome = showClaimStack || showTicketStack || showTicketExpand;
 
   const stationContextBar = (
     <StationContextBar
@@ -427,12 +475,19 @@ export function LineEditPanel({
           linkedOrderNumber={linkedOrder?.orderId ?? null}
           onToggleTicketView={toggleTicketView}
           ticketViewActive={ticketView}
+          onToggleClaimView={() => {
+            if (claimView) closeClaimView();
+            else setClaimView(true, 'create');
+          }}
+          claimViewActive={claimView}
           density="bar"
           onEditTracking={hasTrackingTab ? () => setUnboxView('tracking') : undefined}
           onEditListing={hasListingsTab ? () => setUnboxView('listings') : undefined}
+          onEditPo={!hasRealZohoPoId(row) ? openPoPairing : undefined}
           onClassifyPillOpen={openClassifyFromHeader}
           trackingEditOpen={activeUnboxView === 'tracking'}
           listingEditOpen={activeUnboxView === 'listings'}
+          poEditOpen={pairingOpen && !hasRealZohoPoId(row)}
           photoStage="unbox_carton"
         />
       }
@@ -441,7 +496,15 @@ export function LineEditPanel({
 
   return (
     <>
-      <div className="relative flex h-full min-h-0 min-w-0 flex-1 overflow-hidden">
+      <div
+        className={cn(
+          'relative flex h-full min-h-0 min-w-0 flex-1 overflow-hidden',
+          // Padding (not push-column margin): overflow-hidden clips trailing
+          // child margins so the Ticket/Claim card looked flush to the edge.
+          // Same 8px as the receiving recent-rail `m-2` gutter.
+          showRightPushChrome && TICKET_PUSH_HOST_PAD_CLASS,
+        )}
+      >
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           <StationPanelRoot>
             <div className="relative flex min-h-0 flex-1 flex-col overflow-visible">
@@ -565,22 +628,26 @@ export function LineEditPanel({
           </StationPanelRoot>
         </div>
 
-        {showTicketStack ? (
+        {showClaimStack ? (
+          <ReceivingClaimStack
+            row={row}
+            initialMode={claimMode}
+            prefillReason={c.returnClaimPrefill ?? undefined}
+            onClose={closeClaimView}
+            onTicketCreated={onClaimTicketCreated}
+            onTicketUnlinked={onClaimTicketUnlinked}
+          />
+        ) : showTicketStack ? (
           <ReceivingTicketStack
             ticketId={ticketId!}
             receivingId={row.receiving_id ?? undefined}
             onClose={() => setTicketView(false)}
           />
+        ) : showTicketExpand ? (
+          // Linked ticket parked — same expand strip as the receiving
+          // recent-rail collapse (`CONTEXT_PANEL_COLLAPSE_STRIP_CLASS`).
+          <ReceivingTicketExpandControl onExpand={() => setTicketView(true)} />
         ) : null}
-
-        {/* Pane-anchored More details — outer host so Ticket push does not
-            slide refresh · ⋯ · info left with the squeezed Unbox column. */}
-        <div
-          className={stationMoreDetailsPaneHostClass}
-          data-testid="station-more-details-slot"
-        >
-          {moreDetails}
-        </div>
       </div>
 
       <LineEditModals row={row} c={c} />

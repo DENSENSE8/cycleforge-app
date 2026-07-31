@@ -46,12 +46,19 @@ export function ManualsSection({
   const slideItems = useMemo((): DocumentSlideItem[] => {
     return manuals.map((m) => {
       const name = m.display_name || m.file_name || `Manual #${m.id}`;
+      // Prefer direct Blob URL (works for tech.qc_pass). Document content proxy
+      // requires orders.view — only fall back when source_url is missing.
+      const src =
+        m.source_url ||
+        (m.document_id != null && m.document_id > 0
+          ? `/api/documents/${m.document_id}/content`
+          : null);
       return {
         id: `manual:${m.id}`,
         title: name,
-        src: m.source_url,
+        src,
         mimeHint: 'pdf',
-        count: m.source_url ? 1 : undefined,
+        count: src ? 1 : undefined,
         emptyTitle: 'Manual file unavailable',
         emptyHint: 'Re-pair from the library or open the Products manuals library.',
         meta: m.type ? (
@@ -133,7 +140,7 @@ export function ManualsSection({
                   ) : null}
                 </div>
                 <div className="flex shrink-0 items-center gap-0.5">
-                  {m.source_url ? (
+                  {m.source_url || m.document_id ? (
                     <HoverTooltip label="View / print manual" asChild>
                       <IconButton
                         icon={<Printer className="h-4 w-4" />}

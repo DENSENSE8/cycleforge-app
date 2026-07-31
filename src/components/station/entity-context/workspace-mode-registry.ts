@@ -35,7 +35,10 @@ interface ModeDef {
   label: string;
   /** Toolbar actions shown in the pane header, left → right. */
   headerActions: HeaderActionKey[];
-  /** Right-slot Info button → receiving-details overlay (receiving modes only). */
+  /**
+   * Legacy Info → receiving-details overlay. Always false — observe utilities
+   * live on `/carton/[id]` (decision 2a). Kept so the toolbar can stay keyed.
+   */
   showDetails: boolean;
   /** Which navigation event prev/next dispatches for this mode. */
   navChannel: NavChannel;
@@ -51,27 +54,31 @@ interface ModeDef {
 export const WORKSPACE_MODES: Record<WorkspaceMode, ModeDef> = {
   unbox: {
     label: 'Unbox',
-    // photoNote lives on the carton photo dropdown (ReceivingPhotoButton), not More.
-    headerActions: ['refresh', 'share', 'audit', 'copy', 'movePhotos'],
-    showDetails: true,
+    // Share / Audit / Copy / Refresh live on `/carton/[id]`; Move photos on the
+    // photo gallery. Ticket (photoNote) stays on the carton photo dropdown.
+    // PO link is the carton `#` chip → Package Pairing.
+    headerActions: [],
+    showDetails: false,
     navChannel: 'receiving-navigate-table',
     terminalSlice: 'unbox',
     hasSectionTabs: true,
   },
   triage: {
     label: 'Arrival',
-    // photoNote lives on the carton photo dropdown (ReceivingPhotoButton), not More.
-    headerActions: ['refresh', 'share', 'audit', 'copy', 'movePhotos'],
-    showDetails: true,
+    // Share / Audit / Copy / Refresh live on `/carton/[id]`; Move photos on the
+    // photo gallery. PO link is the carton `#` chip → Package Pairing.
+    headerActions: [],
+    showDetails: false,
     navChannel: 'receiving-navigate-table',
     terminalSlice: 'triage',
     hasSectionTabs: true,
   },
   testing: {
     label: 'Testing',
-    // photoNote lives on the carton photo dropdown (ReceivingPhotoButton), not toolbar.
-    headerActions: ['refresh', 'share', 'audit', 'pair', 'copy', 'movePhotos', 'details'],
-    showDetails: true,
+    // Refresh + Pair only; Share / Audit / Copy / Info live on carton read.
+    // Move photos on the photo gallery; photoNote on ReceivingPhotoButton.
+    headerActions: ['refresh', 'pair'],
+    showDetails: false,
     navChannel: 'testing-navigate-rail',
     terminalSlice: 'testing',
     hasSectionTabs: true,

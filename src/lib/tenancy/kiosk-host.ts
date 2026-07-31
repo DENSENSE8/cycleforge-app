@@ -237,6 +237,8 @@ const KIOSK_HOST_ALLOWED_PATHS: ReadonlyArray<RegExp> = [
   /^\/api\/kiosk\/pair(?:$|\/)/,
   /^\/api\/kiosk\/intake(?:$|\/)/,
   /^\/api\/kiosk\/repair(?:$|\/)/,
+  /^\/api\/kiosk\/sales(?:$|\/)/,
+  /^\/api\/kiosk\/settings(?:$|\/)/,
   /^\/_next\//,
   /^\/favicon\.ico$/,
   /^\/manifest\.(json|webmanifest)$/,

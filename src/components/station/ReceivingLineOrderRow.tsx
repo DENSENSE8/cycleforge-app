@@ -166,7 +166,7 @@ export function ReceivingLineOrderRow({
             selectMode ? (
               <span
                 className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
-                  isSelected ? 'border-blue-600 bg-blue-600 text-white' : 'border-border-default bg-surface-card'
+                  isSelected ? 'border-accent-bg bg-accent-bg text-text-inverse' : 'border-border-default bg-surface-card'
                 }`}
               >
                 {isSelected && <Check className="h-3 w-3" />}

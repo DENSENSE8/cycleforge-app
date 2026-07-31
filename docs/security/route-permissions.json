@@ -1,11 +1,11 @@
 {
   "version": 1,
-  "generatedAt": "2026-07-30T22:57:29Z",
-  "totalRoutes": 891,
+  "generatedAt": "2026-07-31T07:21:42Z",
+  "totalRoutes": 894,
   "summary": {
-    "permissionGated": 756,
+    "permissionGated": 758,
     "authenticatedNoPermission": 48,
-    "anonymousIntentional": 85,
+    "anonymousIntentional": 86,
     "serviceToService": 2,
     "ungatedRead": 0,
     "ungatedWrite": 0
@@ -1418,6 +1418,15 @@
       "exemptReason": "cron endpoint"
     },
     {
+      "path": "/api/cron/documents/ensure-outbound/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "NONE",
+      "permission": null,
+      "exemptReason": "cron endpoint"
+    },
+    {
       "path": "/api/cron/documents/nas-mirror/route.ts",
       "methods": [
         "GET"
@@ -2822,6 +2831,33 @@
       "exemptReason": null
     },
     {
+      "path": "/api/kiosk/sales/ecwid-categories/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withKioskAuth (device principal)",
+      "permission": null,
+      "exemptReason": null
+    },
+    {
+      "path": "/api/kiosk/sales/ecwid-products/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withKioskAuth (device principal)",
+      "permission": null,
+      "exemptReason": null
+    },
+    {
+      "path": "/api/kiosk/settings/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withKioskAuth (device principal)",
+      "permission": null,
+      "exemptReason": null
+    },
+    {
       "path": "/api/label-manifests/[id]/dissolve/route.ts",
       "methods": [
         "POST"
@@ -3531,6 +3567,15 @@
       ],
       "gate": "requireRoutePerm",
       "permission": "orders.create",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/orders/[id]/documents/print/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "requireRoutePerm",
+      "permission": "packing.complete_order",
       "exemptReason": null
     },
     {
@@ -4367,6 +4412,15 @@
       ],
       "gate": "withAuth",
       "permission": "print.label",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/product-manuals/[id]/content/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "requireRoutePerm",
+      "permission": "orders.view",
       "exemptReason": null
     },
     {
@@ -5314,33 +5368,6 @@
     },
     {
       "path": "/api/receiving/zendesk-claim/assist-seller/route.ts",
-      "methods": [
-        "POST"
-      ],
-      "gate": "withAuth",
-      "permission": "receiving.mark_received",
-      "exemptReason": null
-    },
-    {
-      "path": "/api/receiving/zendesk-claim/assist/route.ts",
-      "methods": [
-        "POST"
-      ],
-      "gate": "withAuth",
-      "permission": "receiving.mark_received",
-      "exemptReason": null
-    },
-    {
-      "path": "/api/receiving/zendesk-claim/classify/route.ts",
-      "methods": [
-        "POST"
-      ],
-      "gate": "withAuth",
-      "permission": "receiving.mark_received",
-      "exemptReason": null
-    },
-    {
-      "path": "/api/receiving/zendesk-claim/draft/route.ts",
       "methods": [
         "POST"
       ],

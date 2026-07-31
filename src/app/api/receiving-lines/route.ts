@@ -301,8 +301,9 @@ export async function handleReceivingLinesGet(
             : compareReceivingRowsByScannedAt(a, b),
       );
       const windowed = normalizedList.slice(offset, offset + limit);
-      // Lineless unfound placeholders sort last on unboxed_newest and were
-      // silently dropped when the main query already filled the page window.
+      // Lineless unfound placeholders without an open/unbox stamp sort last on
+      // unboxed_newest and were silently dropped when the main query already
+      // filled the page window.
       if (view === 'activity' && placeholderNorm.length > 0) {
         const windowRcvIds = new Set(
           windowed
@@ -1205,20 +1206,38 @@ function compareReceivingRowsByRecentActivity(
 }
 
 /**
- * `?sort=unboxed_newest` comparator for the placeholder merge. Most recently
- * unboxed first; never-unboxed rows (ts 0 — incl. unfound placeholders) sort
- * last, tie-broken by recent activity so the un-unboxed tail stays stable.
+ * `?sort=unboxed_newest` comparator for the placeholder merge. Prefer first
+ * Unbox-open (Unboxed sidebar axis), then unbox-complete; never-opened and
+ * never-unboxed rows (ts 0 — incl. bare unfound placeholders) sort last,
+ * tie-broken by scan activity so the tail stays stable.
  */
-function receivingRowUnboxedTs(row: { unboxed_at?: string | null }) {
-  const raw = row.unboxed_at ?? null;
+function receivingRowUnboxedTs(row: {
+  unbox_opened_at?: string | null;
+  unboxed_at?: string | null;
+}) {
+  const raw = row.unbox_opened_at ?? row.unboxed_at ?? null;
   if (!raw) return 0;
   const t = new Date(raw).getTime();
   return Number.isFinite(t) ? t : 0;
 }
 
 function compareReceivingRowsByUnboxedAt(
-  a: { unboxed_at?: string | null; scanned_at?: string | null; received_at?: string | null; created_at?: string | null; id: number },
-  b: { unboxed_at?: string | null; scanned_at?: string | null; received_at?: string | null; created_at?: string | null; id: number },
+  a: {
+    unbox_opened_at?: string | null;
+    unboxed_at?: string | null;
+    scanned_at?: string | null;
+    received_at?: string | null;
+    created_at?: string | null;
+    id: number;
+  },
+  b: {
+    unbox_opened_at?: string | null;
+    unboxed_at?: string | null;
+    scanned_at?: string | null;
+    received_at?: string | null;
+    created_at?: string | null;
+    id: number;
+  },
 ) {
   const d = receivingRowUnboxedTs(b) - receivingRowUnboxedTs(a);
   return d !== 0 ? d : compareReceivingRowsByScannedAt(a, b);
@@ -1401,8 +1420,8 @@ function normalizeRow(row: Record<string, unknown>) {
     scanned_at:               (row.first_scanned_at as string | null) ?? null,
     scanned_by_name:          (row.scanned_by_name as string | null) ?? null,
     // First-class "opened for unbox" time (receiving.unbox_opened_at / UNBOX_SCAN_OPENED).
-    // The unbox rail reads THIS for its label + sort — same axis as the Overview —
-    // instead of inferring it from the overloaded scanned_at. Null on non-unbox views.
+    // Unboxed rail + History `unboxed_newest` read THIS for label + sort — same
+    // axis. Selected on view=unbox_opened / activity / all; null elsewhere.
     unbox_opened_at:          (row.unbox_opened_at as string | null) ?? null,
     unbox_only_intake:        row.unbox_only_intake === true,
     triage_complete:          row.triage_complete === true,

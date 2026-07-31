@@ -10,6 +10,7 @@ import {
   appChromeMutedClass,
   appCanvasClass,
   appWorkCanvasClass,
+  appWorkCanvasLayoutClass,
   appWorkCanvasEdgeClass,
   appWashClass,
 } from './app-surface';
@@ -39,9 +40,16 @@ describe('app-surface SoT', () => {
     assert.equal(appWashClass, 'app-wash');
     assert.equal(appWorkCanvasEdgeClass, 'border border-border-soft');
     assert.match(appChromeBandHairlineClass, /--ds-color-border-default/);
+    // Layout shell — no fill (shared CONTEXT_PANEL_HOST ground).
+    assert.equal(
+      appWorkCanvasLayoutClass,
+      'relative flex min-h-0 w-full flex-1 flex-col overflow-hidden',
+    );
+    assert.doesNotMatch(appWorkCanvasLayoutClass, /bg-surface-/);
     // Station fill host — edge + rounded cutout live on appContentShellClass
     // so every desktop page gets the hairline, not only work-canvas opt-ins.
     assert.match(appWorkCanvasClass, /bg-surface-card/);
+    assert.match(appWorkCanvasClass, new RegExp(appWorkCanvasLayoutClass.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
     assert.doesNotMatch(appWorkCanvasClass, /rounded-tl-2xl/);
     assert.doesNotMatch(appWorkCanvasClass, /border-border-soft/);
     assert.doesNotMatch(appWorkCanvasClass, /border-border-hairline/);

@@ -11,15 +11,21 @@ export type DeltaChipProps = {
    * Affects success/danger color only — the numeric sign stays as given.
    */
   invert?: boolean;
-  /** Suffix after the percent, e.g. "vs. yesterday". */
+  /** Suffix after the percent, e.g. "vs. yesterday". Ignored when `compact`. */
   vsLabel?: string;
-  /** When delta is 0, this copy is shown instead of a chip. */
+  /** When delta is 0, this copy is shown instead of a chip. Ignored when `compact` (renders nothing). */
   emptyLabel?: string;
+  /**
+   * Compact top-right KPI readout: `+20%` only — no icon, no vs-label.
+   * Zero / missing change renders nothing.
+   */
+  compact?: boolean;
   className?: string;
 };
 
 /**
- * Monitor delta line under a KPI hero number.
+ * Monitor delta readout. Default is the full chip under a hero; `compact` is the
+ * top-right `+N%` slot on {@link KpiTile}.
  * Uses theme functional text tokens (`text-text-success` / `text-text-danger`).
  */
 export function DeltaChip({
@@ -27,9 +33,11 @@ export function DeltaChip({
   invert = false,
   vsLabel = 'vs. yesterday',
   emptyLabel = 'No change vs. yesterday',
+  compact = false,
   className,
 }: DeltaChipProps) {
   if (!delta) {
+    if (compact) return null;
     return (
       <p className={cn('mt-1.5 text-role-eyebrow font-semibold text-text-faint', className)}>
         {emptyLabel}
@@ -38,6 +46,21 @@ export function DeltaChip({
   }
 
   const positive = invert ? delta < 0 : delta > 0;
+  const signed = `${delta > 0 ? '+' : ''}${delta}%`;
+
+  if (compact) {
+    return (
+      <span
+        className={cn(
+          'shrink-0 text-role-eyebrow font-semibold tabular-nums',
+          positive ? 'text-text-success' : 'text-text-danger',
+          className,
+        )}
+      >
+        {signed}
+      </span>
+    );
+  }
 
   return (
     <p
@@ -48,8 +71,7 @@ export function DeltaChip({
       )}
     >
       <TrendingUp className={cn('h-3.5 w-3.5', delta < 0 && 'rotate-180')} />
-      {delta > 0 ? '+' : ''}
-      {delta}% {vsLabel}
+      {signed} {vsLabel}
     </p>
   );
 }
