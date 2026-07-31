@@ -61,6 +61,11 @@ Top-to-bottom, a station is four parts and nothing more:
 - **The card region uses `flex-1 overflow-y-auto`; the scan bar stays pinned above it.** See `StationPacking` — scan
   bar in the header band, results in the scroll body. *Rationale: the bar must never scroll out from under a working
   operator.*
+- **Recent-activity rails scroll through `SidebarRailScrollport`.** Unbox / Triage / Testing / Shipping / Pack / Pickup /
+  FBA / Support / Labels / Dashboard recents — the host wraps the feed in
+  `@/components/sidebar/rail-shell/SidebarRailScrollport` (flat bottom "more below" fade via `useMoreBelow` +
+  `SCROLL_MORE_BELOW_CLASS`). Never hand-roll a second bottom fade; `SidebarRailShell` stays content-sized and does
+  not own vertical scroll. *Rationale: one scroll-edge affordance across every station recent dock.*
 
 ---
 

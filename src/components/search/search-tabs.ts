@@ -1,21 +1,9 @@
 /**
- * search-tabs — category group vocabulary + preview grouping for Dashboard
- * Search results and the header dropdown preview. (No UI pill strip — groups
- * are section headers only.)
+ * search-tabs — preview grouping for the header dropdown combobox.
+ * The full `/search` surface is a flat RRF list (no entity section cards).
  */
 
 import type { AiSearchHit } from '@/lib/search/ai-search-client';
-
-/** Entity groups for the results surface (section headers). */
-export const CATEGORY_TABS = [
-  { id: 'all', label: 'Overview' },
-  { id: 'order', label: 'Orders' },
-  { id: 'unit', label: 'Units' },
-  { id: 'receiving', label: 'Receiving' },
-  { id: 'sku', label: 'SKUs' },
-  { id: 'repair', label: 'Repairs' },
-  { id: 'fba', label: 'FBA' },
-] as const;
 
 // ── Header-preview grouping ─────────────────────────────────────────────────
 

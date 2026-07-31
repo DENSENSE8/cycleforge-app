@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState, type Ref } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useQuery, useIsFetching } from '@tanstack/react-query';
-import { WorkbenchChromeHeader } from '@/components/dashboard/workbench-shell';
+import { WorkbenchChromeHeader, WorkbenchTrailingCluster } from '@/components/dashboard/workbench-shell';
 import {
   WorkbenchFilterDivider,
   WorkbenchFilterGroupLabel,
@@ -12,6 +12,8 @@ import {
 } from '@/components/dashboard/workbench-filter-popover';
 import { StaffFilterButton } from '@/components/ui/StaffFilterButton';
 import { ToolbarSearchToggle } from '@/design-system/primitives/ToolbarSearchToggle';
+import { GridFieldsMenu } from '@/components/ui/table-column-config/GridFieldsMenu';
+import { RECEIVING_GRID_COLUMNS } from '@/lib/receiving/receiving-grid-layout';
 import { parseStaffParam } from '@/hooks/useStaffFilter';
 import { useWorkbenchSearchParam } from '@/hooks/useWorkbenchSearchParam';
 import { useDebounce } from '@/hooks';
@@ -27,6 +29,7 @@ import {
   normalizeReceivingHistorySearchField,
   setReceivingHistoryUrlParams,
 } from '@/lib/receiving-history-search';
+import { TRIAGE_LANE_OPTS } from '@/lib/receiving/triage-lane-policy';
 import {
   UNBOX_WORKSPACE_TAB_LABEL,
   type UnboxWorkspaceTab,
@@ -35,6 +38,12 @@ import {
 // Order mirrors TestingWorkspaceHeader — the history-like tab (History) sits
 // rightmost (emerald, dividerBefore) after the active-work tabs (Queue, Viewed).
 const TABS: UnboxWorkspaceTab[] = ['queue', 'viewed', 'recent'];
+
+const QUEUE_STAGE_OPTS = [
+  { id: null, label: 'All' },
+  { id: 'staged' as const, label: 'Staged' },
+  { id: 'unstaged' as const, label: 'Not staged' },
+];
 
 export function UnboxWorkspaceHeader({
   tab,
@@ -53,6 +62,7 @@ export function UnboxWorkspaceHeader({
   const staffId = parseStaffParam(searchParams.get('staff') ?? searchParams.get('staffId'));
   const { searchQuery, setSearch } = useWorkbenchSearchParam();
   const isHistoryTab = tab === 'recent';
+  const isQueueTab = tab === 'queue';
 
   const searchField = useMemo(
     () => normalizeReceivingHistorySearchField(searchParams.get(RECEIVING_HISTORY_URL_PARAMS.field)),
@@ -62,6 +72,15 @@ export function UnboxWorkspaceHeader({
     () => normalizeHistorySort(searchParams.get('sort')),
     [searchParams],
   );
+
+  const ustageRaw = (searchParams.get('ustage') || '').trim().toLowerCase();
+  const queueStage: 'staged' | 'unstaged' | null =
+    ustageRaw === 'staged' || ustageRaw === 'unstaged' ? ustageRaw : null;
+  const ulaneRaw = (searchParams.get('ulane') || '').trim().toUpperCase();
+  const queueLane =
+    TRIAGE_LANE_OPTS.some((o) => o.value === ulaneRaw)
+      ? (ulaneRaw as (typeof TRIAGE_LANE_OPTS)[number]['value'])
+      : null;
 
   const replaceParams = useCallback(
     (next: URLSearchParams) => {
@@ -112,10 +131,38 @@ export function UnboxWorkspaceHeader({
     replaceParams(next);
   }, [replaceParams, searchParams]);
 
+  const setQueueStage = useCallback(
+    (id: 'staged' | 'unstaged' | null) => {
+      const next = new URLSearchParams(searchParams.toString());
+      if (id == null) next.delete('ustage');
+      else next.set('ustage', id);
+      replaceParams(next);
+    },
+    [replaceParams, searchParams],
+  );
+
+  const setQueueLane = useCallback(
+    (id: string | null) => {
+      const next = new URLSearchParams(searchParams.toString());
+      if (id == null) next.delete('ulane');
+      else next.set('ulane', id);
+      replaceParams(next);
+    },
+    [replaceParams, searchParams],
+  );
+
+  const clearQueueFilters = useCallback(() => {
+    const next = new URLSearchParams(searchParams.toString());
+    next.delete('ustage');
+    next.delete('ulane');
+    replaceParams(next);
+  }, [replaceParams, searchParams]);
+
   // Lightweight queue depth for the Queue tab badge — separate key from the
-  // KPI strip's 200-row metrics fetch so React Query doesn't collide.
+  // KPI strip's 200-row metrics fetch so React Query doesn't collide. Include
+  // staging facets so the badge matches the filtered table total.
   const { data: queueCount } = useQuery({
-    queryKey: ['unbox-queue-badge', staffId ?? 'all'],
+    queryKey: ['unbox-queue-badge', staffId ?? 'all', queueStage ?? 'all', queueLane ?? 'all'],
     queryFn: async () => {
       const params = new URLSearchParams({
         limit: '1',
@@ -124,6 +171,8 @@ export function UnboxWorkspaceHeader({
         sort: 'priority',
       });
       if (staffId != null) params.set('staff', String(staffId));
+      if (queueStage) params.set('ustage', queueStage);
+      if (queueLane) params.set('ulane', queueLane);
       const res = await fetch(`/api/receiving-lines?${params.toString()}`, { cache: 'no-store' });
       if (!res.ok) return 0;
       const body = (await res.json()) as { total?: number; receiving_lines?: unknown[] };
@@ -139,7 +188,8 @@ export function UnboxWorkspaceHeader({
     }) > 0;
 
   const [filterOpen, setFilterOpen] = useState(false);
-  const filterHot = isHistoryTab && (searchField !== 'all' || historySort !== HISTORY_DEFAULT_SORT);
+  const historyFilterHot = isHistoryTab && (searchField !== 'all' || historySort !== HISTORY_DEFAULT_SORT);
+  const queueFilterHot = isQueueTab && (queueStage != null || queueLane != null);
 
   const tabs = TABS.map((id) => ({
     id,
@@ -154,6 +204,7 @@ export function UnboxWorkspaceHeader({
 
   return (
     <WorkbenchChromeHeader
+      density="band"
       tabs={tabs}
       activeTab={tab}
       onTabChange={(id) => onSelectTab(id as UnboxWorkspaceTab)}
@@ -187,11 +238,66 @@ export function UnboxWorkspaceHeader({
       right={
         <>
           {tab !== 'viewed' ? <StaffFilterButton iconOnly align="end" /> : null}
+          {isQueueTab ? (
+            <WorkbenchFilterPopover
+              open={filterOpen}
+              onOpenChange={setFilterOpen}
+              hot={queueFilterHot}
+              label="Staging filters"
+            >
+              <WorkbenchFilterGroupLabel>Readiness</WorkbenchFilterGroupLabel>
+              {QUEUE_STAGE_OPTS.map((opt) => (
+                <WorkbenchFilterMenuRow
+                  key={opt.id ?? 'all'}
+                  label={opt.label}
+                  active={queueStage === opt.id}
+                  onClick={() => {
+                    setQueueStage(opt.id);
+                    setFilterOpen(false);
+                  }}
+                />
+              ))}
+              <WorkbenchFilterDivider />
+              <WorkbenchFilterGroupLabel>Priority lane</WorkbenchFilterGroupLabel>
+              <WorkbenchFilterMenuRow
+                label="All lanes"
+                active={queueLane == null}
+                onClick={() => {
+                  setQueueLane(null);
+                  setFilterOpen(false);
+                }}
+              />
+              {TRIAGE_LANE_OPTS.map((opt) => (
+                <WorkbenchFilterMenuRow
+                  key={opt.value}
+                  label={opt.label}
+                  active={queueLane === opt.value}
+                  onClick={() => {
+                    setQueueLane(opt.value);
+                    setFilterOpen(false);
+                  }}
+                />
+              ))}
+              {queueFilterHot ? (
+                <>
+                  <WorkbenchFilterDivider />
+                  <WorkbenchFilterMenuRow
+                    label="Clear filters"
+                    active={false}
+                    onClick={() => {
+                      clearQueueFilters();
+                      setFilterOpen(false);
+                    }}
+                  />
+                </>
+              ) : null}
+            </WorkbenchFilterPopover>
+          ) : null}
           {isHistoryTab ? (
             <WorkbenchFilterPopover
               open={filterOpen}
               onOpenChange={setFilterOpen}
-              hot={filterHot}
+              hot={historyFilterHot}
               label="Sort / search field"
             >
               <WorkbenchFilterGroupLabel>Sort by</WorkbenchFilterGroupLabel>
@@ -219,7 +325,7 @@ export function UnboxWorkspaceHeader({
                   }}
                 />
               ))}
-              {filterHot ? (
+              {historyFilterHot ? (
                 <>
                   <WorkbenchFilterDivider />
                   <WorkbenchFilterMenuRow
@@ -235,6 +341,14 @@ export function UnboxWorkspaceHeader({
             </WorkbenchFilterPopover>
           ) : null}
         </>
+      }
+      trailing={
+        /* Fields in host trailing — not portaled from ReceivingLinesTable
+           (table-action-bar-fields PLAN Phase 2). Shared tableId `receiving`
+           with History is Ask-first to split. */
+        <WorkbenchTrailingCluster
+          fields={<GridFieldsMenu tableId="receiving" columns={RECEIVING_GRID_COLUMNS} />}
+        />
       }
     />
   );

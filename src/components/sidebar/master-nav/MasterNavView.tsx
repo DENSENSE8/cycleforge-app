@@ -1,7 +1,8 @@
 'use client';
 
 import { useCallback, useRef } from 'react';
-import type { SidebarPageNav } from '@/lib/sidebar-navigation';
+import { TOP_CHROME_BAND_FACE } from '@/components/layout/header-shell';
+import type { SidebarPageNav, SpineDrillId } from '@/lib/sidebar-navigation';
 import { cn } from '@/utils/_cn';
 import { MasterNavHeader } from './MasterNavHeader';
 import { SidebarNavList } from './SidebarNavList';
@@ -28,13 +29,10 @@ import { SidebarNavList } from './SidebarNavList';
  *
  * ## One body: the page list
  *
- * This renders a 40px identity band over the page list, and nothing else. A
- * route's own sidebar — the Media library's facet rail, Products' catalog
- * picker, the receiving rails — is NOT a body this component can render; it
+ * This renders a 40px identity band over the page list (Main / Stations + Stock
+ * drill + pinned Settings/Admin footer), and nothing else. A route's own sidebar
  * mounts in the content region beside the workspace (`ContextPanelLayout`).
- *
- * L2 mode switching + Recents live in GlobalHeader (`HeaderModeSwitcher` /
- * `HeaderRecentsSwitcher`) — the band shows identity only (mode glyph + label).
+ * L2 mode switching + Recents live in GlobalHeader — the band shows identity only.
  */
 export function MasterNavView({
   activePage,
@@ -45,6 +43,8 @@ export function MasterNavView({
   onToggleRow,
   onNavigate,
   onRowHover,
+  drillId,
+  onDrillChange,
   className,
 }: {
   activePage: SidebarPageNav;
@@ -57,6 +57,8 @@ export function MasterNavView({
   onNavigate: (pageId: string, modeId?: string) => void;
   /** Hover hook per page row — warms the destination's data. */
   onRowHover?: (page: SidebarPageNav) => void;
+  drillId: SpineDrillId | null;
+  onDrillChange: (id: SpineDrillId | null) => void;
   className?: string;
 }) {
   const activeMode = activePage.modes?.find((m) => m.id === activeModeId);
@@ -75,7 +77,11 @@ export function MasterNavView({
 
   return (
     <div className={cn('isolate flex h-full min-h-0 flex-col', className)}>
-      <div ref={headerRef} className="shrink-0 border-b border-border-hairline">
+      {/* Same box model as GlobalHeader — height + hairline on one element. */}
+      <div
+        ref={headerRef}
+        className={cn(TOP_CHROME_BAND_FACE, 'flex w-full min-w-0 items-stretch')}
+      >
         <MasterNavHeader
           label={headerLabel}
           leadingIcon={headerIcon}
@@ -87,8 +93,8 @@ export function MasterNavView({
         />
       </div>
 
-      {/* One body, always the page list. Nothing swaps, so no crossfade. */}
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      {/* One body: scrollable Main/Stations + Stock drill + pinned Settings/Admin. */}
+      <div className="min-h-0 flex-1">
         <SidebarNavList
           activePage={activePage}
           activeModeId={activeModeId}
@@ -97,6 +103,8 @@ export function MasterNavView({
           onToggleRow={onToggleRow}
           onNavigate={onNavigate}
           onRowHover={onRowHover}
+          drillId={drillId}
+          onDrillChange={onDrillChange}
         />
       </div>
     </div>

@@ -17,6 +17,7 @@ import {
   WORKBENCH_BODY_COLUMN,
   WORKBENCH_CHROME_COLUMN,
   WorkbenchChromeHeader,
+  WorkbenchTrailingCluster,
 } from '@/components/dashboard/workbench-shell';
 import {
   WorkbenchFilterDivider,
@@ -305,22 +306,22 @@ export function ProductsCatalogWorkspace() {
                 </WorkbenchFilterPopover>
               }
               trailing={
-                <div className="flex items-center gap-2">
-                  {/* Per-staff column picker — the opt-in path for the
-                      `optional` count columns the lean default hides. */}
-                  <GridFieldsMenu tableId="catalog" columns={CATALOG_GRID_COLUMNS} />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    disabled={syncing}
-                    onClick={() => void refreshInventory()}
-                    className="gap-1.5"
-                  >
-                    <RefreshCw className={cn('h-3.5 w-3.5', syncing && 'animate-spin')} />
-                    Refresh inventory
-                  </Button>
-                </div>
+                <WorkbenchTrailingCluster
+                  fields={<GridFieldsMenu tableId="catalog" columns={CATALOG_GRID_COLUMNS} />}
+                  after={
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      disabled={syncing}
+                      onClick={() => void refreshInventory()}
+                      className="gap-1.5"
+                    >
+                      <RefreshCw className={cn('h-3.5 w-3.5', syncing && 'animate-spin')} />
+                      Refresh inventory
+                    </Button>
+                  }
+                />
               }
             />
           </div>

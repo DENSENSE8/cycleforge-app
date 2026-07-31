@@ -4,12 +4,13 @@
  *
  * Same spreadsheet family as Pending / Incoming (Date as a per-row column —
  * no sticky day-band headers on these rails):
- *   select · title · date · qty · cond · stage · platform · order · tracking · serial
+ *   select · title · date · qty · cond · stage · location · platform · order · tracking · serial
  *
  * Incoming keeps its own Expected / Age / Status columns
  * ({@link INCOMING_GRID_COLUMNS}). Stage label (Unboxed / Scanned / Tested) is
  * a header prop — the track key stays `stage`. Date is the civil day of the
- * activity-axis stamp (Unboxed / Scanned / Tested).
+ * activity-axis stamp (Unboxed / Scanned / Tested). Location is triage shelf
+ * placement (`staging_location_label`).
  */
 
 import { GRID_IDENTITY_COLUMN_KEYS } from '@/design-system/components/grid/grid-column-editability';
@@ -23,6 +24,7 @@ export type ReceivingGridColumnKey =
   | 'qty'
   | 'condition'
   | 'stage'
+  | 'location'
   | 'platform'
   | 'order'
   | 'tracking'
@@ -50,9 +52,9 @@ export interface ReceivingGridColumn extends Omit<LedgerGridColumnModel, 'key'> 
  * ## Default (`core`) set — deliberately lean
  *
  * A receiving line is scanned by: what is it (`title`), when did it land
- * (`date`), how many (`qty`), where is it in the flow (`stage`), and the two
- * identifiers an operator actually types or scans (`order` = PO#, `tracking`).
- * That is the whole default grid.
+ * (`date`), how many (`qty`), where is it in the flow (`stage`), where did
+ * triage place it (`location`), and the two identifiers an operator actually
+ * types or scans (`order` = PO#, `tracking`). That is the whole default grid.
  *
  * `condition`, `platform` and `serial` are `optional` — not because they are
  * unimportant, but because on THIS surface they are usually empty at the moment
@@ -91,6 +93,16 @@ export const RECEIVING_GRID_COLUMNS: readonly ReceivingGridColumn[] = [
   // `type: 'date'` only so the header draws the clock glyph — the cell is a
   // prose stage word, so `align: 'start'` overrides the numeric `date → end` default.
   { key: 'stage', width: 'minmax(5rem, 5rem)', label: 'Stage', type: 'date', align: 'start', hideKey: 'rest', labelFitRem: 4.5 },
+  // Triage shelf placement (Arrival Location Placement) — core for Unbox Queue.
+  {
+    key: 'location',
+    width: 'minmax(6.5rem, 6.5rem)',
+    label: 'Location',
+    gridLabel: 'Loc',
+    type: 'location',
+    hideKey: 'stagingloc',
+    labelFitRem: 4.5,
+  },
   { key: 'platform', width: 'minmax(3rem, 3rem)', label: 'Platform', gridLabel: 'Ch.', type: 'external', hideKey: 'platform', tier: 'optional', labelFitRem: 4.5 },
   { key: 'order', width: 'minmax(4.5rem, 4.5rem)', label: 'Order', type: 'id', hideKey: 'orderid', labelFitRem: 4.5 },
   { key: 'tracking', width: 'minmax(5.75rem, 5.75rem)', label: 'Tracking', type: 'location', omitCellIcon: true, hideKey: 'tracking', labelFitRem: 4.5 },

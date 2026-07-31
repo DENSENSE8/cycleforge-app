@@ -244,6 +244,19 @@ export default function KioskPage() {
         body: JSON.stringify({ code: code.trim() }),
       });
       if (!r.ok) {
+        let apiError: string | undefined;
+        try {
+          const body = (await r.json()) as { error?: string };
+          apiError = body.error;
+        } catch {
+          /* non-JSON */
+        }
+        if (apiError === 'KIOSK_HOST_REQUIRED' || r.status === 403) {
+          setErr(
+            'Open this tablet on your workspace kiosk URL (Settings → Kiosk devices), not the staff app.',
+          );
+          return;
+        }
         setErr('That setup code is invalid or expired. Generate a new one in Settings.');
         return;
       }

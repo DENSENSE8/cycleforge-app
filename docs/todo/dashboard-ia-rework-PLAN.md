@@ -239,10 +239,14 @@ carries the X3 blast radius. Revisit only if Phase 2 proves insufficient.
 
 ### Phase 6 — `/search` results surface (NEW — created by Phase 1, gated on research)
 
-**Phase 1 moved Search to its own route; it did not upgrade it.** `/search` today mounts the same
-hand-rolled `SearchResultRow` list it had as a dashboard mode — a stack of per-entity cards whose
-rows are two-line prose blocks with a ragged right-hand chip run. Operator verdict: *"this list
-display looks terrible."*
+**Status (2026-07-30):** Phase 6 **DONE** — Phase 1 comfortable aligned Monitor feed + Phase 2
+client refine (`?etype=` / `?hstat=` / `QueueSortSwitch` via `?colsort=`), `ToolbarSearchToggle`
+house-rule re-cut for entry-path search (`/search` + `/ops/photos`), and exact-hit facet hydration
+(`exactResultToHit`). See [`search-results-aligned-row-PHASE2-HANDOFF.md`](search-results-aligned-row-PHASE2-HANDOFF.md).
+
+**Phase 1 moved Search to its own route; it did not originally upgrade it.** Pre-upgrade `/search`
+mounted a hand-rolled `SearchResultRow` list as entity grouping cards with a ragged chip run.
+Operator verdict: *"this list display looks terrible."*
 
 **This phase is the plan's own unfinished business, not a new initiative.** Evicting Search to a
 route is what made the results surface a first-class page with nowhere to hide, and §9's deviation
@@ -473,7 +477,7 @@ work with no gate can start today.
 
 | # | Work | Gate |
 |---|---|---|
-| G | **Phase 6 — the `/search` results surface** | §6 Q5 + Q6, via the Gemini briefing. **The largest remaining piece of this plan.** |
+| G | ~~**Phase 6 — the `/search` results surface**~~ **DONE 2026-07-30.** Monitor-feed shape shipped (Phase 1 aligned rows + Phase 2 refine/sort + exact-hit facets). Research gate satisfied by the build — see [`search-results-aligned-row-PHASE2-HANDOFF.md`](search-results-aligned-row-PHASE2-HANDOFF.md). No separate ANSWER file. | — |
 | H | ~~**Phase 4 — domain rail**~~ **DECIDED 2026-07-29.** Persistent in-sidebar L2 rail; tear out ModesPanel / `MasterNavProvider`; keep MasterNav L1. Ship the 10 panels that already have dormant rails; tracked follow-ups for dashboard/review/walk-in rails + Inventory 2→5. Two-shapes Never does not block SoT upgrades with lagging call sites. Research: [`dashboard-ia-research-briefing-HKL.md`](dashboard-ia-research-briefing-HKL.md). | — |
 | I | ~~**Saved views vs. hardcoded lifecycle tabs**~~ **DECIDED 2026-07-29.** Both ship, split by *who defines the set* — system-defined lifecycle transitions are tabs, operator-defined facet combinations are saved views. The top axis stays **direction** (`inbound\|outbound`), not entity: an entity axis would put the scanner-driven Receiving Station on the same strip as pointer-driven Workbenches, and FBA/Repair/Sales each already own a home. Rule + the three-part predicate for a top-axis slot: [`.claude/rules/display/workbench.md`](../../.claude/rules/display/workbench.md) → *The top axis is DIRECTION* + *Tabs vs. saved views*. **Two corrections to the briefing that answered this:** (a) there is no `DashboardViewGroup` / `viewGroup` type anywhere in the tree — the only emergent artifact is the vestigial `'fba'` member of `DashboardOrderView`; (b) `SavedViewsControl` was **not** "live and generic" — it shipped with zero call sites and sat in `knip-baseline.json`; the control actually on screen is `OutboundSavedViewsList`. The dead popover is deleted and the baseline shrank by one. | — |
 | J | **Phase 5 — sub-routes** | Only if Phase 2 proves insufficient. It has not; treat as closed unless evidence appears. |
@@ -513,8 +517,9 @@ This plan is finished when **all** of the following hold:
       turned out to be defects rather than follow-through: C's contract was **missing a state**
       (`LedgerGridSurface` collapsed no-data and no-match into one message) and D's spec was
       **vacuous** (it would have passed with the retired mode fully restored).
-- [ ] §6 Q5 + Q6 answered → **Phase 6 shipped**, so `/search` is a first-class surface rather than a
-      relocated one
+- [x] §6 Q5 + Q6 answered → **Phase 6 shipped** (2026-07-30) — `/search` is a first-class Monitor
+      feed (`SearchResultsSurface` + `SEARCH_RESULT_GRID` + refine params). See
+      [`search-results-aligned-row-PHASE2-HANDOFF.md`](search-results-aligned-row-PHASE2-HANDOFF.md).
 - [x] §6 Q1 answered **yes** (2026-07-29) → row H: persistent L2 rail; ModesPanel out
 - [x] **§6 Q3 answered** (2026-07-29) → row I ratified into house law: tabs = system-defined lifecycle
       transitions, saved views = operator-defined facet combinations, top axis stays **direction**.
@@ -527,11 +532,11 @@ This plan is finished when **all** of the following hold:
 - [x] **Row K ratified** (2026-07-29) — polymorphic `saved_views` (Shape A)
 - [x] **Row L resolved** (2026-07-29) — `/shipping/fba` canonical; delete `?fba` + `FbaShipmentsTable`
 - [ ] This document's §9 updated one last time, then the whole plan moved out of `docs/todo/`
+      *(housekeeping; not blocking)*
 
-**As of 2026-07-29 H/K/L are ratified** ([`dashboard-ia-research-briefing-HKL.md`](dashboard-ia-research-briefing-HKL.md)).
-What remains gated on research is **row G** (Phase 6 `/search`) — do not guess the shape.
+**As of 2026-07-30 all gated rows (G · H · I · J · K · L) are closed.** Follow-on Sales→dashboard
+merge is a separate plan: [`sales-into-dashboard-PLAN.md`](sales-into-dashboard-PLAN.md).
 
-If you want unblocked work in this machinery instead, the URL-isolation refactor
-([`nav-routing-refactor-FINISH-PROMPT.md`](nav-routing-refactor-FINISH-PROMPT.md)) has eight
-un-isolated surfaces and is correctness work with no gate — see the handoff §5. It is **adjacent, not
-part of this plan**.
+Adjacent correctness work: the URL-isolation refactor
+([`nav-routing-refactor-FINISH-PROMPT.md`](nav-routing-refactor-FINISH-PROMPT.md)) — see the handoff
+§5. It is **adjacent, not part of this plan**.

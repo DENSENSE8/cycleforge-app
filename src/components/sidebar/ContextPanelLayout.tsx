@@ -1,17 +1,27 @@
 'use client';
 
-import type { ReactNode } from 'react';
+import { useRef, type ReactNode } from 'react';
 import dynamic from 'next/dynamic';
 import { usePathname } from 'next/navigation';
+import { motion } from 'framer-motion';
 import { ErrorBoundary } from '@/components/error/ErrorBoundary';
-import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { ChevronRight } from '@/components/Icons';
 import { useHasSidebarContext } from '@/components/sidebar/useHasSidebarContext';
+import { ContextPanelCollapseCue } from '@/components/sidebar/ContextPanelCollapseCue';
 import {
+  CONTEXT_PANEL_COLLAPSE,
+  CONTEXT_PANEL_COLLAPSE_STRIP_CLASS,
   CONTEXT_PANEL_COLUMN_CLASS,
   CONTEXT_PANEL_HOST_CLASS,
   CONTEXT_PANEL_RESIZE,
 } from '@/components/sidebar/context-panel-column';
+import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { HorizontalEdgeResizeHandle } from '@/design-system/components/HorizontalEdgeResizeHandle';
+import { framerTransition } from '@/design-system/foundations/motion-framer';
+import { useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
 import { useHorizontalEdgeResize } from '@/design-system/hooks';
+import { IconButton } from '@/design-system/primitives';
+import { useLocalStorage } from '@/hooks';
 import { getSidebarRouteKey, isStationSurfaceRoute } from '@/lib/sidebar-navigation';
 import { cn } from '@/utils/_cn';
 
@@ -48,9 +58,11 @@ const SidebarContextPanel = dynamic(
  *   routes doing that and classic routes doing something else.
  *
  * Receiving (Unbox / Triage / Incoming / Pickup / Repair) is drag-resizable on
- * the rail's right edge via {@link useHorizontalEdgeResize}; width persists in
- * localStorage ({@link CONTEXT_PANEL_RESIZE}). Other routes keep the fixed
- * {@link CONTEXT_PANEL_WIDTH_PX} column.
+ * the rail's right edge via {@link useHorizontalEdgeResize} +
+ * {@link HorizontalEdgeResizeHandle}; width persists in localStorage
+ * ({@link CONTEXT_PANEL_RESIZE}). The same family can collapse via a row-aligned
+ * gutter cue ({@link CONTEXT_PANEL_COLLAPSE}) — width-drawer to 0 + slim expand
+ * strip. Other routes keep the fixed {@link CONTEXT_PANEL_WIDTH_PX} column.
  *
  * Renders `children` untouched when the route has no panel, so a panel-less
  * surface still reserves nothing.
@@ -73,80 +85,121 @@ export function ContextPanelLayout({ children }: { children: ReactNode }) {
     label: 'Resize sidebar',
     testId: 'context-panel-resize',
   });
+  const [collapsed, setCollapsed] = useLocalStorage(
+    CONTEXT_PANEL_COLLAPSE.storageKey,
+    false,
+  );
+  const isCollapsed = isResizable && collapsed;
+  const transition = useMotionTransition(framerTransition.sidebarNavColumnMount);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const hostRef = useRef<HTMLDivElement>(null);
 
   if (!hasPanel) return <>{children}</>;
 
-  return (
-    <div className={CONTEXT_PANEL_HOST_CLASS}>
-      {/* `data-context-panel` is the panel's identity hook, so a test can ask
-          "did the route's rail render?" without keying off its width class. */}
+  const panelBody = (
+    <>
+      {/* The rail degrades alone. It carried an `ErrorBoundary` when it lived
+          in the nav aside, and moving it into the content region must not
+          quietly turn a throwing picker into a blank page. */}
       <div
         className={cn(
-          CONTEXT_PANEL_COLUMN_CLASS,
-          // Outset grip sits outside the card; clip content on an inner shell
-          // so the pill is not sheared by `overflow-hidden`.
-          isResizable && 'overflow-visible',
+          'flex min-h-0 min-w-0 flex-1 flex-col',
+          isResizable && 'overflow-hidden rounded-[inherit]', // ds-allow-radius: clip shell inherits the panel card radius
         )}
-        data-context-panel
-        style={isResizable ? { width } : undefined}
       >
-        {/* The rail degrades alone. It carried an `ErrorBoundary` when it lived
-            in the nav aside, and moving it into the content region must not
-            quietly turn a throwing picker into a blank page. */}
-        <div
-          className={cn(
-            'flex min-h-0 min-w-0 flex-1 flex-col',
-            isResizable && 'overflow-hidden rounded-[inherit]', // ds-allow-radius: clip shell inherits the panel card radius
+        <ErrorBoundary
+          label="context-panel"
+          fallback={(_e, reset) => (
+            <div className="m-3 rounded-lg border border-dashed border-rose-200 bg-rose-50 px-3 py-4 text-center">
+              <p className="text-role-caption font-semibold text-rose-700">Sidebar unavailable</p>
+              <p className="mt-1 text-role-eyebrow uppercase tracking-widest text-rose-500">
+                The rest of the page still works
+              </p>
+              <button
+                type="button"
+                onClick={reset}
+                className="ds-raw-button mt-3 rounded-lg bg-surface-card px-3 py-1.5 text-role-caption font-semibold text-rose-700 ring-1 ring-inset ring-rose-200 hover:bg-rose-50"
+              >
+                Retry
+              </button>
+            </div>
           )}
         >
-          <ErrorBoundary
-            label="context-panel"
-            fallback={(_e, reset) => (
-              <div className="m-3 rounded-lg border border-dashed border-rose-200 bg-rose-50 px-3 py-4 text-center">
-                <p className="text-role-caption font-semibold text-rose-700">Sidebar unavailable</p>
-                <p className="mt-1 text-role-eyebrow uppercase tracking-widest text-rose-500">
-                  The rest of the page still works
-                </p>
-                <button
-                  type="button"
-                  onClick={reset}
-                  className="ds-raw-button mt-3 rounded-lg bg-surface-card px-3 py-1.5 text-role-caption font-semibold text-rose-700 ring-1 ring-inset ring-rose-200 hover:bg-rose-50"
-                >
-                  Retry
-                </button>
-              </div>
-            )}
-          >
-            <SidebarContextPanel />
-          </ErrorBoundary>
-        </div>
-        {isResizable ? (
-          <HoverTooltip
-            label="Drag to resize · double-click for default"
-            asChild
-            focusable={false}
-            openDelayMs={1500}
-          >
-            {/* Wide hit target; visible cue is a short outside pill (VerticalSplitStack
-                grip, rotated) — lowkey idle, lighter while held. */}
-            <div
-              {...edgeHandleProps}
-              className="group absolute -right-1.5 top-0 z-raised flex h-full w-3 translate-x-1/2 cursor-col-resize touch-none items-center justify-center"
-            >
-              <span
-                aria-hidden
-                className={cn(
-                  'pointer-events-none h-8 w-1 rounded-full transition-colors duration-150',
-                  isDragging
-                    ? 'bg-border-strong'
-                    : 'bg-border-soft group-hover:bg-border-default',
-                )}
-              />
-            </div>
-          </HoverTooltip>
-        ) : null}
+          <SidebarContextPanel />
+        </ErrorBoundary>
       </div>
+      {isResizable && !isCollapsed ? (
+        <HorizontalEdgeResizeHandle
+          edgeHandleProps={edgeHandleProps}
+          isDragging={isDragging}
+          edge="trailing"
+          placement="outset"
+        />
+      ) : null}
+    </>
+  );
+
+  return (
+    <div
+      ref={hostRef}
+      className={cn(CONTEXT_PANEL_HOST_CLASS, isResizable && 'relative')}
+    >
+      {isResizable && isCollapsed ? (
+        <div
+          className={CONTEXT_PANEL_COLLAPSE_STRIP_CLASS}
+          data-context-panel-collapsed
+        >
+          <HoverTooltip label="Show sidebar" asChild>
+            <IconButton
+              size="sm"
+              tone="neutral"
+              ariaLabel="Show sidebar"
+              icon={<ChevronRight className="h-4 w-4" />}
+              onClick={() => setCollapsed(false)}
+              data-testid="context-panel-expand"
+            />
+          </HoverTooltip>
+        </div>
+      ) : null}
+
+      {/* `data-context-panel` is the panel's identity hook, so a test can ask
+          "did the route's rail render?" without keying off its width class. */}
+      {isResizable ? (
+        <motion.div
+          ref={panelRef}
+          className={cn(
+            CONTEXT_PANEL_COLUMN_CLASS,
+            // Outset grip sits outside the card; clip content on an inner shell
+            // so the pill is not sheared by `overflow-hidden`.
+            'overflow-visible',
+            isCollapsed && 'pointer-events-none m-0 border-0 opacity-0',
+          )}
+          data-context-panel
+          data-collapsed={isCollapsed ? 'true' : 'false'}
+          initial={false}
+          animate={{ width: isCollapsed ? 0 : width }}
+          transition={transition}
+          // Collapsed column stays mounted so the scan session does not remount
+          // on expand — same latch idiom as SidebarNavColumn.
+          inert={isCollapsed || undefined}
+        >
+          {panelBody}
+        </motion.div>
+      ) : (
+        <div className={CONTEXT_PANEL_COLUMN_CLASS} data-context-panel>
+          {panelBody}
+        </div>
+      )}
       <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">{children}</div>
+      {/* Host sibling (after workspace) so the gutter cue paints above the
+          canvas and is not clipped by the card shell. */}
+      {isResizable && !isCollapsed ? (
+        <ContextPanelCollapseCue
+          panelRef={panelRef}
+          hostRef={hostRef}
+          onCollapse={() => setCollapsed(true)}
+        />
+      ) : null}
     </div>
   );
 }

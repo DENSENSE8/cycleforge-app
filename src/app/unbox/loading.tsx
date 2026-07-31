@@ -27,16 +27,16 @@ export default function UnboxLoading() {
       aria-busy="true"
       aria-label="Loading Unbox"
     >
-      {/* Chrome band — tab pills + trailing controls slot. */}
+      {/* Chrome band — 40px band-density face (mirrors UnboxWorkspaceHeader). */}
       <div className={WORKBENCH_CHROME_COLUMN}>
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <SkeletonBase width="72px" height="28px" className="rounded-full" />
-            <SkeletonBase width="72px" height="28px" className="rounded-full" />
-            <SkeletonBase width="72px" height="28px" className="rounded-full" />
+        <div className="flex h-10 items-center justify-between gap-2 rounded-2xl border border-border-soft bg-surface-card p-0 shadow-sm">
+          <div className="flex items-center gap-1.5">
+            <SkeletonBase width="64px" height="24px" className="rounded-full" />
+            <SkeletonBase width="64px" height="24px" className="rounded-full" />
+            <SkeletonBase width="64px" height="24px" className="rounded-full" />
           </div>
           <div className="flex items-center gap-2">
-            <SkeletonBase width="112px" height="28px" className="rounded-lg" />
+            <SkeletonBase width="28px" height="28px" className="rounded-lg" />
             <SkeletonBase width="28px" height="28px" className="rounded-lg" />
           </div>
         </div>

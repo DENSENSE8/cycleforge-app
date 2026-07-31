@@ -14,9 +14,15 @@
  */
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Loader2, Search } from '@/components/Icons';
-import { PairingLinkButton, PairingLinkedBadge } from './PairingLinkButton';
+import { Loader2 } from '@/components/Icons';
+import { SearchBar } from '@/components/ui/SearchBar';
+import {
+  PairingCandidateRow,
+  PairingLinkButton,
+  PairingLinkedBadge,
+} from './PairingLinkButton';
 import { toast } from '@/lib/toast';
+import { requestConfirm } from '@/design-system/components/confirm';
 import { dispatchLineUpdated } from '@/components/station/receiving-lines-table-helpers';
 import { invalidateReceivingFeeds } from '@/lib/queries/receiving-queries';
 import { apiErrorMessage } from '@/lib/api-error-message';
@@ -69,8 +75,31 @@ export function PoLinkTab({
 
   const link = async (po: PoCandidate) => {
     if (linkingId) return;
-    setLinkingId(po.zoho_purchaseorder_id);
     const poLabel = po.zoho_purchaseorder_number || po.zoho_purchaseorder_id;
+    const existingLabel = currentPoNumber || currentPoId;
+
+    // Explicit Replace / Merge confirm when an identity already exists (P2 / D§7.4).
+    if (isInboundMerge) {
+      const ok = await requestConfirm({
+        title: 'Merge purchase order?',
+        description: existingLabel
+          ? `This carton already has a store/marketplace identity${existingLabel ? ` (${existingLabel})` : ''}. Merge Zoho PO ${poLabel} alongside it?`
+          : `Merge Zoho PO ${poLabel} onto this carton? The marketplace identity stays; the PO is added for accounting.`,
+        confirmLabel: 'Merge',
+        tone: 'primary',
+      });
+      if (!ok) return;
+    } else if (existingLabel) {
+      const ok = await requestConfirm({
+        title: 'Replace purchase order?',
+        description: `This carton is linked to ${existingLabel}. Replace with PO ${poLabel}?`,
+        confirmLabel: 'Replace',
+        tone: 'primary',
+      });
+      if (!ok) return;
+    }
+
+    setLinkingId(po.zoho_purchaseorder_id);
     try {
       if (isInboundMerge) {
         // eBay (or other non-Zoho) Incoming line → add a Zoho PO identity (merge).
@@ -128,7 +157,9 @@ export function PoLinkTab({
         toast.error(apiErrorMessage(body, res.status, `Link failed (${res.status})`));
         return;
       }
-      toast.success(`Linked PO ${poLabel}`);
+      toast.success(
+        existingLabel ? `Replaced with PO ${poLabel}` : `Linked PO ${poLabel}`,
+      );
       // Update the open carton's displayed PO in place (carton context + feeds).
       dispatchLineUpdated({
         id: row.id,
@@ -146,7 +177,7 @@ export function PoLinkTab({
   };
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       {/* The currently-linked PO is shown in the global header — not repeated
           here. This tab is purely the search-and-(re)link surface. */}
 
@@ -157,19 +188,15 @@ export function PoLinkTab({
       ) : null}
 
       {/* Search the local PO mirror (PO# / reference / vendor). */}
-      <div className="relative">
-        <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-text-faint" />
-        <input
-          type="text"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search PO # / reference / vendor…"
-          className="w-full rounded-lg border border-border-soft py-2 pl-8 pr-8 text-sm transition-all focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-        {isFetching ? (
-          <Loader2 className="absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 animate-spin text-text-faint" />
-        ) : null}
-      </div>
+      <SearchBar
+        value={query}
+        onChange={setQuery}
+        placeholder="Search PO # / reference / vendor…"
+        isSearching={isFetching}
+        variant="blue"
+        size="compact"
+        hideUnderline
+      />
 
       {/* Results — the most recent locally-stored incoming POs by default; the
           search box filters them. */}
@@ -191,31 +218,32 @@ export function PoLinkTab({
             const isCurrent = currentPoId != null && po.zoho_purchaseorder_id === currentPoId;
             const isLinking = linkingId === po.zoho_purchaseorder_id;
             return (
-              <div
+              <PairingCandidateRow
                 key={po.zoho_purchaseorder_id}
-                className="flex items-center gap-2 rounded-lg border border-border-soft bg-surface-card inset-field hover:bg-surface-hover"
-              >
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-role-caption font-semibold text-text-default">
-                    {po.zoho_purchaseorder_number || `PO ${po.zoho_purchaseorder_id}`}
-                  </p>
+                linked={isCurrent}
+                title={
+                  po.zoho_purchaseorder_number || `PO ${po.zoho_purchaseorder_id}`
+                }
+                meta={
                   <p className="truncate text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
                     {po.vendor_name || 'Unknown vendor'}
                     {po.reference_number ? ` · ref ${po.reference_number}` : ''}
                     {po.status ? ` · ${po.status}` : ''}
                   </p>
-                </div>
-                {isCurrent ? (
-                  <PairingLinkedBadge />
-                ) : (
-                  <PairingLinkButton
-                    loading={isLinking}
-                    disabled={linkingId !== null}
-                    onClick={() => void link(po)}
-                    label={isInboundMerge ? 'Merge' : currentPoNumber ? 'Relink' : 'Link'}
-                  />
-                )}
-              </div>
+                }
+                action={
+                  isCurrent ? (
+                    <PairingLinkedBadge />
+                  ) : (
+                    <PairingLinkButton
+                      loading={isLinking}
+                      disabled={linkingId !== null}
+                      onClick={() => void link(po)}
+                      label={isInboundMerge ? 'Merge' : currentPoNumber ? 'Relink' : 'Link'}
+                    />
+                  )
+                }
+              />
             );
           })}
         </div>

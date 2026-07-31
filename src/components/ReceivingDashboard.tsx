@@ -12,7 +12,7 @@
  * receiving-line history feeds don't hand-roll parallel copies:
  *   - useReceivingDashboardMode .... `?mode=` → surface flags
  *   - useReceivingWorkspacePane .... workspace + nav + scan loader + recovery
- *   - useReceivingDetailOverlays ... incoming PO panel (carton look → /carton)
+ *   - useReceivingDetailOverlays ... carton details stack + incoming PO panel
  *   - useReceivingLineBulkSelection  shared History/Incoming bulk actions + claim
  */
 
@@ -64,8 +64,11 @@ export default function ReceivingDashboard() {
   } = useReceivingWorkspacePane();
 
   const {
+    overlayLog,
+    setOverlayLog,
     incomingDetails,
     setIncomingDetails,
+    enrichOverlayLog,
   } = useReceivingDetailOverlays(isIncomingMode, incomingView);
 
   const {
@@ -124,6 +127,12 @@ export default function ReceivingDashboard() {
       />
 
       <ReceivingDashboardOverlays
+        overlayLog={overlayLog}
+        onCloseOverlayLog={() => setOverlayLog(null)}
+        onOverlayLogUpdated={() => {
+          if (overlayLog?.id) void enrichOverlayLog(Number(overlayLog.id));
+        }}
+        onOverlayLogDeleted={() => setOverlayLog(null)}
         claimRow={claimRow}
         onCloseClaim={() => setClaimRow(null)}
         onClaimFiled={() => {

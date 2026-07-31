@@ -3,7 +3,6 @@
 // Re-exported verbatim through ../Icons.tsx — do not change export names.
 
 import {
-  Banknote as LucideBanknote,
   Box as LucideBox,
   CircleDollarSign as LucideCircleDollarSign,
 } from 'lucide-react';
@@ -46,11 +45,6 @@ export const DollarSign = ({ className = "w-6 h-6" }: { className?: string }) =>
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 1v22M17 5.5c0-1.933-2.239-3.5-5-3.5S7 3.567 7 5.5 9.239 9 12 9s5 1.567 5 3.5-2.239 3.5-5 3.5-5-1.567-5-3.5" />
     </svg>
-);
-
-/** Walk-in Sales page — front-desk commerce hub (not the cart glyph). */
-export const Banknote = ({ className = "w-6 h-6" }: { className?: string }) => (
-    <LucideBanknote className={className} />
 );
 
 /** Sale line / unit price — circled dollar reads clearer than bare DollarSign at nav size. */

@@ -86,7 +86,7 @@ test.describe('google sheets order import', () => {
     const payload = JSON.parse(body) as {
       details?: {
         inserted?: unknown[];
-        skippedRows?: Array<{ sheetRow: number; orderId: string }>;
+        skippedRows?: Array<{ sheetRow: number; orderId: string; reason: string }>;
         recoveredRows?: Array<{ sheetRow: number; orderId: string }>;
       };
       stats?: Record<string, number>;
@@ -105,6 +105,20 @@ test.describe('google sheets order import', () => {
 
     // FBA inbound shipments are classified, never counted as a data-entry gap.
     expect(payload.stats).toHaveProperty('skippedFbaShipment');
+
+    // The aggregate must equal the sum of every reason, and processed + skipped
+    // must account for every row read. Adding `skippedFbaShipment` without
+    // updating the hand-written sum silently under-reported the total by 4 on
+    // the first live run — this is the assertion that would have caught it.
+    const stats = payload.stats ?? {};
+    const reasonTotal = Object.entries(stats)
+      .filter(([k]) => k.startsWith('skipped') && k !== 'skippedRows')
+      .reduce((sum, [, n]) => sum + n, 0);
+    expect(stats.skippedRows, 'skippedRows must sum every reason').toBe(reasonTotal);
+    expect(
+      (stats.processedRows ?? 0) + (stats.skippedRows ?? 0),
+      'every row read is either processed or skipped',
+    ).toBe(stats.rowCount);
 
     // Every recovered row must carry the identity the panel renders, and must
     // NOT be double-reported as skipped — it imported.
@@ -132,5 +146,22 @@ test.describe('google sheets order import', () => {
 
     await page.waitForTimeout(800);
     await page.screenshot({ path: 'playwright-report/import-skip-panel.png' });
+
+    // The sheet tab claims Ecwid rows "come in through the Ecwid connector".
+    // That claim must be checkable: the Ecwid tab has to actually list them,
+    // rather than rendering a bare "already up to date" beside the assertion.
+    const ecwidSkipped = (payload.details?.skippedRows ?? []).filter((r) => r.reason === 'ecwid');
+    if (ecwidSkipped.length > 0) {
+      // TabSwitch renders plain <button>s, not role="tab" — a role='tab'
+      // locator matches nothing and blocks until the whole test times out.
+      await page.getByRole('button', { name: /Ecwid Direct/i }).click({ timeout: 15_000 });
+      await expect(
+        // "belongs here" (1 row) / "belong here" (n) — match both.
+        page.getByText(/belongs? here/i),
+        'Ecwid tab must list the rows the sheet handed to it',
+      ).toBeVisible({ timeout: 10_000 });
+      await page.waitForTimeout(500);
+      await page.screenshot({ path: 'playwright-report/ecwid-tab-crossref.png' });
+    }
   });
 });

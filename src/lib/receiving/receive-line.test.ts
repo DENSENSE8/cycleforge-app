@@ -20,7 +20,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { resolveReceiveWorkflowTarget } from './receive-line';
+import { resolveReceiveWorkflowTarget, isUnreceiveSerialBlocking, UNRECEIVE_BLOCKING_SERIAL_STATUSES } from './receive-line';
 
 const TESTING_OR_BEYOND = ['AWAITING_TEST', 'IN_TEST', 'PASSED', 'FAILED', 'RTV', 'SCRAP', 'DONE'];
 
@@ -210,5 +210,57 @@ test('zoho_item_id is read from receiving_line_zoho, not the spine', () => {
   assert.ok(
     /FOR UPDATE OF rl/.test(receiveLineSrc),
     'the line lock must be FOR UPDATE OF rl (outer-joined rz is not lockable)',
+  );
+});
+
+// ─── Unreceive (website reverse) ──────────────────────────────────────────────
+
+test('isUnreceiveSerialBlocking: fulfillment / outbound / hold block', () => {
+  for (const s of [
+    'ALLOCATED',
+    'PICKED',
+    'SHIPPED',
+    'PACKED',
+    'ON_HOLD',
+    'IN_REPAIR',
+    'RMA',
+  ]) {
+    assert.equal(isUnreceiveSerialBlocking(s), true, s);
+  }
+});
+
+test('isUnreceiveSerialBlocking: dock / stock / test states do not block', () => {
+  for (const s of ['RECEIVED', 'STOCKED', 'TESTED', 'GRADED', 'TRIAGED', 'UNKNOWN', null, '']) {
+    assert.equal(isUnreceiveSerialBlocking(s), false, String(s));
+  }
+});
+
+test('unreceive clears received_done_at and zeros quantity_received in SQL', () => {
+  assert.ok(
+    /received_done_at\s*=\s*NULL/.test(receiveLineSrc),
+    'unreceive must NULL received_done_at (sticky DONE stamp)',
+  );
+  assert.ok(
+    /quantity_received\s*=\s*0/.test(receiveLineSrc),
+    'unreceive must zero quantity_received',
+  );
+  assert.ok(
+    /UNRECEIVED/.test(receiveLineSrc),
+    'unreceive must write a reversing sku_stock_ledger row (reason UNRECEIVED)',
+  );
+  assert.ok(
+    UNRECEIVE_BLOCKING_SERIAL_STATUSES.has('SHIPPED'),
+    'blocking set must include SHIPPED',
+  );
+});
+
+test('unreceive routes workflow through transitionReceivingLine to MATCHED', () => {
+  assert.ok(
+    /to:\s*'MATCHED'/.test(receiveLineSrc) || /to:\s*"MATCHED"/.test(receiveLineSrc),
+    'unreceive must target MATCHED via the chokepoint',
+  );
+  assert.ok(
+    /export async function unreceiveLineUnits/.test(receiveLineSrc),
+    'unreceiveLineUnits must be exported',
   );
 });

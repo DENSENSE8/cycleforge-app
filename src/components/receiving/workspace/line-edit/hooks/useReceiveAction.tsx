@@ -22,8 +22,9 @@ import { refreshDomains } from '@/lib/refresh/bus';
 import { REFRESH_BUNDLES } from '@/lib/refresh/domains';
 
 // 'local_receive' = unfound carton: mark RECEIVED locally, never touch Zoho.
-// Distinct from 'scan_only', which stays SCANNED.
-type ReceiveIntent = 'zoho_receive' | 'scan_only' | 'local_receive';
+// 'unreceive' = full undo of website Receive (qty + stamp + Zoho reverse).
+// Distinct from 'scan_only', which stays SCANNED without clearing qty/stamp.
+type ReceiveIntent = 'zoho_receive' | 'scan_only' | 'local_receive' | 'unreceive';
 
 /**
  * Last response from POST /api/receiving/mark-received-po. Surfaced inline
@@ -283,6 +284,9 @@ export function useReceiveAction(
                 quantity_expected: r.quantity_expected,
                 qa_status: r.qa_status,
                 disposition_code: r.disposition_code,
+                // Unreceive clears the sticky DONE stamp so the dock flips
+                // primary back to print-then-receive without waiting on refetch.
+                ...(receiveIntent === 'unreceive' ? { received_done_at: null } : {}),
               });
               const rid = r.receiving_id;
               if (typeof rid === 'number' && Number.isFinite(rid) && rid > 0) {

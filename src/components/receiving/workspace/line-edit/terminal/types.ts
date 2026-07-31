@@ -11,7 +11,6 @@ export type UnboxView =
   | 'tracking'
   | 'listings'
   | 'timeline'
-  | 'ticket'
   | 'support';
 
 /** Kind keys produced by STATION_TERMINAL_REGISTRY for unbox tabs. */
@@ -24,7 +23,6 @@ export type UnboxTerminalKind =
   | 'listings'
   | 'classify'
   | 'timeline'
-  | 'ticket'
   | 'support'
   | 'none';
 
@@ -63,8 +61,16 @@ export interface UnboxReceiveTerminalInput {
    * legacy `LineReceiveActionBar` adapter keeps its current behaviour.
    */
   isReceived?: boolean;
+  /**
+   * Line has qty received or a DONE stamp — Unreceive is available even when
+   * primary has collapsed to Print label. Optional for legacy adapters.
+   */
+  canUnreceive?: boolean;
   receiveMenuLabel: string;
   receiveMenuTitle?: string;
+  /** Unreceive / Unreceive all — mirrors Receive all scope. */
+  unreceiveMenuLabel?: string;
+  unreceiveMenuTitle?: string;
   handlePrintAndReceive: () => void | Promise<void>;
   /** Print the currently selected label kind. */
   runPrintLabel: () => void;
@@ -75,5 +81,7 @@ export interface UnboxReceiveTerminalInput {
   selectedLabelKind?: string;
   setSelectedLabelKind?: (key: string) => void;
   activeLabelKind?: string;
-  handleReceive: (mode: 'scan_only' | 'zoho_receive' | 'local_receive') => void | Promise<void>;
+  handleReceive: (
+    mode: 'scan_only' | 'zoho_receive' | 'local_receive' | 'unreceive',
+  ) => void | Promise<void>;
 }

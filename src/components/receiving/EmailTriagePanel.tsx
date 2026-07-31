@@ -8,12 +8,12 @@
  * worklist and acts-and-clears each row (archive / link-to-PO / reply). It is the
  * single home for the email worklist (it replaced the old sidebar to-do list). It
  * rides in the Incoming right pane *beside* the "Incoming POS" table, toggled from
- * the sidebar by a URL sub-view (`?incview=pos|email`) via {@link IncomingViewSwitcher},
- * and the right pane crossfades between the two through the canonical
- * `framerPresence.workbenchPane` preset (wired in `ReceivingRightPane`). It is **not**
- * a local-state toggle and it does **not** fork a new list primitive — it reads the
- * `/api/receiving-lines/incoming/todo` spine, so the count and rows stay in lockstep
- * with the rest of the inbound funnel.
+ * the sidebar facet rail (`IncomingSidebarPanel`) via URL sub-view
+ * (`?incview=pos|email`), and the right pane crossfades between the two through the
+ * canonical `framerPresence.workbenchPane` preset (wired in `ReceivingRightPane`).
+ * It is **not** a local-state toggle and it does **not** fork a new list primitive —
+ * it reads the `/api/receiving-lines/incoming/todo` spine, so the count and rows stay
+ * in lockstep with the rest of the inbound funnel.
  *
  * Data: live by default (shared react-query cache, key `['receiving-lines-incoming-todo', q]`).
  * Pass the optional `emails` prop to render a fixed/mock list instead (tests, Storybook,
@@ -33,8 +33,6 @@ import {
   Reply,
   RotateCcw,
 } from '@/components/Icons';
-import { HorizontalButtonSlider } from '@/components/ui/HorizontalButtonSlider';
-import type { HorizontalSliderItem } from '@/components/ui/HorizontalButtonSlider';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { SearchBar } from '@/components/ui/SearchBar';
 import { ScrollPane } from '@/design-system/primitives/ScrollPane';
@@ -253,8 +251,8 @@ function useIncomingEmailTodo(search: string, enabled: boolean): IncomingEmailTo
 }
 
 /**
- * Standalone count hook for the switcher pill — reuses the same cache entry as
- * the unfiltered list (`q=''`), so it never adds a request.
+ * Standalone count hook for the Incoming sidebar Views row — reuses the same
+ * cache entry as the unfiltered list (`q=''`), so it never adds a request.
  */
 export function useIncomingEmailCount(): number {
   const { data } = useQuery<TodoResponse>({
@@ -268,53 +266,6 @@ export function useIncomingEmailCount(): number {
     staleTime: 30_000,
   });
   return data?.open.count ?? 0;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Segmented control: Incoming POS (n) | Email Triage (n)
-// ─────────────────────────────────────────────────────────────────────────────
-
-interface IncomingViewSwitcherProps {
-  value: IncomingView;
-  onChange: (next: IncomingView) => void;
-  /** Live "Incoming POS" count (e.g. `useIncomingTableTotal()`). */
-  posCount?: number;
-  /** Live "Email Triage" count (`useIncomingEmailCount()`). */
-  emailCount?: number;
-  className?: string;
-}
-
-/**
- * The Incoming view toggle pills (label + count + icon), rendered through
- * the shared `HorizontalButtonSlider` `nav` variant — the same primitive every
- * other page's sub-view tabs use, never a hand-rolled segmented control. It is
- * bare on purpose: it lives in the sidebar's `headerRows` slot (one row right
- * beneath the search bar), and `SidebarShell` supplies the 40px band/gutter.
- * Writing the chosen view to the URL (`?incview=`) is the caller's job, keeping
- * this dumb and the selection deep-linkable.
- */
-export function IncomingViewSwitcher({
-  value,
-  onChange,
-  posCount,
-  emailCount,
-  className,
-}: IncomingViewSwitcherProps) {
-  const items: HorizontalSliderItem[] = [
-    { id: 'pos', label: 'Incoming POS', count: posCount, icon: Inbox },
-    { id: 'email', label: 'Email Triage', count: emailCount, icon: Mail },
-  ];
-  return (
-    <HorizontalButtonSlider
-      items={items}
-      value={value}
-      onChange={(next) => onChange(next as IncomingView)}
-      variant="nav"
-      dense
-      className={cn('w-full', className)}
-      aria-label="Incoming view"
-    />
-  );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

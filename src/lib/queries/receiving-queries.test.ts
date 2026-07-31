@@ -36,6 +36,8 @@ const ctx: ReceivingModeContext = {
   isDeliveredNotUnboxedFacet: false,
   staffFilterId: null,
   listSearch: '',
+  queueStage: null,
+  queueLane: null,
 };
 
 /** Capture the URL each queryFn fetches without a network. */

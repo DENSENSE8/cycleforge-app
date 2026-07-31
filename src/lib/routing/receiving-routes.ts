@@ -87,6 +87,14 @@ export const UNBOX_ROUTE_PARAMS = defineRouteParams({
     sort: historySortParam(),
     /** Stock-image preview for the photo peek — no NAS captures needed. */
     photoPeekDemo: paramFlag,
+    /**
+     * Queue readiness facet — `staged` (shelf+lane) / `unstaged`. Omitted = all.
+     * Only meaningful on the Queue tab; surface hygiene keeps it across tab flips
+     * so returning to Queue restores the filter.
+     */
+    ustage: paramEnum(['staged', 'unstaged'] as const),
+    /** Queue priority-lane facet — triage lane values. Omitted = all lanes. */
+    ulane: paramEnumUpper(['PO_STOCKOUT', 'PO_STANDARD', 'RETURN', 'HOLD'] as const),
   },
   carries: SCAN_SURFACE_CARRIES,
 });

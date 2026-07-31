@@ -11,7 +11,7 @@ import {
   PackageCheck,
   Printer,
   Barcode,
-  Ticket,
+  RotateCcw,
 } from '@/components/Icons';
 import type { TerminalActionVm } from '@/lib/station-terminal';
 import { toast } from '@/lib/toast';
@@ -29,7 +29,6 @@ export const UNBOX_TAB_TERMINAL: Record<UnboxView, UnboxTerminalKind> = {
   tracking: 'none',
   listings: 'none',
   timeline: 'timeline',
-  ticket: 'ticket',
   support: 'support',
 };
 
@@ -122,6 +121,19 @@ export function resolveUnboxReceiveTerminal(ctx: UnboxTerminalContext): Terminal
           ? 'Receive all open lines locally — external inventory is not touched'
           : r.receiveMenuTitle,
       },
+      ...(r.canUnreceive
+        ? [
+            {
+              label: r.unreceiveMenuLabel ?? 'Unreceive',
+              icon: <RotateCcw className="h-3.5 w-3.5 shrink-0" />,
+              onClick: () => void r.handleReceive('unreceive'),
+              disabled: !r.canReceiveReview,
+              title:
+                r.unreceiveMenuTitle ??
+                'Undo website receive — quantities and received stamp clear',
+            },
+          ]
+        : []),
     ],
   };
 }
@@ -248,25 +260,7 @@ export function resolveUnboxTimelineTerminal(ctx: UnboxTerminalContext): Termina
   };
 }
 
-/** Ticket — focus the ticket reply surface. */
-export function resolveUnboxTicketTerminal(ctx: UnboxTerminalContext): TerminalActionVm {
-  const hasTicket = ctx.row != null && ctx.focusTicketReply != null;
-  return {
-    ...dockBase,
-    label: 'Reply',
-    title: 'Focus the ticket reply composer',
-    disabled: !hasTicket,
-    disabledReason: hasTicket ? null : 'No linked ticket',
-    onClick: () => ctx.focusTicketReply?.(),
-    icon: <Ticket className="h-4 w-4 shrink-0" />,
-    tone: 'accent',
-  };
-}
-
-/**
- * Conversation — Add note (internal) / Send (public) on the dock.
- * Composer body stays in the tab; the inline submit button is hidden.
- */
+/** Conversation — Add note (internal) / Send (public) on the dock. */
 export function resolveUnboxConversationTerminal(ctx: UnboxTerminalContext): TerminalActionVm {
   const bridge = ctx.bridges.support ?? ctx.bridges.conversation;
   const canPost = bridge?.canPost ?? false;
@@ -323,8 +317,6 @@ export function resolveUnboxTerminal(
       return resolveUnboxUnitsTerminal(ctx);
     case 'timeline':
       return resolveUnboxTimelineTerminal(ctx);
-    case 'ticket':
-      return resolveUnboxTicketTerminal(ctx);
     case 'support':
       return resolveUnboxConversationTerminal(ctx);
     default:

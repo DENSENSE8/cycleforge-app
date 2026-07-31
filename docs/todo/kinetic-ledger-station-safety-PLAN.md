@@ -1,6 +1,6 @@
 # Kinetic Ledger — Station safety & DS governance (90-day)
 
-**Status:** Phases 0–4 shipped (2026-07-30). Phase 5 (motion majors / Tailwind v4) next.
+**Status:** Phases 0–5 shipped (2026-07-30). Tailwind v4 landed (`@config` bridge) — see [`tailwind-v4-SPIKE.md`](./tailwind-v4-SPIKE.md).
 **Lane:** `main` (or current checkout — no ad-hoc branch).
 **Product frame:** Cycle Forge multi-tenant reseller-ops SaaS. USAV is dogfood only.
 **Industry input:** 2026 Kinetic Ledger vs industry standards audit (Station hard-fail, idempotency, serial grain, reduced-motion, `alert()`, empty states). Corrected against the live codebase — see §2.
@@ -227,8 +227,8 @@ Update SoT one-liner in `source-of-truth.md` + workbench empty/absence section. 
 
 | Debt | Today | Work |
 |---|---|---|
-| `framer-motion` ^11 vs `motion` ^12 (nested framer 12) | Dual majors in lockfile | Consolidate on one major; prefer `motion` / single framer; kill duplicate context risk |
-| Tailwind 3.4.19 | Fine short-term | Spike Tailwind v4 (content globs, `@theme`, plugin CF Type) in a dedicated PR; follow [`build-gotchas.md`](../../.claude/rules/build-gotchas.md) |
+| `framer-motion` ^11 vs `motion` ^12 (nested framer 12) | **DONE** — app on `framer-motion@^12.42.2`; single major in lockfile; `motion-major.guard.test.ts` | Keep SoT imports on `framer-motion`; Motion+ only via `@/design-system/motion` |
+| Tailwind 3.4.x → 4.3.x | **DONE** (`@tailwindcss/postcss` + `@config` bridge) | Optional: full `@theme` migration — [`tailwind-v4-SPIKE.md`](./tailwind-v4-SPIKE.md) |
 
 Phase 5 is **debt**, not floor safety — do not block Phases 1–3 on it.
 
@@ -273,3 +273,5 @@ Phase 5 is **debt**, not floor safety — do not block Phases 1–3 on it.
 | 2026-07-30 | Phase 3 closed: migration applied; remaining TSN reads dual-read order-grain; `tsn-order-grain.guard.test.ts` CI ratchet; E2E mutate stays QA opt-in. |
 | 2026-07-30 | Phase 4a: `LedgerValue`/`DateTimeValue` default absence → `—`; SoT honest-absence row. |
 | 2026-07-30 | Phase 4b: Operations `?mode=reconciliation` Monitor + `GET /api/operations/reconciliation` (smear + open exceptions). |
+| 2026-07-30 | Phase 5: `framer-motion` → ^12.42.2 (single major with `motion`); `motion-major.guard.test.ts`; Tailwind v4 spike doc. |
+| 2026-07-30 | Tailwind v4 upgrade: `4.3.3` + `@tailwindcss/postcss`; `@config` bridge; plain `var(--ds-…)` colors; `@source` globs. |

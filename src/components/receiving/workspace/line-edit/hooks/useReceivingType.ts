@@ -11,7 +11,8 @@ import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
  *
  * Seeds synchronously from the row so the pill never flashes 'PO', falls back to
  * the active line's override when no carton default is set yet (so a freshly
- * tagged line still reads correctly), and persists via PATCH /api/receiving/:id,
+ * tagged line still reads correctly), and persists via PATCH /api/receiving/:id
+ * (`intake_type` + `is_return` so claim subjects / classification stay coherent),
  * broadcasting `receiving-package-updated` so sibling surfaces stay in sync.
  *
  * Deliberately carton-first — the OPPOSITE precedence of `effectiveIntakeKind`
@@ -41,14 +42,18 @@ export function useReceivingType(row: ReceivingLineRow) {
       const norm = (next || 'PO').toUpperCase();
       setTypeSaving(true);
       try {
+        // Keep is_return coherent with the type pill so claim subjects /
+        // columnsToClassification see a return carton (not type-only RETURN
+        // with is_return still false → "Return // Return" subjects).
+        const payload = { intake_type: norm, is_return: norm === 'RETURN' };
         await fetch(`/api/receiving/${row.receiving_id}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ intake_type: norm }),
+          body: JSON.stringify(payload),
         });
         window.dispatchEvent(
           new CustomEvent('receiving-package-updated', {
-            detail: { receiving_id: row.receiving_id, intake_type: norm },
+            detail: { receiving_id: row.receiving_id, ...payload },
           }),
         );
       } catch {

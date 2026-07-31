@@ -14,6 +14,7 @@ import {
   kioskOriginForSlug,
   normalizeKioskRequestHost,
   parseKioskHost,
+  staffKioskRedirectOrigin,
   staffOriginForSlug,
 } from '@/lib/tenancy/kiosk-host';
 
@@ -145,4 +146,51 @@ test('isKioskHostAllowedPath allowlist', () => {
   strictEqual(isKioskHostAllowedPath('/settings'), false);
   strictEqual(isKioskHostAllowedPath('/receiving'), false);
   strictEqual(isKioskHostAllowedPath('/_next/static/chunk.js'), true);
+});
+
+test('staffKioskRedirectOrigin — slug host, prod apex bridge, fail-closed', () => {
+  withEnv(
+    {
+      NEXT_PUBLIC_KIOSK_HOST_SUFFIX: 'kiosk.app.cycleforge.ai',
+      NEXT_PUBLIC_APP_URL: 'https://app.cycleforge.ai',
+    },
+    () => {
+      strictEqual(
+        staffKioskRedirectOrigin({ tenantSlug: 'usav', isProduction: true }),
+        'https://usav.kiosk.app.cycleforge.ai',
+      );
+      strictEqual(
+        staffKioskRedirectOrigin({
+          tenantSlug: null,
+          defaultTenantSlug: 'usav',
+          isProduction: true,
+        }),
+        'https://usav.kiosk.app.cycleforge.ai',
+      );
+      // Non-prod apex keeps serving /kiosk for local E2E even when a bridge is set.
+      strictEqual(
+        staffKioskRedirectOrigin({
+          tenantSlug: null,
+          defaultTenantSlug: 'usav',
+          isProduction: false,
+        }),
+        null,
+      );
+      strictEqual(
+        staffKioskRedirectOrigin({
+          tenantSlug: null,
+          defaultTenantSlug: '',
+          isProduction: true,
+        }),
+        null,
+      );
+      strictEqual(
+        staffKioskRedirectOrigin({
+          tenantSlug: 'kiosk',
+          isProduction: true,
+        }),
+        null,
+      );
+    },
+  );
 });

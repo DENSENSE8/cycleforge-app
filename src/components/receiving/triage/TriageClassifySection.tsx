@@ -190,7 +190,9 @@ export function TriageClassifySection({
           disabled={row.receiving_id == null}
           onSelect={(next) => {
             c.setSourcePlatform(next);
-            void c.savePlatform(next);
+            void c.savePlatform(next, {
+              isReturn: String(c.receivingType ?? '').trim().toUpperCase() === 'RETURN',
+            });
             setOpenPicker(null);
           }}
         />

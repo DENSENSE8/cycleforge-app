@@ -27,8 +27,10 @@ function code(src: string): string {
 const HEADER = code(sourceOf('./GlobalHeader.tsx'));
 const MODE = code(sourceOf('./HeaderModeSwitcher.tsx'));
 const RECENTS = code(sourceOf('./HeaderRecentsSwitcher.tsx'));
+const HEADER_SHELL = code(sourceOf('./header-shell.ts'));
 const MASTER_HEADER = code(sourceOf('../sidebar/master-nav/MasterNavHeader.tsx'));
 const MASTER_NAV = code(sourceOf('../sidebar/master-nav/MasterNav.tsx'));
+const MASTER_VIEW = code(sourceOf('../sidebar/master-nav/MasterNavView.tsx'));
 
 const PANEL_SOURCES = [
   '../sidebar/ReceivingSidebarPanel.tsx',
@@ -74,6 +76,21 @@ test('MasterNavHeader has no MRU jump chips', () => {
   assert.doesNotMatch(MASTER_HEADER, /SIDEBAR_MRU/);
   assert.doesNotMatch(MASTER_NAV, /useRecentModes/);
   assert.doesNotMatch(MASTER_NAV, /recentModes/);
+});
+
+test('MasterNavHeader centers name-of-now label in the band', () => {
+  assert.match(MASTER_HEADER, /absolute inset-0 flex min-w-0 items-center justify-center/);
+  assert.match(MASTER_HEADER, /data-master-nav-label/);
+});
+
+test('GlobalHeader and MasterNav spine share TOP_CHROME_BAND face (one hairline Y)', () => {
+  assert.match(HEADER_SHELL, /TOP_CHROME_BAND_FACE/);
+  assert.match(HEADER_SHELL, /h-\[40px\].*border-b border-border-soft|border-b border-border-soft.*h-\[40px\]/);
+  assert.match(HEADER, /TOP_CHROME_BAND_CLASS/);
+  assert.match(MASTER_VIEW, /TOP_CHROME_BAND_FACE/);
+  // Regression: outer border-b wrapping a separate 40px child → 41px step.
+  assert.doesNotMatch(MASTER_VIEW, /border-b border-border-hairline/);
+  assert.doesNotMatch(MASTER_HEADER, /h-\[40px\]/);
 });
 
 test('modeful sidebar panels do not mount an L2 mode rail twin', () => {

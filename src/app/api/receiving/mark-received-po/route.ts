@@ -16,7 +16,7 @@ import {
 } from '@/lib/zoho';
 import { withZohoOrg } from '@/lib/zoho/tenant-context';
 import { getInventoryProvider, type InventoryProvider } from '@/lib/integrations/inventory';
-import { receiveLineUnits } from '@/lib/receiving/receive-line';
+import { receiveLineUnits, unreceiveLineUnits } from '@/lib/receiving/receive-line';
 import { transitionReceivingLine } from '@/lib/receiving/state-machine';
 import { upsertReceivingLineZoho } from '@/lib/receiving/facts/narrow';
 import { upsertReceivingUnbox } from '@/lib/receiving/streets/carton-street-write';
@@ -221,6 +221,10 @@ export const POST = withAuth(async (request, ctx) => {
 
     const receiveIntentRaw = String(body?.receive_intent ?? 'zoho_receive').trim().toLowerCase();
     const skipZohoReceive = receiveIntentRaw === 'scan_only';
+    // 'unreceive' = full website undo of Receive: zero qty, clear received_done_at,
+    // rewind to MATCHED, reverse Zoho PO received when linked. Distinct from
+    // scan_only (workflow-only "mark scanned" that leaves qty/stamp alone).
+    const isUnreceive = receiveIntentRaw === 'unreceive';
     // 'local_receive' = unfound carton: mark its lines RECEIVED (promoted to
     // DONE) locally, but never create a Zoho purchase receive — there is no PO
     // to reconcile against. It is NOT scan_only: scan_only stays SCANNED
@@ -228,6 +232,10 @@ export const POST = withAuth(async (request, ctx) => {
     // minus the Zoho call. Treated as a non-scan receive everywhere the DONE
     // promotion runs (`!skipZohoReceive`), and guarded out of the Zoho POST.
     const localReceive = receiveIntentRaw === 'local_receive';
+    /** Lines to load: scan_only + unreceive must see DONE lines to rewind them. */
+    const includeAllLines = skipZohoReceive || isUnreceive;
+    /** after() should call markPurchaseOrderUnreceived. */
+    const reverseZohoReceive = skipZohoReceive || isUnreceive;
 
     if (receivingId == null) {
       return NextResponse.json(
@@ -307,7 +315,7 @@ export const POST = withAuth(async (request, ctx) => {
     // lines (no rz row) in the candidate set with NULL Zoho ids, as before.
     const candidates = await tenantQuery<CandidateRow>(
       ctx.organizationId,
-      skipZohoReceive
+      includeAllLines
         ? `SELECT rl.id, rl.sku, rl.item_name, rl.quantity_expected, rl.quantity_received,
                   rz.zoho_purchaseorder_id, rz.zoho_line_item_id
            FROM receiving_line rl
@@ -347,13 +355,13 @@ export const POST = withAuth(async (request, ctx) => {
     }
 
     // Photo-policy gate (WS-PHOTO Plan 5): judge the carton's staged evidence
-    // BEFORE any mutation. scan_only is a local state flip, not a receive, and
-    // a pure verify/replay pass (no open lines) never newly blocks. On a block,
-    // RELEASE the idempotency claim instead of finalizing — PHOTO_POLICY is a
-    // fixable condition, so the same key must be able to retry after the
-    // operator adds the missing photos (a finalized claim would replay the 409
-    // forever). Default policy runs zero extra photo queries.
-    if (!skipZohoReceive && openForReceive.length > 0) {
+    // BEFORE any mutation. scan_only / unreceive are local state flips, not a
+    // receive, and a pure verify/replay pass (no open lines) never newly blocks.
+    // On a block, RELEASE the idempotency claim instead of finalizing —
+    // PHOTO_POLICY is a fixable condition, so the same key must be able to retry
+    // after the operator adds the missing photos (a finalized claim would replay
+    // the 409 forever). Default policy runs zero extra photo queries.
+    if (!skipZohoReceive && !isUnreceive && openForReceive.length > 0) {
       const gateOrg = await getOrganization(ctx.organizationId as OrgId);
       const photoPolicy = gateOrg ? getReceivingPhotoPolicy(gateOrg.settings) : 'optional';
       if (photoPolicy !== 'optional') {
@@ -517,6 +525,38 @@ export const POST = withAuth(async (request, ctx) => {
 
     if (openForReceive.length > 0) {
       for (const lineRow of openForReceive) {
+      const lineClientEventId = clientEventId
+        ? `${clientEventId}:line-${lineRow.id}`
+        : null;
+
+      if (isUnreceive) {
+        const result = await unreceiveLineUnits({
+          organizationId: ctx.organizationId,
+          receiving_line_id: lineRow.id,
+          staff_id: staffId,
+          station,
+          client_event_id: lineClientEventId,
+          notes,
+        });
+        if (!result.ok) {
+          return respond(
+            { success: false, error: result.error },
+            { status: result.status },
+          );
+        }
+        updatedLines.push({
+          id: result.line_state.id,
+          sku: result.line_state.sku,
+          item_name: result.line_state.item_name,
+          quantity_received: result.line_state.quantity_received,
+          quantity_expected: result.line_state.quantity_expected,
+          workflow_status: result.line_state.workflow_status,
+          zoho_purchaseorder_id: lineRow.zoho_purchaseorder_id,
+          zoho_line_item_id: lineRow.zoho_line_item_id,
+        });
+        continue;
+      }
+
       const currentQty = Number(lineRow.quantity_received ?? 0);
 
       // Force-complete: bump qty to expected (or 1 when unknown). Already-received
@@ -527,9 +567,6 @@ export const POST = withAuth(async (request, ctx) => {
         Number(lineRow.quantity_expected ?? 1),
       );
       const unitsToAdd = Math.max(0, targetQty - currentQty);
-      const lineClientEventId = clientEventId
-        ? `${clientEventId}:line-${lineRow.id}`
-        : null;
 
       // Even when unitsToAdd is 0 (line already complete) we still call the
       // helper so QA/disp/cond/workflow_status get set.
@@ -786,10 +823,11 @@ export const POST = withAuth(async (request, ctx) => {
     //     visibly Zoho-pending instead of re-queuing as merely scanned).
     //   - lines with no Zoho link (unfound / off-PO extras) have nothing to
     //     confirm and complete as DONE immediately.
-    //   - scan_only is excluded: "Mark as scanned" reverts lines to MATCHED
-    //     via receiveLineUnits, and the old unconditional DONE promotion here
-    //     was silently defeating that revert.
-    if (linesUpdatedViaReceiveUnits && updatedLines.length > 0 && !skipZohoReceive) {
+    //   - scan_only / unreceive are excluded: both leave lines at MATCHED
+    //     (scan_only via receiveLineUnits; unreceive via unreceiveLineUnits),
+    //     and the old unconditional DONE promotion here was silently defeating
+    //     that revert.
+    if (linesUpdatedViaReceiveUnits && updatedLines.length > 0 && !skipZohoReceive && !isUnreceive) {
       const zohoPendingIds: number[] = [];
       const localOnlyIds: number[] = [];
       for (const l of updatedLines) {
@@ -968,8 +1006,8 @@ export const POST = withAuth(async (request, ctx) => {
           // carries skip_reason inventory_not_connected; publishing
           // zohoReceive:'failed' would fire the generic "saved locally" toast
           // on top of the clearer reconnect diagnostic.
-        } else if (skipZohoReceive) {
-          // "Mark as scanned" intent: flip every linked Zoho PO back to issued
+        } else if (reverseZohoReceive) {
+          // scan_only / unreceive: flip every linked Zoho PO back to issued
           // so the local SCANNED state stays consistent with Zoho. Idempotent
           // on POs not currently in `received` status.
           for (const zohoPoId of byPo.keys()) {
@@ -1087,7 +1125,7 @@ export const POST = withAuth(async (request, ctx) => {
       // received"; lines whose PO receive failed stay UNBOXED so the pending
       // sync is visible (and replayable) instead of masquerading as complete.
       // Status-guarded so we never clobber a state someone advanced meanwhile.
-      if (!skipZohoReceive) {
+      if (!skipZohoReceive && !isUnreceive) {
         const confirmIds = updatedLines
           .filter((l) => {
             const poId = String(l.zoho_purchaseorder_id || '').trim();
@@ -1124,7 +1162,7 @@ export const POST = withAuth(async (request, ctx) => {
       }
 
       try {
-        if (!skipZohoReceive && inventory) {
+        if (!skipZohoReceive && !isUnreceive && inventory) {
           for (const zohoPoId of byPo.keys()) {
             if (!poZohoReceiveSucceeded.get(zohoPoId)) continue;
           const serialMap = serialNotesByPo.get(zohoPoId);
@@ -1208,7 +1246,7 @@ export const POST = withAuth(async (request, ctx) => {
           // meaningful for a real zoho_receive against a linked PO — scan-only
           // (markasunreceived) and local-only lines carry no verdict.
           let zohoReceive: 'ok' | 'failed' | undefined;
-          if (!skipZohoReceive) {
+          if (!skipZohoReceive && !isUnreceive) {
             const poId = String(l.zoho_purchaseorder_id || '').trim();
             if (poId) zohoReceive = poZohoReceiveSucceeded.get(poId) ? 'ok' : 'failed';
           }
@@ -1227,9 +1265,10 @@ export const POST = withAuth(async (request, ctx) => {
 
     // Audit one row per touched line. Source = mobile-scanner when the call
     // came from the phone station, else receiving-station. Action =
-    // PO_RECEIVE_REVERSE for scan_only (markasunreceived), else PO_RECEIVE.
+    // PO_RECEIVE_REVERSE for scan_only / unreceive (markasunreceived), else
+    // PO_RECEIVE.
     const auditSource = station === 'MOBILE' ? 'mobile-scanner' : 'receiving-station';
-    const auditAction = skipZohoReceive
+    const auditAction = reverseZohoReceive
       ? AUDIT_ACTION.PO_RECEIVE_REVERSE
       : AUDIT_ACTION.PO_RECEIVE;
 
@@ -1318,10 +1357,12 @@ export const POST = withAuth(async (request, ctx) => {
       circuitStatus = null;
     }
     const circuitOpen =
-      !skipZohoReceive && attemptedPoIds.size > 0 && circuitStatus?.isOpen === true;
+      !skipZohoReceive && !isUnreceive && attemptedPoIds.size > 0 && circuitStatus?.isOpen === true;
 
     let skipReason: string | null = null;
-    if (skipZohoReceive) {
+    if (isUnreceive) {
+      skipReason = 'unreceive';
+    } else if (skipZohoReceive) {
       skipReason = 'scan_only';
     } else if (localReceive) {
       // Unfound carton received locally — lines are RECEIVED (DONE), Zoho is
@@ -1343,16 +1384,23 @@ export const POST = withAuth(async (request, ctx) => {
     // lines carrying a serial (the background description PUT writes `SN: …` per
     // line); notes_updated = a notes string was provided AND a PO is linked to
     // receive the note against. Both collapse to 0/false when nothing reaches
-    // Zoho (scan-only, no-PO-link, cooldown).
+    // Zoho (scan-only, unreceive, no-PO-link, cooldown).
     const descriptionsUpdated =
-      attemptedPoIds.size > 0 && !skipZohoReceive
+      attemptedPoIds.size > 0 && !skipZohoReceive && !isUnreceive
         ? updatedLines.filter((l) => (serialsByReceivingLineId.get(l.id)?.length ?? 0) > 0).length
         : 0;
-    const notesUpdated = Boolean(notes) && attemptedPoIds.size > 0 && !skipZohoReceive;
+    const notesUpdated =
+      Boolean(notes) && attemptedPoIds.size > 0 && !skipZohoReceive && !isUnreceive;
 
     return respond({
       success: true,
-      receive_intent: skipZohoReceive ? 'scan_only' : localReceive ? 'local_receive' : 'zoho_receive',
+      receive_intent: isUnreceive
+        ? 'unreceive'
+        : skipZohoReceive
+          ? 'scan_only'
+          : localReceive
+            ? 'local_receive'
+            : 'zoho_receive',
       updated_count: linesUpdatedViaReceiveUnits ? updatedLines.length : 0,
       receiving_lines: updatedLines,
       receiving_id: receivingId,
@@ -1369,10 +1417,11 @@ export const POST = withAuth(async (request, ctx) => {
       // staggered green checks. Optimistic — the Zoho writes run in after();
       // the realtime `zohoReceive` verdict reconciles a background failure.
       summary: {
-        marked_received: !skipZohoReceive && attemptedPoIds.size > 0 && !circuitOpen,
+        marked_received:
+          !skipZohoReceive && !isUnreceive && attemptedPoIds.size > 0 && !circuitOpen,
         descriptions_updated: descriptionsUpdated,
         notes_updated: notesUpdated,
-        local_only: attemptedPoIds.size === 0,
+        local_only: attemptedPoIds.size === 0 || isUnreceive,
       },
       zoho: {
         attempted: attemptedPoIds.size,

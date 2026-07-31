@@ -104,7 +104,18 @@ export function KioskDevicesSection() {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ label: trimmed }),
       });
-      if (!r.ok) { setErr('Could not enroll the tablet.'); return; }
+      if (!r.ok) {
+        if (r.status === 401 || r.status === 403) {
+          setErr("You don't have permission to enroll tablets. Ask an admin to grant Enroll / revoke kiosk device.");
+          return;
+        }
+        if (r.status >= 500) {
+          setErr('Server error while enrolling. Try again in a moment.');
+          return;
+        }
+        setErr('Could not enroll the tablet.');
+        return;
+      }
       const data = (await r.json()) as FreshCode;
       setFreshCode(data);
       setLabel('');
@@ -182,7 +193,7 @@ export function KioskDevicesSection() {
                 <>the workspace kiosk URL</>
               )}{' '}
               → “Set up this tablet” and enter this code before{' '}
-              {new Date(freshCode.expiresAt).toLocaleTimeString()}.
+              {new Date(freshCode.expiresAt).toLocaleString()} (single-use; becomes a year-long device cookie once paired).
             </p>
           </div>
         )}

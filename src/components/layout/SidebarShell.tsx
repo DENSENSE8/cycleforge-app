@@ -3,6 +3,7 @@
 import type { ReactNode } from 'react';
 import { cn } from '@/utils/_cn';
 import { SIDEBAR_GUTTER, sidebarHeaderPillRowClass } from '@/components/layout/header-shell';
+import { SidebarRailScrollport } from '@/components/sidebar/rail-shell/SidebarRailScrollport';
 import { FilterRefinementBar, type FilterRefinementBarProps } from '@/design-system/components/FilterRefinementBar';
 
 /**
@@ -53,6 +54,13 @@ export interface SidebarShellProps {
   /** Extra classes for the scroll body (e.g. `space-y-4`, `scrollbar-hide`, `pb-6`). */
   bodyClassName?: string;
 
+  /**
+   * When true, the body uses {@link SidebarRailScrollport} (flat bottom
+   * more-below fade) instead of a raw overflow div. Enable for recent-activity
+   * feeds (Labels, Dashboard Recents).
+   */
+  scrollMoreBelow?: boolean;
+
   /** Pinned block BELOW the scroll body, at the very bottom of the sidebar and
    *  OUTSIDE the scroll — e.g. an always-available dock scan bar. */
   footer?: ReactNode;
@@ -71,6 +79,7 @@ export function SidebarShell({
   headerBelow,
   children,
   bodyClassName,
+  scrollMoreBelow = false,
   footer,
   as: Container = 'div',
   containerProps,
@@ -102,9 +111,15 @@ export function SidebarShell({
       {headerBelow ? <div className="shrink-0">{headerBelow}</div> : null}
 
       {children != null ? (
-        <div className={cn('min-h-0 flex-1 overflow-y-auto', SIDEBAR_GUTTER, 'pt-4', bodyClassName)}>
-          {children}
-        </div>
+        scrollMoreBelow ? (
+          <SidebarRailScrollport bodyClassName={cn(SIDEBAR_GUTTER, 'pt-4', bodyClassName)}>
+            {children}
+          </SidebarRailScrollport>
+        ) : (
+          <div className={cn('min-h-0 flex-1 overflow-y-auto', SIDEBAR_GUTTER, 'pt-4', bodyClassName)}>
+            {children}
+          </div>
+        )
       ) : null}
 
       {footer ? <div className="shrink-0">{footer}</div> : null}

@@ -1,9 +1,12 @@
 'use client';
 
-import type { ComponentType, ReactNode, SVGProps } from 'react';
-import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, X } from '../../Icons';
+import { useRef, useState, type ComponentType, type ReactNode, type SVGProps } from 'react';
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, List, X } from '../../Icons';
 import { HoverTooltip } from '../HoverTooltip';
+import { ToolbarButton } from '../ToolbarButton';
 import { IconButton } from '@/design-system/primitives';
+import { Popover } from '@/design-system';
+import { TOOLBAR_LISTBOX_PANEL_CLASS } from '@/design-system/primitives';
 import { cn } from '@/utils/_cn';
 import { receivingHeaderHairlineClass } from '@/components/layout/header-shell';
 import { RECEIVING_WORKSPACE_HEADER_COLUMN } from '@/components/receiving/workspace/receiving-workspace-layout';
@@ -464,8 +467,9 @@ export function PaneHeaderActionBar({
 }
 
 // ─── PaneHeaderPagination ─────────────────────────────────────────────────────
-// Range label + prev/next page controls — pairs with {@link PaneHeader} for
-// paginated tables.
+// Compact workbench trailing control — icon + range label + chevron, sibling of
+// {@link QueueSortSwitch} / {@link GridFieldsMenu}. Prev/next live in the popover
+// so the resting chrome stays one labeled pill.
 
 interface PaneHeaderPaginationProps {
   /** Current 1-based page index. */
@@ -474,6 +478,7 @@ interface PaneHeaderPaginationProps {
   total: number;
   onPrev: () => void;
   onNext: () => void;
+  className?: string;
 }
 
 export function PaneHeaderPagination({
@@ -482,55 +487,93 @@ export function PaneHeaderPagination({
   total,
   onPrev,
   onNext,
+  className,
 }: PaneHeaderPaginationProps) {
+  const [open, setOpen] = useState(false);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const safePage = Math.min(Math.max(1, page), totalPages);
   const rangeStart = total === 0 ? 0 : (safePage - 1) * pageSize + 1;
   const rangeEnd = Math.min(safePage * pageSize, total);
   const canPrev = safePage > 1;
   const canNext = safePage < totalPages;
+  const rangeLabel = total > 0 ? `${rangeStart}–${rangeEnd}` : '—';
 
   return (
-    <div className="flex items-center gap-3">
-      <span className="tabular-nums text-role-eyebrow uppercase tracking-wider text-text-soft">
-        {total > 0 ? (
-          <>
-            <span className="text-text-default">
-              {rangeStart}–{rangeEnd}
-            </span>{' '}
-            <span className="text-text-faint">/</span>{' '}
-            <span className="text-text-faint">{total.toLocaleString()}</span>
-          </>
-        ) : (
-          '—'
-        )}
-      </span>
-      <div className="flex items-center gap-0.5 rounded-md border border-border-soft bg-surface-card p-0.5">
-        <HoverTooltip label="Previous page" asChild>
-          <IconButton
-            type="button"
-            onClick={() => canPrev && onPrev()}
-            disabled={!canPrev}
-            ariaLabel="Previous page"
-            className="inline-flex h-6 w-6 items-center justify-center rounded hover:bg-surface-sunken disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent"
-            icon={<ChevronLeft className="h-3.5 w-3.5" />}
-          />
-        </HoverTooltip>
-        <span className="px-1 tabular-nums text-role-eyebrow uppercase tracking-wider text-text-soft">
-          <span className="text-text-default">{safePage}</span>
-          <span className="text-text-faint"> / {totalPages}</span>
-        </span>
-        <HoverTooltip label="Next page" asChild>
-          <IconButton
-            type="button"
-            onClick={() => canNext && onNext()}
-            disabled={!canNext}
-            ariaLabel="Next page"
-            className="inline-flex h-6 w-6 items-center justify-center rounded hover:bg-surface-sunken disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent"
-            icon={<ChevronRight className="h-3.5 w-3.5" />}
-          />
-        </HoverTooltip>
-      </div>
+    <div className={cn('shrink-0', className)} data-pane-header-pagination="">
+      <ToolbarButton
+        ref={buttonRef}
+        type="button"
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        aria-label={
+          total > 0
+            ? `Page ${safePage} of ${totalPages}, showing ${rangeLabel} of ${total}`
+            : 'No results'
+        }
+        onClick={() => setOpen((o) => !o)}
+        className="normal-case tracking-wide"
+      >
+        <List className="h-3.5 w-3.5 shrink-0" />
+        <span className="whitespace-nowrap tabular-nums">{rangeLabel}</span>
+        <ChevronDown
+          className={cn('h-3 w-3 shrink-0 opacity-70 transition-transform', open && 'rotate-180')}
+        />
+      </ToolbarButton>
+
+      <Popover
+        open={open}
+        onClose={() => setOpen(false)}
+        anchorRef={buttonRef}
+        placement="bottom-end"
+        gap={4}
+        matchWidth={false}
+        padded={false}
+        role="dialog"
+        aria-label="Pagination"
+        className={TOOLBAR_LISTBOX_PANEL_CLASS}
+      >
+        <div className="min-w-[11rem] px-2.5 py-2">
+          <p className="text-role-eyebrow uppercase tracking-widest text-text-faint">Showing</p>
+          <p className="mt-0.5 tabular-nums text-role-caption font-semibold text-text-default">
+            {total > 0 ? (
+              <>
+                {rangeLabel}
+                <span className="font-medium text-text-faint"> / {total.toLocaleString()}</span>
+              </>
+            ) : (
+              '—'
+            )}
+          </p>
+          <div className="mt-2 flex items-center justify-between gap-2">
+            <HoverTooltip label="Previous page" asChild>
+              <IconButton
+                type="button"
+                onClick={() => canPrev && onPrev()}
+                disabled={!canPrev}
+                ariaLabel="Previous page"
+                className="inline-flex h-7 w-7 items-center justify-center rounded-md hover:bg-surface-sunken disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent"
+                icon={<ChevronLeft className="h-3.5 w-3.5" />}
+              />
+            </HoverTooltip>
+            <span className="tabular-nums text-role-eyebrow uppercase tracking-wider text-text-soft">
+              <span className="text-text-default">{safePage}</span>
+              <span className="text-text-faint"> / {totalPages}</span>
+            </span>
+            <HoverTooltip label="Next page" asChild>
+              <IconButton
+                type="button"
+                onClick={() => canNext && onNext()}
+                disabled={!canNext}
+                ariaLabel="Next page"
+                className="inline-flex h-7 w-7 items-center justify-center rounded-md hover:bg-surface-sunken disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent"
+                icon={<ChevronRight className="h-3.5 w-3.5" />}
+              />
+            </HoverTooltip>
+          </div>
+        </div>
+      </Popover>
     </div>
   );
 }

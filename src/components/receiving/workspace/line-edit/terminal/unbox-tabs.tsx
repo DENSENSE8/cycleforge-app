@@ -9,7 +9,7 @@ import { LinePoNoteCard } from '../LinePoNoteCard';
 import { SupportContextHub } from '@/components/support/context';
 import { SectionTabsSlider, WorkspaceCard, type SectionTab } from '@/design-system/components';
 import { buildSectionTabs, WorkspaceTimelineTab } from '@/components/station/workbench';
-import { Barcode, ClipboardList, ExternalLink, FileText, History, MapPin, MessageSquare, PackageOpen, SlidersHorizontal, Ticket } from '@/components/Icons';
+import { Barcode, ClipboardList, ExternalLink, FileText, History, MapPin, MessageSquare, PackageOpen, SlidersHorizontal } from '@/components/Icons';
 import type { ReceivingLineRow } from '@/components/station/ReceivingLinesTable';
 import type { InlineActionFeedbackPayload } from '../../InlineActionFeedbackCard';
 import type { PoNoteTabState } from './usePoNoteTabState';
@@ -74,6 +74,8 @@ export interface BuildUnboxTabsInput {
  * Build the Unbox SectionTabsSlider tab list. Visibility gates stay here so the
  * terminal registry tab ids stay in lock-step with what the slider actually shows.
  * Filters through {@link buildSectionTabs} — the shared waist for all stations.
+ *
+ * Ticket is not a strip tab — it opens as `ReceivingTicketStack` (right-edge push).
  */
 export function buildUnboxTabs(input: BuildUnboxTabsInput): SectionTab[] {
   const {
@@ -103,7 +105,7 @@ export function buildUnboxTabs(input: BuildUnboxTabsInput): SectionTab[] {
     classifyExpandRequestId = 0,
   } = input;
 
-  // Strip: Unbox · Classify (unfound) | Listings (matched) · Ticket · …
+  // Strip: Unbox · Classify (unfound) | Listings (matched) · Units · …
   // Header bookmark shows locked-width icon faces; Classify tab checklist is
   // the edit surface (clicking a face routes here via onClassifyPillOpen).
   return buildSectionTabs([
@@ -160,28 +162,6 @@ export function buildUnboxTabs(input: BuildUnboxTabsInput): SectionTab[] {
           setListingLink={c.setListingLink}
         />
       ),
-    },
-    {
-      id: 'ticket',
-      label: 'Ticket',
-      icon: Ticket,
-      content:
-        activeUnboxView === 'ticket' && (row.id != null || row.receiving_id != null) ? (
-          <div className="flex h-[68vh] min-h-[460px] flex-col overflow-hidden">
-            <SupportContextHub
-              anchor={{
-                receivingId: row.receiving_id ?? null,
-                lineId: row.id ?? null,
-                tracking: row.tracking_number ?? null,
-              }}
-              variant="station"
-              onlySegment="customer"
-              hideLinkage
-              onRequestLinkTicket={() => c.openClaimModal('link')}
-              className="h-full min-h-0 rounded-2xl"
-            />
-          </div>
-        ) : null,
     },
     {
       id: 'units',

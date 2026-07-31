@@ -81,6 +81,7 @@ describe('default (core) column sets — change these deliberately', () => {
       'date',
       'qty',
       'stage',
+      'location',
       'order',
       'tracking',
     ]);

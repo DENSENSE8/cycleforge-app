@@ -11,6 +11,7 @@ import { ScanBandShell } from '@/components/station/scan-bar';
 import { TestingRecentRail } from '@/components/sidebar/receiving/TestingRecentRail';
 import { TestingScanSessionFeedback } from '@/components/sidebar/receiving/TestingScanSessionFeedback';
 import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
+import { SidebarRailScrollport } from '@/components/sidebar/rail-shell/SidebarRailScrollport';
 import { useIsMobile } from '@/hooks';
 import { useStationTheme } from '@/hooks/useStationTheme';
 import {
@@ -416,14 +417,14 @@ export function TestingSidebarPanel({
         </div>
       ) : null}
 
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+      <SidebarRailScrollport>
         <TestingRecentRail
           selectedLineId={selectedLineId}
           selectedRow={internalSelectedRow}
           testerId={staffId ? Number(staffId) : null}
           filterText={railFilter}
         />
-      </div>
+      </SidebarRailScrollport>
 
       <TechRailSearchBar
         value={railFilter}

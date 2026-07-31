@@ -503,6 +503,10 @@ test.describe('Kiosk host — subdomain gating', () => {
       await ctx.dispose();
     }
   });
+
+  // Production apex + DEFAULT_TENANT_SLUG → same kiosk origin is covered by
+  // unit tests on staffKioskRedirectOrigin (proxy only applies that branch when
+  // NODE_ENV=production; local E2E keeps serving /kiosk on apex for tablet UI).
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

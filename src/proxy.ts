@@ -23,7 +23,7 @@ import {
   isBareKioskPlatformHost,
   isKioskHost,
   isKioskHostAllowedPath,
-  kioskOriginForSlug,
+  staffKioskRedirectOrigin,
 } from '@/lib/tenancy/kiosk-host';
 
 // Inlined (not imported) to keep the Edge bundle free of node:crypto / pg.
@@ -553,16 +553,17 @@ export function proxy(req: NextRequest): NextResponse {
   }
 
   // Legacy staff-host `/kiosk` → permanent redirect to the tenant kiosk origin.
-  // Production apex (no slug) → sign-in. Non-production without a slug keeps
-  // serving `/kiosk` on the staff host so local E2E / tunnels work pre-DNS.
+  // Production apex with DEFAULT_TENANT_SLUG → that tenant's kiosk host (dogfood
+  // bridge). Production apex without a bridge → sign-in. Non-production without
+  // a slug keeps serving `/kiosk` on the staff host so local E2E / tunnels work.
   if (pathname === '/kiosk' || pathname.startsWith('/kiosk/')) {
-    if (tenantSlug) {
-      try {
-        const dest = new URL(`${kioskOriginForSlug(tenantSlug)}/`);
-        return applySecurityHeaders(NextResponse.redirect(dest, 308));
-      } catch {
-        /* invalid slug — fall through */
-      }
+    const kioskDest = staffKioskRedirectOrigin({
+      tenantSlug,
+      defaultTenantSlug: process.env.DEFAULT_TENANT_SLUG,
+      isProduction: process.env.NODE_ENV === 'production',
+    });
+    if (kioskDest) {
+      return applySecurityHeaders(NextResponse.redirect(new URL(`${kioskDest}/`), 308));
     }
     if (process.env.NODE_ENV === 'production') {
       const url = req.nextUrl.clone();

@@ -1,35 +1,26 @@
-# `/dashboard` IA rework — handoff: what is left
+# `/dashboard` IA rework — handoff: CLOSED
 
-**Self-contained.** A new session needs only this file. Paste:
+**Self-contained.** A new session needs only this file for *why* and traps. Paste:
 
-> Read `docs/todo/dashboard-ia-rework-HANDOFF.md` and start at §3.
-
-**Row L's as-built carries one unratified deviation, and the URL-isolation work that closed it is
-uncommitted** — see [`url-isolation-session-HANDOFF.md`](url-isolation-session-HANDOFF.md) §3.1.
+> Read `docs/todo/dashboard-ia-rework-HANDOFF.md` — IA rows are done; follow-ons are §5.
 
 **Companion, not replacement.** [`dashboard-ia-rework-PLAN.md`](dashboard-ia-rework-PLAN.md) stays the
-record of *why*; its §9 is the as-built and §10 is the backlog. This file is the **entry point**: what
-is closed, what is genuinely left, and the traps that cost time in the last two sessions.
+record of *why*; its §9 is the as-built and §10 is the backlog (all gated rows closed).
 
-**Status as of 2026-07-30:** Phases 1–3 shipped, §10.1 A–F closed, rows I and J closed, §10.3
-deviations ratified. **Rows H · K · L ratified and implemented** (see §3.2–3.4); H and K
-**re-verified against `HEAD` 2026-07-30** — `useMasterNavEnabled` has zero references left (the rail
-survived the gate's removal, so it is ON, not deleted), and `useSavedViews` no longer writes
-localStorage. Apply migrations `2026-07-29g_saved_views.sql` +
-`2026-07-29h_drop_legacy_saved_views.sql` before relying on server-backed dashboard/station saved
-views. `npm run verify` is **green**.
+**Status as of 2026-07-30:** Phases 1–3 + Phase 6 shipped. §10.1 A–F closed. Rows G · H · I · J · K · L
+closed. §10.3 deviations ratified. **No IA rows left.**
 
-**Row G is the only row left** — still gated on a research response that has not landed. One row-L
-deviation from its ratified verdict is flagged in §3.4 and needs a yes/no.
+**Follow-on (not this plan):** Sales history Monitor folds into `/dashboard` as a third domain —
+[`sales-into-dashboard-PLAN.md`](sales-into-dashboard-PLAN.md).
 
 ---
 
 ## 0. The four things to internalise
 
-1. **The top axis is DIRECTION, not entity** — ratified into house law
-   (`.claude/rules/display/workbench.md` → *The top axis is DIRECTION*). `inbound | outbound`, with a
-   three-part predicate for what earns a slot. Do not re-open it; do not propose
-   `Orders · FBA · Repair · Sales`. The worked verdicts are in that rule.
+1. **The top axis is DIRECTION (+ commerce history when merged)** — ratified into house law
+   (`.claude/rules/display/workbench.md` → *The top axis is DIRECTION*). Start from
+   `inbound | outbound`; Sales may join as a third domain only when its L1 home is deleted (see
+   sales-into-dashboard follow-on). Do not propose `Orders · FBA · Repair · Sales`.
 2. **Tabs and saved views both ship**, split by *who defines the set* — system-defined lifecycle
    transitions are tabs, operator-defined facet combinations are saved views. Same rule file.
 3. **The ownership guard reports only params NO spec declares.** It will never tell you your route is
@@ -54,6 +45,8 @@ deviation from its ratified verdict is flagged in §3.4 and needs a yes/no.
 | 10.1 F | No dead clear list survives on a spec-backed route; the invariant now guards it. |
 | 10.2 I | Axis + tabs/saved-views **decided** → house law. |
 | 10.2 J | Sub-routes — closed unless evidence appears. |
+| 10.2 G | Phase 6 `/search` results surface — **DONE 2026-07-30** (Monitor feed + refine/sort). |
+| 10.2 H · K · L | Domain rail, saved_views Shape A, FBA front doors — ratified + as-built. |
 
 ---
 
@@ -83,36 +76,23 @@ you write or inherit one, prove it fails — change the code it guards and watch
 
 ---
 
-## 3. What is left — start here
+## 3. Closed rows (record) — nothing left to build for this plan
 
-> **Rows H, K and L now have a briefing:**
-> [`dashboard-ia-rows-HKL-GEMINI-RESEARCH-BRIEFING.md`](dashboard-ia-rows-HKL-GEMINI-RESEARCH-BRIEFING.md)
-> (written 2026-07-29). Read it before acting on §3.2–§3.4 — it corrects three claims repeated below:
-> the panel count is **10**, not ~14; **there is no flag**, so "the dormant code is the cheap
-> experiment" is not available as stated (`MasterNavProvider` is hardcoded `enabled` at
-> `SidebarShell.tsx:48` + `ContextPanelLayout.tsx:90`, so flipping it turns the rail on for all 10
-> panels at once); and `/fba` is **already a redirect**, not a parked page — the precedent for row L's
-> answer is inside the FBA domain itself.
+### 3.1 Row G — Phase 6, the `/search` results surface — **DONE 2026-07-30**
 
-### 3.1 Row G — Phase 6, the `/search` results surface *(the largest remaining build)*
+Research gate ([`search-results-grid-GEMINI-RESEARCH-BRIEFING.md`](search-results-grid-GEMINI-RESEARCH-BRIEFING.md))
+was satisfied by shipping the **Monitor-feed** shape (no separate ANSWER file). Build record:
+[`search-results-aligned-row-PHASE2-HANDOFF.md`](search-results-aligned-row-PHASE2-HANDOFF.md).
 
-Phase 1 created `/search` and did not finish it: evicting Search to its own route made its
-hand-rolled result list a first-class page with nowhere to hide.
+| Piece | Path |
+|---|---|
+| Flat RRF surface | `src/components/search/SearchResultsSurface.tsx` |
+| Grid track SoT | `src/components/search/search-result-grid.ts` (`SEARCH_RESULT_GRID`) |
+| Refine / sort | `SearchRefineControls.tsx` + `lib/search/search-refine.ts` (`?etype=` / `?hstat=` / `?colsort=`) |
+| Route params | `SEARCH_ROUTE_PARAMS` in `lib/routing/query-mode-routes.ts` |
 
-**Gated on** [`search-results-grid-GEMINI-RESEARCH-BRIEFING.md`](search-results-grid-GEMINI-RESEARCH-BRIEFING.md)
-— deliberately, because the three candidate shapes differ by an order of magnitude in cost. Do not
-guess the shape.
-
-Groundwork already in place, so the build starts clean:
-- `SEARCH_ROUTE_PARAMS` exists — declare new sort/scope keys there and the ownership guard catches a
-  collision with `/support`'s `status`/`range`/`type` or `/dashboard`'s `sort`/`open` at build time.
-- `/search` has a real route key; giving the results grid a filter rail is one line
-  (`CONTEXT_PANEL_ROUTE_KEYS`).
-- The four-settled-states contract is house law, and `LedgerGridSurface` now takes
-  `emptyMessage` / `searchEmptyMessage` / `isSearching` — a search results grid is precisely the
-  surface that needs the no-match answer.
-- `CATEGORY_TABS` in `src/components/search/search-tabs.ts` is a scope vocabulary with **no URL param
-  yet**. If Phase 6 wants `?scope=`, declare it on the spec.
+`/search` stays its **own route** — deliberately full-width (absent from `CONTEXT_PANEL_ROUTE_KEYS`).
+Do not re-import Search into the dashboard axis.
 
 ### 3.2 Row H — Phase 4, L2 mode rail — **DECIDED 2026-07-29**
 
@@ -138,7 +118,7 @@ Sourcing Analytics pill vs `SIDEBAR_PAGE_NAV` drift.
 this consolidation. Port `useSavedViews` off localStorage. Research:
 [`dashboard-ia-research-briefing-HKL.md`](dashboard-ia-research-briefing-HKL.md).
 
-### 3.4 Row L — FBA front doors — **DECIDED 2026-07-29 · AS-BUILT 2026-07-30**
+### 3.4 Row L — FBA front doors — **DECIDED 2026-07-29 · AS-BUILT 2026-07-30 · RATIFIED 2026-07-30**
 
 **Verdict:** one canonical route (`/shipping/fba` → `FbaWorkspace`), one redirect (`/fba`). Delete
 vestigial `/dashboard?fba` (falls through to Pending). Delete `FbaShipmentsTable` after cleaning the
@@ -149,16 +129,12 @@ vestigial `/dashboard?fba` (falls through to Pending). Delete `FbaShipmentsTable
 `DashboardOrderView`, the `/test` Shipping FBA tab is cleaned (`ShippingWorkspaceTab` is now
 `pending | history`), and `FbaShipmentsTable` no longer exists.
 
-> ⚠️ **One DEVIATION from the verdict, pending ratification.** The verdict says delete the vestigial
-> `/dashboard?fba` and accept that it *falls through to Pending*. As built, it now **client-redirects to
-> `/shipping/fba`** (`isRetiredFbaView` / `retiredFbaViewTarget` in `lib/dashboard/dashboard-domains.ts`,
-> wired in `app/dashboard/page.tsx`). Rationale: the fall-through silently lands an old bookmark on an
-> unrelated tab, and this is the **third instance** of an existing mechanism — `?warranty=` → `/support`
-> and `?mode=search` → `/search` are already wired the same way in the same file — so it composes rather
-> than invents. It carries nothing across, because the dashboard's `?open=` is an ORDER id while the
-> board's `openShipmentId` is a SHIPMENT id. Browser-verified (`/dashboard?fba` → `/shipping/fba`,
-> `?shipped` untouched) and unit-tested. **Either ratify this as the final shape or revert it to the
-> plain fall-through — it is one effect plus one flag to remove.**
+> **Deviation RATIFIED 2026-07-30.** The verdict said delete the vestigial `/dashboard?fba` and accept
+> fall-through to Pending. As built — and now final — it **client-redirects to `/shipping/fba`**
+> (`isRetiredFbaView` / `retiredFbaViewTarget` in `lib/dashboard/dashboard-domains.ts`, wired in
+> `app/dashboard/page.tsx`). Same mechanism as `?warranty=` → `/support` and `?mode=search` → `/search`
+> in the same file. Fall-through would silently land an old bookmark on an unrelated tab; the redirect
+> does not. It carries nothing across (order id ≠ shipment id).
 
 **FBA param groundwork (2026-07-30).** `/fba` correctly has **no route param spec** — it is a
 server-side `redirect()`, not a surface, the same treatment `/tech` and `/packer` get as aliases. Do not
@@ -208,7 +184,10 @@ in a tree where other sessions commit mid-flight.
 
 ---
 
-## 5. Adjacent, unblocked, not part of this plan
+## 5. Adjacent follow-ons — not part of this plan
+
+**Sales → dashboard domain:** [`sales-into-dashboard-PLAN.md`](sales-into-dashboard-PLAN.md) —
+fold `/walk-in` history into `/dashboard?mode=sales` and drop the Sales L1 page.
 
 **Header Mode + Recents (Receiving pilot):** Row H's persistent rail is superseded for Unbox/Receiving
 only by [`header-mode-switcher-UNBOX-HANDOFF.md`](header-mode-switcher-UNBOX-HANDOFF.md) — start at §3.
@@ -237,12 +216,12 @@ while keeping its list.
 - [x] Phases 1–3 shipped and browser-verified
 - [x] §10.1 A–F closed
 - [x] §6 Q3 answered → row I ratified into house law
-- [ ] §6 Q5 + Q6 answered → **Phase 6 shipped** (row G)
+- [x] §6 Q5 + Q6 answered → **Phase 6 shipped** (row G) — Monitor feed + refine 2026-07-30
 - [x] §6 Q1 answered **yes** (2026-07-29) → row H: persistent L2 rail; ModesPanel out
 - [x] Row K ratified (2026-07-29) → polymorphic `saved_views`
 - [x] Row L resolved (2026-07-29) → `/shipping/fba` canonical; delete `?fba` + `FbaShipmentsTable`
 - [x] §10.3 deviations ratified (2026-07-29)
-- [ ] §9 updated one last time, then the whole plan moved out of `docs/todo/`
+- [ ] §9 updated one last time, then the whole plan moved out of `docs/todo/` *(housekeeping; not blocking)*
 
 *(The `src/app/signin/page.tsx` merge conflict named in the plan's original §10.4 is resolved —
 `npm run verify` is green as of 2026-07-29.)*

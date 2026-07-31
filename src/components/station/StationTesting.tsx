@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { AlertCircle } from '@/components/Icons';
 import { ShippingRecentRail } from '@/components/sidebar/shipping/ShippingRecentRail';
+import { SidebarRailScrollport } from '@/components/sidebar/rail-shell/SidebarRailScrollport';
 import { ShippingScanBar } from '@/components/sidebar/tech/ShippingScanBar';
 import { ScanBandShell } from '@/components/station/scan-bar';
 import { ActiveOrderScanFeedback } from './ActiveOrderScanFeedback';
@@ -275,7 +276,7 @@ export default function StationTesting({
           </div>
         )}
 
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+        <SidebarRailScrollport>
           <ShippingRecentRail
             techId={userId}
             onStart={(tracking) => {
@@ -288,7 +289,7 @@ export default function StationTesting({
             }}
             onAllCompleted={onComplete}
           />
-        </div>
+        </SidebarRailScrollport>
 
         {isMobile && (
           <div className="flex-shrink-0 border-t border-border-hairline bg-surface-card pb-[max(0.5rem,env(safe-area-inset-bottom))]">

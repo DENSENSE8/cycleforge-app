@@ -217,3 +217,22 @@ test('DONE → IN_TEST is a modeled edge (re-test of a fully-passed rollup)', as
   assert.equal(res.coarse, 'RECEIVED');
   assert.ok(calls.updateParams?.includes('IN_TEST'));
 });
+
+test('DONE → MATCHED is a modeled edge (website unreceive)', async () => {
+  assert.equal(guardReceivingLine('DONE', 'MATCHED').ok, true);
+
+  const { db, deps, calls } = fakes({ workflow_status: 'DONE', receiving_id: 12, sku: 'Z' });
+  const res = await transitionReceivingLine(
+    { receivingLineId: 12, to: 'MATCHED', strict: true },
+    db,
+    undefined,
+    deps,
+  );
+  assert.equal(res.ok, true);
+  if (!res.ok) return;
+  assert.equal(res.from, 'DONE');
+  assert.equal(res.to, 'MATCHED');
+  assert.equal(res.changed, true);
+  assert.equal(res.coarse, 'SCANNED');
+  assert.ok(calls.updateParams?.includes('MATCHED'));
+});

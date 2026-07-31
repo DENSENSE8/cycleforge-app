@@ -20,7 +20,6 @@ import dynamic from 'next/dynamic';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { DashboardReceivingHeader } from '@/components/dashboard/receiving/DashboardReceivingHeader';
 import { DashboardReceivingKpiStrip } from '@/components/dashboard/receiving/DashboardReceivingKpiStrip';
-import { DashboardAttentionStrip } from '@/components/dashboard/DashboardAttentionStrip';
 import { dashboardReceivingTabFromSort } from '@/components/dashboard/receiving/dashboard-receiving-tabs';
 import { DashboardScrollShell } from '@/components/dashboard/DashboardScrollShell';
 import { WORKBENCH_CHROME_COLUMN } from '@/components/dashboard/workbench-shell';
@@ -64,13 +63,11 @@ export function DashboardReceivingView() {
       chrome={
         <div className={WORKBENCH_CHROME_COLUMN}>
           <DashboardReceivingHeader />
-          {/* Zone A rides in the CHROME slot here, not the body: this shell's
-              body is `overflow-y-hidden` because the lines table self-scrolls,
-              so there is no scroll port for a band to scroll away in. Still one
-              pinned layer — chrome is a non-scrolling sibling, not a second
-              sticky. */}
-          <div className="space-y-3 pt-3">
-            <DashboardAttentionStrip domain="inbound" />
+          {/* Receiving KPI rides in the CHROME slot: this shell's body is
+              `overflow-y-hidden` because the lines table self-scrolls, so there
+              is no scroll port for a band to scroll away in. Still one pinned
+              layer — chrome is a non-scrolling sibling, not a second sticky. */}
+          <div className="pt-3">
             <DashboardReceivingKpiStrip tab={tab} />
           </div>
         </div>

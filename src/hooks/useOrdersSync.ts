@@ -210,7 +210,10 @@ export function useOrdersSync() {
         (stats.skippedNoItemNumber ?? 0) +
         (stats.skippedNoTracking ?? 0) +
         (stats.skippedNoOrderId ?? 0);
-      if (skipped > 0) parts.push(`${skipped} skipped`);
+      // "needs a fix", not "skipped": this counts only the ACTIONABLE reasons,
+      // while the panel header counts every listed skip. Two different numbers
+      // under one word ("11 skipped" beside "21 rows skipped") reads as a bug.
+      if (skipped > 0) parts.push(`${skipped} need${skipped === 1 ? 's' : ''} a fix`);
 
       setter({
         status: success ? 'done' : 'error',

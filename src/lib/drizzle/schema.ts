@@ -2614,6 +2614,46 @@ export const orderCatalogLinkChores = pgTable('order_catalog_link_chores', {
 export type OrderCatalogLinkChore = typeof orderCatalogLinkChores.$inferSelect;
 export type NewOrderCatalogLinkChore = typeof orderCatalogLinkChores.$inferInsert;
 
+/**
+ * order_import_exceptions — Review · Missing item number queue.
+ * Enqueued only when Google Sheets transfer-orders drops a row for a blank
+ * Item Number (the row has a real order id + tracking, but never becomes an
+ * `orders` row). `raw_row` + `col_indices` let a resolve action splice the
+ * supplied Item Number into the original cell and re-run the same ingest
+ * path. See migration 2026-07-30c_order_import_exceptions.sql.
+ */
+export const orderImportExceptions = pgTable('order_import_exceptions', {
+  id: bigserial('id', { mode: 'number' }).primaryKey(),
+  organizationId: orgIdCol(),
+  accountOrderId: text('account_order_id').notNull(),
+  accountSource: text('account_source').notNull().default(''),
+  productTitle: text('product_title'),
+  tracking: text('tracking'),
+  reason: text('reason').notNull().default('no_item_number'),
+  status: text('status').notNull().default('open'),
+  rawRow: jsonb('raw_row').notNull(),
+  colIndices: jsonb('col_indices').notNull(),
+  sheetRow: integer('sheet_row'),
+  resolvedItemNumber: text('resolved_item_number'),
+  resolvedOrderId: integer('resolved_order_id').references(() => orders.id, { onDelete: 'set null' }),
+  firstSeenAt: timestamp('first_seen_at', { withTimezone: true }).notNull().defaultNow(),
+  lastSeenAt: timestamp('last_seen_at', { withTimezone: true }).notNull().defaultNow(),
+  seenCount: integer('seen_count').notNull().default(1),
+  resolvedAt: timestamp('resolved_at', { withTimezone: true }),
+  ignoredAt: timestamp('ignored_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  orgSourceOrderUx: uniqueIndex('ux_order_import_exceptions_org_source_order').on(
+    table.organizationId,
+    table.accountSource,
+    table.accountOrderId,
+  ),
+}));
+
+export type OrderImportException = typeof orderImportExceptions.$inferSelect;
+export type NewOrderImportException = typeof orderImportExceptions.$inferInsert;
+
 // ─── Bose Sourcing Engine ────────────────────────────────────────────────────
 // Compatibility DB + alternative-sourcing tables. See migrations
 // 2026-06-06e/f/g and docs/bose-parts-sourcing-engine-plan.md.

@@ -125,6 +125,12 @@ function collapseOnlyFootnote(subtitle: string, ref: TimelineRef | undefined): s
   return parts.slice(1).join(' · ');
 }
 
+/** Identity chips for a row — prefer `refs` cluster when present. */
+function itemIdentityRefs(item: TimelineItem): TimelineRef[] {
+  if (item.refs?.length) return item.refs;
+  return item.ref ? [item.ref] : [];
+}
+
 /** Render an identifier through the shared CopyChip family (last-4 + copy). */
 function TimelineRefChip({ refItem }: { refItem: TimelineRef }) {
   const v = String(refItem.value || '').trim();
@@ -135,7 +141,14 @@ function TimelineRefChip({ refItem }: { refItem: TimelineRef }) {
       chip = <TrackingChip value={v} display={getLast4(v)} dense fitDisplayWidth />;
       break;
     case 'serial':
-      chip = <SerialChip value={v} width="w-fit max-w-full" dense />;
+      chip = (
+        <SerialChip
+          value={v}
+          display={refItem.display}
+          width="w-fit max-w-full"
+          dense
+        />
+      );
       break;
     case 'fnsku':
       chip = <FnskuChip value={v} width="w-fit max-w-full" />;
@@ -481,7 +494,9 @@ export function EventTimeline({
         const stationAnatomy = metaTrail && refInline;
         const glyphSpec = resolveTimelineGlyph(item.sourceEventType);
         const GlyphIcon = TIMELINE_GLYPH_ICONS[glyphSpec.id];
-        const glyphHref = item.href?.trim() || item.ref?.href?.trim() || undefined;
+        const identityRefs = itemIdentityRefs(item);
+        const glyphHref =
+          item.href?.trim() || identityRefs[0]?.href?.trim() || undefined;
         const timeNode = richTime ? (
           <HoverTooltip
             label={absTimestamp(item.at)}
@@ -495,9 +510,11 @@ export function EventTimeline({
         );
         const metaBits = (
           <span className="inline-flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-role-micro font-medium tabular-nums text-text-faint">
-            {stationAnatomy && item.ref ? (
-              <span className="-my-0.5 inline-flex shrink-0 items-center">
-                <TimelineRefChip refItem={item.ref} />
+            {stationAnatomy && identityRefs.length > 0 ? (
+              <span className="-my-0.5 inline-flex shrink-0 flex-wrap items-center gap-1">
+                {identityRefs.map((r, ri) => (
+                  <TimelineRefChip key={`${r.kind}:${r.value}:${ri}`} refItem={r} />
+                ))}
               </span>
             ) : null}
             <span className="shrink-0 whitespace-nowrap">
@@ -514,8 +531,8 @@ export function EventTimeline({
             ? item.subtitle
             : null;
         const footnote = rawFootnote
-          ? isRedundantRefSubtitle(rawFootnote, item.ref)
-            ? collapseOnlyFootnote(rawFootnote, item.ref)
+          ? isRedundantRefSubtitle(rawFootnote, identityRefs[0])
+            ? collapseOnlyFootnote(rawFootnote, identityRefs[0])
             : rawFootnote
           : null;
 
@@ -618,9 +635,11 @@ export function EventTimeline({
                     >
                       {item.title}
                     </span>
-                    {refInline && item.ref ? (
-                      <span className="-my-0.5 inline-flex shrink-0 items-center">
-                        <TimelineRefChip refItem={item.ref} />
+                    {refInline && identityRefs.length > 0 ? (
+                      <span className="-my-0.5 inline-flex shrink-0 flex-wrap items-center gap-1">
+                        {identityRefs.map((r, ri) => (
+                          <TimelineRefChip key={`${r.kind}:${r.value}:${ri}`} refItem={r} />
+                        ))}
                       </span>
                     ) : null}
                     <span className="shrink-0 whitespace-nowrap text-role-micro font-medium tabular-nums text-text-faint">
@@ -649,9 +668,11 @@ export function EventTimeline({
                   </ul>
                 ) : null}
 
-                {!stationAnatomy && !refInline && item.ref ? (
-                  <div className="mt-1 -ml-1.5">
-                    <TimelineRefChip refItem={item.ref} />
+                {!stationAnatomy && !refInline && identityRefs.length > 0 ? (
+                  <div className="mt-1 -ml-1.5 inline-flex flex-wrap items-center gap-1">
+                    {identityRefs.map((r, ri) => (
+                      <TimelineRefChip key={`${r.kind}:${r.value}:${ri}`} refItem={r} />
+                    ))}
                   </div>
                 ) : null}
 

@@ -1,21 +1,21 @@
 import { workflowStage } from '@/lib/receiving/workflow-stages';
 import type { ReceivingDetailsLog } from '@/components/station/receiving-details-log';
 
-type CartonPipelineKey = 'scanned' | 'unboxed' | 'received';
-type CartonPipelineState = 'done' | 'active' | 'pending';
+export type CartonPipelineKey = 'scanned' | 'unboxed' | 'received';
+export type CartonPipelineState = 'done' | 'active' | 'pending';
 
-type CartonReadinessStage =
+export type CartonReadinessStage =
   | 'awaiting_scan'
   | 'awaiting_unbox'
   | 'awaiting_receive'
   | 'lines_in_progress'
   | 'carton_received';
 
-type CartonReadinessCta = 'continue_unbox' | 'match_po' | 'none';
+export type CartonReadinessCta = 'continue_unbox' | 'match_po' | 'none';
 
-type CartonReadinessPillTone = 'neutral' | 'blue' | 'amber' | 'emerald';
+export type CartonReadinessPillTone = 'neutral' | 'blue' | 'amber' | 'emerald';
 
-type CartonReadiness = {
+export type CartonReadiness = {
   stage: CartonReadinessStage;
   headline: string;
   nextStep: string;
@@ -26,7 +26,7 @@ type CartonReadiness = {
   linesComplete?: number;
 };
 
-type ReceivingMatchLine = {
+export type ReceivingMatchLine = {
   quantity_expected?: number | null;
   quantity_received?: number | null;
   workflow_status?: string | null;

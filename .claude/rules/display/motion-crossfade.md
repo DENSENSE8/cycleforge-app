@@ -89,9 +89,14 @@ The recipe is shared; **what** crossfades is archetype-specific and **singular**
   graph itself pans/zooms directly. **Never crossfade the graph** — it destroys spatial continuity.
 - **Never crossfade a list, map, or graph.** A list re-fading on every keystroke/selection reads as flicker and loses
   scroll. The list is the stable navigator; only the *detail* transitions.
+- **Exception — MasterNav Stock drill.** Replacing the spine *root map* with Stock children (or Back) is a deliberate
+  altitude change, not a per-row flicker. Use named opacity-only SoT (`framerPresence.spineDrill` +
+  `framerTransition.spineDrill`, ≤150ms) via `useMotionPresence` / `useMotionTransition`. **Do not** horizontal-slide
+  a 240px push spine; **do not** drill Stations (floor map stays on root). Auto-drill on `kind === 'stock'` must not
+  steal focus. Law: `workbench.md`; guard: `main-nav-groups.guard.test.ts`.
 
 > Rule of thumb: there is exactly **one** crossfading region per archetype. If you're fading two regions, or fading the
-> list, you've picked the wrong target — re-read the table.
+> list, you've picked the wrong target — re-read the table. (Stock drill is the sole sanctioned spine-list swap.)
 
 ---
 
@@ -120,8 +125,9 @@ settle — right when a finger or a value is "thrown"; wrong for an abstract A�
 and tail read as imprecise.
 
 - **Cubic-bezier `easeOut` (discrete swaps):** active-card crossfade, right-pane crossfade, table rows, dropdowns,
-  chevrons, scrims. Presets: `framerTransition.stationCardMount` / `tableRowMount` / `dropdownOpen` / `overlayScrim`,
-  all on `motionBezier.easeOut [0.22, 1, 0.36, 1]`. Height/layout tweens use the softer `motionBezier.layout`.
+  chevrons, scrims, MasterNav Stock drill. Presets: `framerTransition.stationCardMount` / `tableRowMount` /
+  `dropdownOpen` / `overlayScrim` / `spineDrill`, all on `motionBezier.easeOut [0.22, 1, 0.36, 1]`. Height/layout
+  tweens use the softer `motionBezier.layout`.
 - **Spring (physical / gesture):** bottom sheets (`framerTransitionMobile.sheetSlide`), fullscreen photo paging
   (`viewerPaging` — `damping: 38` for *no overshoot*, "bounce reads as tacky on a photo"), the sliding tab/button
   indicator (`framerTransition.sliderIndicator`), numeric bumps (`quantityBump`), modal shells (`workOrderModalSpring`).
@@ -209,6 +215,14 @@ it through `useMotionPresence` / `useMotionTransition`, so the reduced-motion co
 inline literals left to drift. **New right-pane crossfades call `useMotionPresence(framerPresence.workbenchPane)`** —
 never re-inline the values.
 
+## RESOLVED — MasterNav Stock drill (`spineDrill`)
+
+Hybrid spine: Stations/Main stay static nests; Stock is a Vercel-style drill-in. List swap uses
+**`framerPresence.spineDrill`** (opacity-only) + **`framerTransition.spineDrill`** (`0.12s`, `easeOut`) in
+`SidebarNavList`, through the hook bridge. No `x`/`y` on the 240px push spine. Gemini-ratified 2026-07-30
+(`docs/todo/spine-drill-in-vercel-GEMINI-RESEARCH-BRIEFING.md`). **Do not** invent a second drill altitude for modes
+or Stations.
+
 ## GAP — residual raw reduced-motion consumers
 
 **The workbench right panes now route through the bridge, but some surfaces still consume presets raw.** The station
@@ -247,6 +261,8 @@ user-facing surface.
 - **Routine transitions over ~300ms** — sluggish; reserve longer only for large physical slides (sheet, pager).
 - **Animating `width`/`height`/`padding`** — layout thrash; use `grid-template-rows` for height, transform for the rest.
 - **Crossfading the list / map / graph** — only the detail/active-card/overlay transitions; the navigator stays put.
+  (Exception: MasterNav Stock drill via `spineDrill` — see above.)
+- **Horizontal slide on Stock drill** — use opacity-only `framerPresence.spineDrill`; never page-local `x: ±12`.
 - **Consuming `framerPresence.*` raw on a user-facing surface** — skips reduced-motion (see the residual-consumers gap);
   go through the hooks.
 
@@ -266,6 +282,7 @@ user-facing surface.
 - Key by array index, or put `AnimatePresence` behind the `&&`.
 - Ship a transform-based animation with no reduced-motion path.
 - Invent new right-pane crossfade literals — use `framerPresence.workbenchPane` via `useMotionPresence`.
+- Horizontal-slide the MasterNav Stock drill — use `framerPresence.spineDrill` (opacity-only).
 - Use `layoutId` for a list→detail replace.
 
 ---

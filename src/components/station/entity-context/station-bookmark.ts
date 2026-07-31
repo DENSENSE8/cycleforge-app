@@ -9,6 +9,10 @@
  * glass work cards (`raised` default). Inner pad + icon gap match GlobalHeader
  * via {@link HEADER_ICON_GAP} (header-shell SoT).
  *
+ * Top (+ right for more-details) inset matches the context-panel card gutter
+ * (`CONTEXT_PANEL_OUTER_MARGIN` = `m-2` → `top-2` / `right-2`) so bookmark
+ * chrome and the sidebar card share one top edge under GlobalHeader.
+ *
  * Mid-canvas right-edge jumps stay a sliced side bookmark (flush right) —
  * different job from the floating identity / more-details shells.
  */
@@ -19,13 +23,24 @@ import { elevationClass } from '@/design-system/tokens/shadows';
 const STATION_BOOKMARK_ELEVATION = elevationClass('raised', 'soft');
 
 /**
+ * Canvas gutter twin of the context-panel card margin (`m-2` /
+ * `CONTEXT_PANEL_OUTER_MARGIN` in `context-panel-column.ts`).
+ * Host uses `top-2`; more-details stays `top-0` *inside* that host and only
+ * adds `right-2` so the corner shell shares the panel’s right gutter without
+ * double-inset.
+ */
+const STATION_BOOKMARK_CANVAS_INSET_TOP = 'top-2';
+const STATION_BOOKMARK_CANVAS_INSET_RIGHT = 'right-2';
+
+/**
  * Absolute float host for {@link StationContextBar} — overlays the panel top
  * with no reserved in-flow shelf (the gray “context bar band”). Click-through
  * outer; children re-enable with `pointer-events-auto`. Mirrors
  * `slicedActionDockWrapperClass({ docked: false })` for the bottom dock.
+ * Top inset matches the context-panel card under GlobalHeader.
  */
 export const stationContextBarHostClass =
-  'pointer-events-none absolute inset-x-0 top-0 z-raised';
+  `pointer-events-none absolute inset-x-0 ${STATION_BOOKMARK_CANVAS_INSET_TOP} z-raised`;
 
 /**
  * Centered identity shell — full `rounded-2xl` + full hairline so it floats
@@ -70,14 +85,28 @@ export const stationBookmarkGapClass = HEADER_ICON_GAP;
 
 /**
  * Corner placement for more-details inside the floating context-bar host —
- * top + right of that host (panel edge). Pair with `pointer-events-auto`.
+ * `top-0` of that host (which already carries the canvas top gutter) +
+ * `right-2` so the shell matches the context-panel card’s right margin.
+ * Pair with `pointer-events-auto`.
+ *
+ * When Ticket push squeezes Unbox, mount More details on the **pane** outer
+ * host instead via {@link stationMoreDetailsPaneHostClass} so the icons do
+ * not slide left with the Unbox column.
  */
 export const stationMoreDetailsHostClass =
-  'pointer-events-auto absolute top-0 right-0 flex items-start';
+  `pointer-events-auto absolute top-0 ${STATION_BOOKMARK_CANVAS_INSET_RIGHT} flex items-start`;
+
+/**
+ * Pane-anchored More details — same canvas top + right gutters as the identity
+ * bar, but relative to the receiving right-pane outer host (Unbox + Ticket).
+ * Use when Ticket push would otherwise move a column-scoped `right-2` slot.
+ */
+export const stationMoreDetailsPaneHostClass =
+  `pointer-events-auto absolute ${STATION_BOOKMARK_CANVAS_INSET_TOP} ${STATION_BOOKMARK_CANVAS_INSET_RIGHT} z-raised flex items-start`;
 
 /**
  * Scroll-body top clearance when {@link StationContextBar} floats absolute
- * over the canvas (identity shell ≈ `min-h-10` + pad + shadow). Pair with
- * `StationWorkbench` `reserveIdentityClearance`.
+ * over the canvas (canvas inset + identity shell ≈ `min-h-10` + pad + shadow).
+ * Pair with `StationWorkbench` `reserveIdentityClearance`.
  */
-export const STATION_IDENTITY_SCROLL_CLEARANCE = 'pt-14';
+export const STATION_IDENTITY_SCROLL_CLEARANCE = 'pt-16';

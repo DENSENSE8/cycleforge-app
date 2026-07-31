@@ -9,17 +9,18 @@
  * Densities:
  *   • compact  — sidebar quick-jumps / rails. Title-first; no chip wall.
  *   • dropdown — header combobox preview. Same narrow anatomy, tighter pad.
- *   • comfortable — full /search + operations. Chips, entity tile, type tag.
+ *   • comfortable — full /search Monitor feed. Strict CSS Grid tracks
+ *     (Entity · Match · Status · Condition · Reference · Platform · Age).
  *
  * Narrow law (compact | dropdown): title + subtitle own the width; status is a
  * leading dot when known; trailing EntityTag and status/platform chips stay
  * off; optional tracking last-4 only. Viewport `md:` must never gate rail
  * chrome (sidebar is narrow on desktop too).
  *
- * Variants, chosen internally by entityType (callers never pass a flag):
- *   • order — status dot · title · meta · (comfortable: chips) · last-4 · when
- *   • unit  — serial badge · product title · (comfortable: chips + type tag)
- *   • generic — glyph/dot · title · subtitle · (comfortable: chips + type tag)
+ * Variants (narrow), chosen internally by entityType (callers never pass a flag):
+ *   • order — status dot · title · meta · last-4 · when
+ *   • unit  — serial badge · product title
+ *   • generic — glyph/dot · title · subtitle
  */
 
 import type { MouseEvent as ReactMouseEvent, ReactNode } from 'react';
@@ -28,11 +29,15 @@ import { useRouter } from 'next/navigation';
 import { Search, ChevronRight, Camera, History } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { IconButton } from '@/design-system/primitives';
-import { TrackingChip, getLast4, getLast4Serial } from '@/components/ui/CopyChip';
+import { TrackingChip, SerialChip, getLast4, getLast4Serial } from '@/components/ui/CopyChip';
+import { PlatformMark } from '@/components/ui/PlatformMark';
 import { formatRelativeTime } from '@/lib/search/search-recents';
 import { journeyHandoffHref, narrowSearchTitleDisplay } from '@/lib/search/search-hit';
 import type { AiSearchHit } from '@/lib/search/ai-search-client';
 import type { NearMatchPackout } from '@/hooks/useNearMatchPackout';
+import { conditionLabel } from '@/lib/conditions';
+import { conditionGradeTone } from '@/lib/condition-tone';
+import { sourcePlatformLabel } from '@/lib/source-platform';
 import { cn } from '@/utils/_cn';
 import {
   CHIP_TONE_CLASSES,
@@ -40,6 +45,7 @@ import {
   orderStatusTone,
   type ChipTone,
 } from './search-result-chips';
+import { SEARCH_RESULT_GRID, SEARCH_RESULT_ROW_PAD } from './search-result-grid';
 
 export type SearchRowDensity = 'compact' | 'comfortable' | 'dropdown';
 
@@ -73,7 +79,7 @@ export interface SearchResultRowProps {
 // ── Per-density geometry ──────────────────────────────────────────────────────
 const ROW_BY_DENSITY: Record<SearchRowDensity, string> = {
   compact: 'gap-3 px-3 py-1.5',
-  comfortable: 'gap-3.5 px-4 py-3',
+  comfortable: SEARCH_RESULT_ROW_PAD,
   dropdown: 'gap-2 px-3 py-1',
 };
 // Narrow rails keep caption-size titles so IDs stay scannable; comfortable
@@ -204,7 +210,139 @@ function TrackingMeta({
   );
 }
 
-/** The Shopify-grade order row. Requires facets (doc-arm hits). */
+function unitSerialFromHit(hit: AiSearchHit): string {
+  const fromFacet = hit.facets?.serial_number?.trim() ?? '';
+  if (fromFacet) return fromFacet;
+  if (hit.entityType !== 'unit') return '';
+  return (hit.subtitle ?? '').split(' · ')[0]?.trim() || '';
+}
+
+/** Monitor feed — one aligned grid for every entity type. */
+function ComfortableAlignedRow({
+  hit,
+  active,
+  optionId,
+  onNavigate,
+  packout,
+  showJourneyAction,
+}: SearchResultRowProps) {
+  const density: SearchRowDensity = 'comfortable';
+  const facets = hit.facets ?? {};
+  const statusRaw = facets.status ?? null;
+  const status = statusRaw ? orderStatusTone(statusRaw) : null;
+  const condition = facets.condition_grade?.trim() || null;
+  const platform = facets.source_platform?.trim() || null;
+  const tracking = facets.tracking_number?.trim() || null;
+  const carrier = facets.carrier?.trim() || null;
+  const serial = unitSerialFromHit(hit);
+  const whenSource = packout?.timeAt ?? facets.happened_at ?? null;
+  const when = whenSource ? formatRelativeTime(whenSource) : null;
+  const whenLabel = packout?.timeAt ? packout.timeLabel : null;
+  const conditionTone = condition ? conditionGradeTone(condition) : null;
+  const journey = journeyActionFor(hit, density, showJourneyAction);
+
+  return (
+    <Link
+      href={hit.href}
+      onClick={(e) => onNavigate?.(hit, e)}
+      role="option"
+      id={optionId}
+      aria-selected={active || undefined}
+      className={cn(
+        'group relative text-left transition-colors hover:bg-surface-hover',
+        SEARCH_RESULT_GRID,
+        SEARCH_RESULT_ROW_PAD,
+        active && ROW_ACTIVE,
+      )}
+    >
+      {/* 1. Entity */}
+      <span className="flex min-w-0 items-center gap-1.5">
+        <EntityTile entityType={hit.entityType} density={density} />
+        <span className="text-role-micro uppercase text-text-soft">{hit.entityType}</span>
+      </span>
+
+      {/* 2. Match */}
+      <span className="min-w-0">
+        <SearchTitle
+          title={hit.title}
+          density={density}
+          forceFull={hit.entityType === 'order'}
+        />
+        {hit.subtitle && (
+          <span className="mt-0.5 block truncate text-role-eyebrow uppercase text-text-soft">
+            {hit.subtitle}
+          </span>
+        )}
+        {hit.matchField ? (
+          <span className="mt-0.5 block truncate text-role-micro text-text-faint">
+            {hit.matchField}
+          </span>
+        ) : null}
+        {packout && packout.photoCount > 0 && (
+          <span className="mt-0.5 inline-flex items-center gap-0.5 tabular-nums text-role-micro uppercase text-emerald-600">
+            <Camera className="h-3 w-3" />
+            {packout.photoCount}
+            {packout.packerName ? ` · ${packout.packerName}` : ''}
+          </span>
+        )}
+      </span>
+
+      {/* 3. Status */}
+      <span className="min-w-0 truncate">
+        {statusRaw && status ? <Chip label={statusRaw} tone={status.tone} /> : null}
+      </span>
+
+      {/* 4. Condition */}
+      <span className="min-w-0 truncate">
+        {condition && conditionTone ? (
+          <span
+            className={cn(
+              'inline-flex shrink-0 rounded px-1.5 py-0.5 text-role-micro uppercase ring-1 ring-inset',
+              conditionTone.badge,
+            )}
+          >
+            {conditionLabel(condition, 'table')}
+          </span>
+        ) : null}
+      </span>
+
+      {/* 5. Reference — tracking XOR serial (polymorphic; never both columns) */}
+      <span className="min-w-0 truncate">
+        {tracking ? (
+          <span className="inline-flex max-w-full items-center gap-1">
+            {carrier ? (
+              <span className="shrink-0 text-role-eyebrow uppercase text-text-faint">{carrier}</span>
+            ) : null}
+            <TrackingChip value={tracking} dense />
+          </span>
+        ) : serial ? (
+          <SerialChip value={serial} dense width="w-fit max-w-full shrink-0" />
+        ) : null}
+      </span>
+
+      {/* 6. Platform */}
+      <span className="flex justify-center">
+        {platform ? (
+          <HoverTooltip label={sourcePlatformLabel(platform)} focusable={false}>
+            <PlatformMark platformValue={platform} />
+          </HoverTooltip>
+        ) : null}
+      </span>
+
+      {/* 7. Age + journey overlay (journey does not steal a track) */}
+      <span className="relative flex min-w-0 items-center justify-end gap-1">
+        {when ? (
+          <span className="truncate text-role-eyebrow uppercase tabular-nums text-text-faint">
+            {whenLabel ? `${whenLabel} · ${when}` : when}
+          </span>
+        ) : null}
+        {journey}
+      </span>
+    </Link>
+  );
+}
+
+/** The Shopify-grade order row. Requires facets (doc-arm hits). Narrow only. */
 function OrderRow({
   hit,
   active,
@@ -455,6 +593,9 @@ function GenericRow({
 }
 
 export function SearchResultRow(props: SearchResultRowProps) {
+  if ((props.density ?? 'compact') === 'comfortable') {
+    return <ComfortableAlignedRow {...props} />;
+  }
   // Order variant when the doc arm gave us facets to render richly, OR when the
   // rep workbench rail hydrated packout proof for it (so an exact-identifier
   // order hit still shows photos/packer/time instead of the bare generic row).

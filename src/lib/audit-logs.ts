@@ -405,6 +405,9 @@ export const AUDIT_ACTION = {
   // Review · Catalog link: pair an unmatched import listing to a catalog SoT.
   SKU_CATALOG_LINK_REVIEW: 'sku_catalog.link_review',
   SKU_CATALOG_LINK_IGNORE: 'sku_catalog.link_ignore',
+  // Review · Missing item number: resolve/ignore a durable import exception.
+  ORDER_IMPORT_EXCEPTION_RESOLVE: 'order_import_exception.resolve',
+  ORDER_IMPORT_EXCEPTION_IGNORE: 'order_import_exception.ignore',
   // SKU relationship graph (parent→child edges)
   SKU_RELATIONSHIP_CREATE: 'sku_relationship.create',
   SKU_RELATIONSHIP_UPDATE: 'sku_relationship.update',

@@ -4,13 +4,13 @@ import { requirePermission } from '@/lib/auth/page-guard';
 import { PhotoLibraryPage } from '@/components/photos/PhotoLibraryPage';
 
 export const metadata: Metadata = {
-  title: 'Media Library',
+  title: 'Media',
 };
 
 export default async function OpsPhotosPage() {
   await requirePermission('photos.view');
   return (
-    <Suspense fallback={<div className="p-6 text-sm text-muted-foreground">Loading media library…</div>}>
+    <Suspense fallback={<div className="p-6 text-sm text-muted-foreground">Loading media…</div>}>
       <PhotoLibraryPage />
     </Suspense>
   );

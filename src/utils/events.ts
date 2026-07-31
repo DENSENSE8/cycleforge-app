@@ -185,21 +185,40 @@ export function dispatchReceivingWorkspaceNavState(
   );
 }
 
+export type ReceivingDetailsOverlayDetail = {
+  receivingId: number;
+  /** Row/list fields for instant overlay render before the enrich fetch lands. */
+  seed?: Partial<ReceivingDetailsLog>;
+};
+
 /**
- * Open the carton READ inspector (`/carton/[id]`). Decision 2a: this replaces
- * mounting editable `ReceivingDetailsStack` as the default "look" action.
- * Mutation stays on Unbox (and other explicit work surfaces).
- *
- * Callers that previously listened for `receiving-open-details-overlay` should
- * navigate here instead; the event is kept only as a legacy name for openers.
+ * Open the receiving details panel (`ReceivingDetailsStack`) on-demand.
+ * Station Info buttons (Unbox / Arrival / Testing), history overlay nav, and
+ * assignment cards dispatch this; ReceivingDashboard listens and mounts the
+ * rail panel. Search / ⌘K / assistant recents still use `/carton/[id]`
+ * (`cartonReadHref`) as the durable read door.
  */
 export function dispatchReceivingDetailsOverlay(
   receivingId: number,
-  _seed?: Partial<ReceivingDetailsLog>,
+  seed?: ReceivingDetailsOverlayDetail['seed'],
 ): void {
   if (typeof window === 'undefined') return;
   if (!Number.isFinite(receivingId) || receivingId <= 0) return;
-  window.location.assign(`/carton/${receivingId}`);
+  window.dispatchEvent(
+    new CustomEvent('receiving-open-details-overlay', {
+      detail: { receivingId, seed } satisfies ReceivingDetailsOverlayDetail,
+    }),
+  );
+}
+
+/**
+ * Close the receiving details float (`detail:receiving`). Dispatched when Unbox
+ * Ticket opens (`?ticketView=1` push column) so details and Ticket stay mutually
+ * exclusive (one coherent right-edge surface at a time).
+ */
+export function dispatchReceivingDetailsOverlayClose(): void {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new CustomEvent('receiving-close-details-overlay'));
 }
 
 // ── Dashboard shipped search ─────────────────────────────────────────────────

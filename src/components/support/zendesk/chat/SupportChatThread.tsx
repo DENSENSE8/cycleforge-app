@@ -36,14 +36,26 @@ function Time({ iso }: { iso: string }) {
   );
 }
 
-function Avatar({ name, photo, ours }: { name: string; photo: string | null; ours: boolean }) {
+function Avatar({
+  name,
+  photo,
+  ours,
+  compact,
+}: {
+  name: string;
+  photo: string | null;
+  ours: boolean;
+  compact?: boolean;
+}) {
+  const size = compact ? 'h-5 w-5' : 'h-7 w-7';
   if (photo) {
-    return <img src={photo} alt="" loading="lazy" decoding="async" className="h-7 w-7 shrink-0 rounded-full object-cover" />;
+    return <img src={photo} alt="" loading="lazy" decoding="async" className={cn(size, 'shrink-0 rounded-full object-cover')} />;
   }
   return (
     <span
       className={cn(
-        'flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-role-micro ',
+        'flex shrink-0 items-center justify-center rounded-full text-role-micro',
+        size,
         ours ? 'bg-blue-100 text-blue-700' : 'bg-surface-strong text-text-muted',
       )}
     >
@@ -60,21 +72,24 @@ function Attachments({
   atts,
   onDark,
   onOpenPhoto,
+  compact = false,
 }: {
   atts: ZAttachment[];
   onDark: boolean;
   onOpenPhoto?: (url: string) => void;
+  compact?: boolean;
 }) {
   if (!atts.length) return null;
   return (
-    <div className="mt-2 flex flex-wrap gap-2">
+    <div className={cn('mt-1.5 flex flex-wrap gap-1.5', compact ? 'mt-1' : 'mt-2 gap-2')}>
       {atts.map((a) => (
         <button
           key={a.id}
           type="button"
           onClick={() => onOpenPhoto?.(a.content_url)}
           className={cn(
-            'ds-raw-button block h-28 w-28 overflow-hidden rounded-xl ring-1 ring-inset transition hover:opacity-90 hover:ring-2',
+            'ds-raw-button block overflow-hidden rounded-xl ring-1 ring-inset transition hover:opacity-90 hover:ring-2',
+            compact ? 'h-16 w-16 rounded-lg' : 'h-28 w-28',
             onDark ? 'ring-white/30 hover:ring-white/60' : 'ring-border-soft hover:ring-blue-300',
           )}
         >
@@ -110,7 +125,7 @@ export function SupportChatThread({
   requesterName?: string | null;
   requesterEmail?: string | null;
   onOpenPhoto?: (url: string) => void;
-  /** Station ticket tab — denser bubbles + smaller type. */
+  /** Station / carton push — denser chrome; body stays readable (`text-role-data`). */
   compact?: boolean;
 }) {
   const { data, isLoading, error } = useTicketComments(ticketId);
@@ -150,57 +165,90 @@ export function SupportChatThread({
     );
   }
   if (error) {
-    return <p className="px-5 py-6 text-center text-sm text-rose-600">Couldn’t load the conversation.</p>;
+    return (
+      <p
+        className={cn(
+          'px-5 py-6 text-center text-rose-600',
+          compact ? 'px-3 py-4 text-role-micro' : 'text-role-caption',
+        )}
+      >
+        Couldn’t load the conversation.
+      </p>
+    );
   }
   if (!comments.length) {
     return (
-      <div className="px-5 py-16 text-center">
-        <p className="text-sm text-text-faint">No messages yet — start the conversation below.</p>
+      <div className={cn('text-center', compact ? 'px-3 py-10' : 'px-5 py-16')}>
+        <p className={cn('text-text-faint', compact ? 'text-role-micro' : 'text-role-caption')}>
+          No messages yet — start the conversation below.
+        </p>
       </div>
     );
   }
 
   return (
-    <div className={cn(compact ? 'space-y-3 px-3 py-3' : 'space-y-5 px-5 py-6')}>
+    <div className={cn(compact ? 'space-y-3 px-2.5 py-2' : 'space-y-5 px-5 py-6')}>
       {comments.map((c) => {
         const a = resolveAuthor(c, { agentsById, usersById, requesterId, requesterName, requesterEmail });
         const atts = imageAttachments(c);
         const internal = c.public === false;
         const onDark = a.isOurs && !internal; // only the blue public bubble is dark
+        const showEmail = Boolean(a.email && a.email !== a.name && !compact);
+        const nameEl = (
+          <span className="shrink-0 font-semibold text-text-muted">{a.name}</span>
+        );
 
         return (
-          <div key={c.id} className="flex items-end gap-2">
-            <Avatar name={a.name} photo={a.photo} ours={a.isOurs} />
+          <div key={c.id} className={cn('flex items-end', compact ? 'gap-1.5' : 'gap-2')}>
+            <Avatar name={a.name} photo={a.photo} ours={a.isOurs} compact={compact} />
             <div className="min-w-0 max-w-[78%] items-start">
               <div
                 className={cn(
-                  'mb-1 flex items-center gap-1.5 justify-start',
-                  compact ? 'text-role-micro' : 'text-role-caption',
+                  'mb-1 flex min-w-0 items-center gap-1.5 justify-start',
+                  compact ? 'mb-0.5 gap-1 text-role-micro' : 'text-role-caption',
                 )}
               >
                 {internal ? (
-                  <span className="inline-flex items-center gap-1 rounded bg-amber-100 px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest text-amber-700">
-                    <Lock className="h-2.5 w-2.5" /> Internal
+                  <span
+                    className={cn(
+                      'inline-flex shrink-0 items-center uppercase tracking-widest text-amber-700',
+                      compact
+                        ? 'gap-0.5 rounded bg-amber-100 px-1 py-px text-role-eyebrow'
+                        : 'gap-1 rounded bg-amber-100 px-1.5 py-0.5 text-role-eyebrow',
+                    )}
+                  >
+                    <Lock className={compact ? 'h-2 w-2' : 'h-2.5 w-2.5'} /> Internal
                   </span>
                 ) : a.isOurs ? (
-                  <span className="inline-flex items-center gap-1 rounded bg-blue-100 px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest text-blue-700">
-                    <Globe className="h-2.5 w-2.5" /> Public
+                  <span
+                    className={cn(
+                      'inline-flex shrink-0 items-center uppercase tracking-widest text-blue-700',
+                      compact
+                        ? 'gap-0.5 rounded bg-blue-100 px-1 py-px text-role-eyebrow'
+                        : 'gap-1 rounded bg-blue-100 px-1.5 py-0.5 text-role-eyebrow',
+                    )}
+                  >
+                    <Globe className={compact ? 'h-2 w-2' : 'h-2.5 w-2.5'} /> Public
                   </span>
                 ) : null}
-                <span className="font-semibold text-text-muted">{a.name}</span>
-                {a.email && a.email !== a.name ? (
-                  <span className="truncate text-text-faint">· {a.email}</span>
+                {compact && a.email && a.email !== a.name ? (
+                  <HoverTooltip label={a.email} focusable={false}>
+                    {nameEl}
+                  </HoverTooltip>
+                ) : (
+                  nameEl
+                )}
+                {showEmail ? (
+                  <span className="min-w-0 truncate text-text-faint">· {a.email}</span>
                 ) : null}
-                <span className="text-text-faint">
+                <span className="shrink-0 text-text-faint">
                   · <Time iso={c.created_at} />
                 </span>
               </div>
               <div
                 className={cn(
-                  'rounded-2xl shadow-sm',
-                  compact
-                    ? 'rounded-bl-md px-3 py-2 text-role-caption leading-snug'
-                    : 'rounded-bl-md px-3.5 py-2.5 text-role-data leading-relaxed',
+                  'rounded-2xl shadow-sm rounded-bl-md text-role-data leading-relaxed',
+                  compact ? 'px-3 py-2' : 'px-3.5 py-2.5',
                   a.isOurs
                     ? internal
                       ? 'border border-amber-200 bg-amber-50 text-amber-900'
@@ -208,8 +256,10 @@ export function SupportChatThread({
                     : 'border border-border-soft bg-surface-card text-text-default',
                 )}
               >
-                <div className="break-words">{renderInlineMarkdown(c.body)}</div>
-                <Attachments atts={atts} onDark={onDark} onOpenPhoto={onOpenPhoto} />
+                <div className="break-words">
+                  {renderInlineMarkdown(c.body, { onOpenPhoto })}
+                </div>
+                <Attachments atts={atts} onDark={onDark} onOpenPhoto={onOpenPhoto} compact={compact} />
               </div>
             </div>
           </div>

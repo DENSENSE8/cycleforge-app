@@ -14,7 +14,6 @@
  */
 
 import { useEcwidProductSearch } from './ecwid-search/useEcwidProductSearch';
-import { EcwidOrderScopeFilters } from './ecwid-search/EcwidOrderScopeFilters';
 import { EcwidSearchHeader } from './ecwid-search/EcwidSearchHeader';
 import { EcwidSearchInputs } from './ecwid-search/EcwidSearchInputs';
 import { EcwidResultsList } from './ecwid-search/EcwidResultsList';
@@ -29,26 +28,39 @@ export type {
 interface EcwidProductSearchInlineProps extends EcwidProductSearchPopoverProps {
   /** Render the title + close header (for panel hosts). Omit when a tab labels it. */
   showHeader?: boolean;
+  /**
+   * `card` (default) — bordered inset panel. `bare` — no nested card chrome when
+   * the host (Package Pairing) already supplies the glass card.
+   */
+  chrome?: 'card' | 'bare';
   className?: string;
 }
 
 export function EcwidProductSearchInline({
   showHeader = false,
+  chrome = 'card',
   className,
   autoFocusSearch = true,
   ...props
 }: EcwidProductSearchInlineProps) {
   const c = useEcwidProductSearch(props);
 
+  const shell =
+    chrome === 'bare'
+      ? 'flex min-w-0 max-w-full max-h-[60vh] flex-col'
+      : 'flex min-w-0 max-w-full max-h-[60vh] flex-col rounded-xl border border-border-soft bg-surface-card';
+
   return (
-    <div
-      className={`flex min-w-0 max-w-full max-h-[60vh] flex-col overflow-hidden rounded-xl border border-border-soft bg-surface-card ${
-        className ?? ''
-      }`}
-    >
+    // No outer overflow-hidden — it clipped SearchField focus borders and
+    // result-row hover/selection rings into a flat blue edge. Height scroll
+    // lives on the results list only; long titles truncate via min-w-0.
+    <div className={`${shell} ${className ?? ''}`}>
       {showHeader ? <EcwidSearchHeader c={c} onClose={props.onClose} /> : null}
-      <EcwidSearchInputs c={c} autoFocusSearch={autoFocusSearch} />
-      <EcwidOrderScopeFilters c={c} />
+      <EcwidSearchInputs
+        c={c}
+        autoFocusSearch={autoFocusSearch}
+        flush={chrome === 'bare'}
+      />
       <EcwidResultsList c={c} />
     </div>
   );

@@ -138,7 +138,9 @@ export function LineCartonContextSection({
       platformValue={c.sourcePlatform}
       onPlatformSelect={(next) => {
         c.setSourcePlatform(next);
-        void c.savePlatform(next);
+        void c.savePlatform(next, {
+          isReturn: c.receivingType.trim().toUpperCase() === 'RETURN',
+        });
       }}
       receivingType={c.receivingType}
       onTypeSelect={(next) => {

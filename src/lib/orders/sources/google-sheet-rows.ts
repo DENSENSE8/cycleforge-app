@@ -33,7 +33,7 @@ type SheetField =
   | 'salePrice'
   | 'currency';
 
-type SheetColumnIndices = Record<SheetField, number>;
+export type SheetColumnIndices = Record<SheetField, number>;
 
 /**
  * The legacy fixed layout, used when there is no header row to bind against.

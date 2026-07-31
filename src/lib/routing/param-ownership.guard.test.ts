@@ -63,6 +63,11 @@ const OWNED_TREES = [
   'app/products',
   'components/dashboard',
   'components/sidebar/DashboardOrdersContextPanel.tsx',
+  // Shipped / unshipped boards mount on `/dashboard` and own most of its URL
+  // writes — without these trees the ownership guard was blind to every
+  // `shippedFilter` / `ostatus` / `stage` read (caught only by the hand-off sweep).
+  'components/shipped',
+  'components/unshipped',
   'app/dashboard',
   'app/search',
   'components/search',

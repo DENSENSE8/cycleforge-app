@@ -13,8 +13,9 @@ import type { ShippedDetailsContext } from '@/utils/events';
 //   packed    → "Packed"   (PACKED_STAGED — staged, not yet left the dock)
 //   shipped   → "Shipped"  (left warehouse / in carrier custody / delivered)
 //
-// Vestigial `?fba` was deleted 2026-07-29 (IA row L): FBA owns `/shipping/fba`.
-// Old bookmarks fall through to the Pending tab.
+// Vestigial `?fba` was deleted as a lifecycle tab 2026-07-29 (IA row L): FBA owns
+// `/shipping/fba`. Old bookmarks client-redirect there (ratified 2026-07-30), they
+// do not fall through to Pending.
 export type DashboardOrderView = 'unshipped' | 'tested' | 'packed' | 'shipped';
 export type DashboardCacheEntry = readonly [unknown, unknown];
 

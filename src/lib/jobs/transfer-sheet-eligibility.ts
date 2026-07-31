@@ -136,11 +136,19 @@ export function filterEligibleTransferSheetRows(
 ): {
   eligible: unknown[][];
   skips: TransferSheetSkipCounts;
+  /** Dialog sample — capped at SKIPPED_ROW_SAMPLE_CAP. */
   skippedRows: TransferSheetSkippedRow[];
+  /**
+   * Uncapped `noItemNumber` rows for the durable Review · Missing item number
+   * queue. Must not share the dialog sample cap — otherwise rows past 200
+   * never enqueue and the operator never sees them.
+   */
+  noItemNumberRows: TransferSheetSkippedRow[];
 } {
   const skips = emptyTransferSheetSkipCounts();
   const eligible: unknown[][] = [];
   const skippedRows: TransferSheetSkippedRow[] = [];
+  const noItemNumberRows: TransferSheetSkippedRow[] = [];
 
   rows.forEach((row, index) => {
     const reason = evaluateTransferSheetRowEligibility(row, colIndices);
@@ -159,17 +167,24 @@ export function filterEligibleTransferSheetRows(
     // Padding carries nothing to show and would pad the operator's queue with
     // empty lines — count it, never list it.
     if (reason === 'blankRow') return;
-    if (skippedRows.length >= SKIPPED_ROW_SAMPLE_CAP) return;
 
-    skippedRows.push({
+    const entry: TransferSheetSkippedRow = {
       sheetRow: firstSheetRow + index,
       reason,
       orderId: cell(row, colIndices.orderNumber),
       platform: cell(row, colIndices.platform),
       productTitle: cell(row, colIndices.itemTitle ?? -1),
       tracking: cell(row, colIndices.tracking),
-    });
+    };
+
+    // Durable Review queue: every noItemNumber row, uncapped.
+    if (reason === 'noItemNumber') {
+      noItemNumberRows.push(entry);
+    }
+
+    if (skippedRows.length >= SKIPPED_ROW_SAMPLE_CAP) return;
+    skippedRows.push(entry);
   });
 
-  return { eligible, skips, skippedRows };
+  return { eligible, skips, skippedRows, noItemNumberRows };
 }

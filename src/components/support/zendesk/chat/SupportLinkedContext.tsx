@@ -54,7 +54,7 @@ export function SupportLinkedContext({
             compact ? 'text-role-micro' : 'text-role-caption'
           }`}
         >
-          Media library <ExternalLink className="h-3 w-3" />
+          Media <ExternalLink className="h-3 w-3" />
         </a>
       </div>
 

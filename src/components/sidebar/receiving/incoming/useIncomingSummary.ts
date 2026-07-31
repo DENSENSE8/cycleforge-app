@@ -35,7 +35,6 @@ export function useIncomingSummary(): IncomingSummary | null {
         awaiting_tracking: summaryData.awaiting_tracking,
         expected_today: summaryData.expected_today,
         wrong_destination: summaryData.wrong_destination ?? 0,
-        by_carrier: summaryData.by_carrier,
         ebay_pending: summaryData.ebay_pending ?? 0,
         ebay_incoming: summaryData.ebay_incoming ?? 0,
         universal_incoming: summaryData.universal_incoming ?? false,

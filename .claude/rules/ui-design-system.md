@@ -86,17 +86,11 @@ Rails are a **recipe** for workbench pickers — not proof that every Workbench 
 
 - **Station (`floor`):** scan bar + single active-entity card; fact stacks and `divide-y` rows *inside* the card. No browse grids competing with scan focus.
 - **Workbench (`ops`):** primary = list **or** table **or** board **or** master–detail (data shape decides). Fact stacks for record bodies. Scroll region `flex-1 overflow-y-auto`; sticky chrome with `border-t`/`border-b` as needed.
-  - **Scoped search chrome:** icon-first `ToolbarSearchToggle` (`@/design-system/primitives`) — collapsed at rest, expands on hover/focus. Never an always-open `SearchField` in the workbench header search slot.
-    - **Sanctioned exception — `/ops/photos` (Media Library), approved 2026-07-28.** The one surface
-      that mounts an always-open `SearchField` in the `WorkbenchChromeHeader` `search` slot.
-      **Why:** it is a photo-*evidence* archive whose primary job is exact-identifier retrieval
-      (pull the unboxing shots for a PO / serial / claim ticket to settle a damage or carrier
-      dispute). Everywhere else search *refines a list already on screen*, so collapsed-at-rest
-      correctly demotes it; here search **is** the entry path, and click-to-expand puts a gesture in
-      front of the surface's main job. **Scope:** this surface only — it does not license an
-      always-open field in any other chrome header. Adding a second exception is Ask-first; if a
-      third appears, the rule itself is wrong and should be re-cut around "is search the entry path
-      or a refinement?" rather than grown case by case.
+  - **Scoped search chrome:** icon-first `ToolbarSearchToggle` (`@/design-system/primitives`) — collapsed at rest, expands on hover/focus. Never an always-open `SearchField` in the workbench header search slot **when search is a refinement of an on-screen list**.
+    - **Entry-path exception (principle).** When search **is** the surface's primary entry path — not a refinement — an always-open / always-synced query field is allowed. Known cases:
+      1. **`/ops/photos` (Media Library)** — always-open `SearchField` in the `WorkbenchChromeHeader` `search` slot (approved 2026-07-28). Photo-*evidence* archive whose #1 job is exact-identifier retrieval (PO / serial / claim ticket).
+      2. **`/search`** — the cross-entity results surface; the global header search stays expanded and synced to `?q=` (codified 2026-07-30 with Phase 2 of the results UI). Typing here *is* the job.
+      Everywhere else, search refines a list already on screen, so collapsed-at-rest correctly demotes it. Do not grow this list case-by-case without re-checking the principle.
   - **Display sort chrome:** quiet trailing dropdown (current value + caret), **left of Import** when present — never a solid `TabSwitch` beside search. SoT: `QueueSortSwitch` / Labels trailing sort. Rule: `.cursor/rules/workbench-sort-chrome.mdc`.
 - **Monitor (`rollup`):** vertical scroll shell + **named rollup zones** may use responsive CSS grid (`KpiStrip`, tri-panel of `SectionCard`s). Compose `@/design-system/components/monitor` — see [display/monitor-rollup-blocks.md](display/monitor-rollup-blocks.md).
 - **Canvas (`studio`):** spatial graph layout; inspector is secondary detail, not a second graph.
@@ -212,6 +206,9 @@ Full waist: [source-of-truth.md](source-of-truth.md).
   actions:** native SVG stroke only (`TOP_CHROME_ICON_GLYPH` in
   `header-shell.ts`); keep mode stroke ≤ 2.25 (`nav-weight.tsx`); 2.75 muddies dense glyphs.
   Cross-page MRU is the GlobalHeader Recents popover (`HeaderRecentsSwitcher`) — never spine chips.
+  **Stock drill-in:** root shows one `STOCK_DRILL` row (chevron); drill body is back + Products →
+  Inventory → Warehouse. Stations/Main stay static nests. Swap via `framerPresence.spineDrill`
+  (opacity-only) — never a page-local `x` slide. Detail: `display/workbench.md`.
 - Size by context: row dot `h-2 w-2` · field/inline `h-3.5 w-3.5` · button/loader `h-4 w-4` (`Loader2 animate-spin`).
 - **Icon buttons own their box via `IconButton size`** (`xs` 24 · `sm` 28 · `md` 32 · `lg` 36 · `touch` 44px —
   `src/design-system/primitives/IconButton.tsx`), never a hand-set `h-N w-N` on the button. Omit `size` only for a

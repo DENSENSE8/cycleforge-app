@@ -2,8 +2,8 @@ import pool from '@/lib/db';
 import { conditionLabel } from '@/components/receiving/zoho-po-types';
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
-import { sourcePlatformLabel } from '@/lib/source-platform';
-import { receivingLabelTypeDisplay } from '@/lib/receiving/receiving-type-display';
+import { getOrgPlatforms, getOrgTypes } from '@/lib/catalog/org-catalog';
+import { resolveClaimSubjectIdentity } from '@/lib/zendesk-claim-subject-identity';
 import {
   CLAIM_TYPE_LABEL,
   type ClaimSeverity,
@@ -72,6 +72,8 @@ export async function buildReceivingClaimTemplate(
     ? `SELECT r.id,
             r.source_platform,
             r.intake_type,
+            r.is_return,
+            r.return_platform::text AS return_platform,
             ru.unboxed_at,
             su.name AS unboxed_by_name,
             s.tracking_number_raw AS tracking_number,
@@ -98,6 +100,8 @@ export async function buildReceivingClaimTemplate(
     : `SELECT r.id,
             r.source_platform,
             r.intake_type,
+            r.is_return,
+            r.return_platform::text AS return_platform,
             ru.unboxed_at,
             su.name AS unboxed_by_name,
             s.tracking_number_raw AS tracking_number,
@@ -123,6 +127,8 @@ export async function buildReceivingClaimTemplate(
         id: number;
         source_platform: string | null;
         intake_type: string | null;
+        is_return: boolean | null;
+        return_platform: string | null;
         unboxed_at: string | Date | null;
         unboxed_by_name: string | null;
         tracking_number: string | null;
@@ -246,12 +252,30 @@ export async function buildReceivingClaimTemplate(
   // an org-custom type string through verbatim rather than have it silently
   // coerced to 'PO' by that resolver's strict built-in-kind validation.
   const effectiveReceivingType = (carton.receiving_type || carton.intake_type || 'PO').trim().toUpperCase();
-  const platformLabel = sourcePlatformLabel(carton.source_platform);
-  const typeLabel = receivingLabelTypeDisplay(effectiveReceivingType);
-  const subjectPlatform =
-    platformLabel && platformLabel !== 'Unknown'
-      ? (typeLabel ? `${platformLabel} - ${typeLabel}` : platformLabel)
-      : typeLabel || 'Unknown';
+  // Org catalog labels win (renamed / custom platforms + types) — same contract
+  // as classify pills and printed carton labels. Built-ins remain the fallback.
+  let catalogPlatformLabel: string | null = null;
+  let catalogTypeLabel: string | null = null;
+  if (orgId) {
+    const platformKey = String(carton.source_platform ?? '').trim().toLowerCase();
+    const typeKey = effectiveReceivingType;
+    const [platforms, types] = await Promise.all([getOrgPlatforms(orgId), getOrgTypes(orgId)]);
+    if (platformKey) {
+      catalogPlatformLabel = platforms.find((p) => p.slug.toLowerCase() === platformKey)?.label ?? null;
+    }
+    if (typeKey) {
+      catalogTypeLabel = types.find((t) => t.slug.toUpperCase() === typeKey)?.label ?? null;
+    }
+  }
+  const subjectPlatform = resolveClaimSubjectIdentity({
+    sourcePlatform: carton.source_platform,
+    receivingType: effectiveReceivingType,
+    isReturn: carton.is_return,
+    returnPlatform: carton.return_platform,
+    claimTypeLabel: CLAIM_TYPE_LABEL[claimType],
+    catalogPlatformLabel,
+    catalogTypeLabel,
+  });
   // Include the PO# in the title when one is present (it's the operator's
   // primary handle); omit it for unfound cartons where there is no real PO.
   // No leading "Claim // " segment — the modal header ("File a claim") and

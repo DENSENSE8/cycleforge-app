@@ -1,5 +1,5 @@
 import type React from 'react';
-import { Package, Truck, AlertTriangle, Clock, Unlink } from '@/components/Icons';
+import { Package, Truck, AlertTriangle, Clock, Unlink, PackageOpen } from '@/components/Icons';
 import type { IncomingDeliveryState, IncomingSummary } from './incoming-summary-types';
 
 export interface TileSpec {
@@ -13,15 +13,29 @@ export interface TileSpec {
 }
 
 /**
- * Incoming dock hunt tiles. One rose delivered attention tile
- * (`DELIVERED_UNOPENED`); email delivery is a STN writer (not a parallel tile).
- * `DELIVERED_NOT_UNBOXED` lives on Unbox KPI, not this hunt strip.
+ * Incoming dock hunt tiles. Email delivery is a STN writer, not a parallel tile.
+ *
+ * TWO rose delivered-attention tiles, and the pair is the point:
+ *   - `DELIVERED_UNOPENED`    — delivered, never scanned. We don't know where it is.
+ *   - `DELIVERED_NOT_UNBOXED` — delivered (possibly scanned in), never opened.
+ *
+ * The second used to be deliberately absent here ("lives on Unbox KPI, not this
+ * hunt strip"). That was reversed 2026-07-30: the lane now carries its own dwell
+ * SLA, an eBay claim deadline, an escalation cron and a loss write-off
+ * (docs/todo/ebay-delivered-not-unboxed-PLAN.md), which makes it a first-class
+ * inbound exception rather than a KPI readout — and it was reachable only by
+ * hand-typing `?state=DELIVERED_NOT_UNBOXED`, so a pointer-driven operator could
+ * not get to it at all.
  */
 export const TILES: TileSpec[] = [
   { state: null, label: 'All issued', key: 'issued', tone: 'slate', icon: Package, title: 'Every PO issued upstream and not yet received locally.' },
   {
     state: 'DELIVERED_UNOPENED', label: 'Delivered · not scanned', key: 'delivered_unopened', tone: 'rose', icon: AlertTriangle,
     title: 'Carrier marked the box delivered AND no operator has scanned the tracking# at the receiving station yet (no receiving_scans row). Physically here, untouched — top priority. Age bands (<24h / 24–48h / >48h) drive burn-down; >48h needs claims attention.',
+  },
+  {
+    state: 'DELIVERED_NOT_UNBOXED', label: 'Delivered · not unboxed', key: 'delivered_not_unboxed', tone: 'rose', icon: PackageOpen,
+    title: 'Carrier marked the box delivered and nothing has been unboxed against it (0 received, no unboxed_at) — this is BROADER than "not scanned": it also catches boxes that were checked in at the dock and then stalled mid-unbox. A 48h+ marker flags dwell past the dock-to-stock target; eBay purchases additionally show a CLAIM countdown, because their item-not-received window closes 30 days after delivery whether or not anyone looks.',
   },
   { state: 'ARRIVING_TODAY', label: 'Arriving today', key: 'arriving_today', tone: 'amber', icon: Truck, title: 'Carrier currently reports "out for delivery".' },
   {

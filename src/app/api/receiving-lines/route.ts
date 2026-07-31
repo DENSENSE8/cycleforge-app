@@ -1408,6 +1408,7 @@ function normalizeRow(row: Record<string, unknown>) {
     triage_complete:          row.triage_complete === true,
     triage_completed_at:      (row.triage_completed_at as string | null) ?? null,
     staging_location_id:      row.staging_location_id != null ? Number(row.staging_location_id) : null,
+    staging_location_label:   (row.staging_location_label as string | null) ?? null,
     priority_lane:            (row.priority_lane as string | null) ?? null,
     pairing_state:            (row.pairing_state as string | null) ?? null,
     created_at:               (row.created_at as string | null) ?? null,

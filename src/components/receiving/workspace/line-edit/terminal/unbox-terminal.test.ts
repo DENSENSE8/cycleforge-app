@@ -35,7 +35,7 @@ function mockCtx(overrides: Partial<UnboxTerminalContext> = {}): UnboxTerminalCo
   return {
     row: { id: 1, tracking_number: '1Z999' } as UnboxTerminalContext['row'],
     poNote: mockPoNote(),
-    bridges: { checklist: null, units: null, support: null, conversation: null },
+    bridges: { checklist: null, units: null, support: null, conversation: null, ticket: null },
     focusSerialScan: () => {},
     setUnboxView: () => {},
     focusTicketReply: () => {},
@@ -72,7 +72,6 @@ test('registry kind: every unbox tab has a non-none kind', () => {
     'checklist',
     'units',
     'timeline',
-    'ticket',
     'support',
   ]) {
     assert.ok(
@@ -163,6 +162,34 @@ test('resolveUnboxReceiveTerminal: received line prints instead of receiving', (
 
   // Re-receive stays reachable — a bounce-back is a supported flow.
   assert.ok(vm.menu && vm.menu.some((m) => m.label === 'Receive again'));
+  // Unreceive appears when canUnreceive is set (received line).
+  assert.ok(
+    !vm.menu?.some((m) => String(m.label).startsWith('Unreceive')),
+    'without canUnreceive, Unreceive stays hidden',
+  );
+});
+
+test('resolveUnboxReceiveTerminal: Unreceive all appears when canUnreceive', () => {
+  let unreceived = 0;
+  const vm = resolveUnboxReceiveTerminal(
+    mockCtx({
+      receive: {
+        ...mockCtx().receive,
+        isReceived: true,
+        canUnreceive: true,
+        printReceivePrimaryLabel: 'Print label',
+        receiveMenuLabel: 'Receive again',
+        unreceiveMenuLabel: 'Unreceive all',
+        handleReceive: (mode) => {
+          if (mode === 'unreceive') unreceived += 1;
+        },
+      },
+    }),
+  );
+  const item = vm.menu?.find((m) => m.label === 'Unreceive all');
+  assert.ok(item, 'Unreceive all must appear when canUnreceive');
+  item?.onClick();
+  assert.equal(unreceived, 1);
 });
 
 test('resolveUnboxReceiveTerminal: un-received line still prints AND receives', () => {
@@ -328,8 +355,7 @@ test('resolveUnboxTerminal dispatches kind', () => {
   assert.equal(resolveUnboxTerminal('units', ctx)?.label, 'Add serial');
   assert.equal(resolveUnboxTerminal('timeline', ctx)?.label, 'Copy tracking');
   assert.equal(resolveUnboxTerminal('timeline', ctx)?.tone, 'accent');
-  assert.equal(resolveUnboxTerminal('ticket', ctx)?.label, 'Reply');
-  assert.equal(resolveUnboxTerminal('ticket', ctx)?.tone, 'accent');
+  assert.equal(resolveUnboxTerminal('ticket', ctx), null);
   assert.equal(resolveUnboxTerminal('support', ctx)?.label, 'Add note');
   assert.equal(resolveUnboxTerminal('support', ctx)?.tone, 'accent');
   assert.equal(resolveUnboxTerminal('none', ctx), null);

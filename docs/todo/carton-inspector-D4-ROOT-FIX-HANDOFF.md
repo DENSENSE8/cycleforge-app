@@ -1,8 +1,10 @@
 # Handoff — Kill the D4 layout mistake; carton read owns the job (decision 2a)
 
-**Status:** EXECUTED (2a + disposition) — **visual polish incomplete**  
-**Follow-up handoff (photos button · columns · strip Unbox spam):**  
+**Status:** EXECUTED (2a + disposition) — layout polish + house SoT: see  
 [`carton-inspector-LAYOUT-POLISH-HANDOFF.md`](carton-inspector-LAYOUT-POLISH-HANDOFF.md)  
+**Superseded visual IA (do not resume):** photo-lead / EvidenceStage / zero-click filmstrip /
+collapsed audit footer / `"Open in Unbox"` spam on findings — overturned by LAYOUT-POLISH +
+`display/carton-read.md`.  
 **Lane:** `main` (integration/dogfood). Stay on it — no branch, no worktree, never `git stash`.  
 **Commits:** user manages. Stage only files you touch.  
 **Supersedes:** [`carton-inspector-REBUILD-HANDOFF.md`](carton-inspector-REBUILD-HANDOFF.md) (mid-flight Gemini rewrite — **do not resume that doc’s §0**; Identity is already deleted, current tree is the post-Gemini document-stack UI + a **reversed** industry redesign).  
@@ -147,6 +149,11 @@ Keep existing milestones / timeline anchor / contents summary.
 ### Phase E — Greenfield read assembly (new files; thin route)
 
 Do **not** restyle the monolithic `CartonInspector.tsx` Section soup.
+
+> **LAYOUT-POLISH supersedes** the Phase E bullet list below for visual IA: no EvidenceStage;
+> Photos button → viewer SoT; handling|findings columns; no `"Open in Unbox"` spam.
+> See [`carton-inspector-LAYOUT-POLISH-HANDOFF.md`](carton-inspector-LAYOUT-POLISH-HANDOFF.md)
+> and `.claude/rules/display/carton-read.md`.
 
 1. New tree under `src/components/receiving/inspector/inspection/` (names flexible):
 

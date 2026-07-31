@@ -38,6 +38,29 @@ import {
   type ReceivingLinesQuery,
 } from './query';
 
+/**
+ * Shelf label for Unbox Queue / list feeds — same expression as GET
+ * `/api/receiving/[id]` (`room · name` or bare `name`). Requires
+ * {@link STAGING_LOCATION_JOIN_SQL}.
+ */
+const STAGING_LOCATION_LABEL_SQL = `CASE
+                  WHEN loc.id IS NULL THEN NULL
+                  WHEN loc.room IS NOT NULL AND BTRIM(loc.room) <> ''
+                    THEN loc.room || ' · ' || loc.name
+                  ELSE loc.name
+                END AS staging_location_label`;
+
+/** Join warehouse map onto triage shelf FK. */
+const STAGING_LOCATION_JOIN_SQL =
+  'LEFT JOIN locations loc ON loc.id = rt.staging_location_id';
+
+/** Arrival staged = shelf + lane (mirrors `isArrivalStaged`). */
+const STAGING_STAGED_PREDICATE_SQL =
+  `(rt.staging_location_id IS NOT NULL AND NULLIF(BTRIM(COALESCE(rt.priority_lane, '')), '') IS NOT NULL)`;
+
+const STAGING_UNSTAGED_PREDICATE_SQL =
+  `(rt.staging_location_id IS NULL OR NULLIF(BTRIM(COALESCE(rt.priority_lane, '')), '') IS NULL)`;
+
 /** One executable statement: SQL text + positional params. */
 export interface BuiltSql {
   sql: string;
@@ -148,6 +171,7 @@ export function buildReceivingLineByIdSql(id: number, orgId: string): BuiltSql {
                 rt.triage_completed_at::text    AS triage_completed_at,
                 COALESCE(ru.intake_path = 'unbox_only', false) AS unbox_only_intake,
                 rt.staging_location_id,
+                ${STAGING_LOCATION_LABEL_SQL},
                 rt.priority_lane,
                 COALESCE(rt.pairing_state, 'UNFOUND') AS pairing_state,
                 r.zoho_purchaseorder_number  AS receiving_zoho_purchaseorder_number,
@@ -215,6 +239,7 @@ export function buildReceivingLineByIdSql(id: number, orgId: string): BuiltSql {
          ) r ON TRUE
          ${sqlLinkedSupportTicketLateralJoin()}
          LEFT JOIN receiving_triage rt ON rt.receiving_id = r.id AND rt.organization_id = r.organization_id
+         ${STAGING_LOCATION_JOIN_SQL}
          LEFT JOIN receiving_unbox ru  ON ru.receiving_id = r.id AND ru.organization_id = r.organization_id
          LEFT JOIN LATERAL (
             SELECT MAX(rs.scanned_at) AS last_scan
@@ -417,6 +442,7 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
     view, deliveryStateFilter, poFrom, poTo,
     incomingSort, historySort, wantsPrioritySort, testerId, returnScope, weekStart, weekEnd, limit, offset,
     inboundSourceParam, incomingLinkParam, staffFilterRaw, staffFilterId,
+    unboxQueueStage, unboxQueueLane,
   } = input.query;
   const { orgId, viewerStaffId, universalIncoming, applyScannedZohoExclusion } = input;
   // view=unbox_opened membership predicate — column-only (read-after-write
@@ -570,6 +596,17 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
     );
     values.push(staffFilterId);
     idx++;
+  }
+  // Unbox Queue staging facets (`?ustage=` / `?ulane=`). Staged = shelf + lane
+  // (isArrivalStaged). Only emitted by unbox_queue buildParams.
+  if (unboxQueueStage === 'staged') {
+    conditions.push(STAGING_STAGED_PREDICATE_SQL);
+  } else if (unboxQueueStage === 'unstaged') {
+    conditions.push(STAGING_UNSTAGED_PREDICATE_SQL);
+  }
+  if (unboxQueueLane) {
+    conditions.push(`rt.priority_lane = $${idx++}`);
+    values.push(unboxQueueLane);
   }
   // `view` selects the WHERE arm; no/unknown view = the org-wide default set.
   // (Wave-2 dead-arm removal: `view=recent` and the no-view ?week_start/
@@ -1183,6 +1220,7 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
                 rt.triage_completed_at::text    AS triage_completed_at,
                 COALESCE(ru.intake_path = 'unbox_only', false) AS unbox_only_intake,
                 rt.staging_location_id,
+                ${STAGING_LOCATION_LABEL_SQL},
                 rt.priority_lane,
                 COALESCE(rt.pairing_state, 'UNFOUND') AS pairing_state,
                 r.zoho_purchaseorder_number  AS receiving_zoho_purchaseorder_number,
@@ -1242,6 +1280,7 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
          ) r ON TRUE
          ${sqlLinkedSupportTicketLateralJoin()}
          LEFT JOIN receiving_triage rt ON rt.receiving_id = r.id AND rt.organization_id = r.organization_id
+         ${STAGING_LOCATION_JOIN_SQL}
          LEFT JOIN receiving_unbox ru  ON ru.receiving_id = r.id AND ru.organization_id = r.organization_id
          LEFT JOIN shipping_tracking_numbers stn ON stn.id = r.shipment_id
          -- sku_catalog SKU-string join pinned to the line's org (cross-tenant SKU collision).

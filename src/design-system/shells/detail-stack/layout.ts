@@ -46,11 +46,11 @@ export function detailStackAsideStyle(widthPx?: number): CSSProperties {
 }
 
 /**
- * The detail-stack aside surface shell — everything but the z-band. Defined
- * once; the two exported variants below only vary the SoT z-index token
- * (`src/design-system/tokens/z-index.ts`), never the shell itself.
+ * The detail-stack aside surface shell — everything but placement / z-band.
+ * Defined once; fixed float variants and in-flow push columns compose this
+ * (rounded inset card) with their own geometry.
  */
-const DETAIL_STACK_ASIDE_SURFACE =
+export const DETAIL_STACK_ASIDE_SURFACE =
   'isolate flex flex-col overflow-hidden rounded-2xl border border-border-soft bg-surface-card shadow-2xl shadow-scrim/40';
 
 /** Default detail stack — panel band (`z-panel`). */
@@ -65,7 +65,6 @@ export const detailStackAsideClassName = `fixed z-panel ${DETAIL_STACK_ASIDE_SUR
  * `panelPopover`/`panelOverlay`) stay on top.
  */
 export const detailStackAsideElevatedClassName = `fixed z-detailStack ${DETAIL_STACK_ASIDE_SURFACE}`;
-
 /**
  * Viewport backdrop behind a detail stack. Two variants pair with the two aside
  * bands above and pull their z-band from the SoT scale
@@ -79,6 +78,18 @@ export const detailStackBackdropClassName =
 
 export const detailStackBackdropElevatedClassName =
   'fixed inset-0 z-detailStackBackdrop bg-scrim/70 backdrop-blur-md';
+
+/**
+ * Invisible dismiss layer for NON-MODAL inspectors that still want click-off
+ * close (receiving details). Same z-band as the modal backdrop pair, but no
+ * scrim / blur — the queue stays visually undimmed while the first outside
+ * click closes the panel. Opt-in via `closeOnOutsideClick`; dashboard order
+ * inspector leaves this off so the grid stays live underneath.
+ */
+export const detailStackDismissLayerClassName = 'fixed inset-0 z-panelBackdrop';
+
+export const detailStackDismissLayerElevatedClassName =
+  'fixed inset-0 z-detailStackBackdrop';
 
 /** Full-height dock for the persistent assistant (⌘J) — flush right edge, no inset card. */
 export function assistantDockAsideStyle(): CSSProperties {

@@ -76,3 +76,27 @@ export function resolveSerialDisplay(value: string | null | undefined): string {
   }
   return getLast4Serial(raw);
 }
+
+/**
+ * Shortest unique trailing suffixes for a set of serials (floor = last-4).
+ * Sibling units on one carton often share a last-4; grow the preview until
+ * each label is distinct so a multi-chip batch row does not look duplicated.
+ * Empty / sentinel inputs collapse via {@link resolveSerialDisplay}.
+ */
+export function disambiguateSerialDisplays(serials: readonly string[]): string[] {
+  const cleaned = serials.map((s) => String(s || '').trim());
+  if (cleaned.length === 0) return [];
+  if (cleaned.length === 1) return [resolveSerialDisplay(cleaned[0])];
+
+  const maxLen = Math.max(0, ...cleaned.map((s) => s.length));
+  let len = 4;
+  while (len <= maxLen) {
+    const suffixes = cleaned.map((s) => {
+      if (!s) return resolveSerialDisplay(s);
+      return s.length > len ? s.slice(-len) : s;
+    });
+    if (new Set(suffixes).size === suffixes.length) return suffixes;
+    len += 1;
+  }
+  return cleaned.map((s) => resolveSerialDisplay(s) === '----' ? '----' : s);
+}

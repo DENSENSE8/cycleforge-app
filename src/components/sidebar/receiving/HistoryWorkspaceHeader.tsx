@@ -6,13 +6,14 @@
  * sidebar (`ReceivingHistorySearchSection`) into the top bar.
  *
  * Left:   carton-source tabs — All / Unfound.
- * Right:  [⌕ search] · [⫶ field / sort] · [week pill].
+ * Right:  [⌕ search] · [⫶ field / sort] · [calendar period].
+ * Trailing: Fields (`WorkbenchTrailingCluster`).
  * Row select lives in the table left gutter.
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { WorkbenchChromeHeader } from '@/components/dashboard/workbench-shell';
+import { WorkbenchChromeHeader, WorkbenchTrailingCluster } from '@/components/dashboard/workbench-shell';
 import {
   WorkbenchFilterDivider,
   WorkbenchFilterGroupLabel,
@@ -220,10 +221,12 @@ export function HistoryWorkspaceHeader({
               onNext: onNextWeek,
             }}
           />
-          {/* Quiet per-staff column picker. History has no `trailing` slot, so
-              it sits last in `right` — still after the filters, still quiet. */}
-          <GridFieldsMenu tableId="receiving" columns={RECEIVING_GRID_COLUMNS} />
         </>
+      }
+      trailing={
+        <WorkbenchTrailingCluster
+          fields={<GridFieldsMenu tableId="receiving" columns={RECEIVING_GRID_COLUMNS} />}
+        />
       }
     />
   );

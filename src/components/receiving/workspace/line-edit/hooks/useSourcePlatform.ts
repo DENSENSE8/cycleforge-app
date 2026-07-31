@@ -6,6 +6,7 @@ import {
   detectPlatformFromUrl,
   parseReceivingPackage,
 } from '@/components/sidebar/receiving/receiving-sidebar-shared';
+import { returnPlatformForSource } from '@/lib/receiving/return-platform-for-source';
 
 /**
  * Source-platform state for a carton (platform is per-carton, not per-line).
@@ -54,17 +55,31 @@ export function useSourcePlatform(row: ReceivingLineRow, { listingLink }: { list
     return () => { cancelled = true; };
   }, [row.receiving_id, row.source_platform]);
 
-  const savePlatform = useCallback(async (next: string) => {
+  const savePlatform = useCallback(async (
+    next: string,
+    opts?: { /** When the carton type is Return, also stamp return_platform / is_return. */ isReturn?: boolean },
+  ) => {
     if (row.receiving_id == null) return;
     setPlatformSaving(true);
     try {
-      await fetch(`/api/receiving/${row.receiving_id}`, {
+      const payload: Record<string, unknown> = { source_platform: next || null };
+      if (opts?.isReturn && next) {
+        const rp = returnPlatformForSource(next);
+        if (rp) {
+          payload.return_platform = rp;
+          payload.is_return = true;
+        }
+      }
+      const res = await fetch(`/api/receiving/${row.receiving_id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ source_platform: next || null }),
+        body: JSON.stringify(payload),
       });
+      // Do not broadcast a fake success — claim subject was staying
+      // "Unknown - Return" while the pill showed FBA after a 400 allowlist miss.
+      if (!res.ok) return;
       window.dispatchEvent(new CustomEvent('receiving-package-updated', {
-        detail: { receiving_id: row.receiving_id, source_platform: next || null },
+        detail: { receiving_id: row.receiving_id, ...payload },
       }));
     } catch {
       /* silent */

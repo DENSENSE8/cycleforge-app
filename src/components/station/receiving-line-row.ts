@@ -262,9 +262,11 @@ export interface ReceivingLineRow {
   photo_count?: number;
   /** Filed Zendesk ticket # for this line (receiving_lines.zendesk_ticket), stored as "#<id>". */
   zendesk_ticket?: string | null;
-  /** Triage staging shelf/lane — `receiving.staging_location_id`, FK into `locations`. Null until Phase 2's shelf picker ships. */
+  /** Triage staging shelf/lane — `receiving_triage.staging_location_id`, FK into `locations`. */
   staging_location_id?: number | null;
-  /** Triage priority lane — `receiving.priority_lane` (see triage-lane-policy.ts). Null until Phase 2's lane picker ships. */
+  /** Joined shelf label (`room · name` or `name`) for Unbox Queue Location column. */
+  staging_location_label?: string | null;
+  /** Triage priority lane — `receiving_triage.priority_lane` (see triage-lane-policy.ts). */
   priority_lane?: string | null;
   /** Triage pairing-hub outcome — `receiving.pairing_state`: UNFOUND | MATCHED | WAIVED. */
   pairing_state?: string | null;

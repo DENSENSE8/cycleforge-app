@@ -9,13 +9,17 @@
  *
  * Placement: absolute overlay at the panel top
  * ({@link stationContextBarHostClass}) — no in-flow canvas band behind the
- * shell. Hosts must reserve top scroll clearance
- * ({@link STATION_IDENTITY_SCROLL_CLEARANCE} via StationWorkbench
- * `reserveIdentityClearance`).
+ * shell; top inset matches the context-panel card gutter. Hosts must reserve
+ * top scroll clearance ({@link STATION_IDENTITY_SCROLL_CLEARANCE} via
+ * StationWorkbench `reserveIdentityClearance`).
  *
  *   1. Identity — centered workbench column, full width of that column
  *   2. More details — {@link StationMoreDetails}, absolute at the
- *      work-canvas top + right edges (out of flow so identity stays centered)
+ *      work-canvas top + right (out of flow so identity stays centered)
+ *
+ * Unbox may omit `moreDetails` here and mount it on the pane outer host via
+ * {@link stationMoreDetailsPaneHostClass} so Ticket push does not slide the
+ * icon cluster left with the squeezed Unbox column.
  */
 
 import type { ReactNode } from 'react';

@@ -20,6 +20,7 @@ import {
 import { PAIRING_SORTS } from '@/components/products/pairing/types';
 import { parseProductsView } from '@/components/products/products-view';
 import { parseSourcingAnalyticsRange } from '@/components/sourcing/sourcing-shared';
+import { RECEIVING_HISTORY_URL_PARAMS } from '@/lib/receiving-history-search';
 import { parsePickupTab, parseRepairTab, parseSalesTab } from '@/lib/walk-in/history-modes';
 import { parseReviewPackingTab } from '@/lib/packing/review-packing-tabs';
 import { parsePackWorkspaceTab } from '@/utils/pack-workspace-state';
@@ -92,7 +93,28 @@ const SUPPORT_ROUTE_PARAMS = defineRouteParams({
 const DASHBOARD_ROUTE_PARAMS = defineRouteParams({
   route: '/dashboard',
   owns: {
-    mode: paramEnum(['search', 'receiving', 'inbound', 'outbound'] as const),
+    /**
+     * Domain axis: `inbound` / legacy `receiving` · `sales` / `pickup` (front-desk
+     * history) · legacy `search` (redirected) · `outbound` (unused wire; bare URL).
+     */
+    mode: paramEnum([
+      'search',
+      'receiving',
+      'inbound',
+      'outbound',
+      'sales',
+      'pickup',
+    ] as const),
+    /**
+     * Sales-domain history tabs (`WalkInHistoryHub`) — Pickup Draft/Completed,
+     * Sales Today/All. Same round-trip as `/walk-in` so a redirected bookmark
+     * keeps its tab after `retiredWalkInHistoryTarget`.
+     */
+    tab: paramRoundTrip((raw) =>
+      parsePickupTab(raw) === raw || parseSalesTab(raw) === raw || parseRepairTab(raw) === raw
+        ? raw
+        : null,
+    ),
     /** Search-scoped handoff — the trio that must never reach another mode. */
     q: paramText,
     map: paramText,
@@ -103,10 +125,7 @@ const DASHBOARD_ROUTE_PARAMS = defineRouteParams({
      *
      * These were `paramText` until 2026-07-29, which rejects the empty value a
      * valueless key carries, so every one of them was dropped by the boundary
-     * parse: `?shipped` parsed to `""` and the tab fell back to Unshipped. It
-     * did not bite yet only because `/dashboard` does not mount
-     * `useSurfaceParamHygiene()` — adding that hook is a step of the migration
-     * method, so the trap was armed and waiting for it.
+     * parse: `?shipped` parsed to `""` and the tab fell back to Unshipped.
      */
     unshipped: paramPresence,
     pending: paramPresence,
@@ -135,11 +154,53 @@ const DASHBOARD_ROUTE_PARAMS = defineRouteParams({
     rtab: paramText,
     type: paramText,
     dq: paramText,
-    /** Packed-tab search box (`searchScopeHref('ORDER')` lands here). */
+    /** Packed-tab / shipped-tab search box (`searchScopeHref('ORDER')` lands here). */
     search: paramText,
-    /** Outbound filter strip. */
+    /** Outbound filter strip + unshipped board. */
     attention: paramFlag,
     ustatus: paramText,
+    stage: paramText,
+    late: paramFlag,
+    /** New-order intake slide-over (`useDashboardSearchController`). */
+    new: paramEnum(['true'] as const),
+    /**
+     * Shipped-tab filter band (`useShippedTableFilters` + saved views). Found by
+     * the hand-off / CONSTANT sweep before mounting `SurfaceParamHygiene` —
+     * these live under `components/shipped`, outside the dashboard OWNED_TREES
+     * entry, so the ownership guard could not see them.
+     */
+    shippedFilter: paramEnum(['all', 'orders', 'sku', 'fba'] as const),
+    shippedSearchField: paramEnum([
+      'all',
+      'order_id',
+      'tracking',
+      'product_title',
+      'sku',
+      'serial_number',
+    ] as const),
+    shippedWeekOffset: paramPositiveInt,
+    ostatus: paramText,
+    exceptions: paramFlag,
+    carrier: paramText,
+    statusCategory: paramText,
+    packedBy: paramPositiveInt,
+    testedBy: paramPositiveInt,
+    dateFrom: paramDateKey,
+    dateTo: paramDateKey,
+    /**
+     * Inbound (`?mode=inbound`) reuses History's namespaced search triple so a
+     * dashboard receiving bookmark matches `/receiving/history`.
+     */
+    [RECEIVING_HISTORY_URL_PARAMS.q]: paramText,
+    [RECEIVING_HISTORY_URL_PARAMS.field]: paramEnum([
+      'all',
+      'po',
+      'tracking',
+      'sku',
+      'product',
+      'serial',
+    ] as const),
+    [RECEIVING_HISTORY_URL_PARAMS.scope]: paramEnum(['all', 'zoho_po', 'unmatched'] as const),
   },
   carries: WORKBENCH_CARRIES,
 });
@@ -328,7 +389,10 @@ export const TEST_ROUTE_PARAMS = defineRouteParams({
 });
 
 /**
- * `/walk-in` — the Sales hub (Sales · Local Pickup).
+ * `/walk-in` — retired Sales-history front door (redirects to
+ * `/dashboard?mode=sales|pickup`). Spec kept so legacy deep-link keys survive
+ * boundary parse until `useWalkInTaskRedirect` / `retiredWalkInHistoryTarget`
+ * consume them.
  *
  * The nav targets nulled `tab` and `category` by hand. `category` is NOT declared
  * here on purpose: it is a dead legacy key that only `proxy.ts`
@@ -446,6 +510,13 @@ const REVIEW_ROUTE_PARAMS = defineRouteParams({
     packerLogId: paramPositiveInt,
     orderId: paramPositiveInt,
     choreId: paramPositiveInt,
+    /**
+     * Catalog-link in-mode tab. Default (`catalog-link`) is omitted; only the
+     * Missing item number section writes a value.
+     */
+    section: paramEnum(['missing-item-number'] as const),
+    /** Focused `order_import_exceptions` row on the Missing item number tab. */
+    exceptionId: paramPositiveInt,
     /** The table search box, shared by all three modes' tables. */
     search: paramText,
   },
@@ -510,19 +581,28 @@ export const WAREHOUSE_ROUTE_PARAMS = defineRouteParams({
  * `/search` — the cross-entity results surface Phase 1 of the dashboard IA
  * rework evicted out of `?mode=search`.
  *
- * `?q=` is the whole state today. A spec still earns its keep before that
- * changes: the route is where a search hit hands off, so it is a natural
- * landing pad for another surface's params, and the results grid (IA plan
- * Phase 6) will want sort/scope keys that must not silently collide with
- * `/support`'s `status`/`range`/`type` or `/dashboard`'s `sort`/`open`.
- * Declaring it now means the collision is a build failure rather than a
- * filter that quietly does nothing.
+ * `?q=` is the query; Phase 2 adds client refine over the top-50 via
+ * `?etype=` / `?hstat=` (namespaced away from `/support`'s `type`/`status`)
+ * and display sort via carried ambient `?colsort=` (`relevance` default |
+ * `date`). Declaring them here means a collision is a build failure rather
+ * than a filter that quietly does nothing.
  */
 const SEARCH_ROUTE_PARAMS = defineRouteParams({
   route: '/search',
   owns: {
     /** The query. Typing happens in the global header pill; this is the state. */
     q: paramText,
+    /**
+     * Client entity-type refine over the retrieved top-50.
+     * UI vocabulary (order | unit | receiving | sku | repair | fba).
+     * Deliberately NOT `type` — `/support` already owns that key.
+     */
+    etype: paramEnum(['order', 'unit', 'receiving', 'sku', 'repair', 'fba'] as const),
+    /**
+     * Client status refine against `facets.status`.
+     * Deliberately NOT `status` — `/support` (and others) already own that key.
+     */
+    hstat: paramText,
   },
   carries: ['staff', 'colsort', 'coldir'],
 });

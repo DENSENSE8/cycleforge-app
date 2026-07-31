@@ -48,7 +48,7 @@ import {
   ordersQueueRowShellClass,
   type OrdersQueueColumn,
 } from '@/lib/dashboard-order-row-layout';
-import { conditionGradeTone, orderRowQtyTone } from '@/lib/condition-tone';
+import { orderRowConditionTone, orderRowQtyTone } from '@/lib/condition-tone';
 import { conditionGradeTableLabel, EMPTY_META_DASH } from '@/lib/conditions';
 import {
   replenishmentTooltip,
@@ -814,18 +814,14 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
           <div
             data-col="condition"
             ref={conditionCellRef}
-            className={cn(dataCell(col, rule), 'text-role-eyebrow uppercase text-text-muted')}
+            className={cn(dataCell(col, rule), 'text-role-caption')}
           >
             {gridEditable ? (
               hasConditionValue ? (
-                // Quiet tag, not a pill. The filled pill was three paint layers
-                // (fill + ring + caret) per row, floating mid-track against the
-                // airtable cell rules — it read as a centered object rather than
-                // a value aligned with the column above it. A dot carries the
-                // same SoT hue in one layer and lets the label start at the
-                // cell's text edge like every other track. The caret is
-                // hover/focus-only: the whole cell is the trigger, so a
-                // permanent one is chrome the resting state doesn't need.
+                // Quiet text value, not a pill or hue-dot. Caption type matches
+                // other data tracks; hue comes from {@link orderRowConditionTone}
+                // (yellow NEW · brown PARTS · muted else) — text only, no dot.
+                // The whole cell is the trigger; caret is hover/focus only.
                 <button
                   type="button"
                   aria-label={`Change condition — ${conditionGradeTableLabel(conditionValue)}`}
@@ -836,17 +832,11 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
                     openEditor('condition');
                   }}
                   className={cn(
-                    'ds-raw-button group/cond inline-flex min-w-0 max-w-full items-center gap-1 rounded text-role-micro uppercase tracking-widest text-text-default transition-colors',
+                    'ds-raw-button group/cond inline-flex min-w-0 max-w-full items-center gap-0.5 rounded text-role-caption font-medium transition-colors',
+                    orderRowConditionTone(conditionValue),
                     focusRing('cell'),
                   )}
                 >
-                  <span
-                    className={cn(
-                      'h-1.5 w-1.5 shrink-0 rounded-full',
-                      conditionGradeTone(conditionValue).dotClass,
-                    )}
-                    aria-hidden
-                  />
                   <span className="min-w-0 truncate">{conditionGradeTableLabel(conditionValue)}</span>
                   <ChevronDown
                     className="h-3 w-3 shrink-0 text-text-faint opacity-0 transition-opacity group-hover/row:opacity-100 group-focus-visible/cond:opacity-100"
@@ -865,7 +855,7 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
                     openEditor('condition');
                   }}
                   className={cn(
-                    'ds-raw-button inline-flex items-center gap-0.5 rounded text-text-faint hover:bg-surface-hover hover:text-text-muted',
+                    'ds-raw-button inline-flex items-center gap-0.5 rounded text-role-caption text-text-faint hover:bg-surface-hover hover:text-text-muted',
                     focusRing('cell'),
                   )}
                 >

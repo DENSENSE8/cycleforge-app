@@ -38,6 +38,7 @@ import type { TrackingScanResult } from '@/components/sidebar/receiving/useTrack
 import { ReceivingReturnBanner } from '@/components/sidebar/ReceivingReturnBanner';
 import { ReceivingLinePicker } from '@/components/sidebar/receiving/ReceivingLinePicker';
 import { IncomingSidebarPanel } from '@/components/sidebar/receiving/IncomingSidebarPanel';
+import { SidebarRailScrollport } from '@/components/sidebar/rail-shell/SidebarRailScrollport';
 
 import { TriageScanBand, UnboxScanBand } from '@/components/sidebar/receiving/ReceivingScanBands';
 import { TriageCartonSearchBar } from '@/components/sidebar/receiving/TriageCartonSearchBar';
@@ -260,9 +261,9 @@ export function ReceivingSidebarPanel() {
         ) : mode === 'pickup' ? (
           // Local Pickup — LCPU orders rail (row = pickup order). Selecting one
           // writes `?lcpu=` to highlight its products in the right-pane table.
-          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+          <SidebarRailScrollport>
             <PickupSidebarRail />
-          </div>
+          </SidebarRailScrollport>
         ) : mode === 'history' ? (
           // History has no scan session and no rail — the right-pane table is
           // filtered via URL params instead. The returns banner still rides here.
@@ -339,14 +340,14 @@ export function ReceivingSidebarPanel() {
             {/* Scan-surface rail. Unbox keeps a fixed Unboxed rail; Triage keeps
                 a fixed combined Triage rail — browse tabs live in the right-pane
                 workbench (UnboxWorkspaceView / TriageWorkspaceView). */}
-            <div className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain">
+            <SidebarRailScrollport>
               <ReceivingRailBody
                 mode={mode}
                 selectedLine={selectedLine}
                 triageLeadingRow={triageLeadingRow}
                 triageFilterText={mode === 'triage' ? triageListQuery : ''}
               />
-            </div>
+            </SidebarRailScrollport>
 
             {/* Carton-list filter (D1) — finds a carton already in the
                 Triage/Prioritize/Unfound/Done list, distinct from the scan band

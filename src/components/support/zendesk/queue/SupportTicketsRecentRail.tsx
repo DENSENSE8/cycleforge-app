@@ -12,6 +12,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { History, TicketHelp } from '@/components/Icons';
 import { Button, EmptyState } from '@/design-system/primitives';
 import { SIDEBAR_GUTTER } from '@/components/layout/header-shell';
+import { SidebarRailScrollport } from '@/components/sidebar/rail-shell/SidebarRailScrollport';
 import { useRecentTickets } from '@/hooks/useRecentTickets';
 import { cn } from '@/utils/_cn';
 import { timeAgo } from '@/utils/_date';
@@ -57,7 +58,7 @@ export function SupportTicketsRecentRail({ modeToggle = null }: { modeToggle?: R
         ) : null}
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      <SidebarRailScrollport>
         {recents.length === 0 ? (
           <div className="px-3 py-6">
             <EmptyState
@@ -113,7 +114,7 @@ export function SupportTicketsRecentRail({ modeToggle = null }: { modeToggle?: R
             })}
           </div>
         )}
-      </div>
+      </SidebarRailScrollport>
     </div>
   );
 }

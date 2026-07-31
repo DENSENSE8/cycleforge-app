@@ -101,12 +101,9 @@ test.describe('Testing mode — lineless unfound carton handle scan', () => {
     // Package Pairing hub from TestingPoUnboxingSection → LineMatchingSection
     await expect(page.getByText('Package Pairing').first()).toBeVisible({ timeout: 10_000 });
 
-    // QoL: a lineless unfound carton opens on the Zoho PO tab by DEFAULT (no
-    // click) — the next correct action is "Acknowledge by Zoho SKU" / link a PO.
-    await expect(page.getByRole('tab', { name: 'Zoho PO', selected: true })).toBeVisible();
-    // exact: the empty-state callout below also contains the phrase "Acknowledge
-    // by Zoho SKU", so match only the ZohoPoPairTab eyebrow heading.
-    await expect(page.getByText('Acknowledge by Zoho SKU', { exact: true })).toBeVisible();
+    // Unfound cartons default to Inventory Item (add by SKU before the PO is known).
+    await expect(page.getByRole('tab', { name: 'Inventory Item', selected: true })).toBeVisible();
+    await expect(page.getByPlaceholder('Search product name or SKU…')).toBeVisible();
 
     // QoL: empty-carton teaching callout above the items surface.
     await expect(page.getByText('No items yet', { exact: true })).toBeVisible();

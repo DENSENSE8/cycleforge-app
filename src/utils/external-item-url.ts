@@ -58,7 +58,9 @@ export function getExternalUrlByPlatform(
   if (!id) return null;
   const p = platform.toLowerCase();
 
-  if (p === 'zoho' || p === 'ecwid') return `https://usavshop.com/products/search?keyword=${encodeURIComponent(id)}`;
+  // Zoho is inventory identity, not a storefront — never invent a usavshop URL.
+  if (p === 'zoho') return null;
+  if (p === 'ecwid') return `https://usavshop.com/products/search?keyword=${encodeURIComponent(id)}`;
   if (p.startsWith('ebay')) return `https://www.ebay.com/itm/${id}`;
   if (p === 'amazon' || p === 'amazon_fba') return `https://www.amazon.com/dp/${id}`;
   if (p === 'walmart') return `https://www.walmart.com/ip/${id}`;

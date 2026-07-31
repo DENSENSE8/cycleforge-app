@@ -20,6 +20,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import type { QueryClient } from '@tanstack/react-query';
 import { BootGate } from '@/components/boot/BootGate';
 import { BootSplash } from '@/components/boot/BootSplash';
+import { SurfaceParamHygiene } from '@/components/routing/SurfaceParamHygiene';
 import { consumeBootSplash } from '@/lib/boot-flag';
 import { warmActiveView } from '@/lib/queries/dashboard-warm';
 import { useDashboardSearchController } from '@/hooks/useDashboardSearchController';
@@ -29,6 +30,7 @@ import { useDashboardViewWarmup } from '@/hooks/useDashboardViewWarmup';
 import { useDashboardRealtime } from '@/hooks/useDashboardRealtime';
 import { DashboardOrdersView } from '@/components/dashboard/DashboardOrdersView';
 import { DashboardReceivingView } from '@/components/dashboard/receiving/DashboardReceivingView';
+import { DashboardSalesView } from '@/components/dashboard/DashboardSalesView';
 import { DashboardOrderDetails } from '@/components/dashboard/DashboardOrderDetails';
 import { buildSupportWarrantyRedirectSearch } from '@/utils/dashboard-search-state';
 import {
@@ -84,7 +86,7 @@ function DashboardPageContent() {
   } = useDashboardBulkSelection(orderView);
 
   // Only the outbound (Shipping) mode resolves/opens the order panel — receiving
-  // rows are cartons and search rows are hits, never orders.
+  // rows are cartons, sales rows are transactions, and search rows are hits.
   const { selectedShipped, selectedContext, requestCloseSelectedOrder } =
     useDashboardSelectedOrder(detailsEnabled && isOutbound);
 
@@ -106,6 +108,16 @@ function DashboardPageContent() {
     return (
       <div className="flex min-h-0 w-full flex-1">
         <DashboardReceivingView />
+      </div>
+    );
+  }
+
+  // Sales (`?mode=sales` | `?mode=pickup`) — front-desk transaction history.
+  // Same isolation: own region, no order panel.
+  if (domain === 'sales') {
+    return (
+      <div className="flex min-h-0 w-full flex-1">
+        <DashboardSalesView />
       </div>
     );
   }
@@ -156,10 +168,14 @@ function DashboardBootGate({ children }: { children: React.ReactNode }) {
 
 export default function DashboardPage() {
   return (
-    <Suspense fallback={<BootSplash />}>
-      <DashboardBootGate>
-        <DashboardPageContent />
-      </DashboardBootGate>
-    </Suspense>
+    <>
+      {/* Leaf route — page is the always-mounted host (see SurfaceParamHygiene). */}
+      <SurfaceParamHygiene />
+      <Suspense fallback={<BootSplash />}>
+        <DashboardBootGate>
+          <DashboardPageContent />
+        </DashboardBootGate>
+      </Suspense>
+    </>
   );
 }

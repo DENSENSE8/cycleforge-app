@@ -5,7 +5,7 @@
  * Modes: Packing (default, `?mode=` cleared) · Pairing (`?mode=pairing`) ·
  * Catalog link (`?mode=catalog-link`).
  * Packing tabs: `?rtab=packed|shipped|history`. Selection: `?packerLogId=` / `?orderId=` /
- * Catalog link: `?choreId=`.
+ * Catalog link: `?choreId=`. Missing item number: `?section=missing-item-number&exceptionId=`.
  */
 
 import { useCallback, useMemo } from 'react';
@@ -53,6 +53,8 @@ export function ReviewWorkspace() {
     params.delete('packerLogId');
     params.delete('orderId');
     params.delete('choreId');
+    params.delete('exceptionId');
+    params.delete('section');
     const qs = params.toString();
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
   }, [pathname, router, searchParams]);
@@ -67,6 +69,8 @@ export function ReviewWorkspace() {
       if (Number.isFinite(oid) && oid > 0) params.set('orderId', String(oid));
       else params.delete('orderId');
       params.delete('choreId');
+      params.delete('exceptionId');
+      params.delete('section');
       router.replace(`${pathname}?${params.toString()}`, { scroll: false });
     },
     [pathname, router, searchParams],
@@ -77,6 +81,8 @@ export function ReviewWorkspace() {
       const params = new URLSearchParams(searchParams.toString());
       params.delete('packerLogId');
       params.delete('choreId');
+      params.delete('exceptionId');
+      params.delete('section');
       params.set('orderId', String(order.id));
       router.replace(`${pathname}?${params.toString()}`, { scroll: false });
     },

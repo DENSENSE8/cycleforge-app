@@ -57,9 +57,8 @@ test('getSidebarNavItems omits mobile-restricted routes in mobile mode', () => {
   assert.equal(navIds.includes('dashboard'), true);
   // FBA / studio / etc. are parked off prod nav (dogfood surface).
   assert.equal(navIds.includes('fba'), false);
-  // /repair is a Receiving mode route now; the front-desk history page (Sales)
-  // keeps the 'walk-in' nav id.
-  assert.equal(navIds.includes('walk-in'), true);
+  // Sales history folded into Dashboard L2 — no separate L1 nav row.
+  assert.equal(navIds.includes('walk-in'), false);
 });
 
 test('dogfood prod nav omits parked surfaces', () => {
@@ -328,13 +327,11 @@ test('resolver matches existing panel derivations for known deep-links', () => {
   assert.equal(resolveSidebarMode('outbound', at('/outbound', 'mode=ready')), 'ready');
   assert.equal(getSidebarRouteKey('/shipping'), 'outbound');
   assert.equal(getSidebarRouteKey('/outbound'), 'outbound');
-  // Dashboard: TWO L2 modes on `?mode=`, one per domain. Shipping (id
-  // `outbound`) is the default — `?shipped`, `?unshipped`, legacy `?pending`,
-  // and bare all resolve to it. Receiving rides `?mode=inbound` (canonical) or
-  // the `?mode=receiving` alias. Warranty Logger moved to Support
-  // (`?mode=warranty`); Search graduated to its own `/search` route, so the
-  // retired `?mode=search` falls through to the default rather than naming a
-  // mode that no longer exists (the page client-redirects it).
+  // Dashboard: Shipping (id `outbound`) is the default — `?shipped`,
+  // `?unshipped`, legacy `?pending`, and bare all resolve to it. Receiving
+  // rides `?mode=inbound` (canonical) or the `?mode=receiving` alias. Sales /
+  // Local Pickup are the front-desk history domain (`?mode=sales|pickup`).
+  // Warranty Logger moved to Support; Search graduated to `/search`.
   assert.equal(resolveSidebarMode('dashboard', at('/dashboard', 'shipped=')), 'outbound');
   assert.equal(resolveSidebarMode('dashboard', at('/dashboard')), 'outbound');
   assert.equal(resolveSidebarMode('dashboard', at('/dashboard', 'pending=')), 'outbound');
@@ -342,6 +339,8 @@ test('resolver matches existing panel derivations for known deep-links', () => {
   assert.equal(resolveSidebarMode('dashboard', at('/dashboard', 'mode=search')), 'outbound');
   assert.equal(resolveSidebarMode('dashboard', at('/dashboard', 'mode=inbound')), 'receiving');
   assert.equal(resolveSidebarMode('dashboard', at('/dashboard', 'mode=receiving')), 'receiving');
+  assert.equal(resolveSidebarMode('dashboard', at('/dashboard', 'mode=sales')), 'sales');
+  assert.equal(resolveSidebarMode('dashboard', at('/dashboard', 'mode=pickup')), 'pickup');
   assert.equal(resolveSidebarMode('support', at('/support', 'mode=warranty')), 'warranty');
   assert.equal(resolveSidebarMode('support', at('/support', 'mode=orders')), 'orders');
   assert.equal(resolveSidebarMode('support', at('/support')), 'tickets');
@@ -352,14 +351,6 @@ test('resolver matches existing panel derivations for known deep-links', () => {
   assert.equal(resolveSidebarMode('tech', at('/test', 'view=testing')), 'testing');
   assert.equal(resolveSidebarMode('tech', at('/test', 'staffId=7')), 'shipping');
   assert.equal(resolveSidebarMode('tech', at('/tech', 'view=testing')), 'testing');
-  // Sales (former Walk-In main) — Local Pickup · Sales hub; Repair lives on
-  // `/repair`. Bare = Sales default, `?mode=` drives it, legacy `?category=`
-  // still maps. Stale `?mode=repair` parses as Sales (proxy redirects first).
-  assert.equal(resolveSidebarMode('walk-in', at('/walk-in')), 'sales');
-  assert.equal(resolveSidebarMode('walk-in', at('/walk-in', 'mode=pickup')), 'pickup');
-  assert.equal(resolveSidebarMode('walk-in', at('/walk-in', 'mode=repair')), 'sales');
-  assert.equal(resolveSidebarMode('walk-in', at('/walk-in', 'category=pickups')), 'pickup');
-  assert.equal(resolveSidebarMode('walk-in', at('/walk-in', 'category=sales')), 'sales');
 });
 
 // The Test surface + its legacy alias both resolve to the `tech` nav key so the

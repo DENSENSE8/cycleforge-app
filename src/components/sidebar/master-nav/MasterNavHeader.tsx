@@ -12,7 +12,7 @@ import type { SidebarIconComponent } from '@/lib/sidebar-navigation';
 import { cn } from '@/utils/_cn';
 
 /**
- * Closed master-nav trigger — **name of now**.
+ * Closed master-nav trigger — **name of now** (optically centered in the band).
  * Modeful pages: leading mode icon + mode label. Modeless: label only (pages = text).
  * Top-left chevron opens the full nav; mode identity is display-only — L2 Mode +
  * Recents live in GlobalHeader (`HeaderModeSwitcher` / `HeaderRecentsSwitcher`).
@@ -49,7 +49,7 @@ export function MasterNavHeader({
       ) : null}
       <span
         data-master-nav-label
-        className="min-w-0 truncate text-role-body font-semibold tracking-tight text-text-default"
+        className="min-w-0 truncate text-role-eyebrow font-semibold tracking-tight text-text-default"
       >
         {label}
       </span>
@@ -57,7 +57,9 @@ export function MasterNavHeader({
   );
 
   return (
-    <div className={cn('flex h-[40px] w-full min-w-0 items-stretch', className)}>
+    // Height lives on the parent band ({@link TOP_CHROME_BAND_FACE}) so the
+    // spine hairline shares GlobalHeader's 40px border-box — fill that band.
+    <div className={cn('relative flex h-full w-full min-w-0 items-stretch', className)}>
       {/* Top-left: full page nav. Omitted when the list is already in flow. */}
       {showNavToggle && (
         <>
@@ -67,7 +69,7 @@ export function MasterNavHeader({
             aria-expanded={open}
             aria-label={open ? 'Close navigation menu' : 'Open navigation menu'}
             className={cn(
-              'ds-raw-button flex shrink-0 items-center justify-center text-text-muted transition-colors hover:bg-surface-canvas hover:text-text-default',
+              'ds-raw-button relative z-10 flex shrink-0 items-center justify-center text-text-muted transition-colors hover:bg-surface-canvas hover:text-text-default',
               SIDEBAR_MASTER_NAV_CHEVRON_PAD_X,
             )}
           >
@@ -77,13 +79,19 @@ export function MasterNavHeader({
             />
           </button>
 
-          {/* Hairline between full-nav chevron and mode identity */}
-          <div className="my-2 w-px shrink-0 self-stretch bg-border-hairline" aria-hidden />
+          {/* Hairline between full-nav chevron and centered title */}
+          <div className="relative z-10 my-2 w-px shrink-0 self-stretch bg-border-hairline" aria-hidden />
         </>
       )}
 
-      {/* Name of now — display-only; L2 switching is in GlobalHeader. */}
-      <div className={cn('flex min-w-0 shrink items-center', SIDEBAR_MASTER_NAV_MODE_GAP, SIDEBAR_MASTER_NAV_MODE_PAD_X)}>
+      {/* Name of now — optically centered in the band; L2 switching is in GlobalHeader. */}
+      <div
+        className={cn(
+          'pointer-events-none absolute inset-0 flex min-w-0 items-center justify-center',
+          SIDEBAR_MASTER_NAV_MODE_GAP,
+          SIDEBAR_MASTER_NAV_MODE_PAD_X,
+        )}
+      >
         {modeIdentity}
       </div>
     </div>

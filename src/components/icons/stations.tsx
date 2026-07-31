@@ -15,7 +15,6 @@
 
 import { Send } from './actions';
 import {
-  Banknote,
   Barcode,
   Box,
   Boxes,
@@ -47,10 +46,7 @@ export const StationShipping: IconComponent = withNavIconPageStroke(PackageCheck
 /** Packing station — `/pack`. */
 export const StationPacking: IconComponent = withNavIconPageStroke(Box);
 
-// ── Sales (walk-in) page + price mode ────────────────────────────────────────
-
-/** Sales page — front-desk commerce hub (`/walk-in`). */
-export const SalesPage: IconComponent = withNavIconPageStroke(Banknote);
+// ── Sales mode mark ──────────────────────────────────────────────────────────
 
 /** Sales mode / sale-line price mark. */
 export const SalesPrice: IconComponent = withNavIconModeStroke(CircleDollarSign);

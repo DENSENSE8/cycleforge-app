@@ -37,6 +37,11 @@ interface SupportStationTabsInput {
   onComposerBridgeChange?: (bridge: ThreadComposerBridge | null) => void;
   /** Exposes the Conversations warehouse-thread composer to the floating dock. */
   onConversationBridgeChange?: (bridge: ThreadComposerBridge | null) => void;
+  /**
+   * When true, Ticket tab skips the sticky composer — host mounts
+   * {@link SupportTicketComposerDock} and provides staging via context.
+   */
+  hostComposer?: boolean;
 }
 
 function TabPanelShell({
@@ -77,6 +82,7 @@ export function buildSupportStationTabs({
   onBack,
   onComposerBridgeChange,
   onConversationBridgeChange,
+  hostComposer = false,
 }: SupportStationTabsInput) {
   return buildSectionTabs([
     {
@@ -91,7 +97,8 @@ export function buildSupportStationTabs({
             embedded
             hideExternalLink
             hideLinkedContext
-            onComposerBridgeChange={onComposerBridgeChange}
+            onComposerBridgeChange={hostComposer ? undefined : onComposerBridgeChange}
+            composerPlacement={hostComposer ? 'host' : 'inline'}
           />
         </TabPanelShell>
       ),

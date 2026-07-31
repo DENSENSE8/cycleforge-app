@@ -88,6 +88,15 @@ export const receivingLinesQuerySchema = z.object({
   /** `?staff=` — raw trimmed string + its raw Number twin. */
   staffFilterRaw: z.string(),
   staffFilterId: numberish,
+  /**
+   * Unbox Queue readiness (`?ustage=`): `staged` = shelf+lane, `unstaged` =
+   * missing either. Empty = all. Invalid values degrade to empty.
+   */
+  unboxQueueStage: z.enum(['', 'staged', 'unstaged']),
+  /**
+   * Unbox Queue priority lane (`?ulane=`). Empty = all. Invalid → empty.
+   */
+  unboxQueueLane: z.enum(['', 'PO_STOCKOUT', 'PO_STANDARD', 'RETURN', 'HOLD']),
 });
 
 export type ReceivingLinesQuery = z.infer<typeof receivingLinesQuerySchema>;
@@ -223,6 +232,20 @@ export function parseReceivingLinesQuery(searchParams: URLSearchParams): Receivi
   const staffFilterRaw = String(searchParams.get('staff') || '').trim();
   const staffFilterId = Number(staffFilterRaw);
 
+  // Unbox Queue staging filters (`?ustage=` / `?ulane=`). Invalid → empty so
+  // deep links never 400; only `unbox_queue` buildParams emits these.
+  const ustageRaw = String(searchParams.get('ustage') || '').trim().toLowerCase();
+  const unboxQueueStage =
+    ustageRaw === 'staged' || ustageRaw === 'unstaged' ? ustageRaw : '';
+  const ulaneRaw = String(searchParams.get('ulane') || '').trim().toUpperCase();
+  const unboxQueueLane =
+    ulaneRaw === 'PO_STOCKOUT'
+    || ulaneRaw === 'PO_STANDARD'
+    || ulaneRaw === 'RETURN'
+    || ulaneRaw === 'HOLD'
+      ? (ulaneRaw as 'PO_STOCKOUT' | 'PO_STANDARD' | 'RETURN' | 'HOLD')
+      : '';
+
   return receivingLinesQuerySchema.parse({
     id,
     receivingId,
@@ -254,5 +277,7 @@ export function parseReceivingLinesQuery(searchParams: URLSearchParams): Receivi
     incomingLinkParam,
     staffFilterRaw,
     staffFilterId,
+    unboxQueueStage,
+    unboxQueueLane,
   });
 }

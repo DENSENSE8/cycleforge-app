@@ -5,34 +5,38 @@
  * to the Incoming right pane (the sibling of `OutboundWorkspaceHeader`).
  *
  * Left:   purchasing-source tabs — All / Zoho / eBay.
- * Right:  [⌕ search] · [⫶ filters] · pagination.
- * Trailing: Import (platform picker → Zoho / eBay) · Add (manual eBay order).
+ * Right:  [⌕ search] · [⫶ filters].
+ * Trailing: [page] · [sort] · [fields] · Import · Add.
  *
- * Search + filters write the SAME URL params the list reads (`?rh_q` / `?state` /
- * `?sort` / `?po_from` / `?po_to`). Import opens a source popover, then runs the
- * matching sync via {@link useIncomingSyncActions}.
+ * POS ↔ Email lives in {@link IncomingSidebarPanel}. Delivery attention
+ * (`?state=`) + PO date live in the filter popover. Search + refinements write
+ * the SAME URL params the list reads (`?rh_q` / `?state` / `?sort` /
+ * `?po_from` / `?po_to` / `?inbound`).
  */
 
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { receivingSurfaceBasePath } from '@/lib/receiving/surface-path';
-import { WorkbenchChromeHeader } from '@/components/dashboard/workbench-shell';
+import { WorkbenchChromeHeader, WorkbenchTrailingCluster } from '@/components/dashboard/workbench-shell';
 import {
   WorkbenchFilterDivider,
   WorkbenchFilterGroupLabel,
   WorkbenchFilterMenuRow,
   WorkbenchFilterPopover,
 } from '@/components/dashboard/workbench-filter-popover';
+import { QueueSortSwitch } from '@/components/dashboard/QueueSortSwitch';
 import { PaneHeaderPagination } from '@/components/ui/pane-header';
 import { GridFieldsMenu } from '@/components/ui/table-column-config/GridFieldsMenu';
 import { INCOMING_GRID_COLUMNS } from '@/lib/receiving/incoming-grid-layout';
 import { ToolbarSearchToggle } from '@/components/ui/ToolbarSearchToggle';
 import { DateRangePickerField } from '@/design-system/components/DateRangePickerField';
-import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { useDebounce } from '@/hooks';
 import { useAuth } from '@/contexts/AuthContext';
 import { INCOMING_PAGE_SIZE } from '@/lib/receiving/receiving-modes';
-import { INCOMING_SORT_LABELS, type IncomingSort } from '@/components/sidebar/receiving/IncomingPaneHeader';
+import {
+  INCOMING_SORT_OPTIONS,
+  type IncomingSort,
+} from '@/components/sidebar/receiving/IncomingPaneHeader';
 import { RECEIVING_HISTORY_URL_PARAMS } from '@/lib/receiving-history-search';
 import { IncomingSyncDialog } from '@/components/sidebar/receiving/IncomingSyncDialog';
 import { useIncomingSummary } from './useIncomingSummary';
@@ -40,7 +44,7 @@ import { useIncomingFilters } from './useIncomingFilters';
 import { useIncomingSyncActions } from './useIncomingSyncActions';
 import { IncomingChromeActions } from './IncomingChromeActions';
 import { IncomingImportEbayOverlay } from './IncomingImportEbayOverlay';
-import { TILES } from './incoming-tiles';
+import { TILES, TONE } from './incoming-tiles';
 
 type IncomingSourceTab = 'all' | 'zoho' | 'ebay';
 
@@ -121,7 +125,13 @@ export function IncomingWorkspaceHeader({
   }, [debouncedDraft, urlQRaw, filters]);
 
   const [filterOpen, setFilterOpen] = useState(false);
-  const filterHot = filters.activeFilterCount > 0;
+  // Attention state and/or PO date — sort is its own trailing control.
+  const filterHot = Boolean(filters.dateRange?.from) || filters.state != null;
+
+  const clearWorkbenchFilters = useCallback(() => {
+    filters.setDateRange(undefined);
+    filters.setState(null);
+  }, [filters]);
 
   const tabs = [
     { id: 'all', label: 'All', color: 'blue' as const },
@@ -130,12 +140,6 @@ export function IncomingWorkspaceHeader({
       ? [{ id: 'ebay', label: 'eBay', color: 'yellow' as const }]
       : []),
   ];
-
-  const statusTiles = TILES.filter((t) => t.state != null);
-  const sortKeys = Object.keys(INCOMING_SORT_LABELS) as IncomingSort[];
-  const showCarrierBreakdown = summary?.by_carrier?.some(
-    (c) => c.delivered_unscanned || c.tracking_unavailable || c.in_transit || c.carrier_mismatch,
-  );
 
   return (
     <>
@@ -163,45 +167,8 @@ export function IncomingWorkspaceHeader({
               onOpenChange={setFilterOpen}
               hot={filterHot}
               label="Filters"
-              contentClassName="w-80 max-h-[min(70vh,32rem)] overflow-y-auto"
+              contentClassName="w-72 max-h-[min(70vh,32rem)] overflow-y-auto"
             >
-              <WorkbenchFilterGroupLabel>Status</WorkbenchFilterGroupLabel>
-              {statusTiles.map((tile) => {
-                const active = filters.state === tile.state;
-                const count = summary ? (summary[tile.key] as number | undefined) : undefined;
-                const Icon = tile.icon;
-                return (
-                  <WorkbenchFilterMenuRow
-                    key={tile.label}
-                    label={tile.label}
-                    count={typeof count === 'number' ? count : undefined}
-                    active={active}
-                    leading={<Icon className="h-3.5 w-3.5 shrink-0" />}
-                    onClick={() => {
-                      filters.setState(active ? null : tile.state);
-                      setFilterOpen(false);
-                    }}
-                  />
-                );
-              })}
-
-              <WorkbenchFilterDivider />
-
-              <WorkbenchFilterGroupLabel>Sort</WorkbenchFilterGroupLabel>
-              {sortKeys.map((key) => (
-                <WorkbenchFilterMenuRow
-                  key={key}
-                  label={INCOMING_SORT_LABELS[key]}
-                  active={filters.sort === key}
-                  onClick={() => {
-                    filters.setSort(key);
-                    setFilterOpen(false);
-                  }}
-                />
-              ))}
-
-              <WorkbenchFilterDivider />
-
               <WorkbenchFilterGroupLabel>PO purchased between</WorkbenchFilterGroupLabel>
               <div className="px-2 pb-2">
                 <DateRangePickerField
@@ -214,59 +181,38 @@ export function IncomingWorkspaceHeader({
                 </p>
               </div>
 
-              {showCarrierBreakdown ? (
-                <>
-                  <WorkbenchFilterDivider />
-                  <WorkbenchFilterGroupLabel>By carrier</WorkbenchFilterGroupLabel>
-                  <div className="mx-1 mb-1 overflow-hidden rounded-md ring-1 ring-inset ring-border-soft">
-                    <div className="grid grid-cols-[minmax(0,1fr)_2.25rem_2.75rem_2.25rem_2.25rem] items-center gap-x-1 bg-surface-canvas px-2 py-1 text-role-micro uppercase tracking-wide text-text-faint">
-                      <span>Carrier</span>
-                      <HoverTooltip label="In transit" asChild>
-                        <span className="text-right tabular-nums">Trans</span>
-                      </HoverTooltip>
-                      <HoverTooltip label="Tracking unavailable" asChild>
-                        <span className="text-right tabular-nums">Unav</span>
-                      </HoverTooltip>
-                      <HoverTooltip label="Delivered · not scanned" asChild>
-                        <span className="text-right tabular-nums">Deliv</span>
-                      </HoverTooltip>
-                      <HoverTooltip label="Carrier mismatch — carrier/number don’t match" asChild>
-                        <span className="text-right tabular-nums">Miss</span>
-                      </HoverTooltip>
-                    </div>
-                    {summary!.by_carrier!.map((c) => (
-                      <div
-                        key={c.carrier}
-                        className="grid grid-cols-[minmax(0,1fr)_2.25rem_2.75rem_2.25rem_2.25rem] items-center gap-x-1 border-t border-border-hairline px-2 py-1 text-role-caption"
-                      >
-                        <span className="truncate font-semibold text-text-muted">
-                          {c.carrier === 'UNKNOWN' ? 'Other' : c.carrier}
-                        </span>
-                        <span
-                          className={`text-right font-semibold tabular-nums ${c.in_transit ? 'text-blue-600' : 'text-text-faint'}`}
-                        >
-                          {c.in_transit}
-                        </span>
-                        <span
-                          className={`text-right font-semibold tabular-nums ${c.tracking_unavailable ? 'text-violet-600' : 'text-text-faint'}`}
-                        >
-                          {c.tracking_unavailable}
-                        </span>
-                        <span
-                          className={`text-right font-semibold tabular-nums ${c.delivered_unscanned ? 'text-emerald-600' : 'text-text-faint'}`}
-                        >
-                          {c.delivered_unscanned}
-                        </span>
-                        <span
-                          className={`text-right font-semibold tabular-nums ${c.carrier_mismatch ? 'text-red-600' : 'text-text-faint'}`}
-                        >
-                          {c.carrier_mismatch}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </>
-              ) : null}
+              <WorkbenchFilterDivider />
+
+              <WorkbenchFilterGroupLabel>Attention</WorkbenchFilterGroupLabel>
+              {TILES.map((tile) => {
+                const id = tile.state ?? 'all_issued';
+                const count = summary ? (summary[tile.key] as number | undefined) : undefined;
+                const active =
+                  tile.state == null ? filters.state === null : filters.state === tile.state;
+                return (
+                  <WorkbenchFilterMenuRow
+                    key={id}
+                    label={tile.label}
+                    count={typeof count === 'number' ? count : undefined}
+                    active={active}
+                    leading={
+                      <tile.icon
+                        className={`h-3.5 w-3.5 shrink-0 ${
+                          active ? 'text-blue-600' : TONE[tile.tone].iconInactive
+                        }`}
+                      />
+                    }
+                    onClick={() => {
+                      if (tile.state == null) {
+                        filters.setState(null);
+                      } else {
+                        filters.setState(filters.state === tile.state ? null : tile.state);
+                      }
+                      setFilterOpen(false);
+                    }}
+                  />
+                );
+              })}
 
               {filterHot ? (
                 <>
@@ -275,47 +221,55 @@ export function IncomingWorkspaceHeader({
                     label="Clear filters"
                     active={false}
                     onClick={() => {
-                      filters.clearFilters();
+                      clearWorkbenchFilters();
                       setFilterOpen(false);
                     }}
                   />
                 </>
               ) : null}
             </WorkbenchFilterPopover>
-
-            <PaneHeaderPagination
-              page={safePage}
-              pageSize={INCOMING_PAGE_SIZE}
-              total={total}
-              onPrev={() => setPage(safePage - 1)}
-              onNext={() => setPage(safePage + 1)}
-            />
           </>
         }
         trailing={
-          <div className="flex items-center gap-2">
-            {/* Per-staff column picker — the opt-in path back to the `optional`
-                tracks (Cond · Ch.) the lean default hides. House slot: first in
-                `trailing`, i.e. left of Import. */}
-            <GridFieldsMenu tableId="receiving" columns={INCOMING_GRID_COLUMNS} />
-            <IncomingChromeActions
-              onImportZoho={() => {
-                void sync.refreshZoho();
-              }}
-              onImportEbay={() => {
-                void sync.refreshMarketplace();
-              }}
-              onAdd={() => {
-                setAddOrderId('');
-                setAddOpen(true);
-              }}
-              importingZoho={sync.zohoRefreshing}
-              importingEbay={sync.marketplaceRefreshing}
-              canImportZoho
-              canImportEbay={universalIncoming && canAddEbay}
-              canAdd={canAddEbay}
-            />
-          </div>
+          <WorkbenchTrailingCluster
+            before={
+              <PaneHeaderPagination
+                page={safePage}
+                pageSize={INCOMING_PAGE_SIZE}
+                total={total}
+                onPrev={() => setPage(safePage - 1)}
+                onNext={() => setPage(safePage + 1)}
+              />
+            }
+            sort={
+              <QueueSortSwitch<IncomingSort>
+                sort={filters.sort}
+                onChange={filters.setSort}
+                options={INCOMING_SORT_OPTIONS}
+                ariaLabel="Sort incoming POs"
+              />
+            }
+            fields={<GridFieldsMenu tableId="receiving" columns={INCOMING_GRID_COLUMNS} />}
+            actions={
+              <IncomingChromeActions
+                onImportZoho={() => {
+                  void sync.refreshZoho();
+                }}
+                onImportEbay={() => {
+                  void sync.refreshMarketplace();
+                }}
+                onAdd={() => {
+                  setAddOrderId('');
+                  setAddOpen(true);
+                }}
+                importingZoho={sync.zohoRefreshing}
+                importingEbay={sync.marketplaceRefreshing}
+                canImportZoho
+                canImportEbay={universalIncoming && canAddEbay}
+                canAdd={canAddEbay}
+              />
+            }
+          />
         }
       />
 

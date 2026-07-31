@@ -9,11 +9,14 @@
  * the operator believes they are looking, and the scan-vs-lookup distinction
  * Phase 2 bought is spent. The escape to the bench must stay a LINK.
  *
- * ## 2. It relapses into document calm / lobotomized work chrome
+ * ## 2. It relapses into a second photo UI / Unbox CTA spam / lobotomized work chrome
  *
- * Intent pins (not frozen UI names): disposition truth, evidence at zero clicks,
- * single-actor provenance collapse somewhere in the tree, full width, empty ≠
- * fetch error for photos. Never require Unbox layout panels / CartonContextCard.
+ * Intent pins (not frozen UI names): disposition truth; photos via shared viewer
+ * SoT (`usePhotoGallery` + `PhotoViewerPortal`) from a header control — never a
+ * page-local EvidenceStage / lightbox; empty ≠ fetch error for photos; single-actor
+ * provenance collapse; full width; one quiet `openInUnboxHref` escape (no
+ * "Open in Unbox" marketing string). Never require Unbox layout panels /
+ * CartonContextCard.
  *
  * Run: `node --test --require ./scripts/register-server-only-shim.cjs --import tsx \
  *        src/components/receiving/inspector/carton-inspector.guard.test.ts`
@@ -80,7 +83,15 @@ test('the inspector never mounts the work editor or its terminal', () => {
       `${editor} is a work surface — the inspector must link to /unbox, not embed it`,
     );
   }
-  assert.ok(ALL.includes('openInUnboxHref'), 'the Open in Unbox escape is missing');
+  assert.ok(ALL.includes('openInUnboxHref'), 'the quiet work escape (openInUnboxHref) is missing');
+});
+
+test('no Open in Unbox marketing spam', () => {
+  assert.equal(
+    ALL.includes('Open in Unbox'),
+    false,
+    'findings/header must not repeat "Open in Unbox" — one quiet openInUnboxHref control only',
+  );
 });
 
 test('disposition truth — exceptions outrank lifecycle.done', () => {
@@ -99,15 +110,25 @@ test('disposition truth — exceptions outrank lifecycle.done', () => {
   );
 });
 
-test('evidence is visible at zero clicks, never behind a launcher', () => {
+test('photos use the shared viewer SoT, never a page-local stage', () => {
   assert.ok(
-    ALL.includes('PhotoThumb') || ALL.includes('photoUrl'),
-    'photos must render on the surface; this is an adjudication view',
+    ALL.includes('usePhotoGallery') && ALL.includes('PhotoViewerPortal'),
+    'photos must open via usePhotoGallery + PhotoViewerPortal (house viewer SoT)',
+  );
+  assert.equal(
+    ALL.includes('EvidenceStage'),
+    false,
+    'EvidenceStage (large preview + filmstrip) is a second photo UI — delete it',
   );
   assert.equal(
     ALL.includes('View Receiving Photos'),
     false,
-    'photos went back behind a launcher — claim evidence must be on screen',
+    'legacy launcher copy must not return',
+  );
+  assert.equal(
+    /role=["']dialog["']/.test(ALL),
+    false,
+    'never a local role="dialog" lightbox — mount PhotoViewerPortal instead',
   );
 });
 
@@ -119,7 +140,7 @@ test('a failed photo load never borrows the "no photos" copy', () => {
   );
   assert.ok(
     ALL.includes('photosError') || ALL.includes('errored'),
-    'the evidence strip must branch errored vs empty, not collapse them',
+    'the photos control must branch errored vs empty, not collapse them',
   );
 });
 

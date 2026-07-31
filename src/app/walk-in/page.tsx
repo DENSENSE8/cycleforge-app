@@ -1,42 +1,40 @@
 'use client';
 
-import { Suspense } from 'react';
-import { WalkInHistoryHub } from '@/components/walk-in/WalkInHistoryHub';
-import { WalkInHistorySidebar } from '@/components/walk-in/WalkInHistorySidebar';
-import { RouteShell } from '@/design-system/components/RouteShell';
+import { Suspense, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
-import { useRealtimeInvalidation } from '@/hooks/useRealtimeInvalidation';
 import { useWalkInTaskRedirect } from '@/hooks/useWalkInTaskRedirect';
 import { useSurfaceParamHygiene } from '@/hooks/useSurfaceParamHygiene';
+import { retiredWalkInHistoryTarget } from '@/lib/dashboard/dashboard-domains';
 
 /**
- * `/walk-in` — front-desk history Monitor (recent repairs / sales / pickups).
- * Active intake & processing live on Receiving Walk-In (`/pickup?job=`).
- * Legacy task deep-links (`?mode=sales`, `?new=true`, `?openRepair=`) redirect
- * to the station via `useWalkInTaskRedirect`.
+ * `/walk-in` — retired front door for Sales history.
+ *
+ * History lives on `/dashboard?mode=sales` (Local Pickup: `?mode=pickup`).
+ * Intake deep-links (`?new=` / `?openRepair=`) still redirect to the Walk-In
+ * station via {@link useWalkInTaskRedirect} before the history redirect runs.
+ *
+ * Client replace (not a permanent Next `redirects()` 308) so bookmarks keep
+ * `tab` / mode without trapping bad params — same class as `?mode=search` →
+ * `/search` on the dashboard page.
  */
-function WalkInPageContent() {
+function WalkInRedirectContent() {
   // Boundary-parse on arrival. WALK_IN_ROUTE_PARAMS declares the legacy
   // deep-link keys (`openRepair`, `new`, `search`, `tab`) precisely so this hook
-  // cannot strip them out from under the redirect below.
+  // cannot strip them out from under the redirects below.
   useSurfaceParamHygiene();
-  const redirecting = useWalkInTaskRedirect();
-  useRealtimeInvalidation({ repair: true, walkIn: true });
+  const redirectingToStation = useWalkInTaskRedirect();
+  const router = useRouter();
+  const searchParams = useSearchParams();
 
-  if (redirecting) {
-    return (
-      <div className="flex h-full w-full items-center justify-center bg-surface-card">
-        <LoadingSpinner size="lg" className="text-orange-500" />
-      </div>
-    );
-  }
+  useEffect(() => {
+    if (redirectingToStation) return;
+    router.replace(retiredWalkInHistoryTarget(searchParams));
+  }, [redirectingToStation, router, searchParams]);
 
   return (
-    <div className="flex h-full w-full bg-surface-card">
-      <RouteShell
-        actions={<WalkInHistorySidebar />}
-        history={<WalkInHistoryHub />}
-      />
+    <div className="flex h-full w-full items-center justify-center bg-surface-card">
+      <LoadingSpinner size="lg" className="text-emerald-600" />
     </div>
   );
 }
@@ -50,7 +48,7 @@ export default function WalkInPage() {
         </div>
       }
     >
-      <WalkInPageContent />
+      <WalkInRedirectContent />
     </Suspense>
   );
 }

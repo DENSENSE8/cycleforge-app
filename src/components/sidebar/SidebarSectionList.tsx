@@ -10,6 +10,15 @@ export interface SidebarSection<TId extends string = string> {
   label: string;
   description?: string;
   icon?: ReactNode;
+  /**
+   * Optional override for the leading-icon wrapper color. When set, replaces the
+   * default active/inactive blue/faint tokens (e.g. Incoming TILES tone accents).
+   */
+  iconClassName?: string;
+  /** Trailing tabular count — ops facet rails (Incoming, future Media day rows). */
+  count?: number;
+  /** Escape hatch when count isn't enough (chips, chevrons). Wins over `count`. */
+  trailing?: ReactNode;
   /** Optional group label — rows are rendered grouped, with the label shown as a small uppercase heading above the first row of each group. */
   group?: string;
   /** Permission string required to see this row. Filtering is done by the caller. */
@@ -25,7 +34,8 @@ interface SidebarSectionListProps<TId extends string = string> {
   /**
    * Horizontal padding for rows + group headers. Defaults to the shared
    * {@link SIDEBAR_GUTTER}. Override (e.g. `px-3`) to line rows up with a
-   * MasterNavHeader above the panel.
+   * MasterNavHeader above the panel. Pass `px-0` when the list sits inside a
+   * shell body that already applies {@link SIDEBAR_GUTTER}.
    */
   gutterClassName?: string;
   /**
@@ -109,6 +119,18 @@ export function SidebarSectionList<TId extends string = string>({
         }
         const s = item.section!;
         const isActive = active === s.id;
+        const trailing =
+          s.trailing ??
+          (typeof s.count === 'number' ? (
+            <span
+              className={cn(
+                'ml-auto shrink-0 tabular-nums text-role-micro uppercase tracking-widest',
+                isActive ? 'text-blue-700' : 'text-text-soft',
+              )}
+            >
+              {s.count}
+            </span>
+          ) : null);
         return (
           <button
             key={s.id}
@@ -136,7 +158,7 @@ export function SidebarSectionList<TId extends string = string>({
                 className={cn(
                   'flex w-5 shrink-0 justify-center',
                   !ops && 'mt-0.5',
-                  isActive ? 'text-blue-600' : 'text-text-faint',
+                  s.iconClassName ?? (isActive ? 'text-blue-600' : 'text-text-faint'),
                 )}
               >
                 {s.icon}
@@ -162,6 +184,7 @@ export function SidebarSectionList<TId extends string = string>({
                 </span>
               )}
             </span>
+            {trailing}
           </button>
         );
       })}

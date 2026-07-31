@@ -2,6 +2,20 @@
 
 Silent-failure traps specific to this stack (Next 16, Turbopack dev, Tailwind). Summarized in root `CLAUDE.md`.
 
+## Tailwind v4 (PostCSS + `@config` bridge)
+
+- CSS entry: `src/app/globals.css` uses `@import "tailwindcss"`, then
+  `@config "../../tailwind.config.ts"`, then explicit `@source` globs (incl. `src/lib`).
+- PostCSS: `postcss.config.mjs` → `@tailwindcss/postcss` only (no `autoprefixer` —
+  Lightning CSS handles prefixes).
+- **Do not** use v3 “function colors” (`themed()`). Theme colors must be plain
+  `'var(--ds-…)'` strings; `/opacity` uses `color-mix` natively.
+- CF Type + spacing-intent plugins still live in `tailwind.config.ts` via `@config`.
+  Ship-before-adoption classes use `@source inline("…")` (replaces v3 `safelist`).
+- Content / `@source` changes still need a **dev server restart** (operator owns `:3050`).
+- Optional follow-up: migrate `theme.extend` into native `@theme` —
+  [`docs/todo/tailwind-v4-SPIKE.md`](../../docs/todo/tailwind-v4-SPIKE.md).
+
 ## tailwind.config.ts must import values modules as `.mjs` (z-index, spacing)
 
 - `tailwind.config.ts` imports the z-index and spacing scales from
@@ -12,12 +26,23 @@ Silent-failure traps specific to this stack (Next 16, Turbopack dev, Tailwind). 
 - Values live in the `.mjs` module; the `.ts` twin re-exports with types.
 - A bare extensionless import can also fail under Turbopack dev (silent missing `z-*` utilities).
 
-## Tailwind content globs: a class used only in an un-scanned file renders invisible
+## Tailwind `@source` / content: a class used only in an un-scanned file renders invisible
 
-- A Tailwind class referenced **only** inside a file not covered by the `content` globs (this bit us when logic moved
-  into newer `src/lib` paths, e.g. `outbound-state.ts`) is silently not generated — no error, the style just doesn't apply.
-- Prefer already-generated shades. If you must add a class in a new path, update `content`/`safelist`
-  and **restart the dev server** (glob changes aren't picked up hot).
+- A Tailwind class referenced **only** inside a file not covered by `@source` (or the
+  legacy `content` array) is silently not generated — no error, the style just doesn't apply.
+  This bit us when logic moved into `src/lib` (e.g. `outbound-state.ts`).
+- Prefer already-generated shades. If you must add a class in a new path, update `@source`
+  in `src/app/globals.css` (keep `content` in `tailwind.config.ts` in parity) and
+  **restart the dev server**.
+
+## Motion stack: one framer-motion major
+
+- App / DS code imports **`framer-motion`** (AnimatePresence, `motion`, `useReducedMotion`, …).
+- **`motion` + `motion-plus`** stay in package.json only so `AnimateNumber` can load via
+  `@/design-system/motion` — feature code never imports `motion` / `motion-plus` / `@motionplus/*` directly.
+- Keep a **single** `framer-motion` major in the lockfile (today `^12.42.2`). Dual majors
+  (e.g. app on 11 + nested 12 under `motion`) risk split React context and broken nested
+  `AnimatePresence`. After dependency bumps: `pnpm why framer-motion` → exactly one version.
 
 ## Bundle altitude: keep light helpers out of heavy modules (and barrels honest)
 

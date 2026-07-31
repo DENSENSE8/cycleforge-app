@@ -45,7 +45,7 @@ const NAV_COLUMN_OPEN = '[data-sidebar-nav-column][data-open="true"]';
 /** GlobalHeader's sidebar control — the leftmost header button. */
 const SIDEBAR_TOGGLE = 'header button';
 /** The spine's own width token (`SIDEBAR_SPINE_WIDTH_PX`). */
-const SPINE_WIDTH = 360;
+const SPINE_WIDTH = 240;
 /**
  * The in-content context panel, by IDENTITY rather than by width.
  *
@@ -53,8 +53,8 @@ const SPINE_WIDTH = 360;
  * arbitrary Tailwind width, so restyling the panel silently broke a test about
  * whether it renders at all. Note the width is NOT the spine's
  * `SIDEBAR_SPINE_WIDTH`: the nav spine and the context panel are two different
- * measurements that happen to both be 360px today, and binding the test to
- * either class would re-create the same coupling in a new place.
+ * measurements (spine 240px, panel 360px), and binding the test to either
+ * class would re-create the same coupling in a new place.
  */
 const CONTEXT_PANEL = 'main [data-context-panel]';
 

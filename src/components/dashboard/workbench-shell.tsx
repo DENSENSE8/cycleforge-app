@@ -25,11 +25,14 @@ import { MONITOR_SECTION_CARD_SCROLL_CLASS } from '@/design-system/components/mo
 // Dependency-free geometry module on purpose — importing the capsule component
 // itself would pull framer-motion + the icon set into every layout consumer.
 import { SELECTION_BAR_SCROLL_INSET } from '@/design-system/components/selection-bar-geometry';
+import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 
 /** Centered max-width gutter column — the one horizontal-inset SoT (chrome + body share it). */
 export const WORKBENCH_GUTTERS = 'mx-auto w-full max-w-[1440px] min-w-0 px-4 sm:px-6 lg:px-8';
-/** Chrome-slot wrapper: the pinned header band lives here (outside the scroll port). */
+/** Chrome-slot wrapper: the pinned header band lives here (outside the scroll port).
+ *  Unbox / Triage beside a floated scan dock use this same column so the 40px
+ *  band face shares a Y row with `receivingScanBandClass` (panel outer `m-2`). */
 export const WORKBENCH_CHROME_COLUMN = cn(WORKBENCH_GUTTERS, 'py-2');
 /** Scroll-body column: KPI strip (scrolls away) then the framed ops table. */
 export const WORKBENCH_BODY_COLUMN = cn('relative flex flex-col', WORKBENCH_GUTTERS, 'pb-8 pt-4');
@@ -104,6 +107,63 @@ export function WorkbenchTablePane({
 type TabSwitchTabs = React.ComponentProps<typeof TabSwitch>['tabs'];
 type TabSwitchSolidTone = React.ComponentProps<typeof TabSwitch>['solidTone'];
 
+/**
+ * Trailing Display & Actions cluster — the one SoT for sort / Fields / Import / Add.
+ *
+ * Slot order (honest absence OK): `before` → Sort → Fields → `actions` → `after`.
+ * Pass as {@link WorkbenchChromeHeader} `trailing`. Never park Fields in `right`
+ * filters; never invent an in-card `TableActionBar` (sticky docking law).
+ *
+ * @see docs/todo/table-action-bar-fields-PLAN.md
+ */
+interface WorkbenchTrailingClusterProps {
+  /** Escapes that precede display prefs (e.g. Incoming pagination). */
+  before?: ReactNode;
+  /** Quiet display sort — {@link QueueSortSwitch}. */
+  sort?: ReactNode;
+  /** Per-staff column picker — {@link GridFieldsMenu}. */
+  fields?: ReactNode;
+  /** Solid CTAs — Import / Add (or surface chrome-actions composer). */
+  actions?: ReactNode;
+  /** Escapes that follow CTAs (e.g. Catalog Refresh). */
+  after?: ReactNode;
+  /**
+   * Leading hairline that visually separates this cluster from `right` filters.
+   * Default true when any slot is present.
+   */
+  divide?: boolean;
+  className?: string;
+}
+
+export function WorkbenchTrailingCluster({
+  before,
+  sort,
+  fields,
+  actions,
+  after,
+  divide,
+  className,
+}: WorkbenchTrailingClusterProps) {
+  const hasContent = Boolean(before || sort || fields || actions || after);
+  if (!hasContent) return null;
+  const showDivide = divide ?? true;
+  return (
+    <div className={cn('flex shrink-0 items-center gap-2', className)}>
+      {showDivide ? (
+        <span
+          aria-hidden
+          className="hidden h-4 w-px shrink-0 bg-border-soft sm:block"
+        />
+      ) : null}
+      {before}
+      {sort}
+      {fields}
+      {actions}
+      {after}
+    </div>
+  );
+}
+
 export interface WorkbenchChromeHeaderProps {
   /**
    * Lifecycle tab rail. Optional: a surface whose facets live in its resident
@@ -125,11 +185,27 @@ export interface WorkbenchChromeHeaderProps {
   right?: ReactNode;
   /**
    * Far-right chrome slot — always after the table-controls portal (e.g. Import
-   * / Add CTAs). Owned by the workspace so it stays top-right even before a
-   * table mounts or when the portal is empty. Row select lives in the table
-   * left gutter, not here.
+   * / Add CTAs). Pass {@link WorkbenchTrailingCluster} so Sort → Fields →
+   * Import → Add stays one skeleton with honest absence. Owned by the workspace
+   * so it stays top-right even before a table mounts or when the portal is
+   * empty. Row select lives in the table left gutter, not here.
    */
   trailing?: ReactNode;
+  /**
+   * Tab rail sizing forwarded to `TabSwitch`. Default `hug` keeps solid tabs at
+   * `px-3 py-2` so the left cluster matches the right `h-8` icon row’s edge
+   * inset; pass `fill` only for a rare full-bleed facet strip.
+   */
+  tabsFit?: 'fill' | 'hug';
+  /**
+   * Face density. `default` — content-driven card (`p-1.5` + md solid-hug tabs
+   * with their own bordered rail). `band` — **single-surface 40px scan-grid
+   * face** (`h-10 p-0.5` + `TabSwitch size="sm"` on a flat rail — 2px inset
+   * so the active pill nests concentrically inside the card shell; no nested
+   * pill card). Compose `band` when this chrome sits beside a station scan
+   * dock (Unbox + Triage).
+   */
+  density?: 'default' | 'band';
   /** Ref for the table-toolbar portal target (tables `createPortal` into it). */
   controlsSlotRef?: Ref<HTMLDivElement>;
   /** Extra attrs for the portal div — e.g. `{ 'data-outbound-controls': '' }`. */
@@ -151,14 +227,25 @@ export function WorkbenchChromeHeader({
   search,
   right,
   trailing,
+  tabsFit = 'hug',
+  density = 'default',
   controlsSlotRef,
   controlsSlotProps,
   className,
 }: WorkbenchChromeHeaderProps) {
+  const band = density === 'band';
   return (
     <div
       className={cn(
-        'flex min-w-0 shrink-0 items-center gap-3 rounded-2xl border border-border-soft bg-surface-card px-2.5 py-1.5 shadow-sm',
+        // default: p-1.5 matches the solid TabSwitch rail’s own p-1 so left
+        // tabs and right h-8 icon controls share one outer inset.
+        // band: h-10 p-0.5 — 2px inset so the active pill sits inside the
+        // shell with a concentric radius (nestedCorner card/0.5). items-stretch
+        // so TabSwitch fills the inset face; the right cluster re-centers
+        // its own h-8 icons.
+        'flex min-w-0 shrink-0 gap-2 border border-border-soft bg-surface-card shadow-sm',
+        band ? 'h-10 items-stretch p-0.5' : 'items-center p-1.5',
+        cornerClass('card'),
         className,
       )}
     >
@@ -182,12 +269,22 @@ export function WorkbenchChromeHeader({
         // `w-max` so tabs keep their natural width instead of compressing, and
         // scrolls the active tab into view. Hand-rolling `overflow-x-auto` here
         // instead would leave the track at `w-full`, squeezing labels mid-word.
+        // Keep scrollable with hug so long rails (Media Library) still overflow
+        // safely; hug prevents `min-w-full` stretch on short rails (Incoming).
         scrollable
-        className="w-auto min-w-0 shrink"
+        fit={tabsFit}
+        size={band ? 'sm' : 'md'}
+        className={cn('w-auto min-w-0 shrink', band && 'h-full')}
         variant="solid"
         solidTone={solidTone}
         countStyle="plain"
-        railClassName="rounded-full border border-border-default bg-surface-card p-1 shadow-sm"
+        // band: flat track inside the outer card — no nested pill card
+        // (Linear single-surface). default: bordered hug rail as before.
+        railClassName={
+          band
+            ? `h-full border-0 bg-transparent p-0 shadow-none ${cornerClass('card')}`
+            : 'rounded-full border border-border-default bg-surface-card p-1 shadow-sm'
+        }
       />
       ) : null}
 

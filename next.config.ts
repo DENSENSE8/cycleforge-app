@@ -76,6 +76,10 @@ const nextConfig: NextConfig = {
     allowedDevOrigins: ['*.trycloudflare.com', '*.ngrok-free.app', '192.168.*', '*.michaelgarisek.com'],
     experimental: {
         webpackMemoryOptimizations: true,
+        // Cap static/page-data workers. Vercel Enhanced (8 cores) otherwise
+        // fans out ~7 workers and OOM-kills during "Collecting page data"
+        // (routes-manifest missing is the symptom). Prefer slower + green.
+        cpus: 2,
         optimizePackageImports: [
             'framer-motion',
             'lucide-react',

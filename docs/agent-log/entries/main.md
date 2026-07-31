@@ -518,3 +518,13 @@
 - `2026-07-30T05:51:37.249Z` · **main** · main · agent · Phase 5 delivered-not-unboxed: claim-window presentation SoT + single urgency-ranked deadline token in Incoming status cell (75px overflow caught by live measurement) — done
 - `2026-07-30T05:59:40.449Z` · **main** · main · agent · wrote url-isolation-session-HANDOFF.md as the entry point for this session (indexes the two detail docs; records 4 live defects, 3 reversed conclusions, decisions owed) — done
 - `2026-07-30T06:05:50.604Z` · **main** · main · agent · KL station-safety: Phase 3 reads closed + Phase 4a/4b (absence — + Reconcile Monitor)
+- `2026-07-30T20:35:30.320Z` · **main** · main · agent · KL station-safety Phase 5: framer-motion 12 single major + Tailwind v4 spike doc
+- `2026-07-30T20:44:00.219Z` · **main** · main · agent · Add 'Delivered · not unboxed' to the Incoming STATUS filter — lane was reachable only by hand-typed URL param — done
+- `2026-07-30T21:21:52.457Z` · **main** · main · agent · Tailwind v4: 4.3.3 + @tailwindcss/postcss, @config bridge, drop themed() colors
+- `2026-07-30T23:45:36.900Z` · **main** · main · agent · Sheet-import Review queue smoke: sync enqueued 13 noItemNumber exceptions; resolved #6→order 7753; re-sync no resurface; UI tab lists queue — done
+- `2026-07-31T01:47:44.000Z` · **main** · main · agent · Dashboard IA row G closed (docs); Sales history → /dashboard?mode=sales|pickup; drop Sales L1; /walk-in redirects — done
+- `2026-07-31T02:27:13.334Z` · **main** · main · agent · Main nav Overview/Stock/Library nest + rename Media library→Media; keep under Library — done
+- `2026-07-31T02:29:33.440Z` · **main** · main · agent · fix(receiving): batch put-away Serial journey chips use serial refs, not bin ARTS — success
+- `2026-07-31T03:05:46.438Z` · **main** · main · agent · Hybrid spine: Stock Vercel drill-in; Stations/Main stay static nests; Gemini briefing — done
+- `2026-07-31T03:56:31.499Z` · **main** · main · agent · Unbox Ticket: denser embedded SupportTicketDetail type + in-flow push column (detail-stack surface); left RightRailHost — done
+- `2026-07-31T04:14:25.081Z` · **main** · main · agent · Pin Unbox More details to pane outer host so Ticket push does not slide icons left — done

@@ -64,7 +64,7 @@ import { cn } from '@/utils/_cn';
  *   close for the scan hotkey because it was covering the bar the hotkey
  *   focuses. A push column never covers it — and auto-closing would reflow the
  *   bench at the exact instant the operator scans, which is strictly worse than
- *   the 360px it costs them.
+ *   the spine width it costs them.
  *
  * The mobile drawer is untouched: it keeps the real overlay contract
  * (scrim + scroll lock) it always had, in `ResponsiveLayout`.

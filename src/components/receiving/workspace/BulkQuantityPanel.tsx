@@ -2,7 +2,9 @@
 
 import { useState, type ReactNode } from 'react';
 import { Button } from '@/design-system/primitives';
+import { focusRing } from '@/design-system/tokens/focus-ring';
 import { conditionLabel } from '@/lib/conditions';
+import { cn } from '@/utils/_cn';
 import { ConditionPills } from './ConditionPills';
 
 interface Props {
@@ -26,6 +28,8 @@ interface Props {
  * Qty roll-up surface for high-qty identical lines (AliExpress-style bulk).
  * One composition: grade + count (+ optional 2-way condition split). Zero
  * per-unit DOM rows — stamps via the parent's mark helpers.
+ *
+ * Stamp row anatomy: qty display left · all actions justify-end.
  */
 export function BulkQuantityPanel({
   quantityExpected,
@@ -55,8 +59,13 @@ export function BulkQuantityPanel({
     ? conditionLabel(secondaryGrade, 'pill')
     : null;
 
+  const applyLabel =
+    splitOpen && remainder > 0 && secondaryLabel
+      ? `Apply ${primaryCount} + ${remainder} ${secondaryLabel}`
+      : `Apply to ${primaryCount}`;
+
   return (
-    <div className="min-w-0 space-y-3 px-1" data-bulk-quantity-panel>
+    <div className="min-w-0 space-y-2 px-1" data-bulk-quantity-panel>
       <div className="flex min-w-0 items-start gap-2">
         <div className="min-w-0 flex-1">
           <ConditionPills
@@ -70,11 +79,10 @@ export function BulkQuantityPanel({
         {noSerialControl ? <div className="shrink-0">{noSerialControl}</div> : null}
       </div>
 
-      <div className="flex min-w-0 flex-wrap items-end gap-3">
-        <label className="flex min-w-0 flex-col gap-1">
-          <span className="text-role-micro font-semibold uppercase tracking-widest text-text-soft">
-            Quantity
-          </span>
+      {/* One-row stamp: qty display left · all actions justify-end */}
+      <div className="flex min-w-0 items-center gap-2">
+        <label className="inline-flex min-w-0 shrink-0 items-center gap-2">
+          <span className="sr-only">Quantity</span>
           <input
             type="number"
             inputMode="numeric"
@@ -87,19 +95,86 @@ export function BulkQuantityPanel({
               if (!Number.isFinite(n)) return;
               setPrimaryCount(Math.max(1, Math.min(expected, n)));
             }}
-            className="h-10 w-24 rounded-lg border border-border-soft bg-surface-card px-3 font-mono text-role-data tabular-nums text-text-default focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40"
+            className={cn(
+              'h-9 w-20 rounded-lg border border-border-soft bg-surface-card px-2.5',
+              'font-mono text-role-data tabular-nums text-text-default',
+              'disabled:cursor-not-allowed disabled:bg-surface-canvas disabled:text-text-faint',
+              focusRing('field', 'accent'),
+            )}
           />
+          <span className="whitespace-nowrap text-role-caption text-text-soft">
+            of{' '}
+            <span className="font-mono tabular-nums text-text-default">{expected}</span>
+          </span>
         </label>
-        <p className="pb-2 text-role-caption text-text-soft">
-          of <span className="font-mono tabular-nums text-text-default">{expected}</span> expected
-        </p>
+
+        <div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-x-1 gap-y-1">
+          {splitOpen ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              disabled={disabled}
+              onClick={() => {
+                setSplitOpen(false);
+                setSecondaryGrade(null);
+                setPrimaryCount(expected);
+              }}
+            >
+              Clear split
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              disabled={disabled || expected < 2}
+              onClick={() => {
+                setSplitOpen(true);
+                if (primaryCount >= expected) {
+                  setPrimaryCount(Math.max(1, expected - 1));
+                }
+              }}
+            >
+              Split remainder by condition
+            </Button>
+          )}
+
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            disabled={disabled}
+            onClick={onTrackEachUnit}
+          >
+            Track each unit
+          </Button>
+
+          <Button
+            type="button"
+            variant="primary"
+            size="md"
+            className="shrink-0"
+            disabled={disabled || !canApply}
+            onClick={() => {
+              if (!primaryGrade) return;
+              onApply({
+                primaryGrade,
+                primaryCount,
+                secondaryGrade: splitOpen && remainder > 0 ? secondaryGrade : null,
+              });
+            }}
+          >
+            {applyLabel}
+          </Button>
+        </div>
       </div>
 
       {splitOpen ? (
-        <div className="space-y-2 rounded-lg border border-border-soft bg-surface-canvas/60 px-3 py-2.5">
-          <p className="text-role-micro font-semibold uppercase tracking-widest text-text-soft">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <span className="text-role-micro font-semibold uppercase tracking-widest text-text-soft">
             Remainder · {remainder} as
-          </p>
+          </span>
           {remainder === 0 ? (
             <p className="text-role-caption text-text-faint">
               Lower the primary quantity to leave a remainder for a second grade.
@@ -107,68 +182,8 @@ export function BulkQuantityPanel({
           ) : (
             <ConditionPills value={secondaryGrade} onChange={setSecondaryGrade} />
           )}
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            disabled={disabled}
-            onClick={() => {
-              setSplitOpen(false);
-              setSecondaryGrade(null);
-              setPrimaryCount(expected);
-            }}
-          >
-            Clear split
-          </Button>
         </div>
-      ) : (
-        <Button
-          type="button"
-          size="sm"
-          variant="ghost"
-          disabled={disabled || expected < 2}
-          onClick={() => {
-            setSplitOpen(true);
-            if (primaryCount >= expected) {
-              setPrimaryCount(Math.max(1, expected - 1));
-            }
-          }}
-        >
-          Split remainder by condition
-        </Button>
-      )}
-
-      <div className="flex min-w-0 flex-wrap items-center gap-2">
-        <Button
-          type="button"
-          variant="primary"
-          size="md"
-          disabled={disabled || !canApply}
-          onClick={() => {
-            if (!primaryGrade) return;
-            onApply({
-              primaryGrade,
-              primaryCount,
-              secondaryGrade: splitOpen && remainder > 0 ? secondaryGrade : null,
-            });
-          }}
-        >
-          Apply to {primaryCount}
-          {splitOpen && remainder > 0 && secondaryLabel
-            ? ` + ${remainder} ${secondaryLabel}`
-            : ''}{' '}
-          units
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="md"
-          disabled={disabled}
-          onClick={onTrackEachUnit}
-        >
-          Track each unit
-        </Button>
-      </div>
+      ) : null}
     </div>
   );
 }

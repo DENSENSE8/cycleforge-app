@@ -134,6 +134,17 @@ export function useReceivingModeContext(): ReceivingModeState {
     searchParams.get('staff') ?? searchParams.get('staffId'),
   );
   const listSearch = searchParams.get('search')?.trim() ?? '';
+  const ustageRaw = (searchParams.get('ustage') || '').trim().toLowerCase();
+  const queueStage: 'staged' | 'unstaged' | null =
+    ustageRaw === 'staged' || ustageRaw === 'unstaged' ? ustageRaw : null;
+  const ulaneRaw = (searchParams.get('ulane') || '').trim().toUpperCase();
+  const queueLane: 'PO_STOCKOUT' | 'PO_STANDARD' | 'RETURN' | 'HOLD' | null =
+    ulaneRaw === 'PO_STOCKOUT'
+    || ulaneRaw === 'PO_STANDARD'
+    || ulaneRaw === 'RETURN'
+    || ulaneRaw === 'HOLD'
+      ? ulaneRaw
+      : null;
 
   // Single bag of parsed URL state handed to the active descriptor. Memoized so
   // the query key / params stay referentially stable across unrelated re-renders.
@@ -154,6 +165,8 @@ export function useReceivingModeContext(): ReceivingModeState {
       isDeliveredNotUnboxedFacet,
       staffFilterId,
       listSearch,
+      queueStage,
+      queueLane,
     }),
     [
       historySearch,
@@ -171,6 +184,8 @@ export function useReceivingModeContext(): ReceivingModeState {
       isDeliveredNotUnboxedFacet,
       staffFilterId,
       listSearch,
+      queueStage,
+      queueLane,
     ],
   );
 

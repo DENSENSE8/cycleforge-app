@@ -27,6 +27,12 @@ export const framerDuration = {
   stationAddedBadge: 0.18,
   /** Modal scrim fade — aligns with CSS `motionDurations.fast` */
   overlayScrim: 0.15,
+  /**
+   * Master-nav Stock drill swap (root ⇄ Stock children) — opacity-only,
+   * ≤150ms. Horizontal slide on a 240px push spine is too heavy for
+   * repetitive enterprise jumps. Pair with `framerPresence.spineDrill`.
+   */
+  spineDrill: 0.12,
   /** Table row enter/exit */
   tableRowMount: 0.22,
   /** Sidebar rail CRUD enter/exit — small left slide (scan in / dismiss out) */
@@ -87,6 +93,12 @@ export const framerTransition = {
   /** Workbench right-pane / detail crossfade — pair with `framerPresence.workbenchPane` */
   workbenchPaneMount: {
     duration: framerDuration.workbenchPaneMount,
+    ease: motionBezier.easeOut,
+  } satisfies Transition,
+
+  /** Master-nav Stock drill list swap — pair with `framerPresence.spineDrill` */
+  spineDrill: {
+    duration: framerDuration.spineDrill,
     ease: motionBezier.easeOut,
   } satisfies Transition,
 
@@ -512,6 +524,19 @@ export const framerPresence = {
     exit: { opacity: 0, y: -6 },
   },
   /**
+   * Master-nav Stock drill (root map ⇄ Stock children) — PURE opacity. No x/y
+   * on a 240px push spine (Gemini: fast crossfade or instant; horizontal
+   * slide feels heavy for repetitive ops jumps). Pair with
+   * `framerTransition.spineDrill`; consume via `useMotionPresence` /
+   * `useMotionTransition`. Auto-drill must not steal focus — see
+   * `SidebarNavList` + `MasterNav`.
+   */
+  spineDrill: {
+    initial: { opacity: 0 },
+    animate: { opacity: 1 },
+    exit: { opacity: 0 },
+  },
+  /**
    * Global detail-stack overlay — floating card near the top-right edge.
    * Slides IN from the right (translating left into view) and OUT back to the
    * right; opacity + x transform only (GPU-composited). Pair with
@@ -712,7 +737,7 @@ export const framerTransitionMobile = {
   /** Camera exit — faster for responsiveness */
   cameraExit: {
     duration: framerDurationMobile.cameraExit,
-    ease: [0.4, 0, 1, 1] as readonly number[],
+    ease: [0.4, 0, 1, 1] as const,
   } satisfies Transition,
 
   /** Scan success — quick pulse feedback */

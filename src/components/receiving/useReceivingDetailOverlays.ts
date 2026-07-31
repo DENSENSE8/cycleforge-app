@@ -1,14 +1,23 @@
 'use client';
 
 /**
- * Overlay state for `/receiving`: Incoming-mode details slide-over only.
- *
- * Carton "look" navigates to `/carton/[id]` via `dispatchReceivingDetailsOverlay`
- * (decision 2a) — editable ReceivingDetailsStack is no longer mounted here.
+ * Overlay state for `/receiving` / `/unbox` / `/triage`: the carton details
+ * stack (with lazy enrich) and the Incoming-mode details slide-over. Owns the
+ * `receiving-open-details-overlay` bridge, the Incoming row-select → panel
+ * bridge, and the mode-flip cleanup.
  */
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from '@/lib/toast';
+import { useAblyChannel } from '@/hooks/useAblyChannel';
+import { getStationChannelName, safeChannelName } from '@/lib/realtime/channels';
+import { useAuth } from '@/contexts/AuthContext';
+import {
+  fetchReceivingDetailsEnrich,
+  receivingDetailsInstantSeed,
+} from '@/lib/receiving/receiving-details-overlay';
+import type { ReceivingDetailsLog } from '@/components/station/receiving-details-log';
+import type { ReceivingDetailsOverlayDetail } from '@/utils/events';
 import {
   shipmentIdFromDeliveredUnscannedRow,
   type ReceivingLineRow,
@@ -24,8 +33,12 @@ export interface IncomingDetailsTarget {
 }
 
 export interface ReceivingDetailOverlays {
+  overlayLog: ReceivingDetailsLog | null;
+  setOverlayLog: React.Dispatch<React.SetStateAction<ReceivingDetailsLog | null>>;
   incomingDetails: IncomingDetailsTarget | null;
   setIncomingDetails: React.Dispatch<React.SetStateAction<IncomingDetailsTarget | null>>;
+  /** Re-fetch + merge the open overlay log. */
+  enrichOverlayLog: (receivingId: number) => Promise<void>;
 }
 
 export function useReceivingDetailOverlays(
@@ -33,10 +46,59 @@ export function useReceivingDetailOverlays(
   /** Incoming POS vs Email Triage (`?incview=`). Email must not keep a stale PO panel. */
   incomingView: 'pos' | 'email' = 'pos',
 ): ReceivingDetailOverlays {
+  const [overlayLog, setOverlayLog] = useState<ReceivingDetailsLog | null>(null);
   // Incoming-mode details panel — populated when a row is selected in
   // mode=incoming. {po_id, po_number} so the panel renders its header label
   // immediately, then re-keys its details query on po_id change.
   const [incomingDetails, setIncomingDetails] = useState<IncomingDetailsTarget | null>(null);
+
+  const overlayLogIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    overlayLogIdRef.current = overlayLog?.id ?? null;
+  }, [overlayLog?.id]);
+
+  const enrichOverlayLog = useCallback(async (receivingId: number) => {
+    try {
+      const result = await fetchReceivingDetailsEnrich(receivingId);
+      if (overlayLogIdRef.current !== String(receivingId)) return;
+
+      if (result.kind === 'local_pickup') {
+        // No parallel pickup review UI — close the carton seed. Reprint/edit
+        // goes through Unbox crossfade + History SoTs.
+        setOverlayLog(null);
+        return;
+      }
+      if (result.kind === 'missing') return;
+
+      setOverlayLog((prev) =>
+        prev?.id === String(receivingId) ? { ...prev, ...result.log } : prev,
+      );
+    } catch {
+      // Keep the instant seed visible when enrichment fails.
+    }
+  }, []);
+
+  // Keep the open carton overlay LIVE: `unboxed_at`/`received_at` and the
+  // Progress stepper are seeded into `overlayLog` state, so a mutation elsewhere
+  // (condition edit, serial scan, receive, unbox acknowledgement) that stamps a
+  // milestone must re-enrich the open panel — otherwise it shows the stale seed
+  // until the operator hits Refresh. The server publishes `receiving-log.changed`
+  // (carton id as `rowId`) on every such write; re-enrich when it matches the
+  // open overlay. Ably echoes to the publishing client, so a same-browser edit
+  // updates too.
+  const { user } = useAuth();
+  const stationChannel = safeChannelName(() => getStationChannelName(user!.organizationId));
+  useAblyChannel(
+    stationChannel,
+    'receiving-log.changed',
+    (msg: { data?: { rowId?: string | number | null } }) => {
+      const rowId = msg?.data?.rowId != null ? String(msg.data.rowId) : '';
+      if (rowId && rowId === overlayLogIdRef.current) {
+        void enrichOverlayLog(Number(rowId));
+      }
+    },
+    !!stationChannel && overlayLog != null,
+  );
 
   // Incoming-mode row select → open the IncomingDetailsPanel overlay. Listens on
   // the same `receiving-select-line` event the table dispatches; the mode check
@@ -97,8 +159,31 @@ export function useReceivingDetailOverlays(
     }
   }, [isIncomingMode, incomingView]);
 
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<ReceivingDetailsOverlayDetail>).detail;
+      const receivingId = Number(detail?.receivingId);
+      if (!Number.isFinite(receivingId) || receivingId <= 0) return;
+
+      setOverlayLog(receivingDetailsInstantSeed(receivingId, detail?.seed));
+      void enrichOverlayLog(receivingId);
+    };
+    window.addEventListener('receiving-open-details-overlay', handler);
+    return () => window.removeEventListener('receiving-open-details-overlay', handler);
+  }, [enrichOverlayLog]);
+
+  // Ticket float claims the rail — drop receiving details so one host occupant wins.
+  useEffect(() => {
+    const handler = () => setOverlayLog(null);
+    window.addEventListener('receiving-close-details-overlay', handler);
+    return () => window.removeEventListener('receiving-close-details-overlay', handler);
+  }, []);
+
   return {
+    overlayLog,
+    setOverlayLog,
     incomingDetails,
     setIncomingDetails,
+    enrichOverlayLog,
   };
 }

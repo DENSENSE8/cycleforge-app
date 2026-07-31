@@ -26,6 +26,18 @@ export interface RecordReceivingScanOptions {
    * append-only event. Classify with `resolveUnboxScanKind`.
    */
   scanKind?: UnboxScanKind;
+  /**
+   * Default `true`. Set `false` when the scanned value was resolved as a pure
+   * PO/order identity, not a carrier tracking number — e.g. a vendor whose
+   * Zoho "PO Number" field literally IS their own order id (Home Depot), with
+   * no separate shipment tracking. Registering that value into
+   * `shipping_tracking_numbers` would fabricate a tracking number that never
+   * existed, so the STN link (and `receiving_carton.shipment_id` stamp) is
+   * skipped — the scan is still audited in `receiving_scans`, just never
+   * promoted to a shipment. Same principle as a local-pickup carton with no
+   * tracking (`fulfillment-mode.ts`).
+   */
+  registerTracking?: boolean;
 }
 
 /**
@@ -158,7 +170,9 @@ export async function recordReceivingScan(
     console.warn('[recordReceivingScan] ops_events write skipped:', err);
   }
 
-  await linkScanToStn(scanId, receivingId, trackingNumber, source);
+  if (options.registerTracking ?? true) {
+    await linkScanToStn(scanId, receivingId, trackingNumber, source);
+  }
 
   // Door-arrival stamp — TRIAGE surface only. Unbox scans must not touch the
   // door stamps so the two modes stay independent on one carton. Wave-3 writer

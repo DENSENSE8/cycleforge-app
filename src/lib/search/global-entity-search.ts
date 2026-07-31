@@ -24,6 +24,21 @@ export interface GlobalSearchResult {
   subtitle: string;
   href: string;
   matchField: string;
+  /**
+   * Optional facet bag — same keys as doc-arm SearchHit.facets. Exact hits
+   * ranked first used to omit these, leaving Status/Tracking/Date empty on the
+   * rows operators see most. Hydrate when the parent-table SELECT already has
+   * the columns (or cheaply can).
+   */
+  facets?: {
+    status?: string | null;
+    condition_grade?: string | null;
+    source_platform?: string | null;
+    tracking_number?: string | null;
+    carrier?: string | null;
+    serial_number?: string | null;
+    happened_at?: string | null;
+  };
 }
 
 export async function searchOrders(orgId: OrgId, query: string, limit: number): Promise<GlobalSearchResult[]> {
@@ -44,8 +59,13 @@ export async function searchOrders(orgId: OrgId, query: string, limit: number): 
             o.product_title,
             o.sku,
             o.account_source,
+            o.status,
+            o.condition,
+            o.order_date,
+            o.created_at,
             COALESCE(STRING_AGG(DISTINCT tsn.serial_number, ', '), '') AS serial_number,
-            MAX(stn.tracking_number_raw)                              AS tracking_number
+            MAX(stn.tracking_number_raw)                              AS tracking_number,
+            MAX(NULLIF(stn.carrier, 'UNKNOWN'))                       AS carrier
      FROM orders o
      LEFT JOIN tech_serial_numbers tsn       ON (
        tsn.organization_id = o.organization_id
@@ -82,18 +102,35 @@ export async function searchOrders(orgId: OrgId, query: string, limit: number): 
     [orgId, `%${query}%`, query, last8, limit],
   );
 
-  return result.rows.map((row: any) => ({
-    id: Number(row.id),
-    entityType: 'order' as const,
-    title: String(row.product_title || `Order #${row.id}`),
-    subtitle: [row.order_id, row.serial_number, row.sku, row.account_source]
-      .filter(Boolean)
-      .join(' · '),
-    // Canonical Dashboard Search detail — kept in sync with searchHitHref('ORDER') /
-    // orderRecordHref so exact-arm and doc-arm hits deep-link identically.
-    href: orderRecordHref(row.id),
-    matchField: 'order',
-  }));
+  return result.rows.map((row: any) => {
+    const serial = String(row.serial_number || '').trim() || null;
+    const happened =
+      row.order_date || row.created_at
+        ? new Date(row.order_date || row.created_at).toISOString()
+        : null;
+    return {
+      id: Number(row.id),
+      entityType: 'order' as const,
+      title: String(row.product_title || `Order #${row.id}`),
+      subtitle: [row.order_id, row.serial_number, row.sku, row.account_source]
+        .filter(Boolean)
+        .join(' · '),
+      // Canonical Dashboard Search detail — kept in sync with searchHitHref('ORDER') /
+      // orderRecordHref so exact-arm and doc-arm hits deep-link identically.
+      href: orderRecordHref(row.id),
+      matchField: 'order',
+      facets: {
+        status: row.status != null ? String(row.status) : null,
+        condition_grade: row.condition != null ? String(row.condition) : null,
+        source_platform: row.account_source != null ? String(row.account_source) : null,
+        tracking_number: row.tracking_number != null ? String(row.tracking_number) : null,
+        carrier: row.carrier != null ? String(row.carrier) : null,
+        // Exact path aggregates serials; only emit a single serial for the chip.
+        serial_number: serial && !serial.includes(',') ? serial : null,
+        happened_at: happened,
+      },
+    };
+  });
 }
 
 export async function searchRepairs(orgId: OrgId, query: string, limit: number): Promise<GlobalSearchResult[]> {
@@ -118,6 +155,10 @@ export async function searchRepairs(orgId: OrgId, query: string, limit: number):
     subtitle: [row.ticket_number, row.status].filter(Boolean).join(' · '),
     href: `/repair?tab=active&openRepair=${row.id}`,
     matchField: 'repair',
+    facets: {
+      status: row.status != null ? String(row.status) : null,
+      serial_number: row.serial_number != null ? String(row.serial_number) : null,
+    },
   }));
 }
 
@@ -141,6 +182,10 @@ export async function searchFba(orgId: OrgId, query: string, limit: number): Pro
     subtitle: String(row.status || 'Pending'),
     href: `/fba?openShipmentId=${row.id}`,
     matchField: 'fba',
+    facets: {
+      status: row.status != null ? String(row.status) : null,
+      source_platform: 'fba',
+    },
   }));
 }
 
@@ -160,7 +205,10 @@ export async function searchReceiving(orgId: OrgId, query: string, limit: number
             stn.tracking_number_raw AS tracking_number,
             COALESCE(NULLIF(stn.carrier, 'UNKNOWN'), r.carrier)             AS carrier,
             r.zoho_purchaseorder_number AS po_number,
-            r.source_order_id
+            r.source_order_id,
+            r.qa_status,
+            r.condition_grade,
+            r.source_platform
      FROM receiving_carton r
      LEFT JOIN shipping_tracking_numbers stn ON stn.id = r.shipment_id
      WHERE r.organization_id = $5
@@ -186,6 +234,13 @@ export async function searchReceiving(orgId: OrgId, query: string, limit: number
     // is how they drifted when RECEIVING moved to the read-only inspector.
     href: searchHitHref('RECEIVING', Number(row.id)),
     matchField: 'receiving',
+    facets: {
+      status: row.qa_status != null ? String(row.qa_status) : null,
+      condition_grade: row.condition_grade != null ? String(row.condition_grade) : null,
+      source_platform: row.source_platform != null ? String(row.source_platform) : null,
+      tracking_number: row.tracking_number != null ? String(row.tracking_number) : null,
+      carrier: row.carrier != null ? String(row.carrier) : null,
+    },
   }));
 }
 

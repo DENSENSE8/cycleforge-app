@@ -16,6 +16,7 @@ import {
   FbaPlanRailBody,
   FbaPlanRailPills,
 } from '@/components/fba/sidebar/FbaSidebarRails';
+import { SidebarRailScrollport } from '@/components/sidebar/rail-shell/SidebarRailScrollport';
 import { sidebarSubBandClass } from '@/components/fba/sidebar/fba-sidebar-shared';
 import {
   useFbaPlanData,
@@ -107,10 +108,10 @@ export function FbaWorkspaceSidebar() {
       ) : null}
 
       {/* Single scroll container */}
-      <div
+      <SidebarRailScrollport
+        className="bg-surface-card"
         data-testid="fba-sidebar-scroll"
-        className="min-h-0 flex-1 overflow-y-auto scrollbar-hide bg-surface-card"
-        style={{ ['--fba-sticky-top' as any]: '38px' }}
+        scrollStyle={{ ['--fba-sticky-top' as string]: '38px' }}
       >
         {activeMode === 'plan' && !editorActive ? <FbaPlanRailBody view={planRailView} /> : null}
 
@@ -142,7 +143,7 @@ export function FbaWorkspaceSidebar() {
             </div>
           </SidebarSection>
         )}
-      </div>
+      </SidebarRailScrollport>
     </div>
   );
 }

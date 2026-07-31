@@ -1,16 +1,16 @@
 /**
- * Sales surface (`/walk-in`) **mode axis** — the front-desk history hub hosts
- * Local Pickup · Sales, each with its own top-header tabs that swap between
- * genuinely separate tables (the dashboard pattern: Outbound = Pending/Packed/
- * Shipped). This is the analogue of `src/lib/dashboard/dashboard-domains.ts`.
+ * Sales history domain mode axis — Local Pickup · Sales, each with its own
+ * top-header tabs that swap between genuinely separate tables. Mounted on
+ * `/dashboard?mode=sales|pickup` (former `/walk-in` L1). This is the analogue
+ * of the inbound/outbound split in `src/lib/dashboard/dashboard-domains.ts`.
  *
  * Repair graduated to Receiving `/repair` (RepairTable + LedgerGrid) — it is
  * no longer a hub mode. Legacy `?mode=repair` / `?category=repairs` redirect at
  * the proxy; `parseRepairTab` stays here as the shared `?tab=` SoT for `/repair`.
  *
- * Modes ≠ tabs: the **mode** lives in the sidebar (`?mode=`), the **tab** lives
- * in the main-pane header (`?tab=`, validated per mode). Both drop their default
- * from the URL so a bare `/walk-in` is the Sales mode.
+ * Modes ≠ tabs: the **mode** lives in the dashboard L2 rail (`?mode=`), the
+ * **tab** lives in the main-pane header (`?tab=`, validated per mode). On the
+ * dashboard, `mode=sales` stays in the URL (it is also the domain wire value).
  *
  * Pure data + functions (no React) so the sidebar slider, the master-nav rail
  * (`sidebar-navigation.ts`), the page header, and the body all read one SoT.

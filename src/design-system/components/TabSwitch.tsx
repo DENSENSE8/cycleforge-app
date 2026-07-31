@@ -4,6 +4,8 @@ import type { ReactNode } from 'react';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { motionBezier } from '@/design-system/foundations/motion-framer';
+import { nestedCornerClass } from '@/design-system/tokens/radius';
+import { cn } from '@/utils/_cn';
 
 interface Tab {
   id: string;
@@ -57,6 +59,14 @@ interface TabSwitchProps {
    */
   fit?: 'fill' | 'hug';
   /**
+   * Solid-hug padding scale. `md` (default) = `px-3 py-2` + rail `p-1`.
+   * `sm` = full-height face (`h-full px-2.5`) + `text-role-caption` — for
+   * 40px band workbench chrome (`p-0.5` inset); active pill uses
+   * `nestedCornerClass('card', 0.5)` so it nests concentrically inside the
+   * card shell.
+   */
+  size?: 'md' | 'sm';
+  /**
    * Optional control rendered inside the rail after the tabs (e.g. a ⋯
    * overflow trigger). Not measured by the sliding pill.
    */
@@ -109,22 +119,27 @@ export function TabSwitch({
   countStyle = 'badge',
   solidTone = 'inverse',
   fit = 'fill',
+  size = 'md',
   trailing,
 }: TabSwitchProps) {
   const upNext = variant === 'upNext';
   const solid = variant === 'solid';
   const solidAccent = solid && solidTone === 'accent';
   const hug = fit === 'hug';
+  const compact = size === 'sm';
   const upNextOutline = stationChromeOutlineClassName ?? 'border border-border-default';
+  const solidRailPad = compact ? 'p-0.5' : 'p-1';
   const defaultRailClass = upNext
     ? `${upNextRailBaseClass} ${upNextOutline}`
     : solid
-      ? 'rounded-full border border-border-default bg-surface-card p-1 shadow-sm'
+      ? `rounded-full border border-border-default bg-surface-card ${solidRailPad} shadow-sm`
       : highContrast
         ? 'rounded-xl bg-surface-strong p-1.5 shadow-[inset_0_1px_3px_rgba(0,0,0,0.08)]'
         : 'bg-surface-sunken rounded-xl p-1';
   const railCombined = railClassName ?? defaultRailClass;
-  const trackWidthClass = scrollable ? 'w-max min-w-full' : hug ? 'w-max' : 'w-full';
+  // Hug keeps an intrinsic track even when `scrollable` — `min-w-full` would
+  // stretch short rails (Incoming Sources) and fight the compact padding.
+  const trackWidthClass = hug ? 'w-max' : scrollable ? 'w-max min-w-full' : 'w-full';
   const tabFlexClass = hug ? 'shrink-0' : 'flex-1';
   const railRef = useRef<HTMLDivElement | null>(null);
   const trackRef = useRef<HTMLDivElement | null>(null);
@@ -224,15 +239,28 @@ export function TabSwitch({
     <div
       ref={railRef}
       className={`${railCombined} ${scrollable ? 'overflow-x-auto scrollbar-hide' : ''} ${
-        hug ? 'inline-flex w-auto max-w-full' : ''
+        hug
+          ? compact
+            ? 'flex h-full w-auto max-w-full items-stretch'
+            : 'inline-flex w-auto max-w-full'
+          : compact
+            ? 'h-full'
+            : ''
       } ${className}`}
     >
-      <div ref={trackRef} className={`relative flex gap-1 ${trackWidthClass}`}>
+      <div
+        ref={trackRef}
+        className={`relative flex gap-1 ${trackWidthClass}${compact ? ' h-full items-stretch' : ''}`}
+      >
         <motion.div
           aria-hidden
-          className={`pointer-events-none absolute z-0 rounded-full ${
-            solid ? (solidAccent ? 'bg-accent-bg' : 'bg-surface-inverse') : 'bg-surface-card'
-          } ${upNext ? upNextOutline : solid ? '' : 'ring-1 ring-inset ring-border-soft'}`}
+          className={cn(
+            'pointer-events-none absolute z-0',
+            // band/sm: concentric inside card + p-0.5; default stays pill.
+            compact ? nestedCornerClass('card', 0.5) : 'rounded-full',
+            solid ? (solidAccent ? 'bg-accent-bg' : 'bg-surface-inverse') : 'bg-surface-card',
+            upNext ? upNextOutline : solid ? '' : 'ring-1 ring-inset ring-border-soft',
+          )}
           style={{
             top: 0,
             bottom: 0,
@@ -265,19 +293,22 @@ export function TabSwitch({
                   buttonRefs.current[tab.id] = node;
                 }}
                 onClick={() => onTabChange(tab.id)}
-                className={`relative z-10 ${tabFlexClass} min-w-[3rem] whitespace-nowrap rounded-full transition-colors duration-150 ${
-                  solid ? 'font-semibold' : 'font-semibold uppercase tracking-widest'
-                } ${
+                className={cn(
+                  'relative z-10 min-w-[3rem] whitespace-nowrap transition-colors duration-150',
+                  tabFlexClass,
+                  compact ? nestedCornerClass('card', 0.5) : 'rounded-full',
+                  solid ? 'font-semibold' : 'font-semibold uppercase tracking-widest',
                   upNext
                     ? 'px-3 py-2 text-role-caption'
                     : solid
                       ? hug
-                        ? 'px-3 py-2 text-role-caption'
+                        ? compact
+                          ? 'flex h-full items-center px-2.5 text-role-caption'
+                          : 'px-3 py-2 text-role-caption'
                         : 'px-5 py-2.5 text-role-caption'
                       : highContrast
                         ? 'px-4 py-2 text-role-caption'
-                        : 'px-3 py-1.5 text-role-micro'
-                } ${
+                        : 'px-3 py-1.5 text-role-micro',
                   upNext
                     ? isActive
                       ? upNextLabels.active
@@ -290,8 +321,8 @@ export function TabSwitch({
                         ? colors.active
                         : highContrast
                           ? 'text-text-default'
-                          : 'text-text-soft hover:text-text-muted'
-                }`}
+                          : 'text-text-soft hover:text-text-muted',
+                )}
               >
                 <motion.span
                   className="relative z-10 flex items-center justify-center gap-1.5"

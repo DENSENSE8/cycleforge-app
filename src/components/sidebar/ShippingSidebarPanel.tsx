@@ -6,6 +6,7 @@ import { appChromeClass } from '@/design-system/tokens/app-surface';
 import { ShippingScanBand } from '@/components/sidebar/tech/ShippingScanBand';
 import { ShippingStaffScanHistoryRail } from '@/components/sidebar/shipping/ShippingStaffScanHistoryRail';
 import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
+import { SidebarRailScrollport } from '@/components/sidebar/rail-shell/SidebarRailScrollport';
 import { useIsMobile } from '@/hooks';
 
 interface Props {
@@ -42,9 +43,9 @@ export function ShippingSidebarPanel({
     <div className={`relative flex h-full w-full flex-col overflow-hidden ${appChromeClass}`}>
       {!isMobile ? <ShippingScanBand {...scanBandProps} /> : null}
 
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+      <SidebarRailScrollport>
         <ShippingStaffScanHistoryRail techId={techId} filterText={railFilter} />
-      </div>
+      </SidebarRailScrollport>
 
       <TechRailSearchBar
         value={railFilter}

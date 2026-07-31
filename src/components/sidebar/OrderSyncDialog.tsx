@@ -58,7 +58,21 @@ function badge(kind: 'inserted' | 'updated' | 'deleted' | 'unknown' | 'resolved'
   return `inline-flex items-center rounded-md inset-chip text-role-micro font-semibold uppercase tracking-wide ring-1 ring-inset ${map[kind]}`;
 }
 
-function TransferTab({ tab, label }: { tab: TransferTabState; label: string }) {
+function TransferTab({
+  tab,
+  label,
+  fromSheet = [],
+}: {
+  tab: TransferTabState;
+  label: string;
+  /**
+   * Rows the SHEET declined because this connector owns them. The sheet tab
+   * says "these come in through the Ecwid connector, not the sheet" — without
+   * routing them here, that sentence points at a tab that renders nothing, and
+   * the operator has no way to confirm the claim.
+   */
+  fromSheet?: TransferSkippedRow[];
+}) {
   const details = tab.details;
   const totalInserted = tab.inserted ?? details?.inserted.length ?? 0;
   const totalUpdated = tab.updated ?? details?.updated.length ?? 0;
@@ -144,6 +158,38 @@ function TransferTab({ tab, label }: { tab: TransferTabState; label: string }) {
         </div>
       )}
 
+      {fromSheet.length > 0 && (
+        <div className="rounded-xl border border-border-soft bg-surface-canvas/60 px-3 py-2.5">
+          <p className={`${microBadge} text-text-soft`}>
+            {fromSheet.length} row{fromSheet.length === 1 ? '' : 's'} in today’s sheet{' '}
+            {fromSheet.length === 1 ? 'belongs' : 'belong'} here
+          </p>
+          <p className={`${fieldLabel} mt-0.5 normal-case tracking-normal text-text-soft`}>
+            The sheet import skipped these because this connector owns them. They are listed here so
+            the hand-off is visible on both sides — no action needed.
+          </p>
+          <ul className="mt-1.5 divide-y divide-border-hairline rounded-lg border border-border-hairline bg-surface-card">
+            {fromSheet.map((row) => (
+              <li key={`fs:${row.sheetRow}`} className="flex items-center gap-2 px-2.5 py-1.5">
+                <span className="w-[76px] shrink-0">
+                  {row.orderId ? (
+                    <OrderIdChip value={row.orderId} display={getLast4(row.orderId)} />
+                  ) : (
+                    <span className="pl-1.5 font-mono text-role-micro text-text-faint">—</span>
+                  )}
+                </span>
+                <span className="min-w-0 flex-1 truncate text-role-caption text-text-muted">
+                  {row.productTitle || <span className="text-text-faint">(no title)</span>}
+                </span>
+                <span className="w-16 shrink-0 truncate text-right text-role-micro uppercase tracking-wide text-text-soft">
+                  {row.platform || '—'}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {recoveredRows.length > 0 && (
         <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 px-3 py-2.5">
           <p className={`${microBadge} text-emerald-700`}>
@@ -175,7 +221,13 @@ function TransferTab({ tab, label }: { tab: TransferTabState; label: string }) {
         </div>
       )}
 
-      <SkippedRowsPanel rows={skippedRows} blankCount={blankRowCount} />
+      <SkippedRowsPanel
+        // Ecwid rows are excluded here and rendered on the Ecwid tab instead —
+        // one home per row, so the two panels can never disagree about a count.
+        rows={skippedRows.filter((row) => row.reason !== 'ecwid')}
+        blankCount={blankRowCount}
+        crossReferenced={skippedRows.filter((row) => row.reason === 'ecwid').length}
+      />
 
       {tab.status === 'running' && noRows ? (
         <p className={`${fieldLabel} text-text-soft`}>Waiting for {label} to finish…</p>
@@ -186,7 +238,12 @@ function TransferTab({ tab, label }: { tab: TransferTabState; label: string }) {
         <p className={`${fieldLabel} text-text-soft`}>
           {skippedRows.length > 0
             ? `No rows imported — every eligible row was already up to date, and ${skippedRows.length} were skipped (above).`
-            : 'No changes — already up to date.'}
+            : fromSheet.length > 0
+              ? // Without this branch the Ecwid tab printed a bare "already up to
+                // date" directly beneath a list of rows the sheet had just handed
+                // it — two statements that read as contradicting each other.
+                `No new ${label} orders — the ${fromSheet.length} row${fromSheet.length === 1 ? '' : 's'} above were already imported by this connector.`
+              : 'No changes — already up to date.'}
         </p>
       ) : (
         <div className="overflow-hidden rounded-xl border border-border-soft">
@@ -330,7 +387,16 @@ const SKIP_REASON_META: Record<
  * existed a run that skipped 34 of 46 rows rendered as "No changes — already up
  * to date."
  */
-function SkippedRowsPanel({ rows, blankCount }: { rows: TransferSkippedRow[]; blankCount: number }) {
+function SkippedRowsPanel({
+  rows,
+  blankCount,
+  crossReferenced = 0,
+}: {
+  rows: TransferSkippedRow[];
+  blankCount: number;
+  /** Ecwid rows now listed on their own tab — summarized here, not re-listed. */
+  crossReferenced?: number;
+}) {
   const [open, setOpen] = useState(false);
   if (rows.length === 0 && blankCount === 0) return null;
 
@@ -410,6 +476,13 @@ function SkippedRowsPanel({ rows, blankCount }: { rows: TransferSkippedRow[]; bl
               </div>
             );
           })}
+
+          {crossReferenced > 0 && (
+            <p className={`${fieldLabel} text-text-soft normal-case tracking-normal`}>
+              Plus {crossReferenced} Ecwid row{crossReferenced === 1 ? '' : 's'} — listed on the{' '}
+              <span className="font-semibold">Ecwid Direct</span> tab, which owns them.
+            </p>
+          )}
 
           {blankCount > 0 && (
             <p className={`${fieldLabel} text-text-faint normal-case tracking-normal`}>
@@ -548,6 +621,14 @@ export function OrderSyncDialog({
   exceptions,
 }: OrderSyncDialogProps) {
   const [activeTab, setActiveTab] = useState<TabId>('sheets');
+
+  // Ecwid rows the SHEET declined belong to the Ecwid tab, not the sheet's skip
+  // list. Cross-referencing them here is what makes "these come in through the
+  // Ecwid connector" a checkable claim instead of a dead pointer.
+  const ecwidRowsFromSheet = useMemo(
+    () => (sheets.details?.skippedRows ?? []).filter((row) => row.reason === 'ecwid'),
+    [sheets.details?.skippedRows],
+  );
   const tabsRailRef = useRef<HTMLDivElement | null>(null);
 
   // #region agent log
@@ -585,9 +666,12 @@ export function OrderSyncDialog({
       {
         id: 'ecwid' as const,
         label: 'Ecwid Direct',
+        // Include the rows handed over from the sheet, or the tab reads as
+        // empty on exactly the runs where it has something to say.
         count:
           (ecwid.details?.inserted.length ?? ecwid.inserted ?? 0) +
-          (ecwid.details?.updated.length ?? ecwid.updated ?? 0),
+          (ecwid.details?.updated.length ?? ecwid.updated ?? 0) +
+          ecwidRowsFromSheet.length,
         color: 'emerald' as const,
       },
       {
@@ -679,7 +763,7 @@ export function OrderSyncDialog({
             {activeTab === 'sheets' ? (
               <TransferTab tab={sheets} label="Google Sheets" />
             ) : activeTab === 'ecwid' ? (
-              <TransferTab tab={ecwid} label="Ecwid Direct" />
+              <TransferTab tab={ecwid} label="Ecwid Direct" fromSheet={ecwidRowsFromSheet} />
             ) : (
               <ExceptionsTab tab={exceptions} />
             )}

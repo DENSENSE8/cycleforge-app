@@ -45,13 +45,14 @@ export function SupportChatHeader({
   /** Station ticket tab — tighter padding + smaller type. */
   compact?: boolean;
   /**
-   * Station identity bar already shows the subject — hide the duplicate title
-   * row; keep requester + status controls unless {@link hideRequesterBand}.
+   * Hide the editable subject title. Station embeds keep the title visible
+   * (click-to-edit) even when {@link hideRequesterBand} drops the avatar row.
    */
   hideTitle?: boolean;
   /**
-   * Station Ticket tab: drop the avatar/requester identity band entirely
-   * (status + assignment row stays). Details stack moves into the controls row.
+   * Station Ticket tab: drop the avatar/requester identity band (status +
+   * assignment row stay). Subject title still renders above that row unless
+   * {@link hideTitle}.
    */
   hideRequesterBand?: boolean;
   /** Opens the Support Context slide-over (console host only). */
@@ -105,19 +106,38 @@ export function SupportChatHeader({
   }, []);
 
   const staffOptions: SelectOption[] = [
-    { value: UNASSIGNED, label: 'Unassigned' },
+    // Distinct from Zendesk agent "Unassigned" so the header doesn't show two identical faces.
+    { value: UNASSIGNED, label: 'Staff' },
     ...staff.map((s) => ({ value: String(s.id), label: s.name })),
   ];
+
+  const titleEditor = hideTitle ? null : (
+    <TicketSubjectEditor
+      subject={ticket.subject}
+      ticketId={ticket.id}
+      compact={compact}
+      editing={editingTitle}
+      draft={titleDraft}
+      saving={update.isPending}
+      showIdSuffix={!hideRequesterBand}
+      onDraftChange={setTitleDraft}
+      onStartEdit={startEditTitle}
+      onSave={saveTitle}
+      onCancel={() => setEditingTitle(false)}
+    />
+  );
 
   return (
     <div
       className={cn(
         'shrink-0 border-b border-border-hairline bg-surface-card',
-        compact ? 'px-3 py-2' : 'px-5 py-3.5',
+        compact ? 'px-2.5 py-1.5' : 'px-5 py-3.5',
       )}
     >
-      {hideRequesterBand ? null : (
-        <div className="flex items-center gap-2.5">
+      {hideRequesterBand ? (
+        titleEditor ? <div className="mb-1.5">{titleEditor}</div> : null
+      ) : (
+        <div className="flex items-center gap-2">
           {onBack ? (
             <IconButton
               icon={<ChevronLeft className="h-4 w-4" />}
@@ -129,69 +149,13 @@ export function SupportChatHeader({
           <span
             className={cn(
               'flex shrink-0 items-center justify-center rounded-full bg-surface-sunken font-semibold text-text-soft',
-              compact ? 'h-7 w-7 text-role-micro' : 'h-9 w-9 text-role-caption',
+              compact ? 'h-6 w-6 text-role-micro' : 'h-9 w-9 text-role-caption',
             )}
           >
             {initials(reqName)}
           </span>
           <div className="min-w-0 flex-1">
-            {hideTitle ? null : (
-              <div className="flex min-w-0 items-center gap-1.5">
-                {editingTitle ? (
-                  <>
-                    <input
-                      autoFocus
-                      value={titleDraft}
-                      onChange={(e) => setTitleDraft(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          saveTitle();
-                        } else if (e.key === 'Escape') {
-                          setEditingTitle(false);
-                        }
-                      }}
-                      className={cn(
-                        'min-w-0 flex-1 rounded-md border border-blue-300 bg-surface-card px-2 py-0.5 font-semibold tracking-tight text-text-default outline-none focus:ring-2 focus:ring-blue-100',
-                        compact ? 'text-role-caption' : 'text-role-body',
-                      )}
-                    />
-                    <HoverTooltip label="Save title" asChild>
-                      <IconButton
-                        icon={<Check className="h-3.5 w-3.5 text-white" />}
-                        onClick={saveTitle}
-                        disabled={update.isPending}
-                        ariaLabel="Save title"
-                        className="shrink-0 rounded-md bg-blue-600 p-1 hover:bg-blue-700"
-                      />
-                    </HoverTooltip>
-                    <HoverTooltip label="Cancel" asChild>
-                      <IconButton
-                        icon={<X className="h-3.5 w-3.5" />}
-                        onClick={() => setEditingTitle(false)}
-                        ariaLabel="Cancel"
-                        className="shrink-0 rounded-md p-1 hover:bg-surface-sunken"
-                      />
-                    </HoverTooltip>
-                  </>
-                ) : (
-                  <HoverTooltip label="Click to edit title" asChild>
-                    {/* ds-raw-button: text-left inline-editable title (truncating subject), not a standard action Button */}
-                    <button
-                      type="button"
-                      onClick={startEditTitle}
-                      aria-label="Click to edit title"
-                      className={cn(
-                        'min-w-0 truncate text-left font-semibold tracking-tight text-text-default transition hover:text-blue-700',
-                        compact ? 'text-role-caption' : 'text-role-body',
-                      )}
-                    >
-                      {ticket.subject || '(no subject)'}
-                    </button>
-                  </HoverTooltip>
-                )}
-              </div>
-            )}
+            {titleEditor}
             <p
               className={cn(
                 'truncate text-text-soft',
@@ -258,16 +222,16 @@ export function SupportChatHeader({
 
       <div
         className={cn(
-          'flex flex-wrap items-center justify-between gap-x-3 gap-y-2',
-          hideRequesterBand ? null : compact ? 'mt-2' : 'mt-3',
+          'flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5',
+          hideRequesterBand && hideTitle ? null : compact ? 'mt-1.5' : 'mt-3',
         )}
       >
         {/* Zendesk ticket fields — external/helpdesk controls on the left. */}
-        <div className="flex shrink-0 flex-wrap items-center gap-1.5">
+        <div className={cn('flex shrink-0 flex-wrap items-center', compact ? 'gap-1' : 'gap-1.5')}>
           <ZendeskSelect
             value={String(ticket.status)}
             options={STATUS_OPTIONS}
-            size="dense"
+            size={compact ? 'rail' : 'dense'}
             disabled={update.isPending}
             onChange={(status) => update.mutate({ id: ticket.id, patch: { status: status as ZendeskTicket['status'] } })}
           />
@@ -275,7 +239,7 @@ export function SupportChatHeader({
             value={ticket.priority ? String(ticket.priority) : null}
             options={PRIORITY_OPTIONS}
             placeholder="Priority"
-            size="dense"
+            size={compact ? 'rail' : 'dense'}
             disabled={update.isPending}
             onChange={(priority) =>
               update.mutate({ id: ticket.id, patch: { priority: priority as ZendeskTicket['priority'] } })
@@ -285,18 +249,18 @@ export function SupportChatHeader({
             value={ticket.assignee_id ? String(ticket.assignee_id) : UNASSIGNED}
             options={assigneeOptions}
             placeholder="Agent"
-            size="dense"
+            size={compact ? 'rail' : 'dense'}
             disabled={update.isPending}
             onChange={(v) => update.mutate({ id: ticket.id, patch: { assignee_id: v === UNASSIGNED ? null : Number(v) } })}
           />
         </div>
 
-        <div className="ml-auto flex shrink-0 items-center gap-1.5">
+        <div className={cn('ml-auto flex shrink-0 items-center', compact ? 'gap-1' : 'gap-1.5')}>
           <ZendeskSelect
             value={assignment ? String(assignment.assignedStaffId) : UNASSIGNED}
             options={staffOptions}
             placeholder="Assign staff"
-            size="dense"
+            size={compact ? 'rail' : 'dense'}
             align="right"
             disabled={assign.isPending}
             onChange={(v) => {
@@ -307,6 +271,97 @@ export function SupportChatHeader({
           />
         </div>
       </div>
+    </div>
+  );
+}
+
+/** Click-to-edit subject control shared by full and station-dense header layouts. */
+function TicketSubjectEditor({
+  subject,
+  ticketId,
+  compact,
+  editing,
+  draft,
+  saving,
+  showIdSuffix,
+  onDraftChange,
+  onStartEdit,
+  onSave,
+  onCancel,
+}: {
+  subject: string | null | undefined;
+  ticketId: number;
+  compact: boolean;
+  editing: boolean;
+  draft: string;
+  saving: boolean;
+  /** When true, `#id` lives on the requester line instead. */
+  showIdSuffix: boolean;
+  onDraftChange: (next: string) => void;
+  onStartEdit: () => void;
+  onSave: () => void;
+  onCancel: () => void;
+}) {
+  if (editing) {
+    return (
+      <div className="flex min-w-0 items-center gap-1.5">
+        <input
+          autoFocus
+          value={draft}
+          onChange={(e) => onDraftChange(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              onSave();
+            } else if (e.key === 'Escape') {
+              onCancel();
+            }
+          }}
+          className={cn(
+            'min-w-0 flex-1 rounded-md border border-blue-300 bg-surface-card px-2 py-0.5 font-semibold tracking-tight text-text-default outline-none focus:ring-2 focus:ring-blue-100',
+            compact ? 'text-role-caption' : 'text-role-body',
+          )}
+        />
+        <HoverTooltip label="Save title" asChild>
+          <IconButton
+            icon={<Check className="h-3.5 w-3.5 text-white" />}
+            onClick={onSave}
+            disabled={saving}
+            ariaLabel="Save title"
+            className="shrink-0 rounded-md bg-blue-600 p-1 hover:bg-blue-700"
+          />
+        </HoverTooltip>
+        <HoverTooltip label="Cancel" asChild>
+          <IconButton
+            icon={<X className="h-3.5 w-3.5" />}
+            onClick={onCancel}
+            ariaLabel="Cancel"
+            className="shrink-0 rounded-md p-1 hover:bg-surface-sunken"
+          />
+        </HoverTooltip>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex min-w-0 items-center gap-1.5">
+      <HoverTooltip label="Click to edit title" asChild>
+        {/* ds-raw-button: text-left inline-editable title (truncating subject), not a standard action Button */}
+        <button
+          type="button"
+          onClick={onStartEdit}
+          aria-label="Click to edit title"
+          className={cn(
+            'min-w-0 flex-1 truncate text-left font-semibold tracking-tight text-text-default transition hover:text-blue-700',
+            compact ? 'text-role-caption' : 'text-role-body',
+          )}
+        >
+          {subject || '(no subject)'}
+        </button>
+      </HoverTooltip>
+      {showIdSuffix ? null : (
+        <span className="shrink-0 text-role-micro text-text-faint">#{ticketId}</span>
+      )}
     </div>
   );
 }

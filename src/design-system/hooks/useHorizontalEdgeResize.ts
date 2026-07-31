@@ -22,7 +22,7 @@ const DEFAULT_MAX_WIDTH_PAD = 240;
  * - `trailing` — right-edge handle on a **left-anchored** pane (context
  *   panel / receiving rail). Dragging right grows; dragging left shrinks.
  */
-type HorizontalEdge = 'leading' | 'trailing';
+export type HorizontalEdge = 'leading' | 'trailing';
 
 /** Pure drag math — exported so unit tests cover both edges without mounting. */
 export function widthFromEdgeDrag(
@@ -75,7 +75,8 @@ interface UseHorizontalEdgeResizeOptions {
   testId?: string;
 }
 
-interface HorizontalEdgeHandleProps {
+/** Props spread onto {@link HorizontalEdgeResizeHandle} (or a raw hit target). */
+export interface HorizontalEdgeHandleProps {
   role: 'separator';
   'aria-orientation': 'vertical';
   'aria-label': string;

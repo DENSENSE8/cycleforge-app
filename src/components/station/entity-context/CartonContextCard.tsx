@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ChevronLeft, Reply } from '@/components/Icons';
+import { ChevronLeft } from '@/components/Icons';
 import { getLast4 } from '@/components/ui/CopyChip';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { WorkspaceCard } from '@/design-system/components';
@@ -220,13 +220,12 @@ export function CartonContextCard({
   /** Set/clear the priority tier (null = Auto). Omit to render urgency display-only. */
   onPrioritySelect?: (tier: number | null) => void;
   /**
-   * Opt-in: toggle the inline support-ticket editor (`?ticketView=1`). Provided
-   * only by the unbox `LineCartonContextSection` for v1 — omitting it hides the
-   * reply-toggle button entirely (so the testing header shows nothing). The
-   * button also requires a linked ticket (`zendeskTrimmed` + `providerTicketId`).
+   * Opt-in: open the Unbox Ticket push column (`?ticketView=1`) from the ticket
+   * chip. Provided only by unbox `LineCartonContextSection` — omitting it keeps
+   * chip Edit = history popover (testing / triage).
    */
   onToggleTicketView?: () => void;
-  /** True while the inline ticket editor is open — drives aria-pressed + ring. */
+  /** True while the ticket push column is open (unused for chrome; kept for hosts). */
   ticketViewActive?: boolean;
   /**
    * Far-left back button that closes the active entity so the right pane
@@ -570,40 +569,24 @@ export function CartonContextCard({
             {showStaffPhotoRow ? (
             <div className="flex shrink-0 items-center gap-2">
               {zendeskTrimmed ? (
-                <div className="flex shrink-0 items-center gap-2">
-                  <ReceivingTicketChip
-                    value={zendeskTrimmed}
-                    display={zendeskChipDisplay}
-                    openHref={zendeskHref}
-                    providerTicketId={providerTicketId}
-                    receivingId={receivingId}
-                    lineId={lineId}
-                    onUnlinked={() => onTicketUnlinked?.()}
-                  />
-                  {/* Inline ticket editor toggle — opt-in per surface (unbox
-                      only for v1). Requires a resolved provider ticket to reply
-                      to; echoes the ticket chip's orange tone. */}
-                  {onToggleTicketView && providerTicketId != null ? (
-                    <HoverTooltip
-                      label={ticketViewActive ? 'Close ticket editor' : 'Reply on this ticket'}
-                      placement="below"
-                      asChild
-                    >
-                      <IconButton
-                        type="button"
-                        onClick={onToggleTicketView}
-                        ariaLabel={ticketViewActive ? 'Close ticket editor' : 'Reply on this ticket'}
-                        aria-pressed={ticketViewActive}
-                        icon={<Reply className="h-3.5 w-3.5 text-orange-600" />}
-                        className={`inline-flex h-8 w-8 shrink-0 items-center justify-center self-center rounded-lg border shadow-sm ${
-                          ticketViewActive
-                            ? 'border-orange-300 bg-orange-100 ring-1 ring-inset ring-orange-400'
-                            : 'border-orange-200 bg-orange-50 hover:border-orange-300 hover:bg-orange-100'
-                        }`}
-                      />
-                    </HoverTooltip>
-                  ) : null}
-                </div>
+                <ReceivingTicketChip
+                  value={zendeskTrimmed}
+                  display={zendeskChipDisplay}
+                  openHref={zendeskHref}
+                  providerTicketId={providerTicketId}
+                  receivingId={receivingId}
+                  lineId={lineId}
+                  onUnlinked={() => {
+                    onTicketUnlinked?.();
+                  }}
+                  onOpenTicketView={
+                    onToggleTicketView && providerTicketId != null
+                      ? () => {
+                          if (!ticketViewActive) onToggleTicketView();
+                        }
+                      : undefined
+                  }
+                />
               ) : onMakeClaim ? (
                 <HoverTooltip label="File claim" placement="above" asChild>
                   <Button

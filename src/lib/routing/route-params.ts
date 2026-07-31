@@ -208,7 +208,11 @@ export const SHARED_OWNED_KEYS: Readonly<Record<string, string>> = {
   sku: 'A focused SKU string — Products Pairing and the Inventory by-sku viewport address the same identifier. (Distinct from `skuId`, the sku_catalog row id.)',
   filter: 'The surface\'s own named filter set — Home\'s feed filter and Inventory\'s bucket multi-select. One question, per-route vocabularies.',
   openRepair: 'A focused repair order id. Same id space on `/repair`, which renders it, and on `/walk-in`, which only reads it to forward the legacy deep-link to `/pickup?job=repair` — the hand-off is the reason the key is deliberately identical on both sides.',
-  tab: 'Sub-tab within the surface, shared by `/repair` and `/walk-in` BY DESIGN rather than by accident: `resolveWalkInRepairModeRedirect` in proxy.ts sends `/walk-in?mode=repair&tab=X` to `/repair?tab=X` and deliberately preserves `tab` so a queue deep-link survives the hop. Renaming either side would break that continuity. Vocabularies stay per-route (Pickup draft/completed · Sales today/all · Repair incoming/active/done).',
+  tab: 'Sub-tab within the surface, shared by `/repair`, `/walk-in` (redirect shell), and `/dashboard` (sales domain) BY DESIGN: `resolveWalkInRepairModeRedirect` in proxy.ts sends `/walk-in?mode=repair&tab=X` to `/repair?tab=X` and deliberately preserves `tab` so a queue deep-link survives the hop; Sales history tabs ride the same key on the dashboard after the Sales L1 fold. Vocabularies stay per-route (Pickup draft/completed · Sales today/all · Repair incoming/active/done).',
+  ostatus: 'Outbound-state facet over a shipped/ready queue. Same question on `/shipping/ready` and `/dashboard` (Shipped tab legend chip); each validates its own state vocabulary.',
+  stage: 'A pipeline-stage facet over the surface\'s own list — Support\'s ticket stage and Dashboard\'s unshipped board stage. One question, per-route vocabularies.',
+  rh_field: 'Receiving-history search field. Shared by `/receiving/history` and `/dashboard?mode=inbound`, which mount the same History search chrome over the inbound feed.',
+  rh_scope: 'Receiving-history search scope; shares its owner set with `rh_field`.',
 };
 
 /** One route's param contract. */

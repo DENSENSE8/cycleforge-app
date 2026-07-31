@@ -9,7 +9,8 @@
  *   StationContextBar → SupportTicketIdentity (subject + right last-4 id)
  *   StationMoreDetails → Open in provider · Ticket details · Close
  *   StationWorkbench  → Ticket | Connections | Conversations | Timeline
- *   StationTerminalDock → tab-aware SlicedActionDock (Ticket / Conversations / Timeline)
+ *   Ticket tab dock   → SupportTicketComposerDock (StationComposerDock + Reply)
+ *   Other tabs        → StationTerminalDock (tab-aware SlicedActionDock)
  */
 
 import { useMemo, useState } from 'react';
@@ -32,11 +33,15 @@ import {
 import { StationTerminalDock } from '@/components/station/terminal';
 import type { ThreadComposerBridge } from '@/components/threads/ThreadPanel';
 import { useSupportContext } from '@/hooks/useSupportContext';
+import { useTicketPhotoStaging } from '@/hooks/useTicketPhotoStaging';
 import { useZendeskTicketBundle } from '@/hooks/useZendeskQueries';
 import type { WorkspaceTimelineAnchor } from '@/components/station/workbench';
 import { capabilityTitle } from '@/lib/integrations/capability-labels';
 import { zendeskTicketUrl } from '@/lib/zendesk-ticket-url';
 import { SupportDetailsStack } from '@/components/support/zendesk/chat/SupportDetailsStack';
+import { SupportTicketComposerDock } from '@/components/support/zendesk/chat/SupportTicketComposerDock';
+import { TicketComposerStagingProvider } from '@/components/support/zendesk/chat/TicketComposerStagingContext';
+import { requesterFrom } from '@/components/support/zendesk/chat/support-chat-utils';
 import { SupportTicketIdentity } from './SupportTicketIdentity';
 import { buildSupportStationTabs } from './support-station-tabs';
 import { resolveSupportTerminal } from './resolve-support-terminal';
@@ -68,6 +73,10 @@ export function SupportTicketFocus({
   const { data: liveBundle } = useZendeskTicketBundle(providerTicketId);
   const liveTicket = liveBundle?.ticket ?? null;
 
+  // Host-owned staging — shared by Ticket tab dropzone + floating composer dock.
+  const photoStaging = useTicketPhotoStaging(providerTicketId);
+  const requesterEmail = liveTicket ? requesterFrom(liveTicket).email : null;
+
   // Derive the Timeline tab anchor (Unbox WorkspaceTimelineTab + Activity spine).
   const timelineAnchor = useMemo<WorkspaceTimelineAnchor>(() => {
     const linkage = contextBundle?.linkage;
@@ -88,6 +97,7 @@ export function SupportTicketFocus({
   }, [contextBundle]);
 
   const primaryTracking = timelineAnchor.tracking ?? null;
+  const receivingId = contextBundle?.linkable?.receivingId ?? undefined;
 
   const tabs = useMemo(
     () =>
@@ -98,6 +108,7 @@ export function SupportTicketFocus({
         onBack: onClose,
         onComposerBridgeChange: setTicketBridge,
         onConversationBridgeChange: setConversationBridge,
+        hostComposer: true,
       }),
     [ticketId, anchor, timelineAnchor, onClose],
   );
@@ -123,56 +134,74 @@ export function SupportTicketFocus({
   const providerLabel = ticket?.providerLabel ?? capabilityTitle('helpdesk');
   const openLabel = `Open in ${providerLabel}`;
 
+  const ticketDock =
+    activeView === 'ticket' ? (
+      <SupportTicketComposerDock
+        host={{
+          ticketId: providerTicketId,
+          requesterEmail,
+          staging: photoStaging,
+          receivingId,
+        }}
+        terminalVm={terminalVm}
+        onBridgeChange={setTicketBridge}
+      />
+    ) : (
+      <StationTerminalDock vm={terminalVm} />
+    );
+
   return (
-    <motion.div
-      key={ticketId}
-      className="relative isolate flex h-full min-h-0 w-full flex-col bg-surface-canvas"
-      initial={paneMotion.initial}
-      animate={paneMotion.animate}
-      exit={paneMotion.exit}
-      transition={paneTransition}
-    >
-      {/* Ambient wash covers identity + body — same Testing / Unbox depth language. */}
-      <StationAmbientWash />
+    <TicketComposerStagingProvider value={photoStaging}>
+      <motion.div
+        key={ticketId}
+        className="relative isolate flex h-full min-h-0 w-full flex-col bg-surface-canvas"
+        initial={paneMotion.initial}
+        animate={paneMotion.animate}
+        exit={paneMotion.exit}
+        transition={paneTransition}
+      >
+        {/* Ambient wash covers identity + body — same Testing / Unbox depth language. */}
+        <StationAmbientWash />
 
-      <StationContextBar
-        identity={<SupportTicketIdentity ticket={ticket} fallbackId={ticketId} />}
-        moreDetails={
-          <StationMoreDetails>
-            {openUrl ? (
-              <HoverTooltip label={openLabel}>
-                <IconButton
-                  size="sm"
-                  icon={<ExternalLink className="h-3.5 w-3.5" />}
-                  ariaLabel={openLabel}
-                  onClick={() => window.open(openUrl, '_blank', 'noopener')}
-                />
-              </HoverTooltip>
-            ) : null}
-            {liveTicket ? <SupportDetailsStack ticket={liveTicket} density="station" /> : null}
-            <PaneHeaderCloseButton
-              onClick={onClose}
-              ariaLabel="Back to tickets queue"
-              title="Back to tickets queue"
+        <StationContextBar
+          identity={<SupportTicketIdentity ticket={ticket} fallbackId={ticketId} />}
+          moreDetails={
+            <StationMoreDetails>
+              {openUrl ? (
+                <HoverTooltip label={openLabel}>
+                  <IconButton
+                    size="sm"
+                    icon={<ExternalLink className="h-3.5 w-3.5" />}
+                    ariaLabel={openLabel}
+                    onClick={() => window.open(openUrl, '_blank', 'noopener')}
+                  />
+                </HoverTooltip>
+              ) : null}
+              {liveTicket ? <SupportDetailsStack ticket={liveTicket} density="station" /> : null}
+              <PaneHeaderCloseButton
+                onClick={onClose}
+                ariaLabel="Back to tickets queue"
+                title="Back to tickets queue"
+              />
+            </StationMoreDetails>
+          }
+        />
+
+        <StationWorkbench
+          ambientWash={false}
+          className="relative z-0 min-h-0 flex-1 bg-transparent"
+          reserveScrollClearance={Boolean(terminalVm) || activeView === 'ticket'}
+          tabs={
+            <SectionTabsSlider
+              tabs={tabs}
+              value={activeView}
+              onChange={(id) => setView(id as SupportTicketView)}
+              ariaLabel="Ticket displays"
             />
-          </StationMoreDetails>
-        }
-      />
-
-      <StationWorkbench
-        ambientWash={false}
-        className="relative z-0 min-h-0 flex-1 bg-transparent"
-        reserveScrollClearance={Boolean(terminalVm)}
-        tabs={
-          <SectionTabsSlider
-            tabs={tabs}
-            value={activeView}
-            onChange={(id) => setView(id as SupportTicketView)}
-            ariaLabel="Ticket displays"
-          />
-        }
-        dock={<StationTerminalDock vm={terminalVm} />}
-      />
-    </motion.div>
+          }
+          dock={ticketDock}
+        />
+      </motion.div>
+    </TicketComposerStagingProvider>
   );
 }

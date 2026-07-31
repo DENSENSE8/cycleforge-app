@@ -33,8 +33,9 @@
  * collapsed-at-rest correctly demotes it. Here it IS the primary entry path, and
  * a click-to-expand puts a gesture in front of the surface's main job.
  *
- * The exception is scoped to this surface and recorded in the rules file — it
- * does not license an always-open field in any other `WorkbenchChromeHeader`.
+ * The rule is principle-based ("is search the entry path or a refinement?").
+ * The other known entry-path case is `/search` (global header stays expanded +
+ * synced to `?q=`). This file's override stays scoped to Media Library chrome.
  */
 
 import { useEffect, useMemo, useState } from 'react';

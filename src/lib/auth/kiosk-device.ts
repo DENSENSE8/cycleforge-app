@@ -33,8 +33,8 @@ import type { OrgId } from '@/lib/tenancy/constants';
 /** Device-token cookie. Distinct from the staff `cf_sid` so a kiosk can never present a staff session. */
 export const KIOSK_COOKIE_NAME = 'cf_kiosk';
 
-/** Default pairing-code lifetime — long enough for a manager to walk the code to the tablet. */
-export const DEFAULT_ENROLL_TTL_MINUTES = 30;
+/** Default pairing-code lifetime — long enough to stage an MDM tablet without racing. */
+export const DEFAULT_ENROLL_TTL_MINUTES = 7 * 24 * 60;
 
 function sha256(raw: string): string {
   return createHash('sha256').update(raw).digest('hex');

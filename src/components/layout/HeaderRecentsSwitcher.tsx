@@ -154,7 +154,7 @@ export function HeaderRecentsSwitcher() {
                   onClick={() => select(entry)}
                   onMouseEnter={() => prefetchNavData(entry.href, queryClient)}
                   className={cn(
-                    'ds-raw-button flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm text-text-default',
+                    'ds-raw-button flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-role-eyebrow text-text-default',
                     'hover:bg-surface-sunken',
                     focusRing('control', 'accent'),
                   )}
@@ -166,7 +166,7 @@ export function HeaderRecentsSwitcher() {
                       'shrink-0 text-text-muted',
                     )}
                   />
-                  <span className="min-w-0 flex-1 truncate">{entry.label}</span>
+                  <span className="min-w-0 flex-1 truncate font-semibold">{entry.label}</span>
                 </button>
               );
             })

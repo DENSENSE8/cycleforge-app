@@ -287,7 +287,7 @@ export function OrderDocumentsSection({ orderId, orderRef, readOnly = false }: O
           href={`/ops/photos?sourceScope=outbound&poRef=${encodeURIComponent(orderRef)}`}
           className="text-role-caption font-semibold text-blue-600 hover:text-blue-800"
         >
-          Open in media library
+          Open in Media
         </Link>
       </div>
       {!readOnly ? (

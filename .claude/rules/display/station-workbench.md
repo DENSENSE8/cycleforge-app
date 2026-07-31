@@ -74,7 +74,8 @@ land a port** ([verify.md](../verify.md)).
   fork is `SupportTicketIdentity` — ticket ≠ carton).
 - Reintroduce `StationWorkbenchShell` (deleted — used `max-w-3xl`).
 - Use `STATION_WORKBENCH_HEADER_COLUMN` (`px-6 sm:px-8`) for family identity/body
-  — it is skeleton/stepper padding only.
+  — Triage toolbar / legacy skeleton pad only; Unbox skeleton uses
+  `identity-tabs` + `STATION_WORKBENCH_IDENTITY_COLUMN`.
 - Raise a guard baseline to pass.
 
 ### Documented allowlists (Tier C / gaps)
@@ -109,11 +110,15 @@ PO path uses Incoming details; order/shipping uses journey `dim=tracking|order`.
 Serials: explicit list or carton fetch via `useCartonSerials`.
 
 Unbox replaced the former Tracking tab with Timeline. Unbox primary strip order:
-**Unbox · Listings · Ticket · Units · Zoho** (po-note label from
+**Unbox · Classify (unfound) | Listings (matched) · Units · Zoho** (po-note label from
 `providerCatalogLabel('zoho')` brand token) + ⋯ for Checklist / Support /
-Tracking / Timeline. Neither Support nor Ticket mounts the Linkage strip
-(link from entity chrome / console drawer). Packing is terminal-registry-exempt
-(no sticky dock).
+Tracking / Timeline. **Ticket is not a strip tab** — it opens as a station-scoped
+right-edge **push** column (`ReceivingTicketStack`) that reuses detail-stack
+surface tokens (rounded inset card) while squeezing Unbox; entry = carton Reply /
+`?ticketView=1`. Mutually exclusive with receiving More details (`detail:receiving`
+float). Support (overflow) still does not mount
+the Linkage strip (link from entity chrome / console drawer). Packing is
+terminal-registry-exempt (no sticky dock).
 
 ---
 
@@ -122,30 +127,37 @@ Tracking / Timeline. Neither Support nor Ticket mounts the Linkage strip
 | Layer | Role | SoT |
 |---|---|---|
 | **1. Progress stepper** | Completeness checklist (Photos → Serial → Print), not a wizard lock | `LinearWorkflowStepper` + `deriveLinearStepStates` — lives in parent shell (`ReceivingLineWorkspace`), not inside `StationWorkbench` |
-| **2. Station bookmark chrome** | Absolute-float identity shell + corner utilities over the work canvas (no in-flow gray band) | `StationContextBar` (`stationContextBarHostClass`) + `StationMoreDetails` + `CartonContextCard` `density="bar"`; pair with `StationWorkbench` `reserveIdentityClearance` |
+| **2. Station bookmark chrome** | Absolute-float identity shell + corner utilities over the work canvas (no in-flow gray band); top inset matches context-panel card gutter (`CONTEXT_PANEL_OUTER_MARGIN` → `top-2`) | `StationContextBar` (`stationContextBarHostClass`) + `StationMoreDetails` + `CartonContextCard` `density="bar"`; pair with `StationWorkbench` `reserveIdentityClearance`. **Unbox:** More details mounts on the **pane** outer host (`stationMoreDetailsPaneHostClass`) beside Unbox + Ticket push — not inside the squeezed Unbox column — so refresh · ⋯ · info stay at receiving-pane top-right when Ticket opens |
+| **2a. Receiving context rail collapse** | Receiving left card (scan + recents) may park via a row-aligned gutter cue outside the card; slim expand strip restores it. Width-drawer + localStorage — not a page-local twin | `CONTEXT_PANEL_COLLAPSE` + `ContextPanelLayout` / `ContextPanelCollapseCue` |
 | **2b. Mid-canvas edge jump** | Secondary surface jump (e.g. Triage → Open in Unbox) — not the terminal CTA | `StationRightEdgeAction` + `stationRightEdgeActionHostClass` on the panel `relative` root (~`top-1/4` right). Never nest under `moreDetails`; never use `SlicedActionDock` for this |
 | **3. Section tabs** | Labeled section displays (`TabSwitch` strip + overflow menu) that own bar + mounted panels; `rightSlot` for contextual controls | `SectionTabsSlider` + `buildSectionTabs` + `PairingTogglePill` / `ExternalLinkPill` |
 | **4. Tab body** | Whole contextual display per tab (form state survives via mounted panels) | Station-specific content; bridges register dock state |
 | **5. Feedback / footer** | Inline action feedback (scroll) + receive band (between body and dock) | `WorkspaceActionFeedbackSlot`, `ReceiveFeedbackRegion` |
-| **6. Terminal dock band** | Optional chat-style notes composer + tab-aware primary CTA | `STATION_TERMINAL_REGISTRY` → `StationTerminalDock` → `SlicedActionDock`. **Unbox overview = ONE floating shell**: `StationComposerDock` via `slicedActionDockWrapperClass({ docked: false })` (absolute over the canvas + `reserveScrollClearance`) with the CTA in its `trailingAction` (`<StationTerminalDock embedded>`), blue Send suppressed. Full-width in-flow band elsewhere |
+| **6. Terminal dock band** | Optional chat-style notes composer + tab-aware primary CTA | `STATION_TERMINAL_REGISTRY` → `StationTerminalDock` → `SlicedActionDock`. **Unbox overview = ONE floating shell**: `StationComposerDock` via `slicedActionDockWrapperClass({ docked: false })` (absolute over the canvas + `reserveScrollClearance`) with the CTA in its `trailingAction` (`<StationTerminalDock embedded>`), blue Send suppressed. **Unbox Ticket** is a right-edge push column (`ReceivingTicketStack` → denser embedded `SupportTicketDetail` — not a canvas dock / not a RightRailHost float). Support/Testing Ticket *tabs* (when present) still use `SupportTicketComposerDock` + `SupportChatComposer` `variant="station-dock"`. Full-width in-flow band elsewhere |
 
 ```
-Parent shell
-├── StationContextBar          ← absolute-float identity + StationMoreDetails
+Parent shell (Unbox = pane outer: Unbox column + optional Ticket push)
+├── StationContextBar          ← absolute-float identity (Unbox column)
+├── StationMoreDetails         ← pane-anchored (`stationMoreDetailsPaneHostClass`)
+│                                  so Ticket push does not slide it left
 ├── StationRightEdgeAction     ← optional mid-canvas jump (Triage Open in Unbox); panel-root absolute
 └── StationWorkbench           ← reserveIdentityClearance (top) + optional terminal clearance (bottom)
     ├── scroll: tabs → feedback  (entityContext/toolbar unused for Unbox-family)
     ├── footer (optional sticky band)
-    └── dock                   ← overview: StationComposerDock (notes) floating
-                                 over the canvas (absolute; not an in-flow shelf)
-                                 with embedded Receive/Print in trailingAction;
-                                 other tabs: full-width StationTerminalDock
+    └── dock                   ← overview / Support Ticket: StationComposerDock
+                                 floating over the canvas (absolute; not an
+                                 in-flow shelf) with embedded CTA in
+                                 trailingAction; other tabs: full-width
+                                 StationTerminalDock
 ```
 
 **Unbox overview dock — one elevated shell, never two cards.** The composer
 floats over the scroll canvas (`slicedActionDockWrapperClass({ docked: false })`
-+ `reserveScrollClearance`); it is the only surface in the band, and the receive
-split-CTA rides in its footer:
++ `reserveScrollClearance`); it is the only surface in the band, and the primary
+CTA rides in its footer. Support/Testing Ticket *tabs* compose the same pattern via
+`SupportTicketComposerDock` (reply field + embedded Reply). Unbox Ticket (detail-stack
+float) keeps the composer **inside** the card via `SupportTicketDetail` — never a
+second canvas-absolute dock fighting the rail:
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -185,7 +197,7 @@ stays in the scroll body. Other Unbox tabs keep a full-width centered terminal.
 
 1. Add one row to `WORKSPACE_MODES` only for receiving-family chrome; every docked adopter adds `STATION_TERMINAL_REGISTRY`
 2. Thin adapter: controller → `CartonContextCard` props with `density="bar"`
-3. Mount adapter in `StationContextBar` above `StationWorkbench`; utilities in `StationMoreDetails` + embedded `StationHeaderToolbar`
+3. Mount adapter in `StationContextBar` above `StationWorkbench`; utilities in `StationMoreDetails` + embedded `StationHeaderToolbar` (Unbox: pane-anchor More details via `stationMoreDetailsPaneHostClass` when Ticket can push)
 4. Tab defs with visibility gates → `buildSectionTabs()`
 5. Terminal resolver in `{station}/terminal/` — tab id → `TerminalActionVm`
 6. Compose `StationWorkbench` — never hand-roll `relative flex h-full min-h-0 flex-col`

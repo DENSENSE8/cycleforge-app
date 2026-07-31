@@ -2,7 +2,7 @@
  * Lightweight, dependency-free inline markdown for the support console.
  *
  * Supports the small grammar staff actually use in replies/notes:
- *   **bold**   *italic*   `code`   bare URLs (autolinked)   line breaks.
+ *   **bold**   *italic*   `code`   ![alt](url)   bare URLs (autolinked)   line breaks.
  *
  * Two outputs from one grammar:
  *   - `renderInlineMarkdown(text)` → safe React nodes for the chat thread.
@@ -20,12 +20,20 @@ type Token =
   | { kind: 'bold'; value: string }
   | { kind: 'italic'; value: string }
   | { kind: 'code'; value: string }
+  | { kind: 'image'; alt: string; url: string }
   | { kind: 'link'; value: string };
 
-// Order matters: code first (so ** inside `code` is literal), then bold before
+type RenderInlineMarkdownOptions = {
+  /** When set, image markdown opens the in-app photo viewer instead of a new tab. */
+  onOpenPhoto?: (url: string) => void;
+};
+
+// Order matters: code first (so ** inside `code` is literal), then images
+// (before bare URLs so `![alt](https://…)` is not split), then bold before
 // italic (so ** isn't eaten as two * ), then autolinked URLs.
+// Optional whitespace after `]` covers paste quirks like `![] (url)`.
 const INLINE_RE =
-  /(`[^`\n]+`)|(\*\*[^*\n]+\*\*)|(\*[^*\n]+\*)|((?:https?:\/\/|www\.)[^\s<]+[^\s<.,;:!?)])/g;
+  /(`[^`\n]+`)|(!\[([^\]]*)\]\s*\(([^)\s]+)\))|(\*\*[^*\n]+\*\*)|(\*[^*\n]+\*)|((?:https?:\/\/|www\.)[^\s<]+[^\s<.,;:!?)])/g;
 
 /** Split one line of source text into typed inline tokens. */
 function tokenizeLine(line: string): Token[] {
@@ -36,9 +44,10 @@ function tokenizeLine(line: string): Token[] {
   while ((m = INLINE_RE.exec(line)) !== null) {
     if (m.index > last) tokens.push({ kind: 'text', value: line.slice(last, m.index) });
     if (m[1]) tokens.push({ kind: 'code', value: m[1].slice(1, -1) });
-    else if (m[2]) tokens.push({ kind: 'bold', value: m[2].slice(2, -2) });
-    else if (m[3]) tokens.push({ kind: 'italic', value: m[3].slice(1, -1) });
-    else if (m[4]) tokens.push({ kind: 'link', value: m[4] });
+    else if (m[2]) tokens.push({ kind: 'image', alt: m[3] ?? '', url: m[4] ?? '' });
+    else if (m[5]) tokens.push({ kind: 'bold', value: m[5].slice(2, -2) });
+    else if (m[6]) tokens.push({ kind: 'italic', value: m[6].slice(1, -1) });
+    else if (m[7]) tokens.push({ kind: 'link', value: m[7] });
     last = m.index + m[0].length;
   }
   if (last < line.length) tokens.push({ kind: 'text', value: line.slice(last) });
@@ -49,8 +58,21 @@ function linkHref(raw: string): string {
   return /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
 }
 
+function looksLikeImageUrl(url: string): boolean {
+  return /\.(png|jpe?g|webp|gif|svg)(\?|#|$)/i.test(url) || /\/attachments\//i.test(url);
+}
+
+function imageLabel(alt: string): string {
+  const trimmed = alt.trim();
+  return trimmed || 'Image';
+}
+
 /** Render inline markdown to safe React nodes (used in the chat thread). */
-export function renderInlineMarkdown(text: string): React.ReactNode {
+export function renderInlineMarkdown(
+  text: string,
+  options?: RenderInlineMarkdownOptions,
+): React.ReactNode {
+  const onOpenPhoto = options?.onOpenPhoto;
   const lines = String(text ?? '').split(/\r?\n/);
   return lines.map((line, li) => {
     const nodes = tokenizeLine(line).map((t, ti) => {
@@ -66,6 +88,34 @@ export function renderInlineMarkdown(text: string): React.ReactNode {
             { key, className: 'rounded bg-scrim/10 px-1 py-0.5 text-[0.9em]' },
             t.value,
           );
+        case 'image': {
+          const href = linkHref(t.url);
+          const label = imageLabel(t.alt);
+          if (onOpenPhoto && looksLikeImageUrl(href)) {
+            return React.createElement(
+              'button',
+              {
+                key,
+                type: 'button',
+                onClick: () => onOpenPhoto(href),
+                className:
+                  'ds-raw-button inline underline underline-offset-2 break-all text-left font-semibold',
+              },
+              label,
+            );
+          }
+          return React.createElement(
+            'a',
+            {
+              key,
+              href,
+              target: '_blank',
+              rel: 'noopener noreferrer',
+              className: 'underline underline-offset-2 break-all',
+            },
+            label,
+          );
+        }
         case 'link':
           return React.createElement(
             'a',
@@ -74,7 +124,7 @@ export function renderInlineMarkdown(text: string): React.ReactNode {
               href: linkHref(t.value),
               target: '_blank',
               rel: 'noopener noreferrer',
-              className: 'underline underline-offset-2',
+              className: 'break-all underline underline-offset-2',
             },
             t.value,
           );
@@ -113,6 +163,11 @@ export function markdownToHtml(text: string): string {
             return `<em>${escapeHtml(t.value)}</em>`;
           case 'code':
             return `<code>${escapeHtml(t.value)}</code>`;
+          case 'image': {
+            const href = escapeHtml(linkHref(t.url));
+            const label = escapeHtml(imageLabel(t.alt));
+            return `<a href="${href}" target="_blank" rel="noopener noreferrer">${label}</a>`;
+          }
           case 'link': {
             const href = escapeHtml(linkHref(t.value));
             return `<a href="${href}" target="_blank" rel="noopener noreferrer">${escapeHtml(t.value)}</a>`;

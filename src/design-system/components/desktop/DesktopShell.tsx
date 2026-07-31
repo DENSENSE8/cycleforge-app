@@ -2,6 +2,7 @@
 
 import { type ReactNode } from 'react';
 import { appContentShellClass } from '@/components/layout/header-shell';
+import { SIDEBAR_SPINE_WIDTH_PX } from '@/components/sidebar/sidebar-spine';
 import { appChromeClass } from '@/design-system/tokens/app-surface';
 import { cn } from '@/utils/_cn';
 
@@ -10,7 +11,7 @@ import { cn } from '@/utils/_cn';
 export interface DesktopShellProps {
   /** Left sidebar content (navigation, context panels). */
   sidebar?: ReactNode;
-  /** Width of the sidebar. Default 360px (matches existing DashboardSidebar). */
+  /** Width of the sidebar. Default matches {@link SIDEBAR_SPINE_WIDTH_PX}. */
   sidebarWidth?: number | string;
   /** Whether the sidebar is collapsed (e.g., when viewing details). */
   sidebarCollapsed?: boolean;
@@ -30,7 +31,7 @@ export interface DesktopShellProps {
  *   ┌───────────┬──────────────────────────────┐
  *   │           │ Top bar (optional)            │
  *   │  Sidebar  ├──────────────────────────────┤
- *   │  (360px)  │                              │
+ *   │  (spine)  │                              │
  *   │           │  Main content (flex-1)       │
  *   │           │  square corner, no edge      │
  *   └───────────┴──────────────────────────────┘
@@ -43,7 +44,7 @@ export interface DesktopShellProps {
  */
 export function DesktopShell({
   sidebar,
-  sidebarWidth = 360,
+  sidebarWidth = SIDEBAR_SPINE_WIDTH_PX,
   sidebarCollapsed = false,
   children,
   topBar,

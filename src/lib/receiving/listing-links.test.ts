@@ -6,6 +6,16 @@ import {
   listingUrlIdentityKey,
   buildOpenLinksHubHref,
 } from './listing-links';
+import { getExternalUrlByPlatform } from '@/utils/external-item-url';
+
+
+test('getExternalUrlByPlatform: zoho is inventory — never invents usavshop URL', () => {
+  assert.equal(getExternalUrlByPlatform('zoho', '1018'), null);
+  assert.equal(
+    getExternalUrlByPlatform('ecwid', '01018'),
+    'https://usavshop.com/products/search?keyword=01018',
+  );
+});
 
 
 test('manual listing URL wins as primary', () => {
@@ -51,6 +61,85 @@ test('unmatched cartons skip SKU-derived storefront link', () => {
     platforms: [],
   });
   assert.equal(links.length, 0);
+});
+
+test('Zoho PO suppress: empty platforms yields no derived usavshop link', () => {
+  const links = collectCartonListingLinks({
+    listingLink: '',
+    sku: '1018',
+    sourcePlatform: '',
+    isUnmatched: false,
+    suppressEcwidStorefront: true,
+    platforms: [],
+  });
+  assert.equal(links.length, 0);
+});
+
+test('Zoho PO suppress: skips catalog ecwid rows', () => {
+  const links = collectCartonListingLinks({
+    listingLink: '',
+    sku: '1018',
+    sourcePlatform: '',
+    isUnmatched: false,
+    suppressEcwidStorefront: true,
+    platforms: [
+      { platform: 'ecwid', platformSku: '01018' },
+      { platform: 'zoho', platformSku: '1018' },
+    ],
+  });
+  assert.equal(links.length, 0);
+});
+
+test('Zoho PO suppress: keeps manual listing URL', () => {
+  const links = collectCartonListingLinks({
+    listingLink: 'https://www.ebay.com/itm/123456789012',
+    sku: '1018',
+    sourcePlatform: 'ebay',
+    isUnmatched: false,
+    suppressEcwidStorefront: true,
+    platforms: [{ platform: 'ecwid', platformSku: '01018' }],
+  });
+  assert.equal(links.length, 1);
+  assert.equal(links[0]?.source, 'manual');
+  assert.equal(links[0]?.href, 'https://www.ebay.com/itm/123456789012');
+});
+
+test('Zoho PO suppress: keeps non-Ecwid catalog marketplace rows', () => {
+  const links = collectCartonListingLinks({
+    listingLink: '',
+    sku: '1018',
+    sourcePlatform: 'amazon',
+    isUnmatched: false,
+    suppressEcwidStorefront: true,
+    platforms: [
+      { platform: 'ecwid', platformSku: '01018' },
+      {
+        platform: 'amazon',
+        platformItemId: 'B012345678',
+        listingUrl: 'https://www.amazon.com/dp/B012345678',
+      },
+    ],
+  });
+  assert.equal(links.length, 1);
+  assert.equal(links[0]?.source, 'catalog');
+  assert.equal(links[0]?.href, 'https://www.amazon.com/dp/B012345678');
+});
+
+test('non-Zoho matched carton still gets derived storefront from SKU', () => {
+  const links = collectCartonListingLinks({
+    listingLink: '',
+    sku: 'WIDGET-01',
+    sourcePlatform: '',
+    isUnmatched: false,
+    suppressEcwidStorefront: false,
+    platforms: [],
+  });
+  assert.equal(links.length, 1);
+  assert.equal(links[0]?.source, 'derived');
+  assert.equal(
+    links[0]?.href,
+    'https://usavshop.com/products/search?keyword=WIDGET-01',
+  );
 });
 
 test('dedupes identical hrefs from catalog and derived paths', () => {

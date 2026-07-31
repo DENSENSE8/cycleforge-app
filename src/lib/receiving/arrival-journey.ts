@@ -7,7 +7,7 @@
  * Overview.
  */
 
-type ArrivalPipelineKey = 'door' | 'classified' | 'staged' | 'ready';
+export type ArrivalPipelineKey = 'door' | 'classified' | 'staged' | 'ready';
 type ArrivalPipelineState = 'done' | 'active' | 'pending';
 
 type ArrivalJourneyFacts = {
