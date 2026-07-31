@@ -11,13 +11,13 @@
  *
  * ## 2. It relapses into a second photo UI / Unbox CTA spam / lobotomized work chrome
  *
- * Intent pins (not frozen UI names): disposition truth; photos via shared viewer
- * SoT (`usePhotoGallery` + `PhotoViewerPortal`) from a thumbnail strip under
- * disposition — never a page-local EvidenceStage / lightbox or a hand-rolled
- * “N photos” count button; empty ≠ fetch error for photos; shared pipeline
- * stepper (`LinearWorkflowStepper`); full width; one quiet `openInUnboxHref`
- * escape (no "Open in Unbox" marketing string). Never require Unbox layout
- * panels / CartonContextCard.
+ * Intent pins (not frozen UI names): disposition truth; photos via the shared
+ * `ReceivingPhotosSection` (readOnly — same component as ReceivingDetailsStack
+ * Progress); never a page-local EvidenceStage / lightbox or hand-rolled “N photos”
+ * count button; empty ≠ fetch error for photos; shared carton pipeline
+ * (`ReceivingCartonPipeline` + stage rows on a Panel); full width; one quiet
+ * `openInUnboxHref` escape (no "Open in Unbox" marketing string). Never require
+ * Unbox layout panels / CartonContextCard.
  *
  * Run: `node --test --require ./scripts/register-server-only-shim.cjs --import tsx \
  *        src/components/receiving/inspector/carton-inspector.guard.test.ts`
@@ -111,10 +111,14 @@ test('disposition truth — exceptions outrank lifecycle.done', () => {
   );
 });
 
-test('photos use the shared viewer SoT, never a page-local stage', () => {
+test('photos use the shared details-stack section, read-only', () => {
   assert.ok(
-    ALL.includes('usePhotoGallery') && ALL.includes('PhotoViewerPortal'),
-    'photos must open via usePhotoGallery + PhotoViewerPortal (house viewer SoT)',
+    ALL.includes('ReceivingPhotosSection'),
+    'photos must reuse ReceivingPhotosSection (same component as ReceivingDetailsStack Progress)',
+  );
+  assert.ok(
+    ALL.includes('readOnly'),
+    'the look-up surface must mount ReceivingPhotosSection read-only (no upload/delete/reassign)',
   );
   assert.equal(
     ALL.includes('EvidenceStage'),
@@ -127,9 +131,14 @@ test('photos use the shared viewer SoT, never a page-local stage', () => {
     'legacy launcher copy must not return',
   );
   assert.equal(
+    ALL.includes('allowReassign'),
+    false,
+    'read surface must not enable PO photo reassign',
+  );
+  assert.equal(
     /role=["']dialog["']/.test(ALL),
     false,
-    'never a local role="dialog" lightbox — mount PhotoViewerPortal instead',
+    'never a local role="dialog" lightbox — PhotoGallery mounts PhotoViewerPortal',
   );
 });
 
@@ -139,20 +148,26 @@ test('a failed photo load never borrows the "no photos" copy', () => {
     false,
     'the photo query swallows failure into an empty list — an outage then reads as "no evidence exists"',
   );
+  // Error branching lives in ReceivingPhotosSection when readOnly — inspector
+  // must pass that flag so the section throws instead of returning [].
   assert.ok(
-    ALL.includes('photosError') || ALL.includes('errored'),
-    'the photos control must branch errored vs empty, not collapse them',
+    ALL.includes('readOnly'),
+    'readOnly photos section owns empty ≠ fetch error for the look-up surface',
   );
 });
 
-test('progress uses the shared pipeline stepper, not a hand-rolled handling strip', () => {
+test('progress uses the shared carton pipeline on a Panel, not a hand-rolled strip', () => {
   assert.ok(
-    ALL.includes('LinearWorkflowStepper'),
-    'carton progress must use LinearWorkflowStepper (same primitive as ReceivingDetailsStack)',
+    ALL.includes('ReceivingCartonPipeline'),
+    'carton progress must reuse ReceivingCartonPipeline (stepper + stage detail rows)',
   );
   assert.ok(
     ALL.includes('deriveCartonReadiness'),
     'stepper states must come from deriveCartonReadiness, not ad-hoc timestamps',
+  );
+  assert.ok(
+    ALL.includes('Panel'),
+    'pipeline sits on a Panel background surface',
   );
   assert.equal(
     ALL.includes('ProvenanceBlock') || ALL.includes('collapseProvenance'),

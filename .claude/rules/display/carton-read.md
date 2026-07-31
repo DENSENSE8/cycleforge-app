@@ -11,23 +11,22 @@ Recipe for the durable **read** record of a carton — observe-first with a work
 ```
 ┌─ DispositionBar ──────────────────────────────────────────────┐
 │ ● Disposition · Carton {id} · chips · flags     [utils] [⚒]  │
-├─ Photo thumbnail strip (PhotoLauncher) ───────────────────────┤
-│ [thumb] [thumb] … → shared PhotoViewerPortal                  │
 └───────────────────────────────────────────────────────────────┘
 ┌─ Col 1 (left) ──────────────┬─ Col 2 (right) ────────────────┐
-│ CONTENTS · ACTIVITY · RECORD│ PROGRESS · HISTORY · FINDINGS   │
-│ Lines first · activity ·    │ Compact LinearWorkflowStepper   │
-│ sparse facts / notes        │ · Units|Tracking · exceptions   │
+│ CONTENTS · ACTIVITY · RECORD│ PROGRESS · PHOTOS · HISTORY     │
+│ Lines first · activity ·    │ Panel + ReceivingCartonPipeline │
+│ sparse facts / notes        │ (stepper + stage rows)          │
+│                             │ ReceivingPhotosSection readOnly │
+│                             │ · Units|Tracking · findings     │
 └─────────────────────────────┴─────────────────────────────────┘
 ```
 
-- **≥xl:** two columns — contents first, progress/history second.  
+- **≥xl:** two columns — contents first, progress/photos/history second.  
 - **Mobile:** stack col1 then col2.  
-- **Photos:** slim thumbnail strip under disposition → `usePhotoGallery` + `PhotoViewerPortal`. Never a hand-rolled “N photos” count button, EvidenceStage, or page-local lightbox.  
-- **Progress:** shared `LinearWorkflowStepper` (Scanned → Unboxed → Received) via `deriveCartonReadiness` — never a hand-rolled HANDLING provenance strip.  
+- **Photos:** same `ReceivingPhotosSection` as ReceivingDetailsStack Progress, mounted **below** the pipeline with `readOnly` (URL-only gallery — no upload/delete/reassign). Never EvidenceStage or a hand-rolled “N photos” count button.  
+- **Progress:** shared `ReceivingCartonPipeline` (Scanned → Unboxed → Received + `PipelineStageRow` details) on a `Panel` surface — never a hand-rolled HANDLING provenance strip.  
 - **Work escape:** one quiet control using `openInUnboxHref` (icon / secondary). Zero visible `"Open in Unbox"` strings on findings or header.  
-- **Empty ≠ fetch error** for photos — branch copy; never swallow failure into `[]`.  
-- **Read-only gallery:** `{ url }` only (no numeric `id` / upload targets).  
+- **Empty ≠ fetch error** for photos — `readOnly` section throws on fetch failure (distinct “Photos unavailable”).  
 - **Disposition truth:** exceptions outrank lifecycle.done — never claim settled / “Work complete” while exceptions hold. Linked PO suppresses Unmatched / “No matched PO” even if `pairing_state` is still `UNFOUND`.  
 - **Full width** — never `STATION_WORKBENCH_*` / station max-width caps.
 
