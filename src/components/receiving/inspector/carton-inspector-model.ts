@@ -49,12 +49,16 @@ export interface CartonInspectorReceiving {
   listing_url: string | null;
   support_notes: string | null;
   tracking_scanned_at: string | null;
+  tracking_scanned_by?: number | null;
   tracking_scanned_by_name: string | null;
   unbox_opened_at: string | null;
+  unbox_opened_by?: number | null;
   unbox_opened_by_name: string | null;
   unboxed_at: string | null;
+  unboxed_by?: number | null;
   unboxed_by_name: string | null;
   received_at: string | null;
+  received_by?: number | null;
   received_by_name: string | null;
   created_at: string | null;
   updated_at: string | null;
