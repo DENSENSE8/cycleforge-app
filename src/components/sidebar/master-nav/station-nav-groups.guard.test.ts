@@ -1,10 +1,11 @@
 /**
- * Source guard: Stations L1 sub-taxonomy is Floor / Desk via SoT `stationGroup`.
+ * Source guard: Stations membership is Floor / Desk via SoT `stationGroup`.
  * Pins — every station declares a group; Floor stays pipeline-ordered; Desk is
- * Review + Support; SidebarNavList imports STATION_GROUPS (no label twin).
+ * Review + Support. Spine renders Floor/Desk as section drills via SPINE_DRILLS
+ * (no label twin).
  *
- * SoT: STATION_GROUPS + APP_SIDEBAR_NAV / SIDEBAR_PAGE_NAV in sidebar-navigation.ts
- * Display law: .claude/rules/display/workbench.md (Stations Floor / Desk)
+ * SoT: STATION_GROUPS + SPINE_DRILLS + APP_SIDEBAR_NAV / SIDEBAR_PAGE_NAV
+ * Display law: .claude/rules/display/workbench.md (section drills)
  * Plan: docs/todo/station-nav-floor-desk-PLAN.md
  *
  * Run: node --test --import tsx \
@@ -89,21 +90,25 @@ test('Desk stations are review then support in APP_SIDEBAR_NAV', () => {
   assert.deepEqual(deskIds, [...DESK_IDS]);
 });
 
-test('SidebarNavList imports STATION_GROUPS and does not twin Floor/Desk labels', () => {
-  assert.match(LIST_SRC, /STATION_GROUPS/);
+test('SidebarNavList imports STATION_GROUPS via SPINE_DRILLS and does not twin Floor/Desk labels', () => {
+  // Labels come from SPINE_DRILLS (which spreads STATION_GROUPS) — no hard-coded twins.
+  assert.match(LIST_SRC, /SPINE_DRILLS/);
   assert.doesNotMatch(LIST_SRC, /['"]Floor['"]/);
   assert.doesNotMatch(LIST_SRC, /['"]Desk['"]/);
   assert.match(LIST_SRC, /role=["']group["']/);
-  assert.match(LIST_SRC, /aria-labelledby/);
 });
 
-test('L1 parent eyebrows outrank Floor/Desk subtitles (type hierarchy)', () => {
-  // Parent Main/Stations: role-eyebrow + text-text-soft (section header recipe).
-  assert.match(LIST_SRC, /text-role-eyebrow uppercase tracking-widest text-text-soft/);
-  // Nested Floor/Desk: quieter micro + faint — never peer-weight the parent.
-  assert.match(LIST_SRC, /text-role-micro uppercase tracking-widest text-text-faint/);
+test('Floor/Desk are section drill buttons — not nested micro-eyebrows under Stations', () => {
+  // Full section drill: no Main/Stations parent eyebrow + Floor/Desk micro nest.
+  assert.doesNotMatch(LIST_SRC, /text-role-micro uppercase tracking-widest text-text-faint/);
+  assert.doesNotMatch(LIST_SRC, /text-role-eyebrow uppercase tracking-widest text-text-soft/);
+  assert.match(LIST_SRC, /ChevronRight/);
+  assert.match(LIST_SRC, /onDrillChange/);
 });
 
-test('L1 sections separate with a quiet hairline (Main / Stations / Stock)', () => {
-  assert.match(LIST_SRC, /groupIndex > 0 && 'mt-1\.5 border-t border-border-soft pt-1\.5'/);
+test('Section drills share one quiet list — no L1 hairline between Main/Stations nests', () => {
+  // Root is a flat list of SPINE_DRILLS buttons; hairlines live on top/footer pins.
+  assert.doesNotMatch(LIST_SRC, /groupIndex > 0 && 'mt-1\.5 border-t border-border-soft pt-1\.5'/);
+  assert.match(LIST_SRC, /border-t border-border-soft/);
+  assert.match(LIST_SRC, /border-b border-border-soft/);
 });

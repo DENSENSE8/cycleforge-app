@@ -1,17 +1,19 @@
 'use client';
 
 /**
- * SearchResultsSurface — the shared results body for the `/search` route.
+ * SearchResultsSurface — shared results body for the `/search` workbench rail
+ * (and any host that wants the same retrieve + refine + flat RRF list).
+ *
  * Controlled: the host owns the query (URL state); the surface owns retrieval
- * + flat RRF-ranked result rendering (Monitor feed — no entity grouping cards).
- * Phase 2: client refine (`etype`/`hstat`) + display sort over the top-50.
+ * + result rendering. Client refine (`etype`/`hstat`) + display sort over the
+ * top-50. When `onSelectHit` is provided, hosts should `preventDefault` to keep
+ * selection in-page (`?sel=`).
  */
 
 import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Search } from '@/components/Icons';
-import { SearchRefineControls } from '@/components/search/SearchRefineControls';
-import { SearchResultRow } from '@/components/search/SearchResultRow';
+import { SearchResultRow, type SearchRowDensity } from '@/components/search/SearchResultRow';
 import { SearchResultRowSkeleton } from '@/components/search/SearchResultRowSkeleton';
 import { MonitorListBlock } from '@/design-system/components/monitor';
 import { EmptyState } from '@/design-system/primitives';
@@ -29,6 +31,10 @@ import {
   type SearchDisplaySort,
 } from '@/lib/search/search-refine';
 import type { SearchHitEntityType } from '@/lib/search/search-hit';
+import {
+  isSearchSelActive,
+  type SearchSelection,
+} from '@/lib/search/search-selection';
 import { cn } from '@/utils/_cn';
 
 export interface SearchResultsSurfaceProps {
@@ -41,19 +47,39 @@ export interface SearchResultsSurfaceProps {
   hstat?: string | null;
   /** Display sort (`?colsort=` — relevance default | date). */
   sort?: SearchDisplaySort;
+  /** Row density. Compact for rails; comfortable for the `/search` Monitor feed. */
+  density?: SearchRowDensity;
   /**
-   * Row click. Receives the event so a host can intercept the `<Link>`.
-   * When absent, rows navigate to their deep-link normally.
+   * Show the secondary "Open journey" affordance on rows. Default true;
+   * `/search` rail passes false (selection opens detail in-pane).
+   */
+  showJourneyAction?: boolean;
+  /**
+   * When false, skip the empty-query teach EmptyState (rail shows recents instead).
+   */
+  showEmptyTeach?: boolean;
+  /**
+   * Row click. Receives the event so a host can intercept the `<Link>`
+   * (`event.preventDefault()` + write `?sel=`). When absent, rows navigate.
    */
   onSelectHit?: (hit: AiSearchHit, event: ReactMouseEvent) => void;
   /** Fires when the in-flight state changes. */
   onLoadingChange?: (loading: boolean) => void;
   /**
    * Fires with the UNFILTERED result set each time a query settles, so a host
-   * can react (sole ORDER → record). Refine must not change sole-hit open.
+   * can react (sole hit → set `sel`). Refine must not change sole-hit open.
    */
   onResults?: (hits: AiSearchHit[]) => void;
-  /** Highlighted order id — the rep workbench rail's current selection. */
+  /** Distinct `facets.status` values for a host-owned refine chrome. */
+  onStatusOptions?: (options: string[]) => void;
+  /**
+   * Durable selection from `?sel=` — highlights any matching entity row.
+   * Prefer this over `activeHitId` on the search workbench.
+   */
+  activeSel?: SearchSelection | null;
+  /**
+   * @deprecated Prefer `activeSel`. Order-only highlight for legacy rail hosts.
+   */
   activeHitId?: number | null;
   /** Per-order packout proof for the rail rows (rep workbench only). */
   packoutById?: Record<number, NearMatchPackout>;
@@ -74,9 +100,14 @@ export function SearchResultsSurface({
   etype = null,
   hstat = null,
   sort = 'relevance',
+  density = 'comfortable',
+  showJourneyAction,
+  showEmptyTeach = true,
   onSelectHit,
   onLoadingChange,
   onResults,
+  onStatusOptions,
+  activeSel = null,
   activeHitId,
   packoutById,
   className,
@@ -155,19 +186,29 @@ export function SearchResultsSurface({
     if (state.status === 'done') onResults?.(state.hits);
   }, [state.status, state.hits, onResults]);
 
+  useEffect(() => {
+    onStatusOptions?.(statusOptions);
+  }, [statusOptions, onStatusOptions]);
+
   const hasRefine = Boolean(etype || hstat);
   const showResults = state.status === 'done' && displayHits.length > 0;
   const showLoading = state.status === 'loading';
-  const showRefineChrome = Boolean(q) && (state.status === 'done' || state.status === 'loading');
+  const isCompact = density === 'compact' || density === 'dropdown';
+
+  function isActive(hit: AiSearchHit): boolean {
+    if (activeSel) return isSearchSelActive(activeSel, hit);
+    return hit.entityType === 'order' && activeHitId != null && hit.id === activeHitId;
+  }
 
   return (
-    <div className={cn('space-y-4', className)}>
-      {showRefineChrome ? (
-        <SearchRefineControls statusOptions={statusOptions} />
-      ) : null}
-
+    <div className={cn(isCompact ? 'space-y-2' : 'space-y-3', className)}>
       {state.status === 'done' && (
-        <p className="text-role-caption font-medium text-text-soft">
+        <p
+          className={cn(
+            'text-role-eyebrow uppercase text-text-soft',
+            isCompact && 'px-3',
+          )}
+        >
           {hasRefine
             ? `${displayHits.length} of ${state.hits.length === 50 ? '50+' : state.hits.length}`
             : state.hits.length === 50
@@ -180,7 +221,7 @@ export function SearchResultsSurface({
         </p>
       )}
 
-      {!q && (
+      {showEmptyTeach && !q && (
         <EmptyState
           icon={<Search className="h-6 w-6 text-text-faint" />}
           title="Search everything, from anywhere"
@@ -208,7 +249,10 @@ export function SearchResultsSurface({
           icon={<Search className="h-6 w-6 text-text-faint" />}
           title={`No matches for “${q}”`}
           description="Try fewer words, a partial serial, or the last 8 digits of a tracking number."
-          className="rounded-xl border border-dashed border-border-soft bg-surface-canvas py-8"
+          className={cn(
+            'rounded-xl border border-dashed border-border-soft bg-surface-canvas',
+            isCompact ? 'py-6' : 'py-8',
+          )}
         />
       )}
       {state.status === 'done' && state.hits.length > 0 && displayHits.length === 0 && q && (
@@ -216,7 +260,10 @@ export function SearchResultsSurface({
           icon={<Search className="h-6 w-6 text-text-faint" />}
           title="No results match these filters"
           description="Clear a refine chip or pick a broader type / status."
-          className="rounded-xl border border-dashed border-border-soft bg-surface-canvas py-8"
+          className={cn(
+            'rounded-xl border border-dashed border-border-soft bg-surface-canvas',
+            isCompact ? 'py-6' : 'py-8',
+          )}
         />
       )}
 
@@ -242,16 +289,17 @@ export function SearchResultsSurface({
             key={`results:${state.forKey}`}
             {...presence}
             transition={transition}
-            className="pb-8"
+            className={isCompact ? 'pb-4' : 'pb-8'}
           >
             <MonitorListBlock>
               {displayHits.map((hit) => (
                 <li key={`${hit.entityType}:${hit.id}`}>
                   <SearchResultRow
                     hit={hit}
-                    density="comfortable"
+                    density={density}
                     onNavigate={onSelectHit}
-                    active={hit.entityType === 'order' && activeHitId != null && hit.id === activeHitId}
+                    active={isActive(hit)}
+                    showJourneyAction={showJourneyAction}
                     packout={hit.entityType === 'order' ? packoutById?.[hit.id] : undefined}
                   />
                 </li>

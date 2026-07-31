@@ -158,3 +158,110 @@ test('line outside the carton → linesUpdated 0, no writes to the line', async 
   assert.ok(!queries.some((q) => /INSERT INTO receiving_line_zoho/.test(q.text)));
   assert.ok(!queries.some((q) => /UPDATE receiving_line\b/.test(q.text)));
 });
+
+test('busy-shell conflict with tracking → attach onto shell and return pairedOnto', async () => {
+  const { deps, queries, recomputeCalls } = fakes();
+  const attachCalls: Array<{ receivingId: number; trackingNumber: string }> = [];
+
+  const res = await relinkReceivingPo(
+    {
+      receivingId: 50292,
+      scope: 'carton',
+      zohoPurchaseorderId: 'PO-BUSY',
+      zohoPurchaseorderNumber: '23-14904-89272',
+    },
+    'org-1',
+    {
+      ...deps,
+      claimShell: async () => ({
+        action: 'conflict',
+        shellReceivingId: 49932,
+        status: 409,
+        error: 'PO already linked to carton #49932 — open that carton or unpair it first',
+      }),
+      attachBox: async ({ receivingId, trackingNumber }) => {
+        attachCalls.push({ receivingId, trackingNumber });
+        return {
+          ok: true,
+          shipmentId: 1,
+          alreadyAttached: false,
+          boxSeq: 2,
+          isPrimary: false,
+          boxCount: 2,
+          boxes: [],
+        };
+      },
+      runTx: async (_orgId, fn) => {
+        // Enrich the client so the tracking probe returns a label.
+        const client: TxClient = {
+          query: async (text, params = []) => {
+            queries.push({ text, params });
+            if (/SELECT id\s+FROM receiving_carton\b/.test(text) && !/source = 'zoho_po'/.test(text)) {
+              return { rows: [{ id: params[0] }], rowCount: 1 };
+            }
+            if (/AS tracking/.test(text)) {
+              return { rows: [{ tracking: 'LX088692799IL' }], rowCount: 1 };
+            }
+            return { rows: [], rowCount: 1 };
+          },
+        };
+        return fn(client);
+      },
+      recompute: async (id) => {
+        recomputeCalls.push(id);
+      },
+    },
+  );
+
+  assert.equal(res.ok, true);
+  assert.equal(res.status, 200);
+  assert.equal(res.receivingId, 49932);
+  assert.equal(res.pairedOnto, 49932);
+  assert.deepEqual(attachCalls, [{ receivingId: 49932, trackingNumber: 'LX088692799IL' }]);
+  assert.ok(queries.some((q) => /UPDATE receiving_scans/.test(q.text)), 're-parent scans');
+  assert.ok(queries.some((q) => /INSERT INTO unfound_overlay/.test(q.text)), 'dismiss orphan');
+  assert.ok(queries.some((q) => /UPDATE photo_entity_links/.test(q.text)), 'reparent photos');
+  assert.ok(queries.some((q) => /UPDATE receiving_unbox/.test(q.text)), 'clear unbox open on orphan');
+  assert.ok(recomputeCalls.includes(49932), 'recompute winning shell');
+});
+
+test('busy-shell conflict without tracking → still 409', async () => {
+  const { deps, queries } = fakes();
+
+  const res = await relinkReceivingPo(
+    { receivingId: 10, scope: 'carton', zohoPurchaseorderId: 'PO-BUSY' },
+    'org-1',
+    {
+      ...deps,
+      claimShell: async () => ({
+        action: 'conflict',
+        shellReceivingId: 99,
+        status: 409,
+        error: 'PO already linked to carton #99 — open that carton or unpair it first',
+      }),
+      attachBox: async () => {
+        throw new Error('attachBox must not run');
+      },
+      runTx: async (_orgId, fn) => {
+        const client: TxClient = {
+          query: async (text, params = []) => {
+            queries.push({ text, params });
+            if (/SELECT id\s+FROM receiving_carton\b/.test(text)) {
+              return { rows: [{ id: params[0] }], rowCount: 1 };
+            }
+            if (/AS tracking/.test(text)) {
+              return { rows: [{ tracking: null }], rowCount: 1 };
+            }
+            return { rows: [], rowCount: 1 };
+          },
+        };
+        return fn(client);
+      },
+    },
+  );
+
+  assert.equal(res.ok, false);
+  assert.equal(res.status, 409);
+  assert.match(res.error ?? '', /carton #99/);
+  assert.equal(res.pairedOnto, undefined);
+});

@@ -16,15 +16,10 @@ export interface SidebarShellProps {
 }
 
 /**
- * Host for the 40px identity band plus the page list.
+ * Host for the identity band plus the page list.
  *
- * **One body, always: the page list.** A route's own sidebar is no longer a body
- * this shell can render — it mounts in the content region beside the workspace
- * (`ContextPanelLayout`), the shape the station benches always had. What that
- * removes is a whole class of conflict: the navigator and the route's picker used
- * to share this column, so opening one took away the other, and a route with no
- * picker (the Media library) left the navigator painting over the work canvas.
- *
+ * **One body, always: section drills.** A route's own sidebar mounts in the
+ * content region beside the workspace (`ContextPanelLayout`).
  */
 export function SidebarShell({
   permissions,

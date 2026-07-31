@@ -20,6 +20,7 @@ import { buildFbaPlanRefFromIsoDate } from '@/lib/fba/plan-ref';
 import { withAuth } from '@/lib/auth/withAuth';
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
+import { scheduleEnsureOutboundDocsOnPackReady } from '@/lib/documents/ensure-outbound-docs';
 
 const ROUTE = 'tech.scan';
 type ScanSourceStation = 'TECH' | 'FBA';
@@ -452,6 +453,12 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       if (salId) publishActivityLogged({ organizationId: ctx.organizationId, id: salId, station: salStation, activityType: 'TRACKING_SCANNED', staffId: testedBy, scanRef: resolved.scanRef ?? value, fnsku: null, source: stationSource }).catch(() => {});
       if (!isFbaSource) {
         await publishOrderTested({ organizationId: ctx.organizationId, orderId: Number(order.id), testedBy, source: ROUTE });
+        // JIT Phase 4: pre-fetch outbound docs while packer queue warms (print stays on pack).
+        scheduleEnsureOutboundDocsOnPackReady(
+          ctx.organizationId,
+          Number(order.id),
+          'pack_ready.tech_scan',
+        );
       }
 
       const scanSessionId = await createStationScanSession(pool, {

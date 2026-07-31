@@ -139,12 +139,14 @@ export function receivingRowActivityTs(
     received_at?: string | null;
     created_at?: string | null;
     unboxed_at?: string | null;
+    unbox_opened_at?: string | null;
     received_done_at?: string | null;
   },
   axis: ReceivingActivityAxis = 'scanned',
 ): string | null {
   if (axis === 'unboxed') {
-    return row.unboxed_at ?? row.created_at ?? null;
+    // Prefer first Unbox-open (Unboxed sidebar axis), then unbox-complete.
+    return row.unbox_opened_at ?? row.unboxed_at ?? row.created_at ?? null;
   }
   if (axis === 'received') {
     return row.received_done_at ?? row.unboxed_at ?? row.created_at ?? null;
@@ -158,6 +160,7 @@ export function receivingRowActivityMs(
     received_at?: string | null;
     created_at?: string | null;
     unboxed_at?: string | null;
+    unbox_opened_at?: string | null;
     received_done_at?: string | null;
   },
   axis: ReceivingActivityAxis = 'scanned',
@@ -197,6 +200,7 @@ type ReceivingStageStampRow = {
   scanned_at?: string | null;
   received_at?: string | null;
   unboxed_at?: string | null;
+  unbox_opened_at?: string | null;
   received_done_at?: string | null;
   tested_at?: string | null;
   scanned_by_name?: string | null;
@@ -207,9 +211,11 @@ type ReceivingStageStampRow = {
 /**
  * Which lifecycle instant owns the dense row clock for the active history axis.
  * Does **not** fall back to `created_at` — that is for day-banding only.
- * On the unboxed axis, when `unboxed_at` is missing (e.g. Unfound PO that was
- * door-scanned but never unboxed), fall back to the scan clock so the meta
- * column stays populated and vertically aligned with sibling rows.
+ * On the unboxed axis, prefer first Unbox-open (`unbox_opened_at` — same stamp
+ * the Unboxed sidebar ages/sorts on), then unbox-complete (`unboxed_at`). When
+ * both are missing (e.g. Unfound PO that was door-scanned but never opened),
+ * fall back to the scan clock so the meta column stays populated and vertically
+ * aligned with sibling rows.
  */
 export function resolveReceivingRowStageStamp(
   row: ReceivingStageStampRow,
@@ -232,6 +238,14 @@ export function resolveReceivingRowStageStamp(
     return null;
   }
   if (axis === 'unboxed') {
+    const opened = (row.unbox_opened_at || '').trim();
+    if (opened) {
+      return {
+        instant: opened,
+        label: 'Unboxed',
+        staffName: (row.unboxed_by_name || '').trim() || null,
+      };
+    }
     const instant = (row.unboxed_at || '').trim();
     if (instant) {
       return {

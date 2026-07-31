@@ -248,6 +248,28 @@ test('unbox_opened sort prefers first-open column over ops MAX / triage door tim
   assert.doesNotMatch(orderByChunk, /rt\.door_received_at/);
 });
 
+test('History unboxed_newest matches Unboxed sidebar first-open axis', () => {
+  const built = buildReceivingLinesListSql({
+    query: parseReceivingLinesQuery(
+      new URLSearchParams('view=activity&sort=unboxed_newest'),
+    ),
+    orgId: ORG,
+    viewerStaffId: NaN,
+    universalIncoming: false,
+    applyScannedZohoExclusion: true,
+  });
+  assert.match(
+    built.list.sql,
+    /ORDER BY COALESCE\(ru\.opened_at::text, unbox_open\.unbox_opened_at::text, ru\.unboxed_at::text\) DESC NULLS LAST/,
+    'History Unboxed sort must prefer first-open before unbox-complete',
+  );
+  assert.match(
+    built.list.sql,
+    /COALESCE\(ru\.opened_at, unbox_open\.unbox_opened_at\)::text AS unbox_opened_at/,
+    'activity feed must expose unbox_opened_at for stage/date cells',
+  );
+});
+
 // ── Single-row and by-receiving-id branches ───────────────────────────────────
 
 test('single-row (?id=) SQL matches legacy', () => {

@@ -2,9 +2,9 @@
  * Generic LLM drafting for an internal Zendesk ticket (roadmap A-series).
  *
  * Takes a deterministic ticket template + a short context label and asks the
- * local Hermes model to rewrite it into clearer, more professional prose. The
- * claim-specific drafter (`zendesk-claim-draft-llm.ts`) predates this and stays
- * as-is; new ticket surfaces (unfound queue, etc.) use this generic one.
+ * local Hermes model to rewrite it into clearer, more professional prose.
+ * Ticket surfaces that need a Hermes rewrite (unfound queue, etc.) use this
+ * module.
  *
  * Discipline (mirrors `extract-llm.ts`): local gateway only, forced single tool
  * call, temperature 0 (inside `hermesToolCall`). The model rewrites PROSE only —

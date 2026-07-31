@@ -191,11 +191,18 @@ operator watched the app background between boxes.
 
 **`framerPresence.stationCartonSwap` + `framerTransition.stationCartonSwapMount`**
 is the sibling for that job: identical opacity shape, but the **exit carries its
-own `{ duration: 0 }`** so `mode="wait"` completes it immediately and only the
-enter fades (0.12s). Net: no gap.
+own `{ duration: 0 }`**. Browse→first open uses `mode="wait"` + enter fade (0.12s).
+Carton→carton uses sync + hard cover (see below).
 
-- **`mode="wait"` stays.** Two absolutely-positioned panes animating
-  concurrently double-image; that is not a fix.
+- **Carton→carton uses `mode="sync"` + opaque hard cover.** `mode="wait"` removes
+  carton A before mounting B and punches a white hole through the host while the
+  browse underlay is `visibility: hidden`. Concurrent *semi-transparent* fades
+  still double-image — that is not a fix. Opaque cover-replace (new pane at full
+  opacity on top, old exits underneath) does not. `UnboxLineWorkspace` switches
+  `mode={cartonSwapHardCut ? 'sync' : 'wait'}`, uses `initial={false}` on swap,
+  and paints the overlay shell `bg-surface-canvas` (station fill, not card white).
+- **Browse→first open keeps `mode="wait"` + enter fade.** Do not hard-cut the
+  first open or the station→browse close path without re-checking underlay paint.
 - **This is a sibling, not a replacement.** `workbenchPaneSettle` keeps serving
   its six pointer-driven consumers (Review, Outbound, FBA, Packer, Triage, …).
   Do not retune the shared preset for a station's problem.

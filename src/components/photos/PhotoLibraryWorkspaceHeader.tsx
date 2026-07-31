@@ -40,7 +40,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { WorkbenchChromeHeader } from '@/components/dashboard/workbench-shell';
+import { WorkbenchChromeHeader, WorkbenchTrailingCluster } from '@/components/dashboard/workbench-shell';
 import {
   WorkbenchFilterDivider,
   WorkbenchFilterGroupLabel,
@@ -172,6 +172,7 @@ export function PhotoLibraryWorkspaceHeader({ className }: { className?: string 
 
   return (
     <WorkbenchChromeHeader
+      density="band"
       // No tab rail: the seven lifecycle facets moved to the resident sidebar
       // rail (`PhotoLibrarySidebarPanel`) — they are navigation, and they were
       // the reason this row overflowed and clipped its own right controls.
@@ -195,50 +196,53 @@ export function PhotoLibraryWorkspaceHeader({ className }: { className?: string 
         />
       }
       right={
-        <>
-          <WorkbenchFilterPopover
-            open={filterOpen}
-            onOpenChange={setFilterOpen}
-            hot={structuredHot}
-            label="Media filters"
-            contentClassName="w-72 max-h-[min(70vh,28rem)] overflow-y-auto"
-          >
-            <PhotoLibraryFilterDropdown
-              filters={filters}
-              onPatch={patch}
-              onClose={() => setFilterOpen(false)}
-              staffOptions={staffRows}
-            />
-            <WorkbenchFilterDivider />
-            <WorkbenchFilterGroupLabel>Labels</WorkbenchFilterGroupLabel>
-            <div className="px-1 pb-1">
-              <PhotoLabelsSection
-                activeLabel={filters.label ?? null}
-                scopeImageType={filters.imageType}
-                onSelect={(label) => patch({ label })}
-              />
-            </div>
-            <WorkbenchFilterDivider />
-            <div className="px-1 pb-1">
-              <MediaSavedViewsSection
-                currentFilters={filters}
-                currentView={display.view}
-                savable={savable}
-                canManage={canManagePhotos}
-                onApply={(payload) => applyView(payload.filters, payload.view)}
-              />
-            </div>
-            <WorkbenchFilterDivider />
-            <div className="px-1 pb-1">
-              <PhotoLibraryNasBackup />
-            </div>
-          </WorkbenchFilterPopover>
-
-          <PhotoSortMenu
-            sort={filters.sort ?? 'recent'}
-            onSortChange={(sort) => patch({ sort })}
+        <WorkbenchFilterPopover
+          open={filterOpen}
+          onOpenChange={setFilterOpen}
+          hot={structuredHot}
+          label="Media filters"
+          contentClassName="w-72 max-h-[min(70vh,28rem)] overflow-y-auto"
+        >
+          <PhotoLibraryFilterDropdown
+            filters={filters}
+            onPatch={patch}
+            onClose={() => setFilterOpen(false)}
+            staffOptions={staffRows}
           />
-        </>
+          <WorkbenchFilterDivider />
+          <WorkbenchFilterGroupLabel>Labels</WorkbenchFilterGroupLabel>
+          <div className="px-1 pb-1">
+            <PhotoLabelsSection
+              activeLabel={filters.label ?? null}
+              scopeImageType={filters.imageType}
+              onSelect={(label) => patch({ label })}
+            />
+          </div>
+          <WorkbenchFilterDivider />
+          <div className="px-1 pb-1">
+            <MediaSavedViewsSection
+              currentFilters={filters}
+              currentView={display.view}
+              savable={savable}
+              canManage={canManagePhotos}
+              onApply={(payload) => applyView(payload.filters, payload.view)}
+            />
+          </div>
+          <WorkbenchFilterDivider />
+          <div className="px-1 pb-1">
+            <PhotoLibraryNasBackup />
+          </div>
+        </WorkbenchFilterPopover>
+      }
+      trailing={
+        <WorkbenchTrailingCluster
+          sort={
+            <PhotoSortMenu
+              sort={filters.sort ?? 'recent'}
+              onSortChange={(sort) => patch({ sort })}
+            />
+          }
+        />
       }
     />
   );

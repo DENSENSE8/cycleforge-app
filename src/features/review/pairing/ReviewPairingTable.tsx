@@ -69,6 +69,7 @@ export function ReviewPairingTable({ onOpenOrder, onCloseOrder }: ReviewPairingT
         chrome={
           <div className={WORKBENCH_CHROME_COLUMN}>
             <WorkbenchChromeHeader
+              density="band"
               tabs={[{ id: 'pairing', label: 'Needs allocation' }]}
               activeTab="pairing"
               onTabChange={() => undefined}

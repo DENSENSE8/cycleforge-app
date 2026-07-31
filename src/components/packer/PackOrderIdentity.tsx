@@ -47,6 +47,9 @@ export function PackOrderIdentity({
           staffId=""
           isUnmatched={Boolean(activeOrder.isUnknownOrder)}
           showStaffPhotoRow={false}
+          // Inert: receivingId is always null here, so the photo pill never
+          // renders regardless of stage. Required prop, no meaningful default.
+          photoStage="unbox_carton"
           // Classify is a receiving concern — a pack session's platform is
           // derived from the scanned item number, so the bar carries identity
           // chips only.

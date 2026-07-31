@@ -60,12 +60,13 @@ import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { MatchCard } from '@/components/receiving/triage/MatchCard';
 import { relativeTime, toTriagePackage } from '@/components/receiving/triage/triage-types';
 import { useTriagePanel } from '@/components/receiving/triage/useTriagePanel';
-import { usePoSuggestions } from '@/components/receiving/triage/usePoSuggestions';
-import { PoSuggestBanner } from '@/components/receiving/triage/PoSuggestBanner';
 import { useUnmatchedItems } from '@/components/receiving/workspace/unmatched-items/useUnmatchedItems';
 import { useReceivingCartonUnlink } from '@/components/receiving/workspace/unmatched-items/useReceivingCartonUnlink';
 import { isReturnIntake } from '@/lib/receiving/triage-intake-kind';
 import { WorkspaceSectionTitle } from '../WorkspaceSectionLabel';
+import {
+  RECEIVING_OPEN_PAIRING_PO_EVENT,
+} from '@/utils/events';
 
 export type CartonMatchTabSet = 'unbox' | 'arrival';
 type MatchTab = 'zoho_item' | 'zoho_po' | 'ecwid' | 'zendesk';
@@ -244,12 +245,13 @@ function MatchHubCard({
     loadCandidates: zendeskQueriesActive,
     loadDeliveredEmails: zendeskQueriesActive,
   });
-  const poSuggestions = usePoSuggestions(row, !collapsed && !pickerCollapsed);
   const pairingCollapse = useMotionPresence(framerPresence.collapseHeight);
   const pairingCollapseTransition = useMotionTransition(framerTransition.sidebarExpand);
 
-  const showQuickMatch =
-    Boolean(autoMatch) && pkg.isUnmatched && !pickerCollapsed && !collapsed;
+  // Unfound Auto-match stays visible even when Package Pairing is collapsed —
+  // operators need Return # / Zoho / Amazon without opening the full hub.
+  // Parent gates `autoMatch` (c.isUnfound / unfoundSurface); don't re-derive.
+  const showQuickMatch = Boolean(autoMatch) && !pickerCollapsed;
 
   const unlink = async () => {
     const ok = await unlinkCarton({
@@ -273,16 +275,26 @@ function MatchHubCard({
   };
 
   const cardTopRef = useRef<HTMLDivElement>(null);
+  const [poFocusRequestId, setPoFocusRequestId] = useState(0);
+  const openPairingTab = (next: MatchTab) => {
+    setTab(next);
+    setForcePicker(true);
+    if (next === 'zoho_po') setPoFocusRequestId((n) => n + 1);
+    requestAnimationFrame(() =>
+      cardTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }),
+    );
+  };
+
   useEffect(() => {
-    const open = () => {
-      setTab('ecwid');
-      setForcePicker(true);
-      requestAnimationFrame(() =>
-        cardTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }),
-      );
-    };
-    window.addEventListener('receiving-open-pairing-add', open);
-    return () => window.removeEventListener('receiving-open-pairing-add', open);
+    const openStore = () => openPairingTab('ecwid');
+    window.addEventListener('receiving-open-pairing-add', openStore);
+    return () => window.removeEventListener('receiving-open-pairing-add', openStore);
+  }, []);
+
+  useEffect(() => {
+    const openPo = () => openPairingTab('zoho_po');
+    window.addEventListener(RECEIVING_OPEN_PAIRING_PO_EVENT, openPo);
+    return () => window.removeEventListener(RECEIVING_OPEN_PAIRING_PO_EVENT, openPo);
   }, []);
 
   useEffect(() => {
@@ -376,25 +388,26 @@ function MatchHubCard({
     </div>
   );
 
+  const quickMatchStrip =
+    showQuickMatch && autoMatch ? (
+      <UnfoundMatchStrip
+        receivingId={autoMatch.receivingId}
+        lineId={autoMatch.lineId}
+        trackingNumber={autoMatch.trackingNumber}
+        receivedSerial={autoMatch.receivedSerial}
+        providerTicketId={autoMatch.providerTicketId}
+        ticketNumber={autoMatch.ticketNumber}
+        ticketUrl={autoMatch.ticketUrl}
+        onTicketChanged={autoMatch.onTicketChanged}
+        showTopRule={false}
+      />
+    ) : null;
+
   const body = (
     <div className="min-w-0 max-w-full">
-      {showQuickMatch && autoMatch ? (
-        <div className="mb-3">
-          <UnfoundMatchStrip
-            receivingId={autoMatch.receivingId}
-            lineId={autoMatch.lineId}
-            trackingNumber={autoMatch.trackingNumber}
-            receivedSerial={autoMatch.receivedSerial}
-            providerTicketId={autoMatch.providerTicketId}
-            ticketNumber={autoMatch.ticketNumber}
-            ticketUrl={autoMatch.ticketUrl}
-            onTicketChanged={autoMatch.onTicketChanged}
-            showTopRule={false}
-          />
-        </div>
-      ) : null}
-
-      <PoSuggestBanner suggestions={poSuggestions} />
+      {/* Non-embedded: strip lives in the card body. Embedded: rendered above
+          the collapse gate so unfound Auto-match stays open. */}
+      {!embedded && quickMatchStrip ? <div className="mb-3">{quickMatchStrip}</div> : null}
 
       <div ref={cardTopRef} className="mb-2 flex min-w-0 items-center gap-2">
         <HorizontalButtonSlider
@@ -433,7 +446,12 @@ function MatchHubCard({
           onAddSku={(sel) => u.handleAddLine(sel, { allowOffPo: orderLinked })}
         />
       ) : tab === 'zoho_po' ? (
-        <PoLinkTab row={row} receivingId={receivingId} />
+        <PoLinkTab
+          row={row}
+          receivingId={receivingId}
+          autoFocusSearch={poFocusRequestId > 0}
+          focusRequestId={poFocusRequestId}
+        />
       ) : (
         <ZendeskMatchTab t={t} />
       )}
@@ -475,11 +493,24 @@ function MatchHubCard({
   );
 
   if (embedded) {
+    const quickMatchBlock = quickMatchStrip ? (
+      <div
+        className={
+          showTopRule
+            ? 'mt-2 border-t border-border-hairline pt-2'
+            : 'mt-2'
+        }
+      >
+        {quickMatchStrip}
+      </div>
+    ) : null;
+
     // Arrival accordion: header always visible; body height-animates.
     if (onToggleCollapsed) {
       return (
-        <div className={showTopRule ? 'border-t border-border-hairline pt-4' : undefined}>
-          <div className="mb-1">
+        <div className={showTopRule && !quickMatchStrip ? 'border-t border-border-hairline pt-4' : undefined}>
+          {quickMatchBlock}
+          <div className={quickMatchStrip ? 'mt-3 mb-1' : 'mb-1'}>
             <MatchHubHeader
               collapsed={collapsed}
               onToggle={onToggleCollapsed}
@@ -504,28 +535,37 @@ function MatchHubCard({
     }
 
     return (
-      <motion.div
-        initial={false}
-        layout="position"
-        animate={
-          collapsed
-            ? { ...pairingCollapse.exit, marginTop: 0 }
-            : {
-                ...pairingCollapse.animate,
-                marginTop: showTopRule ? 8 : 0,
-              }
-        }
-        transition={pairingCollapseTransition}
-        className={collapsed ? 'overflow-hidden' : 'overflow-visible'}
-        aria-hidden={collapsed}
-      >
-        <div className={showTopRule ? 'border-t border-border-hairline pt-2' : undefined}>
-          <div className="mb-2">
-            <MatchHubHeader collapsed={collapsed} actions={headerActions} />
+      <div>
+        {quickMatchBlock}
+        <motion.div
+          initial={false}
+          layout="position"
+          animate={
+            collapsed
+              ? { ...pairingCollapse.exit, marginTop: 0 }
+              : {
+                  ...pairingCollapse.animate,
+                  marginTop: quickMatchStrip ? 12 : showTopRule ? 8 : 0,
+                }
+          }
+          transition={pairingCollapseTransition}
+          className={collapsed ? 'overflow-hidden' : 'overflow-visible'}
+          aria-hidden={collapsed}
+        >
+          <div
+            className={
+              showTopRule && !quickMatchStrip
+                ? 'border-t border-border-hairline pt-2'
+                : undefined
+            }
+          >
+            <div className="mb-2">
+              <MatchHubHeader collapsed={collapsed} actions={headerActions} />
+            </div>
+            {content}
           </div>
-          {content}
-        </div>
-      </motion.div>
+        </motion.div>
+      </div>
     );
   }
 

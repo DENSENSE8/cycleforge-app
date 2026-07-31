@@ -49,7 +49,8 @@ import { STATION_CONTEXT_CLAIM_PILL_CLASS } from './station-context-action-pill'
  *
  * Staff dropdown + photo strip, the listing / Zendesk / PO# / tracking chip
  * row. Identity editors now live in Unbox SectionTabsSlider tabs 
- * (tracking/listings), not below-row drawers. PO is copy/open-only.
+ * (tracking/listings), not below-row drawers. PO is copy/open when linked;
+ * unfound / no real Zoho PO id can pass `onEditPo` → Package Pairing (PO tab).
  *
  * DENSITY CONTRACT: this is an operations-heavy surface — the identity facts
  * stay on ONE condensed row (chips + actions). Classify pills open **inline on
@@ -74,7 +75,8 @@ import { STATION_CONTEXT_CLAIM_PILL_CLASS } from './station-context-action-pill'
  *    on the icon/underline — unmatched cartons have no listing until a PO#
  *    binds them.
  *  - Identity editing: listing/tracking editors accessible via chip edit actions,
- *    open external editing tabs. PO# is copy-only (no editor).
+ *    open external editing tabs. PO# is copy/open when linked; `onEditPo` opens
+ *    Package Pairing → PO when there is no real Zoho PO id.
  *  - Classify opens pills on the left only — right-side identity/actions are
  *    unchanged.
  *
@@ -91,8 +93,9 @@ export function CartonContextCard({
   classifyInteractive = true,
   onClassifyPillOpen,
   onMakeClaim,
+  claimViewActive = false,
   showStaffPhotoRow = true,
-  photoStage = 'arrival_package',
+  photoStage,
   listingLink,
   showListing = true,
   listingEditOpen = false,
@@ -103,6 +106,8 @@ export function CartonContextCard({
   trackingOpenHref,
   poDisplay,
   showOrderIdentity = true,
+  onEditPo,
+  poEditOpen = false,
   linkedOrderNumber = null,
   lineId,
   zendeskTrimmed,
@@ -160,17 +165,21 @@ export function CartonContextCard({
    * host switch to the Classify tab for unfound cartons.
    */
   onClassifyPillOpen?: (picker: 'urgency' | 'platform' | 'type') => void;
-  /** Opens the claim modal. Omit (undefined) to hide the Claim button. */
+  /** Opens / toggles the claim push panel. Omit (undefined) to hide the Claim button. */
   onMakeClaim?: () => void;
+  /** True while the Unbox Claim push column is open — Claim pill reads pressed. */
+  claimViewActive?: boolean;
   /** Photos + Claim row. Hidden in triage (unbox-only). */
   showStaffPhotoRow?: boolean;
   /**
-   * Carton capture stage the header photo pill stamps (stage SoT): triage
-   * keeps the arrival-package default; unbox chrome passes `unbox_carton`.
-   * Item evidence never comes from this card — it is line-scoped, so the
-   * active-line camera owns it.
+   * Carton capture stage the header photo pill stamps (stage SoT) — required,
+   * never defaulted (a defaulted safety classification is how bench photos
+   * silently became arrival evidence; see `.claude/rules/backend-patterns.md`).
+   * Triage passes `arrival_package` explicitly; unbox chrome passes
+   * `unbox_carton`. Item evidence never comes from this card — it is
+   * line-scoped, so the active-line camera owns it.
    */
-  photoStage?: 'arrival_package' | 'unbox_carton';
+  photoStage: 'arrival_package' | 'unbox_carton';
   listingLink: string;
   /** Hide the listing slot for stations whose active entity has no storefront listing. */
   showListing?: boolean;
@@ -189,6 +198,14 @@ export function CartonContextCard({
   poDisplay: string;
   /** Hide the PO/order identifier slot when the station has no identity yet. */
   showOrderIdentity?: boolean;
+  /**
+   * Open Package Pairing → PO tab (link / import a Zoho PO). Pass when the
+   * carton has no real Zoho PO id — empty `# ----` clicks this directly;
+   * sales-order-linked chips keep copy + Edit in the hover menu.
+   */
+  onEditPo?: () => void;
+  /** Pulse the PO chip while Package Pairing (PO) is open. */
+  poEditOpen?: boolean;
   /**
    * Serial-resolved outbound (return) order#. Fills the PO#/order chip (last-4,
    * copy-only) ONLY when the carton has no PO# of its own — never clobbers a
@@ -220,12 +237,12 @@ export function CartonContextCard({
   /** Set/clear the priority tier (null = Auto). Omit to render urgency display-only. */
   onPrioritySelect?: (tier: number | null) => void;
   /**
-   * Opt-in: open the Unbox Ticket push column (`?ticketView=1`) from the ticket
-   * chip. Provided only by unbox `LineCartonContextSection` — omitting it keeps
-   * chip Edit = history popover (testing / triage).
+   * Opt-in: toggle the Unbox Ticket push column (`?ticketView=1`) from the
+   * ticket chip Edit row. Provided only by unbox `LineCartonContextSection` —
+   * omitting it hides Edit (History still opens the thread popover).
    */
   onToggleTicketView?: () => void;
-  /** True while the ticket push column is open (unused for chrome; kept for hosts). */
+  /** True while the ticket push column is open — pulses the ticket chip Edit state. */
   ticketViewActive?: boolean;
   /**
    * Far-left back button that closes the active entity so the right pane
@@ -510,9 +527,9 @@ export function CartonContextCard({
                 shows its Zoho order#, and a serial-resolved return (scanned unit
                 that was previously shipped) shows the closed-loop outbound order#
                 lifted into this slot. Either way it's a copy chip SEPARATE from
-                the listing link, and — not being a Zoho PO — copy-only: no Zoho
-                open, no inline editor. Normal bound POs keep open + edit.
-                Tone `id` → # icon (open lives in hover menu). */}
+                the listing link. Bound POs keep open + copy. Unfound / no real
+                Zoho PO id may pass onEditPo → Package Pairing (PO tab); empty
+                `# ----` clicks that directly. */}
             {showOrderIdentity ? (
               <IdentityLinkChip
                 openHref={orderCopyOnly ? undefined : poOpenHref}
@@ -522,7 +539,9 @@ export function CartonContextCard({
                 tone="id"
                 underlineClass="border-border-emphasis"
                 disableCopy={!effectiveOrder}
-                editOpen={false}
+                onEdit={onEditPo}
+                editOpen={poEditOpen}
+                editLabel={poEditOpen ? 'Hide package pairing' : 'Link PO'}
                 actionsInMenu
               />
             ) : null}
@@ -581,21 +600,29 @@ export function CartonContextCard({
                   }}
                   onOpenTicketView={
                     onToggleTicketView && providerTicketId != null
-                      ? () => {
-                          if (!ticketViewActive) onToggleTicketView();
-                        }
+                      ? () => onToggleTicketView()
                       : undefined
                   }
+                  ticketViewActive={ticketViewActive}
                 />
               ) : onMakeClaim ? (
-                <HoverTooltip label="File claim" placement="above" asChild>
+                <HoverTooltip
+                  label={claimViewActive ? 'Hide claim' : 'File claim'}
+                  placement="above"
+                  asChild
+                >
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
                     onClick={onMakeClaim}
-                    ariaLabel="File claim"
-                    className={STATION_CONTEXT_CLAIM_PILL_CLASS}
+                    ariaLabel={claimViewActive ? 'Hide claim' : 'File claim'}
+                    aria-expanded={claimViewActive}
+                    aria-pressed={claimViewActive}
+                    className={cn(
+                      STATION_CONTEXT_CLAIM_PILL_CLASS,
+                      claimViewActive && 'ring-2 ring-inset ring-orange-400',
+                    )}
                   >
                     Claim
                   </Button>

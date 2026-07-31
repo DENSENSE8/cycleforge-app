@@ -52,27 +52,35 @@ export function parseReceivingPhotoStage(
 
 /**
  * Parse a stage for a CARTON capture surface (mobile carton routes, carton
- * photo pill). Missing/unknown → `arrival_package` (the legacy default —
- * in-flight messages and old links keep their old stamp). `unbox_item` is
- * illegal on a carton surface and coerces to `unbox_carton` (the shot is
- * happening mid-unbox; the carton bucket is the closest legal stage — never
- * re-create the item-on-carton mis-stamp).
+ * photo pill). Missing/unknown → `unbox_carton`, never `arrival_package`: the
+ * mobile capture pipeline overwhelmingly runs at the unbox bench (generic
+ * `/m/receiving/...` browse/list/history surfaces, share-to-phone handoffs),
+ * so a stage-less request is far more likely to be a post-opening shot than a
+ * door shot — mirrors the reasoning in `receivingUploadStage`
+ * (`./photo-intent.ts`). Arrival must always be requested explicitly (Triage
+ * passes it on every capture surface it owns). `unbox_item` is illegal on a
+ * carton surface and coerces to `unbox_carton` (the shot is happening
+ * mid-unbox; the carton bucket is the closest legal stage — never re-create
+ * the item-on-carton mis-stamp).
  */
 export function parseReceivingCartonPhotoStage(
   raw: string | null | undefined,
 ): ReceivingCartonPhotoStage {
   const stage = parseReceivingPhotoStage(raw);
   if (stage === 'unbox_item') return 'unbox_carton';
-  return stage ?? 'arrival_package';
+  return stage ?? 'unbox_carton';
 }
 
 /**
  * Normalize a possibly-partial scope to a coherent stage. The ENTITY wins
  * (identity law): a line id makes it item evidence regardless of the claimed
  * stage; without a line id an `unbox_item` claim degrades to `unbox_carton`
- * (same station, legal carton stamp) and a missing stage means the legacy
- * arrival capture. Lenient by design — used where old queue entries / wire
- * messages without a stage must keep working.
+ * (same station, legal carton stamp) and a missing stage defaults to
+ * `unbox_carton` — the same safe-default reasoning as
+ * {@link parseReceivingCartonPhotoStage}. Never `arrival_package`: that stage
+ * must always be threaded explicitly by the one surface (Triage) that owns
+ * it, not inherited as a fallback. Lenient by design — used where old queue
+ * entries / wire messages without a stage must keep working.
  */
 export function effectiveReceivingPhotoStage(scope: {
   stage?: ReceivingPhotoStage | null;
@@ -80,7 +88,7 @@ export function effectiveReceivingPhotoStage(scope: {
 }): ReceivingPhotoStage {
   if (scope.receivingLineId != null) return 'unbox_item';
   if (scope.stage === 'unbox_item') return 'unbox_carton';
-  return scope.stage ?? 'arrival_package';
+  return scope.stage ?? 'unbox_carton';
 }
 
 /**
@@ -145,10 +153,12 @@ interface NormalizedReceivingPhotoRequest {
 }
 
 /**
- * Normalize an incoming phone-bridge request. Backward compatible: legacy
- * messages without `stage` are arrival (door) captures. Entity-wins coherence
- * via {@link effectiveReceivingPhotoStage}. Returns null when the message has
- * no usable receiving id.
+ * Normalize an incoming phone-bridge request. Every live sender threads an
+ * explicit `stage` (the desktop "send to phone" pill always computes one);
+ * a stage-less message defaults to `unbox_carton` via
+ * {@link effectiveReceivingPhotoStage} — never arrival, which must be
+ * requested explicitly. Entity-wins coherence via the same helper. Returns
+ * null when the message has no usable receiving id.
  */
 export function normalizeReceivingPhotoRequest(
   msg: ReceivingPhotoRequestMessage | null | undefined,

@@ -55,15 +55,9 @@ export interface IncomingGridColumn extends Omit<LedgerGridColumnModel, 'key'> {
  * to the PO/tracking identity the operator actually acts on. A column that is
  * blank for most rows costs horizontal budget and scan attention for nothing.
  *
- * **Tier must match {@link RECEIVING_GRID_COLUMNS} key-for-key.** Incoming
- * mounts under `TableColumnConfigProvider tableId="receiving"`
- * (ReceivingLinesTable), so `qty` · `condition` · `rest` · `platform` ·
- * `orderid` · `tracking` are the SAME stored pref keys Unbox / History use. Tier
- * is what the staff delta is read against (`optional` ⇒ opt-in via `shown`,
- * `core` ⇒ opt-out via `hidden`) — marking a key `optional` here and `core`
- * there would give one stored key two meanings depending on which mode you are
- * looking at. Changing a tier is a both-grids change (or a split onto a distinct
- * `TableId`), never an Incoming-local one.
+ * **Prefs identity:** Incoming mounts under `tableId: "incoming"` — distinct
+ * from Unbox/History `tableId: "receiving"`. Tiers may diverge freely between
+ * the two descriptors; they no longer share a staff delta bucket.
  */
 export const INCOMING_GRID_COLUMNS: readonly IncomingGridColumn[] = [
   { key: 'select', width: 'minmax(2rem, 2rem)', sortable: false },

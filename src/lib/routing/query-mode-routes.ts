@@ -593,6 +593,12 @@ const SEARCH_ROUTE_PARAMS = defineRouteParams({
     /** The query. Typing happens in the global header pill; this is the state. */
     q: paramText,
     /**
+     * Durable selection on the search workbench — `order:123`, `receiving:50200`, …
+     * Parsed by {@link parseSearchSel}. Deliberately NOT `openOrderId` / entity
+     * open-params owned by other surfaces.
+     */
+    sel: paramText,
+    /**
      * Client entity-type refine over the retrieved top-50.
      * UI vocabulary (order | unit | receiving | sku | repair | fba).
      * Deliberately NOT `type` — `/support` already owns that key.

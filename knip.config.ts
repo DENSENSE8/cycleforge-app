@@ -49,6 +49,9 @@ const config: KnipConfig = {
     'src/components/DocxUploader.tsx',
     'src/components/StaffSelector.tsx',
     'src/components/TechSearchPanel.tsx',
+
+    // JIT pack Phase 3 — manual→documents projection (wired next; keep SoT file)
+    'src/lib/documents/manual-documents.ts',
   ],
 
   ignoreDependencies: [

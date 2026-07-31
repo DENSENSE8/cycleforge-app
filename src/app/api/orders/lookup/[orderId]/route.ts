@@ -3,14 +3,20 @@ import { tenantQuery } from '@/lib/tenancy/db';
 import { withAuth } from '@/lib/auth/withAuth';
 import { getOrSet } from '@/lib/cache/upstash-cache';
 import { CACHE_NS, CACHE_TAGS } from '@/lib/cache/tags';
+import { findOrderByTrackingKey } from '@/lib/orders-exceptions';
+import type { OrgId } from '@/lib/tenancy/constants';
+import pool from '@/lib/db';
 
 /**
  * GET /api/orders/lookup/:orderId
  *
- * Look up a single order by its string `order_id` (the externally-visible
- * order number, NOT the numeric primary key). Returns the order joined with
- * customer + current work assignment + serial numbers so the mobile detail
- * page at /m/orders/[orderId] can render in one shot.
+ * Resolve a single order by:
+ *   1. human `order_id` (externally-visible order #), or
+ *   2. carrier tracking (header-search paste / scan) via {@link findOrderByTrackingKey}.
+ *
+ * Returns the order joined with customer + current work assignment + serial
+ * numbers so mobile `/m/orders/[orderId]` and header-search identifier commits
+ * (`resolveSearchOrder` → `/o/[id]`) can render in one shot.
  *
  * Read-only. Does not write to receiving or any other table.
  */
@@ -45,30 +51,7 @@ interface OrderDetail {
   serials: string[];
 }
 
-export const GET = withAuth(async (request: NextRequest, ctx) => {
-  const orgId = ctx.organizationId;
-  const segments = request.nextUrl.pathname.split('/').filter(Boolean);
-  const orderId = segments[segments.length - 1];
-  if (!orderId) {
-    return NextResponse.json({ ok: false, error: 'invalid order id' }, { status: 400 });
-  }
-  const decoded = decodeURIComponent(orderId);
-
-  // Short-TTL read model for the mobile order-detail page: order VM + activity
-  // strip, reloaded per scan. 20s TTL bounds staleness; tech/scan + the order
-  // mutation chokepoint (invalidateOrderViews) bust the org-scoped tags.
-  const cached = await getOrSet<{ order: OrderDetail | null; activity: unknown[] }>(
-    CACHE_NS.orderDetail,
-    orgId,
-    decoded,
-    20,
-    [CACHE_TAGS.orders, CACHE_TAGS.techLogs, CACHE_TAGS.orderDetail],
-    async () => {
-  // order_id is a per-tenant string key — anchor the read on the org so a
-  // collision across tenants can't surface another org's order.
-  const orderResult = await tenantQuery<OrderDetail>(
-    orgId,
-    `
+const ORDER_DETAIL_SELECT = `
     SELECT
       o.id,
       o.order_id,
@@ -144,20 +127,39 @@ export const GET = withAuth(async (request: NextRequest, ctx) => {
       ORDER BY assigned_at DESC NULLS LAST
       LIMIT 1
     ) wa_pack ON true
+`;
+
+async function loadOrderDetailByOrderId(
+  orgId: OrgId,
+  orderId: string,
+): Promise<OrderDetail | null> {
+  const orderResult = await tenantQuery<OrderDetail>(
+    orgId,
+    `${ORDER_DETAIL_SELECT}
     WHERE o.order_id = $1
       AND o.organization_id = $2
-    LIMIT 1
-  `,
-    [decoded, orgId],
+    LIMIT 1`,
+    [orderId, orgId],
   );
-  const order = orderResult.rows[0] ?? null;
+  return orderResult.rows[0] ?? null;
+}
 
-  if (!order) {
-    return { order: null, activity: [] };
-  }
+async function loadOrderDetailById(
+  orgId: OrgId,
+  id: number,
+): Promise<OrderDetail | null> {
+  const orderResult = await tenantQuery<OrderDetail>(
+    orgId,
+    `${ORDER_DETAIL_SELECT}
+    WHERE o.id = $1
+      AND o.organization_id = $2
+    LIMIT 1`,
+    [id, orgId],
+  );
+  return orderResult.rows[0] ?? null;
+}
 
-  // Recent activity for the activity strip — last 5 work_assignment status
-  // transitions on this order.
+async function loadActivity(orgId: OrgId, orderPk: number) {
   const activityResult = await tenantQuery<{
     event_at: string;
     work_type: string;
@@ -180,9 +182,49 @@ export const GET = withAuth(async (request: NextRequest, ctx) => {
     ORDER BY wa.updated_at DESC NULLS LAST
     LIMIT 5
   `,
-    [order.id, orgId],
+    [orderPk, orgId],
   );
-  return { order, activity: activityResult.rows };
+  return activityResult.rows;
+}
+
+export const GET = withAuth(async (request: NextRequest, ctx) => {
+  const orgId = ctx.organizationId;
+  const segments = request.nextUrl.pathname.split('/').filter(Boolean);
+  const orderId = segments[segments.length - 1];
+  if (!orderId) {
+    return NextResponse.json({ ok: false, error: 'invalid order id' }, { status: 400 });
+  }
+  const decoded = decodeURIComponent(orderId);
+
+  // Short-TTL read model for the mobile order-detail page: order VM + activity
+  // strip, reloaded per scan. 20s TTL bounds staleness; tech/scan + the order
+  // mutation chokepoint (invalidateOrderViews) bust the org-scoped tags.
+  const cached = await getOrSet<{ order: OrderDetail | null; activity: unknown[] }>(
+    CACHE_NS.orderDetail,
+    orgId,
+    decoded,
+    20,
+    [CACHE_TAGS.orders, CACHE_TAGS.techLogs, CACHE_TAGS.orderDetail],
+    async () => {
+      // 1) Human order # (per-tenant string key).
+      let order = await loadOrderDetailByOrderId(orgId, decoded);
+
+      // 2) Carrier tracking — header-search paste commits identifiers through
+      //    resolveSearchOrder → this route; order_id-only miss left tracking
+      //    pastes on the results list instead of opening detail.
+      if (!order) {
+        const byTracking = await findOrderByTrackingKey(decoded, pool, orgId);
+        if (byTracking) {
+          order = await loadOrderDetailById(orgId, byTracking.id);
+        }
+      }
+
+      if (!order) {
+        return { order: null, activity: [] };
+      }
+
+      const activity = await loadActivity(orgId, order.id);
+      return { order, activity };
     },
   );
 

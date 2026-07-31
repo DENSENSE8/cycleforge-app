@@ -56,6 +56,24 @@ test('UnboxLineWorkspace keys the overlay on CARTON identity, not the entry rout
   assert.equal(UNBOX_CODE.includes('workspace.scanDriven'), false);
 });
 
+test('UnboxLineWorkspace sync-covers carton→carton so wait cannot flash white', () => {
+  // Browse underlay is visibility:hidden while the overlay is open. mode="wait"
+  // removes carton A before mounting B and punches a white hole. Swap uses sync
+  // + hard-cut enter (opaque cover-replace); browse→first open keeps wait+fade.
+  // Overlay shell/plate paint station canvas, not card white.
+  assert.match(UNBOX_CODE, /cartonSwapHardCut/);
+  assert.match(UNBOX_CODE, /mode=\{cartonSwapHardCut \? 'sync' : 'wait'\}/);
+  assert.match(UNBOX_CODE, /initial=\{cartonSwapHardCut \? false/);
+  assert.match(UNBOX_CODE, /unbox-overlay-plate/);
+  // Canvas fill via AppSurfaceFill SoT — never retype bg-surface-canvas (or card white).
+  assert.match(UNBOX_CODE, /appSurfaceFillClass\('canvas'\)/);
+  assert.equal(
+    (UNBOX_CODE.match(/bg-surface-card/g) ?? []).length,
+    0,
+    'overlay shell/plate must not use card white (flash color)',
+  );
+});
+
 test('useTrackingScan opens optimistic unmatched pane at Unbox t=0', () => {
   assert.equal(SCAN_CODE.includes('buildOptimisticUnmatchedPaneStub'), true);
   assert.equal(SCAN_CODE.includes('buildPendingScanStubRow'), true);

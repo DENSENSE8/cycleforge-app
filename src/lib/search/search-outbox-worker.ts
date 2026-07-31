@@ -132,19 +132,26 @@ const LOADER_SQL: Record<SearchEntityType, string> = {
            stn.tracking_number_raw                                AS tracking_number,
            COALESCE(NULLIF(stn.carrier, 'UNKNOWN'), r.carrier)    AS carrier,
            r.zoho_purchaseorder_number                            AS po_number,
+           r.source_order_id,
            r.source_platform, r.intake_type, r.exception_code,
            r.support_notes, r.zoho_notes,
            r.condition_grade::text AS condition_grade,
            r.qa_status::text       AS qa_status,
            rt.door_received_at AS received_at, r.created_at,
-           lines.line_item_names, lines.line_skus
+           lines.line_item_names, lines.line_skus,
+           lines.line_count, lines.distinct_sku_count, lines.first_item_name
     FROM receiving_carton r
     LEFT JOIN shipping_tracking_numbers stn ON stn.id = r.shipment_id
     LEFT JOIN receiving_triage rt
            ON rt.receiving_id = r.id AND rt.organization_id = r.organization_id
     LEFT JOIN LATERAL (
       SELECT COALESCE(STRING_AGG(DISTINCT rl.item_name, ' '), '') AS line_item_names,
-             COALESCE(STRING_AGG(DISTINCT rl.sku, ' '), '')       AS line_skus
+             COALESCE(STRING_AGG(DISTINCT rl.sku, ' '), '')       AS line_skus,
+             COUNT(*)::int AS line_count,
+             COUNT(DISTINCT COALESCE(NULLIF(TRIM(rl.sku), ''), NULLIF(TRIM(rl.item_name), ''), rl.id::text))::int
+               AS distinct_sku_count,
+             (ARRAY_AGG(rl.item_name ORDER BY rl.id)
+               FILTER (WHERE NULLIF(TRIM(rl.item_name), '') IS NOT NULL))[1] AS first_item_name
       FROM receiving_line rl WHERE rl.receiving_id = r.id
     ) lines ON TRUE
     WHERE r.organization_id = $1 AND r.id = ANY($2::bigint[])`,

@@ -5,7 +5,7 @@
  * Queue; packed-today on History. Reuses shipping-metrics + queue-counts SoT.
  */
 
-import { useMemo, type ReactNode } from 'react';
+import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { unshippedQueueCountsQuery } from '@/lib/queries/dashboard-queries';
 import { packerCountsQuery } from '@/lib/queries/station-table-queries';
@@ -21,7 +21,7 @@ import { useToShipStatusFilter } from '@/components/unshipped/useToShipStatusFil
 import { useGatedOperationsRoi } from '@/features/operations/workspace/useGatedOperationsRoi';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { CheckCircle, RefreshCw } from '@/components/Icons';
-import { computeWeekRange, getCurrentPSTDateKey, toPSTDateKey } from '@/utils/date';
+import { computeWeekRange, getCurrentPSTDateKey } from '@/utils/date';
 import { useStaffFilter } from '@/hooks/useStaffFilter';
 import type { FulfillmentState } from '@/lib/unshipped-state';
 import { cn } from '@/utils/_cn';
@@ -37,22 +37,6 @@ function MetricKpiTile({ metric, toShipFilter }: { metric: ComputedMetric; toShi
   const toneHero = metric.intent === 'warn' || metric.intent === 'bad';
   const clickable = Boolean(metric.filterUstatus && toShipFilter);
   const active = Boolean(metric.filterUstatus && toShipFilter?.active === metric.filterUstatus);
-  const footer: ReactNode =
-    metric.delta !== undefined
-      ? undefined
-      : metric.status
-        ? (
-            <span
-              className={cn(
-                'mt-1.5 inline-flex items-center gap-1.5 text-role-eyebrow font-semibold uppercase tracking-widest',
-                tone,
-              )}
-            >
-              <span className={cn('h-1.5 w-1.5 rounded-full bg-current', tone)} aria-hidden="true" />
-              {active ? 'Filtered' : metric.status}
-            </span>
-          )
-        : undefined;
 
   const tile = (
     <KpiTile
@@ -61,8 +45,6 @@ function MetricKpiTile({ metric, toShipFilter }: { metric: ComputedMetric; toShi
       valueClassName={toneHero ? tone : undefined}
       delta={metric.delta}
       invertDelta={metric.deltaInvert}
-      deltaVsLabel="vs last wk"
-      footer={footer}
       active={active}
       onOpen={
         clickable ? () => toShipFilter?.toggle(metric.filterUstatus as FulfillmentState) : undefined
@@ -86,9 +68,11 @@ function StripSkeleton({ reservedSlots }: { reservedSlots: number }) {
       {Array.from({ length: reservedSlots }).map((_, i) => (
         <div key={i} className={TILE_CELL_CLASS}>
           <div className={cn(MONITOR_KPI_TILE_CLASS, 'h-full')}>
-            <div className="h-2.5 w-16 rounded-full bg-surface-strong" />
+            <div className="flex items-start justify-between gap-3">
+              <div className="h-2.5 w-16 rounded-full bg-surface-strong" />
+              <div className="h-2.5 w-8 rounded-full bg-surface-strong" />
+            </div>
             <div className="mt-2 h-7 w-14 rounded bg-surface-strong" />
-            <div className="mt-2.5 h-2.5 w-20 rounded-full bg-surface-strong" />
           </div>
         </div>
       ))}
@@ -205,28 +189,10 @@ function HistoryStrip({ packerId }: { packerId: number }) {
   return (
     <div className={TILE_BAND_CLASS}>
       <div className={TILE_CELL_CLASS}>
-        <KpiTile
-          label="Packed today"
-          value={packedToday.toLocaleString()}
-          footer={
-            <span className="mt-1.5 text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint">
-              {toPSTDateKey(new Date())}
-            </span>
-          }
-          className="h-full"
-        />
+        <KpiTile label="Packed today" value={packedToday.toLocaleString()} className="h-full" />
       </div>
       <div className={TILE_CELL_CLASS}>
-        <KpiTile
-          label="This week"
-          value={weekTotal.toLocaleString()}
-          footer={
-            <span className="mt-1.5 text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint">
-              Pack scans
-            </span>
-          }
-          className="h-full"
-        />
+        <KpiTile label="This week" value={weekTotal.toLocaleString()} className="h-full" />
       </div>
     </div>
   );

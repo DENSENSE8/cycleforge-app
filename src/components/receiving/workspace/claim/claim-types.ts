@@ -5,49 +5,33 @@ import type { TicketCandidate } from '@/components/support/link/useTicketSearch'
 export type ClaimModalMode = 'create' | 'link';
 
 /**
- * Linear create-flow wizard. Each step owns exactly one job:
- *   photos  → acknowledge/select evidence photos
- *   compose → pick claim type + edit the full Zendesk subject + body
- *   review  → read-only all-in-one summary, then file + archive
- *   confirm → ticket-created + local-backup confirmation
- *   seller  → the seller-facing message
- * Link mode runs its own three-step wizard (see {@link LinkClaimStep}).
+ * Unified claim wizard step. Create starts at `photos` (skips `find`);
+ * link starts at `find`. The success step is always `filed` (label "Filed"
+ * or "Linked" depending on mode).
  */
-export type CreateClaimStep = 'photos' | 'compose' | 'review' | 'confirm' | 'seller';
+export type ClaimWizardStep = 'find' | 'photos' | 'compose' | 'review' | 'filed' | 'seller';
 
-/** The fixed left-to-right order of the create-flow steps. */
-export const CREATE_STEP_ORDER: readonly CreateClaimStep[] = [
-  'photos',
-  'compose',
-  'review',
-  'confirm',
-  'seller',
-] as const;
-
-/**
- * Linear link-flow wizard — the "Link existing" tab. Mirrors the create-flow
- * wizard once a ticket is picked, so photos/subject/body/recipients render
- * and behave identically in either flow:
- *   find    → search + select an existing Zendesk ticket
- *   photos  → acknowledge/select evidence photos to attach to the ticket
- *   compose → edit the ticket subject (prefilled from the ticket's own title)
- *             + body + recipients, same as the create flow
- *   review  → read-only summary, then post the comment (+ photos) to the ticket
- *   linked  → update-posted confirmation + local-backup card
- *   seller  → the seller-facing message (skipped for a 'return' claim — see
- *             `sellerStepApplicable` on the controller)
- */
-export type LinkClaimStep = 'find' | 'photos' | 'compose' | 'review' | 'linked' | 'seller';
-
-/** The fixed left-to-right order of the link-flow steps. */
-export const LINK_STEP_ORDER: readonly LinkClaimStep[] = [
+/** Full left-to-right order (create filters out `find`). */
+const CLAIM_WIZARD_STEP_ORDER: readonly ClaimWizardStep[] = [
   'find',
   'photos',
   'compose',
   'review',
-  'linked',
+  'filed',
   'seller',
 ] as const;
+
+/** Opening step for the given mode. */
+export function claimWizardStartStep(mode: ClaimModalMode): ClaimWizardStep {
+  return mode === 'link' ? 'find' : 'photos';
+}
+
+/** Step order visible for the active mode (create omits Find). */
+export function claimWizardOrderForMode(mode: ClaimModalMode): readonly ClaimWizardStep[] {
+  return mode === 'link'
+    ? CLAIM_WIZARD_STEP_ORDER
+    : CLAIM_WIZARD_STEP_ORDER.filter((s) => s !== 'find');
+}
 
 /** The ticket that has been filed or linked for the current claim. */
 export interface FiledTicket {
@@ -56,7 +40,19 @@ export interface FiledTicket {
   id: number | null;
 }
 
-/** Local-storage backup result, displayed on the confirm step (with a retry on failure). */
+/**
+ * Link-commit sub-flow: idle → linking (in-flight) → committed (persistent).
+ * Independent of {@link LinkUpdateStatus} and of the `unlinking` boolean.
+ */
+export type LinkCommitStatus = 'idle' | 'linking' | 'committed';
+
+/**
+ * Post-link update sub-flow: idle → posting (in-flight) → posted (persistent).
+ * Only meaningful after {@link LinkCommitStatus} is `'committed'`.
+ */
+export type LinkUpdateStatus = 'idle' | 'posting' | 'posted';
+
+/** Local-storage backup result, displayed on the filed step (with a retry on failure). */
 export interface ArchiveState {
   /** True when every photo archived cleanly (no warning / partial). */
   ok: boolean;
@@ -89,51 +85,52 @@ export interface ClaimPhoto {
   photoType: string | null;
 }
 
-/** The five create-flow steps, in order, for the linear header stepper. */
-export const CLAIM_WIZARD_STEPS = [
-  { key: 'photos', label: 'Photos' },
-  { key: 'compose', label: 'Ticket' },
-  { key: 'review', label: 'Review' },
-  { key: 'confirm', label: 'Filed' },
-  { key: 'seller', label: 'Seller' },
-] as const;
+interface ClaimWizardStepDef {
+  key: ClaimWizardStep;
+  label: string;
+}
 
-/** The link-flow steps, in order, for the linear header stepper. */
-export const LINK_WIZARD_STEPS = [
-  { key: 'find', label: 'Find' },
-  { key: 'photos', label: 'Photos' },
-  { key: 'compose', label: 'Ticket' },
-  { key: 'review', label: 'Review' },
-  { key: 'linked', label: 'Linked' },
-  { key: 'seller', label: 'Seller' },
-] as const;
+/** Stepper defs for the active mode (Seller omitted when not applicable). */
+export function claimWizardStepsForMode(
+  mode: ClaimModalMode,
+  sellerStepApplicable: boolean,
+): ClaimWizardStepDef[] {
+  const filedLabel = mode === 'link' ? 'Linked' : 'Filed';
+  const steps: ClaimWizardStepDef[] =
+    mode === 'link'
+      ? [
+          { key: 'find', label: 'Find' },
+          { key: 'photos', label: 'Photos' },
+          { key: 'compose', label: 'Ticket' },
+          { key: 'review', label: 'Review' },
+          { key: 'filed', label: filedLabel },
+          { key: 'seller', label: 'Seller' },
+        ]
+      : [
+          { key: 'photos', label: 'Photos' },
+          { key: 'compose', label: 'Ticket' },
+          { key: 'review', label: 'Review' },
+          { key: 'filed', label: filedLabel },
+          { key: 'seller', label: 'Seller' },
+        ];
+  return steps.filter((s) => s.key !== 'seller' || sellerStepApplicable);
+}
 
 export const SELLER_SKELETON_WIDTHS = ['92%', '88%', '76%', '84%', '68%', '56%'] as const;
 
 /**
- * Derive the dot-stepper state for the linear create wizard. States are purely
+ * Derive the dot-stepper state for the active mode. States are purely
  * positional: every step left of the current one is `done`, the current one is
- * `active`, the rest `pending`. (`filedTicket`/`mode` are accepted for symmetry
- * with the call site and future link-mode reuse.)
+ * `active`, the rest `pending`.
  */
 export function claimWizardStepStates(
-  createStep: CreateClaimStep,
-  _filedTicket: FiledTicket | null,
-  _mode: ClaimModalMode,
+  step: ClaimWizardStep,
+  mode: ClaimModalMode,
 ): Record<string, LinearStepState> {
-  const curIdx = Math.max(0, CREATE_STEP_ORDER.indexOf(createStep));
+  const order = claimWizardOrderForMode(mode);
+  const curIdx = Math.max(0, order.indexOf(step));
   const states: Record<string, LinearStepState> = {};
-  CREATE_STEP_ORDER.forEach((key, i) => {
-    states[key] = i < curIdx ? 'done' : i === curIdx ? 'active' : 'pending';
-  });
-  return states;
-}
-
-/** Positional dot-stepper state for the linear link wizard (same rule as create). */
-export function linkWizardStepStates(linkStep: LinkClaimStep): Record<string, LinearStepState> {
-  const curIdx = Math.max(0, LINK_STEP_ORDER.indexOf(linkStep));
-  const states: Record<string, LinearStepState> = {};
-  LINK_STEP_ORDER.forEach((key, i) => {
+  order.forEach((key, i) => {
     states[key] = i < curIdx ? 'done' : i === curIdx ? 'active' : 'pending';
   });
   return states;

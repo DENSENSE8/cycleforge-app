@@ -55,6 +55,7 @@ export function LabelsProductsWorkspaceHeader({
 
   return (
     <WorkbenchChromeHeader
+      density="band"
       tabs={tabs}
       activeTab={tab}
       onTabChange={(id) => onSelectTab(id as LabelsSubView)}

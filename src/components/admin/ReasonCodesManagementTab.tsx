@@ -15,7 +15,6 @@ import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { mainStickyHeaderClass, mainStickyHeaderShellRowClass } from '@/components/layout/header-shell';
 import { toast } from '@/lib/toast';
 import { sectionLabel, fieldLabel, tableHeader, tableCell } from '@/design-system/tokens/typography/presets';
-import { appWashClass } from '@/design-system/tokens/app-surface';
 import { cn } from '@/utils/_cn';
 
 /** Mirrors the rows returned by GET /api/reason-codes. */
@@ -237,7 +236,7 @@ export function ReasonCodesManagementTab() {
     'grid grid-cols-[160px_minmax(200px,1.5fr)_140px_110px_90px_90px_80px_108px] gap-x-3';
 
   return (
-    <section className={cn('flex h-full min-h-0 w-full flex-col', appWashClass)}>
+    <section className={cn('flex h-full min-h-0 w-full flex-col',)}>
       <div className={mainStickyHeaderClass}>
         <div className={`${mainStickyHeaderShellRowClass} flex-wrap gap-y-2 px-4`}>
           <p className={`${sectionLabel} truncate text-text-default`}>Reason Codes</p>

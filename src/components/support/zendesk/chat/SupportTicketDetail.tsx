@@ -237,7 +237,6 @@ export function SupportTicketDetail({
           ticketId={ticketId}
           requesterEmail={requester.email}
           staging={staging}
-          hideSendBar={embedded}
           receivingId={receivingId}
           onBridgeChange={onComposerBridgeChange}
         />

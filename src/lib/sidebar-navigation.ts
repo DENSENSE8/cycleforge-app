@@ -122,7 +122,37 @@ export const MAIN_GROUPS = [
  */
 export const STOCK_DRILL = { id: 'stock', label: 'Stock' } as const;
 
-export type SpineDrillId = typeof STOCK_DRILL.id;
+/**
+ * Spine section drills — one altitude for Overview / Library / Floor / Desk /
+ * Stock. Root shows these as buttons; drill replaces the body with back +
+ * that section's pages. Compose from {@link MAIN_GROUPS} +
+ * {@link STATION_GROUPS} + {@link STOCK_DRILL} — never twin labels in render.
+ */
+export const SPINE_DRILLS = [
+  ...MAIN_GROUPS,
+  ...STATION_GROUPS,
+  STOCK_DRILL,
+] as const;
+
+export type SpineDrillId = (typeof SPINE_DRILLS)[number]['id'];
+
+/** Resolve which spine section a page belongs to (null = top/footer pin / unknown). */
+export function spineDrillIdForPage(
+  page:
+    | {
+        kind?: 'main' | 'station' | 'stock' | 'top' | 'bottom';
+        mainGroup?: MainGroupId;
+        stationGroup?: StationGroupId;
+      }
+    | null
+    | undefined,
+): SpineDrillId | null {
+  if (!page) return null;
+  if (page.kind === 'stock') return 'stock';
+  if (page.kind === 'main') return page.mainGroup ?? null;
+  if (page.kind === 'station') return page.stationGroup ?? null;
+  return null;
+}
 
 type SidebarNavItemFields = {
   id: string;
@@ -149,13 +179,15 @@ type SidebarNavItemFields = {
 };
 
 /**
- * Flat spine row. `kind: 'main'` requires `mainGroup` (Overview / Library);
- * `kind: 'station'` requires `stationGroup` (Floor / Desk); `kind: 'stock'`
- * is its own L1 after Stations (Products → Inventory → Warehouse).
+ * Flat spine row. `kind: 'top'` = Search/Media header pin; `kind: 'bottom'` =
+ * Settings/Admin footer pin; `kind: 'main'` requires `mainGroup` (Overview /
+ * Library); `kind: 'station'` requires `stationGroup` (Floor / Desk);
+ * `kind: 'stock'` is its own L1 after Stations (Products → Inventory → Warehouse).
  * See `docs/todo/main-nav-overview-stock-HANDOFF.md` +
  * `docs/todo/station-nav-floor-desk-PLAN.md`.
  */
 export type SidebarNavItem =
+  | (SidebarNavItemFields & { kind: 'top' })
   | (SidebarNavItemFields & { kind?: 'bottom' })
   | (SidebarNavItemFields & { kind: 'main'; mainGroup: MainGroupId })
   | (SidebarNavItemFields & { kind: 'station'; stationGroup: StationGroupId })
@@ -210,7 +242,10 @@ export function isMobileAllowedPath(pathname: string | null | undefined): boolea
  * Same pattern as Data Wipe: absent from nav, route can remain live.
  */
 export const APP_SIDEBAR_NAV: SidebarNavItem[] = [
-  // Main — Overview → Stock → Library (nested under the Main parent eyebrow).
+  // Top pin — Search then Media (always above section drills; modeless).
+  // GlobalHeaderSearch + AI stay in GlobalHeader — these are page rows only.
+  { id: 'search',            label: 'Search',      href: '/search',       icon: Search,          kind: 'top' },
+  { id: 'ops-photos',        label: 'Media',         href: '/ops/photos',       icon: Images,          kind: 'top', requires: 'photos.view' },
   // Overview: day boards. Dashboard first; Home + Operations when unparked.
   { id: 'dashboard',         label: 'Dashboard',   href: '/dashboard',    icon: LayoutDashboard, kind: 'main', mainGroup: 'overview', requires: 'dashboard.view' },
   // Home (personal triage + Plan/forge). Parked-aware: shown when unlocked
@@ -221,8 +256,7 @@ export const APP_SIDEBAR_NAV: SidebarNavItem[] = [
   // same soft-gate as Home: hidden on prod nav + `ParkedSurface` stand-in until
   // `DOGFOOD_FULL_SURFACE` unlocks the workspace.
   { id: 'operations',        label: 'Operations',  href: '/operations',         icon: Monitor,         kind: 'main', mainGroup: 'overview', requires: 'operations.view', parkedSurface: 'operations' },
-  // Library: media / catalog assets.
-  { id: 'ops-photos',        label: 'Media',         href: '/ops/photos',       icon: Images,          kind: 'main', mainGroup: 'library', requires: 'photos.view' },
+  // Library: catalog assets (Media lives in the top pin).
   // Sub-route of the parked `studio` surface — hidden from nav while Studio is
   // parked (so it never dead-ends on the stand-in), shown once it's unlocked.
   { id: 'studio-catalog',    label: 'Catalog',     href: '/studio/catalog',     icon: Layers,          kind: 'main', mainGroup: 'library', requires: 'studio.view', parkedSurface: 'studio' },
@@ -378,6 +412,9 @@ const CONTEXT_PANEL_ROUTE_KEYS = new Set<SidebarRouteKey>([
   // made it the one desktop route reserving no column — so the transient spine
   // painted over the photo grid instead of landing on a reserved column.
   'ops-photos',
+  // `/search` is Workbench master–detail: hit list in the context rail, selected
+  // entity detail in the main pane (`?q=` + `?sel=`).
+  'search',
 ]);
 
 /** True when this route's spine holds a context panel — see {@link CONTEXT_PANEL_ROUTE_KEYS}. */
@@ -440,17 +477,9 @@ export function getSidebarRouteKey(pathname: string | null): SidebarRouteKey {
   // /manuals now redirects to /products (see src/app/manuals/page.tsx)
   if (pathname === '/manuals' || pathname.startsWith('/manuals/')) return 'products';
   if (pathname === '/settings' || pathname.startsWith('/settings/')) return 'settings';
-  // `/search` renders FULL-WIDTH, and that is a decision, not an omission.
-  //
-  // It resolved to `unknown` until 2026-07-29 — which produced the right layout
-  // for the wrong reason: `unknown` is the fallback for a path nothing claims, so
-  // a first-class route was inheriting 404-shaped behaviour and would have kept
-  // it silently if the fallback ever changed. Declaring the key and leaving it
-  // out of CONTEXT_PANEL_ROUTE_KEYS says the same thing on purpose.
-  //
-  // Results are the whole surface and `?q=` is the whole state, so there is no
-  // picker to put in a 360px column. If Phase 6 gives the results grid facets or
-  // a filter rail, the change is one line: add 'search' to that set.
+  // `/search` — Workbench master–detail. Context rail holds the hit list
+  // (`SearchSidebarPanel`); main pane holds the selected entity detail
+  // (`SearchDetailWorkspace`). Selection is `?sel=type:id`.
   if (pathname === '/search' || pathname.startsWith('/search/')) return 'search';
   return 'unknown';
 }

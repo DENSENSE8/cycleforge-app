@@ -99,8 +99,8 @@ function useSellerMessage(
 
 /**
  * Seller-facing claim message draft — opened from the ticket chip hover menu
- * (Open → Message → Edit). Panel + Neon persistence live here; the menu row is
- * {@link SellerMessageMenuItem}.
+ * (Open → History → Message → Archive → Unlink). Panel + Neon persistence live
+ * here; the menu row is {@link SellerMessageMenuItem}.
  */
 export function SellerMessageMenuItem({
   onClick,
@@ -117,9 +117,9 @@ export function SellerMessageMenuItem({
       onClick={onClick}
       aria-label="Seller message draft"
       aria-expanded={active}
-      className="flex w-full items-center gap-2 border-t border-border-hairline px-3 py-1.5 text-left text-role-caption font-semibold uppercase tracking-widest text-blue-700 hover:bg-blue-50"
+      className="flex w-full items-center gap-2 border-t border-border-hairline px-3 py-1.5 text-left text-role-caption font-semibold uppercase tracking-widest text-text-muted hover:bg-surface-hover"
     >
-      <MessageSquare className="h-3.5 w-3.5 shrink-0 text-blue-600" />
+      <MessageSquare className="h-3.5 w-3.5 shrink-0 text-text-soft" />
       Message
     </button>
   );

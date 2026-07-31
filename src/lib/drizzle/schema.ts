@@ -1921,6 +1921,33 @@ export const documents = pgTable('documents', {
 export type Document = typeof documents.$inferSelect;
 export type NewDocument = typeof documents.$inferInsert;
 
+/**
+ * document_entity_links — polymorphic hub for documents↔entity (ORDER |
+ * SHIPMENT | SKU | SERIAL_UNIT). Mirrors photo_entity_links. CHECK values are
+ * enforced in SQL (see 2026-07-01c + 2026-07-31 Phase 3 expansion).
+ */
+export const documentEntityLinks = pgTable('document_entity_links', {
+  id: bigserial('id', { mode: 'number' }).primaryKey(),
+  documentId: integer('document_id').notNull().references(() => documents.id, { onDelete: 'cascade' }),
+  organizationId: orgIdCol(),
+  /** ORDER | SHIPMENT | SKU | SERIAL_UNIT */
+  entityType: text('entity_type').notNull(),
+  entityId: bigint('entity_id', { mode: 'number' }).notNull(),
+  /** primary | secondary */
+  linkRole: text('link_role').notNull().default('primary'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  uniqueLink: uniqueIndex('ux_document_entity_links_unique').on(
+    table.documentId,
+    table.entityType,
+    table.entityId,
+    table.linkRole,
+  ),
+}));
+
+export type DocumentEntityLink = typeof documentEntityLinks.$inferSelect;
+export type NewDocumentEntityLink = typeof documentEntityLinks.$inferInsert;
+
 // Packing data audit trail lives in packer_logs; photos in the unified photos table.
 
 export const fbaFnskus = pgTable('fba_fnskus', {
@@ -2971,6 +2998,32 @@ export const labelPrintJobs = pgTable('label_print_jobs', {
 });
 
 /**
+ * document_print_jobs — JIT pack documents Phase 1 (2026-07-30d).
+ * One row per outbound PDF print attempt at pack-confirm / reprint.
+ */
+export const documentPrintJobs = pgTable('document_print_jobs', {
+  id: bigserial('id', { mode: 'number' }).primaryKey(),
+  organizationId: uuid('organization_id').notNull(),
+  orderId: integer('order_id').notNull(),
+  packerLogId: integer('packer_log_id'),
+  documentId: integer('document_id'),
+  /** Phase 2 bridge — product_manuals.id when document_type=manual. */
+  productManualId: integer('product_manual_id'),
+  /** shipping_label | packing_slip | manual */
+  documentType: text('document_type').notNull(),
+  /** queued | dispatched | fallback_browser | failed | skipped */
+  status: text('status').notNull().default('queued'),
+  printerProfileId: integer('printer_profile_id'),
+  printnodeJobId: bigint('printnode_job_id', { mode: 'number' }),
+  isReprint: boolean('is_reprint').notNull().default(false),
+  reprintOfId: bigint('reprint_of_id', { mode: 'number' }),
+  actorStaffId: integer('actor_staff_id'),
+  clientEventId: text('client_event_id'),
+  error: text('error'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+/**
  * label_manifests — "one label, many serials" preboxed-kit grouping (serial↔
  * label pairing plan §5.2, migration 2026-07-06b). status: OPEN|SEALED|DISSOLVED;
  * manifest_type: PREBOX|KIT|MASTER_CARTON (both CHECK-constrained). manifest_uid
@@ -3184,7 +3237,7 @@ export const printerProfiles = pgTable('printer_profiles', {
   name: text('name').notNull(),
   externalId: text('external_id').notNull(),
   vendor: text('vendor').notNull().default('printnode'),
-  /** carton | product | bin | unit | null (generic). 'unit' added 2026-05-17 Phase 1 for Tier-3 GS1 unit labels. */
+  /** carton | product | bin | unit | outbound (PDF docs) | null (generic). */
   defaultFor: text('default_for'),
   isActive: boolean('is_active').notNull().default(true),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),

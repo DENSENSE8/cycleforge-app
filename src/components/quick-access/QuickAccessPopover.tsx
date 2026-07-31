@@ -59,6 +59,7 @@ export function QuickAccessPopover({
           actions={{ phoneHistory: false }}
           onOpenHistoryPopover={() => {}}
           onOpenFeedbackPopover={onOpenFeedbackPopover}
+          onClose={onClose}
         />
       ) : null}
 
@@ -70,6 +71,7 @@ export function QuickAccessPopover({
             actions={settings.actions}
             onOpenHistoryPopover={onOpenHistoryPopover}
             onOpenFeedbackPopover={onOpenFeedbackPopover}
+            onClose={onClose}
           />
         </div>
       )}

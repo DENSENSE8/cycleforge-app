@@ -14,7 +14,7 @@ export interface PrimaryKpiGridProps {
 
 /**
  * The four primary KPI tiles, composed from the Monitor {@link KpiStrip} /
- * `KpiTile` registry — eyebrow → hero number → `DeltaChip`. Value and delta come
+ * `KpiTile` registry — eyebrow + compact delta (top-right) → hero number. Value and delta come
  * straight from the snapshot; clicking a tile opens {@link KpiDetailsModal}.
  */
 export function PrimaryKpiGrid({ summary, onOpen, activeKind }: PrimaryKpiGridProps) {

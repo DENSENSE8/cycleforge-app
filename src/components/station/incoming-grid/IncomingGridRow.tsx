@@ -13,9 +13,9 @@ import { ReceivingLineOrderRow } from '@/components/station/ReceivingLineOrderRo
 import { OrderIdChip, TrackingChip, getLast4 } from '@/components/ui/CopyChip';
 import {
   GridAgeCellValue,
-  GridCellDash,
   GridDateCellValue,
   GridPlatformMarkValue,
+  GridQtyFractionValue,
 } from '@/components/ui/grid-cells';
 import { ledgerRowStateClass } from '@/components/ui/queue-row-chrome';
 import { gridCellAlignClass } from '@/design-system/components/grid';
@@ -113,8 +113,6 @@ export const IncomingGridRow = memo(function IncomingGridRow({
   }
 
   const productTitle = displayProductTitle(row);
-  const quantityText = `${row.quantity_received}/${row.quantity_expected ?? '?'}`;
-  const qtyExpected = row.quantity_expected ?? 0;
   const condGrade = (row.condition_grade || '').toUpperCase();
   const conditionLabel = conditionGradeTableLabel(row.condition_grade);
   const dateSource = incomingRowDateSource(row);
@@ -195,7 +193,7 @@ export const IncomingGridRow = memo(function IncomingGridRow({
                 className={cn(
                   'flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors',
                   isSelected
-                    ? 'border-blue-600 bg-blue-600 text-white'
+                    ? 'border-accent-bg bg-accent-bg text-text-inverse'
                     : 'border-border-default bg-surface-card',
                 )}
                 aria-hidden
@@ -244,18 +242,10 @@ export const IncomingGridRow = memo(function IncomingGridRow({
       case 'qty':
         return (
           <div data-col="qty" className={dataCell(col, rule)}>
-            <span
-              className={cn(
-                'min-w-0 truncate tabular-nums text-role-caption',
-                qtyExpected > 1
-                  ? 'text-text-warning'
-                  : row.quantity_expected && row.quantity_received >= row.quantity_expected
-                    ? 'text-emerald-600'
-                    : 'text-text-muted',
-              )}
-            >
-              {quantityText}
-            </span>
+            <GridQtyFractionValue
+              received={row.quantity_received}
+              expected={row.quantity_expected}
+            />
           </div>
         );
       case 'condition':
@@ -287,15 +277,13 @@ export const IncomingGridRow = memo(function IncomingGridRow({
       case 'order':
         return (
           <div data-col="order" className={dataCell(col, rule)}>
-            {poValue ? (
-              <OrderIdChip
-                value={poValue}
-                display={getLast4(poValue)}
-                plain
-                truncateDisplay={false}
-                fitDisplayWidth
-              />
-            ) : null}
+            <OrderIdChip
+              value={poValue}
+              display={getLast4(poValue)}
+              plain
+              truncateDisplay={false}
+              fitDisplayWidth
+            />
           </div>
         );
       case 'tracking':
@@ -303,14 +291,13 @@ export const IncomingGridRow = memo(function IncomingGridRow({
           <div data-col="tracking" className={dataCell(col, rule)}>
             {isPickup && pickupLabel ? (
               <FulfillmentPickupPill dense />
-            ) : trackingValue ? (
+            ) : !trackingValue && trackingAction ? (
+              trackingAction
+            ) : (
               <TrackingChip
                 value={trackingValue}
-                display={getLast4(trackingValue)}
                 showIcon={!col.omitCellIcon}
               />
-            ) : (
-              trackingAction ?? <GridCellDash />
             )}
           </div>
         );

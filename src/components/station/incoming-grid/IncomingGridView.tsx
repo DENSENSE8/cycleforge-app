@@ -38,9 +38,9 @@ interface IncomingGridViewProps {
   /** FULL canonical column list — visibility is resolved here, not by callers. */
   columns?: readonly IncomingGridColumn[];
   /**
-   * Staff-prefs identity for per-staff column config. Incoming mounts under the
-   * `receiving` `TableColumnConfigProvider` (ReceivingLinesTable), so it keeps
-   * that identity and inherits existing staff Fields selections.
+   * Staff-prefs identity for per-staff column config. Incoming owns its own
+   * `incoming` bucket — distinct from Unbox/History `receiving` — so Fields
+   * toggles cannot cross-contaminate divergent descriptors.
    */
   tableId?: TableId;
   /** Mirror of LedgerGrid scroll body for keyboard-nav / page scroll-to-top. */
@@ -70,7 +70,7 @@ export function IncomingGridView({
   handleSelectRow,
   handleSelectGroup,
   columns = INCOMING_GRID_COLUMNS,
-  tableId = 'receiving',
+  tableId = 'incoming',
   scrollRef,
   className,
 }: IncomingGridViewProps) {

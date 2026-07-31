@@ -68,6 +68,9 @@ export function ShippingEntityContextHeader({
       staffId=""
       isUnmatched={false}
       showStaffPhotoRow={false}
+      // Inert: receivingId is always null here, so the photo pill never
+      // renders regardless of stage. Required prop, no meaningful default.
+      photoStage="unbox_carton"
       listingLink={listingLink}
       listingOpenHref={listingUrl}
       listingLinks={listingLinks}

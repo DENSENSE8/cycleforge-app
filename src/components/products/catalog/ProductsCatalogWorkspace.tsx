@@ -222,6 +222,7 @@ export function ProductsCatalogWorkspace() {
         chrome={
           <div className={WORKBENCH_CHROME_COLUMN}>
             <WorkbenchChromeHeader
+              density="band"
               tabs={PLATFORM_TABS.map((t) => ({
                 id: t.id,
                 label: t.label,

@@ -15,7 +15,7 @@ export function ClaimSellerStep({ c }: { c: ReceivingClaimController }) {
         <ClaimFiledBanner
           filedTicket={c.filedTicket}
           mode={c.mode}
-          linkCommitted={c.linkCommitted}
+          linkCommitted={c.linkCommitStatus === 'committed'}
           unlinking={c.unlinking}
           onUnlink={c.handleBannerUnlink}
         />

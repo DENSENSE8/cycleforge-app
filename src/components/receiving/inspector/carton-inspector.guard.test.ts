@@ -12,11 +12,12 @@
  * ## 2. It relapses into a second photo UI / Unbox CTA spam / lobotomized work chrome
  *
  * Intent pins (not frozen UI names): disposition truth; photos via shared viewer
- * SoT (`usePhotoGallery` + `PhotoViewerPortal`) from a header control — never a
- * page-local EvidenceStage / lightbox; empty ≠ fetch error for photos; single-actor
- * provenance collapse; full width; one quiet `openInUnboxHref` escape (no
- * "Open in Unbox" marketing string). Never require Unbox layout panels /
- * CartonContextCard.
+ * SoT (`usePhotoGallery` + `PhotoViewerPortal`) from a thumbnail strip under
+ * disposition — never a page-local EvidenceStage / lightbox or a hand-rolled
+ * “N photos” count button; empty ≠ fetch error for photos; shared pipeline
+ * stepper (`LinearWorkflowStepper`); full width; one quiet `openInUnboxHref`
+ * escape (no "Open in Unbox" marketing string). Never require Unbox layout
+ * panels / CartonContextCard.
  *
  * Run: `node --test --require ./scripts/register-server-only-shim.cjs --import tsx \
  *        src/components/receiving/inspector/carton-inspector.guard.test.ts`
@@ -144,10 +145,19 @@ test('a failed photo load never borrows the "no photos" copy', () => {
   );
 });
 
-test('single-actor provenance collapses somewhere in the tree', () => {
+test('progress uses the shared pipeline stepper, not a hand-rolled handling strip', () => {
   assert.ok(
-    ALL.includes('collapseProvenance'),
-    'four rows repeating one name with second precision is the rejected shape',
+    ALL.includes('LinearWorkflowStepper'),
+    'carton progress must use LinearWorkflowStepper (same primitive as ReceivingDetailsStack)',
+  );
+  assert.ok(
+    ALL.includes('deriveCartonReadiness'),
+    'stepper states must come from deriveCartonReadiness, not ad-hoc timestamps',
+  );
+  assert.equal(
+    ALL.includes('ProvenanceBlock') || ALL.includes('collapseProvenance'),
+    false,
+    'hand-rolled HANDLING provenance strip is deleted — use the shared stepper',
   );
 });
 

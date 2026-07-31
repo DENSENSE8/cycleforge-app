@@ -68,7 +68,7 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
   receivingId,
   staffId,
   poRef,
-  photoStage = 'arrival_package',
+  photoStage,
   receivingLineId = null,
   poRouteRef = null,
   galleryPlacement = 'below',
@@ -80,11 +80,14 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
    *  details panel shows the linked PO (parity with ReceivingPhotoPeek). */
   poRef?: string | null;
   /**
-   * Capture stage this pill stamps: triage chrome keeps the default arrival
-   * package; the unbox header passes `unbox_carton`; the unbox active-line
-   * camera passes `unbox_item` together with `receivingLineId`.
+   * Capture stage this pill stamps — required, never defaulted (a defaulted
+   * safety classification is how bench photos silently became arrival
+   * evidence; see `.claude/rules/backend-patterns.md`). Triage chrome passes
+   * `arrival_package` explicitly; the unbox header passes `unbox_carton`; the
+   * unbox active-line camera passes `unbox_item` together with
+   * `receivingLineId`.
    */
-  photoStage?: ReceivingPhotoStage;
+  photoStage: ReceivingPhotoStage;
   /**
    * Active receiving line — makes this pill the ITEM camera (RECEIVING_LINE +
    * `receiving_item`): line-scoped count/gallery/upload, and phone requests
@@ -314,9 +317,8 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
       )}
 
       {showGalleryPeek ? (
-        // The padding bridges the gap so the pointer stays inside the hover
-        // target while moving from the pill to the gallery card — on whichever
-        // side the card opens.
+        // Gap bridge only — panel chrome comes from CopyChipHoverMenuPanel
+        // (same drop SoT as tracking / ticket), not a second card wrapper.
         <div
           className={
             galleryPlacement === 'above'
@@ -324,33 +326,31 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
               : 'absolute right-0 top-full z-30 pt-1.5'
           }
         >
-          <div className="w-fit max-w-[80vw] rounded-xl border border-blue-200 bg-surface-card p-0.5 shadow-xl">
-            <PhotoGallery
-              photos={photos}
-              orderId={`RCV-${receivingId}`}
-              receivingId={receivingId}
-              // Explicit target: without it a receiving gallery derives
-              // RECEIVING + `receiving_package`, so an ITEM pill's hover-upload
-              // would stamp carton evidence onto a line camera (and the write
-              // waist would 400 it). The resolver already encodes the matrix.
-              uploadTarget={uploadTarget ?? undefined}
-              allowReassign
-              launcherLayout="toolbar"
-              toolbarShowLabel={false}
-              compact
-              libraryHref={cartonLibraryHref}
-              onPhotoDeleted={(photoId) => refresh(photoId)}
-              // Reassign/upload are NOT deletes — passing the photo id as
-              // `deletedPhotoId` filtered the just-added photo straight back OUT
-              // of the gallery cache (only the trailing refetch hid the bug).
-              // Refresh with no id so the cache reconciles to include it.
-              onPhotoReassigned={() => refresh()}
-              onPhotoUploaded={() => refresh()}
-              onUploadOverlayOpenChange={setGalleryUploadPinned}
-              onMovePhotosOpenChange={setGalleryMovePinned}
-              onSendToTicket={onSendToTicket}
-            />
-          </div>
+          <PhotoGallery
+            photos={photos}
+            orderId={`RCV-${receivingId}`}
+            receivingId={receivingId}
+            // Explicit target: without it a receiving gallery derives
+            // RECEIVING + `receiving_package`, so an ITEM pill's hover-upload
+            // would stamp carton evidence onto a line camera (and the write
+            // waist would 400 it). The resolver already encodes the matrix.
+            uploadTarget={uploadTarget ?? undefined}
+            allowReassign
+            launcherLayout="toolbar"
+            toolbarShowLabel={false}
+            compact
+            libraryHref={cartonLibraryHref}
+            onPhotoDeleted={(photoId) => refresh(photoId)}
+            // Reassign/upload are NOT deletes — passing the photo id as
+            // `deletedPhotoId` filtered the just-added photo straight back OUT
+            // of the gallery cache (only the trailing refetch hid the bug).
+            // Refresh with no id so the cache reconciles to include it.
+            onPhotoReassigned={() => refresh()}
+            onPhotoUploaded={() => refresh()}
+            onUploadOverlayOpenChange={setGalleryUploadPinned}
+            onMovePhotosOpenChange={setGalleryMovePinned}
+            onSendToTicket={onSendToTicket}
+          />
         </div>
       ) : null}
     </div>

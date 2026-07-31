@@ -8,9 +8,6 @@
 
 import { Suspense, useState } from 'react';
 import dynamic from 'next/dynamic';
-import { SkeletonList } from '@/design-system/components/Skeletons';
-import { MONITOR_SECTION_CARD_SCROLL_CLASS } from '@/design-system/components/monitor';
-import { cn } from '@/utils/_cn';
 import { DashboardScrollShell } from '@/components/dashboard/DashboardScrollShell';
 import {
   WORKBENCH_BODY_COLUMN,
@@ -21,36 +18,19 @@ import {
 import { RECEIVING_SELECTION_SCOPE } from '@/components/station/receiving-lines-table-helpers';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { UnboxKpiStrip } from '@/components/receiving/unbox/UnboxKpiStrip';
+import { UnboxTableCardSkeleton } from '@/components/receiving/unbox/UnboxWorkbenchSkeleton';
 import { UnboxWorkspaceHeader } from '@/components/receiving/unbox/UnboxWorkspaceHeader';
 import { useSurfacePaintMark } from '@/lib/observability/paint-timing';
 import { useUnboxWorkspaceTab } from '@/hooks/useUnboxWorkspaceTab';
 import { useReceivingLineBulkSelection } from '@/hooks/useReceivingLineBulkSelection';
 import { ContextualSelectionBar } from '@/design-system/components/ContextualSelectionBar';
 
-/** Table-card skeleton — same monitor card shell + house row anatomy the real
- * table renders, shared by the chunk-load fallback and the Suspense fallback. */
-function TableCardSkeleton() {
-  return (
-    <div
-      className={cn(
-        MONITOR_SECTION_CARD_SCROLL_CLASS,
-        'flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden',
-      )}
-      aria-busy="true"
-    >
-      <div className="p-3">
-        <SkeletonList count={8} type="row" />
-      </div>
-    </div>
-  );
-}
-
 // Code-split the heavy table (board lanes, column config, grouping, deep-link)
 // off the Unbox route chunk: chrome + KPI paint from the small chunk first and
 // the table chunk streams in behind the same structured skeleton.
 const ReceivingLinesTable = dynamic(
   () => import('@/components/station/ReceivingLinesTable'),
-  { loading: () => <TableCardSkeleton /> },
+  { loading: () => <UnboxTableCardSkeleton /> },
 );
 
 /** Copy line for a receiving carton/line: PO • SKU • tracking. */
@@ -102,7 +82,7 @@ export function UnboxWorkspaceView(_props: {
             {/* Structured fallback (searchParams suspension path) mirrors the
                 table card + row anatomy — never a bare gray box. The dynamic()
                 chunk-load path shows the same skeleton via its loading option. */}
-            <Suspense fallback={<TableCardSkeleton />}>
+            <Suspense fallback={<UnboxTableCardSkeleton />}>
               <ReceivingLinesTable
                 key={unboxView}
                 selectMode={selectMode}

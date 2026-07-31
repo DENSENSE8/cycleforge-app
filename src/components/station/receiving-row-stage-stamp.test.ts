@@ -3,7 +3,19 @@ import assert from 'node:assert/strict';
 import { resolveReceivingRowStageStamp } from '@/components/station/receiving-lines-table-helpers';
 
 describe('resolveReceivingRowStageStamp', () => {
-  it('unboxed axis prefers unboxed_at; falls back to scan when never unboxed', () => {
+  it('unboxed axis prefers first-open, then unboxed_at; falls back to scan when never opened', () => {
+    assert.deepEqual(
+      resolveReceivingRowStageStamp(
+        {
+          unbox_opened_at: '2026-07-02T17:00:00Z',
+          unboxed_at: '2026-07-02T18:00:00Z',
+          unboxed_by_name: 'Ada',
+          scanned_at: '2026-07-01T10:00:00Z',
+        },
+        'unboxed',
+      ),
+      { instant: '2026-07-02T17:00:00Z', label: 'Unboxed', staffName: 'Ada' },
+    );
     assert.deepEqual(
       resolveReceivingRowStageStamp(
         { unboxed_at: null, scanned_at: '2026-07-01T10:00:00Z', scanned_by_name: 'Bo' },

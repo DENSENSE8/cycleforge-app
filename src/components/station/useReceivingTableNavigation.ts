@@ -4,15 +4,14 @@
  * Keyboard / sidebar navigation for the receiving-lines table:
  *   - `receiving-navigate-table` (sidebar chevrons / arrow keys) steps the LINE
  *     selection prev/next through the visible rows (single-select only).
- *   - `receiving-navigate-detail-overlay` steps by parent RECEIVING LOG, opening
- *     the receiving details panel for the next unique receiving_id.
  *   - keeps the active row scrolled into view when selection changes.
  * Extracted from ReceivingLinesTable.
+ *
+ * Observe openers (Share / Audit / Copy / carton details) live on `/carton/[id]`
+ * — not a receiving-details overlay stepped from this table.
  */
 
 import { useEffect } from 'react';
-import { receivingLineRowToDetailsSeed } from '@/lib/receiving/receiving-details-overlay';
-import { dispatchReceivingDetailsOverlay } from '@/utils/events';
 import type { ReceivingLineRow } from './receiving-line-row';
 
 interface UseReceivingTableNavigationArgs {
@@ -59,44 +58,6 @@ export function useReceivingTableNavigation({
     window.addEventListener('receiving-navigate-table', handler);
     return () => window.removeEventListener('receiving-navigate-table', handler);
   }, [handleSelectRow, orderedVisibleRows, selectedIdRef, selectModeRef, tableNavEnabled]);
-
-  // Detail-overlay prev/next: step through unique `receiving_id`s in the visible
-  // history list and re-open the overlay for the next one.
-  useEffect(() => {
-    const handler = (event: Event) => {
-      const detail = (event as CustomEvent<{ direction: 'prev' | 'next'; currentReceivingId: number }>).detail;
-      if (!detail || (detail.direction !== 'prev' && detail.direction !== 'next')) return;
-      if (orderedVisibleRows.length === 0) return;
-
-      const uniqueReceivingIds: number[] = [];
-      const seen = new Set<number>();
-      for (const row of orderedVisibleRows) {
-        const rid = Number(row.receiving_id);
-        if (Number.isFinite(rid) && rid > 0 && !seen.has(rid)) {
-          seen.add(rid);
-          uniqueReceivingIds.push(rid);
-        }
-      }
-      if (uniqueReceivingIds.length === 0) return;
-
-      const step = detail.direction === 'prev' ? -1 : 1;
-      const currentIndex = uniqueReceivingIds.indexOf(Number(detail.currentReceivingId));
-      const nextIndex = currentIndex < 0 ? 0 : currentIndex + step;
-      const nextReceivingId = uniqueReceivingIds[nextIndex];
-      if (nextReceivingId == null) return;
-
-      const seedRow = orderedVisibleRows.find(
-        (row) => Number(row.receiving_id) === nextReceivingId,
-      );
-
-      dispatchReceivingDetailsOverlay(
-        nextReceivingId,
-        seedRow ? receivingLineRowToDetailsSeed(seedRow) : undefined,
-      );
-    };
-    window.addEventListener('receiving-navigate-detail-overlay', handler);
-    return () => window.removeEventListener('receiving-navigate-detail-overlay', handler);
-  }, [orderedVisibleRows]);
 
   // Keep the active row in view when selection changes from sidebar nav.
   useEffect(() => {

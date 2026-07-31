@@ -1,7 +1,9 @@
 import {
+  appCanvasClass,
   appChromeBandHairlineClass,
   appChromeClass,
   appChromeMutedClass,
+  appWashClass,
 } from '@/design-system/tokens/app-surface';
 import { cn } from '@/utils/_cn';
 
@@ -22,10 +24,8 @@ export const receivingHeaderHairlineClass = appChromeBandHairlineClass;
  */
 export const SIDEBAR_GUTTER = 'px-1.5';
 
-// ── MasterNav geometry (closed header) — pad / glyph / gap SoT ────────────────
-/** Horizontal pad on the full-nav chevron hit box. */
-export const SIDEBAR_MASTER_NAV_CHEVRON_PAD_X = 'px-2.5';
-/** Chevron + mode glyph box (pairs with `h-4 w-4`). */
+// ── MasterNav geometry (identity band) — pad / glyph / gap SoT ────────────────
+/** Mode glyph box (pairs with `h-4 w-4`). */
 export const SIDEBAR_MASTER_NAV_GLYPH = 'h-4 w-4';
 /** Horizontal pad on the mode-identity control. */
 export const SIDEBAR_MASTER_NAV_MODE_PAD_X = 'px-2.5';
@@ -45,8 +45,8 @@ export const SIDEBAR_MASTER_NAV_MODE_GAP = 'gap-1.5';
  * The eyebrow ({@link SidebarRailShell}), rail rows, and dense scan bar
  * (`leadingColumn="rail"`) all compose {@link SIDEBAR_SCAN_DOCK_LEADING_ROW}
  * so icon/dot track + typed text share one clean column — never a magic rem twin.
- * The MasterNav "now" label deliberately stays deeper (its chevron + hairline +
- * mode glyph own the 0→47px chrome column above the dock).
+ * The MasterNav "now" label keeps its own pad ({@link SIDEBAR_MASTER_NAV_MODE_PAD_X})
+ * so identity sits beside the mode glyph above the dock — not the rail's leading track.
  */
 /** Leading pad before the dot track (`pl-2`) — internal to {@link SIDEBAR_SCAN_DOCK_LEADING_ROW}. */
 const SIDEBAR_RAIL_LEADING_PAD = 'pl-2';
@@ -135,7 +135,20 @@ export const mainStickyHeaderCompactRowClass = 'flex h-[40px] items-center justi
  *
  * Chromeless / mobile routes skip this entirely.
  */
-export const appContentShellClass = 'flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden';
+export const appContentShellClass = cn(
+  'flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden',
+  // THE single page background — canvas ground + Appearance wash, in ONE place.
+  // `<body>` is `appChromeClass` (card WHITE), so without a canvas step here
+  // every page body had to paint its own: `DashboardScrollShell` did it twice,
+  // `ContextPanelLayout` had a whole second host class
+  // (`CONTEXT_PANEL_HOST_RECEIVING_CLASS`) that existed only to add the wash,
+  // and five admin tabs added it again. Those stacked OPAQUE fills covered the
+  // wash gradient everywhere except the rail's outset gutter, which is exactly
+  // the tone seam at the rail edge. Every one of those is deleted; this is the
+  // only background component. Page bodies stay transparent and inherit it.
+  appCanvasClass,
+  appWashClass,
+);
 
 /**
  * Shared hit-box for GlobalHeader icon actions (sidebar, goal ring, WO, right rail).

@@ -3,11 +3,13 @@
 /**
  * Station utilities — top-right floating shell.
  *
- * Hosts refresh · more · info via {@link StationHeaderToolbar} (Unbox + Arrival).
- * Rendered at the work-canvas top + right edges in
- * {@link StationContextBar} so the centered identity shell stays true-center.
- * Full radius + full hairline ({@link stationMoreDetailsPanelClass}).
- * Pad + gap match GlobalHeader icon rail.
+ * Unbox + Arrival no longer mount Refresh here (PO link is the carton `#`
+ * chip → Package Pairing). Testing still hosts Refresh + Pair via
+ * {@link StationHeaderToolbar}. Share / Audit / Copy / Info live on
+ * `/carton/[id]`; Move photos on the photo gallery. Rendered at the
+ * work-canvas top + right edges in {@link StationContextBar} so the centered
+ * identity shell stays true-center. Full radius + full hairline
+ * ({@link stationMoreDetailsPanelClass}). Pad + gap match GlobalHeader icon rail.
  */
 
 import type { ReactNode } from 'react';

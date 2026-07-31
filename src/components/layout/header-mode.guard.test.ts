@@ -78,9 +78,35 @@ test('MasterNavHeader has no MRU jump chips', () => {
   assert.doesNotMatch(MASTER_NAV, /recentModes/);
 });
 
-test('MasterNavHeader centers name-of-now label in the band', () => {
-  assert.match(MASTER_HEADER, /absolute inset-0 flex min-w-0 items-center justify-center/);
+test('MasterNavHeader left-justifies name-of-now with body role beside glyph', () => {
+  assert.doesNotMatch(MASTER_HEADER, /absolute inset-0.*justify-center|justify-center.*absolute inset-0/);
+  assert.match(MASTER_HEADER, /flex min-w-0 flex-1 items-center/);
   assert.match(MASTER_HEADER, /data-master-nav-label/);
+  // One step under title — beside h-4 glyph without overpowering it.
+  // leading-tight (not leading-none): truncate's overflow:hidden clips descenders at lh=1.
+  assert.match(MASTER_HEADER, /text-role-body font-semibold leading-tight/);
+  assert.doesNotMatch(MASTER_HEADER, /data-master-nav-label[\s\S]*?leading-none/);
+  assert.doesNotMatch(MASTER_HEADER, /data-master-nav-label[\s\S]*?text-role-(?:title|eyebrow)/);
+});
+
+test('MasterNavView shows page icon for modeless pages (mode glyph when modeful)', () => {
+  // Modeful branch keeps active mode icon; modeless falls back to page.icon.
+  assert.match(MASTER_VIEW, /modes\.length > 1/);
+  assert.match(MASTER_VIEW, /activePage\.icon/);
+  assert.match(MASTER_VIEW, /leadingIcon=\{headerIcon\}/);
+});
+
+test('MasterNavHeader is identity-only — no always-false nav-toggle API', () => {
+  // Spine body IS the page list; a band chevron would be a dead control.
+  // Column open lives on SidebarNavColumn, not MasterNavHeader.
+  assert.doesNotMatch(MASTER_HEADER, /showNavToggle/);
+  assert.doesNotMatch(MASTER_HEADER, /ChevronDown/);
+  assert.doesNotMatch(MASTER_HEADER, /aria-expanded/);
+  assert.doesNotMatch(MASTER_HEADER, /\bopen\b/);
+  assert.doesNotMatch(MASTER_HEADER, /onClick/);
+  assert.doesNotMatch(MASTER_VIEW, /showNavToggle/);
+  assert.doesNotMatch(MASTER_VIEW, /onOpen/);
+  assert.doesNotMatch(MASTER_NAV, /onOpenNav/);
 });
 
 test('GlobalHeader and MasterNav spine share TOP_CHROME_BAND face (one hairline Y)', () => {

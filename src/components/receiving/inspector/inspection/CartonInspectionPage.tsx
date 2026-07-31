@@ -1,33 +1,53 @@
 'use client';
 
 /**
- * Carton read assembly — disposition bar, handling column, findings.
+ * Carton read assembly — disposition bar, contents column, progress rail.
  *
  * Shares the read model + atoms with Unbox. Never imports workbench editors
  * (decision D6 / anti-pattern: lobotomized work chrome).
  *
- * Photos open the shared viewer SoT (`usePhotoGallery` + `PhotoViewerPortal`);
- * never a page-local EvidenceStage / lightbox. Work escape is one quiet
+ * Photos open the shared viewer SoT (`usePhotoGallery` + `PhotoViewerPortal`)
+ * from a thumbnail strip under disposition — never a page-local EvidenceStage /
+ * lightbox or a hand-rolled “N photos” count button. Work escape is one quiet
  * header control via `openInUnboxHref` — no "Open in Unbox" spam.
  */
 
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
-import { Button } from '@/design-system/primitives';
+import { IconButton } from '@/design-system/primitives';
 import {
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
+  Copy,
+  History,
+  Link2,
   Loader2,
   Wrench,
 } from '@/components/Icons';
 import { PoChip, SerialChip, TrackingChip } from '@/components/ui/CopyChip';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { usePhotoGallery } from '@/components/shipped/photo-gallery/usePhotoGallery';
+import { PhotoLauncher } from '@/components/shipped/photo-gallery/PhotoLauncher';
 import { PhotoViewerPortal } from '@/components/shipped/photo-gallery/PhotoViewerPortal';
 import type { PhotoGalleryInput } from '@/components/shipped/photo-gallery/photo-gallery-utils';
 import { WorkspaceTimelineTab } from '@/components/station/workbench';
+import { ReceivingAuditModal } from '@/components/receiving/workspace/ReceivingAuditModal';
+import {
+  LinearWorkflowStepper,
+  type LinearStep,
+} from '@/components/receiving/workspace/ReceivingProgressStepper';
+import { deriveCartonReadiness } from '@/lib/receiving/carton-readiness';
+import {
+  HEADER_ICON_BTN_CLASS,
+  HEADER_ICON_CLUSTER,
+  HEADER_ICON_WRAP,
+  TOP_CHROME_ICON_GLYPH,
+} from '@/components/layout/header-shell';
+import {
+  buildCartonReadCopyText,
+  shareCartonLink,
+} from '@/lib/receiving/carton-read-utilities';
 import { openInUnboxHref } from '@/lib/receiving/surface-path';
 import { conditionLabel } from '@/lib/conditions';
 import { conditionGradeTextClass } from '@/lib/condition-tone';
@@ -37,17 +57,17 @@ import { workflowStageDot, workflowStageLabel } from '@/lib/receiving/workflow-s
 import { unitStatusChipClass } from '@/lib/unit-status';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { formatDateTimePST } from '@/utils/date';
+import { copyToClipboard } from '@/utils/_dom';
+import { toast } from '@/lib/toast';
 import { getLast4 } from '@/lib/copy-chip-format';
 import { cn } from '@/utils/_cn';
 import {
-  buildCartonMilestones,
   cartonContentsSummary,
   cartonDisposition,
   cartonFacts,
   cartonFlags,
   cartonRecordMeta,
   cartonTimelineAnchor,
-  collapseProvenance,
   type CartonDisposition,
   type CartonException,
   type CartonFact,
@@ -57,6 +77,12 @@ import {
   type CartonInspectorPayload,
   type CartonInspectorReceiving,
 } from '../carton-inspector-model';
+
+const PIPELINE_STEPS: ReadonlyArray<LinearStep> = [
+  { key: 'scanned', label: 'Scanned' },
+  { key: 'unboxed', label: 'Unboxed' },
+  { key: 'received', label: 'Received' },
+];
 
 interface ReceivingPhoto {
   id: number;
@@ -144,22 +170,52 @@ export function CartonInspectionPage({ receivingId }: { receivingId: number }) {
   });
 
   const receiving = data?.receiving;
-  const photos = photoData?.photos ?? [];
+  const lines = data?.lines;
   const disposition = useMemo(
-    () => (receiving ? cartonDisposition(receiving, data?.totals) : null),
-    [receiving, data?.totals],
+    () => (receiving ? cartonDisposition(receiving, data?.totals, lines) : null),
+    [receiving, data?.totals, lines],
   );
-  const flags = useMemo(() => (receiving ? cartonFlags(receiving) : []), [receiving]);
+  const flags = useMemo(
+    () => (receiving ? cartonFlags(receiving, lines) : []),
+    [receiving, lines],
+  );
   const facts = useMemo(() => (receiving ? cartonFacts(receiving) : []), [receiving]);
   const recordMeta = useMemo(() => (receiving ? cartonRecordMeta(receiving) : []), [receiving]);
 
   // URL-only inputs — omit numeric ids so the shared viewer stays read-only
   // (no delete/upload). Mutations belong on Unbox, not the look-up surface.
   const galleryPhotos = useMemo<PhotoGalleryInput[]>(
-    () => photos.map((p) => ({ url: p.photoUrl })),
-    [photos],
+    () => (photoData?.photos ?? []).map((p) => ({ url: p.photoUrl })),
+    [photoData?.photos],
   );
-  const gallery = usePhotoGallery({ photos: galleryPhotos });
+  const photos = photoData?.photos ?? [];
+  const gallery = usePhotoGallery({
+    photos: galleryPhotos,
+    launcherLayout: 'thumbnails',
+  });
+  const [auditOpen, setAuditOpen] = useState(false);
+  const [copyingAll, setCopyingAll] = useState(false);
+
+  const handleShare = useCallback(async () => {
+    const result = await shareCartonLink(
+      receivingId,
+      receiving?.zoho_purchaseorder_number,
+    );
+    if (result === 'copied') toast.success('Link copied to clipboard');
+    else if (result === 'failed') toast.error('Could not copy link');
+  }, [receivingId, receiving?.zoho_purchaseorder_number]);
+
+  const handleCopy = useCallback(async () => {
+    if (!receiving || copyingAll) return;
+    setCopyingAll(true);
+    try {
+      const ok = await copyToClipboard(buildCartonReadCopyText(receiving));
+      if (ok) toast.success('Copied receiving details');
+      else toast.error('Could not copy to clipboard');
+    } finally {
+      window.setTimeout(() => setCopyingAll(false), 800);
+    }
+  }, [receiving, copyingAll]);
 
   return (
     <div className="flex h-full min-h-0 w-full flex-col bg-surface-canvas">
@@ -168,11 +224,27 @@ export function CartonInspectionPage({ receivingId }: { receivingId: number }) {
         receiving={receiving ?? null}
         disposition={disposition}
         flags={flags}
-        photoCount={photos.length}
-        photosLoading={photosLoading}
-        photosError={photosError}
-        onOpenPhotos={() => gallery.openViewer(0)}
+        copyingAll={copyingAll}
+        onShare={() => void handleShare()}
+        onCopy={() => void handleCopy()}
+        onAudit={() => setAuditOpen(true)}
       />
+
+      {photosError ? (
+        <div className="shrink-0 border-b border-border-soft bg-surface-card px-6 py-2">
+          <HoverTooltip label="Could not load photos — retry before relying on them for a claim">
+            <span className="text-role-caption text-text-danger">Photos unavailable</span>
+          </HoverTooltip>
+        </div>
+      ) : photosLoading && photos.length === 0 ? (
+        <div className="flex shrink-0 items-center gap-2 border-b border-border-soft bg-surface-card px-6 py-2 text-role-caption text-text-muted">
+          <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading photos…
+        </div>
+      ) : photos.length > 0 ? (
+        <div className="shrink-0 border-b border-border-soft bg-surface-card px-6 py-2">
+          <PhotoLauncher g={gallery} />
+        </div>
+      ) : null}
 
       <div className="min-h-0 flex-1 overflow-y-auto">
         {isLoading ? (
@@ -187,26 +259,30 @@ export function CartonInspectionPage({ receivingId }: { receivingId: number }) {
           </div>
         ) : (
           <div className="space-y-5 px-6 py-5 pb-16">
-            {/* Col 1: handling · activity · record; col 2: findings. Photos live in the header. */}
+            {/* Col 1: contents · activity · record; col 2: stepper · history · findings. */}
             <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
-              <HandlingColumn
+              <ContentsColumn
                 receiving={receiving}
-                events={data?.events ?? []}
-                recordMeta={recordMeta}
-              />
-              <FindingsRail
-                disposition={disposition}
-                lines={data?.lines ?? []}
+                lines={lines ?? []}
                 totalsSummary={cartonContentsSummary(data?.totals)}
+                events={data?.events ?? []}
                 facts={facts}
+                recordMeta={recordMeta}
                 purchaseOrders={data?.purchase_orders}
+                hideEmptyContents={disposition.exceptions.some((e) => e.key === 'no_lines')}
               />
+              <ProgressRail receiving={receiving} disposition={disposition} />
             </div>
           </div>
         )}
       </div>
 
       <PhotoViewerPortal g={gallery} />
+      <ReceivingAuditModal
+        open={auditOpen}
+        onClose={() => setAuditOpen(false)}
+        receivingId={receivingId}
+      />
     </div>
   );
 }
@@ -216,23 +292,21 @@ function DispositionBar({
   receiving,
   disposition,
   flags,
-  photoCount,
-  photosLoading,
-  photosError,
-  onOpenPhotos,
+  copyingAll,
+  onShare,
+  onCopy,
+  onAudit,
 }: {
   receivingId: number;
   receiving: CartonInspectorReceiving | null;
   disposition: CartonDisposition | null;
   flags: CartonFlag[];
-  photoCount: number;
-  photosLoading: boolean;
-  photosError: boolean;
-  onOpenPhotos: () => void;
+  copyingAll: boolean;
+  onShare: () => void;
+  onCopy: () => void;
+  onAudit: () => void;
 }) {
-  const photosLabel =
-    photoCount === 1 ? '1 photo' : photoCount > 1 ? `${photoCount} photos` : 'Photos';
-  const photosDisabled = photosLoading || photosError || photoCount === 0;
+  const utilsDisabled = receiving == null;
 
   return (
     <header className="flex shrink-0 items-center justify-between gap-4 border-b border-border-soft bg-surface-card px-6 py-3">
@@ -287,21 +361,44 @@ function DispositionBar({
       </div>
 
       <div className="flex shrink-0 items-center gap-2">
-        {photosError ? (
-          <HoverTooltip label="Could not load photos — retry before relying on them for a claim">
-            <span className="text-role-caption text-text-danger">Photos unavailable</span>
-          </HoverTooltip>
-        ) : photoCount === 0 && !photosLoading ? null : (
-          <Button
-            variant="secondary"
-            size="sm"
-            disabled={photosDisabled}
-            onClick={onOpenPhotos}
-            icon={photosLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : undefined}
-          >
-            {photosLoading ? 'Photos' : photosLabel}
-          </Button>
-        )}
+        <div className={HEADER_ICON_CLUSTER}>
+          <div className={HEADER_ICON_WRAP}>
+            <HoverTooltip label="Share receiving link" asChild>
+              <IconButton
+                size="md"
+                disabled={utilsDisabled}
+                onClick={onShare}
+                ariaLabel="Share receiving link"
+                className={HEADER_ICON_BTN_CLASS}
+                icon={<Link2 className={TOP_CHROME_ICON_GLYPH} />}
+              />
+            </HoverTooltip>
+          </div>
+          <div className={HEADER_ICON_WRAP}>
+            <HoverTooltip label="Copy package + PO details" asChild>
+              <IconButton
+                size="md"
+                disabled={utilsDisabled || copyingAll}
+                onClick={onCopy}
+                ariaLabel="Copy all receiving details"
+                className={HEADER_ICON_BTN_CLASS}
+                icon={<Copy className={cn(TOP_CHROME_ICON_GLYPH, copyingAll && 'animate-pulse')} />}
+              />
+            </HoverTooltip>
+          </div>
+          <div className={HEADER_ICON_WRAP}>
+            <HoverTooltip label="Audit log" asChild>
+              <IconButton
+                size="md"
+                disabled={utilsDisabled}
+                onClick={onAudit}
+                ariaLabel="View audit log"
+                className={HEADER_ICON_BTN_CLASS}
+                icon={<History className={TOP_CHROME_ICON_GLYPH} />}
+              />
+            </HoverTooltip>
+          </div>
+        </div>
 
         <HoverTooltip label="Work on this carton" asChild>
           <Link
@@ -320,41 +417,27 @@ function DispositionBar({
   );
 }
 
-function FindingsRail({
-  disposition,
+function ContentsColumn({
+  receiving,
   lines,
   totalsSummary,
+  events,
   facts,
+  recordMeta,
   purchaseOrders,
+  hideEmptyContents,
 }: {
-  disposition: CartonDisposition;
+  receiving: CartonInspectorReceiving;
   lines: CartonInspectorLine[];
   totalsSummary: string;
+  events: CartonInspectorEvent[];
   facts: CartonFact[];
+  recordMeta: CartonFact[];
   purchaseOrders?: CartonInspectorPayload['purchase_orders'];
+  hideEmptyContents: boolean;
 }) {
   return (
-    <div className="space-y-4">
-      {disposition.exceptions.length > 0 ? (
-        <div className="space-y-2">
-          <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">Findings</p>
-          <ul className="space-y-2">
-            {disposition.exceptions.map((ex) => (
-              <li
-                key={ex.key}
-                className={cn(
-                  'rounded-xl border px-3 py-2.5',
-                  EXCEPTION_TONE[ex.tone],
-                )}
-              >
-                <p className="text-role-caption font-semibold text-text-default">{ex.label}</p>
-                <p className="mt-0.5 text-role-caption text-text-muted">{ex.ctaHint}</p>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
-
+    <section className="space-y-5">
       {lines.length > 0 ? (
         <div className="space-y-2">
           <div className="flex items-baseline justify-between gap-3">
@@ -363,9 +446,16 @@ function FindingsRail({
           </div>
           <ContentsList lines={lines} />
         </div>
-      ) : disposition.exceptions.some((e) => e.key === 'no_lines') ? null : (
+      ) : hideEmptyContents ? null : (
         <p className="text-role-caption text-text-muted">No lines on this carton yet.</p>
       )}
+
+      {events.length > 0 ? (
+        <div className="space-y-2">
+          <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">Activity</p>
+          <EventsList events={events} />
+        </div>
+      ) : null}
 
       {facts.length > 0 ? (
         <div className="flex flex-wrap items-start justify-start gap-x-6 gap-y-2">
@@ -395,7 +485,91 @@ function FindingsRail({
           ))}
         </ul>
       ) : null}
-    </div>
+
+      {receiving.support_notes?.trim() ? (
+        <p className="whitespace-pre-wrap text-role-caption text-text-default">
+          {receiving.support_notes.trim()}
+        </p>
+      ) : null}
+
+      {recordMeta.length > 0 ? (
+        <div className="flex flex-wrap items-start justify-start gap-x-6 gap-y-3">
+          {recordMeta.map((m) => (
+            <div key={m.key} className="min-w-0 shrink-0 space-y-1">
+              <p className="text-role-micro uppercase tracking-widest text-text-soft">{m.label}</p>
+              <p className="truncate text-role-caption tabular-nums text-text-default">
+                {m.key === 'created' || m.key === 'updated'
+                  ? formatDateTimePST(m.value)
+                  : m.value}
+              </p>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      {receiving.listing_url?.trim() ? (
+        <a
+          href={receiving.listing_url.trim()}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex items-center gap-1 text-role-caption text-text-accent hover:underline"
+        >
+          Open the source listing
+          <ChevronRight className="h-3.5 w-3.5" />
+        </a>
+      ) : null}
+    </section>
+  );
+}
+
+function ProgressRail({
+  receiving,
+  disposition,
+}: {
+  receiving: CartonInspectorReceiving;
+  disposition: CartonDisposition;
+}) {
+  const readiness = useMemo(() => deriveCartonReadiness(receiving), [receiving]);
+  const states = readiness.pipelineStates;
+
+  return (
+    <section className="space-y-5">
+      <div className="space-y-2">
+        <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">Progress</p>
+        <LinearWorkflowStepper
+          steps={PIPELINE_STEPS}
+          states={states}
+          ariaLabel="Carton progress"
+          className="w-full"
+          size="compact"
+        />
+      </div>
+
+      <div className="space-y-2">
+        <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">History</p>
+        <WorkspaceTimelineTab {...cartonTimelineAnchor(receiving)} />
+      </div>
+
+      {disposition.exceptions.length > 0 ? (
+        <div className="space-y-2">
+          <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">Findings</p>
+          <ul className="space-y-2">
+            {disposition.exceptions.map((ex) => (
+              <li
+                key={ex.key}
+                className={cn(
+                  'rounded-xl border px-3 py-2.5',
+                  EXCEPTION_TONE[ex.tone],
+                )}
+              >
+                <p className="text-role-caption font-semibold text-text-default">{ex.label}</p>
+                <p className="mt-0.5 text-role-caption text-text-muted">{ex.ctaHint}</p>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+    </section>
   );
 }
 
@@ -465,128 +639,6 @@ function ContentsList({ lines }: { lines: CartonInspectorLine[] }) {
         );
       })}
     </ul>
-  );
-}
-
-function HandlingColumn({
-  receiving,
-  events,
-  recordMeta,
-}: {
-  receiving: CartonInspectorReceiving;
-  events: CartonInspectorEvent[];
-  recordMeta: CartonFact[];
-}) {
-  const milestones = useMemo(() => buildCartonMilestones(receiving), [receiving]);
-  const collapsed = useMemo(() => collapseProvenance(milestones), [milestones]);
-
-  return (
-    <section className="space-y-5">
-      <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">
-        Handling · activity · record
-      </p>
-
-      <ProvenanceBlock milestones={milestones} collapsed={collapsed} />
-
-      {events.length > 0 ? (
-        <div className="space-y-2">
-          <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">Activity</p>
-          <EventsList events={events} />
-        </div>
-      ) : null}
-
-      <div className="space-y-2">
-        <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">History</p>
-        <WorkspaceTimelineTab {...cartonTimelineAnchor(receiving)} />
-      </div>
-
-      {receiving.support_notes?.trim() ? (
-        <p className="whitespace-pre-wrap text-role-caption text-text-default">
-          {receiving.support_notes.trim()}
-        </p>
-      ) : null}
-
-      {recordMeta.length > 0 ? (
-        <div className="flex flex-wrap items-start justify-start gap-x-6 gap-y-3">
-          {recordMeta.map((m) => (
-            <div key={m.key} className="min-w-0 shrink-0 space-y-1">
-              <p className="text-role-micro uppercase tracking-widest text-text-soft">{m.label}</p>
-              <p className="truncate text-role-caption tabular-nums text-text-default">
-                {m.key === 'created' || m.key === 'updated'
-                  ? formatDateTimePST(m.value)
-                  : m.value}
-              </p>
-            </div>
-          ))}
-        </div>
-      ) : null}
-
-      {receiving.listing_url?.trim() ? (
-        <a
-          href={receiving.listing_url.trim()}
-          target="_blank"
-          rel="noreferrer"
-          className="inline-flex items-center gap-1 text-role-caption text-text-accent hover:underline"
-        >
-          Open the source listing
-          <ChevronRight className="h-3.5 w-3.5" />
-        </a>
-      ) : null}
-    </section>
-  );
-}
-
-function ProvenanceBlock({
-  milestones,
-  collapsed,
-}: {
-  milestones: ReturnType<typeof buildCartonMilestones>;
-  collapsed: ReturnType<typeof collapseProvenance>;
-}) {
-  const [expanded, setExpanded] = useState(false);
-
-  if (milestones.length === 0) {
-    return <p className="text-role-caption text-text-muted">Nothing recorded against this carton yet.</p>;
-  }
-
-  const rows = (
-    <ul className="divide-y divide-border-soft rounded-lg border border-border-soft">
-      {milestones.map((m) => (
-        <li key={m.key} className="flex items-center justify-between gap-3 px-3 py-1.5">
-          <span className="text-role-caption font-semibold text-text-default">{m.label}</span>
-          <span className="flex items-center gap-3 text-role-caption text-text-muted">
-            <span className="whitespace-nowrap tabular-nums">{formatDateTimePST(m.at)}</span>
-            <span className="whitespace-nowrap font-semibold text-text-default">{m.byName ?? '—'}</span>
-          </span>
-        </li>
-      ))}
-    </ul>
-  );
-
-  if (!collapsed) return rows;
-
-  return (
-    <div className="space-y-1.5">
-      <div className="flex items-center justify-between gap-3 rounded-lg border border-border-soft px-3 py-2">
-        <span className="min-w-0 truncate text-role-caption text-text-default">
-          <span className="font-semibold">{collapsed.actor}</span>
-          <span className="text-text-muted">
-            {' · '}
-            {formatDateTimePST(collapsed.firstAt)} → {formatDateTimePST(collapsed.lastAt)}
-          </span>
-        </span>
-        <button
-          type="button"
-          onClick={() => setExpanded((v) => !v)}
-          aria-expanded={expanded}
-          className="ds-raw-button flex shrink-0 items-center gap-1 text-role-micro uppercase tracking-widest text-text-soft hover:text-text-default"
-        >
-          {collapsed.steps} steps
-          {expanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
-        </button>
-      </div>
-      {expanded ? rows : null}
-    </div>
   );
 }
 

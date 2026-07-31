@@ -381,14 +381,10 @@ export function TestingPanel({
                 onBackToBrowse={onBackToBrowse}
                 handlers={{
                   refresh: () => void c.syncWithZoho(),
-                  share: () => void c.handleShare(),
-                  audit: () => c.setAuditOpen(true),
                   pair:
                     row.sku_catalog_id != null
                       ? () => window.dispatchEvent(new CustomEvent(TESTING_OPEN_SKU_PAIRING_EVENT))
                       : undefined,
-                  copy: () => void c.handleCopyAll(),
-                  movePhotos: () => c.openMovePhotos(),
                 }}
               />
             </StationMoreDetails>

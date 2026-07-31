@@ -19,28 +19,45 @@
  */
 
 import {
-  LayoutDashboard,
   Tool,
   Package,
-  ClipboardList,
+  PackageOpen,
   Box,
   PackageCheck,
+  Boxes,
 } from '@/components/Icons';
 
 type IconComponent = (props: { className?: string }) => JSX.Element;
 
-/** UI entity type → leading glyph (generic row). */
+/**
+ * UI entity type → leading glyph (generic + comfortable rows).
+ * order = closed package; receiving = open package (unbox). Both paint blue
+ * on the comfortable /search feed (see ENTITY_TONE).
+ */
 export const ENTITY_ICONS: Record<string, IconComponent> = {
-  order: LayoutDashboard,
+  order: Package,
   repair: Tool,
-  fba: Package,
-  receiving: ClipboardList,
+  fba: Boxes,
+  receiving: PackageOpen,
   sku: Box,
   unit: PackageCheck,
 };
 
 /** Semantic chip tone vocabulary — matches SearchHitChip.tone. */
 export type ChipTone = 'gray' | 'blue' | 'emerald' | 'amber' | 'rose';
+
+/**
+ * UI entity type → chip / glyph tone. Order + receiving share blue so the
+ * package closed/open pair reads as one family on the /search feed.
+ */
+export const ENTITY_TONE: Record<string, ChipTone> = {
+  order: 'blue',
+  unit: 'emerald',
+  receiving: 'blue',
+  sku: 'gray',
+  repair: 'rose',
+  fba: 'blue',
+};
 
 /** House 3-layer chip tones (bg-x-50 / text-x-700 / ring-x-200). */
 export const CHIP_TONE_CLASSES: Record<string, string> = {

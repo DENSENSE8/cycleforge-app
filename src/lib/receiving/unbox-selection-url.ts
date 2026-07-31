@@ -9,7 +9,7 @@
 
 /**
  * Mutates `params` in place. Pass `null` to clear the focused-carton params.
- * Preserves unrelated keys (`unboxview`, `ticketView`, …).
+ * Preserves unrelated keys (`unboxview`, `ticketView`, `claimView`, …).
  */
 export function applyUnboxOpenReceivingParams(
   params: URLSearchParams,

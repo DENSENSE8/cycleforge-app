@@ -95,8 +95,11 @@ function isEntryPathSearch(pathname: string | null): boolean {
   return pathname === '/search';
 }
 
-/** Expanded search field width within the 420px header rail. */
-const SEARCH_FIELD_WIDTH = 'w-[17.5rem]';
+/**
+ * Expanded search field width. `shrink-0` is required — sibling header icons
+ * are shrink-0 and would otherwise crush this field inside the rail.
+ */
+const SEARCH_FIELD_WIDTH = 'w-[24rem] shrink-0';
 const LISTBOX_ID = 'global-search-listbox';
 const optionId = (index: number) => `global-search-opt-${index}`;
 
@@ -108,6 +111,8 @@ export function GlobalHeaderSearch() {
   const [query, setQuery] = useState('');
   const [expanded, setExpanded] = useState(false);
   const [focused, setFocused] = useState(false);
+  /** Pointer over the field or portaled dropdown — keeps empty-query recents open. */
+  const [hoverHeld, setHoverHeld] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
   const [classicHits, setClassicHits] = useState<AiSearchHit[]>([]);
   const [classicSearching, setClassicSearching] = useState(false);
@@ -128,6 +133,7 @@ export function GlobalHeaderSearch() {
   const inputRef = useRef<HTMLInputElement>(null);
   const blurTimerRef = useRef<number>();
   const collapseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hoverLeaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const classicAbortRef = useRef<AbortController | null>(null);
   const classicDebounceRef = useRef<ReturnType<typeof setTimeout>>();
   const queryRef = useRef(query);
@@ -203,6 +209,7 @@ export function GlobalHeaderSearch() {
   useEffect(() => {
     return () => {
       if (collapseTimerRef.current) clearTimeout(collapseTimerRef.current);
+      if (hoverLeaveTimerRef.current) clearTimeout(hoverLeaveTimerRef.current);
     };
   }, []);
 
@@ -213,12 +220,39 @@ export function GlobalHeaderSearch() {
     }
   }, []);
 
+  const clearHoverLeaveTimer = useCallback(() => {
+    if (hoverLeaveTimerRef.current) {
+      clearTimeout(hoverLeaveTimerRef.current);
+      hoverLeaveTimerRef.current = null;
+    }
+  }, []);
+
+  /** Pointer entered the field or portaled dropdown — hold recents open. */
+  const holdHover = useCallback(() => {
+    clearHoverLeaveTimer();
+    clearCollapseTimer();
+    setHoverHeld(true);
+  }, [clearCollapseTimer, clearHoverLeaveTimer]);
+
+  /**
+   * Pointer left field/dropdown. Delay clearing hoverHeld so the pointer can
+   * bridge into the portaled AnchoredLayer without flashing the panel shut.
+   */
+  const releaseHoverSoon = useCallback(() => {
+    clearHoverLeaveTimer();
+    hoverLeaveTimerRef.current = setTimeout(() => {
+      hoverLeaveTimerRef.current = null;
+      setHoverHeld(false);
+    }, 160);
+  }, [clearHoverLeaveTimer]);
+
   const tryCollapse = useCallback(() => {
     const root = rootRef.current;
     if (root?.contains(document.activeElement)) return;
     if (queryRef.current.trim()) return;
     // Entry-path `/search`: never collapse back to the icon — search is the job.
     if (isEntryPathSearch(pathname)) return;
+    setHoverHeld(false);
     setExpanded(false);
     setFocused(false);
   }, [pathname]);
@@ -229,7 +263,7 @@ export function GlobalHeaderSearch() {
   }, [clearCollapseTimer, tryCollapse]);
 
   const expandAndFocus = useCallback(() => {
-    clearCollapseTimer();
+    holdHover();
     setExpanded(true);
     setFocused(true);
     // Focus after mount when expanding from the collapsed icon.
@@ -239,7 +273,7 @@ export function GlobalHeaderSearch() {
       el.focus();
       if (document.activeElement === el) el.select();
     });
-  }, [clearCollapseTimer]);
+  }, [holdHover]);
 
   const handleFocusRequest = useCallback(() => {
     expandAndFocus();
@@ -297,10 +331,16 @@ export function GlobalHeaderSearch() {
   }, [router, trimmedQuery, previewHits, pathname]);
 
   const emptyQuery = trimmedQuery.length === 0;
-  const showRecents = unifiedOn && expanded && focused && emptyQuery && recents.length > 0;
-  const showFirstUse = unifiedOn && expanded && focused && emptyQuery && recents.length === 0;
+  // Recents/first-use stay up while focused OR while the pointer is over the
+  // field / portaled dropdown (hoverHeld) — blur/collapse timers alone used to
+  // close the panel before the operator could reach a row or “View all”.
+  const showRecents =
+    unifiedOn && expanded && emptyQuery && recents.length > 0 && (focused || hoverHeld);
+  const showFirstUse =
+    unifiedOn && expanded && emptyQuery && recents.length === 0 && (focused || hoverHeld);
   // Preview dropdown is for typed exploration only — paste/Enter commits
   // collapse focus before navigate, so this never paints on the open path.
+  // Hover alone never opens preview (typed results still require focus).
   const dropdownOpen = showPreview || showRecents || showFirstUse;
 
   const dropdownState: GlobalSearchDropdownState = showPreview
@@ -465,7 +505,7 @@ export function GlobalHeaderSearch() {
 
   const handleFocusIn = () => {
     window.clearTimeout(blurTimerRef.current);
-    clearCollapseTimer();
+    holdHover();
     setExpanded(true);
     setFocused(true);
   };
@@ -529,8 +569,11 @@ export function GlobalHeaderSearch() {
             'group/search relative flex h-8 items-center overflow-visible rounded-full border border-border-default bg-surface-canvas',
             SEARCH_FIELD_WIDTH,
           )}
-          onMouseEnter={clearCollapseTimer}
-          onMouseLeave={scheduleCollapse}
+          onMouseEnter={holdHover}
+          onMouseLeave={() => {
+            releaseHoverSoon();
+            scheduleCollapse();
+          }}
           onFocusCapture={handleFocusIn}
           onBlurCapture={handleFocusOut}
         >
@@ -561,6 +604,11 @@ export function GlobalHeaderSearch() {
             recents={recents}
             previewGroups={previewGroups}
             onClose={() => setFocused(false)}
+            onHoverStart={holdHover}
+            onHoverEnd={() => {
+              releaseHoverSoon();
+              scheduleCollapse();
+            }}
             onSeeAll={openSearchPage}
             onSelectRecent={(entry) => {
               handleChange(entry.query);

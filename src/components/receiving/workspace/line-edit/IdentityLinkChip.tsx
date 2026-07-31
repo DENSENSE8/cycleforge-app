@@ -31,6 +31,7 @@ export function IdentityLinkChip({
   onEdit,
   editOpen,
   editLabel,
+  editInMenu = true,
   grow = false,
   actionsInMenu = false,
   chipAction = 'copy',
@@ -61,6 +62,11 @@ export function IdentityLinkChip({
   onEdit?: () => void;
   editOpen?: boolean;
   editLabel?: string;
+  /**
+   * When `actionsInMenu`, render the Edit menuitem. Ticket chip sets false —
+   * History owns the push-column toggle; `onEdit` still drives pulse / chip click.
+   */
+  editInMenu?: boolean;
   /** Wide chip that fills the remaining row width (listing). Others hug last-4. */
   grow?: boolean;
   /** Move external-link/edit controls into a serial-chip-style hover menu. */
@@ -75,8 +81,9 @@ export function IdentityLinkChip({
   /** First menu row. Listing uses Copy; PO/tracking use Open. */
   menuFirstAction?: 'open' | 'copy';
   /**
-   * Optional row(s) between the first action (Open/Copy) and Edit — e.g. ticket
-   * chip seller-message. Caller owns separators / menuitem markup.
+   * Optional row(s) after the first action (Open/Copy) — e.g. ticket chip
+   * History / Message / Unlink / Sync. Caller owns separators / menuitem markup.
+   * Edit (when `editInMenu`) still renders after these rows.
    */
   menuBetween?: ReactNode;
   /**
@@ -129,16 +136,21 @@ export function IdentityLinkChip({
       : 'No listing';
 
   // While editing, chip face is pulsed "edit"; click closes the below-row field.
+  // Empty chips with onEdit (e.g. unfound `# ----`) activate edit on click —
+  // no value to copy, so the face itself is the Link-PO affordance.
+  const emptyEditActivate = !canCopy && !!onEdit && !isEditing ? onEdit : undefined;
   const chipActivate = isEditing
     ? onEdit
     : chipAction === 'open'
       ? openExternal
-      : undefined;
+      : emptyEditActivate;
   const chipActivateLabel = isEditing
     ? (editLabel ? `Done — ${editLabel}` : 'Done editing')
     : chipAction === 'open'
       ? openTitle
-      : undefined;
+      : emptyEditActivate
+        ? (editLabel ?? 'Edit')
+        : undefined;
 
   return (
     <div
@@ -176,14 +188,16 @@ export function IdentityLinkChip({
                   ? !onEdit
                   : chipAction === 'open'
                     ? !openHref && !onEdit
-                    : !canCopy
+                    : !canCopy && !onEdit
               }
               aria-label={
                 isEditing
                   ? chipActivateLabel
                   : chipAction === 'open'
                     ? `${display}: ${openTitle}`
-                    : `Copy ${display}`
+                    : emptyEditActivate
+                      ? (chipActivateLabel ?? 'Edit')
+                      : `Copy ${display}`
               }
               aria-busy={isEditing || undefined}
               className={`inline-flex shrink-0 items-center justify-center rounded-md transition-colors hover:bg-surface-hover active:scale-95 disabled:opacity-40${
@@ -227,7 +241,9 @@ export function IdentityLinkChip({
                   ? openHref
                     ? openTitle
                     : 'No link available'
-                  : undefined
+                  : emptyEditActivate
+                    ? (editLabel ?? 'Edit')
+                    : undefined
             }
             activationDisabled={
               isEditing
@@ -333,7 +349,7 @@ export function IdentityLinkChip({
               </button>
             )}
             {menuBetween}
-            {onEdit ? (
+            {onEdit && editInMenu ? (
               // ds-raw-button: text-left dropdown menuitem row (icon + label), not a standard action button
               <button
                 type="button"

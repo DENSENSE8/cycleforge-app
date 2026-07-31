@@ -27,15 +27,18 @@ test('parseReceivingPhotoStage accepts the three stages, rejects junk', () => {
   assert.equal(parseReceivingPhotoStage(undefined), null);
 });
 
-test('parseReceivingCartonPhotoStage defaults to arrival and coerces unbox_item', () => {
-  assert.equal(parseReceivingCartonPhotoStage(null), 'arrival_package');
-  assert.equal(parseReceivingCartonPhotoStage('garbage'), 'arrival_package');
+test('parseReceivingCartonPhotoStage defaults to unbox_carton and coerces unbox_item', () => {
+  // Missing/unknown stage must default to the SAFE stage (unbox_carton), never
+  // arrival_package — a stage-less mobile capture is far more likely to be a
+  // bench shot than a door shot. Arrival must always be requested explicitly.
+  assert.equal(parseReceivingCartonPhotoStage(null), 'unbox_carton');
+  assert.equal(parseReceivingCartonPhotoStage('garbage'), 'unbox_carton');
   assert.equal(parseReceivingCartonPhotoStage('unbox_carton'), 'unbox_carton');
   // A carton surface can never hold item evidence — closest legal carton stage.
   assert.equal(parseReceivingCartonPhotoStage('unbox_item'), 'unbox_carton');
 });
 
-test('effectiveReceivingPhotoStage — entity wins, legacy defaults to arrival', () => {
+test('effectiveReceivingPhotoStage — entity wins, missing stage defaults safely', () => {
   // Line id present → item evidence regardless of the claimed stage.
   assert.equal(effectiveReceivingPhotoStage({ receivingLineId: 5 }), 'unbox_item');
   assert.equal(
@@ -45,9 +48,10 @@ test('effectiveReceivingPhotoStage — entity wins, legacy defaults to arrival',
   // No line id: carton stages pass through; unbox_item degrades to unbox_carton.
   assert.equal(effectiveReceivingPhotoStage({ stage: 'unbox_carton' }), 'unbox_carton');
   assert.equal(effectiveReceivingPhotoStage({ stage: 'unbox_item' }), 'unbox_carton');
-  // Legacy scope (no stage at all) keeps the old package stamp.
-  assert.equal(effectiveReceivingPhotoStage({}), 'arrival_package');
-  assert.equal(effectiveReceivingPhotoStage({ stage: null, receivingLineId: null }), 'arrival_package');
+  // A scope with no stage at all must default to unbox_carton, never
+  // arrival_package (the safety-classification-defaulted bug this guards).
+  assert.equal(effectiveReceivingPhotoStage({}), 'unbox_carton');
+  assert.equal(effectiveReceivingPhotoStage({ stage: null, receivingLineId: null }), 'unbox_carton');
 });
 
 test('resolveReceivingPhotoTarget maps each stage onto the write matrix', () => {
@@ -83,7 +87,7 @@ test('receivingPhotoListIntentForScope matches the stage matrix', () => {
   assert.equal(receivingPhotoListIntentForScope({ receivingLineId: 3 }), 'item');
 });
 
-test('normalizeReceivingPhotoRequest — legacy message without stage is arrival', () => {
+test('normalizeReceivingPhotoRequest — message without stage defaults to unbox_carton', () => {
   const req = normalizeReceivingPhotoRequest({
     receiving_id: 12,
     request_id: 'abc',
@@ -92,7 +96,7 @@ test('normalizeReceivingPhotoRequest — legacy message without stage is arrival
   assert.deepEqual(req, {
     receivingId: 12,
     receivingLineId: null,
-    stage: 'arrival_package',
+    stage: 'unbox_carton',
     poRef: null,
     requestId: 'abc',
   });

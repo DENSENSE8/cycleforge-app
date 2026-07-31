@@ -7,12 +7,14 @@
  * PO mirror (read-only, no Zoho round-trip) and re-point this carton + line at
  * the correct PO — even when Zoho already had a different (wrong) one. Posts to
  * the audited /api/receiving/relink (scope 'both'); the displayed PO# updates in
- * place via `dispatchLineUpdated`.
+ * place via `dispatchLineUpdated`. When relink pairs onto a busy matched shell,
+ * the response's `paired_onto` / `receiving_id` redirects Unbox to that carton.
  *
  * This replaces "Zoho is authoritative": an operator who knows the right PO can
  * correct a mis-linked carton here instead of editing Zoho and waiting for a sync.
  */
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Loader2 } from '@/components/Icons';
 import { SearchBar } from '@/components/ui/SearchBar';
@@ -26,6 +28,7 @@ import { requestConfirm } from '@/design-system/components/confirm';
 import { dispatchLineUpdated } from '@/components/station/receiving-lines-table-helpers';
 import { invalidateReceivingFeeds } from '@/lib/queries/receiving-queries';
 import { apiErrorMessage } from '@/lib/api-error-message';
+import { UNBOX_SURFACE_ROUTE } from '@/lib/receiving/surface-path';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 
 interface PoCandidate {
@@ -39,13 +42,30 @@ interface PoCandidate {
 export function PoLinkTab({
   row,
   receivingId,
+  autoFocusSearch = false,
+  focusRequestId = 0,
 }: {
   row: ReceivingLineRow;
   receivingId: number;
+  /** Focus the PO search field on mount (chip → Package Pairing PO). */
+  autoFocusSearch?: boolean;
+  /** Bump to re-focus when already on this tab (re-open from chip). */
+  focusRequestId?: number;
 }) {
+  const router = useRouter();
   const queryClient = useQueryClient();
   const [query, setQuery] = useState('');
   const [linkingId, setLinkingId] = useState<string | null>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!autoFocusSearch && focusRequestId <= 0) return;
+    // Wait a frame so expand/scroll can settle before focusing.
+    const id = requestAnimationFrame(() => {
+      searchInputRef.current?.focus();
+    });
+    return () => cancelAnimationFrame(id);
+  }, [autoFocusSearch, focusRequestId]);
 
   const currentPoNumber = (row.zoho_purchaseorder_number || '').trim() || null;
   const currentPoId = (row.zoho_purchaseorder_id || '').trim() || null;
@@ -152,14 +172,42 @@ export function PoLinkTab({
         success?: boolean;
         error?: string;
         message?: string;
+        receiving_id?: number;
+        paired_onto?: number;
+        photos_moved?: number;
       };
       if (!res.ok || !body.success) {
         toast.error(apiErrorMessage(body, res.status, `Link failed (${res.status})`));
         return;
       }
+      const winnerId =
+        body.paired_onto ??
+        (typeof body.receiving_id === 'number' ? body.receiving_id : null);
+      const pairedOntoBusyShell =
+        winnerId != null && winnerId !== receivingId;
+      const photosMoved =
+        typeof body.photos_moved === 'number' && body.photos_moved > 0
+          ? body.photos_moved
+          : 0;
+
       toast.success(
-        existingLabel ? `Replaced with PO ${poLabel}` : `Linked PO ${poLabel}`,
+        pairedOntoBusyShell
+          ? photosMoved > 0
+            ? `Paired onto carton #${winnerId} · PO ${poLabel} · ${photosMoved} photo${photosMoved === 1 ? '' : 's'} kept`
+            : `Paired onto carton #${winnerId} · PO ${poLabel}`
+          : existingLabel
+            ? `Replaced with PO ${poLabel}`
+            : `Linked PO ${poLabel}`,
       );
+
+      if (pairedOntoBusyShell && winnerId != null) {
+        invalidateReceivingFeeds(queryClient);
+        void queryClient.invalidateQueries({ queryKey: ['receiving-photos'] });
+        setQuery('');
+        router.replace(`${UNBOX_SURFACE_ROUTE}?openReceivingId=${winnerId}`);
+        return;
+      }
+
       // Update the open carton's displayed PO in place (carton context + feeds).
       dispatchLineUpdated({
         id: row.id,
@@ -196,6 +244,8 @@ export function PoLinkTab({
         variant="blue"
         size="compact"
         hideUnderline
+        inputRef={searchInputRef}
+        autoFocus={autoFocusSearch}
       />
 
       {/* Results — the most recent locally-stored incoming POs by default; the

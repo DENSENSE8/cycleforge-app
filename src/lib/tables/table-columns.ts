@@ -63,6 +63,8 @@ export interface TableColumnSpec {
 /** Stable ids for every shared list table that supports column config. */
 export type TableId =
   | 'receiving'
+  /** Incoming POS spreadsheet — distinct from Unbox/History `receiving`. */
+  | 'incoming'
   | 'orders'
   | 'shipped'
   | 'tech'
@@ -109,7 +111,12 @@ const GRID_COL = (key: string, label: string, type?: ColumnType): TableColumnSpe
  * genuinely-optional detail (staff initials / days-late) rather than load-bearing.
  */
 export const TABLE_COLUMNS: Record<TableId, TableColumnSpec[]> = {
+  // Unbox / History / Testing receiving-line grids (`RECEIVING_GRID_COLUMNS`).
   receiving: [META_QTY, META_CONDITION, META_REST, CHIP_PLATFORM, CHIP_ORDERID, CHIP_TRACKING, CHIP_SERIAL],
+  // Incoming POS (`INCOMING_GRID_COLUMNS`) — separate prefs bucket so a Fields
+  // toggle on Incoming cannot silently hide tracks on History/Unbox (and vice
+  // versa). Status uses meta `rest`; no serial on this surface.
+  incoming: [META_QTY, META_CONDITION, META_REST, CHIP_PLATFORM, CHIP_ORDERID, CHIP_TRACKING],
   orders: [META_STATUS, META_QTY, META_CONDITION, META_REST, CHIP_PLATFORM, CHIP_ORDERID, CHIP_TRACKING],
   shipped: [META_QTY, META_CONDITION, META_REST, CHIP_PLATFORM, CHIP_ORDERID, CHIP_TRACKING, CHIP_SERIAL],
   tech: [META_QTY, META_CONDITION, META_REST, CHIP_PLATFORM, CHIP_ORDERID, CHIP_TRACKING, CHIP_SERIAL],

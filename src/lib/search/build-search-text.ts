@@ -16,6 +16,11 @@
  * fallback; sku_catalog rows are their own namespace and use product_title.
  */
 
+import {
+  receivingOrderIdFromParts,
+  receivingSearchTitle,
+} from '@/lib/search/receiving-search-title';
+
 export type SearchEntityType =
   | 'ORDER'
   | 'SERIAL_UNIT'
@@ -179,20 +184,37 @@ function buildSerialUnitDoc(row: SearchSourceRow): BuiltSearchDoc {
 /**
  * Loader row contract:
  *   id, tracking_number (stn raw), carrier, po_number
- *   (zoho_purchaseorder_number), source_platform, intake_type,
+ *   (zoho_purchaseorder_number), source_order_id, source_platform, intake_type,
  *   exception_code, support_notes, zoho_notes, condition_grade,
- *   qa_status, received_at, created_at, line_item_names, line_skus
- *   (STRING_AGGs over receiving_lines).
+ *   qa_status, received_at, created_at, line_item_names, line_skus,
+ *   line_count, distinct_sku_count, first_item_name
+ *   (aggregates over receiving_line).
  */
 function buildReceivingDoc(row: SearchSourceRow): BuiltSearchDoc {
-  const title = str(row.tracking_number) || `Receiving #${str(row.id)}`;
+  const poNumber = strOrNull(row.po_number);
+  const sourceOrderId = strOrNull(row.source_order_id);
+  const sourcePlatform = strOrNull(row.source_platform);
+  const firstItemName = strOrNull(row.first_item_name);
+  const lineCount = Number(row.line_count) || 0;
+  const distinctSkuCount = Number(row.distinct_sku_count) || 0;
+  const orderId = receivingOrderIdFromParts(poNumber, sourceOrderId);
+  const title = receivingSearchTitle({
+    lineCount,
+    distinctSkuCount,
+    poNumber,
+    sourceOrderId,
+    sourcePlatform,
+    firstItemName,
+    fallback: `Receiving #${str(row.id)}`,
+  });
   return {
     title,
-    subtitle: subtitleOf([row.carrier, row.po_number, row.source_platform]),
+    subtitle: subtitleOf([orderId, row.carrier, row.source_platform]),
     searchText: joinSearchText([
       row.tracking_number,
       row.carrier,
       row.po_number,
+      row.source_order_id,
       row.source_platform,
       row.intake_type,
       row.exception_code,
@@ -205,7 +227,7 @@ function buildReceivingDoc(row: SearchSourceRow): BuiltSearchDoc {
     facets: {
       status: strOrNull(row.qa_status),
       conditionGrade: strOrNull(row.condition_grade),
-      sourcePlatform: strOrNull(row.source_platform),
+      sourcePlatform,
       trackingNumber: strOrNull(row.tracking_number),
       carrier: strOrNull(row.carrier),
       serialNumber: null,

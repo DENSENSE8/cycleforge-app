@@ -11,6 +11,7 @@ import {
   SIDEBAR_RAIL_ROW_PAD_RIGHT,
   SIDEBAR_SCAN_DOCK_LEADING_ROW,
 } from '@/components/layout/header-shell';
+import { appSurfaceFillClass } from '@/design-system/components/AppSurfaceFill';
 import { cn } from '@/utils/_cn';
 import {
   STAGGER_REVEAL_STEP,
@@ -151,7 +152,7 @@ export function SidebarRailShell<TRow>(props: SidebarRailShellProps<TRow>) {
       : SIDEBAR_GUTTER;
 
   return (
-    <section className="min-w-0 border-t border-border-hairline bg-surface-card">
+    <section className={cn('min-w-0 border-t border-border-hairline', appSurfaceFillClass('chrome'))}>
       {!hideEyebrow ? (
         <div className={cn('flex items-center justify-between py-1', eyebrowOuterX)}>
           {/* Leading spacer = RailRow's dot track (pad → w-4 → gap) so the

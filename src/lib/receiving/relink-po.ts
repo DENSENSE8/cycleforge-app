@@ -9,6 +9,12 @@
  * can't downgrade a carton; an explicit operator relink is the sanctioned
  * exception).
  *
+ * Busy-shell conflict: when another matched carton already has real work on
+ * this PO, mirror `reconcileUnmatchedReceiving` — attach the working carton's
+ * tracking onto that shell, re-parent scans, dismiss the orphan, and return
+ * the shell as `receivingId` / `pairedOnto` (UI opens the winner). Hard 409
+ * only when there is no tracking to attach.
+ *
  * SoT note (items vs sku_catalog collision): a SKU correction rewrites `sku` +
  * `zoho_item_id` only. We do NOT derive `sku_catalog_id` from the SKU string
  * here — the read-side title-guarded join owns that (the two SKU namespaces
@@ -17,6 +23,8 @@
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import { recomputeCartonSourceLink } from './carton-source-link';
 import { claimOrAbsorbZohoPoShell } from './claim-zoho-po-shell';
+import { reparentReceivingCartonPhotos } from './reparent-carton-photos';
+import type { AttachBoxResult } from './attach-box';
 
 export type RelinkScope = 'line' | 'carton' | 'both';
 
@@ -40,6 +48,13 @@ export interface RelinkPoResult {
   linesUpdated: number;
   poId: string;
   poNumber: string | null;
+  /**
+   * When set, the working carton was an unmatched orphan paired onto a busy
+   * matched shell — UI should open this carton (same as `receivingId`).
+   */
+  pairedOnto?: number;
+  /** Photos moved from the orphan unmatched carton onto the winning shell. */
+  photosMoved?: number;
 }
 
 /** Minimal query surface — lets the unit test pass a fake client (DB-free). */
@@ -50,14 +65,33 @@ export interface TxClient {
   ) => Promise<{ rows: Array<Record<string, unknown>>; rowCount: number | null }>;
 }
 
+type ClaimFn = typeof claimOrAbsorbZohoPoShell;
+
 export interface RelinkDeps {
   recompute: (receivingId: number, db: TxClient) => Promise<void>;
   /** Transaction runner — defaults to withTenantTransaction; faked in tests. */
   runTx: <T>(orgId: string, fn: (client: TxClient) => Promise<T>) => Promise<T>;
+  claimShell?: ClaimFn;
+  attachBox?: (params: {
+    receivingId: number;
+    trackingNumber: string;
+    staffId: number | null;
+    organizationId: string;
+  }) => Promise<AttachBoxResult>;
 }
+
 const defaultDeps: RelinkDeps = {
   recompute: (receivingId, db) => recomputeCartonSourceLink(receivingId, db),
   runTx: (orgId, fn) => withTenantTransaction(orgId, (client) => fn(client as unknown as TxClient)),
+  claimShell: claimOrAbsorbZohoPoShell,
+  // Lazy — attach-box pulls `server-only` / db; keep relink unit tests DB-free.
+};
+
+type TxRelinkResult = RelinkPoResult & {
+  /** Internal — tracking to attach after the tenant tx commits. */
+  attachTracking?: string;
+  /** Internal — orphan carton id for post-tx photo realtime publish. */
+  orphanReceivingId?: number;
 };
 
 export async function relinkReceivingPo(
@@ -69,8 +103,12 @@ export async function relinkReceivingPo(
   const poNumber = input.zohoPurchaseorderNumber?.trim() || null;
   const sku = input.sku?.trim() || null;
   const zohoItemId = input.zohoItemId?.trim() || null;
+  const claimShell = deps.claimShell ?? claimOrAbsorbZohoPoShell;
+  const attachBox =
+    deps.attachBox ??
+    (await import('./attach-box')).attachBoxToReceiving;
 
-  return deps.runTx(orgId, async (client) => {
+  const txResult: TxRelinkResult = await deps.runTx(orgId, async (client) => {
     const carton = await client.query(
       `SELECT id FROM receiving_carton WHERE id = $1 AND organization_id = $2 LIMIT 1`,
       [receivingId, orgId],
@@ -146,9 +184,9 @@ export async function relinkReceivingPo(
 
     // ── CARTON header rewrite (explicit override of upgrade-only) ────────────
     // Absorb an empty Incoming PO shell when the unique index would otherwise
-    // throw; return 409 when another matched carton has real work.
+    // throw; on busy shell, attach working tracking onto the shell (reconcile).
     if (scope === 'carton' || scope === 'both') {
-      const claim = await claimOrAbsorbZohoPoShell(
+      const claim = await claimShell(
         {
           orgId,
           workingReceivingId: receivingId,
@@ -158,14 +196,83 @@ export async function relinkReceivingPo(
         client,
       );
       if (claim.action === 'conflict') {
+        const trackRes = await client.query(
+          `SELECT COALESCE(
+             NULLIF(stn.tracking_number_raw, ''),
+             (
+               SELECT rs.tracking_number
+                 FROM receiving_scans rs
+                WHERE rs.receiving_id = rc.id
+                  AND rs.organization_id = $2
+                ORDER BY rs.scanned_at DESC NULLS LAST
+                LIMIT 1
+             )
+           ) AS tracking
+             FROM receiving_carton rc
+             LEFT JOIN shipping_tracking_numbers stn ON stn.id = rc.shipment_id
+            WHERE rc.id = $1 AND rc.organization_id = $2
+            LIMIT 1`,
+          [receivingId, orgId],
+        );
+        const tracking = String(trackRes.rows[0]?.tracking ?? '').trim();
+        if (!tracking) {
+          return {
+            ok: false,
+            status: claim.status,
+            error: claim.error,
+            receivingId,
+            linesUpdated,
+            poId: zohoPurchaseorderId,
+            poNumber,
+          };
+        }
+
+        // Re-parent scans + photos; dismiss orphan from Unfound + Unbox rail.
+        await client.query(
+          `UPDATE receiving_scans
+              SET receiving_id = $1, source = 'zoho_po'
+            WHERE receiving_id = $2 AND organization_id = $3`,
+          [claim.shellReceivingId, receivingId, orgId],
+        );
+        const photos = await reparentReceivingCartonPhotos(
+          {
+            orgId,
+            fromReceivingId: receivingId,
+            toReceivingId: claim.shellReceivingId,
+            poRef: poNumber,
+          },
+          client,
+        );
+        // Drop Unbox-open membership so the lineless orphan leaves Recent rail
+        // (overlay.checked alone only hides triage Unfound).
+        await client.query(
+          `UPDATE receiving_unbox
+              SET opened_at = NULL,
+                  unboxed_at = NULL
+            WHERE receiving_id = $1 AND organization_id = $2`,
+          [receivingId, orgId],
+        );
+        await client.query(
+          `INSERT INTO unfound_overlay
+             (organization_id, source_kind, source_id, checked, checked_at)
+           VALUES ($1, 'unmatched_receiving', $2, TRUE, NOW())
+           ON CONFLICT (organization_id, source_kind, source_id) DO UPDATE
+             SET checked = TRUE,
+                 checked_at = COALESCE(unfound_overlay.checked_at, NOW())`,
+          [orgId, String(receivingId)],
+        );
+
         return {
-          ok: false,
-          status: claim.status,
-          error: claim.error,
-          receivingId,
+          ok: true,
+          status: 200,
+          receivingId: claim.shellReceivingId,
+          pairedOnto: claim.shellReceivingId,
           linesUpdated,
           poId: zohoPurchaseorderId,
           poNumber,
+          photosMoved: photos.moved,
+          attachTracking: tracking,
+          orphanReceivingId: receivingId,
         };
       }
       if (claim.action === 'free') {
@@ -208,4 +315,54 @@ export async function relinkReceivingPo(
       receivingId, linesUpdated, poId: zohoPurchaseorderId, poNumber,
     };
   });
+
+  if (txResult.ok && txResult.attachTracking && txResult.pairedOnto != null) {
+    const tracking = txResult.attachTracking;
+    const shellId = txResult.pairedOnto;
+    const orphanId = txResult.orphanReceivingId ?? receivingId;
+    await attachBox({
+      receivingId: shellId,
+      trackingNumber: tracking,
+      staffId: null,
+      organizationId: orgId,
+    }).catch((attachErr) => {
+      console.warn(
+        `[relink-po] attach-box to shell failed working=${receivingId} shell=${shellId}:`,
+        attachErr instanceof Error ? attachErr.message : attachErr,
+      );
+    });
+    // Recompute on the winning shell (orphan was not promoted).
+    await deps
+      .runTx(orgId, async (client) => {
+        await deps.recompute(shellId, client);
+      })
+      .catch(() => undefined);
+
+    // Realtime: both galleries so the rail/photo panes refresh combined shots.
+    if ((txResult.photosMoved ?? 0) > 0) {
+      try {
+        const { publishReceivingPhotoChanged } = await import('@/lib/realtime/publish');
+        await publishReceivingPhotoChanged({
+          organizationId: orgId,
+          receivingId: orphanId,
+          action: 'delete',
+          source: 'receiving.relink.pair',
+        });
+        await publishReceivingPhotoChanged({
+          organizationId: orgId,
+          receivingId: shellId,
+          action: 'insert',
+          source: 'receiving.relink.pair',
+        });
+      } catch (err) {
+        console.warn('[relink-po] photo realtime publish failed', err);
+      }
+    }
+
+    const { attachTracking: _a, orphanReceivingId: _o, ...publicResult } = txResult;
+    return publicResult;
+  }
+
+  const { attachTracking: _a, orphanReceivingId: _o, ...publicResult } = txResult;
+  return publicResult;
 }

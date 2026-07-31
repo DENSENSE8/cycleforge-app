@@ -8,6 +8,7 @@ import { mergeSerialsFromTsnRows } from '@/lib/tech/serialFields';
 import { resolveTechSerialInsertContextFromSal } from '@/lib/tech/resolveTechSerialInsertContextFromSal';
 import { attachTechSerial } from '@/lib/inventory/tech-serial';
 import { recordOriginProvenance } from '@/lib/neon/serial-units-queries';
+import { scheduleEnsureOutboundDocsOnPackReady } from '@/lib/documents/ensure-outbound-docs';
 
 export type TechSerialInsertDb = Pick<Pool, 'query'>;
 
@@ -380,6 +381,11 @@ export async function insertTechSerialForTracking(
         testedBy: staffId,
         source: 'tech.add-serial',
       });
+      scheduleEnsureOutboundDocsOnPackReady(
+        params.organizationId,
+        Number(order.id),
+        'pack_ready.add_serial',
+      );
     }
   }
 

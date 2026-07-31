@@ -80,6 +80,7 @@ export function OutboundWorkspaceHeader({
 
   return (
     <WorkbenchChromeHeader
+      density="band"
       tabs={tabs}
       activeTab={active}
       onTabChange={(id) => onSelectView(id as DashboardOrderView)}

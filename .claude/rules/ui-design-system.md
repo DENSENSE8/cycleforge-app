@@ -108,7 +108,7 @@ Field group = label above, value below:
 
 - **Card shell:** `rounded-2xl border border-border-soft bg-surface-card shadow-sm`  
   (`MONITOR_SECTION_CARD_*` in `src/design-system/components/monitor/shell.ts`).
-- **KPI tile anatomy:** eyebrow label → hero number (tabular) → `DeltaChip` (not nested cards).
+- **KPI tile anatomy:** eyebrow label + compact `DeltaChip` (top-right) → hero number (tabular). No status footer row.
 - **List rows inside cards:** house one-row anatomy + `divide-y` (`MonitorListBlock` / `MonitorListRow`) — never nested
   `SectionCard`s as rows.
 - **Theme-driven dark:** use `bg-surface-canvas` / `bg-surface-card` / `text-text-*` so `data-theme` +
@@ -126,8 +126,9 @@ Field group = label above, value below:
   - Wide track (`indentWide` / `dotTrackWide`) only for received/expected qty surfaces (Receiving).
   - `CollapsibleGroupRow` nest children: no extra horizontal padding when `showChevron={false}`
     (`queueGroupNestClass`); nest cue is border + wash only.
-- **Selection is background + ring only, never a size/height shift.** Keep row content identical across states:
-  - selected: `QUEUE_ROW.selectedClass` (`bg-blue-50 ring-1 ring-inset ring-blue-400`)
+- **Selection never size/height-shifts.** Keep row content identical across states:
+  - list / accordion selected: `QUEUE_ROW.selectedClass` (`bg-blue-50 ring-1 ring-inset ring-blue-400`)
+  - airtable LedgerGrid selected: `QUEUE_ROW.selectedLedgerClass` / `ledgerRowStateClass(true)` (`bg-blue-50` fill only — inset ring fights cell rules + sticky `bg-inherit` and reads as a top/right L-glow)
   - focused (no click): `bg-gray-50 ring-1 ring-inset ring-gray-200`
   - default: `hover:bg-gray-50`; constant `py-1.5`.
 

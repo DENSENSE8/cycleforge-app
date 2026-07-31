@@ -1,19 +1,18 @@
 'use client';
 
 /**
- * `/search` refine chrome — FilterRefinementBar (etype + hstat) + QueueSortSwitch
- * (relevance | date). Client-only over the retrieved top-50; URL-durable.
+ * `/search` refine chrome — field-density filter icon for SearchBar
+ * `trailingPrefix`. Type + Status + Sort over the retrieved top-50; URL-durable.
  */
 
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { QueueSortSwitch } from '@/components/dashboard/QueueSortSwitch';
-import { FilterDropdownSelect } from '@/design-system/components/FilterDropdownSelect';
 import {
-  FilterRefinementBar,
-  type FilterRefinement,
-} from '@/design-system/components/FilterRefinementBar';
-import { Button } from '@/design-system/primitives';
+  WorkbenchFilterDivider,
+  WorkbenchFilterGroupLabel,
+  WorkbenchFilterMenuRow,
+  WorkbenchFilterPopover,
+} from '@/components/dashboard/workbench-filter-popover';
 import {
   SEARCH_DISPLAY_SORT_OPTIONS,
   SEARCH_ENTITY_TYPES,
@@ -34,15 +33,14 @@ import type { SearchHitEntityType } from '@/lib/search/search-hit';
 
 export function SearchRefineControls({
   statusOptions,
-  className,
 }: {
   /** Distinct `facets.status` values from the current (unfiltered) hit set. */
   statusOptions: readonly string[];
-  className?: string;
 }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const [open, setOpen] = useState(false);
 
   const etype = parseSearchEtype(searchParams.get(SEARCH_ETYPE_PARAM));
   const hstat = parseSearchHstat(searchParams.get(SEARCH_HSTAT_PARAM));
@@ -83,77 +81,93 @@ export function SearchRefineControls({
     replaceParams(clearSearchRefine);
   }, [replaceParams]);
 
-  const entityOptions = useMemo(
-    () =>
-      SEARCH_ENTITY_TYPES.map((id) => ({
-        value: id,
-        label: SEARCH_ENTITY_TYPE_LABELS[id],
-      })),
-    [],
-  );
-
-  const statusSelectOptions = useMemo(
-    () => statusOptions.map((s) => ({ value: s, label: s })),
-    [statusOptions],
-  );
-
-  const refinements = useMemo((): FilterRefinement[] => {
-    const out: FilterRefinement[] = [];
-    if (etype) {
-      out.push({
-        id: 'etype',
-        label: SEARCH_ENTITY_TYPE_LABELS[etype],
-        onRemove: () => setEtype(null),
-      });
-    }
-    if (hstat) {
-      out.push({
-        id: 'hstat',
-        label: hstat,
-        onRemove: () => setHstat(null),
-      });
-    }
-    return out;
-  }, [etype, hstat, setEtype, setHstat]);
+  const hot = Boolean(etype || hstat);
+  const hotLabel = useMemo(() => {
+    const parts: string[] = [];
+    if (etype) parts.push(SEARCH_ENTITY_TYPE_LABELS[etype]);
+    if (hstat) parts.push(hstat);
+    return parts.length > 0 ? parts.join(' · ') : undefined;
+  }, [etype, hstat]);
 
   return (
-    <div className={className}>
-      <div className="flex flex-wrap items-start gap-3">
-        <FilterRefinementBar
-          label="Refine"
-          className="min-w-0 flex-1"
-          refinements={refinements}
-          onClearAll={refinements.length > 0 ? clearAll : undefined}
-          renderDropdown={(onClose) => (
-            <div className="space-y-3">
-              <FilterDropdownSelect
-                label="Type"
-                value={etype}
-                onChange={(next) => setEtype(parseSearchEtype(next))}
-                emptyOption={{ value: '', label: 'All types' }}
-                options={entityOptions}
-              />
-              <FilterDropdownSelect
-                label="Status"
-                value={hstat}
-                onChange={(next) => setHstat(next || null)}
-                emptyOption={{ value: '', label: 'All statuses' }}
-                options={statusSelectOptions}
-              />
-              <Button variant="brand" size="md" onClick={onClose} className="w-full">
-                Done
-              </Button>
-            </div>
-          )}
+    <WorkbenchFilterPopover
+      open={open}
+      onOpenChange={setOpen}
+      hot={hot}
+      label="Filters"
+      hotActiveLabel={hotLabel}
+      density="field"
+      contentClassName="w-52"
+    >
+      <WorkbenchFilterGroupLabel>Type</WorkbenchFilterGroupLabel>
+      <WorkbenchFilterMenuRow
+        label="All types"
+        active={etype === null}
+        onClick={() => {
+          setEtype(null);
+        }}
+      />
+      {SEARCH_ENTITY_TYPES.map((id) => (
+        <WorkbenchFilterMenuRow
+          key={id}
+          label={SEARCH_ENTITY_TYPE_LABELS[id]}
+          active={etype === id}
+          onClick={() => {
+            setEtype(id);
+          }}
         />
-        <QueueSortSwitch
-          sort={sort}
-          onChange={setSort}
-          options={SEARCH_DISPLAY_SORT_OPTIONS}
-          ariaLabel="Sort search results"
-          className="mt-0.5"
+      ))}
+
+      {statusOptions.length > 0 ? (
+        <>
+          <WorkbenchFilterDivider />
+          <WorkbenchFilterGroupLabel>Status</WorkbenchFilterGroupLabel>
+          <WorkbenchFilterMenuRow
+            label="All statuses"
+            active={hstat === null}
+            onClick={() => {
+              setHstat(null);
+            }}
+          />
+          {statusOptions.map((s) => (
+            <WorkbenchFilterMenuRow
+              key={s}
+              label={s}
+              active={hstat === s}
+              onClick={() => {
+                setHstat(s);
+              }}
+            />
+          ))}
+        </>
+      ) : null}
+
+      <WorkbenchFilterDivider />
+      <WorkbenchFilterGroupLabel>Sort</WorkbenchFilterGroupLabel>
+      {SEARCH_DISPLAY_SORT_OPTIONS.map((opt) => (
+        <WorkbenchFilterMenuRow
+          key={opt.id}
+          label={opt.label}
+          active={sort === opt.id}
+          onClick={() => {
+            setSort(opt.id);
+          }}
         />
-      </div>
-    </div>
+      ))}
+
+      {hot ? (
+        <>
+          <WorkbenchFilterDivider />
+          <WorkbenchFilterMenuRow
+            label="Clear filters"
+            active={false}
+            onClick={() => {
+              clearAll();
+              setOpen(false);
+            }}
+          />
+        </>
+      ) : null}
+    </WorkbenchFilterPopover>
   );
 }

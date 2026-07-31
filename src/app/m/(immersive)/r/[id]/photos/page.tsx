@@ -12,7 +12,8 @@ function PhotoPageInner() {
   const mode = searchParams.get('mode') === 'gallery' ? 'gallery' : 'capture';
   const requestId = (searchParams.get('requestId') || '').trim() || null;
   // Carton capture stage from the phone-bridge/deep link. Missing/unknown →
-  // arrival_package (legacy default); item requests never land here.
+  // unbox_carton (the safe default — arrival must be requested explicitly);
+  // item requests never land here.
   const stage = parseReceivingCartonPhotoStage(searchParams.get('stage'));
   const titleParam = (searchParams.get('title') || '').trim();
   const poRefParam = (searchParams.get('poRef') || '').trim() || null;

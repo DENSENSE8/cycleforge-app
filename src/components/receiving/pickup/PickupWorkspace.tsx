@@ -112,6 +112,7 @@ export function PickupWorkspace({ selectedOrderId = null }: PickupWorkspaceProps
       chrome={
         <div className={WORKBENCH_CHROME_COLUMN}>
           <WorkbenchChromeHeader
+            density="band"
             tabs={tabs}
             activeTab={statusTab}
             onTabChange={(id) => setParam('status', id === 'all' ? null : id)}

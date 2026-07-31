@@ -1,55 +1,44 @@
 'use client';
 
 /**
- * OrderRecordBody — the single-scroll order record (Week 1, D2/D3).
+ * OrderRecordBody — the single-scroll order record (Week 1, D2/D3; concise redesign).
  *
- * Replaces the eight-tab strip on the order-record surfaces with one vertical
- * scroll: a main column carrying the transaction payload and its history, and a
- * right rail carrying dimensional metadata (buyer, ship-to, buyer note, links).
- * Operators scan vertically; tabs hid exception state behind a click.
+ * Main column: Item · photos · Fulfillment · Financials · Documents · Timeline,
+ * with Serial Journey + Conversation collapsed by default. Right rail: Customer ·
+ * Buyer note · Returns · Warranty. Identity (order # / platform / status) lives
+ * in the page header — not reprinted here.
  *
- * SCOPE (D2a) — this body is for ORDER-RECORD surfaces only:
+ * SCOPE (D2a) — ORDER-RECORD surfaces only:
  *   `/o/[orderId]` · Dashboard Search detail · `DashboardOrderDetails`.
- * The other seven `ShippedDetailsBody` contexts (station, packer, fulfillment,
- * labels, staged, shipped, queue) stay on the legacy tabbed body — several are
- * Station-contract at `floor` density, where a Workbench master-detail layout
- * is the wrong shape. They need a Station-density variant designed on their own
- * terms, not this retrofitted.
- *
- * This is a LAYOUT COMPOSER. Every section is an existing component
- * (`CustomerDetailsTab`, `OrderTimelineSection`, `SerialJourneySection`,
- * `OrderDocumentsSection`, `OrderWarrantySection`, `PhotoGallery`) arranged into
- * the two columns — it does not re-implement any of them.
- *
- * Presence-driven: a card that has no data does not render. Empty teaching
- * states belong to the sections that own the fetch, not to this shell.
+ * Station / packer / fulfillment / labels / staged / shipped / queue stay on
+ * the legacy tabbed `ShippedDetailsBody`.
  */
 
 import type { ReactNode } from 'react';
 import { AlertTriangle, Package, Zap } from '@/components/Icons';
-import { Button, Panel } from '@/design-system/primitives';
+import { Button } from '@/design-system/primitives';
 import { ThreadPanel } from '@/components/threads/ThreadPanel';
 import {
   OrderFactList,
   OrderFactRow,
   OrderRecordCard,
 } from '@/components/order-record/order-record-card';
+import { OrderCollapsibleSection } from '@/components/order-record/OrderCollapsibleSection';
+import { OrderCustomerFacts } from '@/components/order-record/OrderCustomerFacts';
+import { OrderFulfillmentFacts } from '@/components/order-record/OrderFulfillmentFacts';
+import { OrderItemFacts } from '@/components/order-record/OrderItemFacts';
 import { OrderReturnsCard } from '@/components/order-record/OrderReturnsCard';
+import { OrderWarrantySummary } from '@/components/order-record/OrderWarrantySummary';
 import {
   isSearchOrderFactEmpty,
   isShipByBeforeCreated,
 } from '@/components/order-record/order-fact-presence';
-import { CustomerDetailsTab } from '@/components/shipped/CustomerDetailsTab';
-import { ShippingInformationSection } from '@/components/shipped/details-panel/ShippingInformationSection';
-import { ProductDetailsSection } from '@/components/shipped/details-panel/ProductDetailsSection';
 import type { EditableShippingFields } from '@/components/shipped/details-panel/shipping-information/types';
 import { OrderTimelineSection } from '@/components/shipped/OrderTimelineSection';
 import { SerialJourneySection } from '@/components/serial/SerialJourneySection';
 import { OrderDocumentsSection } from '@/components/shipped/OrderDocumentsSection';
-import { OrderWarrantySection } from '@/components/shipped/details-panel/OrderWarrantySection';
 import { PhotoGallery, type PhotoGalleryInput } from '@/components/shipped/PhotoGallery';
 import type { ShippedOrder } from '@/types/orders';
-import { formatDateTimePST } from '@/utils/date';
 import { cn } from '@/utils/_cn';
 
 /**
@@ -65,19 +54,15 @@ interface OrderRecordBodyProps {
   /** Documents upload/delete is enabled only where the surface owns that job. */
   documentsReadOnly?: boolean;
   /**
-   * Editing passthroughs. Omit them and the record reads read-only; supply them
-   * and Item/Fulfillment become the same inline editors the tabbed body had —
-   * order #, item #, tracking, ship-by, condition, urgent, copy-all. The
-   * single-scroll layout must not cost the surface a capability (D2).
+   * Editing passthroughs for Fulfillment (tracking / ship-by via the edit
+   * modal). Omit them and the record reads read-only.
    */
   editableShippingFields?: EditableShippingFields;
   copiedAll?: boolean;
   onCopyAll?: () => void;
   onUpdate?: () => void;
   /**
-   * Opens the work-order assignment card. In the tabbed body this hung off the
-   * detail-stack action bar, which the single scroll does not have — it becomes
-   * a card action on Fulfillment. Omitted → the control hides.
+   * Opens the work-order assignment card. Omitted → the control hides.
    */
   onAssign?: () => void;
 }
@@ -107,7 +92,7 @@ function ExceptionBanner({
   return (
     <div
       className={cn(
-        'flex items-start gap-2 rounded-xl border px-4 py-3',
+        'flex items-start gap-2 rounded-lg border px-3 py-2',
         tone === 'danger'
           ? 'border-rose-200 bg-rose-50 text-text-danger'
           : 'border-amber-200 bg-amber-50 text-text-warning',
@@ -133,7 +118,6 @@ export function OrderRecordBody({
   const hasOrderRow = Number.isFinite(orderRowId) && orderRowId > 0;
   const twoUp = density === 'full';
 
-  // ── Derived facts ────────────────────────────────────────────────────────
   const tracking = firstNonEmpty(order.shipping_tracking_number, ...(order.tracking_numbers ?? []));
   const sale =
     order.sale_amount != null && order.sale_amount !== ''
@@ -143,11 +127,6 @@ export function OrderRecordBody({
   const photos = (order.packer_photos_url ?? []) as PhotoGalleryInput[];
   const hasPhotos = Array.isArray(photos) && photos.length > 0;
 
-  const created = order.created_at ? formatDateTimePST(order.created_at) : '';
-  const shipBy = order.ship_by_date ? formatDateTimePST(order.ship_by_date) : '';
-  const packedAt = order.packed_at ? formatDateTimePST(order.packed_at) : '';
-  const latestEvent = order.latest_event_at ? formatDateTimePST(order.latest_event_at) : '';
-  const shipConfirmed = order.ship_confirmed_at ? formatDateTimePST(order.ship_confirmed_at) : '';
   const shipByAnomaly = isShipByBeforeCreated(order.ship_by_date, order.created_at);
 
   const serials = [
@@ -159,11 +138,8 @@ export function OrderRecordBody({
     ),
   ];
 
-  // `is_urgent` / `is_out_of_stock` are real columns but not on the ShippedOrder
-  // kernel yet — the legacy panel reads them the same way.
   const isUrgent = Boolean((order as { is_urgent?: unknown }).is_urgent);
   const isOutOfStock = Boolean((order as { is_out_of_stock?: unknown }).is_out_of_stock);
-
   const buyerNote = String(order.buyer_note ?? '').trim();
 
   const hasItem = anyPresent(order.product_title, order.sku, order.item_number, order.quantity, sale);
@@ -172,17 +148,17 @@ export function OrderRecordBody({
     order.carrier,
     order.shipment_status,
     order.latest_status_label,
-    latestEvent,
-    shipConfirmed,
-    shipBy,
-    packedAt,
+    order.latest_event_at,
+    order.ship_confirmed_at,
+    order.ship_by_date,
+    order.packed_at,
     order.packed_by_name,
+    order.tracking_type,
   );
   const hasExceptions = isOutOfStock || isUrgent || shipByAnomaly;
 
   return (
     <div className="stack-section">
-      {/* ── Exceptions ─────────────────────────────────────────────────── */}
       {hasExceptions ? (
         <div className="stack-tight">
           {isOutOfStock ? (
@@ -203,19 +179,11 @@ export function OrderRecordBody({
         </div>
       ) : null}
 
-      <div className={cn('grid grid-cols-1 gap-6', twoUp && 'lg:grid-cols-3')}>
-        {/* ── Main column ──────────────────────────────────────────────── */}
+      <div className={cn('grid grid-cols-1 gap-4', twoUp && 'lg:grid-cols-3')}>
         <div className={cn('stack-section', twoUp && 'lg:col-span-2')}>
-          {/* Item + Fulfillment compose the existing editable sections rather
-              than re-listing their fields read-only — that is what keeps order #
-              / item # / tracking / ship-by / condition / urgent / copy-all
-              working after the tab strip went away. */}
           {hasItem ? (
             <OrderRecordCard title="Item">
-              <ProductDetailsSection
-                shipped={order}
-                editableShippingFields={editableShippingFields}
-              />
+              <OrderItemFacts order={order} editableShippingFields={editableShippingFields} />
             </OrderRecordCard>
           ) : null}
 
@@ -236,42 +204,29 @@ export function OrderRecordBody({
                 ) : null
               }
             >
-              <ShippingInformationSection
-                shipped={order}
+              <OrderFulfillmentFacts
+                order={order}
                 copiedAll={copiedAll}
                 onCopyAll={onCopyAll}
                 onUpdate={onUpdate}
                 editableShippingFields={editableShippingFields}
               />
-              <OrderFactList>
-                <OrderFactRow label="Carrier" value={order.carrier} omitWhenEmpty />
-                <OrderFactRow label="Shipment status" value={order.shipment_status} omitWhenEmpty />
-                <OrderFactRow label="Latest status" value={order.latest_status_label} omitWhenEmpty />
-                <OrderFactRow label="Latest event" value={latestEvent} omitWhenEmpty />
-                <OrderFactRow label="Ship confirmed" value={shipConfirmed} omitWhenEmpty />
-                <OrderFactRow label="Created" value={created} omitWhenEmpty />
-                <OrderFactRow label="Packed at" value={packedAt} omitWhenEmpty />
-                <OrderFactRow label="Packed by" value={order.packed_by_name} omitWhenEmpty />
-              </OrderFactList>
             </OrderRecordCard>
           ) : null}
 
-          {/* Financials — D11: the section shell always renders. Until the
-              commercial keyspace bridge lands (Week 4) there is no fee/payout
-              data, so fall back to the operational sale amount and label the
-              gap. Never blank, never a fabricated zero. */}
-          <OrderRecordCard
-            title="Financials"
-            description="Fees and payout arrive with the linked commercial record."
-          >
+          {/* Financials — D11: shell always renders; fees/payout labeled until
+              the commercial keyspace bridge lands. */}
+          <OrderRecordCard title="Financials">
             <OrderFactList>
               <OrderFactRow label="Sale amount" value={sale} />
               <OrderFactRow label="Fees" value="" />
               <OrderFactRow label="Net payout" value="" />
             </OrderFactList>
-            <p className="text-role-micro font-medium text-text-faint">
-              Not reconciled — this order has no linked commercial document yet.
-            </p>
+            {!sale ? (
+              <p className="text-role-micro font-medium text-text-faint">
+                Not reconciled — no linked commercial document yet.
+              </p>
+            ) : null}
           </OrderRecordCard>
 
           {hasOrderRow ? (
@@ -284,41 +239,41 @@ export function OrderRecordBody({
             </OrderRecordCard>
           ) : null}
 
-          {hasOrderRow ? (
-            <div className="stack-section">
-              <OrderTimelineSection orderId={orderRowId} />
-              {serials.map((sn) => (
-                <SerialJourneySection
-                  key={sn}
-                  serialNumber={sn}
-                  title={serials.length > 1 ? `Item Journey · ${sn}` : 'Item Journey'}
-                />
-              ))}
-            </div>
-          ) : null}
+          {hasOrderRow ? <OrderTimelineSection orderId={orderRowId} /> : null}
 
-          {/* Chat needs a bounded height for its own message scroll + composer:
-              the page lane scrolls, the thread manages its own. Without this the
-              single scroll would have cost the record its Conversation tab. */}
+          {hasOrderRow && serials.length > 0
+            ? serials.map((sn) => (
+                <OrderCollapsibleSection
+                  key={sn}
+                  title={serials.length > 1 ? `Item Journey · ${sn}` : 'Item Journey'}
+                  description="Serial lifecycle — expand when you need the unit trail."
+                >
+                  <div className="p-3">
+                    <SerialJourneySection
+                      serialNumber={sn}
+                      title="Events"
+                      density="compact"
+                      withPhotos={false}
+                    />
+                  </div>
+                </OrderCollapsibleSection>
+              ))
+            : null}
+
           {hasOrderRow ? (
-            <Panel padding="none" className="flex h-[70vh] min-h-[28rem] flex-col overflow-hidden">
-              <div className="shrink-0 border-b border-border-hairline px-5 py-3">
-                <h3 className="text-role-body font-semibold text-text-default">Conversation</h3>
-                <p className="mt-0.5 text-role-micro font-medium text-text-muted">
-                  Internal notes and linked support threads.
-                </p>
-              </div>
-              <div className="flex min-h-0 flex-1 flex-col">
-                <ThreadPanel entityType="ORDER" entityId={orderRowId} />
-              </div>
-            </Panel>
+            <OrderCollapsibleSection
+              title="Conversation"
+              description="Internal notes and linked support threads."
+              bodyClassName="flex h-[min(50vh,24rem)] min-h-[16rem] flex-col"
+            >
+              <ThreadPanel entityType="ORDER" entityId={orderRowId} />
+            </OrderCollapsibleSection>
           ) : null}
         </div>
 
-        {/* ── Right rail ───────────────────────────────────────────────── */}
         <div className="stack-section">
           <OrderRecordCard title="Customer">
-            <CustomerDetailsTab customerId={order.customer_id ?? null} bare />
+            <OrderCustomerFacts customerId={order.customer_id ?? null} />
           </OrderRecordCard>
 
           {buyerNote ? (
@@ -329,18 +284,10 @@ export function OrderRecordBody({
             </OrderRecordCard>
           ) : null}
 
-          <OrderRecordCard title="Order">
-            <OrderFactList cols={1}>
-              <OrderFactRow label="Order #" value={order.order_id} mono />
-              <OrderFactRow label="Account source" value={order.account_source} omitWhenEmpty />
-              <OrderFactRow label="Type" value={order.tracking_type} omitWhenEmpty />
-            </OrderFactList>
-          </OrderRecordCard>
-
           {hasOrderRow ? <OrderReturnsCard orderId={orderRowId} /> : null}
 
           <OrderRecordCard title="Warranty">
-            <OrderWarrantySection order={order} />
+            <OrderWarrantySummary order={order} />
           </OrderRecordCard>
         </div>
       </div>

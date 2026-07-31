@@ -24,19 +24,22 @@ interface WashPreset {
 }
 
 export const WASH_PRESETS: Record<WashName, WashPreset> = {
+  // previewTo is light-theme CANVAS (#eef2f7), not surface white: a wash host
+  // is a ground plane for cards, so no stop may land on card white — see the
+  // GROUND-PLANE RULE beside the `--ds-wash-*` blocks in styles/globals.css.
   mint: {
     id: 'mint',
     label: 'Mint',
     hint: 'Unbox / receiving wash',
     previewFrom: '#f5fbfa',
-    previewTo: '#ffffff',
+    previewTo: '#eef2f7',
   },
   cool: {
     id: 'cool',
     label: 'Cool',
     hint: 'Soft teal fade',
     previewFrom: '#f8fbfb',
-    previewTo: '#ffffff',
+    previewTo: '#eef2f7',
   },
   slate: {
     id: 'slate',
@@ -95,14 +98,27 @@ export const appChromeBandHairlineClass =
   'shadow-[inset_0_-1px_0_0_var(--ds-color-border-default)]';
 
 /**
- * Depth 1 — elevated station work fill (UnboxLineWorkspace / Triage / Pack).
- * Layout + card surface only — the rounded cutout + depth-edge hairline live
- * on the outer desktop content shell (`appContentShellClass`) so they render
- * on every page, not only stations that opt into this host. No drop shadow —
- * a box-shadow at the soft join casts a gray strip into the sidebar cutout.
+ * Depth 1 — layout shell for station work roots (Unbox / Triage / Pack).
+ * No fill — use when the root sits on the receiving
+ * `CONTEXT_PANEL_HOST` shared ground so a full-bleed card cannot shear
+ * outset rail chrome. Pair with an inner content fill, or use
+ * {@link appWorkCanvasClass} when the station owns the full host alone
+ * (e.g. Pack).
  */
-export const appWorkCanvasClass =
-  'relative flex min-h-0 w-full flex-1 flex-col overflow-hidden bg-surface-card';
+export const appWorkCanvasLayoutClass =
+  'relative flex min-h-0 w-full flex-1 flex-col overflow-hidden';
+
+/**
+ * Depth 1 — elevated station work fill (layout + card surface).
+ * The rounded cutout + depth-edge hairline live on the outer desktop content
+ * shell (`appContentShellClass`) so they render on every page, not only
+ * stations that opt into this host. No drop shadow — a box-shadow at the soft
+ * join casts a gray strip into the sidebar cutout.
+ *
+ * Do **not** use this full-bleed card as the workspace sibling under a
+ * receiving context rail — use {@link appWorkCanvasLayoutClass} instead.
+ */
+export const appWorkCanvasClass = `${appWorkCanvasLayoutClass} bg-surface-card`;
 
 /**
  * Page wash hosts (Unbox, receiving, admin tabs). Gradient stops come from

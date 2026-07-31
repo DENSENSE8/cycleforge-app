@@ -2,13 +2,22 @@ import { NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
-import { setManualSkuCatalogId } from '@/lib/neon/product-manuals-queries';
+import {
+  getProductManualById,
+  setManualSkuCatalogId,
+} from '@/lib/neon/product-manuals-queries';
 import { resolveOrCreateLineCatalog } from '@/lib/receiving/line-catalog';
+import {
+  promoteProductManualToDocument,
+  unlinkManualDocumentFromSku,
+} from '@/lib/documents/manual-documents';
 
 /**
  * Pair / unpair a library manual to the SKU catalog row resolved from a
  * receiving line. Tech-facing (`tech.qc_pass`) so testers can attach the right
  * manual from the testing screen. Pairing creates the catalog row on demand.
+ *
+ * Phase 3: pair also promotes into documents + SKU link; unpair removes the link.
  */
 function lineIdFromPath(pathname: string): number {
   const segments = pathname.split('/').filter(Boolean);
@@ -58,11 +67,6 @@ export const POST = withAuth(async (request, ctx) => {
   }
 
   try {
-    // [id]/verb write: thread the org so the line→catalog resolution is scoped
-    // to ctx.organizationId (a foreign line 404s, create-on-demand stamps this
-    // org). product_manuals has NO organization_id column (NEEDS-COL), so the
-    // pairing write can only be GUC-wrapped via the threaded orgId — RLS gates
-    // it once enforced.
     const resolved = await resolveOrCreateLineCatalog(lineId, ctx.organizationId);
     if (!resolved) {
       return NextResponse.json({ ok: false, error: 'line not found' }, { status: 404 });
@@ -77,7 +81,23 @@ export const POST = withAuth(async (request, ctx) => {
     if (!manual) {
       return NextResponse.json({ ok: false, error: 'manual not found' }, { status: 404 });
     }
-    return NextResponse.json({ ok: true, skuCatalogId: resolved.skuCatalogId, manual });
+    let documentId: number | null = null;
+    try {
+      const promoted = await promoteProductManualToDocument(
+        ctx.organizationId,
+        manualId,
+        resolved.skuCatalogId,
+      );
+      documentId = promoted?.documentId ?? null;
+    } catch (promoteErr) {
+      console.warn('[POST /api/receiving-lines/[id]/manuals] promote failed:', promoteErr);
+    }
+    return NextResponse.json({
+      ok: true,
+      skuCatalogId: resolved.skuCatalogId,
+      manual,
+      documentId,
+    });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'failed to pair manual';
     console.error('[POST /api/receiving-lines/[id]/manuals] error:', err);
@@ -104,13 +124,23 @@ export const DELETE = withAuth(async (request, ctx) => {
   }
 
   try {
-    // [id]/verb write: product_manuals has no org column, so gate on the
-    // manual's parent-catalog ownership (404 — never 403 — on a foreign or
-    // already-unpaired manual) before mutating. Then thread orgId so the
-    // unpair write is GUC-wrapped for the RLS backstop.
     if (!(await manualOwnedByOrg(manualId, ctx.organizationId))) {
       return NextResponse.json({ ok: false, error: 'manual not found' }, { status: 404 });
     }
+    const before = await getProductManualById(manualId, ctx.organizationId);
+    const priorCatalogId =
+      before?.sku_catalog_id != null && Number(before.sku_catalog_id) > 0
+        ? Number(before.sku_catalog_id)
+        : null;
+
+    if (priorCatalogId != null) {
+      try {
+        await unlinkManualDocumentFromSku(ctx.organizationId, manualId, priorCatalogId);
+      } catch (unlinkErr) {
+        console.warn('[DELETE /api/receiving-lines/[id]/manuals] unlink failed:', unlinkErr);
+      }
+    }
+
     const manual = await setManualSkuCatalogId(manualId, null, ctx.organizationId);
     if (!manual) {
       return NextResponse.json({ ok: false, error: 'manual not found' }, { status: 404 });

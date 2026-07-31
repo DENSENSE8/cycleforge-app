@@ -16,6 +16,10 @@ import type { OrgId } from '@/lib/tenancy/constants';
 import { looksLikeTicketScan } from '@/lib/support/ticket-scan';
 import { searchSupportTickets } from '@/lib/search/support-ticket-search';
 import { orderRecordHref, searchHitHref } from '@/lib/search/search-hit';
+import {
+  receivingOrderIdFromParts,
+  receivingSearchTitle,
+} from '@/lib/search/receiving-search-title';
 
 export interface GlobalSearchResult {
   id: number;
@@ -37,6 +41,12 @@ export interface GlobalSearchResult {
     tracking_number?: string | null;
     carrier?: string | null;
     serial_number?: string | null;
+    /** Marketplace order id — powers the leading OrderIdChip last-4. */
+    order_id?: string | null;
+    /** Receiving carton Zoho PO# (when order_id not set). */
+    po_number?: string | null;
+    /** Receiving marketplace source order id. */
+    source_order_id?: string | null;
     happened_at?: string | null;
   };
 }
@@ -127,6 +137,7 @@ export async function searchOrders(orgId: OrgId, query: string, limit: number): 
         carrier: row.carrier != null ? String(row.carrier) : null,
         // Exact path aggregates serials; only emit a single serial for the chip.
         serial_number: serial && !serial.includes(',') ? serial : null,
+        order_id: row.order_id != null ? String(row.order_id) : null,
         happened_at: happened,
       },
     };
@@ -208,9 +219,20 @@ export async function searchReceiving(orgId: OrgId, query: string, limit: number
             r.source_order_id,
             r.qa_status,
             r.condition_grade,
-            r.source_platform
+            r.source_platform,
+            lines.line_count,
+            lines.distinct_sku_count,
+            lines.first_item_name
      FROM receiving_carton r
      LEFT JOIN shipping_tracking_numbers stn ON stn.id = r.shipment_id
+     LEFT JOIN LATERAL (
+       SELECT COUNT(*)::int AS line_count,
+              COUNT(DISTINCT COALESCE(NULLIF(TRIM(rl.sku), ''), NULLIF(TRIM(rl.item_name), ''), rl.id::text))::int
+                AS distinct_sku_count,
+              (ARRAY_AGG(rl.item_name ORDER BY rl.id)
+                FILTER (WHERE NULLIF(TRIM(rl.item_name), '') IS NOT NULL))[1] AS first_item_name
+       FROM receiving_line rl WHERE rl.receiving_id = r.id
+     ) lines ON TRUE
      WHERE r.organization_id = $5
        AND (stn.tracking_number_raw ILIKE $1
         OR stn.tracking_number_normalized = $3
@@ -224,24 +246,42 @@ export async function searchReceiving(orgId: OrgId, query: string, limit: number
     [`%${query}%`, query, normalizedQuery, limit, orgId],
   );
 
-  return result.rows.map((row: any) => ({
-    id: Number(row.id),
-    entityType: 'receiving' as const,
-    title: String(row.tracking_number || row.po_number || `Receiving #${row.id}`),
-    subtitle: [row.carrier, row.po_number || row.source_order_id].filter(Boolean).join(' · ') || 'Unknown carrier',
-    // Compose the SoT rather than re-deriving: this fast path and hybrid
-    // retrieval must land a carton on the SAME surface, and the hardcoded twin
-    // is how they drifted when RECEIVING moved to the read-only inspector.
-    href: searchHitHref('RECEIVING', Number(row.id)),
-    matchField: 'receiving',
-    facets: {
-      status: row.qa_status != null ? String(row.qa_status) : null,
-      condition_grade: row.condition_grade != null ? String(row.condition_grade) : null,
-      source_platform: row.source_platform != null ? String(row.source_platform) : null,
-      tracking_number: row.tracking_number != null ? String(row.tracking_number) : null,
-      carrier: row.carrier != null ? String(row.carrier) : null,
-    },
-  }));
+  return result.rows.map((row: any) => {
+    const poNumber = row.po_number != null ? String(row.po_number) : null;
+    const sourceOrderId = row.source_order_id != null ? String(row.source_order_id) : null;
+    const sourcePlatform = row.source_platform != null ? String(row.source_platform) : null;
+    const firstItemName = row.first_item_name != null ? String(row.first_item_name) : null;
+    const orderId = receivingOrderIdFromParts(poNumber, sourceOrderId);
+    return {
+      id: Number(row.id),
+      entityType: 'receiving' as const,
+      title: receivingSearchTitle({
+        lineCount: Number(row.line_count) || 0,
+        distinctSkuCount: Number(row.distinct_sku_count) || 0,
+        poNumber,
+        sourceOrderId,
+        sourcePlatform,
+        firstItemName,
+        fallback: `Receiving #${row.id}`,
+      }),
+      subtitle: [orderId, row.carrier].filter(Boolean).join(' · ') || 'Unknown carrier',
+      // Compose the SoT rather than re-deriving: this fast path and hybrid
+      // retrieval must land a carton on the SAME surface, and the hardcoded twin
+      // is how they drifted when RECEIVING moved to the read-only inspector.
+      href: searchHitHref('RECEIVING', Number(row.id)),
+      matchField: 'receiving',
+      facets: {
+        status: row.qa_status != null ? String(row.qa_status) : null,
+        condition_grade: row.condition_grade != null ? String(row.condition_grade) : null,
+        source_platform: sourcePlatform,
+        tracking_number: row.tracking_number != null ? String(row.tracking_number) : null,
+        carrier: row.carrier != null ? String(row.carrier) : null,
+        order_id: orderId || null,
+        po_number: poNumber,
+        source_order_id: sourceOrderId,
+      },
+    };
+  });
 }
 
 export async function searchSkus(orgId: OrgId, query: string, limit: number): Promise<GlobalSearchResult[]> {

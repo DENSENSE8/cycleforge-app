@@ -434,11 +434,9 @@ export const RECEIVING_SCAN_RULE_LINE_CLASS =
 export const RECEIVING_TRAIL_SLOT_CLASS =
   'flex h-[14px] w-[14px] shrink-0 items-center justify-center';
 
+/** Fill a {@link RECEIVING_TRAIL_SLOT_CLASS} — keeps `w-full` inside the 14×14 box. */
 export const RECEIVING_TRAIL_BTN_CLASS =
   'flex h-full w-full items-center justify-center rounded-sm transition-colors duration-100 ease-out active:scale-95';
-
-export const TRACKING_REMOVE_BTN_CLASS = `${RECEIVING_TRAIL_BTN_CLASS} text-text-faint hover:text-text-default`;
-export const TRACKING_ADD_BTN_CLASS = `${RECEIVING_TRAIL_BTN_CLASS} text-text-soft hover:text-text-default`;
 
 export const TRACKING_ROW_LEADING_ICON_CLASS =
   'shrink-0 text-text-faint transition-colors duration-100 ease-out group-focus-within:text-text-default';

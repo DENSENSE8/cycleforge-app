@@ -16,6 +16,9 @@
  * painted over by the next row (a later DOM sibling), regardless of its
  * `z-index`. A body portal escapes every row stacking context so the menu is
  * never clipped or covered.
+ *
+ * {@link CopyChipHoverMenuPanel} is the presentational chrome + rows — also
+ * composed in-place by hosts that already own hover (e.g. photo launcher toolbar).
  */
 
 import {
@@ -45,6 +48,95 @@ export type CopyChipHoverMenuItem = {
   /** Destructive rows (delete) use rose tone. */
   tone?: 'default' | 'accent' | 'danger';
 };
+
+/**
+ * Presentational drop panel — same chrome / menuitem rows as the hover portal.
+ *
+ * `denseLabel` (carton chips / photo toolbar): short verbs inherit button
+ * `uppercase tracking-widest` (OPEN / EDIT face). Default keeps sentence-case
+ * dashboard labels.
+ */
+export function CopyChipHoverMenuPanel({
+  items,
+  menuLabel,
+  className,
+  denseLabel = false,
+  onItemSelect,
+  'data-testid': dataTestId,
+}: {
+  items: CopyChipHoverMenuItem[];
+  menuLabel: string;
+  className?: string;
+  denseLabel?: boolean;
+  /** Extra hook after a successful select (e.g. close the hover portal). */
+  onItemSelect?: (item: CopyChipHoverMenuItem) => void;
+  'data-testid'?: string;
+}) {
+  return (
+    <div
+      role="menu"
+      aria-label={menuLabel}
+      data-testid={dataTestId}
+      className={cn(
+        'min-w-35 overflow-hidden rounded-lg border border-border-soft bg-surface-card shadow-lg',
+        className,
+      )}
+    >
+      {items.map((item, i) => {
+        const toneClass =
+          item.tone === 'danger'
+            ? 'text-rose-600 hover:bg-rose-50'
+            : item.tone === 'accent'
+              ? 'text-blue-700 hover:bg-blue-50'
+              : 'text-text-muted hover:bg-surface-hover';
+        const iconClass =
+          item.tone === 'danger'
+            ? 'text-rose-600'
+            : item.tone === 'accent'
+              ? 'text-blue-600'
+              : 'text-text-soft';
+        return (
+          // ds-raw-button: text-left dropdown menuitem row (icon + label)
+          <button
+            key={item.id}
+            type="button"
+            role="menuitem"
+            disabled={item.disabled}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (item.disabled) return;
+              item.onSelect();
+              onItemSelect?.(item);
+            }}
+            className={cn(
+              'flex w-full items-center gap-2 px-3 py-1.5 text-left text-role-caption font-semibold uppercase tracking-widest disabled:cursor-not-allowed disabled:opacity-40',
+              i > 0 ? 'border-t border-border-hairline' : '',
+              toneClass,
+            )}
+          >
+            {item.icon ? (
+              <span
+                className={cn(
+                  'inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center [&>svg]:h-3.5 [&>svg]:w-3.5',
+                  iconClass,
+                )}
+              >
+                {item.icon}
+              </span>
+            ) : null}
+            {denseLabel ? (
+              item.label
+            ) : (
+              <span className="min-w-0 truncate normal-case tracking-normal font-semibold">
+                {item.label}
+              </span>
+            )}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 export function CopyChipHoverMenu({
   children,
@@ -159,54 +251,7 @@ export function CopyChipHoverMenu({
             onMouseEnter={clearClose}
             onMouseLeave={scheduleClose}
           >
-            <div
-              role="menu"
-              aria-label={menuLabel}
-              className="min-w-[140px] overflow-hidden rounded-lg border border-border-soft bg-surface-card shadow-lg"
-            >
-              {items.map((item, i) => {
-                const toneClass =
-                  item.tone === 'danger'
-                    ? 'text-rose-600 hover:bg-rose-50'
-                    : item.tone === 'accent'
-                      ? 'text-blue-700 hover:bg-blue-50'
-                      : 'text-text-muted hover:bg-surface-hover';
-                const iconClass =
-                  item.tone === 'danger'
-                    ? 'text-rose-600'
-                    : item.tone === 'accent'
-                      ? 'text-blue-600'
-                      : 'text-text-soft';
-                return (
-                  // ds-raw-button: text-left dropdown menuitem row (icon + label)
-                  <button
-                    key={item.id}
-                    type="button"
-                    role="menuitem"
-                    disabled={item.disabled}
-                    onClick={() => {
-                      if (item.disabled) return;
-                      item.onSelect();
-                      close();
-                    }}
-                    className={cn(
-                      'flex w-full items-center gap-2 px-3 py-1.5 text-left text-role-caption font-semibold uppercase tracking-widest disabled:cursor-not-allowed disabled:opacity-40',
-                      i > 0 ? 'border-t border-border-hairline' : '',
-                      toneClass,
-                    )}
-                  >
-                    {item.icon ? (
-                      <span className={cn('inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center [&>svg]:h-3.5 [&>svg]:w-3.5', iconClass)}>
-                        {item.icon}
-                      </span>
-                    ) : null}
-                    <span className="min-w-0 truncate normal-case tracking-normal font-semibold">
-                      {item.label}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
+            <CopyChipHoverMenuPanel items={items} menuLabel={menuLabel} onItemSelect={() => close()} />
           </div>,
           document.body,
         )

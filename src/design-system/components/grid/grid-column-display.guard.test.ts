@@ -54,9 +54,19 @@ const GRID_DIRS = [
 ] as const;
 
 function filesIn(dir: string): string[] {
-  return readdirSync(resolve(ROOT, dir))
-    .filter((f) => f.endsWith('.tsx'))
-    .map((f) => `${dir}/${f}`);
+  const abs = resolve(ROOT, dir);
+  const out: string[] = [];
+  for (const name of readdirSync(abs, { withFileTypes: true })) {
+    if (name.isDirectory() && name.name === 'cells') {
+      // Per-column cell modules (Receiving Phase A) — still value-cell surfaces.
+      for (const cell of readdirSync(resolve(abs, name.name))) {
+        if (cell.endsWith('.tsx')) out.push(`${dir}/${name.name}/${cell}`);
+      }
+      continue;
+    }
+    if (name.isFile() && name.name.endsWith('.tsx')) out.push(`${dir}/${name.name}`);
+  }
+  return out;
 }
 
 const ALL_GRID_FILES = GRID_DIRS.flatMap(filesIn);
@@ -68,7 +78,14 @@ function code(relative: string): string {
 }
 
 /** Files that render the column header band. */
-const GRID_HEADERS = ALL_GRID_FILES.filter((f) => code(f).includes('gridHeaderCellAlignClass'));
+const GRID_HEADERS = ALL_GRID_FILES.filter((f) => {
+  const src = code(f);
+  return (
+    src.includes('gridHeaderCellAlignClass') ||
+    // Thin adapters compose LedgerGridColumnHeader (align SoT lives there).
+    (/ColumnHeader\.tsx$/.test(f) && src.includes('LedgerGridColumnHeader'))
+  );
+});
 
 /**
  * Files that render VALUE cells (leaf rows, group summaries, group rows).
@@ -81,7 +98,7 @@ const GRID_HEADERS = ALL_GRID_FILES.filter((f) => code(f).includes('gridHeaderCe
  */
 const GRID_ROWS = ALL_GRID_FILES.filter(
   (f) =>
-    /(Row|Summary)\.tsx$/.test(f) &&
+    (/(Row|Summary)\.tsx$/.test(f) || /\/cells\/\w+Cell\.tsx$/.test(f)) &&
     /data-col=/.test(code(f)) &&
     !GRID_HEADERS.includes(f),
 );
@@ -158,10 +175,12 @@ test('every grid value-cell file composes gridCellAlignClass', () => {
   // Hard SoT: digit / order-ID tracks end-align; word tracks start-align —
   // resolved once via resolveGridColumnAlign. A row file that paints cells
   // without gridCellAlignClass will silently left-align every numeric track.
+  // Receiving cell modules call `receivingDataCellClass` (wraps the SoT).
   for (const file of GRID_ROWS) {
+    const src = code(file);
     assert.ok(
-      code(file).includes('gridCellAlignClass'),
-      `${file} renders grid cells but never calls gridCellAlignClass — compose it on every data cell so header and body share resolveGridColumnAlign.`,
+      src.includes('gridCellAlignClass') || src.includes('receivingDataCellClass'),
+      `${file} renders grid cells but never calls gridCellAlignClass (or receivingDataCellClass) — compose it on every data cell so header and body share resolveGridColumnAlign.`,
     );
   }
 });
@@ -170,12 +189,16 @@ test('every typed grid header composes gridHeaderCellAlignClass', () => {
   const headerFiles = ALL_GRID_FILES.filter((f) => /ColumnHeader\.tsx$/.test(f));
   assert.ok(headerFiles.length >= 5, `expected grid ColumnHeader files, got ${headerFiles.length}`);
   for (const file of headerFiles) {
+    const src = code(file);
+    // Thin adapters that compose the shared LedgerGridColumnHeader inherit
+    // align SoT from that module — they must not re-declare the call.
+    if (src.includes('LedgerGridColumnHeader')) continue;
     assert.ok(
-      code(file).includes('gridHeaderCellAlignClass'),
+      src.includes('gridHeaderCellAlignClass'),
       `${file} is a column header but never calls gridHeaderCellAlignClass — headers must resolve the same align as their cells.`,
     );
     assert.ok(
-      code(file).includes('resolveGridColumnAlign'),
+      src.includes('resolveGridColumnAlign'),
       `${file} must pass resolveGridColumnAlign(column) into gridHeaderCellAlignClass.`,
     );
   }

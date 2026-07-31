@@ -27,8 +27,22 @@ export const QUEUE_ROW = {
    * add this same offset so qty stays under the shifted title.
    */
   selectGutter: '1.5rem',
-  /** Selected chrome — background + inset ring; never size/height shift. */
+  /**
+   * Selected chrome for **list / accordion** rows (no cell-rule grid) —
+   * background + inset ring; never size/height shift.
+   */
   selectedClass: 'bg-blue-50 ring-1 ring-inset ring-blue-400',
+  /**
+   * Selected chrome for **airtable LedgerGrid** rows — fill only.
+   *
+   * An inset ring on the row fights `[data-grid-skin='airtable']` paint order:
+   * sticky identity cells (`bg-inherit` + `z-raised`) cover left, cell
+   * RIGHT+BOTTOM rules cover those edges, and transparent fact cells leave
+   * only a top/right L-glow. Sheets/Airtable selection is a wash; use this
+   * (via {@link ledgerRowStateClass} or Pending `gridSkin`) — never
+   * {@link QUEUE_ROW.selectedClass} under the skin.
+   */
+  selectedLedgerClass: 'bg-blue-50',
   /**
    * Expanded-group child nest when a disclosure chevron is shown — pad past the
    * glyph so nesting reads clearly.
@@ -55,17 +69,17 @@ export const QUEUE_ROW = {
  * plane tuned for floating cards, not a row tint — at that luminance step the
  * shaded rows read as a different SURFACE rather than the same one alternately
  * banded. The Pending grid removed it first (2026-07) and the rest followed
- * here; rules + hover + the selected ring carry row tracking on all of them.
+ * here; rules + hover + the selected fill carry row tracking on all of them.
  * Do not reintroduce an `index % 2` fill — guard:
  * `ledger-row-zebra.guard.test.ts`.
  *
- * Selection is background + ring only, never a size/height shift (the house
- * one-row-anatomy law) — so every state below keeps identical row geometry.
+ * Selection is fill only under airtable (see {@link QUEUE_ROW.selectedLedgerClass}),
+ * never a size/height shift — every state below keeps identical row geometry.
  */
 export function ledgerRowStateClass(selected: boolean): string {
   return [
     'cursor-pointer border-b border-border-hairline px-0 py-0 transition-colors hover:bg-surface-hover',
-    selected ? QUEUE_ROW.selectedClass : 'bg-surface-card',
+    selected ? QUEUE_ROW.selectedLedgerClass : 'bg-surface-card',
   ].join(' ');
 }
 

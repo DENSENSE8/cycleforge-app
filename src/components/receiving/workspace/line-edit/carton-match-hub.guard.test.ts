@@ -29,9 +29,23 @@ describe('CartonMatchHub (P1)', () => {
     assert.match(hub, /chrome="bare"/);
   });
 
-  it('embeds UnfoundMatchStrip when autoMatch is set', () => {
+  it('embeds UnfoundMatchStrip when autoMatch is set (visible even when pairing collapsed)', () => {
     assert.match(hub, /UnfoundMatchStrip/);
     assert.match(hub, /showQuickMatch/);
+    // Strip must not be gated on `collapsed` — unfound Auto-match stays open.
+    assert.doesNotMatch(hub, /!pickerCollapsed && !collapsed/);
+    assert.match(hub, /Boolean\(autoMatch\) && !pickerCollapsed/);
+  });
+
+  it('opens PO tab on receiving-open-pairing-po (carton # ---- → Link PO)', () => {
+    assert.match(hub, /RECEIVING_OPEN_PAIRING_PO_EVENT/);
+    assert.match(hub, /openPairingTab\('zoho_po'\)/);
+    assert.match(hub, /openPairingTab\('ecwid'\)/);
+  });
+
+  it('does not auto-search tracking on Package Pairing expand', () => {
+    assert.doesNotMatch(hub, /usePoSuggestions/);
+    assert.doesNotMatch(hub, /PoSuggestBanner/);
   });
 
   it('POUnboxingSection no longer mounts a sibling UnfoundMatchStrip', () => {

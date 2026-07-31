@@ -17,9 +17,9 @@
  *   2. More details — {@link StationMoreDetails}, absolute at the
  *      work-canvas top + right (out of flow so identity stays centered)
  *
- * Unbox may omit `moreDetails` here and mount it on the pane outer host via
- * {@link stationMoreDetailsPaneHostClass} so Ticket push does not slide the
- * icon cluster left with the squeezed Unbox column.
+ * Unbox may omit `moreDetails` here and mount it on the pane outer host
+ * (canvas top + right gutters + `z-raised` on that host) so Ticket push does
+ * not slide the icon cluster left with the squeezed Unbox column.
  */
 
 import type { ReactNode } from 'react';

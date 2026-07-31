@@ -14,7 +14,6 @@
 
 import { useState } from 'react';
 import { sectionLabel } from '@/design-system/tokens/typography/presets';
-import { appWashClass } from '@/design-system/tokens/app-surface';
 import { cn } from '@/utils/_cn';
 import { AdminEmptyDetail } from './shared';
 import { StaffScheduleBoard } from './StaffScheduleBoard';
@@ -66,7 +65,7 @@ export function StaffScheduleTab() {
   }
 
   return (
-    <section className={cn('flex h-full min-h-0 w-full flex-col', appWashClass)}>
+    <section className={cn('flex h-full min-h-0 w-full flex-col',)}>
       <StaffScheduleHeader
         total={summary.total}
         presentToday={summary.presentToday}

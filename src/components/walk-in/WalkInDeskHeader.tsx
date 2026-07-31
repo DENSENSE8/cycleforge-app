@@ -42,6 +42,7 @@ export function WalkInDeskHeader({
 
   return (
     <WorkbenchChromeHeader
+      density="band"
       tabs={tabItems}
       activeTab={activeTab}
       onTabChange={onSelectTab}

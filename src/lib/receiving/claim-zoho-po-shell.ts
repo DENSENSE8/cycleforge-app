@@ -14,6 +14,7 @@
  * emptiness checks so unit tests stay DB-free.
  */
 import type { TxClient } from './relink-po';
+import { reparentReceivingCartonPhotos } from './reparent-carton-photos';
 
 interface ClaimZohoPoShellInput {
   orgId: string;
@@ -200,6 +201,17 @@ export async function claimOrAbsorbZohoPoShell(
         AND owner_type = 'RECEIVING'
         AND owner_id = $1`,
     [shellId, orgId],
+  );
+
+  // Photos on the empty shell → working carton (keep every shot on the winner).
+  await reparentReceivingCartonPhotos(
+    {
+      orgId,
+      fromReceivingId: shellId,
+      toReceivingId: workingReceivingId,
+      poRef: poNumber,
+    },
+    client,
   );
 
   // 6) Keep demoted shell out of Unfound.

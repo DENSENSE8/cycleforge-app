@@ -55,7 +55,14 @@ import {
 export function useUnboxLineController(
   row: ReceivingLineRow,
   staffId: string,
-  { itemTotal }: { itemTotal?: number },
+  {
+    itemTotal,
+    /** Unbox Claim push — opens `?claimView=1` (LineEditPanel wires setClaimView). */
+    onOpenClaim,
+  }: {
+    itemTotal?: number;
+    onOpenClaim?: (mode: 'create' | 'link') => void;
+  } = {},
 ) {
   const core = useReceivingLineCore(row, staffId, {
     dispatchLine: dispatchUnboxRailLineUpdated,
@@ -99,13 +106,17 @@ export function useUnboxLineController(
     serial_number: string;
     condition_grade?: string | null;
   } | null>(null);
-  const [claimModalOpen, setClaimModalOpen] = useState(false);
-  /** Which ReceivingClaimModal tab to open — Link ticket uses `link`. */
-  const [claimModalInitialMode, setClaimModalInitialMode] = useState<'create' | 'link'>('create');
-  const openClaimModal = useCallback((mode: 'create' | 'link' = 'create') => {
-    setClaimModalInitialMode(mode);
-    setClaimModalOpen(true);
-  }, []);
+  /**
+   * Opens the Unbox Claim push column (`?claimView=1`). Host provides
+   * `onOpenClaim` (URL setter); without it this is a no-op (non-Unbox callers
+   * should not use this controller path for claims).
+   */
+  const openClaimModal = useCallback(
+    (mode: 'create' | 'link' = 'create') => {
+      onOpenClaim?.(mode);
+    },
+    [onOpenClaim],
+  );
   const [returnClaimPrefill, setReturnClaimPrefill] = useState<string | null>(null);
   // Guards the auto-bind-PO# effect so a matched order is only written once.
   const autoBoundOrderRef = useRef<string | null>(null);
@@ -846,7 +857,7 @@ export function useUnboxLineController(
     photoPolicy, lineItemPhotoCount,
     receiveMenuLabel, receiveMenuTitle, unreceiveMenuLabel, unreceiveMenuTitle, printReceivePrimaryLabel, splitMenuAriaLabel, splitMenuHoverTitle, printThenReceiveTitle,
     // claim / RETURN flow
-    claimModalOpen, setClaimModalOpen, claimModalInitialMode, openClaimModal,
+    openClaimModal,
     returnClaimPrefill, setReturnClaimPrefill,
     handleFileReturnClaim,
     commitPoNumberOrImportOrder,

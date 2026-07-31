@@ -35,6 +35,7 @@ import {
   toUiEntityType,
   type SearchHit,
 } from '@/lib/search/search-hit';
+import { orderIdFromSubtitle } from '@/lib/search/search-result-identity';
 
 export { looksLikeIdentifier };
 
@@ -248,9 +249,14 @@ function docRowToHit(row: DocHitRow, score: number, matchField: string): SearchH
     conditionGrade: row.condition_grade,
     sourcePlatform: row.source_platform,
   };
+  const entityType = toUiEntityType(row.entity_type);
+  const orderId =
+    entityType === 'order' || entityType === 'receiving'
+      ? orderIdFromSubtitle(row.subtitle)
+      : null;
   return {
     id: row.entity_id,
-    entityType: toUiEntityType(row.entity_type),
+    entityType,
     title: row.title,
     subtitle: row.subtitle ?? '',
     href: searchHitHref(row.entity_type, row.entity_id),
@@ -264,6 +270,7 @@ function docRowToHit(row: DocHitRow, score: number, matchField: string): SearchH
       tracking_number: row.tracking_number,
       carrier: row.carrier,
       serial_number: row.serial_number,
+      order_id: orderId,
       // ISO string so the row can render a relative date (formatRelativeTime).
       happened_at: row.happened_at ? new Date(row.happened_at).toISOString() : null,
     },
@@ -293,6 +300,9 @@ function exactResultToHit(result: GlobalSearchResult, rank: number): SearchHit {
       tracking_number: facets.tracking_number ?? null,
       carrier: facets.carrier ?? null,
       serial_number: facets.serial_number ?? null,
+      order_id: facets.order_id ?? null,
+      po_number: facets.po_number ?? null,
+      source_order_id: facets.source_order_id ?? null,
       happened_at: facets.happened_at ?? null,
     },
   };

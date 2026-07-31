@@ -3,10 +3,9 @@ import { test, expect, type APIRequestContext } from '@playwright/test';
 /**
  * Order workbench — /o/[orderId] (desktop project).
  *
- * Covers the dedicated order workspace:
+ * Covers the dedicated order workspace (concise single-scroll record):
  *   1. the expand control in the slide-over header navigates to /o/[id];
- *   2. /o/[id] renders the tabbed workbench (Shipping / Product / Documents /
- *      Timeline / Customer) with editable notes via the action dock;
+ *   2. /o/[id] renders identity + Item / Fulfillment cards (no tab strip);
  *   3. the order sidebar Recent list records visits and can switch orders;
  *   4. an FBA order id routes to the FBA workspace instead of dead-ending;
  *   5. editing a note persists (save via the notes composer).
@@ -35,31 +34,41 @@ async function readNotes(request: APIRequestContext, id: number): Promise<string
   return String(json.orders?.[0]?.notes ?? '');
 }
 
+/** Concise record is loaded when the Item card heading is on screen. */
+async function expectOrderRecordLoaded(page: import('@playwright/test').Page) {
+  await expect(page.getByRole('heading', { name: 'Item', exact: true })).toBeVisible({
+    timeout: 20_000,
+  });
+  await expect(page.getByRole('heading', { name: 'Fulfillment', exact: true })).toBeVisible();
+}
+
 test.describe('Order workbench (/o/[id])', () => {
   test('expand control in the shipped slide-over opens the order workbench', async ({ page }) => {
     test.skip(isMobile(), 'desktop full-page flow');
 
-    await page.goto(`/dashboard?shipped&openOrderId=${ORDER_ID}`);
+    await page.goto('/dashboard?shipped');
+    // Open any shipped row so the order-record slide-over mounts (deep-link
+    // `?openOrderId=` is not guaranteed to resolve on the QA fixture set).
+    const row = page.getByRole('row').filter({ hasNot: page.getByRole('columnheader') }).first();
+    await row.waitFor({ state: 'visible', timeout: 25_000 });
+    await row.click();
 
     const expand = page.getByRole('button', { name: 'Open full order page' }).first();
     await expand.waitFor({ state: 'visible', timeout: 25_000 });
     await expand.click();
 
-    await expect(page).toHaveURL(new RegExp(`/o/${ORDER_ID}(?:[/?#]|$)`), { timeout: 15_000 });
-    // Workbench header tabs are present (not the not-found state).
-    await expect(page.getByRole('tab', { name: 'Shipping' })).toBeVisible({ timeout: 20_000 });
+    await expect(page).toHaveURL(/\/o\/[^/?#]+(?:[/?#]|$)/, { timeout: 15_000 });
+    await expectOrderRecordLoaded(page);
   });
 
-  test('renders the tabbed workbench with shipping selected by default', async ({ page }) => {
+  test('renders the concise order record with sidebar recents', async ({ page }) => {
     test.skip(isMobile(), 'desktop full-page flow');
 
     await page.goto(`/o/${ORDER_ID}`);
 
-    await expect(page.getByRole('tab', { name: 'Shipping' })).toBeVisible({ timeout: 20_000 });
-    await expect(page.getByRole('tab', { name: 'Product' })).toBeVisible();
-    await expect(page.getByRole('tab', { name: 'Documents' })).toBeVisible();
-    await expect(page.getByRole('tab', { name: 'Timeline' })).toBeVisible();
-    await expect(page.getByRole('tab', { name: 'Customer' })).toBeVisible();
+    await expectOrderRecordLoaded(page);
+    // No legacy tab strip.
+    await expect(page.getByRole('tab', { name: 'Shipping' })).toHaveCount(0);
 
     // Order workspace sidebar Recent mode is mounted.
     await expect(page.getByRole('list', { name: 'Recently opened orders' })).toBeVisible({
@@ -71,7 +80,7 @@ test.describe('Order workbench (/o/[id])', () => {
     test.skip(isMobile(), 'desktop full-page flow');
 
     await page.goto(`/o/${ORDER_ID}`);
-    await page.getByRole('tab', { name: 'Product' }).click();
+    await expectOrderRecordLoaded(page);
 
     // Fixture 2902 is delivered → the grade renders as a single locked badge,
     // never the interactive 7-pill radiogroup. (Assumes a shipped fixture.)
@@ -86,10 +95,10 @@ test.describe('Order workbench (/o/[id])', () => {
     test.skip(!ORDER_ID_B || ORDER_ID_B === ORDER_ID, 'set PW_FULLPAGE_ORDER_ID_B to a second order id');
 
     await page.goto(`/o/${ORDER_ID}`);
-    await expect(page.getByRole('tab', { name: 'Shipping' })).toBeVisible({ timeout: 20_000 });
+    await expectOrderRecordLoaded(page);
 
     await page.goto(`/o/${ORDER_ID_B}`);
-    await expect(page.getByRole('tab', { name: 'Shipping' })).toBeVisible({ timeout: 20_000 });
+    await expectOrderRecordLoaded(page);
 
     const recentList = page.getByRole('list', { name: 'Recently opened orders' });
     await expect(recentList).toBeVisible();
@@ -122,7 +131,7 @@ test.describe('Order workbench (/o/[id])', () => {
 
     try {
       await page.goto(`/o/${ORDER_ID}`);
-      await expect(page.getByRole('tab', { name: 'Shipping' })).toBeVisible({ timeout: 20_000 });
+      await expectOrderRecordLoaded(page);
 
       // Open the notes editor from the header action bar.
       await page.getByRole('button', { name: /^Notes$/i }).first().click();

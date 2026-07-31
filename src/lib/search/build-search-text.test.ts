@@ -64,12 +64,13 @@ test('SERIAL_UNIT: items.name-preferred product title wins; serial in subtitle',
   assert.equal(doc.facets.serialNumber, 'ABC-123');
 });
 
-test('RECEIVING: tracking title, line items searchable, source platform facet', () => {
+test('RECEIVING: adaptive title (multi SKU → PO), line items searchable, platform facet', () => {
   const doc = buildSearchText('RECEIVING', {
     id: 3,
     tracking_number: '9400111899560000000000',
     carrier: 'USPS',
     po_number: 'PO-00123',
+    source_order_id: null,
     source_platform: 'ebay',
     intake_type: 'PO',
     exception_code: null,
@@ -82,13 +83,37 @@ test('RECEIVING: tracking title, line items searchable, source platform facet', 
     created_at: '2026-06-27T00:00:00Z',
     line_item_names: 'Samsung Galaxy S22 Sony WH-1000XM4',
     line_skus: 'SAM-S22 SONY-XM4',
+    line_count: 2,
+    distinct_sku_count: 2,
+    first_item_name: 'Samsung Galaxy S22',
   });
-  assert.equal(doc.title, '9400111899560000000000');
-  assert.equal(doc.subtitle, 'USPS · PO-00123 · ebay');
+  assert.equal(doc.title, 'ebay · PO-00123');
+  assert.equal(doc.subtitle, 'PO-00123 · USPS · ebay');
   assert.ok(doc.searchText.includes('Samsung Galaxy S22'));
   assert.ok(doc.searchText.includes('SAM-S22'));
   assert.equal(doc.facets.sourcePlatform, 'ebay');
   assert.equal(doc.facets.status, 'PENDING');
+  assert.equal(doc.facets.trackingNumber, '9400111899560000000000');
+});
+
+test('RECEIVING: single product → item name title', () => {
+  const doc = buildSearchText('RECEIVING', {
+    id: 4,
+    tracking_number: '9400111899560000000001',
+    carrier: 'USPS',
+    po_number: 'PO-99',
+    source_platform: 'ebay',
+    line_count: 1,
+    distinct_sku_count: 1,
+    first_item_name: 'Bose Wave Music System',
+    line_item_names: 'Bose Wave Music System',
+    line_skus: 'BOSE-1',
+    qa_status: null,
+    condition_grade: null,
+    received_at: null,
+    created_at: '2026-06-27T00:00:00Z',
+  });
+  assert.equal(doc.title, 'Bose Wave Music System');
 });
 
 test('SKU: product_title title, identifiers searchable, lifecycle as status', () => {

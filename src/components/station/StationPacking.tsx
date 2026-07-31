@@ -38,6 +38,99 @@ import { toast } from '@/lib/toast';
 import { refreshDomains } from '@/lib/refresh/bus';
 import { REFRESH_BUNDLES } from '@/lib/refresh/domains';
 import { safeRandomUUID } from '@/lib/safe-uuid';
+import { Button } from '@/design-system/primitives';
+import { printPackBundleFallback } from '@/lib/print/printPackBundleFallback';
+
+type PrintBundleUiStatus =
+  | 'idle'
+  | 'printing'
+  | 'dispatched'
+  | 'fallback_browser'
+  | 'missing'
+  | 'partial'
+  | 'failed'
+  | 'idempotent_replay';
+
+interface PrintBundleUiState {
+  status: PrintBundleUiStatus;
+  missingTypes: string[];
+  message: string;
+  orderRowId: number | null;
+  packerLogId: number | null;
+  manualsResolved?: number;
+}
+
+function printBundleMessage(
+  status: string,
+  missingTypes: string[],
+  manualsResolved = 0,
+): string {
+  const manualBit =
+    manualsResolved > 0
+      ? ` · ${manualsResolved} manual${manualsResolved === 1 ? '' : 's'}`
+      : '';
+  switch (status) {
+    case 'dispatched':
+      return `Papers sent to the bench printer${manualBit}.`;
+    case 'fallback_browser':
+      return `Opening print dialog for packing papers${manualBit}.`;
+    case 'missing':
+      return missingTypes.length
+        ? `No papers on file (${missingTypes.join(', ')}). Buy/fetch at Labels first.`
+        : 'No papers on file. Buy/fetch at Labels first.';
+    case 'partial':
+      return `Some papers printed${manualBit}; check Labels for the rest.`;
+    case 'failed':
+      return 'Print failed — tap Reprint or use Labels.';
+    case 'idempotent_replay':
+      return `Papers already printed for this pack${manualBit}.`;
+    default:
+      return '';
+  }
+}
+
+async function triggerPackPrintBundle(input: {
+  orderRowId: number;
+  packerLogId: number | null;
+  reprint?: boolean;
+}): Promise<PrintBundleUiState> {
+  const res = await fetch(`/api/orders/${input.orderRowId}/documents/print`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      packerLogId: input.packerLogId,
+      reprint: Boolean(input.reprint),
+    }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    return {
+      status: 'failed',
+      missingTypes: [],
+      message: String(data?.error || 'Print failed'),
+      orderRowId: input.orderRowId,
+      packerLogId: input.packerLogId,
+    };
+  }
+  const pb = data?.printBundle ?? {};
+  const status = String(pb.status || 'failed') as PrintBundleUiStatus;
+  const missingTypes = Array.isArray(pb.missingTypes)
+    ? pb.missingTypes.map(String)
+    : [];
+  const manualsResolved = Number(pb.manualsResolved ?? 0) || 0;
+  const fallback = Array.isArray(pb.browserFallbackDocs) ? pb.browserFallbackDocs : [];
+  if (fallback.length > 0) {
+    printPackBundleFallback(fallback);
+  }
+  return {
+    status,
+    missingTypes,
+    manualsResolved,
+    message: printBundleMessage(status, missingTypes, manualsResolved),
+    orderRowId: input.orderRowId,
+    packerLogId: input.packerLogId,
+  };
+}
 
 interface ActivePackingOrder {
   orderRowId: number | null;
@@ -119,6 +212,7 @@ export default function StationPacking({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [activeOrder, setActiveOrder] = useState<ActivePackingOrder | null>(null);
   const [activeFba, setActiveFba] = useState<ActiveFbaScan | null>(null);
+  const [printBundleUi, setPrintBundleUi] = useState<PrintBundleUiState | null>(null);
   const { data: packingPolicy } = usePackingPolicy();
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -188,6 +282,7 @@ export default function StationPacking({
     setErrorMessage(null);
     setActiveOrder(null);
     setActiveFba(null);
+    setPrintBundleUi(null);
 
     try {
       // ── Prepack unit QR — attach packing photos to the prepacked unit ────
@@ -366,6 +461,32 @@ export default function StationPacking({
               Number.isFinite(packerLogIdRaw) && packerLogIdRaw > 0 ? packerLogIdRaw : null,
             isUnknownOrder,
           });
+
+          // JIT pack Phase 1 — PoPC after ORDERS pack (not SKU-only / unknown).
+          if (
+            !isSku &&
+            !isUnknownOrder &&
+            orderRowId &&
+            data?.printBundleSuggested
+          ) {
+            setPrintBundleUi({
+              status: 'printing',
+              missingTypes: [],
+              message: 'Printing packing papers…',
+              orderRowId,
+              packerLogId:
+                Number.isFinite(packerLogIdRaw) && packerLogIdRaw > 0
+                  ? packerLogIdRaw
+                  : null,
+            });
+            void triggerPackPrintBundle({
+              orderRowId,
+              packerLogId:
+                Number.isFinite(packerLogIdRaw) && packerLogIdRaw > 0
+                  ? packerLogIdRaw
+                  : null,
+            }).then(setPrintBundleUi);
+          }
         }
 
         onComplete?.();
@@ -465,7 +586,58 @@ export default function StationPacking({
                 <p className="text-xs font-semibold">{errorMessage}</p>
               </motion.div>
             )}
+          </AnimatePresence>
 
+          <AnimatePresence mode="wait">
+            {printBundleUi && printBundleUi.status !== 'idle' && (
+              <motion.div
+                key={`print-${printBundleUi.status}-${printBundleUi.orderRowId}`}
+                {...cardPresence}
+                transition={cardTransition}
+                className={
+                  printBundleUi.status === 'failed' || printBundleUi.status === 'missing'
+                    ? 'rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2.5'
+                    : printBundleUi.status === 'printing'
+                      ? 'rounded-2xl border border-border-soft bg-surface-card px-3 py-2.5'
+                      : 'rounded-2xl border border-emerald-200 bg-emerald-50 px-3 py-2.5'
+                }
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">
+                      Pack papers
+                    </p>
+                    <p className="mt-1 text-role-caption font-semibold text-text-default">
+                      {printBundleUi.message || 'Working…'}
+                    </p>
+                  </div>
+                  {printBundleUi.orderRowId &&
+                  printBundleUi.status !== 'printing' &&
+                  printBundleUi.status !== 'missing' ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => {
+                        const orderRowId = printBundleUi.orderRowId!;
+                        setPrintBundleUi({
+                          ...printBundleUi,
+                          status: 'printing',
+                          message: 'Reprinting…',
+                        });
+                        void triggerPackPrintBundle({
+                          orderRowId,
+                          packerLogId: printBundleUi.packerLogId,
+                          reprint: true,
+                        }).then(setPrintBundleUi);
+                      }}
+                    >
+                      Reprint
+                    </Button>
+                  ) : null}
+                </div>
+              </motion.div>
+            )}
           </AnimatePresence>
 
           {/* FBA scan result card */}

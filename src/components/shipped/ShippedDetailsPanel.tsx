@@ -23,7 +23,9 @@ import {
 import { ShippedDetailsHeader } from './details-panel/ShippedDetailsHeader';
 import { ShippedDetailsBody } from './details-panel/ShippedDetailsBody';
 import { ShippedPanelEditorDock } from './details-panel/ShippedPanelEditorDock';
+import { OrderIdentityHeader } from '@/components/order-record/OrderIdentityHeader';
 import { OrderRecordBody } from '@/components/order-record/OrderRecordBody';
+import { getAccountSourceLabel } from '@/utils/order-links';
 
 export type { ShippedActiveInput };
 
@@ -87,6 +89,7 @@ export function ShippedDetailsPanel({
   } = useShippedDetailState(initialShipped, onUpdate);
 
   const meta = deriveShippedHeaderMeta(shipped);
+  const platformLabel = getAccountSourceLabel(shipped.order_id, shipped.account_source);
 
   const {
     activeSection,
@@ -200,25 +203,40 @@ export function ShippedDetailsPanel({
       ariaLabel={`Order ${meta.orderIdDisplay} details`}
     >
       <div className="flex h-full min-h-0 flex-col overflow-hidden">
-        <ShippedDetailsHeader
-          orderIdDisplay={meta.orderIdDisplay}
-          showExceptionsFallback={meta.showExceptionsFallback}
-          copiedOrderId={copiedOrderId}
-          onCopyOrderId={handleCopyOrderId}
-          onClose={onClose}
-          actions={headerBarActions}
-          onMoveUp={stackActionBar.onMoveUp}
-          onMoveDown={stackActionBar.onMoveDown}
-          // Slide-over drops the Customer/Warranty tabs — both render as
-          // quick-link rows (OrderQuickLinksSection); the full-page view keeps them.
-          showCustomerTab={false}
-          showWarrantyTab={false}
-          showDocumentsTab={showDocumentsTab}
-          showTabs={!isOrderRecord}
-          activeSection={activeSection}
-          onSectionChange={setActiveSection}
-          onOpenFullPage={() => router.push(`/o/${shipped.id}`)}
-        />
+        {isOrderRecord ? (
+          <OrderIdentityHeader
+            orderIdDisplay={meta.orderIdDisplay}
+            showExceptionsFallback={meta.showExceptionsFallback}
+            statusLabel={meta.statusLabel}
+            statusTone={meta.statusTone}
+            platformLabel={platformLabel}
+            copiedOrderId={copiedOrderId}
+            onCopyOrderId={handleCopyOrderId}
+            actions={headerBarActions}
+            onMoveUp={stackActionBar.onMoveUp}
+            onMoveDown={stackActionBar.onMoveDown}
+            onOpenFullPage={() => router.push(`/o/${shipped.id}`)}
+            compact
+          />
+        ) : (
+          <ShippedDetailsHeader
+            orderIdDisplay={meta.orderIdDisplay}
+            showExceptionsFallback={meta.showExceptionsFallback}
+            copiedOrderId={copiedOrderId}
+            onCopyOrderId={handleCopyOrderId}
+            onClose={onClose}
+            actions={headerBarActions}
+            onMoveUp={stackActionBar.onMoveUp}
+            onMoveDown={stackActionBar.onMoveDown}
+            showCustomerTab={false}
+            showWarrantyTab={false}
+            showDocumentsTab={showDocumentsTab}
+            showTabs
+            activeSection={activeSection}
+            onSectionChange={setActiveSection}
+            onOpenFullPage={() => router.push(`/o/${shipped.id}`)}
+          />
+        )}
 
         {isOrderRecord ? (
           <>

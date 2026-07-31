@@ -9,7 +9,7 @@
  * so the board under the strip collapses to that lane.
  */
 
-import { useMemo, type ReactNode } from 'react';
+import { useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { unshippedQueueCountsQuery } from '@/lib/queries/dashboard-queries';
@@ -43,23 +43,6 @@ function MetricKpiTile({ metric, toShipFilter }: { metric: ComputedMetric; toShi
   const toneHero = metric.intent === 'warn' || metric.intent === 'bad';
   const clickable = Boolean(metric.filterUstatus && toShipFilter);
   const active = Boolean(metric.filterUstatus && toShipFilter?.active === metric.filterUstatus);
-  // DeltaChip wins when present (Packed WoW); otherwise status footer.
-  const footer: ReactNode =
-    metric.delta !== undefined
-      ? undefined
-      : metric.status
-        ? (
-            <span
-              className={cn(
-                'mt-1.5 inline-flex items-center gap-1.5 text-role-eyebrow font-semibold uppercase tracking-widest',
-                tone,
-              )}
-            >
-              <span className={cn('h-1.5 w-1.5 rounded-full bg-current', tone)} aria-hidden="true" />
-              {active ? 'Filtered' : metric.status}
-            </span>
-          )
-        : undefined;
 
   const tile = (
     <KpiTile
@@ -68,8 +51,6 @@ function MetricKpiTile({ metric, toShipFilter }: { metric: ComputedMetric; toShi
       valueClassName={toneHero ? tone : undefined}
       delta={metric.delta}
       invertDelta={metric.deltaInvert}
-      deltaVsLabel="vs last wk"
-      footer={footer}
       active={active}
       onOpen={
         clickable ? () => toShipFilter?.toggle(metric.filterUstatus as FulfillmentState) : undefined
@@ -89,9 +70,11 @@ function MetricKpiTile({ metric, toShipFilter }: { metric: ComputedMetric; toShi
 function SkeletonKpiTile() {
   return (
     <div className={cn(MONITOR_KPI_TILE_CLASS, 'h-full')}>
-      <div className="h-2.5 w-16 rounded-full bg-surface-strong" />
+      <div className="flex items-start justify-between gap-3">
+        <div className="h-2.5 w-16 rounded-full bg-surface-strong" />
+        <div className="h-2.5 w-8 rounded-full bg-surface-strong" />
+      </div>
       <div className="mt-2 h-7 w-14 rounded bg-surface-strong" />
-      <div className="mt-2.5 h-2.5 w-20 rounded-full bg-surface-strong" />
     </div>
   );
 }

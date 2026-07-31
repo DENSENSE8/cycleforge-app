@@ -71,10 +71,12 @@ export function OpsKpiBandSkeleton({
     <div className={cn(OPS_KPI_BAND_CLASS, 'animate-pulse')} aria-busy="true" aria-live="polite">
       <span className="sr-only">{loadingLabel}</span>
       {Array.from({ length: count }).map((_, index) => (
-        <div key={index} className={cn(MONITOR_KPI_TILE_CLASS, cell, 'h-24')}>
-          <div className="h-2.5 w-16 rounded-full bg-surface-strong" />
+        <div key={index} className={cn(MONITOR_KPI_TILE_CLASS, cell, 'h-20')}>
+          <div className="flex items-start justify-between gap-3">
+            <div className="h-2.5 w-16 rounded-full bg-surface-strong" />
+            <div className="h-2.5 w-8 rounded-full bg-surface-strong" />
+          </div>
           <div className="mt-2 h-7 w-14 rounded bg-surface-strong" />
-          <div className="mt-2.5 h-2.5 w-20 rounded-full bg-surface-strong" />
         </div>
       ))}
     </div>

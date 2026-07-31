@@ -118,17 +118,13 @@ const PickupGridLeafRow = memo(function PickupGridLeafRow({
       case 'order':
         return (
           <div data-col="order" className={dataCell(col, rule)}>
-            {line.po_number ? (
-              <OrderIdChip
-                value={line.po_number}
-                display={getLast4(line.po_number)}
-                plain
-                truncateDisplay={false}
-                fitDisplayWidth
-              />
-            ) : (
-              <GridCellDash />
-            )}
+            <OrderIdChip
+              value={line.po_number || ''}
+              display={getLast4(line.po_number)}
+              plain
+              truncateDisplay={false}
+              fitDisplayWidth
+            />
           </div>
         );
       case 'date':
@@ -274,17 +270,13 @@ function PickupGridGroupSummary({
       case 'order':
         return (
           <div data-col="order" className={dataCell(col, rule)}>
-            {first.po_number ? (
-              <OrderIdChip
-                value={first.po_number}
-                display={getLast4(first.po_number)}
-                plain
-                truncateDisplay={false}
-                fitDisplayWidth
-              />
-            ) : (
-              <GridCellDash />
-            )}
+            <OrderIdChip
+              value={first.po_number || ''}
+              display={getLast4(first.po_number)}
+              plain
+              truncateDisplay={false}
+              fitDisplayWidth
+            />
           </div>
         );
       case 'date':

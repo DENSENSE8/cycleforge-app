@@ -415,7 +415,38 @@ async function resolvePoIdLocallyByTracking(
       LIMIT 1`,
     [canon],
   );
-  return m.rows[0]?.zoho_purchaseorder_id ? String(m.rows[0].zoho_purchaseorder_id) : null;
+  if (m.rows[0]?.zoho_purchaseorder_id) return String(m.rows[0].zoho_purchaseorder_id);
+
+  // 3. Digit-prefix near-miss — truncated Zoho Reference# (e.g. missing one
+  //    digit before the carrier suffix). Require an unambiguous single hit.
+  const digits = canon.replace(/\D/g, '');
+  if (digits.length < 8) return null;
+  const near = await tenantQuery<{ zoho_purchaseorder_id: string }>(
+    orgId,
+    `SELECT zoho_purchaseorder_id
+       FROM zoho_po_mirror
+      WHERE organization_id = $2
+        AND NULLIF(regexp_replace(COALESCE(reference_number, ''), '[^0-9]', '', 'g'), '') IS NOT NULL
+        AND abs(
+              length(regexp_replace(COALESCE(reference_number, ''), '[^0-9]', '', 'g'))
+              - length($1)
+            ) BETWEEN 1 AND 2
+        AND (
+              regexp_replace(COALESCE(reference_number, ''), '[^0-9]', '', 'g') LIKE $1 || '%'
+           OR $1 LIKE regexp_replace(COALESCE(reference_number, ''), '[^0-9]', '', 'g') || '%'
+            )
+      ORDER BY last_synced_at DESC NULLS LAST
+      LIMIT 2`,
+    [digits, orgId],
+  );
+  if (near.rows.length !== 1) return null;
+  console.warn('[lookup-po] digit-prefix near-miss on zoho_po_mirror.reference_number', {
+    digits,
+    zoho_purchaseorder_id: near.rows[0]?.zoho_purchaseorder_id,
+  });
+  return near.rows[0]?.zoho_purchaseorder_id
+    ? String(near.rows[0].zoho_purchaseorder_id)
+    : null;
 }
 
 /**

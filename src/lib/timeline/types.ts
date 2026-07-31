@@ -59,10 +59,11 @@ export interface TimelineRef {
 
 /**
  * A photo attached to an event, rendered by {@link EventTimeline} as an inline
- * thumbnail strip (unbox / testing captures on a unit timeline). The renderer
- * shows `thumbUrl` and links out to `fullUrl`; it never fetches — the section
- * component pre-attaches the media. Omit ⇒ no media block (existing consumers
- * are unaffected).
+ * thumbnail strip (unbox / testing captures on a unit timeline). Click opens
+ * the shared photo-gallery SoT (`usePhotoGallery` + `PhotoViewerPortal` →
+ * `PhotoViewerModal`); the renderer never fetches — the section component
+ * pre-attaches the media. Omit ⇒ no media block (existing consumers are
+ * unaffected).
  */
 export interface TimelineMedia {
   photoId: number;
@@ -141,8 +142,9 @@ export interface TimelineItem {
   href?: string;
   /**
    * Inline photo thumbnails for this event (unbox / testing captures). Rendered
-   * as a horizontal thumbnail strip under the row; omit ⇒ no media block. The
-   * adapter attaches these — {@link EventTimeline} never fetches.
+   * as a horizontal thumbnail strip under the row; click opens the shared
+   * PhotoViewerModal. Omit ⇒ no media block. The adapter attaches these —
+   * {@link EventTimeline} never fetches.
    */
   media?: TimelineMedia[];
   /**

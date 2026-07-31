@@ -16,6 +16,7 @@ import { ActivityInboxPopover } from '@/components/quick-access/ActivityInboxPop
 import { ClipboardHistoryPopover } from '@/components/quick-access/ClipboardHistoryPopover';
 import { FeedbackPopover } from '@/components/quick-access/FeedbackWidget';
 import { PhoneSignInQrButton } from '@/components/quick-access/PhoneSignInQrButton';
+import { KioskPreviewButton } from '@/components/quick-access/KioskPreviewButton';
 import { getStaffThemeById, stationThemeColors } from '@/utils/staff-colors';
 import {
   HEADER_ICON_BTN_CLASS,
@@ -27,8 +28,11 @@ import {
 
 type OpenPopover = 'none' | 'history' | 'inbox' | 'account' | 'clipboard' | 'feedback';
 
-/** Matches `RightRailHost` — the header rail aligns with the detail panel below. */
-const HEADER_RAIL_WIDTH = 'w-[420px]';
+/**
+ * Matches `RightRailHost` at rest — min width keeps icons column-aligned with
+ * the detail panel. Grows left when search expands (icons stay `shrink-0`).
+ */
+const HEADER_RAIL_WIDTH = 'min-w-[420px]';
 
 function initials(name: string): string {
   return name
@@ -42,7 +46,7 @@ function initials(name: string): string {
 /**
  * Persistent right zone of the {@link GlobalHeader}.
  *
- * Desktop layout: a 420px right rail (aligned with detail panels) holds
+ * Desktop layout: a ≥420px right rail (aligned with detail panels at rest) holds
  * icon-only search + AI (expanding on hover/focus) and quick-action icons —
  * one shared {@link HEADER_ICON_CLUSTER} gap / glyph / button chrome.
  */
@@ -105,6 +109,12 @@ export function GlobalHeaderActions({ variant = 'desktop' }: { variant?: 'deskto
       <div className={wrapClass}>
         <PhoneSignInQrButton size={iconBtnSize} iconClassName={iconSize} />
       </div>
+
+      {!isMobile ? (
+        <div className={wrapClass}>
+          <KioskPreviewButton size={iconBtnSize} iconClassName={iconSize} />
+        </div>
+      ) : null}
 
       <div ref={inboxAnchorRef} className={wrapClass}>
         <HoverTooltip label="Notifications" asChild>

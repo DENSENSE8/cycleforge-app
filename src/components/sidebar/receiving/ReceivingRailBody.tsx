@@ -27,6 +27,8 @@ interface ReceivingRailBodyProps {
   triageLeadingRow?: ReceivingLineRow | null;
   /** Live filter text for the triage Found/Unfound lists. */
   triageFilterText: string;
+  /** Live filter text for the Unboxed recent dock (`feed=unboxRecent`). */
+  unboxFilterText?: string;
 }
 
 export function ReceivingRailBody({
@@ -34,6 +36,7 @@ export function ReceivingRailBody({
   selectedLine,
   triageLeadingRow = null,
   triageFilterText,
+  unboxFilterText = '',
 }: ReceivingRailBodyProps) {
   const selectedLineId = selectedLine?.id ?? null;
   // Unfound cartons are lineless stubs (negative id) but still open a workspace
@@ -72,6 +75,7 @@ export function ReceivingRailBody({
       feed="unboxRecent"
       selectedLineId={selectedLineId}
       selectedRow={selectedRow}
+      filterText={unboxFilterText}
     />
   );
 }

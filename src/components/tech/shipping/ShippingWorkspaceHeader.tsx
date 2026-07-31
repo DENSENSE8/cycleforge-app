@@ -12,7 +12,7 @@ import {
   OutboundExactFilters,
   useToShipFilterHotkeys,
 } from '@/components/dashboard/OutboundFilterStrip';
-import { WorkbenchChromeHeader } from '@/components/dashboard/workbench-shell';
+import { WorkbenchChromeHeader, WorkbenchTrailingCluster } from '@/components/dashboard/workbench-shell';
 import { OutboundOrderChromeActions } from '@/components/dashboard/OutboundOrderChromeActions';
 import { ToolbarSearchToggle } from '@/components/ui/ToolbarSearchToggle';
 import { StaffFilterButton } from '@/components/ui/StaffFilterButton';
@@ -87,6 +87,7 @@ export function ShippingWorkspaceHeader({
 
   return (
     <WorkbenchChromeHeader
+      density="band"
       tabs={tabs}
       activeTab={tab}
       onTabChange={(id) => onSelectTab(id as ShippingWorkspaceTab)}
@@ -98,7 +99,13 @@ export function ShippingWorkspaceHeader({
       // only shown where the tab's list actually filters on it.
       search={chrome.search}
       right={chrome.right}
-      trailing={onNewOrder ? <OutboundOrderChromeActions onNewOrder={onNewOrder} /> : undefined}
+      trailing={
+        onNewOrder ? (
+          <WorkbenchTrailingCluster
+            actions={<OutboundOrderChromeActions onNewOrder={onNewOrder} />}
+          />
+        ) : undefined
+      }
     />
   );
 }

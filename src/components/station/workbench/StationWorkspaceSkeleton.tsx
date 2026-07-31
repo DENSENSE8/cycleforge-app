@@ -254,10 +254,10 @@ export function StationWorkspaceSkeleton({
           {showIdentityTabs ? <SectionTabsStrip /> : null}
 
           {body === 'unbox-overview' ? (
-            <>
+            <div className="space-y-4">
               <UnboxProductSerialCard />
               <UnboxLabelCard />
-            </>
+            </div>
           ) : (
             sectionRows.map((rows, i) => <SkeletonSectionCard key={i} rows={rows} />)
           )}

@@ -27,6 +27,19 @@ const IN_SCOPE_MOUNTS = [
   'src/components/receiving/unbox/UnboxWorkspaceHeader.tsx',
 ] as const;
 
+/**
+ * Surfaces that must compose WorkbenchTrailingCluster for sort/actions
+ * (honest absence of Fields OK — no GridFieldsMenu SoT yet).
+ */
+const TRAILING_CLUSTER_ADOPTERS = [
+  'src/components/packer/PackWorkspaceHeader.tsx',
+  'src/components/tech/testing/TestingWorkspaceHeader.tsx',
+  'src/components/tech/shipping/ShippingWorkspaceHeader.tsx',
+  'src/components/outbound/labels/LabelsWorkspaceHeader.tsx',
+  'src/components/support/zendesk/SupportTicketsBoard.tsx',
+  'src/components/photos/PhotoLibraryWorkspaceHeader.tsx',
+] as const;
+
 function walkTsx(dir: string, out: string[] = []): string[] {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     if (entry.name === 'node_modules' || entry.name === '.next' || entry.name === 'dist') continue;
@@ -73,6 +86,21 @@ describe('WorkbenchTrailingCluster SoT', () => {
     });
   }
 
+  for (const rel of TRAILING_CLUSTER_ADOPTERS) {
+    it(`${rel} composes WorkbenchTrailingCluster (no raw sort beside search)`, () => {
+      const src = readFileSync(join(ROOT, rel), 'utf8');
+      assert.match(src, /WorkbenchTrailingCluster/);
+      // Display sort must not live in the `right` filter cluster
+      const rightBlock = src.match(/right=\{[\s\S]*?\n\s*(trailing|controlsSlot|className)/);
+      if (rightBlock) {
+        assert.doesNotMatch(rightBlock[0], /QueueSortSwitch/);
+        assert.doesNotMatch(rightBlock[0], /PhotoSortMenu/);
+        assert.doesNotMatch(rightBlock[0], /ZendeskSelect/);
+        assert.doesNotMatch(rightBlock[0], /SortToggle/);
+      }
+    });
+  }
+
   it('Repair trailing places Sort before Fields', () => {
     const src = readFileSync(join(ROOT, 'src/components/repair/RepairWorkspaceHeader.tsx'), 'utf8');
     const sortProp = src.indexOf('sort={');
@@ -83,6 +111,36 @@ describe('WorkbenchTrailingCluster SoT', () => {
   it('ReceivingLinesTable embedded portal does not inject GridFieldsMenu', () => {
     const src = readFileSync(join(ROOT, 'src/components/station/ReceivingLinesTable.tsx'), 'utf8');
     assert.doesNotMatch(src, /GridFieldsMenu/);
+  });
+
+  it('Incoming uses tableId incoming; History/Unbox keep receiving', () => {
+    const incomingHeader = readFileSync(
+      join(ROOT, 'src/components/sidebar/receiving/incoming/IncomingWorkspaceHeader.tsx'),
+      'utf8',
+    );
+    const historyHeader = readFileSync(
+      join(ROOT, 'src/components/sidebar/receiving/HistoryWorkspaceHeader.tsx'),
+      'utf8',
+    );
+    const unboxHeader = readFileSync(
+      join(ROOT, 'src/components/receiving/unbox/UnboxWorkspaceHeader.tsx'),
+      'utf8',
+    );
+    const incomingGrid = readFileSync(
+      join(ROOT, 'src/components/station/incoming-grid/IncomingGridView.tsx'),
+      'utf8',
+    );
+    const linesTable = readFileSync(
+      join(ROOT, 'src/components/station/ReceivingLinesTable.tsx'),
+      'utf8',
+    );
+    assert.match(incomingHeader, /tableId="incoming"/);
+    assert.doesNotMatch(incomingHeader, /tableId="receiving"/);
+    assert.match(historyHeader, /tableId="receiving"/);
+    assert.match(unboxHeader, /tableId="receiving"/);
+    assert.match(incomingGrid, /tableId = 'incoming'/);
+    assert.match(linesTable, /tableId="incoming"/);
+    assert.match(linesTable, /tableId=\{isIncomingMode \? 'incoming' : 'receiving'\}/);
   });
 
   it('bans TableActionBar component / JSX under src/ (comments OK)', () => {

@@ -169,6 +169,46 @@ export function GridSlaCellValue({
 }
 
 /**
+ * Received/expected quantity fraction (`0/1`, `0/?`) — Unbox / Incoming
+ * workbench qty track. `?` is load-bearing when expected is unknown (unfound
+ * PO). Tone: multi-unit expected → warning; complete → emerald; else muted.
+ */
+export function GridQtyFractionValue({
+  received,
+  expected,
+  tooltip,
+  className,
+}: {
+  received: number;
+  expected?: number | null;
+  /** Hover tip; defaults to a plain-language received/expected sentence. */
+  tooltip?: string | null;
+  className?: string;
+}) {
+  const text = `${received}/${expected ?? '?'}`;
+  const qtyExpected = expected ?? 0;
+  const tone =
+    qtyExpected > 1
+      ? 'text-text-warning'
+      : expected != null && received >= expected
+        ? 'text-emerald-600'
+        : 'text-text-muted';
+  const tip =
+    tooltip ??
+    (expected == null
+      ? `${received} received · expected count unknown (no PO line matched yet)`
+      : `${received} of ${expected} received`);
+
+  return (
+    <HoverTooltip label={tip} focusable={false}>
+      <span className={cn('min-w-0 truncate tabular-nums text-role-caption', tone, className)}>
+        {text}
+      </span>
+    </HoverTooltip>
+  );
+}
+
+/**
  * Fixed platform brand mark — display variant (tooltip + sr-only label), the
  * shape the station grids and group summaries share. The Pending leaf row keeps
  * its richer `OrderIdentityChips` mark (listing link + hover menu) — that is a

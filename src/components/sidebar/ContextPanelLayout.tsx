@@ -1,13 +1,12 @@
 'use client';
 
-import { useRef, type ReactNode } from 'react';
+import { type ReactNode } from 'react';
 import dynamic from 'next/dynamic';
 import { usePathname } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { ErrorBoundary } from '@/components/error/ErrorBoundary';
 import { ChevronRight } from '@/components/Icons';
 import { useHasSidebarContext } from '@/components/sidebar/useHasSidebarContext';
-import { ContextPanelCollapseCue } from '@/components/sidebar/ContextPanelCollapseCue';
 import {
   CONTEXT_PANEL_COLLAPSE,
   CONTEXT_PANEL_COLLAPSE_STRIP_CLASS,

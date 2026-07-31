@@ -31,4 +31,15 @@ describe('EventTimeline rail glyphs', () => {
     assert.match(src, /glyphSpec\.tooltip/);
     assert.match(src, /glyphHref/);
   });
+
+  it('opens timeline media via PhotoViewerPortal, never a new tab', () => {
+    assert.match(src, /usePhotoGallery/);
+    assert.match(src, /PhotoViewerPortal/);
+    assert.match(src, /TimelineMediaStrip/);
+    assert.equal(
+      /href=\{m\.fullUrl\}/.test(src) || /target="_blank"/.test(src),
+      false,
+      'timeline thumbs must not open fullUrl in a new tab',
+    );
+  });
 });

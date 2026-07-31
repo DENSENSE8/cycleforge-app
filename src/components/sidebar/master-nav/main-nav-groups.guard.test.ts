@@ -1,10 +1,10 @@
 /**
- * Source guard: Main L1 nests Overview / Library; Stations stay nested Floor/Desk
- * on the root map; Stock is a Vercel-style drill-in (root chevron → back + children).
+ * Source guard: Spine L1 is section drills (Overview / Library / Floor / Desk /
+ * Stock) — root buttons replace the body with back + pages. Modes stay accordion.
  *
- * SoT: MAIN_GROUPS + STOCK_DRILL + kind stock rows in sidebar-navigation.ts
+ * SoT: SPINE_DRILLS + spineDrillIdForPage + MAIN_GROUPS / STATION_GROUPS / STOCK_DRILL
  * Display law: .claude/rules/display/workbench.md
- * Brief: docs/todo/spine-drill-in-vercel-GEMINI-RESEARCH-BRIEFING.md
+ * Brief: docs/todo/spine-drill-in-vercel-GEMINI-RESEARCH-BRIEFING.md (evolved: full section drill)
  *
  * Run: node --test --import tsx \
  *        src/components/sidebar/master-nav/main-nav-groups.guard.test.ts
@@ -18,7 +18,9 @@ import {
   APP_SIDEBAR_NAV,
   MAIN_GROUPS,
   SIDEBAR_PAGE_NAV,
+  SPINE_DRILLS,
   STOCK_DRILL,
+  spineDrillIdForPage,
   type MainGroupId,
 } from '@/lib/sidebar-navigation';
 
@@ -53,6 +55,32 @@ test('MAIN_GROUPS is Overview then Library (Stock drills, not a Main nest)', () 
 test('STOCK_DRILL label is Stock', () => {
   assert.equal(STOCK_DRILL.id, 'stock');
   assert.equal(STOCK_DRILL.label, 'Stock');
+});
+
+test('SPINE_DRILLS is Overview → Library → Floor → Desk → Stock', () => {
+  assert.deepEqual(
+    SPINE_DRILLS.map((d) => d.id),
+    ['overview', 'library', 'floor', 'desk', 'stock'],
+  );
+});
+
+test('spineDrillIdForPage maps main/station/stock pages; top/bottom pins are null', () => {
+  assert.equal(spineDrillIdForPage({ kind: 'main', mainGroup: 'overview' }), 'overview');
+  assert.equal(spineDrillIdForPage({ kind: 'main', mainGroup: 'library' }), 'library');
+  assert.equal(spineDrillIdForPage({ kind: 'station', stationGroup: 'floor' }), 'floor');
+  assert.equal(spineDrillIdForPage({ kind: 'station', stationGroup: 'desk' }), 'desk');
+  assert.equal(spineDrillIdForPage({ kind: 'stock' }), 'stock');
+  assert.equal(spineDrillIdForPage({ kind: 'top' }), null);
+  assert.equal(spineDrillIdForPage({ kind: 'bottom' }), null);
+});
+
+test('Search then Media are kind top (header pin, not Overview/Library)', () => {
+  const topIds = APP_SIDEBAR_NAV.filter((item) => item.kind === 'top').map((item) => item.id);
+  assert.deepEqual(topIds, ['search', 'ops-photos']);
+  const search = APP_SIDEBAR_NAV.find((item) => item.id === 'search');
+  const media = APP_SIDEBAR_NAV.find((item) => item.id === 'ops-photos');
+  assert.equal(search?.kind, 'top');
+  assert.equal(media?.kind, 'top');
 });
 
 test('every APP_SIDEBAR_NAV main declares mainGroup overview|library', () => {
@@ -121,35 +149,57 @@ test('Overview → Library filtered order in APP_SIDEBAR_NAV mains', () => {
   }
 });
 
-test('SidebarNavList: Stock drill via STOCK_DRILL; no Overview/Library twin; ChevronRight drill affordance', () => {
-  assert.match(LIST_SRC, /MAIN_GROUPS/);
-  assert.match(LIST_SRC, /STOCK_DRILL/);
+test('SidebarNavList: section drills via SPINE_DRILLS; no label twins; ChevronRight affordance', () => {
+  assert.match(LIST_SRC, /SPINE_DRILLS/);
+  assert.match(LIST_SRC, /spineDrillIdForPage/);
   assert.doesNotMatch(LIST_SRC, /['"]Overview['"]/);
   assert.doesNotMatch(LIST_SRC, /['"]Library['"]/);
-  // Stock label comes from STOCK_DRILL — no hard-coded twin string in render.
+  assert.doesNotMatch(LIST_SRC, /['"]Floor['"]/);
+  assert.doesNotMatch(LIST_SRC, /['"]Desk['"]/);
   assert.doesNotMatch(LIST_SRC, /label: ['"]Stock['"]/);
   assert.match(LIST_SRC, /ChevronRight/);
   assert.match(LIST_SRC, /ChevronLeft/);
   assert.match(LIST_SRC, /onDrillChange/);
   assert.match(LIST_SRC, /role=["']group["']/);
-  assert.match(LIST_SRC, /aria-labelledby/);
 });
 
-test('SidebarNavList: Stock drill back header centers STOCK_DRILL label', () => {
-  assert.match(LIST_SRC, /STOCK_DRILL\.label/);
-  assert.match(LIST_SRC, /text-center text-role-eyebrow/);
-  // Optical center: chevron | title | mirror spacer (not left-packed flex-1).
+test('SidebarNavList: Search/Media top pin band above drills; Settings/Admin footer', () => {
+  assert.match(LIST_SRC, /kind === ['"]top['"]/);
+  assert.match(LIST_SRC, /border-b border-border-soft/);
+  assert.match(LIST_SRC, /renderRow\(page, ['"]top['"]/);
+  assert.match(LIST_SRC, /renderRow\(page, ['"]bottom['"]/);
+  // GlobalHeaderSearch / AI must not twin into the spine list.
+  assert.doesNotMatch(LIST_SRC, /GlobalHeaderSearch/);
+  assert.doesNotMatch(LIST_SRC, /HeaderAi/);
+});
+
+test('SidebarNavList: drill back header centers section label from SoT', () => {
+  assert.match(LIST_SRC, /drill\.label/);
+  assert.match(LIST_SRC, /text-center text-role-caption/);
   assert.match(LIST_SRC, /grid-cols-\[1\.25rem_1fr_1\.25rem\]/);
 });
 
-test('SidebarNavList: Stock drill uses named spineDrill SoT (opacity-only; no inline x slide)', () => {
+test('SidebarNavList: page/drill/mode destinations share caption; modes stay readable', () => {
+  // Destinations are places (caption sans) — not eyebrow chrome DNA or micro whisper.
+  assert.match(LIST_SRC, /text-role-caption font-semibold/);
+  assert.match(LIST_SRC, /text-role-caption font-medium/);
+  assert.doesNotMatch(LIST_SRC, /text-role-eyebrow font-semibold/);
+  assert.doesNotMatch(LIST_SRC, /text-role-micro font-medium/);
+  // Idle modes stay default ink (active alone takes blue) — not muted/faint.
+  assert.match(LIST_SRC, /text-text-default hover:bg-surface-canvas/);
+  assert.match(LIST_SRC, /modeActive \? 'text-blue-600' : 'text-text-muted'/);
+});
+
+test('SidebarNavList: inactive page/drill rows whisper until hover or active', () => {
+  assert.match(LIST_SRC, /text-text-muted hover:bg-surface-canvas hover:text-text-default/);
+});
+
+test('SidebarNavList: section drills use named spineDrill SoT (opacity-only; no inline x slide)', () => {
   assert.match(LIST_SRC, /framerPresence\.spineDrill/);
   assert.match(LIST_SRC, /framerTransition\.spineDrill/);
   assert.match(LIST_SRC, /useMotionPresence/);
-  // Drill swap must not revive a page-local horizontal slide twin.
   assert.doesNotMatch(LIST_SRC, /x:\s*drillId/);
   assert.doesNotMatch(LIST_SRC, /x:\s*-?12/);
-  // SoT presence (last spineDrill object) is opacity-only — no x/y.
   const presenceMatches = [
     ...MOTION_SRC.matchAll(/spineDrill:\s*\{[\s\S]*?\n\s*\},?/g),
   ];
@@ -162,19 +212,9 @@ test('SidebarNavList: Stock drill uses named spineDrill SoT (opacity-only; no in
   assert.doesNotMatch(presenceBlock, /\by\s*:/);
 });
 
-test('MasterNav: auto-drill on kind stock does not steal focus', () => {
-  assert.match(MASTER_SRC, /kind === ['"]stock['"]/);
-  assert.match(MASTER_SRC, /setDrillId\(['"]stock['"]\)/);
-  // Route-driven enter/leave must not focus sidebar chrome (main content stays).
+test('MasterNav: auto-drill on section change does not steal focus', () => {
+  assert.match(MASTER_SRC, /spineDrillIdForPage/);
+  assert.match(MASTER_SRC, /setDrillId\(activeSection\)/);
   assert.doesNotMatch(MASTER_SRC, /\.focus\s*\(/);
   assert.doesNotMatch(MASTER_SRC, /autoFocus/);
-});
-
-test('L1 parent eyebrows outrank Main nest subtitles (type hierarchy)', () => {
-  assert.match(LIST_SRC, /text-role-eyebrow uppercase tracking-widest text-text-soft/);
-  assert.match(LIST_SRC, /text-role-micro uppercase tracking-widest text-text-faint/);
-});
-
-test('L1 sections separate with a quiet hairline (Main / Stations / Stock)', () => {
-  assert.match(LIST_SRC, /border-t border-border-soft pt-1\.5/);
 });

@@ -7,7 +7,8 @@ import { SEARCH_RESULT_GRID } from './search-result-grid';
 /**
  * Comfortable /search Monitor feed SoT:
  *   • One shared CSS Grid template for live row + skeleton (zero reflow).
- *   • Polymorphic Reference track — TrackingChip XOR SerialChip, never both columns.
+ *   • Glyph | Id | Match | Tracking | Age — no status/condition/platform.
+ *   • TrackingChip on the right; OrderIdChip on the left (never dual id columns).
  *   • Flat RRF list — no CATEGORY_TABS grouping on the full results surface.
  */
 
@@ -19,13 +20,26 @@ describe('SearchResultRow comfortable grid', () => {
   const rowSrc = readSibling('./SearchResultRow.tsx');
   const skeletonSrc = readSibling('./SearchResultRowSkeleton.tsx');
   const gridSrc = readSibling('./search-result-grid.ts');
+  const chipsSrc = readSibling('./search-result-chips.ts');
   const surfaceSrc = readSibling('./SearchResultsSurface.tsx');
+
+  // ComfortableAlignedRow only — slice from that function to export.
+  const comfortableSrc = (() => {
+    const start = rowSrc.indexOf('function ComfortableAlignedRow');
+    const end = rowSrc.indexOf('function OrderRow');
+    return start >= 0 && end > start ? rowSrc.slice(start, end) : rowSrc;
+  })();
 
   it('exports a single SEARCH_RESULT_GRID track template', () => {
     assert.match(gridSrc, /SEARCH_RESULT_GRID/);
     assert.ok(
       SEARCH_RESULT_GRID.includes('grid-cols-['),
       'SEARCH_RESULT_GRID must declare explicit track sizes',
+    );
+    assert.match(
+      gridSrc,
+      /Glyph \| Id \| Match \| Tracking \| Age/,
+      'comfortable tracks must be Glyph · Id · Match · Tracking · Age',
     );
   });
 
@@ -36,21 +50,33 @@ describe('SearchResultRow comfortable grid', () => {
     assert.match(skeletonSrc, /from '\.\/search-result-grid'/);
   });
 
-  it('uses polymorphic Reference — TrackingChip and SerialChip, not dual columns', () => {
-    assert.match(rowSrc, /TrackingChip/);
-    assert.match(rowSrc, /SerialChip/);
-    // Comfortable branch: tracking ? TrackingChip : serial ? SerialChip
-    assert.match(
-      rowSrc,
-      /tracking \?[\s\S]*?<TrackingChip[\s\S]*?: serial \?[\s\S]*?<SerialChip/,
-      'Reference track must be tracking XOR serial (ternary), not two parallel columns',
-    );
+  it('leads with blue package glyphs and OrderIdChip last-4', () => {
+    assert.match(comfortableSrc, /OrderIdChip/);
+    assert.match(comfortableSrc, /getLast4\(orderId\)/);
+    assert.match(comfortableSrc, /EntityTile/);
+    assert.match(rowSrc, /search-result-identity/);
+    assert.match(chipsSrc, /order:\s*Package/);
+    assert.match(chipsSrc, /receiving:\s*PackageOpen/);
+    assert.match(chipsSrc, /receiving:\s*'blue'/);
   });
 
-  it('wires condition and platform through house SoTs', () => {
-    assert.match(rowSrc, /conditionLabel/);
-    assert.match(rowSrc, /conditionGradeTone/);
-    assert.match(rowSrc, /PlatformMark/);
+  it('puts TrackingChip on the right and never paints status/condition/platform', () => {
+    assert.match(comfortableSrc, /TrackingChip/);
+    assert.doesNotMatch(
+      comfortableSrc,
+      /PlatformMark/,
+      'comfortable row must not render PlatformMark',
+    );
+    assert.doesNotMatch(
+      comfortableSrc,
+      /conditionLabel|conditionGradeTone/,
+      'comfortable row must not render condition chips',
+    );
+    assert.doesNotMatch(
+      comfortableSrc,
+      /statusRaw|Chip label=\{statusRaw\}/,
+      'comfortable row must not render status chips',
+    );
   });
 
   it('flattens /search results — no CATEGORY_TABS grouping on the surface', () => {

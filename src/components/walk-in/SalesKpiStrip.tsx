@@ -6,8 +6,8 @@
  *
  * Archetype: **Monitor** — read-only, org-scoped, no durable selection. It
  * composes the house KPI anatomy (`KpiTile` from `@/design-system/components/
- * monitor`) — the SAME eyebrow → hero → footer shape as `OutboundKpiStrip` and
- * `OperationsAnalyticsView`, never a second tile language.
+ * monitor`) — the SAME eyebrow + compact delta (top-right) → hero shape as
+ * `OutboundKpiStrip` and `OperationsAnalyticsView`, never a second tile language.
  *
  * The rollup is derived from the SAME rows the feed renders
  * (`summarizeTransactions`), so the heroes can never disagree with the list
@@ -27,9 +27,11 @@ const TILE_CELL_CLASS = 'min-w-0 grow basis-40';
 function SkeletonKpiTile() {
   return (
     <div className={cn(MONITOR_KPI_TILE_CLASS, 'h-full')}>
-      <div className="h-2.5 w-16 rounded-full bg-surface-strong" />
+      <div className="flex items-start justify-between gap-3">
+        <div className="h-2.5 w-16 rounded-full bg-surface-strong" />
+        <div className="h-2.5 w-8 rounded-full bg-surface-strong" />
+      </div>
       <div className="mt-2 h-7 w-14 rounded bg-surface-strong" />
-      <div className="mt-2.5 h-2.5 w-20 rounded-full bg-surface-strong" />
     </div>
   );
 }
@@ -64,17 +66,12 @@ export function SalesKpiStrip({
     : null;
 
   const tiles = [
-    { id: 'count', label, value: rollup.count, footer: undefined },
-    { id: 'gross', label: 'Gross', value: rollup.gross, footer: undefined },
+    { id: 'count', label, value: rollup.count },
+    { id: 'gross', label: 'Gross', value: rollup.gross },
     {
       id: 'latest',
-      label: 'Latest day',
+      label: latestDayLabel ? `Latest · ${latestDayLabel}` : 'Latest day',
       value: rollup.latestDayCount,
-      footer: latestDayLabel ? (
-        <span className="mt-1.5 inline-flex items-center text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
-          {latestDayLabel}
-        </span>
-      ) : undefined,
     },
   ];
 
@@ -83,7 +80,7 @@ export function SalesKpiStrip({
       <div className={TILE_BAND_CLASS}>
         {tiles.map((tile) => (
           <div key={tile.id} className={TILE_CELL_CLASS}>
-            <KpiTile label={tile.label} value={tile.value} footer={tile.footer} className="h-full" />
+            <KpiTile label={tile.label} value={tile.value} className="h-full" />
           </div>
         ))}
       </div>

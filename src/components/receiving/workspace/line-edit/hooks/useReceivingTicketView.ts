@@ -10,8 +10,7 @@
  * - sibling-line switch clears the param;
  * - mode switch strips it via `MODE_SCOPED_PARAMS`;
  * - ticketless carton auto-clears in the panel guardrail;
- * - opening receiving More details (`receiving-open-details-overlay`) clears
- *   the param so `detail:receiving` can own the right-rail float host.
+ * - mutually exclusive with Claim (`?claimView=1`) and `detail:receiving`.
  */
 
 import { useCallback, useEffect, useRef } from 'react';
@@ -19,6 +18,8 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { dispatchReceivingDetailsOverlayClose } from '@/utils/events';
 
 const TICKET_VIEW_PARAM = 'ticketView';
+const CLAIM_VIEW_PARAM = 'claimView';
+const CLAIM_MODE_PARAM = 'claimMode';
 
 /**
  * Pure decision for the clear-on-line-change effect. Clear the open ticket
@@ -58,7 +59,9 @@ export function useReceivingTicketView(currentLineId: number | null): ReceivingT
       const next = new URLSearchParams(searchParams.toString());
       if (on) {
         next.set(TICKET_VIEW_PARAM, '1');
-        // Single right-rail host: suspend receiving details while Ticket claims the slot.
+        // One right-edge secondary surface: drop Claim + suspend details.
+        next.delete(CLAIM_VIEW_PARAM);
+        next.delete(CLAIM_MODE_PARAM);
         dispatchReceivingDetailsOverlayClose();
       } else {
         next.delete(TICKET_VIEW_PARAM);

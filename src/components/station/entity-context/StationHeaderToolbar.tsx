@@ -2,7 +2,7 @@
 
 import { useState, type ReactNode } from 'react';
 import * as Popover from '@radix-ui/react-popover';
-import { ChevronLeft, Copy, History, Info, Link2, MoreVertical, RefreshCw, ArrowLeftRight } from '@/components/Icons';
+import { ChevronLeft, Copy, History, Link2, MoreVertical, RefreshCw, ArrowLeftRight } from '@/components/Icons';
 import { IconButton } from '@/design-system/primitives';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import {
@@ -16,7 +16,6 @@ import {
   HEADER_ICON_WRAP,
 } from '@/components/layout/header-shell';
 import { cn } from '@/utils/_cn';
-import { dispatchReceivingDetailsOverlay } from '@/utils/events';
 import {
   workspaceMode,
   type HeaderActionKey,
@@ -24,13 +23,13 @@ import {
 } from './workspace-mode-registry';
 
 /**
- * Unbox + Arrival (triage): refresh stays inline; share + the rest live in the
- * overflow menu. Ticket (photoNote) is on the carton photo dropdown, not More.
- * Testing keeps the full icon row (+ prev/next when not embedded).
+ * Unbox + Arrival (triage): no inline overflow actions in current registry.
+ * Testing keeps Pair (+ prev/next when not embedded); Refresh stays Testing-only.
+ * Share / Audit / Copy / Info live on `/carton/[id]`; Move photos on the gallery.
  */
 const COMPACT_OVERFLOW_MODES: ReadonlySet<WorkspaceMode> = new Set(['unbox', 'triage']);
 const COMPACT_INLINE_ACTIONS: ReadonlyArray<Exclude<HeaderActionKey, 'details'>> = [
-  'refresh',
+  'pair',
 ];
 const COMPACT_OVERFLOW_ACTIONS: ReadonlyArray<Exclude<HeaderActionKey, 'details'>> = [
   'share',
@@ -45,8 +44,8 @@ const COMPACT_OVERFLOW_ACTIONS: ReadonlyArray<Exclude<HeaderActionKey, 'details'
  * Icon-only actions driven by {@link workspaceMode} (`headerActions`).
  * Unbox-family stations mount this inside {@link StationMoreDetails}
  * (corner slot of {@link StationContextBar}, `embedded`) using GlobalHeader
- * icon hit-box / gap SoT. Unbox + Arrival: refresh · ⋯ · info (no prev/next).
- * Testing keeps prev/next via navChannel when those handlers are provided.
+ * icon hit-box / gap SoT. Unbox + Arrival: empty (PO link is the `#` chip).
+ * Testing: Refresh + Pair.
  *
  * Prefer this over page-local header icon clusters.
  */
@@ -234,19 +233,6 @@ export function StationHeaderToolbar({
           </div>
         ))}
         {embeddedOverflow ? <div className={HEADER_ICON_WRAP}>{embeddedOverflow}</div> : null}
-        {def.showDetails && receivingId != null ? (
-          <div className={HEADER_ICON_WRAP}>
-            <HoverTooltip label="Receiving details" asChild>
-              <IconButton
-                size="md"
-                onClick={() => dispatchReceivingDetailsOverlay(receivingId)}
-                ariaLabel="Receiving details"
-                className={HEADER_ICON_BTN_CLASS}
-                icon={<Info className={TOP_CHROME_ICON_GLYPH} />}
-              />
-            </HoverTooltip>
-          </div>
-        ) : null}
       </div>
     );
   }
@@ -270,21 +256,7 @@ export function StationHeaderToolbar({
           </HoverTooltip>
         ) : null
       }
-      rightSlot={
-        <>
-          {overflowMenu()}
-          {def.showDetails && receivingId != null ? (
-            <HoverTooltip label="Receiving details" asChild>
-              <IconButton
-                onClick={() => dispatchReceivingDetailsOverlay(receivingId)}
-                ariaLabel="Receiving details"
-                icon={<Info className="h-4 w-4 text-text-soft hover:text-text-default" />}
-                className="inline-flex h-7 w-7 items-center justify-center rounded-md transition-colors hover:bg-surface-hover"
-              />
-            </HoverTooltip>
-          ) : null}
-        </>
-      }
+      rightSlot={overflowMenu()}
       actions={inlineActions}
       status={zohoSyncing ? 'Syncing' : undefined}
       onPrev={
@@ -303,4 +275,3 @@ export function StationHeaderToolbar({
     />
   );
 }
-

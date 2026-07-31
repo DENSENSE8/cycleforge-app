@@ -61,33 +61,34 @@ When using the sidebar map, three structural slots, in this order:
   History icon (collapsed by default) over `useRecentModes`. **Never** remount a full-width
   `HorizontalButtonSlider` mode rail as a twin of the header control. Nested / secondary sliders
   (pairing sort, sourcing status, FBA plan/combine, inventory triage filters) may stay in the
-  sidebar — those are not page L2. Spine identity (`MasterNavHeader`) is display-only — **no MRU
-  chips** in the nav band.
-- **Stations Floor / Desk (spine L1).** Station pages under the Stations parent use required
-  `stationGroup` (`floor` | `desk`) on `SidebarNavItem` / `SIDEBAR_PAGE_NAV` — registry
-  `STATION_GROUPS` in `sidebar-navigation.ts`. **Type hierarchy:** parent Main/Stations use
-  `text-role-eyebrow` + `text-text-soft`; Floor/Desk are nested micro subtitles
-  (`text-role-micro` + `text-text-faint`) — never peer-weight the parent. Floor = scan benches
-  in pipeline order (Receiving → Testing → Packing → Shipping); Desk = gate/ticket stations
-  (Review, Support). Do not invent page-local station folders or collapsible groups. Finer
-  splits (Intake / Line / Outbound) only after Floor **N > 8** + research override. Guard:
-  `station-nav-groups.guard.test.ts`.
-- **Main Overview / Library (spine L1).** Main pages under the Main parent use required
-  `mainGroup` (`overview` | `library`) — registry `MAIN_GROUPS` in
-  `sidebar-navigation.ts`. Same nest chrome as Stations Floor/Desk (micro + faint; skip empty;
-  no collapsible folders). Overview = day boards (Dashboard; Home + Operations when unparked);
-  Library = media/catalog assets (Media; studio Catalog when unparked). Do not invent page-local
-  Main folders. Guard: `main-nav-groups.guard.test.ts`.
-- **Stock drill-in (after Stations).** Catalog/bin workbenches are `kind: 'stock'` — **not** a
-  static L1 eyebrow list. Root shows one Stock row (`STOCK_DRILL` + chevron); drill replaces the
-  scroll body with back + Products → Inventory → Warehouse (mode accordion unchanged). Auto-enters
-  when navigating onto a stock page; manual Back returns to the root map without forcing re-open.
-  Swap uses named opacity-only SoT (`framerPresence.spineDrill` / `framerTransition.spineDrill`,
-  ≤150ms) — **no** horizontal slide on the 240px spine. Auto-drill must **not** steal keyboard
-  focus (main content / `#main` stays). **Do not** drill Stations (floor map stays visible). Modes
-  stay header Mode + accordion — never a mode drill level. Brief:
-  `docs/todo/spine-drill-in-vercel-GEMINI-RESEARCH-BRIEFING.md`. Guard:
-  `main-nav-groups.guard.test.ts`.
+  sidebar — those are not page L2. Spine identity (`MasterNavHeader`) is display-only —
+  **leading icon + label** (mode glyph when modeful, page icon when modeless), no MRU
+  chips and no nav-toggle chevron (column open lives on `SidebarNavColumn`, not in the
+  identity band). Global search + AI stay in
+  GlobalHeader (`GlobalHeaderSearch`) — never pin a search/AI **control** twin in the
+  spine. Search + Media **page** rows are top-pinned (`kind: 'top'`) above section
+  drills — same pin grammar as Settings/Admin footer (`kind: 'bottom'`).
+- **Section drills (spine L1).** Root shows Overview / Library / Floor / Desk / Stock
+  as **drill buttons** (`SPINE_DRILLS` in `sidebar-navigation.ts` — compose from
+  `MAIN_GROUPS` + `STATION_GROUPS` + `STOCK_DRILL`; never twin labels). Drill replaces
+  the scroll body with centered back title + that section's pages (mode accordion
+  unchanged). Membership: `mainGroup` / `stationGroup` / `kind: 'stock'` via
+  `spineDrillIdForPage`. Floor = scan benches in pipeline order; Desk = Review +
+  Support; Overview = day boards; Library = catalog (Media is top-pinned); Stock =
+  Products → Inventory → Warehouse. Auto-enters on cross-section navigation; manual
+  Back returns to the root map without forcing re-open. Swap uses named opacity-only
+  SoT (`framerPresence.spineDrill` / `framerTransition.spineDrill`, ≤150ms) — **no**
+  horizontal slide. Auto-drill must **not** steal keyboard focus. Modes stay header
+  Mode + accordion — never a mode drill level. Search/Media stay top-pinned;
+  Settings/Admin stay footer-pinned.
+  **Spine type ladder (CF Type roles — no rem-base bump):** identity band
+  (`MasterNavHeader`) = `text-role-body font-semibold`; page + drill-back + mode
+  destinations = `text-role-caption` (pages/drills `font-semibold`, modes
+  `font-medium`); counts/chevrons stay `text-role-micro`. Inactive pages whisper
+  (`text-text-muted` until hover); **modes stay `text-text-default`** when idle —
+  only the active mode takes `text-blue-700` + wash. Never use sentence-case
+  `text-role-eyebrow` for spine destinations (eyebrow is uppercase chrome DNA).
+  Guards: `main-nav-groups.guard.test.ts`, `station-nav-groups.guard.test.ts`.
 - **Anti-mix — never invert the sidebar.** Related/similar is progressive disclosure *below* the picker, never replacing the map.
 - **Responsive fallback is list-OR-detail, not both.** On a narrow viewport, show the picker *or* the detail, never a
   cramped two-up. (M3 list-detail / WinUI List/Details patterns.)
@@ -215,7 +216,7 @@ The collection map is stable; only the **focus surface** moves.
 1. **Row click → `router.replace`.** Write the selection id to the URL. Active row uses house selection ring only.
 2. **URL change → id-gated re-fetch.** Detail hooks gate on validity so empty selection never fires; teaching empty instead.
 3. **Crossfade the focus surface** (right pane, drawer, or stack), keyed on the selection id.
-4. **The map never animates.** Selection is `bg-blue-50 ring-1 ring-inset ring-blue-400` only — never a size/height shift.
+4. **The map never animates.** Selection never size/height-shifts. List/accordion maps use `QUEUE_ROW.selectedClass` (fill + inset ring); airtable LedgerGrid maps use `QUEUE_ROW.selectedLedgerClass` / `ledgerRowStateClass` (fill only — ring fights cell rules).
 
 ---
 
@@ -230,7 +231,7 @@ The collection map is stable; only the **focus surface** moves.
 - Only reach for a **measured** offset (ResizeObserver → CSS var per layer) if a port genuinely needs 3+ dynamic-height sticky bars — the two-zone shell removes the need in every current surface. A fixed px offset is never the answer.
 - z bands stay from the SoT (`src/design-system/tokens/z-index.ts`): chrome/top bar = `z-header`, in-body pins = `z-raised`/`z-sticky`. Never hardcode `z-[NNN]`.
 
-**Chrome face density (`WorkbenchChromeHeader`).** Two densities on one SoT — never a page-local twin tab band. `default` is the content-driven raised card (`p-1.5` + md solid-hug tabs with their own rail). `density="band"` pins a **single-surface 40px face** (`h-10 p-0.5` + `TabSwitch size="sm"` on a **flat** rail — **2px inset required**; active pill uses `nestedCornerClass('card', 0.5)` / `rounded-xl` so it nests concentrically inside the card shell; no flush full-height active pill, no nested bordered track, no `rounded-full` mismatch). Nested TabSwitch cards under band are forbidden (Kinetic Ledger / Linear chrome). Lifecycle tabs are **text-only** (no leading icons for Queue · Viewed · History-style states). **Scan-adjacent consumers:** Unbox + Triage. Incoming (no scan dock) stays `default` hug. When beside a floated context panel, wrap with `WORKBENCH_CHROME_BESIDE_SCAN` (`py-2` = panel `m-2`) so the band face shares a Y row with `receivingScanBandClass` — never flush with `py-0`.
+**Chrome face density (`WorkbenchChromeHeader`).** Two densities on one SoT — never a page-local twin tab band. `default` is the content-driven raised card (`p-1.5` + md solid-hug tabs with their own rail) — escape only when a surface cannot use the band face. **`density="band"` is the house standard** for every lifecycle `WorkbenchChromeHeader` consumer (Outbound, Incoming, History, Unbox, Triage, Pack, Testing, Shipping, Labels, Ready, FBA, Walk-In, Repair, Support, Review, …): a **single-surface 40px face** (`h-10 p-0.5` + `TabSwitch size="sm"` on a **flat** rail — **2px inset required**; active pill uses `nestedCornerClass('card', 0.5)` / `rounded-xl` so it nests concentrically inside the card shell; no flush full-height active pill, no nested bordered track, no `rounded-full` mismatch). Nested TabSwitch cards under band are forbidden (Kinetic Ledger / Linear chrome). Lifecycle tabs are **text-only** (no leading icons for Queue · Viewed · History-style states). When beside a floated context panel / scan dock, wrap with `WORKBENCH_CHROME_BESIDE_SCAN` (`py-2` = panel `m-2`) so the band face shares a Y row with `receivingScanBandClass` — never flush with `py-0`. Guard: `workbench-chrome-band.guard.test.ts`.
 
 **Trailing Display & Actions (`WorkbenchTrailingCluster`).** Column visibility (`GridFieldsMenu` / Fields) and display sort (`QueueSortSwitch`) live in the **pinned page chrome trailing cluster**, not an in-card Sheets-like action bar (that would stack a second sticky band — forbidden above) and not GlobalHeader. Compose `WorkbenchTrailingCluster` as `WorkbenchChromeHeader`’s `trailing` prop with honest absence: **Sort → Fields → Import → Add** (`before` / `after` escapes for pagination / refresh only). Filters / refine stay in `right` (query ≠ display). Opening Fields is a detached listbox — no header-coupling mode. Multi-select triage stays on `ContextualSelectionBar` (bottom) — never morph the top bar. Guard: `workbench-trailing-cluster.guard.test.ts`. Plan: `docs/todo/table-action-bar-fields-PLAN.md`.
 
@@ -398,6 +399,32 @@ should have handled it.
 - **A capture-phase listener must not claim a key the focused element already handles.** Grid rows are
   `tabIndex={0}` and handle Enter/Space for *their own* record; a queue-level Enter branch that only knows how to
   open `records[0]` has to bail when the event target is inside a row.
+
+---
+
+## Receiving spreadsheet agent waist (Unbox / History / Testing)
+
+Unbox hosts **two** tables. Agents must not load both for a single cell edit.
+
+| Surface | Job | Primitive | Agent entry |
+|---|---|---|---|
+| **Workbench LedgerGrid** | Pick a carton/line from Queue · Viewed · History | `ReceivingGridView` → `LedgerGrid` | This section + skill `receiving-grid-cell` |
+| **Station PO accordion** | Expand/edit lines inside an open carton | `PoLineRow` / `PoLineMetaGrid` / `META_COL` | Only when the task names line chips / unbox edit |
+
+**When editing workbench spreadsheet display, open only:**
+
+1. Column SoT — `src/lib/receiving/receiving-grid-layout.ts` (`RECEIVING_GRID_COLUMNS`)
+2. The specific cell under `src/components/station/receiving-grid/cells/` (not the whole tree)
+3. Align helpers — `resolveGridColumnAlign` / `gridCellAlignClass` from `@/design-system/components/grid`
+4. Shared value atoms if needed — `src/components/ui/grid-cells.tsx`
+5. Header chrome (sort / select-all / frozen) — grow `LedgerGridColumnHeader`; Receiving adapter stays thin (`ReceivingGridColumnHeader`)
+
+**Do not open unless the task names them:** `PoLineRow`, `LineEditPanel`, `useUnboxLineController`,
+`OrdersQueueTableRow`, `incoming-grid/*` (except when adopting shared header/qty atoms), KPI strips,
+`ReceivingLinesTable` (wiring host only).
+
+Session paste / skill: `.claude/skills/receiving-grid-cell/SKILL.md`.
+Map + Phase B backlog: `docs/todo/unbox-receiving-grid-CONTEXT-MAP.md`.
 
 ---
 

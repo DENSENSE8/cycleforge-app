@@ -7,8 +7,8 @@
  *
  * Archetype: **Monitor** (contextual-display.md) — read-only, org-scoped rollup;
  * no durable selection, no mutation. It composes the house Monitor KPI anatomy
- * (`KpiTile` + `DeltaChip` from `@/design-system/components/monitor`) — the SAME
- * eyebrow → hero → delta shape as every other dashboard, never a second gauge
+ * (`KpiTile` from `@/design-system/components/monitor`) — the SAME
+ * eyebrow + compact delta (top-right) → hero shape as every other dashboard, never a second gauge
  * language — so the strip reads as one family with `OperationsAnalyticsView`.
  *
  * Job (the redesign): this is an **attention header**, not a status mirror. It
@@ -53,7 +53,7 @@ import type { ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useShippedScanOutData, ZERO_OUTBOUND_METRICS } from '@/hooks/useShippedScanOutData';
 import { unshippedQueueCountsQuery } from '@/lib/queries/dashboard-queries';
-import { KpiTile, DeltaChip, metricIntentTextClass, MONITOR_KPI_TILE_CLASS } from '@/design-system/components/monitor';
+import { KpiTile, metricIntentTextClass, MONITOR_KPI_TILE_CLASS } from '@/design-system/components/monitor';
 import {
   resolveOutboundMetrics,
   splitOutboundAttention,
@@ -121,8 +121,8 @@ const TILE_BAND_CLASS = 'flex flex-wrap gap-3';
 const TILE_CELL_CLASS = 'min-w-0 grow basis-40';
 
 /** One metric as a house `KpiTile`. Attention items (severity > 0) tone their hero
- *  by intent and carry a status dot; trend items (severity 0 + delta) carry a
- *  `DeltaChip`. A tile that maps to a board state click-to-filters that board. */
+ *  by intent; trend items carry a compact top-right delta. A tile that maps to a
+ *  board state click-to-filters that board. */
 function MetricKpiTile({
   metric,
   filter,
@@ -154,18 +154,6 @@ function MetricKpiTile({
   // default ink so pressure never masquerades as failure.
   const toneHero = metric.intent === 'warn' || metric.intent === 'bad';
 
-  const footer: ReactNode =
-    metric.delta !== undefined ? (
-      <DeltaChip delta={metric.delta} invert={metric.deltaInvert} vsLabel="vs last wk" />
-    ) : metric.status ? (
-      <span
-        className={cn('mt-1.5 inline-flex items-center gap-1.5 text-role-eyebrow font-semibold uppercase tracking-widest', tone)}
-      >
-        <span className={cn('h-1.5 w-1.5 rounded-full bg-current', tone)} aria-hidden="true" />
-        {active ? 'Filtered' : metric.status}
-      </span>
-    ) : undefined;
-
   const onOpen = shippedClickable
     ? () => filter?.toggle(metric.filterState as OutboundState)
     : toShipClickable && toShipFilter
@@ -193,7 +181,8 @@ function MetricKpiTile({
       label={metric.label}
       value={metric.value}
       valueClassName={toneHero ? tone : undefined}
-      footer={footer}
+      delta={metric.delta}
+      invertDelta={metric.deltaInvert}
       active={active}
       onOpen={onOpen}
       className="h-full"
@@ -210,14 +199,16 @@ function MetricKpiTile({
   );
 }
 
-/** A pulsing KPI-tile placeholder (label bar → hero bar → footer bar) matching the
+/** A pulsing KPI-tile placeholder (label + delta slot → hero) matching the
  *  live `KpiTile` geometry. */
 function SkeletonKpiTile() {
   return (
     <div className={cn(MONITOR_KPI_TILE_CLASS, 'h-full')}>
-      <div className="h-2.5 w-16 rounded-full bg-surface-strong" />
+      <div className="flex items-start justify-between gap-3">
+        <div className="h-2.5 w-16 rounded-full bg-surface-strong" />
+        <div className="h-2.5 w-8 rounded-full bg-surface-strong" />
+      </div>
       <div className="mt-2 h-7 w-14 rounded bg-surface-strong" />
-      <div className="mt-2.5 h-2.5 w-20 rounded-full bg-surface-strong" />
     </div>
   );
 }

@@ -9,7 +9,7 @@
 
 import { useMemo, type Ref } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { WorkbenchChromeHeader } from '@/components/dashboard/workbench-shell';
+import { WorkbenchChromeHeader, WorkbenchTrailingCluster } from '@/components/dashboard/workbench-shell';
 import {
   OutboundExactFilters,
   useToShipFilterHotkeys,
@@ -98,6 +98,7 @@ export function LabelsWorkspaceHeader({
 
   return (
     <WorkbenchChromeHeader
+      density="band"
       tabs={tabs}
       activeTab={tab}
       onTabChange={(id) => onSelectTab(id as LabelsWorkspaceTab)}
@@ -117,11 +118,10 @@ export function LabelsWorkspaceHeader({
       // Same Urgent + lane popover as Dashboard · To Ship / Shipping · Pending.
       right={tab === 'queue' ? <OutboundExactFilters mode="unshipped" /> : undefined}
       trailing={
-        <>
-          {/* Sort (ghost) → Import (blue CTA) → Add (green CTA). */}
-          <SortToggle sort={sort} onToggle={onToggleSort} />
-          <OutboundOrderChromeActions onNewOrder={onNewOrder} />
-        </>
+        <WorkbenchTrailingCluster
+          sort={<SortToggle sort={sort} onToggle={onToggleSort} />}
+          actions={<OutboundOrderChromeActions onNewOrder={onNewOrder} />}
+        />
       }
     />
   );

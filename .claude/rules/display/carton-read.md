@@ -10,22 +10,25 @@ Recipe for the durable **read** record of a carton — observe-first with a work
 
 ```
 ┌─ DispositionBar ──────────────────────────────────────────────┐
-│ ● Disposition · Carton {id} · chips · flags   [Photos N] [⚒] │
+│ ● Disposition · Carton {id} · chips · flags     [utils] [⚒]  │
+├─ Photo thumbnail strip (PhotoLauncher) ───────────────────────┤
+│ [thumb] [thumb] … → shared PhotoViewerPortal                  │
 └───────────────────────────────────────────────────────────────┘
 ┌─ Col 1 (left) ──────────────┬─ Col 2 (right) ────────────────┐
-│ HANDLING · ACTIVITY · RECORD│ FINDINGS                        │
-│ Provenance · activity ·     │ Exception cards (title + hint)  │
-│ history · record meta       │ Contents · left-aligned facts   │
+│ CONTENTS · ACTIVITY · RECORD│ PROGRESS · HISTORY · FINDINGS   │
+│ Lines first · activity ·    │ Compact LinearWorkflowStepper   │
+│ sparse facts / notes        │ · Units|Tracking · exceptions   │
 └─────────────────────────────┴─────────────────────────────────┘
 ```
 
-- **≥xl:** two columns — handling first, findings second.  
+- **≥xl:** two columns — contents first, progress/history second.  
 - **Mobile:** stack col1 then col2.  
-- **Photos:** header (or slim strip under disposition) control → `usePhotoGallery` + `PhotoViewerPortal`. Never a third photo column, EvidenceStage, or page-local lightbox.  
+- **Photos:** slim thumbnail strip under disposition → `usePhotoGallery` + `PhotoViewerPortal`. Never a hand-rolled “N photos” count button, EvidenceStage, or page-local lightbox.  
+- **Progress:** shared `LinearWorkflowStepper` (Scanned → Unboxed → Received) via `deriveCartonReadiness` — never a hand-rolled HANDLING provenance strip.  
 - **Work escape:** one quiet control using `openInUnboxHref` (icon / secondary). Zero visible `"Open in Unbox"` strings on findings or header.  
 - **Empty ≠ fetch error** for photos — branch copy; never swallow failure into `[]`.  
 - **Read-only gallery:** `{ url }` only (no numeric `id` / upload targets).  
-- **Disposition truth:** exceptions outrank lifecycle.done — never claim settled / “Work complete” while exceptions hold.  
+- **Disposition truth:** exceptions outrank lifecycle.done — never claim settled / “Work complete” while exceptions hold. Linked PO suppresses Unmatched / “No matched PO” even if `pairing_state` is still `UNFOUND`.  
 - **Full width** — never `STATION_WORKBENCH_*` / station max-width caps.
 
 ## Mount

@@ -233,6 +233,7 @@ test('getSidebarHref resolves every sidebar page to its real route', () => {
   assert.equal(getSidebarHref('operations'), '/operations');
   assert.equal(getSidebarHref('admin'), '/admin');
   assert.equal(getSidebarHref('settings'), '/settings');
+  assert.equal(getSidebarHref('search'), '/search');
   // Unknown ids resolve to null (caller falls back to current path).
   assert.equal(getSidebarHref('nope'), null);
 });
@@ -244,6 +245,9 @@ test('resolveSidebarMode returns null for pages without modes', () => {
   assert.equal(getSidebarPageNav('ai-chat'), undefined);
   assert.equal(resolveSidebarMode('ai-chat', { pathname: '/ai-chat', params: new URLSearchParams() }), null);
   assert.equal(resolveSidebarMode('settings', { pathname: '/settings', params: new URLSearchParams() }), null);
+  // Search is modeless (APP_SIDEBAR_NAV only) — no SIDEBAR_PAGE_NAV entry.
+  assert.equal(getSidebarPageNav('search'), undefined);
+  assert.equal(resolveSidebarMode('search', { pathname: '/search', params: new URLSearchParams() }), null);
 });
 
 // Operations is modeful: bare /operations is Live; ?mode= drives the rest.
@@ -367,16 +371,17 @@ test('getSidebarRouteKey maps the dedicated order workspace to order', () => {
   assert.equal(getSidebarRouteKey('/o'), 'order');
 });
 
-// `/search` is full-width BY DECLARATION, not because nothing claimed the path.
-// It resolved to `unknown` until 2026-07-29, which gave the right layout for the
-// wrong reason — a first-class route inheriting the fallback's behaviour. The
-// pair of assertions below is the decision: a real key, deliberately absent from
-// CONTEXT_PANEL_ROUTE_KEYS. If Phase 6 gives the results grid facets, flip the
-// second one and add 'search' to that set.
-test('/search declares its own route key and reserves no context column', () => {
+// `/search` is Workbench master–detail: hit list in the context rail, selected
+// entity detail in the main pane (`?q=` + `?sel=`).
+test('/search declares its own route key and reserves a context column', () => {
   assert.equal(getSidebarRouteKey('/search'), 'search');
   assert.equal(getSidebarRouteKey('/search/anything'), 'search');
-  assert.equal(hasSidebarContextPanel('/search'), false);
+  assert.equal(hasSidebarContextPanel('/search'), true);
+  // Spine top pin so MasterNav selects Search instead of falling through to Dashboard.
+  const searchNav = APP_SIDEBAR_NAV.find((item) => item.id === 'search');
+  assert.ok(searchNav, 'search must be in APP_SIDEBAR_NAV');
+  assert.equal(searchNav!.href, '/search');
+  assert.equal(searchNav!.kind, 'top');
   // The fallback still exists and still means "nothing claims this path".
   assert.equal(getSidebarRouteKey('/no-such-route'), 'unknown');
 });

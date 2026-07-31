@@ -211,13 +211,16 @@ export function PhotoPeekFan({
 
   return (
     <>
-      {/* Peek — corner → fan, anchored toward the lower-right of the pane.
+      {/* Peek — right-edge corner → fan, parked just above the floating
+          notes/send (StationComposerDock) / terminal dock band. Fixed rem
+          clearance (not %-of-pane) so Unbox / Triage / Testing stay
+          dock-adjacent instead of drifting mid-canvas on tall panes.
           Hidden while expanded (no edge peek when the display is open). */}
       {!expanded ? (
         <div className="pointer-events-none absolute inset-y-0 right-0 z-20 flex items-end">
           <motion.div
             data-testid="photo-peek"
-            className="pointer-events-auto relative mb-[calc(22%+4rem)] h-36 w-28"
+            className="pointer-events-auto relative mb-[calc(env(safe-area-inset-bottom,0px)+10rem)] h-36 w-28"
             initial="rest"
             animate={peekState}
             variants={{ rest: {}, fan: { transition: { staggerChildren: 0.04 } } }}

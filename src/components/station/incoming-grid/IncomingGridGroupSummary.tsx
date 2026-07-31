@@ -46,7 +46,6 @@ import {
 } from '@/utils/date';
 import {
   GridAgeCellValue,
-  GridCellDash,
   GridDateCellValue,
   GridPlatformMarkValue,
 } from '@/components/ui/grid-cells';
@@ -282,15 +281,13 @@ export function IncomingGridGroupSummary({
       case 'order':
         return (
           <div data-col="order" className={dataCell(col, rule)}>
-            {poValue ? (
-              <OrderIdChip
-                value={poValue}
-                display={getLast4(poValue)}
-                plain
-                truncateDisplay={false}
-                fitDisplayWidth
-              />
-            ) : null}
+            <OrderIdChip
+              value={poValue}
+              display={getLast4(poValue)}
+              plain
+              truncateDisplay={false}
+              fitDisplayWidth
+            />
           </div>
         );
       case 'tracking':
@@ -300,14 +297,13 @@ export function IncomingGridGroupSummary({
               <FulfillmentPickupPill dense />
             ) : trackings.size > 1 ? (
               <TrackingCountChip count={trackings.size} dense />
-            ) : trackingValue ? (
+            ) : !trackingValue && trackingAction ? (
+              trackingAction
+            ) : (
               <TrackingChip
                 value={trackingValue}
-                display={getLast4(trackingValue)}
                 showIcon={!col.omitCellIcon}
               />
-            ) : (
-              trackingAction ?? <GridCellDash />
             )}
           </div>
         );

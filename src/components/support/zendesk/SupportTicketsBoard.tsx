@@ -24,6 +24,7 @@ import {
   WORKBENCH_BODY_COLUMN,
   WORKBENCH_CHROME_COLUMN,
   WorkbenchChromeHeader,
+  WorkbenchTrailingCluster,
 } from '@/components/dashboard/workbench-shell';
 import { ToolbarSearchToggle } from '@/components/ui/ToolbarSearchToggle';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
@@ -201,6 +202,7 @@ export function SupportTicketsBoard() {
       chrome={
         <div className={WORKBENCH_CHROME_COLUMN}>
           <WorkbenchChromeHeader
+            density="band"
             tabs={tabs}
             activeTab={status}
             onTabChange={(id) => setStatus(parseTicketStatus(id))}
@@ -218,26 +220,30 @@ export function SupportTicketsBoard() {
               />
             }
             right={
-              <div className="flex items-center gap-1.5">
-                <ZendeskSelect
-                  value={sort}
-                  options={SORT_OPTIONS}
-                  onChange={(v) => setSort(v as SortKey)}
+              <HoverTooltip label="Refresh tickets" asChild>
+                <IconButton
+                  icon={<RefreshCw className={cn('h-4 w-4', isFetching && 'animate-spin')} />}
+                  onClick={() => void queryClient.invalidateQueries({ queryKey: ['zendesk'] })}
+                  ariaLabel="Refresh tickets"
+                  className="rounded-md p-1.5 hover:bg-surface-sunken"
                 />
-                <HoverTooltip label="Refresh tickets" asChild>
-                  <IconButton
-                    icon={<RefreshCw className={cn('h-4 w-4', isFetching && 'animate-spin')} />}
-                    onClick={() => void queryClient.invalidateQueries({ queryKey: ['zendesk'] })}
-                    ariaLabel="Refresh tickets"
-                    className="rounded-md p-1.5 hover:bg-surface-sunken"
-                  />
-                </HoverTooltip>
-              </div>
+              </HoverTooltip>
             }
             trailing={
-              canCreateTicket ? (
-                <SupportTicketChromeActions onAdd={() => claim.openCreate()} />
-              ) : null
+              <WorkbenchTrailingCluster
+                sort={
+                  <ZendeskSelect
+                    value={sort}
+                    options={SORT_OPTIONS}
+                    onChange={(v) => setSort(v as SortKey)}
+                  />
+                }
+                actions={
+                  canCreateTicket ? (
+                    <SupportTicketChromeActions onAdd={() => claim.openCreate()} />
+                  ) : null
+                }
+              />
             }
           />
         </div>

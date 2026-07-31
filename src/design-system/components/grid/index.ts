@@ -1,5 +1,11 @@
 export { LedgerGrid } from './LedgerGrid';
 export { LedgerCellEditor } from './LedgerCellEditor';
+export { LedgerGridColumnHeader } from './LedgerGridColumnHeader';
+export type {
+  LedgerHeaderLayoutApi,
+  LedgerHeaderSortDir,
+  LedgerGridColumnHeaderProps,
+} from './LedgerGridColumnHeader';
 export { useGridSurface } from './useGridSurface';
 export { LedgerGridSurface } from './LedgerGridSurface';
 export {

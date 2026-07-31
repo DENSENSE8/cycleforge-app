@@ -6,12 +6,13 @@
  * src/lib/photos/image-types.ts. Types live here instead.
  */
 
-/** Owner kinds a document can link to. Mirrors photo_entity_links' entity_type. */
-export type DocumentEntityType = 'ORDER' | 'SHIPMENT';
+/** Owner kinds a document can link to. Mirrors photo_entity_links' entity_type.
+ * SKU / SERIAL_UNIT added for manuals + unit inserts (JIT pack Phase 3). */
+export type DocumentEntityType = 'ORDER' | 'SHIPMENT' | 'SKU' | 'SERIAL_UNIT';
 
 /** Outbound doc kinds this module writes. `documents.document_type` also holds
- * unrelated legacy values (e.g. 'intake_agreement') — never assume this union
- * is exhaustive for the column. */
+ * unrelated legacy values (e.g. 'intake_agreement', 'manual') — never assume
+ * this union is exhaustive for the column. */
 export type OutboundDocumentType = 'shipping_label' | 'packing_slip';
 
 export type DocumentLinkRole = 'primary' | 'secondary';

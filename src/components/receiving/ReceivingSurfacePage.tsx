@@ -23,7 +23,7 @@ import { Menu } from '@/components/Icons';
 import { IconButton } from '@/design-system/primitives';
 import { QuickAccessButton } from '@/components/layout/QuickAccessButton';
 import { ZohoSplitPane } from '@/components/receiving/workspace/ZohoSplitPane';
-import { appChromeClass, appWashClass } from '@/design-system/tokens/app-surface';
+import { appChromeClass } from '@/design-system/tokens/app-surface';
 import { cn } from '@/utils/_cn';
 
 export interface ReceivingSurfacePageProps {
@@ -78,8 +78,11 @@ function ReceivingSurfacePageInner({
         </div>
       </div>
 
-      {/* Desktop (≥768px) — sidebar + form flows. */}
-      <div className={cn('hidden h-full w-full overflow-hidden md:flex', appWashClass)}>
+      {/* Desktop (≥768px) — sidebar + form flows. Wash lives on
+          CONTEXT_PANEL_HOST_RECEIVING (shared behind rail + workspace), not
+          on this workspace-only wrapper — a workspace wash re-painted the
+          seam and sheared outset collapse chrome. */}
+      <div className="hidden h-full w-full overflow-hidden md:flex">
         <RouteShell
           actions={<ReceivingSidebarPanel />}
           history={<ReceivingDashboard />}
@@ -97,7 +100,7 @@ export function ReceivingSurfacePage(props: ReceivingSurfacePageProps) {
   return (
     // Fallback fills the page slot with the app wash while useSearchParams
     // suspends (SSR/hydration) — a bare Suspense here rendered a white void.
-    <Suspense fallback={<div className={cn('h-full w-full', appWashClass)} aria-hidden />}>
+    <Suspense fallback={<div className={cn('h-full w-full',)} aria-hidden />}>
       <ReceivingSurfacePageInner {...props} />
     </Suspense>
   );
