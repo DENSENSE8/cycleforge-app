@@ -27,7 +27,6 @@ import {
   Printer,
   Search,
   Settings,
-  SalesPage,
   SalesPrice,
   ShieldCheck,
   ShoppingCart,
@@ -42,8 +41,11 @@ import {
   Phone,
   Voicemail,
 } from '@/components/Icons';
-import { ADMIN_SECTION_OPTIONS } from '@/components/admin/admin-sections';
-import { DASHBOARD_INBOUND_PERMISSION } from '@/lib/dashboard/dashboard-domains';
+import {
+  DASHBOARD_INBOUND_PERMISSION,
+  DASHBOARD_SALES_MODE,
+  DASHBOARD_SALES_PERMISSION,
+} from '@/lib/dashboard/dashboard-domains';
 import { isParkedSurfaceBlocked, type ParkedSurfaceKey } from '@/lib/dogfood/parked-surfaces';
 import {
   PACKING_MODE_ICONS,
@@ -53,7 +55,6 @@ import {
   TECH_MODE_ICONS,
 } from '@/lib/nav/station-nav-icons';
 import { parseProductsView } from '@/components/products/products-view';
-import { parseWalkInHistoryMode } from '@/lib/walk-in/history-modes';
 import { OUTBOUND_MODE_PATHS, outboundModeFromPath } from '@/components/outbound/outbound-sidebar-shared';
 import { routeParamsFor } from '@/lib/routing/registry';
 import { parseRouteParams } from '@/lib/routing/route-params';
@@ -89,14 +90,47 @@ export type SidebarRouteKey =
 
 export type SidebarIconComponent = (props: { className?: string }) => JSX.Element;
 
-export interface SidebarNavItem {
+/** Stations sub-eyebrow under the Stations parent (`SidebarNavList` + guard). */
+export type StationGroupId = 'floor' | 'desk';
+
+/**
+ * Ordered Floor → Desk registry. Spine list imports this — never hard-code
+ * "Floor" / "Desk" labels in the render path.
+ */
+export const STATION_GROUPS = [
+  { id: 'floor', label: 'Floor' },
+  { id: 'desk', label: 'Desk' },
+] as const satisfies ReadonlyArray<{ id: StationGroupId; label: string }>;
+
+/** Main sub-eyebrow under the Main parent (`SidebarNavList` + guard). */
+export type MainGroupId = 'overview' | 'library';
+
+/**
+ * Ordered Overview → Library registry. Spine list imports this — never
+ * hard-code those labels in the render path. Parallel to {@link STATION_GROUPS}.
+ * Stock is its own L1 parent (after Stations), not a Main nest.
+ */
+export const MAIN_GROUPS = [
+  { id: 'overview', label: 'Overview' },
+  { id: 'library', label: 'Library' },
+] as const satisfies ReadonlyArray<{ id: MainGroupId; label: string }>;
+
+/**
+ * Stock drill-in — Vercel-style section on the spine root (chevron → back +
+ * children). Not a Main nest; not a Stations Floor/Desk peer. Pages are
+ * `kind: 'stock'` in Products → Inventory → Warehouse order.
+ */
+export const STOCK_DRILL = { id: 'stock', label: 'Stock' } as const;
+
+export type SpineDrillId = typeof STOCK_DRILL.id;
+
+type SidebarNavItemFields = {
   id: string;
   label: string;
   href: string;
   icon: SidebarIconComponent;
   /** Optional desktop-only icon override (master nav on lg+). */
   desktopIcon?: SidebarIconComponent;
-  kind?: 'main' | 'station' | 'bottom';
   /**
    * Permission required to see this item. If omitted, the item is visible
    * to anyone signed in (and to unauthenticated callers during rollout —
@@ -112,7 +146,20 @@ export interface SidebarNavItem {
    * otherwise bypasses the `PARKED_SIDEBAR_NAV_IDS` id filter).
    */
   parkedSurface?: ParkedSurfaceKey;
-}
+};
+
+/**
+ * Flat spine row. `kind: 'main'` requires `mainGroup` (Overview / Library);
+ * `kind: 'station'` requires `stationGroup` (Floor / Desk); `kind: 'stock'`
+ * is its own L1 after Stations (Products → Inventory → Warehouse).
+ * See `docs/todo/main-nav-overview-stock-HANDOFF.md` +
+ * `docs/todo/station-nav-floor-desk-PLAN.md`.
+ */
+export type SidebarNavItem =
+  | (SidebarNavItemFields & { kind?: 'bottom' })
+  | (SidebarNavItemFields & { kind: 'main'; mainGroup: MainGroupId })
+  | (SidebarNavItemFields & { kind: 'station'; stationGroup: StationGroupId })
+  | (SidebarNavItemFields & { kind: 'stock' });
 
 const MOBILE_RESTRICTED_SIDEBAR_IDS = new Set<SidebarRouteKey>([
   'operations',
@@ -163,64 +210,62 @@ export function isMobileAllowedPath(pathname: string | null | undefined): boolea
  * Same pattern as Data Wipe: absent from nav, route can remain live.
  */
 export const APP_SIDEBAR_NAV: SidebarNavItem[] = [
-  // Home (personal triage + Plan/forge). Parked-aware: shown first only when the
-  // Home surface is unlocked (`DOGFOOD_FULL_SURFACE`), hidden for customers — so
-  // the locked-prod-nav tests still see it absent (HOME-OPS plan §3.4/§28).
-  { id: 'home',              label: 'Home',        href: '/',                   icon: Layout,          kind: 'main',    parkedSurface: 'home' },
+  // Main — Overview → Stock → Library (nested under the Main parent eyebrow).
+  // Overview: day boards. Dashboard first; Home + Operations when unparked.
+  { id: 'dashboard',         label: 'Dashboard',   href: '/dashboard',    icon: LayoutDashboard, kind: 'main', mainGroup: 'overview', requires: 'dashboard.view' },
+  // Home (personal triage + Plan/forge). Parked-aware: shown when unlocked
+  // (`DOGFOOD_FULL_SURFACE`), hidden for customers — locked-prod-nav tests still
+  // see it absent (HOME-OPS plan §3.4/§28).
+  { id: 'home',              label: 'Home',        href: '/',                   icon: Layout,          kind: 'main', mainGroup: 'overview', parkedSurface: 'home' },
   // Operations (Live / Analytics / Insights / History / Signals). Parked-aware —
   // same soft-gate as Home: hidden on prod nav + `ParkedSurface` stand-in until
   // `DOGFOOD_FULL_SURFACE` unlocks the workspace.
-  { id: 'operations',        label: 'Operations',  href: '/operations',         icon: Monitor,         kind: 'main',    requires: 'operations.view', parkedSurface: 'operations' },
-  { id: 'dashboard',         label: 'Dashboard',   href: '/dashboard',    icon: LayoutDashboard, kind: 'main',    requires: 'dashboard.view' },
-  // Front-desk commerce — the overall transaction history (Sales · Pickups ·
-  // Repairs categories) plus the sales cart. Renamed from "Walk-In" in the
-  // FOH/BOH split: the *work* (Local Pickup, Repair) is now Receiving modes, so
-  // this page keeps the commerce/history side and owns the Sales job. `id` stays
-  // `walk-in` for bookmark/test stability (id migration is a later pass — see
-  // the plan's Overlap register, "Nav id rename").
-  { id: 'walk-in',           label: 'Sales',       href: '/walk-in',            icon: SalesPage,       kind: 'main',    requires: 'walk_in.view' },
-  { id: 'products',          label: 'Products',    href: '/products',           icon: Tags,            kind: 'main',    requires: 'sku_stock.view' },
-  // Inventory workbench — promoted back to dogfood prod nav (was parked).
-  { id: 'inventory',         label: 'Inventory',   href: '/inventory',          icon: ShelvingUnit,    kind: 'main',    requires: 'sku_stock.view' },
-  // Warehouse map / bins — promoted back to dogfood prod nav (was parked).
-  { id: 'warehouse',         label: 'Warehouse',   href: '/warehouse',          icon: Warehouse,       kind: 'main',    requires: 'sku_stock.view' },
+  { id: 'operations',        label: 'Operations',  href: '/operations',         icon: Monitor,         kind: 'main', mainGroup: 'overview', requires: 'operations.view', parkedSurface: 'operations' },
+  // Library: media / catalog assets.
+  { id: 'ops-photos',        label: 'Media',         href: '/ops/photos',       icon: Images,          kind: 'main', mainGroup: 'library', requires: 'photos.view' },
+  // Sub-route of the parked `studio` surface — hidden from nav while Studio is
+  // parked (so it never dead-ends on the stand-in), shown once it's unlocked.
+  { id: 'studio-catalog',    label: 'Catalog',     href: '/studio/catalog',     icon: Layers,          kind: 'main', mainGroup: 'library', requires: 'studio.view', parkedSurface: 'studio' },
+  // Floor stations — pipeline order (Receiving → Testing → Packing → Shipping).
   // Points at the Unbox surface (`/unbox`) — the receiving station's default
   // surface — so the primary nav lands on the canonical URL without a redirect
   // hop. Route key still resolves to 'receiving', so the item stays active
   // across every receiving mode (/unbox, /triage, /receiving?mode=…).
-  { id: 'receiving',         label: 'Receiving',   href: '/unbox',              icon: STATION_PAGE_ICONS.receiving, kind: 'station', requires: 'receiving.view' },
+  { id: 'receiving',         label: 'Receiving',   href: '/unbox',              icon: STATION_PAGE_ICONS.receiving, kind: 'station', stationGroup: 'floor', requires: 'receiving.view' },
+  // Points at the first-class Test surface (`/test`) so the primary nav lands on
+  // the canonical URL without a redirect hop. Route key still resolves to 'tech'
+  // (reuses the tech panel), so the item stays active on /test + /tech.
+  { id: 'tech',              label: 'Testing',     href: '/test',               icon: STATION_PAGE_ICONS.tech,      kind: 'station', stationGroup: 'floor', requires: 'tech.view' },
+  // Points at the first-class Pack surface (`/pack`) so the primary nav lands on
+  // the canonical URL without a redirect hop. Route key still resolves to
+  // 'packer' (reuses the packer panel), so the item stays active on /pack + /packer.
+  { id: 'packer',            label: 'Packing',     href: '/pack',               icon: STATION_PAGE_ICONS.packer,    kind: 'station', stationGroup: 'floor', requires: 'packing.view' },
   // Points at the Labels mode's own route so the primary nav lands on the
   // canonical URL without the bare-`/shipping` redirect hop (same reason
   // Receiving points at `/unbox`). Route key still resolves to 'outbound', so
   // the item stays active across every shipping mode.
-  { id: 'outbound',          label: 'Shipping',    href: OUTBOUND_MODE_PATHS.labels, icon: STATION_PAGE_ICONS.outbound,  kind: 'station', requires: 'shipping.view' },
-  // Points at the first-class Test surface (`/test`) so the primary nav lands on
-  // the canonical URL without a redirect hop. Route key still resolves to 'tech'
-  // (reuses the tech panel), so the item stays active on /test + /tech.
-  { id: 'tech',              label: 'Testing',     href: '/test',               icon: STATION_PAGE_ICONS.tech,      kind: 'station', requires: 'tech.view' },
-  // Data Wipe / FBA / Sourcing / Studio / AI Chat / Home / Operations are
-  // temporarily absent from master nav — dogfood focuses stations + shipping +
-  // inventory + warehouse. Routes + mode configs remain for deep-links /
-  // preview worktrees.
-  { id: 'ops-photos',        label: 'Media library', href: '/ops/photos',       icon: Images,          kind: 'main',    requires: 'photos.view' },
-  // Sub-route of the parked `studio` surface — hidden from nav while Studio is
-  // parked (so it never dead-ends on the stand-in), shown once it's unlocked.
-  { id: 'studio-catalog',    label: 'Catalog',     href: '/studio/catalog',     icon: Layers,          kind: 'main',    requires: 'studio.view', parkedSurface: 'studio' },
-  // Points at the first-class Pack surface (`/pack`) so the primary nav lands on
-  // the canonical URL without a redirect hop. Route key still resolves to
-  // 'packer' (reuses the packer panel), so the item stays active on /pack + /packer.
-  { id: 'packer',            label: 'Packing',     href: '/pack',               icon: STATION_PAGE_ICONS.packer,    kind: 'station', requires: 'packing.view' },
+  { id: 'outbound',          label: 'Shipping',    href: OUTBOUND_MODE_PATHS.labels, icon: STATION_PAGE_ICONS.outbound,  kind: 'station', stationGroup: 'floor', requires: 'shipping.view' },
+  // Desk stations — pointer-first gate/ticket work (not scan benches).
   // Packer Review Station — desktop Workbench for approving/flagging packed
   // orders + serial/SKU pairing (WS-REVIEW). Gated on `packing.review` at birth;
   // when tech/receiving/shipping review modes land, widen this to any-of
   // (see SIDEBAR_PAGE_NAV note).
-  { id: 'review',            label: 'Review',      href: '/review',             icon: ClipboardList,                kind: 'station', requires: 'packing.review' },
+  { id: 'review',            label: 'Review',      href: '/review',             icon: ClipboardList,                kind: 'station', stationGroup: 'desk', requires: 'packing.review' },
   // Visible with Zendesk tickets *or* warranty (Warranty Logger lives under Support).
-  // Support is a floor Station (promoted More → Stations): `/support` mounts
+  // Support is a Desk station (promoted More → Stations): `/support` mounts
   // SurfaceGate + RouteShell like the other stations. Stays desktop-only
   // (mobile-restricted); no floor-station glyph, so it keeps a plain lucide icon
   // (same precedent as Review, a `kind: 'station'` item with `ClipboardList`).
-  { id: 'support',           label: 'Support',     href: '/support',            icon: AlertCircle,     kind: 'station', requires: 'integrations.zendesk' },
+  { id: 'support',           label: 'Support',     href: '/support',            icon: AlertCircle,     kind: 'station', stationGroup: 'desk', requires: 'integrations.zendesk' },
+  // Stock L1 (after Stations, hairline-separated) — Products → Inventory → Warehouse.
+  // Sales history folded into Dashboard (`?mode=sales` / `?mode=pickup`) —
+  // see `docs/todo/sales-into-dashboard-PLAN.md`. `/walk-in` redirects there;
+  // counter intake stays on `/pickup` + `/repair`.
+  { id: 'products',          label: 'Products',    href: '/products',           icon: Tags,            kind: 'stock', requires: 'sku_stock.view' },
+  // Inventory workbench — promoted back to dogfood prod nav (was parked).
+  { id: 'inventory',         label: 'Inventory',   href: '/inventory',          icon: ShelvingUnit,    kind: 'stock', requires: 'sku_stock.view' },
+  // Warehouse map / bins — promoted back to dogfood prod nav (was parked).
+  { id: 'warehouse',         label: 'Warehouse',   href: '/warehouse',          icon: Warehouse,       kind: 'stock', requires: 'sku_stock.view' },
   // Audit Log is no longer a top-level sidebar row — it lives under Admin › Logs
   // (AdminLogsTab, with the Audit filter). The /settings/audit and /audit-log/*
   // routes still resolve directly; only the nav row was removed.
@@ -324,7 +369,8 @@ const CONTEXT_PANEL_ROUTE_KEYS = new Set<SidebarRouteKey>([
   'sourcing',
   'products',
   'warehouse',
-  'walk-in',
+  // `walk-in` dropped — `/walk-in` is a redirect shell; sales context rides
+  // the dashboard panel (`WalkInHistorySidebar` when domain === sales).
   'manuals-library',
   // The Media library holds the two NAVIGATIONAL facets (lifecycle scope +
   // capture day) in a resident rail; refinements (search, filters, media type,
@@ -548,7 +594,7 @@ export interface SidebarModeItem {
   group?: string;
 }
 
-export interface SidebarPageNav extends SidebarNavItem {
+export type SidebarPageNav = SidebarNavItem & {
   /** L2 modes. Omitted for single-surface pages (no mode row). */
   modes?: SidebarModeItem[];
   /**
@@ -557,7 +603,7 @@ export interface SidebarPageNav extends SidebarNavItem {
    * pages that have `modes`.
    */
   resolveMode?: (loc: ModeLocation) => string;
-}
+};
 
 // Page hrefs are repeated from APP_SIDEBAR_NAV so each mode's `to()` is a pure,
 // self-contained literal (no closure over the array).
@@ -582,8 +628,6 @@ const PRODUCTS = '/products';
 // sub-mode rides along). Legacy `/tech` still resolves (proxy redirect + shared
 // page). Renamed const so the page href + every mode `to()` land on `/test`.
 const TECH = '/test';
-const WALK_IN = '/walk-in';
-const ADMIN = '/admin';
 const SHIPPING = '/shipping';
 const SUPPORT = '/support';
 // Packing graduated to its own first-class surface route (`/pack`,
@@ -594,27 +638,17 @@ const REVIEW = '/review';
 
 export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
   // ── Dashboard ─────────────────────────────────────────────────────────────
-  // TWO L2 modes on `?mode=`, one per DOMAIN (SoT `getDashboardDomainFromSearch`):
-  //   • Receiving(`?mode=inbound`) — inbound cartons; Triage (scanned) / Unbox
-  //     (unboxed) table tabs, each with its own KPI + filters. `inbound` is the
-  //     param value (kept for surface-isolation + legacy bookmarks); the pill/id
-  //     is `receiving`. `?mode=receiving` is accepted as an alias by the resolver.
+  // THREE domains on `?mode=` (SoT `getDashboardDomainFromSearch`):
+  //   • Receiving(`?mode=inbound`) — inbound cartons; Triage / Unbox tabs.
   //   • Shipping (bare / `?unshipped` / `?shipped`) — outbound orders (default).
-  //     Id stays `outbound` so existing deep-links + tests resolve unchanged.
+  //   • Sales (`?mode=sales`) · Local Pickup (`?mode=pickup`) — front-desk
+  //     history (former `/walk-in` L1). Both resolve to the `sales` domain;
+  //     counter intake stays on `/pickup` + `/repair`.
   //
-  // There used to be a THIRD mode, Search (`?mode=search`). It was not a domain:
-  // it owned no table, its sidebar showed recents rather than a picker, and it
-  // carried a mode-local order-detail shell — a third way to look at an order.
-  // Cross-entity search graduated to its own route, `/search`, and the dashboard
-  // page client-redirects the retired param (dashboard IA rework Phase 1).
-  //
-  // The Unshipped/Shipped split is a top-left TAB inside the outbound content
-  // (`DashboardOrdersView`). Warranty Logger moved to Support (`?mode=warranty`);
-  // legacy `/dashboard?warranty=` redirects there from the dashboard page. A mode
-  // switch emits only its own delta (`applyModeTarget` + DASHBOARD_ROUTE_PARAMS),
-  // so each domain opens clean with no hand-written clear list.
+  // Search (`?mode=search`) left for `/search` (IA Phase 1). A mode switch emits
+  // only its own delta (`applyModeTarget` + DASHBOARD_ROUTE_PARAMS).
   {
-    id: 'dashboard', label: 'Dashboard', href: DASHBOARD, icon: LayoutDashboard, kind: 'main', requires: 'dashboard.view',
+    id: 'dashboard', label: 'Dashboard', href: DASHBOARD, icon: LayoutDashboard, kind: 'main', mainGroup: 'overview', requires: 'dashboard.view',
     modes: [
       // Lands on the Triage tab (scanned order) — `sort=scanned_newest` keeps the
       // header tab + the table's day-band axis in lockstep (both read `?sort`).
@@ -622,10 +656,14 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
       // disabled pill that opens onto a denial state.
       { id: 'receiving', label: 'Receiving', icon: Inbox, requires: DASHBOARD_INBOUND_PERMISSION, to: () => ({ pathname: DASHBOARD, params: { mode: 'inbound', sort: 'scanned_newest' } }) },
       { id: 'outbound', label: 'Shipping', icon: Send,   to: () => ({ pathname: DASHBOARD, params: { unshipped: '' } }) },
+      { id: 'sales', label: 'Sales', icon: SalesPrice, requires: DASHBOARD_SALES_PERMISSION, to: () => ({ pathname: DASHBOARD, params: { mode: DASHBOARD_SALES_MODE } }) },
+      { id: 'pickup', label: 'Local Pickup', icon: ShoppingCart, requires: DASHBOARD_SALES_PERMISSION, to: () => ({ pathname: DASHBOARD, params: { mode: 'pickup' } }) },
     ],
     resolveMode: ({ params }) => {
       const m = String(params.get('mode') || '').trim().toLowerCase();
       if (m === 'inbound' || m === 'receiving') return 'receiving';
+      if (m === 'sales') return 'sales';
+      if (m === 'pickup') return 'pickup';
       // `?unshipped`, `?shipped`, legacy `?pending`, or nothing → Shipping.
       return 'outbound';
     },
@@ -639,7 +677,7 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
   // the mode-scoped params (search, selection, range, section…) so each mode
   // opens clean — matches Inventory.
   {
-    id: 'operations', label: 'Operations', href: OPERATIONS, icon: Monitor, kind: 'main', requires: 'operations.view',
+    id: 'operations', label: 'Operations', href: OPERATIONS, icon: Monitor, kind: 'main', mainGroup: 'overview', requires: 'operations.view',
     modes: [
       // Each target used to null twelve sibling keys by hand — the largest of the
       // nine deleted denylists, re-stated once per mode. `/operations` declares
@@ -672,7 +710,7 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
   {
     // href is the Unbox surface (the receiving station's default); keep it in
     // sync with APP_SIDEBAR_NAV so `getSidebarHref('receiving')` resolves there.
-    id: 'receiving', label: 'Receiving', href: UNBOX, icon: STATION_PAGE_ICONS.receiving, kind: 'station', requires: 'receiving.view',
+    id: 'receiving', label: 'Receiving', href: UNBOX, icon: STATION_PAGE_ICONS.receiving, kind: 'station', stationGroup: 'floor', requires: 'receiving.view',
     modes: [
       // Incoming now lives at its own route (`/incoming`).
       { id: 'incoming', label: 'Incoming',     icon: RECEIVING_MODE_ICONS.incoming, to: () => ({ pathname: INCOMING, params: {} }) },
@@ -710,7 +748,7 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
   // `?mode=scout|watchlist`; bare /sourcing = the Queue (demand) surface (default).
   // Legacy keys aliased: `alerts`→queue, `lookup`→scout.
   {
-    id: 'sourcing', label: 'Sourcing', href: SOURCING, icon: Search, kind: 'main', requires: 'sourcing.view',
+    id: 'sourcing', label: 'Sourcing', href: SOURCING, icon: Search, kind: 'stock', requires: 'sourcing.view',
     modes: [
       // Each target used to null `q` and `status` by hand — and forgot `by` and
       // `range`, so Scout's field toggle and the Analytics window leaked into
@@ -736,7 +774,7 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
   // ── FBA prep (legacy page nav — surface split hosts under Shipping) ─────
   // Deep-links still resolve; primary UX is `/shipping?mode=fba&fbaMode=…`.
   {
-    id: 'fba', label: 'FBA prep', href: SHIPPING, icon: Boxes, kind: 'main', requires: 'fba.view',
+    id: 'fba', label: 'FBA prep', href: SHIPPING, icon: Boxes, kind: 'stock', requires: 'fba.view',
     modes: [
       { id: 'plan',    label: 'Plan',    icon: ClipboardList, to: () => ({ pathname: SHIPPING, params: { mode: 'fba', fbaMode: 'plan' } }) },
       { id: 'combine', label: 'Combine', icon: Package,       to: () => ({ pathname: SHIPPING, params: { mode: 'fba', fbaMode: null } }) },
@@ -751,7 +789,7 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
   // `?mode=labels|scan-out|ready|fba`; default `labels` (param cleared).
   // Nav id stays `outbound` for bookmark/test stability (route is `/shipping`).
   {
-    id: 'outbound', label: 'Shipping', href: OUTBOUND_MODE_PATHS.labels, icon: STATION_PAGE_ICONS.outbound, kind: 'station', requires: 'shipping.view',
+    id: 'outbound', label: 'Shipping', href: OUTBOUND_MODE_PATHS.labels, icon: STATION_PAGE_ICONS.outbound, kind: 'station', stationGroup: 'floor', requires: 'shipping.view',
     // Scan out sits last (rightmost) — the dock ship-confirm station is the
     // end-of-line action after labels/ready/fba prep.
     modes: [
@@ -776,7 +814,7 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
   // `?packMode=fragile|multi`; default `standard` (param cleared). Mirrors the
   // panel's own `?packMode=` derivation so deep-links resolve identically.
   {
-    id: 'packer', label: 'Packing', href: PACK, icon: STATION_PAGE_ICONS.packer, kind: 'station', requires: 'packing.view',
+    id: 'packer', label: 'Packing', href: PACK, icon: STATION_PAGE_ICONS.packer, kind: 'station', stationGroup: 'floor', requires: 'packing.view',
     modes: [
       { id: 'standard', label: 'Standard',   icon: PACKING_MODE_ICONS.standard, to: () => ({ pathname: PACK, params: { packMode: null } }) },
       { id: 'fragile',  label: 'Fragile',    icon: PACKING_MODE_ICONS.fragile,  to: () => ({ pathname: PACK, params: { packMode: 'fragile' } }) },
@@ -795,7 +833,7 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
   // never new routes. When a non-packing review mode ships, widen the
   // APP_SIDEBAR_NAV `requires` gate to any-of (packing.review OR …).
   {
-    id: 'review', label: 'Review', href: REVIEW, icon: ClipboardList, kind: 'station', requires: 'packing.review',
+    id: 'review', label: 'Review', href: REVIEW, icon: ClipboardList, kind: 'station', stationGroup: 'desk', requires: 'packing.review',
     modes: [
       // Each target used to null `rtab`/`packerLogId`/`orderId`/`choreId` inline —
       // the widest of the remaining clear lists, re-stated once per mode.
@@ -812,10 +850,32 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
       return 'packer';
     },
   },
+  // ── Products ──────────────────────────────────────────────────────────────
+  // Stock group: Products → Inventory → Warehouse. `?view=manuals|catalog|labels|
+  // pairing|qc|kit`; default `manuals` (param cleared). Vocabulary SoT:
+  // `@/components/products/products-view`.
+  //
+  // The targets used to null `platform` / `linkFilter` by hand — a two-key
+  // denylist that only ever covered the Catalog chrome, which is why `?skuId=`,
+  // `?sort=` and `?historyId=` still rode between views. `applyModeTarget` now
+  // constructs from PRODUCTS_ROUTE_PARAMS, so a view emits its own delta and
+  // there is nothing left to remember to clear.
+  {
+    id: 'products', label: 'Products', href: PRODUCTS, icon: Tags, kind: 'stock', requires: 'sku_stock.view',
+    modes: [
+      { id: 'catalog', label: 'Catalog', icon: Tags, to: () => ({ pathname: PRODUCTS, params: { view: 'catalog' } }) },
+      { id: 'manuals', label: 'Manuals', icon: FileText, to: () => ({ pathname: PRODUCTS, params: { view: null } }) },
+      { id: 'labels',  label: 'Labels',  icon: Barcode,  to: () => ({ pathname: PRODUCTS, params: { view: 'labels' } }) },
+      { id: 'pairing', label: 'Pairing', icon: Link2,    to: () => ({ pathname: PRODUCTS, params: { view: 'pairing' } }) },
+      { id: 'qc',      label: 'QC',      icon: Check,     to: () => ({ pathname: PRODUCTS, params: { view: 'qc' } }) },
+      { id: 'kit',     label: 'Kit Parts', icon: PackageOpen, to: () => ({ pathname: PRODUCTS, params: { view: 'kit' } }) },
+    ],
+    resolveMode: ({ params }) => parseProductsView(params.get('view')),
+  },
   // ── Inventory ─────────────────────────────────────────────────────────────
   // `?mode=triage|pulse` or `?section=replenish`; default `ledger`.
   {
-    id: 'inventory', label: 'Inventory', href: INVENTORY, icon: ShelvingUnit, kind: 'main', requires: 'sku_stock.view',
+    id: 'inventory', label: 'Inventory', href: INVENTORY, icon: ShelvingUnit, kind: 'stock', requires: 'sku_stock.view',
     modes: [
       // `open: null` on every switch so a selection (exception/unit id) from one
       // mode never leaks into another's right pane.
@@ -851,7 +911,7 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
   // ── Warehouse ─────────────────────────────────────────────────────────────
   // `?tab=labels|racks|rooms|bins|map`; default `labels` (param cleared).
   {
-    id: 'warehouse', label: 'Warehouse', href: WAREHOUSE, icon: Warehouse, kind: 'main', requires: 'sku_stock.view',
+    id: 'warehouse', label: 'Warehouse', href: WAREHOUSE, icon: Warehouse, kind: 'stock', requires: 'sku_stock.view',
     modes: [
       // `{ tab: null }` on the default mode reads as "drop the switch", not as a
       // clear list — and now that /warehouse declares a spec, every sibling's
@@ -868,34 +928,13 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
       return t === 'rooms' || t === 'bins' || t === 'racks' || t === 'map' ? t : 'labels';
     },
   },
-  // ── Products ──────────────────────────────────────────────────────────────
-  // `?view=manuals|catalog|labels|pairing|qc|kit`; default `manuals` (param
-  // cleared). Vocabulary SoT: `@/components/products/products-view`.
-  //
-  // The targets used to null `platform` / `linkFilter` by hand — a two-key
-  // denylist that only ever covered the Catalog chrome, which is why `?skuId=`,
-  // `?sort=` and `?historyId=` still rode between views. `applyModeTarget` now
-  // constructs from PRODUCTS_ROUTE_PARAMS, so a view emits its own delta and
-  // there is nothing left to remember to clear.
-  {
-    id: 'products', label: 'Products', href: PRODUCTS, icon: Tags, kind: 'main', requires: 'sku_stock.view',
-    modes: [
-      { id: 'catalog', label: 'Catalog', icon: Tags, to: () => ({ pathname: PRODUCTS, params: { view: 'catalog' } }) },
-      { id: 'manuals', label: 'Manuals', icon: FileText, to: () => ({ pathname: PRODUCTS, params: { view: null } }) },
-      { id: 'labels',  label: 'Labels',  icon: Barcode,  to: () => ({ pathname: PRODUCTS, params: { view: 'labels' } }) },
-      { id: 'pairing', label: 'Pairing', icon: Link2,    to: () => ({ pathname: PRODUCTS, params: { view: 'pairing' } }) },
-      { id: 'qc',      label: 'QC',      icon: Check,     to: () => ({ pathname: PRODUCTS, params: { view: 'qc' } }) },
-      { id: 'kit',     label: 'Kit Parts', icon: PackageOpen, to: () => ({ pathname: PRODUCTS, params: { view: 'kit' } }) },
-    ],
-    resolveMode: ({ params }) => parseProductsView(params.get('view')),
-  },
   // ── Testing ───────────────────────────────────────────────────────────────
   // Top-mode switch — Testing / Shipping (matches TECH_TOP_MODE_ITEMS).
   // `?view=testing` → Testing (history browse when no line; panel when open);
   // everything else is Shipping (right pane = Pending · FBA | History workspace).
   // Legacy `?view=testing-history` redirects to `?view=testing`.
   {
-    id: 'tech', label: 'Testing', href: TECH, icon: STATION_PAGE_ICONS.tech, kind: 'station', requires: 'tech.view',
+    id: 'tech', label: 'Testing', href: TECH, icon: STATION_PAGE_ICONS.tech, kind: 'station', stationGroup: 'floor', requires: 'tech.view',
     modes: [
       { id: 'testing',  label: 'Testing',  icon: TECH_MODE_ICONS.testing,  to: () => ({ pathname: TECH, params: { view: 'testing' } }) },
       { id: 'shipping', label: 'Shipping', icon: TECH_MODE_ICONS.shipping, to: () => ({ pathname: TECH, params: { view: null } }) },
@@ -907,25 +946,8 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
   },
   // Data Wipe (`/wipe`) is temporarily absent from master nav — revisit when the
   // station UX is ready for general rollout. Route + `tech.data_wipe` gate remain.
-  // ── Sales (front-desk transaction-history hub) ────────────────────────────
-  // Formerly "Walk-In". Intake/processing lives on `/pickup` (Local Pickup) and
-  // `/repair` (Receiving Repair queue). This page is the observe side — Local
-  // Pickup · Sales history. `?mode=pickup|sales` (default `sales` dropped);
-  // legacy `?mode=repair` / `?category=repairs` redirect to `/repair` at the
-  // proxy. `?new=true` / `?openRepair=` still redirect via `useWalkInTaskRedirect`.
-  {
-    id: 'walk-in', label: 'Sales', href: WALK_IN, icon: SalesPage, kind: 'main', requires: 'walk_in.view',
-    modes: [
-      // Both targets used to null `tab` and legacy `category` by hand. `/walk-in`
-      // declares WALK_IN_ROUTE_PARAMS, so `applyModeTarget` CONSTRUCTS from the
-      // delta and carries only `staff`; the nulls could not affect the result.
-      // Verified byte-identical before and after removal for both modes.
-      { id: 'pickup', label: 'Local Pickup', icon: ShoppingCart, to: () => ({ pathname: WALK_IN, params: { mode: 'pickup' } }) },
-      { id: 'sales',  label: 'Sales',        icon: SalesPrice,   to: () => ({ pathname: WALK_IN, params: { mode: null } }) },
-    ],
-    // Reads the new `?mode=`, falling back to legacy `?category=` for old links.
-    resolveMode: ({ params }) => parseWalkInHistoryMode(params.get('mode') ?? params.get('category')),
-  },
+  // Sales history L1 removed — lives on Dashboard L2 (`sales` / `pickup`).
+  // `/walk-in` is a redirect shell only (`retiredWalkInHistoryTarget`).
   // ── Support ───────────────────────────────────────────────────────────────
   // `?mode=orders|voicemail|calls|warranty|issues`; bare /support = the Zendesk
   // Tickets console (default, param cleared) for deep-link back-compat.
@@ -933,7 +955,7 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
   // Every switch clears mode-scoped params so each mode opens clean — see
   // the /support param spec.
   {
-    id: 'support', label: 'Support', href: SUPPORT, icon: AlertCircle, kind: 'station', requires: 'integrations.zendesk',
+    id: 'support', label: 'Support', href: SUPPORT, icon: AlertCircle, kind: 'station', stationGroup: 'desk', requires: 'integrations.zendesk',
     modes: [
       {
         id: 'tickets',
@@ -1003,28 +1025,9 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
       return 'tickets';
     },
   },
-  // ── Admin (grouped section rows — hover modes dropdown + full nav) ─────────
-  // 20+ sections derived from ADMIN_SECTION_OPTIONS (single source of truth), so
-  // every section is ≤2 taps from the header dropdown and the closed header shows
-  // the active section name. The AdminSidebar body keeps its own grouped/described
-  // list (not gated). Hovering the header trigger lists every section (grouped,
-  // scrollable); clicking opens the full nav. `?section=<value>`;
-  // `overview` clears the param so deep-links land cleanly on overview.
-  {
-    id: 'admin', label: 'Admin', href: ADMIN, icon: ShieldCheck, kind: 'bottom', requires: 'admin.view',
-    modes: ADMIN_SECTION_OPTIONS.map((section) => ({
-      id: section.value,
-      label: section.label,
-      icon: section.icon as SidebarIconComponent,
-      group: section.group,
-      requires: section.requires,
-      to: () => ({ pathname: ADMIN, params: { section: section.value === 'overview' ? null : section.value } }),
-    })),
-    resolveMode: ({ params }) => {
-      const v = params.get('section');
-      return v && ADMIN_SECTION_OPTIONS.some((section) => section.value === v) ? v : 'overview';
-    },
-  },
+  // Admin is modeless in the spine + header Mode control — sections live in
+  // AdminSidebar / AdminContextPanel only (`?section=`). Do not reintroduce
+  // admin modes here; the pinned bottom bar navigates to `/admin` as one hop.
 ];
 
 /** Lookup a page's nav entry (modes + resolver) by its route/page id. */
@@ -1033,7 +1036,7 @@ export function getSidebarPageNav(pageId: string): SidebarPageNav | undefined {
 }
 
 /**
- * Drop modes the user can't access (per-mode `requires`, e.g. admin sub-sections)
+ * Drop modes the user can't access (per-mode `requires`, e.g. Support gates)
  * so every mode surface matches the page body's own permission filtering. Modes
  * without `requires` are always visible; gated modes need the permission present.
  *
@@ -1056,7 +1059,7 @@ export function filterPageModes(
  * Canonical href for a page id. Modeful pages carry it in `SIDEBAR_PAGE_NAV`;
  * modeless pages (operations, packer, support, ai-chat,
  * audit-log, admin, settings) live only in `APP_SIDEBAR_NAV`. Navigation must
- * resolve through here so EVERY page — not just the eight modeful ones — lands
+ * resolve through here so EVERY page — not just the modeful ones — lands
  * on its real route. Returns null for an unknown id.
  */
 export function getSidebarHref(pageId: string): string | null {

@@ -8,7 +8,10 @@ import {
   isRateLimited,
   useZendeskTicketBundle,
 } from '@/hooks/useZendeskQueries';
-import { useTicketPhotoStaging } from '@/hooks/useTicketPhotoStaging';
+import {
+  useTicketPhotoStaging,
+  type TicketPhotoStaging,
+} from '@/hooks/useTicketPhotoStaging';
 import { usePhotoDropzone } from '@/hooks/usePhotoDropzone';
 import { useSupportContext } from '@/hooks/useSupportContext';
 import type { SupportContextBundle } from '@/lib/support/context-types';
@@ -21,6 +24,7 @@ import { PhotoViewerPortal } from '@/components/shipped/photo-gallery/PhotoViewe
 import { SupportChatHeader } from './SupportChatHeader';
 import { SupportChatThread } from './SupportChatThread';
 import { SupportChatComposer } from './SupportChatComposer';
+import { useTicketComposerStaging } from './TicketComposerStagingContext';
 import type { ThreadComposerBridge } from '@/components/threads/ThreadPanel';
 import { SupportContextDetailPanel } from '@/components/support/context/SupportContextDetailPanel';
 import { supportOrdersHref } from '@/components/sidebar/support/support-sidebar-shared';
@@ -61,7 +65,7 @@ function contextBadgeFromBundle(bundle: SupportContextBundle | undefined): strin
 
 /**
  * Chat-style ticket detail: sticky header (requester + Zendesk pickers + staff
- * assignment) → scrollable conversation → sticky composer.
+ * assignment) → scrollable conversation → sticky composer (or host-owned dock).
  *
  * Support Context (Linkage + Team + Activity) lives in the global detail-stack
  * slide-over ({@link SupportContextDetailPanel}) opened from the header.
@@ -74,24 +78,46 @@ export function SupportTicketDetail({
   ticketId,
   onBack,
   hideExternalLink = false,
-  /** Station ticket tab — denser chrome, no AI panel, no composer send bar. */
+  /** Station / Unbox rail — denser chrome, no AI panel. */
   embedded = false,
+  /**
+   * Drop the avatar/requester identity band. Defaults to `embedded` (station
+   * Ticket tabs hide it — identity lives in SupportTicketIdentity). Unbox
+   * push rail passes `false` so a denser requester line stays visible.
+   */
+  hideRequesterBand,
   /** Carton context for media library “Current carton” tab (unbox / testing). */
   receivingId,
   /** Hide linked-context strip (when already shown by SupportContextHub). */
   hideLinkedContext = false,
   onComposerBridgeChange,
+  /**
+   * `inline` — sticky composer under the thread (default / console).
+   * `host` — station owns the floating {@link SupportTicketComposerDock}; skip
+   * inline I/O. Staging comes from {@link photoStaging} or
+   * {@link TicketComposerStagingProvider}.
+   */
+  composerPlacement = 'inline',
+  photoStaging,
 }: {
   ticketId: number;
   onBack?: () => void;
   /** Hide the in-header Zendesk link when the host already shows one. */
   hideExternalLink?: boolean;
   embedded?: boolean;
+  hideRequesterBand?: boolean;
   receivingId?: number;
   hideLinkedContext?: boolean;
   /** Exposes the embedded composer to a station terminal dock. */
   onComposerBridgeChange?: (bridge: ThreadComposerBridge | null) => void;
+  composerPlacement?: 'inline' | 'host';
+  /**
+   * Host-owned staging (optional when a {@link TicketComposerStagingProvider}
+   * wraps the tree). Inline placement creates its own when neither is set.
+   */
+  photoStaging?: TicketPhotoStaging;
 }) {
+  const hideRequester = hideRequesterBand ?? embedded;
   const { data: bundle, isLoading, error } = useZendeskTicketBundle(ticketId);
   const ticket = bundle?.ticket;
   const commentsData = bundle
@@ -131,8 +157,12 @@ export function SupportTicketDetail({
 
   // Drag-a-photo-onto-the-ticket: the dropzone covers the whole panel; dropping
   // uploads to GCS (linked to this ticket) and stages it in the composer.
-  const staging = useTicketPhotoStaging(ticketId);
+  // Host-owned staging (prop or context) wins so Attach / drop share one bag.
+  const contextStaging = useTicketComposerStaging();
+  const localStaging = useTicketPhotoStaging(ticketId);
+  const staging = photoStaging ?? contextStaging ?? localStaging;
   const dz = usePhotoDropzone(staging.addFiles);
+  const hostOwnsComposer = composerPlacement === 'host';
 
   if (isLoading) {
     return (
@@ -185,8 +215,7 @@ export function SupportTicketDetail({
         onBack={onBack}
         hideExternalLink={hideExternalLink}
         compact={embedded}
-        hideTitle={embedded}
-        hideRequesterBand={embedded}
+        hideRequesterBand={hideRequester}
         onOpenContext={showContext ? () => setContextOpen(true) : undefined}
         contextOpen={contextOpen}
         contextBadge={showContext ? contextBadge : null}
@@ -203,14 +232,16 @@ export function SupportTicketDetail({
         />
       </div>
       {/* AI suggested reply intentionally omitted for now (station + console). */}
-      <SupportChatComposer
-        ticketId={ticketId}
-        requesterEmail={requester.email}
-        staging={staging}
-        hideSendBar={embedded}
-        receivingId={receivingId}
-        onBridgeChange={onComposerBridgeChange}
-      />
+      {hostOwnsComposer ? null : (
+        <SupportChatComposer
+          ticketId={ticketId}
+          requesterEmail={requester.email}
+          staging={staging}
+          hideSendBar={embedded}
+          receivingId={receivingId}
+          onBridgeChange={onComposerBridgeChange}
+        />
+      )}
 
       {showContext ? (
         <SupportContextDetailPanel
@@ -234,7 +265,7 @@ export function SupportTicketDetail({
           >
             <div className="flex flex-col items-center gap-2 text-blue-700">
               <Upload className="h-7 w-7" />
-              <p className="text-sm font-semibold">Drop photo to add to ticket #{ticketId}</p>
+              <p className="text-role-caption font-semibold">Drop photo to add to ticket #{ticketId}</p>
               <p className="text-role-caption font-semibold text-blue-500">Uploads to the library, attaches on your next reply</p>
             </div>
           </motion.div>

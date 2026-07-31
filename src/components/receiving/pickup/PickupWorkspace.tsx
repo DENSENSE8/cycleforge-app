@@ -20,6 +20,7 @@ import {
   WORKBENCH_BODY_COLUMN,
   WORKBENCH_CHROME_COLUMN,
   WorkbenchChromeHeader,
+  WorkbenchTrailingCluster,
 } from '@/components/dashboard/workbench-shell';
 import { ToolbarSearchToggle } from '@/design-system/primitives';
 import { GridFieldsMenu } from '@/components/ui/table-column-config/GridFieldsMenu';
@@ -123,9 +124,9 @@ export function PickupWorkspace({ selectedOrderId = null }: PickupWorkspaceProps
               />
             }
             trailing={
-              /* Per-staff column picker — the opt-in path for the `optional`
-                 line-detail tracks (sku · qty · cond · price). */
-              <GridFieldsMenu tableId="pickup" columns={PICKUP_GRID_COLUMNS} />
+              <WorkbenchTrailingCluster
+                fields={<GridFieldsMenu tableId="pickup" columns={PICKUP_GRID_COLUMNS} />}
+              />
             }
           />
         </div>

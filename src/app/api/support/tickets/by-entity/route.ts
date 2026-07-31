@@ -74,6 +74,8 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
             : null,
         subject: ticket.subjectCache,
         status: ticket.statusCache,
+        linkedAt: ticket.linkedAt ?? null,
+        linkedByInitials: ticket.linkedByInitials ?? null,
       },
     });
   } catch (err) {

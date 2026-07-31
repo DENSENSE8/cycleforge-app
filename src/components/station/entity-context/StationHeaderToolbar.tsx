@@ -236,11 +236,11 @@ export function StationHeaderToolbar({
         {embeddedOverflow ? <div className={HEADER_ICON_WRAP}>{embeddedOverflow}</div> : null}
         {def.showDetails && receivingId != null ? (
           <div className={HEADER_ICON_WRAP}>
-            <HoverTooltip label="View carton" asChild>
+            <HoverTooltip label="Receiving details" asChild>
               <IconButton
                 size="md"
                 onClick={() => dispatchReceivingDetailsOverlay(receivingId)}
-                ariaLabel="View carton"
+                ariaLabel="Receiving details"
                 className={HEADER_ICON_BTN_CLASS}
                 icon={<Info className={TOP_CHROME_ICON_GLYPH} />}
               />
@@ -274,10 +274,10 @@ export function StationHeaderToolbar({
         <>
           {overflowMenu()}
           {def.showDetails && receivingId != null ? (
-            <HoverTooltip label="View carton" asChild>
+            <HoverTooltip label="Receiving details" asChild>
               <IconButton
                 onClick={() => dispatchReceivingDetailsOverlay(receivingId)}
-                ariaLabel="View carton"
+                ariaLabel="Receiving details"
                 icon={<Info className="h-4 w-4 text-text-soft hover:text-text-default" />}
                 className="inline-flex h-7 w-7 items-center justify-center rounded-md transition-colors hover:bg-surface-hover"
               />

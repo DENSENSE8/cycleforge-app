@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { captureTimeFromFile } from '@/lib/photos/capture-time';
 import { uploadPhotoClient, linkPhotoClient } from '@/lib/photos/upload-client';
 import { toast } from '@/lib/toast';
@@ -121,7 +121,10 @@ export function useTicketPhotoStaging(ticketId: number) {
 
   const uploading = staged.some((s) => s.status === 'uploading');
 
-  return { staged, addFiles, addLibraryPhotos, remove, clear, uploading };
+  return useMemo(
+    () => ({ staged, addFiles, addLibraryPhotos, remove, clear, uploading }),
+    [staged, addFiles, addLibraryPhotos, remove, clear, uploading],
+  );
 }
 
 export type TicketPhotoStaging = ReturnType<typeof useTicketPhotoStaging>;

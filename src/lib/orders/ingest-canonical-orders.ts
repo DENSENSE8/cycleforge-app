@@ -71,6 +71,8 @@ type OrderProjection = {
 interface IngestCanonicalOrdersResult {
   processedOrders: number;
   insertedOrders: number;
+  /** DB ids of the rows actually inserted this call — empty when every canonical order matched an existing row. */
+  insertedOrderIds: number[];
   updatedOrdersTracking: number;
   updatedOrdersFields: number;
   deletedDuplicateOrders: number;
@@ -92,6 +94,7 @@ function emptyIngestResult(): IngestCanonicalOrdersResult {
   return {
     processedOrders: 0,
     insertedOrders: 0,
+    insertedOrderIds: [],
     updatedOrdersTracking: 0,
     updatedOrdersFields: 0,
     deletedDuplicateOrders: 0,
@@ -918,6 +921,7 @@ export async function ingestCanonicalOrders(
   return {
     processedOrders: canonicalOrders.length,
     insertedOrders: ordersToInsert.length,
+    insertedOrderIds,
     updatedOrdersTracking,
     updatedOrdersFields: ordersToBackfill.length,
     deletedDuplicateOrders: ordersToDelete.length,

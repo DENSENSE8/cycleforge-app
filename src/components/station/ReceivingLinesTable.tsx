@@ -50,7 +50,6 @@ import {
   WORKBENCH_CHROME_COLUMN,
   WORKBENCH_GUTTERS,
 } from '@/components/dashboard/workbench-shell';
-import { receivingTableScopeLabel } from '@/components/dashboard/queue-table';
 import { useSearchParams } from 'next/navigation';
 import { AlertTriangle, Check, Clock, Inbox, Search, Truck } from '@/components/Icons';
 import type { SwimlaneLaneDef } from '@/components/board/SwimlaneBoard';
@@ -66,8 +65,6 @@ import {
   type ReceivingLaneIconKey,
 } from '@/lib/receiving/receiving-board-lanes';
 import { TableColumnConfigProvider } from '@/components/ui/table-column-config/TableColumnConfig';
-import { GridFieldsMenu } from '@/components/ui/table-column-config/GridFieldsMenu';
-import { RECEIVING_GRID_COLUMNS } from '@/lib/receiving/receiving-grid-layout';
 
 const RECEIVING_LANE_ICON: Record<ReceivingLaneIconKey, React.ComponentType<{ className?: string }>> = {
   inbox: Inbox,
@@ -117,11 +114,11 @@ export interface ReceivingLinesTableProps {
   selectMode?: boolean;
   /**
    * Host owns WorkbenchChromeHeader (Unbox workbench). Suppresses the table's
-   * own History/Incoming chrome; week / scope pill portals into
-   * `toolbarPortalTarget` (top tabs bar controls slot).
+   * own History/Incoming chrome; week pill portals into `toolbarPortalTarget`
+   * (controls slot). Fields lives on the host trailing cluster.
    */
   embedded?: boolean;
-  /** Portal week/scope DateRangePickerPill into Unbox chrome controls slot. */
+  /** Portal week DateRangePickerPill into Unbox chrome controls slot. */
   toolbarPortalTarget?: HTMLElement | null;
 }
 
@@ -274,7 +271,6 @@ export default function ReceivingLinesTable({
 
   // Unbox / History spreadsheet body — LedgerGrid via ReceivingGridView (same
   // family as IncomingGridView). Date is a per-row column; no sticky day bands.
-  const visibleLineCount = orderedVisibleRows.length;
   const weekCount = getWeekCount();
 
   const receivingGrid = () => (
@@ -297,6 +293,10 @@ export default function ReceivingLinesTable({
     </div>
   );
 
+  // Unbox Queue / Viewed skip the week filter — do NOT portal a static
+  // "Door queue · N" fact chip (duplicates the Queue tab badge; not actionable).
+  // History keeps the interactive week pill. Fields lives on UnboxWorkspaceHeader
+  // trailing (WorkbenchTrailingCluster) — not in this portal.
   const chromePill =
     isHistoryMode || !skipWeekFilter ? (
       <DateRangePickerPill
@@ -308,27 +308,14 @@ export default function ReceivingLinesTable({
           onNext: () => setWeekOffset(Math.max(0, weekOffset - 1)),
         }}
       />
-    ) : (
-      <DateRangePickerPill
-        label={receivingTableScopeLabel(mode.id)}
-        count={visibleLineCount}
-      />
-    );
+    ) : null;
 
-  // Unbox workbench embeds the table under UnboxWorkspaceHeader — week/scope
-  // pill portals into the top tabs bar (dashboard Shipped recipe). The Fields
-  // menu rides the same portal: it is a quiet per-staff preference, so it
-  // belongs beside the scope pill, not in the primary tab row.
+  // Unbox workbench embeds the table under UnboxWorkspaceHeader — week pill
+  // (History only) portals into the top tabs bar controls slot.
   if (embedded) {
     const portaledToolbar =
-      toolbarPortalTarget != null
-        ? createPortal(
-            <>
-              {chromePill}
-              <GridFieldsMenu tableId="receiving" columns={RECEIVING_GRID_COLUMNS} />
-            </>,
-            toolbarPortalTarget,
-          )
+      toolbarPortalTarget != null && chromePill != null
+        ? createPortal(chromePill, toolbarPortalTarget)
         : null;
     return (
       <TableColumnConfigProvider tableId="receiving">

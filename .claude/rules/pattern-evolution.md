@@ -24,6 +24,9 @@ it never blocks serving a new one. When jobs differ, add the sibling and share t
 5. **Read/work pairs share the read model + atoms only.** Carton **read** (`/carton`) vs Unbox
    **work**: never require shared layout panels or identity cards. A new assembly for the read job is
    correct. Anti-pattern name: **lobotomized work chrome** (work panels with edits stripped).
+   Photos on the read surface use the gallery viewer SoT (`usePhotoGallery` + `PhotoViewerPortal`) —
+   never a second page-local photo UI. Work escape = one quiet `openInUnboxHref` control; never
+   repeated `"Open in Unbox"` marketing CTAs on findings. Recipe: `display/carton-read.md`.
 6. **Recommend even when you only implement the asked slice** — a short note:
 
    ```markdown

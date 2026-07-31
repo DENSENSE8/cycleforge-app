@@ -35,6 +35,8 @@ function ctx(overrides: Partial<ReceivingModeContext> = {}): ReceivingModeContex
     isDeliveredNotUnboxedFacet: false,
     staffFilterId: null,
     listSearch: '',
+    queueStage: null,
+    queueLane: null,
     ...overrides,
   };
 }

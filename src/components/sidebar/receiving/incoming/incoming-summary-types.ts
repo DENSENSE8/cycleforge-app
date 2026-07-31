@@ -11,18 +11,10 @@ export type IncomingDeliveryState =
   | 'AWAITING_TRACKING'
   | 'WRONG_DESTINATION';
 
-export interface IncomingCarrierBreakdown {
-  carrier: 'UPS' | 'USPS' | 'FEDEX' | 'UNKNOWN' | string;
-  delivered_unscanned: number;
-  tracking_unavailable: number;
-  in_transit: number;
-  carrier_mismatch: number;
-}
-
 export interface IncomingSummary {
   issued: number;
   delivered_unopened: number;
-  /** Unbox attention — scanned-in but not unboxed (not an Incoming hunt tile). */
+  /** Delivered, nothing unboxed against it. Drives the Incoming STATUS tile of the same name. */
   delivered_not_unboxed: number;
   /** Hunt-queue claims band: delivered >48h, still unscanned. */
   delivered_unscanned_claims: number;
@@ -35,7 +27,6 @@ export interface IncomingSummary {
   awaiting_tracking: number;
   expected_today: number;
   wrong_destination?: number;
-  by_carrier?: IncomingCarrierBreakdown[];
   /** eBay incoming lines still awaiting their Zoho PO link (0 unless Universal Incoming is on). */
   ebay_pending?: number;
   /** Total incoming eBay purchasing-account lines (0 unless Universal Incoming is on). */

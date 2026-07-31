@@ -22,7 +22,8 @@ export const runtime = 'nodejs';
 
 const BodySchema = z.object({
   label: z.string().trim().min(1).max(120),
-  ttlMinutes: z.number().int().positive().max(24 * 60).optional(),
+  // Up to 30 days — long enough to stage MDM tablets (default is 7 days).
+  ttlMinutes: z.number().int().positive().max(30 * 24 * 60).optional(),
 });
 
 export const POST = withAuth(

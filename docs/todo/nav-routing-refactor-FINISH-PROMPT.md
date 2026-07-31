@@ -43,6 +43,7 @@ never bought isolation. Never write that they do.
 | Last denylists deleted; Support/Dashboard/Operations/Home construct (Slices 4–5 isolation tier) | `3e42e8462` |
 | `/products` isolation tier + D2 detail-route move | uncommitted |
 | Isolation tier for `/sourcing` `/test` `/walk-in` `/inventory` `/review` `/pack` `/warehouse`; `pane` + station-table params ambient; `SurfaceParamHygiene`; `surface-param-isolation.spec.ts` | uncommitted |
+| `/dashboard` boundary parse (`SurfaceParamHygiene` + shipped/unshipped filter band declared) | uncommitted |
 
 **Nine denylists, ~86 enumerated keys, all gone.** `MODE_SCOPED_PARAMS` (17),
 `OUTBOUND_MODE_SCOPED_PARAMS` (16), `SUPPORT_MODE_CLEAR_PARAMS` (20),
@@ -330,32 +331,19 @@ lookahead to `PRODUCTS_VIEWS` and holds the 307 until D3.
 Products segments are now unblocked. Inventory / dashboard were never blocked by
 this.
 
-### 3.3 `/dashboard` — the last surface that does not boundary-parse
+### 3.3 `/dashboard` — boundary parse **COMPLETE** (2026-07-30)
 
-**The presence-flag blocker is FIXED** (`paramPresence` shipped 2026-07-29), so the
-original reason not to mount the hook is gone. But `/dashboard` **still does not
-mount `useSurfaceParamHygiene()`** — verified 2026-07-30 by probe:
-`/dashboard?triq=BOX-9&unshipped` keeps `triq`, a Triage param. Step 6 of the
-method is genuinely unfinished on the highest-traffic surface in the app.
+`SurfaceParamHygiene` mounts on the leaf [`app/dashboard/page.tsx`](../../src/app/dashboard/page.tsx).
+The presence-flag schemas (`paramPresence`) and hand-off keys (`fba` / `wstatus` /
+`wexp` / `warranty`) were already declared; the pre-mount sweeps found the live
+filter band the ownership guard could not see (`shippedFilter`,
+`shippedSearchField`, `shippedWeekOffset`, `ostatus`, `exceptions`, `carrier`,
+`statusCategory`, `packedBy`, `testedBy`, `dateFrom`/`dateTo`, `stage`, `late`,
+`new`, plus inbound `rh_*`) because those readers live under `components/shipped`
+and `components/unshipped`. Those trees are now in `OWNED_TREES`.
 
-**It is now DE-RISKED but not done.** Three hand-off keys were undeclared and would
-have been stripped the moment the hook mounted — each silently breaking a retired
-front door:
-
-- **`wstatus` / `wexp`** — forwarded by `buildSupportWarrantyRedirectSearch` to
-  Support. A **pre-existing** latent break, waiting for whoever graduated the
-  dashboard.
-- **`fba`** — IA row L removed it from the lifecycle-tab set while the `?fba`
-  redirect kept reading it, so closing row L *created* the landmine.
-
-All three are now declared (`query-mode-routes.ts`, in a commented HAND-OFF block)
-and pinned by `dashboard-search-state.test.ts` against
-`SUPPORT_WARRANTY_FORWARDED_PARAMS` — mutation-verified in both directions.
-
-**Before mounting the hook, do the two sweeps anyway.** The declared hand-offs cover
-only the redirects this pass looked at; `components/dashboard` is a large tree and
-the CONSTANT sweep (§2) has not been run against it. Three bugs this refactor
-already shipped came from skipping exactly that step on a smaller surface.
+Pinned by `tests/e2e/surface-param-isolation.spec.ts` (`/dashboard` cases) and the
+existing `dashboard-search-state.test.ts` hand-off assertion.
 
 ### 3.4 D3 — the 307 → 308 sunset
 

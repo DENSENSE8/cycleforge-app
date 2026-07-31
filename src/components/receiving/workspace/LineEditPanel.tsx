@@ -14,19 +14,11 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AnimatePresence, motion, useReducedMotion, type Variants } from 'framer-motion';
+import { motion, useReducedMotion, type Variants } from 'framer-motion';
 import {
   staggerRevealContainer,
   STAGGER_REVEAL_STEP,
 } from '@/design-system/primitives/StaggerReveal';
-import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
-import {
-  useMotionPresence,
-  useMotionTransition,
-} from '@/design-system/foundations/motion-framer-hooks';
-import { SupportTicketDetail } from '@/components/support/zendesk/chat/SupportTicketDetail';
-import { useReceivingTicketView } from './line-edit/hooks/useReceivingTicketView';
-import { isReceivingInlineTicketEditorEnabled } from '@/lib/receiving/inline-ticket-editor-flag';
 import { toast } from '@/lib/toast';
 import { ReceiveFeedbackRegion } from './ReceiveFeedbackRegion';
 import { WorkspaceActionFeedbackSlot } from './WorkspaceActionFeedbackSlot';
@@ -37,6 +29,8 @@ import { LineCartonContextSection } from './line-edit/LineCartonContextSection';
 import { useSyncedPoNote } from './line-edit/hooks/useSyncedPoNote';
 import { LineEditModals } from './line-edit/LineEditModals';
 import { useUnboxLineController } from './line-edit/hooks/useUnboxLineController';
+import { useReceivingTicketView } from './line-edit/hooks/useReceivingTicketView';
+import { ReceivingTicketStack } from './ReceivingTicketStack';
 import { dispatchLineUpdated, type ReceivingLineRow } from '@/components/station/ReceivingLinesTable';
 import { useReturnOrderLinkage } from './line-edit/hooks/useReturnOrderLinkage';
 import { isLocalPickupFulfillment } from '@/lib/receiving/fulfillment-mode';
@@ -46,14 +40,13 @@ import {
   StationContextBar,
   StationHeaderToolbar,
   StationMoreDetails,
+  stationMoreDetailsPaneHostClass,
 } from '@/components/station/entity-context';
-import { STATION_IDENTITY_SCROLL_CLEARANCE } from '@/components/station/entity-context/station-bookmark';
 import { StationTerminalDock, useStationTerminalAction } from '@/components/station/terminal';
 import {
   StationWorkbench,
   StationPanelRoot,
   PairingTogglePill,
-  ExternalLinkPill,
   STATION_WORKBENCH_COLUMN,
 } from '@/components/station/workbench';
 import { slicedActionDockWrapperClass } from '@/design-system/primitives';
@@ -185,7 +178,6 @@ export function LineEditPanel({
     (unboxView === 'listings' && hasListingsTab) ||
     (unboxView === 'classify' && hasClassifyTab) ||
     (unboxView === 'timeline' && hasTimelineTab) ||
-    unboxView === 'ticket' ||
     unboxView === 'support'
       ? unboxView
       : 'overview';
@@ -239,6 +231,18 @@ export function LineEditPanel({
     }
   }, []);
 
+  const { ticketView, setTicketView } = useReceivingTicketView(row.id);
+  const ticketId = c.providerTicketId;
+  const showTicketStack = ticketView && ticketId != null;
+  const toggleTicketView = () => setTicketView(!ticketView);
+
+  useEffect(() => {
+    if (ticketView && !c.supportTicketLoading && ticketId == null) {
+      setTicketView(false);
+      toast('No linked ticket to edit on this carton.');
+    }
+  }, [ticketView, c.supportTicketLoading, ticketId, setTicketView]);
+
   const buildTerminal = useCallback(
     (kind: string) =>
       resolveUnboxTerminal(kind, {
@@ -249,6 +253,7 @@ export function LineEditPanel({
           units: unitsBridgeRef.current,
           support: supportBridgeRef.current,
           conversation: supportBridgeRef.current,
+          ticket: null,
         },
         focusSerialScan: () => {
           const focus = () => {
@@ -263,13 +268,11 @@ export function LineEditPanel({
         },
         setUnboxView: (view) => setUnboxView(view),
         focusTicketReply: () => {
-          setUnboxView('ticket');
-          globalThis.setTimeout(() => {
-            const el = document.querySelector<HTMLElement>(
-              '[role="tabpanel"]:not([hidden]) textarea, [role="tabpanel"]:not([hidden]) [contenteditable="true"]',
-            );
-            el?.focus();
-          }, 0);
+          if (ticketId == null) {
+            c.openClaimModal('link');
+            return;
+          }
+          setTicketView(true);
         },
         receive: {
           printReceivePrimaryLabel: c.printReceivePrimaryLabel,
@@ -283,8 +286,11 @@ export function LineEditPanel({
           canZohoReceive: c.canZohoReceive,
           isUnfound: c.isUnfound,
           isReceived: c.isReceived,
+          canUnreceive: c.canUnreceive,
           receiveMenuLabel: c.receiveMenuLabel,
           receiveMenuTitle: c.receiveMenuTitle,
+          unreceiveMenuLabel: c.unreceiveMenuLabel,
+          unreceiveMenuTitle: c.unreceiveMenuTitle,
           handlePrintAndReceive: () => void c.handlePrintAndReceive(),
           runPrintLabel: () => c.runPrintLabel(),
           printKind: (kind) => c.printKind(kind),
@@ -295,7 +301,7 @@ export function LineEditPanel({
           handleReceive: (mode) => void c.handleReceive(mode),
         },
       }),
-    [row, poNote, c, checklistBridgeTick, unitsBridgeTick, supportBridgeTick],
+    [row, poNote, c, checklistBridgeTick, unitsBridgeTick, supportBridgeTick, ticketId, setTicketView],
   );
 
   const terminalVm = useStationTerminalAction({
@@ -310,10 +316,6 @@ export function LineEditPanel({
   const [pairingOpen, setPairingOpen] = useState(false);
   const togglePairing = useCallback(() => setPairingOpen((v) => !v), []);
   const editPoControl = <PairingTogglePill open={pairingOpen} onToggle={togglePairing} />;
-  const ticketTabLink =
-    activeUnboxView === 'ticket' && c.zendeskHref ? (
-      <ExternalLinkPill href={c.zendeskHref} label="Open ticket in Zendesk" />
-    ) : null;
 
   useEffect(() => {
     setActionFeedback(null);
@@ -339,29 +341,6 @@ export function LineEditPanel({
   const revealItem: Variants = reduceMotion
     ? { hidden: { opacity: 0 }, show: { opacity: 1, transition: { duration: 0.001 } } }
     : { hidden: { opacity: 0 }, show: { opacity: 1, transition: { duration: 0.2 } } };
-
-  const inlineTicketEditorEnabled = isReceivingInlineTicketEditorEnabled();
-  const { ticketView, setTicketView } = useReceivingTicketView(row.id);
-  const ticketId = c.providerTicketId;
-  const showTicketEditor = inlineTicketEditorEnabled && ticketView && ticketId != null;
-  const toggleTicketView = inlineTicketEditorEnabled
-    ? () => setTicketView(!ticketView)
-    : undefined;
-
-  useEffect(() => {
-    if (
-      ticketView &&
-      inlineTicketEditorEnabled &&
-      !c.supportTicketLoading &&
-      ticketId == null
-    ) {
-      setTicketView(false);
-      toast('No linked ticket to edit on this carton.');
-    }
-  }, [ticketView, inlineTicketEditorEnabled, c.supportTicketLoading, ticketId, setTicketView]);
-
-  const paneTransition = useMotionTransition(framerTransition.workbenchPaneMount);
-  const ticketPanePresence = useMotionPresence(framerPresence.workbenchPane);
 
   const unboxTabs = useMemo(
     () =>
@@ -447,7 +426,7 @@ export function LineEditPanel({
           c={c}
           linkedOrderNumber={linkedOrder?.orderId ?? null}
           onToggleTicketView={toggleTicketView}
-          ticketViewActive={false}
+          ticketViewActive={ticketView}
           density="bar"
           onEditTracking={hasTrackingTab ? () => setUnboxView('tracking') : undefined}
           onEditListing={hasListingsTab ? () => setUnboxView('listings') : undefined}
@@ -457,62 +436,15 @@ export function LineEditPanel({
           photoStage="unbox_carton"
         />
       }
-      moreDetails={moreDetails}
     />
   );
 
   return (
     <>
-      <StationPanelRoot>
-        <AnimatePresence mode="wait" initial={false}>
-          {showTicketEditor ? (
-            <motion.div
-              key="ticket-editor"
-              initial={ticketPanePresence.initial}
-              animate={ticketPanePresence.animate}
-              exit={ticketPanePresence.exit}
-              transition={paneTransition}
-              className="relative flex min-h-0 flex-1 flex-col overflow-visible"
-            >
-              <StationContextBar
-                identity={
-                  <LineCartonContextSection
-                    row={row}
-                    staffId={staffId}
-                    c={c}
-                    linkedOrderNumber={linkedOrder?.orderId ?? null}
-                    onToggleTicketView={toggleTicketView}
-                    ticketViewActive
-                    density="bar"
-                    onEditTracking={hasTrackingTab ? () => setUnboxView('tracking') : undefined}
-                    onEditListing={hasListingsTab ? () => setUnboxView('listings') : undefined}
-                    onClassifyPillOpen={openClassifyFromHeader}
-                    trackingEditOpen={activeUnboxView === 'tracking'}
-                    listingEditOpen={activeUnboxView === 'listings'}
-                    photoStage="unbox_carton"
-                  />
-                }
-                moreDetails={moreDetails}
-              />
-              <div
-                className={`relative z-0 min-h-0 flex-1 overflow-hidden ${STATION_IDENTITY_SCROLL_CLEARANCE}`}
-              >
-                <SupportTicketDetail
-                  ticketId={ticketId!}
-                  onBack={() => setTicketView(false)}
-                  receivingId={row.receiving_id ?? undefined}
-                />
-              </div>
-            </motion.div>
-          ) : (
-            <motion.div
-              key="line-body"
-              initial={ticketPanePresence.initial}
-              animate={ticketPanePresence.animate}
-              exit={ticketPanePresence.exit}
-              transition={paneTransition}
-              className="relative flex min-h-0 flex-1 flex-col overflow-visible"
-            >
+      <div className="relative flex h-full min-h-0 min-w-0 flex-1 overflow-hidden">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+          <StationPanelRoot>
+            <div className="relative flex min-h-0 flex-1 flex-col overflow-visible">
               {stationContextBar}
               <StationWorkbench
                 ambientWash={false}
@@ -521,21 +453,13 @@ export function LineEditPanel({
                 // scroll content is not hidden under the absolute composer.
                 reserveScrollClearance={activeUnboxView === 'overview'}
                 tabs={
-                  <motion.div
-                    initial={false}
-                    animate="show"
-                    variants={revealContainer}
-                  >
+                  <motion.div initial={false} animate="show" variants={revealContainer}>
                     <motion.div variants={revealItem}>
                       <UnboxSectionTabs
                         tabs={unboxTabs}
                         value={activeUnboxView}
                         onChange={(id) => setUnboxView(id as UnboxView)}
-                        rightSlot={
-                          activeUnboxView === 'overview'
-                            ? editPoControl
-                            : (ticketTabLink ?? undefined)
-                        }
+                        rightSlot={activeUnboxView === 'overview' ? editPoControl : undefined}
                       />
                     </motion.div>
                   </motion.div>
@@ -621,26 +545,43 @@ export function LineEditPanel({
                   )
                 }
               />
-            </motion.div>
-          )}
-        </AnimatePresence>
+            </div>
 
-        {!showTicketEditor && row.receiving_id != null ? (
-          /* Carton evidence fan — the carton's whole evidence set (arrival
-             package + unbox-carton + legacy), so a carton whose photos
-             predate the unbox_carton stage split still shows here instead of
-             reading empty. Item evidence (RECEIVING_LINE + receiving_item)
-             currently has NO desktop capture surface — see the note in
-             `photo-evidence-chain-INDEX`. New captures taken from this peek
-             still stamp `receiving_unbox_carton` (write path unaffected). */
-          <ReceivingPhotoPeek
-            receivingId={row.receiving_id}
-            staffId={Number(staffId) || 0}
-            poRef={c.poNumber || null}
-            photoIntent={RECEIVING_PHOTO_LIST_INTENT_CARTON}
+            {row.receiving_id != null ? (
+              /* Carton evidence fan — the carton's whole evidence set (arrival
+                 package + unbox-carton + legacy), so a carton whose photos
+                 predate the unbox_carton stage split still shows here instead of
+                 reading empty. Item evidence (RECEIVING_LINE + receiving_item)
+                 currently has NO desktop capture surface — see the note in
+                 `photo-evidence-chain-INDEX`. New captures taken from this peek
+                 still stamp `receiving_unbox_carton` (write path unaffected). */
+              <ReceivingPhotoPeek
+                receivingId={row.receiving_id}
+                staffId={Number(staffId) || 0}
+                poRef={c.poNumber || null}
+                photoIntent={RECEIVING_PHOTO_LIST_INTENT_CARTON}
+              />
+            ) : null}
+          </StationPanelRoot>
+        </div>
+
+        {showTicketStack ? (
+          <ReceivingTicketStack
+            ticketId={ticketId!}
+            receivingId={row.receiving_id ?? undefined}
+            onClose={() => setTicketView(false)}
           />
         ) : null}
-      </StationPanelRoot>
+
+        {/* Pane-anchored More details — outer host so Ticket push does not
+            slide refresh · ⋯ · info left with the squeezed Unbox column. */}
+        <div
+          className={stationMoreDetailsPaneHostClass}
+          data-testid="station-more-details-slot"
+        >
+          {moreDetails}
+        </div>
+      </div>
 
       <LineEditModals row={row} c={c} />
     </>

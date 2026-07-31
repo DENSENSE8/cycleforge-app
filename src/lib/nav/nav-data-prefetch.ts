@@ -41,6 +41,8 @@ const DEFAULT_UNBOX_CONTEXT: ReceivingModeContext = {
   isDeliveredNotUnboxedFacet: false,
   staffFilterId: null,
   listSearch: '',
+  queueStage: null,
+  queueLane: null,
 };
 
 /** Warm the default Unbox tab's spine (History · view=activity, paint tier). */

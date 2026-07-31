@@ -20,7 +20,6 @@ export const STATION_TERMINAL_REGISTRY: Record<TerminalWorkspaceMode, ModeTermin
       tracking: 'none',
       listings: 'none',
       timeline: 'timeline',
-      ticket: 'ticket',
       support: 'support',
     },
   },

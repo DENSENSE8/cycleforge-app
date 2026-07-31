@@ -9,8 +9,8 @@ restated here — a markdown twin drifts the first time one side changes:
 
 | Thread | Detail doc | State |
 |---|---|---|
-| URL param isolation (construct-don't-copy) | [`nav-routing-refactor-FINISH-PROMPT.md`](nav-routing-refactor-FINISH-PROMPT.md) | §3.1 tier **COMPLETE**; §3.3 is the one actionable item left |
-| `/dashboard` IA rework | [`dashboard-ia-rework-HANDOFF.md`](dashboard-ia-rework-HANDOFF.md) (+ `-PLAN.md` for *why*) | Rows H · I · J · K · L closed; **row G** is all that remains |
+| URL param isolation (construct-don't-copy) | [`nav-routing-refactor-FINISH-PROMPT.md`](nav-routing-refactor-FINISH-PROMPT.md) | §3.1 tier **COMPLETE**; §3.3 `/dashboard` hygiene **COMPLETE** |
+| `/dashboard` IA rework | [`dashboard-ia-rework-HANDOFF.md`](dashboard-ia-rework-HANDOFF.md) (+ `-PLAN.md` for *why*) | **CLOSED** — rows G · H · I · J · K · L done (G = `/search` Monitor feed 2026-07-30). Sales→dashboard follow-on: [`sales-into-dashboard-PLAN.md`](sales-into-dashboard-PLAN.md) |
 
 ---
 
@@ -92,38 +92,29 @@ added this session was mutation-tested by breaking the thing it protects.
 
 ## 3. What is left — start here
 
-### 3.1 Decisions owed by the user (blocking, cheap)
+### 3.1 Decisions — **CLOSED 2026-07-30**
 
-1. **Row L deviation — ratify or revert.** The ratified verdict says delete `/dashboard?fba` and let it
-   *fall through to Pending*. As built it **client-redirects to `/shipping/fba`**, on the grounds that
-   the fall-through silently lands a bookmark on an unrelated tab and this is the third instance of an
-   existing mechanism in the same file (`?warranty=` → `/support`, `?mode=search` → `/search`). Flagged
-   in `dashboard-ia-rework-HANDOFF.md` §3.4. **Reverting is one effect + one flag.**
-2. **Apply migrations `2026-07-29g_saved_views.sql` + `2026-07-29h_drop_legacy_saved_views.sql`.**
-   Row K's behaviour depends on the table existing; authored ≠ applied in this repo.
-3. **Eight `SHARED_OWNED_KEYS` entries were added** (`tab`, `openRepair`, `state`, `section`, `unit`,
-   `sku`, `filter`, `serial`, plus `wstatus`/`wexp`) after the user ratified the pattern. That list's
-   own comment says *"never add an entry to land a change"*, so if the ratification should be narrower,
-   the alternative is namespacing those keys per route — which breaks live bookmarks.
+1. **Row L deviation — RATIFIED.** Keep the client redirect `/dashboard?fba` → `/shipping/fba`
+   (same mechanism as `?warranty=` / `?mode=search`). Fall-through to Pending rejected.
+2. **Migrations `2026-07-29g` + `2026-07-29h`** — still an ops apply step (authored ≠ applied);
+   not blocking URL hygiene.
+3. **`SHARED_OWNED_KEYS` — KEEP** the ratified shared-semantics list (shrink-only; no namespacing).
+   The `/dashboard` hygiene pass added four genuine shares discovered by the sweeps
+   (`ostatus`, `stage`, `rh_field`, `rh_scope`) — same discipline as the prior eight.
 
-### 3.2 Actionable code work
+### 3.2 Actionable code work — **COMPLETE 2026-07-30**
 
-**Mount the boundary parse on `/dashboard`** — `nav-routing-refactor-FINISH-PROMPT.md` §3.3. It is the
-last surface that does not parse (verified by probe: `/dashboard?triq=BOX-9` keeps `triq`). The original
-blocker (presence flags dying at the boundary) is fixed, and the three hand-off keys are now declared
-and pinned, so it is **de-risked but deliberately not done**.
-
-> **Do the two sweeps first anyway** (method §1.5 + the constant sweep in §2). The declared hand-offs
-> cover only the redirects this session looked at; `components/dashboard` is a large tree and the
-> CONSTANT sweep has never been run against it. Three of this session's four defects came from skipping
-> exactly that step on smaller surfaces.
+**`/dashboard` boundary parse mounted** via `SurfaceParamHygiene` on the leaf page. Pre-mount
+sweeps declared the shipped/unshipped filter band + inbound `rh_*` keys the ownership guard
+could not see (`components/shipped` / `components/unshipped` now in `OWNED_TREES`). See
+`nav-routing-refactor-FINISH-PROMPT.md` §3.3.
 
 ### 3.3 Gated — do not start
 
-- **Row G — Phase 6, the `/search` results grid.** The only substantive build left in the dashboard
-  plan. Gated on `search-results-grid-GEMINI-RESEARCH-BRIEFING.md`, whose response has **not landed**;
-  its three candidate shapes differ by an order of magnitude in cost. **Do not guess the shape.**
-  Groundwork is ready (see `dashboard-ia-rework-HANDOFF.md` §3.1).
+- **Row G — Phase 6, the `/search` results grid.** **UI Phase 1 landed 2026-07-30** (aligned
+  comfortable grid row + flat RRF `MonitorListBlock` + matching skeletons). **Still gated:**
+  Phase 2 filters/sort + exact-hit facet hydration — do not expand into `LedgerGrid` or per-entity
+  N+1 grids. Briefing: `search-results-grid-GEMINI-RESEARCH-BRIEFING.md`.
 - **§3.4 D3 — the 307 → 308 sunset.** Evidence-gated: needs a full cycle with no legacy `?mode=` hits
   in logs. A 308 is cached permanently and cannot be withdrawn.
 - **§3.5 V9c — server-side permission gating.** Ask-first; a security-model change, not routing.

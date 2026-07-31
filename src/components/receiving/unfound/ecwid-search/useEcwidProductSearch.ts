@@ -10,6 +10,10 @@ import {
   type SearchItem,
   type SearchResponse,
 } from './ecwid-search-shared';
+import {
+  readStoredStoreOrderScope,
+  writeStoredStoreOrderScope,
+} from './store-order-scope-pref';
 
 /**
  * Owns the Ecwid product-search popover's state: catalog search (debounced +
@@ -25,11 +29,9 @@ export function useEcwidProductSearch({
   initialOrderScope,
   onSelect,
 }: EcwidProductSearchPopoverProps) {
-  const defaultOrderScope = useMemo<EcwidOrderScope>(
-    () => initialOrderScope ?? 'all',
-    [initialOrderScope],
-  );
-
+  // Explicit non-default prop wins on first paint; device preference hydrates
+  // after mount (avoid SSR/client localStorage mismatch).
+  const propScope = initialOrderScope ?? 'all';
   const [query, setQuery] = useState(initialQuery);
   const [searchField, setSearchField] = useState<CatalogSearchField>('title');
   const [items, setItems] = useState<SearchItem[]>([]);
@@ -42,7 +44,23 @@ export function useEcwidProductSearch({
   const [manualSubmitting, setManualSubmitting] = useState(false);
   // repair_service mode: server scope chip + client text filter over loaded list.
   const [repairFilter, setRepairFilter] = useState('');
-  const [orderScope, setOrderScope] = useState<EcwidOrderScope>(defaultOrderScope);
+  const [orderScope, setOrderScopeState] = useState<EcwidOrderScope>(propScope);
+  const hydratedScopeRef = useRef(false);
+
+  const setOrderScope = useCallback((next: EcwidOrderScope) => {
+    setOrderScopeState(next);
+    writeStoredStoreOrderScope(next);
+  }, []);
+
+  // Seed from device localStorage once (D8). Explicit non-default prop wins.
+  useEffect(() => {
+    if (hydratedScopeRef.current) return;
+    hydratedScopeRef.current = true;
+    if (initialOrderScope && initialOrderScope !== 'all') return;
+    const stored = readStoredStoreOrderScope();
+    if (stored && stored !== orderScope) setOrderScopeState(stored);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only hydrate
+  }, []);
 
   const listboxId = useId();
   const abortRef = useRef<AbortController | null>(null);
@@ -57,8 +75,13 @@ export function useEcwidProductSearch({
     setManualSubmitting(false);
     manualSubmitLockRef.current = false;
     setRepairFilter('');
-    setOrderScope(defaultOrderScope);
-  }, [popoverMode, defaultOrderScope]);
+    // Prefer stored scope over hard `all` when the prop is the soft default.
+    const next =
+      initialOrderScope && initialOrderScope !== 'all'
+        ? initialOrderScope
+        : (readStoredStoreOrderScope() ?? propScope);
+    setOrderScopeState(next);
+  }, [popoverMode, initialOrderScope, propScope]);
 
   // ─── Recent Ecwid orders (scope: -RS repair vs all) ─────────────────────────
   useEffect(() => {

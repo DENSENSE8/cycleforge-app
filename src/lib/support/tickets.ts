@@ -26,6 +26,10 @@ export interface SupportTicketRow {
   externalTicketId: string | null;
   subjectCache: string | null;
   statusCache: string | null;
+  /** ticket_links.created_at when resolved via a polymorphic link (omit if unknown). */
+  linkedAt?: string | null;
+  /** Initials from ticket_links.created_by → staff.name (omit if unknown). */
+  linkedByInitials?: string | null;
 }
 
 /**
@@ -46,12 +50,22 @@ export function formatSupportTicketDisplayLabel(ticket: SupportTicketRow): strin
   return formatSupportTicketLabel(ticket.id);
 }
 
+/** Two-letter initials from a staff display name; null when empty. */
+function staffInitials(name: string | null | undefined): string | null {
+  const parts = (name ?? '').trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return null;
+  if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase();
+  return `${parts[0]![0] ?? ''}${parts[parts.length - 1]![0] ?? ''}`.toUpperCase();
+}
+
 function mapRow(row: {
   id: string | number;
   provider: string;
   external_ticket_id: string | null;
   subject_cache: string | null;
   status_cache: string | null;
+  linked_at?: string | null;
+  linked_by_name?: string | null;
 }): SupportTicketRow {
   return {
     id: Number(row.id),
@@ -59,6 +73,8 @@ function mapRow(row: {
     externalTicketId: row.external_ticket_id,
     subjectCache: row.subject_cache,
     statusCache: row.status_cache,
+    linkedAt: row.linked_at ?? null,
+    linkedByInitials: staffInitials(row.linked_by_name),
   };
 }
 
@@ -183,12 +199,19 @@ async function ticketFromDirectEntityLinks(args: {
     clauses.push(`(tl.entity_type = 'SERIAL_UNIT' AND tl.entity_id IN (SELECT sup.serial_unit_id FROM serial_unit_provenance sup WHERE sup.origin_type = 'RECEIVING_LINE' AND sup.origin_id IN (SELECT id FROM receiving_line WHERE receiving_id = $${params.length} AND organization_id = $1) AND sup.organization_id = $1))`);
   }
 
-  const res = await tenantQuery<SupportTicketDbRow & { zendesk_ticket_id: string | null }>(
+  const res = await tenantQuery<SupportTicketDbRow & {
+    zendesk_ticket_id: string | null;
+    linked_at: string | null;
+    linked_by_name: string | null;
+  }>(
     orgId,
     `SELECT st.id, st.provider, st.external_ticket_id, st.subject_cache, st.status_cache,
-            tl.zendesk_ticket_id
+            tl.zendesk_ticket_id,
+            tl.created_at AS linked_at,
+            s.name AS linked_by_name
        FROM ticket_links tl
        LEFT JOIN support_tickets st ON st.id = tl.support_ticket_id
+       LEFT JOIN staff s ON s.id = tl.created_by
       WHERE tl.organization_id = $1
         AND (${clauses.join(' OR ')})
       ORDER BY
@@ -216,16 +239,23 @@ async function ticketFromShipmentLink(
   orgId: string,
   receivingId: number,
 ): Promise<SupportTicketRow | null> {
-  const res = await tenantQuery<SupportTicketDbRow & { zendesk_ticket_id: string | null }>(
+  const res = await tenantQuery<SupportTicketDbRow & {
+    zendesk_ticket_id: string | null;
+    linked_at: string | null;
+    linked_by_name: string | null;
+  }>(
     orgId,
     `SELECT st.id, st.provider, st.external_ticket_id, st.subject_cache, st.status_cache,
-            tl.zendesk_ticket_id
+            tl.zendesk_ticket_id,
+            tl.created_at AS linked_at,
+            s.name AS linked_by_name
        FROM receiving_carton r
        JOIN ticket_links tl
          ON tl.organization_id = r.organization_id
         AND tl.entity_type = 'SHIPMENT'
         AND tl.entity_id = r.shipment_id
        LEFT JOIN support_tickets st ON st.id = tl.support_ticket_id
+       LEFT JOIN staff s ON s.id = tl.created_by
       WHERE r.organization_id = $1
         AND r.id = $2
         AND r.shipment_id IS NOT NULL
@@ -291,8 +321,8 @@ async function ticketFromPhotoEntityLinks(args: {
  * Denormalized display-cache fallback: the `zendesk_ticket` column on
  * receiving_line / receiving_carton (stored "#<id>"). Authoritative link tables
  * win above — this only resolves the column when they're all empty, so the
- * carton header (which resolves via this fn) agrees with the rail flag / pairing
- * "Claim ticket" row, both of which read this column directly. The link/unlink
+ * carton header (which resolves via this fn) agrees with the rail flag /
+ * ReceivingTicketChip, both of which read this column directly. The link/unlink
  * routes write and clear the column in lockstep with ticket_links, so a set
  * column means genuinely-linked (no ghost after an unlink).
  */

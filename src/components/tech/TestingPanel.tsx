@@ -23,6 +23,9 @@ import {
 } from '@/components/station/workbench';
 import { SupportContextHub } from '@/components/support/context';
 import type { ThreadComposerBridge } from '@/components/threads/ThreadPanel';
+import { SupportTicketComposerDock } from '@/components/support/zendesk/chat/SupportTicketComposerDock';
+import { TicketComposerStagingProvider } from '@/components/support/zendesk/chat/TicketComposerStagingContext';
+import { useTicketPhotoStaging } from '@/hooks/useTicketPhotoStaging';
 import { resolveTestingTerminal } from './testing-panel/terminal/testing-terminal';
 import type { TestingView } from './testing-panel/terminal/types';
 import {
@@ -79,6 +82,7 @@ export function TestingPanel({
   const c = useTestingLineController(row, staffId, { labelColor });
   const { primaryDisabled, primaryLabel, primaryTitle } = useTestingPrimaryAction(c, row);
   const claimTicketId = c.providerTicketId ?? null;
+  const ticketPhotoStaging = useTicketPhotoStaging(claimTicketId ?? 0);
   const claimFailed =
     c.deriveLineVerdict(row.serials ?? []) === 'TESTING_FAILED';
 
@@ -212,6 +216,7 @@ export function TestingPanel({
                   hideLinkage
                   onRequestLinkTicket={() => c.openClaimModal('link')}
                   onBridgeChange={setTicketBridge}
+                  hostComposer={claimTicketId != null}
                   className="h-full min-h-0 rounded-2xl"
                 />
               </div>
@@ -275,6 +280,7 @@ export function TestingPanel({
       cartonEditorOpen,
       cartonFace,
       cartonLabelAvailable,
+      claimTicketId,
       hasLabel,
       hasSkuTabs,
       hasTimelineTab,
@@ -340,8 +346,27 @@ export function TestingPanel({
     build: buildTerminal,
   });
 
+  const useTicketComposerDock =
+    activeTestingView === 'ticket' && claimTicketId != null;
+
+  const dock = useTicketComposerDock ? (
+    <SupportTicketComposerDock
+      host={{
+        ticketId: claimTicketId,
+        requesterEmail: null,
+        staging: ticketPhotoStaging,
+        receivingId: row.receiving_id ?? undefined,
+      }}
+      terminalVm={terminalVm}
+      onBridgeChange={setTicketBridge}
+      assignedTechId={row.assigned_tech_id}
+    />
+  ) : (
+    <StationTerminalDock vm={terminalVm} assignedTechId={row.assigned_tech_id} />
+  );
+
   return (
-    <>
+    <TicketComposerStagingProvider value={ticketPhotoStaging}>
       <StationPanelRoot className="isolate">
         <StationContextBar
           identity={<TestingCartonHeader c={c} row={row} staffId={staffId} />}
@@ -386,7 +411,7 @@ export function TestingPanel({
               }
             />
           }
-          dock={<StationTerminalDock vm={terminalVm} assignedTechId={row.assigned_tech_id} />}
+          dock={dock}
         />
 
         {c.activeSerial?.id != null && Number(c.activeSerial.id) > 0 ? (
@@ -399,6 +424,6 @@ export function TestingPanel({
       </StationPanelRoot>
 
       <TestingPanelModals c={c} row={row} />
-    </>
+    </TicketComposerStagingProvider>
   );
 }

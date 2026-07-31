@@ -23,10 +23,13 @@ const parseISODate = (raw: string | null): Date | undefined => {
 };
 
 /**
- * URL-param filter state for the Incoming sidebar (`?q`, `?state`, `?sort`,
- * `?po_from/po_to`). Self-contained: reads/writes `/receiving?…` so
+ * URL-param filter state for Incoming (`?q`, `?state`, `?sort`, `?po_from/po_to`).
+ * Self-contained: reads/writes the current receiving surface so
  * ReceivingLinesTable refetches off the same params — no prop-drilling. Every
  * filter change drops `?page=` so the right pane lands on page 1.
+ *
+ * Writers: workbench header owns `?inbound=` (source tabs); filter popover owns
+ * `?state=` + date; sidebar owns `incview` only.
  */
 export function useIncomingFilters() {
   const router = useRouter();

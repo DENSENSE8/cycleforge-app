@@ -2,10 +2,15 @@
 
 **Status:** Phases **1–5 all landed** (uncommitted, 2026-07-29). 51 unit tests across 5 new files.
 
-Three things are deliberately **not live**, each needing a human action:
-1. Phase 2's seed migration is **NOT APPLIED** → apply via `/db-migrate`.
-2. Phase 4's cron ships **DISARMED** (`RECEIVING_CLAIMS_ESCALATION` defaults false) → dry-run it, then arm.
-3. Phase 3's write-off route has **no UI caller** → see the end of *Phase 5 — what landed*.
+**Phase 2's seed migration is APPLIED** (`2026-07-29i`, 2026-07-30 05:58Z) and verified live: all four loss codes
+seeded across 8 orgs at sort_order 120/130/140/150, exactly one ledger entry (no stale row from the pre-rename `f`
+name), and the photo codes still sit at 80–110 — the desync the append-at-end decision was designed to prevent did not
+occur.
+
+Two things remain deliberately **not live**, each needing a human action:
+1. Phase 4's cron ships **DISARMED** (`RECEIVING_CLAIMS_ESCALATION` defaults false) → dry-run it, then arm.
+2. Phase 3's write-off route has **no UI caller** → see the end of *Phase 5 — what landed*.
+
 **Research input:** [`ebay-delivered-not-unboxed-RESEARCH-BRIEF.md`](ebay-delivered-not-unboxed-RESEARCH-BRIEF.md) + the
 Gemini Pro gap analysis it produced. This doc is the *corrected*, code-grounded translation of that analysis —
 three of its concrete mappings were wrong against this codebase and are fixed below (§2).
@@ -117,7 +122,7 @@ explicitly defer it in writing.
 | Phase | Content | Gate |
 |---|---|---|
 | **1 — read-only** | ✅ **LANDED** (see below). Rows 1–3: age band, `claim_by_date`, window 30→45. | none |
-| **2 — vocabulary** | ✅ **AUTHORED, NOT APPLIED** (see below). Row 5 registry + seed migration. | migration awaits `/db-migrate` |
+| **2 — vocabulary** | ✅ **LANDED + APPLIED** (see below). Row 5 registry + seed migration. | none |
 | **3 — resolution** | ✅ **LANDED** (see below). Rows 5–6 write path + reversibility. | none — did not need Phase 2 applied |
 | **4 — escalation** | ✅ **LANDED, DISARMED** (see below). Row 4 cron + `vercel.json` entry. | flag must be flipped to arm |
 | **5 — UI** | ✅ **LANDED** (see below). Row 8. | none |
@@ -159,12 +164,14 @@ an eBay purchase lands in this lane.
 | File | Change |
 |---|---|
 | [`exception-codes.ts`](../../src/lib/receiving/exception-codes.ts) | New `LOSS_EXCEPTION_CODES` (`LOST_IN_TRANSIT`, `EMPTY_BOX`, `MISDELIVERED`, `STOLEN`) appended **last**; `isLossExceptionCode()` narrow guard; 4 `RECEIVING_EXCEPTION_META` entries; header now documents the array-position ⇒ `sort_order` contract |
-| [`2026-07-29i_reason_codes_loss_seed.sql`](../../src/lib/migrations/2026-07-29i_reason_codes_loss_seed.sql) | **New.** DDL-free per-org seed at 120–150, modeled on `2026-07-29b`. Does not touch `reason_codes_flow_context_chk`. **NOT APPLIED.** |
+| [`2026-07-29i_reason_codes_loss_seed.sql`](../../src/lib/migrations/2026-07-29i_reason_codes_loss_seed.sql) | **New.** DDL-free per-org seed at 120–150, modeled on `2026-07-29b`. Does not touch `reason_codes_flow_context_chk`. **Applied 2026-07-30.** |
 | `exception-codes.test.ts` | **New**, 8 tests — a genuine cross-artifact guard (below) |
 
-**⚠ The migration is authored but NOT applied.** Apply via `/db-migrate` before Phase 3, and before any deploy that
-ships a UI listing these codes. Note `2026-07-29b` already has a **filename collision** (two unrelated files share
-that letter), so this one deliberately takes `f`.
+**✅ APPLIED 2026-07-30 05:58Z**, verified live: 4 codes × 8 orgs at 120/130/140/150, exactly one ledger entry (no
+stale row under the pre-rename name), and the photo codes still at 80–110 — the desync this whole ordering discipline
+guards against did not occur. It landed as `2026-07-29i`: `f`, `g`, and `h` were each claimed by other sessions'
+migrations while this was being written (on top of the pre-existing `2026-07-29b` collision), so the letter was
+reassigned before apply.
 
 **Safe to leave unapplied.** The receiving-exception vocabulary is behavior-bearing on the **TypeScript** side —
 labels/tones come from `RECEIVING_EXCEPTION_META` and validation from `isLossExceptionCode`. `reason_codes` rows exist
@@ -335,6 +342,25 @@ only ever consumed `is_priority`. Phase 5 built the first display of it.
 
 **Residual:** with no eBay row in the lane, the claim token's *rendering* is unobserved live (its logic has 10 unit
 tests, and it uses the identical JSX shape as the `48h+` token that was verified). Confirm on the first real eBay row.
+
+### Phase 5b — the lane was unreachable by pointer (2026-07-30)
+
+Owner-reported immediately after Phase 5: **"Delivered · not unboxed" was missing from the Incoming STATUS filter**, so
+the only way onto the lane was hand-typing `?state=DELIVERED_NOT_UNBOXED`. Everything else already existed — the state
+was in `IncomingDeliveryState`, the count in `IncomingSummary`, and the summary route returned it — but
+`incoming-tiles.ts` had no `TileSpec`, and its header said so on purpose: *"`DELIVERED_NOT_UNBOXED` lives on Unbox KPI,
+not this hunt strip."*
+
+**That call was right when written and wrong now.** As a KPI readout it did not belong on a dock-hunt strip. After
+Phases 1–5 the lane carries its own dwell SLA, an eBay claim deadline, an escalation cron, and a loss write-off — a
+first-class inbound exception. A surface with that much machinery behind it that a pointer cannot reach is a bug, not
+a design choice.
+
+One `TileSpec` (rose + `PackageOpen`, matching the row icon in `ReceivingDeliveryStateIcon`), placed directly under
+`DELIVERED_UNOPENED` so the two delivered-but-unprocessed buckets read as the pair they are. Both stale comments
+corrected. **Verified live:** the option renders with its real count (1), clicking it navigates to
+`/incoming?state=DELIVERED_NOT_UNBOXED`, the grid filters to `1-1 / 1` with the `48h+` marker on the row, no console
+errors, `npm run verify` green.
 
 **Still open — the write-off UI.** Phase 3's `POST/DELETE /api/receiving/lines/[id]/loss` has **no caller**. It was left
 out deliberately: a destructive action needs a reason picker plus a confirm step, and wedging that into a 75px grid cell

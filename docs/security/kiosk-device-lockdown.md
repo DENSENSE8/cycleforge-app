@@ -53,15 +53,21 @@ It is NOT granted by default.
 
 ## Enrollment (one-time, per tablet)
 
-1. Manager (signed in) opens **Settings → Kiosk devices**, names the tablet, and
-   clicks **Generate code**. A **one-time pairing code** (shown once) valid
-   ~30 min appears. (Under the hood: `POST /api/kiosk/enroll`.)
+**Dogfood (prod today):** staff workspace is apex `https://app.cycleforge.ai`
+(`usav.app…` is not provisioned yet). Mint the code there; pair **only** on
+`https://usav.kiosk.app.cycleforge.ai`. Do **not** open `/kiosk` on the staff
+app — that path cannot complete pairing.
+
+1. Manager (signed in on the **staff** host) opens **Settings → Kiosk devices**,
+   names the tablet, and clicks **Generate code**. A **one-time pairing code**
+   (shown once) valid ~30 min appears. (Under the hood: `POST /api/kiosk/enroll`.)
 2. On the tablet, open **`https://{slug}.kiosk.app.cycleforge.ai`** (dogfood:
    `https://usav.kiosk.app.cycleforge.ai`), tap **Set up this tablet**, and enter
    the code. The tablet exchanges it for a long-lived device token stored as the
    httpOnly `cf_kiosk` cookie. No human login after this.
 3. The device is now **Paired** in the Settings list. Every intake authorizes
    off that cookie.
+4. Pin MDM / Guided Access to that **kiosk** origin (not `app.cycleforge.ai/kiosk`).
 
 Revoke any tablet from the same **Settings → Kiosk devices** list.
 
@@ -113,5 +119,7 @@ home URL to the kiosk origin so a reload returns to the intake screen.
 | `401 KIOSK_UNPAIRED` on intake | device revoked or cookie lost | Re-pair the tablet |
 | `403 KIOSK_HOST_REQUIRED` on pair | pairing from staff host in production | Open the tenant kiosk origin, not `/kiosk` on the staff app |
 | `403 STEPUP_FAILED` on a privileged action | wrong staff PIN, or PIN not set | Verify the staff PIN in Settings; base intake still works without step-up |
-| Pairing code rejected | expired (>~30 min), already used, or wrong-tenant host | Mint a fresh code; use the matching `{slug}.kiosk…` host |
-| Staff `/kiosk` bookmark | legacy path | 308 to `{slug}.kiosk.app…/` when the staff host has a tenant slug |
+| Pairing code rejected | expired, already used, wrong-tenant host, or typed on staff app | Mint a fresh code; open **`https://{slug}.kiosk.app…`** only (dogfood: `https://usav.kiosk.app.cycleforge.ai`). Codes are single-use; after pair the `cf_kiosk` cookie lasts ~1 year. |
+| Staff `/kiosk` bookmark | legacy path | 308 to `{slug}.kiosk.app…/` when the staff host has a tenant slug; on apex with `DEFAULT_TENANT_SLUG`, 308 to that tenant’s kiosk origin |
+| Settings: “Could not enroll…” / no permission | missing `walk_in.enroll_kiosk`, or server error | Grant the permission in Roles (admins already have it); retry; check status in Network tab |
+| Tablet: “Open this tablet on the kiosk URL…” | paired from staff host (`KIOSK_HOST_REQUIRED`) | Use `{slug}.kiosk.app…`, not staff `/kiosk` |

@@ -256,6 +256,20 @@ export function ReceivingGridGroupSummary({
             )}
           </div>
         );
+      case 'location': {
+        const locLabel = (first.staging_location_label || '').trim();
+        return (
+          <div data-col="location" className={dataCell(col, rule)}>
+            {locLabel ? (
+              <span className="min-w-0 truncate font-mono text-role-caption tabular-nums text-text-faint">
+                {locLabel}
+              </span>
+            ) : (
+              <GridCellDash />
+            )}
+          </div>
+        );
+      }
       case 'platform':
         return (
           <div data-col="platform" className={dataCell(col, rule)}>

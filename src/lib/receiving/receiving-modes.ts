@@ -157,6 +157,14 @@ export interface ReceivingModeContext {
    * search). History uses `historySearch` (`rh_q`) instead.
    */
   listSearch: string;
+  /**
+   * Unbox Queue readiness (`?ustage=`): `staged` | `unstaged` | null (all).
+   */
+  queueStage: 'staged' | 'unstaged' | null;
+  /**
+   * Unbox Queue priority lane (`?ulane=`). Null = all lanes.
+   */
+  queueLane: 'PO_STOCKOUT' | 'PO_STANDARD' | 'RETURN' | 'HOLD' | null;
 }
 
 export interface ReceivingModeDescriptor {
@@ -252,6 +260,8 @@ const unboxQueueMode: ReceivingModeDescriptor = {
     p.set('view', 'scanned');
     p.set('sort', 'priority');
     if (ctx.listSearch) p.set('search', ctx.listSearch);
+    if (ctx.queueStage) p.set('ustage', ctx.queueStage);
+    if (ctx.queueLane) p.set('ulane', ctx.queueLane);
     applyStaffParam(p, ctx);
     return p;
   },
@@ -262,6 +272,8 @@ const unboxQueueMode: ReceivingModeDescriptor = {
       'unbox_queue',
       ctx.listSearch,
       ctx.staffFilterId ?? 'all',
+      ctx.queueStage ?? 'all',
+      ctx.queueLane ?? 'all',
     ] as const;
   },
   skipWeekFilter() {

@@ -3,10 +3,8 @@
 import { useSearchParams } from 'next/navigation';
 import UnshippedSidebar from '@/components/unshipped/UnshippedSidebar';
 import { DashboardManagementPanel } from '@/components/sidebar/DashboardManagementPanel';
-import {
-  DashboardRecentsFooter,
-  DashboardRecentsPanel,
-} from '@/components/sidebar/dashboard/DashboardRecentsPanel';
+import { DashboardRecentsPanel } from '@/components/sidebar/dashboard/DashboardRecentsPanel';
+import { WalkInHistorySidebar } from '@/components/walk-in/WalkInHistorySidebar';
 import { NewOrderEntryOverlay } from '@/components/orders/NewOrderEntryOverlay';
 import { useDashboardSearchController } from '@/hooks/useDashboardSearchController';
 import { getDashboardDomainFromSearch } from '@/lib/dashboard/dashboard-domains';
@@ -15,17 +13,15 @@ import { getDashboardDomainFromSearch } from '@/lib/dashboard/dashboard-domains'
  * The Dashboard route's context panel — the stable sidebar picker/scope
  * for the dashboard Workbench (`.claude/rules/display/workbench.md`).
  *
- * Two domains (`getDashboardDomainFromSearch`), each with a picker:
+ * Three domains (`getDashboardDomainFromSearch`), each with a picker:
  *   • outbound — the order feed (UnshippedSidebar / management panel)
- *   • inbound  — recents (see below)
+ *   • inbound  — recents (`DashboardRecentsPanel`)
+ *   • sales    — station hand-offs (`WalkInHistorySidebar`)
  *
- * **Recents render in BOTH domains.** Inbound used to `return null` here, so
- * `/dashboard?mode=inbound` reserved a 360px column and painted nothing in it;
- * that void is the bug Phase 1.1 of `docs/todo/dashboard-ia-rework-PLAN.md`
- * closes. Outbound keeps the order feed as its primary picker and takes recents
- * as a capped footer beneath it, so re-opening the last carton/order you touched
- * never costs a mode switch — which is what Search mode's recents list was
- * actually being used for.
+ * Inbound used to `return null` here, so `/dashboard?mode=inbound` reserved a
+ * 360px column and painted nothing in it; that void is the bug Phase 1.1 of
+ * `docs/todo/dashboard-ia-rework-PLAN.md` closes. Outbound is the order feed
+ * alone — no capped recents footer under the picker.
  *
  * New-order intake (`?new=true`) opens the shared detail-stack overlay
  * ({@link NewOrderEntryOverlay}) — same shell as `/shipping?new=true`.
@@ -33,9 +29,14 @@ import { getDashboardDomainFromSearch } from '@/lib/dashboard/dashboard-domains'
 export function DashboardOrdersContextPanel() {
   const searchParams = useSearchParams();
   const dashboardSearch = useDashboardSearchController();
+  const domain = getDashboardDomainFromSearch(searchParams);
 
-  if (getDashboardDomainFromSearch(searchParams) === 'inbound') {
+  if (domain === 'inbound') {
     return <DashboardRecentsPanel />;
+  }
+
+  if (domain === 'sales') {
+    return <WalkInHistorySidebar />;
   }
 
   const isOutbound =
@@ -61,7 +62,6 @@ export function DashboardOrdersContextPanel() {
           />
         )}
       </div>
-      <DashboardRecentsFooter />
       <NewOrderEntryOverlay
         open={dashboardSearch.showIntakeForm}
         onClose={dashboardSearch.closeIntakeForm}

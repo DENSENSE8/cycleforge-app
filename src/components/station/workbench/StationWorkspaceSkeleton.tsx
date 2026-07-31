@@ -3,23 +3,39 @@
 /**
  * Station focused-overlay workspace skeleton — **SoT**.
  *
- * Mirrors StationWorkbench identity/header + stacked glass cards so the
+ * Mirrors StationWorkbench identity + section tabs + stacked glass cards so the
  * handoff to LineEditPanel / TriagePanel feels continuous. Section cards
- * compose {@link Panel} — never hand-roll `rounded-2xl border…`.
+ * compose {@link Panel} / {@link WorkspaceCard} — never hand-roll
+ * `rounded-2xl border…`.
  *
  * Domain wrappers (`ReceivingWorkspaceSkeleton`, `TriageWorkspaceSkeleton`)
- * pick the header variant + column recipe.
+ * pick the header variant, body preset, and column recipe.
  */
 
 import { SkeletonBase } from '@/design-system';
+import {
+  WorkspaceCard,
+  WORKSPACE_NESTED_FIELD,
+  WORKSPACE_NESTED_FIELD_PAD,
+} from '@/design-system/components';
 import { Panel } from '@/design-system/primitives/Panel';
 import {
   STATION_WORKBENCH_BODY_COLUMN,
   STATION_WORKBENCH_HEADER_COLUMN,
+  STATION_WORKBENCH_IDENTITY_COLUMN,
 } from '@/components/station/workbench/workbench-layout';
+import {
+  stationBookmarkGapClass,
+  stationBookmarkPadClass,
+  stationBookmarkPanelClass,
+  stationContextBarHostClass,
+  stationMoreDetailsHostClass,
+  stationMoreDetailsPanelClass,
+} from '@/components/station/entity-context/station-bookmark';
 import { cn } from '@/utils/_cn';
 
-type StationWorkspaceSkeletonHeader = 'stepper-toolbar' | 'toolbar' | 'none';
+type StationWorkspaceSkeletonHeader = 'identity-tabs' | 'toolbar' | 'none';
+type StationWorkspaceSkeletonBody = 'unbox-overview' | 'sections';
 
 function SkeletonSectionCard({ rows }: { rows: number }) {
   return (
@@ -39,18 +55,156 @@ function SkeletonSectionCard({ rows }: { rows: number }) {
   );
 }
 
+/**
+ * Floating identity bookmark + corner utilities — mirrors StationContextBar
+ * (CartonContextCard bar + StationMoreDetails).
+ */
+function IdentityTabsHeader() {
+  return (
+    <div className={stationContextBarHostClass} aria-hidden>
+      <div
+        className={cn(
+          STATION_WORKBENCH_IDENTITY_COLUMN,
+          'pointer-events-none flex items-start justify-center',
+        )}
+      >
+        <Panel
+          padding="none"
+          radius="2xl"
+          elevation="none"
+          borderless
+          className={cn(
+            stationBookmarkPanelClass,
+            stationBookmarkPadClass,
+            'flex min-h-10 w-full max-w-full items-center overflow-hidden',
+          )}
+        >
+          <div className="flex min-w-0 flex-1 items-center gap-1.5 px-0.5">
+            <div className="flex shrink-0 items-center gap-1">
+              <SkeletonBase width="64px" height="22px" className="rounded-full" />
+              <SkeletonBase width="52px" height="22px" className="rounded-full" />
+              <SkeletonBase width="36px" height="22px" className="rounded-full" />
+            </div>
+            <div className="mx-auto flex min-w-0 items-center justify-center gap-2">
+              <SkeletonBase width="72px" height="14px" className="rounded-full" />
+              <SkeletonBase width="48px" height="14px" className="rounded-full" />
+              <SkeletonBase width="40px" height="14px" className="rounded-full" />
+            </div>
+          </div>
+        </Panel>
+      </div>
+      <div className={stationMoreDetailsHostClass}>
+        <Panel
+          padding="none"
+          radius="2xl"
+          elevation="none"
+          borderless
+          className={cn(
+            stationMoreDetailsPanelClass,
+            stationBookmarkPadClass,
+            stationBookmarkGapClass,
+            'flex min-h-10 shrink-0 items-center',
+          )}
+        >
+          <SkeletonBase width="56px" height="24px" className="rounded-full" />
+          <SkeletonBase circle width="28px" height="28px" />
+          <SkeletonBase circle width="28px" height="28px" />
+          <SkeletonBase circle width="28px" height="28px" />
+        </Panel>
+      </div>
+    </div>
+  );
+}
+
+/** SectionTabsSlider density — primary tab chips + trailing pencil rightSlot. */
+function SectionTabsStrip() {
+  return (
+    <div className="flex items-center justify-between gap-2" aria-hidden>
+      <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+        <SkeletonBase width="72px" height="32px" className="rounded-full" />
+        <SkeletonBase width="80px" height="32px" className="rounded-full" />
+        <SkeletonBase width="64px" height="32px" className="rounded-full" />
+        <SkeletonBase width="56px" height="32px" className="rounded-full" />
+        <SkeletonBase width="52px" height="32px" className="rounded-full" />
+      </div>
+      <SkeletonBase circle width="32px" height="32px" className="shrink-0" />
+    </div>
+  );
+}
+
+/** POUnboxingSection / SerialCard overview geometry. */
+function UnboxProductSerialCard() {
+  return (
+    <WorkspaceCard variant="glass" bodyDensity="nested" bodyClassName="px-3 pt-3 pb-2">
+      <div className="space-y-3" aria-hidden>
+        <SkeletonBase width="68%" height="18px" className="rounded-md" />
+        <div className="flex flex-wrap items-center gap-2">
+          <SkeletonBase width="28px" height="16px" className="rounded-full" />
+          <SkeletonBase width="48px" height="16px" className="rounded-full" />
+          <SkeletonBase width="56px" height="16px" className="rounded-full" />
+          <SkeletonBase width="44px" height="16px" className="rounded-full" />
+          <SkeletonBase width="64px" height="16px" className="ml-auto rounded-md" />
+        </div>
+        <div className="flex items-center gap-2">
+          <SkeletonBase circle width="36px" height="36px" className="shrink-0" />
+          <SkeletonBase
+            width="100%"
+            height="40px"
+            className="min-w-0 flex-1 rounded-xl"
+          />
+          <SkeletonBase width="40px" height="40px" className="shrink-0 rounded-xl" />
+        </div>
+      </div>
+    </WorkspaceCard>
+  );
+}
+
+/** WorkspaceLabelPreviewCard — nested face + barcode square. */
+function UnboxLabelCard() {
+  return (
+    <WorkspaceCard variant="glass" bodyDensity="nested">
+      <div
+        className={cn(WORKSPACE_NESTED_FIELD, WORKSPACE_NESTED_FIELD_PAD)}
+        aria-hidden
+      >
+        <div className="flex items-stretch gap-3">
+          <div className="flex min-w-0 flex-1 flex-col justify-between gap-6 py-1">
+            <div className="flex items-start justify-between gap-2">
+              <SkeletonBase width="72px" height="12px" className="rounded-full" />
+              <SkeletonBase width="48px" height="12px" className="rounded-full" />
+            </div>
+            <div className="flex items-end justify-between gap-2">
+              <SkeletonBase width="56px" height="12px" className="rounded-full" />
+              <SkeletonBase width="40px" height="12px" className="rounded-full" />
+            </div>
+          </div>
+          <div className="flex shrink-0 flex-col items-center gap-1.5">
+            <SkeletonBase width="72px" height="72px" className="rounded-md" />
+            <SkeletonBase width="56px" height="10px" className="rounded-full" />
+          </div>
+        </div>
+      </div>
+    </WorkspaceCard>
+  );
+}
+
 interface StationWorkspaceSkeletonProps {
   /**
-   * `stepper-toolbar` — Unbox (stepper row + toolbar row).
+   * `identity-tabs` — Unbox (floating StationContextBar + section tab strip).
    * `toolbar` — Triage (single toolbar band).
    * `none` — body cards only.
    */
   header?: StationWorkspaceSkeletonHeader;
+  /**
+   * `unbox-overview` — product/serial + label preview cards.
+   * `sections` — generic stacked Panel text cards (Triage).
+   */
+  body?: StationWorkspaceSkeletonBody;
   /** Override body column (default Station Workbench 720px). */
   bodyColumnClassName?: string;
-  /** Override header column pad. */
+  /** Override header column pad (toolbar variant). */
   headerColumnClassName?: string;
-  /** Row counts per stacked section card. */
+  /** Row counts per stacked section card when `body="sections"`. */
   sectionRows?: readonly number[];
   /** Accessible label for the busy region. */
   label?: string;
@@ -60,57 +214,29 @@ interface StationWorkspaceSkeletonProps {
 const DEFAULT_SECTION_ROWS = [2, 3, 2] as const;
 
 export function StationWorkspaceSkeleton({
-  header = 'stepper-toolbar',
+  header = 'identity-tabs',
+  body = 'sections',
   bodyColumnClassName = STATION_WORKBENCH_BODY_COLUMN,
   headerColumnClassName = STATION_WORKBENCH_HEADER_COLUMN,
   sectionRows = DEFAULT_SECTION_ROWS,
   label = 'Loading workspace',
   className,
 }: StationWorkspaceSkeletonProps) {
-  const showHeader = header !== 'none';
+  const showIdentityTabs = header === 'identity-tabs';
+  const showToolbar = header === 'toolbar';
 
   return (
     <div
-      className={cn('flex h-full w-full flex-col bg-surface-canvas', className)}
+      className={cn(
+        'relative flex h-full w-full flex-col bg-surface-canvas',
+        className,
+      )}
       aria-busy="true"
       aria-label={label}
     >
-      {showHeader && header === 'stepper-toolbar' ? (
-        <>
-          <div className="shrink-0 border-b border-border-hairline bg-surface-card">
-            <div
-              className={cn(
-                headerColumnClassName,
-                'flex h-10 items-center justify-center gap-2',
-              )}
-            >
-              {Array.from({ length: 5 }).map((_, i) => (
-                <SkeletonBase
-                  key={i}
-                  width={`${56 + (i % 2) * 12}px`}
-                  height="24px"
-                  className="rounded-full"
-                />
-              ))}
-            </div>
-          </div>
-          <div className="flex h-10 shrink-0 items-center border-b border-border-hairline bg-surface-card">
-            <div className={cn(headerColumnClassName, 'flex items-center justify-between')}>
-              <div className="flex items-center gap-2">
-                <SkeletonBase width="72px" height="28px" className="rounded-full" />
-                <SkeletonBase width="88px" height="28px" className="rounded-full" />
-              </div>
-              <div className="flex items-center gap-2">
-                {Array.from({ length: 4 }).map((_, i) => (
-                  <SkeletonBase key={i} circle width="32px" height="32px" />
-                ))}
-              </div>
-            </div>
-          </div>
-        </>
-      ) : null}
+      {showIdentityTabs ? <IdentityTabsHeader /> : null}
 
-      {showHeader && header === 'toolbar' ? (
+      {showToolbar ? (
         <div className="flex h-10 shrink-0 items-center border-b border-border-hairline bg-surface-card">
           <div className={cn(headerColumnClassName, 'flex items-center justify-between')}>
             <SkeletonBase width="120px" height="24px" className="rounded-full" />
@@ -125,9 +251,16 @@ export function StationWorkspaceSkeleton({
 
       <div className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto">
         <div className={bodyColumnClassName}>
-          {sectionRows.map((rows, i) => (
-            <SkeletonSectionCard key={i} rows={rows} />
-          ))}
+          {showIdentityTabs ? <SectionTabsStrip /> : null}
+
+          {body === 'unbox-overview' ? (
+            <>
+              <UnboxProductSerialCard />
+              <UnboxLabelCard />
+            </>
+          ) : (
+            sectionRows.map((rows, i) => <SkeletonSectionCard key={i} rows={rows} />)
+          )}
         </div>
       </div>
     </div>

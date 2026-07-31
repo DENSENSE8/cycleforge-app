@@ -325,40 +325,6 @@ export async function getDeliveredUnscannedCount(
 }
 
 /**
- * Delivered-unscanned count split by carrier (E4 per-carrier breakdown).
- * Groups the SAME canonical (deduped) base, so the per-carrier values sum to
- * {@link getDeliveredUnscannedCount} exactly.
- */
-export async function getDeliveredUnscannedByCarrier(
-  client: Queryable,
-  windowDays: number = DELIVERED_UNSCANNED_WINDOW_DAYS,
-  orgId?: OrgId,
-): Promise<Record<string, number>> {
-  if (orgId) {
-    const { tenantQuery } = await import('@/lib/tenancy/db');
-    const { rows } = await tenantQuery<{ carrier: string; n: number }>(
-      orgId,
-      `SELECT carrier, COUNT(*)::int AS n
-       FROM ( ${deliveredUnscannedBaseSql('$1', '$2')} ) d
-      GROUP BY carrier`,
-      [String(windowDays), orgId],
-    );
-    const out: Record<string, number> = {};
-    for (const r of rows) out[r.carrier] = Number(r.n ?? 0);
-    return out;
-  }
-  const { rows } = await client.query<{ carrier: string; n: number }>(
-    `SELECT carrier, COUNT(*)::int AS n
-       FROM ( ${deliveredUnscannedBaseSql('$1')} ) d
-      GROUP BY carrier`,
-    [String(windowDays)],
-  );
-  const out: Record<string, number> = {};
-  for (const r of rows) out[r.carrier] = Number(r.n ?? 0);
-  return out;
-}
-
-/**
  * Count of delivered-unscanned shipments in the claims-attention band (>48h).
  * Same canonical base as {@link getDeliveredUnscannedCount}.
  */

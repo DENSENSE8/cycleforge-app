@@ -49,6 +49,12 @@ export interface TimelineRef {
    * When set, the chip wraps a Link; copy-on-click still works via CopyChip.
    */
   href?: string;
+  /**
+   * Optional chip label override. Serial chips normally derive last-4 from
+   * `value`; set this when a longer suffix is needed (sibling last-4 collision
+   * on a batch journey row — see `disambiguateSerialDisplays`).
+   */
+  display?: string;
 }
 
 /**
@@ -113,6 +119,12 @@ export interface TimelineItem {
   changes?: TimelineChange[];
   /** Identifier shown as a last-4 CopyChip under the title (tracking/serial/…). */
   ref?: TimelineRef;
+  /**
+   * Optional chip cluster (e.g. multi-serial batch put-away). When set,
+   * {@link EventTimeline} renders these as the identity chips and ignores
+   * `ref` for display. Prefer a single `ref` for one-id rows.
+   */
+  refs?: TimelineRef[];
   /** Actor name — rendered after the time as "· {actor}". */
   actor?: string;
   /** Optional pills below the title (signed-by, exception, …). */

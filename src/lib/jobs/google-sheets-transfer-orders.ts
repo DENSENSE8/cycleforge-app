@@ -43,6 +43,7 @@ import {
   batchResolveListingsByTitle,
   listingTitleMatchKey,
 } from '@/lib/neon/sku-catalog-queries';
+import { enqueueImportExceptionsForImport } from '@/lib/inventory/order-import-exceptions';
 
 export type { TransferOrderDetail, TransferOrderDetails } from '@/lib/orders-sync/types';
 
@@ -299,6 +300,30 @@ async function fetchSheetLines(
     itemTitle: colIndices.itemTitle,
   });
 
+  // Durable Review · Missing item number queue (`/review?mode=catalog-link`).
+  // Use the uncapped `noItemNumberRows` list — NOT the dialog's capped
+  // `skippedRows` sample — so every blank-Item-Number sale reaches Review.
+  if (filtered.noItemNumberRows.length > 0) {
+    await enqueueImportExceptionsForImport(
+      orgId,
+      filtered.noItemNumberRows.map((skipped) => ({
+        accountOrderId: skipped.orderId,
+        accountSource: skipped.platform,
+        productTitle: skipped.productTitle,
+        tracking: skipped.tracking,
+        sheetRow: skipped.sheetRow,
+        // `filterEligibleTransferSheetRows` numbers rows as `firstSheetRow +
+        // index` with firstSheetRow defaulting to 2 (dataRows = sourceRows
+        // minus the header) — so the raw row lives back at `sheetRow - 2`.
+        rawRow: dataRows[skipped.sheetRow - 2] ?? [],
+        colIndices,
+      })),
+    ).catch((err) => {
+      // Best-effort: a failure here must never fail the sheet import itself.
+      console.error('[transfer-orders] enqueueImportExceptionsForImport failed (non-fatal):', err);
+    });
+  }
+
   return {
     tabName,
     lines: mapSheetRowsToCanonicalLines(filtered.eligible, colIndices),
@@ -413,12 +438,10 @@ export async function runGoogleSheetsTransferOrders(
       // Total rows the eligibility gate dropped. Only the zero-line early
       // return used to set this, so the normal path reported `skippedRows: 0`
       // while the per-reason counters beside it were non-zero.
-      skippedRows:
-        skips.skippedBlankRow +
-        skips.skippedNoOrderId +
-        skips.skippedNoTracking +
-        skips.skippedNoItemNumber +
-        skips.skippedEcwid,
+      // Sum EVERY reason. Derived by hand, this drifts the moment a category is
+      // added — adding `fbaShipment` without touching this line made the total
+      // under-report by 4 on the very first live run.
+      skippedRows: Object.values(skips).reduce((sum, n) => sum + n, 0),
       skippedRowDetails: sheet?.skippedRows ?? [],
       recoveredByTitle: sheet?.recoveredRows?.length ?? 0,
       recoveredRowDetails: sheet?.recoveredRows ?? [],

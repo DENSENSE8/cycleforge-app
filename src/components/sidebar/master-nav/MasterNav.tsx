@@ -1,18 +1,21 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   APP_SIDEBAR_NAV,
   filterPageModes,
   getSidebarPageNav,
+  type MainGroupId,
   type SidebarNavItem,
   type SidebarPageNav,
+  type SpineDrillId,
 } from '@/lib/sidebar-navigation';
 import {
   getParkedSurfaceMeta,
   isParkedSurfaceBlocked,
   isParkedSurfaceKey,
+  type ParkedSurfaceKey,
 } from '@/lib/dogfood/parked-surfaces';
 import { PARKED_SURFACE_ICONS } from '@/components/dogfood/ParkedSurface';
 import { useOrgNavItems } from '@/hooks/useOrgNavItems';
@@ -20,6 +23,39 @@ import { prefetchNavData } from '@/lib/nav/nav-data-prefetch';
 import { useActiveSidebarMode } from './useActiveSidebarMode';
 import { useSidebarModeNav } from './useSidebarModeNav';
 import { MasterNavView } from './MasterNavView';
+
+/** Parked Overview / Library stand-ins still need a Main nest slot. */
+const PARKED_MAIN_GROUP: Partial<Record<ParkedSurfaceKey, MainGroupId>> = {
+  home: 'overview',
+  operations: 'overview',
+  studio: 'library',
+  'ai-chat': 'overview',
+};
+
+const PARKED_STOCK_IDS = new Set<ParkedSurfaceKey>(['sourcing', 'fba']);
+
+function parkedStandInPage(pageId: ParkedSurfaceKey): SidebarPageNav {
+  const meta = getParkedSurfaceMeta(pageId);
+  const Icon = PARKED_SURFACE_ICONS[pageId];
+  if (PARKED_STOCK_IDS.has(pageId)) {
+    return {
+      id: pageId,
+      label: meta.label,
+      href: meta.href,
+      icon: Icon,
+      kind: 'stock',
+    };
+  }
+  const mainGroup = PARKED_MAIN_GROUP[pageId] ?? 'overview';
+  return {
+    id: pageId,
+    label: meta.label,
+    href: meta.href,
+    icon: Icon,
+    kind: 'main',
+    mainGroup,
+  };
+}
 
 /** Merge a flat nav item with its mode metadata (if the page has modes). */
 function toPageNav(item: SidebarNavItem): SidebarPageNav {
@@ -53,6 +89,7 @@ export function MasterNav({
   const navigate = useSidebarModeNav();
 
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
+  const [drillId, setDrillId] = useState<SpineDrillId | null>(null);
 
   // Per-org nav override applied (Phase 4). Falls back to the static defaults
   // when no override is published — behavior is unchanged until an org opts in.
@@ -69,27 +106,13 @@ export function MasterNav({
     // Parked surfaces are off APP_SIDEBAR_NAV but still addressable by URL.
     // Never fall through to pages[0] (was showing "Operations" on /fba).
     if (isParkedSurfaceKey(pageId)) {
-      const meta = getParkedSurfaceMeta(pageId);
-      const Icon = PARKED_SURFACE_ICONS[pageId];
       const modeful = getSidebarPageNav(pageId);
       // While blocked: header shows the real label (stand-in UI, no mode cluster).
       if (isParkedSurfaceBlocked(pageId)) {
-        return {
-          id: pageId,
-          label: meta.label,
-          href: meta.href,
-          icon: Icon,
-          kind: 'main',
-        };
+        return parkedStandInPage(pageId);
       }
       if (modeful) return modeful;
-      return {
-        id: pageId,
-        label: meta.label,
-        href: meta.href,
-        icon: Icon,
-        kind: 'main',
-      };
+      return parkedStandInPage(pageId);
     }
 
     const fallbackItem = APP_SIDEBAR_NAV.find((item) => item.id === pageId);
@@ -108,6 +131,20 @@ export function MasterNav({
   useEffect(() => {
     setExpandedKey(activeRowKey);
   }, [activeRowKey]);
+
+  // Enter Stock drill when navigating onto a stock page from elsewhere.
+  // Manual Back leaves the root map while the URL can stay on Stock — do not
+  // force-reopen until the next Main/Stations → Stock transition.
+  const prevKindRef = useRef<SidebarPageNav['kind']>(undefined);
+  useEffect(() => {
+    const kind = activePage?.kind;
+    if (kind === 'stock' && prevKindRef.current !== 'stock') {
+      setDrillId('stock');
+    } else if (kind !== 'stock') {
+      setDrillId(null);
+    }
+    prevKindRef.current = kind;
+  }, [activePage?.kind]);
 
   const handleNavigate = useCallback(
     (nextPageId: string, nextModeId?: string) => {
@@ -140,6 +177,8 @@ export function MasterNav({
       onToggleRow={setExpandedKey}
       onNavigate={handleNavigate}
       onRowHover={handleRowHover}
+      drillId={drillId}
+      onDrillChange={setDrillId}
       className={className}
     />
   );

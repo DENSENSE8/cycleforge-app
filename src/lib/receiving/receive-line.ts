@@ -15,6 +15,7 @@ import {
 import { attachTechSerial } from '@/lib/inventory/tech-serial';
 import { workflowStageLabel } from '@/lib/receiving/workflow-stages';
 import { transitionReceivingLine } from '@/lib/receiving/state-machine';
+import { transition, type SerialState } from '@/lib/inventory/state-machine';
 import { publishStockLedgerEvent } from '@/lib/realtime/publish';
 import { escapeLike } from '@/lib/sql-like';
 
@@ -833,4 +834,337 @@ export async function receiveLineUnits(
   }
 
   return result;
+}
+
+// ── Unreceive (website reverse of Receive) ─────────────────────────────────
+
+/**
+ * Serial statuses that block website unreceive — the unit has left the dock
+ * into fulfillment / outbound / hold. STOCKED is recoverable via un-putaway;
+ * RECEIVED / TESTED / GRADED / TRIAGED stay linked but do not block the line
+ * qty rewind.
+ */
+export const UNRECEIVE_BLOCKING_SERIAL_STATUSES: ReadonlySet<string> = new Set([
+  'ALLOCATED',
+  'PICKING',
+  'PICKED',
+  'PACKING',
+  'PACKED',
+  'LABELED',
+  'STAGED',
+  'LOADING',
+  'SHIPPED',
+  'ON_HOLD',
+  'IN_REPAIR',
+  'RMA',
+]);
+
+/** Pure — used by unreceiveLineUnits + unit tests. */
+export function isUnreceiveSerialBlocking(status: string | null | undefined): boolean {
+  const s = String(status ?? '').trim().toUpperCase();
+  return s.length > 0 && UNRECEIVE_BLOCKING_SERIAL_STATUSES.has(s);
+}
+
+export interface UnreceiveLineUnitsInput {
+  organizationId: string;
+  receiving_line_id: number;
+  staff_id?: number | null;
+  station?: InventoryEventStation;
+  client_event_id?: string | null;
+  notes?: string | null;
+}
+
+export type UnreceiveLineUnitsResult =
+  | {
+      ok: true;
+      already_unreceived: boolean;
+      line_id: number;
+      units_removed: number;
+      ledger_event_ids: number[];
+      inventory_event_ids: number[];
+      line_state: {
+        id: number;
+        sku: string | null;
+        item_name: string | null;
+        quantity_received: number;
+        quantity_expected: number | null;
+        workflow_status: string | null;
+        received_done_at: string | null;
+      };
+    }
+  | { ok: false; status: 404 | 409; error: string };
+
+/**
+ * Full undo of a website Receive for one line:
+ *   - refuse if any linked serial is in a fulfillment/outbound state
+ *   - un-putaway STOCKED serials back to RECEIVED (clear bin)
+ *   - write a reversing sku_stock_ledger delta (−quantity_received)
+ *   - zero quantity_received + clear received_done_at
+ *   - transitionReceivingLine → MATCHED (scanned, not received)
+ *
+ * Idempotent when qty is already 0, stamp is null, and workflow is MATCHED.
+ */
+export async function unreceiveLineUnits(
+  input: UnreceiveLineUnitsInput,
+): Promise<UnreceiveLineUnitsResult> {
+  const station: InventoryEventStation = input.station ?? 'RECEIVING';
+  const lineId = Math.floor(Number(input.receiving_line_id));
+  if (!Number.isFinite(lineId) || lineId <= 0) {
+    return { ok: false, status: 404, error: 'receiving_line_id is required' };
+  }
+
+  return withTenantTransaction(input.organizationId, async (client) => {
+    const line = await loadLineForUpdate(client, lineId);
+    if (!line) {
+      return { ok: false, status: 404, error: `receiving_line ${lineId} not found` };
+    }
+
+    const priorQty = Number(line.quantity_received ?? 0);
+    const stampRes = await client.query<{ received_done_at: string | null }>(
+      `SELECT received_done_at::text AS received_done_at
+         FROM receiving_line WHERE id = $1`,
+      [lineId],
+    );
+    const priorStamp = stampRes.rows[0]?.received_done_at ?? null;
+    const priorWorkflow = line.workflow_status ?? null;
+
+    // Linked serials (events + provenance) — refuse fulfillment/outbound states.
+    const serials = await client.query<{
+      id: number;
+      current_status: string;
+      current_location: string | null;
+    }>(
+      `SELECT su.id,
+              su.current_status::text AS current_status,
+              su.current_location
+         FROM serial_units su
+        WHERE su.organization_id = $1
+          AND su.id IN (
+            SELECT ie.serial_unit_id
+              FROM inventory_events ie
+             WHERE ie.receiving_line_id = $2
+               AND ie.serial_unit_id IS NOT NULL
+            UNION
+            SELECT p.serial_unit_id
+              FROM serial_unit_provenance p
+             WHERE p.origin_type = 'RECEIVING_LINE'
+               AND p.origin_id = $2
+          )
+        FOR UPDATE OF su`,
+      [input.organizationId, lineId],
+    );
+
+    for (const su of serials.rows) {
+      if (isUnreceiveSerialBlocking(su.current_status)) {
+        return {
+          ok: false,
+          status: 409,
+          error: `Cannot unreceive — serial unit ${su.id} is ${su.current_status}. Reverse fulfillment first.`,
+        };
+      }
+    }
+
+    // Un-putaway STOCKED units so stock locations don't orphan after qty rewind.
+    for (const su of serials.rows) {
+      if (String(su.current_status).toUpperCase() !== 'STOCKED') continue;
+      const tr = await transition(
+        {
+          unitId: su.id,
+          to: 'RECEIVED' as SerialState,
+          eventType: 'ADJUSTED',
+          actorStaffId: input.staff_id ?? null,
+          station,
+          clientEventId: input.client_event_id
+            ? `${input.client_event_id}:unput-${su.id}`
+            : null,
+          notes: input.notes ?? 'Unreceive: reverse putaway',
+          payload: {
+            source: 'receiving.unreceive',
+            reverse_of: 'PUTAWAY',
+            receiving_line_id: lineId,
+          },
+        },
+        client,
+        input.organizationId,
+      );
+      if (!tr.ok) {
+        return {
+          ok: false,
+          status: tr.status === 404 ? 404 : 409,
+          error: `Cannot unreceive — failed to un-putaway serial unit ${su.id}: ${tr.error}`,
+        };
+      }
+      await client.query(
+        `UPDATE serial_units
+            SET current_location = NULL, updated_at = NOW()
+          WHERE id = $1 AND organization_id = $2`,
+        [su.id, input.organizationId],
+      );
+    }
+
+    const already =
+      priorQty === 0 &&
+      !priorStamp &&
+      (priorWorkflow === 'MATCHED' || priorWorkflow == null);
+
+    if (already) {
+      return {
+        ok: true,
+        already_unreceived: true,
+        line_id: lineId,
+        units_removed: 0,
+        ledger_event_ids: [],
+        inventory_event_ids: [],
+        line_state: {
+          id: lineId,
+          sku: line.sku,
+          item_name: line.item_name,
+          quantity_received: 0,
+          quantity_expected:
+            line.quantity_expected != null ? Number(line.quantity_expected) : null,
+          workflow_status: priorWorkflow ?? 'MATCHED',
+          received_done_at: null,
+        },
+      };
+    }
+
+    const ledgerEventIds: number[] = [];
+    const inventoryEventIds: number[] = [];
+
+    // Reverse stock for the qty this line currently claims.
+    if (priorQty > 0 && line.sku) {
+      const ledger = await client.query<{ id: number }>(
+        `INSERT INTO sku_stock_ledger
+           (organization_id, sku, delta, reason, dimension, staff_id,
+            ref_receiving_line_id, notes)
+         VALUES ($1, $2, $3, 'UNRECEIVED', 'WAREHOUSE', $4, $5, $6)
+         RETURNING id`,
+        [
+          input.organizationId,
+          line.sku,
+          -priorQty,
+          input.staff_id ?? null,
+          lineId,
+          input.notes ?? `Unreceive line ${lineId}`,
+        ],
+      );
+      const ledgerId = ledger.rows[0]?.id ?? null;
+      if (ledgerId) {
+        ledgerEventIds.push(ledgerId);
+        publishStockLedgerEvent({
+          organizationId: input.organizationId,
+          ledgerId,
+          sku: line.sku,
+          delta: -priorQty,
+          reason: 'UNRECEIVED',
+          dimension: 'WAREHOUSE',
+          staffId: input.staff_id ?? null,
+          source: 'receiving.unreceive-line',
+        }).catch((err) => {
+          console.warn('unreceiveLineUnits: publishStockLedgerEvent failed', err);
+        });
+      }
+      const event = await recordInventoryEvent(
+        {
+          event_type: 'ADJUSTED',
+          actor_staff_id: input.staff_id ?? null,
+          station,
+          receiving_id: line.receiving_id,
+          receiving_line_id: lineId,
+          serial_unit_id: null,
+          sku: line.sku,
+          next_status: 'MATCHED',
+          stock_ledger_id: ledgerId,
+          client_event_id: input.client_event_id
+            ? `${input.client_event_id}:unreceive-ledger`
+            : null,
+          notes: `Unreceive −${priorQty} on line ${lineId}`,
+          payload: {
+            action: 'unreceive',
+            units_removed: priorQty,
+            reverse_of: 'RECEIVED',
+          },
+        },
+        client,
+        input.organizationId,
+      );
+      inventoryEventIds.push(event.id);
+    }
+
+    // Zero qty + clear the sticky DONE stamp (trigger only stamps on enter-DONE).
+    const updated = await client.query<{
+      id: number;
+      sku: string | null;
+      item_name: string | null;
+      quantity_received: number;
+      quantity_expected: number | null;
+      workflow_status: string | null;
+      received_done_at: string | null;
+    }>(
+      `UPDATE receiving_line
+          SET quantity_received = 0,
+              received_done_at = NULL,
+              updated_at = NOW()
+        WHERE id = $1
+        RETURNING id, sku, item_name, quantity_received, quantity_expected,
+                  workflow_status::text AS workflow_status,
+                  received_done_at::text AS received_done_at`,
+      [lineId],
+    );
+    const row = updated.rows[0];
+
+    if (priorWorkflow !== 'MATCHED') {
+      const tr = await transitionReceivingLine(
+        {
+          receivingLineId: lineId,
+          to: 'MATCHED',
+          actorStaffId: input.staff_id ?? null,
+          station,
+          eventType: 'NOTE',
+          clientEventId: input.client_event_id
+            ? `${input.client_event_id}:workflow-MATCHED`
+            : null,
+          notes: `Unreceive: ${workflowStageLabel(priorWorkflow)} → ${workflowStageLabel('MATCHED')}`,
+          payload: {
+            workflow_transition: true,
+            action: 'unreceive',
+            from: priorWorkflow,
+            to: 'MATCHED',
+            units_removed: priorQty,
+          },
+        },
+        client,
+        input.organizationId,
+      );
+      if (!tr.ok) {
+        throw new Error(
+          `unreceiveLineUnits: workflow transition ${priorWorkflow ?? '?'} → MATCHED failed (${tr.status}): ${tr.error}`,
+        );
+      }
+      inventoryEventIds.push(tr.eventId);
+    }
+
+    return {
+      ok: true,
+      already_unreceived: false,
+      line_id: lineId,
+      units_removed: priorQty,
+      ledger_event_ids: ledgerEventIds,
+      inventory_event_ids: inventoryEventIds,
+      line_state: {
+        id: Number(row?.id ?? lineId),
+        sku: row?.sku ?? line.sku,
+        item_name: row?.item_name ?? line.item_name,
+        quantity_received: 0,
+        quantity_expected:
+          row?.quantity_expected != null
+            ? Number(row.quantity_expected)
+            : line.quantity_expected != null
+              ? Number(line.quantity_expected)
+              : null,
+        workflow_status: 'MATCHED',
+        received_done_at: null,
+      },
+    };
+  });
 }

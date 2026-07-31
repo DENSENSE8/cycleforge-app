@@ -63,6 +63,31 @@ When using the sidebar map, three structural slots, in this order:
   (pairing sort, sourcing status, FBA plan/combine, inventory triage filters) may stay in the
   sidebar — those are not page L2. Spine identity (`MasterNavHeader`) is display-only — **no MRU
   chips** in the nav band.
+- **Stations Floor / Desk (spine L1).** Station pages under the Stations parent use required
+  `stationGroup` (`floor` | `desk`) on `SidebarNavItem` / `SIDEBAR_PAGE_NAV` — registry
+  `STATION_GROUPS` in `sidebar-navigation.ts`. **Type hierarchy:** parent Main/Stations use
+  `text-role-eyebrow` + `text-text-soft`; Floor/Desk are nested micro subtitles
+  (`text-role-micro` + `text-text-faint`) — never peer-weight the parent. Floor = scan benches
+  in pipeline order (Receiving → Testing → Packing → Shipping); Desk = gate/ticket stations
+  (Review, Support). Do not invent page-local station folders or collapsible groups. Finer
+  splits (Intake / Line / Outbound) only after Floor **N > 8** + research override. Guard:
+  `station-nav-groups.guard.test.ts`.
+- **Main Overview / Library (spine L1).** Main pages under the Main parent use required
+  `mainGroup` (`overview` | `library`) — registry `MAIN_GROUPS` in
+  `sidebar-navigation.ts`. Same nest chrome as Stations Floor/Desk (micro + faint; skip empty;
+  no collapsible folders). Overview = day boards (Dashboard; Home + Operations when unparked);
+  Library = media/catalog assets (Media; studio Catalog when unparked). Do not invent page-local
+  Main folders. Guard: `main-nav-groups.guard.test.ts`.
+- **Stock drill-in (after Stations).** Catalog/bin workbenches are `kind: 'stock'` — **not** a
+  static L1 eyebrow list. Root shows one Stock row (`STOCK_DRILL` + chevron); drill replaces the
+  scroll body with back + Products → Inventory → Warehouse (mode accordion unchanged). Auto-enters
+  when navigating onto a stock page; manual Back returns to the root map without forcing re-open.
+  Swap uses named opacity-only SoT (`framerPresence.spineDrill` / `framerTransition.spineDrill`,
+  ≤150ms) — **no** horizontal slide on the 240px spine. Auto-drill must **not** steal keyboard
+  focus (main content / `#main` stays). **Do not** drill Stations (floor map stays visible). Modes
+  stay header Mode + accordion — never a mode drill level. Brief:
+  `docs/todo/spine-drill-in-vercel-GEMINI-RESEARCH-BRIEFING.md`. Guard:
+  `main-nav-groups.guard.test.ts`.
 - **Anti-mix — never invert the sidebar.** Related/similar is progressive disclosure *below* the picker, never replacing the map.
 - **Responsive fallback is list-OR-detail, not both.** On a narrow viewport, show the picker *or* the detail, never a
   cramped two-up. (M3 list-detail / WinUI List/Details patterns.)
@@ -111,18 +136,22 @@ When using the sidebar map, three structural slots, in this order:
 
 ---
 
-## The top axis is DIRECTION, not entity
+## The top axis is DIRECTION (+ front-desk commerce)
 
-Ratified 2026-07-29 (`docs/todo/dashboard-ia-rework-PLAN.md` §10.2 rows H + I).
+Ratified 2026-07-29 (`docs/todo/dashboard-ia-rework-PLAN.md` §10.2 rows H + I); Sales domain
+amended 2026-07-30 (`docs/todo/sales-into-dashboard-PLAN.md`).
 
 A multi-domain Workbench page's top axis splits by **physical direction of flow**
-(`?mode=inbound` | `outbound`) — never by entity type (`Orders · FBA · Repair · Sales`).
+(`?mode=inbound` | bare outbound) **plus** front-desk commerce history when that collection has no
+other L1 home (`?mode=sales` | `?mode=pickup`). Never by entity type
+(`Orders · FBA · Repair · Sales` as peers of each other).
 
 **The predicate for what earns a top-axis slot** — all three, or it is not a slot:
 
-1. It **owns a distinct collection surface** (its own `LedgerGrid`/`GridSurfaceDescriptor`), not a
-   filtered view of a sibling's.
-2. It is a **Workbench region** — pointer-driven pick+edit. A scanner-driven surface fails here.
+1. It **owns a distinct collection surface** (its own `LedgerGrid`/`GridSurfaceDescriptor` / feed),
+   not a filtered view of a sibling's.
+2. It is a **Workbench / Monitor browse region** — pointer-driven pick+edit or observe. A
+   scanner-driven Station fails here.
 3. It has **no home elsewhere**. A domain that already owns a page or an L2 mode does not get a
    second front door.
 
@@ -130,15 +159,17 @@ Worked verdicts: **Orders** passes. **Receiving** fails (2) — it is a scanner-
 `/unbox`; the dashboard's `inbound` domain is its pointer-driven *counterpart*, not the Station
 itself, and merging them is the anti-mix regression this whole doc opens with. **FBA** and **Repair**
 fail (3) — FBA lives at `/shipping/fba` (legacy `/shipping?mode=fba` redirects there), Repair is a
-Receiving mode. **Sales** fails (3) and is also directionally incoherent — a walk-in sale is commerce,
-neither inbound nor outbound.
+Receiving mode. **Sales** passes after its L1 `/walk-in` home is deleted — it owns the walk-in
+transaction feed, is Monitor browse, and lands as the dashboard `sales` domain
+(`?mode=sales` / `?mode=pickup`); counter intake stays on `/pickup` + `/repair`.
 
-**Why direction beats entity here.** An entity axis reads cleaner on a nav diagram and is the right
-default for a *catalog* console (Shopify, Linear), where every top-level value is the same kind of
-thing: a pointer-driven list you filter. This app's entities are not the same kind of thing — one of
-them is a scan bench. Direction also matches what a 1–15 person floor physically switches between
-(the dock vs. the ship station), so the axis names a place the operator stands rather than a schema
-the operator has to translate.
+**Why direction (+ commerce) beats a full entity axis.** An entity axis reads cleaner on a nav
+diagram and is the right default for a *catalog* console (Shopify, Linear), where every top-level
+value is the same kind of thing: a pointer-driven list you filter. This app's entities are not the
+same kind of thing — one of them is a scan bench. Direction matches what a 1–15 person floor
+physically switches between (the dock vs. the ship station); commerce history is the third browse
+collection that shared the Sales L1 page and now shares the dashboard shell without widening to
+FBA/Repair (they keep their homes).
 
 **Consequence — an axis value that stops owning a table is a deletion candidate, not a tab.**
 The vestigial `'fba'` member of `DashboardOrderView` was deleted 2026-07-29 (IA row L): FBA owns
@@ -199,6 +230,10 @@ The collection map is stable; only the **focus surface** moves.
 - Only reach for a **measured** offset (ResizeObserver → CSS var per layer) if a port genuinely needs 3+ dynamic-height sticky bars — the two-zone shell removes the need in every current surface. A fixed px offset is never the answer.
 - z bands stay from the SoT (`src/design-system/tokens/z-index.ts`): chrome/top bar = `z-header`, in-body pins = `z-raised`/`z-sticky`. Never hardcode `z-[NNN]`.
 
+**Chrome face density (`WorkbenchChromeHeader`).** Two densities on one SoT — never a page-local twin tab band. `default` is the content-driven raised card (`p-1.5` + md solid-hug tabs with their own rail). `density="band"` pins a **single-surface 40px face** (`h-10 p-0.5` + `TabSwitch size="sm"` on a **flat** rail — **2px inset required**; active pill uses `nestedCornerClass('card', 0.5)` / `rounded-xl` so it nests concentrically inside the card shell; no flush full-height active pill, no nested bordered track, no `rounded-full` mismatch). Nested TabSwitch cards under band are forbidden (Kinetic Ledger / Linear chrome). Lifecycle tabs are **text-only** (no leading icons for Queue · Viewed · History-style states). **Scan-adjacent consumers:** Unbox + Triage. Incoming (no scan dock) stays `default` hug. When beside a floated context panel, wrap with `WORKBENCH_CHROME_BESIDE_SCAN` (`py-2` = panel `m-2`) so the band face shares a Y row with `receivingScanBandClass` — never flush with `py-0`.
+
+**Trailing Display & Actions (`WorkbenchTrailingCluster`).** Column visibility (`GridFieldsMenu` / Fields) and display sort (`QueueSortSwitch`) live in the **pinned page chrome trailing cluster**, not an in-card Sheets-like action bar (that would stack a second sticky band — forbidden above) and not GlobalHeader. Compose `WorkbenchTrailingCluster` as `WorkbenchChromeHeader`’s `trailing` prop with honest absence: **Sort → Fields → Import → Add** (`before` / `after` escapes for pagination / refresh only). Filters / refine stay in `right` (query ≠ display). Opening Fields is a detached listbox — no header-coupling mode. Multi-select triage stays on `ContextualSelectionBar` (bottom) — never morph the top bar. Guard: `workbench-trailing-cluster.guard.test.ts`. Plan: `docs/todo/table-action-bar-fields-PLAN.md`.
+
 ## Teaching empty + typed states
 
 - **Branch the empty/error copy by *type*, not one generic "Nothing here."** Four distinct states, each with its own
@@ -230,7 +265,7 @@ surface tells the operator something false. Every collection surface answers:
 
 - **Reserve the geometry while loading, and gate on ALL sources together.** A band fed by two
   queries that each render as they settle **reflows under the operator's cursor**.
-  `DashboardAttentionStrip` holds one combined `isPending` gate for exactly this reason;
+  `OutboundKpiStrip` holds one combined `isPending` gate for exactly this reason;
   `LedgerGridSurface` renders `SkeletonList count={12} type="row"` inside the framed shell.
 - **Absence and no-match are different answers.** "No cartons yet" invites the create action;
   "no cartons match" invites clearing the filter. Showing the first when the second is true
@@ -239,7 +274,7 @@ surface tells the operator something false. Every collection surface answers:
   `searchEmptyMessage` / `isSearching`. *(The surface collapsed these to one message until
   2026-07-29 — every descriptor-driven grid answered both questions identically.)*
 - **Settled-with-nothing can be a POSITIVE answer.** On a queue whose job is "what needs me",
-  zero is an all-clear, not an absence — say so (`DashboardAttentionStrip`'s all-clear line).
+  zero is an all-clear, not an absence — say so in copy (e.g. "Nothing needs you right now").
   Reserve the dashed teaching box for absence.
 - **Degraded is not empty.** A failed sibling fetch renders its own region empty and leaves the
   rest of the surface working — see *Degrade-not-fail* above. Only the **primary** resource

@@ -9,13 +9,12 @@
  *
  * **This is the NAV spine only.** The route's context panel
  * (`CONTEXT_PANEL_WIDTH_PX` / `CONTEXT_PANEL_COLUMN_CLASS`) defaults to 360px
- * too, and deliberately does not consume this: they are two measurements that
- * happen to agree today, not one shared one. Receiving can drag-resize its
- * rail via `CONTEXT_PANEL_RESIZE`; wiring the panel to this spine token would
- * still mean widening the nav silently widens every route's default rail —
- * a different surface, a different job.
+ * and deliberately does not consume this: they are two measurements for two
+ * jobs. Receiving can drag-resize its rail via `CONTEXT_PANEL_RESIZE`; wiring
+ * the panel to this spine token would still mean narrowing the nav silently
+ * narrows every route's default rail.
  */
-export const SIDEBAR_SPINE_WIDTH = 'w-[360px]';
+export const SIDEBAR_SPINE_WIDTH = 'w-[240px]';
 
 /**
  * The same width as a number, for the one consumer that must animate it:
@@ -27,4 +26,4 @@ export const SIDEBAR_SPINE_WIDTH = 'w-[360px]';
  * column instead would move the geometry out of the token file and into the
  * component, which is the trade this pair exists to avoid.)
  */
-export const SIDEBAR_SPINE_WIDTH_PX = 360;
+export const SIDEBAR_SPINE_WIDTH_PX = 240;

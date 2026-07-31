@@ -44,6 +44,7 @@ export { StationHeaderToolbar } from './StationHeaderToolbar';
 export {
   stationRightEdgeActionHostClass,
   stationContextBarHostClass,
+  stationMoreDetailsPaneHostClass,
   STATION_IDENTITY_SCROLL_CLEARANCE,
 } from './station-bookmark';
 export {

@@ -113,3 +113,24 @@ export const INTAKE_CLASSIFICATION_OPTS: ReadonlyArray<{
 export function classificationLabel(c: IntakeClassification): string {
   return INTAKE_CLASSIFICATION_OPTS.find((o) => o.value === c)?.label ?? 'Unknown';
 }
+
+/**
+ * Platform-only identity for a return classification — same platform, without
+ * the trailing "Return" word. Used by `zendesk-claim-subject-identity.ts` when
+ * the claim TYPE segment already says "Return", so the ticket subject reads
+ * "FBA // Return // TRK#…" instead of duplicating it as
+ * "FBA Return // Return // TRK#…". Non-return codes (PO/TRADE_IN/LOCAL_PICKUP/
+ * UNKNOWN) never reach that dedup path, so they fall back to the full label.
+ */
+const RETURN_CLASSIFICATION_PLATFORM_LABEL: Partial<Record<IntakeClassification, string>> = {
+  FBA_RETURN: 'FBA',
+  AMAZON_RETURN: 'Amazon',
+  EBAY_RETURN_DH: 'eBay (DH)',
+  EBAY_RETURN_USAV: 'eBay',
+  EBAY_RETURN_MK: 'eBay (MK)',
+  WALMART_RETURN: 'Walmart',
+};
+
+export function classificationPlatformOnlyLabel(c: IntakeClassification): string {
+  return RETURN_CLASSIFICATION_PLATFORM_LABEL[c] ?? classificationLabel(c);
+}

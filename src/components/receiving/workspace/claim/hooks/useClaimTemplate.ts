@@ -105,6 +105,23 @@ export function useClaimTemplate({
     };
   }, [open, active, receivingId, lineId, claimType, resetNonce]);
 
+  // Reclassify (platform / type / door intake) while the modal is open — refetch
+  // the template so SUBJECT picks up "FBA - Return" / "FBA Return" instead of a
+  // stale "eBay - PO" or bare "Return // Return". Respects touched flags.
+  useEffect(() => {
+    if (!open || !active || !receivingId) return;
+    const onPackageUpdated = (ev: Event) => {
+      const detail = (ev as CustomEvent<{ receiving_id?: number }>).detail;
+      if (Number(detail?.receiving_id) !== Number(receivingId)) return;
+      if (subjectTouched.current || descriptionTouched.current) return;
+      setResetNonce((n) => n + 1);
+    };
+    window.addEventListener('receiving-package-updated', onPackageUpdated);
+    return () => {
+      window.removeEventListener('receiving-package-updated', onPackageUpdated);
+    };
+  }, [open, active, receivingId]);
+
   // Link flow: once a ticket is linked, prefill Subject from ITS real title
   // instead of the generated PO template — the operator is updating an
   // existing ticket, not naming a new one. Runs after (and so wins over) the

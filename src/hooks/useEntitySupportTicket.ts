@@ -15,6 +15,10 @@ export interface EntitySupportTicket {
   openUrl: string | null;
   subject: string | null;
   status: string | null;
+  /** ISO timestamp of the ticket_links row when known. */
+  linkedAt?: string | null;
+  /** Staff initials who linked the ticket when known. */
+  linkedByInitials?: string | null;
 }
 
 export function entitySupportTicketQueryKey(

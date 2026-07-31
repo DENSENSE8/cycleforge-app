@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Image as ImageIcon, Mail, Paperclip, Send, X } from '@/components/Icons';
-import { Button, IconButton } from '@/design-system/primitives';
+import { Button, IconButton, StationComposerDock } from '@/design-system/primitives';
 import { VisibilityToggle } from '@/components/ui/VisibilityToggle';
 import { usePhotoDropzone } from '@/hooks/usePhotoDropzone';
 import { useSupportReply } from '@/hooks/useSupportReply';
@@ -23,6 +23,10 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
  * attach (via the ticket-level drop overlay or the Attach button), ⌘↵ to send.
  * Internal notes auto-sign with the current staffer's name for attribution.
  * Posts through {@link useSupportReply} (the shared photo→ticket pipeline).
+ *
+ * Station dock variant (`variant="station-dock"`) uses {@link StationComposerDock}
+ * — one elevated shell with the terminal CTA in `trailingAction` (Unbox overview
+ * compound). Console / inline keeps the sticky card chrome.
  */
 export function SupportChatComposer({
   ticketId,
@@ -33,6 +37,8 @@ export function SupportChatComposer({
   hideSendBar = false,
   receivingId,
   onBridgeChange,
+  variant = 'inline',
+  trailingAction,
 }: {
   ticketId: number;
   requesterEmail?: string | null;
@@ -44,15 +50,24 @@ export function SupportChatComposer({
   /**
    * Station ticket inclusion — drop the "Signs as / Add note" footer bar.
    * Send remains available via ⌘↵ (see textarea placeholder).
+   * Ignored when `variant="station-dock"` (dock owns send via trailingAction).
    */
   hideSendBar?: boolean;
   /** Carton context for media library “Current carton” tab. */
   receivingId?: number;
   /** Exposes the embedded composer to a station terminal dock. */
   onBridgeChange?: (bridge: ThreadComposerBridge | null) => void;
+  /**
+   * `inline` — sticky card under the thread (console / non-station).
+   * `station-dock` — {@link StationComposerDock} shell for the floating dock band.
+   */
+  variant?: 'inline' | 'station-dock';
+  /** Terminal CTA embedded in the station-dock footer (replaces blue Send). */
+  trailingAction?: ReactNode;
 }) {
   const [body, setBody] = useState('');
   const composerRef = useRef<HTMLTextAreaElement | null>(null);
+  const stationDock = variant === 'station-dock';
 
   // Populate the editor when the parent seeds a draft (AI "Use draft"). Keyed on
   // seedToken so re-using the same text still applies; never clobbers ongoing typing
@@ -178,6 +193,176 @@ export function SupportChatComposer({
         ? `Drag photos to attach${ccs.length ? ` · ${ccs.length} cc` : ''}`
         : `${staffName ? `Signs as — ${staffName} · ` : ''}Not emailed`;
 
+  const libraryPicker = canBrowseLibrary ? (
+    <SupportPhotoLibraryPicker
+      ticketId={ticketId}
+      receivingId={receivingId}
+      open={libraryOpen}
+      onClose={() => setLibraryOpen(false)}
+      excludePhotoIds={stagedPhotoIds}
+      onSelect={(photos) => {
+        staging.addLibraryPhotos(photos);
+        void queryClient.invalidateQueries({ queryKey: zendeskKeys.photos(ticketId) });
+      }}
+    />
+  ) : null;
+
+  const attachActions = (
+    <div className="flex items-center gap-0.5">
+      {canBrowseLibrary ? (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setLibraryOpen(true)}
+          icon={<ImageIcon className="h-3.5 w-3.5" />}
+          className={cn(
+            'gap-1.5 px-2 font-semibold',
+            stationDock || hideSendBar ? 'text-role-micro' : 'text-role-caption',
+          )}
+        >
+          Library
+        </Button>
+      ) : null}
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={picker.openPicker}
+        icon={<Paperclip className="h-3.5 w-3.5" />}
+        className={cn(
+          'gap-1.5 px-2 font-semibold',
+          stationDock || hideSendBar ? 'text-role-micro' : 'text-role-caption',
+        )}
+      >
+        Attach
+      </Button>
+      <input ref={picker.inputRef} {...picker.inputProps} />
+    </div>
+  );
+
+  const ccStrip = isPublic ? (
+    <div
+      className={cn(
+        'flex flex-wrap items-center gap-1.5 rounded-lg border border-border-soft bg-surface-canvas/60 px-2 py-1.5',
+        stationDock ? 'mb-2' : 'mb-2.5',
+      )}
+    >
+      <span className="inline-flex items-center gap-1 text-role-micro uppercase tracking-widest text-text-faint">
+        <Mail className="h-3 w-3" /> Cc
+      </span>
+      {ccs.map((email) => (
+        <span
+          key={email}
+          className="inline-flex items-center gap-1 rounded bg-blue-50 px-1.5 py-0.5 text-role-caption font-semibold text-blue-700 ring-1 ring-inset ring-blue-200"
+        >
+          {email}
+          <IconButton
+            onClick={() => removeCc(email)}
+            ariaLabel={`Remove ${email}`}
+            tone="accent"
+            icon={<X className="h-2.5 w-2.5" />}
+            className="rounded-full text-blue-400 hover:text-blue-700"
+          />
+        </span>
+      ))}
+      <input
+        list="support-cc-suggestions"
+        value={ccInput}
+        onChange={(e) => setCcInput(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ',' || e.key === ';') {
+            e.preventDefault();
+            addCc(ccInput);
+          } else if (e.key === 'Backspace' && !ccInput && ccs.length) {
+            removeCc(ccs[ccs.length - 1]);
+          }
+        }}
+        onBlur={() => addCc(ccInput)}
+        placeholder={ccs.length ? 'Add another…' : 'Add email to CC…'}
+        className="min-w-[8rem] flex-1 bg-transparent px-1 text-role-caption text-text-default outline-none placeholder:text-text-faint"
+      />
+      <datalist id="support-cc-suggestions">
+        {ccSuggestions.map((email) => (
+          <option key={email} value={email} />
+        ))}
+      </datalist>
+    </div>
+  ) : null;
+
+  const stagedThumbs =
+    staging.staged.length > 0 ? (
+      <div className={cn('flex flex-wrap gap-2', stationDock ? 'mb-2' : 'mb-2.5')}>
+        {staging.staged.map((s) => (
+          <div
+            key={s.tempId}
+            className={cn(
+              'relative h-14 w-14 overflow-hidden rounded-lg ring-1 ring-inset',
+              s.status === 'error' ? 'ring-rose-300' : 'ring-border-soft',
+            )}
+          >
+            <img src={s.thumbUrl || s.previewUrl} alt={s.name} className="h-full w-full object-cover" />
+            {s.status === 'uploading' ? (
+              <div className="absolute inset-0 flex items-center justify-center bg-scrim/30">
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+              </div>
+            ) : null}
+            {s.status === 'error' ? (
+              <div className="absolute inset-0 flex items-center justify-center bg-rose-900/40 text-role-micro uppercase text-white">
+                Failed
+              </div>
+            ) : null}
+            <IconButton
+              onClick={() => staging.remove(s.tempId)}
+              ariaLabel="Remove"
+              icon={<X className="h-2.5 w-2.5" />}
+              // ds-allow-raw-neutral: glass overlay pinned on an image thumbnail — photo doesn't theme, stays dark
+              className="absolute right-0.5 top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-scrim/70 text-white hover:bg-gray-900"
+            />
+          </div>
+        ))}
+      </div>
+    ) : null;
+
+  if (stationDock) {
+    const busy = !canPost || reply.isPending || staging.uploading;
+    return (
+      <div className="w-full">
+        {ccStrip}
+        {stagedThumbs}
+        {libraryPicker}
+        <StationComposerDock
+          value={body}
+          onChange={setBody}
+          onCommit={submit}
+          commitDisabled={busy ? true : undefined}
+          placeholder={
+            isPublic
+              ? 'Reply to the customer… (Enter to send)'
+              : 'Internal note — not emailed… (Enter to send)'
+          }
+          ariaLabel={isPublic ? 'Public reply' : 'Internal note'}
+          commitAriaLabel={isPublic ? 'Send reply' : 'Add note'}
+          commitTooltip={
+            isPublic ? 'Send reply (Enter)' : 'Add note (Enter) · Shift+Enter for newline'
+          }
+          footerStart={
+            <>
+              <VisibilityToggle
+                value={isPublic}
+                onChange={setIsPublic}
+                internalLabel="Internal"
+                publicLabel="Public"
+                className="scale-90 origin-left"
+              />
+              {attachActions}
+            </>
+          }
+          trailingAction={trailingAction}
+          textareaRef={composerRef}
+        />
+      </div>
+    );
+  }
+
   return (
     <div
       className={cn(
@@ -192,122 +377,12 @@ export function SupportChatComposer({
           internalLabel="Internal note"
           publicLabel="Public reply"
         />
-        <div className="flex items-center gap-1">
-          {canBrowseLibrary ? (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setLibraryOpen(true)}
-              icon={<ImageIcon className="h-3.5 w-3.5" />}
-              className={cn('gap-1.5 px-2 font-semibold', hideSendBar ? 'text-role-micro' : 'text-role-caption')}
-            >
-              Library
-            </Button>
-          ) : null}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={picker.openPicker}
-            icon={<Paperclip className="h-3.5 w-3.5" />}
-            className={cn('gap-1.5 px-2 font-semibold', hideSendBar ? 'text-role-micro' : 'text-role-caption')}
-          >
-            Attach
-          </Button>
-        </div>
-        <input ref={picker.inputRef} {...picker.inputProps} />
+        {attachActions}
       </div>
 
-      {canBrowseLibrary ? (
-        <SupportPhotoLibraryPicker
-          ticketId={ticketId}
-          receivingId={receivingId}
-          open={libraryOpen}
-          onClose={() => setLibraryOpen(false)}
-          excludePhotoIds={stagedPhotoIds}
-          onSelect={(photos) => {
-            staging.addLibraryPhotos(photos);
-            void queryClient.invalidateQueries({ queryKey: zendeskKeys.photos(ticketId) });
-          }}
-        />
-      ) : null}
-
-      {/* CC collaborators — public replies only (CCs make no sense on a note). */}
-      {isPublic ? (
-        <div className="mb-2.5 flex flex-wrap items-center gap-1.5 rounded-lg border border-border-soft bg-surface-canvas/60 px-2 py-1.5">
-          <span className="inline-flex items-center gap-1 text-role-micro uppercase tracking-widest text-text-faint">
-            <Mail className="h-3 w-3" /> Cc
-          </span>
-          {ccs.map((email) => (
-            <span
-              key={email}
-              className="inline-flex items-center gap-1 rounded bg-blue-50 px-1.5 py-0.5 text-role-caption font-semibold text-blue-700 ring-1 ring-inset ring-blue-200"
-            >
-              {email}
-              <IconButton
-                onClick={() => removeCc(email)}
-                ariaLabel={`Remove ${email}`}
-                tone="accent"
-                icon={<X className="h-2.5 w-2.5" />}
-                className="rounded-full text-blue-400 hover:text-blue-700"
-              />
-            </span>
-          ))}
-          <input
-            list="support-cc-suggestions"
-            value={ccInput}
-            onChange={(e) => setCcInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ',' || e.key === ';') {
-                e.preventDefault();
-                addCc(ccInput);
-              } else if (e.key === 'Backspace' && !ccInput && ccs.length) {
-                removeCc(ccs[ccs.length - 1]);
-              }
-            }}
-            onBlur={() => addCc(ccInput)}
-            placeholder={ccs.length ? 'Add another…' : 'Add email to CC…'}
-            className="min-w-[8rem] flex-1 bg-transparent px-1 text-role-caption text-text-default outline-none placeholder:text-text-faint"
-          />
-          <datalist id="support-cc-suggestions">
-            {ccSuggestions.map((email) => (
-              <option key={email} value={email} />
-            ))}
-          </datalist>
-        </div>
-      ) : null}
-
-      {staging.staged.length ? (
-        <div className="mb-2.5 flex flex-wrap gap-2">
-          {staging.staged.map((s) => (
-            <div
-              key={s.tempId}
-              className={cn(
-                'relative h-14 w-14 overflow-hidden rounded-lg ring-1 ring-inset',
-                s.status === 'error' ? 'ring-rose-300' : 'ring-border-soft',
-              )}
-            >
-              <img src={s.thumbUrl || s.previewUrl} alt={s.name} className="h-full w-full object-cover" />
-              {s.status === 'uploading' ? (
-                <div className="absolute inset-0 flex items-center justify-center bg-scrim/30">
-                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
-                </div>
-              ) : null}
-              {s.status === 'error' ? (
-                <div className="absolute inset-0 flex items-center justify-center bg-rose-900/40 text-role-micro uppercase text-white">
-                  Failed
-                </div>
-              ) : null}
-              <IconButton
-                onClick={() => staging.remove(s.tempId)}
-                ariaLabel="Remove"
-                icon={<X className="h-2.5 w-2.5" />}
-                // ds-allow-raw-neutral: glass overlay pinned on an image thumbnail — photo doesn't theme, stays dark
-                className="absolute right-0.5 top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-scrim/70 text-white hover:bg-gray-900"
-              />
-            </div>
-          ))}
-        </div>
-      ) : null}
+      {libraryPicker}
+      {ccStrip}
+      {stagedThumbs}
 
       <div
         className={cn(

@@ -5,15 +5,15 @@
  * below PO Items, above Package Pairing. Operator-initiated only; nothing here
  * runs on the scan path (see useUnfoundRefetchActions).
  *
- * Four resolution actions on a compact grid (default lane). Order # opens a
+ * Four resolution actions on a compact grid (default lane). Return # opens a
  * local search; Zoho / Amazon fire platform fetches; Find ticket opens the
  * helpdesk picker. Nothing auto-runs on scan.
  *
- *   • **Order #** (Search) — opens the search row (back chip · order-number
- *     input · blue search icon). Typing surfaces a live list of matching
- *     shipped orders; an EXACT order-number match auto-links the order onto
- *     the carton (import-sales-order), and picking a list row links that
- *     order. The search icon runs the read-only serial compare instead (for
+ *   • **Return #** (Search) — opens the search row (back chip · return #
+ *     input · search icon). Typing surfaces a live list of matching shipped
+ *     orders; an EXACT order-number match auto-links the order onto the
+ *     carton (import-sales-order), and picking a list row links that order.
+ *     The search icon runs the read-only serial compare instead (for
  *     verifying before linking) — a confirmed match then logs the serial /
  *     files a support ticket inline. Back returns to the compact action grid.
  *   • **Zoho** (RefreshCw) — FETCH: re-run the Zoho PO tracking search.
@@ -120,8 +120,8 @@ export function UnfoundMatchStrip({
     trackingNumber,
   );
   const compare = useShippedOrderCompare();
-  // Compact action grid is the default (Order # · Zoho · Amazon · Find ticket).
-  // Order # opens the search lane; Find ticket opens the helpdesk picker; both
+  // Compact action grid is the default (Return # · Zoho · Amazon · Find ticket).
+  // Return # opens the search lane; Find ticket opens the helpdesk picker; both
   // return here on back / link.
   const [lane, setLane] = useState<'order' | 'ticket' | 'actions'>('actions');
   const trimmedTracking = (trackingNumber ?? '').trim();
@@ -151,7 +151,7 @@ export function UnfoundMatchStrip({
 
   return (
     <div
-      className={showTopRule ? 'space-y-2 border-t border-border-hairline pt-3' : 'space-y-2'}
+      className={showTopRule ? 'space-y-2 border-t border-border-hairline pt-2' : 'space-y-2'}
     >
       <WorkspaceSectionTitle as="p">Auto-match</WorkspaceSectionTitle>
 
@@ -194,14 +194,12 @@ export function UnfoundMatchStrip({
             transition={stepTransition}
             className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4"
           >
-            {/* Order # is a different kind of action than its peers — it opens a
-                LOCAL search rather than firing a platform fetch — so it wears the
-                blue treatment. Zoho / Amazon stay uniform. */}
+            {/* Return # opens a LOCAL search rather than firing a platform fetch;
+                chrome matches the Zoho / Amazon / Find ticket peers. */}
             <StripButton
               icon={Search}
-              label="Order #"
-              tone="blue"
-              tooltip="Search our shipped records by order number"
+              label="Return #"
+              tooltip="Search our shipped records by return / order number"
               disabled={noReceiving}
               onClick={() => setLane('order')}
             />
@@ -248,13 +246,12 @@ export function UnfoundMatchStrip({
 }
 
 /** One Auto-match action in the collapsed grid. Async lanes (Zoho / Amazon) pass
- *  `state` for the loading spinner; `tone="blue"` marks the odd one out — the
- *  local Order # search — apart from the platform-fetch peers. */
+ *  `state` for the loading spinner. All four actions share secondary (white)
+ *  chrome. */
 function StripButton({
   icon: Icon,
   label,
   tooltip,
-  tone = 'neutral',
   state,
   disabled,
   onClick,
@@ -262,13 +259,10 @@ function StripButton({
   icon: IconComponent;
   label: string;
   tooltip: string;
-  tone?: 'neutral' | 'blue';
   state?: RefetchState;
   disabled: boolean;
   onClick: () => void;
 }) {
-  const blue =
-    'bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-300 hover:bg-blue-100 active:bg-blue-100';
   return (
     <HoverTooltip label={tooltip} asChild focusable={false}>
       <Button
@@ -277,9 +271,7 @@ function StripButton({
         loading={state?.status === 'loading'}
         disabled={disabled}
         onClick={onClick}
-        className={`min-h-11 w-full justify-start gap-2 rounded-lg px-3 ${
-          tone === 'blue' ? blue : ''
-        }`}
+        className="min-h-11 w-full justify-start gap-2 rounded-lg px-3"
         icon={<Icon className="h-4 w-4 shrink-0" />}
       >
         <span className="truncate text-role-caption font-semibold">{label}</span>
@@ -344,10 +336,10 @@ function TicketMatchLane({
 }
 
 /**
- * The order-number search bar — one row: back chip (leftmost) · order-number
- * input · blue search icon (rightmost, tooltip). Typing surfaces a live list of
- * matching shipped orders; an EXACT order-number match auto-links the order onto
- * the carton (import-sales-order) — the same auto-import the PO# field does.
+ * The return-# search bar — one row: back chip (leftmost) · return # input ·
+ * search icon (rightmost, tooltip). Typing surfaces a live list of matching
+ * shipped orders; an EXACT order-number match auto-links the order onto the
+ * carton (import-sales-order) — the same auto-import the PO# field does.
  * Picking a list row links that order. The search icon runs the read-only serial
  * compare instead, for when the operator wants to verify before linking.
  */
@@ -483,7 +475,7 @@ function OrderSearchRow({
           onClick={onBack}
           className="grid h-11 w-9 shrink-0 place-items-center rounded-lg ring-1 ring-inset ring-border-soft hover:bg-surface-canvas"
         />
-        {/* Order # — find what we shipped and link (exact) or compare (search). */}
+        {/* Return # — find what we shipped and link (exact) or compare (search). */}
         <div className="min-w-0 flex-1">
           <input
             autoFocus
@@ -493,21 +485,21 @@ function OrderSearchRow({
               autoAttemptedRef.current = null;
               if (state.status !== 'idle') onClear();
             }}
-            placeholder="Order number…"
+            placeholder="Return #…"
             disabled={disabled}
-            className="min-h-11 w-full min-w-0 rounded-lg border-0 bg-surface-card px-3 text-role-caption font-semibold text-text-default ring-1 ring-inset ring-border-soft placeholder:text-text-faint focus:outline-none focus:ring-2 focus:ring-blue-400"
+            className="min-h-11 w-full min-w-0 rounded-lg border-0 bg-surface-card px-3 text-role-caption font-semibold text-text-default ring-1 ring-inset ring-border-soft placeholder:text-text-faint focus:outline-none focus:ring-2 focus:ring-border-soft"
           />
         </div>
-        {/* Rightmost blue search icon — runs the read-only serial compare. */}
-        <HoverTooltip label="Search shipped records by order number" asChild focusable={false}>
+        {/* Rightmost search icon — runs the read-only serial compare. */}
+        <HoverTooltip label="Search shipped records by return / order number" asChild focusable={false}>
           <Button
             type="submit"
             variant="secondary"
             size="sm"
             loading={state.status === 'loading' || linkingId != null}
             disabled={disabled || !trimmedOrder}
-            ariaLabel="Search by order number"
-            className="min-h-11 w-11 shrink-0 justify-center rounded-lg bg-blue-50 px-0 text-blue-700 ring-1 ring-inset ring-blue-300 hover:bg-blue-100 active:bg-blue-100"
+            ariaLabel="Search by return number"
+            className="min-h-11 w-11 shrink-0 justify-center rounded-lg px-0"
             icon={<Search className="h-4 w-4 shrink-0" />}
           />
         </HoverTooltip>

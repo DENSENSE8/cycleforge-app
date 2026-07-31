@@ -1,8 +1,9 @@
 /**
  * Collect every openable listing URL for a receiving carton — manual paste,
- * catalog platform rows (Zoho / inventory mirror), and SKU-derived storefront
- * fallbacks. Dedupes by normalized href and orders manual → platform-matched
- * catalog → other catalog → derived.
+ * catalog marketplace platform rows, and SKU-derived storefront fallbacks.
+ * Dedupes by normalized href and orders manual → platform-matched catalog →
+ * other catalog → derived. Zoho PO cartons pass `suppressEcwidStorefront` so
+ * Ecwid/usavshop auto-links are not invented from inventory SKUs.
  */
 
 import { sourcePlatformLabel } from '@/lib/source-platform';
@@ -77,11 +78,19 @@ export function collectCartonListingLinks(args: {
   sku: string | null | undefined;
   sourcePlatform: string | null | undefined;
   isUnmatched: boolean;
+  /**
+   * Zoho PO cartons: hide Ecwid/usavshop auto-links. Zoho SKUs are inventory
+   * identity, not storefront listings — derived + catalog ecwid/zoho rows must
+   * not invent a usavshop search URL. Manual paste + sync notes + other
+   * marketplace catalog rows still pass through.
+   */
+  suppressEcwidStorefront?: boolean;
   platforms?: CatalogPlatformLinkInput[];
 }): CartonListingLink[] {
   const seen = new Set<string>();
   const candidates: CartonListingLink[] = [];
   const platformOrder = new Map<string, string>();
+  const suppressEcwid = Boolean(args.suppressEcwidStorefront);
 
   const push = (href: string | null, label: string, source: CartonListingLink['source']) => {
     if (!href) return;
@@ -103,13 +112,14 @@ export function collectCartonListingLinks(args: {
   }
 
   for (const p of args.platforms ?? []) {
-    const href = catalogRowHref(p);
     const platformKey = p.platform.trim().toLowerCase();
+    if (suppressEcwid && (platformKey === 'ecwid' || platformKey === 'zoho')) continue;
+    const href = catalogRowHref(p);
     if (href && !platformOrder.has(platformKey)) platformOrder.set(platformKey, href);
     push(href, platformRowLabel(p), 'catalog');
   }
 
-  if (!args.isUnmatched) {
+  if (!args.isUnmatched && !suppressEcwid) {
     const sku = (args.sku || '').trim();
     if (sku) {
       const derived = getExternalUrlByItemNumber(sku);

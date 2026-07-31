@@ -1,10 +1,10 @@
 'use client';
 
 /**
- * Sales hub (`/walk-in`) — the front-desk history surface: Local Pickup · Sales
- * (modes in the sidebar, per-mode tabs that swap between genuinely separate
- * tables). Repair graduated to Receiving `/repair` (RepairTable → LedgerGrid);
- * legacy `?mode=repair` redirects at the proxy.
+ * Sales hub — front-desk history surface: Local Pickup · Sales (dashboard L2
+ * modes `?mode=pickup|sales`, per-mode tabs that swap between genuinely separate
+ * tables). Mounted by {@link DashboardSalesView} on `/dashboard`; `/walk-in`
+ * redirects there. Repair graduated to Receiving `/repair`.
  *
  * Region contracts (contextual-display.md): Pickup/Sales are **Monitor** (read
  * feeds). Repair Workbench lives on `/repair`, not here.

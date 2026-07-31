@@ -617,8 +617,10 @@ export function TrackingOrSkuScanChip({ value, plain }: { value: string; plain?:
  *
  * The label is derived internally from `value` via {@link resolveSerialDisplay},
  * so callers pass only the serial (or a comma-joined CSV) — no `getLast4Serial`
- * / empty-state handling at the call site. `display` is an optional override and
- * should almost never be needed.
+ * / empty-state handling at the call site. `display` is an optional override
+ * (honored as-is after empty-state collapse) for rare cases like a batch
+ * journey row whose sibling last-4s collide — see
+ * `disambiguateSerialDisplays` in `@/lib/copy-chip-format`.
  */
 export const SerialChip = ({
   value,
@@ -629,7 +631,9 @@ export const SerialChip = ({
   pending,
 }: {
   value: string;
-  /** Optional label override; normally derived from `value`. */
+  /** Optional label override; normally derived from `value`. When set, used
+   *  as-is after empty-state collapse (not re-last-4'd) so callers can pass a
+   *  longer disambiguating suffix. */
   display?: string;
   /** Tailwind width utilities on the wrapper; default is a fixed width sized
    *  for the Barcode icon + 4-char mono value. Table rows pass a content-fit
@@ -642,7 +646,11 @@ export const SerialChip = ({
 }) => (
   <CopyChip
     value={value}
-    display={resolveSerialDisplay(display ?? value)}
+    display={
+      display !== undefined
+        ? resolveChipDisplay(display)
+        : resolveSerialDisplay(value)
+    }
     tone={pending === 'removing' ? 'id' : 'serial'}
     width={width}
     truncateDisplay={false}

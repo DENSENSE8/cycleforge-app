@@ -670,6 +670,10 @@ test('packing.review gates the manager decide + queue routes', () => {
     paths.includes('/api/review/catalog-link/route.ts'),
     'Review · Catalog link chores are gated by packing.review',
   );
+  assert.ok(
+    paths.includes('/api/review/import-exceptions/route.ts'),
+    'Review · Missing item number exceptions are gated by packing.review',
+  );
 });
 
 test('packing.review is a registered permission', () => {

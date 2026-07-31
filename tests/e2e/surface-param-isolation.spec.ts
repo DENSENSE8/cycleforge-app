@@ -215,6 +215,30 @@ test.describe('surface param isolation — the boundary parse', () => {
     });
   });
 
+  test('/dashboard drops a foreign param and keeps a declared presence flag', async ({ page }) => {
+    // Last surface to mount SurfaceParamHygiene (2026-07-30). `triq` belongs to
+    // Triage; `shipped` is a bare presence flag that used to die under paramText.
+    await assertParamsAfterParse(page, '/dashboard?triq=BOX-9&shipped', (params) => {
+      expect(params.triq).toBeUndefined();
+      expect(Object.prototype.hasOwnProperty.call(params, 'shipped')).toBe(true);
+    });
+  });
+
+  test('/dashboard keeps shipped-tab filters the ownership guard could not see', async ({ page }) => {
+    // Lived under `components/shipped`, outside OWNED_TREES until the hygiene pass
+    // — the literal grep of `components/dashboard` alone would have missed them.
+    await assertParamsAfterParse(
+      page,
+      '/dashboard?shipped&shippedFilter=orders&shippedSearchField=tracking&shippedWeekOffset=2',
+      (params) => {
+        expect(Object.prototype.hasOwnProperty.call(params, 'shipped')).toBe(true);
+        expect(params.shippedFilter).toBe('orders');
+        expect(params.shippedSearchField).toBe('tracking');
+        expect(params.shippedWeekOffset).toBe('2');
+      },
+    );
+  });
+
   test('/walk-in keeps the legacy deep-link keys its redirect hands off', async ({ page }) => {
     // `?openRepair=` is read only to forward the operator to /pickup?job=repair.
     // Dropped at the boundary, the link would land on a plain history page — so

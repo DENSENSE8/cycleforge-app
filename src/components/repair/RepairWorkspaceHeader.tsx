@@ -14,7 +14,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { WorkbenchChromeHeader } from '@/components/dashboard/workbench-shell';
+import { WorkbenchChromeHeader, WorkbenchTrailingCluster } from '@/components/dashboard/workbench-shell';
 import { QueueSortSwitch } from '@/components/dashboard/QueueSortSwitch';
 import { GridFieldsMenu } from '@/components/ui/table-column-config/GridFieldsMenu';
 import { ToolbarSearchToggle } from '@/components/ui/ToolbarSearchToggle';
@@ -107,18 +107,18 @@ export function RepairWorkspaceHeader() {
         />
       }
       trailing={
-        <div className="flex items-center gap-2">
-          {/* Per-staff column picker — the opt-in path for the `optional`
-              tracks (phone · price · order) the lean default hides. */}
-          <GridFieldsMenu tableId="repair" columns={REPAIR_GRID_COLUMNS} />
-          <QueueSortSwitch
-            sort={sort}
-            onChange={setSort}
-            options={REPAIR_DISPLAY_SORT_OPTIONS}
-            ariaLabel="Sort repairs"
-          />
-          <RepairChromeActions onAdd={openNewRepair} />
-        </div>
+        <WorkbenchTrailingCluster
+          sort={
+            <QueueSortSwitch
+              sort={sort}
+              onChange={setSort}
+              options={REPAIR_DISPLAY_SORT_OPTIONS}
+              ariaLabel="Sort repairs"
+            />
+          }
+          fields={<GridFieldsMenu tableId="repair" columns={REPAIR_GRID_COLUMNS} />}
+          actions={<RepairChromeActions onAdd={openNewRepair} />}
+        />
       }
     />
   );

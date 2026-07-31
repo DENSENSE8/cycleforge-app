@@ -1,10 +1,14 @@
 'use client';
 
 /**
- * Carton read assembly — disposition bar, evidence stage, findings, audit.
+ * Carton read assembly — disposition bar, handling column, findings.
  *
  * Shares the read model + atoms with Unbox. Never imports workbench editors
  * (decision D6 / anti-pattern: lobotomized work chrome).
+ *
+ * Photos open the shared viewer SoT (`usePhotoGallery` + `PhotoViewerPortal`);
+ * never a page-local EvidenceStage / lightbox. Work escape is one quiet
+ * header control via `openInUnboxHref` — no "Open in Unbox" spam.
  */
 
 import { useMemo, useState } from 'react';
@@ -20,7 +24,6 @@ import {
 } from '@/components/Icons';
 import { PoChip, SerialChip, TrackingChip } from '@/components/ui/CopyChip';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { PhotoThumb } from '@/components/photos/PhotoThumb';
 import { usePhotoGallery } from '@/components/shipped/photo-gallery/usePhotoGallery';
 import { PhotoViewerPortal } from '@/components/shipped/photo-gallery/PhotoViewerPortal';
 import type { PhotoGalleryInput } from '@/components/shipped/photo-gallery/photo-gallery-utils';
@@ -32,6 +35,7 @@ import { sourcePlatformLabel } from '@/lib/source-platform';
 import { receivingTypeMeta } from '@/lib/receiving/receiving-type-meta';
 import { workflowStageDot, workflowStageLabel } from '@/lib/receiving/workflow-stages';
 import { unitStatusChipClass } from '@/lib/unit-status';
+import { focusRing } from '@/design-system/tokens/focus-ring';
 import { formatDateTimePST } from '@/utils/date';
 import { getLast4 } from '@/lib/copy-chip-format';
 import { cn } from '@/utils/_cn';
@@ -149,6 +153,14 @@ export function CartonInspectionPage({ receivingId }: { receivingId: number }) {
   const facts = useMemo(() => (receiving ? cartonFacts(receiving) : []), [receiving]);
   const recordMeta = useMemo(() => (receiving ? cartonRecordMeta(receiving) : []), [receiving]);
 
+  // URL-only inputs — omit numeric ids so the shared viewer stays read-only
+  // (no delete/upload). Mutations belong on Unbox, not the look-up surface.
+  const galleryPhotos = useMemo<PhotoGalleryInput[]>(
+    () => photos.map((p) => ({ url: p.photoUrl })),
+    [photos],
+  );
+  const gallery = usePhotoGallery({ photos: galleryPhotos });
+
   return (
     <div className="flex h-full min-h-0 w-full flex-col bg-surface-canvas">
       <DispositionBar
@@ -156,6 +168,10 @@ export function CartonInspectionPage({ receivingId }: { receivingId: number }) {
         receiving={receiving ?? null}
         disposition={disposition}
         flags={flags}
+        photoCount={photos.length}
+        photosLoading={photosLoading}
+        photosError={photosError}
+        onOpenPhotos={() => gallery.openViewer(0)}
       />
 
       <div className="min-h-0 flex-1 overflow-y-auto">
@@ -171,32 +187,26 @@ export function CartonInspectionPage({ receivingId }: { receivingId: number }) {
           </div>
         ) : (
           <div className="space-y-5 px-6 py-5 pb-16">
-            {/* Findings lead (left); evidence stages on the right — not a photo-first dashboard. */}
-            <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+            {/* Col 1: handling · activity · record; col 2: findings. Photos live in the header. */}
+            <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
+              <HandlingColumn
+                receiving={receiving}
+                events={data?.events ?? []}
+                recordMeta={recordMeta}
+              />
               <FindingsRail
                 disposition={disposition}
-                receivingId={receivingId}
                 lines={data?.lines ?? []}
                 totalsSummary={cartonContentsSummary(data?.totals)}
                 facts={facts}
                 purchaseOrders={data?.purchase_orders}
               />
-              <EvidenceStage
-                photos={photos}
-                receivingId={receivingId}
-                loading={photosLoading}
-                errored={photosError}
-              />
             </div>
-
-            <AuditDrawer
-              receiving={receiving}
-              events={data?.events ?? []}
-              recordMeta={recordMeta}
-            />
           </div>
         )}
       </div>
+
+      <PhotoViewerPortal g={gallery} />
     </div>
   );
 }
@@ -206,13 +216,23 @@ function DispositionBar({
   receiving,
   disposition,
   flags,
+  photoCount,
+  photosLoading,
+  photosError,
+  onOpenPhotos,
 }: {
   receivingId: number;
   receiving: CartonInspectorReceiving | null;
   disposition: CartonDisposition | null;
   flags: CartonFlag[];
+  photoCount: number;
+  photosLoading: boolean;
+  photosError: boolean;
+  onOpenPhotos: () => void;
 }) {
-  const needsWork = disposition ? !disposition.settled : true;
+  const photosLabel =
+    photoCount === 1 ? '1 photo' : photoCount > 1 ? `${photoCount} photos` : 'Photos';
+  const photosDisabled = photosLoading || photosError || photoCount === 0;
 
   return (
     <header className="flex shrink-0 items-center justify-between gap-4 border-b border-border-soft bg-surface-card px-6 py-3">
@@ -266,134 +286,48 @@ function DispositionBar({
         ) : null}
       </div>
 
-      <Link href={openInUnboxHref(receivingId)} className="shrink-0">
-        <Button variant={needsWork ? 'primary' : 'secondary'} icon={<Wrench />}>
-          Open in Unbox
-        </Button>
-      </Link>
-    </header>
-  );
-}
-
-function EvidenceStage({
-  photos,
-  receivingId,
-  loading,
-  errored,
-}: {
-  photos: ReceivingPhoto[];
-  receivingId: number;
-  loading: boolean;
-  errored: boolean;
-}) {
-  const [selectedIdx, setSelectedIdx] = useState(0);
-
-  // URL-only inputs — omit numeric ids so the shared viewer stays read-only
-  // (no delete/upload). Mutations belong on Unbox, not the look-up surface.
-  const galleryPhotos = useMemo<PhotoGalleryInput[]>(
-    () => photos.map((p) => ({ url: p.photoUrl })),
-    [photos],
-  );
-  const gallery = usePhotoGallery({ photos: galleryPhotos });
-  const selected = photos[selectedIdx] ?? photos[0] ?? null;
-
-  if (loading) {
-    return (
-      <section className="space-y-2">
-        <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">Evidence</p>
-        <div className="flex h-56 items-center justify-center gap-2 rounded-xl border border-border-soft bg-surface-card text-role-caption text-text-muted">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading photos…
-        </div>
-      </section>
-    );
-  }
-
-  if (errored) {
-    return (
-      <section className="space-y-2">
-        <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">Evidence</p>
-        <p className="rounded-xl border border-rose-200 bg-rose-50 inset-empty text-center text-role-caption text-text-danger">
-          Could not load this carton&rsquo;s photos. This is a load failure, not a statement that
-          none were taken — retry before relying on it for a claim.
-        </p>
-      </section>
-    );
-  }
-
-  if (photos.length === 0) {
-    return (
-      <section className="space-y-2">
-        <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">Evidence</p>
-        <p className="text-role-caption text-text-muted">
-          No photos were captured for this carton — nothing to support a damage or shortage claim.
-        </p>
-      </section>
-    );
-  }
-
-  return (
-    <section className="space-y-2">
-      <div className="flex items-baseline justify-between gap-3">
-        <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">Evidence</p>
-        <span className="text-role-micro uppercase tracking-widest text-text-soft">
-          {photos.length} {photos.length === 1 ? 'photo' : 'photos'}
-        </span>
-      </div>
-
-      {selected ? (
-        <button
-          type="button"
-          onClick={() => gallery.openViewer(selectedIdx)}
-          className="ds-raw-button relative block w-full overflow-hidden rounded-xl border border-border-soft bg-surface-card"
-          aria-label="Open photo in viewer"
-        >
-          <div className="relative aspect-[4/3] w-full">
-            <PhotoThumb
-              src={selected.photoUrl}
-              alt={selected.caption || `Carton ${receivingId} photo`}
-              ratio="fill"
-            />
-          </div>
-        </button>
-      ) : null}
-
-      <div className="flex gap-2 overflow-x-auto pb-1">
-        {photos.map((p, i) => (
-          <button
-            key={p.id}
-            type="button"
-            onClick={() => setSelectedIdx(i)}
-            className={cn(
-              'ds-raw-button h-16 w-16 shrink-0 overflow-hidden rounded-lg border',
-              i === selectedIdx ? 'border-blue-500 ring-2 ring-blue-200' : 'border-border-soft',
-            )}
-            aria-label={`Select photo ${i + 1}`}
-            aria-pressed={i === selectedIdx}
+      <div className="flex shrink-0 items-center gap-2">
+        {photosError ? (
+          <HoverTooltip label="Could not load photos — retry before relying on them for a claim">
+            <span className="text-role-caption text-text-danger">Photos unavailable</span>
+          </HoverTooltip>
+        ) : photoCount === 0 && !photosLoading ? null : (
+          <Button
+            variant="secondary"
+            size="sm"
+            disabled={photosDisabled}
+            onClick={onOpenPhotos}
+            icon={photosLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : undefined}
           >
-            <PhotoThumb
-              src={p.photoUrl}
-              alt={p.caption || `Carton ${receivingId} photo ${i + 1}`}
-              ratio="fill"
-            />
-          </button>
-        ))}
-      </div>
+            {photosLoading ? 'Photos' : photosLabel}
+          </Button>
+        )}
 
-      <PhotoViewerPortal g={gallery} />
-    </section>
+        <HoverTooltip label="Work on this carton" asChild>
+          <Link
+            href={openInUnboxHref(receivingId)}
+            aria-label="Work on this carton"
+            className={cn(
+              'inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-text-soft hover:bg-surface-canvas hover:text-text-default',
+              focusRing('control', 'accent'),
+            )}
+          >
+            <Wrench className="h-4 w-4" />
+          </Link>
+        </HoverTooltip>
+      </div>
+    </header>
   );
 }
 
 function FindingsRail({
   disposition,
-  receivingId,
   lines,
   totalsSummary,
   facts,
   purchaseOrders,
 }: {
   disposition: CartonDisposition;
-  receivingId: number;
   lines: CartonInspectorLine[];
   totalsSummary: string;
   facts: CartonFact[];
@@ -415,13 +349,6 @@ function FindingsRail({
               >
                 <p className="text-role-caption font-semibold text-text-default">{ex.label}</p>
                 <p className="mt-0.5 text-role-caption text-text-muted">{ex.ctaHint}</p>
-                <Link
-                  href={openInUnboxHref(receivingId)}
-                  className="mt-2 inline-flex items-center gap-1 text-role-caption font-semibold text-text-accent hover:underline"
-                >
-                  Open in Unbox
-                  <ChevronRight className="h-3.5 w-3.5" />
-                </Link>
               </li>
             ))}
           </ul>
@@ -541,7 +468,7 @@ function ContentsList({ lines }: { lines: CartonInspectorLine[] }) {
   );
 }
 
-function AuditDrawer({
+function HandlingColumn({
   receiving,
   events,
   recordMeta,
@@ -550,76 +477,60 @@ function AuditDrawer({
   events: CartonInspectorEvent[];
   recordMeta: CartonFact[];
 }) {
-  const [open, setOpen] = useState(false);
   const milestones = useMemo(() => buildCartonMilestones(receiving), [receiving]);
   const collapsed = useMemo(() => collapseProvenance(milestones), [milestones]);
 
   return (
-    <section className="rounded-xl border border-border-soft bg-surface-card">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        aria-expanded={open}
-        className="ds-raw-button flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
-      >
-        <span className="text-role-eyebrow uppercase tracking-widest text-text-soft">
-          Handling · activity · record
-        </span>
-        <span className="flex items-center gap-2 text-role-micro uppercase tracking-widest text-text-soft">
-          {collapsed ? `${collapsed.actor} · ${collapsed.steps} steps` : `${milestones.length} milestones`}
-          {open ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
-        </span>
-      </button>
+    <section className="space-y-5">
+      <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">
+        Handling · activity · record
+      </p>
 
-      {open ? (
-        <div className="space-y-5 border-t border-border-soft px-4 py-4">
-          <ProvenanceBlock milestones={milestones} collapsed={collapsed} />
+      <ProvenanceBlock milestones={milestones} collapsed={collapsed} />
 
-          {events.length > 0 ? (
-            <div className="space-y-2">
-              <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">Activity</p>
-              <EventsList events={events} />
-            </div>
-          ) : null}
-
-          <div className="space-y-2">
-            <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">History</p>
-            <WorkspaceTimelineTab {...cartonTimelineAnchor(receiving)} />
-          </div>
-
-          {receiving.support_notes?.trim() ? (
-            <p className="whitespace-pre-wrap text-role-caption text-text-default">
-              {receiving.support_notes.trim()}
-            </p>
-          ) : null}
-
-          {recordMeta.length > 0 ? (
-            <div className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-3 xl:grid-cols-4">
-              {recordMeta.map((m) => (
-                <div key={m.key} className="min-w-0 space-y-1">
-                  <p className="text-role-micro uppercase tracking-widest text-text-soft">{m.label}</p>
-                  <p className="truncate text-role-caption tabular-nums text-text-default">
-                    {m.key === 'created' || m.key === 'updated'
-                      ? formatDateTimePST(m.value)
-                      : m.value}
-                  </p>
-                </div>
-              ))}
-            </div>
-          ) : null}
-
-          {receiving.listing_url?.trim() ? (
-            <a
-              href={receiving.listing_url.trim()}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-1 text-role-caption text-text-accent hover:underline"
-            >
-              Open the source listing
-              <ChevronRight className="h-3.5 w-3.5" />
-            </a>
-          ) : null}
+      {events.length > 0 ? (
+        <div className="space-y-2">
+          <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">Activity</p>
+          <EventsList events={events} />
         </div>
+      ) : null}
+
+      <div className="space-y-2">
+        <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">History</p>
+        <WorkspaceTimelineTab {...cartonTimelineAnchor(receiving)} />
+      </div>
+
+      {receiving.support_notes?.trim() ? (
+        <p className="whitespace-pre-wrap text-role-caption text-text-default">
+          {receiving.support_notes.trim()}
+        </p>
+      ) : null}
+
+      {recordMeta.length > 0 ? (
+        <div className="flex flex-wrap items-start justify-start gap-x-6 gap-y-3">
+          {recordMeta.map((m) => (
+            <div key={m.key} className="min-w-0 shrink-0 space-y-1">
+              <p className="text-role-micro uppercase tracking-widest text-text-soft">{m.label}</p>
+              <p className="truncate text-role-caption tabular-nums text-text-default">
+                {m.key === 'created' || m.key === 'updated'
+                  ? formatDateTimePST(m.value)
+                  : m.value}
+              </p>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      {receiving.listing_url?.trim() ? (
+        <a
+          href={receiving.listing_url.trim()}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex items-center gap-1 text-role-caption text-text-accent hover:underline"
+        >
+          Open the source listing
+          <ChevronRight className="h-3.5 w-3.5" />
+        </a>
       ) : null}
     </section>
   );

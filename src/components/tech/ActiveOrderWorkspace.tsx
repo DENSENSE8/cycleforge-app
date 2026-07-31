@@ -52,8 +52,9 @@ interface ActiveOrderWorkspaceProps {
  * is the master-detail "detail" surface for the shipping station.
  *
  * Station Workbench host (`.claude/rules/display/station-workbench.md`): the
- * sticky {@link StationContextBar} identity bookmark hangs flush under
- * GlobalHeader above {@link StationWorkbench}, which owns the scroll body
+ * sticky {@link StationContextBar} identity bookmark hangs under GlobalHeader
+ * with the same canvas gutter as the context-panel card (`top-2`), above
+ * {@link StationWorkbench}, which owns the scroll body
  * (notices → section tabs → siblings) and the terminal dock band. There is no
  * second `PaneHeader` title row — the identity bookmark IS the header, and its
  * back chevron returns to the list.

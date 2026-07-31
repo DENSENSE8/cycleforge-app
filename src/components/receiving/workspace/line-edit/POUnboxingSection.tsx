@@ -7,6 +7,9 @@
  * reveals Package Pairing. Units-on-carton and Notes/Label are NO LONGER shown
  * here — they are top-level tabs owned by {@link LineEditPanel}'s section
  * switcher (`SectionTabsSlider`). This card is just the "Items" tab body.
+ *
+ * Auto-match (Quick match) lives inside {@link CartonMatchHub} when the carton
+ * is unfound — not a sibling strip.
  */
 
 import { useMemo, useState, type ReactNode } from 'react';
@@ -15,8 +18,7 @@ import { WorkspaceCard } from '@/design-system/components';
 import { IconButton } from '@/design-system/primitives';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { LinePoItemsSection } from './LinePoItemsSection';
-import { LineMatchingSection } from './LineMatchingSection';
-import { UnfoundMatchStrip } from './UnfoundMatchStrip';
+import { CartonMatchHub } from './CartonMatchHub';
 import type { ReceivingLineRow } from '@/components/station/ReceivingLinesTable';
 import type { InlineActionFeedbackPayload } from '../InlineActionFeedbackCard';
 import type { UnboxLineController } from './unbox-line-controller';
@@ -69,15 +71,11 @@ export function POUnboxingSection({
   const showPoItems = poItems || (includeLinkedPoItems && matching && linkedPo);
   const showPairing = matching;
 
-  // Package Pairing is collapsed by default for every carton (unfound included);
-  // the "Edit PO" pencil opens it. Uncontrolled here for triage; the unbox tab
-  // row lifts the state up and drives it via props.
   const [internalPairingOpen, setInternalPairingOpen] = useState(false);
   const pairingIsOpen = pairingOpenProp ?? internalPairingOpen;
   const togglePairing = onPairingToggle ?? (() => setInternalPairingOpen((v) => !v));
   const canCollapsePairing = showPoItems && showPairing;
   const pairingCollapsed = canCollapsePairing ? !pairingIsOpen : false;
-  const showAutoMatch = c.isUnfound;
 
   const headerRight = useMemo(() => {
     if (suppressItemsHeader) return undefined;
@@ -124,36 +122,42 @@ export function POUnboxingSection({
   );
 
   return (
-    <WorkspaceCard variant="glass" overflow="visible" bodyDensity="nested">
-      <div className="space-y-3">
+    <WorkspaceCard
+      variant="glass"
+      overflow="visible"
+      bodyDensity="nested"
+      bodyClassName="px-3 pt-3 pb-2"
+    >
+      <div>
         {showPoItems ? poItemsSection : null}
 
-        {showAutoMatch ? (
-          <UnfoundMatchStrip
-            receivingId={receivingId}
-            lineId={row.id ?? null}
-            trackingNumber={row.tracking_number ?? null}
-            receivedSerial={row.serials?.[0]?.serial_number ?? null}
-            providerTicketId={c.providerTicketId}
-            ticketNumber={c.supportTicket?.label ?? null}
-            ticketUrl={c.supportTicket?.openUrl ?? null}
-            onTicketChanged={() => void c.invalidateSupportTicket()}
-            showTopRule={showPoItems}
-          />
-        ) : null}
-
         {showPairing ? (
-          <LineMatchingSection
-            row={row}
-            staffId={staffId}
-            showOpenInUnbox={openInUnbox}
-            embedded
-            collapsed={pairingCollapsed}
-            // Separate pairing (rule + top spacing) from whatever sits above it —
-            // PO items on matched cartons, or the auto-match strip on unfound
-            // ones. Without the auto-match case it abutted the strip with 0 gap.
-            showTopRule={showPoItems || showAutoMatch}
-          />
+          <div className={pairingCollapsed ? undefined : 'mt-3'}>
+            <CartonMatchHub
+              row={row}
+              staffId={staffId}
+              tabSet="unbox"
+              autoFocusSearch={!openInUnbox}
+              showOpenInUnbox={openInUnbox}
+              embedded
+              collapsed={pairingCollapsed}
+              showTopRule={showPoItems}
+              autoMatch={
+                c.isUnfound
+                  ? {
+                      receivingId,
+                      lineId: row.id ?? null,
+                      trackingNumber: row.tracking_number ?? null,
+                      receivedSerial: row.serials?.[0]?.serial_number ?? null,
+                      providerTicketId: c.providerTicketId,
+                      ticketNumber: c.supportTicket?.label ?? null,
+                      ticketUrl: c.supportTicket?.openUrl ?? null,
+                      onTicketChanged: () => void c.invalidateSupportTicket(),
+                    }
+                  : null
+              }
+            />
+          </div>
         ) : null}
       </div>
     </WorkspaceCard>

@@ -16,6 +16,7 @@ import StationGoalBar from './StationGoalBar';
 import { ThemedStationScanBar } from '@/components/station/scan-bar';
 import { ScanBandShell } from '@/components/station/scan-bar';
 import { SIDEBAR_GUTTER } from '@/components/layout/header-shell';
+import { SidebarRailScrollport } from '@/components/sidebar/rail-shell/SidebarRailScrollport';
 import { looksLikeFnsku } from '@/lib/scan-resolver';
 import { scannedUnitKey } from '@/lib/barcode-routing';
 import { OrderPackChecklist } from '@/components/packing/OrderPackChecklist';
@@ -590,7 +591,7 @@ export default function StationPacking({
             bottom-anchored filter band rides in `railFooter` (below the scroll
             port, same anatomy as the Testing / Shipping sidebars). */}
         {railSlot ? (
-          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">{railSlot}</div>
+          <SidebarRailScrollport>{railSlot}</SidebarRailScrollport>
         ) : null}
         {railSlot ? railFooter : null}
       </div>

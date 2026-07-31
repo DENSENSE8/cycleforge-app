@@ -1,26 +1,22 @@
 'use client';
 
 /**
- * URL ⇄ state for the unbox line-edit pane's inline support-ticket editor.
+ * URL ⇄ state for the Unbox Ticket push column (`ReceivingTicketStack`).
  *
- * `?ticketView=1` swaps the right-pane body for the reused `SupportTicketDetail`
- * (see docs/todo/receiving-inline-ticket-editor-plan.md). It is URL-addressable
- * so the editor survives a reload and is shareable — the reload deep-link is
- * `?openReceivingId=<id>&ticketView=1` (the line resolves, then the editor opens).
+ * `?ticketView=1` opens the station-scoped right-edge push work surface.
+ * Deep-link: `?openReceivingId=<id>&ticketView=1`.
  *
- * The param is line/mode-scoped so a stale editor can't bleed across selections:
- * - on a genuine sibling-line switch (`currentLineId` changes to a different
- *   non-null line) the param is cleared here;
- * - on a mode switch it is stripped by `useReceivingMode` (`MODE_SCOPED_PARAMS`);
- * - carton switches that land on a ticketless carton are auto-cleared by the
- *   panel guardrail (no `providerTicketId` ⇒ `setTicketView(false)`).
- *
- * The clear-on-line-change compares against the *previous* line id, so the
- * initial open (prev `null`, incl. the deep-link resolve) never self-clears.
+ * Scoped so a stale editor can't bleed across selections:
+ * - sibling-line switch clears the param;
+ * - mode switch strips it via `MODE_SCOPED_PARAMS`;
+ * - ticketless carton auto-clears in the panel guardrail;
+ * - opening receiving More details (`receiving-open-details-overlay`) clears
+ *   the param so `detail:receiving` can own the right-rail float host.
  */
 
 import { useCallback, useEffect, useRef } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { dispatchReceivingDetailsOverlayClose } from '@/utils/events';
 
 const TICKET_VIEW_PARAM = 'ticketView';
 
@@ -60,13 +56,23 @@ export function useReceivingTicketView(currentLineId: number | null): ReceivingT
   const setTicketView = useCallback(
     (on: boolean) => {
       const next = new URLSearchParams(searchParams.toString());
-      if (on) next.set(TICKET_VIEW_PARAM, '1');
-      else next.delete(TICKET_VIEW_PARAM);
+      if (on) {
+        next.set(TICKET_VIEW_PARAM, '1');
+        // Single right-rail host: suspend receiving details while Ticket claims the slot.
+        dispatchReceivingDetailsOverlayClose();
+      } else {
+        next.delete(TICKET_VIEW_PARAM);
+      }
       const qs = next.toString();
       router.replace(qs ? `${pathname}?${qs}` : (pathname ?? ''));
     },
     [router, pathname, searchParams],
   );
+
+  // Deep-link / reload with `?ticketView=1` already set — suspend details once.
+  useEffect(() => {
+    if (ticketView) dispatchReceivingDetailsOverlayClose();
+  }, [ticketView]);
 
   // Clear on a genuine sibling-line switch. Compare against the previous line id
   // so the first open (prev null — mount OR the `?openReceivingId=` deep-link
@@ -79,6 +85,21 @@ export function useReceivingTicketView(currentLineId: number | null): ReceivingT
       setTicketView(false);
     }
   }, [currentLineId, ticketView, setTicketView]);
+
+  // More details opened → clear Ticket URL so detail:receiving owns the host.
+  // Prefer replace (Info still works while Ticket was open).
+  useEffect(() => {
+    const handler = () => {
+      if (!ticketView) return;
+      const next = new URLSearchParams(searchParams.toString());
+      if (!next.has(TICKET_VIEW_PARAM)) return;
+      next.delete(TICKET_VIEW_PARAM);
+      const qs = next.toString();
+      router.replace(qs ? `${pathname}?${qs}` : (pathname ?? ''));
+    };
+    window.addEventListener('receiving-open-details-overlay', handler);
+    return () => window.removeEventListener('receiving-open-details-overlay', handler);
+  }, [ticketView, router, pathname, searchParams]);
 
   return { ticketView, setTicketView };
 }

@@ -115,6 +115,12 @@ export function legacyBuildLineByIdSql(id: number, orgId: string) {
                 rt.triage_completed_at::text    AS triage_completed_at,
                 COALESCE(ru.intake_path = 'unbox_only', false) AS unbox_only_intake,
                 rt.staging_location_id,
+                CASE
+                  WHEN loc.id IS NULL THEN NULL
+                  WHEN loc.room IS NOT NULL AND BTRIM(loc.room) <> ''
+                    THEN loc.room || ' · ' || loc.name
+                  ELSE loc.name
+                END AS staging_location_label,
                 rt.priority_lane,
                 COALESCE(rt.pairing_state, 'UNFOUND') AS pairing_state,
                 r.zoho_purchaseorder_number  AS receiving_zoho_purchaseorder_number,
@@ -182,6 +188,7 @@ export function legacyBuildLineByIdSql(id: number, orgId: string) {
          ) r ON TRUE
          ${sqlLinkedSupportTicketLateralJoin()}
          LEFT JOIN receiving_triage rt ON rt.receiving_id = r.id AND rt.organization_id = r.organization_id
+         LEFT JOIN locations loc ON loc.id = rt.staging_location_id
          LEFT JOIN receiving_unbox ru  ON ru.receiving_id = r.id AND ru.organization_id = r.organization_id
          LEFT JOIN LATERAL (
             SELECT MAX(rs.scanned_at) AS last_scan
@@ -1158,6 +1165,12 @@ export function legacyBuildListSql(searchParams: URLSearchParams, opts: LegacySq
                 rt.triage_completed_at::text    AS triage_completed_at,
                 COALESCE(ru.intake_path = 'unbox_only', false) AS unbox_only_intake,
                 rt.staging_location_id,
+                CASE
+                  WHEN loc.id IS NULL THEN NULL
+                  WHEN loc.room IS NOT NULL AND BTRIM(loc.room) <> ''
+                    THEN loc.room || ' · ' || loc.name
+                  ELSE loc.name
+                END AS staging_location_label,
                 rt.priority_lane,
                 COALESCE(rt.pairing_state, 'UNFOUND') AS pairing_state,
                 r.zoho_purchaseorder_number  AS receiving_zoho_purchaseorder_number,
@@ -1217,6 +1230,7 @@ export function legacyBuildListSql(searchParams: URLSearchParams, opts: LegacySq
          ) r ON TRUE
          ${sqlLinkedSupportTicketLateralJoin()}
          LEFT JOIN receiving_triage rt ON rt.receiving_id = r.id AND rt.organization_id = r.organization_id
+         LEFT JOIN locations loc ON loc.id = rt.staging_location_id
          LEFT JOIN receiving_unbox ru  ON ru.receiving_id = r.id AND ru.organization_id = r.organization_id
          LEFT JOIN shipping_tracking_numbers stn ON stn.id = r.shipment_id
          -- sku_catalog SKU-string join pinned to the line's org (cross-tenant SKU collision).

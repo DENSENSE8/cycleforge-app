@@ -14,7 +14,6 @@
 
 import { useSyncExternalStore } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { cn } from '@/utils/_cn';
 import {
   framerDuration,
   framerPresence,
@@ -22,6 +21,7 @@ import {
   motionBezier,
 } from '@/design-system/foundations/motion-framer';
 import { useMotionPresence, useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
+import { HorizontalEdgeResizeHandle } from '@/design-system/components/HorizontalEdgeResizeHandle';
 import {
   useAnyOverlayOpen,
   useBodyScrollLock,
@@ -37,12 +37,15 @@ import {
   detailStackAsideStyle,
   detailStackBackdropClassName,
   detailStackBackdropElevatedClassName,
+  detailStackDismissLayerClassName,
+  detailStackDismissLayerElevatedClassName,
 } from '@/components/right-rail/DetailStackFrame';
 import {
   getRightRailTop,
   getServerRightRailTop,
   subscribeRightRail,
 } from '@/lib/right-rail/store';
+import { cn } from '@/utils/_cn';
 
 const BACKDROP_FADE = {
   duration: framerDuration.detailStackOverlayMount * 0.75,
@@ -62,6 +65,11 @@ export function RightRailHost() {
   // through the same flag instead of an id check, so a detail inspector can opt
   // out too (dashboard order inspector — see the execution plan §3).
   const isModal = !isAssistantDock && renderable?.modal !== false;
+  // Invisible dismiss layer: non-modal + opt-in. Restores click-off close without
+  // the dimming scrim. Dashboard leaves this off so the grid stays live.
+  const showDismissLayer =
+    !!renderable?.onClose && !isModal && !isAssistantDock && !!renderable.closeOnOutsideClick;
+  const showModalBackdrop = !!renderable?.onClose && isModal;
 
   // The innermost open overlay owns Escape: while a popover / menu / cell editor
   // is up, Escape dismisses THAT, not the whole inspector underneath it.
@@ -88,16 +96,24 @@ export function RightRailHost() {
   return (
     <>
       <AnimatePresence initial={false}>
-        {renderable?.onClose && isModal ? (
+        {showModalBackdrop || showDismissLayer ? (
           <motion.div
-            key={`${renderable.id}-backdrop`}
+            key={`${renderable!.id}-backdrop`}
             role="presentation"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={BACKDROP_FADE}
-            onClick={renderable.onClose}
-            className={isElevated ? detailStackBackdropElevatedClassName : detailStackBackdropClassName}
+            onClick={overlayOpen ? undefined : renderable!.onClose}
+            className={
+              showModalBackdrop
+                ? isElevated
+                  ? detailStackBackdropElevatedClassName
+                  : detailStackBackdropClassName
+                : isElevated
+                  ? detailStackDismissLayerElevatedClassName
+                  : detailStackDismissLayerClassName
+            }
           />
         ) : null}
       </AnimatePresence>
@@ -124,24 +140,31 @@ export function RightRailHost() {
             className={
               isAssistantDock
                 ? assistantDockAsideClassName
-                : isElevated
-                  ? detailStackAsideElevatedClassName
-                  : detailStackAsideClassName
+                : cn(
+                    isElevated
+                      ? detailStackAsideElevatedClassName
+                      : detailStackAsideClassName,
+                    // Outset grip sits outside the card; clip content on an
+                    // inner shell so the pill is not sheared by overflow-hidden
+                    // (same pattern as the receiving context rail).
+                    isResizable && 'overflow-visible',
+                  )
             }
           >
             {isResizable ? (
-              <div
-                {...edgeHandleProps}
-                className={cn(
-                  // Inside the card (not `-left-*`): the aside clips at its
-                  // rounded corners, so an outset handle would be sheared off.
-                  'absolute inset-y-0 left-0 z-raised w-1.5 cursor-col-resize',
-                  'hover:bg-accent-bg/40 active:bg-accent-bg/60',
-                  isDragging && 'bg-accent-bg/60',
-                )}
+              <HorizontalEdgeResizeHandle
+                edgeHandleProps={edgeHandleProps}
+                isDragging={isDragging}
+                edge="leading"
+                placement="outset"
               />
             ) : null}
-            <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
+            <div
+              className={cn(
+                'flex h-full min-h-0 flex-1 flex-col overflow-hidden',
+                isResizable && 'rounded-[inherit]', // ds-allow-radius: clip shell inherits the aside card radius
+              )}
+            >
               {renderable.node}
             </div>
           </motion.aside>

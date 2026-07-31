@@ -36,6 +36,34 @@ type FulfillmentRow = Pick<
   | 'zoho_purchaseorder_id'
 >;
 
+function normTrackingKey(value: string | null | undefined): string {
+  return (value ?? '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+}
+
+/**
+ * The stored "tracking#" is byte-identical to the carton's own PO#, and no
+ * real carrier was ever resolved for it. There is no separate tracking
+ * identity here — just the order number re-echoed into the tracking slot.
+ * This happens for vendors (e.g. Home Depot) whose Zoho "PO Number" field IS
+ * their own order id: an `auto`-mode scan of that value correctly resolves
+ * the PO (`lookup-po` route, ORDER# mode), but the scanned string was never a
+ * carrier tracking number.
+ *
+ * Deliberately NOT folded into {@link isLocalPickupFulfillment} — that drives
+ * the "Pickup" pill/label ("Fulfilled in person — no tracking number"), which
+ * would misrepresent a genuinely carrier-delivered Home Depot order as a
+ * will-call pickup. This box a real tracking number to show — just not this
+ * one — so the tracking slot goes empty (via {@link displayTrackingNumber}),
+ * not "Pickup".
+ */
+export function isPoNumberEchoedAsTracking(row: FulfillmentRow): boolean {
+  const trk = normTrackingKey(row.tracking_number);
+  if (!trk) return false;
+  const carrier = (row.carrier || '').trim().toUpperCase();
+  if (carrier && carrier !== 'UNKNOWN') return false;
+  return trk === normTrackingKey(row.zoho_purchaseorder_number);
+}
+
 /** True when the carton was picked up locally — not a carrier-shipped parcel. */
 export function isLocalPickupFulfillment(row: FulfillmentRow): boolean {
   if (row.receiving_source === 'local_pickup') return true;
@@ -54,11 +82,16 @@ export function isLocalPickupFulfillment(row: FulfillmentRow): boolean {
   );
 }
 
-/** Tracking# for chip display — null when pickup or placeholder (suppress chip). */
+/**
+ * Tracking# for chip display — null when pickup, placeholder, or the value is
+ * really just the PO# re-echoed (see {@link isPoNumberEchoedAsTracking}) —
+ * suppress the chip in all three cases, but only the first two are "Pickup".
+ */
 export function displayTrackingNumber(
   row: Pick<ReceivingLineRow, 'tracking_number'> & FulfillmentRow,
 ): string | null {
   if (isLocalPickupFulfillment(row)) return null;
+  if (isPoNumberEchoedAsTracking(row)) return null;
   const trk = (row.tracking_number || '').trim();
   if (!trk || isPlaceholderTracking(trk)) return null;
   return trk;

@@ -8,7 +8,10 @@ import {
   PaneHeaderTitle,
 } from './pane-header';
 import { Calendar } from '@/design-system/components/Calendar';
-import { ChevronLeft, ChevronRight } from '@/components/Icons';
+import { Calendar as CalendarIcon, ChevronLeft, ChevronRight } from '@/components/Icons';
+import { IconButton } from '@/design-system/primitives/IconButton';
+import { ToolbarButton } from '@/components/ui/ToolbarButton';
+import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { dateKeyToLocalDate, formatWeekRangeCompact, localDateToDateKey } from '@/utils/date';
 import { cn } from '@/utils/_cn';
 
@@ -29,10 +32,15 @@ const parseKey = (k?: string | null): Date | undefined =>
   k ? dateKeyToLocalDate(k) : undefined;
 const fmtKey = (d?: Date): string => localDateToDateKey(d) ?? '';
 
+function periodTooltip(label: ReactNode, count?: number): string {
+  const base = typeof label === 'string' || typeof label === 'number' ? String(label) : 'Period';
+  return count != null ? `${base} • ${count}` : base;
+}
+
 interface DateRangePickerPillProps {
-  /** Text shown on the pill (e.g. "JUN 23rd – 27th"). */
+  /** Period text (e.g. "JUN 23rd – 27th") — shown in tooltip + popover header. */
   label: ReactNode;
-  /** Right-detail count appended after a dot ("… • 29"). */
+  /** Right-detail count ("… • 29") — shown in tooltip + popover header. */
   count?: number;
   /** Preset rows (This week / Last week / This month …). */
   presets?: DateRangePreset[];
@@ -42,16 +50,19 @@ interface DateRangePickerPillProps {
   activeRange?: WeekRange | null;
   /** Reset affordance (e.g. back to the current week); shown when set. */
   onClear?: () => void;
-  /** Prev/next week stepping — rendered as a compact row in the popover. */
+  /**
+   * Prev/next week stepping — rendered inside the popover under the period
+   * summary (never as a wide header pill).
+   */
   weekNav?: { weekOffset: number; onPrev: () => void; onNext: () => void };
   className?: string;
 }
 
 /**
- * The pill date+filter picker — a single rounded "{label} • {count}" pill that
- * opens a popover of period presets (week / month), an optional calendar for a
- * custom range, and optional prev/next week stepping. This is the interactive
- * core shared by {@link DateRangeHeader} (table headers) and the board header.
+ * Compact period control for workbench chrome. Interactive surfaces render as a
+ * calendar {@link ToolbarButton} (icon rail peer of search / fields) that opens
+ * a popover with the period summary, optional week steppers, presets, and
+ * calendar. Static (no picker / weekNav) still renders a read-only fact pill.
  *
  * It owns no application state: every choice flows out through `presets` /
  * `onSelectCustomRange` / `weekNav` so each surface maps a selection onto its
@@ -70,59 +81,103 @@ export function DateRangePickerPill({
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<DateRange | undefined>(undefined);
 
-  const hasPicker = Boolean((presets && presets.length) || onSelectCustomRange || weekNav);
+  const hasPresets = Boolean(presets && presets.length);
+  const hasPicker = hasPresets || Boolean(onSelectCustomRange);
+  const interactive = hasPicker || Boolean(weekNav);
+  const periodOffDefault = Boolean(activeRange) || (weekNav != null && weekNav.weekOffset !== 0);
+  const tip = periodTooltip(label, count);
 
-  const pill = (
-    <span
-      className={cn(
-        'inline-flex items-center gap-2 rounded-full border px-3 py-1 transition-colors',
-        hasPicker
-          ? 'cursor-pointer border-border-soft bg-surface-card hover:border-blue-300 hover:bg-blue-50/40'
-          : 'border-transparent',
-        className,
-      )}
-    >
-      <span className="text-role-caption font-semibold uppercase tracking-widest text-text-default">{label}</span>
-      {count != null ? (
-        <>
-          <span aria-hidden className="text-text-faint">•</span>
-          <span className="text-role-caption font-semibold tabular-nums text-text-soft">{count}</span>
-        </>
-      ) : null}
-    </span>
-  );
-
-  // No picker affordances → a static, non-interactive pill (e.g. a fixed range).
-  if (!hasPicker) return pill;
+  // Read-only fact chip (e.g. scope label + count with no period controls).
+  if (!interactive) {
+    return (
+      <span
+        className={cn(
+          'inline-flex items-center gap-2 rounded-full border border-transparent px-3 py-1',
+          className,
+        )}
+      >
+        <span className="text-role-caption font-semibold uppercase tracking-widest text-text-default">
+          {label}
+        </span>
+        {count != null ? (
+          <>
+            <span aria-hidden className="text-text-faint">
+              •
+            </span>
+            <span className="text-role-caption font-semibold tabular-nums text-text-soft">{count}</span>
+          </>
+        ) : null}
+      </span>
+    );
+  }
 
   const onOpenChange = (next: boolean) => {
-    if (next) setDraft(activeRange?.startStr ? { from: parseKey(activeRange.startStr), to: parseKey(activeRange.endStr) } : undefined);
+    if (next) {
+      setDraft(
+        activeRange?.startStr
+          ? { from: parseKey(activeRange.startStr), to: parseKey(activeRange.endStr) }
+          : undefined,
+      );
+    }
     setOpen(next);
   };
 
   return (
     <Popover.Root open={open} onOpenChange={onOpenChange}>
-      <Popover.Trigger asChild>
-        {/* ds-raw-button: pill trigger wraps a styled span; not a DS Button shape */}
-        <button
-          type="button"
-          aria-haspopup="dialog"
-          aria-expanded={open}
-          data-testid="date-range-pill"
-          className="-my-0.5 inline-flex"
-        >
-          {pill}
-        </button>
-      </Popover.Trigger>
+      {/* HoverTooltip wraps Trigger (no asChild) — Radix Slot needs a single
+          DOM child; a span wrapper is fine in the icon rail. */}
+      <HoverTooltip label={tip}>
+        <Popover.Trigger asChild>
+          <ToolbarButton
+            iconOnly
+            active={open || periodOffDefault}
+            aria-label={tip}
+            aria-haspopup="dialog"
+            aria-expanded={open}
+            data-testid="date-range-pill"
+            className={className}
+          >
+            <CalendarIcon className="h-3.5 w-3.5" />
+          </ToolbarButton>
+        </Popover.Trigger>
+      </HoverTooltip>
       <Popover.Portal>
         <Popover.Content
-          align="start"
+          align="end"
           sideOffset={6}
-          className="z-dropdown w-auto rounded-xl border border-border-soft bg-surface-card shadow-lg ring-1 ring-black/5 focus:outline-none"
+          className="z-dropdown w-auto min-w-[14rem] rounded-xl border border-border-soft bg-surface-card shadow-lg ring-1 ring-black/5 focus:outline-none"
         >
-          {presets && presets.length ? (
+          <div className="flex items-center justify-between gap-2 border-b border-border-hairline px-3 py-2">
+            <div className="min-w-0">
+              <p className="truncate text-role-caption font-semibold uppercase tracking-widest text-text-default">
+                {label}
+              </p>
+              {count != null ? (
+                <p className="text-role-eyebrow tabular-nums text-text-soft">{count} rows</p>
+              ) : null}
+            </div>
+            {weekNav ? (
+              <div className="flex shrink-0 items-center gap-0.5">
+                <IconButton
+                  size="sm"
+                  ariaLabel="Previous week"
+                  icon={<ChevronLeft className="h-3.5 w-3.5" />}
+                  onClick={weekNav.onPrev}
+                />
+                <IconButton
+                  size="sm"
+                  ariaLabel="Next week"
+                  icon={<ChevronRight className="h-3.5 w-3.5" />}
+                  onClick={weekNav.onNext}
+                  disabled={weekNav.weekOffset === 0}
+                />
+              </div>
+            ) : null}
+          </div>
+
+          {hasPresets ? (
             <div className="flex flex-wrap items-center gap-1 border-b border-border-hairline p-2">
-              {presets.map((p) => (
+              {presets!.map((p) => (
                 // ds-raw-button: two-state preset chip (active blue fill), not a DS variant
                 <button
                   key={p.label}
@@ -141,31 +196,6 @@ export function DateRangePickerPill({
                   {p.label}
                 </button>
               ))}
-            </div>
-          ) : null}
-
-          {weekNav ? (
-            <div className="flex items-center justify-between gap-2 border-b border-border-hairline px-2 py-1.5">
-              {/* ds-raw-button: compact step control, icon-only, inside the popover */}
-              <button
-                type="button"
-                onClick={weekNav.onPrev}
-                aria-label="Previous week"
-                className="inline-flex h-7 w-7 items-center justify-center rounded-md text-text-soft transition-colors hover:bg-surface-sunken hover:text-text-default"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </button>
-              <span className="text-role-eyebrow uppercase tracking-widest text-text-soft">Step week</span>
-              {/* ds-raw-button: compact step control, icon-only, inside the popover */}
-              <button
-                type="button"
-                onClick={weekNav.onNext}
-                disabled={weekNav.weekOffset === 0}
-                aria-label="Next week"
-                className="inline-flex h-7 w-7 items-center justify-center rounded-md text-text-soft transition-colors hover:bg-surface-sunken hover:text-text-default disabled:cursor-not-allowed disabled:opacity-30"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </button>
             </div>
           ) : null}
 
@@ -196,7 +226,10 @@ export function DateRangePickerPill({
                   disabled={!draft?.from}
                   onClick={() => {
                     if (!draft?.from) return;
-                    onSelectCustomRange({ startStr: fmtKey(draft.from), endStr: fmtKey(draft.to ?? draft.from) });
+                    onSelectCustomRange({
+                      startStr: fmtKey(draft.from),
+                      endStr: fmtKey(draft.to ?? draft.from),
+                    });
                     setOpen(false);
                   }}
                   className="rounded-md bg-blue-600 px-3 py-1 text-role-caption font-semibold uppercase tracking-wider text-white shadow-sm transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-surface-strong"
@@ -227,7 +260,7 @@ export function DateRangePickerPill({
 }
 
 interface DateRangeHeaderProps {
-  /** Period total — rendered as the pill's right-detail ("… • {count}"). */
+  /** Period total — shown in the icon tooltip + popover header. */
   count: number;
   /** Optional left title (e.g. "Today"). */
   label?: ReactNode;
@@ -237,7 +270,7 @@ interface DateRangeHeaderProps {
   rightSlot?: ReactNode;
   /** Top-right chrome — the columns icon lives here (always last on the right). */
   columns?: ReactNode;
-  /** Week range backing the pill label; omit for a plain count (no pill). */
+  /** Week range backing the period label; omit for a plain count (no control). */
   weekRange?: WeekRange;
   weekOffset?: number;
   onPrevWeek?: () => void;
@@ -246,23 +279,19 @@ interface DateRangeHeaderProps {
   presets?: DateRangePreset[];
   /** Custom range via calendar — enables the rich picker. */
   onSelectCustomRange?: (range: WeekRange) => void;
-  /** Active explicit (non-week) range — overrides the pill label + seeds the calendar. */
+  /** Active explicit (non-week) range — overrides the period label + seeds the calendar. */
   activeRange?: WeekRange | null;
   /** Reset to the default week. */
   onClear?: () => void;
 }
 
 /**
- * Slim 40px table header: a single pill date+filter picker on the left
- * ("{range} • {count}") and the columns icon pinned top-right. Replaces the old
- * WeekHeader — instead of count-left + prev/next-chevrons-right, the pill opens
- * a popover to pick a week, a month, or a custom range.
- *
- * Surfaces with only week stepping pass `weekRange` + `onPrevWeek`/`onNextWeek`
- * (the popover shows a Step-week row). The shipped surface additionally passes
- * `presets` + `onSelectCustomRange` + `activeRange` for the full week/month/
- * custom picker. A surface with no `weekRange` (e.g. Repair) renders a plain
- * count with no picker.
+ * Slim 40px table header: compact calendar period icon on the left and the
+ * columns icon pinned top-right. Surfaces with week stepping pass `weekRange`
+ * + `onPrevWeek`/`onNextWeek` (chevron steppers live in the popover). The
+ * shipped surface additionally passes `presets` + `onSelectCustomRange` +
+ * `activeRange` for the full week/month/custom picker. A surface with no
+ * `weekRange` (e.g. Repair) renders a plain count with no control.
  */
 export default function DateRangeHeader({
   count,
@@ -279,8 +308,8 @@ export default function DateRangeHeader({
   activeRange,
   onClear,
 }: DateRangeHeaderProps) {
-  // Pill label: an active explicit range wins, else the week range; if neither,
-  // there's no pill and we fall back to a bare count.
+  // Period label: an active explicit range wins, else the week range; if neither,
+  // there's no control and we fall back to a bare count.
   const pillRange = activeRange ?? weekRange ?? null;
   const pillLabel = pillRange ? formatWeekRangeCompact(pillRange.startStr, pillRange.endStr) : null;
   const weekNav =

@@ -1,21 +1,29 @@
 import { SearchBar } from '@/components/ui/SearchBar';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { Button } from '@/design-system/primitives';
+import {
+  EcwidOrderScopeFilters,
+  EcwidOrderScopeHotChip,
+} from './EcwidOrderScopeFilters';
 import type { EcwidProductSearchController } from './useEcwidProductSearch';
 
 /** The search-input area — one of four branches keyed on mode + manual flags. */
 export function EcwidSearchInputs({
   c,
   autoFocusSearch = true,
+  /** When true (Package Pairing bare chrome), skip nested card inset pad. */
+  flush = false,
 }: {
   c: EcwidProductSearchController;
   autoFocusSearch?: boolean;
+  flush?: boolean;
 }) {
   const { popoverMode, manualTitleMode } = c;
+  const pad = flush ? 'pt-0' : 'px-2 pt-1';
 
   if (popoverMode === 'search' && !manualTitleMode) {
     return (
-      <div className="px-2 pt-2">
+      <div className={pad}>
         <SearchBar
           value={c.query}
           onChange={c.setQuery}
@@ -39,7 +47,7 @@ export function EcwidSearchInputs({
                   c.setIsLoading(false);
                 }}
                 aria-label="Product not added yet?"
-                className="ds-raw-button max-w-[min(11rem,calc(100vw-200px))] shrink-0 truncate rounded-md border border-blue-200 bg-blue-50/80 inset-chip text-left text-role-micro font-semibold text-blue-800 hover:bg-blue-100 sm:max-w-[14rem] sm:text-role-caption sm:leading-tight"
+                className="ds-raw-button max-w-[9.5rem] shrink truncate rounded-md border border-blue-200 bg-blue-50/80 inset-chip text-left text-role-micro font-semibold leading-tight text-blue-800 hover:bg-blue-100 sm:max-w-[12rem]"
               >
                 Product not added yet?
               </button>
@@ -52,7 +60,7 @@ export function EcwidSearchInputs({
 
   if (popoverMode === 'search' && manualTitleMode) {
     return (
-      <div className="space-y-2 px-2 pt-2">
+      <div className={`space-y-2 ${pad}`}>
         <SearchBar
           value={c.manualTitle}
           onChange={c.setManualTitle}
@@ -82,22 +90,27 @@ export function EcwidSearchInputs({
 
   if (popoverMode === 'repair_service') {
     return (
-      <div className="px-2 pt-2">
-        <SearchBar
-          value={c.repairFilter}
-          onChange={c.setRepairFilter}
-          placeholder="Filter by order #, title, or SKU…"
-          autoFocus={autoFocusSearch}
-          variant="blue"
-          size="compact"
-          hideUnderline
-        />
+      <div className={`flex items-center gap-1.5 ${pad}`}>
+        <div className="min-w-0 flex-1">
+          <SearchBar
+            value={c.repairFilter}
+            onChange={c.setRepairFilter}
+            placeholder="Filter by order #, title, or SKU…"
+            autoFocus={autoFocusSearch}
+            variant="blue"
+            size="compact"
+            hideUnderline
+            // Scope filter sits left of paste — WorkbenchFilterPopover field density.
+            trailingPrefix={<EcwidOrderScopeFilters c={c} />}
+          />
+        </div>
+        <EcwidOrderScopeHotChip c={c} />
       </div>
     );
   }
 
   return (
-    <p className="px-3 pt-2 text-role-micro text-text-soft">
+    <p className={`${flush ? 'pt-0' : 'px-3 pt-1'} text-role-micro text-text-soft`}>
       Pick an order containing a repair-service SKU to link this carton.
     </p>
   );

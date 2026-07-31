@@ -10,9 +10,9 @@ import type { SidebarNavItem } from '@/lib/sidebar-navigation';
 
 const Icon = () => null as unknown as JSX.Element;
 const defaults: SidebarNavItem[] = [
-  { id: 'operations', label: 'Operations', href: '/operations', icon: Icon, kind: 'main' },
-  { id: 'receiving', label: 'Receiving', href: '/unbox', icon: Icon, kind: 'station' },
-  { id: 'outbound', label: 'Shipping', href: '/shipping', icon: Icon, kind: 'station' },
+  { id: 'operations', label: 'Operations', href: '/operations', icon: Icon, kind: 'main', mainGroup: 'overview' },
+  { id: 'receiving', label: 'Receiving', href: '/unbox', icon: Icon, kind: 'station', stationGroup: 'floor' },
+  { id: 'outbound', label: 'Shipping', href: '/shipping', icon: Icon, kind: 'station', stationGroup: 'floor' },
   { id: 'settings', label: 'Settings', href: '/settings', icon: Icon, kind: 'bottom' },
 ];
 

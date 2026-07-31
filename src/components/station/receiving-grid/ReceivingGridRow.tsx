@@ -32,6 +32,7 @@ import {
   isLocalPickupFulfillment,
 } from '@/lib/receiving/fulfillment-mode';
 import { getReceivingPoIdentityParts } from '@/lib/receiving/po-group-title';
+import { triageLaneLabel } from '@/lib/receiving/triage-lane-policy';
 import {
   RECEIVING_GRID_COLUMNS,
   RECEIVING_GRID_FROZEN_CELL,
@@ -284,6 +285,28 @@ export const ReceivingGridRow = memo(function ReceivingGridRow({
             )}
           </div>
         );
+      case 'location': {
+        const locLabel = (row.staging_location_label || '').trim();
+        const lane = triageLaneLabel(row.priority_lane);
+        const tip = locLabel
+          ? row.priority_lane
+            ? `${locLabel} · ${lane}`
+            : locLabel
+          : null;
+        return (
+          <div data-col="location" className={dataCell(col, rule)}>
+            {locLabel ? (
+              <HoverTooltip label={tip ?? locLabel} focusable={false}>
+                <span className="min-w-0 truncate font-mono text-role-caption tabular-nums text-text-muted">
+                  {locLabel}
+                </span>
+              </HoverTooltip>
+            ) : (
+              <GridCellDash />
+            )}
+          </div>
+        );
+      }
       case 'platform':
         return (
           <div data-col="platform" className={dataCell(col, rule)}>

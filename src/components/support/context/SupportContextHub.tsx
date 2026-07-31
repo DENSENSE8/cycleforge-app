@@ -62,6 +62,11 @@ export interface SupportContextHubProps {
    * Summary + Connections — Ticket tab owns the number).
    */
   hideTicketEmbed?: boolean;
+  /**
+   * Station Ticket tab: host owns floating composer dock — Customer pane skips
+   * the sticky Internal/Public card.
+   */
+  hostComposer?: boolean;
 }
 
 export function SupportContextHub({
@@ -80,6 +85,7 @@ export function SupportContextHub({
   surface = 'card',
   onRequestLinkTicket,
   hideTicketEmbed = false,
+  hostComposer = false,
 }: SupportContextHubProps) {
   const flush = surface === 'flush';
   const cardShellClass = flush
@@ -192,6 +198,7 @@ export function SupportContextHub({
             receivingId={anchor.receivingId ?? undefined}
             onBridgeChange={onBridgeChange}
             onRequestLinkTicket={onRequestLinkTicket}
+            hostComposer={hostComposer}
           />
         ) : null}
         {activeSegment === 'team' ? (

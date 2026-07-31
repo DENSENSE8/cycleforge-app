@@ -145,6 +145,19 @@ export const appContentShellClass = 'flex min-h-0 min-w-0 flex-1 flex-col overfl
 export const HEADER_ICON_WRAP = 'relative flex h-8 w-8 shrink-0 items-center justify-center';
 
 /**
+ * Desktop top-chrome seam — GlobalHeader and the MasterNav spine identity band
+ * must share this box model so their bottom hairlines meet at one Y.
+ *
+ * Put {@link TOP_CHROME_BAND_FACE} on the **same** element as the band height.
+ * Wrapping a `h-[40px]` child in an outer `border-b` yields 41px (border outside
+ * the height) and creates the 1px step at the spine × header T-junction.
+ */
+export const TOP_CHROME_BAND_FACE = 'h-[40px] shrink-0 border-b border-border-soft';
+
+/** Flex row face for GlobalHeader (and any centered top-chrome band). */
+export const TOP_CHROME_BAND_CLASS = `flex items-center ${TOP_CHROME_BAND_FACE}`;
+
+/**
  * Horizontal inset for GlobalHeader and any chrome that must column-align with it
  * (station context bookmarks, sticky main headers). One knob — left + right.
  */

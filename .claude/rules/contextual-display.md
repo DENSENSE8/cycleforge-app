@@ -118,7 +118,7 @@ Density defaults: Station → `floor`; Workbench collection edit → `ops`; Moni
 2. **Table or board + optional inspector** — collection is primary (orders queue, FBA board); context opens on selection.
 3. **Fact stack / form** — single durable record focused without a heavy dual pane.
 
-Do **not** force recipe (1) when the data is a board or wide table. When using a sidebar picker, **compose the rail, never fork**; **L2 Mode + Recents live in GlobalHeader** (`HeaderModeSwitcher` / `HeaderRecentsSwitcher`); related/similar is progressive disclosure below the map, never an inverted sidebar.
+Do **not** force recipe (1) when the data is a board or wide table. When using a sidebar picker, **compose the rail, never fork**; **L2 Mode + Recents live in GlobalHeader** (`HeaderModeSwitcher` / `HeaderRecentsSwitcher`); related/similar is progressive disclosure below the map, never an inverted sidebar. Spine page list: Stations/Main static nests; Stock is the sole drill-in (`STOCK_DRILL` + `spineDrill` motion) — see `display/workbench.md`.
 
 References: `ProductsWorkspace.tsx`, `QcChecklistWorkspace.tsx`, `SidebarRailShell.tsx`, `ReceivingRightPane.tsx`, FBA/order boards.
 
@@ -230,6 +230,7 @@ Full recipe: [display/motion-crossfade.md](display/motion-crossfade.md). Auth st
 - **[`display/station.md`](display/station.md)** — Station contract + floor density recipes.
 - **[`display/station-workbench.md`](display/station-workbench.md)** — Unbox-family right-pane anatomy (toolbar → entity → tabs → dock).
 - **[`display/workbench.md`](display/workbench.md)** — Workbench contract; master–detail **and** table/board recipes.
+- **[`display/carton-read.md`](display/carton-read.md)** — Durable carton **read** record (`/carton/[id]`): disposition · handling|findings · Photos → viewer SoT · quiet work escape. Not Station Workbench.
 - **[`display/monitor-and-canvas.md`](display/monitor-and-canvas.md)** — Monitor observe + Canvas graph.
 - **[`display/monitor-rollup-blocks.md`](display/monitor-rollup-blocks.md)** — Rollup block registry (`rollup` density).
 - **[`display/motion-crossfade.md`](display/motion-crossfade.md)** — Motion / singular focus crossfade.
@@ -245,6 +246,7 @@ Full recipe: [display/motion-crossfade.md](display/motion-crossfade.md). Auth st
 - **URL-as-state partial in Workbench** — filters/sort/search often in-memory.
 - **Studio publish gate** — should publish validate contracts + Kinetic Ledger token rules?
 - **Monitor↔Workbench boundary** — insights chat and clickable rows must not grow silent durable edit.
+- **Durable read-record URLs** (e.g. `/carton/[id]`) — observe-first with a work escape; not Station Workbench and not classic Monitor rollup. Recipe: [`display/carton-read.md`](display/carton-read.md).
 - **`AuditTimeline` vs `EventTimeline`** — still a deliberate fork?
 - **Block registry** — Monitor Phase-1 done; promote Station/Workbench fact-stack / row blocks next.
 - **Presentation-kind registry** — SoTs exist; a single typed registry module is an emerging promote target (document first, code when 2+ consumers need it).

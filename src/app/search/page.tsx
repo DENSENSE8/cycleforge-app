@@ -11,7 +11,9 @@
  * the same move `?warranty=` → `/support` already made.
  *
  * Contract:
- *   • `?q=` is the whole state. Typing still happens in the global header pill.
+ *   • `?q=` is the query (typed in the global header — entry-path search).
+ *   • Client refine: `?etype=` / `?hstat=` over the retrieved top-50.
+ *   • Display sort: carried `?colsort=relevance|date` (relevance omitted).
  *   • Results are the display; there is no detail shell here. A hit opens its
  *     own record surface (`searchHitHref`) — for an order that is `/o/[id]`.
  *   • A SOLE hit is not a choice: it redirects straight to that record.
@@ -21,7 +23,7 @@
  * selection of its own — the filter (`?q=`) IS the state.
  */
 
-import { Suspense, useCallback, useEffect, useRef } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Loader2, Search } from '@/components/Icons';
 import { SearchResultsSurface } from '@/components/search/SearchResultsSurface';
@@ -29,6 +31,14 @@ import { SearchRecentsDropdown } from '@/components/search/SearchRecentsDropdown
 import { useStaffSearchRecents } from '@/hooks/useStaffSearchRecents';
 import { soleHitHref } from '@/lib/search/search-hit';
 import { SEARCH_RECENTS_SCOPE, searchRerunHref } from '@/lib/search/search-page-recents';
+import {
+  SEARCH_ETYPE_PARAM,
+  SEARCH_HSTAT_PARAM,
+  SEARCH_SORT_PARAM,
+  parseSearchDisplaySort,
+  parseSearchEtype,
+  parseSearchHstat,
+} from '@/lib/search/search-refine';
 import type { AiSearchHit } from '@/lib/search/ai-search-client';
 
 function SearchPageFallback() {
@@ -45,6 +55,18 @@ function SearchPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const q = (searchParams.get('q') ?? '').trim();
+  const etype = useMemo(
+    () => parseSearchEtype(searchParams.get(SEARCH_ETYPE_PARAM)),
+    [searchParams],
+  );
+  const hstat = useMemo(
+    () => parseSearchHstat(searchParams.get(SEARCH_HSTAT_PARAM)),
+    [searchParams],
+  );
+  const sort = useMemo(
+    () => parseSearchDisplaySort(searchParams.get(SEARCH_SORT_PARAM)),
+    [searchParams],
+  );
 
   const {
     push: pushRecent,
@@ -106,7 +128,14 @@ function SearchPageContent() {
 
   return (
     <div className="mx-auto flex min-h-0 w-full max-w-5xl flex-1 flex-col space-y-4 overflow-y-auto px-6 py-4">
-      <SearchResultsSurface scope="global" query={q} onResults={handleResults} />
+      <SearchResultsSurface
+        scope="global"
+        query={q}
+        etype={etype}
+        hstat={hstat}
+        sort={sort}
+        onResults={handleResults}
+      />
     </div>
   );
 }

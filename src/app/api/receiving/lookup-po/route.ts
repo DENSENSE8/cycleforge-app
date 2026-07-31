@@ -294,22 +294,37 @@ async function findScanByTracking(
   return null;
 }
 
+export interface LocalPoResolution {
+  poId: string;
+  /**
+   * True when the match came from the PO's registered Reference# — which, per
+   * the inbound contract, IS the carrier tracking for that shipment (see
+   * {@link resolvePoIdLocallyByTracking}). False when it matched the PO's own
+   * `zoho_purchaseorder_number` field — a pure order/PO identity that carries
+   * no separate tracking (e.g. a vendor like Home Depot whose Zoho "PO Number"
+   * literally IS their own order id). Callers use this to decide whether the
+   * scanned value should ALSO be registered as a shipment tracking number.
+   */
+  viaTrackingReference: boolean;
+}
+
 /**
  * Order# / PO-reference resolution against the LOCAL incoming mirror — no Zoho.
  * The incoming Zoho sync already materializes receiving_lines (workflow
  * EXPECTED, receiving_id NULL) and a zoho_po_mirror header for every issued PO,
  * so an order number an operator is unboxing is almost always already local.
  * Matches the shared `_norm` (upper + strip non-alphanumeric) on the
- * receiving_lines PO#, then the mirror PO#/reference#. Returns the Zoho PO id.
+ * receiving_lines PO#, then the mirror PO#/reference#. Returns the Zoho PO id
+ * plus which field it matched (see {@link LocalPoResolution}).
  */
-async function resolvePoIdLocally(orderNumber: string, orgId: string): Promise<string | null> {
+async function resolvePoIdLocally(orderNumber: string, orgId: string): Promise<LocalPoResolution | null> {
   const norm = orderNumber.toUpperCase().replace(/[^A-Z0-9]/g, '');
   if (!norm) return null;
   // order#→poId is an immutable mapping once the incoming sync materializes it,
   // so cache the FOUND result (5 min). A not-found returns null and getOrSet does
   // NOT cache null → a just-synced PO is never masked. Skips the two-table probe
   // (and the "Opening your PO" Zoho fallback) on a hit. Org-scoped.
-  return getOrSet<string | null>(
+  return getOrSet<LocalPoResolution | null>(
     CACHE_NS.poByRef,
     orgId,
     norm,
@@ -321,6 +336,7 @@ async function resolvePoIdLocally(orderNumber: string, orgId: string): Promise<s
       // never resolve to another tenant's PO id.
       // 1. receiving_line_zoho (the line facts behind the Incoming table) —
       //    newest line wins. The spine's number/norm/id copies are write-dead.
+      //    This is always a PO-NUMBER match (the line copy has no reference#).
       const rl = await tenantQuery<{ zoho_purchaseorder_id: string }>(
         orgId,
         `SELECT zoho_purchaseorder_id
@@ -331,11 +347,14 @@ async function resolvePoIdLocally(orderNumber: string, orgId: string): Promise<s
           LIMIT 1`,
         [norm],
       );
-      if (rl.rows[0]?.zoho_purchaseorder_id) return String(rl.rows[0].zoho_purchaseorder_id);
-      // 2. zoho_po_mirror — by PO number, else by reference number.
-      const m = await tenantQuery<{ zoho_purchaseorder_id: string }>(
+      if (rl.rows[0]?.zoho_purchaseorder_id) {
+        return { poId: String(rl.rows[0].zoho_purchaseorder_id), viaTrackingReference: false };
+      }
+      // 2. zoho_po_mirror — by PO number, else by reference number. Select the
+      //    PO-number norm alongside so the caller can tell which side matched.
+      const m = await tenantQuery<{ zoho_purchaseorder_id: string; zoho_purchaseorder_number_norm: string | null }>(
         orgId,
-        `SELECT zoho_purchaseorder_id
+        `SELECT zoho_purchaseorder_id, zoho_purchaseorder_number_norm
            FROM zoho_po_mirror
           WHERE zoho_purchaseorder_number_norm = $1
              OR NULLIF(upper(regexp_replace(COALESCE(reference_number, ''), '[^A-Za-z0-9]', '', 'g')), '') = $1
@@ -343,7 +362,11 @@ async function resolvePoIdLocally(orderNumber: string, orgId: string): Promise<s
           LIMIT 1`,
         [norm],
       );
-      return m.rows[0]?.zoho_purchaseorder_id ? String(m.rows[0].zoho_purchaseorder_id) : null;
+      if (!m.rows[0]?.zoho_purchaseorder_id) return null;
+      return {
+        poId: String(m.rows[0].zoho_purchaseorder_id),
+        viaTrackingReference: m.rows[0].zoho_purchaseorder_number_norm !== norm,
+      };
     },
   );
 }
@@ -765,10 +788,15 @@ async function recordScan(
   // reach cartons that `upsertMatchedReceiving` / the preassigned re-scan
   // branch resolved rather than created, so `work` cannot be assumed.
   scanKind: UnboxScanKind = 'work',
+  // Default true (every existing call site). The ORDER# mode branch passes
+  // false when the scanned value resolved as a pure PO identity, not a
+  // carrier tracking number — see `RecordReceivingScanOptions.registerTracking`.
+  registerTracking = true,
 ): Promise<number> {
   return recordReceivingScan(receivingId, trackingNumber, carrier, staffId, source, {
     intakeSurface,
     scanKind,
+    registerTracking,
   });
 }
 
@@ -1040,7 +1068,14 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
     //    Runs before the tracking dedup path so an order number that happens to
     //    be mostly digits can't be misread as a tracking suffix.
     if (mode === 'order' || mode === 'auto') {
-      let poId = await resolvePoIdLocally(poLookupValue, ctx.organizationId);
+      const localResolution = await resolvePoIdLocally(poLookupValue, ctx.organizationId);
+      let poId = localResolution?.poId ?? null;
+      // Whether the scanned value is a real carrier tracking number (matched
+      // the PO's Reference#) vs. a pure order/PO identity (matched the PO's
+      // own number — no separate tracking exists, e.g. Home Depot). Threaded
+      // into `recordScan` below so a PO-number-only match never fabricates a
+      // shipment tracking entry.
+      let poMatchIsTracking = localResolution?.viaTrackingReference ?? false;
       const resolvedVia = 'local' as const;
       // Guard the local hit: a normalized-number collision or a mis-synced
       // receiving_line can point at the WRONG purchaseorder_id and open a
@@ -1056,12 +1091,14 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
             `[lookup-po.order] local resolve for "${poLookupValue}" pointed at PO ${poId} with a different number — treating as miss`,
           );
           poId = null;
+          poMatchIsTracking = false;
         }
       }
       // `auto` also tries the value as a tracking# against LOCAL data (the
       // zoho_po_mirror Reference# → PO id), so an un-armed tracking scan that is
       // already a known incoming PO resolves here with no loader, exactly like a
       // PO# scan. Order mode skips this — an armed PO# is never a tracking.
+      // This rung is always a Reference#/tracking match by construction.
       if (!poId && mode === 'auto') {
         const localByTracking = await resolvePoIdLocallyByTracking(
           trackingNumber,
@@ -1070,6 +1107,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
         ).catch(() => null);
         if (localByTracking) {
           poId = localByTracking;
+          poMatchIsTracking = true;
         }
       }
 
@@ -1100,7 +1138,19 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
       // the open stamp must never disagree about what this scan was.
       const orderScanKind = await scanKindForMaybeExisting(receivingId, orderPreexisting);
       // Local adopt only — never live-import PO lines on the scan hot path.
-      const orderScanId = await recordScan(receivingId, trackingNumber, carrier, staffId, 'zoho_po', intakeSurface, orderScanKind);
+      // registerTracking=false when the match was a pure PO-number identity
+      // (poMatchIsTracking false) — never fabricate a shipment tracking entry
+      // from a value that is really just the order number.
+      const orderScanId = await recordScan(
+        receivingId,
+        trackingNumber,
+        carrier,
+        staffId,
+        'zoho_po',
+        intakeSurface,
+        orderScanKind,
+        poMatchIsTracking,
+      );
       await stampUnboxOpened(receivingId, orderScanId, trackingNumber, orderScanKind);
       await applyIntakeClassification(receivingId, classification, ctx.organizationId);
 

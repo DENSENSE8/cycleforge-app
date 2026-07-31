@@ -1,10 +1,11 @@
 # Handoff — Carton inspector layout polish (photos button · columns · no Unbox spam)
 
-**Status:** READY TO EXECUTE — product critique locked (2026-07-29 evening)  
+**Status:** EXECUTED (UI + guard + house SoT / `display/carton-read.md`) — human visual gate still required on **49929** / **50263**  
 **Lane:** `main`. Stay on it — no branch, no worktree, never `git stash`.  
 **Commits:** user manages. Stage only files you touch.  
 **Parent:** [`carton-inspector-D4-ROOT-FIX-HANDOFF.md`](carton-inspector-D4-ROOT-FIX-HANDOFF.md) (2a + disposition model **done**). This handoff is **visual IA only** — do not reopen 2a / D6 / ReceivingDetailsStack retirement.  
-**Verify:** `npm run verify` before done. Attach to `:3050` — never start/restart/kill the dev server.
+**Verify:** `npm run verify` before done. Attach to `:3050` — never start/restart/kill the dev server.  
+**House law:** `.claude/rules/display/carton-read.md` + SoT rows (Photo gallery viewer · Carton read surface).
 
 ---
 

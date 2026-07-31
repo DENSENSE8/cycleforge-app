@@ -6,6 +6,7 @@ import {
   fulfillmentModeLabel,
   isLocalPickupFulfillment,
   isPlaceholderTracking,
+  isPoNumberEchoedAsTracking,
 } from './fulfillment-mode';
 
 function row(overrides: Partial<ReceivingLineRow> = {}): ReceivingLineRow {
@@ -69,4 +70,41 @@ test('isLocalPickupFulfillment — receiving_source local_pickup', () => {
 test('isLocalPickupFulfillment — carton intake PICKUP', () => {
   const r = row({ carton_intake_type: 'PICKUP', tracking_number: null, carrier: null });
   assert.equal(isLocalPickupFulfillment(r), true);
+});
+
+test('isPoNumberEchoedAsTracking — Home Depot PO# scanned as tracking, carrier unresolved', () => {
+  const r = row({
+    tracking_number: 'WN66279747',
+    carrier: 'Unknown',
+    zoho_purchaseorder_number: 'WN66279747',
+    zoho_purchaseorder_id: '5623409000003218008',
+    source_platform: null,
+  });
+  assert.equal(isPoNumberEchoedAsTracking(r), true);
+  // The tracking slot goes empty — but this is NOT a pickup: a real carrier
+  // delivered the box, so the "Pickup" ("fulfilled in person") label must
+  // never appear for it.
+  assert.equal(displayTrackingNumber(r), null);
+  assert.equal(isLocalPickupFulfillment(r), false);
+  assert.equal(fulfillmentModeLabel(r), null);
+});
+
+test('isPoNumberEchoedAsTracking — false when a real carrier resolved', () => {
+  const r = row({
+    tracking_number: 'WN66279747',
+    carrier: 'FedEx',
+    zoho_purchaseorder_number: 'WN66279747',
+  });
+  assert.equal(isPoNumberEchoedAsTracking(r), false);
+  assert.equal(displayTrackingNumber(r), 'WN66279747');
+});
+
+test('isPoNumberEchoedAsTracking — false when the tracking# differs from the PO#', () => {
+  const r = row({
+    tracking_number: '1Z999AA',
+    carrier: 'Unknown',
+    zoho_purchaseorder_number: 'WN66279747',
+  });
+  assert.equal(isPoNumberEchoedAsTracking(r), false);
+  assert.equal(displayTrackingNumber(r), '1Z999AA');
 });

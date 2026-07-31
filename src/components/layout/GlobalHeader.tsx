@@ -15,6 +15,7 @@ import {
   HEADER_ICON_CLUSTER,
   HEADER_ICON_WRAP,
   HEADER_INSET_X,
+  TOP_CHROME_BAND_CLASS,
   TOP_CHROME_ICON_GLYPH,
 } from './header-shell';
 import { appChromeMutedClass } from '@/design-system/tokens/app-surface';
@@ -36,12 +37,10 @@ import { cn } from '@/utils/_cn';
  *   - **Context** — page `panelContent` via {@link useHeader}
  *   - **Find / signal / self** — {@link GlobalHeaderActions} (search ⌘K, inbox, account)
  *
- * This bar owns the **only** separator in the desktop frame: one flat `border-b`
- * hairline. `<main>` ({@link appContentShellClass}) used to carry a rounded
- * top-left cutout + a full depth-edge stroke instead; that notched the corner
- * out of every page. The canvas background now runs flat into the top-left and
- * the header line does all the separating — so do NOT re-add a border to
- * `<main>`, or the join doubles up.
+ * This bar shares the desktop top-chrome seam with the MasterNav spine band
+ * ({@link TOP_CHROME_BAND_CLASS}) — one flat `border-b` hairline at one Y.
+ * `<main>` ({@link appContentShellClass}) is square-cornered and border-less;
+ * do NOT re-add a border there, or the join doubles up.
  *
  * Mobile keeps its own chrome (MobileAppHeader); this bar is desktop-only.
  */
@@ -69,13 +68,11 @@ export function GlobalHeader({
   if (!user || isClientPublicPath(pathname)) return null;
 
   return (
-    // The one flat hairline in the desktop frame (see the block comment above):
-    // `<main>` is square-cornered and border-less, so this line is the whole
-    // header × canvas separation.
+    // Shared top-chrome seam with MasterNav spine (see TOP_CHROME_BAND_CLASS).
     <header
       className={cn(
-        'sticky top-0 z-header flex h-[40px] w-full shrink-0 select-none items-center gap-3 backdrop-blur-sm',
-        'border-b border-border-soft',
+        TOP_CHROME_BAND_CLASS,
+        'sticky top-0 z-header w-full select-none gap-3 backdrop-blur-sm',
         HEADER_INSET_X,
         appChromeMutedClass,
       )}

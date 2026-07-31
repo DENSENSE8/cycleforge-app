@@ -164,7 +164,7 @@ function useBarAnim() {
     // and travelled far enough to look like a page element sliding in.
     transition: reduce
       ? { duration: 0 }
-      : { type: 'spring', stiffness: 620, damping: 40, mass: 0.7 },
+      : ({ type: 'spring', stiffness: 620, damping: 40, mass: 0.7 } as const),
   } as const;
 }
 

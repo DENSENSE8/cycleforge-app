@@ -32,7 +32,7 @@ export function MediaLibraryPickerModal({
   ticketId,
   receivingId,
   defaultTab,
-  title = 'Media library',
+  title = 'Media',
   subtitle,
   selected,
   onSelectedChange,

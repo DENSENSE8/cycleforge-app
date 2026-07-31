@@ -13,7 +13,8 @@ export function LabelsModeBody() {
   return (
     <SidebarShell
       headerAbove={<LabelsScanBand />}
-      bodyClassName="flex min-h-0 flex-1 flex-col overflow-y-auto"
+      scrollMoreBelow
+      bodyClassName="flex min-h-0 flex-1 flex-col"
     >
       <LabelsRecentRail />
     </SidebarShell>

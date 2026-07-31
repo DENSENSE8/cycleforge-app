@@ -3,6 +3,7 @@
 import { useRef, useState, type ComponentType } from 'react';
 import { AlertTriangle, Barcode, Boxes, Check, Tag, X } from '@/components/Icons';
 import { Popover } from '@/design-system/primitives';
+import { CHIP_TONES } from '@/components/ui/CopyChip';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { useReasonVocabulary } from '@/hooks/useReasonVocabulary';
 import { NoSerialOfferCheck } from './NoSerialOfferCheck';
@@ -29,15 +30,14 @@ interface Props {
   /** 'pill' = single-line offer token; 'check' = all-units offer token (multi-qty line level). */
   variant?: 'pill' | 'check';
   /**
-   * Committed state spans the full width of its slot and reads as a labeled bar
-   * (leading ✓ + "No serial · {reason}"), instead of the compact inline icon
-   * token. Use when this *replaces an input field* (single-qty SerialCard), where
-   * the field's current value should fill the field's width.
+   * Committed state spans the full width of its slot as a dense chip face
+   * (reason icon + underlined label), matching SKU/condition CopyChips. Use when
+   * this *replaces an input field* (single-qty SerialCard).
    */
   fullWidth?: boolean;
   /**
    * Drop the committed-state clear (✕) affordance — for when the PARENT owns the
-   * on/off toggle (e.g. the SerialCard trailing green-check), so the bar is just
+   * on/off toggle (e.g. the SerialCard trailing green-check), so the chip is just
    * the "No serial · {reason}" label + reason picker and there's exactly one
    * undo control. Offer state is unaffected.
    */
@@ -61,24 +61,24 @@ const reasonIcon = (code: string | null | undefined): Glyph =>
   (code && REASON_ICON[code]) || Barcode;
 
 /**
- * Tone follows the documented chip convention (bg-x-50 / text-x-700 / ring-x-200)
- * and is keyed off the reason's *severity*, so a routine waiver (cable, bulk)
- * reads calm slate and a genuine anomaly (unreadable, missing label) reads amber.
+ * Menu-row + clear affordance tones keyed off reason *severity*. Committed chip
+ * face uses {@link CHIP_TONES}.serial (routine) or amber underline (anomaly) —
+ * dense CopyChip anatomy, not a pill.
  */
 const TONE: Record<
   SerialAbsentSeverity,
-  { token: string; icon: string; clear: string; rowSel: string; tick: string }
+  { icon: string; underline: string; clear: string; rowSel: string; tick: string }
 > = {
   routine: {
-    token: 'bg-surface-canvas text-text-muted ring-border-soft',
-    icon: 'text-text-soft',
+    icon: CHIP_TONES.serial.iconClass,
+    underline: CHIP_TONES.serial.underline,
     clear: 'text-text-faint hover:bg-surface-strong hover:text-text-muted',
     rowSel: 'bg-surface-canvas text-text-default',
     tick: 'text-text-soft',
   },
   anomaly: {
-    token: 'bg-amber-50 text-amber-800 ring-amber-200',
     icon: 'text-amber-600',
+    underline: 'border-amber-500',
     clear: 'text-amber-500 hover:bg-amber-100 hover:text-amber-700',
     rowSel: 'bg-amber-50 text-amber-800',
     tick: 'text-amber-600',
@@ -110,9 +110,9 @@ const ChevronGlyph = ({ className = '' }: { className?: string }) => (
  * (the `serial_absent_reason` Class-D vocabulary) rather than a silent blank — so
  * a cable received with no serial is a first-class fact, not missing data.
  *
- * Display: icon-first, tooltip-driven. The *presence* of the token = committed;
- * the *icon* = which reason; the *tone* = how exceptional it is. No inline label
- * text — the operator reads the glyph and confirms via the HoverTooltip.
+ * Committed display: dense CopyChip anatomy (reason icon + underlined label) so
+ * the token matches SKU/condition height in the PO meta row and SerialCard slot.
+ * Click opens the reason picker; HoverTooltip carries the hint.
  */
 export function NoSerialControl({
   absent,
@@ -194,21 +194,12 @@ export function NoSerialControl({
     );
   }
 
-  // ── Committed state: an icon token carrying the chosen reason + a clear affordance.
+  // ── Committed state: dense chip face (icon + underlined reason) + clear.
   const sev = severityOf(reasons, reason);
   const tone = TONE[sev];
   const Icon = reasonIcon(reason);
   const label = serialAbsentReasonLabel(reason);
   const hint = reasons.find((r) => r.code === reason)?.hint;
-
-  // Full-width committed bar reads as a "confirmed no serial" field value: a green
-  // check (the affirmation), no inline label (the reason lives in the tooltip +
-  // dropdown), on a calm neutral bar so the check is the only color. The compact
-  // (multi-qty) token keeps the reason icon + severity tone.
-  const containerTone = fullWidth ? 'bg-surface-canvas text-text-soft ring-border-soft' : tone.token;
-  const clearTone = fullWidth
-    ? 'text-text-faint hover:bg-surface-strong hover:text-text-muted'
-    : tone.clear;
 
   return (
     <>
@@ -216,15 +207,14 @@ export function NoSerialControl({
         ref={anchorRef}
         className={`${
           fullWidth ? 'flex w-full' : 'inline-flex max-w-full'
-        } h-9 items-center rounded-xl pr-1 ring-1 ring-inset ${containerTone}`}
+        } items-center px-1.5`}
       >
         <HoverTooltip
           label={hint ? `No serial · ${label} — ${hint}` : `No serial · ${label}`}
           asChild
           focusable={false}
         >
-          {/* ds-raw-button: opens the reason popover. Compact = icon only; full-width
-              = reason icon + label, the chevron pushed to the right edge. */}
+          {/* ds-raw-button: dense CopyChip-anatomy face — opens the reason popover */}
           <button
             type="button"
             onClick={() => setPickerOpen((o) => !o)}
@@ -233,23 +223,20 @@ export function NoSerialControl({
             aria-expanded={pickerOpen}
             aria-label={`No serial — ${label}. Change reason`}
             className={`${
-              fullWidth
-                ? 'flex h-full min-w-0 flex-1 items-center gap-2'
-                : 'inline-flex h-full items-center gap-1.5 pr-1.5'
-            } rounded-l-xl pl-2.5 transition-colors hover:brightness-95 disabled:opacity-50`}
+              fullWidth ? 'flex min-w-0 flex-1' : 'inline-flex'
+            } items-center justify-start gap-0.5 py-0 bg-transparent text-left transition-colors hover:opacity-80 disabled:opacity-50`}
           >
-            {fullWidth ? (
-              <>
-                <Icon className={`h-4 w-4 shrink-0 ${tone.icon}`} />
-                <span className="truncate text-role-caption font-semibold text-text-muted">{label}</span>
-                <ChevronGlyph className="ml-auto mr-0.5 shrink-0" />
-              </>
-            ) : (
-              <>
-                <Icon className={`h-4 w-4 ${tone.icon}`} />
-                <ChevronGlyph />
-              </>
-            )}
+            <span className={`shrink-0 [&_svg]:h-3 [&_svg]:w-3 ${tone.icon}`}>
+              <Icon />
+            </span>
+            <span
+              className={`text-role-caption font-semibold font-mono text-text-default tracking-tight leading-none border-b-2 pb-0.5 text-left truncate ${tone.underline} ${
+                fullWidth ? 'min-w-0 flex-1' : ''
+              }`}
+            >
+              {label}
+            </span>
+            <ChevronGlyph className={`shrink-0 ${fullWidth ? 'ml-auto' : ''}`} />
           </button>
         </HoverTooltip>
         {/* ds-raw-button: icon token clear affordance. Suppressed when the parent
@@ -259,9 +246,9 @@ export function NoSerialControl({
             type="button"
             onClick={clear}
             aria-label="Clear no-serial waiver"
-            className={`grid h-6 w-6 shrink-0 place-items-center rounded-lg transition-colors ${clearTone}`}
+            className={`grid h-5 w-5 shrink-0 place-items-center rounded-md transition-colors ${tone.clear}`}
           >
-            <X className="h-3.5 w-3.5" />
+            <X className="h-3 w-3" />
           </button>
         )}
       </div>

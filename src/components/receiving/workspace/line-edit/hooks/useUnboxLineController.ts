@@ -648,6 +648,13 @@ export function useUnboxLineController(
     : isSinglePoItem
       ? 'Receive'
       : 'Receive all';
+  // Unreceive mirrors Receive-all scope: single-line PO → "Unreceive", else all.
+  const canUnreceive =
+    isReceived || Number(row.quantity_received ?? 0) > 0;
+  const unreceiveMenuLabel = isSinglePoItem ? 'Unreceive' : 'Unreceive all';
+  const unreceiveMenuTitle = isUnfound
+    ? 'Undo local receive — quantities and received stamp clear; inventory is not touched'
+    : 'Undo website receive — quantities and received stamp clear; linked inventory PO is marked unreceived';
   // Received ⇒ the bench's remaining job is the package label, so the primary
   // collapses to Print. This is the same CTA regardless of which surface did
   // the receiving (this bench, the PO bulk route, or the phone).
@@ -835,9 +842,9 @@ export function useUnboxLineController(
     labelOptions, labelSelectOptions, selectedLabelKind, setSelectedLabelKind, activeLabelKind,
     activeLabelFace, unitInput,     asListedDraftDefaults, buildAsListedPayload, applyAsListedAndPrint,
     asListedPayload, ticketPayload, applyUnitAndPrint,
-    canPrintReview, canReceiveReview, canZohoReceive, isUnfound, isReceived, combinedReviewDisabled, combinedReviewDisabledReason, requireSerialConfirmation,
+    canPrintReview, canReceiveReview, canZohoReceive, isUnfound, isReceived, canUnreceive, combinedReviewDisabled, combinedReviewDisabledReason, requireSerialConfirmation,
     photoPolicy, lineItemPhotoCount,
-    receiveMenuLabel, receiveMenuTitle, printReceivePrimaryLabel, splitMenuAriaLabel, splitMenuHoverTitle, printThenReceiveTitle,
+    receiveMenuLabel, receiveMenuTitle, unreceiveMenuLabel, unreceiveMenuTitle, printReceivePrimaryLabel, splitMenuAriaLabel, splitMenuHoverTitle, printThenReceiveTitle,
     // claim / RETURN flow
     claimModalOpen, setClaimModalOpen, claimModalInitialMode, openClaimModal,
     returnClaimPrefill, setReturnClaimPrefill,

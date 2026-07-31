@@ -1,26 +1,19 @@
 'use client';
 
 /**
- * Dashboard · Recents — the context-panel recents list, rendered in **both**
- * dashboard domains (outbound and inbound).
+ * Dashboard · Recents — the inbound domain's context-panel recents list.
  *
  * Harvested from the `Recent` half of the retired `DashboardSearchSidebar` when
  * Search stopped being a dashboard mode (`docs/todo/dashboard-ia-rework-PLAN.md`
- * Phase 1.1). Two reasons it lives here rather than behind a mode:
- *
- *   • Inbound's context panel used to render `null` — 360px of empty chrome. The
- *     recents list is what fills it, and it is domain-agnostic by construction
- *     (a recent carton is as re-openable as a recent order).
- *   • Recents were the only part of Search mode that was navigation rather than
- *     retrieval. Retrieval moved to `/search`; navigation belongs beside the
- *     picker.
+ * Phase 1.1). Inbound's context panel used to render `null` — 360px of empty
+ * chrome; this list fills it. Retrieval lives on `/search`; re-open navigation
+ * lives here beside the inbound picker.
  *
  * Rows re-open through `detailStackHref`, the same SoT the ⌘K palette and the
  * order workspace rail use — so an order always lands on `/o/[id]`, never on a
  * second order shell.
  */
 
-import { useMemo } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { Clock, X } from '@/components/Icons';
@@ -89,10 +82,10 @@ function DashboardRecentsList({ entries }: { entries: DetailStackEntry[] }) {
                 className="min-w-0 flex-1 px-2 py-1.5 text-left"
                 aria-current={selected ? 'true' : undefined}
               >
-                <p className="truncate text-role-caption font-semibold text-text-default">
+                <p className="truncate text-role-eyebrow font-semibold text-text-default">
                   {entry.label}
                 </p>
-                <p className="truncate text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint">
+                <p className="truncate text-role-micro font-semibold uppercase tracking-widest text-text-faint">
                   {when ? `${noun} · opened ${when}` : `${noun} · ${entry.id}`}
                 </p>
               </Link>
@@ -131,36 +124,10 @@ export function DashboardRecentsPanel() {
           <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">Recents</p>
         </div>
       }
+      scrollMoreBelow
       bodyClassName="pt-2 pb-6"
     >
       <DashboardRecentsList entries={entries} />
     </SidebarShell>
-  );
-}
-
-/**
- * Footer form — pinned under the outbound order feed, which is already the
- * domain's picker. Capped height with its own scroll so the feed keeps the
- * column; recents never push the picker off screen.
- */
-export function DashboardRecentsFooter() {
-  const entries = useRecentDetailStacks();
-  // Only surface the footer once there is something to re-open — an empty
-  // teaching box under a full picker is chrome, not help.
-  const visible = useMemo(() => entries.slice(0, 5), [entries]);
-  if (visible.length === 0) return null;
-
-  return (
-    <section
-      className="shrink-0 border-t border-border-hairline bg-surface-card"
-      aria-label="Recents"
-    >
-      <p className="px-3 pt-2 text-role-eyebrow uppercase tracking-widest text-text-soft">
-        Recents
-      </p>
-      <div className="max-h-40 overflow-y-auto px-1 pb-2">
-        <DashboardRecentsList entries={visible} />
-      </div>
-    </section>
   );
 }

@@ -19,18 +19,15 @@ import {
 } from '@/lib/receiving/streets/carton-street-write';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { ensureLineUnitsSafe, fetchLineUnits } from '@/lib/receiving/ensure-line-units';
+import { SOURCE_PLATFORMS as SOURCE_PLATFORM_REGISTRY } from '@/lib/source-platform';
 
+// Built-in allowlist = SoT registry values + internal `zoho`. Must stay in sync
+// with `@/lib/source-platform` — a local Set that omitted `fba`/`shopify`/
+// `square` caused the classify pill to paint FBA while PATCH 400'd and the
+// claim subject stayed "Unknown - Return".
 const SOURCE_PLATFORMS = new Set([
   'zoho',
-  'ebay',
-  'amazon',
-  'aliexpress',
-  'walmart',
-  'other',
-  'goodwill',
-  // 'ecwid' — auto-applied by the Link Repair Service flow when an
-  // unmatched carton is paired with a recent Ecwid -RS order.
-  'ecwid',
+  ...SOURCE_PLATFORM_REGISTRY.map((p) => p.value),
 ]);
 
 // Carton-level default receiving type (receiving.intake_type). Per-line

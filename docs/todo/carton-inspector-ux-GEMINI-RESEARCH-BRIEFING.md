@@ -1,5 +1,10 @@
 # Research briefing — the carton read view: what a warehouse "look it up" surface should actually be
 
+> **Supersession (visual IA):** Evidence-led strip / photo-first layout and header `"Open in Unbox"`
+> spam were overturned by product critique — see
+> [`carton-inspector-LAYOUT-POLISH-HANDOFF.md`](carton-inspector-LAYOUT-POLISH-HANDOFF.md) and
+> `.claude/rules/display/carton-read.md`. Keep this brief for research archaeology only.
+
 **For:** Gemini Pro (deep research)
 **From:** Cycle Forge engineering
 **Date:** 2026-07-29

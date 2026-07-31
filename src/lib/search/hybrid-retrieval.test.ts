@@ -273,6 +273,35 @@ test('entityTypes option is threaded into the keyword arm', async () => {
   assert.deepEqual(cap.keywordCalls[0].entityTypes, ['SKU', 'SERIAL_UNIT']);
 });
 
+test('exact hits hydrate facets + chips (no longer empty on identifier queries)', async () => {
+  const { deps } = fakes({
+    exact: [
+      {
+        id: 7,
+        entityType: 'order',
+        title: 'Order 7',
+        subtitle: 'sub',
+        href: '/o/7',
+        matchField: 'order',
+        facets: {
+          status: 'Shipped',
+          condition_grade: 'USED_GOOD',
+          source_platform: 'ebay',
+          tracking_number: '9400111899561234567890',
+          happened_at: '2026-06-01T12:00:00.000Z',
+        },
+      },
+    ],
+  });
+  const res = await hybridSearch(ORG, '12345', {}, deps);
+  const hit = res.hits[0];
+  assert.equal(hit.entityType, 'order');
+  assert.equal(hit.facets?.status, 'Shipped');
+  assert.equal(hit.facets?.tracking_number, '9400111899561234567890');
+  assert.ok(hit.chips.some((c) => c.label === 'Shipped'));
+  assert.ok(hit.chips.some((c) => c.label === 'USED_GOOD'));
+});
+
 test('blank query is a no-op', async () => {
   const { deps, cap } = fakes();
   const res = await hybridSearch(ORG, '   ', {}, deps);

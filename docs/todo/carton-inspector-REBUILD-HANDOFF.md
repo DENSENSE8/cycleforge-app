@@ -3,6 +3,9 @@
 > **SUPERSEDED (2026-07-29).** Do not resume this doc.  
 > Canonical handoff (decision **2a** locked — read inspector replaces `ReceivingDetailsStack`):  
 > [`carton-inspector-D4-ROOT-FIX-HANDOFF.md`](carton-inspector-D4-ROOT-FIX-HANDOFF.md).  
+> Visual IA (photos button · handling|findings · no Unbox spam):  
+> [`carton-inspector-LAYOUT-POLISH-HANDOFF.md`](carton-inspector-LAYOUT-POLISH-HANDOFF.md) +  
+> `.claude/rules/display/carton-read.md`. **D3 photo-lead / zero-click filmstrip is overturned.**  
 > §0 below is historical (Identity already deleted; industry redesign was built then **reversed**).
 
 **Lane:** `main` (integration/dogfood). Stay on it — no branch, no worktree, never `git stash`.

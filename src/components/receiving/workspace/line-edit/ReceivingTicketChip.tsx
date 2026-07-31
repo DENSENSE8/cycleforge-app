@@ -49,11 +49,10 @@ import {
 
 /**
  * Filed-ticket chip for the carton identity row. Renders the same
- * {@link IdentityLinkChip} primitive as PO#/tracking (orange `#` tone): chip
- * click copies, hover menu offers Open → Message → Edit. The Edit row opens an
- * anchored popover showing the ticket's history (live Zendesk comments) with
- * an Unlink action — instead of re-opening the full claim modal. Message opens
- * the seller-facing draft panel (formerly a standalone header icon).
+ * {@link IdentityLinkChip} primitive as PO#/tracking (orange `#` tone). When
+ * `onOpenTicketView` is set (Unbox), chip activate opens the Ticket push column;
+ * history stays in the menu. Otherwise Edit opens the anchored history
+ * popover. Message opens the seller-facing draft panel.
  */
 export function ReceivingTicketChip({
   value,
@@ -63,6 +62,7 @@ export function ReceivingTicketChip({
   receivingId,
   lineId,
   onUnlinked,
+  onOpenTicketView,
 }: {
   /** Copy value — internal ticket label (#42). */
   value: string;
@@ -77,6 +77,8 @@ export function ReceivingTicketChip({
   lineId: number | null;
   /** Called after a successful unlink so the parent can clear its ticket state. */
   onUnlinked: () => void;
+  /** Opens the Unbox Ticket push column (`?ticketView=1`). */
+  onOpenTicketView?: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const [sellerOpen, setSellerOpen] = useState(false);
@@ -102,15 +104,30 @@ export function ReceivingTicketChip({
         tone="ticket"
         underlineClass="border-orange-500"
         disableCopy={!value.trim()}
-        onEdit={openTicketHistory}
-        editOpen={open}
-        editLabel="View ticket history"
+        onEdit={onOpenTicketView ?? openTicketHistory}
+        editOpen={onOpenTicketView ? false : open}
+        editLabel={onOpenTicketView ? 'Open ticket' : 'View ticket history'}
         actionsInMenu
         suppressMenu={sellerOpen}
         menuBetween={
-          receivingId != null ? (
-            <SellerMessageMenuItem onClick={openSellerMessage} active={sellerOpen} />
-          ) : null
+          <>
+            {onOpenTicketView ? (
+              // ds-raw-button: text-left dropdown menuitem row
+              <button
+                type="button"
+                role="menuitem"
+                onClick={openTicketHistory}
+                aria-expanded={open}
+                aria-label="View ticket history"
+                className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-role-caption font-semibold uppercase tracking-widest text-text-muted hover:bg-surface-hover"
+              >
+                View history
+              </button>
+            ) : null}
+            {receivingId != null ? (
+              <SellerMessageMenuItem onClick={openSellerMessage} active={sellerOpen} />
+            ) : null}
+          </>
         }
       />
       <AnchoredLayer

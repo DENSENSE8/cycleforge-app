@@ -16,6 +16,7 @@ export function DetailStackRailRegistrar({
   enabled = true,
   elevated,
   modal,
+  closeOnOutsideClick,
   ariaLabel,
   children,
 }: {
@@ -30,6 +31,9 @@ export function DetailStackRailRegistrar({
   /** `false` = non-modal inspector (no scrim / scroll lock; `role="region"`).
    *  Defaults to modal so existing occupants are unchanged. */
   modal?: boolean;
+  /** Non-modal only: invisible dismiss layer so click-off closes (receiving).
+   *  Leave off for live-queue inspectors (dashboard). */
+  closeOnOutsideClick?: boolean;
   /** Accessible name for the aside — pass one whenever `modal` is false. */
   ariaLabel?: string;
   children: ReactNode;
@@ -41,6 +45,7 @@ export function DetailStackRailRegistrar({
     onClose,
     elevated,
     modal,
+    closeOnOutsideClick,
     ariaLabel,
     enabled,
   });

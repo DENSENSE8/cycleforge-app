@@ -60,7 +60,7 @@ export default function UnshippedSidebar(props: UnshippedSidebarProps) {
       opacity: 1,
       x: 0,
       filter: 'blur(0px)',
-      transition: { type: 'spring', damping: 25, stiffness: 350, mass: 0.5 },
+      transition: { type: 'spring' as const, damping: 25, stiffness: 350, mass: 0.5 },
     },
   };
 

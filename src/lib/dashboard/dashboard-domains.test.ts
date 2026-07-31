@@ -1,9 +1,9 @@
 /**
- * `/dashboard` domain axis + the retired-Search-mode redirect contract.
+ * `/dashboard` domain axis + the retired-front-door redirect contracts.
  *
- * The redirect table is the load-bearing part: `?mode=search` was a real,
- * bookmarkable surface, so every shape it could carry has to land somewhere
- * honest rather than 404-ing or silently dropping the operator's query.
+ * The redirect tables are load-bearing: `?mode=search`, `?fba`, and `/walk-in`
+ * were bookmarkable surfaces, so every shape they could carry has to land
+ * somewhere honest rather than 404-ing or silently dropping the operator's query.
  */
 
 import { test } from 'node:test';
@@ -15,18 +15,21 @@ import {
   isRetiredSearchMode,
   retiredFbaViewTarget,
   retiredSearchModeTarget,
+  retiredWalkInHistoryTarget,
 } from './dashboard-domains';
 
 const sp = (qs: string) => new URLSearchParams(qs);
 
-test('domain: two values, with the legacy `receiving` alias folding into inbound', () => {
+test('domain: outbound | inbound | sales, with aliases', () => {
   assert.equal(getDashboardDomainFromSearch(sp('')), 'outbound');
   assert.equal(getDashboardDomainFromSearch(sp('unshipped=')), 'outbound');
   assert.equal(getDashboardDomainFromSearch(sp('shipped=')), 'outbound');
   assert.equal(getDashboardDomainFromSearch(sp('mode=inbound')), 'inbound');
   assert.equal(getDashboardDomainFromSearch(sp('mode=receiving')), 'inbound');
   assert.equal(getDashboardDomainFromSearch(sp('mode=INBOUND')), 'inbound');
-  // A retired / unknown mode is not a third domain — it falls to the default.
+  assert.equal(getDashboardDomainFromSearch(sp('mode=sales')), 'sales');
+  assert.equal(getDashboardDomainFromSearch(sp('mode=pickup')), 'sales');
+  // A retired / unknown mode is not a fourth domain — it falls to the default.
   assert.equal(getDashboardDomainFromSearch(sp('mode=search')), 'outbound');
   assert.equal(getDashboardDomainFromSearch(sp('mode=nonsense')), 'outbound');
 });
@@ -79,4 +82,16 @@ test('a retired ?fba bookmark redirects to FBA\'s real home, not the Pending tab
   // SHIPMENT id, so forwarding it would focus an unrelated record.
   assert.equal(retiredFbaViewTarget(), FBA_OUTBOUND_PATH);
   assert.ok(!retiredFbaViewTarget().includes('?'));
+});
+
+test('retiredWalkInHistoryTarget: Sales / Local Pickup land on the dashboard domain', () => {
+  assert.equal(retiredWalkInHistoryTarget(sp('')), '/dashboard?mode=sales');
+  assert.equal(retiredWalkInHistoryTarget(sp('mode=sales')), '/dashboard?mode=sales');
+  assert.equal(retiredWalkInHistoryTarget(sp('mode=pickup')), '/dashboard?mode=pickup');
+  assert.equal(retiredWalkInHistoryTarget(sp('category=pickups')), '/dashboard?mode=pickup');
+  // Non-default tabs survive; defaults drop.
+  assert.equal(retiredWalkInHistoryTarget(sp('mode=sales&tab=all')), '/dashboard?mode=sales&tab=all');
+  assert.equal(retiredWalkInHistoryTarget(sp('mode=sales&tab=today')), '/dashboard?mode=sales');
+  assert.equal(retiredWalkInHistoryTarget(sp('mode=pickup&tab=draft')), '/dashboard?mode=pickup&tab=draft');
+  assert.equal(retiredWalkInHistoryTarget(sp('mode=pickup&tab=completed')), '/dashboard?mode=pickup');
 });

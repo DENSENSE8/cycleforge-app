@@ -179,10 +179,13 @@ describe('filterEligibleTransferSheetRows', () => {
 
   it('bounds the captured rows without distorting the counts', () => {
     const many = Array.from({ length: SKIPPED_ROW_SAMPLE_CAP + 25 }, () => row({ itemNumber: '' }));
-    const { skips, skippedRows } = filterEligibleTransferSheetRows(many, cols);
+    const { skips, skippedRows, noItemNumberRows } = filterEligibleTransferSheetRows(many, cols);
 
     assert.equal(skippedRows.length, SKIPPED_ROW_SAMPLE_CAP);
     // The COUNT stays exact — only the listed sample is capped.
     assert.equal(skips.skippedNoItemNumber, SKIPPED_ROW_SAMPLE_CAP + 25);
+    // Durable Review queue is uncapped — every noItemNumber row enqueues.
+    assert.equal(noItemNumberRows.length, skips.skippedNoItemNumber);
+    assert.ok(noItemNumberRows.every((r) => r.reason === 'noItemNumber'));
   });
 });

@@ -1,6 +1,8 @@
 # 03 — Sales (main transaction history)
 
-**Status:** P1–P2 shipped 2026-07-16 (P3 URL migration still deferred)
+**Status:** P1–P2 shipped 2026-07-16 · **Superseded 2026-07-30** — history Monitor lives on
+`/dashboard?mode=sales|pickup` ([`../sales-into-dashboard-PLAN.md`](../sales-into-dashboard-PLAN.md)).
+`/walk-in` is a redirect shell. P3 URL migrate deferred (redirect covers bookmarks).
 **Parent:** [../foh-boh-surface-split-plan.md](../foh-boh-surface-split-plan.md)
 **Depends on:** [05 — Nav · permission · redirects](./05-nav-permission-redirects.md)
 

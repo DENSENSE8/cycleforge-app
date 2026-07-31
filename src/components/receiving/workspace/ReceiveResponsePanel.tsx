@@ -206,6 +206,14 @@ export function classifyReceiveResponse(r: ReceiveResponsePanelProps['response']
       detail: '',
     };
   }
+  if (zoho.skip_reason === 'unreceive') {
+    return {
+      verdict: 'success',
+      headline: 'Success — unmarked as received',
+      tone: 'emerald',
+      detail: '',
+    };
+  }
   if (zoho.skip_reason === 'received_local' || zoho.skip_reason === 'unfound_no_po') {
     // Unfound carton received locally — lines are RECEIVED, Zoho is
     // intentionally not touched (there is no PO to reconcile against).

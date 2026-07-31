@@ -80,6 +80,13 @@ export interface RightRailPanel {
    * trap (see `docs/todo/dashboard-inline-detail-editing-EXECUTION-PLAN.md` §3).
    */
   modal?: boolean;
+  /**
+   * When true (non-modal only), mount an invisible dismiss layer behind the
+   * card so click-off closes — same dismiss affordance as the modal scrim,
+   * without darkening. Opt-in: the dashboard order inspector leaves this off
+   * so the grid stays live; receiving details turns it on.
+   */
+  closeOnOutsideClick?: boolean;
   /** Accessible name for the aside. Required in spirit for non-modal occupants
    *  (`role="region"` needs a name); the host falls back to a generic label. */
   ariaLabel?: string;
@@ -129,6 +136,7 @@ export function registerRightRailPanel(input: {
   onClose?: () => void;
   elevated?: boolean;
   modal?: boolean;
+  closeOnOutsideClick?: boolean;
   ariaLabel?: string;
 }): () => void {
   seq += 1;
@@ -140,6 +148,7 @@ export function registerRightRailPanel(input: {
     onClose: input.onClose,
     elevated: input.elevated,
     modal: input.modal,
+    closeOnOutsideClick: input.closeOnOutsideClick,
     ariaLabel: input.ariaLabel,
     seq: mySeq,
   });
@@ -167,9 +176,10 @@ export function updateRightRailPanelNode(input: {
   onClose?: () => void;
   elevated?: boolean;
   modal?: boolean;
+  closeOnOutsideClick?: boolean;
   ariaLabel?: string;
 }): void {
-  const { id, node, onClose, elevated, modal, ariaLabel } = input;
+  const { id, node, onClose, elevated, modal, closeOnOutsideClick, ariaLabel } = input;
   const current = panels.get(id);
   if (
     !current ||
@@ -177,10 +187,19 @@ export function updateRightRailPanelNode(input: {
       current.onClose === onClose &&
       current.elevated === elevated &&
       current.modal === modal &&
+      current.closeOnOutsideClick === closeOnOutsideClick &&
       current.ariaLabel === ariaLabel)
   )
     return;
-  panels.set(id, { ...current, node, onClose, elevated, modal, ariaLabel });
+  panels.set(id, {
+    ...current,
+    node,
+    onClose,
+    elevated,
+    modal,
+    closeOnOutsideClick,
+    ariaLabel,
+  });
   recomputeTop();
   emit();
 }

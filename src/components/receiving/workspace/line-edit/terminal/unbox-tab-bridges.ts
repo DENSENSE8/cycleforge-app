@@ -27,5 +27,7 @@ export interface UnboxTabBridges {
   support: SupportTabBridge | null;
   /** @deprecated use support */
   conversation: SupportTabBridge | null;
+  /** Customer Ticket-tab composer (Zendesk reply / internal note). */
+  ticket: SupportTabBridge | null;
   units: UnitsTabBridge | null;
 }

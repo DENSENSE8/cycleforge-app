@@ -56,6 +56,10 @@ function trackingValue(row: ReceivingLineRow): string {
   return (displayTrackingNumber(row) || row.tracking_number || '').trim();
 }
 
+function locationValue(row: ReceivingLineRow): string {
+  return (row.staging_location_label || '').trim();
+}
+
 function stageMs(row: ReceivingLineRow, axis: ReceivingActivityAxis): number {
   const stamp = resolveReceivingRowStageStamp(row, axis);
   if (!stamp?.instant) return Number.POSITIVE_INFINITY;
@@ -96,6 +100,12 @@ export function compareReceivingGridRows(
       break;
     case 'stage':
       primary = stageMs(a, activityAxis) - stageMs(b, activityAxis);
+      break;
+    case 'location':
+      primary = locationValue(a).localeCompare(locationValue(b), undefined, {
+        numeric: true,
+        sensitivity: 'base',
+      });
       break;
     case 'platform':
       primary = platformValue(a).localeCompare(platformValue(b), undefined, { sensitivity: 'base' });

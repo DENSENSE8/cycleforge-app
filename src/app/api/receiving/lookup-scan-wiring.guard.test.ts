@@ -163,12 +163,13 @@ test('lookup-po: the attribution write is classified wherever the carton pre-exi
   assert.ok(/scanKind/.test(wrapper[1]), 'recordScan must accept a scanKind');
   assert.ok(/scanKind,?/.test(wrapper[2]), 'recordScan must forward scanKind to recordReceivingScan');
 
-  // Every in-handler recordScan call passes one.
+  // Every in-handler recordScan call passes scanKind (7th). An optional 8th
+  // `registerTracking` is allowed on the ORDER# path so a pure PO-number match
+  // never fabricates a shipment tracking entry.
   for (const [i, args] of callArguments(LOOKUP_PO, 'recordScan').entries()) {
-    assert.equal(
-      args.length,
-      7,
-      `recordScan call #${i + 1} passes ${args.length} args (${args.join(' | ')}) — the 7th (scanKind) is what stops an inspection from overwriting scanned_by`,
+    assert.ok(
+      args.length === 7 || args.length === 8,
+      `recordScan call #${i + 1} passes ${args.length} args (${args.join(' | ')}) — expect 7 (scanKind) or 8 (+ registerTracking)`,
     );
   }
 

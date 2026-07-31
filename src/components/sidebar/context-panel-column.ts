@@ -56,6 +56,45 @@ export const CONTEXT_PANEL_RESIZE = {
 } as const;
 
 /**
+ * Collapse contract for the receiving context-panel rail (scan + recents).
+ *
+ * Open: row/gutter hover reveals a collapse cue outside the card's trailing
+ * edge ({@link ContextPanelCollapseCue}). Collapsed: width-drawer to 0 + a
+ * slim expand strip on the canvas ({@link CONTEXT_PANEL_COLLAPSE_STRIP_CLASS}).
+ * Persists beside {@link CONTEXT_PANEL_RESIZE} — receiving family only.
+ */
+export const CONTEXT_PANEL_COLLAPSE = {
+  storageKey: 'context-panel-collapsed',
+  /** Slim expand strip width when the rail is parked (Tailwind twin: `w-8`). */
+  stripWidthPx: 32,
+  /**
+   * Hit/gutter width outside the card for the collapse cue. Starts past the
+   * resize pill so the two affordances do not fight.
+   */
+  gutterHitPx: 28,
+  /** Offset from the card's right edge to the cue center (clears resize pill). */
+  cueOutsetPx: 14,
+} as const;
+
+/**
+ * Outer margin between the context-panel card and the canvas host (`m-2` =
+ * 8px). Station bookmark chrome (`stationContextBarHostClass` /
+ * `stationMoreDetailsHostClass` in `station-bookmark.ts`) uses the same
+ * top (+ right for more-details) so the floating identity shell lines up with
+ * the sidebar card under GlobalHeader — one knob: change here and update the
+ * bookmark `top-*` / `right-*` twins to match.
+ */
+const CONTEXT_PANEL_OUTER_MARGIN = 'm-2';
+
+/**
+ * Parked expand strip when the receiving context panel is collapsed.
+ * Canvas chrome only — not a second white card.
+ */
+export const CONTEXT_PANEL_COLLAPSE_STRIP_CLASS = cn(
+  'relative m-2 flex w-8 shrink-0 flex-col items-center pt-3',
+);
+
+/**
  * The in-DISPLAY context panel column (picker / rail / scan bar).
  *
  * A discrete floating slate: full radius, border on every edge, its own gutter
@@ -69,17 +108,18 @@ export const CONTEXT_PANEL_RESIZE = {
  * away from centre puts the whole app under one light in the middle of the
  * screen.
  *
- * `relative` anchors the trailing-edge resize grip (receiving only — a short
- * outside pill; see {@link ContextPanelLayout}). `w-[360px]` is the fixed
- * default; receiving overrides it with an inline width from
+ * `relative` anchors the trailing-edge resize grip (receiving only —
+ * `HorizontalEdgeResizeHandle` `placement="outset"`). `w-[360px]` is the
+ * fixed default; receiving overrides it with an inline width from
  * {@link CONTEXT_PANEL_RESIZE}.
  */
 export const CONTEXT_PANEL_COLUMN_CLASS = cn(
   // The gutter is the panel's OWN margin, not host padding. Host padding would
-  // also inset the workspace beside it, and the workspace must stay flush to
-  // the GlobalHeader — the station bookmark bar docks directly under that
-  // hairline with no gap (see display/station-workbench.md).
-  'relative m-2 flex w-[360px] shrink-0 flex-col overflow-hidden',
+  // also inset the workspace beside it; bookmark chrome matches this margin
+  // via `top-2` / `right-2` (see display/station-workbench.md).
+  'relative',
+  CONTEXT_PANEL_OUTER_MARGIN,
+  'flex w-[360px] shrink-0 flex-col overflow-hidden',
   'border border-border-soft bg-surface-card rounded-2xl',
   elevationCastClass('left'),
 );
@@ -98,8 +138,9 @@ export const CONTEXT_PANEL_COLUMN_CLASS = cn(
  * children own their own internal scrollports.
  */
 export const CONTEXT_PANEL_HOST_CLASS = cn(
-  // No padding and no gap: the panel carries its own margin, so the workspace
-  // column beside it starts flush under the GlobalHeader.
+  // No padding and no gap: the panel carries its own margin; bookmark chrome
+  // insets with the same gutter so identity + more-details share the panel’s
+  // top edge (see station-bookmark.ts).
   'flex min-h-0 flex-1 overflow-hidden',
   appCanvasClass,
 );

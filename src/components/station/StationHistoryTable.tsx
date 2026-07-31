@@ -251,9 +251,9 @@ export function StationHistoryTable<T>({
       weekNav={{ weekOffset, onPrev: onPrevWeek, onNext: onNextWeek }}
     />
   );
-  // House chrome recipe (Unbox · Shipped · FBA · Testing history): the week pill
-  // + ⋮ menu ride in the workbench chrome controls slot, so the table itself is
-  // a plain framed card with no second header band inside it. A caller with no
+  // House chrome recipe (Unbox · Shipped · FBA · Testing history): the period
+  // calendar icon + ⋮ menu ride in the workbench chrome controls slot, so the
+  // table itself is a plain framed card with no second header band inside it. A caller with no
   // portal target keeps the in-table `DateRangeHeader`.
   const portaledControls = toolbarPortalTarget
     ? createPortal(

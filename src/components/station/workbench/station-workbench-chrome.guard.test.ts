@@ -155,6 +155,19 @@ test('Guard F: SupportTicketIdentity is the only sanctioned non-carton identity 
   }
 });
 
+// ── Guard F2 — Support Ticket tab uses the Unbox composer compound ────────────
+test('Guard F2: SupportTicketFocus Ticket dock uses SupportTicketComposerDock', () => {
+  const focus = readFileSync(join(SRC_ROOT, 'components/support/station/SupportTicketFocus.tsx'), 'utf8');
+  assert.ok(
+    focus.includes('SupportTicketComposerDock'),
+    'SupportTicketFocus must mount SupportTicketComposerDock (StationComposerDock + embedded Reply) on the Ticket tab — not a sticky composer stacked above a bare FAB',
+  );
+  assert.ok(
+    focus.includes('TicketComposerStagingProvider'),
+    'SupportTicketFocus must provide host-owned photo staging for the floating ticket composer',
+  );
+});
+
 // ── Guard E — terminal path ───────────────────────────────────────────────────
 test('Guard E: <StationTerminalDock> mounts go through the terminal registry', () => {
   const allowlist = new Set<string>(TERMINAL_HAND_VM_ALLOWLIST);

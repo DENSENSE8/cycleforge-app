@@ -63,7 +63,12 @@ const INBOUND_TRANSITIONS: Readonly<Record<string, ReadonlySet<string>>> = {
   FAILED:        new Set(['RTV', 'SCRAP', 'IN_TEST', 'DONE']),
   RTV:           new Set(['DONE', 'SCRAP']),
   SCRAP:         new Set(['DONE']),
-  DONE:          new Set(['UNBOXED', 'AWAITING_TEST' /* reconcile/undo reopen */, 'IN_TEST' /* re-test of a fully-passed rollup (TEST_AGAIN on a DONE line) */]),
+  DONE:          new Set([
+    'UNBOXED',
+    'AWAITING_TEST' /* reconcile/undo reopen */,
+    'IN_TEST' /* re-test of a fully-passed rollup (TEST_AGAIN on a DONE line) */,
+    'MATCHED' /* website unreceive — full undo back to scanned */,
+  ]),
 };
 
 export type ReceivingLineGuardResult = { ok: true } | { ok: false; reason: string };

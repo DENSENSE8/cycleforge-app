@@ -50,6 +50,8 @@ test('defaults: empty search params', () => {
   assert.equal(q.incomingLinkParam, '');
   assert.equal(q.staffFilterRaw, '');
   assert.equal(q.staffFilterId, 0);
+  assert.equal(q.unboxQueueStage, '');
+  assert.equal(q.unboxQueueLane, '');
 });
 
 test('id / receiving_id: raw Number semantics incl. NaN passthrough', () => {

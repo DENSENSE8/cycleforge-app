@@ -16,6 +16,8 @@ export function SupportContextCustomer({
   receivingId,
   onBridgeChange,
   onRequestLinkTicket,
+  /** Station host owns floating {@link SupportTicketComposerDock}. */
+  hostComposer = false,
 }: {
   bundle: SupportContextBundle;
   embedded?: boolean;
@@ -27,6 +29,7 @@ export function SupportContextCustomer({
    * inline {@link TicketLinkPopover}.
    */
   onRequestLinkTicket?: () => void;
+  hostComposer?: boolean;
 }) {
   const [pickerOpen, setPickerOpen] = useState(false);
   const { has, isLoaded } = useAuth();
@@ -79,7 +82,8 @@ export function SupportContextCustomer({
         embedded={embedded}
         receivingId={receivingId ?? bundle.linkable?.receivingId ?? undefined}
         hideLinkedContext
-        onComposerBridgeChange={onBridgeChange}
+        onComposerBridgeChange={hostComposer ? undefined : onBridgeChange}
+        composerPlacement={hostComposer ? 'host' : 'inline'}
       />
     </div>
   );

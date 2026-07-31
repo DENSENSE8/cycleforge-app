@@ -8,8 +8,7 @@ import { Button, IconButton } from '@/design-system/primitives';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { openInUnboxHref } from '@/lib/receiving/surface-path';
 import { shouldUseUnmatchedItemsSurface } from '@/lib/receiving/intake-items-routing';
-import { LineMatchingSection } from '@/components/receiving/workspace/line-edit/LineMatchingSection';
-import { UnfoundMatchStrip } from '@/components/receiving/workspace/line-edit/UnfoundMatchStrip';
+import { CartonMatchHub } from '@/components/receiving/workspace/line-edit/CartonMatchHub';
 import type { ReceivingLineRow } from '@/components/station/ReceivingLinesTable';
 import type { TestingController } from './testing-panel-types';
 import { TestingPoItemsSection } from './TestingPoItemsSection';
@@ -113,23 +112,23 @@ export function TestingPoUnboxingSection({
           headerRight={headerRight}
           suppressHeader={suppressItemsHeader}
         />
-        {unfoundSurface ? (
-          <UnfoundMatchStrip
-            receivingId={receivingId}
-            trackingNumber={row.tracking_number ?? null}
-            showTopRule
-          />
-        ) : null}
-        <LineMatchingSection
+        <CartonMatchHub
           row={row}
           staffId={staffId}
+          tabSet="unbox"
+          autoFocusSearch
           showOpenInUnbox={false}
           embedded
           collapsed={!pairingOpen}
-          // The auto-match strip already draws the divider above pairing when it's
-          // shown; only draw our own top rule when there's no strip between them.
-          showTopRule={!unfoundSurface}
-          hideTicketLinkRow
+          showTopRule
+          autoMatch={
+            unfoundSurface
+              ? {
+                  receivingId,
+                  trackingNumber: row.tracking_number ?? null,
+                }
+              : null
+          }
         />
       </div>
     </WorkspaceCard>

@@ -1,6 +1,17 @@
 # Inline support-ticket editor in the receiving carton pane
 
-Status: **Unbox v1 built** (behind `NEXT_PUBLIC_RECEIVING_INLINE_TICKET_EDITOR`, ships dark) · Surface: unbox line-edit workspace (testing display deferred) · Region contract: Workbench (focus-surface swap)
+Status: **Superseded for Unbox** by Ticket as first-class detail-stack float
+(`ReceivingTicketStack` / `detail:ticket` — same `DetailStackRailRegistrar` shell as
+receiving More details). URL `?ticketView=1` still opens/closes the rail; the
+pane body-swap path is retired. See plan ratification (Ticket as first-class
+detail-stack float). Flag `NEXT_PUBLIC_RECEIVING_INLINE_TICKET_EDITOR` is unused
+for Unbox rail mount (always on). Testing display remains deferred / tab-based.
+
+---
+
+# Inline support-ticket editor in the receiving carton pane (historical)
+
+Status (historical): **Unbox v1 built** (behind `NEXT_PUBLIC_RECEIVING_INLINE_TICKET_EDITOR`, ships dark) · Surface: unbox line-edit workspace (testing display deferred) · Region contract: Workbench (focus-surface swap)
 
 ## Build log — unbox v1 (2026-07-13)
 

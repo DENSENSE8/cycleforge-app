@@ -176,6 +176,38 @@ export function kioskOriginForSlug(slug: string, opts?: { port?: string }): stri
   return `https://${host}`;
 }
 
+/**
+ * Where staff-host `/kiosk` should permanently redirect (no trailing slash).
+ *
+ * - Tenant staff slug host → that org's kiosk origin
+ * - Production apex + `DEFAULT_TENANT_SLUG` → that org's kiosk origin (dogfood
+ *   DNS bridge — apex staff bookmarks/MDM must not dump tablets to sign-in)
+ * - Otherwise → null (caller: serve `/kiosk` in non-prod for E2E, or sign-in
+ *   in production when no bridge is configured)
+ */
+export function staffKioskRedirectOrigin(opts: {
+  tenantSlug: string | null | undefined;
+  defaultTenantSlug?: string | null;
+  isProduction: boolean;
+}): string | null {
+  const fromHost = String(opts.tenantSlug ?? '').trim().toLowerCase();
+  if (fromHost) {
+    try {
+      return kioskOriginForSlug(fromHost);
+    } catch {
+      return null;
+    }
+  }
+  if (!opts.isProduction) return null;
+  const bridge = String(opts.defaultTenantSlug ?? '').trim().toLowerCase();
+  if (!bridge) return null;
+  try {
+    return kioskOriginForSlug(bridge);
+  } catch {
+    return null;
+  }
+}
+
 /** Public origin for a tenant's staff workspace (no trailing slash). */
 export function staffOriginForSlug(slug: string, opts?: { port?: string }): string {
   const safe = String(slug).trim().toLowerCase();

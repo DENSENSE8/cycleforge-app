@@ -17,6 +17,10 @@ removed. SoT: `workbench.md` + `source-of-truth.md` + `HeaderModeSwitcher` /
 `HeaderRecentsSwitcher`. This Unbox pilot handoff is historical — implementers should
 treat the house SoT as current, not re-run a Receiving-only experiment.
 
+**Next compound upgrades** (KPI strips, workbench chrome, Station identity, …) live in
+[`chrome-sot-compound-PLAN.md`](./chrome-sot-compound-PLAN.md) — same lift→delete-twin→law→guard
+pattern, not a Mode/Recents redo.
+
 ---
 
 ## 0. The four things to internalise

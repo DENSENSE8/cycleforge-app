@@ -1,9 +1,9 @@
 'use client';
 
 /**
- * The dashboard's main orders region: KPI strip + unified outbound header
- * (lifecycle slider · contextual filters/controls) + the active list for the
- * current tab. Presentational — selection state + actions are owned by
+ * The dashboard's main orders region: outbound KPI strip + unified outbound
+ * header (lifecycle slider · contextual filters/controls) + the active list for
+ * the current tab. Presentational — selection state + actions are owned by
  * useDashboardBulkSelection. Extracted from the dashboard page.
  */
 
@@ -12,7 +12,6 @@ import dynamic from 'next/dynamic';
 import { UnshippedTable } from '@/components/unshipped/UnshippedTable';
 import { PackedOrdersTable } from '@/components/dashboard/PackedOrdersTable';
 import { OutboundKpiStrip } from '@/components/dashboard/OutboundKpiStrip';
-import { DashboardAttentionStrip } from '@/components/dashboard/DashboardAttentionStrip';
 import { OutboundWorkspaceHeader } from '@/components/dashboard/OutboundWorkspaceHeader';
 import { DashboardScrollShell } from '@/components/dashboard/DashboardScrollShell';
 import {
@@ -91,11 +90,7 @@ export function DashboardOrdersView({
           headers are the only sticky layer left inside the port. */}
       <div className={showOutboundChrome ? WORKBENCH_BODY_COLUMN : 'relative flex min-w-0 flex-col'}>
         {showOutboundChrome ? (
-          <div className="mb-4 space-y-3">
-            {/* Zone A — the cross-domain glance, above this domain's own tiles.
-                Both scroll away; Zone B (the chrome slot above) is the one
-                pinned layer. */}
-            <DashboardAttentionStrip domain="outbound" />
+          <div className="mb-4">
             <OutboundKpiStrip
               mode={
                 orderView === 'packed' || orderView === 'shipped'

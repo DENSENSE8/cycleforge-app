@@ -148,7 +148,8 @@ export const SURFACE_REGISTRY: Record<SurfaceKey, SurfaceDefinition> = {
   // Local Pickup — a Receiving MODE with its own graduated route, exactly like
   // Unbox/Triage/Incoming. (It is not a separate "Walk-In station": front-desk
   // pickup is receiving work, and the operator switches to it from the receiving
-  // mode rail.) Sales lives on the `/walk-in` Sales page, not here.
+  // mode rail.) Sales history lives on Dashboard (`?mode=sales` / `?mode=pickup`),
+  // not here; counter intake for sales still opens from `/pickup?job=sales`.
   pickup: {
     key: 'pickup',
     label: 'Local Pickup',

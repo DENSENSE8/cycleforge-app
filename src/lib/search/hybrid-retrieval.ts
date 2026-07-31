@@ -271,11 +271,30 @@ function docRowToHit(row: DocHitRow, score: number, matchField: string): SearchH
 }
 
 function exactResultToHit(result: GlobalSearchResult, rank: number): SearchHit {
+  const facets = result.facets ?? {};
   return {
-    ...result,
+    id: result.id,
+    entityType: result.entityType,
+    title: result.title,
+    subtitle: result.subtitle,
+    href: result.href,
+    matchField: result.matchField,
     // Exact hits outrank anything the fuzzy arms can produce.
     score: 1000 - rank,
-    chips: [],
+    chips: facetChips({
+      status: facets.status ?? null,
+      conditionGrade: facets.condition_grade ?? null,
+      sourcePlatform: facets.source_platform ?? null,
+    }),
+    facets: {
+      status: facets.status ?? null,
+      condition_grade: facets.condition_grade ?? null,
+      source_platform: facets.source_platform ?? null,
+      tracking_number: facets.tracking_number ?? null,
+      carrier: facets.carrier ?? null,
+      serial_number: facets.serial_number ?? null,
+      happened_at: facets.happened_at ?? null,
+    },
   };
 }
 

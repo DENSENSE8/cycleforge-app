@@ -13,6 +13,7 @@ import { getTrackingUrl, getTrackingUrlByCarrier } from '@/lib/tracking-format';
 import { getExternalUrlByItemNumber } from '@/hooks/useExternalItemUrl';
 import { useSkuIdentity } from '@/hooks/useSkuIdentity';
 import { collectCartonListingLinks } from '@/lib/receiving/listing-links';
+import { displayTrackingNumber } from '@/lib/receiving/fulfillment-mode';
 import {
   dispatchLineUpdated,
   type ReceivingLineRow,
@@ -135,7 +136,7 @@ export function useReceivingLineCore(
   });
   const supportTicket = supportTicketQuery.data ?? null;
   const [listingLink, setListingLink] = useState('');
-  const [trackingEdit, setTrackingEdit] = useState(row.tracking_number || '');
+  const [trackingEdit, setTrackingEdit] = useState(displayTrackingNumber(row) || '');
   const [extraTrackings, setExtraTrackings] = useState<string[]>([]);
   /** Tracking inline editor — collapsed by default; pencil expands. */
   const [trackingEditorsOpen, setTrackingEditorsOpen] = useState(false);
@@ -191,6 +192,9 @@ export function useReceivingLineCore(
     { listingLink },
   );
   const isUnmatched = row.receiving_source === 'unmatched';
+  const isZohoPo =
+    row.receiving_source === 'zoho_po' ||
+    Boolean((row.zoho_purchaseorder_id || '').trim());
   const skuIdentity = useSkuIdentity(isUnmatched ? null : row.sku, sourcePlatform || row.source_platform);
   const listingLinks = useMemo(
     () =>
@@ -200,9 +204,10 @@ export function useReceivingLineCore(
         sku: row.sku,
         sourcePlatform,
         isUnmatched,
+        suppressEcwidStorefront: isZohoPo,
         platforms: skuIdentity.platforms,
       }),
-    [listingLink, row.receiving_zoho_notes, row.sku, sourcePlatform, isUnmatched, skuIdentity.platforms],
+    [listingLink, row.receiving_zoho_notes, row.sku, sourcePlatform, isUnmatched, isZohoPo, skuIdentity.platforms],
   );
   const { intakeType: receivingType, setIntakeType: setReceivingType, saveType } =
     useReceivingType(row);
@@ -229,7 +234,10 @@ export function useReceivingLineCore(
   // Reset the carton-level edit buffers on line/carton change. (Condition/serial
   // resets live in the per-mode controller.)
   useEffect(() => {
-    setTrackingEdit(row.tracking_number || '');
+    // displayTrackingNumber, not the raw column — suppresses pickup placeholders
+    // AND a scanned value that turned out to be the PO# re-echoed into the
+    // tracking slot (fulfillment-mode.ts), never a real carrier tracking#.
+    setTrackingEdit(displayTrackingNumber(row) || '');
     setPriorityTier(row.priority_tier ?? (row.is_priority ? 0 : null));
   }, [row.id, row.tracking_number, row.is_priority, row.priority_tier]);
 
@@ -567,10 +575,11 @@ export function useReceivingLineCore(
   const poNumber = (row.zoho_purchaseorder_number || row.zoho_purchaseorder_id || '').trim();
   // Listing link: an explicit pasted URL wins; otherwise derive from catalog
   // platform rows + storefront search by SKU (collectCartonListingLinks).
+  // Zoho PO: never invent a usavshop/Ecwid URL from the inventory SKU.
   const listingOpenHref =
     listingLinks[0]?.href ??
     (listingUrlForOpen(listingLink) ||
-      (isUnmatched ? null : getExternalUrlByItemNumber(row.sku)));
+      (isUnmatched || isZohoPo ? null : getExternalUrlByItemNumber(row.sku)));
   const poOpenHref = (() => {
     const id = (row.zoho_purchaseorder_id || '').trim();
     if (id) return `https://inventory.zoho.com/app#/purchaseorders/${encodeURIComponent(id)}`;

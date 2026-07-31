@@ -55,7 +55,12 @@ function ReceiveInlineProgress({ startedAt, intent }: ReceiveInFlight) {
     }, 250);
     return () => window.clearInterval(t);
   }, [startedAt]);
-  const label = intent === 'scan_only' ? 'Marking as scanned…' : 'Receiving…';
+  const label =
+    intent === 'unreceive'
+      ? 'Unreceiving…'
+      : intent === 'scan_only'
+        ? 'Marking as scanned…'
+        : 'Receiving…';
   return (
     <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2.5">
       <div className="flex items-center justify-between">
@@ -112,6 +117,18 @@ function buildView(summary: ReceiveSummary, failed: boolean): ChecklistView {
       tone: 'emerald',
       headline: 'Already received in inventory',
       items: ['Local state now matches the dashboard'],
+    };
+  }
+  if (summary.intent === 'unreceive') {
+    return {
+      tone: 'emerald',
+      headline: 'Unreceived',
+      items: ['Cleared received quantities', 'Marked as scanned locally'],
+      note: summary.isUnfound
+        ? 'Local receive undone — inventory was not updated.'
+        : summary.localOnly
+          ? 'Local receive undone — no inventory PO linked.'
+          : 'Inventory PO marked unreceived in the background.',
     };
   }
   if (summary.intent === 'scan_only' || summary.localOnly) {
@@ -194,7 +211,7 @@ function ReceiveSuccessChecklist({
   // Key/value rows for the details dropdown — show real note/description text
   // when present; omit internal ids (receiving / line ids).
   const detailRows: Array<[string, string]> = [
-    ['Intent', result.summary.intent === 'scan_only' ? 'Scan only (local)' : result.summary.intent === 'local_receive' ? 'Received locally' : 'Inventory receive'],
+    ['Intent', result.summary.intent === 'unreceive' ? 'Unreceive' : result.summary.intent === 'scan_only' ? 'Scan only (local)' : result.summary.intent === 'local_receive' ? 'Received locally' : 'Inventory receive'],
     ...(result.summary.itemDescription
       ? [['Item description', result.summary.itemDescription] as [string, string]]
       : []),
