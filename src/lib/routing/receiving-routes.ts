@@ -87,6 +87,21 @@ export const UNBOX_ROUTE_PARAMS = defineRouteParams({
     claimView: paramFlag,
     /** Claim wizard tab when claimView is on — omit / create = New ticket; link = Link existing. */
     claimMode: paramEnum(['create', 'link'] as const),
+    /**
+     * Unbox Displays push column — which side display is open. Absence IS
+     * closed (no separate flag). Mutually exclusive with ticketView / claimView.
+     * NOT `unboxview`, which is the queue/viewed BROWSE tab on this same route.
+     */
+    display: paramEnum([
+      'classify',
+      'listings',
+      'units',
+      'po-note',
+      'checklist',
+      'support',
+      'tracking',
+      'timeline',
+    ] as const),
     /** Server ORDER BY for the History tab (`UnboxWorkspaceHeader` reads + writes it). */
     sort: historySortParam(),
     /** Stock-image preview for the photo peek — no NAS captures needed. */

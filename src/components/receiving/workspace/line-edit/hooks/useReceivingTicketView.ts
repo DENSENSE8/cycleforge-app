@@ -16,10 +16,9 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { dispatchReceivingDetailsOverlayClose } from '@/utils/events';
+import { clearPeerRightEdgeParams } from '../unbox-right-edge';
 
 const TICKET_VIEW_PARAM = 'ticketView';
-const CLAIM_VIEW_PARAM = 'claimView';
-const CLAIM_MODE_PARAM = 'claimMode';
 
 /**
  * Pure decision for the clear-on-line-change effect. Clear the open ticket
@@ -59,9 +58,9 @@ export function useReceivingTicketView(currentLineId: number | null): ReceivingT
       const next = new URLSearchParams(searchParams.toString());
       if (on) {
         next.set(TICKET_VIEW_PARAM, '1');
-        // One right-edge secondary surface: drop Claim + suspend details.
-        next.delete(CLAIM_VIEW_PARAM);
-        next.delete(CLAIM_MODE_PARAM);
+        // One right-edge secondary surface: drop Claim + Displays in this SAME
+        // write (a sibling effect would race and lose) + suspend details.
+        clearPeerRightEdgeParams(next, 'ticket');
         dispatchReceivingDetailsOverlayClose();
       } else {
         next.delete(TICKET_VIEW_PARAM);

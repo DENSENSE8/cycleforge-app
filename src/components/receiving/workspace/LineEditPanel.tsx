@@ -12,8 +12,8 @@
  * {@link ReceivingDisplaysPushStack} — a peer of Ticket / Claim / tool push, not
  * a `RightRailHost` occupant (the occupant slot stays single-occupancy and
  * `detail:receiving` keeps the float host). The station's procedure is not in
- * the centre either: {@link UnboxProcedureRail} registers it into the rail's
- * ambient region so it survives opening Ticket, Claim or carton details.
+ * the centre either — it IS the Checklist display in that same column
+ * ({@link UnboxProcedureChecklist}).
  *
  * The bottom dock is **carton-terminal**: always Print · Receive. It does not
  * change with the Displays selection — a right-panel click re-labelling the
@@ -43,6 +43,7 @@ import { useSyncedPoNote } from './line-edit/hooks/useSyncedPoNote';
 import { useUnboxLineController } from './line-edit/hooks/useUnboxLineController';
 import { useReceivingTicketView } from './line-edit/hooks/useReceivingTicketView';
 import { useReceivingClaimView } from './line-edit/hooks/useReceivingClaimView';
+import { useUnboxDisplayView } from './line-edit/hooks/useUnboxDisplayView';
 import { clearUnboxPeerRightEdgeSurfaces } from './line-edit/unbox-right-edge';
 import {
   ReceivingPushExpandStrip,
@@ -67,7 +68,6 @@ import {
   patchReceivingRailTicketByCarton,
 } from '@/lib/queries/receiving-queries';
 import { activeReceivingStepKey } from './ReceivingProgressStepper';
-import { UnboxProcedureRail } from './UnboxProcedureRail';
 import {
   StationContextBar,
 } from '@/components/station/entity-context';
@@ -183,10 +183,11 @@ export function LineEditPanel({
     [photoCount, serialCount, row.serial_absent, perUnitAbsentCount, row.quantity_expected, labelPrinted],
   );
 
-  // Which right-edge display is showing. `null` = the Displays column is closed
-  // — one piece of state, so there is no "active tab while hidden" to keep in
-  // sync and nothing vestigial left behind by the strip removal.
-  const [requestedSideTab, setRequestedSideTab] = useState<UnboxSideTab | null>(null);
+  // Which right-edge display is showing, from `?display=`. `null` = the column
+  // is closed — one piece of state, URL-durable like its Ticket / Claim
+  // siblings, so a reload or a shared link lands on the same display.
+  const { requestedDisplay: requestedSideTab, setDisplay: setRequestedSideTab } =
+    useUnboxDisplayView(row.id ?? null);
   const [classifyExpand, setClassifyExpand] = useState<{
     dimension: 'urgency' | 'platform' | 'type';
     requestId: number;
@@ -241,21 +242,23 @@ export function LineEditPanel({
   const showDisplays =
     displaysOpen && !showClaimStack && !showTicketStack && !showToolPush;
 
-  const closeDisplays = useCallback(() => setRequestedSideTab(null), []);
+  const closeDisplays = useCallback(
+    () => setRequestedSideTab(null),
+    [setRequestedSideTab],
+  );
 
-  /** Open a display, clearing every peer right-edge surface first. */
+  /**
+   * Open a display. `setDisplay` already drops the Ticket / Claim params and
+   * suspends `detail:receiving` (it owns that half of the exclusion, same as
+   * `setClaimView` does), so only the tool push — controller state, not URL —
+   * is cleared here.
+   */
   const openDisplays = useCallback(
     (tab: UnboxSideTab) => {
-      clearUnboxPeerRightEdgeSurfaces({
-        setClaimView,
-        setTicketView,
-        claimView,
-        ticketView,
-      });
       c.closeToolPush();
       setRequestedSideTab(tab);
     },
-    [setClaimView, setTicketView, claimView, ticketView, c.closeToolPush],
+    [c.closeToolPush, setRequestedSideTab],
   );
 
   /** Identity-header classify face → open Classify with that picker expanded. */
@@ -284,31 +287,37 @@ export function LineEditPanel({
       ticketView,
     });
     setRequestedSideTab(null);
-  }, [c.movePhotosOpen, c.photoNoteOpen, c.auditOpen, setClaimView, setTicketView, claimView, ticketView]);
+  }, [
+    c.movePhotosOpen,
+    c.photoNoteOpen,
+    c.auditOpen,
+    setClaimView,
+    setTicketView,
+    claimView,
+    ticketView,
+    setRequestedSideTab,
+  ]);
 
+  // Claim / Ticket drop `?display=` inside their OWN url write
+  // (`clearPeerRightEdgeParams`), so these only close the tool push — controller
+  // state, not URL. Clearing the display here too would race that write from a
+  // stale `searchParams` snapshot and resurrect the param.
   const prevClaimViewRef = useRef(false);
   useEffect(() => {
-    if (claimView && !prevClaimViewRef.current) {
-      c.closeToolPush();
-      setRequestedSideTab(null);
-    }
+    if (claimView && !prevClaimViewRef.current) c.closeToolPush();
     prevClaimViewRef.current = claimView;
   }, [claimView, c.closeToolPush]);
 
   const prevTicketViewRef = useRef(false);
   useEffect(() => {
-    if (ticketView && !prevTicketViewRef.current) {
-      c.closeToolPush();
-      setRequestedSideTab(null);
-    }
+    if (ticketView && !prevTicketViewRef.current) c.closeToolPush();
     prevTicketViewRef.current = ticketView;
   }, [ticketView, c.closeToolPush]);
 
+  // Details overlay wins the edge: `useUnboxDisplayView` already drops
+  // `?display=` on this event, so the panel only has to close the tool push.
   useEffect(() => {
-    const handler = () => {
-      c.closeToolPush();
-      setRequestedSideTab(null);
-    };
+    const handler = () => c.closeToolPush();
     window.addEventListener('receiving-open-details-overlay', handler);
     return () => window.removeEventListener('receiving-open-details-overlay', handler);
   }, [c.closeToolPush]);
@@ -578,9 +587,6 @@ export function LineEditPanel({
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           <StationPanelRoot>
             <div className="relative flex min-h-0 flex-1 flex-col overflow-visible">
-              {/* Station procedure — pinned at the top of the right rail, not in
-                  the work surface. Renders nothing here; it registers. */}
-              <UnboxProcedureRail row={row} />
               {stationContextBar}
               <StationWorkbench
                 ambientWash={false}
