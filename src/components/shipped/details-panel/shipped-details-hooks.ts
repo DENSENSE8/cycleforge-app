@@ -186,10 +186,13 @@ export function useShippedDetailState(initialShipped: ShippedOrder, onUpdate: ()
 export interface UseShippedPanelViewStateOptions {
   initialShipped: ShippedOrder;
   /**
-   * When true (search deep-link / `?mode=search`), open on the Timeline tab so
-   * Item Journey is journey-first. Dashboard slide-over keeps `shipping`.
+   * The opening tab, resolved by the caller from the contextual SoT
+   * (`resolveOrderInspectorContext(...).defaultTab` in
+   * `@/lib/selection-context/order-inspector-context`) — Pending / fulfillment
+   * opens docs-first, the search deep-link opens journey-first, everything else
+   * keeps `shipping`. The hook does not re-decide it; one decider, one place.
    */
-  journeyFirst?: boolean;
+  defaultSection?: ShippedActiveSection;
 }
 
 /**
@@ -199,17 +202,17 @@ export interface UseShippedPanelViewStateOptions {
  */
 export function useShippedPanelViewState({
   initialShipped,
-  journeyFirst = false,
+  defaultSection = 'shipping',
 }: UseShippedPanelViewStateOptions) {
-  const defaultSection: ShippedActiveSection = journeyFirst ? 'timeline' : 'shipping';
   const [activeSection, setActiveSection] = useState<ShippedActiveSection>(defaultSection);
   const [activeInput, setActiveInput] = useState<ShippedActiveInput>('none');
 
-  // Reset to a sensible default when the underlying order changes (e.g. user
-  // navigates to a different order via the panel's up/down arrows).
+  // Reset to the context default when the underlying order changes (e.g. user
+  // navigates to a different order via the panel's up/down arrows). Pending
+  // re-opens on Documents per record — the question the lane exists to answer.
   useEffect(() => {
-    setActiveSection(journeyFirst ? 'timeline' : 'shipping');
-  }, [initialShipped.id, journeyFirst]);
+    setActiveSection(defaultSection);
+  }, [initialShipped.id, defaultSection]);
 
   useEffect(() => {
     setActiveInput('none');

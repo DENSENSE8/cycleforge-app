@@ -16,6 +16,11 @@ import { OrderWarrantySection } from '@/components/shipped/details-panel/OrderWa
 import { ThreadPanel } from '@/components/threads/ThreadPanel';
 import { DeleteOrderControl } from '@/components/shipped/stacks/DeleteOrderControl';
 import { ShippedPanelEditorDock } from '@/components/shipped/details-panel/ShippedPanelEditorDock';
+import { OrderStationHandoff } from '@/components/shipped/details-panel/OrderStationHandoff';
+import type {
+  OrderInspectorDocumentsMode,
+  OrderInspectorRecordCta,
+} from '@/lib/selection-context/order-inspector-context';
 
 export interface ShippedStackActionBar {
   onClose: () => void;
@@ -43,6 +48,14 @@ export interface ShippedDetailsBodyProps {
   context: NonNullable<'dashboard' | 'queue' | 'fulfillment' | 'labels' | 'staged' | 'shipped' | 'station' | 'packer'>;
   isFulfillmentPanel: boolean;
   isLabelsPanel: boolean;
+  /**
+   * Documents plane behaviour, resolved by the panel from
+   * `@/lib/selection-context/order-inspector-context` — `manage` is the full
+   * Labels tray, `preview` is read-only + the slide-over previewer.
+   */
+  documentsMode?: OrderInspectorDocumentsMode;
+  /** Record-plane hand-offs this context offers (deep-links, never mutations). */
+  recordCtas?: readonly OrderInspectorRecordCta[];
   showDashboardExtras: boolean;
   /** Slide-over: render Warranty/Customer quick-link rows instead of tabs. */
   showQuickLinks?: boolean;
@@ -77,6 +90,8 @@ export function ShippedDetailsBody({
   context,
   isFulfillmentPanel,
   isLabelsPanel,
+  documentsMode = isLabelsPanel ? 'manage' : 'preview',
+  recordCtas = [],
   showDashboardExtras,
   showQuickLinks,
   activeSection,
@@ -121,12 +136,17 @@ export function ShippedDetailsBody({
   const scrollContent = (() => {
     if (activeSection === 'documents' && shipped?.id) {
       return (
-        <div className="flex min-h-full flex-col pb-8 pt-4">
+        <div className="flex min-h-full flex-col gap-4 pb-8 pt-4">
           <OrderDocumentsSection
             orderId={Number(shipped.id)}
             orderRef={shipped.order_id || `order-${shipped.id}`}
-            readOnly={!isLabelsPanel}
+            readOnly={documentsMode !== 'manage'}
+            showPreview={documentsMode === 'preview'}
           />
+          {/* The pre-pack hand-off sits under the paperwork it gates: labels +
+              slip present → the order can move to Testing. One quiet deep-link,
+              not a CTA repeated per document. */}
+          <OrderStationHandoff order={shipped} ctas={recordCtas} />
         </div>
       );
     }

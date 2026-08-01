@@ -151,6 +151,19 @@ const DASHBOARD_ROUTE_PARAMS = defineRouteParams({
     /** Grid + inspector state. */
     open: paramPositiveInt,
     sort: paramText,
+    /**
+     * Direction for `sort`. MUST be declared wherever `sort` is — see the `dir`
+     * entry in `SHARED_OWNED_KEYS`, and the pairing guard in
+     * `param-ownership.guard.test.ts`.
+     *
+     * Omitting it made every Pending column sort permanently ASCENDING: the
+     * header click wrote `?sort=title&dir=desc`, this boundary parse stripped
+     * the undeclared `dir` on the very next pass, and `parseQueueDisplaySortDir`
+     * then resolved the missing param back to the column default. The URL and
+     * the header agreed — both said ascending — so nothing looked broken except
+     * that Z–A was unreachable.
+     */
+    dir: paramEnum(['asc', 'desc'] as const),
     rtab: paramText,
     type: paramText,
     dq: paramText,

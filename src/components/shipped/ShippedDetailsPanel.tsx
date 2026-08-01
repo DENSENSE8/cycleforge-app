@@ -26,6 +26,7 @@ import { ShippedPanelEditorDock } from './details-panel/ShippedPanelEditorDock';
 import { OrderIdentityHeader } from '@/components/order-record/OrderIdentityHeader';
 import { OrderRecordBody } from '@/components/order-record/OrderRecordBody';
 import { getAccountSourceLabel } from '@/utils/order-links';
+import { resolveOrderInspectorContext } from '@/lib/selection-context/order-inspector-context';
 
 export type { ShippedActiveInput };
 
@@ -53,14 +54,18 @@ export function ShippedDetailsPanel({
   const isOrderRecord = context === 'dashboard';
   const isFulfillmentPanel = context === 'queue' || context === 'fulfillment';
   const isLabelsPanel = context === 'labels';
-  const isStagedPanel = context === 'staged';
   // Dashboard-style contexts get the panel-action bar, the Customer tab, and the
   // shipping-label drop-zone (labels only).
   const showDashboardExtras = context === 'dashboard' || isFulfillmentPanel || isLabelsPanel;
-  // Outbound documents (label + slip) get their own tab wherever the tray used
-  // to render inline (docs/outbound-documents-plan.md §9.1/9.2) — full tray on
-  // labels, read-only on dashboard/fulfillment/staged.
-  const showDocumentsTab = showDashboardExtras || isStagedPanel;
+  /**
+   * Contextual SoT: which tab opens, whether Documents is a tab at all, whether
+   * that tray manages or only previews, and which record-plane hand-offs exist.
+   * Outbound documents (label + slip) get their own tab wherever the tray used
+   * to render inline (docs/outbound-documents-plan.md §9.1/9.2) — full tray on
+   * labels, read-only on dashboard/fulfillment/staged.
+   */
+  const inspectorContext = resolveOrderInspectorContext({ panelContext: context });
+  const showDocumentsTab = inspectorContext.showDocumentsTab;
 
   const [durationData] = useState<DetailsStackDurationData>({});
 
@@ -96,7 +101,10 @@ export function ShippedDetailsPanel({
     setActiveSection,
     activeInput,
     setActiveInput,
-  } = useShippedPanelViewState({ initialShipped });
+  } = useShippedPanelViewState({
+    initialShipped,
+    defaultSection: inspectorContext.defaultTab,
+  });
 
   const { copiedAll, copiedOrderId, handleCopyAll, handleCopyOrderId } = useShippedCopyActions(
     shipped,
@@ -296,6 +304,8 @@ export function ShippedDetailsPanel({
           context={context}
           isFulfillmentPanel={isFulfillmentPanel}
           isLabelsPanel={isLabelsPanel}
+          documentsMode={inspectorContext.documentsMode}
+          recordCtas={inspectorContext.recordCtas}
           showDashboardExtras={showDashboardExtras}
           showQuickLinks
           activeSection={activeSection}

@@ -226,8 +226,18 @@ The collection map is stable; only the **focus surface** moves.
 
 **House pattern (the fix): pinned chrome OUTSIDE the scroll port.** The single always-visible top bar (lifecycle tabs + filters) renders in a non-scrolling slot **above** the `overflow-y-auto` body; the body then has exactly one sticky layer — the day-band `DateGroupHeader`s at `top-0` — which docks directly under the chrome with **no offset math**.
 
-- Reference: `DashboardScrollShell`'s `chrome` prop (`src/components/dashboard/DashboardScrollShell.tsx`) — the chrome slot owns the `z-header` band as a non-scrolling sibling; `DashboardOrdersView` / `ShippingWorkspaceView` pass the workspace header there and keep the KPI strip **inside** the body so it scrolls away.
-- Anything that must scroll away (KPI strips, banners) belongs in the body, never the chrome.
+- Reference: `DashboardScrollShell`'s `chrome` prop (`src/components/dashboard/DashboardScrollShell.tsx`) — the chrome slot owns the `z-header` band as a non-scrolling sibling; `DashboardOrdersView` / `ShippingWorkspaceView` pass the workspace header there and keep the KPI strip **inside** the body.
+- Anything that is not always-visible chrome (KPI strips, banners) belongs in the body, never the chrome.
+- **In the body ≠ scrolls away.** On a lane whose table is a **bounded host**
+  (`workbenchTableViewportClass` → `h-[calc(100dvh-13rem)]`), the grid owns Y
+  scroll internally, so the body never grows with row count and an in-body KPI
+  strip effectively stays put. That is deliberate — an unbounded card grows past
+  the fold and loses the bottom edge that sells its elevation
+  (`WORKBENCH_TABLE_VIEWPORT` docblock). Do not "fix" a KPI that does not scroll
+  away on such a lane; the sticky layers that matter there live inside the
+  **grid's** port (column header at `top-0`, day bands), not the page's.
+  Pinned by `to-ship-pending-grid.spec.ts` → "the bounded host keeps the KPI
+  pinned and the card fully on screen".
 - Only reach for a **measured** offset (ResizeObserver → CSS var per layer) if a port genuinely needs 3+ dynamic-height sticky bars — the two-zone shell removes the need in every current surface. A fixed px offset is never the answer.
 - z bands stay from the SoT (`src/design-system/tokens/z-index.ts`): chrome/top bar = `z-header`, in-body pins = `z-raised`/`z-sticky`. Never hardcode `z-[NNN]`.
 

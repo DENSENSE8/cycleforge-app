@@ -1,13 +1,21 @@
 'use client';
 
 import Link from 'next/link';
-import { useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { FileText, Trash2, Loader2, ExternalLink, RefreshCw } from '@/components/Icons';
 import { buildNasLabelUrl, putNasPhoto, deleteNasPhoto } from '@/lib/nas-photos';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { IconButton } from '@/design-system/primitives';
+import { Button, IconButton } from '@/design-system/primitives';
 import { BuyLabelSection } from '@/components/outbound/labels/BuyLabelSection';
+import {
+  DocumentSlideOver,
+  type DocumentSlideItem,
+} from '@/design-system/components/DocumentSlideOver';
+import {
+  outboundDocumentContentSrc,
+  outboundDocumentMimeHint,
+} from '@/lib/documents/outbound-document-display';
 import type {
   FetchOutboundDocumentsResponse,
   OutboundDocument,
@@ -120,7 +128,7 @@ function DocumentTypeGroup({
   };
 
   return (
-    <div>
+    <div data-testid={`order-doc-${documentType.replace(/_/g, '-')}`}>
       <div className="mb-2 flex items-center justify-between">
         <h3 className="text-role-eyebrow uppercase tracking-wider text-text-soft">{title}</h3>
         {!readOnly ? (
@@ -246,6 +254,16 @@ export interface OrderDocumentsSectionProps {
   /** Dashboard/fulfillment/staged contexts show a read-only tray — no drop
    * zone, fetch button, or delete (docs/outbound-documents-plan.md §9.2). */
   readOnly?: boolean;
+  /**
+   * Mount the preview affordance — a Preview control that opens the shared
+   * `DocumentSlideOver` (label ⇄ slip switcher + PDF/image frame).
+   *
+   * This is the read-only surfaces' answer to "is the paperwork actually
+   * there": the tray lists filenames, the slide-over shows the document. The
+   * Labels station manages documents instead, and reaches the same previewer
+   * from its own Print tab.
+   */
+  showPreview?: boolean;
 }
 
 /**
@@ -255,9 +273,16 @@ export interface OrderDocumentsSectionProps {
  * fetch (Phase 4 stub today; the button + retry-on-error affordance is wired
  * ahead of the real adapters).
  */
-export function OrderDocumentsSection({ orderId, orderRef, readOnly = false }: OrderDocumentsSectionProps) {
+export function OrderDocumentsSection({
+  orderId,
+  orderRef,
+  readOnly = false,
+  showPreview = false,
+}: OrderDocumentsSectionProps) {
   const queryClient = useQueryClient();
   const queryKey = ['order-documents', orderId];
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewActiveId, setPreviewActiveId] = useState<string>('shipping_label');
 
   const { data, isLoading } = useQuery({
     queryKey,
@@ -274,6 +299,33 @@ export function OrderDocumentsSection({ orderId, orderRef, readOnly = false }: O
   const labels = documents.filter((d) => d.documentType === 'shipping_label');
   const slips = documents.filter((d) => d.documentType === 'packing_slip');
 
+  // Every type is always listed in the switcher — an EMPTY type is a fact the
+  // operator needs ("no slip yet"), not a row to hide.
+  const previewItems = useMemo((): DocumentSlideItem[] => {
+    const label = labels[0];
+    const slip = slips[0];
+    return [
+      {
+        id: 'shipping_label',
+        title: 'Shipping Label',
+        src: outboundDocumentContentSrc(label),
+        mimeHint: outboundDocumentMimeHint(label),
+        count: label ? labels.length : undefined,
+        loading: isLoading,
+        emptyHint: 'Buy or fetch one from the Labels station',
+      },
+      {
+        id: 'packing_slip',
+        title: 'Packing Slip',
+        src: outboundDocumentContentSrc(slip),
+        mimeHint: outboundDocumentMimeHint(slip),
+        count: slip ? slips.length : undefined,
+        loading: isLoading,
+        emptyHint: 'Fetch one from the Labels station',
+      },
+    ];
+  }, [labels, slips, isLoading]);
+
   const onChange = () => {
     queryClient.invalidateQueries({ queryKey });
     queryClient.invalidateQueries({ queryKey: ['order-timeline', orderId] });
@@ -281,8 +333,22 @@ export function OrderDocumentsSection({ orderId, orderRef, readOnly = false }: O
   };
 
   return (
-    <section className="mx-8 space-y-5">
-      <div className="flex items-center justify-end">
+    <section className="mx-8 space-y-5" data-testid="order-documents-section">
+      <div className="flex items-center justify-end gap-3">
+        {showPreview ? (
+          <Button
+            variant="secondary"
+            size="sm"
+            icon={<FileText className="h-4 w-4" />}
+            onClick={() => {
+              setPreviewActiveId(labels.length > 0 || slips.length === 0 ? 'shipping_label' : 'packing_slip');
+              setPreviewOpen(true);
+            }}
+            data-testid="order-documents-preview"
+          >
+            Preview
+          </Button>
+        ) : null}
         <Link
           href={`/ops/photos?sourceScope=outbound&poRef=${encodeURIComponent(orderRef)}`}
           className="text-role-caption font-semibold text-blue-600 hover:text-blue-800"
@@ -319,6 +385,19 @@ export function OrderDocumentsSection({ orderId, orderRef, readOnly = false }: O
         isLoading={isLoading}
         onChange={onChange}
       />
+
+      {showPreview ? (
+        <DocumentSlideOver
+          open={previewOpen}
+          onClose={() => setPreviewOpen(false)}
+          title="Order documents"
+          items={previewItems}
+          activeId={previewActiveId}
+          onActiveIdChange={setPreviewActiveId}
+          storageKey="order-documents-preview-width"
+          aria-label="Order documents preview"
+        />
+      ) : null}
     </section>
   );
 }

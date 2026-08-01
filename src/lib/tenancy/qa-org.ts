@@ -42,9 +42,30 @@ export const QA_FIXTURE_PO_NUMBER = 'QA-PO-MOCK-001';
 export const QA_FIXTURE_ORDERS = {
   awaiting: 'QA-TEST-UNSHIP-AWAIT',
   pending: 'QA-TEST-UNSHIP-PENDING',
+  /**
+   * A SECOND tracked pending order. The Pending lane filters out rows with no
+   * tracking, so `awaiting` never reaches the grid — which left every
+   * record→record spec (keyboard `j`/`k` swap, click-through past the inspector)
+   * with `test.skip('needs at least two pending rows')`, i.e. permanently
+   * unrun. Two tracked rows is the minimum that lane's contract needs.
+   */
+  pendingSecond: 'QA-TEST-UNSHIP-PENDING-2',
+  /** Third tracked pending row — the keyboard specs need to focus a row that is
+   *  neither the first nor the second to prove they open THAT row. */
+  pendingThird: 'QA-TEST-UNSHIP-PENDING-3',
+  /**
+   * A PACKED order — tracking + a PACK station-activity row, no SHIP_CONFIRM,
+   * which is exactly the `?stagedOnly=true` predicate the Packed lane queries.
+   * Without it `/dashboard?packed` is empty on the QA org and every post-pack
+   * assertion (lifecycle-scoped bulk actions) failed on an unrendered grid.
+   */
+  packed: 'QA-TEST-PACKED',
 } as const;
 
 export const QA_FIXTURE_TRACKING_PENDING = '9400100000000000000199';
+export const QA_FIXTURE_TRACKING_PENDING_SECOND = '9400100000000000000205';
+export const QA_FIXTURE_TRACKING_PENDING_THIRD = '9400100000000000000229';
+export const QA_FIXTURE_TRACKING_PACKED = '9400100000000000000212';
 
 export interface QaStationStaffSeed {
   name: string;

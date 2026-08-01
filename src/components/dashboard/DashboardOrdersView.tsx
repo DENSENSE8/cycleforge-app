@@ -86,8 +86,11 @@ export function DashboardOrdersView({
         ) : undefined
       }
     >
-      {/* Scroll body: KPI strip scrolls away above the list; the list's day
-          headers are the only sticky layer left inside the port. */}
+      {/* Scroll body: KPI strip above the list. The strip STAYS — the table
+          below is bounded (`workbenchTableViewportClass`) and owns Y scroll
+          internally, so this body never grows with row count and the strip
+          never slides under the chrome. Sticky layers live inside the grid's
+          own port (column header at top-0, day-band headers), not here. */}
       <div className={showOutboundChrome ? WORKBENCH_BODY_COLUMN : 'relative flex min-w-0 flex-col'}>
         {showOutboundChrome ? (
           <div className="mb-4">

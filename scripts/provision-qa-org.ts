@@ -34,7 +34,10 @@ import {
   QA_FIXTURE_PO_NUMBER,
   QA_FIXTURE_SKUS,
   QA_FIXTURE_TRACKING,
+  QA_FIXTURE_TRACKING_PACKED,
   QA_FIXTURE_TRACKING_PENDING,
+  QA_FIXTURE_TRACKING_PENDING_SECOND,
+  QA_FIXTURE_TRACKING_PENDING_THIRD,
   QA_ORG_ID,
   QA_ORG_NAME,
   QA_ORG_SLUG,
@@ -330,12 +333,24 @@ async function seedOrderFixtures(client: PoolClient, orgId: string) {
     'QA — Unshipped PENDING (tracking assigned)',
     QA_FIXTURE_SKUS.earbuds,
   );
+  // The Pending lane drops rows with no tracking, so `awaiting` never reaches
+  // the grid. Without a SECOND tracked order every record→record spec skipped
+  // itself — a hidden coverage gap, not a passing suite.
+  const pendingSecondId = await createFixtureOrder(
+    client,
+    orgId,
+    QA_FIXTURE_ORDERS.pendingSecond,
+    'QA — Unshipped PENDING #2 (record→record navigation)',
+    QA_FIXTURE_SKUS.speaker,
+  );
 
-  const norm = normalizeTrackingNumber(QA_FIXTURE_TRACKING_PENDING);
-  const carrier = detectCarrier(norm);
-  if (!carrier) {
-    console.warn(`  ⚠ carrier detection failed for ${QA_FIXTURE_TRACKING_PENDING} — skipping tracking assign`);
-  } else {
+  /** Attach a tracking number to one fixture order (idempotent). */
+  const assignTracking = async (orderRowId: number, tracking: string) => {
+    const norm = normalizeTrackingNumber(tracking);
+    if (!detectCarrier(norm)) {
+      console.warn(`  ⚠ carrier detection failed for ${tracking} — skipping tracking assign`);
+      return;
+    }
     const existingStn = await client.query<{ id: number }>(
       `SELECT id FROM shipping_tracking_numbers WHERE tracking_number_normalized = $1 LIMIT 1`,
       [norm],
@@ -343,13 +358,65 @@ async function seedOrderFixtures(client: PoolClient, orgId: string) {
     if (existingStn.rows[0]) {
       await client.query(`UPDATE orders SET shipment_id = $1 WHERE id = $2`, [
         Number(existingStn.rows[0].id),
-        pendingId,
+        orderRowId,
       ]);
     }
-    await upsertOrderTracking([pendingId], QA_FIXTURE_TRACKING_PENDING, client, orgId);
+    await upsertOrderTracking([orderRowId], tracking, client, orgId);
+  };
+
+  const pendingThirdId = await createFixtureOrder(
+    client,
+    orgId,
+    QA_FIXTURE_ORDERS.pendingThird,
+    'QA — Unshipped PENDING #3 (focus-a-middle-row keyboard specs)',
+    QA_FIXTURE_SKUS.earbuds,
+  );
+  const packedId = await createFixtureOrder(
+    client,
+    orgId,
+    QA_FIXTURE_ORDERS.packed,
+    'QA — PACKED (staged for the dock)',
+    QA_FIXTURE_SKUS.earbuds,
+  );
+
+  await assignTracking(pendingId, QA_FIXTURE_TRACKING_PENDING);
+  await assignTracking(pendingSecondId, QA_FIXTURE_TRACKING_PENDING_SECOND);
+  await assignTracking(pendingThirdId, QA_FIXTURE_TRACKING_PENDING_THIRD);
+  await assignTracking(packedId, QA_FIXTURE_TRACKING_PACKED);
+
+  // The Packed lane is `?stagedOnly=true`: a PACK activity on the order's
+  // shipment and NO SHIP_CONFIRM. Stamp the pack fact so the lane is non-empty.
+  const packedShipment = await client.query<{ shipment_id: string | null }>(
+    `SELECT shipment_id FROM orders WHERE id = $1`,
+    [packedId],
+  );
+  const packedShipmentId = packedShipment.rows[0]?.shipment_id;
+  if (!packedShipmentId) {
+    console.warn('  ⚠ packed fixture has no shipment_id — Packed lane will stay empty');
+  } else {
+    await client.query(
+      `INSERT INTO station_activity_logs
+         (organization_id, station, activity_type, shipment_id, scan_ref, notes)
+       SELECT $1, 'packing', 'PACK_COMPLETED', $2, $3, 'QA fixture'
+       WHERE NOT EXISTS (
+         SELECT 1 FROM station_activity_logs
+         WHERE organization_id = $1 AND shipment_id = $2 AND activity_type = 'PACK_COMPLETED'
+       )`,
+      [orgId, Number(packedShipmentId), QA_FIXTURE_TRACKING_PACKED],
+    );
+    // Idempotent re-provision must not leave the order scanned out, or it moves
+    // to the Shipped lane and the Packed lane is empty again.
+    await client.query(
+      `DELETE FROM station_activity_logs
+       WHERE organization_id = $1 AND shipment_id = $2 AND activity_type = 'SHIP_CONFIRM'`,
+      [orgId, Number(packedShipmentId)],
+    );
   }
 
-  log('Order fixtures', `awaiting id=${awaitId}, pending id=${pendingId}`);
+  log(
+    'Order fixtures',
+    `awaiting id=${awaitId}, pending id=${pendingId}, pending#2 id=${pendingSecondId}, pending#3 id=${pendingThirdId}, packed id=${packedId}`,
+  );
 }
 
 async function seedFixtures(pool: Pool, orgId: string) {
