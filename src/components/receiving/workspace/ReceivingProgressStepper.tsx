@@ -102,7 +102,12 @@ export function LinearWorkflowStepper({
   );
 }
 
-function StepDot({
+/**
+ * The done / active / pending marker. Exported so the capture stack's step rows
+ * wear the SAME marker as the dot bar — two markers for one step vocabulary is
+ * how the two surfaces would start disagreeing about "you are here".
+ */
+export function StepDot({
   state,
   index,
   compact = false,
