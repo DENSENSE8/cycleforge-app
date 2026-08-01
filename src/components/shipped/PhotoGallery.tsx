@@ -5,6 +5,7 @@ import { useUIModeOptional } from '@/design-system/providers/UIModeProvider';
 import { MobileSwipePhotoViewer, type SwipePhotoSlide } from '@/components/mobile/station/MobileSwipePhotoViewer';
 import { Image as ImageIcon, Upload } from '../Icons';
 import { Button } from '@/design-system/primitives';
+import { cn } from '@/utils/_cn';
 import { usePhotoGallery, type PhotoGalleryProps } from './photo-gallery/usePhotoGallery';
 import { PhotoLauncher } from './photo-gallery/PhotoLauncher';
 import { PhotoViewerPortal } from './photo-gallery/PhotoViewerPortal';
@@ -42,7 +43,7 @@ export function PhotoGallery(props: PhotoGalleryProps) {
   );
 
   const movePhotosModal =
-    g.canReassignCurrent && g.receivingId != null ? (
+    !props.onOpenMovePhotosExternal && g.canReassignCurrent && g.receivingId != null ? (
       <MovePhotosBetweenPoModal
         key={g.movePhotosKey}
         open={g.movePhotosOpen}
@@ -69,7 +70,13 @@ export function PhotoGallery(props: PhotoGalleryProps) {
   if (g.photoItems.length === 0 && g.launcherLayout !== 'toolbar') {
     if (!g.canUpload) {
       return (
-        <div className={`w-full bg-surface-canvas border border-border-soft rounded-xl px-4 py-3 ${g.className}`}>
+        <div
+          className={cn(
+            'w-full rounded-xl border border-border-soft px-4 py-3',
+            g.launcherTone === 'neutral' ? 'bg-surface-card' : 'bg-surface-canvas',
+            g.className,
+          )}
+        >
           <div className="flex items-center justify-center gap-2 text-text-soft">
             <ImageIcon className="h-4 w-4" />
             <span className="text-xs font-semibold">No photos available</span>

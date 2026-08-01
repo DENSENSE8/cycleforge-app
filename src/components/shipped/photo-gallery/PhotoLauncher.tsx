@@ -64,14 +64,18 @@ export function PhotoLauncher({ g }: { g: PhotoGalleryController }) {
         disabled: !hasPhotos,
         onSelect: () => g.openViewer(0),
       },
-      {
-        id: 'details',
-        label: 'Details',
-        icon: <Info />,
-        disabled: !hasPhotos,
-        onSelect: () => g.openViewer(0, { details: true }),
-      },
     ];
+
+    if (g.libraryHref) {
+      const href = g.libraryHref;
+      items.push({
+        id: 'media',
+        label: 'Media',
+        tone: 'accent',
+        icon: <ExternalLink />,
+        onSelect: () => window.open(href, '_blank', 'noopener,noreferrer'),
+      });
+    }
 
     if (g.canUpload) {
       items.push({
@@ -112,16 +116,13 @@ export function PhotoLauncher({ g }: { g: PhotoGalleryController }) {
       });
     }
 
-    if (g.libraryHref) {
-      const href = g.libraryHref;
-      items.push({
-        id: 'media',
-        label: 'Media',
-        tone: 'accent',
-        icon: <ExternalLink />,
-        onSelect: () => window.open(href, '_blank', 'noopener,noreferrer'),
-      });
-    }
+    items.push({
+      id: 'details',
+      label: 'Details',
+      icon: <Info />,
+      disabled: !hasPhotos,
+      onSelect: () => g.openViewer(0, { details: true }),
+    });
 
     const panel = (
       <CopyChipHoverMenuPanel
@@ -177,17 +178,23 @@ export function PhotoLauncher({ g }: { g: PhotoGalleryController }) {
     <button
       type="button"
       onClick={() => g.openViewer(0)}
-      className={`w-full bg-gradient-to-r from-blue-50 to-blue-100/50 hover:from-blue-100 hover:to-blue-100 border border-blue-200 hover:border-blue-300 rounded-xl px-4 py-3 transition-all active:scale-[0.98] group ${className}`}
+      className={cn(
+        'group w-full rounded-xl px-4 py-3 transition-all active:scale-[0.98]',
+        g.launcherTone === 'neutral'
+          ? 'border border-border-soft bg-surface-card hover:border-border-default hover:bg-surface-hover'
+          : 'border border-blue-200 bg-gradient-to-r from-blue-50 to-blue-100/50 hover:border-blue-300 hover:from-blue-100 hover:to-blue-100',
+        className,
+      )}
     >
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="h-10 w-10 bg-blue-500 rounded-lg flex items-center justify-center shadow-sm">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-500 shadow-sm">
             <ImageIcon className="h-5 w-5 text-white" />
           </div>
           <div className="flex flex-col items-start">
             <span className="text-sm font-semibold text-text-default">{g.launcherTitle}</span>
-            <div className="flex items-center gap-2 mt-0.5">
-              <span className="text-role-micro text-blue-600 uppercase tracking-wider">
+            <div className="mt-0.5 flex items-center gap-2">
+              <span className="text-role-micro uppercase tracking-wider text-blue-600">
                 {photoItems.length} {photoItems.length === 1 ? 'Photo' : 'Photos'}
               </span>
               {loadedCount < photoItems.length && errorCount === 0 && (
@@ -197,7 +204,12 @@ export function PhotoLauncher({ g }: { g: PhotoGalleryController }) {
             </div>
           </div>
         </div>
-        <ChevronRight className="h-5 w-5 text-blue-600 group-hover:translate-x-1 transition-transform" />
+        <ChevronRight
+          className={cn(
+            'h-5 w-5 transition-transform group-hover:translate-x-1',
+            g.launcherTone === 'neutral' ? 'text-text-soft' : 'text-blue-600',
+          )}
+        />
       </div>
     </button>
   );

@@ -73,6 +73,7 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
   poRouteRef = null,
   galleryPlacement = 'below',
   onSendToTicket,
+  onOpenMovePhotosExternal,
 }: {
   receivingId: number;
   staffId: number;
@@ -109,6 +110,8 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
   galleryPlacement?: 'below' | 'above';
   /** Opens SendPhotoNoteModal — ticket icon in the photo dropdown toolbar. */
   onSendToTicket?: () => void;
+  /** Unbox: open Move photos in the station tool push instead of a center overlay. */
+  onOpenMovePhotosExternal?: () => void;
 }) {
   const { getClient } = useAblyClient();
   const { user } = useAuth();
@@ -349,6 +352,7 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
             onPhotoUploaded={() => refresh()}
             onUploadOverlayOpenChange={setGalleryUploadPinned}
             onMovePhotosOpenChange={setGalleryMovePinned}
+            onOpenMovePhotosExternal={onOpenMovePhotosExternal}
             onSendToTicket={onSendToTicket}
           />
         </div>

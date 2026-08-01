@@ -30,6 +30,8 @@ interface ReceivingPhotosSectionProps {
   launcherTitle?: string;
   /** Look-up / carton-read: view only — no upload, delete, or PO reassign. */
   readOnly?: boolean;
+  /** Omit the Camera + sectionTitle row (launcher card carries the label). */
+  hideHeader?: boolean;
 }
 
 export function ReceivingPhotosSection({
@@ -39,6 +41,7 @@ export function ReceivingPhotosSection({
   sectionTitle = 'Receiving photos',
   launcherTitle = 'View Receiving Photos',
   readOnly = false,
+  hideHeader = false,
 }: ReceivingPhotosSectionProps) {
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -97,14 +100,16 @@ export function ReceivingPhotosSection({
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Camera className="h-4 w-4 text-text-muted" aria-hidden />
-          <h3 className="text-role-caption font-semibold uppercase tracking-widest text-text-default">
-            {sectionTitle}
-          </h3>
+      {hideHeader ? null : (
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Camera className="h-4 w-4 text-text-muted" aria-hidden />
+            <h3 className="text-role-caption font-semibold uppercase tracking-widest text-text-default">
+              {sectionTitle}
+            </h3>
+          </div>
         </div>
-      </div>
+      )}
 
       {photosError ? (
         <p className="text-role-caption text-text-danger">Photos unavailable</p>
@@ -121,7 +126,7 @@ export function ReceivingPhotosSection({
           orderId={downloadLabel ?? `recv-${receivingId}`}
           launcherTitle={readOnly ? (launcherTitle === 'View Receiving Photos' ? 'Photos' : launcherTitle) : launcherTitle}
           {...(readOnly
-            ? {}
+            ? { launcherTone: 'neutral' as const }
             : {
                 receivingId: Number(receivingId),
                 allowReassign: true,

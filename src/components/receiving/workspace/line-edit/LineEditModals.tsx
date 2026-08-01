@@ -1,9 +1,10 @@
 'use client';
 
 /**
- * Page-level modals for the LineEditPanel: carton audit log, photo note, move
- * photos. Claim opens as the Unbox push column (`ReceivingClaimStack`) — not
- * here.
+ * Page-level modals for non-Unbox hosts (Testing panel).
+ *
+ * Unbox mounts Move photos / Send photo note / Audit in
+ * {@link ReceivingToolPushStack} instead — see LineEditPanel.
  */
 
 import { ReceivingAuditModal } from '../ReceivingAuditModal';
@@ -17,6 +18,7 @@ interface LineEditModalsProps {
   c: UnboxLineController;
 }
 
+/** Overlay shells for Testing (and any host that still uses centered modals). */
 export function LineEditModals({ row, c }: LineEditModalsProps) {
   return (
     <>
