@@ -20,9 +20,6 @@ const REQUIRED_BOTH = [
   'src/components/station/ActiveOrderScanFeedback.tsx',
   'src/components/station/StationPacking.tsx',
   'src/components/station/OfflineBanner.tsx',
-  'src/components/station/upnext/UpNextOrderPieces.tsx',
-  'src/components/station/upnext/RepairCard.tsx',
-  'src/components/station/upnext/FbaItemCard.tsx',
 ] as const;
 
 /** Transition-only surfaces (progress bars, width anims). */

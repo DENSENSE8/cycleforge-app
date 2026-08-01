@@ -1,5 +1,5 @@
 /**
- * Receiving + Incoming sticky headers must compose LedgerGridColumnHeader —
+ * Receiving + Incoming + Pickup sticky headers must compose LedgerGridColumnHeader —
  * never re-fork the select-all / sort / frozen / tip recipe.
  */
 import assert from 'node:assert/strict';
@@ -13,6 +13,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../.
 const ADAPTERS = [
   'src/components/station/receiving-grid/ReceivingGridColumnHeader.tsx',
   'src/components/station/incoming-grid/IncomingGridColumnHeader.tsx',
+  'src/components/receiving/pickup/grid/PickupGridColumnHeader.tsx',
 ] as const;
 
 describe('LedgerGridColumnHeader composition', () => {

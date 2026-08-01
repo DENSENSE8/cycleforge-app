@@ -201,16 +201,26 @@ If a facet has no SoT yet, **add or extend one** (pattern evolution) — do not 
   what a scrim would hide. Reserve modal for surfaces that genuinely block until dismissed.
   Occupants that already float non-modally: dashboard order inspector (`detail:order`),
   receiving details (`detail:receiving`, keep `elevated` so the card clears Unbox
-  `z-panel` workspace overlays — elevated z without the scrim). Receiving details
+  `z-panel` workspace overlays — elevated z without the scrim), **intake / import
+  planes** (`detail:new-order`, `detail:incoming-import-ebay`, `detail:order-sync`,
+  `detail:incoming-sync` — same non-modal metric; Import popovers stay triggers
+  only). Receiving details
   also pass `closeOnOutsideClick` so an invisible dismiss layer restores click-off
-  close without darkening; dashboard leaves that flag off so the grid stays live.
-  **Unbox Ticket** and **Unbox Claim** are not RightRailHost occupants — they are
-  station-scoped **right-edge push** columns (`ReceivingTicketStack` /
-  `ReceivingClaimStack`) that reuse detail-stack **surface** tokens
-  (`DETAIL_STACK_ASIDE_SURFACE` / rounded inset card) while squeezing the Unbox
-  workbench in-flow. **One right-edge secondary surface at a time:** Ticket
-  (`?ticketView=1`), Claim (`?claimView=1`), and `detail:receiving` are mutually
-  exclusive — opening any one clears/suspends the others; do not nest them as peers.- **Do not "fix" a non-modal occupant by adding a focus trap.** The host has never
+  close without darkening; dashboard / intake leave that flag off so the grid stays live.
+  **Unbox Displays, Ticket, Claim and tool** are not RightRailHost occupants —
+  they are station-scoped **right-edge push** columns that all compose the one
+  shared shell `UnboxPushColumn` (`ReceivingDisplaysPushStack` /
+  `ReceivingTicketStack` / `ReceivingClaimStack` / `ReceivingToolPushStack`),
+  reusing detail-stack **surface** tokens (`DETAIL_STACK_ASIDE_SURFACE` /
+  rounded inset card) while squeezing the Unbox workbench in-flow. A fifth
+  hand-rolled aside is a fork — compose the shell.
+  **One right-edge secondary surface at a time:** Displays, Ticket
+  (`?ticketView=1`), Claim (`?claimView=1`), the tool push, and
+  `detail:receiving` are mutually exclusive — opening any one clears/suspends
+  the others; do not nest them as peers. Displays is **lowest precedence**: an
+  exception surface (Claim / Ticket) or a just-launched tool outranks reference
+  reading. When none is open, the parked `ReceivingPushExpandStrip` restores
+  them.- **Do not "fix" a non-modal occupant by adding a focus trap.** The host has never
   installed one, so `aria-modal="true"` was a claim the DOM did not honor; non-modal
   markup is the honest form.
 - **Non-modal occupants are resizable + collapsible** via `DETAIL_STACK_RESIZE` /

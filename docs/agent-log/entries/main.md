@@ -528,3 +528,11 @@
 - `2026-07-31T03:05:46.438Z` · **main** · main · agent · Hybrid spine: Stock Vercel drill-in; Stations/Main stay static nests; Gemini briefing — done
 - `2026-07-31T03:56:31.499Z` · **main** · main · agent · Unbox Ticket: denser embedded SupportTicketDetail type + in-flow push column (detail-stack surface); left RightRailHost — done
 - `2026-07-31T04:14:25.081Z` · **main** · main · agent · Pin Unbox More details to pane outer host so Ticket push does not slide icons left — done
+- `2026-08-01T03:37:29.025Z` · **main** · main · agent · capture-stack Phases 0+1: dropped dead serial tail from receiving sidebar; promoted mobile feed primitive to design-system CaptureStack (+guard) — ok
+- `2026-08-01T03:42:53.433Z` · **main** · main · agent · Lane C: split receiving_line.notes into notes (item note, never printed) + label_note (printed face); migration applied + backfilled 331/331 faces with 0 drift — done
+- `2026-08-01T04:02:22.440Z` · **main** · main · agent · Lane C display: label-kind SoT gains explicit grain (carton/item/container); picker shows it as row meta; TestingPanel composes SoT instead of hand-typed names — done
+- `2026-08-01T04:16:43.011Z` · **main** · main · agent · SoT: added Note-vs-label-grain rows + section to source-of-truth.md (uncommitted — file shared with another session); committed guard pinning label_note to receiving_line, never receiving_carton — done
+- `2026-08-01T04:31:55.403Z` · **main** · main · agent · capture-stack Phase 2: step-vocabulary SoT (fold packing material into unbox_carton), per-stage photo counts, read-only stack mounted above the Unbox accordion — ok
+- `2026-08-01T04:53:41.705Z` · **main** · main · agent · Fixed live data loss: mark-received bare SET notes=$1 erased the operator item note on mobile Pass-all (notes:null); COALESCE + receive-side sweep guard — done
+- `2026-08-01T05:04:53.314Z` · **main** · main · agent · Removed [unboxed_by staff_id=N] addendum from receiving_line.notes (write-only; actor lives in RECEIVING_MATCH audit); tightened note guard to exact COALESCE($n, notes) + concat ban — done
+- `2026-08-01T05:15:12.542Z` · **main** · main · agent · capture-stack Phase 2 bench trial: measured ergonomics green (12px constant gap, 41/74px collapse); fixed 3 stack defects + an em-dash ByteString 500 in POST /api/receiving-photos; added unbox-capture-stack.spec.ts — ok
