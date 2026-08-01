@@ -179,13 +179,29 @@ Two things learned writing it, both worth keeping:
   two *pre-existing* tests while GlobalHeader is being reworked; a route-level
   assertion is immune to that.
 
-### 3.8 — Narrow viewport and centre width unmeasured
+### 3.8 — Narrow viewport and centre width — **DONE, nothing to fix**
 
-Below 1024px `UnboxPushColumn` overlays instead of pushing; that path is proven for
-Ticket/Claim but **not exercised for Displays**. And at 1440px with the context rail
-plus a 560px Displays ceiling, the remaining centre is worth measuring against the
-PO-line accordion's real min width — in Playwright, not the preview pane
-(`verify.md` → measure in the real runner).
+Measured 2026-08-01 in Playwright at the real runner (not the preview pane), on
+`qa-desktop`:
+
+| Config | Displays | Centre content column | Frame |
+|---|---|---|---|
+| 1440, closed | — | **720** (its max) | — |
+| 1440, open @ 420 default | push (`relative`) | **636** | workspace width unchanged |
+| 1440, open @ 560 ceiling | push (`relative`) | **496** | workspace width unchanged |
+| 900, open | **overlay** (`absolute`) | 516 | workspace width unchanged (524) |
+
+**No configuration produced horizontal document scroll**, and the narrow overlay
+path — proven for Ticket / Claim but never exercised for Displays — works. The
+worry that a 560 ceiling plus a 360 rail would crush the carton does not
+materialise: the squeeze lands on the content column, which is `min-w-0` and
+yields to 496 without overflowing. **No cap change is warranted.**
+
+Pinned by three tests in `unbox-displays-column.spec.ts` as **invariants, not
+pixels** — push vs overlay, workspace width unchanged either way, and no
+sideways page scroll including at the ceiling. The measured widths live in a
+comment there as the record; they are deliberately not asserted, so a rail or
+ceiling re-tune does not fail a test that is really about the frame holding.
 
 ### 3.9 — Support tab loses composer state on switch *(pre-existing, now visible)*
 
