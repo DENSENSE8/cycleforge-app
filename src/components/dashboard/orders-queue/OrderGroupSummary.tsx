@@ -132,6 +132,8 @@ export function OrderGroupSummary({
   const orderCell = (
     <OrderIdChip value={orderId} display={getLast4(orderId)} plain fitDisplayWidth />
   );
+  /** What the collapsed fold IS — the desktop Product cell's line. */
+  const foldLabel = `${rows.length} ${rows.length === 1 ? 'product' : 'products'}`;
   const trackingCell =
     trackings.size > 1 ? (
       <TrackingCountChip count={trackings.size} dense={isMobile} />
@@ -190,8 +192,11 @@ export function OrderGroupSummary({
             style={{ left: ordersQueueFrozenLeft('title') }}
             data-frozen-edge
           >
+            {/* The order id lives in its own pinned Order cell immediately to
+                the left, so the Product track says what the FOLD is (how many
+                lines) instead of restating the identifier one track over. */}
             <span className="min-w-0 truncate text-role-data text-text-default">
-              {platformLabel ? `${platformLabel} · Order ${orderId}` : `Order ${orderId}`}
+              {platformLabel ? `${platformLabel} · ${foldLabel}` : foldLabel}
             </span>
           </div>
         );
@@ -228,8 +233,14 @@ export function OrderGroupSummary({
           </div>
         );
       case 'order':
+        // Identity pane — pinned beside select/title so a scrolled fold header
+        // still reads as "which order" (mirrors the leaf rows).
         return (
-          <div data-col="order" className={dataCell(col, rule)}>
+          <div
+            data-col="order"
+            className={cn(dataCell(col, rule), ORDERS_QUEUE_FROZEN_CELL)}
+            style={{ left: ordersQueueFrozenLeft('order') }}
+          >
             {orderCell}
           </div>
         );

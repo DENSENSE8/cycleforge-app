@@ -25,6 +25,7 @@ export {
 export type { GridColumnAlign } from './grid-header-align';
 export {
   GRID_IDENTITY_COLUMN_KEYS,
+  gridFrozenKeys,
   isGridColumnInCellEditable,
   isGridIdentityColumn,
 } from './grid-column-editability';

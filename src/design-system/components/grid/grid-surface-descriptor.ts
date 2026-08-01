@@ -53,6 +53,20 @@ export interface LedgerGridColumnModel {
    */
   omitCellIcon?: boolean;
   /**
+   * Part of the frozen IDENTITY PANE — pinned left while the fact columns
+   * scroll, immovable under drag-reorder, and never in-cell editable. Must be a
+   * contiguous prefix of the canonical order (the sticky-left offset sums the
+   * widths of the frozen columns before it).
+   *
+   * Declared per surface rather than by a house key list because the pane
+   * answers "what does an operator scan first HERE": Orders freezes
+   * `select · order · title`; Catalog / Receiving / Incoming / Repair / Pickup
+   * freeze `select · title`. Derive the key list with `gridFrozenKeys` — never
+   * re-type it beside the model. A frozen column carries no `hideKey` (it is
+   * structural, so the Fields menu can never take the identity pane away).
+   */
+  frozen?: boolean;
+  /**
    * Staff-preference key this track answers to (`staff_preferences
    * .tableColumns[tableId]`). Columns WITHOUT a `hideKey` are structural — they
    * never appear in the Fields menu and can never be toggled off.

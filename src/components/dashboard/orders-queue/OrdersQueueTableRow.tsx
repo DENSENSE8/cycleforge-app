@@ -871,8 +871,17 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
           </div>
         );
       case 'order':
+        // Identity pane, not a fact column — the order is the container an
+        // operator scans a dispatch queue by, so it stays pinned beside the
+        // product while ship-by…tracking scroll under it. Read-only in the
+        // collection map for the same reason `title` is: correction happens at
+        // the record plane. No focus ring — clicks fall through to open the row.
         return (
-          <div data-col="order" className={dataCell(col, rule)}>
+          <div
+            data-col="order"
+            className={cn(dataCell(col, rule), ORDERS_QUEUE_FROZEN_CELL)}
+            style={{ left: ordersQueueFrozenLeft('order') }}
+          >
             {identityNodes.order}
           </div>
         );

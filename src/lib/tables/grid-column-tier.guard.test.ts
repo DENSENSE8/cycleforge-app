@@ -8,9 +8,13 @@
  *  1. `tier: 'optional'` REQUIRES a `hideKey`. `hideKey` is the only channel a
  *     staffer can opt in through, so an optional column without one is
  *     permanently invisible — a column that silently never renders.
- *  2. Structural columns (`select`, `title`) must carry NO `hideKey` and NO
- *     `tier`. They are the frozen identity pane; offering them in the Fields
- *     menu would let a staffer hide the checkbox gutter or the product title.
+ *  2. Frozen columns (`frozen: true`) must carry NO `hideKey` and NO `tier`.
+ *     They are the identity pane; offering them in the Fields menu would let a
+ *     staffer hide the checkbox gutter, the order, or the product title.
+ *  3. The frozen pane must be a CONTIGUOUS PREFIX of the canonical order — the
+ *     sticky-left offset sums the widths of the frozen columns before a given
+ *     one, so a frozen column with a scrolling column ahead of it would pin at
+ *     the wrong origin.
  *
  * It also pins each surface's DEFAULT (core) set, so making a column optional —
  * which changes what every staffer sees on their next load — is a deliberate,
@@ -27,8 +31,14 @@ import { CATALOG_GRID_COLUMNS } from '@/lib/products/catalog-grid-layout';
 import { PICKUP_GRID_COLUMNS } from '@/components/receiving/pickup/grid/pickup-grid-layout';
 import { REPAIR_GRID_COLUMNS } from '@/lib/repair/repair-grid-layout';
 
-/** Keys that are structural on every family — never hideable, never tiered. */
-const STRUCTURAL = new Set(['select', 'title']);
+/**
+ * Structural columns are the family's FROZEN IDENTITY PANE, read off the model's
+ * own `frozen` flag rather than a hardcoded key list — the pane is a per-surface
+ * answer (Orders freezes `select · order · title`; everyone else freezes
+ * `select · title`), and a key list here would silently stop guarding the moment
+ * a surface declared a different one.
+ */
+const isStructural = (c: LedgerGridColumnModel) => c.frozen === true;
 
 const FAMILIES: Record<string, readonly LedgerGridColumnModel[]> = {
   receiving: RECEIVING_GRID_COLUMNS,
@@ -54,12 +64,25 @@ describe('grid column tier contract', () => {
       }
     });
 
-    it(`${name}: structural columns are never hideable`, () => {
-      for (const c of columns) {
-        if (!STRUCTURAL.has(c.key)) continue;
+    it(`${name}: frozen identity columns are never hideable`, () => {
+      const frozen = columns.filter(isStructural);
+      assert.ok(frozen.length > 0, `${name} declares no frozen identity pane`);
+      for (const c of frozen) {
         assert.equal(c.hideKey, undefined, `${name}.${c.key} must not carry a hideKey`);
         assert.equal(c.tier, undefined, `${name}.${c.key} must not carry a tier`);
       }
+    });
+
+    it(`${name}: the frozen pane is a contiguous leading prefix`, () => {
+      const firstScrolling = columns.findIndex((c) => !isStructural(c));
+      const stragglers = columns.slice(firstScrolling).filter(isStructural).map((c) => c.key);
+      assert.deepEqual(
+        stragglers,
+        [],
+        `${name}: ${stragglers.join(', ')} are frozen but sit after a scrolling column — ` +
+          'sticky-left offset math only holds for a leading prefix',
+      );
+      assert.equal(columns[0]?.key, 'select', `${name} must lead with the select gutter`);
     });
 
     it(`${name}: column keys are unique`, () => {
@@ -130,9 +153,8 @@ describe('default (core) column sets — change these deliberately', () => {
   it('every family keeps its frozen identity pane in the default set', () => {
     for (const [name, columns] of Object.entries(FAMILIES)) {
       const core = coreKeys(columns);
-      for (const key of STRUCTURAL) {
-        if (!columns.some((c) => c.key === key)) continue;
-        assert.ok(core.includes(key), `${name} dropped structural column ${key} from its default`);
+      for (const c of columns.filter(isStructural)) {
+        assert.ok(core.includes(c.key), `${name} dropped identity column ${c.key} from its default`);
       }
     }
   });
@@ -141,7 +163,8 @@ describe('default (core) column sets — change these deliberately', () => {
     for (const [name, columns] of Object.entries(FAMILIES)) {
       // Structural columns alone are not a usable grid — at least one FACT
       // track must ship on by default or the surface opens blank.
-      const factCore = coreKeys(columns).filter((k) => !STRUCTURAL.has(k));
+      const frozenKeys = new Set(columns.filter(isStructural).map((c) => c.key));
+      const factCore = coreKeys(columns).filter((k) => !frozenKeys.has(k));
       assert.ok(factCore.length > 0, `${name} has no core fact columns — it would open blank`);
     }
   });

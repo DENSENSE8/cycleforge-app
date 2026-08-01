@@ -13,7 +13,7 @@
  * placement (`staging_location_label`).
  */
 
-import { GRID_IDENTITY_COLUMN_KEYS } from '@/design-system/components/grid/grid-column-editability';
+import { gridFrozenKeys } from '@/design-system/components/grid/grid-column-editability';
 import { gridTemplate } from '@/design-system/components/grid/grid-column-geometry';
 import type { LedgerGridColumnModel } from '@/design-system/components/grid/grid-surface-descriptor';
 
@@ -64,9 +64,10 @@ export interface ReceivingGridColumn extends Omit<LedgerGridColumnModel, 'key'> 
  * lane where they matter turn them on once, and it follows them across devices.
  */
 export const RECEIVING_GRID_COLUMNS: readonly ReceivingGridColumn[] = [
-  { key: 'select', width: 'minmax(2rem, 2rem)', sortable: false },
+  { key: 'select', width: 'minmax(2rem, 2rem)', sortable: false, frozen: true },
   {
     key: 'title',
+    frozen: true,
     width: 'minmax(12rem, 1fr)',
     label: 'Product Title',
     gridLabel: 'Product',
@@ -109,9 +110,13 @@ export const RECEIVING_GRID_COLUMNS: readonly ReceivingGridColumn[] = [
   { key: 'serial', width: 'minmax(5.75rem, 5.75rem)', label: 'Serial', type: 'id', hideKey: 'serial', tier: 'optional', labelFitRem: 4.5 },
 ] as const;
 
-const RECEIVING_GRID_LOCKED_KEYS: readonly ReceivingGridColumnKey[] = [
-  ...GRID_IDENTITY_COLUMN_KEYS,
-];
+/**
+ * Frozen identity pane — `select · title`. Derived from the column model's
+ * `frozen` flag (one declaration for freeze + immovability + offset math), not
+ * from the house key list: the pane is a per-surface answer, and Orders already
+ * freezes a third track. See `grid-column-editability.ts`.
+ */
+const RECEIVING_GRID_LOCKED_KEYS: readonly ReceivingGridColumnKey[] = gridFrozenKeys(RECEIVING_GRID_COLUMNS);
 
 /** Data columns that support click-to-sort (excludes select). */
 const RECEIVING_GRID_SORTABLE_KEYS: readonly ReceivingGridColumnKey[] = RECEIVING_GRID_COLUMNS.filter(

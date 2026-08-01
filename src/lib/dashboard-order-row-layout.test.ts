@@ -77,7 +77,7 @@ describe('ORDERS_QUEUE_COLUMNS — the column model header + template share', ()
   it('is the 7-column scan order and derives the CSS-var template (no drift)', () => {
     assert.deepEqual(
       ORDERS_QUEUE_COLUMNS.map((c) => c.key),
-      ['select', 'title', 'sla', 'qty', 'condition', 'order', 'tracking'],
+      ['select', 'order', 'title', 'sla', 'condition', 'qty', 'tracking'],
     );
     // Each track = its width CSS var with the model width as the fallback, so a
     // persisted/resized width overrides with zero template rebuild.
@@ -91,7 +91,7 @@ describe('ORDERS_QUEUE_COLUMNS — the column model header + template share', ()
   it('resize helpers: only data columns resize; widths → CSS vars', () => {
     assert.deepEqual(
       [...ORDERS_QUEUE_RESIZABLE_KEYS],
-      ['title', 'sla', 'qty', 'condition', 'order', 'tracking'],
+      ['order', 'title', 'sla', 'condition', 'qty', 'tracking'],
       'select control gutter is not resizable',
     );
     assert.equal(ordersQueueColVar('title'), '--cf-col-title');
@@ -112,14 +112,13 @@ describe('ORDERS_QUEUE_COLUMNS — the column model header + template share', ()
     assert.equal(byKey.sla.label, 'Ship by');
   });
 
-  it('hideable columns map to their TableColumnConfig keys (order → orderid)', () => {
+  it('hideable columns map to their TableColumnConfig keys', () => {
     const hide = Object.fromEntries(
       ORDERS_QUEUE_COLUMNS.filter((c) => c.hideKey).map((c) => [c.key, c.hideKey]),
     );
     assert.deepEqual(hide, {
       qty: 'qty',
       condition: 'condition',
-      order: 'orderid',
       tracking: 'tracking',
     });
   });
@@ -144,16 +143,18 @@ describe('sanitizeOrdersQueueColumnOrder — persisted order → safe full order
     const out = sanitizeOrdersQueueColumnOrder(['tracking', 'title', 'select', 'qty']);
     assert.deepEqual(out.slice(0, ORDERS_QUEUE_LOCKED_KEYS.length), ORDERS_QUEUE_LOCKED_KEYS);
     assert.equal(out[0], 'select');
-    assert.equal(out[1], 'title');
+    assert.equal(out[1], 'order');
+    assert.equal(out[2], 'title');
   });
 
   it('known movable keys keep their persisted relative order', () => {
     const out = sanitizeOrdersQueueColumnOrder([
       'tracking', 'order', 'condition', 'qty', 'age', 'date',
     ]);
+    // `order` is locked (frozen identity), so it cannot ride the movable list.
     assert.deepEqual(out, [
-      'select', 'title',
-      'sla', 'tracking', 'order', 'condition', 'qty',
+      'select', 'order', 'title',
+      'sla', 'tracking', 'condition', 'qty',
     ]);
   });
 
@@ -166,7 +167,7 @@ describe('sanitizeOrdersQueueColumnOrder — persisted order → safe full order
     assert.ok(!(out as string[]).includes('status'));
     assert.ok(!(out as string[]).includes('platform'));
     assert.deepEqual(out, [
-      'select', 'title', 'sla', 'qty', 'condition', 'order', 'tracking',
+      'select', 'order', 'title', 'sla', 'qty', 'condition', 'tracking',
     ]);
   });
 
@@ -175,7 +176,7 @@ describe('sanitizeOrdersQueueColumnOrder — persisted order → safe full order
       'date', 'age', 'qty', 'condition', 'order', 'tracking',
     ]);
     assert.deepEqual(out, [
-      'select', 'title', 'sla', 'qty', 'condition', 'order', 'tracking',
+      'select', 'order', 'title', 'sla', 'qty', 'condition', 'tracking',
     ]);
   });
 
@@ -200,9 +201,16 @@ describe('sanitizeOrdersQueueColumnOrder — persisted order → safe full order
   it('orderedOrdersQueueColumns + ordersQueueGridTemplate respect the order', () => {
     const order = ['tracking', 'date', 'age', 'qty', 'condition', 'order'];
     const cols = orderedOrdersQueueColumns(order);
-    assert.equal(cols[2].key, 'sla', 'missing canonical sla inserts before persisted movable keys');
+    assert.equal(cols[0].key, 'select');
+    assert.equal(cols[1].key, 'order');
+    assert.equal(cols[2].key, 'title');
+    assert.equal(cols[3].key, 'sla', 'missing canonical sla inserts before persisted movable keys');
     const template = ordersQueueGridTemplate(order);
-    assert.ok(template.startsWith('var(--cf-col-select, minmax(2rem, 2rem)) var(--cf-col-title,'));
+    assert.ok(
+      template.startsWith(
+        'var(--cf-col-select, minmax(2rem, 2rem)) var(--cf-col-order, minmax(4.5rem, 4.5rem)) var(--cf-col-title,',
+      ),
+    );
     assert.ok(
       template.indexOf('--cf-col-sla') < template.indexOf('--cf-col-tracking'),
       'sla track renders before tracking',

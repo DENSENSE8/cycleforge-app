@@ -9,7 +9,7 @@
  * PO as order). Status stays its own column — never folded into Product Title.
  */
 
-import { GRID_IDENTITY_COLUMN_KEYS } from '@/design-system/components/grid/grid-column-editability';
+import { gridFrozenKeys } from '@/design-system/components/grid/grid-column-editability';
 import {
   gridColumnTrackRem,
   gridContentMinWidthRem,
@@ -60,9 +60,10 @@ export interface IncomingGridColumn extends Omit<LedgerGridColumnModel, 'key'> {
  * the two descriptors; they no longer share a staff delta bucket.
  */
 export const INCOMING_GRID_COLUMNS: readonly IncomingGridColumn[] = [
-  { key: 'select', width: 'minmax(2rem, 2rem)', sortable: false },
+  { key: 'select', width: 'minmax(2rem, 2rem)', sortable: false, frozen: true },
   {
     key: 'title',
+    frozen: true,
     width: 'minmax(12rem, 1fr)',
     label: 'Product Title',
     gridLabel: 'Product',
@@ -91,9 +92,13 @@ export const INCOMING_GRID_COLUMNS: readonly IncomingGridColumn[] = [
   { key: 'tracking', width: 'minmax(5.75rem, 5.75rem)', label: 'Tracking', type: 'location', omitCellIcon: true, hideKey: 'tracking', labelFitRem: 4.5 },
 ] as const;
 
-export const INCOMING_GRID_LOCKED_KEYS: readonly IncomingGridColumnKey[] = [
-  ...GRID_IDENTITY_COLUMN_KEYS,
-];
+/**
+ * Frozen identity pane — `select · title`. Derived from the column model's
+ * `frozen` flag (one declaration for freeze + immovability + offset math), not
+ * from the house key list: the pane is a per-surface answer, and Orders already
+ * freezes a third track. See `grid-column-editability.ts`.
+ */
+export const INCOMING_GRID_LOCKED_KEYS: readonly IncomingGridColumnKey[] = gridFrozenKeys(INCOMING_GRID_COLUMNS);
 
 /** Data columns that support click-to-sort (excludes select). */
 export const INCOMING_GRID_SORTABLE_KEYS: readonly IncomingGridColumnKey[] = INCOMING_GRID_COLUMNS.filter(

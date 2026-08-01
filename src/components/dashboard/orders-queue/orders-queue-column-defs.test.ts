@@ -29,7 +29,7 @@ describe('orders-queue mode column sets (TanStack ColumnDefs)', () => {
     const defs = ordersQueueColumnDefsFor('fulfillment.default');
     assert.deepEqual(
       defs.map((d) => d.id),
-      ['select', 'title', 'sla', 'qty', 'condition', 'order', 'tracking'],
+      ['select', 'order', 'title', 'sla', 'condition', 'qty', 'tracking'],
     );
     assert.deepEqual(
       defs.map((d) => d.id),
@@ -42,7 +42,7 @@ describe('orders-queue mode column sets (TanStack ColumnDefs)', () => {
     const defs = ordersQueueColumnDefsFor('fulfillment.tested');
     assert.deepEqual(
       defs.map((d) => d.id),
-      ['select', 'title', 'sla', 'tester', 'testedAt', 'qty', 'condition', 'order', 'tracking'],
+      ['select', 'order', 'title', 'sla', 'tester', 'testedAt', 'condition', 'qty', 'tracking'],
     );
     assert.ok(!defs.some((d) => d.id === 'status'), 'Status pill is not on the TESTED tab');
     assert.ok(!defs.some((d) => d.id === 'platform'), 'Platform column is retired');
@@ -115,8 +115,9 @@ describe('ORDERS_QUEUE_TESTED_COLUMNS — house geometry for the TESTED lane', (
     assert.ok((out as string[]).includes('testedAt'), 'testedAt inserted at canonical slot');
     assert.ok(!(out as string[]).includes('status'), 'status is not a TESTED-mode column');
     assert.ok(!(out as string[]).includes('platform'), 'platform is retired');
-    assert.equal(out[0], 'select');
-    assert.equal(out[1], 'title');
+    // The frozen identity pane is re-prepended in canonical order regardless
+    // of where a stale persisted order put those keys.
+    assert.deepEqual(out.slice(0, 3), ['select', 'order', 'title']);
     // And the default canonical still drops the TESTED-only keys:
     const roundTrip = sanitizeOrdersQueueColumnOrder(out);
     assert.ok(!(roundTrip as string[]).includes('tester'));
