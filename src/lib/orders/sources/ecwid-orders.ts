@@ -94,6 +94,10 @@ export function mapEcwidOrdersToCanonicalLines(ecwidOrders: unknown[]): Canonica
         condition: '',
         quantity: cleanText(item.quantity) || '1',
         notes,
+        // `notes` here is the buyer's own comment, which is a note. Ecwid does
+        // carry a customer object — wire it by id/email if orders need buyer
+        // linkage, not by name.
+        customerName: '',
         accountSource: 'ecwid',
         // Ecwid fulfillment state is not read here — no lifecycle opinion.
         status: null,

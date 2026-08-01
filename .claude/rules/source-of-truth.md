@@ -40,6 +40,7 @@ fields, pick the presentation kind and import from the SoT below (Kinetic Ledger
 | Honest absence (missing fact) | `GridCellDash` / ledger `fallback` default `—` — never invent `"N/A"` on ledger/grid primitives |
 | Photo gallery viewer | `@/components/shipped/photo-gallery` — `usePhotoGallery` + `PhotoViewerPortal` → `PhotoViewerModal` (composed launcher: `PhotoGallery` / `launcherLayout`). Never a page-local lightbox or `createPortal`+`AnimatePresence` fork around the modal. Read surfaces pass `{ url }` only (omit numeric `id` / upload targets so delete/upload stay off). |
 | Carton read surface | `/carton/[id]` → `CartonInspector` → `inspection/CartonInspectionPage` + `carton-inspector-model.ts`. Read model + atoms only (D6 / `pattern-evolution.md`). Photos = `ReceivingPhotosSection` readOnly below pipeline (same component as details-stack Progress). Work escape = one quiet `openInUnboxHref` control — never `"Open in Unbox"` spam on findings/header. IA: disposition header; col1 contents·activity·record; col2 Panel+ReceivingCartonPipeline·photos·history·findings. Linked PO suppresses Unmatched. Not Station Workbench — recipe: `display/carton-read.md`. |
+| Order note (annotation on an order) | `order_notes` **only**, via `POST /api/orders/[id]/notes` (`src/lib/orders/order-notes.ts` + `useOrderNotes` / `OrderNotesTrail`). The scalar `orders.notes` is **read-only legacy** — displayed, searched, counted, never written by the product. Guard: `order-note-grain.guard.test.ts` — see **Order note grain** below |
 | Receiving note vs label text (**per line item**) | `receiving_line.notes` = operator item note (**never printed**) · `receiving_line.label_note` = the printed face center · `receiving_line.zoho_notes` = Zoho line description · `receiving.zoho_notes` / `support_notes` = PO-header / carton. **All three line columns are per LINE ITEM — never hoist a label note to the carton.** Notes dock (`LineNotesCard`) writes `notes`; label editor (`LabelEditPopover` / As Listed) writes `label_note`. Guard: `label-note-grain.guard.test.ts` — see **Note vs label grain** below |
 | Label kind → grain (what the sticker goes on) | `src/lib/print/workspace-label-kinds.ts` — `KIND_META.grain` + `workspaceLabelGrainLabel(kind)` (`PO / carton` · `Per item` · `Container`), carried into every picker by `labelOptionsForSelect`. Never hand-type a kind's name or grain at a call site |
 | Dialog / AlertDialog | `@/design-system/components/Dialog` · `AlertDialog` · `requestConfirm` / `ConfirmDialogHost` — never hand-roll `fixed inset-0` scrims for new modals; station floor confirms stay on `ConfirmSheet` |
@@ -440,6 +441,52 @@ the two that live closest together were one column until 2026-07-31.
 - Guard: `src/components/receiving/workspace/line-edit/label-note-grain.guard.test.ts`
   (wiring) + `src/lib/print/workspace-label-kinds.test.ts` (faces + grain).
 
+## Order note grain (one writable home)
+
+An annotation on an order goes to **`order_notes`**, appended through
+`POST /api/orders/[id]/notes`. Nothing else in the product writes a note.
+
+| Field | Grain | Writable? | Written by |
+|---|---|---|---|
+| `order_notes.note_text` | one entry, attributed + timestamped | **yes — append only** | `OrderNotesTrail` (record plane) · the grid's in-cell **Add note** · both via `useAppendOrderNote` |
+| `orders.notes` | one overwritable string per order | **no — read-only in the product** | `ingestCanonicalOrders` at INSERT, carrying **the note the SOURCE sent** (a Google Sheet `Note` cell, an Ecwid buyer comment) |
+| Entity Threads (`ThreadPanel entityType="ORDER"`) | the customer / support **conversation** | yes | the thread composer |
+
+- **The scalar and the trail were the SAME job, not two jobs.** From 2026-07-28
+  to 2026-07-31 the order inspector carried both — the append-only trail and the
+  editor dock's `orders.notes` composer, labelled apart ("Ops notes" vs "Notes")
+  to hide the collision. `2026-07-28_order_notes.sql`'s SCOPE BOUNDARY allows two
+  homes only while they do genuinely different jobs; "write a note about this
+  order" is one job, and the scalar was the worse implementation of it (the
+  second person to touch a row overwrote the first, unattributed). The writers
+  were migrated; the column was frozen. **Do not re-open it** — a `{ notes }`
+  key on `PATCH /api/orders/[id]` is now a 400, not a write.
+- **What `orders.notes` legitimately still is: the SOURCE's note.** An inbound
+  snapshot stamped at ingest — never typed by an operator, never editable in the
+  product. That is a real second job, so the column is frozen rather than
+  dropped. A **buyer name is not a note**: the CSV import used to write
+  `"Customer: <name>"` here, which hid the buyer from every customer-scoped read;
+  it now resolves to a `customers` row via `resolveCustomersByName` and lands on
+  `orders.customer_id`. A source with a stronger identifier (customer id, email,
+  phone) must match on that, never on a name.
+- **Read paths stay.** `orders.notes` still renders read-only beneath the trail
+  ("Legacy note"), still feeds the queue's search `ILIKE` predicate, and still
+  lights the row's corner indicator beside `note_count`. The row shows **one**
+  mark for either store: the operator's problem is the note, not which table it
+  landed in.
+- **The in-cell plane appends, it does not edit.** A trail entry is a statement
+  someone made at a time, so the cell popover seeds empty ("Add note") and the
+  record plane owns reading the trail and its authors — `display/workbench.md`
+  → Action planes.
+- **One composer per panel.** A surface that already mounts `OrderNotesTrail` at
+  the record plane (the dashboard inspector, via `OrderTriageSection`) passes
+  `showNotes={false}` to `ShippedPanelEditorDock`. Two composers over one store
+  is the same confusion in a new shape.
+- **Threads are still the other side of the line** — `order_notes` is internal
+  and staff-authored; the customer conversation stays in Entity Threads. If that
+  blurs in practice, collapse onto threads rather than growing a third home.
+- Guard: `src/lib/orders/order-note-grain.guard.test.ts`.
+
 ## Honest absence (missing facts)
 
 - Grid cells: `GridCellDash` → `—` (never blank, never `"N/A"`).
@@ -480,6 +527,29 @@ the two that live closest together were one column until 2026-07-31.
 - `items` (Zoho) and `sku_catalog` are **two independent SKU numbering schemes**.
 - **Never join on the SKU string** — they collide. `items.name` is the title-display SoT
   (`get-title-by-sku` prefers `items.name`, not `sku_catalog` / `sku_stock`).
+
+## Customer identity on ingest (data-integrity)
+
+- **Order ingest resolves a buyer to a real `customers` row — it never parks the
+  name in free text.** `ingestCanonicalOrders` matches per-order first (a
+  customer the source itself identified), then `CanonicalOrderLine.customerName`
+  via `resolveCustomersByName`, and writes `orders.customer_id`. A name written
+  into `orders.notes` is invisible to every customer-scoped read; that was the
+  CSV import's shim and it is now a guard failure
+  (`order-note-grain.guard.test.ts`).
+- **`customerName` is the WEAKEST identity signal — use it only when it is the
+  only one.** Exact name (trimmed, whitespace-collapsed, case-insensitive) is
+  what a mapped CSV column carries, so two people with the same name do collapse
+  onto one customer. A source with a platform customer id, email, or phone must
+  match on that instead and leave `customerName` blank.
+- **Resolution is batched, and free when unused.** Match-then-create in two
+  queries per import regardless of row count, and a source that sets no
+  `customerName` issues zero queries. Never add a per-row find-or-create to this
+  path — a CSV import is up to 10k rows over a handful of distinct names.
+- **The JS and SQL match keys must stay identical** — `customerNameKey` and
+  `customerNameKeySql`. Collapse whitespace BEFORE trimming: Postgres one-arg
+  `btrim` strips spaces only, so trim-first leaves a stored tab behind and mints
+  a duplicate customer for a name that already exists.
 
 ## Cross-entity search (AI search — the narrow waist)
 

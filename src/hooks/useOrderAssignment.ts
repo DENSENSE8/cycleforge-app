@@ -14,7 +14,6 @@ export type OrderAssignPayload = {
   shipByDate?: string | null;
   outOfStock?: string | null;
   isOutOfStock?: boolean;
-  notes?: string | null;
   /** Operator urgent / expedited toggle (orders.is_urgent). */
   isUrgent?: boolean;
   shippingTrackingNumber?: string | null;
@@ -79,9 +78,6 @@ export function useOrderAssignment() {
         // Keep legacy alias for backward compatibility
         next.out_of_stock = payload.outOfStock;
         next.outOfStock = payload.outOfStock;
-      }
-      if (payload.notes !== undefined) {
-        next.notes = payload.notes;
       }
       if (payload.isUrgent !== undefined) {
         next.is_urgent = payload.isUrgent;
@@ -183,7 +179,6 @@ export function useOrderAssignment() {
             shipByDate: payload.shipByDate,
             outOfStock: payload.outOfStock,
             isOutOfStock: payload.isOutOfStock,
-            notes: payload.notes,
             isUrgent: payload.isUrgent,
             shippingTrackingNumber: payload.shippingTrackingNumber,
             itemNumber: payload.itemNumber,

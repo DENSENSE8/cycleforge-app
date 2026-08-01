@@ -5,7 +5,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { ShippedOrder } from '@/lib/neon/orders-queries';
 import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
 import { MarkAsShippedForm } from '@/components/shipped/stacks/MarkAsShippedForm';
-import { ShippedNotesComposer } from '@/components/shipped/details-panel/ShippedNotesComposer';
+import { OrderNotesTrail } from '@/components/shipped/details-panel/OrderNotesTrail';
 import { ShippedOutOfStockComposer } from '@/components/shipped/details-panel/ShippedOutOfStockComposer';
 import type { ShippedActiveInput } from '@/components/shipped/stacks/types';
 import { getActiveStaff, type StaffMember } from '@/lib/staffCache';
@@ -21,10 +21,6 @@ export interface ShippedPanelEditorDockProps {
   showMarkAsShipped?: boolean;
   showOutOfStock?: boolean;
   showNotes?: boolean;
-  notes: string;
-  setNotes: (value: string) => void;
-  isSavingNotes: boolean;
-  onSaveNotes: () => void;
   isOutOfStock: boolean;
   isSavingOutOfStock: boolean;
   /** Persist the out-of-stock flag (boolean). */
@@ -36,6 +32,13 @@ export interface ShippedPanelEditorDockProps {
 /**
  * Fixed footer region for header-action editors (mark shipped, out-of-stock
  * flag toggle, notes). Queue rows show icons for the same flags.
+ *
+ * The Notes region used to be a `ShippedNotesComposer` bound to the legacy
+ * scalar `orders.notes`. It now mounts {@link OrderNotesTrail}, the single
+ * writable home for an order annotation — see that file's header for why the
+ * scalar became read-only. Contexts that already mount the trail at the record
+ * plane (the dashboard inspector, via `OrderTriageSection`) pass
+ * `showNotes={false}` so one panel never carries two composers for one store.
  */
 export function ShippedPanelEditorDock({
   shipped,
@@ -44,10 +47,6 @@ export function ShippedPanelEditorDock({
   showMarkAsShipped = false,
   showOutOfStock = false,
   showNotes = true,
-  notes,
-  setNotes,
-  isSavingNotes,
-  onSaveNotes,
   isOutOfStock,
   isSavingOutOfStock,
   onSaveOutOfStock,
@@ -56,11 +55,17 @@ export function ShippedPanelEditorDock({
 }: ShippedPanelEditorDockProps) {
   const [packerOptions, setPackerOptions] = useState<StaffRecipient[]>([]);
 
-  const savedNotes = String(notes || shipped.notes || '').trim();
-  const hasSavedNotes = savedNotes.length > 0;
+  const orderId = Number(shipped.id);
+  // "Already carries annotations" now spans BOTH stores — the append-only trail
+  // (`note_count`) and whatever legacy scalar the row still holds. Reading only
+  // the scalar would have hidden the region on every order whose notes live in
+  // `order_notes`, which is every note written since 2026-07-31.
+  const legacyNote = String(shipped.notes || '').trim();
+  const hasSavedNotes = legacyNote.length > 0 || Number(shipped.note_count ?? 0) > 0;
   const showOutOfStockRegion =
     showOutOfStock && (activeInput === 'out_of_stock' || isOutOfStock);
-  const showNotesRegion = showNotes && (activeInput === 'notes' || hasSavedNotes);
+  const showNotesRegion =
+    showNotes && Number.isFinite(orderId) && orderId > 0 && (activeInput === 'notes' || hasSavedNotes);
   const hasExpandedEditor = showMarkAsShipped && activeInput === 'mark_shipped';
 
   const hasDockContent = hasExpandedEditor || showOutOfStockRegion || showNotesRegion;
@@ -130,24 +135,9 @@ export function ShippedPanelEditorDock({
       ) : null}
 
       {showNotesRegion ? (
-        activeInput === 'notes' ? (
-          <ShippedNotesComposer
-            value={notes}
-            onChange={setNotes}
-            onCancel={() => {
-              setNotes(shipped.notes || '');
-              setActiveInput('none');
-            }}
-            onSubmit={onSaveNotes}
-            isSaving={isSavingNotes}
-          />
-        ) : (
-          <ShippedNotesComposer
-            value={savedNotes}
-            readOnly
-            onClick={() => setActiveInput('notes')}
-          />
-        )
+        <section className="mx-8 py-3">
+          <OrderNotesTrail orderId={orderId} legacyNote={legacyNote} />
+        </section>
       ) : null}
     </div>
   );

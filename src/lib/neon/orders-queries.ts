@@ -612,6 +612,9 @@ export async function getShippedOrderById(id: number, orgId?: OrgId): Promise<Sh
           o.sku,
           o.account_source,
           o.notes,
+          (
+            SELECT COUNT(*)::int FROM order_notes n WHERE n.order_id = o.id
+          ) AS note_count,
           o.sale_amount,
           o.currency,
           COALESCE(o.status_history::jsonb, '[]'::jsonb) AS status_history,
@@ -1587,7 +1590,6 @@ export async function updateOrder(
     quantity: string | null;
     itemNumber: string | null;
     shipByDate: string | null;
-    notes: string | null;
     isOutOfStock: boolean;
     statusHistory: any;
     accountSource: string | null;
@@ -1602,7 +1604,8 @@ export async function updateOrder(
     condition: 'condition',
     quantity: 'quantity',
     itemNumber: 'item_number',
-    notes: 'notes',
+    // No `notes` entry, on purpose: `orders.notes` is read-only legacy and an
+    // annotation belongs in `order_notes` (see src/lib/orders/order-notes.ts).
     isOutOfStock: 'is_out_of_stock',
     statusHistory: 'status_history',
     accountSource: 'account_source',

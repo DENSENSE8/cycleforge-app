@@ -18,7 +18,10 @@ export const OrderUpdateBody = z
     quantity: nullableText.optional(),
     itemNumber: nullableText.optional(),
     shipByDate: nullableText.optional(),
-    notes: trimmed.nullable().optional(),
+    // `notes` is deliberately absent. An order annotation is written ONLY to
+    // `order_notes` via POST /api/orders/[id]/notes — the legacy scalar
+    // `orders.notes` is read-only history. `.strict()` turns a stray
+    // `{ notes }` body into a 400 instead of a silent second write path.
     isOutOfStock: z.boolean().optional(),
     accountSource: nullableText.optional(),
   })

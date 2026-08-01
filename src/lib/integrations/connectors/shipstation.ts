@@ -69,6 +69,10 @@ function toCanonicalLine(order: ShipStationV1Order): CanonicalOrderLine {
     condition: '',
     quantity: String(quantity),
     notes: '',
+    // No buyer name on this adapter's payload yet; when it is wired, match on
+    // ShipStation's customer id/email rather than routing a name through
+    // `customerName` (name-only matching is the weakest identity signal).
+    customerName: '',
     accountSource: ACCOUNT_SOURCE,
     trackings: [],
     shipByDate: null,

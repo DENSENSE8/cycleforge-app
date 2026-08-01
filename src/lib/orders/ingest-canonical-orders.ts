@@ -136,6 +136,114 @@ function pickLatestByKey<T extends { createdAt: Date | null }>(rows: T[], getKey
   return result;
 }
 
+/** Match key for a buyer name — trimmed, case- and whitespace-insensitive. */
+function customerNameKey(name: string): string {
+  return name.trim().replace(/\s+/g, ' ').toLowerCase();
+}
+
+/**
+ * `customerNameKey` in SQL. Collapse FIRST, then trim: Postgres `btrim` with no
+ * character set strips spaces only, so trimming first leaves a stored
+ * `"John Smith\t"` with a trailing tab that the collapse turns into a trailing
+ * space — a key JS would never produce, and therefore a duplicate customer.
+ */
+function customerNameKeySql(expr: string): string {
+  return `lower(btrim(regexp_replace(${expr}, '\\s+', ' ', 'g')))`;
+}
+
+/**
+ * Resolve name-only buyers to `customers` rows, match-then-create, in two
+ * queries total regardless of batch size.
+ *
+ * **Exact name is the only signal these sources carry**, so that is what we
+ * match on — the same rule `findCustomerByName` already applies on the repair
+ * intake path, not a new one. Two distinct people with the same name do collapse
+ * onto one customer; that is a known limit of a name-only source, and it is
+ * strictly better than the alternative this replaced (the name as prose in
+ * `orders.notes`, reachable by no customer query at all). A source that carries
+ * an email, phone, or platform customer id must NOT route through here — match
+ * on the stronger identifier instead.
+ *
+ * The created row carries `order_id`, so the next import of the same order
+ * matches through the existing per-order path above and never reaches this
+ * function again.
+ */
+async function resolveCustomersByName(
+  requests: Array<{ name: string; sourceOrderId: string }>,
+  effectiveOrgId: OrgId,
+  orgId?: OrgId,
+): Promise<Map<string, number>> {
+  const resolved = new Map<string, number>();
+
+  // First sighting of each name wins the `order_id` stamp — later duplicates
+  // are the same person, and one customer per name is the point.
+  const wanted = new Map<string, { name: string; sourceOrderId: string }>();
+  requests.forEach(({ name, sourceOrderId }) => {
+    const trimmed = String(name || '').trim();
+    if (!trimmed) return;
+    const key = customerNameKey(trimmed);
+    if (!wanted.has(key)) wanted.set(key, { name: trimmed, sourceOrderId });
+  });
+  if (wanted.size === 0) return resolved;
+
+  const keys = Array.from(wanted.keys());
+  const runQuery = <T extends Record<string, unknown>>(sql: string, params: unknown[]) =>
+    orgId ? tenantQuery<T>(orgId, sql, params) : pool.query<T>(sql, params);
+
+  // Match on customer_name OR display_name — the same two columns
+  // `findCustomerByName` reads, so a customer created by any other surface is
+  // found here rather than duplicated.
+  const nameKeyExpr = customerNameKeySql(
+    "COALESCE(NULLIF(btrim(customer_name), ''), display_name, '')",
+  );
+  const existing = await runQuery<{ id: number; match_key: string }>(
+    `SELECT id, ${nameKeyExpr} AS match_key
+       FROM customers
+      WHERE organization_id = $2
+        AND ${nameKeyExpr} = ANY($1::text[])
+      ORDER BY created_at ASC, id ASC`,
+    [keys, effectiveOrgId],
+  );
+  // Oldest first, so the earliest row wins a name with duplicates already in
+  // the book — new orders join the established customer, not a later copy.
+  existing.rows.forEach((row) => {
+    const key = String(row.match_key || '');
+    if (key && !resolved.has(key)) resolved.set(key, Number(row.id));
+  });
+
+  const toCreate = keys.filter((key) => !resolved.has(key)).map((key) => wanted.get(key)!);
+  if (toCreate.length === 0) return resolved;
+
+  const values: unknown[] = [];
+  const tuples = toCreate.map(({ name, sourceOrderId }, i) => {
+    const parts = name.split(/\s+/);
+    const base = i * 5;
+    values.push(
+      effectiveOrgId,
+      name,
+      parts[0] || '',
+      parts.length > 1 ? parts.slice(1).join(' ') : '',
+      sourceOrderId || null,
+    );
+    return `($${base + 1}, $${base + 2}, $${base + 2}, $${base + 3}, $${base + 4}, 'customer', $${base + 5}, now(), now())`;
+  });
+
+  const created = await runQuery<{ id: number; match_key: string }>(
+    `INSERT INTO customers (
+       organization_id, customer_name, display_name, first_name, last_name,
+       contact_type, order_id, created_at, updated_at
+     ) VALUES ${tuples.join(', ')}
+     RETURNING id, ${customerNameKeySql('customer_name')} AS match_key`,
+    values,
+  );
+  created.rows.forEach((row) => {
+    const key = String(row.match_key || '');
+    if (key) resolved.set(key, Number(row.id));
+  });
+
+  return resolved;
+}
+
 /**
  * The order's canonical deadline lives on its OPEN `work_assignments` TEST row.
  * Upsert rather than insert so a re-sync moves the deadline instead of creating
@@ -485,6 +593,25 @@ export async function ingestCanonicalOrders(
     String(customer.orderId || '').trim(),
   );
 
+  // ─── Resolve name-only buyers to real customers ─────────────────────
+  // A source that carries a buyer NAME but no id/email/phone (a mapped CSV
+  // column) still names a real person. Match the tenant's book first, create
+  // only what is genuinely new, and hand the loop below a customer id — the
+  // name never becomes prose in `orders.notes`.
+  //
+  // Batched on purpose: a CSV import is up to 10k rows, and a per-row
+  // find-or-create would be 10k round trips against the same handful of names.
+  const customerIdByName = await resolveCustomersByName(
+    canonicalOrders
+      .filter((order) => !latestCustomerByOrderId.get(String(order.externalOrderId || '').trim()))
+      .map((order) => ({
+        name: order.customerName,
+        sourceOrderId: String(order.externalOrderId || '').trim(),
+      })),
+    effectiveOrgId,
+    orgId,
+  );
+
   // ─── Hydrate catalog identity ───────────────────────────────────────
   // Blank titles fill from the SKU / platform item# crosswalk; title-only rows
   // match the catalog by product_title (minimal small-business sheet).
@@ -687,7 +814,13 @@ export async function ingestCanonicalOrders(
 
     const matchedCustomer = latestCustomerByOrderId.get(orderId);
     const matchedCustomerId = matchedCustomer ? Number(matchedCustomer.id) : Number.NaN;
-    const customerId = Number.isFinite(matchedCustomerId) ? matchedCustomerId : null;
+    // Per-order match first (a customer the source itself identified), then the
+    // name resolution above. Both produce a real `customers` row, so downstream
+    // reads cannot tell which path found it.
+    const customerId =
+      (Number.isFinite(matchedCustomerId) ? matchedCustomerId : null) ??
+      customerIdByName.get(customerNameKey(order.customerName || '')) ??
+      null;
     if (customerId) matchedCustomers++;
     else unmatchedCustomers++;
 

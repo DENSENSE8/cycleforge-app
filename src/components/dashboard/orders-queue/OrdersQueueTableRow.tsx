@@ -73,6 +73,7 @@ import {
   GridStaffCellValue,
 } from '@/components/ui/grid-cells';
 import { useOrderAssignment, type OrderAssignPayload } from '@/hooks/useOrderAssignment';
+import { useAppendOrderNote } from '@/hooks/useOrderNotes';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTableDensity } from '@/hooks/useTableDensity';
 import { toast } from '@/lib/toast';
@@ -193,6 +194,9 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   const { has } = useAuth();
   const router = useRouter();
   const assignOrder = useOrderAssignment();
+  // Notes are NOT part of the assign waist: they append to `order_notes`, which
+  // has its own store and its own (append-only) semantics.
+  const appendNote = useAppendOrderNote(Number(record.id));
   const canOos = has('orders.create');
   const [editing, setEditing] = useState<RowEditField | null>(null);
   const [editSeed, setEditSeed] = useState<string | null>(null);
@@ -345,10 +349,12 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   );
 
   /**
-   * Row annotations. TWO homes, deliberately, and the row shows ONE mark:
-   *  • `notesValue` — the legacy scalar `orders.notes`, still editable in-cell.
+   * Row annotations. ONE writable home, two things to READ, one mark:
    *  • `note_count` — the append-only `order_notes` trail (author + timestamp
-   *    per entry), read and written at the record plane.
+   *    per entry). Everything written since 2026-07-31 lands here, including
+   *    the in-cell editor below, which appends rather than overwrites.
+   *  • `notesValue` — the legacy scalar `orders.notes`, now read-only history
+   *    (`.claude/rules/source-of-truth.md` → Order note grain).
    * The corner triangle answers "does this row carry annotations?", which is
    * true of either. A second indicator would make the operator learn which
    * storage a note happened to land in — their problem is the note, not us.
@@ -1155,15 +1161,26 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
           // itself when present; else the title cell aligned to that corner.
           anchorRef={!isMobile && hasNotes ? noteIndicatorRef : editorAnchorRef}
           placement={isMobile ? 'bottom-start' : 'bottom-end'}
-          title="Notes"
-          initialValue={notesValue.trim()}
+          // APPEND, not edit. The cell used to overwrite the scalar
+          // `orders.notes`; it now adds one attributed entry to the
+          // `order_notes` trail, so the seed is empty and the title says so.
+          // Reading the whole trail (and its authors) is the record plane's job
+          // — the corner tooltip carries the summary until you open it.
+          title="Add note"
+          initialValue=""
           multiline
           placeholder="Add a note…"
-          onCommit={(next) =>
-            commitAssign({ notes: next }, next ? 'Notes saved' : 'Notes cleared', 'Failed to save')
-          }
+          onCommit={(next) => {
+            const body = next.trim();
+            if (!body) return;
+            appendNote.mutate(body, {
+              onSuccess: () => toast.success('Note added'),
+              onError: (e) =>
+                toast.error(e instanceof Error ? e.message : 'Failed to add the note'),
+            });
+          }}
           onDone={closeEditor}
-          saving={assignOrder.isPending}
+          saving={appendNote.isPending}
         />
       ) : null}
       {editing === 'link' ? (

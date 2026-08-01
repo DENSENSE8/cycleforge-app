@@ -250,7 +250,13 @@ Still open:
 
 1. **Citations artifact** (§0) — `order_details_research_briefing.md` exists outside this repo; land it
    in `docs/todo/` and fold the sources into the brief.
-2. **`order_notes` vs. threads boundary** (Week 3) — the split is written down; it needs enforcing in
-   the UI, and revisiting if ops annotations and customer conversation blur in practice.
+2. ~~**`order_notes` vs. threads boundary** (Week 3)~~ — **resolved 2026-07-31.** The boundary that
+   actually leaked was not notes-vs-threads but `order_notes` vs. the legacy scalar `orders.notes`,
+   which the inspector made writable side by side. All operator writers were migrated onto
+   `POST /api/orders/[id]/notes` (record trail + the grid's in-cell "Add note"), the scalar is now
+   read-only legacy — `PATCH /api/orders/[id]` and `POST /api/orders/assign` reject `{ notes }` —
+   and the split is pinned by `src/lib/orders/order-note-grain.guard.test.ts`. Law:
+   `.claude/rules/source-of-truth.md` → Order note grain. The notes-vs-threads line (internal
+   annotation vs. customer conversation) still stands and still wants revisiting if it blurs.
 3. **Allocation cutover sequencing** (§6) — the staged path is defined, but step 4 (flip readers) needs
    a reader inventory before it can be scheduled.

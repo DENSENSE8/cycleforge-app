@@ -59,7 +59,6 @@ export function useOrderFieldSave({
   const queryClient = useQueryClient();
   const orderAssignmentMutation = useOrderAssignment();
   const [isSavingOutOfStock, setIsSavingOutOfStock]   = useState(false);
-  const [isSavingNotes, setIsSavingNotes]             = useState(false);
   const [isSavingShipByDate, setIsSavingShipByDate]   = useState(false);
   const [isSavingInlineFields, setIsSavingInlineFields] = useState(false);
 
@@ -134,18 +133,6 @@ export function useOrderFieldSave({
     );
   };
 
-  const saveNotes = async (value: string) => {
-    const trimmed = value.trim();
-    const notesValue = trimmed || null;
-    await persistOrderRecordField(
-      { notes: notesValue },
-      { notes: notesValue },
-      { notes: trimmed },
-      setIsSavingNotes,
-      'Failed to save notes',
-    );
-  };
-
   const saveShipByDate = async (shipByDate: string) => {
     setIsSavingShipByDate(true);
     try {
@@ -199,11 +186,9 @@ export function useOrderFieldSave({
 
   return {
     isSavingOutOfStock,
-    isSavingNotes,
     isSavingShipByDate,
     isSavingInlineFields,
     saveOutOfStock,
-    saveNotes,
     saveShipByDate,
     saveInlineFields,
     resetRefs,

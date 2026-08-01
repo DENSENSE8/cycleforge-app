@@ -62,6 +62,9 @@ const ORDER_DETAIL_SELECT = `
       o.status_history,
       o.quantity,
       o.notes,
+      (
+        SELECT COUNT(*)::int FROM order_notes n WHERE n.order_id = o.id
+      ) AS note_count,
       o.account_source,
       o.order_date,
       o.created_at,

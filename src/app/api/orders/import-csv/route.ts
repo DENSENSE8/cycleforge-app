@@ -160,7 +160,13 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
           productTitle: '',
           condition: '',
           quantity: canonical.quantity || '1',
-          notes: canonical.customer_name ? `Customer: ${canonical.customer_name}` : '',
+          // The mapped `customer_name` column is a BUYER, not a note. It used
+          // to land as `notes: "Customer: <name>"`, which made the buyer
+          // invisible to every customer-scoped read and put import prose in the
+          // column operators type into. The writer now resolves it to a
+          // `customers` row and sets `orders.customer_id`.
+          notes: '',
+          customerName: canonical.customer_name || '',
           accountSource: canonical.platform || '',
           trackings: canonical.tracking_number ? [canonical.tracking_number] : [],
           shipByDate: null,
