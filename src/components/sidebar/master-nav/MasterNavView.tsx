@@ -1,7 +1,7 @@
 'use client';
 
 import { TOP_CHROME_BAND_FACE } from '@/components/layout/header-shell';
-import type { SidebarPageNav, SpineDrillId } from '@/lib/sidebar-navigation';
+import type { SidebarPageNav, SpineSectionId } from '@/lib/sidebar-navigation';
 import { cn } from '@/utils/_cn';
 import { MasterNavHeader } from './MasterNavHeader';
 import { SidebarNavList } from './SidebarNavList';
@@ -18,20 +18,18 @@ import { SidebarNavList } from './SidebarNavList';
  * ## Stack (top → bottom)
  *
  * 1. **Name-of-now** — identity only (label + leading icon: mode glyph or page icon).
- * 2. **Body** — Search/Media top pin → section drills (Overview / Library /
- *    Floor / Desk / Stock) or the root map of those section buttons →
- *    Settings/Admin footer pin.
+ * 2. **Body** — Home/Search/Media top pin → section drills (Overview / Scan
+ *    Stations / Desk / Stock / Library) or the root map of those section
+ *    buttons → Settings/Admin footer pin.
  *
  * Global search + AI stay in GlobalHeader (`GlobalHeaderSearch`). L2 Mode +
- * Recents stay in GlobalHeader — never a second drill altitude. Search + Media
- * page rows are top-pinned in the spine (not a GlobalHeader twin).
+ * Recents stay in GlobalHeader. Home + Search + Media page rows are top-pinned
+ * in the spine (not a GlobalHeader twin).
  */
 export function MasterNavView({
   activePage,
   activeModeId,
   otherPages,
-  expandedKey,
-  onToggleRow,
   onNavigate,
   onRowHover,
   drillId,
@@ -41,13 +39,11 @@ export function MasterNavView({
   activePage: SidebarPageNav;
   activeModeId: string | null;
   otherPages: SidebarPageNav[];
-  expandedKey: string | null;
-  onToggleRow: (key: string | null) => void;
   onNavigate: (pageId: string, modeId?: string) => void;
   /** Hover hook per page row — warms the destination's data. */
   onRowHover?: (page: SidebarPageNav) => void;
-  drillId: SpineDrillId | null;
-  onDrillChange: (id: SpineDrillId | null) => void;
+  drillId: SpineSectionId | null;
+  onDrillChange: (id: SpineSectionId | null) => void;
   className?: string;
 }) {
   const activeMode = activePage.modes?.find((m) => m.id === activeModeId);
@@ -71,8 +67,6 @@ export function MasterNavView({
           activePage={activePage}
           activeModeId={activeModeId}
           otherPages={otherPages}
-          expandedKey={expandedKey}
-          onToggleRow={onToggleRow}
           onNavigate={onNavigate}
           onRowHover={onRowHover}
           drillId={drillId}
