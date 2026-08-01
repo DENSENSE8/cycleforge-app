@@ -4,21 +4,17 @@ import type { ReactNode } from 'react';
 import { CartonUnitsRollupBody } from '../../CartonUnitsRollup';
 import { UnboxLabelPreview } from '../UnboxLabelPreview';
 import { POUnboxingSection } from '../POUnboxingSection';
+import { UnboxCaptureStack } from '../../UnboxCaptureStack';
 import { LineChecklistTab } from '../LineChecklistTab';
 import { LinePoNoteCard } from '../LinePoNoteCard';
 import { SupportContextHub } from '@/components/support/context';
 import { SectionTabsSlider, WorkspaceCard, type SectionTab } from '@/design-system/components';
 import { buildSectionTabs, WorkspaceTimelineTab } from '@/components/station/workbench';
-import { Barcode, ClipboardList, ExternalLink, FileText, History, MapPin, MessageSquare, PackageOpen, SlidersHorizontal } from '@/components/Icons';
+import { Barcode, ClipboardList, ExternalLink, FileText, History, MapPin, MessageSquare, SlidersHorizontal } from '@/components/Icons';
 import type { ReceivingLineRow } from '@/components/station/ReceivingLinesTable';
 import type { InlineActionFeedbackPayload } from '../../InlineActionFeedbackCard';
 import type { PoNoteTabState } from './usePoNoteTabState';
-import type { UnboxView } from './types';
-import type {
-  ChecklistTabBridge,
-  ConversationTabBridge,
-  UnitsTabBridge,
-} from './unbox-tab-bridges';
+import type { UnboxSideTab } from '../unbox-side-tabs';
 import { TrackingNumbersTab } from '../TrackingNumbersTab';
 import { ListingLinksTab } from '../ListingLinksTab';
 import { TriageClassifySection } from '@/components/receiving/triage/TriageClassifySection';
@@ -42,7 +38,8 @@ export interface BuildUnboxTabsInput {
   staffId: string;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- unbox controller return
   c: any;
-  activeUnboxView: UnboxView;
+  /** Which side tab is showing — gates the lazily-mounted Support hub. */
+  activeSideTab: UnboxSideTab | null;
   hasUnits: boolean;
   serialCount: number;
   hasTimelineTab: boolean;
@@ -50,7 +47,7 @@ export interface BuildUnboxTabsInput {
   hasListingsTab: boolean;
   /** Always true — Classify is the SoT editor (strip for unfound, overflow for matched). */
   hasClassifyTab: boolean;
-  /** Unfound: Classify on primary strip order 2. Matched: under ⋯. */
+  /** Unfound: Classify on primary strip order 1. Matched: under ⋯. */
   classifyOnStrip: boolean;
   poIdForTracking: string;
   hasPoNoteTab: boolean;
@@ -59,9 +56,6 @@ export interface BuildUnboxTabsInput {
   onPairingToggle: () => void;
   onItemDescFeedback: (feedback: InlineActionFeedbackPayload | null) => void;
   onItemDescSaved: (lineId: number, zohoNotes: string | null) => void;
-  onChecklistBridge?: (bridge: ChecklistTabBridge | null) => void;
-  onUnitsBridge?: (bridge: UnitsTabBridge | null) => void;
-  onConversationBridge?: (bridge: ConversationTabBridge | null) => void;
   /** Carton-open snapshot of `receiving.accordionExpand`. */
   accordionBootstrap?: 'default' | 'all';
   /** Header classify pill → open this dimension in TriageClassifySection. */
@@ -71,18 +65,83 @@ export interface BuildUnboxTabsInput {
 }
 
 /**
- * Build the Unbox SectionTabsSlider tab list. Visibility gates stay here so the
- * terminal registry tab ids stay in lock-step with what the slider actually shows.
- * Filters through {@link buildSectionTabs} — the shared waist for all stations.
+ * The Unbox CENTRE — capture stack → PO lines → label preview.
  *
- * Ticket is not a strip tab — it opens as `ReceivingTicketStack` (right-edge push).
+ * No tab strip above it: `overview` is the whole workbench body, and every other
+ * display moved to the right-edge Displays push column ({@link buildUnboxSideTabs}).
  */
-export function buildUnboxTabs(input: BuildUnboxTabsInput): SectionTab[] {
+export function buildUnboxOverview(
+  input: Pick<
+    BuildUnboxTabsInput,
+    | 'row'
+    | 'staffId'
+    | 'c'
+    | 'pairingOpen'
+    | 'onPairingToggle'
+    | 'onItemDescFeedback'
+    | 'onItemDescSaved'
+    | 'accordionBootstrap'
+  >,
+): ReactNode {
   const {
     row,
     staffId,
     c,
-    activeUnboxView,
+    pairingOpen,
+    onPairingToggle,
+    onItemDescFeedback,
+    onItemDescSaved,
+    accordionBootstrap = 'default',
+  } = input;
+
+  return (
+    <div className="space-y-4">
+      {/* Capture stack — READ-ONLY (capture-stack PLAN Phase 2). Bounded
+          height so the bottom-anchor, the collapse density and the push-up
+          motion behave exactly as they will once the input moves in
+          (Phase 3); the accordion below still owns every write. */}
+      <div className="flex max-h-[38vh] min-h-0 flex-col overflow-hidden">
+        <UnboxCaptureStack row={row} />
+      </div>
+      <POUnboxingSection
+        row={row}
+        staffId={staffId}
+        poItems
+        matching
+        openInUnbox={false}
+        editLines
+        serialScan
+        c={c}
+        suppressItemsHeader
+        pairingOpen={pairingOpen}
+        onPairingToggle={onPairingToggle}
+        onItemDescFeedback={onItemDescFeedback}
+        onItemDescSaved={onItemDescSaved}
+        accordionBootstrap={accordionBootstrap}
+      />
+      <UnboxLabelPreview row={row} c={c} />
+    </div>
+  );
+}
+
+/**
+ * Build the eight Unbox side displays for the Displays push column.
+ *
+ * Visibility gates stay here so the strip and {@link resolveUnboxSideTab} agree
+ * on what exists. Filters through {@link buildSectionTabs} — the shared waist for
+ * all stations.
+ *
+ * Each tab owns its own actions now: the bottom dock is carton-terminal
+ * (Print · Receive) and no longer changes with the selected display, so a
+ * tab-scoped action (Save the PO note, Check all, Prebox, post a reply) is a
+ * LOCAL control inside its own body. Ticket is not a display — it opens as
+ * `ReceivingTicketStack`, a peer push column.
+ */
+export function buildUnboxSideTabs(input: BuildUnboxTabsInput): SectionTab[] {
+  const {
+    row,
+    c,
+    activeSideTab,
     hasUnits,
     serialCount,
     hasTimelineTab,
@@ -93,48 +152,11 @@ export function buildUnboxTabs(input: BuildUnboxTabsInput): SectionTab[] {
     poIdForTracking,
     hasPoNoteTab,
     poNote,
-    pairingOpen,
-    onPairingToggle,
-    onItemDescFeedback,
-    onItemDescSaved,
-    onChecklistBridge,
-    onUnitsBridge,
-    onConversationBridge,
-    accordionBootstrap = 'default',
     classifyExpandDimension = null,
     classifyExpandRequestId = 0,
   } = input;
 
-  // Strip: Unbox · Classify (unfound) | Listings (matched) · Units · …
-  // Header bookmark shows locked-width icon faces; Classify tab checklist is
-  // the edit surface (clicking a face routes here via onClassifyPillOpen).
   return buildSectionTabs([
-    {
-      id: 'overview',
-      label: 'Unbox',
-      icon: PackageOpen,
-      content: (
-        <div className="space-y-4">
-          <POUnboxingSection
-            row={row}
-            staffId={staffId}
-            poItems
-            matching
-            openInUnbox={false}
-            editLines
-            serialScan
-            c={c}
-            suppressItemsHeader
-            pairingOpen={pairingOpen}
-            onPairingToggle={onPairingToggle}
-            onItemDescFeedback={onItemDescFeedback}
-            onItemDescSaved={onItemDescSaved}
-            accordionBootstrap={accordionBootstrap}
-          />
-          <UnboxLabelPreview row={row} c={c} />
-        </div>
-      ),
-    },
     {
       id: 'classify',
       label: 'Classify',
@@ -176,7 +198,7 @@ export function buildUnboxTabs(input: BuildUnboxTabsInput): SectionTab[] {
               receivingId={row.receiving_id ?? null}
               activeLineId={row.id ?? null}
               showEmpty
-              onBridgeChange={onUnitsBridge}
+              showPreboxAction
             />
           </div>
         </WorkspaceCard>
@@ -192,6 +214,10 @@ export function buildUnboxTabs(input: BuildUnboxTabsInput): SectionTab[] {
           draft={poNote.draft}
           onDraftChange={poNote.setDraft}
           loading={poNote.loading}
+          dirty={poNote.dirty}
+          saving={poNote.saving}
+          onSave={() => void poNote.save()}
+          onSyncFromInventory={() => void poNote.syncFromInventory()}
         />
       ),
     },
@@ -202,11 +228,7 @@ export function buildUnboxTabs(input: BuildUnboxTabsInput): SectionTab[] {
       priority: 'overflow',
       content: (
         <WorkspaceCard variant="glass" overflow="visible" bodyDensity="nested">
-          <LineChecklistTab
-            lineId={row.id}
-            sku={row.sku}
-            onBridgeChange={onChecklistBridge}
-          />
+          <LineChecklistTab lineId={row.id} sku={row.sku} />
         </WorkspaceCard>
       ),
     },
@@ -216,7 +238,7 @@ export function buildUnboxTabs(input: BuildUnboxTabsInput): SectionTab[] {
       icon: MessageSquare,
       priority: 'overflow',
       content:
-        activeUnboxView === 'support' && (row.id != null || row.receiving_id != null) ? (
+        activeSideTab === 'support' && (row.id != null || row.receiving_id != null) ? (
           <div className="flex h-[68vh] min-h-[460px] flex-col overflow-hidden">
             <SupportContextHub
               anchor={{
@@ -228,8 +250,9 @@ export function buildUnboxTabs(input: BuildUnboxTabsInput): SectionTab[] {
               defaultSegment="team"
               hideCustomerSegment
               hideLinkage
-              externalSubmit
-              onBridgeChange={onConversationBridge}
+              // No `externalSubmit`: the composer owns its own Send / Add note
+              // now that the bottom dock is carton-terminal. That was the whole
+              // job of the deleted support bridge.
               className="h-full min-h-0 rounded-2xl"
             />
           </div>

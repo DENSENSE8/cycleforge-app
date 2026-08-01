@@ -1,46 +1,22 @@
 import type { ReceivingLineRow } from '@/components/station/ReceivingLinesTable';
-import type { PoNoteTabState } from './usePoNoteTabState';
-import type { UnboxTabBridges } from './unbox-tab-bridges';
-
-export type UnboxView =
-  | 'overview'
-  | 'classify'
-  | 'units'
-  | 'checklist'
-  | 'po-note'
-  | 'tracking'
-  | 'listings'
-  | 'timeline'
-  | 'support';
-
-/** Kind keys produced by STATION_TERMINAL_REGISTRY for unbox tabs. */
-export type UnboxTerminalKind =
-  | 'mode-default'
-  | 'po-note'
-  | 'checklist'
-  | 'units'
-  | 'tracking'
-  | 'listings'
-  | 'classify'
-  | 'timeline'
-  | 'support'
-  | 'none';
 
 /**
- * Bags the unbox terminal resolver needs — controller surface + PO-note state
- * + per-tab imperative bridges.
+ * Kind keys produced by STATION_TERMINAL_REGISTRY for unbox.
+ *
+ * There is exactly one live kind: the Unbox dock is carton-terminal, so it does
+ * not vary with the selected display (see `unbox-terminal.tsx`). `none` stays so
+ * the registry can still hide the dock.
+ */
+export type UnboxTerminalKind = 'mode-default' | 'none';
+
+/**
+ * Bags the unbox terminal resolver needs. Just the receive surface now —
+ * the per-tab bridges (checklist / units / support) existed only to feed a
+ * tab-aware dock and were deleted with it.
  */
 export interface UnboxTerminalContext {
   row: ReceivingLineRow;
-  poNote: PoNoteTabState;
   receive: UnboxReceiveTerminalInput;
-  bridges: UnboxTabBridges;
-  /** Focus the serial scan input (units → overview handoff). */
-  focusSerialScan: () => void;
-  /** Switch workspace tab (e.g. units Add serial → overview). */
-  setUnboxView: (view: UnboxView) => void;
-  /** Open linked support ticket reply surface when possible. */
-  focusTicketReply?: () => void;
 }
 
 /** Subset of useUnboxLineController fields that drive the Print · Receive dock. */

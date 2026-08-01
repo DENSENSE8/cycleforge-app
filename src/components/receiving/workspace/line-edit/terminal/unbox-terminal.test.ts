@@ -1,5 +1,5 @@
 /**
- * Unit tests for the unbox terminal VM builders.
+ * Unit tests for the unbox terminal VM builder.
  *
  *   node --import tsx --test src/components/receiving/workspace/line-edit/terminal/unbox-terminal.test.ts
  */
@@ -7,38 +7,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { resolveTerminalKind } from '@/lib/station-terminal';
-import {
-  resolveUnboxChecklistTerminal,
-  resolveUnboxConversationTerminal,
-  resolveUnboxPoNoteTerminal,
-  resolveUnboxReceiveTerminal,
-  resolveUnboxTerminal,
-  resolveUnboxUnitsTerminal,
-} from './unbox-terminal';
+import { resolveUnboxReceiveTerminal, resolveUnboxTerminal } from './unbox-terminal';
 import type { UnboxTerminalContext } from './types';
-import type { PoNoteTabState } from './usePoNoteTabState';
-
-function mockPoNote(overrides: Partial<PoNoteTabState> = {}): PoNoteTabState {
-  return {
-    draft: '',
-    setDraft: () => {},
-    dirty: false,
-    loading: false,
-    saving: false,
-    save: async () => {},
-    syncFromInventory: async () => {},
-    ...overrides,
-  };
-}
 
 function mockCtx(overrides: Partial<UnboxTerminalContext> = {}): UnboxTerminalContext {
   return {
     row: { id: 1, tracking_number: '1Z999' } as UnboxTerminalContext['row'],
-    poNote: mockPoNote(),
-    bridges: { checklist: null, units: null, support: null, conversation: null, ticket: null },
-    focusSerialScan: () => {},
-    setUnboxView: () => {},
-    focusTicketReply: () => {},
     receive: {
       printReceivePrimaryLabel: 'Receive',
       printThenReceiveTitle: 'Print then receive',
@@ -60,23 +34,28 @@ function mockCtx(overrides: Partial<UnboxTerminalContext> = {}): UnboxTerminalCo
   };
 }
 
-test('registry kind: overview → mode-default; po-note → po-note', () => {
-  assert.equal(resolveTerminalKind({ mode: 'unbox', tabId: 'overview' }), 'mode-default');
-  assert.equal(resolveTerminalKind({ mode: 'unbox', tabId: 'po-note' }), 'po-note');
-});
-
-test('registry kind: every unbox tab has a non-none kind', () => {
-  for (const tab of [
+test('the unbox dock is carton-terminal — no tab changes it', () => {
+  // The whole point of Lane E: the displays moved to the right-edge Displays
+  // push column, so a selection there must NOT re-label the bottom primary.
+  // Every tab id (and none at all) resolves to the same kind.
+  for (const tabId of [
+    null,
     'overview',
+    'classify',
+    'listings',
+    'units',
     'po-note',
     'checklist',
-    'units',
-    'timeline',
     'support',
+    'tracking',
+    'timeline',
+    // even an id the registry never knew about
+    'not-a-tab',
   ]) {
-    assert.ok(
-      resolveTerminalKind({ mode: 'unbox', tabId: tab }),
-      `${tab} must resolve to a terminal kind`,
+    assert.equal(
+      resolveTerminalKind({ mode: 'unbox', tabId }),
+      'mode-default',
+      `unbox tabId=${String(tabId)} must stay on the carton terminal`,
     );
   }
 });
@@ -228,135 +207,11 @@ test('resolveUnboxReceiveTerminal: unfound hides Save all to inventory', () => {
   assert.ok(vm.menu && !vm.menu.some((m) => m.label === 'Save all to inventory'));
 });
 
-test('resolveUnboxPoNoteTerminal: dirty draft enables Save', () => {
-  const vm = resolveUnboxPoNoteTerminal(
-    mockCtx({ poNote: mockPoNote({ dirty: true, draft: 'hello' }) }),
-  );
-  assert.equal(vm.label, 'Save to inventory');
-  assert.equal(vm.disabled, false);
-  assert.ok(vm.menu && vm.menu[0]?.label === 'Sync from inventory');
-  assert.equal(vm.menu?.[0]?.disabled, true); // dirty → sync disabled
-});
-
-test('resolveUnboxPoNoteTerminal: clean draft disables Save', () => {
-  const vm = resolveUnboxPoNoteTerminal(mockCtx({ poNote: mockPoNote({ dirty: false }) }));
-  assert.equal(vm.disabled, true);
-  assert.equal(vm.menu?.[0]?.disabled, false);
-});
-
-test('resolveUnboxChecklistTerminal: Check all / Uncheck all toggle', () => {
-  let checked = false;
-  const vmCheck = resolveUnboxChecklistTerminal(
-    mockCtx({
-      bridges: {
-        checklist: {
-          allDone: false,
-          itemCount: 3,
-          checkAll: () => {
-            checked = true;
-          },
-          uncheckAll: () => {
-            checked = false;
-          },
-        },
-        units: null,
-        conversation: null,
-      },
-    }),
-  );
-  assert.equal(vmCheck.label, 'Check all');
-  assert.equal(vmCheck.disabled, false);
-  void vmCheck.onClick();
-  assert.equal(checked, true);
-
-  const vmUncheck = resolveUnboxChecklistTerminal(
-    mockCtx({
-      bridges: {
-        checklist: {
-          allDone: true,
-          itemCount: 3,
-          checkAll: () => {},
-          uncheckAll: () => {
-            checked = false;
-          },
-        },
-        units: null,
-        conversation: null,
-      },
-    }),
-  );
-  assert.equal(vmUncheck.label, 'Uncheck all');
-});
-
-test('resolveUnboxUnitsTerminal: Add serial switches to overview and focuses scan', async () => {
-  let view: string | null = null;
-  let focused = false;
-  const vm = resolveUnboxUnitsTerminal(
-    mockCtx({
-      setUnboxView: (v) => {
-        view = v;
-      },
-      focusSerialScan: () => {
-        focused = true;
-      },
-    }),
-  );
-  void vm.onClick();
-  assert.equal(view, 'overview');
-  await new Promise<void>((resolve) => globalThis.setTimeout(resolve, 5));
-  assert.equal(focused, true);
-});
-
-test('resolveUnboxUnitsTerminal: Add serial + Prebox menu', () => {
-  const vm = resolveUnboxUnitsTerminal(
-    mockCtx({
-      bridges: {
-        checklist: null,
-        units: { serialCount: 2, openPrebox: () => {} },
-        conversation: null,
-      },
-    }),
-  );
-  assert.equal(vm.label, 'Add serial');
-  assert.ok(vm.menu?.some((m) => m.label === 'Prebox'));
-  assert.ok(vm.menu?.some((m) => m.label === 'Edit serials' && m.disabled));
-});
-
-test('resolveUnboxConversationTerminal: Add note when empty draft', () => {
-  let focused = false;
-  const vm = resolveUnboxConversationTerminal(
-    mockCtx({
-      bridges: {
-        checklist: null,
-        units: null,
-        conversation: {
-          hasDraft: false,
-          isPublic: false,
-          submitting: false,
-          canPost: true,
-          focus: () => {
-            focused = true;
-          },
-          submit: () => {},
-        },
-      },
-    }),
-  );
-  assert.equal(vm.label, 'Add note');
-  void vm.onClick();
-  assert.equal(focused, true);
-});
-
-test('resolveUnboxTerminal dispatches kind', () => {
-  const ctx = mockCtx({ poNote: mockPoNote({ dirty: true }) });
+test('resolveUnboxTerminal dispatches only the carton terminal', () => {
+  const ctx = mockCtx();
   assert.equal(resolveUnboxTerminal('mode-default', ctx)?.label, 'Receive');
-  assert.equal(resolveUnboxTerminal('po-note', ctx)?.label, 'Save to inventory');
-  assert.equal(resolveUnboxTerminal('checklist', ctx)?.label, 'Check all');
-  assert.equal(resolveUnboxTerminal('units', ctx)?.label, 'Add serial');
-  assert.equal(resolveUnboxTerminal('timeline', ctx)?.label, 'Copy tracking');
-  assert.equal(resolveUnboxTerminal('timeline', ctx)?.tone, 'accent');
-  assert.equal(resolveUnboxTerminal('ticket', ctx), null);
-  assert.equal(resolveUnboxTerminal('support', ctx)?.label, 'Add note');
-  assert.equal(resolveUnboxTerminal('support', ctx)?.tone, 'accent');
-  assert.equal(resolveUnboxTerminal('none', ctx), null);
+  // The retired tab kinds must not resurrect a second dock meaning.
+  for (const kind of ['po-note', 'checklist', 'units', 'timeline', 'support', 'ticket', 'none']) {
+    assert.equal(resolveUnboxTerminal(kind, ctx), null, `${kind} must not build a VM`);
+  }
 });
