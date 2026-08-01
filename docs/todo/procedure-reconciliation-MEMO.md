@@ -1,6 +1,14 @@
 # Procedure reconciliation — one declaration, two surfaces
 
-**Status:** drafted 2026-07-31, code landed behind a guard. **Needs sign-off from the lane that owns `src/components/receiving/workspace/`.**
+**Status:** drafted 2026-07-31, **merged 2026-08-01**. The bench now resolves its
+vocabulary from the declaration; `captureStepVocabulary` is a thin adapter over
+`resolveProcedureSteps` rather than a second source of truth.
+
+**For the lane that owns `src/components/receiving/workspace/`:** this touched
+`derive-capture-step-states.ts`. It was a provably behaviour-preserving swap —
+the earlier guard asserted both sides produced identical sequences across six
+carton shapes *before* the change, and that module's own 18 tests pass unchanged
+after it. The one open question below is still yours.
 
 ---
 
@@ -71,14 +79,20 @@ Variant rules are declarative and compose: `onlyWhen` / `omitWhen` / `moveBefore
 
 Proven to fail correctly: dropping `omitWhen: 'isLocalPickup'` fails with the local-pickup sequence diff; pointing `moveBefore` at the wrong flag fails with the unfound diff.
 
-## What is NOT done — the ask
+## What the merge did
 
-The guard **pins** the two in sync. It does not merge them. The end state is:
+1. `captureStepVocabulary` kept its name and signature (so no call site moved) but its body is now `resolveProcedureSteps(getProcedure('unbox'), input, 'capture')` mapped to the bench's `CaptureStepDef`.
+2. `CAPTURE_STEPS` and `STEP_CLASSIFY` — the local ordered vocabulary — are **deleted**. The variant rules (drop `packing_material` on pickup, serial-before-condition on a return, prepend `classify` on unfound) now live once, declaratively, on the declaration.
+3. `CaptureStepDef.key` widened from the closed `CaptureStepKey` union to `string`: this module no longer gets to close the set. `CaptureStepKey`, narrowed by `isCaptureStepKey`, became the separate question of which keys it can **gate**.
+4. The gate switch got a safe fallback — an unknown key renders **not done** rather than throwing, because a bench that crashes mid-carton is far worse than one showing an extra unchecked row. CI catches it first (below).
 
-1. `captureStepVocabulary` is **deleted**.
-2. `deriveProcedureSteps` takes its vocabulary from `resolveProcedureSteps(getProcedure('unbox'), variant, 'capture')` and keeps only the **gate derivation** (what counts as done, and the `n of N` fact).
-3. This guard becomes trivially true and is deleted with it.
+## What the guard enforces now
 
-That change lives in `src/components/receiving/workspace/` — **your files, not mine.** Nothing in this draft touches them; the guard only reads `captureStepVocabulary`.
+The sequence comparison is tautological once both sides read one declaration, so it was replaced by the two invariants that keep it that way:
 
-**Open question for you:** should the declaration also own the *gate* (photo counts, serial-vs-expected), or does that stay bench-local? My read is it stays bench-local — a gate needs the live row, and the declaration is deliberately fetch-free — but you own that call.
+1. **The bench declares no second ordered vocabulary** — a module-level step array is exactly how the four-way split happened. *(Proven: re-adding `const CAPTURE_STEPS = [...]` fails.)*
+2. **Every declared `capture` step has a gate** — a declared step with no gate renders permanently unchecked and blocks the operator, so it fails in CI instead of at the bench. *(Proven: removing `packing_material` from `GATED_KEYS` fails.)*
+
+Plus: intake/commit steps never leak onto the bench, and every carton shape still resolves a usable sequence (`pickup return` exercises an omission and a reorder at once).
+
+**Still open — your call:** should the declaration also own the *gate* (photo counts, serial-vs-expected)? My read is no: a gate needs the live row and the declaration is deliberately fetch-free, which is why the split above is where it is. But you own that.
