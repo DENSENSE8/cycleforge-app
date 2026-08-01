@@ -1,12 +1,13 @@
 'use client';
 
-import { type ReactNode, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Voicemail, Link2, Clock } from '@/components/Icons';
 import { EmptyState } from '@/design-system/primitives';
 import { SkeletonList } from '@/design-system/components/Skeletons';
 import { SearchBar } from '@/components/ui/SearchBar';
-import { SidebarNavOverlaySlider } from '@/components/sidebar/SidebarNavOverlaySlider';
+import { SidebarFacetGroup } from '@/components/sidebar/SidebarFacetGroup';
+import type { SidebarSection } from '@/components/sidebar/SidebarSectionList';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { cn } from '@/utils/_cn';
 import {
@@ -30,7 +31,7 @@ import { isNotConfigured, useVoicemails } from './useVoiceQueries';
  * deep-linkable) and the page body renders {@link VoicemailDetail}. One-row
  * anatomy: caller → time·mailbox meta → status dot + linked-ticket chip.
  */
-export function VoicemailQueue({ modeToggle = null }: { modeToggle?: ReactNode }) {
+export function VoicemailQueue() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const selectedId = Number(searchParams.get('vm')) || null;
@@ -52,6 +53,23 @@ export function VoicemailQueue({ modeToggle = null }: { modeToggle?: ReactNode }
 
   const openCount = data?.openCount ?? 0;
 
+  // Vocabulary stays in the shared const; only the glyph is wrapped for the
+  // facet list. The Open row carries the count the header line already had, so
+  // the number is legible without reading the sentence beneath it.
+  const statusSections = useMemo<SidebarSection<VoicemailStatusFilter>[]>(
+    () =>
+      VOICEMAIL_STATUS_ITEMS.map((item) => {
+        const Icon = item.icon;
+        return {
+          id: item.id as VoicemailStatusFilter,
+          label: item.label,
+          icon: Icon ? <Icon className="h-3.5 w-3.5" /> : undefined,
+          count: item.id === 'open' && openCount > 0 ? openCount : undefined,
+        };
+      }),
+    [openCount],
+  );
+
   return (
     <div className="flex h-full min-h-0 flex-col bg-surface-card">
       <div className="shrink-0 px-2 pt-2">
@@ -66,14 +84,17 @@ export function VoicemailQueue({ modeToggle = null }: { modeToggle?: ReactNode }
         />
       </div>
 
+      {/* Pinned above the scrollport, not inside it — as a slider it rode the list
+          and scrolled away from the operator who was filtering with it. */}
+      <SidebarFacetGroup
+        label="Status"
+        sections={statusSections}
+        active={status}
+        onSelect={setStatus}
+        ariaLabel="Voicemail follow-up status"
+      />
+
       <div className="min-h-0 flex-1 overflow-y-auto">
-        {modeToggle}
-        <SidebarNavOverlaySlider
-          items={VOICEMAIL_STATUS_ITEMS}
-          value={status}
-          onChange={(id) => setStatus(id as VoicemailStatusFilter)}
-          aria-label="Voicemail follow-up status"
-        />
         {isLoading ? (
           <SkeletonList count={6} />
         ) : notConfigured ? (

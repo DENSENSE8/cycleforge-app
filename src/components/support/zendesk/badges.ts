@@ -58,7 +58,11 @@ const STATUS_DOT: Record<string, string> = {
  * row's left edge never loses its alignment anchor.
  */
 export function statusDot(status?: string | null): string {
-  return STATUS_DOT[String(status ?? '')] ?? 'bg-border-emphasis';
+  // Lowercased on the same terms as statusBadge above — the row renders both off one
+  // status, and `ZendeskTicket.status` is typed `ZendeskTicketStatus | string`, so a
+  // differently-cased value would send the dot neutral while the badge stayed correct
+  // and the row would contradict itself.
+  return STATUS_DOT[String(status ?? '').toLowerCase()] ?? 'bg-border-emphasis';
 }
 
 export const STATUS_OPTIONS: { value: string; label: string }[] = [

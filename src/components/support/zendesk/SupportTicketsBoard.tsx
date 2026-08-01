@@ -285,14 +285,38 @@ export function SupportTicketsBoard() {
               </div>
             ) : tickets.length === 0 ? (
               <div className="p-6">
-                <EmptyState title="No tickets match" description="Try a different filter or search." />
+                {/* Absence and no-match are different answers (workbench.md → the four
+                    settled states). Both signals were already in hand and neither was
+                    used, so a Solved tab with genuinely nothing solved told the operator
+                    their filter was wrong. Zero on a "what needs me" lane is an all-clear,
+                    not an absence — say so. */}
+                {debounced ? (
+                  <EmptyState
+                    title="No tickets match that search"
+                    description={`Nothing in ${status === 'all' ? 'any status' : status} matches “${debounced}”.`}
+                  />
+                ) : status === 'open' || status === 'pending' ? (
+                  <EmptyState
+                    title="Nothing needs you right now"
+                    description={`No ${status} tickets in the queue.`}
+                  />
+                ) : (
+                  <EmptyState
+                    title={`No ${status === 'all' ? '' : `${status} `}tickets yet`}
+                    description="Tickets appear here as they arrive from the connected helpdesk."
+                  />
+                )}
               </div>
             ) : (
               <div className="divide-y divide-border-hairline">
                 {tickets.map((t) => (
                   <SupportTicketRow
                     key={t.id}
-                    ticket={t}
+                    id={t.id}
+                    subject={t.subject}
+                    status={t.status}
+                    priority={t.priority as string | null}
+                    at={t.updated_at}
                     selected={false}
                     onSelect={() =>
                       select({

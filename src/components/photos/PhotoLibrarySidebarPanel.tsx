@@ -5,7 +5,7 @@ import { usePhotoLibrary } from '@/hooks/usePhotoLibrary';
 import { usePhotoLibraryUrlState } from '@/hooks/usePhotoLibraryUrlState';
 import { useImageTypes } from '@/hooks/useImageTypes';
 import { SidebarShell } from '@/components/layout/SidebarShell';
-import { SidebarSectionList } from '@/components/sidebar/SidebarSectionList';
+import { SidebarFacetGroup } from '@/components/sidebar/SidebarFacetGroup';
 import { Folder, Loader2, Plus } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { IconButton } from '@/design-system/primitives';
@@ -149,35 +149,32 @@ export function PhotoLibrarySidebarPanel() {
     <SidebarShell
       className="bg-surface-card"
       headerAbove={
-        <div className="shrink-0 border-b border-border-hairline">
-          <div className="flex items-center justify-between gap-2 px-1.5 pt-2">
-            <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">Sources</p>
-            <HoverTooltip label="Add media type" asChild>
-              <IconButton
-                size="xs"
-                icon={
-                  addingType ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <Plus className="h-3.5 w-3.5" />
-                  )
-                }
-                ariaLabel="Add media type"
-                onClick={() => void addType()}
-                disabled={addingType}
-                // Bleed the hit box so the affordance never grows the eyebrow row.
-                className="-my-1"
-              />
-            </HoverTooltip>
-          </div>
-          <SidebarSectionList
+        <div className="shrink-0">
+          <SidebarFacetGroup
+            label="Sources"
             sections={scopeSections}
             active={activeSection}
             onSelect={selectSection}
             ariaLabel="Media scope"
-            // A navigator beside a working surface, not a settings page — house
-            // one-row anatomy and ring selection (see the prop's contract).
-            density="ops"
+            action={
+              <HoverTooltip label="Add media type" asChild>
+                <IconButton
+                  size="xs"
+                  icon={
+                    addingType ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Plus className="h-3.5 w-3.5" />
+                    )
+                  }
+                  ariaLabel="Add media type"
+                  onClick={() => void addType()}
+                  disabled={addingType}
+                  // Bleed the hit box so the affordance never grows the eyebrow row.
+                  className="-my-1"
+                />
+              </HoverTooltip>
+            }
           />
           {typesLoading && custom.length === 0 ? (
             <p className="flex items-center gap-2 px-1.5 py-1.5 text-role-caption text-text-faint">
