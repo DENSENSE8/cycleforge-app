@@ -4,7 +4,7 @@
 > - P1: 74 `CONN-*` in `master-plan.mdx`; extractor; HTML deprecated; tests green.  
 > - P2: `connections_gap_adoption` template + `conn-adopt:*` helpers; `from-template` stamps session org;  
 >   deploy-time multi-org upsert still **optional later** (§5.2).  
-> **Created:** 2026-07-11 · **Companion:** [`connections-mdx-forge-EXECUTION-PROMPT.md`](./connections-mdx-forge-EXECUTION-PROMPT.md)
+> **Created:** 2026-07-11 · Execution prompt retired 2026-08-01 (both phases shipped).
 
 ---
 

@@ -1,7 +1,7 @@
 # DOC catalog — machine-generated SoT
 
 > **Do not hand-edit.** Regenerate: `node scripts/portfolio-sot-sync.mjs`  
-> Generated: `2026-07-30T04:49:32.808Z` · Files: **299** · Repo: `cycleforge-app`  
+> Generated: `2026-08-01T16:53:49.466Z` · Files: **370** · Repo: `cycleforge-app`  
 > Parent index: [INDEX.md](./INDEX.md)
 
 Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*** id  
@@ -13,13 +13,14 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 
 | WT-ID | Absolute path | Branch | HEAD (short) | Exists |
 |-------|---------------|--------|--------------|--------|
-| `main` | `/Users/icecube/repos/cycleforge-app` | `main` | `22f3d6bda` | yes |
+| `main` | `/Users/icecube/repos/cycleforge-app` | `main` | `c77f33d7e` | yes |
 | `ai-chat` | `/Users/icecube/repos/cycleforge-ai-chat` | `topic/ai-chat` | `3f55b275e` | yes |
 | `fba` | `/Users/icecube/repos/cycleforge-fba` | `topic/fba` | `3f55b275e` | yes |
 | `glass` | `/Users/icecube/repos/cycleforge-glass` | `glass-design-system` | `a331b1247` | yes |
 | `home` | `/Users/icecube/repos/cycleforge-home` | `topic/home` | `dfd5f517f` | yes |
 | `inventory` | `/Users/icecube/repos/cycleforge-inventory` | `topic/inventory` | `3f55b275e` | yes |
 | `journey-hops` | `/Users/icecube/repos/cycleforge-journey-hops` | `topic/journey-hops` | `74d1dd5f6` | yes |
+| `note-grain` | `/Users/icecube/repos/cycleforge-note-grain` | `topic/note-grain` | `5c331b60a` | yes |
 | `photo` | `/Users/icecube/repos/cycleforge-photo` | `topic/photo` | `6b7aab4ce` | yes |
 | `review` | `/Users/icecube/repos/cycleforge-review` | `topic/review` | `b766dd58f` | yes |
 | `sourcing` | `/Users/icecube/repos/cycleforge-sourcing` | `topic/sourcing` | `3f55b275e` | yes |
@@ -122,6 +123,7 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 | `DOC-ROOT-EDGE-REWRITES-8F0E` | `WS-INT` | [`edge-rewrites.md`](../edge-rewrites.md) |
 | `DOC-ROOT-FABLE5-DS-PRUNE-REPORT-7D88` | `WS-DOCS-MISC` | [`audit/fable5-ds-prune-report.md`](../audit/fable5-ds-prune-report.md) |
 | `DOC-ROOT-FABLE5-WAVE2-DS-REPORT-721A` | `WS-DOCS-MISC` | [`audit/fable5-wave2-ds-report.md`](../audit/fable5-wave2-ds-report.md) |
+| `DOC-ROOT-GEMINI-BRIEFING-JIT-PACK-DOCUMENTS-2533` | `WS-SEARCH` | [`research/gemini-briefing-jit-pack-documents.md`](../research/gemini-briefing-jit-pack-documents.md) |
 | `DOC-ROOT-GEMINI-BRIEFING-SERIAL-LABEL-ORDER-BINDING-598B` | `WS-SEARCH` | [`research/gemini-briefing-serial-label-order-binding.md`](../research/gemini-briefing-serial-label-order-binding.md) |
 | `DOC-ROOT-GOOGLE-DRIVE-BACKUP-SETUP-7C9C` | `WS-INT` | [`google-drive-backup-setup.md`](../google-drive-backup-setup.md) |
 | `DOC-ROOT-HANDOFF-LCP-STREAMING-793C` | `WS-DOCS-MISC` | [`performance/HANDOFF-lcp-streaming.md`](../performance/HANDOFF-lcp-streaming.md) |
@@ -189,18 +191,25 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 | `DOC-TODO-06-WALK-IN-KIOSK-AUTH-F4B9` | `WS-TODO-MISC` | [`todo/foh-boh-surface-split/06-walk-in-kiosk-auth.md`](../todo/foh-boh-surface-split/06-walk-in-kiosk-auth.md) |
 | `DOC-TODO-AGENTIC-LOOP-EXECUTION-PROMPT-E0EC` | `WS-ALP` | [`todo/agentic-loop-EXECUTION-PROMPT.md`](../todo/agentic-loop-EXECUTION-PROMPT.md) |
 | `DOC-TODO-AGENTIC-LOOP-MASTER-PLAN-C913` | `WS-ALP` | [`todo/agentic-loop-master-plan.md`](../todo/agentic-loop-master-plan.md) |
+| `DOC-TODO-AI-CHAT-ODYSSEUS-DISPLAY-HANDOFF-CA08` | `WS-TODO-MISC` | [`todo/ai-chat-odysseus-display-HANDOFF.md`](../todo/ai-chat-odysseus-display-HANDOFF.md) |
 | `DOC-TODO-ALL-TABLES-IMPROVEMENTS-EXECUTION-PROMPT-7E82` | `WS-TODO-MISC` | [`todo/all-tables-improvements-EXECUTION-PROMPT.md`](../todo/all-tables-improvements-EXECUTION-PROMPT.md) |
 | `DOC-TODO-BETA-INTAKE-FUNNEL-PLAN-6D32` | `WS-BETA` | [`todo/beta-intake-funnel-plan.md`](../todo/beta-intake-funnel-plan.md) |
 | `DOC-TODO-CARTON-INSPECTOR-D4-ROOT-FIX-HANDOFF-A727` | `WS-TODO-MISC` | [`todo/carton-inspector-D4-ROOT-FIX-HANDOFF.md`](../todo/carton-inspector-D4-ROOT-FIX-HANDOFF.md) |
+| `DOC-TODO-CARTON-INSPECTOR-LAYOUT-POLISH-HANDOFF-2237` | `WS-TODO-MISC` | [`todo/carton-inspector-LAYOUT-POLISH-HANDOFF.md`](../todo/carton-inspector-LAYOUT-POLISH-HANDOFF.md) |
 | `DOC-TODO-CARTON-INSPECTOR-REBUILD-HANDOFF-DDA8` | `WS-TODO-MISC` | [`todo/carton-inspector-REBUILD-HANDOFF.md`](../todo/carton-inspector-REBUILD-HANDOFF.md) |
 | `DOC-TODO-CARTON-INSPECTOR-UX-GEMINI-RESEARCH-BRIEFING-326B` | `WS-TODO-MISC` | [`todo/carton-inspector-ux-GEMINI-RESEARCH-BRIEFING.md`](../todo/carton-inspector-ux-GEMINI-RESEARCH-BRIEFING.md) |
+| `DOC-TODO-CHROME-SOT-COMPOUND-GEMINI-RESEARCH-BRIEFING-5D7D` | `WS-TODO-MISC` | [`todo/chrome-sot-compound-GEMINI-RESEARCH-BRIEFING.md`](../todo/chrome-sot-compound-GEMINI-RESEARCH-BRIEFING.md) |
+| `DOC-TODO-CHROME-SOT-COMPOUND-PLAN-1D11` | `WS-TODO-MISC` | [`todo/chrome-sot-compound-PLAN.md`](../todo/chrome-sot-compound-PLAN.md) |
+| `DOC-TODO-CLAIM-SUBJECT-FBA-UNKNOWN-HANDOFF-559C` | `WS-TODO-MISC` | [`todo/claim-subject-fba-unknown-HANDOFF.md`](../todo/claim-subject-fba-unknown-HANDOFF.md) |
 | `DOC-TODO-CLASSIFY-OPTION-ICON-FACES-HANDOFF-C3C4` | `WS-TODO-MISC` | [`todo/classify-option-icon-faces-handoff.md`](../todo/classify-option-icon-faces-handoff.md) |
-| `DOC-TODO-CONNECTIONS-MDX-FORGE-EXECUTION-PROMPT-3437` | `WS-CONN` | [`todo/connections-mdx-forge-EXECUTION-PROMPT.md`](../todo/connections-mdx-forge-EXECUTION-PROMPT.md) |
 | `DOC-TODO-CONNECTIONS-MDX-FORGE-PLAN-2E2B` | `WS-CONN` | [`todo/connections-mdx-forge-plan.md`](../todo/connections-mdx-forge-plan.md) |
+| `DOC-TODO-CONTEXT-RAIL-COLLAPSE-CHEVRON-SIZE-HANDOFF-7B4A` | `WS-TODO-MISC` | [`todo/context-rail-collapse-chevron-SIZE-HANDOFF.md`](../todo/context-rail-collapse-chevron-SIZE-HANDOFF.md) |
 | `DOC-TODO-CONTEXTUAL-FONT-SYSTEM-GEMINI-RESEARCH-BRIEFING-2EB3` | `WS-TODO-MISC` | [`todo/contextual-font-system-GEMINI-RESEARCH-BRIEFING.md`](../todo/contextual-font-system-GEMINI-RESEARCH-BRIEFING.md) |
 | `DOC-TODO-CONTEXTUAL-MY-DAY-HOME-PLAN-B10C` | `WS-HOME` | [`todo/contextual-my-day-home-plan.md`](../todo/contextual-my-day-home-plan.md) |
 | `DOC-TODO-CONTEXTUAL-SIDEBAR-IA-GEMINI-RESEARCH-BRIEFING-DD4E` | `WS-TODO-MISC` | [`todo/contextual-sidebar-ia-GEMINI-RESEARCH-BRIEFING.md`](../todo/contextual-sidebar-ia-GEMINI-RESEARCH-BRIEFING.md) |
-| `DOC-TODO-CYCLEFORGE-SYNC-FROM-USAV-2026-07-10-4707` | `WS-SYNC` | [`todo/cycleforge-sync-from-usav-2026-07-10.md`](../todo/cycleforge-sync-from-usav-2026-07-10.md) |
+| `DOC-TODO-DAILY-TRIAGE-BACKEND-PLAN-VALIDATION-B9D3` | `WS-TODO-MISC` | [`todo/daily-triage-BACKEND-PLAN-VALIDATION.md`](../todo/daily-triage-BACKEND-PLAN-VALIDATION.md) |
+| `DOC-TODO-DAILY-TRIAGE-FRONTEND-F0-EXECUTION-PROMPT-6BDB` | `WS-TODO-MISC` | [`todo/daily-triage-frontend-F0-EXECUTION-PROMPT.md`](../todo/daily-triage-frontend-F0-EXECUTION-PROMPT.md) |
+| `DOC-TODO-DAILY-TRIAGE-FRONTEND-PLAN-VALIDATION-A98D` | `WS-TODO-MISC` | [`todo/daily-triage-FRONTEND-PLAN-VALIDATION.md`](../todo/daily-triage-FRONTEND-PLAN-VALIDATION.md) |
 | `DOC-TODO-DASHBOARD-ENTITY-AXIS-GEMINI-RESEARCH-BRIEFING-B384` | `WS-TODO-MISC` | [`todo/dashboard-entity-axis-GEMINI-RESEARCH-BRIEFING.md`](../todo/dashboard-entity-axis-GEMINI-RESEARCH-BRIEFING.md) |
 | `DOC-TODO-DASHBOARD-IA-RESEARCH-BRIEFING-HKL-CCB9` | `WS-TODO-MISC` | [`todo/dashboard-ia-research-briefing-HKL.md`](../todo/dashboard-ia-research-briefing-HKL.md) |
 | `DOC-TODO-DASHBOARD-IA-REWORK-HANDOFF-1970` | `WS-TODO-MISC` | [`todo/dashboard-ia-rework-HANDOFF.md`](../todo/dashboard-ia-rework-HANDOFF.md) |
@@ -211,9 +220,13 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 | `DOC-TODO-DASHBOARD-INLINE-DETAIL-EDITING-GEMINI-RESEARCH--A493` | `WS-TODO-MISC` | [`todo/dashboard-inline-detail-editing-GEMINI-RESEARCH-BRIEFING.md`](../todo/dashboard-inline-detail-editing-GEMINI-RESEARCH-BRIEFING.md) |
 | `DOC-TODO-DASHBOARD-MODES-RESEARCH-BRIEF-9A0E` | `WS-TODO-MISC` | [`todo/dashboard-modes-research-BRIEF.md`](../todo/dashboard-modes-research-BRIEF.md) |
 | `DOC-TODO-DASHBOARD-MODES-SEARCH-RECEIVING-SHIPPING-10B3` | `WS-TODO-MISC` | [`todo/dashboard-modes-search-receiving-shipping.md`](../todo/dashboard-modes-search-receiving-shipping.md) |
+| `DOC-TODO-DASHBOARD-ORDERS-IDENTITY-HIERARCHY-GEMINI-RESEA-C78E` | `WS-TODO-MISC` | [`todo/dashboard-orders-identity-hierarchy-GEMINI-RESEARCH-BRIEFING.md`](../todo/dashboard-orders-identity-hierarchy-GEMINI-RESEARCH-BRIEFING.md) |
 | `DOC-TODO-DASHBOARD-SEARCH-EXACT-OPEN-HANDOFF-E040` | `WS-TODO-MISC` | [`todo/dashboard-search-exact-open-handoff.md`](../todo/dashboard-search-exact-open-handoff.md) |
+| `DOC-TODO-DESK-CONTRACT-UNIFICATION-ADDENDUM-7108` | `WS-TODO-MISC` | [`todo/desk-contract-unification-ADDENDUM.md`](../todo/desk-contract-unification-ADDENDUM.md) |
+| `DOC-TODO-DESK-CONTRACT-UNIFICATION-CLAUDE-CODE-PROMPT-1B61` | `WS-TODO-MISC` | [`todo/desk-contract-unification-CLAUDE-CODE-PROMPT.md`](../todo/desk-contract-unification-CLAUDE-CODE-PROMPT.md) |
 | `DOC-TODO-DETAIL-SURFACE-IA-GEMINI-RESEARCH-BRIEFING-9ABA` | `WS-TODO-MISC` | [`todo/detail-surface-IA-GEMINI-RESEARCH-BRIEFING.md`](../todo/detail-surface-IA-GEMINI-RESEARCH-BRIEFING.md) |
 | `DOC-TODO-DISPLAY-CONVERGENCE-LOG-ABE1` | `WS-TODO-MISC` | [`todo/display-convergence-log.md`](../todo/display-convergence-log.md) |
+| `DOC-TODO-DISPLAY-REGION-CONTRACT-ELEVATION-2026-07-31-FDF4` | `WS-TODO-MISC` | [`todo/display-region-contract-ELEVATION-2026-07-31.md`](../todo/display-region-contract-ELEVATION-2026-07-31.md) |
 | `DOC-TODO-DOCK-RECEIVING-VS-UNBOX-GEMINI-RESEARCH-BRIEFING-BACD` | `WS-TODO-MISC` | [`todo/dock-receiving-vs-unbox-GEMINI-RESEARCH-BRIEFING.md`](../todo/dock-receiving-vs-unbox-GEMINI-RESEARCH-BRIEFING.md) |
 | `DOC-TODO-EBAY-DELIVERED-NOT-UNBOXED-PLAN-85A5` | `WS-TODO-MISC` | [`todo/ebay-delivered-not-unboxed-PLAN.md`](../todo/ebay-delivered-not-unboxed-PLAN.md) |
 | `DOC-TODO-EBAY-DELIVERED-NOT-UNBOXED-RESEARCH-BRIEF-67BD` | `WS-TODO-MISC` | [`todo/ebay-delivered-not-unboxed-RESEARCH-BRIEF.md`](../todo/ebay-delivered-not-unboxed-RESEARCH-BRIEF.md) |
@@ -224,46 +237,62 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 | `DOC-TODO-FBA-SURFACE-SPLIT-PLAN-21E8` | `WS-TODO-MISC` | [`todo/fba-surface-split-plan.md`](../todo/fba-surface-split-plan.md) |
 | `DOC-TODO-FOH-BOH-SURFACE-SPLIT-PLAN-7A2D` | `WS-TODO-MISC` | [`todo/foh-boh-surface-split-plan.md`](../todo/foh-boh-surface-split-plan.md) |
 | `DOC-TODO-GARISEK-ACK-EOD-SHELF-IMPLEMENTATION-PROMPT-C41C` | `WS-TODO-MISC` | [`todo/garisek-ack-eod-shelf-IMPLEMENTATION-PROMPT.md`](../todo/garisek-ack-eod-shelf-IMPLEMENTATION-PROMPT.md) |
-| `DOC-TODO-GLASS-DESIGN-SYSTEM-776B` | `WS-GLASS` | [`todo/GLASS-DESIGN-SYSTEM.md`](../todo/GLASS-DESIGN-SYSTEM.md) |
 | `DOC-TODO-GRID-SURFACE-DESCRIPTOR-EXECUTION-PROMPT-481C` | `WS-TODO-MISC` | [`todo/grid-surface-descriptor-EXECUTION-PROMPT.md`](../todo/grid-surface-descriptor-EXECUTION-PROMPT.md) |
 | `DOC-TODO-GRID-SURFACE-DESCRIPTOR-PHASE-A-RUN-NOTES-B664` | `WS-TODO-MISC` | [`todo/grid-surface-descriptor-phase-a-RUN-NOTES.md`](../todo/grid-surface-descriptor-phase-a-RUN-NOTES.md) |
 | `DOC-TODO-GRID-SURFACE-DESCRIPTOR-PLAN-8E00` | `WS-TODO-MISC` | [`todo/grid-surface-descriptor-plan.md`](../todo/grid-surface-descriptor-plan.md) |
+| `DOC-TODO-HEADER-MODE-SWITCHER-UNBOX-HANDOFF-9862` | `WS-TODO-MISC` | [`todo/header-mode-switcher-UNBOX-HANDOFF.md`](../todo/header-mode-switcher-UNBOX-HANDOFF.md) |
 | `DOC-TODO-HIGHEST-ROI-OPS-UI-EXECUTION-PLAN-3D1F` | `WS-ROI` | [`todo/highest-roi-ops-ui-execution-plan.md`](../todo/highest-roi-ops-ui-execution-plan.md) |
+| `DOC-TODO-HOME-ICON-PRODUCTS-PLATFORMS-HANDOFF-D975` | `WS-TODO-MISC` | [`todo/home-icon-products-platforms-HANDOFF.md`](../todo/home-icon-products-platforms-HANDOFF.md) |
 | `DOC-TODO-HOME-OPS-TV-COLLAB-SURFACES-PLAN-2B48` | `WS-TODO-MISC` | [`todo/home-ops-tv-collab-surfaces-plan.md`](../todo/home-ops-tv-collab-surfaces-plan.md) |
 | `DOC-TODO-HOME-TRIAGE-SUBSCRIPTIONS-GEMINI-RESEARCH-BRIEFI-3DDA` | `WS-TODO-MISC` | [`todo/home-triage-subscriptions-GEMINI-RESEARCH-BRIEFING.md`](../todo/home-triage-subscriptions-GEMINI-RESEARCH-BRIEFING.md) |
 | `DOC-TODO-HOME-TRIAGE-SUBSCRIPTIONS-GEMINI-REVISION-PROMPT-581C` | `WS-TODO-MISC` | [`todo/home-triage-subscriptions-GEMINI-REVISION-PROMPT.md`](../todo/home-triage-subscriptions-GEMINI-REVISION-PROMPT.md) |
 | `DOC-TODO-HOME-TRIAGE-SUBSCRIPTIONS-PLAN-VALIDATION-FD83` | `WS-TODO-MISC` | [`todo/home-triage-subscriptions-PLAN-VALIDATION.md`](../todo/home-triage-subscriptions-PLAN-VALIDATION.md) |
 | `DOC-TODO-HOME-TRIAGE-SUBSCRIPTIONS-V2-PUNCHLIST-8CE9` | `WS-TODO-MISC` | [`todo/home-triage-subscriptions-V2-PUNCHLIST.md`](../todo/home-triage-subscriptions-V2-PUNCHLIST.md) |
+| `DOC-TODO-IMPORT-ADD-ORDER-RIGHT-RAIL-HANDOFF-54A3` | `WS-TODO-MISC` | [`todo/import-add-order-right-rail-HANDOFF.md`](../todo/import-add-order-right-rail-HANDOFF.md) |
+| `DOC-TODO-INCOMING-CHROME-DISPLAY-HANDOFF-86DA` | `WS-TODO-MISC` | [`todo/incoming-chrome-display-HANDOFF.md`](../todo/incoming-chrome-display-HANDOFF.md) |
 | `DOC-TODO-INCOMING-CLICK-TO-OPEN-HANDOFF-8301` | `WS-TODO-MISC` | [`todo/incoming-click-to-open-handoff.md`](../todo/incoming-click-to-open-handoff.md) |
 | `DOC-TODO-INCOMING-GRID-PO-SELECT-STATUS-HANDOFF-27AD` | `WS-TODO-MISC` | [`todo/incoming-grid-po-select-status-handoff.md`](../todo/incoming-grid-po-select-status-handoff.md) |
 | `DOC-TODO-INTEGRATIONS-OAUTH-CONNECTION-PLAN-281D` | `WS-INT` | [`todo/integrations-oauth-connection-plan.md`](../todo/integrations-oauth-connection-plan.md) |
 | `DOC-TODO-INVERTED-STATION-OUTBOUND-BRIEFING-FOR-GEMINI-BC4E` | `WS-TODO-MISC` | [`todo/inverted-station-outbound-BRIEFING-FOR-GEMINI.md`](../todo/inverted-station-outbound-BRIEFING-FOR-GEMINI.md) |
+| `DOC-TODO-JIT-PACK-DOCUMENTS-PLAN-D04F` | `WS-TODO-MISC` | [`todo/jit-pack-documents-plan.md`](../todo/jit-pack-documents-plan.md) |
 | `DOC-TODO-JOURNEY-HOP-EMITTERS-PLAN-B8CE` | `WS-TODO-MISC` | [`todo/journey-hop-emitters-plan.md`](../todo/journey-hop-emitters-plan.md) |
 | `DOC-TODO-KINETIC-LEDGER-STATION-SAFETY-EXECUTION-PROMPT-DECE` | `WS-TODO-MISC` | [`todo/kinetic-ledger-station-safety-EXECUTION-PROMPT.md`](../todo/kinetic-ledger-station-safety-EXECUTION-PROMPT.md) |
 | `DOC-TODO-KINETIC-LEDGER-STATION-SAFETY-PLAN-97BC` | `WS-TODO-MISC` | [`todo/kinetic-ledger-station-safety-PLAN.md`](../todo/kinetic-ledger-station-safety-PLAN.md) |
 | `DOC-TODO-KIOSK-COUNTER-TRANSACTION-PLAN-0689` | `WS-TODO-MISC` | [`todo/kiosk-counter-transaction-PLAN.md`](../todo/kiosk-counter-transaction-PLAN.md) |
+| `DOC-TODO-KIOSK-IPAD-NATIVE-SHELL-GEMINI-RESEARCH-BRIEFING-D94F` | `WS-TODO-MISC` | [`todo/kiosk-ipad-native-shell-GEMINI-RESEARCH-BRIEFING.md`](../todo/kiosk-ipad-native-shell-GEMINI-RESEARCH-BRIEFING.md) |
+| `DOC-TODO-KIOSK-LANDSCAPE-SHELL-PLAN-1830` | `WS-TODO-MISC` | [`todo/kiosk-landscape-shell-PLAN.md`](../todo/kiosk-landscape-shell-PLAN.md) |
+| `DOC-TODO-KIOSK-PAPERWORK-ICON-HANDOFF-EA0C` | `WS-TODO-MISC` | [`todo/kiosk-paperwork-icon-HANDOFF.md`](../todo/kiosk-paperwork-icon-HANDOFF.md) |
 | `DOC-TODO-KIOSK-SALES-INTAKE-GEMINI-RESEARCH-BRIEFING-5DAF` | `WS-TODO-MISC` | [`todo/kiosk-sales-intake-GEMINI-RESEARCH-BRIEFING.md`](../todo/kiosk-sales-intake-GEMINI-RESEARCH-BRIEFING.md) |
+| `DOC-TODO-LEDGERGRID-UNIFIED-TABLE-SOT-RESEARCH-HANDOFF-1AEB` | `WS-TODO-MISC` | [`todo/ledgergrid-unified-table-sot-RESEARCH-HANDOFF.md`](../todo/ledgergrid-unified-table-sot-RESEARCH-HANDOFF.md) |
 | `DOC-TODO-LOCAL-PICKUP-LEDGERGRID-PORT-HANDOFF-1268` | `WS-TODO-MISC` | [`todo/local-pickup-ledgergrid-port-HANDOFF.md`](../todo/local-pickup-ledgergrid-port-HANDOFF.md) |
+| `DOC-TODO-MAIN-NAV-OVERVIEW-STOCK-HANDOFF-E0DC` | `WS-TODO-MISC` | [`todo/main-nav-overview-stock-HANDOFF.md`](../todo/main-nav-overview-stock-HANDOFF.md) |
 | `DOC-TODO-MASTER-NAV-RELOCATION-EXECUTION-PROMPT-5886` | `WS-TODO-MISC` | [`todo/master-nav-relocation-EXECUTION-PROMPT.md`](../todo/master-nav-relocation-EXECUTION-PROMPT.md) |
+| `DOC-TODO-MASTER-NAV-SPINE-DISPLAY-HANDOFF-EC61` | `WS-TODO-MISC` | [`todo/master-nav-spine-display-HANDOFF.md`](../todo/master-nav-spine-display-HANDOFF.md) |
 | `DOC-TODO-MEDIA-LIBRARY-RAIL-CARD-HANDOFF-552E` | `WS-TODO-MISC` | [`todo/media-library-rail-card-HANDOFF.md`](../todo/media-library-rail-card-HANDOFF.md) |
 | `DOC-TODO-MEDIA-LIBRARY-UX-GEMINI-RESEARCH-BRIEFING-7DD1` | `WS-TODO-MISC` | [`todo/media-library-ux-GEMINI-RESEARCH-BRIEFING.md`](../todo/media-library-ux-GEMINI-RESEARCH-BRIEFING.md) |
 | `DOC-TODO-MOBILE-UNBOX-PHOTO-FLOW-GEMINI-RESEARCH-BRIEFING-2BA6` | `WS-TODO-MISC` | [`todo/mobile-unbox-photo-flow-GEMINI-RESEARCH-BRIEFING.md`](../todo/mobile-unbox-photo-flow-GEMINI-RESEARCH-BRIEFING.md) |
+| `DOC-TODO-MOTION-REDUCE-STRATEGY-COSTING-50E3` | `WS-TODO-MISC` | [`todo/motion-reduce-strategy-COSTING.md`](../todo/motion-reduce-strategy-COSTING.md) |
 | `DOC-TODO-NAV-ROUTING-REFACTOR-EXECUTION-PROMPT-1A0D` | `WS-TODO-MISC` | [`todo/nav-routing-refactor-EXECUTION-PROMPT.md`](../todo/nav-routing-refactor-EXECUTION-PROMPT.md) |
 | `DOC-TODO-NAV-ROUTING-REFACTOR-FINISH-PROMPT-3E0A` | `WS-TODO-MISC` | [`todo/nav-routing-refactor-FINISH-PROMPT.md`](../todo/nav-routing-refactor-FINISH-PROMPT.md) |
 | `DOC-TODO-NEXTIVA-VOICE-SUPPORT-MODE-PLAN-E13F` | `WS-VOICE` | [`todo/nextiva-voice-support-mode-plan.md`](../todo/nextiva-voice-support-mode-plan.md) |
+| `DOC-TODO-NOTE-GRAIN-E2E-AND-FOLLOWUPS-EXECUTION-PROMPT-CAA2` | `WS-TODO-MISC` | [`todo/note-grain-e2e-and-followups-EXECUTION-PROMPT.md`](../todo/note-grain-e2e-and-followups-EXECUTION-PROMPT.md) |
 | `DOC-TODO-ONBOARDING-FOUNDATIONAL-PLAN-8E4E` | `WS-ONB` | [`todo/onboarding-foundational-plan.md`](../todo/onboarding-foundational-plan.md) |
 | `DOC-TODO-OPS-EVENTS-STATION-WORKFLOW-UNIFICATION-PLAN-2789` | `WS-ENGINE` | [`todo/ops-events-station-workflow-unification-plan.md`](../todo/ops-events-station-workflow-unification-plan.md) |
 | `DOC-TODO-OPS-TABLE-SIMPLIFICATION-GEMINI-FOLLOWUP-9A06` | `WS-TODO-MISC` | [`todo/ops-table-simplification-GEMINI-FOLLOWUP.md`](../todo/ops-table-simplification-GEMINI-FOLLOWUP.md) |
 | `DOC-TODO-OPS-TABLE-SIMPLIFICATION-GEMINI-RESEARCH-BRIEFIN-BE48` | `WS-TODO-MISC` | [`todo/ops-table-simplification-GEMINI-RESEARCH-BRIEFING.md`](../todo/ops-table-simplification-GEMINI-RESEARCH-BRIEFING.md) |
 | `DOC-TODO-ORDER-DETAILS-PAGE-EXECUTION-PLAN-24A7` | `WS-TODO-MISC` | [`todo/order-details-page-EXECUTION-PLAN.md`](../todo/order-details-page-EXECUTION-PLAN.md) |
 | `DOC-TODO-ORDER-DETAILS-PAGE-GEMINI-RESEARCH-BRIEFING-5A00` | `WS-TODO-MISC` | [`todo/order-details-page-GEMINI-RESEARCH-BRIEFING.md`](../todo/order-details-page-GEMINI-RESEARCH-BRIEFING.md) |
+| `DOC-TODO-ORDER-IMPORT-EXCEPTIONS-PLAN-E3E7` | `WS-TODO-MISC` | [`todo/order-import-exceptions-PLAN.md`](../todo/order-import-exceptions-PLAN.md) |
 | `DOC-TODO-ORDER-INGEST-SIMPLIFICATION-GEMINI-RESEARCH-BRIE-44F9` | `WS-TODO-MISC` | [`todo/order-ingest-simplification-GEMINI-RESEARCH-BRIEFING.md`](../todo/order-ingest-simplification-GEMINI-RESEARCH-BRIEFING.md) |
+| `DOC-TODO-ORDER-RAIL-SELECTION-PLANE-PLAN-8EF3` | `WS-TODO-MISC` | [`todo/order-rail-selection-plane-PLAN.md`](../todo/order-rail-selection-plane-PLAN.md) |
 | `DOC-TODO-ORDER-STATE-IDENTITY-MODEL-GEMINI-RESEARCH-BRIEF-4689` | `WS-TODO-MISC` | [`todo/order-state-identity-model-GEMINI-RESEARCH-BRIEFING.md`](../todo/order-state-identity-model-GEMINI-RESEARCH-BRIEFING.md) |
 | `DOC-TODO-ORG-LOGIN-GATE-EXECUTION-PROMPT-C64B` | `WS-LOGIN` | [`todo/org-login-gate-EXECUTION-PROMPT.md`](../todo/org-login-gate-EXECUTION-PROMPT.md) |
 | `DOC-TODO-PACK-RAIL-AND-RADIUS-SOT-FINISH-PROMPT-DF3E` | `WS-TODO-MISC` | [`todo/pack-rail-and-radius-sot-FINISH-PROMPT.md`](../todo/pack-rail-and-radius-sot-FINISH-PROMPT.md) |
+| `DOC-TODO-PACKAGE-PAIRING-SEARCH-LINKAGE-GEMINI-RESEARCH-B-B68B` | `WS-TODO-MISC` | [`todo/package-pairing-search-linkage-GEMINI-RESEARCH-BRIEFING.md`](../todo/package-pairing-search-linkage-GEMINI-RESEARCH-BRIEFING.md) |
+| `DOC-TODO-PACKAGE-PAIRING-SEARCH-LINKAGE-PLAN-2F30` | `WS-TODO-MISC` | [`todo/package-pairing-search-linkage-PLAN.md`](../todo/package-pairing-search-linkage-PLAN.md) |
 | `DOC-TODO-PACKER-REVIEW-STATION-PLAN-FCAA` | `WS-TODO-MISC` | [`todo/packer-review-station-plan.md`](../todo/packer-review-station-plan.md) |
 | `DOC-TODO-PAGE-CONSOLIDATION-STATION-FIRST-GEMINI-RESEARCH-B26D` | `WS-TODO-MISC` | [`todo/page-consolidation-station-first-GEMINI-RESEARCH-BRIEFING.md`](../todo/page-consolidation-station-first-GEMINI-RESEARCH-BRIEFING.md) |
-| `DOC-TODO-PENDING-GRID-AIRTABLE-VISUAL-HANDOFF-B07C` | `WS-TODO-MISC` | [`todo/pending-grid-airtable-visual-handoff.md`](../todo/pending-grid-airtable-visual-handoff.md) |
+| `DOC-TODO-PENDING-DOCS-FIRST-VERIFICATION-HANDOFF-0854` | `WS-TODO-MISC` | [`todo/pending-docs-first-VERIFICATION-HANDOFF.md`](../todo/pending-docs-first-VERIFICATION-HANDOFF.md) |
 | `DOC-TODO-PENDING-GRID-DEAD-CODE-CLEANUP-PROMPT-9CF6` | `WS-TODO-MISC` | [`todo/pending-grid-dead-code-cleanup-PROMPT.md`](../todo/pending-grid-dead-code-cleanup-PROMPT.md) |
 | `DOC-TODO-PENDING-GRID-DISPLAY-LANGUAGE-GEMINI-RESEARCH-BR-D4F0` | `WS-TODO-MISC` | [`todo/pending-grid-display-language-GEMINI-RESEARCH-BRIEFING.md`](../todo/pending-grid-display-language-GEMINI-RESEARCH-BRIEFING.md) |
 | `DOC-TODO-PENDING-GRID-INDUSTRY-STANDARD-EXECUTION-PROMPT-8DA2` | `WS-TODO-MISC` | [`todo/pending-grid-industry-standard-EXECUTION-PROMPT.md`](../todo/pending-grid-industry-standard-EXECUTION-PROMPT.md) |
@@ -282,31 +311,46 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 | `DOC-TODO-PHOTO-EVIDENCE-ULTRACO-EXECUTION-PROMPT-A28A` | `WS-TODO-MISC` | [`todo/photo-evidence-ultraco-EXECUTION-PROMPT.md`](../todo/photo-evidence-ultraco-EXECUTION-PROMPT.md) |
 | `DOC-TODO-POLYMORPHIC-RECEIVING-CARTON-EXECUTION-PROMPT-B4CE` | `WS-POLY` | [`todo/polymorphic-receiving-carton-EXECUTION-PROMPT.md`](../todo/polymorphic-receiving-carton-EXECUTION-PROMPT.md) |
 | `DOC-TODO-POLYMORPHIC-TABLES-DATABASE-REFACTOR-PLAN-5AAC` | `WS-POLY` | [`todo/polymorphic-tables-database-refactor-plan.md`](../todo/polymorphic-tables-database-refactor-plan.md) |
+| `DOC-TODO-PROCEDURE-RECONCILIATION-MEMO-A2E5` | `WS-TODO-MISC` | [`todo/procedure-reconciliation-MEMO.md`](../todo/procedure-reconciliation-MEMO.md) |
 | `DOC-TODO-PRODUCTION-INTEGRATIONS-SYSTEM-PLAN-244D` | `WS-INT` | [`todo/production-integrations-system-plan.md`](../todo/production-integrations-system-plan.md) |
 | `DOC-TODO-PRODUCTS-CATALOG-MDM-REMEASURE-2026-07-22-B753` | `WS-TODO-MISC` | [`todo/products-catalog-mdm-remeasure-2026-07-22.md`](../todo/products-catalog-mdm-remeasure-2026-07-22.md) |
+| `DOC-TODO-QUEUE-INSPECTOR-NON-MODAL-RAIL-HANDOFF-DA25` | `WS-TODO-MISC` | [`todo/queue-inspector-non-modal-rail-HANDOFF.md`](../todo/queue-inspector-non-modal-rail-HANDOFF.md) |
 | `DOC-TODO-RAIL-MODE-BUS-ISOLATION-HANDOFF-94AE` | `WS-TODO-MISC` | [`todo/rail-mode-bus-isolation-handoff.md`](../todo/rail-mode-bus-isolation-handoff.md) |
 | `DOC-TODO-README-1DDA` | `WS-PORTFOLIO` | [`todo/README.md`](../todo/README.md) |
+| `DOC-TODO-RECEIVING-CLAIM-MODAL-AUTO-TICKET-GEMINI-RESEARC-B0D9` | `WS-TODO-MISC` | [`todo/receiving-claim-modal-auto-ticket-GEMINI-RESEARCH-BRIEFING.md`](../todo/receiving-claim-modal-auto-ticket-GEMINI-RESEARCH-BRIEFING.md) |
+| `DOC-TODO-RECEIVING-CLAIM-MODAL-SIMPLIFY-MIGRATION-PLAN-9BDD` | `WS-TODO-MISC` | [`todo/receiving-claim-modal-simplify-MIGRATION-PLAN.md`](../todo/receiving-claim-modal-simplify-MIGRATION-PLAN.md) |
 | `DOC-TODO-RECEIVING-CONDITION-SERIAL-UNIFICATION-PLAN-B8F5` | `WS-TODO-MISC` | [`todo/receiving-condition-serial-unification-plan.md`](../todo/receiving-condition-serial-unification-plan.md) |
+| `DOC-TODO-RECEIVING-DETAILS-FLOAT-PUSH-GEMINI-RESEARCH-BRI-0B1B` | `WS-TODO-MISC` | [`todo/receiving-details-float-push-GEMINI-RESEARCH-BRIEFING.md`](../todo/receiving-details-float-push-GEMINI-RESEARCH-BRIEFING.md) |
 | `DOC-TODO-RECEIVING-DOOR-EXCEPTIONS-DECISION-FACTS-PLAN-B550` | `WS-TODO-MISC` | [`todo/receiving-door-exceptions-decision-facts-plan.md`](../todo/receiving-door-exceptions-decision-facts-plan.md) |
 | `DOC-TODO-RECEIVING-INLINE-TICKET-EDITOR-PLAN-A5F0` | `WS-TODO-MISC` | [`todo/receiving-inline-ticket-editor-plan.md`](../todo/receiving-inline-ticket-editor-plan.md) |
 | `DOC-TODO-RECEIVING-LIST-SQL-FLOOR-OPTIMIZATION-6ACF` | `WS-TODO-MISC` | [`todo/receiving-list-sql-floor-optimization.md`](../todo/receiving-list-sql-floor-optimization.md) |
 | `DOC-TODO-RECEIVING-SERIAL-IMMEDIATE-DISPLAY-PLAN-8946` | `WS-TODO-MISC` | [`todo/receiving-serial-immediate-display-plan.md`](../todo/receiving-serial-immediate-display-plan.md) |
+| `DOC-TODO-RECEIVING-SERIAL-JOURNEY-BATCH-CHIP-HANDOFF-F7FC` | `WS-TODO-MISC` | [`todo/receiving-serial-journey-batch-chip-HANDOFF.md`](../todo/receiving-serial-journey-batch-chip-HANDOFF.md) |
+| `DOC-TODO-RECEIVING-TICKET-PUSH-DENSITY-HANDOFF-F719` | `WS-TODO-MISC` | [`todo/receiving-ticket-push-density-HANDOFF.md`](../todo/receiving-ticket-push-density-HANDOFF.md) |
 | `DOC-TODO-REPAIR-CHAIN-CLOSURE-GEMINI-RESEARCH-BRIEFING-94CE` | `WS-TODO-MISC` | [`todo/repair-chain-closure-GEMINI-RESEARCH-BRIEFING.md`](../todo/repair-chain-closure-GEMINI-RESEARCH-BRIEFING.md) |
 | `DOC-TODO-REVERSIBILITY-FIXES-PLAN-41B8` | `WS-INT` | [`todo/reversibility-fixes-plan.md`](../todo/reversibility-fixes-plan.md) |
+| `DOC-TODO-RIGHT-RAIL-INSPECTOR-CONTRACT-CLAUDE-CODE-PROMPT-0C9A` | `WS-TODO-MISC` | [`todo/right-rail-inspector-contract-CLAUDE-CODE-PROMPT.md`](../todo/right-rail-inspector-contract-CLAUDE-CODE-PROMPT.md) |
 | `DOC-TODO-SAAS-COMMERCIALIZATION-PLAN-090C` | `WS-SAAS` | [`todo/saas-commercialization-plan.md`](../todo/saas-commercialization-plan.md) |
 | `DOC-TODO-SAAS-PRODUCTION-READINESS-AUDIT-2026-07-08-38B5` | `WS-SAAS` | [`todo/saas-production-readiness-audit-2026-07-08.md`](../todo/saas-production-readiness-audit-2026-07-08.md) |
+| `DOC-TODO-SALES-INTO-DASHBOARD-PLAN-2327` | `WS-TODO-MISC` | [`todo/sales-into-dashboard-PLAN.md`](../todo/sales-into-dashboard-PLAN.md) |
 | `DOC-TODO-SCHEMA-WIDE-POLYMORPHIC-REFACTOR-PLAN-47E1` | `WS-POLY` | [`todo/schema-wide-polymorphic-refactor-plan.md`](../todo/schema-wide-polymorphic-refactor-plan.md) |
 | `DOC-TODO-SEARCH-JOURNEY-HANDOFF-PLAN-C10D` | `WS-TODO-MISC` | [`todo/search-journey-handoff-plan.md`](../todo/search-journey-handoff-plan.md) |
+| `DOC-TODO-SEARCH-RESULTS-ALIGNED-ROW-PHASE2-HANDOFF-B72F` | `WS-TODO-MISC` | [`todo/search-results-aligned-row-PHASE2-HANDOFF.md`](../todo/search-results-aligned-row-PHASE2-HANDOFF.md) |
 | `DOC-TODO-SEARCH-RESULTS-GRID-GEMINI-RESEARCH-BRIEFING-BAA6` | `WS-TODO-MISC` | [`todo/search-results-grid-GEMINI-RESEARCH-BRIEFING.md`](../todo/search-results-grid-GEMINI-RESEARCH-BRIEFING.md) |
 | `DOC-TODO-SERIAL-LABEL-PAIRING-SPLIT-COMBINE-PLAN-0F7D` | `WS-SERIAL` | [`todo/serial-label-pairing-split-combine-plan.md`](../todo/serial-label-pairing-split-combine-plan.md) |
+| `DOC-TODO-SHEET-IMPORT-REVIEW-QUEUE-HANDOFF-3D5D` | `WS-TODO-MISC` | [`todo/sheet-import-review-queue-HANDOFF.md`](../todo/sheet-import-review-queue-HANDOFF.md) |
+| `DOC-TODO-SHEET-IMPORT-VISIBILITY-FINISH-PROMPT-842A` | `WS-TODO-MISC` | [`todo/sheet-import-visibility-FINISH-PROMPT.md`](../todo/sheet-import-visibility-FINISH-PROMPT.md) |
 | `DOC-TODO-SHIPPED-ORDER-DISPLAY-ROI-PLAN-CC7A` | `WS-TODO-MISC` | [`todo/shipped-order-display-roi-plan.md`](../todo/shipped-order-display-roi-plan.md) |
 | `DOC-TODO-SIDEBAR-NAV-SLIDEOUT-BRIEFING-78FA` | `WS-TODO-MISC` | [`todo/sidebar-nav-slideout-BRIEFING.md`](../todo/sidebar-nav-slideout-BRIEFING.md) |
 | `DOC-TODO-SIDEBAR-ROUTING-PROBE-BRIEF-2B32` | `WS-TODO-MISC` | [`todo/sidebar-routing-probe-BRIEF.md`](../todo/sidebar-routing-probe-BRIEF.md) |
+| `DOC-TODO-SIDEBAR-SPINE-VALIDATION-SIMPLIFICATION-HANDOFF-4DD7` | `WS-TODO-MISC` | [`todo/sidebar-spine-validation-simplification-HANDOFF.md`](../todo/sidebar-spine-validation-simplification-HANDOFF.md) |
 | `DOC-TODO-SOURCING-HUB-INTEGRATION-PLAN-ADB6` | `WS-SRC` | [`todo/sourcing-hub-integration-plan.md`](../todo/sourcing-hub-integration-plan.md) |
 | `DOC-TODO-SPACING-TOKEN-LEAKAGE-FIX-PLAN-2FE4` | `WS-TODO-MISC` | [`todo/spacing-token-leakage-fix-plan.md`](../todo/spacing-token-leakage-fix-plan.md) |
+| `DOC-TODO-SPINE-DRILL-IN-VERCEL-GEMINI-RESEARCH-BRIEFING-D3B7` | `WS-TODO-MISC` | [`todo/spine-drill-in-vercel-GEMINI-RESEARCH-BRIEFING.md`](../todo/spine-drill-in-vercel-GEMINI-RESEARCH-BRIEFING.md) |
 | `DOC-TODO-STATION-COLUMN-ARCHETYPE-SPLIT-PLAN-964C` | `WS-TODO-MISC` | [`todo/station-column-archetype-split-plan.md`](../todo/station-column-archetype-split-plan.md) |
 | `DOC-TODO-STATION-COLUMN-POINT-AND-FIX-PROMPT-C524` | `WS-TODO-MISC` | [`todo/station-column-POINT-AND-FIX-PROMPT.md`](../todo/station-column-POINT-AND-FIX-PROMPT.md) |
-| `DOC-TODO-STATION-DEPTH-SURFACE-HANDOFF-EB65` | `WS-TODO-MISC` | [`todo/station-depth-surface-handoff.md`](../todo/station-depth-surface-handoff.md) |
+| `DOC-TODO-STATION-NAV-FLOOR-DESK-GEMINI-RESEARCH-BRIEFING-AB99` | `WS-TODO-MISC` | [`todo/station-nav-floor-desk-GEMINI-RESEARCH-BRIEFING.md`](../todo/station-nav-floor-desk-GEMINI-RESEARCH-BRIEFING.md) |
+| `DOC-TODO-STATION-NAV-FLOOR-DESK-PLAN-94AD` | `WS-TODO-MISC` | [`todo/station-nav-floor-desk-PLAN.md`](../todo/station-nav-floor-desk-PLAN.md) |
 | `DOC-TODO-STATION-WORKBENCH-PORT-FOLLOWUPS-DB23` | `WS-TODO-MISC` | [`todo/station-workbench-port-FOLLOWUPS.md`](../todo/station-workbench-port-FOLLOWUPS.md) |
 | `DOC-TODO-STATION-WORKBENCH-SOT-RULES-BRIEFING-C50B` | `WS-TODO-MISC` | [`todo/station-workbench-sot-rules-BRIEFING.md`](../todo/station-workbench-sot-rules-BRIEFING.md) |
 | `DOC-TODO-STUDIO-DRIVEN-OPERATOR-SURFACES-REFACTOR-PLAN-96BF` | `WS-STUDIO` | [`todo/studio-driven-operator-surfaces-refactor-plan.md`](../todo/studio-driven-operator-surfaces-refactor-plan.md) |
@@ -314,23 +358,51 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 | `DOC-TODO-SUPPORT-STATION-FULL-WAIST-EXECUTION-PROMPT-D0C1` | `WS-TODO-MISC` | [`todo/support-station-full-waist-EXECUTION-PROMPT.md`](../todo/support-station-full-waist-EXECUTION-PROMPT.md) |
 | `DOC-TODO-SUPPORT-STATION-FULL-WAIST-FINISH-PROMPT-F907` | `WS-TODO-MISC` | [`todo/support-station-full-waist-FINISH-PROMPT.md`](../todo/support-station-full-waist-FINISH-PROMPT.md) |
 | `DOC-TODO-SUPPORT-STATION-FULL-WAIST-HANDOFF-D366` | `WS-TODO-MISC` | [`todo/support-station-full-waist-handoff.md`](../todo/support-station-full-waist-handoff.md) |
+| `DOC-TODO-TABLE-ACTION-BAR-FIELDS-GEMINI-RESEARCH-BRIEFING-E1A1` | `WS-TODO-MISC` | [`todo/table-action-bar-fields-GEMINI-RESEARCH-BRIEFING.md`](../todo/table-action-bar-fields-GEMINI-RESEARCH-BRIEFING.md) |
+| `DOC-TODO-TABLE-ACTION-BAR-FIELDS-PLAN-6354` | `WS-TODO-MISC` | [`todo/table-action-bar-fields-PLAN.md`](../todo/table-action-bar-fields-PLAN.md) |
 | `DOC-TODO-TABLE-DISPLAY-SOT-GEMINI-RESEARCH-BRIEFING-6C00` | `WS-TODO-MISC` | [`todo/table-display-sot-GEMINI-RESEARCH-BRIEFING.md`](../todo/table-display-sot-GEMINI-RESEARCH-BRIEFING.md) |
+| `DOC-TODO-TABLE-SURFACE-INVENTORY-2026-07-31-F9BC` | `WS-TODO-MISC` | [`todo/table-surface-inventory-2026-07-31.md`](../todo/table-surface-inventory-2026-07-31.md) |
+| `DOC-TODO-TAILWIND-V4-SPIKE-ACEB` | `WS-TODO-MISC` | [`todo/tailwind-v4-SPIKE.md`](../todo/tailwind-v4-SPIKE.md) |
 | `DOC-TODO-TECH-SUBSTITUTION-WIRING-PLAN-C0D7` | `WS-SUB` | [`todo/tech-substitution-wiring-plan.md`](../todo/tech-substitution-wiring-plan.md) |
 | `DOC-TODO-TICKET-STN-MANY-LINK-PLAN-1F33` | `WS-TODO-MISC` | [`todo/ticket-stn-many-link-plan.md`](../todo/ticket-stn-many-link-plan.md) |
 | `DOC-TODO-TO-SHIP-PENDING-FULL-GRID-HANDOFF-CDA0` | `WS-TODO-MISC` | [`todo/to-ship-pending-full-grid-handoff.md`](../todo/to-ship-pending-full-grid-handoff.md) |
 | `DOC-TODO-TO-SHIP-PENDING-GRID-STAGE-B-HANDOFF-BF30` | `WS-TODO-MISC` | [`todo/to-ship-pending-grid-stage-b-handoff.md`](../todo/to-ship-pending-grid-stage-b-handoff.md) |
 | `DOC-TODO-TO-SHIP-PENDING-SHEETS-GRID-HANDOFF-0CB7` | `WS-TODO-MISC` | [`todo/to-ship-pending-sheets-grid-handoff.md`](../todo/to-ship-pending-sheets-grid-handoff.md) |
 | `DOC-TODO-TOKEN-SYSTEM-CONSOLIDATION-PLAN-B21B` | `WS-TODO-MISC` | [`todo/token-system-consolidation-plan.md`](../todo/token-system-consolidation-plan.md) |
+| `DOC-TODO-UNBOX-A-IDENTITY-DENSITY-EXECUTION-PROMPT-3CEA` | `WS-TODO-MISC` | [`todo/unbox-A-identity-density-EXECUTION-PROMPT.md`](../todo/unbox-A-identity-density-EXECUTION-PROMPT.md) |
+| `DOC-TODO-UNBOX-A-IDENTITY-DENSITY-PLAN-F6F1` | `WS-TODO-MISC` | [`todo/unbox-A-identity-density-PLAN.md`](../todo/unbox-A-identity-density-PLAN.md) |
+| `DOC-TODO-UNBOX-B-STEP-PROCEDURE-EXECUTION-PROMPT-C049` | `WS-TODO-MISC` | [`todo/unbox-B-step-procedure-EXECUTION-PROMPT.md`](../todo/unbox-B-step-procedure-EXECUTION-PROMPT.md) |
+| `DOC-TODO-UNBOX-B-STEP-PROCEDURE-PLAN-5FF3` | `WS-TODO-MISC` | [`todo/unbox-B-step-procedure-PLAN.md`](../todo/unbox-B-step-procedure-PLAN.md) |
+| `DOC-TODO-UNBOX-C-LABEL-NOTE-GRAIN-EXECUTION-PROMPT-157C` | `WS-TODO-MISC` | [`todo/unbox-C-label-note-grain-EXECUTION-PROMPT.md`](../todo/unbox-C-label-note-grain-EXECUTION-PROMPT.md) |
+| `DOC-TODO-UNBOX-C-LABEL-NOTE-GRAIN-PLAN-A65A` | `WS-TODO-MISC` | [`todo/unbox-C-label-note-grain-PLAN.md`](../todo/unbox-C-label-note-grain-PLAN.md) |
+| `DOC-TODO-UNBOX-CAPTURE-STACK-P0-P1-EXECUTION-PROMPT-5AE6` | `WS-TODO-MISC` | [`todo/unbox-capture-stack-P0-P1-EXECUTION-PROMPT.md`](../todo/unbox-capture-stack-P0-P1-EXECUTION-PROMPT.md) |
+| `DOC-TODO-UNBOX-CAPTURE-STACK-PLAN-902D` | `WS-TODO-MISC` | [`todo/unbox-capture-stack-PLAN.md`](../todo/unbox-capture-stack-PLAN.md) |
+| `DOC-TODO-UNBOX-D-CANVAS-PROCEDURE-EXECUTION-PROMPT-A771` | `WS-TODO-MISC` | [`todo/unbox-D-canvas-procedure-EXECUTION-PROMPT.md`](../todo/unbox-D-canvas-procedure-EXECUTION-PROMPT.md) |
+| `DOC-TODO-UNBOX-D-CANVAS-PROCEDURE-PLAN-1FDE` | `WS-TODO-MISC` | [`todo/unbox-D-canvas-procedure-PLAN.md`](../todo/unbox-D-canvas-procedure-PLAN.md) |
+| `DOC-TODO-UNBOX-E-TABS-TO-RIGHT-RAIL-EXECUTION-PROMPT-D9DB` | `WS-TODO-MISC` | [`todo/unbox-E-tabs-to-right-rail-EXECUTION-PROMPT.md`](../todo/unbox-E-tabs-to-right-rail-EXECUTION-PROMPT.md) |
+| `DOC-TODO-UNBOX-E-TABS-TO-RIGHT-RAIL-PLAN-E4D8` | `WS-TODO-MISC` | [`todo/unbox-E-tabs-to-right-rail-PLAN.md`](../todo/unbox-E-tabs-to-right-rail-PLAN.md) |
+| `DOC-TODO-UNBOX-E2-DISPLAYS-COLUMN-HANDOFF-59B1` | `WS-TODO-MISC` | [`todo/unbox-E2-displays-column-HANDOFF.md`](../todo/unbox-E2-displays-column-HANDOFF.md) |
+| `DOC-TODO-UNBOX-F-MOTION-BRIDGE-EXECUTION-PROMPT-7752` | `WS-TODO-MISC` | [`todo/unbox-F-motion-bridge-EXECUTION-PROMPT.md`](../todo/unbox-F-motion-bridge-EXECUTION-PROMPT.md) |
+| `DOC-TODO-UNBOX-F-MOTION-BRIDGE-PLAN-64E5` | `WS-TODO-MISC` | [`todo/unbox-F-motion-bridge-PLAN.md`](../todo/unbox-F-motion-bridge-PLAN.md) |
+| `DOC-TODO-UNBOX-G-MOTIONCONFIG-EXECUTION-PROMPT-3757` | `WS-TODO-MISC` | [`todo/unbox-G-motionconfig-EXECUTION-PROMPT.md`](../todo/unbox-G-motionconfig-EXECUTION-PROMPT.md) |
+| `DOC-TODO-UNBOX-G-MOTIONCONFIG-PLAN-6EB0` | `WS-TODO-MISC` | [`todo/unbox-G-motionconfig-PLAN.md`](../todo/unbox-G-motionconfig-PLAN.md) |
+| `DOC-TODO-UNBOX-INPUT-LOCUS-INVERSION-GEMINI-RESEARCH-BRIE-7252` | `WS-TODO-MISC` | [`todo/unbox-input-locus-inversion-GEMINI-RESEARCH-BRIEFING.md`](../todo/unbox-input-locus-inversion-GEMINI-RESEARCH-BRIEFING.md) |
+| `DOC-TODO-UNBOX-LANES-INDEX-7D19` | `WS-TODO-MISC` | [`todo/unbox-LANES-INDEX.md`](../todo/unbox-LANES-INDEX.md) |
+| `DOC-TODO-UNBOX-PROCEDURE-INTO-CHECKLIST-HANDOFF-C4B2` | `WS-TODO-MISC` | [`todo/unbox-procedure-into-checklist-HANDOFF.md`](../todo/unbox-procedure-into-checklist-HANDOFF.md) |
 | `DOC-TODO-UNBOX-RAIL-DOT-TITLE-GAP-HANDOFF-340E` | `WS-TODO-MISC` | [`todo/unbox-rail-dot-title-gap-handoff.md`](../todo/unbox-rail-dot-title-gap-handoff.md) |
 | `DOC-TODO-UNBOX-RECEIVE-UX-IMPROVEMENT-PLAN-BA53` | `WS-UNBOX` | [`todo/unbox-receive-ux-improvement-plan.md`](../todo/unbox-receive-ux-improvement-plan.md) |
-| `DOC-TODO-UNBOX-REFRESH-STICKINESS-PLAYWRIGHT-PROMPT-6537` | `WS-TODO-MISC` | [`todo/unbox-refresh-stickiness-playwright-prompt.md`](../todo/unbox-refresh-stickiness-playwright-prompt.md) |
+| `DOC-TODO-UNBOX-RECEIVING-GRID-CONTEXT-MAP-D4AC` | `WS-TODO-MISC` | [`todo/unbox-receiving-grid-CONTEXT-MAP.md`](../todo/unbox-receiving-grid-CONTEXT-MAP.md) |
 | `DOC-TODO-UNBOX-SCAN-VS-LOOKUP-EXECUTION-PROMPT-BBF3` | `WS-TODO-MISC` | [`todo/unbox-scan-vs-lookup-EXECUTION-PROMPT.md`](../todo/unbox-scan-vs-lookup-EXECUTION-PROMPT.md) |
+| `DOC-TODO-UNBOX-SHARED-HOST-RAIL-BACKGROUND-HANDOFF-F0A0` | `WS-TODO-MISC` | [`todo/unbox-shared-host-rail-background-HANDOFF.md`](../todo/unbox-shared-host-rail-background-HANDOFF.md) |
+| `DOC-TODO-UNBOX-SIBLING-PATTERNS-2EFC` | `WS-TODO-MISC` | [`todo/unbox-SIBLING-PATTERNS.md`](../todo/unbox-SIBLING-PATTERNS.md) |
 | `DOC-TODO-UNBOX-SIDERAIL-FLUSH-STAGGER-HANDOFF-9F37` | `WS-TODO-MISC` | [`todo/unbox-siderail-flush-stagger-handoff.md`](../todo/unbox-siderail-flush-stagger-handoff.md) |
 | `DOC-TODO-UNBOX-STATION-SCAN-VS-LOOKUP-GEMINI-RESEARCH-BRI-444F` | `WS-TODO-MISC` | [`todo/unbox-station-scan-vs-lookup-GEMINI-RESEARCH-BRIEFING.md`](../todo/unbox-station-scan-vs-lookup-GEMINI-RESEARCH-BRIEFING.md) |
 | `DOC-TODO-UNBOX-TRIAGE-MODE-SEPARATION-HANDOFF-2CC3` | `WS-TODO-MISC` | [`todo/unbox-triage-mode-separation-handoff.md`](../todo/unbox-triage-mode-separation-handoff.md) |
+| `DOC-TODO-URL-ISOLATION-SESSION-HANDOFF-E53B` | `WS-TODO-MISC` | [`todo/url-isolation-session-HANDOFF.md`](../todo/url-isolation-session-HANDOFF.md) |
 | `DOC-TODO-USER-ISSUES-CONSOLE-EXECUTION-PROMPT-5CB0` | `WS-TODO-MISC` | [`todo/user-issues-console-EXECUTION-PROMPT.md`](../todo/user-issues-console-EXECUTION-PROMPT.md) |
 | `DOC-TODO-USER-ISSUES-CONSOLE-PLAN-16C3` | `WS-TODO-MISC` | [`todo/user-issues-console-plan.md`](../todo/user-issues-console-plan.md) |
 | `DOC-TODO-WAREHOUSE-MAP-REACT-FLOW-PLAN-11AB` | `WS-WH` | [`todo/warehouse-map-react-flow-plan.md`](../todo/warehouse-map-react-flow-plan.md) |
+| `DOC-TODO-WORKBENCH-CHROME-BAND-DENSITY-GEMINI-RESEARCH-BR-DB4F` | `WS-TODO-MISC` | [`todo/workbench-chrome-band-density-GEMINI-RESEARCH-BRIEFING.md`](../todo/workbench-chrome-band-density-GEMINI-RESEARCH-BRIEFING.md) |
 
 ---
 
@@ -345,7 +417,7 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 
 - `DOC-TODO-BETA-INTAKE-FUNNEL-PLAN-6D32` — [`todo/beta-intake-funnel-plan.md`](../todo/beta-intake-funnel-plan.md)
 
-### `WS-CONN` (15)
+### `WS-CONN` (14)
 
 - `DOC-CONN-00-HOW-TO-USE-THESE-DOCS-220C` — [`master-connections-and-refactor/staff/00-how-to-use-these-docs.md`](../master-connections-and-refactor/staff/00-how-to-use-these-docs.md)
 - `DOC-CONN-01-BIG-PICTURE-28C7` — [`master-connections-and-refactor/staff/01-big-picture.md`](../master-connections-and-refactor/staff/01-big-picture.md)
@@ -360,7 +432,6 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 - `DOC-CONN-MASTER-INDEX-PLAN-3AE0` — [`master-connections-and-refactor/master-index-plan.md`](../master-connections-and-refactor/master-index-plan.md)
 - `DOC-CONN-README-B9F2` — [`master-connections-and-refactor/README.md`](../master-connections-and-refactor/README.md)
 - `DOC-CONN-STAFF-CONNECTIONS-PLANNING-0EA4` — [`master-connections-and-refactor/staff-connections-planning.html`](../master-connections-and-refactor/staff-connections-planning.html)
-- `DOC-TODO-CONNECTIONS-MDX-FORGE-EXECUTION-PROMPT-3437` — [`todo/connections-mdx-forge-EXECUTION-PROMPT.md`](../todo/connections-mdx-forge-EXECUTION-PROMPT.md)
 - `DOC-TODO-CONNECTIONS-MDX-FORGE-PLAN-2E2B` — [`todo/connections-mdx-forge-plan.md`](../todo/connections-mdx-forge-plan.md)
 
 ### `WS-DEV` (1)
@@ -408,10 +479,6 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 ### `WS-ENGINE` (1)
 
 - `DOC-TODO-OPS-EVENTS-STATION-WORKFLOW-UNIFICATION-PLAN-2789` — [`todo/ops-events-station-workflow-unification-plan.md`](../todo/ops-events-station-workflow-unification-plan.md)
-
-### `WS-GLASS` (1)
-
-- `DOC-TODO-GLASS-DESIGN-SYSTEM-776B` — [`todo/GLASS-DESIGN-SYSTEM.md`](../todo/GLASS-DESIGN-SYSTEM.md)
 
 ### `WS-HOME` (1)
 
@@ -521,9 +588,10 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 - `DOC-TODO-SAAS-COMMERCIALIZATION-PLAN-090C` — [`todo/saas-commercialization-plan.md`](../todo/saas-commercialization-plan.md)
 - `DOC-TODO-SAAS-PRODUCTION-READINESS-AUDIT-2026-07-08-38B5` — [`todo/saas-production-readiness-audit-2026-07-08.md`](../todo/saas-production-readiness-audit-2026-07-08.md)
 
-### `WS-SEARCH` (5)
+### `WS-SEARCH` (6)
 
 - `DOC-ROOT-AI-AUTOMATION-OPPORTUNITIES-PLAN-52DE` — [`ai-automation-opportunities-plan.md`](../ai-automation-opportunities-plan.md)
+- `DOC-ROOT-GEMINI-BRIEFING-JIT-PACK-DOCUMENTS-2533` — [`research/gemini-briefing-jit-pack-documents.md`](../research/gemini-briefing-jit-pack-documents.md)
 - `DOC-ROOT-GEMINI-BRIEFING-SERIAL-LABEL-ORDER-BINDING-598B` — [`research/gemini-briefing-serial-label-order-binding.md`](../research/gemini-briefing-serial-label-order-binding.md)
 - `DOC-ROOT-SEARCH-AND-DENSE-UI-REFACTOR-PLAN-3E46` — [`search-and-dense-ui-refactor-plan.md`](../search-and-dense-ui-refactor-plan.md)
 - `DOC-ROOT-UNIFIED-GLOBAL-SEARCH-CONSOLIDATION-PLAN-9E96` — [`unified-global-search-consolidation-plan.md`](../unified-global-search-consolidation-plan.md)
@@ -584,10 +652,6 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 
 - `DOC-TODO-TECH-SUBSTITUTION-WIRING-PLAN-C0D7` — [`todo/tech-substitution-wiring-plan.md`](../todo/tech-substitution-wiring-plan.md)
 
-### `WS-SYNC` (1)
-
-- `DOC-TODO-CYCLEFORGE-SYNC-FROM-USAV-2026-07-10-4707` — [`todo/cycleforge-sync-from-usav-2026-07-10.md`](../todo/cycleforge-sync-from-usav-2026-07-10.md)
-
 ### `WS-TENANCY` (13)
 
 - `DOC-TEN-CRITIQUE-AE32` — [`tenancy/_analysis/critique.md`](../tenancy/_analysis/critique.md)
@@ -604,7 +668,7 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 - `DOC-TEN-SLICE-TEMPLATE-5BE0` — [`tenancy/SLICE_TEMPLATE.md`](../tenancy/SLICE_TEMPLATE.md)
 - `DOC-TEN-TABLES-9F18` — [`tenancy/_analysis/tables.md`](../tenancy/_analysis/tables.md)
 
-### `WS-TODO-MISC` (127)
+### `WS-TODO-MISC` (200)
 
 - `DOC-TODO-00-INDEX-9E1E` — [`todo/kiosk-counter-transaction/00-INDEX.md`](../todo/kiosk-counter-transaction/00-INDEX.md)
 - `DOC-TODO-01-RECEIVING-BOH-SLIM-4C77` — [`todo/foh-boh-surface-split/01-receiving-boh-slim.md`](../todo/foh-boh-surface-split/01-receiving-boh-slim.md)
@@ -618,13 +682,22 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 - `DOC-TODO-05-KIOSK-UI-2ECB` — [`todo/kiosk-counter-transaction/05-kiosk-ui.md`](../todo/kiosk-counter-transaction/05-kiosk-ui.md)
 - `DOC-TODO-05-NAV-PERMISSION-REDIRECTS-AE24` — [`todo/foh-boh-surface-split/05-nav-permission-redirects.md`](../todo/foh-boh-surface-split/05-nav-permission-redirects.md)
 - `DOC-TODO-06-WALK-IN-KIOSK-AUTH-F4B9` — [`todo/foh-boh-surface-split/06-walk-in-kiosk-auth.md`](../todo/foh-boh-surface-split/06-walk-in-kiosk-auth.md)
+- `DOC-TODO-AI-CHAT-ODYSSEUS-DISPLAY-HANDOFF-CA08` — [`todo/ai-chat-odysseus-display-HANDOFF.md`](../todo/ai-chat-odysseus-display-HANDOFF.md)
 - `DOC-TODO-ALL-TABLES-IMPROVEMENTS-EXECUTION-PROMPT-7E82` — [`todo/all-tables-improvements-EXECUTION-PROMPT.md`](../todo/all-tables-improvements-EXECUTION-PROMPT.md)
 - `DOC-TODO-CARTON-INSPECTOR-D4-ROOT-FIX-HANDOFF-A727` — [`todo/carton-inspector-D4-ROOT-FIX-HANDOFF.md`](../todo/carton-inspector-D4-ROOT-FIX-HANDOFF.md)
+- `DOC-TODO-CARTON-INSPECTOR-LAYOUT-POLISH-HANDOFF-2237` — [`todo/carton-inspector-LAYOUT-POLISH-HANDOFF.md`](../todo/carton-inspector-LAYOUT-POLISH-HANDOFF.md)
 - `DOC-TODO-CARTON-INSPECTOR-REBUILD-HANDOFF-DDA8` — [`todo/carton-inspector-REBUILD-HANDOFF.md`](../todo/carton-inspector-REBUILD-HANDOFF.md)
 - `DOC-TODO-CARTON-INSPECTOR-UX-GEMINI-RESEARCH-BRIEFING-326B` — [`todo/carton-inspector-ux-GEMINI-RESEARCH-BRIEFING.md`](../todo/carton-inspector-ux-GEMINI-RESEARCH-BRIEFING.md)
+- `DOC-TODO-CHROME-SOT-COMPOUND-GEMINI-RESEARCH-BRIEFING-5D7D` — [`todo/chrome-sot-compound-GEMINI-RESEARCH-BRIEFING.md`](../todo/chrome-sot-compound-GEMINI-RESEARCH-BRIEFING.md)
+- `DOC-TODO-CHROME-SOT-COMPOUND-PLAN-1D11` — [`todo/chrome-sot-compound-PLAN.md`](../todo/chrome-sot-compound-PLAN.md)
+- `DOC-TODO-CLAIM-SUBJECT-FBA-UNKNOWN-HANDOFF-559C` — [`todo/claim-subject-fba-unknown-HANDOFF.md`](../todo/claim-subject-fba-unknown-HANDOFF.md)
 - `DOC-TODO-CLASSIFY-OPTION-ICON-FACES-HANDOFF-C3C4` — [`todo/classify-option-icon-faces-handoff.md`](../todo/classify-option-icon-faces-handoff.md)
+- `DOC-TODO-CONTEXT-RAIL-COLLAPSE-CHEVRON-SIZE-HANDOFF-7B4A` — [`todo/context-rail-collapse-chevron-SIZE-HANDOFF.md`](../todo/context-rail-collapse-chevron-SIZE-HANDOFF.md)
 - `DOC-TODO-CONTEXTUAL-FONT-SYSTEM-GEMINI-RESEARCH-BRIEFING-2EB3` — [`todo/contextual-font-system-GEMINI-RESEARCH-BRIEFING.md`](../todo/contextual-font-system-GEMINI-RESEARCH-BRIEFING.md)
 - `DOC-TODO-CONTEXTUAL-SIDEBAR-IA-GEMINI-RESEARCH-BRIEFING-DD4E` — [`todo/contextual-sidebar-ia-GEMINI-RESEARCH-BRIEFING.md`](../todo/contextual-sidebar-ia-GEMINI-RESEARCH-BRIEFING.md)
+- `DOC-TODO-DAILY-TRIAGE-BACKEND-PLAN-VALIDATION-B9D3` — [`todo/daily-triage-BACKEND-PLAN-VALIDATION.md`](../todo/daily-triage-BACKEND-PLAN-VALIDATION.md)
+- `DOC-TODO-DAILY-TRIAGE-FRONTEND-F0-EXECUTION-PROMPT-6BDB` — [`todo/daily-triage-frontend-F0-EXECUTION-PROMPT.md`](../todo/daily-triage-frontend-F0-EXECUTION-PROMPT.md)
+- `DOC-TODO-DAILY-TRIAGE-FRONTEND-PLAN-VALIDATION-A98D` — [`todo/daily-triage-FRONTEND-PLAN-VALIDATION.md`](../todo/daily-triage-FRONTEND-PLAN-VALIDATION.md)
 - `DOC-TODO-DASHBOARD-ENTITY-AXIS-GEMINI-RESEARCH-BRIEFING-B384` — [`todo/dashboard-entity-axis-GEMINI-RESEARCH-BRIEFING.md`](../todo/dashboard-entity-axis-GEMINI-RESEARCH-BRIEFING.md)
 - `DOC-TODO-DASHBOARD-IA-RESEARCH-BRIEFING-HKL-CCB9` — [`todo/dashboard-ia-research-briefing-HKL.md`](../todo/dashboard-ia-research-briefing-HKL.md)
 - `DOC-TODO-DASHBOARD-IA-REWORK-HANDOFF-1970` — [`todo/dashboard-ia-rework-HANDOFF.md`](../todo/dashboard-ia-rework-HANDOFF.md)
@@ -635,9 +708,13 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 - `DOC-TODO-DASHBOARD-INLINE-DETAIL-EDITING-GEMINI-RESEARCH--A493` — [`todo/dashboard-inline-detail-editing-GEMINI-RESEARCH-BRIEFING.md`](../todo/dashboard-inline-detail-editing-GEMINI-RESEARCH-BRIEFING.md)
 - `DOC-TODO-DASHBOARD-MODES-RESEARCH-BRIEF-9A0E` — [`todo/dashboard-modes-research-BRIEF.md`](../todo/dashboard-modes-research-BRIEF.md)
 - `DOC-TODO-DASHBOARD-MODES-SEARCH-RECEIVING-SHIPPING-10B3` — [`todo/dashboard-modes-search-receiving-shipping.md`](../todo/dashboard-modes-search-receiving-shipping.md)
+- `DOC-TODO-DASHBOARD-ORDERS-IDENTITY-HIERARCHY-GEMINI-RESEA-C78E` — [`todo/dashboard-orders-identity-hierarchy-GEMINI-RESEARCH-BRIEFING.md`](../todo/dashboard-orders-identity-hierarchy-GEMINI-RESEARCH-BRIEFING.md)
 - `DOC-TODO-DASHBOARD-SEARCH-EXACT-OPEN-HANDOFF-E040` — [`todo/dashboard-search-exact-open-handoff.md`](../todo/dashboard-search-exact-open-handoff.md)
+- `DOC-TODO-DESK-CONTRACT-UNIFICATION-ADDENDUM-7108` — [`todo/desk-contract-unification-ADDENDUM.md`](../todo/desk-contract-unification-ADDENDUM.md)
+- `DOC-TODO-DESK-CONTRACT-UNIFICATION-CLAUDE-CODE-PROMPT-1B61` — [`todo/desk-contract-unification-CLAUDE-CODE-PROMPT.md`](../todo/desk-contract-unification-CLAUDE-CODE-PROMPT.md)
 - `DOC-TODO-DETAIL-SURFACE-IA-GEMINI-RESEARCH-BRIEFING-9ABA` — [`todo/detail-surface-IA-GEMINI-RESEARCH-BRIEFING.md`](../todo/detail-surface-IA-GEMINI-RESEARCH-BRIEFING.md)
 - `DOC-TODO-DISPLAY-CONVERGENCE-LOG-ABE1` — [`todo/display-convergence-log.md`](../todo/display-convergence-log.md)
+- `DOC-TODO-DISPLAY-REGION-CONTRACT-ELEVATION-2026-07-31-FDF4` — [`todo/display-region-contract-ELEVATION-2026-07-31.md`](../todo/display-region-contract-ELEVATION-2026-07-31.md)
 - `DOC-TODO-DOCK-RECEIVING-VS-UNBOX-GEMINI-RESEARCH-BRIEFING-BACD` — [`todo/dock-receiving-vs-unbox-GEMINI-RESEARCH-BRIEFING.md`](../todo/dock-receiving-vs-unbox-GEMINI-RESEARCH-BRIEFING.md)
 - `DOC-TODO-EBAY-DELIVERED-NOT-UNBOXED-PLAN-85A5` — [`todo/ebay-delivered-not-unboxed-PLAN.md`](../todo/ebay-delivered-not-unboxed-PLAN.md)
 - `DOC-TODO-EBAY-DELIVERED-NOT-UNBOXED-RESEARCH-BRIEF-67BD` — [`todo/ebay-delivered-not-unboxed-RESEARCH-BRIEF.md`](../todo/ebay-delivered-not-unboxed-RESEARCH-BRIEF.md)
@@ -651,36 +728,53 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 - `DOC-TODO-GRID-SURFACE-DESCRIPTOR-EXECUTION-PROMPT-481C` — [`todo/grid-surface-descriptor-EXECUTION-PROMPT.md`](../todo/grid-surface-descriptor-EXECUTION-PROMPT.md)
 - `DOC-TODO-GRID-SURFACE-DESCRIPTOR-PHASE-A-RUN-NOTES-B664` — [`todo/grid-surface-descriptor-phase-a-RUN-NOTES.md`](../todo/grid-surface-descriptor-phase-a-RUN-NOTES.md)
 - `DOC-TODO-GRID-SURFACE-DESCRIPTOR-PLAN-8E00` — [`todo/grid-surface-descriptor-plan.md`](../todo/grid-surface-descriptor-plan.md)
+- `DOC-TODO-HEADER-MODE-SWITCHER-UNBOX-HANDOFF-9862` — [`todo/header-mode-switcher-UNBOX-HANDOFF.md`](../todo/header-mode-switcher-UNBOX-HANDOFF.md)
+- `DOC-TODO-HOME-ICON-PRODUCTS-PLATFORMS-HANDOFF-D975` — [`todo/home-icon-products-platforms-HANDOFF.md`](../todo/home-icon-products-platforms-HANDOFF.md)
 - `DOC-TODO-HOME-OPS-TV-COLLAB-SURFACES-PLAN-2B48` — [`todo/home-ops-tv-collab-surfaces-plan.md`](../todo/home-ops-tv-collab-surfaces-plan.md)
 - `DOC-TODO-HOME-TRIAGE-SUBSCRIPTIONS-GEMINI-RESEARCH-BRIEFI-3DDA` — [`todo/home-triage-subscriptions-GEMINI-RESEARCH-BRIEFING.md`](../todo/home-triage-subscriptions-GEMINI-RESEARCH-BRIEFING.md)
 - `DOC-TODO-HOME-TRIAGE-SUBSCRIPTIONS-GEMINI-REVISION-PROMPT-581C` — [`todo/home-triage-subscriptions-GEMINI-REVISION-PROMPT.md`](../todo/home-triage-subscriptions-GEMINI-REVISION-PROMPT.md)
 - `DOC-TODO-HOME-TRIAGE-SUBSCRIPTIONS-PLAN-VALIDATION-FD83` — [`todo/home-triage-subscriptions-PLAN-VALIDATION.md`](../todo/home-triage-subscriptions-PLAN-VALIDATION.md)
 - `DOC-TODO-HOME-TRIAGE-SUBSCRIPTIONS-V2-PUNCHLIST-8CE9` — [`todo/home-triage-subscriptions-V2-PUNCHLIST.md`](../todo/home-triage-subscriptions-V2-PUNCHLIST.md)
+- `DOC-TODO-IMPORT-ADD-ORDER-RIGHT-RAIL-HANDOFF-54A3` — [`todo/import-add-order-right-rail-HANDOFF.md`](../todo/import-add-order-right-rail-HANDOFF.md)
+- `DOC-TODO-INCOMING-CHROME-DISPLAY-HANDOFF-86DA` — [`todo/incoming-chrome-display-HANDOFF.md`](../todo/incoming-chrome-display-HANDOFF.md)
 - `DOC-TODO-INCOMING-CLICK-TO-OPEN-HANDOFF-8301` — [`todo/incoming-click-to-open-handoff.md`](../todo/incoming-click-to-open-handoff.md)
 - `DOC-TODO-INCOMING-GRID-PO-SELECT-STATUS-HANDOFF-27AD` — [`todo/incoming-grid-po-select-status-handoff.md`](../todo/incoming-grid-po-select-status-handoff.md)
 - `DOC-TODO-INVERTED-STATION-OUTBOUND-BRIEFING-FOR-GEMINI-BC4E` — [`todo/inverted-station-outbound-BRIEFING-FOR-GEMINI.md`](../todo/inverted-station-outbound-BRIEFING-FOR-GEMINI.md)
+- `DOC-TODO-JIT-PACK-DOCUMENTS-PLAN-D04F` — [`todo/jit-pack-documents-plan.md`](../todo/jit-pack-documents-plan.md)
 - `DOC-TODO-JOURNEY-HOP-EMITTERS-PLAN-B8CE` — [`todo/journey-hop-emitters-plan.md`](../todo/journey-hop-emitters-plan.md)
 - `DOC-TODO-KINETIC-LEDGER-STATION-SAFETY-EXECUTION-PROMPT-DECE` — [`todo/kinetic-ledger-station-safety-EXECUTION-PROMPT.md`](../todo/kinetic-ledger-station-safety-EXECUTION-PROMPT.md)
 - `DOC-TODO-KINETIC-LEDGER-STATION-SAFETY-PLAN-97BC` — [`todo/kinetic-ledger-station-safety-PLAN.md`](../todo/kinetic-ledger-station-safety-PLAN.md)
 - `DOC-TODO-KIOSK-COUNTER-TRANSACTION-PLAN-0689` — [`todo/kiosk-counter-transaction-PLAN.md`](../todo/kiosk-counter-transaction-PLAN.md)
+- `DOC-TODO-KIOSK-IPAD-NATIVE-SHELL-GEMINI-RESEARCH-BRIEFING-D94F` — [`todo/kiosk-ipad-native-shell-GEMINI-RESEARCH-BRIEFING.md`](../todo/kiosk-ipad-native-shell-GEMINI-RESEARCH-BRIEFING.md)
+- `DOC-TODO-KIOSK-LANDSCAPE-SHELL-PLAN-1830` — [`todo/kiosk-landscape-shell-PLAN.md`](../todo/kiosk-landscape-shell-PLAN.md)
+- `DOC-TODO-KIOSK-PAPERWORK-ICON-HANDOFF-EA0C` — [`todo/kiosk-paperwork-icon-HANDOFF.md`](../todo/kiosk-paperwork-icon-HANDOFF.md)
 - `DOC-TODO-KIOSK-SALES-INTAKE-GEMINI-RESEARCH-BRIEFING-5DAF` — [`todo/kiosk-sales-intake-GEMINI-RESEARCH-BRIEFING.md`](../todo/kiosk-sales-intake-GEMINI-RESEARCH-BRIEFING.md)
+- `DOC-TODO-LEDGERGRID-UNIFIED-TABLE-SOT-RESEARCH-HANDOFF-1AEB` — [`todo/ledgergrid-unified-table-sot-RESEARCH-HANDOFF.md`](../todo/ledgergrid-unified-table-sot-RESEARCH-HANDOFF.md)
 - `DOC-TODO-LOCAL-PICKUP-LEDGERGRID-PORT-HANDOFF-1268` — [`todo/local-pickup-ledgergrid-port-HANDOFF.md`](../todo/local-pickup-ledgergrid-port-HANDOFF.md)
+- `DOC-TODO-MAIN-NAV-OVERVIEW-STOCK-HANDOFF-E0DC` — [`todo/main-nav-overview-stock-HANDOFF.md`](../todo/main-nav-overview-stock-HANDOFF.md)
 - `DOC-TODO-MASTER-NAV-RELOCATION-EXECUTION-PROMPT-5886` — [`todo/master-nav-relocation-EXECUTION-PROMPT.md`](../todo/master-nav-relocation-EXECUTION-PROMPT.md)
+- `DOC-TODO-MASTER-NAV-SPINE-DISPLAY-HANDOFF-EC61` — [`todo/master-nav-spine-display-HANDOFF.md`](../todo/master-nav-spine-display-HANDOFF.md)
 - `DOC-TODO-MEDIA-LIBRARY-RAIL-CARD-HANDOFF-552E` — [`todo/media-library-rail-card-HANDOFF.md`](../todo/media-library-rail-card-HANDOFF.md)
 - `DOC-TODO-MEDIA-LIBRARY-UX-GEMINI-RESEARCH-BRIEFING-7DD1` — [`todo/media-library-ux-GEMINI-RESEARCH-BRIEFING.md`](../todo/media-library-ux-GEMINI-RESEARCH-BRIEFING.md)
 - `DOC-TODO-MOBILE-UNBOX-PHOTO-FLOW-GEMINI-RESEARCH-BRIEFING-2BA6` — [`todo/mobile-unbox-photo-flow-GEMINI-RESEARCH-BRIEFING.md`](../todo/mobile-unbox-photo-flow-GEMINI-RESEARCH-BRIEFING.md)
+- `DOC-TODO-MOTION-REDUCE-STRATEGY-COSTING-50E3` — [`todo/motion-reduce-strategy-COSTING.md`](../todo/motion-reduce-strategy-COSTING.md)
 - `DOC-TODO-NAV-ROUTING-REFACTOR-EXECUTION-PROMPT-1A0D` — [`todo/nav-routing-refactor-EXECUTION-PROMPT.md`](../todo/nav-routing-refactor-EXECUTION-PROMPT.md)
 - `DOC-TODO-NAV-ROUTING-REFACTOR-FINISH-PROMPT-3E0A` — [`todo/nav-routing-refactor-FINISH-PROMPT.md`](../todo/nav-routing-refactor-FINISH-PROMPT.md)
+- `DOC-TODO-NOTE-GRAIN-E2E-AND-FOLLOWUPS-EXECUTION-PROMPT-CAA2` — [`todo/note-grain-e2e-and-followups-EXECUTION-PROMPT.md`](../todo/note-grain-e2e-and-followups-EXECUTION-PROMPT.md)
 - `DOC-TODO-OPS-TABLE-SIMPLIFICATION-GEMINI-FOLLOWUP-9A06` — [`todo/ops-table-simplification-GEMINI-FOLLOWUP.md`](../todo/ops-table-simplification-GEMINI-FOLLOWUP.md)
 - `DOC-TODO-OPS-TABLE-SIMPLIFICATION-GEMINI-RESEARCH-BRIEFIN-BE48` — [`todo/ops-table-simplification-GEMINI-RESEARCH-BRIEFING.md`](../todo/ops-table-simplification-GEMINI-RESEARCH-BRIEFING.md)
 - `DOC-TODO-ORDER-DETAILS-PAGE-EXECUTION-PLAN-24A7` — [`todo/order-details-page-EXECUTION-PLAN.md`](../todo/order-details-page-EXECUTION-PLAN.md)
 - `DOC-TODO-ORDER-DETAILS-PAGE-GEMINI-RESEARCH-BRIEFING-5A00` — [`todo/order-details-page-GEMINI-RESEARCH-BRIEFING.md`](../todo/order-details-page-GEMINI-RESEARCH-BRIEFING.md)
+- `DOC-TODO-ORDER-IMPORT-EXCEPTIONS-PLAN-E3E7` — [`todo/order-import-exceptions-PLAN.md`](../todo/order-import-exceptions-PLAN.md)
 - `DOC-TODO-ORDER-INGEST-SIMPLIFICATION-GEMINI-RESEARCH-BRIE-44F9` — [`todo/order-ingest-simplification-GEMINI-RESEARCH-BRIEFING.md`](../todo/order-ingest-simplification-GEMINI-RESEARCH-BRIEFING.md)
+- `DOC-TODO-ORDER-RAIL-SELECTION-PLANE-PLAN-8EF3` — [`todo/order-rail-selection-plane-PLAN.md`](../todo/order-rail-selection-plane-PLAN.md)
 - `DOC-TODO-ORDER-STATE-IDENTITY-MODEL-GEMINI-RESEARCH-BRIEF-4689` — [`todo/order-state-identity-model-GEMINI-RESEARCH-BRIEFING.md`](../todo/order-state-identity-model-GEMINI-RESEARCH-BRIEFING.md)
 - `DOC-TODO-PACK-RAIL-AND-RADIUS-SOT-FINISH-PROMPT-DF3E` — [`todo/pack-rail-and-radius-sot-FINISH-PROMPT.md`](../todo/pack-rail-and-radius-sot-FINISH-PROMPT.md)
+- `DOC-TODO-PACKAGE-PAIRING-SEARCH-LINKAGE-GEMINI-RESEARCH-B-B68B` — [`todo/package-pairing-search-linkage-GEMINI-RESEARCH-BRIEFING.md`](../todo/package-pairing-search-linkage-GEMINI-RESEARCH-BRIEFING.md)
+- `DOC-TODO-PACKAGE-PAIRING-SEARCH-LINKAGE-PLAN-2F30` — [`todo/package-pairing-search-linkage-PLAN.md`](../todo/package-pairing-search-linkage-PLAN.md)
 - `DOC-TODO-PACKER-REVIEW-STATION-PLAN-FCAA` — [`todo/packer-review-station-plan.md`](../todo/packer-review-station-plan.md)
 - `DOC-TODO-PAGE-CONSOLIDATION-STATION-FIRST-GEMINI-RESEARCH-B26D` — [`todo/page-consolidation-station-first-GEMINI-RESEARCH-BRIEFING.md`](../todo/page-consolidation-station-first-GEMINI-RESEARCH-BRIEFING.md)
-- `DOC-TODO-PENDING-GRID-AIRTABLE-VISUAL-HANDOFF-B07C` — [`todo/pending-grid-airtable-visual-handoff.md`](../todo/pending-grid-airtable-visual-handoff.md)
+- `DOC-TODO-PENDING-DOCS-FIRST-VERIFICATION-HANDOFF-0854` — [`todo/pending-docs-first-VERIFICATION-HANDOFF.md`](../todo/pending-docs-first-VERIFICATION-HANDOFF.md)
 - `DOC-TODO-PENDING-GRID-DEAD-CODE-CLEANUP-PROMPT-9CF6` — [`todo/pending-grid-dead-code-cleanup-PROMPT.md`](../todo/pending-grid-dead-code-cleanup-PROMPT.md)
 - `DOC-TODO-PENDING-GRID-DISPLAY-LANGUAGE-GEMINI-RESEARCH-BR-D4F0` — [`todo/pending-grid-display-language-GEMINI-RESEARCH-BRIEFING.md`](../todo/pending-grid-display-language-GEMINI-RESEARCH-BRIEFING.md)
 - `DOC-TODO-PENDING-GRID-INDUSTRY-STANDARD-EXECUTION-PROMPT-8DA2` — [`todo/pending-grid-industry-standard-EXECUTION-PROMPT.md`](../todo/pending-grid-industry-standard-EXECUTION-PROMPT.md)
@@ -697,42 +791,85 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 - `DOC-TODO-PHOTO-EVIDENCE-STAGE-SOT-PLAN-4CED` — [`todo/photo-evidence-stage-sot-plan.md`](../todo/photo-evidence-stage-sot-plan.md)
 - `DOC-TODO-PHOTO-EVIDENCE-STATION-MODE-CAPTURE-PLAN-AC82` — [`todo/photo-evidence-station-mode-capture-plan.md`](../todo/photo-evidence-station-mode-capture-plan.md)
 - `DOC-TODO-PHOTO-EVIDENCE-ULTRACO-EXECUTION-PROMPT-A28A` — [`todo/photo-evidence-ultraco-EXECUTION-PROMPT.md`](../todo/photo-evidence-ultraco-EXECUTION-PROMPT.md)
+- `DOC-TODO-PROCEDURE-RECONCILIATION-MEMO-A2E5` — [`todo/procedure-reconciliation-MEMO.md`](../todo/procedure-reconciliation-MEMO.md)
 - `DOC-TODO-PRODUCTS-CATALOG-MDM-REMEASURE-2026-07-22-B753` — [`todo/products-catalog-mdm-remeasure-2026-07-22.md`](../todo/products-catalog-mdm-remeasure-2026-07-22.md)
+- `DOC-TODO-QUEUE-INSPECTOR-NON-MODAL-RAIL-HANDOFF-DA25` — [`todo/queue-inspector-non-modal-rail-HANDOFF.md`](../todo/queue-inspector-non-modal-rail-HANDOFF.md)
 - `DOC-TODO-RAIL-MODE-BUS-ISOLATION-HANDOFF-94AE` — [`todo/rail-mode-bus-isolation-handoff.md`](../todo/rail-mode-bus-isolation-handoff.md)
+- `DOC-TODO-RECEIVING-CLAIM-MODAL-AUTO-TICKET-GEMINI-RESEARC-B0D9` — [`todo/receiving-claim-modal-auto-ticket-GEMINI-RESEARCH-BRIEFING.md`](../todo/receiving-claim-modal-auto-ticket-GEMINI-RESEARCH-BRIEFING.md)
+- `DOC-TODO-RECEIVING-CLAIM-MODAL-SIMPLIFY-MIGRATION-PLAN-9BDD` — [`todo/receiving-claim-modal-simplify-MIGRATION-PLAN.md`](../todo/receiving-claim-modal-simplify-MIGRATION-PLAN.md)
 - `DOC-TODO-RECEIVING-CONDITION-SERIAL-UNIFICATION-PLAN-B8F5` — [`todo/receiving-condition-serial-unification-plan.md`](../todo/receiving-condition-serial-unification-plan.md)
+- `DOC-TODO-RECEIVING-DETAILS-FLOAT-PUSH-GEMINI-RESEARCH-BRI-0B1B` — [`todo/receiving-details-float-push-GEMINI-RESEARCH-BRIEFING.md`](../todo/receiving-details-float-push-GEMINI-RESEARCH-BRIEFING.md)
 - `DOC-TODO-RECEIVING-DOOR-EXCEPTIONS-DECISION-FACTS-PLAN-B550` — [`todo/receiving-door-exceptions-decision-facts-plan.md`](../todo/receiving-door-exceptions-decision-facts-plan.md)
 - `DOC-TODO-RECEIVING-INLINE-TICKET-EDITOR-PLAN-A5F0` — [`todo/receiving-inline-ticket-editor-plan.md`](../todo/receiving-inline-ticket-editor-plan.md)
 - `DOC-TODO-RECEIVING-LIST-SQL-FLOOR-OPTIMIZATION-6ACF` — [`todo/receiving-list-sql-floor-optimization.md`](../todo/receiving-list-sql-floor-optimization.md)
 - `DOC-TODO-RECEIVING-SERIAL-IMMEDIATE-DISPLAY-PLAN-8946` — [`todo/receiving-serial-immediate-display-plan.md`](../todo/receiving-serial-immediate-display-plan.md)
+- `DOC-TODO-RECEIVING-SERIAL-JOURNEY-BATCH-CHIP-HANDOFF-F7FC` — [`todo/receiving-serial-journey-batch-chip-HANDOFF.md`](../todo/receiving-serial-journey-batch-chip-HANDOFF.md)
+- `DOC-TODO-RECEIVING-TICKET-PUSH-DENSITY-HANDOFF-F719` — [`todo/receiving-ticket-push-density-HANDOFF.md`](../todo/receiving-ticket-push-density-HANDOFF.md)
 - `DOC-TODO-REPAIR-CHAIN-CLOSURE-GEMINI-RESEARCH-BRIEFING-94CE` — [`todo/repair-chain-closure-GEMINI-RESEARCH-BRIEFING.md`](../todo/repair-chain-closure-GEMINI-RESEARCH-BRIEFING.md)
+- `DOC-TODO-RIGHT-RAIL-INSPECTOR-CONTRACT-CLAUDE-CODE-PROMPT-0C9A` — [`todo/right-rail-inspector-contract-CLAUDE-CODE-PROMPT.md`](../todo/right-rail-inspector-contract-CLAUDE-CODE-PROMPT.md)
+- `DOC-TODO-SALES-INTO-DASHBOARD-PLAN-2327` — [`todo/sales-into-dashboard-PLAN.md`](../todo/sales-into-dashboard-PLAN.md)
 - `DOC-TODO-SEARCH-JOURNEY-HANDOFF-PLAN-C10D` — [`todo/search-journey-handoff-plan.md`](../todo/search-journey-handoff-plan.md)
+- `DOC-TODO-SEARCH-RESULTS-ALIGNED-ROW-PHASE2-HANDOFF-B72F` — [`todo/search-results-aligned-row-PHASE2-HANDOFF.md`](../todo/search-results-aligned-row-PHASE2-HANDOFF.md)
 - `DOC-TODO-SEARCH-RESULTS-GRID-GEMINI-RESEARCH-BRIEFING-BAA6` — [`todo/search-results-grid-GEMINI-RESEARCH-BRIEFING.md`](../todo/search-results-grid-GEMINI-RESEARCH-BRIEFING.md)
+- `DOC-TODO-SHEET-IMPORT-REVIEW-QUEUE-HANDOFF-3D5D` — [`todo/sheet-import-review-queue-HANDOFF.md`](../todo/sheet-import-review-queue-HANDOFF.md)
+- `DOC-TODO-SHEET-IMPORT-VISIBILITY-FINISH-PROMPT-842A` — [`todo/sheet-import-visibility-FINISH-PROMPT.md`](../todo/sheet-import-visibility-FINISH-PROMPT.md)
 - `DOC-TODO-SHIPPED-ORDER-DISPLAY-ROI-PLAN-CC7A` — [`todo/shipped-order-display-roi-plan.md`](../todo/shipped-order-display-roi-plan.md)
 - `DOC-TODO-SIDEBAR-NAV-SLIDEOUT-BRIEFING-78FA` — [`todo/sidebar-nav-slideout-BRIEFING.md`](../todo/sidebar-nav-slideout-BRIEFING.md)
 - `DOC-TODO-SIDEBAR-ROUTING-PROBE-BRIEF-2B32` — [`todo/sidebar-routing-probe-BRIEF.md`](../todo/sidebar-routing-probe-BRIEF.md)
+- `DOC-TODO-SIDEBAR-SPINE-VALIDATION-SIMPLIFICATION-HANDOFF-4DD7` — [`todo/sidebar-spine-validation-simplification-HANDOFF.md`](../todo/sidebar-spine-validation-simplification-HANDOFF.md)
 - `DOC-TODO-SPACING-TOKEN-LEAKAGE-FIX-PLAN-2FE4` — [`todo/spacing-token-leakage-fix-plan.md`](../todo/spacing-token-leakage-fix-plan.md)
+- `DOC-TODO-SPINE-DRILL-IN-VERCEL-GEMINI-RESEARCH-BRIEFING-D3B7` — [`todo/spine-drill-in-vercel-GEMINI-RESEARCH-BRIEFING.md`](../todo/spine-drill-in-vercel-GEMINI-RESEARCH-BRIEFING.md)
 - `DOC-TODO-STATION-COLUMN-ARCHETYPE-SPLIT-PLAN-964C` — [`todo/station-column-archetype-split-plan.md`](../todo/station-column-archetype-split-plan.md)
 - `DOC-TODO-STATION-COLUMN-POINT-AND-FIX-PROMPT-C524` — [`todo/station-column-POINT-AND-FIX-PROMPT.md`](../todo/station-column-POINT-AND-FIX-PROMPT.md)
-- `DOC-TODO-STATION-DEPTH-SURFACE-HANDOFF-EB65` — [`todo/station-depth-surface-handoff.md`](../todo/station-depth-surface-handoff.md)
+- `DOC-TODO-STATION-NAV-FLOOR-DESK-GEMINI-RESEARCH-BRIEFING-AB99` — [`todo/station-nav-floor-desk-GEMINI-RESEARCH-BRIEFING.md`](../todo/station-nav-floor-desk-GEMINI-RESEARCH-BRIEFING.md)
+- `DOC-TODO-STATION-NAV-FLOOR-DESK-PLAN-94AD` — [`todo/station-nav-floor-desk-PLAN.md`](../todo/station-nav-floor-desk-PLAN.md)
 - `DOC-TODO-STATION-WORKBENCH-PORT-FOLLOWUPS-DB23` — [`todo/station-workbench-port-FOLLOWUPS.md`](../todo/station-workbench-port-FOLLOWUPS.md)
 - `DOC-TODO-STATION-WORKBENCH-SOT-RULES-BRIEFING-C50B` — [`todo/station-workbench-sot-rules-BRIEFING.md`](../todo/station-workbench-sot-rules-BRIEFING.md)
 - `DOC-TODO-SUPPORT-STATION-FULL-WAIST-EXECUTION-PROMPT-D0C1` — [`todo/support-station-full-waist-EXECUTION-PROMPT.md`](../todo/support-station-full-waist-EXECUTION-PROMPT.md)
 - `DOC-TODO-SUPPORT-STATION-FULL-WAIST-FINISH-PROMPT-F907` — [`todo/support-station-full-waist-FINISH-PROMPT.md`](../todo/support-station-full-waist-FINISH-PROMPT.md)
 - `DOC-TODO-SUPPORT-STATION-FULL-WAIST-HANDOFF-D366` — [`todo/support-station-full-waist-handoff.md`](../todo/support-station-full-waist-handoff.md)
+- `DOC-TODO-TABLE-ACTION-BAR-FIELDS-GEMINI-RESEARCH-BRIEFING-E1A1` — [`todo/table-action-bar-fields-GEMINI-RESEARCH-BRIEFING.md`](../todo/table-action-bar-fields-GEMINI-RESEARCH-BRIEFING.md)
+- `DOC-TODO-TABLE-ACTION-BAR-FIELDS-PLAN-6354` — [`todo/table-action-bar-fields-PLAN.md`](../todo/table-action-bar-fields-PLAN.md)
 - `DOC-TODO-TABLE-DISPLAY-SOT-GEMINI-RESEARCH-BRIEFING-6C00` — [`todo/table-display-sot-GEMINI-RESEARCH-BRIEFING.md`](../todo/table-display-sot-GEMINI-RESEARCH-BRIEFING.md)
+- `DOC-TODO-TABLE-SURFACE-INVENTORY-2026-07-31-F9BC` — [`todo/table-surface-inventory-2026-07-31.md`](../todo/table-surface-inventory-2026-07-31.md)
+- `DOC-TODO-TAILWIND-V4-SPIKE-ACEB` — [`todo/tailwind-v4-SPIKE.md`](../todo/tailwind-v4-SPIKE.md)
 - `DOC-TODO-TICKET-STN-MANY-LINK-PLAN-1F33` — [`todo/ticket-stn-many-link-plan.md`](../todo/ticket-stn-many-link-plan.md)
 - `DOC-TODO-TO-SHIP-PENDING-FULL-GRID-HANDOFF-CDA0` — [`todo/to-ship-pending-full-grid-handoff.md`](../todo/to-ship-pending-full-grid-handoff.md)
 - `DOC-TODO-TO-SHIP-PENDING-GRID-STAGE-B-HANDOFF-BF30` — [`todo/to-ship-pending-grid-stage-b-handoff.md`](../todo/to-ship-pending-grid-stage-b-handoff.md)
 - `DOC-TODO-TO-SHIP-PENDING-SHEETS-GRID-HANDOFF-0CB7` — [`todo/to-ship-pending-sheets-grid-handoff.md`](../todo/to-ship-pending-sheets-grid-handoff.md)
 - `DOC-TODO-TOKEN-SYSTEM-CONSOLIDATION-PLAN-B21B` — [`todo/token-system-consolidation-plan.md`](../todo/token-system-consolidation-plan.md)
+- `DOC-TODO-UNBOX-A-IDENTITY-DENSITY-EXECUTION-PROMPT-3CEA` — [`todo/unbox-A-identity-density-EXECUTION-PROMPT.md`](../todo/unbox-A-identity-density-EXECUTION-PROMPT.md)
+- `DOC-TODO-UNBOX-A-IDENTITY-DENSITY-PLAN-F6F1` — [`todo/unbox-A-identity-density-PLAN.md`](../todo/unbox-A-identity-density-PLAN.md)
+- `DOC-TODO-UNBOX-B-STEP-PROCEDURE-EXECUTION-PROMPT-C049` — [`todo/unbox-B-step-procedure-EXECUTION-PROMPT.md`](../todo/unbox-B-step-procedure-EXECUTION-PROMPT.md)
+- `DOC-TODO-UNBOX-B-STEP-PROCEDURE-PLAN-5FF3` — [`todo/unbox-B-step-procedure-PLAN.md`](../todo/unbox-B-step-procedure-PLAN.md)
+- `DOC-TODO-UNBOX-C-LABEL-NOTE-GRAIN-EXECUTION-PROMPT-157C` — [`todo/unbox-C-label-note-grain-EXECUTION-PROMPT.md`](../todo/unbox-C-label-note-grain-EXECUTION-PROMPT.md)
+- `DOC-TODO-UNBOX-C-LABEL-NOTE-GRAIN-PLAN-A65A` — [`todo/unbox-C-label-note-grain-PLAN.md`](../todo/unbox-C-label-note-grain-PLAN.md)
+- `DOC-TODO-UNBOX-CAPTURE-STACK-P0-P1-EXECUTION-PROMPT-5AE6` — [`todo/unbox-capture-stack-P0-P1-EXECUTION-PROMPT.md`](../todo/unbox-capture-stack-P0-P1-EXECUTION-PROMPT.md)
+- `DOC-TODO-UNBOX-CAPTURE-STACK-PLAN-902D` — [`todo/unbox-capture-stack-PLAN.md`](../todo/unbox-capture-stack-PLAN.md)
+- `DOC-TODO-UNBOX-D-CANVAS-PROCEDURE-EXECUTION-PROMPT-A771` — [`todo/unbox-D-canvas-procedure-EXECUTION-PROMPT.md`](../todo/unbox-D-canvas-procedure-EXECUTION-PROMPT.md)
+- `DOC-TODO-UNBOX-D-CANVAS-PROCEDURE-PLAN-1FDE` — [`todo/unbox-D-canvas-procedure-PLAN.md`](../todo/unbox-D-canvas-procedure-PLAN.md)
+- `DOC-TODO-UNBOX-E-TABS-TO-RIGHT-RAIL-EXECUTION-PROMPT-D9DB` — [`todo/unbox-E-tabs-to-right-rail-EXECUTION-PROMPT.md`](../todo/unbox-E-tabs-to-right-rail-EXECUTION-PROMPT.md)
+- `DOC-TODO-UNBOX-E-TABS-TO-RIGHT-RAIL-PLAN-E4D8` — [`todo/unbox-E-tabs-to-right-rail-PLAN.md`](../todo/unbox-E-tabs-to-right-rail-PLAN.md)
+- `DOC-TODO-UNBOX-E2-DISPLAYS-COLUMN-HANDOFF-59B1` — [`todo/unbox-E2-displays-column-HANDOFF.md`](../todo/unbox-E2-displays-column-HANDOFF.md)
+- `DOC-TODO-UNBOX-F-MOTION-BRIDGE-EXECUTION-PROMPT-7752` — [`todo/unbox-F-motion-bridge-EXECUTION-PROMPT.md`](../todo/unbox-F-motion-bridge-EXECUTION-PROMPT.md)
+- `DOC-TODO-UNBOX-F-MOTION-BRIDGE-PLAN-64E5` — [`todo/unbox-F-motion-bridge-PLAN.md`](../todo/unbox-F-motion-bridge-PLAN.md)
+- `DOC-TODO-UNBOX-G-MOTIONCONFIG-EXECUTION-PROMPT-3757` — [`todo/unbox-G-motionconfig-EXECUTION-PROMPT.md`](../todo/unbox-G-motionconfig-EXECUTION-PROMPT.md)
+- `DOC-TODO-UNBOX-G-MOTIONCONFIG-PLAN-6EB0` — [`todo/unbox-G-motionconfig-PLAN.md`](../todo/unbox-G-motionconfig-PLAN.md)
+- `DOC-TODO-UNBOX-INPUT-LOCUS-INVERSION-GEMINI-RESEARCH-BRIE-7252` — [`todo/unbox-input-locus-inversion-GEMINI-RESEARCH-BRIEFING.md`](../todo/unbox-input-locus-inversion-GEMINI-RESEARCH-BRIEFING.md)
+- `DOC-TODO-UNBOX-LANES-INDEX-7D19` — [`todo/unbox-LANES-INDEX.md`](../todo/unbox-LANES-INDEX.md)
+- `DOC-TODO-UNBOX-PROCEDURE-INTO-CHECKLIST-HANDOFF-C4B2` — [`todo/unbox-procedure-into-checklist-HANDOFF.md`](../todo/unbox-procedure-into-checklist-HANDOFF.md)
 - `DOC-TODO-UNBOX-RAIL-DOT-TITLE-GAP-HANDOFF-340E` — [`todo/unbox-rail-dot-title-gap-handoff.md`](../todo/unbox-rail-dot-title-gap-handoff.md)
-- `DOC-TODO-UNBOX-REFRESH-STICKINESS-PLAYWRIGHT-PROMPT-6537` — [`todo/unbox-refresh-stickiness-playwright-prompt.md`](../todo/unbox-refresh-stickiness-playwright-prompt.md)
+- `DOC-TODO-UNBOX-RECEIVING-GRID-CONTEXT-MAP-D4AC` — [`todo/unbox-receiving-grid-CONTEXT-MAP.md`](../todo/unbox-receiving-grid-CONTEXT-MAP.md)
 - `DOC-TODO-UNBOX-SCAN-VS-LOOKUP-EXECUTION-PROMPT-BBF3` — [`todo/unbox-scan-vs-lookup-EXECUTION-PROMPT.md`](../todo/unbox-scan-vs-lookup-EXECUTION-PROMPT.md)
+- `DOC-TODO-UNBOX-SHARED-HOST-RAIL-BACKGROUND-HANDOFF-F0A0` — [`todo/unbox-shared-host-rail-background-HANDOFF.md`](../todo/unbox-shared-host-rail-background-HANDOFF.md)
+- `DOC-TODO-UNBOX-SIBLING-PATTERNS-2EFC` — [`todo/unbox-SIBLING-PATTERNS.md`](../todo/unbox-SIBLING-PATTERNS.md)
 - `DOC-TODO-UNBOX-SIDERAIL-FLUSH-STAGGER-HANDOFF-9F37` — [`todo/unbox-siderail-flush-stagger-handoff.md`](../todo/unbox-siderail-flush-stagger-handoff.md)
 - `DOC-TODO-UNBOX-STATION-SCAN-VS-LOOKUP-GEMINI-RESEARCH-BRI-444F` — [`todo/unbox-station-scan-vs-lookup-GEMINI-RESEARCH-BRIEFING.md`](../todo/unbox-station-scan-vs-lookup-GEMINI-RESEARCH-BRIEFING.md)
 - `DOC-TODO-UNBOX-TRIAGE-MODE-SEPARATION-HANDOFF-2CC3` — [`todo/unbox-triage-mode-separation-handoff.md`](../todo/unbox-triage-mode-separation-handoff.md)
+- `DOC-TODO-URL-ISOLATION-SESSION-HANDOFF-E53B` — [`todo/url-isolation-session-HANDOFF.md`](../todo/url-isolation-session-HANDOFF.md)
 - `DOC-TODO-USER-ISSUES-CONSOLE-EXECUTION-PROMPT-5CB0` — [`todo/user-issues-console-EXECUTION-PROMPT.md`](../todo/user-issues-console-EXECUTION-PROMPT.md)
 - `DOC-TODO-USER-ISSUES-CONSOLE-PLAN-16C3` — [`todo/user-issues-console-plan.md`](../todo/user-issues-console-plan.md)
+- `DOC-TODO-WORKBENCH-CHROME-BAND-DENSITY-GEMINI-RESEARCH-BR-DB4F` — [`todo/workbench-chrome-band-density-GEMINI-RESEARCH-BRIEFING.md`](../todo/workbench-chrome-band-density-GEMINI-RESEARCH-BRIEFING.md)
 
 ### `WS-UNBOX` (1)
 

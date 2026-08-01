@@ -190,8 +190,8 @@ worked for spacing / control-size / focus-ring / surface-box). Fix `AGENTS.md:14
 `tailwind.config.ts:9–10` actually imports `.mjs` — the constitution currently contradicts the code and would
 walk an agent into a broken config.
 
-*Do **not** action the `GLASS-DESIGN-SYSTEM.md` reconciliation — it sources from another repo; none of its
-files exist here.*
+*The `GLASS-DESIGN-SYSTEM.md` reconciliation is moot — that doc was a port guide sourced from another
+repo (none of its files exist here) and was retired 2026-08-01.*
 
 ### Step 1 — Record the cascade invariant · 0.5 d · no risk
 Add the §2.1 invariant plus a guard test asserting the two `<style>` tags carry no `precedence` and appear in
