@@ -4,6 +4,11 @@
 **Question:** is it cheaper to bake reduced-motion into the motion SoT than to migrate 23 files to `useMotionPresence` / `useMotionTransition`?
 **Answer:** yes — but not by rewriting the presets. **framer-motion already ships the mechanism and we do not use it.**
 
+> **STATUS 2026-07-31 — IMPLEMENTED.** Mounted app-wide, mechanism verified empirically, rules updated.
+> Two claims below were corrected against the shipped library rather than the docs: §3.2 (`height` snaps, it is
+> **not** preserved) and §5.5's suggested proof target (`CommandBar` already hand-rolls `useReducedMotion`, so it
+> could never have demonstrated the change). See the inline CORRECTION blocks.
+
 ---
 
 ## 0. The finding that decides this
@@ -57,7 +62,11 @@ Reduced motion is *"replace slides with crossfades,"* **not** *"no motion"* — 
 
 It returns a flat `{ initial:{opacity}, animate:{opacity}, exit:{opacity} }` (`motion-framer-hooks.ts:28-36`). Applied to `framerPresence.collapseHeight` or `sidebarSection` — both `{height:0} → {height:'auto'}` — the height keys vanish, so the element no longer collapses at all; it fades while holding full height, and on exit holds its box until unmount.
 
-`collapseHeight` is the **one sanctioned height animation** in the house rules. MotionConfig preserves it (height is not a transform) while still killing the slide. That is the documented intent; the current bridge over-reduces.
+`collapseHeight` is the **one sanctioned height animation** in the house rules, so the bridge over-reduces it. **Fixed 2026-07-31:** `useMotionPresence` now strips only transform/filter keys and preserves the rest.
+
+> **CORRECTION (verified 2026-07-31).** This section originally claimed *"MotionConfig preserves it (height is not a transform)."* **That is wrong.** framer's `positionalKeys` set is `width · height · top · left · right · bottom` **plus** every transform prop, and every member gets `{type:false}` under reduce. Measured in an isolated Playwright A/B against the installed `framer-motion@12.42.2`: `height` goes from **30 distinct tween values to 2** — it *snaps*. MotionConfig does **not** tween height under reduce, and no setting makes it.
+>
+> The conclusion is unchanged and the fix still stands — a snap that collapses the box is strictly better than a fade that holds it — but the stated reason was wrong, and §3.1 (opacity survives) is the claim that actually carries this argument.
 
 ---
 
@@ -80,6 +89,20 @@ Honest gaps — none of them block the change, but do not claim total coverage:
 3. **Layout animations get disabled globally.** That includes `CaptureStack`/`MobileFeed`'s `layout="position"` push-up — which already sets `layout={false}` under reduce, so it is consistent — and the **sanctioned push toggles** (sidebar nav column width, photo details drawer). Those are deliberate layout animations per `motion-crossfade.md`; disabling them under reduce is probably right, but confirm it is intended.
 4. **SSR / first paint.** MotionConfig reads the media query client-side, same as today's `useReducedMotion`. No regression, but confirm no hydration warning.
 5. **Prove the mechanism before relying on it.** Set `prefers-reduced-motion: reduce` in the browser and confirm a *known-unbridged* component (e.g. `CommandBar`) stops translating. If it does not behave as documented, this whole costing collapses — verify first, migrate after.
+
+> **CORRECTION (2026-07-31).** `CommandBar` is a **bad proof target**: it does not use the hook bridge, but it *does* call `useReducedMotion()` inline (`CommandBar.tsx:252`) and already branches every `initial`/`animate`/`exit`/`transition` on it. It reduces with or without MotionConfig, so it can demonstrate nothing. Of the 15 raw `framerPresence` consumers, only 13 are *genuinely* ungated once `CommandBar` and the other inline-`useReducedMotion` files are excluded.
+>
+> **How it was actually verified:** the app could not be used as the harness — the working tree has an unrelated broken import (see below) that fails the build on every route. Instead, an isolated Playwright A/B bundled the repo's own `framer-motion@12.42.2` with `<MotionConfig reducedMotion="user">` and measured real geometry over 260ms in both `reducedMotion` states:
+>
+> | | no-preference | reduce |
+> |---|---|---|
+> | `y` translate — distinct values | 24 (range 17→40) | **2** (40→0, snap) |
+> | `height` 0→auto — distinct values | 30 | **2** (snap) |
+> | `opacity` — distinct values | 31 | **33** (still tweening) |
+>
+> Both halves of the thesis hold: **transforms stop tweening, opacity keeps tweening.** The mechanism is real.
+>
+> **Still unverified — the in-app wiring.** `src/components/shipped/PhotoGallery.tsx:13` imports `@/components/receiving/workspace/line-edit/MovePhotosBetweenPoModal`, which another session renamed to `…Rail.tsx` (`git status` shows `RM`). That import runs through `layout.tsx`, so **every route fails to build** and no authenticated page renders. Not caused by this lane and deliberately not repaired here. The §7 matrix in Plan G must be re-run once that rename is finished.
 
 ---
 
