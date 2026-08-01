@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { AlertTriangle, Check, ChevronDown, Loader2, X } from '@/components/Icons';
 import { focusRing } from '@/design-system/tokens/focus-ring';
-import { RightPaneOverlay } from '@/components/ui/RightPaneOverlay';
+import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
 import { TabSwitch } from '@/design-system/components/TabSwitch';
 import { Button, IconButton } from '@/design-system/primitives';
 import { framerTransition } from '@/design-system/foundations/motion-framer';
@@ -610,6 +610,11 @@ function ExceptionTable({
   );
 }
 
+/**
+ * Order import progress — non-modal RightRailHost occupant (`detail:order-sync`).
+ * Same float metric as Add Order / order inspector; Cancel is the only intentional
+ * abort while a transfer is in flight (Escape / X / Close no-op until done).
+ */
 export function OrderSyncDialog({
   open,
   onClose,
@@ -629,27 +634,6 @@ export function OrderSyncDialog({
     () => (sheets.details?.skippedRows ?? []).filter((row) => row.reason === 'ecwid'),
     [sheets.details?.skippedRows],
   );
-  const tabsRailRef = useRef<HTMLDivElement | null>(null);
-
-  // #region agent log
-  useEffect(() => {
-    if (!open) return;
-    const id = window.setTimeout(() => {
-      const rail = tabsRailRef.current;
-      const dialog = rail?.closest('[role="dialog"]') as HTMLElement | null;
-      const buttons = rail ? Array.from(rail.querySelectorAll('button')) : [];
-      const tabMetrics = buttons.map((btn) => ({
-        label: (btn.textContent || '').trim(),
-        clientWidth: btn.clientWidth,
-        scrollWidth: btn.scrollWidth,
-        clipped: btn.scrollWidth > btn.clientWidth + 1,
-      }));
-      const body = dialog?.querySelector('.overflow-y-auto') as HTMLElement | null;
-      fetch('http://127.0.0.1:7336/ingest/8bd437e7-bc3e-4c78-9dcf-4ca4496a96b4',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'7d3d46'},body:JSON.stringify({sessionId:'7d3d46',runId:'pre-fix',hypothesisId:'F',location:'OrderSyncDialog.tsx:layout',message:'dialog/tab truncation metrics',data:{dialogW:dialog?.clientWidth??null,dialogH:dialog?.clientHeight??null,railW:rail?.clientWidth??null,bodyScrollH:body?.scrollHeight??null,bodyClientH:body?.clientHeight??null,bodyClipped:(body?(body.scrollHeight>body.clientHeight+1):null),persistedSize:(()=>{try{return JSON.parse(window.localStorage.getItem('order-sync-dialog-size')||'null');}catch{return null;}})(),tabMetrics,sheetsStatus:sheets.status,sheetsInserted:sheets.inserted??null,sheetsDetailsLen:sheets.details?.inserted?.length??null},timestamp:Date.now()})}).catch(()=>{});
-    }, 250);
-    return () => window.clearTimeout(id);
-  }, [open, activeTab, sheets, ecwid, exceptions]);
-  // #endregion
 
   // Pill TabSwitch SoT — same solid/accent recipe as WorkbenchChromeHeader
   // (dashboard / Labels top-left). Per-source status stays in the footer.
@@ -681,114 +665,115 @@ export function OrderSyncDialog({
         color: 'gray' as const,
       },
     ],
-    [sheets, ecwid, exceptions],
+    [sheets, ecwid, exceptions, ecwidRowsFromSheet.length],
   );
 
-  // Block dismiss while a transfer is in flight (backdrop + Escape); Cancel is
-  // the only intentional abort. Same RightPaneOverlay shell as ReceivingClaimModal.
+  // Block dismiss while a transfer is in flight; Cancel is the only intentional abort.
   const handleClose = () => {
     if (!isRunning) onClose();
   };
 
+  if (!open) return null;
+
   return (
-    <RightPaneOverlay
-      open={open}
+    <DetailStackRailRegistrar
+      id="detail:order-sync"
       onClose={handleClose}
-      align="center"
-      resizable
-      storageKey="order-sync-dialog-size"
-      minWidth={480}
-      minHeight={360}
-      closeOnEscape={!isRunning}
-      className="-mt-8 h-[min(86vh,40rem)] w-[min(94vw,48rem)]"
-      aria-label="Order sync"
+      modal={false}
+      ariaLabel="Order import progress"
     >
-      <header className="flex shrink-0 items-start gap-3 border-b border-border-soft px-5 py-3.5">
-        <div className="min-w-0 flex-1">
-          <p className={`${microBadge} text-text-soft`}>Order Sync</p>
-          <h2 className={`${sectionLabel} mt-0.5 text-text-default`}>
-            {isRunning ? 'Importing latest orders' : 'Import complete'}
-          </h2>
-        </div>
-        <div className="flex shrink-0 items-center gap-3">
-          <motion.span
-            key={Math.floor(elapsedMs / 100)}
-            initial={{ opacity: 0.4 }}
-            animate={{ opacity: 1 }}
-            className="text-role-caption font-mono font-semibold tabular-nums text-blue-600"
-          >
-            {(elapsedMs / 1000).toFixed(1)}s
-          </motion.span>
-          {isRunning && onCancel ? (
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={onCancel}
-              className="bg-red-50 text-red-700 ring-inset ring-red-200 hover:bg-red-100"
+      <div
+        className="flex h-full min-h-0 flex-col overflow-hidden bg-surface-card"
+        data-testid="order-sync-panel"
+      >
+        <header className="flex shrink-0 items-start gap-3 border-b border-border-soft px-5 py-3.5">
+          <div className="min-w-0 flex-1">
+            <p className={`${microBadge} text-text-soft`}>Order Sync</p>
+            <h2 className={`${sectionLabel} mt-0.5 text-text-default`}>
+              {isRunning ? 'Importing latest orders' : 'Import complete'}
+            </h2>
+          </div>
+          <div className="flex shrink-0 items-center gap-3">
+            <motion.span
+              key={Math.floor(elapsedMs / 100)}
+              initial={{ opacity: 0.4 }}
+              animate={{ opacity: 1 }}
+              className="text-role-caption font-mono font-semibold tabular-nums text-blue-600"
             >
-              Cancel
-            </Button>
-          ) : null}
-          <IconButton
-            icon={<X className="h-4 w-4" />}
-            ariaLabel="Close"
-            onClick={handleClose}
-            disabled={isRunning}
-            className="rounded-lg p-1.5 hover:bg-surface-sunken"
+              {(elapsedMs / 1000).toFixed(1)}s
+            </motion.span>
+            {isRunning && onCancel ? (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={onCancel}
+                className="bg-red-50 text-red-700 ring-inset ring-red-200 hover:bg-red-100"
+              >
+                Cancel
+              </Button>
+            ) : null}
+            <IconButton
+              icon={<X className="h-4 w-4" />}
+              ariaLabel="Close"
+              onClick={handleClose}
+              disabled={isRunning}
+              className="rounded-lg p-1.5 hover:bg-surface-sunken"
+            />
+          </div>
+        </header>
+
+        <div className="shrink-0 border-b border-border-soft px-4 py-2.5">
+          <TabSwitch
+            tabs={switchTabs}
+            activeTab={activeTab}
+            onTabChange={(id) => setActiveTab(id as TabId)}
+            variant="solid"
+            solidTone="accent"
+            countStyle="plain"
+            className="w-full"
           />
         </div>
-      </header>
 
-      <div ref={tabsRailRef} className="shrink-0 border-b border-border-soft px-4 py-2.5">
-        <TabSwitch
-          tabs={switchTabs}
-          activeTab={activeTab}
-          onTabChange={(id) => setActiveTab(id as TabId)}
-          variant="solid"
-          solidTone="accent"
-          countStyle="plain"
-          className="w-full"
-        />
-      </div>
-
-      <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={activeTab}
-            initial={{ opacity: 0, y: 4 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -4 }}
-            transition={framerTransition.overlayScrim}
-          >
-            {activeTab === 'sheets' ? (
-              <TransferTab tab={sheets} label="Google Sheets" />
-            ) : activeTab === 'ecwid' ? (
-              <TransferTab tab={ecwid} label="Ecwid Direct" fromSheet={ecwidRowsFromSheet} />
-            ) : (
-              <ExceptionsTab tab={exceptions} />
-            )}
-          </motion.div>
-        </AnimatePresence>
-      </div>
-
-      <footer className="flex shrink-0 items-center justify-between gap-3 border-t border-border-soft bg-surface-canvas px-5 py-2.5">
-        <div className="flex items-center gap-3 text-xs text-text-muted">
-          <span className="inline-flex items-center gap-1.5">
-            {statusDot(sheets.status)} <span>{statusLabel(sheets.status, sheets.summary)}</span>
-          </span>
-          <span className="text-text-faint">·</span>
-          <span className="inline-flex items-center gap-1.5">
-            {statusDot(ecwid.status)} <span>{statusLabel(ecwid.status, ecwid.summary)}</span>
-          </span>
-          <span className="text-text-faint">·</span>
-          <span className="inline-flex items-center gap-1.5">
-            {statusDot(exceptions.status)} <span>{statusLabel(exceptions.status, exceptions.summary)}</span>
-          </span>
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={framerTransition.overlayScrim}
+            >
+              {activeTab === 'sheets' ? (
+                <TransferTab tab={sheets} label="Google Sheets" />
+              ) : activeTab === 'ecwid' ? (
+                <TransferTab tab={ecwid} label="Ecwid Direct" fromSheet={ecwidRowsFromSheet} />
+              ) : (
+                <ExceptionsTab tab={exceptions} />
+              )}
+            </motion.div>
+          </AnimatePresence>
         </div>
-        <Button variant="brand" size="sm" onClick={handleClose} disabled={isRunning}>
-          {isRunning ? 'Running…' : 'Close'}
-        </Button>
-      </footer>
-    </RightPaneOverlay>
+
+        <footer className="flex shrink-0 items-center justify-between gap-3 border-t border-border-soft bg-surface-canvas px-5 py-2.5">
+          <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-xs text-text-muted">
+            <span className="inline-flex items-center gap-1.5">
+              {statusDot(sheets.status)} <span>{statusLabel(sheets.status, sheets.summary)}</span>
+            </span>
+            <span className="text-text-faint">·</span>
+            <span className="inline-flex items-center gap-1.5">
+              {statusDot(ecwid.status)} <span>{statusLabel(ecwid.status, ecwid.summary)}</span>
+            </span>
+            <span className="text-text-faint">·</span>
+            <span className="inline-flex items-center gap-1.5">
+              {statusDot(exceptions.status)}{' '}
+              <span>{statusLabel(exceptions.status, exceptions.summary)}</span>
+            </span>
+          </div>
+          <Button variant="brand" size="sm" onClick={handleClose} disabled={isRunning}>
+            {isRunning ? 'Running…' : 'Close'}
+          </Button>
+        </footer>
+      </div>
+    </DetailStackRailRegistrar>
   );
 }

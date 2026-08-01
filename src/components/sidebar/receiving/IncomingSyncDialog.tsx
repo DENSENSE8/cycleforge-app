@@ -1,16 +1,9 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { AlertTriangle, Check, Loader2, Package, RefreshCw } from '@/components/Icons';
-import { Button } from '@/design-system/primitives';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/design-system/components/Dialog';
+import { AlertTriangle, Check, Loader2, Package, RefreshCw, X } from '@/components/Icons';
+import { Button, IconButton } from '@/design-system/primitives';
+import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
 import { sectionLabel, fieldLabel, microBadge, dataValue } from '@/design-system/tokens/typography/presets';
 
 export type IncomingSyncKind = 'zoho' | 'marketplace';
@@ -70,10 +63,9 @@ function SummaryStat({ label, value, tone }: SyncDialogTile) {
 }
 
 /**
- * Result dialog for Incoming Zoho / marketplace Import — single-shot
- * (non-streaming) progress + result. Same visual language (Dialog shell,
- * eyebrow + title header, summary stat tiles, breakdown sections, footer) as
- * other sync result shells.
+ * Incoming Zoho / marketplace Import progress — non-modal RightRailHost
+ * occupant (`detail:incoming-sync`). Same float metric as Add eBay purchase /
+ * order import progress; dismiss blocked while a sync is in flight.
  */
 export function IncomingSyncDialog({
   open,
@@ -91,40 +83,51 @@ export function IncomingSyncDialog({
       ? 'Sync failed'
       : 'Sync complete';
 
+  const handleClose = () => {
+    if (!isRunning) onClose();
+  };
+
+  if (!open) return null;
+
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(next) => {
-        if (!next && !isRunning) onClose();
-      }}
+    <DetailStackRailRegistrar
+      id="detail:incoming-sync"
+      onClose={handleClose}
+      modal={false}
+      ariaLabel="Incoming import progress"
     >
-      <DialogContent
-        hideClose
-        className="max-w-2xl gap-0 overflow-hidden p-0 sm:rounded-2xl"
+      <div
+        className="flex h-full min-h-0 flex-col overflow-hidden bg-surface-card"
+        data-testid="incoming-sync-panel"
       >
-        <DialogHeader className="flex flex-row items-start gap-3 space-y-0 border-b border-border-soft px-5 py-3.5">
+        <header className="flex shrink-0 items-start gap-3 border-b border-border-soft px-5 py-3.5">
           <div className="flex min-w-0 flex-1 items-center gap-2">
             <Icon className={`h-4 w-4 ${meta.tone} ${isRunning ? 'animate-pulse' : ''}`} />
             <div className="min-w-0">
-              <DialogDescription className={`${microBadge} text-text-soft`}>
-                {meta.eyebrow}
-              </DialogDescription>
-              <DialogTitle className={`${sectionLabel} mt-0.5 text-text-default`}>
-                {title}
-              </DialogTitle>
+              <p className={`${microBadge} text-text-soft`}>{meta.eyebrow}</p>
+              <h2 className={`${sectionLabel} mt-0.5 text-text-default`}>{title}</h2>
             </div>
           </div>
-          <motion.span
-            key={Math.floor(elapsedMs / 100)}
-            initial={{ opacity: 0.4 }}
-            animate={{ opacity: 1 }}
-            className={`shrink-0 text-role-caption font-mono font-semibold tabular-nums ${meta.tone}`}
-          >
-            {(elapsedMs / 1000).toFixed(1)}s
-          </motion.span>
-        </DialogHeader>
+          <div className="flex shrink-0 items-center gap-3">
+            <motion.span
+              key={Math.floor(elapsedMs / 100)}
+              initial={{ opacity: 0.4 }}
+              animate={{ opacity: 1 }}
+              className={`text-role-caption font-mono font-semibold tabular-nums ${meta.tone}`}
+            >
+              {(elapsedMs / 1000).toFixed(1)}s
+            </motion.span>
+            <IconButton
+              icon={<X className="h-4 w-4" />}
+              ariaLabel="Close"
+              onClick={handleClose}
+              disabled={isRunning}
+              className="rounded-lg p-1.5 hover:bg-surface-sunken"
+            />
+          </div>
+        </header>
 
-        <div className="max-h-[60vh] overflow-y-auto px-5 py-4">
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
           {isRunning || !result ? (
             <div className="flex flex-col items-center justify-center gap-2 py-12 text-text-soft">
               <Loader2 className="h-5 w-5 animate-spin text-text-faint" />
@@ -133,14 +136,13 @@ export function IncomingSyncDialog({
           ) : (
             <div className="flex flex-col gap-4">
               {result.tiles.length > 0 ? (
-                <div className="grid grid-cols-4 gap-2">
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                   {result.tiles.map((t) => (
                     <SummaryStat key={t.label} {...t} />
                   ))}
                 </div>
               ) : null}
 
-              {/* Headline "what changed" bullets. */}
               {result.updated.length > 0 ? (
                 <ul className="space-y-1">
                   {result.updated.map((line, i) => (
@@ -152,13 +154,12 @@ export function IncomingSyncDialog({
                 </ul>
               ) : null}
 
-              {/* Per-leg breakdown (Issued sync / Mirror sync / Scan). */}
               {result.sections.map((s) => (
                 <div key={s.label} className="overflow-hidden rounded-xl border border-border-soft">
                   <div className="border-b border-border-hairline bg-surface-canvas px-3 py-1.5">
                     <p className={`${microBadge} text-text-soft`}>{s.label}</p>
                   </div>
-                  <dl className="grid grid-cols-2 gap-x-4 gap-y-1.5 px-3 py-2.5 sm:grid-cols-3">
+                  <dl className="grid grid-cols-2 gap-x-4 gap-y-1.5 px-3 py-2.5">
                     {s.rows.map((r) => (
                       <div key={r.k} className="flex items-baseline justify-between gap-2">
                         <dt className={`${fieldLabel} text-text-soft`}>{r.k}</dt>
@@ -169,7 +170,6 @@ export function IncomingSyncDialog({
                 </div>
               ))}
 
-              {/* Error list (e.g. Zoho mirror errors). */}
               {result.errors.length > 0 ? (
                 <div className="overflow-hidden rounded-xl border border-red-200 bg-red-50/60">
                   <div className="flex items-center gap-1.5 border-b border-red-100 px-3 py-1.5 text-red-700">
@@ -193,17 +193,12 @@ export function IncomingSyncDialog({
           )}
         </div>
 
-        <DialogFooter className="border-t border-border-soft bg-surface-canvas px-5 py-2.5 sm:justify-end">
-          <Button
-            variant="brand"
-            size="sm"
-            onClick={onClose}
-            disabled={isRunning}
-          >
+        <footer className="flex shrink-0 items-center justify-end border-t border-border-soft bg-surface-canvas px-5 py-2.5">
+          <Button variant="brand" size="sm" onClick={handleClose} disabled={isRunning}>
             {isRunning ? 'Running…' : 'Close'}
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </footer>
+      </div>
+    </DetailStackRailRegistrar>
   );
 }

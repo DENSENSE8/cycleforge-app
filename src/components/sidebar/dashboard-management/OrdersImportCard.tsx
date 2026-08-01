@@ -46,7 +46,7 @@ export function OrdersImportCard({ imp, canImportOrders }: { imp: OrdersImportCo
         </Button>
       )}
 
-      {/* Compact status row — full details live in the centered OrderSyncDialog */}
+      {/* Compact status row — full details live in the OrderSyncDialog right rail */}
       <AnimatePresence>
         {isTransferring || sheetsTask.status !== 'idle' || ecwidTask.status !== 'idle' ? (
           <motion.div

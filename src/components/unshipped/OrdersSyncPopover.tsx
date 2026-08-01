@@ -17,7 +17,7 @@ type SyncTab = 'sync' | 'backfill';
  * surfaces the merged Unshipped sidebar needs:
  *   - **Sync** — Google Sheets + Ecwid Direct transfer + Resolved Exceptions
  *     (the "Import Latest Orders" flow), via {@link useOrdersSync}; detailed
- *     per-tab progress shows in the centered {@link OrderSyncDialog}.
+ *     per-tab progress shows in the non-modal {@link OrderSyncDialog} right rail.
  *   - **Backfill** — eBay/Ecwid order backfill + integrity check
  *     ({@link AwaitingEbayPanel}).
  * Replaces the old split (main Sync lived in DashboardManagementPanel, Backfill

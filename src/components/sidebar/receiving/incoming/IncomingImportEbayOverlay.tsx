@@ -6,7 +6,7 @@
  * Incoming chrome Add CTA (and `station:import-ebay-order`).
  *
  * Mounts in the shared right detail-stack rail (same shell as dashboard
- * {@link NewOrderEntryOverlay}) — not a centered RightPaneOverlay card.
+ * {@link NewOrderEntryOverlay}) — non-modal float, not a centered overlay.
  */
 
 import { useEffect, useState } from 'react';
@@ -101,7 +101,12 @@ export function IncomingImportEbayOverlay({
   if (!open) return null;
 
   return (
-    <DetailStackRailRegistrar id="detail:incoming-import-ebay" onClose={onClose}>
+    <DetailStackRailRegistrar
+      id="detail:incoming-import-ebay"
+      onClose={onClose}
+      modal={false}
+      ariaLabel="Add eBay purchase"
+    >
       <SidebarIntakeFormShell
         title="Add eBay purchase"
         subtitle="Manual order entry"
