@@ -1,4 +1,5 @@
-/** Dispatched to focus the global header search field (⌘K / quick-access). */
+/** Dispatched to focus the active search field (⌘K / quick-access / re-click Search).
+ *  Header launcher listens everywhere except `/search`, where SearchSidebarPanel owns focus. */
 export const GLOBAL_SEARCH_FOCUS_EVENT = 'cf-global-search-focus';
 
 export function dispatchGlobalSearchFocus(): void {

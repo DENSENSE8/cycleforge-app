@@ -89,4 +89,15 @@ describe('SearchResultRow comfortable grid', () => {
     assert.match(surfaceSrc, /SearchResultRowSkeleton/);
     assert.match(surfaceSrc, /mode="wait"/);
   });
+
+  it('fills the rail with height-derived skeleton rows (not a fixed SKELETON_COUNT)', () => {
+    assert.doesNotMatch(
+      surfaceSrc,
+      /SKELETON_COUNT\s*=\s*\d+/,
+      'SearchResultsSurface must not hard-code a fixed skeleton count',
+    );
+    assert.match(surfaceSrc, /searchSkeletonCount/);
+    assert.match(surfaceSrc, /ResizeObserver/);
+    assert.match(gridSrc, /export function searchSkeletonCount/);
+  });
 });

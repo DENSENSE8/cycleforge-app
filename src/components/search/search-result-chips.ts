@@ -102,7 +102,7 @@ const ORDER_STATUS_TONE: Record<string, ChipTone> = {
   refunded: 'rose',
 };
 
-export interface OrderStatusTone {
+interface OrderStatusTone {
   tone: ChipTone;
   /** Tailwind bg-* class for the status dot. */
   dot: string;

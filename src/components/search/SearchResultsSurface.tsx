@@ -15,6 +15,10 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Search } from '@/components/Icons';
 import { SearchResultRow, type SearchRowDensity } from '@/components/search/SearchResultRow';
 import { SearchResultRowSkeleton } from '@/components/search/SearchResultRowSkeleton';
+import {
+  SEARCH_SKELETON_TOP_PAD_PX,
+  searchSkeletonCount,
+} from '@/components/search/search-result-grid';
 import { MonitorListBlock } from '@/design-system/components/monitor';
 import { EmptyState } from '@/design-system/primitives';
 import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
@@ -93,8 +97,6 @@ interface FetchState {
   forKey: string;
 }
 
-const SKELETON_COUNT = 10;
-
 export function SearchResultsSurface({
   query,
   etype = null,
@@ -120,9 +122,21 @@ export function SearchResultsSurface({
     forKey: '',
   });
   const abortRef = useRef<AbortController | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [heightPx, setHeightPx] = useState(0);
   const pageContext = '/search';
   const presence = useMotionPresence(framerPresence.workbenchPaneSettle);
   const transition = useMotionTransition(framerTransition.workbenchPaneSettle);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const publish = () => setHeightPx(el.clientHeight);
+    publish();
+    const ro = new ResizeObserver(publish);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   const statusOptions = useMemo(
     () => (state.status === 'done' ? statusOptionsFromHits(state.hits) : []),
@@ -194,6 +208,9 @@ export function SearchResultsSurface({
   const showResults = state.status === 'done' && displayHits.length > 0;
   const showLoading = state.status === 'loading';
   const isCompact = density === 'compact' || density === 'dropdown';
+  const skeletonCount = searchSkeletonCount(
+    heightPx > 0 ? Math.max(0, heightPx - SEARCH_SKELETON_TOP_PAD_PX) : 0,
+  );
 
   function isActive(hit: AiSearchHit): boolean {
     if (activeSel) return isSearchSelActive(activeSel, hit);
@@ -201,14 +218,9 @@ export function SearchResultsSurface({
   }
 
   return (
-    <div className={cn(isCompact ? 'space-y-2' : 'space-y-3', className)}>
+    <div ref={containerRef} className={className}>
       {state.status === 'done' && (
-        <p
-          className={cn(
-            'text-role-eyebrow uppercase text-text-soft',
-            isCompact && 'px-3',
-          )}
-        >
+        <p className="px-3 pt-2 pb-1.5 text-role-eyebrow uppercase text-text-soft">
           {hasRefine
             ? `${displayHits.length} of ${state.hits.length === 50 ? '50+' : state.hits.length}`
             : state.hits.length === 50
@@ -221,12 +233,13 @@ export function SearchResultsSurface({
         </p>
       )}
 
+
       {showEmptyTeach && !q && (
         <EmptyState
           icon={<Search className="h-6 w-6 text-text-faint" />}
           title="Search everything, from anywhere"
           description="Orders, serial units, receiving cartons, SKUs, repairs and FBA shipments — one query."
-          className="rounded-xl border border-dashed border-border-soft bg-surface-canvas py-10"
+          className="mx-3 mt-2 rounded-xl border border-dashed border-border-soft bg-surface-canvas py-10"
         />
       )}
 
@@ -234,14 +247,14 @@ export function SearchResultsSurface({
         <EmptyState
           title="AI search not available"
           description='Your role doesn’t include AI search yet — ask an admin to grant the “AI search retrieval” permission.'
-          className="rounded-xl border border-dashed border-rose-200 bg-rose-50 py-8 [&_h3]:text-rose-800 [&_p]:text-rose-700"
+          className="mx-3 mt-2 rounded-xl border border-dashed border-rose-200 bg-rose-50 py-8 [&_h3]:text-rose-800 [&_p]:text-rose-700"
         />
       )}
       {state.status === 'error' && (
         <EmptyState
           title="Search failed"
           description="Try again in a moment."
-          className="rounded-xl border border-dashed border-rose-200 bg-rose-50 py-8 [&_h3]:text-rose-800 [&_p]:text-rose-700"
+          className="mx-3 mt-2 rounded-xl border border-dashed border-rose-200 bg-rose-50 py-8 [&_h3]:text-rose-800 [&_p]:text-rose-700"
         />
       )}
       {state.status === 'done' && state.hits.length === 0 && q && (
@@ -250,7 +263,7 @@ export function SearchResultsSurface({
           title={`No matches for “${q}”`}
           description="Try fewer words, a partial serial, or the last 8 digits of a tracking number."
           className={cn(
-            'rounded-xl border border-dashed border-border-soft bg-surface-canvas',
+            'mx-3 rounded-xl border border-dashed border-border-soft bg-surface-canvas',
             isCompact ? 'py-6' : 'py-8',
           )}
         />
@@ -261,7 +274,7 @@ export function SearchResultsSurface({
           title="No results match these filters"
           description="Clear a refine chip or pick a broader type / status."
           className={cn(
-            'rounded-xl border border-dashed border-border-soft bg-surface-canvas',
+            'mx-3 rounded-xl border border-dashed border-border-soft bg-surface-canvas',
             isCompact ? 'py-6' : 'py-8',
           )}
         />
@@ -273,9 +286,10 @@ export function SearchResultsSurface({
             key={`loading:${state.forKey}`}
             {...presence}
             transition={transition}
+            className="flex h-full min-h-0 flex-col pt-2 pb-0"
           >
-            <MonitorListBlock>
-              {Array.from({ length: SKELETON_COUNT }, (_, i) => (
+            <MonitorListBlock className="min-h-0 flex-1">
+              {Array.from({ length: skeletonCount }, (_, i) => (
                 <li key={i}>
                   <SearchResultRowSkeleton />
                 </li>
@@ -289,7 +303,7 @@ export function SearchResultsSurface({
             key={`results:${state.forKey}`}
             {...presence}
             transition={transition}
-            className={isCompact ? 'pb-4' : 'pb-8'}
+            className="pb-4"
           >
             <MonitorListBlock>
               {displayHits.map((hit) => (

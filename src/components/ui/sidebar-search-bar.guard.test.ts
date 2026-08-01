@@ -6,10 +6,11 @@ import { test } from 'node:test';
 /**
  * Guards the unified-search end state (docs/unified-global-search-consolidation-plan.md).
  *
- * The global header pill (`GlobalHeaderSearch`) is the SINGLE search surface.
- * Master sidebars no longer render a header search band. Page-scoped lookup
- * goes through the AI assistant. The old per-panel `<SidebarSearchBar>` band
- * and its `sidebarHeaderSearchRowClass` 40px token are deleted.
+ * The global header pill (`GlobalHeaderSearch`) is the search **launcher** on
+ * every route except `/search`, whose entry field lives in the context rail
+ * (`SearchSidebarPanel` + plain `SearchBar`). Master sidebars must not revive
+ * the deleted per-panel `<SidebarSearchBar>` band or `SidebarShell.search` prop.
+ * Page-scoped lookup goes through the AI assistant.
  *
  * These tests fail the moment someone reintroduces a sidebar search band.
  */
@@ -31,8 +32,9 @@ const ALL_SOURCE_FILES = walk(SRC_ROOT);
 test('the deleted SidebarSearchBar component stays deleted', () => {
   assert.ok(
     !existsSync(join(SRC_ROOT, 'components/ui/SidebarSearchBar.tsx')),
-    'SidebarSearchBar was removed — sidebars must not render a header search band. ' +
-      'The global header pill is the single search surface.',
+    'SidebarSearchBar was removed — do not revive the old per-panel search band. ' +
+      'On `/search`, use SearchSidebarPanel\'s plain SearchBar; elsewhere the ' +
+      'global header pill is the launcher.',
   );
 });
 
@@ -48,7 +50,7 @@ test('no file imports a SidebarSearchBar symbol', () => {
     offenders,
     [],
     'SidebarSearchBar no longer exists. Do not re-add a sidebar header search band — ' +
-      'the global header pill is the single search surface. Offending files:\n' +
+      'use SearchSidebarPanel on `/search`, or the global header launcher elsewhere. Offending files:\n' +
       offenders.map((f) => `  - ${f}`).join('\n'),
   );
 });
@@ -57,8 +59,8 @@ test('SidebarShell exposes no `search` prop (header owns search)', () => {
   const src = readFileSync(join(SRC_ROOT, 'components/layout/SidebarShell.tsx'), 'utf8');
   assert.ok(
     !/\bsearch\??:/.test(src),
-    'SidebarShell must not declare a `search` prop. The global header pill is ' +
-      'the single search surface — not the shell.',
+    'SidebarShell must not declare a `search` prop. The deleted SidebarSearchBar ' +
+      'band stays gone — `/search` uses a plain SearchBar in headerAbove.',
   );
 });
 
