@@ -6,8 +6,9 @@
  *     Mobile fallback + pipeline board lanes + Tech/Packer week rows still use this.
  *   • **orders queue columns** (`ordersQueueRowShellClass`) — Google-Sheets-like
  *     WMS grid (Outbound Pending · Tested · Packed · Labels · Staged · Shipped · Review):
- *       select · title · date · age · qty · cond · order · tracking
- *       (Tested tab: status demoted → tester · testedAt after age)
+ *       select · order · title · ship-by · cond · qty · tracking
+ *     (frozen identity pane = select · order · title)
+ *       (Tested tab: tester · testedAt insert after ship-by)
  *   • **Incoming columns** (`INCOMING_GRID_COLUMNS`) — LedgerGrid for `/incoming`:
  *       select · title · date · age · qty · cond · status · platform · order · tracking
  *   • **Receiving browse columns** (`RECEIVING_GRID_COLUMNS`) — LedgerGrid for
@@ -18,7 +19,7 @@
  * anatomy regardless of viewport width.
  */
 
-import { GRID_IDENTITY_COLUMN_KEYS } from '@/design-system/components/grid/grid-column-editability';
+import { gridFrozenKeys } from '@/design-system/components/grid/grid-column-editability';
 import {
   gridColVar,
   gridColumnTrackRem,
@@ -71,11 +72,17 @@ export interface OrdersQueueColumn extends Omit<LedgerGridColumnModel, 'key'> {
 
 /**
  * Canonical Pending-tab column model, in strict scan order:
- *   select · title · date · age · qty · cond · order · tracking
+ *   select · order · title · ship-by · cond · qty · tracking
  * Never mix `auto`/`fr` for the same slot across rows, or columns drift (the
- * uneven look the Sheets rewrite exists to kill). `order` hides under the legacy
- * `orderid` config key (the grid column is `order`; the hide-registry key is
- * `orderid`).
+ * uneven look the Sheets rewrite exists to kill).
+ *
+ * **Order** (`order`) is the lead identity track, not a fact column: it is the
+ * container the operator scans a dispatch queue by, so it is frozen beside
+ * select/title and carries **no `hideKey`** — the Fields menu can never take
+ * the row's identity away. (It previously hid under the legacy `orderid` key;
+ * a persisted `hidden: ['orderid']` delta is now inert, because
+ * `isGridColumnVisible` short-circuits on a missing `hideKey`. That is the
+ * whole migration — no pref rewrite needed.)
  *
  * **Ship by** (`sla`) = the fused commitment cell: absolute civil ship-by
  * (deadline → created fallback) **and** relative urgency (`Nd` / lane age) with
@@ -94,37 +101,37 @@ export interface OrdersQueueColumn extends Omit<LedgerGridColumnModel, 'key'> {
  * Fact tracks are content-hard `minmax(X,X)`; `title` is the ONLY flex track.
  */
 export const ORDERS_QUEUE_COLUMNS: readonly OrdersQueueColumn[] = [
-  { key: 'select', width: 'minmax(2rem, 2rem)' },
-  { key: 'title', width: 'minmax(12rem, 1fr)', label: 'Product', type: 'text', labelFitRem: 8 },
+  { key: 'select', width: 'minmax(2rem, 2rem)', frozen: true },
+  { key: 'order', width: 'minmax(4.5rem, 4.5rem)', label: 'Order', type: 'id', frozen: true, labelFitRem: 4.5 },
+  { key: 'title', width: 'minmax(12rem, 1fr)', label: 'Product', type: 'text', frozen: true, labelFitRem: 8 },
   // Every fact track is sized to fit its own short label, so the default view
   // shows words rather than glyphs. `labelFitRem` stays as the graceful
   // degrade for a column the operator drag-resizes narrower than its label.
   { key: 'sla', width: 'minmax(7rem, 7rem)', label: 'Ship by', type: 'date', labelFitRem: 5 },
-  { key: 'qty', width: 'minmax(3.5rem, 3.5rem)', label: 'Qty', type: 'number', hideKey: 'qty', labelFitRem: 3.5 },
   { key: 'condition', width: 'minmax(5.5rem, 5.5rem)', label: 'Cond', type: 'tag', hideKey: 'condition', labelFitRem: 4 },
-  { key: 'order', width: 'minmax(4.5rem, 4.5rem)', label: 'Order', type: 'id', hideKey: 'orderid', labelFitRem: 4.5 },
+  { key: 'qty', width: 'minmax(3.5rem, 3.5rem)', label: 'Qty', type: 'number', hideKey: 'qty', labelFitRem: 3.5 },
   { key: 'tracking', width: 'minmax(5rem, 5rem)', label: 'Tracking', gridLabel: 'Track', type: 'location', hideKey: 'tracking', labelFitRem: 4.5 },
 ] as const;
 
 /**
  * TESTED-tab column model (`?tested` / fulfillment.tested): every row is TESTED,
  * so the lane surfaces **who tested** + **when** instead of a redundant Status
- * pill — Tester docks after Age (the "who · when" pair reads beside the urgency
- * cluster). Field contract (plan §9): tester name resolves
+ * pill — Tester docks after Ship by (the "who · when" pair reads beside the
+ * urgency cluster). Field contract (plan §9): tester name resolves
  * `tested_by_name → tester_name → getStaffName(id)` via `normalizePersonName`;
  * tested-at prefers `test_date_time` then `test_activity_at`, ignores the legacy
  * `'1'` sentinel, formats via `formatDateTimePST`.
  */
 export const ORDERS_QUEUE_TESTED_COLUMNS: readonly OrdersQueueColumn[] = [
-  { key: 'select', width: 'minmax(2rem, 2rem)' },
-  { key: 'title', width: 'minmax(12rem, 1fr)', label: 'Product', type: 'text', labelFitRem: 8 },
+  { key: 'select', width: 'minmax(2rem, 2rem)', frozen: true },
+  { key: 'order', width: 'minmax(4.5rem, 4.5rem)', label: 'Order', type: 'id', frozen: true, labelFitRem: 4.5 },
+  { key: 'title', width: 'minmax(12rem, 1fr)', label: 'Product', type: 'text', frozen: true, labelFitRem: 8 },
   { key: 'sla', width: 'minmax(7rem, 7rem)', label: 'Ship by', type: 'date', labelFitRem: 5 },
   { key: 'tester', width: 'minmax(6rem, 6rem)', label: 'Tester', type: 'text', labelFitRem: 4.5 },
   // Full `formatDateTimePST` string (MM/DD/YYYY h:mm:ss AM/PM) needs the widest track.
   { key: 'testedAt', width: 'minmax(10rem, 10rem)', label: 'Tested at', type: 'date', labelFitRem: 4.5 },
-  { key: 'qty', width: 'minmax(3.5rem, 3.5rem)', label: 'Qty', type: 'number', hideKey: 'qty', labelFitRem: 3.5 },
   { key: 'condition', width: 'minmax(5.5rem, 5.5rem)', label: 'Cond', type: 'tag', hideKey: 'condition', labelFitRem: 4 },
-  { key: 'order', width: 'minmax(4.5rem, 4.5rem)', label: 'Order', type: 'id', hideKey: 'orderid', labelFitRem: 4.5 },
+  { key: 'qty', width: 'minmax(3.5rem, 3.5rem)', label: 'Qty', type: 'number', hideKey: 'qty', labelFitRem: 3.5 },
   { key: 'tracking', width: 'minmax(5rem, 5rem)', label: 'Tracking', gridLabel: 'Track', type: 'location', hideKey: 'tracking', labelFitRem: 4.5 },
 ] as const;
 
@@ -200,7 +207,7 @@ export const ordersQueueColVar = gridColVar;
 
 /**
  * Sanitize a persisted per-staff column order into a full, safe key list:
- *   • locked keys (`select · title`) are forced to the front in canonical
+ *   • locked keys (the frozen identity pane) are forced to the front in canonical
  *     relative order — a stale/hostile persisted order can never displace them;
  *   • known movable keys keep their persisted relative order;
  *   • movable canonical keys missing from the persisted list are inserted at
@@ -288,16 +295,31 @@ export const ORDERS_QUEUE_RESIZABLE_KEYS: readonly string[] = ORDERS_QUEUE_COLUM
 ).map((c) => c.key);
 
 /**
- * The locked identity pane — select · title — one SoT for THREE invariants:
- *   • **frozen**: pinned on the left while date…tracking scroll horizontally;
+ * The locked identity pane — **select · order · title** — one SoT for THREE
+ * invariants:
+ *   • **frozen**: pinned on the left while ship-by…tracking scroll horizontally;
  *   • **immovable**: never drag-reorderable, and no other column may cross it
  *     (AG Grid `lockPosition` semantics; Airtable primary-field precedent);
  *   • **read-only in the collection map**: never mounts `LedgerCellEditor`
- *     ({@link GRID_IDENTITY_COLUMN_KEYS} / `isGridColumnInCellEditable`).
+ *     (`GRID_IDENTITY_COLUMN_KEYS` / `isGridColumnInCellEditable` covers
+ *     select · title; `order` is display-only by construction — no editor is
+ *     wired to it).
  * Keeping freeze + lock + editability identical is what keeps
  * {@link ordersQueueFrozenLeft}'s offset math valid under any persisted order.
+ *
+ * **Why `order` joins the house `select · title` default here.** On a dispatch
+ * queue the order is the container and the scan anchor — it is what the
+ * operator reads off a pick list, a label, or a customer email, and every
+ * outbound/OMS console (Shopify Admin, ShipStation) pins it first. The product
+ * title is the heavy secondary anchor for the physical pick, so it keeps the
+ * flex track immediately after. Sibling grids do NOT inherit this: Catalog has
+ * no order context, and on Receiving/Incoming the PO is secondary to the item
+ * being scanned — each declares its own pane via the model's `frozen` flag.
+ *
+ * Derived, never re-typed: `frozen` on the column model is the single
+ * declaration, so the pane and its offset math cannot drift apart.
  */
-export const ORDERS_QUEUE_LOCKED_KEYS: readonly string[] = GRID_IDENTITY_COLUMN_KEYS;
+export const ORDERS_QUEUE_LOCKED_KEYS: readonly string[] = gridFrozenKeys(ORDERS_QUEUE_COLUMNS);
 
 /** Whether a column is part of the frozen (and immovable) identity pane. */
 export function isOrdersQueueFrozen(key: string): boolean {

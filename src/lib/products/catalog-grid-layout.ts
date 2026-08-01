@@ -8,7 +8,7 @@
  * geometry from {@link ORDERS_QUEUE_COLUMNS}'s helpers.
  */
 
-import { GRID_IDENTITY_COLUMN_KEYS } from '@/design-system/components/grid/grid-column-editability';
+import { gridFrozenKeys } from '@/design-system/components/grid/grid-column-editability';
 import { gridTemplate } from '@/design-system/components/grid/grid-column-geometry';
 import type { CatalogListRow } from '@/components/products/catalog/types';
 import type { ColumnType } from '@/lib/tables/table-columns';
@@ -33,6 +33,8 @@ export interface CatalogGridColumn {
   type?: ColumnType;
   /** Justification override — see {@link LedgerGridColumnModel.align}. */
   align?: 'start' | 'end';
+  /** Part of the frozen identity pane — see {@link LedgerGridColumnModel.frozen}. */
+  frozen?: boolean;
   /** Staff-preference key (`staff_preferences.tableColumns.catalog`). */
   hideKey?: string;
   /** `core` ships ON (opt-out); `optional` ships OFF (opt-in via Fields). */
@@ -53,9 +55,10 @@ export interface CatalogGridColumn {
  * of a numbers table. Staff opt them back in per-person via the Fields menu.
  */
 export const CATALOG_GRID_COLUMNS: readonly CatalogGridColumn[] = [
-  { key: 'select', width: 'minmax(2rem, 2rem)', sortable: false },
+  { key: 'select', width: 'minmax(2rem, 2rem)', sortable: false, frozen: true },
   {
     key: 'title',
+    frozen: true,
     width: 'minmax(14rem, 1fr)',
     label: 'Product',
     type: 'text',
@@ -122,9 +125,13 @@ export const CATALOG_GRID_COLUMNS: readonly CatalogGridColumn[] = [
   },
 ] as const;
 
-const CATALOG_GRID_LOCKED_KEYS: readonly CatalogGridColumnKey[] = [
-  ...GRID_IDENTITY_COLUMN_KEYS,
-];
+/**
+ * Frozen identity pane — `select · title`. Derived from the column model's
+ * `frozen` flag (one declaration for freeze + immovability + offset math), not
+ * from the house key list: the pane is a per-surface answer, and Orders already
+ * freezes a third track. See `grid-column-editability.ts`.
+ */
+const CATALOG_GRID_LOCKED_KEYS: readonly CatalogGridColumnKey[] = gridFrozenKeys(CATALOG_GRID_COLUMNS);
 
 const CATALOG_GRID_SORTABLE_KEYS: readonly CatalogGridColumnKey[] = CATALOG_GRID_COLUMNS.filter(
   (c) => c.sortable !== false && c.key !== 'select',

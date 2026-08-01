@@ -360,7 +360,10 @@ Every operator action on a collection surface belongs to exactly **one primary p
 | **Multi-select** | `ContextualSelectionBar` + `SelectionAction[]` | anything meaningful on N records at once |
 | **Record** | the detail inspector / full record page | relational, multi-step, or side-effectful work |
 
-- **Identity columns are collection-map read-only.** `select` · `title`
+- **Identity columns are collection-map read-only.** The frozen pane is declared
+  per surface on the column model (`frozen: true` → `gridFrozenKeys`; Orders adds
+  `order` to the house `select` · `title` default — see `source-of-truth.md` →
+  Grid identity pane). Its columns
   (`GRID_IDENTITY_COLUMN_KEYS` / `isGridColumnInCellEditable` in
   `src/design-system/components/grid/grid-column-editability.ts`) never mount
   `LedgerCellEditor` or a cell focus ring. Title is the row's identity anchor

@@ -12,7 +12,7 @@
  * Title is identity — never in-cell editable ({@link GRID_IDENTITY_COLUMN_KEYS}).
  */
 
-import { GRID_IDENTITY_COLUMN_KEYS } from '@/design-system/components/grid/grid-column-editability';
+import { gridFrozenKeys } from '@/design-system/components/grid/grid-column-editability';
 import { gridTemplate } from '@/design-system/components/grid/grid-column-geometry';
 import { ordersQueueColVar } from '@/lib/dashboard-order-row-layout';
 import type { ColumnType } from '@/lib/tables/table-columns';
@@ -37,6 +37,8 @@ export interface PickupGridColumn {
   type?: ColumnType;
   /** Justification override — see {@link LedgerGridColumnModel.align}. */
   align?: 'start' | 'end';
+  /** Part of the frozen identity pane — see {@link LedgerGridColumnModel.frozen}. */
+  frozen?: boolean;
   /** Staff-preference key (`staff_preferences.tableColumns.pickup`). */
   hideKey?: string;
   /** `core` ships ON (opt-out); `optional` ships OFF (opt-in via Fields). */
@@ -55,9 +57,10 @@ export interface PickupGridColumn {
  * in full, so they ship `optional` rather than widening every first load.
  */
 export const PICKUP_GRID_COLUMNS: readonly PickupGridColumn[] = [
-  { key: 'select', width: 'minmax(2rem, 2rem)', sortable: false },
+  { key: 'select', width: 'minmax(2rem, 2rem)', sortable: false, frozen: true },
   {
     key: 'title',
+    frozen: true,
     width: 'minmax(12rem, 1fr)',
     label: 'Product',
     gridLabel: 'Product',
@@ -76,9 +79,13 @@ export const PICKUP_GRID_COLUMNS: readonly PickupGridColumn[] = [
   { key: 'status', width: 'minmax(5rem, 5rem)', label: 'Status', type: 'tag', hideKey: 'status', labelFitRem: 4.5 },
 ] as const;
 
-const PICKUP_GRID_LOCKED_KEYS: readonly PickupGridColumnKey[] = [
-  ...GRID_IDENTITY_COLUMN_KEYS,
-];
+/**
+ * Frozen identity pane — `select · title`. Derived from the column model's
+ * `frozen` flag (one declaration for freeze + immovability + offset math), not
+ * from the house key list: the pane is a per-surface answer, and Orders already
+ * freezes a third track. See `grid-column-editability.ts`.
+ */
+const PICKUP_GRID_LOCKED_KEYS: readonly PickupGridColumnKey[] = gridFrozenKeys(PICKUP_GRID_COLUMNS);
 
 const PICKUP_GRID_SORTABLE_KEYS: readonly PickupGridColumnKey[] = PICKUP_GRID_COLUMNS.filter(
   (c) => c.sortable !== false && c.key !== 'select',
