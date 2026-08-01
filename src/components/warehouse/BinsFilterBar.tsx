@@ -6,7 +6,7 @@
  */
 
 import { useCallback } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import type { BinsOverviewCounts } from '@/hooks/useBinsOverview';
 import type { LocationRecord } from '@/hooks/useLocations';
 
@@ -103,6 +103,7 @@ export function BinsFilterBar({ counts, rooms, status, room, onParamChange }: Pr
  */
 export function useBinsFilterParams() {
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
 
   const status: BinFilterStatus = (() => {
@@ -120,9 +121,13 @@ export function useBinsFilterParams() {
       if (!next.get('tab')) next.set('tab', 'bins');
       if (value) next.set(key, value);
       else next.delete(key);
-      router.replace(`/inventory?${next.toString()}`);
+      // Stay on the route the filter bar is mounted on. This was hardcoded to
+      // `/inventory`, and the bar's only mount is WarehouseShell — so on
+      // `/warehouse?tab=bins` every status chip and room select navigated the
+      // operator off the page they were filtering.
+      router.replace(`${pathname}?${next.toString()}`);
     },
-    [router, searchParams],
+    [router, pathname, searchParams],
   );
 
   return { status, room, q, onParamChange };

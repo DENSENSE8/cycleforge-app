@@ -82,7 +82,6 @@ export type SidebarRouteKey =
   | 'ai-chat'
   | 'admin'
   | 'audit-log'
-  | 'manuals-library'
   | 'settings'
   | 'search'
   | 'unknown';
@@ -214,7 +213,6 @@ export type SidebarNavItem =
 const MOBILE_RESTRICTED_SIDEBAR_IDS = new Set<SidebarRouteKey>([
   'operations',
   'studio',
-  'manuals-library',
   'support',
   'admin',
   'audit-log',
@@ -423,7 +421,9 @@ const CONTEXT_PANEL_ROUTE_KEYS = new Set<SidebarRouteKey>([
   'warehouse',
   // `walk-in` dropped — `/walk-in` is a redirect shell; sales context rides
   // the dashboard panel (`WalkInHistorySidebar` when domain === sales).
-  'manuals-library',
+  // (`manuals-library` dropped — `/manuals/library` was a bookmark-only second
+  // copy of the manuals library, deleted 2026-08-01. The surface lives at
+  // `/products?view=manuals`.)
   // The Media library holds the two NAVIGATIONAL facets (lifecycle scope +
   // capture day) in a resident rail; refinements (search, filters, media type,
   // sort) stay in its workbench chrome header. It used to be excluded here, which
@@ -491,7 +491,6 @@ export function getSidebarRouteKey(pathname: string | null): SidebarRouteKey {
   // sidebar panel + station key (legacy `/outbound` too).
   if (pathname === '/shipping' || pathname.startsWith('/shipping/')) return 'outbound';
   if (pathname === '/outbound' || pathname.startsWith('/outbound/')) return 'outbound';
-  if (pathname === '/manuals/library' || pathname.startsWith('/manuals/library/')) return 'manuals-library';
   // /manuals now redirects to /products (see src/app/manuals/page.tsx)
   if (pathname === '/manuals' || pathname.startsWith('/manuals/')) return 'products';
   if (pathname === '/settings' || pathname.startsWith('/settings/')) return 'settings';

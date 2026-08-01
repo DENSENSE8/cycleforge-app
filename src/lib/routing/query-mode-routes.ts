@@ -318,6 +318,16 @@ export const PRODUCTS_ROUTE_PARAMS = defineRouteParams({
     /** Labels sub-tab (Products · Recent · History) and its focused unit. */
     labelsView: paramRoundTrip(parseLabelsView),
     historyId: paramText,
+    /**
+     * Selected manual on the Manuals view — `product_manuals.id`.
+     *
+     * Undeclared until 2026-08-01, which broke manual selection outright:
+     * `useManualNavigation` writes `?id=`, then `SurfaceParamHygiene` rebuilt
+     * the query string from `declaredKeys(spec)` alone and dropped it, so the
+     * detail pane snapped straight back to empty. The fork at
+     * `/manuals/library` appeared to work only because it mounts no hygiene.
+     */
+    id: paramPositiveInt,
   },
   carries: WORKBENCH_CARRIES,
 });

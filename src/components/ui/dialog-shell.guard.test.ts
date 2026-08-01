@@ -30,8 +30,12 @@ import { test } from 'node:test';
  *
  * Known categories inside the current baseline, none yet triaged:
  *   · sheets      — BottomSheet + the four Bin*Sheet consumers
- *   · slide-overs — SkuPairingModal / BinDetailFlyout (two shapes, one job;
- *                   the SoT is DocumentSlideOver / shells/detail-stack)
+ *   · slide-overs — BinDetailFlyout (the SoT is DocumentSlideOver /
+ *                   shells/detail-stack). Its twin `SkuPairingModal` was
+ *                   deleted 2026-08-01 — the testing workspace reaches the same
+ *                   `ProductHubPanel allowManualPair` through a section tab
+ *                   (`TestingSkuPairingPanel`), so the private portal had no
+ *                   call site left to serve.
  *   · popovers    — ~13 anchored popovers mislabeled role="dialog"
  *   · viewers     — PhotoViewerModal (has its own trapRef), NasPhotoPicker (none)
  */
@@ -39,7 +43,7 @@ import { test } from 'node:test';
 const SRC_ROOT = join(process.cwd(), 'src');
 
 // Shrink-only. LOWER as shells migrate onto the DS Dialog; never raise.
-const HAND_ROLLED_DIALOG_BASELINE = 43;
+const HAND_ROLLED_DIALOG_BASELINE = 40;
 
 const ESCAPE_MARKER = 'ds-allow-dialog';
 

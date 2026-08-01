@@ -125,7 +125,7 @@ export function LabelsProductsWorkspace() {
                 <ProductCatalogList query={catalogQuery} onPick={handleProductPick} />
               </div>
               <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-xl border border-border-soft bg-surface-card">
-                <MultiSkuSnBarcode layout="horizontal" />
+                <MultiSkuSnBarcode />
               </div>
             </div>
           ) : tab === 'history' ? (

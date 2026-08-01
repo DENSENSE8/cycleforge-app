@@ -9,13 +9,11 @@ import {
   buildUnitPayload,
   deriveColorFromTitle,
 } from '@/lib/print/printProductLabel';
-import { useLabelRecents } from '@/hooks/useLabelRecents';
 import { CONDITION_OPTIONS } from '@/components/receiving/zoho-po-types';
 import { useBarcodeModeStep } from './useBarcodeModeStep';
 import { useSerialList } from './useSerialList';
 import { lookupProductInfo, peekNextUnitId, postMultiSn, resolveUnitId } from './unit-label-api';
 export type ConditionGrade = (typeof CONDITION_OPTIONS)[number]['value'];
-export type BarcodeLayout = 'vertical' | 'horizontal';
 
 function createClientEventId(): string {
   return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -23,21 +21,20 @@ function createClientEventId(): string {
 
 /**
  * Controller for the multi-SKU / serial barcode workspace. Composes
- * {@link useBarcodeModeStep} (mode + wizard step), {@link useSerialList}
- * (serials) and the pure {@link unit-label-api} network layer, and owns the
- * product/label state plus the three issue paths — print, sn-to-sku log, and
- * reprint — for both the horizontal (desktop) and vertical (wizard) layouts.
+ * {@link useBarcodeModeStep} (URL-driven mode), {@link useSerialList} (serials)
+ * and the pure {@link unit-label-api} network layer, and owns the product/label
+ * state plus the three issue paths — print, sn-to-sku log, and reprint.
  *
- * Returns one bag consumed by the layout components so the view files stay
- * presentational.
+ * Returns one bag consumed by {@link MultiSkuBarcodeWorkspace} so the view file
+ * stays presentational.
  *
- * @param layout `horizontal` reads/writes mode via the URL; `vertical` keeps
- *   mode in local state and reveals steps one at a time.
+ * A second `vertical` wizard layout used to share this controller (hence the
+ * former `layout` parameter, the `step` counter and the `density` switch). It
+ * was deleted 2026-08-01 — the only mount always passed `horizontal`.
  */
-export function useMultiSkuBarcode(layout: BarcodeLayout) {
+export function useMultiSkuBarcode() {
   const queryClient = useQueryClient();
-  const isHorizontal = layout === 'horizontal';
-  const { mode, step, setStep, handleModeChange, bottomAnchorRef } = useBarcodeModeStep(isHorizontal);
+  const { mode, handleModeChange } = useBarcodeModeStep();
   const {
     snInput,
     setSnInput,
@@ -75,11 +72,6 @@ export function useMultiSkuBarcode(layout: BarcodeLayout) {
   const skuInputRef = useRef<HTMLInputElement>(null);
   const snInputRef = useRef<HTMLInputElement>(null);
   const issueClientEventIdRef = useRef<string | null>(null);
-
-  // localStorage recents still feed the Products picker's pinned chips
-  // (ProductsSidebarPanel); the desktop "Recent" bottom strip was removed in
-  // favour of the server-backed Printed sidebar rail (ProductLabelsRecentRail).
-  const { push: pushRecent } = useLabelRecents();
 
   // Surface validation/fetch errors via the global toast system instead of the
   // fixed-position pill. State stays as a one-shot trigger.
@@ -179,7 +171,7 @@ export function useMultiSkuBarcode(layout: BarcodeLayout) {
     async (value: string) => {
       const trimmed = value.trim();
       if (!trimmed) return;
-      // Reset to step 1 clean state first.
+      // Reset to a clean state first.
       setSku(trimmed);
       issueClientEventIdRef.current = null;
       setUniqueSku('');
@@ -188,7 +180,6 @@ export function useMultiSkuBarcode(layout: BarcodeLayout) {
       resetSerials();
       setImageUrl('');
       setSkuCatalogId(null);
-      setStep(1);
       setError('');
 
       // Give React one tick to flush state, then kick off the lookup.
@@ -196,7 +187,6 @@ export function useMultiSkuBarcode(layout: BarcodeLayout) {
 
       if (mode === 'reprint') {
         await resolveReprintUnit(trimmed);
-        setStep(3);
         return;
       }
 
@@ -236,10 +226,9 @@ export function useMultiSkuBarcode(layout: BarcodeLayout) {
 
       await Promise.all([titlePromise, unitIdPromise]);
 
-      setStep(mode === 'auto-unit' ? 3 : 2);
       if (mode !== 'auto-unit') setTimeout(() => snInputRef.current?.focus(), 100);
     },
-    [mode, fetchNextUnitId, resolveReprintUnit, resetSerials, setStep],
+    [mode, fetchNextUnitId, resolveReprintUnit, resetSerials],
   );
 
   // Listen for sku:fill events dispatched by the right-panel SKU table.
@@ -279,7 +268,6 @@ export function useMultiSkuBarcode(layout: BarcodeLayout) {
 
     if (mode === 'reprint') {
       await resolveReprintUnit(sku.trim());
-      setStep(3);
       return;
     }
 
@@ -298,7 +286,6 @@ export function useMultiSkuBarcode(layout: BarcodeLayout) {
       }
     }
 
-    setStep(mode === 'auto-unit' ? 3 : 2);
     if (mode !== 'auto-unit') setTimeout(() => snInputRef.current?.focus(), 100);
   };
 
@@ -331,13 +318,10 @@ export function useMultiSkuBarcode(layout: BarcodeLayout) {
           setIsGenerating(false);
         }
       }
-      setStep(3);
     } else if (mode === 'reprint') {
       setUniqueSku(sku);
-      setStep(3);
     } else {
       setUniqueSku(sku);
-      setStep(3);
     }
   };
 
@@ -351,7 +335,6 @@ export function useMultiSkuBarcode(layout: BarcodeLayout) {
     resetSerials();
     setImageUrl('');
     setSkuCatalogId(null);
-    setStep(1);
     setError('');
     setTimeout(() => skuInputRef.current?.focus(), 100);
   };
@@ -391,8 +374,6 @@ export function useMultiSkuBarcode(layout: BarcodeLayout) {
       // Just print, no DB/Sheet updates. The DataMatrix encodes ONLY the bare
       // unit id — never a GS1 Digital Link — so a reprint matches new labels.
       printProductLabel({ sku: uniqueSku, title, qrPayload: uniqueSku, condition, color });
-      pushRecent({ sku: uniqueSku || sku, sn: serialNumbers[0], title });
-      setStep(1);
       setSku('');
       setUniqueSku('');
       setGtin('');
@@ -417,8 +398,7 @@ export function useMultiSkuBarcode(layout: BarcodeLayout) {
         });
       }
 
-      // Pin this SKU for local recents; refresh the Printed sidebar rail.
-      pushRecent({ sku, sn: mode === 'auto-unit' ? undefined : serialNumbers[0], title });
+      // Refresh the server-backed Printed sidebar rail.
       void queryClient.invalidateQueries({ queryKey: ['labels.recent'] });
       window.dispatchEvent(new CustomEvent('labels-print-feed'));
 
@@ -437,19 +417,16 @@ export function useMultiSkuBarcode(layout: BarcodeLayout) {
         }
       }
 
-      setStep(mode === 'auto-unit' ? 3 : 2);
     } else {
       setError('Failed to save data');
     }
   };
 
-  const density: 'comfortable' | 'compact' = isHorizontal ? 'comfortable' : 'compact';
   const previewIsReady = mode === 'reprint' ? !!sku.trim() : !!uniqueSku;
 
   // Cmd/Ctrl+P inside the workspace prints the current label (when ready). We
   // capture early to intercept before the browser opens its print dialog.
   useEffect(() => {
-    if (!isHorizontal) return;
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && (e.key === 'p' || e.key === 'P')) {
         if (!previewIsReady) return;
@@ -460,15 +437,11 @@ export function useMultiSkuBarcode(layout: BarcodeLayout) {
     window.addEventListener('keydown', handler, true);
     return () => window.removeEventListener('keydown', handler, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isHorizontal, mode, previewIsReady]);
+  }, [mode, previewIsReady]);
 
   return {
-    // layout
-    isHorizontal,
-    density,
-    // mode + step
+    // mode
     mode,
-    step,
     handleModeChange,
     // sku/title/product
     sku,
@@ -508,7 +481,6 @@ export function useMultiSkuBarcode(layout: BarcodeLayout) {
     // refs
     skuInputRef,
     snInputRef,
-    bottomAnchorRef,
     // handlers
     handleSkuChange,
     handleSkuFillAndSearch,

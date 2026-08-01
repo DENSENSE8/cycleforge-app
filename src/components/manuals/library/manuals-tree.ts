@@ -1,7 +1,16 @@
 /**
  * Pure data layer for the manuals/library browser: the row shape, the folder
- * tree builder, and the path-aware fuzzy matcher. No React — independently
- * testable.
+ * tree builder, the badge tone maps and the path-aware fuzzy matcher. No React
+ * — independently testable.
+ *
+ * THE badge-tone home for manuals. `ManualLibrary` carried a byte-identical
+ * private pair until 2026-08-01. A third pair lives in
+ * `manuals-library-sidebar/manuals-library-shared.ts`; its `statusBadgeClass`
+ * is identical but its `typeBadgeClass` answers a DIFFERENT type vocabulary
+ * (`troubleshooting` / `installation` / `quick-start` / `safety` vs this file's
+ * `packing-list` / `pl-plus-m`), so the two are a genuine behavioural fork, not
+ * a copy — do not merge them without deciding which vocabulary
+ * `product_manuals.type` actually holds.
  */
 
 export interface ManualRow {

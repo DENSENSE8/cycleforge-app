@@ -16,17 +16,7 @@ import { SidebarRailScrollport } from '@/components/sidebar/rail-shell/SidebarRa
 import { useRecentTickets } from '@/hooks/useRecentTickets';
 import { cn } from '@/utils/_cn';
 import { timeAgo } from '@/utils/_date';
-import { priorityBadge, statusBadge } from '../badges';
-
-/** Zendesk status → a small dot hue (mirrors SupportTicketRow). */
-const STATUS_DOT: Record<string, string> = {
-  new: 'bg-sky-500',
-  open: 'bg-rose-500',
-  pending: 'bg-amber-500',
-  hold: 'bg-violet-500',
-  solved: 'bg-emerald-500',
-  closed: 'bg-border-emphasis',
-};
+import { priorityBadge, statusBadge, statusDot } from '../badges';
 
 export function SupportTicketsRecentRail({ modeToggle = null }: { modeToggle?: ReactNode }) {
   const router = useRouter();
@@ -72,7 +62,7 @@ export function SupportTicketsRecentRail({ modeToggle = null }: { modeToggle?: R
             {recents.map((r) => {
               const sb = statusBadge(r.status);
               const pb = priorityBadge(r.priority);
-              const dot = STATUS_DOT[String(r.status)] ?? 'bg-border-emphasis';
+              const dot = statusDot(r.status);
               const selected = r.id === selectedId;
               return (
                 // ds-raw-button: text-left recent-dock row (status dot + subject + #id), not a standard action Button

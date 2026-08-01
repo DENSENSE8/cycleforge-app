@@ -28,7 +28,6 @@ const SourcingSidebarPanel = dynamic(() => import('@/components/sidebar/Sourcing
 const ProductsSidebarPanel = dynamic(() => import('@/components/sidebar/ProductsSidebarPanel').then((m) => m.ProductsSidebarPanel));
 const WarehouseSidebarPanel = dynamic(() => import('@/components/sidebar/WarehouseSidebarPanel').then((m) => m.WarehouseSidebarPanel));
 const WalkInSidebarPanel = dynamic(() => import('@/components/sidebar/WalkInSidebarPanel').then((m) => m.WalkInSidebarPanel));
-const ManualsLibrarySidebar = dynamic(() => import('@/components/manuals/ManualsLibrarySidebar').then((m) => m.ManualsLibrarySidebar));
 const TechSidebarPanel = dynamic(() => import('@/components/sidebar/TechSidebarPanel').then((m) => m.TechSidebarPanel));
 const PackerSidebarPanel = dynamic(() => import('@/components/sidebar/PackerSidebarPanel').then((m) => m.PackerSidebarPanel));
 const OutboundSidebarPanel = dynamic(() => import('@/components/sidebar/OutboundSidebarPanel').then((m) => m.OutboundSidebarPanel));
@@ -72,8 +71,6 @@ export function SidebarContextPanel({ onBackToAppNav }: { onBackToAppNav?: () =>
   // (No `repair` branch: `/repair` is a Receiving MODE and resolves to the
   // `receiving` key — see getSidebarRouteKey. The branch that used to sit here
   // could never be reached.)
-  if (routeKey === 'manuals-library') return <ManualsLibrarySidebar />;
-
   if (routeKey === 'tech') {
     // Identity from the verified session cookie. Proxy guarantees user.
     const techId = String(user?.staffId ?? 0);

@@ -28,7 +28,7 @@
 import { useEffect, useState } from 'react';
 import type { DataMatrixSymbology } from '@/lib/barcode/dataMatrixSvg';
 
-export type Gs1DataMatrixSymbology = DataMatrixSymbology;
+type Gs1DataMatrixSymbology = DataMatrixSymbology;
 
 interface Gs1DataMatrixProps {
   /** Payload to encode. AI parens form for `gs1datamatrix`, plain text for `datamatrix`. */
