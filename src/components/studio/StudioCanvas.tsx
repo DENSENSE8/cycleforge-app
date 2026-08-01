@@ -39,11 +39,16 @@ import {
 import '@xyflow/react/dist/style.css';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 import { buildStaticFlowGraph } from '@/lib/studio/static-flow-graph';
+import { buildStationProcedureMap } from '@/lib/studio/station-procedure-map';
+import { procedureForNodeType } from '@/lib/stations/procedure';
+import { listDataSourceMeta } from '@/lib/stations/data-sources';
+import { registerStationBuiltins } from '@/lib/stations';
 import type { Diagnostic } from './studio-types';
 import {
   CanvasProps,
   STATIC_ROLE,
   type AnnotationNodeData,
+  type ProcedureNodePaint,
 } from './canvas/studio-canvas-shared';
 import { NODE_TYPES } from './canvas/StudioCanvasNodes';
 import { buildBusinessMap, buildFlowGraph } from './canvas/studio-canvas-graph';
@@ -96,22 +101,50 @@ export function StudioCanvas({
     () => (lens === 'static' ? buildStaticFlowGraph(nodes, edges) : null),
     [lens, nodes, edges],
   );
+  // Procedure lens: same discipline one altitude deeper — each node's declared
+  // step sequence and the relations those steps touch. The node→procedure bind
+  // is `node.type`, which is already on the fetched graph, so switching to this
+  // lens repaints and never refetches (Studio law #3).
+  const procedureByNode = useMemo(() => {
+    if (lens !== 'procedure') return null;
+    registerStationBuiltins();
+    const sources = new Map(listDataSourceMeta().map((s) => [s.id, s]));
+    const byProcedure = new Map<string, ProcedureNodePaint>();
+    const paint = new Map<string, ProcedureNodePaint>();
+    for (const n of nodes) {
+      const declared = procedureForNodeType(n.type);
+      if (!declared) continue;
+      let box = byProcedure.get(declared.surface);
+      if (!box) {
+        const map = buildStationProcedureMap(declared, { sources, actions: new Map() });
+        box = {
+          label: map.label,
+          steps: map.counts.steps,
+          composed: map.counts.composed,
+          readTables: map.tables.reads,
+          writeTables: map.tables.writes,
+        };
+        byProcedure.set(declared.surface, box);
+      }
+      paint.set(n.id, box);
+    }
+    return paint;
+  }, [lens, nodes]);
   const { rfNodes, rfEdges } = useMemo(() => {
     if (zoom === 1)
-      return buildFlowGraph(
-        nodes,
-        edges,
+      return buildFlowGraph(nodes, edges, {
         focus,
-        liveMap,
+        live: liveMap,
         gapsByNode,
         editable,
         staticFlow,
-        flowMap,
-        flowMetrics,
-        peopleMap,
+        flowEdges: flowMap,
+        flow: flowMetrics,
+        people: peopleMap,
+        procedure: procedureByNode,
         simGhostNodeId,
-        simTraversedEdgeIds ?? null,
-      );
+        simTraversedEdgeIds: simTraversedEdgeIds ?? null,
+      });
     return buildBusinessMap(nodes, edges, liveMap);
   }, [
     nodes,
@@ -125,6 +158,7 @@ export function StudioCanvas({
     flowMap,
     flowMetrics,
     peopleMap,
+    procedureByNode,
     simGhostNodeId,
     simTraversedEdgeIds,
   ]);
@@ -264,6 +298,27 @@ export function StudioCanvas({
               {label} <span className="tabular-nums text-text-faint">{count}</span>
             </span>
           ))}
+        </div>
+      )}
+      {lens === 'procedure' && zoom === 1 && procedureByNode && (
+        <div className="absolute left-3 top-3 z-10 flex items-center gap-3 rounded-lg border border-border-soft bg-surface-card/90 px-3 py-1.5 text-role-micro font-semibold text-text-muted shadow-sm">
+          <span className="uppercase tracking-wide text-text-faint">Procedure</span>
+          {procedureByNode.size === 0 ? (
+            <span className="text-text-faint">No step sequence declared for these node types yet</span>
+          ) : (
+            <>
+              <span className="tabular-nums">
+                {procedureByNode.size} mapped {procedureByNode.size === 1 ? 'step' : 'steps'}
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="h-2 w-2 rounded-full bg-sky-500" /> reads
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="h-2 w-2 rounded-full bg-emerald-500" /> writes
+              </span>
+              <span className="text-text-faint">double-click a step for its full procedure</span>
+            </>
+          )}
         </div>
       )}
       {editable && (

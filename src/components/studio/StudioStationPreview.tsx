@@ -14,6 +14,7 @@
 import { icons } from 'lucide-react';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { Button } from '@/design-system/primitives';
+import { StationProcedurePanel, useStationProcedureMap } from './StationProcedurePanel';
 import type { StudioGraphNode, StudioStationView } from './studio-types';
 
 const SLOT_LABELS: Record<string, string> = {
@@ -41,6 +42,10 @@ export function StudioStationPreview({
   onBack: () => void;
 }) {
   const nodeLabel = node?.meta?.label ?? node?.type ?? 'Step';
+
+  // The station's PROCEDURE leads the station-scoped view; the org's published
+  // composition follows below it.
+  const procedure = useStationProcedureMap(node);
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-surface-canvas">
@@ -72,6 +77,11 @@ export function StudioStationPreview({
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto p-4">
+        {node && procedure && (
+          <div className="mx-auto mb-6 max-w-2xl">
+            <StationProcedurePanel map={procedure} />
+          </div>
+        )}
         {!node ? (
           <EmptyState
             icon="MousePointerClick"

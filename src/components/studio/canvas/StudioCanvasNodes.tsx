@@ -28,8 +28,20 @@ function NodeIcon({ name, className }: { name: string | undefined; className?: s
 }
 
 export function ProcessNode({ data }: NodeProps) {
-  const { node, dimmed, focused, live, gaps, staticRole, staticDangling, flow, flowBottleneck, people, simGhost } =
-    data as ProcessNodeData;
+  const {
+    node,
+    dimmed,
+    focused,
+    live,
+    gaps,
+    staticRole,
+    staticDangling,
+    flow,
+    flowBottleneck,
+    people,
+    procedure,
+    simGhost,
+  } = data as ProcessNodeData;
   const station = stationOf(node);
   const states = Array.isArray(node.config.states) ? (node.config.states as string[]) : [];
   const slaHours = typeof node.config.slaHours === 'number' ? node.config.slaHours : null;
@@ -189,6 +201,45 @@ export function ProcessNode({ data }: NodeProps) {
           <span className="text-role-micro font-semibold uppercase tracking-wide" style={{ color: station.color }}>
             {station.label}
           </span>
+        </div>
+      )}
+      {/* Procedure lens — a Value-Stream-Mapping data box: how many acts happen
+          here, then the relations they read and write. Static projection, so it
+          is populated with nothing moving. */}
+      {procedure && (
+        <div className="space-y-1 border-t border-border-hairline px-3 py-1.5">
+          <div className="flex items-center gap-1.5">
+            <span className="text-role-micro font-semibold uppercase tracking-wide text-text-faint">
+              {procedure.label}
+            </span>
+            <span className="rounded bg-surface-sunken px-1.5 py-0.5 text-role-micro font-semibold tabular-nums text-text-muted">
+              {procedure.steps} steps
+            </span>
+            {procedure.composed < procedure.steps && (
+              <HoverTooltip
+                label={`${procedure.steps - procedure.composed} of ${procedure.steps} steps are still hand-coded UI over a hand-coded route — they are declared here, but the station registry does not drive them yet.`}
+                asChild
+              >
+                <span className="rounded bg-amber-50 px-1.5 py-0.5 text-role-micro font-semibold tabular-nums text-amber-700">
+                  {procedure.composed}/{procedure.steps} composed
+                </span>
+              </HoverTooltip>
+            )}
+          </div>
+          <div className="flex flex-wrap items-center gap-1">
+            <HoverTooltip label={`Reads: ${procedure.readTables.join(', ')}`} asChild>
+              <span className="inline-flex items-center gap-1 rounded bg-sky-50 px-1.5 py-0.5 text-role-micro font-semibold tabular-nums text-sky-700">
+                ↓ {procedure.readTables.length} read
+              </span>
+            </HoverTooltip>
+            {procedure.writeTables.length > 0 && (
+              <HoverTooltip label={`Writes: ${procedure.writeTables.join(', ')}`} asChild>
+                <span className="inline-flex items-center gap-1 rounded bg-emerald-50 px-1.5 py-0.5 text-role-micro font-semibold tabular-nums text-emerald-700">
+                  ↑ {procedure.writeTables.length} write
+                </span>
+              </HoverTooltip>
+            )}
+          </div>
         </div>
       )}
       {staticRole && staticDangling.length > 0 && (
