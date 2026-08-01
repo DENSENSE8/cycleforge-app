@@ -15,7 +15,11 @@ import { MobileReceivingPhotoStrip } from '@/components/mobile/receiving/MobileR
 import { UnfoundMatchStrip } from '@/components/receiving/workspace/line-edit/UnfoundMatchStrip';
 import { OrderIdChip, TrackingChip, getLast4 } from '@/components/ui/CopyChip';
 import { operatorAccentClasses } from '@/utils/operator-accent';
-import { conditionGradeTableLabel, workflowStatusTableLabel } from '@/components/station/receiving-constants';
+import {
+  conditionGradeTableLabel,
+  getStatusDotBg,
+  workflowStatusTableLabel,
+} from '@/components/station/receiving-constants';
 import { conditionGradeTextClass } from '@/lib/condition-tone';
 import { EMPTY_META_DASH, EMPTY_META_DASH_ALIGN_CLASS } from '@/lib/conditions';
 import { cn } from '@/utils/_cn';
@@ -27,29 +31,6 @@ interface MobileCartonSheetProps {
   staffId: number;
   open: boolean;
   onClose: () => void;
-}
-
-function getStatusDotBg(
-  status: string | null | undefined,
-  qtyReceived?: number,
-  qtyExpected?: number | null,
-) {
-  if (
-    qtyExpected != null &&
-    qtyExpected > 0 &&
-    qtyReceived != null &&
-    qtyReceived >= qtyExpected
-  ) {
-    return 'bg-emerald-500';
-  }
-  const value = String(status || '').trim().toUpperCase();
-  if (value === 'EXPECTED') return 'bg-amber-400';
-  if (value === 'ARRIVED' || value === 'MATCHED') return 'bg-blue-500';
-  if (value === 'UNBOXED') return 'bg-indigo-500';
-  if (value === 'AWAITING_TEST' || value === 'IN_TEST') return 'bg-violet-500';
-  if (value === 'PASSED' || value === 'DONE') return 'bg-emerald-500';
-  if (value.startsWith('FAILED') || value === 'SCRAP' || value === 'RTV') return 'bg-rose-500';
-  return 'bg-border-emphasis';
 }
 
 /**

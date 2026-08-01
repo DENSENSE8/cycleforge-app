@@ -5,14 +5,13 @@
  *
  * The phone view of the dashboard `?pending=` table: the same pending orders
  * (fetchPendingOrdersData → /api/orders?excludePacked=true), rendered through
- * the shared mobile feed primitives (useMobileFeedQuery → useFeedWindow →
- * MobileFeed + PendingOrderRow). Header lives in the shell.
+ * the shared mobile feed primitives (useCaptureStackQuery → useCaptureStackWindow →
+ * CaptureStack + PendingOrderRow). Header lives in the shell.
  */
 
 import { Package } from '@/components/Icons';
 import { TOKENS } from '@/components/mobile/redesign/DesignSystem';
-import { MobileFeed } from '@/components/mobile/feed/MobileFeed';
-import { useFeedWindow, useMobileFeedQuery } from '@/components/mobile/feed/useMobileFeed';
+import { CaptureStack, useCaptureStackWindow, useCaptureStackQuery } from '@/design-system/components/capture-stack';
 import { PendingOrderRow } from '@/components/mobile/feed/rows/PendingOrderRow';
 import { fetchPendingOrdersData } from '@/lib/dashboard-table-data';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
@@ -25,18 +24,18 @@ const PENDING_QUERY_KEY = ['dashboard-table', 'pending', { searchQuery: '', pack
 export default function RedesignedMobilePickQueue() {
   const router = useRouter();
 
-  const { data, isLoading } = useMobileFeedQuery<ShippedOrder>({
+  const { data, isLoading } = useCaptureStackQuery<ShippedOrder>({
     queryKey: PENDING_QUERY_KEY,
     queryFn: () => fetchPendingOrdersData({}),
     realtime: { invalidation: { dashboard: true }, refreshDomains: ['orders.outbound'] },
   });
 
   // Queue reads top-down in deadline/priority order — no reverse, no auto-scroll.
-  const { rows, scrollRef } = useFeedWindow(data, { limit: null, anchor: 'top', freshPulse: false });
+  const { rows, scrollRef } = useCaptureStackWindow(data, { limit: null, anchor: 'top', freshPulse: false });
 
   return (
     <div className={`flex h-full flex-col ${TOKENS.colors.background}`}>
-      <MobileFeed<ShippedOrder>
+      <CaptureStack<ShippedOrder>
         rows={rows}
         isLoading={isLoading}
         scrollRef={scrollRef}

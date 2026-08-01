@@ -44,3 +44,4 @@ export * from './DocumentPreviewFrame';
 export * from './DocumentSlideOver';
 export * from './document-preview-mime';
 export * from './HorizontalEdgeResizeHandle';
+export * from './capture-stack';

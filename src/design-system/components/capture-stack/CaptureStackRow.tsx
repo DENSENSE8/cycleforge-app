@@ -6,14 +6,21 @@ import { motionBezier } from '@/design-system/foundations/motion-framer';
 import { MOBILE_GUTTER, MOBILE_GUTTER_X } from '@/components/mobile/redesign/DesignSystem';
 
 /**
- * Shared chrome for a mobile feed row — the collapsed pill vs. bottom-pinned
- * expanded card, the tap overlay, and the one-shot "fresh arrival" ring pulse.
+ * Shared chrome for a {@link CaptureStack} row — the collapsed one-line pill vs.
+ * the bottom-pinned expanded card, the tap overlay, and the one-shot "fresh
+ * arrival" ring pulse. Domain rows render only their *content* as children; the
+ * card owns the layout, borders, and animation.
  *
- * Extracted verbatim from MobileReceivingRow / MobilePackingRow, which had
- * byte-identical wrappers. Domain rows now render only their *content* as
- * children; the card owns the layout, borders, and animation.
+ * Promoted verbatim from `components/mobile/feed/MobileRowCard` in
+ * capture-stack Phase 1 (itself extracted from the byte-identical wrappers in
+ * MobileReceivingRow / MobilePackingRow).
+ *
+ * The `MOBILE_GUTTER*` import is deliberate and stays until the stack has a
+ * desktop consumer: those two classes are the mobile row-alignment SoT and are
+ * shared with `MobileReceivingCards`, so inlining them here would fork the
+ * value. Promoting them to a DS spacing token is capture-stack Phase 2 work.
  */
-export function MobileRowCard({
+export function CaptureStackRow({
   variant,
   fresh = false,
   onTap,

@@ -5,7 +5,7 @@ import { Camera } from '@/components/Icons';
 import { RowTitle, RowMetaColumns, META_COL, RowConditionMeta } from '@/components/ui/RowMetaColumns';
 import { ReceivingIdentityChips } from '@/components/receiving/ReceivingIdentityChips';
 import type { PackerLogRow } from '@/components/mobile/packer/types';
-import { MobileRowCard } from '@/components/mobile/feed/MobileRowCard';
+import { CaptureStackRow } from '@/design-system/components/capture-stack';
 import { orderRowQtyTone } from '@/lib/condition-tone';
 import { RowStageTimeMeta } from '@/components/ui/RowStageTimeMeta';
 import { OutcomeChip } from '@/features/review/OutcomeChip';
@@ -48,7 +48,7 @@ export function MobilePackingRow({ row, variant, fresh = false, onTap, photosHre
   const packedAt = (row.created_at || '').trim() || null;
 
   return (
-    <MobileRowCard variant={variant} fresh={fresh} onTap={onTap} dataAttr={{ name: 'packer-row-id', value: row.id }}>
+    <CaptureStackRow variant={variant} fresh={fresh} onTap={onTap} dataAttr={{ name: 'packer-row-id', value: row.id }}>
       <RowTitle dot={getSourceDotBg(row)} dotTrack={META_COL.dotTrackWide} title={productTitle} />
 
       <div className="pointer-events-auto mt-0.5 flex items-center gap-2">
@@ -107,6 +107,6 @@ export function MobilePackingRow({ row, variant, fresh = false, onTap, photosHre
           ) : null}
         </Link>
       )}
-    </MobileRowCard>
+    </CaptureStackRow>
   );
 }

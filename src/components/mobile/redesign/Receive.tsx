@@ -14,8 +14,7 @@ import {
   GlassButton,
 } from '@/components/mobile/redesign/DesignSystem';
 import { IconButton } from '@/design-system/primitives';
-import { MobileFeed } from '@/components/mobile/feed/MobileFeed';
-import { useFeedWindow } from '@/components/mobile/feed/useMobileFeed';
+import { CaptureStack, useCaptureStackWindow } from '@/design-system/components/capture-stack';
 import { ScanResultRow, type ScanFeedItem } from '@/components/mobile/feed/rows/ScanResultRow';
 import { useBarcodeScanner } from '@/hooks/useBarcodeScanner';
 import {
@@ -273,7 +272,7 @@ export default function RedesignedMobileReceive({
       }),
     [visibleScans],
   );
-  const { rows: feedRows, scrollRef } = useFeedWindow(feedItems, { limit: 50, anchor: 'top', freshPulse: false });
+  const { rows: feedRows, scrollRef } = useCaptureStackWindow(feedItems, { limit: 50, anchor: 'top', freshPulse: false });
 
   return (
     <div className={`h-full ${TOKENS.colors.background} flex flex-col`}>
@@ -401,7 +400,7 @@ export default function RedesignedMobileReceive({
             );
           })}
         </div>
-        <MobileFeed<ScanFeedItem>
+        <CaptureStack<ScanFeedItem>
           rows={feedRows}
           expandLast={false}
           scrollRef={scrollRef}

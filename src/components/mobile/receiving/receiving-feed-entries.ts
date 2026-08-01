@@ -8,7 +8,7 @@ import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
  * a single `package` entry so one parcel's units read as a set, and leaves
  * solitary lines as standalone `unit` entries. Grouping is pure + presentational
  * — it never touches the data layer, so it composes on top of the existing
- * windowing/scroll/fresh mechanics in {@link useFeedWindow}.
+ * windowing/scroll/fresh mechanics in {@link useCaptureStackWindow}.
  *
  * Display-only: a unit's detail panel renders from `buildUnitFields(row)` (the
  * `pin` flag, not JSX, decides what shows collapsed) so adding/removing a

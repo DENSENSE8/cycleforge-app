@@ -52,7 +52,7 @@ export const TOKENS = {
 /**
  * Canonical mobile gutter — the single horizontal inset shared by every mobile
  * feed/table row. The mobile analog of the desktop `SIDEBAR_GUTTER` (px-1.5):
- * one value, applied in exactly ONE place (MobileRowCard), so all tables align.
+ * one value, applied in exactly ONE place (CaptureStackRow), so all tables align.
  *
  * Value is the tightest gutter we had (the Picks tab). Feeds must NOT add their
  * own outer `px-*` — the row card supplies the gutter, and doubling it up is the
