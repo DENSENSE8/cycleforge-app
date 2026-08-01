@@ -5,8 +5,8 @@ import { getHermesApiUrl, getHermesHeaders } from '@/lib/ai/hermes-client';
 
 export const runtime = 'nodejs';
 
-// Simple liveness probe. Prefer /api/ai/chat-health for the richer shape
-// used by AiChatPanel.tsx; this route stays for any legacy consumers.
+// Simple liveness probe. Prefer /api/ai/chat-health for the richer shape;
+// this route stays for any legacy consumers.
 
 export const GET = withAuth(async () => {
   const timestamp = formatPSTTimestamp();
