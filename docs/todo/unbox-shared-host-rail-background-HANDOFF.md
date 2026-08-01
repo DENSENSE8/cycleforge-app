@@ -146,6 +146,5 @@ is required for zero-flash.
 | Do not touch for this fix | `UnboxLineWorkspace` overlay plate, `StationPanelRoot` default fill |
 
 Related prior art: [`context-rail-collapse-chevron-SIZE-HANDOFF.md`](./context-rail-collapse-chevron-SIZE-HANDOFF.md),
-[`station-depth-surface-handoff.md`](./station-depth-surface-handoff.md),
 `.claude/rules/source-of-truth.md` (app chrome / canvas / wash),
 `.claude/rules/display/station-workbench.md` §2a.

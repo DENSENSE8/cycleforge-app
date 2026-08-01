@@ -2,7 +2,7 @@
 
 > **Status:** Living SoT · 2026-07-12  
 > **Hub:** [README.md](./README.md) · **Lanes:** [WORKTREE-LANES.md](./WORKTREE-LANES.md) · **Review:** [review-protocol.md](./review-protocol.md)  
-> **Catalog:** [`DOC-CATALOG.md`](./DOC-CATALOG.md) (299 files, regenerated 2026-07-30) · run `node scripts/portfolio-sot-sync.mjs`
+> **Catalog:** [`DOC-CATALOG.md`](./DOC-CATALOG.md) (370 files, regenerated 2026-08-01) · run `node scripts/portfolio-sot-sync.mjs`
 > **Live tickets:** [`master-plan.mdx`](../../master-plan.mdx) → `/forge` or usav-dev  
 > **Lane registry:** [`dev-worktrees.json`](../../dev-worktrees.json) — a registry only. The
 > per-lane port resolver and `pnpm dev:switcher` were removed 2026-07-29; `pnpm dev` is a plain
@@ -38,13 +38,14 @@ Docs stay in this monorepo. Worktrees are **code lanes** only ([WORKTREE-LANES.m
 
 | WT-ID | Absolute path | Branch | HEAD | Switcher card | Unlock parked | Workstreams |
 |-------|---------------|--------|------|---------------|---------------|-------------|
-| `main` | `/Users/icecube/repos/cycleforge-app` | `main` | `22f3d6bda` | yes · :3000 | no | WS-DOGFOOD + lane=main |
+| `main` | `/Users/icecube/repos/cycleforge-app` | `main` | `c77f33d7e` | yes · :3000 | no | WS-DOGFOOD + lane=main |
 | `ai-chat` | `/Users/icecube/repos/cycleforge-ai-chat` | `topic/ai-chat` | `3f55b275e` | yes · :3010 | yes | WS-AI |
 | `fba` | `/Users/icecube/repos/cycleforge-fba` | `topic/fba` | `3f55b275e` | yes · :3020 | yes | WS-FBA |
 | `glass` | `/Users/icecube/repos/cycleforge-glass` | `glass-design-system` | `a331b1247` | yes · :3030 | yes | WS-GLASS |
 | `home` | `/Users/icecube/repos/cycleforge-home` | `topic/home` | `dfd5f517f` | yes · :3040 | yes | WS-HOME |
 | `inventory` | `/Users/icecube/repos/cycleforge-inventory` | `topic/inventory` | `3f55b275e` | yes · :3050 | yes | WS-INV |
 | `journey-hops` | `/Users/icecube/repos/cycleforge-journey-hops` | `topic/journey-hops` | `74d1dd5f6` | yes · :3000 | yes | — |
+| `note-grain` | `/Users/icecube/repos/cycleforge-note-grain` | `topic/note-grain` | `5c331b60a` | yes · :3140 | no | — |
 | `photo` | `/Users/icecube/repos/cycleforge-photo` | `topic/photo` | `6b7aab4ce` | yes · :3110 | yes | — |
 | `review` | `/Users/icecube/repos/cycleforge-review` | `topic/review` | `b766dd58f` | yes · :3000 | yes | — |
 | `sourcing` | `/Users/icecube/repos/cycleforge-sourcing` | `topic/sourcing` | `3f55b275e` | yes · :3060 | yes | WS-SRC |
@@ -62,6 +63,7 @@ Docs stay in this monorepo. Worktrees are **code lanes** only ([WORKTREE-LANES.m
 | `home` | `../cycleforge-home` (parent: `cycleforge-home`) |
 | `inventory` | `../cycleforge-inventory` (parent: `cycleforge-inventory`) |
 | `journey-hops` | `../cycleforge-journey-hops` (parent: `cycleforge-journey-hops`) |
+| `note-grain` | `../cycleforge-note-grain` (parent: `cycleforge-note-grain`) |
 | `photo` | `../cycleforge-photo` (parent: `cycleforge-photo`) |
 | `review` | `../cycleforge-review` (parent: `cycleforge-review`) |
 | `sourcing` | `../cycleforge-sourcing` (parent: `cycleforge-sourcing`) |
@@ -94,7 +96,7 @@ Docs stay in this monorepo. Worktrees are **code lanes** only ([WORKTREE-LANES.m
 | WS-DS | Design system | [design-system/](../design-system/) | `main` | P2-build | — | — |
 | WS-ENGINE | Ops events / engine | [todo/ops-events…](../todo/ops-events-station-workflow-unification-plan.md) | `main` | P2-build | — | — |
 | WS-FBA | FBA prep | FBA diagrams + `/fba` | **`fba`** | P1-branch | `WS-FBA` | — |
-| WS-GLASS | Glass DS | [todo/GLASS…](../todo/GLASS-DESIGN-SYSTEM.md) | **`glass`** | P2-build | `WS-GLASS` | needed |
+| WS-GLASS | Glass DS — **retired 2026-08-01** | plan deleted (was a port guide sourced from another repo; none of its files exist here) | **`glass`** (dormant: 0 commits ahead of `main`, last touched 2026-07-10 — removal pending owner) | P6-done | `WS-GLASS` | — |
 | WS-HOME | Home triage/collab · Ops TV | [todo/home-ops-tv-collab…](../todo/home-ops-tv-collab-surfaces-plan.md) · my-day | **`home`** + `main` | P2-build | `HOME-OPS-*` | — | A–C shipped on main 2026-07-12 (TV board `?tv=1` + `operations.tv.view`); D–F next |
 | WS-INT | Integrations | [integrations/](../integrations/) + todo oauth | `main` | P2-build | — | — |
 | WS-INV | Inventory | inventory UI | **`inventory`** | P1-branch | `WS-INV` | — |
@@ -120,7 +122,6 @@ Docs stay in this monorepo. Worktrees are **code lanes** only ([WORKTREE-LANES.m
 | WS-STATION | Station chassis | station-chassis · testing-vs-receiving | `main` | P2-build | — | — |
 | WS-STUDIO | Studio | [operations-studio/](../operations-studio/) · todo studio-* | **`studio`** | P2-build | `WS-STUDIO` | — |
 | WS-SUB | Substitution | [todo/tech-substitution…](../todo/tech-substitution-wiring-plan.md) | `main` | P2-build | — | — |
-| WS-SYNC | USAV sync | [todo/cycleforge-sync…](../todo/cycleforge-sync-from-usav-2026-07-10.md) | `main` | P0-catalog | — | — |
 | WS-TENANCY | Tenancy | [tenancy/](../tenancy/) | `main` | P2-build | — | owner |
 | WS-UNBOX | Unbox UX | [todo/unbox-receive…](../todo/unbox-receive-ux-improvement-plan.md) | `main` | P2-build | — | needed |
 | WS-VOICE | Nextiva | [todo/nextiva…](../todo/nextiva-voice-support-mode-plan.md) | `main` | P0-catalog | — | — |
