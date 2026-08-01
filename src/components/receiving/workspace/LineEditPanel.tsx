@@ -7,11 +7,13 @@
  * `useReceivingLineCore`); this file is pure composition.
  *
  * **The centre is the carton.** There is no tab strip in the workbench body:
- * `overview` (capture stack → PO lines → label preview) IS the body, and the
- * eight other displays plus the PO-pairing pencil live in the right-edge
+ * `overview` (PO lines → label preview) IS the body, and the eight other
+ * displays plus the PO-pairing pencil live in the right-edge
  * {@link ReceivingDisplaysPushStack} — a peer of Ticket / Claim / tool push, not
- * a `RightRailHost` occupant (the right slot stays single-occupancy and
- * `detail:receiving` keeps the float host).
+ * a `RightRailHost` occupant (the occupant slot stays single-occupancy and
+ * `detail:receiving` keeps the float host). The station's procedure is not in
+ * the centre either: {@link UnboxProcedureRail} registers it into the rail's
+ * ambient region so it survives opening Ticket, Claim or carton details.
  *
  * The bottom dock is **carton-terminal**: always Print · Receive. It does not
  * change with the Displays selection — a right-panel click re-labelling the
@@ -65,6 +67,7 @@ import {
   patchReceivingRailTicketByCarton,
 } from '@/lib/queries/receiving-queries';
 import { activeReceivingStepKey } from './ReceivingProgressStepper';
+import { UnboxProcedureRail } from './UnboxProcedureRail';
 import {
   StationContextBar,
 } from '@/components/station/entity-context';
@@ -575,6 +578,9 @@ export function LineEditPanel({
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           <StationPanelRoot>
             <div className="relative flex min-h-0 flex-1 flex-col overflow-visible">
+              {/* Station procedure — pinned at the top of the right rail, not in
+                  the work surface. Renders nothing here; it registers. */}
+              <UnboxProcedureRail row={row} />
               {stationContextBar}
               <StationWorkbench
                 ambientWash={false}
