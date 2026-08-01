@@ -4,7 +4,6 @@ import type { ReactNode } from 'react';
 import { CartonUnitsRollupBody } from '../../CartonUnitsRollup';
 import { UnboxLabelPreview } from '../UnboxLabelPreview';
 import { POUnboxingSection } from '../POUnboxingSection';
-import { UnboxCaptureStack } from '../../UnboxCaptureStack';
 import { LineChecklistTab } from '../LineChecklistTab';
 import { LinePoNoteCard } from '../LinePoNoteCard';
 import { SupportContextHub } from '@/components/support/context';
@@ -65,10 +64,14 @@ export interface BuildUnboxTabsInput {
 }
 
 /**
- * The Unbox CENTRE — capture stack → PO lines → label preview.
+ * The Unbox CENTRE — PO lines → label preview. The carton and its capture work,
+ * nothing else.
  *
  * No tab strip above it: `overview` is the whole workbench body, and every other
  * display moved to the right-edge Displays push column ({@link buildUnboxSideTabs}).
+ * The step procedure is not here either — `UnboxProcedureRail` registers it into
+ * the right rail's ambient region, so a read-only status display never takes the
+ * work surface's seat.
  */
 export function buildUnboxOverview(
   input: Pick<
@@ -96,13 +99,6 @@ export function buildUnboxOverview(
 
   return (
     <div className="space-y-4">
-      {/* Capture stack — READ-ONLY (capture-stack PLAN Phase 2). Bounded
-          height so the bottom-anchor, the collapse density and the push-up
-          motion behave exactly as they will once the input moves in
-          (Phase 3); the accordion below still owns every write. */}
-      <div className="flex max-h-[38vh] min-h-0 flex-col overflow-hidden">
-        <UnboxCaptureStack row={row} />
-      </div>
       <POUnboxingSection
         row={row}
         staffId={staffId}

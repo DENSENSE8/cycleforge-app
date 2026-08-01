@@ -110,8 +110,11 @@ PO path uses Incoming details; order/shipping uses journey `dim=tracking|order`.
 Serials: explicit list or carton fetch via `useCartonSerials`.
 
 **Unbox has NO tab strip in the workbench body.** The centre is the carton —
-capture stack → PO lines → label preview (`buildUnboxOverview`) — and the
-`tabs` slot is deliberately empty. Every other display moved to the right-edge
+PO lines → label preview (`buildUnboxOverview`) — and the `tabs` slot is
+deliberately empty. The step procedure is not in the centre either:
+`UnboxProcedureRail` registers it into the right rail's ambient region, so a
+read-only status display never takes the work surface's seat. Every other
+display moved to the right-edge
 **Displays** push column (`ReceivingDisplaysPushStack`): strip order
 **Classify (unfound) | Listings (matched) · Units · Zoho** (po-note label from
 `providerCatalogLabel('zoho')` brand token) + ⋯ for Checklist / Support /
