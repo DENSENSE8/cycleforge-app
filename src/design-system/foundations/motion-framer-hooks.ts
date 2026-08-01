@@ -40,6 +40,26 @@ function stripMotionKeys<S extends object>(shape: S): S {
 }
 
 /**
+ * The reduced form of a presence shape — the pure core of
+ * {@link useMotionPresence}, split out so it is directly testable.
+ *
+ * A hook cannot be called without a React renderer, and this repo's unit tests
+ * are plain `node:test` + `tsx` with no DOM. Keeping the decision here means
+ * the behaviour that actually regressed (which keys survive) is pinned by
+ * `motion-framer-hooks.test.ts` instead of resting on review.
+ */
+export function reducePresenceShape<T extends { initial: object; animate: object; exit?: object }>(
+  presence: T,
+): T {
+  return {
+    ...presence,
+    initial: stripMotionKeys(presence.initial),
+    animate: stripMotionKeys(presence.animate),
+    ...(presence.exit ? { exit: stripMotionKeys(presence.exit) } : {}),
+  };
+}
+
+/**
  * Pair a presence shape (initial/animate/exit) with `prefers-reduced-motion`.
  *
  * Returns the full shape when the user has not opted into reduced motion;
@@ -64,11 +84,5 @@ export function useMotionPresence<T extends { initial: object; animate: object; 
   presence: T,
 ): T {
   const shouldReduce = useReducedMotion();
-  if (!shouldReduce) return presence;
-  return {
-    ...presence,
-    initial: stripMotionKeys(presence.initial),
-    animate: stripMotionKeys(presence.animate),
-    ...(presence.exit ? { exit: stripMotionKeys(presence.exit) } : {}),
-  };
+  return shouldReduce ? reducePresenceShape(presence) : presence;
 }
