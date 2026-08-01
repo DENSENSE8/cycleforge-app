@@ -11,9 +11,6 @@
  * Legacy keys (`alerts` → queue, `lookup` → scout) are aliased so old links work.
  */
 
-import { Search, AlertCircle, Star, Clock, Link2, BarChart3 } from '@/components/Icons';
-import type { HorizontalSliderItem } from '@/components/ui/HorizontalButtonSlider';
-
 export type SourcingMode = 'queue' | 'scout' | 'watchlist' | 'searches' | 'suppliers' | 'analytics';
 
 export function resolveSourcingMode(raw: string | null): SourcingMode {
@@ -24,16 +21,6 @@ export function resolveSourcingMode(raw: string | null): SourcingMode {
   if (raw === 'analytics') return 'analytics';
   return 'queue'; // default; legacy 'alerts' lands here too
 }
-
-/** Mode rail items (used by the sidebar slider when the master-nav rail is off). */
-export const SOURCING_MODE_ITEMS: HorizontalSliderItem[] = [
-  { id: 'queue', label: 'Queue', icon: AlertCircle },
-  { id: 'scout', label: 'Scout', icon: Search },
-  { id: 'watchlist', label: 'Watchlist', icon: Star },
-  { id: 'searches', label: 'Searches', icon: Clock },
-  { id: 'suppliers', label: 'Suppliers', icon: Link2 },
-  { id: 'analytics', label: 'Analytics', icon: BarChart3 },
-];
 
 /** Analytics mode ranges (?range= — ephemeral URL filter, Monitor archetype). */
 export type SourcingAnalyticsRangeKey = '30d' | '90d' | '1y';

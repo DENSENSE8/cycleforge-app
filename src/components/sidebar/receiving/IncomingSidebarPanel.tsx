@@ -15,8 +15,8 @@ import { useCallback, useMemo } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { Inbox, Mail } from '@/components/Icons';
 import { SidebarShell } from '@/components/layout/SidebarShell';
-import { SIDEBAR_GUTTER } from '@/components/layout/header-shell';
-import { SidebarSectionList, type SidebarSection } from '@/components/sidebar/SidebarSectionList';
+import type { SidebarSection } from '@/components/sidebar/SidebarSectionList';
+import { SidebarFacetGroup } from '@/components/sidebar/SidebarFacetGroup';
 import { useIncomingEmailCount } from '@/components/receiving/EmailTriagePanel';
 import type { IncomingView } from '@/components/receiving/EmailTriagePanel';
 import { receivingSurfaceBasePath } from '@/lib/receiving/surface-path';
@@ -71,18 +71,13 @@ export function IncomingSidebarPanel() {
     <SidebarShell
       className={cn('flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden', appChromeClass)}
       headerAbove={
-        <div className="shrink-0 border-b border-border-hairline">
-          <div className={cn(SIDEBAR_GUTTER, 'pt-2')}>
-            <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">Views</p>
-          </div>
-          <SidebarSectionList
-            sections={viewSections}
-            active={value}
-            onSelect={setView}
-            ariaLabel="Incoming view"
-            density="ops"
-          />
-        </div>
+        <SidebarFacetGroup
+          label="Views"
+          sections={viewSections}
+          active={value}
+          onSelect={setView}
+          ariaLabel="Incoming view"
+        />
       }
       bodyClassName="pb-4"
     >

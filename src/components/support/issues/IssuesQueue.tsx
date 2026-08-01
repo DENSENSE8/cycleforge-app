@@ -6,7 +6,7 @@
  * One-row anatomy: title → reporter · page · relative-date → status dot + type chip.
  */
 
-import { type ReactNode, useMemo } from 'react';
+import { useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { MessageSquare } from '@/components/Icons';
 import { SidebarShell } from '@/components/layout/SidebarShell';
@@ -43,7 +43,7 @@ function parseType(raw: string | null): UserIssueType | null {
   return raw === 'bug' || raw === 'suggestion' || raw === 'question' ? raw : null;
 }
 
-export function IssuesQueue({ modeToggle = null }: { modeToggle?: ReactNode }) {
+export function IssuesQueue() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -135,7 +135,6 @@ export function IssuesQueue({ modeToggle = null }: { modeToggle?: ReactNode }) {
     <SidebarShell
       headerAbove={
         <>
-          {modeToggle}
           <div className={`${SIDEBAR_GUTTER} pt-3 pb-2`}>
             <SearchBar
               size="compact"

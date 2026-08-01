@@ -88,14 +88,6 @@ export function SupportSidebarPanel() {
     [pathname, router, searchParams],
   );
 
-  if (isLoaded && !canTickets && !canWarranty && !canIssues && !canOrders) {
-    return (
-      <div className="flex h-full items-center justify-center p-6 text-center text-role-caption font-semibold text-text-soft">
-        Requires support tickets, orders, warranty, or reported-issues access.
-      </div>
-    );
-  }
-
   // Non-ticket staff land on the first mode they can open when they hit bare /support.
   useEffect(() => {
     if (!isLoaded) return;
@@ -110,6 +102,22 @@ export function SupportSidebarPanel() {
       else if (canWarranty) updateMode('warranty');
     }
   }, [canTickets, canOrders, canWarranty, canIssues, isLoaded, mode, updateMode]);
+
+  // Every hook above this line — the permission gate is an EARLY RETURN, and it used to sit
+  // above the effect. Before `useAuth` resolves, `isLoaded` is false and every `can*` reads
+  // true (see their `!isLoaded ||` definitions), so the first render ran both effects and
+  // skipped the gate. The moment `isLoaded` flipped true for a staffer holding none of
+  // tickets / orders / warranty / issues, the gate fired and React saw one fewer hook than
+  // the previous render — "rendered fewer hooks than expected". Nothing catches this
+  // statically: eslint.config.mjs registers the react-hooks plugin but never enables
+  // `rules-of-hooks`, so `npm run verify` is silent on it.
+  if (isLoaded && !canTickets && !canWarranty && !canIssues && !canOrders) {
+    return (
+      <div className="flex h-full items-center justify-center p-6 text-center text-role-caption font-semibold text-text-soft">
+        Requires support tickets, orders, warranty, or reported-issues access.
+      </div>
+    );
+  }
 
   return (
     <div className={`flex h-full min-h-0 flex-col ${appChromeClass}`}>

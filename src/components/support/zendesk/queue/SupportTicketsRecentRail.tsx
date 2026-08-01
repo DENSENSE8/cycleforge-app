@@ -7,7 +7,6 @@
  * Mirrors Unbox's short Unboxed recent dock / Dashboard Search recents.
  */
 
-import type { ReactNode } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { History, TicketHelp } from '@/components/Icons';
 import { Button, EmptyState } from '@/design-system/primitives';
@@ -15,10 +14,9 @@ import { SIDEBAR_GUTTER } from '@/components/layout/header-shell';
 import { SidebarRailScrollport } from '@/components/sidebar/rail-shell/SidebarRailScrollport';
 import { useRecentTickets } from '@/hooks/useRecentTickets';
 import { cn } from '@/utils/_cn';
-import { timeAgo } from '@/utils/_date';
-import { priorityBadge, statusBadge, statusDot } from '../badges';
+import { SupportTicketRow } from './SupportTicketRow';
 
-export function SupportTicketsRecentRail({ modeToggle = null }: { modeToggle?: ReactNode }) {
+export function SupportTicketsRecentRail() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const selectedId = Number(searchParams.get('ticket')) || null;
@@ -34,7 +32,6 @@ export function SupportTicketsRecentRail({ modeToggle = null }: { modeToggle?: R
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-surface-card">
-      {modeToggle}
 
       <div className={cn(SIDEBAR_GUTTER, 'flex shrink-0 items-center justify-between gap-2 py-2')}>
         <p className="flex items-center gap-1 text-role-micro uppercase tracking-widest text-text-faint">
@@ -59,49 +56,20 @@ export function SupportTicketsRecentRail({ modeToggle = null }: { modeToggle?: R
           </div>
         ) : (
           <div className="divide-y divide-border-hairline">
-            {recents.map((r) => {
-              const sb = statusBadge(r.status);
-              const pb = priorityBadge(r.priority);
-              const dot = statusDot(r.status);
-              const selected = r.id === selectedId;
-              return (
-                // ds-raw-button: text-left recent-dock row (status dot + subject + #id), not a standard action Button
-                <button
-                  key={r.id}
-                  type="button"
-                  onClick={() => openTicket(r.id)}
-                  className={cn(
-                    'ds-raw-button block w-full px-3 py-2 text-left transition',
-                    selected
-                      ? 'bg-blue-50 ring-1 ring-inset ring-blue-400'
-                      : 'hover:bg-surface-hover',
-                  )}
-                >
-                  <div className="flex items-center gap-2">
-                    <span className={cn('h-2 w-2 shrink-0 rounded-full', dot)} />
-                    <span className="min-w-0 flex-1 truncate text-role-data font-semibold text-text-default">
-                      {r.subject || `(no subject)`}
-                    </span>
-                    {pb ? (
-                      <span
-                        className={cn(
-                          'shrink-0 rounded px-1 py-0.5 text-[8.5px] font-semibold uppercase tracking-widest',
-                          pb.className,
-                        )}
-                      >
-                        {pb.label}
-                      </span>
-                    ) : null}
-                  </div>
-                  <div className="mt-0.5 flex items-center gap-1.5 pl-4 text-role-caption text-text-faint">
-                    <span className="font-semibold uppercase tracking-wide">{sb.label}</span>
-                    <span>·</span>
-                    <span>#{r.id}</span>
-                    <span className="ml-auto">{timeAgo(new Date(r.at).toISOString())}</span>
-                  </div>
-                </button>
-              );
-            })}
+            {recents.map((r) => (
+              <SupportTicketRow
+                key={r.id}
+                id={r.id}
+                subject={r.subject}
+                status={r.status}
+                priority={r.priority}
+                // The dock's axis is when THIS operator opened the ticket, not when the
+                // ticket last changed — `RecentTicket.at` is a ms epoch stamped at open.
+                at={new Date(r.at).toISOString()}
+                selected={r.id === selectedId}
+                onSelect={() => openTicket(r.id)}
+              />
+            ))}
           </div>
         )}
       </SidebarRailScrollport>
