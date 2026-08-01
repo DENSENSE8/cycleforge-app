@@ -77,22 +77,16 @@ function navigateSearchHref(
   router.push(href);
 }
 
-/** Sync the field from `/search?q=` (and the legacy dashboard search mode). */
+/** Sync the field from the legacy dashboard search mode. */
 function readSyncedQuery(pathname: string | null): string | null {
   if (typeof window === 'undefined') return null;
   const sp = new URLSearchParams(window.location.search);
-  if (pathname === '/search') {
-    return sp.get('q') ?? '';
-  }
+  // `/search` owns its entry field in SearchSidebarPanel — header is unmounted
+  // there (GlobalHeaderActions), so no sync branch for that route.
   if (pathname === '/dashboard' && sp.get('mode') === 'search') {
     return sp.get('q') ?? '';
   }
   return null;
-}
-
-/** Entry-path surfaces keep the field expanded (search IS the job). */
-function isEntryPathSearch(pathname: string | null): boolean {
-  return pathname === '/search';
 }
 
 /**
@@ -190,21 +184,18 @@ export function GlobalHeaderSearch() {
     return () => clearTimeout(classicDebounceRef.current);
   }, [trimmedQuery, showPreview, aiQuickJump.aiEnabled]);
 
-  // Keep the field in sync when landing on /search or the legacy dashboard mode.
-  // /search is an entry-path surface — stay expanded even with an empty q.
+  // Keep the field in sync when landing on the legacy dashboard search mode.
   useEffect(() => {
     const synced = readSyncedQuery(pathname);
     if (synced != null) {
       setQuery(synced);
-      if (synced.trim() || isEntryPathSearch(pathname)) setExpanded(true);
-    } else if (isEntryPathSearch(pathname)) {
-      setExpanded(true);
+      if (synced.trim()) setExpanded(true);
     }
   }, [pathname]);
 
   useEffect(() => {
-    if (hasValue || isEntryPathSearch(pathname)) setExpanded(true);
-  }, [hasValue, pathname]);
+    if (hasValue) setExpanded(true);
+  }, [hasValue]);
 
   useEffect(() => {
     return () => {
@@ -250,12 +241,10 @@ export function GlobalHeaderSearch() {
     const root = rootRef.current;
     if (root?.contains(document.activeElement)) return;
     if (queryRef.current.trim()) return;
-    // Entry-path `/search`: never collapse back to the icon — search is the job.
-    if (isEntryPathSearch(pathname)) return;
     setHoverHeld(false);
     setExpanded(false);
     setFocused(false);
-  }, [pathname]);
+  }, []);
 
   const scheduleCollapse = useCallback(() => {
     clearCollapseTimer();

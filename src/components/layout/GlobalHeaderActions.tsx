@@ -207,10 +207,15 @@ export function GlobalHeaderActions({ variant = 'desktop' }: { variant?: 'deskto
     return <div className="flex h-full items-center gap-1.5">{iconCluster}</div>;
   }
 
+  // `/search` owns its entry field in the context rail — hide the header
+  // launcher so the page isn't dual-input.
+  const onSearchPage =
+    pathname === '/search' || (pathname?.startsWith('/search/') ?? false);
+
   // One cluster: search + AI + rail icons share HEADER_ICON_GAP exactly.
   return (
     <div className={cn(HEADER_ICON_CLUSTER, 'justify-end', HEADER_RAIL_WIDTH)}>
-      <GlobalHeaderSearch />
+      {!onSearchPage ? <GlobalHeaderSearch /> : null}
       {iconCluster}
     </div>
   );
