@@ -23,7 +23,7 @@ import {
  * positions before this, where adding the last one meant counting `null`s.
  * Every field is optional and absent means "this layer is off".
  */
-export interface FlowGraphPaint {
+interface FlowGraphPaint {
   focus?: string | null;
   /** Live-lens per-node occupancy. */
   live?: Record<string, StudioLiveNode> | null;
