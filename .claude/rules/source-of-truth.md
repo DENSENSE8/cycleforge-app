@@ -31,7 +31,7 @@ fields, pick the presentation kind and import from the SoT below (Kinetic Ledger
 | Ops table / spreadsheet surface shell | `src/design-system/tokens/table-surface.ts` (`TABLE_SURFACE_*` + `TABLE_FROZEN_HEADER_CLASS`) |
 | Sticky LedgerGrid column-header row (select-all · sort · frozen · tip) | `@/design-system/components/grid` `LedgerGridColumnHeader` + layout API — Receiving / Incoming adapters thin; **Orders deferred** (resize/reorder recipe). Inner label: `GridHeaderLabel` |
 | Grid column justification (end vs start) | `@/design-system/components/grid` `resolveGridColumnAlign` / `gridCellAlignClass` / `gridHeaderCellAlignClass` — see **Grid column justification** below |
-| Grid identity columns (freeze · lock · never in-cell edit) | `@/design-system/components/grid` `GRID_IDENTITY_COLUMN_KEYS` / `isGridColumnInCellEditable` |
+| Grid identity columns (freeze · lock · never in-cell edit) | Column model `frozen: true` → `gridFrozenKeys(columns)` (per surface); house default + editability floor: `GRID_IDENTITY_COLUMN_KEYS` / `isGridColumnInCellEditable` — see **Grid identity pane** below |
 | Grid column visibility (per-staff) | `@/design-system/components/grid` `useGridColumnVisibility` / `useGridFields` + `GridFieldsMenu` — see **Grid column visibility + sort** below |
 | Grid column sort (URL-durable) | `@/hooks/useUrlColumnSort` → `?colsort=` / `?coldir=` — see **Grid column visibility + sort** below |
 | Collection-surface action planes | `display/workbench.md` — in-cell · row-scoped · multi-select · record, one primary plane each |
@@ -40,18 +40,21 @@ fields, pick the presentation kind and import from the SoT below (Kinetic Ledger
 | Honest absence (missing fact) | `GridCellDash` / ledger `fallback` default `—` — never invent `"N/A"` on ledger/grid primitives |
 | Photo gallery viewer | `@/components/shipped/photo-gallery` — `usePhotoGallery` + `PhotoViewerPortal` → `PhotoViewerModal` (composed launcher: `PhotoGallery` / `launcherLayout`). Never a page-local lightbox or `createPortal`+`AnimatePresence` fork around the modal. Read surfaces pass `{ url }` only (omit numeric `id` / upload targets so delete/upload stay off). |
 | Carton read surface | `/carton/[id]` → `CartonInspector` → `inspection/CartonInspectionPage` + `carton-inspector-model.ts`. Read model + atoms only (D6 / `pattern-evolution.md`). Photos = `ReceivingPhotosSection` readOnly below pipeline (same component as details-stack Progress). Work escape = one quiet `openInUnboxHref` control — never `"Open in Unbox"` spam on findings/header. IA: disposition header; col1 contents·activity·record; col2 Panel+ReceivingCartonPipeline·photos·history·findings. Linked PO suppresses Unmatched. Not Station Workbench — recipe: `display/carton-read.md`. |
+| Receiving note vs label text (**per line item**) | `receiving_line.notes` = operator item note (**never printed**) · `receiving_line.label_note` = the printed face center · `receiving_line.zoho_notes` = Zoho line description · `receiving.zoho_notes` / `support_notes` = PO-header / carton. **All three line columns are per LINE ITEM — never hoist a label note to the carton.** Notes dock (`LineNotesCard`) writes `notes`; label editor (`LabelEditPopover` / As Listed) writes `label_note`. Guard: `label-note-grain.guard.test.ts` — see **Note vs label grain** below |
+| Label kind → grain (what the sticker goes on) | `src/lib/print/workspace-label-kinds.ts` — `KIND_META.grain` + `workspaceLabelGrainLabel(kind)` (`PO / carton` · `Per item` · `Container`), carried into every picker by `labelOptionsForSelect`. Never hand-type a kind's name or grain at a call site |
 | Dialog / AlertDialog | `@/design-system/components/Dialog` · `AlertDialog` · `requestConfirm` / `ConfirmDialogHost` — never hand-roll `fixed inset-0` scrims for new modals; station floor confirms stay on `ConfirmSheet` |
 | Switch / Checkbox | `@/design-system/primitives` `Switch` / `Checkbox` |
 | Dropdown / Context menu | `@/design-system/primitives` `DropdownMenu` / `ContextMenu` |
 | App chrome / canvas / wash / work-canvas depth | `src/design-system/tokens/app-surface.ts` + `appContentShellClass` (`appWorkCanvasEdgeClass` owns the depth-edge hairline on every desktop page). Receiving rail+workspace share `CONTEXT_PANEL_HOST` ground (`context-panel-column.ts`); Unbox/Triage under that host use `appWorkCanvasLayoutClass` (no full-bleed card sibling) |
-| Global detail-stack overlay shell | `@/design-system/shells/detail-stack` (`DETAIL_STACK_LAYOUT`, `DETAIL_STACK_RESIZE`, `detailStackAsideClassName`, `detailStackAsideStyle(widthPx?)`, …) |
-| Right-edge slot occupancy + modality | `RightRailHost` + `src/lib/right-rail/store.ts` — see **Right-rail modality** below |
+| Global detail-stack overlay shell | `@/design-system/shells/detail-stack` (`DETAIL_STACK_LAYOUT`, `DETAIL_STACK_RESIZE`, `DETAIL_STACK_COLLAPSE`, `detailStackAsideClassName`, `detailStackAsideStyle(widthPx?)`, …) |
+| Left context-sidebar wrapper | `ContextPanelLayout` + `context-panel-column.ts` (`CONTEXT_PANEL_RESIZE` / `CONTEXT_PANEL_COLLAPSE`) — every route rail beside the workspace; resize + collapse via `HorizontalEdgeResizeHandle`. MasterNav / `SidebarNavColumn` is a separate push spine |
+| Right-edge slot occupancy + modality | `RightRailHost` + `src/lib/right-rail/store.ts` — THE right details-panel wrapper; see **Right-rail modality** below |
 | Keyboard ownership (Escape / ambient hotkeys) | `src/lib/overlay-stack/store.ts` (+ `useRegisterOverlay` / `useAnyOverlayOpen`) — see **Escape ownership** below |
 | Station entity-context header | `@/components/station/entity-context` (`CartonContextCard` + `StationContextBar`) — Unbox / Triage / Testing / Shipping active-order |
-| Workbench chrome scoped search | `@/design-system/primitives/ToolbarSearchToggle` — collapsed Search icon; expands on hover / focus / click (or when query non-empty); composes `SearchField`. Never mount an always-open `SearchField` in a `WorkbenchChromeHeader` `search` slot **when search refines an on-screen list**. **Entry-path exceptions:** `/ops/photos` (always-open chrome field) and `/search` (global header stays expanded + synced to `?q=`) — rationale in `ui-design-system.md` → Scoped search chrome. |
+| Workbench chrome scoped search | `@/design-system/primitives/ToolbarSearchToggle` — collapsed Search icon; expands on hover / focus / click (or when query non-empty); composes `SearchField`. Never mount an always-open `SearchField` in a `WorkbenchChromeHeader` `search` slot **when search refines an on-screen list**. **Entry-path exceptions:** `/ops/photos` (always-open chrome field) and `/search` (context-rail `SearchBar` in `SearchSidebarPanel`; header launcher hidden) — rationale in `ui-design-system.md` → Scoped search chrome. |
 | Station composer dock (chat-style notes) | `@/design-system/primitives` `StationComposerDock` — Unbox overview carton notes **and** all ticket reply chrome (`SupportChatComposer`: inline under thread **and** `variant="station-dock"` via `SupportTicketComposerDock`). Same elevated white shell + auto-grow height; ticket footer = VisibilityToggle · Library (`+`) · Attach (paperclip) · Send (or `trailingAction` as `<StationTerminalDock embedded>` — Send suppressed, Enter still commits). Placement SoT for floating docks: `slicedActionDockWrapperClass()`. Never hand-roll a second sticky/amber ticket composer beside this shell. |
 | Resizable document PDF slide-over | `@/design-system/components/DocumentSlideOver` (+ `DocumentPreviewFrame`, `useHorizontalEdgeResize`) — Labels Print, Testing manuals |
-| Horizontal pane edge resize grip | `@/design-system/components/HorizontalEdgeResizeHandle` (+ `useHorizontalEdgeResize`) — receiving context rail + non-modal detail inspectors (`RightRailHost`); never hand-roll a second pill/strip for the same job |
+| Horizontal pane edge resize grip | `@/design-system/components/HorizontalEdgeResizeHandle` (+ `useHorizontalEdgeResize`) — context rails (`ContextPanelLayout`) + non-modal detail inspectors (`RightRailHost`); never hand-roll a second pill/strip for the same job |
 | Recent-rail scrollport / more-below lip | `@/components/sidebar/rail-shell/SidebarRailScrollport` (+ `useMoreBelow` / `SCROLL_MORE_BELOW_CLASS` in `tokens/scroll-edge.ts`) — station + SidebarShell-hosted recent feeds; never hand-roll a second bottom fade. `SidebarRailShell` is content-sized and does **not** own vertical scroll |
 | Buttons | `src/design-system/primitives` `Button` |
 | Product icon glyphs | `@/components/Icons` (`src/components/icons/*`) — never duplicate nav primitives |
@@ -118,6 +121,29 @@ If a facet has no SoT yet, **add or extend one** (pattern evolution) — do not 
   `?sort=` / `?dir=` on station routes** — those are taken by server ordering, and colliding on them
   makes the grid and the query disagree about what "sorted" means.
 
+## Grid identity pane
+
+- **The frozen pane is declared on the column model** (`frozen: true`), and the key list is
+  **derived** with `gridFrozenKeys(columns)` — never re-typed beside the model. One declaration
+  drives all three invariants: pinned-left, immovable under drag-reorder, and never in-cell
+  editable.
+- **It is a per-surface answer to "what does an operator scan first here."**
+  Orders (`/dashboard`) freezes **`select · order · title`** — on a dispatch queue the order is the
+  container and the scan anchor (Shopify Admin / ShipStation pin it first), with the product title
+  as the heavy secondary anchor for the physical pick. Catalog · Receiving · Incoming · Repair ·
+  Pickup freeze **`select · title`**: Catalog has no order context, and on Receiving/Incoming the PO
+  is secondary to the item being scanned. **Do not widen `GRID_IDENTITY_COLUMN_KEYS`** to serve one
+  surface — it remains the house default and the key-only editability floor.
+- **The pane must be a contiguous leading prefix** of the canonical order, starting with `select`.
+  Sticky-left offsets sum the widths of the frozen columns *before* a given one, so a frozen column
+  sitting after a scrolling one pins at the wrong origin.
+- **A frozen column carries no `hideKey` and no `tier`** — it is structural, so `GridFieldsMenu`
+  can never take the row's identity away (`isGridColumnVisible` rule 1). Promoting a fact column
+  into the pane therefore *retires* its pref key; a stale `hidden: [...]` delta goes inert on its
+  own, which is the whole migration.
+- Guard: `src/lib/tables/grid-column-tier.guard.test.ts` (pane derived from `frozen`, contiguous
+  prefix, never hideable, always in the default set).
+
 ## Grid column justification
 
 - Source: `src/design-system/components/grid/grid-header-align.ts`
@@ -152,16 +178,21 @@ If a facet has no SoT yet, **add or extend one** (pattern evolution) — do not 
 
 - **Navigators push, inspectors float.** The left spine (`SidebarNavColumn` /
   MasterNav) is a **resident push column** — it dictates permanent workspace
-  layout, so opening it moves the frame. Right-rail **record inspectors** are
-  **non-modal floats** (`modal={false}`): same inset card, no scrim, no layout
-  squeeze.   Never push/squeeze a dense LedgerGrid or station column for a
-  transient peek — at 1440px the arithmetic does not permit it. Modal remains
-  reserved for blocking wizards and destructive confirms (delete, …) — **not**
-  Unbox Claim (station push, same family as Ticket).
-- **One owner:** `RightRailHost` renders exactly the top occupant of
-  `src/lib/right-rail/store.ts`. Panels register via `useRegisterRightPanel` /
-  `DetailStackRailRegistrar` and own **no** geometry. Never add a private
-  `fixed right-0 z-panel w-[420px]` element — that is the exact bug the store exists to fix.
+  layout, so opening it moves the frame. The **left context-sidebar wrapper** is
+  `ContextPanelLayout` (route rail beside the workspace — not the spine): every
+  mounted rail is drag-resizable + collapsible via `CONTEXT_PANEL_RESIZE` /
+  `CONTEXT_PANEL_COLLAPSE` + `HorizontalEdgeResizeHandle` (`edge: 'trailing'`).
+  Right-rail **record inspectors** are **non-modal floats** (`modal={false}`):
+  same inset card, no scrim, no layout squeeze. Never push/squeeze a dense
+  LedgerGrid or station column for a transient peek — at 1440px the arithmetic
+  does not permit it. Modal remains reserved for blocking wizards and
+  destructive confirms (delete, …) — **not** Unbox Claim (station push, same
+  family as Ticket).
+- **One owner:** `RightRailHost` is THE right details-panel wrapper — it renders
+  exactly the top occupant of `src/lib/right-rail/store.ts`. Panels register via
+  `useRegisterRightPanel` / `DetailStackRailRegistrar` and own **no** geometry.
+  Never add a private `fixed right-0 z-panel w-[420px]` element — that is the
+  exact bug the store exists to fix.
 - **Modality is per occupant, `modal` defaults to `true`** so every existing panel keeps
   blocking behavior. Pass `modal={false}` for a non-modal **inspector**: no scrim, no
   `backdrop-blur`, no body scroll lock, `role="region"` + `ariaLabel` instead of
@@ -182,15 +213,18 @@ If a facet has no SoT yet, **add or extend one** (pattern evolution) — do not 
   exclusive — opening any one clears/suspends the others; do not nest them as peers.- **Do not "fix" a non-modal occupant by adding a focus trap.** The host has never
   installed one, so `aria-modal="true"` was a claim the DOM did not honor; non-modal
   markup is the honest form.
-- **Non-modal occupants are resizable** via `DETAIL_STACK_RESIZE` + `useHorizontalEdgeResize`
-  + `HorizontalEdgeResizeHandle` (`edge: 'leading'`, `placement: 'outset'` — grip outside the
-  left border; aside uses `overflow-visible` with an inner clip shell, same as the receiving
-  rail). The width cap is derived, not taste: viewport − (sidebar + the grid's own min content
-  width).   Modal occupants keep the fixed `DETAIL_STACK_LAYOUT.widthPx`. Ticket /
-  Claim push reuse the same resize grammar with station-scoped storage keys,
+- **Non-modal occupants are resizable + collapsible** via `DETAIL_STACK_RESIZE` /
+  `DETAIL_STACK_COLLAPSE` + `useHorizontalEdgeResize` + `HorizontalEdgeResizeHandle`
+  (`edge: 'leading'`, `placement: 'outset'` — grip outside the left border; aside uses
+  `overflow-visible` with an inner clip shell, same as the context rail). Collapse
+  parks the aside (width → 0, stays registered/`inert`) + slim right-edge expand strip
+  (`detailStackCollapseStripClassName` / `detail-inspector-expand`). The width cap is
+  derived, not taste: viewport − (sidebar + the grid's own min content width). Modal
+  occupants keep the fixed `DETAIL_STACK_LAYOUT.widthPx` (no resize/collapse strip).
+  Ticket / Claim push reuse the same resize grammar with station-scoped storage keys,
   absolute `maxWidth` (chat / wizard ceilings), and `maxWidthPad` tuned to leave
-  Unbox usable; dismiss uses the same edge `onCollapse` chevron as the receiving
-  context rail; Ticket closed + linked shows an in-flow expand strip
+  Unbox usable; dismiss uses the same edge `onCollapse` chevron as the context
+  rail; Ticket closed + linked shows an in-flow expand strip
   (`ReceivingTicketExpandControl` / `CONTEXT_PANEL_COLLAPSE_STRIP_CLASS`).
   **Gutter is host padding** (`TICKET_PUSH_HOST_PAD_CLASS` = `py-2 pr-2` on the
   LineEditPanel overflow host) — not child margin — because `overflow-hidden`
@@ -359,6 +393,42 @@ Reference: the Unbox unfound **Find ticket** action (`UnfoundMatchStrip`) → `T
   `CHIP_TONES` tone registry in `CopyChip.tsx` (incl. `price` for unit cost).
 - Condition meta chips use `ConditionGradeChip` → `src/lib/condition-tone.ts` for per-grade underline/icon hue.
 - `resolveSerialDisplay` / `resolveChipDisplay` are the label SoT for serials/chips.
+
+## Note vs label grain (per line item)
+
+Receiving carries four note-shaped fields. They are four **different grains**, and
+the two that live closest together were one column until 2026-07-31.
+
+| Field | Grain | Printed? | Written by |
+|---|---|---|---|
+| `receiving_line.notes` | **line item** | **never** | notes dock (`LineNotesCard` → `StationComposerDock`) |
+| `receiving_line.label_note` | **line item** | yes — the face center | label editor (`LabelEditPopover`, As Listed) |
+| `receiving_line.zoho_notes` | line item | no | zoho sync (read-only import) |
+| `receiving.zoho_notes` / `.support_notes` | PO header / carton | no | PO sync / carton ops |
+
+- **The split is PER LINE ITEM, and stays there.** A carton's face is printed
+  *from a line*, so on a multi-line PO each line carries its own note and its own
+  printed text. **Never hoist `label_note` to `receiving`** to "fix" that
+  ambiguity — a carton-level label note would force every line on a PO to print
+  the same face, which is the opposite of the grain this split exists to express.
+  A carton-wide remark belongs in `receiving.support_notes`.
+- **Why they were split** (`2026-07-31b_receiving_lines_label_note.sql`): one
+  buffer doing both jobs meant an operator could not record anything about an
+  item without it appearing on the sticker, and could not re-word a label
+  without rewriting the record's note. The migration backfills
+  `label_note := notes`, so pre-split cartons reprint a byte-identical face; the
+  two diverge from the first edit onward.
+- **Neither composer writes the other's column.** The notes dock patches `notes`
+  only; the label editor patches `label_note` only. A single call site reading
+  `row.notes` for a face silently re-creates the conflation — which is exactly
+  how Testing's carton reprint drifted from Unbox's before the split landed.
+- **Receive / push-to-PO carries the item note**, never the label text: a print
+  artifact must not travel to Zoho.
+- **Grain must be legible in the picker**, not inferred from a kind's name —
+  resolve it with `workspaceLabelGrainLabel(kind)` (table row above), never a
+  hand-typed string.
+- Guard: `src/components/receiving/workspace/line-edit/label-note-grain.guard.test.ts`
+  (wiring) + `src/lib/print/workspace-label-kinds.test.ts` (faces + grain).
 
 ## Honest absence (missing facts)
 
