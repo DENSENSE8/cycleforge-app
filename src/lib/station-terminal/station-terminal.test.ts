@@ -72,23 +72,26 @@ test('registry: every registered tab id maps to a non-empty kind string', () => 
   }
 });
 
-test('resolveTerminalKind: unbox overview → mode-default', () => {
-  assert.equal(resolveTerminalKind({ mode: 'unbox', tabId: 'overview' }), 'mode-default');
-});
-
-test('resolveTerminalKind: unbox po-note → po-note', () => {
-  assert.equal(resolveTerminalKind({ mode: 'unbox', tabId: 'po-note' }), 'po-note');
-});
-
-test('resolveTerminalKind: unbox tabs each resolve to a distinct kind', () => {
-  assert.equal(resolveTerminalKind({ mode: 'unbox', tabId: 'checklist' }), 'checklist');
-  assert.equal(resolveTerminalKind({ mode: 'unbox', tabId: 'units' }), 'units');
-  assert.equal(resolveTerminalKind({ mode: 'unbox', tabId: 'tracking' }), null);
-  assert.equal(resolveTerminalKind({ mode: 'unbox', tabId: 'listings' }), null);
-  assert.equal(resolveTerminalKind({ mode: 'unbox', tabId: 'classify' }), null);
-  assert.equal(resolveTerminalKind({ mode: 'unbox', tabId: 'timeline' }), 'timeline');
-  assert.equal(resolveTerminalKind({ mode: 'unbox', tabId: 'ticket' }), null);
-  assert.equal(resolveTerminalKind({ mode: 'unbox', tabId: 'support' }), 'support');
+test('resolveTerminalKind: unbox is carton-terminal — no tab varies the dock', () => {
+  // Unbox displays live in the right-edge Displays push column now, so a tab →
+  // kind map would let a right-panel click silently re-label the bottom
+  // primary. The slice is `hasSectionTabs: false` + `defaultKind: 'mode-default'`.
+  assert.equal(resolveTerminalKind({ mode: 'unbox', tabId: null }), 'mode-default');
+  assert.equal(resolveTerminalKind({ mode: 'unbox' }), 'mode-default');
+  for (const tabId of [
+    'overview',
+    'po-note',
+    'checklist',
+    'units',
+    'tracking',
+    'listings',
+    'classify',
+    'timeline',
+    'support',
+    'ticket',
+  ]) {
+    assert.equal(resolveTerminalKind({ mode: 'unbox', tabId }), 'mode-default');
+  }
 });
 
 test('resolveTerminalKind: triage tabs → mode-default', () => {

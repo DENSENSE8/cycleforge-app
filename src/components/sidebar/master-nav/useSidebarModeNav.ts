@@ -2,6 +2,7 @@
 
 import { useCallback } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { dispatchGlobalSearchFocus } from '@/lib/global-search-focus';
 import {
   applyModeTarget,
   getSidebarHref,
@@ -33,7 +34,11 @@ export function useSidebarModeNav() {
       // settings, …) — which aren't in SIDEBAR_PAGE_NAV — still land on their
       // real route instead of falling back to the current pathname (no-op).
       if (!page || !modeId) {
-        if (samePage && !modeId) return; // already here, nothing to do
+        if (samePage && !modeId) {
+          // Re-click Search while already on `/search` — refocus the rail field.
+          if (pageId === 'search') dispatchGlobalSearchFocus();
+          return;
+        }
         const href = getSidebarHref(pageId) ?? pathname ?? '/';
         router.push(href);
         return;

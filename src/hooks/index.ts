@@ -94,7 +94,6 @@ export {
   useRepairsTable,
 } from './useRepairs';
 export { useTechLogs } from './useTechLogs';
-export { useUpNextData } from './useUpNextData';
 export { useLocations } from './useLocations';
 export type {
   LocationRecord,

@@ -8,7 +8,7 @@ import type { Dispatch, MutableRefObject, RefObject, SetStateAction } from 'reac
 import type { QueryClient } from '@tanstack/react-query';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import type { PhotoRequestPublisher } from '@/components/sidebar/receiving/usePhotoRequestPublisher';
-import type { PoContext, PoLineSummary } from '@/components/sidebar/receiving/receiving-sidebar-shared';
+import type { PoContext } from '@/components/sidebar/receiving/receiving-sidebar-shared';
 
 /**
  * Result echoed to a scan's caller — phone-paired scans listen for this to
@@ -43,6 +43,11 @@ export interface ScanApplyCtx {
   // — hook collaborators —
   queryClient: QueryClient;
   publishPhotoRequestFor: PhotoRequestPublisher;
+  /**
+   * Focus target for `refocusScanInput`. Deliberately kept while no input is
+   * attached to it (the refocus is a no-op today) — capture-stack Phase 3
+   * mounts the anchored Unbox input here. Do not prune as dead code.
+   */
   serialInputRef: RefObject<HTMLInputElement | null>;
   accordionBootstrapRef: MutableRefObject<'default' | 'all'>;
   autoPushCameraRef: MutableRefObject<boolean>;
@@ -53,7 +58,6 @@ export interface ScanApplyCtx {
   setScanDriven: Dispatch<SetStateAction<boolean>>;
   setPoContext: Dispatch<SetStateAction<PoContext | null>>;
   setArmedLineId: Dispatch<SetStateAction<number | null>>;
-  setPendingCandidates: Dispatch<SetStateAction<PoLineSummary[]>>;
   /** Unbox vs triage — forwarded to background lookup-po follow-ups. */
   intakeSurface?: 'unbox' | 'triage';
 }

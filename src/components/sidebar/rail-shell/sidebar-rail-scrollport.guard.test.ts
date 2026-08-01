@@ -16,7 +16,6 @@ const HOSTS: Array<{ rel: string; label: string }> = [
   { rel: 'components/sidebar/TestingSidebarPanel.tsx', label: 'Testing' },
   { rel: 'components/sidebar/ShippingSidebarPanel.tsx', label: 'Shipping' },
   { rel: 'components/station/StationPacking.tsx', label: 'Pack' },
-  { rel: 'components/station/StationTesting.tsx', label: 'StationTesting' },
   { rel: 'components/fba/sidebar/FbaWorkspaceSidebar.tsx', label: 'FBA' },
   {
     rel: 'components/support/zendesk/queue/SupportTicketsRecentRail.tsx',

@@ -81,13 +81,13 @@ test.describe('refresh bus wiring', () => {
     ).toBe(false);
   });
 
-  test('a data wipe (receiving.lines + upnext) refetches the receiving list', async ({ page }) => {
+  test('a data wipe (receiving.lines) refetches the receiving list', async ({ page }) => {
     await gotoAuthed(page, '/unbox');
 
     const onUnrelated = await apiCallsDuring(page, () => signal(page, ['replenish', 'repairs']));
-    const onReceiving = await apiCallsDuring(page, () => signal(page, ['receiving.lines', 'upnext']));
+    const onReceiving = await apiCallsDuring(page, () => signal(page, ['receiving.lines']));
 
-    console.log('[receiving.lines+upnext] refetched:', JSON.stringify(onReceiving));
+    console.log('[receiving.lines] refetched:', JSON.stringify(onReceiving));
     console.log('[unrelated] refetched:', JSON.stringify(onUnrelated));
 
     expect(
@@ -110,7 +110,7 @@ test.describe('refresh bus wiring', () => {
     await gotoAuthed(page, '/unbox');
     const domains = [
       'orders.outbound', 'packer.logs', 'receiving.lines',
-      'receiving.poLines', 'repairs', 'replenish', 'upnext', 'work-orders',
+      'receiving.poLines', 'repairs', 'replenish', 'work-orders',
     ];
     for (const domain of domains) {
       const calls = await apiCallsDuring(page, () => signal(page, [domain]));

@@ -265,7 +265,6 @@ export function applyMatchedCarton(ctx: ScanApplyCtx, d: LookupPoData): void {
   // below still surfaces the carton in queue.
   if (ctx.isCurrent()) {
     ctx.setPoContext(poCtx);
-    ctx.setPendingCandidates([]);
 
     const openLines = poCtx.lines.filter(
       (l) => l.quantity_expected == null || l.quantity_received < (l.quantity_expected ?? 0),

@@ -7,9 +7,9 @@
  *
  * Owns the `poContext` / `armedLineId` cells and the window-event bridges that
  * mutate them from the main panel (arm/disarm a line, activate a pending
- * receiving). `clearPoContext` resets only this hook's cells — serial-input
- * resets live in useSerialScan; the panel composes the two. Extracted from
- * ReceivingSidebarPanel; behaviour is unchanged.
+ * receiving). `clearPoContext` resets only this hook's cells; the sidebar has
+ * no serial input of its own to reset (see `useReceivingReturnsBanner`).
+ * Extracted from ReceivingSidebarPanel; behaviour is unchanged.
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
