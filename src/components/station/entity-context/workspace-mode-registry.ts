@@ -47,7 +47,13 @@ interface ModeDef {
    * terminal-dock slice owns this mode's bottom CTA.
    */
   terminalSlice: WorkspaceMode;
-  /** True when the mode hosts a SectionTabsSlider (tab-aware terminal). */
+  /**
+   * True when the mode's terminal dock is TAB-AWARE — i.e. its
+   * `STATION_TERMINAL_REGISTRY` slice maps tab ids to kinds. Unbox is `false`:
+   * it still has a SectionTabsSlider, but that slider lives in the right-edge
+   * Displays push column and the dock stays carton-terminal (Print · Receive).
+   * Pinned against the terminal registry by `station-terminal.test.ts`.
+   */
   hasSectionTabs: boolean;
 }
 
@@ -61,7 +67,9 @@ export const WORKSPACE_MODES: Record<WorkspaceMode, ModeDef> = {
     showDetails: false,
     navChannel: 'receiving-navigate-table',
     terminalSlice: 'unbox',
-    hasSectionTabs: true,
+    // Displays live in the right-edge push column; the dock never changes with
+    // the selected display. See the field docblock above.
+    hasSectionTabs: false,
   },
   triage: {
     label: 'Arrival',

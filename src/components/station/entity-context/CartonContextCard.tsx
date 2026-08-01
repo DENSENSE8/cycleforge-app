@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ChevronLeft } from '@/components/Icons';
-import { getLast4 } from '@/components/ui/CopyChip';
+import { getLast4, PoTotalChip } from '@/components/ui/CopyChip';
+import { GridQtyFractionValue } from '@/components/ui/grid-cells';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { WorkspaceCard } from '@/design-system/components';
 import { Button, IconButton } from '@/design-system/primitives';
@@ -39,6 +40,12 @@ import {
   HEADER_ICON_WRAP,
 } from '@/components/layout/header-shell';
 import { STATION_CONTEXT_CLAIM_PILL_CLASS } from './station-context-action-pill';
+import {
+  STATION_IDENTITY_GROUP_CLASS,
+  STATION_IDENTITY_LEAD_COL_CLASS,
+  STATION_IDENTITY_ROW_CLASS,
+  STATION_IDENTITY_ROW_STACK_CLASS,
+} from './station-bookmark';
 
 
 /**
@@ -65,6 +72,16 @@ import { STATION_CONTEXT_CLAIM_PILL_CLASS } from './station-context-action-pill'
  * cluster). Listing uses ExternalLink + platform title (same CopyChip anatomy
  * as PO# / tracking). Refresh · more · info live in a separate corner bookmark
  * — {@link StationMoreDetails}.
+ *
+ * Stacked-bar density (`density="bar-stacked"`): the same bar shell split into
+ * TWO semantic rows — row 1 answers *"what kind of work is this, and act on
+ * it"* (urgency · platform · type, trailing listing · ticket/Claim · Photos),
+ * row 2 answers *"which record is this, how far along, and what is it worth"*
+ * (lifecycle dot · order#/PO# · tracking# · received/expected qty, trailing the
+ * PO money total). The exit chevron opens row 1 so it and the order chip share
+ * the band's left edge. Never mix an identifier into row 1 or a classification
+ * into row 2 — that split IS the density. Unbox opts in; every other adapter
+ * stays on the one-row `bar`.
  *
  * Card density (`density="card"`): same inline classify-on-row-1 pattern on the
  * wrap-friendly identity row (legacy glass card body).
@@ -131,7 +148,12 @@ export function CartonContextCard({
   onExitToList,
   exitLabel = 'Back to list',
   density = 'card',
+  poTotal = null,
+  showPoTotal = false,
+  lifecycle = null,
+  qty = null,
   onSendToTicket,
+  onOpenMovePhotosExternal,
 }: {
   receivingId: number | null;
   staffId: string;
@@ -141,8 +163,40 @@ export function CartonContextCard({
    * `bar` — fills the centered identity bookmark (no card chrome;
    * exit+classify (+pills) left, identity+actions always right; listing =
    * ExternalLink + platform title, same CopyChip anatomy as PO# / tracking).
+   * `bar-stacked` — the same bookmark shell over TWO rows: row 1 =
+   * classification context (urgency · platform · type → listing link), row 2 =
+   * identifiers (order#/PO# · tracking# → ticket/Claim · Photos). Unbox-only
+   * opt-in; `bar` stays the one-row face for every other station adapter.
    */
-  density?: 'card' | 'bar';
+  density?: 'card' | 'bar' | 'bar-stacked';
+  /**
+   * Purchase-order money total, resolved by the adapter via `cartonPoTotal`
+   * (`src/lib/receiving/po-total.ts`) — never summed in a view. `null` renders
+   * the honest `—` (no line on this carton carries a mirrored price).
+   * Displayed only on `bar-stacked`, as row 2's trailing focal fact.
+   */
+  poTotal?: number | null;
+  /**
+   * Show the PO-total slot at all. Off by default so a station whose active
+   * entity is not a purchase order (Shipping / Pack / Review / Support order
+   * identity) never grows a money column it cannot fill.
+   */
+  showPoTotal?: boolean;
+  /**
+   * Resolved lifecycle status dot for row 2's leading position — the SAME dot
+   * the operator just clicked in the sidebar rail. Resolve via the receiving
+   * rail SoT (`getReceivingStatusDot` / `getReceivingStatusDotLabel`,
+   * `src/lib/receiving/rail/status.ts`); this card never maps a status itself.
+   * Omit to hide. `bar-stacked` only.
+   */
+  lifecycle?: { dotClass: string; label: string } | null;
+  /**
+   * Carton-wide received / expected counts, resolved via `cartonQtyRollup`
+   * (`src/lib/receiving/po-total.ts`) so this shares the PO total's carton
+   * grain — never a per-line count beside a carton-wide total. Omit to hide.
+   * `bar-stacked` only.
+   */
+  qty?: { received: number; expected: number | null } | null;
   /**
    * The carton still needs its intake kind (unbox stepper's Classify dot is
    * active) — auto-expand the classify pills so this header IS the classify
@@ -257,6 +311,10 @@ export function CartonContextCard({
    * Omit to hide the ticket icon in the gallery peek.
    */
   onSendToTicket?: () => void;
+  /**
+   * Unbox: open Move photos in the station tool push instead of a center overlay.
+   */
+  onOpenMovePhotosExternal?: () => void;
 }) {
   // Pills always visible when showClassifyControls — no hide/show toggle.
   // One picker open at a time. Opening any pill unrenders the trailing chip
@@ -353,15 +411,373 @@ export function CartonContextCard({
   });
   const typeOptions = typeClassifyOptions({ catalogOptions: typeCatalog.options });
 
+  // Bar family = the floating identity bookmark (one-row `bar` + the Unbox
+  // two-row `bar-stacked`). Both drop card chrome and fill the identity column;
+  // only the ROW SPLIT differs, so every bar-vs-card branch below tests the
+  // family and only the layout assembly tests `isStacked`.
+  const isBarFamily = density === 'bar' || density === 'bar-stacked';
+  const isStacked = density === 'bar-stacked';
+
+  // Exit chevron (header icon SoT). One-row densities keep it inline ahead of
+  // the classify pills; stacked hoists it to a leading column spanning both
+  // rows so row 1 and row 2 share a left edge (one-row anatomy per row).
+  const exitControl = onExitToList ? (
+    <div className={HEADER_ICON_WRAP}>
+      <HoverTooltip label={exitLabel} asChild>
+        <IconButton
+          type="button"
+          size="md"
+          onClick={onExitToList}
+          ariaLabel={exitLabel}
+          icon={<ChevronLeft className={TOP_CHROME_ICON_GLYPH} />}
+          className={cn(HEADER_ICON_BTN_CLASS, 'text-text-faint hover:text-text-muted')}
+        />
+      </HoverTooltip>
+    </div>
+  ) : null;
+
+  /* Classify bookmark — WIP dogfood: text-only full SoT names.
+     Unbox/Triage click → Classify dimension (no icon faces).
+     Stacked: this IS row 1's left side (the classification question). */
+  const classifyCluster = showClassifyControls ? (
+    <div
+      data-testid="carton-context-classify-pills"
+      className={cn(STATION_IDENTITY_GROUP_CLASS, 'shrink-0')}
+    >
+      {showStaffPhotoRow ? (
+        <InlinePillPicker
+          ariaLabel="Urgency"
+          options={urgencyOptions}
+          value={urgencyValue}
+          onSelect={handleUrgencySelect}
+          collapsedLabel={effectiveUrgencyLabel}
+          collapsedClass={effectiveUrgencyClass}
+          collapsedFace="label"
+          expandedFace="iconLabel"
+          open={false}
+          onOpenChange={(o) => {
+            if (o) openClassifyPicker('urgency');
+          }}
+          disabled={classifyInteractive ? !onPrioritySelect : false}
+          readOnly={!classifyInteractive}
+        />
+      ) : null}
+      <InlinePillPicker
+        ariaLabel="Platform"
+        options={platformOptions}
+        value={platformValue}
+        onSelect={onPlatformSelect}
+        collapsedFace="label"
+        expandedFace="iconLabel"
+        open={false}
+        onOpenChange={(o) => {
+          if (o) openClassifyPicker('platform');
+        }}
+        disabled={classifyInteractive ? receivingId == null : false}
+        readOnly={!classifyInteractive}
+        placeholder={isUnmatched ? 'Unfound' : 'Platform'}
+      />
+      <InlinePillPicker
+        ariaLabel="Type"
+        options={typeOptions}
+        value={receivingType}
+        onSelect={onTypeSelect}
+        collapsedFace="label"
+        expandedFace="iconLabel"
+        open={false}
+        onOpenChange={(o) => {
+          if (o) openClassifyPicker('type');
+        }}
+        readOnly={!classifyInteractive}
+        placeholder="Type"
+      />
+    </div>
+  ) : null;
+
+  /* Listing / external open — bar family: ExternalLink + platform title (same
+     CopyChip anatomy as PO# / tracking). Card: icon-only PlatformMark.
+     Hover: Copy, then Edit. Stacked pins this to row 1's trailing slot. */
+  const listingChip = showListing ? (
+    isBarFamily ? (
+      <IdentityLinkChip
+        openHref={listingOpenHref}
+        openTitle={listingOpenTitle}
+        linkOptions={listingLinkOptions}
+        value={listingLink || listingOpenHref || ''}
+        display={listingChipDisplay}
+        // Platform tone ONLY when there's an actual listing to open.
+        underlineClass={listingHasTarget && platformValue ? platformMeta.border : 'border-border-default'}
+        iconClass={listingHasTarget && platformValue ? platformMeta.text : 'text-text-faint'}
+        disableCopy={!(listingLink.trim() || listingOpenHref)}
+        onEdit={onEditListing}
+        editOpen={listingEditOpen}
+        editLabel="Edit listing"
+        actionsInMenu
+        chipAction="open"
+        menuFirstAction="copy"
+        showExternalIcon
+      />
+    ) : (
+      <IdentityLinkChip
+        openHref={listingOpenHref}
+        openTitle={listingOpenTitle}
+        linkOptions={listingLinkOptions}
+        value={listingLink || listingOpenHref || ''}
+        display={listingChipDisplay}
+        iconOnly
+        iconOnlyMark={
+          <PlatformMark
+            platformValue={platformValue}
+            empty={!platformValue}
+            textClassName={
+              listingHasTarget && platformValue ? platformMeta.text : 'text-text-faint'
+            }
+            borderClassName={
+              listingHasTarget && platformValue ? platformMeta.border : undefined
+            }
+          />
+        }
+        underlineClass={listingHasTarget && platformValue ? platformMeta.border : 'border-border-default'}
+        iconClass={listingHasTarget && platformValue ? platformMeta.text : 'text-text-faint'}
+        disableCopy={!(listingLink.trim() || listingOpenHref)}
+        onEdit={onEditListing}
+        editOpen={listingEditOpen}
+        editLabel="Edit listing"
+        actionsInMenu
+        chipAction="open"
+        menuFirstAction="copy"
+        showExternalIcon
+      />
+    )
+  ) : null;
+
+  /* PO# — or the originating ORDER# for a return: an imported RETURN shows its
+     Zoho order#, and a serial-resolved return (scanned unit that was previously
+     shipped) shows the closed-loop outbound order# lifted into this slot. Either
+     way it's a copy chip SEPARATE from the listing link. Bound POs keep open +
+     copy. Unfound / no real Zoho PO id may pass onEditPo → Package Pairing (PO
+     tab); empty `# ----` clicks that directly. */
+  const orderChip = showOrderIdentity ? (
+    <IdentityLinkChip
+      openHref={orderCopyOnly ? undefined : poOpenHref}
+      openTitle={orderCopyOnly ? 'Order number' : 'Open PO in Zoho'}
+      value={effectiveOrder}
+      display={effectiveOrder ? getLast4(effectiveOrder) : '----'}
+      tone="id"
+      underlineClass="border-border-emphasis"
+      disableCopy={!effectiveOrder}
+      onEdit={onEditPo}
+      editOpen={poEditOpen}
+      editLabel={poEditOpen ? 'Hide package pairing' : 'Link PO'}
+      actionsInMenu
+    />
+  ) : null;
+
+  /* Tracking# — tone `tracking` → MapPin. Chip click copies; hover menu opens
+     carrier tracking or edits. Extra-box `+` sits on the chip (opens editor +
+     adds a row). Suppressed for pickup. */
+  const trackingSlot = isLocalPickup ? (
+    <FulfillmentPickupPill
+      variant="rail"
+      tooltip="Fulfilled in person — no tracking number"
+    />
+  ) : (
+    <div className="flex shrink-0 items-center gap-1">
+      <IdentityLinkChip
+        openHref={trackingOpenHref}
+        openTitle="Open carrier tracking"
+        value={primaryTrackingTrimmed}
+        display={primaryTrackingTrimmed ? getLast4(primaryTrackingTrimmed) : '----'}
+        tone="tracking"
+        underlineClass="border-blue-500"
+        disableCopy={!primaryTrackingTrimmed}
+        onEdit={onEditTracking}
+        editOpen={trackingEditOpen}
+        editLabel="Edit tracking"
+        actionsInMenu
+      />
+      {filledExtraTrackingsCount > 0 ? (
+        <HoverTooltip
+          label={`${filledExtraTrackingsCount} extra box${filledExtraTrackingsCount === 1 ? '' : 'es'} on this PO`}
+          asChild
+        >
+          <span className="shrink-0 rounded bg-surface-strong/90 px-1 py-px text-role-eyebrow tabular-nums text-text-muted">
+            +{filledExtraTrackingsCount}
+          </span>
+        </HoverTooltip>
+      ) : null}
+    </div>
+  );
+
+  /* Claim · Photos. Always shown with identity (classify does not collapse this
+     side). Stacked pins it to row 2's trailing slot. */
+  const actionsCluster = showStaffPhotoRow ? (
+    <div className={cn(STATION_IDENTITY_ROW_CLASS, 'shrink-0')}>
+      {zendeskTrimmed ? (
+        <ReceivingTicketChip
+          value={zendeskTrimmed}
+          display={zendeskChipDisplay}
+          openHref={zendeskHref}
+          providerTicketId={providerTicketId}
+          receivingId={receivingId}
+          lineId={lineId}
+          onUnlinked={() => {
+            onTicketUnlinked?.();
+          }}
+          onOpenTicketView={
+            onToggleTicketView && providerTicketId != null
+              ? () => onToggleTicketView()
+              : undefined
+          }
+          ticketViewActive={ticketViewActive}
+        />
+      ) : onMakeClaim ? (
+        <HoverTooltip
+          label={claimViewActive ? 'Hide claim' : 'File claim'}
+          placement="above"
+          asChild
+        >
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={onMakeClaim}
+            ariaLabel={claimViewActive ? 'Hide claim' : 'File claim'}
+            aria-expanded={claimViewActive}
+            className={STATION_CONTEXT_CLAIM_PILL_CLASS}
+          >
+            Claim
+          </Button>
+        </HoverTooltip>
+      ) : null}
+
+      {/* Photos — camera + count (or + when empty); hover opens gallery when photos exist. */}
+      {receivingId != null ? (
+        <ReceivingPhotoButton
+          receivingId={receivingId}
+          staffId={Number(staffId) || 0}
+          poRef={effectiveOrder || null}
+          photoStage={photoStage}
+          onSendToTicket={onSendToTicket}
+          onOpenMovePhotosExternal={onOpenMovePhotosExternal}
+        />
+      ) : null}
+    </div>
+  ) : null;
+
+  // ── Assembly — the ONLY thing a density changes ────────────────────────────
+  // One row (`card` / `bar`): classify left, then listing · PO# · tracking#
+  // followed by Claim/Photos, pinned right on `bar`.
+  const oneRowLayout = (
+    <>
+      {/* Cluster 1 — exit + classify icons (header icon SoT) · optional
+          expanded urgency/platform/type pills. Bar: left side only. */}
+      <div className="flex shrink-0 items-center gap-2">
+        <div className={cn('flex shrink-0 items-center', HEADER_ICON_GAP)}>{exitControl}</div>
+        {classifyCluster}
+      </div>
+
+      {/* Clusters 2–3 — identity facts · Claim/Photos (bar: always pin right).
+          Classify only adds pills on the left — never moves or hides this
+          cluster. */}
+      <div
+        className={cn(
+          'flex min-w-0 items-center',
+          density === 'bar' ? 'ml-auto min-w-0 flex-nowrap justify-end gap-2' : 'flex-wrap gap-2',
+        )}
+      >
+        {/* Cluster 2 — listing · PO · tracking. Editors open externally. */}
+        <div className="flex min-w-0 shrink items-center gap-2">
+          {listingChip}
+          {orderChip}
+          {trackingSlot}
+        </div>
+        {actionsCluster}
+      </div>
+    </>
+  );
+
+  // Two rows (`bar-stacked`): both rows start at the SAME left edge — the exit
+  // chevron opens row 1 and the order#/PO# chip sits directly beneath it, so
+  // the operator's eye lands on "go back" and "which record" in one vertical
+  // sweep. (It used to be a centered column spanning both rows, which floated
+  // the chevron between them and belonged to neither.)
+  //
+  //   Row 1 — CONTEXT + the carton's work actions: classification pills, then
+  //           listing link · ticket/Claim · Photos pinned right. Claim and
+  //           Photos ride the top row because they are what the operator
+  //           REACHES FOR, and the top row is the shorter travel from the
+  //           section tabs below.
+  //   Row 2 — IDENTIFIERS: order#/PO# · tracking#, closing on the PO money
+  //           total at the right. The total is the row's focal fact — it
+  //           answers "what is this box worth" right beside the ids that say
+  //           which box it is.
+  //
+  // Never mix the two: no identifier on row 1, no classification on row 2.
+  // Both rows open with the SAME leading gutter, so the exit chevron and the
+  // lifecycle dot share a column and every following chip starts at one x.
+  // Reserved whenever either row can fill it; dropped entirely when neither
+  // can, so a station without both never pays 32px for an empty track.
+  const hasLeadCol = !!exitControl || !!lifecycle;
+
+  const stackedLayout = (
+    <div className={cn(STATION_IDENTITY_ROW_STACK_CLASS, 'min-w-0 flex-1')}>
+      {/* Row 1 — what kind of work is this, and act on it. */}
+      <div className={cn(STATION_IDENTITY_ROW_CLASS, 'min-w-0')}>
+        {hasLeadCol ? (
+          <div className={STATION_IDENTITY_LEAD_COL_CLASS}>{exitControl}</div>
+        ) : null}
+        {classifyCluster}
+        <div className={cn(STATION_IDENTITY_ROW_CLASS, 'ml-auto min-w-0 shrink')}>
+          {listingChip}
+          {actionsCluster}
+        </div>
+      </div>
+      {/* Row 2 — which record is this, how far along, and what is it worth. */}
+      <div className={cn(STATION_IDENTITY_ROW_CLASS, 'min-w-0')}>
+        {hasLeadCol ? (
+          <div className={STATION_IDENTITY_LEAD_COL_CLASS}>
+            {/* House status-indicator anatomy (2-unit dot + HoverTooltip label,
+                never a standalone text badge). `asChild` + `inline-block` per
+                the `StatusChip` reference: the default HoverTooltip wrapper is
+                an inline <span>, and an inline box drops `h-2 w-2` on the floor
+                — the dot renders 0×0. */}
+            {lifecycle ? (
+              <HoverTooltip label={lifecycle.label} asChild>
+                <span
+                  className={cn('inline-block h-2 w-2 shrink-0 rounded-full', lifecycle.dotClass)}
+                  data-testid="carton-context-lifecycle-dot"
+                />
+              </HoverTooltip>
+            ) : null}
+          </div>
+        ) : null}
+        <div className={cn(STATION_IDENTITY_ROW_CLASS, 'min-w-0 shrink')}>
+          {orderChip}
+          {trackingSlot}
+          {qty ? (
+            <GridQtyFractionValue received={qty.received} expected={qty.expected} />
+          ) : null}
+        </div>
+        {showPoTotal ? (
+          <div className={cn(STATION_IDENTITY_ROW_CLASS, 'ml-auto shrink-0')}>
+            <PoTotalChip amount={poTotal} />
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+
   const body = (
-      <div className={cn(density === 'bar' ? 'space-y-1 px-0.5 py-0' : 'space-y-2 px-4 pt-2 pb-3')}>
+      <div className={cn(isBarFamily ? 'space-y-1 px-0.5 py-0' : 'space-y-2 px-4 pt-2 pb-3')}>
         <div className="flex min-w-0 flex-col gap-y-1">
           {/* Condensed identity row — Priority · Platform · Type · listing ·
               PO# · tracking# · Claim · Photos (in that order). Platform/Type
               collapse to the active pill and expand inline on click;
               listing/PO#/tracking are compact chips with hover Open/Edit menus.
-              Priority/Claim/Photos are unbox-only (hidden in triage). */}
-          <div className={cn('flex min-w-0 items-center', density === 'bar' && 'w-full max-w-full')}>
+              Priority/Claim/Photos are unbox-only (hidden in triage).
+              `bar-stacked` re-splits the same clusters across two rows. */}
+          <div className={cn('flex min-w-0 items-center', isBarFamily && 'w-full max-w-full')}>
             <AnimatePresence initial={false}>
               {openPicker === null ? (
                 <motion.div
@@ -372,276 +788,14 @@ export function CartonContextCard({
                   transition={{ duration: 0.12, ease: [0.22, 1, 0.36, 1] }}
                   className={cn(
                     'flex min-w-0 items-center',
-                    density === 'bar'
-                      ? 'w-full max-w-full flex-nowrap justify-between gap-2'
-                      : 'flex-1 flex-wrap gap-2',
+                    isStacked
+                      ? 'w-full max-w-full flex-nowrap gap-2'
+                      : density === 'bar'
+                        ? 'w-full max-w-full flex-nowrap justify-between gap-2'
+                        : 'flex-1 flex-wrap gap-2',
                   )}
                 >
-            {/* Cluster 1 — exit + classify icons (header icon SoT) · optional
-                expanded urgency/platform/type pills. Bar: left side only. */}
-            <div className="flex shrink-0 items-center gap-2">
-            <div className={cn('flex shrink-0 items-center', HEADER_ICON_GAP)}>
-            {onExitToList ? (
-              <div className={HEADER_ICON_WRAP}>
-                <HoverTooltip label={exitLabel} asChild>
-                  <IconButton
-                    type="button"
-                    size="md"
-                    onClick={onExitToList}
-                    ariaLabel={exitLabel}
-                    icon={<ChevronLeft className={TOP_CHROME_ICON_GLYPH} />}
-                    className={cn(HEADER_ICON_BTN_CLASS, 'text-text-faint hover:text-text-muted')}
-                  />
-                </HoverTooltip>
-              </div>
-            ) : null}
-            </div>
-            {/* Classify bookmark — WIP dogfood: text-only full SoT names.
-                Unbox/Triage click → Classify dimension (no icon faces). */}
-            {showClassifyControls ? (
-              <div
-                data-testid="carton-context-classify-pills"
-                className="flex shrink-0 items-center gap-1.5"
-              >
-                  {showStaffPhotoRow ? (
-                    <InlinePillPicker
-                      ariaLabel="Urgency"
-                      options={urgencyOptions}
-                      value={urgencyValue}
-                      onSelect={handleUrgencySelect}
-                      collapsedLabel={effectiveUrgencyLabel}
-                      collapsedClass={effectiveUrgencyClass}
-                      collapsedFace="label"
-                      expandedFace="iconLabel"
-                      open={false}
-                      onOpenChange={(o) => {
-                        if (o) openClassifyPicker('urgency');
-                      }}
-                      disabled={classifyInteractive ? !onPrioritySelect : false}
-                      readOnly={!classifyInteractive}
-                    />
-                  ) : null}
-                  <InlinePillPicker
-                    ariaLabel="Platform"
-                    options={platformOptions}
-                    value={platformValue}
-                    onSelect={onPlatformSelect}
-                    collapsedFace="label"
-                    expandedFace="iconLabel"
-                    open={false}
-                    onOpenChange={(o) => {
-                      if (o) openClassifyPicker('platform');
-                    }}
-                    disabled={classifyInteractive ? receivingId == null : false}
-                    readOnly={!classifyInteractive}
-                    placeholder={isUnmatched ? 'Unfound' : 'Platform'}
-                  />
-                  <InlinePillPicker
-                    ariaLabel="Type"
-                    options={typeOptions}
-                    value={receivingType}
-                    onSelect={onTypeSelect}
-                    collapsedFace="label"
-                    expandedFace="iconLabel"
-                    open={false}
-                    onOpenChange={(o) => {
-                      if (o) openClassifyPicker('type');
-                    }}
-                    readOnly={!classifyInteractive}
-                    placeholder="Type"
-                  />
-              </div>
-            ) : null}
-            </div>
-
-            {/* Clusters 2–3 — identity facts · Claim/Photos (bar: always pin
-                right). Classify only adds pills on the left — never moves or
-                hides this cluster. */}
-            <div
-              className={cn(
-                'flex min-w-0 items-center',
-                density === 'bar'
-                  ? 'ml-auto min-w-0 flex-nowrap justify-end gap-2'
-                  : 'flex-wrap gap-2',
-              )}
-            >
-            {/* Cluster 2 — listing · PO · tracking. Editors open externally. */}
-            <div className="flex min-w-0 shrink items-center gap-2">
-            {/* Listing — bar: ExternalLink + platform title (CopyChip anatomy).
-                Card: icon-only PlatformMark. Hover: Copy, then Edit. */}
-            {showListing ? (
-              density === 'bar' ? (
-                <IdentityLinkChip
-                  openHref={listingOpenHref}
-                  openTitle={listingOpenTitle}
-                  linkOptions={listingLinkOptions}
-                  value={listingLink || listingOpenHref || ''}
-                  display={listingChipDisplay}
-                  // Platform tone ONLY when there's an actual listing to open.
-                  underlineClass={listingHasTarget && platformValue ? platformMeta.border : 'border-border-default'}
-                  iconClass={listingHasTarget && platformValue ? platformMeta.text : 'text-text-faint'}
-                  disableCopy={!(listingLink.trim() || listingOpenHref)}
-                  onEdit={onEditListing}
-                  editOpen={listingEditOpen}
-                  editLabel="Edit listing"
-                  actionsInMenu
-                  chipAction="open"
-                  menuFirstAction="copy"
-                  showExternalIcon
-                />
-              ) : (
-                <IdentityLinkChip
-                  openHref={listingOpenHref}
-                  openTitle={listingOpenTitle}
-                  linkOptions={listingLinkOptions}
-                  value={listingLink || listingOpenHref || ''}
-                  display={listingChipDisplay}
-                  iconOnly
-                  iconOnlyMark={
-                    <PlatformMark
-                      platformValue={platformValue}
-                      empty={!platformValue}
-                      textClassName={
-                        listingHasTarget && platformValue ? platformMeta.text : 'text-text-faint'
-                      }
-                      borderClassName={
-                        listingHasTarget && platformValue ? platformMeta.border : undefined
-                      }
-                    />
-                  }
-                  underlineClass={listingHasTarget && platformValue ? platformMeta.border : 'border-border-default'}
-                  iconClass={listingHasTarget && platformValue ? platformMeta.text : 'text-text-faint'}
-                  disableCopy={!(listingLink.trim() || listingOpenHref)}
-                  onEdit={onEditListing}
-                  editOpen={listingEditOpen}
-                  editLabel="Edit listing"
-                  actionsInMenu
-                  chipAction="open"
-                  menuFirstAction="copy"
-                  showExternalIcon
-                />
-              )
-            ) : null}
-
-            {/* PO# — or the originating ORDER# for a return: an imported RETURN
-                shows its Zoho order#, and a serial-resolved return (scanned unit
-                that was previously shipped) shows the closed-loop outbound order#
-                lifted into this slot. Either way it's a copy chip SEPARATE from
-                the listing link. Bound POs keep open + copy. Unfound / no real
-                Zoho PO id may pass onEditPo → Package Pairing (PO tab); empty
-                `# ----` clicks that directly. */}
-            {showOrderIdentity ? (
-              <IdentityLinkChip
-                openHref={orderCopyOnly ? undefined : poOpenHref}
-                openTitle={orderCopyOnly ? 'Order number' : 'Open PO in Zoho'}
-                value={effectiveOrder}
-                display={effectiveOrder ? getLast4(effectiveOrder) : '----'}
-                tone="id"
-                underlineClass="border-border-emphasis"
-                disableCopy={!effectiveOrder}
-                onEdit={onEditPo}
-                editOpen={poEditOpen}
-                editLabel={poEditOpen ? 'Hide package pairing' : 'Link PO'}
-                actionsInMenu
-              />
-            ) : null}
-
-            {/* Tracking# — tone `tracking` → MapPin. Chip click copies; hover
-                menu opens carrier tracking or edits. Extra-box `+` sits on the
-                chip (opens editor + adds a row). Suppressed for pickup. */}
-            {isLocalPickup ? (
-              <FulfillmentPickupPill
-                variant="rail"
-                tooltip="Fulfilled in person — no tracking number"
-              />
-            ) : (
-              <div className="flex shrink-0 items-center gap-1">
-                <IdentityLinkChip
-                  openHref={trackingOpenHref}
-                  openTitle="Open carrier tracking"
-                  value={primaryTrackingTrimmed}
-                  display={primaryTrackingTrimmed ? getLast4(primaryTrackingTrimmed) : '----'}
-                  tone="tracking"
-                  underlineClass="border-blue-500"
-                  disableCopy={!primaryTrackingTrimmed}
-                  onEdit={onEditTracking}
-                  editOpen={trackingEditOpen}
-                  editLabel="Edit tracking"
-                  actionsInMenu
-                />
-                {filledExtraTrackingsCount > 0 ? (
-                  <HoverTooltip
-                    label={`${filledExtraTrackingsCount} extra box${filledExtraTrackingsCount === 1 ? '' : 'es'} on this PO`}
-                    asChild
-                  >
-                    <span className="shrink-0 rounded bg-surface-strong/90 px-1 py-px text-role-eyebrow tabular-nums text-text-muted">
-                      +{filledExtraTrackingsCount}
-                    </span>
-                  </HoverTooltip>
-                ) : null}
-              </div>
-            )}
-            </div>
-
-            {/* Cluster 3 — Claim · Photos. Always shown with identity (classify
-                does not collapse this side). */}
-            {showStaffPhotoRow ? (
-            <div className="flex shrink-0 items-center gap-2">
-              {zendeskTrimmed ? (
-                <ReceivingTicketChip
-                  value={zendeskTrimmed}
-                  display={zendeskChipDisplay}
-                  openHref={zendeskHref}
-                  providerTicketId={providerTicketId}
-                  receivingId={receivingId}
-                  lineId={lineId}
-                  onUnlinked={() => {
-                    onTicketUnlinked?.();
-                  }}
-                  onOpenTicketView={
-                    onToggleTicketView && providerTicketId != null
-                      ? () => onToggleTicketView()
-                      : undefined
-                  }
-                  ticketViewActive={ticketViewActive}
-                />
-              ) : onMakeClaim ? (
-                <HoverTooltip
-                  label={claimViewActive ? 'Hide claim' : 'File claim'}
-                  placement="above"
-                  asChild
-                >
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={onMakeClaim}
-                    ariaLabel={claimViewActive ? 'Hide claim' : 'File claim'}
-                    aria-expanded={claimViewActive}
-                    aria-pressed={claimViewActive}
-                    className={cn(
-                      STATION_CONTEXT_CLAIM_PILL_CLASS,
-                      claimViewActive && 'ring-2 ring-inset ring-orange-400',
-                    )}
-                  >
-                    Claim
-                  </Button>
-                </HoverTooltip>
-              ) : null}
-
-            {/* Photos — camera + count (or + when empty); hover opens gallery when photos exist. */}
-            {receivingId != null ? (
-              <ReceivingPhotoButton
-                receivingId={receivingId}
-                staffId={Number(staffId) || 0}
-                poRef={effectiveOrder || null}
-                photoStage={photoStage}
-                onSendToTicket={onSendToTicket}
-              />
-            ) : null}
-            </div>
-            ) : null}
-            </div>
+                  {isStacked ? stackedLayout : oneRowLayout}
                 </motion.div>
               ) : (
                 <motion.div
@@ -654,7 +808,16 @@ export function CartonContextCard({
                 >
                   {/* Right side unrendered — the chosen picker owns the row.
                       Selecting (or click-away / Escape) returns openPicker to
-                      null, swapping the chip cluster back in. */}
+                      null, swapping the chip cluster back in.
+
+                      NOTE (bar-stacked): this branch is a ONE-row picker, so a
+                      stacked bar would shed a row while it is open. Unreachable
+                      today — `openClassifyPicker` bails before `setOpenPicker`
+                      whenever `onClassifyPillOpen` is wired, and the only
+                      stacked host (Unbox `LineEditPanel`) always wires it
+                      (pills hand off to the Classify tab). A future stacked
+                      host that omits `onClassifyPillOpen` must give this branch
+                      the two-row frame first. */}
                   {openPicker === 'urgency' ? (
                     <InlinePillPicker
                       ariaLabel="Urgency"
@@ -699,7 +862,7 @@ export function CartonContextCard({
       </div>
   );
 
-  if (density === 'bar') {
+  if (isBarFamily) {
     // Width comes from StationContextBar's identity Panel
     // ({@link STATION_WORKBENCH_IDENTITY_COLUMN}).
     return <div className="w-full min-w-0 overflow-visible">{body}</div>;

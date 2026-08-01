@@ -19,6 +19,11 @@ import {
   type ReceivingLineRow,
 } from '@/components/station/ReceivingLinesTable';
 import { isLocalPickupFulfillment } from '@/lib/receiving/fulfillment-mode';
+import {
+  getReceivingStatusDot,
+  getReceivingStatusDotLabel,
+} from '@/lib/receiving/rail/status';
+import { useCartonPoTotal } from './hooks/useCartonPoTotal';
 import type { UnboxLineController } from './unbox-line-controller';
 
 interface LineCartonContextSectionProps {
@@ -75,8 +80,14 @@ interface LineCartonContextSectionProps {
    * Classify surface and expands that dimension's names list.
    */
   onClassifyPillOpen?: (picker: 'urgency' | 'platform' | 'type') => void;
-  /** Forwarded to {@link CartonContextCard} — `bar` for the sticky station chrome. */
-  density?: 'card' | 'bar';
+  /**
+   * Forwarded to {@link CartonContextCard} — `bar` for the sticky station
+   * chrome, `bar-stacked` for the two-row Unbox identity (row 1 = urgency ·
+   * platform · type → listing; row 2 = order#/PO# · tracking# → ticket/Claim ·
+   * Photos). This adapter serves BOTH Unbox and Triage, so the two-row face is
+   * opted into per call site — Triage stays on the one-row `bar`.
+   */
+  density?: 'card' | 'bar' | 'bar-stacked';
   /** Switch Unbox workspace to the Tracking tab. */
   onEditTracking?: () => void;
   /** Switch Unbox workspace to the Listings tab. */
@@ -89,6 +100,8 @@ interface LineCartonContextSectionProps {
   listingEditOpen?: boolean;
   /** Pulse PO chip while Package Pairing (PO) is open. */
   poEditOpen?: boolean;
+  /** Unbox: open Move photos in the station tool push. */
+  onOpenMovePhotosExternal?: () => void;
 }
 
 // The carton-context card (photos + claim) is identical in unbox and triage —
@@ -115,8 +128,14 @@ export function LineCartonContextSection({
   listingEditOpen = false,
   poEditOpen = false,
   photoStage,
+  onOpenMovePhotosExternal,
 }: LineCartonContextSectionProps) {
   void expandClassifyWhenPending;
+
+  // PO money total — carton grain by construction (a sum over the carton's
+  // lines), derived via the SoT (`cartonPoTotal`), never summed in the card.
+  const poTotal = useCartonPoTotal(row.receiving_id ?? null);
+  const isStackedDensity = density === 'bar-stacked';
 
   return (
     <CartonContextCard
@@ -127,6 +146,34 @@ export function LineCartonContextSection({
       classifyInteractive={classifyInteractive}
       onClassifyPillOpen={onClassifyPillOpen}
       density={density}
+      poTotal={poTotal}
+      showPoTotal={isStackedDensity}
+      // ACTIVE LINE, not a carton rollup — this is the same `n/expected` the
+      // operator just read on the rail row they clicked, so the two surfaces
+      // never show different numbers for the same click.
+      //
+      // `quantity_received` is typed `number` but a synthetic unfound row
+      // arrives without it, which rendered a literal `undefined/?`. Coerce to
+      // 0 so an unfound carton reads `0/?` — exactly what its rail row says.
+      qty={
+        isStackedDensity
+          ? {
+              received: Number(row.quantity_received) || 0,
+              expected: row.quantity_expected ?? null,
+            }
+          : null
+      }
+      // Same dot + label the operator just clicked in the sidebar rail — the
+      // rail SoT owns the unmatched / Zoho-received special cases, so the band
+      // and the rail can never disagree about a carton's stage.
+      lifecycle={
+        isStackedDensity
+          ? {
+              dotClass: getReceivingStatusDot(row),
+              label: getReceivingStatusDotLabel(row),
+            }
+          : null
+      }
       showStaffPhotoRow
       photoStage={photoStage}
       onMakeClaim={onToggleClaimView ?? (() => c.openClaimModal('create'))}
@@ -179,6 +226,7 @@ export function LineCartonContextSection({
       // feed. Unbox + triage share the same window-event close mechanism.
       onExitToList={() => dispatchReceivingWorkspaceClose()}
       onSendToTicket={() => c.setPhotoNoteOpen(true)}
+      onOpenMovePhotosExternal={onOpenMovePhotosExternal}
     />
   );
 }
