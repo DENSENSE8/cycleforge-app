@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Loader2 } from '@/components/Icons';
 import { PhotoGallery } from '@/components/shipped/PhotoGallery';
 import { SerialJourneySection } from '@/components/serial/SerialJourneySection';
-import { inventoryStatusBadgeClass } from './status-classes';
+import { unitStatusBadgeClass } from '@/lib/unit-status';
 import type {
     SerialUnitDetailPayload,
     TimelineEventRow,
@@ -374,7 +374,7 @@ function StatusBadge({ status }: { status: string | null }) {
     if (!status) return <span className="text-xs text-text-faint">—</span>;
     return (
         <span
-            className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${inventoryStatusBadgeClass(status)}`}
+            className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${unitStatusBadgeClass(status)}`}
         >
             {status}
         </span>

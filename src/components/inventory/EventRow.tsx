@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { getLast4, OrderIdChip, SerialChip, SkuScanRefChip } from '@/components/ui/CopyChip';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import type { PulseEventRow } from './types';
-import { inventoryStatusBadgeClass } from './status-classes';
+import { unitStatusBadgeClass } from '@/lib/unit-status';
 
 interface EventRowProps {
     event: PulseEventRow;
@@ -12,7 +12,7 @@ interface EventRowProps {
 
 function statusBadgeClass(status: string | null): string {
     if (!status) return 'bg-surface-sunken text-text-soft';
-    return inventoryStatusBadgeClass(status);
+    return unitStatusBadgeClass(status);
 }
 
 // Legacy rows stored extra serials as "Supplemental serial <SN> (beyond

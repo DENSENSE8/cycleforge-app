@@ -559,6 +559,49 @@ export const UnitPriceChip = ({
 };
 
 /**
+ * Purchase-order MONEY TOTAL for a carton — the trailing fact on the station
+ * identity's identifier row (order# · tracking# → total).
+ *
+ * Same `price` tone as {@link UnitPriceChip} so money reads one way everywhere;
+ * the difference is grain, not face — this is Σ over the PO's lines
+ * (`cartonPoTotal`, `src/lib/receiving/po-total.ts`), not one line's rate.
+ * Pass `amount={null}` for a carton whose lines carry no mirrored price: it
+ * renders the honest `—` rather than a `$0.00` that would read as "free".
+ */
+export const PoTotalChip = ({
+  amount,
+  dense,
+}: {
+  amount: number | null | undefined;
+  dense?: boolean;
+}) => {
+  if (amount == null || !Number.isFinite(amount)) {
+    return (
+      <CopyChip
+        value=""
+        display="—"
+        tone="price"
+        truncateDisplay={false}
+        fitDisplayWidth
+        dense={dense}
+        disableCopy
+      />
+    );
+  }
+  const numeric = amount.toFixed(2);
+  return (
+    <CopyChip
+      value={`$${numeric}`}
+      display={numeric}
+      tone="price"
+      truncateDisplay={false}
+      fitDisplayWidth
+      dense={dense}
+    />
+  );
+};
+
+/**
  * Condition grade on a PO line meta row. Tags icon + underlined label; hue comes
  * from `src/lib/condition-tone.ts` (same registry as {@link ConditionPills}).
  */

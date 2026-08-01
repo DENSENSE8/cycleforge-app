@@ -8,7 +8,7 @@ import { useDebounce } from '@/hooks';
 import { SidebarShell } from '@/components/layout/SidebarShell';
 import { getLast4, SerialChip, SkuScanRefChip } from '@/components/ui/CopyChip';
 import { microBadge } from '@/design-system/tokens/typography/presets';
-import { inventoryStatusBadgeClass } from '@/components/inventory/status-classes';
+import { unitStatusBadgeClass } from '@/lib/unit-status';
 import type { UnitListRow, UnitListResponse } from '@/components/inventory/types';
 import { cn } from '@/utils/_cn';
 import { SearchBar } from '@/components/ui/SearchBar';
@@ -141,7 +141,7 @@ export function InventoryPulseSidebar() {
                                     <span
                                         className={cn(
                                             'shrink-0 rounded px-1.5 py-0.5 text-role-eyebrow uppercase tracking-wide',
-                                            inventoryStatusBadgeClass(row.current_status),
+                                            unitStatusBadgeClass(row.current_status),
                                         )}
                                     >
                                         {row.current_status}
