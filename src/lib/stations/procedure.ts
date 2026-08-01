@@ -40,17 +40,71 @@ import type { TableRef } from './contract';
 import type { SurfaceKey } from './surface-keys';
 
 /**
- * A single ordered act at the bench. `key` is stable and is what the Studio
- * paints; it is NOT required to match a stepper key (the Unbox progress stepper
- * deliberately shows only the three steps carrying operator signal — see
- * `derive-receiving-step-states.ts`).
+ * Which part of the station's work a step belongs to. The split exists because
+ * two surfaces render two different slices of one procedure:
+ *
+ *   intake  — how work reaches the bench (scan, classify). Studio shows it;
+ *             the bench checklist does not, because by the time the operator
+ *             reads the checklist it has already happened.
+ *   capture — the per-carton / per-unit acts. THIS is the slice the station's
+ *             right-rail checklist renders.
+ *   commit  — the terminal acts that close the carton out (print, receive).
+ *             Driven from the terminal dock, not the checklist.
+ *
+ * Without this, the two surfaces disagreed about what "the Unbox procedure" is
+ * — Studio said 7 steps, the bench said 5, and both docblocks claimed to be the
+ * operator-facing one.
+ */
+export type ProcedurePhase = 'intake' | 'capture' | 'commit';
+
+/**
+ * The carton-shape flags that vary a procedure. Mirrors the bench's
+ * `CaptureStepVocabularyInput` one-for-one, deliberately: they can co-occur
+ * (an unfound return), so this is three booleans and not one enum.
+ */
+export interface ProcedureVariant {
+  /** No matched PO — identity resolution comes first. */
+  isUnfound?: boolean;
+  /** Handed over at the counter — no carrier dunnage to photograph. */
+  isLocalPickup?: boolean;
+  /** A return — the serial names WHICH unit is being graded. */
+  isReturn?: boolean;
+}
+
+type VariantFlag = keyof ProcedureVariant;
+
+/**
+ * A single ordered act at the bench. `key` is stable and is what both Studio
+ * and the station checklist paint.
  */
 export interface ProcedureStep {
-  /** Stable within its procedure, e.g. `scan`. */
+  /** Stable within its procedure, e.g. `serial`. */
   key: string;
   label: string;
   /** One line, operator-voiced: what the person does here. */
   summary: string;
+  /** Which surface renders it — see {@link ProcedurePhase}. */
+  phase: ProcedurePhase;
+  /** Step exists ONLY when this carton flag is set (`classify` on unfound). */
+  onlyWhen?: VariantFlag;
+  /** Step is dropped when this carton flag is set (`packing_material` on pickup). */
+  omitWhen?: VariantFlag;
+  /**
+   * On this variant the step moves to sit immediately before the named step.
+   * One declared exception, not a general sort: a return captures the serial
+   * before the grade, because the scan names the unit the grade applies to.
+   */
+  moveBefore?: { when: VariantFlag; step: string };
+  /**
+   * Satisfied by default — renders as done and the active pointer skips it.
+   * `condition_grade` is NOT NULL with a default, so the grade always exists;
+   * gating on it would stall every carton on a decision already answered.
+   */
+  ungated?: boolean;
+  /** Repeats per unit on a multi-quantity line, so the row carries `n of N`. */
+  perUnit?: boolean;
+  /** Receiving photo stage this step is evidenced by, when it is a photo step. */
+  photoStage?: 'arrival_package' | 'unbox_carton' | 'unbox_item';
   /**
    * True when the station registry drives this step (a composed block bound to
    * a registered source/action). False when it is hand-coded UI over a
@@ -118,6 +172,42 @@ export function procedureForNodeType(type: string): ProcedureDefinition | undefi
   return listProcedures().find((p) => p.nodeTypes.includes(type));
 }
 
+/**
+ * The ordered steps for one carton's shape — THE resolver both surfaces read.
+ *
+ * Studio calls it with no phase filter (it shows the whole procedure); the
+ * station checklist calls it with `phase: 'capture'`. That is the entire
+ * reconciliation: one declaration, two slices, no second vocabulary.
+ *
+ * Pure and total — an unknown flag combination just yields the base sequence.
+ */
+export function resolveProcedureSteps(
+  procedure: ProcedureDefinition,
+  variant: ProcedureVariant = {},
+  phase?: ProcedurePhase,
+): ProcedureStep[] {
+  const on = (flag: VariantFlag | undefined) => !!flag && variant[flag] === true;
+
+  const steps = procedure.steps.filter((s) => {
+    if (s.onlyWhen && !on(s.onlyWhen)) return false;
+    if (s.omitWhen && on(s.omitWhen)) return false;
+    return phase ? s.phase === phase : true;
+  });
+
+  // Apply the declared move-before exceptions against the already-filtered list,
+  // so a reorder composes with an omission instead of fighting it.
+  for (const step of [...steps]) {
+    if (!step.moveBefore || !on(step.moveBefore.when)) continue;
+    const from = steps.indexOf(step);
+    const to = steps.findIndex((s) => s.key === step.moveBefore!.step);
+    if (from < 0 || to < 0 || from === to) continue;
+    steps.splice(from, 1);
+    steps.splice(steps.findIndex((s) => s.key === step.moveBefore!.step), 0, step);
+  }
+
+  return steps;
+}
+
 // ─── Unbox ───────────────────────────────────────────────────
 //
 // The pilot. Seven acts, one of which (the queue) is registry-composed today;
@@ -129,11 +219,13 @@ const unboxProcedure: ProcedureDefinition = {
   label: 'Unbox',
   nodeTypes: ['receiving'],
   steps: [
+    // ── intake ────────────────────────────────────────────────
     {
       key: 'scan',
       label: 'Scan the carton',
       summary:
         'Scan the tracking number at the bench. Resolves the carton against its PO, or opens an unfound carton when nothing matches.',
+      phase: 'intake',
       composed: false,
       endpoint: { method: 'POST', path: '/api/receiving/lookup-po' },
       reads: [
@@ -152,19 +244,44 @@ const unboxProcedure: ProcedureDefinition = {
         { table: 'receiving_scans' },
       ],
     },
+
+    // ── capture — the slice the station checklist renders ──────
     {
-      key: 'queue',
-      label: 'Pick from the queue',
+      key: 'classify',
+      label: 'Classify',
       summary:
-        'The rail of cartons that have arrived but are not yet unboxed. The one step the station registry already drives.',
-      composed: true,
-      sourceIds: ['receiving.unbox_queue'],
+        'Name what this carton is (PO / return / trade-in / pickup) before anything else can be recorded against it.',
+      phase: 'capture',
+      onlyWhen: 'isUnfound',
+      composed: false,
+      endpoint: { method: 'PATCH', path: '/api/receiving/:id' },
+      // The carton route is a broad read (it also serves the carton GET), so the
+      // classify PATCH inherits that whole read set. Declared in full because the
+      // lineage guard checks the module, not the branch — see its docblock.
+      reads: [
+        { table: 'local_pickup_orders' },
+        { table: 'locations' },
+        { table: 'receiving_carton' },
+        { table: 'receiving_line' },
+        { table: 'receiving_line_testing' },
+        { table: 'receiving_line_zoho' },
+        { table: 'receiving_scans' },
+        { table: 'receiving_triage' },
+        { table: 'receiving_unbox' },
+        { table: 'serial_unit_provenance' },
+        { table: 'serial_units' },
+        { table: 'shipping_tracking_numbers' },
+        { table: 'staff' },
+      ],
+      writes: [{ table: 'receiving_carton' }],
     },
     {
-      key: 'photos',
-      label: 'Capture photos',
+      key: 'po_photos',
+      label: 'PO / box photos',
       summary:
-        'Photograph the carton and its contents as received. The evidence a claim is later argued from.',
+        'Read the door\u2019s pre-opening shot. A VERIFY step, never a capture: a bench photo stamped here would satisfy the receive gate with a post-opening image and void the control.',
+      phase: 'capture',
+      photoStage: 'arrival_package',
       composed: false,
       endpoint: { method: 'POST', path: '/api/receiving-photos' },
       reads: [
@@ -181,10 +298,72 @@ const unboxProcedure: ProcedureDefinition = {
       ],
     },
     {
-      key: 'serial',
-      label: 'Capture serials',
+      key: 'packing_material',
+      label: 'Packing material',
+      summary: 'Photograph the opened box and its dunnage \u2014 the same evidentiary moment as the carton itself.',
+      phase: 'capture',
+      photoStage: 'unbox_carton',
+      omitWhen: 'isLocalPickup',
+      composed: false,
+      endpoint: { method: 'POST', path: '/api/receiving-photos' },
+      reads: [
+        { table: 'receiving_carton' },
+        { table: 'receiving_scans' },
+        { table: 'receiving_triage' },
+        { table: 'photos', via: '@/lib/photos/service' },
+        { table: 'photo_storage', via: '@/lib/photos/service' },
+      ],
+      writes: [
+        { table: 'photos', via: '@/lib/photos/service' },
+        { table: 'photo_storage', via: '@/lib/photos/service' },
+        { table: 'photo_entity_links', via: '@/lib/photos/claim-link' },
+      ],
+    },
+    {
+      key: 'item_photos',
+      label: 'Item photos',
+      summary: 'Photograph each unit as received \u2014 the evidence a claim is later argued from.',
+      phase: 'capture',
+      photoStage: 'unbox_item',
+      perUnit: true,
+      composed: false,
+      endpoint: { method: 'POST', path: '/api/receiving-photos' },
+      reads: [
+        { table: 'receiving_carton' },
+        { table: 'receiving_scans' },
+        { table: 'receiving_triage' },
+        { table: 'photos', via: '@/lib/photos/service' },
+        { table: 'photo_storage', via: '@/lib/photos/service' },
+      ],
+      writes: [
+        { table: 'photos', via: '@/lib/photos/service' },
+        { table: 'photo_storage', via: '@/lib/photos/service' },
+        { table: 'photo_entity_links', via: '@/lib/photos/claim-link' },
+      ],
+    },
+    {
+      key: 'condition',
+      label: 'Condition',
       summary:
-        'Scan each unit’s serial, or waive it for a line that genuinely has none. This is what turns a quantity into tracked units.',
+        'Grade the unit. Defaults to A and is only overridden for exceptions, so it renders already-satisfied and the pointer skips it.',
+      phase: 'capture',
+      ungated: true,
+      perUnit: true,
+      composed: false,
+      endpoint: { method: 'POST', path: '/api/receiving/lines/:id/condition' },
+      reads: [{ table: 'receiving_line' }],
+      writes: [{ table: 'receiving_line_testing' }],
+    },
+    {
+      key: 'serial',
+      label: 'Serial',
+      summary:
+        'Scan each unit\u2019s serial, or waive it for a line that genuinely has none. This is what turns a quantity into tracked units.',
+      phase: 'capture',
+      perUnit: true,
+      // A return captures the serial BEFORE the grade: the scan names the unit
+      // the grade applies to.
+      moveBefore: { when: 'isReturn', step: 'condition' },
       composed: false,
       endpoint: { method: 'POST', path: '/api/receiving/scan-serial' },
       reads: [
@@ -198,21 +377,13 @@ const unboxProcedure: ProcedureDefinition = {
         { table: 'receiving_line_testing', via: '@/lib/receiving/serial-projection' },
       ],
     },
-    {
-      key: 'condition',
-      label: 'Set the condition',
-      summary:
-        'Grade the line. Defaults to A and is only overridden for exceptions, so it carries no stepper dot — but the override is durable and feeds recommendations.',
-      composed: false,
-      endpoint: { method: 'POST', path: '/api/receiving/lines/:id/condition' },
-      reads: [{ table: 'receiving_line' }],
-      writes: [{ table: 'receiving_line_testing' }],
-    },
+
+    // ── commit \u2014 the terminal dock, not the checklist ───────────
     {
       key: 'print',
       label: 'Print the label',
-      summary:
-        'Print the carton or item label. First print wins — the stamp survives a refresh and another device.',
+      summary: 'Print the carton or item label. First print wins \u2014 the stamp survives a refresh and another device.',
+      phase: 'commit',
       composed: false,
       endpoint: { method: 'POST', path: '/api/receiving/lines/:id/label-printed' },
       reads: [{ table: 'receiving_line' }],
@@ -223,6 +394,7 @@ const unboxProcedure: ProcedureDefinition = {
       label: 'Receive to the purchase order',
       summary:
         'Commit the received quantities: units become inventory, the line advances, and the receipt is pushed to the inventory provider.',
+      phase: 'commit',
       composed: false,
       endpoint: { method: 'POST', path: '/api/receiving/mark-received-po' },
       reads: [
