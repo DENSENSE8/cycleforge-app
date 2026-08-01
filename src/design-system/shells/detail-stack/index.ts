@@ -1,6 +1,7 @@
 export {
   DETAIL_STACK_LAYOUT,
   DETAIL_STACK_RESIZE,
+  DETAIL_STACK_COLLAPSE,
   DETAIL_STACK_ASIDE_SURFACE,
   assistantDockAsideClassName,
   assistantDockAsideStyle,
@@ -9,6 +10,8 @@ export {
   detailStackAsideStyle,
   detailStackBackdropClassName,
   detailStackBackdropElevatedClassName,
+  detailStackCollapseStripClassName,
+  detailStackCollapseStripStyle,
   detailStackDismissLayerClassName,
   detailStackDismissLayerElevatedClassName,
 } from './layout';

@@ -1,7 +1,7 @@
 /**
- * Source guard: receiving context-panel collapse uses the SoT storage key +
+ * Source guard: every context-panel rail collapses via the SoT storage key +
  * DS edge-resize `onCollapse` (no page-local twin / raw collapse button /
- * restored ContextPanelCollapseCue).
+ * restored ContextPanelCollapseCue; not gated to receiving routes).
  *
  * SoT: context-panel-column.ts → CONTEXT_PANEL_COLLAPSE
  * Layout: ContextPanelLayout.tsx → HorizontalEdgeResizeHandle.onCollapse
@@ -45,6 +45,12 @@ test('ContextPanelLayout persists via CONTEXT_PANEL_COLLAPSE.storageKey', () => 
   assert.match(LAYOUT_SRC, /CONTEXT_PANEL_COLLAPSE\.storageKey/);
   assert.match(LAYOUT_SRC, /useLocalStorage/);
   assert.match(LAYOUT_SRC, /CONTEXT_PANEL_COLLAPSE_STRIP_CLASS/);
+});
+
+test('resize + collapse enable for every mounted context panel (not receiving-only)', () => {
+  assert.match(LAYOUT_SRC, /enabled:\s*hasPanel/);
+  assert.doesNotMatch(LAYOUT_SRC, /getSidebarRouteKey/);
+  assert.doesNotMatch(LAYOUT_SRC, /===\s*['"]receiving['"]/);
 });
 
 test('collapse lives on HorizontalEdgeResizeHandle.onCollapse (not a cue twin)', () => {

@@ -192,8 +192,18 @@ export function OrderTriageSection({
 
       {/* ── Ops notes ────────────────────────────────────────────────────── */}
       <div className="space-y-1">
+        {/*
+          "Ops notes", not "Notes": the editor dock below still writes the legacy
+          scalar `orders.notes`, and two fields both labelled Notes on one panel
+          is precisely the two-writable-homes confusion `2026-07-28_order_notes`
+          warns about. The word marks WHICH trail this is until the legacy field
+          is retired; the sub-line says what makes it different.
+        */}
         <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">
-          Notes{notes.length > 0 ? ` · ${notes.length}` : ''}
+          Ops notes{notes.length > 0 ? ` · ${notes.length}` : ''}
+        </p>
+        <p className="text-role-micro normal-case tracking-normal text-text-faint">
+          Append-only, stamped with who wrote it.
         </p>
 
         <div className="space-y-1.5">

@@ -42,11 +42,11 @@ import { cn } from '@/utils/_cn';
 export const CONTEXT_PANEL_WIDTH_PX = 360;
 
 /**
- * Drag-to-resize contract for the receiving context-panel rail (left-anchored,
+ * Drag-to-resize contract for every context-panel rail (left-anchored,
  * right-edge handle via `useHorizontalEdgeResize` `edge: 'trailing'`).
  *
  * `maxWidthPad` leaves at least a station workbench column (~720) plus gutters
- * for the canvas beside the rail.
+ * for the canvas beside the rail. One shared preference across routes.
  */
 export const CONTEXT_PANEL_RESIZE = {
   storageKey: 'context-panel-width',
@@ -56,12 +56,13 @@ export const CONTEXT_PANEL_RESIZE = {
 } as const;
 
 /**
- * Collapse contract for the receiving context-panel rail (scan + recents).
+ * Collapse contract for every context-panel rail (picker / scan + recents /
+ * feed — whatever the route mounts in {@link ContextPanelLayout}).
  *
  * Open: collapse chevron on the trailing {@link HorizontalEdgeResizeHandle}
  * (`onCollapse`). Collapsed: width-drawer to 0 + a slim expand strip on the
  * canvas ({@link CONTEXT_PANEL_COLLAPSE_STRIP_CLASS}). Persists beside
- * {@link CONTEXT_PANEL_RESIZE} — receiving family only.
+ * {@link CONTEXT_PANEL_RESIZE} — one shared preference across routes.
  */
 export const CONTEXT_PANEL_COLLAPSE = {
   storageKey: 'context-panel-collapsed',
@@ -80,7 +81,7 @@ export const CONTEXT_PANEL_COLLAPSE = {
 const CONTEXT_PANEL_OUTER_MARGIN = 'm-2';
 
 /**
- * Parked expand strip when the receiving context panel is collapsed.
+ * Parked expand strip when the context panel is collapsed.
  * Canvas chrome only — not a second white card.
  */
 export const CONTEXT_PANEL_COLLAPSE_STRIP_CLASS = cn(
@@ -101,10 +102,10 @@ export const CONTEXT_PANEL_COLLAPSE_STRIP_CLASS = cn(
  * away from centre puts the whole app under one light in the middle of the
  * screen.
  *
- * `relative` anchors the trailing-edge resize grip (receiving only —
- * `HorizontalEdgeResizeHandle` `placement="outset"`). `w-[360px]` is the
- * fixed default; receiving overrides it with an inline width from
- * {@link CONTEXT_PANEL_RESIZE}.
+ * `relative` anchors the trailing-edge resize grip
+ * (`HorizontalEdgeResizeHandle` `placement="outset"`). `w-[360px]` is the
+ * fixed default; {@link ContextPanelLayout} overrides it with an inline width
+ * from {@link CONTEXT_PANEL_RESIZE}.
  */
 export const CONTEXT_PANEL_COLUMN_CLASS = cn(
   // The gutter is the panel's OWN margin, not host padding. Host padding would
