@@ -9,7 +9,8 @@
  * Scoped so a stale editor can't bleed across selections:
  * - sibling-line switch clears the params;
  * - mode switch strips them via route owns;
- * - mutually exclusive with Ticket (`?ticketView=1`) and `detail:receiving`.
+ * - mutually exclusive with Ticket (`?ticketView=1`), Unbox tool push
+ *   (move photos / photo note / audit), and `detail:receiving`.
  */
 
 import { useCallback, useEffect, useRef } from 'react';

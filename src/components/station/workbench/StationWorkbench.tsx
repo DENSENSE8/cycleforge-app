@@ -3,7 +3,10 @@
 import type { ReactNode } from 'react';
 import { cn } from '@/utils/_cn';
 import { STATION_TERMINAL_SCROLL_CLEARANCE } from '@/components/station/terminal/StationTerminalDock';
-import { STATION_IDENTITY_SCROLL_CLEARANCE } from '@/components/station/entity-context/station-bookmark';
+import {
+  STATION_IDENTITY_SCROLL_CLEARANCE,
+  STATION_IDENTITY_STACKED_SCROLL_CLEARANCE,
+} from '@/components/station/entity-context/station-bookmark';
 import { StationAmbientWash } from './StationAmbientWash';
 import {
   STATION_WORKBENCH_COLUMN,
@@ -62,15 +65,21 @@ export function StationWorkbench({
    * Absolute-float {@link StationContextBar} needs top clearance so scroll
    * content is not hidden under the identity shell. Default true — Unbox-family
    * hosts mount the floating context bar. Pass false when this workbench has
-   * no floating identity overlay.
+   * no floating identity overlay. Pass `'stacked'` when the identity is
+   * `CartonContextCard density="bar-stacked"` (two rows → 32px taller shell).
    */
-  reserveIdentityClearance?: boolean;
+  reserveIdentityClearance?: boolean | 'stacked';
   className?: string;
   scrollClassName?: string;
   /** Soft tonal blobs behind glass cards (Unbox ambient wash). */
   ambientWash?: boolean;
 }) {
-  const topPad = reserveIdentityClearance ? STATION_IDENTITY_SCROLL_CLEARANCE : 'pt-5';
+  const topPad =
+    reserveIdentityClearance === 'stacked'
+      ? STATION_IDENTITY_STACKED_SCROLL_CLEARANCE
+      : reserveIdentityClearance
+        ? STATION_IDENTITY_SCROLL_CLEARANCE
+        : 'pt-5';
   const bottomPad = reserveScrollClearance ? STATION_TERMINAL_SCROLL_CLEARANCE : 'pb-6';
 
   return (

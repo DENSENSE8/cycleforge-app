@@ -1,7 +1,7 @@
 /**
  * Generic SectionTabsSlider tab builder — visibility-gated tab defs → SectionTab[].
  *
- * Unbox's `buildUnboxTabs` stays domain-specific (content wiring); this helper
+ * Unbox's `buildUnboxSideTabs` stays domain-specific (content wiring); this helper
  * is the shared waist so Testing / Shipping / Packing can declare the same
  * `{ id, label, icon, content, visible, priority }` shape without hand-filtering.
  */

@@ -4,8 +4,18 @@
  * Right-pane workspace editor for a single receiving line — the UNBOX display,
  * and the MASTER/anchor for the workspace UX. All form state, effects, and
  * handlers live in `useUnboxLineController` (which composes the mode-agnostic
- * `useReceivingLineCore`); this file is pure composition — it lays out the
- * toolbar → scroll body → tab-aware terminal dock from shared section components.
+ * `useReceivingLineCore`); this file is pure composition.
+ *
+ * **The centre is the carton.** There is no tab strip in the workbench body:
+ * `overview` (capture stack → PO lines → label preview) IS the body, and the
+ * eight other displays plus the PO-pairing pencil live in the right-edge
+ * {@link ReceivingDisplaysPushStack} — a peer of Ticket / Claim / tool push, not
+ * a `RightRailHost` occupant (the right slot stays single-occupancy and
+ * `detail:receiving` keeps the float host).
+ *
+ * The bottom dock is **carton-terminal**: always Print · Receive. It does not
+ * change with the Displays selection — a right-panel click re-labelling the
+ * bottom primary is cross-region action-at-a-distance.
  *
  * Triage (the identify-before-unbox pass) is its own lean panel
  * ({@link TriagePanel}); the two no longer share a JSX shell or a capability
@@ -28,16 +38,22 @@ import { ReceivingPhotoPeek } from './line-edit/ReceivingPhotoPeek';
 import { RECEIVING_PHOTO_LIST_INTENT_CARTON } from '@/lib/receiving/photo-intent';
 import { LineCartonContextSection } from './line-edit/LineCartonContextSection';
 import { useSyncedPoNote } from './line-edit/hooks/useSyncedPoNote';
-import { LineEditModals } from './line-edit/LineEditModals';
 import { useUnboxLineController } from './line-edit/hooks/useUnboxLineController';
 import { useReceivingTicketView } from './line-edit/hooks/useReceivingTicketView';
 import { useReceivingClaimView } from './line-edit/hooks/useReceivingClaimView';
+import { clearUnboxPeerRightEdgeSurfaces } from './line-edit/unbox-right-edge';
 import {
+  ReceivingPushExpandStrip,
   ReceivingTicketExpandControl,
   ReceivingTicketStack,
   TICKET_PUSH_HOST_PAD_CLASS,
 } from './ReceivingTicketStack';
 import { ReceivingClaimStack } from './ReceivingClaimStack';
+import { ReceivingDisplaysPushStack } from './ReceivingDisplaysPushStack';
+import {
+  ReceivingToolPushStack,
+  type UnboxToolPushId,
+} from './ReceivingToolPushStack';
 import { cn } from '@/utils/_cn';
 import { dispatchLineUpdated, type ReceivingLineRow } from '@/components/station/ReceivingLinesTable';
 import { useReturnOrderLinkage } from './line-edit/hooks/useReturnOrderLinkage';
@@ -59,17 +75,17 @@ import {
   PairingTogglePill,
   STATION_WORKBENCH_COLUMN,
 } from '@/components/station/workbench';
-import { slicedActionDockWrapperClass } from '@/design-system/primitives';
+import { Layers } from '@/components/Icons';
+import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { IconButton, slicedActionDockWrapperClass } from '@/design-system/primitives';
 import { usePoNoteTabState } from './line-edit/terminal/usePoNoteTabState';
 import { resolveUnboxTerminal } from './line-edit/terminal/unbox-terminal';
-import { buildUnboxTabs, UnboxSectionTabs } from './line-edit/terminal/unbox-tabs';
+import { buildUnboxOverview, buildUnboxSideTabs } from './line-edit/terminal/unbox-tabs';
 import { WorkspaceNotesCard } from './line-edit/WorkspaceNotesCard';
-import type { UnboxView } from './line-edit/terminal/types';
-import type {
-  ChecklistTabBridge,
-  ConversationTabBridge,
-  UnitsTabBridge,
-} from './line-edit/terminal/unbox-tab-bridges';
+import {
+  resolveUnboxSideTab,
+  type UnboxSideTab,
+} from './line-edit/unbox-side-tabs';
 import { hasRealZohoPoId } from '@/lib/receiving/intake-items-routing';
 import { dispatchReceivingOpenPairingPo } from '@/utils/events';
 
@@ -164,19 +180,15 @@ export function LineEditPanel({
     [photoCount, serialCount, row.serial_absent, perUnitAbsentCount, row.quantity_expected, labelPrinted],
   );
 
-  const [unboxView, setUnboxView] = useState<UnboxView>('overview');
+  // Which right-edge display is showing. `null` = the Displays column is closed
+  // — one piece of state, so there is no "active tab while hidden" to keep in
+  // sync and nothing vestigial left behind by the strip removal.
+  const [requestedSideTab, setRequestedSideTab] = useState<UnboxSideTab | null>(null);
   const [classifyExpand, setClassifyExpand] = useState<{
     dimension: 'urgency' | 'platform' | 'type';
     requestId: number;
   } | null>(null);
 
-  const openClassifyFromHeader = (picker: 'urgency' | 'platform' | 'type') => {
-    setUnboxView('classify');
-    setClassifyExpand((prev) => ({
-      dimension: picker,
-      requestId: (prev?.requestId ?? 0) + 1,
-    }));
-  };
   const hasUnits = serialCount > 0;
   const trackingNumber = String(row.tracking_number ?? '').trim();
   const poIdForTracking = String(row.zoho_purchaseorder_id ?? '').trim();
@@ -186,75 +198,126 @@ export function LineEditPanel({
   const isLocalPickup = isLocalPickupFulfillment(row);
   const hasTrackingTab = !isLocalPickup;
   // Classification: checklist tab only (header pill row removed — DS SoT).
-  // Unfound → strip order 2 (replaces Listings). Matched → ⋯ overflow.
+  // Unfound → strip order 1 (replaces Listings). Matched → ⋯ overflow.
   const hasClassifyTab = true;
   const classifyOnStrip = c.isUnfound;
   const hasListingsTab = !c.isUnfound;
-  const activeUnboxView: UnboxView =
-    unboxView === 'checklist' ||
-    (unboxView === 'po-note' && hasPoNoteTab) ||
-    (unboxView === 'units' && hasUnits) ||
-    (unboxView === 'tracking' && hasTrackingTab) ||
-    (unboxView === 'listings' && hasListingsTab) ||
-    (unboxView === 'classify' && hasClassifyTab) ||
-    (unboxView === 'timeline' && hasTimelineTab) ||
-    unboxView === 'support'
-      ? unboxView
-      : 'overview';
+  const activeSideTab = resolveUnboxSideTab(requestedSideTab, {
+    hasClassifyTab,
+    hasListingsTab,
+    hasUnits,
+    hasPoNoteTab,
+    hasTrackingTab,
+    hasTimelineTab,
+  });
+  const displaysOpen = activeSideTab != null;
 
   const poNote = usePoNoteTabState({
     overallZohoNotes: row.receiving_zoho_notes ?? null,
-    active: activeUnboxView === 'po-note',
+    active: activeSideTab === 'po-note',
     onSaveOverallNote: saveOverallNote,
     onLoadZohoNotes: () => c.syncCartonFromZoho(),
   });
-
-  // Tab bodies register imperative bridges (checkAll, openPrebox, …). Keep the
-  // latest snapshot in refs so callback identity churn doesn't loop setState;
-  // bump the tick only when dock-visible fields change.
-  const checklistBridgeRef = useRef<ChecklistTabBridge | null>(null);
-  const [checklistBridgeTick, setChecklistBridgeTick] = useState(0);
-  const unitsBridgeRef = useRef<UnitsTabBridge | null>(null);
-  const [unitsBridgeTick, setUnitsBridgeTick] = useState(0);
-  const supportBridgeRef = useRef<ConversationTabBridge | null>(null);
-  const [supportBridgeTick, setSupportBridgeTick] = useState(0);
-
-  const onChecklistBridge = useCallback((bridge: ChecklistTabBridge | null) => {
-    const prev = checklistBridgeRef.current;
-    checklistBridgeRef.current = bridge;
-    if (
-      Boolean(prev) !== Boolean(bridge) ||
-      prev?.allDone !== bridge?.allDone ||
-      prev?.itemCount !== bridge?.itemCount
-    ) {
-      setChecklistBridgeTick((t) => t + 1);
-    }
-  }, []);
-  const onUnitsBridge = useCallback((bridge: UnitsTabBridge | null) => {
-    const prev = unitsBridgeRef.current;
-    unitsBridgeRef.current = bridge;
-    if (Boolean(prev) !== Boolean(bridge) || prev?.serialCount !== bridge?.serialCount) {
-      setUnitsBridgeTick((t) => t + 1);
-    }
-  }, []);
-  const onConversationBridge = useCallback((bridge: ConversationTabBridge | null) => {
-    const prev = supportBridgeRef.current;
-    supportBridgeRef.current = bridge;
-    if (
-      Boolean(prev) !== Boolean(bridge) ||
-      prev?.hasDraft !== bridge?.hasDraft ||
-      prev?.isPublic !== bridge?.isPublic ||
-      prev?.submitting !== bridge?.submitting ||
-      prev?.canPost !== bridge?.canPost
-    ) {
-      setSupportBridgeTick((t) => t + 1);
-    }
-  }, []);
 
   const { ticketView, setTicketView } = useReceivingTicketView(row.id);
   const ticketId = c.providerTicketId;
   const showTicketStack = ticketView && ticketId != null && !claimView;
   const showClaimStack = claimView;
+
+  const activeToolPush: UnboxToolPushId | null = c.movePhotosOpen
+    ? 'move-photos'
+    : c.photoNoteOpen
+      ? 'photo-note'
+      : c.auditOpen && row.receiving_id != null
+        ? 'audit'
+        : null;
+  const showToolPush = activeToolPush != null && !showClaimStack && !showTicketStack;
+  // Displays is the LOWEST-precedence right-edge surface: an exception surface
+  // (Claim / Ticket) or a tool the operator just launched outranks reference
+  // reading. It is still exclusive — never a second column beside them.
+  const showDisplays =
+    displaysOpen && !showClaimStack && !showTicketStack && !showToolPush;
+
+  const closeDisplays = useCallback(() => setRequestedSideTab(null), []);
+
+  /** Open a display, clearing every peer right-edge surface first. */
+  const openDisplays = useCallback(
+    (tab: UnboxSideTab) => {
+      clearUnboxPeerRightEdgeSurfaces({
+        setClaimView,
+        setTicketView,
+        claimView,
+        ticketView,
+      });
+      c.closeToolPush();
+      setRequestedSideTab(tab);
+    },
+    [setClaimView, setTicketView, claimView, ticketView, c.closeToolPush],
+  );
+
+  /** Identity-header classify face → open Classify with that picker expanded. */
+  const openClassifyFromHeader = useCallback(
+    (picker: 'urgency' | 'platform' | 'type') => {
+      openDisplays('classify');
+      setClassifyExpand((prev) => ({
+        dimension: picker,
+        requestId: (prev?.requestId ?? 0) + 1,
+      }));
+    },
+    [openDisplays],
+  );
+
+  // One right-edge secondary: Displays ↔ tool push ↔ Claim ↔ Ticket ↔
+  // detail:receiving. Opening a tool clears peers. Opening Claim/Ticket closes
+  // the tool only on a false→true *transition* (not while Claim is already
+  // open) so clearing Claim when a tool opens cannot race and kill the tool
+  // mid-open.
+  useEffect(() => {
+    if (!c.movePhotosOpen && !c.photoNoteOpen && !c.auditOpen) return;
+    clearUnboxPeerRightEdgeSurfaces({
+      setClaimView,
+      setTicketView,
+      claimView,
+      ticketView,
+    });
+    setRequestedSideTab(null);
+  }, [c.movePhotosOpen, c.photoNoteOpen, c.auditOpen, setClaimView, setTicketView, claimView, ticketView]);
+
+  const prevClaimViewRef = useRef(false);
+  useEffect(() => {
+    if (claimView && !prevClaimViewRef.current) {
+      c.closeToolPush();
+      setRequestedSideTab(null);
+    }
+    prevClaimViewRef.current = claimView;
+  }, [claimView, c.closeToolPush]);
+
+  const prevTicketViewRef = useRef(false);
+  useEffect(() => {
+    if (ticketView && !prevTicketViewRef.current) {
+      c.closeToolPush();
+      setRequestedSideTab(null);
+    }
+    prevTicketViewRef.current = ticketView;
+  }, [ticketView, c.closeToolPush]);
+
+  useEffect(() => {
+    const handler = () => {
+      c.closeToolPush();
+      setRequestedSideTab(null);
+    };
+    window.addEventListener('receiving-open-details-overlay', handler);
+    return () => window.removeEventListener('receiving-open-details-overlay', handler);
+  }, [c.closeToolPush]);
+
+  const closeToolPush = useCallback(() => {
+    c.closeToolPush();
+  }, [c.closeToolPush]);
+
+  const openMovePhotosPush = useCallback(() => {
+    c.openMovePhotos();
+  }, [c.openMovePhotos]);
+
   const toggleTicketView = () => setTicketView(!ticketView);
 
   const closeClaimView = useCallback(() => {
@@ -296,37 +359,12 @@ export function LineEditPanel({
     }
   }, [ticketView, c.supportTicketLoading, ticketId, setTicketView]);
 
+  // Carton-terminal: no `tabId`, no bridges. The dock is Print · Receive
+  // whatever the Displays column is showing.
   const buildTerminal = useCallback(
     (kind: string) =>
       resolveUnboxTerminal(kind, {
         row,
-        poNote,
-        bridges: {
-          checklist: checklistBridgeRef.current,
-          units: unitsBridgeRef.current,
-          support: supportBridgeRef.current,
-          conversation: supportBridgeRef.current,
-          ticket: null,
-        },
-        focusSerialScan: () => {
-          const focus = () => {
-            const el =
-              c.serialRef?.current ??
-              document.querySelector<HTMLInputElement>('[data-unbox-serial-input]');
-            el?.focus({ preventScroll: true });
-            el?.select?.();
-          };
-          focus();
-          globalThis.setTimeout(focus, 0);
-        },
-        setUnboxView: (view) => setUnboxView(view),
-        focusTicketReply: () => {
-          if (ticketId == null) {
-            c.openClaimModal('link');
-            return;
-          }
-          setTicketView(true);
-        },
         receive: {
           printReceivePrimaryLabel: c.printReceivePrimaryLabel,
           printThenReceiveTitle: c.printThenReceiveTitle,
@@ -354,30 +392,29 @@ export function LineEditPanel({
           handleReceive: (mode) => void c.handleReceive(mode),
         },
       }),
-    [row, poNote, c, checklistBridgeTick, unitsBridgeTick, supportBridgeTick, ticketId, setTicketView],
+    [row, c],
   );
 
   const terminalVm = useStationTerminalAction({
     surface: 'unbox',
     mode: 'unbox',
-    tabId: activeUnboxView,
     build: buildTerminal,
   });
 
-  // Package Pairing state lifted here so its "Edit PO" pencil can live on the tab
-  // row (context slot) instead of the removed "PO items · N" header.
+  // Package Pairing state. Pairing itself renders in the CENTRE (POUnboxingSection);
+  // its "Edit PO" pencil moved to the Displays strip's right slot with the tabs.
   const [pairingOpen, setPairingOpen] = useState(false);
   const togglePairing = useCallback(() => setPairingOpen((v) => !v), []);
   const editPoControl = <PairingTogglePill open={pairingOpen} onToggle={togglePairing} />;
 
-  /** Carton `# ----` / Link PO → Overview + expand Package Pairing on the PO tab.
-   *  Click again while open closes Package Pairing. */
+  /** Carton `# ----` / Link PO → expand Package Pairing in the centre. Click
+   *  again while open closes it. Reachable without the Displays column, so an
+   *  unfound carton can be paired with the panel closed. */
   const openPoPairing = useCallback(() => {
     if (pairingOpen) {
       setPairingOpen(false);
       return;
     }
-    setUnboxView('overview');
     setPairingOpen(true);
     requestAnimationFrame(() => dispatchReceivingOpenPairingPo());
   }, [pairingOpen]);
@@ -407,13 +444,37 @@ export function LineEditPanel({
     ? { hidden: { opacity: 0 }, show: { opacity: 1, transition: { duration: 0.001 } } }
     : { hidden: { opacity: 0 }, show: { opacity: 1, transition: { duration: 0.2 } } };
 
-  const unboxTabs = useMemo(
+  const unboxOverview = useMemo(
     () =>
-      buildUnboxTabs({
+      buildUnboxOverview({
         row,
         staffId,
         c,
-        activeUnboxView,
+        pairingOpen,
+        onPairingToggle: togglePairing,
+        onItemDescFeedback: handleItemDescFeedback,
+        onItemDescSaved: handleItemDescSaved,
+        accordionBootstrap,
+      }),
+    [
+      row,
+      staffId,
+      c,
+      pairingOpen,
+      togglePairing,
+      handleItemDescFeedback,
+      handleItemDescSaved,
+      accordionBootstrap,
+    ],
+  );
+
+  const unboxSideTabs = useMemo(
+    () =>
+      buildUnboxSideTabs({
+        row,
+        staffId,
+        c,
+        activeSideTab,
         hasUnits,
         serialCount,
         hasTimelineTab,
@@ -428,9 +489,6 @@ export function LineEditPanel({
         onPairingToggle: togglePairing,
         onItemDescFeedback: handleItemDescFeedback,
         onItemDescSaved: handleItemDescSaved,
-        onChecklistBridge,
-        onUnitsBridge,
-        onConversationBridge,
         accordionBootstrap,
         classifyExpandDimension: classifyExpand?.dimension ?? null,
         classifyExpandRequestId: classifyExpand?.requestId ?? 0,
@@ -440,7 +498,7 @@ export function LineEditPanel({
       staffId,
       c,
       accordionBootstrap,
-      activeUnboxView,
+      activeSideTab,
       hasUnits,
       serialCount,
       hasTimelineTab,
@@ -455,15 +513,18 @@ export function LineEditPanel({
       togglePairing,
       handleItemDescFeedback,
       handleItemDescSaved,
-      onChecklistBridge,
-      onUnitsBridge,
-      onConversationBridge,
       classifyExpand,
     ],
   );
 
-  const showTicketExpand = !showClaimStack && !showTicketStack && ticketId != null;
-  const showRightPushChrome = showClaimStack || showTicketStack || showTicketExpand;
+  const showTicketExpand =
+    !showClaimStack && !showTicketStack && !showToolPush && !showDisplays && ticketId != null;
+  // The parked strip carries the Displays toggle whenever no push column owns
+  // the edge, plus the linked-ticket restore beneath it.
+  const showExpandStrip =
+    !showClaimStack && !showTicketStack && !showToolPush && !showDisplays;
+  const showRightPushChrome =
+    showClaimStack || showTicketStack || showToolPush || showDisplays || showExpandStrip;
 
   const stationContextBar = (
     <StationContextBar
@@ -480,13 +541,19 @@ export function LineEditPanel({
             else setClaimView(true, 'create');
           }}
           claimViewActive={claimView}
-          density="bar"
-          onEditTracking={hasTrackingTab ? () => setUnboxView('tracking') : undefined}
-          onEditListing={hasListingsTab ? () => setUnboxView('listings') : undefined}
+          onOpenMovePhotosExternal={openMovePhotosPush}
+          // Unbox is the only opt-in to the two-row identity (row 1 = what kind
+          // of work, row 2 = which record). Triage shares this adapter and
+          // stays on the one-row `bar`.
+          density="bar-stacked"
+          // Identity pills open the Displays column on their own tab — the
+          // editors moved right, so the header route follows them.
+          onEditTracking={hasTrackingTab ? () => openDisplays('tracking') : undefined}
+          onEditListing={hasListingsTab ? () => openDisplays('listings') : undefined}
           onEditPo={!hasRealZohoPoId(row) ? openPoPairing : undefined}
           onClassifyPillOpen={openClassifyFromHeader}
-          trackingEditOpen={activeUnboxView === 'tracking'}
-          listingEditOpen={activeUnboxView === 'listings'}
+          trackingEditOpen={activeSideTab === 'tracking'}
+          listingEditOpen={activeSideTab === 'listings'}
           poEditOpen={pairingOpen && !hasRealZohoPoId(row)}
           photoStage="unbox_carton"
         />
@@ -512,21 +579,16 @@ export function LineEditPanel({
               <StationWorkbench
                 ambientWash={false}
                 className="relative z-0 flex-1 bg-transparent"
-                // Overview notes float over the canvas — reserve clearance so
-                // scroll content is not hidden under the absolute composer.
-                reserveScrollClearance={activeUnboxView === 'overview'}
-                tabs={
-                  <motion.div initial={false} animate="show" variants={revealContainer}>
-                    <motion.div variants={revealItem}>
-                      <UnboxSectionTabs
-                        tabs={unboxTabs}
-                        value={activeUnboxView}
-                        onChange={(id) => setUnboxView(id as UnboxView)}
-                        rightSlot={activeUnboxView === 'overview' ? editPoControl : undefined}
-                      />
-                    </motion.div>
-                  </motion.div>
-                }
+                // The notes composer floats over the canvas on every carton now
+                // that the centre is always `overview` — always reserve the
+                // clearance so scroll content is never hidden under it.
+                reserveScrollClearance
+                // Unbox identity is the two-row `bar-stacked` card (32px taller
+                // than the one-row bar), so the body needs the matching stacked
+                // top clearance.
+                reserveIdentityClearance="stacked"
+                // `tabs` is deliberately EMPTY: the strip moved to the
+                // right-edge Displays column, so the carton owns the centre.
                 feedback={
                   !showReceiveFeedback ? (
                     <WorkspaceActionFeedbackSlot
@@ -564,50 +626,47 @@ export function LineEditPanel({
                   ) : null
                 }
                 dock={
-                  // Overview: ONE elevated shell floating over the canvas —
-                  // receive split-CTA rides in the notes composer footer
-                  // (no second dock row). Placement SoT =
-                  // slicedActionDockWrapperClass({ docked: false }).
-                  // Other tabs keep the full-width in-flow terminal band.
-                  activeUnboxView === 'overview' ? (
-                    <div className={slicedActionDockWrapperClass({ docked: false })}>
-                      <div className={`pointer-events-auto ${STATION_WORKBENCH_COLUMN}`}>
-                        {terminalVm?.disabled && terminalVm.disabledReason ? (
-                          <p
-                            role="status"
-                            className="mb-1.5 text-right text-role-caption font-semibold text-amber-700"
-                          >
-                            {terminalVm.disabledReason}
-                          </p>
-                        ) : null}
-                        <WorkspaceNotesCard
-                          row={row}
-                          c={c}
-                          onActionFeedback={setActionFeedback}
-                          activeStep={activeStep}
-                          // Enter in the notes field = chat Send → print+receive.
-                          onPrimaryAction={
-                            terminalVm ? () => void terminalVm.onClick() : undefined
-                          }
-                          primaryActionDisabled={Boolean(terminalVm?.disabled)}
-                          trailingAction={
-                            <StationTerminalDock
-                              embedded
-                              vm={terminalVm}
-                              assignedTechId={row.assigned_tech_id}
-                            />
-                          }
-                        />
-                      </div>
+                  // ONE elevated shell floating over the canvas — the receive
+                  // split-CTA rides in the notes composer footer (no second dock
+                  // row). Placement SoT = slicedActionDockWrapperClass({ docked: false }).
+                  // There is no per-tab branch any more: the dock is
+                  // carton-terminal, so this is the dock for every carton.
+                  <div className={slicedActionDockWrapperClass({ docked: false })}>
+                    <div className={`pointer-events-auto ${STATION_WORKBENCH_COLUMN}`}>
+                      {terminalVm?.disabled && terminalVm.disabledReason ? (
+                        <p
+                          role="status"
+                          className="mb-1.5 text-right text-role-caption font-semibold text-amber-700"
+                        >
+                          {terminalVm.disabledReason}
+                        </p>
+                      ) : null}
+                      <WorkspaceNotesCard
+                        row={row}
+                        c={c}
+                        onActionFeedback={setActionFeedback}
+                        activeStep={activeStep}
+                        // Enter in the notes field = chat Send → print+receive.
+                        onPrimaryAction={
+                          terminalVm ? () => void terminalVm.onClick() : undefined
+                        }
+                        primaryActionDisabled={Boolean(terminalVm?.disabled)}
+                        trailingAction={
+                          <StationTerminalDock
+                            embedded
+                            vm={terminalVm}
+                            assignedTechId={row.assigned_tech_id}
+                          />
+                        }
+                      />
                     </div>
-                  ) : (
-                    <StationTerminalDock
-                      vm={terminalVm}
-                      assignedTechId={row.assigned_tech_id}
-                    />
-                  )
+                  </div>
                 }
-              />
+              >
+                <motion.div initial={false} animate="show" variants={revealContainer}>
+                  <motion.div variants={revealItem}>{unboxOverview}</motion.div>
+                </motion.div>
+              </StationWorkbench>
             </div>
 
             {row.receiving_id != null ? (
@@ -623,6 +682,7 @@ export function LineEditPanel({
                 staffId={Number(staffId) || 0}
                 poRef={c.poNumber || null}
                 photoIntent={RECEIVING_PHOTO_LIST_INTENT_CARTON}
+                onOpenMovePhotosExternal={openMovePhotosPush}
               />
             ) : null}
           </StationPanelRoot>
@@ -643,14 +703,42 @@ export function LineEditPanel({
             receivingId={row.receiving_id ?? undefined}
             onClose={() => setTicketView(false)}
           />
-        ) : showTicketExpand ? (
-          // Linked ticket parked — same expand strip as the receiving
-          // recent-rail collapse (`CONTEXT_PANEL_COLLAPSE_STRIP_CLASS`).
-          <ReceivingTicketExpandControl onExpand={() => setTicketView(true)} />
+        ) : showToolPush && activeToolPush ? (
+          <ReceivingToolPushStack
+            tool={activeToolPush}
+            row={row}
+            onClose={closeToolPush}
+          />
+        ) : showDisplays && activeSideTab ? (
+          <ReceivingDisplaysPushStack
+            tabs={unboxSideTabs}
+            activeTab={activeSideTab}
+            onTabChange={(id) => setRequestedSideTab(id as UnboxSideTab)}
+            rightSlot={editPoControl}
+            onClose={closeDisplays}
+          />
+        ) : showExpandStrip ? (
+          // Nothing owns the edge — park the same expand strip the receiving
+          // recent-rail collapse uses (`CONTEXT_PANEL_COLLAPSE_STRIP_CLASS`).
+          // Displays first (it is the general secondary surface); a linked but
+          // closed ticket restores beneath it.
+          <ReceivingPushExpandStrip>
+            <HoverTooltip label="Show displays" asChild>
+              <IconButton
+                size="sm"
+                tone="neutral"
+                ariaLabel="Show displays"
+                icon={<Layers className="h-4 w-4" />}
+                onClick={() => openDisplays(c.isUnfound ? 'classify' : 'listings')}
+                data-testid="unbox-displays-expand-button"
+              />
+            </HoverTooltip>
+            {showTicketExpand ? (
+              <ReceivingTicketExpandControl onExpand={() => setTicketView(true)} />
+            ) : null}
+          </ReceivingPushExpandStrip>
         ) : null}
       </div>
-
-      <LineEditModals row={row} c={c} />
     </>
   );
 }
