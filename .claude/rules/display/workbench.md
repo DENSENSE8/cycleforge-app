@@ -200,12 +200,20 @@ view.
   storage + URL-apply implementation; a surface supplies only `storageKey` + `paramKeys` and its own
   UI. Exactly two consumers: `OutboundSavedViewsList` (dashboard sidebar) and `TableOptionsMenu`
   (station + testing history ⋮). Never fork the apply-to-URL logic for a new surface.
-- **Known split-brain (Ask-first to close):** `useSavedViews` persists to **localStorage**, so a
-  dashboard view does not follow a staffer to a second device — while `operations_saved_views` and
-  `media_library_saved_views` are server-backed, org-scoped and staff-owned. Three implementations,
-  one concept. The fix is a polymorphic `saved_views` waist (org-scoped, `staff_id`-owned,
-  `is_shared`), but it is a live-table migration, so it stays Ask-first
-  (`.claude/rules/pattern-evolution.md`) rather than something a UI task does in passing.
+- **One store, three faces (the split-brain is CLOSED — 2026-07-29).** Every saved view, on every
+  surface, lives in the polymorphic **`saved_views`** table (org-scoped, `staff_id`-owned,
+  `is_shared`). `2026-07-29g_saved_views.sql` created it; `2026-07-29h` dropped the
+  `operations_saved_views` / `media_library_saved_views` duplicates. `useSavedViews` writes it
+  through `/api/saved-views` and **no longer touches localStorage** — a dashboard view now follows
+  a staffer to a second device.
+  - The `storageKey` prop kept its name for call-site stability; it resolves to a DB `surface`
+    discriminator via **`src/lib/saved-views/surfaces.ts`**. That module is the SoT for the
+    discriminator: **keep `SAVED_VIEW_SURFACES` in lockstep with the `saved_views_surface_chk`
+    CHECK** in the birth migration, or a new surface fails its first insert.
+  - Ops and Media Library keep their own hooks/routes (`useOperationsSavedViews`,
+    `useMediaLibrarySavedViews`) because their UIs differ. **Three client hooks over one store is
+    not a fork** — the thing that must never be duplicated is the storage and the apply-to-URL
+    logic, and there is exactly one of each. Do not "consolidate" the hooks for symmetry.
 
 ---
 
