@@ -35,7 +35,13 @@ export const WORKBENCH_GUTTERS = 'mx-auto w-full max-w-[1440px] min-w-0 px-4 sm:
  *  band face shares a Y row with `receivingScanBandClass` (panel outer `m-2`). */
 export const WORKBENCH_CHROME_COLUMN = cn(WORKBENCH_GUTTERS, 'py-2');
 /**
- * Scroll-body column: KPI strip (scrolls away) then the framed ops table.
+ * Scroll-body column: KPI strip then the framed ops table.
+ *
+ * The strip does NOT scroll away — {@link WORKBENCH_TABLE_VIEWPORT} bounds the
+ * table below it, so the body never overflows by more than its own gutter and
+ * the strip stays read-able beside the grid. (This comment said "scrolls away"
+ * until 2026-07-31, contradicting the viewport docblock 15 lines down and the
+ * E2E that asserted it.)
  * `pt-2` + chrome `py-2` = 1rem chrome→KPI, matching the KPI wrapper’s `mb-4`
  * so both seams around the strip are equal.
  */

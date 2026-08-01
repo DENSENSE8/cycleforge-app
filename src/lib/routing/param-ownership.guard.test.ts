@@ -219,6 +219,69 @@ test('SHARED_OWNED_KEYS only lists keys that are actually shared (it shrinks)', 
   );
 });
 
+/**
+ * Routes whose `?sort=` vocabulary BAKES the direction into the value
+ * (`zoho_newest` / `zoho_oldest`, `priority` / `newest`), so a separate `?dir=`
+ * would be a param with no reader. Every other route that owns `sort` can
+ * receive a grid COLUMN key, where direction is a second, independent axis.
+ *
+ * **This list only shrinks** — same ratchet discipline as the DS guards. A
+ * route earns removal by growing a column sort and declaring `dir`; never add
+ * an entry to land a change.
+ */
+const SORT_WITHOUT_DIRECTION: Readonly<Record<string, string>> = {
+  '/unbox': 'History tab ORDER BY — `unboxed_newest` / `scanned_newest`, both directional values.',
+  '/incoming': 'Server ORDER BY enum — `zoho_newest` / `zoho_oldest` / `expected_soonest`.',
+  '/shipping/labels': 'SHIPPING_COMMON display sort — `priority` / `newest`.',
+  '/shipping/ready': 'SHIPPING_COMMON display sort — `priority` / `newest`.',
+  '/shipping/fba': 'SHIPPING_COMMON display sort — `priority` / `newest`.',
+  '/shipping/scan-out': 'SHIPPING_COMMON display sort — `priority` / `newest`.',
+  '/products': 'Pairing backlog ordering — `volume` / `confidence` / `count` / `title`, a rank choice rather than a sortable column.',
+};
+
+/**
+ * `?dir=` is meaningless without `?sort=`, and `?sort=` without `?dir=` is
+ * WORSE than meaningless — the boundary parse strips the undeclared half, so
+ * the surface silently pins itself to the sort's default direction.
+ *
+ * `SHARED_OWNED_KEYS.dir` has documented this pairing since the 2026-06 bug,
+ * but nothing enforced it: `/dashboard` shipped `sort` without `dir`, which
+ * made every Pending column sort permanently ascending (the header wrote
+ * `dir=desc`, hygiene deleted it on the next pass, and `parseQueueDisplaySortDir`
+ * resolved the now-missing param back to the default). A prose invariant is a
+ * recipe; this is the enforcement.
+ */
+test('a route that owns ?sort= also owns ?dir= (direction is never orphaned)', () => {
+  const orphaned = ALL_SPECS.filter(
+    (spec) =>
+      'sort' in spec.owns && !('dir' in spec.owns) && !(spec.route in SORT_WITHOUT_DIRECTION),
+  ).map((spec) => spec.route);
+  assert.deepEqual(
+    orphaned,
+    [],
+    'These routes declare ?sort= but not ?dir=, so the boundary parse will strip the direction and pin the surface to the sort default. Add `dir: paramEnum([\'asc\',\'desc\'])`, or document the route in SORT_WITHOUT_DIRECTION if its sort vocabulary bakes direction into the value.',
+  );
+
+  // The allowlist only shrinks: an entry whose route grew a `dir` (or lost
+  // `sort`) is stale and must go, or it silently excuses the next regression.
+  const staleExcuses = Object.keys(SORT_WITHOUT_DIRECTION).filter((route) => {
+    const spec = ALL_SPECS.find((s) => s.route === route);
+    return !spec || !('sort' in spec.owns) || 'dir' in spec.owns;
+  });
+  assert.deepEqual(
+    staleExcuses,
+    [],
+    'These SORT_WITHOUT_DIRECTION entries no longer describe a live sort-without-dir route — drop them.',
+  );
+
+  // The converse is a different (harmless-but-dead) shape: a direction with
+  // nothing to direct. Catch it in the same place so the pair stays a pair.
+  const dangling = ALL_SPECS.filter(
+    (spec) => 'dir' in spec.owns && !('sort' in spec.owns),
+  ).map((spec) => spec.route);
+  assert.deepEqual(dangling, [], 'These routes declare ?dir= with no ?sort= to direct.');
+});
+
 test('an owned param never shadows an ambient one', () => {
   const shadowed: string[] = [];
   for (const spec of ALL_SPECS) {

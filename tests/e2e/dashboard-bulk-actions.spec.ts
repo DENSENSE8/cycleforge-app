@@ -26,7 +26,9 @@ test.describe('Dashboard bulk actions', () => {
     const all = await labels.evaluateAll((els) =>
       els.map((e) => e.getAttribute('aria-label') ?? '').filter(Boolean),
     );
-    return [...new Set(all.filter((l) => /^(Assign|Set ship-by|Print|Delete|Copy details)/i.test(l)))];
+    return [
+      ...new Set(all.filter((l) => /^(Assign|Set ship-by|Print|Delete|Copy details|Export CSV)/i.test(l))),
+    ];
   }
 
   test('pre-pack lanes offer prep actions; post-pack lanes offer the shipping document', async ({
@@ -37,15 +39,44 @@ test.describe('Dashboard bulk actions', () => {
     expect(pending).toContain('Assign tester / packer');
     expect(pending).toContain('Set ship-by date');
     expect(pending).toContain('Print product labels'); // SKU+serial prep label
+    // Reads the selected rows only, so it holds on every lane.
+    expect(pending).toContain('Export CSV');
     expect(pending).not.toContain('Print shipping labels');
 
     const packed = await barActionsFor(page, 'packed');
     expect(packed).toContain('Copy details');
     expect(packed).toContain('Print shipping labels');
+    expect(packed).toContain('Export CSV');
     // Assigning a tester to an order that is already packed is not a thing.
     expect(packed).not.toContain('Assign tester / packer');
     expect(packed).not.toContain('Set ship-by date');
     expect(packed).not.toContain('Print product labels');
+  });
+
+  test('Export CSV downloads the selection as a warehouse-dated file', async ({ page }) => {
+    await page.goto('/dashboard?unshipped');
+    const row = page.locator('[data-order-row-id]').first();
+    await expect(row).toBeVisible({ timeout: 30_000 });
+    await row.getByRole('checkbox').first().check();
+
+    const [download] = await Promise.all([
+      page.waitForEvent('download'),
+      page.getByLabel('Export CSV').first().click(),
+    ]);
+
+    // Named for the lane + the WAREHOUSE civil day (not UTC, which is already
+    // tomorrow for a late-afternoon PST export).
+    expect(download.suggestedFilename()).toMatch(/^pending-orders-\d{4}-\d{2}-\d{2}\.csv$/);
+
+    // Header + at least the one selected row — the file is built from the rows
+    // in hand, never a second query that could disagree with the screen.
+    const stream = await download.createReadStream();
+    const chunks: Buffer[] = [];
+    for await (const chunk of stream) chunks.push(Buffer.from(chunk));
+    const lines = Buffer.concat(chunks).toString('utf8').trim().split('\n');
+    expect(lines[0]).toContain('order_id');
+    expect(lines[0]).toContain('is_out_of_stock');
+    expect(lines.length).toBeGreaterThanOrEqual(2);
   });
 
   test('Assign opens the multi-row carousel, not a batch-edit form', async ({ page }) => {

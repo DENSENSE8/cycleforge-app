@@ -35,6 +35,7 @@ import { ShippedPanelEditorDock } from '@/components/shipped/details-panel/Shipp
 import { DeleteOrderControl } from '@/components/shipped/stacks/DeleteOrderControl';
 import { OrderIdentityHeader } from '@/components/order-record/OrderIdentityHeader';
 import { OrderRecordBody } from '@/components/order-record/OrderRecordBody';
+import { resolveOrderInspectorContext } from '@/lib/selection-context/order-inspector-context';
 import {
   resolveSearchOrder,
   type ResolvedSearchOrder,
@@ -188,7 +189,11 @@ function OrderFullPageLoaded({
   const platformLabel = getAccountSourceLabel(shipped.order_id, shipped.account_source);
   const { activeInput, setActiveInput } = useShippedPanelViewState({
     initialShipped: order,
-    journeyFirst,
+    // Single-scroll record body — no tab strip here, so the opening section only
+    // matters for parity with the slide-over. Resolved from the same SoT so the
+    // journey-first hint can never mean two different things.
+    defaultSection: resolveOrderInspectorContext({ panelContext: 'dashboard', journeyFirst })
+      .defaultTab,
   });
   const { copiedAll, copiedOrderId, handleCopyAll, handleCopyOrderId } = useShippedCopyActions(
     shipped,

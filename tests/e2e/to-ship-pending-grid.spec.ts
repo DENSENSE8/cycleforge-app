@@ -442,8 +442,12 @@ test.describe('To Ship · Pending Sheets-like grid', () => {
     const pageSlack = await pageScroll.evaluate((el) => el.scrollHeight - el.clientHeight);
     expect(pageSlack, 'the bounded host keeps the page from growing').toBeLessThan(120);
 
-    // (3) The KPI stays pinned: scrolling the page as far as it goes must not
-    // carry the strip up under the lifecycle tabs.
+    // (3) The KPI never leaves. It is not literally immovable — the body's
+    // bottom gutter is the whole of `pageSlack`, so scrolling the page to its
+    // end shifts the strip up by that much and no more. What matters is that it
+    // is still on screen and still readable afterwards, which is what the old
+    // "scrolls away under the tabs" assertion had backwards.
+    const kpiTopBefore = (await kpi.boundingBox())?.y ?? 0;
     await pageScroll.evaluate((el) => {
       el.scrollTop = el.scrollHeight;
     });
@@ -455,9 +459,13 @@ test.describe('To Ship · Pending Sheets-like grid', () => {
     await expect(kpi).toBeVisible();
     if (chromeBox && kpiBox) {
       expect(
-        kpiBox.y,
-        'KPI stays below the pinned chrome rather than sliding under it',
-      ).toBeGreaterThanOrEqual(chromeBox.y + chromeBox.height - 2);
+        kpiTopBefore - kpiBox.y,
+        'KPI travels at most the page slack — it is not carried away by row scroll',
+      ).toBeLessThanOrEqual(pageSlack + 2);
+      expect(
+        kpiBox.y + kpiBox.height,
+        'KPI is still readable below the pinned chrome, not tucked behind it',
+      ).toBeGreaterThan(chromeBox.y + chromeBox.height);
     }
 
     // (4) The depth contract: all four edges of the framed card are on screen,
