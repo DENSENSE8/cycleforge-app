@@ -50,7 +50,6 @@ import {
   type SidebarIconComponent,
   type SidebarNavItem,
 } from '@/lib/sidebar-navigation';
-import { isParkedSurfaceBlocked } from '@/lib/dogfood/parked-surfaces';
 import { useSidebarModeNav } from '@/components/sidebar/master-nav/useSidebarModeNav';
 import { looksLikeIdentifier, searchScopeHref, searchScopeLabel } from '@/lib/search/search-hit';
 import { isSearchEntityType } from '@/lib/search/build-search-text';
@@ -178,15 +177,13 @@ interface ModeOption {
  * so `/shipping?mode=scan-out` and friends were URL-typing territory.
  *
  * Gating mirrors the master nav exactly: page-level `requires` via
- * `getSidebarNavItems`, per-mode `requires` via the shared `filterPageModes`,
- * and parked surfaces skipped (they render a stand-in, not their real modes).
+ * `getSidebarNavItems`, per-mode `requires` via the shared `filterPageModes`.
  * Single-mode pages are omitted — the page row already goes there.
  */
 function buildModeItems(permissions?: ReadonlySet<string>): ModeOption[] {
   const items = permissions ? getSidebarNavItems({ permissions }) : APP_SIDEBAR_NAV;
   const out: ModeOption[] = [];
   for (const item of items) {
-    if (isParkedSurfaceBlocked(item.id)) continue;
     const page = getSidebarPageNav(item.id);
     if (!page?.modes) continue;
     const modes = filterPageModes(page, permissions).modes ?? [];

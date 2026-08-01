@@ -2,49 +2,46 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   APP_SIDEBAR_NAV,
-  PARKED_SIDEBAR_NAV_IDS,
   getSidebarNavItems,
   isSidebarRouteMobileRestricted,
   SIDEBAR_PAGE_NAV,
   getSidebarPageNav,
   getSidebarHref,
   getSidebarRouteKey,
+  getSidebarNavPageId,
   hasSidebarContextPanel,
   applyModeTarget,
   resolveSidebarMode,
 } from '@/lib/sidebar-navigation';
 import { routeParamsFor } from '@/lib/routing/registry';
 
-test('getSidebarNavItems returns the full sidebar list by default (parked sub-routes filtered)', () => {
-  // A row that rides a parked surface (`parkedSurface`, e.g. studio-catalog on
-  // the parked `studio` surface) is dropped while that surface is locked, so a
-  // sub-route link never dead-ends on the ParkedSurface stand-in. Force the
-  // locked default regardless of the ambient env, then everything else returns
-  // verbatim.
-  const prevA = process.env.DOGFOOD_FULL_SURFACE;
-  const prevB = process.env.NEXT_PUBLIC_DOGFOOD_FULL_SURFACE;
-  delete process.env.DOGFOOD_FULL_SURFACE;
-  delete process.env.NEXT_PUBLIC_DOGFOOD_FULL_SURFACE;
-  try {
-    const expected = APP_SIDEBAR_NAV.filter((item) => !item.parkedSurface);
-    assert.deepEqual(getSidebarNavItems(), expected);
-  } finally {
-    if (prevA === undefined) delete process.env.DOGFOOD_FULL_SURFACE;
-    else process.env.DOGFOOD_FULL_SURFACE = prevA;
-    if (prevB === undefined) delete process.env.NEXT_PUBLIC_DOGFOOD_FULL_SURFACE;
-    else process.env.NEXT_PUBLIC_DOGFOOD_FULL_SURFACE = prevB;
-  }
+test('getSidebarNavItems returns the full sidebar list by default', () => {
+  // Dogfood parking is retired, so no rows are filtered out any more: the
+  // default call returns APP_SIDEBAR_NAV verbatim.
+  assert.deepEqual(getSidebarNavItems(), APP_SIDEBAR_NAV);
 });
 
-test('a parked sub-route row (studio-catalog) reappears once its surface is unlocked', () => {
-  const prev = process.env.DOGFOOD_FULL_SURFACE;
-  process.env.DOGFOOD_FULL_SURFACE = '1';
-  try {
-    const ids = getSidebarNavItems().map((item) => item.id);
-    assert.equal(ids.includes('studio-catalog'), true);
-  } finally {
-    if (prev === undefined) delete process.env.DOGFOOD_FULL_SURFACE;
-    else process.env.DOGFOOD_FULL_SURFACE = prev;
+test('Home is top-pinned; Sourcing / Operations ship in Overview; AI Chat under Media', () => {
+  // All four were unparked (the same promotion Studio took into Library).
+  // Re-parking any of them, or moving Home off the top pin, breaks this.
+  const items = getSidebarNavItems();
+
+  const home = items.find((item) => item.id === 'home');
+  assert.ok(home, 'home should ship on prod nav');
+  assert.equal(home.kind, 'top', 'home is top-pinned above Search');
+
+  const aiChat = items.find((item) => item.id === 'ai-chat');
+  assert.ok(aiChat, 'ai-chat should ship on prod nav');
+  assert.equal(aiChat.kind, 'top', 'ai-chat is top-pinned under Media');
+
+  for (const id of ['operations', 'sourcing']) {
+    const row = items.find((item) => item.id === id);
+    assert.ok(row, `${id} should ship on prod nav`);
+    assert.equal(
+      row.kind === 'main' ? row.mainGroup : null,
+      'overview',
+      `${id} belongs to the Overview drill`,
+    );
   }
 });
 
@@ -55,28 +52,47 @@ test('getSidebarNavItems omits mobile-restricted routes in mobile mode', () => {
   assert.equal(navIds.includes('support'), false);
   assert.equal(navIds.includes('admin'), false);
   assert.equal(navIds.includes('dashboard'), true);
-  // FBA / studio / etc. are parked off prod nav (dogfood surface).
+  // /fba is a permanent redirect into Shipping — it owns no spine row.
   assert.equal(navIds.includes('fba'), false);
   // Sales history folded into Dashboard L2 — no separate L1 nav row.
   assert.equal(navIds.includes('walk-in'), false);
 });
 
-test('dogfood prod nav omits parked surfaces', () => {
+test('prod nav ships every unparked page; only redirect surfaces stay off', () => {
   const navIds = new Set(getSidebarNavItems().map((item) => item.id));
+  // Dogfood parking is retired: Sourcing ships in Overview; AI Chat is top-pinned
+  // under Media. `fba` stays off the spine because /fba is a permanent redirect
+  // into Shipping, which already owns that surface (no second front door).
+  assert.equal(navIds.has('sourcing'), true, 'sourcing ships in Overview');
+  assert.equal(navIds.has('ai-chat'), true, 'ai-chat ships top-pinned under Media');
+  assert.equal(navIds.has('fba'), false, 'fba redirects into Shipping — no spine row');
+  // Studio was promoted out of the parked set — it is a live Library page now,
+  // so it must be present on prod nav rather than absent.
+  assert.equal(navIds.has('studio'), true, 'studio ships as a live nav page');
+  // Home is top-pinned; Operations stays an Overview page.
+  assert.equal(navIds.has('home'), true, 'home ships as a top-pinned page');
+  assert.equal(navIds.has('operations'), true, 'operations ships as a live Overview page');
+  assert.equal(navIds.has('studio-catalog'), true, 'its Catalog sub-route rides along');
+  // Stations + shipping + inventory + warehouse stay visible (receiving family
+  // promoted to L1: Arrival / Unbox / Pickup / Repair + Incoming on Desk).
   for (const id of [
-    'home',
-    'operations',
-    'sourcing',
-    'fba',
-    'studio',
-    'ai-chat',
+    'dashboard',
+    'triage',
+    'receive',
+    'pickup',
+    'repair',
+    'incoming',
+    'outbound',
+    'scan-out',
+    'tech',
+    'packer',
+    'products',
+    'inventory',
+    'warehouse',
   ]) {
-    assert.equal(navIds.has(id), false, `${id} should be parked off APP_SIDEBAR_NAV`);
-  }
-  // Stations + shipping + inventory + warehouse stay visible.
-  for (const id of ['dashboard', 'receiving', 'outbound', 'tech', 'packer', 'inventory', 'warehouse']) {
     assert.equal(navIds.has(id), true, `${id} should stay on dogfood nav`);
   }
+  assert.equal(navIds.has('receiving'), false, 'parent Receiving L1 is gone — modes are L1');
 });
 
 test('isSidebarRouteMobileRestricted only flags mobile-blocked routes', () => {
@@ -96,8 +112,8 @@ test('isSidebarRouteMobileRestricted only flags mobile-blocked routes', () => {
 // If a page's URL convention drifts on one side only, this fails loudly.
 test('every mode round-trips: resolveMode(apply(to(mode))) === mode', () => {
   for (const page of SIDEBAR_PAGE_NAV) {
-    assert.ok(page.modes && page.modes.length > 0, `${page.id} should declare modes`);
-    for (const mode of page.modes!) {
+    if (!page.modes || page.modes.length === 0) continue;
+    for (const mode of page.modes) {
       // Start from the page's bare href with no params — the cold-link case.
       const { pathname, search } = applyModeTarget(
         { pathname: page.href, params: new URLSearchParams() },
@@ -126,7 +142,8 @@ test('every mode round-trips: resolveMode(apply(to(mode))) === mode', () => {
 // still resolve.
 test('mode round-trip resolves, preserving unrelated params only on un-migrated routes', () => {
   for (const page of SIDEBAR_PAGE_NAV) {
-    for (const mode of page.modes!) {
+    if (!page.modes || page.modes.length === 0) continue;
+    for (const mode of page.modes) {
       const target = mode.to();
       // A mode legitimately sets/clears its OWN params (e.g. Review's Pairing
       // clears `rtab`/`packerLogId`). `applyModeTarget` only preserves params
@@ -187,14 +204,19 @@ test('dashboard modes clear Search-scoped openOrderId/map/q', () => {
 // A page's bare href must resolve to one of its declared modes (its default).
 // NB: the default isn't always the leftmost mode — FBA lists plan/combine/
 // shipped but defaults to `combine`. The specific defaults are pinned in the
-// deep-link spot-check below.
+// deep-link spot-check below. Modeless L1 pages (receiving family stations)
+// resolve to null.
 test("a page's bare href resolves to a declared mode (its default)", () => {
   for (const page of SIDEBAR_PAGE_NAV) {
     const resolved = resolveSidebarMode(page.id, {
       pathname: page.href,
       params: new URLSearchParams(),
     });
-    const ids = page.modes!.map((m) => m.id);
+    if (!page.modes || page.modes.length === 0) {
+      assert.equal(resolved, null, `${page.id} is modeless but resolved "${resolved}"`);
+      continue;
+    }
+    const ids = page.modes.map((m) => m.id);
     assert.ok(resolved && ids.includes(resolved), `${page.id} bare href resolved to "${resolved}", not a declared mode`);
   }
 });
@@ -202,22 +224,29 @@ test("a page's bare href resolves to a declared mode (its default)", () => {
 // Mode ids must be unique within a page (the dropdown + L2 rail key on them).
 test('mode ids are unique within each page', () => {
   for (const page of SIDEBAR_PAGE_NAV) {
-    const ids = page.modes!.map((m) => m.id);
+    if (!page.modes) continue;
+    const ids = page.modes.map((m) => m.id);
     assert.equal(new Set(ids).size, ids.length, `${page.id} has duplicate mode ids`);
   }
 });
 
-// Every modeful page id must be a real nav route OR a parked deep-link page,
-// and carry a resolver. Parked pages keep SIDEBAR_PAGE_NAV so /fba?mode=… etc.
-// still resolve when opened by URL / topic-worktree previews.
-test('SIDEBAR_PAGE_NAV pages are prod-nav or parked routes with resolvers', () => {
+// Every page id must be a real nav route OR one of the URL-only surfaces that
+// deliberately own no spine row: `fba` (a permanent redirect into Shipping,
+// which keeps its mode registry so legacy `?mode=` deep links still resolve)
+// and the legacy `receiving` family entry (modes only). Modeful pages carry a
+// resolver. Dogfood parking is retired — every other page ships on the spine.
+const URL_ONLY_PAGE_IDS = new Set(['fba', 'receiving']);
+
+test('SIDEBAR_PAGE_NAV pages are prod-nav or URL-only, with resolvers when modeful', () => {
   const navIds = new Set(APP_SIDEBAR_NAV.map((item) => item.id));
   for (const page of SIDEBAR_PAGE_NAV) {
     assert.ok(
-      navIds.has(page.id) || PARKED_SIDEBAR_NAV_IDS.has(page.id as never),
-      `${page.id} is not in APP_SIDEBAR_NAV and not in PARKED_SIDEBAR_NAV_IDS`,
+      navIds.has(page.id) || URL_ONLY_PAGE_IDS.has(page.id),
+      `${page.id} is neither in APP_SIDEBAR_NAV nor a known URL-only surface`,
     );
-    assert.equal(typeof page.resolveMode, 'function', `${page.id} missing resolveMode`);
+    if (page.modes && page.modes.length > 0) {
+      assert.equal(typeof page.resolveMode, 'function', `${page.id} missing resolveMode`);
+    }
   }
 });
 
@@ -265,19 +294,16 @@ test('resolveSidebarMode reads the operations mode', () => {
   assert.equal(resolveSidebarMode('operations', at('mode=bogus')), 'live');
 });
 
-// Packing is modeful: bare /pack is Standard; ?packMode= drives Fragile/Multi.
-// The surface graduated /packer → /pack (operator-surfaces Phase 7); the mode is
-// param-based so it resolves identically on either route.
-test('resolveSidebarMode reads the packer pack-mode', () => {
+// Packing is modeless Standard-only in MasterNav. Legacy `?packMode=` may still
+// hit the pack surface; resolveSidebarMode returns null without modes.
+test('resolveSidebarMode returns null for modeless packer', () => {
   const at = (search = '') => ({ pathname: '/pack', params: new URLSearchParams(search) });
-  assert.equal(resolveSidebarMode('packer', at()), 'standard');
-  assert.equal(resolveSidebarMode('packer', at('packMode=fragile')), 'fragile');
-  assert.equal(resolveSidebarMode('packer', at('packMode=multi')), 'multi');
-  assert.equal(resolveSidebarMode('packer', at('packMode=bogus')), 'standard');
-  // Legacy route still resolves the same mode (proxy redirects it to /pack).
+  assert.equal(getSidebarPageNav('packer')?.modes, undefined);
+  assert.equal(resolveSidebarMode('packer', at()), null);
+  assert.equal(resolveSidebarMode('packer', at('packMode=fragile')), null);
   assert.equal(
     resolveSidebarMode('packer', { pathname: '/packer', params: new URLSearchParams() }),
-    'standard',
+    null,
   );
 });
 
@@ -318,19 +344,36 @@ test('resolver matches existing panel derivations for known deep-links', () => {
   assert.equal(getSidebarRouteKey('/pickup'), 'receiving');
   assert.equal(getSidebarRouteKey('/repair'), 'receiving');
   assert.equal(getSidebarRouteKey('/receiving/history'), 'receiving');
+  // MasterNav L1 identity — promoted receiving stations (not the family key).
+  assert.equal(getSidebarNavPageId('/unbox'), 'receive');
+  assert.equal(getSidebarNavPageId('/triage'), 'triage');
+  assert.equal(getSidebarNavPageId('/incoming'), 'incoming');
+  assert.equal(getSidebarNavPageId('/pickup'), 'pickup');
+  assert.equal(getSidebarNavPageId('/repair'), 'repair');
+  assert.equal(getSidebarNavPageId('/receiving'), 'receive');
+  assert.equal(getSidebarNavPageId('/receiving/history'), 'receive');
+  assert.equal(resolveSidebarMode('receive', at('/unbox')), null);
   // FBA sub-modes live under Shipping as fbaMode (legacy mode=plan still works).
   assert.equal(resolveSidebarMode('fba', at('/shipping', 'mode=fba')), 'combine');
   assert.equal(resolveSidebarMode('fba', at('/shipping', 'mode=fba&fbaMode=plan')), 'plan');
   assert.equal(resolveSidebarMode('fba', at('/fba', 'mode=plan')), 'plan');
-  // Shipping modes include ready + fba (canonical `/shipping`; `/outbound` redirects).
+  // Desk Shipping modes: Labels / Ready / FBA. Scan out is its own floor L1.
   assert.equal(resolveSidebarMode('outbound', at('/shipping')), 'labels');
   assert.equal(resolveSidebarMode('outbound', at('/shipping', 'mode=ready')), 'ready');
   assert.equal(resolveSidebarMode('outbound', at('/shipping', 'mode=fba')), 'fba');
-  assert.equal(resolveSidebarMode('outbound', at('/shipping', 'mode=scan-out')), 'scan-out');
+  assert.equal(resolveSidebarMode('outbound', at('/shipping/labels')), 'labels');
+  assert.equal(resolveSidebarMode('outbound', at('/shipping/ready')), 'ready');
+  assert.equal(resolveSidebarMode('outbound', at('/shipping/fba')), 'fba');
   // Redirect-window: legacy path still resolves nav key until the edge 308 lands.
   assert.equal(resolveSidebarMode('outbound', at('/outbound', 'mode=ready')), 'ready');
   assert.equal(getSidebarRouteKey('/shipping'), 'outbound');
   assert.equal(getSidebarRouteKey('/outbound'), 'outbound');
+  assert.equal(getSidebarRouteKey('/shipping/scan-out'), 'outbound');
+  assert.equal(getSidebarNavPageId('/shipping/labels'), 'outbound');
+  assert.equal(getSidebarNavPageId('/shipping/ready'), 'outbound');
+  assert.equal(getSidebarNavPageId('/shipping/fba'), 'outbound');
+  assert.equal(getSidebarNavPageId('/shipping/scan-out'), 'scan-out');
+  assert.equal(resolveSidebarMode('scan-out', at('/shipping/scan-out')), null);
   // Dashboard: Shipping (id `outbound`) is the default — `?shipped`,
   // `?unshipped`, legacy `?pending`, and bare all resolve to it. Receiving
   // rides `?mode=inbound` (canonical) or the `?mode=receiving` alias. Sales /

@@ -6,8 +6,8 @@ import { dispatchGlobalSearchFocus } from '@/lib/global-search-focus';
 import {
   applyModeTarget,
   getSidebarHref,
+  getSidebarNavPageId,
   getSidebarPageNav,
-  getSidebarRouteKey,
 } from '@/lib/sidebar-navigation';
 
 /**
@@ -27,7 +27,7 @@ export function useSidebarModeNav() {
   return useCallback(
     (pageId: string, modeId?: string) => {
       const page = getSidebarPageNav(pageId);
-      const samePage = getSidebarRouteKey(pathname) === pageId;
+      const samePage = getSidebarNavPageId(pathname) === pageId;
 
       // Single-surface page, unknown page, or "just go there": bare href.
       // Resolve through `getSidebarHref` so modeless pages (operations, admin,
