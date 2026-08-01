@@ -25,6 +25,7 @@ import {
 import { ToolbarSearchToggle } from '@/design-system/primitives';
 import { GridFieldsMenu } from '@/components/ui/table-column-config/GridFieldsMenu';
 import { cn } from '@/utils/_cn';
+import { pickupOrderIsDone } from '@/lib/local-pickup/order-status';
 import { usePickupLines, type PickupLine } from './pickup-lines';
 import { PickupGridView } from './grid/PickupGridView';
 import { PICKUP_GRID_COLUMNS } from './grid/pickup-grid-layout';
@@ -33,7 +34,7 @@ type PickupStatusTab = 'all' | 'draft' | 'done';
 
 function rowMatchesStatus(line: PickupLine, tab: PickupStatusTab): boolean {
   if (tab === 'all') return true;
-  const done = line.order_status === 'COMPLETED';
+  const done = pickupOrderIsDone(line.order_status);
   return tab === 'done' ? done : !done;
 }
 
@@ -91,8 +92,8 @@ export function PickupWorkspace({ selectedOrderId = null }: PickupWorkspaceProps
   const tabs = useMemo(
     () => [
       { id: 'all', label: 'All', count: allRows.length },
-      { id: 'draft', label: 'Draft', count: allRows.filter((l) => l.order_status !== 'COMPLETED').length },
-      { id: 'done', label: 'Done', count: allRows.filter((l) => l.order_status === 'COMPLETED').length },
+      { id: 'draft', label: 'Draft', count: allRows.filter((l) => !pickupOrderIsDone(l.order_status)).length },
+      { id: 'done', label: 'Done', count: allRows.filter((l) => pickupOrderIsDone(l.order_status)).length },
     ],
     [allRows],
   );

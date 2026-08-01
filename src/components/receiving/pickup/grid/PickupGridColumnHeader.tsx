@@ -1,14 +1,9 @@
 'use client';
 
-import { tableHeader } from '@/design-system/tokens/typography/presets';
-import { ColumnTypeGlyph } from '@/components/ui/table-column-config/column-type-glyph';
 import {
-  GridHeaderLabel,
-  gridHeaderAriaSort,
-} from '@/design-system/components/grid/GridHeaderLabel';
-import { gridHeaderCellAlignClass, resolveGridColumnAlign } from '@/design-system/components/grid/grid-header-align';
-import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { cn } from '@/utils/_cn';
+  LedgerGridColumnHeader,
+  type LedgerHeaderLayoutApi,
+} from '@/design-system/components/grid/LedgerGridColumnHeader';
 import {
   PICKUP_GRID_COLUMNS,
   PICKUP_GRID_FROZEN_CELL,
@@ -23,11 +18,21 @@ import {
   type PickupGridSortDir,
 } from './pickup-grid-layout';
 
+const PICKUP_HEADER_LAYOUT: LedgerHeaderLayoutApi<PickupGridColumn> = {
+  template: pickupGridTemplate,
+  cellClass: pickupGridCell,
+  rowShellClass: pickupGridRowShellClass,
+  frozenCellClass: PICKUP_GRID_FROZEN_CELL,
+  frozenLeft: (key) => pickupGridFrozenLeft(key as PickupGridColumnKey),
+  isFrozen: isPickupGridFrozen,
+  isSortable: isPickupGridSortable,
+};
+
 /**
- * Sticky column header for the Local Pickup LedgerGrid — SoT labels, adaptive
- * glyph + short label, click-to-sort. No select-all control: pickup is a
- * read-only browse surface (no bulk mode), so `select` is a bare gutter that
- * keeps the frozen title aligned with every other station grid.
+ * Sticky column header for the Local Pickup LedgerGrid — thin adapter over
+ * {@link LedgerGridColumnHeader}. Read-only browse (no select-all); the empty
+ * `select` gutter keeps the frozen title aligned with every other station grid.
+ * Columns arrive already visibility-resolved from {@link PickupGridView}.
  */
 export function PickupGridColumnHeader({
   columns = PICKUP_GRID_COLUMNS,
@@ -40,109 +45,17 @@ export function PickupGridColumnHeader({
   sortDir?: PickupGridSortDir | null;
   onSortColumn?: (key: PickupGridColumnKey) => void;
 }) {
-  const template = pickupGridTemplate(columns);
-  const dataColumns = columns.filter((c) => c.key !== 'select');
-
   return (
-    <div
-      role="row"
-      className={cn(
-        'grid min-h-11 border-b border-border-default bg-surface-card px-0 py-0',
-        pickupGridRowShellClass(false, { scrollMinContent: true }),
-      )}
-      style={{ gridTemplateColumns: template }}
-    >
-      <div
-        className={cn(
-          pickupGridCell({ inset: 'none', rule: true }),
-          'justify-center',
-          PICKUP_GRID_FROZEN_CELL,
-        )}
-        style={{ left: pickupGridFrozenLeft('select') }}
-        aria-hidden
-      />
-
-      {dataColumns.map((column, i) => {
-        const last = i === dataColumns.length - 1;
-        const sortable = Boolean(onSortColumn) && isPickupGridSortable(column.key);
-        return (
-          <PickupHeaderCell
-            key={column.key}
-            column={column}
-            last={last}
-            sortActive={sortable}
-            isActiveSort={activeSort === column.key}
-            sortDir={activeSort === column.key ? sortDir : null}
-            onSort={sortable ? () => onSortColumn?.(column.key) : undefined}
-          />
-        );
-      })}
-    </div>
-  );
-}
-
-function PickupHeaderCell({
-  column,
-  last,
-  sortActive = false,
-  isActiveSort = false,
-  sortDir = null,
-  onSort,
-}: {
-  column: PickupGridColumn;
-  last: boolean;
-  sortActive?: boolean;
-  isActiveSort?: boolean;
-  sortDir?: PickupGridSortDir | null;
-  onSort?: () => void;
-}) {
-  const frozen = isPickupGridFrozen(column.key);
-
-  const glyph = column.type ? (
-    <ColumnTypeGlyph type={column.type} className="h-3 w-3 text-text-faint" />
-  ) : null;
-
-  // Tooltip copy only — the visible label is resolved inside GridHeaderLabel.
-  const label = column.label ?? column.key;
-
-  const inner = (
-    <GridHeaderLabel column={column} glyph={glyph} sortDir={isActiveSort ? sortDir : null} />
-  );
-
-  const ariaSort = gridHeaderAriaSort(isActiveSort, sortDir, sortActive);
-
-  const tip =
-    isActiveSort && sortDir
-      ? `${label} · sorted ${sortDir === 'asc' ? 'A→Z / ascending' : 'Z→A / descending'}`
-      : sortActive
-        ? `${label} · click to sort`
-        : label;
-
-  const cell = (
-    <div
-      role="columnheader"
-      data-col={column.key}
-      data-frozen-edge={column.key === 'title' ? true : undefined}
-      aria-sort={ariaSort}
-      onClick={onSort}
-      className={cn(
-        'group/hcell relative gap-1 min-h-11',
-        gridHeaderCellAlignClass(resolveGridColumnAlign(column)),
-        pickupGridCell({ rule: !last, inset: 'grid' }),
-        frozen && PICKUP_GRID_FROZEN_CELL,
-        tableHeader,
-        sortActive && 'cursor-pointer hover:text-text-default',
-        isActiveSort && 'text-text-default',
-      )}
-      style={frozen ? { left: pickupGridFrozenLeft(column.key) } : undefined}
-    >
-      {inner}
-    </div>
-  );
-
-  return (
-    <HoverTooltip label={tip} focusable={false} asChild>
-      {cell}
-    </HoverTooltip>
+    <LedgerGridColumnHeader
+      columns={columns}
+      layout={PICKUP_HEADER_LAYOUT}
+      activeSort={activeSort}
+      sortDir={sortDir}
+      onSortColumn={
+        onSortColumn
+          ? (key) => onSortColumn(key as PickupGridColumnKey)
+          : undefined
+      }
+    />
   );
 }

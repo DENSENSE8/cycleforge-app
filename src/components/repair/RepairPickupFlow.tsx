@@ -6,6 +6,7 @@ import { SignaturePad, type SignatureData } from './SignaturePad';
 import { getSidebarIntakeSubmitButtonClass } from '@/design-system/components';
 import { Button } from '@/design-system/primitives';
 import { useBodyScrollLock } from '@/design-system/hooks';
+import { refreshDomains } from '@/lib/refresh/bus';
 import type { RSRecord } from '@/lib/neon/repair-service-queries';
 
 interface RepairPickupFlowProps {
@@ -66,6 +67,7 @@ export function RepairPickupFlow({ repair, onUpdate, onClose }: RepairPickupFlow
       if (!response.ok || !result?.success) {
         throw new Error(result?.details || result?.error || 'Pickup failed');
       }
+      refreshDomains(['repairs']);
       onUpdate();
       return true;
     } catch (err: any) {
