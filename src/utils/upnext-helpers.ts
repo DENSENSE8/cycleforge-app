@@ -1,46 +1,9 @@
-import { getDaysLateNumber, getDaysLateTone } from '@/utils/date';
-import { conditionTextColor } from '@/lib/conditions';
-import type { WorkOrderRow } from '@/components/work-orders/types';
-import type { Order, RepairQueueItem, FBAQueueItem } from '@/components/station/upnext/upnext-types';
+/**
+ * Shared display helpers still used by live shipping surfaces.
+ * (Legacy UpNext card builders lived here; removed with the orphan UpNext tree.)
+ */
 
-// ─── Display helpers ────────────────────────────────────────────────────────
-
-export function getOrderIdLast4(orderId: string) {
-  const digits = String(orderId || '').replace(/\D/g, '');
-  if (digits.length >= 4) return digits.slice(-4);
-  return String(orderId || '').slice(-4);
-}
-
-export function getLast4(value: string | null | undefined) {
-  const digits = String(value || '').replace(/\D/g, '');
-  if (digits.length >= 4) return digits.slice(-4);
-  const raw = String(value || '').trim();
-  return raw.length > 4 ? raw.slice(-4) : raw || 'None';
-}
-
-export function getTrackingLast4(tracking: string) {
-  const digits = String(tracking || '').replace(/\D/g, '');
-  if (digits.length >= 4) return digits.slice(-4);
-  return String(tracking || '').slice(-4);
-}
-
-// ─── Date / urgency helpers ─────────────────────────────────────────────────
-
-export function getDisplayShipByDate(order: { ship_by_date?: string | null; created_at?: string | null }) {
-  const shipByRaw = String(order.ship_by_date || '').trim();
-  const createdAtRaw = String(order.created_at || '').trim();
-  const isInvalid = !shipByRaw || /^\d+$/.test(shipByRaw) || Number.isNaN(new Date(shipByRaw).getTime());
-  return isInvalid ? createdAtRaw || null : shipByRaw;
-}
-
-// Re-exported from @/utils/date — canonical source of truth
-export { getDaysLateNumber, getDaysLateTone };
-
-// ─── Condition helpers ──────────────────────────────────────────────────────
-
-/** @deprecated thin re-export of `conditionTextColor` (SoT in lib/conditions). */
-export const getConditionColor = conditionTextColor;
-
+/** Drop a leading condition token from a product title when present. */
 export function stripConditionPrefix(title: string | null | undefined, condition: string | null | undefined) {
   const t = (title || '').trimStart();
   const c = (condition || '').trim();
@@ -49,80 +12,4 @@ export function stripConditionPrefix(title: string | null | undefined, condition
     return t.slice(c.length).trimStart();
   }
   return t;
-}
-
-// ─── WorkOrderRow builders ──────────────────────────────────────────────────
-
-export function buildOrderWorkOrderRow(order: Order): WorkOrderRow {
-  return {
-    id:          `order-${order.id}`,
-    entityType:  'ORDER',
-    entityId:    order.id,
-    queueKey:    'orders',
-    queueLabel:  'Orders',
-    title:       order.product_title || 'Unknown Product',
-    subtitle:    [order.order_id, order.shipping_tracking_number, order.sku].filter(Boolean).join(' • '),
-    recordLabel: order.order_id || '',
-    sourcePath:  '/dashboard',
-    techId:      order.tester_id ?? null,
-    techName:    order.tester_name ?? null,
-    packerId:    order.packer_id ?? null,
-    packerName:  order.packer_name ?? null,
-    status:      'OPEN',
-    priority:    0,
-    deadlineAt:  order.ship_by_date ?? null,
-    notes:       null,
-    assignedAt:  null,
-    updatedAt:   null,
-    orderId:     order.order_id || null,
-    trackingNumber: order.shipping_tracking_number || null,
-  };
-}
-
-export function buildRepairWorkOrderRow(repair: RepairQueueItem): WorkOrderRow {
-  return {
-    id:           `repair-${repair.repairId}`,
-    entityType:   'REPAIR',
-    entityId:     repair.repairId,
-    queueKey:     'repair_services',
-    queueLabel:   'Repair Services',
-    title:        repair.productTitle || 'Unknown Product',
-    subtitle:     repair.ticketNumber || '',
-    recordLabel:  repair.ticketNumber || '',
-    sourcePath:   '/repair',
-    techId:       repair.assignedTechId,
-    techName:     repair.techName,
-    packerId:     null,
-    packerName:   null,
-    status:       (repair.assignmentStatus as WorkOrderRow['status']) || 'OPEN',
-    priority:     0,
-    deadlineAt:   repair.deadlineAt,
-    notes:        repair.issue || null,
-    assignedAt:   null,
-    updatedAt:    null,
-  };
-}
-
-export function buildFbaWorkOrderRow(item: FBAQueueItem): WorkOrderRow {
-  return {
-    id: `fba-shipment-${item.shipment_id}`,
-    entityType: 'FBA_SHIPMENT',
-    entityId: item.shipment_id,
-    queueKey: 'fba_shipments',
-    queueLabel: 'FBA Shipments',
-    title: String(item.plan_title || item.shipment_ref || `Pending shipment #${item.shipment_id}`),
-    subtitle: [item.fnsku, item.asin, item.sku].filter(Boolean).join(' • '),
-    recordLabel: String(item.shipment_ref || `Row #${item.shipment_id}`),
-    sourcePath: '/shipping?mode=fba',
-    techId: item.assigned_tech_id ?? null,
-    techName: item.assigned_tech_name ?? null,
-    packerId: item.assigned_packer_id ?? null,
-    packerName: null,
-    status: item.assigned_tech_id ? 'ASSIGNED' : 'OPEN',
-    priority: 100,
-    deadlineAt: String(item.deadline_at || item.due_date || '').trim() || null,
-    notes: null,
-    assignedAt: null,
-    updatedAt: null,
-  };
 }

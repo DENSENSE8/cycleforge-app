@@ -1,21 +1,7 @@
-export interface StaffOption { id: number; name: string; }
-
-export interface ReceivingQueueItem {
-  assignment_id: number;
-  receiving_id: number;
-  assigned_tech_id: number | null;
-  assigned_tech_name: string | null;
-  status: string;
-  priority: number;
-  notes: string | null;
-  assigned_at: string | null;
-  tracking_number: string | null;
-  carrier: string | null;
-  qa_status: string | null;
-  workflow_status: string | null;
-  line_count: number;
-  line_skus: string[];
-}
+/**
+ * Shared order / FBA plan shapes used by live shipping + FBA sidebar surfaces.
+ * (Legacy UpNext queue item types were removed with the orphan UpNext tree.)
+ */
 
 /**
  * Open FBA plan row for the /fba workspace sidebar.
@@ -37,28 +23,6 @@ export interface FbaPlanQueueItem {
   created_at: string;
   amazon_shipment_id?: string | null;
   tracking_numbers?: { tracking_number: string; carrier: string; label?: string | null }[];
-}
-
-export interface FBAQueueItem {
-  item_id: number;
-  /** Internal `fba_shipments.id` (same as plan list `id` — not the plan code). */
-  shipment_id: number;
-  /** Plan id / human ref (`fba_shipments.shipment_ref`). */
-  shipment_ref: string;
-  plan_title?: string | null;
-  fnsku: string;
-  product_title: string | null;
-  asin: string | null;
-  sku: string | null;
-  condition?: string | null;
-  expected_qty: number;
-  actual_qty: number;
-  status: 'PLANNED' | 'TESTED' | 'PACKED' | 'LABEL_ASSIGNED' | 'SHIPPED';
-  assigned_tech_id?: number | null;
-  assigned_packer_id?: number | null;
-  assigned_tech_name: string | null;
-  due_date: string | null;
-  deadline_at?: string | null;
 }
 
 export interface Order {
@@ -90,33 +54,3 @@ export interface Order {
   /** Derived from shipping_tracking_numbers carrier status */
   is_shipped?: boolean;
 }
-
-export interface RepairQueueItem {
-  kind: 'REPAIR';
-  repairId: number;
-  assignmentId: number | null;
-  assignmentStatus: string | null;
-  deadlineAt: string | null;
-  ticketNumber: string;
-  productTitle: string;
-  issue: string;
-  serialNumber: string;
-  contactInfo: string;
-  dateTime: string;
-  repairStatus: string;
-  price: string;
-  assignedTechId: number | null;
-  techName: string | null;
-  outOfStock: string | null;
-  repairOutcome: string | null;
-  /** From repair_service.source_sku — opens Ecwid keyword search */
-  sku?: string | null;
-}
-
-export const FBA_ITEM_STATUS_BADGE: Record<string, string> = {
-  PLANNED:        'bg-surface-sunken text-text-soft border-border-soft',
-  TESTED:         'bg-emerald-100 text-emerald-700 border-emerald-200',
-  PACKED:         'bg-amber-100 text-amber-700 border-amber-200',
-  LABEL_ASSIGNED: 'bg-blue-100 text-blue-700 border-blue-200',
-  SHIPPED:        'bg-purple-100 text-purple-700 border-purple-200',
-};
