@@ -80,6 +80,43 @@ export const stationRightEdgeActionHostClass =
 /** Inner pad for identity + more-details bookmark faces (matches icon-gap unit). */
 export const stationBookmarkPadClass = 'p-0.5';
 
+/* ── Stacked identity rhythm (the two-row `bar-stacked` band) ─────────────────
+ *
+ * Every gap in that band resolves here, so the two rows share ONE cadence
+ * instead of each row hand-picking a value. All three compose Tier-2 spacing
+ * intents (tailwind.config.ts plugin, `ui-design-system.md` → Spacing) — they
+ * are density-aware and already carry `display:flex` + `align-items:center`,
+ * so never pair them with a raw `flex`/`gap-*` (both survive `cn()` and the
+ * intent wins in CSS order).
+ */
+
+/**
+ * Chip-to-chip step INSIDE a row, and the row's own track (`row-gap` = 2).
+ * One value for both rows is what makes the band read as a grid.
+ */
+export const STATION_IDENTITY_ROW_CLASS = 'row-gap';
+
+/**
+ * Tighter step for a pill GROUP that reads as one control — the classify
+ * urgency·platform·type triple (`row-tight` = 1.5). Deliberately below
+ * {@link STATION_IDENTITY_ROW_CLASS}: the group must bind visually before it
+ * separates from its neighbours.
+ */
+export const STATION_IDENTITY_GROUP_CLASS = 'row-tight';
+
+/** Vertical step between the two rows (`stack-tight` = 1.5). */
+export const STATION_IDENTITY_ROW_STACK_CLASS = 'stack-tight';
+
+/**
+ * Leading gutter shared by both rows — one 32px icon box (`w-8`, the
+ * `IconButton size="md"` box the exit chevron already occupies). Row 1 puts the
+ * chevron in it and row 2 the lifecycle dot, so the dot centres under the
+ * chevron and BOTH rows' first chip starts at the same x. Without it the rows
+ * began 32px apart and never formed columns.
+ */
+export const STATION_IDENTITY_LEAD_COL_CLASS =
+  'flex w-8 shrink-0 items-center justify-center';
+
 /** Gap between icons / chips inside a bookmark — same integer as GlobalHeader. */
 export const stationBookmarkGapClass = HEADER_ICON_GAP;
 
@@ -101,5 +138,28 @@ export const stationMoreDetailsHostClass =
  * Scroll-body top clearance when {@link StationContextBar} floats absolute
  * over the canvas (canvas inset + identity shell ≈ `min-h-10` + pad + shadow).
  * Pair with `StationWorkbench` `reserveIdentityClearance`.
+ *
+ * Measured (2026-07-31, Playwright @ 1280/1440/1920): one-row identity is 40px
+ * tall at `top-2`, so `pt-16` leaves a 16px gap to the first body row.
  */
 export const STATION_IDENTITY_SCROLL_CLEARANCE = 'pt-16';
+
+/**
+ * Same clearance for a TWO-row identity (`CartonContextCard`
+ * `density="bar-stacked"` — Unbox). Row 1 carries the 32px controls (exit ·
+ * classify pills · listing · Claim · Photos) and row 2 the 24px fact track
+ * (lifecycle dot · order# · tracking# · qty · PO total), separated by 6px, so
+ * the shell measures 68px against the one-row 40px.
+ *
+ * `pt-24` clears it with a 20px gap (the one-row pair is 16px). Measured in
+ * Playwright at 1280/1440/1920 — re-measure when a row gains or loses a
+ * control: `pt-20` was correct at 62px and leaves only 4px at 68px.
+ *
+ * A THIRD row would blow this budget entirely — re-derive, never assume the
+ * next scale step absorbs it.
+ *
+ * Opt in per host via `StationWorkbench reserveIdentityClearance="stacked"` —
+ * never by raising {@link STATION_IDENTITY_SCROLL_CLEARANCE}, which would add
+ * dead space to every one-row station.
+ */
+export const STATION_IDENTITY_STACKED_SCROLL_CLEARANCE = 'pt-24';
