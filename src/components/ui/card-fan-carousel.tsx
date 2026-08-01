@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import gsap from "gsap";
+import { useReducedMotion } from "framer-motion";
 
 export interface CardItem {
   imgUrl: string;
@@ -23,6 +24,14 @@ interface SocialCardsProps {
 
 const MAX_VISIBLE = 7;
 const HALF = 3;
+
+/**
+ * Stacking order for a card that is off-fan (exited / not yet entered). These
+ * are GSAP tween values scoped to this component's own card stack — sibling
+ * layering inside one element, not app chrome — so they are local to the fan
+ * geometry beside `FAN_POSITIONS.zIndex`, not the app z-index scale.
+ */
+const FAN_CARD_HIDDEN_Z = 0;
 
 const FAN_POSITIONS = [
   { rot: -21, scale: 0.7756, x: -30, y: 7.3, zIndex: 1 },
@@ -109,12 +118,25 @@ export default function SocialCards({ cards, onCardClick, cardTestId }: SocialCa
     );
   }, [totalCards, needsPagination]);
 
+  /**
+   * GSAP sits outside framer's `MotionConfig` reduced-motion floor (different
+   * engine, different context), so this is the one place that still needs an
+   * explicit gate. Collapsing duration + delay to 0 makes every tween an
+   * instant set — cards land on their target layout with no fan, slide, or
+   * elastic overshoot — while `onComplete` still fires, so `isAnimating`
+   * bookkeeping and pagination keep working unchanged.
+   */
+  const prefersReducedMotion = useReducedMotion();
+
   useEffect(() => {
     const container = containerRef.current;
     if (!container || !totalCards) return;
 
     const cardElements = Array.from(container.querySelectorAll<HTMLElement>(".fan-card"));
     if (!cardElements.length) return;
+
+    /** Tween timing, zeroed under `prefers-reduced-motion`. */
+    const t = (seconds: number) => (prefersReducedMotion ? 0 : seconds);
 
     const visibleMap = getVisibleMap(centerIndex);
     const previouslyVisible = prevVisible.current;
@@ -153,17 +175,17 @@ export default function SocialCards({ cards, onCardClick, cardTestId }: SocialCa
 
         if (isFirstMount) {
           gsap.set(card, { x: 0, y: `${12 * hMult}rem`, rotation: 0, scale: 0.5, opacity: 0 });
-          gsap.to(card, { ...target, duration: 1.2, ease: "elastic.out(1.05,.78)", delay: 0.2 + slot * 0.06, onComplete: onCardDone });
+          gsap.to(card, { ...target, duration: t(1.2), ease: "elastic.out(1.05,.78)", delay: t(0.2 + slot * 0.06), onComplete: onCardDone });
         } else if (!wasVisible) {
           const enterX = direction === "right" ? 40 : -40;
           gsap.set(card, { x: `${enterX}rem`, y: `${y * hMult}rem`, rotation: direction === "right" ? 30 : -30, scale: 0.5, opacity: 0 });
-          gsap.to(card, { ...target, duration: 0.6, ease: "power2.out", onComplete: onCardDone });
+          gsap.to(card, { ...target, duration: t(0.6), ease: "power2.out", onComplete: onCardDone });
         } else {
-          gsap.to(card, { ...target, duration: 0.5, ease: "power2.out", onComplete: onCardDone });
+          gsap.to(card, { ...target, duration: t(0.5), ease: "power2.out", onComplete: onCardDone });
         }
       } else if (wasVisible) {
         const exitX = direction === "right" ? -40 : 40;
-        gsap.to(card, { x: `${exitX}rem`, opacity: 0, scale: 0.5, rotation: direction === "right" ? -30 : 30, duration: 0.4, ease: "power2.in", zIndex: 0 });
+        gsap.to(card, { x: `${exitX}rem`, opacity: 0, scale: 0.5, rotation: direction === "right" ? -30 : 30, duration: t(0.4), ease: "power2.in", zIndex: FAN_CARD_HIDDEN_Z });
       } else if (isFirstMount) {
         gsap.set(card, { opacity: 0, scale: 0.3, x: 0, y: 0, zIndex: 0 });
       }
@@ -223,7 +245,7 @@ export default function SocialCards({ cards, onCardClick, cardTestId }: SocialCa
 
         gsap.to(el, {
           x: `${targetX}rem`, y: `${targetY}rem`, rotation: targetRot, scale: targetScale,
-          duration: 0.5, delay, ease: "elastic.out(1,.75)", overwrite: "auto",
+          duration: t(0.5), delay: t(delay), ease: "elastic.out(1,.75)", overwrite: "auto",
         });
         gsap.set(el, { zIndex: base.zIndex });
       });
@@ -255,7 +277,7 @@ export default function SocialCards({ cards, onCardClick, cardTestId }: SocialCa
       window.removeEventListener("resize", onResize);
       if (leaveTimer) clearTimeout(leaveTimer);
     };
-  }, [centerIndex, totalCards, getVisibleMap, needsPagination]);
+  }, [centerIndex, totalCards, getVisibleMap, needsPagination, prefersReducedMotion]);
 
   if (!totalCards) return null;
 
