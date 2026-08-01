@@ -145,27 +145,27 @@ Cutting the tab→dock coupling retired two dock actions with no local home:
 **Do:** confirm both at the bench. If an operator reaches for either, add it as a
 local control in that display — never back onto the dock.
 
-### 3.7 — No permanent E2E for the column — **WRITTEN, run incomplete**
+### 3.7 — Permanent E2E for the column — **DONE**
 
 `tests/e2e/unbox-displays-column.spec.ts` exists (4 tests: empty centre + strip
 opens · dock label byte-identical across a tab switch · display survives reload ·
 Claim takes the edge and clears `?display=`).
 
-**Status:** 2 of 4 passed on the first run and the Claim test caught the
-exclusion bug in 3.1. The confirming re-run never completed — **the `:3050` dev
-server went down mid-suite** (`ECONNREFUSED`, nothing listening) and an agent
-must not start it. **Re-run this spec once the operator's server is back**;
-static gates (lint / tsc / unit / knip) are clean.
+**Status:** all 4 green on `qa-desktop` against `:3050`, plus 4 in
+`receiving-param-isolation.spec.ts`.
 
-Also note the reload test took ~35s solo and may need a longer timeout under a
-cold sequential suite.
+Two things learned writing it, both worth keeping:
 
-**Warning — `tests/e2e/unbox-tool-push.spec.ts` (untracked, another session) has
-two broken selectors** and fails on its own preconditions, not on the code:
-`getByRole('button', { name: /^Ticket$/i })` does not match the photo-toolbar item
-(it is not a `button` role — use `getByText`), and `/^Claim$/i` does not match the
-identity chip's accessible name (`/claim/i` does). It also needs a carton **with a
-photo** — `TICKET` is disabled without one. Fix the spec, don't chase the app.
+- **Do not pin which displays sit on the strip vs under ⋯.** That split is a
+  per-lane taste call (`classifyOnStrip`) and it moves — Checklist went
+  strip-ward the moment it started deriving step states, breaking a spec that
+  navigated through the ⋯ menu. `selectDisplay()` tries the strip, then the
+  menu. What the test asserts is that the DOCK does not move.
+- **Do not route a param-ownership assertion through the header Mode menu.**
+  Ownership is a property of the ROUTE, so assert it by landing on a surface
+  that does not declare the param. The `switchMode` helper is currently red for
+  two *pre-existing* tests while GlobalHeader is being reworked; a route-level
+  assertion is immune to that.
 
 ### 3.8 — Narrow viewport and centre width unmeasured
 
