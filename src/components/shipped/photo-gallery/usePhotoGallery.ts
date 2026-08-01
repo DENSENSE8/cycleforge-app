@@ -82,6 +82,11 @@ export interface PhotoGalleryProps {
    */
   launcherLayout?: 'default' | 'toolbar' | 'thumbnails';
   /**
+   * Default launcher card chrome. `accent` keeps the blue gradient (packing /
+   * editable details). `neutral` is a white card surface for read inspectors.
+   */
+  launcherTone?: 'accent' | 'neutral';
+  /**
    * Optional count header (`N photos`) above the vertical action rows.
    * Off when the parent already shows the count (e.g. camera pill). Does not
    * gate per-action titles on the toolbar rows.
@@ -118,6 +123,11 @@ export interface PhotoGalleryProps {
    */
   onMovePhotosOpenChange?: (open: boolean) => void;
   /**
+   * When set, "Move to another PO" delegates to the parent (e.g. Unbox tool
+   * push) instead of opening the local {@link MovePhotosBetweenPoModal}.
+   */
+  onOpenMovePhotosExternal?: () => void;
+  /**
    * Opt-in toolbar action: send this carton's photos to a support ticket
    * (opens {@link SendPhotoNoteModal} via the parent). Receiving station
    * surfaces this on the photo dropdown instead of More actions.
@@ -139,6 +149,7 @@ export function usePhotoGallery(props: PhotoGalleryProps) {
     compact = false,
     launcherTitle = 'View Packing Photos',
     launcherLayout = 'default',
+    launcherTone = 'accent',
     toolbarShowLabel = true,
     onPhotoDeleted,
     receivingId,
@@ -149,6 +160,7 @@ export function usePhotoGallery(props: PhotoGalleryProps) {
     onPhotoUploaded,
     onUploadOverlayOpenChange,
     onMovePhotosOpenChange,
+    onOpenMovePhotosExternal,
     onSendToTicket,
   } = props;
 
@@ -256,10 +268,15 @@ export function usePhotoGallery(props: PhotoGalleryProps) {
   /**
    * Soft-close the lightbox (if open), then open Move photos. Clicking again
    * while open soft-closes and reopens so picker state resets cleanly.
+   * When `onOpenMovePhotosExternal` is set (Unbox tool push), delegate there.
    */
   const openMovePhotos = useCallback(() => {
     if (viewerOpen || deferViewerClose) {
       dismissViewer();
+    }
+    if (onOpenMovePhotosExternal) {
+      onOpenMovePhotosExternal();
+      return;
     }
     if (movePhotosReopenTimer.current != null) {
       clearTimeout(movePhotosReopenTimer.current);
@@ -276,7 +293,14 @@ export function usePhotoGallery(props: PhotoGalleryProps) {
     }
     setMovePhotosKey((k) => k + 1);
     trackMovePhotosOpen(true);
-  }, [viewerOpen, deferViewerClose, dismissViewer, movePhotosOpen, trackMovePhotosOpen]);
+  }, [
+    viewerOpen,
+    deferViewerClose,
+    dismissViewer,
+    movePhotosOpen,
+    trackMovePhotosOpen,
+    onOpenMovePhotosExternal,
+  ]);
 
   const openViewer = useCallback((index: number, opts?: { details?: boolean }) => {
     setCurrentIndex(index);
@@ -572,7 +596,7 @@ export function usePhotoGallery(props: PhotoGalleryProps) {
   );
 
   return {
-    className, compact, launcherTitle, launcherLayout, toolbarShowLabel, libraryHref,
+    className, compact, launcherTitle, launcherLayout, launcherTone, toolbarShowLabel, libraryHref,
     allowReassign, receivingId, onSendToTicket,
     photoItems, loadedCount, errorCount,
     viewerOpen, currentIndex, mounted, openViewer, closeViewer, handleNext, handlePrevious, setCurrentIndex,

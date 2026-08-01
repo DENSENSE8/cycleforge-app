@@ -79,6 +79,7 @@ export function PhotoPeekFan({
   receivingId,
   poRef,
   onPhotoDeleted,
+  onOpenMovePhotosExternal,
 }: {
   cards: PeekCard[];
   holdMs?: number;
@@ -88,6 +89,8 @@ export function PhotoPeekFan({
   poRef?: string | null;
   /** Wired so the viewer's delete affordance can refresh the source list. */
   onPhotoDeleted?: (photoId: number) => void;
+  /** Unbox: open Move photos in the station tool push instead of a center overlay. */
+  onOpenMovePhotosExternal?: () => void;
 }) {
   const count = cards.length;
   const peekCards = cards.slice(0, PEEK_COUNT);
@@ -125,6 +128,7 @@ export function PhotoPeekFan({
     libraryHref: cartonLibraryHref,
     onPhotoDeleted,
     onPhotoReassigned: onPhotoDeleted,
+    onOpenMovePhotosExternal,
   });
   const { viewerOpen, openViewer } = gallery;
 
@@ -322,7 +326,7 @@ export function PhotoPeekFan({
         <PhotoViewerPortal g={gallery} />
       )}
 
-      {gallery.canReassignCurrent && receivingId != null ? (
+      {!onOpenMovePhotosExternal && gallery.canReassignCurrent && receivingId != null ? (
         <MovePhotosBetweenPoModal
           key={gallery.movePhotosKey}
           open={gallery.movePhotosOpen}

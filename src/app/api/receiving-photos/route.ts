@@ -311,7 +311,13 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       },
       {
         headers: {
-          Deprecation: 'photoUrl attach — prefer POST /api/photos/upload with multipart bytes',
+          // ASCII only: an HTTP header value is a ByteString (≤ U+00FF). The em
+          // dash that used to sit here threw
+          // "Cannot convert argument to a ByteString … value of 8212" while
+          // BUILDING this response — so every successful attach 500'd *after*
+          // the photo, audit and count had already been written, and the client
+          // saw a failure for a photo that was really there.
+          Deprecation: 'photoUrl attach - prefer POST /api/photos/upload with multipart bytes',
         },
       },
     );

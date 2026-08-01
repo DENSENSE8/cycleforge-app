@@ -51,6 +51,7 @@ export const ReceivingPhotoPeek = memo(function ReceivingPhotoPeek({
   staffId,
   poRef,
   photoIntent = 'all',
+  onOpenMovePhotosExternal,
 }: {
   receivingId: number;
   staffId: number;
@@ -61,6 +62,8 @@ export const ReceivingPhotoPeek = memo(function ReceivingPhotoPeek({
    * unbox carton strip peeks `unbox_carton`, line peeks `item`.
    */
   photoIntent?: ReceivingPhotoListIntent;
+  /** Unbox: open Move photos in the station tool push. */
+  onOpenMovePhotosExternal?: () => void;
 }) {
   const { user } = useAuth();
   const orgId = user?.organizationId;
@@ -123,7 +126,15 @@ export const ReceivingPhotoPeek = memo(function ReceivingPhotoPeek({
 
   const cards = demo ? DEMO_CARDS.slice(0, demoShown) : realCards;
 
-  return <PhotoPeekFan cards={cards} receivingId={receivingId} poRef={poRef} onPhotoDeleted={(photoId) => refresh(photoId)} />;
+  return (
+    <PhotoPeekFan
+      cards={cards}
+      receivingId={receivingId}
+      poRef={poRef}
+      onPhotoDeleted={(photoId) => refresh(photoId)}
+      onOpenMovePhotosExternal={onOpenMovePhotosExternal}
+    />
+  );
 });
 
 export default ReceivingPhotoPeek;
