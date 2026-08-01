@@ -24,8 +24,10 @@ import { cn } from '@/utils/_cn';
 /** Tier A heuristic — a synthetic label when the backend has sent no `step` frame yet. */
 function heuristicLabel(elapsedSec: number): string {
   if (elapsedSec < 4) return 'Understanding the question';
-  if (elapsedSec < 15) return 'Querying live data';
-  return 'Composing the answer';
+  if (elapsedSec < 12) return 'Querying live data';
+  if (elapsedSec < 30) return 'Composing the answer';
+  if (elapsedSec < 60) return 'Still working — this can take a bit longer';
+  return "Still working — hang tight, this one's taking a while";
 }
 
 function formatSeconds(totalSec: number): string {

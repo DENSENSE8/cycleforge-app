@@ -5,7 +5,7 @@ import {
   captureStepVocabulary,
   deriveCaptureStepFlags,
   deriveCaptureStepStates,
-  deriveCaptureStackRows,
+  deriveProcedureSteps,
   type DeriveCaptureStepStatesInput,
 } from './derive-capture-step-states';
 
@@ -147,76 +147,56 @@ test('a later step whose gate passes reads done behind an incomplete earlier one
   assert.equal(states.serial, 'done', 'working out of order must not be reported as pending');
 });
 
-// ── Stack row order (bottom-anchored: active is always last) ─────────────────
+// ── Procedure list (every step renders, in order) ────────────────────────────
 
-test('fresh carton: only the active step renders, nothing above it', () => {
-  const rows = deriveCaptureStackRows(base);
-  assert.deepEqual(rows.map((r) => r.key), ['po_photos']);
-  assert.equal(rows[0].state, 'active');
+test('every step renders, in vocabulary order, whatever its state', () => {
+  const steps = deriveProcedureSteps(base);
+  assert.deepEqual(
+    steps.map((s) => s.key),
+    ['po_photos', 'packing_material', 'item_photos', 'condition', 'serial'],
+    'a checklist shows the whole procedure — pending steps are the point',
+  );
+  assert.deepEqual(steps.map((s) => s.position), [1, 2, 3, 4, 5]);
 });
 
-test('an ungated step does not sit in the ledger before the pointer reaches it', () => {
-  // Regression: Condition is `done` from first render (default grade), which
-  // hoisted "Condition · NEW" above step 1 of a fresh carton — the ledger
-  // claiming work that had not happened.
-  assert.ok(!deriveCaptureStackRows(base).some((r) => r.key === 'condition'));
+test('position is the vocabulary number and never renumbers', () => {
+  const unfound = deriveProcedureSteps({ ...base, vocabulary: { ...matched, isUnfound: true } });
+  assert.equal(unfound[0].key, 'classify');
+  assert.equal(unfound[0].position, 1);
+  assert.equal(unfound.at(-1)?.position, unfound.length);
+});
 
-  // Once the pointer is past it, it IS history and belongs in the ledger.
-  const past = deriveCaptureStackRows({
+test('exactly one step is active, and it is the first incomplete one', () => {
+  const fresh = deriveProcedureSteps(base).filter((s) => s.state === 'active');
+  assert.equal(fresh.length, 1);
+  assert.equal(fresh[0].key, 'po_photos');
+
+  const shot = deriveProcedureSteps({
     ...base,
     arrivalPhotoCount: 1,
     unboxCartonPhotoCount: 1,
     itemPhotoCount: 1,
   });
-  assert.equal(past.find((r) => r.key === 'condition')?.state, 'done');
-  assert.equal(past[past.length - 1].key, 'serial');
+  assert.deepEqual(
+    shot.filter((s) => s.state === 'active').map((s) => s.key),
+    ['serial'],
+    'condition is ungated, so the pointer steps over it',
+  );
+  assert.equal(shot.find((s) => s.key === 'condition')?.state, 'done');
 });
 
-test('row.position is the vocabulary step number, not the row index', () => {
-  const rows = deriveCaptureStackRows({ ...base, vocabulary: { ...matched, isUnfound: true } });
-  const classify = rows.find((r) => r.key === 'classify');
-  assert.equal(classify?.position, 1, 'Classify is step 1 of the unfound vocabulary');
-
-  // Out-of-order completion: hidden/absent rows must not renumber the steps.
-  const outOfOrder = deriveCaptureStackRows({ ...base, serialCount: 1 });
-  assert.equal(outOfOrder.find((r) => r.key === 'po_photos')?.position, 1);
-  assert.equal(outOfOrder.find((r) => r.key === 'serial')?.position, 5);
+test('an out-of-order completion reads done in place — no reordering', () => {
+  const steps = deriveProcedureSteps({ ...base, serialCount: 1 });
+  assert.equal(steps.find((s) => s.key === 'serial')?.state, 'done');
+  assert.equal(steps.find((s) => s.key === 'po_photos')?.state, 'active');
+  assert.equal(steps.at(-1)?.key, 'serial', 'order follows the vocabulary, not the state');
 });
 
-test('the active step is last even when a later step already passed its gate', () => {
-  // Serial captured before any photo — working out of order.
-  const rows = deriveCaptureStackRows({ ...base, serialCount: 1 });
-  const keys = rows.map((r) => r.key);
-  assert.equal(rows[rows.length - 1].key, 'po_photos', 'next job stays next to the input');
-  assert.ok(keys.includes('serial'), 'the out-of-order win still shows in the ledger');
-  assert.equal(rows.find((r) => r.key === 'serial')?.state, 'done');
-});
-
-test('pending steps never render', () => {
-  const keys = deriveCaptureStackRows(base).map((r) => r.key);
-  assert.ok(!keys.includes('item_photos'), 'unreachable work must not push the active card up');
-  assert.ok(!keys.includes('packing_material'));
-});
-
-test('completing a step moves it into the ledger and promotes the next', () => {
-  const before = deriveCaptureStackRows(base);
-  const after = deriveCaptureStackRows({ ...base, arrivalPhotoCount: 1 });
-  assert.equal(before[before.length - 1].key, 'po_photos');
-  assert.equal(after[after.length - 1].key, 'packing_material');
-  assert.equal(after.find((r) => r.key === 'po_photos')?.state, 'done');
-  assert.equal(after.length, before.length + 1);
-});
-
-test('finished carton: no active row, ledger only', () => {
-  const rows = deriveCaptureStackRows({
-    ...base,
-    arrivalPhotoCount: 1,
-    unboxCartonPhotoCount: 1,
-    itemPhotoCount: 1,
-    serialCount: 1,
-  });
-  assert.equal(rows.length, 5);
-  assert.ok(rows.every((r) => r.state === 'done'));
+test('each photo step carries its own stage — packing material folds onto unbox_carton', () => {
+  const byKey = new Map(deriveProcedureSteps(base).map((s) => [s.key, s.stage]));
+  assert.equal(byKey.get('po_photos'), 'arrival_package');
+  assert.equal(byKey.get('packing_material'), 'unbox_carton');
+  assert.equal(byKey.get('item_photos'), 'unbox_item');
 });
 
 test('unfound: Classify holds active until it is answered', () => {

@@ -199,7 +199,7 @@ Full waist: [source-of-truth.md](source-of-truth.md).
 ## Icons: structural and paired, never decorative
 
 - Import from `@/components/Icons`. Always pair an icon with text (e.g. `<Check className="h-3.5 w-3.5"/> Resolve`),
-  except the status dot — and **GlobalHeader Mode / Recents** (icon-only with `HoverTooltip`; active mode or History glyph).
+  except the status dot — and **GlobalHeader Mode / Recents / Pins** (icon-only with `HoverTooltip`; active mode, History, or pin glyph).
 - **Nav chrome law:** MasterNav L1 page rows render SoT page icons
   (lighter stroke); L2 modes (GlobalHeader Mode menu, header “now” identity, scan rails) keep glyphs
   with heavier stroke. CommandBar Pages / mobile page rows stay label-only until those surfaces
@@ -207,6 +207,7 @@ Full waist: [source-of-truth.md](source-of-truth.md).
   actions:** native SVG stroke only (`TOP_CHROME_ICON_GLYPH` in
   `header-shell.ts`); keep mode stroke ≤ 2.25 (`nav-weight.tsx`); 2.75 muddies dense glyphs.
   Cross-page MRU is the GlobalHeader Recents popover (`HeaderRecentsSwitcher`) — never spine chips.
+  Quick Access **pins** are `HeaderPinsSwitcher` (hairline after Recents) — never a pin list in the avatar menu.
   **Stock drill-in:** root shows one `STOCK_DRILL` row (chevron); drill body is back + Products →
   Inventory → Warehouse. Stations/Main stay static nests. Swap via `framerPresence.spineDrill`
   (opacity-only) — never a page-local `x` slide. Detail: `display/workbench.md`.

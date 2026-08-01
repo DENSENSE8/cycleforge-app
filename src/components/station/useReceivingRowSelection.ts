@@ -1,15 +1,28 @@
 'use client';
 
 /**
- * Row selection for the receiving-lines table — both single-select (opens the
- * workspace via `receiving-select-line`) and multi-select (bulk checkbox mode).
+ * Row selection for the receiving-lines table — the RECORD plane (open the row
+ * via `receiving-select-line`) and the MULTI-SELECT plane (bulk checkboxes).
  *
- * Owns `selectedId` / `selectedIds`, the click handler, the inbound selection
- * event bridges (clear-line, highlight-line, workspace-open), the "selected row
- * left the dataset" auto-clear, and the bulk-selection broadcast wiring
- * (emitSelection / emitSelectionTotal / onToggleAll). Refs let the click handler
- * and listeners read current values without stale closures. Extracted from
- * ReceivingLinesTable; behaviour is unchanged.
+ * **The two planes have separate gestures and always coexist**
+ * (`display/workbench.md` → Action planes, and the golden outbound grid:
+ * `useDashboardBulkSelection` keeps the gutter always-on while a row click
+ * still opens the order). A plain row click opens the record; the select-gutter
+ * checkbox — a real button that stops propagation — toggles bulk membership.
+ *
+ * That split is load-bearing, not cosmetic. `handleSelectRow` used to early-
+ * return into the bulk toggle whenever `selectMode` was on, and `selectMode` is
+ * pinned ON for every table-only surface (`isTableOnlyMode`) — so on `/incoming`
+ * no click ever reached `dispatchSelectLine`, `useReceivingDetailOverlays` never
+ * set `incomingDetails`, and `IncomingDetailsPanel` was unreachable by any
+ * gesture. History had the mirror symptom: its `receiving-select-line` handler
+ * deep-links into Unbox (`useReceivingSelection`) and could never fire.
+ *
+ * Owns `selectedId` / `selectedIds`, both handlers, the inbound selection event
+ * bridges (clear-line, highlight-line, workspace-open), the "selected row left
+ * the dataset" auto-clear, and the bulk-selection broadcast wiring
+ * (emitSelection / emitSelectionTotal / onToggleAll). Refs let the handlers and
+ * listeners read current values without stale closures.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -22,6 +35,24 @@ import type { ReceivingLineRow } from './receiving-line-row';
 
 interface UseReceivingRowSelectionArgs {
   selectMode: boolean;
+  /**
+   * Split the two planes: the ROW body opens the record and the select GUTTER
+   * owns bulk membership.
+   *
+   * Needed because `useReceivingLineBulkSelection` pins `selectMode` ON for the
+   * table-only surfaces ("selection is always on while `active`"), and the
+   * original `handleSelectRow` read `selectMode` as "bulk mode — never open the
+   * workspace". Always-on select therefore meant NEVER-open: on `/incoming` a
+   * row click emitted no `receiving-select-line`, so `IncomingDetailsPanel`
+   * could not mount at all, and the whole row acted as one big checkbox while
+   * the gutter cell was inert.
+   *
+   * With this on, both planes coexist the way the dashboard Pending grid already
+   * does them (gutter checkbox = multi-select, row body = open the record) —
+   * `display/workbench.md` → Action planes, "a surface gets real selection OR a
+   * collapsed gutter — never an inert one".
+   */
+  rowClickOpens?: boolean;
   localRows: ReceivingLineRow[];
   orderedVisibleRows: ReceivingLineRow[];
 }
@@ -30,7 +61,10 @@ export interface ReceivingRowSelection {
   selectedId: number | null;
   setSelectedId: React.Dispatch<React.SetStateAction<number | null>>;
   selectedIds: Set<number>;
+  /** Row-body click / keyboard nav. Opens the record when `rowClickOpens`. */
   handleSelectRow: (row: ReceivingLineRow) => void;
+  /** Select-gutter click — bulk membership only, never opens. */
+  handleToggleRow: (row: ReceivingLineRow) => void;
   /** Bulk-toggle every id in a PO fold (select-all / clear-group). */
   handleSelectGroup: (ids: readonly number[]) => void;
   selectedIdRef: React.MutableRefObject<number | null>;
@@ -39,6 +73,7 @@ export interface ReceivingRowSelection {
 
 export function useReceivingRowSelection({
   selectMode,
+  rowClickOpens = false,
   localRows,
   orderedVisibleRows,
 }: UseReceivingRowSelectionArgs): ReceivingRowSelection {
@@ -101,21 +136,39 @@ export function useReceivingRowSelection({
   const selectModeRef = useRef(selectMode);
   useEffect(() => { selectModeRef.current = selectMode; }, [selectMode]);
 
-  const handleSelectRow = useCallback((row: ReceivingLineRow) => {
-    if (selectModeRef.current) {
-      // Bulk mode: toggle membership; never open the workspace.
-      setSelectedIds((prev) => {
-        const next = new Set(prev);
-        if (next.has(row.id)) next.delete(row.id);
-        else next.add(row.id);
-        return next;
-      });
-      return;
-    }
+  const rowClickOpensRef = useRef(rowClickOpens);
+  useEffect(() => { rowClickOpensRef.current = rowClickOpens; }, [rowClickOpens]);
+
+  /** Bulk membership only — the select gutter's job. Never opens a record. */
+  const handleToggleRow = useCallback((row: ReceivingLineRow) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(row.id)) next.delete(row.id);
+      else next.add(row.id);
+      return next;
+    });
+  }, []);
+
+  /** Open the record — single-select; re-clicking the open row closes it. */
+  const handleOpenRow = useCallback((row: ReceivingLineRow) => {
     const next = selectedIdRef.current === row.id ? null : row.id;
     setSelectedId(next);
     dispatchSelectLine(next ? row : null);
   }, []);
+
+  const handleSelectRow = useCallback(
+    (row: ReceivingLineRow) => {
+      // Two planes, one row. When the surface splits them (`rowClickOpens`) the
+      // body always opens and the gutter owns membership; otherwise keep the
+      // historical "selectMode swallows the click" behaviour.
+      if (selectModeRef.current && !rowClickOpensRef.current) {
+        handleToggleRow(row);
+        return;
+      }
+      handleOpenRow(row);
+    },
+    [handleToggleRow, handleOpenRow],
+  );
 
   const handleSelectGroup = useCallback((ids: readonly number[]) => {
     if (!selectModeRef.current || ids.length === 0) return;
@@ -172,6 +225,7 @@ export function useReceivingRowSelection({
     setSelectedId,
     selectedIds,
     handleSelectRow,
+    handleToggleRow,
     handleSelectGroup,
     selectedIdRef,
     selectModeRef,

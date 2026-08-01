@@ -23,7 +23,7 @@ import { RECEIVING_PHOTO_PACKAGE } from '@/lib/receiving/photo-intent';
 import type { PhotoEntityType } from '@/lib/photos/types';
 import type { PhotoGalleryInput, PhotoItem } from './photo-gallery-utils';
 
-/** Soft exit duration for MovePhotosBetweenPoModal / RightPaneOverlay fade. */
+/** Soft exit duration for the MovePhotosBetweenPoRail occupant's exit fade. */
 const MOVE_PHOTOS_SOFT_MS = 180;
 
 const INITIAL_CLOSE_STATE: ViewerCloseState = {
@@ -98,7 +98,7 @@ export interface PhotoGalleryProps {
   receivingId?: number;
   /** Opens the ops photo library filtered to this entity/receiving scope. */
   libraryHref?: string;
-  /** Show "Move to another PO" (opens MovePhotosBetweenPoModal) for receiving photos. */
+  /** Show "Move to another PO" (opens MovePhotosBetweenPoRail) for receiving photos. */
   allowReassign?: boolean;
   /** Called after photos move between POs (parents invalidate cache). */
   onPhotoReassigned?: (photoId: number) => void;
@@ -124,12 +124,12 @@ export interface PhotoGalleryProps {
   onMovePhotosOpenChange?: (open: boolean) => void;
   /**
    * When set, "Move to another PO" delegates to the parent (e.g. Unbox tool
-   * push) instead of opening the local {@link MovePhotosBetweenPoModal}.
+   * push) instead of opening the local {@link MovePhotosBetweenPoRail}.
    */
   onOpenMovePhotosExternal?: () => void;
   /**
    * Opt-in toolbar action: send this carton's photos to a support ticket
-   * (opens {@link SendPhotoNoteModal} via the parent). Receiving station
+   * (opens {@link SendPhotoNoteRail} via the parent). Receiving station
    * surfaces this on the photo dropdown instead of More actions.
    */
   onSendToTicket?: () => void;

@@ -18,6 +18,15 @@ export interface OrdersQueueSelection {
   selectedRecord: ShippedOrder | null;
   /** Toggle the open detail for a row (re-click closes it). */
   handleRowClick: (record: ShippedOrder) => void;
+  /**
+   * Open a record unconditionally. Exposed for the rail-selection model, where
+   * the check-set is the single selection SoT and the open record is DERIVED
+   * from it — the caller has already decided, so it needs the half of
+   * `handleRowClick` that opens without the toggle-to-close branch.
+   */
+  openRecord: (record: ShippedOrder) => void;
+  /** Close whatever is open (no-op when nothing is). */
+  closeRecord: () => void;
 }
 
 /**
@@ -69,15 +78,24 @@ export function useOrdersQueueSelection({
     }
   }, [onCloseRecord, selectedRecord, visibleRecords]);
 
-  const handleRowClick = useCallback((record: ShippedOrder) => {
-    if (selectedRecord && Number(selectedRecord.id) === Number(record.id)) {
-      onCloseRecord?.(selectedRecord);
-      setSelectedRecord(null);
-      return;
-    }
+  const openRecord = useCallback((record: ShippedOrder) => {
     onOpenRecord?.(record);
     setSelectedRecord(record);
-  }, [onCloseRecord, onOpenRecord, selectedRecord]);
+  }, [onOpenRecord]);
+
+  const closeRecord = useCallback(() => {
+    if (!selectedRecord) return;
+    onCloseRecord?.(selectedRecord);
+    setSelectedRecord(null);
+  }, [onCloseRecord, selectedRecord]);
+
+  const handleRowClick = useCallback((record: ShippedOrder) => {
+    if (selectedRecord && Number(selectedRecord.id) === Number(record.id)) {
+      closeRecord();
+      return;
+    }
+    openRecord(record);
+  }, [closeRecord, openRecord, selectedRecord]);
 
   // Cross-pane event bridge. Handlers are held in a ref by useEventBridge, so
   // these always read the latest selectedRecord / displayedRecords closures
@@ -106,5 +124,5 @@ export function useOrdersQueueSelection({
     },
   });
 
-  return { selectedRecord, handleRowClick };
+  return { selectedRecord, handleRowClick, openRecord, closeRecord };
 }

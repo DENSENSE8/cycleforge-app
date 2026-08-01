@@ -21,10 +21,18 @@ export default function SkuDetailView({ sku, variant = 'page', onClose }: SkuDet
   const c = useSkuDetailView({ sku, variant, onClose });
   const { data, isPanel } = c;
 
+  // Non-modal only in the PANEL variant — the page variant owns the whole route
+  // and never registers a rail occupant. The id stays per-SKU: this surface has
+  // no prev/next walk, so there is no row→row loop to keep mounted.
   const wrapPanel = (content: React.ReactNode) => {
     if (!isPanel || !onClose) return content;
     return (
-      <DetailStackRailRegistrar id={`detail:sku:${sku}`} onClose={c.handleClose}>
+      <DetailStackRailRegistrar
+        id={`detail:sku:${sku}`}
+        onClose={c.handleClose}
+        modal={false}
+        ariaLabel={`SKU ${sku} details`}
+      >
         <div className="flex h-full min-h-0 flex-col overflow-hidden">{content}</div>
       </DetailStackRailRegistrar>
     );

@@ -6,7 +6,7 @@
  * Forwards photos already captured on THIS purchase order to a Zendesk ticket —
  * either as a private internal note or as a public reply.
  *
- * Hosted by Unbox {@link ReceivingToolPushStack} or {@link SendPhotoNoteModal}.
+ * Hosted by Unbox {@link ReceivingToolPushStack} or {@link SendPhotoNoteRail}.
  */
 
 import { useEffect, useState } from 'react';

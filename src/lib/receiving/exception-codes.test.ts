@@ -21,9 +21,11 @@ import { join } from 'node:path';
 import {
   LOSS_EXCEPTION_CODES,
   PHOTO_POLICY_OVERRIDE_CODES,
+  QA_FAIL_EXCEPTION_STATUS,
   RECEIVING_EXCEPTION_CODES,
   RECEIVING_EXCEPTION_META,
   isLossExceptionCode,
+  isQaFailExceptionCode,
   isReceivingExceptionCode,
 } from './exception-codes';
 
@@ -32,6 +34,7 @@ const SEED_MIGRATIONS = [
   '2026-06-28d_reason_codes_receiving_exception_seed.sql',
   '2026-07-29b_reason_codes_photo_policy_override_seed.sql',
   '2026-07-29i_reason_codes_loss_seed.sql',
+  '2026-08-01a_reason_codes_qa_fail_seed.sql',
 ];
 
 /** `('CODE', 'Label', 120)` tuples out of a VALUES block. */
@@ -91,9 +94,47 @@ test('seeded labels match RECEIVING_EXCEPTION_META', () => {
   }
 });
 
-test('loss codes are appended LAST, after the photo overrides', () => {
-  const tail = RECEIVING_EXCEPTION_CODES.slice(-LOSS_EXCEPTION_CODES.length);
-  assert.deepEqual([...tail], [...LOSS_EXCEPTION_CODES]);
+test('loss codes stay one contiguous block, immediately after the photo overrides', () => {
+  // Was "appended LAST" until the QA-fail codes landed behind them (2026-08-01a).
+  // What actually has to hold is that the block did not MOVE or get split — the
+  // 120–150 numbering below is derived from exactly that.
+  const start = RECEIVING_EXCEPTION_CODES.indexOf(LOSS_EXCEPTION_CODES[0]);
+  assert.equal(
+    start,
+    RECEIVING_EXCEPTION_CODES.indexOf(
+      PHOTO_POLICY_OVERRIDE_CODES[PHOTO_POLICY_OVERRIDE_CODES.length - 1],
+    ) + 1,
+    'the loss block no longer starts right after the photo overrides',
+  );
+  assert.deepEqual(
+    [...RECEIVING_EXCEPTION_CODES.slice(start, start + LOSS_EXCEPTION_CODES.length)],
+    [...LOSS_EXCEPTION_CODES],
+  );
+});
+
+test('a QA fail can only be filed under the QA-fail slice', () => {
+  // The narrowing IS the guard: without it a phone-side fail could file itself as
+  // NO_PO, or claim a photo waiver / a write-off it never asked the operator about.
+  for (const code of Object.keys(QA_FAIL_EXCEPTION_STATUS)) {
+    assert.ok(isQaFailExceptionCode(code), `${code} should be a QA-fail code`);
+    assert.ok(isReceivingExceptionCode(code), `${code} must also be a real exception code`);
+  }
+  for (const code of ['NO_PO', 'SHORT', 'OVER', 'LOST_IN_TRANSIT', 'PHOTO_WAIVED_DEFERRED']) {
+    assert.ok(!isQaFailExceptionCode(code), `${code} must NOT be usable as a QA-fail reason`);
+  }
+  assert.ok(!isQaFailExceptionCode(null));
+  assert.ok(!isQaFailExceptionCode('toString'), 'inherited Object keys are not codes');
+});
+
+test('every QA-fail code maps to a distinct qa_status_enum FAILED_* value', () => {
+  // One reason ↔ one verdict. A many-to-one map would put us back where we
+  // started: a column that cannot tell a dead unit from a damaged one.
+  const statuses = Object.values(QA_FAIL_EXCEPTION_STATUS);
+  assert.deepEqual(
+    [...statuses].sort(),
+    ['FAILED_DAMAGED', 'FAILED_FUNCTIONAL', 'FAILED_INCOMPLETE'],
+  );
+  assert.equal(new Set(statuses).size, statuses.length, 'two reasons share one verdict');
 });
 
 test('photo overrides still occupy 80–110 (the 2026-07-29b hardcoded range)', () => {

@@ -538,6 +538,10 @@ export function LineEditPanel({
   const showRightPushChrome =
     showClaimStack || showTicketStack || showToolPush || showDisplays || showExpandStrip;
 
+  // TODO(daily-triage F0→F1): mount MyDayRail here pending OQ1
+  // (`docs/todo/daily-triage-FRONTEND-PLAN-VALIDATION.md`) — Unbox is
+  // scanner-driven (`display/station.md`), so a personal triage rail beside the
+  // bench may read as noise competing with scan focus. F0 changes nothing here.
   const stationContextBar = (
     <StationContextBar
       identity={

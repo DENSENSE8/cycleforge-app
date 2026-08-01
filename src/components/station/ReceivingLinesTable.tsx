@@ -166,16 +166,36 @@ export default function ReceivingLinesTable({
     setSelectedId,
     selectedIds,
     handleSelectRow,
+    handleToggleRow,
     handleSelectGroup,
     selectedIdRef,
     selectModeRef,
-  } = useReceivingRowSelection({ selectMode, localRows, orderedVisibleRows });
+  } = useReceivingRowSelection({
+    selectMode,
+    // Incoming splits the planes: row body opens the record, gutter checkbox
+    // owns bulk. Without this, `selectMode` (pinned ON by
+    // `useReceivingLineBulkSelection` for every `isTableOnlyMode` surface)
+    // swallowed every row click, so `IncomingDetailsPanel` had no reachable
+    // trigger at all.
+    //
+    // History is deliberately NOT flipped here. Its row click is not dead — it
+    // ticks the checkbox, which is that surface's job (Copy / Print / Create
+    // ticket over a week of cartons). What it cannot reach is the
+    // `receiving-select-line` History branch in `useReceivingSelection`, which
+    // deep-links into `/unbox`; sending a browse click from a history table
+    // straight into the work station is a product call, not a bug fix, and
+    // `/carton/[id]` is now the read-record answer. Left for that decision.
+    rowClickOpens: isIncomingMode,
+    localRows,
+    orderedVisibleRows,
+  });
 
   useReceivingTableNavigation({
     orderedVisibleRows,
     handleSelectRow,
     selectedIdRef,
     selectModeRef,
+    rowClickOpens: isIncomingMode,
     scrollRef,
     selectedId,
     // History / Incoming / Unbox workbench table own the chevron channel.
@@ -356,6 +376,7 @@ export default function ReceivingLinesTable({
               selectedId={selectedId}
               selectedIds={selectedIds}
               handleSelectRow={handleSelectRow}
+              handleToggleRow={handleToggleRow}
               handleSelectGroup={handleSelectGroup}
               scrollRef={scrollRef}
             />

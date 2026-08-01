@@ -41,7 +41,15 @@ const RepairDetailsPanel = dynamic(
 
 function DetailStackLoadingShell({ stackId, onClose }: { stackId: string; onClose: () => void }) {
   return (
-    <DetailStackRailRegistrar id={`detail:global:${stackId}`} onClose={onClose}>
+    // Non-modal like every panel it hands off to — otherwise the half-second
+    // spinner flashes a scrim + scroll lock that the real inspector immediately
+    // takes back down, which reads as the page blinking.
+    <DetailStackRailRegistrar
+      id={`detail:global:${stackId}`}
+      onClose={onClose}
+      modal={false}
+      ariaLabel="Loading details"
+    >
       <div className="flex h-full min-h-0 flex-col items-center justify-center gap-2 bg-surface-card">
         <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
         <p className="text-role-caption font-semibold text-text-soft">Loading…</p>

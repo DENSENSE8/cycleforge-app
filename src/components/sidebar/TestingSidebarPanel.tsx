@@ -441,8 +441,17 @@ export function TestingSidebarPanel({
         </div>
       ) : null}
 
+      {/* Box / manifest workbenches are non-modal rail inspectors: an operator
+          re-sorting units at the bench needs the scan feed and the recent rail
+          beside them, and a scrim hid exactly that. Ids stay per-entity — these
+          open from a SCAN, not from walking a queue row by row. */}
       {boxPanel ? (
-        <DetailStackRailRegistrar id={`box:${boxPanel.id}`} onClose={() => setBoxPanel(null)}>
+        <DetailStackRailRegistrar
+          id={`box:${boxPanel.id}`}
+          onClose={() => setBoxPanel(null)}
+          modal={false}
+          ariaLabel={`Box H-${boxPanel.id} workbench`}
+        >
           <BoxWorkbenchPanel
             handlingUnitId={boxPanel.id}
             onClose={() => setBoxPanel(null)}
@@ -455,6 +464,8 @@ export function TestingSidebarPanel({
         <DetailStackRailRegistrar
           id={`manifest:${manifestPanel.ref}`}
           onClose={() => setManifestPanel(null)}
+          modal={false}
+          ariaLabel={`Kit manifest ${manifestPanel.ref} workbench`}
         >
           <ManifestWorkbenchPanel manifestRef={manifestPanel.ref} onClose={() => setManifestPanel(null)} />
         </DetailStackRailRegistrar>

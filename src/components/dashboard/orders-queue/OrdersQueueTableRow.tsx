@@ -23,6 +23,8 @@ import {
   QUEUE_ROW,
   metaIndentFor,
 } from '@/components/ui/RowMetaColumns';
+import { ledgerRowFillClass } from '@/components/ui/queue-row-chrome';
+import type { GridSurfaceCapabilities } from '@/design-system/components/grid';
 import {
   getOrderPlatformColor,
   getOrderPlatformBorderColor,
@@ -135,6 +137,22 @@ export interface OrdersQueueTableRowProps {
    *  Default = canonical order. Header + rows + group summaries must receive
    *  the SAME list. */
   columns?: readonly OrdersQueueColumn[];
+  /**
+   * The MOUNTING SURFACE's declared capabilities — required, never defaulted.
+   *
+   * This row is rendered by two surfaces with different feature sets: the
+   * outbound Queue grid (`ORDERS_GRID_CAPABILITIES`) and the Tech / Packer
+   * history benches (`STATION_HISTORY_GRID_CAPABILITIES`). It used to import the
+   * Orders bag directly, which meant a bench row resolved its fill against the
+   * outbound triage vocabulary — a capability leaking in through a shared
+   * component rather than being declared by the surface that owns it.
+   *
+   * It has no default for the same reason a safety classification never does:
+   * a default is a silent opt-in that every call site you did not visit takes
+   * automatically, and the compiler stays quiet about exactly the ones you
+   * missed. Required makes a new mount answer the question.
+   */
+  capabilities: Pick<GridSurfaceCapabilities, 'rowTriageFlags'>;
   onRowClick: (record: ShippedOrder, event?: { shiftKey: boolean }) => void;
 }
 
@@ -188,6 +206,7 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   singleSelected = false,
   queueMode = 'fulfillment',
   columns = ORDERS_QUEUE_COLUMNS,
+  capabilities,
   onRowClick,
 }: OrdersQueueTableRowProps) {
   const orderChannelLabel = useOrderChannelLabel();
@@ -372,8 +391,16 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
    * Operator-set triage flag — an org-wide shared tag that washes the row.
    * Resolved through the SoT so an id this build does not know renders as
    * unflagged rather than as some arbitrary colour.
+   *
+   * Gated ONCE, here, on the mounting surface's declared capability rather than
+   * at each of the three places the flag paints (grid fill, list fill, dot
+   * indicator). Triage is outbound dispatch vocabulary; a surface that did not
+   * declare it must not show any of the three, and gating at the derivation is
+   * what makes that one decision instead of three that can drift apart.
    */
-  const rowFlag = resolveOrderRowFlag(record.row_flag?.flag);
+  const rowFlag = capabilities.rowTriageFlags
+    ? resolveOrderRowFlag(record.row_flag?.flag)
+    : null;
 
   const conditionValue = String(record.condition || '').trim();
   const hasConditionValue = Boolean(conditionValue) && conditionValue !== EMPTY_META_DASH;
@@ -1032,44 +1059,40 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
       className={cn(
         'group/row relative',
         ordersQueueRowShellClass(isMobile, { scrollMinContent: gridSkin }),
-        'cursor-pointer border-b border-border-hairline transition-colors',
-        // Grid skin: flush shell — cells own px/py so vertical rules meet edges.
-        gridSkin ? 'px-0 py-0' : QUEUE_ROW.px,
-        !gridSkin &&
-          (isStagedRow
-            ? 'py-2.5 hover:bg-blue-50/50'
-            : cn('hover:bg-surface-hover', densityClasses.rowPadding)),
-        // A flagged row keeps its wash under the pointer — the generic hover
-        // fill would erase the tint at exactly the moment the operator points
-        // at it. The flag is a fact; hover is only feedback.
-        gridSkin && !rowFlag && 'hover:bg-surface-hover',
-        // Idle zebra (off-grid only — see `stripeRow`): opaque canvas where the
-        // caller asks, translucent otherwise. Selection overrides stripe.
-        isStagedRow
-          ? (selectMode ? isChecked : isSelected)
-            ? 'bg-blue-50/80'
-            : stripeRow
-              ? opaqueStripe
-                ? 'bg-surface-canvas'
-                : 'bg-surface-canvas/40'
-              : 'bg-surface-card'
-          : (selectMode ? isChecked : isSelected)
-            ? // Airtable skin: fill only (selectedLedgerClass). List/board keeps
-              // the inset ring — ring fights cell rules under gridSkin.
-              gridSkin
-              ? QUEUE_ROW.selectedLedgerClass
-              : QUEUE_ROW.selectedClass
-            : // Unselected fill, in precedence order: the operator's triage
-              // flag beats zebra beats the card ground. Selection still wins
-              // over all three above — the row being edited must look picked,
-              // not tagged, and only one row is ever being edited while any
-              // number may be flagged.
-              rowFlag?.rowClass ??
-              (stripeRow
-                ? opaqueStripe
-                  ? 'bg-surface-canvas'
-                  : 'bg-surface-canvas/40'
-                : 'bg-surface-card'),
+        // Airtable LedgerGrid: capability-gated fill SoT (selection → triage
+        // flag → card). List/board keeps zebra + inset-ring selected chrome.
+        gridSkin
+          ? ledgerRowFillClass({
+              selected: selectMode ? isChecked : isSelected,
+              flagClass: rowFlag?.rowClass,
+              capabilities,
+            })
+          : cn(
+              'cursor-pointer border-b border-border-hairline transition-colors',
+              QUEUE_ROW.px,
+              isStagedRow
+                ? 'py-2.5 hover:bg-blue-50/50'
+                : cn('hover:bg-surface-hover', densityClasses.rowPadding),
+              // Idle zebra (off-grid only — see `stripeRow`): opaque canvas
+              // where the caller asks, translucent otherwise. Selection
+              // overrides stripe; triage flag beats zebra.
+              isStagedRow
+                ? (selectMode ? isChecked : isSelected)
+                  ? 'bg-blue-50/80'
+                  : stripeRow
+                    ? opaqueStripe
+                      ? 'bg-surface-canvas'
+                      : 'bg-surface-canvas/40'
+                    : 'bg-surface-card'
+                : (selectMode ? isChecked : isSelected)
+                  ? QUEUE_ROW.selectedClass
+                  : (rowFlag?.rowClass ??
+                    (stripeRow
+                      ? opaqueStripe
+                        ? 'bg-surface-canvas'
+                        : 'bg-surface-canvas/40'
+                      : 'bg-surface-card')),
+            ),
       )}
       style={
         gridTemplate

@@ -103,11 +103,15 @@ export function LinearWorkflowStepper({
 }
 
 /**
- * The done / active / pending marker. Exported so the capture stack's step rows
- * wear the SAME marker as the dot bar — two markers for one step vocabulary is
- * how the two surfaces would start disagreeing about "you are here".
+ * The done / active / pending marker for the dot bar.
+ *
+ * NOTE: `ProcedureChecklist` (DS) now renders its own visually-identical marker,
+ * because a design-system component must not import from `components/receiving`.
+ * That is a real duplication — the consolidation is to promote the marker into
+ * the design system and have this stepper consume it. Left as a follow-up rather
+ * than done in passing, since this stepper has five other consumers.
  */
-export function StepDot({
+function StepDot({
   state,
   index,
   compact = false,

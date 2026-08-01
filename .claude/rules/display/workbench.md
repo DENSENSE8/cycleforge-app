@@ -47,7 +47,7 @@ When using the sidebar map, three structural slots, in this order:
 | Slot | Owns | Reference |
 |---|---|---|
 | **Sidebar picker** (the stable map) | searchable master list (filters / sub-tabs as needed) | `ProductsSidebarPanel.tsx` via `src/components/layout/SidebarShell.tsx` |
-| **L2 Mode + Recents** | page mode switcher + cross-page MRU | `GlobalHeader` → `HeaderModeSwitcher` / `HeaderRecentsSwitcher` (data = `SIDEBAR_PAGE_NAV` via `useSidebarModeNav`) |
+| **L2 Mode + Recents** | page mode switcher + cross-page MRU | `GlobalHeader` → `HeaderModeSwitcher` / `HeaderRecentsSwitcher` (data = `SIDEBAR_PAGE_NAV` via `useSidebarModeNav`); pins = `HeaderPinsSwitcher` / `useQuickAccess` |
 | **Right pane** (the workspace) | the selected record's detail/editor; crossfades on selection change | `QcChecklistWorkspace.tsx`, `KitPartsWorkspace.tsx` |
 
 - **Compose `src/components/layout/SidebarShell.tsx`; never hand-position search.** It owns the outer
@@ -61,30 +61,39 @@ When using the sidebar map, three structural slots, in this order:
   History icon (collapsed by default) over `useRecentModes`. **Never** remount a full-width
   `HorizontalButtonSlider` mode rail as a twin of the header control. Nested / secondary sliders
   (pairing sort, sourcing status, FBA plan/combine, inventory triage filters) may stay in the
-  sidebar — those are not page L2. Spine identity (`MasterNavHeader`) is display-only —
+  sidebar — those are not page L2. **Header pins** (`HeaderPinsSwitcher`) sit to the right of
+  Recents (hairline separator): pin-current + sortable icon stations from `useQuickAccess` /
+  `cf.quickAccess` — never a pin list in the avatar Quick Access popover. Spine identity
+  (`MasterNavHeader`) is display-only —
   **leading icon + label** (mode glyph when modeful, page icon when modeless), no MRU
   chips and no nav-toggle chevron (column open lives on `SidebarNavColumn`, not in the
-  identity band). Global search + AI stay in
-  GlobalHeader (`GlobalHeaderSearch`) — never pin a search/AI **control** twin in the
-  spine. Search + Media **page** rows are top-pinned (`kind: 'top'`) above section
-  drills — same pin grammar as Settings/Admin footer (`kind: 'bottom'`).
-- **Section drills (spine L1).** Root shows Overview / Library / Floor / Desk / Stock
-  as **drill buttons** (`SPINE_DRILLS` in `sidebar-navigation.ts` — compose from
-  `MAIN_GROUPS` + `STATION_GROUPS` + `STOCK_DRILL`; never twin labels). Drill replaces
-  the scroll body with centered back title + that section's pages (mode accordion
-  unchanged). Membership: `mainGroup` / `stationGroup` / `kind: 'stock'` via
-  `spineDrillIdForPage`. Floor = scan benches in pipeline order; Desk = Review +
-  Support; Overview = day boards; Library = catalog (Media is top-pinned); Stock =
-  Products → Inventory → Warehouse. Auto-enters on cross-section navigation; manual
-  Back returns to the root map without forcing re-open. Swap uses named opacity-only
-  SoT (`framerPresence.spineDrill` / `framerTransition.spineDrill`, ≤150ms) — **no**
-  horizontal slide. Auto-drill must **not** steal keyboard focus. Modes stay header
-  Mode + accordion — never a mode drill level. Search/Media stay top-pinned;
-  Settings/Admin stay footer-pinned.
+  identity band). Global search stays in
+  GlobalHeader (`GlobalHeaderSearch`) — never pin a search **control** twin in the
+  spine. **Home** (house glyph + label) then Search + Media + **AI Chat** **page**
+  rows are top-pinned (`kind: 'top'`) above section drills — same pin grammar as
+  Settings/Admin footer (`kind: 'bottom'`).
+- **Section drills (spine L1).** Root shows Overview / Scan Stations / Desk / Stock /
+  Products / Library as **drill buttons** (`SPINE_SECTIONS` in `sidebar-navigation.ts` —
+  compose from `MAIN_GROUPS` + `STATION_GROUPS` + `STOCK_DRILL` + `PRODUCTS_SECTION`;
+  never twin labels). Drill replaces the scroll body with centered back title + that
+  section's pages. Membership: `mainGroup` / `stationGroup` / `kind: 'stock'` /
+  `kind: 'products'` via `spineSectionIdForPage`. Scan Stations (`floor`) = quiet
+  Receiving subgroup (Arrival / Unbox / Local Pickup / Repair Service via
+  `STATION_SUBGROUPS` + `stationSubgroup` — page-style header with icon + count,
+  members indent as mode rows) + Testing / Packing (modeless) / Scan out
+  (modeless); Desk = Incoming / Review / Support / Shipping (Labels · Ready · FBA);
+  Overview = Dashboard + Operations (+ any unparked Overview peers; Home / Media /
+  AI Chat are top-pinned); Library = Studio + Catalog (last section); Stock = Inventory →
+  Warehouse; Products = catalog + channel modes. Auto-enters on cross-section
+  navigation; manual Back returns to the root map without forcing re-open. Swap uses
+  named opacity-only SoT (`framerPresence.spineDrill` / `framerTransition.spineDrill`,
+  ≤150ms) — **no** horizontal slide. Auto-drill must **not** steal keyboard focus.
+  Multi-mode pages keep children **always expanded** with a pinned mode-count (no
+  accordion chevron); L2 Mode also lives in GlobalHeader — never a mode drill level.
   **Spine type ladder (CF Type roles — no rem-base bump):** identity band
   (`MasterNavHeader`) = `text-role-body font-semibold`; page + drill-back + mode
   destinations = `text-role-caption` (pages/drills `font-semibold`, modes
-  `font-medium`); counts/chevrons stay `text-role-micro`. Inactive pages whisper
+  `font-medium`); counts stay `text-role-micro`. Inactive pages whisper
   (`text-text-muted` until hover); **modes stay `text-text-default`** when idle —
   only the active mode takes `text-blue-700` + wash. Never use sentence-case
   `text-role-eyebrow` for spine destinations (eyebrow is uppercase chrome DNA).

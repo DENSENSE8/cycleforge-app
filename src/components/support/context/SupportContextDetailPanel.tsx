@@ -1,7 +1,9 @@
 'use client';
 
+import { X } from '@/components/Icons';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
 import { SupportContextHub } from '@/components/support/context';
+import { IconButton } from '@/design-system/primitives';
 import type { SupportContextAnchor } from '@/hooks/useSupportContext';
 
 export interface SupportContextDetailPanelProps {
@@ -15,7 +17,10 @@ export interface SupportContextDetailPanelProps {
 /**
  * Ticket linkage / team / activity in the global detail-stack shell
  * ({@link DetailStackRailRegistrar} → floating inset card with 12px viewport gap).
- * Close via backdrop / Esc (RightRailHost) — no header X.
+ *
+ * NON-MODAL (`modal={false}`): reference context read BESIDE the ticket thread —
+ * a scrim would hide the very conversation the linkage is about. Close is the
+ * header X or Escape on RightRailHost (there is no backdrop to click off).
  */
 export function SupportContextDetailPanel({
   ticketId,
@@ -29,6 +34,8 @@ export function SupportContextDetailPanel({
       id={`detail:support-context:${ticketId}`}
       onClose={onClose}
       enabled={open}
+      modal={false}
+      ariaLabel={`Ticket #${ticketId} support context`}
     >
       <div className="flex h-full min-h-0 flex-col overflow-hidden">
         <div className="flex shrink-0 items-start justify-between gap-3 border-b border-border-hairline px-4 py-3">
@@ -40,6 +47,13 @@ export function SupportContextDetailPanel({
               Support context
             </h2>
           </div>
+          <IconButton
+            size="md"
+            icon={<X className="h-4 w-4" />}
+            ariaLabel="Close support context"
+            onClick={onClose}
+            className="-my-1 rounded-lg text-text-muted hover:bg-surface-sunken"
+          />
         </div>
         <div className="min-h-0 flex-1 overflow-hidden">
           <SupportContextHub

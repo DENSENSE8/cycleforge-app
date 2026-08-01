@@ -1,7 +1,6 @@
 'use client';
 
 import { Fragment, memo, type ReactNode } from 'react';
-import { Check } from '@/components/Icons';
 import { FulfillmentPickupPill } from '@/components/receiving/ReceivingIdentityChips';
 import { IncomingAttachTrackingButton } from '@/components/station/IncomingAttachTrackingButton';
 import {
@@ -17,7 +16,9 @@ import {
   GridPlatformMarkValue,
   GridQtyFractionValue,
 } from '@/components/ui/grid-cells';
-import { ledgerRowStateClass } from '@/components/ui/queue-row-chrome';
+import { GridRowCheckbox } from '@/components/ui/GridRowCheckbox';
+import { ledgerRowFillClass } from '@/components/ui/queue-row-chrome';
+import { INCOMING_GRID_CAPABILITIES } from '@/components/station/incoming-grid/incoming-grid-descriptor';
 import { gridCellAlignClass } from '@/design-system/components/grid';
 import { usePlatformMeta } from '@/hooks/useCatalog';
 import { conditionGradeTextClass } from '@/lib/condition-tone';
@@ -54,8 +55,14 @@ interface IncomingGridRowProps {
   index: number;
   isMobile: boolean;
   selectMode: boolean;
-  isSelected: boolean;
+  /** This row is the record currently open in the Incoming inspector. */
+  isOpen: boolean;
+  /** This row is checked into the bulk selection (gutter plane). */
+  isChecked: boolean;
+  /** Row-body activate — opens the record. */
   onSelect: () => void;
+  /** Gutter checkbox — bulk membership only. */
+  onToggle: () => void;
   columns?: readonly IncomingGridColumn[];
 }
 
@@ -92,13 +99,19 @@ export const IncomingGridRow = memo(function IncomingGridRow({
   index,
   isMobile,
   selectMode,
-  isSelected,
+  isOpen,
+  isChecked,
   onSelect,
+  onToggle,
   columns = INCOMING_GRID_COLUMNS,
 }: IncomingGridRowProps) {
   const resolvePlatformMeta = usePlatformMeta();
 
   if (isMobile) {
+    // The mobile stack splits the planes the same way: the leading checkbox is
+    // a real control, the tap opens the record. Passing `onToggleSelect` is what
+    // keeps bulk reachable there — without it the phone would show a checkbox
+    // it could no longer tick.
     return (
       <ReceivingLineOrderRow
         row={row}
@@ -106,8 +119,10 @@ export const IncomingGridRow = memo(function IncomingGridRow({
         isMobile
         isIncoming
         selectMode={selectMode}
-        isSelected={isSelected}
+        isSelected={isOpen || isChecked}
+        isChecked={isChecked}
         onSelect={onSelect}
+        onToggleSelect={onToggle}
       />
     );
   }
@@ -184,22 +199,16 @@ export const IncomingGridRow = memo(function IncomingGridRow({
               'justify-center',
             )}
             style={{ left: incomingGridFrozenLeft('select') }}
-            onClick={(e) => {
-              if (selectMode) e.stopPropagation();
-            }}
           >
             {selectMode ? (
-              <span
-                className={cn(
-                  'flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors',
-                  isSelected
-                    ? 'border-accent-bg bg-accent-bg text-text-inverse'
-                    : 'border-border-default bg-surface-card',
-                )}
-                aria-hidden
-              >
-                {isSelected ? <Check className="h-3 w-3" /> : null}
-              </span>
+              // The gutter is the multi-select plane and owns its own click —
+              // it used to `stopPropagation` with no handler of its own, so the
+              // checkbox was inert and the whole ROW toggled it instead.
+              <GridRowCheckbox
+                checked={isChecked}
+                onToggle={onToggle}
+                label={`Select receiving line ${row.id} for bulk actions`}
+              />
             ) : (
               <span className="h-4 w-4 shrink-0" aria-hidden />
             )}
@@ -310,11 +319,15 @@ export const IncomingGridRow = memo(function IncomingGridRow({
     <div
       data-line-row-id={row.id}
       data-order-row-id={String(row.id)}
-      role={selectMode ? 'checkbox' : 'button'}
+      // The row body is the RECORD plane — always a button that opens the
+      // inspector. The checkbox semantics moved to the gutter cell, where the
+      // affordance actually is; the row used to claim `role="checkbox"` for the
+      // whole width whenever select mode was on, which is what made "open" an
+      // unreachable gesture on this surface.
+      role="button"
       tabIndex={0}
-      aria-checked={selectMode ? isSelected : undefined}
-      aria-pressed={selectMode ? undefined : isSelected}
-      aria-label={`Select receiving line ${row.id}`}
+      aria-pressed={isOpen}
+      aria-label={`Open receiving line ${row.id}`}
       onClick={() => {
         onSelect();
       }}
@@ -326,7 +339,13 @@ export const IncomingGridRow = memo(function IncomingGridRow({
       }}
       className={cn(
         incomingGridRowShellClass(false, { scrollMinContent: true }),
-        ledgerRowStateClass(isSelected),
+        // Either plane fills the row — the gutter checkbox is what tells the
+        // operator which one. Selection is fill-only here (no ring): an inset
+        // ring fights the airtable cell rules (`queue-row-chrome.ts`).
+        ledgerRowFillClass({
+          selected: isOpen || isChecked,
+          capabilities: INCOMING_GRID_CAPABILITIES,
+        }),
       )}
       style={{ gridTemplateColumns: incomingGridTemplate(columns) }}
     >

@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { Settings } from '@/components/Icons';
 import { useRouter } from 'next/navigation';
 import { ActionsSection } from './ActionsSection';
-import { PinnedSection } from './PinnedSection';
 import { RecentSection } from './RecentSection';
 import { useQuickAccess } from '@/lib/quick-access/use-quick-access';
 import { useAuth } from '@/contexts/AuthContext';
@@ -24,13 +23,14 @@ interface QuickAccessPopoverProps {
   onOpenFeedbackPopover?: () => void;
   /**
    * Mobile: collapse the popover to just the staff identity row (avatar, name,
-   * settings, sign-out). The pinned / recent / action sections are desktop-only.
+   * settings, sign-out). Recent / action sections are desktop-only.
    */
   compact?: boolean;
 }
 
 /**
- * Body order: pinned → recent → compact actions.
+ * Body order: recent → compact actions.
+ * Pins live in GlobalHeader ({@link HeaderPinsSwitcher}) — not here.
  * Signed-in staff card lives at the bottom.
  */
 export function QuickAccessPopover({
@@ -65,7 +65,6 @@ export function QuickAccessPopover({
 
       {!compact && (
         <div className="min-h-0 flex-1 divide-y divide-border-hairline overflow-y-auto overscroll-contain">
-          <PinnedSection onNavigate={onClose} />
           {settings.showRecent ? <RecentSection onNavigate={onClose} /> : null}
           <ActionsSection
             actions={settings.actions}

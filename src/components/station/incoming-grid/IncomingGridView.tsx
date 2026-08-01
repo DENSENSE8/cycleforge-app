@@ -33,7 +33,10 @@ interface IncomingGridViewProps {
   selectMode: boolean;
   selectedId: number | null;
   selectedIds: Set<number>;
+  /** Row-body click — opens the record in the Incoming inspector. */
   handleSelectRow: (row: ReceivingLineRow) => void;
+  /** Select-gutter click — bulk membership only. */
+  handleToggleRow: (row: ReceivingLineRow) => void;
   handleSelectGroup: (ids: readonly number[]) => void;
   /** FULL canonical column list — visibility is resolved here, not by callers. */
   columns?: readonly IncomingGridColumn[];
@@ -68,6 +71,7 @@ export function IncomingGridView({
   selectedId,
   selectedIds,
   handleSelectRow,
+  handleToggleRow,
   handleSelectGroup,
   columns = INCOMING_GRID_COLUMNS,
   tableId = 'incoming',
@@ -161,6 +165,7 @@ export function IncomingGridView({
           selectedId={selectedId}
           selectedIds={selectedIds}
           handleSelectRow={handleSelectRow}
+          handleToggleRow={handleToggleRow}
           handleSelectGroup={handleSelectGroup}
           columns={visible}
         />
@@ -174,6 +179,7 @@ export function IncomingGridView({
           selectedId={selectedId}
           selectedIds={selectedIds}
           handleSelectRow={handleSelectRow}
+          handleToggleRow={handleToggleRow}
           handleSelectGroup={handleSelectGroup}
           columns={visible}
         />

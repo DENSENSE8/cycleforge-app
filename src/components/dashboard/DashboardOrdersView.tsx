@@ -108,16 +108,23 @@ export function DashboardOrdersView({
 
         <div className="relative flex min-w-0 flex-col">
           <Suspense fallback={<div className="min-h-[240px] bg-surface-canvas" aria-hidden />}>
+            {/* `railSelection`: on THIS display the check-set is the single
+                selection SoT and the right rail is the selection plane — one
+                row selected opens the inspector on it. The same tables render
+                without it on Pack / Support / Shipping, which still run the
+                bottom capsule. Plan: docs/todo/order-rail-selection-plane-PLAN.md */}
             {orderView === 'shipped' ? (
               <DashboardShippedTable
                 selectMode={selectMode}
                 bulkBarInset={bulkBarVisible}
+                railSelection
                 toolbarPortalTarget={outboundControlsEl}
               />
             ) : orderView === 'packed' ? (
               <PackedOrdersTable
                 selectMode={selectMode}
                 bulkBarInset={bulkBarVisible}
+                railSelection
                 toolbarPortalTarget={outboundControlsEl}
               />
             ) : (
@@ -125,6 +132,7 @@ export function DashboardOrdersView({
                 strictSearchScope
                 selectMode={selectMode}
                 bulkBarInset={bulkBarVisible}
+                railSelection
                 toolbarPortalTarget={outboundControlsEl}
                 fulfillmentLane={orderView === 'tested' ? 'tested' : 'pending'}
               />
@@ -133,6 +141,14 @@ export function DashboardOrdersView({
         </div>
       </div>
 
+      {/* REVERTED 2026-08-01 (plan step C). The capsule is back because its
+          replacement is not proven: mounting the rail action region inside the
+          inspector makes the record open and immediately close, so a 1-row
+          selection was left with NO actions at all. Phase 2's files
+          (`rail/OrderRailActions`, `rail/OrderRailShell`, `rail-actions-store`)
+          are on disk but unmounted. Re-remove this ONLY after that bug is fixed
+          and `dashboard-bulk-actions` is green.
+          Plan: docs/todo/order-rail-selection-plane-PLAN.md §Phase 2 status. */}
       {selectionEnabled ? (
         <>
           <ContextualSelectionBar

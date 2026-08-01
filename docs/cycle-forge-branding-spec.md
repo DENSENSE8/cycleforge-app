@@ -176,7 +176,6 @@ Add blanks to `.env.example`; never commit real secrets.
 | `src/app/ai/page.tsx`, `src/app/ai-chat/page.tsx` | AI Chat — USAV | AI Chat · Cycle Forge |
 | `src/lib/email/send.ts` | `USAV Orders <…>` dev From | `Cycle Forge <…>` |
 | `src/app/api/warranty/claims/[id]/close/route.ts` | closed in USAV Orders | closed in Cycle Forge (pending open item #4) |
-| `src/components/quick-access/PinThisPageButton.tsx` | sentinel `USAV Solutions` | sentinel `Cycle Forge` |
 | `src/components/station/InstallPrompt.tsx` | USAV Solutions | Cycle Forge |
 | `src/lib/mobile-context-navigation.ts` | fallback `USAV` | `Cycle Forge` |
 

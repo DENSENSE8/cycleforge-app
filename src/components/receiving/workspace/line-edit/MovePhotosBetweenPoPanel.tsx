@@ -8,7 +8,7 @@
  * Reuses the reassign SoT (`reassignPhotoToReceiving` → PATCH /api/photos/:id/reassign).
  *
  * Hosted by Unbox {@link ReceivingToolPushStack} or the thin
- * {@link MovePhotosBetweenPoModal} overlay for non-Unbox hosts.
+ * {@link MovePhotosBetweenPoRail} overlay for non-Unbox hosts.
  */
 
 import { useEffect, useRef, useState } from 'react';

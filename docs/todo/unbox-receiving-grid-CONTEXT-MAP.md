@@ -85,8 +85,9 @@ Same LedgerGrid family powers `/unbox` and dashboard Receiving via `ReceivingLin
 ## Still deferred
 
 1. **Orders** `OrdersQueueColumnHeader` — resize/reorder recipe; do not force through `LedgerGridColumnHeader` v1
-2. Catalog / Pickup / Repair headers — same adapter pattern when next touched
-3. Delete local `PoLineRow` twin in `PoLinesSection.tsx` — only when accordion work is in scope
+2. Delete local `PoLineRow` twin in `PoLinesSection.tsx` — only when accordion work is in scope
+
+**Shipped (header adapters):** Receiving · Incoming · Pickup · Catalog · Repair all thin-adapt `LedgerGridColumnHeader`. Surface features live on `GridSurfaceCapabilities` per descriptor.
 
 ---
 

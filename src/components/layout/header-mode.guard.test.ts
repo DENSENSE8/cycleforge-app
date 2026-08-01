@@ -1,9 +1,11 @@
 /**
- * Source guard: L2 Mode + Recents live in GlobalHeader for every modeful page.
- * Pins the XOR — header mounts Mode/Recents; sidebar panels must not remount a
- * page-L2 mode rail twin. Nested facet sliders are OK.
+ * Source guard: L2 Mode + Recents + Pins live in GlobalHeader for every modeful page.
+ * Pins the XOR — header mounts Mode/Recents/Pins; sidebar panels must not remount a
+ * page-L2 mode rail twin. Nested facet sliders are OK. Avatar Quick Access must not
+ * remount a pin list (pins = HeaderPinsSwitcher / useQuickAccess).
  *
  * SoT: SIDEBAR_PAGE_NAV + useSidebarModeNav · HeaderModeSwitcher · HeaderRecentsSwitcher
+ *      · HeaderPinsSwitcher / useQuickAccess
  * Display law: .claude/rules/display/workbench.md (L2 in GlobalHeader)
  *
  * Run: node --test --import tsx \
@@ -27,7 +29,9 @@ function code(src: string): string {
 const HEADER = code(sourceOf('./GlobalHeader.tsx'));
 const MODE = code(sourceOf('./HeaderModeSwitcher.tsx'));
 const RECENTS = code(sourceOf('./HeaderRecentsSwitcher.tsx'));
+const PINS = code(sourceOf('./HeaderPinsSwitcher.tsx'));
 const HEADER_SHELL = code(sourceOf('./header-shell.ts'));
+const QUICK_ACCESS_POPOVER = code(sourceOf('../quick-access/QuickAccessPopover.tsx'));
 const MASTER_HEADER = code(sourceOf('../sidebar/master-nav/MasterNavHeader.tsx'));
 const MASTER_NAV = code(sourceOf('../sidebar/master-nav/MasterNav.tsx'));
 const MASTER_VIEW = code(sourceOf('../sidebar/master-nav/MasterNavView.tsx'));
@@ -48,13 +52,23 @@ const PANEL_SOURCES = [
 test('SIDEBAR_PAGE_NAV has multiple modeful pages for the header Mode control', () => {
   const modeful = SIDEBAR_PAGE_NAV.filter((p) => (p.modes?.length ?? 0) > 1);
   assert.ok(modeful.length >= 8, `expected ≥8 modeful pages, got ${modeful.length}`);
+  // Receiving family L1 pages are modeless; legacy `receiving` keeps mode
+  // resolution for deep-links. Shipping stays modeful in the header.
+  assert.equal(getSidebarPageNav('receive')?.modes, undefined);
   assert.ok(getSidebarPageNav('receiving')?.modes?.some((m) => m.id === 'receive'));
   assert.ok(getSidebarPageNav('outbound')?.modes?.some((m) => m.id === 'labels'));
+  assert.equal(
+    getSidebarPageNav('outbound')?.modes?.some((m) => m.id === 'scan-out'),
+    false,
+  );
+  assert.equal(getSidebarPageNav('packer')?.modes, undefined);
+  assert.equal(getSidebarPageNav('scan-out')?.modes, undefined);
 });
 
-test('GlobalHeader always mounts Mode + Recents (Mode nulls itself when modeless)', () => {
+test('GlobalHeader always mounts Mode + Recents + Pins (Mode nulls itself when modeless)', () => {
   assert.match(HEADER, /HeaderModeSwitcher/);
   assert.match(HEADER, /HeaderRecentsSwitcher/);
+  assert.match(HEADER, /HeaderPinsSwitcher/);
   assert.doesNotMatch(HEADER, /isReceivingHeaderModeRoute/);
 });
 
@@ -69,6 +83,16 @@ test('HeaderRecentsSwitcher reuses useRecentModes + useSidebarModeNav', () => {
   assert.match(RECENTS, /useRecentModes/);
   assert.match(RECENTS, /useSidebarModeNav/);
   assert.match(RECENTS, /AnchoredLayer/);
+});
+
+test('HeaderPinsSwitcher owns Quick Access pins (not the avatar popover)', () => {
+  assert.match(PINS, /useQuickAccess/);
+  assert.match(PINS, /HEADER_CLUSTER_HAIRLINE/);
+  assert.match(PINS, /MAX_HEADER_PIN_ICONS/);
+  assert.match(PINS, /reorder/);
+  assert.match(HEADER_SHELL, /HEADER_CLUSTER_HAIRLINE/);
+  assert.doesNotMatch(QUICK_ACCESS_POPOVER, /PinnedSection/);
+  assert.doesNotMatch(QUICK_ACCESS_POPOVER, /PinThisPageButton/);
 });
 
 test('MasterNavHeader has no MRU jump chips', () => {

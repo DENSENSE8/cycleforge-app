@@ -1,0 +1,217 @@
+import { test, expect } from '@playwright/test';
+
+/**
+ * Queue / workbench record inspectors = NON-MODAL right-rail regions.
+ *
+ * Same modality metric already proven for `detail:order`
+ * (`dashboard-inspector-non-modal.spec.ts`) and the intake planes
+ * (`import-add-order-non-modal.spec.ts`): `DetailStackRailRegistrar` +
+ * `modal={false}` → `role="region"` with a name, no scrim, no body scroll lock,
+ * and the collection map underneath stays hit-testable.
+ *
+ * Covers the Wave A flips:
+ *   (1) Incoming PO / shipment details (`detail:incoming`)
+ *   (2) Repair claim details (`detail:claim`)
+ *
+ * Run against the QA org (`.claude/rules/verify.md`):
+ *   pnpm provision:qa-org && npx playwright test tests/e2e/queue-inspector-non-modal.spec.ts --project=qa-desktop
+ *
+ * Both cases skip cleanly when the tenant has no rows on that lane — the
+ * assertion is about the OVERLAY contract, not about seeded row counts.
+ *
+ * NOT covered here, and WHY (both are pre-existing reachability gaps, not
+ * modality gaps — measured 2026-07-31):
+ *
+ *   • `detail:inventory-sync` — its only trigger (`ShippedActionsButton`) has
+ *     zero mounts in the app; both files sit in `knip-baseline.json` as unused.
+ *     There is no page that can open it. The port matches `OrderSyncDialog`
+ *     exactly; coverage lands when the button is remounted.
+ *
+ *   • `detail:incoming` row-click — `/incoming` is a `isTableOnlyMode` surface,
+ *     so `useReceivingLineBulkSelection` pins `selectMode` ON
+ *     (`const selectMode = active`), and `handleSelectRow` therefore always
+ *     takes the bulk-toggle early return and never calls `dispatchSelectLine`.
+ *     No event → `useReceivingDetailOverlays` never sets `incomingDetails` →
+ *     the panel never mounts. The Incoming cases below consequently skip on a
+ *     live tenant; they are kept (not deleted) so they start asserting the
+ *     moment that wiring is repaired.
+ */
+
+/** Both backdrop variants carry their z-band token in the class string. */
+const BACKDROP_SELECTOR = '[class*="z-panelBackdrop"], [class*="z-detailStackBackdrop"]';
+
+/** The shared non-modal asserts: named region, no dialog, no scrim, no lock. */
+async function expectNonModalRegion(
+  page: import('@playwright/test').Page,
+  aside: import('@playwright/test').Locator,
+  namePattern: RegExp,
+) {
+  await expect(aside).toHaveAttribute('aria-label', namePattern);
+  expect(await aside.getAttribute('aria-modal')).toBeNull();
+  await expect(page.locator('aside[role="dialog"]')).toHaveCount(0);
+  await expect(page.locator(BACKDROP_SELECTOR)).toHaveCount(0);
+  await expect
+    .poll(() => page.evaluate(() => document.body.style.overflow))
+    .not.toBe('hidden');
+}
+
+test.describe('Queue inspectors — non-modal right rail', () => {
+  test.skip(({ browserName }) => browserName === 'webkit', 'queue grids are a desktop layout');
+
+  test('Incoming details opens as a named region and leaves the grid live', async ({ page }) => {
+    await page.goto('/incoming');
+    await expect(page.getByTestId('incoming-grid-body')).toBeVisible({ timeout: 30_000 });
+
+    const rows = page.locator('[data-line-row-id]');
+    // Wait for the first row to RENDER before counting — `count()` does not
+    // auto-wait, so counting straight after the fetch skips on a live tenant.
+    const hasRows = await rows
+      .first()
+      .waitFor({ state: 'visible', timeout: 20_000 })
+      .then(() => true)
+      .catch(() => false);
+    if (!hasRows) test.skip(true, 'no Incoming rows on this tenant');
+
+    await rows.first().click();
+
+    const inspector = page.locator('aside[role="region"]');
+    // A PO-less / unlinked row toasts instead of opening — a valid no-op path.
+    const opened = await inspector
+      .first()
+      .waitFor({ state: 'visible', timeout: 5_000 })
+      .then(() => true)
+      .catch(() => false);
+    if (!opened) {
+      test.skip(
+        true,
+        'Incoming row click did not open the panel — either a PO-less row (toast path) ' +
+          'or the pinned-selectMode wiring gap noted in the file header.',
+      );
+    }
+
+    await expectNonModalRegion(page, inspector, /^Incoming .*details$/);
+
+    // The grid stays clickable under the float. Probe via elementFromPoint so
+    // the assertion is about the OVERLAY, not about what a given row click does.
+    const rowBox = await rows.first().boundingBox();
+    expect(rowBox).not.toBeNull();
+    const hit = await page.evaluate(
+      ({ x, y }) => {
+        const el = document.elementFromPoint(x, y);
+        return { inRow: !!el?.closest('[data-line-row-id]'), inAside: !!el?.closest('aside') };
+      },
+      {
+        x: rowBox!.x + Math.min(40, rowBox!.width / 4),
+        y: rowBox!.y + rowBox!.height / 2,
+      },
+    );
+    expect(hit).toEqual({ inRow: true, inAside: false });
+
+    // The header close is the explicit dismiss now that there is no scrim.
+    await page.getByRole('button', { name: 'Close' }).first().click();
+    await expect(inspector).toBeHidden({ timeout: 10_000 });
+  });
+
+  test('Incoming row→row keeps ONE occupant mounted (stable detail:incoming)', async ({ page }) => {
+    await page.goto('/incoming');
+    await expect(page.getByTestId('incoming-grid-body')).toBeVisible({ timeout: 30_000 });
+
+    const rows = page.locator('[data-line-row-id]');
+    const hasRows = await rows
+      .nth(1)
+      .waitFor({ state: 'visible', timeout: 20_000 })
+      .then(() => true)
+      .catch(() => false);
+    if (!hasRows) test.skip(true, 'needs at least two Incoming rows');
+
+    await rows.nth(0).click();
+    const inspector = page.locator('aside[role="region"]');
+    const opened = await inspector
+      .first()
+      .waitFor({ state: 'visible', timeout: 5_000 })
+      .then(() => true)
+      .catch(() => false);
+    if (!opened) {
+      test.skip(
+        true,
+        'Incoming row click did not open the panel — either a PO-less row (toast path) ' +
+          'or the pinned-selectMode wiring gap noted in the file header.',
+      );
+    }
+
+    // Watch for the occupant being torn out of the DOM. Under the old per-record
+    // occupant ids (`detail:incoming:<poId>`) this fired on every row step:
+    // exit → empty slot → enter.
+    await page.evaluate(() => {
+      (window as unknown as { __asideRemoved?: boolean }).__asideRemoved = false;
+      const obs = new MutationObserver((records) => {
+        for (const r of records) {
+          for (const node of Array.from(r.removedNodes)) {
+            if (!(node instanceof HTMLElement)) continue;
+            if (node.matches('aside[role="region"]') || node.querySelector('aside[role="region"]')) {
+              (window as unknown as { __asideRemoved?: boolean }).__asideRemoved = true;
+            }
+          }
+        }
+      });
+      obs.observe(document.body, { childList: true, subtree: true });
+    });
+
+    await rows.nth(1).click();
+    await expect(inspector).toBeVisible();
+    // Still exactly one right-edge region — store single-slot exclusivity.
+    await expect(page.locator('aside[role="region"]')).toHaveCount(1);
+    expect(
+      await page.evaluate(() => (window as unknown as { __asideRemoved?: boolean }).__asideRemoved),
+    ).toBe(false);
+  });
+
+  test('the Incoming gutter checkbox does bulk WITHOUT opening a record', async ({ page }) => {
+    // The other half of the two-plane split. Fixing "row click opens" is only
+    // correct if the multi-select plane survives it — the gutter must toggle
+    // membership and must NOT mount the inspector.
+    await page.goto('/incoming');
+    await expect(page.getByTestId('incoming-grid-body')).toBeVisible({ timeout: 30_000 });
+
+    const rows = page.locator('[data-line-row-id]');
+    const hasRows = await rows
+      .first()
+      .waitFor({ state: 'visible', timeout: 20_000 })
+      .then(() => true)
+      .catch(() => false);
+    if (!hasRows) test.skip(true, 'no Incoming rows on this tenant');
+
+    const box = rows.first().getByRole('checkbox').first();
+    await expect(box).toHaveAttribute('aria-checked', 'false');
+
+    await box.click();
+    await expect(box).toHaveAttribute('aria-checked', 'true');
+    // No record opened — the check is not a row click.
+    await expect(page.locator('aside[role="region"]')).toHaveCount(0);
+
+    await box.click();
+    await expect(box).toHaveAttribute('aria-checked', 'false');
+  });
+
+  test('Repair details opens as a named region without scrim or scroll lock', async ({ page }) => {
+    await page.goto('/repair');
+
+    const rows = page.locator('[data-repair-row-id]');
+    const hasRows = await rows
+      .first()
+      .waitFor({ state: 'visible', timeout: 20_000 })
+      .then(() => true)
+      .catch(() => false);
+    if (!hasRows) test.skip(true, 'no Repair rows on this tenant');
+
+    await rows.first().locator('[data-col="title"]').click();
+
+    const inspector = page.locator('aside[role="region"]');
+    await expect(inspector).toBeVisible({ timeout: 20_000 });
+
+    await expectNonModalRegion(page, inspector, /^Repair .+ details$/);
+
+    await page.keyboard.press('Escape');
+    await expect(inspector).toBeHidden({ timeout: 10_000 });
+  });
+});

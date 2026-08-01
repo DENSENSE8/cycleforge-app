@@ -11,15 +11,11 @@ import {
 } from '@/design-system/foundations/motion-framer-hooks';
 import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
 import { ChevronRight, ExternalLink } from '@/components/Icons';
-import type { MyDayInterrupt } from '@/lib/my-day/my-day-types';
+import type { MyDayInterrupt, MyDaySelectedItem } from '@/lib/my-day/my-day-types';
 import { workOrderHref } from '@/lib/my-day/my-day-href';
 import { assignmentHeaderContextText } from '@/design-system/components/work-order-assignment/work-order-assignment-shared';
 
-type SelectedItem =
-  | { kind: 'work_order'; row: WorkOrderRow }
-  | { kind: 'interrupt'; item: MyDayInterrupt };
-
-export function MyDayContextPane({ selected }: { selected: SelectedItem | null }) {
+export function MyDayContextPane({ selected }: { selected: MyDaySelectedItem | null }) {
   const presence = useMotionPresence(framerPresence.workbenchPane);
   const transition = useMotionTransition(framerTransition.workbenchPaneMount);
 

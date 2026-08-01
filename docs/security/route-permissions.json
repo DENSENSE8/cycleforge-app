@@ -1,9 +1,9 @@
 {
   "version": 1,
-  "generatedAt": "2026-08-01T04:42:10Z",
-  "totalRoutes": 897,
+  "generatedAt": "2026-08-01T06:25:09Z",
+  "totalRoutes": 896,
   "summary": {
-    "permissionGated": 761,
+    "permissionGated": 760,
     "authenticatedNoPermission": 48,
     "anonymousIntentional": 86,
     "serviceToService": 2,
@@ -1358,18 +1358,6 @@
       ],
       "gate": "withAuth",
       "permission": "orders.view",
-      "exemptReason": null
-    },
-    {
-      "path": "/api/checklists/route.ts",
-      "methods": [
-        "DELETE",
-        "GET",
-        "POST",
-        "PUT"
-      ],
-      "gate": "withAuth",
-      "permission": "receiving.view",
       "exemptReason": null
     },
     {

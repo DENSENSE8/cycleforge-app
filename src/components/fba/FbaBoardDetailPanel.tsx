@@ -33,7 +33,16 @@ export function FbaBoardDetailPanel({
   } = useFbaBoardDetail({ item, onSaved });
 
   return (
-    <DetailStackRailRegistrar id={`detail:plan:${item.fnsku}`} onClose={onClose}>
+    // Non-modal + STABLE occupant id: the header action bar walks the board
+    // up/down, and the host keys its crossfade on the occupant id — a per-FNSKU
+    // id played exit→empty→enter on every step while the board sat dimmed
+    // behind a scrim it needed to read.
+    <DetailStackRailRegistrar
+      id="detail:fba-plan"
+      onClose={onClose}
+      modal={false}
+      ariaLabel={`FBA ${item.fnsku} details`}
+    >
       <div className="flex h-full min-h-0 flex-col overflow-hidden">
       {/* ── Fixed header (4 rows) — never scrolls ──────────────────── */}
       <div className="shrink-0 overflow-hidden bg-surface-card">

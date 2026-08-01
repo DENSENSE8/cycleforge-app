@@ -41,6 +41,9 @@ export interface DashboardShippedTableProps {
    *  `workbenchTableViewportClass`). Ignored when `embedded` — that shell is a
    *  flex child with no bounded host of its own. */
   bulkBarInset?: boolean;
+  /** Rail-selection model: the check-set is the single selection SoT and drives
+   *  the right-rail inspector. See `docs/todo/order-rail-selection-plane-PLAN.md`. */
+  railSelection?: boolean;
   bannerTitle?: DashboardSearchSectionProps['bannerTitle'];
   bannerSubtitle?: DashboardSearchSectionProps['bannerSubtitle'];
   searchEmptyTitle?: DashboardSearchSectionProps['searchEmptyTitle'];
@@ -62,6 +65,7 @@ export function DashboardShippedTable({
   embedded = false,
   selectMode = false,
   bulkBarInset = false,
+  railSelection = false,
   searchEmptyTitle = 'No shipped orders found',
   searchResultLabel = 'shipped orders',
   clearSearchLabel = 'Show All Shipped Orders',
@@ -197,6 +201,7 @@ export function DashboardShippedTable({
           sort="newest"
           selectMode={selectMode}
           selectionScope={DASHBOARD_ORDERS_SELECTION_SCOPE}
+          railSelection={railSelection}
           data-testid="shipped-grid-body"
           onOpenRecord={onOpenRecord}
           onCloseRecord={() => undefined}

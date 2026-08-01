@@ -35,7 +35,7 @@ import {
 } from '@/components/ui/CopyChip';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { WorkspaceTimelineTab } from '@/components/station/workbench';
-import { ReceivingAuditModal } from '@/components/receiving/workspace/ReceivingAuditModal';
+import { ReceivingAuditRail } from '@/components/receiving/workspace/ReceivingAuditRail';
 import { ProgressBadge } from '@/components/receiving/workspace/PoLineBadges';
 import { PoLineMetaGrid } from '@/components/receiving/workspace/PoLineMetaGrid';
 import { ReceivingCartonPipeline } from '@/components/station/receiving/ReceivingCartonPipeline';
@@ -246,7 +246,7 @@ export function CartonInspectionPage({ receivingId }: { receivingId: number }) {
         )}
       </div>
 
-      <ReceivingAuditModal
+      <ReceivingAuditRail
         open={auditOpen}
         onClose={() => setAuditOpen(false)}
         receivingId={receivingId}

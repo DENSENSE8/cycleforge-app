@@ -47,4 +47,6 @@ export interface RecentVisit {
 }
 
 export const MAX_PINS = 30;
+/** Always-visible pin icons in GlobalHeader; extras go behind the overflow menu. */
+export const MAX_HEADER_PIN_ICONS = 5;
 export const MAX_RECENTS = 12;

@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo, useRef, type ReactNode, type RefObject } from 'react';
+import { useCallback, useEffect, useMemo, useRef, type ReactNode, type RefObject } from 'react';
 import { useSearchParams } from 'next/navigation';
 import type { OnChangeFn, SortingState } from '@tanstack/react-table';
 import { getDaysLateNullable } from '@/utils/date';
@@ -26,6 +26,7 @@ import {
   type OrdersQueueColumnKey,
   type OrdersQueueColumnMode,
 } from '@/lib/dashboard-order-row-layout';
+import { ORDERS_GRID_CAPABILITIES } from '@/components/dashboard/orders-queue/orders-queue-descriptor';
 import { toast } from '@/lib/toast';
 import { cn } from '@/utils/_cn';
 import {
@@ -48,6 +49,7 @@ import { useOrdersQueueRows } from './useOrdersQueueRows';
 import { useOrdersQueueSelection } from './useOrdersQueueSelection';
 import { AddTrackingPopover } from '@/components/outbound/labels/AddTrackingPopover';
 import { useViewportForcedHidden } from './ViewportForcedHidden';
+import { resolveRailOccupancy } from '@/lib/right-rail/selection-occupancy';
 
 interface OrdersGridViewProps {
   records: ShippedOrder[];
@@ -65,6 +67,20 @@ interface OrdersGridViewProps {
   /** Pencil multi-select chrome on rows. Shares the page's selection scope + action bar. */
   selectMode?: boolean;
   selectionScope: string;
+  /**
+   * Rail-selection model — **the check-set becomes the single selection SoT**
+   * and the open record is derived from it (1 selected ⇒ the inspector opens on
+   * that row). Off by default: this grid has seven mount sites and only the
+   * three dashboard outbound lanes opt in.
+   *
+   * `selectionScope` cannot stand in for this. Six of the seven hosts pass
+   * `DASHBOARD_ORDERS_SELECTION_SCOPE` — including Labels, Staged, and both
+   * Review tables — so gating on the scope would silently change four surfaces
+   * that still run the bottom capsule.
+   *
+   * Plan: `docs/todo/order-rail-selection-plane-PLAN.md` (D3).
+   */
+  railSelection?: boolean;
   /** Surface chrome (status dots, tracking/serial affordances). Default fulfillment. */
   queueMode?: OrdersQueueMode;
   /**
@@ -127,6 +143,7 @@ export function OrdersGridView({
   clearSearchLabel = 'Show All Pending Orders',
   selectMode = false,
   selectionScope,
+  railSelection = false,
   queueMode = 'fulfillment',
   tableId = 'orders',
   sort: sortProp,
@@ -161,7 +178,7 @@ export function OrdersGridView({
     queueMode,
   });
 
-  const { selectedRecord, handleRowClick } = useOrdersQueueSelection({
+  const { selectedRecord, handleRowClick, openRecord, closeRecord } = useOrdersQueueSelection({
     visibleRecords: displayedRecords,
     displayedRecords,
     onOpenRecord,
@@ -172,13 +189,87 @@ export function OrdersGridView({
   const getTableRowId = useCallback((r: ShippedOrder) => String(r.id), []);
   // Always-on left gutter (Airtable-style): checkboxes toggle the set; row-body
   // click opens the record. `selectMode` only gates visible pencil chrome.
-  const { selectedIds, toggle } = useTableSelectMode<ShippedOrder>({
+  const { selectedIds, toggle, selectOnly, clear } = useTableSelectMode<ShippedOrder>({
     scope: selectionScope,
     selectMode: true,
     rows: displayedRecords,
     getId: getRowId,
   });
   const singleSelectedId = selectedIds.size === 1 ? [...selectedIds][0] : null;
+
+  // ─── Rail selection: the check-set is the only selection ───────────────────
+  // Set iteration is insertion order, so this preserves the order rows were
+  // picked in — which is what the compare pane's left/right columns key off.
+  const railOccupancy = useMemo(
+    () => (railSelection ? resolveRailOccupancy([...selectedIds]) : null),
+    [railSelection, selectedIds],
+  );
+  const selectedRecordId = selectedRecord ? Number(selectedRecord.id) : null;
+  /**
+   * The record the SET is currently responsible for — the one piece of state
+   * that lets the two effects below tell three superficially identical
+   * situations apart:
+   *
+   *   set {4821} · record null · ref 4821  → the operator CLOSED it → clear
+   *   set {4821} · record null · ref null  → checked, rows not landed → wait
+   *   set {}     · record 4821 · ref null  → an external open (deep link,
+   *                                          search jump, Recents) → adopt it
+   *
+   * Without it the effects fight. Closing the inspector while its row stays
+   * checked made the derived-open effect immediately re-open it (the panel could
+   * not be closed at all), and a naive fix for that closed the deep-linked
+   * record during the one commit before the set adopts it.
+   */
+  const railOpenedIdRef = useRef<number | null>(null);
+
+  // Derive the open record from the set.
+  useEffect(() => {
+    if (!railOccupancy) return;
+    if (railOccupancy.kind === 'inspect') {
+      if (selectedRecordId === railOccupancy.orderId) return;
+      if (selectedRecordId == null) {
+        // Closed from the inspector itself (Escape, its X, close-shipped-details)
+        // while the row stayed checked. Under this model an open record IS a
+        // selection of one, so the close has to clear the set.
+        if (railOpenedIdRef.current === railOccupancy.orderId) {
+          railOpenedIdRef.current = null;
+          clear();
+          return;
+        }
+        // Never opened — fall through and open it below.
+      }
+      const next = displayedRecords.find((r) => Number(r.id) === railOccupancy.orderId);
+      // Checked but not on screen — a deep link whose rows have not landed, or a
+      // refetch in flight. Leave the current occupant alone: dropping it here is
+      // exactly what used to make a reloaded row vanish, and genuine removal is
+      // already owned by useOrdersQueueSelection's seen-in-this-queue guard.
+      if (!next) return;
+      railOpenedIdRef.current = railOccupancy.orderId;
+      openRecord(next);
+      return;
+    }
+
+    // 0, 2, or 3+ selected — the single-record inspector is not the right body.
+    // (2 and 3+ get their own occupants in plan phases 3 and 4.)
+    if (selectedRecordId == null) return;
+    // Only close a record the SET opened. An externally-opened record sits here
+    // for exactly one commit before the seed effect adopts it, and closing it in
+    // that window is what broke `?openOrderId=` on reload.
+    if (railOpenedIdRef.current !== selectedRecordId) return;
+    railOpenedIdRef.current = null;
+    closeRecord();
+  }, [railOccupancy, selectedRecordId, displayedRecords, openRecord, closeRecord, clear]);
+
+  // Adopt an externally-opened record into the set, so every entry path lands on
+  // the same single selection SoT. Guarded by the ref, not by set size: an
+  // external jump SHOULD replace a live multi-select, but a clear must not
+  // resurrect the row it just closed.
+  useEffect(() => {
+    if (!railSelection || selectedRecordId == null) return;
+    if (railOpenedIdRef.current === selectedRecordId) return;
+    railOpenedIdRef.current = selectedRecordId;
+    selectOnly(selectedRecordId);
+  }, [railSelection, selectedRecordId, selectOnly]);
 
   const { order: persistedOrder, setOrder, resetOrder } = useColumnOrder(tableId);
   const sanitizedOrder = useMemo(
@@ -284,10 +375,28 @@ export function OrdersGridView({
   }, [resetOrder]);
 
   const handleRowAction = useCallback(
-    (record: ShippedOrder, _event?: { shiftKey: boolean }) => {
-      handleRowClick(record);
+    (record: ShippedOrder, event?: { shiftKey: boolean }) => {
+      if (!railSelection) {
+        handleRowClick(record);
+        return;
+      }
+      const id = Number(record.id);
+      // Shift extends the set from the anchor — same gesture as the checkbox.
+      if (event?.shiftKey) {
+        toggle(id, true);
+        return;
+      }
+      // Re-clicking the sole selected row clears it. This preserves the
+      // click-again-to-close gesture the inspector had before the open channel
+      // and the check-set merged; it now clears the selection too, because under
+      // this model an open record IS a selection of one.
+      if (selectedIds.size === 1 && selectedIds.has(id)) {
+        clear();
+        return;
+      }
+      selectOnly(id);
     },
-    [handleRowClick],
+    [railSelection, handleRowClick, toggle, selectedIds, clear, selectOnly],
   );
 
   const handleToggleSelect = useCallback(
@@ -348,6 +457,7 @@ export function OrdersGridView({
           daysLate={getDaysLateNullable(r.deadline_at as string | null | undefined)}
           queueMode={queueMode}
           columns={displayColumns}
+          capabilities={ORDERS_GRID_CAPABILITIES}
           trackingAction={
             queueMode === 'labels' ? <AddTrackingPopover record={record} /> : undefined
           }

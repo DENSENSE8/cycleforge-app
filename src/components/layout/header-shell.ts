@@ -187,6 +187,13 @@ export const HEADER_ICON_GAP = 'gap-0.5';
 export const HEADER_ICON_CLUSTER = `flex h-8 shrink-0 items-center ${HEADER_ICON_GAP}`;
 
 /**
+ * Vertical hairline between Recents and the header pin group. Pair with a
+ * small horizontal margin so Mode/Recents stay tight while pins read as a
+ * separate station strip.
+ */
+export const HEADER_CLUSTER_HAIRLINE = 'mx-1.5 h-4 w-px shrink-0 bg-border-hairline';
+
+/**
  * Glyph box for GlobalHeader icon actions (sidebar, Mode, Recents, WO, clipboard,
  * inbox, search/AI). Native SVG `strokeWidth={2}` only — do **not** layer
  * `navIconStrokeClass` here; CSS `![stroke-width:…]` on dense glyphs reads

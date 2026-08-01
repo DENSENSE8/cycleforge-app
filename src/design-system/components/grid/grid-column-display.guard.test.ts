@@ -12,7 +12,7 @@
  *    own SoT declared `type: 'number'`. Now: `resolveGridColumnAlign(column)`.
  * 2. **Zebra fills.** `index % 2 === 1 ? 'bg-surface-canvas' : 'bg-surface-card'`
  *    typed byte-identically into four row shells, on surfaces that already draw
- *    a full cell rule grid. Now: `ledgerRowStateClass(selected)`.
+ *    a full cell rule grid. Now: `ledgerRowFillClass` / `ledgerRowStateClass`.
  * 3. **Doubled cell glyphs.** A typed header draws the column's type glyph, and
  *    the value chip drew the same glyph again in every row (the Unbox tracking
  *    MapPin). Now: `omitCellIcon` on the column.
@@ -131,15 +131,15 @@ test('no grid row paints a zebra stripe', () => {
       // Pin the exemption's premise: it is only defensible while the grid path
       // itself stays striped-off. If that guard clause goes, so does the reason.
       assert.ok(
-        src.includes('!gridSkin'),
-        `${file} is zebra-exempt only because the airtable grid path opts OUT of the stripe; that opt-out is gone.`,
+        src.includes('ledgerRowFillClass'),
+        `${file} is zebra-exempt only because the airtable grid path uses ledgerRowFillClass (no stripe); that opt-out is gone.`,
       );
       continue;
     }
     assert.equal(
       /index % 2/.test(src),
       false,
-      `${file} re-introduced an index-parity row fill — LedgerGrid rows draw cell rules, so a stripe is a third separation system. Use ledgerRowStateClass(selected).`,
+      `${file} re-introduced an index-parity row fill — LedgerGrid rows draw cell rules, so a stripe is a third separation system. Use ledgerRowFillClass / ledgerRowStateClass.`,
     );
     // Conditional, not blanket: a group SUMMARY renders inside
     // `CollapsibleGroupRow`, which owns its fill, so it paints no row state at
@@ -149,8 +149,16 @@ test('no grid row paints a zebra stripe', () => {
     assert.equal(
       src.includes('QUEUE_ROW.selectedClass'),
       false,
-      `${file} hand-rolls the selected-row fill. A file that paints row state must use ledgerRowStateClass(selected), which owns default + hover + selected together.`,
+      `${file} hand-rolls the selected-row fill. A file that paints row state must use ledgerRowFillClass / ledgerRowStateClass.`,
     );
+    // Leaf rows that compose fill must use the capability-gated SoT. Group
+    // summaries sit inside CollapsibleGroupRow (no leaf fill) and skip this.
+    if (/(GridRow|TableRow)\.tsx$/.test(file) || /PickupGridGroupRow\.tsx$/.test(file)) {
+      assert.ok(
+        src.includes('ledgerRowFillClass'),
+        `${file} must compose ledgerRowFillClass (capability-gated row fill SoT).`,
+      );
+    }
   }
 });
 
@@ -264,6 +272,7 @@ test('no surface re-implements grid column geometry', () => {
 test('the row-state SoT stays zebra-free', () => {
   const src = code('src/components/ui/queue-row-chrome.ts');
   assert.ok(src.includes('ledgerRowStateClass'), 'the row-state SoT is missing');
+  assert.ok(src.includes('ledgerRowFillClass'), 'the capability-gated fill SoT is missing');
   assert.equal(
     /index|% 2|bg-surface-canvas/.test(src),
     false,

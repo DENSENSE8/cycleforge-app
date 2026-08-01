@@ -20,7 +20,7 @@ interface Props {
    * - `terminal`: dock SlicedActionDock owns send — Claim tab in TestingPanel
    */
   sendPlacement?: 'inline' | 'terminal';
-  /** Opens SendPhotoNoteModal locked to this ticket (Claim tab). */
+  /** Opens SendPhotoNoteRail locked to this ticket (Claim tab). */
   onAttachPhotos?: () => void;
 }
 

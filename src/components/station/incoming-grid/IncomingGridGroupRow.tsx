@@ -16,6 +16,7 @@ interface IncomingGridGroupRowProps {
   selectedId: number | null;
   selectedIds: Set<number>;
   handleSelectRow: (row: ReceivingLineRow) => void;
+  handleToggleRow: (row: ReceivingLineRow) => void;
   handleSelectGroup: (ids: readonly number[]) => void;
   columns?: readonly IncomingGridColumn[];
 }
@@ -32,12 +33,13 @@ export function IncomingGridGroupRow({
   selectedId,
   selectedIds,
   handleSelectRow,
+  handleToggleRow,
   handleSelectGroup,
   columns,
 }: IncomingGridGroupRowProps) {
   const isMulti = group.rows.length > 1;
-  const hasSelected = group.rows.some((r) =>
-    selectMode ? selectedIds.has(r.id) : selectedId === r.id,
+  const hasSelected = group.rows.some(
+    (r) => selectedId === r.id || (selectMode && selectedIds.has(r.id)),
   );
   const [expanded, setExpanded] = useState(selectMode || hasSelected);
 
@@ -48,8 +50,14 @@ export function IncomingGridGroupRow({
       index={stripeIndex}
       isMobile={isMobile}
       selectMode={selectMode}
-      isSelected={selectMode ? selectedIds.has(row.id) : selectedId === row.id}
+      // Two independent planes now: `isOpen` is the record in the inspector,
+      // `isChecked` is bulk membership. They used to collapse into one flag,
+      // which is why an always-on select mode made the row read as a checkbox
+      // and nothing could be open.
+      isOpen={selectedId === row.id}
+      isChecked={selectMode && selectedIds.has(row.id)}
       onSelect={() => handleSelectRow(row)}
+      onToggle={() => handleToggleRow(row)}
       columns={columns}
     />
   );

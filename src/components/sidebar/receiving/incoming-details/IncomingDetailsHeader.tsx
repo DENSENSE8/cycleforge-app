@@ -2,14 +2,16 @@
 
 /**
  * Incoming details stack header — house PaneHeader chrome (icon badge + label
- * + status pill + action bar with Sync + prev/next + tabs). Close lives on
- * RightRailHost backdrop / Esc (same as Shipped slide-over).
+ * + status pill + action bar with Sync + prev/next + tabs). The panel is a
+ * NON-MODAL rail inspector, so there is no scrim to click off: the header
+ * carries the explicit close (Escape still works via RightRailHost).
  */
 
 import { Inbox, RefreshCw } from '@/components/Icons';
 import {
   PaneHeader,
   PaneHeaderActionBar,
+  PaneHeaderCloseButton,
   PaneHeaderIconBadge,
   PaneHeaderLabel,
   PaneHeaderStatusPill,
@@ -43,6 +45,7 @@ export function IncomingDetailsHeader({
   tabs,
   tab,
   onTabChange,
+  onClose,
 }: {
   headerPo: string;
   headerTracking: string;
@@ -56,6 +59,7 @@ export function IncomingDetailsHeader({
   tabs: Array<{ value: TabId; label: string }>;
   tab: TabId;
   onTabChange: (next: TabId) => void;
+  onClose: () => void;
 }) {
   const eyebrow = isInboundOnly
     ? 'Marketplace order'
@@ -103,6 +107,7 @@ export function IncomingDetailsHeader({
           />
         </>
       }
+      rightSlot={<PaneHeaderCloseButton onClick={onClose} title="Close details" />}
       belowSlot={
         <>
           {(statusLabel || vendorName) ? (
@@ -160,17 +165,25 @@ export function incomingDetailsHeaderMeta(data: DetailsResponse | undefined): {
   return { statusLabel, vendorName };
 }
 
-/** Stable RightRailHost occupant id for Incoming row identity. */
-export function incomingDetailsRailId(props: {
-  zohoPurchaseOrderId?: string | null;
-  shipmentId?: number | null;
-  inboundSourceType?: string | null;
-  inboundSourceOrderId?: string | null;
-}): string {
-  if (props.zohoPurchaseOrderId) return `detail:incoming:${props.zohoPurchaseOrderId}`;
-  if (props.shipmentId != null) return `detail:incoming:shipment:${props.shipmentId}`;
-  if (props.inboundSourceType && props.inboundSourceOrderId) {
-    return `detail:incoming:inbound:${props.inboundSourceType}:${props.inboundSourceOrderId}`;
-  }
-  return 'detail:incoming:unknown';
+/**
+ * RightRailHost occupant id for the Incoming inspector — STABLE, deliberately
+ * NOT keyed on the row.
+ *
+ * The host keys its `AnimatePresence mode="wait"` on the occupant id, so the
+ * old per-record ids (`detail:incoming:<poId>` / `:shipment:<id>` /
+ * `:inbound:<type>:<id>`) made every row→row step a full exit-then-enter with
+ * an empty slot in between. Walking the Incoming grid row by row is the core
+ * loop on that surface. One stable id keeps the aside mounted and swaps its
+ * node in place (the store's `updateRightRailPanelNode` path) — the same
+ * queue-processing exception `detail:order` takes (`display/motion-crossfade.md`).
+ *
+ * Safe because the panel re-seeds on row change: `useIncomingDetails` re-keys
+ * its query on the row identity and resets the open tab to that row's default.
+ */
+export const INCOMING_DETAILS_RAIL_ID = 'detail:incoming';
+
+/** Accessible name for the non-modal aside — the row's own identity. */
+export function incomingDetailsAriaLabel(identity: string): string {
+  const trimmed = identity.trim();
+  return trimmed ? `Incoming ${trimmed} details` : 'Incoming details';
 }

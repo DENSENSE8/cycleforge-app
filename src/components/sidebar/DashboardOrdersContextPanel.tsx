@@ -26,6 +26,11 @@ import { getDashboardDomainFromSearch } from '@/lib/dashboard/dashboard-domains'
  * New-order intake (`?new=true`) opens the shared detail-stack overlay
  * ({@link NewOrderEntryOverlay}) — same shell as `/shipping?new=true`.
  */
+// TODO(daily-triage F0→F1): mount MyDayRail here pending OQ1
+// (`docs/todo/daily-triage-FRONTEND-PLAN-VALIDATION.md`) — does the personal
+// triage rail replace this picker, sit above it, or toggle with it? Unanswered
+// by operators, so F0 mounts the rail on Home Today only and leaves this panel
+// exactly as it is.
 export function DashboardOrdersContextPanel() {
   const searchParams = useSearchParams();
   const dashboardSearch = useDashboardSearchController();

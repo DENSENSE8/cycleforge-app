@@ -5,6 +5,10 @@
  * (ticket / notes / status edits, linkage set/clear, soft-cancel delete, pickup
  * toggle) lives in {@link useRepairDetailsPanel}; the status / info / linkage
  * sections are presentational components under `./details-panel/`.
+ *
+ * NON-MODAL rail inspector (`modal={false}`) on a STABLE occupant id — the
+ * repair queue underneath stays live while the operator walks it with the
+ * header's prev/next. See the header comment on the registrar below.
  */
 
 import { createPortal } from 'react-dom';
@@ -17,6 +21,7 @@ import { IconButton } from '@/design-system/primitives';
 import {
   PaneHeader,
   PaneHeaderActionBar,
+  PaneHeaderCloseButton,
   PaneHeaderIconBadge,
   PaneHeaderLabel,
   PaneHeaderStatusPill,
@@ -50,9 +55,22 @@ export function RepairDetailsPanel({
 }: RepairDetailsPanelProps) {
   const c = useRepairDetailsPanel({ repair, onUpdate });
   const hasSavedNotes = String(repair.notes || '').trim().length > 0;
+  // Identity for the aria name — the SAVED ticket number, never the editable
+  // draft (`c.ticketNumber`), which would re-register the occupant per keystroke.
+  const repairIdentity = String(repair.ticket_number || '').trim() || `RS-${repair.id}`;
 
   return (
-    <DetailStackRailRegistrar id={`detail:claim:${repair.id}`} onClose={onClose}>
+    // STABLE occupant id (`detail:claim`, not `detail:claim:<id>`): the header
+    // action bar has prev/next, so row→row is the loop here, and the host keys
+    // its crossfade on the occupant id — a per-record id played exit→empty→enter
+    // on every step. Safe because `useRepairDetailsPanel` re-seeds notes, ticket,
+    // linkage editors and the open tab on `repair.id` change.
+    <DetailStackRailRegistrar
+      id="detail:claim"
+      onClose={onClose}
+      modal={false}
+      ariaLabel={`Repair ${repairIdentity} details`}
+    >
       <div className="flex h-full min-h-0 flex-col overflow-hidden">
         <PaneHeader
           className="border-border-hairline bg-surface-card/90 backdrop-blur-xl"
@@ -103,13 +121,17 @@ export function RepairDetailsPanel({
             </>
           }
           rightSlot={
-            <IconButton
-              icon={<Pencil className="h-4 w-4" />}
-              onClick={() => c.setIsEditingTicket(true)}
-              ariaLabel="Edit ticket number"
-              disabled={c.isSavingTicket}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-lg hover:bg-surface-sunken"
-            />
+            <>
+              <IconButton
+                icon={<Pencil className="h-4 w-4" />}
+                onClick={() => c.setIsEditingTicket(true)}
+                ariaLabel="Edit ticket number"
+                disabled={c.isSavingTicket}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-lg hover:bg-surface-sunken"
+              />
+              {/* Non-modal: no scrim to click off, so the close is explicit. */}
+              <PaneHeaderCloseButton onClick={onClose} title="Close details" />
+            </>
           }
           belowSlot={
             <>

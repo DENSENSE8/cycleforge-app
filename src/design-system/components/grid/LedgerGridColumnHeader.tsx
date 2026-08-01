@@ -2,7 +2,7 @@
 
 /**
  * Sticky LedgerGrid column-header row — shared outer chrome for Receiving /
- * Incoming (and later Catalog / Pickup / Repair). Inner label/chevron lives in
+ * Incoming / Pickup / Catalog / Repair. Inner label/chevron lives in
  * {@link GridHeaderLabel}; this owns select-all, frozen tracks, sort click,
  * aria-sort, and HoverTooltip tips.
  *

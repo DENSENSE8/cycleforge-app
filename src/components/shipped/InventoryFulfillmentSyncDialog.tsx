@@ -1,11 +1,14 @@
 'use client';
 
 /**
- * Rich "what was synced to inventory" modal for the dashboard shipped view.
+ * Rich "what was synced to inventory" progress surface for the dashboard
+ * shipped view — a NON-MODAL RightRailHost occupant (`detail:inventory-sync`).
  *
- * Mirrors the Google Sheets transfer popover (OrderSyncDialog): summary stat
- * cards + a scrollable detail table showing each packer-scanned shipped order
- * that was pushed to an inventory sales order (→ package → shipment → invoice).
+ * Same float metric as its literal sibling {@link OrderSyncDialog}
+ * (`detail:order-sync`): watching an import run is not a blocking decision, and
+ * the centered Dialog it used to be buried the shipped queue the run is about
+ * behind a scrim. Dismiss is blocked while a preview/sync is in flight; the
+ * footer Cancel is the only intentional abort.
  *
  * It is a presentational component — the ShippedActionsButton owns the data
  * fetching (dry-run preview + live run) and feeds report/phase/elapsed in as props.
@@ -25,14 +28,7 @@ import {
 } from '@/components/Icons';
 import { framerTransition } from '@/design-system/foundations/motion-framer';
 import { Button } from '@/design-system/primitives';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/design-system/components/Dialog';
+import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
 import { sectionLabel, fieldLabel, microBadge, dataValue } from '@/design-system/tokens/typography/presets';
 import { TrackingChip, OrderIdChip, SkuScanRefChip, getLast4 } from '@/components/ui/CopyChip';
 
@@ -154,7 +150,9 @@ function ChainStep({ icon, label }: { icon: React.ReactNode; label: string }) {
 
 function DetailTable({ rows }: { rows: InventoryOrderResult[] }) {
   return (
-    <div className="max-h-[42vh] overflow-y-auto">
+    // The rail column is narrower than the old centered dialog, so the 7-track
+    // table scrolls in its own port instead of squeezing the page.
+    <div className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead className="sticky top-0 z-10 bg-surface-canvas text-left shadow-[0_1px_0_0_rgb(229_231_235)]">
           <tr className="text-role-micro uppercase tracking-wide text-text-soft">
@@ -234,7 +232,7 @@ function DetailTable({ rows }: { rows: InventoryOrderResult[] }) {
   );
 }
 
-// ─── Modal ─────────────────────────────────────────────────────────────────────
+// ─── Non-modal rail occupant ──────────────────────────────────────────────────
 
 export function InventoryFulfillmentSyncDialog({
   open,
@@ -265,26 +263,33 @@ export function InventoryFulfillmentSyncDialog({
   const errored = report?.errored ?? 0;
   const noRows = !report || report.results.length === 0;
 
+  // Block dismiss while a preview / sync is in flight; the footer Cancel is the
+  // only intentional abort (mirrors OrderSyncDialog).
+  const handleClose = () => {
+    if (!busy) onClose();
+  };
+
+  if (!open) return null;
+
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(next) => {
-        // Escape / overlay dismiss only when idle. Header Cancel still calls onClose while busy.
-        if (!next && !busy) onClose();
-      }}
+    <DetailStackRailRegistrar
+      id="detail:inventory-sync"
+      onClose={handleClose}
+      modal={false}
+      ariaLabel="Inventory fulfillment progress"
     >
-      <DialogContent
-        hideClose
-        className="max-w-3xl gap-0 overflow-hidden p-0 sm:rounded-2xl"
+      <div
+        className="flex h-full min-h-0 flex-col overflow-hidden bg-surface-card"
+        data-testid="inventory-sync-panel"
       >
-        <DialogHeader className="flex flex-row items-start gap-3 space-y-0 border-b border-border-soft px-5 py-3.5">
+        <header className="flex shrink-0 flex-row items-start gap-3 border-b border-border-soft px-5 py-3.5">
           <div className="min-w-0 flex-1">
-            <DialogDescription className={`${microBadge} text-text-soft`}>
+            <p className={`${microBadge} text-text-soft`}>
               Inventory Fulfillment Sync
-            </DialogDescription>
-            <DialogTitle className={`${sectionLabel} mt-0.5 text-text-default`}>
+            </p>
+            <h2 className={`${sectionLabel} mt-0.5 text-text-default`}>
               {title}
-            </DialogTitle>
+            </h2>
           </div>
           <motion.span
             key={Math.floor(elapsedMs / 100)}
@@ -294,7 +299,7 @@ export function InventoryFulfillmentSyncDialog({
           >
             {(elapsedMs / 1000).toFixed(1)}s
           </motion.span>
-        </DialogHeader>
+        </header>
 
         <div className="flex flex-wrap items-center gap-1.5 border-b border-border-hairline bg-surface-canvas/60 px-5 py-2">
           <span className="text-role-micro font-medium uppercase tracking-wide text-text-faint">Each order →</span>
@@ -311,7 +316,7 @@ export function InventoryFulfillmentSyncDialog({
           ) : null}
         </div>
 
-        <div className="max-h-[60vh] overflow-y-auto px-5 py-4">
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
           {notConnected ? (
             <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-12 text-center">
               <Link2 className="h-6 w-6 text-text-faint" />
@@ -339,7 +344,7 @@ export function InventoryFulfillmentSyncDialog({
             </div>
           ) : (
             <div className="flex flex-col gap-4">
-              <div className="grid grid-cols-4 gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 <SummaryStat label="Pending" value={pendingCount} tone="blue" />
                 <SummaryStat label="Synced" value={synced} tone="emerald" />
                 <SummaryStat label="Already synced" value={skipped} tone="gray" />
@@ -382,14 +387,14 @@ export function InventoryFulfillmentSyncDialog({
           )}
         </div>
 
-        <DialogFooter className="flex-col gap-3 border-t border-border-soft bg-surface-canvas px-5 py-2.5 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-role-micro leading-snug text-text-faint sm:mr-auto">
+        <footer className="flex shrink-0 flex-col gap-3 border-t border-border-soft bg-surface-canvas px-5 py-2.5">
+          <p className="text-role-micro leading-snug text-text-faint">
             {report?.dryRun !== false
               ? 'Preview is a dry run (no changes).'
               : 'Records created in inventory.'}
             {report ? ` Invoice mode: ${report.invoiceMode}.` : ''}
           </p>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center justify-end gap-2">
             <Button
               variant="secondary"
               size="sm"
@@ -419,8 +424,8 @@ export function InventoryFulfillmentSyncDialog({
               {busy ? 'Cancel' : 'Close'}
             </Button>
           </div>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </footer>
+      </div>
+    </DetailStackRailRegistrar>
   );
 }

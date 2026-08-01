@@ -10,7 +10,7 @@ import { DateGroupHeader } from '@/components/ui/DateGroupHeader';
 import { OrderSearchEmptyState } from '@/components/dashboard/OrderSearchEmptyState';
 import { QueueTableBanner } from '@/components/dashboard/orders-queue/QueueTableBanner';
 import { StationRowColumnHeader } from '@/components/dashboard/queue-table';
-import { LedgerGrid } from '@/design-system/components/grid';
+import { LedgerGrid, type GridSurfaceCapabilities } from '@/design-system/components/grid';
 import type { WeekRange } from '@/components/dashboard/orders-queue/helpers';
 import type { RowGroup } from '@/lib/group-rows';
 import { cn } from '@/utils/_cn';
@@ -60,6 +60,16 @@ export interface StationListTableProps<TRecord> {
   bannerSubtitle?: string;
   bannerCompact?: boolean;
 
+  /**
+   * The mounting surface's declared capabilities — required, never defaulted.
+   *
+   * This shell mounts `LedgerGrid` on behalf of whoever renders it, so without a
+   * declared bag the surface underneath is unclassified: it reaches the
+   * Workbench spreadsheet SoT with no answer to "what may this grid do".
+   * Required is what makes a new station bench answer that rather than inherit
+   * a neighbour's feature set by accident.
+   */
+  capabilities: GridSurfaceCapabilities;
   /** Multi-select mode — forwarded to the station column guide when enabled. */
   selectMode?: boolean;
   /** Render the shared station row column guide above the scroll body. */
@@ -138,6 +148,7 @@ export function StationListTable<TRecord>({
   searchResultLabel = 'records',
   clearSearchLabel = 'Show all',
   footer,
+  capabilities,
   selectMode = false,
   showStationColumnHeader = false,
   columnHeaderStageLabel = 'Stage',
@@ -163,10 +174,14 @@ export function StationListTable<TRecord>({
 
   const dayBands = orderGroupsByDate ?? daySections ?? [];
   const isEmpty = dayBands.length === 0;
+  // A surface that did not declare multi-select must not render the select
+  // gutter — the gutter is the affordance, so drawing it on a surface with no
+  // selection wiring is the "inert gutter" the workbench law bans.
+  const canSelect = selectMode && capabilities.multiSelect;
   const columnHeader =
     showStationColumnHeader && !isMobile ? (
       <StationRowColumnHeader
-        selectMode={selectMode}
+        selectMode={canSelect}
         includeSerial={columnHeaderIncludeSerial}
         stageLabel={columnHeaderStageLabel}
       />

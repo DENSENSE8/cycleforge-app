@@ -5,10 +5,16 @@ import { CollapsibleGroupRow } from '@/components/ui/CollapsibleGroupRow';
 import { OrderIdChip, getLast4 } from '@/components/ui/CopyChip';
 import { GridCellDash, GridDateCellValue } from '@/components/ui/grid-cells';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { ledgerRowStateClass } from '@/components/ui/queue-row-chrome';
+import { ledgerRowFillClass } from '@/components/ui/queue-row-chrome';
+import { PICKUP_GRID_CAPABILITIES } from '@/components/receiving/pickup/grid/pickup-grid-descriptor';
 import { conditionLabel } from '@/lib/conditions';
 import { conditionGradeTextClass } from '@/lib/condition-tone';
 import type { RowGroup } from '@/lib/group-rows';
+import {
+  pickupOrderStatusChipClass,
+  pickupOrderStatusDot,
+  pickupOrderStatusLabel,
+} from '@/lib/local-pickup/order-status';
 import { formatDateKeyShort } from '@/utils/date';
 import { gridCellAlignClass } from '@/design-system/components/grid';
 import { cn } from '@/utils/_cn';
@@ -26,27 +32,19 @@ import {
 const dataCell = (col: PickupGridColumn, rule = true) =>
   cn(pickupGridCell({ rule, inset: 'grid' }), gridCellAlignClass(col));
 
-/** Amber (Draft) / emerald (Done) status dot + chip tone. */
-function statusIsDone(orderStatus: string): boolean {
-  return orderStatus === 'COMPLETED';
-}
-
 function pickupDateLabel(dateKey: string | null): string | null {
   return dateKey ? formatDateKeyShort(dateKey) : null;
 }
 
-function StatusChip({ orderStatus }: { orderStatus: string }) {
-  const done = statusIsDone(orderStatus);
+function PickupStatusChip({ orderStatus }: { orderStatus: string }) {
   return (
     <span
       className={cn(
         'inline-flex items-center rounded px-1.5 py-0.5 text-role-micro uppercase tracking-widest ring-1 ring-inset',
-        done
-          ? 'bg-emerald-50 text-emerald-700 ring-emerald-200'
-          : 'bg-amber-50 text-amber-700 ring-amber-200',
+        pickupOrderStatusChipClass(orderStatus),
       )}
     >
-      {done ? 'Done' : 'Draft'}
+      {pickupOrderStatusLabel(orderStatus)}
     </span>
   );
 }
@@ -66,9 +64,9 @@ const PickupGridLeafRow = memo(function PickupGridLeafRow({
   onSelectOrder: (orderId: number) => void;
   columns?: readonly PickupGridColumn[];
 }) {
-  const done = statusIsDone(line.order_status);
   const condGrade = (line.condition_grade || '').toUpperCase();
   const dateLabel = pickupDateLabel(line.pickup_date);
+  const statusDot = pickupOrderStatusDot(line.order_status);
 
   const renderCell = (col: PickupGridColumn, last: boolean): ReactNode => {
     const rule = !last;
@@ -94,10 +92,7 @@ const PickupGridLeafRow = memo(function PickupGridLeafRow({
             style={{ left: pickupGridFrozenLeft('title') }}
             data-frozen-edge
           >
-            <span
-              className={cn('h-2 w-2 shrink-0 rounded-full', done ? 'bg-emerald-500' : 'bg-amber-400')}
-              aria-hidden
-            />
+            <span className={cn('h-2 w-2 shrink-0 rounded-full', statusDot)} aria-hidden />
             <span className="min-w-0 flex-1 truncate text-role-data text-text-default">
               {line.product_title}
             </span>
@@ -165,7 +160,7 @@ const PickupGridLeafRow = memo(function PickupGridLeafRow({
       case 'status':
         return (
           <div data-col="status" className={dataCell(col, rule)}>
-            <StatusChip orderStatus={line.order_status} />
+            <PickupStatusChip orderStatus={line.order_status} />
           </div>
         );
       default:
@@ -189,7 +184,10 @@ const PickupGridLeafRow = memo(function PickupGridLeafRow({
       }}
       className={cn(
         pickupGridRowShellClass(false, { scrollMinContent: true }),
-        ledgerRowStateClass(isSelected),
+        ledgerRowFillClass({
+          selected: isSelected,
+          capabilities: PICKUP_GRID_CAPABILITIES,
+        }),
       )}
       style={{ gridTemplateColumns: pickupGridTemplate(columns) }}
     >
@@ -220,9 +218,9 @@ function PickupGridGroupSummary({
   const grades = new Set(group.rows.map((r) => (r.condition_grade || '').toUpperCase()).filter(Boolean));
   const condGrade = grades.size === 1 ? [...grades][0] : '';
   const condDisplay = grades.size === 1 ? conditionLabel([...grades][0], 'compact') : grades.size > 1 ? 'MIXED' : '—';
-  const done = statusIsDone(first.order_status);
   const dateLabel = pickupDateLabel(first.pickup_date);
   const customer = first.customer_name;
+  const statusDot = pickupOrderStatusDot(first.order_status);
 
   const renderCell = (col: PickupGridColumn, last: boolean): ReactNode => {
     const rule = !last;
@@ -248,10 +246,7 @@ function PickupGridGroupSummary({
             style={{ left: pickupGridFrozenLeft('title') }}
             data-frozen-edge
           >
-            <span
-              className={cn('h-2 w-2 shrink-0 rounded-full', done ? 'bg-emerald-500' : 'bg-amber-400')}
-              aria-hidden
-            />
+            <span className={cn('h-2 w-2 shrink-0 rounded-full', statusDot)} aria-hidden />
             <span className="min-w-0 flex-1 truncate text-role-data font-semibold text-text-default">
               {first.po_number || `Order ${first.order_id}`}
             </span>
@@ -312,7 +307,7 @@ function PickupGridGroupSummary({
       case 'status':
         return (
           <div data-col="status" className={dataCell(col, rule)}>
-            <StatusChip orderStatus={first.order_status} />
+            <PickupStatusChip orderStatus={first.order_status} />
           </div>
         );
       default:

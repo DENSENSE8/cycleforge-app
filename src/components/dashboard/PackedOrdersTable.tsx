@@ -27,12 +27,16 @@ export interface PackedOrdersTableProps {
   /** Reserve bottom room for the pinned bulk-selection capsule (see
    *  `workbenchTableViewportClass`). Pass the host's `bulkBarVisible`. */
   bulkBarInset?: boolean;
+  /** Rail-selection model: the check-set is the single selection SoT and drives
+   *  the right-rail inspector. See `docs/todo/order-rail-selection-plane-PLAN.md`. */
+  railSelection?: boolean;
   toolbarPortalTarget?: HTMLElement | null;
 }
 
 export function PackedOrdersTable({
   selectMode = false,
   bulkBarInset = false,
+  railSelection = false,
   toolbarPortalTarget,
 }: PackedOrdersTableProps) {
   const pathname = usePathname();
@@ -130,6 +134,7 @@ export function PackedOrdersTable({
           sort="newest"
           selectMode={selectMode}
           selectionScope={DASHBOARD_ORDERS_SELECTION_SCOPE}
+          railSelection={railSelection}
           data-testid="packed-grid-body"
           onOpenRecord={(record) => {
             setSelectedId(Number(record.id));

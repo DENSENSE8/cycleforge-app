@@ -35,6 +35,11 @@ export interface UnshippedTableProps extends DashboardSearchSectionProps {
    *  the bounded host in {@link UnshippedShelfBoard}; pass `bulkBarVisible`
    *  from `useDashboardBulkSelection`. */
   bulkBarInset?: boolean;
+  /** Rail-selection model: the check-set is the single selection SoT and drives
+   *  the right-rail inspector. Dashboard outbound lanes only — Pack, Support
+   *  orders, and Shipping still run the bottom capsule. See
+   *  `docs/todo/order-rail-selection-plane-PLAN.md`. */
+  railSelection?: boolean;
   /** Portal board toolbar controls into the dashboard outbound floating row. */
   toolbarPortalTarget?: HTMLElement | null;
   /**
@@ -101,6 +106,7 @@ export function UnshippedTable({
   clearSearchLabel = 'Show All Pending Orders',
   selectMode = false,
   bulkBarInset = false,
+  railSelection = false,
   toolbarPortalTarget,
   onOpenRecord,
   fulfillmentLane,
@@ -363,6 +369,7 @@ export function UnshippedTable({
       searchValue={searchQuery}
       selectMode={selectMode}
       bulkBarInset={bulkBarInset}
+      railSelection={railSelection}
       onOpenRecord={(record) => {
         if (onOpenRecord) {
           onOpenRecord(record);

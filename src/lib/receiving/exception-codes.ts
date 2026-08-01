@@ -89,15 +89,56 @@ export const LOSS_EXCEPTION_CODES = [
   'STOLEN',
 ] as const;
 
-/** All three sub-vocabularies, in seed order. Order is the `sort_order` contract. */
+/**
+ * QA-fail sub-vocabulary — the two failure modes the OS&D block cannot express.
+ * A unit that powers on but does not work, and a unit that arrived complete as a
+ * package but is missing parts, are neither `SHORT` (a count against the PO) nor
+ * `DAMAGED` (physical harm). Without them a QA fail had nowhere structured to go,
+ * which is why the mobile QA sheet's fail reason was a free-text field posted as
+ * the operator's item note — see `QA_FAIL_EXCEPTION_CODES` below.
+ *
+ * Only these two are NEW: `DAMAGED` is already the right code for a damaged unit,
+ * so the fail vocabulary reuses it rather than minting a prefixed twin.
+ *
+ * Appended at the END of the composed array (see the header warning): splicing
+ * them next to `DAMAGED`, where they logically belong, would renumber every
+ * photo-override and loss code that 2026-07-29b/i hardcoded.
+ */
+const QA_FAIL_ONLY_CODES = ['DEFECTIVE', 'INCOMPLETE'] as const;
+
+/** All four sub-vocabularies, in seed order. Order is the `sort_order` contract. */
 export const RECEIVING_EXCEPTION_CODES = [
   ...OSD_EXCEPTION_CODES,
   ...PHOTO_POLICY_OVERRIDE_CODES,
   ...LOSS_EXCEPTION_CODES,
+  ...QA_FAIL_ONLY_CODES,
 ] as const;
+
+/**
+ * The ONLY codes a QA fail may be recorded under, and the `qa_status` each one
+ * means. A deliberately narrow slice like `PHOTO_POLICY_OVERRIDE_CODES` — the
+ * receive route validates against THIS map, so a fail cannot be filed as `NO_PO`
+ * and a write-off cannot arrive dressed as a QA verdict.
+ *
+ * It is a MAP, not a list, because the failure reason and the QA verdict are the
+ * same fact at two grains: the mobile sheet used to post a hardcoded
+ * `FAILED_FUNCTIONAL` for every fail and put the real reason in free text, so a
+ * damaged unit and a dead unit were indistinguishable in the column built to tell
+ * them apart. Deriving one from the other makes that impossible.
+ *
+ * It spans two sub-vocabularies on purpose (`DAMAGED` is OS&D) — the seed-order
+ * arrays are the `sort_order` contract; this is the semantic slice.
+ */
+export const QA_FAIL_EXCEPTION_STATUS = {
+  DEFECTIVE: 'FAILED_FUNCTIONAL',
+  DAMAGED: 'FAILED_DAMAGED',
+  INCOMPLETE: 'FAILED_INCOMPLETE',
+} as const;
 
 export type ReceivingExceptionCode = (typeof RECEIVING_EXCEPTION_CODES)[number];
 export type PhotoPolicyOverrideCode = (typeof PHOTO_POLICY_OVERRIDE_CODES)[number];
+export type QaFailExceptionCode = keyof typeof QA_FAIL_EXCEPTION_STATUS;
+export type QaFailStatus = (typeof QA_FAIL_EXCEPTION_STATUS)[QaFailExceptionCode];
 /**
  * Deliberately module-private: nothing outside this file NAMES it, and an
  * exported-but-unconsumed type is dead code (knip gate). `isLossExceptionCode`
@@ -122,6 +163,14 @@ export function isPhotoPolicyOverrideCode(v: string | null | undefined): v is Ph
  */
 export function isLossExceptionCode(v: string | null | undefined): v is LossExceptionCode {
   return v != null && (LOSS_EXCEPTION_CODES as readonly string[]).includes(v);
+}
+
+/**
+ * Validate a QA-fail reason. The receive route validates against THIS guard, never
+ * `isReceivingExceptionCode` — same narrowing rationale as the two guards above.
+ */
+export function isQaFailExceptionCode(v: string | null | undefined): v is QaFailExceptionCode {
+  return v != null && Object.prototype.hasOwnProperty.call(QA_FAIL_EXCEPTION_STATUS, v);
 }
 
 interface ExceptionMeta {
@@ -209,6 +258,18 @@ export const RECEIVING_EXCEPTION_META: Record<ReceivingExceptionCode, ExceptionM
     label: 'Stolen',
     tone: 'bg-rose-200 text-rose-800 ring-rose-300',
     description: 'Confirmed theft after the carrier delivery scan.',
+  },
+  // QA-fail family — a verdict on the UNIT, so it shares DAMAGED's red hue at the
+  // recoverable 100/700 weight (the goods are here; they are going back).
+  DEFECTIVE: {
+    label: 'Defective',
+    tone: 'bg-red-100 text-red-700 ring-red-200',
+    description: 'Unit is present and undamaged but does not work.',
+  },
+  INCOMPLETE: {
+    label: 'Missing parts',
+    tone: 'bg-orange-100 text-orange-700 ring-orange-200',
+    description: 'Unit arrived without accessories, cables, or parts it needs.',
   },
 };
 

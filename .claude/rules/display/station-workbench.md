@@ -111,17 +111,26 @@ Serials: explicit list or carton fetch via `useCartonSerials`.
 
 **Unbox has NO tab strip in the workbench body.** The centre is the carton —
 PO lines → label preview (`buildUnboxOverview`) — and the `tabs` slot is
-deliberately empty. The step procedure is not in the centre either:
-`UnboxProcedureRail` registers it into the right rail's ambient region, so a
-read-only status display never takes the work surface's seat. Every other
+deliberately empty. The step procedure is not in the centre either: it **IS**
+the `checklist` display (`UnboxProcedureChecklist`), so a read-only status
+display never takes the work surface's seat. Every other
 display moved to the right-edge
 **Displays** push column (`ReceivingDisplaysPushStack`): strip order
-**Classify (unfound) | Listings (matched) · Units · Zoho** (po-note label from
-`providerCatalogLabel('zoho')` brand token) + ⋯ for Checklist / Support /
+**Classify (unfound) | Listings (matched) · Units · Zoho · Checklist** (po-note
+label from `providerCatalogLabel('zoho')` brand token) + ⋯ for Support /
 Tracking / Timeline, with the `PairingTogglePill` pencil in the strip's
 `rightSlot`. Tab list SoT = `buildUnboxSideTabs`; which one is showing (and
 whether the column is open at all) = `resolveUnboxSideTab` — `null` IS closed,
 so there is no second open flag to drift.
+
+**Checklist is PRIMARY, not ⋯.** It was overflow while it was a hand-ticked
+reference list; it derives the station's step states now, which makes it the
+orienting "where am I" display, and an orienting display behind a menu costs two
+clicks on every carton. **There is exactly ONE checklist in Unbox** — the
+org-editable `checklist_templates` list and its `/api/checklists` CRUD were
+deleted 2026-08-01. Do not add a second checklist surface, and do not re-derive
+step order in a view: `deriveProcedureSteps` is the vocabulary SoT (hardcoding
+the five steps breaks unfound, local pickup, returns and multi-qty).
 
 **Every Unbox right-edge surface is a station-scoped push column, never a
 `RightRailHost` occupant.** Displays / Ticket (`ReceivingTicketStack`) / Claim

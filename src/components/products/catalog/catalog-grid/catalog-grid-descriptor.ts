@@ -3,7 +3,11 @@
  * the TanStack defs `LedgerGridSurface` mounts.
  */
 
-import { makeGridSurfaceDescriptor, type GridSurfaceDescriptor } from '@/design-system/components/grid';
+import {
+  makeGridSurfaceDescriptor,
+  type GridSurfaceCapabilities,
+  type GridSurfaceDescriptor,
+} from '@/design-system/components/grid';
 import type { CatalogListRow } from '@/components/products/catalog/types';
 import {
   defaultDirForCatalogGridSort,
@@ -11,6 +15,15 @@ import {
   isCatalogGridSortable,
   type CatalogGridColumn,
 } from '@/lib/products/catalog-grid-layout';
+
+/** Product catalog — display + multi-select; never staff triage row wash. */
+export const CATALOG_GRID_CAPABILITIES: GridSurfaceCapabilities = {
+  rowTriageFlags: false,
+  multiSelect: true,
+  inCellEdit: false,
+  fieldsMenu: true,
+  dayBands: false,
+};
 
 /**
  * Build the descriptor from a RESOLVED column list (post-visibility), so
@@ -28,6 +41,7 @@ export function makeCatalogGridDescriptor(
       sortDescFirst: (key) => defaultDirForCatalogGridSort(key) === 'desc',
       isLocked: isCatalogGridFrozen,
     },
+    CATALOG_GRID_CAPABILITIES,
   );
 }
 

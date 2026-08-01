@@ -45,6 +45,17 @@ export function useTableSelectMode<T>({
   /** Toggle one row. Pass `extend` (shift-click) to apply the clicked row's NEW
    *  state to every visible row between the last-clicked anchor and this one. */
   toggle: (id: number, extend?: boolean) => void;
+  /**
+   * Replace the whole set with exactly this row.
+   *
+   * The rail-selection model (dashboard orders) needs a plain row-body click to
+   * MEAN "select only this" — the check-set is the single selection SoT there,
+   * so a click that merely added would grow a batch the operator never asked
+   * for. Distinct from `toggle`, which is the checkbox gesture.
+   */
+  selectOnly: (id: number) => void;
+  /** Drop every checked row (the rail's close / the header's Clear). */
+  clear: () => void;
   isSelected: (id: number) => boolean;
 } {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(() => new Set());
@@ -90,6 +101,19 @@ export function useTableSelectMode<T>({
     anchorRef.current = id;
   }, []);
 
+  // Both return `prev` untouched when nothing would change, so a repeat click on
+  // the already-sole selection does not re-render the grid or re-broadcast the
+  // same set on the bus.
+  const selectOnly = useCallback((id: number) => {
+    anchorRef.current = id;
+    setSelectedIds((prev) => (prev.size === 1 && prev.has(id) ? prev : new Set([id])));
+  }, []);
+
+  const clear = useCallback(() => {
+    anchorRef.current = null;
+    setSelectedIds((prev) => (prev.size ? new Set() : prev));
+  }, []);
+
   const isSelected = useCallback((id: number) => selectedIds.has(id), [selectedIds]);
 
   // Broadcast the resolved selected rows whenever the checked set changes.
@@ -130,5 +154,5 @@ export function useTableSelectMode<T>({
     emitSelectionTotal(scope, selectMode ? rows.length : 0);
   }, [scope, selectMode, rows.length]);
 
-  return { selectedIds, toggle, isSelected };
+  return { selectedIds, toggle, selectOnly, clear, isSelected };
 }

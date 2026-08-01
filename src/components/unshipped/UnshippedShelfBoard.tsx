@@ -38,6 +38,10 @@ export interface UnshippedShelfBoardProps {
   /** Reserve bottom room for the pinned bulk-selection capsule (see
    *  `workbenchTableViewportClass`). Pass the host's `bulkBarVisible`. */
   bulkBarInset?: boolean;
+  /** Rail-selection model: the check-set is the single selection SoT and drives
+   *  the right-rail inspector. Dashboard outbound lanes only — see
+   *  `docs/todo/order-rail-selection-plane-PLAN.md`. */
+  railSelection?: boolean;
   footer?: React.ReactNode;
   toolbarPortalTarget?: HTMLElement | null;
 }
@@ -53,6 +57,7 @@ export function UnshippedShelfBoard({
   clearSearchLabel = 'Show All Pending Orders',
   selectMode = false,
   bulkBarInset = false,
+  railSelection = false,
   footer,
   toolbarPortalTarget,
 }: UnshippedShelfBoardProps) {
@@ -110,6 +115,7 @@ export function UnshippedShelfBoard({
           onClearSearch={onClearSearch}
           selectMode={selectMode}
           selectionScope={DASHBOARD_ORDERS_SELECTION_SCOPE}
+          railSelection={railSelection}
           queueMode="fulfillment"
           searchEmptyTitle={searchEmptyTitle}
           searchResultLabel={searchResultLabel}
