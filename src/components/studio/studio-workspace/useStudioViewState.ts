@@ -33,7 +33,8 @@ export function useStudioViewState(): StudioViewState {
     lensRaw === 'gaps' ||
     lensRaw === 'static' ||
     lensRaw === 'flow' ||
-    lensRaw === 'people'
+    lensRaw === 'people' ||
+    lensRaw === 'procedure'
       ? lensRaw
       : 'build';
 

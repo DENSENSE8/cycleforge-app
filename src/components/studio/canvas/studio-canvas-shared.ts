@@ -23,6 +23,21 @@ export const STATIC_ROLE: Record<FlowRole, { label: string; color: string; pill:
   sink: { label: 'Sink', color: '#059669', pill: 'bg-emerald-50 text-emerald-700' },
 };
 
+/**
+ * Procedure-lens paint for one node — a Value-Stream-Mapping "data box": the
+ * step count sitting above the relations those steps touch. Everything here is
+ * projected from `buildStationProcedureMap`, so it is correct with zero traffic.
+ */
+export interface ProcedureNodePaint {
+  /** The procedure's own label ("Unbox"). */
+  label: string;
+  steps: number;
+  /** Steps the station registry actually drives — the rest are hand-coded. */
+  composed: number;
+  readTables: string[];
+  writeTables: string[];
+}
+
 /** Live-lens heat → card tone (border + ring + wash), count badge, text & dot tints. */
 export const HEAT_TONE: Record<HeatLevel, string> = {
   idle: 'border-border-soft bg-surface-card',
@@ -129,6 +144,8 @@ export type ProcessNodeData = {
   flowBottleneck: boolean;
   /** People-lens staffing coverage for this node (null when the lens is off). */
   people: PeopleNodeCoverage | null;
+  /** Procedure-lens step + table box (null when the lens is off or nothing is declared). */
+  procedure: ProcedureNodePaint | null;
   /** Simulate overlay: the ghost-run dot is currently sitting on this node. */
   simGhost: boolean;
 };

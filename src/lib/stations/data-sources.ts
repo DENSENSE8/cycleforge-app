@@ -480,6 +480,21 @@ const receivingUnboxQueue: DataSourceDefinition = {
     },
   ],
   permission: 'receiving.view',
+  // Lineage (guarded by data-lineage.guard.test.ts). The queue is a pure read:
+  // the carton spine plus the four street/facts tables the row is assembled
+  // from, the shipment row the tracking number lives on, and staff for the
+  // assigned-tech name.
+  reads: [
+    { table: 'receiving_carton' },
+    { table: 'receiving_line' },
+    { table: 'receiving_line_testing' },
+    { table: 'receiving_line_zoho' },
+    { table: 'receiving_triage' },
+    { table: 'receiving_unbox' },
+    { table: 'shipping_tracking_numbers' },
+    { table: 'staff' },
+  ],
+  writes: [],
   realtime: { ablyChannel: 'receiving' },
 };
 

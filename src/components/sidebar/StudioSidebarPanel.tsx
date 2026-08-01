@@ -8,6 +8,7 @@ import {
   AlertTriangle,
   Boxes,
   ChevronDown,
+  ClipboardList,
   Layers,
   MapPin,
   Share2,
@@ -37,6 +38,12 @@ type IconCmp = (props: { className?: string }) => JSX.Element;
 
 const LENSES: ReadonlyArray<{ id: string; label: string; icon: IconCmp; detail: string }> = [
   { id: 'build', label: 'Build', icon: Wrench, detail: 'Wire & configure the operation graph' },
+  {
+    id: 'procedure',
+    label: 'Procedure',
+    icon: ClipboardList,
+    detail: 'The steps at each station & the tables they touch',
+  },
   { id: 'static', label: 'Static', icon: Share2, detail: 'Where data flows — sources → transforms → sinks' },
   { id: 'live', label: 'Live', icon: Activity, detail: 'Units in flight, heat & edge traffic, real time' },
   { id: 'flow', label: 'Flow²', icon: TrendingUp, detail: 'Throughput, dwell & bottlenecks over the window' },

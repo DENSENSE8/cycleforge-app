@@ -13,6 +13,7 @@
 
 import { registerBuiltinDataSources } from './data-sources';
 import { registerBuiltinActions } from './actions';
+import { registerBuiltinProcedures } from './procedure';
 import { registerChecklistBlock } from './blocks/checklist.block';
 import { registerScanBandBlock } from './blocks/scan-band.block';
 import { registerRailFeedBlock } from './blocks/rail-feed.block';
@@ -23,6 +24,7 @@ export function registerStationBuiltins(): void {
   builtinsRegistered = true;
   registerBuiltinDataSources();
   registerBuiltinActions();
+  registerBuiltinProcedures();
   registerChecklistBlock();
   registerScanBandBlock();
   registerRailFeedBlock();
@@ -51,6 +53,10 @@ export {
   listActionMeta,
   actionsForSource,
 } from './actions';
+// The procedure registry is deliberately NOT re-exported here: its only
+// consumers are the Studio's Procedure lens and the lineage guard, and both
+// import '@/lib/stations/procedure' directly. Re-exporting it would put a
+// second, unused path to the same module in every station bundle.
 export * from './contract';
 
 // ─── Operator surfaces (Studio-driven operator surfaces refactor) ────────────

@@ -9,22 +9,62 @@ import type {
   StudioGraphNode,
   StudioLiveNode,
 } from '../studio-types';
-import { REWORK_PORTS, type DepartmentNodeData, type ProcessNodeData } from './studio-canvas-shared';
+import {
+  REWORK_PORTS,
+  type DepartmentNodeData,
+  type ProcedureNodePaint,
+  type ProcessNodeData,
+} from './studio-canvas-shared';
+
+/**
+ * Everything a lens (or the simulate overlay) paints onto the L1 graph. One
+ * bag rather than a positional tail: each lens contributes an independent,
+ * optional layer, so the argument list only ever grows — it reached thirteen
+ * positions before this, where adding the last one meant counting `null`s.
+ * Every field is optional and absent means "this layer is off".
+ */
+export interface FlowGraphPaint {
+  focus?: string | null;
+  /** Live-lens per-node occupancy. */
+  live?: Record<string, StudioLiveNode> | null;
+  /** Gaps-lens diagnostics, pre-grouped by node. */
+  gapsByNode?: Map<string, Diagnostic[]> | null;
+  /** Draft edit mode (ST4): nodes drag, ports connect, edges delete. */
+  editable?: boolean;
+  /** Static-lens source/transform/sink projection. */
+  staticFlow?: StaticFlowGraph | null;
+  /** Live-lens recently-traversed edges, keyed `${sourceNode} ${sourcePort}`. */
+  flowEdges?: ReadonlySet<string> | null;
+  /** Flow²-lens throughput metrics. */
+  flow?: StudioFlowResponse | null;
+  /** People-lens staffing coverage. */
+  people?: Record<string, PeopleNodeCoverage> | null;
+  /** Procedure-lens step + table box, keyed by node id. */
+  procedure?: ReadonlyMap<string, ProcedureNodePaint> | null;
+  /** Simulate overlay: node the ghost currently occupies. */
+  simGhostNodeId?: string | null;
+  /** Simulate overlay: edge ids the ghost has walked. */
+  simTraversedEdgeIds?: ReadonlySet<string> | null;
+}
 
 export function buildFlowGraph(
   nodes: StudioGraphNode[],
   edges: StudioGraphEdge[],
-  focus: string | null,
-  live: Record<string, StudioLiveNode> | null,
-  gapsByNode: Map<string, Diagnostic[]> | null,
-  editable = false,
-  staticFlow: StaticFlowGraph | null = null,
-  flowEdges: ReadonlySet<string> | null = null,
-  flow: StudioFlowResponse | null = null,
-  people: Record<string, PeopleNodeCoverage> | null = null,
-  simGhostNodeId: string | null = null,
-  simTraversedEdgeIds: ReadonlySet<string> | null = null,
+  paint: FlowGraphPaint = {},
 ) {
+  const {
+    focus = null,
+    live = null,
+    gapsByNode = null,
+    editable = false,
+    staticFlow = null,
+    flowEdges = null,
+    flow = null,
+    people = null,
+    procedure = null,
+    simGhostNodeId = null,
+    simTraversedEdgeIds = null,
+  } = paint;
   const metaByNode = new Map(nodes.map((n) => [n.id, n.meta]));
   // Flow² lens: which node instances rank as bottlenecks, and the busiest edge
   // so we can normalize stroke thickness against the heaviest traffic.
@@ -50,6 +90,7 @@ export function buildFlowGraph(
         flow: flow?.nodes[n.id] ?? null,
         flowBottleneck: bottleneckIds?.has(n.id) ?? false,
         people: people?.[n.id] ?? null,
+        procedure: procedure?.get(n.id) ?? null,
         simGhost: simGhostNodeId === n.id,
       } satisfies ProcessNodeData,
     };

@@ -39,6 +39,7 @@ import { getBlock } from '@/lib/stations';
 import type { BlockInstanceConfig, StationConfig } from '@/lib/stations/contract';
 import { BlockRenderer } from '@/components/stations/BlockRenderer';
 import { BlockPaletteOverlay } from '@/components/stations/BlockPaletteOverlay';
+import { StationProcedurePanel, useStationProcedureMap } from './StationProcedurePanel';
 import { BlockConfigSheet } from '@/components/stations/BlockConfigSheet';
 import { StationIcon } from '@/components/stations/station-icons';
 import { useStationEditor } from '@/components/stations/useStationEditor';
@@ -164,6 +165,7 @@ export function StudioNodeStationEditor({
     onPublish,
     onPublished: reloadStation,
   });
+  const procedure = useStationProcedureMap(node);
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-surface-canvas">
@@ -207,6 +209,14 @@ export function StudioNodeStationEditor({
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto p-4">
+        {/* The station's procedure leads the station-scoped view here too — a
+            manager is the person who most needs to read it, and the shell
+            routes them to this editor instead of the read-only preview. */}
+        {procedure && (
+          <div className="mx-auto mb-6 max-w-2xl">
+            <StationProcedurePanel map={procedure} />
+          </div>
+        )}
         <div className="mx-auto max-w-2xl">
           <section
             className={

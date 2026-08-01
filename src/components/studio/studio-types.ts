@@ -155,8 +155,12 @@ export interface StudioStationResponse {
   error?: string;
 }
 
-/** Lenses live so far — Build (ST1), Static + Live + Flow² (ST2), Gaps (ST3), People (ST6). */
-export type StudioLens = 'build' | 'static' | 'live' | 'gaps' | 'flow' | 'people';
+/**
+ * Lenses live so far — Build (ST1), Static + Live + Flow² (ST2), Gaps (ST3),
+ * People (ST6), Procedure (the station's own step sequence + the data each step
+ * touches; pure projection of the registries, so it needs no fetch).
+ */
+export type StudioLens = 'build' | 'static' | 'live' | 'gaps' | 'flow' | 'people' | 'procedure';
 
 // ─── People lens (the /api/studio/people feed) ───────────────────────────────
 // Per-node staffing coverage assembled server-side from the node→station

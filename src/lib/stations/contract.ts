@@ -64,6 +64,29 @@ export interface SourceRow {
   [key: string]: unknown;
 }
 
+// ─── Table lineage ───────────────────────────────────────────
+//
+// The persistent relations an endpoint touches — BPMN's "data store" grain
+// (persistent, shared across processes), as opposed to the transient row/payload
+// a block renders (BPMN's "data object"). Table-level only, deliberately: it is
+// the granularity the industry ships (dbt's native lineage is table-level;
+// OpenLineage keeps column lineage an OPTIONAL facet), and it is the granularity
+// `data-lineage.guard.test.ts` can actually verify by matching the name against
+// the module's SQL. A column-level claim would need a real SQL parser, and a
+// parser that fails open produces the untrusted map that is worse than no map.
+
+export interface TableRef {
+  /** Physical relation name, exactly as it appears in migrations and in SQL. */
+  table: string;
+  /**
+   * The module whose SQL touches it, when that is NOT the descriptor's own
+   * endpoint route (`@/lib/receiving/serial-attach`). The guard verifies the
+   * named module really touches the named table, so a `via` can never be a
+   * guess — it is a checked claim about where the write lives.
+   */
+  via?: string;
+}
+
 // ─── Data sources ────────────────────────────────────────────
 
 export interface DataSourceDefinition {
@@ -91,6 +114,15 @@ export interface DataSourceDefinition {
   permission: string;
   /** Live invalidation channel, when the feed has one. */
   realtime?: { ablyChannel?: string };
+  /**
+   * Relations `endpoint` reads. Optional so lineage is adoptable per station,
+   * but NOT optional once declared: `data-lineage.guard.test.ts` fails when the
+   * route's own SQL touches a relation this list omits, and when this list names
+   * one the SQL never touches. Ids in `LINEAGE_REQUIRED` must declare.
+   */
+  reads?: TableRef[];
+  /** Relations `endpoint` writes. A GET feed normally declares none. */
+  writes?: TableRef[];
 }
 
 /** Palette/config-sheet metadata (no functions) — safe to serialize. */
@@ -119,6 +151,10 @@ export interface ActionDefinition {
   /** …or when it belongs to the same integration. */
   integration?: string;
   confirm?: 'none' | 'soft' | 'step_up';
+  /** Relations `endpoint` reads — same contract as `DataSourceDefinition.reads`. */
+  reads?: TableRef[];
+  /** Relations `endpoint` writes — the half that makes an action's blast radius legible. */
+  writes?: TableRef[];
 }
 
 export type ActionMeta = Omit<ActionDefinition, 'body'>;
