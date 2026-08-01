@@ -5,14 +5,14 @@ import { AnimatePresence, LayoutGroup, motion, useReducedMotion } from 'framer-m
 
 type FeedId = string | number;
 
-export interface MobileFeedRowContext {
+export interface CaptureStackRowContext {
   variant: 'collapsed' | 'expanded';
   fresh: boolean;
   index: number;
   isLast: boolean;
 }
 
-export interface MobileFeedProps<T> {
+export interface CaptureStackProps<T> {
   rows: T[];
   isLoading?: boolean;
   scrollRef?: React.RefObject<HTMLDivElement>;
@@ -20,7 +20,7 @@ export interface MobileFeedProps<T> {
   getId?: (row: T) => FeedId;
   /** Render the bottom (last) row as the 'expanded' card. Default true. */
   expandLast?: boolean;
-  renderRow: (row: T, ctx: MobileFeedRowContext) => ReactNode;
+  renderRow: (row: T, ctx: CaptureStackRowContext) => ReactNode;
   empty?: ReactNode;
   loading?: ReactNode;
   /** Extra classes on the scroll container. */
@@ -42,11 +42,25 @@ const DefaultLoading = (
 );
 
 /**
- * Generic mobile feed shell. Owns the scroll container + the layout/spring
- * animation per row; callers supply `renderRow` (usually a domain row wrapped
- * in MobileRowCard). Pair with useFeedWindow for windowing + scroll + pulse.
+ * The house **bottom-anchored capture stack**: the current task expanded at the
+ * bottom, every completed row collapsed to a single line and pushed up into a
+ * scrollable ledger. Owns the scroll container + the layout/spring animation per
+ * row; callers supply `renderRow` (usually a domain row wrapped in
+ * {@link CaptureStackRow}). Pair with `useCaptureStackWindow` for windowing +
+ * auto-scroll + fresh pulse — bottom-anchoring lives across BOTH files, so they
+ * move and change together.
+ *
+ * Promoted verbatim from `components/mobile/feed/MobileFeed` (capture-stack
+ * Phase 1) so stations migrate onto one primitive instead of forking a
+ * `StationTimelineShell`. Contract pinned by `capture-stack.guard.test.ts`.
+ *
+ * TODO(capture-stack): Phase 2 migrates the inline variants below onto
+ * `useMotionPresence` / `useMotionTransition` and adds this file to
+ * `station-motion-bridge.guard.test.ts` in the same commit. It is compliant in
+ * effect today (it branches on `useReducedMotion`), and rewriting it here would
+ * break the byte-identical requirement of the promotion.
  */
-export function MobileFeed<T>({
+export function CaptureStack<T>({
   rows,
   isLoading = false,
   scrollRef,
@@ -57,7 +71,7 @@ export function MobileFeed<T>({
   empty,
   loading,
   className = '',
-}: MobileFeedProps<T>) {
+}: CaptureStackProps<T>) {
   const reduceMotion = useReducedMotion();
 
   if (isLoading && rows.length === 0) {

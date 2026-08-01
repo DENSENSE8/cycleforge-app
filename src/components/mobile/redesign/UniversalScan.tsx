@@ -15,8 +15,7 @@ import {
   SectionHeader,
 } from '@/components/mobile/redesign/DesignSystem';
 import { HorizontalButtonSlider } from '@/components/ui/HorizontalButtonSlider';
-import { MobileFeed } from '@/components/mobile/feed/MobileFeed';
-import { useFeedWindow } from '@/components/mobile/feed/useMobileFeed';
+import { CaptureStack, useCaptureStackWindow } from '@/design-system/components/capture-stack';
 import { ScanResultRow, type ScanFeedItem } from '@/components/mobile/feed/rows/ScanResultRow';
 import { ScanTestingPanel } from '@/components/mobile/redesign/ScanTestingPanel';
 import { ScanInput } from '@/components/mobile/redesign/ScanInput';
@@ -154,7 +153,7 @@ export default function RedesignedMobileUniversalScan() {
   );
 
   // Prepacked "Recent Scans" is the only in-component feed left (label history).
-  const { rows: feedRows, scrollRef } = useFeedWindow(prepackScans, { limit: 12, anchor: 'top', freshPulse: false });
+  const { rows: feedRows, scrollRef } = useCaptureStackWindow(prepackScans, { limit: 12, anchor: 'top', freshPulse: false });
 
   return (
     <div className={`h-full ${TOKENS.colors.background} flex flex-col`}>
@@ -223,7 +222,7 @@ export default function RedesignedMobileUniversalScan() {
               <div className="px-6">
                 <SectionHeader title="Recent Scans" />
               </div>
-              <MobileFeed<ScanFeedItem>
+              <CaptureStack<ScanFeedItem>
                 rows={feedRows}
                 expandLast={false}
                 scrollRef={scrollRef}

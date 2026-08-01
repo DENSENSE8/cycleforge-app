@@ -23,8 +23,7 @@ import {
 } from '@/components/mobile/receiving/receiving-feed-entries';
 import { MobileCartonSheet } from '@/components/mobile/receiving/MobileCartonSheet';
 import { MobileReceivingFeedGallery } from '@/components/mobile/receiving/MobileReceivingFeedGallery';
-import { MobileFeed } from '@/components/mobile/feed/MobileFeed';
-import { useFeedWindow, useMobileFeedQuery } from '@/components/mobile/feed/useMobileFeed';
+import { CaptureStack, useCaptureStackWindow, useCaptureStackQuery } from '@/design-system/components/capture-stack';
 import { receivingLinePhotoHrefs } from '@/lib/photos/mobile-gallery-url';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 
@@ -81,7 +80,7 @@ export function MobileReceivingList({
 
   const queryKey = queryKeyForSurface(surface);
 
-  const { data, isLoading, refetch } = useMobileFeedQuery<ReceivingLineRow>({
+  const { data, isLoading, refetch } = useCaptureStackQuery<ReceivingLineRow>({
     queryKey,
     // Capture navigates to a fullscreen (immersive) route and back, so the
     // realtime photo push fires while this list is unmounted (no rewind). Always
@@ -91,7 +90,7 @@ export function MobileReceivingList({
     enabled: isMobile,
     queryFn: async () => {
       const params = new URLSearchParams({
-        // Display windows to ≤20 rows (useFeedWindow) — 100 gives carton-grouping
+        // Display windows to ≤20 rows (useCaptureStackWindow) — 100 gives carton-grouping
         // headroom; the old 500-row window was pure over-fetch on a phone feed.
         limit: '100',
         offset: '0',
@@ -139,7 +138,7 @@ export function MobileReceivingList({
     !!stationChannel,
   );
 
-  const { rows, scrollRef, freshIds } = useFeedWindow(data, { limit, anchor: 'bottom' });
+  const { rows, scrollRef, freshIds } = useCaptureStackWindow(data, { limit, anchor: 'bottom' });
 
   // Collapse carton-mates into package entries for rendering — windowing, scroll,
   // and fresh-pulse stay line-level (above) so the existing feed mechanics are
@@ -191,7 +190,7 @@ export function MobileReceivingList({
 
   return (
     <div className="flex h-full w-full max-w-full flex-col overflow-x-hidden bg-surface-card">
-      <MobileFeed<ReceivingFeedEntry>
+      <CaptureStack<ReceivingFeedEntry>
         rows={entries}
         isLoading={isLoading}
         scrollRef={scrollRef}

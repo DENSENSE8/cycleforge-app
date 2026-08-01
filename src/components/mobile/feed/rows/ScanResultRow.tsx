@@ -2,14 +2,14 @@
 
 import Link from 'next/link';
 import { ChevronRight, Package, AlertCircle, Loader2, Check, Zap, MapPin } from '@/components/Icons';
-import { MobileRowCard } from '@/components/mobile/feed/MobileRowCard';
+import { CaptureStackRow } from '@/design-system/components/capture-stack';
 import { formatOpsStageTime } from '@/utils/date';
 import { useTimeFormat } from '@/lib/time-format/useTimeFormat';
 
 /**
  * Normalized scan-result item. Both the Universal Scan (/m/scan) and Receive
  * (/m/receive) screens map their bespoke local-state rows onto this shape so
- * they can share one row component + the shared MobileFeed.
+ * they can share one row component + the shared CaptureStack.
  */
 export interface ScanFeedItem {
   id: string;
@@ -65,7 +65,7 @@ function StateIcon({ state }: { state: ScanFeedItem['state'] }) {
 }
 
 /**
- * One scan-result row. Reuses the shared MobileRowCard chrome so it matches the
+ * One scan-result row. Reuses the shared CaptureStackRow chrome so it matches the
  * receiving/packing feed; status colour communicates resolve outcome.
  *
  * A row becomes a tap target when it has either an `href` (navigation) or an
@@ -128,7 +128,7 @@ export function ScanResultRow({
   );
 
   return (
-    <MobileRowCard variant="collapsed" fresh={fresh}>
+    <CaptureStackRow variant="collapsed" fresh={fresh}>
       {item.href ? (
         <Link href={item.href} prefetch={false} className="pointer-events-auto">
           {inner}
@@ -140,6 +140,6 @@ export function ScanResultRow({
       ) : (
         inner
       )}
-    </MobileRowCard>
+    </CaptureStackRow>
   );
 }

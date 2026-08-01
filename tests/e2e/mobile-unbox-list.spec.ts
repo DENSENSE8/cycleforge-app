@@ -54,7 +54,7 @@ test.describe('mobile unbox list mirrors the desktop unbox-mode rail', () => {
 
     test.skip(rows.length === 0, 'no unboxed receiving lines in this environment');
 
-    // With data present, the empty state must NOT show (MobileFeed renders the
+    // With data present, the empty state must NOT show (CaptureStack renders the
     // empty branch only when rows===0 && !isLoading — so any stale/failed fetch
     // would surface here).
     await expect

@@ -3,14 +3,14 @@
 import { OrderIdChip, TrackingChip, getLast4 } from '@/components/ui/CopyChip';
 import { getDaysLateNullable, getDaysLateTone } from '@/utils/date';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
-import { MobileRowCard } from '@/components/mobile/feed/MobileRowCard';
+import { CaptureStackRow } from '@/design-system/components/capture-stack';
 import { RowTitle, RowMetaColumns, META_COL, RowConditionMeta } from '@/components/ui/RowMetaColumns';
 import { orderRowQtyTone } from '@/lib/condition-tone';
 
 /**
  * Pending-order row for the mobile Picks feed — the phone view of the
  * dashboard `?pending=` table. Mirrors MobileReceivingRow / MobilePackingRow:
- * same MobileRowCard chrome + shared CopyChips, so all mobile displays share
+ * same CaptureStackRow chrome + shared CopyChips, so all mobile displays share
  * one set of primitives.
  *
  *   Row 1: deadline-tone dot + product title
@@ -53,7 +53,7 @@ export function PendingOrderRow({
   const daysLate = getDaysLateNullable(deadlineOf(row));
 
   return (
-    <MobileRowCard variant={variant} fresh={fresh} onTap={onTap} dataAttr={{ name: 'order-row-id', value: row.id }}>
+    <CaptureStackRow variant={variant} fresh={fresh} onTap={onTap} dataAttr={{ name: 'order-row-id', value: row.id }}>
       {/* Title — same primitive + wide dot-track as receiving/packing so the dot
           and title start at the identical x across every mobile feed. */}
       <div className="flex items-center gap-2">
@@ -86,6 +86,6 @@ export function PendingOrderRow({
           {trackingValue && <TrackingChip value={trackingValue} display={getLast4(trackingValue)} />}
         </div>
       </div>
-    </MobileRowCard>
+    </CaptureStackRow>
   );
 }

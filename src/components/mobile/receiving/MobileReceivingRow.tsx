@@ -14,7 +14,7 @@ import { RowTitle, RowMetaColumns, META_COL } from '@/components/ui/RowMetaColum
 import { ReceivingIdentityChips } from '@/components/receiving/ReceivingIdentityChips';
 import { MobileRowPhotoActions } from '@/components/mobile/receiving/MobileRowPhotoActions';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
-import { MobileRowCard } from '@/components/mobile/feed/MobileRowCard';
+import { CaptureStackRow } from '@/design-system/components/capture-stack';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { conditionGradeTextClass } from '@/lib/condition-tone';
 import { EMPTY_META_DASH, EMPTY_META_DASH_ALIGN_CLASS } from '@/lib/conditions';
@@ -94,7 +94,7 @@ export function MobileReceivingRow({
   const isExpanded = variant === 'expanded';
 
   return (
-    <MobileRowCard variant={variant} fresh={fresh} onTap={onTap} dataAttr={{ name: 'line-row-id', value: row.id }}>
+    <CaptureStackRow variant={variant} fresh={fresh} onTap={onTap} dataAttr={{ name: 'line-row-id', value: row.id }}>
       {/* Title — identical primitive to the desktop table row. */}
       <RowTitle
         dot={getStatusDotBg(row.workflow_status, row.quantity_received, row.quantity_expected)}
@@ -221,6 +221,6 @@ export function MobileReceivingRow({
           </Link>
         </div>
       )}
-    </MobileRowCard>
+    </CaptureStackRow>
   );
 }

@@ -11,17 +11,18 @@ import type { RefreshDomain } from '@/lib/refresh/domains';
 const EMPTY_DOMAINS: readonly RefreshDomain[] = [];
 
 /**
- * Shared mobile-feed behaviors, factored out of the two hand-rolled lists
- * (MobileReceivingList / MobilePackingList) so every mobile display — Recent,
- * Receiving, Scan, Receive, Packing, Picks — gets the same windowing,
- * bottom-anchored auto-scroll, and fresh-row pulse for free.
+ * Behavior half of the capture stack — the windowing, bottom-anchored
+ * auto-scroll, and fresh-row pulse that {@link CaptureStack} renders against.
+ * Bottom-anchoring lives across both files; they move and change as one unit.
  *
  * Two layers:
- *   - useFeedWindow(rows)      → pure view: window to last N, order, scroll, pulse.
- *   - useMobileFeedQuery(opts) → TanStack Query + realtime wiring (data feeds).
+ *   - useCaptureStackWindow(rows) → pure view: window to last N, order, scroll, pulse.
+ *   - useCaptureStackQuery(opts)  → TanStack Query + realtime wiring (data feeds).
  *
- * Scan/Receive feed local component state straight into useFeedWindow; the
- * other four pull through useMobileFeedQuery first.
+ * Scan/Receive feed local component state straight into useCaptureStackWindow;
+ * the query-backed feeds (Receiving, Packing, Picks) pull through
+ * useCaptureStackQuery first. Promoted verbatim from
+ * `components/mobile/feed/useMobileFeed` in capture-stack Phase 1.
  */
 
 type FeedId = string | number;
@@ -56,7 +57,7 @@ const defaultGetId = <T,>(row: T): FeedId => (row as { id: FeedId }).id;
  * View-layer feed behaviors. Source rows are expected newest-first (the order
  * every list endpoint and the scan prepend already produce).
  */
-export function useFeedWindow<T>(
+export function useCaptureStackWindow<T>(
   source: ReadonlyArray<T> | null | undefined,
   options: FeedWindowOptions<T> = {},
 ): FeedWindow<T> {
@@ -124,7 +125,7 @@ export function useFeedWindow<T>(
   return { rows, scrollRef, freshIds };
 }
 
-export interface MobileFeedQueryOptions<T> {
+export interface CaptureStackQueryOptions<T> {
   queryKey: readonly unknown[];
   queryFn: () => Promise<T[]>;
   /** ms before a cached result is considered stale (default 20s — snappy tab switches). */
@@ -153,7 +154,7 @@ export interface MobileFeedQueryOptions<T> {
   };
 }
 
-export interface MobileFeedQuery<T> {
+export interface CaptureStackQuery<T> {
   data: T[];
   isLoading: boolean;
   refetch: () => void;
@@ -163,7 +164,7 @@ export interface MobileFeedQuery<T> {
  * Query-backed feed source: TanStack Query (cached, so back-navigation is
  * instant) plus the realtime fan-in each feed needs. Returns a plain array.
  */
-export function useMobileFeedQuery<T>(opts: MobileFeedQueryOptions<T>): MobileFeedQuery<T> {
+export function useCaptureStackQuery<T>(opts: CaptureStackQueryOptions<T>): CaptureStackQuery<T> {
   const { queryKey, queryFn, staleTime = 20_000, refetchOnMount, enabled = true, realtime } = opts;
   const queryClient = useQueryClient();
 
