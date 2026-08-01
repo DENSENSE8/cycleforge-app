@@ -6,7 +6,11 @@
  * house `group-rows`, not TanStack).
  */
 
-import { makeGridSurfaceDescriptor, type GridSurfaceDescriptor } from '@/design-system/components/grid';
+import {
+  makeGridSurfaceDescriptor,
+  type GridSurfaceCapabilities,
+  type GridSurfaceDescriptor,
+} from '@/design-system/components/grid';
 import type { PickupLine } from '../pickup-lines';
 import {
   defaultDirForPickupGridSort,
@@ -14,6 +18,15 @@ import {
   isPickupGridSortable,
   type PickupGridColumn,
 } from './pickup-grid-layout';
+
+/** Local Pickup browse — read-only map (empty select gutter); no triage wash. */
+export const PICKUP_GRID_CAPABILITIES: GridSurfaceCapabilities = {
+  rowTriageFlags: false,
+  multiSelect: false,
+  inCellEdit: false,
+  fieldsMenu: true,
+  dayBands: false,
+};
 
 /**
  * Build the descriptor from a RESOLVED column list (post-visibility), so
@@ -31,6 +44,7 @@ export function makePickupGridDescriptor(
       sortDescFirst: (key) => defaultDirForPickupGridSort(key) === 'desc',
       isLocked: isPickupGridFrozen,
     },
+    PICKUP_GRID_CAPABILITIES,
   );
 }
 

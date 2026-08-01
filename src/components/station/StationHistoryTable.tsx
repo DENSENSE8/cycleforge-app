@@ -6,6 +6,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { StationListTable } from '@/components/station/StationListTable';
 import { StationPipelineBoard } from '@/components/station/StationPipelineBoard';
 import { StationQueueRow } from '@/components/station/StationQueueRow';
+import { STATION_HISTORY_GRID_CAPABILITIES } from '@/components/station/station-history-capabilities';
 import { TableColumnConfigProvider } from '@/components/ui/table-column-config/TableColumnConfig';
 import { TableDensityProvider } from '@/components/ui/table-density/TableDensityProvider';
 import { TableOptionsMenu } from '@/components/ui/table-options/TableOptionsMenu';
@@ -345,6 +346,7 @@ export function StationHistoryTable<T>({
               headerEndSlot={headerControls}
               emptyMessage={emptyMessage}
               firstRunEmpty={firstRunEmpty}
+              capabilities={STATION_HISTORY_GRID_CAPABILITIES}
             />
             {bulkBar}
           </div>

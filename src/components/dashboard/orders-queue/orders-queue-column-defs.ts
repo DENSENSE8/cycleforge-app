@@ -3,7 +3,7 @@
  *
  * Engine split (grid-surface-descriptor plan, hybrid B-): **TanStack owns the
  * column MODEL + sorting/visibility/order state; Kinetic Ledger owns markup.**
- * Each def carries the house `OrdersQueueColumn` geometry on `meta.queueColumn`
+ * Each def carries the house `OrdersQueueColumn` geometry on `meta.gridColumn`
  * — `ordersQueueGridTemplateFor` / frozen offsets / force-hide keep reading the
  * house model, so TanStack never grows a second width system (plan risk #1).
  * Cell markup stays in the house per-column registries
@@ -15,88 +15,33 @@
  *     order · tracking (the canonical `ORDERS_QUEUE_COLUMNS`).
  *   `fulfillment.tested` (`?tested`) — **tester** + **testedAt** surface per
  *     plan §9 (`ORDERS_QUEUE_TESTED_COLUMNS`).
+ *
+ * Capabilities live on {@link makeOrdersGridDescriptor} /
+ * {@link ORDERS_GRID_CAPABILITIES} — this module re-exports stable TanStack
+ * defs for the two modes.
  */
 
 import type { ColumnDef } from '@tanstack/react-table';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
-import { buildLedgerColumnDefs } from '@/design-system/components/grid';
 import {
-  isOrdersQueueFrozen,
-  ordersQueueColumnsFor,
   type OrdersQueueColumn,
   type OrdersQueueColumnMode,
 } from '@/lib/dashboard-order-row-layout';
-import { isQueueColumnSort } from '@/utils/queue-display-sort';
-import {
-  queueRowShipBySource,
-  queueRowTestedAtRaw,
-  queueRowTesterNameRaw,
-  type QueueRowRecord,
-} from './helpers';
+import { makeOrdersGridDescriptor } from './orders-queue-descriptor';
 
-/** State-math accessor per column key (sort/group value — NOT display markup). */
-function accessorFor(key: OrdersQueueColumn['key']): (row: ShippedOrder) => unknown {
-  switch (key) {
-    case 'title':
-      return (row) => String(row.product_title ?? '');
-    case 'sla':
-      // Ship-by is the fused column's sort/group value (deadline → created
-      // fallback). Lateness is derived from the same instant, so one accessor
-      // serves both halves of the cell.
-      return (row) => queueRowShipBySource(row);
-    case 'status':
-      return (row) => {
-        const r = row as QueueRowRecord;
-        return {
-          hasTechScan: Boolean(r.has_tech_scan),
-          isOutOfStock: Boolean(r.is_out_of_stock ?? r.isOutOfStock),
-        };
-      };
-    case 'qty':
-      return (row) => Number(row.quantity) || 0;
-    case 'condition':
-      return (row) => String(row.condition ?? '');
-    case 'tester':
-      return (row) => queueRowTesterNameRaw(row as QueueRowRecord);
-    case 'testedAt':
-      return (row) => queueRowTestedAtRaw(row as QueueRowRecord);
-    case 'platform':
-      return (row) => String(row.account_source ?? '');
-    case 'order':
-      return (row) => String(row.order_id ?? '');
-    case 'tracking':
-      return (row) => {
-        const r = row as QueueRowRecord;
-        return String((r.tracking_number as string | undefined) || row.shipping_tracking_number || '').trim();
-      };
-    default:
-      return () => null;
-  }
-}
-
-/** House column models → TanStack defs via the DS descriptor factory. */
-function defsFor(mode: OrdersQueueColumnMode): ColumnDef<ShippedOrder, unknown>[] {
-  return buildLedgerColumnDefs<ShippedOrder, OrdersQueueColumn>(ordersQueueColumnsFor(mode), {
-    // URL `?sort=` stays the durable sort vocabulary — only its columns sort.
-    isSortable: isQueueColumnSort,
-    // No column activates DESC first — ascending ship-by is already
-    // most-late-first (matches `defaultDirForQueueSort`).
-    sortDescFirst: () => false,
-    isLocked: isOrdersQueueFrozen,
-    accessorFor,
-  });
-}
-
-const DEFS_BY_MODE: Record<OrdersQueueColumnMode, readonly ColumnDef<ShippedOrder, unknown>[]> = {
-  'fulfillment.default': defsFor('fulfillment.default'),
-  'fulfillment.tested': defsFor('fulfillment.tested'),
+const DESCRIPTOR_BY_MODE: Record<
+  OrdersQueueColumnMode,
+  ReturnType<typeof makeOrdersGridDescriptor>
+> = {
+  'fulfillment.default': makeOrdersGridDescriptor('fulfillment.default'),
+  'fulfillment.tested': makeOrdersGridDescriptor('fulfillment.tested'),
 };
 
 /** The TanStack column defs for a queue mode (stable references — safe deps). */
 export function ordersQueueColumnDefsFor(
   mode: OrdersQueueColumnMode,
 ): readonly ColumnDef<ShippedOrder, unknown>[] {
-  return DEFS_BY_MODE[mode];
+  return DESCRIPTOR_BY_MODE[mode].columnDefs;
 }
 
 /** House geometry model off a TanStack column def (meta round-trip). */

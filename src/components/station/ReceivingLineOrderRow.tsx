@@ -16,6 +16,7 @@ import {
   shouldShowWorkflowStatusIcon,
 } from '@/components/station/receiving-constants';
 import { ReceivingIdentityChips } from '@/components/receiving/ReceivingIdentityChips';
+import { GridRowCheckbox } from '@/components/ui/GridRowCheckbox';
 import {
   RowTitle,
   RowMetaColumns,
@@ -85,6 +86,8 @@ export function ReceivingLineOrderRow({
   isIncoming = false,
   isHistory = false,
   selectMode = false,
+  isChecked,
+  onToggleSelect,
   /** History day-band axis — Unbox → `unboxed`, Triage → `scanned`. */
   activityAxis = 'scanned',
 }: {
@@ -102,9 +105,20 @@ export function ReceivingLineOrderRow({
    *  check) and the testing verdict (FAILED box) are noise — we drop the icon
    *  and read the dot as a uniform "received" green. */
   isHistory?: boolean;
-  /** Multi-select mode: render a checkbox and treat `isSelected` as "checked".
-   *  Click toggles membership instead of opening the workspace. */
+  /** Multi-select mode: render the leading checkbox. */
   selectMode?: boolean;
+  /**
+   * Bulk membership, when the surface splits the two planes (`onToggleSelect`).
+   * Defaults to `isSelected` for the legacy surfaces where one flag still means
+   * both "checked" and "open".
+   */
+  isChecked?: boolean;
+  /**
+   * Gutter checkbox handler. When given, the checkbox becomes a REAL control
+   * (bulk membership) and the row tap is left to `onSelect` — the record plane.
+   * Omitted → the historical painted span, where the row tap toggles instead.
+   */
+  onToggleSelect?: () => void;
   activityAxis?: ReceivingActivityAxis;
 }) {
   const stageStamp = !isIncoming ? resolveReceivingRowStageStamp(row, activityAxis) : null;
@@ -132,6 +146,9 @@ export function ReceivingLineOrderRow({
   // identity in the generated title until the serial projection catches up.
   const serialsCsv = resolveReceivingLineSerialsCsv(row);
   const { classes: densityClasses } = useTableDensity();
+  // One flag on the legacy surfaces (checked === open); split where the caller
+  // passes the two planes separately.
+  const checked = isChecked ?? isSelected;
 
   return (
     <div
@@ -143,11 +160,18 @@ export function ReceivingLineOrderRow({
           onSelect();
         }
       }}
-      role={selectMode ? 'checkbox' : 'button'}
+      // Once the gutter owns its own toggle, the ROW body is purely the record
+      // plane — a whole-width `role="checkbox"` would be claiming a gesture it
+      // no longer performs.
+      role={selectMode && !onToggleSelect ? 'checkbox' : 'button'}
       tabIndex={0}
-      aria-checked={selectMode ? isSelected : undefined}
-      aria-pressed={selectMode ? undefined : isSelected}
-      aria-label={`Select receiving line ${row.id}`}
+      aria-checked={selectMode && !onToggleSelect ? checked : undefined}
+      aria-pressed={selectMode && !onToggleSelect ? undefined : isSelected}
+      aria-label={
+        onToggleSelect
+          ? `Open receiving line ${row.id}`
+          : `Select receiving line ${row.id}`
+      }
       className={cn(
         dashboardOrderRowShellClass(isMobile),
         'border-b border-border-hairline transition-colors cursor-pointer hover:bg-blue-50/50',
@@ -163,15 +187,21 @@ export function ReceivingLineOrderRow({
       <div className="flex min-w-0 flex-col">
         <RowTitle
           leading={
-            selectMode ? (
+            !selectMode ? undefined : onToggleSelect ? (
+              <GridRowCheckbox
+                checked={checked}
+                onToggle={onToggleSelect}
+                label={`Select receiving line ${row.id} for bulk actions`}
+              />
+            ) : (
               <span
                 className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
-                  isSelected ? 'border-accent-bg bg-accent-bg text-text-inverse' : 'border-border-default bg-surface-card'
+                  checked ? 'border-accent-bg bg-accent-bg text-text-inverse' : 'border-border-default bg-surface-card'
                 }`}
               >
-                {isSelected && <Check className="h-3 w-3" />}
+                {checked && <Check className="h-3 w-3" />}
               </span>
-            ) : undefined
+            )
           }
           // History reads as received across the board (unfound boxes included),
           // so the dot is a uniform "received" green there rather than the

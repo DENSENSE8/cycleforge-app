@@ -4,9 +4,14 @@ import { test, expect } from '@playwright/test';
  * Incoming = table-only until a row click.
  *
  * Regression guard for the "details panel opens on /incoming load" bug: the
- * IncomingDetailsPanel (a right-rail `role="dialog"`) must open ONLY after an
- * explicit row click — never on page load, and never because a stale
+ * IncomingDetailsPanel (a right-rail occupant) must open ONLY after an explicit
+ * row click — never on page load, and never because a stale
  * `?openReceivingId=` rode a mode switch onto Incoming.
+ *
+ * The panel is NON-MODAL (`detail:incoming`, `modal={false}`) as of the queue
+ * inspector wave, so it renders as `aside[role="region"]`, not `role="dialog"`.
+ * Its modality contract lives in `queue-inspector-non-modal.spec.ts`; this spec
+ * only asserts WHEN it appears.
  *
  * Root cause the fix addresses: `?openReceivingId=` is the Unbox surface's
  * focused-carton URL SoT (written only on /unbox). The workspace-pane restore
@@ -18,7 +23,10 @@ import { test, expect } from '@playwright/test';
  * assertion skips cleanly when no Incoming rows are seeded.
  */
 test.describe('Incoming click-to-open (no details on load)', () => {
-  test('A — fresh /incoming shows the table with no detail dialog', async ({ page }) => {
+  /** The details panel, whichever modality it carries. */
+  const DETAIL_PANEL = 'aside[role="region"], [role="dialog"]';
+
+  test('A — fresh /incoming shows the table with no detail panel', async ({ page }) => {
     const listReq = page.waitForRequest(
       (r) => /\/api\/receiving-lines(\?|$)/.test(r.url()) && r.method() === 'GET',
     );
@@ -27,7 +35,7 @@ test.describe('Incoming click-to-open (no details on load)', () => {
 
     // Let any errant restore/select settle before asserting the negative.
     await page.waitForTimeout(600);
-    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await expect(page.locator(DETAIL_PANEL)).toHaveCount(0);
   });
 
   test('B — a stale ?openReceivingId= must NOT open the details panel on load', async ({ page }) => {
@@ -40,7 +48,7 @@ test.describe('Incoming click-to-open (no details on load)', () => {
     await listReq;
 
     await page.waitForTimeout(800);
-    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await expect(page.locator(DETAIL_PANEL)).toHaveCount(0);
   });
 
   test('C — clicking a row opens the details panel; close stays closed', async ({ page }) => {
@@ -56,10 +64,10 @@ test.describe('Incoming click-to-open (no details on load)', () => {
 
     // A row can be a PO group header or a leaf line — click and expect the panel.
     await firstRow.click();
-    const dialog = page.getByRole('dialog');
+    const panel = page.locator(DETAIL_PANEL);
     // A PO-less/unlinked row toasts instead of opening; only assert when a
-    // dialog actually appears (deterministic-feedback rows are a valid no-op).
-    const opened = await dialog
+    // panel actually appears (deterministic-feedback rows are a valid no-op).
+    const opened = await panel
       .first()
       .waitFor({ state: 'visible', timeout: 2500 })
       .then(() => true)
@@ -68,8 +76,8 @@ test.describe('Incoming click-to-open (no details on load)', () => {
 
     // Close via Escape and confirm it does not immediately re-open.
     await page.keyboard.press('Escape');
-    await expect(dialog).toHaveCount(0);
+    await expect(panel).toHaveCount(0);
     await page.waitForTimeout(600);
-    await expect(dialog).toHaveCount(0);
+    await expect(panel).toHaveCount(0);
   });
 });

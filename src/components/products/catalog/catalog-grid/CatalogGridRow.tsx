@@ -5,7 +5,8 @@ import { Check } from '@/components/Icons';
 import { InventoryMasterChip } from '@/components/products/InventoryMasterChip';
 import type { CatalogListRow } from '@/components/products/catalog/types';
 import { GridCellDash } from '@/components/ui/grid-cells';
-import { ledgerRowStateClass } from '@/components/ui/queue-row-chrome';
+import { ledgerRowFillClass } from '@/components/ui/queue-row-chrome';
+import { CATALOG_GRID_CAPABILITIES } from '@/components/products/catalog/catalog-grid/catalog-grid-descriptor';
 import {
   CATALOG_GRID_COLUMNS,
   CATALOG_GRID_FROZEN_CELL,
@@ -207,7 +208,10 @@ export const CatalogGridRow = memo(function CatalogGridRow({
       }}
       className={cn(
         catalogGridRowShellClass(false, { scrollMinContent: true }),
-        ledgerRowStateClass(isSelected || isChecked),
+        ledgerRowFillClass({
+          selected: isSelected || isChecked,
+          capabilities: CATALOG_GRID_CAPABILITIES,
+        }),
       )}
       style={{ gridTemplateColumns: catalogGridTemplate(columns) }}
     >

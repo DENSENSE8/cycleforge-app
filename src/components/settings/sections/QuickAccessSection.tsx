@@ -3,8 +3,9 @@
 import { useState } from 'react';
 import { useQuickAccess } from '@/lib/quick-access/use-quick-access';
 import { MAX_PINS, type ActionToggles } from '@/lib/quick-access/types';
-import { Button, Switch } from '@/design-system/primitives';
+import { Button, IconButton, Switch } from '@/design-system/primitives';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { ChevronDown, ChevronUp } from '@/components/Icons';
 
 const FIELD_CLS =
   'w-full rounded-xl border border-border-default bg-surface-card px-3 py-2 text-sm text-text-default ' +
@@ -31,7 +32,8 @@ function ToggleRow({ label, description, checked, onChange }: ToggleRowProps) {
 }
 
 export function QuickAccessSection() {
-  const { settings, recents, updateSettings, pin, unpin, rename, wipeRecents } = useQuickAccess();
+  const { settings, recents, updateSettings, pin, unpin, rename, reorder, wipeRecents } =
+    useQuickAccess();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingLabel, setEditingLabel] = useState('');
   const [addUrl, setAddUrl] = useState('');
@@ -51,6 +53,18 @@ export function QuickAccessSection() {
     if (editingId) rename(editingId, editingLabel);
     setEditingId(null);
     setEditingLabel('');
+  }
+
+  function movePin(id: string, direction: -1 | 1) {
+    const ids = settings.pinned.map((p) => p.id);
+    const index = ids.indexOf(id);
+    const next = index + direction;
+    if (index < 0 || next < 0 || next >= ids.length) return;
+    const swapped = [...ids];
+    const tmp = swapped[index]!;
+    swapped[index] = swapped[next]!;
+    swapped[next] = tmp;
+    reorder(swapped);
   }
 
   function handleAddManually() {
@@ -75,7 +89,8 @@ export function QuickAccessSection() {
       <header>
         <h2 className="sr-only">Quick access</h2>
         <p className="mt-1 text-sm text-text-soft">
-          The account menu from the header avatar. Pin pages for one-click navigation and toggle optional actions.
+          Account menu (header avatar) for recents and actions. Pinned pages live in
+          the global header — pin from the + control next to Recents, or manage them here.
         </p>
       </header>
 
@@ -140,21 +155,43 @@ export function QuickAccessSection() {
             {settings.pinned.length} / {MAX_PINS}
           </span>
         </div>
+        <p className="mb-3 text-role-caption text-text-soft">
+          Shown as icon stations in the global header (right of Recents). Drag there to
+          reorder, or use the arrows below.
+        </p>
 
         {settings.pinned.length === 0 ? (
           <p className="rounded-xl border border-dashed border-border-default bg-surface-canvas px-4 py-6 text-center text-xs text-text-soft">
-            No pinned pages. Open Quick Access from any page and tap <span className="font-semibold text-blue-600">+ Pin page</span>.
+            No pinned pages. Use the <span className="font-semibold text-blue-600">+</span> pin
+            control in the global header, or add a URL below.
           </p>
         ) : (
           <ul className="space-y-1">
-            {settings.pinned.map((p) => (
+            {settings.pinned.map((p, index) => (
               <li
                 key={p.id}
-                className="flex items-center gap-3 rounded-xl border border-border-soft px-3 py-2"
+                className="flex items-center gap-2 rounded-xl border border-border-soft px-3 py-2"
               >
-                <span className="text-text-faint" aria-hidden>
-                  ⠿
-                </span>
+                <div className="flex shrink-0 flex-col">
+                  <IconButton
+                    type="button"
+                    size="xs"
+                    ariaLabel={`Move ${p.label} up`}
+                    disabled={index === 0}
+                    onClick={() => movePin(p.id, -1)}
+                    className="text-text-faint disabled:opacity-30"
+                    icon={<ChevronUp className="h-3.5 w-3.5" />}
+                  />
+                  <IconButton
+                    type="button"
+                    size="xs"
+                    ariaLabel={`Move ${p.label} down`}
+                    disabled={index === settings.pinned.length - 1}
+                    onClick={() => movePin(p.id, 1)}
+                    className="text-text-faint disabled:opacity-30"
+                    icon={<ChevronDown className="h-3.5 w-3.5" />}
+                  />
+                </div>
                 <div className="min-w-0 flex-1">
                   {editingId === p.id ? (
                     <input

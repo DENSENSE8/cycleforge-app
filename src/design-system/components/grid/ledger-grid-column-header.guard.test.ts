@@ -1,6 +1,7 @@
 /**
- * Receiving + Incoming + Pickup sticky headers must compose LedgerGridColumnHeader —
- * never re-fork the select-all / sort / frozen / tip recipe.
+ * Workbench sticky headers (except Orders — resize/reorder recipe deferred)
+ * must compose LedgerGridColumnHeader — never re-fork the select-all / sort /
+ * frozen / tip recipe.
  */
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -14,6 +15,8 @@ const ADAPTERS = [
   'src/components/station/receiving-grid/ReceivingGridColumnHeader.tsx',
   'src/components/station/incoming-grid/IncomingGridColumnHeader.tsx',
   'src/components/receiving/pickup/grid/PickupGridColumnHeader.tsx',
+  'src/components/products/catalog/catalog-grid/CatalogGridColumnHeader.tsx',
+  'src/components/repair/repair-grid/RepairGridColumnHeader.tsx',
 ] as const;
 
 describe('LedgerGridColumnHeader composition', () => {

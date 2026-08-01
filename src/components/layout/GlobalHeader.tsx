@@ -6,6 +6,7 @@ import { useAuth, isClientPublicPath } from '@/contexts/AuthContext';
 import { GlobalHeaderActions } from './GlobalHeaderActions';
 import { HeaderGoalChip } from './HeaderGoalChip';
 import { HeaderModeSwitcher } from './HeaderModeSwitcher';
+import { HeaderPinsSwitcher } from './HeaderPinsSwitcher';
 import { HeaderRecentsSwitcher } from './HeaderRecentsSwitcher';
 import { HeaderTopWorkOrderChip } from './HeaderTopWorkOrderChip';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
@@ -32,6 +33,9 @@ import { cn } from '@/utils/_cn';
  *     {@link HeaderRecentsSwitcher}); Mode returns null on modeless pages.
  *     Data = {@link SIDEBAR_PAGE_NAV} via `useSidebarModeNav` — never a
  *     sidebar pill twin.
+ *   - **Pins** — {@link HeaderPinsSwitcher} (hairline after Recents → pin
+ *     current → sortable icons → overflow); data = `useQuickAccess` /
+ *     `cf.quickAccess` — never a pin list in the avatar menu.
  *   - **Next** — {@link HeaderTopWorkOrderChip} (work-order icon → popover; hidden when none)
  *   - **Pace** — {@link HeaderGoalChip} (progress ring → checklist popover)
  *   - **Context** — page `panelContent` via {@link useHeader}
@@ -109,6 +113,7 @@ export function GlobalHeader({
         )}
         <HeaderModeSwitcher />
         <HeaderRecentsSwitcher />
+        <HeaderPinsSwitcher />
         <HeaderTopWorkOrderChip />
         <HeaderGoalChip />
       </div>

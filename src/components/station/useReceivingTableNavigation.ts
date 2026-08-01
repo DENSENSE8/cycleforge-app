@@ -19,6 +19,8 @@ interface UseReceivingTableNavigationArgs {
   handleSelectRow: (row: ReceivingLineRow) => void;
   selectedIdRef: React.MutableRefObject<number | null>;
   selectModeRef: React.MutableRefObject<boolean>;
+  /** Mirrors `useReceivingRowSelection` — the row body opens the record. */
+  rowClickOpens?: boolean;
   scrollRef: React.RefObject<HTMLDivElement | null>;
   selectedId: number | null;
   /**
@@ -34,6 +36,7 @@ export function useReceivingTableNavigation({
   handleSelectRow,
   selectedIdRef,
   selectModeRef,
+  rowClickOpens = false,
   scrollRef,
   selectedId,
   tableNavEnabled = true,
@@ -44,7 +47,12 @@ export function useReceivingTableNavigation({
     const handler = (event: Event) => {
       const direction = (event as CustomEvent<'prev' | 'next'>).detail;
       if (direction !== 'prev' && direction !== 'next') return;
-      if (selectModeRef.current) return; // arrow-nav is for single-select only
+      // Arrow-nav steps the OPEN record, so it only has to stand down where a
+      // row click is still the bulk toggle. On a surface that splits the planes
+      // (`rowClickOpens`) select mode is pinned on and stepping is exactly what
+      // the chevrons should do — reading `selectMode` alone is what left the
+      // Incoming chevrons as dead as the row click.
+      if (selectModeRef.current && !rowClickOpens) return;
       if (orderedVisibleRows.length === 0) return;
 
       const step = direction === 'prev' ? -1 : 1;
@@ -57,7 +65,14 @@ export function useReceivingTableNavigation({
     };
     window.addEventListener('receiving-navigate-table', handler);
     return () => window.removeEventListener('receiving-navigate-table', handler);
-  }, [handleSelectRow, orderedVisibleRows, selectedIdRef, selectModeRef, tableNavEnabled]);
+  }, [
+    handleSelectRow,
+    orderedVisibleRows,
+    selectedIdRef,
+    selectModeRef,
+    rowClickOpens,
+    tableNavEnabled,
+  ]);
 
   // Keep the active row in view when selection changes from sidebar nav.
   useEffect(() => {

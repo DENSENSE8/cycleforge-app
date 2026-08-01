@@ -79,16 +79,15 @@ test.describe('receiving param isolation', () => {
     await expect.poll(() => paramsOf(page).display, { timeout: 15_000 }).toBe('po-note');
   });
 
-  test('`display` is Unbox-owned — it cannot ride a mode switch into Triage', async ({ page }) => {
-    await gotoAuthed(page, '/unbox?display=tracking');
-    await expect.poll(() => paramsOf(page).display, { timeout: 15_000 }).toBe('tracking');
-
-    await switchMode(page, 'Arrival');
-    await expect(page).toHaveURL(/\/triage/);
-    expect(
-      paramsOf(page).display,
-      'an Unbox display must not follow the operator into Triage',
-    ).toBeUndefined();
+  test('`display` is Unbox-owned — Triage drops it on arrival', async ({ page }) => {
+    // Asserted by direct navigation rather than through the header Mode menu:
+    // ownership is a property of the ROUTE (Triage does not declare `display`),
+    // and routing it through `switchMode` would couple this to GlobalHeader
+    // chrome that has nothing to do with the guarantee.
+    await gotoAuthed(page, '/triage?display=tracking&triq=BOX-9');
+    await expect.poll(() => paramsOf(page).display, { timeout: 15_000 }).toBeUndefined();
+    // Isolation is not amnesia — Triage's own param survives.
+    expect(paramsOf(page).triq).toBe('BOX-9');
   });
 
   test('switching Triage → Unbox leaves no Triage state behind', async ({ page }) => {

@@ -1,7 +1,6 @@
 'use client';
 
 import { Fragment, type ReactNode } from 'react';
-import { Check } from '@/components/Icons';
 import {
   conditionGradeTableLabel,
   getStatusDotBg,
@@ -14,6 +13,7 @@ import {
   TrackingCountChip,
   getLast4,
 } from '@/components/ui/CopyChip';
+import { GridRowCheckbox } from '@/components/ui/GridRowCheckbox';
 import { usePlatformMeta } from '@/hooks/useCatalog';
 import { conditionGradeTextClass } from '@/lib/condition-tone';
 import { EMPTY_META_DASH, EMPTY_META_DASH_ALIGN_CLASS } from '@/lib/conditions';
@@ -174,30 +174,11 @@ export function IncomingGridGroupSummary({
             }}
           >
             {selectMode ? (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onToggleGroupSelect?.();
-                }}
-                aria-label={allSelected ? 'Deselect all products in PO' : 'Select all products in PO'}
-                aria-checked={allSelected ? true : someSelected ? 'mixed' : false}
-                role="checkbox"
-                className={cn(
-                  'ds-raw-button flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors',
-                  allSelected
-                    ? 'border-accent-bg bg-accent-bg text-text-inverse'
-                    : someSelected
-                      ? 'border-accent-bg bg-accent-bg/20 text-accent-bg'
-                      : 'border-border-default bg-surface-card hover:border-border-strong',
-                )}
-              >
-                {allSelected ? (
-                  <Check className="h-3 w-3" />
-                ) : someSelected ? (
-                  <span className="h-0.5 w-2 rounded-full bg-current" />
-                ) : null}
-              </button>
+              <GridRowCheckbox
+                checked={allSelected ? true : someSelected ? 'mixed' : false}
+                onToggle={() => onToggleGroupSelect?.()}
+                label={allSelected ? 'Deselect all products in PO' : 'Select all products in PO'}
+              />
             ) : (
               <span className="h-4 w-4 shrink-0" aria-hidden />
             )}

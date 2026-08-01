@@ -93,7 +93,14 @@ export function LabelFacePreview({
             </span>
           </div>
           <div className="flex min-h-0 flex-1 min-w-0 items-center justify-center px-0.5">
-            <span className="line-clamp-3 w-full text-center text-role-caption font-semibold leading-tight tracking-normal text-text-default normal-case">
+            {/* The printed center band = `receiving_line.label_note`, never the
+                operator's item note. Tagged so a spec can assert THIS text
+                rather than "somewhere on the page" — the item note lives in a
+                textarea whose value is also a matchable text node. */}
+            <span
+              data-testid="label-face-center"
+              className="line-clamp-3 w-full text-center text-role-caption font-semibold leading-tight tracking-normal text-text-default normal-case"
+            >
               {model.center}
             </span>
           </div>

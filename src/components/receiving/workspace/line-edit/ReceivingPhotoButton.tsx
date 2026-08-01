@@ -108,7 +108,7 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
    * `above` so the card never runs off the pane edge.
    */
   galleryPlacement?: 'below' | 'above';
-  /** Opens SendPhotoNoteModal — ticket icon in the photo dropdown toolbar. */
+  /** Opens SendPhotoNoteRail — ticket icon in the photo dropdown toolbar. */
   onSendToTicket?: () => void;
   /** Unbox: open Move photos in the station tool push instead of a center overlay. */
   onOpenMovePhotosExternal?: () => void;

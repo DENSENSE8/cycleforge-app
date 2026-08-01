@@ -4,8 +4,9 @@
  * One sidebar button → a tabbed popover that unifies the two shipped-view
  * actions that used to be separate full-width buttons:
  *   - **Sync** — push packer-scanned shipped orders to inventory (dry-run preview →
- *     two-click live sync), via the centered {@link InventoryFulfillmentSyncDialog}.
- *     Gated by `integrations.zoho`.
+ *     two-click live sync). Progress renders in {@link InventoryFulfillmentSyncDialog},
+ *     a non-modal right-rail occupant (`detail:inventory-sync`) so the shipped
+ *     queue stays readable while the run works. Gated by `integrations.zoho`.
  *   - **Report** — pick a day and print that day's carrier pickup report.
  *
  * Replaces the old split (ZohoSyncButton + PickupReportButton) so the Shipped

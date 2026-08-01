@@ -29,7 +29,7 @@ import { useEscapeClose } from '@/design-system/hooks';
 import { X } from '@/components/Icons';
 import { IconButton } from '@/design-system/primitives';
 import { buildUnboxingCartonLibraryHref } from '@/components/shipped/photo-gallery/photo-context-provenance';
-import { MovePhotosBetweenPoModal } from '@/components/receiving/workspace/line-edit/MovePhotosBetweenPoModal';
+import { MovePhotosBetweenPoRail } from '@/components/receiving/workspace/line-edit/MovePhotosBetweenPoRail';
 import { usePhotoGallery } from '@/components/shipped/photo-gallery/usePhotoGallery';
 import { PhotoViewerPortal } from '@/components/shipped/photo-gallery/PhotoViewerPortal';
 import type { PhotoGalleryInput, PhotoMeta } from '@/components/shipped/photo-gallery/photo-gallery-utils';
@@ -327,7 +327,7 @@ export function PhotoPeekFan({
       )}
 
       {!onOpenMovePhotosExternal && gallery.canReassignCurrent && receivingId != null ? (
-        <MovePhotosBetweenPoModal
+        <MovePhotosBetweenPoRail
           key={gallery.movePhotosKey}
           open={gallery.movePhotosOpen}
           receivingId={receivingId}

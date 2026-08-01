@@ -36,7 +36,12 @@ import {
   photoPolicyOverrideWarning,
   recordPhotoPolicyOverride,
 } from '@/lib/receiving/photo-policy-override';
-import type { PhotoPolicyOverrideCode } from '@/lib/receiving/exception-codes';
+import {
+  QA_FAIL_EXCEPTION_STATUS,
+  isQaFailExceptionCode,
+  type PhotoPolicyOverrideCode,
+} from '@/lib/receiving/exception-codes';
+import { recordReceivingException } from '@/lib/receiving/exceptions';
 import type { OrgId } from '@/lib/tenancy/constants';
 import {
   isPlacementParityObserve,
@@ -445,7 +450,41 @@ export const POST = withAuth(async (request, ctx) => {
     const zohoPoId = String(body?.zoho_purchaseorder_id || '').trim();
     const zohoLineItemId = String(body?.zoho_line_item_id || '').trim();
     const zohoItemId = String(body?.zoho_item_id || '').trim();
-    const qaStatus = String(body?.qa_status || 'PASSED').trim();
+    // A QA FAIL reason is a receiving EXCEPTION, not a note. The mobile QA sheet
+    // used to offer free text here and post it as `notes`, which (a) would have
+    // overwritten the desktop operator's item note on every line in the carton
+    // and (b) left the reason as unqueryable prose. It now sends a code from the
+    // narrow QA-fail slice; present-but-unrecognized is a 400, never a silent
+    // drop — same stance as the photo-policy override below.
+    const rawQaFailCode = body?.exception_code == null ? null : String(body.exception_code).trim();
+    if (rawQaFailCode && !isQaFailExceptionCode(rawQaFailCode)) {
+      return NextResponse.json(
+        { success: false, error: 'QA_FAIL_REASON', code: rawQaFailCode },
+        { status: 400 },
+      );
+    }
+    const qaFailCode = isQaFailExceptionCode(rawQaFailCode) ? rawQaFailCode : null;
+    const qaFailReason = String(body?.exception_reason || '').trim() || null;
+
+    // The reason and the verdict are ONE fact at two grains, so the code decides
+    // the verdict. (The sheet posted a hardcoded FAILED_FUNCTIONAL for every fail
+    // and put the real reason in free text — which is how the column built to tell
+    // a dead unit from a damaged one stopped being able to.) A body that supplies
+    // both and disagrees is a caller bug, not something to silently resolve.
+    const bodyQaStatus = body?.qa_status == null ? null : String(body.qa_status).trim();
+    const derivedQaStatus = qaFailCode ? QA_FAIL_EXCEPTION_STATUS[qaFailCode] : null;
+    if (derivedQaStatus && bodyQaStatus && bodyQaStatus !== derivedQaStatus) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'QA_FAIL_REASON_CONFLICT',
+          expected: derivedQaStatus,
+          received: bodyQaStatus,
+        },
+        { status: 400 },
+      );
+    }
+    const qaStatus = derivedQaStatus ?? bodyQaStatus ?? 'PASSED';
     const dispositionCode = String(body?.disposition_code || 'ACCEPT').trim();
     const conditionGrade = String(body?.condition_grade || 'USED_A').trim();
     const serialNumber = String(body?.serial_number || '').trim() || null;
@@ -757,6 +796,25 @@ export const POST = withAuth(async (request, ctx) => {
           blockers: photoPolicyWaiver.blockers,
         },
       });
+    }
+
+    // The QA-fail reason lands in its own home — an OPEN line-level
+    // `receiving_exceptions` row (code + the operator's free text) — and NEVER in
+    // `receiving_line.notes`. Best-effort, exactly like the advance route's
+    // exception write: the verdict has already committed, and losing the reason
+    // row must not roll back a receive the operator watched succeed.
+    if (qaFailCode) {
+      try {
+        await recordReceivingException(ctx.organizationId as OrgId, {
+          receivingLineId,
+          receivingId: beforeRow?.line_receiving_id ?? receivingId,
+          exceptionCode: qaFailCode,
+          reason: qaFailReason,
+          createdBy: staffId,
+        });
+      } catch (err) {
+        console.warn('[mark-received] receiving_exceptions write failed', err);
+      }
     }
 
     let line = foldedLine;
@@ -1140,6 +1198,7 @@ export const POST = withAuth(async (request, ctx) => {
         condition_grade: line.condition_grade,
       },
       method: serialNumber ? 'scan' : 'manual',
+      ...(qaFailCode ? { reasonCode: qaFailCode } : {}),
       extra: {
         receiving_id: receivingId,
         zoho_purchaseorder_id: zohoPoId || null,

@@ -76,6 +76,8 @@ export const framerDuration = {
   signInIdentityChip: 0.18,
   /** Alternate auth methods fade (step change only) */
   signInAlternateFade: 0.18,
+  /** AI chat "jump to latest" floating pill — mount/unmount */
+  chatScrollToLatest: 0.16,
 } as const;
 
 export const framerDurationTabPager = {
@@ -342,6 +344,12 @@ export const framerTransition = {
     ease: motionBezier.easeOut,
   } satisfies Transition,
 
+  /** AI chat "jump to latest" floating pill — pair with `framerPresence.chatScrollToLatest` */
+  chatScrollToLatestMount: {
+    duration: framerDuration.chatScrollToLatest,
+    ease: motionBezier.easeOut,
+  } satisfies Transition,
+
   /** Horizontal tab pager — x slide + opacity crossfade */
   tabPager: {
     x: { type: 'tween' as const, duration: framerDurationTabPager.x, ease: [0.32, 0.72, 0, 1] as const },
@@ -522,6 +530,17 @@ export const framerPresence = {
     initial: { opacity: 0, y: 6 },
     animate: { opacity: 1, y: 0 },
     exit: { opacity: 0, y: -6 },
+  },
+  /**
+   * AI chat "jump to latest" floating pill — rises from just below its rest
+   * position (mirrors `statusMessage`, but that one drops from above; this
+   * affordance sits at the bottom edge of the scroll port so it rises
+   * instead). Single consumer: `AiChatConversation`.
+   */
+  chatScrollToLatest: {
+    initial: { opacity: 0, y: 8 },
+    animate: { opacity: 1, y: 0 },
+    exit: { opacity: 0, y: 8 },
   },
   /**
    * Master-nav Stock drill (root map ⇄ Stock children) — PURE opacity. No x/y

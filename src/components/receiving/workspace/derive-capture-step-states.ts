@@ -48,7 +48,7 @@ import {
 
 // Not exported until a consumer outside this module needs it — the knip ratchet
 // only shrinks, and "Phase 3 will import it" is exactly the claim it exists to
-// reject. Consumers reach these through `CaptureStepDef` / `CaptureStackStepRow`.
+// reject. Consumers reach these through `CaptureStepDef` / `ProcedureStepRow`.
 type CaptureStepKey =
   | 'classify'
   | 'po_photos'
@@ -203,67 +203,38 @@ export function activeCaptureStepKey(
   return hit?.key ?? null;
 }
 
-/** One rendered row of the capture stack, in bottom-anchored order. */
-export interface CaptureStackStepRow extends CaptureStepDef {
-  /** Only `done` (collapsed history) or `active` (the expanded card) ever render. */
-  state: Extract<LinearStepState, 'done' | 'active'>;
-  /**
-   * 1-based position in the FULL vocabulary — not the row index. Hidden pending
-   * steps and out-of-order completions both make the row index diverge from the
-   * step number, and a card labelled "2" that is actually step 1 is worse than
-   * no number at all.
-   */
+/** One step of the station procedure, ready for `ProcedureChecklist`. Not
+ *  exported until a caller names it — `deriveProcedureSteps` infers it. */
+interface ProcedureStepRow {
+  key: string;
+  label: string;
+  state: LinearStepState;
+  /** 1-based position in the vocabulary — never a render index. */
   position: number;
+  /** Photo stage this step is evidenced by, when it is a photo step. */
+  stage?: 'arrival_package' | 'unbox_carton' | 'unbox_item';
 }
 
 /**
- * The stack's rows, oldest-first — completed steps collapse into the ledger
- * above and the ACTIVE step is always LAST, which is what makes
- * `CaptureStack expandLast` land on the operator's current job with no
- * per-row variant logic in the view.
+ * The whole procedure, in vocabulary order, with each step's state.
  *
- * Three rules, all load-bearing:
- *
- *  1. **Done steps render in vocabulary order.** They are the ledger.
- *  2. **The active step is appended last**, even when a later step's own gate
- *     already passed — working out of order (scanning before shooting) must
- *     still leave the operator's next job at the bottom, next to the input.
- *     That is why this appends rather than sorting by state.
- *  3. **Pending steps do not render.** They are not work the operator can do
- *     yet; the horizontal pager (Phase 3) is how you reach a step out of turn.
- *     Rendering them would push the active card up off the thumb zone on a
- *     phone — the exact failure the bottom anchor exists to prevent.
- *  4. **An UNGATED step only joins the ledger once the pointer is past it.**
- *     Condition is `done` from the first render (it carries a default grade),
- *     so rule 1 alone hoisted "Condition · NEW" above the very first step of a
- *     fresh carton — the ledger claiming work that had not happened. A gated
- *     step in the ledger means real captured evidence; an ungated one means
- *     only "you passed this and kept the default", which is untrue until you
- *     have passed it. Caught by the Phase 2 read-only trial on a real carton.
- *
- * When every step is done there is no active row and the last completed step
- * stays expanded, which correctly reads as "carton finished".
+ * Deliberately boring: EVERY step renders, in declaration order, done or not.
+ * That is the simplification over the mid-canvas capture stack this replaces —
+ * it hid pending steps and re-sorted completed ones so the current card could
+ * sit at the bottom, which made the procedure unreadable as a procedure and
+ * needed two extra rules (an "ungated steps only join the ledger once the
+ * pointer passes them" carve-out, and a position field divorced from the render
+ * index) purely to undo its own reordering. A checklist needs neither.
  */
-export function deriveCaptureStackRows(
+export function deriveProcedureSteps(
   input: DeriveCaptureStepStatesInput,
-): ReadonlyArray<CaptureStackStepRow> {
+): ReadonlyArray<ProcedureStepRow> {
   const states = deriveCaptureStepStates(input);
-  const steps = captureStepVocabulary(input.vocabulary);
-  const activeIndex = steps.findIndex((step) => states[step.key] === 'active');
-
-  const row = (step: CaptureStepDef, index: number, state: 'done' | 'active') =>
-    ({ ...step, state, position: index + 1 }) satisfies CaptureStackStepRow;
-
-  const done = steps
-    .map((step, index) => ({ step, index }))
-    .filter(({ step, index }) => {
-      if (states[step.key] !== 'done') return false;
-      // Rule 4: an ungated step is ledger only once it is behind the pointer.
-      if (step.ungated && activeIndex >= 0 && index > activeIndex) return false;
-      return true;
-    })
-    .map(({ step, index }) => row(step, index, 'done'));
-
-  if (activeIndex < 0) return done;
-  return [...done, row(steps[activeIndex], activeIndex, 'active')];
+  return captureStepVocabulary(input.vocabulary).map((step, index) => ({
+    key: step.key,
+    label: step.label,
+    state: states[step.key] ?? 'pending',
+    position: index + 1,
+    stage: step.stage,
+  }));
 }

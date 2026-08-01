@@ -24,9 +24,6 @@ import { useSurfaceParamHygiene } from '@/hooks/useSurfaceParamHygiene';
  *   the sidebar is owned by `SidebarContextPanel`, and `RouteShell`'s `actions`
  *   slot only renders below the mobile breakpoint — so the parse silently never
  *   runs. `/sourcing` shipped that way; `/products` and receiving still do.
- * - A **parked** surface (`PARKED_SURFACE_KEYS`) renders a stand-in, so nothing
- *   here can mount at all. Its spec is still valid groundwork; just do not expect
- *   observable behaviour until it unparks.
  *
  * Every claim above was found by `tests/e2e/surface-param-isolation.spec.ts`,
  * whose probe param proves the parse actually ran — not by reading the code.

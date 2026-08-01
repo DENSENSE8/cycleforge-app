@@ -76,6 +76,9 @@ function DashboardPageContent() {
 
   const isOutbound = domain === 'outbound';
 
+  // `publishToRail` stays OFF until the rail action region is fixed — nothing
+  // consumes the store while the capsule is mounted, so publishing would be
+  // dead work every render. See DashboardOrdersView's revert note.
   const {
     selectionEnabled,
     selectMode,

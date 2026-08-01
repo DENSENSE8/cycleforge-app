@@ -1,7 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Copy, RefreshCw, Send, Sparkles } from '@/components/Icons';
+import { AnimatePresence, motion } from 'framer-motion';
+import { ChevronDown, Copy, RefreshCw, Send, Sparkles } from '@/components/Icons';
 import AiAnswerCard from '@/components/ai/AiAnswerCard';
 import AgentStepTimeline from '@/components/ai/AgentStepTimeline';
 import MarkdownRenderer from '@/components/ai/MarkdownRenderer';
@@ -12,6 +13,10 @@ import { linkifyOrderRefs, inferDestination, countOrderRefs, extractOrderRefs } 
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { Button, IconButton } from '@/design-system/primitives';
 import { PRODUCT_NAME_AI } from '@/lib/branding/constants';
+import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
+import { useMotionPresence, useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
+import { elevationClass } from '@/design-system/tokens/shadows';
+import { cn } from '@/utils/_cn';
 
 function ArrowRightGlyph({ className = 'h-3.5 w-3.5' }: { className?: string }) {
   return (
@@ -90,6 +95,7 @@ export default function AiChatConversation({ variant = 'panel', chat }: AiChatCo
   const [input, setInput] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [elapsed, setElapsed] = useState(0);
+  const [pinned, setPinned] = useState(true);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
@@ -107,14 +113,28 @@ export default function AiChatConversation({ variant = 'panel', chat }: AiChatCo
   }, []);
 
   // Track whether the user is pinned to the bottom so auto-scroll never fights them.
+  // `pinnedRef` drives the scroll effect below without retriggering it on every
+  // pixel of scroll; `pinned` state only exists to show/hide the jump-to-latest pill.
   const onScroll = useCallback(() => {
     const el = scrollRef.current;
     if (!el) return;
-    pinnedRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+    const next = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+    pinnedRef.current = next;
+    setPinned((prev) => (prev === next ? prev : next));
+  }, []);
+
+  const scrollToLatest = useCallback(() => {
+    pinnedRef.current = true;
+    setPinned(true);
+    endRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, []);
 
   useEffect(() => {
-    if (pinnedRef.current) endRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (!pinnedRef.current) return;
+    // Instant during a token stream (deltas can arrive many times a second —
+    // stacking `smooth` scrolls there stutters); smooth once settled, so a
+    // completed answer or a freshly-sent question still glides into view.
+    endRef.current?.scrollIntoView({ behavior: status === 'streaming' ? 'auto' : 'smooth' });
   }, [messages, status]);
 
   // Auto-grow the composer.
@@ -159,6 +179,7 @@ export default function AiChatConversation({ variant = 'panel', chat }: AiChatCo
     }
     setInput('');
     pinnedRef.current = true;
+    setPinned(true);
   }, [editMessage, editingId, input, send, status]);
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -179,196 +200,224 @@ export default function AiChatConversation({ variant = 'panel', chat }: AiChatCo
   const lastAssistantId = [...messages].reverse().find((m) => m.role === 'assistant' && !m.streaming)?.id;
   const isEmpty = messages.length === 0;
 
+  const jumpPresence = useMotionPresence(framerPresence.chatScrollToLatest);
+  const jumpTransition = useMotionTransition(framerTransition.chatScrollToLatestMount);
+  const showJumpToLatest = !isEmpty && !pinned;
+
   return (
     <div className="flex h-full min-h-0 flex-col bg-surface-card">
       {/* Thread */}
-      <div
-        ref={scrollRef}
-        onScroll={onScroll}
-        role="log"
-        aria-live="polite"
-        aria-relevant="additions text"
-        aria-busy={status === 'streaming'}
-        aria-label="Conversation"
-        className="min-h-0 flex-1 overflow-y-auto px-3 py-4"
-      >
-        {isEmpty ? (
-          <div className={`${colWidth} flex h-full flex-col justify-center`}>
-            <div className="flex items-center gap-2 text-text-muted">
-              <Sparkles className="h-5 w-5 text-blue-500" />
-              <p className="text-base font-semibold tracking-tight text-text-default">{PRODUCT_NAME_AI}</p>
+      <div className="relative min-h-0 flex-1">
+        <div
+          ref={scrollRef}
+          onScroll={onScroll}
+          role="log"
+          aria-live="polite"
+          aria-relevant="additions text"
+          aria-busy={status === 'streaming'}
+          aria-label="Conversation"
+          className="h-full overflow-y-auto px-3 py-4"
+        >
+          {isEmpty ? (
+            <div className={`${colWidth} flex h-full flex-col justify-center`}>
+              <div className="flex items-center gap-2 text-text-muted">
+                <Sparkles className="h-5 w-5 text-blue-500" />
+                <p className="text-base font-semibold tracking-tight text-text-default">{PRODUCT_NAME_AI}</p>
+              </div>
+              <p className="mt-2 text-sm leading-6 text-text-muted">
+                Ask about orders, shipping, staff pace, FBA, repairs, inventory, or Bose service manuals.
+              </p>
+              <div className="mt-4 flex flex-col gap-2">
+                {/* ds-raw-button: full-width text-left multi-line option card — conflicts with Button's inline-flex justify-center */}
+                {STARTER_PROMPTS.map((p) => (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => submit(p)}
+                    className="rounded-lg border border-border-soft bg-surface-card px-3 py-2 text-left text-role-caption leading-5 text-text-muted transition-colors hover:border-blue-300 hover:bg-blue-50 hover:text-text-default"
+                  >
+                    {p}
+                  </button>
+                ))}
+              </div>
             </div>
-            <p className="mt-2 text-sm leading-6 text-text-muted">
-              Ask about orders, shipping, staff pace, FBA, repairs, inventory, or Bose service manuals.
-            </p>
-            <div className="mt-4 flex flex-col gap-2">
-              {/* ds-raw-button: full-width text-left multi-line option card — conflicts with Button's inline-flex justify-center */}
-              {STARTER_PROMPTS.map((p) => (
-                <button
-                  key={p}
-                  type="button"
-                  onClick={() => submit(p)}
-                  className="rounded-lg border border-border-soft bg-surface-card px-3 py-2 text-left text-role-caption leading-5 text-text-muted transition-colors hover:border-blue-300 hover:bg-blue-50 hover:text-text-default"
-                >
-                  {p}
-                </button>
-              ))}
-            </div>
-          </div>
-        ) : (
-          <div className={`${colWidth} flex flex-col gap-4`}>
-            {messages.map((msg, i) => {
-              const ts = new Date(msg.ts).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true });
-              const prevUser = i > 0 && messages[i - 1]?.role === 'user' ? messages[i - 1].content : '';
+          ) : (
+            <div className={`${colWidth} flex flex-col gap-4`}>
+              {messages.map((msg, i) => {
+                const ts = new Date(msg.ts).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true });
+                const prevUser = i > 0 && messages[i - 1]?.role === 'user' ? messages[i - 1].content : '';
 
-              if (msg.role === 'user') {
-                return (
-                  <div key={msg.id} className="group ml-auto flex max-w-[88%] items-start gap-1.5">
-                    <HoverTooltip label="Edit & resend" asChild>
-                      <IconButton
-                        onClick={() => startEditing(msg)}
-                        disabled={status === 'streaming'}
-                        className="mt-2 hidden rounded-md p-1 text-text-faint hover:bg-surface-sunken hover:text-text-muted group-hover:block disabled:hidden"
-                        ariaLabel="Edit and resend"
-                        icon={<PencilGlyph />}
-                      />
-                    </HoverTooltip>
-                    <div className="rounded-xl rounded-br-sm border border-blue-100 bg-blue-50 px-3.5 py-2.5">
-                      <p className="whitespace-pre-wrap text-sm leading-6 text-text-default">{msg.content}</p>
-                    </div>
-                  </div>
-                );
-              }
-
-              if (msg.error) {
-                // retry() always re-sends the LATEST user turn, so only the
-                // final row may offer it — a Retry on a historical error would
-                // silently resend a different question.
-                const isLastMessage = i === messages.length - 1;
-                return (
-                  <div key={msg.id} className="max-w-full rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-red-700">
-                    <div className={`${sectionLabel} text-red-500`}>Error</div>
-                    <p className="mt-1 whitespace-pre-wrap text-role-caption leading-6">{msg.content}</p>
-                    {isLastMessage && (
-                      <div className="mt-1.5 -ml-1.5">
-                        <HoverTooltip label="Re-send the last question" asChild>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => retry()}
-                            disabled={status === 'streaming'}
-                            className="text-red-700 hover:bg-red-100"
-                            ariaLabel="Retry last question"
-                            icon={<RefreshCw />}
-                          >
-                            Retry
-                          </Button>
-                        </HoverTooltip>
-                      </div>
-                    )}
-                  </div>
-                );
-              }
-
-              const showCaret = msg.streaming;
-              const isLastDone = msg.id === lastAssistantId;
-
-              return (
-                <div key={msg.id} className="group max-w-full">
-                  <div className="flex items-start gap-2.5">
-                    <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-surface-inverse text-white">
-                      <Sparkles className="h-3.5 w-3.5" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      {msg.streaming || (msg.steps?.length ?? 0) > 0 ? (
-                        <AgentStepTimeline
-                          steps={msg.steps ?? []}
-                          streaming={!!msg.streaming}
-                          startedAt={msg.startedAt ?? msg.ts}
-                          doneAt={msg.doneAt}
-                          className={msg.analysis || msg.content ? 'mb-2' : ''}
+                if (msg.role === 'user') {
+                  return (
+                    <div key={msg.id} className="group ml-auto flex max-w-[88%] items-start gap-1.5">
+                      <HoverTooltip label="Edit & resend" asChild>
+                        <IconButton
+                          onClick={() => startEditing(msg)}
+                          disabled={status === 'streaming'}
+                          className="mt-2 hidden rounded-md p-1 text-text-faint hover:bg-surface-sunken hover:text-text-muted group-hover:block disabled:hidden"
+                          ariaLabel="Edit and resend"
+                          icon={<PencilGlyph />}
                         />
-                      ) : null}
-                      {msg.analysis ? (
-                        <AiAnswerCard analysis={msg.analysis} content={msg.content} modeLabel={modeLabel(msg.mode)} timestampLabel={ts} onFollowUp={(p) => submit(p)} />
-                      ) : msg.content ? (
-                        (() => {
-                          const refs = msg.streaming ? [] : extractOrderRefs(msg.content);
-                          if (refs.length >= 3) {
+                      </HoverTooltip>
+                      <div className="rounded-xl rounded-br-sm border border-blue-100 bg-blue-50 px-3.5 py-2.5">
+                        <p className="whitespace-pre-wrap text-sm leading-6 text-text-default">{msg.content}</p>
+                      </div>
+                    </div>
+                  );
+                }
+
+                if (msg.error) {
+                  // retry() always re-sends the LATEST user turn, so only the
+                  // final row may offer it — a Retry on a historical error would
+                  // silently resend a different question.
+                  const isLastMessage = i === messages.length - 1;
+                  return (
+                    <div key={msg.id} className="max-w-full rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-red-700">
+                      <div className={`${sectionLabel} text-red-500`}>Error</div>
+                      <p className="mt-1 whitespace-pre-wrap text-role-caption leading-6">{msg.content}</p>
+                      {isLastMessage && (
+                        <div className="mt-1.5 -ml-1.5">
+                          <HoverTooltip label="Re-send the last question" asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => retry()}
+                              disabled={status === 'streaming'}
+                              className="text-red-700 hover:bg-red-100"
+                              ariaLabel="Retry last question"
+                              icon={<RefreshCw />}
+                            >
+                              Retry
+                            </Button>
+                          </HoverTooltip>
+                        </div>
+                      )}
+                    </div>
+                  );
+                }
+
+                const showCaret = msg.streaming;
+                const isLastDone = msg.id === lastAssistantId;
+
+                return (
+                  <div key={msg.id} className="group max-w-full">
+                    <div className="flex items-start gap-2.5">
+                      <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-surface-inverse text-white">
+                        <Sparkles className="h-3.5 w-3.5" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        {msg.streaming || (msg.steps?.length ?? 0) > 0 ? (
+                          <AgentStepTimeline
+                            steps={msg.steps ?? []}
+                            streaming={!!msg.streaming}
+                            startedAt={msg.startedAt ?? msg.ts}
+                            doneAt={msg.doneAt}
+                            className={msg.analysis || msg.content ? 'mb-2' : ''}
+                          />
+                        ) : null}
+                        {msg.analysis ? (
+                          <AiAnswerCard analysis={msg.analysis} content={msg.content} modeLabel={modeLabel(msg.mode)} timestampLabel={ts} onFollowUp={(p) => submit(p)} />
+                        ) : msg.content ? (
+                          (() => {
+                            const refs = msg.streaming ? [] : extractOrderRefs(msg.content);
+                            if (refs.length >= 3) {
+                              return (
+                                <div className="space-y-2">
+                                  <AiOrderList orderIds={refs} />
+                                  <details className="text-sm leading-7 text-text-muted">
+                                    <summary className="cursor-pointer text-role-caption font-semibold text-text-soft hover:text-text-muted">Show full text answer</summary>
+                                    <div className="mt-1"><MarkdownRenderer content={linkifyOrderRefs(msg.content)} /></div>
+                                  </details>
+                                </div>
+                              );
+                            }
                             return (
-                              <div className="space-y-2">
-                                <AiOrderList orderIds={refs} />
-                                <details className="text-sm leading-7 text-text-muted">
-                                  <summary className="cursor-pointer text-role-caption font-semibold text-text-soft hover:text-text-muted">Show full text answer</summary>
-                                  <div className="mt-1"><MarkdownRenderer content={linkifyOrderRefs(msg.content)} /></div>
-                                </details>
+                              <div className="text-sm leading-7 text-text-default">
+                                <MarkdownRenderer content={msg.streaming ? msg.content : linkifyOrderRefs(msg.content)} />
+                                {showCaret ? <span className="ml-0.5 inline-block h-4 w-[2px] animate-pulse bg-blue-500 align-middle" /> : null}
                               </div>
                             );
-                          }
+                          })()
+                        ) : null}
+
+                        {!msg.streaming && msg.content && !msg.analysis ? (() => {
+                          const n = countOrderRefs(msg.content);
+                          // List answers (>=3 refs) render AiOrderList, which has its own
+                          // "Take me there" — don't duplicate it here.
+                          if (n >= 3) return null;
+                          const dest = inferDestination(prevUser, msg.content);
+                          if (!dest) return null;
                           return (
-                            <div className="text-sm leading-7 text-text-default">
-                              <MarkdownRenderer content={msg.streaming ? msg.content : linkifyOrderRefs(msg.content)} />
-                              {showCaret ? <span className="ml-0.5 inline-block h-4 w-[2px] animate-pulse bg-blue-500 align-middle" /> : null}
-                            </div>
+                            <a
+                              href={dest.href}
+                              className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-role-caption font-semibold text-blue-700 transition-colors hover:border-blue-300 hover:bg-blue-100"
+                            >
+                              {dest.label}
+                              <ArrowRightGlyph className="h-3.5 w-3.5" />
+                            </a>
                           );
-                        })()
-                      ) : null}
+                        })() : null}
 
-                      {!msg.streaming && msg.content && !msg.analysis ? (() => {
-                        const n = countOrderRefs(msg.content);
-                        // List answers (>=3 refs) render AiOrderList, which has its own
-                        // "Take me there" — don't duplicate it here.
-                        if (n >= 3) return null;
-                        const dest = inferDestination(prevUser, msg.content);
-                        if (!dest) return null;
-                        return (
-                          <a
-                            href={dest.href}
-                            className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-role-caption font-semibold text-blue-700 transition-colors hover:border-blue-300 hover:bg-blue-100"
-                          >
-                            {dest.label}
-                            <ArrowRightGlyph className="h-3.5 w-3.5" />
-                          </a>
-                        );
-                      })() : null}
-
-                      {!msg.streaming && (msg.content || msg.analysis) ? (
-                        <div className="mt-1.5 flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                          <CopyButton
-                            text={
-                              msg.analysis
-                                ? [msg.analysis.title, msg.analysis.summary, msg.content]
-                                    .map((s) => (s ?? '').trim())
-                                    .filter(Boolean)
-                                    .filter((s, i, arr) => arr.indexOf(s) === i)
-                                    .join('\n\n')
-                                : msg.content
-                            }
-                          />
-                          {isLastDone ? (
-                            <HoverTooltip label="Regenerate answer" asChild>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => retry()}
-                                className="text-text-faint hover:bg-surface-sunken hover:text-text-muted"
-                                ariaLabel="Regenerate answer"
-                                icon={<RefreshCw />}
-                              >
-                                Retry
-                              </Button>
-                            </HoverTooltip>
-                          ) : null}
-                        </div>
-                      ) : null}
+                        {!msg.streaming && (msg.content || msg.analysis) ? (
+                          <div className="mt-1.5 flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                            <CopyButton
+                              text={
+                                msg.analysis
+                                  ? [msg.analysis.title, msg.analysis.summary, msg.content]
+                                      .map((s) => (s ?? '').trim())
+                                      .filter(Boolean)
+                                      .filter((s, i, arr) => arr.indexOf(s) === i)
+                                      .join('\n\n')
+                                  : msg.content
+                              }
+                            />
+                            {isLastDone ? (
+                              <HoverTooltip label="Regenerate answer" asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => retry()}
+                                  className="text-text-faint hover:bg-surface-sunken hover:text-text-muted"
+                                  ariaLabel="Regenerate answer"
+                                  icon={<RefreshCw />}
+                                >
+                                  Retry
+                                </Button>
+                              </HoverTooltip>
+                            ) : null}
+                          </div>
+                        ) : null}
+                      </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
-            <div ref={endRef} />
-          </div>
-        )}
+                );
+              })}
+              <div ref={endRef} />
+            </div>
+          )}
+        </div>
+        <AnimatePresence>
+          {showJumpToLatest ? (
+            <motion.div
+              initial={jumpPresence.initial}
+              animate={jumpPresence.animate}
+              exit={jumpPresence.exit}
+              transition={jumpTransition}
+              className="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center"
+            >
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={scrollToLatest}
+                className={cn('pointer-events-auto gap-1 rounded-full', elevationClass('overlay'))}
+                ariaLabel="Jump to latest message"
+                icon={<ChevronDown className="h-3.5 w-3.5" />}
+              >
+                Jump to latest
+              </Button>
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
       </div>
 
       {/* Composer */}

@@ -1,5 +1,9 @@
 import type { ReadonlyURLSearchParams } from 'next/navigation';
-import { APP_SIDEBAR_NAV, getSidebarRouteKey, type SidebarRouteKey } from '@/lib/sidebar-navigation';
+import {
+  APP_SIDEBAR_NAV,
+  getSidebarNavPageId,
+  type SidebarRouteKey,
+} from '@/lib/sidebar-navigation';
 import {
   getActiveSettingsSection,
   resolveSettingsSectionFromPath,
@@ -22,8 +26,8 @@ export interface MobileContextOption {
 /** Row-1 app title from the current pathname (matches sidebar nav labels). */
 export function getMobileAppTitle(pathname: string | null): string {
   if (pathname === '/m/home' || pathname?.startsWith('/m/home/')) return 'Home';
-  const key = getSidebarRouteKey(pathname);
-  const nav = APP_SIDEBAR_NAV.find((item) => item.id === key);
+  const pageId = getSidebarNavPageId(pathname);
+  const nav = APP_SIDEBAR_NAV.find((item) => item.id === pageId);
   return nav?.label || PRODUCT_NAME;
 }
 

@@ -6,7 +6,11 @@
  * only — no TanStack grouping on day-band-capable surfaces, plan Phase E).
  */
 
-import { makeGridSurfaceDescriptor, type GridSurfaceDescriptor } from '@/design-system/components/grid';
+import {
+  makeGridSurfaceDescriptor,
+  type GridSurfaceCapabilities,
+  type GridSurfaceDescriptor,
+} from '@/design-system/components/grid';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import {
   defaultDirForReceivingGridSort,
@@ -14,6 +18,15 @@ import {
   isReceivingGridSortable,
   type ReceivingGridColumn,
 } from '@/lib/receiving/receiving-grid-layout';
+
+/** Receiving / Unbox browse — pick carton; no staff triage row wash. */
+export const RECEIVING_GRID_CAPABILITIES: GridSurfaceCapabilities = {
+  rowTriageFlags: false,
+  multiSelect: true,
+  inCellEdit: false,
+  fieldsMenu: true,
+  dayBands: true,
+};
 
 export function makeReceivingGridDescriptor(
   columns: readonly ReceivingGridColumn[],
@@ -26,6 +39,7 @@ export function makeReceivingGridDescriptor(
       sortDescFirst: (key) => defaultDirForReceivingGridSort(key) === 'desc',
       isLocked: isReceivingGridFrozen,
     },
+    RECEIVING_GRID_CAPABILITIES,
   );
 }
 

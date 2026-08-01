@@ -4,7 +4,8 @@ import { Fragment, memo, type ReactNode } from 'react';
 import { Check } from '@/components/Icons';
 import { SourceOrderChip, TicketChip, getLast4 } from '@/components/ui/CopyChip';
 import { GridCellDash, GridDateCellValue } from '@/components/ui/grid-cells';
-import { ledgerRowStateClass } from '@/components/ui/queue-row-chrome';
+import { ledgerRowFillClass } from '@/components/ui/queue-row-chrome';
+import { REPAIR_GRID_CAPABILITIES } from '@/components/repair/repair-grid/repair-grid-descriptor';
 import type { RSRecord } from '@/lib/neon/repair-service-queries';
 import {
   REPAIR_GRID_COLUMNS,
@@ -214,7 +215,10 @@ export const RepairGridRow = memo(function RepairGridRow({
       }}
       className={cn(
         repairGridRowShellClass(false, { scrollMinContent: true }),
-        ledgerRowStateClass(isSelected || isChecked),
+        ledgerRowFillClass({
+          selected: isSelected || isChecked,
+          capabilities: REPAIR_GRID_CAPABILITIES,
+        }),
       )}
       style={{ gridTemplateColumns: repairGridTemplate(columns) }}
     >

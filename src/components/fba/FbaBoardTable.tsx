@@ -6,6 +6,8 @@ import { FnskuChip, CopyChip, getLast4 } from '@/components/ui/CopyChip';
 import { PrintTableCheckbox } from '@/components/fba/table/Checkbox';
 import { sectionLabel, SkeletonList } from '@/design-system';
 import { LedgerGrid } from '@/design-system/components/grid';
+import { ledgerRowFillClass } from '@/components/ui/queue-row-chrome';
+import { FBA_BOARD_GRID_CAPABILITIES } from '@/components/fba/fba-board-capabilities';
 import { IconButton, Button } from '@/design-system/primitives';
 import type { StationTheme } from '@/utils/staff-colors';
 import { printQueueTableUi } from '@/utils/staff-colors';
@@ -389,9 +391,21 @@ export function FbaBoardTable({
               }}
               className={cn(
                 FBA_GRID,
-                'cursor-pointer border-b border-border-hairline px-3 py-3 transition-colors',
+                // Capability-gated fill SoT. The hand-typed selected chrome here
+                // was `bg-blue-50 ring-1 ring-inset ring-blue-400` — the LIST
+                // recipe, on a surface that renders `gridSkin="airtable"`. Under
+                // continuous cell rules that inset ring reads as a top/right
+                // L-glow, which is exactly why `ledgerRowFillClass` paints the
+                // airtable selection as fill only.
+                ledgerRowFillClass({
+                  selected: isSelected,
+                  capabilities: FBA_BOARD_GRID_CAPABILITIES,
+                }),
+                // After the fill class so the board keeps its own row inset
+                // (the shared helper zeroes padding for the grid families that
+                // pad per cell; this board pads the row).
+                'px-3 py-3',
                 ui.rowFocusRing,
-                isSelected ? 'bg-blue-50 ring-1 ring-inset ring-blue-400' : 'bg-surface-card hover:bg-gray-50',
               )}
             >
               <div className="align-middle">

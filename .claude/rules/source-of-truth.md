@@ -29,7 +29,9 @@ fields, pick the presentation kind and import from the SoT below (Kinetic Ledger
 | Focus affordance | `src/design-system/tokens/focus-ring.ts` (`focusRing(archetype, tone)`) |
 | Depth elevation (flat · raised · overlay) | `src/design-system/tokens/shadows.ts` (`elevationClass`) |
 | Ops table / spreadsheet surface shell | `src/design-system/tokens/table-surface.ts` (`TABLE_SURFACE_*` + `TABLE_FROZEN_HEADER_CLASS`) |
-| Sticky LedgerGrid column-header row (select-all · sort · frozen · tip) | `@/design-system/components/grid` `LedgerGridColumnHeader` + layout API — Receiving / Incoming adapters thin; **Orders deferred** (resize/reorder recipe). Inner label: `GridHeaderLabel` |
+| Sticky LedgerGrid column-header row (select-all · sort · frozen · tip) | `@/design-system/components/grid` `LedgerGridColumnHeader` + layout API — Receiving / Incoming / Pickup / Catalog / Repair adapters thin; **Orders deferred** (resize/reorder recipe). Inner label: `GridHeaderLabel` |
+| Grid surface features (triage wash · multi-select · in-cell edit · Fields · day bands) | `@/design-system/components/grid` `GridSurfaceCapabilities` on `GridSurfaceDescriptor` — see **Grid surface capabilities** below |
+| Grid leaf-row fill (selection · optional triage · card) | `ledgerRowFillClass` in `src/components/ui/queue-row-chrome.ts` (gates flag wash on `capabilities.rowTriageFlags`) |
 | Grid column justification (end vs start) | `@/design-system/components/grid` `resolveGridColumnAlign` / `gridCellAlignClass` / `gridHeaderCellAlignClass` — see **Grid column justification** below |
 | Grid identity columns (freeze · lock · never in-cell edit) | Column model `frozen: true` → `gridFrozenKeys(columns)` (per surface); house default + editability floor: `GRID_IDENTITY_COLUMN_KEYS` / `isGridColumnInCellEditable` — see **Grid identity pane** below |
 | Grid column visibility (per-staff) | `@/design-system/components/grid` `useGridColumnVisibility` / `useGridFields` + `GridFieldsMenu` — see **Grid column visibility + sort** below |
@@ -62,10 +64,12 @@ fields, pick the presentation kind and import from the SoT below (Kinetic Ledger
 | Station page + L2 mode nav icons | `src/lib/nav/station-nav-icons.ts` + semantic wrappers `src/components/icons/stations.tsx` — mode glyphs unique via `MODE_ICON_GLYPH_KEYS` |
 | Top-band chrome icon **display** (glyph box) | `src/components/layout/header-shell.ts` (`TOP_CHROME_ICON_GLYPH` for GlobalHeader Mode / Recents / WO / goal) — native SVG stroke only; do not layer `navIconStrokeClass` on header chips (muddies dense glyphs). Glyph *identity* stays Icons / station-nav |
 | L2 Mode + Recents (page modes + cross-page MRU) | `HeaderModeSwitcher` + `HeaderRecentsSwitcher` in `GlobalHeader` — data = `SIDEBAR_PAGE_NAV` / `useSidebarModeNav` / `useRecentModes`. Never a sidebar pill-band twin; no MRU chips in `MasterNavHeader`. |
-| Stations Floor / Desk (spine section drills) | `STATION_GROUPS` + required `stationGroup` on `kind: 'station'` rows in `sidebar-navigation.ts`; membership via `SPINE_DRILLS` / `spineDrillIdForPage`. Floor = pipeline scan benches; Desk = Review/Support. Type: page/mode destinations = `text-role-caption` (see spine type ladder in `display/workbench.md`). Guard: `station-nav-groups.guard.test.ts`. |
-| Main Overview / Library (spine section drills) | `MAIN_GROUPS` + required `mainGroup` on `kind: 'main'` rows in `sidebar-navigation.ts`; membership via `SPINE_DRILLS` / `spineDrillIdForPage`. Overview = day boards; Library = catalog (Media is top-pinned). Type: same caption destinations + idle modes `text-text-default` (active mode blue). Guard: `main-nav-groups.guard.test.ts`. Law: `display/workbench.md`. |
+| Header pin stations (Quick Access pins) | `HeaderPinsSwitcher` in `GlobalHeader` (hairline after Recents → pin current → sortable icons → overflow) — data = `useQuickAccess` / `cf.quickAccess`. Never remount a pin list in the avatar Quick Access popover. |
+| Stations Scan Stations / Desk (spine section drills) | `STATION_GROUPS` + required `stationGroup` on `kind: 'station'` rows in `sidebar-navigation.ts`; membership via `SPINE_SECTIONS` / `spineSectionIdForPage`. Scan Stations (`floor`) = Receiving subgroup (Arrival / Unbox / Local Pickup / Repair Service) + Testing / Packing / Scan out; Desk = Incoming / Review / Support / Shipping (Labels · Ready · FBA). Receiving subgroup header from `STATION_SUBGROUPS` + `stationSubgroup` matches multi-mode page chrome (icon + caption + count; members indent as mode rows). Type: page/mode destinations = `text-role-caption` (see spine type ladder in `display/workbench.md`). Guard: `station-nav-groups.guard.test.ts`. |
+| Main Overview / Library (spine section drills) | `MAIN_GROUPS` + required `mainGroup` on `kind: 'main'` rows in `sidebar-navigation.ts`; membership via `SPINE_SECTIONS` / `spineSectionIdForPage`. Overview = Dashboard + Operations (Home / Search / Media / AI Chat are top-pinned); Library = Studio + Catalog (last drill section). Type: same caption destinations + idle modes `text-text-default` (active mode blue). Guard: `main-nav-groups.guard.test.ts`. Law: `display/workbench.md`. |
 | MasterNav spine type ladder | Identity `MasterNavHeader` = `text-role-body`; page/drill/mode labels = `text-role-caption` (pages semibold, modes medium); counts = `text-role-micro`. Never sentence-case `text-role-eyebrow` for destinations. Idle pages whisper muted; idle modes stay default ink. Law: `display/workbench.md`. Guard: `main-nav-groups.guard.test.ts`. |
-| Stock drill-in (spine) | `STOCK_DRILL` + `kind: 'stock'` rows; root chevron row → back + Products → Inventory → Warehouse. Stations stay static (no drill). Motion: `framerPresence.spineDrill` / `framerTransition.spineDrill` (opacity-only ≤150ms; no horizontal slide). Auto-drill must not steal focus. Guard: `main-nav-groups.guard.test.ts`. Brief: `docs/todo/spine-drill-in-vercel-GEMINI-RESEARCH-BRIEFING.md`. Law: `display/workbench.md` + `display/motion-crossfade.md`. |
+| Stock drill-in (spine) | `STOCK_DRILL` + `kind: 'stock'` rows; section drill via `SPINE_SECTIONS` after Desk, before Products — Inventory → Warehouse (physical stock). Motion: `framerPresence.spineDrill` / `framerTransition.spineDrill` (opacity-only ≤150ms; no horizontal slide). Auto-drill must not steal focus. Guard: `main-nav-groups.guard.test.ts`. Law: `display/workbench.md`. |
+| Products drill-in (spine) | `PRODUCTS_SECTION` + `kind: 'products'` rows; section drill via `SPINE_SECTIONS` after Stock, before Library — catalog + channel commerce (modes: Catalog / Manuals / Labels / Pairing / QC / Kit). Guard: `main-nav-groups.guard.test.ts`. Law: `display/workbench.md`. |
 
 If a facet has no SoT yet, **add or extend one** (pattern evolution) — do not fork a page-local map “just for this screen.”
 
@@ -118,9 +122,59 @@ If a facet has no SoT yet, **add or extend one** (pattern evolution) — do not 
 - **Never call `useIsColumnHidden()` from a grid family** — it is the retired cell-granularity path
   that left an empty ruled band instead of removing the track; it survives only for
   `ChipColumns` / `RowMetaColumns`.
-- **Sort is URL-durable** via `useUrlColumnSort` → `?colsort=` / `?coldir=`. **Never reuse
-  `?sort=` / `?dir=` on station routes** — those are taken by server ordering, and colliding on them
-  makes the grid and the query disagree about what "sorted" means.
+- **Sort is URL-durable — always.** A column sort held in `useState` dies on reload and cannot be
+  sent to a colleague, which is the whole reason it lives in the URL.
+- **Which param depends on what `?sort=` already means on that route.** There are two vocabularies
+  and they are *not* drift — they answer different questions:
+
+  | Param | Question it answers | Engine | Surfaces |
+  |---|---|---|---|
+  | `?colsort=` / `?coldir=` | "which column header did the operator click" | `useUrlColumnSort` (default pair, `grid-column-sort-params.ts`) | Receiving / History · Incoming · Catalog · Pickup |
+  | `?sort=` / `?dir=` | "what display ORDER is this list in" — incl. composite non-column modes | `useQueueDisplaySort` · `useRepairDisplaySort` | Orders (`/dashboard`) · Repair |
+
+  - **Reach for `?colsort=` by default.** On those four routes `?sort=` is already a **server**
+    ordering vocabulary — `useIncomingFilters` (`zoho_newest`, …), `normalizeHistorySort`,
+    `/api/sku-catalog?sort=az` — so a header click writing `?sort=` would silently rewrite the API
+    query with a value it does not understand.
+  - **`?sort=` on Orders / Repair is correct, not legacy.** Nothing server-side owns it there, and
+    the vocabulary carries **composite modes** (`priority`, `newest`) that a pure column-sort param
+    cannot express. The `QueueSortSwitch` dropdown and the grid header click write the same param on
+    purpose: one surface, one answer to "what order is this list in".
+- **One sort param per surface.** Two on the same list makes the header and the dropdown disagree
+  about what is sorted. If a `colsort` surface later grows a composite mode, extend its column
+  vocabulary or its server order — do **not** add a second `?sort=` beside it.
+
+## Grid surface capabilities
+
+- Source: `@/design-system/components/grid` `GridSurfaceCapabilities` on every
+  `GridSurfaceDescriptor` (passed to `makeGridSurfaceDescriptor` — **required, no silent defaults**).
+- **One shell, declared features.** Every Workbench spreadsheet mounts `LedgerGrid` /
+  `LedgerGridSurface` with a descriptor that names what the surface may do:
+  `rowTriageFlags` · `multiSelect` · `inCellEdit` · `fieldsMenu` · `dayBands`.
+- **Triage wash is opt-in.** Only Orders sets `rowTriageFlags: true` (domain vocabulary in
+  `src/lib/orders/order-row-flags.ts`). Catalog · Receiving · Incoming · Repair · Pickup ·
+  station-history · FBA set `false`. Leaf rows paint fill via
+  `ledgerRowFillClass({ selected, flagClass?, capabilities })` — a flag class is ignored when the
+  capability is off, so Catalog cannot grow a staff row colour without changing its descriptor
+  (and failing the guard).
+- **A bag is required to MOUNT the grid, not just to build a descriptor.** A surface with no bag is
+  **unclassified, not feature-free** — that is what let `StationListTable` (Tech/Packer history) and
+  `FbaBoardTable` reach `LedgerGrid` with no declaration, and what let `OrdersQueueTableRow` resolve
+  a bench row against `ORDERS_GRID_CAPABILITIES` by import. Two surfaces legitimately declare a bag
+  **without** a descriptor because they have no column model of their own
+  (`station-history-capabilities.ts`, `fba-board-capabilities.ts`); a column model authored only to
+  satisfy the descriptor factory would be a stale second declaration of geometry nothing renders from.
+- **A shared row component takes `capabilities` as a REQUIRED prop** and gates the flag **once, at
+  derivation** — never imports one surface's const. `OrdersQueueTableRow` is the reference: it
+  renders both the outbound grid and the station benches, so a default would silently give the
+  benches outbound dispatch vocabulary.
+- **Do not invent a second table shell** for a new spreadsheet — add a column model + descriptor
+  with explicit capabilities + thin `renderRow`. Domain cell registries stay per family (different
+  row types); the SoT boundary is shell + capabilities + shared atoms (`grid-cells`, `QUEUE_ROW`).
+- Guard: `src/lib/tables/grid-surface-capabilities.guard.test.ts` — two halves: the hand-listed bags,
+  **plus a disk walk of every `<LedgerGrid` / `<LedgerGridSurface` mount** asserting each is
+  registered against a declared bag (only `LedgerGridSurface.tsx` itself is exempt). The hand list
+  alone stayed green through both undeclared mounts above.
 
 ## Grid identity pane
 
@@ -200,14 +254,36 @@ If a facet has no SoT yet, **add or extend one** (pattern evolution) — do not 
   `role="dialog" aria-modal`. That is the correct contract for a pick-a-row-and-edit-it
   surface — the operator's context (sibling rows, KPI strip, lifecycle tabs) is exactly
   what a scrim would hide. Reserve modal for surfaces that genuinely block until dismissed.
-  Occupants that already float non-modally: dashboard order inspector (`detail:order`),
-  receiving details (`detail:receiving`, keep `elevated` so the card clears Unbox
-  `z-panel` workspace overlays — elevated z without the scrim), **intake / import
-  planes** (`detail:new-order`, `detail:incoming-import-ebay`, `detail:order-sync`,
-  `detail:incoming-sync` — same non-modal metric; Import popovers stay triggers
-  only). Receiving details
+  Occupants that already float non-modally: **record inspectors** — dashboard
+  order (`detail:order`), receiving details (`detail:receiving`, keep `elevated`
+  so the card clears Unbox `z-panel` workspace overlays — elevated z without the
+  scrim), Incoming (`detail:incoming`), repair claim (`detail:claim`), unfound
+  queue (`detail:unfound`), FBA board (`detail:fba-plan`), SKU panel variant
+  (`detail:sku:<sku>`), support context (`detail:support-context:<ticketId>`),
+  the global open-store loading shell (`detail:global:<stackId>`), and the
+  Testing bench box / kit workbenches (`box:<id>` / `manifest:<ref>`);
+  **intake / import / progress planes** (`detail:new-order`,
+  `detail:incoming-import-ebay`, `detail:order-sync`, `detail:incoming-sync`,
+  `detail:inventory-sync` — same non-modal metric; Import popovers stay triggers
+  only); **non-Unbox station tools** (`detail:receiving-audit`,
+  `detail:photo-note`, `detail:move-photos` — the `*Rail` wrappers Testing /
+  Triage / carton read / the photo gallery mount; Unbox mounts the same bodies on
+  its push column instead). Receiving details
   also pass `closeOnOutsideClick` so an invisible dismiss layer restores click-off
-  close without darkening; dashboard / intake leave that flag off so the grid stays live.
+  close without darkening; **every other non-modal occupant leaves that flag off** —
+  the dismiss layer is `fixed inset-0`, so it would swallow the very sibling-row
+  clicks the modality flip exists to keep live. A non-modal panel therefore owns
+  an explicit close control in its own header (Escape on the host still works);
+  do not ship one whose only dismiss was the scrim you just removed.
+  **Ids are stable where row→row is the loop.** `detail:order`, `detail:incoming`,
+  `detail:claim`, `detail:unfound` and `detail:fba-plan` are NOT keyed on the
+  record: the host keys its `AnimatePresence` on the occupant id, so a per-record
+  id plays exit→empty→enter on every arrow step. Preconditions in
+  `display/motion-crossfade.md` (full re-seed on record change, dirty draft
+  flushed for the OUTGOING record) — surfaces without a prev/next walk
+  (`detail:sku`, `detail:support-context`, scan-opened `box:` / `manifest:`)
+  keep per-entity ids. `detail:unfound` deliberately left the `detail:claim:`
+  namespace it used to share with the repair inspector.
   **Unbox Displays, Ticket, Claim and tool** are not RightRailHost occupants —
   they are station-scoped **right-edge push** columns that all compose the one
   shared shell `UnboxPushColumn` (`ReceivingDisplaysPushStack` /

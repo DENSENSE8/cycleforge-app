@@ -30,6 +30,7 @@ import { formatDateTimePST } from '@/utils/date';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
 import {
   PaneHeader,
+  PaneHeaderCloseButton,
   PaneHeaderIconBadge,
   PaneHeaderLabel,
   PaneHeaderTabs,
@@ -51,7 +52,17 @@ export function UnfoundQueueDetailsPanel(props: UnfoundQueueDetailsPanelProps) {
   const { meta, Icon, detailQuery, detail, isEmailPo } = c;
 
   return (
-    <DetailStackRailRegistrar id={`detail:claim:${row.source_id}`} onClose={onClose}>
+    // STABLE occupant id, and deliberately NOT the `detail:claim:` namespace it
+    // used to share with the Repair inspector — two unrelated surfaces on one id
+    // prefix is a reopen/exclusivity bug waiting to happen. Non-modal so the
+    // unfound queue underneath stays live; the caller re-keys this component per
+    // row, so every editor re-seeds on the swap.
+    <DetailStackRailRegistrar
+      id="detail:unfound"
+      onClose={onClose}
+      modal={false}
+      ariaLabel={`Unfound ${c.identityLabel} details`}
+    >
       <div className="flex h-full min-h-0 flex-col overflow-hidden">
         <PaneHeader
           className="border-border-hairline bg-surface-card/90 backdrop-blur-xl"
@@ -73,6 +84,7 @@ export function UnfoundQueueDetailsPanel(props: UnfoundQueueDetailsPanelProps) {
               />
             </>
           }
+          rightSlot={<PaneHeaderCloseButton onClick={onClose} title="Close details" />}
           belowSlot={
             isEmailPo ? (
               <PaneHeaderTabs<DetailsTab>

@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 import { CartonUnitsRollupBody } from '../../CartonUnitsRollup';
 import { UnboxLabelPreview } from '../UnboxLabelPreview';
 import { POUnboxingSection } from '../POUnboxingSection';
-import { LineChecklistTab } from '../LineChecklistTab';
+import { UnboxProcedureChecklist } from '../UnboxProcedureChecklist';
 import { LinePoNoteCard } from '../LinePoNoteCard';
 import { SupportContextHub } from '@/components/support/context';
 import { SectionTabsSlider, WorkspaceCard, type SectionTab } from '@/design-system/components';
@@ -69,9 +69,8 @@ export interface BuildUnboxTabsInput {
  *
  * No tab strip above it: `overview` is the whole workbench body, and every other
  * display moved to the right-edge Displays push column ({@link buildUnboxSideTabs}).
- * The step procedure is not here either — `UnboxProcedureRail` registers it into
- * the right rail's ambient region, so a read-only status display never takes the
- * work surface's seat.
+ * The step procedure is not here either — it is the `checklist` display in that
+ * column, so a read-only status display never takes the work surface's seat.
  */
 export function buildUnboxOverview(
   input: Pick<
@@ -221,10 +220,15 @@ export function buildUnboxSideTabs(input: BuildUnboxTabsInput): SectionTab[] {
       id: 'checklist',
       label: 'Checklist',
       icon: ClipboardList,
-      priority: 'overflow',
+      // PRIMARY (the default), not overflow: the checklist IS the derived
+      // procedure — the station's "where am I", ticked by the carton's own
+      // evidence rather than by hand. A hand-ticked list was reference material
+      // and earned the ⋯ menu; an orienting display that answers "what is left
+      // on this carton" does not, because two clicks to find out where you are
+      // is the cost paid on every carton.
       content: (
         <WorkspaceCard variant="glass" overflow="visible" bodyDensity="nested">
-          <LineChecklistTab lineId={row.id} sku={row.sku} />
+          <UnboxProcedureChecklist row={row} />
         </WorkspaceCard>
       ),
     },

@@ -1,11 +1,12 @@
-import { ChevronLeft, Check, Copy } from '@/components/Icons';
+import { ChevronLeft, Check, Copy, X } from '@/components/Icons';
 import { IconButton } from '@/design-system/primitives';
 import { cardTitle, monoValue } from '@/design-system/tokens/typography/presets';
 import type { SkuDetailData } from './sku-detail-types';
 import type { SkuDetailController } from './useSkuDetailView';
 
 /** Top bar — back (page only), title + copyable SKU, and the Ecwid price/stock badge.
- *  Panel variant closes via RightRailHost backdrop / Esc (no header X). */
+ *  The panel variant is a NON-MODAL rail occupant (no scrim to click off), so it
+ *  carries an explicit close; Escape on RightRailHost still works. */
 export function SkuDetailHeader({ c, data }: { c: SkuDetailController; data: SkuDetailData }) {
   return (
     <div className="flex-shrink-0 flex items-center gap-3 border-b border-border-soft bg-surface-card px-4 py-3">
@@ -35,6 +36,15 @@ export function SkuDetailHeader({ c, data }: { c: SkuDetailController; data: Sku
           </p>
         </div>
       )}
+      {c.isPanel ? (
+        <IconButton
+          size="md"
+          icon={<X className="h-4 w-4" />}
+          ariaLabel="Close details"
+          onClick={c.handleClose}
+          className="rounded-lg text-text-muted hover:bg-surface-sunken"
+        />
+      ) : null}
     </div>
   );
 }

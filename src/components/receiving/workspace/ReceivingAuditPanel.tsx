@@ -107,7 +107,7 @@ function groupEvents(events: ReceivingAuditEvent[]): AuditGroup[] {
 
 /**
  * Carton audit log — chrome-free panel body.
- * Hosted by Unbox {@link ReceivingToolPushStack} or {@link ReceivingAuditModal}.
+ * Hosted by Unbox {@link ReceivingToolPushStack} or {@link ReceivingAuditRail}.
  */
 export function ReceivingAuditPanel({
   open,

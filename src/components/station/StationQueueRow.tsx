@@ -2,6 +2,7 @@
 
 import { SerialChip } from '@/components/ui/CopyChip';
 import { OrdersQueueTableRow } from '@/components/dashboard/orders-queue/OrdersQueueTableRow';
+import { STATION_HISTORY_GRID_CAPABILITIES } from '@/components/station/station-history-capabilities';
 import { resolveStationSource, SOURCE_DOT_BG, SOURCE_DOT_LABEL } from '@/utils/source-dot';
 import type { QueueRowRecord } from '@/components/dashboard/orders-queue/helpers';
 import type { OrdersQueueColumn } from '@/lib/dashboard-order-row-layout';
@@ -86,6 +87,7 @@ export function StationQueueRow({
       isChecked={isChecked}
       isMobile={isMobile}
       columns={columns}
+      capabilities={STATION_HISTORY_GRID_CAPABILITIES}
       useAlternateStripe={index % 2 === 1}
       testerDisplay="---"
       packerDisplay="---"

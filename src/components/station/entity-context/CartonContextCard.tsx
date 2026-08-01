@@ -307,7 +307,7 @@ export function CartonContextCard({
   /** Tooltip + aria-label for the back button. Default "Back to list". */
   exitLabel?: string;
   /**
-   * Opens SendPhotoNoteModal from the photo dropdown toolbar (unbox/triage).
+   * Opens SendPhotoNoteRail from the photo dropdown toolbar (unbox/triage).
    * Omit to hide the ticket icon in the gallery peek.
    */
   onSendToTicket?: () => void;

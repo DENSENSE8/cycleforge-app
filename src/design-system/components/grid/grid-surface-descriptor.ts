@@ -144,8 +144,32 @@ export function buildLedgerColumnDefs<Row, C extends LedgerGridColumnModel>(
 }
 
 /**
+ * Declared surface features for one Workbench spreadsheet.
+ *
+ * Capabilities are **opt-in and explicit** on every descriptor — never inferred
+ * from column keys or left undefined. Catalog cannot paint staff triage row
+ * colours because its descriptor sets `rowTriageFlags: false`; Orders can
+ * because it sets `true`. Row chrome (`ledgerRowFillClass` in queue-row-chrome)
+ * and future shell mounts read this bag; adapters must not invent a feature
+ * the descriptor omitted.
+ */
+export interface GridSurfaceCapabilities {
+  /** Staff triage wash on leaf rows (`order-row-flags` — Orders only today). */
+  rowTriageFlags: boolean;
+  /** Checkbox multi-select + ContextualSelectionBar / select-all wiring. */
+  multiSelect: boolean;
+  /** In-cell editors via LedgerCellEditor / isGridColumnInCellEditable. */
+  inCellEdit: boolean;
+  /** Fields menu / staff column prefs (`hideKey` + `tier`). */
+  fieldsMenu: boolean;
+  /** Sticky civil-day bands (Receiving Testing History, etc.). */
+  dayBands: boolean;
+}
+
+/**
  * One surface-mode's grid contract: house column models + TanStack defs +
- * geometry content-min. Modes swap descriptors, not markup (plan §5).
+ * geometry content-min + capabilities. Modes swap descriptors, not markup
+ * (plan §5).
  */
 export interface GridSurfaceDescriptor<Row, C extends LedgerGridColumnModel = LedgerGridColumnModel> {
   /** Stable surface-mode id, e.g. `outbound.pending` / `fulfillment.tested`. */
@@ -156,13 +180,16 @@ export interface GridSurfaceDescriptor<Row, C extends LedgerGridColumnModel = Le
   columnDefs: readonly ColumnDef<Row, unknown>[];
   /** Sum of track rem floors (`--cf-orders-grid-w` h-scroll activation). */
   contentMinWidthRem: number;
+  /** Declared surface features — gate row chrome / shell mounts. */
+  capabilities: GridSurfaceCapabilities;
 }
 
 /** Build a descriptor from a house column list (defs built once, stable). */
 export function makeGridSurfaceDescriptor<Row, C extends LedgerGridColumnModel>(
   id: string,
   columns: readonly C[],
-  defOptions?: BuildLedgerColumnDefsOptions<Row, C>,
+  defOptions: BuildLedgerColumnDefsOptions<Row, C> | undefined,
+  capabilities: GridSurfaceCapabilities,
 ): GridSurfaceDescriptor<Row, C> {
   return {
     id,
@@ -173,5 +200,6 @@ export function makeGridSurfaceDescriptor<Row, C extends LedgerGridColumnModel>(
     // could only ever be right or stale, and a stale one silently mis-sizes the
     // h-scroll activation width against the template it is supposed to match.
     contentMinWidthRem: gridContentMinWidthRem(columns),
+    capabilities,
   };
 }

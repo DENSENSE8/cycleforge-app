@@ -5,6 +5,7 @@ import { describe, it } from 'node:test';
 import {
   QUEUE_ROW,
   QUEUE_ROW_META_INDENT,
+  ledgerRowFillClass,
   ledgerRowStateClass,
   metaIndentFor,
   queueGroupNestClass,
@@ -111,11 +112,40 @@ describe('queue-row left-edge chrome', () => {
     );
   });
 
-  it('OrdersQueueTableRow gridSkin selection uses selectedLedgerClass', () => {
+  it('ledgerRowFillClass ignores triage wash when capability is off', () => {
+    const catalog = ledgerRowFillClass({
+      selected: false,
+      flagClass: 'bg-violet-50',
+      capabilities: { rowTriageFlags: false },
+    });
+    assert.ok(catalog.includes('bg-surface-card'), 'Catalog must stay on card ground');
+    assert.ok(!catalog.includes('bg-violet-50'), 'Catalog must not paint staff triage wash');
+
+    const orders = ledgerRowFillClass({
+      selected: false,
+      flagClass: 'bg-violet-50',
+      capabilities: { rowTriageFlags: true },
+    });
+    assert.ok(orders.includes('bg-violet-50'), 'Orders may paint triage wash when capability is on');
+
+    const selectedWins = ledgerRowFillClass({
+      selected: true,
+      flagClass: 'bg-violet-50',
+      capabilities: { rowTriageFlags: true },
+    });
+    assert.ok(selectedWins.includes('bg-blue-50'), 'selection outranks triage wash');
+    assert.ok(!selectedWins.includes('bg-violet-50'), 'selection must not keep the flag fill');
+  });
+
+  it('OrdersQueueTableRow gridSkin uses capability-gated ledgerRowFillClass', () => {
     const src = readSibling('../dashboard/orders-queue/OrdersQueueTableRow.tsx');
     assert.ok(
-      src.includes('QUEUE_ROW.selectedLedgerClass'),
-      'Pending gridSkin must compose selectedLedgerClass (fill-only)',
+      src.includes('ledgerRowFillClass'),
+      'Pending gridSkin must compose ledgerRowFillClass (selection + triage via capabilities)',
+    );
+    assert.ok(
+      src.includes('ORDERS_GRID_CAPABILITIES'),
+      'Pending gridSkin must pass ORDERS_GRID_CAPABILITIES so triage wash stays opt-in',
     );
   });
 });

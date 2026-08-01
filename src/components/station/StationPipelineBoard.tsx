@@ -3,6 +3,7 @@
 import { useCallback, type ReactNode } from 'react';
 import { SwimlaneBoard, type SwimlaneLaneDef } from '@/components/board/SwimlaneBoard';
 import { StationListTable } from '@/components/station/StationListTable';
+import { STATION_HISTORY_GRID_CAPABILITIES } from '@/components/station/station-history-capabilities';
 import type { BoardPrefsKey } from '@/lib/neon/staff-preferences-queries';
 
 /**
@@ -76,6 +77,7 @@ export function StationPipelineBoard<T, LaneId extends string>({
         renderRow={renderRow}
         getRowKey={getRowKey}
         emptyMessage={`No ${laneLabel.toLowerCase()} records`}
+        capabilities={STATION_HISTORY_GRID_CAPABILITIES}
       />
     ),
     [loading, renderRow, getRowKey, toDaySections],

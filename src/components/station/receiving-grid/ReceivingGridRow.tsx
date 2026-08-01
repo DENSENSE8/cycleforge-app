@@ -12,7 +12,8 @@ import {
   type ReceivingActivityAxis,
 } from '@/components/station/receiving-lines-table-helpers';
 import { ReceivingLineOrderRow } from '@/components/station/ReceivingLineOrderRow';
-import { ledgerRowStateClass } from '@/components/ui/queue-row-chrome';
+import { ledgerRowFillClass } from '@/components/ui/queue-row-chrome';
+import { RECEIVING_GRID_CAPABILITIES } from '@/components/station/receiving-grid/receiving-grid-descriptor';
 import { usePlatformMeta } from '@/hooks/useCatalog';
 import {
   displayTrackingNumber,
@@ -139,7 +140,10 @@ export const ReceivingGridRow = memo(function ReceivingGridRow({
       }}
       className={cn(
         receivingGridRowShellClass(false, { scrollMinContent: true }),
-        ledgerRowStateClass(isSelected),
+        ledgerRowFillClass({
+          selected: isSelected,
+          capabilities: RECEIVING_GRID_CAPABILITIES,
+        }),
       )}
       style={{ gridTemplateColumns: receivingGridTemplate(columns) }}
     >

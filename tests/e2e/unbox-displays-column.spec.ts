@@ -57,6 +57,26 @@ async function dockLabel(page: Page): Promise<string> {
   return (await page.getByTestId('sliced-action-dock').first().allInnerTexts()).join('|');
 }
 
+/**
+ * Switch display the way an operator does, from the strip OR the ⋯ menu.
+ *
+ * Which side of that split a display sits on is authored per carton lane
+ * (`classifyOnStrip`) and gets re-tuned as displays earn or lose primacy —
+ * Checklist moved strip-ward the moment it started deriving step states. Pinning
+ * the placement here would make this spec fail on someone else's taste call,
+ * when what it actually asserts is that the DOCK does not move.
+ */
+async function selectDisplay(page: Page, label: string) {
+  const displays = page.getByTestId('receiving-displays-push');
+  const onStrip = displays.getByRole('button', { name: new RegExp(`^${label}\\b`, 'i') });
+  if ((await onStrip.count()) > 0) {
+    await onStrip.first().click();
+    return;
+  }
+  await displays.getByRole('button', { name: /more displays/i }).click();
+  await page.getByRole('menuitem', { name: label }).click();
+}
+
 test.describe('Unbox Displays column', () => {
   test('the centre has no tab strip, and the column opens from the parked strip', async ({
     page,
@@ -92,9 +112,8 @@ test.describe('Unbox Displays column', () => {
     const before = await dockLabel(page);
     expect(before, 'the carton terminal must render something to compare').not.toBe('');
 
-    // Switch to an overflow display with a very different job.
-    await displays.getByRole('button', { name: /more displays/i }).click();
-    await page.getByRole('menuitem', { name: 'Checklist' }).click();
+    // Switch to a display with a very different job.
+    await selectDisplay(page, 'Checklist');
     await expect(page).toHaveURL(/display=checklist/);
 
     expect(

@@ -5,7 +5,11 @@
  * house comparator (`compareRepairGridRows`) — the defs are state math only.
  */
 
-import { makeGridSurfaceDescriptor, type GridSurfaceDescriptor } from '@/design-system/components/grid';
+import {
+  makeGridSurfaceDescriptor,
+  type GridSurfaceCapabilities,
+  type GridSurfaceDescriptor,
+} from '@/design-system/components/grid';
 import type { RSRecord } from '@/lib/neon/repair-service-queries';
 import {
   defaultDirForRepairGridSort,
@@ -13,6 +17,15 @@ import {
   isRepairGridSortable,
   type RepairGridColumn,
 } from '@/lib/repair/repair-grid-layout';
+
+/** Repair queue — multi-select + Fields; no staff triage row wash. */
+export const REPAIR_GRID_CAPABILITIES: GridSurfaceCapabilities = {
+  rowTriageFlags: false,
+  multiSelect: true,
+  inCellEdit: false,
+  fieldsMenu: true,
+  dayBands: false,
+};
 
 /**
  * Build the descriptor from a RESOLVED column list (post-visibility), so
@@ -30,6 +43,7 @@ export function makeRepairGridDescriptor(
       sortDescFirst: (key) => defaultDirForRepairGridSort(key) === 'desc',
       isLocked: isRepairGridFrozen,
     },
+    REPAIR_GRID_CAPABILITIES,
   );
 }
 

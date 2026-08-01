@@ -1,9 +1,9 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/lib/toast';
 import { ReceivingClaimModal } from '@/components/receiving/workspace/ReceivingClaimModal';
-import { ReceivingAuditModal } from '@/components/receiving/workspace/ReceivingAuditModal';
-import { SendPhotoNoteModal } from '@/components/receiving/workspace/SendPhotoNoteModal';
-import { MovePhotosBetweenPoModal } from '@/components/receiving/workspace/line-edit/MovePhotosBetweenPoModal';
+import { ReceivingAuditRail } from '@/components/receiving/workspace/ReceivingAuditRail';
+import { SendPhotoNoteRail } from '@/components/receiving/workspace/SendPhotoNoteRail';
+import { MovePhotosBetweenPoRail } from '@/components/receiving/workspace/line-edit/MovePhotosBetweenPoRail';
 import { dispatchLineUpdated, type ReceivingLineRow } from '@/components/station/ReceivingLinesTable';
 import { invalidateSupportContextCaches } from '@/hooks';
 import {
@@ -12,7 +12,14 @@ import {
 } from '@/lib/queries/receiving-queries';
 import type { TestingController } from './testing-panel-types';
 
-/** The claim and audit overlays for the testing panel. SKU pairing lives in the pairing section tab. */
+/**
+ * Testing panel's secondary surfaces. SKU pairing lives in the pairing section tab.
+ *
+ * Audit / photo-note / move-photos are NON-MODAL `RightRailHost` occupants — a
+ * bench operator reads them BESIDE the carton, and the centered overlay they
+ * used to be dimmed it. The claim WIZARD stays a blocking modal: it is a
+ * decision that must be finished or abandoned, not reference material.
+ */
 export function TestingPanelModals({
   c,
   row,
@@ -48,15 +55,15 @@ export function TestingPanelModals({
       />
 
       {row.receiving_id != null ? (
-        <ReceivingAuditModal open={c.auditOpen} onClose={() => c.setAuditOpen(false)} receivingId={row.receiving_id} />
+        <ReceivingAuditRail open={c.auditOpen} onClose={() => c.setAuditOpen(false)} receivingId={row.receiving_id} />
       ) : null}
 
-      <SendPhotoNoteModal
+      <SendPhotoNoteRail
         open={c.photoNoteOpen}
         row={row}
         onClose={() => c.setPhotoNoteOpen(false)}
       />
-      <MovePhotosBetweenPoModal
+      <MovePhotosBetweenPoRail
         key={c.movePhotosKey}
         open={c.movePhotosOpen}
         receivingId={row.receiving_id}

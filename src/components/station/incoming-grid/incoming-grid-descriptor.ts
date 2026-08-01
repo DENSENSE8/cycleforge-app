@@ -6,7 +6,11 @@
  * (`compareIncomingGridRows`) — the defs are state math only.
  */
 
-import { makeGridSurfaceDescriptor, type GridSurfaceDescriptor } from '@/design-system/components/grid';
+import {
+  makeGridSurfaceDescriptor,
+  type GridSurfaceCapabilities,
+  type GridSurfaceDescriptor,
+} from '@/design-system/components/grid';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import {
   INCOMING_GRID_COLUMNS,
@@ -15,6 +19,15 @@ import {
   isIncomingGridSortable,
   type IncomingGridColumn,
 } from '@/lib/receiving/incoming-grid-layout';
+
+/** Incoming POS browse — no staff triage row wash. */
+export const INCOMING_GRID_CAPABILITIES: GridSurfaceCapabilities = {
+  rowTriageFlags: false,
+  multiSelect: true,
+  inCellEdit: false,
+  fieldsMenu: true,
+  dayBands: false,
+};
 
 /**
  * Build the Incoming descriptor from a RESOLVED column list.
@@ -35,5 +48,6 @@ export function makeIncomingGridDescriptor(
       sortDescFirst: (key) => defaultDirForIncomingGridSort(key) === 'desc',
       isLocked: isIncomingGridFrozen,
     },
+    INCOMING_GRID_CAPABILITIES,
   );
 }

@@ -10,6 +10,8 @@
  * queue-row left alignment.
  */
 
+import type { GridSurfaceCapabilities } from '@/design-system/components/grid';
+
 /** Default / wide tracks mirror META_COL.indent / indentWide. */
 export const QUEUE_ROW_META_INDENT = {
   default: '1.25rem',
@@ -80,6 +82,10 @@ export const QUEUE_ROW = {
  * **Selection outranks it** — the row being edited must look picked, not
  * tagged, and the operator can only edit one row at a time while any number
  * may be flagged. The flag is still readable from its dot while selected.
+ *
+ * Prefer {@link ledgerRowFillClass} at call sites — it gates the flag wash on
+ * the surface's `GridSurfaceCapabilities.rowTriageFlags` so Catalog / Receiving
+ * cannot paint staff triage colours even if a flag class is passed by mistake.
  */
 export function ledgerRowStateClass(selected: boolean, flagClass?: string | null): string {
   return [
@@ -93,6 +99,25 @@ export function ledgerRowStateClass(selected: boolean, flagClass?: string | null
   ]
     .filter(Boolean)
     .join(' ');
+}
+
+/**
+ * Capability-gated leaf-row fill for airtable LedgerGrid skins.
+ *
+ * Precedence: selection → (optional triage flag) → card ground. The flag wash
+ * is ignored unless `capabilities.rowTriageFlags` is true — Catalog /
+ * Receiving / Incoming / Repair / Pickup declare `false`, so they stay display
+ * / pick surfaces even if a caller hands a flag class.
+ */
+export function ledgerRowFillClass(opts: {
+  selected: boolean;
+  /** Pre-resolved wash from the domain flag SoT (e.g. `order-row-flags`). */
+  flagClass?: string | null;
+  capabilities: Pick<GridSurfaceCapabilities, 'rowTriageFlags'>;
+}): string {
+  const flag =
+    opts.capabilities.rowTriageFlags && opts.flagClass ? opts.flagClass : null;
+  return ledgerRowStateClass(opts.selected, flag);
 }
 
 type MetaIndentTrack = 'default' | 'wide';

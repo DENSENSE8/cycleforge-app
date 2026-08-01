@@ -10,7 +10,7 @@ import { usePhotoGallery, type PhotoGalleryProps } from './photo-gallery/usePhot
 import { PhotoLauncher } from './photo-gallery/PhotoLauncher';
 import { PhotoViewerPortal } from './photo-gallery/PhotoViewerPortal';
 import { PhotoUploadOverlay } from './photo-gallery/PhotoUploadOverlay';
-import { MovePhotosBetweenPoModal } from '@/components/receiving/workspace/line-edit/MovePhotosBetweenPoModal';
+import { MovePhotosBetweenPoRail } from '@/components/receiving/workspace/line-edit/MovePhotosBetweenPoRail';
 
 export type { PhotoGalleryInput } from './photo-gallery/photo-gallery-utils';
 
@@ -44,7 +44,7 @@ export function PhotoGallery(props: PhotoGalleryProps) {
 
   const movePhotosModal =
     !props.onOpenMovePhotosExternal && g.canReassignCurrent && g.receivingId != null ? (
-      <MovePhotosBetweenPoModal
+      <MovePhotosBetweenPoRail
         key={g.movePhotosKey}
         open={g.movePhotosOpen}
         receivingId={g.receivingId}
