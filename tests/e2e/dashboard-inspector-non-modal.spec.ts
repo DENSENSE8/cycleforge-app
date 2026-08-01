@@ -85,6 +85,36 @@ test.describe('Dashboard order inspector — non-modal', () => {
     await expect(inspector).not.toHaveAttribute('aria-label', String(firstLabel));
   });
 
+  test('Pending opens on Documents, the question the lane exists to answer', async ({ page }) => {
+    await page.goto('/dashboard?unshipped');
+
+    const table = page.locator('[data-testid="pending-grid-body"]').first();
+    await expect(table).toBeVisible({ timeout: 20_000 });
+    const row = table.locator('[data-order-row-id]').first();
+    await expect(row).toBeVisible({ timeout: 20_000 });
+
+    await row.locator('[data-col="title"]').click();
+
+    const inspector = page.locator('aside[role="region"]');
+    await expect(inspector).toBeVisible({ timeout: 20_000 });
+    // Still a named region, never a modal dialog — the docs-first default is a
+    // tab decision, not a modality change.
+    await expect(inspector).toHaveAttribute('aria-label', /^Order .+ details$/);
+    expect(await inspector.getAttribute('aria-modal')).toBeNull();
+    await expect(page.locator('aside[role="dialog"]')).toHaveCount(0);
+    await expect(page.locator(BACKDROP_SELECTOR)).toHaveCount(0);
+
+    await expect(page.getByRole('tab', { name: 'Documents' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+    await expect(page.getByTestId('order-documents-section')).toBeVisible({ timeout: 20_000 });
+    expect(new URL(page.url()).searchParams.get('openOrderId')).toBeTruthy();
+
+    await page.keyboard.press('Escape');
+    await expect(inspector).toBeHidden({ timeout: 10_000 });
+  });
+
   test('the innermost open overlay owns Escape', async ({ page }) => {
     await page.goto('/dashboard?unshipped');
 
@@ -137,7 +167,10 @@ test.describe('Dashboard order inspector — non-modal', () => {
     await page.goto('/dashboard?unshipped');
     // Clear once (not via addInitScript — that re-runs on every navigation and
     // would wipe the very value this test is asserting survives a reload).
-    await page.evaluate(() => window.localStorage.removeItem('detail-inspector-width'));
+    await page.evaluate(() => {
+      window.localStorage.removeItem('detail-inspector-width');
+      window.localStorage.removeItem('detail-inspector-collapsed');
+    });
     await page.goto('/dashboard?unshipped');
 
     await openFirstRow();
@@ -168,6 +201,18 @@ test.describe('Dashboard order inspector — non-modal', () => {
       EXPECTED_CAP,
       0,
     );
+
+    // Collapse parks the aside; expand strip restores it (same grammar as the
+    // left context rail — host-owned, not page-local).
+    const collapseBtn = page.getByTestId('edge-resize-collapse');
+    await handle.hover();
+    await expect(collapseBtn).toBeVisible();
+    await collapseBtn.click();
+    await expect(page.getByTestId('detail-inspector-expand')).toBeVisible();
+    await expect(inspector).toHaveAttribute('aria-hidden', 'true');
+    await page.getByTestId('detail-inspector-expand').click();
+    await expect(inspector).toBeVisible();
+    await expect(inspector).not.toHaveAttribute('aria-hidden', 'true');
   });
 
   test('record→record swap keeps the panel mounted and writes nothing', async ({ page }) => {

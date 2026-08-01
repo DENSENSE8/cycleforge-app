@@ -17,6 +17,7 @@ import { ThreadPanel } from '@/components/threads/ThreadPanel';
 import { DeleteOrderControl } from '@/components/shipped/stacks/DeleteOrderControl';
 import { ShippedPanelEditorDock } from '@/components/shipped/details-panel/ShippedPanelEditorDock';
 import { OrderStationHandoff } from '@/components/shipped/details-panel/OrderStationHandoff';
+import { OrderTriageSection } from './OrderTriageSection';
 import type {
   OrderInspectorDocumentsMode,
   OrderInspectorRecordCta,
@@ -305,6 +306,24 @@ export function ShippedDetailsBody({
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="min-h-0 flex-1 overflow-y-auto no-scrollbar">
+        {/*
+          Record-plane triage — the shared row flag + the attributed ops-note
+          trail. ABOVE the tab body, not inside one tab: both are facts about
+          the record, and this panel's default tab is per-record
+          (`resolveOrderInspectorContext`), so a tab-scoped placement meant the
+          operator had to already know which tab to look under. The grid shows
+          that a row is flagged or annotated; this is the one place that says
+          which tag, why, and who wrote the notes.
+        */}
+        {showDashboardDelete && Number(shipped.id) > 0 ? (
+          <div className="pt-4">
+            <OrderTriageSection
+              orderId={Number(shipped.id)}
+              flag={shipped.row_flag?.flag}
+              flagSetBy={shipped.row_flag?.by}
+            />
+          </div>
+        ) : null}
         {scrollContent}
       </div>
 

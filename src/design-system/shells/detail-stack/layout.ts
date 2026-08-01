@@ -1,4 +1,5 @@
 import type { CSSProperties } from 'react';
+import { cn } from '@/utils/_cn';
 
 /** Shared layout tokens — one place to tune inset / width / header offset. */
 export const DETAIL_STACK_LAYOUT = {
@@ -10,8 +11,9 @@ export const DETAIL_STACK_LAYOUT = {
 } as const;
 
 /**
- * Drag-to-resize contract for NON-MODAL detail inspectors (the dashboard order
- * inspector). Modal occupants keep the fixed {@link DETAIL_STACK_LAYOUT} width.
+ * Drag-to-resize contract for NON-MODAL detail inspectors (dashboard order
+ * inspector, receiving More details). Modal occupants keep the fixed
+ * {@link DETAIL_STACK_LAYOUT} width.
  *
  * `maxWidthPad` is the viewport the panel must leave behind, and it is derived,
  * not taste: the docked sidebar is 360px and the Pending grid's own minimum
@@ -28,6 +30,20 @@ export const DETAIL_STACK_RESIZE = {
   maxWidthPadPx: 960,
 } as const;
 
+/**
+ * Collapse contract for NON-MODAL detail inspectors on {@link RightRailHost}.
+ *
+ * Open: collapse chevron on the leading {@link HorizontalEdgeResizeHandle}
+ * (`onCollapse`). Collapsed: width-drawer to 0 + a slim expand strip on the
+ * right edge ({@link detailStackCollapseStripClassName}). Persists beside
+ * {@link DETAIL_STACK_RESIZE}. Modal + assistant dock do not use this.
+ */
+export const DETAIL_STACK_COLLAPSE = {
+  storageKey: 'detail-inspector-collapsed',
+  /** Slim expand strip width when the inspector is parked (Tailwind twin: `w-8`). */
+  stripWidthPx: 32,
+} as const;
+
 /** @param widthPx overrides the fixed default (resizable non-modal inspectors). */
 export function detailStackAsideStyle(widthPx?: number): CSSProperties {
   const { insetPx, widthPx: defaultWidthPx } = DETAIL_STACK_LAYOUT;
@@ -42,6 +58,26 @@ export function detailStackAsideStyle(widthPx?: number): CSSProperties {
     right: insetPx,
     bottom: insetPx,
     width: `min(${width}px, calc(100vw - ${insetPx * 2}px))`,
+  };
+}
+
+/**
+ * Parked expand strip when a non-modal detail inspector is collapsed.
+ * Fixed chrome on the right edge — not a second white card.
+ */
+export function detailStackCollapseStripClassName(elevated = false): string {
+  return cn(
+    'fixed flex w-8 flex-col items-center pt-3',
+    elevated ? 'z-detailStack' : 'z-panel',
+  );
+}
+
+export function detailStackCollapseStripStyle(): CSSProperties {
+  const { insetPx } = DETAIL_STACK_LAYOUT;
+  return {
+    top: insetPx,
+    right: insetPx,
+    bottom: insetPx,
   };
 }
 

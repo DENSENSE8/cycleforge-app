@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { DetailsStackProps } from './types';
-import { OrderTriageSection } from '@/components/shipped/details-panel/OrderTriageSection';
 import { ShippedDetailsPanelContent } from '../ShippedDetailsPanelContent';
 import { toPSTDateKey } from '@/utils/date';
 import { dispatchCloseShippedDetails } from '@/utils/events';
@@ -139,17 +138,6 @@ export function DashboardDetailsStack({
                 </div>
               ) : null}
             </section>
-
-            {/* Record-plane triage: the shared row flag + the attributed
-                ops-note trail. Above the field stack because both answer
-                "why is this row like this" before any field edit does. */}
-            {Number(shipped.id) > 0 ? (
-              <OrderTriageSection
-                orderId={Number(shipped.id)}
-                flag={shipped.row_flag?.flag}
-                flagSetBy={shipped.row_flag?.by}
-              />
-            ) : null}
 
             <div>
               <ShippedDetailsPanelContent

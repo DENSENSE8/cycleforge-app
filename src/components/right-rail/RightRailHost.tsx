@@ -1,12 +1,16 @@
 'use client';
 
 /**
- * RightRailHost — the ONE owner of the right-edge slot.
+ * RightRailHost — THE right details-panel wrapper / ONE owner of the right-edge
+ * slot.
  *
  * Renders exactly the top occupant inside an inset rounded overlay card
  * (`DetailStackFrame` layout tokens) with a viewport backdrop, one
  * `AnimatePresence mode="wait"` crossfade keyed on occupant id, and
  * scale+opacity enter/exit (`framerPresence.detailStackOverlay`).
+ *
+ * Non-modal occupants are drag-resizable + collapsible (same edge-grip grammar
+ * as {@link ContextPanelLayout}). Modal + assistant dock keep fixed geometry.
  *
  * Desktop-first; the inset card is also shown on narrow viewports (width
  * clamps to viewport minus inset).
@@ -14,6 +18,8 @@
 
 import { useSyncExternalStore } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
+import { ChevronLeft } from '@/components/Icons';
+import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import {
   framerDuration,
   framerPresence,
@@ -28,7 +34,10 @@ import {
   useEscapeClose,
   useHorizontalEdgeResize,
 } from '@/design-system/hooks';
+import { IconButton } from '@/design-system/primitives';
+import { useLocalStorage } from '@/hooks';
 import {
+  DETAIL_STACK_COLLAPSE,
   DETAIL_STACK_RESIZE,
   assistantDockAsideClassName,
   assistantDockAsideStyle,
@@ -37,6 +46,8 @@ import {
   detailStackAsideStyle,
   detailStackBackdropClassName,
   detailStackBackdropElevatedClassName,
+  detailStackCollapseStripClassName,
+  detailStackCollapseStripStyle,
   detailStackDismissLayerClassName,
   detailStackDismissLayerElevatedClassName,
 } from '@/components/right-rail/DetailStackFrame';
@@ -65,11 +76,6 @@ export function RightRailHost() {
   // through the same flag instead of an id check, so a detail inspector can opt
   // out too (dashboard order inspector — see the execution plan §3).
   const isModal = !isAssistantDock && renderable?.modal !== false;
-  // Invisible dismiss layer: non-modal + opt-in. Restores click-off close without
-  // the dimming scrim. Dashboard leaves this off so the grid stays live.
-  const showDismissLayer =
-    !!renderable?.onClose && !isModal && !isAssistantDock && !!renderable.closeOnOutsideClick;
-  const showModalBackdrop = !!renderable?.onClose && isModal;
 
   // The innermost open overlay owns Escape: while a popover / menu / cell editor
   // is up, Escape dismisses THAT, not the whole inspector underneath it.
@@ -78,10 +84,10 @@ export function RightRailHost() {
   useBodyScrollLock(!!renderable && isModal);
   useEscapeClose(!!renderable?.onClose && !overlayOpen, renderable?.onClose ?? (() => {}));
 
-  // Drag-to-resize, non-modal occupants only. A modal panel dims what it covers,
-  // so its width is a fixed design decision; a non-modal inspector coexists with
-  // the collection map, and how much map to trade is the operator's call. The
-  // assistant dock keeps its own flush-right geometry.
+  // Drag-to-resize + collapse, non-modal occupants only. A modal panel dims what
+  // it covers, so its width is a fixed design decision; a non-modal inspector
+  // coexists with the collection map, and how much map to trade is the
+  // operator's call. The assistant dock keeps its own flush-right geometry.
   const isResizable = !!renderable && !isModal && !isAssistantDock;
   const { width, edgeHandleProps, isDragging } = useHorizontalEdgeResize({
     storageKey: DETAIL_STACK_RESIZE.storageKey,
@@ -92,6 +98,22 @@ export function RightRailHost() {
     label: 'Resize details panel',
     testId: 'detail-inspector-resize',
   });
+  const [collapsed, setCollapsed] = useLocalStorage(
+    DETAIL_STACK_COLLAPSE.storageKey,
+    false,
+  );
+  const isCollapsed = isResizable && collapsed;
+
+  // Invisible dismiss layer: non-modal + opt-in + not parked. Restores click-off
+  // close without the dimming scrim. Dashboard leaves this off so the grid stays
+  // live. Parked inspectors hide it so the page stays fully interactive.
+  const showDismissLayer =
+    !!renderable?.onClose &&
+    !isModal &&
+    !isAssistantDock &&
+    !!renderable.closeOnOutsideClick &&
+    !isCollapsed;
+  const showModalBackdrop = !!renderable?.onClose && isModal;
 
   return (
     <>
@@ -117,6 +139,24 @@ export function RightRailHost() {
           />
         ) : null}
       </AnimatePresence>
+      {isCollapsed ? (
+        <div
+          className={detailStackCollapseStripClassName(isElevated)}
+          style={detailStackCollapseStripStyle()}
+          data-detail-inspector-collapsed
+        >
+          <HoverTooltip label="Show details" asChild>
+            <IconButton
+              size="sm"
+              tone="neutral"
+              ariaLabel="Show details"
+              icon={<ChevronLeft className="h-4 w-4" />}
+              onClick={() => setCollapsed(false)}
+              data-testid="detail-inspector-expand"
+            />
+          </HoverTooltip>
+        </div>
+      ) : null}
       <AnimatePresence mode="wait" initial={false}>
         {renderable ? (
           <motion.aside
@@ -128,14 +168,24 @@ export function RightRailHost() {
             role={isModal ? 'dialog' : 'region'}
             aria-modal={isModal ? true : undefined}
             aria-label={renderable.ariaLabel ?? (isModal ? undefined : 'Details')}
+            aria-hidden={isCollapsed || undefined}
             initial={presence.initial}
-            animate={presence.animate}
+            animate={
+              isCollapsed
+                ? { ...presence.animate, opacity: 0 }
+                : presence.animate
+            }
             exit={presence.exit}
             transition={transition}
             style={
               isAssistantDock
                 ? assistantDockAsideStyle()
-                : detailStackAsideStyle(isResizable ? width : undefined)
+                : {
+                    ...detailStackAsideStyle(isResizable ? width : undefined),
+                    ...(isCollapsed
+                      ? { width: 0, minWidth: 0, padding: 0, border: 'none' }
+                      : null),
+                  }
             }
             className={
               isAssistantDock
@@ -146,17 +196,23 @@ export function RightRailHost() {
                       : detailStackAsideClassName,
                     // Outset grip sits outside the card; clip content on an
                     // inner shell so the pill is not sheared by overflow-hidden
-                    // (same pattern as the receiving context rail).
+                    // (same pattern as the context rail).
                     isResizable && 'overflow-visible',
+                    isCollapsed && 'pointer-events-none opacity-0',
                   )
             }
+            // Collapsed aside stays mounted so the registrant does not remount
+            // on expand — same latch idiom as ContextPanelLayout.
+            inert={isCollapsed || undefined}
           >
-            {isResizable ? (
+            {isResizable && !isCollapsed ? (
               <HorizontalEdgeResizeHandle
                 edgeHandleProps={edgeHandleProps}
                 isDragging={isDragging}
                 edge="leading"
                 placement="outset"
+                onCollapse={() => setCollapsed(true)}
+                collapseLabel="Hide details"
               />
             ) : null}
             <div

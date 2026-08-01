@@ -21,7 +21,7 @@ import { useMotionTransition } from '@/design-system/foundations/motion-framer-h
 import { useHorizontalEdgeResize } from '@/design-system/hooks';
 import { IconButton } from '@/design-system/primitives';
 import { useLocalStorage } from '@/hooks';
-import { getSidebarRouteKey, isStationSurfaceRoute } from '@/lib/sidebar-navigation';
+import { isStationSurfaceRoute } from '@/lib/sidebar-navigation';
 import { cn } from '@/utils/_cn';
 
 // Kept lazy, exactly as they were when this mounted from the app shell: the
@@ -34,7 +34,9 @@ const SidebarContextPanel = dynamic(
 );
 
 /**
- * The wrapper that mounts a route's OWN sidebar beside its workspace.
+ * THE left context-sidebar wrapper — mounts a route's OWN sidebar beside its
+ * workspace. MasterNav / `SidebarNavColumn` is a separate push spine; this is
+ * the content-region rail card only.
  *
  * This is the shape the station benches always had — scan bar + recents rail as
  * a card in the content region — generalized to every route that has a context
@@ -56,13 +58,11 @@ const SidebarContextPanel = dynamic(
  *   `[rail card] [workspace]` on the canvas ground plane, instead of station
  *   routes doing that and classic routes doing something else.
  *
- * Receiving (Unbox / Triage / Incoming / Pickup / Repair) is drag-resizable on
- * the rail's right edge via {@link useHorizontalEdgeResize} +
- * {@link HorizontalEdgeResizeHandle}; width persists in localStorage
- * ({@link CONTEXT_PANEL_RESIZE}). The same family can collapse via
- * `onCollapse` on that trailing edge handle ({@link CONTEXT_PANEL_COLLAPSE}) —
- * width-drawer to 0 + slim expand strip. Other routes keep the fixed
- * {@link CONTEXT_PANEL_WIDTH_PX} column.
+ * Every mounted context rail is drag-resizable on the trailing edge via
+ * {@link useHorizontalEdgeResize} + {@link HorizontalEdgeResizeHandle}; width
+ * persists in localStorage ({@link CONTEXT_PANEL_RESIZE}). Collapse via
+ * `onCollapse` on that handle ({@link CONTEXT_PANEL_COLLAPSE}) — width-drawer
+ * to 0 + slim expand strip. One shared preference across routes.
  *
  * Renders `children` untouched when the route has no panel, so a panel-less
  * surface still reserves nothing.
@@ -72,15 +72,14 @@ export function ContextPanelLayout({ children }: { children: ReactNode }) {
   // Two families, one question: station benches (scan bar + rail) and classic
   // routes (picker / feed) both mount their panel here now.
   const hasPanel = useHasSidebarContext() || isStationSurfaceRoute(pathname);
-  // Receiving family only — the dense recents rail is where operators want to
-  // trade map vs. workspace. Hooks must run unconditionally (hasPanel flips).
-  const isResizable = getSidebarRouteKey(pathname) === 'receiving';
+  // Every mounted context rail shares Unbox's resize + collapse grammar.
+  // Hooks must run unconditionally (hasPanel flips on navigation).
   const { width, edgeHandleProps, isDragging } = useHorizontalEdgeResize({
     storageKey: CONTEXT_PANEL_RESIZE.storageKey,
     defaultWidth: CONTEXT_PANEL_RESIZE.defaultWidthPx,
     minWidth: CONTEXT_PANEL_RESIZE.minWidthPx,
     maxWidthPad: CONTEXT_PANEL_RESIZE.maxWidthPadPx,
-    enabled: isResizable,
+    enabled: hasPanel,
     edge: 'trailing',
     label: 'Resize sidebar',
     testId: 'context-panel-resize',
@@ -89,7 +88,7 @@ export function ContextPanelLayout({ children }: { children: ReactNode }) {
     CONTEXT_PANEL_COLLAPSE.storageKey,
     false,
   );
-  const isCollapsed = isResizable && collapsed;
+  const isCollapsed = hasPanel && collapsed;
   const transition = useMotionTransition(framerTransition.sidebarNavColumnMount);
 
   if (!hasPanel) return <>{children}</>;
@@ -99,12 +98,7 @@ export function ContextPanelLayout({ children }: { children: ReactNode }) {
       {/* The rail degrades alone. It carried an `ErrorBoundary` when it lived
           in the nav aside, and moving it into the content region must not
           quietly turn a throwing picker into a blank page. */}
-      <div
-        className={cn(
-          'flex min-h-0 min-w-0 flex-1 flex-col',
-          isResizable && 'overflow-hidden rounded-[inherit]', // ds-allow-radius: clip shell inherits the panel card radius
-        )}
-      >
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-[inherit]"> {/* ds-allow-radius: clip shell inherits the panel card radius */}
         <ErrorBoundary
           label="context-panel"
           fallback={(_e, reset) => (
@@ -126,7 +120,7 @@ export function ContextPanelLayout({ children }: { children: ReactNode }) {
           <SidebarContextPanel />
         </ErrorBoundary>
       </div>
-      {isResizable && !isCollapsed ? (
+      {!isCollapsed ? (
         <HorizontalEdgeResizeHandle
           edgeHandleProps={edgeHandleProps}
           isDragging={isDragging}
@@ -139,8 +133,8 @@ export function ContextPanelLayout({ children }: { children: ReactNode }) {
   );
 
   return (
-    <div className={cn(CONTEXT_PANEL_HOST_CLASS, isResizable && 'relative')}>
-      {isResizable && isCollapsed ? (
+    <div className={cn(CONTEXT_PANEL_HOST_CLASS, 'relative')}>
+      {isCollapsed ? (
         <div
           className={CONTEXT_PANEL_COLLAPSE_STRIP_CLASS}
           data-context-panel-collapsed
@@ -160,31 +154,25 @@ export function ContextPanelLayout({ children }: { children: ReactNode }) {
 
       {/* `data-context-panel` is the panel's identity hook, so a test can ask
           "did the route's rail render?" without keying off its width class. */}
-      {isResizable ? (
-        <motion.div
-          className={cn(
-            CONTEXT_PANEL_COLUMN_CLASS,
-            // Outset grip sits outside the card; clip content on an inner shell
-            // so the pill is not sheared by `overflow-hidden`.
-            'overflow-visible',
-            isCollapsed && 'pointer-events-none m-0 border-0 opacity-0',
-          )}
-          data-context-panel
-          data-collapsed={isCollapsed ? 'true' : 'false'}
-          initial={false}
-          animate={{ width: isCollapsed ? 0 : width }}
-          transition={transition}
-          // Collapsed column stays mounted so the scan session does not remount
-          // on expand — same latch idiom as SidebarNavColumn.
-          inert={isCollapsed || undefined}
-        >
-          {panelBody}
-        </motion.div>
-      ) : (
-        <div className={CONTEXT_PANEL_COLUMN_CLASS} data-context-panel>
-          {panelBody}
-        </div>
-      )}
+      <motion.div
+        className={cn(
+          CONTEXT_PANEL_COLUMN_CLASS,
+          // Outset grip sits outside the card; clip content on an inner shell
+          // so the pill is not sheared by `overflow-hidden`.
+          'overflow-visible',
+          isCollapsed && 'pointer-events-none m-0 border-0 opacity-0',
+        )}
+        data-context-panel
+        data-collapsed={isCollapsed ? 'true' : 'false'}
+        initial={false}
+        animate={{ width: isCollapsed ? 0 : width }}
+        transition={transition}
+        // Collapsed column stays mounted so the scan session does not remount
+        // on expand — same latch idiom as SidebarNavColumn.
+        inert={isCollapsed || undefined}
+      >
+        {panelBody}
+      </motion.div>
       <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">{children}</div>
     </div>
   );
