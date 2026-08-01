@@ -1,4 +1,9 @@
 import {
+  getProcedure,
+  registerBuiltinProcedures,
+  resolveProcedureSteps,
+} from '@/lib/stations/procedure';
+import {
   deriveReceivingStepFlags,
   deriveLinearStepStates,
   type DeriveReceivingStepStatesInput,
@@ -61,7 +66,13 @@ type CaptureStepKey =
 type CaptureStepStage = 'arrival_package' | 'unbox_carton' | 'unbox_item';
 
 interface CaptureStepDef {
-  key: CaptureStepKey;
+  /**
+   * Open `string`, not `CaptureStepKey`: the vocabulary is resolved from the
+   * station declaration now, so this module does not get to close the set.
+   * `CaptureStepKey` narrowed by `isCaptureStepKey` is the separate question of
+   * which keys this module can GATE.
+   */
+  key: string;
   label: string;
   /** Photo stage this step is evidenced by, when it is a photo step. */
   stage?: CaptureStepStage;
@@ -78,16 +89,28 @@ interface CaptureStepDef {
   perUnit?: boolean;
 }
 
-/** Ordered vocabulary for a matched carton — the default procedure. */
-const CAPTURE_STEPS: ReadonlyArray<CaptureStepDef> = [
-  { key: 'po_photos', label: 'PO / box photos', stage: 'arrival_package' },
-  { key: 'packing_material', label: 'Packing material', stage: 'unbox_carton' },
-  { key: 'item_photos', label: 'Item photos', stage: 'unbox_item', perUnit: true },
-  { key: 'condition', label: 'Condition', ungated: true, perUnit: true },
-  { key: 'serial', label: 'Serial', perUnit: true },
-];
+/**
+ * Every key this module knows how to GATE. The vocabulary itself is no longer
+ * declared here (see `captureStepVocabulary`) — this is the bench's half of the
+ * contract: the declaration says which steps exist and in what order, and this
+ * says which of them this module can decide "done" for.
+ *
+ * A declared capture step missing from here is a CI failure, not a runtime one
+ * (`procedure-divergence.guard.test.ts`), so the bench can never quietly render
+ * a step it has no gate for.
+ */
+const GATED_KEYS: Record<CaptureStepKey, true> = {
+  classify: true,
+  po_photos: true,
+  packing_material: true,
+  item_photos: true,
+  condition: true,
+  serial: true,
+};
 
-const STEP_CLASSIFY: CaptureStepDef = { key: 'classify', label: 'Classify' };
+function isCaptureStepKey(key: string): key is CaptureStepKey {
+  return Object.prototype.hasOwnProperty.call(GATED_KEYS, key);
+}
 
 export interface CaptureStepVocabularyInput {
   /** Unfound carton — identity resolution comes first (mirrors the unfound stepper). */
@@ -106,29 +129,37 @@ export interface CaptureStepVocabularyInput {
 }
 
 /**
- * The ordered step list for one carton's intake type. Hardcoding the five steps
- * is what breaks unfound / local pickup / returns — resolve through here.
+ * The ordered step list for one carton's intake type — RESOLVED FROM THE STATION
+ * DECLARATION, not declared here.
+ *
+ * This module used to own its own ordered vocabulary, and the Studio Procedure
+ * lens owned a different one. Both docblocks claimed to be "the operator-facing
+ * unbox procedure" and they disagreed — 5 steps here, 7 there, different photo
+ * granularity, different variant handling. An operator taught one procedure at
+ * the bench while the owner reads another in Studio is worse than either being
+ * wrong alone, because both look authoritative.
+ *
+ * They were never really in conflict: the bench list is the `capture` PHASE of
+ * one procedure. `intake` (the scan) has already happened by the time this
+ * renders, and `commit` (print · receive) belongs to the terminal dock. So the
+ * declaration in `@/lib/stations/procedure` owns which steps exist, their order,
+ * their labels, their photo stages and the variant rules; this module owns only
+ * the GATES — what counts as done, which needs the live row and is why the two
+ * halves stay split.
  */
 export function captureStepVocabulary(
   input: CaptureStepVocabularyInput,
 ): ReadonlyArray<CaptureStepDef> {
-  let steps = [...CAPTURE_STEPS];
-
-  if (input.isLocalPickup) {
-    steps = steps.filter((s) => s.key !== 'packing_material');
-  }
-
-  if (input.isReturn) {
-    // Serial before Condition: the scan names the unit the grade applies to.
-    const condition = steps.findIndex((s) => s.key === 'condition');
-    const serial = steps.findIndex((s) => s.key === 'serial');
-    if (condition >= 0 && serial > condition) {
-      const [serialStep] = steps.splice(serial, 1);
-      steps.splice(condition, 0, serialStep);
-    }
-  }
-
-  return input.isUnfound ? [STEP_CLASSIFY, ...steps] : steps;
+  registerBuiltinProcedures();
+  const unbox = getProcedure('unbox');
+  if (!unbox) return [];
+  return resolveProcedureSteps(unbox, input, 'capture').map((step) => ({
+    key: step.key,
+    label: step.label,
+    stage: step.photoStage,
+    ungated: step.ungated,
+    perUnit: step.perUnit,
+  }));
 }
 
 /**
@@ -163,6 +194,12 @@ export function deriveCaptureStepFlags(
   const base = deriveReceivingStepFlags({ ...input, labelPrinted: false });
 
   return captureStepVocabulary(input.vocabulary).map((step): LinearStepFlag => {
+    // The vocabulary now comes from the declaration, so a step could in
+    // principle arrive without a gate here. Render it NOT DONE rather than
+    // throwing — a bench that crashes mid-carton is far worse than one showing
+    // an extra unchecked row — and let the divergence guard fail CI so it never
+    // reaches an operator.
+    if (!isCaptureStepKey(step.key)) return { key: step.key, done: false };
     switch (step.key) {
       case 'classify':
         return { key: step.key, done: !!input.classified };
@@ -195,7 +232,7 @@ export function deriveCaptureStepStates(
 /** The step the operator is on — the capture stack's expanded card. */
 export function activeCaptureStepKey(
   input: DeriveCaptureStepStatesInput,
-): CaptureStepKey | null {
+): string | null {
   const states = deriveCaptureStepStates(input);
   const hit = captureStepVocabulary(input.vocabulary).find(
     (step) => states[step.key] === 'active',
