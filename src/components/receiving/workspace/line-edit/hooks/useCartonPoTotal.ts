@@ -68,8 +68,12 @@ export function useCartonPoTotal(receivingId: number | null): number | null {
     staleTime: 30_000,
   });
 
-  // Whichever source can actually answer wins. The shared cache is preferred
-  // when it HAS a priced answer — it is live with the accordion's optimistic
-  // writes — and the owned fetch backs it up the rest of the time.
-  return cartonPoTotal(shared?.receiving_lines) ?? cartonPoTotal(own?.receiving_lines);
+  // The OWNED fetch wins, and the shared cache is only a fallback — the reverse
+  // order is a silent-wrong-number hazard, not a preference. That cache can
+  // hold the accordion's one-line `placeholderData`; the moment such a row
+  // carries a price, preferring it would render a PARTIAL total (one line's
+  // worth) that looks entirely plausible beside the real order#. A short `—`
+  // while the fetch lands is recoverable; a confidently wrong dollar figure on
+  // a receiving bench is not.
+  return cartonPoTotal(own?.receiving_lines) ?? cartonPoTotal(shared?.receiving_lines);
 }
