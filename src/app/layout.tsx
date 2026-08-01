@@ -19,6 +19,7 @@ import { BOOT_SPLASH_SCRIPT } from "@/lib/boot-splash-script";
 import { designTokenStyleText } from '@/styles/tokens';
 import { themePaletteStyleText } from '@/design-system/themes/registry';
 import { OfflineBanner } from "../components/layout/OfflineBanner";
+import { ReducedMotionProvider } from "../components/providers/ReducedMotionProvider";
 import { InstallPrompt } from "../components/station/InstallPrompt";
 import { AppearanceApplier } from "../components/settings/AppearanceApplier";
 import { ReceivingZohoSyncToaster } from "../components/receiving/ReceivingZohoSyncToaster";
@@ -96,6 +97,13 @@ export default async function RootLayout({
                   vs dvh) and clipped the mobile header when nested shells also used
                   100dvh / h-full. Safe areas live on mobile chrome instead.
                 */}
+                {/*
+                  App-wide reduced-motion floor. framer itself honors
+                  prefers-reduced-motion for every motion.* below this point, so
+                  compliance is the default rather than a per-call-site opt-in.
+                  Wraps InstallPrompt too — it animates and sits outside Providers.
+                */}
+                <ReducedMotionProvider>
                 <div id="app-root" className="fixed inset-0 flex min-h-0 flex-col overflow-hidden">
                     <OfflineBanner />
                     <PostHogProvider>
@@ -132,6 +140,7 @@ export default async function RootLayout({
                 </div>
                 <InstallPrompt />
                 <AppearanceApplier />
+                </ReducedMotionProvider>
                 <Analytics />
                 <SpeedInsights />
                 <PaintTimingHud />
