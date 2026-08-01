@@ -11,6 +11,11 @@ import {
 } from '@/components/Icons';
 import { deriveColorFromTitle, resolveTestingLineTitle } from '@/lib/print/printProductLabel';
 import { receivingPayloadToFace } from '@/lib/print/printReceivingLabel';
+import {
+  workspaceLabelDisplayName,
+  workspaceLabelGrainLabel,
+  type WorkspaceLabelKind,
+} from '@/lib/print/workspace-label-kinds';
 import { SectionTabsSlider } from '@/design-system/components';
 import { StationTerminalDock, useStationTerminalAction } from '@/components/station/terminal';
 import {
@@ -88,10 +93,19 @@ export function TestingPanel({
 
   const unitLabelAvailable = Boolean(c.previewPayload && row.sku);
   const cartonLabelAvailable = Boolean(c.cartonLabelPayload);
+  // Names + grain come from the label-kind SoT, not hand-typed here — otherwise
+  // Testing's picker drifts from Unbox's the first time either is renamed, and
+  // Testing silently loses the PO/carton-vs-per-item grain the operator needs.
+  // Availability stays local: it keys off Testing's own payloads.
   const labelOptions = useMemo<LabelTypeOption[]>(() => {
+    const opt = (kind: WorkspaceLabelKind): LabelTypeOption => ({
+      key: kind,
+      name: workspaceLabelDisplayName(kind),
+      grain: workspaceLabelGrainLabel(kind),
+    });
     const opts: LabelTypeOption[] = [];
-    if (unitLabelAvailable) opts.push({ key: 'unit', name: 'Unit label' });
-    if (cartonLabelAvailable) opts.push({ key: 'carton', name: 'Carton label' });
+    if (unitLabelAvailable) opts.push(opt('unit'));
+    if (cartonLabelAvailable) opts.push(opt('carton'));
     return opts;
   }, [unitLabelAvailable, cartonLabelAvailable]);
 

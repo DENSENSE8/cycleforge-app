@@ -14,6 +14,8 @@ import {
   listAvailableLabelOptions,
   resolveActiveLabelKind,
   workspaceLabelToFace,
+  workspaceLabelGrainLabel,
+  labelOptionsForSelect,
   UNBOX_LABEL_KINDS,
   type WorkspaceLabelContext,
 } from './workspace-label-kinds';
@@ -175,4 +177,67 @@ test('the carton face center is the label buffer, so an item note cannot leak on
     workspaceLabelToFace('carton', withItemNote)!.center,
   );
   assert.equal(workspaceLabelToFace('carton', withItemNote)!.center, 'printed face text');
+});
+
+/**
+ * Grain must be legible in the PICKER, not just in the face geometry. An
+ * operator choosing between "Carton label" and "Unit label" is choosing what the
+ * sticker goes on; the names alone do not say so, and Testing used to hand-type
+ * them (so it carried no grain at all).
+ */
+test('every label kind declares a grain, and the picker carries it', () => {
+  const ctx: WorkspaceLabelContext = {
+    hasCarton: true,
+    scanValue: 'PO-1',
+    sku: 'ABC',
+    receivingType: 'RETURN',
+    disclosureNote: 'scuffed as listed',
+    ticketDigits: '9395',
+    cartonPayload: {
+      scanValue: 'PO-1',
+      platform: 'eBay',
+      notes: '',
+      conditionCode: 'USED_A',
+      date: '7/31/26',
+      receivingId: 1,
+    },
+    unitInput: { sku: 'ABC' },
+    asListedPayload: {
+      disclosure: 'scuffed as listed',
+      conditionCode: 'USED_A',
+      corner: 'eBay',
+      receivingId: 1,
+    },
+    ticketPayload: { ticketDigits: '9395' },
+  };
+
+  const options = listAvailableLabelOptions(UNBOX_LABEL_KINDS, ctx);
+  assert.deepEqual(
+    options.map((o) => [o.kind, o.grain]),
+    [
+      ['carton', 'carton'],
+      ['unit', 'item'],
+      // A seller disclosure describes ONE unit, even though it prints from the
+      // carton workspace.
+      ['as_listed', 'item'],
+      // The claim is filed against the carton, not a unit.
+      ['ticket_minimal', 'carton'],
+    ],
+  );
+
+  // The select shape must carry the operator-facing grain string, or the picker
+  // silently drops back to name-only.
+  const select = labelOptionsForSelect(options);
+  assert.deepEqual(
+    select.map((o) => [o.key, o.grain]),
+    [
+      ['carton', 'PO / carton'],
+      ['unit', 'Per item'],
+      ['as_listed', 'Per item'],
+      ['ticket_minimal', 'PO / carton'],
+    ],
+  );
+  // A tote/LPN spans POs — neither carton nor item. Named honestly rather than
+  // squeezed into one of the other two.
+  assert.equal(workspaceLabelGrainLabel('handling_unit'), 'Container');
 });

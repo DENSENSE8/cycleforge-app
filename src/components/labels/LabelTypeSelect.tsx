@@ -7,6 +7,12 @@ import { Popover } from '@/design-system/primitives';
 export interface LabelTypeOption {
   key: string;
   name: string;
+  /**
+   * What the sticker goes on — "PO / carton" vs "Per item". Resolved by
+   * `labelOptionsForSelect` from the label-kind SoT. Shown as row meta so the
+   * operator reads the GRAIN, not just the kind's name.
+   */
+  grain?: string;
 }
 
 /**
@@ -58,7 +64,8 @@ export function LabelTypeSelect({
         role="listbox"
         aria-label="Select label to print"
         padded={false}
-        className="min-w-[9rem]"
+        // Wide enough that name + grain meta sit on one row without truncating.
+        className="min-w-[14rem]"
       >
         <ul className="py-1">
           {options.map((opt) => {
@@ -74,12 +81,22 @@ export function LabelTypeSelect({
                     setOpen(false);
                     triggerRef.current?.focus();
                   }}
-                  className={`flex w-full items-center justify-between gap-2 px-2.5 py-1.5 text-left text-role-caption font-semibold transition-colors hover:bg-surface-hover ${
+                  className={`flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-role-caption font-semibold transition-colors hover:bg-surface-hover ${
                     active ? 'text-text-default' : 'text-text-soft'
                   }`}
                 >
+                  {/* House one-row anatomy: title → meta → chip(right). Grain is
+                      meta, so it separates from the name by color + case rather
+                      than weight (the micro role already bakes 600). */}
                   <span className="truncate">{opt.name}</span>
-                  {active ? <Check className="h-3.5 w-3.5 shrink-0 text-blue-600" /> : null}
+                  {opt.grain ? (
+                    <span className="ml-auto shrink-0 text-role-micro uppercase tracking-widest text-text-soft">
+                      {opt.grain}
+                    </span>
+                  ) : null}
+                  {active ? (
+                    <Check className={`h-3.5 w-3.5 shrink-0 text-blue-600 ${opt.grain ? '' : 'ml-auto'}`} />
+                  ) : null}
                 </button>
               </li>
             );
