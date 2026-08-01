@@ -658,9 +658,19 @@ export const POST = withAuth(async (request, ctx) => {
       // facts now — the spine UPDATE keeps only the columns that stay on the spine
       // (notes + quantity_received). Same transaction = same atomicity the single
       // statement had.
+      // `notes` is COALESCE'd, not assigned: a receive may SET the operator's
+      // item note but must never CLEAR one it was not given. The mobile QA
+      // sheet passes `notes: null` on its Pass-all path
+      // (ReceivingQaActionSheet.tsx → markAllLines(..., null, ...)), and a bare
+      // `SET notes = $1` therefore erased whatever the desktop operator had
+      // typed on the Unbox panel — silently, on every phone-side pass.
+      // Clearing a note stays the notes composer's job (PATCH
+      // /api/receiving-lines, which presence-checks the field). Same semantics
+      // the sibling writers already document: receive-line.ts (`notes =
+      // COALESCE($3, notes)`) and lines/[id]/status.
       const lineUpdate = await client.query(
         `UPDATE receiving_line
-         SET notes = $1,
+         SET notes = COALESCE($1, notes),
              quantity_received = GREATEST(
                COALESCE(quantity_received, 0),
                COALESCE(quantity_expected, 1)
