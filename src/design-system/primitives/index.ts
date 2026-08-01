@@ -12,7 +12,6 @@ export * from './DeferredQtyInput';
 export * from './DetailCell';
 export * from './DetailGrid';
 export * from './DropdownMenu';
-export * from './ExpandableSection';
 export * from './ExternalLinkButton';
 export * from './SlicedActionDock';
 export * from './StationComposerDock';
