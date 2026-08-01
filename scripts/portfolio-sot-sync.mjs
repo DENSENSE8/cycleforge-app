@@ -464,11 +464,32 @@ function main() {
       process.exit(1);
     }
     const existing = fs.readFileSync(CATALOG_PATH, 'utf8');
-    // compare without volatile timestamp
+    // Compare the DOC ROSTER only — the one claim this file makes that is a
+    // property of the repository.
+    //
+    // Everything else the catalog renders is machine or moment state, and
+    // gating on it makes the check unwinnable in two different ways:
+    //
+    //   - the generation timestamp (already normalized below);
+    //   - the "Live git worktrees" table, which comes from `git worktree list`
+    //     on whatever box ran the script. `main`'s HEAD sha advances with every
+    //     commit — including the commit carrying this very file — so
+    //     regenerate-then-commit always lands a catalog that is instantly
+    //     "stale" by its own check. And CI, which has no sibling worktrees,
+    //     would fail against any locally-generated catalog, permanently.
+    //
+    // That is why this check quietly stopped being run and DOC-CATALOG.md
+    // drifted 71 files behind before anyone noticed (2026-08-01). A gate that
+    // cannot be satisfied does not get satisfied.
+    //
+    // Adding or removing a doc still fails the check, which is the drift worth
+    // catching. The worktree table stays IN the written file — it is useful to
+    // read locally — it is just not something to gate a repo on.
     const norm = (s) =>
       s
         .replace(/Generated: `[^`]+`/g, 'Generated: _')
-        .replace(/\d{4}-\d{2}-\d{2}T[\d:.]+Z/g, '_TS_');
+        .replace(/\d{4}-\d{2}-\d{2}T[\d:.]+Z/g, '_TS_')
+        .replace(/## Live git worktrees[\s\S]*?\n---\n/, '_WORKTREES_\n');
     if (norm(existing) !== norm(catalog)) {
       console.error('DOC-CATALOG.md is stale — run: node scripts/portfolio-sot-sync.mjs');
       process.exit(1);

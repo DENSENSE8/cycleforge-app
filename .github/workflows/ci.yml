@@ -110,6 +110,14 @@ jobs:
         if: ${{ !cancelled() }}
         run: npm run schema:drift-guard:check
 
+      # Doc catalog drift. Fix: `pnpm portfolio:sot` and commit DOC-CATALOG.md.
+      # Compares the doc roster only — the machine-local worktree table and the
+      # generation timestamp are normalized out, so this is CI-safe (a runner
+      # has no sibling worktrees) and survives regenerate-then-commit.
+      - name: Doc catalog drift
+        if: ${{ !cancelled() }}
+        run: npm run portfolio:sot:check
+
   audit-permissions:
     name: Permission drift audit
     runs-on: ubuntu-latest
