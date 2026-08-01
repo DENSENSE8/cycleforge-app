@@ -3,17 +3,7 @@
 import type { ZendeskTicket } from '@/lib/zendesk';
 import { timeAgo } from '@/utils/_date';
 import { cn } from '@/utils/_cn';
-import { priorityBadge, statusBadge } from '../badges';
-
-/** Zendesk status → a small dot hue (mirrors the badge colour scale). */
-const STATUS_DOT: Record<string, string> = {
-  new: 'bg-sky-500',
-  open: 'bg-rose-500',
-  pending: 'bg-amber-500',
-  hold: 'bg-violet-500',
-  solved: 'bg-emerald-500',
-  closed: 'bg-border-emphasis',
-};
+import { priorityBadge, statusBadge, statusDot } from '../badges';
 
 /**
  * One ticket row in the sidebar queue. Title-first, status dot + meta eyebrow +
@@ -30,7 +20,7 @@ export function SupportTicketRow({
 }) {
   const sb = statusBadge(ticket.status);
   const pb = priorityBadge(ticket.priority);
-  const dot = STATUS_DOT[String(ticket.status)] ?? 'bg-border-emphasis';
+  const dot = statusDot(ticket.status);
 
   return (
     <button

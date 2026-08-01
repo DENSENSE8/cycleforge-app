@@ -38,6 +38,29 @@ export function priorityBadge(priority?: string | null): BadgeStyle | null {
   return PRIORITY_BADGE[key] ?? null;
 }
 
+/** Row-dot hue per status — the saturated sibling of {@link STATUS_BADGE}. */
+const STATUS_DOT: Record<string, string> = {
+  new: 'bg-sky-500',
+  open: 'bg-rose-500',
+  pending: 'bg-amber-500',
+  hold: 'bg-violet-500',
+  solved: 'bg-emerald-500',
+  closed: 'bg-border-emphasis',
+};
+
+/**
+ * Zendesk status → the one-row-anatomy status dot.
+ *
+ * Lived as two identical private `STATUS_DOT` maps in `SupportTicketRow` and
+ * `SupportTicketsRecentRail` — the second even carried a "mirrors
+ * SupportTicketRow" comment, which is a copy admitting it is one. Unknown /
+ * unset falls back to the neutral hue rather than rendering no dot, so the
+ * row's left edge never loses its alignment anchor.
+ */
+export function statusDot(status?: string | null): string {
+  return STATUS_DOT[String(status ?? '')] ?? 'bg-border-emphasis';
+}
+
 export const STATUS_OPTIONS: { value: string; label: string }[] = [
   { value: 'new', label: 'New' },
   { value: 'open', label: 'Open' },

@@ -2,24 +2,22 @@
 
 import { useMultiSkuBarcode } from './barcode/multi-sku/useMultiSkuBarcode';
 import { MultiSkuBarcodeWorkspace } from './barcode/multi-sku/MultiSkuBarcodeWorkspace';
-import { MultiSkuBarcodeWizard } from './barcode/multi-sku/MultiSkuBarcodeWizard';
-
-interface MultiSkuSnBarcodeProps {
-  /**
-   * `vertical` — narrow-column wizard (sidebar / mobile). Steps reveal one at a
-   * time, inactive steps dim, parent auto-scrolls to the new step.
-   * `horizontal` — desktop workspace (right pane). Inputs and live preview sit
-   * side-by-side; all panels stay visible at full opacity.
-   */
-  layout?: 'vertical' | 'horizontal';
-}
 
 /**
  * Unit-label workspace: scan a SKU, capture serials, and print / log / reprint
  * products labels. A thin composition layer — all state and the three issue
- * paths live in {@link useMultiSkuBarcode}; the two layouts are presentational.
+ * paths live in {@link useMultiSkuBarcode}; the layout is presentational.
+ *
+ * Kept as its own module rather than inlined into `LabelsProductsWorkspace`,
+ * because that caller reaches it through `next/dynamic`. Inlining would pull
+ * the print/barcode graph into the labels chunk — `build-gotchas.md` → bundle
+ * altitude.
+ *
+ * A `layout` prop used to pick between this workspace and a narrow-column
+ * wizard. Every mount passed `horizontal`, so the wizard was reachable only
+ * through the default parameter; both were deleted 2026-08-01.
  */
-export default function MultiSkuSnBarcode({ layout = 'vertical' }: MultiSkuSnBarcodeProps = {}) {
-  const b = useMultiSkuBarcode(layout);
-  return b.isHorizontal ? <MultiSkuBarcodeWorkspace b={b} /> : <MultiSkuBarcodeWizard b={b} />;
+export default function MultiSkuSnBarcode() {
+  const b = useMultiSkuBarcode();
+  return <MultiSkuBarcodeWorkspace b={b} />;
 }

@@ -87,6 +87,15 @@ export function useSavedViews({
 
   useEffect(() => {
     if (!surface) {
+      // An unmapped storageKey silently disables the whole feature: the list
+      // renders empty and save/remove become no-ops, which looks exactly like
+      // "this staffer has no saved views yet". Say so, or a new surface ships
+      // with a dead Views menu nobody notices. Fix = add the key to
+      // SAVED_VIEW_SURFACES *and* the saved_views_surface_chk CHECK.
+      console.error(
+        `[useSavedViews] no saved-views surface is mapped for storageKey "${storageKey}" — ` +
+          'saved views are disabled here. Register it in src/lib/saved-views/surfaces.ts.',
+      );
       setViews([]);
       return;
     }
@@ -108,7 +117,7 @@ export function useSavedViews({
     return () => {
       cancelled = true;
     };
-  }, [surface]);
+  }, [surface, storageKey]);
 
   // Encode only the params that define a view, in a stable order so equality is
   // reliable regardless of how they sit in the live URL.

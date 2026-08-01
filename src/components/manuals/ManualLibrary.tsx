@@ -8,6 +8,7 @@ import { Button } from '@/design-system/primitives';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { toast } from '@/lib/toast';
 import { generatePdfThumbnail } from '@/lib/manuals/pdfThumbnail';
+import { statusBadgeClass, typeBadgeClass } from './library/manuals-tree';
 import {
   EditManualModal,
   UploadManualModal,
@@ -50,24 +51,6 @@ function appendCacheBust(href: string, version: string | number): string {
   const sep = base.includes('?') ? '&' : '?';
   const next = `${base}${sep}v=${encodeURIComponent(String(version))}`;
   return hash ? `${next}#${hash}` : `${next}#toolbar=1&navpanes=0`;
-}
-
-function statusBadgeClass(status: string): string {
-  switch (status) {
-    case 'unassigned': return 'bg-amber-50 text-amber-700 border-amber-200';
-    case 'assigned':   return 'bg-emerald-50 text-emerald-700 border-emerald-200';
-    case 'archived':   return 'bg-surface-sunken text-text-soft border-border-soft';
-    default:           return 'bg-surface-canvas text-text-muted border-border-soft';
-  }
-}
-
-function typeBadgeClass(type: string | null): string {
-  switch ((type || '').toLowerCase()) {
-    case 'manual':       return 'bg-blue-50 text-blue-700 border-blue-200';
-    case 'packing-list': return 'bg-emerald-50 text-emerald-700 border-emerald-200';
-    case 'pl-plus-m':    return 'bg-violet-50 text-violet-700 border-violet-200';
-    default:             return 'bg-surface-canvas text-text-muted border-border-soft';
-  }
 }
 
 export function ManualLibrary() {

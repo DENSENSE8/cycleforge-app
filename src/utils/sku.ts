@@ -32,15 +32,6 @@ export function formatSku(sku: string): string {
 }
 
 /**
- * Get the last 6 characters of serial numbers for display
- * @param serialNumbers - Array of serial numbers
- * @returns Comma-separated string of last 6 characters
- */
-export function getSerialLast6(serialNumbers: string[]): string {
-    return serialNumbers.map(sn => sn.slice(-6)).join(', ');
-}
-
-/**
  * Parse SKU and extract numeric portion
  * @param sku - The SKU to parse
  * @returns Numeric portion of SKU
