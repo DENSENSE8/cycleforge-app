@@ -244,32 +244,26 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
         [lineIds, orgId]
       );
 
-      // Linkage/facts half: receiving_id (+ the unboxed_by notes addendum) for
-      // EVERY candidate — matching always links, whatever the lifecycle state.
-      const updateParts: string[] = [
-        `receiving_id = $1`,
-        `updated_at   = NOW()`,
-      ];
-      const updateVals: unknown[] = [receivingId];
-      let paramIdx = 2;
-
-      if (unboxed && unboxedBy) {
-        // Mirror unboxed_by to lines for audit trail (stored as notes addendum for now)
-        updateParts.push(`notes = COALESCE(notes || $${paramIdx}, $${paramIdx})`);
-        updateVals.push(`\n[unboxed_by staff_id=${unboxedBy}]`);
-        paramIdx++;
-      }
-
-      updateVals.push(lineIds);
-      const lineIdsParam = paramIdx;
-      updateVals.push(orgId);
-      const orgParam = paramIdx + 1;
+      // Linkage/facts half: receiving_id for EVERY candidate — matching always
+      // links, whatever the lifecycle state.
+      //
+      // This used to also append `\n[unboxed_by staff_id=N]` into
+      // `receiving_line.notes` "for audit trail". That was a structured fact
+      // stored in a prose field: nothing ever parsed it back out, and the actor
+      // already has two real homes — the RECEIVING_MATCH audit row emitted by
+      // this route (recordAudit resolves the actor server-side and the entry
+      // carries `matched_line_ids`), and `actorStaffId` on the transition
+      // below. Since the 2026-07-31 note/label split, `notes` is purely the
+      // operator's item note, so the addendum was machine text in a human
+      // field. Dropped — along with the dynamic SET builder that existed only
+      // to carry it. SoT: source-of-truth.md → Note vs label grain.
       await client.query(
         `UPDATE receiving_line
-         SET ${updateParts.join(', ')}
-         WHERE id = ANY($${lineIdsParam}::int[])
-           AND organization_id = $${orgParam}`,
-        updateVals
+         SET receiving_id = $1,
+             updated_at   = NOW()
+         WHERE id = ANY($2::int[])
+           AND organization_id = $3`,
+        [receivingId, lineIds, orgId],
       );
 
       // Lifecycle half — through the guarded chokepoint (§7 Step D), inside this

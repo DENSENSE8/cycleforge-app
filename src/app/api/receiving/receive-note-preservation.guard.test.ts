@@ -61,6 +61,18 @@ function receivingLineSetClauses(src: string): string[] {
   return out;
 }
 
+/**
+ * The ONE accepted shape: `notes = COALESCE($n, notes)`.
+ *
+ * Deliberately stricter than "mentions COALESCE". The `[unboxed_by staff_id=N]`
+ * provenance addendum this route used to write was
+ * `notes = COALESCE(notes || $2, $2)` — which contains COALESCE and would have
+ * sailed through a looser check while still mutating the operator's note. A
+ * receive either supplies a whole note or leaves the column alone; it never
+ * appends machine text to a human field.
+ */
+const PRESERVE_FORM = /notes\s*=\s*COALESCE\(\s*\$\d+\s*,\s*notes\s*\)/i;
+
 /** Every .ts file under the receive-side trees. */
 function receiveSideFiles(): string[] {
   const roots = [abs('.'), abs('../../../lib/receiving')];
@@ -83,7 +95,7 @@ test('mark-received preserves a note it was not given', () => {
     if (!/\bnotes\b/.test(clause)) continue;
     assert.match(
       clause,
-      /notes\s*=\s*COALESCE\(/i,
+      PRESERVE_FORM,
       'mark-received must COALESCE notes — a bare assignment erases the operator note when the caller sends null',
     );
   }
@@ -97,7 +109,7 @@ test('the sibling receive writers keep their COALESCE', () => {
     const noteClauses = clauses.filter((c) => /\bnotes\b/.test(c));
     assert.ok(noteClauses.length > 0, `expected a notes write in ${rel}`);
     for (const clause of noteClauses) {
-      assert.match(clause, /notes\s*=\s*COALESCE\(/i, `${rel} must COALESCE notes`);
+      assert.match(clause, PRESERVE_FORM, `${rel} must COALESCE notes`);
     }
   }
 });
@@ -108,7 +120,7 @@ test('NO receive-side writer assigns receiving_line.notes unconditionally', () =
   for (const file of receiveSideFiles()) {
     for (const clause of receivingLineSetClauses(code(readFileSync(file, 'utf8')))) {
       if (!/\bnotes\b/.test(clause)) continue;
-      if (!/notes\s*=\s*COALESCE\(/i.test(clause)) {
+      if (!PRESERVE_FORM.test(clause)) {
         offenders.push(file.replace(/^.*\/src\//, 'src/'));
       }
     }
@@ -117,5 +129,30 @@ test('NO receive-side writer assigns receiving_line.notes unconditionally', () =
     offenders,
     [],
     'these receive-side writers assign receiving_line.notes unconditionally and will erase the operator note',
+  );
+});
+
+test('NO receive-side writer appends machine text to the operator note', () => {
+  // `receiving_line.notes` is a HUMAN field. Provenance ("who unboxed this"),
+  // reason codes, and lifecycle facts have structured homes — audit_logs,
+  // inventory_events, receiving_line_testing, receiving_unbox. The match route
+  // shipped `notes = COALESCE(notes || $2, $2)` appending
+  // `[unboxed_by staff_id=N]` for months; nothing ever parsed it back out, so
+  // it was write-only clutter in someone's note.
+  const offenders: string[] = [];
+  for (const file of receiveSideFiles()) {
+    for (const clause of receivingLineSetClauses(code(readFileSync(file, 'utf8')))) {
+      if (!/\bnotes\b/.test(clause)) continue;
+      // SQL string concatenation into the column (`notes || …`). JS `||`
+      // defaults live outside a SET clause, so they cannot reach here.
+      if (/\bnotes\s*\|\|/i.test(clause)) {
+        offenders.push(file.replace(/^.*\/src\//, 'src/'));
+      }
+    }
+  }
+  assert.deepEqual(
+    offenders,
+    [],
+    'these writers concatenate into receiving_line.notes — put the fact in its structured home instead',
   );
 });
