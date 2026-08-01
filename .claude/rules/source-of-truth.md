@@ -248,6 +248,32 @@ If a facet has no SoT yet, **add or extend one** (pattern evolution) — do not 
   `useRegisterRightPanel` / `DetailStackRailRegistrar` and own **no** geometry.
   Never add a private `fixed right-0 z-panel w-[420px]` element — that is the
   exact bug the store exists to fix.
+- **Exactly TWO right-edge grammars exist, and there is no third.**
+  1. **Float** — a `RightRailHost` occupant. App-wide, one at a time, over the
+     work surface. The default for a picked record.
+  2. **Station push column** — `UnboxPushColumn`. Squeezes its own station's
+     workbench in-flow, exclusive within that station, never a rail occupant.
+     Unbox's Displays / Ticket / Claim / tool.
+
+  **There is no ambient, always-on right-edge region**, and one must not be
+  rebuilt. One was built for the Unbox step procedure — `procedure-store.ts` +
+  `RightRailProcedureRegion` + `useRegisterRightRailProcedure` +
+  `UnboxProcedureRail` — and retired within the day; the procedure is now the
+  **`checklist` display inside the Displays push column**
+  (`UnboxProcedureChecklist`).
+
+  Why the door stays shut: `RightRailHost` renders exactly one occupant by
+  construction (`getRightRailTop()`), so a region pinned beside it is a *second*
+  permanent consumer of the same edge — the multi-pane right edge the store's own
+  docblock says it exists to prevent. It also re-opens, for every surface
+  underneath, the question the exclusion list exists to answer: *which of these
+  two things am I looking at?*
+
+  **So: a surface that should stay visible while the operator works is a
+  DISPLAY the operator picks (and which then persists), not a region that
+  outranks the picker.** If a third grammar ever looks necessary, that is a
+  signal the surface belongs in someone's display column — not that the edge
+  needs another layer.
 - **Modality is per occupant, `modal` defaults to `true`** so every existing panel keeps
   blocking behavior. Pass `modal={false}` for a non-modal **inspector**: no scrim, no
   `backdrop-blur`, no body scroll lock, `role="region"` + `ariaLabel` instead of
