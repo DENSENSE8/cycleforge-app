@@ -63,7 +63,7 @@ import { refreshDomain } from '@/lib/refresh/bus';
  * Minimal shape the dashboard selection bar needs from a row — satisfied by
  * both the Unshipped (`ShippedOrder`) and Shipped (`PackerRecord`) records.
  */
-export type DashSelectableRow = {
+type DashSelectableRow = {
   id: number | string;
   order_id?: string | null;
   sku?: string | null;
