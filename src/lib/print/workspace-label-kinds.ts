@@ -33,6 +33,29 @@ export type WorkspaceLabelKind =
 
 export type WorkspaceLabelEditor = 'carton' | 'unit' | 'as_listed' | null;
 
+/**
+ * What physical thing the sticker goes on. This is the label's GRAIN, and it is
+ * the question an operator must be able to answer before printing: am I
+ * labelling the whole receipt, or one unit inside it?
+ *
+ *   carton    — one label for the whole PO / carton
+ *   item      — one label per item / unit
+ *   container — a tote / LPN that spans POs (handling unit); neither of the above
+ */
+type WorkspaceLabelGrain = 'carton' | 'item' | 'container';
+
+/** Operator-facing grain names — the SoT for how grain reads in any picker. */
+const GRAIN_LABEL: Record<WorkspaceLabelGrain, string> = {
+  carton: 'PO / carton',
+  item: 'Per item',
+  container: 'Container',
+};
+
+/** The operator-facing grain string for a label kind ("PO / carton", "Per item"). */
+export function workspaceLabelGrainLabel(kind: WorkspaceLabelKind): string {
+  return GRAIN_LABEL[KIND_META[kind].grain];
+}
+
 export interface WorkspaceLabelContext {
   /** Carton / receiving id present. */
   hasCarton: boolean;
@@ -55,17 +78,21 @@ export interface WorkspaceLabelOption {
   kind: WorkspaceLabelKind;
   name: string;
   editor: WorkspaceLabelEditor;
+  grain: WorkspaceLabelGrain;
 }
 
 const KIND_META: Record<
   WorkspaceLabelKind,
-  { name: string; editor: WorkspaceLabelEditor }
+  { name: string; editor: WorkspaceLabelEditor; grain: WorkspaceLabelGrain }
 > = {
-  carton: { name: 'Carton label', editor: 'carton' },
-  unit: { name: 'Unit label', editor: 'unit' },
-  as_listed: { name: 'As Listed', editor: 'as_listed' },
-  ticket_minimal: { name: 'Ticket label', editor: null },
-  handling_unit: { name: 'Box / LPN', editor: null },
+  carton: { name: 'Carton label', editor: 'carton', grain: 'carton' },
+  unit: { name: 'Unit label', editor: 'unit', grain: 'item' },
+  // The seller-disclosure face describes ONE unit's condition, so it is per-item
+  // even though it is printed from the carton workspace.
+  as_listed: { name: 'As Listed', editor: 'as_listed', grain: 'item' },
+  // The claim/ticket is filed against the carton, not an individual unit.
+  ticket_minimal: { name: 'Ticket label', editor: null, grain: 'carton' },
+  handling_unit: { name: 'Box / LPN', editor: null, grain: 'container' },
 };
 
 /** Returns / trade-ins (and any line with a disclosure note) get As Listed. */
@@ -116,14 +143,19 @@ export function listAvailableLabelOptions(
       kind,
       name: KIND_META[kind].name,
       editor: KIND_META[kind].editor,
+      grain: KIND_META[kind].grain,
     }));
 }
 
-/** UI option keys for LabelTypeSelect (string keys). */
+/**
+ * UI options for LabelTypeSelect. Carries the resolved GRAIN label so the picker
+ * states what the sticker goes on — the operator should never have to infer
+ * "Unit label" means per-item from the name alone.
+ */
 export function labelOptionsForSelect(
   options: readonly WorkspaceLabelOption[],
-): Array<{ key: string; name: string }> {
-  return options.map((o) => ({ key: o.kind, name: o.name }));
+): Array<{ key: string; name: string; grain: string }> {
+  return options.map((o) => ({ key: o.kind, name: o.name, grain: GRAIN_LABEL[o.grain] }));
 }
 
 export function resolveActiveLabelKind(
