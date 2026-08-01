@@ -3,6 +3,7 @@ import { qk } from '@/queries/keys';
 import { toast } from '@/lib/toast';
 import { RSRecord } from '@/lib/neon/repair-service-queries';
 import { useActivityInboxOptional } from '@/contexts/ActivityInboxContext';
+import { refreshDomains } from '@/lib/refresh/bus';
 
 function mapRepairListCaches(
   old: unknown,
@@ -174,6 +175,7 @@ export function useUpdateRepairStatus() {
     },
     onSuccess: (_data, variables, context) => {
       toast.success('Status updated successfully');
+      refreshDomains(['repairs']);
       const prev = context?.previousStatus;
       if (
         inbox &&

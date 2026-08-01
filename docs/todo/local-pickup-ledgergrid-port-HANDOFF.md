@@ -14,26 +14,22 @@ This doc is self-contained. Read `AGENTS.md` first; load `.claude/rules/ui-desig
 
 ## 0. Status / what's already built (verified)
 
+**Port DONE.** `/pickup` is a first-class SoT-composed surface (Strategy B):
+
 - **Data source is settled.** LCPU products live ONLY in `local_pickup_orders` +
-  `local_pickup_order_items` (40 orders). The `zoho_po_mirror` LCPU rows (86) are
-  header-only; `receiving_carton source='local_pickup'` is ~2 rows — so the
-  receiving-lines pipeline is NOT the source. See memory `local-pickup-lcpu-data-reality`.
-- **Endpoint DONE + verified** (200, 224 rows / 39 orders): `GET /api/local-pickup-orders/lines`
-  (`src/app/api/local-pickup-orders/lines/route.ts`, perm `walk_in.view`). Flattens items
-  joined to their order + `zoho_po_mirror` (status/total/vendor via `zoho_po_id`).
-  Row shape (`PickupLine`, in `src/components/receiving/pickup/pickup-lines.ts`):
-  `id, order_id, sku, product_title, image_url, quantity, condition_grade, parts_status,
-   total_price, po_number, reference_number, customer_name, order_status, pickup_date,
-   zoho_po_id, zoho_status, zoho_total, zoho_po_date, zoho_vendor_name`.
-  `?status=` narrows (default all except VOIDED). Client hook `usePickupLines()` +
-  `groupPickupLines()` + `pickupMoney()` already exist.
-- **Wiring exists.** `ReceivingRightPane` (`if (mode==='pickup')` → `PickupWorkspace`) and
-  `ReceivingSidebarPanel` (`mode==='pickup'` → `PickupSidebarRail`) — modeled on the
-  **Repair precedent** (own pane, not shared with Unbox). Keep this split.
-- **INTERIM (to be REPLACED by this port):** `PickupWorkspace.tsx` currently uses
-  `DataTable` (flat, hand-rolled columns) and `PickupSidebarRail.tsx` is a hand-rolled
-  `<ul>`. Date column added, Zoho image removed already. These are placeholders —
-  replace with the SoT grid + rail below.
+  `local_pickup_order_items`. The `zoho_po_mirror` LCPU rows are header-only;
+  `receiving_carton source='local_pickup'` is not the source.
+- **Endpoint:** `GET /api/local-pickup-orders/lines` (`src/app/api/local-pickup-orders/lines/route.ts`).
+  Row shape (`PickupLine` in `pickup-lines.ts`) + `usePickupLines()` / `groupPickupLines()` / `pickupMoney()`.
+- **Right pane:** `PickupWorkspace` → `DashboardScrollShell` + `WorkbenchChromeHeader`
+  (All/Draft/Done + `ToolbarSearchToggle`) → `PickupGridView` → `LedgerGridSurface`
+  (grouped by LCPU order). Header is a thin `LedgerGridColumnHeader` adapter.
+- **Sidebar:** `PickupSidebarRail` → `SidebarRecentRailBase` + `pickupOrderToRailVM`
+  (plain PO# title + customer · N meta — Unbox/Pack rail anatomy).
+- **Status SoT:** `src/lib/local-pickup/order-status.ts` owns Draft/Done dots + chip
+  (rail + grid Product cell + Status column). No page-local amber/emerald maps.
+- **Wiring:** `ReceivingRightPane` (`mode==='pickup'` → `PickupWorkspace`) and
+  `ReceivingSidebarPanel` (`mode==='pickup'` → `PickupSidebarRail`). Keep this split.
 
 ## Requirements (from the product owner)
 
