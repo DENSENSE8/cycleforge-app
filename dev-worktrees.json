@@ -85,6 +85,14 @@
       "note": "WS-NAV-IA · topic/nav-ia · :3130 · lane-based master nav (Phase 4 of the page-consolidation plan). unlockParked so the Phase-2 nav can be designed with the parked surfaces visible. Brief: docs/todo/page-consolidation-station-first-GEMINI-RESEARCH-BRIEFING.md"
     },
     {
+      "id": "note-grain",
+      "label": "Receiving note/label grain",
+      "path": "../cycleforge-note-grain",
+      "appPort": 3140,
+      "unlockParked": false,
+      "note": "WS-NOTE-GRAIN · topic/note-grain · :3140 · receiving note vs printed-label grain + the receive-side note-integrity guards. Exists mainly as a CLEAN checkout: main's tree carries several lanes' uncommitted work, so its pre-push verify cannot vouch for committed state. Law: .claude/rules/source-of-truth.md → Note vs label grain"
+    },
+    {
       "id": "tokens",
       "label": "Token consolidation",
       "path": "../cycleforge-tokens",
