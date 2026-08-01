@@ -115,7 +115,6 @@ Token density presets also exist as `compact` / `standard` / `spacious` in `toke
 - `ToolbarSearchToggle.tsx` — **SoT for workbench chrome scoped search**: collapsed Search icon → expands on hover/focus/click (composes `SearchField`). Quiet header rails only — not modal/station always-open fields.
 - `DeferredQtyInput.tsx` — number input with internal draft, clamped on blur
 - `StatusText.tsx` — uppercase label with colored underline
-- `ExpandableSection.tsx` — AnimatePresence height:'auto' wrapper (uses `framerPresence.sidebarSection`)
 - `StickyHeader.tsx` — sticky top/bottom with optional frosted-glass backdrop
 - `ConditionText.tsx` — inline condition+qty+title with color mapping; exports `getConditionColor`, `formatConditionLabel`
 - `ActionButtonGroup.tsx` — row of icon action buttons with consistent spacing
@@ -366,7 +365,7 @@ Migrate existing components to consume new design system primitives:
 2. **TechTable / PackerTable / DashboardShippedTable** — replace inline sticky date headers with `DateGroupHeader` component
 3. **UpNextFilterBar** — replace inline AnimatePresence toggle with `OverlaySearch` component
 4. **Sidebar form sections** — replace inline label styling with `FormField` component
-5. **All expand/collapse patterns** — replace inline AnimatePresence+motion.div with `ExpandableSection` primitive
+5. **All expand/collapse patterns** — drive `AnimatePresence`+`motion.div` from `framerPresence.collapseHeight` (the `ExpandableSection` primitive was deleted 2026-07-31 — zero call sites)
 6. **Typography** — replace hand-rolled `text-[10px] uppercase tracking-[0.2em]` with `typographyPresets.sectionLabel` etc.
 
 See `.design-system-rules.md` for complete auto-UX integration rules.
