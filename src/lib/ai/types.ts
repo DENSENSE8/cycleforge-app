@@ -61,10 +61,3 @@ export interface AiStructuredAnswer {
   followUps?: string[];
   actions?: AiActionLink[];
 }
-
-export interface AiChatRouteResponse {
-  reply: string;
-  sessionId: string;
-  mode?: AiChatMode;
-  analysis?: AiStructuredAnswer | null;
-}
