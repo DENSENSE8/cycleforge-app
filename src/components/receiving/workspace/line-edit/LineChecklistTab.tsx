@@ -23,7 +23,6 @@ import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { toast } from '@/lib/toast';
 import { useChecklist, checklistQueryKey } from '@/hooks/useChecklist';
 import { GLOBAL_RECEIVING_CHECKLIST } from '@/lib/receiving/global-checklist';
-import type { ChecklistTabBridge } from './terminal/unbox-tab-bridges';
 
 const storageKey = (lineId: number) => `receiving-checklist:${lineId}`;
 
@@ -39,12 +38,9 @@ function persistChecked(lineId: number, next: Record<string, boolean>) {
 
 export function LineChecklistTab({
   lineId,
-  onBridgeChange,
 }: {
   lineId: number;
   sku?: string | null;
-  /** Register Check all / Uncheck all with the panel terminal dock. */
-  onBridgeChange?: (bridge: ChecklistTabBridge | null) => void;
 }) {
   const queryClient = useQueryClient();
   const { data, isLoading, isError } = useChecklist('GLOBAL');
@@ -198,17 +194,6 @@ export function LineChecklistTab({
   const doneCount = items.reduce((n, it) => n + (checked[it.id] ? 1 : 0), 0);
   const allDone = items.length > 0 && doneCount === items.length;
 
-  useEffect(() => {
-    if (!onBridgeChange) return;
-    onBridgeChange({
-      allDone,
-      itemCount: items.length,
-      checkAll,
-      uncheckAll,
-    });
-    return () => onBridgeChange(null);
-  }, [onBridgeChange, allDone, items.length, checkAll, uncheckAll]);
-
   if (isLoading) {
     return (
       <div className="flex items-center justify-center gap-2 py-6 text-role-caption text-text-faint">
@@ -240,6 +225,26 @@ export function LineChecklistTab({
             >
               {doneCount}/{items.length}
             </span>
+          ) : null}
+          {/* Check all / Uncheck all is a LOCAL control — it used to be the
+              panel terminal dock's primary while this tab was selected, but the
+              dock is carton-terminal now (Print · Receive) and this display
+              lives in the right-edge Displays column. */}
+          {items.length > 0 ? (
+            <HoverTooltip
+              label={allDone ? 'Clear every checked step' : 'Mark every step complete'}
+              asChild
+            >
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={allDone ? uncheckAll : checkAll}
+                ariaLabel={allDone ? 'Uncheck all steps' : 'Check all steps'}
+                icon={<Check className="h-3 w-3" />}
+              >
+                {allDone ? 'Uncheck all' : 'Check all'}
+              </Button>
+            </HoverTooltip>
           ) : null}
           <HoverTooltip label={managing ? 'Done editing' : 'Edit checklist steps'} asChild>
             <Button

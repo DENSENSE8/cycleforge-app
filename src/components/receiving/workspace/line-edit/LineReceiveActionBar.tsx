@@ -7,8 +7,8 @@ import type { UnboxReceiveTerminalInput } from './terminal/types';
 /**
  * Thin adapter around {@link StationTerminalDock} for the unbox Print · Receive
  * dock. Prefer resolving via `resolveUnboxTerminal` + `useStationTerminalAction`
- * in the panel (tab-aware). This wrapper exists for any call site that still
- * wants the receive dock without the full terminal registry hook.
+ * in the panel. This wrapper exists for any call site that still wants the
+ * receive dock without the full terminal registry hook.
  */
 export function LineReceiveActionBar({
   assignedTechId,
@@ -74,18 +74,6 @@ export function LineReceiveActionBar({
 
   const vm = resolveUnboxReceiveTerminal({
     row: { id: 0 } as never,
-    poNote: {
-      draft: '',
-      setDraft: () => {},
-      dirty: false,
-      loading: false,
-      saving: false,
-      save: async () => {},
-      syncFromInventory: async () => {},
-    },
-    bridges: { checklist: null, units: null, support: null, conversation: null, ticket: null },
-    focusSerialScan: () => {},
-    setUnboxView: () => {},
     receive,
   });
 

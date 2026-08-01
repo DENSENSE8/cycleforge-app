@@ -203,7 +203,7 @@ export function cartonFacts(receiving: CartonInspectorReceiving): CartonFact[] {
  * been unboxed is a real inconsistency and is surfaced. This is the difference
  * between a status readout and a signal.
  */
-export interface CartonFlag {
+interface CartonFlag {
   key: string;
   label: string;
   tone: 'info' | 'warning' | 'danger';
@@ -250,6 +250,52 @@ export function cartonFlags(
   }
 
   return flags;
+}
+
+/**
+ * Header identity for the carton read chrome — raw parts only.
+ *
+ * The view composes the lead title (platform label · PO, or sole product name,
+ * or carton id) and mounts TrackingChip / PoChip from `tracking` / `poNumber`.
+ * Platform stays raw so the view resolves it through `sourcePlatformLabel`.
+ */
+export interface CartonHeaderIdentity {
+  cartonId: number;
+  /** Raw `source_platform` token — view resolves the display label. */
+  platform: string | null;
+  poNumber: string | null;
+  tracking: string | null;
+  /** Sole product name when the carton has exactly one named line and no PO. */
+  productTitle: string | null;
+}
+
+export function cartonHeaderIdentity(
+  receiving: CartonInspectorReceiving,
+  lines?: ReadonlyArray<Pick<CartonInspectorLine, 'item_name' | 'sku' | 'zoho_purchaseorder_number' | 'tracking_number'>> | null,
+): CartonHeaderIdentity {
+  const poNumber =
+    present(receiving.zoho_purchaseorder_number) ??
+    present(lines?.map((l) => l.zoho_purchaseorder_number).find((v) => present(v)) ?? null);
+
+  const tracking =
+    present(receiving.tracking) ??
+    present(lines?.map((l) => l.tracking_number).find((v) => present(v)) ?? null);
+
+  const productNames = [
+    ...new Set(
+      (lines ?? [])
+        .map((l) => present(l.item_name) ?? present(l.sku))
+        .filter((v): v is string => Boolean(v)),
+    ),
+  ];
+
+  return {
+    cartonId: receiving.id,
+    platform: present(receiving.source_platform),
+    poNumber,
+    tracking,
+    productTitle: !poNumber && productNames.length === 1 ? productNames[0]! : null,
+  };
 }
 
 /** System-record footer facts — the "which row is this, really" set. */

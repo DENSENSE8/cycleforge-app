@@ -148,9 +148,9 @@ export function useReceivingLineCore(
   const [priorityTier, setPriorityTier] = useState<number | null>(
     row.priority_tier ?? (row.is_priority ? 0 : null),
   );
-  const [auditOpen, setAuditOpen] = useState(false);
-  const [photoNoteOpen, setPhotoNoteOpen] = useState(false);
-  const [movePhotosOpen, setMovePhotosOpen] = useState(false);
+  const [auditOpen, setAuditOpenRaw] = useState(false);
+  const [photoNoteOpen, setPhotoNoteOpenRaw] = useState(false);
+  const [movePhotosOpen, setMovePhotosOpenRaw] = useState(false);
   const [movePhotosKey, setMovePhotosKey] = useState(0);
   const movePhotosReopenTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [copyingAll, setCopyingAll] = useState(false);
@@ -158,6 +158,38 @@ export function useReceivingLineCore(
   const { getClient: getAblyClient } = useAblyClient();
   const { user } = useAuth();
   const orgId = user?.organizationId;
+
+  /** One Unbox tool push at a time — opening any closes the other two. */
+  const setAuditOpen = useCallback((on: boolean) => {
+    if (on) {
+      setPhotoNoteOpenRaw(false);
+      setMovePhotosOpenRaw(false);
+    }
+    setAuditOpenRaw(on);
+  }, []);
+
+  const setPhotoNoteOpen = useCallback((on: boolean) => {
+    if (on) {
+      setAuditOpenRaw(false);
+      setMovePhotosOpenRaw(false);
+    }
+    setPhotoNoteOpenRaw(on);
+  }, []);
+
+  const setMovePhotosOpen = useCallback((on: boolean) => {
+    if (on) {
+      setAuditOpenRaw(false);
+      setPhotoNoteOpenRaw(false);
+    }
+    setMovePhotosOpenRaw(on);
+  }, []);
+
+  /** Close all three tool-push surfaces (Claim/Ticket/details took the slot). */
+  const closeToolPush = useCallback(() => {
+    setAuditOpenRaw(false);
+    setPhotoNoteOpenRaw(false);
+    setMovePhotosOpenRaw(false);
+  }, []);
 
   useEffect(
     () => () => {
@@ -183,8 +215,7 @@ export function useReceivingLineCore(
     }
     setMovePhotosKey((k) => k + 1);
     setMovePhotosOpen(true);
-  }, [movePhotosOpen]);
-
+  }, [movePhotosOpen, setMovePhotosOpen]);
   const { poEditorOpen, setPoEditorOpen, poNumberEdit, setPoNumberEdit, persistPoNumber } =
     usePoBinding(row);
   const { sourcePlatform, setSourcePlatform, platformSaving, savePlatform } = useSourcePlatform(
@@ -609,6 +640,7 @@ export function useReceivingLineCore(
     auditOpen, setAuditOpen,
     photoNoteOpen, setPhotoNoteOpen,
     movePhotosOpen, setMovePhotosOpen, movePhotosKey, openMovePhotos,
+    closeToolPush,
     copyingAll,
     phoneSharing,
     // composed carton hooks

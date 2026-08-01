@@ -17,6 +17,7 @@ import {
   cartonExceptions,
   cartonFacts,
   cartonFlags,
+  cartonHeaderIdentity,
   cartonLifecycle,
   cartonRecordMeta,
   cartonTimelineAnchor,
@@ -281,6 +282,56 @@ test('cartonRecordMeta identifies the row and omits unset ids', () => {
   assert.equal(byKey.get('poId'), '5623409000003125066');
   // Null on the fixture.
   assert.equal(byKey.has('receiveId'), false, 'an unset zoho receive id must be omitted');
+});
+
+test('cartonHeaderIdentity: PO + tracking from the carton header', () => {
+  const id = cartonHeaderIdentity(RECEIVING);
+  assert.equal(id.poNumber, '19-14910-41811');
+  assert.equal(id.tracking, '874847124243');
+  assert.equal(id.platform, null);
+  assert.equal(id.productTitle, null, 'PO identity wins over a product title');
+});
+
+test('cartonHeaderIdentity: falls back to line PO/tracking and sole product name', () => {
+  const id = cartonHeaderIdentity(
+    {
+      ...RECEIVING,
+      zoho_purchaseorder_number: null,
+      zoho_purchaseorder_id: null,
+      tracking: null,
+      source_platform: null,
+    },
+    [
+      {
+        item_name: 'Netgear Orbi',
+        sku: 'ORBI-1',
+        zoho_purchaseorder_number: 'PO-LINE-9',
+        tracking_number: 'TRACK-LINE-9',
+      },
+    ],
+  );
+  assert.equal(id.poNumber, 'PO-LINE-9');
+  assert.equal(id.tracking, 'TRACK-LINE-9');
+  assert.equal(id.productTitle, null, 'a line PO still suppresses the product title');
+
+  const noPo = cartonHeaderIdentity(
+    {
+      ...RECEIVING,
+      zoho_purchaseorder_number: null,
+      zoho_purchaseorder_id: null,
+      tracking: null,
+    },
+    [
+      {
+        item_name: 'Netgear Orbi',
+        sku: 'ORBI-1',
+        zoho_purchaseorder_number: null,
+        tracking_number: null,
+      },
+    ],
+  );
+  assert.equal(noPo.poNumber, null);
+  assert.equal(noPo.productTitle, 'Netgear Orbi');
 });
 
 // ── Disposition truth (exceptions outrank lifecycle.done) ───────────────────
