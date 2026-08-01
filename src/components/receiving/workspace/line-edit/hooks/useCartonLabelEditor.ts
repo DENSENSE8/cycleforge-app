@@ -37,8 +37,11 @@ export function useCartonLabelEditor(
   core: ReceivingLineCore,
   opts: {
     conditionCode: string;
+    /** The PRINTED center text (`receiving_line.label_note`) — not the operator's
+     *  item note. Separate buffers since 2026-07-31. */
     notes: string;
-    /** When set, Save & print also persists an edited notes field (Unbox durable line note). */
+    /** When set, Save & print persists the edited center text to the label-face
+     *  column. Must NOT write the operator's item note. */
     onPersistNotes?: (notes: string) => void;
   },
 ) {

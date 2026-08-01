@@ -413,6 +413,11 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
     const itemName       = String(body?.item_name || '').trim() || null;
     const sku            = String(body?.sku || '').trim() || null;
     const notes          = String(body?.notes || '').trim() || null;
+    // Label face at birth. The two columns start equal — same as the migration's
+    // backfill — so a line born before the operator ever opens the label editor
+    // still prints its note, exactly as it did pre-split. They diverge from the
+    // first edit onward (composer → notes, label editor → label_note).
+    const labelNote      = String(body?.label_note ?? body?.notes ?? '').trim() || null;
 
     const qtyReceivedRaw   = Number(body?.quantity_received ?? body?.quantity ?? 0);
     const quantityReceived = Number.isFinite(qtyReceivedRaw) && qtyReceivedRaw >= 0 ? Math.floor(qtyReceivedRaw) : 0;
@@ -459,14 +464,14 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
         `INSERT INTO receiving_line (
           receiving_id, item_name, sku,
           quantity_received, quantity_expected,
-          notes, organization_id
+          notes, label_note, organization_id
         )
-        VALUES ($1,$2,$3,$4,$5,$6,$7)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
         RETURNING id`,
         [
           receivingId, itemName, sku,
           quantityReceived, quantityExpected,
-          notes, orgId,
+          notes, labelNote, orgId,
         ],
       );
       const newId = Number(ins.rows[0].id);
@@ -541,6 +546,9 @@ export const PATCH = withAuth(async (request: NextRequest, ctx) => {
       ['item_name',                 String(body?.item_name ?? '').trim() || null],
       ['sku',                       String(body?.sku ?? '').trim() || null],
       ['notes',                     String(body?.notes ?? '').trim() || null],
+      // Printed label face center. Independent of `notes` since 2026-07-31 —
+      // the notes composer writes `notes`, the label editor writes `label_note`.
+      ['label_note',                String(body?.label_note ?? '').trim() || null],
       ['receiving_type',            String(body?.receiving_type ?? '').trim() || null],
       ['zendesk_ticket',            String(body?.zendesk_ticket ?? '').trim() || null],
     ];
@@ -1376,6 +1384,9 @@ function normalizeRow(row: Record<string, unknown>) {
     zoho_last_modified_time:  (row.zoho_last_modified_time as string | null) ?? null,
     zoho_synced_at:           (row.zoho_synced_at as string | null) ?? null,
     notes:                    (row.notes as string | null) ?? null,
+    // Printed label face center — split from `notes` 2026-07-31 so an item note
+    // need not print. Arrives via `rl.*`; null on views whose SELECT omits it.
+    label_note:               (row.label_note as string | null) ?? null,
     zoho_notes:               (row.zoho_notes as string | null) ?? null,
     unit_price:               (row.unit_price as string | null) ?? null,
     receiving_support_notes:  (row.receiving_support_notes as string | null) ?? null,

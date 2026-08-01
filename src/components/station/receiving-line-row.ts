@@ -102,7 +102,11 @@ export interface ReceivingLineRow {
    * Effective line type = receiving_type ?? carton_intake_type ?? 'PO'. Migration 2026-06-13b.
    */
   carton_intake_type?: string | null;
+  /** Operator's durable per-item note. Never printed — the printed face is `label_note`. 2026-07-31. */
   notes: string | null;
+  /** Printed label face center text for this line (carton face center / As Listed disclosure).
+   *  Split out of `notes` so an item note can be written without printing it. 2026-07-31. */
+  label_note?: string | null;
   /** Zoho PO line description (read-only import); shown in the Zoho Notes tab. 2026-06-24. */
   zoho_notes?: string | null;
   /** Zoho PO line unit cost (read-only mirror of Zoho line.rate); pg numeric → string. 2026-06-24. */

@@ -74,9 +74,13 @@ export function useTestingLineController(
   const queryClient = useQueryClient();
   // Editable carton label (default draft + preview payload + Save & print),
   // driving the label preview's pencil → editor CTA — same face as unbox.
+  // Center text = the PRINTED face buffer (`label_note`), same as Unbox — a
+  // carton reprinted from Testing must show the identical face. Reading
+  // `notes` here would print the operator's item note and drift the two
+  // surfaces apart the first time either buffer is edited. (2026-07-31 split.)
   const cartonLabel = useCartonLabelEditor(row, core, {
     conditionCode: row.condition_grade || 'USED_A',
-    notes: (row.notes || '').trim(),
+    notes: (row.label_note || '').trim(),
   });
 
   const [serialSubmitting, setSerialSubmitting] = useState(false);

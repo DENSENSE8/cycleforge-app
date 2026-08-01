@@ -7,11 +7,15 @@
  * {@link TriagePanel} share ONE notes implementation. Pure composition over the
  * controller bag; the panel owns placement (dock vs mid-canvas).
  *
- * The note is ONE durable buffer (`receiving_lines.notes`): it composes the
- * printed label face AND is the operator's saved note. It hydrates from the row
- * and saves on blur / Send (see `useUnboxLineController` /
- * {@link LineNotesCard}), so a reprint carries the same note. With the
- * overview Receive CTA mounted, Enter saves then fires print+receive.
+ * GRAIN: this composer owns the **item note** (`receiving_line.notes`) — the
+ * operator's durable note on this line. It does **not** print. The printed face
+ * is a separate buffer (`receiving_line.label_note`) edited in the label editor
+ * (`LabelEditPopover` / As Listed); see the two-buffer note in
+ * `useUnboxLineController`. Until 2026-07-31 these were one column, so a note
+ * could not be written without printing it.
+ *
+ * It hydrates from the row and saves on blur / Send. With the overview Receive
+ * CTA mounted, Enter saves then fires print+receive.
  *
  * Built on {@link StationComposerDock}. The full view / reload / overwrite of
  * the synced PO note lives in the standalone "PO note" display tab
@@ -55,7 +59,7 @@ export function WorkspaceNotesCard({
   return (
     <div id="zoho-notes-card">
       <LineNotesCard
-        notes={c.labelNotes}
+        notes={c.itemNote}
         overallZohoNotes={row.receiving_zoho_notes ?? null}
         skuTitle={row.zoho_item_title || row.item_name || null}
         unitPrice={row.unit_price ?? null}
@@ -63,11 +67,12 @@ export function WorkspaceNotesCard({
         zendeskProviderTicketId={c.providerTicketId}
         zendeskTicketSubject={c.supportTicket?.subject ?? null}
         previousLineNotes={c.prevLineNotes}
-        onNotesChange={c.setLabelNotes}
+        onNotesChange={c.setItemNote}
         onSaveNotes={() => {
           // Returns whether it actually persisted, so the card only flashes
-          // "Saved" when the note changed.
-          const next = c.labelNotes;
+          // "Saved" when the note changed. Writes `notes` ONLY — the printed
+          // face (`label_note`) is never touched from this composer.
+          const next = c.itemNote;
           if (next === (row.notes || '')) return false;
           void c.patch({ notes: next });
           return true;

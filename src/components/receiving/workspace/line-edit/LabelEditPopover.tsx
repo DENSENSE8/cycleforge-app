@@ -52,7 +52,8 @@ export interface LabelEditDraft {
   platform: string;
   /** Receiving type shown after the platform as "Platform - Type". */
   receivingType: string;
-  /** Center free text. */
+  /** Center free text — persists to `receiving_line.label_note`, NOT to the
+   *  operator's item note (`notes`). Separate buffers since 2026-07-31. */
   notes: string;
   /** Bottom-left condition grade code. */
   conditionCode: string;
@@ -302,12 +303,12 @@ export function LabelEditPopover({
           </div>
 
           <div>
-            <label className={FIELD_LABEL}>Notes (center text)</label>
+            <label className={FIELD_LABEL}>Label text (center)</label>
             <textarea
               value={draft.notes}
               onChange={(e) => set('notes', e.target.value)}
               rows={2}
-              placeholder="Anything to print across the middle…"
+              placeholder="Printed across the middle — separate from the item note"
               className={`${TEXT_INPUT} resize-none`}
             />
           </div>

@@ -1376,7 +1376,11 @@ export const receivingLines = pgTable('receiving_line', {
   // QA/disposition + test-assignment (testing cluster) DROPPED 2026-07-11e —
   // lives on receiving_line_testing (see receivingLineTesting below).
 
+  /** Operator's durable per-item note. Never printed — the face is `label_note`. */
   notes: text('notes'),
+  /** Printed label face center text (carton face center / As Listed disclosure).
+   *  Split out of `notes` 2026-07-31 so an item note need not print. */
+  labelNote: text('label_note'),
   /** Filed Zendesk ticket # for a line-level claim, stored as "#<id>". */
   zendeskTicket: text('zendesk_ticket'),
   // ── Drift reconciliation (2026-06-19): DB columns added via raw-SQL

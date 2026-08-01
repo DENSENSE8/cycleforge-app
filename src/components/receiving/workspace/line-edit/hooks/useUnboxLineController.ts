@@ -83,12 +83,24 @@ export function useUnboxLineController(
   // from ReceivingUnitRows). Null on single-qty lines.
   const [unitLabelCondition, setUnitLabelCondition] = useState<string | null>(null);
   /**
-   * Single durable note buffer for this line: hydrates from `receiving_lines.notes`,
-   * composes the printed label face, and auto-saves back on blur. Formerly a split
-   * ephemeral label buffer + a durable "internal" buffer — merged so the printed
-   * note is durable and a reprint carries the same note (see LineNotesCard).
+   * TWO durable buffers, one per GRAIN of text on this line (split 2026-07-31,
+   * migration `2026-07-31b_receiving_lines_label_note.sql`):
+   *
+   *   itemNote  ← `receiving_line.notes`      — the operator's item note. NEVER
+   *               printed. Feeds the receive payload / push-to-PO. Composed in
+   *               the Notes dock ({@link LineNotesCard}).
+   *   labelNote ← `receiving_line.label_note` — the PRINTED face center text
+   *               (carton face center + As Listed disclosure). Composed in the
+   *               label editor ({@link LabelEditPopover} / As Listed).
+   *
+   * They were one buffer until now, so an operator could not write a note that
+   * did not print, nor re-word a label without rewriting the record's note. The
+   * migration backfills `label_note := notes`, so both start equal on existing
+   * cartons and every pre-split carton reprints an identical face; they diverge
+   * from the first edit onward.
    */
-  const [labelNotes, setLabelNotes] = useState(row.notes ?? '');
+  const [itemNote, setItemNote] = useState(row.notes ?? '');
+  const [labelNote, setLabelNote] = useState(row.label_note ?? '');
   const [serialInput, setSerialInput] = useState('');
   // Explicit "no serial number" waiver for this line (mutually exclusive with a
   // captured serial). Carries an auditable reason code and satisfies the optional
@@ -132,25 +144,29 @@ export function useUnboxLineController(
     setUnitLabelCondition(null);
   }, [row.id, row.qa_status, row.disposition_code, row.condition_grade, row.receiving_source]);
 
-  // Hydrate the note buffer from the durable column on line change AND whenever the
-  // persisted value updates (own blur-save echo, another device, an external edit)
-  // so the composer and the printed label always reflect the saved note.
+  // Hydrate each buffer from its OWN durable column on line change AND whenever
+  // the persisted value updates (own blur-save echo, another device, an external
+  // edit) so the composer shows the saved note and the preview shows the saved
+  // face. Separate effects: an item-note save must not re-seed the label face.
   useEffect(() => {
-    setLabelNotes(row.notes ?? '');
+    setItemNote(row.notes ?? '');
   }, [row.id, row.notes]);
+  useEffect(() => {
+    setLabelNote(row.label_note ?? '');
+  }, [row.id, row.label_note]);
 
-  // Track the previous line's label notes so the Label composer can offer a
+  // Track the previous line's item note so the Notes composer can offer a
   // "repeat previous" prefill on multi-line cartons. The workspace stays
   // mounted across sibling-line switches within the same carton (see
   // ReceivingRightPane's carton-keyed remount), so a ref-captured value
   // naturally survives from one line to the next.
-  const labelNotesLiveRef = useRef(labelNotes);
+  const itemNoteLiveRef = useRef(itemNote);
   useEffect(() => {
-    labelNotesLiveRef.current = labelNotes;
-  }, [labelNotes]);
+    itemNoteLiveRef.current = itemNote;
+  }, [itemNote]);
   const [prevLineNotes, setPrevLineNotes] = useState('');
   useEffect(() => {
-    return () => setPrevLineNotes(labelNotesLiveRef.current);
+    return () => setPrevLineNotes(itemNoteLiveRef.current);
   }, [row.id]);
 
   // Serial is per line; prefill from the row's recorded serials (most recent
@@ -276,9 +292,10 @@ export function useUnboxLineController(
     qa,
     disp,
     cond,
-    // One note buffer feeds the receive payload too — what's on the label is what's
-    // received and what's saved.
-    notes: labelNotes,
+    // The receive payload carries the OPERATOR note, not the label face: this is
+    // the text that lands on the record and gets pushed to the synced PO note.
+    // The printed face (`labelNote`) is a print artifact and stays out of Zoho.
+    notes: itemNote,
     zendesk: core.zendesk,
     listingLink: core.listingLink,
     serialInput,
@@ -291,19 +308,30 @@ export function useUnboxLineController(
   const isMultiQtyLine = (row.quantity_expected ?? 0) > 1;
   const labelConditionCode = isMultiQtyLine && unitLabelCondition ? unitLabelCondition : cond;
 
-  const persistLabelNotes = useCallback(
-    (notes: string) => {
-      setLabelNotes(notes);
-      void core.patch({ notes });
+  /** Persist the PRINTED face text — `label_note`, never the operator's note. */
+  const persistLabelNote = useCallback(
+    (nextLabelNote: string) => {
+      setLabelNote(nextLabelNote);
+      void core.patch({ label_note: nextLabelNote });
     },
     [core.patch],
   );
 
-  // Shared carton-label editor (same SoT as Testing).
+  /** Persist the operator's item note — `notes`, never the printed face. */
+  const persistItemNote = useCallback(
+    (nextItemNote: string) => {
+      setItemNote(nextItemNote);
+      void core.patch({ notes: nextItemNote });
+    },
+    [core.patch],
+  );
+
+  // Shared carton-label editor (same SoT as Testing). Its `notes` field IS the
+  // printed center slot, so it reads and writes `label_note`.
   const cartonLabel = useCartonLabelEditor(row, core, {
     conditionCode: labelConditionCode,
-    notes: labelNotes,
-    onPersistNotes: persistLabelNotes,
+    notes: labelNote,
+    onPersistNotes: persistLabelNote,
   });
 
   // As Listed disclosure — print-time override for the seller-defect phrase.
@@ -317,14 +345,15 @@ export function useUnboxLineController(
 
   const asListedDraftDefaults: AsListedLabelDraft = useMemo(
     () => ({
-      disclosure: asListedOverride.disclosure ?? labelNotes,
+      // The disclosure IS printed text, so it seeds from the label face buffer.
+      disclosure: asListedOverride.disclosure ?? labelNote,
       conditionCode: asListedOverride.conditionCode ?? labelConditionCode,
       corner: asListedOverride.corner ?? cartonLabel.derivedPlatform,
       date: asListedOverride.date ?? cartonLabel.derivedDate,
     }),
     [
       asListedOverride,
-      labelNotes,
+      labelNote,
       labelConditionCode,
       cartonLabel.derivedPlatform,
       cartonLabel.derivedDate,
@@ -378,7 +407,9 @@ export function useUnboxLineController(
       scanValue,
       sku: row.sku,
       receivingType: core.receivingType,
-      disclosureNote: labelNotes,
+      // Availability of the As Listed kind keys off the PRINTED disclosure text,
+      // not the operator's item note — the two are separate buffers now.
+      disclosureNote: labelNote,
       ticketDigits,
       cartonPayload: cartonLabel.defaultPayload,
       unitInput,
@@ -390,7 +421,7 @@ export function useUnboxLineController(
       row.sku,
       scanValue,
       core.receivingType,
-      labelNotes,
+      labelNote,
       ticketDigits,
       cartonLabel.defaultPayload,
       unitInput,
@@ -486,13 +517,15 @@ export function useUnboxLineController(
         setCond(draft.conditionCode);
         void core.patch({ condition_grade: draft.conditionCode });
       }
-      if (draft.disclosure.trim() && draft.disclosure.trim() !== labelNotes) {
-        persistLabelNotes(draft.disclosure.trim());
+      // An edited disclosure is printed text — it persists to the label face,
+      // leaving the operator's item note untouched.
+      if (draft.disclosure.trim() && draft.disclosure.trim() !== labelNote) {
+        persistLabelNote(draft.disclosure.trim());
       }
       printAsListedLabel(buildAsListedPayload(draft));
       markLabelPrinted();
     },
-    [labelConditionCode, labelNotes, core.patch, persistLabelNotes, buildAsListedPayload, markLabelPrinted],
+    [labelConditionCode, labelNote, core.patch, persistLabelNote, buildAsListedPayload, markLabelPrinted],
   );
 
   const applyUnitAndPrint = useCallback(
@@ -835,8 +868,12 @@ export function useUnboxLineController(
     // condition / qa / disposition
     qa, setQa, disp, setDisp,
     cond, setCond, unitLabelCondition, setUnitLabelCondition, isMultiQtyLine,
-    // notes — one durable buffer: composes the label face AND is `receiving_lines.notes`
-    labelNotes, setLabelNotes, prevLineNotes,
+    // notes — TWO durable buffers, one per grain (2026-07-31 split):
+    //   itemNote  = `receiving_line.notes`      — operator note, never printed
+    //   labelNote = `receiving_line.label_note` — the printed face center text
+    itemNote, setItemNote, persistItemNote,
+    labelNote, setLabelNote, persistLabelNote,
+    prevLineNotes,
     // serial scanning
     serialInput, setSerialInput, serialRef,
     serialAbsent, setSerialAbsent, serialAbsentReason, setSerialAbsentReason, commitSerialAbsent,

@@ -24,10 +24,15 @@ import {
 } from '../note-composer-helpers';
 
 /**
- * Carton-notes composer — ONE durable buffer (`receiving_lines.notes`).
+ * Item-note composer — the operator's durable note on this line
+ * (`receiving_line.notes`).
  *
- * Composes the printed label face AND is the operator's saved note. Hydrates
- * from the row and saves on blur / Send. Built on
+ * GRAIN: this note is **not printed**. The printed label face is a separate
+ * buffer (`receiving_line.label_note`) owned by the label editor. They were one
+ * column until 2026-07-31; splitting them is what lets an operator record
+ * something about an item without it landing on the sticker.
+ *
+ * Hydrates from the row and saves on blur / Send. Built on
  * {@link StationComposerDock} (ChatGPT-style dock chrome).
  *
  * When a {@link trailingAction} (Unbox Receive) owns the footer, Enter acts
@@ -56,7 +61,7 @@ export function LineNotesCard({
   onPrimaryAction,
   primaryActionDisabled = false,
 }: {
-  /** The one durable note (`receiving_lines.notes`) — composes the label + saves. */
+  /** The operator's durable item note (`receiving_line.notes`) — never printed. */
   notes: string;
   /** Overall Zoho PO header note (carton-level) — source for the push-to-PO action. */
   overallZohoNotes: string | null;
@@ -73,7 +78,7 @@ export function LineNotesCard({
   /** Note from the previous line touched this session — repeat-previous source. */
   previousLineNotes?: string;
   onNotesChange: (next: string) => void;
-  /** Persist the note to `receiving_lines.notes`. Returns true if it saved. */
+  /** Persist the note to `receiving_line.notes`. Returns true if it saved. */
   onSaveNotes: () => boolean;
   /** Append the note into the carton's synced PO note (external push). */
   onSaveOverallNote: (text: string) => void | Promise<void>;
@@ -336,9 +341,11 @@ export function LineNotesCard({
       // Receive CTA: Enter must fire even with an empty note (chat-send).
       // Default composer still requires non-empty text before Save.
       commitDisabled={onPrimaryAction ? primaryActionDisabled : undefined}
-      placeholder="Notes for this carton — printed on the label and saved"
-      ariaLabel="Carton notes"
-      commitAriaLabel="Save carton notes"
+      // Grain, stated plainly: this is the item note and it does NOT print.
+      // The printed face is edited from the label preview's Edit control.
+      placeholder="Note for this item — saved to the record, not printed"
+      ariaLabel="Item note"
+      commitAriaLabel="Save item note"
       commitTooltip={
         onPrimaryAction ? 'Receive (Enter) · Shift+Enter for newline' : 'Save notes (Enter)'
       }
