@@ -36,6 +36,7 @@ function code(src: string): string {
   return src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
 }
 
+const SCHEMA = code(sourceOf('../../../../lib/drizzle/schema.ts'));
 const UNBOX_CONTROLLER = code(sourceOf('./hooks/useUnboxLineController.ts'));
 const TESTING_CONTROLLER = code(sourceOf('../../../tech/hooks/useTestingLineController.ts'));
 const NOTES_CARD = code(sourceOf('./WorkspaceNotesCard.tsx'));
@@ -66,6 +67,40 @@ function firstCallArgs(src: string, name: string): string {
     return src.slice(from, i - 1);
   }
 }
+
+/** The body of a `pgTable('<name>', { ... })` declaration. */
+function pgTableBody(src: string, tableName: string): string {
+  const at = src.indexOf(`pgTable('${tableName}'`);
+  if (at === -1) return '';
+  const open = src.indexOf('{', at);
+  let depth = 1;
+  let i = open + 1;
+  for (; i < src.length && depth > 0; i += 1) {
+    const ch = src[i];
+    if (ch === '{') depth += 1;
+    else if (ch === '}') depth -= 1;
+  }
+  return src.slice(open + 1, i - 1);
+}
+
+test('the note/label split lives PER LINE ITEM, never on the carton', () => {
+  // A carton-level label note would force every line on a multi-line PO to
+  // print the same face — the opposite of the grain this split expresses. A
+  // carton-wide remark belongs in receiving_carton.support_notes.
+  const line = pgTableBody(SCHEMA, 'receiving_line');
+  const carton = pgTableBody(SCHEMA, 'receiving_carton');
+  assert.notEqual(line, '', 'expected a receiving_line pgTable');
+  assert.notEqual(carton, '', 'expected a receiving_carton pgTable');
+
+  assert.match(line, /label_note/, 'label_note belongs on the LINE');
+  assert.doesNotMatch(
+    carton,
+    /label_note/,
+    'label_note must never be hoisted to the carton — see source-of-truth.md → Note vs label grain',
+  );
+  // The carton keeps its own, differently-grained note fields.
+  assert.match(carton, /support_notes/, 'carton-wide remarks stay on support_notes');
+});
 
 test('the two buffers hydrate from their OWN columns', () => {
   // An item-note echo must not re-seed the face, and vice versa — so each
