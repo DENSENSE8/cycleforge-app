@@ -184,12 +184,37 @@ sessions' files (`selection-occupancy.ts`, `sidebar-navigation.ts`,
 guards ✓** (including the new `motion-framer-hooks.test.ts`). **No ratchet baseline
 raised**; `station-motion-bridge.guard.test.ts` untouched.
 
+### RESOLVED — the sidebar push toggle snaps under reduce, and stays that way
+
+**Ratified 2026-08-01.** Disabling the width animation under `prefers-reduced-motion`
+is **intended**. Keep it; do not re-litigate.
+
+- **Instant is the correct outcome, not a degraded one.** The vestibular trigger is
+  *smooth continuous motion* — the in-between frames. An instant state change does
+  not trigger it. And there is no crossfade equivalent of *making room*: the space
+  either exists or it does not. You can fade a slide; you cannot fade a reflow.
+- **This doc's own rule already implies it.** The push animation is sanctioned on
+  three conditions, the first being "the operator asked for it" — that is an argument
+  for why animating is *permissible*, not that it is load-bearing. A user-invoked
+  toggle with an unambiguous end state loses nothing by arriving immediately.
+- **It costs zero code.** Framer's default is already right; any deviation is new
+  surface area contradicting what WCAG 2.3.3 / Apple HIG prescribe.
+
+> **Refinement considered and REJECTED (for now).** The inner `<aside>`
+> (`SidebarNavColumn.tsx:104`) is a plain element, not a `motion.*`, so under reduce
+> the column snaps to full width with contents fully opaque — there is no fade cue at
+> all. Contents *could* fade in while the box snaps; opacity still tweens under the
+> floor (measured: 142 distinct values), so it would be free and non-vestibular.
+> Rejected because it solves a **different** problem (cognitive orientation, not
+> vestibular safety), it makes the reduced path *structurally different* from the
+> normal one (normal: a slide revealing already-painted content; reduced: a fade)
+> rather than a reduction of it, and it is a 2–3 site change —
+> `ContextPanelLayout:92` shares `sidebarNavColumnMount`, and the photo viewer's
+> `photoContextPanelMount` drawer is the third sanctioned push. Real cost, no
+> reported need. **Revisit only if someone actually reports the jump is
+> disorienting** — do not build for the hypothetical.
+
 ### Still open
 
-- **Is disabling the sidebar push toggle under reduce intended?** Behaviour is
-  confirmed (snap, not tween); the *intent* is a taste call. Argument for: a width
-  reflow is the most vestibularly aggressive motion in the app, and this doc already
-  calls the push toggle sanctioned *because* it is user-invoked — not because it must
-  survive reduce.
 - `CaptureStack` / `MobileFeed` push-up never independently measured.
 - No production-build hydration check.
