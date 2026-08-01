@@ -52,6 +52,39 @@ async function openUnbox(page: Page, receivingId: number, lineId: number, extra 
   await expect(page.getByTestId('receiving-workspace')).toBeVisible({ timeout: 30_000 });
 }
 
+/** Layout facts the geometry tests read. Rounded — sub-pixel is noise here. */
+async function geometry(page: Page) {
+  return page.evaluate(() => {
+    const box = (el: Element | null) => {
+      if (!el) return null;
+      const r = el.getBoundingClientRect();
+      return { w: Math.round(r.width), x: Math.round(r.x) };
+    };
+    const workspace = document.querySelector('[data-testid="receiving-workspace"]');
+    const displays = document.querySelector('[data-testid="receiving-displays-push"]');
+    return {
+      workspace: box(workspace),
+      displays: box(displays),
+      displaysPosition: displays ? getComputedStyle(displays).position : null,
+      // The station content column — `STATION_WORKBENCH_COLUMN` (max-w-[720px]).
+      column: box(workspace?.querySelector('.max-w-\\[720px\\]') ?? null),
+    };
+  });
+}
+
+/**
+ * The page frame must never scroll sideways. This is the invariant a squeezed
+ * centre would break first, and it holds regardless of which pixel widths the
+ * rail / column / ceiling happen to be today.
+ */
+async function expectNoHorizontalScroll(page: Page) {
+  const { scrollW, clientW } = await page.evaluate(() => ({
+    scrollW: document.documentElement.scrollWidth,
+    clientW: document.documentElement.clientWidth,
+  }));
+  expect(scrollW, 'the page body must never scroll horizontally').toBeLessThanOrEqual(clientW);
+}
+
 /** The dock's rendered text — the thing that must not move when a tab changes. */
 async function dockLabel(page: Page): Promise<string> {
   return (await page.getByTestId('sliced-action-dock').first().allInnerTexts()).join('|');
@@ -154,5 +187,88 @@ test.describe('Unbox Displays column', () => {
       new URL(page.url()).searchParams.get('display'),
       'opening Claim must drop ?display= too, or a reload reopens both',
     ).toBeNull();
+  });
+
+  /**
+   * Geometry — asserted as INVARIANTS, not sampled pixels (`verify.md` → measure
+   * in the real runner; assert the invariant, not a sample). Measured
+   * 2026-08-01 at 1440×900 for the record, so nobody re-measures to find out
+   * whether the column is survivable:
+   *
+   *   closed            centre column 720 (its max)
+   *   open @420 default centre column 636
+   *   open @560 ceiling centre column 496
+   *   narrow 900        Displays overlays; workspace width unchanged at 524
+   *
+   * No configuration produced horizontal document scroll.
+   */
+  test('pushes on desktop: the workspace holds, the content column yields', async ({
+    page,
+    request,
+  }) => {
+    const receivingId = await createCarton(request);
+    const lineId = await addLine(request, receivingId);
+
+    await openUnbox(page, receivingId, lineId);
+    const closed = await geometry(page);
+
+    await openUnbox(page, receivingId, lineId, '&display=classify');
+    await expect(page.getByTestId('receiving-displays-push')).toBeVisible({ timeout: 15_000 });
+    const open = await geometry(page);
+
+    // Push, not overlay: the column takes real in-flow width at desktop.
+    expect(open.displaysPosition).toBe('relative');
+    // The workbench host is unchanged — the column is squeezed from INSIDE it,
+    // so the page frame never reflows when a display opens.
+    expect(open.workspace?.w).toBe(closed.workspace?.w);
+    // …and the squeeze lands on the content column, which is what may yield.
+    expect(open.column!.w).toBeLessThan(closed.column!.w);
+    expect(open.column!.w).toBeGreaterThan(0);
+
+    await expectNoHorizontalScroll(page);
+  });
+
+  test('overlays below 1024 rather than crushing the carton', async ({ page, request }) => {
+    // The narrow path was proven for Ticket / Claim but never exercised for
+    // Displays — at 900 a 420px push column would leave ~104px of carton.
+    await page.setViewportSize({ width: 900, height: 900 });
+    const receivingId = await createCarton(request);
+    const lineId = await addLine(request, receivingId);
+
+    await openUnbox(page, receivingId, lineId);
+    const closed = await geometry(page);
+
+    await openUnbox(page, receivingId, lineId, '&display=classify');
+    await expect(page.getByTestId('receiving-displays-push')).toBeVisible({ timeout: 15_000 });
+    const open = await geometry(page);
+
+    expect(open.displaysPosition, 'narrow must overlay, never push').toBe('absolute');
+    expect(
+      open.workspace?.w,
+      'an overlay is out of flow — the carton keeps its width',
+    ).toBe(closed.workspace?.w);
+
+    await expectNoHorizontalScroll(page);
+  });
+
+  test('dragged to its width ceiling, the page still does not scroll sideways', async ({
+    page,
+    request,
+  }) => {
+    const receivingId = await createCarton(request);
+    const lineId = await addLine(request, receivingId);
+    // Seed the persisted resize preference at the 560 ceiling — the tightest
+    // centre an operator can produce without resizing the browser.
+    await page.addInitScript(() => {
+      window.localStorage.setItem('unbox-displays-push-width', '560');
+    });
+
+    await openUnbox(page, receivingId, lineId, '&display=classify');
+    await expect(page.getByTestId('receiving-displays-push')).toBeVisible({ timeout: 15_000 });
+
+    const open = await geometry(page);
+    expect(open.displays!.w).toBeGreaterThan(500);
+    expect(open.column!.w).toBeGreaterThan(0);
+    await expectNoHorizontalScroll(page);
   });
 });
