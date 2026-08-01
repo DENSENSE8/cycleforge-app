@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 
 import {
   PACKED_SAVED_VIEWS_KEY,
@@ -27,6 +29,30 @@ test('SAVED_VIEW_SURFACES includes ops, media, dashboard_*, and *_history', () =
   assert.ok(SAVED_VIEW_SURFACES.includes('receiving_incoming'));
   assert.ok(SAVED_VIEW_SURFACES.includes('testing_history'));
   assert.equal(SAVED_VIEW_SURFACES.length, 10);
+});
+
+/**
+ * The TS list and the DB CHECK are two halves of one discriminator. The
+ * inclusion test above passes if a surface is added to only one of them — and
+ * the failure mode is invisible until the first insert on the new surface is
+ * rejected by `saved_views_surface_chk` in production. Compare the sets.
+ */
+test('SAVED_VIEW_SURFACES matches the saved_views_surface_chk CHECK exactly', () => {
+  const sql = readFileSync(
+    fileURLToPath(new URL('../migrations/2026-07-29g_saved_views.sql', import.meta.url)),
+    'utf8',
+  );
+  const chk = /saved_views_surface_chk[\s\S]*?CHECK\s*\(\s*surface\s+IN\s*\(([\s\S]*?)\)\s*\)/i.exec(sql);
+  assert.ok(chk, 'could not find the saved_views_surface_chk CHECK in the birth migration');
+
+  const inCheck = [...chk[1].matchAll(/'([a-z_]+)'/g)].map((m) => m[1]).sort();
+  assert.ok(inCheck.length > 0, 'parsed an empty CHECK value list');
+
+  assert.deepEqual(
+    [...SAVED_VIEW_SURFACES].sort(),
+    inCheck,
+    'SAVED_VIEW_SURFACES and the DB CHECK disagree — a surface in only one place fails on first insert. Add it to BOTH (new values need a follow-up migration redefining the CHECK).',
+  );
 });
 
 test('GENERIC_SAVED_VIEW_SURFACES excludes operations and media_library', () => {
