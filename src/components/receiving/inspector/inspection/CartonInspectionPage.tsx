@@ -1,15 +1,16 @@
 'use client';
 
 /**
- * Carton read assembly — disposition bar, contents column, progress rail.
+ * Carton read assembly — floating identity chrome, contents column, progress rail.
  *
  * Shares the read model + atoms with Unbox. Never imports workbench editors
  * (decision D6 / anti-pattern: lobotomized work chrome).
  *
  * Progress reuses the details-stack carton pipeline (`ReceivingCartonPipeline`
  * + stage rows) on a Panel surface; photos use the same
- * `ReceivingPhotosSection` (read-only) below the stepper. Work escape is one
- * quiet header control via `openInUnboxHref` — no "Open in Unbox" spam.
+ * `ReceivingPhotosSection` (read-only) below the stepper. Header floats as a
+ * top context bookmark (station-bookmark SoT) with PO title · tracking · PO#
+ * plus quiet actions — never an in-flow pinned band.
  */
 
 import { useCallback, useMemo, useState } from 'react';
@@ -17,7 +18,6 @@ import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import { IconButton, Panel } from '@/design-system/primitives';
 import {
-  ChevronLeft,
   ChevronRight,
   Copy,
   History,
@@ -25,10 +25,19 @@ import {
   Loader2,
   Wrench,
 } from '@/components/Icons';
-import { PoChip, SerialChip, TrackingChip } from '@/components/ui/CopyChip';
+import {
+  ConditionGradeChip,
+  EmptySkuChipFace,
+  PoChip,
+  SerialChip,
+  SkuScanRefChip,
+  TrackingChip,
+} from '@/components/ui/CopyChip';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { WorkspaceTimelineTab } from '@/components/station/workbench';
 import { ReceivingAuditModal } from '@/components/receiving/workspace/ReceivingAuditModal';
+import { ProgressBadge } from '@/components/receiving/workspace/PoLineBadges';
+import { PoLineMetaGrid } from '@/components/receiving/workspace/PoLineMetaGrid';
 import { ReceivingCartonPipeline } from '@/components/station/receiving/ReceivingCartonPipeline';
 import { ReceivingPhotosSection } from '@/components/station/receiving/ReceivingPhotosSection';
 import type { ReceivingDetailsLog } from '@/components/station/receiving-details-log';
@@ -40,6 +49,11 @@ import {
   TOP_CHROME_ICON_GLYPH,
 } from '@/components/layout/header-shell';
 import {
+  STATION_IDENTITY_SCROLL_CLEARANCE,
+  stationBookmarkPanelClass,
+  stationContextBarHostClass,
+} from '@/components/station/entity-context/station-bookmark';
+import {
   buildCartonReadCopyText,
   shareCartonLink,
 } from '@/lib/receiving/carton-read-utilities';
@@ -48,8 +62,6 @@ import { conditionLabel } from '@/lib/conditions';
 import { conditionGradeTextClass } from '@/lib/condition-tone';
 import { sourcePlatformLabel } from '@/lib/source-platform';
 import { receivingTypeMeta } from '@/lib/receiving/receiving-type-meta';
-import { workflowStageDot, workflowStageLabel } from '@/lib/receiving/workflow-stages';
-import { unitStatusChipClass } from '@/lib/unit-status';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { formatDateTimePST } from '@/utils/date';
 import { copyToClipboard } from '@/utils/_dom';
@@ -60,32 +72,18 @@ import {
   cartonContentsSummary,
   cartonDisposition,
   cartonFacts,
-  cartonFlags,
+  cartonHeaderIdentity,
   cartonRecordMeta,
   cartonTimelineAnchor,
   type CartonDisposition,
   type CartonException,
   type CartonFact,
-  type CartonFlag,
+  type CartonHeaderIdentity,
   type CartonInspectorEvent,
   type CartonInspectorLine,
   type CartonInspectorPayload,
   type CartonInspectorReceiving,
 } from '../carton-inspector-model';
-
-const DISPOSITION_DOT: Record<CartonDisposition['tone'], string> = {
-  neutral: 'bg-text-soft',
-  info: 'bg-blue-500',
-  success: 'bg-emerald-500',
-  warning: 'bg-amber-500',
-  danger: 'bg-rose-500',
-};
-
-const FLAG_TONE: Record<CartonFlag['tone'], string> = {
-  info: 'bg-blue-50 text-blue-700 ring-blue-200',
-  warning: 'bg-amber-50 text-amber-700 ring-amber-200',
-  danger: 'bg-rose-50 text-rose-700 ring-rose-200',
-};
 
 const EXCEPTION_TONE: Record<CartonException['tone'], string> = {
   info: 'border-blue-200 bg-blue-50/80',
@@ -133,19 +131,6 @@ function toReceivingDetailsLog(receiving: CartonInspectorReceiving): ReceivingDe
   };
 }
 
-function FlagChip({ flag }: { flag: CartonFlag }) {
-  return (
-    <span
-      className={cn(
-        'rounded ring-1 ring-inset inset-chip text-role-micro uppercase tracking-widest',
-        FLAG_TONE[flag.tone],
-      )}
-    >
-      {flag.label}
-    </span>
-  );
-}
-
 function FactValue({ fact }: { fact: CartonFact }) {
   switch (fact.kind) {
     case 'condition':
@@ -187,8 +172,8 @@ export function CartonInspectionPage({ receivingId }: { receivingId: number }) {
     () => (receiving ? cartonDisposition(receiving, data?.totals, lines) : null),
     [receiving, data?.totals, lines],
   );
-  const flags = useMemo(
-    () => (receiving ? cartonFlags(receiving, lines) : []),
+  const headerIdentity = useMemo(
+    () => (receiving ? cartonHeaderIdentity(receiving, lines) : null),
     [receiving, lines],
   );
   const facts = useMemo(() => (receiving ? cartonFacts(receiving) : []), [receiving]);
@@ -219,19 +204,18 @@ export function CartonInspectionPage({ receivingId }: { receivingId: number }) {
   }, [receiving, copyingAll]);
 
   return (
-    <div className="flex h-full min-h-0 w-full flex-col bg-surface-canvas">
+    <div className="relative flex h-full min-h-0 w-full flex-col bg-surface-canvas">
       <DispositionBar
         receivingId={receivingId}
-        receiving={receiving ?? null}
-        disposition={disposition}
-        flags={flags}
+        identity={headerIdentity}
+        utilsDisabled={receiving == null}
         copyingAll={copyingAll}
         onShare={() => void handleShare()}
         onCopy={() => void handleCopy()}
         onAudit={() => setAuditOpen(true)}
       />
 
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      <div className={cn('min-h-0 flex-1 overflow-y-auto', STATION_IDENTITY_SCROLL_CLEARANCE)}>
         {isLoading ? (
           <div className="flex items-center gap-2 px-6 py-10 text-role-caption text-text-muted">
             <Loader2 className="h-4 w-4 animate-spin" /> Loading carton…
@@ -271,133 +255,114 @@ export function CartonInspectionPage({ receivingId }: { receivingId: number }) {
   );
 }
 
+function cartonHeaderTitle(identity: CartonHeaderIdentity): string {
+  if (identity.poNumber) {
+    const platform = identity.platform ? sourcePlatformLabel(identity.platform) : '';
+    return [platform, `PO ${identity.poNumber}`].filter(Boolean).join(' · ');
+  }
+  if (identity.productTitle) return identity.productTitle;
+  return `Carton ${identity.cartonId}`;
+}
+
 function DispositionBar({
   receivingId,
-  receiving,
-  disposition,
-  flags,
+  identity,
+  utilsDisabled,
   copyingAll,
   onShare,
   onCopy,
   onAudit,
 }: {
   receivingId: number;
-  receiving: CartonInspectorReceiving | null;
-  disposition: CartonDisposition | null;
-  flags: CartonFlag[];
+  identity: CartonHeaderIdentity | null;
+  utilsDisabled: boolean;
   copyingAll: boolean;
   onShare: () => void;
   onCopy: () => void;
   onAudit: () => void;
 }) {
-  const utilsDisabled = receiving == null;
+  const title = identity ? cartonHeaderTitle(identity) : `Carton ${receivingId}`;
+  const tracking = identity?.tracking ?? null;
+  const poNumber = identity?.poNumber ?? null;
 
   return (
-    <header className="flex shrink-0 items-center justify-between gap-4 border-b border-border-soft bg-surface-card px-6 py-3">
-      <div className="flex min-w-0 flex-1 items-center gap-3">
-        <HoverTooltip label="Back" focusable={false}>
-          <Link
-            href="/search"
-            aria-label="Back to search"
-            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-text-muted hover:bg-surface-canvas hover:text-text-default"
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Link>
-        </HoverTooltip>
-
-        {disposition ? (
-          <div className="flex min-w-0 items-center gap-2.5">
-            <span className={cn('h-2.5 w-2.5 shrink-0 rounded-full', DISPOSITION_DOT[disposition.tone])} />
-            <span className="text-role-title text-text-default">{disposition.label}</span>
-            {disposition.settled ? (
-              <span className="rounded bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200 inset-chip text-role-micro uppercase tracking-widest">
-                Settled
-              </span>
-            ) : null}
-          </div>
-        ) : (
-          <span className="text-role-title text-text-muted">Carton {receivingId}</span>
+    <div className={cn(stationContextBarHostClass, 'px-2 sm:px-4')}>
+      <Panel
+        padding="none"
+        radius="2xl"
+        elevation="none"
+        borderless
+        role="banner"
+        className={cn(
+          stationBookmarkPanelClass,
+          'pointer-events-auto flex min-h-10 w-full max-w-full items-center justify-between gap-3 overflow-visible px-3 py-1.5',
         )}
-
-        <div className="flex min-w-0 flex-wrap items-center gap-2 border-l border-border-soft pl-3 text-role-caption text-text-muted">
-          <span className="font-semibold tabular-nums text-text-default">Carton {receivingId}</span>
-          {receiving?.tracking ? <TrackingChip value={receiving.tracking} /> : null}
-          {receiving?.zoho_purchaseorder_number ? (
-            <PoChip
-              value={receiving.zoho_purchaseorder_number}
-              display={getLast4(receiving.zoho_purchaseorder_number)}
-            />
-          ) : null}
-          {receiving?.carrier ? (
-            <span className="text-role-eyebrow uppercase tracking-widest text-text-soft">
-              {receiving.carrier}
-            </span>
+      >
+        <div className="flex min-w-0 flex-1 items-center gap-3">
+          <span className="truncate text-role-title text-text-default">{title}</span>
+          {tracking || poNumber ? (
+            <div className="flex min-w-0 flex-wrap items-center gap-2 border-l border-border-soft pl-3">
+              {tracking ? <TrackingChip value={tracking} /> : null}
+              {poNumber ? <PoChip value={poNumber} display={getLast4(poNumber)} /> : null}
+            </div>
           ) : null}
         </div>
 
-        {flags.length > 0 ? (
-          <div className="hidden shrink-0 items-center gap-1.5 lg:flex">
-            {flags.map((f) => (
-              <FlagChip key={f.key} flag={f} />
-            ))}
+        <div className="flex shrink-0 items-center gap-2">
+          <div className={HEADER_ICON_CLUSTER}>
+            <div className={HEADER_ICON_WRAP}>
+              <HoverTooltip label="Share receiving link" asChild>
+                <IconButton
+                  size="md"
+                  disabled={utilsDisabled}
+                  onClick={onShare}
+                  ariaLabel="Share receiving link"
+                  className={HEADER_ICON_BTN_CLASS}
+                  icon={<Link2 className={TOP_CHROME_ICON_GLYPH} />}
+                />
+              </HoverTooltip>
+            </div>
+            <div className={HEADER_ICON_WRAP}>
+              <HoverTooltip label="Copy package + PO details" asChild>
+                <IconButton
+                  size="md"
+                  disabled={utilsDisabled || copyingAll}
+                  onClick={onCopy}
+                  ariaLabel="Copy all receiving details"
+                  className={HEADER_ICON_BTN_CLASS}
+                  icon={<Copy className={cn(TOP_CHROME_ICON_GLYPH, copyingAll && 'animate-pulse')} />}
+                />
+              </HoverTooltip>
+            </div>
+            <div className={HEADER_ICON_WRAP}>
+              <HoverTooltip label="Audit log" asChild>
+                <IconButton
+                  size="md"
+                  disabled={utilsDisabled}
+                  onClick={onAudit}
+                  ariaLabel="View audit log"
+                  className={HEADER_ICON_BTN_CLASS}
+                  icon={<History className={TOP_CHROME_ICON_GLYPH} />}
+                />
+              </HoverTooltip>
+            </div>
           </div>
-        ) : null}
-      </div>
 
-      <div className="flex shrink-0 items-center gap-2">
-        <div className={HEADER_ICON_CLUSTER}>
-          <div className={HEADER_ICON_WRAP}>
-            <HoverTooltip label="Share receiving link" asChild>
-              <IconButton
-                size="md"
-                disabled={utilsDisabled}
-                onClick={onShare}
-                ariaLabel="Share receiving link"
-                className={HEADER_ICON_BTN_CLASS}
-                icon={<Link2 className={TOP_CHROME_ICON_GLYPH} />}
-              />
-            </HoverTooltip>
-          </div>
-          <div className={HEADER_ICON_WRAP}>
-            <HoverTooltip label="Copy package + PO details" asChild>
-              <IconButton
-                size="md"
-                disabled={utilsDisabled || copyingAll}
-                onClick={onCopy}
-                ariaLabel="Copy all receiving details"
-                className={HEADER_ICON_BTN_CLASS}
-                icon={<Copy className={cn(TOP_CHROME_ICON_GLYPH, copyingAll && 'animate-pulse')} />}
-              />
-            </HoverTooltip>
-          </div>
-          <div className={HEADER_ICON_WRAP}>
-            <HoverTooltip label="Audit log" asChild>
-              <IconButton
-                size="md"
-                disabled={utilsDisabled}
-                onClick={onAudit}
-                ariaLabel="View audit log"
-                className={HEADER_ICON_BTN_CLASS}
-                icon={<History className={TOP_CHROME_ICON_GLYPH} />}
-              />
-            </HoverTooltip>
-          </div>
+          <HoverTooltip label="Work on this carton" asChild>
+            <Link
+              href={openInUnboxHref(receivingId)}
+              aria-label="Work on this carton"
+              className={cn(
+                'inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-text-soft hover:bg-surface-canvas hover:text-text-default',
+                focusRing('control', 'accent'),
+              )}
+            >
+              <Wrench className="h-4 w-4" />
+            </Link>
+          </HoverTooltip>
         </div>
-
-        <HoverTooltip label="Work on this carton" asChild>
-          <Link
-            href={openInUnboxHref(receivingId)}
-            aria-label="Work on this carton"
-            className={cn(
-              'inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-text-soft hover:bg-surface-canvas hover:text-text-default',
-              focusRing('control', 'accent'),
-            )}
-          >
-            <Wrench className="h-4 w-4" />
-          </Link>
-        </HoverTooltip>
-      </div>
-    </header>
+      </Panel>
+    </div>
   );
 }
 
@@ -441,15 +406,56 @@ function ContentsColumn({
         </div>
       ) : null}
 
-      {facts.length > 0 ? (
-        <div className="flex flex-wrap items-start justify-start gap-x-6 gap-y-2">
-          {facts.slice(0, 6).map((f) => (
-            <div key={f.key} className="min-w-0 shrink-0 space-y-0.5">
-              <p className="text-role-micro uppercase tracking-widest text-text-soft">{f.label}</p>
-              <FactValue fact={f} />
+      {facts.length > 0 || recordMeta.length > 0 ? (
+        <Panel padding="sm" radius="xl" elevation="none" className="space-y-4">
+          {facts.length > 0 ? (
+            <div className="flex flex-wrap items-start justify-start gap-x-6 gap-y-2">
+              {facts.slice(0, 6).map((f) => (
+                <div key={f.key} className="min-w-0 shrink-0 space-y-0.5">
+                  <p className="text-role-micro uppercase tracking-widest text-text-soft">{f.label}</p>
+                  <FactValue fact={f} />
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
+          ) : null}
+
+          {recordMeta.length > 0 ? (
+            <div className="flex flex-wrap items-start justify-start gap-x-6 gap-y-3">
+              {recordMeta.map((m) => (
+                <div key={m.key} className="min-w-0 shrink-0 space-y-1">
+                  <p className="text-role-micro uppercase tracking-widest text-text-soft">{m.label}</p>
+                  <p className="truncate text-role-caption tabular-nums text-text-default">
+                    {m.key === 'created' || m.key === 'updated'
+                      ? formatDateTimePST(m.value)
+                      : m.value}
+                  </p>
+                </div>
+              ))}
+            </div>
+          ) : null}
+
+          {receiving.listing_url?.trim() ? (
+            <a
+              href={receiving.listing_url.trim()}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1 text-role-caption text-text-accent hover:underline"
+            >
+              Open the source listing
+              <ChevronRight className="h-3.5 w-3.5" />
+            </a>
+          ) : null}
+        </Panel>
+      ) : receiving.listing_url?.trim() ? (
+        <a
+          href={receiving.listing_url.trim()}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex items-center gap-1 text-role-caption text-text-accent hover:underline"
+        >
+          Open the source listing
+          <ChevronRight className="h-3.5 w-3.5" />
+        </a>
       ) : null}
 
       {(purchaseOrders?.length ?? 0) > 1 ? (
@@ -471,36 +477,11 @@ function ContentsColumn({
       ) : null}
 
       {receiving.support_notes?.trim() ? (
-        <p className="whitespace-pre-wrap text-role-caption text-text-default">
-          {receiving.support_notes.trim()}
-        </p>
-      ) : null}
-
-      {recordMeta.length > 0 ? (
-        <div className="flex flex-wrap items-start justify-start gap-x-6 gap-y-3">
-          {recordMeta.map((m) => (
-            <div key={m.key} className="min-w-0 shrink-0 space-y-1">
-              <p className="text-role-micro uppercase tracking-widest text-text-soft">{m.label}</p>
-              <p className="truncate text-role-caption tabular-nums text-text-default">
-                {m.key === 'created' || m.key === 'updated'
-                  ? formatDateTimePST(m.value)
-                  : m.value}
-              </p>
-            </div>
-          ))}
-        </div>
-      ) : null}
-
-      {receiving.listing_url?.trim() ? (
-        <a
-          href={receiving.listing_url.trim()}
-          target="_blank"
-          rel="noreferrer"
-          className="inline-flex items-center gap-1 text-role-caption text-text-accent hover:underline"
-        >
-          Open the source listing
-          <ChevronRight className="h-3.5 w-3.5" />
-        </a>
+        <Panel padding="sm" radius="xl" elevation="none">
+          <p className="whitespace-pre-wrap text-role-caption text-text-default">
+            {receiving.support_notes.trim()}
+          </p>
+        </Panel>
       ) : null}
     </section>
   );
@@ -518,6 +499,18 @@ function ProgressRail({
 
   return (
     <section className="space-y-5">
+      <Panel padding="sm" radius="xl" elevation="none">
+        <ReceivingPhotosSection
+          receivingId={String(receiving.id)}
+          poRef={receiving.zoho_purchaseorder_number || receiving.zoho_purchaseorder_id || null}
+          downloadLabel={`recv-${receiving.id}`}
+          sectionTitle="Receiving photos"
+          launcherTitle="Photos"
+          readOnly
+          hideHeader
+        />
+      </Panel>
+
       <div className="space-y-2">
         <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">Progress</p>
         <Panel padding="sm" radius="xl" elevation="none">
@@ -525,18 +518,11 @@ function ProgressRail({
         </Panel>
       </div>
 
-      <ReceivingPhotosSection
-        receivingId={String(receiving.id)}
-        poRef={receiving.zoho_purchaseorder_number || receiving.zoho_purchaseorder_id || null}
-        downloadLabel={`recv-${receiving.id}`}
-        sectionTitle="Receiving photos"
-        launcherTitle="Photos"
-        readOnly
-      />
-
       <div className="space-y-2">
         <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">History</p>
-        <WorkspaceTimelineTab {...cartonTimelineAnchor(receiving)} />
+        <Panel padding="sm" radius="xl" elevation="none">
+          <WorkspaceTimelineTab {...cartonTimelineAnchor(receiving)} />
+        </Panel>
       </div>
 
       {disposition.exceptions.length > 0 ? (
@@ -547,7 +533,7 @@ function ProgressRail({
               <li
                 key={ex.key}
                 className={cn(
-                  'rounded-xl border px-3 py-2.5',
+                  'rounded-xl border bg-surface-card px-3 py-2.5',
                   EXCEPTION_TONE[ex.tone],
                 )}
               >
@@ -562,68 +548,59 @@ function ProgressRail({
   );
 }
 
+/**
+ * CONTENTS items — same collapsed PO-row chrome as {@link PoLineRow} (title +
+ * {@link PoLineMetaGrid} chips), without the active-row bottom body (condition
+ * pills / serial adder). Shared atoms only — never mounts PoLinesAccordion /
+ * PoLineRow (D6: no lobotomized work chrome).
+ */
 function ContentsList({ lines }: { lines: CartonInspectorLine[] }) {
   return (
-    <ul className="divide-y divide-border-soft rounded-xl border border-border-soft bg-surface-card">
+    <ul className="flex min-w-0 flex-col gap-2">
       {lines.map((line) => {
-        const expected = line.quantity_expected;
-        const received = line.quantity_received ?? 0;
-        const serials = line.serials ?? [];
+        const title = line.item_name?.trim() || line.sku?.trim() || 'Untitled line';
+        const sku = (line.sku || '').trim();
+        const serials = (line.serials ?? [])
+          .map((s) => (s.serial_number || '').trim())
+          .filter(Boolean);
         return (
-          <li key={line.id} className="space-y-1.5 px-3 py-2">
-            <div className="flex items-start justify-between gap-3">
-              <span className="flex min-w-0 items-center gap-2">
-                <span
-                  className={cn('h-2 w-2 shrink-0 rounded-full', workflowStageDot(line.workflow_status))}
-                />
-                <span className="min-w-0 truncate text-role-caption font-semibold text-text-default">
-                  {line.item_name?.trim() || line.sku?.trim() || 'Untitled line'}
-                </span>
-              </span>
-              <span className="shrink-0 text-role-caption tabular-nums text-text-muted">
-                {expected != null && expected > 0 ? `${received}/${expected}` : received}
-              </span>
+          <li
+            key={line.id}
+            className="relative min-w-0 overflow-hidden rounded-xl border border-border-soft bg-surface-card"
+          >
+            <div className="w-full min-w-0 px-3 pb-1 pt-1 text-left">
+              <p
+                className="min-w-0 truncate text-role-caption font-semibold text-text-default"
+                title={title}
+              >
+                {title}
+              </p>
+              <PoLineMetaGrid
+                qty={
+                  <ProgressBadge
+                    received={line.quantity_received ?? 0}
+                    expected={line.quantity_expected}
+                  />
+                }
+                sku={
+                  sku ? (
+                    <SkuScanRefChip value={sku} display={getLast4(sku)} dense />
+                  ) : (
+                    <EmptySkuChipFace dense />
+                  )
+                }
+                condition={<ConditionGradeChip grade={line.condition_grade} dense />}
+                serial={
+                  serials.length > 0 ? (
+                    <span className="flex min-w-0 flex-wrap items-center gap-1">
+                      {serials.map((sn) => (
+                        <SerialChip key={sn} value={sn} width="w-fit max-w-full" dense />
+                      ))}
+                    </span>
+                  ) : undefined
+                }
+              />
             </div>
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-role-eyebrow uppercase tracking-widest text-text-soft">
-              {line.sku ? <span className="truncate">{line.sku}</span> : null}
-              {line.workflow_status ? <span>{workflowStageLabel(line.workflow_status)}</span> : null}
-              {line.condition_grade ? (
-                <span className={conditionGradeTextClass(line.condition_grade)}>
-                  {conditionLabel(line.condition_grade, 'compact')}
-                </span>
-              ) : null}
-              {line.zoho_purchaseorder_number ? (
-                <PoChip
-                  value={line.zoho_purchaseorder_number}
-                  display={getLast4(line.zoho_purchaseorder_number)}
-                />
-              ) : null}
-              {line.tracking_number ? <TrackingChip value={line.tracking_number} /> : null}
-            </div>
-            {serials.length > 0 ? (
-              <ul className="space-y-1 border-l-2 border-border-soft pl-3">
-                {serials.map((s) => (
-                  <li key={s.id} className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                    <SerialChip value={s.serial_number} />
-                    {s.current_status ? (
-                      <span
-                        className={cn(
-                          'rounded ring-1 ring-inset inset-chip text-role-micro uppercase tracking-widest',
-                          unitStatusChipClass(s.current_status),
-                        )}
-                      >
-                        {s.current_status}
-                      </span>
-                    ) : null}
-                    {s.current_location ? (
-                      <span className="truncate text-role-eyebrow uppercase tracking-widest text-text-soft">
-                        {s.current_location}
-                      </span>
-                    ) : null}
-                  </li>
-                ))}
-              </ul>
-            ) : null}
           </li>
         );
       })}
@@ -633,7 +610,7 @@ function ContentsList({ lines }: { lines: CartonInspectorLine[] }) {
 
 function EventsList({ events }: { events: CartonInspectorEvent[] }) {
   return (
-    <ul className="divide-y divide-border-soft rounded-lg border border-border-soft">
+    <ul className="divide-y divide-border-soft rounded-xl border border-border-soft bg-surface-card">
       {events.map((e) => {
         const moved = e.prev_status && e.next_status && e.prev_status !== e.next_status;
         return (

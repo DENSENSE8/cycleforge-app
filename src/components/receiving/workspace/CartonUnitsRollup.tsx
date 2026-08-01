@@ -15,15 +15,16 @@
  * identical key so it shares that fetch (or triggers it when it mounts first).
  */
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { Package } from '@/components/Icons';
+import { Button } from '@/design-system/primitives';
 import { WorkspaceCard } from '@/design-system/components/WorkspaceCard';
 import { SerialPreviewStrip, BoxMembershipHint } from '@/components/receiving/SerialPreviewStrip';
 import { PreboxWizard, type PreboxWizardSerial } from '@/components/receiving/PreboxWizard';
 import { receivingSiblingsQueryKey } from '@/lib/queries/receiving-queries';
 import type { ReceivingLineRow } from '@/components/station/ReceivingLinesTable';
 import { receivingWorkspaceLineTitle } from '@/lib/receiving/po-group-title';
-import type { UnitsTabBridge } from '@/components/receiving/workspace/line-edit/terminal/unbox-tab-bridges';
 
 interface ApiResponse {
   success: boolean;
@@ -66,25 +67,20 @@ export function CartonUnitsRollupBody({
   receivingId,
   activeLineId,
   showEmpty = false,
-  onBridgeChange,
+  showPreboxAction = false,
 }: {
   receivingId: number | null;
   activeLineId: number | null;
   showEmpty?: boolean;
-  /** Register Prebox + serial count with the panel terminal dock. */
-  onBridgeChange?: (bridge: UnitsTabBridge | null) => void;
+  /**
+   * Render the local Prebox trigger. Prebox used to sit in the panel terminal
+   * dock's split menu while the Units tab was selected; the dock is
+   * carton-terminal now, so the action lives with its own display.
+   */
+  showPreboxAction?: boolean;
 }) {
   const { enabled, rows, totalSerials } = useCartonSiblingLines(receivingId);
   const [wizardOpen, setWizardOpen] = useState(false);
-
-  useEffect(() => {
-    if (!onBridgeChange || !enabled) return;
-    onBridgeChange({
-      serialCount: totalSerials,
-      openPrebox: () => setWizardOpen(true),
-    });
-    return () => onBridgeChange(null);
-  }, [onBridgeChange, enabled, totalSerials]);
 
   if (!enabled) return null;
   if (totalSerials === 0 && !showEmpty) return null;
@@ -103,6 +99,19 @@ export function CartonUnitsRollupBody({
   return (
     <>
       <div className="min-w-0">
+        {showPreboxAction && totalSerials > 0 ? (
+          <div className="mb-2 flex justify-end">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setWizardOpen(true)}
+              icon={<Package className="h-3.5 w-3.5" />}
+              title="Open the prebox wizard for units on this carton"
+            >
+              Prebox
+            </Button>
+          </div>
+        ) : null}
         {totalSerials > 0 ? (
           <ul className="divide-y divide-border-soft">
             {rows.map((line) => {
@@ -134,7 +143,8 @@ export function CartonUnitsRollupBody({
           </ul>
         ) : (
           <p className="rounded-lg border border-dashed border-border-soft bg-surface-canvas px-4 py-5 text-center text-role-caption text-text-soft">
-            No serials scanned on this carton yet. Use Add serial on the dock to scan.
+            No serials scanned on this carton yet. Scan into the serial field on the carton
+            line to add one.
           </p>
         )}
       </div>
