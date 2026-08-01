@@ -77,6 +77,19 @@ Fix: preserve `height` keys when present; collapse only transforms (`x` / `y` / 
 
 > **CORRECTION.** *"MotionConfig does this correctly by construction"* is **wrong**. `height` is one of framer's `positionalKeys` (`width · height · top · left · right · bottom` + transforms) and gets `{type:false}` under reduce — measured 30 distinct tween values → **2**. It **snaps**. Bridge and floor still agree, because `useMotionTransition`'s `{ duration: 0 }` also snaps a preserved height — but they agree on *snapping*, not on *tweening*.
 
+> **GUARDED 2026-08-01** (`a0f8d5a8b`). The fix shipped with no test, and it is
+> **unobservable in a browser at both current call sites**: `/signin` and
+> `CardShell` pair `useMotionPresence` with `useMotionTransition`, whose
+> `{ duration: 0 }` snaps everything, so the old flat shape and the fixed shape
+> measure *identically* under reduce (§7 row 3). Only a unit test separates them.
+>
+> The pure core is now exported as **`reducePresenceShape`** — a hook cannot be
+> called without a React renderer, and this repo's tests are plain `node:test` +
+> `tsx` with no testing-library/jsdom, so the pure function is the only honest
+> seam. `motion-framer-hooks.test.ts` pins the **real** `framerPresence` presets
+> (not synthetic shapes), including a sweep asserting no preset silently loses a
+> `height` key. Verified to fail **4/6** against the pre-fix implementation.
+
 ---
 
 ## 4. Update the rules — mandatory, own commit
@@ -94,7 +107,8 @@ Replace with: MotionConfig is the floor; the bridge is for surfaces needing *str
 
 ## 5. What survives
 
-- **`useMotionPresence` / `useMotionTransition` stay** — as the escape hatch for stronger-than-default reduction, with §3 fixed.
+- **`useMotionPresence` / `useMotionTransition` stay** — as the escape hatch for stronger-than-default reduction, with §3 fixed. The pure core is exported as `reducePresenceShape`; call the hook, not the core, from components.
+- **`motion-framer-hooks.test.ts` is new** (`a0f8d5a8b`) — it pins which presence keys survive reduction against the real `framerPresence` presets. It is the *only* thing that can catch a §3 regression, since the bug is invisible in a browser wherever `useMotionTransition` is also in play.
 - **`station-motion-bridge.guard.test.ts` stays** — it now pins deliberate stronger-reduction surfaces, not baseline compliance. Do not delete it and do not raise its baseline.
 - **Lane F's `ExpandableSection` deletion stays** — dead code on its own merit (zero call sites, barrel-exported only).
 - **Lane F's three fixes become optional polish**, not WCAG remediation. Deprioritize; do not cancel the deletion.
@@ -112,14 +126,70 @@ Replace with: MotionConfig is the floor; the bridge is for surfaces needing *str
 
 ## 7. Verification matrix
 
-Both states, in a real browser, against `:3050` (attach — never start/restart/kill it):
+Both states, in a real browser, against `:3050` (attach — never start/restart/kill it).
 
-| Case | Reduced ON | Reduced OFF |
-|---|---|---|
-| Unbridged consumer (`CommandBar`) | opacity only, no translate | unchanged from today |
-| Already-bridged (`CardShell`, `StationPacking`) | still reduced — **note the change**: crossfade now, not an instant cut (§3.1 of the costing; this is the more correct behavior) | unchanged |
-| `collapseHeight` consumer | height still collapses, no slide | unchanged |
-| Sanctioned push toggle (sidebar nav column width) | width animation disabled — **confirm this is intended** | unchanged |
-| `CaptureStack` / `MobileFeed` push-up | `layout` already `false` under reduce; consistent | unchanged |
+> **RUN 2026-08-01 — the floor is confirmed IN-APP.** Measured with Playwright
+> (`reducedMotion: 'reduce' | 'no-preference'`, storage state `tests/.auth/admin.json`,
+> 1440×900) rather than the Browser pane, which cannot emulate the media query —
+> and per `verify.md`, geometry claims come from the real runner. Method: sample a
+> property every `requestAnimationFrame` and count **distinct values**; ~1–2 means
+> the property SNAPPED, a high count means it tweened.
+>
+> §2 proved the mechanism in isolation. This run proves it **in the app tree**.
 
-Plus: `npm run verify` green, **no ratchet baseline raised**, and no hydration warning in the console (MotionConfig reads the media query client-side — same as today's `useReducedMotion`, so no regression expected, but confirm).
+| Case | Reduced ON | Reduced OFF | Verdict |
+|---|---|---|---|
+| **Unbridged** — `BootSplash` ring + sweep | `scale` **1 distinct** (frozen 1.0) · `translateX` **1 distinct** (frozen) · `opacity` **142 distinct** (0.152–0.599) | `scale` 96 (1.002–1.12) · `translateX` 145 (−64→170) · `opacity` 145 | ✅ **PASS** — transforms freeze, opacity keeps tweening |
+| **Bridged** — `/signin` `collapseHeight` reveal | `height` **1 distinct @ 66.2px** · `opacity` **1 distinct @ 1** — instant, fully formed | `height` 2.3→66.2 (26 distinct) · `opacity` 0→1 (21) | ⚠️ **row 2 expectation was WRONG** — see below |
+| `collapseHeight` consumer | reaches natural height, no slide | real expand | ✅ (bridged path only — see gap) |
+| Sanctioned push toggle (sidebar nav column) | `width` 0→240px in **2 distinct** = snap; animation disabled, column still opens | real tween | ✅ behaviour confirmed — **intent still needs a human call** |
+| `CaptureStack` / `MobileFeed` push-up | not separately measured; mobile `/dashboard` load clean | — | ⚪ not measured |
+
+**Row 1's target was replaced.** `CommandBar` proves nothing (§2 already flagged it —
+it hand-rolls `useReducedMotion()` at `:252` and reduces either way). `BootSplash`
+(`src/components/boot/BootSplash.tsx`) is the correct probe: pure framer, **no bridge
+and no `useReducedMotion`**, animating a transform *and* an opacity on the same
+element, so one measurement answers the whole question and any difference between
+states is attributable **only** to `MotionConfig`.
+
+> **CORRECTION — row 2 as written is wrong.** Already-bridged surfaces do **not**
+> "crossfade now, not an instant cut". `useMotionTransition` returns `{ duration: 0 }`
+> under reduce, which zeroes **opacity too**, and an explicit transition beats
+> `MotionConfig`'s per-key handling. Bridged surfaces still instant-cut, exactly as
+> before this lane. The crossfade-instead-of-cut improvement lands **only on
+> unbridged surfaces** — which is precisely where it was missing, so the lane's value
+> stands; only this row's prediction was wrong. `motion-crossfade.md` states this
+> correctly and needed no edit.
+
+**Coverage gap — the unbridged `collapseHeight` path is untested in-app.**
+`CollapsibleGroupRow` (the one raw `framerPresence.collapseHeight` consumer) was
+unreachable: zero `role="row"[aria-expanded]` elements on `/dashboard`, `/incoming`
+or `/unbox` in current dogfood data, and the dashboard loading state renders
+`BootSplash`, not `SkeletonList`. `BootSplash` covers the same mechanism more
+strongly, so this was not chased further.
+
+**Hydration — clean, with a caveat.** Warnings appeared under `reduce` in 2 of 3
+early loads, which looked like a regression. It does not hold up: an **interleaved
+warm A/B of 6 loads per state showed 0/6 in both**, and one early hit was
+`Switched to client rendering because the server rendering errored` — a Turbopack
+cold-compile artifact. Correlated with dev-mode first compile, **not** with `reduce`.
+Not tested against a production build.
+
+**`npm run verify` — red, none of it from this lane.** The shared tree was moving
+mid-run (`Lint` flipped ✗→✓ between runs with no action). Failures: `Typecheck` — 3×
+`Cannot find module '@/components/dogfood/DogfoodSurfaceGate'` in
+`src/app/{ai,ai-chat,sourcing}/layout.tsx`; `knip` — 11 findings, all in other
+sessions' files (`selection-occupancy.ts`, `sidebar-navigation.ts`,
+`unbox-right-edge.ts`, …). Lane G's own files: ESLint exit 0, **Unit tests + DS
+guards ✓** (including the new `motion-framer-hooks.test.ts`). **No ratchet baseline
+raised**; `station-motion-bridge.guard.test.ts` untouched.
+
+### Still open
+
+- **Is disabling the sidebar push toggle under reduce intended?** Behaviour is
+  confirmed (snap, not tween); the *intent* is a taste call. Argument for: a width
+  reflow is the most vestibularly aggressive motion in the app, and this doc already
+  calls the push toggle sanctioned *because* it is user-invoked — not because it must
+  survive reduce.
+- `CaptureStack` / `MobileFeed` push-up never independently measured.
+- No production-build hydration check.
