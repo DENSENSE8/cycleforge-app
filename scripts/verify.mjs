@@ -62,6 +62,10 @@ const GATES = [
           advisory: true, // ci.yml runs this continue-on-error
         },
         { name: 'Schema drift', cmd: 'node', args: ['scripts/schema-drift-guard.mjs', '--check'] },
+        // Doc catalog drift. Fix is one command: `pnpm portfolio:sot`.
+        // Added 2026-08-01 — the check existed but was gated by nothing, and
+        // DOC-CATALOG.md had drifted 71 files behind before anyone noticed.
+        { name: 'Doc catalog drift', cmd: 'node', args: ['scripts/portfolio-sot-sync.mjs', '--check'] },
       ]),
 ];
 
