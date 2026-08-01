@@ -113,17 +113,29 @@ chip keeps pairing reachable with the column closed, so the affordance is not lo
 **Decide:** either move the pencil back beside the thing it opens, or move
 Package Pairing into a display. Do not leave it undecided a second time.
 
-### 3.4 — Two right-edge grammars now coexist *(needs one story)*
+### 3.4 — Two right-edge grammars — **DONE (the premise died)**
 
-Lane B landed `UnboxProcedureRail`, which registers the step checklist into a new
-**ambient region** on `RightRailHost` (`lib/right-rail/procedure-store.ts`), while
-Displays / Ticket / Claim / tool are **push columns** that squeeze the workbench.
-Both are "the right edge" to an operator. Nobody has written down when a surface
-belongs to which.
+Written up expecting a decision rule for "ambient region vs push column". By the
+time it was picked up, **one grammar had won**: the ambient region built for the
+Unbox procedure (`procedure-store.ts`, `RightRailProcedureRegion`,
+`useRegisterRightRailProcedure`, `UnboxProcedureRail`) was deleted, and the
+procedure became the **`checklist` display inside the Displays push column**
+(`UnboxProcedureChecklist`, primary).
 
-**Do:** add the decision rule to `source-of-truth.md` → Right-rail modality in the
-same style as the existing occupant table — ambient/persistent status vs.
-exclusive/dismissable work surface — before a third surface picks by coin flip.
+So the rule recorded in `source-of-truth.md` → Right-rail modality is not a
+chooser — it is a **closed door**: exactly two grammars (RightRailHost float ·
+station push column), no ambient always-on region, and the reason it must not be
+rebuilt (a second permanent consumer of an edge whose host renders exactly one
+occupant by construction). The positive form: *a surface that should stay
+visible while the operator works is a DISPLAY the operator picks, not a region
+that outranks the picker.*
+
+Also corrected `procedure-divergence.guard.test.ts`, which still called it "the
+right-rail checklist at the bench".
+
+**Note for whoever reads this next:** the retirement rationale above is
+**structural — inferred from the code**, not quoted from the lane that did it.
+If that lane wrote down a different reason, theirs wins; fold it in.
 
 ### 3.5 — Promote the expand strip to a DS primitive
 

@@ -2,7 +2,7 @@
  * Hard law: the station bench and the Studio declaration describe ONE procedure.
  *
  * Two surfaces render a station's steps — the Studio Procedure lens (owner:
- * "what should happen here") and the right-rail checklist at the bench
+ * "what should happen here") and the bench Checklist display
  * (operator: "where am I"). They were authored independently, hours apart, in
  * different lanes, and by the time anyone noticed there were FOUR step
  * vocabularies for Unbox alone:
