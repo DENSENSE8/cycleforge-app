@@ -160,6 +160,8 @@ function toCanonicalLine(node: ShopifyOrderNode): CanonicalOrderLine {
     condition: '',
     quantity: String(quantity),
     notes: '',
+    // See shipstation.ts — prefer Shopify's customer id/email over a name.
+    customerName: '',
     accountSource: ACCOUNT_SOURCE,
     trackings: [],
     shipByDate: null,

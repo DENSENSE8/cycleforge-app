@@ -132,7 +132,12 @@ async function upsertOrderDeadline(
 /**
  * POST /api/orders/assign
  * Assigns tech and/or packer to one or more orders via work_assignments.
- * Also handles non-assignment order field updates (ship_by_date, notes, etc.).
+ * Also handles non-assignment order field updates (ship_by_date, condition, etc.).
+ *
+ * NOT notes: an order annotation goes to `order_notes` via
+ * POST /api/orders/[id]/notes. This route used to accept `{ notes }` and
+ * overwrite the scalar `orders.notes`, which made the same note writable in two
+ * places — the thing `2026-07-28_order_notes.sql`'s scope boundary forbids.
  */
 export const POST = withAuth(async (req: NextRequest, ctx) => {
   try {
@@ -146,7 +151,6 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       shipByDate,
       outOfStock,
       isOutOfStock,
-      notes,
       isUrgent,
       shippingTrackingNumber,
       trackingLinkEdits,
@@ -319,10 +323,6 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         updates.push(`is_out_of_stock = $${paramCount++}`);
         values.push(outOfStockValueBoolean);
       }
-      if (notes !== undefined) {
-        updates.push(`notes = $${paramCount++}`);
-        values.push(notes);
-      }
       if (isUrgent !== undefined) {
         updates.push(`is_urgent = $${paramCount++}`);
         values.push(Boolean(isUrgent));
@@ -371,7 +371,6 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       if (orderNumber !== undefined) changedFields.orderNumber = orderNumber;
       if (shipByDate !== undefined) changedFields.shipByDate = shipByDate;
       if (outOfStock !== undefined || isOutOfStock !== undefined) changedFields.isOutOfStock = outOfStockValueBoolean;
-      if (notes !== undefined) changedFields.notes = notes;
       if (isUrgent !== undefined) changedFields.isUrgent = Boolean(isUrgent);
       if (shippingTrackingNumber !== undefined) changedFields.shippingTrackingNumber = shippingTrackingNumber;
       if (Array.isArray(trackingLinkEdits) && trackingLinkEdits.length > 0) changedFields.trackingLinkEdits = trackingLinkEdits;

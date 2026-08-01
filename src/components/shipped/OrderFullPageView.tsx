@@ -170,18 +170,14 @@ function OrderFullPageLoaded({
     setItemNumber,
     shippingTrackingNumber,
     setShippingTrackingNumber,
-    notes,
-    setNotes,
     isOutOfStock,
     shipByDate,
     setShipByDate,
     isSavingInlineFields,
-    isSavingNotes,
     isSavingOutOfStock,
     isSavingShipByDate,
     saveInlineFields,
     saveShipByDate,
-    handleSaveNotes,
     handleSaveOutOfStock,
   } = useShippedDetailState(order, onReload);
 
@@ -331,12 +327,6 @@ function OrderFullPageLoaded({
         showMarkAsShipped
         showOutOfStock
         showNotes
-        notes={notes}
-        setNotes={setNotes}
-        isSavingNotes={isSavingNotes}
-        onSaveNotes={() => {
-          void handleSaveNotes(() => setActiveInput('none'));
-        }}
         isOutOfStock={isOutOfStock}
         isSavingOutOfStock={isSavingOutOfStock}
         onSaveOutOfStock={(checked) => {

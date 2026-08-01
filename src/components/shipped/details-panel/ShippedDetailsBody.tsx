@@ -70,10 +70,6 @@ export interface ShippedDetailsBodyProps {
   setActiveInput: React.Dispatch<React.SetStateAction<ShippedActiveInput>>;
   stackActionBar: ShippedStackActionBar;
   editableFields: ShippedEditableFields;
-  notes: string;
-  setNotes: (value: string) => void;
-  isSavingNotes: boolean;
-  onSaveNotes: () => void;
   isOutOfStock: boolean;
   isSavingOutOfStock: boolean;
   onSaveOutOfStock: (checked: boolean) => void | Promise<void>;
@@ -105,10 +101,6 @@ export function ShippedDetailsBody({
   setActiveInput,
   stackActionBar,
   editableFields,
-  notes,
-  setNotes,
-  isSavingNotes,
-  onSaveNotes,
   isOutOfStock,
   isSavingOutOfStock,
   onSaveOutOfStock,
@@ -303,11 +295,13 @@ export function ShippedDetailsBody({
     </section>
   ) : null;
 
+  const showTriage = showDashboardDelete && Number(shipped.id) > 0;
+
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="min-h-0 flex-1 overflow-y-auto no-scrollbar">
         {/*
-          Record-plane triage — the shared row flag + the attributed ops-note
+          Record-plane triage — the shared row flag + the attributed note
           trail. ABOVE the tab body, not inside one tab: both are facts about
           the record, and this panel's default tab is per-record
           (`resolveOrderInspectorContext`), so a tab-scoped placement meant the
@@ -315,12 +309,13 @@ export function ShippedDetailsBody({
           that a row is flagged or annotated; this is the one place that says
           which tag, why, and who wrote the notes.
         */}
-        {showDashboardDelete && Number(shipped.id) > 0 ? (
+        {showTriage ? (
           <div className="pt-4">
             <OrderTriageSection
               orderId={Number(shipped.id)}
               flag={shipped.row_flag?.flag}
               flagSetBy={shipped.row_flag?.by}
+              legacyNote={shipped.notes}
             />
           </div>
         ) : null}
@@ -334,11 +329,10 @@ export function ShippedDetailsBody({
           setActiveInput={setActiveInput}
           showMarkAsShipped={showDashboardExtras}
           showOutOfStock={showDashboardExtras}
-          showNotes
-          notes={notes}
-          setNotes={setNotes}
-          isSavingNotes={isSavingNotes}
-          onSaveNotes={onSaveNotes}
+          /* One composer per panel: when the triage section above already
+             mounts the trail, the dock must not mount a second one for the
+             same store. */
+          showNotes={!showTriage}
           isOutOfStock={isOutOfStock}
           isSavingOutOfStock={isSavingOutOfStock}
           onSaveOutOfStock={onSaveOutOfStock}

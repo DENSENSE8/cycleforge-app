@@ -15,6 +15,7 @@ function line(overrides: Partial<CanonicalOrderLine> = {}): CanonicalOrderLine {
     condition: '',
     quantity: '1',
     notes: '',
+    customerName: '',
     accountSource: '',
     status: null,
     trackings: [],

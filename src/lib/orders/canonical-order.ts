@@ -45,6 +45,18 @@ export interface CanonicalOrderLine {
   quantity: string;
   /** Buyer / operator note → `orders.notes`. */
   notes: string;
+  /**
+   * The buyer's name as the source reported it, when the source carries one but
+   * no customer identity the writer could match on (no id, no email, no phone).
+   *
+   * The writer resolves it to a real `customers` row and sets
+   * `orders.customer_id`. It is deliberately NOT a note: a CSV import used to
+   * stuff `"Customer: <name>"` into `notes` because the name had nowhere else
+   * to go, which made it invisible to every customer-scoped read and put prose
+   * in a column the operator also types into. `''` when the source has no name
+   * or already carries a matchable customer.
+   */
+  customerName: string;
   /** Channel label → `orders.account_source`. */
   accountSource: string;
   /**

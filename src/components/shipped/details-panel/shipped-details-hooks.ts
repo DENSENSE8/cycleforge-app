@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { ShippedOrder } from '@/lib/neon/orders-queries';
 import { buildShippedCopyInfo } from '@/utils/copyallshipped';
 import { useDeleteOrderRow } from '@/hooks';
@@ -27,7 +27,6 @@ export function useShippedDetailState(initialShipped: ShippedOrder, onUpdate: ()
   const [orderNumber, setOrderNumber] = useState(initialShipped.order_id || '');
   const [itemNumber, setItemNumber] = useState(initialShipped.item_number || '');
   const [shippingTrackingNumber, setShippingTrackingNumber] = useState(initialShipped.shipping_tracking_number || '');
-  const [notes, setNotes] = useState(initialShipped.notes || '');
   const [isOutOfStock, setIsOutOfStock] = useState(
     Boolean((initialShipped as { is_out_of_stock?: boolean }).is_out_of_stock),
   );
@@ -41,54 +40,27 @@ export function useShippedDetailState(initialShipped: ShippedOrder, onUpdate: ()
   });
   const {
     isSavingInlineFields,
-    isSavingNotes,
     isSavingOutOfStock,
     isSavingShipByDate,
     saveInlineFields: persistInlineFields,
-    saveNotes,
     saveOutOfStock,
     saveShipByDate,
     resetRefs,
   } = fieldSave;
 
-  // Latest-refs so the re-seed effect below can flush the OUTGOING record's note
-  // without taking `notes` / `saveNotes` as deps (which would re-run the re-seed
-  // on every keystroke and wipe the draft being typed).
-  const notesRef = useRef(notes);
-  notesRef.current = notes;
-  const saveNotesRef = useRef(saveNotes);
-  saveNotesRef.current = saveNotes;
-  /** The note this panel last seeded from a record — the dirty-check baseline. */
-  const seededNotesRef = useRef(String(initialShipped.notes || ''));
-  const seededIdRef = useRef(Number(initialShipped.id));
-
   useEffect(() => {
-    // Record swapped under a MOUNTED panel (queue j/k navigation, or a row click
-    // while the inspector is open). The re-seed below overwrites `notes` with the
-    // incoming record's value, so an unsaved draft for the order we are leaving
-    // would vanish silently. Flush it first — `saveNotes` still closes over the
-    // OUTGOING orderId at this point, because `setShipped` has not run yet.
-    //
-    // Fire-and-forget on purpose: this is a throughput queue, so navigation is
-    // never blocked and never prompts. A failed save surfaces through the shared
-    // toast path in `useOrderFieldSave`.
-    const nextId = Number(initialShipped.id);
-    if (seededIdRef.current !== nextId) {
-      const draft = notesRef.current.trim();
-      if (draft !== seededNotesRef.current.trim()) {
-        void saveNotesRef.current(draft);
-      }
-    }
-    seededIdRef.current = nextId;
-    seededNotesRef.current = String(initialShipped.notes || '');
-
+    // Note: this used to flush an unsaved note draft for the OUTGOING record
+    // before re-seeding (the panel swaps content in place on queue j/k
+    // navigation — `display/motion-crossfade.md` → queue-processing inspector).
+    // Notes are no longer a panel-held draft over a scalar column: they append
+    // to `order_notes` on submit, so there is nothing left that a record swap
+    // could silently discard. The rest of the re-seed is unchanged.
     setShipped(initialShipped);
     const preferredDate = String(initialShipped.ship_by_date || '').trim() || initialShipped.created_at || '';
     setShipByDate(toMonthDayYearCurrent(preferredDate));
     setOrderNumber(initialShipped.order_id || '');
     setItemNumber(initialShipped.item_number || '');
     setShippingTrackingNumber(initialShipped.shipping_tracking_number || '');
-    setNotes(initialShipped.notes || '');
     setIsOutOfStock(Boolean((initialShipped as { is_out_of_stock?: boolean }).is_out_of_stock));
     resetRefs(
       initialShipped.order_id || '',
@@ -128,23 +100,6 @@ export function useShippedDetailState(initialShipped: ShippedOrder, onUpdate: ()
     }
   }, [isOutOfStock, saveOutOfStock, setIsOutOfStock, setShipped, shipped]);
 
-  const handleSaveNotes = useCallback(async (onSaved?: () => void) => {
-    const trimmed = notes.trim();
-    const currentSaved = String(shipped.notes || '').trim();
-    if (trimmed === currentSaved) {
-      onSaved?.();
-      return;
-    }
-    try {
-      await saveNotes(trimmed);
-      setShipped((current) => ({ ...current, notes: trimmed }));
-      onSaved?.();
-    } catch (error) {
-      console.error('Failed to save notes:', error);
-      setNotes(shipped.notes || '');
-    }
-  }, [notes, saveNotes, setNotes, setShipped, shipped.notes]);
-
   useEffect(() => {
     const handleClose = () => {
       void (async () => {
@@ -165,20 +120,15 @@ export function useShippedDetailState(initialShipped: ShippedOrder, onUpdate: ()
     setItemNumber,
     shippingTrackingNumber,
     setShippingTrackingNumber,
-    notes,
-    setNotes,
     isOutOfStock,
     shipByDate,
     setShipByDate,
     isSavingInlineFields,
-    isSavingNotes,
     isSavingOutOfStock,
     isSavingShipByDate,
     saveInlineFields,
-    saveNotes,
     saveShipByDate,
     saveOutOfStockIfChanged,
-    handleSaveNotes,
     handleSaveOutOfStock,
   };
 }

@@ -76,12 +76,16 @@ test.describe('surface param isolation — the boundary parse', () => {
   test.skip(({ isMobile }) => !!isMobile, 'these assert desktop chrome; the pane test is mobile-only');
 
   /**
-   * `/sourcing` used to render the `ParkedSurface` stand-in, so `SourcingPage`
-   * — and therefore its hygiene hook — never mounted and these were skipped.
-   * Dogfood parking is retired and the real workspace now mounts, so the
-   * boundary parse is observable: unskipped as that comment promised.
+   * `/sourcing` is in `PARKED_SURFACE_KEYS` (`src/lib/dogfood/parked-surfaces.ts`),
+   * so the route renders the `ParkedSurface` stand-in and `SourcingPage` — and
+   * therefore its hygiene hook — never mounts. Its spec is real groundwork (the
+   * nav targets construct through it today, exactly like parked `/operations` and
+   * `/`), but the boundary parse is unobservable until the surface is unparked.
+   * These unskip the day it is.
    */
-  test.describe('/sourcing', () => {
+  test.describe('/sourcing (parked)', () => {
+    test.skip(true, '/sourcing renders the parked stand-in; its hygiene hook cannot mount');
+
     test('drops a foreign param but keeps its own declared set', async ({ page }) => {
     // `skuId` belongs to /products; `by` and `range` belong here and were the two
     // keys BOTH of this surface's old clear lists forgot.

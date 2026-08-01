@@ -7,6 +7,10 @@ import { ShippedOrder } from '@/lib/neon/orders-queries';
 import { dispatchNavigateShippedDetails } from '@/utils/events';
 import { usePanelActions } from '@/hooks/usePanelActions';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
+import { RailActionRegion } from '@/components/dashboard/rail/OrderRailActions';
+
+/** Kill switch for the 1-row rail action region — see the mount site below. */
+const RAIL_ACTION_REGION_IN_INSPECTOR = false;
 import { WorkOrderAssignmentCard } from '@/components/work-orders/WorkOrderAssignmentCard';
 import { type PaneHeaderActionBarAction } from '@/components/ui/pane-header';
 import type { DetailsStackDurationData, ShippedActiveInput } from './stacks/types';
@@ -78,18 +82,14 @@ export function ShippedDetailsPanel({
     setItemNumber,
     shippingTrackingNumber,
     setShippingTrackingNumber,
-    notes,
-    setNotes,
     isOutOfStock,
     shipByDate,
     setShipByDate,
     isSavingInlineFields,
-    isSavingNotes,
     isSavingOutOfStock,
     isSavingShipByDate,
     saveInlineFields,
     saveShipByDate,
-    handleSaveNotes,
     handleSaveOutOfStock,
   } = useShippedDetailState(initialShipped, onUpdate);
 
@@ -283,10 +283,6 @@ export function ShippedDetailsPanel({
               showMarkAsShipped
               showOutOfStock
               showNotes
-              notes={notes}
-              setNotes={setNotes}
-              isSavingNotes={isSavingNotes}
-              onSaveNotes={() => { void handleSaveNotes(() => setActiveInput('none')); }}
               isOutOfStock={isOutOfStock}
               isSavingOutOfStock={isSavingOutOfStock}
               onSaveOutOfStock={(checked) => {
@@ -298,6 +294,21 @@ export function ShippedDetailsPanel({
                 onUpdate();
               }}
             />
+
+            {/* Rail action region — the bottom capsule's replacement for a
+                1-row selection.
+                DISABLED: mounting it here makes the record open and then close
+                itself (URL goes `?openOrderId=N` → back to `?unshipped`), which
+                red-lined 4 specs. Bisected to this mount: with it removed they
+                pass. The 2+ path (`OrderRailShell`) is unaffected. Cause is not
+                yet root-caused — prime suspect is `selectionActions` churning
+                identity each render (its `useMemo` deps include callbacks from
+                `useWorkOrderAssignment`), so `publishRailActions` emits on every
+                render and the store notification lands mid-open.
+                Do NOT re-enable without re-running:
+                  npx playwright test dashboard-bulk-actions dashboard-inspector-non-modal --project=qa-desktop
+                Tracked: docs/todo/order-rail-selection-plane-PLAN.md §Phase 2 status. */}
+            {RAIL_ACTION_REGION_IN_INSPECTOR ? <RailActionRegion /> : null}
           </>
         ) : (
         <ShippedDetailsBody
@@ -331,10 +342,6 @@ export function ShippedDetailsPanel({
             onSaveInline: saveInlineFields,
             onSaveShipByDate: saveShipByDate,
           }}
-          notes={notes}
-          setNotes={setNotes}
-          isSavingNotes={isSavingNotes}
-          onSaveNotes={() => { void handleSaveNotes(() => setActiveInput('none')); }}
           isOutOfStock={isOutOfStock}
           isSavingOutOfStock={isSavingOutOfStock}
           onSaveOutOfStock={(checked) => {

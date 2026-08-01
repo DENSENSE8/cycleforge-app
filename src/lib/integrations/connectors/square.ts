@@ -83,6 +83,8 @@ function toCanonicalLine(order: SquareOrder): CanonicalOrderLine {
     condition: '',
     quantity: String(quantity),
     notes: '',
+    // See shipstation.ts — prefer Square's customer id over a name.
+    customerName: '',
     accountSource: ACCOUNT_SOURCE,
     trackings: [],
     shipByDate: null,

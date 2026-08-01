@@ -181,6 +181,10 @@ export function mapSheetRowsToCanonicalLines(
       // A blank quantity cell means one unit, not zero.
       quantity: cell(row, colIndices.quantity) || '1',
       notes: cell(row, colIndices.note),
+      // The sheet layout has no customer column, so there is no buyer name to
+      // resolve. Its `note` cell stays a note — it is an operator remark, not
+      // an identity smuggled into free text.
+      customerName: '',
       accountSource: cell(row, colIndices.platform),
       // A sheet carries no lifecycle opinion — the writer inserts 'unassigned'.
       status: null,
