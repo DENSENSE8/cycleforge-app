@@ -2,7 +2,9 @@
 
 /**
  * New-order intake in the shared right detail-stack rail (RightRailHost).
- * Backdrop / Esc close via the host; header X still works through the form shell.
+ * Non-modal float — same metric as `detail:order` / `detail:receiving`
+ * (no scrim, queue stays live). Esc close via the host; header X still works
+ * through the form shell.
  */
 
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
@@ -21,7 +23,12 @@ export function NewOrderEntryOverlay({
   if (!open) return null;
 
   return (
-    <DetailStackRailRegistrar id="detail:new-order" onClose={onClose}>
+    <DetailStackRailRegistrar
+      id="detail:new-order"
+      onClose={onClose}
+      modal={false}
+      ariaLabel="New order entry"
+    >
       <ShippedIntakeForm onClose={onClose} onSubmit={submitNewOrder} />
     </DetailStackRailRegistrar>
   );
