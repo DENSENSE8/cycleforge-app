@@ -23,6 +23,10 @@ interface LineRow {
   unit_price?: string | null;
   zoho_notes?: string | null;
   receiving_zoho_notes?: string | null;
+  /** Operator item note — never printed (2026-07-31 grain split). */
+  notes?: string | null;
+  /** Printed label face center text — the buffer `notes` used to double as. */
+  label_note?: string | null;
 }
 
 const ACTIVE = new Set(['MATCHED', 'UNBOXED', 'ARRIVED', 'AWAITING_TEST']);
@@ -48,6 +52,12 @@ async function findCandidate(request: APIRequestContext): Promise<LineRow | null
     if (rows.length) {
       expect(rows[0], 'row exposes receiving_zoho_notes key').toHaveProperty('receiving_zoho_notes');
       expect(rows[0], 'row exposes unit_price key').toHaveProperty('unit_price');
+      // The four notes-family fields are four DIFFERENT grains. `notes` (the
+      // operator's item note) and `label_note` (the printed face) were one
+      // column until 2026-07-31; the row must carry both or the label editor
+      // silently falls back to the item note.
+      expect(rows[0], 'row exposes notes key').toHaveProperty('notes');
+      expect(rows[0], 'row exposes label_note key').toHaveProperty('label_note');
     }
     const hit = rows.find(
       (r) =>
