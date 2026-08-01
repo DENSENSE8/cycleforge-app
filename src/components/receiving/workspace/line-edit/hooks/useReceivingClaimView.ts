@@ -16,11 +16,11 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { dispatchReceivingDetailsOverlayClose } from '@/utils/events';
+import { clearPeerRightEdgeParams } from '../unbox-right-edge';
 import type { ClaimModalMode } from '@/components/receiving/workspace/claim/claim-types';
 
 const CLAIM_VIEW_PARAM = 'claimView';
 const CLAIM_MODE_PARAM = 'claimMode';
-const TICKET_VIEW_PARAM = 'ticketView';
 
 /**
  * Pure decision for the clear-on-line-change effect. Clear only on a genuine
@@ -63,10 +63,11 @@ export function useReceivingClaimView(currentLineId: number | null): ReceivingCl
       const next = new URLSearchParams(searchParams.toString());
       if (on) {
         next.set(CLAIM_VIEW_PARAM, '1');
+        // One right-edge secondary surface: drop Ticket + Displays in this SAME
+        // write (a sibling effect would race and lose) + suspend details.
+        clearPeerRightEdgeParams(next, 'claim');
         if (mode === 'link') next.set(CLAIM_MODE_PARAM, 'link');
         else next.delete(CLAIM_MODE_PARAM);
-        // One right-edge secondary surface: drop Ticket + suspend details.
-        next.delete(TICKET_VIEW_PARAM);
         dispatchReceivingDetailsOverlayClose();
       } else {
         next.delete(CLAIM_VIEW_PARAM);

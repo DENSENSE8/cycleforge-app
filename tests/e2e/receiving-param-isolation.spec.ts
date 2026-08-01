@@ -63,9 +63,32 @@ test.describe('receiving param isolation', () => {
   });
 
   test('a param with a valid name but a bogus value is dropped too', async ({ page }) => {
-    await gotoAuthed(page, '/unbox?unboxview=not-a-tab&openReceivingId=0');
+    await gotoAuthed(page, '/unbox?unboxview=not-a-tab&openReceivingId=0&display=not-a-tab');
     await expect.poll(() => paramsOf(page).unboxview, { timeout: 15_000 }).toBeUndefined();
     expect(paramsOf(page).openReceivingId).toBeUndefined();
+    // `?display=` is the Displays push column. A bogus value must not survive —
+    // an unparseable tab would otherwise ask the column to paint nothing.
+    expect(paramsOf(page).display).toBeUndefined();
+  });
+
+  test('a real Displays tab survives arrival — the column is deep-linkable', async ({ page }) => {
+    // The whole reason `?display=` exists: the column shipped holding its tab in
+    // local state, so a reload or a shared link landed with it closed while its
+    // Ticket / Claim siblings restored fine.
+    await gotoAuthed(page, '/unbox?display=po-note');
+    await expect.poll(() => paramsOf(page).display, { timeout: 15_000 }).toBe('po-note');
+  });
+
+  test('`display` is Unbox-owned — it cannot ride a mode switch into Triage', async ({ page }) => {
+    await gotoAuthed(page, '/unbox?display=tracking');
+    await expect.poll(() => paramsOf(page).display, { timeout: 15_000 }).toBe('tracking');
+
+    await switchMode(page, 'Arrival');
+    await expect(page).toHaveURL(/\/triage/);
+    expect(
+      paramsOf(page).display,
+      'an Unbox display must not follow the operator into Triage',
+    ).toBeUndefined();
   });
 
   test('switching Triage → Unbox leaves no Triage state behind', async ({ page }) => {

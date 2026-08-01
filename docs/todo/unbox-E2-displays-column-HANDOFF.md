@@ -53,7 +53,24 @@ or not at all.**
 
 ## 3. Open work — ranked, with the reason each is real
 
-### 3.1 — Displays has no URL state *(highest value; house-law gap)*
+### 3.1 — Displays has no URL state — **DONE**
+
+Shipped as `?display=<tab>` via `useUnboxDisplayView`, registered on
+`UNBOX_ROUTE_PARAMS`, covered by `useUnboxDisplayView.test.ts` +
+`receiving-param-isolation.spec.ts`. **Absence is closed** — no second flag.
+
+**It surfaced a live bug worth knowing about.** Opening Claim did *not* drop
+`?display=`, so a reload reopened two right-edge surfaces at once. Cause: the
+panel cleared the display in a sibling `useEffect` while `setClaimView` wrote the
+URL, and both built from the same stale `searchParams` snapshot — the second
+`router.replace` resurrected what the first deleted. Fix: the exclusion is now
+**one URL write**, `clearPeerRightEdgeParams(next, keep)` in
+`line-edit/unbox-right-edge.ts`, called inline by all three hooks.
+**Never clear a peer's param from an effect.** Pinned by
+`unbox-right-edge.test.ts`, including a registry test so a fourth push column
+cannot be added without joining the exclusion.
+
+<details><summary>original write-up</summary>
 
 `requestedSideTab` is local `useState` ([LineEditPanel.tsx:189](../../src/components/receiving/workspace/LineEditPanel.tsx)).
 Ticket and Claim are URL-durable (`?ticketView=1` / `?claimView=1`, via
@@ -71,6 +88,8 @@ parser only has to reject non-members.
 
 **Don't:** reuse `?unboxview=` — that is the queue/viewed **browse** tab and the
 collision is exactly the `?sort=` mistake the grid rules call out.
+
+</details>
 
 ### 3.2 — The only entry is the parked strip; discoverability is unproven
 
@@ -126,14 +145,20 @@ Cutting the tab→dock coupling retired two dock actions with no local home:
 **Do:** confirm both at the bench. If an operator reaches for either, add it as a
 local control in that display — never back onto the dock.
 
-### 3.7 — No permanent E2E for the column
+### 3.7 — No permanent E2E for the column — **WRITTEN, run incomplete**
 
-Lane E's verification spec was temporary and deleted. Coverage today is indirect.
+`tests/e2e/unbox-displays-column.spec.ts` exists (4 tests: empty centre + strip
+opens · dock label byte-identical across a tab switch · display survives reload ·
+Claim takes the edge and clears `?display=`).
 
-**Do:** add `tests/e2e/unbox-displays-column.spec.ts` on `qa-desktop`, asserting:
-no `group[name="Unbox displays"]` in the workbench body · the strip opens the column ·
-the dock label is byte-identical before and after a tab switch (this is the
-regression that matters) · opening Claim clears Displays.
+**Status:** 2 of 4 passed on the first run and the Claim test caught the
+exclusion bug in 3.1. The confirming re-run never completed — **the `:3050` dev
+server went down mid-suite** (`ECONNREFUSED`, nothing listening) and an agent
+must not start it. **Re-run this spec once the operator's server is back**;
+static gates (lint / tsc / unit / knip) are clean.
+
+Also note the reload test took ~35s solo and may need a longer timeout under a
+cold sequential suite.
 
 **Warning — `tests/e2e/unbox-tool-push.spec.ts` (untracked, another session) has
 two broken selectors** and fails on its own preconditions, not on the code:
