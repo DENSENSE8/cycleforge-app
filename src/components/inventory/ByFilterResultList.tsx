@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Loader2 } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
 import type { UnitListResponse, UnitListRow } from './types';
-import { inventoryStatusBadgeClass } from './status-classes';
+import { unitStatusBadgeClass } from '@/lib/unit-status';
 
 const PAGE_SIZE = 100;
 
@@ -160,7 +160,7 @@ function UnitRow({ row }: { row: UnitListRow }) {
     const binHref = row.current_location
         ? `/inventory?bin=${encodeURIComponent(row.current_location)}`
         : null;
-    const statusTone = inventoryStatusBadgeClass(row.current_status);
+    const statusTone = unitStatusBadgeClass(row.current_status);
 
     return (
         <li className="flex items-start gap-3 border-b border-border-hairline px-4 py-2.5 hover:bg-blue-50/40 sm:px-6">

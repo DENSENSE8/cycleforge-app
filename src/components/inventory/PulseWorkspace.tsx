@@ -5,7 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { History, Loader2, MapPin, Package } from '@/components/Icons';
 import { getLast4, SerialChip, SkuScanRefChip } from '@/components/ui/CopyChip';
 import { EventRow } from './EventRow';
-import { inventoryStatusBadgeClass } from './status-classes';
+import { unitStatusBadgeClass } from '@/lib/unit-status';
 import type { PulseEventRow, PulseEventsResponse } from './types';
 import { cn } from '@/utils/_cn';
 
@@ -102,7 +102,7 @@ export function PulseWorkspace({ unitId }: PulseWorkspaceProps) {
                                     <span
                                         className={cn(
                                             'rounded px-1.5 py-0.5 text-role-micro uppercase tracking-wide',
-                                            inventoryStatusBadgeClass(currentStatus),
+                                            unitStatusBadgeClass(currentStatus),
                                         )}
                                     >
                                         {currentStatus}
