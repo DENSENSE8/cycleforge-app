@@ -10,18 +10,13 @@ import type { ModeTerminalSliceDef, TerminalWorkspaceMode } from './types';
 
 export const STATION_TERMINAL_REGISTRY: Record<TerminalWorkspaceMode, ModeTerminalSliceDef> = {
   unbox: {
-    hasSectionTabs: true,
-    tabs: {
-      overview: 'mode-default',
-      classify: 'none',
-      'po-note': 'po-note',
-      checklist: 'checklist',
-      units: 'units',
-      tracking: 'none',
-      listings: 'none',
-      timeline: 'timeline',
-      support: 'support',
-    },
+    // Carton-terminal: the Unbox dock is always Print · Receive. The displays
+    // moved to the right-edge Displays push column (Lane E), so a tab → kind map
+    // would mean a right-panel click silently re-labelling the bottom primary.
+    // Tab-scoped actions are local controls inside their own display now.
+    hasSectionTabs: false,
+    defaultKind: 'mode-default',
+    tabs: {},
   },
   triage: {
     hasSectionTabs: true,

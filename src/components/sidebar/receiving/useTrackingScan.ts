@@ -66,7 +66,6 @@ import { looksLikeTicketScan } from '@/lib/support/ticket-scan';
 export type { ScanResolutionMode };
 import type {
   PoContext,
-  PoLineSummary,
   ReceivingMode,
 } from '@/components/sidebar/receiving/receiving-sidebar-shared';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
@@ -92,8 +91,6 @@ interface UseTrackingScanArgs {
   // PO-context cells (usePoContext)
   setPoContext: React.Dispatch<React.SetStateAction<PoContext | null>>;
   setArmedLineId: React.Dispatch<React.SetStateAction<number | null>>;
-  // Serial-scan cells (useSerialScan)
-  setPendingCandidates: React.Dispatch<React.SetStateAction<PoLineSummary[]>>;
   /** Active sidebar mode — drives UNBOX_SCAN_OPENED stamping when `receive`. */
   receivingMode: ReceivingMode;
   /** Triage only: paint the pre-resolve leading row the moment a scan starts. */
@@ -161,7 +158,6 @@ export function useTrackingScan({
   setScanDriven,
   setPoContext,
   setArmedLineId,
-  setPendingCandidates,
   receivingMode,
   onTriageScanStart,
 }: UseTrackingScanArgs): TrackingScanState {
@@ -550,7 +546,6 @@ export function useTrackingScan({
             setScanDriven,
             setPoContext,
             setArmedLineId,
-            setPendingCandidates,
             intakeSurface: intakeSurfaceRef.current,
           };
 
@@ -644,7 +639,6 @@ export function useTrackingScan({
       setScanDriven,
       setPoContext,
       setArmedLineId,
-      setPendingCandidates,
       onTriageScanStart,
     ],
   );

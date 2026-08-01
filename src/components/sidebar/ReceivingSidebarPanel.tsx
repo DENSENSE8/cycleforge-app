@@ -6,7 +6,7 @@
  * All business logic lives in focused hooks under `./receiving/`:
  *   - useReceivingMode .............. URL ⇄ mode + Unbox sub-view + nav
  *   - usePoContext .................. active carton + armed line
- *   - useSerialScan ................. serial scan + returns banner
+ *   - useReceivingReturnsBanner ..... returns banner + shared serial input ref
  *   - useReceivingSourcePlatform .... source-platform mirror (side effect)
  *   - useReceivingSelection ........ selected line + inbound event bridges
  *   - useReceivingLineNavigation ... sibling-line nav + progress
@@ -50,7 +50,7 @@ import { PickupSidebarRail } from '@/components/receiving/pickup/PickupSidebarRa
 
 import { useReceivingMode } from '@/components/sidebar/receiving/useReceivingMode';
 import { usePoContext } from '@/components/sidebar/receiving/usePoContext';
-import { useSerialScan } from '@/components/sidebar/receiving/useSerialScan';
+import { useReceivingReturnsBanner } from '@/components/sidebar/receiving/useReceivingReturnsBanner';
 import { useReceivingSourcePlatform } from '@/components/sidebar/receiving/useReceivingSourcePlatform';
 import { useReceivingSelection } from '@/components/sidebar/receiving/useReceivingSelection';
 import { useReceivingLineNavigation } from '@/components/sidebar/receiving/useReceivingLineNavigation';
@@ -93,25 +93,21 @@ export function ReceivingSidebarPanel() {
     updateTriageQuery,
   } = useReceivingMode();
 
-  // ── Unbox session: PO context + serial scan ──────────────────────────────
-  const { poContext, setPoContext, armedLineId, setArmedLineId, clearPoContext } = usePoContext();
-  const {
-    serialInputRef,
-    returns,
-    setPendingCandidates,
-    dismissReturn,
-    resetSerialInputs,
-  } = useSerialScan({ poContext, armedLineId, staffId });
+  // ── Unbox session: PO context + returns banner ───────────────────────────
+  // `armedLineId` (the value) is deliberately not read here — it is consumed by
+  // the scan pipeline (`usePoContext` / `scan-apply` / `useTrackingScan`), which
+  // this panel only feeds the setter to.
+  const { poContext, setPoContext, setArmedLineId, clearPoContext } = usePoContext();
+  const { serialInputRef, returns, dismissReturn } = useReceivingReturnsBanner();
 
   // Source-platform mirror — called for its `receiving-package-updated` event
   // bridge side effect (the returned setter is owned by the line inspector).
   useReceivingSourcePlatform({ poContext, setPoContext });
 
-  // Clearing a scan session resets the PO context + serial inputs together.
-  const clearScanSession = useCallback(() => {
-    clearPoContext();
-    resetSerialInputs();
-  }, [clearPoContext, resetSerialInputs]);
+  // Clearing a scan session drops the PO context. (It also used to reset the
+  // sidebar's serial input; that input never existed on this surface — see
+  // `useReceivingReturnsBanner`.)
+  const clearScanSession = clearPoContext;
 
   // ── Selection + navigation + right-pane bridge ───────────────────────────
   const {
@@ -182,7 +178,6 @@ export function ReceivingSidebarPanel() {
     setScanDriven,
     setPoContext,
     setArmedLineId,
-    setPendingCandidates,
     receivingMode: mode,
     onTriageScanStart,
   });
