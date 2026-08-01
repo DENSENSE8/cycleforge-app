@@ -212,8 +212,9 @@ export type ReceivingDetailsOverlayDetail = {
 
 /**
  * Close the receiving details float (`detail:receiving`). Dispatched when Unbox
- * Ticket (`?ticketView=1`) or Claim (`?claimView=1`) opens so details and the
- * station push column stay mutually exclusive (one coherent right-edge surface).
+ * Ticket (`?ticketView=1`), Claim (`?claimView=1`), or a tool push (move photos /
+ * photo note / audit) opens so details and the station push column stay mutually
+ * exclusive (one coherent right-edge surface).
  */
 export function dispatchReceivingDetailsOverlayClose(): void {
   if (typeof window === 'undefined') return;

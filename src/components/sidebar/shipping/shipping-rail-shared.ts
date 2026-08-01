@@ -2,11 +2,6 @@ import type { Order } from '@/components/station/upnext/upnext-types';
 import type { TechRecord } from '@/hooks/useTechLogs';
 import type { RefreshDomain } from '@/lib/refresh/domains';
 
-/** React-query key for the shipping Up Next sidebar rail (queue / stock). */
-export function shippingRailQueryKey(feed: 'queue' | 'stock', techId: string) {
-  return ['shipping-recent-rail', feed, techId] as const;
-}
-
 export const SHIPPING_RAIL_REFRESH_EVENTS = ['tech-log-added'] as const;
 
 /** Refresh domains the shipping rail renders (was the two broadcast names). */
@@ -67,37 +62,7 @@ export function recentOrderToShippedRow(row: RecentOrderRow): ShippedHistoryRow 
   };
 }
 
-/** Normalize `/api/orders/next` rows into the shared `Order` shape. */
-export function normalizeUpNextOrders(rows: unknown[]): Order[] {
-  const pending = Array.isArray(rows) ? rows : [];
-  const normalized: Order[] = pending.map((row: any) => ({
-    id: Number(row.id),
-    ship_by_date: row.ship_by_date ?? row.deadline_at ?? null,
-    created_at: row.created_at ?? null,
-    order_id: String(row.order_id || ''),
-    product_title: String(row.product_title || ''),
-    item_number: row.item_number ?? null,
-    account_source: row.account_source ?? null,
-    sku: String(row.sku || ''),
-    condition: row.condition ?? null,
-    quantity: row.quantity ?? null,
-    status: String(row.status || ''),
-    shipping_tracking_number: String(row.shipping_tracking_number || row.tracking_number || ''),
-    is_out_of_stock: Boolean(row.is_out_of_stock),
-    tester_id: row.tester_id ?? null,
-    tester_name: row.tester_name ?? null,
-    has_tech_scan: Boolean(row.has_tech_scan),
-    is_shipped: Boolean(row.is_shipped),
-  }));
-
-  const deduped = normalized.filter(
-    (row, idx, arr) => arr.findIndex((cand) => Number(cand.id) === Number(row.id)) === idx,
-  );
-
-  return deduped.filter((order) => !order.has_tech_scan);
-}
-
-/** Map a History {@link TechRecord} → Up Next preview `Order` shape. */
+/** Map a History {@link TechRecord} → rail preview `Order` shape. */
 export function techRecordToPreviewOrder(record: TechRecord): Order {
   return {
     id: Number(record.order_db_id ?? record.id),
@@ -123,13 +88,4 @@ export function techRecordToPreviewOrder(record: TechRecord): Order {
 /** Rail row id — aligns preview selection with order_db_id when present. */
 export function techRecordRailId(record: TechRecord): number {
   return Number(record.order_db_id ?? record.id);
-}
-
-/** Earliest ship-by first — the tech queue's default "must go" ordering. */
-export function sortOrdersByShipBy(orders: Order[]): Order[] {
-  return [...orders].sort((a, b) => {
-    const da = a.ship_by_date ? new Date(a.ship_by_date).getTime() : Number.POSITIVE_INFINITY;
-    const db = b.ship_by_date ? new Date(b.ship_by_date).getTime() : Number.POSITIVE_INFINITY;
-    return da - db;
-  });
 }
