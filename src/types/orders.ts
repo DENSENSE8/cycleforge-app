@@ -51,7 +51,22 @@ export interface ShippedOrder {
    */
   tracking_added_at?: string | null;
   label_printed_at?: string | null;
+  /**
+   * Legacy single overwritable annotation on `orders`. Superseded by the
+   * append-only `order_notes` trail (see {@link ShippedOrder.note_count}) —
+   * kept because station rows still render it, but new writes belong on the
+   * trail, where they keep an author and a timestamp.
+   */
   notes: string;
+  /**
+   * Operator-set triage tag that tints this row, org-wide, plus who set it and
+   * when. `null` when unflagged. Vocabulary + presentation:
+   * `src/lib/orders/order-row-flags.ts` — an id this build does not know
+   * resolves to no tint rather than an arbitrary colour.
+   */
+  row_flag?: { flag: string | null; by: string | null; at: string | null } | null;
+  /** How many `order_notes` entries this order has. Drives the row indicator. */
+  note_count?: number | null;
   sale_amount?: string | number | null;
   currency?: string | null;
   status_history: any;

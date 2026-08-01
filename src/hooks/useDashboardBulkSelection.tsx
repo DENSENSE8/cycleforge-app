@@ -20,7 +20,7 @@
 
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Calendar as CalendarIcon, Copy, FileText, Printer, Trash2, User } from '@/components/Icons';
+import { Calendar as CalendarIcon, Copy, Download, FileText, Flag, Printer, Trash2, User } from '@/components/Icons';
 import { useTableSelection } from '@/hooks/useTableSelection';
 import { useDeleteOrderRow } from '@/hooks/useDeleteOrderRow';
 import { useOrderAssignment } from '@/hooks/useOrderAssignment';
@@ -31,8 +31,16 @@ import { getDashboardDomainFromSearch } from '@/lib/dashboard/dashboard-domains'
 import { isPdfOutboundDocument } from '@/lib/documents/outbound-document-display';
 import { printOutboundDocuments, type PrintableOutboundDocument } from '@/lib/print/printOutboundDocuments';
 import { buildAssignmentRow } from '@/components/shipped/details-panel/shipped-details-logic';
+import {
+  buildOrderExportCsv,
+  orderExportFilename,
+  type ExportableOrderRow,
+} from '@/lib/dashboard/order-export-csv';
+import { orderBulkActionKeys } from '@/lib/selection-context/order-inspector-context';
 import { WorkOrderAssignmentCard } from '@/components/work-orders/WorkOrderAssignmentCard';
 import { BulkShipByDialog } from '@/components/dashboard/BulkShipByDialog';
+import { BulkFlagDialog } from '@/components/dashboard/BulkFlagDialog';
+import type { OrderRowFlagId } from '@/lib/orders/order-row-flags';
 import type { WorkOrderRow } from '@/components/work-orders/types';
 import type { OutboundDocumentsResponse } from '@/lib/documents/types';
 import type { ShippedOrder } from '@/types/orders';
@@ -113,10 +121,12 @@ export function useDashboardBulkSelection(
   const selectionEnabled = true;
   // Packed reuses the shipped row/delete path (packer records with packed_at).
   const isShippedView = orderView === 'shipped' || orderView === 'packed';
-  /** Pre-pack lanes — work is still ahead of the unit (assign, date, prep labels). */
-  const isPrePack = orderView !== 'shipped' && orderView !== 'packed';
-  /** Post-pack lanes — the shipping document exists and can be reprinted. */
-  const isPostPack = orderView === 'packed' || orderView === 'shipped';
+  /**
+   * Which actions this lane supports, from the contextual SoT — so the bar, the
+   * inspector, and the specs read one list instead of three copies of the same
+   * `isPrePack` / `isPostPack` arithmetic.
+   */
+  const laneActionKeys = useMemo(() => new Set(orderBulkActionKeys(orderView)), [orderView]);
   // Always-on left gutter when the surface supports selection (To Ship / Packed /
   // Shipped). Select-all lives in the table column header, not chrome.
   const selectMode = selectionEnabled;
@@ -228,6 +238,46 @@ export function useDashboardBulkSelection(
     [assignOrder, clearSelection, selectedRows],
   );
 
+  // ─── Bulk triage flag ──────────────────────────────────────────────────────
+  const [flagOpen, setFlagOpen] = useState(false);
+  const [isSavingFlag, setIsSavingFlag] = useState(false);
+
+  const handleSetFlag = useCallback(() => setFlagOpen(true), []);
+
+  const handleConfirmFlag = useCallback(
+    async (flag: OrderRowFlagId | null) => {
+      const orderIds = selectedRows.map((r) => Number(r.id)).filter((n) => Number.isFinite(n));
+      if (orderIds.length === 0) return;
+      setIsSavingFlag(true);
+      try {
+        // One request for the whole set. The server reports which ids it
+        // actually owned, so a stale selection reports honestly instead of
+        // claiming it flagged rows that had already left the queue.
+        const res = await fetch('/api/orders/bulk-flag', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ orderIds, flag }),
+        });
+        if (!res.ok) throw new Error(`bulk-flag ${res.status}`);
+        const data = (await res.json()) as { updatedIds?: number[] };
+        const n = data.updatedIds?.length ?? orderIds.length;
+        toast.success(
+          flag === null
+            ? n === 1 ? 'Flag cleared' : `Flag cleared on ${n} orders`
+            : n === 1 ? 'Row flagged' : `${n} rows flagged`,
+        );
+        setFlagOpen(false);
+        clearSelection();
+        refreshDomain('orders.outbound');
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : 'Could not set the flag');
+      } finally {
+        setIsSavingFlag(false);
+      }
+    },
+    [clearSelection, selectedRows],
+  );
+
   // ─── Print shipping labels (post-pack) ─────────────────────────────────────
   const handlePrintShippingLabels = useCallback(async (rows: DashSelectableRow[]) => {
     const ids = rows.map((r) => Number(r.id)).filter((n) => Number.isFinite(n));
@@ -286,6 +336,33 @@ export function useDashboardBulkSelection(
       .catch(() => toast.error('Could not load the label printer — reload and retry'));
   }, []);
 
+  // ─── Export CSV ────────────────────────────────────────────────────────────
+  // Client-side only: the rows are already in hand, so a round trip would just
+  // be a second definition of "what this lane contains" and a chance for the
+  // file to disagree with the screen it was exported from.
+  const handleExportCsv = useCallback(
+    (rows: DashSelectableRow[]) => {
+      if (rows.length === 0) return;
+      try {
+        // Pre-pack lanes broadcast the full `ShippedOrder`; the narrow
+        // DashSelectableRow type is only what the BAR needs to render.
+        const csv = buildOrderExportCsv(rows as unknown as ExportableOrderRow[]);
+        const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = orderExportFilename(orderView === 'unshipped' ? 'pending' : orderView);
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        toast.success(`Exported ${rows.length} row${rows.length === 1 ? '' : 's'}`);
+      } catch {
+        toast.error('Could not build the export — retry in a moment');
+      }
+    },
+    [orderView],
+  );
+
   const handleDelete = useCallback(
     async (rows: DashSelectableRow[]) => {
       if (rows.length === 0) return;
@@ -337,14 +414,14 @@ export function useDashboardBulkSelection(
         icon: <User className="h-4 w-4" />,
         // Pre-pack only: assigning a tester to an order that already shipped is
         // not a thing an operator ever means to do.
-        enabled: () => isPrePack,
+        enabled: () => laneActionKeys.has('assign'),
         run: handleAssign,
       },
       {
         key: 'ship-by',
         label: 'Set ship-by date',
         icon: <CalendarIcon className="h-4 w-4" />,
-        enabled: () => isPrePack,
+        enabled: () => laneActionKeys.has('ship-by'),
         run: handleSetShipBy,
       },
       {
@@ -354,15 +431,32 @@ export function useDashboardBulkSelection(
         // used to be conflated under one "Print labels" button on every lane.
         label: 'Print product labels',
         icon: <Printer className="h-4 w-4" />,
-        enabled: () => isPrePack,
+        enabled: () => laneActionKeys.has('print'),
         run: handlePrintLabels,
       },
       {
         key: 'print-shipping',
         label: 'Print shipping labels',
         icon: <FileText className="h-4 w-4" />,
-        enabled: () => isPostPack,
+        enabled: () => laneActionKeys.has('print-shipping'),
         run: handlePrintShippingLabels,
+      },
+      {
+        key: 'flag',
+        label: 'Flag rows',
+        icon: <Flag className="h-4 w-4" />,
+        // Every lane: a shipped order can still be Damaged. The tag annotates
+        // the record, it is not a step in the pipeline.
+        enabled: () => laneActionKeys.has('flag'),
+        run: handleSetFlag,
+      },
+      {
+        key: 'export',
+        label: 'Export CSV',
+        icon: <Download className="h-4 w-4" />,
+        // Reads the selected rows only — meaningful on every lane.
+        enabled: () => laneActionKeys.has('export'),
+        run: handleExportCsv,
       },
       { key: 'delete', label: 'Delete', icon: <Trash2 className="h-4 w-4" />, tone: 'red', run: handleDelete },
     ],
@@ -370,11 +464,12 @@ export function useDashboardBulkSelection(
       handleCopyDetails,
       handleAssign,
       handleSetShipBy,
+      handleSetFlag,
       handlePrintLabels,
       handlePrintShippingLabels,
+      handleExportCsv,
       handleDelete,
-      isPrePack,
-      isPostPack,
+      laneActionKeys,
     ],
   );
 
@@ -399,6 +494,13 @@ export function useDashboardBulkSelection(
         saving={isSavingShipBy}
         onCancel={() => setShipByOpen(false)}
         onConfirm={handleConfirmShipBy}
+      />
+      <BulkFlagDialog
+        open={flagOpen}
+        count={selectedRows.length}
+        saving={isSavingFlag}
+        onCancel={() => setFlagOpen(false)}
+        onConfirm={handleConfirmFlag}
       />
     </>
   );

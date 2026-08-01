@@ -75,12 +75,24 @@ export const QUEUE_ROW = {
  *
  * Selection is fill only under airtable (see {@link QUEUE_ROW.selectedLedgerClass}),
  * never a size/height shift — every state below keeps identical row geometry.
+ *
+ * `flagClass` is the operator-set triage wash (Orders: `orderRowFlagClass`).
+ * **Selection outranks it** — the row being edited must look picked, not
+ * tagged, and the operator can only edit one row at a time while any number
+ * may be flagged. The flag is still readable from its dot while selected.
  */
-export function ledgerRowStateClass(selected: boolean): string {
+export function ledgerRowStateClass(selected: boolean, flagClass?: string | null): string {
   return [
-    'cursor-pointer border-b border-border-hairline px-0 py-0 transition-colors hover:bg-surface-hover',
-    selected ? QUEUE_ROW.selectedLedgerClass : 'bg-surface-card',
-  ].join(' ');
+    'cursor-pointer border-b border-border-hairline px-0 py-0 transition-colors',
+    // A flagged row keeps its wash under the pointer. The generic hover fill
+    // would erase the tint at exactly the moment the operator is pointing at
+    // the row, which reads as "did I imagine that colour?" — the flag is a
+    // fact, hover is only feedback, so the fact wins.
+    flagClass && !selected ? '' : 'hover:bg-surface-hover',
+    selected ? QUEUE_ROW.selectedLedgerClass : (flagClass || 'bg-surface-card'),
+  ]
+    .filter(Boolean)
+    .join(' ');
 }
 
 type MetaIndentTrack = 'default' | 'wide';
