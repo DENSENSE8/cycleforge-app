@@ -144,10 +144,14 @@ Interactions) and Apple HIG both require that motion-sensitive users get the con
 technique is "**replace slides with crossfades**" — not "no motion." A pure opacity fade is the reduced form, not a
 hard cut.
 
-- **Route every preset through the bridge** in `motion-framer-hooks.ts`:
-  - `useMotionTransition(transition)` → returns the transition unchanged, or `{ duration: 0 }` when reduced.
-  - `useMotionPresence(presence)` → returns the full `initial/animate/exit`, or an **opacity-only** shape when reduced
-    (collapses `x`/`y`/`scale` to nothing, keeps the fade).
+- **The floor is automatic** — `<MotionConfig reducedMotion="user">` is mounted app-wide
+  (`ReducedMotionProvider`), so every framer `motion.*` reduces without any per-call-site wiring.
+  Transforms, layout, and the positional box keys (`width`/`height`/`top`/`left`/`right`/`bottom`)
+  snap; **opacity keeps animating**. See *RESOLVED — `MotionConfig` is the reduced-motion FLOOR*.
+- **The bridge in `motion-framer-hooks.ts` is the escape hatch**, for stronger-than-default reduction:
+  - `useMotionTransition(transition)` → the transition unchanged, or `{ duration: 0 }` when reduced.
+  - `useMotionPresence(presence)` → the full `initial/animate/exit`, or the same shape with
+    transform/filter keys stripped when reduced (`height` and `opacity` are **preserved**).
 - **Reduced means collapse transforms to 0 + fade, never "instant cut" everywhere.** `framerTransition.tabPagerReduced`
   shows the baked-in form: same opacity crossfade, `x` duration dropped to `0.01s`.
 - **Where the hook isn't used, do the inline ternary** (`ReceivingRightPane` reads `prefersReducedMotion` and swaps
@@ -230,16 +234,50 @@ Hybrid spine: Stations/Main stay static nests; Stock is a Vercel-style drill-in.
 (`docs/todo/spine-drill-in-vercel-GEMINI-RESEARCH-BRIEFING.md`). **Do not** invent a second drill altitude for modes
 or Stations.
 
-## GAP — residual raw reduced-motion consumers
+## RESOLVED — `MotionConfig` is the reduced-motion FLOOR
 
-**The workbench right panes now route through the bridge, but some surfaces still consume presets raw.** The station
-cards consume `framerPresence.stationCard` directly, and `StationPacking.tsx` hand-rolls its keyed-card crossfade inline
-with no reduced-motion handling at all — so a reduced-motion user still gets the `y`-slide there.
+**`<MotionConfig reducedMotion="user">` is mounted app-wide** at `src/app/layout.tsx` via
+`ReducedMotionProvider` (`src/components/providers/ReducedMotionProvider.tsx`). framer itself
+now honors `prefers-reduced-motion` for **every `motion.*` in the tree**, so compliance is the
+**default** — present and future — rather than something each call site opts into.
 
-**Fix (one of):** (a) bake the reduce-to-opacity collapse *into* the presets so consuming a preset is automatically
-safe, or (b) make "always go through `useMotionPresence`/`useMotionTransition`" a lint-enforced rule. Until one lands,
-**new animated code must call the hook bridge** — never consume `framerPresence.*` / `framerTransition.*` raw on a
-user-facing surface.
+**Consuming `framerPresence.*` / `framerTransition.*` raw is therefore no longer a WCAG bug.**
+The former instruction ("new animated code must call the hook bridge") is retired: it sent agents
+to do work the floor already does.
+
+What framer actually does when the preference is on — **verified against the installed
+`framer-motion@12.42.2`, not the docs** (isolated Playwright A/B, `reducedMotion: 'reduce'`):
+
+| Key | Under reduce | Measured |
+|---|---|---|
+| transforms (`x`/`y`/`scale`/`rotate`/…) | **snap** — `{type:false}` | `y` 24 distinct frames → **2** |
+| `width` · `height` · `top` · `left` · `right` · `bottom` | **snap** (they are positional keys too) | `height` 30 → **2** |
+| layout animations (`layout` / `layoutId`) | **disabled** (`type:false`, `delay:0`) | — |
+| **`opacity`** | **animates normally** | 31 → **33 distinct frames** |
+
+So reduced motion here is genuinely *"replace slides with crossfades"* — the slide dies, the
+crossfade lives. That is **more faithful than the old bridge**, whose `{ duration: 0 }` produced a
+hard cut.
+
+**Do not assume `collapseHeight` keeps tweening under reduce.** `height` is a positional key, so
+the sanctioned height animation still *collapses* — instantly. There is no framer setting that
+tweens it under reduce; do not go looking for one.
+
+**The bridge survives as an escape hatch, not as the compliance mechanism.** Reach for
+`useMotionPresence` / `useMotionTransition` only when a surface needs *stronger-than-default*
+reduction — suppressing an animation outright rather than crossfading it. `useMotionPresence`
+strips only transform/filter keys and **preserves the rest** (notably `height`); it previously
+returned a flat opacity-only shape, which discarded `collapseHeight`'s height keys so the element
+faded while holding its full box and never collapsed.
+
+**Still outside the floor** (each needs its own gate):
+
+- **GSAP** — different engine, no `MotionConfig`. `card-fan-carousel.tsx` gates explicitly with
+  `useReducedMotion()` zeroing every tween `duration`/`delay`.
+- **`motion-plus` `AnimateNumber`** — separate package/context; its only consumer `AnimatedStat`
+  already handles reduce manually.
+- **Tailwind `animate-*`** (~289 files) — CSS animations, mostly loaders where a spinner is a
+  status indicator rather than vestibular motion. **Do not sweep them.**
 
 **Compact auth/wizard step forms** follow [`auth-step-panel.md`](auth-step-panel.md) — not this archetype split. Use
 `signInStepVariants` + fixed viewport + bundled back chip; do not apply workbench right-pane or field-level pager patterns.
@@ -270,8 +308,9 @@ user-facing surface.
 - **Crossfading the list / map / graph** — only the detail/active-card/overlay transitions; the navigator stays put.
   (Exception: MasterNav Stock drill via `spineDrill` — see above.)
 - **Horizontal slide on Stock drill** — use opacity-only `framerPresence.spineDrill`; never page-local `x: ±12`.
-- **Consuming `framerPresence.*` raw on a user-facing surface** — skips reduced-motion (see the residual-consumers gap);
-  go through the hooks.
+- **Animating outside framer without a gate** — GSAP / `motion-plus` sit outside the `MotionConfig`
+  floor, so they need their own `useReducedMotion()` check. (Consuming `framerPresence.*` raw is
+  *fine* — the floor covers it.)
 
 ---
 
@@ -280,14 +319,14 @@ user-facing surface.
 **Do**
 - Crossfade exactly one region per archetype (card / right pane / overlay), keyed by entity id.
 - Use `mode="wait"` + `initial={false}` + opacity-and-transform-only presets from `motion-framer.ts`.
-- Route every preset through `useMotionTransition` / `useMotionPresence`.
+- Trust the `MotionConfig` floor for framer; reach for the bridge only for stronger reduction.
 - Keep the navigator (list/sidebar/graph) mounted; display-toggle, don't unmount.
 - Pick spring for gesture/physical surfaces, `easeOut` tween for discrete swaps; stay sub-300ms.
 
 **Don't**
 - Animate layout (`width`/`height`/`padding`), or crossfade a list/map/graph.
 - Key by array index, or put `AnimatePresence` behind the `&&`.
-- Ship a transform-based animation with no reduced-motion path.
+- Ship a **non-framer** animation (GSAP, `motion-plus`, CSS) with no reduced-motion path.
 - Invent new right-pane crossfade literals — use `framerPresence.workbenchPane` via `useMotionPresence`.
 - Horizontal-slide the MasterNav Stock drill — use `framerPresence.spineDrill` (opacity-only).
 - Use `layoutId` for a list→detail replace.
