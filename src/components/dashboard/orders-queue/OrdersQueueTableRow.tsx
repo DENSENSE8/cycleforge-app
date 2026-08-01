@@ -49,6 +49,7 @@ import {
   type OrdersQueueColumn,
 } from '@/lib/dashboard-order-row-layout';
 import { orderRowConditionTone, orderRowQtyTone } from '@/lib/condition-tone';
+import { resolveOrderRowFlag } from '@/lib/orders/order-row-flags';
 import { conditionGradeTableLabel, EMPTY_META_DASH } from '@/lib/conditions';
 import {
   replenishmentTooltip,
@@ -343,7 +344,31 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
     [assignOrder, record.id],
   );
 
-  const hasNotes = notesValue.trim().length > 0;
+  /**
+   * Row annotations. TWO homes, deliberately, and the row shows ONE mark:
+   *  • `notesValue` — the legacy scalar `orders.notes`, still editable in-cell.
+   *  • `note_count` — the append-only `order_notes` trail (author + timestamp
+   *    per entry), read and written at the record plane.
+   * The corner triangle answers "does this row carry annotations?", which is
+   * true of either. A second indicator would make the operator learn which
+   * storage a note happened to land in — their problem is the note, not us.
+   */
+  const noteCount = Number(record.note_count ?? 0) || 0;
+  const hasNotes = notesValue.trim().length > 0 || noteCount > 0;
+  const noteSummary = [
+    noteCount > 0 ? `${noteCount} ${noteCount === 1 ? 'note' : 'notes'} on the record` : '',
+    notesValue.trim(),
+  ]
+    .filter(Boolean)
+    .join(' · ');
+
+  /**
+   * Operator-set triage flag — an org-wide shared tag that washes the row.
+   * Resolved through the SoT so an id this build does not know renders as
+   * unflagged rather than as some arbitrary colour.
+   */
+  const rowFlag = resolveOrderRowFlag(record.row_flag?.flag);
+
   const conditionValue = String(record.condition || '').trim();
   const hasConditionValue = Boolean(conditionValue) && conditionValue !== EMPTY_META_DASH;
 
@@ -502,13 +527,37 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
     </HoverTooltip>
   ) : null;
 
+  /**
+   * The flag's dot — the tint's non-colour carrier.
+   *
+   * A row wash alone fails anyone with a colour-vision deficiency and fails
+   * everyone on a washed-out warehouse monitor, and it cannot say WHICH tag it
+   * is or who set it. The dot carries the tone, the tooltip carries the word,
+   * the author, and what the tag means, so the shared vocabulary stays shared.
+   */
+  const flagIndicator = rowFlag ? (
+    <HoverTooltip
+      label={[
+        `${rowFlag.label} — ${rowFlag.hint}`,
+        record.row_flag?.by ? `Set by ${record.row_flag.by}` : null,
+      ]
+        .filter(Boolean)
+        .join(' · ')}
+      focusable={false}
+    >
+      <span className={cn('h-2 w-2 shrink-0 rounded-full', rowFlag.dotClass)}>
+        <span className="sr-only">{`Flagged ${rowFlag.label}`}</span>
+      </span>
+    </HoverTooltip>
+  ) : null;
+
   const noteIndicator = hasNotes ? (
-    <HoverTooltip label={notesValue.trim()} focusable={false}>
+    <HoverTooltip label={noteSummary} focusable={false}>
       <button
         ref={noteIndicatorRef}
         type="button"
         data-indicator="note"
-        aria-label={`Has note: ${notesValue.trim()}`}
+        aria-label={`Has note: ${noteSummary}`}
         onClick={(e) => {
           e.stopPropagation();
           if (canEditNotes) openEditor('note');
@@ -729,6 +778,7 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
             data-frozen-edge
           >
             {oosIndicator}
+            {flagIndicator}
             {/* Status chip lives in the Status column on gridSkin; board/mobile keep the title-dot. */}
             {!gridSkin ? (
               <HoverTooltip label={`${rowStatus.label} — ${rowStatus.description}`} focusable={false}>
@@ -983,7 +1033,10 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
           (isStagedRow
             ? 'py-2.5 hover:bg-blue-50/50'
             : cn('hover:bg-surface-hover', densityClasses.rowPadding)),
-        gridSkin && 'hover:bg-surface-hover',
+        // A flagged row keeps its wash under the pointer — the generic hover
+        // fill would erase the tint at exactly the moment the operator points
+        // at it. The flag is a fact; hover is only feedback.
+        gridSkin && !rowFlag && 'hover:bg-surface-hover',
         // Idle zebra (off-grid only — see `stripeRow`): opaque canvas where the
         // caller asks, translucent otherwise. Selection overrides stripe.
         isStagedRow
@@ -1000,11 +1053,17 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
               gridSkin
               ? QUEUE_ROW.selectedLedgerClass
               : QUEUE_ROW.selectedClass
-            : stripeRow
-              ? opaqueStripe
-                ? 'bg-surface-canvas'
-                : 'bg-surface-canvas/40'
-              : 'bg-surface-card',
+            : // Unselected fill, in precedence order: the operator's triage
+              // flag beats zebra beats the card ground. Selection still wins
+              // over all three above — the row being edited must look picked,
+              // not tagged, and only one row is ever being edited while any
+              // number may be flagged.
+              rowFlag?.rowClass ??
+              (stripeRow
+                ? opaqueStripe
+                  ? 'bg-surface-canvas'
+                  : 'bg-surface-canvas/40'
+                : 'bg-surface-card'),
       )}
       style={
         gridTemplate

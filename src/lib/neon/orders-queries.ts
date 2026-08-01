@@ -30,6 +30,10 @@ export interface ActiveOrder {
   sku: string | null;
   account_source: string | null;
   notes: string | null;
+  /** Org-wide triage tag that tints the row, plus who set it. See `ShippedOrder`. */
+  row_flag?: { flag: string | null; by: string | null; at: string | null } | null;
+  /** `order_notes` count — drives the row's annotation indicator. */
+  note_count?: number | null;
   sale_amount?: string | number | null;
   currency?: string | null;
   status_history: any;
@@ -117,6 +121,36 @@ const ORDER_SERIALS_CTE = `
       o.sku,
       o.account_source,
       o.notes,
+      /*
+       * Row flag + ops-note count travel WITH the row that renders them.
+       *
+       * Scalar subqueries, not LATERAL joins, on purpose: both reference only
+       * o.id (already grouped), so they add nothing to this CTE's GROUP BY --
+       * a lateral would need three more columns in it, and every future edit
+       * would have to keep the two lists in step.
+       *
+       * Fetching either per row would be an N+1 against a virtualized grid;
+       * fetching them in a second request would repaint the tint one frame
+       * after the row, which reads as a flicker on a 200-row queue.
+       *
+       * order_flags / order_notes are FORCE RLS, so these resolve under the
+       * caller's app.current_org GUC (tenantQuery). On the legacy org-less
+       * pool.query fallback the policy simply yields nothing, and a row
+       * degrades to unflagged / zero notes -- never another org's flag.
+       */
+      (
+        SELECT jsonb_build_object(
+                 'flag', f.flag,
+                 'by',   fs.name,
+                 'at',   f.updated_at
+               )
+          FROM order_flags f
+          LEFT JOIN staff fs ON fs.id = f.set_by_staff_id
+         WHERE f.order_id = o.id
+      ) AS row_flag,
+      (
+        SELECT COUNT(*)::int FROM order_notes n WHERE n.order_id = o.id
+      ) AS note_count,
       o.sale_amount,
       o.currency,
       COALESCE(o.status_history::jsonb, '[]'::jsonb) AS status_history,
@@ -1310,6 +1344,25 @@ export async function getActiveOrders(options?: {
        o.sku,
        o.account_source,
        o.notes,
+       /*
+        * Same projection as ORDER_SERIALS_CTE -- this queue is a SEPARATE query
+        * with an explicit column list, so a fact added there does not reach the
+        * Pending grid unless it is added here too. Scalar subqueries on o.id
+        * (already grouped) keep the GROUP BY untouched.
+        */
+       (
+         SELECT jsonb_build_object(
+                  'flag', f.flag,
+                  'by',   fs.name,
+                  'at',   f.updated_at
+                )
+           FROM order_flags f
+           LEFT JOIN staff fs ON fs.id = f.set_by_staff_id
+          WHERE f.order_id = o.id
+       ) AS row_flag,
+       (
+         SELECT COUNT(*)::int FROM order_notes n WHERE n.order_id = o.id
+       ) AS note_count,
        o.is_urgent,
        o.sale_amount,
        o.currency,

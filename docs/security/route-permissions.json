@@ -1,9 +1,9 @@
 {
   "version": 1,
-  "generatedAt": "2026-07-31T07:21:42Z",
-  "totalRoutes": 894,
+  "generatedAt": "2026-08-01T04:42:10Z",
+  "totalRoutes": 897,
   "summary": {
-    "permissionGated": 758,
+    "permissionGated": 761,
     "authenticatedNoPermission": 48,
     "anonymousIntentional": 86,
     "serviceToService": 2,
@@ -3589,6 +3589,25 @@
       "exemptReason": null
     },
     {
+      "path": "/api/orders/[id]/flag/route.ts",
+      "methods": [
+        "PUT"
+      ],
+      "gate": "requireRoutePerm",
+      "permission": "orders.create",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/orders/[id]/notes/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "gate": "requireRoutePerm",
+      "permission": "orders.view",
+      "exemptReason": null
+    },
+    {
       "path": "/api/orders/[id]/pack-checklist/route.ts",
       "methods": [
         "GET"
@@ -3707,6 +3726,15 @@
       ],
       "gate": "withAuth",
       "permission": "dashboard.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/orders/bulk-flag/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "requireRoutePerm",
+      "permission": "orders.create",
       "exemptReason": null
     },
     {

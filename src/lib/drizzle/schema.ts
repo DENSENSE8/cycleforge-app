@@ -958,6 +958,35 @@ export const entityNotes = pgTable('entity_notes', {
  * Entity Threads (`ThreadPanel entityType="ORDER"`), which is already mounted on
  * the order record. Do not let the same note become writable in both.
  */
+/**
+ * Operator-set triage tag that tints an order's row in the outbound queue.
+ *
+ * ORG-WIDE by construction: the natural key is (organization_id, order_id) with
+ * no staff column, so the next shift sees what this shift flagged.
+ * `setByStaffId` is attribution, not identity.
+ *
+ * `flag` is CHECK-constrained in the DDL (`order_flags_flag_chk`) to the ids in
+ * `src/lib/orders/order-row-flags.ts` — Drizzle has no first-class
+ * "text with an enumerated CHECK", so the vocabulary lives there and both are
+ * extended in the same change. Migration `2026-07-31_order_flags.sql`.
+ */
+export const orderFlags = pgTable('order_flags', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  organizationId: orgIdCol(),
+  orderId: integer('order_id').notNull().references(() => orders.id, { onDelete: 'cascade' }),
+  /** 'priority' | 'hold' | 'damaged' | 'awaiting_customer' | 'ready' */
+  flag: text('flag').notNull(),
+  setByStaffId: integer('set_by_staff_id').references(() => staff.id, { onDelete: 'set null' }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  /** One flag per order — also the upsert's ON CONFLICT target. */
+  orgOrderIdx: uniqueIndex('ux_order_flags_org_order').on(
+    table.organizationId,
+    table.orderId,
+  ),
+}));
+
 export const orderNotes = pgTable('order_notes', {
   id: uuid('id').primaryKey().defaultRandom(),
   organizationId: orgIdCol(),

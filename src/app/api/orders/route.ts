@@ -423,6 +423,26 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
         o.is_out_of_stock,
         o.status,
         o.notes,
+        /*
+         * Row flag + ops-note count. THIRD copy of this projection, because the
+         * outbound queue has three independent order readers (this route,
+         * ORDER_SERIALS_CTE, and getActiveOrders) and a fact added to one does
+         * not reach the others -- this is the live path the Pending grid
+         * actually fetches. Scalar subqueries on o.id add nothing to GROUP BY.
+         */
+        (
+          SELECT jsonb_build_object(
+                   'flag', f.flag,
+                   'by',   fs.name,
+                   'at',   f.updated_at
+                 )
+            FROM order_flags f
+            LEFT JOIN staff fs ON fs.id = f.set_by_staff_id
+           WHERE f.order_id = o.id
+        ) AS row_flag,
+        (
+          SELECT COUNT(*)::int FROM order_notes n WHERE n.order_id = o.id
+        ) AS note_count,
         o.is_urgent,
         o.sale_amount,
         o.currency,
