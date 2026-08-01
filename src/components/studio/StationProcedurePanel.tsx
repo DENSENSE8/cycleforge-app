@@ -54,6 +54,14 @@ export function StationProcedurePanel({ map }: { map: StationProcedureMap }) {
           {map.counts.steps} steps
         </span>
         <HoverTooltip
+          label={`Up to ${map.counts.onBench} of ${map.counts.steps} steps reach the operator's right-rail checklist (the capture phase). Any one carton sees fewer — a step can be scoped to a carton shape, so Classify appears only on an unfound carton and Packing material drops on a local pickup. The rest are intake (how the carton got here) and commit (the terminal dock's job).`}
+          asChild
+        >
+          <span className="rounded bg-blue-50 px-1.5 py-0.5 text-role-micro font-semibold tabular-nums text-blue-700">
+            up to {map.counts.onBench} on the bench
+          </span>
+        </HoverTooltip>
+        <HoverTooltip
           label={`${map.counts.reads} relation(s) read and ${map.counts.writes} written across the whole procedure`}
           asChild
         >
@@ -81,6 +89,26 @@ export function StationProcedurePanel({ map }: { map: StationProcedureMap }) {
                 {step.index}
               </span>
               <span className="text-sm font-semibold text-text-default">{step.label}</span>
+              {step.phase === 'capture' ? (
+                <HoverTooltip label="The operator sees this step on the bench checklist" asChild>
+                  <span className="rounded bg-blue-50 px-1.5 py-0.5 text-role-micro font-semibold text-blue-700">
+                    bench
+                  </span>
+                </HoverTooltip>
+              ) : (
+                <HoverTooltip
+                  label={
+                    step.phase === 'intake'
+                      ? 'Intake — already done by the time the operator reads the checklist'
+                      : 'Commit — driven from the terminal dock, not the checklist'
+                  }
+                  asChild
+                >
+                  <span className="rounded bg-surface-sunken px-1.5 py-0.5 text-role-micro font-semibold text-text-soft">
+                    {step.phase}
+                  </span>
+                </HoverTooltip>
+              )}
               {step.composed ? (
                 <HoverTooltip label="Driven by the station registry — composed, not hand-coded" asChild>
                   <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-role-micro font-semibold text-emerald-700">
