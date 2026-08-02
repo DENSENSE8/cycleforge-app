@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { LedgerGridSurface, useGridColumnVisibility } from '@/design-system/components/grid';
+import { GridColumnDetailsPanel } from '@/components/ui/table-column-config/GridColumnDetailsPanel';
 import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
 import type { RowGroup } from '@/lib/group-rows';
 import type { MyDayTask } from '@/lib/my-day/my-day-tasks';
@@ -109,6 +110,8 @@ export function MyDayGridView({
 
   const descriptor = useMemo(() => makeMyDayGridDescriptor(visible), [visible]);
 
+  const [columnDetailsOpen, setColumnDetailsOpen] = useState(false);
+
   // One-shot settle tick after the first data arrives — the virtualized grid
   // mounts its scrollport in the same commit as the rows, and nothing else
   // re-renders this subtree, so without it the body can paint blank until the
@@ -136,6 +139,7 @@ export function MyDayGridView({
   }, [tasks, columnSort, sortDir]);
 
   return (
+    <>
     <LedgerGridSurface<MyDayTask, MyDayGridColumnKey>
       ariaLabel="My Day tasks"
       descriptor={descriptor}
@@ -157,6 +161,8 @@ export function MyDayGridView({
           activeSort={columnSort}
           sortDir={sortDir}
           onSortColumn={toggleColumnSort}
+          onOpenColumnDetails={() => setColumnDetailsOpen(true)}
+          columnDetailsOpen={columnDetailsOpen}
         />
       )}
       renderGroup={(group) => (
@@ -177,5 +183,14 @@ export function MyDayGridView({
         />
       )}
     />
+    {/* Full `columns` (not `visible`) — the rail must offer the tracks the
+        staffer turned OFF, which is the only way to turn one back on. */}
+    <GridColumnDetailsPanel
+      open={columnDetailsOpen}
+      onClose={() => setColumnDetailsOpen(false)}
+      tableId={MY_DAY_TABLE_ID}
+      columns={columns}
+    />
+    </>
   );
 }

@@ -39,7 +39,7 @@ fields, pick the presentation kind and import from the SoT below (Kinetic Ledger
 | Grid leaf-row fill (selection · optional triage · card) | `ledgerRowFillClass` in `src/components/ui/queue-row-chrome.ts` (gates flag wash on `capabilities.rowTriageFlags`) |
 | Grid column justification (end vs start) | `@/design-system/components/grid` `resolveGridColumnAlign` / `gridCellAlignClass` / `gridHeaderCellAlignClass` — see **Grid column justification** below |
 | Grid identity columns (freeze · lock · never in-cell edit) | Column model `frozen: true` → `gridFrozenKeys(columns)` (per surface); house default + editability floor: `GRID_IDENTITY_COLUMN_KEYS` / `isGridColumnInCellEditable` — see **Grid identity pane** below |
-| Grid column visibility (per-staff) | `@/design-system/components/grid` `useGridColumnVisibility` / `useGridFields` + `GridFieldsMenu` — see **Grid column visibility + sort** below |
+| Grid column visibility (per-staff) | `@/design-system/components/grid` `useGridColumnVisibility` / `useGridFields`; operator entry = the grid header **lip** (`onOpenColumnDetails`) → `GridColumnDetailsPanel` — see **Grid column visibility + sort** below |
 | Grid column sort (URL-durable) | `@/hooks/useUrlColumnSort` → `?colsort=` / `?coldir=` — see **Grid column visibility + sort** below |
 | Collection-surface action planes | `display/workbench.md` — in-cell · row-scoped · multi-select · record, one primary plane each |
 | Workbench branch (Layer C recipe) | `SURFACE_REGISTRY.workbenchBranch` + `WORKBENCH_BRANCH_IDS` in `src/lib/stations/surface-keys.ts` — `ops-queue` · `master-detail` · `board` · `fact-stack` · `service-workspace`; null on Station/Monitor/Canvas. Law: `display/workbench.md` + child recipe files |
@@ -159,7 +159,8 @@ Two invariants live here because they are single-source mappings, not recipes:
 - **Visibility resolves in exactly ONE place** — `useGridColumnVisibility` (descriptor `tier` + staff
   delta + viewport force-hide → the visible track list, which the header, rows, summaries and the grid
   template all consume). Column `tier: 'core' | 'optional'` is the default-set SoT: grids open **lean**,
-  staff opt in from `GridFieldsMenu`, and prefs persist as a **delta** in
+  staff opt in from the grid's top-right **column-display lip** (chrome `GridFieldsMenu`
+  was deleted 2026-08-02), and prefs persist as a **delta** in
   `staff_preferences.tableColumns[tableId]`.
 - **Never call `useIsColumnHidden()` from a grid family** — it is the retired cell-granularity path
   that left an empty ruled band instead of removing the track; it survives only for
@@ -234,7 +235,7 @@ Two invariants live here because they are single-source mappings, not recipes:
 - **The pane must be a contiguous leading prefix** of the canonical order, starting with `select`.
   Sticky-left offsets sum the widths of the frozen columns *before* a given one, so a frozen column
   sitting after a scrolling one pins at the wrong origin.
-- **A frozen column carries no `hideKey` and no `tier`** — it is structural, so `GridFieldsMenu`
+- **A frozen column carries no `hideKey` and no `tier`** — it is structural, so the column-display rail
   can never take the row's identity away (`isGridColumnVisible` rule 1). Promoting a fact column
   into the pane therefore *retires* its pref key; a stale `hidden: [...]` delta goes inert on its
   own, which is the whole migration.

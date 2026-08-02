@@ -50,7 +50,7 @@ import {
  *  • `dayBands` — these are open queues ordered by attention, not a civil-day log.
  *
  * `fieldsMenu` is on: both models carry `hideKey`s + `tier`s, both `TableId`s
- * have a `TABLE_COLUMNS` entry, and `GridFieldsMenu` mounts in the chrome's
+ * have a `TABLE_COLUMNS` entry, and the column-display lip mounts on the grid's
  * `WorkbenchTrailingCluster`. All of that landed together — a flag without the
  * menu is a claim on a staff-preference surface that does not exist.
  */

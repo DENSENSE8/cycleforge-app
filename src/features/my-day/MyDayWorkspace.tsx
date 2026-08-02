@@ -37,14 +37,11 @@ import {
   WORKBENCH_BODY_COLUMN,
   WORKBENCH_CHROME_COLUMN,
   WorkbenchChromeHeader,
-  WorkbenchTrailingCluster,
   withScopeDivider,
 } from '@/components/dashboard/workbench-shell';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { GridFieldsMenu } from '@/components/ui/table-column-config/GridFieldsMenu';
 import { ToolbarSearchToggle } from '@/design-system/primitives/ToolbarSearchToggle';
 import { useDebounce } from '@/hooks';
-import { MY_DAY_GRID_COLUMNS, MY_DAY_TABLE_ID } from '@/lib/my-day/my-day-grid-layout';
 import type { MyDayQueueCard } from '@/lib/my-day/my-day-types';
 import { MyDayKpiStrip } from './MyDayKpiStrip';
 import { MyDayOnboardingPanel } from './MyDayOnboardingPanel';
@@ -195,13 +192,6 @@ export function MyDayWorkspace() {
           //    per surface.
           //  · Import / Add — absent. Nothing creates a Today task: rows are a
           //    projection of work assignments and interrupts owned elsewhere.
-          trailing={
-            <WorkbenchTrailingCluster
-              fields={
-                <GridFieldsMenu tableId={MY_DAY_TABLE_ID} columns={MY_DAY_GRID_COLUMNS} />
-              }
-            />
-          }
         />
       </div>
 

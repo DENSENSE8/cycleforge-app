@@ -20,8 +20,6 @@ import { QueueSortSwitch } from '@/components/dashboard/QueueSortSwitch';
 import { WorkbenchChromeHeader, WorkbenchTrailingCluster } from '@/components/dashboard/workbench-shell';
 import { OutboundOrderChromeActions } from '@/components/dashboard/OutboundOrderChromeActions';
 import { ToolbarSearchToggle } from '@/components/ui/ToolbarSearchToggle';
-import { GridFieldsMenu } from '@/components/ui/table-column-config/GridFieldsMenu';
-import { ORDERS_QUEUE_COLUMNS } from '@/lib/dashboard-order-row-layout';
 import { useDashboardSearchController } from '@/hooks/useDashboardSearchController';
 import { useQueueDisplaySort } from '@/hooks/useQueueDisplaySort';
 import { unshippedQueueCountsQuery } from '@/lib/queries/dashboard-queries';
@@ -102,16 +100,16 @@ export function OutboundWorkspaceHeader({
       // header (left gutter ☐), not chrome. Display sort is trailing (quiet).
       right={<OutboundExactFilters mode={active} />}
       trailing={
-        /* Sort → Fields → Import → Add — WorkbenchTrailingCluster SoT.
-           Every outbound lane shares the `orders` column SoT and one
-           persisted delta (see OrdersGridView's `tableId` docblock). */
+        /* Sort → Import → Add — WorkbenchTrailingCluster SoT. Column display
+           is the grid's own header lip, not this cluster (2026-08-02); every
+           outbound lane still shares the `orders` column SoT and one persisted
+           delta (see OrdersGridView's `tableId` docblock). */
         <WorkbenchTrailingCluster
           sort={
             isPrePackOrderView(active) ? (
               <QueueSortSwitch sort={sort} onChange={setSort} />
             ) : null
           }
-          fields={<GridFieldsMenu tableId="orders" columns={ORDERS_QUEUE_COLUMNS} />}
           actions={<OutboundOrderChromeActions onNewOrder={openIntakeForm} />}
         />
       }

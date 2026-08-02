@@ -7,13 +7,13 @@
  *
  * Left:   carton-source tabs — All / Unfound.
  * Right:  [⌕ search] · [⫶ field / sort] · [calendar period].
- * Trailing: Fields (`WorkbenchTrailingCluster`).
+ * Trailing: none — column display lives on the grid's top-right lip.
  * Row select lives in the table left gutter.
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { WorkbenchChromeHeader, WorkbenchTrailingCluster } from '@/components/dashboard/workbench-shell';
+import { WorkbenchChromeHeader } from '@/components/dashboard/workbench-shell';
 import {
   WorkbenchFilterDivider,
   WorkbenchFilterGroupLabel,
@@ -22,8 +22,6 @@ import {
 } from '@/components/dashboard/workbench-filter-popover';
 import { ToolbarSearchToggle } from '@/components/ui/ToolbarSearchToggle';
 import { DateRangePickerPill } from '@/components/ui/DateRangeHeader';
-import { GridFieldsMenu } from '@/components/ui/table-column-config/GridFieldsMenu';
-import { RECEIVING_GRID_COLUMNS } from '@/lib/receiving/receiving-grid-layout';
 import { useDebounce } from '@/hooks';
 import {
   HISTORY_SORT_OPTIONS,
@@ -146,6 +144,9 @@ export function HistoryWorkspaceHeader({
 
   const placeholder = getReceivingHistoryPlaceholder(searchField).replace(/^Search/, 'Filter');
 
+  // No `trailing` cluster: History has no display sort and no chrome CTA, and
+  // column display moved to the grid's own top-right lip (2026-08-02). Honest
+  // absence — WorkbenchTrailingCluster would render null anyway.
   return (
     <WorkbenchChromeHeader
       density="band"
@@ -223,11 +224,6 @@ export function HistoryWorkspaceHeader({
             }}
           />
         </>
-      }
-      trailing={
-        <WorkbenchTrailingCluster
-          fields={<GridFieldsMenu tableId="receiving" columns={RECEIVING_GRID_COLUMNS} />}
-        />
       }
     />
   );

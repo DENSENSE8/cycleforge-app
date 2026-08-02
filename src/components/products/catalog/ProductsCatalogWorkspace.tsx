@@ -40,9 +40,7 @@ import {
   type CatalogLinkFilter,
   type CatalogRefineFilters,
 } from '@/components/products/catalog/catalog-url-state';
-import { GridFieldsMenu } from '@/components/ui/table-column-config/GridFieldsMenu';
 import {
-  CATALOG_GRID_COLUMNS,
   compareCatalogGridRows,
   defaultDirForCatalogGridSort,
   isCatalogGridSortable,
@@ -308,7 +306,6 @@ export function ProductsCatalogWorkspace() {
               }
               trailing={
                 <WorkbenchTrailingCluster
-                  fields={<GridFieldsMenu tableId="catalog" columns={CATALOG_GRID_COLUMNS} />}
                   after={
                     <Button
                       type="button"

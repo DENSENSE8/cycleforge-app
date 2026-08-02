@@ -68,8 +68,10 @@ Rails are a **recipe** for workbench pickers — not proof that every Workbench 
   (descriptor `tier` + staff delta + viewport force-hide → the visible track
   list, which the header, rows, summaries and the grid template all consume).
   Grids open **lean**: mark secondary columns `tier: 'optional'` and let staff
-  add them from `GridFieldsMenu` (generated from the descriptor, persisted per
-  staff as a delta). **Never** call `useIsColumnHidden()` from a grid family —
+  add them from the grid's top-right **column-display lip** →
+  `GridColumnDetailsPanel` (generated from the descriptor, persisted per
+  staff as a delta). Column display is never page chrome — see
+  `display/workbench-ops-queue.md` → Trailing Display & Actions. **Never** call `useIsColumnHidden()` from a grid family —
   it is the retired cell-granularity path that left an empty ruled band instead
   of removing the track; it survives only for `ChipColumns`/`RowMetaColumns`.
   **Column sort** is URL-durable via `useUrlColumnSort` (`?colsort=`/`?coldir=`,

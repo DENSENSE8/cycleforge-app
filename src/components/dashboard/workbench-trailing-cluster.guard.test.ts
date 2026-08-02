@@ -1,12 +1,22 @@
 /**
- * WorkbenchTrailingCluster — Sort → Fields → Import → Add skeleton (Fields altitude).
+ * WorkbenchTrailingCluster — Sort → Import → Add skeleton, and the ban on
+ * chrome-altitude column Fields.
  *
- * - In-scope GridFieldsMenu mounts must compose WorkbenchTrailingCluster.
- * - When Sort + Fields share a trailing cluster, Sort precedes Fields.
- * - Ban TableActionBar / in-card Fields toolbar identifiers.
+ * Fields left the page chrome on 2026-08-02. The operator entry for column
+ * visibility / display is the grid's own top-right header lip
+ * (`LedgerGridColumnHeader` `onOpenColumnDetails` → `GridColumnDetailsPanel`).
+ * Rationale: Fields mutates the column set of the card it sits on, so a
+ * page-chrome control acting on that card is an altitude mismatch — and seven
+ * surfaces shipped BOTH doors onto the same rail id at once.
  *
- * @see docs/todo/table-action-bar-fields-PLAN.md
- * @see .claude/rules/display/workbench.md → Trailing Display & Actions
+ * This does not relax the sticky-docking law. The lip renders inside the
+ * already-sticky `[data-grid-col-header]` band, so the scroll port still has
+ * exactly one sticky layer; the banned shape is a Sheets-like `TableActionBar`
+ * ABOVE the grid, which would add a second one. That ban is asserted below and
+ * is unchanged.
+ *
+ * @see .claude/rules/display/workbench-ops-queue.md → Trailing Display & Actions
+ * @see docs/todo/fields-chrome-to-table-lip-HANDOFF.md
  */
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
@@ -16,20 +26,9 @@ import { describe, it } from 'node:test';
 const ROOT = process.cwd();
 const SHELL = join(ROOT, 'src/components/dashboard/workbench-shell.tsx');
 
-/** Workbench mounts that own GridFieldsMenu (Wave 1 + Unbox Phase 2). */
-const IN_SCOPE_MOUNTS = [
-  'src/components/dashboard/OutboundWorkspaceHeader.tsx',
-  'src/components/sidebar/receiving/incoming/IncomingWorkspaceHeader.tsx',
-  'src/components/sidebar/receiving/HistoryWorkspaceHeader.tsx',
-  'src/components/repair/RepairWorkspaceHeader.tsx',
-  'src/components/products/catalog/ProductsCatalogWorkspace.tsx',
-  'src/components/receiving/pickup/PickupWorkspace.tsx',
-  'src/components/receiving/unbox/UnboxWorkspaceHeader.tsx',
-] as const;
-
 /**
  * Surfaces that must compose WorkbenchTrailingCluster for sort/actions
- * (honest absence of Fields OK — no GridFieldsMenu SoT yet).
+ * (honest absence OK — several now render nothing there and pass no `trailing`).
  */
 const TRAILING_CLUSTER_ADOPTERS = [
   'src/components/packer/PackWorkspaceHeader.tsx',
@@ -39,6 +38,66 @@ const TRAILING_CLUSTER_ADOPTERS = [
   'src/components/support/zendesk/SupportTicketsBoard.tsx',
   'src/components/photos/PhotoLibraryWorkspaceHeader.tsx',
 ] as const;
+
+/**
+ * Every grid that declares `fieldsMenu: true` must expose the lip, or its staff
+ * lose column display entirely. Header adapter → the view that owns the rail.
+ */
+const LIP_SURFACES: readonly (readonly [header: string, view: string])[] = [
+  [
+    'src/components/station/receiving-grid/ReceivingGridColumnHeader.tsx',
+    'src/components/station/receiving-grid/ReceivingGridView.tsx',
+  ],
+  [
+    'src/components/station/incoming-grid/IncomingGridColumnHeader.tsx',
+    'src/components/station/incoming-grid/IncomingGridView.tsx',
+  ],
+  [
+    'src/components/receiving/pickup/grid/PickupGridColumnHeader.tsx',
+    'src/components/receiving/pickup/grid/PickupGridView.tsx',
+  ],
+  [
+    'src/components/products/catalog/catalog-grid/CatalogGridColumnHeader.tsx',
+    'src/components/products/catalog/catalog-grid/CatalogGridView.tsx',
+  ],
+  [
+    'src/components/repair/repair-grid/RepairGridColumnHeader.tsx',
+    'src/components/repair/repair-grid/RepairGridView.tsx',
+  ],
+  [
+    'src/components/outbound/ready/grid/ReadyGridColumnHeader.tsx',
+    'src/components/outbound/ready/grid/ReadyGridView.tsx',
+  ],
+  [
+    'src/components/warranty/grid/WarrantyGridColumnHeader.tsx',
+    'src/components/warranty/grid/WarrantyGridView.tsx',
+  ],
+  [
+    'src/components/receiving/unfound/grid/UnfoundGridColumnHeader.tsx',
+    'src/components/receiving/unfound/grid/UnfoundGridView.tsx',
+  ],
+  [
+    'src/components/warehouse/bins-grid/BinsGridColumnHeader.tsx',
+    'src/components/warehouse/bins-grid/BinsGridView.tsx',
+  ],
+  [
+    'src/components/tracking-exceptions/grid/TrackingExceptionsGridColumnHeader.tsx',
+    'src/components/tracking-exceptions/grid/TrackingExceptionsGridView.tsx',
+  ],
+  [
+    'src/features/review/catalog-link/grid/CatalogLinkGridColumnHeader.tsx',
+    'src/features/review/catalog-link/grid/ReviewCatalogLinkGridView.tsx',
+  ],
+  // The two that chrome Fields used to serve exclusively.
+  [
+    'src/features/my-day/grid/MyDayGridColumnHeader.tsx',
+    'src/features/my-day/grid/MyDayGridView.tsx',
+  ],
+  [
+    'src/components/dashboard/orders-queue/OrdersQueueColumnHeader.tsx',
+    'src/components/dashboard/orders-queue/OrdersGridView.tsx',
+  ],
+];
 
 function walkTsx(dir: string, out: string[] = []): string[] {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
@@ -53,38 +112,29 @@ function walkTsx(dir: string, out: string[] = []): string[] {
 describe('WorkbenchTrailingCluster SoT', () => {
   const shell = readFileSync(SHELL, 'utf8');
 
-  it('exports WorkbenchTrailingCluster with Sort → Fields slot order', () => {
+  it('exports WorkbenchTrailingCluster with Sort → actions slot order', () => {
     assert.match(shell, /export function WorkbenchTrailingCluster/);
     assert.match(shell, /before\?: ReactNode/);
     assert.match(shell, /sort\?: ReactNode/);
-    assert.match(shell, /fields\?: ReactNode/);
     assert.match(shell, /actions\?: ReactNode/);
     assert.match(shell, /after\?: ReactNode/);
-    // Render order in the composer body
     const body = shell.slice(shell.indexOf('export function WorkbenchTrailingCluster'));
     const beforeIdx = body.indexOf('{before}');
     const sortIdx = body.indexOf('{sort}');
-    const fieldsIdx = body.indexOf('{fields}');
     const actionsIdx = body.indexOf('{actions}');
     const afterIdx = body.indexOf('{after}');
     assert.ok(beforeIdx > 0 && sortIdx > beforeIdx);
-    assert.ok(fieldsIdx > sortIdx);
-    assert.ok(actionsIdx > fieldsIdx);
+    assert.ok(actionsIdx > sortIdx);
     assert.ok(afterIdx > actionsIdx);
   });
 
-  for (const rel of IN_SCOPE_MOUNTS) {
-    it(`${rel} mounts GridFieldsMenu inside WorkbenchTrailingCluster fields=`, () => {
-      const src = readFileSync(join(ROOT, rel), 'utf8');
-      assert.match(src, /WorkbenchTrailingCluster/);
-      assert.match(src, /fields=\{[\s\S]*?<GridFieldsMenu/);
-      // Fields must not sit in the `right` filter cluster
-      const rightBlock = src.match(/right=\{[\s\S]*?\n\s*(trailing|controlsSlot)/);
-      if (rightBlock) {
-        assert.doesNotMatch(rightBlock[0], /GridFieldsMenu/);
-      }
-    });
-  }
+  it('has NO fields slot — chrome Fields cannot grow back', () => {
+    const props = shell.slice(
+      shell.indexOf('interface WorkbenchTrailingClusterProps'),
+      shell.indexOf('export function WorkbenchTrailingCluster'),
+    );
+    assert.doesNotMatch(props, /^\s*fields\?: ReactNode/m);
+  });
 
   for (const rel of TRAILING_CLUSTER_ADOPTERS) {
     it(`${rel} composes WorkbenchTrailingCluster (no raw sort beside search)`, () => {
@@ -101,31 +151,75 @@ describe('WorkbenchTrailingCluster SoT', () => {
     });
   }
 
-  it('Repair trailing places Sort before Fields', () => {
-    const src = readFileSync(join(ROOT, 'src/components/repair/RepairWorkspaceHeader.tsx'), 'utf8');
-    const sortProp = src.indexOf('sort={');
-    const fieldsProp = src.indexOf('fields={');
-    assert.ok(sortProp > 0 && fieldsProp > sortProp, 'sort= must precede fields=');
+  for (const [header, view] of LIP_SURFACES) {
+    it(`${view} reaches column display through the header lip`, () => {
+      const headerSrc = readFileSync(join(ROOT, header), 'utf8');
+      const viewSrc = readFileSync(join(ROOT, view), 'utf8');
+      // A family either composes the factory — which forwards the lip props by
+      // construction, which is the whole reason it exists — or, if it is a
+      // bespoke header (Orders), plumbs them itself.
+      assert.ok(
+        /makeLedgerGridColumnHeader/.test(headerSrc) || /onOpenColumnDetails/.test(headerSrc),
+        `${header} must compose makeLedgerGridColumnHeader or plumb onOpenColumnDetails itself`,
+      );
+      assert.match(
+        viewSrc,
+        /onOpenColumnDetails=\{/,
+        `${view} must pass onOpenColumnDetails to its column header`,
+      );
+      assert.match(
+        viewSrc,
+        /<GridColumnDetailsPanel/,
+        `${view} must mount the column-display rail`,
+      );
+    });
+  }
+
+  it('the lip anchors inside the sticky header band, not a second sticky layer', () => {
+    const lipHost = readFileSync(
+      join(ROOT, 'src/design-system/components/grid/LedgerGrid.tsx'),
+      'utf8',
+    );
+    // `relative` on the [data-grid-col-header] band is what lets the lip be
+    // absolutely positioned WITHOUT introducing its own `sticky` element.
+    const band = lipHost.slice(lipHost.indexOf('data-grid-col-header'));
+    assert.match(band.slice(0, 400), /'relative sticky top-0/);
+
+    for (const file of [
+      'src/design-system/components/grid/LedgerGridColumnHeader.tsx',
+      'src/components/dashboard/orders-queue/OrdersQueueColumnHeader.tsx',
+    ]) {
+      const src = readFileSync(join(ROOT, file), 'utf8');
+      const lip = src.slice(src.indexOf('data-grid-column-details-lip'));
+      const decl = lip.slice(0, 300);
+      assert.match(decl, /absolute inset-y-0 right-0/, `${file} lip must be absolute`);
+      // `position: sticky` — NOT the `z-sticky` z-index token, which the lip
+      // legitimately uses to sit above the header cells it overlaps.
+      assert.doesNotMatch(
+        decl,
+        /(^|[\s"'`])sticky[\s"'`-]/,
+        `${file} lip must not add a second sticky layer`,
+      );
+    }
   });
 
-  it('ReceivingLinesTable embedded portal does not inject GridFieldsMenu', () => {
-    const src = readFileSync(join(ROOT, 'src/components/station/ReceivingLinesTable.tsx'), 'utf8');
-    assert.doesNotMatch(src, /GridFieldsMenu/);
+  it('no workspace chrome mounts a column picker (Fields is retired)', () => {
+    const hits: string[] = [];
+    for (const file of walkTsx(join(ROOT, 'src'))) {
+      if (file.endsWith('workbench-trailing-cluster.guard.test.ts')) continue;
+      const text = readFileSync(file, 'utf8');
+      if (/<\s*GridFieldsMenu\b/.test(text) || /\bfields=\{/.test(text)) {
+        hits.push(relative(ROOT, file));
+      }
+    }
+    assert.deepEqual(
+      hits,
+      [],
+      `Column Fields belongs on the grid header lip, not page chrome: ${hits.join(', ')}`,
+    );
   });
 
   it('Incoming uses tableId incoming; History/Unbox keep receiving', () => {
-    const incomingHeader = readFileSync(
-      join(ROOT, 'src/components/sidebar/receiving/incoming/IncomingWorkspaceHeader.tsx'),
-      'utf8',
-    );
-    const historyHeader = readFileSync(
-      join(ROOT, 'src/components/sidebar/receiving/HistoryWorkspaceHeader.tsx'),
-      'utf8',
-    );
-    const unboxHeader = readFileSync(
-      join(ROOT, 'src/components/receiving/unbox/UnboxWorkspaceHeader.tsx'),
-      'utf8',
-    );
     const incomingGrid = readFileSync(
       join(ROOT, 'src/components/station/incoming-grid/IncomingGridView.tsx'),
       'utf8',
@@ -134,10 +228,6 @@ describe('WorkbenchTrailingCluster SoT', () => {
       join(ROOT, 'src/components/station/ReceivingLinesTable.tsx'),
       'utf8',
     );
-    assert.match(incomingHeader, /tableId="incoming"/);
-    assert.doesNotMatch(incomingHeader, /tableId="receiving"/);
-    assert.match(historyHeader, /tableId="receiving"/);
-    assert.match(unboxHeader, /tableId="receiving"/);
     assert.match(incomingGrid, /tableId = 'incoming'/);
     assert.match(linesTable, /tableId="incoming"/);
     assert.match(linesTable, /tableId=\{isIncomingMode \? 'incoming' : 'receiving'\}/);

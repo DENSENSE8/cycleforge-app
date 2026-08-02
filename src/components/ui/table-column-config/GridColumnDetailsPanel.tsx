@@ -2,13 +2,24 @@
 
 /**
  * Right-rail column display inspector — pick a product column, toggle
- * visibility, set highlight wash + cell chrome (default / chip).
+ * visibility, set highlight wash + cell chrome (default / chip), reset the
+ * table's whole delta.
+ *
+ * **The SOLE operator entry is the LedgerGrid top-right header lip**
+ * (`LedgerGridColumnHeader` `onOpenColumnDetails`). The chrome `GridFieldsMenu`
+ * that used to open a second door onto this same rail was retired 2026-08-02:
+ * Fields mutates the column set of the card it sits on, so a page-chrome
+ * control acting on that card was an altitude mismatch, and seven surfaces
+ * shipped both doors at once. Retiring it is not a sticky-band regression —
+ * the lip renders INSIDE the already-sticky `[data-grid-col-header]` band, so
+ * the port still has exactly one sticky layer.
  *
  * Prefs: `staff_preferences.tableColumns[tableId]` via {@link useGridFields} +
  * {@link useGridColumnDisplay}. Shell: non-modal detail stack (New Order grammar).
  */
 
 import { useEffect, useState } from 'react';
+import { RotateCcw } from '@/components/Icons';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
 import { SidebarIntakeFormShell } from '@/design-system/components/sidebar-intake';
 import {
@@ -51,18 +62,35 @@ export function GridColumnDetailsPanel<C extends LedgerGridColumnModel>({
   columns: readonly C[];
   initialHideKey?: string | null;
 }) {
-  const { fields, setFieldVisible } = useGridFields(tableId, columns);
+  const { fields, setFieldVisible, reset, dirtyCount } = useGridFields(tableId, columns);
   const { displayByKey, setHighlight, setCellMode } = useGridColumnDisplay(tableId);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
 
+  // Seed ONCE per open — deliberately NOT on every `fields` change.
+  //
+  // `fields` takes a new identity whenever a visibility toggle lands, so
+  // depending on it here snapped the operator's pick back to the first column
+  // on every switch flip: you clicked "Show Serial", the write succeeded, and
+  // the panel silently jumped to the top of the list. That was survivable while
+  // the chrome popover was the main toggle path; with the lip as the SOLE entry
+  // it is the primary interaction, so it had to go.
   useEffect(() => {
     if (!open) return;
-    if (initialHideKey && fields.some((f) => f.key === initialHideKey)) {
-      setSelectedKey(initialHideKey);
-      return;
-    }
-    setSelectedKey(fields[0]?.key ?? null);
-  }, [open, initialHideKey, fields]);
+    setSelectedKey(
+      initialHideKey && fields.some((f) => f.key === initialHideKey)
+        ? initialHideKey
+        : (fields[0]?.key ?? null),
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- seed on OPEN only; `fields` is read, not tracked
+  }, [open, initialHideKey]);
+
+  // Separate concern: if the selected column leaves the model entirely (a
+  // descriptor change, not a visibility toggle — a hidden column stays listed),
+  // fall back rather than rendering an empty detail body.
+  useEffect(() => {
+    if (!open || !selectedKey) return;
+    if (!fields.some((f) => f.key === selectedKey)) setSelectedKey(fields[0]?.key ?? null);
+  }, [open, selectedKey, fields]);
 
   if (!open) return null;
 
@@ -88,9 +116,24 @@ export function GridColumnDetailsPanel<C extends LedgerGridColumnModel>({
         subtitleAccent="blue"
         onClose={onClose}
         footer={
-          <Button variant="primary" className="w-full" onClick={onClose}>
-            Done
-          </Button>
+          // Reset acts on the whole table's delta, not the selected column, so
+          // it sits beside Done rather than under the per-column controls.
+          // Absent while pristine — a reset that resets nothing teaches nothing.
+          <div className="flex items-center gap-2">
+            {dirtyCount > 0 ? (
+              <Button
+                variant="secondary"
+                icon={<RotateCcw className="h-3.5 w-3.5 shrink-0" />}
+                onClick={() => reset()}
+                aria-label={`Reset to default — ${dirtyCount} changed from default`}
+              >
+                Reset
+              </Button>
+            ) : null}
+            <Button variant="primary" className="flex-1" onClick={onClose}>
+              Done
+            </Button>
+          </div>
         }
       >
         {fields.length === 0 ? (

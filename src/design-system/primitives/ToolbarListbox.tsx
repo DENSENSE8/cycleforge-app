@@ -12,7 +12,7 @@
  * **always** rendered (`opacity-0` when unselected) so nothing shifts
  * horizontally as the selection moves down the list.
  *
- * Consumers: `QueueSortSwitch` (single-select display sort), `GridFieldsMenu`
+ * Consumers: `QueueSortSwitch` (single-select display sort), `GridColumnDetailsPanel`
  * (multi-select column visibility), and `WorkbenchFilterMenuRow` (the [⫶]
  * filter popover on every workbench chrome header). All three compose this row,
  * so they are structurally incapable of drifting apart — which is exactly what

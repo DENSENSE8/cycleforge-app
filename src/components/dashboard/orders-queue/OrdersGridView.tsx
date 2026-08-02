@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, type ReactNode, type RefObject } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { useSearchParams } from 'next/navigation';
 import type { OnChangeFn, SortingState } from '@tanstack/react-table';
 import { getDaysLateNullable } from '@/utils/date';
@@ -8,6 +8,7 @@ import { useStaffNameMap } from '@/hooks/useStaffNameMap';
 import { useUIModeOptional } from '@/design-system/providers/UIModeProvider';
 import { useTableSelectMode } from '@/hooks/useTableSelectMode';
 import { useColumnOrder } from '@/components/ui/table-column-config/useColumnOrder';
+import { GridColumnDetailsPanel } from '@/components/ui/table-column-config/GridColumnDetailsPanel';
 import { OrderSearchEmptyState } from '@/components/dashboard/OrderSearchEmptyState';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
 import { LedgerGrid, useGridColumnVisibility, useGridSurface } from '@/design-system/components/grid';
@@ -431,6 +432,8 @@ export function OrdersGridView({
     if (cursor.openRevealFoldKey) revealFold(cursor.openRevealFoldKey);
   }, [selectedRecordId, cursor.position, cursor.openRevealFoldKey, revealFold]);
 
+  const [columnDetailsOpen, setColumnDetailsOpen] = useState(false);
+
   const { order: persistedOrder, setOrder, resetOrder } = useColumnOrder(tableId);
   const sanitizedOrder = useMemo(
     () => sanitizeOrdersQueueColumnOrder(persistedOrder, canonicalColumns),
@@ -707,6 +710,8 @@ export function OrdersGridView({
             activeSort={urlDriven && isQueueColumnSort(sort) ? sort : undefined}
             sortDir={urlDriven ? dir : null}
             onSortColumn={urlDriven ? handleSortColumn : undefined}
+            onOpenColumnDetails={() => setColumnDetailsOpen(true)}
+            columnDetailsOpen={columnDetailsOpen}
           />
         }
         renderRow={renderRow}
@@ -729,6 +734,14 @@ export function OrdersGridView({
             onClear={onClearSearch}
           />
         }
+      />
+      {/* `canonicalColumns`, not `displayColumns` — the rail must offer the
+          tracks that are currently OFF, which is the only way to turn one on. */}
+      <GridColumnDetailsPanel
+        open={columnDetailsOpen}
+        onClose={() => setColumnDetailsOpen(false)}
+        tableId={tableId}
+        columns={canonicalColumns}
       />
     </div>
   );
