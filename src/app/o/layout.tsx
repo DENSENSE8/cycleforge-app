@@ -11,12 +11,7 @@
 
 import { useMemo, type ReactNode } from 'react';
 import { useParams } from 'next/navigation';
-import { AnimatePresence, motion } from '@/design-system/motion';
-import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
-import {
-  useMotionPresence,
-  useMotionTransition,
-} from '@/design-system/foundations/motion-framer-hooks';
+import { AnimatePresence, motion, motionRole, useMotionRole } from '@/design-system/motion';
 
 export default function OrderWorkspaceLayout({ children }: { children: ReactNode }) {
   const params = useParams<{ orderId?: string }>();
@@ -26,8 +21,9 @@ export default function OrderWorkspaceLayout({ children }: { children: ReactNode
     return id ? decodeURIComponent(id) : 'order';
   }, [params?.orderId]);
 
-  const pane = useMotionPresence(framerPresence.workbenchPane);
-  const transition = useMotionTransition(framerTransition.workbenchPaneMount);
+  // `motionRole.swap.focus` — the pointer-driven focus-surface swap, taken as
+  // one pair so the presence can never drift onto another job's timing.
+  const { presence: pane, transition } = useMotionRole(motionRole.swap.focus);
 
   return (
     <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">

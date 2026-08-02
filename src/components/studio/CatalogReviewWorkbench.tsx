@@ -17,13 +17,11 @@
  */
 
 import { useMemo, useState } from 'react';
-import { AnimatePresence, motion } from '@/design-system/motion';
+import { AnimatePresence, motion, motionRole, useMotionRole } from '@/design-system/motion';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/design-system/primitives/Button';
 import { AlertCircle, Boxes, Check, ClipboardList, Clock, Inbox, Loader2, X } from '@/components/Icons';
 import { AnimatedCheck } from '@/components/ui/AnimatedCheck';
-import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
-import { useMotionPresence, useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
 
 interface CatalogSubmission {
   id: number;
@@ -89,8 +87,9 @@ export function CatalogReviewWorkbench() {
     },
   });
 
-  const panePresence = useMotionPresence(framerPresence.workbenchPane);
-  const paneTransition = useMotionTransition(framerTransition.workbenchPaneMount);
+  // `motionRole.swap.focus` — the pointer-driven focus-surface swap, taken as
+  // one pair so the presence can never drift onto another job's timing.
+  const { presence: panePresence, transition: paneTransition } = useMotionRole(motionRole.swap.focus);
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col bg-surface-canvas">

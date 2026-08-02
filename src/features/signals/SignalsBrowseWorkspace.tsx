@@ -14,12 +14,10 @@
 
 import { useMemo } from 'react';
 import Link from 'next/link';
-import { AnimatePresence, motion } from '@/design-system/motion';
+import { AnimatePresence, motion, motionRole, useMotionRole } from '@/design-system/motion';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { operationsHistoryTraceHref } from '@/lib/operations/history-links';
-import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
-import { useMotionPresence, useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
 import { SIGNAL_KINDS, SURFACE_ENTITY_TYPES } from '@/lib/surfaces/registry';
 import type { EntitySignalTimelineRow } from '@/lib/timeline';
 import type { EntitySignalDetail } from '@/lib/surfaces/entity-signals-read';
@@ -44,8 +42,9 @@ export function SignalsBrowseWorkspace() {
   const signalId = Number(searchParams.get('signalId')) || null;
   const q = searchParams.get('q') ?? '';
 
-  const paneMotion = useMotionPresence(framerPresence.workbenchPane);
-  const paneTransition = useMotionTransition(framerTransition.workbenchPaneMount);
+  // `motionRole.swap.focus` — the pointer-driven focus-surface swap, taken as
+  // one pair so the presence can never drift onto another job's timing.
+  const { presence: paneMotion, transition: paneTransition } = useMotionRole(motionRole.swap.focus);
 
   const select = (id: number | null) => {
     replaceOperationsSignalsUrl(router, searchParams, (sp) => {

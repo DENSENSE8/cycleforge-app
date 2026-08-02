@@ -8,9 +8,7 @@
 
 import { Suspense, useState } from 'react';
 import dynamic from 'next/dynamic';
-import { AnimatePresence, motion } from '@/design-system/motion';
-import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
-import { useMotionPresence, useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
+import { AnimatePresence, motion, motionRole, useMotionRole } from '@/design-system/motion';
 import { UnshippedTable } from '@/components/unshipped/UnshippedTable';
 import { DashboardScrollShell } from '@/components/dashboard/DashboardScrollShell';
 import { ShippingKpiStrip } from '@/components/tech/shipping/ShippingKpiStrip';
@@ -54,10 +52,10 @@ export function ShippingWorkspaceView({ techId }: ShippingWorkspaceViewProps) {
 
   // Tab bodies crossfade as the singular focus surface (chrome + KPI strip stay
   // put) — same workbenchPane preset family as the receiving right pane.
-  const paneMotionProps = {
-    ...useMotionPresence(framerPresence.workbenchPane),
-    transition: useMotionTransition(framerTransition.workbenchPaneMount),
-  };
+  // `motionRole.swap.focus` — the pointer-driven focus-surface swap, taken as
+  // one pair, then spread into the single props object this call site passes.
+  const { presence, transition } = useMotionRole(motionRole.swap.focus);
+  const paneMotionProps = { ...presence, transition };
 
   return (
     // Flex column (not a bare block): `DashboardScrollShell` is `flex-1`, which

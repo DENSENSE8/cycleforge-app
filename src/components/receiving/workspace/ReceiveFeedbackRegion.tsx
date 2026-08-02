@@ -20,7 +20,7 @@
  * ────────────────────────────────────────────────────────────────────────── */
 
 import { useEffect, useState } from 'react';
-import { AnimatePresence, motion } from '@/design-system/motion';
+import { AnimatePresence, motion, motionRole, useMotionRole } from '@/design-system/motion';
 import { Check, ChevronDown, Loader2 } from '@/components/Icons';
 import { WorkspaceCard } from '@/design-system/components';
 import { Button } from '@/design-system/primitives';
@@ -319,8 +319,9 @@ export function ReceiveFeedbackRegion({
    */
   onPhotoPolicyOverride?: (code: PhotoPolicyOverrideCode) => void;
 }) {
-  const presence = useMotionPresence(framerPresence.workbenchPane);
-  const transition = useMotionTransition(framerTransition.workbenchPaneMount);
+  // `motionRole.swap.focus` — the pointer-driven focus-surface swap, taken as
+  // one pair so the presence can never drift onto another job's timing.
+  const { presence: presence, transition: transition } = useMotionRole(motionRole.swap.focus);
 
   const phase: 'progress' | 'success' | 'diagnostic' | 'none' = receiving
     ? 'progress'

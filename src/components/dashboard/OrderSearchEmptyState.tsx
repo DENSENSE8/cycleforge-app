@@ -1,11 +1,7 @@
 'use client';
 
-import { motion } from '@/design-system/motion';
-import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
-import {
-  useMotionPresence,
-  useMotionTransition,
-} from '@/design-system/foundations/motion-framer-hooks';
+import { motion, motionRole, useMotionRole } from '@/design-system/motion';
+
 import { Search } from '@/components/Icons';
 import { sectionLabel } from '@/design-system';
 import { Button } from '@/design-system/primitives';
@@ -31,8 +27,9 @@ export function OrderSearchEmptyState({
   clearLabel = 'Show All Orders',
   onClear,
 }: OrderSearchEmptyStateProps) {
-  const presence = useMotionPresence(framerPresence.workbenchPane);
-  const transition = useMotionTransition(framerTransition.workbenchPaneMount);
+  // `motionRole.swap.focus` — the pointer-driven focus-surface swap, taken as
+  // one pair so the presence can never drift onto another job's timing.
+  const { presence: presence, transition: transition } = useMotionRole(motionRole.swap.focus);
 
   return (
     <motion.div

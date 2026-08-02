@@ -10,10 +10,8 @@
  * LedgerGrid day-banded queue, not ReceivingLines.
  */
 
-import { AnimatePresence, motion } from '@/design-system/motion';
+import { AnimatePresence, motion, motionRole, useMotionRole } from '@/design-system/motion';
 import { useSearchParams } from 'next/navigation';
-import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
-import { useMotionPresence, useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
 import ReceivingLinesTable from '@/components/station/ReceivingLinesTable';
 import { RECEIVING_SELECTION_SCOPE } from '@/components/station/ReceivingLinesTable';
 import { ContextualSelectionBar } from '@/design-system/components/ContextualSelectionBar';
@@ -87,8 +85,9 @@ export function ReceivingRightPane({
   // Incoming Email-Triage sub-view swap keeps the snappy canonical crossfade —
   // it fades in over the (display:none) table, so there is no second pane to
   // ghost against and no need for the slower settle.
-  const emailPane = useMotionPresence(framerPresence.workbenchPane);
-  const emailTransition = useMotionTransition(framerTransition.workbenchPaneMount);
+  // `motionRole.swap.focus` — the pointer-driven focus-surface swap, taken as
+  // one pair so the presence can never drift onto another job's timing.
+  const { presence: emailPane, transition: emailTransition } = useMotionRole(motionRole.swap.focus);
 
   // Incoming hosts two right-pane sub-views toggled by the band (`?incview=`):
   // the POS table (default) and the Email Triage worklist. The table stays

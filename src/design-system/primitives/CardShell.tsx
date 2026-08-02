@@ -1,7 +1,7 @@
 'use client';
 
 import { forwardRef, type ReactNode } from 'react';
-import { motion, useReducedMotion } from '@/design-system/motion';
+import { motion, motionRole, useMotionPressRole, useReducedMotion } from '@/design-system/motion';
 import { useUIModeOptional } from '../providers/UIModeProvider';
 import {
   framerPresence,
@@ -159,6 +159,8 @@ export const CardShell = forwardRef<HTMLDivElement, CardShellProps>(function Car
   // Linear + rail variants intentionally suppress the lift/scale hover gesture
   // so rows don't jump and neighbours never shift. Hover state is bg-only.
   const flatRow = variant === 'linear' || variant === 'rail';
+  // `motionRole.gesture.press` — suppressed (not reduced) under prefers-reduced-motion.
+  const pressGesture = useMotionPressRole(motionRole.gesture.press);
   const hoverGesture =
     shouldReduce || (!isMobile && flatRow) ? undefined : framerGesture.cardHover;
 
@@ -176,7 +178,7 @@ export const CardShell = forwardRef<HTMLDivElement, CardShellProps>(function Car
       layout={!shouldReduce}
       {...entranceProps}
       whileHover={hoverGesture}
-      whileTap={shouldReduce ? undefined : framerGesture.tapPress}
+      whileTap={pressGesture}
       onClick={onClick}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}

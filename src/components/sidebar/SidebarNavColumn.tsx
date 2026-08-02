@@ -1,9 +1,8 @@
 'use client';
 
 import { useEffect, useState, type ReactNode } from 'react';
-import { motion } from '@/design-system/motion';
+import { motion, motionRole } from '@/design-system/motion';
 import { useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
-import { framerTransition } from '@/design-system/foundations/motion-framer';
 import { appChromeClass } from '@/design-system/tokens/app-surface';
 import { SIDEBAR_SPINE_WIDTH, SIDEBAR_SPINE_WIDTH_PX } from '@/components/sidebar/sidebar-spine';
 import { cn } from '@/utils/_cn';
@@ -70,7 +69,10 @@ import { cn } from '@/utils/_cn';
  * (scrim + scroll lock) it always had, in `ResponsiveLayout`.
  */
 export function SidebarNavColumn({ open, children }: { open: boolean; children: ReactNode }) {
-  const transition = useMotionTransition(framerTransition.sidebarNavColumnMount);
+  // `motionRole.push.rail` — TRANSITION ONLY. This column animates its own
+  // width keyframes inline rather than mounting a presence shape, so it takes
+  // the role's physics without pretending to have the role's presence.
+  const transition = useMotionTransition(motionRole.push.rail.transition);
 
   // Mount the spine on FIRST open and keep it mounted thereafter.
   //

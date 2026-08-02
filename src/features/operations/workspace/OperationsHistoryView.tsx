@@ -15,7 +15,7 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
-import { AnimatePresence, motion } from '@/design-system/motion';
+import { AnimatePresence, motion, motionRole, useMotionRole } from '@/design-system/motion';
 import { Download, FileText, History, Loader2, X } from '@/components/Icons';
 import {
   OrderIdChip,
@@ -28,14 +28,7 @@ import { TimelineSection } from '@/components/ui/TimelineSection';
 import { Button, IconButton } from '@/design-system/primitives';
 import { IdentifierToggle } from '@/components/ui/IdentifierToggle';
 import { SerialProvenanceHeader } from '@/components/operations/SerialProvenanceHeader';
-import {
-  framerPresence,
-  framerTransition,
-} from '@/design-system/foundations/motion-framer';
-import {
-  useMotionPresence,
-  useMotionTransition,
-} from '@/design-system/foundations/motion-framer-hooks';
+
 import type { TimelineGroupMode } from '@/components/ui/EventTimeline';
 import type { SerialProvenance } from '@/lib/queries/operations-journey-queries';
 import { journeyKeyOf, type JourneyDimension } from '@/lib/timeline/journey';
@@ -123,10 +116,9 @@ export function OperationsHistoryView() {
   // Operations History browse feed (flag): when on, the non-focused landing is
   // the org-wide filterable event feed instead of the empty box.
   const browseEnabled = isOperationsHistoryBrowseEnabled();
-  const panePresence = useMotionPresence(framerPresence.workbenchPane);
-  const paneTransition = useMotionTransition(
-    framerTransition.workbenchPaneMount,
-  );
+  // `motionRole.swap.focus` — the pointer-driven focus-surface swap, taken as
+  // one pair so the presence can never drift onto another job's timing.
+  const { presence: panePresence, transition: paneTransition } = useMotionRole(motionRole.swap.focus);
   // Region precedence: Trace (focused) → Browse (flag on) → empty.
   const region = focused
     ? `timeline:${url.entityValue}`

@@ -3,7 +3,7 @@
 import { useEffect, useSyncExternalStore, type ReactNode } from 'react';
 import dynamic from 'next/dynamic';
 import { usePathname } from 'next/navigation';
-import { motion } from '@/design-system/motion';
+import { motion, motionRole } from '@/design-system/motion';
 import { ErrorBoundary } from '@/components/error/ErrorBoundary';
 import { ChevronRight } from '@/components/Icons';
 import { useHasSidebarContext } from '@/components/sidebar/useHasSidebarContext';
@@ -16,7 +16,6 @@ import {
 } from '@/components/sidebar/context-panel-column';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { HorizontalEdgeResizeHandle } from '@/design-system/components/HorizontalEdgeResizeHandle';
-import { framerTransition } from '@/design-system/foundations/motion-framer';
 import { useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
 import { useHorizontalEdgeResize } from '@/design-system/hooks';
 import { IconButton } from '@/design-system/primitives';
@@ -118,7 +117,10 @@ export function ContextPanelLayout({ children }: { children: ReactNode }) {
   );
 
   const isCollapsed = hasPanel && (collapsed || parkRail);
-  const transition = useMotionTransition(framerTransition.sidebarNavColumnMount);
+  // `motionRole.push.rail` — TRANSITION ONLY. This column animates its own
+  // width keyframes inline rather than mounting a presence shape, so it takes
+  // the role's physics without pretending to have the role's presence.
+  const transition = useMotionTransition(motionRole.push.rail.transition);
 
   if (!hasPanel) return <>{children}</>;
 

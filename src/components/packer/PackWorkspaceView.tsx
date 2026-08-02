@@ -6,9 +6,7 @@
  */
 
 import { Suspense, useState } from 'react';
-import { AnimatePresence, motion } from '@/design-system/motion';
-import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
-import { useMotionPresence, useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
+import { AnimatePresence, motion, motionRole, useMotionRole } from '@/design-system/motion';
 import { UnshippedTable } from '@/components/unshipped/UnshippedTable';
 import { PackerTable } from '@/components/PackerTable';
 import { DashboardScrollShell } from '@/components/dashboard/DashboardScrollShell';
@@ -40,10 +38,10 @@ export function PackWorkspaceView({ packerId }: { packerId: number }) {
   const { selectMode, selectedRows, selectionActions, bulkBarVisible } =
     useDashboardBulkSelection('unshipped');
 
-  const paneMotionProps = {
-    ...useMotionPresence(framerPresence.workbenchPane),
-    transition: useMotionTransition(framerTransition.workbenchPaneMount),
-  };
+  // `motionRole.swap.focus` — the pointer-driven focus-surface swap, taken as
+  // one pair, then spread into the single props object this call site passes.
+  const { presence, transition } = useMotionRole(motionRole.swap.focus);
+  const paneMotionProps = { ...presence, transition };
 
   const handleOpenQueueRecord = (record: ShippedOrder) => {
     dispatchPackActiveOrder(shippedOrderToPackPane(record));
