@@ -68,7 +68,6 @@ import {
   invalidateReceivingFeeds,
   patchReceivingRailTicketByCarton,
 } from '@/lib/queries/receiving-queries';
-import { activeReceivingStepKey } from './ReceivingProgressStepper';
 import {
   StationContextBar,
   StationMoreDetails,
@@ -84,8 +83,10 @@ import {
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { IconButton, slicedActionDockWrapperClass } from '@/design-system/primitives';
 import { GoalRing } from '@/components/layout/goal-chip/GoalRing';
-import { toneFor } from '@/components/layout/goal-chip/goal-chip-shared';
+import { IDLE_TONE } from '@/components/layout/goal-chip/goal-chip-shared';
 import { usePoNoteTabState } from './line-edit/terminal/usePoNoteTabState';
+import { elevationClass } from '@/design-system/tokens/shadows';
+
 import { resolveUnboxTerminal } from './line-edit/terminal/unbox-terminal';
 import { buildUnboxOverview, buildUnboxSideTabs } from './line-edit/terminal/unbox-tabs';
 import { WorkspaceNotesCard } from './line-edit/WorkspaceNotesCard';
@@ -177,18 +178,12 @@ export function LineEditPanel({
   // in the top-row PO#/order chip (last-8) instead of a separate LINKAGE panel.
   const latestRowSerial = String(rowSerials[rowSerials.length - 1]?.serial_number ?? '').trim();
   const linkedOrder = useReturnOrderLinkage(c.serialInput.trim() || latestRowSerial);
-  const activeStep = useMemo(
-    () =>
-      activeReceivingStepKey({
-        photoCount,
-        serialCount,
-        serialAbsent: !!row.serial_absent,
-        perUnitAbsentCount,
-        quantityExpected: row.quantity_expected ?? 0,
-        labelPrinted,
-      }),
-    [photoCount, serialCount, row.serial_absent, perUnitAbsentCount, row.quantity_expected, labelPrinted],
-  );
+  // NOTE (2026-08-02): the `activeStep` memo that lived here is gone with the
+  // notes-composer auto-focus it existed to drive. It was also a SECOND pointer
+  // derivation — `activeReceivingStepKey` beside `resolveActiveStep` — and the
+  // two disagree the moment skips exist, which is the precise hazard
+  // `procedure-pointer.ts` was extracted to close. Anything needing the active
+  // step reads `useUnboxProcedureSteps`.
 
   // Which right-edge display is showing, from `?display=`. `null` = the column
   // is closed — one piece of state, URL-durable like its Ticket / Claim
@@ -612,19 +607,24 @@ export function LineEditPanel({
       >
         {/* Pane-anchored — sibling of Unbox + push so Ticket/Displays do not slide it. */}
         <div className={stationMoreDetailsPaneHostClass} data-testid="station-more-details-slot">
-          <StationMoreDetails>
+          <StationMoreDetails className="min-h-0 rounded-full p-1">
             <HoverTooltip label={displaysExpandLabel} asChild>
               <IconButton
                 size="sm"
                 tone="neutral"
                 ariaLabel={displaysExpandLabel}
                 aria-expanded={showDisplays}
+                className={cn(
+                  'rounded-full bg-surface-card',
+                  elevationClass('raised', 'soft'),
+                )}
                 icon={
                   <GoalRing
                     percent={procedurePercent}
-                    color={toneFor(procedurePercent, procedureDone).ring}
-                    size={16}
+                    color={IDLE_TONE.ring}
+                    size={18}
                     strokeWidth={2}
+                    showValue={false}
                   />
                 }
                 onClick={toggleDisplays}
@@ -706,7 +706,6 @@ export function LineEditPanel({
                         row={row}
                         c={c}
                         onActionFeedback={setActionFeedback}
-                        activeStep={activeStep}
                         // Enter in the notes field = chat Send → print+receive.
                         onPrimaryAction={
                           terminalVm ? () => void terminalVm.onClick() : undefined

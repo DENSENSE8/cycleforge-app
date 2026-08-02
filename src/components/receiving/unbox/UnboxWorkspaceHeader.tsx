@@ -42,6 +42,7 @@ import {
   type UnboxWorkspaceTab,
 } from '@/utils/unbox-workspace-state';
 import { dispatchReceivingWorkspaceClose } from '@/utils/events';
+import { emitReceiving } from '@/components/receiving/receiving-events';
 
 // Order is the SoT's (`UNBOX_WORKSPACE_TABS`): Recent · Queue · History, with
 // the archive tab last (emerald, dividerBefore) after the working tabs. Recent
@@ -93,13 +94,11 @@ export function UnboxWorkspaceHeader({
         const rows = await fetchUnboxOpenedRows({ staffId });
         const mru = rows[0];
         if (mru?.id != null) {
-          window.dispatchEvent(
-            new CustomEvent('receiving-highlight-line', { detail: mru.id }),
-          );
+          emitReceiving('receiving-highlight-line', mru.id);
         }
       } finally {
         setTimeout(() => {
-          window.dispatchEvent(new CustomEvent('receiving-focus-scan'));
+          emitReceiving('receiving-focus-scan');
         }, 60);
       }
     })();

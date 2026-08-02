@@ -53,7 +53,7 @@ import {
 /** Functional families — never a per-step one-off hue. */
 type StepHue = 'sky' | 'violet' | 'amber' | 'emerald';
 
-export interface StepFace {
+interface StepFace {
   Icon: ComponentType<{ className?: string }>;
   hue: StepHue;
 }

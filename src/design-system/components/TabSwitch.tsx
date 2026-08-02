@@ -71,6 +71,13 @@ interface TabSwitchProps {
    * overflow trigger). Not measured by the sliding pill.
    */
   trailing?: ReactNode;
+  /**
+   * `inline` (default) — icon + label in a horizontal row.
+   * `stacked` — icon above label (`text-role-micro`). Opt-in for dense
+   * section strips (Unbox Displays); do not flip the default without a
+   * second adopting surface.
+   */
+  density?: 'inline' | 'stacked';
 }
 
 const colorTextMap: Record<string, { active: string; shadow: string }> = {
@@ -121,18 +128,22 @@ export function TabSwitch({
   fit = 'fill',
   size = 'md',
   trailing,
+  density = 'inline',
 }: TabSwitchProps) {
   const upNext = variant === 'upNext';
   const solid = variant === 'solid';
   const solidAccent = solid && solidTone === 'accent';
   const hug = fit === 'hug';
   const compact = size === 'sm';
+  const stacked = density === 'stacked';
   const upNextOutline = stationChromeOutlineClassName ?? 'border border-border-default';
   const solidRailPad = compact ? 'p-0.5' : 'p-1';
   const defaultRailClass = upNext
     ? `${upNextRailBaseClass} ${upNextOutline}`
     : solid
-      ? `rounded-full border border-border-default bg-surface-card ${solidRailPad} shadow-sm`
+      ? stacked
+        ? `rounded-2xl border border-border-default bg-surface-card ${solidRailPad} shadow-sm`
+        : `rounded-full border border-border-default bg-surface-card ${solidRailPad} shadow-sm`
       : highContrast
         ? 'rounded-xl bg-surface-strong p-1.5 shadow-[inset_0_1px_3px_rgba(0,0,0,0.08)]'
         : 'bg-surface-sunken rounded-xl p-1';
@@ -294,9 +305,14 @@ export function TabSwitch({
                 }}
                 onClick={() => onTabChange(tab.id)}
                 className={cn(
-                  'relative z-10 min-w-[3rem] whitespace-nowrap transition-colors duration-150',
+                  'relative z-10 transition-colors duration-150',
                   tabFlexClass,
-                  compact ? nestedCornerClass('card', 0.5) : 'rounded-full',
+                  stacked
+                    ? 'min-w-[3.25rem] rounded-xl'
+                    : cn(
+                        'min-w-[3rem] whitespace-nowrap',
+                        compact ? nestedCornerClass('card', 0.5) : 'rounded-full',
+                      ),
                   solid ? 'font-semibold' : 'font-semibold uppercase tracking-widest',
                   upNext
                     ? 'px-3 py-2 text-role-caption'
@@ -304,7 +320,9 @@ export function TabSwitch({
                       ? hug
                         ? compact
                           ? 'flex h-full items-center px-2.5 text-role-caption'
-                          : 'px-3 py-2 text-role-caption'
+                          : stacked
+                            ? 'px-2 py-1.5 text-role-micro'
+                            : 'px-3 py-2 text-role-caption'
                         : 'px-5 py-2.5 text-role-caption'
                       : highContrast
                         ? 'px-4 py-2 text-role-caption'
@@ -325,42 +343,58 @@ export function TabSwitch({
                 )}
               >
                 <motion.span
-                  className="relative z-10 flex items-center justify-center gap-1.5"
+                  className={cn(
+                    'relative z-10 flex items-center justify-center',
+                    stacked ? 'flex-col gap-0.5' : 'gap-1.5',
+                  )}
                   animate={{
                     scale: isActive ? 1 : solid ? 1 : upNext || highContrast ? 0.98 : 0.93,
                     opacity: isActive ? 1 : solid || upNext ? 1 : highContrast ? 0.9 : 0.52,
                   }}
                   transition={{ duration: 0.18, ease: motionBezier.easeOut }}
                 >
-                  {Icon ? <Icon className="h-3.5 w-3.5 shrink-0" /> : null}
-                  {tab.label}
-                  {tab.count !== undefined && tab.count > 0 ? (
-                    countStyle === 'plain' ? (
+                  {Icon ? (
+                    <Icon className={cn('shrink-0', stacked ? 'h-4 w-4' : 'h-3.5 w-3.5')} />
+                  ) : null}
+                  <span
+                    className={cn(
+                      'inline-flex items-center',
+                      stacked
+                        ? 'max-w-[4.5rem] gap-0.5 truncate text-role-micro leading-tight'
+                        : 'gap-1.5',
+                    )}
+                  >
+                    <span className={stacked ? 'truncate' : undefined}>{tab.label}</span>
+                    {tab.count !== undefined && tab.count > 0 && countStyle === 'plain' ? (
                       <span
                         key={tab.count}
-                        className={`tabular-nums ${isActive ? 'opacity-80' : 'opacity-55'}`}
+                        className={cn(
+                          'tabular-nums',
+                          isActive ? 'opacity-80' : 'opacity-55',
+                        )}
                       >
                         {tab.count > 99 ? '99+' : tab.count}
                       </span>
-                    ) : (
-                      <motion.span
-                        key={tab.count}
-                        initial={{ scale: 0.7, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        transition={{ type: 'spring', stiffness: 420, damping: 26 }}
-                        className={/* ds-allow-spacing — 14px count bubble, deliberate 3px inset */ `inline-flex items-center justify-center min-w-[14px] h-[14px] px-[3px] rounded-full text-role-micro tabular-nums leading-none ${
-                          upNext
-                            ? 'bg-current/[0.14] text-current'
-                            : isActive
-                              ? 'bg-current/[0.12] text-current'
-                              : highContrast
-                                ? 'bg-surface-inverse-soft/20 text-text-default'
-                                : 'bg-surface-strong/70 text-text-muted'
-                        }`}
-                      >
-                        {tab.count > 99 ? '99+' : tab.count}
-                      </motion.span>
-                    )
+                    ) : null}
+                  </span>
+                  {tab.count !== undefined && tab.count > 0 && countStyle !== 'plain' ? (
+                    <motion.span
+                      key={tab.count}
+                      initial={{ scale: 0.7, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      transition={{ type: 'spring', stiffness: 420, damping: 26 }}
+                      className={/* ds-allow-spacing — 14px count bubble, deliberate 3px inset */ `inline-flex items-center justify-center min-w-[14px] h-[14px] px-[3px] rounded-full text-role-micro tabular-nums leading-none ${
+                        upNext
+                          ? 'bg-current/[0.14] text-current'
+                          : isActive
+                            ? 'bg-current/[0.12] text-current'
+                            : highContrast
+                              ? 'bg-surface-inverse-soft/20 text-text-default'
+                              : 'bg-surface-strong/70 text-text-muted'
+                      }`}
+                    >
+                      {tab.count > 99 ? '99+' : tab.count}
+                    </motion.span>
                   ) : null}
                 </motion.span>
               </button>

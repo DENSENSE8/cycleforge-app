@@ -1,4 +1,4 @@
-export { ProcedureCards } from './ProcedureCards';
-export type { ProcedureCardFace } from './ProcedureCards';
+export { ProcedureColumn } from './ProcedureColumn';
+export { PROCEDURE_STEP_FACE_HEIGHT } from './ProcedureColumn';
 export { ProcedureChecklist } from './ProcedureChecklist';
-export type { ProcedureStepRow, ProcedureStepState } from './types';
+export type { ProcedureStepRow } from './types';

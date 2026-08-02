@@ -5,31 +5,22 @@
  * Three layers, deliberately separable:
  *   - `capture-upload-model`  — pure vocabulary + summary law (no React)
  *   - `CaptureUploadStatus`   — the compound; plain props, imports no queue
- *   - `useCaptureUploadStatus`/`CaptureUploadDock` — the phone-side wiring
+ *   - `useCaptureUploadStatus` / `CaptureUploadDock` — the phone-side wiring
  *
- * A new bench renders `CaptureUploadStatus`. It does NOT fork a strip, and it
- * does not need the hook if its entries come from somewhere else — which is the
- * seam a desk-side surface uses in P1.
+ * A new bench renders `CaptureUploadStatus`; it does NOT fork a strip. A
+ * surface whose entries come from somewhere else (the P1 desk-side seam) skips
+ * the hook and passes its own — which is why the compound imports no queue.
+ *
+ * **This barrel exports only what something imports.** Consumers reach the
+ * compound, the hook and the model through their concrete modules
+ * (`./CaptureUploadStatus`, `./useCaptureUploadStatus`, `./capture-upload-model`).
+ * Re-exporting the whole surface here for symmetry would add a dozen entries
+ * that nothing imports, and every one lands in the knip ledger as dead code —
+ * the same trap documented on `design-system/components/capture-stack/index.ts`.
+ * Add a name here when a real caller needs it from this path, not before.
  *
  * Law: `.claude/rules/display/station.md` §6 (pass/fail is a card, not a toast).
  * Program: `docs/todo/station-realtime-capture-visibility-CLAUDE-CODE-PROMPT.md`.
  */
 
-export { CaptureUploadStatus } from './CaptureUploadStatus';
-export type { CaptureUploadStatusProps } from './CaptureUploadStatus';
 export { CaptureUploadDock } from './CaptureUploadDock';
-export { useCaptureUploadStatus } from './useCaptureUploadStatus';
-export type { CaptureUploadStatusModel } from './useCaptureUploadStatus';
-export {
-  captureUploadKey,
-  distinctFailureReasons,
-  humanizeUploadError,
-  summarizeCaptureUploads,
-} from './capture-upload-model';
-export type {
-  CaptureUploadDomain,
-  CaptureUploadEntry,
-  CaptureUploadState,
-  CaptureUploadSummary,
-  CaptureUploadTone,
-} from './capture-upload-model';

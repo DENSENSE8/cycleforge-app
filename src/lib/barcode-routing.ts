@@ -586,12 +586,12 @@ export function gs1LocationUrl(
 /**
  * Raw GS1 AI string in human-readable parens form — `(414)gln(254)code`.
  *
- * `gln` is REQUIRED and is assumed already validated by
- * {@link locationLabelPayload}, which is the only thing that should call this.
- * Emitting AI 414 is a claim that the digits are a licensed GLN, so there is
- * deliberately no default and no fallback here.
+ * NOT exported: emitting AI 414 is a claim that the digits are a licensed GLN,
+ * and {@link locationLabelPayload} is the only place allowed to decide that.
+ * A call site that could reach this directly could bypass the check — which is
+ * precisely how `DEFAULT_GLN` ended up on every printed label.
  */
-export function gs1LocationAi(s: LocationSegments, opts: { gln: string }): string {
+function gs1LocationAi(s: LocationSegments, opts: { gln: string }): string {
   return `(414)${opts.gln.trim()}(254)${locationCodeFlat(s)}`;
 }
 
@@ -625,7 +625,7 @@ export function gs1LocationAi(s: LocationSegments, opts: { gln: string }): strin
  * No re-print is required; re-printing is what upgrades a location to real GS1
  * once a prefix is licensed.
  */
-export interface LocationLabelPayload {
+interface LocationLabelPayload {
   /** Symbology to hand the DataMatrix renderer. */
   symbology: 'gs1datamatrix' | 'datamatrix';
   /** The payload string to encode. */

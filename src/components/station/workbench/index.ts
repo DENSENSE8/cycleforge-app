@@ -20,7 +20,6 @@
 
 export { StationWorkbench } from './StationWorkbench';
 export { StationPanelRoot } from './StationPanelRoot';
-export { StationAmbientWash } from './StationAmbientWash';
 export {
   SectionTabsRightTrack,
   SectionTabsRightPill,

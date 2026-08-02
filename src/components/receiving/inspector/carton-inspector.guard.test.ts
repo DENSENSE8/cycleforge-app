@@ -219,9 +219,16 @@ test('photo buckets resolve in the model, never in JSX', () => {
 });
 
 test('the Photos CTA is the primary entry, and there is only one', () => {
+  // Pinned on the ACCESSIBLE NAMES and the toggle wiring, not on the markup —
+  // the first version of this matched a literal `aria-label={...}` and broke the
+  // moment the control migrated from a raw <button> to <Button ariaLabel>, which
+  // is a DS improvement a guard should never punish.
+  for (const name of ['Show carton photos', 'Hide carton photos']) {
+    assert.ok(ALL.includes(name), `the Photos control must expose the "${name}" accessible name`);
+  }
   assert.ok(
-    /aria-label=\{photosOpen \? 'Hide carton photos' : 'Show carton photos'\}/.test(ALL),
-    'the DispositionBar must carry the primary Photos control',
+    ALL.includes('onTogglePhotos'),
+    'the DispositionBar must own the primary Photos toggle',
   );
   assert.equal(
     ALL.includes('ReceivingPhotosSection'),

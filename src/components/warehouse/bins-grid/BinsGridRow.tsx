@@ -25,7 +25,7 @@ const dataCell = (col: BinsGridColumn, rule = true) =>
   cn(binsGridCell({ rule, inset: 'grid' }), gridCellAlignClass(col));
 
 /** Compact age label for `last_counted` — absolute ISO stays on the tooltip. */
-export function binsCountedAge(iso: string | null): string {
+function binsCountedAge(iso: string | null): string {
   if (!iso) return 'never';
   const ms = Date.now() - new Date(iso).getTime();
   if (!Number.isFinite(ms) || ms < 0) return 'just now';

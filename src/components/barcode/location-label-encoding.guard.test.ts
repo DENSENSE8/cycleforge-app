@@ -16,7 +16,10 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { locationLabelPayload, type LocationSegments } from '@/lib/barcode-routing';
+import {
+  locationLabelPayload,
+  type LocationSegments,
+} from '@/lib/barcode-routing';
 import { renderDataMatrixSvg } from '@/lib/barcode/dataMatrixSvg';
 
 const BIN: LocationSegments = { zone: 'A', aisle: 1, bay: 1, level: 1, position: 1 };
@@ -30,7 +33,7 @@ function assertRealSymbol(svg: string, label: string): void {
 }
 
 test('the no-GLN label encodes as a plain DataMatrix', () => {
-  const payload = locationLabelPayload(BIN);
+  const payload: ReturnType<typeof locationLabelPayload> = locationLabelPayload(BIN);
   assert.equal(payload.symbology, 'datamatrix');
   assertRealSymbol(
     renderDataMatrixSvg({ value: payload.value, symbology: payload.symbology }),
@@ -39,7 +42,7 @@ test('the no-GLN label encodes as a plain DataMatrix', () => {
 });
 
 test('the licensed-GLN label encodes as a GS1 DataMatrix', () => {
-  const payload = locationLabelPayload(BIN, { gln: LICENSED_GLN });
+  const payload: ReturnType<typeof locationLabelPayload> = locationLabelPayload(BIN, { gln: LICENSED_GLN });
   assert.equal(payload.symbology, 'gs1datamatrix');
   assertRealSymbol(
     renderDataMatrixSvg({ value: payload.value, symbology: payload.symbology }),

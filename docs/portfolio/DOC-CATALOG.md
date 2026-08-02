@@ -1,7 +1,7 @@
 # DOC catalog — machine-generated SoT
 
 > **Do not hand-edit.** Regenerate: `node scripts/portfolio-sot-sync.mjs`  
-> Generated: `2026-08-02T04:20:14.861Z` · Files: **409** · Repo: `cycleforge-app`  
+> Generated: `2026-08-02T05:20:03.419Z` · Files: **410** · Repo: `cycleforge-app`  
 > Parent index: [INDEX.md](./INDEX.md)
 
 Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*** id  
@@ -13,7 +13,7 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 
 | WT-ID | Absolute path | Branch | HEAD (short) | Exists |
 |-------|---------------|--------|--------------|--------|
-| `main` | `/Users/icecube/repos/cycleforge-app` | `main` | `d5d805032` | yes |
+| `main` | `/Users/icecube/repos/cycleforge-app` | `main` | `6581c6211` | yes |
 | `ai-chat` | `/Users/icecube/repos/cycleforge-ai-chat` | `topic/ai-chat` | `3f55b275e` | yes |
 | `fba` | `/Users/icecube/repos/cycleforge-fba` | `topic/fba` | `3f55b275e` | yes |
 | `glass` | `/Users/icecube/repos/cycleforge-glass` | `glass-design-system` | `a331b1247` | yes |
@@ -200,6 +200,7 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 | `DOC-TODO-CARTON-INSPECTOR-UX-GEMINI-RESEARCH-BRIEFING-326B` | `WS-TODO-MISC` | [`todo/carton-inspector-ux-GEMINI-RESEARCH-BRIEFING.md`](../todo/carton-inspector-ux-GEMINI-RESEARCH-BRIEFING.md) |
 | `DOC-TODO-CARTON-PHOTO-TRIAGE-CLAUDE-CODE-PROMPT-D716` | `WS-TODO-MISC` | [`todo/carton-photo-triage-CLAUDE-CODE-PROMPT.md`](../todo/carton-photo-triage-CLAUDE-CODE-PROMPT.md) |
 | `DOC-TODO-CARTON-PHOTO-TRIAGE-RESEARCH-RULING-7253` | `WS-TODO-MISC` | [`todo/carton-photo-triage-RESEARCH-RULING.md`](../todo/carton-photo-triage-RESEARCH-RULING.md) |
+| `DOC-TODO-CARTON-READ-DISPLAY-POLISH-CLAUDE-CODE-PROMPT-01DC` | `WS-TODO-MISC` | [`todo/carton-read-display-polish-CLAUDE-CODE-PROMPT.md`](../todo/carton-read-display-polish-CLAUDE-CODE-PROMPT.md) |
 | `DOC-TODO-CHROME-SOT-COMPOUND-GEMINI-RESEARCH-BRIEFING-5D7D` | `WS-TODO-MISC` | [`todo/chrome-sot-compound-GEMINI-RESEARCH-BRIEFING.md`](../todo/chrome-sot-compound-GEMINI-RESEARCH-BRIEFING.md) |
 | `DOC-TODO-CHROME-SOT-COMPOUND-PLAN-1D11` | `WS-TODO-MISC` | [`todo/chrome-sot-compound-PLAN.md`](../todo/chrome-sot-compound-PLAN.md) |
 | `DOC-TODO-CLAIM-SUBJECT-FBA-UNKNOWN-HANDOFF-559C` | `WS-TODO-MISC` | [`todo/claim-subject-fba-unknown-HANDOFF.md`](../todo/claim-subject-fba-unknown-HANDOFF.md) |
@@ -707,7 +708,7 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 - `DOC-TEN-SLICE-TEMPLATE-5BE0` — [`tenancy/SLICE_TEMPLATE.md`](../tenancy/SLICE_TEMPLATE.md)
 - `DOC-TEN-TABLES-9F18` — [`tenancy/_analysis/tables.md`](../tenancy/_analysis/tables.md)
 
-### `WS-TODO-MISC` (239)
+### `WS-TODO-MISC` (240)
 
 - `DOC-TODO-00-INDEX-9E1E` — [`todo/kiosk-counter-transaction/00-INDEX.md`](../todo/kiosk-counter-transaction/00-INDEX.md)
 - `DOC-TODO-01-RECEIVING-BOH-SLIM-4C77` — [`todo/foh-boh-surface-split/01-receiving-boh-slim.md`](../todo/foh-boh-surface-split/01-receiving-boh-slim.md)
@@ -729,6 +730,7 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 - `DOC-TODO-CARTON-INSPECTOR-UX-GEMINI-RESEARCH-BRIEFING-326B` — [`todo/carton-inspector-ux-GEMINI-RESEARCH-BRIEFING.md`](../todo/carton-inspector-ux-GEMINI-RESEARCH-BRIEFING.md)
 - `DOC-TODO-CARTON-PHOTO-TRIAGE-CLAUDE-CODE-PROMPT-D716` — [`todo/carton-photo-triage-CLAUDE-CODE-PROMPT.md`](../todo/carton-photo-triage-CLAUDE-CODE-PROMPT.md)
 - `DOC-TODO-CARTON-PHOTO-TRIAGE-RESEARCH-RULING-7253` — [`todo/carton-photo-triage-RESEARCH-RULING.md`](../todo/carton-photo-triage-RESEARCH-RULING.md)
+- `DOC-TODO-CARTON-READ-DISPLAY-POLISH-CLAUDE-CODE-PROMPT-01DC` — [`todo/carton-read-display-polish-CLAUDE-CODE-PROMPT.md`](../todo/carton-read-display-polish-CLAUDE-CODE-PROMPT.md)
 - `DOC-TODO-CHROME-SOT-COMPOUND-GEMINI-RESEARCH-BRIEFING-5D7D` — [`todo/chrome-sot-compound-GEMINI-RESEARCH-BRIEFING.md`](../todo/chrome-sot-compound-GEMINI-RESEARCH-BRIEFING.md)
 - `DOC-TODO-CHROME-SOT-COMPOUND-PLAN-1D11` — [`todo/chrome-sot-compound-PLAN.md`](../todo/chrome-sot-compound-PLAN.md)
 - `DOC-TODO-CLAIM-SUBJECT-FBA-UNKNOWN-HANDOFF-559C` — [`todo/claim-subject-fba-unknown-HANDOFF.md`](../todo/claim-subject-fba-unknown-HANDOFF.md)

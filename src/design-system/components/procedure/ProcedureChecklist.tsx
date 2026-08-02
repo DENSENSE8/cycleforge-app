@@ -17,8 +17,8 @@ import type { ProcedureStepRow, ProcedureStepState } from './types';
  * This is the **right-edge reference** display: the whole procedure, in
  * vocabulary order, nothing hidden, so the operator can see the shape of the
  * work and where they are in it *without leaving the step they are on*. Its
- * sibling {@link ProcedureCards} is the **work surface** — one card at a time,
- * carrying that step's own controls.
+ * sibling {@link ProcedureColumn} is the **work surface** — one expanded section
+ * at a time, carrying that step's own controls.
  *
  * They are not a duplication, and the earlier "exactly ONE procedure surface"
  * rule that deleted this component was reading them as one. They answer
@@ -34,8 +34,6 @@ import type { ProcedureStepRow, ProcedureStepState } from './types';
  * (`ui-design-system.md`): left-aligned, `truncate`, constant row height,
  * selection is background + ring only — never a size shift.
  */
-
-export type { ProcedureStepState, ProcedureStepRow } from './types';
 
 function StepMarker({ state, position }: { state: ProcedureStepState; position: number }) {
   if (state === 'done') {

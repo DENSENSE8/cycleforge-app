@@ -12,7 +12,7 @@
  * ## It is a second VIEW, not a second derivation
  *
  * The centre renders the same procedure as work cards
- * ({@link UnboxProcedureCards}). Both read {@link useUnboxProcedureSteps}, so
+ * ({@link UnboxProcedureColumn}). Both read {@link useUnboxProcedureSteps}, so
  * there is exactly one answer to "is this step done" and the two cannot drift.
  * The rule this replaced ("exactly ONE procedure surface in Unbox") was aimed at
  * a real hazard and named the wrong thing: the danger was two derivations, not
