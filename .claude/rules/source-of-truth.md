@@ -21,11 +21,13 @@ fields, pick the presentation kind and import from the SoT below (Kinetic Ledger
 | Staff / org identity mark (avatar circle) | `@/components/identity` — `StaffAvatar` (photo → colour+initials) / `IdentityMark`; initials from `staffInitials` |
 | Capability / provider nouns | `src/lib/integrations/capability-labels.ts` (+ server connections) |
 | Cross-entity search row | `SearchHit` / `src/lib/search/search-hit.ts` + hybrid retrieval |
+| Printed barcode payload (**encode**) | `encodePrintMatrix` in `src/lib/qr/platform-link.ts` — see **Printed code ↔ scan round-trip** below |
+| Scanned / typed payload (**decode**) | `routeScan` in `src/lib/barcode-routing.ts` — see **Printed code ↔ scan round-trip** below |
 | Lifecycle / status dots | lifecycle tone registries / `workflowStageDot` (do not invent status maps) |
 | Z-index | `src/design-system/tokens/z-index.ts` |
 | Motion **intent** (which physics for this job) | `src/design-system/motion/roles.ts` — `motionRole.swap.scan` · `swap.focus` · `push.rail` · `gesture.press` · `feedback.pulse`. Five roles; a sixth means a new JOB, never a new duration. Catalog (`framerPresence` / `framerTransition`) stays the implementation — see **Motion roles + import path** below |
 | Motion **import path** (the engine) | `@/design-system/motion` — the ONLY motion import in `src/`; `framer-motion` / `motion/react` banned outside `src/design-system/motion/**`. Guard: `motion-major.guard.test.ts` |
-| Typeface cuts (sans · condensed · mono) | `src/lib/fonts.ts` + `typography/families.ts` (stacks mirrored in `styles/globals.css`) |
+| Typeface cuts (sans **Inter** · condensed **Plex** · mono **Plex**) | `src/lib/fonts.ts` + `typography/families.ts` (stacks mirrored in `styles/globals.css`) |
 | Type role → size/leading/tracking/weight/family/numerals | `tailwind.config.ts` `fontSize['role-*']` + the CF Type plugin |
 | Font weight ceiling (600) | `typography/weights.ts` (`MAX_FONT_WEIGHT`) |
 | Spacing scale + intents | `src/design-system/tokens/spacing.mjs` (+ `Stack`/`Inset`/`Row` primitives) |
@@ -497,6 +499,93 @@ Two invariants live here because they are single-source mappings, not recipes:
   record→record navigation swaps content in place instead of playing exit-then-enter
   with an empty slot between. See `display/motion-crossfade.md`. (Ticket / Claim
   are push, not rail occupant ids.)
+
+## Printed code ↔ scan round-trip
+
+```
+        ENCODE                                  DECODE
+   encodePrintMatrix()  ─── printed symbol ───► routeScan()
+   @/lib/qr/platform-link                       @/lib/barcode-routing
+```
+
+- **One encoder.** `encodePrintMatrix` returns the three coupled decisions —
+  `{ value, symbology, hri }` — for every printable matrix that leaves this
+  app: `carton` · `unit` · `as_listed` · `ticket` · `location`. Nothing else
+  decides any of the three. A kind that still encodes a bare handle carries an
+  allowlist entry stating WHY (the path it would point at has no anonymous
+  landing). Guard: `print-matrix-sot.guard.test.ts`.
+- **One ladder — every kind descends the same four rungs.** There is not a
+  grammar per kind; there is one ladder and each kind falls as far as its
+  facts allow.
+
+  | Rung | Form | Reachable when |
+  |---|---|---|
+  | 1 | **GS1 Digital Link URI** — `https://{slug}…/01/{gtin}/21/{serial}` · `…/414/{gln}/254/{code}` | a **licensed** GS1 key **and** a tenant host |
+  | 2 | GS1 element string — `(01)…(21)…` · `(414)…(254)…` | licensed key, no host |
+  | 3 | Platform Digital Link — `https://{slug}…/m/r/{id}` | no GS1 key, but the path has an **anonymous landing** |
+  | 4 | Bare handle / flat code — `R-1234` · `L-567` · `U-SN1` · `T-9395` · `A0101101` | otherwise |
+
+  **Rung 1 is not reachable by wanting it.** A GS1 key is *licensed* to whoever
+  holds its prefix, so minting one you do not hold is a false identity claim,
+  not a placeholder — which is exactly what `DEFAULT_GLN = '0614141000005'`
+  (GS1's own documentation GLN) did to every location label printed before
+  2026-08-02. Cartons, receiving lines, tickets, handling units and
+  un-licensed shelves therefore **cannot** be GS1 Digital Links; they are
+  internal identities and they sit on rung 3 or 4. Closing that gap is a GS1
+  Company Prefix purchase, not a refactor. **Do not "unify" the remaining kinds
+  onto rung 1** — that is the borrowed-GLN bug with a nicer grammar.
+  - **`unit` and `location` follow the ladder identically** (ratified
+    2026-08-02): a licensed key + a slug promotes both to a real Digital Link
+    URI; without a host both fall to the element string; without a licence
+    location falls to the bare flat code. The location rung-1 form is
+    byte-identical to what the pre-DataMatrix printer emitted, so the "legacy
+    location URL" row of the wild-forms table is not a legacy form any more —
+    it is the canonical licensed one.
+  - **A Digital Link URI draws as plain `datamatrix`, never `gs1datamatrix`** —
+    it is a URI, not an AI string, and bwip-js rejects a GS1-framed payload with
+    no AIs (blank sticker). Guard: `location-label-encoding.guard.test.ts`.
+  - **Rungs 3→4 turn on whether an anonymous phone lands somewhere.** A URL
+    that bounces a visitor to `/signin` is worse than a handle, and costs
+    matrix area on a small sticker.
+  - `locationLabelPayload` is that guard's one wrinkle: it holds the
+    licensed-GLN decision and is `export`ed **only** because
+    `barcode-routing` cannot import `platform-link` back. It is the location
+    case's private helper — a printer that calls it directly is a second
+    encoder, and the guard fails.
+- **One decoder.** `routeScan` turns any scanned / typed / pasted string into
+  `{ type, value, redirect? }`. It is the only thing allowed to interpret a
+  scan, on the client **and** inside `/api/scan/resolve` (whose own cascade
+  must run `routeScan` FIRST — `classifyInput` has no location vocabulary and
+  buckets a flat bin code as `serial_partial`).
+- **The invariant that ties them: anything `encodePrintMatrix` can mint,
+  `routeScan` must resolve to the right entity.** Pinned by **one table** —
+  `WILD_PAYLOAD_FORMS` in `barcode-routing.test.ts`: every payload form this
+  app has ever printed, its rung, its current encoder expression (or `null`
+  when legacy-only), and its expected decode. Three tests derive from it —
+  everything decodes · everything we still mint matches byte for byte · rung 1
+  is GS1-only. **Extend that table; never write a second one.** A new `mint`
+  with no row is an unpinned payload; a new row with no `mint` and no stated
+  reason is a fork.
+- **A form leaves the table only when the last sticker carrying it is off the
+  racks — i.e. never.** Nothing is re-printed when the encoder changes, so the
+  installed base is permanent. That is why the borrowed-GLN rows stay.
+- **An input whose copy says "scan" decodes BEFORE it searches.** A printed
+  sticker does not carry a bare handle — a carton carries
+  `https://{slug}.app.cycleforge.ai/m/r/{id}`, a unit carries a GS1 Digital
+  Link — so a field that regexes for `R-{id}` silently stopped accepting the
+  thing this app prints. Compose the SoT unwraps, never a local parser:
+  `scannedReceivingId` (carton) · `unwrapScannedSerial` (unit) ·
+  `unwrapScannedLocation` (bin/rack) · `scannedUnitKey` (the strict
+  camera gate). A box that says "scan" and cannot is worse than one that says
+  "type" — fix the input or fix the copy.
+- **Never break a payload form already in the wild.** Nothing is re-printed, so
+  a warehouse full of stickers is the installed base — including the
+  borrowed-GLN location labels (`0614141000005`) printed before 2026-08-02.
+  Every removal needs a positive test that the old form still resolves.
+- **Never re-introduce a default GLN**, and never loosen `LOCATION_FLAT_RE`
+  (`^[A-Z]\d{7,8}$`) — it is deliberately narrow so short legacy bin barcodes
+  (`A12`, `B04`) keep their old, redirect-free behaviour. A `bin` route with no
+  redirect is a GUESS, and callers must treat it as one.
 
 ## Nav search (type-to-jump)
 

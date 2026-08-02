@@ -409,3 +409,97 @@ test.describe('Receiving unbox scan-resolution ladder', () => {
     },
   );
 });
+
+/**
+ * The server-side half of the same decoder — `/api/scan/resolve`.
+ *
+ * That route runs its own cascade (`classifyInput` → `parseScannedUrl` →
+ * `parseGs1AiPayload`) around `routeScan`, so a payload can round-trip
+ * perfectly in the unit tests and still be mis-classified here. Location
+ * labels were exactly that: `classifyInput` has no location vocabulary, so a
+ * bare flat code came back as `serial_partial` and was looked up against
+ * `tech_serial_numbers`.
+ *
+ * Assertions are shape-based and input-derived — no rows, no counts — so this
+ * block is org-agnostic and runs on `desktop` or `qa-desktop` alike.
+ */
+
+/** GS1's documentation GLN — on every location sticker printed before 2026-08-02. */
+const BORROWED_GLN = '0614141000005';
+/** The FNC1 (GS, 0x1D) byte an industrial scanner emits between AIs. */
+const GS = String.fromCharCode(0x1d);
+
+test.describe('/api/scan/resolve — every printed payload form', () => {
+  const CASES: Array<{ what: string; input: string; kind: string; route: string }> = [
+    {
+      what: 'bare flat bin code (no licensed GLN — what NEW labels carry)',
+      input: 'A0101101',
+      kind: 'location',
+      route: '/inventory?bin=A0101101',
+    },
+    {
+      what: 'bare flat code, lower-cased by a hand entry',
+      input: 'a0101101',
+      kind: 'location',
+      route: '/inventory?bin=A0101101',
+    },
+    {
+      what: 'bare flat RACK code (position=00) opens the rack view, not the bin view',
+      input: 'A0101100',
+      kind: 'location',
+      route: '/warehouse?tab=racks&code=A0101100',
+    },
+    {
+      what: 'legacy borrowed-GLN label, parens form',
+      input: `(414)${BORROWED_GLN}(254)A0101101`,
+      kind: 'location',
+      route: '/inventory?bin=A0101101',
+    },
+    {
+      what: 'legacy borrowed-GLN label, FNC1 form (industrial scanner)',
+      input: `414${BORROWED_GLN}${GS}254A0101100`,
+      kind: 'location',
+      route: '/warehouse?tab=racks&code=A0101100',
+    },
+    {
+      what: 'legacy location Digital Link URL',
+      input: `/414/${BORROWED_GLN}/254/A0101100`,
+      kind: 'location',
+      route: '/warehouse?tab=racks&code=A0101100',
+    },
+    {
+      what: 'carton handle',
+      input: 'R-1234',
+      kind: 'package',
+      route: '/m/r/1234',
+    },
+    {
+      what: 'carton absolute platform Digital Link (what the sticker carries)',
+      input: 'https://usav.app.cycleforge.ai/m/r/1234',
+      kind: 'package',
+      route: '/m/r/1234',
+    },
+  ];
+
+  for (const c of CASES) {
+    test(`resolves ${c.what}`, async ({ page }) => {
+      await page.goto('/unbox');
+      const res = await page.request.post('/api/scan/resolve', { data: { input: c.input } });
+      expect(res.ok(), `HTTP ${res.status()} for "${c.input}"`).toBe(true);
+      const body = await res.json();
+      expect(body.kind, `kind for "${c.input}"`).toBe(c.kind);
+      expect(body.mobileRoute, `route for "${c.input}"`).toBe(c.route);
+    });
+  }
+
+  test('a short legacy bin barcode is NOT claimed as a location label', async ({ page }) => {
+    // `A12` matches routeScan's leading-letter fallback, which returns no
+    // redirect because it is a GUESS. A guess must fall through to the pattern
+    // cascade rather than assert a location that may not exist.
+    await page.goto('/unbox');
+    const res = await page.request.post('/api/scan/resolve', { data: { input: 'A12' } });
+    expect(res.ok()).toBe(true);
+    const body = await res.json();
+    expect(body.kind).not.toBe('location');
+  });
+});

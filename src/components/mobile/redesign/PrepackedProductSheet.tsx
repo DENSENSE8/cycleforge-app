@@ -20,6 +20,7 @@ import { SerialChip, SkuSerialChip } from '@/components/ui/CopyChip';
 import { Button } from '@/design-system/primitives';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { ScanInput } from '@/components/mobile/redesign/ScanInput';
+import { unwrapScannedLocation } from '@/lib/barcode-routing';
 import {
   MobilePackerSpamCamera,
   type CapturedShot,
@@ -188,7 +189,7 @@ export function PrepackedProductSheet({ scanned, onClose }: { scanned: string | 
 
   async function handleLocationDecode(value: string) {
     if (!liveUnitId) return;
-    const bin = value.trim();
+    const bin = unwrapScannedLocation(value);
     if (!bin || moving) return;
     setMoving(true);
     try {

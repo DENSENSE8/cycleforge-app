@@ -13,6 +13,7 @@ import { toast } from '@/lib/toast';
 import { X, Package, Printer, Loader2, Check, Trash2 } from '@/components/Icons';
 import { IconButton, Button } from '@/design-system/primitives';
 import { getLast8 } from '@/components/ui/CopyChip';
+import { unwrapScannedSerial } from '@/lib/barcode-routing';
 import { unitStatusBadgeTone } from '@/components/station/receiving-constants';
 import { conditionLabel } from '@/lib/conditions';
 import { printManifestLabel } from '@/lib/print/printManifestLabel';
@@ -56,7 +57,7 @@ export function ManifestWorkbenchPanel({
   const isOpen = status === 'OPEN';
 
   const submitAdd = useCallback(async () => {
-    const ref = addInput.trim();
+    const ref = unwrapScannedSerial(addInput);
     if (!ref || busy || manifestId == null) return;
     // Resolve the scanned serial/uid → serial_unit_id, then add to the manifest.
     setBusy('add');

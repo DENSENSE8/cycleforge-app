@@ -7,6 +7,7 @@ import { Check, Loader2, RefreshCw, AlertTriangle } from '@/components/Icons';
 import { SkuScanRefChip, SerialChip } from '@/components/ui/CopyChip';
 import { SUBSTITUTION_REASONS, type SubstitutionReason } from '@/lib/fulfillment/substitution-reasons';
 import { SubstituteReasonPicker } from './SubstituteReasonPicker';
+import { unwrapScannedSerial } from '@/lib/barcode-routing';
 
 /**
  * Scan-anchored substitution action for the testing / packing card. The operator
@@ -71,7 +72,11 @@ export function SubstitutePanel({
 
   function submit() {
     if (!canSubmit || !reasonCode) return;
-    onSubmit({ substituteSerial: substituteSerial.trim().toUpperCase(), reasonCode, note: note.trim() });
+    onSubmit({
+      substituteSerial: unwrapScannedSerial(substituteSerial).toUpperCase(),
+      reasonCode,
+      note: note.trim(),
+    });
   }
 
   return (

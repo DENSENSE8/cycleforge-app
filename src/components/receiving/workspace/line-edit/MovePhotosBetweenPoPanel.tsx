@@ -25,6 +25,27 @@ import { useClaimPhotos } from '../claim/hooks/useClaimPhotos';
 import { ClaimPhotoPicker } from '../claim/components/ClaimPhotoPicker';
 import { refreshDomains } from '@/lib/refresh/bus';
 import { parsePoListSearch } from '@/lib/receiving/po-list-search';
+import { receivingHandle, scannedReceivingId } from '@/lib/barcode-routing';
+
+/**
+ * What the operator put in the box, in the ONE vocabulary the API understands.
+ *
+ * The box says "type or scan", so a scan is decoded FIRST — through `routeScan`
+ * (via {@link scannedReceivingId}), the only thing allowed to interpret a scan.
+ * A printed carton sticker carries an absolute Digital Link, not `R-1234`, so
+ * before this the scanned URL went to the API as a text needle, matched nothing,
+ * and the operator got an empty list with no explanation.
+ *
+ * A decoded scan is sent as the canonical `R-{id}` handle because
+ * `/api/receiving/po/list` already resolves that to an exact `receiving_id`;
+ * `parsePoListSearch` stays the *human-text* helper it was, never a second
+ * decoder.
+ */
+function poSearchNeedle(raw: string): string {
+  const scanned = scannedReceivingId(raw);
+  if (scanned != null) return receivingHandle(scanned);
+  return parsePoListSearch(raw).needle;
+}
 
 interface PoListRow {
   po_id: string;
@@ -126,7 +147,7 @@ export function MovePhotosBetweenPoPanel({
       setPoLoading(true);
       try {
         const params = new URLSearchParams({ limit: '25' });
-        const { needle } = parsePoListSearch(search);
+        const needle = poSearchNeedle(search);
         if (needle) params.set('search', needle);
         const res = await fetch(`/api/receiving/po/list?${params.toString()}`, {
           signal: controller.signal,
@@ -149,7 +170,7 @@ export function MovePhotosBetweenPoPanel({
       } finally {
         setPoLoading(false);
       }
-    }, parsePoListSearch(search).needle ? 280 : 0);
+    }, poSearchNeedle(search) ? 280 : 0);
     return () => {
       controller.abort();
       window.clearTimeout(timer);
@@ -310,7 +331,7 @@ export function MovePhotosBetweenPoPanel({
                           <p className="px-4 py-6 text-center text-xs text-text-soft">
                             {matchedSelfOnly
                               ? 'That is this carton — enter a different PO #, tracking #, or carton QR.'
-                              : parsePoListSearch(search).needle
+                              : poSearchNeedle(search)
                                 ? 'No matching POs'
                                 : 'Search for another PO to move photos to.'}
                           </p>

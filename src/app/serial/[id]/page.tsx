@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { unitStatusBadgeTone } from '@/components/station/receiving-constants';
 import { ScanAgainBar } from '@/components/mobile/receiving/ScanAgainBar';
 import { safeRandomUUID } from '@/lib/safe-uuid';
+import { unwrapScannedLocation } from '@/lib/barcode-routing';
 import { Button } from '@/design-system/primitives';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -162,7 +163,7 @@ function UnitPageInner() {
   );
 
   const submitPutaway = useCallback(async () => {
-    const bin = binInput.trim();
+    const bin = unwrapScannedLocation(binInput);
     if (!bin || busy || !unit?.current_receiving_line_id) return;
     setBusy('putaway');
     try {

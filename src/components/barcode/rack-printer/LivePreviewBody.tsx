@@ -1,6 +1,10 @@
+'use client';
+
 import { Printer } from '@/components/Icons';
 import { LocationDataMatrix } from '../LocationDataMatrix';
-import { locationLabelPayload, rackCode, rackToLocation, type RackSegments } from '@/lib/barcode-routing';
+import { rackCode, rackToLocation, type RackSegments } from '@/lib/barcode-routing';
+import { encodePrintMatrix } from '@/lib/qr/platform-link';
+import { useAuth } from '@/contexts/AuthContext';
 import { humanReadable, partialCode } from './rack-code-format';
 
 interface LivePreviewBodyProps {
@@ -14,6 +18,7 @@ interface LivePreviewBodyProps {
 
 /** Compact live preview (mobile): rack code + breakdown + QR. */
 export function LivePreviewBody({ zoneLetter, roomName, aisle, bay, level, gln }: LivePreviewBodyProps) {
+  const { user } = useAuth();
   const all = zoneLetter && aisle != null && bay != null && level != null;
   const segments: RackSegments | null = all
     ? { zone: zoneLetter!, aisle: aisle!, bay: bay!, level: level! }
@@ -21,6 +26,14 @@ export function LivePreviewBody({ zoneLetter, roomName, aisle, bay, level, gln }
   const code = segments
     ? rackCode(segments)
     : partialCode({ zone: zoneLetter, aisle, bay, level });
+  const matrix = segments
+    ? encodePrintMatrix({
+        kind: 'location',
+        segments: rackToLocation(segments),
+        gln,
+        orgSlug: user?.organizationSlug,
+      })
+    : null;
 
   return (
     <div className="flex items-center gap-5 rounded-xl bg-surface-canvas p-5 ring-1 ring-border-soft/50">
@@ -43,10 +56,10 @@ export function LivePreviewBody({ zoneLetter, roomName, aisle, bay, level, gln }
         </div>
       </div>
       <div className="flex h-[160px] w-[160px] shrink-0 items-center justify-center rounded-lg bg-surface-card p-2 ring-1 ring-border-soft">
-        {segments ? (
+        {matrix ? (
           <LocationDataMatrix
-            value={locationLabelPayload(rackToLocation(segments), { gln }).value}
-            symbology={locationLabelPayload(rackToLocation(segments), { gln }).symbology}
+            value={matrix.value}
+            symbology={matrix.symbology}
             size={144}
             fgColor="#0F172A"
           />

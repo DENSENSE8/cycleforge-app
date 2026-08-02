@@ -8,6 +8,7 @@ import { safeRandomUUID } from '@/lib/safe-uuid';
 // dragging DB code into the browser bundle.
 import type { WipeMethod } from '@/lib/tech/recordDataWipe';
 import { refreshDomains } from '@/lib/refresh/bus';
+import { unwrapScannedSerial } from '@/lib/barcode-routing';
 
 /**
  * Station controller for the Data-Wipe bench — the scan → resolve → active-card
@@ -152,7 +153,7 @@ export function useDataWipeController() {
   const handleScan = useCallback(
     async (e?: FormEvent) => {
       if (e) e.preventDefault();
-      const raw = inputValue.trim();
+      const raw = unwrapScannedSerial(inputValue);
       if (!raw) return;
       if (isResolving || submittingVerdict !== null) return; // double-fire / wedge-burst guard
 

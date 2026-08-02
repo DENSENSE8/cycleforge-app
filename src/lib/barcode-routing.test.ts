@@ -11,6 +11,7 @@ import { strictEqual, ok } from 'node:assert';
 
 import {
   routeScan,
+  type ScanType,
   receivingHandle,
   receivingLineHandle,
   serialUnitHandle,
@@ -18,9 +19,13 @@ import {
   repairHandle,
   ticketHandle,
   scannedUnitKey,
+  scannedReceivingId,
+  unwrapScannedLocation,
+  unwrapScannedSerial,
   locationLabelPayload,
   type LocationSegments,
 } from './barcode-routing';
+import { encodePrintMatrix } from '@/lib/qr/platform-link';
 
 test('every generated handle round-trips to its entity type (not bin/sku fallback)', () => {
   const cases: Array<[string, string]> = [
@@ -36,6 +41,359 @@ test('every generated handle round-trips to its entity type (not bin/sku fallbac
     ok(r, `${payload} should route`);
     strictEqual(r!.type, expectedType, `${payload} → type`);
   }
+});
+
+// ─── THE payload-form table — one SoT for every symbol in the wild ───────────
+//
+// Every payload form this app has ever printed, in one place, asserted in both
+// directions. Nothing is re-printed when the encoder changes, so a warehouse
+// full of stickers is the installed base: a form leaves this table only when
+// the last label carrying it is off the racks, which is never.
+//
+// `mint` is the CURRENT encoder expression, or null for a form we no longer
+// emit but must keep resolving. A new form with no `mint` and no stated reason
+// is a fork; a new `mint` with no row here is an unpinned payload.
+
+const SLUG = 'usav';
+const GTIN = '00012345678905';
+
+const BIN: LocationSegments = { zone: 'A', aisle: 1, bay: 1, level: 1, position: 1 };
+const RACK: LocationSegments = { zone: 'A', aisle: 1, bay: 1, level: 1, position: 0 };
+
+/** GS1's documentation GLN — what every location label used to fall back to. */
+const PLACEHOLDER_GLN = '0614141000005';
+/** Licensed-SHAPED GLN: not a real registration, just not an example prefix. */
+const LICENSED_GLN = '0812345000009';
+
+/** The FNC1 (GS, 0x1D) byte an industrial scanner emits between AIs. */
+const FNC1 = String.fromCharCode(0x1d);
+
+function withAppHost<T>(fn: () => T): T {
+  const prev = process.env.NEXT_PUBLIC_APP_URL;
+  process.env.NEXT_PUBLIC_APP_URL = 'https://app.cycleforge.ai';
+  try {
+    return fn();
+  } finally {
+    if (prev === undefined) delete process.env.NEXT_PUBLIC_APP_URL;
+    else process.env.NEXT_PUBLIC_APP_URL = prev;
+  }
+}
+
+interface WildForm {
+  /** Row label — mirrors the docs table. */
+  what: string;
+  /** Which rung of the encode ladder this form sits on (platform-link.ts). */
+  rung: 1 | 2 | 3 | 4;
+  /** Current encoder expression, or null when the form is legacy-only. */
+  mint: (() => string) | null;
+  /** The exact bytes on the sticker. */
+  value: string;
+  type: ScanType;
+  redirect?: string;
+}
+
+/**
+ * Rung 1 — GS1 Digital Link URI. Reachable ONLY with a licensed GS1 key.
+ * Rung 2 — GS1 element string (licensed key, no tenant host).
+ * Rung 3 — platform Digital Link (no GS1 key, but the path has an anon landing).
+ * Rung 4 — bare handle / flat code.
+ */
+const WILD_PAYLOAD_FORMS: WildForm[] = [
+  // ── Rung 1 · true GS1 Digital Link ────────────────────────────────────────
+  {
+    what: 'GS1 Digital Link — unit',
+    rung: 1,
+    mint: () =>
+      encodePrintMatrix({ kind: 'unit', orgSlug: SLUG, sku: 'SKU-1', gtin: GTIN, serialNumber: 'SN123' }).value,
+    value: `https://usav.app.cycleforge.ai/01/${GTIN}/21/SN123`,
+    type: 'serial-unit',
+    redirect: `/01/${GTIN}/21/SN123`,
+  },
+  {
+    what: 'GS1 Digital Link — location (licensed GLN + tenant host)',
+    rung: 1,
+    mint: () =>
+      encodePrintMatrix({ kind: 'location', orgSlug: SLUG, segments: BIN, gln: LICENSED_GLN }).value,
+    value: `https://usav.app.cycleforge.ai/414/${LICENSED_GLN}/254/A0101101`,
+    type: 'bin',
+    redirect: '/inventory?bin=A0101101',
+  },
+  {
+    what: 'GS1 Digital Link — location, rack (position=00)',
+    rung: 1,
+    mint: () =>
+      encodePrintMatrix({ kind: 'location', orgSlug: SLUG, segments: RACK, gln: LICENSED_GLN }).value,
+    value: `https://usav.app.cycleforge.ai/414/${LICENSED_GLN}/254/A0101100`,
+    type: 'bin',
+    redirect: '/warehouse?tab=racks&code=A0101100',
+  },
+  {
+    what: 'legacy location Digital Link — pre-DataMatrix printer, borrowed GLN',
+    rung: 1,
+    // Same GRAMMAR as the row above; only the GLN differs. The old printer's
+    // form did not need retiring — the licensed mint converged onto it.
+    mint: null,
+    value: `/414/${PLACEHOLDER_GLN}/254/A0101100`,
+    type: 'bin',
+    redirect: '/warehouse?tab=racks&code=A0101100',
+  },
+
+  // ── Rung 2 · GS1 element string (licensed key, no host to resolve it) ─────
+  {
+    what: 'GS1 element string — unit (no tenant slug)',
+    rung: 2,
+    mint: () =>
+      encodePrintMatrix({ kind: 'unit', orgSlug: null, sku: 'SKU-1', gtin: GTIN, serialNumber: 'SN123' }).value,
+    value: `(01)${GTIN}(21)SN123`,
+    type: 'serial-unit',
+    redirect: `/01/${GTIN}/21/SN123`,
+  },
+  {
+    what: 'GS1 element string — location (licensed GLN, no tenant slug)',
+    rung: 2,
+    mint: () => encodePrintMatrix({ kind: 'location', orgSlug: null, segments: BIN, gln: LICENSED_GLN }).value,
+    value: `(414)${LICENSED_GLN}(254)A0101101`,
+    type: 'bin',
+    redirect: '/inventory?bin=A0101101',
+  },
+  {
+    what: 'GS1 element string — location, legacy borrowed GLN',
+    rung: 2,
+    mint: null, // never mintable again — isLicensedGln refuses the example prefix
+    value: `(414)${PLACEHOLDER_GLN}(254)A0101101`,
+    type: 'bin',
+    redirect: '/inventory?bin=A0101101',
+  },
+  {
+    what: 'FNC1 form — what an industrial scanner re-emits for either element string',
+    rung: 2,
+    mint: null, // the SCANNER produces this shape, not us
+    value: `414${PLACEHOLDER_GLN}${FNC1}254A0101100`,
+    type: 'bin',
+    redirect: '/warehouse?tab=racks&code=A0101100',
+  },
+  {
+    what: 'FNC1 form — unit',
+    rung: 2,
+    mint: null,
+    value: `01${GTIN}${FNC1}21SN123`,
+    type: 'serial-unit',
+    redirect: `/01/${GTIN}/21/SN123`,
+  },
+
+  // ── Rung 3 · platform Digital Link (internal identity, anon landing) ──────
+  {
+    what: 'platform Digital Link — carton',
+    rung: 3,
+    mint: () => encodePrintMatrix({ kind: 'carton', orgSlug: SLUG, receivingId: 1234 }).value,
+    value: 'https://usav.app.cycleforge.ai/m/r/1234',
+    type: 'receiving',
+    redirect: '/m/r/1234',
+  },
+
+  // ── Rung 4 · bare handles + the flat location code ────────────────────────
+  {
+    what: 'bare flat location code — no licensed GLN',
+    rung: 4,
+    mint: () => encodePrintMatrix({ kind: 'location', orgSlug: SLUG, segments: BIN }).value,
+    value: 'A0101101',
+    type: 'bin',
+    redirect: '/inventory?bin=A0101101',
+  },
+  {
+    what: 'bare flat location code — rack',
+    rung: 4,
+    mint: () => encodePrintMatrix({ kind: 'location', orgSlug: SLUG, segments: RACK }).value,
+    value: 'A0101100',
+    type: 'bin',
+    redirect: '/warehouse?tab=racks&code=A0101100',
+  },
+  {
+    what: 'bare handle — carton (no tenant slug)',
+    rung: 4,
+    mint: () => encodePrintMatrix({ kind: 'carton', orgSlug: null, receivingId: 1234 }).value,
+    value: 'R-1234',
+    type: 'receiving',
+    redirect: '/m/r/1234',
+  },
+  {
+    what: 'bare handle — receiving line (as-listed)',
+    rung: 4,
+    mint: () => encodePrintMatrix({ kind: 'as_listed', orgSlug: SLUG, receivingLineId: 567 }).value,
+    value: 'L-567',
+    type: 'receiving-line',
+    redirect: '/m/l/567',
+  },
+  {
+    what: 'bare handle — unit, alphanumeric serial (no GTIN)',
+    rung: 4,
+    mint: () => encodePrintMatrix({ kind: 'unit', orgSlug: SLUG, sku: 'SKU-1', serialNumber: 'CN1A2B3' }).value,
+    value: 'U-CN1A2B3',
+    type: 'serial-unit',
+    redirect: '/m/u/CN1A2B3',
+  },
+  {
+    what: 'bare handle — ticket',
+    rung: 4,
+    mint: () => encodePrintMatrix({ kind: 'ticket', orgSlug: SLUG, ticketDigits: '#9395' }).value,
+    value: 'T-9395',
+    type: 'support-ticket',
+    redirect: '/support?ticket=9395',
+  },
+  {
+    what: 'bare handle — handling unit / LPN',
+    rung: 4,
+    mint: () => handlingUnitHandle(12),
+    value: 'H-12',
+    type: 'handling-unit',
+    redirect: '/m/h/12',
+  },
+  {
+    what: 'bare handle — repair',
+    rung: 4,
+    mint: () => repairHandle(89),
+    value: 'REP-89',
+    type: 'receiving',
+    redirect: '/m/rs/89',
+  },
+  {
+    what: 'bare handle — kit manifest',
+    rung: 4,
+    mint: null, // minted by printManifestLabel from a manifest_uid, not a factory
+    value: 'KIT-SKU1-2601-000042',
+    type: 'manifest',
+  },
+  {
+    what: 'bare handle — legacy carton (pre-DataMatrix)',
+    rung: 4,
+    mint: null,
+    value: 'RCV-123',
+    type: 'receiving',
+    redirect: '/m/r/123',
+  },
+  {
+    what: 'bare minted unit id — what the products label carries with no GS1',
+    rung: 4,
+    mint: null, // minted upstream as serial_units.unit_uid
+    value: 'IPH13-128-BLU-2601-000042',
+    type: 'serial-unit',
+    redirect: '/m/u/IPH13-128-BLU-2601-000042',
+  },
+];
+
+test('EVERY payload form in the wild decodes to the right entity', () => {
+  withAppHost(() => {
+    for (const f of WILD_PAYLOAD_FORMS) {
+      const r = routeScan(f.value);
+      ok(r, `${f.what}: "${f.value}" should route`);
+      strictEqual(r!.type, f.type, `${f.what} → type`);
+      if (f.redirect) strictEqual(r!.redirect, f.redirect, `${f.what} → redirect`);
+    }
+  });
+});
+
+test('EVERY form we still mint comes out of the one encoder, byte for byte', () => {
+  withAppHost(() => {
+    for (const f of WILD_PAYLOAD_FORMS) {
+      if (!f.mint) continue;
+      strictEqual(f.mint(), f.value, `${f.what}: the encoder no longer emits the pinned form`);
+    }
+  });
+});
+
+test('the table covers all four rungs, and rung 1 is GS1-only', () => {
+  const rungs = new Set(WILD_PAYLOAD_FORMS.map((f) => f.rung));
+  for (const r of [1, 2, 3, 4]) ok(rungs.has(r as 1), `no form pinned at rung ${r}`);
+
+  // Rung 1 is a *licensed* GS1 Digital Link. Every row there must carry a real
+  // GS1 AI path — `/01/` or `/414/` — and never an internal `/m/` path. This is
+  // the line that stops "make it all one Digital Link" from becoming "mint GS1
+  // keys we do not hold": a carton has no licensed key, so it cannot be here.
+  for (const f of WILD_PAYLOAD_FORMS.filter((x) => x.rung === 1)) {
+    ok(/\/(01|414)\//.test(f.value), `${f.what}: rung 1 must be a GS1 AI path`);
+    ok(!f.value.includes('/m/'), `${f.what}: an internal path is rung 3, not rung 1`);
+  }
+
+  // Rung 3 is the mirror claim: a platform link is NOT GS1 and must not pretend.
+  for (const f of WILD_PAYLOAD_FORMS.filter((x) => x.rung === 3)) {
+    ok(!/\/(01|414)\//.test(f.value), `${f.what}: rung 3 must not wear a GS1 AI path`);
+  }
+});
+
+test('KNOWN LIMIT: a sku-only unit label is not distinguishable from a bin barcode', () => {
+  // `encodePrintMatrix('unit')`'s last-resort branch — no gtin, no serial —
+  // encodes the bare SKU, and a bare letter-leading token is exactly what a
+  // legacy bin barcode looks like (`A12`). routeScan cannot tell them apart,
+  // and widening rule 6 to try would break every bin sticker in the warehouse.
+  //
+  // This is pinned rather than fixed because the honest fix is upstream: a
+  // sku-only label carries no unique identity, so there is nothing to scan
+  // back TO. Do not "repair" this by loosening the bin fallback.
+  const skuOnly = encodePrintMatrix({ kind: 'unit', orgSlug: 'usav', sku: 'SKU-1' });
+  strictEqual(skuOnly.value, 'SKU-1');
+  strictEqual(routeScan(skuOnly.value)!.type, 'bin');
+
+  // A colon-form SKU — the shape routeScan CAN recognise — round-trips.
+  const colon = encodePrintMatrix({ kind: 'unit', orgSlug: 'usav', sku: '1809:A03' });
+  strictEqual(routeScan(colon.value)!.type, 'sku');
+});
+
+// ─── The unwrap helpers every "type or scan" input composes ──────────────────
+
+test('scannedReceivingId reads a carton id out of EVERY printed carton form', () => {
+  withAppHost(() => {
+    const url = encodePrintMatrix({ kind: 'carton', orgSlug: SLUG, receivingId: 1234 }).value;
+    strictEqual(url, 'https://usav.app.cycleforge.ai/m/r/1234');
+    // The defect this closes: the printed sticker is the URL, and every
+    // consumer of `parsePoListSearch` only knew the bare handle.
+    strictEqual(scannedReceivingId(url), 1234);
+  });
+  strictEqual(scannedReceivingId('R-1234'), 1234);
+  // A leading `#` is scanner chrome, not a payload — `parsePoListSearch`
+  // strips it, so the decoder is right to refuse it and let the text helper run.
+  strictEqual(scannedReceivingId('#R-1234'), null);
+  strictEqual(scannedReceivingId('RCV-1234'), 1234);
+  strictEqual(scannedReceivingId('/m/r/1234'), 1234);
+});
+
+test('scannedReceivingId refuses everything that is NOT a carton', () => {
+  // A repair label types as `receiving` but redirects to /m/rs/ — a repair
+  // order is not a carton, and anchoring on the redirect is what separates them.
+  strictEqual(scannedReceivingId(repairHandle(33)), null);
+  strictEqual(scannedReceivingId('L-567'), null);
+  strictEqual(scannedReceivingId('A0101101'), null);
+  strictEqual(scannedReceivingId('PO-9912'), null, 'a typed PO number stays text search');
+  strictEqual(scannedReceivingId(''), null);
+});
+
+test('unwrapScannedSerial unwraps a printed unit label but passes typed text through', () => {
+  withAppHost(() => {
+    const dl = encodePrintMatrix({
+      kind: 'unit', orgSlug: SLUG, sku: 'SKU-1', gtin: GTIN, serialNumber: 'SN123',
+    }).value;
+    strictEqual(unwrapScannedSerial(dl), 'SN123');
+  });
+  strictEqual(unwrapScannedSerial('(01)00012345678905(21)SN123'), 'SN123');
+  strictEqual(unwrapScannedSerial('U-SN123'), 'SN123');
+  // A hand-typed serial must survive untouched — scannedUnitKey rejects it by
+  // design (it is a camera gate), so the pass-through is load-bearing.
+  strictEqual(unwrapScannedSerial('  sn123  '), 'sn123');
+  strictEqual(unwrapScannedSerial('12345'), '12345');
+});
+
+test('unwrapScannedLocation unwraps every location form, typed codes untouched', () => {
+  strictEqual(unwrapScannedLocation('A0101101'), 'A0101101');
+  strictEqual(unwrapScannedLocation('a0101101'), 'A0101101', 'normalised like the GS1 form');
+  strictEqual(unwrapScannedLocation(`(414)${LICENSED_GLN}(254)A0101101`), 'A0101101');
+  // The borrowed-GLN stickers on the racks today — all three legacy forms.
+  strictEqual(unwrapScannedLocation(`(414)${PLACEHOLDER_GLN}(254)A0101101`), 'A0101101');
+  strictEqual(unwrapScannedLocation(`414${PLACEHOLDER_GLN}${FNC1}254A0101100`), 'A0101100');
+  strictEqual(unwrapScannedLocation(`/414/${PLACEHOLDER_GLN}/254/A0101100`), 'A0101100');
+  strictEqual(unwrapScannedLocation('A-01-01-1-01'), 'A0101101', 'the dashed human code');
+  // Short legacy bin barcodes and free-text bin NAMES pass through unchanged —
+  // routeScan's leading-letter arm is a guess, not a decode.
+  strictEqual(unwrapScannedLocation('A12'), 'A12');
+  strictEqual(unwrapScannedLocation('  Overflow shelf '), 'Overflow shelf');
 });
 
 test('T-{id} ticket label scans to Support deep-link', () => {
@@ -106,16 +464,6 @@ test('scannedUnitKey returns null for a non-unit-label scan (the gate)', () => {
 
 // ─── Location labels: the borrowed-GLN fix ──────────────────────────────────
 
-const BIN: LocationSegments = { zone: 'A', aisle: 1, bay: 1, level: 1, position: 1 };
-const RACK: LocationSegments = { zone: 'A', aisle: 1, bay: 1, level: 1, position: 0 };
-
-/** GS1's documentation GLN — what every location label used to fall back to. */
-const PLACEHOLDER_GLN = '0614141000005';
-/** Licensed-SHAPED GLN: not a real registration, just not an example prefix. */
-const LICENSED_GLN = '0812345000009';
-
-/** The FNC1 (GS, 0x1D) byte an industrial scanner emits between AIs. */
-const FNC1 = String.fromCharCode(0x1d);
 
 test('with no GLN a location label emits the bare code, never a borrowed AI 414', () => {
   const p = locationLabelPayload(BIN);

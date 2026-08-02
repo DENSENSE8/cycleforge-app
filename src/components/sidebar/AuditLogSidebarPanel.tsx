@@ -8,6 +8,7 @@ import { useAuditLogFilterRefinements, AuditLogFilterDropdown } from '@/componen
 import { SIDEBAR_GUTTER } from '@/components/layout/header-shell';
 import { SidebarShell } from '@/components/layout/SidebarShell';
 import { SearchBar } from '@/components/ui/SearchBar';
+import { unwrapScannedSerial } from '@/lib/barcode-routing';
 import { AUDIT_SECTIONS } from './audit-log-panel/audit-log-panel-shared';
 import { ReceivingPOPicker } from './audit-log-panel/ReceivingPOPicker';
 import { PackingTrackingPicker, TechSessionPicker, SkuPicker } from './audit-log-panel/AuditSectionPickers';
@@ -54,7 +55,10 @@ export function AuditLogSidebarPanel() {
               onChange={setSearchQuery}
               onClear={() => setSearchQuery('')}
               onSearch={(value) => {
-                const v = value.trim();
+                // The trace input says "scan", and a printed unit label is a
+                // Digital Link / GS1 frame — unwrap it to the serial the trace
+                // page actually queries.
+                const v = isTrace ? unwrapScannedSerial(value) : value.trim();
                 if (!v) return;
                 if (isTrace) {
                   const params = new URLSearchParams(searchParams.toString());
