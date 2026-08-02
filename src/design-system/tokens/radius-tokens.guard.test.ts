@@ -42,10 +42,8 @@ const ALLOW_MARKER = 'ds-allow-radius';
  * `ds-allow-radius` rather than a migration.
  */
 const KNOWN_ARBITRARY: Record<string, number> = {
-  'features/operations/components/StaffGoalsRail.tsx': 3,
   'components/mobile/redesign/Receive.tsx': 3,
   'components/mobile/redesign/PrepackedProductSheet.tsx': 2,
-  'features/operations/components/OperationsAgentsRow.tsx': 1,
   'components/ui/BottomSheet.tsx': 1,
   'components/po-gmail/PoMailboxPreviewPanel.tsx': 1,
   'components/mobile/redesign/ScanInput.tsx': 1,
