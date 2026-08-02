@@ -110,16 +110,17 @@ describe('grid column tier contract', () => {
 
 describe('default (core) column sets — change these deliberately', () => {
   // Receiving is the surface the lean default was designed around: what is it,
-  // when did it land, how many, where in the flow, and the two identifiers an
+  // WHERE IN THE LIFECYCLE (`status` — dot · stage name · day · time, one track
+  // since 2026-08-02), how many, where in the flow, and the two identifiers an
   // operator scans. condition / platform / serial are opt-in because they are
-  // usually still empty at the moment the row is scanned.
+  // usually still empty at the moment the row is scanned; `date` and `stage`
+  // joined them when `status` absorbed both halves of the same fact.
   it('receiving ships the lean scan set', () => {
     assert.deepEqual(coreKeys(RECEIVING_GRID_COLUMNS), [
       'select',
       'title',
-      'date',
+      'status',
       'qty',
-      'stage',
       'location',
       'order',
       'tracking',

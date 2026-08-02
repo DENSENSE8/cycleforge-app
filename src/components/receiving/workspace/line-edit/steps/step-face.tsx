@@ -18,7 +18,7 @@
  * by colour before reading a word:
  *
  *   evidence (a photograph)  → sky      · the camera family
- *   identity (what IS this)  → violet   · classify, contents
+ *   identity (what IS this)  → violet   · classify, contents, label
  *   judgement (a grade)      → amber    · condition
  *   traceability (a number)  → emerald  · serial
  *
@@ -26,15 +26,28 @@
  * one map, and a new step picks the family its job belongs to rather than a
  * colour nobody else uses.
  *
- * ## White card, coloured content
+ * ## Lightly TINTED card, coloured content — never a saturated one
  *
- * The CARD stays `bg-surface-card` — white — so the raised elevation has a real
- * ground plane to cast onto and the rail reads as depth rather than as a row of
- * paint chips. The hue lives in the icon medallion, the accent rail and the
- * quantity, which is enough to identify a card at arm's length without the text
- * losing its contrast floor. A fully saturated card would put white-on-colour
- * text at the bench's worst viewing angle, and it is the one thing a warehouse
- * monitor renders badly.
+ * The card carries its family as a **50-level fill** (2026-08-02, replacing a
+ * leading accent edge): a whole card is legible as a family at arm's length in a
+ * way a 4px edge is not, and on a deck where cards tuck behind one another the
+ * edge is the first thing occlusion eats.
+ *
+ * It stops at 50 for two reasons, both load-bearing:
+ *
+ *   - **The ground plane.** Depth on this surface comes from
+ *     `elevationClass('raised')` against `background-canvas`, and a shadow needs
+ *     something to cast onto. A 50 tint sits above the canvas step; a heavier
+ *     fill closes it, and the deck stops reading as depth. If that ever
+ *     flattens, the fix is a stronger canvas — never a heavier shadow.
+ *   - **Contrast.** `text-text-default` on a 50 tint keeps its floor at the
+ *     12–14px this renders at. A fully saturated card would put white-on-colour
+ *     text at the bench's worst viewing angle, which is the one thing a
+ *     warehouse monitor renders badly.
+ *
+ * The medallion therefore steps UP to 100/300 rather than staying at 50 — on a
+ * tinted card a 50 medallion is invisible, and the medallion is the glyph plate
+ * that identifies the card before any text is read.
  */
 
 import type { ComponentType } from 'react';
@@ -45,6 +58,7 @@ import {
   Images,
   Package,
   PackageOpen,
+  Printer,
   SlidersHorizontal,
   Tag,
   Tags,
@@ -58,23 +72,44 @@ interface StepFace {
   hue: StepHue;
 }
 
-/** Medallion (icon plate) — the saturated element on the white card. */
+/**
+ * Medallion (icon plate) — the saturated element on the tinted card.
+ *
+ * 100 fill / 300 ring, one step above the card's own 50, because a medallion
+ * that matches the card it sits on is not a plate. 700 ink on 100 clears the AA
+ * floor.
+ */
 const HUE_MEDALLION: Record<StepHue, string> = {
-  sky: 'bg-sky-50 text-sky-700 ring-1 ring-inset ring-sky-200',
-  violet: 'bg-violet-50 text-violet-700 ring-1 ring-inset ring-violet-200',
-  amber: 'bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200',
-  emerald: 'bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200',
+  sky: 'bg-sky-100 text-sky-700 ring-1 ring-inset ring-sky-300',
+  violet: 'bg-violet-100 text-violet-700 ring-1 ring-inset ring-violet-300',
+  amber: 'bg-amber-100 text-amber-700 ring-1 ring-inset ring-amber-300',
+  emerald: 'bg-emerald-100 text-emerald-700 ring-1 ring-inset ring-emerald-300',
 };
 
-/** Leading accent rail — identifies the card's family down the whole strip. */
-const HUE_ACCENT: Record<StepHue, string> = {
-  sky: 'bg-sky-500',
-  violet: 'bg-violet-500',
-  amber: 'bg-amber-500',
-  emerald: 'bg-emerald-500',
+/**
+ * The card's own surface — fill + border, as ONE class string.
+ *
+ * Coupled on purpose: a tinted card with a neutral `border-border-soft` reads as
+ * an unfinished swatch, and splitting them into two registries is how a new hue
+ * arrives with a fill and no border. The consumer emits a bare `border` and lets
+ * this supply the colour.
+ *
+ * This replaced a leading accent edge, which had itself replaced an
+ * absolutely-positioned rail. The rail wore `rounded-l-[inherit]`, and
+ * `border-radius: inherit` copies the parent's radius VALUE (≈16px) onto a
+ * 4px-wide child box — so it rendered as a lens/notch instead of following the
+ * card's curve. `overflow-hidden` was never the fix either: it shears the focus
+ * rings off the inputs inside an expanded step body. The general trap is
+ * recorded in `ui-design-system.md`.
+ */
+const HUE_SURFACE: Record<StepHue, string> = {
+  sky: 'border-sky-200 bg-sky-50',
+  violet: 'border-violet-200 bg-violet-50',
+  amber: 'border-amber-200 bg-amber-50',
+  emerald: 'border-emerald-200 bg-emerald-50',
 };
 
-/** Quantity ink. 700 on white clears the AA floor at the 12px this renders at. */
+/** Quantity ink. 700 on the card's 50 tint clears the AA floor at 12px. */
 const HUE_QUANTITY: Record<StepHue, string> = {
   sky: 'text-sky-700',
   violet: 'text-violet-700',
@@ -92,6 +127,11 @@ const FACES: Record<string, StepFace> = {
   condition: { Icon: Tags, hue: 'amber' },
   item_photos: { Icon: ImageIcon, hue: 'sky' },
   serial: { Icon: Barcode, hue: 'emerald' },
+  // Reading the printed face is an IDENTITY act — what this box will be called
+  // on the shelf — so it wears violet beside `classify` and `contents`, not the
+  // sky of the camera family. `Tag` is already the shipping-label shot's glyph;
+  // `Printer` says "this is the face about to come out of the printer".
+  label: { Icon: Printer, hue: 'violet' },
 };
 
 /**
@@ -110,8 +150,8 @@ export function stepMedallionClass(hue: StepHue): string {
   return HUE_MEDALLION[hue];
 }
 
-export function stepAccentClass(hue: StepHue): string {
-  return HUE_ACCENT[hue];
+export function stepSurfaceClass(hue: StepHue): string {
+  return HUE_SURFACE[hue];
 }
 
 export function stepQuantityClass(hue: StepHue): string {

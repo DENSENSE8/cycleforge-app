@@ -92,9 +92,39 @@ export function gridContentMinWidthRem(columns: readonly TrackLike[]): number {
 /**
  * `grid-template-columns` for the visible tracks, each overridable by its
  * per-column CSS var so a resize updates header, rows and summaries together.
+ *
+ * **A flex track stays flexible after a resize.** A column declared
+ * `minmax(12rem, 1fr)` is the surface's FILL track — it is what makes the row
+ * span the card. Substituting the whole declaration with `var(--cf-col-title)`
+ * replaced `1fr` with a fixed px width, so the moment anything was dragged the
+ * tracks summed to less than the card and the remainder rendered as a band of
+ * empty white inside the card, to the right of the last column. Every other
+ * column's drag produced it too, because there was then nothing left to absorb
+ * the slack.
+ *
+ * So for a flex column the override sets its **floor**, not its width:
+ * `minmax(var(--cf-col-KEY, 12rem), 1fr)`. Fixed tracks are unchanged — they
+ * still take the var wholesale, so their drags stay exact to the pixel.
+ *
+ * The trade, stated: dragging the fill column narrower than its 1fr share has
+ * no visible effect while the grid still fits its card — there is no free space
+ * for anyone else to take. It resizes normally once the grid is wide enough to
+ * scroll horizontally, which is the only state in which "narrower" means
+ * anything. A grid that never leaves a white gap is worth that.
  */
 export function gridTemplate(columns: readonly (TrackLike & { key: string })[]): string {
-  return columns.map((c) => `var(${gridColVar(c.key)}, ${c.width})`).join(' ');
+  return columns
+    .map((c) =>
+      isFlexTrack(c)
+        ? `minmax(var(${gridColVar(c.key)}, ${gridColumnTrackRem(c)}rem), 1fr)`
+        : `var(${gridColVar(c.key)}, ${c.width})`,
+    )
+    .join(' ');
+}
+
+/** A track that absorbs the surface's leftover width (declared `…, 1fr)`). */
+export function isFlexTrack(column: TrackLike): boolean {
+  return column.width.includes('1fr');
 }
 
 /**

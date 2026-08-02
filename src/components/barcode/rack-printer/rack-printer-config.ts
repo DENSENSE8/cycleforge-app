@@ -1,24 +1,25 @@
-import { isLicensedGln } from '@/lib/interop/gs1-keys';
-
 /**
  * Pure config + storage layer for the rack label printer. No React — the
- * per-warehouse counts/GLN are persisted to localStorage so they survive
- * without a rebuild.
+ * per-warehouse counts are persisted to localStorage so they survive without a
+ * rebuild.
+ *
+ * **No `gln` here, deliberately.** It lived in this config (and the bin
+ * printer's twin) until 2026-08-02, which made a per-TENANT legal identifier a
+ * per-BROWSER preference that could silently disagree with
+ * `organizations.settings.gs1.gln` — the value the print ladder, the interop
+ * projections and Settings all read. The GLN now comes from `useOrgGs1()`.
  */
 
 export interface PrinterConfig {
   maxAisles: number;
   maxBays: number;
   maxLevels: number;
-  gln: string;
 }
 
 export const DEFAULT_CONFIG: PrinterConfig = {
   maxAisles: 6,
   maxBays: 12,
   maxLevels: 5,
-  // No default GLN — see the bin printer's types.ts for the full note.
-  gln: '',
 };
 
 const CONFIG_KEY = 'rackPrinter.config.v1';
@@ -33,19 +34,11 @@ export const STEPS: { id: Step; label: string }[] = [
 ];
 
 /**
- * A stored GLN is kept only when it is genuinely licensed.
- *
- * Every config written before 2026-08-02 carries `0614141000005` — GS1's
- * documentation GLN, which used to be this printer's default. Those values are
- * sitting in operators' localStorage right now, so dropping the default alone
- * would not have stopped the next print. Sanitising on LOAD is what actually
- * retires it: a stale placeholder resolves to "" and the label falls back to
- * the bare location code (`locationLabelPayload`).
+ * Configs written before 2026-08-02 also contain a `gln` — often
+ * `0614141000005`, GS1's documentation GLN, which used to be this printer's
+ * default. `loadConfig` does not read that key, so the stale value is inert:
+ * it stays in localStorage as dead JSON and can never reach a label.
  */
-export function sanitizeStoredGln(v: unknown): string {
-  const s = typeof v === 'string' ? v.trim() : '';
-  return isLicensedGln(s) ? s : '';
-}
 
 /** Clamp a count to a sane integer in [1, 99], falling back when invalid. */
 export function clampMax(v: unknown, fallback: number): number {
@@ -64,7 +57,6 @@ export function loadConfig(): PrinterConfig {
       maxAisles: clampMax(parsed?.maxAisles, DEFAULT_CONFIG.maxAisles),
       maxBays: clampMax(parsed?.maxBays, DEFAULT_CONFIG.maxBays),
       maxLevels: clampMax(parsed?.maxLevels, DEFAULT_CONFIG.maxLevels),
-      gln: sanitizeStoredGln(parsed?.gln),
     };
   } catch {
     return DEFAULT_CONFIG;

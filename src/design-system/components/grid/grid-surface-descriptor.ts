@@ -39,6 +39,15 @@ export interface LedgerGridColumnModel {
    */
   align?: 'start' | 'end';
   /**
+   * Drag-resize OVERRIDE. Leave unset — `isGridColumnResizable` already decides
+   * from `type`: variable-content tracks get a grip, the fixed-format
+   * identifier / magnitude types (`number` · `id` · `location`, which render a
+   * last-8 chip or a short numeral run) do not, because dragging one only moves
+   * whitespace. Set this where the column is DECLARED when a surface genuinely
+   * disagrees — e.g. an `id` column that holds a full free-text reference.
+   */
+  resizable?: boolean;
+  /**
    * Suppress the leading tone glyph on this column's value chips.
    *
    * In a typed grid the column header already carries the data-type glyph, so

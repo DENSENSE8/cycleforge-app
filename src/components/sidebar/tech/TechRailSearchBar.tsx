@@ -6,6 +6,11 @@
  * same component above Settings/Admin to filter root sections or the open
  * drill's pages. Compact station-style filter — not the global header search
  * (which is the only "search the app" surface).
+ *
+ * Two hosts, two vertical rhythms, ONE component: `density` is the whole story
+ * (see the prop). The spine's band has to read as one more row in a list of
+ * rows; a station rail's band is a dock under a scrollable carton list and keeps
+ * the taller `inset-field` inset.
  */
 
 import { useEffect, useState } from 'react';
@@ -18,6 +23,7 @@ export function TechRailSearchBar({
   onChange,
   onKeyDown,
   placeholder = 'Filter lines…',
+  density = 'default',
   className,
 }: {
   value: string;
@@ -30,6 +36,22 @@ export function TechRailSearchBar({
    */
   onKeyDown?: React.KeyboardEventHandler<HTMLDivElement>;
   placeholder?: string;
+  /**
+   * The band's vertical rhythm — **the component owns its whole padding story**,
+   * so a host never stacks a raw `p-*` on the `inset-field` intent (both survive
+   * `cn()` and the intent wins in CSS order, so the override silently no-ops).
+   *
+   * - `default` — the station rails' dock: `inset-field` + the 32px field = 49px.
+   * - `row` — drops the vertical padding so the band measures one nav row (~33px)
+   *   instead of reading as a separate dock. The MasterNav spine passes this: its
+   *   box sits in a list of 30px rows, not below a carton list.
+   *
+   * The 12px horizontal inset is identical in both, so the search glyph keeps
+   * the same column as the nav rows' leading glyph. The `SearchField
+   * size="compact"` control stays 32px either way — that is the floor's touch
+   * target on a station rail, and it is not a spine's 2px to spend.
+   */
+  density?: 'default' | 'row';
   className?: string;
 }) {
   const [draft, setDraft] = useState(value);
@@ -47,7 +69,8 @@ export function TechRailSearchBar({
     <div
       onKeyDown={onKeyDown}
       className={cn(
-        'shrink-0 border-t border-border-hairline bg-surface-card inset-field',
+        'shrink-0 border-t border-border-hairline bg-surface-card',
+        density === 'row' ? 'px-3' : 'inset-field',
         className,
       )}
     >

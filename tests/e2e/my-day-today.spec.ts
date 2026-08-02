@@ -5,8 +5,11 @@ import { QA_FIXTURE_MY_DAY } from '@/lib/tenancy/qa-org';
  * Home → Today (`/`, the `MyDayWorkspace` region) — the workbench contract.
  *
  * Covers the F0 rebuild's hand-checked invariants plus the four chrome-parity
- * controls added 2026-08-01 (saved-views rail · scoped search · Fields · KPI
- * band).
+ * controls added 2026-08-01 (saved-views rail · scoped search · Fields ·
+ * due-horizon refine — the last of which moved from a body KPI band into the
+ * chrome band in the same pass, which is why its test asserts ALTITUDE as well
+ * as behaviour: a chip that filters correctly from the wrong altitude is the
+ * regression, and only a geometry check catches it).
  *
  * **Runs against real QA fixtures — the BFF stub is gone (2026-08-02.)** This
  * spec used to `page.route` `GET /api/my-day` and fulfil a hand-written feed,
@@ -179,22 +182,33 @@ test.describe('Home → Today workbench', () => {
     await expect(page.getByText(/Nothing needs you right now/i)).toHaveCount(0);
   });
 
-  test('the KPI band buckets by due horizon and each tile filters to its own count', async ({
+  test('the due-horizon chips live in the chrome and each filters to its own bucket', async ({
     page,
   }) => {
     await openToday(page);
 
-    const tile = (label: string) =>
-      page.locator('section').filter({ hasText: label }).getByText(label).first();
+    // Scoped to the chip group, not the whole page: "Today" is a common word on
+    // this route, and an unscoped accessible-name match would be asserting
+    // against whatever else happens to carry it.
+    const chips = page.getByTestId('my-day-due-horizon');
+    const chip = (name: RegExp) => chips.getByRole('button', { name });
 
-    await expect(tile('Overdue')).toBeVisible();
-    await expect(tile('Due today')).toBeVisible();
-    await expect(tile('Upcoming')).toBeVisible();
+    await expect(chip(/^Overdue\b/)).toBeVisible();
+    await expect(chip(/^Today\b/)).toBeVisible();
+    await expect(chip(/^Upcoming\b/)).toBeVisible();
+
+    // The refine is CHROME now, not a body band — it must sit inside the
+    // workbench header, above and outside the grid's own scroll port. This is
+    // the altitude assertion; the bucket assertions below are the behaviour.
+    const chipsBox = (await chips.boundingBox())!;
+    const gridBox = (await page.locator(GRID).first().boundingBox())!;
+    expect(chipsBox.y + chipsBox.height).toBeLessThanOrEqual(gridBox.y);
 
     // The horizons must actually partition: the overdue fixture shows, and
     // neither the upcoming one nor the undated interrupt leaks into the bucket.
-    await tile('Overdue').click();
+    await chip(/^Overdue\b/).click();
     await expect(page).toHaveURL(/[?&]filter=overdue\b/);
+    await expect(chip(/^Overdue\b/)).toHaveAttribute('aria-pressed', 'true');
     await expect(row(page, OVERDUE)).toBeVisible();
     await expect(row(page, UPCOMING)).toHaveCount(0);
     await expect(row(page, DUE_TODAY)).toHaveCount(0);
@@ -202,39 +216,64 @@ test.describe('Home → Today workbench', () => {
     // `myDayDueHorizon` returns null rather than folding it into `upcoming`.
     await expect(row(page, INTERRUPT)).toHaveCount(0);
 
-    // The lit tile is its own escape hatch.
-    await tile('Overdue').click();
+    // The lit chip is its own escape hatch.
+    await chip(/^Overdue\b/).click();
     await expect(page).not.toHaveURL(/[?&]filter=/);
+    await expect(chip(/^Overdue\b/)).toHaveAttribute('aria-pressed', 'false');
   });
 
-  test('Fields hides an optional track and the header loses the column', async ({ page }) => {
+  test('column display opens from the grid’s own header — no chrome Fields survives', async ({
+    page,
+  }) => {
     await openToday(page);
 
-    // Assert the TRACK by `data-col`, not by accessible name. The Fields
-    // listbox stays open across toggles by design, and querying the header
-    // through the a11y tree while a popover is open is answering a different
-    // question than "does the column exist" (it returned nothing on the
-    // dogfood org for exactly that reason). `data-col` is what the header SoT
-    // actually renders.
-    const queueHeader = page.locator('[role="columnheader"][data-col="queue"]');
+    // Retargeted 2026-08-02: column display moved from the chrome trailing
+    // cluster to the grid's own header, and `GridFieldsMenu` is deleted. This
+    // test drove `getByRole('button', { name: /^Fields/ })` and so was asserting
+    // against a control that no longer exists — the failure was the migration,
+    // not flake. Locators follow `grid-column-fields-columns-hover`.
+    //
+    // The control reserves no layout: it is `opacity-0` + `pointer-events-none`
+    // until the header band is hovered, so this must hover before it clicks.
+    const band = page.locator('[data-grid-col-header]').first();
+    const triggerHost = page.locator('[data-grid-column-details-trigger]');
+    const lip = triggerHost.getByRole('button', { name: 'Column display' });
+    const rail = page.getByRole('region', { name: 'Column display' });
 
-    // `queue` ships `optional`, so it starts hidden and Fields is how it comes back.
-    await expect(queueHeader).toHaveCount(0);
+    // **Scope: the DOOR, not the mechanics.** Toggling a track and asserting
+    // the header gains/loses it is `grid-column-fields-lip.spec.ts`'s job, and
+    // it does it properly — with a `restoreDefaults` in both hooks, because
+    // those toggles persist a per-staff delta to the DATABASE and leak into
+    // every later spec that asserts default columns. Re-running the mechanics
+    // here would buy no new information about the lip and would need that same
+    // cleanup apparatus to avoid poisoning Today's other tests. What is
+    // Today-specific — and what this pass changed — is which door exists.
+    await expect(page.getByRole('button', { name: /^Fields/ })).toHaveCount(0);
+    // Hidden at rest — the whole reason the lip became an overlay.
+    await page.mouse.move(0, 0);
+    await expect(triggerHost).toHaveCSS('opacity', '0');
 
-    await page.getByRole('button', { name: /^Fields/ }).first().click();
-    // The menu is keyed by pref key (`hideKey`), which is the unit a staffer
-    // actually toggles — matching on the visible label would break the moment
-    // the column SoT reworded it.
-    const queueField = page.locator('[data-field-key="queue"]');
-    await queueField.click();
-    await expect(queueField).toHaveAttribute('aria-selected', 'true');
-    await expect(queueHeader).toHaveCount(1);
+    await band.hover();
+    await expect(triggerHost).toHaveCSS('opacity', '1');
+    await lip.click();
+    await expect(rail).toBeVisible();
+    // The rail knows it is Today's grid, not some other surface's.
+    await expect(
+      rail.locator('[role="option"][data-column-details-key="queue"]'),
+    ).toHaveCount(1);
 
-    // …and back off again, so the assertion is about the toggle, not about one
-    // lucky direction.
-    await queueField.click();
-    await expect(queueField).toHaveAttribute('aria-selected', 'false');
-    await expect(queueHeader).toHaveCount(0);
+    // Leave no delta behind: this test never toggles, so Reset should not even
+    // render — but if an earlier run died mid-toggle, clear it rather than
+    // letting Today's default-column assumptions rot.
+    const reset = rail.getByRole('button', { name: /Reset/i });
+    if (await reset.count()) {
+      await reset.click();
+      await page.waitForTimeout(250);
+    }
+
+    await rail.getByRole('button', { name: 'Done' }).click();
+    await expect(rail).toHaveCount(0);
+    await expect(page.locator('[role="columnheader"][data-col="queue"]')).toHaveCount(0);
   });
 
   test('the saved-views rail is resident and reserves its own column', async ({ page }) => {
@@ -294,17 +333,40 @@ test.describe('Home → Today workbench', () => {
     await expect(view).toHaveCount(0);
   });
 
-  test('a queue link in the chrome leaves for that queue’s page', async ({ page }) => {
+  test('the chrome band carries no queue doors — it controls the rows below it', async ({
+    page,
+  }) => {
     await openToday(page);
-    // Locate by HREF, not by accessible name. The spine and the integrations
-    // settings both carry links whose names contain "Orders", and `first()` over
-    // a name regex picked one of those — the test navigated to
-    // /settings/integrations and failed for a reason that had nothing to do with
-    // the queue card. The href is the SoT (`QUEUE_SURFACE_LINKS` in
-    // `aggregate-my-day.ts`) and is unambiguous.
-    const ordersCard = page.locator('a[href="/dashboard?unshipped"]');
-    await expect(ordersCard).toHaveCount(1);
-    await ordersCard.click();
-    await expect(page).toHaveURL(/\/dashboard/);
+
+    // Inverted 2026-08-01. This used to assert the queue link WAS in the chrome
+    // and navigated; the chrome-altitude pass removed it, because a link that
+    // leaves the surface is navigation, and the band's one job is controlling
+    // the data mounted below it. Kept as the inverse rather than deleted: an
+    // assertion that a control is absent from a band is the only thing that
+    // stops it drifting back in the next time someone needs somewhere to put a
+    // count.
+    //
+    // Located by HREF, not by accessible name — the spine and the integrations
+    // settings both carry links whose names contain "Orders", so a name regex
+    // proves nothing about the chrome. The href is the SoT (`QUEUE_SURFACE_LINKS`
+    // in `aggregate-my-day.ts`).
+    const chrome = page.locator('main').getByRole('button', { name: /^Everything\b/ });
+    await expect(chrome.first()).toBeVisible();
+
+    const chromeBox = (await chrome.first().boundingBox())!;
+    const queueDoor = page.locator(`a[href="/dashboard?unshipped"]`);
+    for (const link of await queueDoor.all()) {
+      const box = await link.boundingBox();
+      if (!box) continue;
+      // A surviving link may legitimately live in the MasterNav spine (its
+      // destination — see `MyDayWorkspace`), which is to the LEFT of the band.
+      // What must not exist is one sharing the band's row.
+      const sharesBandRow =
+        box.y < chromeBox.y + chromeBox.height && box.y + box.height > chromeBox.y;
+      expect(
+        sharesBandRow && box.x > chromeBox.x,
+        'a queue door reappeared in the Today chrome band',
+      ).toBe(false);
+    }
   });
 });

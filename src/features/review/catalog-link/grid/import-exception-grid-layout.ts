@@ -20,6 +20,7 @@ import { gridFrozenKeys } from '@/design-system/components/grid/grid-column-edit
 import { gridTemplate } from '@/design-system/components/grid/grid-column-geometry';
 import { ordersQueueColVar } from '@/lib/dashboard-order-row-layout';
 import type { ColumnType, TableId } from '@/lib/tables/table-columns';
+import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 
 /** Per-staff column-prefs bucket + Fields-menu vocabulary key. */
 export const IMPORT_EXCEPTION_TABLE_ID: TableId = 'import-exception';
@@ -186,7 +187,6 @@ export function importExceptionGridFrozenLeft(key: ImportExceptionGridColumnKey)
   return `calc(${parts.join(' + ')})`;
 }
 
-export type ImportExceptionGridSortDir = 'asc' | 'desc';
 
 /**
  * First-activation direction. `seen` → **descending**: the reason to sort it is
@@ -195,7 +195,7 @@ export type ImportExceptionGridSortDir = 'asc' | 'desc';
  */
 export function defaultDirForImportExceptionGridSort(
   key: ImportExceptionGridColumnKey,
-): ImportExceptionGridSortDir {
+): GridSortDir {
   if (key === 'seen' || key === 'first' || key === 'last') return 'desc';
   return 'asc';
 }

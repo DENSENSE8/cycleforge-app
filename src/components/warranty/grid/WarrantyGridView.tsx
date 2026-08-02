@@ -15,8 +15,8 @@ import {
   isWarrantyGridSortable,
   type WarrantyGridColumn,
   type WarrantyGridColumnKey,
-  type WarrantyGridSortDir,
 } from './warranty-grid-layout';
+import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 
 /** Staff-prefs identity — one warranty spreadsheet, one Fields selection. */
 const WARRANTY_TABLE_ID = 'warranty' as const;
@@ -49,7 +49,7 @@ function compareWarrantyRows(
   a: WarrantyClaimListRow,
   b: WarrantyClaimListRow,
   key: WarrantyGridColumnKey,
-  dir: WarrantyGridSortDir,
+  dir: GridSortDir,
 ): number {
   const sign = dir === 'asc' ? 1 : -1;
   switch (key) {
@@ -174,14 +174,15 @@ export function WarrantyGridView({
         isSearching={isSearching}
         scrollRef={scrollRef}
         testId="warranty-grid-body"
-        renderColumnHeader={({ toggleColumnSort }) => (
+        tableId={WARRANTY_TABLE_ID}
+        columnDetails={{ open: columnDetailsOpen, onOpen: () => setColumnDetailsOpen(true) }}
+        renderColumnHeader={({ toggleColumnSort, onResizeColumn }) => (
           <WarrantyGridColumnHeader
             columns={visible}
             activeSort={columnSort}
             sortDir={sortDir}
             onSortColumn={toggleColumnSort}
-            onOpenColumnDetails={() => setColumnDetailsOpen(true)}
-            columnDetailsOpen={columnDetailsOpen}
+            onResizeColumn={onResizeColumn}
           />
         )}
         renderGroup={(group) => <>{group.rows.map(renderLeaf)}</>}

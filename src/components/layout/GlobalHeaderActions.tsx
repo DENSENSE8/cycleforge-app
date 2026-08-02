@@ -17,7 +17,6 @@ import { ActivityInboxPopover } from '@/components/quick-access/ActivityInboxPop
 import { ClipboardHistoryPopover } from '@/components/quick-access/ClipboardHistoryPopover';
 import { FeedbackPopover } from '@/components/quick-access/FeedbackWidget';
 import { PhoneSignInQrButton } from '@/components/quick-access/PhoneSignInQrButton';
-import { KioskPreviewButton } from '@/components/quick-access/KioskPreviewButton';
 import { getStaffThemeById, stationThemeColors } from '@/utils/staff-colors';
 import {
   HEADER_ICON_BTN_CLASS,
@@ -47,13 +46,27 @@ function initials(name: string): string {
 /**
  * Persistent right zone of the {@link GlobalHeader}.
  *
- * Desktop order (left → right): search · clipboard · phone QR · kiosk · inbox ·
- * **AI (far-right)** — Sparkles opens the assistant right-rail occupant, so it
- * sits at the edge it owns (mirror of MasterNav collapse on the far left).
- * Staff identity + org live on the MasterNav spine — no avatar here.
+ * Desktop order (left → right): **search · notifications · AI (far-right)**.
+ * Sparkles opens the assistant right-rail occupant, so it sits at the edge it
+ * owns (mirror of MasterNav collapse on the far left). Staff identity + org live
+ * on the MasterNav spine — no avatar here.
  *
- * Mobile: utility icon cluster plus a compact account avatar (no MasterNav
- * spine). AI stays desktop-only with the rest of the right-rail chrome.
+ * **Three, down from six (2026-08-01 chrome-altitude pass).** Clipboard history,
+ * the phone sign-in QR and the kiosk preview moved to the spine's account
+ * overflow ({@link StaffAccountFooter} ⋯). The rule they failed is frequency,
+ * not usefulness: a persistent top-right icon is the most expensive slot in the
+ * app, and it is earned by something an operator reaches for through the day.
+ * A once-a-shift device hand-off and a preview link are not that, and six peers
+ * with no ranking between them is what makes a header read as a toolbar.
+ *
+ * What stays is one of each KIND: **find** (search, which also fronts ⌘K),
+ * **be told** (notifications — actionable, cross-domain, badge-only when
+ * non-empty), and **ask** (the assistant). Adding a fourth means displacing one
+ * of those three or having a genuinely new kind.
+ *
+ * Mobile keeps its own utility cluster — it has no MasterNav spine, so it has no
+ * account overflow to move clipboard / phone QR into — plus a compact account
+ * avatar. AI stays desktop-only with the rest of the right-rail chrome.
  */
 export function GlobalHeaderActions({ variant = 'desktop' }: { variant?: 'desktop' | 'mobile' } = {}) {
   const isMobile = variant === 'mobile';
@@ -86,7 +99,12 @@ export function GlobalHeaderActions({ variant = 'desktop' }: { variant?: 'deskto
   const avatarSize = 'h-10 w-10 text-sm';
   const wrapClass = isMobile ? 'relative flex h-11 w-11 shrink-0 items-center justify-center' : HEADER_ICON_WRAP;
 
-  const iconCluster = (
+  /**
+   * Mobile-only utilities. Desktop reaches these from the spine account
+   * overflow ({@link StaffAccountFooter} ⋯); mobile has no spine, so removing
+   * them here would orphan them rather than relocate them.
+   */
+  const mobileUtilityCluster = isMobile ? (
     <>
       <div ref={clipboardAnchorRef} className={wrapClass}>
         <HoverTooltip label="Clipboard history" asChild>
@@ -114,12 +132,12 @@ export function GlobalHeaderActions({ variant = 'desktop' }: { variant?: 'deskto
       <div className={wrapClass}>
         <PhoneSignInQrButton size={iconBtnSize} iconClassName={iconSize} />
       </div>
+    </>
+  ) : null;
 
-      {!isMobile ? (
-        <div className={wrapClass}>
-          <KioskPreviewButton size={iconBtnSize} iconClassName={iconSize} />
-        </div>
-      ) : null}
+  const iconCluster = (
+    <>
+      {mobileUtilityCluster}
 
       <div ref={inboxAnchorRef} className={wrapClass}>
         <HoverTooltip label="Notifications" asChild>
@@ -157,13 +175,14 @@ export function GlobalHeaderActions({ variant = 'desktop' }: { variant?: 'deskto
       {isMobile ? (
         <div ref={accountAnchorRef} className={wrapClass}>
           <HoverTooltip label={displayName || `Staff #${user.staffId}`} asChild>
+            {/* ds-raw-button: HoverTooltip asChild Slot — IconButton would disturb the clone */}
             <button
               type="button"
               onClick={() => setPopover((p) => (p === 'account' ? 'none' : 'account'))}
               aria-label="Account & quick access"
               aria-expanded={accountOpen}
               className={cn(
-                'flex items-center justify-center rounded-full font-semibold transition-transform active:scale-95',
+                'ds-raw-button flex items-center justify-center rounded-full font-semibold transition-transform active:scale-95',
                 avatarSize,
                 sc.bg,
                 'text-white',
@@ -219,7 +238,7 @@ export function GlobalHeaderActions({ variant = 'desktop' }: { variant?: 'deskto
   const onSearchPage =
     pathname === '/search' || (pathname?.startsWith('/search/') ?? false);
 
-  // Order: find · utility popovers · AI at the right edge the assistant opens.
+  // Order: find · be told · ask — AI last, at the right edge it opens.
   return (
     <div className={cn(HEADER_ICON_CLUSTER, 'justify-end', HEADER_RAIL_WIDTH)}>
       {!onSearchPage ? <GlobalHeaderSearch /> : null}

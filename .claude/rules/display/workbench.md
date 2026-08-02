@@ -79,13 +79,24 @@ never as a quiet icon in `right` filters.
 
 ```text
 ┌─ WorkbenchChromeHeader (pinned) ──────────────────────────────┐
-│  [Recent] [Queue] [History]   …search…filters… │ Fields │ CTA │
+│  [Recent] [Queue] [History]   …search…filters… │ Sort │ CTA   │
 └───────────────────────────────────────────────────────────────┘
 ┌─ KPI strip (scrolls with body) ───────────────────────────────┐
 │  UNFINISHED · VIEWED TODAY · …                                  │
 └───────────────────────────────────────────────────────────────┘
-┌─ Data table / collection map ─────────────────────────────────┐
+┌─ Data table / collection map ────────────────────────────┐ ▤ ← column display
+│  column header band                                      │   (gutter, outside
+├──────────────────────────────────────────────────────────┤    the card)
 ```
+
+**Column display belongs to the GRID, and sits in a gutter beside it**
+(2026-08-02). Chrome Fields is retired: a control that mutates the column set of
+a card does not belong on page chrome floating above that card. But it does not
+belong *inside* the card's header band either — parked at the band's right edge
+it either reserves a permanent track (taxing every row of every grid forever to
+host an occasional action) or covers the last column's label. The gutter spends
+**page** width beside the card instead, so no track narrows and nothing is
+covered — and it adds no sticky layer, because it is outside the scroll port.
 
 ### Return-to-scan contract (every scan station)
 
@@ -93,7 +104,7 @@ Hybrid Station+Workbench pages **must** expose a solid primary CTA that rejoins 
 
 | Rule | Detail |
 |---|---|
-| **Where** | `WorkbenchTrailingCluster.actions` (trailing cluster, after Sort → Fields) |
+| **Where** | `WorkbenchTrailingCluster.actions` (trailing cluster, after Sort) |
 | **When** | On **every** strip tab (not honest-absence on the bench tab) |
 | **Look** | Solid `Button` `variant="primary"` + leading station glyph + short uppercase verb (Unbox: **“Unbox”**) |
 | **Click** | (1) Close carton/line overlay so the **data table** is visible · (2) Switch to the **bench tab** (strip-first / working set — Unbox: Recent) · (3) Best-effort highlight of the station’s MRU row in that table (`receiving-highlight-line` — no `select-line`, which would re-open the overlay) · (4) Focus the **station scan bar** (`receiving-focus-scan` / surface equivalent) |

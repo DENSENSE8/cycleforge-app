@@ -68,6 +68,7 @@ interface LineRow {
   serial_absent: boolean;
   per_unit_absent_count: number | string | null;
   label_printed_at: string | null;
+  label_previewed_at: string | null;
   serial_count: number | string | null;
   serial_last_at: string | null;
   photo_count: number | string | null;
@@ -180,6 +181,7 @@ export async function resolveUnboxProcedureReceipt(
             cg.name                             AS condition_graded_by_name,
             COALESCE(rlt.serial_absent, false)  AS serial_absent,
             rlt.label_printed_at::text          AS label_printed_at,
+            rlt.label_previewed_at::text        AS label_previewed_at,
             (SELECT COUNT(*) FROM receiving_line_unit rlu
               WHERE rlu.receiving_line_id = rl.id
                 AND rlu.organization_id = rl.organization_id
@@ -382,6 +384,14 @@ export async function resolveUnboxProcedureReceipt(
         ? latest(lines.map((l) => l.condition_graded_at))
         : null,
     contentsConfirmedAt: carton.contents_confirmed_at,
+    // Folded like the grade: the carton's label step is satisfied only when
+    // EVERY line's face has been read, because a multi-line PO prints one face
+    // per line. `every` on an empty array is vacuously true, so the length
+    // guard carries the "no lines ⇒ nothing acknowledged" case.
+    labelPreviewedAt:
+      lines.length > 0 && lines.every((l) => l.label_previewed_at)
+        ? latest(lines.map((l) => l.label_previewed_at))
+        : null,
     photoCount: num(arrival?.n) + num(unboxCarton?.n),
     // Serial facts fold by SUM: the bench's gate is "every expected unit is
     // accounted for", which is the same question one line up.
@@ -450,7 +460,16 @@ export async function resolveUnboxProcedureReceipt(
             ? 'Captured'
             : null,
     },
+    label: { at: gates.labelPreviewedAt },
   };
+
+  // The instants the shared derivation hangs on each step. `condition`,
+  // `contents` and `label` are deliberately absent from the effect of this map —
+  // `stepCompletedAt` reads those off the gate input, which is the same value
+  // the entries above carry, so there is no second answer to keep in step.
+  gates.evidenceAt = Object.fromEntries(
+    Object.entries(evidence).map(([key, e]) => [key, e.at ?? null]),
+  );
 
   return buildProcedureReceipt({
     gates,

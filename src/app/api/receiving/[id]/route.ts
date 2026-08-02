@@ -93,7 +93,14 @@ export async function GET(
            ELSE loc.name
          END AS staging_location_label,
          rt.priority_lane,
-         COALESCE(rt.pairing_state, 'UNFOUND') AS pairing_state,
+         -- RAW, never COALESCEd. A carton with no receiving_triage row has no
+         -- recorded pairing answer, and COALESCE(rt.pairing_state, UNFOUND)
+         -- invented one -- which read back on /carton/[id] as a PO search that
+         -- had failed, and as a "Pairing state: UNFOUND" fact nobody wrote.
+         -- Absent and recorded are different answers; the read model decides
+         -- what absence means (it reads r.source = unmatched, which IS recorded,
+         -- stamped at scan time). See carton-inspector-model.ts.
+         rt.pairing_state,
          COALESCE(rt.triage_complete, false) AS triage_complete,
          to_char(rt.triage_completed_at::timestamp, 'YYYY-MM-DD HH24:MI:SS') AS triage_completed_at,
          lpo.id AS local_pickup_order_id,

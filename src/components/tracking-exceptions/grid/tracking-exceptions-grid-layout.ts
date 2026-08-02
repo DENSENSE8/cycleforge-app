@@ -14,6 +14,7 @@ import { gridFrozenKeys } from '@/design-system/components/grid/grid-column-edit
 import { gridTemplate } from '@/design-system/components/grid/grid-column-geometry';
 import { ordersQueueColVar } from '@/lib/dashboard-order-row-layout';
 import type { ColumnType } from '@/lib/tables/table-columns';
+import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 
 export type TrackingExceptionsGridColumnKey =
   | 'select'
@@ -195,7 +196,6 @@ export function trackingExceptionsGridFrozenLeft(key: TrackingExceptionsGridColu
   return `calc(${parts.join(' + ')})`;
 }
 
-export type TrackingExceptionsGridSortDir = 'asc' | 'desc';
 
 /**
  * Default direction when first activating a column sort.
@@ -204,7 +204,7 @@ export type TrackingExceptionsGridSortDir = 'asc' | 'desc';
  */
 export function defaultDirForTrackingExceptionsGridSort(
   key: TrackingExceptionsGridColumnKey,
-): TrackingExceptionsGridSortDir {
+): GridSortDir {
   if (key === 'created' || key === 'lastCheck' || key === 'retries') return 'desc';
   return 'asc';
 }

@@ -3,11 +3,24 @@ export { LedgerCellEditor } from './LedgerCellEditor';
 export { LedgerGridColumnHeader } from './LedgerGridColumnHeader';
 export type {
   LedgerHeaderLayoutApi,
-  LedgerHeaderSortDir,
   LedgerGridColumnHeaderProps,
 } from './LedgerGridColumnHeader';
+/** The one column-sort direction — see `grid-sort-dir.ts` for why there is only one. */
+export type { GridSortDir } from './grid-sort-dir';
+export { makeLedgerGridColumnHeader } from './makeLedgerGridColumnHeader';
+export type {
+  GridColumnHeaderBaseProps,
+  GridColumnHeaderProps,
+  GridHeaderSelectMode,
+  MakeLedgerGridColumnHeaderConfig,
+} from './makeLedgerGridColumnHeader';
 export { useGridSurface } from './useGridSurface';
 export { LedgerGridSurface } from './LedgerGridSurface';
+export { ColumnResizeHandle } from './ColumnResizeHandle';
+export {
+  GridColumnDetailsTrigger,
+  GridColumnGutter,
+} from './GridColumnDetailsTrigger';
 export {
   buildLedgerColumnDefs,
   makeGridSurfaceDescriptor,
@@ -41,6 +54,7 @@ export {
   GRID_IDENTITY_COLUMN_KEYS,
   gridFrozenKeys,
   isGridColumnInCellEditable,
+  isGridColumnResizable,
   isGridIdentityColumn,
 } from './grid-column-editability';
 export type { GridIdentityColumnKey } from './grid-column-editability';

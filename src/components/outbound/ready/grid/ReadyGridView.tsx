@@ -20,8 +20,8 @@ import {
   isReadyGridSortable,
   type ReadyGridColumn,
   type ReadyGridColumnKey,
-  type ReadyGridSortDir,
 } from './ready-grid-layout';
+import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 
 /** Staff-prefs identity — one Ready spreadsheet, one Fields selection. */
 const READY_TABLE_ID = 'ready' as const;
@@ -50,7 +50,7 @@ function compareReadyRows(
   a: AllocationHit,
   b: AllocationHit,
   key: ReadyGridColumnKey,
-  dir: ReadyGridSortDir,
+  dir: GridSortDir,
 ): number {
   const sign = dir === 'asc' ? 1 : -1;
   switch (key) {
@@ -157,14 +157,15 @@ export function ReadyGridView({
         isSearching={isSearching}
         scrollRef={scrollRef}
         testId="ready-grid-body"
-        renderColumnHeader={({ toggleColumnSort }) => (
+        tableId={READY_TABLE_ID}
+        columnDetails={{ open: columnDetailsOpen, onOpen: () => setColumnDetailsOpen(true) }}
+        renderColumnHeader={({ toggleColumnSort, onResizeColumn }) => (
           <ReadyGridColumnHeader
             columns={visible}
             activeSort={columnSort}
             sortDir={sortDir}
             onSortColumn={toggleColumnSort}
-            onOpenColumnDetails={() => setColumnDetailsOpen(true)}
-            columnDetailsOpen={columnDetailsOpen}
+            onResizeColumn={onResizeColumn}
           />
         )}
         renderGroup={(group) => <>{group.rows.map(renderLeaf)}</>}

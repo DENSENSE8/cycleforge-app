@@ -20,8 +20,7 @@ import {
   useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Check, Calendar, ChevronUp, ChevronDown, ColumnsThree } from '@/components/Icons';
-import { ToolbarButton } from '@/components/ui/ToolbarButton';
+import { Check, Calendar, ChevronUp, ChevronDown } from '@/components/Icons';
 import { tableHeader } from '@/design-system/tokens/typography/presets';
 import { elevationClass } from '@/design-system/tokens/shadows';
 import { TABLE_FROZEN_HEADER_CLASS } from '@/design-system/tokens/table-surface';
@@ -49,7 +48,7 @@ import {
   type QueueDisplaySortColumn,
   type QueueDisplaySortDir,
 } from '@/utils/queue-display-sort';
-import { ColumnResizeHandle } from './ColumnResizeHandle';
+import { ColumnResizeHandle } from '@/design-system/components/grid/ColumnResizeHandle';
 import { cn } from '@/utils/_cn';
 
 /**
@@ -82,8 +81,6 @@ export function OrdersQueueColumnHeader({
   activeSort,
   sortDir = null,
   onSortColumn,
-  onOpenColumnDetails,
-  columnDetailsOpen = false,
 }: {
   isMobile?: boolean;
   selectMode?: boolean;
@@ -115,15 +112,6 @@ export function OrdersQueueColumnHeader({
   sortDir?: QueueDisplaySortDir | null;
   /** Spreadsheet click-to-sort — Pending grid URL-driven mode only. */
   onSortColumn?: (key: OrdersQueueColumnKey) => void;
-  /**
-   * When set, mounts the top-right column-display lip — the SOLE entry to the
-   * `GridColumnDetailsPanel` rail since chrome Fields was retired (2026-08-02).
-   * Same recipe as {@link LedgerGridColumnHeader}: absolute inside the already
-   * sticky `[data-grid-col-header]` band, so the port keeps ONE sticky layer.
-   */
-  onOpenColumnDetails?: () => void;
-  /** Active fill on the lip while the details rail is open. */
-  columnDetailsOpen?: boolean;
 }) {
   const scope = selectionScope ?? '__idle__';
   const selectedRows = useTableSelection<{ id?: number | string }>(scope, (r) => Number(r.id));
@@ -177,9 +165,6 @@ export function OrdersQueueColumnHeader({
           ? cn('min-h-11 px-0 py-0', TABLE_FROZEN_HEADER_CLASS)
           : cn('sticky top-0 z-sticky bg-surface-canvas/95 py-2 backdrop-blur-sm', ORDERS_QUEUE_COL_HEADER_STICKY, QUEUE_ROW.px),
         ordersQueueRowShellClass(false, { scrollMinContent: gridSkin }),
-        // Room for the absolute top-right lip so the last header label isn't
-        // painted under the control.
-        onOpenColumnDetails && 'pr-9',
         className,
       )}
       style={{
@@ -256,46 +241,17 @@ export function OrdersQueueColumnHeader({
     </div>
   );
 
-  // Sibling of the header ROW, not a child: the row is the drag surface and a
-  // grid track owner, so the lip anchors to the `relative` band wrapper instead
-  // (`[data-grid-col-header]` — LedgerGrid.tsx).
-  const lip = onOpenColumnDetails ? (
-    <div
-      data-grid-column-details-lip=""
-      className="absolute inset-y-0 right-0 z-sticky flex w-9 items-center justify-center border-b border-l border-border-default bg-surface-card"
-    >
-      <HoverTooltip label="Column display" asChild>
-        <ToolbarButton
-          type="button"
-          iconOnly
-          active={columnDetailsOpen}
-          aria-label="Column display"
-          aria-haspopup="dialog"
-          aria-expanded={columnDetailsOpen}
-          onClick={onOpenColumnDetails}
-        >
-          <ColumnsThree className="h-3.5 w-3.5 shrink-0" />
-        </ToolbarButton>
-      </HoverTooltip>
-    </div>
-  ) : null;
-
-  if (!onReorderColumns)
-    return (
-      <>
-        {headerRow}
-        {lip}
-      </>
-    );
+  // Column DISPLAY is not this component's job: its control lives in a gutter
+  // beside the card (`GridColumnGutter`, mounted by the view), because anything
+  // parked at the band's right edge either reserves a permanent track or covers
+  // the last column's label.
+  if (!onReorderColumns) return headerRow;
   return (
-    <>
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-        <SortableContext items={sortableItems} strategy={horizontalListSortingStrategy}>
-          {headerRow}
-        </SortableContext>
-      </DndContext>
-      {lip}
-    </>
+    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+      <SortableContext items={sortableItems} strategy={horizontalListSortingStrategy}>
+        {headerRow}
+      </SortableContext>
+    </DndContext>
   );
 }
 

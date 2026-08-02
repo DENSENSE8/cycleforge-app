@@ -30,7 +30,12 @@ import { receivingPhotosQueryKey, refreshReceivingPhotos } from '@/lib/queries/r
 import { Camera, Plus } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { publishReceivingPhotoRequest } from '@/lib/realtime/receiving-photo-request';
+import {
+  getReceivingPhotoRequestChannelName,
+  publishReceivingPhotoRequest,
+} from '@/lib/realtime/receiving-photo-request';
+import { useSendToDevice } from '@/components/station/send-to-device/useSendToDevice';
+import { SendToDeviceStatus } from '@/components/station/send-to-device/SendToDeviceStatus';
 import { toast } from '@/lib/toast';
 import { receivingPhotoToGalleryInput } from '@/components/shipped/photo-gallery/photo-gallery-utils';
 import { buildUnboxingCartonLibraryHref } from '@/components/shipped/photo-gallery/photo-context-provenance';
@@ -212,14 +217,18 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
 
   useReceivingPhotosRealtimeRefresh(receivingId, staffId, refresh, staffId > 0 && !!orgId);
 
-  const [phoneSending, setPhoneSending] = useState(false);
-
   // An item capture routes to `/m/receiving/po/{ref}/item/{line}/photos`, which
   // needs a PO route ref. Without one the phone leg is unavailable (device
   // upload via the hover strip still works) — better than sending the operator's
   // phone to a route it cannot resolve.
   const routeRef = String(poRouteRef ?? '').trim();
   const canSendToPhone = !isItemScope || routeRef.length > 0;
+
+  // Waiting/unreachable state instead of an optimistic "Sent to phone" toast:
+  // an Ably publish resolves with zero subscribers, so the old toast confirmed
+  // only that the desk spoke. Same hook + same card as Pack (P1 · D2).
+  const phone = useSendToDevice('receiving_photo');
+  const ackChannelName = getReceivingPhotoRequestChannelName(orgId, staffId);
 
   const handleRequestOnPhone = useCallback(async () => {
     if (!orgId || staffId <= 0) {
@@ -230,22 +239,32 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
       toast.error('Link a PO to capture item photos on the phone');
       return;
     }
-    setPhoneSending(true);
-    try {
-      const client = await getClient();
-      await publishReceivingPhotoRequest(client, orgId, staffId, receivingId, {
-        stage,
-        receivingLineId: lineId,
-        poRef: routeRef || null,
-      });
-      toast.success('Sent to phone');
-    } catch (err) {
-      console.warn('receiving-photo-button: photo request publish failed', err);
-      toast.error('Could not send to phone');
-    } finally {
-      setPhoneSending(false);
-    }
-  }, [getClient, orgId, receivingId, staffId, stage, lineId, routeRef, canSendToPhone]);
+    await phone.send({
+      channelName: ackChannelName,
+      // The minted id must reach the wire — the phone echoes it back, and an
+      // ack carrying a different id is an ack the desk is not waiting on.
+      publish: async (requestId) => {
+        const client = await getClient();
+        await publishReceivingPhotoRequest(client, orgId, staffId, receivingId, {
+          stage,
+          receivingLineId: lineId,
+          poRef: routeRef || null,
+          requestId,
+        });
+      },
+    });
+  }, [
+    ackChannelName,
+    canSendToPhone,
+    getClient,
+    lineId,
+    orgId,
+    phone,
+    receivingId,
+    routeRef,
+    staffId,
+    stage,
+  ]);
 
   const photos = useMemo(
     () =>
@@ -319,7 +338,7 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
       // Item scope with no PO route ref: the phone leg has nowhere to land, but
       // the pill must stay hoverable for device upload — so it is click-inert,
       // not `disabled` (a disabled button swallows the hover the strip needs).
-      disabled={phoneSending}
+      disabled={phone.pending}
       aria-disabled={!canSendToPhone || undefined}
       ariaLabel={ariaLabel}
       aria-expanded={showGalleryPeek}
@@ -352,6 +371,17 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
           {pillButton}
         </HoverTooltip>
       )}
+
+      {/*
+        Pairing state, anchored under the pill that triggered it. Absolute so a
+        two-line "unreachable" row cannot grow the identity row and shove the
+        carton title around mid-scan — the same reason the gallery peek floats.
+      */}
+      {phone.state !== 'idle' ? (
+        <div className="absolute right-0 top-full z-30 w-max max-w-[18rem] pt-1.5">
+          <SendToDeviceStatus state={phone.state} onRetry={phone.retry} />
+        </div>
+      ) : null}
 
       {showGalleryPeek ? (
         // Gap bridge only — panel chrome comes from CopyChipHoverMenuPanel

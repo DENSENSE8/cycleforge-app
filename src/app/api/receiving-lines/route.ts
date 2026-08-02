@@ -1365,6 +1365,24 @@ function normalizeRow(row: Record<string, unknown>) {
     condition_grade:          (row.condition_grade as string) ?? 'USED_A',
     condition_set_at:         (row.condition_set_at as string | null) ?? null,
     label_printed_at:         (row.label_printed_at as string | null) ?? null,
+    // Unbox procedure ACKNOWLEDGEMENT stamps — the gates for the `condition`,
+    // `contents` and `label` capture steps (derive-capture-step-states.ts).
+    //
+    // This normalizer is a strict ALLOWLIST with no passthrough, so a column
+    // added to the SELECT but not to this object reaches the client as
+    // `undefined` — and `undefined` is indistinguishable from "not acknowledged".
+    // All three shipped that way: the routes wrote the stamps, the builders
+    // selected them, the step gates read them, and the steps could never go
+    // done because the value never crossed the wire. Nothing failed loudly;
+    // the procedure pointer simply parked forever.
+    //
+    // `?? null` is the right default rather than `undefined`: on a view whose
+    // SELECT omits these (the PATCH re-fetch, placeholder stubs) the honest
+    // answer is "no acknowledgement", which can only under-claim, never
+    // over-claim. Guard: `receiving-lines-procedure-gates.guard.test.ts`.
+    condition_graded_at:      (row.condition_graded_at as string | null) ?? null,
+    contents_confirmed_at:    (row.contents_confirmed_at as string | null) ?? null,
+    label_previewed_at:       (row.label_previewed_at as string | null) ?? null,
     // Denormalized serial projection (rlt.serial_projection) surfaced by the list
     // builders as `serials` — the FAST DEFAULT for first-frame chip display, so a
     // row-click / deep-link / arrow-nav open paints serials without waiting on the

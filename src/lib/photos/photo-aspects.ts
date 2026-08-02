@@ -35,6 +35,19 @@
  * The DB half is `photos.photo_aspect` (nullable TEXT + named CHECK, migration
  * `2026-08-01b_photo_aspect.sql`). `photo-aspect-vocabulary.guard.test.ts`
  * asserts this union and that CHECK list are identical.
+ *
+ * ## Exactly two writers
+ *
+ *   1. `./create-photo.ts` — stamps the claim at INSERT, from the upload's
+ *      `photoAspect` field (`./upload-client.ts`).
+ *   2. `./set-photo-aspect.ts` — names it afterwards, behind
+ *      `PATCH /api/photos/[id]/aspect`.
+ *
+ * The second exists because the first was the only one until 2026-08-02, which
+ * meant a shot taken from the wrong step — or from any surface that sends no
+ * aspect — could never satisfy the step it obviously depicts, and the only
+ * recovery was to re-shoot the box. `reassign-receiving-photo.ts` is NOT a third
+ * writer: it moves a photo's entity link and never touches this column.
  */
 
 import type { PhotoEvidenceStage } from './stages';

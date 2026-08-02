@@ -118,7 +118,8 @@ export interface ReceivingLinesTableProps {
   /**
    * Host owns WorkbenchChromeHeader (Unbox workbench). Suppresses the table's
    * own History/Incoming chrome; week pill portals into `toolbarPortalTarget`
-   * (controls slot). Fields lives on the host trailing cluster.
+   * (controls slot). Column display is neither the host's nor this portal's —
+   * it is the grid's own header lip (chrome Fields retired 2026-08-02).
    */
   embedded?: boolean;
   /** Portal week DateRangePickerPill into Unbox chrome controls slot. */
@@ -380,8 +381,8 @@ export default function ReceivingLinesTable({
 
   // Unbox Queue / Viewed skip the week filter — do NOT portal a static
   // "Door queue · N" fact chip (duplicates the Queue tab badge; not actionable).
-  // History keeps the interactive week pill. Fields lives on UnboxWorkspaceHeader
-  // trailing (WorkbenchTrailingCluster) — not in this portal.
+  // History keeps the interactive week pill. Column display is not in this
+  // portal and not in chrome — it is the grid's own header lip.
   const chromePill =
     isHistoryMode || !skipWeekFilter ? (
       <DateRangePickerPill

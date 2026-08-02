@@ -224,7 +224,7 @@ export function resolveProcedureSteps(
 // file top to bottom is meant to be the same experience as watching someone work
 // the bench: scan it, read the door's shot, photograph the label, the box and
 // the dunnage, confirm the contents, grade it, shoot the unit, capture the
-// serial, print, receive.
+// serial, read the face it is about to print, print, receive.
 
 /**
  * The read/write triple every `/api/receiving-photos` step shares. Declared
@@ -422,6 +422,21 @@ const unboxProcedure: ProcedureDefinition = {
         { table: 'serial_units', via: '@/lib/receiving/serial-attach' },
         { table: 'receiving_line_testing', via: '@/lib/receiving/serial-projection' },
       ],
+    },
+    {
+      key: 'label',
+      label: 'Label',
+      summary:
+        'Read the face this carton is about to print — the title, the condition and the code the shelf will be found by — and confirm it. A capture step, never the print itself: the printed face is the last thing an operator can still correct for free, and once the sticker is on the box a wrong one costs a re-label at the shelf.',
+      phase: 'capture',
+      composed: false,
+      // POST, not the label-printed route. The gate is `label_previewed_at` —
+      // the acknowledgement that a person read the face. The print STAMP belongs
+      // to the commit step below, and gating a capture step on a commit act
+      // would invert the phase order.
+      endpoint: { method: 'POST', path: '/api/receiving/lines/:id/label-previewed' },
+      reads: [{ table: 'receiving_line' }],
+      writes: [{ table: 'receiving_line_testing' }],
     },
 
     // ── commit \u2014 the terminal dock, not the checklist ───────────

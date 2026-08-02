@@ -19,7 +19,12 @@ const REQUIRED_BOTH = [
   'src/design-system/primitives/CardShell.tsx',
   'src/components/station/ActiveOrderScanFeedback.tsx',
   'src/components/station/StationPacking.tsx',
-  'src/components/station/OfflineBanner.tsx',
+  // The mobile-shell placement of the connection banner. It owns its own
+  // slide-down, and it can appear mid-scan on a phone at the bench — so the
+  // reduced-motion collapse must be inherited, not re-derived (P2 · D4).
+  // (Its dead `station/OfflineBanner` twin was deleted in the same change; that
+  // file was imported by nothing and only this allowlist made it look alive.)
+  'src/components/mobile/OfflineBanner.tsx',
   // The bottom-anchored capture stack every station migrates onto. It owns row
   // entrance motion, so the bridge must be inherited by consumers rather than
   // re-derived per station (capture-stack Phase 2).
@@ -29,6 +34,10 @@ const REQUIRED_BOTH = [
   // reduced-motion collapse must be inherited by every future consumer rather
   // than re-derived per bench (station realtime + capture visibility, P0 · D10).
   'src/components/station/capture-upload/CaptureUploadStatus.tsx',
+  // The send-to-device waiting card (Waiting on phone… / Phone unreachable).
+  // Same reasoning as its capture-upload sibling: it owns its own entrance, and
+  // every bench mounts this one component (P1 · D2).
+  'src/components/station/send-to-device/SendToDeviceStatus.tsx',
 ] as const;
 
 /** Transition-only surfaces (progress bars, width anims). */

@@ -25,9 +25,13 @@ import type { OrgId } from '@/lib/tenancy/constants';
 import { transitionReceivingLine } from '@/lib/receiving/state-machine';
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import { invalidateReceivingViews } from '@/lib/receiving/invalidation';
+import { ZOHO_RECEIVED_LIKE_STATUSES } from '@/lib/receiving/zoho-received-status';
 
-/** Zoho statuses that mean "the vendor side considers this PO received". */
-export const ZOHO_RECEIVED_LIKE_STATUSES = ['received', 'billed', 'closed'] as const;
+/**
+ * Re-exported so this module stays the import path server callers already use,
+ * while the pure list lives in a leaf module client bundles can also reach.
+ */
+export { ZOHO_RECEIVED_LIKE_STATUSES };
 
 export interface ZohoReceivedReconcileResult {
   /** receiving_line rows marked received. */

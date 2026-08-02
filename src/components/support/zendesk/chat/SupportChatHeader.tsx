@@ -11,13 +11,14 @@ import {
 import { getActiveStaff, type StaffMember } from '@/lib/staffCache';
 import { zendeskTicketUrl } from '@/lib/zendesk-ticket-url';
 import { useCapabilityProviderLabel } from '@/hooks/useCapabilityProviderLabel';
-import { Check, ChevronLeft, ExternalLink, Link2, Package, X } from '@/components/Icons';
+import { ChevronLeft, ExternalLink, Link2, Package } from '@/components/Icons';
 import { IconButton } from '@/design-system/primitives';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { cn } from '@/utils/_cn';
 import { ZendeskSelect, type SelectOption } from '../ZendeskSelect';
 import { PRIORITY_OPTIONS, STATUS_OPTIONS } from '../badges';
 import { SupportDetailsStack } from './SupportDetailsStack';
+import { TicketSubjectField } from './TicketSubjectField';
 import { initials, requesterFrom } from './support-chat-utils';
 
 const UNASSIGNED = 'unassigned';
@@ -45,8 +46,11 @@ export function SupportChatHeader({
   /** Station ticket tab — tighter padding + smaller type. */
   compact?: boolean;
   /**
-   * Hide the editable subject title. Station embeds keep the title visible
-   * (click-to-edit) even when {@link hideRequesterBand} drops the avatar row.
+   * Hide the editable subject title — for a host that already renders it.
+   * `/support` does: the thread's split header carries the subject in its
+   * identity row, and drawing it again one row below was the duplicate this
+   * flag exists to remove. Station embeds (Unbox ticket push) have no such
+   * header, so they keep the title here.
    */
   hideTitle?: boolean;
   /**
@@ -74,18 +78,6 @@ export function SupportChatHeader({
   const openLabel = `Open in ${helpdeskLabel}`;
   const requester = requesterFrom(ticket);
   const reqName = requester.name || requester.email || 'Requester';
-  // Inline title (subject) edit — click the title, confirm with the checkmark.
-  const [editingTitle, setEditingTitle] = useState(false);
-  const [titleDraft, setTitleDraft] = useState('');
-  const startEditTitle = () => {
-    setTitleDraft(ticket.subject || '');
-    setEditingTitle(true);
-  };
-  const saveTitle = () => {
-    const next = titleDraft.trim();
-    if (next && next !== (ticket.subject || '')) update.mutate({ id: ticket.id, patch: { subject: next } });
-    setEditingTitle(false);
-  };
 
   const assigneeOptions: SelectOption[] = [
     { value: UNASSIGNED, label: 'Unassigned' },
@@ -112,18 +104,17 @@ export function SupportChatHeader({
   ];
 
   const titleEditor = hideTitle ? null : (
-    <TicketSubjectEditor
-      subject={ticket.subject}
+    <TicketSubjectField
       ticketId={ticket.id}
+      subject={ticket.subject}
       compact={compact}
-      editing={editingTitle}
-      draft={titleDraft}
-      saving={update.isPending}
-      showIdSuffix={!hideRequesterBand}
-      onDraftChange={setTitleDraft}
-      onStartEdit={startEditTitle}
-      onSave={saveTitle}
-      onCancel={() => setEditingTitle(false)}
+      // With the requester band on, `#id` rides that line instead — one home
+      // per fact, per layout.
+      trailing={
+        hideRequesterBand ? (
+          <span className="shrink-0 text-role-micro text-text-faint">#{ticket.id}</span>
+        ) : null
+      }
     />
   );
 
@@ -271,97 +262,6 @@ export function SupportChatHeader({
           />
         </div>
       </div>
-    </div>
-  );
-}
-
-/** Click-to-edit subject control shared by full and station-dense header layouts. */
-function TicketSubjectEditor({
-  subject,
-  ticketId,
-  compact,
-  editing,
-  draft,
-  saving,
-  showIdSuffix,
-  onDraftChange,
-  onStartEdit,
-  onSave,
-  onCancel,
-}: {
-  subject: string | null | undefined;
-  ticketId: number;
-  compact: boolean;
-  editing: boolean;
-  draft: string;
-  saving: boolean;
-  /** When true, `#id` lives on the requester line instead. */
-  showIdSuffix: boolean;
-  onDraftChange: (next: string) => void;
-  onStartEdit: () => void;
-  onSave: () => void;
-  onCancel: () => void;
-}) {
-  if (editing) {
-    return (
-      <div className="flex min-w-0 items-center gap-1.5">
-        <input
-          autoFocus
-          value={draft}
-          onChange={(e) => onDraftChange(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              e.preventDefault();
-              onSave();
-            } else if (e.key === 'Escape') {
-              onCancel();
-            }
-          }}
-          className={cn(
-            'min-w-0 flex-1 rounded-md border border-blue-300 bg-surface-card px-2 py-0.5 font-semibold tracking-tight text-text-default outline-none focus:ring-2 focus:ring-blue-100',
-            compact ? 'text-role-caption' : 'text-role-body',
-          )}
-        />
-        <HoverTooltip label="Save title" asChild>
-          <IconButton
-            icon={<Check className="h-3.5 w-3.5 text-white" />}
-            onClick={onSave}
-            disabled={saving}
-            ariaLabel="Save title"
-            className="shrink-0 rounded-md bg-blue-600 p-1 hover:bg-blue-700"
-          />
-        </HoverTooltip>
-        <HoverTooltip label="Cancel" asChild>
-          <IconButton
-            icon={<X className="h-3.5 w-3.5" />}
-            onClick={onCancel}
-            ariaLabel="Cancel"
-            className="shrink-0 rounded-md p-1 hover:bg-surface-sunken"
-          />
-        </HoverTooltip>
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex min-w-0 items-center gap-1.5">
-      <HoverTooltip label="Click to edit title" asChild>
-        {/* ds-raw-button: text-left inline-editable title (truncating subject), not a standard action Button */}
-        <button
-          type="button"
-          onClick={onStartEdit}
-          aria-label="Click to edit title"
-          className={cn(
-            'min-w-0 flex-1 truncate text-left font-semibold tracking-tight text-text-default transition hover:text-blue-700',
-            compact ? 'text-role-caption' : 'text-role-body',
-          )}
-        >
-          {subject || '(no subject)'}
-        </button>
-      </HoverTooltip>
-      {showIdSuffix ? null : (
-        <span className="shrink-0 text-role-micro text-text-faint">#{ticketId}</span>
-      )}
     </div>
   );
 }

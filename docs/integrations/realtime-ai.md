@@ -34,6 +34,30 @@ phone↔desktop bridges, scan logs, and AI session streaming. **Live.**
   `packer:{staffId}`, `staffstation:{staffId}`, `scanlog:{staffId}` (read-only).
 - **AI sessions:** `ai:assist:{sessionId}`.
 
+### Desk → phone handshake (`src/lib/realtime/device-handshake.ts`)
+
+**There is exactly ONE ack event: `station_device_ack`**, carrying the
+`request_id` it answers plus a `kind`. It is the reply to every desk-initiated
+send-to-device request — `receiving_photo_request` and `receiving_share_to_phone`
+on `staffstation:{staffId}`, `scan_ready` on `packer:{staffId}`.
+
+Why it exists: an Ably `publish()` resolves with **zero subscribers**, so a desk
+that published a capture request and said "Sent to phone" had confirmed only
+that it spoke. The desk now subscribes to the ack *before* publishing (a phone on
+the same LAN can answer in milliseconds), races it against
+`SEND_TO_DEVICE_TIMEOUT_MS` (6s), and reports **Waiting on phone… → Open on your
+phone | Phone unreachable**.
+
+- `receiving_share_ack` is the original, path-specific ack. It is still
+  **accepted inbound** so a phone on older code satisfies a fresh desk; nothing
+  publishes it any more. **Do not add a third ack event** — a new bench extends
+  `DeviceAckKind` and publishes `station_device_ack`.
+- Ephemeral by design: no claim row, no `realtime_outbox`. The channel name
+  remains the pairing gate, and with several phones on one staff id the fastest
+  to answer wins — the desk is only asking whether *a* phone is there.
+- `peer_active` means a phone **answered**, not that a photo arrived. Upload
+  state is a separate surface (`components/station/capture-upload`).
+
 > Key format is validated in `src/lib/realtime/ably-key.ts` (`<appId>.<keyId>:<secret>`).
 > Several subscriber fixes + tech fan-out shipped during the Ably D1 work (see the
 > tier-0 progress memory).

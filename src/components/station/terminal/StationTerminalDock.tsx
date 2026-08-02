@@ -15,6 +15,21 @@ import { cn } from '@/utils/_cn';
  */
 export const STATION_TERMINAL_SCROLL_CLEARANCE = 'pb-32';
 
+/**
+ * Clearance for a dock that carries a PAGER ROW above the composer (Unbox).
+ *
+ * The dock floats over the scroll canvas, so the body's bottom padding is the
+ * only thing keeping content out from under it — and that padding is a constant
+ * tuned to the dock's height. Add a row to the dock without adding it here and
+ * the deck's last card slides under the new chrome; that is exactly what the
+ * 4px overlap the pager shipped with was.
+ *
+ * A named variant rather than a bumped shared constant: the four stations
+ * without a pager must not pay 32px of dead canvas for one that has one. Same
+ * shape as `reserveIdentityClearance`'s `'stacked'`.
+ */
+export const STATION_TERMINAL_PAGER_SCROLL_CLEARANCE = 'pb-40';
+
 /** VM tone, tinted with the assigned tech's station theme when unset. */
 function resolveDockToneClasses(
   vm: TerminalActionVm | null,

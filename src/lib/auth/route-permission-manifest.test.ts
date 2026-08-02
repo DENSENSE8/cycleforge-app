@@ -192,6 +192,19 @@ test('regression: receiving.upload_photo gates photo reassignment', () => {
   );
 });
 
+test('regression: photo ASPECT classification is floor work, not admin work', () => {
+  // Naming what a shot shows is done at the bench, by the operator standing in
+  // the capture step — the same hands that took it. Migrating this to an admin
+  // permission would 403 the only person who can answer the question, which is
+  // the `integrations.zendesk` failure (an ADMIN_ONLY gate on a floor surface).
+  // Deliberately the SAME permission as the reassign sibling above.
+  const paths = routesGatedBy('receiving.upload_photo').map((r) => r.path);
+  assert.ok(
+    paths.includes('/api/photos/[id]/aspect/route.ts'),
+    'receiving.upload_photo should gate photo aspect classification',
+  );
+});
+
 test('regression: photo-label routes are gated (read on view, writes on manage)', () => {
   // Vocabulary list + per-photo label read land on the per-file minimum
   // (photos.view, the GET); the POST/PUT/PATCH/DELETE writes assert photos.manage

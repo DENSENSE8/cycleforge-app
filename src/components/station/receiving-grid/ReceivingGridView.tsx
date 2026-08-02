@@ -199,7 +199,9 @@ export function ReceivingGridView({
         scrollRef={scrollRef}
         className={className}
         testId={testId}
-        renderColumnHeader={({ toggleColumnSort }) => (
+        tableId={tableId}
+        columnDetails={{ open: columnDetailsOpen, onOpen: () => setColumnDetailsOpen(true) }}
+        renderColumnHeader={({ toggleColumnSort, onResizeColumn }) => (
           <ReceivingGridColumnHeader
             isMobile={isMobile}
             selectMode={selectMode}
@@ -209,8 +211,7 @@ export function ReceivingGridView({
             activeSort={columnSort}
             sortDir={sortDir}
             onSortColumn={toggleColumnSort}
-            onOpenColumnDetails={() => setColumnDetailsOpen(true)}
-            columnDetailsOpen={columnDetailsOpen}
+            onResizeColumn={onResizeColumn}
           />
         )}
         renderGroup={(group, baseStripeIndex) => (

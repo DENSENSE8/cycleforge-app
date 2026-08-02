@@ -18,12 +18,16 @@
  * A fourth copy is the page-local fork `pattern-evolution.md` bans, so the
  * geometry lives here once and each surface supplies only its own knobs.
  *
- * **Gutter is host padding** ({@link TICKET_PUSH_HOST_PAD_CLASS} on the
- * LineEditPanel flex host) — never margin on this aside, because the host's
- * `overflow-hidden` clips trailing child margins.
+ * **Gutter split:** trailing edge is host padding
+ * ({@link TICKET_PUSH_HOST_PAD_CLASS} = `pr-2`) because `overflow-hidden` clips
+ * trailing child margins. Top/bottom is {@link CONTEXT_PANEL_OUTER_MARGIN_Y}
+ * on this aside — the station top-padding SoT twin — so identity stays at
+ * `STATION_BOOKMARK_CANVAS_INSET_TOP` without a stacked host `py-*`.
  */
 
 import { useEffect, useState, type ReactNode } from 'react';
+import { CONTEXT_PANEL_OUTER_MARGIN_Y } from '@/components/sidebar/context-panel-column';
+import { STATION_BOOKMARK_CANVAS_INSET_TOP } from '@/components/station/entity-context/station-bookmark';
 import { HorizontalEdgeResizeHandle } from '@/design-system/components/HorizontalEdgeResizeHandle';
 import { useEscapeClose, useHorizontalEdgeResize } from '@/design-system/hooks';
 import {
@@ -97,10 +101,17 @@ export function UnboxPushColumn({
       data-testid={testId}
       {...(dataTool ? { 'data-tool': dataTool } : null)}
       className={cn(
-        'relative h-full min-h-0 shrink-0 overflow-visible',
-        // Narrow: overlay the Unbox column but stay inside host padding
-        // (host owns `pr-2` / `py-2` — never `right-0` flush).
-        narrow && 'absolute inset-y-0 right-0',
+        'relative min-h-0 shrink-0 overflow-visible',
+        // Narrow: overlay the Unbox column; keep the same 8px canvas gutters
+        // (host owns trailing `pr-2` — never `right-0` flush).
+        // Wide: CONTEXT_PANEL_OUTER_MARGIN_Y — station top-padding SoT twin;
+        // trailing gutter stays on the host so `overflow-hidden` cannot clip it.
+        narrow
+          ? cn(
+              'absolute bottom-2 right-0',
+              STATION_BOOKMARK_CANVAS_INSET_TOP,
+            )
+          : cn(CONTEXT_PANEL_OUTER_MARGIN_Y, 'self-stretch'),
       )}
       style={{
         width,

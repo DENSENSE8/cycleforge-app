@@ -118,17 +118,26 @@ export const STATION_GROUPS = [
   icon: SidebarIconComponent;
 }>;
 
-/** Main category ids (Monitor / Studio) under the spine. */
-export type MainGroupId = 'monitor' | 'studio';
+/**
+ * Main category ids under the spine — Analytics Monitor, and only that.
+ *
+ * **Workflow Studio left this registry 2026-08-02.** It was a root section drill
+ * holding two pages (`/studio`, `/studio/catalog`); it is now a FOOTER PIN above
+ * Admin, because defining the operation is a rare, standing-back act rather than
+ * one of the nine places an operator browses through in a shift. A pinned row
+ * never draws children (`showModes = !pinned && …`), so `/studio/catalog`
+ * survives as an L2 **mode** of `studio` in {@link SIDEBAR_PAGE_NAV} — reachable
+ * from ⌘K, the GlobalHeader Mode switcher, and its URL, but no longer a spine
+ * row of its own.
+ */
+export type MainGroupId = 'monitor';
 
 /**
- * Ordered Monitor → Studio registry. Spine list imports this — never
- * hard-code those labels in the render path. Parallel to {@link STATION_GROUPS}.
- * Render order on the spine is {@link SPINE_SECTIONS}.
+ * Spine list imports this — never hard-code the label in the render path.
+ * Parallel to {@link STATION_GROUPS}. Render order is {@link SPINE_SECTIONS}.
  */
 export const MAIN_GROUPS = [
   { id: 'monitor', label: 'Analytics Monitor', icon: ChartPie },
-  { id: 'studio', label: 'Workflow Studio', icon: Workflow },
 ] as const satisfies ReadonlyArray<{
   id: MainGroupId;
   label: string;
@@ -193,15 +202,18 @@ export const DOMAIN_GROUPS = [
 
 /**
  * Spine section drills — Analytics Monitor → Scan Stations → the six business
- * domains → Workflow Studio. Root shows these as buttons (icon + label); drill
- * replaces the body with back + filter + that section's pages. Compose from
- * {@link MAIN_GROUPS} + {@link STATION_GROUPS} + {@link DOMAIN_GROUPS}; never
- * twin labels in render.
+ * domains. Root shows these as buttons (icon + label); drill replaces the body
+ * with back + filter + that section's pages. Compose from {@link MAIN_GROUPS} +
+ * {@link STATION_GROUPS} + {@link DOMAIN_GROUPS}; never twin labels in render.
  *
- * The axis is deliberately mixed: Monitor and Studio are ALTITUDES (observe /
- * define), Scan Stations is an INPUT MODEL, and the six in between are DOMAINS.
- * A single uniform axis is what produced `desk` — "not a scanner, not a graph"
- * is a leftover, not a place.
+ * The axis is deliberately mixed: Monitor is an ALTITUDE (observe), Scan
+ * Stations is an INPUT MODEL, and the six after it are DOMAINS. A single uniform
+ * axis is what produced `desk` — "not a scanner, not a graph" is a leftover, not
+ * a place.
+ *
+ * **Workflow Studio is not here** — it is a footer pin (see {@link MainGroupId}).
+ * The other altitude, Monitor, stays a drill because an operator reads it during
+ * a shift; nobody re-defines the operation mid-shift.
  *
  * A section with no visible page renders nothing (permission-filtered or empty),
  * so a hollow domain can never appear on the root map.
@@ -210,7 +222,6 @@ export const SPINE_SECTIONS = [
   MAIN_GROUPS[0], // Analytics Monitor
   ...STATION_GROUPS, // Scan Stations
   ...DOMAIN_GROUPS, // Inbound → Catalog → Inventory → Fulfillment → Sales → Support
-  MAIN_GROUPS[1], // Workflow Studio
 ] as const;
 
 export type SpineSectionId = (typeof SPINE_SECTIONS)[number]['id'];
@@ -318,9 +329,9 @@ export function isMobileAllowedPath(pathname: string | null | undefined): boolea
  * promoted back or archived):
  *   home (`/`), operations, sourcing, fba, ai-chat
  *
- * Studio was promoted OUT of that set (it ships as a Studio section page); its
- * sub-route `studio-catalog` therefore no longer rides a `parkedSurface`.
- * Same pattern as Data Wipe: absent from nav, route can remain live.
+ * Studio was promoted OUT of that set; it ships as a FOOTER PIN (2026-08-02) and
+ * its `/studio/catalog` sub-route rides along as an L2 mode rather than a second
+ * flat row. Same pattern as Data Wipe: absent from nav, route can remain live.
  */
 export const APP_SIDEBAR_NAV: SidebarNavItem[] = [
   // Top pin — Home → Search → Media → Chat (always above scroll categories;
@@ -385,10 +396,15 @@ export const APP_SIDEBAR_NAV: SidebarNavItem[] = [
   // lives under Support). `/support` mounts SurfaceGate + RouteShell like the
   // stations do, and stays desktop-only (mobile-restricted).
   { id: 'support',           label: 'Support',     href: '/support',            icon: AlertCircle,     kind: 'domain', domainGroup: 'support', requires: 'integrations.zendesk' },
-  // Studio — Canvas definition graph + catalog (Media lives in the top pin).
+  // ── Footer pins ───────────────────────────────────────────────────────────
+  // Workflow Studio — Canvas definition graph + its catalog (Media lives in the
+  // top pin). Footer, above Admin (2026-08-02): defining the operation is a
+  // standing-back act, not one of the nine places browsed through in a shift, so
+  // it reads with Admin/Settings rather than as a tenth root drill. Its Catalog
+  // sub-route is an L2 mode in SIDEBAR_PAGE_NAV — a pinned row draws no children,
+  // so it left the spine surface and is reached by ⌘K / header Mode / URL.
   // Desktop-only (pan/zoom canvas); MOBILE_RESTRICTED_SIDEBAR_IDS enforces.
-  { id: 'studio',            label: 'Studio',      href: '/studio',             icon: Share2,          kind: 'main', mainGroup: 'studio', requires: 'studio.view' },
-  { id: 'studio-catalog',    label: 'Catalog',     href: '/studio/catalog',     icon: Layers,          kind: 'main', mainGroup: 'studio', requires: 'studio.view' },
+  { id: 'studio',            label: 'Workflow Studio', href: '/studio',         icon: Workflow,        kind: 'bottom', requires: 'studio.view' },
   // Audit Log is no longer a top-level sidebar row — it lives under Admin › Logs
   // (AdminLogsTab, with the Audit filter). The /settings/audit and /audit-log/*
   // routes still resolve directly; only the nav row was removed.
@@ -1239,6 +1255,27 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
       if (m === 'issues') return 'issues';
       return 'tickets';
     },
+  },
+  // ── Workflow Studio (footer pin) ──────────────────────────────────────────
+  // Studio is a FLAT footer row on the spine (2026-08-02), and a pinned row
+  // never draws children — so this registry is the only thing keeping
+  // `/studio/catalog` a named destination. It is what ⌘K, the spine's flat
+  // search, and the GlobalHeader Mode switcher read; the spine row itself just
+  // navigates to `/studio`.
+  //
+  // Modes are SUB-PATHS, not `?params`, so `to()` names a pathname and sets no
+  // delta — `/studio` and `/studio/catalog` are two routes, not two views of one.
+  {
+    id: 'studio', label: 'Workflow Studio', href: '/studio', icon: Workflow,
+    kind: 'bottom', requires: 'studio.view',
+    modes: [
+      { id: 'graph',   label: 'Studio',  icon: Share2,  to: () => ({ pathname: '/studio' }) },
+      { id: 'catalog', label: 'Catalog', icon: Layers,  to: () => ({ pathname: '/studio/catalog' }) },
+    ],
+    resolveMode: ({ pathname }) =>
+      pathname === '/studio/catalog' || pathname.startsWith('/studio/catalog/')
+        ? 'catalog'
+        : 'graph',
   },
   // Admin is modeless in the spine + header Mode control — sections live in
   // AdminSidebar / AdminContextPanel only (`?section=`). Do not reintroduce

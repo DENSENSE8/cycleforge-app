@@ -11,6 +11,7 @@ import { ReceivingQtyCell } from './ReceivingQtyCell';
 import { ReceivingSelectCell } from './ReceivingSelectCell';
 import { ReceivingSerialCell } from './ReceivingSerialCell';
 import { ReceivingStageCell } from './ReceivingStageCell';
+import { ReceivingStatusCell } from './ReceivingStatusCell';
 import { ReceivingTitleCell } from './ReceivingTitleCell';
 import { ReceivingTrackingCell } from './ReceivingTrackingCell';
 import {
@@ -48,6 +49,8 @@ export function renderReceivingGridCell(
       return <ReceivingConditionCell {...props} />;
     case 'stage':
       return <ReceivingStageCell {...props} />;
+    case 'status':
+      return <ReceivingStatusCell {...props} />;
     case 'location':
       return <ReceivingLocationCell {...props} />;
     case 'platform':

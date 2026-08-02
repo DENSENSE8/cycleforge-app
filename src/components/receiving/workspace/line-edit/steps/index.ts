@@ -24,6 +24,7 @@
 import { CartonPhotoStepBody } from './CartonPhotoStepBody';
 import { ArrivalCheckStepBody } from './ArrivalCheckStepBody';
 import { ConditionStepBody } from './ConditionStepBody';
+import { LabelStepBody } from './LabelStepBody';
 import {
   ClassifyStepBody,
   ContentsStepBody,
@@ -47,4 +48,5 @@ export const UNBOX_STEP_BODIES: Record<string, UnboxStepBody> = {
   condition: ConditionStepBody,
   item_photos: ItemPhotoStepBody,
   serial: SerialStepBody,
+  label: LabelStepBody,
 };

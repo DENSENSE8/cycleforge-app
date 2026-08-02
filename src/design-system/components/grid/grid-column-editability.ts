@@ -44,6 +44,51 @@ export function isGridColumnInCellEditable(key: string): boolean {
 }
 
 /**
+ * Column types whose cell content has a FIXED rendered width, so a drag-resize
+ * can only add or steal whitespace around it.
+ *
+ * These are the identifier / magnitude tracks — serial, tracking, order id, SKU,
+ * qty — and every one of them renders through the `CopyChip` family's last-8
+ * preview or a short tabular numeral run. Their width is decided by the display
+ * format, not by the data, which is why the house sizes them once in the column
+ * SoT and does not offer a grip: dragging one wider produces a wider empty gutter
+ * beside the same eight characters.
+ *
+ * Everything else — titles, conditions, statuses, platforms, dates, staff names —
+ * has content whose length genuinely varies per row and per tenant, which is
+ * exactly what a resize is for.
+ */
+const FIXED_WIDTH_COLUMN_TYPES = new Set(['number', 'id', 'location']);
+
+/**
+ * Structural shape for the resize test — see the dependency note below.
+ */
+interface ResizableLike {
+  key: string;
+  type?: string;
+  resizable?: boolean;
+}
+
+/**
+ * May an operator drag this column's edge?
+ *
+ * Yes for variable-content tracks; no for the `select` gutter (it has no content
+ * to fit) and for the fixed-format identifier / magnitude types above. An
+ * explicit `resizable` on the column model wins, so a surface with a genuinely
+ * variable `id` column can opt back in where it is declared — once, never per
+ * header.
+ *
+ * The frozen identity pane IS resizable: `gridFrozenLeft` builds its sticky-left
+ * offsets as a `calc()` over the same `--cf-col-*` vars the drag writes, so
+ * pinned cells follow a resized `title` without extra machinery.
+ */
+export function isGridColumnResizable(column: ResizableLike): boolean {
+  if (column.resizable != null) return column.resizable;
+  if (column.key === 'select') return false;
+  return !(column.type && FIXED_WIDTH_COLUMN_TYPES.has(column.type));
+}
+
+/**
  * Structural, dependency-free by design — same reason as `grid-column-geometry`:
  * typing against the concrete `LedgerGridColumnModel` would import the
  * descriptor module, which imports THIS one. Every column model satisfies it.

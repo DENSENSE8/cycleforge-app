@@ -95,40 +95,48 @@ These were on the handoff's "likely fork" list. All confirmed **already composin
 
 | Route / host | Composer | Family today | Row entity | Selection | Mutations | Horizon A | Notes / risk |
 |---|---|---|---|---|---|---|---|
-| `/receiving/unfound` | [`UnfoundQueueTable.tsx`](../../src/components/receiving/unfound/UnfoundQueueTable.tsx) (+ `queue-table/QueueTableRow`) | hand-rolled `<table class="table-fixed">` | `v_unfound_queue` (unmatched receiving · email PO) | open-highlight only | **debounced in-cell PATCH** per field | **`migrate-to-LedgerGrid`** | Highest-value wave: it is a genuine ops queue *and* already has in-cell edit — it would light up `inCellEdit: true` + `multiSelect`. Filter state already URL-backed. |
+| ~~`/receiving/unfound`~~ | ~~`UnfoundQueueTable.tsx` (+ `queue-table/QueueTableRow`)~~ → [`UnfoundGridView.tsx`](../../src/components/receiving/unfound/grid/UnfoundGridView.tsx) | **MIGRATED 2026-08-01** — `LedgerGridSurface` + `receiving.unfound` descriptor | `v_unfound_queue` (unmatched receiving · email PO) | open-highlight only | in-cell PATCH via `LedgerCellEditor` | ✅ `done` | Wave 4. `QueueTableRow` deleted. See [Phase 3 wave log](#phase-3-wave-log). |
 | ~~`/shipping/ready`~~ | ~~`ReadyQueueTable.tsx`~~ → [`ReadyGridView.tsx`](../../src/components/outbound/ready/grid/ReadyGridView.tsx) | **MIGRATED 2026-08-01** — `LedgerGridSurface` + `outbound.ready` descriptor | `AllocationHit` | none (history) | Stage-FBA link | ✅ `done` | Wave 2. See [Phase 3 wave log](#phase-3-wave-log). |
-| `/warehouse` (bins) | [`BinsTable.tsx`](../../src/components/warehouse/BinsTable.tsx) (host `WarehouseShell`) | hand-rolled `<table>` + **local `SortKey`/`SortDir` state machine** | `BinsOverviewRow` | multi-check (parent-controlled `Set<number>`) | flyout (record) | **`migrate-to-LedgerGrid`** | Hand-rolled sort toggle = a second sort state machine (SoT ban). Already has selection + bulk bar semantics → `multiSelect: true`. |
-| `/tracking-exceptions` | [`TrackingExceptionsTable.tsx`](../../src/components/tracking-exceptions/TrackingExceptionsTable.tsx) | hand-rolled `<table>` (516 lines) | `tracking_exceptions` | none | Dialog edit | **`migrate-to-LedgerGrid`** | Ops triage queue. Big file — split data/mutations out first. |
+| ~~`/warehouse` (bins)~~ | ~~`BinsTable.tsx`~~ → [`BinsGridView.tsx`](../../src/components/warehouse/bins-grid/BinsGridView.tsx) | **MIGRATED 2026-08-01** — `LedgerGridSurface` + `warehouse.bins` descriptor | `BinsOverviewRow` | multi-check (parent-controlled `Set<number>`) | flyout (record) | ✅ `done` | Wave 3. Local `SortKey`/`SortDir` machine retired for `useUrlColumnSort`. See [Phase 3 wave log](#phase-3-wave-log). |
+| ~~`/tracking-exceptions`~~ | ~~`TrackingExceptionsTable.tsx` (516 lines)~~ → [`TrackingExceptionsGridView.tsx`](../../src/components/tracking-exceptions/grid/TrackingExceptionsGridView.tsx) | **MIGRATED 2026-08-01** — `LedgerGridSurface` + `ops.trackingExceptions` descriptor | `tracking_exceptions` | none | Dialog edit (record plane) | ✅ `done` | Wave 5. Host now 181 lines. See [Phase 3 wave log](#phase-3-wave-log). |
 | ~~`/support?mode=warranty`~~ | ~~`WarrantyClaimsTable.tsx`~~ → [`WarrantyGridView.tsx`](../../src/components/warranty/grid/WarrantyGridView.tsx) | **MIGRATED 2026-08-01** — `LedgerGridSurface` + `support.warranty` descriptor | `WarrantyClaimListRow` | record plane (`?open=`) | ticket popover (row-scoped) | ✅ `done` | Wave 1. See [Phase 3 wave log](#phase-3-wave-log). |
 | `/review?mode=catalog-link` | [`ReviewCatalogLinkTable.tsx`](../../src/features/review/catalog-link/ReviewCatalogLinkTable.tsx) | `divide-y <ul>` lists (621 lines) | unmatched listings / missing item-number sheet rows | none | link/resolve actions | **`migrate-to-LedgerGrid`** *(ask-first)* | Named "Table" but is a two-pane resolve UI. Confirm with human whether the job is *browse-a-queue* (migrate) or *resolve-one-at-a-time* (keep-sibling). |
 
 ---
 
-## D. Admin / settings / reports — the `DataTable` wave (currently all hand-rolled)
+## D. Admin / settings / reports — the `DataTable` wave ✅ **DONE 2026-08-01**
 
-None of these mount `DataTable`. All are small, non-virtualized lifecycle tables — exactly the
-sibling's stated job.
+All small, non-virtualized lifecycle tables — exactly the sibling's stated job. Every row below now
+mounts `DataTable`; Waves 6–7 in the [Phase 3 wave log](#phase-3-wave-log).
 
 | Route | File | `<table>` count | Horizon A |
 |---|---|---|---|
-| `/settings/staff` | `app/settings/staff/StaffTable.tsx` | 1 | `migrate-to-DataTable` |
-| `/settings/audit` | `app/settings/audit/page.tsx` | 1 | `migrate-to-DataTable` |
-| `/settings/ai` | `app/settings/ai/page.tsx` | 1 | `migrate-to-DataTable` |
-| `/settings` → Kiosk devices | `components/settings/sections/KioskDevicesSection.tsx` | 1 | `migrate-to-DataTable` |
-| `/settings` → Sessions | `components/settings/sections/SessionsSection.tsx` | 1 | `migrate-to-DataTable` |
-| `/reports` | `app/reports/page.tsx` | 3 | `migrate-to-DataTable` |
-| `/admin` → Compatibility | `components/admin/sourcing/CompatibilityManagementTab.tsx` | 1 | `migrate-to-DataTable` |
-| `/admin/inventory` (hub) | `_inventory-admin/TableSections.tsx` · `StatusSections.tsx` | 4 + 1 | `migrate-to-DataTable` |
-| `/admin/inventory/events` | `events/page.tsx` | 1 | `migrate-to-DataTable` |
-| `/admin/inventory/holds` | `holds/page.tsx` | 1 | `migrate-to-DataTable` |
-| `/admin/inventory/returns` | `returns/page.tsx` | 1 | `migrate-to-DataTable` |
-| `/admin/inventory/cycle-counts` (+ `[id]`) | `cycle-counts/page.tsx` · `[id]/page.tsx` | 1 + 1 | `migrate-to-DataTable` |
-| `/admin/inventory/bulk-allocate` | `bulk-allocate/page.tsx` | 1 | `migrate-to-DataTable` |
-| `/admin/inventory/throughput` | `throughput/page.tsx` | 2 | `migrate-to-DataTable` |
-| `/admin/inventory/sku/[sku]` | `sku/[sku]/page.tsx` | 5 | `migrate-to-DataTable` |
+| ~~`/settings/staff`~~ | `app/settings/staff/StaffTable.tsx` | ~~1~~ → 0 | ✅ `done` |
+| ~~`/settings/audit`~~ | `app/settings/audit/page.tsx` | ~~1~~ → 0 | ✅ `done` |
+| ~~`/settings/ai`~~ | `app/settings/ai/page.tsx` | ~~1~~ → 0 | ✅ `done` |
+| ~~`/settings` → Kiosk devices~~ | `components/settings/sections/KioskDevicesSection.tsx` | ~~1~~ → 0 | ✅ `done` |
+| ~~`/settings` → Sessions~~ | `components/settings/sections/SessionsSection.tsx` | ~~1~~ → 0 | ✅ `done` |
+| ~~`/reports`~~ | `app/reports/page.tsx` | ~~3~~ → 0 | ✅ `done` |
+| ~~`/admin` → Compatibility~~ | `components/admin/sourcing/CompatibilityManagementTab.tsx` | ~~1~~ → 0 | ✅ `done` |
+| ~~`/admin/inventory` (hub)~~ | `_inventory-admin/TableSections.tsx` · `StatusSections.tsx` | ~~4 + 1~~ → 0 | ✅ `done` |
+| ~~`/admin/inventory/events`~~ | `events/page.tsx` | ~~1~~ → 0 | ✅ `done` |
+| ~~`/admin/inventory/holds`~~ | `holds/page.tsx` | ~~1~~ → 0 | ✅ `done` |
+| ~~`/admin/inventory/returns`~~ | `returns/page.tsx` | ~~1~~ → 0 | ✅ `done` |
+| ~~`/admin/inventory/cycle-counts` (+ `[id]`)~~ | `cycle-counts/page.tsx` · `[id]/page.tsx` | ~~1 + 1~~ → 0 | ✅ `done` |
+| ~~`/admin/inventory/bulk-allocate`~~ | `bulk-allocate/page.tsx` | ~~1~~ → 0 | ✅ `done` |
+| `/admin/inventory/throughput` | `throughput/page.tsx` | ~~2~~ → **1 (kept)** | ✅ `keep-sibling-job` — see below |
+| ~~`/admin/inventory/sku/[sku]`~~ | `sku/[sku]/page.tsx` | ~~5~~ → 0 | ✅ `done` |
 
-**Total ≈ 26 hand-rolled `<table>` elements across 15 files.** Recommend one wave for
-`/admin/inventory/**` (largest, most uniform) and one for `/settings` + `/reports`.
+**Was ≈ 26 hand-rolled `<table>` elements across 15 files; now 1.**
+
+**The one deliberate leftover: the throughput heatmap.** `/admin/inventory/throughput` keeps a raw
+`<table>` for its **station × hour matrix**, and that is `keep-sibling-job`, not a miss. A heatmap
+cell is addressed by *both* axes — the column set IS data (one column per hour), so there is no
+stable column model to declare, no per-column type to align from, and no row entity to select.
+`DataTable` describes a **collection of records with fixed columns**; forcing a matrix into it would
+mean generating 24 column defs per render to carry what is really one two-dimensional value. The
+page's own summary/leaderboard tables did migrate. The remaining element carries an inline comment
+saying so, so the next audit does not re-flag it.
 
 ---
 
@@ -311,12 +319,39 @@ feature-free" message. A guard that cannot fail proves nothing.
 
 1. ~~`WarrantyClaimsTable`~~ — **DONE 2026-08-01** (proved the thin recipe)
 2. ~~`ReadyQueueTable`~~ — **DONE 2026-08-01**
-3. `BinsTable` (retires a hand-rolled sort state machine)
-4. `UnfoundQueueTable` (highest value — lights up `inCellEdit`)
-5. `TrackingExceptionsTable`
-6. `/admin/inventory/**` → `DataTable`
-7. `/settings` + `/reports` → `DataTable`
-8. `ReviewCatalogLinkTable` — **ask human first** (job classification unresolved)
+3. ~~`BinsTable`~~ — **DONE 2026-08-01** (retired the hand-rolled sort state machine)
+4. ~~`UnfoundQueueTable`~~ — **DONE 2026-08-01** (lit up `inCellEdit`; `QueueTableRow` deleted)
+5. ~~`TrackingExceptionsTable`~~ — **DONE 2026-08-01**
+6. ~~`/admin/inventory/**` → `DataTable`~~ — **DONE 2026-08-01**
+7. ~~`/settings` + `/reports` → `DataTable`~~ — **DONE 2026-08-01**
+8. `ReviewCatalogLinkTable` — **still ask-human-first** (job classification unresolved; deliberately
+   left out of Waves 3–7)
+9. ~~Per-family header/sort boilerplate~~ — **DONE 2026-08-01** (Wave 8: `makeLedgerGridColumnHeader`
+   + `GridSortDir`; see [Compound opportunities](#compound-opportunities))
+
+**Phase 3 is complete except item 8.** Every ops queue on the pin now mounts `LedgerGridSurface`
+behind a thin host, and every admin/settings/reports list mounts `DataTable`. The only hand-rolled
+`<table>` elements left in the product are `keep-sibling-job` by §E or the throughput heatmap (§D).
+
+**Phase 3.5 (display chrome — one affordance, all families):**
+
+1. ~~Retire chrome `Fields`; make the grid header the sole column entry~~ — **DONE 2026-08-01**.
+   `GridFieldsMenu` deleted, the trailing-cluster guard now **bans** chrome column pickers, all 14
+   grid views mount `GridColumnDetailsPanel`, and Reset lives in that rail.
+2. **Replace the permanent header lip with a Notion-style hover overlay** — **SPECCED, not started**:
+   [`fields-to-notion-header-hover-HANDOFF.md`](./fields-to-notion-header-hover-HANDOFF.md).
+
+   *Why this reversed:* the lip is permanent chrome, so `pr-9` + an absolute `w-9` track tax **every
+   row of every grid, forever**, to host a control the operator needs occasionally. Reserving layout
+   for an occasional action is the cost; overlaying on hover removes it without moving the control
+   back into page chrome (which is separately banned). The rail, the prefs and the one-registrar rule
+   are unaffected — this is an affordance change, not an architecture change.
+
+   Scope is narrow because Phase 3.5 item 1 already landed: two header files
+   (`LedgerGridColumnHeader` + the still-forked `OrdersQueueColumnHeader`), one guard inversion, two
+   E2E specs, four SoT prose files.
+
+**Phase 4 (industry actions)** stays blocked on Phase 3 — unchanged.
 
 ---
 
@@ -432,6 +467,104 @@ concurrent session had edited the same guard file, and the guard then failed on
 an undefined import. Anchored edits in a shared tree need `assert anchor in s` —
 a no-op replace is indistinguishable from a successful one.
 
+### Wave 3 — `/warehouse` bins (2026-08-01)
+
+`BinsTable` → `LedgerGridSurface` + a `warehouse.bins` descriptor. New family under
+`src/components/warehouse/bins-grid/`; the host is now **35 lines** and its public
+API is unchanged — the parent still owns the selection `Set<number>` so the bulk
+action bar can read it.
+
+**What this wave actually retired:** a local `SortKey`/`SortDir` `useState`
+machine — the second sort implementation the SoT bans. It is now `useUrlColumnSort`
+(`?colsort=`/`?coldir=`), so a bin sort survives reload and can be sent to a
+colleague.
+
+**The frozen pane is `select · barcode`, not the house-default `select · title`.**
+A bin has no title; the barcode *is* what an operator scans and reads first, so the
+header layout declares `frozenEdgeKey: 'barcode'`. That is the per-surface answer
+the identity-pane rule asks for, not a deviation from it.
+
+**Capabilities:** `multiSelect: true` + `fieldsMenu: true`; `inCellEdit: false`
+(corrections happen in the record flyout) and `rowTriageFlags: false`.
+
+**E2E:** `tests/e2e/bins-grid.spec.ts`.
+
+### Wave 4 — `/receiving/unfound` · PO Mailbox (2026-08-01)
+
+The highest-value wave, and the only one that lit up `inCellEdit: true`.
+`UnfoundQueueTable` → `LedgerGridSurface` + a `receiving.unfound` descriptor;
+family under `src/components/receiving/unfound/grid/`. **`QueueTableRow` is
+deleted** — the point was to retire the second in-cell edit paradigm, not to keep
+it alongside the first.
+
+**All three editable fields (ticket · USA note · Vietnam note) now commit through
+`LedgerCellEditor`.** The debounced PATCH still lives in `useUnfoundQueueTable`
+(`patchRow`), so the mutation waist is unchanged; only the editor UI moved onto the
+SoT.
+
+**The row ignores clicks that land on an inline control** (`input, textarea,
+button, label`) so an in-cell edit never also swaps the detail plane — the same
+rule the hand-rolled row carried. This is load-bearing and easy to mistake for a
+bug: a Playwright `.click()` on the row's geometric centre lands in the notes
+editor column and is *correctly* ignored, so the spec clicks the title cell's
+label instead.
+
+**`unfoundRowTitle` is kind-dependent** — for `email_po` the title renders from the
+context prefix (the email subject), falling back to `product_title` only when the
+context is empty. Sort orders by the same function the cell renders, so the column
+can never sort by a value the operator cannot see.
+
+**E2E:** `tests/e2e/unfound-grid.spec.ts` — 5 route-mocked cases: no `<table>`
+left, every core column owns a labelled track, row → detail plane, in-cell PATCH
+body, and `?colsort=` durability.
+
+### Wave 5 — `/tracking-exceptions` (2026-08-01)
+
+`TrackingExceptionsTable` (516 lines) → `LedgerGridSurface` + an
+`ops.trackingExceptions` descriptor; host now **181 lines**.
+
+**Capabilities are all-false except `fieldsMenu`.** `multiSelect: false` because
+nothing on this surface acts on N exceptions at once; `inCellEdit: false` because a
+correction opens the record-plane dialog — the dialog is the action plane, and
+splitting it across two would give one field two homes.
+
+**`rowTriageFlags: false` with a reason worth keeping:** the row already carries a
+status pill, so a triage wash would be chrome inventing a second colour story for a
+fact the row states (Kinetic Ledger law 1).
+
+**E2E:** `tests/e2e/tracking-exceptions-grid.spec.ts` — 6 cases including the
+row-scoped Refresh *not* opening the edit dialog, and the absence-vs-no-match split.
+
+### Waves 6–7 — admin · settings · reports → `DataTable` (2026-08-01)
+
+~26 hand-rolled `<table>` elements across 15 files collapsed onto `DataTable`
+(§D, now all ✅). Batches: `/settings` + `/reports`, then `/admin/inventory/**` +
+the Compatibility tab.
+
+**`DataTable` kept its no-`'use client'` property, and that was the constraint that
+shaped the wave.** Most consumers here are RSCs that ship zero client JS for their
+tables; a directive on the shell (or a transitively client-only import) would put
+all 15 behind a client boundary to render static rows. Pages that were RSCs still
+are.
+
+**Alignment came for free and was the quiet win:** `DataTable` resolves
+end-vs-start from each column's `type` through the same `resolveGridColumnAlign`
+the ledger grids use, so ~26 tables stopped hand-typing `text-right` and
+inherited the house rule instead.
+
+**One table deliberately did not migrate** — the `/admin/inventory/throughput`
+station × hour heatmap. Rationale and the inline comment that protects it: §D.
+
+**E2E:** `tests/e2e/settings-datatable-smoke.spec.ts` ·
+`tests/e2e/admin-inventory-datatable-smoke.spec.ts`.
+
+**Process note (a11y, surfaced by the smoke spec):** `PageHeader` →
+`PaneHeaderTitle` renders a **`<p>`**, not a heading element, so
+`getByRole('heading', …)` can never match a page title. The spec was corrected to
+assert by text. Promoting that block to an `<h1>` is a real a11y improvement but an
+**ask-first** change: the same block serves right-rail record inspectors, where an
+`<h1>` would be wrong — so it needs a variant, not a global swap.
+
 ---
 
 ## Compound opportunities
@@ -443,12 +576,89 @@ a no-op replace is indistinguishable from a successful one.
 - **New, surfaced by the A1 fix:** `OrdersQueueTableRow` is now the only shared row component threading a capabilities bag. If a second family's row is ever reused across surfaces, thread the bag the same way — required prop, gated once at derivation — rather than importing a neighbour's const.
 
 **Promote to DS next (2+ call sites)**
-- `BinsTable`'s local `SortKey`/`SortDir` machine and `UnfoundQueueTable`'s debounced in-cell PATCH are each a second implementation of something the SoT owns (`useUrlColumnSort`, `LedgerCellEditor`). Migrate the call sites rather than porting the pattern.
-- `DataTable` likely needs sort + selection parity before it can absorb 15 admin files — grow it once, then migrate.
+- ~~`BinsTable`'s local `SortKey`/`SortDir` machine and `UnfoundQueueTable`'s debounced in-cell PATCH~~ — **Done** in Waves 3–4; both now compose `useUrlColumnSort` / `LedgerCellEditor`.
+- ~~`DataTable` needs sort + selection parity before it can absorb 15 admin files~~ — **it did not.** The 2026-08-01 audit found the admin wave needs none of them, and Waves 6–7 landed all 15 files without growing the API. Adding sort/selection would have made `DataTable` a second, weaker grid — the thing its own docblock says it must not become.
+
+**Wave 8 — the per-family boilerplate sweep** ✅ **DONE 2026-08-01** *(approved after being raised
+as ask-first; it changes a shared DS API across 12 call sites)*
+
+With every family on the pin, the remaining duplication had moved out of the shells and into the
+thin adapters. Both halves are now collapsed:
+
+1. **`makeLedgerGridColumnHeader`** (`@/design-system/components/grid`) generates every family's
+   sticky header. Each `*GridColumnHeader.tsx` used to be ~65 lines that built a
+   `LedgerHeaderLayoutApi` and forwarded six props with `as`-casts; the family now declares its
+   layout + column model and gets a header it **cannot mis-forward**. **12 adapters: 903 → 568
+   lines**, and most of what remains is the layout object and the docblock — the genuine per-family
+   content.
+
+   **Select-all became a MODE, and that is the real win.** `selectMode: 'always' | 'prop' | 'never'`
+   changes the generated component's prop *types*: `'always'` makes `selectionScope` **required**
+   (select-all without a scope is a checkbox that does nothing — now a compile error, not a dead
+   control), and `'never'` makes both selection props impossible to pass. Negative-tested: all three
+   constraints produce real `tsc` errors.
+
+   **One family keeps a hand-written wrapper, correctly.** Receiving's `stageLabel`
+   (Unboxed / Scanned / Tested) is per-MOUNT state, not a family constant like Repair's glyphs, so it
+   stays a wrapper that translates into the factory's `labelFor`.
+
+2. **`GridSortDir`** replaced **13** identical `'asc' | 'desc'` declarations — twelve family aliases
+   plus the header's own `LedgerHeaderSortDir`. Thirteen names for a two-member union was thirteen
+   places to check whether a surface meant the same thing by "desc".
+
+   **`QueueDisplaySortDir` was deliberately NOT folded in.** It belongs to the `?sort=`/`?dir=`
+   display-order vocabulary, which carries composite non-column modes — same shape, different
+   question. Folding it would erase the distinction `source-of-truth.md` draws.
+
+**The guard was strengthened, not just kept passing.** `ledger-grid-column-header.guard.test.ts` now
+**walks `src/**` off disk** instead of hand-listing ten adapters — by the time the factory landed the
+tree held **twelve**, so `My Day` and both `Review · Catalog link` headers had never been guarded at
+all. Same hand-listed-scope gap the capabilities guard closed for mounts. It asserts each adapter is
+factory-generated, re-asserts no `role="columnheader"`, and forbids reaching for the selection bus
+directly. 13 tests, and negative-tested (breaking one adapter fails it).
+
+**A non-finding worth recording:** the per-family `renderRow` / cell registries are **not**
+duplication. Row types differ per domain, and the SoT boundary is deliberately shell + capabilities
++ shared atoms (`grid-cells`, `QUEUE_ROW`) — collapsing those would be the fork the rules ban, not a
+simplification.
+
+**A non-finding worth recording:** the per-family `renderRow` / cell registries are **not**
+duplication. Row types differ per domain, and the SoT boundary is deliberately shell + capabilities
++ shared atoms (`grid-cells`, `QUEUE_ROW`) — collapsing those would be the fork the rules ban, not a
+simplification.
 
 **Deferred / ask-first**
 - ~~**`LedgerGrid.empty` counts bands, not rows**~~ — **DONE 2026-08-01**: now `hasGridRows`, which repaired `/pickup` for free.
-- Two other guards claim discovery but hand-list their scope: `grid-column-display` (`GRID_DIRS`) and `ledger-grid-column-header` (`ADAPTERS`). Widened for warranty this wave; making them walk the tree the way the capabilities guard now does would stop the next family being silently unguarded.
+- ~~`ledger-grid-column-header` hand-lists its scope (`ADAPTERS`)~~ — **DONE 2026-08-01** (Wave 8): it now walks the tree, which immediately picked up three previously unguarded adapters.
+- **Still hand-listed: `grid-column-display` (`GRID_DIRS`).** Same fix, same reasoning — make it walk. Left alone here only to keep Wave 8 to one concern.
+- **PARTLY RULED 2026-08-02 — `id` settled, `date` / `location` still open.** The identifier half
+  is decided: an identifier that is the row's **transaction identity** (PO # · sales order # ·
+  `order`) aligns **start**; a **catalog item number / SKU** stays **end** as a reference
+  attribute. Same `type: 'id'`, different role — implement with an explicit `align: 'start'` on the
+  order column's layout model, **never** by changing `ALIGN_BY_TYPE.id` (that would drag SKU,
+  serial and ticket with it). SoT docs carry it as *RULED, not yet shipped*; code + spec land in
+  the hover handoff's **Stream F**. `date` and `location` remain unadjudicated — the detail below
+  stands for those two.
+- **UNRESOLVED CONTRADICTION — `date` / `id` / `location` justification.** Found 2026-08-02 while
+  running the grid E2E suite; **pre-existing**, not introduced by Wave 8. Two sources say **end**,
+  one says **start**, and they cannot all be right:
+
+  | Source | `date` | `order` (`id`) | `tracking` (`location`) |
+  |---|---|---|---|
+  | `ALIGN_BY_TYPE` (`grid-header-align.ts`) | end | end | end |
+  | `source-of-truth.md` → Grid column justification | end | end | end |
+  | `tests/e2e/ledger-grid-column-display.spec.ts` D2 `want` map | **start** | **start** | **start** |
+
+  The spec is the outlier, and its comments show it is a deliberate position, not a typo:
+  *"id — a label made of digits, not a magnitude"*. That argument is real — an order number is a
+  name, not a quantity — but it is **not** what the ratified SoT or the code says, so today D2 fails
+  on any receiving surface (`column "date" resolved the wrong alignment`).
+
+  **Do not "fix" this by editing the assertion to match the code** — that papers over a genuine
+  disagreement about intent. It needs a human ruling on which philosophy wins, then ONE of:
+  (a) update the spec's `want` map, or (b) change `ALIGN_BY_TYPE` + the SoT table + give the prose
+  `date` columns their `align: 'start'` override (the escape the module docblock already
+  anticipates). Whichever way it goes, all three sources must move together.
 - Orders header resize/reorder onto `LedgerGridColumnHeader` (A2).
 - TanStack grouping Phase E on day-band surfaces.
 - `PoLinesAccordion` / `PoLineMetaGrid` → LedgerGrid (locked decision #5).
@@ -466,6 +676,38 @@ a no-op replace is indistinguishable from a successful one.
   `app/admin`, `app/reports`.
 - Classification is from source reading — `npm run verify` and the Playwright grid suite were
   **not** run in this phase (nothing changed to verify). Both are required per migration wave.
+
+### Audit pass (2026-08-01, post-Waves 3–7)
+
+Waves 0–2 of the thin-adapter plan were audited against the shipped tree rather than re-migrated:
+barrel importers, guard registration for all three new families, host thinness, and the forbidden
+patterns (`useIsColumnHidden`, hand-typed `justify-*`, a second sort machine). All clean; the four
+grid guards pass 101/101. The doc rows above were the only real gap.
+
+**E2E after Wave 8** (2026-08-02, `--project=desktop`, 10 grid + DataTable specs): **47 passed, 11
+failed** — and **none of the 11 are Wave 8**. Every swept family's own spec (bins · unfound ·
+tracking-exceptions · ready · warranty-except-one · settings · admin) is green, so the factory and
+`GridSortDir` are proven in a browser, not just by `tsc`.
+
+The 11 break into three pre-existing groups:
+
+| Count | Spec | Cause |
+|---|---|---|
+| 8 | `my-day-today` | Another session's in-flight `MyDayWorkspace` refactor (132-line diff, `MyDayKpiStrip` deleted, `MyDayDueHorizonChips` added) — the grid body never mounts on `/` |
+| 2 | `ledger-grid-column-display` D2 + fold rows | The alignment contradiction above |
+| 1 | `warranty-grid` row → `?open=` | Pre-existing — **proved** by restoring the three warranty files to HEAD and re-running: identical `1 failed, 6 passed` |
+
+That last proof is the method to copy when a shared tree is churning: **restore the suspect files to
+HEAD, re-run, compare.** Arguing from "my diff is type-only" is usually right but is not evidence;
+the revert is.
+
+**Two measurement lessons from this pass, both worth not repeating:**
+
+- **Piping a gate through `tail` throws away its exit code.** `npm run verify … | tail -40` reports
+  `tail`'s status, so a red run reads as green. Redirect to a file and check `$?`.
+- **Do not run Playwright concurrently with `npm run verify`.** Contention produced a spurious
+  Typecheck ✗ (clean when re-run alone) and one spurious grid-spec failure that passed 3/3 in
+  isolation. Serial runs, or the result is noise.
 
 ---
 

@@ -14,6 +14,16 @@
  * and DB triggers mirror at verified 0-drift parity. Output aliases are
  * byte-identical to the spine era, so normalizeRow and clients are untouched.
  * The fixture was regenerated with the same mechanical edits in the same PR.
+ *
+ * DELIBERATE BEHAVIOR CHANGE (2026-08-02) — `pairing_state` is selected RAW,
+ * not `COALESCE(rt.pairing_state, 'UNFOUND')`. A carton with no receiving_triage
+ * row has no recorded pairing answer, and the default invented one; absent and
+ * recorded are different answers and only the reader can decide what absence
+ * means. No consumer changes behaviour (`isTriagePaired` tests for WAIVED /
+ * MATCHED, and `ArrivalCartonPipeline` renders the chip only when the value is
+ * present and not UNFOUND — null and 'UNFOUND' were already equivalent to
+ * both). The fixture carries the identical edit, so the parity guard stays
+ * byte-exact.
  */
 import {
   NOT_ZOHO_RECEIVED_PREDICATE,
@@ -148,6 +158,7 @@ export function buildReceivingLineByIdSql(id: number, orgId: string): BuiltSql {
                 rlt.condition_graded_at::text                         AS condition_graded_at,
                 ru.contents_confirmed_at::text                         AS contents_confirmed_at,
                 rlt.label_printed_at                         AS label_printed_at,
+                rlt.label_previewed_at::text                       AS label_previewed_at,
                 COALESCE(rlt.serial_absent, false)           AS serial_absent,
                 rlt.serial_absent_reason                     AS serial_absent_reason,
                 COALESCE(rlt.serial_projection, '[]'::jsonb)   AS serials,
@@ -175,7 +186,7 @@ export function buildReceivingLineByIdSql(id: number, orgId: string): BuiltSql {
                 rt.staging_location_id,
                 ${STAGING_LOCATION_LABEL_SQL},
                 rt.priority_lane,
-                COALESCE(rt.pairing_state, 'UNFOUND') AS pairing_state,
+                rt.pairing_state,
                 r.zoho_purchaseorder_number  AS receiving_zoho_purchaseorder_number,
                 r.support_notes              AS receiving_support_notes,
                 r.zoho_notes                 AS receiving_zoho_notes,
@@ -314,6 +325,7 @@ export function buildReceivingLinesByReceivingIdSql(
                 rlt.condition_graded_at::text                         AS condition_graded_at,
                 ru.contents_confirmed_at::text                         AS contents_confirmed_at,
                 rlt.label_printed_at                         AS label_printed_at,
+                rlt.label_previewed_at::text                       AS label_previewed_at,
                 COALESCE(rlt.serial_absent, false)           AS serial_absent,
                 rlt.serial_absent_reason                     AS serial_absent_reason,
                 COALESCE(rlt.serial_projection, '[]'::jsonb)   AS serials,
@@ -1192,6 +1204,7 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
                 rlt.condition_graded_at::text                         AS condition_graded_at,
                 ru.contents_confirmed_at::text                         AS contents_confirmed_at,
                 rlt.label_printed_at                         AS label_printed_at,
+                rlt.label_previewed_at::text                       AS label_previewed_at,
                 COALESCE(rlt.serial_absent, false)           AS serial_absent,
                 rlt.serial_absent_reason                     AS serial_absent_reason,
                 COALESCE(rlt.serial_projection, '[]'::jsonb)   AS serials,
@@ -1233,7 +1246,7 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
                 rt.staging_location_id,
                 ${STAGING_LOCATION_LABEL_SQL},
                 rt.priority_lane,
-                COALESCE(rt.pairing_state, 'UNFOUND') AS pairing_state,
+                rt.pairing_state,
                 r.zoho_purchaseorder_number  AS receiving_zoho_purchaseorder_number,
                 r.support_notes              AS receiving_support_notes,
                 r.zoho_notes                 AS receiving_zoho_notes,

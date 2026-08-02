@@ -68,6 +68,31 @@ test('invite: the signup admin alone does not complete it', () => {
   assert.equal(step('invite').doneWhen(stats({ staff: 2 })), true);
 });
 
+test('compliance: done iff the org ANSWERED — "no to both" completes it', () => {
+  // The whole reason settings.compliance.* is nullable: answering "we stock no
+  // new inventory and don't sell on Amazon" is a real answer that must clear
+  // the step, while never having been asked must not.
+  assert.equal(step('compliance').doneWhen(stats()), false);
+  assert.equal(
+    step('compliance').doneWhen(stats({ complianceAnsweredAt: '2026-08-02T17:00:00.000Z' })),
+    true,
+  );
+});
+
+test('compliance: no amount of activity data completes it', () => {
+  // The one step activity cannot prove — a warehouse humming along still has
+  // not told us whether it stocks new product.
+  const busy = stats({
+    orders: 99,
+    receivingLines: 99,
+    staff: 9,
+    integrationsConnected: 3,
+    firstScanDone: true,
+    hasActiveWorkflow: true,
+  });
+  assert.equal(step('compliance').doneWhen(busy), false);
+});
+
 test('completedStepCount tallies mixed progress', () => {
   const mixed = stats({ integrationsConnected: 2, orders: 10 });
   assert.equal(completedStepCount(ONBOARDING_STEPS, mixed), 2);
@@ -75,7 +100,9 @@ test('completedStepCount tallies mixed progress', () => {
 
 test('stepsForPlan(trial) shows the whole v1 ladder (maxStaff 5 keeps invite)', () => {
   const ids = stepsForPlan('trial').map((s) => s.id);
-  assert.deepEqual(ids, ['workflow', 'connect', 'order', 'receive', 'scan', 'invite']);
+  assert.deepEqual(ids, [
+    'workflow', 'connect', 'order', 'receive', 'scan', 'invite', 'compliance',
+  ]);
 });
 
 test('every plan in the catalog resolves to a non-empty, ordered subset', () => {
@@ -105,6 +132,7 @@ test('all-done stats self-dismiss the card (completed === visible length)', () =
     integrationsConnected: 1,
     firstScanDone: true,
     hasActiveWorkflow: true,
+    complianceAnsweredAt: '2026-08-02T17:00:00.000Z',
   });
   const visible = stepsForPlan('trial');
   assert.equal(completedStepCount(visible, done), visible.length);

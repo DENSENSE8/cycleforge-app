@@ -73,7 +73,7 @@ test('no file outside src/design-system/motion/** names a motion package', () =>
  * The barrel is "the one motion import path" — which a package ban alone does
  * not deliver. `@/design-system/motion/roles` and `.../use-motion-role` are house
  * modules, so nothing stopped a surface reaching past `index.ts` into them, and
- * `ProcedureColumn` did exactly that: two deep imports beside a barrel import of
+ * `ProcedureDeck` did exactly that: two deep imports beside a barrel import of
  * `motion` in the same file. Two spellings for one module is the drift the barrel
  * exists to remove.
  *

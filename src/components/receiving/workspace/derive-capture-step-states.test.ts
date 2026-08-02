@@ -59,13 +59,17 @@ test('matched carton: the guided procedure in order', () => {
     'condition',
     'item_photos',
     'serial',
+    // `label` is a CAPTURE step — reading the face the carton is about to
+    // print, the last correction that is still free. `print` stays a commit act
+    // on the terminal dock.
+    'label',
   ]);
 });
 
 test('unfound carton prepends Classify (mirrors the unfound stepper)', () => {
   const k = keys({ ...matched, isUnfound: true });
   assert.equal(k[0], 'classify');
-  assert.equal(k.length, 9);
+  assert.equal(k.length, 10);
 });
 
 test('local pickup drops every carrier shot — handed over, no dunnage', () => {
@@ -263,10 +267,11 @@ test('every step renders, in vocabulary order, whatever its state', () => {
       'condition',
       'item_photos',
       'serial',
+      'label',
     ],
     'a checklist shows the whole procedure — pending steps are the point',
   );
-  assert.deepEqual(steps.map((s) => s.position), [1, 2, 3, 4, 5, 6, 7, 8]);
+  assert.deepEqual(steps.map((s) => s.position), [1, 2, 3, 4, 5, 6, 7, 8, 9]);
 });
 
 test('position is the vocabulary number and never renumbers', () => {
@@ -293,7 +298,7 @@ test('an out-of-order completion reads done in place — no reordering', () => {
   const steps = deriveProcedureSteps({ ...base, serialCount: 1 });
   assert.equal(steps.find((s) => s.key === 'serial')?.state, 'done');
   assert.equal(steps.find((s) => s.key === 'arrival_check')?.state, 'active');
-  assert.equal(steps.at(-1)?.key, 'serial', 'order follows the vocabulary, not the state');
+  assert.equal(steps.at(-1)?.key, 'label', 'order follows the vocabulary, not the state');
 });
 
 test('each photo step carries its own stage', () => {
@@ -304,6 +309,55 @@ test('each photo step carries its own stage', () => {
   assert.equal(byKey.get('packing_material'), 'unbox_carton');
   assert.equal(byKey.get('item_photos'), 'unbox_item');
   assert.equal(byKey.get('contents'), undefined, 'contents is not a photo step');
+});
+
+// ── Completion time (`at`) ───────────────────────────────────────────────────
+
+test('a pending step carries no completion time, even holding real evidence', () => {
+  // The subtle failure this exists for: one required item aspect of two is shot,
+  // so the step legitimately holds evidence and is legitimately NOT done.
+  // Printing that evidence's instant beside it reads as a completion.
+  const partial = deriveProcedureSteps({
+    ...base,
+    requiredItemAspects: ['included', 'serial'],
+    itemAspectCounts: { included: 1 },
+    itemPhotoCount: 1,
+    evidenceAt: { item_photos: '2026-08-01T10:00:00Z' },
+  });
+  const step = partial.find((s) => s.key === 'item_photos');
+  assert.equal(step?.state, 'pending');
+  assert.equal(step?.at, null, 'a pending step must never report a time');
+});
+
+test('an acknowledgement step takes its time from the column that gated it', () => {
+  // condition / contents / label are the three steps whose gate IS an instant.
+  // Reading it off the gate is what makes the time and the state impossible to
+  // disagree — a caller cannot pass one and satisfy the other.
+  const steps = deriveProcedureSteps({
+    ...upToSerial,
+    labelPreviewedAt: '2026-08-01T10:02:00Z',
+    // Ignored on purpose for these three.
+    evidenceAt: { condition: '1999-01-01T00:00:00Z', label: '1999-01-01T00:00:00Z' },
+  });
+  const at = (key: string) => steps.find((s) => s.key === key)?.at;
+  assert.equal(at('condition'), '2026-08-01T10:01:00Z');
+  assert.equal(at('contents'), '2026-08-01T10:00:00Z');
+  assert.equal(at('label'), '2026-08-01T10:02:00Z');
+});
+
+test('every other step takes the instant its caller resolved', () => {
+  const steps = deriveProcedureSteps({
+    ...upToSerial,
+    evidenceAt: { arrival_check: '2026-08-01T09:00:00Z' },
+  });
+  assert.equal(steps.find((s) => s.key === 'arrival_check')?.at, '2026-08-01T09:00:00Z');
+});
+
+test('a done step whose caller resolved nothing reports null, never a fabricated time', () => {
+  const steps = deriveProcedureSteps(upToSerial);
+  const arrival = steps.find((s) => s.key === 'arrival_check');
+  assert.equal(arrival?.state, 'done');
+  assert.equal(arrival?.at, null, 'honest absence beats the nearest instant to hand');
 });
 
 test('unfound: Classify holds active until it is answered', () => {

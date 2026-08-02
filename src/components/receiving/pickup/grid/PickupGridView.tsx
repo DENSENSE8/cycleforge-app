@@ -15,8 +15,8 @@ import {
   isPickupGridSortable,
   type PickupGridColumn,
   type PickupGridColumnKey,
-  type PickupGridSortDir,
 } from './pickup-grid-layout';
+import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 
 /** Staff-prefs identity — one pickup spreadsheet, one Fields selection. */
 const PICKUP_TABLE_ID = 'pickup' as const;
@@ -46,7 +46,7 @@ function comparePickupRows(
   a: PickupLine,
   b: PickupLine,
   key: PickupGridColumnKey,
-  dir: PickupGridSortDir,
+  dir: GridSortDir,
 ): number {
   const sign = dir === 'asc' ? 1 : -1;
   switch (key) {
@@ -156,14 +156,15 @@ export function PickupGridView({
         isSearching={isSearching}
         scrollRef={scrollRef}
         testId="pickup-grid-body"
-        renderColumnHeader={({ toggleColumnSort }) => (
+        tableId={PICKUP_TABLE_ID}
+        columnDetails={{ open: columnDetailsOpen, onOpen: () => setColumnDetailsOpen(true) }}
+        renderColumnHeader={({ toggleColumnSort, onResizeColumn }) => (
           <PickupGridColumnHeader
             columns={visible}
             activeSort={columnSort}
             sortDir={sortDir}
             onSortColumn={toggleColumnSort}
-            onOpenColumnDetails={() => setColumnDetailsOpen(true)}
-            columnDetailsOpen={columnDetailsOpen}
+            onResizeColumn={onResizeColumn}
           />
         )}
         renderGroup={(group, baseStripeIndex) => (

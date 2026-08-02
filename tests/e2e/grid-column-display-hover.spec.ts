@@ -1,14 +1,19 @@
 import { test, expect, type Page } from '@playwright/test';
 
 /**
- * Per-staff grid column fields → `staff_preferences.tableColumns` delta,
- * driven from the grid's own top-right **column-display lip**.
+ * Per-staff grid column fields → `staff_preferences.tableColumns` delta, driven
+ * from the **column-display control in the gutter beside the table card**.
  *
- * The lip is the SOLE entry as of 2026-08-02: the chrome `GridFieldsMenu` that
- * used to open a second door onto this same rail was deleted, because Fields
- * mutates the column set of the card it sat above. This spec is what proves the
- * lip actually carries every job the retired popover did — otherwise the
- * migration would be a silent capability loss.
+ * It is the SOLE entry as of 2026-08-02: the chrome `GridFieldsMenu` that used
+ * to open a second door onto this same rail was deleted, because Fields mutates
+ * the column set of the card it sat above. This spec is what proves the control
+ * actually carries every job the retired popover did — otherwise the migration
+ * would be a silent capability loss.
+ *
+ * It left the header band the same day. Parked at the band's right edge it
+ * either reserved a permanent `w-9` track plus `pr-9`, or (with that padding
+ * dropped) covered the last column's label. (0) below is what the gutter buys:
+ * the control is OUTSIDE the card, so it overlaps no column.
  *
  * The behaviour this locks is the whole point of the unified visibility waist:
  * a column a staffer turns off loses its TRACK everywhere (header, body rows,
@@ -16,6 +21,7 @@ import { test, expect, type Page } from '@playwright/test';
  * follows the staffer across reloads because it is persisted, not local state.
  *
  * Asserts:
+ *   (0) the control sits outside the card and overlaps no column;
  *   (1) the grid opens LEAN — `tier: 'optional'` columns (condition / platform /
  *       serial on receiving) are absent until opted into;
  *   (2) opting one IN adds its track to header AND body;
@@ -27,7 +33,7 @@ import { test, expect, type Page } from '@playwright/test';
  *   (8) no chrome Fields control survives anywhere on the page.
  */
 
-test.describe('Grid column fields — the header lip', () => {
+test.describe('Grid column fields — the hover-revealed header control', () => {
   test.skip(({ browserName }) => browserName === 'webkit', 'ledger grid is a desktop layout');
 
   const HISTORY_URL = '/receiving/history';
@@ -36,12 +42,13 @@ test.describe('Grid column fields — the header lip', () => {
   /** Header + body cells share `data-col`, so one selector proves the whole track. */
   const track = (page: Page, key: string) => grid(page).locator(`[data-col="${key}"]`);
 
-  const lip = (page: Page) =>
-    page.locator('[data-grid-column-details-lip]').getByRole('button', { name: 'Column display' });
+  const triggerHost = (page: Page) => page.locator('[data-grid-column-details-trigger]');
+  const trigger = (page: Page) =>
+    triggerHost(page).getByRole('button', { name: 'Column display' });
   const rail = (page: Page) => page.getByRole('region', { name: 'Column display' });
 
   const openRail = async (page: Page) => {
-    await lip(page).click();
+    await trigger(page).click();
     await expect(rail(page)).toBeVisible();
   };
 
@@ -116,11 +123,68 @@ test.describe('Grid column fields — the header lip', () => {
     await restoreDefaults(page);
   });
 
-  test('the lip is the only column control — no chrome Fields survives', async ({ page }) => {
-    await expect(lip(page)).toBeVisible();
+  test('it is the only column control — no chrome Fields survives', async ({ page }) => {
+    await expect(trigger(page)).toBeVisible();
     // The retired popover's own marker and its listbox must both be gone.
     await expect(page.locator('[data-grid-fields-menu]')).toHaveCount(0);
     await expect(page.getByRole('listbox', { name: 'Grid fields' })).toHaveCount(0);
+  });
+
+  /**
+   * THE point of the placement change, and the one assertion the retired
+   * header-anchored versions could not pass. Proof is GEOMETRIC — a screenshot
+   * cannot tell "beside the card" from "over the last column".
+   */
+  test('the control sits in a gutter outside the card, overlapping no column', async ({
+    page,
+  }) => {
+    const cardBox = await grid(page).boundingBox();
+    const triggerBox = await triggerHost(page).boundingBox();
+    expect(cardBox).not.toBeNull();
+    expect(triggerBox).not.toBeNull();
+    // Strictly right of the card's right edge, with a real gap — not merely
+    // inside it, and not flush against the border.
+    expect(triggerBox!.x).toBeGreaterThan(cardBox!.x + cardBox!.width);
+
+    // The last header cell is therefore uncovered.
+    const lastHeaderCell = grid(page).locator('[role="columnheader"]').last();
+    const cellBox = await lastHeaderCell.boundingBox();
+    expect(cellBox).not.toBeNull();
+    expect(cellBox!.x + cellBox!.width).toBeLessThanOrEqual(triggerBox!.x);
+  });
+
+  /**
+   * Airtable / Sheets drag-resize. The grip mutates the shared `--cf-col-*` var,
+   * so header AND body cells move together — asserting only the header would
+   * miss the regression this waist exists to prevent.
+   */
+  test('a column can be drag-resized, and the width persists per staff', async ({ page }) => {
+    const headerCell = grid(page).locator('[role="columnheader"][data-col="title"]');
+    const before = (await headerCell.boundingBox())!.width;
+
+    const gripBox = (await headerCell
+      .getByRole('button', { name: /Resize .* column/i })
+      .boundingBox())!;
+    await page.mouse.move(gripBox.x + gripBox.width / 2, gripBox.y + gripBox.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(gripBox.x + 80, gripBox.y + gripBox.height / 2, { steps: 8 });
+    await page.mouse.up();
+
+    await expect
+      .poll(async () => (await headerCell.boundingBox())!.width)
+      .toBeGreaterThan(before + 40);
+
+    // Header and body agree — one var drives both.
+    const bodyCell = grid(page).locator('[data-col="title"]').nth(1);
+    const bodyWidth = (await bodyCell.boundingBox())!.width;
+    expect(Math.abs(bodyWidth - (await headerCell.boundingBox())!.width)).toBeLessThan(2);
+
+    // Persisted, not local state.
+    await page.reload();
+    await expect(grid(page)).toBeVisible();
+    await expect
+      .poll(async () => (await headerCell.boundingBox())!.width)
+      .toBeGreaterThan(before + 40);
   });
 
   test('opens lean — optional columns are absent until opted in', async ({ page }) => {
@@ -193,7 +257,7 @@ test.describe('Grid column fields — the header lip', () => {
     await expect(track(page, 'title').first()).toBeVisible();
   });
 
-  test('header lip applies a highlight wash to the track', async ({ page }) => {
+  test('the column-display rail applies a highlight wash to the track', async ({ page }) => {
     await openRail(page);
 
     // Qty is a core column — set a blue track wash.

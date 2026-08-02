@@ -42,6 +42,7 @@ import {
   type ReceivingGridColumn,
 } from '@/lib/receiving/receiving-grid-layout';
 import { sourcePlatformMetaFromLabel } from '@/lib/source-platform';
+import { workflowStageLabel } from '@/lib/receiving/workflow-stages';
 import { formatOpsStageTime } from '@/utils/date';
 import { gridCellAlignClass } from '@/design-system/components/grid';
 import { cn } from '@/utils/_cn';
@@ -207,6 +208,28 @@ export function ReceivingGridGroupSummary({
             </span>
           </div>
         );
+      // Same one-track lifecycle answer the leaf rows render — a fold that fell
+      // through to the empty default would leave a blank ruled band exactly
+      // where the summary's most-scanned fact belongs.
+      case 'status': {
+        const stageLabel = workflowStageLabel(first.workflow_status);
+        const time = stageDisplay && stageDisplay !== '--:--' ? stageDisplay : null;
+        return (
+          <div data-col="status" className={dataCell(col, rule)}>
+            <span className="flex min-w-0 items-center gap-1.5">
+              <span className={cn('h-2 w-2 shrink-0 rounded-full', statusDot)} aria-hidden />
+              <span className="shrink-0 text-role-caption font-semibold text-text-default">
+                {stageLabel}
+              </span>
+              {dateCell?.label || time ? (
+                <span className="min-w-0 truncate tabular-nums text-role-caption text-text-muted">
+                  {[dateCell?.label, time].filter(Boolean).join(' ')}
+                </span>
+              ) : null}
+            </span>
+          </div>
+        );
+      }
       case 'date':
         return (
           <div data-col="date" className={dataCell(col, rule)}>

@@ -159,7 +159,7 @@ test('mergeStationUnitJourneys: shared carton photos hoist once across serials',
   assert.equal(perSerialPhotoRows.length, 0);
 });
 
-test('mergeStationUnitJourneys: single-serial carton photos stay on the serial chip', () => {
+test('mergeStationUnitJourneys: a single-serial carton never hoists, and carries no unit chip', () => {
   const items = mergeStationUnitJourneys([
     {
       serial: 'SN-ONLY',
@@ -176,10 +176,30 @@ test('mergeStationUnitJourneys: single-serial carton photos stay on the serial c
     },
   ]);
 
+  // The subject of this test: no `carton:` hoist when only one serial shares
+  // the stage (hoisting exists to stop a multi-unit carton showing the same
+  // journey twice).
   assert.equal(items.filter((i) => String(i.id).startsWith('carton:')).length, 0);
   const arrival = items.find((i) => String(i.id).includes('unit-photos-arrival'));
   assert.ok(arrival);
-  assert.deepEqual(arrival?.ref, { kind: 'serial', value: 'SN-ONLY' });
+  // Re-pointed 2026-08-02: an identity chip disambiguates, and with one unit in
+  // the feed there is nothing to disambiguate — the same last-8 on every row is
+  // noise. Multi-serial feeds still chip (next test).
+  assert.equal(arrival?.ref, undefined);
+  assert.ok(items.every((i) => i.ref?.kind !== 'serial'));
+});
+
+test('mergeStationUnitJourneys: a MULTI-serial carton keeps the unit chip', () => {
+  const items = mergeStationUnitJourneys([
+    { serial: 'SN-A', events: [invReceived(1, 'SN-A', '2026-07-15T14:46:00.000Z')] },
+    { serial: 'SN-B', events: [invReceived(2, 'SN-B', '2026-07-15T15:10:00.000Z')] },
+  ]);
+  // Two units, two rows — here the chip is the only thing telling them apart.
+  const serials = items
+    .filter((i) => i.ref?.kind === 'serial')
+    .map((i) => i.ref!.value)
+    .sort();
+  assert.deepEqual(serials, ['SN-A', 'SN-B']);
 });
 
 test('mergeStationUnitJourneys: keeps full stage media (display cap is the strip)', () => {

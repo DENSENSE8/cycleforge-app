@@ -42,10 +42,10 @@ rule genuinely must change, change the rule in the same commit and record why.
 **HARD NEVER: no part of the procedure surface may take keyboard focus.**
 
 - No `autoFocus`. No focus trap. No `tabIndex` on a container. No `.focus()` call.
-- To bring a section into view use `scrollIntoView({ block: 'start' })` on the snap column — never
-  focus. (`'nearest'` was written for the retired horizontal rail; on a snap column it can park a
-  section straddling two snap positions. The invariant is *scroll, never focus*.)
-- **A clicked control hands focus BACK.** A neighbour chip or a section click natively focuses its
+- To bring a card into view use `scrollIntoView({ block: 'nearest' })` on the host port — never
+  focus. (`'start'` was written for the snap column, which no longer exists; on a bottom-pinned deck
+  it yanks the focus card to the top of the port. The invariant is *scroll, never focus*.)
+- **A clicked control hands focus BACK.** A pager chip or a card click natively focuses its
   button — and then the next wedge scan types into it and its Enter re-activates it. Every pointer
   control on this surface dispatches `receiving-focus-scan` after it acts.
 - Any new overlay must register with `src/lib/overlay-stack/store.ts` so the innermost open thing
@@ -65,7 +65,7 @@ The procedure renders in two places at once:
 
 | Where | Surface | Answers |
 |---|---|---|
-| **Centre** | one vertical snap column carrying EVERY step — active expanded, the rest dimmed faces | *what do I do right now* |
+| **Centre** | one bottom-pinned focus DECK carrying EVERY step — active expanded against the composer, history as full rows above, the next step as a single peek behind | *what do I do right now* |
 | **Right edge** | `ProcedureChecklist`, first and default Displays tab, live | *where am I in the whole job* |
 
 **HARD ALWAYS: both read `useUnboxProcedureSteps`. One hook, one answer.**
@@ -78,12 +78,17 @@ The procedure renders in two places at once:
   component's `useState`: two surfaces would render two pointers and disagree on one screen.
 
 **HARD NEVER: do not ship the centre's bottom-anchored geometry without the right-rail checklist
-mounted and defaulted.**
+mounted and defaulted.** This is now LIVE and load-bearing — it is the deck's precondition, not a
+caution about a future design.
 
 This is a coupling, not a preference. The first version of this surface was deleted precisely because
 it put the current step at the bottom and hid what was coming — "which made the procedure unreadable
-as a procedure". The geometry is only safe because the checklist now owns the shape of the work. If
-you hide, collapse, or de-default that checklist, **the centre must revert in the same change.**
+as a procedure". The deck compresses everything past the next step into a single covered pile, so the
+checklist is what still owns the shape of the whole job. If you hide, collapse, or de-default that
+checklist, **the centre must revert to a flat column in the same change.**
+
+The deck's own reachability rests on three pointer paths — the peek, the pager pinned above the
+composer, and that checklist. Remove one and re-check the other two before shipping.
 
 **What must never come back:** a hand-ticked checklist. The org-editable `checklist_templates` table
 and its `/api/checklists` CRUD were deleted because a box got ticked when someone remembered to tick
@@ -109,12 +114,15 @@ a plain reflow in one un-animated frame, the same licence the retired rail's car
 
 **HARD NEVER:**
 
-- `layout` or `layoutId` on the column or any section. (`layoutId` is for an element that genuinely
-  *travels*; face → active is a *replace*, and shared-layout there produces a morphing artifact.)
+- `layout` or `layoutId` on the deck or any card. (`layoutId` is for an element that genuinely
+  *travels*; face → focus is a *replace*, and shared-layout there produces a morphing artifact.)
 - An animated `height` — including a `collapseHeight` reveal. That is what this section retired.
-- A JS-driven scroll animation for the column. It is **CSS scroll-snap** (`snap-y snap-mandatory`) —
-  the browser does it, and it handles reduced motion correctly for free.
-- A second scroll port nested inside a section.
+- A JS-driven scroll animation. Travel is native `scrollIntoView({ behavior: 'smooth' })` on the
+  host port — the browser does it, and it handles reduced motion correctly for free. **There is no
+  scroll-snap:** it was written for a private port the deck no longer owns, and snap on a
+  zero-height port is invisible in review and obvious at the bench. If it returns it goes on the
+  HOST port behind an opt-in prop.
+- A second scroll port nested inside a card.
 - A scroll-linked animation: `animation-timeline`, `useScroll`. A scanner-driven operator does not
   scroll this list; you would be decorating a path nobody takes.
 - A spring on a discrete view swap. Springs are for gesture and physical surfaces only.
@@ -194,7 +202,7 @@ one green comes to mean three things.
   a shared shell) with the CTA in `trailingAction`. Its **leading** zone is step-contextual; its
   **trailing** terminal is carton-scoped and never re-labels. Never a second dock, never a
   CTA row beneath it.
-- **One card renderer.** `ProcedureColumn` is the rail component **evolved in place**; do not fork a
+- **One card renderer.** `ProcedureDeck` is the rail component **evolved in place**; do not fork a
   second beside it.
 - Reason codes come from the Class-D `reason_codes` engine with a `flow_context`. **Never** a
   free-text reason beside a picker — prose is not queryable.

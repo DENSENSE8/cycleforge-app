@@ -9,3 +9,4 @@
  */
 
 export { ServiceWorkspaceShell } from './ServiceWorkspaceShell';
+export { useSupportTicketDisplays } from './support-ticket-displays';

@@ -5,8 +5,8 @@ import {
   COLUMN_WIDTH_MIN,
   clampColumnWidth,
 } from '@/components/ui/table-column-config/useColumnWidths';
-import { ordersQueueColVar } from '@/lib/dashboard-order-row-layout';
 import { focusRing } from '@/design-system/tokens/focus-ring';
+import { gridColVar } from './grid-column-geometry';
 import { cn } from '@/utils/_cn';
 
 /** Keyboard nudge per arrow press. */
@@ -18,12 +18,23 @@ const surfaceOf = (el: HTMLElement | null) => (el?.closest('[data-cf-grid]') as 
 const cellOf = (el: HTMLElement | null) => (el?.closest('[data-col]') as HTMLElement | null) ?? null;
 
 /**
- * Drag handle on a resizable column header's right edge. During a drag it mutates
- * ONLY the grid surface's `--cf-col-<key>` CSS var (via the nearest `[data-cf-grid]`
- * ancestor), so every row reflows through CSS with zero React re-render; the final
- * width is COMMITTED once on drop via `onCommit` (→ persisted per-staff). Not
- * animated (it tracks the pointer). Keyboard-accessible (←/→ nudge · Enter =
- * resize-to-fit) and double-click = resize-to-fit.
+ * Drag handle on a resizable column header's right edge — the Airtable / Sheets
+ * affordance, and the ONE implementation for every LedgerGrid family.
+ *
+ * During a drag it mutates ONLY the grid surface's `--cf-col-<key>` CSS var (via
+ * the nearest `[data-cf-grid]` ancestor), so header, rows and group summaries
+ * reflow together through CSS with zero React re-render — and the frozen pane's
+ * sticky-left offsets follow, because `gridFrozenLeft`-style math is itself a
+ * `calc()` over those same vars. The final width is COMMITTED once on drop via
+ * `onCommit` (→ persisted per staff in `staff_preferences.tableColumns[t].widths`).
+ *
+ * Not animated: it tracks the pointer, and a transition on a drag reads as lag.
+ * Keyboard-accessible (←/→ nudge · Enter = resize-to-fit); double-click =
+ * resize-to-fit.
+ *
+ * It lives in the DS grid module rather than beside the Orders queue that first
+ * grew it: it was written generic (it already keyed off `[data-cf-grid]` and a
+ * per-key CSS var) and only its import path was parochial.
  */
 export function ColumnResizeHandle({
   colKey,
@@ -67,7 +78,7 @@ export function ColumnResizeHandle({
       // function refs add/remove cleanly (no stale-listener leak).
       const move = (ev: PointerEvent) => {
         surface.style.setProperty(
-          ordersQueueColVar(colKey),
+          gridColVar(colKey),
           `${clampColumnWidth(startW + (ev.clientX - startX))}px`,
         );
       };

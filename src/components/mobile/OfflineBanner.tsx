@@ -1,97 +1,65 @@
 'use client';
 
 /**
- * OfflineBanner — sticky top banner that appears when the device goes offline.
+ * OfflineBanner — the MOBILE-SHELL placement of the app's connection state.
  *
- * Slides down from the top, stays until the connection comes back. When the
- * device reconnects, the banner morphs to a "Back online" confirmation that
- * auto-dismisses after a short delay.
+ * Same answer as the global `layout/OfflineBanner`, different geometry: a phone
+ * has no room for the desk band, and its shell owns its own safe area. Both read
+ * `useConnectionChrome()`, so the two can no longer disagree about whether the
+ * device is offline, the realtime link is paused, or edits are still draining —
+ * which is exactly what four independent `navigator.onLine` listeners used to
+ * guarantee they would.
  *
- * Subscribes to the same external store as `NetworkChip` (navigator.onLine
- * via `subscribe`) so both surfaces stay in sync without duplicate listeners.
- *
- * Drop this near the top of any mobile shell — it positions itself absolutely
- * (z-banner) and shouldn't push layout when hidden.
+ * Slides down, stays while the problem holds, and shows a brief "Back online"
+ * confirmation on recovery (the recovery beat is owned by the shared hook, so a
+ * cold load never flashes it).
  */
 
-import { useEffect, useState, useSyncExternalStore } from 'react';
 import { AnimatePresence, motion } from '@/design-system/motion';
-import { WifiOff, Wifi } from 'lucide-react';
+import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
+import {
+  useMotionPresence,
+  useMotionTransition,
+} from '@/design-system/foundations/motion-framer-hooks';
+import { Wifi, WifiOff } from '@/components/Icons';
+import { useConnectionChrome } from '@/hooks/useConnectionHealth';
 
-function subscribe(listener: () => void): () => void {
-  if (typeof window === 'undefined') return () => {};
-  window.addEventListener('online', listener);
-  window.addEventListener('offline', listener);
-  return () => {
-    window.removeEventListener('online', listener);
-    window.removeEventListener('offline', listener);
-  };
-}
-function getSnapshot(): boolean {
-  if (typeof navigator === 'undefined') return true;
-  return navigator.onLine;
-}
-function getServerSnapshot(): boolean {
-  return true;
-}
+const TONE_CLASS = {
+  danger: 'bg-rose-600 text-white',
+  warning: 'bg-amber-600 text-white',
+  success: 'bg-emerald-600 text-white',
+} as const;
 
-interface OfflineBannerProps {
-  /** Milliseconds to keep the "back online" toast visible. Default 2400. */
-  reconnectToastMs?: number;
-}
+export function OfflineBanner() {
+  const chrome = useConnectionChrome();
+  const presence = useMotionPresence(framerPresence.stationCard);
+  const transition = useMotionTransition(framerTransition.stationCardMount);
 
-export function OfflineBanner({ reconnectToastMs = 2400 }: OfflineBannerProps) {
-  const online = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
-  // Track whether we've ever been offline in this mount — used to gate the
-  // reconnect toast so a fresh page load doesn't flash "Back online".
-  const [wasOffline, setWasOffline] = useState(false);
-  const [showReconnect, setShowReconnect] = useState(false);
-
-  useEffect(() => {
-    if (!online) {
-      setWasOffline(true);
-      setShowReconnect(false);
-      return;
-    }
-    if (wasOffline) {
-      setShowReconnect(true);
-      const t = window.setTimeout(() => setShowReconnect(false), reconnectToastMs);
-      return () => window.clearTimeout(t);
-    }
-  }, [online, wasOffline, reconnectToastMs]);
-
-  const visible = !online || showReconnect;
-  if (!visible) return null;
+  const visible = chrome.kind !== 'hidden';
+  // `offline` is the only state where the device genuinely has no link; a paused
+  // realtime link or a draining queue still has one, so they keep the Wifi mark.
+  const Icon = chrome.kind === 'offline' ? WifiOff : Wifi;
 
   return (
-    <AnimatePresence>
-      <motion.div
-        key={online ? 'online' : 'offline'}
-        initial={{ y: -48, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        exit={{ y: -48, opacity: 0 }}
-        transition={{ type: 'spring', damping: 24, stiffness: 320, mass: 0.5 }}
-        role="status"
-        aria-live="polite"
-        className={`fixed inset-x-0 top-0 z-banner ${
-          online ? 'bg-emerald-600 text-white' : 'bg-red-600 text-white'
-        }`}
-        style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
-      >
-        <div className="flex items-center justify-center gap-2 px-4 py-2 text-xs font-semibold tracking-wide">
-          {online ? (
-            <>
-              <Wifi className="h-4 w-4" aria-hidden="true" />
-              <span>Back online</span>
-            </>
-          ) : (
-            <>
-              <WifiOff className="h-4 w-4" aria-hidden="true" />
-              <span>Offline — actions will queue and sync when reconnected</span>
-            </>
-          )}
-        </div>
-      </motion.div>
+    <AnimatePresence initial={false}>
+      {visible && (
+        <motion.div
+          key={chrome.kind}
+          {...presence}
+          transition={transition}
+          role="status"
+          aria-live="polite"
+          data-connection-state={chrome.kind}
+          className={`fixed inset-x-0 top-0 z-banner ${TONE_CLASS[chrome.tone]}`}
+          /* ds-allow-spacing — safe-area inset */
+          style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
+        >
+          <div className="flex items-center justify-center gap-2 px-4 py-2 text-role-micro font-semibold uppercase tracking-widest">
+            <Icon className="h-4 w-4" />
+            <span>{chrome.message}</span>
+          </div>
+        </motion.div>
+      )}
     </AnimatePresence>
   );
 }

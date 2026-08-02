@@ -11,6 +11,7 @@ import { FILTER_DROPDOWN_SELECT_CLASS } from '@/design-system/components/FilterD
 import { useAuth } from '@/contexts/AuthContext';
 import { orgInitials } from '@/lib/identity/switch-org';
 import { useSwitchOrg } from '@/lib/identity/use-switch-org';
+import { Gs1ComplianceCard } from './Gs1ComplianceCard';
 import { WorkspaceSwitcher } from './WorkspaceSwitcher';
 
 /**
@@ -398,6 +399,15 @@ export function OrganizationSection() {
       <WorkspaceSwitcher />
 
       <InvitationsSection />
+
+      {/*
+        Grouped with InvitationsSection above the profile block on purpose: both
+        own their own fetch + Save button, while every card below shares the one
+        "Save changes" at the foot of the page. GS1 lives on a different route
+        (/api/admin/organization/settings) because that is where its validation
+        and the server-side `answeredAt` stamp already are.
+      */}
+      <Gs1ComplianceCard />
 
       <div className="space-y-5 rounded-2xl border border-border-soft bg-surface-card p-5 shadow-sm">
         <h3 className="text-sm font-semibold text-text-default">Regional</h3>

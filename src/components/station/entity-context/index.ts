@@ -8,9 +8,11 @@
  *    composes this — never fork a parallel header.
  * 2. **Bookmark chrome** — {@link StationContextBar} + {@link StationMoreDetails}:
  *    absolute-float identity shell + corner utilities over the work canvas
- *    (`stationContextBarHostClass`; `density="bar"`). Mount as a sibling above
- *    StationWorkbench with `reserveIdentityClearance`; do not put identity in
- *    the workbench `entityContext` / `toolbar` slots for Unbox-family stations.
+ *    (`stationContextBarHostClass`; `density="bar"`). Top padding SoT:
+ *    {@link STATION_BOOKMARK_CANVAS_INSET_TOP} ↔ `CONTEXT_PANEL_OUTER_MARGIN`
+ *    — never stack host `py-*` under the absolute identity. Mount as a sibling
+ *    above StationWorkbench with `reserveIdentityClearance`; do not put identity
+ *    in the workbench `entityContext` / `toolbar` slots for Unbox-family stations.
  *    Mid-canvas secondary jumps use {@link StationRightEdgeAction} on the panel
  *    root with `stationRightEdgeActionHostClass` — not inside `moreDetails`.
  * 3. **Header utilities** — {@link StationHeaderToolbar} + workspace mode registry:
@@ -45,7 +47,10 @@ export {
   stationRightEdgeActionHostClass,
   stationContextBarHostClass,
   stationMoreDetailsPaneHostClass,
+  STATION_BOOKMARK_CANVAS_INSET_TOP,
+  STATION_BOOKMARK_CANVAS_INSET_RIGHT,
   STATION_IDENTITY_SCROLL_CLEARANCE,
+  STATION_IDENTITY_STACKED_SCROLL_CLEARANCE,
 } from './station-bookmark';
 export {
   WORKSPACE_MODES,

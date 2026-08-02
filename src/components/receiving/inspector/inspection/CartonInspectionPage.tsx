@@ -42,6 +42,9 @@ import {
   TrackingChip,
 } from '@/components/ui/CopyChip';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { StaffAvatar } from '@/components/identity';
+import { TIMELINE_GLYPH_ICONS } from '@/components/ui/timeline-glyph-icons';
+import { resolveStationGlyph } from '@/lib/timeline/timeline-glyphs';
 import { ReceivingAuditRail } from '@/components/receiving/workspace/ReceivingAuditRail';
 import { CartonUnitJourneyHistory } from './CartonUnitJourneyHistory';
 import { ProgressBadge } from '@/components/receiving/workspace/PoLineBadges';
@@ -79,6 +82,7 @@ import { cn } from '@/utils/_cn';
 import {
   cartonContentsSummary,
   cartonDisposition,
+  cartonEventSignature,
   cartonFacts,
   cartonHeaderIdentity,
   cartonRecordMeta,
@@ -151,7 +155,10 @@ function FactValue({ fact }: { fact: CartonFact }) {
     case 'receivingType':
       return <span className="text-role-caption text-text-default">{receivingTypeMeta(fact.value).label}</span>;
     default:
-      return <span className="truncate text-role-caption text-text-default">{fact.value}</span>;
+      // `block` is load-bearing: `truncate` sets overflow+ellipsis, which an
+      // inline span ignores — so a long staging label used to run past the
+      // column instead of clipping. Only visible once the rail narrowed.
+      return <span className="block truncate text-role-caption text-text-default">{fact.value}</span>;
   }
 }
 
@@ -302,8 +309,18 @@ export function CartonInspectionPage({ receivingId }: { receivingId: number }) {
               findings. Activity moved across (2026-08-02): it is an event
               stream, and reading it next to the other two event streams beats
               reading it under the line list it does not describe.
+
+              The tracks are ASYMMETRIC because the two columns are not peers
+              (2026-08-02): col 1 answers a BOUNDED question — the median carton
+              is one line plus a sparse fact set — while col 2 is an unbounded
+              stream that grows with every scan. Equal tracks guaranteed the
+              imbalance: measured at 1440 on carton 50354 the left content ended
+              212px down against 826px on the right. A rail cannot out-run a
+              timeline and should not try; it should stop pretending to be its
+              peer. Same shape every record surface uses for the same reason
+              (Linear / GitHub / Shopify: metadata rail, wide stream).
             */}
-            <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
+            <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
               <ContentsColumn
                 receiving={receiving}
                 lines={lines ?? []}
@@ -491,7 +508,7 @@ function ContentsColumn({
   hideEmptyContents: boolean;
 }) {
   return (
-    <section className="space-y-5">
+    <section className="space-y-5" data-testid="carton-contents-column">
       {lines.length > 0 ? (
         <div className="space-y-2">
           <div className="flex items-baseline justify-between gap-3">
@@ -509,7 +526,7 @@ function ContentsColumn({
           {facts.length > 0 ? (
             <div className="flex flex-wrap items-start justify-start gap-x-6 gap-y-2">
               {facts.slice(0, 6).map((f) => (
-                <div key={f.key} className="min-w-0 shrink-0 space-y-0.5">
+                <div key={f.key} className="min-w-0 max-w-full shrink-0 space-y-0.5">
                   <p className="text-role-micro uppercase tracking-widest text-text-soft">{f.label}</p>
                   <FactValue fact={f} />
                 </div>
@@ -520,7 +537,7 @@ function ContentsColumn({
           {recordMeta.length > 0 ? (
             <div className="flex flex-wrap items-start justify-start gap-x-6 gap-y-3">
               {recordMeta.map((m) => (
-                <div key={m.key} className="min-w-0 shrink-0 space-y-1">
+                <div key={m.key} className="min-w-0 max-w-full shrink-0 space-y-1">
                   <p className="text-role-micro uppercase tracking-widest text-text-soft">{m.label}</p>
                   <p className="truncate text-role-caption tabular-nums text-text-default">
                     {m.key === 'created' || m.key === 'updated'
@@ -598,7 +615,7 @@ function ProgressRail({
   const log = useMemo(() => toReceivingDetailsLog(receiving), [receiving]);
 
   return (
-    <section className="space-y-5">
+    <section className="space-y-5" data-testid="carton-timeline-column">
       {/*
         No photo card here any more. Photos are the DispositionBar's primary CTA
         and open in-flow above both columns — a mid-rail launcher beside it would
@@ -611,7 +628,7 @@ function ProgressRail({
         </Panel>
       </div>
 
-      {/* Three event streams read together: milestones → activity → journeys. */}
+      {/* Milestones → activity → what is wrong → per-unit journeys. */}
       {events.length > 0 ? (
         <div className="space-y-2">
           <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">Activity</p>
@@ -619,13 +636,16 @@ function ProgressRail({
         </div>
       ) : null}
 
-      <div className="space-y-2">
-        <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">History</p>
-        <Panel padding="sm" radius="xl" elevation="none">
-          <CartonUnitJourneyHistory receivingId={receiving.id} />
-        </Panel>
-      </div>
-
+      {/*
+        FINDINGS sits ABOVE History (hoisted 2026-08-02). `carton-read.md`
+        already rules that exceptions outrank `lifecycle.done` for the
+        disposition header; the same logic says an unresolved finding must not
+        be the last thing an operator scrolls to. History is unbounded — it
+        grows with every unit and photo — so "last in the column" meant "below
+        the fold" on exactly the cartons that had something wrong with them.
+        Findings stay under Activity, not above Progress: the reader still
+        needs to know WHERE the carton is before they can act on what is wrong.
+      */}
       {disposition.exceptions.length > 0 ? (
         <div className="space-y-2">
           <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">Findings</p>
@@ -645,6 +665,13 @@ function ProgressRail({
           </ul>
         </div>
       ) : null}
+
+      <div className="space-y-2">
+        <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">History</p>
+        <Panel padding="sm" radius="xl" elevation="none">
+          <CartonUnitJourneyHistory receivingId={receiving.id} />
+        </Panel>
+      </div>
     </section>
   );
 }
@@ -709,10 +736,24 @@ function ContentsList({ lines }: { lines: CartonInspectorLine[] }) {
 }
 
 function EventsList({ events }: { events: CartonInspectorEvent[] }) {
+  // Same rule the unit journeys use (`mergeStationUnitJourneys`): an identity
+  // chip exists to say WHICH unit a row is about, so on a feed with one distinct
+  // serial it repeats the same last-8 down the column and disambiguates nothing.
+  // Keeping it here while the journeys below dropped it would put two answers to
+  // one question on a single page.
+  const distinctSerials = new Set(
+    events.map((e) => e.serial_number?.trim()).filter((s): s is string => Boolean(s)),
+  );
+  const chipDisambiguates = distinctSerials.size > 1;
+
   return (
     <ul className="divide-y divide-border-soft rounded-xl border border-border-soft bg-surface-card">
       {events.map((e) => {
-        const moved = e.prev_status && e.next_status && e.prev_status !== e.next_status;
+        // What makes this row different from the one above it. Derived in the
+        // model, never re-decided in JSX (same rule as the photo buckets).
+        const { kind, trail } = cartonEventSignature(e);
+        const station = resolveStationGlyph(e.station);
+        const StationGlyph = station ? TIMELINE_GLYPH_ICONS[station.id] : null;
         return (
           <li key={e.id} className="space-y-1 px-3 py-2">
             <div className="flex items-start justify-between gap-3">
@@ -723,15 +764,46 @@ function EventsList({ events }: { events: CartonInspectorEvent[] }) {
                 {formatDateTimePST(e.occurred_at)}
               </span>
             </div>
+            {/*
+              WHO leads. An event is someone's action, and the face is the
+              fastest thing on the row to recognise — the name used to sit last,
+              after the machine tokens. `StaffAvatar` resolves the photo by
+              staff ID (never from the name), so a feed carrying only an actor
+              id still gets the right face.
+            */}
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-role-eyebrow uppercase tracking-widest text-text-soft">
-              {moved ? (
-                <span className="text-text-muted">
-                  {e.prev_status} → {e.next_status}
+              {e.actor_staff_id != null || e.actor_name ? (
+                <span className="flex items-center gap-1.5 normal-case tracking-normal">
+                  <StaffAvatar staffId={e.actor_staff_id} name={e.actor_name} size="xs" />
+                  {e.actor_name ? (
+                    <span className="text-role-caption text-text-default">{e.actor_name}</span>
+                  ) : null}
                 </span>
               ) : null}
-              {e.station ? <span>{e.station}</span> : null}
-              {e.serial_number ? <SerialChip value={e.serial_number} /> : null}
-              {e.actor_name ? <span className="text-text-default">{e.actor_name}</span> : null}
+              {/*
+                The bench is a glyph, not a shouted word: `RECEIVING` in caps
+                out-weighed the note it belonged to. Same shape MasterNav uses
+                for that station (StationReceiving IS PackageOpen), minus the
+                nav stroke wrapper which muddies 14px. An unmapped bench keeps
+                its text rather than vanishing.
+              */}
+              {StationGlyph && station ? (
+                <HoverTooltip
+                  label={station.tooltip}
+                  className={cn('inline-flex items-center', focusRing('control', 'accent'))}
+                >
+                  <StationGlyph className="h-3.5 w-3.5 text-text-soft" />
+                  {/* The glyph replaced a word; keep the word for a reader. */}
+                  <span className="sr-only">{station.tooltip}</span>
+                </HoverTooltip>
+              ) : e.station ? (
+                <span>{e.station}</span>
+              ) : null}
+              {kind ? <span className="text-text-muted">{kind}</span> : null}
+              {trail ? <span className="text-text-muted">{trail}</span> : null}
+              {chipDisambiguates && e.serial_number ? (
+                <SerialChip value={e.serial_number} />
+              ) : null}
             </div>
           </li>
         );

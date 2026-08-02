@@ -312,6 +312,21 @@ export function setStaffAvatarPhotoId(
 }
 
 /**
+ * Patch ONE staffer's colour without discarding the rest of the cache — used
+ * right after a self-recolour so the spine mark flips before `/api/staff`
+ * refetches. Same one-row patch discipline as {@link setStaffAvatarPhotoId}.
+ */
+export function setStaffColorHex(staffId: number, colorHex: string): void {
+  const id = parseStaffId(staffId);
+  if (!id) return;
+  if (!/^#[0-9a-fA-F]{6}$/.test(colorHex)) return;
+  _staffColorCache.set(id, colorHex.toLowerCase());
+  _staffColorVersion += 1;
+  persistStaffColorCache();
+  _staffColorSubscribers.forEach((fn) => fn());
+}
+
+/**
  * Resolved profile-photo id for a staff id, or null when they have none (the
  * common case — the caller then renders colour + initials). Never guesses from
  * a display name: an actor without a resolved staff id has no avatar.

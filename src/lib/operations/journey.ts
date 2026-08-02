@@ -401,6 +401,10 @@ export async function readJourneyEntity(
         sku: r.sku,
         prev_status: r.prev_status,
         next_status: r.next_status,
+        // The spine has always SELECTed this; the projection dropped it, so a
+        // NOTE reached every journey as the bare word "Note" and the sentence
+        // someone wrote was unreadable anywhere in the product.
+        notes: r.notes,
         bin_barcode: r.bin_barcode,
         bin_name: r.bin_name,
         payload: r.payload,

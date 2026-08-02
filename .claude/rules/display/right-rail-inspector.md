@@ -13,8 +13,8 @@
 ```text
 ┌─────────────────────────────────────────────────────────────┐
 │ Row 1 — icon action row (ONLY secondary action surface)     │
-│ [ contextual icons … ]              [ ↑ · ↓ · × ]           │
-│ PaneHeaderActionBar iconOnly         prev next close        │
+│ [ contextual icons … ]              [ >| · ↑ · ↓ ]          │
+│ PaneHeaderActionBar iconOnly        close prev next         │
 ├─────────────────────────────────────────────────────────────┤
 │ Row 2 — dense identity (PaneHeaderLabel)                    │
 │ [badge?]  eyebrow (mode / entity kind)                      │
@@ -41,7 +41,9 @@ Compose with `PaneHeader`: icon cluster in the main row (`leftSlot` / `rightSlot
   - Value: truncated short key at caption density (`paneHeaderLabelValueClass` / `text-role-caption font-semibold`) — order id, item #, SKU, ticket #, tracking.
 - Long product titles, listing sentences, descriptions, and multi-line prose live in the **body** as fact rows — not in the header.
 - Contextual icon actions are a **per-occupant** `PaneHeaderActionBarAction[]` (Link / Sync / Print / Ignore / …). The shell does not hardcode them.
-- Close is `PaneHeaderCloseButton` on the panel (mandatory for `modal={false}`). Queue walk uses ActionBar `onPrev` / `onNext` (↑ · ↓) in the same header band as Close.
+- Close is **`PaneHeaderActionBar onClose`** (which composes `PaneHeaderCloseButton` at the HEAD of its trailing cluster), mandatory for `modal={false}`. Queue walk uses the same bar's `onPrev` / `onNext`, so `close · up · down` is one cluster **by construction** — never close in a `rightSlot` on the row above, which is how the two halves drifted apart and how two headers ended up swallowing the prop. Reach for `PaneHeaderCloseButton` directly only outside an action row.
+- **Close leads, and its glyph is `ArrowRightToLine` (`>|`), not an `X`** (2026-08-02). Dismiss is the control reached for without looking, so it takes the stable end — prev/next come and go with the queue behind the record. The arrow says the panel is parked back against the right edge it came from rather than cancelled; `intent="dismiss"` restores the `X` for a pane that genuinely goes away.
+- **Order surfaces mount `RecordPaneHeader`** (`src/components/order-record/`) — the merge of `ShippedDetailsHeader` + `OrderIdentityHeader` (2026-08-02). Tabs are a `tabs` slot on it, not a second component. Open-full-page is an **action in the icon row**, not a lone `IconButton` beside close.
 
 **Never**
 
@@ -76,7 +78,7 @@ Different rails own different action contracts. Pass them in; do not fork a seco
 | `detail:import-exception` | Resolve · Ignore |
 | `detail:claim` | Print · Square · … |
 
-Far-right cluster is always **↑ · ↓ · ×** when the rail walks a queue; Close alone when it does not.
+Trailing cluster is always **`>| · ↑ · ↓`** when the rail walks a queue; close alone when it does not.
 
 ---
 
@@ -84,7 +86,7 @@ Far-right cluster is always **↑ · ↓ · ×** when the rail walks a queue; Cl
 
 1. `DetailStackRailRegistrar` / `useRegisterRightPanel` — no private geometry.  
 2. `modal={false}` for record peeks; stable id when row→row is the loop.  
-3. Header = `PaneHeader` + dense `PaneHeaderLabel` (short key) + `PaneHeaderActionBar iconOnly` + `PaneHeaderCloseButton`.  
+3. Header = `PaneHeader` + `PaneHeaderActionBar iconOnly` (row 1, with `onPrev`/`onNext`/`onClose`) + dense `PaneHeaderLabel` short key (row 2). Order surfaces: compose `RecordPaneHeader`, don't fork a third.  
 4. No `SidebarIntakeFormShell` on a record inspector.  
 5. Long titles / prose only in the scroll body.  
 6. Push / resize / collapse per Right-rail modality SoT.

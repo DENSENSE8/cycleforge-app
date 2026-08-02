@@ -23,6 +23,7 @@ import { gridFrozenKeys } from '@/design-system/components/grid/grid-column-edit
 import { gridTemplate } from '@/design-system/components/grid/grid-column-geometry';
 import { ordersQueueColVar } from '@/lib/dashboard-order-row-layout';
 import type { ColumnType, TableId } from '@/lib/tables/table-columns';
+import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 
 /**
  * Per-staff column-prefs bucket + Fields-menu vocabulary key. Named once so the
@@ -195,7 +196,6 @@ export function catalogLinkGridFrozenLeft(key: CatalogLinkGridColumnKey): string
   return `calc(${parts.join(' + ')})`;
 }
 
-export type CatalogLinkGridSortDir = 'asc' | 'desc';
 
 /**
  * First-activation direction.
@@ -207,7 +207,7 @@ export type CatalogLinkGridSortDir = 'asc' | 'desc';
  */
 export function defaultDirForCatalogLinkGridSort(
   key: CatalogLinkGridColumnKey,
-): CatalogLinkGridSortDir {
+): GridSortDir {
   if (key === 'orders' || key === 'first' || key === 'last') return 'desc';
   return 'asc';
 }

@@ -1,10 +1,20 @@
 
+/**
+ * Per-browser layout counts for the bin builder.
+ *
+ * **No `gln` here, deliberately.** It lived in this config (and in the rack
+ * printer's twin) until 2026-08-02, which made a per-TENANT legal identifier a
+ * per-BROWSER preference: two operators could print the same rack with
+ * different GLNs, and neither matched `organizations.settings.gs1.gln` — the
+ * value the print ladder, the interop projections and Settings all read. The
+ * GLN now comes from `useOrgGs1()`; these counts stay local because a warehouse
+ * layout genuinely is a property of the machine you build labels on.
+ */
 export interface PrinterConfig {
   maxAisles: number;
   maxBays: number;
   maxLevels: number;
   maxPositions: number;
-  gln: string;
 }
 
 export const DEFAULT_CONFIG: PrinterConfig = {
@@ -12,11 +22,6 @@ export const DEFAULT_CONFIG: PrinterConfig = {
   maxBays: 12,
   maxLevels: 5,
   maxPositions: 20,
-  // No default GLN. A GLN is a LICENSED identifier — the old
-  // `DEFAULT_GLN` placeholder printed GS1's documentation number on every
-  // label. Empty means "this warehouse asserts no GLN", which is a legal
-  // state; the label then carries the bare location code.
-  gln: '',
 };
 
 export const CONFIG_KEY = 'binPrinter.config.v4';

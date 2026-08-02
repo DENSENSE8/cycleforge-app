@@ -19,12 +19,7 @@ import {
   deriveReceivingLineStatus,
   type ReceivingLineStatus,
 } from '@/lib/receiving/workflow-stages';
-
-// Zoho statuses that mean "the vendor side considers this PO received". Mirror
-// of the canonical server constant ZOHO_RECEIVED_LIKE_STATUSES in
-// src/lib/receiving/zoho-received-reconcile.ts — inlined here because that module
-// imports the DB pool and can't be pulled into a client bundle. Keep in sync.
-const ZOHO_RECEIVED_LIKE = new Set(['received', 'billed', 'closed']);
+import { isZohoReceivedLikeStatus } from '@/lib/receiving/zoho-received-status';
 
 /**
  * Operator-facing 3-state model (Scanned → Unboxed → Received), the single
@@ -39,8 +34,7 @@ function railCoarseStatus(row: ReceivingLineRow): ReceivingLineStatus {
   if (row.receiving_source === 'unmatched') {
     return row.unboxed_at || (row.quantity_received ?? 0) > 0 ? 'RECEIVED' : 'SCANNED';
   }
-  const zohoReceived = ZOHO_RECEIVED_LIKE.has(String(row.zoho_status ?? '').trim().toLowerCase());
-  if (zohoReceived) return 'RECEIVED';
+  if (isZohoReceivedLikeStatus(row.zoho_status)) return 'RECEIVED';
   return deriveReceivingLineStatus(row.workflow_status);
 }
 

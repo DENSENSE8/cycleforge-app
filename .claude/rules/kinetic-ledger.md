@@ -26,7 +26,9 @@ Code north star: `src/design-system/DESIGN_SYSTEM.md`.
 
 - Random card soup.
 - Nested cards-as-rows.
-- A second visual language beside Kinetic Ledger tokens.
+- A second visual language beside Kinetic Ledger tokens. *(Changing WHICH face
+  serves a cut is not that — the sans cut moved to Inter 2026-08-02. Adding a
+  FOURTH slot, a display/heading face beside sans/condensed/mono, is.)*
 
 Boards, KPI grids in named rollup zones, and Studio canvas are valid primaries when the data shape
 requires them — the bans above are about *decorative* structure, not about which surface wins.

@@ -19,7 +19,10 @@
  * anatomy regardless of viewport width.
  */
 
-import { gridFrozenKeys } from '@/design-system/components/grid/grid-column-editability';
+import {
+  gridFrozenKeys,
+  isGridColumnResizable,
+} from '@/design-system/components/grid/grid-column-editability';
 import {
   gridColVar,
   gridColumnTrackRem,
@@ -102,7 +105,13 @@ export interface OrdersQueueColumn extends Omit<LedgerGridColumnModel, 'key'> {
  */
 export const ORDERS_QUEUE_COLUMNS: readonly OrdersQueueColumn[] = [
   { key: 'select', width: 'minmax(2rem, 2rem)', frozen: true },
-  { key: 'order', width: 'minmax(4.5rem, 4.5rem)', label: 'Order', type: 'id', frozen: true, labelFitRem: 4.5 },
+  // `align: 'start'` is the declared exception to `ALIGN_BY_TYPE.id` (ruled
+  // 2026-08-02): an ORDER number is the row's own transaction identity — a name
+  // you read, and the first thing scanned on an order-anchored surface — not a
+  // magnitude compared down the column. A catalog SKU / serial / ticket stays
+  // end-aligned, which is why this is an override here and never a change to
+  // the type map. See `source-of-truth.md` → Grid column justification.
+  { key: 'order', width: 'minmax(4.5rem, 4.5rem)', label: 'Order', type: 'id', align: 'start', frozen: true, labelFitRem: 4.5 },
   { key: 'title', width: 'minmax(12rem, 1fr)', label: 'Product', type: 'text', frozen: true, labelFitRem: 8 },
   // Every fact track is sized to fit its own short label, so the default view
   // shows words rather than glyphs. `labelFitRem` stays as the graceful
@@ -124,7 +133,13 @@ export const ORDERS_QUEUE_COLUMNS: readonly OrdersQueueColumn[] = [
  */
 export const ORDERS_QUEUE_TESTED_COLUMNS: readonly OrdersQueueColumn[] = [
   { key: 'select', width: 'minmax(2rem, 2rem)', frozen: true },
-  { key: 'order', width: 'minmax(4.5rem, 4.5rem)', label: 'Order', type: 'id', frozen: true, labelFitRem: 4.5 },
+  // `align: 'start'` is the declared exception to `ALIGN_BY_TYPE.id` (ruled
+  // 2026-08-02): an ORDER number is the row's own transaction identity — a name
+  // you read, and the first thing scanned on an order-anchored surface — not a
+  // magnitude compared down the column. A catalog SKU / serial / ticket stays
+  // end-aligned, which is why this is an override here and never a change to
+  // the type map. See `source-of-truth.md` → Grid column justification.
+  { key: 'order', width: 'minmax(4.5rem, 4.5rem)', label: 'Order', type: 'id', align: 'start', frozen: true, labelFitRem: 4.5 },
   { key: 'title', width: 'minmax(12rem, 1fr)', label: 'Product', type: 'text', frozen: true, labelFitRem: 8 },
   { key: 'sla', width: 'minmax(7rem, 7rem)', label: 'Ship by', type: 'date', labelFitRem: 5 },
   { key: 'tester', width: 'minmax(6rem, 6rem)', label: 'Tester', type: 'text', labelFitRem: 4.5 },
@@ -288,10 +303,15 @@ export function ordersQueueColumnVars(
   return vars;
 }
 
-/** Column keys that carry a drag-resize handle — the labelled data columns; the
- *  select control gutter stays fixed. */
+/**
+ * Column keys that carry a drag-resize handle — resolved from the house rule
+ * ({@link isGridColumnResizable}) rather than "everything but `select`", so this
+ * queue offers the same grips as every other LedgerGrid family: variable-content
+ * tracks yes, the `select` gutter and the fixed-format identifier / magnitude
+ * types (`order` · `qty` · `tracking`) no.
+ */
 export const ORDERS_QUEUE_RESIZABLE_KEYS: readonly string[] = ORDERS_QUEUE_COLUMNS.filter(
-  (c) => c.key !== 'select',
+  isGridColumnResizable,
 ).map((c) => c.key);
 
 /**

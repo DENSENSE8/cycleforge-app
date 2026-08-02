@@ -58,6 +58,16 @@ export interface OrderInspectorContext {
   showDocumentsTab: boolean;
   documentsMode: OrderInspectorDocumentsMode;
   recordCtas: readonly OrderInspectorRecordCta[];
+  /**
+   * Mark-shipped / out-of-stock toggles + the header quick-action set — the
+   * "this lane can dispatch" cluster. The station / packer / shipped panels
+   * observe an order someone else dispatches, so they get none of it.
+   */
+  showDispatchExtras: boolean;
+  /** Delete + the record-plane delete footer. Same lanes as dispatch today. */
+  showDelete: boolean;
+  /** Whether the footer editor dock mounts at all. */
+  showEditorDock: boolean;
 }
 
 export interface ResolveOrderInspectorContextInput {
@@ -83,6 +93,9 @@ const FULFILLMENT_CONTEXT: OrderInspectorContext = {
   showDocumentsTab: true,
   documentsMode: 'preview',
   recordCtas: ['assign', 'open_testing'],
+  showDispatchExtras: true,
+  showDelete: true,
+  showEditorDock: true,
 };
 
 /** The Labels station owns document lifecycle — the only `manage` surface. */
@@ -91,6 +104,9 @@ const LABELS_CONTEXT: OrderInspectorContext = {
   showDocumentsTab: true,
   documentsMode: 'manage',
   recordCtas: ['assign'],
+  showDispatchExtras: true,
+  showDelete: true,
+  showEditorDock: true,
 };
 
 const DASHBOARD_CONTEXT: OrderInspectorContext = {
@@ -98,6 +114,9 @@ const DASHBOARD_CONTEXT: OrderInspectorContext = {
   showDocumentsTab: true,
   documentsMode: 'preview',
   recordCtas: ['assign'],
+  showDispatchExtras: true,
+  showDelete: true,
+  showEditorDock: true,
 };
 
 const STAGED_CONTEXT: OrderInspectorContext = {
@@ -105,6 +124,11 @@ const STAGED_CONTEXT: OrderInspectorContext = {
   showDocumentsTab: true,
   documentsMode: 'preview',
   recordCtas: [],
+  // Staged/station/packer/shipped observe an order they do not dispatch: no
+  // mark-shipped, no delete — but the dock still mounts for its other editors.
+  showDispatchExtras: false,
+  showDelete: false,
+  showEditorDock: true,
 };
 
 /** Station / packer / shipped panels keep the legacy shipping-first body. */
@@ -113,6 +137,9 @@ const STATION_CONTEXT: OrderInspectorContext = {
   showDocumentsTab: false,
   documentsMode: 'hidden',
   recordCtas: [],
+  showDispatchExtras: false,
+  showDelete: false,
+  showEditorDock: true,
 };
 
 export function resolveOrderInspectorContext({

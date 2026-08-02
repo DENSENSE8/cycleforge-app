@@ -16,10 +16,12 @@
 import { gridFrozenKeys } from '@/design-system/components/grid/grid-column-editability';
 import { gridTemplate } from '@/design-system/components/grid/grid-column-geometry';
 import type { LedgerGridColumnModel } from '@/design-system/components/grid/grid-surface-descriptor';
+import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 
 export type ReceivingGridColumnKey =
   | 'select'
   | 'title'
+  | 'status'
   | 'date'
   | 'qty'
   | 'condition'
@@ -74,8 +76,19 @@ export const RECEIVING_GRID_COLUMNS: readonly ReceivingGridColumn[] = [
     type: 'text',
     labelFitRem: 8,
   },
+  // The row's lifecycle answer in ONE track: dot · stage name · day · time
+  // (`ReceivingStatusCell`). Added 2026-08-02, replacing the split where `date`
+  // held `Jul 31`, `stage` held `4:19 PM`, and the STAGE NAME appeared only in
+  // the `stage` column's runtime header label — so a row could not be read
+  // without keeping the header in your head. `type: 'tag'` (a categorical
+  // label, start-aligned and drag-resizable, unlike the fixed-format types).
+  { key: 'status', width: 'minmax(11rem, 11rem)', label: 'Status', type: 'tag', hideKey: 'status', labelFitRem: 4.5 },
   // Civil day of the activity-axis stamp — Pending/Incoming Date column recipe.
-  { key: 'date', width: 'minmax(4.5rem, 4.5rem)', label: 'Date', gridLabel: 'Date', type: 'date', labelFitRem: 4.5 },
+  // Demoted to `optional` when `status` absorbed it: both render the same day,
+  // and two tracks for one fact is what the merge removed. Kept (not deleted)
+  // so a staffer who wants the split back can opt in — and so an existing
+  // `hidden`/`shown` delta stays meaningful.
+  { key: 'date', width: 'minmax(4.5rem, 4.5rem)', label: 'Date', gridLabel: 'Date', type: 'date', hideKey: 'date', tier: 'optional', labelFitRem: 4.5 },
   // 3.5rem / fit 3.5 matches the Pending grid exactly, so the header reads
   // `Qty` instead of a bare `#`. The glyph fallback was ambiguous here: the
   // type registry maps BOTH `number` and `id` to the hash mark, so a label-less
@@ -93,7 +106,10 @@ export const RECEIVING_GRID_COLUMNS: readonly ReceivingGridColumn[] = [
   //
   // `type: 'date'` only so the header draws the clock glyph — the cell is a
   // prose stage word, so `align: 'start'` overrides the numeric `date → end` default.
-  { key: 'stage', width: 'minmax(5rem, 5rem)', label: 'Stage', type: 'date', align: 'start', hideKey: 'rest', labelFitRem: 4.5 },
+  // Demoted to `optional` alongside `date` — `status` now carries this stamp
+  // WITH the stage name beside it, which is the half this column could never
+  // show in the row itself.
+  { key: 'stage', width: 'minmax(5rem, 5rem)', label: 'Stage', type: 'date', align: 'start', hideKey: 'rest', tier: 'optional', labelFitRem: 4.5 },
   // Triage shelf placement (Arrival Location Placement) — core for Unbox Queue.
   {
     key: 'location',
@@ -105,7 +121,10 @@ export const RECEIVING_GRID_COLUMNS: readonly ReceivingGridColumn[] = [
     labelFitRem: 4.5,
   },
   { key: 'platform', width: 'minmax(3rem, 3rem)', label: 'Platform', gridLabel: 'Ch.', type: 'external', hideKey: 'platform', tier: 'optional', labelFitRem: 4.5 },
-  { key: 'order', width: 'minmax(7rem, 7rem)', label: 'Order', type: 'id', hideKey: 'orderid', labelFitRem: 4.5 },
+  // `align: 'start'` — the PO / order number is this row's transaction identity
+  // (a name you read), not a magnitude. Declared exception to `ALIGN_BY_TYPE.id`
+  // ruled 2026-08-02; `serial` below keeps `end` as a reference attribute.
+  { key: 'order', width: 'minmax(7rem, 7rem)', label: 'Order', type: 'id', align: 'start', hideKey: 'orderid', labelFitRem: 4.5 },
   { key: 'tracking', width: 'minmax(8rem, 8rem)', label: 'Tracking', type: 'location', omitCellIcon: true, hideKey: 'tracking', labelFitRem: 4.5 },
   { key: 'serial', width: 'minmax(8rem, 8rem)', label: 'Serial', type: 'id', hideKey: 'serial', tier: 'optional', labelFitRem: 4.5 },
 ] as const;
@@ -137,10 +156,9 @@ export function isReceivingGridFrozen(key: string): boolean {
   return RECEIVING_GRID_LOCKED_KEYS.includes(key as ReceivingGridColumnKey);
 }
 
-export type ReceivingGridSortDir = 'asc' | 'desc';
 
 /** Default direction when first activating a column sort. */
-export function defaultDirForReceivingGridSort(key: ReceivingGridColumnKey): ReceivingGridSortDir {
+export function defaultDirForReceivingGridSort(key: ReceivingGridColumnKey): GridSortDir {
   // Date / stage: most recent first (ops scan).
   if (key === 'date' || key === 'stage') return 'desc';
   return 'asc';

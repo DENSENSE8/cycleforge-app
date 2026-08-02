@@ -39,7 +39,6 @@ import {
   isCatalogLinkGridSortable,
   type CatalogLinkGridColumn,
   type CatalogLinkGridColumnKey,
-  type CatalogLinkGridSortDir,
 } from './catalog-link-grid-layout';
 import {
   IMPORT_EXCEPTION_GRID_COLUMNS,
@@ -48,8 +47,8 @@ import {
   isImportExceptionGridSortable,
   type ImportExceptionGridColumn,
   type ImportExceptionGridColumnKey,
-  type ImportExceptionGridSortDir,
 } from './import-exception-grid-layout';
+import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 
 /**
  * One-shot "settle" re-render after the grid first has data.
@@ -83,7 +82,7 @@ function compareChoreRows(
   a: CatalogLinkChoreRow,
   b: CatalogLinkChoreRow,
   key: CatalogLinkGridColumnKey,
-  dir: CatalogLinkGridSortDir,
+  dir: GridSortDir,
 ): number {
   const sign = dir === 'asc' ? 1 : -1;
   switch (key) {
@@ -177,14 +176,15 @@ export function CatalogLinkChoresGrid({
         isSearching={shared.isSearching}
         scrollRef={scrollRef}
         testId="catalog-link-grid-body"
-        renderColumnHeader={({ toggleColumnSort }) => (
+        tableId={CATALOG_LINK_TABLE_ID}
+        columnDetails={{ open: columnDetailsOpen, onOpen: () => setColumnDetailsOpen(true) }}
+        renderColumnHeader={({ toggleColumnSort, onResizeColumn }) => (
           <CatalogLinkGridColumnHeader
             columns={visible}
             activeSort={columnSort}
             sortDir={sortDir}
             onSortColumn={toggleColumnSort}
-            onOpenColumnDetails={() => setColumnDetailsOpen(true)}
-            columnDetailsOpen={columnDetailsOpen}
+            onResizeColumn={onResizeColumn}
           />
         )}
         renderGroup={(group) => <>{group.rows.map(renderLeaf)}</>}
@@ -206,7 +206,7 @@ function compareExceptionRows(
   a: ImportExceptionRow,
   b: ImportExceptionRow,
   key: ImportExceptionGridColumnKey,
-  dir: ImportExceptionGridSortDir,
+  dir: GridSortDir,
 ): number {
   const sign = dir === 'asc' ? 1 : -1;
   switch (key) {
@@ -306,14 +306,15 @@ export function ImportExceptionsGrid({
         isSearching={shared.isSearching}
         scrollRef={scrollRef}
         testId="import-exception-grid-body"
-        renderColumnHeader={({ toggleColumnSort }) => (
+        tableId={IMPORT_EXCEPTION_TABLE_ID}
+        columnDetails={{ open: columnDetailsOpen, onOpen: () => setColumnDetailsOpen(true) }}
+        renderColumnHeader={({ toggleColumnSort, onResizeColumn }) => (
           <ImportExceptionGridColumnHeader
             columns={visible}
             activeSort={columnSort}
             sortDir={sortDir}
             onSortColumn={toggleColumnSort}
-            onOpenColumnDetails={() => setColumnDetailsOpen(true)}
-            columnDetailsOpen={columnDetailsOpen}
+            onResizeColumn={onResizeColumn}
           />
         )}
         renderGroup={(group) => <>{group.rows.map(renderLeaf)}</>}

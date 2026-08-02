@@ -89,7 +89,7 @@ export function BinBuilderDesktop({ c }: { c: BinLabelPrinterController }) {
         bay={c.bay}
         level={c.level}
         position={c.position}
-        gln={c.config.gln}
+        gln={c.gln}
       />
 
       <ConfigSheet open={c.configOpen} onClose={() => c.setConfigOpen(false)} config={c.config} onSave={c.handleConfigSave} />

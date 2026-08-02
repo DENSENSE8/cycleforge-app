@@ -239,6 +239,17 @@ export const AUDIT_ACTION = {
    */
   RECEIVING_CONTENTS_CONFIRMED: 'receiving.contents.confirmed',
   RECEIVING_CONTENTS_REOPENED:  'receiving.contents.reopened',
+  /**
+   * An operator confirmed they read this LINE's printed label face — the
+   * `label` step of the Unbox procedure
+   * (`receiving_line_testing.label_previewed_at`).
+   *
+   * Paired with its retraction for the same reason as the contents pair above,
+   * and a LINE fact rather than a carton one because a multi-line PO prints one
+   * face per line.
+   */
+  RECEIVING_LABEL_PREVIEWED: 'receiving.label.previewed',
+  RECEIVING_LABEL_REOPENED:  'receiving.label.reopened',
   /** Incoming email to-do check-off / restore — a reversible pile move on an
    *  email_missing_purchase_orders row, never a delete. */
   RECEIVING_TODO_CHECKED:    'receiving.todo.checked',
@@ -356,6 +367,13 @@ export const AUDIT_ACTION = {
   // Photo library — minted N temporary signed share links for selected photos
   PHOTO_SHARE_LINK:        'photo.share_link',
   PHOTO_REASSIGN:          'photo.reassign',
+  // Photo ASPECT — *what this shot shows*, claimed after the fact. Two actions,
+  // not one with a null `after`: `photos.photo_aspect` is overwritable, so
+  // audit_logs is the only place the original claim survives, and a rollup that
+  // counted a retraction as a classification would read the trail backwards.
+  // Same pairing as RECEIVING_LABEL_PREVIEWED / …_REOPENED.
+  PHOTO_ASPECT_SET:        'photo.aspect_set',
+  PHOTO_ASPECT_CLEARED:    'photo.aspect_cleared',
   // Photo library master folders (operator-created, persistent) + assignments
   PHOTO_FOLDER_CREATE:     'photo_folder.create',
   PHOTO_FOLDER_RENAME:     'photo_folder.rename',
@@ -394,6 +412,20 @@ export const AUDIT_ACTION = {
    */
   STAFF_AVATAR_SET:   'staff.avatar.set',
   STAFF_AVATAR_CLEAR: 'staff.avatar.clear',
+  /**
+   * Staff identity colour change (`staff.color_hex`). Same attribution rationale
+   * as the avatar verbs — a recoloured mark is how work is attributed when
+   * there is no photo. Self OR admin; `extra.self` distinguishes the actor.
+   */
+  STAFF_COLOR_SET: 'staff.color.set',
+  /**
+   * Staff display-name change (`staff.name`). Audited for the same reason as the
+   * avatar and colour verbs, and more sharply: the name is the PRIMARY thing a
+   * timeline, journey or schedule pill attributes work to, so renaming is the
+   * cheapest way to make past work read as someone else's. Self OR admin;
+   * `extra.self` distinguishes which.
+   */
+  STAFF_NAME_SET: 'staff.name.set',
   // Home Inbox — personal follow/mute on an entity, and inbox triage.
   SUBSCRIPTION_TOGGLE: 'subscription.toggle',
   INBOX_TRIAGE: 'inbox.triage',

@@ -53,9 +53,18 @@ function makeRow(i: number, overrides: Partial<MockRow> = {}): MockRow {
   };
 }
 
+// An `email_po` row's TITLE is not `product_title` — `unfoundRowTitle` renders
+// the context's prefix (the email subject) for that kind, and only falls back to
+// `product_title` when the context is empty. So the sort fixture has to put the
+// alphabetising word in the CONTEXT prefix, or it is asserting against a title
+// the surface never displays. The ` · PO: …` suffix keeps the PO-chip coverage.
 const ROWS: MockRow[] = [
   makeRow(0, { product_title: 'Zulu Carton', usa_team_note: 'Waiting on vendor' }),
-  makeRow(1, { product_title: 'Alpha Mailbox', kind: 'email_po' }),
+  makeRow(1, {
+    product_title: 'Alpha Mailbox',
+    kind: 'email_po',
+    context: 'Alpha Mailbox · PO: 19-14668-49101',
+  }),
   makeRow(2, { product_title: 'Mid Tracking', kind: 'unmatched_receiving' }),
 ];
 
@@ -109,7 +118,11 @@ test.describe('Admin · Unfound / PO Mailbox grid', () => {
     const first = rows(page).first();
     await expect(first).toBeVisible({ timeout: 20_000 });
 
-    await first.click();
+    // Click the TITLE cell's label, not the row's geometric centre. The row
+    // deliberately ignores clicks that land on an inline control
+    // (`input, textarea, button, label`) so an in-cell edit never also swaps the
+    // detail plane — and the row's centre falls in the notes editor column.
+    await first.locator('[data-col="title"] span').first().click();
 
     await expect(first).toHaveAttribute('aria-pressed', 'true');
     // Detail panel mounts via AnimatePresence at the host — close control proves it.

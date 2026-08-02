@@ -1,16 +1,14 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { X } from '@/components/Icons';
-import { IconButton } from '@/design-system/primitives';
-import { useHorizontalEdgeResize } from '@/design-system/hooks';
-import { cn } from '@/utils/_cn';
+import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
+import {
+  PaneHeader,
+  PaneHeaderCloseButton,
+  PaneHeaderLabel,
+} from '@/components/ui/pane-header';
 
 type OpenPaneDetail = { poId?: string; poNumber?: string };
-
-const DEFAULT_WIDTH = 560;
-const MIN_WIDTH = 320;
-const WIDTH_STORAGE_KEY = 'zoho-pane-width';
 
 function buildZohoUrl(detail: OpenPaneDetail): string {
   const poId = (detail.poId || '').trim();
@@ -25,23 +23,28 @@ function buildZohoUrl(detail: OpenPaneDetail): string {
 }
 
 /**
- * Right-side overlay for opening a Zoho Inventory purchase order. Zoho blocks
- * iframe embedding (X-Frame-Options), so the pane surfaces an "Open in Zoho"
- * deep link. Hidden by default; the flow-header action dispatches
+ * Right-side reference pane for opening a Zoho Inventory purchase order. Zoho
+ * blocks iframe embedding (X-Frame-Options), so the pane surfaces an "Open in
+ * Zoho" deep link. Hidden by default; the flow-header action dispatches
  * `open-zoho-pane` with the PO id / number.
  *
- * The pane has a draggable left edge; width is persisted across sessions via
- * {@link useHorizontalEdgeResize}.
+ * **It was a private `fixed right-0 top-0 z-40` aside until 2026-08-01** — the
+ * literal shape `lib/right-rail/store.ts`'s docblock names as the bug it exists
+ * to prevent, plus a raw `z-40` outside the z-index scale and a hand-rolled rgba
+ * shadow. It also hand-rolled its own resize grip and width persistence, all of
+ * which `RightRailHost` already owns.
+ *
+ * Now a non-modal rail occupant, so it PUSHES the receiving work surface rather
+ * than covering the PO rows the operator opened it from. Width, the resize grip,
+ * the collapse strip and Escape all come from the host.
+ *
+ * The occupant id is stable across POs on purpose: this is one singleton viewer
+ * that re-targets, not a queue being walked, so a per-PO id would play
+ * exit → empty → enter every time the header action fires again.
  */
 export function ZohoSplitPane() {
   const [open, setOpen] = useState(false);
   const [url, setUrl] = useState('');
-  const { width, edgeHandleProps, isDragging } = useHorizontalEdgeResize({
-    storageKey: WIDTH_STORAGE_KEY,
-    defaultWidth: DEFAULT_WIDTH,
-    minWidth: MIN_WIDTH,
-    enabled: open,
-  });
 
   useEffect(() => {
     const handler = (e: Event) => {
@@ -57,51 +60,46 @@ export function ZohoSplitPane() {
     return () => window.removeEventListener('open-zoho-pane', handler);
   }, []);
 
-  if (!open || !url) return null;
+  const close = () => setOpen(false);
 
   return (
-    <aside
-      className="fixed right-0 top-0 z-40 flex h-full flex-col border-l border-border-soft bg-surface-card shadow-[0_0_24px_-12px_rgba(15,23,42,0.35)]"
-      style={{ width }}
-      role="complementary"
-      aria-label="Zoho PO viewer"
+    <DetailStackRailRegistrar
+      id="detail:zoho-po"
+      enabled={open && !!url}
+      onClose={close}
+      modal={false}
+      ariaLabel="Purchase order viewer"
     >
-      <div
-        {...edgeHandleProps}
-        className={cn(
-          'absolute -left-0.5 top-0 z-10 h-full w-1.5 cursor-col-resize bg-transparent hover:bg-blue-400/40 active:bg-blue-500/60',
-          isDragging && 'bg-blue-500/60',
-        )}
-        aria-label="Resize Zoho pane"
-      />
-
-      <header className="flex h-10 shrink-0 items-center justify-between border-b border-border-hairline bg-surface-canvas px-3">
-        <span className="text-role-caption font-semibold uppercase tracking-[0.18em] text-text-muted">
-          Zoho · Purchase Order
-        </span>
-        <IconButton
-          onClick={() => setOpen(false)}
-          ariaLabel="Close Zoho pane"
-          icon={<X className="h-4 w-4" />}
-          className="flex h-7 w-7 items-center justify-center rounded hover:bg-surface-strong"
+      <div className="flex h-full min-h-0 flex-col overflow-hidden">
+        <PaneHeader
+          leftSlot={<PaneHeaderLabel eyebrow="Purchase order" value="Zoho" />}
+          rightSlot={
+            <PaneHeaderCloseButton
+              onClick={close}
+              ariaLabel="Close purchase order viewer"
+              title="Close purchase order viewer"
+            />
+          }
         />
-      </header>
 
-      <div className="min-h-0 flex-1">
-        <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center text-role-caption text-text-soft">
-          <p className="leading-snug">
-            Purchase orders open in the inventory provider. Use the link below to view the PO.
-          </p>
-          <a
-            href={url}
-            target="_blank"
-            rel="noreferrer"
-            className="rounded-md bg-blue-600 px-3 py-1.5 text-role-caption font-semibold uppercase tracking-[0.16em] text-white hover:bg-blue-700"
-          >
-            Open in Zoho
-          </a>
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center text-role-caption text-text-soft">
+            <p className="leading-snug">
+              Purchase orders open in the inventory provider. Use the link below to view the PO.
+            </p>
+            {/* Deep link into the vendor web app — one of the sanctioned places a
+                brand name is allowed in operator copy. */}
+            <a
+              href={url}
+              target="_blank"
+              rel="noreferrer"
+              className="rounded-md bg-blue-600 px-3 py-1.5 text-role-caption font-semibold uppercase tracking-[0.16em] text-white hover:bg-blue-700"
+            >
+              Open in Zoho
+            </a>
+          </div>
         </div>
       </div>
-    </aside>
+    </DetailStackRailRegistrar>
   );
 }

@@ -9,10 +9,15 @@
  * per-stage thumb rows; a failed photo fetch degrades that serial to
  * events-only (never blocks the feed).
  *
- * Station two-line anatomy (`metaTrail` + `refInline`):
+ * Station anatomy (`metaTrail` + `refInline`):
  *   1. Primary — event outcome ("Tested — Fail")
  *   2. Secondary — SerialChip last-8 · clock · actor
  * Raw PREV → NEXT machine trails are omitted (duplicate the title dialect).
+ *
+ * The secondary line is EARNED BY THE CHIPS. A single-unit carton carries no
+ * serial chip (nothing to disambiguate — see `mergeStationUnitJourneys`), so
+ * those rows collapse to one line with the clock trailing the title. Two-line
+ * is the multi-unit shape, not the default.
  */
 
 import { useMemo } from 'react';

@@ -43,13 +43,21 @@ describe('order-record concise surface', () => {
     );
   });
 
-  it('OrderFullPageView uses OrderIdentityHeader, not ShippedDetailsHeader', () => {
+  it('OrderFullPageView mounts the merged RecordPaneHeader with no tab strip', () => {
     const source = readFileSync(path.join(ROOT, FULL_PAGE), 'utf8');
-    assert.match(source, /OrderIdentityHeader/, `${FULL_PAGE} must use OrderIdentityHeader`);
+    assert.match(source, /RecordPaneHeader/, `${FULL_PAGE} must use RecordPaneHeader`);
+    // The two order headers merged (handoff §4); the old names must not return.
     assert.doesNotMatch(
       source,
-      /ShippedDetailsHeader/,
-      `${FULL_PAGE} must not mount ShippedDetailsHeader`,
+      /OrderIdentityHeader|ShippedDetailsHeader/,
+      `${FULL_PAGE} must not mount a forked order header`,
+    );
+    // The full page scrolls ONE record body — the eight-tab strip is slide-over
+    // chrome and re-growing it here would put two navigations on one record.
+    assert.doesNotMatch(
+      source,
+      /\btabs=\{/,
+      `${FULL_PAGE} must not pass a tab strip to RecordPaneHeader`,
     );
   });
 });

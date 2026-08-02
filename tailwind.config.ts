@@ -164,12 +164,12 @@ const config = {
                 'fill-fulfillment': 'var(--ds-color-fill-fulfillment)',
             },
             fontFamily: {
-                sans: ['var(--ds-font-sans)', 'IBM Plex Sans', 'system-ui', 'sans-serif'],
+                sans: ['var(--ds-font-sans)', 'Inter', 'system-ui', 'sans-serif'],
                 // Dense-chrome cut. You should almost never write `font-condensed`
                 // by hand — `text-role-eyebrow` / `text-role-micro` bind it
                 // intrinsically (plugin below). Reach for the ROLE whose job is
                 // dense chrome, not for the family.
-                condensed: ['var(--ds-font-condensed)', 'IBM Plex Sans Condensed', 'IBM Plex Sans', 'system-ui', 'sans-serif'],
+                condensed: ['var(--ds-font-condensed)', 'IBM Plex Sans Condensed', 'Inter', 'system-ui', 'sans-serif'],
                 mono: ['var(--ds-font-mono)', 'IBM Plex Mono', 'ui-monospace', 'monospace'],
             },
             fontSize: {

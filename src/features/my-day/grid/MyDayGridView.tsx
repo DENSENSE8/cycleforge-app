@@ -13,11 +13,11 @@ import {
   isMyDayGridSortable,
   type MyDayGridColumn,
   type MyDayGridColumnKey,
-  type MyDayGridSortDir,
 } from '@/lib/my-day/my-day-grid-layout';
 import { makeMyDayGridDescriptor } from './my-day-grid-descriptor';
 import { MyDayGridColumnHeader } from './MyDayGridColumnHeader';
 import { MyDayGridRow } from './MyDayGridRow';
+import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 
 interface MyDayGridViewProps {
   tasks: MyDayTask[];
@@ -36,7 +36,7 @@ function compareMyDayTasks(
   a: MyDayTask,
   b: MyDayTask,
   key: MyDayGridColumnKey,
-  dir: MyDayGridSortDir,
+  dir: GridSortDir,
 ): number {
   const sign = dir === 'asc' ? 1 : -1;
   switch (key) {
@@ -155,14 +155,15 @@ export function MyDayGridView({
       isSearching={isFiltered}
       scrollRef={scrollRef}
       testId="my-day-grid-body"
-      renderColumnHeader={({ toggleColumnSort }) => (
+      tableId={MY_DAY_TABLE_ID}
+      columnDetails={{ open: columnDetailsOpen, onOpen: () => setColumnDetailsOpen(true) }}
+      renderColumnHeader={({ toggleColumnSort, onResizeColumn }) => (
         <MyDayGridColumnHeader
           columns={visible}
           activeSort={columnSort}
           sortDir={sortDir}
           onSortColumn={toggleColumnSort}
-          onOpenColumnDetails={() => setColumnDetailsOpen(true)}
-          columnDetailsOpen={columnDetailsOpen}
+          onResizeColumn={onResizeColumn}
         />
       )}
       renderGroup={(group) => (

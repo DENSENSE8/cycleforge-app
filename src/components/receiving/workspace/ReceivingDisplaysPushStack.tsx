@@ -4,45 +4,57 @@
  * Unbox Displays — the station-scoped right-edge **push** column that now holds
  * every Unbox display except the carton itself.
  *
- * Lane E moved the workbench tab strip here: `overview` stayed and became the
- * whole centre (capture stack → PO lines → label preview), and
- * `classify · listings · units · po-note · checklist · support · tracking ·
- * timeline` plus the PO-pairing pencil moved into this column.
+ * The scan-progress **ring** stays **pane-anchored** (same top-right corner open
+ * or closed) — it is the toggle that opens this column, so it cannot be gated on
+ * the column being open. The `close · up · down` cursor trio beside it is
+ * rail-scoped and mounts only while a push column is up, so this header's top
+ * inset reserves the full cluster's band whenever it is the open occupant. The
+ * ⋯ overflow stays flush with the column's right edge.
  *
- * It composes {@link UnboxPushColumn}, so it is a PEER of Ticket / Claim / tool
- * push — **not** a `RightRailHost` occupant. The right slot stays single-
- * occupancy and `detail:receiving` keeps the float host; LineEditPanel enforces
- * the mutual exclusion.
- *
- * The tab bar is the same {@link UnboxSectionTabs} / `SectionTabsSlider` the
- * workbench used, so a moved tab renders the same body with the same handlers —
- * and the overflow ⋯ keeps the strip usable at push-column width.
+ * There is no `rightSlot`: the PO-pairing pencil that used to live there was
+ * deleted on 2026-08-02 when Package Pairing became a display of its own. A
+ * tab's selected-ness IS its open state, so a separate toggle beside the strip
+ * would be a second flag to keep in sync.
  */
 
-import type { ReactNode } from 'react';
 import type { SectionTab } from '@/design-system/components';
 import { UnboxSectionTabs } from './line-edit/terminal/unbox-tabs';
 import { UnboxPushColumn } from './UnboxPushColumn';
 
 const DISPLAYS_PUSH_STORAGE_KEY = 'unbox-displays-push-width';
-/**
- * Wider ceiling than Ticket (480): the Support hub, the tracking editor and the
- * classify checklist all carry two-column rows at ~560.
- */
 const DISPLAYS_PUSH_MAX_WIDTH_PX = 560;
+
+/**
+ * Top inset on the strip header — reserves the pane-anchored utility row
+ * (`↑ ↓ ×` + scan-progress ring) as a band ABOVE the strip.
+ *
+ * Derived: that cluster is `absolute top-2` on the pane host and one
+ * `IconButton` sm tall (28px), so it occupies y 8…36 measured from the same
+ * host box the Displays column starts at. `pt-9` (36px) puts the strip row at
+ * y 44 — an 8px gap under it.
+ *
+ * **Top, never right.** A right inset (`pr-7`) also cleared the cluster, but it
+ * did so by holding a dead gutter open on the strip's own row, which pushed the
+ * PO pencil inward from the column edge it belongs on. The cluster is a
+ * different row, so it should cost a different axis.
+ *
+ * `-mr-1` pulls the row 4px past the scroll container's `px-4`, which is exactly
+ * the internal padding of the trailing `xs` `IconButton` (24px box, 14px glyph).
+ * That lands the GLYPH on the 16px gutter instead of the button's invisible box
+ * — optically flush right, which is what "flush" means for an icon button. A
+ * button whose border actually touched the card edge would read as clipped.
+ */
+const DISPLAYS_STRIP_HEADER_CLASS = 'pt-9 -mr-1';
 
 export function ReceivingDisplaysPushStack({
   tabs,
   activeTab,
   onTabChange,
-  rightSlot,
   onClose,
 }: {
   tabs: SectionTab[];
   activeTab: string;
   onTabChange: (id: string) => void;
-  /** Context control pinned right of the strip — the PO-pairing pencil. */
-  rightSlot?: ReactNode;
   onClose: () => void;
 }) {
   return (
@@ -57,12 +69,13 @@ export function ReceivingDisplaysPushStack({
       collapseLabel="Hide displays"
       onClose={onClose}
     >
-      <div className="flex h-full min-h-0 flex-col overflow-y-auto px-4 py-3">
+      <div className="flex h-full min-h-0 flex-col overflow-y-auto px-4 pb-2 pt-0">
         <UnboxSectionTabs
           tabs={tabs}
           value={activeTab}
           onChange={onTabChange}
-          rightSlot={rightSlot}
+          headerClassName={DISPLAYS_STRIP_HEADER_CLASS}
+          compact
         />
       </div>
     </UnboxPushColumn>

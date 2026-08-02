@@ -22,7 +22,7 @@ ruling reverses.
 >
 > 1. **Action icons are the TOP row of the panel header.** No labelled button
 >    block anywhere in the panel.
-> 2. **The far right of that row is `up · down · close`**, one right-aligned
+> 2. **The far right of that row is `close · up · down`**, one right-aligned
 >    cluster, in that order.
 > 3. **The panel PUSHES the work surface.** It takes width from the LEFT first —
 >    collapse/displace the spine, then the context rail — and only overlays if
@@ -89,13 +89,38 @@ workbench record inspector and import-adjacent progress surface is a
   AsListedEditPopover / CatalogManagerPopover / UnitSlotsManageOverlay /
   PreboxWizard (anchored field editors + wizards — different contract).
 
-## 3. What is OPEN
+## 3. What WAS open — all three closed 2026-08-02
 
-### 3.1 Icon row + `up · down · close`
+§3.1, §3.2 and §3.3 are **done**. The sections below are kept as the record of
+what was decided and why; read them before re-opening any of it.
 
-Today prev/next live in `PaneHeaderActionBar` (the `belowSlot` row) and close
-sits in `rightSlot` of the row *above*. They must end up as **one right-aligned
-cluster on the top row**, with the action icons as that same top row.
+### 3.1 Icon row + `close · up · down` — ✅ DONE 2026-08-02
+
+Prev/next lived in `PaneHeaderActionBar` (the `belowSlot` row) and close sat in
+`rightSlot` of the row *above*. They are now **one right-aligned cluster on the
+top row**, with the action icons as that same top row.
+
+**Fixed at the primitive, not per header.** `PaneHeaderActionBar` takes
+`onClose` and renders `PaneHeaderCloseButton` at the HEAD of its trailing
+cluster, so `close · up · down` is structural — a header cannot re-order it or
+forget half of it. Every rail gets the grammar by passing one more prop.
+
+**Close leads, and wears `>|` (`ArrowRightToLine`), not an `X`** (ordered
+2026-08-02, after seeing it). Dismiss is reached for without looking, so it
+takes the stable end — prev/next come and go with the queue behind the record,
+and a trailing close shifts under the cursor whenever they do. The arrow says
+the panel is parked back against the right edge it came from rather than
+cancelled; `intent="dismiss"` restores the `X` where a pane genuinely goes away.
+
+**The rows swapped roles**, per the SoT: row 1 is the icon action row (spanning
+the full width so the bar's own spacer pushes the cluster to the far edge), row
+2 is the dense `PaneHeaderLabel` identity, row 3 is the optional tab strip.
+Open-full-page stopped being a lone `IconButton` beside close and became an
+entry in the contextual action set — the loose-button-beside-the-icon-row shape
+the grammar bans.
+
+**Implemented once, because the two headers merged first** (§4) — see
+`RecordPaneHeader`.
 
 Grammar is now SoT: `.claude/rules/source-of-truth.md` → Right-rail modality →
 **Panel header grammar**.
@@ -103,16 +128,28 @@ Grammar is now SoT: `.claude/rules/source-of-truth.md` → Right-rail modality �
 ⚠️ `dashboard-bulk-actions.spec.ts` reads action **`aria-label`** strings off the
 DOM. `PaneHeaderActionBar iconOnly` preserves `label` as `aria-label` — keep it.
 
-### 3.2 FLAG / NOTES / "Add note" must not render in this panel
+### 3.2 FLAG / NOTES / "Add note" must not render in this panel — ✅ DONE 2026-08-02
 
-`OrderTriageSection`, mounted from `ShippedDetailsBody.tsx:312` behind
-`showTriage = showDashboardDelete && Number(shipped.id) > 0`.
+`OrderTriageSection` is **deleted** (it had exactly one mount) and `showNotes`
+is hard `false` on **both** branches — `ShippedDetailsBody` for the legacy
+tabbed contexts, and the order-record branch's own `ShippedPanelEditorDock` in
+`ShippedDetailsPanel`. The trap was real and is why both had to change: the dock
+read `showNotes={!showTriage}`, so turning the section off alone would have
+*moved* the composer down rather than removing it.
 
-**Trap:** the sibling dock reads `showNotes={!showTriage}`, so flipping
-`showTriage` alone *moves* the composer instead of removing it. Turn both off.
-Note-writing then lives only on `/o/[orderId]` (the header's external-link icon).
-That is a deliberate capability removal — `order-note-grain.guard.test.ts`
-governs the write path and should still pass, but run it.
+Note-writing now lives only on `/o/[orderId]`, reached from the open-full-page
+action which §3.1 promoted into the header's icon row. `SupportOrdersWorkspace`
+keeps its own composer — it is not this panel.
+
+**The write path is untouched**, which is what keeps this a placement change
+rather than a grain change: `order_notes` via `POST /api/orders/[id]/notes`,
+one writable home. `order-note-grain.guard.test.ts` passes.
+
+⚠️ **What was actually given up.** This also removed the row-flag readout — the
+panel was the one place that said *which* tag, *why*, and *who* wrote the notes,
+and the grid only says *that* a row is flagged. That trade is deliberate but it
+is the part to revisit first if operators complain; the cheapest reversal is the
+flag block alone, without the composer.
 
 ### 3.3 Push (the ruling)
 
@@ -125,47 +162,81 @@ governs the write path and should still pass, but run it.
   reversal rationale.
 - Both right-edge grammars now push; they differ in scope, not in reflow.
 
-Engineering still owed:
+**✅ SHIPPED — verified by call site 2026-08-02, not by docblock.** The four
+items below were all owed; here is where each landed.
 
-1. **Measure and record** the arithmetic at 1280 / 1440 / 1920, spine open and
-   closed, against the grid's own minimum content width. Write the numbers into
-   this file. (Known from the 2026-07-28 round: with the sidebar collapsed a
-   432px push leaves 944px, which cleared both column sets.)
-2. **Mechanism = the deliberate PUSH toggle** in
-   `.claude/rules/display/motion-crossfade.md` — tween (never a spring: it would
-   rubber-band the width every sibling lays out against), explicit gesture, and
-   fixed-width edge-anchored content inside an `overflow-hidden` host. Copy
-   `SidebarNavColumn`; do not invent a second recipe.
-3. **Decide the blast radius before editing the host.** `RightRailHost` serves
-   one occupant app-wide (assistant, SKU, repair, receiving, FBA, support …).
-   Say in this file whether push is host-wide or scoped to the dashboard
-   occupants, then implement that.
-4. The old float rationale lives on in
-   `docs/todo/dashboard-inline-detail-editing-EXECUTION-PLAN.md` and the project
-   memory `dashboard-non-modal-inspector` (memory already updated). Fix any
-   other doc that still asserts "inspectors float".
+1. **The arithmetic is code, and unit-pinned.** It lives in
+   `src/lib/right-rail/frame.ts` (`resolveRightRailFrame`, pure + DOM-free) with
+   every worked number asserted in `frame.test.ts`. The constants:
+   `MIN_WORK_SURFACE_PX = 784` (derived — the larger of the Outbound grid's 640
+   show-all + `lg:px-8` gutters = 704, and the station workbench's 720 + `px-6`
+   = 768), `CONTEXT_RAIL_PARKED_PX` = the 32px strip + margins,
+   `RIGHT_RAIL_GUTTER_PX = 8`. Below a **1160px content row** the answer is
+   overlay.
+   **The ruling's three-rung ladder shipped as two**, and that correction is in
+   the SoT: measured in the running app at 1440/1920, `[data-sidebar-nav-column]`
+   reports width **0 on every route** (`navOpen` is unpersisted
+   `useState(false)`), so a spine rung would be dead code in the common case and
+   would fight `SidebarNavColumn`'s own no-auto-close rule. Rung 0 nothing
+   yields → rung 1 the context rail parks → else overlay.
+2. **Mechanism is the sanctioned PUSH toggle**, tween not spring, per
+   `motion-crossfade.md`. Two `AnimatePresence` with two keys (outer keyed on a
+   constant so the column joining/leaving the flow does not replay on a record
+   swap; inner keyed on the occupant id), and an opacity-only presence preset —
+   the width tween already owns arrive/leave, so an `x` translate would slide
+   the column out of the slot it just reserved.
+3. **Blast radius: HOST-WIDE, gated per occupant.** The decision lives in the
+   frame store, so it serves every `RightRailHost` occupant rather than a
+   dashboard special case — but `wantsPush` is per occupant, so the surfaces
+   that must not push (station edge columns, the assistant, anything modal)
+   resolve to overlay by construction. Enforced by
+   `right-rail-push.guard.test.ts`: *"the push/overlay decision belongs to
+   `resolveRightRailFrame`"*.
+   **The park is an ephemeral MASK, never a write** — `ContextPanelLayout` ORs
+   `parkRail` into its collapsed state and must never call `setCollapsed(true)`
+   from that path, or opening a record would leave `context-panel-collapsed` in
+   the operator's localStorage forever. A push-park therefore renders no expand
+   strip and costs **0** in the ladder, while an operator-chosen collapse costs
+   the 32px strip.
+4. Docs: `AGENTS.md`, `source-of-truth.md` and the project memory were amended
+   the same day. `dashboard-inline-detail-editing-EXECUTION-PLAN.md` still
+   carries the old float rationale as history.
 
 ## 4. Code simplification worth doing while in here
 
 Real duplications on this surface — each is a "two shapes for one job" the house
 rules already ban:
 
-- **Two order-panel headers.** `ShippedDetailsHeader`
-  (`src/components/shipped/details-panel/`) and `OrderIdentityHeader`
-  (`src/components/order-record/`) render the same identity band + action bar and
-  diverge only in tabs; `ShippedDetailsPanel` picks on `isOrderRecord`. Should be
-  one component with a `tabs?` slot — and §3.1 has to be implemented twice until
-  they are merged.
-- **`RailActionRegion` may now be dead-ish** — after the header move it survives
-  only in `OrderRailCompare` / `OrderRailShell`. If those gain pane headers,
-  delete it and keep only `useRailHeaderActions`. Check `npm run knip`.
-- **`ShippedDetailsBody` gates on five booleans** (`showDashboardExtras`,
-  `showQuickLinks`, `showTriage`, `showEditorDock`, `documentsMode`) resolved from
-  `resolveOrderInspectorContext`. Push the decision into that resolver so the body
-  reads one descriptor.
-- **Context trap:** the dashboard's Pending/Tested lanes reach this panel with
-  context `'fulfillment'`, NOT `'dashboard'` — `isOrderRecord` is false there.
-  That mismatch has already caused two reverts. Verify which branch renders.
+- ✅ **Two order-panel headers → one.** `RecordPaneHeader`
+  (`src/components/order-record/`) replaced `ShippedDetailsHeader` +
+  `OrderIdentityHeader`, both deleted. Tabs are a `tabs?` slot. §3.1 was
+  therefore implemented once, not twice. Three call sites migrated:
+  `ShippedDetailsPanel` (both branches) and `OrderFullPageView`.
+  `order-record-body.guard.test.ts` now pins that the full page mounts the
+  merged header **and passes no `tabs`** — the eight-tab strip is slide-over
+  chrome, and re-growing it on `/o/[id]` would put two navigations on one record.
+- ❌ **`RailActionRegion` is NOT dead** — it still has two live consumers
+  (`OrderRailCompare`, `OrderRailShell`), neither of which grew a pane header.
+  Leave it; `useRailHeaderActions` and it are serving different surfaces.
+- ✅ **`ShippedDetailsBody` reads ONE descriptor.** `showDispatchExtras`,
+  `showDelete` and `showEditorDock` moved onto `OrderInspectorContext`, joining
+  `documentsMode` / `recordCtas` / `showDocumentsTab`. The body no longer
+  re-derives a lane set: `isFulfillmentPanel` / `isLabelsPanel` /
+  `showDashboardExtras` are gone from its props, and `showDashboardDelete` /
+  `showEditorDock` are gone as local expressions. (`showTriage` is gone with
+  §3.2; `showQuickLinks` stays a prop — it is a slide-over-vs-full-page layout
+  choice, not a lane fact.)
+  Two findings worth keeping: `showDelete` and `showDispatchExtras` resolve to
+  the **same lane set** today but are named apart because they are different
+  jobs, and the old `showEditorDock` five-way disjunction was a **tautology** —
+  it unioned to every context there is. Both are now pinned by tests in
+  `order-inspector-context.test.ts` so a "simplification" cannot quietly change
+  either.
+- ⚠️ **Context trap — still true, still load-bearing.** The dashboard's
+  Pending/Tested lanes reach this panel with context `'fulfillment'`, NOT
+  `'dashboard'`, so `isOrderRecord` is FALSE and they render the tabbed branch.
+  That is why the merged header had to serve both shapes rather than the
+  order-record one absorbing the other. A comment at the mount site now says so.
 
 ## 5. Pattern checklist (every panel must satisfy)
 
@@ -177,7 +248,7 @@ rules already ban:
 5. **Pushes** the work surface; left columns yield first (§3.3).
 6. One right-edge secondary at a time; opening an inspector suspends intake/sync.
 7. Stable occupant ids where row↔row is the loop.
-8. Header carries the icon row + dense `PaneHeaderLabel` identity (short key — never a wrapping product title) + `up · down · close`; explicit close mandatory. Never `SidebarIntakeFormShell` on a record peek (`display/right-rail-inspector.md`).
+8. Header carries the icon row + dense `PaneHeaderLabel` identity (short key — never a wrapping product title) + `close · up · down` (close first, `>|` glyph); explicit close mandatory. Never `SidebarIntakeFormShell` on a record peek (`display/right-rail-inspector.md`).
 9. No private fixed panels.
 10. Never raise DS ratchet baselines.
 
@@ -188,12 +259,14 @@ rules already ban:
 | Host / store | `src/components/right-rail/RightRailHost.tsx`, `src/lib/right-rail/store.ts` |
 | Registrar API | `src/components/right-rail/DetailStackRailRegistrar.tsx` |
 | Panel (golden) | `src/components/shipped/ShippedDetailsPanel.tsx` |
-| Headers (merge candidates) | `…/details-panel/ShippedDetailsHeader.tsx`, `src/components/order-record/OrderIdentityHeader.tsx` |
+| Header (merged) | `src/components/order-record/RecordPaneHeader.tsx` |
+| Push ladder | `src/lib/right-rail/frame.ts` (+ `frame.test.ts`, `right-rail-push.guard.test.ts`) |
 | Header primitives | `src/components/ui/pane-header/blocks.tsx` (`PaneHeaderActionBar`, `PaneHeaderCloseButton`) |
 | Rail actions / bodies | `src/components/dashboard/rail/{OrderRailActions,OrderRailCompare,OrderRailShell}.tsx` |
 | Selection resolver | `src/lib/right-rail/selection-occupancy.ts` |
 | Compare model | `src/lib/right-rail/order-compare-model.ts` |
-| Triage block (§3.2) | `src/components/shipped/details-panel/OrderTriageSection.tsx`, `ShippedDetailsBody.tsx:312` |
+| Triage block (§3.2) | deleted — `ShippedDetailsBody.tsx` carries the note explaining the removal |
+| Plane descriptor (§4) | `src/lib/selection-context/order-inspector-context.ts` |
 | Push recipe to copy | `src/components/sidebar/master-nav/SidebarNavColumn` + `framerTransition.sidebarNavColumnMount` |
 | Laws | `AGENTS.md`, `.claude/rules/source-of-truth.md`, `.claude/rules/display/motion-crossfade.md` |
 | Parent plan | `docs/todo/order-rail-selection-plane-PLAN.md` |
@@ -235,4 +308,6 @@ rail's grip and the inspector's). Doc-catalog drift is another session's new fil
 | 2026-08-01 | **Incoming + History row-click planes split** (row body opens the record; gutter checkbox owns bulk). History opens `/carton/[id]`, the durable read record — not `/unbox`, which would drop a browse click into the scan bench. Unbox flipped as a set, and its feed clicks no longer claim the carton (`recordView` threaded as a required, undefaulted flag). |
 | 2026-08-01 | Unbox tab strip renamed to the house vocabulary **Recent · Queue · History**; wire (`?unboxview=viewed`) deliberately unchanged — `viewed` is the SERVER's name for that feed. |
 | 2026-08-01 | **Display rework begun (§1).** Header icon row, duplicate Delete removed, close buttons added to two headers that were swallowing the prop, onboarding card removed from the outbound sidebar. Selection-plane Phase 3 compare pane landed. Pre-existing D4 clear bug fixed. |
+| 2026-08-02 | **§3.1 + §3.2 + §4 closed; §3.3 confirmed already shipped.** §4's header merge went FIRST so §3.1 was implemented once: `RecordPaneHeader` replaces both order headers (deleted), rows swapped so the icon action row is row 1 and dense identity is row 2, and `up · down · close` became one cluster owned by `PaneHeaderActionBar onClose` — a primitive-level fix, so every rail inherits it. Open-full-page became an action rather than a loose button beside close. §3.2: `OrderTriageSection` deleted and `showNotes` hard-off on BOTH branches (the `!showTriage` trap was real). §4: the body now reads one `OrderInspectorContext` descriptor; `RailActionRegion` turned out NOT to be dead (2 live consumers). §3.3 was verified by call site — `resolveRightRailFrame` + guard + the rail park are all live; the handoff was stale, and the ladder shipped with two rungs, not three, because the spine measures 0 on every route. **Not visually verified — no dev server on `:3050`.** |
+| 2026-08-02 | **Unbox Displays rail simplified — the station right edge, ahead of §3.1 on the record rail.** `SectionTabsSlider` gained `density="icon"`: a flat icon row (no rail box), idle cells icon-only with the label as tooltip + accessible name, the SELECTED cell expanding to icon + label so exactly one display is ever named. ⋯ left `TabSwitch trailing` and became a right-aligned peer of `rightSlot` with a hairline between — the documented overlap (accent ⋯ covering the PO pencil) is gone. The one-day-old `density="stacked"` was **deleted** from `TabSwitch`, not left beside it: one call site, and two densities for one job is the drift these docs exist to close. Also fixed a collision this handoff had not catalogued — the pane-anchored More-details ring floats at `right-2` over this column's top-right corner, so the strip row now reserves derived clearance (`DISPLAYS_HEADER_RING_CLEARANCE`) instead of running under it. `record-cursor-unification-PLAN.md` Phase 5 amended with the reversal + why icon-only is the sanctioned nav-chrome exception here, not a paired-icons violation. **Not visually verified — no dev server was running on `:3050`.** |
 | 2026-08-01 | **PUSH RULED IN, float ruled out.** Product owner overruled the 2026-07-28 float decision after seeing it in production; the mitigation the original refusal lacked is that the panel takes width from the LEFT first. `AGENTS.md`, `.claude/rules/source-of-truth.md` and the project memory amended the same day. Implementation open (§3.3). |

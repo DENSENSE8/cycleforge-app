@@ -6,7 +6,7 @@
    dark-scheme raw-neutral compatibility remap below. */
 :root {
   /* ── Typeface chain — this block is the SoT ──────────────────────────────
-     `next/font` sets `--font-ibm-plex-sans` / `--font-ibm-plex-condensed` /
+     `next/font` sets `--font-cf-sans` / `--font-ibm-plex-condensed` /
      `--font-ibm-plex-mono` on <html> (`src/lib/fonts.ts`); these resolve them
      into full stacks. Stacks mirror
      `src/design-system/tokens/typography/families.ts` byte-for-byte.
@@ -34,8 +34,8 @@
      link → app-design-tokens → app-theme-palettes, and an injected :root
      always beats this one at equal specificity. Pinned by
      `src/app/head-token-order.guard.test.ts`. */
-  --font-sans: var(--font-ibm-plex-sans), 'IBM Plex Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --font-condensed: var(--font-ibm-plex-condensed), 'IBM Plex Sans Condensed', var(--font-ibm-plex-sans), 'IBM Plex Sans', system-ui, sans-serif;
+  --font-sans: var(--font-cf-sans), 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-condensed: var(--font-ibm-plex-condensed), 'IBM Plex Sans Condensed', var(--font-cf-sans), 'Inter', system-ui, sans-serif;
   --font-mono: var(--font-ibm-plex-mono), 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   --ds-font-sans: var(--font-sans);
   --ds-font-condensed: var(--font-condensed);

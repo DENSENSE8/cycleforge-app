@@ -16,6 +16,7 @@ import { gridFrozenKeys } from '@/design-system/components/grid/grid-column-edit
 import { gridTemplate } from '@/design-system/components/grid/grid-column-geometry';
 import { ordersQueueColVar } from '@/lib/dashboard-order-row-layout';
 import type { ColumnType, TableId } from '@/lib/tables/table-columns';
+import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 
 /**
  * Today's per-staff column-prefs bucket + Fields-menu vocabulary key. Named once
@@ -171,10 +172,9 @@ export function myDayGridFrozenLeft(key: MyDayGridColumnKey): string {
   return `calc(${parts.join(' + ')})`;
 }
 
-export type MyDayGridSortDir = 'asc' | 'desc';
 
 /** First-activation direction — recency/urgency columns open most-urgent-first. */
-export function defaultDirForMyDayGridSort(key: MyDayGridColumnKey): MyDayGridSortDir {
+export function defaultDirForMyDayGridSort(key: MyDayGridColumnKey): GridSortDir {
   return key === 'due' ? 'desc' : 'asc';
 }
 

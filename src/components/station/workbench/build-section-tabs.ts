@@ -22,6 +22,8 @@ export interface SectionTabDef {
    * `overflow` — More-displays menu. Authored per station, not a global bucket.
    */
   priority?: SectionTabPriority;
+  /** When true, body still mounts but no strip cell (ring-only displays). */
+  stripHidden?: boolean;
 }
 
 /**
@@ -32,12 +34,13 @@ export interface SectionTabDef {
 export function buildSectionTabs(defs: SectionTabDef[]): SectionTab[] {
   return defs
     .filter((d) => d.visible !== false)
-    .map(({ id, label, icon, content, count, priority }) => ({
+    .map(({ id, label, icon, content, count, priority, stripHidden }) => ({
       id,
       label,
       icon,
       content,
       ...(count != null ? { count } : {}),
       ...(priority != null ? { priority } : {}),
+      ...(stripHidden ? { stripHidden } : {}),
     }));
 }

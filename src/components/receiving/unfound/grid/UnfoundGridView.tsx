@@ -15,8 +15,8 @@ import {
   isUnfoundGridSortable,
   type UnfoundGridColumn,
   type UnfoundGridColumnKey,
-  type UnfoundGridSortDir,
 } from './unfound-grid-layout';
+import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 
 /** Staff-prefs identity — one Unfound spreadsheet, one Fields selection. */
 const UNFOUND_TABLE_ID = 'unfound' as const;
@@ -41,7 +41,7 @@ function compareUnfoundRows(
   a: QueueRow,
   b: QueueRow,
   key: UnfoundGridColumnKey,
-  dir: UnfoundGridSortDir,
+  dir: GridSortDir,
 ): number {
   const sign = dir === 'asc' ? 1 : -1;
   switch (key) {
@@ -160,14 +160,15 @@ export function UnfoundGridView({
         isSearching={isSearching}
         scrollRef={scrollRef}
         testId="unfound-grid-body"
-        renderColumnHeader={({ toggleColumnSort }) => (
+        tableId={UNFOUND_TABLE_ID}
+        columnDetails={{ open: columnDetailsOpen, onOpen: () => setColumnDetailsOpen(true) }}
+        renderColumnHeader={({ toggleColumnSort, onResizeColumn }) => (
           <UnfoundGridColumnHeader
             columns={visible}
             activeSort={columnSort}
             sortDir={sortDir}
             onSortColumn={toggleColumnSort}
-            onOpenColumnDetails={() => setColumnDetailsOpen(true)}
-            columnDetailsOpen={columnDetailsOpen}
+            onResizeColumn={onResizeColumn}
           />
         )}
         renderGroup={(group) => <>{group.rows.map(renderLeaf)}</>}

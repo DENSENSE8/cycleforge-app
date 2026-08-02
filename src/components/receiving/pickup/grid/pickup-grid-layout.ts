@@ -16,6 +16,7 @@ import { gridFrozenKeys } from '@/design-system/components/grid/grid-column-edit
 import { gridTemplate } from '@/design-system/components/grid/grid-column-geometry';
 import { ordersQueueColVar } from '@/lib/dashboard-order-row-layout';
 import type { ColumnType } from '@/lib/tables/table-columns';
+import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 
 export type PickupGridColumnKey =
   | 'select'
@@ -126,10 +127,9 @@ export function pickupGridFrozenLeft(key: PickupGridColumnKey): string {
   return `calc(${parts.join(' + ')})`;
 }
 
-export type PickupGridSortDir = 'asc' | 'desc';
 
 /** Default direction when first activating a column sort (date/price → desc). */
-export function defaultDirForPickupGridSort(key: PickupGridColumnKey): PickupGridSortDir {
+export function defaultDirForPickupGridSort(key: PickupGridColumnKey): GridSortDir {
   if (key === 'date' || key === 'price' || key === 'qty') return 'desc';
   return 'asc';
 }

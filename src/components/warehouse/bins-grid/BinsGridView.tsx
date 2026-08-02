@@ -23,8 +23,8 @@ import {
   isBinsGridSortable,
   type BinsGridColumn,
   type BinsGridColumnKey,
-  type BinsGridSortDir,
 } from './bins-grid-layout';
+import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 
 /** Staff-prefs identity — one bins spreadsheet, one Fields selection. */
 const BINS_TABLE_ID = 'bins' as const;
@@ -49,7 +49,7 @@ function compareBinsRows(
   a: BinsOverviewRow,
   b: BinsOverviewRow,
   key: BinsGridColumnKey,
-  dir: BinsGridSortDir,
+  dir: GridSortDir,
 ): number {
   const sign = dir === 'asc' ? 1 : -1;
   switch (key) {
@@ -203,15 +203,16 @@ export function BinsGridView({
         emptyMessage={emptyMessage}
         scrollRef={scrollRef}
         testId="bins-grid-body"
-        renderColumnHeader={({ toggleColumnSort }) => (
+        tableId={BINS_TABLE_ID}
+        columnDetails={{ open: columnDetailsOpen, onOpen: () => setColumnDetailsOpen(true) }}
+        renderColumnHeader={({ toggleColumnSort, onResizeColumn }) => (
           <BinsGridColumnHeader
             selectionScope={BINS_SELECTION_SCOPE}
             columns={visible}
             activeSort={columnSort}
             sortDir={sortDir}
             onSortColumn={toggleColumnSort}
-            onOpenColumnDetails={() => setColumnDetailsOpen(true)}
-            columnDetailsOpen={columnDetailsOpen}
+            onResizeColumn={onResizeColumn}
           />
         )}
         renderGroup={(group) => <>{group.rows.map(renderLeaf)}</>}

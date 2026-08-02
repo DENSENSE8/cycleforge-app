@@ -35,7 +35,10 @@ import { attachSerialToLine } from '@/lib/receiving/serial-attach';
 import { transitionReceivingLine } from '@/lib/receiving/state-machine';
 import { recordInventoryEvent } from '@/lib/inventory/events';
 import { upsertReceivingLineReturn } from '@/lib/receiving/facts/narrow';
-import { upsertReceivingUnbox } from '@/lib/receiving/streets/carton-street-write';
+import {
+  upsertReceivingTriage,
+  upsertReceivingUnbox,
+} from '@/lib/receiving/streets/carton-street-write';
 import { resolveReceivingExceptionsByReceivingId } from '@/lib/tracking-exceptions';
 import { recordReceivingException } from '@/lib/receiving/exceptions';
 import { getExternalUrlByItemNumber, getPlatformKeyByItemNumber } from '@/utils/external-item-url';
@@ -945,6 +948,7 @@ export interface LogUnmatchedSerialDeps {
   runTransaction: <T>(orgId: OrgId, cb: (client: PoolClient) => Promise<T>) => Promise<T>;
   upsertSerialUnit: typeof upsertSerialUnit;
   recordInventoryEvent: typeof recordInventoryEvent;
+  upsertReceivingTriage: typeof upsertReceivingTriage;
   emitSignal?: typeof emitEntitySignalSafe;
 }
 
@@ -954,8 +958,42 @@ const logSerialDefaultDeps: LogUnmatchedSerialDeps = {
   runTransaction: withTenantTransaction,
   upsertSerialUnit,
   recordInventoryEvent,
+  upsertReceivingTriage,
   emitSignal: emitEntitySignalSafe,
 };
+
+/**
+ * Record that this carton's pairing question is ANSWERED: it is a return, and
+ * the return matched no sales order, so there is nothing left to pair it to.
+ *
+ * Without this the carton has no `receiving_triage` row at all, and every
+ * reader falls through `COALESCE(rt.pairing_state, 'UNFOUND')` — so a state
+ * nobody ever recorded reads back as a search that failed. On carton 50354
+ * that surfaced as a permanent "No matched PO" finding and an "Unmatched"
+ * disposition on a return that can never have a PO.
+ *
+ * `WAIVED`, not `MATCHED`: we looked (the scan compared the serial against
+ * shipped units) and there is nothing to bind to. That is exactly the state
+ * `isTriagePaired` in `triage-focus.ts` already treats as paired for a
+ * return — this makes the fact explicit on the row instead of leaving it
+ * derivable only by the one surface that knows the rule.
+ *
+ * Never downgrades a carton already `MATCHED` to a PO (`preserveMatchedPairing`).
+ * Best-effort: the serial is already attached, and a pairing bookkeeping
+ * failure must not fail the scan.
+ */
+async function settleReturnPairing(
+  receivingId: number,
+  orgId: OrgId,
+  deps: LogUnmatchedSerialDeps,
+): Promise<void> {
+  await deps.runTransaction(orgId, async (client) => {
+    await deps.upsertReceivingTriage(client, orgId, receivingId, {
+      pairingState: 'WAIVED',
+      preserveMatchedPairing: true,
+    });
+  });
+}
 
 /**
  * Log a received serial that had no platform/order match as an UNFOUND record,
@@ -1011,6 +1049,15 @@ export async function logUnmatchedReturnSerial(
       });
     } catch (err) {
       console.warn('logUnmatchedReturnSerial: RETURN_NO_ORDER exception failed (non-fatal)', err);
+    }
+
+    // The pairing question is now answered — record it (see settleReturnPairing).
+    if (input.receivingId != null && input.receivingId > 0) {
+      try {
+        await settleReturnPairing(input.receivingId, orgId, deps);
+      } catch (err) {
+        console.warn('logUnmatchedReturnSerial: pairing settle failed (non-fatal)', err);
+      }
     }
 
     // Investigate NOTE capturing the order compared + verdict (order-less rows

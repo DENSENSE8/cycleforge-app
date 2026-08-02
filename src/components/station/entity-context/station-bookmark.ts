@@ -9,9 +9,18 @@
  * glass work cards (`raised` default). Inner pad + icon gap match GlobalHeader
  * via {@link HEADER_ICON_GAP} (header-shell SoT).
  *
- * Top (+ right for more-details) inset matches the context-panel card gutter
- * (`CONTEXT_PANEL_OUTER_MARGIN` = `m-2` → `top-2` / `right-2`) so bookmark
- * chrome and the sidebar card share one top edge under GlobalHeader.
+ * ## Station top-padding SoT
+ *
+ * {@link STATION_BOOKMARK_CANVAS_INSET_TOP} (`top-2`) is the **station** twin of
+ * `CONTEXT_PANEL_OUTER_MARGIN` (`m-2`) — one 8px canvas gutter under
+ * GlobalHeader so identity + more-details + the left rail card share one top
+ * edge. Right twin: {@link STATION_BOOKMARK_CANVAS_INSET_RIGHT}.
+ *
+ * **Never stack a second vertical inset under this host.** An ancestor with
+ * `py-2` (the old Unbox push host pad) pushes the identity's containing block
+ * down, then `top-2` adds another 8px → 16px vs the rail's 8px. Trailing push
+ * gutter stays host `pr-2`; vertical push gutter is
+ * `CONTEXT_PANEL_OUTER_MARGIN_Y` (`my-2`) on the push column itself.
  *
  * Mid-canvas right-edge jumps stay a sliced side bookmark (flush right) —
  * different job from the floating identity / more-details shells.
@@ -23,21 +32,25 @@ import { elevationClass } from '@/design-system/tokens/shadows';
 const STATION_BOOKMARK_ELEVATION = elevationClass('raised', 'soft');
 
 /**
- * Canvas gutter twin of the context-panel card margin (`m-2` /
- * `CONTEXT_PANEL_OUTER_MARGIN` in `context-panel-column.ts`).
- * Host uses `top-2`; more-details stays `top-0` *inside* that host and only
- * adds `right-2` so the corner shell shares the panel’s right gutter without
- * double-inset.
+ * Station canvas **top** gutter — SoT twin of context-panel `m-2`
+ * (`CONTEXT_PANEL_OUTER_MARGIN`). Absolute hosts compose this; never replace
+ * with a page-local `top-*` or stack host `py-*` above it.
  */
-const STATION_BOOKMARK_CANVAS_INSET_TOP = 'top-2';
-const STATION_BOOKMARK_CANVAS_INSET_RIGHT = 'right-2';
+export const STATION_BOOKMARK_CANVAS_INSET_TOP = 'top-2';
+
+/**
+ * Station canvas **right** gutter — SoT twin of context-panel `m-2` on the
+ * trailing edge. More-details inside {@link StationContextBar} stays `top-0`
+ * of that host and only adds this inset (no double top).
+ */
+export const STATION_BOOKMARK_CANVAS_INSET_RIGHT = 'right-2';
 
 /**
  * Absolute float host for {@link StationContextBar} — overlays the panel top
  * with no reserved in-flow shelf (the gray “context bar band”). Click-through
  * outer; children re-enable with `pointer-events-auto`. Mirrors
  * `slicedActionDockWrapperClass({ docked: false })` for the bottom dock.
- * Top inset matches the context-panel card under GlobalHeader.
+ * Top inset is {@link STATION_BOOKMARK_CANVAS_INSET_TOP} (context-panel twin).
  */
 export const stationContextBarHostClass =
   `pointer-events-none absolute inset-x-0 ${STATION_BOOKMARK_CANVAS_INSET_TOP} z-raised`;

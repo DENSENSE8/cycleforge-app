@@ -43,6 +43,7 @@ Top-to-bottom, a station is four parts and nothing more:
 |---|---|---|
 | **Focus-locked scan bar** (top, sticky) | `StationScanBar` / `ThemedStationScanBar` (`src/components/station/scan-bar/`) | One input, auto-focused, the *only* primary control. |
 | **Entity-context header** (active carton / line / ship order) | `CartonContextCard` + `StationContextBar` via `@/components/station/entity-context` | Absolute-float identity shell (`density="bar"`) over the work canvas. Unbox golden; Triage/Testing/Shipping/Pack/Pickup compose via thin adapters. Never fork. |
+| **Procedure progress chrome** (when the bench has a derived procedure) | `ScanStationProgressControl` + `ScanStationProgressRing` (`src/components/station/`) | Bare ring (not `GoalRing`). **Always pane top-right** — same place whether Displays/push is open or closed (procedure chrome ≠ panel chrome). **Selected face** when checklist display is live. Hover peeks the checklist (**2 rows**); hover is **off** while any push rail is open. Click opens/closes/switches checklist (Unbox → `UnboxScanProgressControl`). Checklist is ring-only — not on the Displays strip. Never fork a second ring. |
 | **Single active-entity card** (replaces on scan) | `ActiveOrderScanFeedback`, `PackChecklist`, `StationPacking` | One card; the new scan's card *replaces* the previous one. |
 | **Minimal chrome / goal HUD** | `StationGoalBar` (composed in `StationPacking`) | Ambient throughput only; never a control surface. |
 | **Station-down banner** (singleton, app root) | `OfflineBanner` (`src/components/layout/OfflineBanner.tsx`) | First-class, non-blocking, mounted once. |
@@ -120,13 +121,14 @@ The bar is dumb; classification is a pure layer.
 
 - **One card. The new scan's card replaces the previous one.**
   **Scoped exception (2026-08-01, re-shaped 2026-08-02) — the Unbox guided
-  procedure.** *Within one carton session* the procedure renders as a vertical
-  **snap column**: one expanded step section plus a compact, dimmed face per
-  other step. Those faces are the SAME entity's ordered steps — that carton's own
-  evidence trail — not a browse list of other entities, so the "one transient
-  entity" contract holds. A new **carton** still replaces the whole column
-  (`UnboxProcedureColumn` remounts on carton change, and the focus store is
-  carton-keyed so a pointer cannot leak across a scan).
+  procedure.** *Within one carton session* the procedure renders as a **focus
+  deck**: one expanded step card at the bottom, its completed steps as full rows
+  above it, and the next step as a single peek tucked behind it. Those are the
+  SAME entity's ordered steps — that carton's own evidence trail — not a browse
+  list of other entities, so the "one transient entity" contract holds. A new
+  **carton** still replaces the whole deck (`UnboxProcedureDeck` remounts on
+  carton change, and the focus store is carton-keyed so a pointer cannot leak
+  across a scan).
   The exception buys nothing elsewhere: it does not license a scan bench to keep
   a list of previous scans, which is the browse-list-in-a-station anti-pattern §1
   bans. Recipe + geometry: [`station-workbench.md`](station-workbench.md).
@@ -200,11 +202,32 @@ The bar is dumb; classification is a pure layer.
 
 ## 8. Station-down is first-class
 
-- **`OfflineBanner` is a singleton mounted once near app root.** It shows when `navigator.onLine` is false **OR** the
-  offline write queue depth (`useOfflineWriteQueue`) is `> 0`, and stays up while syncing
-  (`src/components/layout/OfflineBanner.tsx`). It is `fixed inset-x-0 top-0 z-banner` — pinned, non-blocking, color-coded
-  (rose offline / amber syncing / emerald back-online). *Rationale: the operator can't fix the network mid-shift; the
-  state must be visible and the bench must keep moving.*
+- **`OfflineBanner` is a singleton mounted once near app root.** It shows when `navigator.onLine` is false, when the
+  station's **realtime link is degraded**, **OR** when the offline write queue depth (`useOfflineWriteQueue`) is `> 0`,
+  and stays up while syncing (`src/components/layout/OfflineBanner.tsx`). It is `fixed inset-x-0 top-0 z-banner` —
+  pinned, non-blocking, color-coded (rose offline / amber degraded-or-syncing / emerald back-online). *Rationale: the
+  operator can't fix the network mid-shift; the state must be visible and the bench must keep moving.*
+- **THREE different problems, ONE answer, resolved in ONE pure module.** Device offline · realtime link paused · edits
+  still draining are not the same failure and must stay distinguishable — but which one leads, the operator copy, and
+  the debounce are decided once in `src/lib/realtime/connection-health.ts` (pure, unit-tested) and read through
+  `useConnectionChrome()` / `useNetworkOnline()` / `useRealtimeLink()` (`src/hooks/useConnectionHealth.ts`).
+  **Placement may differ; the answer may not.** Four surfaces each ran their own `navigator.onLine` listener before
+  2026-08-02, so wiring realtime health into any one of them would have left the rest confidently telling the old
+  story — and a bench that says "online" while the station's realtime link is dead is worse than a bench that says
+  nothing. The dead `station/OfflineBanner` was deleted; `mobile/OfflineBanner` is the phone-shell **placement** of the
+  same answer; the Operations TV board renders it read-only at wall scale (D12 — never an upload or pairing modal on a
+  Monitor). **Never add a fifth `navigator.onLine` listener or a per-bench reconnect strip** (D4).
+- **Realtime state is published to a MODULE STORE, never added to the Ably context value.**
+  `src/lib/realtime/connection-store.ts` (`useSyncExternalStore`) carries it; `AblyContext`'s value stays exactly
+  `{ getClient }` on an empty-dep `useCallback`. *Rationale: that value has ~23 consumers, and widening it so it
+  changes on every reconnect re-fires precisely the effects whose churn once flooded Ably at >1000 msg/s. The store is
+  also the only shape the global banner can read — it is mounted **above** `AuthenticatedAblyProvider`.*
+- **Debounce the transient; never name the mechanism.** Ably `disconnected` is what a routine wifi hiccup looks like,
+  so it is reported only after it holds for `REALTIME_DEGRADE_GRACE_MS` (8s); `suspended`/`failed` arrive
+  pre-debounced and report on sight; pre-init is `unknown` and reports **nothing** (a sign-in page has no station link
+  to be down). A banner that flashes on every blip trains operators to ignore the one signal that matters. Copy states
+  the *consequence* and what still works — **"Station sync paused — scans still save"** — never `suspended`,
+  `connecting`, a channel name, or an error code.
 - **Degrade-not-block: keep scanning into a durable queue.** A down printer/scale/network never gates a scan; the scan
   enqueues and the idempotent retry (§7) drains it on reconnect. *Rationale: throughput is the job — blocking the bar on
   infra failure stops the line for something the operator can't repair.*
@@ -275,6 +298,9 @@ The phone station is **not a distinct archetype** — it is this same Station we
 - **Don't drop a client-minted `idempotencyKey` on the server** (§7).
 - **Don't block the bench on infra.** Printer/scale/network down → distinct non-blocking banner + durable queue, never a
   gated scan (§8).
+- **Don't add a fifth `navigator.onLine` listener, a per-bench reconnect strip, or a second degraded-state answer.**
+  Read `useConnectionChrome()` / `useNetworkOnline()` / `useRealtimeLink()`; grow the pure module if the answer is
+  wrong (§8, D4).
 - **Don't invent hex or hardcode `z-[NNN]`.** Color from `src/design-system/tokens/colors/semantic.ts`, z-index from the
   named scale, status tones from `workflowStageDot`.
 - **Don't ship a hybrid Station+Workbench page without a return-to-scan CTA.** When the page hosts a workbench strip
@@ -299,6 +325,7 @@ The phone station is **not a distinct archetype** — it is this same Station we
 | Feedback | big card pass/fail (emerald Active vs amber No order vs rose fail) + audio/haptic; never toast/`alert()` |
 | Idempotency | client mints key; server **must** honor via `api_idempotency_responses` |
 | Down state | `OfflineBanner` singleton + durable queue; degrade-not-block |
+| Connection health | offline · realtime-degraded · syncing — one answer from `connection-health.ts`, debounced, no Ably jargon |
 | Mobile | same Station on `MobileShell` via `ScanInput`; same endpoints/keys |
 
 ## Background — industry references

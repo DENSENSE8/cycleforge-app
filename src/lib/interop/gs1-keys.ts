@@ -234,6 +234,76 @@ export function hasGln(
   return isLicensedGln(identity.gln);
 }
 
+// ─── Does this tenant need a GS1 key at all? ────────────────────────────────
+
+/** Why a tenant is expected to hold a GTIN-capable key. */
+type Gs1RequirementReason = 'new-inventory' | 'amazon';
+
+/** How a tenant obtains GTINs — mirrors `settings.compliance.gs1Status`. */
+export type Gs1SourceStatus = 'prefix' | 'per-item' | 'exempt' | 'none';
+
+/** The two persisted answers, taken structurally so this module stays pure. */
+export interface Gs1ComplianceAnswers {
+  hasNewInventory?: boolean | null;
+  sellsOnAmazon?: boolean | null;
+  gs1Status?: Gs1SourceStatus | null;
+}
+
+interface Gs1Requirement {
+  /** Both questions have an explicit answer — `false` counts, `null` does not. */
+  answered: boolean;
+  /** A GTIN-capable GS1 key is expected for this inventory + these channels. */
+  required: boolean;
+  /** Empty unless `required`. */
+  reasons: Gs1RequirementReason[];
+  /** `required` AND nothing usable on file. **The only state worth nagging.** */
+  unmet: boolean;
+}
+
+/**
+ * Decide whether a tenant needs a licensed GS1 key, from what they told us.
+ *
+ * **This is a GTIN question, not a GLN one.** Amazon enforces a product
+ * identifier when you create a listing for a BRAND-NEW item; selling refurb
+ * against an existing ASIN needs no key you own, and eBay accepts "does not
+ * apply" for used goods outright. A GLN answers to an EDI / EPCIS partner and
+ * is deliberately NOT part of this verdict — gating it here would tell a
+ * refurb reseller they need a warehouse identifier to sell a used laptop.
+ *
+ * **A Company Prefix is not the only legal answer.** GS1 sells individual
+ * GTINs, and a brand owner may be exempt; both store nothing org-level because
+ * the values land per-SKU on `sku_catalog.gtin`. Treating "no prefix on file"
+ * as non-compliance would nag those tenants forever, which is why `unmet`
+ * reads `gs1Status` rather than testing `hasCompanyPrefix` alone.
+ *
+ * Unanswered is never `unmet`: a tenant who has not been asked has not failed.
+ */
+export function resolveGs1Requirement(
+  answers: Gs1ComplianceAnswers | null | undefined,
+  identity: Gs1OrgIdentity = {},
+): Gs1Requirement {
+  const hasNewInventory = answers?.hasNewInventory ?? null;
+  const sellsOnAmazon = answers?.sellsOnAmazon ?? null;
+  const gs1Status = answers?.gs1Status ?? null;
+
+  const answered = typeof hasNewInventory === 'boolean' && typeof sellsOnAmazon === 'boolean';
+
+  const reasons: Gs1RequirementReason[] = [];
+  if (hasNewInventory === true) reasons.push('new-inventory');
+  if (sellsOnAmazon === true) reasons.push('amazon');
+  const required = reasons.length > 0;
+
+  // A prefix claim is only met once the digits are actually on file AND survive
+  // the placeholder / length refusal — claiming `'prefix'` with an empty or
+  // borrowed value is exactly the state this flow exists to surface.
+  const met =
+    gs1Status === 'per-item' ||
+    gs1Status === 'exempt' ||
+    (gs1Status === 'prefix' && hasCompanyPrefix(resolveGs1Identity(identity)));
+
+  return { answered, required, reasons, unmet: answered && required && !met };
+}
+
 /**
  * An identifier as it will appear in a projection.
  *

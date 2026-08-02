@@ -17,6 +17,7 @@ import {
   gridTemplate,
 } from '@/design-system/components/grid/grid-column-geometry';
 import type { LedgerGridColumnModel } from '@/design-system/components/grid/grid-surface-descriptor';
+import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 
 export type IncomingGridColumnKey =
   | 'select'
@@ -130,16 +131,15 @@ export function isIncomingGridFrozen(key: string): boolean {
   return INCOMING_GRID_LOCKED_KEYS.includes(key as IncomingGridColumnKey);
 }
 
-export type IncomingGridSortDir = 'asc' | 'desc';
 
 /** Default direction when first activating a column sort. */
-export function defaultDirForIncomingGridSort(key: IncomingGridColumnKey): IncomingGridSortDir {
+export function defaultDirForIncomingGridSort(key: IncomingGridColumnKey): GridSortDir {
   // Age: most overdue / oldest first (urgency scan), matching Pending.
   if (key === 'age') return 'desc';
   return 'asc';
 }
 
-export function flipIncomingGridSortDir(dir: IncomingGridSortDir): IncomingGridSortDir {
+export function flipIncomingGridSortDir(dir: GridSortDir): GridSortDir {
   return dir === 'asc' ? 'desc' : 'asc';
 }
 

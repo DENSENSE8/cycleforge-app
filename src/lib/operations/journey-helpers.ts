@@ -381,6 +381,9 @@ export function buildBrowseQuery(
                'id', ie.id, 'occurred_at', ie.occurred_at, 'event_type', ie.event_type,
                'actor_name', s.name, 'serial_number', su.serial_number, 'sku', ie.sku,
                'prev_status', ie.prev_status, 'next_status', ie.next_status,
+               -- Same reason as the entity projection in journey.ts: without
+               -- this a NOTE renders as the bare word "Note" in browse too.
+               'notes', ie.notes,
                'bin_barcode', l.barcode, 'bin_name', l.name, 'payload', ie.payload
              )
         FROM inventory_events ie

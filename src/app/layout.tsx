@@ -33,7 +33,7 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 import { PaintTimingHud } from "@/components/dev/PaintTimingHud";
 import { PostHogProvider } from "../components/analytics/PostHogProvider";
 import { PRODUCT_NAME } from "@/lib/branding/constants";
-import { ibmPlexMono, ibmPlexSans, ibmPlexSansCondensed } from "@/lib/fonts";
+import { cfSans, ibmPlexMono, ibmPlexSansCondensed } from "@/lib/fonts";
 import { appChromeClass } from "@/design-system/tokens/app-surface";
 
 export default async function RootLayout({
@@ -61,7 +61,7 @@ export default async function RootLayout({
     return (
         <html
             lang="en"
-            className={`${ibmPlexSans.variable} ${ibmPlexSansCondensed.variable} ${ibmPlexMono.variable} h-full overflow-hidden`}
+            className={`${cfSans.variable} ${ibmPlexSansCondensed.variable} ${ibmPlexMono.variable} h-full overflow-hidden`}
             suppressHydrationWarning
         >
             <head>
@@ -91,7 +91,7 @@ export default async function RootLayout({
                     blank shell and the splash flickers off and back on. */}
                 <script dangerouslySetInnerHTML={{ __html: BOOT_SPLASH_SCRIPT }} />
             </head>
-            <body className={`${ibmPlexSans.className} antialiased m-0 overflow-hidden ${appChromeClass}`}>
+            <body className={`${cfSans.className} antialiased m-0 overflow-hidden ${appChromeClass}`}>
                 {/*
                   Pin the app to the visual viewport. Body must NOT carry safe-area
                   padding or min-height:100vh — both caused first-load gaps (URL bar

@@ -2,7 +2,10 @@
 
 import type { ReactNode } from 'react';
 import { cn } from '@/utils/_cn';
-import { STATION_TERMINAL_SCROLL_CLEARANCE } from '@/components/station/terminal/StationTerminalDock';
+import {
+  STATION_TERMINAL_PAGER_SCROLL_CLEARANCE,
+  STATION_TERMINAL_SCROLL_CLEARANCE,
+} from '@/components/station/terminal/StationTerminalDock';
 import {
   STATION_IDENTITY_SCROLL_CLEARANCE,
   STATION_IDENTITY_STACKED_SCROLL_CLEARANCE,
@@ -43,6 +46,7 @@ export function StationWorkbench({
   dock,
   reserveScrollClearance = false,
   reserveIdentityClearance = true,
+  bodyAlign = 'start',
   className,
   scrollClassName,
   ambientWash = false,
@@ -59,8 +63,14 @@ export function StationWorkbench({
    */
   footer?: ReactNode;
   dock?: ReactNode;
-  /** Absolute-float docks need `pb-32`; docked bands (unbox) use lighter padding. */
-  reserveScrollClearance?: boolean;
+  /**
+   * Absolute-float docks need `pb-32`; docked bands use lighter padding.
+   *
+   * Pass `'pager'` when the dock carries a step-pager row above the composer
+   * (Unbox) — that row makes the dock ~28px taller, and the clearance is the
+   * only thing keeping the scroll body out from under it.
+   */
+  reserveScrollClearance?: boolean | 'pager';
   /**
    * Absolute-float {@link StationContextBar} needs top clearance so scroll
    * content is not hidden under the identity shell. Default true — Unbox-family
@@ -69,6 +79,24 @@ export function StationWorkbench({
    * `CartonContextCard density="bar-stacked"` (two rows → 32px taller shell).
    */
   reserveIdentityClearance?: boolean | 'stacked';
+  /**
+   * Where the scroll body rests when it is shorter than the port.
+   *
+   * `'end'` bottom-pins it against the dock and lets it grow UPWARD — the
+   * geometry a station WORK surface wants, because the operator's eye path is
+   * product → down → the live step → the composer that commits it. A work
+   * surface floating at the top of an empty canvas has put their eye in the
+   * wrong place.
+   *
+   * It lives here rather than on the child because `min-height: 100%` only
+   * resolves against an ancestor with a DEFINITE height, and the scroll port is
+   * the nearest one. A `min-h-full` written inside a `space-y-*` wrapper further
+   * down resolves to zero and does nothing — silently.
+   *
+   * Opt-in: `'start'` (the default) keeps every existing station's top-anchored
+   * body exactly as it was.
+   */
+  bodyAlign?: 'start' | 'end';
   className?: string;
   scrollClassName?: string;
   /** Soft tonal blobs behind glass cards (Unbox ambient wash). */
@@ -80,7 +108,12 @@ export function StationWorkbench({
       : reserveIdentityClearance
         ? STATION_IDENTITY_SCROLL_CLEARANCE
         : 'pt-5';
-  const bottomPad = reserveScrollClearance ? STATION_TERMINAL_SCROLL_CLEARANCE : 'pb-6';
+  const bottomPad =
+    reserveScrollClearance === 'pager'
+      ? STATION_TERMINAL_PAGER_SCROLL_CLEARANCE
+      : reserveScrollClearance
+        ? STATION_TERMINAL_SCROLL_CLEARANCE
+        : 'pb-6';
 
   return (
     <div
@@ -101,6 +134,13 @@ export function StationWorkbench({
             STATION_WORKBENCH_BODY_PAD_X,
             topPad,
             bottomPad,
+            // Bottom-pinned body. `min-h-full` (never `h-full`) is the
+            // load-bearing half: it makes the content at least a port tall so
+            // `justify-end` has something to push against, while still letting
+            // the stack grow past the fold and scroll. Flex items keep
+            // `min-height: auto`, so a tall body overflows into the port rather
+            // than squashing.
+            bodyAlign === 'end' && 'flex min-h-full flex-col justify-end',
             scrollClassName,
           )}
         >

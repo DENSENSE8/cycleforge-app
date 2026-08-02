@@ -382,6 +382,42 @@ That is the honest-absence rule, not a gap.
 
 ### Phase 5 — the station display strip (`SectionTabsSlider`)
 
+> **AMENDED 2026-08-02 — the target layout below shipped, was looked at, and was
+> replaced by `density="icon"`. Read this box before the section under it.**
+>
+> Stacked icon-over-label landed and fixed causes (1), (2) and (4) exactly as
+> predicted — the strip stopped overflowing and the eyebrow collision died. What
+> the drawing did not price is that it made the *switcher* the loudest object in
+> a 360px push column: a two-row 44px band, in a bordered + shadowed rail, with a
+> saturated accent pill on the active cell, sitting directly above the display it
+> selects (and under the pane-anchored progress ring, which overlapped it).
+>
+> **Shipped instead:** a flat icon row, no rail box. Idle cells are icon-only;
+> the SELECTED cell expands to icon + label. ⋯ still leaves `TabSwitch trailing`
+> and becomes a right-aligned peer of `rightSlot` with the hairline between —
+> cause (4) is fixed the same way. Icon cells are narrower than stacked ones, so
+> cause (1) is fixed harder. Cause (2) is fixed by the same deletion of the
+> eyebrow.
+>
+> **On the constraint that said icon-only would be "a new violation":** it is the
+> sanctioned nav-chrome exception, not a break of *Icons: structural and paired*.
+> This is a mode switcher — the same job as GlobalHeader Mode / Recents / Pins,
+> which `ui-design-system.md` names explicitly as icon-only **with a
+> `HoverTooltip`**. Each cell carries its label as the tooltip *and* the
+> accessible name, and the one display that is actually selected renders its
+> label as visible text. No display is ever unnamed, which is the thing the rule
+> protects. Tooltip-*only*, with the active display nameless, would still be a
+> violation — that is the version the constraint was written against.
+>
+> **Cause (3) (membership is authored, not measured) is still open** and is not
+> addressed by either density. `priority: 'overflow'` remains hardcoded per call
+> site; the `ResizeObserver` demotion below is still the fix. Icon cells only
+> lower the width at which it would matter.
+>
+> The `stacked` branch was deleted from `TabSwitch` rather than left beside the
+> new one — it had exactly one call site, this one, and two densities for one
+> job is the drift these plans exist to close.
+
 Same family, same failure mode: a strip whose membership and width rules are
 authored per call site instead of resolved once. Evidence is the Unbox Displays
 strip in its shipped state — **"Checklist" and the "CLASSIFY" eyebrow render on

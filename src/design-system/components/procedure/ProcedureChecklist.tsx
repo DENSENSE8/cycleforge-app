@@ -17,7 +17,7 @@ import type { ProcedureStepRow, ProcedureStepState } from './types';
  * This is the **right-edge reference** display: the whole procedure, in
  * vocabulary order, nothing hidden, so the operator can see the shape of the
  * work and where they are in it *without leaving the step they are on*. Its
- * sibling {@link ProcedureColumn} is the **work surface** — one expanded section
+ * sibling {@link ProcedureDeck} is the **work surface** — one expanded section
  * at a time, carrying that step's own controls.
  *
  * They are not a duplication, and the earlier "exactly ONE procedure surface"
@@ -67,11 +67,20 @@ function StepMarker({ state, position }: { state: ProcedureStepState; position: 
   );
 }
 
+/**
+ * Cozy-row height for preview viewport math: `inset-cozy` (py-1.5) + 16px
+ * marker ≈ 40px. Module-private — the only consumer is this file's own
+ * `maxVisibleRows` math, and an exported geometry constant is a second place
+ * for row height to be declared. Keep in sync with the row anatomy below.
+ */
+const PROCEDURE_CHECKLIST_ROW_PX = 40;
+
 export function ProcedureChecklist({
   steps,
   title,
   onSelectStep,
   className,
+  maxVisibleRows,
 }: {
   steps: ReadonlyArray<ProcedureStepRow>;
   /** Eyebrow above the list — the station's name for its procedure. */
@@ -79,18 +88,41 @@ export function ProcedureChecklist({
   /** Optional: jump to a step. Omit for a read-only checklist. */
   onSelectStep?: (key: string) => void;
   className?: string;
+  /**
+   * Cap the visible list to N rows (scroll for the rest). Used by the
+   * scan-station hover peek (`SCAN_STATION_CHECKLIST_PREVIEW_ROWS` = 2).
+   */
+  maxVisibleRows?: number;
 }) {
   if (steps.length === 0) return null;
 
+  const listMaxHeight =
+    maxVisibleRows != null && maxVisibleRows > 0
+      ? maxVisibleRows * PROCEDURE_CHECKLIST_ROW_PX
+      : undefined;
+
   return (
-    <section className={cn('flex min-w-0 flex-col', className)} aria-label={title ?? 'Procedure'}>
+    <section
+      className={cn('flex min-w-0 flex-col', className)}
+      aria-label={title ?? 'Procedure'}
+      // Sibling of `data-procedure-deck`. Both surfaces render the SAME
+      // `data-procedure-step` keys — one derivation, two views — so a probe that
+      // does not name which view it means silently reads both lists at once.
+      data-procedure-checklist
+    >
       {title ? (
         <p className="inset-field pb-1 text-role-eyebrow uppercase tracking-widest text-text-soft">
           {title}
         </p>
       ) : null}
 
-      <ol className="flex min-w-0 flex-col divide-y divide-border-hairline">
+      <ol
+        className={cn(
+          'flex min-w-0 flex-col divide-y divide-border-hairline',
+          listMaxHeight != null && 'overflow-y-auto',
+        )}
+        style={listMaxHeight != null ? { maxHeight: listMaxHeight } : undefined}
+      >
         {steps.map((step) => {
           const isActive = step.state === 'active';
           const trailing =
@@ -126,8 +158,9 @@ export function ProcedureChecklist({
               data-procedure-step={step.key}
               data-procedure-state={step.state}
               // Selection never size-shifts: fill + inset ring only, constant py.
+              // Fixed min-height keeps the hover-peek viewport honest at N rows.
               className={cn(
-                'inset-cozy',
+                'inset-cozy min-h-10 box-border',
                 isActive && 'bg-blue-50 ring-1 ring-inset ring-blue-400',
               )}
             >

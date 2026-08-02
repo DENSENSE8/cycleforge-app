@@ -33,6 +33,7 @@ import type {
 } from '@/design-system/components/grid/grid-column-display';
 import { Button, Switch, ToolbarListboxOption } from '@/design-system/primitives';
 import type { TableId } from '@/lib/tables/table-columns';
+import { useGridColumnWidths } from './useGridColumnWidths';
 import { cn } from '@/utils/_cn';
 
 const HIGHLIGHT_OPTS: { id: GridColumnHighlight; label: string; swatch: string }[] = [
@@ -63,6 +64,16 @@ export function GridColumnDetailsPanel<C extends LedgerGridColumnModel>({
   initialHideKey?: string | null;
 }) {
   const { fields, setFieldVisible, reset, dirtyCount } = useGridFields(tableId, columns);
+  // A drag-resized width is part of this surface's display delta, so "Reset to
+  // default" must clear it too — otherwise Reset leaves the grid visibly
+  // non-default and the control quietly lies about what it did.
+  const { widths, resetWidths } = useGridColumnWidths(tableId);
+  const widthCount = Object.keys(widths).length;
+  const resetAll = () => {
+    reset();
+    if (widthCount > 0) resetWidths();
+  };
+  const dirtyTotal = dirtyCount + widthCount;
   const { displayByKey, setHighlight, setCellMode } = useGridColumnDisplay(tableId);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
 
@@ -120,12 +131,12 @@ export function GridColumnDetailsPanel<C extends LedgerGridColumnModel>({
           // it sits beside Done rather than under the per-column controls.
           // Absent while pristine — a reset that resets nothing teaches nothing.
           <div className="flex items-center gap-2">
-            {dirtyCount > 0 ? (
+            {dirtyTotal > 0 ? (
               <Button
                 variant="secondary"
                 icon={<RotateCcw className="h-3.5 w-3.5 shrink-0" />}
-                onClick={() => reset()}
-                aria-label={`Reset to default — ${dirtyCount} changed from default`}
+                onClick={resetAll}
+                aria-label={`Reset to default — ${dirtyTotal} changed from default`}
               >
                 Reset
               </Button>

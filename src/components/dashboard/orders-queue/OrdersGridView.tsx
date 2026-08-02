@@ -8,10 +8,11 @@ import { useStaffNameMap } from '@/hooks/useStaffNameMap';
 import { useUIModeOptional } from '@/design-system/providers/UIModeProvider';
 import { useTableSelectMode } from '@/hooks/useTableSelectMode';
 import { useColumnOrder } from '@/components/ui/table-column-config/useColumnOrder';
+import { useGridColumnWidths } from '@/components/ui/table-column-config/useGridColumnWidths';
 import { GridColumnDetailsPanel } from '@/components/ui/table-column-config/GridColumnDetailsPanel';
 import { OrderSearchEmptyState } from '@/components/dashboard/OrderSearchEmptyState';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
-import { LedgerGrid, useGridColumnVisibility, useGridSurface } from '@/design-system/components/grid';
+import { GridColumnGutter, LedgerGrid, useGridColumnVisibility, useGridSurface } from '@/design-system/components/grid';
 import type { TableId } from '@/lib/tables/table-columns';
 import {
   TABLE_SURFACE_CLIP_CLASS,
@@ -435,6 +436,7 @@ export function OrdersGridView({
   const [columnDetailsOpen, setColumnDetailsOpen] = useState(false);
 
   const { order: persistedOrder, setOrder, resetOrder } = useColumnOrder(tableId);
+  const { columnVars, setWidth: setColumnWidth } = useGridColumnWidths(tableId);
   const sanitizedOrder = useMemo(
     () => sanitizeOrdersQueueColumnOrder(persistedOrder, canonicalColumns),
     [persistedOrder, canonicalColumns],
@@ -676,6 +678,10 @@ export function OrdersGridView({
   );
 
   return (
+    <GridColumnGutter
+      onOpen={() => setColumnDetailsOpen(true)}
+      open={columnDetailsOpen}
+    >
     <div
       ref={shellRef}
       data-testid={dataTestId}
@@ -693,6 +699,7 @@ export function OrdersGridView({
         scrollX
         scrollParentRef={scrollParentRef}
         contentMinWidthRem={ordersQueueContentMinWidthRem(displayColumns)}
+        columnVars={columnVars}
         gridSkin="airtable"
         aria-label={ariaLabel}
         data-testid={scrollTestId}
@@ -710,8 +717,7 @@ export function OrdersGridView({
             activeSort={urlDriven && isQueueColumnSort(sort) ? sort : undefined}
             sortDir={urlDriven ? dir : null}
             onSortColumn={urlDriven ? handleSortColumn : undefined}
-            onOpenColumnDetails={() => setColumnDetailsOpen(true)}
-            columnDetailsOpen={columnDetailsOpen}
+            onResizeColumn={setColumnWidth}
           />
         }
         renderRow={renderRow}
@@ -744,5 +750,6 @@ export function OrdersGridView({
         columns={canonicalColumns}
       />
     </div>
+    </GridColumnGutter>
   );
 }

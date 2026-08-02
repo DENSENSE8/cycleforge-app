@@ -7,7 +7,6 @@ import { CONDITION_GRADES, resolveConditionGrade } from '@/lib/conditions';
 import { displayTrackingNumber } from '@/lib/receiving/fulfillment-mode';
 import {
   type ReceivingGridColumnKey,
-  type ReceivingGridSortDir,
 } from '@/lib/receiving/receiving-grid-layout';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import {
@@ -15,6 +14,7 @@ import {
   type ReceivingActivityAxis,
 } from '@/components/station/receiving-lines-table-helpers';
 import { resolveReceivingLineSerialsCsv } from '@/components/station/receiving-line-serials';
+import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 
 const CONDITION_RANK = new Map<string, number>(
   CONDITION_GRADES.map((g, i) => [g, i]),
@@ -79,7 +79,7 @@ export function compareReceivingGridRows(
   a: ReceivingLineRow,
   b: ReceivingLineRow,
   column: ReceivingGridColumnKey,
-  dir: ReceivingGridSortDir,
+  dir: GridSortDir,
   activityAxis: ReceivingActivityAxis = 'unboxed',
 ): number {
   const sign = dir === 'asc' ? 1 : -1;

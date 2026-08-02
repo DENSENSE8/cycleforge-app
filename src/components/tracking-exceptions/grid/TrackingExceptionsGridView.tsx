@@ -19,8 +19,8 @@ import {
   isTrackingExceptionsGridSortable,
   type TrackingExceptionsGridColumn,
   type TrackingExceptionsGridColumnKey,
-  type TrackingExceptionsGridSortDir,
 } from './tracking-exceptions-grid-layout';
+import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 
 /** Staff-prefs identity — one Tracking Exceptions spreadsheet, one Fields selection. */
 const TRACKING_EXCEPTIONS_TABLE_ID = 'tracking-exceptions' as const;
@@ -52,7 +52,7 @@ function compareTrackingExceptionRows(
   a: TrackingExceptionRow,
   b: TrackingExceptionRow,
   key: TrackingExceptionsGridColumnKey,
-  dir: TrackingExceptionsGridSortDir,
+  dir: GridSortDir,
 ): number {
   const sign = dir === 'asc' ? 1 : -1;
   switch (key) {
@@ -172,14 +172,15 @@ export function TrackingExceptionsGridView({
         isSearching={isSearching}
         scrollRef={scrollRef}
         testId="tracking-exceptions-grid-body"
-        renderColumnHeader={({ toggleColumnSort }) => (
+        tableId={TRACKING_EXCEPTIONS_TABLE_ID}
+        columnDetails={{ open: columnDetailsOpen, onOpen: () => setColumnDetailsOpen(true) }}
+        renderColumnHeader={({ toggleColumnSort, onResizeColumn }) => (
           <TrackingExceptionsGridColumnHeader
             columns={visible}
             activeSort={columnSort}
             sortDir={sortDir}
             onSortColumn={toggleColumnSort}
-            onOpenColumnDetails={() => setColumnDetailsOpen(true)}
-            columnDetailsOpen={columnDetailsOpen}
+            onResizeColumn={onResizeColumn}
           />
         )}
         renderGroup={(group) => <>{group.rows.map(renderLeaf)}</>}

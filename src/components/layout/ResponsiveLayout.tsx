@@ -46,6 +46,13 @@ const SidebarNavColumn = dynamic(
 // hydration changes no behavior — the listeners attach as soon as the split
 // chunk lands, which is still within the first idle moments.
 const CommandBar = dynamic(() => import('@/components/CommandBar').then((m) => m.CommandBar), { ssr: false });
+// Owns the ⌘⇧V chord + the single desktop clipboard-panel mount. Must be here
+// rather than in the spine footer: that footer mounts lazily on first spine
+// open, so a chord bound there would be dead on every fresh page load.
+const ClipboardHistoryHost = dynamic(
+  () => import('@/components/quick-access/ClipboardHistoryHost').then((m) => m.ClipboardHistoryHost),
+  { ssr: false },
+);
 const GlobalDesktopSkuScanner = dynamic(
   () => import('@/components/layout/GlobalDesktopSkuScanner').then((m) => m.GlobalDesktopSkuScanner),
   { ssr: false },
@@ -420,6 +427,7 @@ export function ResponsiveLayout({ children, kioskHost = false }: ResponsiveLayo
         )}
 
         <CommandBar />
+        <ClipboardHistoryHost />
         <Suspense fallback={null}>
           <GlobalDesktopSkuScanner />
         </Suspense>

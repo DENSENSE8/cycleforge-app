@@ -93,7 +93,9 @@ export type TableId =
    */
   | 'import-exception'
   /** Ops › Tracking Exceptions spreadsheet (`TRACKING_EXCEPTIONS_GRID_COLUMNS`). */
-  | 'tracking-exceptions';
+  | 'tracking-exceptions'
+  /** Support › Tickets spreadsheet (`SUPPORT_TICKETS_GRID_COLUMNS`). */
+  | 'support-tickets';
 
 /** Canonical meta-slot keys (the left-side qty | condition | rest grid). */
 export const META_KEYS = {
@@ -133,7 +135,19 @@ const GRID_COL = (key: string, label: string, type?: ColumnType): TableColumnSpe
  */
 export const TABLE_COLUMNS: Record<TableId, TableColumnSpec[]> = {
   // Unbox / History / Testing receiving-line grids (`RECEIVING_GRID_COLUMNS`).
-  receiving: [META_QTY, META_CONDITION, META_REST, CHIP_PLATFORM, CHIP_ORDERID, CHIP_TRACKING, CHIP_SERIAL],
+  // `status` = the merged lifecycle track (dot · stage · day · time, 2026-08-02);
+  // `date` joined the list when that column absorbed it.
+  receiving: [
+    META_STATUS,
+    GRID_COL('date', 'Date', 'date'),
+    META_QTY,
+    META_CONDITION,
+    META_REST,
+    CHIP_PLATFORM,
+    CHIP_ORDERID,
+    CHIP_TRACKING,
+    CHIP_SERIAL,
+  ],
   // Incoming POS (`INCOMING_GRID_COLUMNS`) — separate prefs bucket so a Fields
   // toggle on Incoming cannot silently hide tracks on History/Unbox (and vice
   // versa). Status uses meta `rest`; no serial on this surface.
@@ -259,6 +273,15 @@ export const TABLE_COLUMNS: Record<TableId, TableColumnSpec[]> = {
     GRID_COL('lastCheck', 'Last check', 'date'),
     GRID_COL('created', 'Created', 'date'),
     GRID_COL('notes', 'Notes', 'longtext'),
+  ],
+  // Keys are the `hideKey`s in
+  // `src/components/support/zendesk/grid/support-tickets-grid-layout.ts`.
+  // `select` / `subject` are absent — structurally un-hideable identity.
+  'support-tickets': [
+    GRID_COL('status', 'Status', 'tag'),
+    GRID_COL('priority', 'Priority', 'tag'),
+    GRID_COL('ticket', 'Ticket', 'id'),
+    GRID_COL('updated', 'Updated', 'date'),
   ],
 };
 

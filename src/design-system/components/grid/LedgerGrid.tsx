@@ -309,9 +309,9 @@ export function LedgerGrid<T>({
             role="rowgroup"
             data-grid-col-header=""
             className={cn(
-              // `relative` anchors the optional top-right column-display lip
-              // (LedgerGridColumnHeader) to the visible header band, not the
-              // translated wide header row.
+              // `relative` keeps the band a positioning context for anything a
+              // family anchors to the VISIBLE header rather than the translated
+              // wide header row (frozen-edge chrome under split mode).
               'relative sticky top-0 z-sticky isolate shrink-0 bg-surface-card',
               splitX && 'overflow-x-clip',
             )}

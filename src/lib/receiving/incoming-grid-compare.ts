@@ -10,10 +10,10 @@ import {
 import {
   incomingRowDateSource,
   type IncomingGridColumnKey,
-  type IncomingGridSortDir,
 } from '@/lib/receiving/incoming-grid-layout';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { getDaysLateNullable } from '@/utils/date';
+import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 
 const CONDITION_RANK = new Map<string, number>(
   CONDITION_GRADES.map((g, i) => [g, i]),
@@ -114,7 +114,7 @@ export function compareIncomingGridRows(
   a: ReceivingLineRow,
   b: ReceivingLineRow,
   column: IncomingGridColumnKey,
-  dir: IncomingGridSortDir,
+  dir: GridSortDir,
 ): number {
   const sign = dir === 'asc' ? 1 : -1;
   let primary = 0;

@@ -28,6 +28,7 @@ import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { TrackingChip, OrderIdChip, getLast8 } from '@/components/ui/CopyChip';
 import { Button, IconButton } from '@/design-system/primitives';
 import { cn } from '@/utils/_cn';
+import { InboxQueueLinks } from './InboxQueueLinks';
 import { QuickAccessPanelShell } from './QuickAccessPanelShell';
 
 interface ActivityInboxPopoverProps {
@@ -166,10 +167,18 @@ export function ActivityInboxPopover({ onClose }: ActivityInboxPopoverProps) {
         ) : null
       }
     >
+      {/* "Where my work is", above "what just happened". The strip answers a
+          different question from the feed below it and has its own source, so
+          it renders in both the empty and the populated branch. */}
+      <InboxQueueLinks onNavigate={onClose} />
+
       {items.length === 0 ? (
         <div className="flex flex-col items-center gap-2 px-6 py-12 text-center">
           <Inbox className="h-5 w-5 text-text-faint" />
-          <p className="text-sm font-semibold text-text-default">All caught up</p>
+          {/* Scoped to the FEED, not to the day. "All caught up" sat directly
+              under a queue strip that can be reading "Orders 4", which is a
+              contradiction the operator notices before the nuance. */}
+          <p className="text-sm font-semibold text-text-default">No new activity</p>
           <p className="max-w-[14rem] text-role-caption text-text-soft">
             Tech items, repair updates, and messages will show up here.
           </p>

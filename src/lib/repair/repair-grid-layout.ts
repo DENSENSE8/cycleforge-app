@@ -17,6 +17,7 @@ import { gridTemplate } from '@/design-system/components/grid/grid-column-geomet
 import type { RSRecord } from '@/lib/neon/repair-service-queries';
 import type { ColumnType } from '@/lib/tables/table-columns';
 import { formatPhoneNumber } from '@/utils/phone';
+import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 
 export type RepairGridColumnKey =
   | 'select'
@@ -108,10 +109,9 @@ export function isRepairGridFrozen(key: string): boolean {
   return REPAIR_GRID_LOCKED_KEYS.includes(key as RepairGridColumnKey);
 }
 
-export type RepairGridSortDir = 'asc' | 'desc';
 
 /** Default direction when a column sort is first activated. */
-export function defaultDirForRepairGridSort(key: RepairGridColumnKey): RepairGridSortDir {
+export function defaultDirForRepairGridSort(key: RepairGridColumnKey): GridSortDir {
   // Created date scans newest-first by default; everything else A→Z / low→high.
   return key === 'date' ? 'desc' : 'asc';
 }

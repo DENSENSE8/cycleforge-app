@@ -10,7 +10,8 @@
  * exclusive with Displays, Claim, Ticket, and `detail:receiving` (wired by
  * LineEditPanel).
  *
- * Gutter is {@link TICKET_PUSH_HOST_PAD_CLASS} on the LineEditPanel host.
+ * Trailing gutter is {@link TICKET_PUSH_HOST_PAD_CLASS} on the LineEditPanel
+ * host; top/bottom is {@link UnboxPushColumn}'s `my-2`.
  */
 
 import type { ReactNode } from 'react';

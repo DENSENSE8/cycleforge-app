@@ -14,6 +14,7 @@
 import type { PoolClient } from 'pg';
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
+import { getComplianceAnswers, parseOrgSettings } from '@/lib/tenancy/settings';
 import { EMPTY_ONBOARDING_STATS, type OnboardingStats } from './steps';
 
 /** Injectable deps so unit tests run DB-free (backend-patterns.md). */
@@ -32,6 +33,7 @@ interface StatsRow {
   integrations_connected: number | string;
   first_scan_done: boolean;
   has_active_workflow: boolean;
+  org_settings: unknown;
 }
 
 /** Caps keep the counts index-cheap; the checklist thresholds are tiny. */
@@ -55,7 +57,15 @@ export async function getOnboardingStats(
              WHERE organization_id = $1 AND status = 'active')                        AS integrations_connected,
            EXISTS (SELECT 1 FROM inventory_events WHERE organization_id = $1)         AS first_scan_done,
            EXISTS (SELECT 1 FROM workflow_definitions
-             WHERE organization_id = $1 AND is_active = TRUE)                          AS has_active_workflow`,
+             WHERE organization_id = $1 AND is_active = TRUE)                          AS has_active_workflow,
+           -- The one persisted ANSWER in this bag. The whole settings blob comes
+           -- back and getComplianceAnswers reads it, rather than a jsonb path
+           -- spelled out here: the shape of that block has exactly one owner
+           -- (OrgSettingsSchema), and a hand-written '{compliance,answeredAt}'
+           -- would be a second place that has to be right. organizations is the
+           -- tenant REGISTRY, keyed by id not organization_id, so the PK match
+           -- IS its org scope.
+           (SELECT settings FROM organizations WHERE id = $1)                          AS org_settings`,
         [orgId],
       );
       const row = rows[0];
@@ -67,6 +77,7 @@ export async function getOnboardingStats(
         integrationsConnected: Number(row.integrations_connected ?? 0),
         firstScanDone: Boolean(row.first_scan_done),
         hasActiveWorkflow: Boolean(row.has_active_workflow),
+        complianceAnsweredAt: getComplianceAnswers(parseOrgSettings(row.org_settings)).answeredAt,
       };
     });
   } catch (error) {

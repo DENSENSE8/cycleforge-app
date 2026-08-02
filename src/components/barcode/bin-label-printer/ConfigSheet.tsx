@@ -5,7 +5,7 @@ import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Check } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
 import { QR_BASE_URL } from '@/lib/barcode-routing';
-import { isLicensedGln } from '@/lib/interop/gs1-keys';
+import { useOrgGs1 } from '@/hooks/useOrgGs1';
 import { DEFAULT_CONFIG, type PrinterConfig } from './types';
 import { clampMax } from './storage';
 
@@ -18,12 +18,12 @@ interface ConfigSheetProps {
 
 export function ConfigSheet({ open, onClose, config, onSave }: ConfigSheetProps) {
   const [draft, setDraft] = useState<PrinterConfig>(config);
+  const { identity } = useOrgGs1();
   useEffect(() => {
     if (open) setDraft(config);
   }, [open, config]);
 
   const set = (k: keyof PrinterConfig) => (v: string) => {
-    if (k === 'gln') return setDraft({ ...draft, gln: v.trim() });
     setDraft({
       ...draft,
       [k]: clampMax(v, (DEFAULT_CONFIG as unknown as Record<string, number>)[k]),
@@ -36,7 +36,6 @@ export function ConfigSheet({ open, onClose, config, onSave }: ConfigSheetProps)
       maxBays: clampMax(draft.maxBays, DEFAULT_CONFIG.maxBays),
       maxLevels: clampMax(draft.maxLevels, DEFAULT_CONFIG.maxLevels),
       maxPositions: clampMax(draft.maxPositions, DEFAULT_CONFIG.maxPositions),
-      gln: draft.gln.trim(),
     });
   };
 
@@ -55,20 +54,24 @@ export function ConfigSheet({ open, onClose, config, onSave }: ConfigSheetProps)
         <NumField label="Positions" value={draft.maxPositions} onChange={set('maxPositions')} />
       </div>
 
+      {/*
+        Read-only on purpose. A GLN is a LICENSED identifier belonging to the
+        company, so it is workspace-wide (Settings → Organization → Product
+        identity) rather than a per-browser preference. Editing it here used to
+        let two operators print the same rack with different GLNs, neither of
+        them the value the rest of the app reads.
+      */}
       <div className="mt-4">
-        <label className="text-role-micro font-semibold uppercase tracking-wider text-text-soft">
+        <span className="text-role-micro font-semibold uppercase tracking-wider text-text-soft">
           GLN (Global Location Number)
-        </label>
-        <input
-          type="text"
-          value={draft.gln}
-          onChange={(e) => set('gln')(e.target.value)}
-          className="mt-1 h-11 w-full rounded-2xl border border-border-default bg-surface-canvas px-4 font-mono text-sm font-semibold text-text-default outline-none focus:border-blue-500 focus:bg-surface-card focus:ring-2 focus:ring-blue-200"
-        />
+        </span>
+        <p className="mt-1 font-mono text-sm font-semibold text-text-default">
+          {identity.gln || 'None'}
+        </p>
         <p className="mt-1 text-role-micro text-text-faint">
-          {isLicensedGln(draft.gln)
-            ? 'Licensed GLN — labels print as a GS1 DataMatrix carrying (414).'
-            : 'Optional. Leave blank until you register a GLN with GS1 — labels then carry the bare location code, which scans the same. An unlicensed number here is ignored: AI 414 means "GLN", so printing one you do not hold claims another company\u2019s identity.'}
+          {identity.gln
+            ? 'Licensed GLN for this workspace — labels print as a GS1 DataMatrix carrying (414). An admin can change it in Settings → Organization.'
+            : 'This workspace holds no GLN, so labels carry the bare location code — which scans exactly the same here. An admin can add one in Settings → Organization once you register with GS1.'}
         </p>
       </div>
 

@@ -14,6 +14,7 @@ import {
   buildCartonMilestones,
   cartonContentsSummary,
   cartonDisposition,
+  cartonEventSignature,
   cartonExceptions,
   cartonFacts,
   cartonFlags,
@@ -412,4 +413,194 @@ test('cartonDisposition: in_progress when lifecycle not done and no exceptions',
   assert.equal(d.state, 'in_progress');
   assert.equal(d.settled, false);
   assert.equal(d.lifecycle.state, 'scanned');
+});
+
+// ── cartonEventSignature — two events, one second apart, must not read alike ──
+
+const EVENT = {
+  event_type: null as string | null,
+  prev_status: null as string | null,
+  next_status: null as string | null,
+  notes: null as string | null,
+};
+
+test('cartonEventSignature: a unit\'s FIRST status is still a transition', () => {
+  // The real carton-50354 pair. Before the fix both rendered as bare title +
+  // timestamp + serial, because `prev && next && prev !== next` is false when
+  // prev is null — so the row that moved the unit to RECEIVED showed nothing.
+  const attach = cartonEventSignature({
+    ...EVENT,
+    event_type: 'RECEIVED',
+    next_status: 'RECEIVED',
+    notes: 'Serial 049331F81860251AE',
+  });
+  const note = cartonEventSignature({
+    ...EVENT,
+    event_type: 'NOTE',
+    notes: 'Unmatched return serial 049331f81860251ae — no order match',
+  });
+
+  assert.deepEqual(attach, { kind: null, trail: '→ RECEIVED' });
+  assert.deepEqual(note, { kind: 'NOTE', trail: null });
+  // The whole point: the two rows say different things.
+  assert.notDeepEqual(attach, note);
+});
+
+test('cartonEventSignature: a real move keeps both ends', () => {
+  assert.deepEqual(
+    cartonEventSignature({
+      ...EVENT,
+      event_type: 'MOVED',
+      prev_status: 'RECEIVED',
+      next_status: 'TESTED',
+      notes: 'Moved to bench',
+    }),
+    { kind: 'MOVED', trail: 'RECEIVED → TESTED' },
+  );
+});
+
+test('cartonEventSignature: never prints one fact twice', () => {
+  // kind === next_status → the trail already said it.
+  assert.equal(
+    cartonEventSignature({
+      ...EVENT,
+      event_type: 'RECEIVED',
+      next_status: 'RECEIVED',
+      notes: 'anything',
+    }).kind,
+    null,
+  );
+  // No notes ⇒ the TITLE is the event type ⇒ do not repeat it in the meta row.
+  assert.equal(
+    cartonEventSignature({ ...EVENT, event_type: 'TRIAGED' }).kind,
+    null,
+  );
+  // A no-op re-stamp of the same status is not a move.
+  assert.equal(
+    cartonEventSignature({
+      ...EVENT,
+      event_type: 'NOTE',
+      prev_status: 'RECEIVED',
+      next_status: 'RECEIVED',
+      notes: 'x',
+    }).trail,
+    '→ RECEIVED',
+  );
+});
+
+test('cartonEventSignature: whitespace-only fields are absent, not values', () => {
+  assert.deepEqual(
+    cartonEventSignature({ ...EVENT, event_type: '  ', next_status: '  ', notes: '   ' }),
+    { kind: null, trail: null },
+  );
+});
+
+test('cartonExceptions: a RETURN never asks the operator to go find a PO', () => {
+  // A return has no PO to match, so "unpaired" is not a finding about it —
+  // same rule `isTriagePaired` (triage-focus.ts) has used since C6. Carton
+  // 50354 has NO receiving_triage row at all, which is why the fixture below
+  // carries an explicit UNFOUND: the suppression must hold even when the
+  // pairing answer really was recorded.
+  const asReturn = cartonExceptions(
+    { ...RECEIVING, pairing_state: 'UNFOUND', is_return: true, intake_type: 'RETURN' },
+    { expected: 1, received: 0, lines: 1, lines_complete: 0 },
+  );
+  assert.equal(asReturn.some((e) => e.key === 'unfound'), false);
+
+  // intake_type alone is enough — the boolean lags on some rows.
+  const byIntakeOnly = cartonExceptions(
+    { ...RECEIVING, pairing_state: 'UNFOUND', is_return: false, intake_type: 'return' },
+    { expected: 1, received: 0, lines: 1, lines_complete: 0 },
+  );
+  assert.equal(byIntakeOnly.some((e) => e.key === 'unfound'), false);
+
+  // A PO-intake carton with no PO link still gets the finding — that one CAN be
+  // found. (The base fixture carries a linked PO, which `cartonHasLinkedPo`
+  // already suppresses on its own, so the control has to clear it.)
+  const poCarton = cartonExceptions(
+    {
+      ...RECEIVING,
+      pairing_state: 'UNFOUND',
+      is_return: false,
+      intake_type: 'PO',
+      zoho_purchaseorder_id: null,
+      zoho_purchaseorder_number: null,
+    },
+    { expected: 1, received: 0, lines: 1, lines_complete: 0 },
+  );
+  assert.ok(poCarton.some((e) => e.key === 'unfound'));
+});
+
+test('cartonFlags: the return suppression matches the exception rule', () => {
+  const flags = cartonFlags({
+    ...RECEIVING,
+    pairing_state: 'UNFOUND',
+    is_return: true,
+    intake_type: 'RETURN',
+  });
+  assert.equal(flags.some((f) => f.key === 'unfound'), false);
+});
+
+// --- absent vs recorded -----------------------------------------------------
+// `/api/receiving/[id]` and the receiving-lines builders no longer send
+// COALESCE(rt.pairing_state,'UNFOUND'), so `pairing_state: null` now genuinely
+// means "no receiving_triage row" — 751 of 2790 dogfood cartons. The finding has
+// to come from a fact somebody RECORDED instead.
+
+const NO_PO = { zoho_purchaseorder_id: null, zoho_purchaseorder_number: null } as const;
+
+test('cartonExceptions: an unrecorded pairing state still finds an unmatched-source carton', () => {
+  // Nobody triaged it, so there is no pairing answer — but the intake scan
+  // stamped source='unmatched' when the tracking number matched no PO. That is
+  // recorded, and it is the fact the finding rests on.
+  const untriaged = cartonExceptions(
+    { ...RECEIVING, ...NO_PO, pairing_state: null, source: 'unmatched' },
+    { expected: 1, received: 0, lines: 1, lines_complete: 0 },
+  );
+  assert.ok(untriaged.some((e) => e.key === 'unfound'));
+});
+
+test('cartonExceptions: nothing recorded, nothing claimed', () => {
+  // A PO-sourced carton with no triage row and no PO link. Nothing on disk says
+  // a PO search happened, let alone failed — so the surface must not report one.
+  // This is the case the COALESCE default used to fabricate a finding for.
+  const silent = cartonExceptions(
+    { ...RECEIVING, ...NO_PO, pairing_state: null, source: 'zoho_po' },
+    { expected: 1, received: 0, lines: 1, lines_complete: 0 },
+  );
+  assert.equal(silent.some((e) => e.key === 'unfound'), false);
+
+  // …and the recorded answer alone is still enough, with no help from `source`.
+  const recorded = cartonExceptions(
+    { ...RECEIVING, ...NO_PO, pairing_state: 'UNFOUND', source: 'zoho_po' },
+    { expected: 1, received: 0, lines: 1, lines_complete: 0 },
+  );
+  assert.ok(recorded.some((e) => e.key === 'unfound'));
+});
+
+test('cartonFlags and cartonExceptions never disagree about No matched PO', () => {
+  // The chip and the header's settled-ness read one predicate. A carton showing
+  // the flag while the disposition says "complete" is the surface contradicting
+  // itself, so this walks the axes that decide it.
+  for (const pairing_state of [null, 'UNFOUND', 'MATCHED', 'WAIVED']) {
+    for (const source of ['unmatched', 'zoho_po', null]) {
+      for (const is_return of [true, false]) {
+        const r = { ...RECEIVING, ...NO_PO, pairing_state, source, is_return };
+        const totals = { expected: 1, received: 0, lines: 1, lines_complete: 0 };
+        assert.equal(
+          cartonFlags(r).some((f) => f.key === 'unfound'),
+          cartonExceptions(r, totals).some((e) => e.key === 'unfound'),
+          `flag/exception disagree for ${JSON.stringify({ pairing_state, source, is_return })}`,
+        );
+      }
+    }
+  }
+});
+
+test('cartonRecordMeta: omits Pairing state when nobody recorded one', () => {
+  const absent = cartonRecordMeta({ ...RECEIVING, pairing_state: null });
+  assert.equal(absent.some((f) => f.key === 'pairing'), false, 'no row is not a value');
+
+  const recorded = cartonRecordMeta({ ...RECEIVING, pairing_state: 'WAIVED' });
+  assert.equal(recorded.find((f) => f.key === 'pairing')?.value, 'WAIVED');
 });

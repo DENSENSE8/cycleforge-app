@@ -22,10 +22,12 @@ export const SERVICE_WORKSPACE_THREAD_CLASS =
   'relative flex min-h-0 min-w-0 flex-1 flex-col';
 
 /**
- * The context column. In-flow (`shrink-0` + `border-l`), so it PUSHES the
- * thread rather than floating over it — the house right-edge law
- * (`source-of-truth.md` → Right-rail modality). Width is fixed at the
- * detail-stack minimum: narrower and the linkage chips wrap mid-identifier.
+ * There is deliberately NO context-column token here.
+ *
+ * One existed (`SERVICE_WORKSPACE_CONTEXT_CLASS`, a hand-rolled
+ * `w-[20rem] shrink-0 … border-l`) until 2026-08-01. Ticket context is a
+ * `RightRailHost` occupant — `SupportContextDetailPanel` — and that host owns
+ * the width, the resize grip, the collapse strip and the push tween. A geometry
+ * token for a second right column is how a surface grows a competing right edge,
+ * so its absence is the point rather than an omission.
  */
-export const SERVICE_WORKSPACE_CONTEXT_CLASS =
-  'flex w-[20rem] shrink-0 flex-col overflow-y-auto border-l border-border-soft bg-surface-card';

@@ -12,14 +12,14 @@ import {
   defaultDirForRepairGridSort,
   isRepairGridSortable,
   type RepairGridColumnKey,
-  type RepairGridSortDir,
 } from '@/lib/repair/repair-grid-layout';
+import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 
 /** Every sortable grid column (the frozen `select` gutter is never a sort). */
 export type RepairDisplaySortColumn = Exclude<RepairGridColumnKey, 'select'>;
 /** `newest` is the default composite (server `created_at DESC`). */
 export type RepairDisplaySort = 'newest' | RepairDisplaySortColumn;
-export type RepairDisplaySortDir = RepairGridSortDir;
+export type RepairDisplaySortDir = GridSortDir;
 
 export function isRepairColumnSort(sort: string): sort is RepairDisplaySortColumn {
   return isRepairGridSortable(sort);
