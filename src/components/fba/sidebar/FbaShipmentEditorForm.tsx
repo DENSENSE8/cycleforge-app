@@ -1,10 +1,10 @@
 'use client';
 
 import { DndContext, DragOverlay } from '@dnd-kit/core';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion } from '@/design-system/motion';
 import { Loader2, MapPin, Package, Plus, RotateCcw, Search, X } from '@/components/Icons';
 import { Button, IconButton } from '@/design-system/primitives';
-import { getLast4 } from '@/components/ui/CopyChip';
+import { getLast8 } from '@/components/ui/CopyChip';
 import { FbaTrackingBundleCard } from '@/components/fba/sidebar/FbaTrackingBundleCard';
 import { FbaQtySplitPopover } from '@/components/fba/sidebar/FbaQtySplitPopover';
 import { droppableIdForBundle, UNALLOCATED_ID, type FbaShipmentEditorFormProps } from './shipment-editor/shipment-editor-helpers';
@@ -75,7 +75,7 @@ export function FbaShipmentEditorForm(props: FbaShipmentEditorFormProps) {
                         <>
                           <MapPin className="h-3 w-3 shrink-0 text-blue-500" />
                           <span className="border-b-2 border-blue-500 pb-0.5 font-mono text-role-micro tracking-tight leading-none text-text-default">
-                            {getLast4(bundle.tracking_number)}
+                            {getLast8(bundle.tracking_number)}
                           </span>
                         </>
                       ) : (

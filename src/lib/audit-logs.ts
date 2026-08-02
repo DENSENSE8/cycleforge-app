@@ -226,6 +226,19 @@ export const AUDIT_ACTION = {
   RECEIVING_LINE_ADVANCE:    'receiving_line.advance',
   /** Real "Save for unbox" transition — stamps receiving.triage_complete. */
   RECEIVING_TRIAGE_COMPLETE: 'receiving.triage.complete',
+  /**
+   * An operator confirmed this carton's contents against its line list — the
+   * `contents` step of the Unbox procedure
+   * (`receiving_unbox.contents_confirmed_at`).
+   *
+   * Paired with its retraction rather than folded into one toggle action,
+   * because the two are different claims and a dashboard counting
+   * "confirmations" must not be able to count a reopen as one. The stamp is
+   * clearable, so the audit trail is the only place the original claim survives
+   * a reopen.
+   */
+  RECEIVING_CONTENTS_CONFIRMED: 'receiving.contents.confirmed',
+  RECEIVING_CONTENTS_REOPENED:  'receiving.contents.reopened',
   /** Incoming email to-do check-off / restore — a reversible pile move on an
    *  email_missing_purchase_orders row, never a delete. */
   RECEIVING_TODO_CHECKED:    'receiving.todo.checked',
@@ -372,6 +385,15 @@ export const AUDIT_ACTION = {
   AI_SEARCH_ASK: 'ai_search.ask',
   // Personal UI preferences (e.g. configurable focus-scan hotkey)
   STAFF_PREFERENCE_UPDATE: 'staff_preference.update',
+  /**
+   * Staff profile photo set / replaced / cleared (`staff.avatar_photo_id`).
+   * Audited even for a self-change because the avatar is how every timeline,
+   * journey and schedule pill ATTRIBUTES work to a face — a silently swapped
+   * face is an attribution change, and `actor_staff_id ≠ entity_id` is what
+   * distinguishes an admin acting on behalf from the staffer themselves.
+   */
+  STAFF_AVATAR_SET:   'staff.avatar.set',
+  STAFF_AVATAR_CLEAR: 'staff.avatar.clear',
   // Home Inbox — personal follow/mute on an entity, and inbox triage.
   SUBSCRIPTION_TOGGLE: 'subscription.toggle',
   INBOX_TRIAGE: 'inbox.triage',

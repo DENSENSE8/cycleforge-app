@@ -20,6 +20,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { PoLinesAccordion } from '../PoLinesAccordion';
 import { UnmatchedItemsSection } from '../UnmatchedItemsSection';
 import { ActiveLineConditionSerial } from './ActiveLineConditionSerial';
+import { ReceivingPhotoButton } from './ReceivingPhotoButton';
 import type { ReceivingLineRow } from '@/components/station/ReceivingLinesTable';
 import type { InlineActionFeedbackPayload } from '../InlineActionFeedbackCard';
 import type { UnboxLineController } from './unbox-line-controller';
@@ -240,6 +241,26 @@ export function LinePoItemsSection({
           onSerialAbsentChange={({ absent, reason }) => c.commitSerialAbsent({ absent, reason })}
           units={units}
           serialInputRef={c.serialRef}
+          // The desktop's ONLY item-evidence surface. Stage is threaded
+          // explicitly and paired with the line id — a defaulted safety
+          // classification is what let bench photos become arrival evidence
+          // once already (`.claude/rules/backend-patterns.md`). `unbox_item`
+          // + `receivingLineId` writes RECEIVING_LINE / `receiving_item`;
+          // `arrival_package` is never reachable from this bench.
+          itemPhotoSlot={
+            <ReceivingPhotoButton
+              receivingId={receivingId}
+              staffId={Number(staffId) || 0}
+              poRef={row.zoho_purchaseorder_number ?? null}
+              photoStage="unbox_item"
+              receivingLineId={row.id}
+              // Routes a phone request to /m/receiving/po/{ref}/item/{line}/photos.
+              // The detail route resolves either the Zoho id or the printed
+              // number; prefer the id, which survives a PO rename. Absent →
+              // the phone leg is click-inert and device upload still works.
+              poRouteRef={row.zoho_purchaseorder_id ?? row.zoho_purchaseorder_number ?? null}
+            />
+          }
         />
       )}
     />

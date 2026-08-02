@@ -1,7 +1,12 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { AnimatePresence, LayoutGroup, motion, useReducedMotion } from 'framer-motion';
+import { AnimatePresence, LayoutGroup, motion, useReducedMotion } from '@/design-system/motion';
+import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
+import {
+  useMotionPresence,
+  useMotionTransition,
+} from '@/design-system/foundations/motion-framer-hooks';
 
 type FeedId = string | number;
 
@@ -54,11 +59,14 @@ const DefaultLoading = (
  * Phase 1) so stations migrate onto one primitive instead of forking a
  * `StationTimelineShell`. Contract pinned by `capture-stack.guard.test.ts`.
  *
- * TODO(capture-stack): Phase 2 migrates the inline variants below onto
- * `useMotionPresence` / `useMotionTransition` and adds this file to
- * `station-motion-bridge.guard.test.ts` in the same commit. It is compliant in
- * effect today (it branches on `useReducedMotion`), and rewriting it here would
- * break the byte-identical requirement of the promotion.
+ * Motion routes through the reduced-motion bridge (capture-stack Phase 2):
+ * shapes come from `framerPresence.captureStackRow*` and the spring from
+ * `framerTransition.captureStackRowMount`, both via `useMotionPresence` /
+ * `useMotionTransition`, so reduced motion is free here and for every future
+ * station consumer. Pinned by `station-motion-bridge.guard.test.ts`.
+ *
+ * `layout` keeps its own `useReducedMotion` branch because the bridge has no
+ * layout equivalent — same shape as `CardShell`.
  */
 export function CaptureStack<T>({
   rows,
@@ -73,6 +81,10 @@ export function CaptureStack<T>({
   className = '',
 }: CaptureStackProps<T>) {
   const reduceMotion = useReducedMotion();
+  // Resolved per VARIANT, not per row: hooks cannot be called inside the map.
+  const expandedPresence = useMotionPresence(framerPresence.captureStackRowExpanded);
+  const collapsedPresence = useMotionPresence(framerPresence.captureStackRowCollapsed);
+  const transition = useMotionTransition(framerTransition.captureStackRowMount);
 
   if (isLoading && rows.length === 0) {
     return <div className="flex min-h-0 flex-1 flex-col">{loading ?? DefaultLoading}</div>;
@@ -100,22 +112,15 @@ export function CaptureStack<T>({
             const isLast = i === lastIndex;
             const variant: 'collapsed' | 'expanded' = expandLast && isLast ? 'expanded' : 'collapsed';
             const fresh = freshIds?.has(id) ?? false;
+            const presence = variant === 'expanded' ? expandedPresence : collapsedPresence;
             return (
               <motion.div
                 key={id}
                 layout={reduceMotion ? false : 'position'}
-                initial={
-                  reduceMotion
-                    ? false
-                    : { opacity: 0, y: variant === 'expanded' ? 24 : 10, scale: variant === 'expanded' ? 0.98 : 1 }
-                }
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={reduceMotion ? undefined : { opacity: 0, height: 0, transition: { duration: 0.18 } }}
-                transition={
-                  reduceMotion
-                    ? { duration: 0 }
-                    : { type: 'spring', damping: 28, stiffness: 340, mass: 0.55 }
-                }
+                initial={presence.initial}
+                animate={presence.animate}
+                exit={presence.exit}
+                transition={transition}
               >
                 {renderRow(row, { variant, fresh, index: i, isLast })}
               </motion.div>

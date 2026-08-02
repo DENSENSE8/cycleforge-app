@@ -1,9 +1,9 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion } from '@/design-system/motion';
 import { framerTransition } from '@/design-system/foundations/motion-framer';
-import { ConditionGradeChip, SerialChip, SkuScanRefChip, getLast4 } from '@/components/ui/CopyChip';
+import { ConditionGradeChip, SerialChip, SkuScanRefChip, getLast8 } from '@/components/ui/CopyChip';
 import { PoLineMetaGrid } from '@/components/receiving/workspace/PoLineMetaGrid';
 import { ProgressBadge } from '@/components/receiving/workspace/PoLineBadges';
 import { META_COL } from '@/components/ui/RowMetaColumns';
@@ -149,7 +149,7 @@ function SkuSerialGroupBlock({
         qty={<ProgressBadge received={serials.length} expected={quantity} />}
         sku={
           group.sku && group.sku !== '—' ? (
-            <SkuScanRefChip value={group.sku} display={getLast4(group.sku)} dense />
+            <SkuScanRefChip value={group.sku} display={getLast8(group.sku)} dense />
           ) : undefined
         }
         condition={

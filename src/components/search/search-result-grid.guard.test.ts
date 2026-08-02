@@ -50,9 +50,9 @@ describe('SearchResultRow comfortable grid', () => {
     assert.match(skeletonSrc, /from '\.\/search-result-grid'/);
   });
 
-  it('leads with blue package glyphs and OrderIdChip last-4', () => {
+  it('leads with blue package glyphs and OrderIdChip last-8', () => {
     assert.match(comfortableSrc, /OrderIdChip/);
-    assert.match(comfortableSrc, /getLast4\(orderId\)/);
+    assert.match(comfortableSrc, /getLast8\(orderId\)/);
     assert.match(comfortableSrc, /EntityTile/);
     assert.match(rowSrc, /search-result-identity/);
     assert.match(chipsSrc, /order:\s*Package/);

@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { motion } from 'framer-motion';
+import { motion } from '@/design-system/motion';
 import { Settings, X } from '@/components/Icons';
 import { AnchoredLayer } from '@/design-system/primitives/AnchoredLayer';
 import { IconButton } from '@/design-system/primitives';

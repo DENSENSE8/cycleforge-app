@@ -260,7 +260,7 @@ export function IntegrationCard({
             </div>
           )}
         </div>
-        <span className={`inline-flex shrink-0 items-center gap-1.5 rounded-full ${pill.bg} px-2 py-1 text-[10.5px] font-medium ${pill.text}`}>
+        <span className={`inline-flex shrink-0 items-center gap-1.5 rounded-full ${pill.bg} px-2 py-1 text-role-micro ${pill.text}`}>
           <span className={`h-1.5 w-1.5 rounded-full ${pill.dot}`} />
           {pill.label}
         </span>
@@ -289,7 +289,7 @@ export function IntegrationCard({
                 <span className="min-w-0 flex-1 truncate text-role-caption font-medium text-text-default">{acct.label}</span>
               )}
               {def.connect === 'ebay' && acct.role === 'buyer' && (
-                <span className="shrink-0 rounded bg-indigo-50 px-1.5 py-0.5 text-[8.5px] font-semibold uppercase tracking-widest text-indigo-700 ring-1 ring-inset ring-indigo-200">Purchasing</span>
+                <span className="shrink-0 rounded bg-indigo-50 px-1.5 py-0.5 text-role-micro uppercase tracking-widest text-indigo-700 ring-1 ring-inset ring-indigo-200">Purchasing</span>
               )}
               {acct.detail && def.connect !== 'ebay' && <span className="shrink-0 text-role-caption text-text-faint">{acct.detail}</span>}
               {canManage && def.connect === 'amazon' && acct.id != null && (
@@ -322,7 +322,7 @@ export function IntegrationCard({
 
       <div className="mt-auto flex items-center gap-2 border-t border-border-hairline pt-3">
         {!canManage ? (
-          <span className="text-[11.5px] text-text-faint">Read-only — requires elevated access</span>
+          <span className="text-role-caption text-text-faint">Read-only — requires elevated access</span>
         ) : (
           <>
             {connected ? (

@@ -27,7 +27,7 @@ import {
 } from './commerce';
 import { ClipboardList, Inbox, Printer } from './media';
 import { AlertTriangle, ShieldCheck } from './status';
-import { Wrench } from './nav';
+import { Packer, Wrench } from './nav';
 import { withNavIconModeStroke, withNavIconPageStroke } from './nav-weight';
 
 type IconComponent = (props: { className?: string }) => JSX.Element;
@@ -43,8 +43,8 @@ export const StationTesting: IconComponent = withNavIconPageStroke(Wrench);
 /** Outbound Shipping station — `/shipping`. Not carrier motion (Truck). */
 export const StationShipping: IconComponent = withNavIconPageStroke(PackageCheck);
 
-/** Packing station — `/pack`. */
-export const StationPacking: IconComponent = withNavIconPageStroke(Box);
+/** Packing station — `/pack`. Dedicated Packer glyph (not generic Box). */
+export const StationPacking: IconComponent = withNavIconPageStroke(Packer);
 
 // ── Sales mode mark ──────────────────────────────────────────────────────────
 

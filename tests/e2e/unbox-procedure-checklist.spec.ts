@@ -42,17 +42,32 @@ async function attachPhoto(
   request: APIRequestContext,
   receivingId: number,
   photoType: string,
-  receivingLineId?: number,
+  opts: { receivingLineId?: number; photoAspect?: string } = {},
 ) {
   const res = await request.post('/api/receiving-photos', {
     data: {
       receivingId,
-      ...(receivingLineId != null ? { receivingLineId } : {}),
+      ...(opts.receivingLineId != null ? { receivingLineId: opts.receivingLineId } : {}),
+      ...(opts.photoAspect ? { photoAspect: opts.photoAspect } : {}),
       photoUrl: `/api/nas-dev/e2e-proc-${uniq()}.jpg`,
       photoType,
     },
   });
   expect(res.ok(), `attach ${photoType} ${res.status()}: ${await res.text()}`).toBeTruthy();
+}
+
+/** All three bench carton shots — one per aspect, which is what the gates want. */
+async function attachCartonShots(request: APIRequestContext, receivingId: number) {
+  for (const aspect of ['shipping_label', 'box_exterior', 'packing_material']) {
+    await attachPhoto(request, receivingId, 'receiving_unbox_carton', { photoAspect: aspect });
+  }
+}
+
+async function confirmContents(request: APIRequestContext, receivingId: number) {
+  const res = await request.post(`/api/receiving/${receivingId}/contents-confirm`, {
+    data: { confirmed: true },
+  });
+  expect(res.ok(), `contents-confirm ${res.status()}: ${await res.text()}`).toBeTruthy();
 }
 
 /**
@@ -97,7 +112,17 @@ test.describe('unbox procedure checklist', () => {
     // the point of moving it out of the work surface.
     await expect
       .poll(() => stepKeys(page), { timeout: 45_000 })
-      .toEqual(['classify', 'po_photos', 'packing_material', 'item_photos', 'condition', 'serial']);
+      .toEqual([
+        'classify',
+        'arrival_check',
+        'shipping_label_photo',
+        'box_photo',
+        'packing_material',
+        'contents',
+        'condition',
+        'item_photos',
+        'serial',
+      ]);
     await expectActive(page, ['classify']);
   });
 
@@ -119,7 +144,7 @@ test.describe('unbox procedure checklist', () => {
     // Re-open rather than reload+goto: one navigation, one settle.
     await openUnbox(page, receivingId, lineId);
 
-    await expectActive(page, ['po_photos']);
+    await expectActive(page, ['arrival_check']);
     expect(await stepKeys(page), 'the list does not reorder as work lands').toEqual(orderBefore);
     await expect(page.locator('[data-procedure-step="classify"]')).toHaveAttribute(
       'data-procedure-state',
@@ -132,32 +157,75 @@ test.describe('unbox procedure checklist', () => {
     const lineId = await addLine(request, receivingId);
     await classify(request, receivingId);
 
-    // `unbox_carton` is the bench's own capture — the stage packing material
-    // folds onto. `require_one` counts only `arrival_package`, so satisfying
-    // step 1 from the bench would void the receive gate.
-    await attachPhoto(request, receivingId, 'receiving_unbox_carton');
+    // `unbox_carton` is the bench's own capture. `require_one` counts only
+    // `arrival_package`, so satisfying step 1 from the bench would void the
+    // receive gate.
+    await attachCartonShots(request, receivingId);
     await openUnbox(page, receivingId, lineId);
 
-    await expectActive(page, ['po_photos']);
+    await expectActive(page, ['arrival_check']);
     await expect(page.locator('[data-procedure-step="packing_material"]')).toHaveAttribute(
       'data-procedure-state',
       'done',
     );
   });
 
-  test('the pointer skips condition — a defaulted grade is not a gate', async ({
-    request,
-    page,
-  }) => {
+  test('one carton shot cannot satisfy all three carton steps', async ({ request, page }) => {
     const receivingId = await createCarton(request);
     const lineId = await addLine(request, receivingId);
     await classify(request, receivingId, 'PO');
     await attachPhoto(request, receivingId, 'receiving_package');
-    await attachPhoto(request, receivingId, 'receiving_unbox_carton');
-    await attachPhoto(request, receivingId, 'receiving_item', lineId);
+    // Shipping label ONLY. The three bench steps share the `unbox_carton`
+    // stage and are told apart by aspect — gating them on the stage count
+    // would mark the box and the dunnage done off this single photo.
+    await attachPhoto(request, receivingId, 'receiving_unbox_carton', {
+      photoAspect: 'shipping_label',
+    });
 
     await openUnbox(page, receivingId, lineId);
 
+    await expectActive(page, ['box_photo']);
+    await expect(page.locator('[data-procedure-step="shipping_label_photo"]')).toHaveAttribute(
+      'data-procedure-state',
+      'done',
+    );
+    await expect(page.locator('[data-procedure-step="packing_material"]')).toHaveAttribute(
+      'data-procedure-state',
+      'pending',
+    );
+  });
+
+  test('condition is gated on the grading act, not on the defaulted grade', async ({
+    request,
+    page,
+  }) => {
+    // Reversal of the old "the pointer skips condition" rule: `condition_grade`
+    // is NOT NULL with a default, so it exists on a carton nobody has touched
+    // and can never be the gate. `condition_graded_at` — the ACT — is.
+    const receivingId = await createCarton(request);
+    const lineId = await addLine(request, receivingId);
+    await classify(request, receivingId, 'PO');
+    await attachPhoto(request, receivingId, 'receiving_package');
+    await attachCartonShots(request, receivingId);
+    await confirmContents(request, receivingId);
+    await attachPhoto(request, receivingId, 'receiving_item', { receivingLineId: lineId });
+
+    await openUnbox(page, receivingId, lineId);
+
+    // Everything before Condition is done, and the pointer STOPS there — it
+    // used to step over it.
+    await expectActive(page, ['condition']);
+    await expect(page.locator('[data-procedure-step="contents"]')).toHaveAttribute(
+      'data-procedure-state',
+      'done',
+    );
+
+    const graded = await request.patch(`/api/receiving/lines/${lineId}/condition`, {
+      data: { condition_grade: 'USED_A' },
+    });
+    expect(graded.ok(), `condition ${graded.status()}: ${await graded.text()}`).toBeTruthy();
+
+    await openUnbox(page, receivingId, lineId);
     await expectActive(page, ['serial']);
     await expect(page.locator('[data-procedure-step="condition"]')).toHaveAttribute(
       'data-procedure-state',
@@ -173,8 +241,8 @@ test.describe('unbox procedure checklist', () => {
     const lineId = await addLine(request, receivingId);
     await classify(request, receivingId, 'RETURN');
     await attachPhoto(request, receivingId, 'receiving_package');
-    await attachPhoto(request, receivingId, 'receiving_unbox_carton');
-    await attachPhoto(request, receivingId, 'receiving_item', lineId);
+    await attachCartonShots(request, receivingId);
+    await attachPhoto(request, receivingId, 'receiving_item', { receivingLineId: lineId });
 
     await openUnbox(page, receivingId, lineId);
 

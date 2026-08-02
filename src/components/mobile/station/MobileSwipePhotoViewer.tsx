@@ -9,7 +9,7 @@ import {
   useMotionValue,
   useTransform,
   useReducedMotion,
-} from 'framer-motion';
+} from '@/design-system/motion';
 import { Trash2, ChevronDown } from '@/components/Icons';
 import { IconButton } from '@/design-system/primitives';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';

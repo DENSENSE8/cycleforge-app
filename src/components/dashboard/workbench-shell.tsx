@@ -118,6 +118,28 @@ type TabSwitchTabs = React.ComponentProps<typeof TabSwitch>['tabs'];
 type TabSwitchSolidTone = React.ComponentProps<typeof TabSwitch>['solidTone'];
 
 /**
+ * Mark the hairline that separates a strip's leading **scope** tab from the
+ * lane tabs after it.
+ *
+ * A workbench tab strip reads as one flat row of peers, but the first tab is
+ * usually not a peer — it is the scope the others filter *within*: Unbox's
+ * **Recent** (the cartons this operator opened) ahead of Queue · History, My
+ * Day's **Everything** ahead of Do next · Assigned · Needs attention. The
+ * hairline is what says "these are lanes of that", and putting it here rather
+ * than hand-writing `dividerBefore: id === '…'` per surface keeps the two
+ * strips from drifting apart — the second one is what makes this a grammar
+ * instead of a decoration.
+ *
+ * Exactly one divider, always after index 0: a 3–4 tab strip with hairlines on
+ * both sides of a middle tab reads as a rendering bug, not as grouping.
+ */
+export function withScopeDivider<T extends { id: string }>(
+  tabs: readonly T[],
+): (T & { dividerBefore?: boolean })[] {
+  return tabs.map((tab, i) => (i === 1 ? { ...tab, dividerBefore: true } : { ...tab }));
+}
+
+/**
  * Trailing Display & Actions cluster — the one SoT for sort / Fields / Import / Add.
  *
  * Slot order (honest absence OK): `before` → Sort → Fields → `actions` → `after`.
@@ -138,8 +160,11 @@ interface WorkbenchTrailingClusterProps {
   /** Escapes that follow CTAs (e.g. Catalog Refresh). */
   after?: ReactNode;
   /**
-   * Leading hairline that visually separates this cluster from `right` filters.
-   * Default true when any slot is present.
+   * Leading hairline before this cluster. Default **only when `actions` are
+   * present** — solid Import/Add CTAs need a wall from the quiet icon rail
+   * (search / filters / week / Fields). Pure Fields (or Sort → Fields) sits
+   * flush with peer icon controls; a hairline between Calendar and Fields
+   * reads as a broken pair of display icons.
    */
   divide?: boolean;
   className?: string;
@@ -156,7 +181,7 @@ export function WorkbenchTrailingCluster({
 }: WorkbenchTrailingClusterProps) {
   const hasContent = Boolean(before || sort || fields || actions || after);
   if (!hasContent) return null;
-  const showDivide = divide ?? true;
+  const showDivide = divide ?? Boolean(actions);
   return (
     <div className={cn('flex shrink-0 items-center gap-2', className)}>
       {showDivide ? (

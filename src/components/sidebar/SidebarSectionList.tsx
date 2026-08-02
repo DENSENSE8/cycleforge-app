@@ -34,7 +34,7 @@ interface SidebarSectionListProps<TId extends string = string> {
   /**
    * Horizontal padding for rows + group headers. Defaults to the shared
    * {@link SIDEBAR_GUTTER}. Override (e.g. `px-3`) to line rows up with a
-   * MasterNavHeader above the panel. Pass `px-0` when the list sits inside a
+   * OrgWorkspaceControl above the panel. Pass `px-0` when the list sits inside a
    * shell body that already applies {@link SIDEBAR_GUTTER}.
    */
   gutterClassName?: string;

@@ -11,7 +11,7 @@
 
 import { useMemo, type ReactNode } from 'react';
 import { useParams } from 'next/navigation';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion } from '@/design-system/motion';
 import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
 import {
   useMotionPresence,

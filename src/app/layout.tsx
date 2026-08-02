@@ -12,6 +12,7 @@ import { SwitchStaffSheet } from "../components/auth/SwitchStaffSheet";
 import { ScanHotkeySync } from "../components/scan/ScanHotkeySync";
 import { ThemeSync } from "../components/theme/ThemeSync";
 import { TimeFormatSync } from "../components/time-format/TimeFormatSync";
+import { QuickAccessSync } from "../components/quick-access/QuickAccessSync";
 import { AuthenticatedAblyProvider } from "../components/providers/AuthenticatedAblyProvider";
 import { AssistantProvider } from "../components/assistant/AssistantProvider";
 import { THEME_BOOT_SCRIPT } from "@/lib/theme/theme";
@@ -130,6 +131,7 @@ export default async function RootLayout({
                                     <ScanHotkeySync />
                                     <ThemeSync />
                                     <TimeFormatSync />
+                                    <QuickAccessSync />
                                 </StaffSwitcherProvider>
                                 </StaffColorsProvider>
                                 </ActivityInboxProvider>

@@ -1,14 +1,14 @@
 'use client';
 
 import React, { useEffect, useRef, useState, type ReactNode } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from '@/design-system/motion';
 import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
 import {
   useMotionPresence,
   useMotionTransition,
 } from '@/design-system/foundations/motion-framer-hooks';
 import { Barcode, AlertCircle, Package } from '../Icons';
-import { getLast4 } from '../ui/CopyChip';
+import { getLast8 } from '../ui/CopyChip';
 import { useStationTheme } from '@/hooks/useStationTheme';
 import { useLast8TrackingSearch } from '@/hooks/useLast8TrackingSearch';
 import { formatPSTTimestamp } from '@/utils/date';
@@ -667,7 +667,7 @@ export default function StationPacking({
                   <HoverTooltip label={activeFba.fnsku} asChild>
                     <div className="min-w-0 flex-1">
                       <p className="text-role-micro text-purple-400 uppercase tracking-wider">FNSKU</p>
-                      <p className="text-sm font-mono font-semibold text-text-default tabular-nums">{getLast4(activeFba.fnsku)}</p>
+                      <p className="text-sm font-mono font-semibold text-text-default tabular-nums">{getLast8(activeFba.fnsku)}</p>
                     </div>
                   </HoverTooltip>
                   <div className="flex-1 text-center border-x border-purple-100/80 px-2">

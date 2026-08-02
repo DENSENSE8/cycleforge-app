@@ -1,11 +1,11 @@
 'use client';
 
+import { getLast8 } from '@/lib/copy-chip-format';
 import { Barcode, Package } from '@/components/Icons';
 
-/** Last 4 of a serial for a compact preview chip (…last4). */
-export function serialLast4(value: string): string {
-  const t = (value || '').trim();
-  return t.length <= 4 ? t : t.slice(-4);
+/** Last 8 of a serial for a compact preview chip. */
+export function serialLast8(value: string): string {
+  return getLast8(value);
 }
 
 type PreviewSerial = { id?: number; serial_number: string; unit_uid?: string | null };
@@ -51,7 +51,7 @@ export function BoxMembershipHint({
 
 /**
  * Non-interactive serial preview — a strip of emerald `serial`-tone pills
- * (…last4) that lets an operator see WHICH serials sit on a line at a glance
+ * (last-8) that lets an operator see WHICH serials sit on a line at a glance
  * (e.g. when a PO carries duplicate SKUs). Plain spans, so it is safe to render
  * inside a clickable row/button; caps at `max` with a +N overflow so a
  * many-serial line can't blow out the row height.
@@ -91,7 +91,7 @@ export function SerialPreviewStrip({
             }`}
           >
             <Barcode className="h-2.5 w-2.5 shrink-0" />
-            {serialLast4(s.serial_number)}
+            {serialLast8(s.serial_number)}
           </span>
         );
       })}

@@ -37,10 +37,11 @@ async function handleGet(request: NextRequest, ctx: AuthContext) {
                 employee_id: string | null;
                 active: boolean;
                 color_hex: string;
+                avatar_photo_id: number | null;
                 default_home_path: string | null;
             }>(
                 ctx.organizationId,
-                `SELECT id, name, role, employee_id, active, color_hex, default_home_path
+                `SELECT id, name, role, employee_id, active, color_hex, avatar_photo_id, default_home_path
                  FROM staff WHERE id = $1 AND organization_id = $2 LIMIT 1`,
                 [numId, ctx.organizationId],
             );
@@ -160,7 +161,7 @@ async function handleGet(request: NextRequest, ctx: AuthContext) {
           ), ARRAY[]::text[]) AS role_keys`;
 
         const sql = `
-          SELECT s.id, s.name, s.role, s.employee_id, s.active, s.color_hex, s.default_home_path, s.created_at
+          SELECT s.id, s.name, s.role, s.employee_id, s.active, s.color_hex, s.avatar_photo_id, s.default_home_path, s.created_at
           ${roleKeysSelect}
           ${scheduledTodaySelect}
           FROM staff s
@@ -212,7 +213,7 @@ async function handleGet(request: NextRequest, ctx: AuthContext) {
             }
 
             const fallbackSql = `
-              SELECT s.id, s.name, s.role, s.employee_id, s.active, s.color_hex, s.default_home_path, s.created_at,
+              SELECT s.id, s.name, s.role, s.employee_id, s.active, s.color_hex, s.avatar_photo_id, s.default_home_path, s.created_at,
                 COALESCE((
                   SELECT array_agg(r.key ORDER BY r.position ASC, r.id ASC)
                   FROM staff_roles sr

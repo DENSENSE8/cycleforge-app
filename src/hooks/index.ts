@@ -65,7 +65,7 @@ export { useOrderAssignment } from './useOrderAssignment';
 export type { OrderAssignPayload } from './useOrderAssignment';
 export { useDeleteOrderRow } from './useDeleteOrderRow';
 export type { DeleteOrderRowPayload } from './useDeleteOrderRow';
-export { useStationTestingController, getOrderIdLast4 } from './useStationTestingController';
+export { useStationTestingController, getOrderIdLast8 } from './useStationTestingController';
 export type {
   ActiveStationOrder,
   StationThemeColor,

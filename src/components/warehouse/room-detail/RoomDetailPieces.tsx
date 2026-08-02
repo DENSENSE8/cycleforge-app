@@ -39,7 +39,7 @@ export function EmptyState({ loading, roomCount, onCreate }: EmptyStateProps) {
         </Button>
       )}
       {!loading && roomCount > 0 && (
-        <p className="text-[10.5px] uppercase tracking-[0.18em] text-text-faint">
+        <p className="text-role-eyebrow uppercase tracking-widest text-text-faint">
           {roomCount} room{roomCount === 1 ? '' : 's'} on file
         </p>
       )}

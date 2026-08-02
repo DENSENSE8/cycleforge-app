@@ -49,7 +49,7 @@ describe('credential-payload', () => {
     assert.equal(merged.apiToken, 'keep-me');
   });
 
-  it('maskSecretValue shows last four chars', () => {
+  it('maskSecretValue shows last eight chars', () => {
     assert.equal(maskSecretValue('abcdefghij'), '••••ghij');
   });
 });

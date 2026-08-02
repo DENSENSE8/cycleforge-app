@@ -45,8 +45,9 @@ export function unitTimelinePhotosQuery(serialUnitId: number | null | undefined)
 
 interface MergeJourneyPhotosOptions {
   /**
-   * Cap thumbnails per stage row (station density = collapsed per-stage thumbs,
-   * not full galleries). The row subtitle keeps the true photo count.
+   * Optional hard slice of `media` on inserted stage rows. Prefer leaving media
+   * full and letting {@link EventTimeline}'s strip apply a display `+N` cap
+   * (station journeys). Compact serial journey still opts into this slice.
    */
   mediaLimit?: number;
 }

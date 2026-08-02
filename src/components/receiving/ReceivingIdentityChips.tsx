@@ -11,7 +11,7 @@ import {
   SkuScanRefChip,
   TrackingChip,
   SerialChip,
-  getLast4,
+  getLast8,
 } from '@/components/ui/CopyChip';
 import { ChipColumns, CHIP_COL, type ChipColumn } from '@/components/ui/ChipColumns';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
@@ -60,7 +60,7 @@ export function FulfillmentPickupPill({
   return (
     <span
       className={`inline-flex shrink-0 items-center justify-center rounded font-semibold uppercase tracking-widest text-emerald-700 ring-1 ring-inset ring-emerald-200 bg-emerald-50 ${
-        dense ? 'px-1 py-px text-[8.5px]' : 'inset-chip text-role-eyebrow'
+        dense ? 'px-1 py-px text-role-micro' : 'inset-chip text-role-eyebrow'
       }`}
     >
       Pickup
@@ -69,9 +69,9 @@ export function FulfillmentPickupPill({
 }
 
 /**
- * The slim, color-coded, last-4 chip cluster shared by the desktop receiving
+ * The slim, color-coded, last-8 chip cluster shared by the desktop receiving
  * table row ({@link ReceivingLineOrderRow}) and the scanned-line / receipt
- * detail headers on mobile. Each chip shows the last-4 preview and copies the
+ * detail headers on mobile. Each chip shows the last-8 preview and copies the
  * full value on tap. Pass only the identifiers a surface has — empties render
  * as placeholder chips so the row stays aligned.
  *
@@ -82,7 +82,7 @@ export interface ReceivingIdentityChipsProps {
   po?: string | null;
   sku?: string | null;
   tracking?: string | null;
-  /** Comma-joined serial list; SerialChip picks the most recent + last-4. */
+  /** Comma-joined serial list; SerialChip picks the most recent + last-8. */
   serialsCsv?: string | null;
   /** When set, derives pickup vs shipped tracking display from the row. */
   row?: ReceivingLineRow | null;
@@ -140,21 +140,21 @@ export function ReceivingIdentityChips({
         ? trackingAction
         : null;
   const serialsValue = (serialsCsv || '').trim();
-  // Dense columns are ~12px narrower so the full PO·SKU·tracking·serial set
+  // Dense columns sized for last-8 mono so the full PO·SKU·tracking·serial set
   // stays on one line in a phone row.
-  const idCol = dense ? 'w-[52px]' : CHIP_COL.id;
-  const trackCol = dense ? 'w-[52px]' : CHIP_COL.tracking;
-  const serialCol = dense ? 'w-[52px]' : CHIP_COL.serial;
+  const idCol = dense ? 'w-[80px]' : CHIP_COL.id;
+  const trackCol = dense ? 'w-[80px]' : CHIP_COL.tracking;
+  const serialCol = dense ? 'w-[80px]' : CHIP_COL.serial;
 
-  // Last-4 only — matches PO / SKU / serial chips; full value still copies.
-  const trackingDisplay = getLast4(trackingValue);
+  // Last-8 only — matches PO / SKU / serial chips; full value still copies.
+  const trackingDisplay = getLast8(trackingValue);
   if (asColumns) {
     const columns: ChipColumn[] = [];
     if (includePo) {
-      columns.push({ key: 'po', width: idCol, node: <OrderIdChip value={poValue} display={getLast4(poValue)} dense={dense} /> });
+      columns.push({ key: 'po', width: idCol, node: <OrderIdChip value={poValue} display={getLast8(poValue)} dense={dense} /> });
     }
     if (includeSku) {
-      columns.push({ key: 'sku', width: idCol, node: <SkuScanRefChip value={skuValue} display={getLast4(skuValue)} dense={dense} /> });
+      columns.push({ key: 'sku', width: idCol, node: <SkuScanRefChip value={skuValue} display={getLast8(skuValue)} dense={dense} /> });
     }
     if (includeTracking) {
       columns.push({
@@ -173,8 +173,8 @@ export function ReceivingIdentityChips({
 
   return (
     <div className={className}>
-      {includePo && <OrderIdChip value={poValue} display={getLast4(poValue)} dense={dense} />}
-      {includeSku && <SkuScanRefChip value={skuValue} display={getLast4(skuValue)} dense={dense} />}
+      {includePo && <OrderIdChip value={poValue} display={getLast8(poValue)} dense={dense} />}
+      {includeSku && <SkuScanRefChip value={skuValue} display={getLast8(skuValue)} dense={dense} />}
       {includeTracking &&
         (trackingNode ??
           (!isPickup ? <TrackingChip value={trackingValue} display={trackingDisplay} dense={dense} /> : null))}

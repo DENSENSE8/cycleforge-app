@@ -32,8 +32,7 @@ function ToggleRow({ label, description, checked, onChange }: ToggleRowProps) {
 }
 
 export function QuickAccessSection() {
-  const { settings, recents, updateSettings, pin, unpin, rename, reorder, wipeRecents } =
-    useQuickAccess();
+  const { settings, updateSettings, pin, unpin, rename, reorder } = useQuickAccess();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingLabel, setEditingLabel] = useState('');
   const [addUrl, setAddUrl] = useState('');
@@ -89,7 +88,7 @@ export function QuickAccessSection() {
       <header>
         <h2 className="sr-only">Quick access</h2>
         <p className="mt-1 text-sm text-text-soft">
-          Account menu (header avatar) for recents and actions. Pinned pages live in
+          Account menu (header avatar / FAB) for quick actions. Pinned pages live in
           the global header — pin from the + control next to Recents, or manage them here.
         </p>
       </header>
@@ -106,12 +105,6 @@ export function QuickAccessSection() {
           description="Skipped automatically while typing in inputs."
           checked={settings.hotkey === 'cmdk'}
           onChange={(v) => updateSettings({ hotkey: v ? 'cmdk' : 'off' })}
-        />
-        <ToggleRow
-          label="Show recently visited pages"
-          description="Auto-collected from your last 12 page visits."
-          checked={settings.showRecent}
-          onChange={(v) => updateSettings({ showRecent: v })}
         />
       </div>
 
@@ -157,7 +150,8 @@ export function QuickAccessSection() {
         </div>
         <p className="mb-3 text-role-caption text-text-soft">
           Shown as icon stations in the global header (right of Recents). Drag there to
-          reorder, or use the arrows below.
+          reorder, or use the arrows below. Pins sync across devices via your staff
+          preferences (label + exact URL).
         </p>
 
         {settings.pinned.length === 0 ? (
@@ -262,22 +256,6 @@ export function QuickAccessSection() {
         </div>
       </div>
 
-      <div className="rounded-2xl border border-border-soft bg-surface-card p-5 shadow-sm">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-sm font-semibold text-text-default">Recent pages</h3>
-            <p className="text-role-caption text-text-soft">{recents.length} stored on this device</p>
-          </div>
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={wipeRecents}
-            disabled={recents.length === 0}
-          >
-            Clear recents
-          </Button>
-        </div>
-      </div>
     </div>
   );
 }

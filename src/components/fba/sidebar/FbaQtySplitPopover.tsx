@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion } from '@/design-system/motion';
 import { Button, DeferredQtyInput } from '@/design-system/primitives';
 import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
 import { microBadge } from '@/design-system/tokens/typography/presets';

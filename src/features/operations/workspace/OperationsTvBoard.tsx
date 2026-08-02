@@ -16,8 +16,8 @@
  * honest stuck signal today and is what this shows.
  */
 
-import { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
+import { useEffect, useState, type ReactNode } from 'react';
+import { motion } from '@/design-system/motion';
 import { cn } from '@/utils/_cn';
 import {
   KpiStrip,
@@ -27,7 +27,8 @@ import {
   SectionCard,
 } from '@/design-system/components/monitor';
 import { framerVariants } from '@/design-system/foundations/motion-framer';
-import { Activity, AlertTriangle, CheckCircle, Clock, Layers, Loader2, Warehouse } from '@/components/Icons';
+import { Activity, AlertTriangle, Clock, Layers, Loader2, Warehouse } from '@/components/Icons';
+import { AnimatedCheck } from '@/components/ui/AnimatedCheck';
 import { formatDateKeyShort, formatTime12hPST } from '@/utils/date';
 import type { TvBoard, TvBoardPlan, TvBoardStation, TvBoardTask, TvPlanSource } from '@/lib/ops-plans/tv-board';
 import { useOperationsTvBoard } from './useOperationsTvBoard';
@@ -174,7 +175,7 @@ function TvBoardBody({ board, online, degraded }: { board: TvBoard; online: bool
         <SectionCard stagger icon={AlertTriangle} eyebrow="Slipping" title="Overdue" headline={board.counts.overdue}>
           <TaskLane
             tasks={board.overdue}
-            emptyIcon={CheckCircle}
+            emptyIcon={<AnimatedCheck size={20} />}
             emptyLabel="Nothing overdue — the floor is on time."
             overdue
           />
@@ -188,7 +189,7 @@ function TvBoardBody({ board, online, degraded }: { board: TvBoard; online: bool
         <SectionCard stagger icon={Clock} eyebrow="Today" title="Due today" headline={board.counts.dueToday}>
           <TaskLane
             tasks={board.dueToday}
-            emptyIcon={CheckCircle}
+            emptyIcon={<AnimatedCheck size={20} />}
             emptyLabel="No tasks due today."
           />
         </SectionCard>
@@ -225,19 +226,19 @@ function TvBoardBody({ board, online, degraded }: { board: TvBoard; online: bool
 
 function TaskLane({
   tasks,
-  emptyIcon: EmptyIcon,
+  emptyIcon,
   emptyLabel,
   overdue = false,
 }: {
   tasks: TvBoardTask[];
-  emptyIcon: (p: { className?: string }) => JSX.Element;
+  emptyIcon: ReactNode;
   emptyLabel: string;
   overdue?: boolean;
 }) {
   if (tasks.length === 0) {
     return (
       <div className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-8 text-center">
-        <EmptyIcon className="h-5 w-5 text-text-faint" />
+        {emptyIcon}
         <span className="text-role-caption font-semibold text-text-faint">{emptyLabel}</span>
       </div>
     );

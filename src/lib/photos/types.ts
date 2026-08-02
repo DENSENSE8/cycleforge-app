@@ -1,5 +1,7 @@
 /** Shared photo platform types — entity linkage, storage, and API contracts. */
 
+import type { PhotoAspect } from './photo-aspects';
+
 export const PHOTO_ENTITY_TYPES = [
   'RECEIVING',
   'RECEIVING_LINE',
@@ -10,6 +12,7 @@ export const PHOTO_ENTITY_TYPES = [
   'BIN_ADJUSTMENT',
   'SHARE_PACK',
   'ZENDESK_TICKET',
+  'STAFF',
 ] as const;
 
 export type PhotoEntityType = (typeof PHOTO_ENTITY_TYPES)[number];
@@ -50,6 +53,15 @@ export const UNIT_PREPACK_PHOTO_TYPE = 'prepack';
  * `photo_type` for box-label shots the packing routes attach to a PACKER_LOG.
  */
 export const PACKER_BOX_LABEL_PHOTO_TYPE = 'box_label';
+
+/**
+ * `photo_type` for a staff profile photo (entity_type `STAFF`). The ONLY type
+ * allowed on that entity — see the write matrix in `./stages.ts`. A profile
+ * photo is identity chrome, not evidence: constraining it keeps a receiving or
+ * packing capture from ever landing on a person's face, and keeps a face out of
+ * the evidence buckets the library and claim exports read.
+ */
+export const STAFF_AVATAR_PHOTO_TYPE = 'staff_avatar';
 
 /**
  * Resolve the serial-units photo POST `stage` body field → canonical photo_type.
@@ -113,6 +125,19 @@ export interface UploadPhotoInput {
    * see `./capture-provenance.ts`.
    */
   clientCapturedAt?: Date | null;
+  /**
+   * What this shot SHOWS, within its stage (`./photo-aspects.ts`). NULL means
+   * *unclassified evidence*, never *missing evidence* — that is what every
+   * pre-2026-08-01b row carries, and what any surface that cannot name the shot
+   * should keep sending.
+   *
+   * Legality (aspect × stage) is decided at the route edge against the stage the
+   * ENTITY resolves to, exactly as {@link AttachLegacyPhotoInput} documents:
+   * only the route knows the caller's claimed stage, and validating an aspect
+   * against a claim rather than the resolved value lets a mis-claimed stage
+   * mis-claim an aspect too.
+   */
+  photoAspect?: PhotoAspect | null;
 }
 
 export interface UploadPhotoResult {

@@ -1,1 +1,51 @@
-export { AnimateNumber } from './plus';
+/**
+ * `@/design-system/motion` — THE motion import path for `src/`.
+ *
+ * Everything animated in this app imports from here. No file outside
+ * `src/design-system/motion/**` may name a motion package; the guard
+ * (`../foundations/motion-major.guard.test.ts`) fails the build if one does.
+ *
+ * What this barrel carries:
+ *   - the ENGINE (`./framer` → `motion/react`) — `motion`, `AnimatePresence`, …
+ *   - the ROLE layer (`./roles`) — `motionRole`, the intent vocabulary
+ *   - the role HOOK (`./use-motion-role`) — role → render-ready bridged pair
+ *
+ * What it deliberately does NOT carry:
+ *   - `AnimateNumber` — stays at `@/design-system/motion/plus`. Re-exporting it
+ *     here would put `motion-plus` in the module graph of every consumer of this
+ *     barrel, which is the bundle-altitude trap in `.claude/rules/build-gotchas.md`.
+ *     (This barrel used to export exactly that one symbol, and nothing imported
+ *     it — knip had it baselined as dead since it landed.)
+ *   - the 60-literal preset CATALOG (`framerPresence` / `framerTransition` / …)
+ *     and the reduced-motion bridge hooks. Both keep their
+ *     `@/design-system/foundations/motion-framer*` paths: they are house modules,
+ *     not packages, so they were never what the boundary is about — and funnelling
+ *     them through here would add ~60 re-exports nothing imports from this file.
+ *
+ * Law: `.claude/rules/display/motion-crossfade.md` → The import boundary.
+ */
+
+export {
+  motion,
+  animate,
+  AnimatePresence,
+  MotionConfig,
+  LayoutGroup,
+  Reorder,
+  useReducedMotion,
+  useInView,
+  useAnimationControls,
+  useMotionValue,
+  useTransform,
+} from './framer';
+
+export type {
+  Transition,
+  Variants,
+  PanInfo,
+  HTMLMotionProps,
+} from './framer';
+
+export { motionRole } from './roles';
+
+export { useMotionRole, useMotionPressRole } from './use-motion-role';

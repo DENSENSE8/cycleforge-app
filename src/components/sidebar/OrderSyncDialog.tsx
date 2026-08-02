@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion } from '@/design-system/motion';
 import { AlertTriangle, Check, ChevronDown, Loader2, X } from '@/components/Icons';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
@@ -9,7 +9,7 @@ import { TabSwitch } from '@/design-system/components/TabSwitch';
 import { Button, IconButton } from '@/design-system/primitives';
 import { framerTransition } from '@/design-system/foundations/motion-framer';
 import { sectionLabel, fieldLabel, microBadge, dataValue } from '@/design-system/tokens/typography/presets';
-import { TrackingChip, OrderIdChip, SkuScanRefChip, getLast4 } from '@/components/ui/CopyChip';
+import { TrackingChip, OrderIdChip, SkuScanRefChip, getLast8 } from '@/components/ui/CopyChip';
 import type {
   ExceptionsTabState,
   OrderExceptionResolutionDetail,
@@ -173,7 +173,7 @@ function TransferTab({
               <li key={`fs:${row.sheetRow}`} className="flex items-center gap-2 px-2.5 py-1.5">
                 <span className="w-[76px] shrink-0">
                   {row.orderId ? (
-                    <OrderIdChip value={row.orderId} display={getLast4(row.orderId)} />
+                    <OrderIdChip value={row.orderId} display={getLast8(row.orderId)} />
                   ) : (
                     <span className="pl-1.5 font-mono text-role-micro text-text-faint">—</span>
                   )}
@@ -204,7 +204,7 @@ function TransferTab({
               <li key={`rec:${row.sheetRow}`} className="flex items-center gap-2 px-2.5 py-1.5">
                 <span className="w-[76px] shrink-0">
                   {row.orderId ? (
-                    <OrderIdChip value={row.orderId} display={getLast4(row.orderId)} />
+                    <OrderIdChip value={row.orderId} display={getLast8(row.orderId)} />
                   ) : (
                     <span className="pl-1.5 font-mono text-role-micro text-text-faint">—</span>
                   )}
@@ -459,7 +459,7 @@ function SkippedRowsPanel({
                           the clipboard) rather than being a dead mono string. */}
                       <span className="w-[76px] shrink-0">
                         {row.orderId ? (
-                          <OrderIdChip value={row.orderId} display={getLast4(row.orderId)} />
+                          <OrderIdChip value={row.orderId} display={getLast8(row.orderId)} />
                         ) : (
                           <span className="pl-1.5 font-mono text-role-micro text-text-faint">—</span>
                         )}
@@ -520,7 +520,7 @@ function DetailTable({
               <tr key={`${kind}:${row.orderId}:${i}`} className="hover:bg-surface-canvas/60">
                 <td className="inset-field align-top">
                   {row.orderId ? (
-                    <OrderIdChip value={row.orderId} display={getLast4(row.orderId)} />
+                    <OrderIdChip value={row.orderId} display={getLast8(row.orderId)} />
                   ) : (
                     <span className="font-mono text-xs text-text-faint">—</span>
                   )}
@@ -542,7 +542,7 @@ function DetailTable({
                   {row.sku || row.itemNumber ? (
                     <SkuScanRefChip
                       value={(row.sku || row.itemNumber) as string}
-                      display={getLast4(row.sku || row.itemNumber)}
+                      display={getLast8(row.sku || row.itemNumber)}
                     />
                   ) : (
                     <span className="font-mono text-xs text-text-faint">—</span>
@@ -550,7 +550,7 @@ function DetailTable({
                 </td>
                 <td className="inset-field align-top">
                   {row.tracking ? (
-                    <TrackingChip value={row.tracking} display={getLast4(row.tracking)} />
+                    <TrackingChip value={row.tracking} display={getLast8(row.tracking)} />
                   ) : (
                     <span className="font-mono text-xs text-text-faint">—</span>
                   )}

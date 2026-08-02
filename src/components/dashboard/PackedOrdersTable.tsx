@@ -18,7 +18,7 @@ import { dispatchOpenShippedDetails, dispatchCloseShippedDetails } from '@/utils
 import { StaffFilterButton } from '@/components/ui/StaffFilterButton';
 import { useEventBridge } from '@/hooks';
 import { parseStaffParam } from '@/hooks/useStaffFilter';
-import { useOutboundQueueKeyboard } from '@/hooks/useOutboundQueueKeyboard';
+import { useRecordCursorKeyboard } from '@/hooks/useRecordCursorKeyboard';
 import type { ShippedOrder } from '@/types/orders';
 import { useRefreshSignal } from '@/lib/refresh/bus';
 
@@ -72,13 +72,10 @@ export function PackedOrdersTable({
   const records = query.data ?? [];
   const ordered = useMemo(() => records, [records]);
 
-  useOutboundQueueKeyboard({
-    enabled: true,
-    orderedRecords: ordered,
-    selectedId,
-    context: 'queue',
-    openRecord: (r) => dispatchOpenShippedDetails(r, 'queue'),
-  });
+  // The cursor is published by the OrdersGridView below — it owns the grouping,
+  // the fold state and the on-screen order. This lane only turns the keyboard on;
+  // publishing here too would put a second, flatter claim on the same scope.
+  useRecordCursorKeyboard({ enabled: true, scope: 'record' });
 
   const clearSearch = useCallback(() => {
     const params = new URLSearchParams(searchParams.toString());

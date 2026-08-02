@@ -6,7 +6,7 @@
  * `SupportOrderFocus` (compose, don't fork): StationContextBar identity +
  * StationWorkbench tabs + ambient wash + floating terminal dock.
  *
- *   StationContextBar → SupportTicketIdentity (subject + right last-4 id)
+ *   StationContextBar → SupportTicketIdentity (subject + right last-8 id)
  *   StationMoreDetails → Open in provider · Ticket details · Close
  *   StationWorkbench  → Ticket | Connections | Conversations | Timeline
  *   Ticket tab dock   → SupportTicketComposerDock (StationComposerDock + Reply)
@@ -14,7 +14,7 @@
  */
 
 import { useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion } from '@/design-system/motion';
 import { ExternalLink } from '@/components/Icons';
 import { IconButton } from '@/design-system/primitives';
 import { SectionTabsSlider } from '@/design-system/components';

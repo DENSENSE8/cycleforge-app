@@ -12,7 +12,7 @@
  */
 
 import { useEffect, useState } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion } from '@/design-system/motion';
 import { Check, ChevronDown, Loader2 } from '@/components/Icons';
 import { sectionLabel } from '@/design-system/tokens/typography/presets';
 import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';

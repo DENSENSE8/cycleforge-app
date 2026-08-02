@@ -186,34 +186,52 @@ const THEME_ANCHOR_HEX: Record<StationTheme, [number, number, number]> = {
 };
 
 /**
- * Module-level cache of staff color_hex values keyed by staff ID. Populated
- * once on app boot by <StaffColorsProvider> (root layout). Drives the
- * synchronous resolvers ({@link getStaffThemeById}, {@link getStaffColorHex})
- * that 30+ components depend on without forcing every consumer to thread the
- * staff record through props.
+ * Module-level cache of per-staff IDENTITY facets keyed by staff ID — the
+ * assigned `color_hex` and the profile `avatar_photo_id`. Populated once on app
+ * boot by <StaffColorsProvider> (root layout) from `/api/staff`. Drives the
+ * synchronous resolvers ({@link getStaffThemeById}, {@link getStaffColorHex},
+ * {@link getStaffAvatarPhotoId}) that 30+ components depend on without forcing
+ * every consumer to thread the staff record through props.
  *
- * Reactivity: when the cache is replaced (e.g. an admin changes a staff
- * color), subscribers are notified. Components that need to re-render on
- * color change should call {@link useStaffColorVersion}.
+ * The avatar id rides HERE rather than through each payload for the same reason
+ * the colour does: an actor is identified by a staff id in a dozen feeds
+ * (timelines, journeys, schedule pills) that have no business growing a photo
+ * join. `<StaffAvatar>` reads this cache; a caller that already holds the row
+ * may still pass `avatarPhotoId` explicitly and skip the lookup.
+ *
+ * Reactivity: when the cache is replaced (an admin changes a colour, a staffer
+ * uploads a photo), subscribers are notified. Components that read the
+ * resolvers during render call {@link useStaffColorVersion}.
  */
 const _staffColorCache = new Map<number, string>();
+const _staffAvatarCache = new Map<number, number>();
 let _staffColorVersion = 0;
 const _staffColorSubscribers = new Set<() => void>();
 
 /**
  * Persists the cache between page loads so themed chrome (packer scan-bar
- * border, FBA sidebar gradients, etc.) paints with the right hue immediately
- * on cold boot instead of flashing the emerald default until
- * <StaffColorsProvider>'s /api/staff fetch resolves.
+ * border, FBA sidebar gradients, spine footer avatar) paints with the right
+ * hue/photo immediately on cold boot instead of flashing the emerald default
+ * until <StaffColorsProvider>'s /api/staff fetch resolves.
+ *
+ * Entries are `[id, hex, avatarPhotoId | null]`. The two legacy keys held
+ * 2-tuples; they are still READ (hue-only) so an existing browser does not
+ * lose its warm colours on the first load after this ships.
  */
-const STORAGE_KEY = 'cf_staff_colors_v1';
-const LEGACY_STORAGE_KEY = 'usav_staff_colors_v1';
+const STORAGE_KEY = 'cf_staff_identity_v1';
+const LEGACY_STORAGE_KEYS = ['cf_staff_colors_v1', 'usav_staff_colors_v1'] as const;
 
 function persistStaffColorCache(): void {
   if (typeof window === 'undefined') return;
   try {
-    const out: Array<[number, string]> = [];
-    for (const [id, hex] of _staffColorCache) out.push([id, hex]);
+    const out: Array<[number, string, number | null]> = [];
+    for (const [id, hex] of _staffColorCache) {
+      out.push([id, hex, _staffAvatarCache.get(id) ?? null]);
+    }
+    // A staffer with a photo but no colour still has to survive the round-trip.
+    for (const [id, photoId] of _staffAvatarCache) {
+      if (!_staffColorCache.has(id)) out.push([id, '', photoId]);
+    }
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(out));
   } catch {
     // quota / privacy mode — silently drop
@@ -223,18 +241,26 @@ function persistStaffColorCache(): void {
 function hydrateStaffColorCacheFromStorage(): void {
   if (typeof window === 'undefined') return;
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY) ?? window.localStorage.getItem(LEGACY_STORAGE_KEY);
+    let raw = window.localStorage.getItem(STORAGE_KEY);
+    for (const legacy of LEGACY_STORAGE_KEYS) {
+      if (raw) break;
+      raw = window.localStorage.getItem(legacy);
+    }
     if (!raw) return;
     const parsed = JSON.parse(raw) as unknown;
     if (!Array.isArray(parsed)) return;
     for (const entry of parsed) {
-      if (!Array.isArray(entry) || entry.length !== 2) continue;
-      const [id, hex] = entry;
-      if (typeof id !== 'number' || typeof hex !== 'string') continue;
-      if (!/^#[0-9a-fA-F]{6}$/.test(hex)) continue;
-      _staffColorCache.set(id, hex.toLowerCase());
+      if (!Array.isArray(entry) || entry.length < 2) continue;
+      const [id, hex, photoId] = entry as [unknown, unknown, unknown];
+      if (typeof id !== 'number') continue;
+      if (typeof hex === 'string' && /^#[0-9a-fA-F]{6}$/.test(hex)) {
+        _staffColorCache.set(id, hex.toLowerCase());
+      }
+      if (typeof photoId === 'number' && photoId > 0) {
+        _staffAvatarCache.set(id, photoId);
+      }
     }
-    if (_staffColorCache.size > 0) _staffColorVersion += 1;
+    if (_staffColorCache.size > 0 || _staffAvatarCache.size > 0) _staffColorVersion += 1;
   } catch {
     // corrupt JSON — ignore; next setStaffColorCache will overwrite
   }
@@ -244,16 +270,58 @@ function hydrateStaffColorCacheFromStorage(): void {
 // server because the typeof window guard short-circuits.
 hydrateStaffColorCacheFromStorage();
 
-export function setStaffColorCache(entries: Array<{ id: number; color_hex?: string | null }>): void {
+interface StaffIdentityCacheEntry {
+  id: number;
+  color_hex?: string | null;
+  /** `staff.avatar_photo_id` — the profile photo, served via the photos waist. */
+  avatar_photo_id?: number | null;
+}
+
+export function setStaffColorCache(entries: Array<StaffIdentityCacheEntry>): void {
   _staffColorCache.clear();
+  _staffAvatarCache.clear();
   for (const e of entries) {
     if (e.color_hex && /^#[0-9a-fA-F]{6}$/.test(e.color_hex)) {
       _staffColorCache.set(e.id, e.color_hex.toLowerCase());
     }
+    const photoId = Number(e.avatar_photo_id);
+    if (Number.isFinite(photoId) && photoId > 0) _staffAvatarCache.set(e.id, photoId);
   }
   _staffColorVersion += 1;
   persistStaffColorCache();
   _staffColorSubscribers.forEach((fn) => fn());
+}
+
+/**
+ * Patch ONE staffer's avatar without discarding the rest of the cache — used
+ * right after a self-upload / clear so the spine footer flips before the
+ * `/api/staff` query refetches. A full {@link setStaffColorCache} would drop
+ * every other staffer's warm colour until that fetch lands.
+ */
+export function setStaffAvatarPhotoId(
+  staffId: number,
+  avatarPhotoId: number | null,
+): void {
+  const id = parseStaffId(staffId);
+  if (!id) return;
+  if (avatarPhotoId && avatarPhotoId > 0) _staffAvatarCache.set(id, avatarPhotoId);
+  else _staffAvatarCache.delete(id);
+  _staffColorVersion += 1;
+  persistStaffColorCache();
+  _staffColorSubscribers.forEach((fn) => fn());
+}
+
+/**
+ * Resolved profile-photo id for a staff id, or null when they have none (the
+ * common case — the caller then renders colour + initials). Never guesses from
+ * a display name: an actor without a resolved staff id has no avatar.
+ */
+export function getStaffAvatarPhotoId(
+  staffId: number | string | null | undefined,
+): number | null {
+  const id = parseStaffId(staffId);
+  if (!id) return null;
+  return _staffAvatarCache.get(id) ?? null;
 }
 
 export function _subscribeStaffColorCache(fn: () => void): () => void {

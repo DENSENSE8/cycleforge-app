@@ -145,7 +145,7 @@ export function StaffScheduleBoard({
                 }`}
               >
                 <div>
-                  <p className={`text-[10.5px] font-semibold uppercase tracking-[0.14em] ${isToday ? 'text-amber-700' : 'text-text-soft'}`}>
+                  <p className={`text-role-eyebrow uppercase tracking-widest ${isToday ? 'text-amber-700' : 'text-text-soft'}`}>
                     {day.label}
                   </p>
                   <p className={`mt-0.5 text-base font-semibold tracking-tight ${isToday ? 'text-amber-900' : 'text-text-default'}`}>
@@ -160,12 +160,12 @@ export function StaffScheduleBoard({
               {/* Avatar pills */}
               <div className="flex flex-col gap-1 px-2 py-1.5">
                 {isLoading && dayShifts.length === 0 && (
-                  <p className="px-1 py-2 text-[10.5px] font-medium uppercase tracking-[0.14em] text-text-faint">
+                  <p className="px-1 py-2 text-role-eyebrow uppercase tracking-widest text-text-faint">
                     Loading…
                   </p>
                 )}
                 {!isLoading && dayShifts.length === 0 && (
-                  <p className="px-1 py-2 text-[10.5px] font-medium uppercase tracking-[0.14em] text-text-faint">
+                  <p className="px-1 py-2 text-role-eyebrow uppercase tracking-widest text-text-faint">
                     No one in
                   </p>
                 )}
@@ -235,7 +235,7 @@ function ShiftAvatarPill({
         </span>
         <span className="truncate text-role-caption font-semibold text-text-default">{shift.staff_name.split(/\s+/)[0]}</span>
         {isCovering && (
-          <span className="rounded-full bg-amber-100 inset-chip text-[8.5px] font-semibold uppercase tracking-wide text-amber-800">
+          <span className="rounded-full bg-amber-100 inset-chip text-role-micro uppercase text-amber-800">
             Cover
           </span>
         )}

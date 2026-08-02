@@ -7,7 +7,7 @@
  * re-exports everything here, so server callers keep their import path.
  */
 
-import { getLast4 } from '@/lib/copy-chip-format';
+import { getLast8 } from '@/lib/copy-chip-format';
 
 /** Internal registry label — `#42`. The operator PRIMARY ticket id. Client-safe. */
 export function formatSupportTicketLabel(ticketId: number): string {
@@ -70,7 +70,7 @@ export function resolveSupportTicketDisplayLabel(args: {
 }
 
 /**
- * Compact ticket id face for Support station chrome — strip `#`, show last 4.
+ * Compact ticket id face for Support station chrome — strip `#`, show last 8.
  * Copy value stays the full numeric id. Pure; client-safe.
  */
 export function supportTicketIdFace(label: string): { value: string; display: string } {
@@ -78,7 +78,7 @@ export function supportTicketIdFace(label: string): { value: string; display: st
   const digits = value.replace(/\D/g, '') || value;
   return {
     value: value || digits,
-    display: getLast4(digits || value),
+    display: getLast8(digits || value),
   };
 }
 

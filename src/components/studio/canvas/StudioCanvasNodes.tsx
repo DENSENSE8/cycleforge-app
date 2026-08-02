@@ -350,7 +350,7 @@ export function ProcessNode({ data }: NodeProps) {
                   asChild
                 >
                   <span
-                    className={`flex h-5 w-5 items-center justify-center rounded-full text-[8.5px] font-semibold ${
+                    className={`flex h-5 w-5 items-center justify-center rounded-full text-role-micro ${
                       s.isPrimary
                         ? 'bg-violet-600 text-white'
                         : 'bg-violet-100 text-violet-700 ring-1 ring-inset ring-violet-200'

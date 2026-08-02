@@ -29,7 +29,7 @@ import {
 export const QA_FAIL_REASON_FLOW_CONTEXT = 'receiving_exception';
 
 /**
- * The receive-request fields that record a fail reason.
+ * The receive-request field that records a fail reason.
  *
  * `code` is REQUIRED with no default: absence of a reason is expressed by NOT
  * calling this (a PASS), never by a defaulted code. A default here would file
@@ -37,14 +37,18 @@ export const QA_FAIL_REASON_FLOW_CONTEXT = 'receiving_exception';
  * `.claude/rules/backend-patterns.md` → a safety classification is never
  * defaulted.
  *
+ * There is deliberately NO free-text sibling: the reason IS the code
+ * (`ReasonChipPicker`'s contract — "if a vocabulary needs 'other, explain', that
+ * belongs in the vocabulary as a code, not a textarea"). Prose about the item
+ * still has a home, the operator's item note, which this path no longer touches.
+ *
  * `qa_status` is deliberately ABSENT: the route derives it from the code, so the
  * verdict and the reason cannot disagree on the wire.
  */
 export function qaFailReasonFields(
   code: QaFailExceptionCode,
-  reason: string | null,
-): { exception_code: QaFailExceptionCode; exception_reason: string | null } {
-  return { exception_code: code, exception_reason: reason?.trim() || null };
+): { exception_code: QaFailExceptionCode } {
+  return { exception_code: code };
 }
 
 /** One selectable fail reason. */

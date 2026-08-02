@@ -121,6 +121,7 @@ export async function GET() {
         role: user.role,
         permissions: Array.from(user.permissions),
         mobileDisplayConfig: user.mobileDisplayConfig,
+        avatarPhotoId: user.avatarPhotoId,
         session: {
           sid: session.sid,
           deviceKind: session.deviceKind,

@@ -11,7 +11,7 @@ import {
 } from '@/components/station/receiving-constants';
 import { workflowStageBadge } from '@/lib/receiving/workflow-stages';
 import { sourcePlatformMeta, UNKNOWN_PLATFORM } from '@/lib/source-platform';
-import { getLast4 } from '@/components/ui/CopyChip';
+import { getLast8 } from '@/components/ui/CopyChip';
 import { ReceivingIdentityChips } from '@/components/receiving/ReceivingIdentityChips';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { NetworkChip } from '@/components/mobile/NetworkChip';
@@ -354,7 +354,7 @@ function CartonPageInner() {
                         {received}/{expected ?? '?'}
                       </span>
                     </div>
-                    {/* Shared last-4 SKU chip (tap to copy). Serials render in
+                    {/* Shared last-8 SKU chip (tap to copy). Serials render in
                         their own status-colored row below. */}
                     <ReceivingIdentityChips
                       sku={line.sku}
@@ -366,13 +366,13 @@ function CartonPageInner() {
                     {line.serials && line.serials.length > 0 && (
                       <div className="mt-2 flex flex-wrap gap-1 pl-4">
                         {line.serials.slice(0, 4).map((s) => (
-                          // ds-allow-title: non-interactive chip showing the clipped last-4 serial; title reveals the full serial.
+                          // ds-allow-title: non-interactive chip showing the clipped last-8 serial; title reveals the full serial.
                           <span
                             key={s.id}
                             title={s.serial_number}
                             className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-mono text-role-micro ${unitStatusBadgeTone(s.current_status)}`}
                           >
-                            …{getLast4(s.serial_number)}
+                            …{getLast8(s.serial_number)}
                             {s.current_location ? (
                               <span className="opacity-60">· {s.current_location}</span>
                             ) : null}

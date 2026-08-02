@@ -1,7 +1,8 @@
 'use client';
 
-import { useCallback, useMemo, type RefObject } from 'react';
+import { useCallback, useMemo, useState, type RefObject } from 'react';
 import { LedgerGridSurface, useGridColumnVisibility } from '@/design-system/components/grid';
+import { GridColumnDetailsPanel } from '@/components/ui/table-column-config/GridColumnDetailsPanel';
 import type { RowGroup } from '@/lib/group-rows';
 import type { RSRecord } from '@/lib/neon/repair-service-queries';
 import { useTableSelectMode } from '@/hooks/useTableSelectMode';
@@ -69,6 +70,8 @@ export function RepairGridView({
     getId: (r) => r.id,
   });
 
+  const [columnDetailsOpen, setColumnDetailsOpen] = useState(false);
+
   // ONE visibility resolution: descriptor default tier + this staffer's delta.
   // Header, rows and the grid template all read `visible` — a hidden column
   // loses its TRACK rather than rendering an empty ruled cell.
@@ -108,31 +111,41 @@ export function RepairGridView({
   );
 
   return (
-    <LedgerGridSurface<RSRecord, RepairGridColumnKey>
-      ariaLabel="Repair queue"
-      descriptor={descriptor}
-      orderGroupsByDate={orderGroupsByDate}
-      rows={records}
-      getRowId={(r) => String(r.id)}
-      sort={sort}
-      dir={dir}
-      onSortChange={onSortChange}
-      loading={loading}
-      emptyMessage={emptyMessage}
-      scrollRef={scrollRef}
-      className={className}
-      testId="repair-grid-body"
-      renderColumnHeader={({ toggleColumnSort }) => (
-        <RepairGridColumnHeader
-          selectionScope={selectionScope}
-          columns={visible}
-          activeSort={sort}
-          sortDir={dir}
-          onSortColumn={toggleColumnSort}
-        />
-      )}
-      renderGroup={(group) => renderLeaf(group.rows[0])}
-      renderRow={(row) => renderLeaf(row)}
-    />
+    <>
+      <LedgerGridSurface<RSRecord, RepairGridColumnKey>
+        ariaLabel="Repair queue"
+        descriptor={descriptor}
+        orderGroupsByDate={orderGroupsByDate}
+        rows={records}
+        getRowId={(r) => String(r.id)}
+        sort={sort}
+        dir={dir}
+        onSortChange={onSortChange}
+        loading={loading}
+        emptyMessage={emptyMessage}
+        scrollRef={scrollRef}
+        className={className}
+        testId="repair-grid-body"
+        renderColumnHeader={({ toggleColumnSort }) => (
+          <RepairGridColumnHeader
+            selectionScope={selectionScope}
+            columns={visible}
+            activeSort={sort}
+            sortDir={dir}
+            onSortColumn={toggleColumnSort}
+            onOpenColumnDetails={() => setColumnDetailsOpen(true)}
+            columnDetailsOpen={columnDetailsOpen}
+          />
+        )}
+        renderGroup={(group) => renderLeaf(group.rows[0])}
+        renderRow={(row) => renderLeaf(row)}
+      />
+      <GridColumnDetailsPanel
+        open={columnDetailsOpen}
+        onClose={() => setColumnDetailsOpen(false)}
+        tableId={REPAIR_TABLE_ID}
+        columns={columns}
+      />
+    </>
   );
 }

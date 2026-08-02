@@ -10,6 +10,9 @@ import { linkReceivingPhotoToClaim } from '@/lib/photos/claim-link';
 import { uploadPermissionFor } from '@/lib/photos/entity-permissions';
 import type { PhotoEntityType, PhotoLinkRole } from '@/lib/photos/types';
 import { PHOTO_ENTITY_TYPES, PHOTO_LINK_ROLES } from '@/lib/photos/types';
+import type { PhotoAspect } from '@/lib/photos/photo-aspects';
+import { isAspectLegalForStage, parsePhotoAspect } from '@/lib/photos/photo-aspects';
+import { receivingStageFromPhotoType } from '@/lib/receiving/photo-intent';
 import {
   publishReceivingPhotoChanged,
   publishPackerPhotoChanged,
@@ -91,6 +94,36 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     const linkRole = parseLinkRole(form.get('linkRole'));
     const clientCapturedAt = parseCapturedAt(form.get(CLIENT_CAPTURED_AT_FIELD));
 
+    // What this shot SHOWS, within its stage — the second axis beside
+    // `photoType`. Validated against the stage the (entity × photo_type) pair
+    // RESOLVES to, never a stage the caller claimed: a caller that mis-claims
+    // the stage must not also get to mis-claim the aspect, or the pairing the
+    // `require_one` receive gate depends on stops meaning anything.
+    //
+    // Absent → null → legal (unclassified evidence, what every pre-aspect row
+    // carries). Present-but-unknown → 400, never silently dropped: an aspect is
+    // a claim about the frame, and a dropped claim reads to the operator as a
+    // recorded one.
+    const rawAspect = String(form.get('photoAspect') || '').trim();
+    let photoAspect: PhotoAspect | null = null;
+    if (rawAspect) {
+      photoAspect = parsePhotoAspect(rawAspect);
+      if (!photoAspect) {
+        throw ApiError.badRequest(`photoAspect '${rawAspect}' is not a known photo aspect`);
+      }
+      const stage = receivingStageFromPhotoType(entityType, photoType);
+      if (!stage) {
+        throw ApiError.badRequest(
+          `photoAspect cannot be recorded: (${entityType}, ${photoType}) resolves to no evidence stage`,
+        );
+      }
+      if (!isAspectLegalForStage(photoAspect, stage)) {
+        throw ApiError.badRequest(
+          `photoAspect '${photoAspect}' is not allowed at the ${stage} stage`,
+        );
+      }
+    }
+
     const result = await uploadPhoto({
       organizationId: ctx.organizationId,
       staffId: ctx.staffId,
@@ -102,6 +135,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       fileBuffer: buffer,
       contentType,
       clientCapturedAt,
+      photoAspect,
       useStorageAdapter: true,
     });
 

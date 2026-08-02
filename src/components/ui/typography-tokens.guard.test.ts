@@ -38,7 +38,14 @@ const RETIRED_TOKENS = ['mini', 'eyebrow', 'micro', 'caption', 'label'];
 
 // `text-[Npx]` as a standalone class (allows `:`/`-`-joined prefixes, rejects
 // substrings of longer identifiers).
-const ARBITRARY_PX_RE = /(?<![A-Za-z0-9])text-\[(\d+)px\]/g;
+//
+// The size is `\d+(?:\.\d+)?` — DECIMALS COUNT. An integer-only `\d+` shipped
+// here until 2026-08-01 and let 73 half-pixel sites (`text-[8.5px]`,
+// `text-[10.5px]`, `text-[11.5px]`, `text-[12.5px]`) accumulate in settings,
+// admin, warehouse and the sidebar rails — invisible to a guard that asserts
+// zero offenders. A half-pixel is not a smaller violation than a whole one; it
+// is the same bypass of the density-aware `rem` scale, wearing a decimal.
+const ARBITRARY_PX_RE = /(?<![A-Za-z0-9])text-\[(\d+(?:\.\d+)?)px\]/g;
 // A retired legacy token as a standalone class (boundary-safe so it never
 // matches e.g. `library-context-label`).
 const retiredRe = (t: string) => new RegExp(`(?<![\\w-])text-${t}(?![\\w-])`, 'g');

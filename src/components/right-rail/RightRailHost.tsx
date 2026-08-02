@@ -2,22 +2,43 @@
 
 /**
  * RightRailHost — THE right details-panel wrapper / ONE owner of the right-edge
- * slot.
+ * slot. It renders exactly the top occupant of `lib/right-rail/store.ts`.
  *
- * Renders exactly the top occupant inside an inset rounded overlay card
- * (`DetailStackFrame` layout tokens) with a viewport backdrop, one
- * `AnimatePresence mode="wait"` crossfade keyed on occupant id, and
- * scale+opacity enter/exit (`framerPresence.detailStackOverlay`).
+ * ## Two geometries, one host
  *
- * Non-modal occupants are drag-resizable + collapsible (same edge-grip grammar
- * as {@link ContextPanelLayout}). Modal + assistant dock keep fixed geometry.
+ * **PUSH (the default).** A non-modal occupant is an **in-flow column**: a flex
+ * sibling of `ContextPanelLayout`'s host inside `<main>` that tweens its own
+ * width from 0, so the work surface reflows BESIDE it instead of under it. This
+ * is the house ruling — "every resident edge PUSHES; nothing floats over the
+ * work surface" (`source-of-truth.md` → Right-rail modality) — and it is the
+ * left edge's recipe mirrored, not a new one: `ContextPanelLayout` already
+ * animates its card's own width at `overflow-visible` with an inner clip shell,
+ * through `framerTransition.sidebarNavColumnMount`.
  *
- * Desktop-first; the inset card is also shown on narrow viewports (width
- * clamps to viewport minus inset).
+ * The card (not a clipping host) is the animating element ON PURPOSE. The
+ * leading resize grip renders *outside* the card border
+ * (`HorizontalEdgeResizeHandle` `placement="outset"`), so `SidebarNavColumn`'s
+ * shape — an `overflow-hidden` host wrapping an absolutely-anchored fixed-width
+ * child — would shear it.
+ *
+ * **OVERLAY (the fallback).** Below the derived threshold
+ * (`RIGHT_RAIL_PUSH_MIN_FRAME_PX`), or for an occupant that opted out with
+ * `push={false}`, or for a modal one, the panel keeps the historical fixed inset
+ * card. The SoT sanctions exactly this: "only a viewport that cannot seat the
+ * grid's own minimum content width after both are parked may fall back to
+ * overlaying."
+ *
+ * ## Two AnimatePresence, and why
+ *
+ * The OUTER one (push mode) keys on a **constant** — it owns the column arriving
+ * and leaving the flow. The INNER one keys on the **occupant id** — it owns the
+ * crossfade between occupants. Keying the outer on the occupant id would collapse
+ * the column to 0 and grow it again on every genuine record→record swap, which is
+ * the exact "exit → empty → enter" the stable-occupant-id rule exists to prevent.
  */
 
-import { useSyncExternalStore } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { useEffect, useSyncExternalStore } from 'react';
+import { AnimatePresence, motion, motionRole, useMotionRole } from '@/design-system/motion';
 import { ChevronLeft } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import {
@@ -35,9 +56,12 @@ import {
   useHorizontalEdgeResize,
 } from '@/design-system/hooks';
 import { IconButton } from '@/design-system/primitives';
+import { zIndex } from '@/design-system/tokens/z-index';
 import { useLocalStorage } from '@/hooks';
 import {
   DETAIL_STACK_COLLAPSE,
+  DETAIL_STACK_PUSH_COLUMN_CLASS,
+  DETAIL_STACK_PUSH_STRIP_CLASS,
   DETAIL_STACK_RESIZE,
   assistantDockAsideClassName,
   assistantDockAsideStyle,
@@ -52,6 +76,12 @@ import {
   detailStackDismissLayerElevatedClassName,
 } from '@/components/right-rail/DetailStackFrame';
 import {
+  getRightRailFrame,
+  getServerRightRailFrame,
+  setRightRailDemand,
+  subscribeRightRailFrame,
+} from '@/lib/right-rail/frame';
+import {
   getRightRailTop,
   getServerRightRailTop,
   subscribeRightRail,
@@ -63,37 +93,51 @@ const BACKDROP_FADE = {
   ease: motionBezier.easeOut,
 } as const;
 
+/** Stable key for the push column's own arrive/leave — NEVER the occupant id. */
+const PUSH_COLUMN_KEY = 'right-rail-push-column';
+
 export function RightRailHost() {
   const top = useSyncExternalStore(subscribeRightRail, getRightRailTop, getServerRightRailTop);
-  const presence = useMotionPresence(framerPresence.detailStackOverlay);
-  const transition = useMotionTransition(framerTransition.detailStackOverlayMount);
+  const frame = useSyncExternalStore(
+    subscribeRightRailFrame,
+    getRightRailFrame,
+    getServerRightRailFrame,
+  );
+  const overlayPresence = useMotionPresence(framerPresence.detailStackOverlay);
+  const overlayTransition = useMotionTransition(framerTransition.detailStackOverlayMount);
+  // `motionRole.push.rail` — the sanctioned push pair (opacity-only presence +
+  // the layout tween the spine and the context rail also use). Taking them as
+  // one role is what keeps a spring out of a width every sibling lays out
+  // against (`display/motion-crossfade.md`).
+  const { presence: pushPresence, transition: pushTransition } = useMotionRole(
+    motionRole.push.rail,
+  );
 
   const renderable = top && top.node != null ? top : null;
   const isAssistantDock = renderable?.id === 'assistant';
   const isElevated = !!renderable?.elevated;
   // Modality is a per-occupant contract (`RightRailPanel.modal`, default true).
-  // The assistant dock has always been non-modal by identity; it now flows
-  // through the same flag instead of an id check, so a detail inspector can opt
-  // out too (dashboard order inspector — see the execution plan §3).
   const isModal = !isAssistantDock && renderable?.modal !== false;
 
   // The innermost open overlay owns Escape: while a popover / menu / cell editor
   // is up, Escape dismisses THAT, not the whole inspector underneath it.
   const overlayOpen = useAnyOverlayOpen();
 
-  useBodyScrollLock(!!renderable && isModal);
+  // Push mode has nothing to lock: it covers nothing.
+  const isPush = frame.mode === 'push';
+  useBodyScrollLock(!!renderable && isModal && !isPush);
   useEscapeClose(!!renderable?.onClose && !overlayOpen, renderable?.onClose ?? (() => {}));
 
-  // Drag-to-resize + collapse, non-modal occupants only. A modal panel dims what
-  // it covers, so its width is a fixed design decision; a non-modal inspector
-  // coexists with the collection map, and how much map to trade is the
-  // operator's call. The assistant dock keeps its own flush-right geometry.
+  // Drag-to-resize + collapse, non-modal occupants only.
   const isResizable = !!renderable && !isModal && !isAssistantDock;
   const { width, edgeHandleProps, isDragging } = useHorizontalEdgeResize({
     storageKey: DETAIL_STACK_RESIZE.storageKey,
     defaultWidth: DETAIL_STACK_RESIZE.defaultWidthPx,
     minWidth: DETAIL_STACK_RESIZE.minWidthPx,
     maxWidthPad: DETAIL_STACK_RESIZE.maxWidthPadPx,
+    // In push mode the ceiling is derived from the frame (what the work surface
+    // must keep), not from the viewport pad — the pad stays as the floor.
+    maxWidth: isPush ? frame.capPx : undefined,
     enabled: isResizable,
     label: 'Resize details panel',
     testId: 'detail-inspector-resize',
@@ -104,21 +148,129 @@ export function RightRailHost() {
   );
   const isCollapsed = isResizable && collapsed;
 
-  // Invisible dismiss layer: non-modal + opt-in + not parked. Restores click-off
-  // close without the dimming scrim. Dashboard leaves this off so the grid stays
-  // live. Parked inspectors hide it so the page stays fully interactive.
+  // Publish this occupant's demand so `resolveRightRailFrame` can answer whether
+  // it fits and what has to yield. An occupant that opted out publishes
+  // `wantsPush: false`, which resolves to overlay with nothing parked.
+  const wantsPush = !!renderable && !isModal && !isAssistantDock && renderable.push !== false;
+  useEffect(() => {
+    setRightRailDemand({ wantsPush, desiredWidthPx: width });
+  }, [wantsPush, width]);
+  // Release the claim on unmount so a route without a host cannot leave the
+  // context rail masked open-forever.
+  useEffect(() => () => setRightRailDemand({ wantsPush: false, desiredWidthPx: width }), []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Invisible dismiss layer: non-modal + opt-in + not parked + OVERLAY only.
+  // Under push it would be a `fixed inset-0` blanket over the very surface the
+  // push exists to keep live.
   const showDismissLayer =
     !!renderable?.onClose &&
     !isModal &&
     !isAssistantDock &&
     !!renderable.closeOnOutsideClick &&
-    !isCollapsed;
-  const showModalBackdrop = !!renderable?.onClose && isModal;
+    !isCollapsed &&
+    !isPush;
+  const showModalBackdrop = !!renderable?.onClose && isModal && !isPush;
 
+  const body = (
+    <div
+      className={cn(
+        'flex h-full min-h-0 flex-1 flex-col overflow-hidden',
+        isResizable && 'rounded-[inherit]', // ds-allow-radius: clip shell inherits the aside card radius
+      )}
+    >
+      {renderable?.node}
+    </div>
+  );
+
+  const showPush = isPush && !!renderable;
+  const showOverlay = !isPush && !!renderable;
+
+  // BOTH layers are always mounted, and each one's CHILD is what is conditional.
+  //
+  // An `AnimatePresence` that mounts together with its child suppresses the
+  // enter animation under `initial={false}`, and one that unmounts together with
+  // its child can never play the exit at all — the two halves of the
+  // "`AnimatePresence` inside the conditional" anti-pattern
+  // (`display/motion-crossfade.md`). Keeping the presence resident and toggling
+  // the child is what makes the width tween play in both directions.
+  //
+  // An empty push layer costs nothing in the flow: it renders no element.
   return (
     <>
+      {/* ── PUSH: an in-flow column beside the work surface ─────────────── */}
+      <>
+        {showPush && isCollapsed ? (
+          <div className={DETAIL_STACK_PUSH_STRIP_CLASS} data-detail-inspector-collapsed>
+            <HoverTooltip label="Show details" asChild>
+              <IconButton
+                size="sm"
+                tone="neutral"
+                ariaLabel="Show details"
+                icon={<ChevronLeft className="h-4 w-4" />}
+                onClick={() => setCollapsed(false)}
+                data-testid="detail-inspector-expand"
+              />
+            </HoverTooltip>
+          </div>
+        ) : null}
+        {/* Outer presence keyed on a CONSTANT — it owns the column joining and
+            leaving the flow, not the occupant swap (see the docblock).
+            NO `initial={false}` here: the enter tween IS the push gesture's
+            feedback, and suppressing it would make the column appear at full
+            width with the work surface snapping sideways beside it. */}
+        <AnimatePresence>
+          {showPush && !isCollapsed ? (
+            <motion.aside
+              key={PUSH_COLUMN_KEY}
+              role="region"
+              aria-label={renderable?.ariaLabel ?? 'Details'}
+              data-right-rail-column
+              data-right-rail-mode="push"
+              className={cn(
+                DETAIL_STACK_PUSH_COLUMN_CLASS,
+                // The outset grip lives outside the card; clip on the inner
+                // shell instead so it is not sheared (same as the context rail).
+                'overflow-visible',
+              )}
+              // The header+content column is `relative` and seven workspaces
+              // mount `zIndex.panel` overlays inside it, so an in-flow column
+              // with `z-index: auto` would paint under them.
+              style={{ zIndex: isElevated ? zIndex.detailStack : zIndex.panel }}
+              initial={{ width: 0, opacity: pushPresence.initial?.opacity as number }}
+              animate={{ width, opacity: 1 }}
+              exit={{ width: 0, opacity: pushPresence.exit?.opacity as number }}
+              transition={pushTransition}
+            >
+              <HorizontalEdgeResizeHandle
+                edgeHandleProps={edgeHandleProps}
+                isDragging={isDragging}
+                edge="leading"
+                placement="outset"
+                onCollapse={() => setCollapsed(true)}
+                collapseLabel="Hide details"
+              />
+              {/* Inner presence keyed on the OCCUPANT — the record→record
+                  crossfade, unchanged from the float. */}
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.div
+                  key={renderable?.id ?? PUSH_COLUMN_KEY}
+                  className="flex h-full min-h-0 flex-1 flex-col overflow-hidden rounded-[inherit]" // ds-allow-radius: clip shell inherits the card radius
+                  initial={pushPresence.initial}
+                  animate={pushPresence.animate}
+                  exit={pushPresence.exit}
+                  transition={pushTransition}
+                >
+                  {renderable?.node}
+                </motion.div>
+              </AnimatePresence>
+            </motion.aside>
+          ) : null}
+        </AnimatePresence>
+      </>
+
+      {/* ── OVERLAY: the historical fixed inset card ────────────────────── */}
       <AnimatePresence initial={false}>
-        {showModalBackdrop || showDismissLayer ? (
+        {showOverlay && (showModalBackdrop || showDismissLayer) ? (
           <motion.div
             key={`${renderable!.id}-backdrop`}
             role="presentation"
@@ -139,7 +291,7 @@ export function RightRailHost() {
           />
         ) : null}
       </AnimatePresence>
-      {isCollapsed ? (
+      {showOverlay && isCollapsed ? (
         <div
           className={detailStackCollapseStripClassName(isElevated)}
           style={detailStackCollapseStripStyle()}
@@ -158,9 +310,10 @@ export function RightRailHost() {
         </div>
       ) : null}
       <AnimatePresence mode="wait" initial={false}>
-        {renderable ? (
+        {showOverlay && renderable ? (
           <motion.aside
             key={renderable.id}
+            data-right-rail-mode="overlay"
             // Modal occupants keep the blocking dialog semantics. Non-modal ones
             // are a named region: the page underneath stays scrollable, clickable
             // and readable, so announcing a modal dialog would be a lie (and the
@@ -169,14 +322,14 @@ export function RightRailHost() {
             aria-modal={isModal ? true : undefined}
             aria-label={renderable.ariaLabel ?? (isModal ? undefined : 'Details')}
             aria-hidden={isCollapsed || undefined}
-            initial={presence.initial}
+            initial={overlayPresence.initial}
             animate={
               isCollapsed
-                ? { ...presence.animate, opacity: 0 }
-                : presence.animate
+                ? { ...overlayPresence.animate, opacity: 0 }
+                : overlayPresence.animate
             }
-            exit={presence.exit}
-            transition={transition}
+            exit={overlayPresence.exit}
+            transition={overlayTransition}
             style={
               isAssistantDock
                 ? assistantDockAsideStyle()
@@ -215,14 +368,7 @@ export function RightRailHost() {
                 collapseLabel="Hide details"
               />
             ) : null}
-            <div
-              className={cn(
-                'flex h-full min-h-0 flex-1 flex-col overflow-hidden',
-                isResizable && 'rounded-[inherit]', // ds-allow-radius: clip shell inherits the aside card radius
-              )}
-            >
-              {renderable.node}
-            </div>
+            {body}
           </motion.aside>
         ) : null}
       </AnimatePresence>

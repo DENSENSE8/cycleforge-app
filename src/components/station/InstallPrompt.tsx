@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { X, Share, Plus } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from '@/design-system/motion';
 import { Button } from '@/design-system/primitives/Button';
 import { IconButton } from '@/design-system/primitives/IconButton';
 import { cornerClass } from '@/design-system/tokens/radius';

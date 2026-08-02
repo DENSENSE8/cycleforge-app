@@ -5,7 +5,7 @@
  * Selection via `?issueId=`; crossfade only the focus surface.
  */
 
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion } from '@/design-system/motion';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { MessageSquare } from '@/components/Icons';
 import { EmptyState } from '@/design-system/primitives';

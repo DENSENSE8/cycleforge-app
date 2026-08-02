@@ -6,6 +6,7 @@ import {
   APP_SIDEBAR_NAV,
   filterPageModes,
   getSidebarPageNav,
+  isSidebarPageReachable,
   spineSectionIdForPage,
   type SidebarNavItem,
   type SidebarPageNav,
@@ -51,7 +52,13 @@ export function MasterNav({
   // when no override is published — behavior is unchanged until an org opts in.
   const navItems = useOrgNavItems({ permissions, mobileRestricted });
   const pages = useMemo(
-    () => navItems.map(toPageNav).map((page) => filterPageModes(page, permissions)),
+    () =>
+      navItems
+        .map(toPageNav)
+        .map((page) => filterPageModes(page, permissions))
+        // A page whose every mode was permission-filtered is unreachable — drop
+        // it rather than render a dead header (see `isSidebarPageReachable`).
+        .filter(isSidebarPageReachable),
     [navItems, permissions],
   );
 

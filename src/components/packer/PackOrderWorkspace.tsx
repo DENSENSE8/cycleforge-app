@@ -5,7 +5,7 @@
  * workspace crossfades over it (UnboxLineWorkspace pattern).
  */
 
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion } from '@/design-system/motion';
 import { PackWorkspaceView } from '@/components/packer/PackWorkspaceView';
 import { PackOrderPanel } from '@/components/packer/PackOrderPanel';
 import {

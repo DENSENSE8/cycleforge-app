@@ -11,7 +11,8 @@
  */
 
 import type { ReactNode } from 'react';
-import { CheckCircle, RefreshCw } from '@/components/Icons';
+import { RefreshCw } from '@/components/Icons';
+import { AnimatedCheck } from '@/components/ui/AnimatedCheck';
 import { Button } from '@/design-system/primitives';
 import { MONITOR_KPI_TILE_CLASS } from './shell';
 import { cn } from '@/utils/_cn';
@@ -94,7 +95,7 @@ export function OpsKpiBandEmpty({
 }) {
   return (
     <div className="flex items-center gap-3 rounded-xl border border-dashed border-border-soft bg-surface-card px-4 py-5">
-      {icon ?? <CheckCircle className="h-5 w-5 shrink-0 text-text-success" />}
+      {icon ?? <AnimatedCheck size={20} />}
       <div className="min-w-0">
         <p className="text-role-caption font-semibold text-text-default">{title}</p>
         <p className="mt-0.5 text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint">

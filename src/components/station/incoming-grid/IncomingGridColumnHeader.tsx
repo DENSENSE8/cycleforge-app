@@ -43,6 +43,8 @@ export function IncomingGridColumnHeader({
   activeSort = null,
   sortDir = null,
   onSortColumn,
+  onOpenColumnDetails,
+  columnDetailsOpen = false,
 }: {
   isMobile?: boolean;
   selectMode?: boolean;
@@ -52,6 +54,8 @@ export function IncomingGridColumnHeader({
   activeSort?: IncomingGridColumnKey | null;
   sortDir?: IncomingGridSortDir | null;
   onSortColumn?: (key: IncomingGridColumnKey) => void;
+  onOpenColumnDetails?: () => void;
+  columnDetailsOpen?: boolean;
 }) {
   return (
     <LedgerGridColumnHeader
@@ -68,6 +72,8 @@ export function IncomingGridColumnHeader({
           ? (key) => onSortColumn(key as IncomingGridColumnKey)
           : undefined
       }
+      onOpenColumnDetails={onOpenColumnDetails}
+      columnDetailsOpen={columnDetailsOpen}
       glyphFor={(column) =>
         column.key === 'date' ? (
           <Calendar className="h-3 w-3 shrink-0 text-text-faint" aria-hidden />

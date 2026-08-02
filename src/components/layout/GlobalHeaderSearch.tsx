@@ -1,11 +1,14 @@
 'use client';
 
 /**
- * GlobalHeaderSearch — icon-rail search + separate AI entry for the global
- * header. Resting state matches sibling header IconButtons (search glyph only);
- * hover / focus / click / ⌘K expands a compact SearchField and focuses the
- * cursor. The Sparkles assistant control is a sibling IconButton — never nested
- * inside the search field.
+ * GlobalHeaderSearch — icon-rail search for the global header. Resting state
+ * matches sibling header IconButtons (search glyph only); hover / focus / click /
+ * ⌘K expands a compact SearchField and focuses the cursor.
+ *
+ * The Sparkles assistant control lives far-right in {@link GlobalHeaderActions}
+ * ({@link GlobalHeaderAssistantButton}) — never nested here or beside Search.
+ * Draft query syncs via {@link setGlobalHeaderSearchDraft} so AI can seed the
+ * composer on open.
  *
  * Combobox model (when expanded): the input carries role=combobox +
  * aria-activedescendant; the dropdown is the listbox. ↓/↑ move a virtual
@@ -22,7 +25,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { IconButton, SearchField } from '@/design-system/primitives';
-import { Search, Sparkles } from '@/components/Icons';
+import { Search } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import {
   GlobalSearchDropdown,
@@ -32,10 +35,13 @@ import {
   groupHitsForPreview,
   flattenPreviewGroups,
 } from '@/components/search/search-tabs';
-import { useAssistantDockControls } from '@/components/assistant/AssistantProvider';
 import { useAiQuickJump } from '@/hooks/useAiQuickJump';
 import { useSearchRecents } from '@/hooks/useSearchRecents';
 import { GLOBAL_SEARCH_FOCUS_EVENT } from '@/lib/global-search-focus';
+import {
+  clearGlobalHeaderSearchDraft,
+  setGlobalHeaderSearchDraft,
+} from '@/lib/global-header-search-query';
 import { isUnifiedHeaderSearchEnabled } from '@/lib/search/unified-header-search';
 import { recentRerunHref } from '@/lib/search/search-recents';
 import { searchRerunHref } from '@/lib/search/search-page-recents';
@@ -50,7 +56,6 @@ import type { AiSearchHit } from '@/lib/search/ai-search-client';
 import { cn } from '@/utils/_cn';
 import {
   HEADER_ICON_BTN_CLASS,
-  HEADER_ICON_BTN_OPEN_CLASS,
   HEADER_ICON_WRAP,
   TOP_CHROME_ICON_GLYPH,
 } from './header-shell';
@@ -100,7 +105,6 @@ const optionId = (index: number) => `global-search-opt-${index}`;
 export function GlobalHeaderSearch() {
   const router = useRouter();
   const pathname = usePathname();
-  const assistant = useAssistantDockControls();
 
   const [query, setQuery] = useState('');
   const [expanded, setExpanded] = useState(false);
@@ -192,6 +196,17 @@ export function GlobalHeaderSearch() {
       if (synced.trim()) setExpanded(true);
     }
   }, [pathname]);
+
+  // Far-right assistant button seeds from this draft (GlobalHeaderAssistantButton).
+  useEffect(() => {
+    setGlobalHeaderSearchDraft(query);
+  }, [query]);
+
+  useEffect(() => {
+    return () => {
+      clearGlobalHeaderSearchDraft();
+    };
+  }, []);
 
   useEffect(() => {
     if (hasValue) setExpanded(true);
@@ -519,18 +534,6 @@ export function GlobalHeaderSearch() {
     else el.removeAttribute('aria-activedescendant');
   }, [expanded, dropdownOpen, activeIndex]);
 
-  const openAssistant = () => {
-    const next = !assistant.open;
-    assistant.setOpen(next);
-    if (!next) return;
-    if (trimmedQuery) {
-      // Pre-fill only — operator reviews before send (exact-data handoff).
-      assistant.seedComposer(trimmedQuery, { autoSend: false });
-    } else {
-      assistant.focusComposer();
-    }
-  };
-
   return (
     <div ref={rootRef} className="contents">
       {!expanded ? (
@@ -614,28 +617,6 @@ export function GlobalHeaderSearch() {
           />
         </div>
       )}
-
-      {assistant.enabled ? (
-        <div className={HEADER_ICON_WRAP}>
-          <HoverTooltip
-            label={assistant.open ? 'Close assistant (⌘J)' : 'Open assistant (⌘J)'}
-            asChild
-          >
-            <IconButton
-              type="button"
-              size="md"
-              ariaLabel={assistant.open ? 'Close assistant' : 'Open assistant'}
-              aria-expanded={assistant.open}
-              onClick={openAssistant}
-              className={cn(
-                HEADER_ICON_BTN_CLASS,
-                assistant.open && cn(HEADER_ICON_BTN_OPEN_CLASS, 'text-blue-600'),
-              )}
-              icon={<Sparkles className={TOP_CHROME_ICON_GLYPH} />}
-            />
-          </HoverTooltip>
-        </div>
-      ) : null}
     </div>
   );
 }

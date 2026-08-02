@@ -1,7 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { motion, useReducedMotion } from 'framer-motion';
+import { motion, useReducedMotion } from '@/design-system/motion';
 import { motionBezier } from '@/design-system/foundations/motion-framer';
 
 /**

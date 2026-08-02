@@ -27,5 +27,6 @@ export {
   PaneHeaderTabs,
   PaneHeaderActionBar,
   PaneHeaderPagination,
+  CursorPositionReadout,
 } from './blocks';
 export type { PaneHeaderActionBarAction } from './blocks';

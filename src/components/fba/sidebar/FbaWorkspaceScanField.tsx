@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import { AnimatePresence, motion, useReducedMotion } from '@/design-system/motion';
 import { AlertCircle, Loader2 } from '@/components/Icons';
 import StationFbaInput from '@/components/fba/StationFbaInput';
 import { useFbaWorkspace } from '@/contexts/FbaWorkspaceContext';

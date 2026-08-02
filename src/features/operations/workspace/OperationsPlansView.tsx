@@ -12,7 +12,7 @@
 
 import { useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion } from '@/design-system/motion';
 import { useQuery } from '@tanstack/react-query';
 import { cn } from '@/utils/_cn';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';

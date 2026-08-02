@@ -47,7 +47,7 @@ export function ScannedMode({
                           <span className="truncate text-sm font-medium text-text-default">{item.subject || '(no subject)'}</span>
                           <span className="truncate text-role-caption text-text-soft">{item.from}</span>
                         </div>
-                        <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[11.5px] text-text-soft">
+                        <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-role-caption text-text-soft">
                           <span>{item.date || new Date(Number(item.internalDate)).toLocaleString()}</span>
                           <span aria-hidden>·</span>
                           <ReconcileStatusChip status={item.status} />
@@ -69,7 +69,7 @@ export function ScannedMode({
                         {isOpen && (
                           <div className="mt-2 space-y-2">
                             {item.matches.length > 0 && (
-                              <table className="w-full border-collapse text-[11.5px]">
+                              <table className="w-full border-collapse text-role-caption">
                                 <thead className="bg-surface-canvas text-text-soft">
                                   <tr>
                                     <th className="px-2 py-1 text-left font-medium">PO#</th>
@@ -92,7 +92,7 @@ export function ScannedMode({
                                 </tbody>
                               </table>
                             )}
-                            <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-words rounded-md border border-border-soft bg-surface-canvas px-2.5 py-2 text-[11.5px] text-text-muted">
+                            <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-words rounded-md border border-border-soft bg-surface-canvas px-2.5 py-2 text-role-caption text-text-muted">
                               {item.bodyPreview || '(empty body)'}
                               {item.bodyTruncated && (
                                 <span className="block pt-2 text-text-faint">… truncated at 800 chars (full body is {item.bodyLength} chars)</span>

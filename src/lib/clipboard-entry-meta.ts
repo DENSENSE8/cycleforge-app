@@ -1,4 +1,4 @@
-import { getLast4, getLast4Serial } from '@/lib/copy-chip-format';
+import { getLast8, getLast8Serial } from '@/lib/copy-chip-format';
 import { sellerClaimClipboardLabel } from '@/lib/receiving-claim-seller-copy';
 import type { ClipboardEntry } from '@/lib/clipboard-history';
 
@@ -22,16 +22,16 @@ function kindLabel(kind: string | null | undefined): string | null {
 function isRedundantDisplay(value: string, display: string, kind?: string): boolean {
   const v = value.trim();
   const d = display.trim();
-  if (!d || d === v || d === '----' || d === '---') return true;
+  if (!d || d === v || d === '--------' || d === '---') return true;
   if (d.length <= 4 && v.endsWith(d)) return true;
-  if (kind === 'serial' && d === getLast4Serial(v)) return true;
-  if (kind !== 'serial' && d === getLast4(v)) return true;
+  if (kind === 'serial' && d === getLast8Serial(v)) return true;
+  if (kind !== 'serial' && d === getLast8(v)) return true;
   return false;
 }
 
 /**
  * Secondary linkage captured at copy time — platform name, seller msg id label,
- * ticket ref, etc. Omits chip last-4 previews that duplicate the full value.
+ * ticket ref, etc. Omits chip last-8 previews that duplicate the full value.
  */
 export function clipboardEntryLinkage(entry: ClipboardEntry): string | null {
   if (typeof entry.sellerMessageId === 'number' && entry.sellerMessageId > 0) {

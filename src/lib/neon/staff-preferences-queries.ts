@@ -124,8 +124,34 @@ export interface StaffPreferences {
    */
   tableColumns?: Record<
     string,
-    { hidden?: string[]; shown?: string[]; widths?: Record<string, number>; order?: string[] }
+    {
+      hidden?: string[];
+      shown?: string[];
+      widths?: Record<string, number>;
+      order?: string[];
+      display?: Record<
+        string,
+        {
+          highlight?: 'none' | 'blue' | 'amber' | 'rose' | 'emerald';
+          cell?: 'default' | 'chip';
+        }
+      >;
+    }
   > | null;
+  /**
+   * GlobalHeader pin stations — ordered bookmarks with display label + exact
+   * href. Mirrored to `cf.quickAccess` for flash-free chrome; this key is the
+   * durable cross-device SoT. Visit MRU stays device-local.
+   */
+  quickAccess?: {
+    pinned: Array<{
+      id: string;
+      label: string;
+      href: string;
+      iconKey?: string;
+      addedAt: number;
+    }>;
+  } | null;
 }
 
 /** Read one staffer's prefs bag (empty object when no row yet). */

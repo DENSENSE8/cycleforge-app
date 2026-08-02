@@ -5,7 +5,7 @@ import { receivingDataCellClass, type ReceivingGridCellProps } from './receiving
 
 export function ReceivingPlatformCell({ col, rule, ctx }: ReceivingGridCellProps) {
   return (
-    <div data-col="platform" className={receivingDataCellClass(col, rule)}>
+    <div data-col="platform" className={receivingDataCellClass(col, rule, ctx)}>
       <GridPlatformMarkValue platformValue={ctx.platformMeta.value} label={ctx.markLabel} />
     </div>
   );

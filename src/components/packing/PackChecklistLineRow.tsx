@@ -1,12 +1,22 @@
 'use client';
 
+import { useState } from 'react';
 import Image from 'next/image';
-import { Check, ChevronDown, Package } from '@/components/Icons';
+import { AnimatePresence, motion } from '@/design-system/motion';
+import { Check, ChevronDown, FileText, Package } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { SkuScanRefChip, getLast4 } from '@/components/ui/CopyChip';
+import { SkuScanRefChip, getLast8 } from '@/components/ui/CopyChip';
 import { InlineNotice } from '@/design-system/components';
+import { Button } from '@/design-system/primitives';
+import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
+import {
+  useMotionPresence,
+  useMotionTransition,
+} from '@/design-system/foundations/motion-framer-hooks';
 import type { PackChecklistLineDto, PackKitPartDto, PackCheckDto } from '@/lib/packing/order-pack-checklist';
+import type { KitPartDocument } from '@/lib/packing/kit-part-document';
 import { orderRowConditionLabel } from '@/lib/conditions';
+import { cn } from '@/utils/_cn';
 
 interface PackChecklistLineRowProps {
   line: PackChecklistLineDto;
@@ -19,6 +29,17 @@ interface PackChecklistLineRowProps {
   tickedChecks: ReadonlySet<number>;
   onToggleCheckItem: (checkId: number) => void;
   variant: 'station' | 'mobile' | 'panel';
+  /**
+   * Open a kit part's reference document. Omitted ⇒ no part renders its
+   * document strip, so a host that has not mounted the slide-over cannot paint
+   * a View control that does nothing.
+   */
+  onOpenPartDocument?: (partId: number) => void;
+  /**
+   * Print a kit part's insert and tick it as durable `print` evidence.
+   * Paired with {@link onOpenPartDocument} — both required for the strip.
+   */
+  onPrintPartDocument?: (partId: number) => void;
 }
 
 const PART_TYPE_TAG: Record<string, string> = {
@@ -28,6 +49,73 @@ const PART_TYPE_TAG: Record<string, string> = {
   ADAPTER: 'Adapter',
 };
 
+/**
+ * Reference-document disclosure — the paper this part puts in the box.
+ *
+ * Candidate B of the 2026-08-01 ruling (docs/todo/step-document-reveal-RULING.md):
+ * a SMALL fixed-height strip in the row that names the insert, with the full
+ * read handed off to the 640px `DocumentSlideOver`. Deliberately NOT the
+ * requested split-reveal — a PDF page at this width is ~6pt equivalent body
+ * text, unreadable at 3ft standing, and displacing the row's neighbours at
+ * bench cadence is the disorientation that killed the mid-canvas capture stack.
+ *
+ * MOTION. `framerPresence.collapseHeight` is the sanctioned low-frequency
+ * expand/collapse, and this fires at most twice per part, on the operator's own
+ * tap — never on a scan. The strip is present while the part is UNCONFIRMED and
+ * collapses when it is ticked, because at that point the operator has the paper
+ * and the reference has done its job.
+ *
+ * The clip is RELEASED once settled: `overflow-hidden` is needed while the
+ * height tweens, but the View control's focus ring is outward and would be
+ * sheared off by a permanent clip (same trap as the auth step panel —
+ * .claude/rules/display/auth-step-panel.md).
+ *
+ * EVIDENCE. Print is the durable path (spool intent at the bench); View is
+ * recognition-only; the parent row's checkbox remains the advisory
+ * acknowledgement override (§3 of the ruling).
+ */
+function KitPartDocumentStrip({
+  // Aliased: `document` is a browser global, and shadowing it inside a
+  // component that also renders DOM is a debugging trap.
+  document: doc,
+  onView,
+  onPrint,
+}: {
+  document: KitPartDocument;
+  onView: () => void;
+  onPrint: () => void;
+}) {
+  const [settled, setSettled] = useState(false);
+  const presence = useMotionPresence(framerPresence.collapseHeight);
+  const transition = useMotionTransition(framerTransition.stationCollapse);
+
+  return (
+    <motion.div
+      initial={presence.initial}
+      animate={presence.animate}
+      exit={presence.exit}
+      transition={transition}
+      onAnimationStart={() => setSettled(false)}
+      onAnimationComplete={() => setSettled(true)}
+      className={cn('px-1 -mx-1', settled ? 'overflow-visible' : 'overflow-hidden')}
+      data-testid="kit-part-document-strip"
+    >
+      <div className="mt-1 flex items-center gap-2 rounded-lg border border-border-soft bg-surface-card px-2 py-1.5">
+        <FileText className="h-3.5 w-3.5 shrink-0 text-text-soft" aria-hidden />
+        <span className="min-w-0 flex-1 truncate text-role-micro font-semibold text-text-muted">
+          {doc.title}
+        </span>
+        <Button variant="ghost" size="sm" onClick={onView}>
+          View
+        </Button>
+        <Button variant="secondary" size="sm" onClick={onPrint}>
+          Print
+        </Button>
+      </div>
+    </motion.div>
+  );
+}
+
 function SubCheckRow({
   checked,
   onToggle,
@@ -35,6 +123,10 @@ function SubCheckRow({
   qty,
   tag,
   critical,
+  document: doc,
+  onViewDocument,
+  onPrintDocument,
+  testId,
 }: {
   checked: boolean;
   onToggle: () => void;
@@ -42,9 +134,21 @@ function SubCheckRow({
   qty?: number;
   tag?: string;
   critical?: boolean;
+  /** Present only for a part that carries an insert; null renders as before. */
+  document?: KitPartDocument | null;
+  onViewDocument?: () => void;
+  onPrintDocument?: () => void;
+  /**
+   * Per-row handle so a test can assert the document strip is present on THIS
+   * part and absent on its sibling — "no strip" is the half of the contract a
+   * page-wide selector cannot prove.
+   */
+  testId?: string;
 }) {
+  const hasDocument = Boolean(doc && onViewDocument && onPrintDocument);
+
   return (
-    <li>
+    <li data-testid={testId}>
       <button
         type="button"
         onClick={onToggle}
@@ -83,7 +187,24 @@ function SubCheckRow({
             Required
           </span>
         ) : null}
+        {/* Document-bearing parts: the tap is the advisory override. Print on
+            the strip below is the durable path — keep that class legible. */}
+        {hasDocument && !checked ? (
+          <span className="rounded-md bg-surface-sunken px-1 py-0.5 text-role-eyebrow uppercase text-text-soft">
+            Confirm
+          </span>
+        ) : null}
       </button>
+
+      <AnimatePresence initial={false}>
+        {doc && !checked && onViewDocument && onPrintDocument ? (
+          <KitPartDocumentStrip
+            document={doc}
+            onView={onViewDocument}
+            onPrint={onPrintDocument}
+          />
+        ) : null}
+      </AnimatePresence>
     </li>
   );
 }
@@ -99,6 +220,8 @@ export function PackChecklistLineRow({
   tickedChecks,
   onToggleCheckItem,
   variant,
+  onOpenPartDocument,
+  onPrintPartDocument,
 }: PackChecklistLineRowProps & { onToggleCheckItem: (checkId: number) => void }) {
   const condLabel = orderRowConditionLabel(line.condition);
   const sku = line.sku?.trim() ?? '';
@@ -123,13 +246,18 @@ export function PackChecklistLineRow({
           </button>
         </HoverTooltip>
 
-        <button
-          type="button"
-          onClick={onToggleExpand}
-          aria-expanded={expanded}
-          className={`ds-raw-button min-w-0 flex-1 text-left ${touchClass}`}
-        >
-          <div className="flex items-start gap-2">
+        {/* One-row anatomy: title → meta → chips(right). The SKU chip is a
+            SIBLING of the expand button, never a child — `SkuScanRefChip` is a
+            `CopyChip`, which renders its own <button>, so nesting it produced
+            invalid DOM (hydration error) and made copy and expand fight for the
+            same click target. */}
+        <div className="flex min-w-0 flex-1 items-start gap-2">
+          <button
+            type="button"
+            onClick={onToggleExpand}
+            aria-expanded={expanded}
+            className={`ds-raw-button flex min-w-0 flex-1 items-start gap-2 text-left ${touchClass}`}
+          >
             {/* Prominent SKU catalog photo for visual verification (high-ROI scan match) */}
             <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-lg border border-border-soft bg-surface-card">
               {line.catalog.imageUrl ? (
@@ -157,11 +285,16 @@ export function PackChecklistLineRow({
                   <span className="px-1 text-text-faint">·</span>
                   {condLabel}
                 </span>
-                {sku ? <SkuScanRefChip value={sku} display={getLast4(sku)} /> : null}
               </div>
             </div>
-          </div>
-        </button>
+          </button>
+
+          {sku ? (
+            <div className="mt-0.5 shrink-0">
+              <SkuScanRefChip value={sku} display={getLast8(sku)} />
+            </div>
+          ) : null}
+        </div>
 
         <button
           type="button"
@@ -241,6 +374,14 @@ export function PackChecklistLineRow({
                     qty={part.qty > 1 ? part.qty : undefined}
                     tag={PART_TYPE_TAG[part.type]}
                     critical={part.critical}
+                    document={part.document}
+                    onViewDocument={
+                      onOpenPartDocument ? () => onOpenPartDocument(part.id) : undefined
+                    }
+                    onPrintDocument={
+                      onPrintPartDocument ? () => onPrintPartDocument(part.id) : undefined
+                    }
+                    testId={`pack-kit-part-${part.id}`}
                   />
                 ))}
               </ul>

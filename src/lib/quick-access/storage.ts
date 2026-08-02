@@ -1,38 +1,38 @@
 /**
- * localStorage adapters for the Quick Access feature. Two keys:
- *   - `cf.quickAccess`        — settings + pinned pages (written rarely)
- *   - `cf.quickAccessRecent`  — recent visits (written on every navigation)
+ * localStorage adapters for the Quick Access feature.
+ * Key: `cf.quickAccess` — settings + pinned pages.
  *
- * Recents live in their own key so a page navigation doesn't have to
- * serialize the full settings + pinned list on each write.
+ * Pins are also durable in `staff_preferences.prefs.quickAccess` (cross-device).
+ * localStorage stays the flash-free cache; {@link setPinsPersister} /
+ * {@link hydratePinned} bridge to the server via `<QuickAccessSync/>`.
  */
 
 import { safeRandomUUID } from '@/lib/safe-uuid';
 import {
   MAX_PINS,
-  MAX_RECENTS,
   type PinnedPage,
   type QuickAccessSettings,
-  type RecentVisit,
 } from './types';
 
 import { readMigratedItem } from '@/lib/storage/migrate-key';
 
 const SETTINGS_KEY = 'cf.quickAccess';
-const RECENTS_KEY = 'cf.quickAccessRecent';
 const LEGACY_SETTINGS_KEY = 'usav.quickAccess';
-const LEGACY_RECENTS_KEY = 'usav.quickAccessRecent';
+
+/** Same-tab broadcast so every `useQuickAccess` instance re-reads. */
+export const QUICK_ACCESS_CHANGED_EVENT = 'cf.quickAccess.changed';
 
 export const DEFAULT_SETTINGS: QuickAccessSettings = {
   version: 1,
   enabled: true,
   hotkey: 'cmdk',
-  showRecent: true,
   actions: {
     phoneHistory: true,
   },
   pinned: [],
 };
+
+let pinsPersister: ((pinned: PinnedPage[]) => void) | null = null;
 
 function safeParse<T>(raw: string | null, fallback: T): T {
   if (!raw) return fallback;
@@ -52,25 +52,97 @@ function safeWrite(key: string, value: unknown): void {
   }
 }
 
+function emitChanged(): void {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new CustomEvent(QUICK_ACCESS_CHANGED_EVENT));
+}
+
+function persistPinsToServer(pinned: PinnedPage[]): void {
+  pinsPersister?.(pinned);
+}
+
+/** Register how pin mutations persist to staff_preferences (QuickAccessSync). */
+export function setPinsPersister(fn: ((pinned: PinnedPage[]) => void) | null): void {
+  pinsPersister = fn;
+}
+
+/**
+ * Adopt a server pin list WITHOUT writing it back (hydration only).
+ * Updates localStorage + broadcasts so mounted hooks re-render.
+ */
+export function hydratePinned(pinned: PinnedPage[] | null | undefined): void {
+  if (!Array.isArray(pinned)) return;
+  const sanitized = sanitizePinned(pinned);
+  const current = getSettings();
+  if (pinnedEqual(current.pinned, sanitized)) return;
+  setSettings({ pinned: sanitized });
+  emitChanged();
+}
+
+function pinnedEqual(a: PinnedPage[], b: PinnedPage[]): boolean {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    const x = a[i]!;
+    const y = b[i]!;
+    if (
+      x.id !== y.id ||
+      x.label !== y.label ||
+      x.href !== y.href ||
+      x.iconKey !== y.iconKey ||
+      x.addedAt !== y.addedAt
+    ) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/** Drop invalid / over-cap entries before cache or server write. */
+export function sanitizePinned(pinned: PinnedPage[]): PinnedPage[] {
+  const out: PinnedPage[] = [];
+  const seenHref = new Set<string>();
+  for (const p of pinned) {
+    if (!p || typeof p !== 'object') continue;
+    if (typeof p.id !== 'string' || !p.id) continue;
+    if (typeof p.label !== 'string' || !p.label.trim()) continue;
+    if (typeof p.href !== 'string' || !p.href.startsWith('/')) continue;
+    if (seenHref.has(p.href)) continue;
+    seenHref.add(p.href);
+    out.push({
+      id: p.id.slice(0, 64),
+      label: p.label.trim().slice(0, 120),
+      href: p.href.slice(0, 2000),
+      iconKey: typeof p.iconKey === 'string' ? p.iconKey.slice(0, 64) : undefined,
+      addedAt: typeof p.addedAt === 'number' && Number.isFinite(p.addedAt) ? p.addedAt : Date.now(),
+    });
+    if (out.length >= MAX_PINS) break;
+  }
+  return out;
+}
+
 export function getSettings(): QuickAccessSettings {
   if (typeof window === 'undefined') return DEFAULT_SETTINGS;
   const raw = readMigratedItem(window.localStorage, SETTINGS_KEY, LEGACY_SETTINGS_KEY);
-  const parsed = safeParse<Partial<QuickAccessSettings>>(raw, {});
+  const parsed = safeParse<Partial<QuickAccessSettings> & { showRecent?: boolean }>(raw, {});
+  // Drop legacy FAB-recents flag if present in older caches.
+  const { showRecent: _legacyShowRecent, ...rest } = parsed;
   return {
     ...DEFAULT_SETTINGS,
-    ...parsed,
+    ...rest,
     version: 1,
-    actions: { ...DEFAULT_SETTINGS.actions, ...(parsed.actions ?? {}) },
-    pinned: Array.isArray(parsed.pinned) ? parsed.pinned : [],
+    actions: { ...DEFAULT_SETTINGS.actions, ...(rest.actions ?? {}) },
+    pinned: Array.isArray(rest.pinned) ? sanitizePinned(rest.pinned) : [],
   };
 }
 
 export function setSettings(patch: Partial<QuickAccessSettings>): QuickAccessSettings {
+  const current = getSettings();
   const next: QuickAccessSettings = {
-    ...getSettings(),
+    ...current,
     ...patch,
     version: 1,
-    actions: { ...getSettings().actions, ...(patch.actions ?? {}) },
+    actions: { ...current.actions, ...(patch.actions ?? {}) },
+    pinned: Array.isArray(patch.pinned) ? sanitizePinned(patch.pinned) : current.pinned,
   };
   safeWrite(SETTINGS_KEY, next);
   return next;
@@ -88,7 +160,11 @@ export function findPinByHref(href: string): PinnedPage | null {
   return getSettings().pinned.find((p) => p.href === href) ?? null;
 }
 
-export function addPin(input: { label: string; href: string; iconKey?: string }): { settings: QuickAccessSettings; result: 'added' | 'duplicate' | 'full' } {
+export function addPin(input: {
+  label: string;
+  href: string;
+  iconKey?: string;
+}): { settings: QuickAccessSettings; result: 'added' | 'duplicate' | 'full' } {
   const current = getSettings();
   if (current.pinned.some((p) => p.href === input.href)) {
     return { settings: current, result: 'duplicate' };
@@ -103,22 +179,25 @@ export function addPin(input: { label: string; href: string; iconKey?: string })
     iconKey: input.iconKey,
     addedAt: Date.now(),
   };
-  return {
-    settings: setSettings({ pinned: [pin, ...current.pinned] }),
-    result: 'added',
-  };
+  const settings = setSettings({ pinned: [pin, ...current.pinned] });
+  persistPinsToServer(settings.pinned);
+  return { settings, result: 'added' };
 }
 
 export function removePin(id: string): QuickAccessSettings {
   const current = getSettings();
-  return setSettings({ pinned: current.pinned.filter((p) => p.id !== id) });
+  const settings = setSettings({ pinned: current.pinned.filter((p) => p.id !== id) });
+  persistPinsToServer(settings.pinned);
+  return settings;
 }
 
 export function renamePin(id: string, label: string): QuickAccessSettings {
   const current = getSettings();
-  return setSettings({
+  const settings = setSettings({
     pinned: current.pinned.map((p) => (p.id === id ? { ...p, label: label.trim() || p.label } : p)),
   });
+  persistPinsToServer(settings.pinned);
+  return settings;
 }
 
 export function reorderPins(orderedIds: string[]): QuickAccessSettings {
@@ -134,31 +213,7 @@ export function reorderPins(orderedIds: string[]): QuickAccessSettings {
   }
   // Append any pins that weren't in the orderedIds list (defensive)
   for (const remaining of map.values()) reordered.push(remaining);
-  return setSettings({ pinned: reordered });
-}
-
-// ─── Recents ────────────────────────────────────────────────────────────────
-
-export function getRecents(): RecentVisit[] {
-  if (typeof window === 'undefined') return [];
-  const raw = readMigratedItem(window.localStorage, RECENTS_KEY, LEGACY_RECENTS_KEY);
-  const parsed = safeParse<RecentVisit[]>(raw, []);
-  return Array.isArray(parsed) ? parsed : [];
-}
-
-export function addRecent(visit: RecentVisit): RecentVisit[] {
-  if (typeof window === 'undefined') return [];
-  const existing = getRecents().filter((v) => v.href !== visit.href);
-  const next = [visit, ...existing].slice(0, MAX_RECENTS);
-  safeWrite(RECENTS_KEY, next);
-  return next;
-}
-
-export function clearRecents(): void {
-  if (typeof window === 'undefined') return;
-  try {
-    window.localStorage.removeItem(RECENTS_KEY);
-  } catch {
-    /* ignore */
-  }
+  const settings = setSettings({ pinned: reordered });
+  persistPinsToServer(settings.pinned);
+  return settings;
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion } from '@/design-system/motion';
 import { ChevronDown, Copy, RefreshCw, Send, Sparkles } from '@/components/Icons';
 import AiAnswerCard from '@/components/ai/AiAnswerCard';
 import AgentStepTimeline from '@/components/ai/AgentStepTimeline';
@@ -101,6 +101,8 @@ export default function AiChatConversation({ variant = 'panel', chat }: AiChatCo
   const endRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const pinnedRef = useRef(true);
+  /** true while a smooth scroll WE started is still animating — see `onScroll`. */
+  const programmaticRef = useRef(false);
 
   const colWidth = variant === 'full' ? 'mx-auto w-full max-w-3xl' : 'w-full';
 
@@ -118,23 +120,40 @@ export default function AiChatConversation({ variant = 'panel', chat }: AiChatCo
   const onScroll = useCallback(() => {
     const el = scrollRef.current;
     if (!el) return;
-    const next = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
-    pinnedRef.current = next;
-    setPinned((prev) => (prev === next ? prev : next));
+    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+    // A SMOOTH scroll we started ourselves emits `scroll` on every frame of its
+    // animation, each one still far from the bottom. Reading those as "the user
+    // scrolled away" un-pins us mid-flight — which kills auto-follow and flashes
+    // the jump pill on for the length of the animation. Ignore our own frames
+    // until the animation arrives.
+    if (programmaticRef.current) {
+      if (!atBottom) return;
+      programmaticRef.current = false;
+    }
+    pinnedRef.current = atBottom;
+    setPinned((prev) => (prev === atBottom ? prev : atBottom));
+  }, []);
+
+  // A real wheel/touch/keyboard scroll always wins over the guard above, so
+  // interrupting our animation by scrolling up is honoured immediately.
+  const releaseProgrammaticScroll = useCallback(() => {
+    programmaticRef.current = false;
   }, []);
 
   const scrollToLatest = useCallback(() => {
     pinnedRef.current = true;
     setPinned(true);
+    programmaticRef.current = true;
     endRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, []);
 
   useEffect(() => {
     if (!pinnedRef.current) return;
-    // Instant during a token stream (deltas can arrive many times a second —
-    // stacking `smooth` scrolls there stutters); smooth once settled, so a
-    // completed answer or a freshly-sent question still glides into view.
-    endRef.current?.scrollIntoView({ behavior: status === 'streaming' ? 'auto' : 'smooth' });
+    // Instant, always. This is auto-FOLLOW, not navigation: deltas can arrive
+    // many times a second, and an animated catch-up both stutters and fights
+    // the pinned-tracking above. The one smooth scroll is `scrollToLatest`,
+    // where the operator asked for the trip.
+    endRef.current?.scrollIntoView({ behavior: 'auto' });
   }, [messages, status]);
 
   // Auto-grow the composer.
@@ -211,6 +230,9 @@ export default function AiChatConversation({ variant = 'panel', chat }: AiChatCo
         <div
           ref={scrollRef}
           onScroll={onScroll}
+          onWheel={releaseProgrammaticScroll}
+          onTouchStart={releaseProgrammaticScroll}
+          onKeyDown={releaseProgrammaticScroll}
           role="log"
           aria-live="polite"
           aria-relevant="additions text"

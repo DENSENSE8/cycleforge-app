@@ -109,8 +109,8 @@ never the thing the user navigates by as a collection map, and never a parallel 
   densities; readability never degrades. (`AuditTimeline` mirrors this with its own `compact` prop.)
 - **`TimelineRef` identifiers render through the shared CopyChip family — never re-implement chip display.**
   `EventTimeline`'s `TimelineRefChip` dispatches by `kind` to `TrackingChip` / `SerialChip` / `FnskuChip` /
-  `SkuScanRefChip` / `OrderIdChip` (`src/components/ui/CopyChip.tsx`), and uses `getLast4` for the preview. A
-  tracking/serial in the timeline looks and copies exactly like the same id everywhere else. **Never re-derive last-4 or
+  `SkuScanRefChip` / `OrderIdChip` (`src/components/ui/CopyChip.tsx`), and uses `getLast8` for the preview. A
+  tracking/serial in the timeline looks and copies exactly like the same id everywhere else. **Never re-derive last-8 or
   hand-roll a chip** — that's the copy-chip SoT (../source-of-truth.md → copy-chip/serial display).
 
 ---
@@ -178,7 +178,7 @@ never the thing the user navigates by as a collection map, and never a parallel 
 | Render through `TimelineSection` (header/skeleton/empty included) | Use `EventTimeline` bare and re-build the header |
 | Merge spines + `collapseTimeline` + sort in the section wrapper | Sort/merge/collapse inside `EventTimeline` |
 | Pick a `TimelineTone`; let the registry map the class | Pass a Tailwind color class or invent a hex dot |
-| Render ids through the CopyChip family (`TimelineRefChip`) | Re-derive last-4 or hand-build a chip |
+| Render ids through the CopyChip family (`TimelineRefChip`) | Re-derive last-8 or hand-build a chip |
 | Use `density` for sidebars; keep the same font scale | Shrink the type to fit a tight panel |
 | Use `EventTimeline` for any merged single-line history | Fork a new timeline component "just for this view" |
 | Extend `AuditTimeline` only for the 3-source diff ledger | Force the before/after audit onto `TimelineItem` |

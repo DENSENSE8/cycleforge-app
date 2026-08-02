@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion } from '@/design-system/motion';
 import { LabelsOrderWorkspace } from '@/components/outbound/labels/LabelsOrderWorkspace';
 import { LabelsWorkspaceView } from '@/components/outbound/labels/LabelsWorkspaceView';
 import { NewOrderEntryOverlay } from '@/components/orders/NewOrderEntryOverlay';

@@ -16,7 +16,7 @@ import { toast } from '@/lib/toast';
 import { X, Package, Loader2, Check } from '@/components/Icons';
 import { Button, IconButton } from '@/design-system/primitives';
 import { RightPaneOverlay } from '@/components/ui/RightPaneOverlay';
-import { SerialChip, OrderIdChip, getLast4 } from '@/components/ui/CopyChip';
+import { SerialChip, OrderIdChip, getLast8 } from '@/components/ui/CopyChip';
 import { printProductLabels } from '@/lib/print/printProductLabel';
 import { printManifestLabel } from '@/lib/print/printManifestLabel';
 
@@ -224,7 +224,7 @@ export function PreboxWizard({
                     <div className="min-w-0 flex-1" aria-hidden />
                     <div className="ml-auto flex shrink-0 justify-end">
                       {unitUid ? (
-                        <OrderIdChip value={unitUid} display={getLast4(unitUid)} />
+                        <OrderIdChip value={unitUid} display={getLast8(unitUid)} />
                       ) : (
                         <button
                           type="button"

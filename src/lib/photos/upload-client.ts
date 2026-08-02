@@ -22,6 +22,13 @@ export interface ClientUploadInput {
    * `created_at`, never instead of it.
    */
   clientCapturedAtMs?: number | null;
+  /**
+   * What this shot SHOWS, within its stage (`./photo-aspects.ts`). Omit when the
+   * capture surface cannot name the frame — that stores NULL, which means
+   * *unclassified evidence*, not *missing evidence*. An aspect illegal for the
+   * resolved stage is a 400 at the route, never a silent drop.
+   */
+  photoAspect?: string | null;
 }
 
 export interface ClientUploadResult {
@@ -39,6 +46,7 @@ export async function uploadPhotoClient(input: ClientUploadInput): Promise<Clien
   if (input.photoType) form.append('photoType', input.photoType);
   if (input.linkRole) form.append('linkRole', input.linkRole);
   if (input.poRef) form.append('poRef', input.poRef);
+  if (input.photoAspect) form.append('photoAspect', input.photoAspect);
   // Epoch-ms verbatim — the route's parser accepts that form, so no capture
   // surface has to format a date. Absent stays absent (null column, no warn).
   if (input.clientCapturedAtMs != null && Number.isFinite(input.clientCapturedAtMs)) {

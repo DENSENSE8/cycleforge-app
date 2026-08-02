@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, Suspense } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from '@/design-system/motion';
 import { usePathname } from 'next/navigation';
 import { MobileTopBar } from './MobileTopBar';
 import { MobileSidebarDrawer } from './MobileSidebarDrawer';

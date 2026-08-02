@@ -13,6 +13,8 @@ export interface StationActivityRow {
   station: string | null;
   activity_type: string;
   actor_name: string | null;
+  /** `station_activity_logs.staff_id` — resolves the actor's avatar. */
+  actor_staff_id?: number | null;
   scan_ref: string | null;
   tech_serial_number_id?: number | null;
   serial_number?: string | null;
@@ -63,7 +65,7 @@ export function stationActivityToTimeline(rows: StationActivityRow[]): TimelineI
     const title = mapped?.title ?? pretty(r.activity_type);
     const tone = mapped?.tone ?? 'muted';
 
-    // The scan ref (tracking / FNSKU / serial) renders as a last-4 CopyChip.
+    // The scan ref (tracking / FNSKU / serial) renders as a last-8 CopyChip.
     const serialNumber = String(
       r.serial_number ?? r.metadata?.serial ?? '',
     ).trim();
@@ -87,6 +89,7 @@ export function stationActivityToTimeline(rows: StationActivityRow[]): TimelineI
       subtitle: serialSourceSubtitle(r),
       ref,
       actor: r.actor_name ?? undefined,
+      actorStaffId: r.actor_staff_id ?? null,
       sourceEventType: r.activity_type,
     };
   });

@@ -1,7 +1,7 @@
 'use client';
 
 import { Fragment, useCallback, useId, useRef, type RefObject, type WheelEvent } from 'react';
-import { motion, useReducedMotion } from 'framer-motion';
+import { motion, useReducedMotion } from '@/design-system/motion';
 import { navIconStrokeClass } from '@/components/icons/nav-weight';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { framerTransition } from '@/design-system/foundations/motion-framer';

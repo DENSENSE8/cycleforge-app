@@ -18,8 +18,8 @@ test('Support header uses one icon-only context action without a tracking shortc
   assert.match(HEADER, /<IconButton[\s\S]*?ariaLabel="Support context"/);
 });
 
-test('Support linkage displays tracking by its last four characters', () => {
+test('Support linkage displays tracking by its last eight characters', () => {
   assert.match(LINKAGE_STRIP, /<LinkedTicketsPanel[\s\S]*?hideTickets/);
-  assert.match(LINKAGE_PANEL, /display=\{last4\(t\.tracking\)\}/);
-  assert.match(COPY_CHIP, /display=\{resolveChipDisplay\(getLast4\(value\)\)\}/);
+  assert.match(LINKAGE_PANEL, /display=\{last8\(t\.tracking\)\}/);
+  assert.match(COPY_CHIP, /display=\{resolveChipDisplay\(getLast8\(value\)\)\}/);
 });

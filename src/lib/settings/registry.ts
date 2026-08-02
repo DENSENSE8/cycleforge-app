@@ -11,6 +11,7 @@
  */
 
 import { z } from 'zod';
+import { parsePhotoAspectList } from '@/lib/photos/photo-aspects';
 import type { SettingDef, SettingPage } from './types';
 
 export const SETTING_PAGES = [
@@ -50,6 +51,35 @@ export const SETTINGS: readonly SettingDef[] = [
       { value: 'direct', label: 'Direct', hint: 'Browser writes straight to the NAS.' },
     ],
     optionEntitlements: { direct: 'nasArchive' },
+    permission: 'admin.manage_features',
+  },
+  {
+    key: 'receiving.requiredItemPhotoAspects',
+    page: 'receiving',
+    group: 'Photos',
+    scope: 'org',
+    label: 'Required item photo angles',
+    description:
+      'Which item shots must exist before the Item photos step is complete. Comma-separated: included, serial, front, back, side, bottom. Empty means any item photo counts.',
+    control: 'text',
+    // A comma list rather than six toggles or a multi-select: `SettingValue` is
+    // `string | number | boolean`, and widening it (plus a new control kind) to
+    // serve one row would be a public API change to a primitive every settings
+    // surface reads. Vocabulary + parsing stay in the aspect SoT.
+    //
+    // Refined BEFORE `.default()` on purpose: zod 4 returns a `.default()`
+    // verbatim without re-parsing, so the shipped default never has to satisfy
+    // the refinement — but an admin who types nonsense is told, instead of
+    // silently getting a weaker requirement when `parsePhotoAspectList` drops
+    // the unknown tokens at read time.
+    schema: z
+      .string()
+      .trim()
+      .refine(
+        (raw) => raw === '' || parsePhotoAspectList(raw).length > 0,
+        'must be a comma-separated list of item photo angles (included, serial, front, back, side, bottom)',
+      )
+      .default('included,serial'),
     permission: 'admin.manage_features',
   },
   {

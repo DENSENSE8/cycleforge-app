@@ -24,6 +24,10 @@
 
 import { useSyncExternalStore } from 'react';
 import { Button } from '@/design-system/primitives';
+import {
+  PaneHeaderCloseButton,
+  type PaneHeaderActionBarAction,
+} from '@/components/ui/pane-header';
 import { cn } from '@/utils/_cn';
 import { emitToggleAll } from '@/lib/selection/table-selection';
 import { resolveSelectionAction } from '@/lib/selection/selection-actions';
@@ -38,6 +42,41 @@ export function useRailActionSnapshot() {
 }
 
 /**
+ * The live actions as **header icon** actions for `PaneHeaderActionBar`.
+ *
+ * The 1-row inspector already owns a pane header with an icon action bar, so a
+ * second full-width block of LABELLED buttons at the foot of the same panel was
+ * a duplicate control surface — and it duplicated real controls, not just
+ * chrome: the panel carries its own Delete, so the footer's Delete made two red
+ * buttons on one record. Feeding the header bar instead keeps one action
+ * surface per panel.
+ *
+ * `delete` is dropped here deliberately: destructive removal of the record in
+ * hand belongs to the record's own control, not to the multi-select action set
+ * that happens to have one row in it.
+ *
+ * `iconOnly` on the bar preserves each `label` as the `aria-label`, so
+ * `dashboard-bulk-actions.spec.ts` keeps reading the same strings.
+ */
+export function useRailHeaderActions(): PaneHeaderActionBarAction[] {
+  const { scope, rows, actions } = useRailActionSnapshot();
+  if (!scope || rows.length === 0) return [];
+  return actions
+    .filter((action) => action.key !== 'delete')
+    .map((action) => ({ action, resolved: resolveSelectionAction(action, rows) }))
+    .filter(({ resolved }) => !resolved.disabled)
+    .map(({ action }) => ({
+      key: `rail-${action.key}`,
+      label: action.label,
+      icon: action.icon,
+      title: action.label,
+      onClick: () => {
+        void action.run(rows);
+      },
+    }));
+}
+
+/**
  * Region 1 — the selection band. Carries the three affordances the capsule
  * owned and the rail would otherwise lose: the count, select-all, and clear.
  *
@@ -45,7 +84,17 @@ export function useRailActionSnapshot() {
  * that empties the set, and an operator who cannot see what is selected cannot
  * trust the action region below it.
  */
-export function RailSelectionBand({ className }: { className?: string }) {
+export function RailSelectionBand({
+  className,
+  onClose,
+}: {
+  className?: string;
+  /** Dismiss control for the non-modal rail — renders the X at the top right,
+   *  the same affordance the 1-row inspector's pane header carries. A non-modal
+   *  panel has no scrim to click off, so it owns an explicit close
+   *  (source-of-truth.md → Right-rail modality). */
+  onClose?: () => void;
+}) {
   const { scope, rows, total } = useRailActionSnapshot();
   const count = rows.length;
   if (!scope || count === 0) return null;
@@ -83,6 +132,7 @@ export function RailSelectionBand({ className }: { className?: string }) {
         >
           Clear
         </Button>
+        {onClose ? <PaneHeaderCloseButton onClick={onClose} className="-my-1" /> : null}
       </div>
     </div>
   );

@@ -113,7 +113,7 @@ export function ResultBanner({
   return (
     <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-red-800">
       <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-      <span className="flex-1 text-[12.5px] font-medium">{errorMsg}</span>
+      <span className="flex-1 text-role-caption">{errorMsg}</span>
       <IconButton
         icon={<X className="h-3.5 w-3.5" />}
         ariaLabel="Dismiss"

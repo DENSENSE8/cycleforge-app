@@ -76,6 +76,14 @@ export interface SkuKitPartRow {
   required_for: string[] | null;
   is_critical: boolean;
   sort_order: number;
+  // Reference document (2026-08-01d) — the paper this part puts in the box.
+  // Optional so a caller selecting an explicit older column list still
+  // type-checks; `getKitParts` does SELECT *, so they are always present there.
+  // Normalize with `kitPartDocument()` (src/lib/packing/kit-part-document.ts)
+  // rather than reading these three fields at a call site.
+  document_url?: string | null;
+  document_title?: string | null;
+  document_mime?: string | null;
 }
 
 export interface QcCheckTemplateRow {
@@ -832,11 +840,19 @@ export async function createKitPart(
     requiredFor?: string[] | null;
     isCritical?: boolean;
     sortOrder?: number;
+    documentUrl?: string | null;
+    documentTitle?: string | null;
+    documentMime?: string | null;
   },
   orgId?: OrgId,
 ): Promise<SkuKitPartRow> {
   const requiredForArr =
     params.requiredFor != null && params.requiredFor.length > 0 ? params.requiredFor : null;
+
+  // Empty string and whitespace collapse to null — same rule as kitPartDocument().
+  const documentUrl = params.documentUrl?.trim() || null;
+  const documentTitle = documentUrl ? params.documentTitle?.trim() || null : null;
+  const documentMime = documentUrl ? params.documentMime?.trim() || null : null;
 
   const insertValues: unknown[] = [
     params.skuCatalogId,
@@ -846,11 +862,15 @@ export async function createKitPart(
     requiredForArr,
     params.isCritical ?? true,
     params.sortOrder ?? 0,
+    documentUrl,
+    documentTitle,
+    documentMime,
   ];
   if (orgId) insertValues.push(orgId);
   const insertSql = `INSERT INTO sku_kit_parts
-       (sku_catalog_id, component_name, component_type, qty_required, required_for, is_critical, sort_order${orgId ? ', organization_id' : ''})
-     VALUES ($1, $2, $3, $4, $5::text[], $6, $7${orgId ? ', $8' : ''})
+       (sku_catalog_id, component_name, component_type, qty_required, required_for, is_critical, sort_order,
+        document_url, document_title, document_mime${orgId ? ', organization_id' : ''})
+     VALUES ($1, $2, $3, $4, $5::text[], $6, $7, $8, $9, $10${orgId ? ', $11' : ''})
      RETURNING *`;
 
   const reactivateSql = `UPDATE sku_catalog SET is_active = true, updated_at = NOW()
@@ -878,6 +898,9 @@ export async function updateKitPart(
     requiredFor?: string[] | null;
     isCritical?: boolean;
     sortOrder?: number;
+    documentUrl?: string | null;
+    documentTitle?: string | null;
+    documentMime?: string | null;
   },
   orgId?: OrgId,
 ): Promise<SkuKitPartRow | null> {
@@ -908,6 +931,27 @@ export async function updateKitPart(
   if (updates.sortOrder !== undefined) {
     sets.push(`sort_order = $${idx++}`);
     values.push(updates.sortOrder);
+  }
+
+  // Reference document — treat the three columns as one unit when the url is
+  // being set/cleared, so we never leave a title/mime without a url (CHECK).
+  if (updates.documentUrl !== undefined) {
+    const url = updates.documentUrl?.trim() || null;
+    sets.push(`document_url = $${idx++}`);
+    values.push(url);
+    sets.push(`document_title = $${idx++}`);
+    values.push(url ? (updates.documentTitle?.trim() || null) : null);
+    sets.push(`document_mime = $${idx++}`);
+    values.push(url ? (updates.documentMime?.trim() || null) : null);
+  } else {
+    if (updates.documentTitle !== undefined) {
+      sets.push(`document_title = $${idx++}`);
+      values.push(updates.documentTitle?.trim() || null);
+    }
+    if (updates.documentMime !== undefined) {
+      sets.push(`document_mime = $${idx++}`);
+      values.push(updates.documentMime?.trim() || null);
+    }
   }
 
   if (sets.length === 0) return null;

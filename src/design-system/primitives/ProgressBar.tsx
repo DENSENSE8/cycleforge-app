@@ -1,6 +1,6 @@
 'use client';
 
-import { motion } from 'framer-motion';
+import { motion } from '@/design-system/motion';
 import { motionBezier } from '@/design-system/foundations/motion-framer';
 import { sectionLabel } from '@/design-system/tokens/typography/presets';
 

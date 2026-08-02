@@ -7,7 +7,7 @@
  * until you paste an order / serial / tracking number in the sidebar, then it
  * renders THAT record's complete event timeline across every station
  * (receiving → tested → packed → shipped → carrier → returned/warranty),
- * aggregated from all five spines. The record number renders as a last-4
+ * aggregated from all five spines. The record number renders as a last-8
  * copy chip. Monitor archetype: observe-only, URL-driven, no edit affordances,
  * one shared `EventTimeline` primitive.
  */
@@ -15,13 +15,13 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion } from '@/design-system/motion';
 import { Download, FileText, History, Loader2, X } from '@/components/Icons';
 import {
   OrderIdChip,
   SerialChip,
   TrackingChip,
-  getLast4,
+  getLast8,
 } from '@/components/ui/CopyChip';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { TimelineSection } from '@/components/ui/TimelineSection';
@@ -62,15 +62,15 @@ const FOCUSED_TOGGLE_OPTIONS: ReadonlyArray<{
   { value: 'serial', label: 'By unit' },
 ];
 
-/** The looked-up record number, rendered as a last-4 CopyChip per dimension. */
+/** The looked-up record number, rendered as a last-8 CopyChip per dimension. */
 function RecordChip({ dim, value }: { dim: JourneyDimension; value: string }) {
   const v = value.trim();
   if (!v) return null;
   if (dim === 'serial' || dim === 'unit')
-    return <SerialChip value={v} display={getLast4(v)} width="w-auto" dense />;
+    return <SerialChip value={v} display={getLast8(v)} width="w-auto" dense />;
   if (dim === 'tracking')
-    return <TrackingChip value={v} display={getLast4(v)} dense />;
-  return <OrderIdChip value={v} display={getLast4(v)} dense />;
+    return <TrackingChip value={v} display={getLast8(v)} dense />;
+  return <OrderIdChip value={v} display={getLast8(v)} dense />;
 }
 
 /**

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import gsap from "gsap";
-import { useReducedMotion } from "framer-motion";
+import { useReducedMotion } from "@/design-system/motion";
 
 export interface CardItem {
   imgUrl: string;

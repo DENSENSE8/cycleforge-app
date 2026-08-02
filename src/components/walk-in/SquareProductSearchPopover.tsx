@@ -13,7 +13,7 @@
 
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from '@/design-system/motion';
 import { motionBezier } from '@/design-system/foundations/motion-framer';
 import { Package, X } from '@/components/Icons';
 import { SearchBar } from '@/components/ui/SearchBar';

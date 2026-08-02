@@ -24,12 +24,10 @@ export const receivingHeaderHairlineClass = appChromeBandHairlineClass;
  */
 export const SIDEBAR_GUTTER = 'px-1.5';
 
-// ── MasterNav geometry (identity band) — pad / glyph / gap SoT ────────────────
-/** Mode glyph box (pairs with `h-4 w-4`). */
-export const SIDEBAR_MASTER_NAV_GLYPH = 'h-4 w-4';
-/** Horizontal pad on the mode-identity control. */
+// ── MasterNav geometry (org band) — pad / gap SoT ─────────────────────────────
+/** Horizontal pad on the org/workspace control. */
 export const SIDEBAR_MASTER_NAV_MODE_PAD_X = 'px-2.5';
-/** Gap between mode glyph and label. */
+/** Gap between org mark and label (also reused by scan-dock leading rows). */
 export const SIDEBAR_MASTER_NAV_MODE_GAP = 'gap-1.5';
 
 /**
@@ -45,8 +43,8 @@ export const SIDEBAR_MASTER_NAV_MODE_GAP = 'gap-1.5';
  * The eyebrow ({@link SidebarRailShell}), rail rows, and dense scan bar
  * (`leadingColumn="rail"`) all compose {@link SIDEBAR_SCAN_DOCK_LEADING_ROW}
  * so icon/dot track + typed text share one clean column — never a magic rem twin.
- * The MasterNav "now" label keeps its own pad ({@link SIDEBAR_MASTER_NAV_MODE_PAD_X})
- * so identity sits beside the mode glyph above the dock — not the rail's leading track.
+ * The MasterNav org band keeps its own pad ({@link SIDEBAR_MASTER_NAV_MODE_PAD_X})
+ * so workspace identity sits above the dock — not the rail's leading track.
  */
 /** Leading pad before the dot track (`pl-2`) — internal to {@link SIDEBAR_SCAN_DOCK_LEADING_ROW}. */
 const SIDEBAR_RAIL_LEADING_PAD = 'pl-2';

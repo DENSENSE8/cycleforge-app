@@ -47,7 +47,7 @@ export function IdentityLinkChip({
   openTitle: string;
   /** Raw value copied to the clipboard. */
   value: string;
-  /** Label shown in the chip (platform name / last-4 id). Hidden when `iconOnly`. */
+  /** Label shown in the chip (platform name / last-8 id). Hidden when `iconOnly`. */
   display: string;
   /**
    * Copy-chip tone — supplies the leading identity icon (id `#`, tracking pin,
@@ -67,7 +67,7 @@ export function IdentityLinkChip({
    * History owns the push-column toggle; `onEdit` still drives pulse / chip click.
    */
   editInMenu?: boolean;
-  /** Wide chip that fills the remaining row width (listing). Others hug last-4. */
+  /** Wide chip that fills the remaining row width (listing). Others hug last-8. */
   grow?: boolean;
   /** Move external-link/edit controls into a serial-chip-style hover menu. */
   actionsInMenu?: boolean;

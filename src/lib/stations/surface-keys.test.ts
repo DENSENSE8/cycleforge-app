@@ -120,6 +120,32 @@ test('registry archetypes agree with the surface intent', () => {
   assert.equal(getSurface('history').archetype, 'monitor');
 });
 
+// ─── Support is a WORKBENCH branch, not a Station (ratified 2026-08-01) ──────
+// docs/todo/support-service-workspace-PLAN.md. The registry said 'station' for
+// months purely because Support was promoted into the Stations spine section —
+// a nav DOMAIN, which is not a region contract. Pin the corrected reading so a
+// future nav change cannot silently drag the contract back with it.
+
+test('support: archetype is workbench (service-workspace branch), never station', () => {
+  assert.equal(getSurface('support').archetype, 'workbench');
+});
+
+test('support: a Workbench surface declares no scan policy', () => {
+  // The one question that returns Station (Q1) is "does a scanner drive this?".
+  // Support answers no — and always did, which is why the old row was incoherent
+  // with itself rather than merely debatable.
+  assert.equal(getSurface('support').scan, null);
+  assert.equal(pickArchetype({ inputModel: 'pointer', job: 'edit', persistence: 'crud' }), 'workbench');
+});
+
+test('a Workbench BRANCH is a composition, not a fifth archetype', () => {
+  // `service-workspace` (list | thread | context) is Layer C — it composes on
+  // Workbench physics. Adding it (or 'support' / 'inbox' / 'service') to
+  // ARCHETYPE_IDS is closed forever: four contracts, no per-domain slope.
+  assert.equal(ARCHETYPE_IDS.length, 4);
+  assert.deepEqual([...ARCHETYPE_IDS], ['station', 'workbench', 'monitor', 'canvas']);
+});
+
 // ─── decideSurfaceRender (resolver decision core) ────────────────────────────
 
 function fakeRow(config: StationConfig, isActive = true): StationDefinitionRow {

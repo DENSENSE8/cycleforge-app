@@ -138,7 +138,6 @@ export const QA_FAIL_EXCEPTION_STATUS = {
 export type ReceivingExceptionCode = (typeof RECEIVING_EXCEPTION_CODES)[number];
 export type PhotoPolicyOverrideCode = (typeof PHOTO_POLICY_OVERRIDE_CODES)[number];
 export type QaFailExceptionCode = keyof typeof QA_FAIL_EXCEPTION_STATUS;
-export type QaFailStatus = (typeof QA_FAIL_EXCEPTION_STATUS)[QaFailExceptionCode];
 /**
  * Deliberately module-private: nothing outside this file NAMES it, and an
  * exported-but-unconsumed type is dead code (knip gate). `isLossExceptionCode`

@@ -1,9 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion } from '@/design-system/motion';
 import { ChevronLeft } from '@/components/Icons';
-import { getLast4, PoTotalChip } from '@/components/ui/CopyChip';
+import { getLast8, PoTotalChip } from '@/components/ui/CopyChip';
 import { GridQtyFractionValue } from '@/components/ui/grid-cells';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { WorkspaceCard } from '@/design-system/components';
@@ -261,7 +261,7 @@ export function CartonContextCard({
   /** Pulse the PO chip while Package Pairing (PO) is open. */
   poEditOpen?: boolean;
   /**
-   * Serial-resolved outbound (return) order#. Fills the PO#/order chip (last-4,
+   * Serial-resolved outbound (return) order#. Fills the PO#/order chip (last-8,
    * copy-only) ONLY when the carton has no PO# of its own — never clobbers a
    * bound PO#. This is the lifted LINKAGE identity (the standalone panel is gone).
    */
@@ -351,14 +351,14 @@ export function CartonContextCard({
   const isReturn = receivingType.trim().toUpperCase() === 'RETURN';
   // A serial-resolved outbound order (a return) fills the PO#/order slot only
   // when the carton has no PO# of its own — never clobber a real bound PO#. Like
-  // an imported-return order#, the lifted linkage reads copy-only (last-4): it is
+  // an imported-return order#, the lifted linkage reads copy-only (last-8): it is
   // not a Zoho PO, so no Zoho open + no inline editor.
   const linkedReturnOrder = (linkedOrderNumber ?? '').trim();
   const effectiveOrder = poDisplay || linkedReturnOrder;
   const orderCopyOnly = isReturn || (!poDisplay && !!linkedReturnOrder);
   const listingHasTarget = !!(listingLink || listingOpenHref);
   const listingLinkOptions = formatListingLinkMenuOptions(listingLinks);
-  // Platform title on the listing face (eBay / Amazon / …). Identity last-4
+  // Platform title on the listing face (eBay / Amazon / …). Identity last-8
   // stays on PO# / TRK / ticket; platform tone still drives icon/underline.
   const listingChipDisplay = isReturn
     ? platformValue
@@ -370,7 +370,7 @@ export function CartonContextCard({
         : isUnmatched
           ? 'Unfound'
           : 'Listing'
-      : '----';
+      : '--------';
   const listingOpenTitle = platformValue
     ? `Open ${platformMeta.label} listing in new tab`
     : 'Open listing in new tab';
@@ -562,7 +562,7 @@ export function CartonContextCard({
       openHref={orderCopyOnly ? undefined : poOpenHref}
       openTitle={orderCopyOnly ? 'Order number' : 'Open PO in Zoho'}
       value={effectiveOrder}
-      display={effectiveOrder ? getLast4(effectiveOrder) : '----'}
+      display={effectiveOrder ? getLast8(effectiveOrder) : '--------'}
       tone="id"
       underlineClass="border-border-emphasis"
       disableCopy={!effectiveOrder}
@@ -587,7 +587,7 @@ export function CartonContextCard({
         openHref={trackingOpenHref}
         openTitle="Open carrier tracking"
         value={primaryTrackingTrimmed}
-        display={primaryTrackingTrimmed ? getLast4(primaryTrackingTrimmed) : '----'}
+        display={primaryTrackingTrimmed ? getLast8(primaryTrackingTrimmed) : '--------'}
         tone="tracking"
         underlineClass="border-blue-500"
         disableCopy={!primaryTrackingTrimmed}

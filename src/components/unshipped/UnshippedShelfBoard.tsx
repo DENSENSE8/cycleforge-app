@@ -20,7 +20,7 @@ import { OrdersGridView } from '@/components/dashboard/orders-queue/OrdersGridVi
 import { workbenchTableViewportClass } from '@/components/dashboard/workbench-shell';
 import { DASHBOARD_ORDERS_SELECTION_SCOPE } from '@/lib/selection/dashboard-scopes';
 import { StaffFilterButton } from '@/components/ui/StaffFilterButton';
-import { useOutboundQueueKeyboard } from '@/hooks/useOutboundQueueKeyboard';
+import { useRecordCursorKeyboard } from '@/hooks/useRecordCursorKeyboard';
 import { dispatchCloseShippedDetails } from '@/utils/events';
 import { useEventBridge } from '@/hooks';
 import type { ShippedOrder } from '@/types/orders';
@@ -72,13 +72,9 @@ export function UnshippedShelfBoard({
     'close-shipped-details': () => setSelectedId(null),
   });
 
-  useOutboundQueueKeyboard({
-    enabled: true,
-    orderedRecords: records,
-    selectedId,
-    context: 'queue',
-    openRecord: onOpenRecord,
-  });
+  // The OrdersGridView below publishes the cursor (it owns grouping + folds);
+  // this lane only turns the keyboard on.
+  useRecordCursorKeyboard({ enabled: true, scope: 'record' });
 
   // Staff filter only — no table-options / column-config / density chrome.
   const searchToolbar = useMemo(() => <StaffFilterButton iconOnly />, []);

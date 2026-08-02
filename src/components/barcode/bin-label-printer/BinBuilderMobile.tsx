@@ -58,7 +58,7 @@ export function BinBuilderMobile({ c, variant }: { c: BinLabelPrinterController;
               <ZoneLetterTile letter={c.zoneLetter} />
               <div className="min-w-0">
                 <p className="truncate text-base font-semibold text-text-default">{c.selectedRoom}</p>
-                <p className="mt-0.5 text-[11.5px] text-text-soft">
+                <p className="mt-0.5 text-role-caption text-text-soft">
                   {c.zoneLetter ? `Zone ${c.zoneLetter}` : 'No zone letter yet — set one in the Rooms tab.'}
                 </p>
               </div>
@@ -113,7 +113,7 @@ export function BinBuilderMobile({ c, variant }: { c: BinLabelPrinterController;
 /** Amber warning shown when the selected room has no zone letter assigned. */
 export function MissingLetterBanner() {
   return (
-    <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-[12.5px] text-amber-800">
+    <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-role-caption text-amber-800">
       <p className="font-semibold">No zone letter assigned to this room.</p>
       <p className="mt-0.5 text-amber-700">
         Open the <span className="font-semibold">Rooms</span> tab, tap this room, and pick a letter

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion } from '@/design-system/motion';
 import { useQuery } from '@tanstack/react-query';
 import { Loader2, Package } from '@/components/Icons';
 import { QA_BADGE, COND_LABEL } from './receiving-constants';

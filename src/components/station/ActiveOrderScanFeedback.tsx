@@ -10,12 +10,12 @@
  * mental model as “Undo send” trailing a message.
  *
  * **Orders_exceptions** sessions share the normal SAL + `tech.serial` undo path;
- * we label them “Exception · …last-4 tracking chip…” and style distinctly from
+ * we label them “Exception · …last-8 tracking chip…” and style distinctly from
  * matched orders (`sourceType` + `orderFound`).
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { AnimatePresence, LayoutGroup, motion, useReducedMotion } from 'framer-motion';
+import { AnimatePresence, LayoutGroup, motion, useReducedMotion } from '@/design-system/motion';
 import {
   AlertTriangle,
   Barcode,
@@ -33,7 +33,7 @@ import {
 } from '@/design-system/foundations/motion-framer-hooks';
 import type { ActiveStationOrder } from '@/hooks/useStationTestingController';
 import { looksLikeFnsku } from '@/lib/scan-resolver';
-import { CopyChip, getLast4 } from '@/components/ui/CopyChip';
+import { CopyChip, getLast8 } from '@/components/ui/CopyChip';
 import { refreshDomains } from '@/lib/refresh/bus';
 import { REFRESH_BUNDLES } from '@/lib/refresh/domains';
 import { toast } from '@/lib/toast';
@@ -70,7 +70,7 @@ function IdentifierChip({
     return (
       <CopyChip
         value={value}
-        display={getLast4(value)}
+        display={getLast8(value)}
         tone="fnsku"
         icon={null}
         dense
@@ -85,7 +85,7 @@ function IdentifierChip({
     return (
       <CopyChip
         value={tracking}
-        display={getLast4(tracking)}
+        display={getLast8(tracking)}
         tone="tracking"
         icon={null}
         dense
@@ -99,7 +99,7 @@ function IdentifierChip({
   return (
     <CopyChip
       value={oid}
-      display={getLast4(oid)}
+      display={getLast8(oid)}
       tone="id"
       icon={null}
       dense
@@ -328,7 +328,7 @@ function FeedbackBody({
             initial={shouldReduce ? { opacity: 0 } : { opacity: 0, scale: 0.92 }}
             animate={shouldReduce ? { opacity: 1 } : { opacity: 1, scale: 1 }}
             transition={chipTransition}
-            className={`inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-[8.5px] font-semibold uppercase tracking-widest ring-1 ring-inset ${
+            className={`inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-role-micro uppercase tracking-widest ring-1 ring-inset ${
               isException
                 ? 'bg-amber-50 text-amber-700 ring-amber-300'
                 : 'bg-emerald-50 text-emerald-600 ring-emerald-200'
@@ -398,7 +398,7 @@ function FeedbackBody({
           <div className="mt-2 flex flex-wrap items-center gap-1.5 rounded-md border border-blue-200 bg-blue-50/80 px-2 py-1">
             <MapPin className="h-3 w-3 shrink-0 text-blue-600" />
             <span className="text-role-eyebrow uppercase tracking-widest text-blue-700">
-              STN …{getLast4(trackingKey)}
+              STN …{getLast8(trackingKey)}
             </span>
             <span className="text-role-eyebrow text-blue-400">↔</span>
             <Barcode className="h-3 w-3 shrink-0 text-emerald-600" />

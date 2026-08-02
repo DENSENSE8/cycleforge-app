@@ -77,17 +77,21 @@ The single most load-bearing behavior. A station that loses focus is a station t
   (`src/lib/scan-hotkey/useScanHotkey.ts`), which `StationScanBar` calls for free (`hotkey` prop, default `true`).
   *Rationale: the most-recently-mounted bar wins the key (`registerScanTarget` pushes onto a stack in
   `src/lib/scan-hotkey/store.ts`), so the page's active bench always owns the hotkey with zero per-page wiring.*
-- **The focus hotkey is global and configurable (default `F2`).** `store.ts` installs exactly one `keydown` listener
-  lazily on first subscribe and focuses+selects the top target; the binding hydrates synchronously from `localStorage`
-  (durable SoT is `staff_preferences`). *Rationale: an operator who tabbed away or clicked a modal hits one key to slam
-  focus back to the bar — without it the wedge fails silently.*
+- **The focus hotkey is global and configurable — the binding SoT is `DEFAULT_FOCUS_SCAN_HOTKEY`
+  (`src/lib/schemas/staff-preferences.ts`, today `Insert`; `Insert` · `ScrollLock` · `F1`–`F12` are the legal set).**
+  `store.ts` installs exactly one `keydown` listener lazily on first subscribe and focuses+selects the top target; the
+  binding hydrates synchronously from `localStorage` (durable SoT is `staff_preferences`). *Rationale: an operator who
+  tabbed away or clicked a modal hits one key to slam focus back to the bar — without it the wedge fails silently.*
+  **Never re-type the key into prose or a test** — four rule files said "F2" for months while the code defaulted to
+  `Insert`, and the first spec written from the docs failed against the real bench
+  (`tests/e2e/unbox-scan-focus.spec.ts` imports the constant instead).
 - **Auto-refocus after every submit.** On submit the bar clears the input and the host re-focuses it
   (`setTimeout(() => inputRef.current?.focus(), 0)` in `StationPacking`'s `handleSubmit`). *Rationale: the operator
   scans the next entity immediately; a one-tick defer lets React commit the cleared value before focus returns.*
 - **Add a focus-watchdog for blur/`visibilitychange`.** Modals, tab-aways, and on-screen keyboards steal focus — the
   classic wedge failure mode. Re-grab focus when the bar blurs unexpectedly or the tab regains visibility. *(The global
-  `F2` target covers the manual case; a watchdog covers the silent one. Do not block the operator while down — just put
-  the cursor back.)*
+  hotkey target covers the manual case; a watchdog covers the silent one. Do not block the operator while down — just
+  put the cursor back.)*
 - **Guard against wedge terminators / split scans.** A keyboard-wedge ends a scan with Enter (form submit) but can also
   fire fast partial bursts; debounce or gate re-entrant submits (`inFlight`/`isLoading` guards in
   `StationPacking`, `MobilePackerFlow`, `UniversalScan`). *Rationale: a double-fire must be a no-op, not a double-effect
@@ -114,7 +118,17 @@ The bar is dumb; classification is a pure layer.
 
 ## 5. Single active-entity rule
 
-- **One card. The new scan's card replaces the previous one.** `StationPacking` and `ActiveOrderScanFeedback` render
+- **One card. The new scan's card replaces the previous one.**
+  **Scoped exception (2026-08-01) — the Unbox guided procedure.** *Within one
+  carton session* the step stack accumulates completed step rows above the one
+  active step card: the operator is working a single entity through an ordered
+  procedure, and the collapsed rows are that entity's own evidence trail, not a
+  browse list of other entities. A new **carton** still replaces the whole stack
+  (`UnboxProcedureStack` remounts on carton change), so the rule holds where it
+  means something — one transient entity at a time. The exception buys nothing
+  elsewhere: it does not license a scan bench to keep a list of previous scans,
+  which is the browse-list-in-a-station anti-pattern §1 bans.
+  `StationPacking` and `ActiveOrderScanFeedback` render
   the active entity inside `AnimatePresence mode="wait"` keyed on the entity id (`activeOrder.tracking`,
   `activeFba.fnsku`). *Rationale: `mode="wait"` exits the old card before mounting the new one — there are never two
   cards on screen, which would imply a list the operator must choose from.*

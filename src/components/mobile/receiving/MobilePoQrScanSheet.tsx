@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from '@/design-system/motion';
 import { X } from '@/components/Icons';
 import { Button, IconButton } from '@/design-system/primitives';
 import { useBarcodeScanner } from '@/hooks/useBarcodeScanner';

@@ -36,7 +36,7 @@ export function buildCartonLabelPayloadFromDraft(
   // Bottom-right corner is operator-chosen — steer the label-corner helper:
   //   ticket   → set zendeskTicket    (helper shows `#ticket`)
   //   tracking → force scanValue to the internal `RCV-{id}` handle + set tracking
-  //   order    → show the order/PO last-4 (or `R-{id}` when there's no PO).
+  //   order    → show the order/PO last-8 (or `R-{id}` when there's no PO).
   if (draft.cornerMode === 'ticket') {
     return {
       ...base,

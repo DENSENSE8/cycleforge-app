@@ -1,5 +1,5 @@
 import { DndContext, DragOverlay, closestCenter } from '@dnd-kit/core';
-import { AnimatePresence } from 'framer-motion';
+import { AnimatePresence } from '@/design-system/motion';
 import { Check, Plus } from '@/components/Icons';
 import type { FbaBoardItem } from '@/components/fba/FbaBoardTable';
 import { FbaSelectedLineRow } from '@/components/fba/sidebar/FbaSelectedLineRow';

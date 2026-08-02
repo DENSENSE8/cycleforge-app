@@ -59,6 +59,6 @@ export function renderReceivingGridCell(
     case 'serial':
       return <ReceivingSerialCell {...props} />;
     default:
-      return <span className={receivingDataCellClass(col, rule)} />;
+      return <span className={receivingDataCellClass(col, rule, ctx)} />;
   }
 }

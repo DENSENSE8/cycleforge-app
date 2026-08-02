@@ -1,4 +1,5 @@
-import { CheckCircle, ExternalLink, FileText } from '@/components/Icons';
+import { ExternalLink, FileText } from '@/components/Icons';
+import { AnimatedCheck } from '@/components/ui/AnimatedCheck';
 import type { ReceivingClaimController } from '../hooks/useReceivingClaimController';
 import { ClaimFiledBanner } from './ClaimFiledBanner';
 import { ClaimNasBackupCard } from './ClaimNasBackupCard';
@@ -41,7 +42,7 @@ export function ClaimFiledStep({
     <div className="divide-y divide-border-hairline space-y-0 [&>section]:py-3 [&>div]:py-3">
       <section className="space-y-1">
         <div className="flex items-center gap-1.5">
-          <CheckCircle className="h-3.5 w-3.5 text-emerald-600" />
+          <AnimatedCheck size={14} />
           <p className="text-role-micro uppercase tracking-[0.14em] text-emerald-800">
             Internal ticket filed
           </p>

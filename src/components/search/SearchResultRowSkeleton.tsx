@@ -20,7 +20,7 @@ export function SearchResultRowSkeleton({ className }: { className?: string }) {
         <SkeletonBase width={14} height={14} className="rounded" />
       </span>
 
-      {/* Id — OrderIdChip last-4 */}
+      {/* Id — OrderIdChip last-8 */}
       <SkeletonBase width={44} height={14} className="rounded" />
 
       {/* Match — title only */}

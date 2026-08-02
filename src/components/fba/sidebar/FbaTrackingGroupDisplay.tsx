@@ -5,7 +5,7 @@ import { MapPin } from '@/components/Icons';
 import { emitOpenQuickAddFnsku } from '@/components/fba/FbaQuickAddFnskuModal';
 import { FbaSelectedLineRow } from '@/components/fba/sidebar/FbaSelectedLineRow';
 import { FbaQtyStepper, FbaQtyDisplay } from '@/components/fba/sidebar/FbaQtyStepper';
-import { TrackingChip, getLast4 } from '@/components/ui/CopyChip';
+import { TrackingChip, getLast8 } from '@/components/ui/CopyChip';
 import type { StationTheme } from '@/utils/staff-colors';
 import type { ShipmentCardItem, TrackingBundle } from '@/lib/fba/types';
 
@@ -78,7 +78,7 @@ export function FbaTrackingGroupDisplay({
         {...(chipStripDragHandlers ?? {})}
       >
         {tracking ? (
-          <TrackingChip value={tracking} display={getLast4(tracking)} />
+          <TrackingChip value={tracking} display={getLast8(tracking)} />
         ) : (
           <div className="flex items-center gap-1.5 text-blue-500">
             <MapPin className="h-3 w-3" />

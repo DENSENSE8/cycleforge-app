@@ -3,11 +3,11 @@
 import { TOP_CHROME_BAND_FACE } from '@/components/layout/header-shell';
 import type { SidebarPageNav, SpineSectionId } from '@/lib/sidebar-navigation';
 import { cn } from '@/utils/_cn';
-import { MasterNavHeader } from './MasterNavHeader';
+import { OrgWorkspaceControl } from './OrgWorkspaceControl';
 import { SidebarNavList } from './SidebarNavList';
 
 /**
- * The **sidebar spine** — a 40px identity band over one swapping body.
+ * The **sidebar spine** — a 40px workspace band over one swapping body.
  *
  * ## One grammar
  *
@@ -17,14 +17,13 @@ import { SidebarNavList } from './SidebarNavList';
  *
  * ## Stack (top → bottom)
  *
- * 1. **Name-of-now** — identity only (label + leading icon: mode glyph or page icon).
- * 2. **Body** — Home/Search/Media top pin → section drills (Overview / Scan
- *    Stations / Desk / Stock / Library) or the root map of those section
- *    buttons → Settings/Admin footer pin.
+ * 1. **Org / workspace** — current tenant (+ switch when multi-org).
+ * 2. **Body** — Home/Search/Media/Chat top pin → section drills → footer
+ *    {@link TechRailSearchBar} → Settings/Admin pin → staff account footer.
  *
  * Global search + AI stay in GlobalHeader (`GlobalHeaderSearch`). L2 Mode +
- * Recents stay in GlobalHeader. Home + Search + Media page rows are top-pinned
- * in the spine (not a GlobalHeader twin).
+ * Recents + Quick Access pins/actions stay in GlobalHeader. Page selection is
+ * the selected body row — not a twin label in the top band.
  */
 export function MasterNavView({
   activePage,
@@ -46,22 +45,14 @@ export function MasterNavView({
   onDrillChange: (id: SpineSectionId | null) => void;
   className?: string;
 }) {
-  const activeMode = activePage.modes?.find((m) => m.id === activeModeId);
-  const headerLabel = activeMode?.label ?? activePage.label;
-  // Modeful: active mode glyph; modeless: page icon — every destination shows a leading icon.
-  const headerIcon =
-    activePage.modes && activePage.modes.length > 1
-      ? (activeMode ?? activePage.modes[0])?.icon
-      : activePage.icon;
-
   return (
     <div className={cn('isolate flex h-full min-h-0 flex-col', className)}>
       {/* Same box model as GlobalHeader — height + hairline on one element. */}
       <div className={cn(TOP_CHROME_BAND_FACE, 'flex w-full min-w-0 items-stretch')}>
-        <MasterNavHeader label={headerLabel} leadingIcon={headerIcon} />
+        <OrgWorkspaceControl />
       </div>
 
-      {/* One body: top pin + section drills + pinned Settings/Admin. */}
+      {/* One body: top pin + section drills + pinned Settings/Admin + staff. */}
       <div className="min-h-0 flex-1">
         <SidebarNavList
           activePage={activePage}

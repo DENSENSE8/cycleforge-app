@@ -16,7 +16,7 @@
  * the DNS cutover; that is explicit, not a silent USAV fallback.
  *
  * Public: the picker has to render before sign-in. We expose only id/name/
- * role/hasPin — no email, employee_code, or sensitive columns.
+ * role/colour/avatar/hasPin — no email, employee_code, or sensitive columns.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -31,6 +31,10 @@ interface Row {
   role: string;
   has_pin: boolean;
   color_hex: string;
+  /** Profile photo id. Served anonymously by /api/photos/[id]/content's
+   *  current-staff-avatar branch — the same disclosure class as name + role,
+   *  which this route already returns publicly. */
+  avatar_photo_id: number | null;
 }
 
 function isPinlessEnabled(): boolean {
@@ -50,7 +54,7 @@ export async function GET(req: NextRequest) {
       );
     }
     const r = await pool.query(
-      `SELECT id, name, role, color_hex, (pin_hash IS NOT NULL) AS has_pin
+      `SELECT id, name, role, color_hex, avatar_photo_id, (pin_hash IS NOT NULL) AS has_pin
          FROM staff
         WHERE organization_id = $1
           AND COALESCE(status, 'active') IN ('active', 'invited')

@@ -1,6 +1,6 @@
 'use client';
 
-import { motion } from 'framer-motion';
+import { motion } from '@/design-system/motion';
 import { cn } from '@/utils/_cn';
 import { framerVariants } from '@/design-system/foundations/motion-framer';
 import { KpiTile, type KpiTileProps } from './KpiTile';

@@ -119,6 +119,7 @@ export function ReceivingSidebarPanel() {
     setLineAccordionBootstrap,
     scanDriven,
     setScanDriven,
+    recordView,
   } = useReceivingSelection({ mode, clearScanSession });
 
   const { currentIndex, canPrev, canNext } = useReceivingLineNavigation({
@@ -134,6 +135,7 @@ export function ReceivingSidebarPanel() {
     selectedLine,
     lineAccordionBootstrap,
     scanDriven,
+    recordView,
     scanMatchedRows,
     currentIndex,
     canPrev,
@@ -303,7 +305,8 @@ export function ReceivingSidebarPanel() {
                 onSubmit={(m) => {
                   // Unbox: one cache upsert on resolve (final title). No importing
                   // stub — that caused tracking# → Unfound PO flicker.
-                  if (unboxView === 'queue') updateUnboxView('recent', { clearLine: false });
+                  // Leaving Queue after a scan lands on the default tab.
+                  if (unboxView === 'queue') updateUnboxView('history', { clearLine: false });
                   submitTrackingScan(undefined, { mode: m });
                 }}
                 inputRef={scanInputRef}

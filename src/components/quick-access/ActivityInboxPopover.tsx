@@ -25,7 +25,7 @@ import {
   type ActivityInboxItemKind,
 } from '@/contexts/ActivityInboxContext';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { TrackingChip, OrderIdChip, getLast4 } from '@/components/ui/CopyChip';
+import { TrackingChip, OrderIdChip, getLast8 } from '@/components/ui/CopyChip';
 import { Button, IconButton } from '@/design-system/primitives';
 import { cn } from '@/utils/_cn';
 import { QuickAccessPanelShell } from './QuickAccessPanelShell';
@@ -251,7 +251,7 @@ export function ActivityInboxPopover({ onClose }: ActivityInboxPopoverProps) {
                         <span className="pointer-events-auto relative z-10 inline-flex max-w-full">
                           <OrderIdChip
                             value={it.orderNumber}
-                            display={getLast4(it.orderNumber)}
+                            display={getLast8(it.orderNumber)}
                             dense
                           />
                         </span>
@@ -261,7 +261,7 @@ export function ActivityInboxPopover({ onClose }: ActivityInboxPopoverProps) {
                         <span className="pointer-events-auto relative z-10 inline-flex max-w-full">
                           <TrackingChip
                             value={it.trackingNumber}
-                            display={getLast4(it.trackingNumber)}
+                            display={getLast8(it.trackingNumber)}
                             dense
                           />
                         </span>

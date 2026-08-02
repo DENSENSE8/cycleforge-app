@@ -9,7 +9,7 @@ import {
 } from '@/components/station/receiving-constants';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { ReceivingLineOrderRow } from '@/components/station/ReceivingLineOrderRow';
-import { OrderIdChip, TrackingChip, getLast4 } from '@/components/ui/CopyChip';
+import { OrderIdChip, TrackingChip, getLast8 } from '@/components/ui/CopyChip';
 import {
   GridAgeCellValue,
   GridDateCellValue,
@@ -288,7 +288,7 @@ export const IncomingGridRow = memo(function IncomingGridRow({
           <div data-col="order" className={dataCell(col, rule)}>
             <OrderIdChip
               value={poValue}
-              display={getLast4(poValue)}
+              display={getLast8(poValue)}
               plain
               truncateDisplay={false}
               fitDisplayWidth

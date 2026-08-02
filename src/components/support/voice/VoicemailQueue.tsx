@@ -190,7 +190,7 @@ function VoicemailRow({
               {name}
             </span>
             {vm.linkedTicketId ? (
-              <span className="inline-flex shrink-0 items-center gap-0.5 rounded bg-violet-50 px-1 py-0.5 text-[8.5px] font-semibold uppercase tracking-widest text-violet-700 ring-1 ring-inset ring-violet-200">
+              <span className="inline-flex shrink-0 items-center gap-0.5 rounded bg-violet-50 px-1 py-0.5 text-role-micro uppercase tracking-widest text-violet-700 ring-1 ring-inset ring-violet-200">
                 <Link2 className="h-2.5 w-2.5" />#{vm.linkedTicketId}
               </span>
             ) : null}
@@ -206,7 +206,7 @@ function VoicemailRow({
             </span>
           ) : null}
           {vm.assignedStaffName ? (
-            <span className={cn('mt-1 inline-block rounded px-1 py-0.5 text-[8.5px] font-semibold uppercase tracking-widest ring-1 ring-inset', tone.chip)}>
+            <span className={cn('mt-1 inline-block rounded px-1 py-0.5 text-role-micro uppercase tracking-widest ring-1 ring-inset', tone.chip)}>
               {vm.assignedStaffName}
             </span>
           ) : null}

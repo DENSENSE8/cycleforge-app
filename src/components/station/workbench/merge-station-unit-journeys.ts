@@ -4,10 +4,11 @@
  *
  * Each serial's journey events go through {@link mergeJourney} (same adapters
  * as Operations History), its stage photo rows fold in via
- * {@link mergeJourneyWithUnitPhotos} (station density: collapsed per-stage
- * thumbs, capped — never full galleries), then rows are namespaced, sorted
- * newest-first, and given a serial {@link TimelineRef} so {@link EventTimeline}
- * renders the shared {@link SerialChip} (last-4 via CopyChip SoT).
+ * {@link mergeJourneyWithUnitPhotos} (full stage `media` kept — display cap /
+ * `+N` lives in {@link EventTimeline}'s media strip), then rows are namespaced,
+ * sorted newest-first, and given a serial {@link TimelineRef} so
+ * {@link EventTimeline} renders the shared {@link SerialChip} (last-8 via
+ * CopyChip SoT).
  *
  * Carton-scoped photo stages (`arrival`, `unbox_carton`) whose photo-id set is
  * shared across ≥2 sibling serials hoist once as `carton:unit-photos-*` (no
@@ -15,7 +16,7 @@
  *
  * Batch inventory hops (same title / actor / clock / trail on different serials
  * — typical multi-unit receive + put-away) fold into one “N units” row with a
- * `refs` SerialChip cluster (disambiguated when sibling last-4s collide). Bin /
+ * `refs` SerialChip cluster (disambiguated when sibling last-8s collide). Bin /
  * location stays in the subtitle only — never as the identity chip.
  */
 
@@ -26,11 +27,8 @@ import type { TimelineItem, TimelineRef } from '@/lib/timeline/types';
 import type { UnitTimelinePhotoRow } from '@/lib/timeline/unit-photos-events';
 import {
   disambiguateSerialDisplays,
-  getLast4Serial,
+  getLast8Serial,
 } from '@/lib/copy-chip-format';
-
-/** Station density: collapsed per-stage thumbs (subtitle keeps the true count). */
-const STATION_PHOTO_MEDIA_LIMIT = 4;
 
 /** Photo stage ids that attach to the parent carton, not a single unit. */
 const CARTON_PHOTO_STAGE_IDS = new Set(['unit-photos-arrival', 'unit-photos-unbox_carton']);
@@ -82,7 +80,7 @@ function batchAtBucket(at: string | null | undefined): string {
 
 /**
  * Batch signature — ignores serial ref so sibling units put away / received
- * in the same minute collapse into one row instead of stacking twin last-4 chips.
+ * in the same minute collapse into one row instead of stacking twin last-8 chips.
  */
 function batchHopSignature(item: TimelineItem): string {
   return [
@@ -113,13 +111,13 @@ function serialFromCartonRow(item: TimelineItem): string | undefined {
   return rest.slice(0, colon) || undefined;
 }
 
-/** Multi-serial identity chips — longer display only when last-4s collide. */
+/** Multi-serial identity chips — longer display only when last-8s collide. */
 function batchSerialRefs(serials: string[]): TimelineRef[] {
   const displays = disambiguateSerialDisplays(serials);
   return serials.map((value, i) => {
     const display = displays[i]!;
     const ref: TimelineRef = { kind: 'serial', value };
-    if (display !== getLast4Serial(value)) ref.display = display;
+    if (display !== getLast8Serial(value)) ref.display = display;
     return ref;
   });
 }
@@ -178,7 +176,7 @@ export function collapseCrossSerialBatchHops(items: TimelineItem[]): TimelineIte
 
 /**
  * Flatten per-serial journey payloads into one Station-density timeline list.
- * Rows always carry `ref.kind === 'serial'` so the last-4 CopyChip is the unit
+ * Rows always carry `ref.kind === 'serial'` so the last-8 CopyChip is the unit
  * identity — never a bin chip (location stays in the adapter subtitle). Hoisted
  * carton photo stages omit the serial ref; collapsed batch hops use `refs`.
  */
@@ -189,9 +187,7 @@ export function mergeStationUnitJourneys(buckets: SerialJourneyBucket[]): Timeli
     const sn = serial.trim();
     if (!sn) continue;
     const { items } = mergeJourney(events);
-    const withMedia = mergeJourneyWithUnitPhotos(items, photos, {
-      mediaLimit: STATION_PHOTO_MEDIA_LIMIT,
-    });
+    const withMedia = mergeJourneyWithUnitPhotos(items, photos);
     prepared.push({ serial: sn, items: withMedia });
   }
 

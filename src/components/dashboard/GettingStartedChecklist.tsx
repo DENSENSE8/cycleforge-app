@@ -14,9 +14,8 @@
  * useStaffPreferences — the same cross-device mechanism the boards use).
  * Skipping hides the card but never deletes the underlying truth.
  *
- * Composed in `MyDayOnboardingPanel` (home right pane) alongside
- * `FirstScanOnboardingCard` — that card owns the "scan your first unit" hero;
- * this owns the multi-step activation ladder. Gated behind `dashboard.view`.
+ * Composed in `MyDayOnboardingPanel` (home right pane) and the Unshipped
+ * sidebar. Owns the multi-step activation ladder. Gated behind `dashboard.view`.
  */
 
 import Link from 'next/link';

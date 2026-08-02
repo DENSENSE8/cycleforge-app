@@ -6,7 +6,7 @@
  * ReceivingDetailsStack is no longer mounted from the inbound feed.
  */
 
-import { AnimatePresence } from 'framer-motion';
+import { AnimatePresence } from '@/design-system/motion';
 import { ReceivingClaimModal } from '@/components/receiving/workspace/ReceivingClaimModal';
 import { RepairDetailsPanel } from '@/components/repair/RepairDetailsPanel';
 import { toast } from '@/lib/toast';

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronRight } from '@/components/Icons';
-import { FnskuChip, CopyChip, getLast4 } from '@/components/ui/CopyChip';
+import { FnskuChip, CopyChip, getLast8 } from '@/components/ui/CopyChip';
 import { PrintTableCheckbox } from '@/components/fba/table/Checkbox';
 import { sectionLabel, SkeletonList } from '@/design-system';
 import { LedgerGrid } from '@/design-system/components/grid';
@@ -419,7 +419,7 @@ export function FbaBoardTable({
               </div>
               <div className="min-w-0 align-middle">
                 {item.asin ? (
-                  <CopyChip value={item.asin} display={getLast4(item.asin)} tone="id" dense />
+                  <CopyChip value={item.asin} display={getLast8(item.asin)} tone="id" dense />
                 ) : (
                   <span className="text-role-caption text-text-faint">—</span>
                 )}
@@ -454,7 +454,7 @@ export function FbaBoardTable({
               <div className="min-w-0 align-middle">
                 {planRef ? (
                   <div className="flex flex-col gap-0.5">
-                    <CopyChip value={planRef} display={getLast4(planRef)} tone="id" dense />
+                    <CopyChip value={planRef} display={getLast8(planRef)} tone="id" dense />
                     {item.destination_fc ? (
                       <p className="text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint">
                         {item.destination_fc}

@@ -8,8 +8,6 @@ import type { ShippedOrder } from '@/lib/neon/orders-queries';
 export interface UseOrdersQueueSelectionOptions {
   /** Records still in the queue — used to re-resolve the selection on data changes. */
   visibleRecords: ShippedOrder[];
-  /** Flat on-screen order — used for up/down keyboard navigation. */
-  displayedRecords: ShippedOrder[];
   onOpenRecord?: (record: ShippedOrder) => void;
   onCloseRecord?: (record: ShippedOrder | null) => void;
 }
@@ -32,12 +30,20 @@ export interface OrdersQueueSelection {
 /**
  * Owns the open-detail selection for the queue: which record is open, keeping
  * it in sync as the underlying data refreshes, and the cross-pane window-event
- * bridge (`open` / `close` / `navigate` shipped-details) that the detail panel
- * and keyboard shortcuts drive.
+ * bridge (`open` / `close` shipped-details) that the detail panel drives.
+ *
+ * **Stepping is no longer here.** This hook used to carry one of five hand-typed
+ * copies of `findIndex → ±1 → open`, listening on `navigate-shipped-details`
+ * over a `displayedRecords` list it was handed separately from the one the grid
+ * paints. Because that list was fold-BLIND while `QueueGroupRow` renders a
+ * multi-line order collapsed, ↓ stepped into rows the operator could not see —
+ * the panel and the grid disagreed about what "next" meant
+ * (`record-cursor-unification-PLAN.md` §2.2). The grid now publishes its order
+ * once via `usePublishRecordCursor`, and the panel/keyboard read that cursor;
+ * the `displayedRecords` option went with the branch, having had no other reader.
  */
 export function useOrdersQueueSelection({
   visibleRecords,
-  displayedRecords,
   onOpenRecord,
   onCloseRecord,
 }: UseOrdersQueueSelectionOptions): OrdersQueueSelection {
@@ -98,30 +104,14 @@ export function useOrdersQueueSelection({
   }, [closeRecord, openRecord, selectedRecord]);
 
   // Cross-pane event bridge. Handlers are held in a ref by useEventBridge, so
-  // these always read the latest selectedRecord / displayedRecords closures
-  // without re-subscribing on every change.
+  // these always read the latest selectedRecord closure without re-subscribing
+  // on every change.
   useEventBridge({
     'open-shipped-details': (e) => {
       const payload = getOpenShippedDetailsPayload((e as CustomEvent<ShippedOrder>).detail);
       if (payload?.order) setSelectedRecord(payload.order);
     },
     'close-shipped-details': () => setSelectedRecord(null),
-    'navigate-shipped-details': (e) => {
-      const direction = (e as CustomEvent<{ direction?: 'up' | 'down' }>).detail?.direction;
-      if (!selectedRecord || displayedRecords.length === 0) return;
-
-      const currentIndex = displayedRecords.findIndex(
-        (record) => Number(record.id) === Number(selectedRecord.id),
-      );
-      if (currentIndex < 0) return;
-
-      const step = direction === 'up' ? -1 : 1;
-      const nextRecord = displayedRecords[currentIndex + step];
-      if (!nextRecord) return;
-
-      onOpenRecord?.(nextRecord);
-      setSelectedRecord(nextRecord);
-    },
   });
 
   return { selectedRecord, handleRowClick, openRecord, closeRecord };

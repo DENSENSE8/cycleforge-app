@@ -15,7 +15,10 @@ import {
   isReceivingView,
   RECEIVING_VIEWS,
 } from '@/lib/receiving/receiving-views';
-import { UNBOX_WORKSPACE_TAB_LABEL } from '@/utils/unbox-workspace-state';
+import {
+  UNBOX_WORKSPACE_TAB_LABEL,
+  UNBOX_WORKSPACE_TABS,
+} from '@/utils/unbox-workspace-state';
 
 /** A neutral context — no search, no facets, default page. */
 function ctx(overrides: Partial<ReceivingModeContext> = {}): ReceivingModeContext {
@@ -56,14 +59,22 @@ test('resolveReceivingTableMode maps the URL ?mode= to a table mode', () => {
 
 test('resolveUnboxReceivingTableMode maps workbench tabs to table modes', () => {
   assert.equal(resolveUnboxReceivingTableMode('queue'), 'unbox_queue');
-  assert.equal(resolveUnboxReceivingTableMode('viewed'), 'unbox_viewed');
-  assert.equal(resolveUnboxReceivingTableMode('recent'), 'history');
+  // The UI's `recent` tab (this operator's opens) resolves to the SERVER's
+  // `unbox_viewed` mode — the seam between the two vocabularies.
+  assert.equal(resolveUnboxReceivingTableMode('recent'), 'unbox_viewed');
+  assert.equal(resolveUnboxReceivingTableMode('history'), 'history');
 });
 
-test('Unbox recent tab label is History (URL id stays recent)', () => {
-  assert.equal(UNBOX_WORKSPACE_TAB_LABEL.recent, 'History');
+test('Unbox tab labels follow the house vocabulary (Recent, not Viewed)', () => {
+  assert.equal(UNBOX_WORKSPACE_TAB_LABEL.recent, 'Recent');
   assert.equal(UNBOX_WORKSPACE_TAB_LABEL.queue, 'Queue');
-  assert.equal(UNBOX_WORKSPACE_TAB_LABEL.viewed, 'Viewed');
+  assert.equal(UNBOX_WORKSPACE_TAB_LABEL.history, 'History');
+});
+
+test('Recent leads the strip and History closes it', () => {
+  // Placement rule, not taste: the operator's own working set comes first and
+  // the full archive last — the order `labels-workspace-state.ts` already uses.
+  assert.deepEqual([...UNBOX_WORKSPACE_TABS], ['recent', 'queue', 'history']);
 });
 
 // ── The core invariant: History is the scanned/unpacked log, NOT incoming ────

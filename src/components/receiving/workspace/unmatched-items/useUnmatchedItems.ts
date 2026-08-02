@@ -13,7 +13,7 @@ import {
 import { useReceivingCartonUnlink } from './useReceivingCartonUnlink';
 import { requestConfirm } from '@/design-system/components/confirm';
 import { isSalesOrderDerivedCarton } from '@/lib/receiving/intake-items-routing';
-import { getLast4Serial } from '@/lib/copy-chip-format';
+import { getLast8Serial } from '@/lib/copy-chip-format';
 import {
   classificationToColumns,
   columnsToClassification,
@@ -450,7 +450,7 @@ export function useUnmatchedItems({
             },
             line: onLinkedLine,
           });
-          toast.info(`Serial ${getLast4Serial(serial)} recorded — no sales order match`);
+          toast.info(`Serial ${getLast8Serial(serial)} recorded — no sales order match`);
           return;
         }
 

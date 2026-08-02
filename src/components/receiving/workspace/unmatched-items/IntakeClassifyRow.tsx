@@ -1,6 +1,6 @@
 'use client';
 
-import { motion } from 'framer-motion';
+import { motion } from '@/design-system/motion';
 import {
   INTAKE_CLASSIFICATION_OPTS,
   type IntakeClassification,

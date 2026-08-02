@@ -1,4 +1,11 @@
 import { test, expect } from '@playwright/test';
+// Imported, never re-typed: the cap is derived, so a spec that hardcoded the
+// number would keep passing after the derivation changed underneath it.
+import {
+  CONTEXT_RAIL_PARKED_PX,
+  MIN_WORK_SURFACE_PX,
+  RIGHT_RAIL_GUTTER_PX,
+} from '@/lib/right-rail/frame';
 
 /**
  * Dashboard order inspector = a NON-MODAL region (execution plan Phase 1).
@@ -128,11 +135,26 @@ test.describe('Dashboard order inspector — non-modal', () => {
     await expect(inspector).toBeVisible({ timeout: 20_000 });
 
     // Single-select the row so its info menu (Notes · OOS · Details) is live.
-    // The select gutter + Product cell stay left of the inspector card.
     await row.getByRole('checkbox').first().check();
     const infoTrigger = row.locator('[data-row-info-menu]');
     await expect(infoTrigger).toBeVisible();
-    await infoTrigger.click();
+
+    // Wait for the panel's entrance animation to settle before touching the row.
+    // This test used to pass only by RACING that animation: the inspector is a
+    // non-modal float over a full-width grid (it reserves no room — see the
+    // plan's open occlusion item), so once it is at rest at x=1008 it covers
+    // every trailing row control — info menu (centre 1013), listing link
+    // (1033), open-order (1053), condition (1212). Mid-flight the panel is
+    // still right of those, which is the only window in which a real click
+    // landed. Any unrelated timing change flipped the result, which is what
+    // made this file look like it oscillated.
+    await expect(inspector).toHaveCSS('transform', 'none', { timeout: 10_000 });
+
+    // Open the menu directly on the element rather than by hit-testing a point
+    // the float owns. What is under test is Escape OWNERSHIP (the overlay stack
+    // vs. the queue's capture-phase listener), not whether the trigger is
+    // clickable while covered — that is a product question tracked separately.
+    await infoTrigger.dispatchEvent('click');
 
     const menu = page.getByRole('menu').or(page.locator('[data-row-info-menu-panel]'));
     await expect(menu.first()).toBeVisible({ timeout: 10_000 });
@@ -150,9 +172,14 @@ test.describe('Dashboard order inspector — non-modal', () => {
   });
 
   test('the inspector is resizable, clamps to the derived cap, and persists', async ({ page }) => {
-    // The cap leaves the queue readable: viewport − (360px sidebar + ~596px
-    // Pending min content) — so at 1440 the panel tops out near 480px.
-    const EXPECTED_CAP = 1440 - 960;
+    // The cap leaves the queue readable. Since the inspector became a PUSH
+    // column it is derived by `resolveRightRailFrame` against the FULLY-PARKED
+    // frame — content row − (parked context-rail strip + both its gutters +
+    // MIN_WORK_SURFACE_PX + the panel's own gutters) — so a ceiling the operator
+    // drags against cannot move when the rail parks underneath them.
+    // At 1440 with the spine closed: 1440 − 48 − 784 − 16 = 592.
+    const EXPECTED_CAP =
+      1440 - CONTEXT_RAIL_PARKED_PX - MIN_WORK_SURFACE_PX - RIGHT_RAIL_GUTTER_PX * 2;
 
     const inspector = page.locator('aside[role="region"]');
     const openFirstRow = async () => {

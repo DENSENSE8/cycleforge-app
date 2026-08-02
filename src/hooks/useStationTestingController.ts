@@ -53,10 +53,10 @@ function resolveScanType(val: string, contextOrder: ActiveStationOrder | null): 
   return 'SERIAL';
 }
 
-export function getOrderIdLast4(orderId: string) {
+export function getOrderIdLast8(orderId: string) {
   const digits = String(orderId || '').replace(/\D/g, '');
-  if (digits.length >= 4) return digits.slice(-4);
-  return String(orderId || '').slice(-4);
+  if (digits.length >= 8) return digits.slice(-8);
+  return String(orderId || '').slice(-8);
 }
 
 export function useStationTestingController({

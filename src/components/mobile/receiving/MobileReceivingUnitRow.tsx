@@ -51,7 +51,7 @@ interface MobileReceivingUnitRowProps {
  * - **Compact** (everything else): title · meta row whose far right holds small
  *   gallery + camera icons (priority placement); no third row.
  *
- * All identifiers render through the shared CopyChip family (last-4 + copy on
+ * All identifiers render through the shared CopyChip family (last-8 + copy on
  * tap), never as raw text. Tapping the dot/qty or the chevron toggles the
  * config-driven detail panel.
  */

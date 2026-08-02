@@ -35,14 +35,26 @@ Silent-failure traps specific to this stack (Next 16, Turbopack dev, Tailwind). 
   in `src/app/globals.css` (keep `content` in `tailwind.config.ts` in parity) and
   **restart the dev server**.
 
-## Motion stack: one framer-motion major
+## Motion stack: one package, one import path
 
-- App / DS code imports **`framer-motion`** (AnimatePresence, `motion`, `useReducedMotion`, …).
-- **`motion` + `motion-plus`** stay in package.json only so `AnimateNumber` can load via
-  `@/design-system/motion` — feature code never imports `motion` / `motion-plus` / `@motionplus/*` directly.
-- Keep a **single** `framer-motion` major in the lockfile (today `^12.42.2`). Dual majors
-  (e.g. app on 11 + nested 12 under `motion`) risk split React context and broken nested
-  `AnimatePresence`. After dependency bumps: `pnpm why framer-motion` → exactly one version.
+**Reversed 2026-08-01.** This section used to read "App / DS code imports **`framer-motion`**"
+and the guard banned `motion/react` outright. Both are now inverted — see
+[`display/motion-crossfade.md`](display/motion-crossfade.md) → *The import boundary*.
+
+- **App code imports `@/design-system/motion` and never names a motion package.** The barrel
+  carries the engine (`motion`, `AnimatePresence`, `useReducedMotion`, types …), `motionRole`,
+  and `useMotionRole`. The preset catalog and the bridge hooks keep their
+  `@/design-system/foundations/motion-framer*` paths — house modules, not packages.
+- **The package underneath is `motion/react`.** Same v12 engine as `framer-motion`, which is
+  the legacy alias for it. It is named in exactly one file (`src/design-system/motion/framer.ts`),
+  so replacing it later is a dependency decision, not a 220-file migration.
+- **`framer-motion` and `motion/react` are banned outside `src/design-system/motion/**`.**
+- **`AnimateNumber` stays at `@/design-system/motion/plus`,** deliberately off the main barrel:
+  re-exporting it from the index would drag `motion-plus` into the graph of every barrel
+  consumer — the bundle-altitude trap the next section catalogues.
+- Keep a **single** motion major in the lockfile (today `^12.42.2`). Dual majors risk split
+  React context and broken nested `AnimatePresence`. After dependency bumps:
+  `pnpm why framer-motion` → exactly one version.
 
 ## Bundle altitude: keep light helpers out of heavy modules (and barrels honest)
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { motion } from 'framer-motion';
+import { motion } from '@/design-system/motion';
 
 const TRANSITION = { duration: 0.18 } as const;
 

@@ -12,6 +12,13 @@ export const UPLOAD_PERM_BY_ENTITY: Record<PhotoEntityType, PermissionString> = 
   BIN_ADJUSTMENT: 'bin.adjust',
   SHARE_PACK: 'photos.share',
   ZENDESK_TICKET: 'integrations.zendesk',
+  // Deliberately the ADMIN perm, not an "everyone" gate: this table answers
+  // "may I upload to someone else's scope". A staffer setting their OWN photo
+  // goes through /api/staff/[id]/avatar, which checks `id === ctx.staffId`
+  // first and only falls back to this permission for the admin-on-behalf case.
+  // Leaving it open here would let the generic /api/photos/upload route attach
+  // a photo to any colleague's profile.
+  STAFF: 'admin.manage_staff',
 };
 
 export function uploadPermissionFor(entityType: PhotoEntityType): PermissionString {

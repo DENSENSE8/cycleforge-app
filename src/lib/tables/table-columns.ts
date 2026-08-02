@@ -72,7 +72,22 @@ export type TableId =
   | 'packer'
   | 'catalog'
   | 'pickup'
-  | 'repair';
+  | 'repair'
+  /** Support › Warranty claims spreadsheet (`WARRANTY_GRID_COLUMNS`). */
+  | 'warranty'
+  /** Outbound › Ready / recently-tested history (`READY_GRID_COLUMNS`). */
+  | 'ready'
+  /** Home › Today task spreadsheet (`MY_DAY_GRID_COLUMNS`). */
+  | 'my-day'
+  /** Review › Catalog link chores (`CATALOG_LINK_GRID_COLUMNS`). */
+  | 'catalog-link'
+  /**
+   * Review › Missing item number (`IMPORT_EXCEPTION_GRID_COLUMNS`) — its own
+   * bucket, not `catalog-link`'s. The two tabs share a surface but not their
+   * identity facts, so one bucket would mean hiding `source` on one tab
+   * silently hid it on the other.
+   */
+  | 'import-exception';
 
 /** Canonical meta-slot keys (the left-side qty | condition | rest grid). */
 export const META_KEYS = {
@@ -150,6 +165,60 @@ export const TABLE_COLUMNS: Record<TableId, TableColumnSpec[]> = {
     GRID_COL('price', 'Price', 'number'),
     GRID_COL('order', 'Walk-in / Order', 'id'),
     GRID_COL('ticket', 'Ticket', 'id'),
+  ],
+  // Keys are the `hideKey`s in
+  // `src/components/warranty/grid/warranty-grid-layout.ts`. The `ticket` action
+  // track is deliberately absent — it carries no `hideKey`, so it is structural
+  // and the Fields menu must never offer to hide a row control.
+  warranty: [
+    GRID_COL('claim', 'Claim', 'id'),
+    GRID_COL('serial', 'Serial', 'id'),
+    GRID_COL('customer', 'Customer', 'text'),
+    GRID_COL('status', 'Status', 'tag'),
+    GRID_COL('warranty', 'Warranty', 'tag'),
+    GRID_COL('logged', 'Logged', 'date'),
+  ],
+  // Keys are the `hideKey`s in
+  // `src/components/outbound/ready/grid/ready-grid-layout.ts`. The `action`
+  // track (Stage FBA) has no `hideKey` — structural, never offered.
+  ready: [
+    GRID_COL('verdict', 'Verdict', 'tag'),
+    GRID_COL('destination', 'Destination', 'tag'),
+    GRID_COL('reasons', 'Reasons', 'tag'),
+    GRID_COL('velocity', 'Velocity', 'tag'),
+    GRID_COL('condition', 'Cond', 'tag'),
+    GRID_COL('tested', 'Tested', 'date'),
+  ],
+  // Keys are the `hideKey`s in `src/lib/my-day/my-day-grid-layout.ts`. `select`
+  // and `task` are absent — frozen identity, structurally un-hideable. Labels
+  // mirror the column SoT so the menu and the header read the same word.
+  'my-day': [
+    GRID_COL('lane', 'Lane', 'tag'),
+    GRID_COL('queue', 'Queue', 'tag'),
+    GRID_COL('record', 'Record', 'id'),
+    GRID_COL('due', 'Due', 'date'),
+    GRID_COL('status', 'Status', 'tag'),
+  ],
+  // Keys are the `hideKey`s in
+  // `src/features/review/catalog-link/grid/catalog-link-grid-layout.ts`.
+  'catalog-link': [
+    GRID_COL('item', 'Item number', 'id'),
+    GRID_COL('source', 'Account', 'external'),
+    GRID_COL('sku', 'SKU', 'id'),
+    GRID_COL('orders', 'Orders', 'number'),
+    GRID_COL('first', 'First seen', 'date'),
+    GRID_COL('last', 'Last seen', 'date'),
+  ],
+  // Keys are the `hideKey`s in
+  // `src/features/review/catalog-link/grid/import-exception-grid-layout.ts`.
+  'import-exception': [
+    GRID_COL('order', 'Order', 'id'),
+    GRID_COL('source', 'Account', 'external'),
+    GRID_COL('tracking', 'Tracking', 'location'),
+    GRID_COL('sheet', 'Sheet row', 'number'),
+    GRID_COL('seen', 'Seen', 'number'),
+    GRID_COL('first', 'First seen', 'date'),
+    GRID_COL('last', 'Last seen', 'date'),
   ],
 };
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from 'react';
-import { motion, type HTMLMotionProps } from 'framer-motion';
+import { motion, type HTMLMotionProps } from '@/design-system/motion';
 import { Loader2 } from '@/components/Icons';
 import { cn } from '@/utils/_cn';
 import { focusRing } from '../tokens/focus-ring';

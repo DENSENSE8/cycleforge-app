@@ -7,7 +7,7 @@ import {
   OrderIdChipPlaceholder,
   TrackingOrSkuScanChip,
   PlatformChip,
-  getLast4,
+  getLast8,
 } from '@/components/ui/CopyChip';
 import { ChipColumns, CHIP_COL, type ChipColumn } from '@/components/ui/ChipColumns';
 import { CopyChipHoverMenu, type CopyChipHoverMenuItem } from '@/components/ui/CopyChipHoverMenu';
@@ -223,7 +223,7 @@ export function useOrderIdentityCellNodes({
   const emptyTrackingNode = (() => {
     if (tracking) return null;
     if (lastTracking && onPasteTracking) {
-      const last4 = getLast4(lastTracking.value);
+      const last4 = getLast8(lastTracking.value);
       return (
         <CopyChipHoverMenu
           menuLabel="Tracking actions"
@@ -317,7 +317,7 @@ export function useOrderIdentityCellNodes({
     <OrderIdChipPlaceholder plain={plain} />
   ) : (
     <CopyChipHoverMenu menuLabel="Order number actions" items={orderItems} onOpenChange={handleMenuOpenChange}>
-      <OrderIdChip value={orderId} display={getLast4(orderId)} plain={plain} fitDisplayWidth />
+      <OrderIdChip value={orderId} display={getLast8(orderId)} plain={plain} fitDisplayWidth />
     </CopyChipHoverMenu>
   );
 

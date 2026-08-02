@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion } from '@/design-system/motion';
 import { ShippedOrder } from '@/lib/neon/orders-queries';
 import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
 import { MarkAsShippedForm } from '@/components/shipped/stacks/MarkAsShippedForm';

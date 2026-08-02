@@ -20,7 +20,7 @@
 
 import { useCallback, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion } from '@/design-system/motion';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Button } from '@/design-system/primitives/Button';
 import { AlertCircle, Boxes, Copy, Globe, Layers, Loader2, RefreshCw } from '@/components/Icons';

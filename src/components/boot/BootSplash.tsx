@@ -1,6 +1,6 @@
 'use client';
 
-import { motion } from 'framer-motion';
+import { motion } from '@/design-system/motion';
 
 /**
  * Full-screen sign-in splash. Shown by {@link BootGate} from first paint after

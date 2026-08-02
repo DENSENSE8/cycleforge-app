@@ -10,7 +10,7 @@
 
 import { useCallback, useMemo } from 'react';
 import { useSearchParams, usePathname, useRouter } from 'next/navigation';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion } from '@/design-system/motion';
 import { useMotionPresence, useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
 import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
 import { zIndex } from '@/design-system/tokens/z-index';
@@ -26,14 +26,9 @@ import {
   type ReviewTableOrder,
 } from '@/lib/packing/review-table-mappers';
 import { usePackReviewQueue } from '@/features/review/usePackReviewQueue';
+import { parseReviewMode } from '@/features/review/review-mode';
 import type { ShippedOrder } from '@/types/orders';
 import { useQuery } from '@tanstack/react-query';
-
-function parseReviewMode(raw: string | null): 'packer' | 'pairing' | 'catalog-link' {
-  if (raw === 'pairing') return 'pairing';
-  if (raw === 'catalog-link') return 'catalog-link';
-  return 'packer';
-}
 
 export function ReviewWorkspace() {
   const searchParams = useSearchParams();

@@ -5,7 +5,7 @@ import {
   OrderIdChip,
   TrackingCountChip,
   TrackingOrSkuScanChip,
-  getLast4,
+  getLast8,
 } from '@/components/ui/CopyChip';
 import { RowTitle, RowConditionMeta } from '@/components/ui/RowMetaColumns';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
@@ -130,7 +130,7 @@ export function OrderGroupSummary({
     </HoverTooltip>
   ) : null;
   const orderCell = (
-    <OrderIdChip value={orderId} display={getLast4(orderId)} plain fitDisplayWidth />
+    <OrderIdChip value={orderId} display={getLast8(orderId)} plain fitDisplayWidth />
   );
   /** What the collapsed fold IS — the desktop Product cell's line. */
   const foldLabel = `${rows.length} ${rows.length === 1 ? 'product' : 'products'}`;

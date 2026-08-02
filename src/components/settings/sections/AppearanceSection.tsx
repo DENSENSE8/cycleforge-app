@@ -33,6 +33,7 @@ import {
   resolvesUseStaffAccent,
 } from '@/utils/operator-accent';
 import { Switch } from '@/design-system/primitives/Switch';
+import { StaffPhotoCard } from './StaffPhotoCard';
 
 /**
  * True palette miniature — a tiny "app" rendered from the theme's actual
@@ -203,6 +204,10 @@ export function AppearanceSection() {
         <h2 className="sr-only">Appearance</h2>
         <p className="mt-1 text-sm text-text-soft">How the interface looks on this device.</p>
       </header>
+
+      {/* Identity first: the photo follows the staffer across every device,
+          unlike the device-scoped density/text/wash controls below it. */}
+      <StaffPhotoCard />
 
       <div className="rounded-2xl border border-border-soft bg-surface-card p-5 shadow-sm">
         <h3 className="mb-3 text-sm font-semibold text-text-default">UI density</h3>

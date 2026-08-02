@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from '@/lib/toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { Loader2, ShieldCheck } from '@/components/Icons';
-import { OrderIdChip, TrackingChip, SerialChip, getLast4 } from '@/components/ui/CopyChip';
+import { OrderIdChip, TrackingChip, SerialChip, getLast8 } from '@/components/ui/CopyChip';
 import { ChipColumns, CHIP_COL } from '@/components/ui/ChipColumns';
 import { conditionGradeTableLabel } from '@/components/station/receiving-constants';
 import { TestingLinePanel, type UnitSlotSerial } from '@/components/tech/TestingUnitSlots';
@@ -242,8 +242,8 @@ export function ScanTestingPanel({ query }: { query: string }) {
                 <ChipColumns
                   className="ml-auto"
                   columns={[
-                    { key: 'po', width: CHIP_COL.id, node: <OrderIdChip value={po} display={getLast4(po)} /> },
-                    { key: 'tracking', width: CHIP_COL.tracking, node: <TrackingChip value={tracking} display={getLast4(tracking)} /> },
+                    { key: 'po', width: CHIP_COL.id, node: <OrderIdChip value={po} display={getLast8(po)} /> },
+                    { key: 'tracking', width: CHIP_COL.tracking, node: <TrackingChip value={tracking} display={getLast8(tracking)} /> },
                     { key: 'serial', width: CHIP_COL.serial, node: <SerialChip value={serialsCsv} width="w-auto" /> },
                   ]}
                 />

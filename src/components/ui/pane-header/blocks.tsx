@@ -577,3 +577,38 @@ export function PaneHeaderPagination({
     </div>
   );
 }
+
+// ─── CursorPositionReadout ──────────────────────────────────────────────────
+// `3 / 47` — where the open record sits in the collection that published the
+// record cursor.
+//
+// **This is the point of the readout, not decoration.** A panel that can step
+// has to say where it is, or the operator cannot tell a chevron that is disabled
+// from one that is broken — which is exactly how the receiving details stack
+// shipped two dead chevrons for months (`receiving-navigate-detail-overlay` had
+// zero listeners; see `docs/todo/record-cursor-unification-PLAN.md` §2.1, §3.6).
+//
+// Renders nothing when no cursor is published (a panel opened from search, or a
+// surface that has not migrated yet). A placeholder "1 / 1" would be a claim
+// about a queue that does not exist — honest absence instead.
+//
+// Composed into `PaneHeaderActionBar`'s existing `rightSlot`, which paints
+// immediately before the chevrons — never as a new prop on that shared
+// primitive (`pattern-evolution.md` → Ask first). It lives here, beside that
+// bar, because both order headers render it today and Phase 6 merges them into
+// one `RecordPaneHeader`; a copy inside either consumer is a cross-family import
+// for the other.
+
+interface CursorPositionReadoutProps {
+  position?: number | null;
+  total?: number;
+}
+
+export function CursorPositionReadout({ position, total }: CursorPositionReadoutProps) {
+  if (position == null || !total) return null;
+  return (
+    <span className="text-role-micro tabular-nums text-text-soft">
+      {position} / {total}
+    </span>
+  );
+}

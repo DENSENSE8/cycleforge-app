@@ -24,7 +24,6 @@ import {
 } from 'react';
 import dynamic from 'next/dynamic';
 import { useAuth } from '@/contexts/AuthContext';
-import { RightRailHost } from '@/components/right-rail/RightRailHost';
 import { GlobalDetailStackHost } from '@/components/detail-stacks/GlobalDetailStackHost';
 import { useRegisterRightPanel } from '@/components/right-rail/useRegisterRightPanel';
 import { RIGHT_RAIL_PRIORITY } from '@/lib/right-rail/store';
@@ -157,9 +156,12 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
     <AssistantDockControlsContext.Provider value={controls}>
       <AssistantDockOpenContext.Provider value={enabled && open}>
         {children}
-        {/* Always mounted — detail stacks register here even when the user
-            lacks assistant.chat permission. */}
-        <RightRailHost />
+        {/* `RightRailHost` moved into `ResponsiveLayout`. It has to be an in-flow
+            flex sibling of the content row to PUSH the work surface, and from
+            here its DOM parent is `#app-root` — a `flex-col` — where dropping
+            `position: fixed` would stack it below the entire app. The
+            always-mounted guarantee is unchanged: `ResponsiveLayout` wraps every
+            route and is equally permission-independent. */}
         <GlobalDetailStackHost />
         {enabled ? (
           <>
@@ -186,6 +188,10 @@ function AssistantRailRegistrant({ open, onClose }: { open: boolean; onClose: ()
     priority: RIGHT_RAIL_PRIORITY.assistant,
     node: <AssistantDockBody onClose={onClose} />,
     onClose,
+    // Ambient chat with its own flush-right dock geometry (no inset card, full
+    // height under the header), opened by ⌘J rather than by picking a record.
+    // The push grammar is for a picked record's inspector; this is not one.
+    push: false,
     enabled: open,
   });
   return null;

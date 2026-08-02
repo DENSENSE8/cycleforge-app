@@ -14,7 +14,7 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Loader2, Search, Check, ExternalLink } from '@/components/Icons';
-import { OrderIdChip, PoChip, getLast4 } from '@/components/ui/CopyChip';
+import { OrderIdChip, PoChip, getLast8 } from '@/components/ui/CopyChip';
 import { PairingLinkButton } from '@/components/receiving/workspace/line-edit/PairingLinkButton';
 import { toast } from '@/lib/toast';
 import { invalidateReceivingFeeds } from '@/lib/queries/receiving-queries';
@@ -104,7 +104,7 @@ export function EbayTab({ data }: { data: DetailsResponse }) {
       {/* Identity */}
       <div className="grid grid-cols-2 gap-4">
         <Field label={`${sourceLabel} order`}>
-          <OrderIdChip value={inbound.source_order_id} display={inbound.order_number || getLast4(inbound.source_order_id)} />
+          <OrderIdChip value={inbound.source_order_id} display={inbound.order_number || getLast8(inbound.source_order_id)} />
         </Field>
         <Field label="Account">{inbound.account_label || '—'}</Field>
         <Field label="Seller">{inbound.seller_name || '—'}</Field>
@@ -131,7 +131,7 @@ export function EbayTab({ data }: { data: DetailsResponse }) {
           <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 inset-field">
             <Check className="h-3.5 w-3.5 text-emerald-600" />
             {inbound.zoho_purchaseorder_id ? (
-              <PoChip value={inbound.zoho_purchaseorder_id} display={getLast4(inbound.zoho_purchaseorder_id)} />
+              <PoChip value={inbound.zoho_purchaseorder_id} display={getLast8(inbound.zoho_purchaseorder_id)} />
             ) : null}
             <span className="text-role-caption font-semibold text-emerald-700">Linked</span>
           </div>

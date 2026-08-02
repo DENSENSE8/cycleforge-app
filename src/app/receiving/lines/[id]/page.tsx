@@ -12,7 +12,7 @@ import {
   getStatusDotBg,
 } from '@/components/station/receiving-constants';
 import { workflowStageBadge } from '@/lib/receiving/workflow-stages';
-import { getLast4 } from '@/components/ui/CopyChip';
+import { getLast8 } from '@/components/ui/CopyChip';
 import { ReceivingIdentityChips } from '@/components/receiving/ReceivingIdentityChips';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { ScanAgainBar } from '@/components/mobile/receiving/ScanAgainBar';
@@ -308,7 +308,7 @@ function LinePageInner() {
           </span>
         </div>
 
-        {/* Shared last-4 chips — PO + SKU + most-recent serial (tap to copy). */}
+        {/* Shared last-8 chips — PO + SKU + most-recent serial (tap to copy). */}
         <ReceivingIdentityChips
           po={line?.zoho_purchaseorder_number}
           sku={line?.sku}
@@ -412,13 +412,13 @@ function LinePageInner() {
           {serials.length > 0 && (
             <div className="mt-3 flex flex-wrap gap-1.5">
               {serials.map((s) => (
-                // ds-allow-title: non-interactive chip showing the clipped last-4 serial; title reveals the full serial.
+                // ds-allow-title: non-interactive chip showing the clipped last-8 serial; title reveals the full serial.
                 <span
                   key={s.id}
                   title={s.serial_number}
                   className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-mono text-role-micro ${unitStatusBadgeTone(s.current_status)}`}
                 >
-                  …{getLast4(s.serial_number)}
+                  …{getLast8(s.serial_number)}
                   <span className="opacity-50">·</span>
                   <span className="opacity-80">{s.current_status}</span>
                 </span>

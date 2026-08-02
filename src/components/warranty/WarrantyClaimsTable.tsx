@@ -1,17 +1,18 @@
 'use client';
 
 import { useSearchParams } from 'next/navigation';
-import { Loader2 } from '@/components/Icons';
-import { cn } from '@/utils/_cn';
 import { useWarrantyClaims, useWarrantyUrlState } from '@/hooks/useWarrantyClaims';
-import { WarrantyClockChip, WarrantyStatusBadge } from '@/components/warranty/chips';
-import { WarrantyTicketButton } from '@/components/warranty/WarrantyTicketPopover';
-import { formatDateTimePST } from '@/utils/date';
+import { WarrantyGridView } from '@/components/warranty/grid/WarrantyGridView';
 
 /**
- * Right-pane warranty claims table. Visual display only — search / status /
- * expiring filters all live in the sidebar (URL params); this reads the same
- * params so it shares one React Query cache key with the sidebar list.
+ * Right-pane warranty claims map — the thin data host over the Workbench
+ * spreadsheet SoT ({@link WarrantyGridView} → `LedgerGridSurface`).
+ *
+ * Search / status / expiring filters all live in the sidebar (URL params); this
+ * reads the SAME params so both share one React Query cache key. The hand-rolled
+ * `<table>` this replaced carried its own sticky header, its own selection ring
+ * (`ring-1 ring-inset ring-blue-400`, the list recipe under what is now an
+ * airtable skin), and no column config or durable sort at all.
  */
 export function WarrantyClaimsTable() {
   const searchParams = useSearchParams();
@@ -20,94 +21,37 @@ export function WarrantyClaimsTable() {
 
   const { data: claims = [], isLoading, error } = useWarrantyClaims({ status, search, expiringSoon });
 
-  if (isLoading) {
-    return (
-      <div className="flex flex-1 items-center justify-center bg-surface-canvas">
-        <Loader2 className="h-7 w-7 animate-spin text-text-faint" />
-      </div>
-    );
-  }
-
+  // Degrade-not-fail: the claim list is this pane's PRIMARY resource, so a
+  // failed fetch earns the retryable error state rather than an empty grid that
+  // would read as "no claims" — the exact lie the four settled states exist to
+  // prevent (`display/workbench.md`).
   if (error) {
     return (
-      <div className="flex flex-1 items-center justify-center bg-surface-canvas p-8 text-sm text-text-danger">
-        {error instanceof Error ? error.message : 'Failed to load warranty claims.'}
+      <div className="flex flex-1 items-center justify-center bg-surface-canvas p-8">
+        <div className="rounded-xl border border-dashed border-border-danger bg-surface-danger px-4 py-6 text-center">
+          <p className="text-sm font-semibold text-text-danger">
+            {error instanceof Error ? error.message : 'Could not load warranty claims.'}
+          </p>
+        </div>
       </div>
     );
   }
 
+  // A filter is narrowing the list when any of the three refinements is on —
+  // that is what picks "no matches" over "nothing logged yet".
+  const isSearching = Boolean(search) || status != null || expiringSoon;
+
   return (
-    <div className="flex-1 overflow-auto bg-surface-canvas">
-      <div className="min-w-full p-4">
-        <table className="min-w-full border-separate border-spacing-0 text-sm">
-          <thead className="sticky top-0 z-10">
-            <tr className="text-left text-role-caption font-semibold uppercase tracking-wide text-text-faint">
-              <th className="bg-surface-canvas px-3 py-2">Claim</th>
-              <th className="bg-surface-canvas px-3 py-2">Item</th>
-              <th className="bg-surface-canvas px-3 py-2">Customer</th>
-              <th className="bg-surface-canvas px-3 py-2">Status</th>
-              <th className="bg-surface-canvas px-3 py-2">Warranty</th>
-              <th className="bg-surface-canvas px-3 py-2">Logged</th>
-              <th className="bg-surface-canvas px-3 py-2" aria-label="Support ticket" />
-            </tr>
-          </thead>
-          <tbody>
-            {claims.length === 0 ? (
-              <tr>
-                <td colSpan={7} className="px-3 py-16 text-center text-sm text-text-faint">
-                  No warranty claims match the current filters.
-                </td>
-              </tr>
-            ) : (
-              claims.map((claim) => {
-                const selected = claim.id === openClaimId;
-                const title = claim.productTitle || claim.sku || claim.serialNumber || '—';
-                return (
-                  <tr
-                    key={claim.id}
-                    onClick={() => openClaim(selected ? null : claim.id)}
-                    className={cn(
-                      'cursor-pointer transition',
-                      selected ? 'bg-blue-50 ring-1 ring-inset ring-blue-400' : 'bg-surface-card hover:bg-surface-hover',
-                    )}
-                  >
-                    <td className="border-b border-border-hairline px-3 py-2 align-top">
-                      <div className="font-mono text-role-caption text-text-soft">{claim.claimNumber}</div>
-                      {claim.serialNumber && (
-                        <div className="font-mono text-role-caption text-text-faint">{claim.serialNumber}</div>
-                      )}
-                    </td>
-                    <td className="border-b border-border-hairline px-3 py-2 align-top">
-                      <div className="max-w-[280px] truncate text-text-default">{title}</div>
-                      {claim.sku && claim.productTitle && (
-                        <div className="truncate text-role-caption text-text-faint">{claim.sku}</div>
-                      )}
-                    </td>
-                    <td className="border-b border-border-hairline px-3 py-2 align-top text-text-muted">
-                      {claim.customerName || '—'}
-                    </td>
-                    <td className="border-b border-border-hairline px-3 py-2 align-top">
-                      <WarrantyStatusBadge status={claim.status} />
-                    </td>
-                    <td className="border-b border-border-hairline px-3 py-2 align-top">
-                      <WarrantyClockChip daysRemaining={claim.daysRemaining} basis={claim.clockBasis} />
-                    </td>
-                    <td className="border-b border-border-hairline px-3 py-2 align-top text-role-caption text-text-faint">
-                      {formatDateTimePST(claim.createdAt)}
-                    </td>
-                    <td
-                      className="border-b border-border-hairline px-2 py-1.5 align-top"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <WarrantyTicketButton claimId={claim.id} linked={claim.zendeskTicketId != null} />
-                    </td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
-      </div>
+    <div className="flex min-h-0 flex-1 flex-col bg-surface-canvas p-4">
+      <WarrantyGridView
+        rows={claims}
+        loading={isLoading}
+        openClaimId={openClaimId}
+        onOpenClaim={(id) => openClaim(id === openClaimId ? null : id)}
+        emptyMessage="No warranty claims logged yet."
+        searchEmptyMessage="No warranty claims match these filters."
+        isSearching={isSearching}
+      />
     </div>
   );
 }

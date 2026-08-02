@@ -64,8 +64,11 @@ test.describe('Receiving + Tech workspace mode smoke tests', () => {
     await expect(workbench.getByRole('button', { name: /^History\b/ }).first()).toBeVisible({
       timeout: PANEL_TIMEOUT,
     });
-    const viewedPill = workbench.getByRole('button', { name: /^Viewed\b/ }).first();
-    await expect(viewedPill).toBeVisible({ timeout: PANEL_TIMEOUT });
+    // The recents tab reads "Recent" (house vocabulary, `unbox-workspace-state.ts`);
+    // `viewed` survives only as the WIRE value, because that is the server's
+    // name for the feed (`view=viewed` / `receiving_line_views`).
+    const recentPill = workbench.getByRole('button', { name: /^Recent\b/ }).first();
+    await expect(recentPill).toBeVisible({ timeout: PANEL_TIMEOUT });
 
     // The Unboxed rail lives in the sidebar (mode-scoped; see
     // unbox-rail-order.spec.ts for its full contract).
@@ -73,8 +76,8 @@ test.describe('Receiving + Tech workspace mode smoke tests', () => {
       timeout: PANEL_TIMEOUT,
     });
 
-    // Switching to "Viewed" deep-links ?unboxview=viewed (the recents feed).
-    await viewedPill.click();
+    // Switching to "Recent" deep-links ?unboxview=viewed (the recents feed).
+    await recentPill.click();
     await expect(page).toHaveURL(/unboxview=viewed/, { timeout: PANEL_TIMEOUT });
 
     // Browse-first: open a line from the sidebar Unboxed rail when rows exist.

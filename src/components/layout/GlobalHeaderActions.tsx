@@ -6,6 +6,7 @@ import { AnchoredLayer } from '@/design-system';
 import { IconButton } from '@/design-system/primitives';
 import { Inbox, Clipboard } from '@/components/Icons';
 import { GlobalHeaderSearch } from '@/components/layout/GlobalHeaderSearch';
+import { GlobalHeaderAssistantButton } from '@/components/layout/GlobalHeaderAssistantButton';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { cn } from '@/utils/_cn';
 import { useAuth } from '@/contexts/AuthContext';
@@ -46,9 +47,13 @@ function initials(name: string): string {
 /**
  * Persistent right zone of the {@link GlobalHeader}.
  *
- * Desktop layout: a ≥420px right rail (aligned with detail panels at rest) holds
- * icon-only search + AI (expanding on hover/focus) and quick-action icons —
- * one shared {@link HEADER_ICON_CLUSTER} gap / glyph / button chrome.
+ * Desktop order (left → right): search · clipboard · phone QR · kiosk · inbox ·
+ * **AI (far-right)** — Sparkles opens the assistant right-rail occupant, so it
+ * sits at the edge it owns (mirror of MasterNav collapse on the far left).
+ * Staff identity + org live on the MasterNav spine — no avatar here.
+ *
+ * Mobile: utility icon cluster plus a compact account avatar (no MasterNav
+ * spine). AI stays desktop-only with the rest of the right-rail chrome.
  */
 export function GlobalHeaderActions({ variant = 'desktop' }: { variant?: 'desktop' | 'mobile' } = {}) {
   const isMobile = variant === 'mobile';
@@ -78,7 +83,7 @@ export function GlobalHeaderActions({ variant = 'desktop' }: { variant?: 'deskto
 
   const iconBtnSize = isMobile ? ('touch' as const) : ('md' as const);
   const iconSize = isMobile ? 'h-5 w-5' : TOP_CHROME_ICON_GLYPH;
-  const avatarSize = isMobile ? 'h-10 w-10 text-sm' : 'h-8 w-8 text-role-caption';
+  const avatarSize = 'h-10 w-10 text-sm';
   const wrapClass = isMobile ? 'relative flex h-11 w-11 shrink-0 items-center justify-center' : HEADER_ICON_WRAP;
 
   const iconCluster = (
@@ -148,58 +153,60 @@ export function GlobalHeaderActions({ variant = 'desktop' }: { variant?: 'deskto
         </AnchoredLayer>
       </div>
 
-      {/* Extra air between inbox and staff avatar. */}
-      <div ref={accountAnchorRef} className={cn(wrapClass, !isMobile && 'ml-1.5')}>
-        <HoverTooltip label={displayName || `Staff #${user.staffId}`} asChild>
-          <button
-            type="button"
-            onClick={() => setPopover((p) => (p === 'account' ? 'none' : 'account'))}
-            aria-label="Account & quick access"
-            aria-expanded={accountOpen}
-            className={cn(
-              'flex items-center justify-center rounded-full font-semibold transition-transform active:scale-95',
-              avatarSize,
-              sc.bg,
-              'text-white',
-              accountOpen && 'ring-2 ring-border-default ring-offset-1',
-            )}
-          >
-            {accountInitial}
-          </button>
-        </HoverTooltip>
-        <AnchoredLayer
-          open={accountOpen}
-          onClose={() => setPopover('none')}
-          anchorRef={accountAnchorRef}
-          placement="bottom-end"
-          gap={4}
-        >
-          <QuickAccessPopover
+      {/* Mobile only — desktop staff identity lives on the MasterNav spine footer. */}
+      {isMobile ? (
+        <div ref={accountAnchorRef} className={wrapClass}>
+          <HoverTooltip label={displayName || `Staff #${user.staffId}`} asChild>
+            <button
+              type="button"
+              onClick={() => setPopover((p) => (p === 'account' ? 'none' : 'account'))}
+              aria-label="Account & quick access"
+              aria-expanded={accountOpen}
+              className={cn(
+                'flex items-center justify-center rounded-full font-semibold transition-transform active:scale-95',
+                avatarSize,
+                sc.bg,
+                'text-white',
+                accountOpen && 'ring-2 ring-border-default ring-offset-1',
+              )}
+            >
+              {accountInitial}
+            </button>
+          </HoverTooltip>
+          <AnchoredLayer
+            open={accountOpen}
             onClose={() => setPopover('none')}
-            onOpenHistoryPopover={() => setPopover('history')}
-            onOpenFeedbackPopover={() => setPopover('feedback')}
-            compact={isMobile}
-          />
-        </AnchoredLayer>
-        <AnchoredLayer
-          open={popover === 'history'}
-          onClose={() => setPopover('none')}
-          anchorRef={accountAnchorRef}
-          placement="bottom-end"
-          gap={4}
-        >
-          <PhoneHistoryPopover onClose={() => setPopover('none')} />
-        </AnchoredLayer>
-        <AnchoredLayer
-          open={popover === 'feedback'}
-          onClose={() => setPopover('none')}
-          anchorRef={accountAnchorRef}
-          placement="bottom-end"
-          gap={4}
-        >
-          <FeedbackPopover onClose={() => setPopover('none')} />
-        </AnchoredLayer>
-      </div>
+            anchorRef={accountAnchorRef}
+            placement="bottom-end"
+            gap={4}
+          >
+            <QuickAccessPopover
+              onClose={() => setPopover('none')}
+              onOpenHistoryPopover={() => setPopover('history')}
+              onOpenFeedbackPopover={() => setPopover('feedback')}
+              compact
+            />
+          </AnchoredLayer>
+          <AnchoredLayer
+            open={popover === 'history'}
+            onClose={() => setPopover('none')}
+            anchorRef={accountAnchorRef}
+            placement="bottom-end"
+            gap={4}
+          >
+            <PhoneHistoryPopover onClose={() => setPopover('none')} />
+          </AnchoredLayer>
+          <AnchoredLayer
+            open={popover === 'feedback'}
+            onClose={() => setPopover('none')}
+            anchorRef={accountAnchorRef}
+            placement="bottom-end"
+            gap={4}
+          >
+            <FeedbackPopover onClose={() => setPopover('none')} />
+          </AnchoredLayer>
+        </div>
+      ) : null}
     </>
   );
 
@@ -208,15 +215,16 @@ export function GlobalHeaderActions({ variant = 'desktop' }: { variant?: 'deskto
   }
 
   // `/search` owns its entry field in the context rail — hide the header
-  // launcher so the page isn't dual-input.
+  // launcher so the page isn't dual-input. AI stays mounted (far-right).
   const onSearchPage =
     pathname === '/search' || (pathname?.startsWith('/search/') ?? false);
 
-  // One cluster: search + AI + rail icons share HEADER_ICON_GAP exactly.
+  // Order: find · utility popovers · AI at the right edge the assistant opens.
   return (
     <div className={cn(HEADER_ICON_CLUSTER, 'justify-end', HEADER_RAIL_WIDTH)}>
       {!onSearchPage ? <GlobalHeaderSearch /> : null}
       {iconCluster}
+      <GlobalHeaderAssistantButton />
     </div>
   );
 }

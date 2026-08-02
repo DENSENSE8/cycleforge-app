@@ -1,7 +1,7 @@
 'use client';
 
 import { type FormEvent, type ReactNode, type Ref, useCallback, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from '@/design-system/motion';
 import { Search, X, Camera, Loader2, SlidersHorizontal } from '@/components/Icons';
 import {
   framerPresenceMobile,

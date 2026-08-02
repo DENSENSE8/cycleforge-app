@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { motion, AnimatePresence, useReducedMotion, type Variants } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion, type Variants } from '@/design-system/motion';
 import { markSurfacePainted } from '@/lib/observability/paint-timing';
 import {
   SIDEBAR_GUTTER,
@@ -172,7 +172,7 @@ export function SidebarRailShell<TRow>(props: SidebarRailShellProps<TRow>) {
                   // title — which made the suffixed rail (Unfound) ~2px taller than
                   // the action-button rail (Found). Tight leading lets the title
                   // govern the row height so both eyebrows align.
-                  <p className="text-[8.5px] font-semibold uppercase leading-none tracking-widest text-text-faint">{eyebrowSuffix}</p>
+                  <p className="text-role-micro uppercase leading-none tracking-widest text-text-faint">{eyebrowSuffix}</p>
                 )}
             {editMode.enabled ? (
               <RailEditPencil active={editMode.active} onToggle={editMode.toggleActive} />

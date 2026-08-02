@@ -1,6 +1,6 @@
 'use client';
 
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion } from '@/design-system/motion';
 import { ChevronLeft, ChevronRight } from '@/components/Icons';
 import { WorkOrderInfoChips } from '@/components/work-orders/WorkOrderInfoStrip';
 import { AssignmentOverlayCard } from './AssignmentOverlayCard';

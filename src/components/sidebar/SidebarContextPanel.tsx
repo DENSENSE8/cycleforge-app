@@ -12,6 +12,7 @@ import { getSidebarTitle } from '@/lib/sidebar-titles';
 // per-route chunk boundary belongs. SSR stays on (default), so the active
 // route's panel is still server-rendered into the first HTML; the client only
 // downloads the one chunk its route needs.
+const HomeContextPanel = dynamic(() => import('@/components/sidebar/HomeContextPanel').then((m) => m.HomeContextPanel));
 const DashboardOrdersContextPanel = dynamic(() => import('@/components/sidebar/DashboardOrdersContextPanel').then((m) => m.DashboardOrdersContextPanel));
 const OrderWorkspaceSidebar = dynamic(() => import('@/components/sidebar/order/OrderWorkspaceSidebar').then((m) => m.OrderWorkspaceSidebar));
 const AdminContextPanel = dynamic(() => import('@/components/sidebar/AdminContextPanel').then((m) => m.AdminContextPanel));
@@ -48,6 +49,9 @@ export function SidebarContextPanel({ onBackToAppNav }: { onBackToAppNav?: () =>
   const { user } = useAuth();
   const routeKey = getSidebarRouteKey(pathname);
 
+  // Home → Today: the operator's saved views over the Today spreadsheet. Every
+  // other Today control is chrome by rule — see HomeContextPanel's docblock.
+  if (routeKey === 'home') return <HomeContextPanel />;
   if (routeKey === 'dashboard') return <DashboardOrdersContextPanel />;
   if (routeKey === 'order') return <OrderWorkspaceSidebar />;
   if (routeKey === 'admin') return <AdminContextPanel />;

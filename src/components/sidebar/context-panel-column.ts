@@ -135,6 +135,10 @@ export const CONTEXT_PANEL_HOST_CLASS = cn(
   // No padding and no gap: the panel carries its own margin; bookmark chrome
   // insets with the same gutter so identity + more-details share the panel’s
   // top edge (see station-bookmark.ts).
-  'flex min-h-0 flex-1 overflow-hidden',
+  //
+  // `min-w-0` is load-bearing since the right-rail push column became a flex
+  // SIBLING of this host: without it the host's min-content width wins the row
+  // and the pushing panel would overflow the frame instead of squeezing it.
+  'flex min-h-0 min-w-0 flex-1 overflow-hidden',
   appCanvasClass,
 );

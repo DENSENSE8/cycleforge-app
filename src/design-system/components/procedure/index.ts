@@ -1,2 +1,2 @@
-export { ProcedureChecklist } from './ProcedureChecklist';
-export type { ProcedureChecklistStep } from './ProcedureChecklist';
+export { ProcedureStack } from './ProcedureStack';
+export type { ProcedureStepRow } from './types';

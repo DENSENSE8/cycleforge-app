@@ -184,10 +184,10 @@ export function RackDetailView({ code }: RackDetailViewProps) {
             <div className="flex items-center gap-2.5">
               <Layers className="h-4 w-4 text-text-soft" />
               <div>
-                <p className="text-[12.5px] font-semibold text-text-default">
+                <p className="text-role-caption font-semibold text-text-default">
                   Other levels on this bay
                 </p>
-                <p className="text-[10.5px] text-text-soft">
+                <p className="text-role-micro text-text-soft">
                   {otherLevels.length} more level{otherLevels.length === 1 ? '' : 's'} registered
                 </p>
               </div>
@@ -221,7 +221,7 @@ export function RackDetailView({ code }: RackDetailViewProps) {
           <p className="mt-2 text-sm font-semibold text-text-muted">
             No positions registered on this level yet.
           </p>
-          <p className="mt-1 text-[11.5px] text-text-soft">
+          <p className="mt-1 text-role-caption text-text-soft">
             Print bin-level labels from the <span className="font-semibold">Labels</span> tab to
             populate this rack. Bin labels auto-register their location row.
           </p>
@@ -365,7 +365,7 @@ function PositionCell({ row, onClick }: { row: BinsOverviewRow; onClick: () => v
             <p className="text-role-caption font-semibold tabular-nums text-text-default">
               {row.total_qty}
             </p>
-            <p className="text-[9.5px] text-text-soft">
+            <p className="text-role-micro text-text-soft">
               {row.sku_count} SKU{row.sku_count === 1 ? '' : 's'}
             </p>
           </>
@@ -457,7 +457,7 @@ function RackList({
                   <p className="truncate text-sm font-semibold text-text-default">
                     {row.total_qty} units · {row.sku_count} SKU{row.sku_count === 1 ? '' : 's'}
                   </p>
-                  <p className="mt-0.5 text-[10.5px] text-text-soft">
+                  <p className="mt-0.5 text-role-micro text-text-soft">
                     Fill {row.fill_pct == null ? '—' : `${Math.round(row.fill_pct)}%`}
                     {row.last_counted ? ` · counted ${formatAgo(row.last_counted)}` : ''}
                   </p>

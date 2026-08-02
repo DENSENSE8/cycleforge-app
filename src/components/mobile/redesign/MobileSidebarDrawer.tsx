@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from '@/design-system/motion';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
   Barcode,
@@ -294,7 +294,7 @@ export const MobileSidebarDrawer = ({
                                       {ChildIcon ? (
                                         <ChildIcon className={`h-4 w-4 shrink-0 ${childActive ? 'text-blue-600' : 'text-text-faint'}`} />
                                       ) : null}
-                                      <span className="text-[13.5px] font-semibold">{child.label}</span>
+                                      <span className="text-role-body font-semibold">{child.label}</span>
                                     </button>
                                   </li>
                                 );

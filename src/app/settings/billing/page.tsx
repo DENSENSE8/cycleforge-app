@@ -55,7 +55,7 @@ export default async function BillingPage() {
             <div>
               <div className="text-role-caption font-medium uppercase tracking-[0.12em] text-text-soft">Current plan</div>
               <div className="mt-1 text-2xl font-semibold text-text-default">{PLAN_LABELS[org.plan].label}</div>
-              <p className="mt-1 text-[12.5px] text-text-soft">{PLAN_LABELS[org.plan].tagline}</p>
+              <p className="mt-1 text-role-caption text-text-soft">{PLAN_LABELS[org.plan].tagline}</p>
               <dl className="mt-4 grid grid-cols-2 gap-x-8 gap-y-1.5 text-role-caption">
                 <dt className="text-text-soft">Status</dt>
                 <dd className="font-medium text-text-default">{sub?.status ?? org.status}</dd>
@@ -77,7 +77,7 @@ export default async function BillingPage() {
 
         <Card>
           <div className="text-role-caption font-medium uppercase tracking-[0.12em] text-text-soft">Entitlements</div>
-          <ul className="mt-3 grid grid-cols-2 gap-y-1.5 text-[12.5px] text-text-muted sm:grid-cols-3">
+          <ul className="mt-3 grid grid-cols-2 gap-y-1.5 text-role-caption text-text-muted sm:grid-cols-3">
             {Object.entries(ent.features).map(([key, on]) => (
               <li key={key} className="flex items-center gap-2">
                 <span className={`inline-block h-1.5 w-1.5 rounded-full ${on ? 'bg-emerald-500' : 'bg-surface-strong'}`} />
@@ -122,7 +122,7 @@ export default async function BillingPage() {
               );
             })}
           </div>
-          <p className="mt-3 text-[11.5px] text-text-soft">
+          <p className="mt-3 text-role-caption text-text-soft">
             Enterprise is sales-assisted — <a className="font-medium text-text-default hover:underline" href="mailto:sales@cycleforge.ai">contact us</a>.
           </p>
         </Card>

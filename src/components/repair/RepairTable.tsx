@@ -1,6 +1,6 @@
 'use client';
 
-import { AnimatePresence } from 'framer-motion';
+import { AnimatePresence } from '@/design-system/motion';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Copy, Maximize2 } from '../Icons';

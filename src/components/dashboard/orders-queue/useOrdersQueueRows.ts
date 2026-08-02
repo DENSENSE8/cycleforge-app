@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import { toPSTDateKey } from '@/utils/date';
-import { groupRowsBy, type RowGroup } from '@/lib/group-rows';
+import { flattenRenderOrder, groupRowsBy, type RowGroup } from '@/lib/group-rows';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
 import {
   defaultDirForQueueSort,
@@ -21,9 +21,35 @@ import { compareQueueColumnRows } from './queue-row-compare';
 export interface OrdersQueueRows {
   /** Records still in the queue (already-shipped rows filtered out). */
   visibleRecords: ShippedOrder[];
-  /** Date bands → folded order groups, in canonical render order. */
+  /**
+   * Date bands → folded order groups, in canonical render order — a
+   * `GroupedRenderOrder<ShippedOrder>` in all but its declared (mutable) type,
+   * which it keeps because it flows straight into `LedgerGrid`'s mutable prop.
+   * (Mutable → readonly is assignable; the reverse is not, so the readonly alias
+   * belongs on the consumer, not here.)
+   *
+   * Group keys are **band-local** by design (`order_id`, or `id:<n>`), so a
+   * multi-line order whose lines straddle two date bands lands one group per
+   * band under the same key. Do not band-qualify them here: fold identity is
+   * minted exactly once, by `foldKey(bandKey, group.key)` in `group-rows.ts`,
+   * and a second encoding would mean a `revealFoldKey` produced by one is never
+   * `.has()`-equal to a set built by the other — the reveal silently no-ops and
+   * the record opens behind a still-closed fold.
+   */
   orderGroupsByDate: [string, RowGroup<ShippedOrder>[]][];
-  /** Flat list matching the on-screen order (keyboard nav, shift-range select). */
+  /**
+   * The FOLD-BLIND flat leaf order — every group treated as expanded.
+   *
+   * It is **not** "what is on screen", and it must not be narrowed to that. Its
+   * three consumers all need the full set: `useGridSurface` (the TanStack row
+   * model), `useTableSelectMode` (shift-range select — narrowing would make a
+   * range across a collapsed order skip its lines), and the queue selection's
+   * seen-in-this-queue guard. "Which record can the operator see, and what does
+   * ↓ open" is a different question, answered by `resolveRecordCursor`
+   * (`src/lib/record-cursor/cursor-model.ts`), which is fold-blind for its own
+   * reason: a step into a collapsed fold REVEALS it rather than skipping it, so
+   * every record is reachable.
+   */
   displayedRecords: ShippedOrder[];
   /** Count of dated, visible records. */
   totalCount: number;
@@ -43,8 +69,17 @@ export interface UseOrdersQueueRowsOptions {
  * deadline/created date (composites) or sorts globally (column sorts), then
  * folds lines that share an order number into one group.
  *
- * The flat `displayedRecords` is flattened from the SAME grouped order so that
- * keyboard-nav and shift-range select line up with exactly what's on screen.
+ * `displayedRecords` is flattened from the SAME grouped order — via
+ * `flattenRenderOrder`, the one implementation of that walk — so the row model
+ * and a shift-range select can never disagree with the render order about which
+ * rows lie between two clicks.
+ *
+ * It is deliberately **fold-blind**. The docblock here used to claim it "lines
+ * up with exactly what's on screen"; it never did (`QueueGroupRow` collapses a
+ * multi-line order while this walk keeps all of its children), and reading it
+ * as the visible order is what let ↓ step three times into rows nobody could
+ * see — plan §2.2. See `OrdersQueueRows.displayedRecords` for who needs the
+ * full set and who answers the visible-order question instead.
  */
 export function useOrdersQueueRows({
   records,
@@ -64,7 +99,7 @@ export function useOrdersQueueRows({
       );
       const groups = groupRowsBy(sorted, (r) => String(r.order_id || '').trim() || `id:${r.id}`);
       const orderGroupsByDate: [string, RowGroup<ShippedOrder>[]][] = [['', groups]];
-      const displayedRecords = groups.flatMap((g) => g.rows);
+      const displayedRecords = flattenRenderOrder(orderGroupsByDate);
       return {
         visibleRecords,
         orderGroupsByDate,
@@ -91,8 +126,8 @@ export function useOrdersQueueRows({
     });
 
     // One canonical per-day ordering, shared by the rendered rows AND the flat
-    // `displayedRecords` (keyboard nav, awaiting worklist, shift-range select) so
-    // the range a shift-click spans matches exactly what's on screen.
+    // `displayedRecords` (row model, awaiting worklist, shift-range select) so
+    // the range a shift-click spans matches the order the grid paints.
     const deadlineTime = (r: ShippedOrder) => new Date(r.deadline_at || r.created_at || 0).getTime();
     const sortDayRecords = (dayRecords: ShippedOrder[]): ShippedOrder[] =>
       [...dayRecords].sort((a, b) => {
@@ -127,7 +162,7 @@ export function useOrdersQueueRows({
       ],
     );
 
-    const displayedRecords = orderGroupsByDate.flatMap(([, groups]) => groups.flatMap((g) => g.rows));
+    const displayedRecords = flattenRenderOrder(orderGroupsByDate);
 
     const totalCount = Object.values(groupedRecords).reduce((sum, dayRecords) => sum + dayRecords.length, 0);
 

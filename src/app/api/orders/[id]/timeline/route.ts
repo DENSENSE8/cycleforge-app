@@ -102,7 +102,7 @@ export async function GET(
         client.query(
           `SELECT al.id, al.created_at, al.action, al.after_data, al.metadata,
                   ${canViewAudit ? 'al.before_data' : 'NULL::jsonb AS before_data'},
-                  s.name AS actor_name
+                  s.name AS actor_name, al.actor_staff_id
              FROM audit_logs al
              LEFT JOIN staff s ON s.id = al.actor_staff_id
             WHERE lower(al.entity_type) = 'order' AND al.entity_id = $1
@@ -130,7 +130,7 @@ export async function GET(
                         NULLIF(BTRIM(sal.metadata->>'serial'), '')
                       ) AS serial_number,
                       tsn.serial_type,
-                      s.name AS actor_name
+                      s.name AS actor_name, sal.staff_id AS actor_staff_id
                  FROM station_activity_logs sal
                  LEFT JOIN staff s ON s.id = sal.staff_id
                  LEFT JOIN tech_serial_numbers tsn

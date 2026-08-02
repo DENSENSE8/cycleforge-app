@@ -198,6 +198,13 @@ export const staff = pgTable('staff', {
   // in this org is `memberships`. Nullable until backfill completes.
   accountId: uuid('account_id').references(() => accounts.id),
   membershipId: uuid('membership_id').references(() => memberships.id),
+  // Profile photo (2026-08-01e_staff_avatar_photo.sql). A photos.id, never a
+  // raw storage URL — bytes stay behind /api/photos/{id}/content. NULL ⇒ every
+  // surface renders colour + initials via <StaffAvatar>.
+  // The FK → photos(id) ON DELETE SET NULL lives in SQL only: `photos` already
+  // references `staff`, so declaring the reverse here would make the two table
+  // consts circular initializers and collapse both to `any` under TS.
+  avatarPhotoId: bigint('avatar_photo_id', { mode: 'number' }),
 });
 
 // Editable roles taxonomy. is_system rows are seeded built-ins and cannot
@@ -1122,6 +1129,21 @@ export const photos = pgTable('photos', {
    * fabricated capture time would be worse than none in a carrier dispute.
    */
   clientCapturedAt: timestamp('client_captured_at', { withTimezone: true }),
+  /**
+   * What this shot SHOWS, within its stage (2026-08-01b). Orthogonal to
+   * photo_type, which encodes entity legality — see
+   * src/lib/photos/photo-aspects.ts, the vocabulary SoT.
+   *
+   * CHECK (photo_aspect IS NULL OR photo_aspect IN (
+   *   'shipping_label','box_exterior','box_interior','packing_material',
+   *   'included','serial','front','back','side','bottom'))
+   *
+   * NULL is legal and is what every pre-2026-08-01b row carries: it means
+   * *unclassified evidence*, never *missing evidence*. Deliberately not
+   * backfilled — inferring an aspect from photo_type would manufacture an
+   * evidence claim no operator made.
+   */
+  photoAspect: text('photo_aspect'),
   deletedFromBlobAt: timestamp('deleted_from_blob_at', { withTimezone: true }),
   poRef: text('po_ref'),
 });
@@ -1535,6 +1557,18 @@ export const receivingLineTesting = pgTable('receiving_line_testing', {
   /** When the operator explicitly picked condition_grade (distinct from the DB default). Moved from receiving_lines (2026-07-05c). */
   conditionSetAt: timestamp('condition_set_at', { withTimezone: true }),
   /**
+   * The grading ACT, and the gate for the Condition procedure step
+   * (2026-08-01c). `conditionGrade` is NOT NULL with a default, so it exists on
+   * a carton nobody has touched and can never be a gate.
+   *
+   * Distinct from `conditionSetAt` on purpose: that one is COALESCE-once (first
+   * explicit set wins, survives every later edit), so it cannot be cleared and
+   * cannot answer "is this step satisfied right now". A reopen sets THIS column
+   * back to NULL and leaves `conditionSetAt` alone. Never backfilled.
+   */
+  conditionGradedAt: timestamp('condition_graded_at', { withTimezone: true }),
+  conditionGradedBy: integer('condition_graded_by').references(() => staff.id, { onDelete: 'set null' }),
+  /**
    * Denormalized serial projection — a jsonb array of
    * `{ id, serial_number, condition_grade }` for the serials whose CURRENT
    * receiving line is this line. Fast-default for first-frame serial display;
@@ -1697,6 +1731,14 @@ export const receivingUnbox = pgTable('receiving_unbox', {
   /** Operator "Unboxed" action (NOT scan-owned). */
   unboxedAt: timestamp('unboxed_at', { withTimezone: true }),
   unboxedBy: integer('unboxed_by').references(() => staff.id, { onDelete: 'set null' }),
+  /**
+   * An operator confirmed the carton contents against the line list
+   * (2026-08-01c) — the gate for the Contents procedure step, and the fact
+   * nothing in the schema recorded before. Cleared by a reopen; never
+   * backfilled, because a stamp asserts a person did something at a time.
+   */
+  contentsConfirmedAt: timestamp('contents_confirmed_at', { withTimezone: true }),
+  contentsConfirmedBy: integer('contents_confirmed_by').references(() => staff.id, { onDelete: 'set null' }),
   /** CHECK: triage_first | unbox_only | unknown. Mirrors receiving.unbox_only_intake / received_at. */
   intakePath: text('intake_path').notNull().default('unknown'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -2613,6 +2655,15 @@ export const skuKitParts = pgTable('sku_kit_parts', {
   requiredFor: text('required_for').array(),
   isCritical: boolean('is_critical').notNull().default(true),
   sortOrder: integer('sort_order').notNull().default(0),
+  // Reference document — the paper this part puts in the box
+  // (2026-08-01d_kit_part_reference_document.sql). `documentUrl` is a directly
+  // fetchable Blob url, never an /api/documents/:id/content path: packing.*
+  // does not imply orders.view. `documentMime` is CHECK-constrained to
+  // 'pdf' | 'image' | 'unknown' (DocumentPreviewMimeHint), and a title or mime
+  // without a url is rejected by sku_kit_parts_document_url_required_chk.
+  documentUrl: text('document_url'),
+  documentTitle: text('document_title'),
+  documentMime: text('document_mime'),
 });
 
 /**
@@ -3930,7 +3981,7 @@ export const entitySearchDocs = pgTable('entity_search_docs', {
   conditionGrade: text('condition_grade'),
   sourcePlatform: text('source_platform'),
   // Order/receiving carrier + tracking facets (migration 2026-07-06a) — surface
-  // a carrier + last-4 tracking chip on the order row without a second fetch.
+  // a carrier + last-8 tracking chip on the order row without a second fetch.
   trackingNumber: text('tracking_number'),
   carrier: text('carrier'),
   // Serial facet (migration 2026-07-17d) — journey handoff key for unit/repair

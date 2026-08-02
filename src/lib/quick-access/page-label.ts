@@ -19,7 +19,7 @@ export function resolveQuickAccessHref(
  * Human-readable label for a stored quick-access href. Uses route + query
  * metadata — never the generic document title / org name fallback.
  */
-export function resolveQuickAccessLabel(href: string): string {
+function resolveQuickAccessLabel(href: string): string {
   try {
     const url = new URL(href, 'http://local');
     const pathname = url.pathname;
@@ -52,23 +52,9 @@ export function resolveQuickAccessLabel(href: string): string {
   }
 }
 
-/** Optional eyebrow meta — pathname when it adds disambiguation. */
-export function resolveQuickAccessMeta(href: string, label: string): string | null {
-  try {
-    const url = new URL(href, 'http://local');
-    const pathname = url.pathname;
-    if (pathname === '/' || pathname === '/signin') return null;
-    const bare = pathname + (url.search ? `?${url.search}` : '');
-    if (label.toLowerCase() === bare.toLowerCase()) return null;
-    return bare;
-  } catch {
-    return null;
-  }
-}
-
 /**
- * Label for pinning / recording the current page. Prefers a real page title
- * when available, otherwise falls back to route metadata.
+ * Label for pinning the current page. Prefers a real page title when available,
+ * otherwise falls back to route metadata.
  */
 export function resolveQuickAccessLabelFromLocation(
   pathname: string | null,

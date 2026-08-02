@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { ChevronDown } from '@/components/Icons';
 import { MOBILE_GUTTER_X } from '@/components/mobile/redesign/DesignSystem';
 import { OrderIdChip, TrackingChip } from '@/components/ui/CopyChip';
-import { getLast4 } from '@/lib/copy-chip-format';
+import { getLast8 } from '@/lib/copy-chip-format';
 import { MobileReceivingUnitRow } from '@/components/mobile/receiving/MobileReceivingUnitRow';
 import type { ReceivingFeedEntry } from '@/components/mobile/receiving/receiving-feed-entries';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
@@ -47,7 +47,7 @@ export function MobileReceivingUnitCard({
 
 /**
  * Package group — a collapsible card for one inbound carton. Shared PO / tracking
- * (CopyChips, last-4) / carrier live once on the header; each unit carries its
+ * (CopyChips, last-8) / carrier live once on the header; each unit carries its
  * own qty, condition, and photos. Default open.
  */
 export function MobilePackageGroup({
@@ -78,8 +78,8 @@ export function MobilePackageGroup({
           </span>
         </button>
         <span className="flex min-w-0 items-center gap-1.5 overflow-hidden">
-          {entry.po ? <OrderIdChip value={entry.po} display={getLast4(entry.po)} dense /> : null}
-          {entry.trk ? <TrackingChip value={entry.trk} display={getLast4(entry.trk)} dense /> : null}
+          {entry.po ? <OrderIdChip value={entry.po} display={getLast8(entry.po)} dense /> : null}
+          {entry.trk ? <TrackingChip value={entry.trk} display={getLast8(entry.trk)} dense /> : null}
           {entry.carrier ? (
             <span className="shrink-0 text-role-eyebrow uppercase tracking-widest text-text-soft">
               {entry.carrier}

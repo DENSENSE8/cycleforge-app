@@ -34,6 +34,7 @@ export const getInitialAuthUser = cache(async (): Promise<AuthSessionUser | null
     role: current.role,
     permissions: Array.from(current.permissions),
     mobileDisplayConfig: current.mobileDisplayConfig,
+    avatarPhotoId: current.avatarPhotoId,
     session: {
       sid: current.session.sid,
       deviceKind: current.session.deviceKind,

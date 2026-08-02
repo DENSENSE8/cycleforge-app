@@ -1,8 +1,8 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { motion, useReducedMotion } from 'framer-motion';
-import { motionBezier } from '@/design-system/foundations/motion-framer';
+import { motion, useReducedMotion } from '@/design-system/motion';
+import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
 import { MOBILE_GUTTER, MOBILE_GUTTER_X } from '@/components/mobile/redesign/DesignSystem';
 
 /**
@@ -18,7 +18,9 @@ import { MOBILE_GUTTER, MOBILE_GUTTER_X } from '@/components/mobile/redesign/Des
  * The `MOBILE_GUTTER*` import is deliberate and stays until the stack has a
  * desktop consumer: those two classes are the mobile row-alignment SoT and are
  * shared with `MobileReceivingCards`, so inlining them here would fork the
- * value. Promoting them to a DS spacing token is capture-stack Phase 2 work.
+ * value. That condition is still unmet — the Unbox centre mount was removed
+ * (`33a3eb609`) — so promoting them to a DS spacing token stays deferred to the
+ * first real desktop consumer rather than to a phase number.
  */
 export function CaptureStackRow({
   variant,
@@ -58,13 +60,16 @@ export function CaptureStackRow({
         />
       )}
 
-      {/* Fresh-arrival ring pulse (expanded row only). */}
+      {/* Fresh-arrival ring pulse (expanded row only). Suppressed OUTRIGHT under
+          reduced motion rather than bridged: a decorative attention pulse is
+          what WCAG 2.3.3 removes, and a reduced-form fade would still draw the
+          eye it exists to draw. */}
       {isExpanded && fresh && !reduceMotion && (
         <motion.span
           aria-hidden
-          initial={{ opacity: 0.55, scale: 1 }}
-          animate={{ opacity: 0, scale: 1.04 }}
-          transition={{ duration: 1.8, ease: motionBezier.easeOut }}
+          initial={framerPresence.captureStackFreshPulse.initial}
+          animate={framerPresence.captureStackFreshPulse.animate}
+          transition={framerTransition.captureStackFreshPulse}
           className="pointer-events-none absolute inset-0 z-0 rounded-2xl ring-2 ring-blue-400/70"
         />
       )}

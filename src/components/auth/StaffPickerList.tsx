@@ -12,10 +12,19 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { getStaffTheme, getStaffColorHex, type StationTheme } from '@/utils/staff-colors';
+import { StaffAvatar } from '@/components/identity';
+import { getStaffTheme, type StationTheme } from '@/utils/staff-colors';
 import { SkeletonBase } from '@/design-system/components/Skeletons';
 
-export type StaffRow = { id: number; name: string; role: string; has_pin: boolean; color_hex: string };
+export type StaffRow = {
+  id: number;
+  name: string;
+  role: string;
+  has_pin: boolean;
+  color_hex: string;
+  /** Profile photo id from /api/auth/staff-picker; null ⇒ colour + initials. */
+  avatar_photo_id?: number | null;
+};
 
 interface StaffPickerListProps {
   /** Staff that should appear at the top under a "RECENT" header. */
@@ -54,10 +63,6 @@ const THEME_ROW: Record<StationTheme, {
   lightblue: { hoverBg: 'hover:bg-sky-50',      hoverRing: 'hover:ring-sky-200',     chevron: 'text-sky-600',     avatarRing: 'ring-sky-100',      recentDot: 'bg-sky-400',      nameHover: 'group-hover:text-sky-900' },
   pink:      { hoverBg: 'hover:bg-pink-50',     hoverRing: 'hover:ring-pink-200',    chevron: 'text-pink-600',    avatarRing: 'ring-pink-100',     recentDot: 'bg-pink-400',     nameHover: 'group-hover:text-pink-900' },
 };
-
-function initials(name: string): string {
-  return name.split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]?.toUpperCase() ?? '').join('');
-}
 
 export function StaffPickerList({ recent = [], recentReady = true, onPick, onMessage, onPolicy }: StaffPickerListProps) {
   const [staff, setStaff] = useState<StaffRow[]>([]);
@@ -193,12 +198,15 @@ function Row({ staff: s, onPick, onMessage, isRecent }: RowProps) {
         {isRecent && (
           <span className={`absolute -right-0.5 -top-0.5 z-[1] h-2.5 w-2.5 rounded-full ${t.recentDot} ring-2 ring-white`} aria-hidden />
         )}
-        <div
-          className={`flex h-11 w-11 items-center justify-center rounded-full text-sm font-semibold text-white ring-4 ${t.avatarRing} transition-transform duration-150 group-hover:scale-[1.04]`}
-          style={{ backgroundColor: getStaffColorHex(s) }}
-        >
-          {initials(s.name)}
-        </div>
+        <StaffAvatar
+          staffId={s.id}
+          name={s.name}
+          colorHex={s.color_hex}
+          avatarPhotoId={s.avatar_photo_id ?? null}
+          size="lg"
+          ring={false}
+          className={`ring-4 ${t.avatarRing} transition-transform duration-150 group-hover:scale-[1.04]`}
+        />
       </div>
       <div className="min-w-0 flex-1">
         <div className={`truncate text-base font-semibold text-text-default transition-colors ${t.nameHover}`}>{s.name}</div>

@@ -1,6 +1,6 @@
 'use client';
 
-import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import { AnimatePresence, motion, useReducedMotion } from '@/design-system/motion';
 import { Check, X } from '@/components/Icons';
 import { AnimatedStat } from '@/design-system/components/AnimatedStat';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';

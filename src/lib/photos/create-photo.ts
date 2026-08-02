@@ -1,5 +1,6 @@
 import type { PoolClient } from 'pg';
 import { photoContentUrl } from './display-url';
+import type { PhotoAspect } from './photo-aspects';
 import type { PhotoEntityType, PhotoLinkRole } from './types';
 
 export interface InsertPhotoCatalogInput {
@@ -13,6 +14,12 @@ export interface InsertPhotoCatalogInput {
    * with no device timestamp — never substitute `now()` or `created_at` here.
    */
   clientCapturedAt?: Date | null;
+  /**
+   * What this shot SHOWS, within its stage (`../photo-aspects.ts`). Absent/null
+   * is legal and means *unclassified evidence* — never *missing evidence*. Legality
+   * against the resolved stage is decided at the route edge, before we get here.
+   */
+  photoAspect?: PhotoAspect | null;
 }
 
 /** Insert a catalog row (no entity columns — links + storage hold relationships/bytes). */
@@ -21,8 +28,8 @@ export async function insertPhotoCatalog(
   input: InsertPhotoCatalogInput,
 ): Promise<number> {
   const { rows } = await client.query<{ id: string }>(
-    `INSERT INTO photos (taken_by_staff_id, photo_type, organization_id, po_ref, client_captured_at)
-     VALUES ($1, $2, $3, $4, $5)
+    `INSERT INTO photos (taken_by_staff_id, photo_type, organization_id, po_ref, client_captured_at, photo_aspect)
+     VALUES ($1, $2, $3, $4, $5, $6)
      RETURNING id`,
     [
       input.staffId,
@@ -30,6 +37,7 @@ export async function insertPhotoCatalog(
       input.organizationId,
       input.poRef ?? null,
       input.clientCapturedAt ?? null,
+      input.photoAspect ?? null,
     ],
   );
   return Number(rows[0].id);

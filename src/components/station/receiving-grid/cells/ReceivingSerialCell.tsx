@@ -7,7 +7,7 @@ import { receivingDataCellClass, type ReceivingGridCellProps } from './receiving
 export function ReceivingSerialCell({ col, rule, ctx }: ReceivingGridCellProps) {
   const { serialsCsv } = ctx;
   return (
-    <div data-col="serial" className={receivingDataCellClass(col, rule)}>
+    <div data-col="serial" className={receivingDataCellClass(col, rule, ctx)}>
       {serialsCsv ? (
         <SerialChip value={serialsCsv} width="w-auto shrink-0" dense />
       ) : (

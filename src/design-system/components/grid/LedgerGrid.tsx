@@ -10,7 +10,7 @@ import {
   type RefObject,
 } from 'react';
 import { VirtualGroupedSections } from '@/design-system/components/grid/VirtualGroupedSections';
-import { countGridRows } from '@/design-system/components/grid/grid-row-index';
+import { countGridRows, hasGridRows } from '@/design-system/components/grid/grid-row-index';
 import type { RowGroup } from '@/lib/group-rows';
 import {
   ORDERS_QUEUE_GRID_WIDTH_VAR,
@@ -171,8 +171,11 @@ export function LedgerGrid<T>({
     return () => ro.disconnect();
   }, []);
 
-  const empty =
-    (orderGroupsByDate?.length ?? 0) === 0 && (daySections?.length ?? 0) === 0;
+  // Empty means NO ROWS — not "no bands". Testing the band count made a surface
+  // that always emits one band (`[['', groups]]`, the natural shape for a flat
+  // list) render its column headers over a void whenever it had nothing to show,
+  // instead of the teaching box the caller passed in `emptyState`.
+  const empty = !hasGridRows({ orderGroupsByDate, daySections });
   const rowCount = countGridRows({ orderGroupsByDate, daySections, showDayHeaders });
   // Self-scrolling body owns the virtualizer scroll unless an ancestor is passed.
   const useAncestorScroll = Boolean(scrollParentRef);
@@ -306,7 +309,10 @@ export function LedgerGrid<T>({
             role="rowgroup"
             data-grid-col-header=""
             className={cn(
-              'sticky top-0 z-sticky isolate shrink-0 bg-surface-card',
+              // `relative` anchors the optional top-right column-display lip
+              // (LedgerGridColumnHeader) to the visible header band, not the
+              // translated wide header row.
+              'relative sticky top-0 z-sticky isolate shrink-0 bg-surface-card',
               splitX && 'overflow-x-clip',
             )}
           >

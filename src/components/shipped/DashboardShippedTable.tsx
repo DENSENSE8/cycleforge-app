@@ -19,7 +19,7 @@ import { useShippedTableRecords } from '@/components/shipped/dashboard-table/use
 import { useShippedTableGrouping } from '@/components/shipped/dashboard-table/useShippedTableGrouping';
 import { useShippedDetailsSelection } from '@/components/shipped/dashboard-table/useShippedDetailsSelection';
 import { useShippedPeriodControls } from '@/components/shipped/dashboard-table/useShippedPeriodControls';
-import { useOutboundQueueKeyboard } from '@/hooks/useOutboundQueueKeyboard';
+import { useRecordCursorKeyboard } from '@/hooks/useRecordCursorKeyboard';
 import { ShippedTableEmptyState } from '@/components/shipped/dashboard-table/ShippedTableEmptyState';
 import { DateRangePickerPill } from '@/components/ui/DateRangeHeader';
 import { OrdersGridView } from '@/components/dashboard/orders-queue/OrdersGridView';
@@ -75,14 +75,12 @@ export function DashboardShippedTable({
   const filters = useShippedTableFilters({ packedBy, testedBy, lockedOutboundStatus });
   const { query, derivedRecords, searchMeta, pagination } = useShippedTableRecords(filters);
   const { orderedRecords, totalCount } = useShippedTableGrouping(derivedRecords);
-  const { selectedDetailId, handleRowClick } = useShippedDetailsSelection({ orderedRecords });
+  const { selectedDetailId, handleRowClick } = useShippedDetailsSelection();
 
-  useOutboundQueueKeyboard({
-    enabled: !embedded,
-    orderedRecords,
-    selectedId: selectedDetailId,
-    context: 'shipped',
-  });
+  // The OrdersGridView below publishes the cursor (it owns grouping + folds);
+  // this lane only turns the keyboard on. `embedded` still gates it so a nested
+  // mount does not bind a second ambient listener.
+  useRecordCursorKeyboard({ enabled: !embedded, scope: 'record' });
 
   const period = useShippedPeriodControls(filters);
   const periodRange = period.activeRange ?? filters.weekRange;

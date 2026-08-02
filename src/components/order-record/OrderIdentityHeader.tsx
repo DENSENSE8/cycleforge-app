@@ -17,6 +17,8 @@ import {
   PaneHeaderLabel,
   PaneHeaderStatusPill,
   type PaneHeaderActionBarAction,
+  PaneHeaderCloseButton,
+  CursorPositionReadout,
 } from '@/components/ui/pane-header';
 import type { StatusTone as HeaderStatusTone } from '@/components/shipped/details-panel/shipped-details-logic';
 import {
@@ -44,7 +46,12 @@ export function OrderIdentityHeader({
   actions,
   onMoveUp,
   onMoveDown,
+  prevDisabled,
+  nextDisabled,
+  position,
+  total,
   onOpenFullPage,
+  onClose,
   compact = false,
 }: {
   orderIdDisplay: string;
@@ -57,7 +64,19 @@ export function OrderIdentityHeader({
   actions: PaneHeaderActionBarAction[];
   onMoveUp?: () => void;
   onMoveDown?: () => void;
+  /**
+   * Ends-of-list state, from the record cursor. Undefined when no surface
+   * publishes one — the chevrons then keep today's always-enabled legacy
+   * behaviour rather than rendering as permanently dead.
+   */
+  prevDisabled?: boolean;
+  nextDisabled?: boolean;
+  /** 1-based position + length of the published cursor; omitted → no readout. */
+  position?: number | null;
+  total?: number;
   onOpenFullPage?: () => void;
+  /** Dismiss control for the non-modal rail — renders the X at the top right. */
+  onClose?: () => void;
   /** Tighter horizontal padding for the compact slide-over. */
   compact?: boolean;
 }) {
@@ -114,15 +133,24 @@ export function OrderIdentityHeader({
         </>
       }
       rightSlot={
-        onOpenFullPage ? (
-          <HoverTooltip label="Open full order page" asChild>
-            <IconButton
-              icon={<ExternalLink className="h-4 w-4" />}
-              onClick={onOpenFullPage}
-              ariaLabel="Open full order page"
-              className="rounded-md p-1.5 hover:bg-surface-sunken"
-            />
-          </HoverTooltip>
+        onOpenFullPage || onClose ? (
+          <div className="flex items-center gap-1">
+            {onOpenFullPage ? (
+              <HoverTooltip label="Open full order page" asChild>
+                <IconButton
+                  icon={<ExternalLink className="h-4 w-4" />}
+                  onClick={onOpenFullPage}
+                  ariaLabel="Open full order page"
+                  className="rounded-md p-1.5 hover:bg-surface-sunken"
+                />
+              </HoverTooltip>
+            ) : null}
+            {/* A non-modal panel owns an explicit close in its own header —
+                there is no scrim to click off. This header shipped without one,
+                so the only dismissals were Escape and un-checking the row.
+                SoT: source-of-truth.md → Right-rail modality. */}
+            {onClose ? <PaneHeaderCloseButton onClick={onClose} /> : null}
+          </div>
         ) : undefined
       }
       belowSlot={
@@ -133,6 +161,9 @@ export function OrderIdentityHeader({
             actions={actions}
             onPrev={onMoveUp}
             onNext={onMoveDown}
+            prevDisabled={prevDisabled}
+            nextDisabled={nextDisabled}
+            rightSlot={<CursorPositionReadout position={position} total={total} />}
             prevTitle="Move up a row"
             nextTitle="Move down a row"
           />

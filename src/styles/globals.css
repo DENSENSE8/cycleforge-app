@@ -89,6 +89,14 @@
     0 0 4px rgba(2, 6, 23, 0.06),
     -4px 4px 10px -2px rgba(2, 6, 23, 0.1),
     -20px 24px 48px -16px rgba(2, 6, 23, 0.24);
+  /* The mirror, for a surface sitting RIGHT of centre (the right-rail push
+     column). Same ink and same zero-offset ambient layer — only the sign of the
+     key + cast x flips, so both edges of the frame read as lit from the middle
+     rather than one of them casting back toward the other. */
+  --ds-elev-overlay-right:
+    0 0 4px rgba(2, 6, 23, 0.06),
+    4px 4px 10px -2px rgba(2, 6, 23, 0.1),
+    20px 24px 48px -16px rgba(2, 6, 23, 0.24);
 }
 
 html[data-color-scheme='dark'] {
@@ -108,6 +116,10 @@ html[data-color-scheme='dark'] {
     0 0 4px rgba(0, 0, 0, 0.4),
     -4px 4px 10px -2px rgba(0, 0, 0, 0.5),
     -20px 24px 48px -16px rgba(0, 0, 0, 0.7);
+  --ds-elev-overlay-right:
+    0 0 4px rgba(0, 0, 0, 0.4),
+    4px 4px 10px -2px rgba(0, 0, 0, 0.5),
+    20px 24px 48px -16px rgba(0, 0, 0, 0.7);
 }
 
 /* ─── Page wash (Appearance → Page background / data-app-wash) ─────────────

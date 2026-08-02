@@ -1,6 +1,5 @@
 'use client';
 
-import { FirstScanOnboardingCard } from '@/components/dashboard/FirstScanOnboardingCard';
 import { GettingStartedChecklist } from '@/components/dashboard/GettingStartedChecklist';
 import { useMyDayOnboardingVisible } from './useMyDayOnboardingVisible';
 
@@ -11,7 +10,6 @@ export function MyDayOnboardingPanel() {
 
   return (
     <div className="shrink-0 space-y-3 border-b border-border-hairline px-4 py-3">
-      <FirstScanOnboardingCard variant="pane" />
       <GettingStartedChecklist variant="pane" />
     </div>
   );

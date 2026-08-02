@@ -34,7 +34,7 @@
  */
 
 import { useCallback, useMemo, useRef, useState } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion } from '@/design-system/motion';
 import { Button, Panel, TextField } from '@/design-system/primitives';
 import { IconButton } from '@/design-system/primitives/IconButton';
 import { X, Check, Loader2 } from '@/components/Icons';

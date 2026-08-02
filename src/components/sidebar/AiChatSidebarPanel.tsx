@@ -44,7 +44,7 @@ export function AiChatSidebarPanel() {
   return (
     <div className={`flex h-full min-h-0 flex-col ${appChromeClass}`}>
       <div className={`flex shrink-0 items-center justify-between border-b border-border-hairline ${SIDEBAR_GUTTER} py-2.5`}>
-        <p className={`${sectionLabel} text-blue-600`}>AI Chat</p>
+        <p className={`${sectionLabel} text-blue-600`}>Chat</p>
         <HoverTooltip label="New chat" asChild>
           <IconButton
             onClick={() => emitAiChatNew()}

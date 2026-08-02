@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { motion } from 'framer-motion';
+import { motion } from '@/design-system/motion';
 import type { DashboardData } from '@/features/operations/types';
 import { sectionLabel } from '@/design-system/tokens/typography/presets';
 import { staffGoalStatusMeta } from '@/lib/staff-goal-status';

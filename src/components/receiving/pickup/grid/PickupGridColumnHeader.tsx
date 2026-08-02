@@ -39,11 +39,15 @@ export function PickupGridColumnHeader({
   activeSort = null,
   sortDir = null,
   onSortColumn,
+  onOpenColumnDetails,
+  columnDetailsOpen = false,
 }: {
   columns?: readonly PickupGridColumn[];
   activeSort?: PickupGridColumnKey | null;
   sortDir?: PickupGridSortDir | null;
   onSortColumn?: (key: PickupGridColumnKey) => void;
+  onOpenColumnDetails?: () => void;
+  columnDetailsOpen?: boolean;
 }) {
   return (
     <LedgerGridColumnHeader
@@ -56,6 +60,8 @@ export function PickupGridColumnHeader({
           ? (key) => onSortColumn(key as PickupGridColumnKey)
           : undefined
       }
+      onOpenColumnDetails={onOpenColumnDetails}
+      columnDetailsOpen={columnDetailsOpen}
     />
   );
 }

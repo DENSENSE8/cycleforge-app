@@ -22,7 +22,16 @@ test.describe('Dashboard bulk actions', () => {
     await row.getByRole('checkbox').first().check();
 
     const labels = page.locator('[aria-label]');
-    await expect(labels.filter({ has: page.locator('svg') }).first()).toBeVisible({ timeout: 10_000 });
+    // Wait for an action that EVERY lane carries, not merely "some labelled
+    // icon" — the old gate matched header chrome, so it was already satisfied
+    // before the action set existed. That was harmless while the bottom capsule
+    // rendered synchronously with the selection; the actions now live in the
+    // right rail's footer, which appears only after the inspector opens and
+    // finishes its entrance animation, so the loose gate started collecting an
+    // empty array. Plan: docs/todo/order-rail-selection-plane-PLAN.md (D2).
+    await expect(page.locator('[aria-label="Copy details"]').first()).toBeVisible({
+      timeout: 20_000,
+    });
     const all = await labels.evaluateAll((els) =>
       els.map((e) => e.getAttribute('aria-label') ?? '').filter(Boolean),
     );
@@ -95,6 +104,31 @@ test.describe('Dashboard bulk actions', () => {
     await expect(page.getByRole('button', { name: 'Next' })).toBeVisible({ timeout: 20_000 });
   });
 
+  test('checkbox multi-select keeps both rows in the set', async ({ page }) => {
+    // Regression for the 1→2 collapse: toggle adds B, then either a bubbled
+    // row click or the adopt-effect race selectOnly-replaced the set with one
+    // id. Assert the count on the rail band — independent of any action dialog.
+    await page.goto('/dashboard?unshipped');
+    const rows = page.locator('[data-order-row-id]');
+    await expect(rows.first()).toBeVisible({ timeout: 30_000 });
+    test.skip((await rows.count()) < 2, 'needs at least two pending rows');
+
+    await rows.nth(0).getByRole('checkbox').first().check();
+    await rows.nth(1).getByRole('checkbox').first().check();
+
+    await expect(page.getByText(/\b2 of \d+ selected\b/).first()).toBeVisible({
+      timeout: 20_000,
+    });
+    await expect(rows.nth(0).getByRole('checkbox').first()).toHaveAttribute(
+      'aria-checked',
+      'true',
+    );
+    await expect(rows.nth(1).getByRole('checkbox').first()).toHaveAttribute(
+      'aria-checked',
+      'true',
+    );
+  });
+
   test('Set ship-by opens a date picker scoped to the selection', async ({ page }) => {
     await page.goto('/dashboard?unshipped');
     const rows = page.locator('[data-order-row-id]');
@@ -103,6 +137,10 @@ test.describe('Dashboard bulk actions', () => {
 
     await rows.nth(0).getByRole('checkbox').first().check();
     await rows.nth(1).getByRole('checkbox').first().check();
+
+    await expect(page.getByText(/\b2 of \d+ selected\b/).first()).toBeVisible({
+      timeout: 20_000,
+    });
 
     await page.getByLabel('Set ship-by date').first().click();
 

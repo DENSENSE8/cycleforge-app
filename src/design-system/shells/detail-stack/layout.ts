@@ -1,4 +1,5 @@
 import type { CSSProperties } from 'react';
+import { elevationCastClass } from '@/design-system/tokens/shadows';
 import { cn } from '@/utils/_cn';
 
 /** Shared layout tokens — one place to tune inset / width / header offset. */
@@ -88,6 +89,43 @@ export function detailStackCollapseStripStyle(): CSSProperties {
  */
 export const DETAIL_STACK_ASIDE_SURFACE =
   'isolate flex flex-col overflow-hidden rounded-2xl border border-border-soft bg-surface-card shadow-2xl shadow-scrim/40';
+
+/**
+ * The IN-FLOW push column — the right-edge mirror of
+ * {@link CONTEXT_PANEL_COLUMN_CLASS}.
+ *
+ * Two things here are deliberate and easy to get wrong:
+ *
+ * - **The card itself is the element that tweens its width**, not an
+ *   `overflow-hidden` host wrapping a fixed-width absolute child (the spine's
+ *   shape in `SidebarNavColumn`). The leading resize grip renders *outside* the
+ *   card (`HorizontalEdgeResizeHandle` `placement="outset"`), so a clipping host
+ *   would shear it. `ContextPanelLayout` solved exactly this on the left edge by
+ *   animating the card at `overflow-visible` with an inner clip shell — this is
+ *   that recipe mirrored, not a second drawer.
+ * - **The cast goes RIGHT** (`elevationCastClass('right')`). The context panel
+ *   casts left because it is pinned to the left of the frame; this card is
+ *   pinned to the right, so casting away from centre keeps the whole app under
+ *   one light in the middle of the screen.
+ *
+ * `m-2` matches {@link CONTEXT_PANEL_OUTER_MARGIN} so both cards sit on the
+ * canvas with the same gutter. The gutter is the card's OWN margin, never host
+ * padding — host padding would also inset the workspace between them.
+ */
+export const DETAIL_STACK_PUSH_COLUMN_CLASS = cn(
+  'relative m-2 flex min-h-0 shrink-0 flex-col overflow-hidden',
+  'rounded-2xl border border-border-soft bg-surface-card',
+  elevationCastClass('right'),
+);
+
+/**
+ * Parked push column — the in-flow twin of
+ * {@link detailStackCollapseStripClassName}. Same 32px strip, but it takes its
+ * width from the flow instead of floating over it, so the work surface keeps the
+ * space the open panel gave back.
+ */
+export const DETAIL_STACK_PUSH_STRIP_CLASS =
+  'relative m-2 flex w-8 shrink-0 flex-col items-center pt-3';
 
 /** Default detail stack — panel band (`z-panel`). */
 export const detailStackAsideClassName = `fixed z-panel ${DETAIL_STACK_ASIDE_SURFACE}`;

@@ -16,7 +16,8 @@ import { getSidebarNavPageId, resolveSidebarMode } from '@/lib/sidebar-navigatio
 export function useActiveSidebarMode(): { pageId: string; modeId: string | null } {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const pageId = getSidebarNavPageId(pathname);
+  // Pass search so Products → Labels resolves to Print Labels (Print Stations).
+  const pageId = getSidebarNavPageId(pathname, searchParams);
   const modeId = resolveSidebarMode(pageId, {
     pathname: pathname ?? '',
     params: searchParams,

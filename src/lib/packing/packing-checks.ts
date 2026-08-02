@@ -41,6 +41,17 @@ export const PACKING_STEP_TYPE: Record<PackingTickKind, string> = {
   PACKING_CHECK: 'PACKING',
 };
 
+/**
+ * How the tick was earned. Ruled 2026-08-01
+ * (`docs/todo/step-document-reveal-RULING.md` §3): a print/spool event is the
+ * durable default for an insert; a UI tap is a zero-trust acknowledgement and
+ * must stay distinguishable in the write so a later audit cannot confuse the
+ * two. Stored on `tech_verifications.value_text` — the existing free-text slot
+ * that upsertVerification already threads — so no schema change is needed for
+ * Phase 1. Absent ⇒ legacy tick (pre-origin callers), treated as acknowledgement.
+ */
+export type PackingTickOrigin = 'print' | 'acknowledgement';
+
 export interface RecordPackingTickArgs {
   orderRowId: number;
   kind: PackingTickKind;
@@ -48,6 +59,8 @@ export interface RecordPackingTickArgs {
   stepId: number;
   checked: boolean;
   verifiedBy: number;
+  /** Defaults to `acknowledgement` — the tap path. Pass `print` from the strip. */
+  origin?: PackingTickOrigin;
 }
 
 export type RecordPackingTickResult =
@@ -124,6 +137,11 @@ export async function recordPackingTick(
   }
 
   const stepType = PACKING_STEP_TYPE[args.kind];
+  // Untick clears the confirmation; origin is irrelevant once passed is null,
+  // so wipe value_text too — a re-tick must not inherit a stale 'print' stamp.
+  const origin: PackingTickOrigin | null = args.checked
+    ? (args.origin ?? 'acknowledgement')
+    : null;
   const verification = await deps.upsertVerification(
     {
       sourceKind: 'order',
@@ -134,6 +152,7 @@ export async function recordPackingTick(
       // Untick clears the confirmation (passed = NULL) instead of deleting.
       passed: args.checked ? true : null,
       verifiedBy: args.verifiedBy,
+      valueText: origin,
     },
     orgId,
   );

@@ -12,7 +12,7 @@ import {
   SkuScanRefChip,
   TrackingChip,
   SerialChip,
-  getLast4,
+  getLast8,
 } from '@/components/ui/CopyChip';
 import type { PackerLogRow } from '@/components/mobile/packer/types';
 
@@ -86,9 +86,9 @@ export function MobilePackingSheet({ row, open, onClose }: MobilePackingSheetPro
             </span>
 
             <div className="ml-auto flex shrink-0 items-center gap-2">
-              <OrderIdChip value={orderId} display={getLast4(orderId)} />
-              <SkuScanRefChip value={skuValue} display={getLast4(skuValue)} />
-              <TrackingChip value={trackingValue} display={getLast4(trackingValue)} />
+              <OrderIdChip value={orderId} display={getLast8(orderId)} />
+              <SkuScanRefChip value={skuValue} display={getLast8(skuValue)} />
+              <TrackingChip value={trackingValue} display={getLast8(trackingValue)} />
               <SerialChip value={serialValue} />
             </div>
           </div>

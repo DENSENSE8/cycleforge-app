@@ -13,7 +13,7 @@
  */
 
 import { useCallback, useState } from 'react';
-import { AnimatePresence } from 'framer-motion';
+import { AnimatePresence } from '@/design-system/motion';
 import { DashboardScrollShell } from '@/components/dashboard/DashboardScrollShell';
 import {
   WORKBENCH_BODY_COLUMN,

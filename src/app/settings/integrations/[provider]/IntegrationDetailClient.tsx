@@ -265,7 +265,7 @@ export function IntegrationDetailClient({ def, summary, nangoReady }: Integratio
                   <span className="font-medium text-text-default">{acct.label}</span>
                 )}
                 {acct.role === 'buyer' && (
-                  <span className="rounded bg-indigo-50 px-1.5 py-0.5 text-[8.5px] font-semibold uppercase tracking-widest text-indigo-700">Purchasing</span>
+                  <span className="rounded bg-indigo-50 px-1.5 py-0.5 text-role-micro uppercase tracking-widest text-indigo-700">Purchasing</span>
                 )}
                 {acct.detail && def.connect !== 'ebay' && <span className="text-text-faint">{acct.detail}</span>}
               </div>

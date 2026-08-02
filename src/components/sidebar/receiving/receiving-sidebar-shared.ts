@@ -365,18 +365,40 @@ export function listingLinkPreview(raw: string): string {
 export type ReceivingSelectLineDetail =
   | ReceivingLineRow
   | null
-  | { row: ReceivingLineRow | null; expandFlowSections?: boolean };
+  | {
+      row: ReceivingLineRow | null;
+      expandFlowSections?: boolean;
+      /**
+       * Whether this open should stamp the operator's recents
+       * (`POST /api/receiving-lines/view` → the Recent tab). Default TRUE: every
+       * historical dispatcher (scan resolve, recent rail, sibling PO line,
+       * deep-link restore) IS a deliberate open of one carton, and stays exactly
+       * as it was.
+       *
+       * The Unbox FEED passes false. Browsing a 117-row queue is not the same
+       * act as working a carton — if a click on the map counted, Recent would
+       * just mirror the feed and stop answering "what did I actually touch".
+       * The gesture only became possible when the feed's row body was handed to
+       * the record plane, so this is the one caller that has to answer.
+       */
+      recordView?: boolean;
+    };
 
 export function readSelectLineDetail(
   detail: ReceivingSelectLineDetail,
-): { row: ReceivingLineRow | null; expandFlowSections: boolean } {
+): { row: ReceivingLineRow | null; expandFlowSections: boolean; recordView: boolean } {
   if (detail && typeof detail === 'object' && 'row' in detail) {
     return {
       row: detail.row ?? null,
       expandFlowSections: detail.expandFlowSections === true,
+      recordView: detail.recordView !== false,
     };
   }
-  return { row: (detail as ReceivingLineRow | null) ?? null, expandFlowSections: false };
+  return {
+    row: (detail as ReceivingLineRow | null) ?? null,
+    expandFlowSections: false,
+    recordView: true,
+  };
 }
 
 // ── Form input class tokens ─────────────────────────────────────────────────

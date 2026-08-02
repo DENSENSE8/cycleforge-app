@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, type ReactNode } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion } from '@/design-system/motion';
 import { ChevronDown } from '@/components/Icons';
 import { QUEUE_ROW, queueGroupNestClass } from '@/components/ui/queue-row-chrome';
 import { framerPresence, framerTransition } from '@/design-system';

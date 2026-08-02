@@ -1,6 +1,6 @@
 'use client';
 
-import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import { AnimatePresence, motion, useReducedMotion } from '@/design-system/motion';
 import { SlicedActionDock } from '@/design-system/primitives';
 import type { TerminalActionVm } from '@/lib/station-terminal';
 import { getStaffThemeById, stationThemeColors } from '@/utils/staff-colors';

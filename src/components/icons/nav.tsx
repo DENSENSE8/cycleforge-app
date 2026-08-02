@@ -2,7 +2,13 @@
 // Generated split of the former flat Icons.tsx (the nav-icon SoT).
 // Re-exported verbatim through ../Icons.tsx — do not change export names.
 
-import { ShelvingUnit as LucideShelvingUnit, Warehouse as LucideWarehouse } from 'lucide-react';
+import {
+  ChartPie as LucideChartPie,
+  ScanBarcode as LucideScanBarcode,
+  ShelvingUnit as LucideShelvingUnit,
+  Warehouse as LucideWarehouse,
+  Workflow as LucideWorkflow,
+} from 'lucide-react';
 
 export const BarChart3 = ({ className = "w-6 h-6" }: { className?: string }) => (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -190,6 +196,21 @@ export const Monitor = ({ className = "w-6 h-6" }: { className?: string }) => (
         <rect x="2" y="3" width="20" height="14" rx="2" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} />
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 21h8M12 17v4" />
     </svg>
+);
+
+/** Pie chart — Analytics Monitor spine section (lucide chart-pie). */
+export const ChartPie = ({ className = "w-6 h-6" }: { className?: string }) => (
+    <LucideChartPie className={className} />
+);
+
+/** Scanner + barcode — Scan Stations spine section (lucide scan-barcode). */
+export const ScanBarcode = ({ className = "w-6 h-6" }: { className?: string }) => (
+    <LucideScanBarcode className={className} />
+);
+
+/** Workflow graph — Workflow Studio spine section (lucide workflow). */
+export const Workflow = ({ className = "w-6 h-6" }: { className?: string }) => (
+    <LucideWorkflow className={className} />
 );
 
 export const Smartphone = ({ className = "w-6 h-6" }: { className?: string }) => (

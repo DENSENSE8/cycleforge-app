@@ -1,12 +1,13 @@
 'use client';
 
 import React from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from '@/design-system/motion';
 import { motionBezier } from '@/design-system/foundations/motion-framer';
 import { Barcode, Package, Wrench, Activity } from '@/components/Icons';
 import type { DashboardData } from '@/features/operations/types';
 import { sectionLabel } from '@/design-system/tokens/typography/presets';
 import { MONITOR_SECTION_CARD_CLASS } from '@/design-system/components/monitor';
+import { StaffAvatar } from '@/components/identity';
 import { getStaffColorHex } from '@/utils/staff-colors';
 import { useStaffColorVersion } from '@/contexts/StaffColorsProvider';
 import { cn } from '@/utils/_cn';
@@ -138,10 +139,18 @@ export function LiveFeedCard({ feed, isLoading, ablyStatus = 'connected' }: Live
                         {row.summary}
                       </p>
                       {row.actor_name && (
-                        <p className="text-role-micro font-medium mt-0.5 truncate text-text-muted">
-                          by{' '}
+                        <p className="text-role-micro font-medium mt-0.5 flex min-w-0 items-center gap-1 truncate text-text-muted">
+                          <span>by</span>
+                          {row.staff_id ? (
+                            <StaffAvatar
+                              staffId={row.staff_id}
+                              name={row.actor_name}
+                              size="xs"
+                              ring={false}
+                            />
+                          ) : null}
                           <span
-                            className="font-semibold"
+                            className="truncate font-semibold"
                             style={{ color: getStaffColorHex({ id: row.staff_id ?? null }) }}
                           >
                             {row.actor_name}

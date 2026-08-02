@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { WifiOff, RefreshCw } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from '@/design-system/motion';
 import { Button } from '@/design-system/primitives';
 import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
 import {

@@ -37,6 +37,23 @@ const sharedFields = {
   /** Critical parts drive the "all required items in the box" pack signal. */
   isCritical: z.boolean().optional(),
   sortOrder: z.number().int().min(0).optional(),
+  /**
+   * Reference insert (2026-08-01d). Directly-fetchable Blob url — NEVER an
+   * `/api/documents/:id/content` path (packing.* does not imply orders.view).
+   * Empty string / null clears on update; omit to leave unchanged. Title/mime
+   * without a url is rejected by sku_kit_parts_document_url_required_chk.
+   */
+  documentUrl: z
+    .string()
+    .trim()
+    .max(2000)
+    .nullish()
+    .refine(
+      (v) => v == null || v === '' || /^https?:\/\//i.test(v),
+      'documentUrl must be an http(s) url',
+    ),
+  documentTitle: z.string().trim().max(200).nullish(),
+  documentMime: z.enum(['pdf', 'image', 'unknown']).nullish(),
 };
 
 export const KitPartCreateBody = z.object({

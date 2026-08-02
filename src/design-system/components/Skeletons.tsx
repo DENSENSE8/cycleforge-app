@@ -1,6 +1,6 @@
 'use client';
 
-import { motion } from 'framer-motion';
+import { motion } from '@/design-system/motion';
 import { framerPresence, framerTransition } from '../foundations/motion-framer';
 
 interface SkeletonProps {

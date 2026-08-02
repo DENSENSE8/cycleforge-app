@@ -19,7 +19,7 @@ import {
   type FocusEvent,
   type ReactNode,
 } from 'react';
-import { motion, useAnimationControls, useReducedMotion } from 'framer-motion';
+import { motion, useAnimationControls, useReducedMotion } from '@/design-system/motion';
 import {
   framerTransition,
   scanBandGlowOpacity,

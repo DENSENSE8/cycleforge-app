@@ -15,7 +15,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { motion } from 'framer-motion';
+import { motion } from '@/design-system/motion';
 import { cn } from '@/utils/_cn';
 import { Button } from '@/design-system/primitives';
 import {

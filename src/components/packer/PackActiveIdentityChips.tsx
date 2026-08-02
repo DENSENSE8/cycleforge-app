@@ -6,9 +6,9 @@
  *
  * Same anatomy and tokens as the receiving Unbox identity row: each chip is an
  * {@link IdentityLinkChip} over the {@link CopyChip} family, so the order number
- * is a last-4 `id` chip (`#`) and tracking is a last-4 `tracking` chip (MapPin)
+ * is a last-8 `id` chip (`#`) and tracking is a last-8 `tracking` chip (MapPin)
  * that opens the carrier page from its hover menu. Never hand-roll a mono
- * `<span>` for these ids — the last-4 face + copy + clipboard history all come
+ * `<span>` for these ids — the last-8 face + copy + clipboard history all come
  * from the chip SoT.
  *
  * NO listing chip here: the sidebar card is the scan-loop confirmation, and the
@@ -18,7 +18,7 @@
  */
 
 import { IdentityLinkChip } from '@/components/receiving/workspace/line-edit/IdentityLinkChip';
-import { getLast4 } from '@/components/ui/CopyChip';
+import { getLast8 } from '@/components/ui/CopyChip';
 import { getTrackingUrl } from '@/utils/order-links';
 
 interface PackActiveIdentity {
@@ -44,7 +44,7 @@ export function PackActiveIdentityChips({ activeOrder }: { activeOrder: PackActi
         openHref={undefined}
         openTitle={isSkuIdentity ? 'SKU' : 'Order number'}
         value={identityValue}
-        display={identityValue ? getLast4(identityValue) : '----'}
+        display={identityValue ? getLast8(identityValue) : '--------'}
         tone={isSkuIdentity ? 'sku' : 'id'}
         underlineClass={isSkuIdentity ? 'border-yellow-500' : 'border-border-emphasis'}
         disableCopy={!identityValue}
@@ -56,7 +56,7 @@ export function PackActiveIdentityChips({ activeOrder }: { activeOrder: PackActi
         openHref={tracking ? getTrackingUrl(tracking) : null}
         openTitle="Open carrier tracking"
         value={tracking}
-        display={tracking ? getLast4(tracking) : '----'}
+        display={tracking ? getLast8(tracking) : '--------'}
         tone="tracking"
         underlineClass="border-blue-500"
         disableCopy={!tracking}

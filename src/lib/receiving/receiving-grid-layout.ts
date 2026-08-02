@@ -105,9 +105,9 @@ export const RECEIVING_GRID_COLUMNS: readonly ReceivingGridColumn[] = [
     labelFitRem: 4.5,
   },
   { key: 'platform', width: 'minmax(3rem, 3rem)', label: 'Platform', gridLabel: 'Ch.', type: 'external', hideKey: 'platform', tier: 'optional', labelFitRem: 4.5 },
-  { key: 'order', width: 'minmax(4.5rem, 4.5rem)', label: 'Order', type: 'id', hideKey: 'orderid', labelFitRem: 4.5 },
-  { key: 'tracking', width: 'minmax(5.75rem, 5.75rem)', label: 'Tracking', type: 'location', omitCellIcon: true, hideKey: 'tracking', labelFitRem: 4.5 },
-  { key: 'serial', width: 'minmax(5.75rem, 5.75rem)', label: 'Serial', type: 'id', hideKey: 'serial', tier: 'optional', labelFitRem: 4.5 },
+  { key: 'order', width: 'minmax(7rem, 7rem)', label: 'Order', type: 'id', hideKey: 'orderid', labelFitRem: 4.5 },
+  { key: 'tracking', width: 'minmax(8rem, 8rem)', label: 'Tracking', type: 'location', omitCellIcon: true, hideKey: 'tracking', labelFitRem: 4.5 },
+  { key: 'serial', width: 'minmax(8rem, 8rem)', label: 'Serial', type: 'id', hideKey: 'serial', tier: 'optional', labelFitRem: 4.5 },
 ] as const;
 
 /**

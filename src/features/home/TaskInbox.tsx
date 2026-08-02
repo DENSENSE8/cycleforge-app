@@ -4,8 +4,9 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/design-system/primitives';
 import { ContextualEmptyState } from '@/components/ui/ContextualEmptyState';
-import { CheckCircle, Inbox, Clock, Zap } from '@/components/Icons';
+import { Check, Inbox, Clock, Loader2, Zap } from '@/components/Icons';
 import { toast } from '@/lib/toast';
+import { cn } from '@/utils/_cn';
 
 interface Task {
   id: string;
@@ -52,7 +53,7 @@ export function TaskInbox() {
   if (isLoading) {
     return (
       <div className="flex h-full items-center justify-center p-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500"></div>
+        <Loader2 className="h-8 w-8 animate-spin text-text-success" />
       </div>
     );
   }
@@ -97,16 +98,17 @@ export function TaskInbox() {
           {myTasks.length > 0 && (
             <div className="mb-6">
               <div className="px-6 py-3 text-role-caption font-semibold text-text-muted tracking-wider uppercase flex items-center gap-2 sticky top-0 bg-surface-card/95 backdrop-blur-sm z-10">
-                <CheckCircle className="w-4 h-4" /> My Tasks
+                <Check className="w-4 h-4" /> My Tasks
               </div>
               <div className="flex flex-col">
                 {myTasks.map((task) => (
                   <button
                     key={task.id}
                     onClick={() => setSelectedTaskId(task.id)}
-                    className={`flex flex-col px-6 py-4 border-b border-border-hairline text-left transition-all duration-200 hover:bg-surface-sunken group ${
-                      selectedTaskId === task.id ? 'bg-surface-sunken border-l-4 border-l-emerald-500' : 'border-l-4 border-l-transparent'
-                    }`}
+                    className={cn(
+                      'flex flex-col px-6 py-4 border-b border-border-hairline text-left transition-colors duration-150 hover:bg-surface-sunken group',
+                      selectedTaskId === task.id && 'bg-blue-50 ring-1 ring-inset ring-blue-400',
+                    )}
                   >
                     <div className="flex items-center justify-between w-full mb-1">
                       <span className="text-body font-medium text-text-default line-clamp-1 group-hover:text-emerald-600 transition-colors">
@@ -135,9 +137,10 @@ export function TaskInbox() {
                   <button
                     key={task.id}
                     onClick={() => setSelectedTaskId(task.id)}
-                    className={`flex flex-col px-6 py-4 border-b border-border-hairline text-left transition-all duration-200 hover:bg-surface-sunken group ${
-                      selectedTaskId === task.id ? 'bg-surface-sunken border-l-4 border-l-blue-500' : 'border-l-4 border-l-transparent'
-                    }`}
+                    className={cn(
+                      'flex flex-col px-6 py-4 border-b border-border-hairline text-left transition-colors duration-150 hover:bg-surface-sunken group',
+                      selectedTaskId === task.id && 'bg-blue-50 ring-1 ring-inset ring-blue-400',
+                    )}
                   >
                     <div className="flex items-center justify-between w-full mb-1">
                       <span className="text-body font-medium text-text-default line-clamp-1 group-hover:text-blue-600 transition-colors">

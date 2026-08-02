@@ -7,7 +7,7 @@
  * AnimatePresence for the slide in/out. Extracted from the dashboard page.
  */
 
-import { AnimatePresence } from 'framer-motion';
+import { AnimatePresence } from '@/design-system/motion';
 import dynamic from 'next/dynamic';
 import type { ShippedOrder } from '@/types/orders';
 import type { ShippedDetailsContext } from '@/utils/events';

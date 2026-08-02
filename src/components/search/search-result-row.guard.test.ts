@@ -8,7 +8,7 @@ import { describe, it } from 'node:test';
  *   • Chips / entity tags are density-gated (comfortable only) — never viewport
  *     `md:` inside a narrow sidebar/dropdown (desktop rails are still ~16–18rem).
  *   • Identifier titles go through narrowSearchTitleDisplay so tracking rows
- *     show last-4 instead of identical `94…` crumbs.
+ *     show last-8 instead of identical `94…` crumbs.
  */
 
 function readSibling(relativePath: string): string {

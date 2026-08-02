@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion } from '@/design-system/motion';
 import { useMutation } from '@tanstack/react-query';
 import { Truck, Check, Loader2, RefreshCw, Clock, AlertTriangle, Trash2 } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';

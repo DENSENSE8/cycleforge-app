@@ -32,7 +32,7 @@ import {
   type ComponentType,
   type SVGProps,
 } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion } from '@/design-system/motion';
 import {
   useMotionPresence,
   useMotionTransition,
@@ -56,7 +56,7 @@ import { Popover } from '@/design-system/primitives/Popover';
 import { PaneHeaderTabs } from '@/components/ui/pane-header';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { ListingUrlChip, OrderIdChip, SerialChip } from '@/components/ui/CopyChip';
-import { getLast4 } from '@/lib/copy-chip-format';
+import { getLast8 } from '@/lib/copy-chip-format';
 import { toast } from '@/lib/toast';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 import { dispatchUnboxRailLineUpdated } from '@/components/sidebar/receiving/unbox-rail-events';
@@ -571,7 +571,7 @@ function OrderSuggestList({
               ) : null}
             </span>
             <span className="shrink-0">
-              <OrderIdChip value={c.order_id} display={getLast4(c.order_id)} />
+              <OrderIdChip value={c.order_id} display={getLast8(c.order_id)} />
             </span>
           </button>
         </li>
@@ -615,7 +615,7 @@ function buildTicketPrefill(result: ShippedOrderCompare, receivedSerial: string 
 
 /**
  * Found-order display: title + order chip, then the serial comparison as the
- * crux (shipped vs received via the shared CopyChip last-4 chips), a single
+ * crux (shipped vs received via the shared CopyChip last-8 chips), a single
  * tone-carrying verdict line, and the actions (listing + support-ticket popover).
  */
 function CompareResult({
@@ -673,7 +673,7 @@ function CompareResult({
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {order.order_id ? (
-            <OrderIdChip value={order.order_id} display={getLast4(order.order_id)} />
+            <OrderIdChip value={order.order_id} display={getLast8(order.order_id)} />
           ) : null}
           <button
             type="button"
@@ -721,7 +721,7 @@ function CompareResult({
   );
 }
 
-/** Compare received vs shipped serials as last-4 {@link SerialChip}s. */
+/** Compare received vs shipped serials as last-8 {@link SerialChip}s. */
 function SerialContrast({ received, shipped }: { received: string | null; shipped: string | null }) {
   return (
     <div className="space-y-1.5 rounded-lg bg-surface-canvas px-2.5 py-2 ring-1 ring-inset ring-border-soft">

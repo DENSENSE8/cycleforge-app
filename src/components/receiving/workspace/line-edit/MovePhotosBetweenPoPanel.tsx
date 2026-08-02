@@ -12,7 +12,7 @@
  */
 
 import { useEffect, useRef, useState } from 'react';
-import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import { AnimatePresence, motion, useReducedMotion } from '@/design-system/motion';
 import { ArrowLeftRight, Loader2, Package, Search, X } from '@/components/Icons';
 import { Button, IconButton } from '@/design-system/primitives';
 import { focusRing } from '@/design-system/tokens/focus-ring';

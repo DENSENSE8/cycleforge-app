@@ -36,3 +36,30 @@ test('StaffPreferencesPutBody accepts Insert and rejects printable keys', () => 
   ok(!StaffPreferencesPutBody.safeParse({ focusScanHotkey: 'a' }).success);
   ok(!StaffPreferencesPutBody.safeParse({ focusScanHotkey: 'Pause' }).success);
 });
+
+test('StaffPreferencesPutBody accepts quickAccess pins with label + exact href', () => {
+  const pin = {
+    id: 'p1',
+    label: 'Receiving',
+    href: '/unbox?openReceivingId=50297',
+    iconKey: 'receiving',
+    addedAt: 1,
+  };
+  ok(
+    StaffPreferencesPutBody.safeParse({ quickAccess: { pinned: [pin] } }).success,
+    'valid pin bag should pass',
+  );
+  ok(StaffPreferencesPutBody.safeParse({ quickAccess: null }).success);
+  ok(
+    !StaffPreferencesPutBody.safeParse({
+      quickAccess: { pinned: [{ ...pin, href: 'https://evil.example' }] },
+    }).success,
+    'external href must be rejected',
+  );
+  ok(
+    !StaffPreferencesPutBody.safeParse({
+      quickAccess: { pinned: [{ ...pin, href: 'javascript:void(0)' }] },
+    }).success,
+    'non-app href must be rejected',
+  );
+});

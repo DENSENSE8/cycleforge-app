@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion } from '@/design-system/motion';
 import { fbaPaths } from '@/lib/fba/api-paths';
 import { Check, ChevronDown, Loader2, Boxes } from '@/components/Icons';
 import { framerPresence, framerTransition, SkeletonList } from '@/design-system';

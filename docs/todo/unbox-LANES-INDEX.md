@@ -9,7 +9,7 @@ Four lanes. A, C, and the capture-stack foundation run in parallel; **B is the r
 | **Foundation** | `CaptureStack` primitive (P0 dead-tail, P1 promote) | [capture-stack](./unbox-capture-stack-PLAN.md) | [P0+P1](./unbox-capture-stack-P0-P1-EXECUTION-PROMPT.md) |
 | **A** | Two-row station identity header | [A](./unbox-A-identity-density-PLAN.md) | [A](./unbox-A-identity-density-EXECUTION-PROMPT.md) |
 | **C** | Per-PO / per-item labels + notes | [C](./unbox-C-label-note-grain-PLAN.md) | [C](./unbox-C-label-note-grain-EXECUTION-PROMPT.md) |
-| **B** | Step procedure + Playwright | [B](./unbox-B-step-procedure-PLAN.md) | [B](./unbox-B-step-procedure-EXECUTION-PROMPT.md) |
+| **B** | Step procedure + Playwright — **vocabulary SHIPPED as the Checklist display; restructure REJECTED.** Plan superseded in part; the prompt now carries the two remaining slices | [B](./unbox-B-step-procedure-PLAN.md) | [B](./unbox-B-step-procedure-EXECUTION-PROMPT.md) |
 | **D** | Canvas Procedure lens (`/studio`) | [D](./unbox-D-canvas-procedure-PLAN.md) | [D](./unbox-D-canvas-procedure-EXECUTION-PROMPT.md) |
 | **E** | Tab strip → right details panel — **SHIPPED** `7d014d37a` | [E](./unbox-E-tabs-to-right-rail-PLAN.md) | [E](./unbox-E-tabs-to-right-rail-EXECUTION-PROMPT.md) |
 | **E2** | Displays column follow-through — URL state, entry, grammar collision | — | [E2 handoff](./unbox-E2-displays-column-HANDOFF.md) |

@@ -17,7 +17,7 @@ export function ReceivingTitleCell({ col, rule, ctx }: ReceivingGridCellProps) {
   return (
     <div
       data-col="title"
-      className={cn(receivingDataCellClass(col, rule), RECEIVING_GRID_FROZEN_CELL, 'gap-1.5')}
+      className={cn(receivingDataCellClass(col, rule, ctx), RECEIVING_GRID_FROZEN_CELL, 'gap-1.5')}
       style={{ left: receivingGridFrozenLeft('title') }}
       data-frozen-edge
     >

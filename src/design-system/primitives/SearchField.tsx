@@ -63,6 +63,11 @@ export interface SearchFieldProps {
   className?: string;
   tone?: SearchFieldTone;
   size?: SearchFieldSize;
+  /**
+   * Trailing loader while a query fetch is in flight. Only paints when the
+   * field has a non-empty value — an empty open field keeps paste, never a
+   * spinner (background list refetch must not hijack chrome expand).
+   */
   isSearching?: boolean;
   rightElement?: ReactNode;
   leadingIcon?: ReactNode;
@@ -194,9 +199,11 @@ export function SearchField({
     };
   }, [draft, debounceMs, onChange]);
 
-  // Pending = user has typed but debounce hasn't fired yet — show a subtle dot.
-  const isPending = draft !== committedRef.current && !isSearching;
   const hasValue = Boolean(draft.trim());
+  // Spinner means "this query is resolving" — never replace paste on an empty open field.
+  const showSearchSpinner = isSearching && hasValue;
+  // Pending = user has typed but debounce hasn't fired yet — show a subtle dot.
+  const isPending = draft !== committedRef.current && !showSearchSpinner;
 
   const sizeClasses = size === 'compact'
     ? {
@@ -278,7 +285,7 @@ export function SearchField({
   const trailingControl =
     customTrailingSlot !== undefined ? (
       customTrailingSlot
-    ) : isSearching ? (
+    ) : showSearchSpinner ? (
       <Loader2 className={`h-4 w-4 animate-spin ${loaderToneClass[tone]}`} />
     ) : isPending ? (
       <span className="flex h-4 w-4 items-center justify-center">

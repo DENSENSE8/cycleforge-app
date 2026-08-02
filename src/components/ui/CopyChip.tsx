@@ -23,8 +23,9 @@ import { conditionGradeChipStyleOrPending } from '@/lib/condition-tone';
 import { conditionGradeTableLabel } from '@/components/station/receiving-constants';
 import { skuScanPrefixBeforeColon, getExternalUrlByItemNumber } from '@/hooks/useExternalItemUrl';
 import {
-  getLast4,
-  getLast4Serial,
+  EMPTY_CHIP_DISPLAY,
+  getLast8,
+  getLast8Serial,
   isEmptyChipDisplay,
   isSkuFormattedScanRef,
   normalizeCopyText,
@@ -33,9 +34,8 @@ import {
 } from '@/lib/copy-chip-format';
 
 export {
-  getLast4,
   getLast8,
-  getLast4Serial,
+  getLast8Serial,
   isEmptyChipDisplay,
   isSkuFormattedScanRef,
   resolveChipDisplay,
@@ -173,8 +173,8 @@ export interface CopyChipProps {
   activationTitle?: string;
   activationDisabled?: boolean;
   /**
-   * Below-row editor is open for this chip. Face swaps to pulsed `edit` (4
-   * chars — same footprint as last-4 / `----` / `eBay`) so the identity row
+   * Below-row editor is open for this chip. Face swaps to pulsed `editing`
+   * (8 chars — same footprint as last-8 / `--------`) so the identity row
    * never reflows when an editor opens. Copy is disabled while editing.
    */
   editing?: boolean;
@@ -206,7 +206,7 @@ export function CopyChip({
   editing = false,
 }: CopyChipProps) {
   const resolvedTooltipAction = tooltipAction ?? (onActivate ? 'external-link' : 'copy');
-  const faceDisplay = editing ? 'edit' : display;
+  const faceDisplay = editing ? 'editing' : display;
   const {
     chipRef,
     hasTooltipProvider,
@@ -313,7 +313,7 @@ export function CopyChip({
 /**
  * Internal order ID. Gray / Hash icon. Do NOT use for tracking numbers or FNSKUs.
  * `plain` drops the leading hash glyph (Sheets-like queue grid, where the column
- * header already labels "Order") while keeping copy + last-4 mono value.
+ * header already labels "Order") while keeping copy + last-8 mono value.
  */
 export const OrderIdChip = ({
   value,
@@ -328,7 +328,7 @@ export const OrderIdChip = ({
   dense?: boolean;
   /** Omit the leading hash icon — used by the quiet queue-grid identity cells. */
   plain?: boolean;
-  /** Grid tracks: keep last-4 fully visible (no `33…` ellipsis). */
+  /** Grid tracks: keep last-8 fully visible (no `33…` ellipsis). */
   truncateDisplay?: boolean;
   fitDisplayWidth?: boolean;
 }) => (
@@ -340,7 +340,7 @@ export const OrderIdChip = ({
     dense={dense}
     truncateDisplay={truncateDisplay}
     fitDisplayWidth={fitDisplayWidth}
-    // Empty → `'----'` face (resolveChipDisplay); disable copy so the button
+    // Empty → `'--------'` face (resolveChipDisplay); disable copy so the button
     // stays full-opacity instead of the no-value disabled fade.
     disableCopy={isEmptyDisplayValue(value)}
   />
@@ -353,7 +353,7 @@ export const OrderIdChip = ({
 export function OrderIdChipPlaceholder({ plain }: { plain?: boolean } = {}) {
   return (
     <span className="pointer-events-none inline-flex shrink-0 select-none invisible" aria-hidden>
-      <OrderIdChip value="0000" display="0000" plain={plain} />
+      <OrderIdChip value="00000000" display="00000000" plain={plain} />
     </span>
   );
 }
@@ -399,7 +399,7 @@ export const TrackingChip = ({
   /** When false, renders copy label only — use with a separate leading icon column so rows align across the FBA sidebar. */
   showIcon = true,
   /**
-   * Default true — underline hugs the mono label (last-4 preview). Prevents full-width underline when the wrapper
+   * Default true — underline hugs the mono label (last-8 preview). Prevents full-width underline when the wrapper
    * sits in a wide grid/flex slot (e.g. FBA tracking bundle header beside “N SKUs · M units”).
    */
   fitDisplayWidth = true,
@@ -407,7 +407,7 @@ export const TrackingChip = ({
   disableTooltip = false,
 }: {
   value: string;
-  /** @deprecated Tracking labels are always derived from `value` as last four. */
+  /** @deprecated Tracking labels are always derived from `value` as last eight. */
   display?: string;
   disableCopy?: boolean;
   /** Tailwind width utilities on the wrapper (sidebar grids need `min-w-0 flex-1`). */
@@ -420,11 +420,11 @@ export const TrackingChip = ({
 }) => (
   <CopyChip
     value={value}
-    display={resolveChipDisplay(getLast4(value))}
+    display={resolveChipDisplay(getLast8(value))}
     tone="tracking"
     icon={showIcon ? undefined : null}
     width={width}
-    // Empty → `'----'` face; disable copy so the button stays full-opacity
+    // Empty → `'--------'` face; disable copy so the button stays full-opacity
     // instead of the no-value disabled fade.
     disableCopy={disableCopy || isEmptyDisplayValue(value)}
     disableTooltip={disableTooltip}
@@ -501,14 +501,14 @@ export const SkuScanRefChip = ({
 );
 
 /**
- * Empty SKU slot on a PO-line meta row — mono `----` + solid yellow underline
+ * Empty SKU slot on a PO-line meta row — mono `--------` + solid yellow underline
  * matching a dense {@link SkuScanRefChip} footprint (same pencil tone, same
- * 4ch width). Presentational only (no copy button) so accordion row clicks
+ * 8ch width). Presentational only (no copy button) so accordion row clicks
  * stay on the row. Used by blank matched SKUs and the empty unfound stub.
  *
  * Do NOT route through {@link AddValueChipFace}: its non-mono micro label +
- * dashed underline stacks four short hyphens over two CSS dashes and reads as
- * an uneven double-dash, not a 4-char empty chip.
+ * dashed underline stacks short hyphens over CSS dashes and reads as an uneven
+ * double-dash, not an 8-char empty chip.
  */
 export function EmptySkuChipFace({ dense = true }: { dense?: boolean } = {}) {
   const tone = CHIP_TONES.sku;
@@ -526,7 +526,7 @@ export function EmptySkuChipFace({ dense = true }: { dense?: boolean } = {}) {
             dense ? 'text-role-caption font-semibold font-mono text-text-default' : monoValue
           } tracking-tight leading-none border-b-2 pb-0.5 text-left ${tone.underline}`}
         >
-          ----
+          {EMPTY_CHIP_DISPLAY}
         </span>
       </span>
     </span>
@@ -634,11 +634,11 @@ export const ConditionGradeChip = ({
  * Picks blue carrier {@link TrackingChip} vs yellow {@link SkuScanRefChip} when the value contains `:`.
  * For SKU-formatted scans (`SKU:ID`), also renders an Ecwid {@link PlatformChip} that opens the
  * product search page using the base SKU (segment before `:`).
- * Label is always last 4 characters of the raw value (same for carrier and SKU scans).
+ * Label is always last 8 characters of the raw value (same for carrier and SKU scans).
  */
 export function TrackingOrSkuScanChip({ value, plain }: { value: string; plain?: boolean }) {
   const raw = normalizeCopyText(value);
-  const display = getLast4(raw);
+  const display = getLast8(raw);
   if (isSkuFormattedScanRef(raw)) {
     const sku = skuScanPrefixBeforeColon(raw);
     const productUrl = getExternalUrlByItemNumber(sku);
@@ -652,7 +652,7 @@ export function TrackingOrSkuScanChip({ value, plain }: { value: string; plain?:
             if (productUrl) window.open(productUrl, '_blank', 'noopener,noreferrer');
           }}
         />
-        <SourceOrderChip value={sku} display={getLast4(sku)} />
+        <SourceOrderChip value={sku} display={getLast8(sku)} />
         <SkuScanRefChip value={raw} display={display} />
       </>
     );
@@ -664,27 +664,27 @@ export function TrackingOrSkuScanChip({ value, plain }: { value: string; plain?:
  * Device / unit serial number. Emerald / Barcode icon.
  *
  * The label is derived internally from `value` via {@link resolveSerialDisplay},
- * so callers pass only the serial (or a comma-joined CSV) — no `getLast4Serial`
+ * so callers pass only the serial (or a comma-joined CSV) — no `getLast8Serial`
  * / empty-state handling at the call site. `display` is an optional override
  * (honored as-is after empty-state collapse) for rare cases like a batch
- * journey row whose sibling last-4s collide — see
+ * journey row whose sibling last-8s collide — see
  * `disambiguateSerialDisplays` in `@/lib/copy-chip-format`.
  */
 export const SerialChip = ({
   value,
   display,
-  width = 'w-[84px] shrink-0',
+  width = 'w-[120px] shrink-0',
   disableTooltip = false,
   dense,
   pending,
 }: {
   value: string;
   /** Optional label override; normally derived from `value`. When set, used
-   *  as-is after empty-state collapse (not re-last-4'd) so callers can pass a
+   *  as-is after empty-state collapse (not re-last-8'd) so callers can pass a
    *  longer disambiguating suffix. */
   display?: string;
   /** Tailwind width utilities on the wrapper; default is a fixed width sized
-   *  for the Barcode icon + 4-char mono value. Table rows pass a content-fit
+   *  for the Barcode icon + 8-char mono value. Table rows pass a content-fit
    *  width so the serial column hugs its value like the other id chips. */
   width?: string;
   disableTooltip?: boolean;
@@ -714,7 +714,7 @@ export const SerialChip = ({
 /**
  * Loading placeholder for a {@link SerialChip}. Emerald Barcode glyph + a pulsing
  * bar in the mono-value slot, carrying the same emerald underline and default
- * ~84px footprint so the PO-line meta row does not reflow when the real serial
+ * ~120px footprint so the PO-line meta row does not reflow when the real serial
  * streams in from the per-carton serials query. Reads as "serial loading", not
  * "no serial" — the empty state a bare gap would imply.
  *
@@ -725,7 +725,7 @@ export const SerialChip = ({
  * shared {@link CHIP_TONES} `serial` entry (one hue SoT, no parallel color).
  */
 export const SerialChipSkeleton = ({
-  width = 'w-[84px] shrink-0',
+  width = 'w-[120px] shrink-0',
   dense,
 }: {
   /** Match the sibling {@link SerialChip} width so the swap doesn't reflow. */
@@ -744,7 +744,7 @@ export const SerialChipSkeleton = ({
         </span>
         <span className={`inline-flex items-end border-b-2 pb-0.5 ${tone.underline}`}>
           <span
-            className={`${dense ? 'h-2.5' : 'h-3'} w-9 max-w-full animate-pulse rounded bg-surface-strong`}
+            className={`${dense ? 'h-2.5' : 'h-3'} w-[4.5rem] max-w-full animate-pulse rounded bg-surface-strong`}
           />
         </span>
       </span>
@@ -759,7 +759,7 @@ export const SerialChipSkeleton = ({
 export const SkuSerialChip = ({
   value,
   display,
-  width = 'w-[84px] shrink-0',
+  width = 'w-[120px] shrink-0',
 }: {
   value: string;
   display: string;
@@ -767,7 +767,7 @@ export const SkuSerialChip = ({
 }) => (
   <CopyChip
     value={value}
-    display={isEmptyDisplayValue(display) ? 'SKU' : getLast4Serial(display)}
+    display={isEmptyDisplayValue(display) ? 'SKU' : getLast8Serial(display)}
     tone="sku"
     width={width}
     truncateDisplay={false}
@@ -790,11 +790,11 @@ function GroupCountChip({ count, tone, dense }: { count: number; tone: ChipTone;
         <span className={`inline-flex shrink-0 items-center justify-center ${dense ? '[&_svg]:h-3 [&_svg]:w-3' : ''} ${toneDef.iconClass}`}>
           {toneDef.icon}
         </span>
-        {/* Reserve the same 4-char footprint the last-4 id chips occupy so the
+        {/* Reserve the same 8-char footprint the last-8 id chips occupy so the
             icon lands at the same x and the underline matches the sibling chips'
             width. Value sits right within that footprint; underline color matches
             the column's real chip. */}
-        <span className={`${dense ? 'text-role-caption' : 'text-sm'} w-[4ch] border-b-2 ${toneDef.underline} pb-0.5 text-right font-mono font-semibold leading-none tracking-tight text-yellow-600`}>
+        <span className={`${dense ? 'text-role-caption' : 'text-sm'} w-[8ch] border-b-2 ${toneDef.underline} pb-0.5 text-right font-mono font-semibold leading-none tracking-tight text-yellow-600`}>
           ×{count}
         </span>
       </span>
@@ -839,7 +839,7 @@ export const TicketChip = ({
     disableTooltip={disableTooltip}
   />
 );
-/** Bin / location barcode chip (teal / Tags). Prefer last-4 display for long barcodes. */
+/** Bin / location barcode chip (teal / Tags). Prefer last-8 display for long barcodes. */
 export const BinChip = ({
   value,
   display,
@@ -851,7 +851,7 @@ export const BinChip = ({
 }) => (
   <CopyChip
     value={value}
-    display={display ?? getLast4(value)}
+    display={display ?? getLast8(value)}
     tone="bin"
     dense={dense}
     width="w-fit max-w-full"
@@ -864,7 +864,7 @@ export const BinChip = ({
  * Do NOT use for carrier tracking numbers — use TrackingChip (blue/MapPin) for those.
  */
 export const FnskuChip = ({ value, width }: { value: string; width?: string }) => (
-  <CopyChip value={value} display={getLast4(value)} tone="fnsku" width={width} />
+  <CopyChip value={value} display={getLast8(value)} tone="fnsku" width={width} />
 );
 
 export const SourceOrderChip = ({

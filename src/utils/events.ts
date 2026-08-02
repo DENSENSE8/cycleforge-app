@@ -146,6 +146,13 @@ export interface ReceivingWorkspaceOpenPayload {
   row: ReceivingLineRow;
   accordionBootstrap: 'default' | 'all';
   scanDriven: boolean;
+  /**
+   * Whether this open stamps the operator's recents (the Recent tab's feed,
+   * `receiving_line_views`). Omitted = true, which is every path that predates
+   * the Unbox feed's click-to-open: scan resolve, recent rail, sibling PO line,
+   * deep-link restore. See `readSelectLineDetail`.
+   */
+  recordView?: boolean;
 }
 
 export function dispatchReceivingWorkspaceOpen(

@@ -1,4 +1,4 @@
-import { getLast4 } from '@/components/ui/CopyChip';
+import { getLast8 } from '@/components/ui/CopyChip';
 import { receivingHandle } from '@/lib/barcode-routing';
 import { type LabelFaceModel } from '@/lib/print/labelFace';
 import { conditionLabel } from '@/lib/conditions';
@@ -114,9 +114,9 @@ export function receivingLabelPoCornerDisplay(payload: ReceivingLabelPayload): s
   const isInternalRcv = /^RCV-\d+$/i.test(sv);
   if (isInternalRcv) {
     const tracking = String(payload.trackingNumber || '').trim();
-    if (tracking) return getLast4(tracking);
+    if (tracking) return getLast8(tracking);
   }
-  return getLast4(sv);
+  return getLast8(sv);
 }
 
 /**

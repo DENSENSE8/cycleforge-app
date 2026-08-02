@@ -42,7 +42,7 @@ export function RawMode({
                           <span className="truncate text-sm font-medium text-text-default">{item.subject || '(no subject)'}</span>
                           <span className="truncate text-role-caption text-text-soft">{item.from}</span>
                         </div>
-                        <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[11.5px] text-text-soft">
+                        <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-role-caption text-text-soft">
                           <span>{item.date || new Date(Number(item.internalDate)).toLocaleString()}</span>
                           {item.extracted.all.length === 0 ? (
                             <span className="rounded bg-amber-50 px-1.5 py-0.5 text-amber-700">no PO# detected</span>
@@ -55,7 +55,7 @@ export function RawMode({
                           )}
                         </div>
                         {isOpen && (
-                          <pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap break-words rounded-md border border-border-soft bg-surface-canvas px-2.5 py-2 text-[11.5px] text-text-muted">
+                          <pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap break-words rounded-md border border-border-soft bg-surface-canvas px-2.5 py-2 text-role-caption text-text-muted">
                             {item.bodyPreview || '(empty body)'}
                             {item.bodyTruncated && (
                               <span className="block pt-2 text-text-faint">… truncated at 800 chars (full body is {item.bodyLength} chars)</span>

@@ -18,9 +18,8 @@
  * user who can't see operations — the gate returns null first.
  *
  * States: loading (Loader2 + text) · error / no-data-from-fetch (quiet null,
- * never crashes the dashboard) · `hasData === false` (quiet null — the sibling
- * `FirstScanOnboardingCard` (mounted alongside in UnshippedSidebar) owns the
- * brand-new-shop first-run state, so the two never stack a "no data yet" box) ·
+ * never crashes the dashboard) · `hasData === false` (quiet null — brand-new
+ * orgs with zero throughput stay empty until the first unit lands) ·
  * `hasData === true` (the hero).
  */
 
@@ -77,10 +76,7 @@ function ThroughputRoiCardInner({ variant }: { variant: ThroughputRoiVariant }) 
   // dashboard.
   if (isError || !data) return null;
 
-  // Brand-new org (zero throughput): stay quiet. The sibling
-  // `FirstScanOnboardingCard` (mounted alongside in UnshippedSidebar) owns
-  // the first-run "scan your first unit" state, so we render nothing here to
-  // avoid stacking two "no data yet" boxes. It lights up once throughput exists.
+  // Brand-new org (zero throughput): stay quiet until the first unit lands.
   if (!data.hasData) return null;
 
   return <RoiHero data={data} variant={variant} />;

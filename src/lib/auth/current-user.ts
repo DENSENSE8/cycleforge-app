@@ -42,6 +42,13 @@ export interface CurrentUser {
   permissionsRemoved: ReadonlyArray<string>;
   /** Resolved mobile UI config (role defaults + per-staff override). */
   mobileDisplayConfig: MobileDisplayConfig;
+  /**
+   * Profile photo id (`staff.avatar_photo_id`), or null. Rides the envelope so
+   * the spine footer paints the operator's own face on FIRST render — the
+   * client staff identity cache is filled from an idle-deferred /api/staff
+   * fetch, which would otherwise show initials for a beat on every cold boot.
+   */
+  avatarPhotoId: number | null;
 }
 
 interface StaffOverrideRow {
@@ -50,6 +57,7 @@ interface StaffOverrideRow {
   permissions_added: string[] | null;
   permissions_removed: string[] | null;
   mobile_display_config: unknown;
+  avatar_photo_id: number | null;
 }
 
 async function loadStaffOverrides(staffId: number, orgId: string): Promise<StaffOverrideRow | null> {
@@ -67,7 +75,8 @@ async function loadStaffOverrides(staffId: number, orgId: string): Promise<Staff
       [CACHE_TAGS.staffOverrides],
       async () => {
         const r = await pool.query(
-          `SELECT name, role, permissions_added, permissions_removed, mobile_display_config
+          `SELECT name, role, permissions_added, permissions_removed, mobile_display_config,
+                  avatar_photo_id
              FROM staff
             WHERE id = $1
             LIMIT 1`,
@@ -135,6 +144,7 @@ async function buildCurrentUser(session: SessionRow | null): Promise<CurrentUser
     permissionsAdded: added,
     permissionsRemoved: removed,
     mobileDisplayConfig,
+    avatarPhotoId: overrides?.avatar_photo_id ?? null,
   };
 }
 

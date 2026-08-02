@@ -39,7 +39,8 @@ import { cn } from '@/utils/_cn';
  *   - **Next** — {@link HeaderTopWorkOrderChip} (work-order icon → popover; hidden when none)
  *   - **Pace** — {@link HeaderGoalChip} (progress ring → checklist popover)
  *   - **Context** — page `panelContent` via {@link useHeader}
- *   - **Find / signal / self** — {@link GlobalHeaderActions} (search ⌘K, inbox, account)
+ *   - **Find / signal / AI** — {@link GlobalHeaderActions} (search ⌘K, inbox,
+ *     utilities, Sparkles assistant far-right)
  *
  * This bar shares the desktop top-chrome seam with the MasterNav spine band
  * ({@link TOP_CHROME_BAND_CLASS}) — one flat `border-b` hairline at one Y.

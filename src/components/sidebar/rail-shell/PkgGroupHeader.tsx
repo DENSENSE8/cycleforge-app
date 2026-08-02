@@ -1,5 +1,5 @@
-import type { Variants } from 'framer-motion';
-import { motion } from 'framer-motion';
+import type { Variants } from '@/design-system/motion';
+import { motion } from '@/design-system/motion';
 import { motionBezier } from '@/design-system/foundations/motion-framer';
 import { SIDEBAR_RAIL_ROW_PAD_RIGHT } from '@/components/layout/header-shell';
 import { ChevronDown } from '@/components/Icons';
@@ -39,8 +39,8 @@ export function PkgGroupHeader({
         <motion.span animate={{ rotate: isCollapsed ? -90 : 0 }} transition={{ duration: 0.18, ease: motionBezier.easeOut }} className="inline-flex">
           <ChevronDown className="h-3 w-3" />
         </motion.span>
-        <span className="text-[8.5px] font-semibold uppercase tracking-widest">PKG · {groupSize}</span>
-        <span className="ml-auto text-[8.5px] font-semibold uppercase tracking-widest text-indigo-400">{groupSize} items</span>
+        <span className="text-role-micro uppercase tracking-widest">PKG · {groupSize}</span>
+        <span className="ml-auto text-role-micro uppercase tracking-widest text-indigo-400">{groupSize} items</span>
       </button>
     </motion.li>
   );

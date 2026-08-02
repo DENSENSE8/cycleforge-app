@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useMemo, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useUIModeOptional } from '@/design-system/providers/UIModeProvider';
@@ -9,7 +9,7 @@ import {
   dispatchSelectLine,
   type ReceivingLineRow,
 } from '@/components/station/ReceivingLinesTable';
-import { emitSelection, emitSelectionTotal, onToggleAll } from '@/lib/selection/table-selection';
+import { useReceivingRowSelection } from '@/components/station/useReceivingRowSelection';
 import { ReceivingGridView } from '@/components/station/receiving-grid/ReceivingGridView';
 import { StationPipelineBoard } from '@/components/station/StationPipelineBoard';
 import { STATION_PIPELINE_BOARDS } from '@/lib/station/flags';
@@ -171,69 +171,41 @@ export function TestingHistoryList({
           ? 'Sign in to see tested lines.'
           : 'No tested lines in this staff scope yet.';
 
-  const [selectedIds, setSelectedIds] = useState<Set<number>>(() => new Set());
+  /**
+   * Testing's record plane: open the line in the `TestingPanel` that covers
+   * this browse (`TestingLineWorkspace`) — the same in-place open the Unbox
+   * workbench does, so no navigation and no `openRow`-style destination change.
+   * It is an override only because the open also has to tell the host
+   * (`onOpenLine`), which the hook's bare dispatch has no slot for.
+   */
+  const openTestingLine = useCallback(
+    (row: ReceivingLineRow) => {
+      dispatchSelectLine(row);
+      onOpenLine?.(row);
+    },
+    [onOpenLine],
+  );
 
-  // Broadcast resolved selection whenever the id set or rows change.
-  useEffect(() => {
-    if (!selectMode) return;
-    const byId = new Map(rows.map((r) => [r.id, r]));
-    const selected: ReceivingLineRow[] = [];
-    for (const id of selectedIds) {
-      const row = byId.get(id);
-      if (row) selected.push(row);
-    }
-    emitSelection(TESTING_SELECTION_SCOPE, selected);
-  }, [selectMode, selectedIds, rows]);
-
-  // Leaving select mode clears the selection.
-  useEffect(() => {
-    if (selectMode) return;
-    setSelectedIds((prev) => (prev.size ? new Set() : prev));
-    emitSelection(TESTING_SELECTION_SCOPE, []);
-  }, [selectMode]);
-
-  // Header "Select all" / "Clear".
-  useEffect(() => {
-    return onToggleAll(TESTING_SELECTION_SCOPE, (mode) => {
-      setSelectedIds(mode === 'all' ? new Set(rows.map((r) => r.id)) : new Set());
-    });
-  }, [rows]);
-
-  // Publish the selectable total so the action bar's select-all ring can fill.
-  useEffect(() => {
-    emitSelectionTotal(TESTING_SELECTION_SCOPE, selectMode ? rows.length : 0);
-  }, [selectMode, rows]);
-
-  const selectModeRef = useRef(selectMode);
-  useEffect(() => { selectModeRef.current = selectMode; }, [selectMode]);
-
-  const handleSelect = useCallback((row: ReceivingLineRow) => {
-    if (selectModeRef.current) {
-      setSelectedIds((prev) => {
-        const next = new Set(prev);
-        if (next.has(row.id)) next.delete(row.id);
-        else next.add(row.id);
-        return next;
-      });
-      return;
-    }
-    dispatchSelectLine(row);
-    onOpenLine?.(row);
-  }, [onOpenLine]);
-
-  const handleSelectGroup = useCallback((ids: readonly number[]) => {
-    if (!selectModeRef.current || ids.length === 0) return;
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      const allSelected = ids.every((id) => next.has(id));
-      if (allSelected) {
-        for (const id of ids) next.delete(id);
-      } else {
-        for (const id of ids) next.add(id);
-      }
-      return next;
-    });
-  }, []);
+  const {
+    selectedId,
+    selectedIds,
+    handleSelectRow,
+    handleToggleRow,
+    handleSelectGroup,
+  } = useReceivingRowSelection({
+    selectMode,
+    // The two planes, split across ALL THREE tabs as a set. `browseActive`
+    // pins `selectMode` ON (`useTechTestingSelection`), so before this the row
+    // body was one big checkbox and the panel had no click gesture at all —
+    // measured on dogfood: 5 rows this week / 20 at weekOffset=3, role
+    // `checkbox`, zero `receiving-select-line` events on click.
+    rowClickOpens: true,
+    openRow: openTestingLine,
+    // Testing broadcasts on its own bus — the tech dashboard mounts the bar.
+    selectionScope: TESTING_SELECTION_SCOPE,
+    localRows: rows,
+    orderedVisibleRows: rows,
+  });
 
   const renderLegacyBoardRow = useCallback(
     (row: ReceivingLineRow, index: number) => (
@@ -245,11 +217,17 @@ export function TestingHistoryList({
         isHistory={mode === 'history'}
         activityAxis={mode === 'history' ? 'tested' : 'unboxed'}
         selectMode={selectMode}
-        isSelected={selectMode ? selectedIds.has(row.id) : false}
-        onSelect={() => handleSelect(row)}
+        // Two planes on the board too: the tap opens, the gutter box selects.
+        // Without `onToggleSelect` the split would leave the board's always-on
+        // checkbox painted and its bulk set unreachable — the same dead gutter
+        // this change set exists to remove.
+        isSelected={selectedId === row.id}
+        isChecked={selectMode && selectedIds.has(row.id)}
+        onSelect={() => handleSelectRow(row)}
+        onToggleSelect={selectMode ? () => handleToggleRow(row) : undefined}
       />
     ),
-    [isMobile, mode, selectMode, selectedIds, handleSelect],
+    [isMobile, mode, selectMode, selectedId, selectedIds, handleSelectRow, handleToggleRow],
   );
 
   const toDaySections = useCallback((recs: ReceivingLineRow[]): [string, ReceivingLineRow[]][] => {
@@ -338,9 +316,12 @@ export function TestingHistoryList({
         emptyMessage={emptyMessage}
         isMobile={isMobile}
         selectMode={selectMode}
-        selectedId={null}
+        selectedId={selectedId}
         selectedIds={selectedIds}
-        handleSelectRow={handleSelect}
+        handleSelectRow={handleSelectRow}
+        // The row body belongs to the record plane now, so the gutter is the
+        // only way left to build a bulk set — it must be a real control.
+        handleToggleRow={handleToggleRow}
         handleSelectGroup={handleSelectGroup}
         activityAxis={activityAxis}
         isHistory={mode === 'history'}

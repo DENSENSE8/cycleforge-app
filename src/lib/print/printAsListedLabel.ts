@@ -1,4 +1,4 @@
-import { getLast4 } from '@/components/ui/CopyChip';
+import { getLast8 } from '@/components/ui/CopyChip';
 import { receivingHandle, receivingLineHandle } from '@/lib/barcode-routing';
 import { buildFaceInfoHtml, type LabelFaceModel } from '@/lib/print/labelFace';
 import { conditionLabel } from '@/lib/conditions';
@@ -48,7 +48,7 @@ export function asListedPayloadToFace(payload: AsListedLabelPayload): LabelFaceM
     topRight: (payload.date || '').trim(),
     center: (payload.disclosure || '').trim(),
     bottomLeft: conditionLabel(payload.conditionCode, 'label'),
-    bottomRight: corner.length > 8 ? getLast4(corner) : corner,
+    bottomRight: corner.length > 8 ? getLast8(corner) : corner,
     matrix: { value: qrValue, symbology: 'datamatrix', scale: 4 },
     hri,
   };

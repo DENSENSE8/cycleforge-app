@@ -4,17 +4,12 @@ import Link from 'next/link';
 import { Settings } from '@/components/Icons';
 import { useRouter } from 'next/navigation';
 import { ActionsSection } from './ActionsSection';
-import { RecentSection } from './RecentSection';
 import { useQuickAccess } from '@/lib/quick-access/use-quick-access';
 import { useAuth } from '@/contexts/AuthContext';
-import { getStaffColorHex } from '@/utils/staff-colors';
 import { useStaffColorVersion } from '@/contexts/StaffColorsProvider';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { IconButton } from '@/design-system/primitives';
-
-function initials(name: string): string {
-  return name.split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]?.toUpperCase() ?? '').join('');
-}
+import { StaffAvatar } from '@/components/identity';
 
 interface QuickAccessPopoverProps {
   onClose: () => void;
@@ -23,14 +18,16 @@ interface QuickAccessPopoverProps {
   onOpenFeedbackPopover?: () => void;
   /**
    * Mobile: collapse the popover to just the staff identity row (avatar, name,
-   * settings, sign-out). Recent / action sections are desktop-only.
+   * settings, sign-out). Action sections are desktop-only.
    */
   compact?: boolean;
 }
 
 /**
- * Body order: recent → compact actions.
- * Pins live in GlobalHeader ({@link HeaderPinsSwitcher}) — not here.
+ * Mobile / FAB account menu body (desktop staff identity lives on the
+ * MasterNav spine footer — {@link StaffAccountFooter}).
+ * Pins live in GlobalHeader ({@link HeaderPinsSwitcher}); page MRU lives in
+ * {@link HeaderRecentsSwitcher} — neither remounts here.
  * Signed-in staff card lives at the bottom.
  */
 export function QuickAccessPopover({
@@ -46,7 +43,6 @@ export function QuickAccessPopover({
   useStaffColorVersion();
 
   const staffName = user?.name ?? '';
-  const staffColorHex = user ? getStaffColorHex({ id: user.staffId }) : '#10b981';
 
   return (
     <div
@@ -64,8 +60,7 @@ export function QuickAccessPopover({
       ) : null}
 
       {!compact && (
-        <div className="min-h-0 flex-1 divide-y divide-border-hairline overflow-y-auto overscroll-contain">
-          {settings.showRecent ? <RecentSection onNavigate={onClose} /> : null}
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
           <ActionsSection
             actions={settings.actions}
             onOpenHistoryPopover={onOpenHistoryPopover}
@@ -77,10 +72,7 @@ export function QuickAccessPopover({
 
       {user ? (
         <div className="flex shrink-0 items-center gap-3 border-t border-border-hairline bg-surface-canvas/60 px-4 py-3">
-          <StaffIdentityAvatar
-            value={staffColorHex}
-            initials={staffName ? initials(staffName) : '·'}
-          />
+          <StaffAvatar staffId={user.staffId} name={staffName} size="md" />
           <div className="min-w-0 flex-1">
             <div className="truncate text-role-eyebrow uppercase tracking-[0.14em] text-text-faint">
               {user.organizationName}
@@ -121,18 +113,5 @@ export function QuickAccessPopover({
         </button>
       )}
     </div>
-  );
-}
-
-/** Quiet staff initials — color editing lives in Settings → Staff profile. */
-function StaffIdentityAvatar({ value, initials }: { value: string; initials: string }) {
-  return (
-    <span
-      aria-hidden
-      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-role-caption font-semibold text-white ring-1 ring-border-soft"
-      style={{ backgroundColor: value }}
-    >
-      {initials}
-    </span>
   );
 }

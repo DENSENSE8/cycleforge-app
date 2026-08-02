@@ -13,7 +13,7 @@ import {
   SerialCountChip,
   TrackingChip,
   TrackingCountChip,
-  getLast4,
+  getLast8,
 } from '@/components/ui/CopyChip';
 import {
   GridCellDash,
@@ -281,7 +281,7 @@ export function ReceivingGridGroupSummary({
           <div data-col="order" className={dataCell(col, rule)}>
             <OrderIdChip
               value={poValue}
-              display={getLast4(poValue)}
+              display={getLast8(poValue)}
               plain
               truncateDisplay={false}
               fitDisplayWidth

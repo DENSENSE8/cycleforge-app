@@ -5,10 +5,9 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { SIDEBAR_GUTTER } from '@/components/layout/header-shell';
 import { OutboundSidebarFilterMap } from '@/components/unshipped/OutboundSidebarFilterMap';
 import { ThroughputRoiCard } from '@/components/dashboard/ThroughputRoiCard';
-import { FirstScanOnboardingCard } from '@/components/dashboard/FirstScanOnboardingCard';
 import { GettingStartedChecklist } from '@/components/dashboard/GettingStartedChecklist';
 import { ShippedFilterDropdown } from '@/components/shipping/shipped-filter/ShippedFilterDropdown';
-import { motion } from 'framer-motion';
+import { motion } from '@/design-system/motion';
 import { SidebarShell } from '@/components/layout/SidebarShell';
 import { useOutboundSidebarScope } from '@/components/unshipped/useOutboundSidebarScope';
 import { SHIPPING_PATH } from '@/components/outbound/outbound-sidebar-shared';
@@ -112,9 +111,10 @@ export default function UnshippedSidebar(props: UnshippedSidebarProps) {
         <OutboundSidebarFilterMap />
       </motion.div>
 
-      {/* Ambient / teach — first-scan when no throughput; ROI when hasData. */}
+      {/* Ambient / teach — ROI when hasData. The first-scan onboarding hero was
+          removed from this rail: it is a large decorative card sitting above the
+          working filter map on the operator's primary outbound surface. */}
       <motion.div variants={itemVariants} className="space-y-3 border-t border-border-hairline pt-3">
-        <FirstScanOnboardingCard variant="sidebar" />
         <ThroughputRoiCard variant="sidebar" />
         <GettingStartedChecklist variant="sidebar" />
       </motion.div>

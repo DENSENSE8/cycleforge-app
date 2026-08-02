@@ -29,10 +29,13 @@ import {
   QA_ADMIN_NAME,
   QA_ADMIN_PIN,
   QA_FEATURE_FLAGS,
+  QA_FIXTURE_INCOMING_POS,
   QA_FIXTURE_ORDERS,
   QA_FIXTURE_PO_ID,
   QA_FIXTURE_PO_NUMBER,
   QA_FIXTURE_SKUS,
+  QA_FIXTURE_TESTED_LINE,
+  QA_FIXTURE_TESTING_LINE,
   QA_FIXTURE_TRACKING,
   QA_FIXTURE_TRACKING_PACKED,
   QA_FIXTURE_TRACKING_PENDING,
@@ -212,7 +215,7 @@ async function seedSkus(client: PoolClient, orgId: string) {
   log('SKU catalog', `${skus.length} fixtures`);
 }
 
-async function seedReceivingFixture(client: PoolClient, orgId: string) {
+async function seedReceivingFixture(client: PoolClient, orgId: string, adminStaffId: number) {
   const existingCarton = await client.query<{ id: number }>(
     `SELECT id FROM receiving_carton
       WHERE organization_id = $1 AND source = 'zoho_po' AND zoho_purchaseorder_id = $2
@@ -241,6 +244,18 @@ async function seedReceivingFixture(client: PoolClient, orgId: string) {
     [receivingId, orgId],
   );
 
+  // Verdicts first: `testing_results.receiving_line_id` is ON DELETE SET NULL,
+  // so dropping the lines without this would leave one orphan verdict row per
+  // re-provision — and this script is meant to be re-run freely.
+  await client.query(
+    `DELETE FROM testing_results tr
+      USING receiving_line rl, receiving_line_zoho rz
+      WHERE tr.receiving_line_id = rl.id
+        AND rz.receiving_line_id = rl.id
+        AND rl.receiving_id = $1
+        AND rz.zoho_line_item_id LIKE 'QA-MOCK-LINE-%'`,
+    [receivingId],
+  );
   await client.query(
     `DELETE FROM receiving_line rl
       USING receiving_line_zoho rz
@@ -284,6 +299,88 @@ async function seedReceivingFixture(client: PoolClient, orgId: string) {
     );
   }
 
+  // Testing feed fixture — a received, still-untested line so the Testing
+  // workbench's Pending tab (`view=needs-test`) has rows on this tenant. Its own
+  // line so the two above keep the exact state their specs assert from.
+  const testingLineRes = await client.query<{ id: number }>(
+    `INSERT INTO receiving_line
+       (organization_id, receiving_id, item_name, sku, quantity_expected, quantity_received,
+        workflow_status, created_at, updated_at)
+     VALUES ($1, $2, $3, $4, 1, 1, 'UNBOXED', NOW(), NOW())
+     RETURNING id`,
+    [orgId, receivingId, QA_FIXTURE_TESTING_LINE.title, QA_FIXTURE_TESTING_LINE.sku],
+  );
+  const testingLineId = Number(testingLineRes.rows[0]!.id);
+  await client.query(
+    `INSERT INTO receiving_line_testing
+       (receiving_line_id, organization_id, needs_test, qa_status, disposition_code,
+        condition_grade, disposition_audit)
+     VALUES ($1, $2, true, 'PENDING', 'HOLD', 'USED_A', '[]'::jsonb)
+     ON CONFLICT (receiving_line_id) DO NOTHING`,
+    [testingLineId, orgId],
+  );
+  await client.query(
+    `INSERT INTO receiving_line_zoho
+       (receiving_line_id, organization_id, zoho_item_id, zoho_line_item_id,
+        zoho_purchaseorder_id, zoho_purchaseorder_number, zoho_purchaseorder_number_norm)
+     VALUES ($1, $2, $3, $4, $5, $6,
+             NULLIF(UPPER(REGEXP_REPLACE($6, '[^A-Za-z0-9]', '', 'g')), ''))
+     ON CONFLICT (receiving_line_id) DO NOTHING`,
+    [
+      testingLineId,
+      orgId,
+      QA_FIXTURE_TESTING_LINE.itemId,
+      QA_FIXTURE_TESTING_LINE.lineId,
+      QA_FIXTURE_PO_ID,
+      QA_FIXTURE_PO_NUMBER,
+    ],
+  );
+
+  // Testing HISTORY fixture — a line with a recorded verdict by the QA admin,
+  // which is what `view=testing` selects and what the History tab (defaulting to
+  // the signed-in tester) scopes to.
+  const testedLineRes = await client.query<{ id: number }>(
+    `INSERT INTO receiving_line
+       (organization_id, receiving_id, item_name, sku, quantity_expected, quantity_received,
+        workflow_status, created_at, updated_at)
+     VALUES ($1, $2, $3, $4, 1, 1, 'PASSED', NOW(), NOW())
+     RETURNING id`,
+    [orgId, receivingId, QA_FIXTURE_TESTED_LINE.title, QA_FIXTURE_TESTED_LINE.sku],
+  );
+  const testedLineId = Number(testedLineRes.rows[0]!.id);
+  await client.query(
+    `INSERT INTO receiving_line_testing
+       (receiving_line_id, organization_id, needs_test, qa_status, disposition_code,
+        condition_grade, disposition_audit)
+     VALUES ($1, $2, false, 'PASSED', 'ACCEPT', 'USED_A', '[]'::jsonb)
+     ON CONFLICT (receiving_line_id) DO NOTHING`,
+    [testedLineId, orgId],
+  );
+  await client.query(
+    `INSERT INTO receiving_line_zoho
+       (receiving_line_id, organization_id, zoho_item_id, zoho_line_item_id,
+        zoho_purchaseorder_id, zoho_purchaseorder_number, zoho_purchaseorder_number_norm)
+     VALUES ($1, $2, $3, $4, $5, $6,
+             NULLIF(UPPER(REGEXP_REPLACE($6, '[^A-Za-z0-9]', '', 'g')), ''))
+     ON CONFLICT (receiving_line_id) DO NOTHING`,
+    [
+      testedLineId,
+      orgId,
+      QA_FIXTURE_TESTED_LINE.itemId,
+      QA_FIXTURE_TESTED_LINE.lineId,
+      QA_FIXTURE_PO_ID,
+      QA_FIXTURE_PO_NUMBER,
+    ],
+  );
+  // `created_at` is the feed's tested-at axis, so NOW() lands it in the current
+  // week — the History tab opens on `weekOffset=0`.
+  await client.query(
+    `INSERT INTO testing_results
+       (organization_id, receiving_line_id, verdict, unit_status, tested_by, notes, created_at)
+     VALUES ($1, $2, 'PASS', 'TESTED', $3, 'QA fixture verdict', NOW())`,
+    [orgId, testedLineId, adminStaffId],
+  );
+
   await client.query(
     `INSERT INTO receiving_scans (receiving_id, tracking_number, carrier, scanned_at, source)
      VALUES ($1, $2, 'Mock', NOW(), 'zoho_po')
@@ -291,7 +388,81 @@ async function seedReceivingFixture(client: PoolClient, orgId: string) {
     [receivingId, QA_FIXTURE_TRACKING],
   );
 
-  log('Receiving fixture', `carton=${receivingId} tracking=${QA_FIXTURE_TRACKING}`);
+  log(
+    'Receiving fixture',
+    `carton=${receivingId} tracking=${QA_FIXTURE_TRACKING} ` +
+      `needsTestLine=${testingLineId} testedLine=${testedLineId}`,
+  );
+}
+
+/**
+ * `/incoming` fixture — Zoho POs the vendor has issued and the warehouse has
+ * not touched.
+ *
+ * Deliberately carton-LESS (`receiving_id IS NULL`): an incoming PO line exists
+ * before any box shows up at the door, which is why `view=incoming` reads the
+ * line + its `receiving_line_zoho` PO id rather than a carton. Adding a carton
+ * or a `receiving_scans` row would satisfy `SHIPMENT_SCANNED_PREDICATE` and drop
+ * the row straight back off the lane.
+ *
+ * No `zoho_po_mirror` row is required — `NOT_ZOHO_RECEIVED_PREDICATE` coalesces
+ * a missing mirror status to '' (non-terminal) — but we seed one anyway so the
+ * fixture matches a real issued PO and the "drops off once Zoho reports it
+ * received" path is exercised against real data rather than an absence.
+ */
+async function seedIncomingFixture(client: PoolClient, orgId: string) {
+  const lineIds = QA_FIXTURE_INCOMING_POS.map((po) => po.lineId);
+  await client.query(
+    `DELETE FROM receiving_line rl
+      USING receiving_line_zoho rz
+      WHERE rz.receiving_line_id = rl.id
+        AND rl.organization_id = $1
+        AND rz.zoho_line_item_id = ANY($2::text[])`,
+    [orgId, lineIds],
+  );
+
+  const titles = ['QA Incoming Bose SoundLink Mini II', 'QA Incoming Apple AirPods Pro'];
+  const skus = [QA_FIXTURE_SKUS.speaker, QA_FIXTURE_SKUS.earbuds];
+
+  for (const [i, po] of QA_FIXTURE_INCOMING_POS.entries()) {
+    await client.query(
+      `INSERT INTO zoho_po_mirror
+         (zoho_purchaseorder_id, zoho_purchaseorder_number, vendor_name, status,
+          po_date, expected_delivery_date, raw, organization_id, last_synced_at)
+       VALUES ($1, $2, 'QA Mock Vendor', 'issued',
+               CURRENT_DATE - 3, CURRENT_DATE + 2, '{"qa_fixture": true}'::jsonb, $3, NOW())
+       ON CONFLICT (zoho_purchaseorder_id) DO UPDATE
+         SET status = EXCLUDED.status,
+             expected_delivery_date = EXCLUDED.expected_delivery_date,
+             organization_id = COALESCE(zoho_po_mirror.organization_id, EXCLUDED.organization_id),
+             last_synced_at = NOW()`,
+      [po.id, po.number, orgId],
+    );
+
+    const lineRes = await client.query<{ id: number }>(
+      `INSERT INTO receiving_line
+         (organization_id, receiving_id, item_name, sku, quantity_expected, quantity_received,
+          workflow_status, created_at, updated_at)
+       VALUES ($1, NULL, $2, $3, 1, 0, 'EXPECTED', NOW(), NOW())
+       RETURNING id`,
+      [orgId, titles[i], skus[i]],
+    );
+    const lineId = Number(lineRes.rows[0]!.id);
+    await client.query(
+      `INSERT INTO receiving_line_zoho
+         (receiving_line_id, organization_id, zoho_item_id, zoho_line_item_id,
+          zoho_purchaseorder_id, zoho_purchaseorder_number, zoho_purchaseorder_number_norm)
+       VALUES ($1, $2, $3, $4, $5, $6,
+               NULLIF(UPPER(REGEXP_REPLACE($6, '[^A-Za-z0-9]', '', 'g')), ''))
+       ON CONFLICT (receiving_line_id) DO NOTHING`,
+      [lineId, orgId, `QA-MOCK-INC-ITEM-${i + 1}`, po.lineId, po.id, po.number],
+    );
+  }
+
+  log(
+    'Incoming fixture',
+    `${QA_FIXTURE_INCOMING_POS.length} expected POs (${QA_FIXTURE_INCOMING_POS.map((p) => p.number).join(', ')})`,
+  );
 }
 
 async function createFixtureOrder(
@@ -419,13 +590,14 @@ async function seedOrderFixtures(client: PoolClient, orgId: string) {
   );
 }
 
-async function seedFixtures(pool: Pool, orgId: string) {
+async function seedFixtures(pool: Pool, orgId: string, adminStaffId: number) {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
     await setOrgGuc(client, orgId);
     await seedSkus(client, orgId);
-    await seedReceivingFixture(client, orgId);
+    await seedReceivingFixture(client, orgId, adminStaffId);
+    await seedIncomingFixture(client, orgId);
     await seedOrderFixtures(client, orgId);
     await client.query('COMMIT');
   } catch (err) {
@@ -506,7 +678,7 @@ async function main() {
       staffId = r.rows[0].id;
     }
 
-    await seedFixtures(pool, orgId);
+    await seedFixtures(pool, orgId, staffId);
 
     if (process.argv.includes('--verify')) {
       await verifyIsolation(pool, orgId);

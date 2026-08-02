@@ -21,7 +21,7 @@
 
 import type { MouseEvent as ReactMouseEvent, RefObject } from 'react';
 import Link from 'next/link';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion } from '@/design-system/motion';
 import { Search, History } from '@/components/Icons';
 import { AnchoredLayer } from '@/design-system';
 import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';

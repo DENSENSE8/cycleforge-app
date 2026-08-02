@@ -21,7 +21,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Search, Loader2, Check, X, ExternalLink } from '@/components/Icons';
 import { IconButton } from '@/design-system/primitives';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { OrderIdChip, getLast4 } from '@/components/ui/CopyChip';
+import { OrderIdChip, getLast8 } from '@/components/ui/CopyChip';
 
 interface OrderCandidate {
   ecwidOrderId: string;
@@ -157,8 +157,8 @@ export function RepairOrderLinkSearch({ value, onChange, disabled }: RepairOrder
       <div className="flex items-center justify-between gap-2 rounded-lg border border-emerald-200 bg-emerald-50/60 px-3 py-2">
         <span className="flex min-w-0 items-center gap-2">
           <Check className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
-          {/* Copy chip shows last 4 (full value on copy/tooltip) per the chip SoT. */}
-          <OrderIdChip value={value} display={getLast4(value)} dense />
+          {/* Copy chip shows last 8 (full value on copy/tooltip) per the chip SoT. */}
+          <OrderIdChip value={value} display={getLast8(value)} dense />
         </span>
         <div className="flex shrink-0 items-center gap-1">
           {/* ds-raw-button: minimal inline microBadge text link (no chrome) — a DS Button would add height/padding */}

@@ -247,8 +247,10 @@ describe('§2 legacy · a stage-less, timestamp-less payload uploads cleanly wit
   it('insertPhotoCatalog omitting the field entirely still binds NULL (no undefined param)', async () => {
     const { client, calls } = pgClientFake();
     await insertPhotoCatalog(client, { organizationId: ORG, staffId: null });
-    assert.equal(calls[0].params.length, 5);
+    // organizationId · staffId · … · clientCapturedAt · photoAspect (trailing nulls)
+    assert.equal(calls[0].params.length, 6);
     assert.equal(calls[0].params[4], null);
+    assert.equal(calls[0].params[5], null);
   });
 });
 

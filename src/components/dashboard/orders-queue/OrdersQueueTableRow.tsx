@@ -1,7 +1,7 @@
 'use client';
 
 import { Fragment, memo, useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { motion } from 'framer-motion';
+import { motion } from '@/design-system/motion';
 import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
 import { useMotionPresence, useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
 import { AlertTriangle, Check, ChevronDown, FileText, Link2, Maximize2, Plus } from '@/components/Icons';
@@ -153,7 +153,10 @@ export interface OrdersQueueTableRowProps {
    * missed. Required makes a new mount answer the question.
    */
   capabilities: Pick<GridSurfaceCapabilities, 'rowTriageFlags'>;
-  onRowClick: (record: ShippedOrder, event?: { shiftKey: boolean }) => void;
+  onRowClick: (
+    record: ShippedOrder,
+    event?: { shiftKey: boolean; target?: EventTarget | null },
+  ) => void;
 }
 
 /** In-cell / popover editors this row can host (one open at a time).
@@ -735,6 +738,7 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   // (no hover-reveal) so the select bubble is discoverable without hunting.
   const leadControls = (
     <div
+      data-select-gutter
       className={cn(
         ordersQueueGridCell({ inset: 'none', rule: true }),
         'justify-center',
@@ -972,7 +976,7 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
         // Pending grid: a row with no tracking has no label yet — that's a
         // different status, surfaced as a compact soft-accent + icon that
         // jumps to the outbound label station (`/shipping?open=`) to print.
-        // Icon-only keeps the tracking track as narrow as last-4 chips.
+        // Icon-only keeps the tracking track as narrow as last-8 chips.
         // The paste-from-clipboard chip stays a Labels/board-only tool.
         return (
           <div data-col="tracking" className={dataCell(col, rule)}>

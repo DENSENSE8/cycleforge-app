@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useRef, useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { motion, AnimatePresence, type PanInfo } from 'framer-motion';
+import { motion, AnimatePresence, type PanInfo } from '@/design-system/motion';
 import { framerTransition, tabPagerVariants } from '@/design-system/foundations/motion-framer';
 import {
   History,

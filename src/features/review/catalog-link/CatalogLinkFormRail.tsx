@@ -1,0 +1,642 @@
+'use client';
+
+/**
+ * Review · Catalog link RECORD plane — the two resolution forms, as NON-MODAL
+ * right-rail occupants.
+ *
+ * They live here rather than in a cell popover because both are **side-effectful
+ * multi-step work**: linking a chore backfills every matching order (and its
+ * manuals), and supplying an Item Number re-runs the sheet → order import path
+ * and CREATES an order. That is the record plane by the action-plane table
+ * (`display/workbench.md`), which is also why the grid descriptor declares
+ * `inCellEdit: false`.
+ *
+ * They also replace the in-flow `max-w-md` sibling column the surface used to
+ * park beside its list — a permanently-mounted pane whose resting state was a
+ * "Select a listing…" placeholder occupying a third of the workbench. A record
+ * plane that is empty most of the time should not be holding width; the rail
+ * mounts when a row is picked and pushes the grid rather than shrinking it
+ * forever (`source-of-truth.md` → Right-rail modality).
+ *
+ * **Header:** `PaneHeader` + dense `PaneHeaderLabel` (short key) + contextual
+ * icon actions — never `SidebarIntakeFormShell` (intake hero-title chrome).
+ * Recipe: `display/right-rail-inspector.md`.
+ *
+ * **Occupant ids are STABLE** (`detail:catalog-link` / `detail:import-exception`),
+ * not per-record: walking the queue row by row is the loop here, and
+ * `RightRailHost` keys its `AnimatePresence` on the id — a per-record id plays
+ * exit → empty → enter on every step (`display/motion-crossfade.md`). The
+ * exception's preconditions hold because each BODY is keyed on the record, so a
+ * swap remounts it and every field re-seeds; nothing is auto-saved, so there is
+ * no dirty draft to flush (a catalog pick for chore A must never survive onto
+ * chore B).
+ */
+
+import { useEffect, useState, type ReactNode } from 'react';
+import { AlertTriangle, Check, Flag, Link2, Loader2, Package } from '@/components/Icons';
+import { SearchField, TextField } from '@/design-system/primitives';
+import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
+import { OrderIdChip, TrackingChip } from '@/components/ui/CopyChip';
+import {
+  CursorPositionReadout,
+  PaneHeader,
+  PaneHeaderActionBar,
+  PaneHeaderCloseButton,
+  PaneHeaderIconBadge,
+  PaneHeaderLabel,
+  type PaneHeaderActionBarAction,
+} from '@/components/ui/pane-header';
+import { formatDateTimePST } from '@/utils/date';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { sourcePlatformLabel } from '@/lib/source-platform';
+import type { CatalogLinkChoreRow } from '@/features/review/catalog-link/types';
+import type { ImportExceptionRow } from '@/features/review/catalog-link/import-exception-types';
+import { cn } from '@/utils/_cn';
+
+/** Stable occupant ids — see the docblock. Do NOT key these on the record. */
+const CATALOG_LINK_RAIL_ID = 'detail:catalog-link';
+const IMPORT_EXCEPTION_RAIL_ID = 'detail:import-exception';
+
+interface CatalogSearchRow {
+  id: number;
+  sku: string;
+  product_title: string | null;
+}
+
+/** Where the open record sits in the queue, so prev/next can say when it stops. */
+export interface RailQueuePosition {
+  /** 0-based index of the open record among the visible rows. */
+  index: number;
+  total: number;
+  onPrev: () => void;
+  onNext: () => void;
+}
+
+// ── Shared chrome ─────────────────────────────────────────────────────────────
+
+function FieldRow({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="flex min-w-0 items-baseline justify-between gap-3">
+      <span className="shrink-0 text-role-eyebrow uppercase tracking-widest text-text-soft">
+        {label}
+      </span>
+      <span className="min-w-0 truncate text-right text-role-caption text-text-default">
+        {children}
+      </span>
+    </div>
+  );
+}
+
+function RailError({ message }: { message: string }) {
+  return (
+    <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-amber-800">
+      <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+      <p className="text-role-caption">{message}</p>
+    </div>
+  );
+}
+
+function SeenLine({ firstSeenAt, lastSeenAt }: { firstSeenAt: string; lastSeenAt: string }) {
+  return (
+    <p className="text-role-micro uppercase tracking-widest text-text-faint">
+      First {formatDateTimePST(firstSeenAt)} · Last {formatDateTimePST(lastSeenAt)}
+    </p>
+  );
+}
+
+/**
+ * Record-inspector header — icon row (contextual + ↑↓×) over dense identity.
+ * Long product titles stay out of this chrome (body fact rows only).
+ */
+function RecordRailHeader({
+  eyebrow,
+  identity,
+  identityTitle,
+  badgeIcon: BadgeIcon = Package,
+  badgeBg = 'bg-blue-100',
+  badgeTint = 'text-blue-700',
+  actions,
+  position,
+  onClose,
+}: {
+  eyebrow: string;
+  identity: string;
+  identityTitle?: string;
+  badgeIcon?: typeof Package;
+  badgeBg?: string;
+  badgeTint?: string;
+  actions: PaneHeaderActionBarAction[];
+  position?: RailQueuePosition;
+  onClose: () => void;
+}) {
+  const hasQueue = position != null && position.total > 1;
+  const atFirst = hasQueue && position.index <= 0;
+  const atLast = hasQueue && position.index >= position.total - 1;
+
+  return (
+    <PaneHeader
+      className="shrink-0 border-border-hairline bg-surface-card/90 backdrop-blur-xl"
+      rowClassName="px-4"
+      leftSlot={
+        <PaneHeaderActionBar
+          iconOnly
+          variant="flat"
+          actions={actions}
+          onPrev={hasQueue ? position.onPrev : undefined}
+          onNext={hasQueue ? position.onNext : undefined}
+          prevDisabled={atFirst}
+          nextDisabled={atLast}
+          prevTitle="Previous row"
+          nextTitle="Next row"
+          rightSlot={
+            hasQueue ? (
+              <CursorPositionReadout
+                position={position.index + 1}
+                total={position.total}
+              />
+            ) : undefined
+          }
+          className="min-w-0 flex-1"
+        />
+      }
+      rightSlot={<PaneHeaderCloseButton onClick={onClose} title="Close details" />}
+      belowSlot={
+        <div className="flex min-w-0 items-center gap-2 px-4 pb-2">
+          <PaneHeaderIconBadge Icon={BadgeIcon} bg={badgeBg} tint={badgeTint} size="sm" />
+          <PaneHeaderLabel
+            eyebrow={eyebrow}
+            value={identity}
+            valueTitle={identityTitle ?? identity}
+            valueClassName="truncate text-role-caption font-semibold tracking-tight text-text-default"
+          />
+        </div>
+      }
+    />
+  );
+}
+
+function RecordRailShell({
+  header,
+  facts,
+  children,
+}: {
+  header: ReactNode;
+  facts?: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <div className="flex h-full min-h-0 flex-col bg-surface-card">
+      {header}
+      {facts ? (
+        <div className="shrink-0 space-y-1.5 border-b border-border-hairline px-4 py-3">
+          {facts}
+        </div>
+      ) : null}
+      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto bg-surface-card p-4 scrollbar-hide">
+        {children}
+      </div>
+    </div>
+  );
+}
+
+// ── Tab A · Link a listing to the catalog ─────────────────────────────────────
+
+function CatalogLinkFormBody({
+  chore,
+  position,
+  onClose,
+  onDone,
+}: {
+  chore: CatalogLinkChoreRow;
+  position?: RailQueuePosition;
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  // Seeded from the listing title — the operator's first search is almost always
+  // "the first few words of what this is". Kept as component state (not a URL
+  // param): it is a draft over one record, and the body remounts per record.
+  const [query, setQuery] = useState(
+    chore.productTitle?.split(/\s+/).slice(0, 3).join(' ') || '',
+  );
+  const [results, setResults] = useState<CatalogSearchRow[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [selected, setSelected] = useState<CatalogSearchRow | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const term = query.trim();
+    if (!term) {
+      setResults([]);
+      return;
+    }
+    let cancelled = false;
+    setSearching(true);
+    (async () => {
+      try {
+        const res = await fetch(
+          `/api/sku-catalog/search?q=${encodeURIComponent(term)}&searchField=zoho_catalog&limit=20`,
+          { credentials: 'same-origin' },
+        );
+        const body = await res.json();
+        if (!cancelled && body.success) setResults(body.items || []);
+      } catch {
+        /* best-effort — the picker degrades to empty, it never fails the form */
+      } finally {
+        if (!cancelled) setSearching(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [query]);
+
+  const submitLink = async () => {
+    if (!selected) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/review/catalog-link', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ action: 'link', choreId: chore.id, skuCatalogId: selected.id }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok || !body.success) throw new Error(body.error || 'Link failed');
+      onDone();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Link failed');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const submitIgnore = async () => {
+    setSubmitting(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/review/catalog-link', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ action: 'ignore', choreId: chore.id }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok || !body.success) throw new Error(body.error || 'Ignore failed');
+      onDone();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Ignore failed');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const identity = chore.itemNumber;
+  const headerActions: PaneHeaderActionBarAction[] = [
+    {
+      key: 'link',
+      label: submitting && selected ? 'Linking…' : 'Link listing',
+      icon: submitting && selected ? (
+        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+      ) : (
+        <Link2 className="h-3.5 w-3.5" />
+      ),
+      onClick: () => void submitLink(),
+      disabled: !selected || submitting,
+      toneClassName: 'text-blue-700',
+      title: selected
+        ? `Link listing to ${selected.sku}`
+        : 'Pick a catalog SKU first',
+    },
+    {
+      key: 'ignore',
+      label: 'Ignore',
+      icon: <Flag className="h-3.5 w-3.5" />,
+      onClick: () => void submitIgnore(),
+      disabled: submitting,
+      toneClassName: 'text-text-soft',
+      title: 'Ignore this catalog-link chore',
+    },
+  ];
+
+  return (
+    <RecordRailShell
+      header={
+        <RecordRailHeader
+          eyebrow="Catalog link"
+          identity={identity}
+          identityTitle={identity}
+          badgeIcon={Link2}
+          actions={headerActions}
+          position={position}
+          onClose={onClose}
+        />
+      }
+      facts={
+        <>
+          {chore.productTitle ? (
+            <FieldRow label="Product">{chore.productTitle}</FieldRow>
+          ) : null}
+          <FieldRow label="Item number">
+            <OrderIdChip
+              value={chore.itemNumber}
+              display={chore.itemNumber}
+              plain
+              truncateDisplay={false}
+              fitDisplayWidth
+            />
+          </FieldRow>
+          <FieldRow label="Account">{sourcePlatformLabel(chore.accountSource)}</FieldRow>
+          <FieldRow label="Orders blocked">
+            <span className="tabular-nums">{chore.orderCount}</span>
+          </FieldRow>
+          {chore.sku ? <FieldRow label="Sheet SKU">{chore.sku}</FieldRow> : null}
+          <SeenLine firstSeenAt={chore.firstSeenAt} lastSeenAt={chore.lastSeenAt} />
+        </>
+      }
+    >
+      <SearchField
+        value={query}
+        onChange={setQuery}
+        onClear={() => setQuery('')}
+        placeholder="Search catalog SKU or title…"
+        isSearching={searching}
+        debounceMs={250}
+        tone="blue"
+      />
+
+      {results.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-6 text-center">
+          <p className="text-role-caption font-semibold text-text-soft">
+            {query.trim()
+              ? searching
+                ? 'Searching the catalog…'
+                : `No catalog SKU matches “${query.trim()}”.`
+              : 'Search the catalog to pick the SKU this listing belongs to.'}
+          </p>
+        </div>
+      ) : (
+        <ul className="space-y-1">
+          {results.map((row) => {
+            const active = selected?.id === row.id;
+            return (
+              <li key={row.id}>
+                {/* ds-raw-button: catalog pick row (two-line, selectable), not Button chrome */}
+                <button
+                  type="button"
+                  onClick={() => setSelected(row)}
+                  aria-pressed={active}
+                  className={cn(
+                    'ds-raw-button flex w-full flex-col rounded-lg px-3 py-2 text-left transition-colors',
+                    focusRing('control', 'neutral'),
+                    active
+                      ? 'bg-blue-50 ring-1 ring-inset ring-blue-400'
+                      : 'hover:bg-surface-sunken',
+                  )}
+                >
+                  <span className="text-role-caption font-semibold text-text-default">{row.sku}</span>
+                  <span className="truncate text-role-micro uppercase tracking-widest text-text-soft">
+                    {row.product_title || 'Untitled'}
+                  </span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+
+      {error ? <RailError message={error} /> : null}
+    </RecordRailShell>
+  );
+}
+
+/**
+ * Claims the single right-rail slot while a chore is picked. Renders nothing
+ * itself — `RightRailHost` renders the top occupant, which is why no surface
+ * ever hand-rolls its own `fixed right-0` panel.
+ */
+export function CatalogLinkFormRail({
+  chore,
+  position,
+  onClose,
+  onDone,
+}: {
+  chore: CatalogLinkChoreRow | null;
+  position?: RailQueuePosition;
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  return (
+    <DetailStackRailRegistrar
+      id={CATALOG_LINK_RAIL_ID}
+      enabled={chore != null}
+      onClose={onClose}
+      modal={false}
+      ariaLabel="Link listing to catalog"
+    >
+      {chore ? (
+        // Keyed on the record so a queue step remounts the body and every field
+        // re-seeds — the precondition for the stable-occupant-id exception.
+        <CatalogLinkFormBody
+          key={chore.id}
+          chore={chore}
+          position={position}
+          onClose={onClose}
+          onDone={onDone}
+        />
+      ) : null}
+    </DetailStackRailRegistrar>
+  );
+}
+
+// ── Tab B · Supply the missing Item Number ────────────────────────────────────
+
+function ImportExceptionFormBody({
+  row,
+  position,
+  onClose,
+  onDone,
+}: {
+  row: ImportExceptionRow;
+  position?: RailQueuePosition;
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  const [itemNumber, setItemNumber] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const submitResolve = async () => {
+    const trimmed = itemNumber.trim();
+    if (!trimmed) {
+      setError('Item Number is required');
+      return;
+    }
+    setSubmitting(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/review/import-exceptions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ action: 'resolve', id: row.id, itemNumber: trimmed }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok || !body.success) throw new Error(body.error || 'Resolve failed');
+      onDone();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Resolve failed');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const submitIgnore = async () => {
+    setSubmitting(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/review/import-exceptions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ action: 'ignore', id: row.id }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok || !body.success) throw new Error(body.error || 'Ignore failed');
+      onDone();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Ignore failed');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const identity = row.accountOrderId;
+  const headerActions: PaneHeaderActionBarAction[] = [
+    {
+      key: 'resolve',
+      label: submitting ? 'Resolving…' : 'Resolve',
+      icon: submitting ? (
+        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+      ) : (
+        <Check className="h-3.5 w-3.5" />
+      ),
+      onClick: () => void submitResolve(),
+      disabled: !itemNumber.trim() || submitting,
+      toneClassName: 'text-blue-700',
+      title: 'Resolve with the item number below',
+    },
+    {
+      key: 'ignore',
+      label: 'Ignore',
+      icon: <Flag className="h-3.5 w-3.5" />,
+      onClick: () => void submitIgnore(),
+      disabled: submitting,
+      toneClassName: 'text-text-soft',
+      title: 'Ignore this import exception',
+    },
+  ];
+
+  return (
+    <RecordRailShell
+      header={
+        <RecordRailHeader
+          eyebrow="Supply item number"
+          identity={identity}
+          identityTitle={identity}
+          badgeIcon={Package}
+          badgeBg="bg-amber-100"
+          badgeTint="text-amber-700"
+          actions={headerActions}
+          position={position}
+          onClose={onClose}
+        />
+      }
+      facts={
+        <>
+          {row.productTitle ? <FieldRow label="Product">{row.productTitle}</FieldRow> : null}
+          <FieldRow label="Order">
+            <OrderIdChip
+              value={row.accountOrderId}
+              display={row.accountOrderId}
+              plain
+              truncateDisplay={false}
+              fitDisplayWidth
+            />
+          </FieldRow>
+          <FieldRow label="Account">{sourcePlatformLabel(row.accountSource)}</FieldRow>
+          {row.tracking ? (
+            <FieldRow label="Tracking">
+              <TrackingChip value={row.tracking} dense />
+            </FieldRow>
+          ) : null}
+          {row.sheetRow != null ? (
+            <FieldRow label="Sheet row">
+              <span className="tabular-nums">{row.sheetRow}</span>
+            </FieldRow>
+          ) : null}
+          <FieldRow label="Seen">
+            <span className="tabular-nums">×{row.seenCount}</span>
+          </FieldRow>
+          <SeenLine firstSeenAt={row.firstSeenAt} lastSeenAt={row.lastSeenAt} />
+        </>
+      }
+    >
+      {/* The floating label IS the placeholder (TextField's contract) — the
+          accepted shapes go in the helper line, not a second hint inside the box. */}
+      <TextField
+        label="Item number"
+        value={itemNumber}
+        onChange={setItemNumber}
+        mono
+        autoFocus
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            void submitResolve();
+          }
+        }}
+      />
+      <p className="text-role-caption text-text-muted">
+        eBay item # / ASIN / listing id. Resolve re-runs the same sheet → order import path with
+        this Item Number filled in, which creates the order that row was missing.
+      </p>
+
+      {error ? <RailError message={error} /> : null}
+    </RecordRailShell>
+  );
+}
+
+/** Claims the right-rail slot while a missing-item-number row is picked. */
+export function ImportExceptionFormRail({
+  row,
+  position,
+  onClose,
+  onDone,
+}: {
+  row: ImportExceptionRow | null;
+  position?: RailQueuePosition;
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  return (
+    <DetailStackRailRegistrar
+      id={IMPORT_EXCEPTION_RAIL_ID}
+      enabled={row != null}
+      onClose={onClose}
+      modal={false}
+      ariaLabel="Supply the missing item number"
+    >
+      {row ? (
+        <ImportExceptionFormBody
+          key={row.id}
+          row={row}
+          position={position}
+          onClose={onClose}
+          onDone={onDone}
+        />
+      ) : null}
+    </DetailStackRailRegistrar>
+  );
+}

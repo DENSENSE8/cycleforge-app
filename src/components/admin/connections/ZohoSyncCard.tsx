@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { motion } from 'framer-motion';
+import { motion } from '@/design-system/motion';
 import { RefreshCw } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
 import { refreshDomains } from '@/lib/refresh/bus';

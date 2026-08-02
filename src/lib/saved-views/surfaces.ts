@@ -1,8 +1,17 @@
 /**
  * Saved-view surface SoT — discriminator values for the polymorphic
- * `saved_views` table and the localStorage-key → surface map used by
- * `useSavedViews`. Keep CHECK `saved_views_surface_chk` in
- * `2026-07-29g_saved_views.sql` in lockstep with `SAVED_VIEW_SURFACES`.
+ * `saved_views` table and the storage-key → surface map used by `useSavedViews`.
+ *
+ * Keep `SAVED_VIEW_SURFACES` in lockstep with the **effective**
+ * `saved_views_surface_chk` — the CHECK as redefined by the LAST-SORTING
+ * migration that touches it (`2026-07-29g` birth, then any follow-up). A value
+ * present in only one half is invisible until its first insert is rejected in
+ * production; `surfaces.test.ts` resolves the effective CHECK off disk and
+ * compares the sets.
+ *
+ * A follow-up migration must DROP and re-ADD the constraint with the FULL union,
+ * never just the new value — that is the `reason_codes_flow_context_chk`
+ * regression `.claude/rules/polymorphic-tables.md` records.
  */
 
 import {
@@ -11,6 +20,7 @@ import {
   UNSHIPPED_SAVED_VIEWS_KEY,
 } from '@/components/unshipped/outbound-sidebar-shared';
 import { SAVED_VIEW_STORAGE_KEY } from '@/lib/station/table-url-params';
+import { MY_DAY_SAVED_VIEWS_KEY } from '@/lib/my-day/my-day-saved-views';
 
 /** Full CHECK set — every row in `saved_views.surface`. */
 export const SAVED_VIEW_SURFACES = [
@@ -24,6 +34,9 @@ export const SAVED_VIEW_SURFACES = [
   'receiving_history',
   'receiving_incoming',
   'testing_history',
+  // Home → Today (`/`). Added 2026-08-01 with the CHECK follow-up
+  // `2026-08-01a_saved_views_home_today.sql`.
+  'home_today',
 ] as const;
 
 export type SavedViewSurface = (typeof SAVED_VIEW_SURFACES)[number];
@@ -42,12 +55,14 @@ export const GENERIC_SAVED_VIEW_SURFACES = [
   'receiving_history',
   'receiving_incoming',
   'testing_history',
+  'home_today',
 ] as const;
 
 type GenericSavedViewSurface = (typeof GENERIC_SAVED_VIEW_SURFACES)[number];
 
-/** localStorage key → DB surface (former useSavedViews consumers). */
+/** Storage key → DB surface (the `useSavedViews` consumers). */
 const STORAGE_KEY_TO_SURFACE: Readonly<Record<string, GenericSavedViewSurface>> = {
+  [MY_DAY_SAVED_VIEWS_KEY]: 'home_today',
   [UNSHIPPED_SAVED_VIEWS_KEY]: 'dashboard_unshipped',
   [PACKED_SAVED_VIEWS_KEY]: 'dashboard_packed',
   [SHIPPED_SAVED_VIEWS_KEY]: 'dashboard_shipped',

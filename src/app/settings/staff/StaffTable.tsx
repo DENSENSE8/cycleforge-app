@@ -226,7 +226,7 @@ function StatusPill({ status, active }: { status: string; active: boolean }) {
   };
   const css = styles[effective] ?? 'bg-surface-canvas text-text-soft';
   return (
-    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10.5px] font-medium ${css}`}>
+    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-role-micro ${css}`}>
       {effective}
     </span>
   );
@@ -349,7 +349,7 @@ function InviteModal({ open, onClose, onInvited }: InviteModalProps) {
               <input
                 readOnly
                 value={enrollmentUrl}
-                className="block w-full rounded-xl border border-border-soft bg-surface-canvas px-3 py-2 font-mono text-[11.5px] text-text-muted"
+                className="block w-full rounded-xl border border-border-soft bg-surface-canvas px-3 py-2 font-mono text-role-caption text-text-muted"
                 onFocus={(e) => e.currentTarget.select()}
               />
             </label>

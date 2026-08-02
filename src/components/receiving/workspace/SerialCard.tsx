@@ -15,7 +15,7 @@ import { X, Pencil } from '@/components/Icons';
 import { SerialChip } from '@/components/ui/CopyChip';
 import { TextField, IconButton } from '@/design-system/primitives';
 import { classifyInput } from '@/lib/scan-resolver';
-import { getLast4Serial } from '@/lib/copy-chip-format';
+import { getLast8Serial } from '@/lib/copy-chip-format';
 import { ConditionPills } from './ConditionPills';
 import { ConditionBadge } from './ReceivingUnitRows';
 import { NoSerialOfferCheck } from './line-edit/NoSerialOfferCheck';
@@ -109,7 +109,7 @@ interface Props {
 /**
  * Top-of-workspace scan card. Hosts the everyday "scan a serial → ⏎" path
  * with the existing-serial chips rendered BELOW the input as `SerialChip`
- * copy-chips (last-4 display, emerald underline). Each chip exposes an
+ * copy-chips (last-8 display, emerald underline). Each chip exposes an
  * Edit / Delete dropdown on hover.
  *
  * Edit flow: clicking Edit populates the scan input with the chip's current
@@ -326,7 +326,7 @@ export function SerialCard({
             tone: 'rose',
             text:
               dupes.length === 1
-                ? `Already on this line — ends ${getLast4Serial(dupes[0])}. Not added again.`
+                ? `Already on this line — ends ${getLast8Serial(dupes[0])}. Not added again.`
                 : `${dupes.length} serials already on this line — skipped.`,
           },
     );

@@ -30,6 +30,11 @@ export function ReceivingAuditRail({
   return (
     <DetailStackRailRegistrar
       id="detail:receiving-audit"
+      // Station edge: /unbox, /triage and /testing already push this edge with
+      // `UnboxPushColumn`, and two push mechanisms on one edge is exactly what
+      // the right-rail store exists to prevent. Stays a float pending the
+      // right-edge ownership ruling.
+      push={false}
       onClose={onClose}
       modal={false}
       ariaLabel="Carton audit log"

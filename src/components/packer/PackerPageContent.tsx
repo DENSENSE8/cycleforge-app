@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback } from 'react';
-import { motion } from 'framer-motion';
+import { motion } from '@/design-system/motion';
 import PackerDashboard from '@/components/PackerDashboard';
 import { MobilePackingList } from '@/components/mobile/packer/MobilePackingList';
 import { Menu } from '@/components/Icons';

@@ -1,8 +1,10 @@
 # Support Station — full waist · handoff hub
 
+> **2026-08-01 supersession (shell/contract):** Support is **not** a Station. Gemini Option B ratified Workbench branch **`service-workspace`**. See [`support-service-workspace-PLAN.md`](./support-service-workspace-PLAN.md) + [`support-service-workspace-CLAUDE-CODE-PROMPT.md`](./support-service-workspace-CLAUDE-CODE-PROMPT.md). **Do not** keep porting Unbox `StationWorkbench` anatomy onto `/support`. Ticket **waist** work below (links re-key, helpdesk facade, create path) may continue as domain follow-ons under the new branch.
+
 - **For:** any agent continuing this lane
 - **Lane:** `main` / WS-DOGFOOD (current checkout). Prefer `../cycleforge-support` if main is busy with pending-grid WIP.
-- **Status:** **Phase 0 + Phase 1 DONE**; **Phase 2 EXPAND authored (migration unapplied)**. Type-clean + guard tests + 67 unit tests green, **uncommitted**. Phases 2b–6 pending.
+- **Status:** **Shell/contract SUPERSEDED** (see banner). Phase 0 + Phase 1 DONE historically; **Phase 2 EXPAND authored (migration unapplied)**. Phases 2b–6 pending as **domain** work only.
 - **Plan:** Cursor plan `support_station_full_waist` (`/Users/icecube/.cursor/plans/support_station_full_waist_72645bf4.plan.md`).
 - **Execution prompt (FABLE 5 HAND-OFF — paste this):** [`support-station-full-waist-EXECUTION-PROMPT.md`](support-station-full-waist-EXECUTION-PROMPT.md) — self-contained, covers current state + remaining Phases 2b–6 including the **vendor-neutral helpdesk** workstream.
 - **Related:** [`ticket-stn-many-link-plan.md`](ticket-stn-many-link-plan.md) #2 (the re-key = Phase 2) · staff `03-testing-and-support-tickets.md` · Unbox `LineEditPanel`.

@@ -1,6 +1,6 @@
 'use client';
 
-import { useReducedMotion, type Transition } from 'framer-motion';
+import { useReducedMotion, type Transition } from '../motion/framer';
 
 /**
  * Pair a motion transition with `prefers-reduced-motion`.

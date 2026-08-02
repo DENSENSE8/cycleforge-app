@@ -28,6 +28,21 @@ export interface QueueGroupRowProps {
   /** Ordered column models (sanitized). Threaded to the group summary so it
    *  tracks the same drag-reordered order as the leaf rows. */
   columns?: readonly OrdersQueueColumn[];
+  /**
+   * Controlled fold state for a MULTI-row group. Omit both and the fold stays
+   * uncontrolled (`CollapsibleGroupRow`'s own `useState`, default collapsed) —
+   * which is what every non-dashboard host still does.
+   *
+   * Lifting it is what makes plan §2.2 fixable: while the open state lived
+   * privately inside `CollapsibleGroupRow`, nothing outside could EXPAND a fold,
+   * so a keyboard step into a collapsed order could only ever land on an
+   * invisible row. Pass the pair and the surface can reveal-then-open.
+   *
+   * A singleton group ignores both — it renders its leaf directly, with no
+   * summary row and no chevron, so it has no fold to control.
+   */
+  expanded?: boolean;
+  onToggleExpanded?: (next: boolean) => void;
   /** Render a single queue row at the given zebra-stripe index. */
   renderRow: (record: ShippedOrder, stripeIndex: number, rowIndex?: number) => ReactNode;
 }
@@ -38,7 +53,17 @@ export interface QueueGroupRowProps {
  * folds into a {@link CollapsibleGroupRow}. Shared by {@link OrdersGridView}
  * / LedgerGrid (flat spreadsheet) — no duplicate row/group markup.
  */
-export function QueueGroupRow({ group, baseStripeIndex, rowIndex, isMobile, gridSkin = false, columns, renderRow }: QueueGroupRowProps) {
+export function QueueGroupRow({
+  group,
+  baseStripeIndex,
+  rowIndex,
+  isMobile,
+  gridSkin = false,
+  columns,
+  expanded,
+  onToggleExpanded,
+  renderRow,
+}: QueueGroupRowProps) {
   // Singleton order → a plain row (renderRow already sets the row key).
   if (group.rows.length === 1) {
     return <>{renderRow(group.rows[0], baseStripeIndex, rowIndex)}</>;
@@ -51,6 +76,8 @@ export function QueueGroupRow({ group, baseStripeIndex, rowIndex, isMobile, grid
       rowIndex={rowIndex}
       showChevron={false}
       nestRail={!gridSkin}
+      expanded={expanded}
+      onToggle={onToggleExpanded}
       summary={<OrderGroupSummary rows={group.rows} isMobile={isMobile} gridSkin={gridSkin} columns={columns} />}
     >
       {/* Summary owns `rowIndex`; children follow it in order. */}

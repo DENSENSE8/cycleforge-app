@@ -41,8 +41,10 @@ Violating one of these is a bug even when the task "worked". Detail behind the l
 - **`orgId` comes from `ctx`, never the body**; org-scoped writes go through `withTenantTransaction`.
 - **Never build a second search engine, audit API, or status transition** outside the SoT modules.
 - **Color, spacing, type, z-index, elevation, focus come from tokens** — no page-local hex, no raw `z-[N]`.
+- **Motion comes from `@/design-system/motion`** — name a `motionRole.*`, never a motion package.
+  `framer-motion` / `motion/react` are banned outside `src/design-system/motion/**`.
 - **LedgerGrid justification:** digit / order-ID / date / tracking columns **end**-align; word / tag columns **start**-align — `resolveGridColumnAlign` only (never a per-cell `justify-*`).
-- **Navigators push, inspectors float** — MasterNav is a push spine; context rails use `ContextPanelLayout` (resize + collapse); right-rail record inspectors are non-modal floats on `RightRailHost` (`modal={false}`, resize + collapse). Detail: [`source-of-truth.md`](.claude/rules/source-of-truth.md) (Right-rail modality).
+- **The right edge PUSHES; it never floats over the work surface** (ruled 2026-08-01, superseding "inspectors float"). MasterNav is a push spine; context rails use `ContextPanelLayout` (resize + collapse); right-rail record inspectors push the workspace in-flow on `RightRailHost` (`modal={false}`, resize + collapse) and **displace the left spine before they overlap the grid**. Detail: [`source-of-truth.md`](.claude/rules/source-of-truth.md) (Right-rail modality).
 - **`npm run verify` before a task is done** — and never raise a ratchet baseline to make it pass.
 - **E2E asserts against the QA org**, not the dogfood tenant.
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useMemo, type ReactNode } from 'react';
-import { motion } from 'framer-motion';
+import { motion } from '@/design-system/motion';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useUIModeOptional } from '@/design-system/providers/UIModeProvider';
 import {

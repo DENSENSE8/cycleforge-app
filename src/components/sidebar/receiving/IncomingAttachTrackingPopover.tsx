@@ -16,7 +16,7 @@ import { Link2, Package, Truck, X, Loader2 } from '@/components/Icons';
 import { Button, IconButton } from '@/design-system/primitives';
 import { Dialog, DialogContent, DialogTitle } from '@/design-system/components/Dialog';
 import { SearchBar } from '@/components/ui/SearchBar';
-import { getLast4 } from '@/components/ui/CopyChip';
+import { getLast8 } from '@/components/ui/CopyChip';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { toast } from '@/lib/toast';
 import { invalidateReceivingFeeds } from '@/lib/queries/receiving-queries';
@@ -414,7 +414,7 @@ export function IncomingAttachTrackingPopover({
                               Box {b.box_seq}
                             </span>
                             <span className="min-w-0 flex-1 truncate text-role-caption font-semibold text-text-muted">
-                              {b.tracking_number ? `…${getLast4(b.tracking_number)}` : '—'}
+                              {b.tracking_number ? `…${getLast8(b.tracking_number)}` : '—'}
                               {b.carrier ? <span className="ml-1 text-text-faint">{b.carrier}</span> : null}
                             </span>
                             <span

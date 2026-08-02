@@ -14,7 +14,7 @@
  */
 
 import { useEffect, useRef, type ReactNode } from 'react';
-import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import { AnimatePresence, motion, useReducedMotion } from '@/design-system/motion';
 import { Flag, Globe, Tag } from '@/components/Icons';
 import { TOP_CHROME_ICON_GLYPH, HEADER_ICON_WRAP } from '@/components/layout/header-shell';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';

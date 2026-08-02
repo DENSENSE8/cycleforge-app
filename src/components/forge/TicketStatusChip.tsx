@@ -10,7 +10,7 @@
  */
 
 import { useEffect, useRef, useState } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion } from '@/design-system/motion';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
 import { motionBezier } from '@/design-system/foundations/motion-framer';

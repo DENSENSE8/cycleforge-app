@@ -11,7 +11,7 @@ import React, {
   useState,
 } from 'react';
 import { createPortal } from 'react-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from '@/design-system/motion';
 import { Check, Copy, ExternalLink } from '@/components/Icons';
 
 const CLOSE_DELAY_MS = 100;

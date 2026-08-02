@@ -1,6 +1,6 @@
 'use client';
 
-import { motion } from 'framer-motion';
+import { motion } from '@/design-system/motion';
 import { ChevronDown, Check } from '@/components/Icons';
 import {
   framerPresence,
@@ -19,7 +19,7 @@ import {
   SerialChipSkeleton,
   SkuScanRefChip,
   UnitPriceChip,
-  getLast4,
+  getLast8,
 } from '@/components/ui/CopyChip';
 import { SerialChipWithMenu } from '@/components/receiving/workspace/SerialCard';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
@@ -268,7 +268,7 @@ export function PoLineRow({
             (line.sku || '').trim() ? (
               <SkuScanRefChip
                 value={line.sku as string}
-                display={getLast4(line.sku)}
+                display={getLast8(line.sku)}
                 dense
               />
             ) : (

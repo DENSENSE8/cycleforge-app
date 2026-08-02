@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion } from '@/design-system/motion';
 import { fbaPaths } from '@/lib/fba/api-paths';
 import { X, Package, Loader2 } from '@/components/Icons';
 import { Button, IconButton } from '@/design-system/primitives';

@@ -170,7 +170,7 @@ export async function fetchOrdersContext(params: IntentParams, orgId: OrgId): Pr
   const urgent = overdue.rows
     .map((row) => {
       const orderId = String(row.order_id || '').trim();
-      const shortOrderId = orderId ? `#${orderId.slice(-4)}` : 'Unknown order';
+      const shortOrderId = orderId ? `#${orderId.slice(-8)}` : 'Unknown order';
       const product = formatTitle(row.product_title as string, 'Unknown product');
       const days = Number(row.days_overdue || 0);
       return `${shortOrderId} (${product}, ${formatCountLabel(days, 'day')} overdue)`;

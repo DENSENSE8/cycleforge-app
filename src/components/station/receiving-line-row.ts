@@ -282,6 +282,19 @@ export interface ReceivingLineRow {
   unbox_only_intake?: boolean;
   /** Server stamp when operator explicitly picked condition_grade. */
   condition_set_at?: string | null;
+  /**
+   * The grading ACT — gate for the Condition procedure step
+   * (`receiving_line_testing.condition_graded_at`, 2026-08-01c). Distinct from
+   * `condition_set_at`, which is the COALESCE-once first-set stamp and survives
+   * a reopen; this one is cleared by one. `condition_grade` is NOT NULL with a
+   * default, so it exists on an untouched line and can never be the gate.
+   */
+  condition_graded_at?: string | null;
+  /**
+   * Carton-level: an operator confirmed the contents against this line list
+   * (`receiving_unbox.contents_confirmed_at`). Gate for the Contents step.
+   */
+  contents_confirmed_at?: string | null;
   /** Server stamp when a receiving label was first printed for this line (Print step). */
   label_printed_at?: string | null;
   /**

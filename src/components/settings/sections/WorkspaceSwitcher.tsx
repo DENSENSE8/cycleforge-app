@@ -7,94 +7,26 @@
  * Settings → Organization · "Switch workspace".
  *
  * Lists every OTHER workspace the signed-in account can act in (memberships
- * from the auth envelope, minus the current org) and switches the active tenant
- * via POST /api/auth/switch-org { organizationId }. The whole block renders only
- * when the account belongs to >1 workspace — a single-org account sees nothing.
- *
- * On success the server revokes the old session and mints a new one for the
- * target org's staff profile (overwriting the cookie), so we HARD-reload to the
- * new workspace home — never router.push — to reset React Query caches, Ably
- * subscriptions, and the RLS GUC cleanly to the new tenant.
- *
- * switch-org response shape coded against (see src/app/api/auth/switch-org):
- *   200 { ok: true, organizationId, unchanged?: true, staffId?, session? }
- *   400 { error: 'INVALID_REQUEST' }    409 { error: 'MULTI_ORG_NOT_PROVISIONED' }
- *   401 { error: 'NOT_AUTHENTICATED' }  403 { error: 'NOT_A_MEMBER' }
- *   500 { error: 'INTERNAL' }
+ * from the auth envelope, minus the current org) and switches via
+ * {@link useSwitchOrg} / {@link orgInitials} (shared with the MasterNav spine
+ * org control). The whole block renders only when the account belongs to >1
+ * workspace — a single-org account sees nothing.
  */
 
-import { useState } from 'react';
 import { Button } from '@/design-system/primitives';
-import { requestConfirm } from '@/design-system/components/confirm';
 import { useAuth } from '@/contexts/AuthContext';
-
-function orgInitials(name: string): string {
-  return (
-    name
-      .split(/\s+/)
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((p) => p[0]?.toUpperCase() ?? '')
-      .join('') || 'W'
-  );
-}
-
-/** Map a switch-org error code to a friendly, human line. */
-function switchErrorMessage(code: string | undefined): string {
-  switch (code) {
-    case 'MULTI_ORG_NOT_PROVISIONED':
-      return 'Multi-workspace switching isn’t set up for this account yet. Contact your administrator.';
-    case 'NOT_A_MEMBER':
-      return 'You’re not a member of that workspace.';
-    case 'NOT_AUTHENTICATED':
-      return 'Your session has expired — please sign in again.';
-    default:
-      return 'Couldn’t switch workspace. Please try again.';
-  }
-}
+import { orgInitials } from '@/lib/identity/switch-org';
+import { useSwitchOrg } from '@/lib/identity/use-switch-org';
 
 export function WorkspaceSwitcher() {
   const { user } = useAuth();
-  const [switching, setSwitching] = useState<string | null>(null);
-  const [switchErr, setSwitchErr] = useState<string | null>(null);
+  const { switching, switchErr, switchTo } = useSwitchOrg();
 
   const memberships = user?.memberships ?? [];
   const others = memberships.filter((m) => !m.isCurrent);
 
   // Only surface the switcher when the account has another workspace to go to.
   if (!user || memberships.length <= 1 || others.length === 0) return null;
-
-  const switchTo = async (organizationId: string, name: string) => {
-    if (switching) return;
-    const ok = await requestConfirm({
-      description: `Switch to ${name}? Your current view and any unsaved scan state will close.`,
-      tone: 'primary',
-      confirmLabel: 'Switch',
-    });
-    if (!ok) return;
-    setSwitching(organizationId);
-    setSwitchErr(null);
-    try {
-      const r = await fetch('/api/auth/switch-org', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ organizationId }),
-      });
-      if (!r.ok) {
-        const data = (await r.json().catch(() => ({}))) as { error?: string };
-        setSwitchErr(switchErrorMessage(data.error));
-        setSwitching(null);
-        return;
-      }
-      // Hard reload so caches / realtime subscriptions / RLS context reset
-      // cleanly to the new tenant. NOT router.push.
-      window.location.assign('/dashboard');
-    } catch {
-      setSwitchErr(switchErrorMessage(undefined));
-      setSwitching(null);
-    }
-  };
 
   return (
     <div className="space-y-3 rounded-2xl border border-border-soft bg-surface-card p-5 shadow-sm">

@@ -151,4 +151,42 @@ test.describe('Grid Fields menu — per-staff columns', () => {
     await closeMenu(page);
     await expect(track(page, 'title').first()).toBeVisible();
   });
+
+  test('Add a column opens the column-display rail and opts in a hidden field', async ({ page }) => {
+    await expect(track(page, 'serial')).toHaveCount(0);
+
+    await openMenu(page);
+    await page.getByRole('option', { name: 'Add a column' }).click();
+
+    const rail = page.getByRole('region', { name: 'Column display' });
+    await expect(rail).toBeVisible();
+    // Menu closes when the rail opens.
+    await expect(page.getByRole('listbox', { name: 'Grid fields' })).toHaveCount(0);
+
+    await rail.locator('[role="option"][data-column-details-key="serial"]').click();
+    await rail.getByRole('switch', { name: /Show Serial/i }).click();
+    await rail.getByRole('button', { name: 'Done' }).click();
+
+    await expect(rail).toHaveCount(0);
+    await expect(track(page, 'serial').first()).toBeVisible();
+  });
+
+  test('header lip opens column display and applies highlight wash', async ({ page }) => {
+    const lip = page.locator('[data-grid-column-details-lip]').getByRole('button', {
+      name: 'Column display',
+    });
+    await expect(lip).toBeVisible();
+    await lip.click();
+
+    const rail = page.getByRole('region', { name: 'Column display' });
+    await expect(rail).toBeVisible();
+
+    // Qty is a core column — set a blue track wash.
+    await rail.locator('[role="option"][data-column-details-key="qty"]').click();
+    await rail.locator('[data-highlight="blue"]').click();
+    await rail.getByRole('button', { name: 'Done' }).click();
+    await expect(rail).toHaveCount(0);
+
+    await expect(track(page, 'qty').first()).toHaveClass(/bg-blue-50/);
+  });
 });

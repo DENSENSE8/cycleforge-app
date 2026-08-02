@@ -5,7 +5,7 @@ import { useResourceMutation } from '@/hooks';
 import { toast } from '@/lib/toast';
 import { copyToClipboard } from '@/utils/_dom';
 import { formatDateTimePST } from '@/utils/date';
-import { getLast4 } from '@/components/ui/CopyChip';
+import { getLast8 } from '@/components/ui/CopyChip';
 import { useUnfoundTriageDetail } from '../useUnfoundTriageDetail';
 import {
   KIND_META,
@@ -163,9 +163,9 @@ export function useUnfoundDetailsPanel({
     row.kind === 'email_po' && poNumbers.length > 0
       ? `PO ${poNumbers.length === 1 ? poNumbers[0] : `${poNumbers[0]} +${poNumbers.length - 1}`}`
       : row.kind === 'unmatched_receiving' && row.context
-        ? `Tracking ${getLast4(row.context)}`
+        ? `Tracking ${getLast8(row.context)}`
         : row.kind === 'station_exception' && row.context
-          ? `Tracking ${getLast4(row.context.split(' · ')[0])}`
+          ? `Tracking ${getLast8(row.context.split(' · ')[0])}`
           : row.product_title || row.source_id;
 
   return {

@@ -8,7 +8,7 @@
  */
 
 import { useMemo, useState } from 'react';
-import { motion, useReducedMotion, type Variants } from 'framer-motion';
+import { motion, useReducedMotion, type Variants } from '@/design-system/motion';
 import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
 import {
   useMotionPresence,

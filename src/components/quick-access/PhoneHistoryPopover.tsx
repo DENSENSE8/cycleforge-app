@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { History, Loader2, Smartphone } from '@/components/Icons';
-import { getLast4 } from '@/components/ui/CopyChip';
+import { getLast8 } from '@/components/ui/CopyChip';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAblyChannel } from '@/hooks/useAblyChannel';
 import { safeChannelName, getScanLogChannelName } from '@/lib/realtime/channels';
@@ -275,7 +275,7 @@ export function PhoneHistoryPopover({ onClose }: PhoneHistoryPopoverProps) {
                         {entry.carrier}
                       </span>
                     ) : null}
-                    {entry.tracking ? <span>TRK {getLast4(entry.tracking)}</span> : null}
+                    {entry.tracking ? <span>TRK {getLast8(entry.tracking)}</span> : null}
                     {entry.sku ? <span className="normal-case tracking-normal">{entry.sku}</span> : null}
                   </>
                 }

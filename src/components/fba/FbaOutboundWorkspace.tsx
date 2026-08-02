@@ -10,7 +10,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import { AnimatePresence, motion, useReducedMotion } from '@/design-system/motion';
 import { FbaQuickAddFnskuModal } from '@/components/fba/FbaQuickAddFnskuModal';
 import { FbaCreatePlanModal } from '@/components/fba/FbaCreatePlanModal';
 import { FbaBoardDetailPanel } from '@/components/fba/FbaBoardDetailPanel';

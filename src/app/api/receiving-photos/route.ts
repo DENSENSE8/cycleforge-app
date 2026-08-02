@@ -19,8 +19,15 @@ import { publishReceivingPhotoChanged } from '@/lib/realtime/publish';
 import {
   RECEIVING_PHOTO_ITEM,
   RECEIVING_PHOTO_PACKAGE,
+  receivingStageFromPhotoType,
   validateReceivingPhotoWrite,
 } from '@/lib/receiving/photo-intent';
+import {
+  isAspectLegalForStage,
+  parsePhotoAspect,
+  parsePhotoAspectList,
+  type PhotoAspect,
+} from '@/lib/photos/photo-aspects';
 
 export const dynamic = 'force-dynamic';
 
@@ -58,6 +65,12 @@ interface PhotoRow {
   createdAt: string;
   /** Shutter clock (`photos.client_captured_at`), beside the server-INSERT time. */
   clientCapturedAt: string | null;
+  /**
+   * What this shot SHOWS, within its stage (`@/lib/photos/photo-aspects`).
+   * NULL = unclassified evidence — the value every pre-2026-08-01b row carries,
+   * and never a reason to treat the photo as missing.
+   */
+  photoAspect: string | null;
 }
 
 function mapRow(row: {
@@ -70,6 +83,7 @@ function mapRow(row: {
   uploadedBy: number | null;
   createdAt: string;
   clientCapturedAt: string | null;
+  photoAspect: string | null;
 }): PhotoRow {
   const isLine = row.entityType === 'RECEIVING_LINE';
   return {
@@ -81,6 +95,7 @@ function mapRow(row: {
     uploadedBy: row.uploadedBy,
     createdAt: row.createdAt,
     clientCapturedAt: row.clientCapturedAt ?? null,
+    photoAspect: row.photoAspect ?? null,
   };
 }
 
@@ -103,6 +118,22 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
         ? photoIntentRaw
         : 'all';
 
+    // Aspect NARROWS an intent, it never replaces one: the guided procedure asks
+    // "which of this carton's unbox_carton shots is the shipping label", which is
+    // a question about both axes at once.
+    //
+    // A well-formed but incoherent pair (an item aspect under the package intent)
+    // returns `[]`, not a 400 — a read that asks a coherent question with no
+    // answer is empty, not malformed. An UNKNOWN aspect token is a different
+    // thing and is dropped by the SoT parser rather than widening the result.
+    const aspectParam = params.get('photoAspects') ?? params.get('photoAspect');
+    const photoAspects = parsePhotoAspectList(aspectParam);
+    // A supplied filter that resolves to nothing must narrow to nothing. Falling
+    // back to "no filter" would answer a narrower question with a wider result,
+    // which is the one failure mode a filter must not have.
+    const aspectFilterMatchesNothing =
+      aspectParam != null && aspectParam.trim() !== '' && photoAspects.length === 0;
+
     const lineId =
       lineIdRaw != null
         ? (() => {
@@ -114,13 +145,16 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
           })()
         : null;
 
-    const rows = await listReceivingPhotos({
-      organizationId: ctx.organizationId,
-      receivingId,
-      lineId,
-      scope: scope === 'po' ? 'po' : 'all',
-      photoIntent,
-    });
+    const rows = aspectFilterMatchesNothing
+      ? []
+      : await listReceivingPhotos({
+          organizationId: ctx.organizationId,
+          receivingId,
+          lineId,
+          scope: scope === 'po' ? 'po' : 'all',
+          photoIntent,
+          photoAspects,
+        });
 
     // Surface when this carton was physically scanned/received so the NAS picker
     // can anchor the "PO scan time" sort on the moment the photos were actually
@@ -251,6 +285,41 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       requestedType ??
       (receivingLineId != null ? RECEIVING_PHOTO_ITEM : RECEIVING_PHOTO_PACKAGE);
 
+    // Aspect — the second axis (`@/lib/photos/photo-aspects`). Three of the
+    // guided procedure's steps are all `unbox_carton` evidence and are told
+    // apart by this alone.
+    //
+    // Validated against the stage the (entity × photo_type) pair RESOLVES to,
+    // never the stage the caller claimed: otherwise a caller that mis-claims
+    // the stage also gets to mis-claim the aspect, and the pairing that the
+    // `require_one` receive gate depends on stops meaning anything.
+    //
+    // Absent → null → legal (unclassified evidence). Present-but-unknown →
+    // 400, never silently dropped: an aspect is a claim about what the photo
+    // shows, and a dropped claim reads to the operator as a recorded one.
+    const rawAspect = body?.photoAspect;
+    const hasAspect = rawAspect != null && String(rawAspect).trim() !== '';
+    let photoAspect: PhotoAspect | null = null;
+    if (hasAspect) {
+      photoAspect = parsePhotoAspect(String(rawAspect));
+      if (!photoAspect) {
+        throw ApiError.badRequest(
+          `photoAspect '${String(rawAspect)}' is not a known photo aspect`,
+        );
+      }
+      const stage = receivingStageFromPhotoType(entityType, photoType);
+      if (!stage) {
+        throw ApiError.badRequest(
+          `photoAspect cannot be recorded: (${entityType}, ${photoType}) resolves to no evidence stage`,
+        );
+      }
+      if (!isAspectLegalForStage(photoAspect, stage)) {
+        throw ApiError.badRequest(
+          `photoAspect '${photoAspect}' is not allowed at the ${stage} stage`,
+        );
+      }
+    }
+
     let attached;
     try {
       attached = await attachPhotoWithLegacyUrl({
@@ -260,6 +329,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         entityId,
         legacyUrl: photoUrl,
         photoType,
+        photoAspect,
         poRef,
       });
     } catch (err) {
@@ -290,6 +360,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       // Upload response has no client shutter clock until the client posts one —
       // null here matches the GET mapper's "unknown" sentinel.
       clientCapturedAt: null,
+      photoAspect,
     };
     await publishReceivingPhotoChanged({
       organizationId: ctx.organizationId as OrgId,

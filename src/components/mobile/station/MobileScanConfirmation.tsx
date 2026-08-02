@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion } from '@/design-system/motion';
 import { MapPin, Barcode, Package, Settings } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
 import {

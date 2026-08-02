@@ -37,7 +37,7 @@ export function RoomEditForm({ c }: { c: RoomDetailController }) {
       {/* Hero: zone tile + subtitle */}
       <div className="flex items-start gap-3 px-4 py-4">
         <BigZoneTile letter={trimmedLetter} placeholder={creating && !trimmedLetter} />
-        <p className="max-w-[60ch] text-[12.5px] leading-snug text-text-soft">
+        <p className="max-w-[60ch] text-role-caption leading-snug text-text-soft">
           {subtitle}
         </p>
       </div>
@@ -128,10 +128,10 @@ export function RoomEditForm({ c }: { c: RoomDetailController }) {
           onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
           rows={3}
           placeholder="Add a short note…"
-          className="w-full resize-none rounded-2xl border border-border-soft bg-surface-canvas px-4 py-3 text-[13.5px] text-text-default outline-none transition-colors focus:border-blue-500 focus:bg-surface-card focus:ring-2 focus:ring-blue-200"
+          className="w-full resize-none rounded-2xl border border-border-soft bg-surface-canvas px-4 py-3 text-role-body text-text-default outline-none transition-colors focus:border-blue-500 focus:bg-surface-card focus:ring-2 focus:ring-blue-200"
         />
         {!creating && (
-          <p className="mt-1 text-[10.5px] text-text-faint">
+          <p className="mt-1 text-role-micro text-text-faint">
             Note storage lands in the next update — name + zone letter save
             today.
           </p>
@@ -146,7 +146,7 @@ export function RoomEditForm({ c }: { c: RoomDetailController }) {
               <p className="text-sm font-semibold text-text-default">
                 Delete this room
               </p>
-              <p className="mt-0.5 text-[11.5px] text-text-soft">
+              <p className="mt-0.5 text-role-caption text-text-soft">
                 Soft delete — bins stay in history and you can recreate the
                 room by printing labels under that name again.
               </p>

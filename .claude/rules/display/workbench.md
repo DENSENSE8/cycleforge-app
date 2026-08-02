@@ -35,8 +35,17 @@ This doc only details what's *specific* to the Workbench contract.
 | **Table / queue + context** | Dense table | Drawer / side panel / stack | Wide rows, multi-column ops (orders, shipments) |
 | **Board + detail** | Swimlanes / cards on lanes | Board detail panel | Pipeline states (FBA board) |
 | **Fact stack / form** | Optional thin list or none | Full-width record body | Single durable entity already selected |
+| **Service workspace** (thread-first) | Durable ticket/case queue — **stays mounted** | Thread + docked composer, context pushes at the right | Conversation-first CX. Formal branch **`service-workspace`** — law: [`workbench-service.md`](workbench-service.md) |
 
 **Detail pane / right pane = optional secondary** in table/board recipes. Do not invent a dual pane to satisfy an old template when the collection is already the job.
+
+**A named BRANCH is a recipe that earned a law**, not a fifth contract. `service-workspace` (Support)
+is the only one, and the bar to mint another is deliberately high: the primary **data shape** must
+mandate a different composition axis (thread vs ledger) **and** the surface must need persistent
+chrome unique to that axis (SLA, presence, omnichannel source). Different business *entities* — SKUs
+vs Orders vs Quotes — buy an existing recipe, never a branch. Sales, Fulfillment Desk, and Inbound
+Desk are ops-queue; that is settled, not pending. Slope rule + worked verdicts:
+[`workbench-service.md`](workbench-service.md) → Branch slope rule.
 
 ---
 
@@ -63,40 +72,67 @@ When using the sidebar map, three structural slots, in this order:
   (pairing sort, sourcing status, FBA plan/combine, inventory triage filters) may stay in the
   sidebar — those are not page L2. **Header pins** (`HeaderPinsSwitcher`) sit to the right of
   Recents (hairline separator): pin-current + sortable icon stations from `useQuickAccess` /
-  `cf.quickAccess` — never a pin list in the avatar Quick Access popover. Spine identity
-  (`MasterNavHeader`) is display-only —
-  **leading icon + label** (mode glyph when modeful, page icon when modeless), no MRU
-  chips and no nav-toggle chevron (column open lives on `SidebarNavColumn`, not in the
-  identity band). Global search stays in
-  GlobalHeader (`GlobalHeaderSearch`) — never pin a search **control** twin in the
-  spine. **Home** (house glyph + label) then Search + Media + **AI Chat** **page**
-  rows are top-pinned (`kind: 'top'`) above section drills — same pin grammar as
-  Settings/Admin footer (`kind: 'bottom'`).
-- **Section drills (spine L1).** Root shows Overview / Scan Stations / Desk / Stock /
-  Products / Library as **drill buttons** (`SPINE_SECTIONS` in `sidebar-navigation.ts` —
-  compose from `MAIN_GROUPS` + `STATION_GROUPS` + `STOCK_DRILL` + `PRODUCTS_SECTION`;
-  never twin labels). Drill replaces the scroll body with centered back title + that
-  section's pages. Membership: `mainGroup` / `stationGroup` / `kind: 'stock'` /
-  `kind: 'products'` via `spineSectionIdForPage`. Scan Stations (`floor`) = quiet
-  Receiving subgroup (Arrival / Unbox / Local Pickup / Repair Service via
-  `STATION_SUBGROUPS` + `stationSubgroup` — page-style header with icon + count,
-  members indent as mode rows) + Testing / Packing (modeless) / Scan out
-  (modeless); Desk = Incoming / Review / Support / Shipping (Labels · Ready · FBA);
-  Overview = Dashboard + Operations (+ any unparked Overview peers; Home / Media /
-  AI Chat are top-pinned); Library = Studio + Catalog (last section); Stock = Inventory →
-  Warehouse; Products = catalog + channel modes. Auto-enters on cross-section
-  navigation; manual Back returns to the root map without forcing re-open. Swap uses
-  named opacity-only SoT (`framerPresence.spineDrill` / `framerTransition.spineDrill`,
-  ≤150ms) — **no** horizontal slide. Auto-drill must **not** steal keyboard focus.
-  Multi-mode pages keep children **always expanded** with a pinned mode-count (no
-  accordion chevron); L2 Mode also lives in GlobalHeader — never a mode drill level.
-  **Spine type ladder (CF Type roles — no rem-base bump):** identity band
-  (`MasterNavHeader`) = `text-role-body font-semibold`; page + drill-back + mode
-  destinations = `text-role-caption` (pages/drills `font-semibold`, modes
-  `font-medium`); counts stay `text-role-micro`. Inactive pages whisper
-  (`text-text-muted` until hover); **modes stay `text-text-default`** when idle —
-  only the active mode takes `text-blue-700` + wash. Never use sentence-case
-  `text-role-eyebrow` for spine destinations (eyebrow is uppercase chrome DNA).
+  `cf.quickAccess` — never a pin list in a staff / Quick Access menu. Desktop Quick Access
+  **actions** stay in `GlobalHeaderActions` (**search · clipboard · phone QR · kiosk ·
+  inbox · AI far-right**) — Sparkles opens the assistant right-rail at the edge it
+  owns (mirror of MasterNav collapse far-left). **No staff avatar on desktop**. Spine top band is
+  `OrgWorkspaceControl` (current workspace + switch when multi-org) — not a “name of
+  now” page label (selection is the body row). No MRU chips in the org band; column open
+  lives on `SidebarNavColumn`. Global search stays in GlobalHeader (`GlobalHeaderSearch`)
+  — never pin a search **control** twin in the spine. **Home** (house glyph + label) then
+  Search + Media + **Chat** **page** rows are top-pinned (`kind: 'top'`) above section
+  drills — same pin grammar as Settings/Admin footer (`kind: 'bottom'`). Below
+  Settings/Admin: `StaffAccountFooter` (avatar · name · role · more · sign-out). When the
+  spine collapses to 0 width, org + staff are unreachable (open via header toggle / edge
+  peek) — intentional, same as Admin/Settings. **Both ends of the spine wear the
+  same circular mark** — `IdentityMark` (org) / `StaffAvatar` (staff) from
+  `@/components/identity`, at the same `sm` density — and the org control is
+  **always** a dropdown trigger, single-org included. Never hand-roll a
+  `rounded-full` initials span or a local `initials()`; SoT:
+  `source-of-truth.md` → Identity mark · Staff profile photo.
+- **Section drills (spine L1).** Root shows **Analytics Monitor · Scan Stations · Inbound ·
+  Catalog · Inventory · Fulfillment · Sales · Support · Workflow Studio** as **drill buttons**
+  with leading icons (`SPINE_SECTIONS` in `sidebar-navigation.ts` — compose from
+  `MAIN_GROUPS` + `STATION_GROUPS` + `DOMAIN_GROUPS`; never twin labels). Drill replaces the
+  scroll body with centered back title + that section's pages. A footer-pinned
+  `TechRailSearchBar` (same band as station rails) sits above Settings/Admin (+ staff footer
+  below) and always filters the visible map — root sections (label or any child page/mode)
+  when at the root, pages inside the open drill when drilled. Membership: `mainGroup` /
+  `stationGroup` / `domainGroup` via `spineSectionIdForPage`.
+  **Declare membership identically in BOTH `APP_SIDEBAR_NAV` and `SIDEBAR_PAGE_NAV`**.
+
+  **The axis is deliberately mixed, and that is the ruling** (2026-08-01,
+  `docs/todo/desk-domain-spine-split-CLAUDE-CODE-PROMPT.md`): Monitor and Studio are
+  ALTITUDES (observe / define), Scan Stations is an INPUT MODEL, and the six between them are
+  BUSINESS DOMAINS. Insisting on one uniform axis is what produced `Triage Desk` — "not a
+  scanner, not a graph" is a leftover, not a place, and it collected seven unrelated pages
+  behind a label no operator could predict. `Print Stations` failed the same way from the
+  other side: printing is a task every domain performs, so its rows were aliases of URLs the
+  canonical pages already owned. Both are dead labels and must not return under a new name.
+
+  Members: Scan Stations (`floor`) = Receiving subgroup + Testing / Packing / Scan out —
+  **never** relocated into Inbound or Fulfillment; Inbound = Incoming + Receiving Board;
+  Catalog = Manage Products (Reference · Manuals · Labels · Pairing · Catalog link · QC ·
+  Kit Parts); Inventory = Inventory + Sourcing + Locations (ex-Warehouse, incl. the bin/rack
+  label printer); Fulfillment = Manage Shipping (Orders · Labels · Ready · FBA · Packing
+  Review) — **carrier postage stays here and never folds into a label workspace**; Sales =
+  Sales Board + Local Pickup History; Support = the 6 support modes; Analytics Monitor =
+  Operations only; Workflow Studio = Studio + Catalog canvas. Section icons come from
+  `MAIN_GROUPS` / `STATION_GROUPS` / `DOMAIN_GROUPS`. Accents: `spineAccentFor` /
+  `SPINE_SECTION_ACCENTS` (sky / amber / teal / emerald / cyan / indigo / rose / orange /
+  violet; top+footer neutral blue). **A section with no visible page renders nothing**, and a
+  page whose every mode was permission-filtered is dropped by `isSidebarPageReachable` —
+  hollow is forbidden at both altitudes. Auto-enters on cross-section navigation; manual Back
+  returns to the root map.
+  Swap uses `framerPresence.spineDrill` / `framerTransition.spineDrill` (opacity-only)
+  plus the named active-wash preset. **Page rows and mode rows share ONE
+  cascade** — `spineRowStagger*`, 15ms/row, keyed on the SECTION (never the filter);
+  the root map mounts instantly. Hover/press travel is CSS on the 14px glyph
+  (`SPINE_ICON_LIFT_CLASS`) — never `whileHover`, never a row `scale` or weight shift.
+  Active rows are a fill **plus** an inset hairline. Detail:
+  `motion-crossfade.md` → ONE MasterNav row cascade; `source-of-truth.md` → MasterNav
+  section accents / row hover-press travel. Modes stay always expanded; L2 Mode
+  also lives in GlobalHeader.
   Guards: `main-nav-groups.guard.test.ts`, `station-nav-groups.guard.test.ts`.
 - **Anti-mix — never invert the sidebar.** Related/similar is progressive disclosure *below* the picker, never replacing the map.
 - **Responsive fallback is list-OR-detail, not both.** On a narrow viewport, show the picker *or* the detail, never a
@@ -260,7 +296,7 @@ The collection map is stable; only the **focus surface** moves.
 
 **Chrome face density (`WorkbenchChromeHeader`).** Two densities on one SoT — never a page-local twin tab band. `default` is the content-driven raised card (`p-1.5` + md solid-hug tabs with their own rail) — escape only when a surface cannot use the band face. **`density="band"` is the house standard** for every lifecycle `WorkbenchChromeHeader` consumer (Outbound, Incoming, History, Unbox, Triage, Pack, Testing, Shipping, Labels, Ready, FBA, Walk-In, Repair, Support, Review, …): a **single-surface 40px face** (`h-10 p-0.5` + `TabSwitch size="sm"` on a **flat** rail — **2px inset required**; active pill uses `nestedCornerClass('card', 0.5)` / `rounded-xl` so it nests concentrically inside the card shell; no flush full-height active pill, no nested bordered track, no `rounded-full` mismatch). Nested TabSwitch cards under band are forbidden (Kinetic Ledger / Linear chrome). Lifecycle tabs are **text-only** (no leading icons for Queue · Viewed · History-style states). When beside a floated context panel / scan dock, wrap with `WORKBENCH_CHROME_BESIDE_SCAN` (`py-2` = panel `m-2`) so the band face shares a Y row with `receivingScanBandClass` — never flush with `py-0`. Guard: `workbench-chrome-band.guard.test.ts`.
 
-**Trailing Display & Actions (`WorkbenchTrailingCluster`).** Column visibility (`GridFieldsMenu` / Fields) and display sort (`QueueSortSwitch`) live in the **pinned page chrome trailing cluster**, not an in-card Sheets-like action bar (that would stack a second sticky band — forbidden above) and not GlobalHeader. Compose `WorkbenchTrailingCluster` as `WorkbenchChromeHeader`’s `trailing` prop with honest absence: **Sort → Fields → Import → Add** (`before` / `after` escapes for pagination / refresh only). Filters / refine stay in `right` (query ≠ display). Opening Fields is a detached listbox — no header-coupling mode. Multi-select triage stays on `ContextualSelectionBar` (bottom) — never morph the top bar. Guard: `workbench-trailing-cluster.guard.test.ts`. Plan: `docs/todo/table-action-bar-fields-PLAN.md`.
+**Trailing Display & Actions (`WorkbenchTrailingCluster`).** Column visibility (`GridFieldsMenu` / Fields) and display sort (`QueueSortSwitch`) live in the **pinned page chrome trailing cluster**, not an in-card Sheets-like action bar (that would stack a second sticky band — forbidden above) and not GlobalHeader. Compose `WorkbenchTrailingCluster` as `WorkbenchChromeHeader`’s `trailing` prop with honest absence: **Sort → Fields → Import → Add** (`before` / `after` escapes for pagination / refresh only). Filters / refine stay in `right` (query ≠ display). Leading hairline only when `actions` (Import/Add) are present — Fields is an icon-rail peer of week/calendar/filters, not a walled second cluster. Fields trigger is icon-only (`ColumnsThree` + tooltip); dirty count stays in the accessible name, never a numeric badge on the glyph. Opening Fields is a detached listbox — no header-coupling mode. Multi-select triage stays on `ContextualSelectionBar` (bottom) — never morph the top bar. Guard: `workbench-trailing-cluster.guard.test.ts`. Plan: `docs/todo/table-action-bar-fields-PLAN.md`.
 
 ## Teaching empty + typed states
 
@@ -461,9 +497,10 @@ Map + Phase B backlog: `docs/todo/unbox-receiving-grid-CONTEXT-MAP.md`.
 ## Gap notes (to close)
 
 - **Add a cmd-K launcher** that fuzzy-jumps to `?skuId=` and fires CRUD actions (command-palette pattern:
-  https://uxpatterns.dev/patterns/advanced/command-palette). **It must not collide with the F2 scan hotkey**
-  (`src/lib/scan-hotkey/store.ts`, default F2, claimed by the last-registered scan target) — bind cmd-K / ctrl-K only,
-  and never grab a function key the Station archetype owns.
+  https://uxpatterns.dev/patterns/advanced/command-palette). **It must not collide with the scan focus hotkey**
+  (`src/lib/scan-hotkey/store.ts`, binding from `DEFAULT_FOCUS_SCAN_HOTKEY` — `Insert` today, rebindable to
+  `ScrollLock` or any of `F1`–`F12`, claimed by the last-registered scan target) — bind cmd-K / ctrl-K only, and never
+  grab `Insert`, `ScrollLock`, or a bare function key the Station archetype can be bound to.
 - **Push filters/sort/search fully into the URL** (see URL-as-state) so deep links survive a reload.
 - **Migrate CRUD sections from refresh-after to optimistic `onMutate`/rollback** (see Optimistic CRUD).
 

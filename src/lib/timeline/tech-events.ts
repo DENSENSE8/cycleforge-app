@@ -73,7 +73,7 @@ export function techEventsToTimeline(rows: TechTimelineRow[]): TimelineItem[] {
     const from = statusOf(r.before);
     const to = statusOf(r.after);
     const subtitle = from && to && from !== to ? `${from} → ${to}` : undefined;
-    // Serial / SKU → last-4 CopyChip (consistent with every other id surface).
+    // Serial / SKU → last-8 CopyChip (consistent with every other id surface).
     let ref: TimelineItem['ref'];
     if (r.serial_number) ref = { value: r.serial_number, kind: 'serial' };
     else if (r.sku) ref = { value: r.sku, kind: 'sku' };

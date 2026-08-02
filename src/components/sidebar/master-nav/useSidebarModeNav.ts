@@ -27,7 +27,7 @@ export function useSidebarModeNav() {
   return useCallback(
     (pageId: string, modeId?: string) => {
       const page = getSidebarPageNav(pageId);
-      const samePage = getSidebarNavPageId(pathname) === pageId;
+      const samePage = getSidebarNavPageId(pathname, searchParams) === pageId;
 
       // Single-surface page, unknown page, or "just go there": bare href.
       // Resolve through `getSidebarHref` so modeless pages (operations, admin,

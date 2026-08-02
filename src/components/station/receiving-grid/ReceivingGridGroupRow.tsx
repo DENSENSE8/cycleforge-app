@@ -4,6 +4,7 @@ import { useState, type ReactNode } from 'react';
 import { CollapsibleGroupRow } from '@/components/ui/CollapsibleGroupRow';
 import type { RowGroup } from '@/lib/group-rows';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { GridColumnDisplayPref } from '@/design-system/components/grid';
 import type { ReceivingGridColumn } from '@/lib/receiving/receiving-grid-layout';
 import type { ReceivingActivityAxis } from '@/components/station/receiving-lines-table-helpers';
 import { ReceivingGridGroupSummary } from './ReceivingGridGroupSummary';
@@ -17,10 +18,18 @@ interface ReceivingGridGroupRowProps {
   selectedId: number | null;
   selectedIds: Set<number>;
   handleSelectRow: (row: ReceivingLineRow) => void;
+  /**
+   * Select-gutter click — bulk membership only, never opens a record. Present
+   * only where the row body has been handed to the record plane (History);
+   * omitted on the single-gesture surfaces (Unbox workbench, Testing, Pickup).
+   */
+  handleToggleRow?: (row: ReceivingLineRow) => void;
   handleSelectGroup: (ids: readonly number[]) => void;
   activityAxis?: ReceivingActivityAxis;
   isHistory?: boolean;
   columns?: readonly ReceivingGridColumn[];
+  /** Per-hideKey display prefs (highlight / chip). */
+  columnDisplay?: Readonly<Record<string, GridColumnDisplayPref>>;
 }
 
 /**
@@ -35,14 +44,16 @@ export function ReceivingGridGroupRow({
   selectedId,
   selectedIds,
   handleSelectRow,
+  handleToggleRow,
   handleSelectGroup,
   activityAxis = 'unboxed',
   isHistory = false,
   columns,
+  columnDisplay,
 }: ReceivingGridGroupRowProps) {
   const isMulti = group.rows.length > 1;
-  const hasSelected = group.rows.some((r) =>
-    selectMode ? selectedIds.has(r.id) : selectedId === r.id,
+  const hasSelected = group.rows.some(
+    (r) => selectedId === r.id || (selectMode && selectedIds.has(r.id)),
   );
   const [expanded, setExpanded] = useState(selectMode || hasSelected);
 
@@ -53,11 +64,20 @@ export function ReceivingGridGroupRow({
       index={stripeIndex}
       isMobile={isMobile}
       selectMode={selectMode}
-      isSelected={selectMode ? selectedIds.has(row.id) : selectedId === row.id}
+      // Two independent planes: `isOpen` is the focused record, `isChecked` is
+      // bulk membership. Collapsing them into one flag is what let an always-on
+      // select mode turn the whole row into a checkbox. On a surface that has
+      // NOT split them, only one can be true at a time — the row click writes
+      // whichever the mode says — so `isOpen` stays gated on `!selectMode`
+      // there, preserving the legacy fill exactly.
+      isOpen={handleToggleRow ? selectedId === row.id : !selectMode && selectedId === row.id}
+      isChecked={selectMode && selectedIds.has(row.id)}
       onSelect={() => handleSelectRow(row)}
+      onToggle={handleToggleRow ? () => handleToggleRow(row) : undefined}
       activityAxis={activityAxis}
       isHistory={isHistory}
       columns={columns}
+      columnDisplay={columnDisplay}
     />
   );
 

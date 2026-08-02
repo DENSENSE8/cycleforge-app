@@ -1,4 +1,5 @@
 import pool from '@/lib/db';
+import type { PhotoAspect } from '@/lib/photos/photo-aspects';
 import {
   receivingPhotoIntentSql,
   type ReceivingPhotoListIntent,
@@ -26,6 +27,12 @@ export interface ReceivingPhotoListRow {
    * the two you are looking at. Null for desktop/legacy rows.
    */
   clientCapturedAt: string | null;
+  /**
+   * What this shot SHOWS, within its stage (`../photo-aspects.ts`). NULL means
+   * unclassified evidence — it is the value every pre-2026-08-01b row carries
+   * and must never be read as "the photo is missing".
+   */
+  photoAspect: string | null;
 }
 
 interface DbRow {
@@ -37,6 +44,7 @@ interface DbRow {
   uploaded_by: number | null;
   created_at: string;
   client_captured_at: string | null;
+  photo_aspect: string | null;
 }
 
 const SELECT = `
@@ -52,7 +60,8 @@ const SELECT = `
   p.photo_type AS caption,
   p.taken_by_staff_id AS uploaded_by,
   p.created_at,
-  p.client_captured_at
+  p.client_captured_at,
+  p.photo_aspect
 `;
 
 function mapRow(row: DbRow, contentUrl: (id: number) => string): ReceivingPhotoListRow {
@@ -67,6 +76,7 @@ function mapRow(row: DbRow, contentUrl: (id: number) => string): ReceivingPhotoL
     uploadedBy: row.uploaded_by != null ? Number(row.uploaded_by) : null,
     createdAt: row.created_at,
     clientCapturedAt: row.client_captured_at ?? null,
+    photoAspect: row.photo_aspect ?? null,
   };
 }
 
@@ -78,6 +88,13 @@ export async function listReceivingPhotos(input: {
   scope?: 'po' | 'all';
   /** Filter by capture stage — arrival package vs unbox carton vs item shots. */
   photoIntent?: ReceivingPhotoListIntent;
+  /**
+   * Narrow WITHIN the intent to specific shots (`../photo-aspects.ts`). Empty
+   * (the default) means no aspect filter, which includes the unclassified rows
+   * every pre-2026-08-01b photo is — an aspect filter is opt-in precisely
+   * because NULL is the overwhelming majority and is legal.
+   */
+  photoAspects?: readonly PhotoAspect[];
   contentUrl?: (id: number) => string;
 }): Promise<ReceivingPhotoListRow[]> {
   const toUrl = input.contentUrl ?? ((id: number) => `/api/photos/${id}/content`);
@@ -114,11 +131,20 @@ export async function listReceivingPhotos(input: {
   // entity-only (line evidence is item evidence by the identity law).
   const intentSql = receivingPhotoIntentSql(input.photoIntent ?? 'all');
 
+  // Aspect narrows within the intent; the two axes AND together. Parameterized
+  // (unlike the intent fragment, whose values come from a closed TS union) —
+  // these arrive from a query string.
+  let aspectSql = '';
+  if (input.photoAspects && input.photoAspects.length > 0) {
+    params.push([...input.photoAspects]);
+    aspectSql = ` AND p.photo_aspect = ANY($${params.length}::text[])`;
+  }
+
   const res = await pool.query<DbRow>(
     `SELECT ${SELECT}
        FROM photos p
        ${LINK_JOINS}
-      WHERE ${where}${intentSql}
+      WHERE ${where}${intentSql}${aspectSql}
       ORDER BY p.id ASC, p.created_at ASC`,
     params,
   );

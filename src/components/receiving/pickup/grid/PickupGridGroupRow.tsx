@@ -2,7 +2,7 @@
 
 import { Fragment, memo, useState, type ReactNode } from 'react';
 import { CollapsibleGroupRow } from '@/components/ui/CollapsibleGroupRow';
-import { OrderIdChip, getLast4 } from '@/components/ui/CopyChip';
+import { OrderIdChip, getLast8 } from '@/components/ui/CopyChip';
 import { GridCellDash, GridDateCellValue } from '@/components/ui/grid-cells';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { ledgerRowFillClass } from '@/components/ui/queue-row-chrome';
@@ -115,7 +115,7 @@ const PickupGridLeafRow = memo(function PickupGridLeafRow({
           <div data-col="order" className={dataCell(col, rule)}>
             <OrderIdChip
               value={line.po_number || ''}
-              display={getLast4(line.po_number)}
+              display={getLast8(line.po_number)}
               plain
               truncateDisplay={false}
               fitDisplayWidth
@@ -267,7 +267,7 @@ function PickupGridGroupSummary({
           <div data-col="order" className={dataCell(col, rule)}>
             <OrderIdChip
               value={first.po_number || ''}
-              display={getLast4(first.po_number)}
+              display={getLast8(first.po_number)}
               plain
               truncateDisplay={false}
               fitDisplayWidth

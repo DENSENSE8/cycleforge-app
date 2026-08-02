@@ -18,10 +18,13 @@ fields, pick the presentation kind and import from the SoT below (Kinetic Ledger
 | Source platform → label / tone | `src/lib/source-platform.ts` |
 | Receiving type → label / tone / icon | `src/lib/receiving/receiving-type-meta.ts` |
 | Typed identifiers (serial, FNSKU, tracking, …) | `CopyChip` family + `src/lib/copy-chip-format.ts` |
+| Staff / org identity mark (avatar circle) | `@/components/identity` — `StaffAvatar` (photo → colour+initials) / `IdentityMark`; initials from `staffInitials` |
 | Capability / provider nouns | `src/lib/integrations/capability-labels.ts` (+ server connections) |
 | Cross-entity search row | `SearchHit` / `src/lib/search/search-hit.ts` + hybrid retrieval |
 | Lifecycle / status dots | lifecycle tone registries / `workflowStageDot` (do not invent status maps) |
 | Z-index | `src/design-system/tokens/z-index.ts` |
+| Motion **intent** (which physics for this job) | `src/design-system/motion/roles.ts` — `motionRole.swap.scan` · `swap.focus` · `push.rail` · `gesture.press` · `feedback.pulse`. Five roles; a sixth means a new JOB, never a new duration. Catalog (`framerPresence` / `framerTransition`) stays the implementation — see **Motion roles + import path** below |
+| Motion **import path** (the engine) | `@/design-system/motion` — the ONLY motion import in `src/`; `framer-motion` / `motion/react` banned outside `src/design-system/motion/**`. Guard: `motion-major.guard.test.ts` |
 | Typeface cuts (sans · condensed · mono) | `src/lib/fonts.ts` + `typography/families.ts` (stacks mirrored in `styles/globals.css`) |
 | Type role → size/leading/tracking/weight/family/numerals | `tailwind.config.ts` `fontSize['role-*']` + the CF Type plugin |
 | Font weight ceiling (600) | `typography/weights.ts` (`MAX_FONT_WEIGHT`) |
@@ -52,6 +55,8 @@ fields, pick the presentation kind and import from the SoT below (Kinetic Ledger
 | Global detail-stack overlay shell | `@/design-system/shells/detail-stack` (`DETAIL_STACK_LAYOUT`, `DETAIL_STACK_RESIZE`, `DETAIL_STACK_COLLAPSE`, `detailStackAsideClassName`, `detailStackAsideStyle(widthPx?)`, …) |
 | Left context-sidebar wrapper | `ContextPanelLayout` + `context-panel-column.ts` (`CONTEXT_PANEL_RESIZE` / `CONTEXT_PANEL_COLLAPSE`) — every route rail beside the workspace; resize + collapse via `HorizontalEdgeResizeHandle`. MasterNav / `SidebarNavColumn` is a separate push spine |
 | Right-edge slot occupancy + modality | `RightRailHost` + `src/lib/right-rail/store.ts` — THE right details-panel wrapper; see **Right-rail modality** below |
+| Right-rail record-inspector header | `PaneHeader` + blocks (`PaneHeaderLabel` · `PaneHeaderActionBar iconOnly` · `PaneHeaderCloseButton`) — dense identity + contextual icons; **never** `SidebarIntakeFormShell` on a record peek. Recipe: [`display/right-rail-inspector.md`](display/right-rail-inspector.md). Guard: `right-rail-inspector-header.guard.test.ts` |
+| Sidebar intake / create form chrome | `SidebarIntakeFormShell` — **create · import · prefs** overlays only (`detail:new-order`, Import eBay, FBA create, grid column display). Not a record-inspector header |
 | Keyboard ownership (Escape / ambient hotkeys) | `src/lib/overlay-stack/store.ts` (+ `useRegisterOverlay` / `useAnyOverlayOpen`) — see **Escape ownership** below |
 | Station entity-context header | `@/components/station/entity-context` (`CartonContextCard` + `StationContextBar`) — Unbox / Triage / Testing / Shipping active-order |
 | Workbench chrome scoped search | `@/design-system/primitives/ToolbarSearchToggle` — collapsed Search icon; expands on hover / focus / click (or when query non-empty); composes `SearchField`. Never mount an always-open `SearchField` in a `WorkbenchChromeHeader` `search` slot **when search refines an on-screen list**. **Entry-path exceptions:** `/ops/photos` (always-open chrome field) and `/search` (context-rail `SearchBar` in `SearchSidebarPanel`; header launcher hidden) — rationale in `ui-design-system.md` → Scoped search chrome. |
@@ -63,13 +68,23 @@ fields, pick the presentation kind and import from the SoT below (Kinetic Ledger
 | Product icon glyphs | `@/components/Icons` (`src/components/icons/*`) — never duplicate nav primitives |
 | Station page + L2 mode nav icons | `src/lib/nav/station-nav-icons.ts` + semantic wrappers `src/components/icons/stations.tsx` — mode glyphs unique via `MODE_ICON_GLYPH_KEYS` |
 | Top-band chrome icon **display** (glyph box) | `src/components/layout/header-shell.ts` (`TOP_CHROME_ICON_GLYPH` for GlobalHeader Mode / Recents / WO / goal) — native SVG stroke only; do not layer `navIconStrokeClass` on header chips (muddies dense glyphs). Glyph *identity* stays Icons / station-nav |
-| L2 Mode + Recents (page modes + cross-page MRU) | `HeaderModeSwitcher` + `HeaderRecentsSwitcher` in `GlobalHeader` — data = `SIDEBAR_PAGE_NAV` / `useSidebarModeNav` / `useRecentModes`. Never a sidebar pill-band twin; no MRU chips in `MasterNavHeader`. |
-| Header pin stations (Quick Access pins) | `HeaderPinsSwitcher` in `GlobalHeader` (hairline after Recents → pin current → sortable icons → overflow) — data = `useQuickAccess` / `cf.quickAccess`. Never remount a pin list in the avatar Quick Access popover. |
-| Stations Scan Stations / Desk (spine section drills) | `STATION_GROUPS` + required `stationGroup` on `kind: 'station'` rows in `sidebar-navigation.ts`; membership via `SPINE_SECTIONS` / `spineSectionIdForPage`. Scan Stations (`floor`) = Receiving subgroup (Arrival / Unbox / Local Pickup / Repair Service) + Testing / Packing / Scan out; Desk = Incoming / Review / Support / Shipping (Labels · Ready · FBA). Receiving subgroup header from `STATION_SUBGROUPS` + `stationSubgroup` matches multi-mode page chrome (icon + caption + count; members indent as mode rows). Type: page/mode destinations = `text-role-caption` (see spine type ladder in `display/workbench.md`). Guard: `station-nav-groups.guard.test.ts`. |
-| Main Overview / Library (spine section drills) | `MAIN_GROUPS` + required `mainGroup` on `kind: 'main'` rows in `sidebar-navigation.ts`; membership via `SPINE_SECTIONS` / `spineSectionIdForPage`. Overview = Dashboard + Operations (Home / Search / Media / AI Chat are top-pinned); Library = Studio + Catalog (last drill section). Type: same caption destinations + idle modes `text-text-default` (active mode blue). Guard: `main-nav-groups.guard.test.ts`. Law: `display/workbench.md`. |
-| MasterNav spine type ladder | Identity `MasterNavHeader` = `text-role-body`; page/drill/mode labels = `text-role-caption` (pages semibold, modes medium); counts = `text-role-micro`. Never sentence-case `text-role-eyebrow` for destinations. Idle pages whisper muted; idle modes stay default ink. Law: `display/workbench.md`. Guard: `main-nav-groups.guard.test.ts`. |
-| Stock drill-in (spine) | `STOCK_DRILL` + `kind: 'stock'` rows; section drill via `SPINE_SECTIONS` after Desk, before Products — Inventory → Warehouse (physical stock). Motion: `framerPresence.spineDrill` / `framerTransition.spineDrill` (opacity-only ≤150ms; no horizontal slide). Auto-drill must not steal focus. Guard: `main-nav-groups.guard.test.ts`. Law: `display/workbench.md`. |
-| Products drill-in (spine) | `PRODUCTS_SECTION` + `kind: 'products'` rows; section drill via `SPINE_SECTIONS` after Stock, before Library — catalog + channel commerce (modes: Catalog / Manuals / Labels / Pairing / QC / Kit). Guard: `main-nav-groups.guard.test.ts`. Law: `display/workbench.md`. |
+| L2 Mode + Recents (page modes + cross-page MRU) | `HeaderModeSwitcher` + `HeaderRecentsSwitcher` in `GlobalHeader` — data = `SIDEBAR_PAGE_NAV` / `useSidebarModeNav` / `useRecentModes`. Never a sidebar pill-band twin; no MRU chips in the spine org band. |
+| Header pin stations (Quick Access pins) | `HeaderPinsSwitcher` in `GlobalHeader` (hairline after Recents → pin current → sortable icons → overflow) — data = `useQuickAccess` / `cf.quickAccess` cache; durable SoT = `staff_preferences.prefs.quickAccess` via `<QuickAccessSync/>`. Never remount a pin list in a Quick Access / staff menu. Desktop Quick Access **actions** stay in `GlobalHeaderActions` in order **search · clipboard · phone QR · kiosk · inbox · AI (far-right)** — Sparkles opens the assistant right-rail occupant at the edge it owns; no staff avatar on desktop. |
+| Identity mark (org + staff circle) | `@/components/identity` — `IdentityMark` (circle · ring · image-or-initials · `xs`…`2xl`) and `StaffAvatar` (photo → colour+initials, resolved by staff id). **Never hand-roll a `rounded-full` + initials span**, and never fork a local `initials()` — the SoT is `staffInitials` (`StaffBadge.tsx`). See **Staff profile photo** below |
+| Org / workspace switch (spine top) | `OrgWorkspaceControl` in the MasterNav 40px top band — current `organizationName` on a **circle `IdentityMark`** (same `sm` density as the staff footer) + an **always-mounted dropdown trigger**, single-org included: a control that is a button for some accounts and inert text for others teaches two affordances for one slot, and the single-org menu still names the workspace and routes to `admin.view`-gated Settings → Organization. Switch path = `useSwitchOrg` / `requestSwitchOrg` (`src/lib/identity/switch-org.ts`). Page selection is the selected spine body row — never a twin “name of now” label in the top band. Org does **not** use staff photos (org brand logo is a separate lane). Guard: `header-mode.guard.test.ts`. |
+| Staff account (spine footer) | `StaffAccountFooter` below Settings/Admin — `StaffAvatar` · name · role · more (phone history / feedback / QA settings) · sign-out. Mobile keeps a compact account avatar in `GlobalHeaderActions`. When the spine is collapsed (0 width), org + staff are unreachable — same as Admin/Settings; open via header toggle / edge peek. |
+| Staff profile photo | `staff.avatar_photo_id` → the photos platform (`STAFF` entity type). Read it with `<StaffAvatar>`, never a per-surface photo join — see **Staff profile photo** below |
+| Scan Stations (spine section drill) | `STATION_GROUPS` (+ `icon`) + required `stationGroup: 'floor'` on `kind: 'station'` rows in `sidebar-navigation.ts`; membership via `SPINE_SECTIONS` / `spineSectionIdForPage`. **`floor` is the only station group** — the `desk` twin died 2026-08-01 (see the domain row below). Members, in pipeline order: Receiving subgroup (Arrival / Unbox / Local Pickup / Repair Service) + Testing / Packing / Scan out. Subgroup header from `STATION_SUBGROUPS`. **Never move a scan bench into a domain drill** — an operator at the dock answers to their input model, not to the domain of the records they touch. Footer-pinned `TechRailSearchBar` above Settings/Admin (+ `StaffAccountFooter` below) filters root sections or the open drill's pages. Guard: `station-nav-groups.guard.test.ts` + `main-nav-groups.guard.test.ts`. |
+| Main Analytics Monitor / Workflow Studio (spine section drills) | `MAIN_GROUPS` (+ `icon`) + required `mainGroup` on `kind: 'main'` rows. **Analytics Monitor** = Operations only (Live / TV). **Workflow Studio** = Studio + Catalog. Home / Search / Media / Chat top-pinned. Guard: `main-nav-groups.guard.test.ts`. Law: `display/workbench.md`. |
+| MasterNav spine type ladder | Org band `OrgWorkspaceControl` = `text-role-body`; page/drill/mode/section labels = `text-role-caption` (pages semibold, modes medium); counts = `text-role-micro`; staff footer name = `text-role-caption`. Never sentence-case `text-role-eyebrow` for destinations. Idle page/section labels use default ink (icons stay muted); idle modes stay default ink. Law: `display/workbench.md`. Guard: `main-nav-groups.guard.test.ts` + `header-mode.guard.test.ts`. |
+| MasterNav section accents | `spineAccentFor` / `SPINE_SECTION_ACCENTS` in `src/lib/nav/spine-section-accent.ts` — monitor sky · floor **amber-700** · inbound **teal-700** · catalog emerald · inventory **cyan-700** · fulfillment indigo · sales rose · support **orange-700** · studio violet; top pin + footer = `SPINE_NEUTRAL_ACCENT` (blue). The map is a **total** `Record<SpineSectionId, …>`, so a new section without a hue is a type error. Active fill / mode wash / icon tint compose from the map — never hardcode `bg-blue-600` alone in `SidebarNavList`. **An active row is a fill PLUS `ring-1 ring-inset ring-{hue}-400/30`** (mode wash: `/20`) — a bare colour swatch has no seated edge. **A hue's SHADE is picked for contrast, not symmetry:** amber / cyan / orange fill at 700 because at 600 they sit under the AA 4.5:1 floor for the 12px caption these rows use (amber-600 ≈2.9:1). Do not "restore" 600 for hue symmetry. Guard: `main-nav-groups.guard.test.ts`. |
+| MasterNav row hover/press travel | `SPINE_ICON_LIFT_CLASS` (same module) — CSS-only `translate(2px, -1px)` hover / `(1px, 0)` press on the **14px leading glyph**, `motion-safe:`-gated because the framer `MotionConfig` floor does not cover CSS transforms. Requires `group` on the row button. **Never** a framer `whileHover` on a spine row (a re-render per mousemove across 20 rows for 2px the compositor gives free), **never** a row-level `scale` (breaks the baseline dense siblings align to), **never** a hover/active `font-*` shift (reflows text mid-pointer). Guard: `main-nav-groups.guard.test.ts`. |
+| Spine row membership (the TWO registries are one declaration) | `APP_SIDEBAR_NAV` (flat rows) + `SIDEBAR_PAGE_NAV` (mode registry) — `MasterNav`'s `toPageNav` merges them as `{ ...page, icon, label }`, so for any page owning a `SIDEBAR_PAGE_NAV` entry the mode registry **wins** every membership field (`kind` · `mainGroup` · `stationGroup` · `stationSubgroup` · `domainGroup` · `href` · `requires`) and the flat row's copy is inert. A disagreement does not error and does not double-render — it silently ships one answer while the other reads as documentation. Declare membership in both **identically**. Guard: `main-nav-groups.guard.test.ts` → "agree on every shared membership field". |
+| Business-domain sections (spine section drills) | `DOMAIN_GROUPS` (+ `icon`) + required `domainGroup` on `kind: 'domain'` rows. **Inbound** = Inbound (Incoming · Receiving Board). **Catalog** = Catalog (Reference · Manuals · Labels · Pairing · Catalog link · QC · Kit Parts). **Inventory** = Inventory · Sourcing · Locations. **Fulfillment** = Shipping (Orders · Labels · Ready · FBA · Packing Review). **Sales** = Sales (Sales Board · Local Pickup History). **Support** = Support (6 modes). Root order: **Analytics Monitor → Scan Stations → Inbound → Catalog → Inventory → Fulfillment → Sales → Support → Workflow Studio**. Ratified 2026-08-01 (`docs/todo/desk-domain-spine-split-CLAUDE-CODE-PROMPT.md`); replaces the retired `desk` grab-bag and `print` task slice. Guard: `main-nav-groups.guard.test.ts`. |
+| Print is a TASK, never a section | There is no Print Stations drill and no `kind: 'labels'` / `'documents'`. Product labels = Catalog → Labels (`/products?view=labels`); bin/rack labels = Inventory → Locations (`/warehouse`, Labels tab); carton stickers = the Unbox bench. Every former Print row was an ALIAS of a URL a canonical page already owned, which is how `/products?view=labels` came to resolve to a nav id (`print-labels`) that was not the page it opened. **Carrier postage is not a print destination** — `/shipping/labels` stays Fulfillment → Labels and never folds into a label workspace. Guard: `main-nav-groups.guard.test.ts`. |
+| Dashboard boards are domain homes, not an L1 | `/dashboard` owns no spine row. `getSidebarNavPageId` reads the `?mode=` DOMAIN and hands the URL to the owning page: `inbound`/`receiving` → Inbound › Receiving Board, `sales`/`pickup` → Sales, everything else → Fulfillment › Shipping › Orders. The route, its param spec and every bookmark are unchanged — only the nav identity moved. Guard: `sidebar-navigation.test.ts`. |
+| Review splits by job (`/review`) | `/review` owns no spine row and no `SIDEBAR_PAGE_NAV` entry. Packing QA (bare URL) is Fulfillment › Shipping › **Packing Review**; `?mode=pairing` and `?mode=catalog-link` are Catalog work and highlight Catalog › Pairing / Catalog link. `getSidebarNavPageId` reads `?mode=` to pick the owner. The three workspaces are untouched — merging Review pairing into Catalog pairing is a separate LedgerGrid job, deliberately out of scope. Guard: `main-nav-groups.guard.test.ts` → "Review splits". |
+| Hollow sections + hollow pages are forbidden | A section with no visible page renders nothing on the root map (`SidebarNavList`), and a page that DECLARED modes but had every one permission-filtered is dropped wholesale via `isSidebarPageReachable` (composed by `MasterNav` **and** `buildCommandBarNavGroups`). A nav row can carry only one `requires`, so a page needing two gates (Sales: `dashboard.view` route + `walk_in.view` front desk) would otherwise ship a dead header. Absent, never disabled. |
 
 If a facet has no SoT yet, **add or extend one** (pattern evolution) — do not fork a page-local map “just for this screen.”
 
@@ -112,6 +127,26 @@ If a facet has no SoT yet, **add or extend one** (pattern evolution) — do not 
   (shrink-only; escape `ds-allow-alert` on the same line or line above).
 - Never hardcode `z-[NNN]` or inline numeric `zIndex`. Add/adjust a named token instead.
 
+## Motion roles + import path
+
+Full law + the region matrix: [`display/motion-crossfade.md`](display/motion-crossfade.md).
+Two invariants live here because they are single-source mappings, not recipes:
+
+- **Intent resolves in exactly ONE place** — `motionRole` (`src/design-system/motion/roles.ts`).
+  Each role names a JOB and binds it to physics the house already ships; a role never invents a
+  curve. `swap.scan` **must** keep its `duration: 0` exit (the station-cadence contract) and
+  `push.rail` **must** stay a tween — a spring on a push width overshoots the value every
+  sibling lays out against, so the work surface rubber-bands on every open.
+- **The engine is named in exactly ONE file** — `src/design-system/motion/framer.ts`
+  (`motion/react`). Everything in `src/` imports `@/design-system/motion`. The barrel is what
+  makes the package a dependency decision instead of a 220-file migration.
+- **The preset catalog is not deprecated.** `framerPresence.*` / `framerTransition.*` are the
+  physics roles resolve to, and remain legal for surfaces no role covers. Do **not** sweep
+  existing call sites onto roles for symmetry — migrate a surface while you are already
+  editing its motion.
+- Guard: `src/design-system/foundations/motion-major.guard.test.ts` (import boundary + single
+  major + role↔preset identity).
+
 ## Grid column visibility + sort
 
 - **Visibility resolves in exactly ONE place** — `useGridColumnVisibility` (descriptor `tier` + staff
@@ -153,7 +188,7 @@ If a facet has no SoT yet, **add or extend one** (pattern evolution) — do not 
   `rowTriageFlags` · `multiSelect` · `inCellEdit` · `fieldsMenu` · `dayBands`.
 - **Triage wash is opt-in.** Only Orders sets `rowTriageFlags: true` (domain vocabulary in
   `src/lib/orders/order-row-flags.ts`). Catalog · Receiving · Incoming · Repair · Pickup ·
-  station-history · FBA set `false`. Leaf rows paint fill via
+  station-history · FBA · warranty set `false`. Leaf rows paint fill via
   `ledgerRowFillClass({ selected, flagClass?, capabilities })` — a flag class is ignored when the
   capability is off, so Catalog cannot grow a staff row colour without changing its descriptor
   (and failing the guard).
@@ -208,7 +243,7 @@ If a facet has no SoT yet, **add or extend one** (pattern evolution) — do not 
   `justify-end` / `text-right` on the cell.
   | Type | Align | Examples |
   |---|---|---|
-  | `number` · `id` · `location` · `date` | **end** | Qty · price · **order ID** · SKU · serial · ticket · tracking last-4 · ship-by / age |
+  | `number` · `id` · `location` · `date` | **end** | Qty · price · **order ID** · SKU · serial · ticket · tracking last-8 · ship-by / age |
   | `text` · `longtext` · `tag` · `external` | **start** | Product title · condition · status · platform · tester name |
 - Explicit `align` on the column model is the ONLY override — use it when a column's *type*
   is numeric-looking for the header glyph but the *cell* is prose (receiving `stage`) or a
@@ -231,26 +266,118 @@ If a facet has no SoT yet, **add or extend one** (pattern evolution) — do not 
 
 ## Right-rail modality (the detail slot)
 
-- **Navigators push, inspectors float.** The left spine (`SidebarNavColumn` /
-  MasterNav) is a **resident push column** — it dictates permanent workspace
-  layout, so opening it moves the frame. The **left context-sidebar wrapper** is
-  `ContextPanelLayout` (route rail beside the workspace — not the spine): every
-  mounted rail is drag-resizable + collapsible via `CONTEXT_PANEL_RESIZE` /
-  `CONTEXT_PANEL_COLLAPSE` + `HorizontalEdgeResizeHandle` (`edge: 'trailing'`).
-  Right-rail **record inspectors** are **non-modal floats** (`modal={false}`):
-  same inset card, no scrim, no layout squeeze. Never push/squeeze a dense
-  LedgerGrid or station column for a transient peek — at 1440px the arithmetic
-  does not permit it. Modal remains reserved for blocking wizards and
-  destructive confirms (delete, …) — **not** Unbox Claim (station push, same
-  family as Ticket).
+- **Every resident edge PUSHES. Nothing floats over the work surface.**
+  (Ruled 2026-08-01, superseding "navigators push, inspectors float".) The left
+  spine (`SidebarNavColumn` / MasterNav) is a **resident push column** — it
+  dictates permanent workspace layout, so opening it moves the frame. The
+  **left context-sidebar wrapper** is `ContextPanelLayout` (route rail beside the
+  workspace — not the spine): every mounted rail is drag-resizable + collapsible
+  via `CONTEXT_PANEL_RESIZE` / `CONTEXT_PANEL_COLLAPSE` +
+  `HorizontalEdgeResizeHandle` (`edge: 'trailing'`). Right-rail **record
+  inspectors** are **non-modal push columns** (`modal={false}`): same inset card,
+  no scrim, and the workspace reflows beside them rather than under them.
+
+  **Width order of sacrifice — the panel takes its space from the LEFT before it
+  takes it from the grid:** collapse/displace the spine (and, if still short, the
+  context rail) first; only a viewport that cannot seat the grid's own minimum
+  content width after both are parked may fall back to overlaying. That order is
+  the whole ruling — it is what the earlier float-only rule lacked.
+
+  **IMPLEMENTED 2026-08-01, with one correction the ruling had wrong.** The
+  ladder lives in `src/lib/right-rail/frame.ts` (`resolveRightRailFrame`, pure +
+  unit-pinned) and it has **two rungs, not three**: measured in the running app
+  at 1440 and 1920, `[data-sidebar-nav-column]` reports **width 0 on every
+  route** — `navOpen` is unpersisted `useState(false)` — so a spine rung would be
+  dead code in the common case, and displacing it would fight
+  `SidebarNavColumn`'s own ruling that a navigator must never auto-close. The
+  only real donor is the **context rail** (360px + margins). Order is therefore:
+  rung 0 nothing yields → rung 1 the context rail parks → else overlay.
+
+  **The park is an EPHEMERAL MASK, never a write.** `ContextPanelLayout` reads
+  `parkRail` and ORs it into its collapsed state; it must never call
+  `setCollapsed(true)` from that path, or opening a record would silently leave
+  `context-panel-collapsed` set in the operator's localStorage forever. A
+  push-park renders **no expand strip** (the rail returns on its own when the
+  panel closes, so a restore button that cannot restore is worse than none) —
+  which is why a push-park costs **0** in the ladder while an operator-chosen
+  collapse costs the 32px strip.
+
+  **The threshold is derived, not a breakpoint:** `MIN_WORK_SURFACE_PX` (784 —
+  the larger of the Outbound grid's 640 show-all + gutters and the station
+  workbench's 720 + gutters) + panel gutters + the panel's own 360 minimum =
+  a **1160px content row**. Below that, overlay. The floor is deliberately ONE
+  static constant and **not** a per-lane `contentMinWidthRem`: on `/dashboard`
+  that value is filtered by a `ResizeObserver` on the very scrollport the push
+  narrows, so feeding it back would make the decision depend on its own outcome.
+
+  **Measured before/after** (1440, `/review?mode=catalog-link`): the float
+  covered **400px of the grid** and the work surface yielded 0; the push leaves
+  zero overlap and the grid gives up only 60px, because parking the rail returns
+  376. Proof is geometric (`table.right <= rail.left`), not visual — a screenshot
+  cannot tell "pushed" from "covered".
+
+  **Why this reversed.** The float was chosen because "at 1440px the arithmetic
+  does not permit it" — true only while the left columns were treated as
+  immovable. It bought that arithmetic with permanent occlusion of the trailing
+  grid columns, which got worse the moment selection (not just an explicit open)
+  started mounting the rail: on `/dashboard` the panel is up whenever anything is
+  checked. Operators read the panel and the row together; a surface that covers
+  the row it describes is the wrong trade.
+
+  Mechanism is the **deliberate PUSH toggle** already sanctioned in
+  `display/motion-crossfade.md` — tween (never a spring, which would rubber-band
+  the width every sibling lays out against), fired by an explicit gesture, with
+  fixed-width edge-anchored content inside an `overflow-hidden` host. Copy
+  `SidebarNavColumn`'s recipe; do not invent a second one.
+
+  Modal remains reserved for blocking wizards and destructive confirms
+  (delete, …) — **not** Unbox Claim (station push, same family as Ticket).
+- **Panel header grammar (ruled 2026-08-01; identity density 2026-08-01).** Every
+  **record** right-panel occupant wears the same header outline (full recipe:
+  [`display/right-rail-inspector.md`](display/right-rail-inspector.md)):
+  - **Row 1 is the icon action row.** Actions are icon-only
+    (`PaneHeaderActionBar iconOnly`, which keeps each `label` as the
+    `aria-label`). The action set is **contextual per occupant** (orders ≠
+    incoming ≠ catalog-link) — pass a per-rail `PaneHeaderActionBarAction[]`;
+    never hardcode one product's icons into the shell. **Never a labelled
+    button block that duplicates this row** elsewhere in the panel (the
+    dashboard inspector shipped two red Delete buttons because the footer
+    action set carried its own). A single **primary CTA** band in the footer
+    (Link listing / Resolve / Save) is allowed; it is not a twin of the icon
+    strip.
+  - **The far right of that row is `up · down · close`, in that order** — record
+    prev/next then dismiss, one right-aligned cluster. Not split across two rows.
+  - **Row 2 is dense identity** — `PaneHeaderLabel` (eyebrow = mode / entity
+    kind; value = a **short durable key**: order id, item #, SKU, ticket #,
+    tracking). Roles only (`text-role-eyebrow` / caption-density value).  
+    **Never a wrapping hero title** — full `product_title` / listing sentences /
+    prose belong in the scroll **body** as fact rows. Never `text-role-title` /
+    `text-role-display` / intake `<h2>` for rail identity.
+  - **`SidebarIntakeFormShell` is forbidden on record inspectors.** That shell
+    is create/import/prefs chrome (left-circle close + wrapping uppercase
+    title). Review → Catalog link once put a Bose product sentence in that
+    title prop — the exact anti-pattern this law bans. Intake overlays
+    (`detail:new-order`, Import eBay, FBA create, grid column display) keep
+    the intake shell; the moment a rail opens a **picked row**, migrate to
+    `PaneHeader`.
+  - **The close control is mandatory and belongs to the panel.** A non-modal
+    push column has no scrim to click off, so a header that omits it leaves
+    Escape as the only dismiss. Two headers actively *swallowed* the prop
+    (`ShippedDetailsHeader` did `void _onClose` behind a comment claiming
+    "close lives on RightRailHost (backdrop / Esc)" — untrue since the flip), so
+    the lanes operators actually work had no visible dismiss at all. Compose
+    `PaneHeaderCloseButton`.
+  - **A destructive action belongs to the record's own control, never to the
+    multi-select action set** that happens to have one row in it.
 - **One owner:** `RightRailHost` is THE right details-panel wrapper — it renders
   exactly the top occupant of `src/lib/right-rail/store.ts`. Panels register via
   `useRegisterRightPanel` / `DetailStackRailRegistrar` and own **no** geometry.
   Never add a private `fixed right-0 z-panel w-[420px]` element — that is the
   exact bug the store exists to fix.
-- **Exactly TWO right-edge grammars exist, and there is no third.**
-  1. **Float** — a `RightRailHost` occupant. App-wide, one at a time, over the
-     work surface. The default for a picked record.
+- **Exactly TWO right-edge grammars exist, and there is no third.** Both push;
+  they differ in SCOPE, not in whether the work surface reflows.
+  1. **App push column** — a `RightRailHost` occupant. App-wide, one at a time,
+     pushing the work surface. The default for a picked record.
   2. **Station push column** — `UnboxPushColumn`. Squeezes its own station's
      workbench in-flow, exclusive within that station, never a rail occupant.
      Unbox's Displays / Ticket / Claim / tool.
@@ -258,9 +385,13 @@ If a facet has no SoT yet, **add or extend one** (pattern evolution) — do not 
   **There is no ambient, always-on right-edge region**, and one must not be
   rebuilt. One was built for the Unbox step procedure — `procedure-store.ts` +
   `RightRailProcedureRegion` + `useRegisterRightRailProcedure` +
-  `UnboxProcedureRail` — and retired within the day; the procedure is now the
-  **`checklist` display inside the Displays push column**
-  (`UnboxProcedureChecklist`).
+  `UnboxProcedureRail` — and retired within the day. It then lived as the
+  `checklist` display in the Displays push column, and as of **2026-08-01 the
+  procedure is not on the right edge at all**: it is the Unbox workbench CENTRE
+  (`UnboxProcedureStack`, `display/station-workbench.md`), and the `checklist`
+  display was deleted rather than kept as a mirror. Both retirements point the
+  same way — the procedure is the work, so it belongs on the work surface, and
+  the right edge stays for reference and exception surfaces the operator picks.
 
   Why the door stays shut: `RightRailHost` renders exactly one occupant by
   construction (`getRightRailTop()`), so a region pinned beside it is a *second*
@@ -460,6 +591,32 @@ Reference: the Unbox unfound **Find ticket** action (`UnfoundMatchStrip`) → `T
 - Consumers: `DataTable`, `LedgerGridSurface`, outbound `OrdersGridView`.
 - Never hand-roll `rounded-* border … shadow-*` / header fills for ops collection tables.
 
+### Which table: `LedgerGrid` vs `DataTable`
+
+Two families, one shell. **Pick by whether the surface is an ops queue**, not by row count:
+
+- **`LedgerGridSurface` + a `GridSurfaceDescriptor`** — virtualized Workbench queues. Windowing,
+  frozen identity pane, per-staff Fields, day bands, in-cell edit, multi-select.
+- **`DataTable`** (`@/design-system/components/DataTable`) — the non-virtualized admin / settings /
+  reports lifecycle list. Deliberately has **no** sort, selection, or pagination: the 15-file admin
+  wave it exists for needs none of them (audited 2026-08-01), and adding them would make it a second,
+  weaker grid.
+
+`DataTable` rules:
+
+- **It carries no `'use client'` — keep it that way.** Most consumers are React Server Components
+  that ship zero client JS for their tables; a directive here (or a transitively client-only import
+  like `SkeletonList`, which pulls framer-motion) puts every one behind a client boundary to render
+  static rows. A caller that passes `onRowClick` is interactive and must be the client component
+  itself. Guard: `DataTable.test.ts`.
+- **Alignment derives from the column's `type`** through the same `resolveGridColumnAlign` the grids
+  use — digit / id / date end, word / tag start. Never hand-type `text-right` inside `cell()`; the
+  explicit `align` prop is the declared exception (and owns `center`).
+- **Answer both empty questions** — `emptyMessage` (nothing exists) vs `searchEmptyMessage` +
+  `isSearching` (a filter excluded everything). Same contract as `LedgerGridSurface`.
+- **Use `loading`, don't swap the table for a spinner** — it draws placeholder rows at the real
+  column geometry so the page does not reflow when rows land.
+
 ## Spacing (density-aware scale + intents)
 
 - Source: `src/design-system/tokens/spacing.mjs` → `theme.extend.spacing`; each step is
@@ -506,6 +663,7 @@ Reference: the Unbox unfound **Find ticket** action (`UnfoundMatchStrip`) → `T
   `CHIP_TONES` tone registry in `CopyChip.tsx` (incl. `price` for unit cost).
 - Condition meta chips use `ConditionGradeChip` → `src/lib/condition-tone.ts` for per-grade underline/icon hue.
 - `resolveSerialDisplay` / `resolveChipDisplay` are the label SoT for serials/chips.
+- Display preview is **last-8** (`CHIP_DISPLAY_LEN` / `getLast8` / `getLast8Serial`); empty face is `--------`.
 
 ## Note vs label grain (per line item)
 
@@ -540,8 +698,24 @@ the two that live closest together were one column until 2026-07-31.
 - **Grain must be legible in the picker**, not inferred from a kind's name —
   resolve it with `workspaceLabelGrainLabel(kind)` (table row above), never a
   hand-typed string.
+- **A receive may SET the item note, never CLEAR one it was not given** —
+  `notes = COALESCE($n, notes)` in every receive-side writer. The mobile QA
+  sheet's Pass-all posts `notes: null`, so a bare `SET notes = $1` erased the
+  desktop operator's note on every phone-side pass. Guard:
+  `src/app/api/receiving/receive-note-preservation.guard.test.ts`.
+- **A QA fail REASON is not a note.** It is a code from the QA-fail slice
+  (`QA_FAIL_EXCEPTION_STATUS` in `src/lib/receiving/exception-codes.ts` —
+  `DEFECTIVE` · `DAMAGED` · `INCOMPLETE`), sent as `exception_code` via
+  `qa-fail-reason-wire.ts`, landing in `receiving_exceptions`. It also **decides
+  the `qa_status`** the receive writes — the sheet used to hardcode
+  `FAILED_FUNCTIONAL` and carry the real reason as prose, so the column built to
+  tell a dead unit from a damaged one could not. `mark-received` 400s an
+  unrecognized code and 400s a body whose `qa_status` contradicts the code.
+  There is deliberately **no free-text sibling** (`ReasonChipPicker`'s contract).
 - Guard: `src/components/receiving/workspace/line-edit/label-note-grain.guard.test.ts`
-  (wiring) + `src/lib/print/workspace-label-kinds.test.ts` (faces + grain).
+  (wiring) + `src/lib/print/workspace-label-kinds.test.ts` (faces + grain) +
+  `tests/e2e/receiving-note-label-grain.spec.ts` (both composers in a browser,
+  on the QA org).
 
 ## Order note grain (one writable home)
 
@@ -588,6 +762,46 @@ An annotation on an order goes to **`order_notes`**, appended through
   and staff-authored; the customer conversation stays in Entity Threads. If that
   blurs in practice, collapse onto threads rather than growing a third home.
 - Guard: `src/lib/orders/order-note-grain.guard.test.ts`.
+
+## Staff profile photo (one face, one resolution point)
+
+A staffer uploads **one** photo; it becomes their avatar everywhere their work is
+attributed — spine footer, sign-in picker + PIN chrome, timelines, serial
+journeys, admin identity, ops live feed. No photo ⇒ their colour + initials.
+
+- **Store a PHOTO ID, never a URL.** `staff.avatar_photo_id` → `photos(id)`
+  `ON DELETE SET NULL` (`2026-08-01e_staff_avatar_photo.sql`). Bytes live behind
+  `photo_storage` + `/api/photos/{id}/content`, org-scoped like receiving
+  evidence. A URL column here would be a second, unsigned way to reach tenant
+  bytes.
+- **One upload waist.** `POST`/`DELETE /api/staff/[id]/avatar` composes
+  `uploadPhoto()` — GCS via the adapter, `photo_entity_links(entity_type='STAFF',
+  link_role='primary')`, path `{org}/staff/{staffId}/avatar/{photoId}.jpg`.
+  **Never** add a second uploader; the Settings card
+  (`settings/sections/StaffPhotoCard.tsx`) posts to this route.
+- **Gate = self OR `admin.manage_staff`,** checked inline (a route-level
+  `permission:` would lock every staffer out of their own profile). The generic
+  `/api/photos/upload` path stays admin-only for `STAFF`
+  (`UPLOAD_PERM_BY_ENTITY`), so it can't attach a photo to a colleague.
+- **`staff_avatar` is the ONLY legal `photo_type` on `STAFF`** (write matrix in
+  `photos/stages.ts`): a profile photo is identity chrome, not evidence — the
+  constraint keeps a receiving capture off a person's face and a face out of the
+  evidence buckets the library and claim exports read.
+- **Resolution is by staff id, through the staff identity cache**
+  (`@/utils/staff-colors` — `getStaffAvatarPhotoId` / `setStaffAvatarPhotoId`,
+  filled by `<StaffColorsProvider>` from `/api/staff` and seeded for SELF from
+  the auth envelope's `avatarPhotoId`). A feed carrying only an actor's staff id
+  needs **no photo join and no prop drilling**. A caller holding the row may pass
+  `avatarPhotoId` / `colorHex` to skip the lookup.
+- **Never guess an avatar from a display name.** Two people share one, and the
+  row would attribute the work to the wrong face. `TimelineItem.actorStaffId`
+  (additive beside the `actor` copy string) is what unlocks the mark; an adapter
+  whose query resolved only a name leaves it undefined and renders name-only.
+- **Sign-in shows faces.** `/api/photos/{id}/content` has ONE anonymous branch:
+  the photo must be the **current** `avatar_photo_id` of an active staffer in the
+  tenant the request's host resolves to — exactly the set `/api/auth/staff-picker`
+  already discloses publicly (name + role + colour). A superseded avatar, an
+  evidence photo, or another tenant's staffer still 401s.
 
 ## Honest absence (missing facts)
 

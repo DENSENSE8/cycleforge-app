@@ -11,16 +11,16 @@
  *   • dropdown — header combobox preview. Same narrow anatomy, tighter pad.
  *   • comfortable — full /search Monitor feed. Strict CSS Grid tracks
  *     (Glyph · Id · Match · Tracking · Age). Glyph = blue Package /
- *     PackageOpen leftmost. Id = OrderIdChip last-4. Match = title only.
- *     Tracking = TrackingChip last-4 on the right.
+ *     PackageOpen leftmost. Id = OrderIdChip last-8. Match = title only.
+ *     Tracking = TrackingChip last-8 on the right.
  *
  * Narrow law (compact | dropdown): title + subtitle own the width; status is a
  * leading dot when known; trailing EntityTag and status/platform chips stay
- * off; optional tracking last-4 only. Viewport `md:` must never gate rail
+ * off; optional tracking last-8 only. Viewport `md:` must never gate rail
  * chrome (sidebar is narrow on desktop too).
  *
  * Variants (narrow), chosen internally by entityType (callers never pass a flag):
- *   • order — status dot · title · meta · last-4 · when
+ *   • order — status dot · title · meta · last-8 · when
  *   • unit  — serial badge · product title
  *   • generic — glyph/dot · title · subtitle
  */
@@ -36,8 +36,8 @@ import {
   SerialChip,
   OrderIdChip,
   OrderIdChipPlaceholder,
-  getLast4,
-  getLast4Serial,
+  getLast8,
+  getLast8Serial,
 } from '@/components/ui/CopyChip';
 import { formatRelativeTime } from '@/lib/search/search-recents';
 import { journeyHandoffHref, narrowSearchTitleDisplay } from '@/lib/search/search-hit';
@@ -125,7 +125,7 @@ function Chip({ label, tone }: { label: string; tone: ChipTone | string }) {
   );
 }
 
-/** Title text — last-4 when identifier-shaped; full value on HoverTooltip. */
+/** Title text — last-8 when identifier-shaped; full value on HoverTooltip. */
 function SearchTitle({
   title,
   density,
@@ -195,7 +195,7 @@ function journeyActionFor(
   return <JourneyAction href={href} density={density} />;
 }
 
-/** Carrier + last-4 — always shown when tracking exists (density-gated, not md:). */
+/** Carrier + last-8 — always shown when tracking exists (density-gated, not md:). */
 function TrackingMeta({
   tracking,
   carrier,
@@ -208,7 +208,7 @@ function TrackingMeta({
       {carrier && (
         <span className="text-role-eyebrow uppercase text-text-faint">{carrier}</span>
       )}
-      <TrackingChip value={tracking} display={getLast4(tracking)} dense />
+      <TrackingChip value={tracking} display={getLast8(tracking)} dense />
     </span>
   );
 }
@@ -256,12 +256,12 @@ function ComfortableAlignedRow({
         </HoverTooltip>
       </span>
 
-      {/* 2. Id — order/PO last-4 (never tracking) */}
+      {/* 2. Id — order/PO last-8 (never tracking) */}
       <span className="flex min-w-0 items-center justify-start">
         {identityKind === 'order' ? (
           <OrderIdChip
             value={orderId}
-            display={getLast4(orderId)}
+            display={getLast8(orderId)}
             dense
             truncateDisplay={false}
             fitDisplayWidth
@@ -291,10 +291,10 @@ function ComfortableAlignedRow({
         ) : null}
       </span>
 
-      {/* 4. Tracking — right-side last-4 (orders + receiving); serial only when no tracking */}
+      {/* 4. Tracking — right-side last-8 (orders + receiving); serial only when no tracking */}
       <span className="min-w-0 truncate">
         {tracking ? (
-          <TrackingChip value={tracking} display={getLast4(tracking)} dense />
+          <TrackingChip value={tracking} display={getLast8(tracking)} dense />
         ) : identityKind !== 'serial' && serial ? (
           <SerialChip value={serial} dense width="w-fit max-w-full shrink-0" />
         ) : null}
@@ -404,9 +404,9 @@ function UnitRow({
   showJourneyAction,
 }: SearchResultRowProps) {
   // The unit subtitle is `serial · sku · status` by builder contract; the first
-  // segment is the serial. Echo the receiving carton chip (last-4 mono badge).
+  // segment is the serial. Echo the receiving carton chip (last-8 mono badge).
   const serial = (hit.subtitle ?? '').split(' · ')[0]?.trim() || '';
-  const badge = serial ? getLast4Serial(serial) : '';
+  const badge = serial ? getLast8Serial(serial) : '';
   const chips = hit.chips?.slice(0, 2) ?? [];
   const big = density === 'comfortable';
   const narrow = isNarrowDensity(density);
@@ -525,7 +525,7 @@ function GenericRow({
     null;
   const tracking = hit.facets?.tracking_number ?? null;
   const carrier = hit.facets?.carrier ?? null;
-  // When the title itself is the tracking #, last-4 lives in the title — skip
+  // When the title itself is the tracking #, last-8 lives in the title — skip
   // a redundant right-slot chip.
   const titleAbbrev = narrow ? narrowSearchTitleDisplay(hit.title).abbreviated : false;
   const showTrackingRight = Boolean(tracking) && !titleAbbrev;

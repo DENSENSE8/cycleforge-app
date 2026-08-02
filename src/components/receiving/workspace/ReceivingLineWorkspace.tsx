@@ -25,6 +25,14 @@ interface Props {
   /** Which workspace mode — `triage` hides unbox-only sections (photos, claim,
    *  label, print·receive, serial scan). Defaults to the full `unbox` editor. */
   variant?: ReceivingWorkspaceVariant;
+  /**
+   * Whether this open stamps the operator's recents (`receiving_line_views` →
+   * the Recent tab). **Required, deliberately undefaulted** — it decides whether
+   * a write claims that this staffer touched this carton, and a default would
+   * silently answer for every call site nobody revisited
+   * (`backend-patterns.md` → a safety classification is a required parameter).
+   */
+  recordView: boolean;
   onPrev: () => void;
   onNext: () => void;
   onClose: () => void;
@@ -48,21 +56,27 @@ export function ReceivingLineWorkspace({
   accordionBootstrap,
   nav,
   variant = 'unbox',
+  recordView,
   onClose,
 }: Props) {
   useSurfacePaintMark('unbox:workspace', variant === 'unbox');
   // Record this open into the operator's recents (server-backed, per-staff) so
-  // the unbox sidebar's "Viewed" pill can list recently-opened lines. Fire-and-
-  // forget — a failure never blocks the workspace. Upsert keys on (staff, line),
-  // so re-opening just bumps viewed_at.
+  // the Recent tab can list recently-opened lines. Fire-and-forget — a failure
+  // never blocks the workspace. Upsert keys on (staff, line), so re-opening just
+  // bumps viewed_at.
+  //
+  // `recordView` false = the operator clicked a row on the browse FEED. That is
+  // navigation, not work: if every click on a 117-row queue stamped a view,
+  // Recent would converge on a copy of the feed and stop answering the only
+  // question it exists for — which cartons did I actually open.
   useEffect(() => {
-    if (!(row.id > 0)) return;
+    if (!(row.id > 0) || !recordView) return;
     void fetch('/api/receiving-lines/view', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ receiving_line_id: row.id, receiving_id: row.receiving_id ?? null }),
     }).catch(() => {});
-  }, [row.id, row.receiving_id]);
+  }, [row.id, row.receiving_id, recordView]);
 
   return (
     // Plain wrapper — NO per-line key/crossfade. Switching between sibling lines

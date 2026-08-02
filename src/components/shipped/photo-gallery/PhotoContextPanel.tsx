@@ -1,6 +1,6 @@
 'use client';
 
-import { motion } from 'framer-motion';
+import { motion } from '@/design-system/motion';
 import {
   AlertTriangle, Barcode, Calendar, Camera, ChevronRight, ExternalLink, FileText, Hash,
   Image as ImageIcon, Layers, Package, Sparkles, Tag, Truck, User,

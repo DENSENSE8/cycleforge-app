@@ -256,7 +256,8 @@ export function cartonFlags(
  * Header identity for the carton read chrome — raw parts only.
  *
  * The view composes the lead title (platform label · PO, or sole product name,
- * or carton id) and mounts TrackingChip / PoChip from `tracking` / `poNumber`.
+ * or carton id) and mounts PoChip · TrackingChip from `poNumber` / `tracking`
+ * (order#/PO# before tracking#, matching CartonContextCard).
  * Platform stays raw so the view resolves it through `sourcePlatformLabel`.
  */
 export interface CartonHeaderIdentity {
@@ -403,23 +404,6 @@ export function cartonLifecycle(
           ? 'scanned'
           : 'expected';
   return { state, ...LIFECYCLE[state] };
-}
-
-/**
- * Anchor for the shared `WorkspaceTimelineTab` (the SAME timeline the Unbox
- * workbench mounts). Passing the PO id lets it use the Incoming-details cache
- * instead of a second carrier fetch.
- */
-export function cartonTimelineAnchor(receiving: CartonInspectorReceiving): {
-  receivingId: number;
-  tracking: string | null;
-  poId: string | null;
-} {
-  return {
-    receivingId: receiving.id,
-    tracking: receiving.tracking?.trim() || null,
-    poId: receiving.zoho_purchaseorder_id?.trim() || null,
-  };
 }
 
 /** Received-vs-expected summary for the contents header. */

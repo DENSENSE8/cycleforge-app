@@ -1,7 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion } from '@/design-system/motion';
 import { formatDateWithOrdinal } from '@/utils/date';
 import { cn } from '@/utils/_cn';
 import { QUEUE_ROW } from '@/components/ui/queue-row-chrome';

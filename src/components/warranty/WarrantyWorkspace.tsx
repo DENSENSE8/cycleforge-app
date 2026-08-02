@@ -1,6 +1,6 @@
 'use client';
 
-import { AnimatePresence } from 'framer-motion';
+import { AnimatePresence } from '@/design-system/motion';
 import { useSearchParams } from 'next/navigation';
 import { WarrantyClaimsTable } from '@/components/warranty/WarrantyClaimsTable';
 import { WarrantyClaimDetailPanel } from '@/components/warranty/WarrantyClaimDetailPanel';

@@ -20,7 +20,15 @@ export interface SidebarIntakeFormShellProps {
 }
 
 /**
- * Chrome for sidebar “intake” flows — matches {@link ShippedIntakeForm} layout.
+ * Chrome for sidebar **intake / create / import / prefs** flows — matches
+ * {@link ShippedIntakeForm} layout (left-circle close + uppercase title +
+ * accent subtitle).
+ *
+ * **Not for record inspectors.** A picked-row right-rail peek must compose
+ * `PaneHeader` + `PaneHeaderLabel` (short durable key) + icon action row —
+ * never this shell with a product title in `title`. SoT:
+ * `.claude/rules/display/right-rail-inspector.md` + source-of-truth → Panel
+ * header grammar. Guard: `right-rail-inspector-header.guard.test.ts`.
  */
 export function SidebarIntakeFormShell({
   title,

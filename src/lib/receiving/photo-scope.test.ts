@@ -57,15 +57,66 @@ test('effectiveReceivingPhotoStage — entity wins, missing stage defaults safel
 test('resolveReceivingPhotoTarget maps each stage onto the write matrix', () => {
   assert.deepEqual(
     resolveReceivingPhotoTarget({ receivingId: 7, stage: 'arrival_package' }),
-    { entityType: 'RECEIVING', entityId: 7, photoType: 'receiving_package' },
+    { entityType: 'RECEIVING', entityId: 7, photoType: 'receiving_package', aspect: null },
   );
   assert.deepEqual(
     resolveReceivingPhotoTarget({ receivingId: 7, receivingLineId: null, stage: 'unbox_carton' }),
-    { entityType: 'RECEIVING', entityId: 7, photoType: 'receiving_unbox_carton' },
+    { entityType: 'RECEIVING', entityId: 7, photoType: 'receiving_unbox_carton', aspect: null },
   );
   assert.deepEqual(
     resolveReceivingPhotoTarget({ receivingId: 7, receivingLineId: 41, stage: 'unbox_item' }),
-    { entityType: 'RECEIVING_LINE', entityId: 41, photoType: 'receiving_item' },
+    { entityType: 'RECEIVING_LINE', entityId: 41, photoType: 'receiving_item', aspect: null },
+  );
+});
+
+test('an omitted aspect is null — unclassified evidence, never inferred', () => {
+  // The resolver knows the stage, so it COULD guess a "most likely" aspect.
+  // It must not: an aspect is a claim about what the photo shows, and this
+  // module is not in a position to make one on the operator's behalf.
+  const target = resolveReceivingPhotoTarget({ receivingId: 7, stage: 'unbox_carton' });
+  assert.equal(target.aspect, null);
+});
+
+test('a declared aspect rides through to the write target', () => {
+  assert.equal(
+    resolveReceivingPhotoTarget({
+      receivingId: 7,
+      stage: 'unbox_carton',
+      aspect: 'packing_material',
+    }).aspect,
+    'packing_material',
+  );
+  assert.equal(
+    resolveReceivingPhotoTarget({
+      receivingId: 7,
+      receivingLineId: 41,
+      stage: 'unbox_item',
+      aspect: 'serial',
+    }).aspect,
+    'serial',
+  );
+});
+
+test('an aspect illegal for the stage throws — this is the STRICT resolver', () => {
+  // `packing_material` describes the inside of an opened box, so it can never
+  // be arrival (pre-opening) evidence. Failing here means a mis-wired capture
+  // surface breaks in dev and tests, not with a 400 at the bench.
+  assert.throws(
+    () =>
+      resolveReceivingPhotoTarget({
+        receivingId: 7,
+        stage: 'arrival_package',
+        aspect: 'packing_material',
+      }),
+    /not legal at the arrival_package stage/,
+  );
+  assert.throws(() =>
+    resolveReceivingPhotoTarget({
+      receivingId: 7,
+      receivingLineId: 41,
+      stage: 'unbox_item',
+      aspect: 'shipping_label',
+    }),
   );
 });
 

@@ -47,6 +47,20 @@ import { makeRepairGridDescriptor } from '@/components/repair/repair-grid/repair
 import { makePickupGridDescriptor } from '@/components/receiving/pickup/grid/pickup-grid-descriptor';
 import { STATION_HISTORY_GRID_CAPABILITIES } from '@/components/station/station-history-capabilities';
 import { FBA_BOARD_GRID_CAPABILITIES } from '@/components/fba/fba-board-capabilities';
+import { MY_DAY_GRID_CAPABILITIES, makeMyDayGridDescriptor } from '@/features/my-day/grid/my-day-grid-descriptor';
+import { MY_DAY_GRID_COLUMNS } from '@/lib/my-day/my-day-grid-layout';
+import { WARRANTY_GRID_CAPABILITIES } from '@/components/warranty/grid/warranty-grid-descriptor';
+import { makeWarrantyGridDescriptor } from '@/components/warranty/grid/warranty-grid-descriptor';
+import { WARRANTY_GRID_COLUMNS } from '@/components/warranty/grid/warranty-grid-layout';
+import { READY_GRID_CAPABILITIES, makeReadyGridDescriptor } from '@/components/outbound/ready/grid/ready-grid-descriptor';
+import { READY_GRID_COLUMNS } from '@/components/outbound/ready/grid/ready-grid-layout';
+import {
+  CATALOG_LINK_GRID_CAPABILITIES,
+  makeCatalogLinkGridDescriptor,
+  makeImportExceptionGridDescriptor,
+} from '@/features/review/catalog-link/grid/catalog-link-grid-descriptor';
+import { CATALOG_LINK_GRID_COLUMNS } from '@/features/review/catalog-link/grid/catalog-link-grid-layout';
+import { IMPORT_EXCEPTION_GRID_COLUMNS } from '@/features/review/catalog-link/grid/import-exception-grid-layout';
 
 const REQUIRED_KEYS: readonly (keyof GridSurfaceCapabilities)[] = [
   'rowTriageFlags',
@@ -72,6 +86,12 @@ const DECLARED_CAPABILITIES: Record<string, GridSurfaceCapabilities> = {
   pickup: PICKUP_GRID_CAPABILITIES,
   'station-history': STATION_HISTORY_GRID_CAPABILITIES,
   fba: FBA_BOARD_GRID_CAPABILITIES,
+  warranty: WARRANTY_GRID_CAPABILITIES,
+  'my-day': MY_DAY_GRID_CAPABILITIES,
+  ready: READY_GRID_CAPABILITIES,
+  // ONE bag for both Review · Catalog-link tabs: they differ in what their
+  // columns MEAN, not in what the surface may do.
+  'catalog-link': CATALOG_LINK_GRID_CAPABILITIES,
 };
 
 function assertComplete(name: string, caps: GridSurfaceCapabilities) {
@@ -88,6 +108,9 @@ describe('grid surface capabilities', () => {
     assert.equal(INCOMING_GRID_CAPABILITIES.rowTriageFlags, false);
     assert.equal(REPAIR_GRID_CAPABILITIES.rowTriageFlags, false);
     assert.equal(PICKUP_GRID_CAPABILITIES.rowTriageFlags, false);
+    assert.equal(WARRANTY_GRID_CAPABILITIES.rowTriageFlags, false);
+    assert.equal(READY_GRID_CAPABILITIES.rowTriageFlags, false);
+    assert.equal(CATALOG_LINK_GRID_CAPABILITIES.rowTriageFlags, false);
   });
 
   it('every family declares a complete capabilities bag', () => {
@@ -130,10 +153,55 @@ describe('grid surface capabilities', () => {
       makePickupGridDescriptor(PICKUP_GRID_COLUMNS).capabilities,
       PICKUP_GRID_CAPABILITIES,
     );
+    assert.deepEqual(
+      makeWarrantyGridDescriptor(WARRANTY_GRID_COLUMNS).capabilities,
+      WARRANTY_GRID_CAPABILITIES,
+    );
+    assert.deepEqual(
+      makeReadyGridDescriptor(READY_GRID_COLUMNS).capabilities,
+      READY_GRID_CAPABILITIES,
+    );
+    assert.deepEqual(
+      makeMyDayGridDescriptor(MY_DAY_GRID_COLUMNS).capabilities,
+      MY_DAY_GRID_CAPABILITIES,
+    );
+    // Both Review tabs resolve to the SAME bag — the whole point of one
+    // declaration for one surface.
+    assert.deepEqual(
+      makeCatalogLinkGridDescriptor(CATALOG_LINK_GRID_COLUMNS).capabilities,
+      CATALOG_LINK_GRID_CAPABILITIES,
+    );
+    assert.deepEqual(
+      makeImportExceptionGridDescriptor(IMPORT_EXCEPTION_GRID_COLUMNS).capabilities,
+      CATALOG_LINK_GRID_CAPABILITIES,
+    );
   });
 
-  it('Pickup stays browse-only (no multi-select)', () => {
+  it('Review · Catalog link never edits in a cell', () => {
+    // The load-bearing flag on this surface: tab B's Item Number looks like a
+    // textbook single-value in-cell field, but resolving it re-runs the sheet
+    // import and CREATES an order. Side-effectful multi-step work is the record
+    // plane — flipping this to `true` would put an order-creating write one
+    // keystroke away in a grid cell.
+    assert.equal(CATALOG_LINK_GRID_CAPABILITIES.inCellEdit, false);
+    assert.equal(CATALOG_LINK_GRID_CAPABILITIES.multiSelect, false);
+  });
+
+  it('My Day is browse-only — a personal task list has no bulk plane', () => {
+    // Every flag false is a decision, not a default: the record a Today row
+    // points at owns its own status, so an in-cell editor here would write
+    // nowhere, and there is no bulk action on one operator's own day.
+    assert.equal(MY_DAY_GRID_CAPABILITIES.multiSelect, false);
+    assert.equal(MY_DAY_GRID_CAPABILITIES.inCellEdit, false);
+    assert.equal(MY_DAY_GRID_CAPABILITIES.rowTriageFlags, false);
+  });
+
+  it('read maps stay browse-only (no multi-select)', () => {
+    // Nothing on either surface acts on N rows at once, and a gutter with no
+    // wiring behind it is the inert gutter the workbench law bans.
     assert.equal(PICKUP_GRID_CAPABILITIES.multiSelect, false);
+    assert.equal(WARRANTY_GRID_CAPABILITIES.multiSelect, false);
+    assert.equal(READY_GRID_CAPABILITIES.multiSelect, false);
   });
 
   it('Orders keeps in-cell edit; Catalog / Receiving do not', () => {
@@ -170,6 +238,11 @@ const MOUNTS: Record<string, string> = {
   'src/components/products/catalog/catalog-grid/CatalogGridView.tsx': 'catalog',
   'src/components/repair/repair-grid/RepairGridView.tsx': 'repair',
   'src/components/receiving/pickup/grid/PickupGridView.tsx': 'pickup',
+  'src/components/warranty/grid/WarrantyGridView.tsx': 'warranty',
+  'src/components/outbound/ready/grid/ReadyGridView.tsx': 'ready',
+  'src/features/my-day/grid/MyDayGridView.tsx': 'my-day',
+  // Both Review · Catalog-link tabs mount from ONE file under ONE bag.
+  'src/features/review/catalog-link/grid/ReviewCatalogLinkGridView.tsx': 'catalog-link',
   'src/components/station/StationListTable.tsx': 'station-history',
   'src/components/fba/FbaBoardTable.tsx': 'fba',
 };

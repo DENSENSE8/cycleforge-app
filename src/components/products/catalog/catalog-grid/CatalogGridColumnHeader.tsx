@@ -41,6 +41,8 @@ export function CatalogGridColumnHeader({
   activeSort = null,
   sortDir = null,
   onSortColumn,
+  onOpenColumnDetails,
+  columnDetailsOpen = false,
 }: {
   selectionScope: string;
   className?: string;
@@ -48,6 +50,8 @@ export function CatalogGridColumnHeader({
   activeSort?: CatalogGridColumnKey | null;
   sortDir?: CatalogGridSortDir | null;
   onSortColumn?: (key: CatalogGridColumnKey) => void;
+  onOpenColumnDetails?: () => void;
+  columnDetailsOpen?: boolean;
 }) {
   return (
     <LedgerGridColumnHeader
@@ -63,6 +67,8 @@ export function CatalogGridColumnHeader({
           ? (key) => onSortColumn(key as CatalogGridColumnKey)
           : undefined
       }
+      onOpenColumnDetails={onOpenColumnDetails}
+      columnDetailsOpen={columnDetailsOpen}
     />
   );
 }

@@ -10,7 +10,7 @@
  */
 
 import { useRouter, useSearchParams } from 'next/navigation';
-import { AnimatePresence } from 'framer-motion';
+import { AnimatePresence } from '@/design-system/motion';
 import { SupportTicketFocus } from '@/components/support/station/SupportTicketFocus';
 import { SupportTicketsBoard } from './SupportTicketsBoard';
 

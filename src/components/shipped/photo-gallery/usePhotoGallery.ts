@@ -66,6 +66,14 @@ export interface PhotoUploadTarget {
   entityId: number;
   photoType?: string;
   poRef?: string;
+  /**
+   * What this shot SHOWS, within the stage (`@/lib/photos/photo-aspects`).
+   * `null`/omitted is legal and means *unclassified evidence* — which is what
+   * every pre-aspect photo carries. It is passed through, never inferred: an
+   * aspect is a claim about the content of a frame, and only the surface that
+   * asked for the shot is in a position to make it.
+   */
+  aspect?: string | null;
 }
 
 export interface PhotoGalleryProps {
@@ -540,6 +548,10 @@ export function usePhotoGallery(props: PhotoGalleryProps) {
             entityId: effectiveUploadTarget.entityId,
             photoType: effectiveUploadTarget.photoType,
             poRef: effectiveUploadTarget.poRef,
+            // The aspect the LAUNCHING surface asked for. A gallery mounted
+            // without one keeps sending null (unclassified) rather than
+            // guessing what the frame shows.
+            photoAspect: effectiveUploadTarget.aspect ?? null,
             // Read BEFORE the route's re-encode ever sees the bytes. A dropped
             // File's `lastModified` is the closest unambiguous capture instant
             // available here; null when it fails the shared bounds.

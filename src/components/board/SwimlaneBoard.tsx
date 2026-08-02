@@ -37,7 +37,7 @@ import { createPortal } from 'react-dom';
 import { startOfDay, endOfDay } from 'date-fns';
 import type { DateRange } from 'react-day-picker';
 import * as Popover from '@radix-ui/react-popover';
-import { LayoutGroup, motion } from 'framer-motion';
+import { LayoutGroup, motion } from '@/design-system/motion';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, arrayMove, rectSortingStrategy, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';

@@ -44,9 +44,9 @@ function useDebounced<T>(value: T, ms = 400): T {
   return v;
 }
 
-const last4 = (v: string | null | undefined): string => {
+const last8 = (v: string | null | undefined): string => {
   const s = String(v ?? '').trim();
-  return s.length <= 4 ? s || '—' : s.slice(-4);
+  return s.length <= 8 ? s || '—' : s.slice(-8);
 };
 
 function statusDotClass(status: string | null): string {
@@ -155,7 +155,7 @@ export function LinkedTicketsPanel({
                 <TrackingChip
                   key={`${t.shipmentId}-${t.tracking}-${i}`}
                   value={t.tracking}
-                  display={last4(t.tracking)}
+                  display={last8(t.tracking)}
                   dense
                 />
               ) : null,

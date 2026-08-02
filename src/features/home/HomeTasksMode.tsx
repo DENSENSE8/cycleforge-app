@@ -15,7 +15,8 @@
 import { useCallback, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { Loader2, CheckCircle, ClipboardList } from '@/components/Icons';
+import { Loader2, ClipboardList } from '@/components/Icons';
+import { AnimatedCheck } from '@/components/ui/AnimatedCheck';
 import { Button } from '@/design-system/primitives';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { HorizontalButtonSlider } from '@/components/ui/HorizontalButtonSlider';
@@ -138,7 +139,7 @@ function TaskDetail({ item }: { item: HomeTaskItem }) {
               onClick={() => complete.mutate(item.id)}
               className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white transition-colors hover:bg-emerald-700 disabled:opacity-60"
             >
-              {complete.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
+              {complete.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <AnimatedCheck size={16} />}
               Complete
             </button>
           ) : null}

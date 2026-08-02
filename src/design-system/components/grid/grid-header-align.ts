@@ -44,8 +44,8 @@ export type GridColumnAlign = 'start' | 'end';
  * | Type | Align | Why |
  * |---|---|---|
  * | `number` | `end` | Magnitudes compare down a column by their ones place; right-aligning is what makes a column of figures scannable (and `role-data` already binds `tabular-nums`, so the digits form a true grid). |
- * | `id` | `end` | Order / ticket / SKU / serial tracks are fixed-width digit (or digit-led) labels — end-align keeps the ones place stacked the same way as qty and price, so a column of last-4s scans as one vertical edge. |
- * | `location` | `end` | Tracking last-4s are the same class of digit label as `id`; they share the right edge with Order beside them. |
+ * | `id` | `end` | Order / ticket / SKU / serial tracks are fixed-width digit (or digit-led) labels — end-align keeps the ones place stacked the same way as qty and price, so a column of last-8s scans as one vertical edge. |
+ * | `location` | `end` | Tracking last-8s are the same class of digit label as `id`; they share the right edge with Order beside them. |
  * | `date` | `end` | Civil days, SLA (`Jul 21 · 42d`), and age tracks are compact numeral runs — end-align stacks the day / duration edge for scan, matching the numeric fact cluster. |
  * | `text` · `longtext` | `start` | Prose reads from the left edge; a ragged left edge destroys the scan line. |
  * | `tag` · `external` | `start` | A chip or brand mark is a categorical label, not a quantity. |

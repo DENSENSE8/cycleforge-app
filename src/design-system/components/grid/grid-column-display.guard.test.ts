@@ -51,6 +51,9 @@ const GRID_DIRS = [
   'src/components/repair/repair-grid',
   'src/components/receiving/pickup/grid',
   'src/components/dashboard/orders-queue',
+  'src/components/warranty/grid',
+  'src/components/outbound/ready/grid',
+  'src/features/review/catalog-link/grid',
 ] as const;
 
 function filesIn(dir: string): string[] {
@@ -237,6 +240,8 @@ const LAYOUT_FILES = [
   'src/lib/repair/repair-grid-layout.ts',
   'src/components/receiving/pickup/grid/pickup-grid-layout.ts',
   'src/lib/dashboard-order-row-layout.ts',
+  'src/features/review/catalog-link/grid/catalog-link-grid-layout.ts',
+  'src/features/review/catalog-link/grid/import-exception-grid-layout.ts',
 ] as const;
 
 test('no surface re-implements grid column geometry', () => {
