@@ -26,8 +26,7 @@
  *   node scripts/debt-ledger.mjs --summary  # one line (used by verify)
  */
 
-import { execFileSync } from 'node:child_process';
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
@@ -37,26 +36,38 @@ const SUMMARY = process.argv.includes('--summary');
 /** `const RAW_FOCUS_BASELINE = 1075;` — the house ratchet shape. */
 const BASELINE_RE = /^const\s+([A-Z0-9_]*(?:BASELINE|BUDGET|CAP)[A-Z0-9_]*)\s*(?::\s*number)?\s*=\s*(\d+);/gm;
 
+/**
+ * Walk `src/` directly rather than asking git.
+ *
+ * This started as `git ls-files` and silently returned `[]` wherever git could
+ * not answer (a `git archive` export, a CI cache, a tarball) — so the ledger
+ * printed "DS ratchets 0" and read as a codebase with no debt at all. A ledger
+ * that reports zero when it cannot read is worse than no ledger: it is the
+ * false-clean signal this whole script exists to remove. The filesystem is the
+ * thing being measured, so measure it.
+ */
+function testFiles(dir, out = []) {
+  for (const entry of readdirSync(dir)) {
+    if (entry === 'node_modules' || entry.startsWith('.')) continue;
+    const full = join(dir, entry);
+    if (statSync(full).isDirectory()) testFiles(full, out);
+    else if (entry.endsWith('.test.ts')) out.push(full);
+  }
+  return out;
+}
+
 function ratchets() {
-  let files = [];
-  try {
-    files = execFileSync(
-      'git',
-      ['ls-files', 'src/**/*.guard.test.ts', 'src/**/*.test.ts'],
-      { cwd: REPO_ROOT, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 },
-    )
-      .split('\n')
-      .filter(Boolean);
-  } catch {
-    return [];
+  const src = join(REPO_ROOT, 'src');
+  if (!existsSync(src)) {
+    console.error('debt-ledger: no src/ directory — cannot measure. Refusing to report 0.');
+    process.exit(2);
   }
 
   const out = [];
-  for (const rel of files) {
-    const full = join(REPO_ROOT, rel);
-    if (!existsSync(full)) continue;
-    const src = readFileSync(full, 'utf8');
-    for (const m of src.matchAll(BASELINE_RE)) {
+  for (const full of testFiles(src)) {
+    const text = readFileSync(full, 'utf8');
+    const rel = full.slice(REPO_ROOT.length + 1);
+    for (const m of text.matchAll(BASELINE_RE)) {
       const value = Number(m[2]);
       // A baseline already at 0 is a CLOSED door, not debt — it forbids the
       // pattern outright. Listing it as debt would misreport a finished job.
