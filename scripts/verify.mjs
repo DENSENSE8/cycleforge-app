@@ -101,4 +101,15 @@ if (hardFail) {
   );
   process.exit(1);
 }
-process.stdout.write('\n' + c('32', 'verify PASSED') + ' — matches CI; safe to push.\n\n');
+process.stdout.write('\n' + c('32', 'verify PASSED') + ' — matches CI; safe to push.\n');
+
+// The ledger rides on the PASS line deliberately. Every gate here is
+// shrink-only, so a green run means "no NEW debt" — never "no debt". Printing
+// what the baselines are still forgiving is what keeps PASS from reading as
+// clean. Best-effort: a broken ledger must never fail a verify that passed.
+try {
+  spawnSync('node', ['scripts/debt-ledger.mjs', '--summary'], { stdio: 'inherit' });
+} catch {
+  /* ledger is informational only */
+}
+process.stdout.write('\n');
