@@ -27,7 +27,25 @@ it never blocks serving a new one. When jobs differ, add the sibling and share t
    Photos on the read surface use the gallery viewer SoT (`usePhotoGallery` + `PhotoViewerPortal`) —
    never a second page-local photo UI. Work escape = one quiet `openInUnboxHref` control; never
    repeated `"Open in Unbox"` marketing CTAs on findings. Recipe: `display/carton-read.md`.
-6. **Recommend even when you only implement the asked slice** — a short note:
+6. **A retirement is not done until the old path is DELETED, or a guard names the exact surviving
+   call sites.** A prose-only retirement is a TODO wearing a ruling's clothes. Write the allowlist
+   shrink-only, like every other ratchet — finishing the migration removes a line; nothing may add
+   one.
+
+   *Why this is a law and not advice:* a rules file cannot fail. `source-of-truth.md` said
+   `useIsColumnHidden()` "survives only for `ChipColumns` / `RowMetaColumns`" while four surfaces
+   called it, and `workbench-ops-queue.md` described chrome Fields as the live entry long after 11
+   of 13 grids had moved to the table lip. Both sentences were true when written and silently
+   stopped being true; nothing anywhere could notice. The fix is cheap — one guard test
+   (`use-is-column-hidden.guard.test.ts` is the reference) — and it is what turns a claim into a
+   fact.
+
+   Corollary, learned the expensive way: **`knip` cannot see a fork whose doors are both imported.**
+   Chrome Fields and the lip both mounted the same panel, so both were "used" and the tool stayed
+   silent for months. A dead-code tool answers *"is this reachable"*, never *"is this the only way
+   in"* — only a guard answers the second.
+
+7. **Recommend even when you only implement the asked slice** — a short note:
 
    ```markdown
    ### Compound opportunities

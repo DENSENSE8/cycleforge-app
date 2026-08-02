@@ -163,8 +163,13 @@ Two invariants live here because they are single-source mappings, not recipes:
   was deleted 2026-08-02), and prefs persist as a **delta** in
   `staff_preferences.tableColumns[tableId]`.
 - **Never call `useIsColumnHidden()` from a grid family** — it is the retired cell-granularity path
-  that left an empty ruled band instead of removing the track; it survives only for
-  `ChipColumns` / `RowMetaColumns`.
+  that left an empty ruled band instead of removing the track. It survives on **four** surfaces, and
+  the list is pinned shrink-only by `use-is-column-hidden.guard.test.ts`: the chip/meta SLOT
+  primitives `ChipColumns` / `RowMetaColumns` / `OrderIdentityChips` (each paints inside a cell the
+  row already owns, so there is no track to remove) plus the pre-LedgerGrid
+  `StationRowColumnHeader`, which migrates with its surface.
+  *This row said "only `ChipColumns` / `RowMetaColumns`" while four surfaces called it — the guard
+  exists because a rules file cannot fail. See `pattern-evolution.md` → Always #6.*
 - **Sort is URL-durable — always.** A column sort held in `useState` dies on reload and cannot be
   sent to a colleague, which is the whole reason it lives in the URL.
 - **Which param depends on what `?sort=` already means on that route.** There are two vocabularies
