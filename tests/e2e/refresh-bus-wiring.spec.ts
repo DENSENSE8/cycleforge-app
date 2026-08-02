@@ -68,7 +68,10 @@ test.describe('refresh bus wiring', () => {
     console.log('[replenish] refetched:', JSON.stringify(onReplenish));
     console.log('[unrelated] refetched:', JSON.stringify(onUnrelated));
 
-    // The domain salesCartStore now signals must actually reach the counts panel.
+    // The 'replenish' domain must actually reach the counts panel. (This asserts
+    // the BUS wiring, not any particular emitter — the signal is dispatched
+    // directly above. The product has no 'replenish' emitter today; see
+    // `src/lib/refresh/bus.ts`.)
     expect(
       onReplenish.some((p) => p.includes('/api/need-to-order')),
       `'replenish' must refetch need-to-order; saw ${JSON.stringify(onReplenish)}`,

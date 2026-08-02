@@ -31,9 +31,11 @@ function formatCents(cents: number): string {
 /**
  * Landscape right-pane counter transaction.
  *
- * Cart SoT is `CounterDraft.retailLines` (same as `CounterIntakeForm`) — not
- * `salesCartStore`, which remains the staff `/pickup` walk-in cart. Submit
- * posts to `/api/kiosk/intake` with `serviceLine` + Idempotency-Key.
+ * Cart SoT is `CounterDraft.retailLines` (same as `CounterIntakeForm`) — and as
+ * of 2026-08-02 it is the only counter cart. This used to read "not
+ * `salesCartStore`, which remains the staff `/pickup` walk-in cart"; `/pickup`
+ * never imported that store either, and it was deleted with zero consumers.
+ * Submit posts to `/api/kiosk/intake` with `serviceLine` + Idempotency-Key.
  */
 export function KioskCounterPane({ selectedItems, selectedProduct, onReset }: KioskCounterPaneProps) {
   const [draft, setDraft] = useState<CounterDraft>(emptyCounterDraft);

@@ -20,11 +20,16 @@
 /**
  * One retail line staged at the counter.
  *
- * Mirrors the two shapes `SalesCartLine` already carries
- * (`src/components/walk-in/salesCartStore.ts`), because the kiosk composes that
- * store rather than forking a second cart: a catalog line charges by
- * `catalog_object_id` (the provider's price is authoritative at charge time),
- * and a manual line charges as an ad-hoc name + amount.
+ * Two line shapes: a catalog line charges by `catalog_object_id` (the
+ * provider's price is authoritative at charge time), and a manual line charges
+ * as an ad-hoc name + amount.
+ *
+ * This shape was modelled on the walk-in `SalesCartLine`, and the docblock used
+ * to claim the kiosk *composed* that store "rather than forking a second cart".
+ * It never did — the counter has always carried its own `CounterDraft.retailLines`
+ * and imported nothing from it. `salesCartStore.ts` was deleted 2026-08-02 with
+ * zero consumers, so this is now the only counter cart, which is what the
+ * original claim was reaching for.
  */
 export interface CounterRetailLine {
   /** Provider catalog variation id. `null` = ad-hoc manual line. */
