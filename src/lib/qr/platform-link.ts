@@ -9,11 +9,14 @@
 import {
   mobileQrUrl,
   gs1DigitalLinkUrl,
+  gs1LocationUrl,
   gs1UnitAi,
+  locationLabelPayload,
   receivingHandle,
   receivingLineHandle,
   serialUnitHandle,
   ticketHandle,
+  type LocationSegments,
 } from '@/lib/barcode-routing';
 import { staffOriginForSlug } from '@/lib/tenancy/kiosk-host';
 
@@ -111,6 +114,20 @@ type PrintMatrixArgs =
       orgSlug: string | null | undefined;
       /** Provider (Zendesk) digits, no `#`. */
       ticketDigits: string;
+    })
+  | (MatrixOverride & {
+      kind: 'location';
+      /** Needed for the Digital Link rung — same role as every other kind. */
+      orgSlug?: string | null;
+      /**
+       * Zone / aisle / bay / level / position. A RACK label is the same kind
+       * with `position: 0` — pass `rackToLocation(rackSegments)`. Rack-vs-bin
+       * is decided by the code on the way back out (`isRackCode`), never by a
+       * second encode path.
+       */
+      segments: LocationSegments;
+      /** The tenant's GLN. Only a *licensed* one can name a GS1 location. */
+      gln?: string | null;
     });
 
 const TYPEABLE_HANDLE_RE = /^(?:R|RCV|L|U|T)-[A-Za-z0-9._-]+$/i;
@@ -136,21 +153,50 @@ function symbologyForOverride(value: string): PrintMatrix['symbology'] {
 /**
  * **The** encode decision for every printable matrix that leaves this app.
  *
- * One rule across kinds: mint an absolute platform Digital Link
- * (`https://{slug}.app.cycleforge.ai/…`) when the tenant slug is known **and
- * that path has a landing surface**; otherwise fall back to the bare handle,
- * which `routeScan()` still resolves at a staff wedge. A URL is only worth
- * printing if someone scanning it with a phone lands somewhere — minting one
- * for a path that bounces an anonymous visitor to `/signin` is worse than
- * printing the handle.
+ * ## One ladder, four rungs — every kind descends the same one
  *
- * Kind coverage today:
- *   carton    → `/m/r/{id}` (dual-audience landing shipped)
- *   unit      → `/01/{gtin}[/21/{serial}]` (dual-audience landing shipped)
- *   as_listed → bare `L-{id}` / `R-{id}` — `/m/l/*` is a proxy REWRITE onto a
- *               staff page, so it has no anon landing yet. Folded in here so
- *               the day it gets one, this is the only edit.
- *   ticket    → bare `T-{digits}` — same reason; `/support?ticket=` is staff-only.
+ * ```
+ *   1. GS1 Digital Link URI   https://{slug}…/01/{gtin}/21/{serial}
+ *                             https://{slug}…/414/{gln}/254/{code}
+ *      ↑ needs a LICENSED GS1 key + a tenant host
+ *
+ *   2. GS1 element string     (01){gtin}(21){serial}   ·  (414){gln}(254){code}
+ *      ↑ licensed key, no host — same identity, no domain to resolve it
+ *
+ *   3. Platform Digital Link  https://{slug}…/m/r/{id}
+ *      ↑ no licensed key, but the path HAS an anonymous landing
+ *
+ *   4. Bare handle            R-1234 · L-567 · U-SN1 · T-9395 · A0101101
+ *      ↑ no key, no host, or no anon landing — still resolves at a staff wedge
+ * ```
+ *
+ * **Rung 1 is not reachable by wanting it.** A GS1 key (GTIN, GLN) is
+ * *licensed* to the company that holds its prefix. Minting one you do not hold
+ * is a false identity claim, not a placeholder — that is precisely what
+ * `DEFAULT_GLN = '0614141000005'` (GS1's own documentation GLN) did to every
+ * location label printed before 2026-08-02. So a carton, a receiving line, a
+ * ticket, a handling unit and an un-licensed shelf **cannot** become GS1
+ * Digital Links; they are internal identities and they descend to rung 3 or 4.
+ * Closing that gap is a GS1 Company Prefix purchase, not a refactor.
+ *
+ * **Rungs 3→4 turn on whether an anonymous phone lands somewhere.** A URL is
+ * only worth printing if scanning it with a camera works; minting one for a
+ * path that bounces a visitor to `/signin` is worse than printing the handle,
+ * and it costs matrix area on a small sticker.
+ *
+ * Kind coverage today — the rung each one currently reaches:
+ *   unit      → 1 (GTIN) · 2 (GTIN, no slug) · 4 (`U-{serial}` / bare SKU)
+ *   location  → 1 (licensed GLN) · 2 (licensed GLN, no slug) · 4 (flat code)
+ *   carton    → 3 (`/m/r/{id}` has a dual-audience landing) · 4 (no slug)
+ *   as_listed → 4 — `/m/l/*` is a proxy REWRITE onto a staff page, so it has
+ *               no anon landing yet. Folded in here so the day it gets one,
+ *               this is the only edit.
+ *   ticket    → 4 — same reason; `/support?ticket=` is staff-only.
+ *
+ * The licensed-GLN decision itself is `locationLabelPayload`, which exists only
+ * because `barcode-routing` cannot import this module back — it is the location
+ * case's private helper, not a second encoder. Pinned by
+ * `print-matrix-sot.guard.test.ts`.
  */
 export function encodePrintMatrix(args: PrintMatrixArgs): PrintMatrix {
   const override = (args.override ?? '').trim();
@@ -216,6 +262,31 @@ export function encodePrintMatrix(args: PrintMatrixArgs): PrintMatrix {
       if (!digits) return { value: '', symbology: 'datamatrix' };
       const handle = ticketHandle(digits);
       return { value: handle, symbology: 'datamatrix', hri: handle };
+    }
+
+    case 'location': {
+      const payload = locationLabelPayload(args.segments, { gln: args.gln });
+      // Rung 1 — the same promotion `unit` already makes: a licensed key plus
+      // a tenant host is a real GS1 Digital Link. `payload.gln` is non-null
+      // ONLY when `isLicensedGln` passed, so this can never mint a borrowed
+      // AI 414; with no licence it is not reachable at all.
+      if (payload.gln) {
+        const base = platformQrOriginForSlug(args.orgSlug);
+        if (base) {
+          return {
+            // A Digital Link is a URI, so it draws as a PLAIN DataMatrix —
+            // `gs1datamatrix` would frame it as an AI string and bwip-js
+            // rejects a payload with no AIs. Same as the unit DL branch.
+            value: gs1LocationUrl(args.segments, { gln: payload.gln, baseUrl: base }),
+            symbology: 'datamatrix',
+            hri: payload.code,
+          };
+        }
+      }
+      // Rung 2 (licensed, no host) or rung 4 (no licence) — decided already.
+      // The flat code is typeable AND is what `routeScan` resolves, so it is
+      // the honest HRI on every rung.
+      return { value: payload.value, symbology: payload.symbology, hri: payload.code };
     }
   }
 }

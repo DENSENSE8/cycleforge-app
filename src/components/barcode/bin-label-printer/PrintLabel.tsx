@@ -4,12 +4,12 @@ import type React from 'react';
 import { LocationDataMatrix } from '../LocationDataMatrix';
 import {
   bayHand,
-  locationLabelPayload,
   locationCode,
   noPad,
   pad2,
   type LocationSegments,
 } from '@/lib/barcode-routing';
+import { encodePrintMatrix } from '@/lib/qr/platform-link';
 import { useAuth } from '@/contexts/AuthContext';
 import { orgWarehouseLabel } from '@/lib/branding/letterhead';
 
@@ -26,7 +26,12 @@ interface PrintLabelProps {
 export function PrintLabel({ segments, roomName, gln }: PrintLabelProps) {
   const { user } = useAuth();
   const code = locationCode(segments);
-  const label = locationLabelPayload(segments, { gln });
+  const label = encodePrintMatrix({
+    kind: 'location',
+    segments,
+    gln,
+    orgSlug: user?.organizationSlug,
+  });
   return (
     <div className="label-print-card" style={labelCardStyle}>
       <div style={labelLeftStyle}>

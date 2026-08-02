@@ -4,6 +4,7 @@ import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { safeRandomUUID } from '@/lib/safe-uuid';
+import { unwrapScannedLocation, unwrapScannedSerial } from '@/lib/barcode-routing';
 import {
   workflowStatusTableLabel,
   conditionGradeTableLabel,
@@ -182,7 +183,7 @@ function LinePageInner() {
   );
 
   const submitSerial = useCallback(async () => {
-    const serial = serialInput.trim();
+    const serial = unwrapScannedSerial(serialInput);
     if (!serial || busy) return;
     setBusy('serial');
     try {
@@ -217,7 +218,7 @@ function LinePageInner() {
   }, [serialInput, busy, lineId, staffId, loadAll]);
 
   const submitPutaway = useCallback(async () => {
-    const bin = binInput.trim();
+    const bin = unwrapScannedLocation(binInput);
     if (!bin || busy) return;
     setBusy('putaway');
     try {

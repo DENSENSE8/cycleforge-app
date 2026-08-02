@@ -21,6 +21,7 @@ import { toast } from '@/lib/toast';
 import { X, Package, Printer, Loader2, History } from '@/components/Icons';
 import { IconButton } from '@/design-system/primitives';
 import { getLast8 } from '@/components/ui/CopyChip';
+import { unwrapScannedSerial } from '@/lib/barcode-routing';
 import { UnitPrintHistory } from '@/components/receiving/UnitPrintHistory';
 import { HandlingUnitChip } from '@/components/receiving/HandlingUnitChip';
 import { handlingUnitStatusChipClass } from '@/lib/handling-unit-status';
@@ -61,7 +62,7 @@ export function BoxWorkbenchPanel({
   }, [lines]);
 
   const submitAdd = useCallback(async () => {
-    const ref = addInput.trim();
+    const ref = unwrapScannedSerial(addInput);
     if (!ref || busy) return;
     setBusy('add');
     try {

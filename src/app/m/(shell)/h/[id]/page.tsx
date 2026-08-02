@@ -25,6 +25,7 @@ import { unitStatusBadgeTone } from '@/components/station/receiving-constants';
 import { conditionLabel } from '@/lib/conditions';
 import { handlingUnitStatusChipClass } from '@/lib/handling-unit-status';
 import { getLast8 } from '@/components/ui/CopyChip';
+import { unwrapScannedSerial } from '@/lib/barcode-routing';
 import { printHandlingUnitLabel } from '@/lib/print/printHandlingUnitLabel';
 import { HandlingUnitChip } from '@/components/receiving/HandlingUnitChip';
 import { ChevronLeft, Check, X, Printer, Plus, Package } from '@/components/Icons';
@@ -99,7 +100,7 @@ export default function MobileHandlingUnitPage() {
   const box = data?.handling_unit;
 
   const submitAdd = useCallback(async () => {
-    const ref = addInput.trim();
+    const ref = unwrapScannedSerial(addInput);
     if (!ref || busy || !box) return;
     setBusy('add');
     try {

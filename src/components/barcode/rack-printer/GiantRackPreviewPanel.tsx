@@ -1,6 +1,7 @@
 import { Printer } from '@/components/Icons';
 import { LocationDataMatrix } from '../LocationDataMatrix';
-import { locationLabelPayload, rackCode, rackToLocation, type RackSegments } from '@/lib/barcode-routing';
+import { rackCode, rackToLocation, type RackSegments } from '@/lib/barcode-routing';
+import { encodePrintMatrix } from '@/lib/qr/platform-link';
 import { humanReadable, partialCode } from './rack-code-format';
 import { useAuth } from '@/contexts/AuthContext';
 import { orgWarehouseLabel } from '@/lib/branding/letterhead';
@@ -25,7 +26,14 @@ export function GiantRackPreviewPanel({ zoneLetter, aisle, bay, level, gln }: Gi
   const code = segments
     ? rackCode(segments)
     : partialCode({ zone: zoneLetter, aisle, bay, level });
-  const label = segments ? locationLabelPayload(rackToLocation(segments), { gln }) : null;
+  const label = segments
+    ? encodePrintMatrix({
+        kind: 'location',
+        segments: rackToLocation(segments),
+        gln,
+        orgSlug: user?.organizationSlug,
+      })
+    : null;
 
   return (
     <div className="rounded-2xl border border-border-soft bg-surface-card p-4">

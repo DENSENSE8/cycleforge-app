@@ -23,10 +23,18 @@ import { CACHE_NS, CACHE_TAGS } from '@/lib/cache/tags';
  * (`/m/scan`).
  *
  * Resolution cascade (first match wins):
+ *   0. Anything this app PRINTS — via `routeScan`, the one decoder. Carton /
+ *      line / unit / handling-unit handles AND location labels, in every form
+ *      (bare handle, flat code, GS1 AI, absolute URL).
  *   1. Multi-AI GS1 Data Matrix (FNC1 or parenthesized form)
  *   2. GS1 Digital Link URL or internal /l|/p|/o|/s|/q prefix
  *   3. Pattern classify — tracking | FNSKU | serial_full | serial_partial
  *   4. Fallback: 'unknown'
+ *
+ * Step 0 must stay FIRST. `classifyInput` has no location vocabulary, so a
+ * bare flat location code reaching step 3 is classified `serial_partial` and
+ * looked up against `tech_serial_numbers` — a printed bin label answering as a
+ * serial fragment.
  *
  * For every scan we additionally look up matching orders (single | multi |
  * none) and return a `mobileRoute` field that /m/scan uses to navigate
@@ -415,28 +423,45 @@ async function resolve(input: string, organizationId: string, staffId: number, d
 
   if (!trimmed) return { ...base, kind: 'unknown', source: 'none' };
 
-  // 0. Internal receiving handles — `R-{id}`, `L-{id}`, `U-{id}`, `REP-{id}`,
-  //    and the URL forms of the same. These are what the receiving station
-  //    actually prints onto carton/line labels (see `printReceivingLabel`).
-  //    They route DIRECTLY to the existing /m/r, /m/l, /m/u, /repair pages
-  //    without touching `mobile_scan_events`-style classification.
+  // 0. Anything THIS APP PRINTS — `R-{id}`, `L-{id}`, `U-{id}`, `REP-{id}`,
+  //    `H-{id}`, a location label, and the URL forms of all of them. These
+  //    route DIRECTLY to their existing pages without touching
+  //    `mobile_scan_events`-style classification.
+  //
+  //    `routeScan` is the ONE decoder, so this arm must run before the pattern
+  //    cascade below — `classifyInput` has no location vocabulary and buckets a
+  //    bare flat code (`A0101101`) as `serial_partial`, which is how a printed
+  //    bin label came back as a serial fragment.
+  //
+  //    The `redirect` check is what keeps this arm honest: routeScan's
+  //    leading-letter fallback also types `bin`, but returns no redirect
+  //    because it is a guess. A guess must fall through to the cascade.
   const handleRoute = routeScan(trimmed);
   if (handleRoute && handleRoute.redirect && (
     handleRoute.type === 'receiving' ||
     handleRoute.type === 'receiving-line' ||
     handleRoute.type === 'serial-unit' ||
-    handleRoute.type === 'handling-unit'
+    handleRoute.type === 'handling-unit' ||
+    handleRoute.type === 'bin'
   )) {
     // A handling unit (box/LPN) is a physical container, so it shares the
     // `package` kind; only a unit handle resolves to a single unit.
     const kind: ResolveKind = handleRoute.type === 'serial-unit'
       ? 'gs1_unit'
-      : 'package';
+      : handleRoute.type === 'bin'
+        ? 'location'
+        : 'package';
     const result: ResolveResponse = {
       ...base,
       kind,
       source: 'pattern',
-      entity: { handleType: handleRoute.type, redirect: handleRoute.redirect },
+      entity: {
+        handleType: handleRoute.type,
+        redirect: handleRoute.redirect,
+        // Normalised payload — for a location this is the flat code
+        // (`locations.barcode`), so callers never re-parse the label.
+        value: handleRoute.value,
+      },
       matches: [],
       matchOutcome: 'single',
       mobileRoute: handleRoute.redirect,

@@ -34,6 +34,7 @@ import {
   AlertTriangle,
 } from '@/components/Icons';
 import { timeAgo } from '@/utils/_date';
+import { unwrapScannedLocation } from '@/lib/barcode-routing';
 import { Button, IconButton } from '@/design-system/primitives';
 
 interface UnitDetail {
@@ -207,7 +208,7 @@ export default function MobileUnitPage() {
   );
 
   const submitMove = useCallback(async () => {
-    const bin = binInput.trim();
+    const bin = unwrapScannedLocation(binInput);
     if (!bin || busy) return;
     setBusy('move');
     try {

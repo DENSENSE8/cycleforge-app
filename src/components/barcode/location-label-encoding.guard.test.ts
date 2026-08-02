@@ -21,6 +21,7 @@ import {
   type LocationSegments,
 } from '@/lib/barcode-routing';
 import { renderDataMatrixSvg } from '@/lib/barcode/dataMatrixSvg';
+import { encodePrintMatrix } from '@/lib/qr/platform-link';
 
 const BIN: LocationSegments = { zone: 'A', aisle: 1, bay: 1, level: 1, position: 1 };
 const LICENSED_GLN = '0812345000009';
@@ -48,6 +49,29 @@ test('the licensed-GLN label encodes as a GS1 DataMatrix', () => {
     renderDataMatrixSvg({ value: payload.value, symbology: payload.symbology }),
     'GS1 AI',
   );
+});
+
+test('the licensed-GLN Digital Link encodes as a PLAIN DataMatrix', () => {
+  // Rung 1 of the encode ladder: a licensed GLN + a tenant host mints
+  // `https://{slug}…/414/{gln}/254/{code}`. That is a URI, not an AI string,
+  // so it must draw as plain `datamatrix` — the same trap in the opposite
+  // direction from the test below, and the one a "make it all Digital Link"
+  // sweep is most likely to walk into.
+  const prev = process.env.NEXT_PUBLIC_APP_URL;
+  process.env.NEXT_PUBLIC_APP_URL = 'https://app.cycleforge.ai';
+  try {
+    const m = encodePrintMatrix({ kind: 'location', orgSlug: 'usav', segments: BIN, gln: LICENSED_GLN });
+    assert.equal(m.symbology, 'datamatrix');
+    assert.match(m.value, /^https:\/\/usav\.app\.cycleforge\.ai\/414\//);
+    assertRealSymbol(renderDataMatrixSvg({ value: m.value, symbology: m.symbology }), 'GS1 Digital Link');
+    assert.throws(
+      () => renderDataMatrixSvg({ value: m.value, symbology: 'gs1datamatrix' }),
+      'a Digital Link URI must not encode as GS1 DataMatrix',
+    );
+  } finally {
+    if (prev === undefined) delete process.env.NEXT_PUBLIC_APP_URL;
+    else process.env.NEXT_PUBLIC_APP_URL = prev;
+  }
 });
 
 test('regression: the bare code under gs1datamatrix does NOT silently succeed', () => {

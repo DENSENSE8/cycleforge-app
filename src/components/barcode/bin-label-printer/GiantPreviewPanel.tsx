@@ -3,10 +3,10 @@
 import { Printer } from '@/components/Icons';
 import { LocationDataMatrix } from '../LocationDataMatrix';
 import {
-  locationLabelPayload,
   locationCode,
   type LocationSegments,
 } from '@/lib/barcode-routing';
+import { encodePrintMatrix } from '@/lib/qr/platform-link';
 import { humanReadable, partialCode } from './utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { orgWarehouseLabel } from '@/lib/branding/letterhead';
@@ -39,7 +39,9 @@ export function GiantPreviewPanel({
   const code = segments
     ? locationCode(segments)
     : partialCode({ zone: zoneLetter, aisle, bay, level, position });
-  const label = segments ? locationLabelPayload(segments, { gln }) : null;
+  const label = segments
+    ? encodePrintMatrix({ kind: 'location', segments, gln, orgSlug: user?.organizationSlug })
+    : null;
 
   return (
     <div className="rounded-2xl border border-border-soft bg-surface-card p-4">

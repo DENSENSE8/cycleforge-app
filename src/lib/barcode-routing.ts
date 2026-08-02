@@ -317,6 +317,85 @@ export function scannedUnitKey(raw: string): string | null {
   return null;
 }
 
+/**
+ * Unwrap a value typed or scanned into a **serial** field.
+ *
+ * A field whose placeholder says "scan" must accept what this app PRINTS, and
+ * a printed unit label is not a bare serial — it is a GS1 Digital Link URL, a
+ * `(01)…(21)…` element string, or a `U-…` handle, depending on tenant slug and
+ * printer lane. {@link scannedUnitKey} is the decode; this is the pass-through
+ * form for an input that must ALSO keep accepting a hand-typed serial, which
+ * `scannedUnitKey` deliberately rejects (it is a camera gate, not a parser).
+ *
+ * Never a second decoder: the only interpretation happens in `routeScan`.
+ */
+export function unwrapScannedSerial(raw: string): string {
+  return scannedUnitKey(raw) ?? String(raw ?? '').trim();
+}
+
+/**
+ * For a scan of a **printed location label**, return the flat location code
+ * (`A0101101`) — the exact string `locations.barcode` stores.
+ *
+ * Returns `null` when the value is not a decodable location label, including
+ * the short legacy bin barcodes (`A12`) that `routeScan` types as `bin` with
+ * no redirect: that arm is a leading-letter GUESS, not a decode, so passing it
+ * through unchanged is the honest answer. Use {@link unwrapScannedLocation} at
+ * an input that must accept both.
+ */
+function scannedLocationCode(raw: string): string | null {
+  const route = routeScan(raw);
+  if (!route || route.type !== 'bin') return null;
+  const redirect = route.redirect || '';
+  // Extract from the REDIRECT, not `value` — the `/sku-stock/location/{code}`
+  // arm returns the whole scanned URL as `value` and only the redirect carries
+  // the barcode.
+  const bin = /^\/inventory\?bin=(.+)$/.exec(redirect);
+  if (bin) return decodeURIComponent(bin[1]).trim() || null;
+  const rack = /^\/warehouse\?tab=racks&code=(.+)$/.exec(redirect);
+  if (rack) return decodeURIComponent(rack[1]).trim() || null;
+  return null;
+}
+
+/**
+ * Unwrap a value typed or scanned into a **bin / location** field.
+ *
+ * Decodable label → its flat code; anything else → the trimmed text, so a
+ * hand-typed `A12` or a bin NAME still reaches the API unchanged. This is what
+ * makes a "scan or type bin" box accept the legacy `(414){gln}(254){code}`
+ * stickers that are on the racks today — those carry a borrowed GLN and a URL
+ * wrapper, and a raw pass-through sends the whole string as `bin_barcode`.
+ */
+export function unwrapScannedLocation(raw: string): string {
+  return scannedLocationCode(raw) ?? String(raw ?? '').trim();
+}
+
+/**
+ * For a scan of a **printed carton label**, return the numeric `receiving_id`.
+ * Returns `null` when the raw value is not a carton label, so a human typing a
+ * PO number still falls through to text search.
+ *
+ * Sibling of {@link scannedUnitKey}, and it exists for the same reason: a
+ * printed carton sticker does NOT carry `R-1234`. Since the platform-link
+ * change it carries an absolute Digital Link
+ * (`https://{slug}.app.cycleforge.ai/m/r/1234`), so any surface that reads the
+ * bare handle by regex silently stopped accepting the thing it prints. Every
+ * form resolves here — absolute URL, bare path, `R-1234`, legacy `RCV-1234` —
+ * because they all resolve through the one decoder.
+ *
+ * A repair label (`REP-33`) is deliberately excluded: `routeScan` types it
+ * `receiving` but redirects to `/m/rs/33`, and a repair order is not a carton.
+ * Anchoring on the `/m/r/` redirect is what keeps them apart.
+ */
+export function scannedReceivingId(raw: string): number | null {
+  const route = routeScan(raw);
+  if (!route || route.type !== 'receiving') return null;
+  const m = /^\/m\/r\/(\d+)$/.exec(route.redirect || '');
+  if (!m) return null;
+  const id = Number(m[1]);
+  return Number.isFinite(id) && id > 0 ? id : null;
+}
+
 // ─── Print-side helpers ─────────────────────────────────────────────────────
 
 /**
@@ -596,9 +675,19 @@ function gs1LocationAi(s: LocationSegments, opts: { gln: string }): string {
 }
 
 /**
- * What to encode into a printed location label, and in which symbology.
+ * The licensed-GLN decision for a printed location label.
  *
- * THE decision point for every bin and rack label. Two outcomes, and which
+ * **Not a call-site API — this is `encodePrintMatrix({ kind: 'location' })`'s
+ * private helper.** It is `export`ed only because the encode SoT lives in
+ * `@/lib/qr/platform-link`, which imports *this* module; the dependency cannot
+ * run the other way, so the GLN logic has to sit here. Printers (bin, rack,
+ * previews) compose `encodePrintMatrix`, never this — one encoder is the whole
+ * point, and a second `{ value, symbology }` decision reachable from a
+ * component is how the first fork started. Pinned by
+ * `print-matrix-sot.guard.test.ts` → "only the encode SoT reads
+ * locationLabelPayload".
+ *
+ * Two outcomes, and which
  * one you get is decided by whether the tenant has a licensed GLN — never by
  * a printer setting, a default, or a fallback string:
  *

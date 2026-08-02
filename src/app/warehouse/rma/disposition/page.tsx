@@ -38,6 +38,7 @@ import {
   X,
 } from '@/components/Icons';
 import { ThemedStationScanBar } from '@/components/station/scan-bar';
+import { unwrapScannedSerial } from '@/lib/barcode-routing';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { IconButton } from '@/design-system/primitives';
 import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
@@ -173,7 +174,7 @@ function DispositionStationInner() {
   }, [loading, refocus]);
 
   const handleSubmit = useCallback(async () => {
-    await lookupSerial(scan);
+    await lookupSerial(unwrapScannedSerial(scan));
   }, [scan, lookupSerial]);
 
   // Deep-link from the backlog worklist (?serial=) — pre-fills and fires the
