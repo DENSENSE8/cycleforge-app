@@ -1,7 +1,15 @@
 'use client';
 
 import { useRef, useState, type ComponentType, type ReactNode, type SVGProps } from 'react';
-import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, List, X } from '../../Icons';
+import {
+  ArrowRightToLine,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  ChevronUp,
+  List,
+  X,
+} from '../../Icons';
 import { HoverTooltip } from '../HoverTooltip';
 import { ToolbarButton } from '../ToolbarButton';
 import { IconButton } from '@/design-system/primitives';
@@ -120,13 +128,21 @@ export function PaneHeaderIconBadge({
 }
 
 // ─── PaneHeaderCloseButton ──────────────────────────────────────────────────
-// Standard close (X) button — top-right corner of a detail pane.
+// Dismiss control for a detail pane. Leads the trailing cluster
+// (`close · up · down`) — see PaneHeaderActionBar's `onClose`.
 
 interface PaneHeaderCloseButtonProps {
   onClick: () => void;
   ariaLabel?: string;
   title?: string;
   className?: string;
+  /**
+   * `push` (default) — `ArrowRightToLine` (`>|`): this pane is parked back
+   * against the right edge it came from. Every right-rail / push surface.
+   * `dismiss` — the classic `X`, for a pane that genuinely goes away rather
+   * than sliding aside.
+   */
+  intent?: 'push' | 'dismiss';
 }
 
 export function PaneHeaderCloseButton({
@@ -134,6 +150,7 @@ export function PaneHeaderCloseButton({
   ariaLabel = 'Close',
   title = 'Close',
   className,
+  intent = 'push',
 }: PaneHeaderCloseButtonProps) {
   return (
     <HoverTooltip label={title} asChild>
@@ -145,7 +162,13 @@ export function PaneHeaderCloseButton({
           'inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg hover:bg-surface-sunken active:scale-95',
           className,
         )}
-        icon={<X className="h-4 w-4" />}
+        icon={
+          intent === 'push' ? (
+            <ArrowRightToLine className="h-4 w-4" />
+          ) : (
+            <X className="h-4 w-4" />
+          )
+        }
       />
     </HoverTooltip>
   );
@@ -336,6 +359,20 @@ interface PaneHeaderActionBarProps {
   prevTitle?: string;
   nextTitle?: string;
   /**
+   * Dismiss the panel. Renders {@link PaneHeaderCloseButton} as the LAST item of
+   * the trailing cluster, so `up · down · close` is one right-aligned group by
+   * construction — the SoT grammar (`source-of-truth.md` → Right-rail modality →
+   * Panel header grammar), not something each header re-assembles.
+   *
+   * It lives here rather than in a host's `rightSlot` because it was the split
+   * that caused the bug: close sat in the row ABOVE prev/next, so the two halves
+   * of one cluster drifted apart and two headers ended up swallowing the prop
+   * entirely. A non-modal panel has no scrim to click off, so this control is
+   * mandatory on every record inspector.
+   */
+  onClose?: () => void;
+  closeTitle?: string;
+  /**
    * Card = rounded pill with subtle border + shadow. Flat = no chrome.
    * Header = full-width 30px band with a top hairline, matching the house
    * header rows (e.g. the workspace toolbar pinned beneath the stepper).
@@ -367,6 +404,8 @@ export function PaneHeaderActionBar({
   nextDisabled,
   prevTitle = 'Previous',
   nextTitle = 'Next',
+  onClose,
+  closeTitle = 'Close',
   variant = 'card',
   iconOnly = false,
   leftSlot,
@@ -418,10 +457,22 @@ export function PaneHeaderActionBar({
           {status}
         </span>
       ) : null}
-      {/* Spacer only when prev/next need the far edge — rightSlot alone stays
-          clustered with the actions (station context bar util row). */}
-      {(onPrev || onNext) && <div className="flex-1" />}
+      {/* Spacer only when the trailing cluster needs the far edge — rightSlot
+          alone stays clustered with the actions (station context bar util row). */}
+      {(onPrev || onNext || onClose) && <div className="flex-1" />}
       {rightSlot}
+      {/* Close LEADS the trailing cluster — `close · up · down`. Dismiss is the
+          control an operator reaches for without looking, so it takes the
+          stable end: prev/next come and go with the queue behind the record,
+          and a trailing close would shift under the cursor every time they did. */}
+      {onClose ? (
+        <PaneHeaderCloseButton
+          onClick={onClose}
+          title={closeTitle}
+          ariaLabel={closeTitle}
+          className="h-7 w-7 rounded-md"
+        />
+      ) : null}
       {onPrev ? (
         <HoverTooltip label={prevTitle} asChild>
           <IconButton

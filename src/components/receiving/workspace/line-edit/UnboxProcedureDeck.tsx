@@ -1,31 +1,45 @@
 'use client';
 
 /**
- * The Unbox WORK SURFACE — the vertical procedure step column.
+ * The Unbox WORK SURFACE — the procedure focus deck.
  *
- * The adapter: it knows both the carton domain and the DS {@link ProcedureColumn},
+ * The adapter: it knows both the carton domain and the DS {@link ProcedureDeck},
  * and nothing else does. Steps come from {@link useUnboxProcedureSteps} — the
  * same hook the right-edge checklist reads — so the two surfaces on screen
  * cannot disagree about where the operator is. It re-derives nothing.
  *
- * ## Why the centre is a column and the right edge is a checklist
+ * ## Why the centre is a deck and the right edge is a checklist
  *
  * They answer different questions, which is why both exist:
  *
- *   centre  → *what do I do right now* — one expanded section carrying that
- *             step's own controls, its neighbours dimmed above and below
+ *   centre  → *what do I do right now* — one expanded card at the bottom
+ *             against the composer, its history above and its queue tucked
+ *             behind it
  *   right   → *where am I in the whole job* — every step, one line each, live
  *
  * Two VIEWS are fine; two DERIVATIONS are not. The hook is the guarantee.
  *
- * ## The column never takes focus — and neither does a click on it
+ * That coupling is also the deck's PRECONDITION, not a nicety: the centre is
+ * only allowed to tuck queued cards behind one another because the checklist
+ * holds the shape of the whole job. De-default the checklist and the deck goes
+ * back to a flat column in the same change.
  *
- * No `autoFocus`, no `tabIndex`; the active section is scrolled into view, never
- * focused. But a face button and a neighbour chip DO take focus natively when
- * clicked, and the wedge types into whatever holds focus — so every selection
- * here hands focus straight back to the scan bar. That is this adapter's job,
- * not the DS component's: the event is the station's, and the DS layer stays
- * domain-free.
+ * ## The deck never takes focus — and neither does a click on it
+ *
+ * No `autoFocus`, no `tabIndex`; the focus card is scrolled into view, never
+ * focused. But a face button DOES take focus natively when clicked, and the
+ * wedge types into whatever holds focus — so every selection here hands focus
+ * straight back to the scan bar. That is this adapter's job, not the DS
+ * component's: the event is the station's, and the DS layer stays domain-free.
+ *
+ * ## The prev/next chips live on the DOCK, not here (2026-08-02)
+ *
+ * They were cut from this component and came back the same day as
+ * {@link UnboxProcedurePager}, pinned above the composer. The cut was right and
+ * the reinstatement is not a reversal of it: rendering them *after* the deck put
+ * them mid-document, because this component owns no scroll port. A pager belongs
+ * beside the input the operator's hand is already on — never as a trailer after
+ * the content. Do not re-add chips to this file.
  *
  * ## Skips are not wired yet
  *
@@ -41,17 +55,17 @@ import { useCallback, type ReactNode } from 'react';
 import { emitReceiving } from '@/components/receiving/receiving-events';
 import {
   PROCEDURE_STEP_FACE_HEIGHT,
-  ProcedureColumn,
+  ProcedureDeck,
   type ProcedureStepRow,
 } from '@/design-system/components/procedure';
 import { SkeletonBase } from '@/design-system/components/Skeletons';
 import { cn } from '@/utils/_cn';
 import { UNBOX_STEP_BODIES, type UnboxStepBodyContext } from './steps';
 import {
-  stepAccentClass,
   stepFace,
   stepMedallionClass,
   stepQuantityClass,
+  stepSurfaceClass,
 } from './steps/step-face';
 import { useUnboxProcedureSteps } from './useUnboxProcedureSteps';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
@@ -59,14 +73,16 @@ import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 /**
  * Placeholder at the real geometry while the photo counts hydrate.
  *
- * The vocabulary resolves synchronously from the row, so the section COUNT is
- * known before any state is — reserve exactly that many at exactly the face
- * height rather than collapsing to a spinner and reflowing the composer
- * underneath on settle.
+ * The vocabulary resolves synchronously from the row, so the card COUNT is known
+ * before any state is — reserve exactly that many at exactly the face height
+ * rather than collapsing to a spinner and reflowing the composer underneath on
+ * settle. Flat, not a deck: which card takes focus is precisely what has not
+ * resolved yet, and a skeleton that guessed one would move under the operator
+ * the moment evidence landed.
  */
-function ColumnSkeleton({ sections }: { sections: number }) {
+function DeckSkeleton({ sections }: { sections: number }) {
   return (
-    <div className="space-y-3 overflow-hidden pb-2" aria-hidden>
+    <div className="space-y-3" aria-hidden>
       {Array.from({ length: sections }, (_, i) => (
         <div
           key={i}
@@ -83,7 +99,7 @@ function ColumnSkeleton({ sections }: { sections: number }) {
   );
 }
 
-interface UnboxProcedureColumnProps {
+interface UnboxProcedureDeckProps {
   row: ReceivingLineRow;
   staffId: string;
   /** The carton's line list — the `contents` step's body. */
@@ -94,20 +110,23 @@ interface UnboxProcedureColumnProps {
   serialSlot?: ReactNode;
   /** Per-line item capture — the `item_photos` step's body. */
   itemPhotoSlot?: ReactNode;
+  /** The printed label preview — the `label` step's body. */
+  labelSlot?: ReactNode;
   /** The grade slice for the `condition` step. Omit to render honest absence. */
   condition?: { value: string; onChange: (next: string) => void };
 }
 
-export function UnboxProcedureColumn({
+export function UnboxProcedureDeck({
   row,
   staffId,
   contentsSlot,
   classifySlot,
   serialSlot,
   itemPhotoSlot,
+  labelSlot,
   condition,
-}: UnboxProcedureColumnProps) {
-  const { steps, activeKey, prevKey, nextKey, aspectByKey, settled, stepCount, focusStep } =
+}: UnboxProcedureDeckProps) {
+  const { steps, activeKey, aspectByKey, settled, stepCount, focusStep } =
     useUnboxProcedureSteps(row);
 
   const face = useCallback((step: ProcedureStepRow) => {
@@ -115,7 +134,7 @@ export function UnboxProcedureColumn({
     return {
       Icon,
       medallionClass: stepMedallionClass(hue),
-      accentClass: stepAccentClass(hue),
+      surfaceClass: stepSurfaceClass(hue),
       quantityClass: stepQuantityClass(hue),
     };
   }, []);
@@ -153,6 +172,7 @@ export function UnboxProcedureColumn({
         classifySlot,
         serialSlot,
         itemPhotoSlot,
+        labelSlot,
         condition,
       };
       return <Body {...ctx} />;
@@ -165,20 +185,19 @@ export function UnboxProcedureColumn({
       classifySlot,
       serialSlot,
       itemPhotoSlot,
+      labelSlot,
       condition,
     ],
   );
 
   // Gate on settled evidence: un-hydrated zeros read as "nothing shot", which
-  // would open the wrong section for a beat and then scroll under the operator.
-  if (!settled) return <ColumnSkeleton sections={stepCount} />;
+  // would open the wrong card for a beat and then scroll under the operator.
+  if (!settled) return <DeckSkeleton sections={stepCount} />;
 
   return (
-    <ProcedureColumn
+    <ProcedureDeck
       steps={steps}
       activeKey={activeKey}
-      prevKey={prevKey}
-      nextKey={nextKey}
       face={face}
       renderActive={renderActive}
       onSelectStep={selectStep}

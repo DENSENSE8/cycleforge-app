@@ -14,7 +14,12 @@ export type TimelineGlyphId =
   | 'unbox'
   | 'tracking-scan'
   | 'support'
+  // A NOTE and a MESSAGE are different acts, so they are different glyphs
+  // (split 2026-08-02). `team-note` is something a staffer WROTE DOWN about a
+  // record — paper. `thread-message` is something someone SAID to someone —
+  // a bubble. One glyph for both put a chat bubble on every carton note.
   | 'team-note'
+  | 'thread-message'
   | 'packing'
   | 'shipping'
   | 'testing'
@@ -40,7 +45,7 @@ const EXACT: Record<string, TimelineGlyphSpec> = {
   // Support linkage
   TICKET_LINKED: { id: 'support', tooltip: 'Support' },
   TICKET_UNLINKED: { id: 'support', tooltip: 'Support' },
-  THREAD_MESSAGE: { id: 'team-note', tooltip: 'Team note' },
+  THREAD_MESSAGE: { id: 'thread-message', tooltip: 'Message' },
 
   // SAL / packing / shipping
   FNSKU_SCANNED: { id: 'tracking-scan', tooltip: 'FNSKU scan' },
@@ -124,6 +129,38 @@ const EXACT: Record<string, TimelineGlyphSpec> = {
 const DEFAULT: TimelineGlyphSpec = { id: 'signal', tooltip: 'Signal' };
 
 /**
+ * `inventory_events.station` → the same glyph vocabulary.
+ *
+ * A station is a PLACE, not an event type, so it resolves separately — but it
+ * must land on the icon operators already learned for that bench, which is the
+ * whole reason this lives beside the event map instead of in a page. RECEIVING
+ * maps to `unbox` on purpose: `StationReceiving` in `icons/stations.tsx` is
+ * `PackageOpen`, so the rail glyph and the nav glyph are the same shape (the
+ * rail just skips the nav stroke wrapper, which muddies 14px — see
+ * `timeline-glyph-icons.tsx`).
+ *
+ * Returns null for an unknown / absent station: an honest absence beats
+ * painting `signal` on every row that happens to name a bench we don't map.
+ */
+const STATION: Record<string, TimelineGlyphSpec> = {
+  RECEIVING: { id: 'unbox', tooltip: 'Receiving' },
+  TRIAGE: { id: 'receiving', tooltip: 'Arrival' },
+  TESTING: { id: 'testing', tooltip: 'Testing' },
+  TECH: { id: 'testing', tooltip: 'Testing' },
+  PACKING: { id: 'packing', tooltip: 'Packing' },
+  PACKER: { id: 'packing', tooltip: 'Packing' },
+  SHIPPING: { id: 'shipping', tooltip: 'Shipping' },
+  REPAIR: { id: 'repair', tooltip: 'Repair' },
+  SUPPORT: { id: 'support', tooltip: 'Support' },
+};
+
+export function resolveStationGlyph(station?: string | null): TimelineGlyphSpec | null {
+  const key = (station ?? '').trim().toUpperCase();
+  if (!key) return null;
+  return STATION[key] ?? null;
+}
+
+/**
  * Resolve the rail glyph for a timeline row. Prefer exact `sourceEventType`;
  * then light prefix heuristics; else the quiet signal fallback.
  */
@@ -161,8 +198,10 @@ export function resolveTimelineGlyph(
   if (upper.includes('CARRIER') || upper.includes('DELIVER')) {
     return { id: 'carrier', tooltip: 'Carrier' };
   }
-  if (upper.includes('THREAD') || upper.includes('NOTE') || upper.includes('MESSAGE')) {
-    return { id: 'team-note', tooltip: 'Team note' };
+  // NOTE before MESSAGE: `NOTE_ADDED` is written-down, `THREAD_MESSAGE` is said.
+  if (upper.includes('NOTE')) return { id: 'team-note', tooltip: 'Team note' };
+  if (upper.includes('THREAD') || upper.includes('MESSAGE')) {
+    return { id: 'thread-message', tooltip: 'Message' };
   }
   if (upper.includes('SIGNAL') || raw.includes('signal') || raw.includes('_reason')) {
     return { id: 'signal', tooltip: 'Signal' };

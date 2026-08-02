@@ -15,6 +15,7 @@ import {
   getStaffColorHex,
   setStaffAvatarPhotoId,
   setStaffColorCache,
+  setStaffColorHex,
 } from './staff-colors';
 
 test('a /api/staff refill carries colour AND avatar per staffer', () => {
@@ -55,6 +56,17 @@ test('the single-staffer patch leaves every other staffer intact', () => {
   assert.equal(getStaffAvatarPhotoId(1), null);
   assert.equal(getStaffAvatarPhotoId(2), 11);
   assert.equal(getStaffColorHex({ id: 1 }), '#a855f7');
+});
+
+test('the single-staffer colour patch leaves every other staffer intact', () => {
+  setStaffColorCache([
+    { id: 1, color_hex: '#a855f7', avatar_photo_id: 42 },
+    { id: 2, color_hex: '#3b82f6', avatar_photo_id: 11 },
+  ]);
+  setStaffColorHex(1, '#ef4444');
+  assert.equal(getStaffColorHex({ id: 1 }), '#ef4444');
+  assert.equal(getStaffColorHex({ id: 2 }), '#3b82f6');
+  assert.equal(getStaffAvatarPhotoId(1), 42);
 });
 
 test('a non-positive photo id is treated as absent, not as an id', () => {

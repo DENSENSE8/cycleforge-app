@@ -119,6 +119,12 @@ export const qk = {
     all: ['favorites'] as const,
     list: (workspace: string) => ['favorites', 'list', workspace] as const,
   },
+  orgGs1: {
+    /** Broad invalidation prefix — matches the org GS1 identity query. */
+    all: ['org-gs1'] as const,
+    /** GET /api/org/gs1 — the resolved { gln, companyPrefix } for label printers. */
+    identity: () => ['org-gs1', 'identity'] as const,
+  },
   locations: {
     /** Broad invalidation prefix — matches every warehouse locations list query. */
     all: ['locations'] as const,

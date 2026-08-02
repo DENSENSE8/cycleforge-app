@@ -14,6 +14,7 @@ import { gridFrozenKeys } from '@/design-system/components/grid/grid-column-edit
 import { gridTemplate } from '@/design-system/components/grid/grid-column-geometry';
 import { ordersQueueColVar } from '@/lib/dashboard-order-row-layout';
 import type { ColumnType } from '@/lib/tables/table-columns';
+import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 
 export type UnfoundGridColumnKey =
   | 'select'
@@ -137,10 +138,9 @@ export function unfoundGridFrozenLeft(key: UnfoundGridColumnKey): string {
   return `calc(${parts.join(' + ')})`;
 }
 
-export type UnfoundGridSortDir = 'asc' | 'desc';
 
 /** Default direction on first activation — newest-checked / ticket asc. */
-export function defaultDirForUnfoundGridSort(_key: UnfoundGridColumnKey): UnfoundGridSortDir {
+export function defaultDirForUnfoundGridSort(_key: UnfoundGridColumnKey): GridSortDir {
   return 'asc';
 }
 

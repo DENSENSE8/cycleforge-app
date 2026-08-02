@@ -40,13 +40,13 @@ test('every spine section with pages emits a band whose label + icon come from t
     assert.equal(group.label, section.label);
     assert.equal(group.sectionIcon, section.icon);
   }
-  // The nine locked sections all ship pages by default.
+  // The eight locked sections all ship pages by default.
   for (const section of SPINE_SECTIONS) {
     assert.ok(emitted.has(String(section.id)), `${section.id} band missing by default`);
   }
 });
 
-test('pin contains Home Search Media Chat; footer contains Admin Settings', () => {
+test('pin contains Home Search Media Chat; footer contains Studio Admin Settings', () => {
   const groups = buildCommandBarNavGroups();
   const pin = groups.find((g) => g.id === 'pin');
   const footer = groups.find((g) => g.id === 'footer');
@@ -57,9 +57,11 @@ test('pin contains Home Search Media Chat; footer contains Admin Settings', () =
     pin!.rows.filter((r) => r.type === 'page').map((r) => r.id),
     ['home', 'search', 'ops-photos', 'ai-chat'],
   );
+  // Workflow Studio joined the footer band 2026-08-02 — it left SPINE_SECTIONS,
+  // so the palette must find it here rather than dropping it entirely.
   assert.deepEqual(
     footer!.rows.filter((r) => r.type === 'page').map((r) => r.id),
-    ['admin', 'settings'],
+    ['studio', 'admin', 'settings'],
   );
 });
 

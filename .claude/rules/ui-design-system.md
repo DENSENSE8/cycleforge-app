@@ -108,6 +108,32 @@ Field group = label above, value below:
 </div>
 ```
 
+## Scroll ownership — one port per region, and the HOST owns it
+
+**A component mounted into an existing scroll host is CONTENT, never a viewport.**
+Check who owns the scroll before you write `overflow-*`.
+
+- **Do:** compose the host's port — `StationWorkbench` for station bodies,
+  `DashboardScrollShell` for workbench pages, `RightRailHost`'s body for a rail occupant —
+  and let the child size to its content.
+- **Don't:** ship `flex-1 overflow-y-auto` inside a `space-y-*` wrapper. `flex-1` has **no
+  basis** there, so the port is never height-constrained: it does not scroll, and every
+  `flex-1`, `h-full`, `snap-*` and `min-h-*` on it becomes dead CSS **that still occupies
+  space**. The Unbox procedure column shipped exactly this (2026-08-02) — the nested port
+  rendered its height floors as empty white voids and the scroll-snap never engaged.
+- **A scroll-snap surface must be verified to actually snap.** Snap on a zero-height port is
+  invisible in code review and obvious at the bench. Snap belongs on the **host** port (behind
+  an opt-in prop — never globally for every station), with `snap-start` on the sections.
+- A nested port is legitimate only when the child has a **definite height** of its own — a
+  `max-h-*`, or `flex-1 min-h-0` inside an ancestor chain that resolves to a fixed height.
+  Prove it or drop the `overflow-*`.
+
+**`rounded-*-[inherit]` on a child is not a clip.** `border-radius: inherit` copies the
+parent's radius *value* onto the child's own box, so a 4px accent rail inherits a 16px card
+radius and renders as a lens/notch. For an edge accent use a **border on the element itself**
+(`border-l-4`), which follows that element's own corner radius natively. Do **not** reach for
+`overflow-hidden` on the parent instead — that shears the focus rings off any input inside it.
+
 ## Monitor surface tokens (rollup density)
 
 - **Card shell:** `rounded-2xl border border-border-soft bg-surface-card shadow-sm`  
@@ -146,16 +172,24 @@ Field group = label above, value below:
   text-role-micro uppercase tracking-widest`. Pills (`rounded-full`) drop vertical padding to keep row height.
 - **Typed identifiers** use the semantic `CopyChip` family — never interchange chip variants (see `DESIGN_SYSTEM.md`).
 
-## Type: one family, three cuts, capped at 600
+## Type: three cuts, one face each, capped at 600
 
-**Contextuality is width and role binding — never a second face.** IBM Plex is the whole system
+**Contextuality is width and role binding — never a fourth slot.** Three cuts, one face per cut
 (`src/lib/fonts.ts`; stacks in `tokens/typography/families.ts`, mirrored in `styles/globals.css`):
 
 | Cut | Job | How you get it |
 |---|---|---|
-| **Sans** | display · title · body · data · caption | the default — `text-role-*` |
-| **Sans Condensed** | eyebrow · micro (dense chrome) | **intrinsic** to `text-role-eyebrow` / `text-role-micro` |
-| **Mono** | identifiers (serial · FNSKU · tracking · SKU) | `font-mono` / the `CopyChip` family |
+| **Sans — Inter** | display · title · body · data · caption | the default — `text-role-*` |
+| **Condensed — IBM Plex Sans Condensed** | eyebrow · micro (dense chrome) | **intrinsic** to `text-role-eyebrow` / `text-role-micro` |
+| **Mono — IBM Plex Mono** | identifiers (serial · FNSKU · tracking · SKU) | `font-mono` / the `CopyChip` family |
+
+**The sans cut moved IBM Plex Sans → Inter (2026-08-02)** for small-size legibility: this UI lives at
+12–14px and Inter was drawn for screen UI at exactly that size (larger x-height, more open apertures).
+It is a SWAP, not a second language — there is still one sans face and every `text-role-*` resolves
+through the same stack. Condensed + mono stayed Plex because Inter ships neither, and both are
+load-bearing (condensed keeps 10–11px chrome inside a grid column; mono keeps a serial retypable).
+**A display / heading face on top of these three is still banned** — that is what the old
+"one macro-family" rule was actually protecting.
 
 - **Pick a ROLE, not a family.** `text-role-eyebrow`/`-micro` bind the condensed cut themselves
   (tailwind.config.ts CF Type plugin), so a 10–11px label stays legible without wrapping a grid column.
@@ -170,9 +204,16 @@ Field group = label above, value below:
 - **Numerals align by default** — `role-display`/`-title`/`-data` bind `tabular-nums` intrinsically; a
   surface that genuinely wants proportional figures opts out with `proportional-nums`. Mono never
   ligates (`fi`/`fl` in a serial would render a string the operator can't retype).
-- **LedgerGrid column justification is a hard SoT** — digit / order-ID / date / tracking tracks
+- **LedgerGrid column justification is a hard SoT** — digit / date / tracking / SKU tracks
   **end**-align; word / tag / platform tracks **start**-align. Resolve via
   `resolveGridColumnAlign` (`grid-header-align.ts`); never hand-type `justify-end` on a cell.
+  **Exception, ruled 2026-08-02:** an identifier that is the row's own **transaction identity**
+  (PO # · sales order # · `order`) aligns **start** — it is a name you read, not a magnitude you
+  compare — while a **catalog item number / SKU** stays end-aligned as a reference attribute.
+  Same `type: 'id'`, different role; express it with an explicit `align: 'start'` on that
+  surface's column model, never by changing `ALIGN_BY_TYPE.id`. Shipped 2026-08-02 on the Orders
+  and Receiving `order` columns; `date` / `tracking` stay unadjudicated (and their spec assertions
+  stay red on purpose).
   Full table: [source-of-truth.md](source-of-truth.md) → Grid column justification.
 - Guard: `typography-tokens.guard.test.ts` (raw px, retired tokens, the weight cap, the family
   bindings). Genuine one-off: same-line `ds-allow-weight`. Codemod: `scripts/codemods/cap-font-weight.mjs`.
@@ -214,8 +255,9 @@ Full waist: [source-of-truth.md](source-of-truth.md).
   Cross-page MRU is the GlobalHeader Recents popover (`HeaderRecentsSwitcher`) — never spine chips.
   Quick Access **pins** are `HeaderPinsSwitcher` (hairline after Recents) — never a pin list in the avatar menu.
   **Section drills:** root shows Analytics Monitor / Scan Stations / Inbound / Catalog / Inventory /
-  Fulfillment / Sales / Support / Workflow Studio (`SPINE_SECTIONS`); drill body is back + that
-  section's pages. No `Triage Desk` / `Print Stations` grab-bag, and no scan bench inside a domain.
+  Fulfillment / Sales / Support (`SPINE_SECTIONS`); drill body is back + that
+  section's pages. **Workflow Studio is a FOOTER PIN above Admin**, not a drill (2026-08-02).
+  No `Triage Desk` / `Print Stations` grab-bag, and no scan bench inside a domain.
   Swap via `framerPresence.spineDrill` (opacity-only) — never a page-local `x` slide.
   Detail: `display/workbench.md`.
 - Size by context: row dot `h-2 w-2` · field/inline `h-3.5 w-3.5` · button/loader `h-4 w-4` (`Loader2 animate-spin`).
@@ -247,6 +289,13 @@ Full waist: [source-of-truth.md](source-of-truth.md).
 - **Never** hardcode arbitrary-px spacing (`p-[6px]`-style). Guard: `spacing-tokens.guard.test.ts`
   (`npm run test:spacing-guard`); genuine safe-area / fixed-overlay geometry carries a same-line
   `ds-allow-spacing` comment. Pair→intent codemod: `scripts/codemods/spacing-intents.mjs`.
+- **`space-y-*` is `margin-block-END` in Tailwind v4 — a per-item `margin-top` cannot cancel it.**
+  v4 compiles `space-y-N` to `margin-block-end` on every child *except the last*, so the gap belongs
+  to the element **above**. A layout that overrides one child's `margin-top` (an overlap, a pull-up,
+  a tucked card) therefore gets the gap *plus* its override, and both the computed `margin-top` and
+  the class list read exactly as intended while it is wrong. **Do:** when any item needs a different
+  gap from its siblings, drop the space utility and set the margin per item. **Don't:** assume v3's
+  `& > * + *` `margin-top` semantics.
 
 ## Focus affordance from the SoT
 
@@ -268,3 +317,10 @@ Full waist: [source-of-truth.md](source-of-truth.md).
 - Error/empty = dashed bordered box, centered: `rounded-xl border border-dashed {border-rose-200|border-gray-200}
   {bg-rose-50|bg-gray-50} px-4 py-6 text-center`.
 - Teach and degrade: failing sub-resources render empty; they never 500 the whole record.
+- **Never reserve height a body has not asked for.** A `min-h-[N]` floor on a container whose
+  content is dynamic renders as an empty void the moment a small body lands in it — and an
+  empty box at a bench reads as *"this step is broken"*, while costing the vertical room the
+  surface is spending to exist. Reserve geometry only for a **skeleton at the real geometry**
+  (a known row count at a known row height), never for "presence". A fixed height on a
+  genuinely fixed one-row object (a collapsed face) is not this — that height *is* its
+  geometry.

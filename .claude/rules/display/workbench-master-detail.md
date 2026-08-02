@@ -32,16 +32,24 @@ When using the sidebar map, three structural slots, in this order:
   (pairing sort, sourcing status, FBA plan/combine, inventory triage filters) may stay in the
   sidebar — those are not page L2. **Header pins** (`HeaderPinsSwitcher`) sit to the right of
   Recents (hairline separator): pin-current + sortable icon stations from `useQuickAccess` /
-  `cf.quickAccess` — never a pin list in a staff / Quick Access menu. Desktop Quick Access
-  **actions** stay in `GlobalHeaderActions` (**search · clipboard · phone QR · kiosk ·
-  inbox · AI far-right**) — Sparkles opens the assistant right-rail at the edge it
-  owns (mirror of MasterNav collapse far-left). **No staff avatar on desktop**. Spine top band is
+  `cf.quickAccess` — never a pin list in a staff / Quick Access menu. The desktop
+  `GlobalHeaderActions` rail is **search · notifications · AI far-right** (three, one per
+  kind: find · be told · ask) — Sparkles opens the assistant right-rail at the edge it
+  owns (mirror of MasterNav collapse far-left). Session/setup actions (clipboard, phone QR,
+  kiosk preview) live in the `StaffAccountFooter` ⋯ overflow, not on the rail —
+  frequency earns a persistent icon. **No staff avatar on desktop**. Spine top band is
   `OrgWorkspaceControl` (current workspace + switch when multi-org) — not a “name of
   now” page label (selection is the body row). No MRU chips in the org band; column open
   lives on `SidebarNavColumn`. Global search stays in GlobalHeader (`GlobalHeaderSearch`)
   — never pin a search **control** twin in the spine. **Home** (house glyph + label) then
   Search + Media + **Chat** **page** rows are top-pinned (`kind: 'top'`) above section
-  drills — same pin grammar as Settings/Admin footer (`kind: 'bottom'`). Below
+  drills — same pin grammar as the footer band (`kind: 'bottom'`), which reads
+  **Workflow Studio · Admin · Settings** in `APP_SIDEBAR_NAV` array order. Studio joined it
+  2026-08-02 (it was a root drill): defining the operation is a standing-back act, not one of
+  the places browsed through in a shift. **A pinned row never draws children**
+  (`showModes = !pinned && …`), so `/studio/catalog` rides as an L2 mode in
+  `SIDEBAR_PAGE_NAV` — ⌘K, the spine's flat search and the header Mode switcher still name it,
+  but it left the spine surface. Below
   Settings/Admin: `StaffAccountFooter` (avatar · name · role · more · sign-out). When the
   spine collapses to 0 width, org + staff are unreachable (open via header toggle / edge
   peek) — intentional, same as Admin/Settings. **Both ends of the spine wear the
@@ -56,7 +64,7 @@ When using the sidebar map, three structural slots, in this order:
   `source-of-truth.md` → Identity mark · Staff profile photo · MasterNav spine type ladder.
   Guard: `header-mode.guard.test.ts`.
 - **Section drills (spine L1).** Root shows **Analytics Monitor · Scan Stations · Inbound ·
-  Catalog · Inventory · Fulfillment · Sales · Support · Workflow Studio** as **drill buttons**
+  Catalog · Inventory · Fulfillment · Sales · Support** as **drill buttons**
   with leading icons (`SPINE_SECTIONS` in `sidebar-navigation.ts` — compose from
   `MAIN_GROUPS` + `STATION_GROUPS` + `DOMAIN_GROUPS`; never twin labels). Drill replaces the
   scroll body with centered back title + that section's pages. A footer-pinned
@@ -67,8 +75,8 @@ When using the sidebar map, three structural slots, in this order:
   **Declare membership identically in BOTH `APP_SIDEBAR_NAV` and `SIDEBAR_PAGE_NAV`**.
 
   **The axis is deliberately mixed, and that is the ruling** (2026-08-01,
-  `docs/todo/desk-domain-spine-split-CLAUDE-CODE-PROMPT.md`): Monitor and Studio are
-  ALTITUDES (observe / define), Scan Stations is an INPUT MODEL, and the six between them are
+  `docs/todo/desk-domain-spine-split-CLAUDE-CODE-PROMPT.md`): Monitor is an
+  ALTITUDE (observe), Scan Stations is an INPUT MODEL, and the six after it are
   BUSINESS DOMAINS. Insisting on one uniform axis is what produced `Triage Desk` — "not a
   scanner, not a graph" is a leftover, not a place, and it collected seven unrelated pages
   behind a label no operator could predict. `Print Stations` failed the same way from the
@@ -82,10 +90,10 @@ When using the sidebar map, three structural slots, in this order:
   label printer); Fulfillment = Manage Shipping (Orders · Labels · Ready · FBA · Packing
   Review) — **carrier postage stays here and never folds into a label workspace**; Sales =
   Sales Board + Local Pickup History; Support = the 6 support modes; Analytics Monitor =
-  Operations only; Workflow Studio = Studio + Catalog canvas. Section icons come from
+  Operations only. Section icons come from
   `MAIN_GROUPS` / `STATION_GROUPS` / `DOMAIN_GROUPS`. Accents: `spineAccentFor` /
-  `SPINE_SECTION_ACCENTS` (sky / amber / teal / emerald / cyan / indigo / rose / orange /
-  violet; top+footer neutral blue). **A section with no visible page renders nothing**, and a
+  `SPINE_SECTION_ACCENTS` (sky / amber / teal / emerald / cyan / indigo / green / orange;
+  top+footer neutral blue). **A section with no visible page renders nothing**, and a
   page whose every mode was permission-filtered is dropped by `isSidebarPageReachable` —
   hollow is forbidden at both altitudes. Auto-enters on cross-section navigation; manual Back
   returns to the root map.

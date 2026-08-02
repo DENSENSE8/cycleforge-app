@@ -4,7 +4,8 @@ import type { ReactNode } from 'react';
 import { CartonUnitsRollupBody } from '../../CartonUnitsRollup';
 import { UnboxLabelPreview } from '../UnboxLabelPreview';
 import { POUnboxingSection } from '../POUnboxingSection';
-import { UnboxProcedureColumn } from '../UnboxProcedureColumn';
+import { CartonMatchHub } from '../CartonMatchHub';
+import { UnboxProcedureDeck } from '../UnboxProcedureDeck';
 import { UnboxSerialStepSurface } from '../steps/UnboxSerialStepSurface';
 import { UnboxProcedureChecklist } from '../UnboxProcedureChecklist';
 import { ReceivingPhotoButton } from '../ReceivingPhotoButton';
@@ -12,7 +13,7 @@ import { LinePoNoteCard } from '../LinePoNoteCard';
 import { SupportContextHub } from '@/components/support/context';
 import { SectionTabsSlider, WorkspaceCard, type SectionTab } from '@/design-system/components';
 import { buildSectionTabs, WorkspaceTimelineTab } from '@/components/station/workbench';
-import { Barcode, ClipboardList, ExternalLink, FileText, History, MapPin, MessageSquare, SlidersHorizontal } from '@/components/Icons';
+import { Barcode, ClipboardList, ExternalLink, FileText, History, Link2, MapPin, MessageSquare, SlidersHorizontal } from '@/components/Icons';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import type { InlineActionFeedbackPayload } from '../../InlineActionFeedbackCard';
 import type { PoNoteTabState } from './usePoNoteTabState';
@@ -51,11 +52,11 @@ export interface BuildUnboxTabsInput {
   hasClassifyTab: boolean;
   /** Unfound: Classify on primary strip order 1. Matched: under ⋯. */
   classifyOnStrip: boolean;
+  /** Package Pairing needs a carton record to pair against. */
+  hasPairingTab: boolean;
   poIdForTracking: string;
   hasPoNoteTab: boolean;
   poNote: PoNoteTabState;
-  pairingOpen: boolean;
-  onPairingToggle: () => void;
   onItemDescFeedback: (feedback: InlineActionFeedbackPayload | null) => void;
   onItemDescSaved: (lineId: number, zohoNotes: string | null) => void;
   /** Carton-open snapshot of `receiving.accordionExpand`. */
@@ -91,8 +92,6 @@ export function buildUnboxOverview(
     | 'row'
     | 'staffId'
     | 'c'
-    | 'pairingOpen'
-    | 'onPairingToggle'
     | 'onItemDescFeedback'
     | 'onItemDescSaved'
     | 'accordionBootstrap'
@@ -102,8 +101,6 @@ export function buildUnboxOverview(
     row,
     staffId,
     c,
-    pairingOpen,
-    onPairingToggle,
     onItemDescFeedback,
     onItemDescSaved,
     accordionBootstrap = 'default',
@@ -112,8 +109,7 @@ export function buildUnboxOverview(
   const receivingId = row.receiving_id ?? 0;
 
   return (
-    <div className="space-y-4">
-    <UnboxProcedureColumn
+    <UnboxProcedureDeck
       // Remount on carton change: the focused-step pointer, and every body's
       // transient view state, belong to ONE carton. A new box starts at its own
       // first unsettled step, never wherever the last one was parked.
@@ -135,8 +131,6 @@ export function buildUnboxOverview(
           serialScan={false}
           c={c}
           suppressItemsHeader
-          pairingOpen={pairingOpen}
-          onPairingToggle={onPairingToggle}
           onItemDescFeedback={onItemDescFeedback}
           onItemDescSaved={onItemDescSaved}
           accordionBootstrap={accordionBootstrap}
@@ -170,18 +164,18 @@ export function buildUnboxOverview(
           />
         ) : null
       }
+      // `label` step body — the ONE label surface. It used to render as a
+      // SIBLING beneath the column, which is how it came to slide under the
+      // composer dock: it sat outside the stack the dock reserves clearance
+      // for. As a step it also answers *when* the operator reads it — right
+      // before the dock prints it. `print` stays a COMMIT step on that dock.
+      labelSlot={<UnboxLabelPreview row={row} c={c} />}
     />
-      {/* The printed face stays below the stack. `print` is a COMMIT-phase step
-          the bench deliberately never renders (the terminal dock owns it), so
-          folding the preview into a step body would remove the operator's only
-          chance to read the label before it prints. */}
-      <UnboxLabelPreview row={row} c={c} />
-    </div>
   );
 }
 
 /**
- * Build the eight Unbox side displays for the Displays push column.
+ * Build the Unbox side displays for the Displays push column.
  *
  * Visibility gates stay here so the strip and {@link resolveUnboxSideTab} agree
  * on what exists. Filters through {@link buildSectionTabs} — the shared waist for
@@ -196,6 +190,7 @@ export function buildUnboxOverview(
 export function buildUnboxSideTabs(input: BuildUnboxTabsInput): SectionTab[] {
   const {
     row,
+    staffId,
     c,
     activeSideTab,
     hasUnits,
@@ -205,6 +200,7 @@ export function buildUnboxSideTabs(input: BuildUnboxTabsInput): SectionTab[] {
     hasListingsTab,
     hasClassifyTab,
     classifyOnStrip,
+    hasPairingTab,
     poIdForTracking,
     hasPoNoteTab,
     poNote,
@@ -225,6 +221,47 @@ export function buildUnboxSideTabs(input: BuildUnboxTabsInput): SectionTab[] {
           c={c}
           expandDimension={classifyExpandDimension}
           expandRequestId={classifyExpandRequestId}
+        />
+      ),
+    },
+    {
+      id: 'pairing',
+      label: 'Pairing',
+      icon: Link2,
+      visible: hasPairingTab,
+      // Package Pairing is a DISPLAY, not a peer push column: it is
+      // reference-and-edit work the operator chooses to look at, never an
+      // exception that interrupts them. It rendered inline in the `contents`
+      // step until 2026-08-02, while its only toggle sat on this edge — so a
+      // click on the right changed something off-screen in the centre.
+      //
+      // Non-embedded on purpose: in a display the COLUMN is the card, so the
+      // hub's own `WorkspaceCard` is the right chrome and `collapsed` /
+      // `showTopRule` (which existed to fold it under the PO line list) have
+      // nothing left to fold under. The tab's selected-ness IS the open state.
+      content: (
+        <CartonMatchHub
+          row={row}
+          staffId={staffId}
+          tabSet="unbox"
+          showOpenInUnbox={false}
+          // Already in unbox, and the wedge owns focus at a bench — a display
+          // opening must not move the caret into a search box.
+          autoFocusSearch={false}
+          autoMatch={
+            c.isUnfound
+              ? {
+                  receivingId: row.receiving_id ?? null,
+                  lineId: row.id ?? null,
+                  trackingNumber: row.tracking_number ?? null,
+                  receivedSerial: row.serials?.[0]?.serial_number ?? null,
+                  providerTicketId: c.providerTicketId,
+                  ticketNumber: c.supportTicket?.label ?? null,
+                  ticketUrl: c.supportTicket?.openUrl ?? null,
+                  onTicketChanged: () => void c.invalidateSupportTicket(),
+                }
+              : null
+          }
         />
       ),
     },
@@ -281,17 +318,10 @@ export function buildUnboxSideTabs(input: BuildUnboxTabsInput): SectionTab[] {
       id: 'checklist',
       label: 'Checklist',
       icon: ClipboardList,
-      // FIRST and PRIMARY — the strip's default display. It is the station's
-      // live "where am I": every step, one line each, updating as scans land
-      // (including phone captures, via the realtime subscription in
-      // `useUnboxProcedureSteps`). The operator's first question on every carton
-      // is what is left on it, and two clicks to find that out is a cost paid on
-      // every box.
-      //
-      // It is a second VIEW of the centre's work cards, NOT a second procedure:
-      // both read `useUnboxProcedureSteps`, so there is one derivation and they
-      // cannot drift. Clicking a row moves the centre's card — the checklist is
-      // the map, the cards are the work.
+      stripHidden: true,
+      // Ring-only entry — the pane scan-progress control is the sole Checklist
+      // control. Body still mounts when `?display=checklist` or the ring opens it.
+      // Second VIEW of the centre's work cards; both read `useUnboxProcedureSteps`.
       content: (
         <WorkspaceCard variant="glass" overflow="visible" bodyDensity="nested">
           <UnboxProcedureChecklist row={row} />
@@ -369,11 +399,18 @@ export function UnboxSectionTabs({
   value,
   onChange,
   rightSlot,
+  headerClassName,
+  compact = false,
 }: {
   tabs: SectionTab[];
   value: string;
   onChange: (id: string) => void;
+  /** Right cluster: vertical ⋮ peer · flat pencil (pencil rightmost). */
   rightSlot?: ReactNode;
+  /** Strip-row clearance for the pane-anchored progress ring. */
+  headerClassName?: string;
+  /** Tighter icon row — Unbox Displays under the pane ring. */
+  compact?: boolean;
 }) {
   return (
     <SectionTabsSlider
@@ -382,7 +419,13 @@ export function UnboxSectionTabs({
       onChange={onChange}
       ariaLabel="Unbox displays"
       rightSlot={rightSlot}
-      density="stacked"
+      headerClassName={headerClassName}
+      compact={compact}
+      // Quiet icon row: idle cells are icon-only (label = tooltip + accessible
+      // name), the selected cell expands to icon + label. The switcher is
+      // chrome for a 360px push column — it must not out-shout the display it
+      // selects, which a bordered rail with a saturated accent pill did.
+      density="icon"
     />
   );
 }

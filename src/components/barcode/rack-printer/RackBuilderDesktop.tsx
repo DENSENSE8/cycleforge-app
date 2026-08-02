@@ -81,7 +81,7 @@ export function RackBuilderDesktop({ c }: { c: RackLabelPrinterController }) {
         </WorkspaceCard>
       )}
 
-      <GiantRackPreviewPanel zoneLetter={c.zoneLetter} aisle={c.aisle} bay={c.bay} level={c.level} gln={c.config.gln} />
+      <GiantRackPreviewPanel zoneLetter={c.zoneLetter} aisle={c.aisle} bay={c.bay} level={c.level} gln={c.gln} />
 
       <ConfigSheet open={c.configOpen} onClose={() => c.setConfigOpen(false)} config={c.config} onSave={c.handleConfigSave} />
     </div>

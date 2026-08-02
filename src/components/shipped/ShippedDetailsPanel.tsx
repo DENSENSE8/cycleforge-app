@@ -12,7 +12,11 @@ import { useRailHeaderActions } from '@/components/dashboard/rail/OrderRailActio
 
 import { WorkOrderAssignmentCard } from '@/components/work-orders/WorkOrderAssignmentCard';
 import { type PaneHeaderActionBarAction } from '@/components/ui/pane-header';
-import type { DetailsStackDurationData, ShippedActiveInput } from './stacks/types';
+import type {
+  DetailsStackDurationData,
+  ShippedActiveInput,
+  ShippedActiveSection,
+} from './stacks/types';
 import { buildAssignmentRow, buildShippedHeaderQuickActions, deriveShippedHeaderMeta } from './details-panel/shipped-details-logic';
 import { useOrderAssignment } from '@/hooks/useOrderAssignment';
 import { toast } from '@/lib/toast';
@@ -23,10 +27,10 @@ import {
   useShippedDetailState,
   useShippedPanelViewState,
 } from './details-panel/shipped-details-hooks';
-import { ShippedDetailsHeader } from './details-panel/ShippedDetailsHeader';
+import { PaneHeaderTabs } from '@/components/ui/pane-header';
 import { ShippedDetailsBody } from './details-panel/ShippedDetailsBody';
 import { ShippedPanelEditorDock } from './details-panel/ShippedPanelEditorDock';
-import { OrderIdentityHeader } from '@/components/order-record/OrderIdentityHeader';
+import { RecordPaneHeader } from '@/components/order-record/RecordPaneHeader';
 import { OrderRecordBody } from '@/components/order-record/OrderRecordBody';
 import { getAccountSourceLabel } from '@/utils/order-links';
 import { resolveOrderInspectorContext } from '@/lib/selection-context/order-inspector-context';
@@ -55,20 +59,19 @@ export function ShippedDetailsPanel({
    * variant designed on their own terms, not this retrofitted.
    */
   const isOrderRecord = context === 'dashboard';
-  const isFulfillmentPanel = context === 'queue' || context === 'fulfillment';
-  const isLabelsPanel = context === 'labels';
-  // Dashboard-style contexts get the panel-action bar, the Customer tab, and the
-  // shipping-label drop-zone (labels only).
-  const showDashboardExtras = context === 'dashboard' || isFulfillmentPanel || isLabelsPanel;
   /**
    * Contextual SoT: which tab opens, whether Documents is a tab at all, whether
-   * that tray manages or only previews, and which record-plane hand-offs exist.
+   * that tray manages or only previews, which record-plane hand-offs exist, and
+   * whether this lane may dispatch / delete / mount the editor dock.
    * Outbound documents (label + slip) get their own tab wherever the tray used
    * to render inline (docs/outbound-documents-plan.md §9.1/9.2) — full tray on
    * labels, read-only on dashboard/fulfillment/staged.
    */
   const inspectorContext = resolveOrderInspectorContext({ panelContext: context });
   const showDocumentsTab = inspectorContext.showDocumentsTab;
+  // Dashboard-style contexts get the panel-action bar + the shipping-label
+  // drop-zone (labels only) — the same lanes the descriptor calls "dispatch".
+  const showDashboardExtras = inspectorContext.showDispatchExtras;
 
   const [durationData] = useState<DetailsStackDurationData>({});
 
@@ -262,49 +265,56 @@ export function ShippedDetailsPanel({
       ariaLabel={`Order ${meta.orderIdDisplay} details`}
     >
       <div className="flex h-full min-h-0 flex-col overflow-hidden">
-        {isOrderRecord ? (
-          <OrderIdentityHeader
-            orderIdDisplay={meta.orderIdDisplay}
-            showExceptionsFallback={meta.showExceptionsFallback}
-            statusLabel={meta.statusLabel}
-            statusTone={meta.statusTone}
-            platformLabel={platformLabel}
-            copiedOrderId={copiedOrderId}
-            onCopyOrderId={handleCopyOrderId}
-            actions={headerBarActions}
-            onMoveUp={stackActionBar.onMoveUp}
-            onMoveDown={stackActionBar.onMoveDown}
-            prevDisabled={cursorPrevDisabled}
-            nextDisabled={cursorNextDisabled}
-            position={cursorPosition}
-            total={cursorTotal}
-            onOpenFullPage={() => router.push(`/o/${shipped.id}`)}
-            onClose={onClose}
-            compact
-          />
-        ) : (
-          <ShippedDetailsHeader
-            orderIdDisplay={meta.orderIdDisplay}
-            showExceptionsFallback={meta.showExceptionsFallback}
-            copiedOrderId={copiedOrderId}
-            onCopyOrderId={handleCopyOrderId}
-            onClose={onClose}
-            actions={headerBarActions}
-            onMoveUp={stackActionBar.onMoveUp}
-            onMoveDown={stackActionBar.onMoveDown}
-            prevDisabled={cursorPrevDisabled}
-            nextDisabled={cursorNextDisabled}
-            position={cursorPosition}
-            total={cursorTotal}
-            showCustomerTab={false}
-            showWarrantyTab={false}
-            showDocumentsTab={showDocumentsTab}
-            showTabs
-            activeSection={activeSection}
-            onSectionChange={setActiveSection}
-            onOpenFullPage={() => router.push(`/o/${shipped.id}`)}
-          />
-        )}
+        {/* ONE header for both branches (was `OrderIdentityHeader` vs
+            `ShippedDetailsHeader`, picked on `isOrderRecord`). The branch now
+            decides only whether a tab strip follows — which is a slot, not a
+            second component. Note the context trap: the dashboard's Pending /
+            Tested lanes arrive with context `'fulfillment'`, so `isOrderRecord`
+            is FALSE there and this is the branch they render. */}
+        <RecordPaneHeader
+          orderIdDisplay={meta.orderIdDisplay}
+          showExceptionsFallback={meta.showExceptionsFallback}
+          copiedOrderId={copiedOrderId}
+          onCopyOrderId={handleCopyOrderId}
+          actions={headerBarActions}
+          onMoveUp={stackActionBar.onMoveUp}
+          onMoveDown={stackActionBar.onMoveDown}
+          prevDisabled={cursorPrevDisabled}
+          nextDisabled={cursorNextDisabled}
+          position={cursorPosition}
+          total={cursorTotal}
+          onOpenFullPage={() => router.push(`/o/${shipped.id}`)}
+          onClose={onClose}
+          compact={isOrderRecord}
+          {...(isOrderRecord
+            ? {
+                statusLabel: meta.statusLabel,
+                statusTone: meta.statusTone,
+                platformLabel,
+              }
+            : null)}
+          {...(isOrderRecord
+            ? null
+            : {
+                tabs: (
+                  <PaneHeaderTabs<ShippedActiveSection>
+                    dense
+                    tabs={[
+                      { value: 'shipping' as const, label: 'Shipping' },
+                      { value: 'product' as const, label: 'Product' },
+                      ...(showDocumentsTab
+                        ? [{ value: 'documents' as const, label: 'Documents' }]
+                        : []),
+                      { value: 'timeline' as const, label: 'Timeline' },
+                      { value: 'conversation' as const, label: 'Conversation' },
+                    ]}
+                    value={activeSection}
+                    onChange={setActiveSection}
+                    className="px-5"
+                  />
+                ),
+              })}
+        />
 
         {isOrderRecord ? (
           <>
@@ -342,7 +352,10 @@ export function ShippedDetailsPanel({
               setActiveInput={setActiveInput}
               showMarkAsShipped
               showOutOfStock
-              showNotes
+              // No note composer in this panel (handoff §3.2) — note-writing
+              // lives on `/o/[orderId]`, via the header's open-full-page
+              // action. The other branch is off in `ShippedDetailsBody`.
+              showNotes={false}
               isOutOfStock={isOutOfStock}
               isSavingOutOfStock={isSavingOutOfStock}
               onSaveOutOfStock={(checked) => {
@@ -359,11 +372,7 @@ export function ShippedDetailsPanel({
         ) : (
         <ShippedDetailsBody
           context={context}
-          isFulfillmentPanel={isFulfillmentPanel}
-          isLabelsPanel={isLabelsPanel}
-          documentsMode={inspectorContext.documentsMode}
-          recordCtas={inspectorContext.recordCtas}
-          showDashboardExtras={showDashboardExtras}
+          inspectorContext={inspectorContext}
           showQuickLinks
           activeSection={activeSection}
           shipped={shipped}

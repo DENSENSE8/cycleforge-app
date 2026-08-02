@@ -57,6 +57,8 @@ export function ReceivingLineWorkspace({
   nav,
   variant = 'unbox',
   recordView,
+  onPrev,
+  onNext,
   onClose,
 }: Props) {
   useSurfacePaintMark('unbox:workspace', variant === 'unbox');
@@ -106,6 +108,12 @@ export function ReceivingLineWorkspace({
             staffId={staffId}
             itemTotal={nav?.total}
             accordionBootstrap={accordionBootstrap}
+            // Carton cursor + dismiss. These props existed on this component
+            // from the start but were only ever wired to Triage, so Unbox
+            // rendered neither — they now reach the pane utility row.
+            onPrevCarton={onPrev}
+            onNextCarton={onNext}
+            onCloseCarton={onClose}
           />
         )}
       </div>

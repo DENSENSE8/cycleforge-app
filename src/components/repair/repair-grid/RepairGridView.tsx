@@ -10,11 +10,11 @@ import {
   REPAIR_GRID_COLUMNS,
   type RepairGridColumn,
   type RepairGridColumnKey,
-  type RepairGridSortDir,
 } from '@/lib/repair/repair-grid-layout';
 import { makeRepairGridDescriptor } from './repair-grid-descriptor';
 import { RepairGridColumnHeader } from './RepairGridColumnHeader';
 import { RepairGridRow } from './RepairGridRow';
+import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 
 /** Staff-prefs identity — one repair queue, one Fields selection. */
 const REPAIR_TABLE_ID = 'repair' as const;
@@ -31,8 +31,8 @@ interface RepairGridViewProps {
   onOpenRecord: (repair: RSRecord) => void;
   /** Controlled ephemeral column sort (the host owns durability + row order). */
   sort: RepairGridColumnKey | null;
-  dir: RepairGridSortDir | null;
-  onSortChange: (key: RepairGridColumnKey, dir: RepairGridSortDir) => void;
+  dir: GridSortDir | null;
+  onSortChange: (key: RepairGridColumnKey, dir: GridSortDir) => void;
   /** FULL canonical column list — visibility is resolved here, not by callers. */
   columns?: readonly RepairGridColumn[];
   scrollRef?: RefObject<HTMLDivElement | null>;
@@ -126,15 +126,16 @@ export function RepairGridView({
         scrollRef={scrollRef}
         className={className}
         testId="repair-grid-body"
-        renderColumnHeader={({ toggleColumnSort }) => (
+        tableId={REPAIR_TABLE_ID}
+        columnDetails={{ open: columnDetailsOpen, onOpen: () => setColumnDetailsOpen(true) }}
+        renderColumnHeader={({ toggleColumnSort, onResizeColumn }) => (
           <RepairGridColumnHeader
             selectionScope={selectionScope}
             columns={visible}
             activeSort={sort}
             sortDir={dir}
             onSortColumn={toggleColumnSort}
-            onOpenColumnDetails={() => setColumnDetailsOpen(true)}
-            columnDetailsOpen={columnDetailsOpen}
+            onResizeColumn={onResizeColumn}
           />
         )}
         renderGroup={(group) => renderLeaf(group.rows[0])}

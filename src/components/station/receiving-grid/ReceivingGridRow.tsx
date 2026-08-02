@@ -21,6 +21,7 @@ import {
   isLocalPickupFulfillment,
 } from '@/lib/receiving/fulfillment-mode';
 import { getReceivingPoIdentityParts } from '@/lib/receiving/po-group-title';
+import { workflowStageLabel } from '@/lib/receiving/workflow-stages';
 import {
   RECEIVING_GRID_COLUMNS,
   receivingGridRowShellClass,
@@ -129,6 +130,7 @@ export const ReceivingGridRow = memo(function ReceivingGridRow({
     condGrade: (row.condition_grade || '').toUpperCase(),
     conditionLabel: conditionGradeTableLabel(row.condition_grade),
     stageDisplay: stageStamp?.instant ? formatOpsStageTime(stageStamp.instant) : null,
+    stageLabel: workflowStageLabel(row.workflow_status),
     stageTip: stageStamp ? receivingStageTooltip(row, stageStamp, activityAxis) : '',
     dateCell: receivingActivityDateCell(stageStamp?.instant),
     platformMeta,

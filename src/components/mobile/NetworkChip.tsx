@@ -3,16 +3,17 @@
 /**
  * NetworkChip — compact online/offline status pill for mobile shells.
  *
- * Subscribes to `navigator.onLine` plus the `online`/`offline` window events.
- * Optionally accepts a `pendingCount` for an offline action queue (used once
- * the IndexedDB-backed queue lands in B4).
+ * Reads the shared `useNetworkOnline()` store (the same one the connection
+ * banners use) rather than a private window listener — this chip and the banner
+ * sitting above it must never disagree. Optionally accepts a `pendingCount` for
+ * an offline action queue (used once the IndexedDB-backed queue lands in B4).
  *
  * Lives in `MobileShellToolbarConfig.trailing`. Designed to be glanceable —
  * green dot = online, amber dot = pending replay, red = offline.
  */
 
-import { useSyncExternalStore } from 'react';
-import { Wifi, WifiOff } from 'lucide-react';
+import { Wifi, WifiOff } from '@/components/Icons';
+import { useNetworkOnline } from '@/hooks/useConnectionHealth';
 
 export interface NetworkChipProps {
   /** Pending action count from the offline queue. */
@@ -22,29 +23,8 @@ export interface NetworkChipProps {
   className?: string;
 }
 
-// External-store subscription — single source of truth across the app.
-function subscribe(listener: () => void): () => void {
-  if (typeof window === 'undefined') return () => {};
-  window.addEventListener('online', listener);
-  window.addEventListener('offline', listener);
-  return () => {
-    window.removeEventListener('online', listener);
-    window.removeEventListener('offline', listener);
-  };
-}
-
-function getSnapshot(): boolean {
-  if (typeof navigator === 'undefined') return true;
-  return navigator.onLine;
-}
-
-function getServerSnapshot(): boolean {
-  // SSR optimistic: assume online so first paint matches the most common case.
-  return true;
-}
-
 export function NetworkChip({ pendingCount = 0, compact = false, className = '' }: NetworkChipProps) {
-  const online = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+  const online = useNetworkOnline();
   const hasPending = pendingCount > 0;
 
   const tone = !online

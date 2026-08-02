@@ -43,6 +43,11 @@ export interface UnboxStepBodyContext {
   serialSlot?: ReactNode;
   /** Per-aspect item capture — the `item_photos` step's whole body. */
   itemPhotoSlot?: ReactNode;
+  /**
+   * The printed label preview + its editors — the `label` step's whole body.
+   * The ONE label surface: there is no standalone preview beneath the column.
+   */
+  labelSlot?: ReactNode;
 }
 
 export type UnboxStepBody = (props: UnboxStepBodyContext) => ReactNode;

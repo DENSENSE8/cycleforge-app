@@ -4,8 +4,8 @@
  * My Day — Home Today's Workbench, composed from the house shells.
  *
  *   chrome    → `WorkbenchChromeHeader` `density="band"` (the Unbox / Triage /
- *               History face) — lane tabs left, collapsed search, queue links in
- *               `right`, Fields in the `trailing` cluster
+ *               History face) — lane tabs left, collapsed search, the due-horizon
+ *               refine in `right`, Fields in the `trailing` cluster
  *   collection→ `LedgerGridSurface` + `GridSurfaceDescriptor` via `MyDayGridView`
  *   record    → `RightRailHost` (non-modal) via `MyDayTaskInspectorRail`
  *   rail      → `HomeContextPanel` (saved views), via the `home` route key
@@ -20,30 +20,37 @@
  * defined combinations, which is the one thing chrome cannot own
  * (`display/workbench.md` → Tabs vs. saved views).
  *
- * **The queue counts are chrome, not a rollup.** They were the column's only
- * other content, and they briefly became a `KpiStrip` — but a KPI hero claims
- * "this is a metric worth reading", and these are just doors to other pages with
- * a number on them. They ride the chrome's `right` slot (where a workbench keeps
- * its refine/scope controls), which also keeps the body a single region: chrome,
- * then table.
+ * **The body is the table, and nothing else (2026-08-01 chrome-altitude pass).**
+ * Two things left this file:
+ *  · The **KPI band** (`MyDayKpiStrip`, deleted) — a Monitor rollup region that
+ *    cost the largest single block of vertical space above the grid to render
+ *    three numbers whose only job was to narrow the table. It is now
+ *    `MyDayDueHorizonChips` in the chrome's `right` slot: same `?filter=`, same
+ *    toggle, at chrome scale instead of hero scale. That file's docblock carries
+ *    the full reasoning, including why the horizons did NOT become tabs.
+ *  · The **queue links** (`MyDayQueueLinks`, deleted) — label + count doors to
+ *    other pages. A door is navigation, and the chrome band's one job is
+ *    controlling the data mounted below it. They now live in the GlobalHeader
+ *    Inbox popover (`InboxQueueLinks`), which is the app-wide "be told"
+ *    channel — NOT the MasterNav spine, whose root shows sections rather than
+ *    pages and whose registry is deliberately static. That file's docblock
+ *    carries the ruling. `queueCards` still rides this feed, and the Inbox
+ *    strip shares its `['my-day']` query key, so Today pays nothing for it.
  *
  * One sticky layer per scroll port: the chrome renders OUTSIDE the body, the
  * grid owns its own scroll (`display/workbench.md` → Sticky docking).
  */
 
 import { useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
 import {
   WORKBENCH_BODY_COLUMN,
   WORKBENCH_CHROME_COLUMN,
   WorkbenchChromeHeader,
   withScopeDivider,
 } from '@/components/dashboard/workbench-shell';
-import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { ToolbarSearchToggle } from '@/design-system/primitives/ToolbarSearchToggle';
 import { useDebounce } from '@/hooks';
-import type { MyDayQueueCard } from '@/lib/my-day/my-day-types';
-import { MyDayKpiStrip } from './MyDayKpiStrip';
+import { MyDayDueHorizonChips } from './MyDayDueHorizonChips';
 import { MyDayOnboardingPanel } from './MyDayOnboardingPanel';
 import { MyDayTaskInspectorRail } from './MyDayTaskInspector';
 import { MyDayGridView } from './grid/MyDayGridView';
@@ -62,33 +69,6 @@ import {
   searchMyDayTasks,
   type MyDayLaneFilter,
 } from '@/lib/my-day/my-day-tasks';
-
-/**
- * Queue doors for the chrome's `right` slot — label + count, one line, no card.
- *
- * Quiet on purpose: these leave the surface, so they must not out-rank the lane
- * tabs that scope it. `text-role-caption` label + `text-role-micro` count is the
- * house one-row anatomy at chrome scale, and the 8px hit-box matches the band's
- * `h-8` right cluster.
- */
-function MyDayQueueLinks({ cards }: { cards: readonly MyDayQueueCard[] }) {
-  if (cards.length === 0) return null;
-  return (
-    <div className="flex min-w-0 items-center gap-0.5">
-      {cards.map((card) => (
-        <HoverTooltip key={card.key} label={`Open ${card.label}`} focusable={false} asChild>
-          <Link
-            href={card.href}
-            className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg px-2 text-text-muted transition-colors hover:bg-surface-hover hover:text-text-default"
-          >
-            <span className="truncate text-role-caption font-medium">{card.label}</span>
-            <span className="text-role-micro tabular-nums text-text-soft">{card.count}</span>
-          </Link>
-        </HoverTooltip>
-      ))}
-    </div>
-  );
-}
 
 export function MyDayWorkspace() {
   const { data, isLoading, isError } = useMyDayFeed();
@@ -111,10 +91,10 @@ export function MyDayWorkspace() {
   // Lane first, then the text refinement — the tab counts stay the lane's own
   // totals rather than sliding under the operator as they type.
   const laneTasks = useMemo(() => filterMyDayTasks(tasks, lane), [tasks, lane]);
-  // The KPI band's denominator: everything the OTHER controls have already left
-  // on screen. Counting the whole day instead would let a tile read 5 and then
-  // produce 2 rows once the lane and the query applied — a faceted count has to
-  // promise what clicking it delivers.
+  // The horizon chips' denominator: everything the OTHER controls have already
+  // left on screen. Counting the whole day instead would let a chip read 5 and
+  // then produce 2 rows once the lane and the query applied — a faceted count
+  // has to promise what clicking it delivers.
   const horizonBase = useMemo(() => searchMyDayTasks(laneTasks, query), [laneTasks, query]);
   const horizonCounts = useMemo(() => myDayDueHorizonCounts(horizonBase), [horizonBase]);
   const visibleTasks = useMemo(
@@ -150,8 +130,6 @@ export function MyDayWorkspace() {
     [counts],
   );
 
-  const queueCards = data?.queueCards ?? [];
-
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden bg-surface-canvas text-text-default">
       <div className={WORKBENCH_CHROME_COLUMN}>
@@ -177,42 +155,46 @@ export function MyDayWorkspace() {
               tone="blue"
             />
           }
-          // Query/refine controls stay in `right`. The queue links live here
-          // rather than moving to `trailing` because `trailing` is the DISPLAY
-          // cluster (how this list is drawn) and a queue link is neither —
-          // it leaves the surface entirely. They keep the slot the F0 rebuild
-          // gave them.
-          right={<MyDayQueueLinks cards={queueCards} />}
-          // Sort → Fields → Import → Add, with honest absence: Today renders
-          // only Fields.
-          //  · Sort — absent. Today's ordering IS the column sort (`?colsort=`),
-          //    which the grid header already owns; a `QueueSortSwitch` here
-          //    would be a second sort vocabulary over one list, and
-          //    `source-of-truth.md` → Grid column sort allows exactly one param
-          //    per surface.
-          //  · Import / Add — absent. Nothing creates a Today task: rows are a
+          // `right` is the REFINE cluster — controls that narrow the rows below
+          // (`display/workbench-ops-queue.md` → Trailing Display & Actions:
+          // "Filters / refine stay in `right`; query ≠ display"). The due
+          // horizon is exactly that, so it lands here rather than in `trailing`,
+          // which is the DISPLAY cluster (how this list is drawn, not which
+          // rows it holds).
+          right={
+            !isError ? (
+              <MyDayDueHorizonChips
+                counts={horizonCounts}
+                loading={isLoading}
+                active={horizon}
+                onToggle={toggleHorizon}
+              />
+            ) : null
+          }
+          // No `trailing` cluster at all — honest absence of every slot it
+          // holds (`WorkbenchTrailingCluster` would render null anyway):
+          //  · Sort — Today's ordering IS the column sort (`?colsort=`), which
+          //    the grid header already owns; a `QueueSortSwitch` here would be
+          //    a second sort vocabulary over one list, and `source-of-truth.md`
+          //    → Grid column sort allows exactly one param per surface.
+          //  · Import / Add — nothing creates a Today task: rows are a
           //    projection of work assignments and interrupts owned elsewhere.
+          //  · Column display — never chrome. It is the grid's own top-right
+          //    header lip (`MyDayGridView` → `onOpenColumnDetails`), which is
+          //    where the retired `fields` slot went 2026-08-02.
         />
       </div>
 
+      {/*
+        The body is onboarding + the table. The due-horizon refine used to sit
+        here as a KPI band; moving it into the chrome's `right` slot did NOT
+        create the stacked-sticky bug `display/workbench.md` names, because it
+        joined the SINGLE existing chrome band rather than adding a second one —
+        the chrome is still one non-scrolling layer outside the scroll port, and
+        the grid still owns the only sticky layer inside it.
+      */}
       <div className={`min-h-0 flex-1 ${WORKBENCH_BODY_COLUMN}`}>
         <MyDayOnboardingPanel />
-
-        {/*
-          KPI lives in the BODY, never in the chrome — the chrome is a single
-          non-scrolling sticky layer and a second band inside it would be the
-          stacked-sticky bug `display/workbench.md` names. It does not scroll
-          away in practice because the grid is a bounded host that owns its own
-          Y scroll; that is deliberate, not a bug to fix.
-        */}
-        {!isError ? (
-          <MyDayKpiStrip
-            counts={horizonCounts}
-            loading={isLoading}
-            active={horizon}
-            onToggle={toggleHorizon}
-          />
-        ) : null}
 
         {isError ? (
           <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50 px-4 py-6 text-center">

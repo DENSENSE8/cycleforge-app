@@ -12,6 +12,7 @@ import {
   Activity,
   Barcode,
   Boxes,
+  FileText,
   MessageSquare,
   Package,
   PackageOpen,
@@ -29,7 +30,9 @@ export const TIMELINE_GLYPH_ICONS: Record<TimelineGlyphId, IconComponent> = {
   unbox: PackageOpen,
   'tracking-scan': Barcode,
   support: Ticket,
-  'team-note': MessageSquare,
+  // Paper, not a bubble — a note is written on the record, not said to someone.
+  'team-note': FileText,
+  'thread-message': MessageSquare,
   packing: Package,
   shipping: Send,
   testing: ShieldCheck,

@@ -45,12 +45,19 @@ const HOST = 'src/components/right-rail/RightRailHost.tsx';
  * Occupants frozen to the float, each with the reason recorded at its call site.
  * Keep this list in step with the `push={false}` props themselves — the test
  * below walks both directions, so a stale entry and a missing prop both fail.
+ *
+ * An entry names the file that DECIDES the float, which is not always the file
+ * that registers. `SupportContextDetailPanel` has two hosts with opposite
+ * answers — Unbox nests it inside an `UnboxPushColumn`, `/support` gives it the
+ * edge outright — so its `push` is a required prop and the decision moved up to
+ * `SupportTicketDetail`, the host that nests. The panel itself left this list
+ * because its edge ownership was settled, not because a refactor lost the prop.
  */
 const FLOAT_ONLY: readonly string[] = [
   // Station edge — `UnboxPushColumn` already pushes it on /unbox, /triage, /testing.
   'src/components/station/ReceivingDetailsStack.tsx',
   'src/components/sidebar/TestingSidebarPanel.tsx',
-  'src/components/support/context/SupportContextDetailPanel.tsx',
+  'src/components/support/zendesk/chat/SupportTicketDetail.tsx',
   'src/components/receiving/workspace/ReceivingAuditRail.tsx',
   'src/components/receiving/workspace/SendPhotoNoteRail.tsx',
   'src/components/receiving/workspace/line-edit/MovePhotosBetweenPoRail.tsx',
@@ -153,7 +160,11 @@ describe('right-rail push — occupants frozen to the float', () => {
       const src = code(f);
       return (
         (src.includes('push={false}') || src.includes('push: false')) &&
-        (src.includes('DetailStackRailRegistrar') || src.includes('useRegisterRightPanel'))
+        // Direct registrants, plus the one panel whose hosts decide its edge —
+        // otherwise a host could opt out through that indirection unreviewed.
+        (src.includes('DetailStackRailRegistrar') ||
+          src.includes('useRegisterRightPanel') ||
+          src.includes('SupportContextDetailPanel'))
       );
     });
     const unlisted = optOuts.filter((f) => !FLOAT_ONLY.includes(f));

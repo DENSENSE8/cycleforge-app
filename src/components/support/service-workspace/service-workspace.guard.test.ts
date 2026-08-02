@@ -109,6 +109,111 @@ test('the shell never unmounts the queue map', () => {
   );
 });
 
+test('the shell owns TWO slots — the right edge belongs to RightRailHost', () => {
+  // The shell shipped a private `<aside className={SERVICE_WORKSPACE_CONTEXT_CLASS}>`
+  // for one day (2026-08-01): a second permanent consumer of the right edge —
+  // which `lib/right-rail/store.ts` exists specifically to prevent — and a
+  // duplicate of `SupportContextDetailPanel`, which was already registering the
+  // same `SupportContextHub` through the house rail. It was deleted, not migrated.
+  const shell = readCode('components/support/service-workspace/ServiceWorkspaceShell.tsx');
+  assert.equal(
+    /<aside/.test(shell),
+    false,
+    'ServiceWorkspaceShell must not render its own <aside> — ticket context is a RightRailHost occupant',
+  );
+  assert.equal(
+    shell.includes('SERVICE_WORKSPACE_CONTEXT_CLASS'),
+    false,
+    'a context-column geometry token is how a second right edge grows back; the rail host owns the width',
+  );
+
+  const layout = readCode('components/support/service-workspace/service-workspace-layout.ts');
+  assert.equal(
+    layout.includes('SERVICE_WORKSPACE_CONTEXT_CLASS'),
+    false,
+    'service-workspace-layout must not re-export a context-column token',
+  );
+
+  // Nothing under the branch may claim the edge directly either.
+  for (const relPath of SUPPORT_PRIMARY_SHELL) {
+    const src = readCode(relPath);
+    assert.equal(
+      /fixed\s+(?:inset-y-0\s+)?right-0/.test(src),
+      false,
+      `${relPath}: hand-rolls a fixed right-edge element — register with RightRailHost instead`,
+    );
+  }
+});
+
+test('ticket context reaches the edge through the house rail, and pushes', () => {
+  const workspace = readCode('components/support/zendesk/SupportTicketsWorkspace.tsx');
+  assert.ok(
+    workspace.includes('SupportContextDetailPanel'),
+    'SupportTicketsWorkspace must mount the rail occupant for the open ticket',
+  );
+  // `push` is required on that panel precisely because its two hosts disagree;
+  // /support is the one that owns the edge outright.
+  assert.equal(
+    /push=\{false\}/.test(workspace),
+    false,
+    'the /support host must let the context PUSH — the thread reflows beside it, never under it',
+  );
+});
+
+test('the thread header is the split header, not a full-bleed band', () => {
+  // `PaneHeader`'s shell is `mainStickyHeaderClass` — squared and full-bleed,
+  // which seams against the rounded queue card the thread replaces. The split
+  // header composes the same BLOCKS onto a card shell instead.
+  const header = readCode('components/support/service-workspace/SupportTicketPaneHeader.tsx');
+  for (const block of ['PaneHeaderActionBar', 'PaneHeaderCloseButton', 'Panel'] as const) {
+    assert.ok(header.includes(block), `the split header must compose ${block}`);
+  }
+  assert.equal(
+    header.includes('mainStickyHeaderClass'),
+    false,
+    'the split header must not re-adopt the full-bleed squared band',
+  );
+
+  const focus = readCode('components/support/service-workspace/SupportTicketFocus.tsx');
+  assert.ok(
+    focus.includes('SupportTicketPaneHeader'),
+    'the thread must mount the split header',
+  );
+  assert.equal(
+    /<PaneHeader\b/.test(focus),
+    false,
+    'the thread must not mount the bare PaneHeader shell — that is the squared band that was removed',
+  );
+});
+
+test('the displays live on the right edge, not in the middle', () => {
+  // The thread mounted a `SectionTabsSlider` (Ticket | Conversations | Timeline)
+  // in its own body until 2026-08-02, so reading the linkage or the history
+  // swapped the conversation off screen — on the surface whose whole job is that
+  // conversation. Displays moved to the rail (the Unbox Displays shape); the
+  // middle holds the work and one dock that never re-labels.
+  const focus = readCode('components/support/service-workspace/SupportTicketFocus.tsx');
+  assert.equal(
+    focus.includes('SectionTabsSlider'),
+    false,
+    'the thread must not mount a display switcher — displays belong to the right rail',
+  );
+  assert.ok(
+    focus.includes('SupportTicketDetail'),
+    'the thread must mount the customer conversation directly',
+  );
+  assert.ok(
+    /tabId:\s*'ticket'/.test(focus),
+    'the dock is ticket-terminal — it must not resolve from a display selection',
+  );
+
+  const workspace = readCode('components/support/zendesk/SupportTicketsWorkspace.tsx');
+  assert.ok(
+    workspace.includes('useSupportTicketDisplays') && /displays=\{/.test(workspace),
+    'the rail occupant must receive the ticket displays',
+  );
+});
+
 test('Support declares the workbench archetype and the service-workspace branch', async () => {
   const { SURFACE_REGISTRY } = await import('@/lib/stations/surface-keys');
   assert.equal(SURFACE_REGISTRY.support.archetype, 'workbench');

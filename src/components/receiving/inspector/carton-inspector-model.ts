@@ -101,6 +101,13 @@ export interface CartonInspectorEvent {
   id: string;
   occurred_at: string;
   event_type: string | null;
+  /**
+   * Required for the avatar. `StaffAvatar` resolves a photo BY STAFF ID and
+   * must never guess one from a display name — two people share a name and the
+   * row would attribute the work to the wrong face (`source-of-truth.md` →
+   * Staff profile photo). The API already sent this; only the type lagged.
+   */
+  actor_staff_id: number | null;
   actor_name: string | null;
   station: string | null;
   sku: string | null;
@@ -109,6 +116,43 @@ export interface CartonInspectorEvent {
   prev_status: string | null;
   next_status: string | null;
   notes: string | null;
+}
+
+/**
+ * What an ACTIVITY row DID — the fact that separates it from the row above.
+ *
+ * Measured on carton 50354: one unfound-return scan writes two
+ * `inventory_events` in the same second, and the row rendered them as twins
+ * because it discarded both distinguishing facts.
+ *
+ *   `RECEIVED` · next_status `RECEIVED` · notes "Serial 049331F81860251AE"
+ *   `NOTE`     · no status              · notes "Unmatched return serial … — no order match"
+ *
+ * Two independent causes:
+ *   1. the title is `notes || event_type`, so whenever notes exist the event
+ *      TYPE never rendered at all;
+ *   2. the status trail was gated on `prev && next && prev !== next` — and a
+ *      unit's FIRST status has no prev, so the one row that actually moved the
+ *      unit to RECEIVED showed nothing. Exactly backwards.
+ *
+ * **A first status IS a transition**: `null → RECEIVED` reads `→ RECEIVED`.
+ *
+ * `kind` is suppressed when something else already said it — the status equals
+ * the type (`RECEIVED` + `→ RECEIVED` is one fact printed twice), or the title
+ * already IS the type because the event carried no notes.
+ */
+export function cartonEventSignature(
+  event: Pick<CartonInspectorEvent, 'event_type' | 'prev_status' | 'next_status' | 'notes'>,
+): { kind: string | null; trail: string | null } {
+  const type = present(event.event_type);
+  const prev = present(event.prev_status);
+  const next = present(event.next_status);
+  const titledByNotes = present(event.notes) != null;
+
+  const trail = next ? (prev && prev !== next ? `${prev} → ${next}` : `→ ${next}`) : null;
+  const kind = !titledByNotes || (next != null && type === next) ? null : type;
+
+  return { kind, trail };
 }
 
 export interface CartonInspectorTotals {
@@ -223,6 +267,67 @@ function cartonHasLinkedPo(
   return Boolean(lines?.some((l) => present(l.zoho_purchaseorder_number)));
 }
 
+/**
+ * A RETURN has no PO to find, so "unpaired" is not a finding about it.
+ *
+ * This mirrors `isTriagePaired` in `src/lib/receiving/triage-focus.ts`, which
+ * has counted a return as paired since C6 — the receiving domain already knew
+ * this rule and only Triage was reading it. The read surface used raw
+ * `pairing_state === 'UNFOUND'` and so kept telling an operator to go match a
+ * PO for a box that can never have one.
+ *
+ * It also covers the rows the write path cannot reach retroactively: cartons
+ * created before `settleReturnPairing` (`returned-serial-link.ts`) started
+ * recording `WAIVED` have no `receiving_triage` row at all.
+ */
+function isReturnCarton(receiving: CartonInspectorReceiving): boolean {
+  if (receiving.is_return) return true;
+  return present(receiving.intake_type)?.toUpperCase() === 'RETURN';
+}
+
+/**
+ * "This carton arrived without a PO" — grounded in a RECORDED fact.
+ *
+ * Two facts say it, and either is enough:
+ *   - `receiving_triage.pairing_state = 'UNFOUND'` — the pairing hub looked and
+ *     came back empty. That is an *answer*.
+ *   - `receiving_carton.source = 'unmatched'` — the intake scan could not match
+ *     the tracking number to a PO. Stamped on the carton itself, at scan time.
+ *
+ * What is NOT enough is the ABSENCE of a `receiving_triage` row. 751 of 2790
+ * dogfood cartons have none, and `/api/receiving/[id]` used to `COALESCE` that
+ * hole to `'UNFOUND'` — so a box nobody had triaged yet reported a search that
+ * had failed, and the record footer printed "Pairing state: UNFOUND" as a fact.
+ *
+ * Reading `source` instead costs nothing and says something true: measured
+ * across the whole dogfood tenant, this predicate raises the finding on exactly
+ * the same 1192 cartons the COALESCE did — zero disagreement — because every
+ * carton the default used to catch is a `source = 'unmatched'` row.
+ */
+function isCartonUnmatched(receiving: CartonInspectorReceiving): boolean {
+  if (present(receiving.pairing_state)?.toUpperCase() === 'UNFOUND') return true;
+  return present(receiving.source)?.toLowerCase() === 'unmatched';
+}
+
+/**
+ * The whole "No matched PO" question, asked once.
+ *
+ * `cartonFlags` and `cartonExceptions` both need it and must never drift apart:
+ * the flag is the chip and the exception is what stops the header claiming the
+ * carton is settled, so a carton showing one without the other is the surface
+ * contradicting itself.
+ */
+function cartonLacksMatchedPo(
+  receiving: CartonInspectorReceiving,
+  lines?: ReadonlyArray<Pick<CartonInspectorLine, 'zoho_purchaseorder_number'>> | null,
+): boolean {
+  return (
+    isCartonUnmatched(receiving) &&
+    !cartonHasLinkedPo(receiving, lines) &&
+    !isReturnCarton(receiving)
+  );
+}
+
 export function cartonFlags(
   receiving: CartonInspectorReceiving,
   lines?: ReadonlyArray<Pick<CartonInspectorLine, 'zoho_purchaseorder_number'>> | null,
@@ -232,10 +337,10 @@ export function cartonFlags(
   if (receiving.is_return) flags.push({ key: 'return', label: 'Return', tone: 'warning' });
   if (receiving.needs_test) flags.push({ key: 'needsTest', label: 'Needs test', tone: 'info' });
 
-  // UNFOUND = arrived without a matching PO. Suppress when a PO is already linked
-  // (carton or line) — pairing_state can lag behind the link.
-  const pairing = present(receiving.pairing_state);
-  if (pairing && pairing.toUpperCase() === 'UNFOUND' && !cartonHasLinkedPo(receiving, lines)) {
+  // Arrived without a matching PO. Suppressed when a PO is already linked
+  // (carton or line) — the recorded pairing answer can lag behind the link —
+  // and when the carton is a RETURN, which has no PO to find.
+  if (cartonLacksMatchedPo(receiving, lines)) {
     flags.push({ key: 'unfound', label: 'No matched PO', tone: 'warning' });
   }
 
@@ -308,6 +413,9 @@ export function cartonRecordMeta(receiving: CartonInspectorReceiving): CartonFac
   add('id', 'Carton', String(receiving.id));
   add('shipment', 'Shipment', present(receiving.shipment_id));
   add('source', 'Source', present(receiving.source));
+  // Omitted entirely when nobody recorded a pairing answer — `add` skips a null.
+  // That honest absence is the point: this row used to print "UNFOUND" for every
+  // carton with no receiving_triage row, which is a fact the footer invented.
   add('pairing', 'Pairing state', present(receiving.pairing_state));
   add('poId', 'Zoho PO id', present(receiving.zoho_purchaseorder_id));
   add('receiveId', 'Zoho receive id', present(receiving.zoho_purchase_receive_id));
@@ -442,8 +550,7 @@ export function cartonExceptions(
   lines?: ReadonlyArray<Pick<CartonInspectorLine, 'zoho_purchaseorder_number'>> | null,
 ): CartonException[] {
   const out: CartonException[] = [];
-  const pairing = present(receiving.pairing_state);
-  if (pairing && pairing.toUpperCase() === 'UNFOUND' && !cartonHasLinkedPo(receiving, lines)) {
+  if (cartonLacksMatchedPo(receiving, lines)) {
     out.push({
       key: 'unfound',
       label: 'No matched PO',

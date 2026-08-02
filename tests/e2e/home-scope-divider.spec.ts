@@ -36,16 +36,18 @@ test.describe('Home — scope tab divider', () => {
   test('the lane tabs still read left to right after the scope', async ({ page }) => {
     await page.goto('/');
     const strip = page.getByRole('button', {
-      name: /^(Everything|Do next|Assigned to me|Needs attention)\b/,
+      name: /^(Everything|Do next|Assigned|Needs attention)\b/,
     });
     await expect(strip.first()).toBeVisible({ timeout: 25_000 });
     const labels = (await strip.allInnerTexts()).map((t) =>
       t.trim().replace(/\s*\d+$/, ''),
     );
+    // "Assigned", not "Assigned to me" — on My Day the qualifier is redundant,
+    // and the strip now has to seat the due-horizon chips the KPI band held.
     expect(labels.slice(0, 4)).toEqual([
       'Everything',
       'Do next',
-      'Assigned to me',
+      'Assigned',
       'Needs attention',
     ]);
   });

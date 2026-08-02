@@ -9,8 +9,8 @@
  * (`?ticketView=1`) and receiving More details (`detail:receiving`) via URL +
  * close-details events.
  *
- * Gutter is {@link TICKET_PUSH_HOST_PAD_CLASS} on the LineEditPanel host —
- * not margin on this aside (overflow-hidden clips trailing margins).
+ * Trailing gutter is {@link TICKET_PUSH_HOST_PAD_CLASS} on the LineEditPanel
+ * host; top/bottom is {@link UnboxPushColumn}'s `my-2`.
  *
  * Opened via Make claim / Link ticket / `?claimView=1`.
  */

@@ -136,7 +136,13 @@ export function PageHeader({
         rightSlot != null || onClose != null ? (
           <>
             {rightSlot}
-            {onClose ? <PaneHeaderCloseButton onClick={onClose} /> : null}
+            {/* A PAGE header is not a right-edge push surface — its close
+                genuinely dismisses rather than parking the pane back against
+                an edge, so it keeps the `X`. Every right-rail consumer takes
+                the `>|` default. */}
+            {onClose ? (
+              <PaneHeaderCloseButton onClick={onClose} intent="dismiss" />
+            ) : null}
           </>
         ) : null
       }

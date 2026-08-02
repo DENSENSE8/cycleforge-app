@@ -17,6 +17,8 @@ import { getExternalUrlByItemNumber } from '@/utils/external-item-url';
 import {
   linkReturnedSerial,
   importSalesOrderByNumber,
+  logUnmatchedReturnSerial,
+  type LogUnmatchedSerialDeps,
   type ReturnedSerialLinkDeps,
 } from './returned-serial-link';
 
@@ -315,4 +317,75 @@ test('importSalesOrderByNumber: unknown order# → clean no-op (caller falls bac
   assert.equal(res.matchedOrder, null);
   assert.ok(!calls.some((c) => c.sql.includes('UPDATE receiving_line')));
   assert.equal(captured.upsertReturn.length, 0);
+});
+
+// ── logUnmatchedReturnSerial — the carton's pairing question gets ANSWERED ────
+
+function makeLogDeps() {
+  const triageUpserts: Array<{ receivingId: number; patch: Record<string, unknown> }> = [];
+  const deps: LogUnmatchedSerialDeps = {
+    attachSerialToLine: (async () => ({
+      serial_unit: { id: 2115, sku: null },
+      is_new: true,
+      already_attached: false,
+    })) as unknown as LogUnmatchedSerialDeps['attachSerialToLine'],
+    recordReceivingException: (async () => undefined) as unknown as
+      LogUnmatchedSerialDeps['recordReceivingException'],
+    runTransaction: (async (_org, cb) => cb({} as never)) as LogUnmatchedSerialDeps['runTransaction'],
+    upsertSerialUnit: (async () => null) as unknown as LogUnmatchedSerialDeps['upsertSerialUnit'],
+    recordInventoryEvent: (async () => null) as unknown as
+      LogUnmatchedSerialDeps['recordInventoryEvent'],
+    upsertReceivingTriage: (async (_client, _org, receivingId, patch) => {
+      triageUpserts.push({ receivingId, patch: patch as Record<string, unknown> });
+    }) as unknown as LogUnmatchedSerialDeps['upsertReceivingTriage'],
+    emitSignal: (async () => undefined) as unknown as LogUnmatchedSerialDeps['emitSignal'],
+  };
+  return { deps, triageUpserts };
+}
+
+test('logUnmatchedReturnSerial: records WAIVED so the carton stops reading as UNFOUND', async () => {
+  // Carton 50354 had NO receiving_triage row, so every reader fell through
+  // COALESCE(rt.pairing_state,'UNFOUND') and a state nobody wrote read back as
+  // a failed search — a permanent "No matched PO" on a return that cannot have one.
+  const { deps, triageUpserts } = makeLogDeps();
+
+  await logUnmatchedReturnSerial(
+    { serialNumber: '049331f81860251ae', receivingLineId: 30654, receivingId: 50354 },
+    ORG,
+    deps,
+  );
+
+  assert.equal(triageUpserts.length, 1);
+  assert.equal(triageUpserts[0]!.receivingId, 50354);
+  assert.equal(triageUpserts[0]!.patch.pairingState, 'WAIVED');
+  // Must never downgrade a carton already MATCHED to a real PO.
+  assert.equal(triageUpserts[0]!.patch.preserveMatchedPairing, true);
+  // Pairing is a different act from "Save for unbox" — do not claim triage done.
+  assert.equal(triageUpserts[0]!.patch.triageComplete, undefined);
+});
+
+test('logUnmatchedReturnSerial: no carton id ⇒ no pairing write', async () => {
+  const { deps, triageUpserts } = makeLogDeps();
+  await logUnmatchedReturnSerial(
+    { serialNumber: 'SN-1', receivingLineId: 1, receivingId: null },
+    ORG,
+    deps,
+  );
+  assert.equal(triageUpserts.length, 0);
+});
+
+test('logUnmatchedReturnSerial: a pairing-write failure never fails the scan', async () => {
+  const { deps } = makeLogDeps();
+  deps.upsertReceivingTriage = (async () => {
+    throw new Error('triage table unavailable');
+  }) as unknown as LogUnmatchedSerialDeps['upsertReceivingTriage'];
+
+  const res = await logUnmatchedReturnSerial(
+    { serialNumber: 'SN-1', receivingLineId: 1, receivingId: 5 },
+    ORG,
+    deps,
+  );
+  // The serial is already attached; bookkeeping must not undo that.
+  assert.equal(res.serialUnitId, 2115);
+  assert.equal(res.pairedToLine, true);
 });

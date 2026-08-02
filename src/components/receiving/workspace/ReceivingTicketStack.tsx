@@ -14,13 +14,19 @@
  * context rail). Closed + linked → in-flow expand strip restores it
  * ({@link CONTEXT_PANEL_COLLAPSE_STRIP_CLASS} twin).
  *
- * **Gutter:** the LineEditPanel host applies `py-2 pr-2` while Ticket chrome is
- * mounted — padding, not child margin. Parent `overflow-hidden` clips trailing
- * child margins (the card looked flush); padding sits inside the clip box.
+ * **Gutter:** trailing edge is host padding (`pr-2` via
+ * {@link TICKET_PUSH_HOST_PAD_CLASS}) — parent `overflow-hidden` clips trailing
+ * child margins. Top/bottom is {@link CONTEXT_PANEL_OUTER_MARGIN_Y} on the push
+ * column (see {@link UnboxPushColumn}) so the Unbox identity bookmark stays at
+ * {@link STATION_BOOKMARK_CANVAS_INSET_TOP} and keeps sharing an edge with the
+ * left context-panel card.
  */
 
 import { ChevronLeft } from '@/components/Icons';
-import { CONTEXT_PANEL_COLLAPSE_STRIP_CLASS } from '@/components/sidebar/context-panel-column';
+import {
+  CONTEXT_PANEL_COLLAPSE_STRIP_CLASS,
+  CONTEXT_PANEL_OUTER_MARGIN_Y,
+} from '@/components/sidebar/context-panel-column';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { IconButton } from '@/design-system/primitives';
 import { SupportTicketDetail } from '@/components/support/zendesk/chat/SupportTicketDetail';
@@ -35,24 +41,36 @@ const TICKET_PUSH_STORAGE_KEY = 'unbox-ticket-push-width';
 const TICKET_PUSH_MAX_WIDTH_PX = 480;
 
 /**
- * Host padding while a push column / expand strip is mounted.
- * Must be padding on the overflow-hidden flex host — not margin on the push
- * column (trailing margins are clipped). Same 8px as context-panel `m-2`.
+ * Host trailing padding while a push column / expand strip is mounted.
+ *
+ * **Right only (`pr-2`).** Never `py-2`: vertical host padding would push the
+ * in-flow Unbox column down, and {@link StationContextBar}'s absolute `top-2`
+ * would stack on top of that inset — 16px vs the context panel's `m-2` (8px),
+ * which is the sidebar / carton-context misalignment. Top/bottom gutter lives
+ * on the push column / expand strip ({@link CONTEXT_PANEL_OUTER_MARGIN_Y}).
+ * Trailing must stay host padding because `overflow-hidden` clips child `mr-*`.
  */
-export const TICKET_PUSH_HOST_PAD_CLASS = 'py-2 pr-2';
+export const TICKET_PUSH_HOST_PAD_CLASS = 'pr-2';
 
 /**
  * Right-edge strip the Unbox host parks when a linked ticket is closed and no
  * push column owns the edge — the same in-flow recipe as the receiving
- * recent-rail expand ({@link CONTEXT_PANEL_COLLAPSE_STRIP_CLASS}). Host already
- * applies {@link TICKET_PUSH_HOST_PAD_CLASS}, so strip margin is zeroed to avoid
- * double-inset. Displays toggles from the pane-anchored progress ring
- * (`StationMoreDetails`); this strip only restores the ticket.
+ * recent-rail expand ({@link CONTEXT_PANEL_COLLAPSE_STRIP_CLASS}). Host owns
+ * trailing padding only, so this strip keeps
+ * {@link CONTEXT_PANEL_OUTER_MARGIN_Y} (top edge with the context panel) and
+ * zeros horizontal margin to avoid double-inset with
+ * {@link TICKET_PUSH_HOST_PAD_CLASS}. Displays toggles from the pane-anchored
+ * progress ring; this strip only restores the ticket.
  */
 export function ReceivingPushExpandStrip({ children }: { children: React.ReactNode }) {
   return (
     <div
-      className={cn(CONTEXT_PANEL_COLLAPSE_STRIP_CLASS, 'm-0 gap-1.5')}
+      className={cn(
+        CONTEXT_PANEL_COLLAPSE_STRIP_CLASS,
+        'mx-0',
+        CONTEXT_PANEL_OUTER_MARGIN_Y,
+        'gap-1.5',
+      )}
       data-testid="unbox-push-expand-strip"
     >
       {children}

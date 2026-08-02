@@ -2,12 +2,16 @@
 
 import { Fragment } from 'react';
 import { Check } from '@/components/Icons';
-import type { LinearStepState, ReceivingStepKey } from './derive-receiving-step-states';
+// `ReceivingStepKey` is deliberately NOT re-exported here — its consumers
+// (`derive-unfound-step-states`, the stepper tests) import it from
+// `derive-receiving-step-states` directly, so a second path to the same type is
+// dead weight that knip correctly flags.
+import type { LinearStepState } from './derive-receiving-step-states';
 
-export type { LinearStepState, ReceivingStepKey };
+export type { LinearStepState };
 export type LinearStep = { key: string; label: string };
 
-export { deriveReceivingStepStates, activeReceivingStepKey } from './derive-receiving-step-states';
+export { deriveReceivingStepStates } from './derive-receiving-step-states';
 
 /**
  * Shared dot + connector stepper — used by ReceivingDetailsStack carton

@@ -3,42 +3,86 @@
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
-import { MessageSquare, MoreHorizontal, Settings, Smartphone } from '@/components/Icons';
+import {
+  Clipboard,
+  MessageSquare,
+  Monitor,
+  MoreHorizontal,
+  Settings,
+  Smartphone,
+} from '@/components/Icons';
 import {
   SIDEBAR_SPINE_MENU_ACTION_CLASS,
+  SIDEBAR_SPINE_MENU_ACTION_LABEL_CLASS,
   SIDEBAR_SPINE_MENU_HEADER_CLASS,
+  SIDEBAR_SPINE_MENU_META_CLASS,
+  SIDEBAR_SPINE_MENU_ORG_CLASS,
   SIDEBAR_SPINE_MENU_PANEL_CLASS,
+  SIDEBAR_SPINE_MENU_TITLE_CLASS,
 } from '@/components/sidebar/sidebar-spine';
 import { AnchoredLayer } from '@/design-system';
 import { IconButton } from '@/design-system/primitives';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { StaffAvatar } from '@/components/identity';
+import { StaffAvatarEditor } from '@/components/identity';
 import { PhoneHistoryPopover } from '@/components/quick-access/PhoneHistoryPopover';
+import {
+  CLIPBOARD_HISTORY_HOTKEY_LABEL,
+  openClipboardHistory,
+} from '@/components/quick-access/ClipboardHistoryHost';
+import { PhoneSignInQrDialog } from '@/components/quick-access/PhoneSignInQrButton';
 import { FeedbackPopover } from '@/components/quick-access/FeedbackWidget';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQuickAccess } from '@/lib/quick-access/use-quick-access';
+import { openKioskShellPreview } from '@/lib/kiosk/preview-url';
 import { cn } from '@/utils/_cn';
 
-type OpenMenu = 'none' | 'more' | 'history' | 'feedback';
+type OpenMenu = 'none' | 'more' | 'history' | 'feedback' | 'phone-qr';
 
 /**
  * Spine footer below Settings/Admin — staff identity, more-details menu, and
- * quick sign-out. Phone history + report-an-issue live here so removing the
- * GlobalHeader avatar does not orphan them. Kiosk stays header-only.
+ * quick sign-out.
+ *
+ * **This is the desktop account overflow**, and the 2026-08-01 chrome-altitude
+ * pass made that load-bearing. The GlobalHeader's top-right rail was six peer
+ * icons (search · clipboard · phone QR · kiosk · notifications · assistant);
+ * it is now three, and the three that left landed here. The test for whether a
+ * control belongs on the persistent rail is FREQUENCY, not existence — a
+ * once-a-shift session or setup task does not earn permanent pixels beside
+ * notifications. (The docblock here used to read "Kiosk stays header-only";
+ * that is exactly the ruling that was reversed.)
+ *
+ * Mobile does not follow: it has no spine, therefore no account overflow, so
+ * `GlobalHeaderActions` keeps clipboard + phone QR in its own icon cluster.
+ *
+ * **Clipboard history stays here, and now carries its chord** (D5, decided
+ * 2026-08-02). Every comparable product — Windows `Win+V`, Paste, Maccy,
+ * Raycast, Alfred, Ditto — puts clipboard history in the menu bar / tray rather
+ * than on a toolbar, and pairs it with a hotkey; this ⋯ drawer is that slot, so
+ * the button was already right and what was missing was `⌘⇧V`. The row is a
+ * TRIGGER only: {@link ClipboardHistoryHost} owns the chord and the single
+ * panel mount, because this footer does not exist until the spine is first
+ * opened. The full reasoning (and why the command palette could not host it)
+ * lives in that host's docblock.
  *
  * The ⋯ menu is a **child of the footer row**: `top-stretch` on the row
  * (inset by the footer pad), dense chrome + caption/micro type — never a
- * wider/chunkier twin of the spine.
+ * wider/chunkier twin of the spine. Org name in the menu header is
+ * load-bearing. The avatar is a separate click target
+ * ({@link StaffAvatarEditor}) for colour + photo — Settings is not required.
  */
 export function StaffAccountFooter({ className }: { className?: string }) {
   const pathname = usePathname();
   const { user, signOut } = useAuth();
   const { settings } = useQuickAccess();
   const [menu, setMenu] = useState<OpenMenu>('none');
+  // The QR overlay is a Dialog, not an anchored layer, so it does not belong in
+  // the `menu` union — it must survive the menu closing behind it.
+  const [phoneQrOpen, setPhoneQrOpen] = useState(false);
   const rowRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setMenu('none');
+    setPhoneQrOpen(false);
   }, [pathname]);
 
   if (!user) return null;
@@ -53,10 +97,8 @@ export function StaffAccountFooter({ className }: { className?: string }) {
       data-staff-account-footer
     >
       <div ref={rowRef} className="flex min-w-0 items-center gap-1.5 px-1 py-1">
-        {/* Photo id resolves from the staff identity cache, which
-            <StaffColorsProvider> seeds from the auth envelope on boot — so this
-            paints the photo on first render, not after the /api/staff fetch. */}
-        <StaffAvatar staffId={user.staffId} name={staffName} size="sm" />
+        {/* Click the mark to change colour / photo — not Settings. */}
+        <StaffAvatarEditor />
         <div className="min-w-0 flex-1">
           <div className="truncate text-role-caption font-semibold leading-tight text-text-default">
             {staffName || `Staff #${user.staffId}`}
@@ -117,13 +159,11 @@ export function StaffAccountFooter({ className }: { className?: string }) {
           className={SIDEBAR_SPINE_MENU_PANEL_CLASS}
         >
           <div className={cn(SIDEBAR_SPINE_MENU_HEADER_CLASS, 'flex-col items-stretch gap-0')}>
-            <div className="truncate text-role-eyebrow uppercase tracking-[0.14em] text-text-faint">
-              {user.organizationName}
-            </div>
-            <div className="truncate text-role-caption font-semibold leading-tight text-text-default">
+            <div className={SIDEBAR_SPINE_MENU_ORG_CLASS}>{user.organizationName}</div>
+            <div className={SIDEBAR_SPINE_MENU_TITLE_CLASS}>
               {staffName || `Staff #${user.staffId}`}
             </div>
-            <div className="truncate text-role-micro text-text-soft">
+            <div className={SIDEBAR_SPINE_MENU_META_CLASS}>
               {user.organizationSlug ?? '—'}
               {user.organizationPlan ? ` · ${user.organizationPlan} plan` : ''}
               {' · '}
@@ -138,18 +178,66 @@ export function StaffAccountFooter({ className }: { className?: string }) {
                 className={cn('ds-raw-button', SIDEBAR_SPINE_MENU_ACTION_CLASS)}
               >
                 <Smartphone className="h-3 w-3 shrink-0 text-text-muted" />
-                <span className="text-role-caption font-medium text-text-default">
+                <span className={SIDEBAR_SPINE_MENU_ACTION_LABEL_CLASS}>
                   Phone history
                 </span>
               </button>
             ) : null}
+            {/* The panel itself is owned by `ClipboardHistoryHost` — this row
+                only asks it to open. The host is mounted app-wide, so the chord
+                still works on a page where this footer does not exist (the spine
+                mounts lazily and starts closed). */}
+            <button
+              type="button"
+              onClick={() => {
+                setMenu('none');
+                openClipboardHistory();
+              }}
+              className={cn('ds-raw-button', SIDEBAR_SPINE_MENU_ACTION_CLASS)}
+            >
+              <Clipboard className="h-3 w-3 shrink-0 text-text-muted" />
+              <span className={cn(SIDEBAR_SPINE_MENU_ACTION_LABEL_CLASS, 'min-w-0 flex-1 truncate')}>
+                Clipboard history
+              </span>
+              {/* Imported from the binder so a rebinding can never leave a
+                  stale hint — a false shortcut hint is worse than none. */}
+              <kbd className="shrink-0 rounded border border-border-soft bg-surface-canvas px-1 py-0.5 font-mono text-role-micro font-semibold text-text-soft">
+                {CLIPBOARD_HISTORY_HOTKEY_LABEL}
+              </kbd>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setMenu('none');
+                setPhoneQrOpen(true);
+              }}
+              className={cn('ds-raw-button', SIDEBAR_SPINE_MENU_ACTION_CLASS)}
+            >
+              <Smartphone className="h-3 w-3 shrink-0 text-text-muted" />
+              <span className={SIDEBAR_SPINE_MENU_ACTION_LABEL_CLASS}>
+                Open on your phone
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                openKioskShellPreview(user.organizationSlug ?? undefined);
+                setMenu('none');
+              }}
+              className={cn('ds-raw-button', SIDEBAR_SPINE_MENU_ACTION_CLASS)}
+            >
+              <Monitor className="h-3 w-3 shrink-0 text-text-muted" />
+              <span className={SIDEBAR_SPINE_MENU_ACTION_LABEL_CLASS}>
+                Kiosk shell preview
+              </span>
+            </button>
             <button
               type="button"
               onClick={() => setMenu('feedback')}
               className={cn('ds-raw-button', SIDEBAR_SPINE_MENU_ACTION_CLASS)}
             >
               <MessageSquare className="h-3 w-3 shrink-0 text-text-muted" />
-              <span className="text-role-caption font-medium text-text-default">
+              <span className={SIDEBAR_SPINE_MENU_ACTION_LABEL_CLASS}>
                 Report an issue
               </span>
             </button>
@@ -159,7 +247,7 @@ export function StaffAccountFooter({ className }: { className?: string }) {
               className={SIDEBAR_SPINE_MENU_ACTION_CLASS}
             >
               <Settings className="h-3 w-3 shrink-0 text-text-muted" />
-              <span className="text-role-caption font-medium text-text-default">
+              <span className={SIDEBAR_SPINE_MENU_ACTION_LABEL_CLASS}>
                 Quick Access settings
               </span>
             </Link>
@@ -186,6 +274,8 @@ export function StaffAccountFooter({ className }: { className?: string }) {
       >
         <FeedbackPopover onClose={() => setMenu('none')} />
       </AnchoredLayer>
+
+      <PhoneSignInQrDialog open={phoneQrOpen} onOpenChange={setPhoneQrOpen} />
     </div>
   );
 }

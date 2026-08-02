@@ -4,26 +4,30 @@
  * Sticky LedgerGrid column-header row — shared outer chrome for Receiving /
  * Incoming / Pickup / Catalog / Repair. Inner label/chevron lives in
  * {@link GridHeaderLabel}; this owns select-all, frozen tracks, sort click,
- * aria-sort, HoverTooltip tips, and the optional top-right column-display lip
- * (visual twin of the select gutter — opens the right-rail details panel).
+ * aria-sort, HoverTooltip tips, and the optional per-column drag-resize grip.
+ *
+ * Column DISPLAY is not here: its control lives in a gutter beside the card
+ * ({@link GridColumnGutter}), because a control parked at the band's right edge
+ * either reserves a permanent track or covers the last column's label.
  *
  * Domain wrappers supply a {@link LedgerHeaderLayoutApi} + optional glyph /
  * label overrides. Resize / reorder stay out of v1 (Orders deferred).
  */
 
 import { type ReactNode } from 'react';
-import { Check, ColumnsThree } from '@/components/Icons';
+import { Check } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { ToolbarButton } from '@/components/ui/ToolbarButton';
 import { tableHeader } from '@/design-system/tokens/typography/presets';
 import { emitToggleAll } from '@/lib/selection/table-selection';
 import { useTableSelection, useTableSelectionTotal } from '@/hooks/useTableSelection';
 import { cn } from '@/utils/_cn';
+import { ColumnResizeHandle } from './ColumnResizeHandle';
 import { GridHeaderLabel, gridHeaderAriaSort } from './GridHeaderLabel';
+import { isGridColumnResizable } from './grid-column-editability';
 import { gridHeaderCellAlignClass, resolveGridColumnAlign } from './grid-header-align';
+import type { GridSortDir } from './grid-sort-dir';
 import type { LedgerGridColumnModel } from './grid-surface-descriptor';
 
-export type LedgerHeaderSortDir = 'asc' | 'desc';
 
 export type LedgerHeaderLayoutApi<C extends LedgerGridColumnModel> = {
   template: (cols: readonly C[]) => string;
@@ -45,19 +49,19 @@ export type LedgerGridColumnHeaderProps<C extends LedgerGridColumnModel> = {
   selectionScope?: string;
   className?: string;
   activeSort?: string | null;
-  sortDir?: LedgerHeaderSortDir | null;
+  sortDir?: GridSortDir | null;
   onSortColumn?: (key: string) => void;
   /** Surface glyph (e.g. stage Clock, date Calendar). Default: type glyph via GridHeaderLabel. */
   glyphFor?: (column: C) => ReactNode;
   /** Runtime label override (e.g. Unbox stage → Unboxed / Scanned / Tested). */
   labelFor?: (column: C) => string | undefined;
   /**
-   * When set, mounts the sticky top-right column-display lip (mirror of the
-   * select-all corner). Header-only — no body track.
+   * Commit a column's drag-resized width (px). Presence enables the grips on
+   * every resizable track ({@link isGridColumnResizable} — variable-content
+   * columns; not `select`, and not the fixed-format identifier / magnitude
+   * types whose cells render a last-8 chip or a short numeral run).
    */
-  onOpenColumnDetails?: () => void;
-  /** Active fill on the lip while the details rail is open. */
-  columnDetailsOpen?: boolean;
+  onResizeColumn?: (key: string, px: number) => void;
 };
 
 export function LedgerGridColumnHeader<C extends LedgerGridColumnModel>({
@@ -72,8 +76,7 @@ export function LedgerGridColumnHeader<C extends LedgerGridColumnModel>({
   onSortColumn,
   glyphFor,
   labelFor,
-  onOpenColumnDetails,
-  columnDetailsOpen = false,
+  onResizeColumn,
 }: LedgerGridColumnHeaderProps<C>) {
   const scope = selectionScope ?? '__idle__';
   const selectedRows = useTableSelection<{ id?: number | string }>(scope, (r) => Number(r.id));
@@ -95,101 +98,80 @@ export function LedgerGridColumnHeader<C extends LedgerGridColumnModel>({
   };
 
   return (
-    <>
+    <div
+      role="row"
+      className={cn(
+        'group/hrow grid min-h-11 border-b border-border-default bg-surface-card px-0 py-0',
+        layout.rowShellClass(false, { scrollMinContent: true }),
+        className,
+      )}
+      style={{ gridTemplateColumns: template }}
+    >
       <div
-        role="row"
         className={cn(
-          'group/hrow grid min-h-11 border-b border-border-default bg-surface-card px-0 py-0',
-          layout.rowShellClass(false, { scrollMinContent: true }),
-          // Room for the absolute top-right lip so the last header label isn't
-          // painted under the control.
-          onOpenColumnDetails && 'pr-9',
-          className,
+          layout.cellClass({ inset: 'none', rule: true }),
+          'justify-center',
+          layout.frozenCellClass,
         )}
-        style={{ gridTemplateColumns: template }}
+        style={{ left: layout.frozenLeft('select') }}
       >
-        <div
-          className={cn(
-            layout.cellClass({ inset: 'none', rule: true }),
-            'justify-center',
-            layout.frozenCellClass,
-          )}
-          style={{ left: layout.frozenLeft('select') }}
-        >
-          {selectActive ? (
-            <button
-              type="button"
-              onClick={onToggleAll}
-              aria-label={allSelected ? 'Deselect all' : 'Select all'}
-              aria-checked={allSelected ? true : someSelected ? 'mixed' : false}
-              role="checkbox"
-              className={cn(
-                'ds-raw-button flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors',
-                allSelected
-                  ? 'border-accent-bg bg-accent-bg text-text-inverse'
-                  : someSelected
-                    ? 'border-accent-bg bg-accent-bg/20 text-accent-bg'
-                    : 'border-border-default bg-surface-card hover:border-border-strong',
-              )}
-            >
-              {allSelected ? (
-                <Check className="h-3 w-3" />
-              ) : someSelected ? (
-                <span className="h-0.5 w-2 rounded-full bg-current" />
-              ) : null}
-            </button>
-          ) : (
-            <span className="h-4 w-4 shrink-0" aria-hidden />
-          )}
-        </div>
-
-        {dataColumns.map((column, i) => {
-          const last = i === dataColumns.length - 1;
-          const sortable = Boolean(onSortColumn) && layout.isSortable(column.key);
-          const isActiveSort = activeSort === column.key;
-          const labelOverride = labelFor?.(column);
-          const headerColumn =
-            labelOverride != null
-              ? ({ ...column, label: labelOverride, gridLabel: labelOverride } as C)
-              : column;
-          return (
-            <LedgerHeaderCell
-              key={column.key}
-              column={headerColumn}
-              last={last}
-              layout={layout}
-              frozenEdgeKey={frozenEdgeKey}
-              sortActive={sortable}
-              isActiveSort={isActiveSort}
-              sortDir={isActiveSort ? sortDir : null}
-              onSort={sortable ? () => onSortColumn?.(column.key) : undefined}
-              glyph={glyphFor?.(column)}
-            />
-          );
-        })}
+        {selectActive ? (
+          <button
+            type="button"
+            onClick={onToggleAll}
+            aria-label={allSelected ? 'Deselect all' : 'Select all'}
+            aria-checked={allSelected ? true : someSelected ? 'mixed' : false}
+            role="checkbox"
+            className={cn(
+              'ds-raw-button flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors',
+              allSelected
+                ? 'border-accent-bg bg-accent-bg text-text-inverse'
+                : someSelected
+                  ? 'border-accent-bg bg-accent-bg/20 text-accent-bg'
+                  : 'border-border-default bg-surface-card hover:border-border-strong',
+            )}
+          >
+            {allSelected ? (
+              <Check className="h-3 w-3" />
+            ) : someSelected ? (
+              <span className="h-0.5 w-2 rounded-full bg-current" />
+            ) : null}
+          </button>
+        ) : (
+          <span className="h-4 w-4 shrink-0" aria-hidden />
+        )}
       </div>
 
-      {onOpenColumnDetails ? (
-        <div
-          data-grid-column-details-lip=""
-          className="absolute inset-y-0 right-0 z-sticky flex w-9 items-center justify-center border-b border-l border-border-default bg-surface-card"
-        >
-          <HoverTooltip label="Column display" asChild>
-            <ToolbarButton
-              type="button"
-              iconOnly
-              active={columnDetailsOpen}
-              aria-label="Column display"
-              aria-haspopup="dialog"
-              aria-expanded={columnDetailsOpen}
-              onClick={onOpenColumnDetails}
-            >
-              <ColumnsThree className="h-3.5 w-3.5 shrink-0" />
-            </ToolbarButton>
-          </HoverTooltip>
-        </div>
-      ) : null}
-    </>
+      {dataColumns.map((column, i) => {
+        const last = i === dataColumns.length - 1;
+        const sortable = Boolean(onSortColumn) && layout.isSortable(column.key);
+        const isActiveSort = activeSort === column.key;
+        const labelOverride = labelFor?.(column);
+        const headerColumn =
+          labelOverride != null
+            ? ({ ...column, label: labelOverride, gridLabel: labelOverride } as C)
+            : column;
+        return (
+          <LedgerHeaderCell
+            key={column.key}
+            column={headerColumn}
+            last={last}
+            layout={layout}
+            frozenEdgeKey={frozenEdgeKey}
+            sortActive={sortable}
+            isActiveSort={isActiveSort}
+            sortDir={isActiveSort ? sortDir : null}
+            onSort={sortable ? () => onSortColumn?.(column.key) : undefined}
+            glyph={glyphFor?.(column)}
+            onResize={
+              onResizeColumn && isGridColumnResizable(column)
+                ? (px) => onResizeColumn(column.key, px)
+                : undefined
+            }
+          />
+        );
+      })}
+    </div>
   );
 }
 
@@ -203,6 +185,7 @@ function LedgerHeaderCell<C extends LedgerGridColumnModel>({
   sortDir = null,
   onSort,
   glyph,
+  onResize,
 }: {
   column: C;
   last: boolean;
@@ -210,9 +193,10 @@ function LedgerHeaderCell<C extends LedgerGridColumnModel>({
   frozenEdgeKey: string;
   sortActive?: boolean;
   isActiveSort?: boolean;
-  sortDir?: LedgerHeaderSortDir | null;
+  sortDir?: GridSortDir | null;
   onSort?: () => void;
   glyph?: ReactNode;
+  onResize?: (px: number) => void;
 }) {
   const frozen = layout.isFrozen(column.key);
   const label = column.label ?? column.key;
@@ -243,6 +227,9 @@ function LedgerHeaderCell<C extends LedgerGridColumnModel>({
       style={frozen ? { left: layout.frozenLeft(column.key) } : undefined}
     >
       <GridHeaderLabel column={column} glyph={glyph} sortDir={isActiveSort ? sortDir : null} />
+      {onResize ? (
+        <ColumnResizeHandle colKey={column.key} label={label} onCommit={onResize} />
+      ) : null}
     </div>
   );
 

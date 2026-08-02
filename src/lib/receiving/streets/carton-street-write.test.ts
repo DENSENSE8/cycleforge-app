@@ -164,3 +164,24 @@ test('unbox: without deriveIntakePath the intake_path column is untouched', asyn
   assert.ok(!sql.includes('intake_path'), 'intake_path must be absent');
   assert.ok(!sql.includes('opened_at'), 'omitted opened_at must be absent');
 });
+
+test('triage: preserveMatchedPairing never downgrades a real PO match', async () => {
+  const { client, calls } = fakeClient();
+  await upsertReceivingTriage(client, ORG, RID, {
+    pairingState: 'WAIVED',
+    preserveMatchedPairing: true,
+  });
+  const { sql } = calls[0];
+  // The SET keeps MATCHED and applies the new value to every other state — a
+  // background "nothing to pair to" writer must not un-match a matched carton.
+  assert.match(sql, /CASE WHEN receiving_triage\.pairing_state = 'MATCHED'/);
+  assert.match(sql, /ELSE EXCLUDED\.pairing_state END/);
+});
+
+test('triage: without the flag pairing still OVERWRITES', async () => {
+  const { client, calls } = fakeClient();
+  await upsertReceivingTriage(client, ORG, RID, { pairingState: 'MATCHED' });
+  const { sql } = calls[0];
+  assert.match(sql, /pairing_state = EXCLUDED\.pairing_state/);
+  assert.doesNotMatch(sql, /CASE WHEN/);
+});

@@ -655,6 +655,26 @@ export function EventTimeline({
         const glyphSpec = resolveTimelineGlyph(item.sourceEventType);
         const GlyphIcon = TIMELINE_GLYPH_ICONS[glyphSpec.id];
         const identityRefs = itemIdentityRefs(item);
+        /**
+         * The second line is EARNED BY THE CHIPS, not spent by default.
+         *
+         * Station anatomy puts the id chips on their own line so a column of
+         * last-8s lines up down a multi-unit feed. When a row has no identity
+         * chip that line carries only `3:14pm · Kai` — half a row of height for
+         * a clock. Chipless rows therefore fall back to the compact one-line
+         * `metaTrail` form the component already renders below, which is the
+         * same layout, not a third one.
+         *
+         * This became common once single-unit feeds stopped repeating a serial
+         * that disambiguated nothing (`mergeStationUnitJourneys`): on a one-unit
+         * carton EVERY row lost its chip and the feed was all half-empty
+         * second lines.
+         *
+         * `stationAnatomy` itself stays row-invariant — it also drives the day
+         * band, the latest-row ring and the raw-status-trail suppression, and
+         * flipping those per row would make one feed look like two.
+         */
+        const stationTwoLine = stationAnatomy && identityRefs.length > 0;
         const glyphHref =
           item.href?.trim() || identityRefs[0]?.href?.trim() || undefined;
         const timeNode = richTime ? (
@@ -769,7 +789,7 @@ export function EventTimeline({
                     : undefined
                 }
               >
-                {stationAnatomy ? (
+                {stationTwoLine ? (
                   <>
                     <div
                       className={`text-role-caption tracking-tight ${

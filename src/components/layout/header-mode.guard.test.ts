@@ -150,7 +150,7 @@ test('spine identity marks are ONE circular primitive (org + staff)', () => {
   // `rounded-full` staff mark, with nothing in code tying them together.
   // Both ends of the spine now compose the same primitive at the same density.
   assert.match(ORG_CONTROL, /IdentityMark/);
-  assert.match(STAFF_FOOTER, /StaffAvatar/);
+  assert.match(STAFF_FOOTER, /StaffAvatarEditor/);
   assert.match(IDENTITY_MARK, /rounded-full/);
   // Neither end may hand-roll a mark box or its own initials again.
   assert.doesNotMatch(ORG_CONTROL, /rounded-md bg-surface-inverse|h-6 w-6 shrink-0 items-center/);
@@ -191,18 +191,35 @@ test('spine identity menus are a child of the trigger (SoT — never a wider mag
   assert.match(SPINE, /SIDEBAR_SPINE_MENU_PANEL_CLASS/);
   assert.match(SPINE, /SIDEBAR_SPINE_MENU_HEADER_CLASS/);
   assert.match(SPINE, /SIDEBAR_SPINE_MENU_ACTION_CLASS/);
+  assert.match(SPINE, /SIDEBAR_SPINE_MENU_ORG_CLASS/);
   assert.match(SPINE, /SIDEBAR_SPINE_WIDTH_PX = 240/);
 
   assert.match(ORG_CONTROL, /SIDEBAR_SPINE_MENU_PANEL_CLASS/);
   assert.match(ORG_CONTROL, /placement="bottom-stretch"/);
   assert.match(ORG_CONTROL, /anchorRef=\{triggerRef\}/);
+  // Chevron is enough — no "Current" eyebrow label in the org menu.
+  assert.doesNotMatch(ORG_CONTROL, /\bCurrent\b/);
   assert.match(STAFF_FOOTER, /SIDEBAR_SPINE_MENU_PANEL_CLASS/);
   assert.match(STAFF_FOOTER, /placement="top-stretch"/);
   assert.match(STAFF_FOOTER, /anchorRef=\{rowRef\}/);
+  // Org name stays load-bearing in the staff menu header.
+  assert.match(STAFF_FOOTER, /SIDEBAR_SPINE_MENU_ORG_CLASS/);
+  assert.match(STAFF_FOOTER, /organizationName/);
 
   // No second geometry — magic widths on these two files are a regression.
   assert.doesNotMatch(ORG_CONTROL, /w-\[\d+px\]/);
   assert.doesNotMatch(STAFF_FOOTER, /w-\[\d+px\]/);
+});
+
+test('spine staff avatar opens colour+photo editor (not Settings)', () => {
+  assert.match(STAFF_FOOTER, /StaffAvatarEditor/);
+  assert.doesNotMatch(STAFF_FOOTER, /<StaffAvatar\b/);
+  const EDITOR = code(sourceOf('../identity/StaffAvatarEditor.tsx'));
+  assert.match(EDITOR, /\/api\/staff\/\$\{staffId\}\/avatar/);
+  assert.match(EDITOR, /\/api\/staff\/\$\{staffId\}\/color/);
+  assert.match(EDITOR, /RoleColorPicker/);
+  assert.match(EDITOR, /setStaffColorHex/);
+  assert.match(EDITOR, /setStaffAvatarPhotoId/);
 });
 
 test('spine identity menus use dense caption type (no bare text-sm; org trigger stays body)', () => {
@@ -210,7 +227,7 @@ test('spine identity menus use dense caption type (no bare text-sm; org trigger 
   // (+ micro meta). Staff footer + ⋯ menu stay caption. A raw text-sm twin is
   // how menus drifted chunkier than the spine.
   assert.match(ORG_CONTROL, /data-master-nav-org[\s\S]*?text-role-body font-semibold/);
-  assert.match(ORG_CONTROL, /SIDEBAR_SPINE_MENU_PANEL_CLASS[\s\S]*?text-role-caption font-semibold/);
+  assert.match(ORG_CONTROL, /SIDEBAR_SPINE_MENU_TITLE_CLASS/);
   assert.doesNotMatch(ORG_CONTROL, /\btext-sm\b/);
   assert.match(STAFF_FOOTER, /text-role-caption font-semibold leading-tight/);
   assert.doesNotMatch(STAFF_FOOTER, /\btext-sm\b/);

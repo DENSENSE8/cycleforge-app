@@ -6,7 +6,7 @@
  *
  * Left:   purchasing-source tabs — All / Zoho / eBay.
  * Right:  [⌕ search] · [⫶ filters].
- * Trailing: [page] · [sort] · Import · Add.
+ * Trailing: [page] · [sort] · Check · Import · Add.
  *
  * POS ↔ Email lives in {@link IncomingSidebarPanel}. Delivery attention
  * (`?state=`) + PO date live in the filter popover. Search + refinements write
@@ -42,6 +42,7 @@ import { useIncomingFilters } from './useIncomingFilters';
 import { useIncomingSyncActions } from './useIncomingSyncActions';
 import { IncomingChromeActions } from './IncomingChromeActions';
 import { IncomingImportEbayOverlay } from './IncomingImportEbayOverlay';
+import { IncomingZohoReceivedCheckRail } from './IncomingZohoReceivedCheckRail';
 import { TILES, TONE } from './incoming-tiles';
 
 type IncomingSourceTab = 'all' | 'zoho' | 'ebay';
@@ -70,6 +71,7 @@ export function IncomingWorkspaceHeader({
 
   const [addOpen, setAddOpen] = useState(false);
   const [addOrderId, setAddOrderId] = useState('');
+  const [checkOpen, setCheckOpen] = useState(false);
 
   useEffect(() => {
     const onStationImport = (event: Event) => {
@@ -250,6 +252,7 @@ export function IncomingWorkspaceHeader({
             }
             actions={
               <IncomingChromeActions
+                onCheckZoho={() => setCheckOpen(true)}
                 onImportZoho={() => {
                   void sync.refreshZoho();
                 }}
@@ -262,6 +265,7 @@ export function IncomingWorkspaceHeader({
                 }}
                 importingZoho={sync.zohoRefreshing}
                 importingEbay={sync.marketplaceRefreshing}
+                canCheckZoho
                 canImportZoho
                 canImportEbay={universalIncoming && canAddEbay}
                 canAdd={canAddEbay}
@@ -269,6 +273,11 @@ export function IncomingWorkspaceHeader({
             }
           />
         }
+      />
+
+      <IncomingZohoReceivedCheckRail
+        open={checkOpen}
+        onClose={() => setCheckOpen(false)}
       />
 
       <IncomingImportEbayOverlay

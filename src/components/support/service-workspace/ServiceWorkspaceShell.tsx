@@ -3,12 +3,21 @@
 /**
  * ServiceWorkspaceShell — the Workbench branch `service-workspace` frame.
  *
- *   ┌────────────┬──────────────────────────┬─────────────────┐
- *   │ list       │ thread (focus surface)   │ context (push)  │
- *   │ queue map  │ + composer dock          │ customer/order  │
- *   └────────────┴──────────────────────────┴─────────────────┘
+ *   ┌────────────┬──────────────────────────┐  ┌─────────────────┐
+ *   │ list       │ thread (focus surface)   │  │ context         │
+ *   │ queue map  │ + composer dock          │  │ RightRailHost   │
+ *   └────────────┴──────────────────────────┘  └─────────────────┘
+ *          the shell's two slots                 not the shell's
  *
  * Law: `.claude/rules/display/workbench-service.md`.
+ *
+ * THE SHELL HAS TWO SLOTS, AND THE THIRD PANE IS NOT ONE OF THEM. It rendered a
+ * private `<aside>` for ticket context until 2026-08-01 — a second permanent
+ * consumer of the right edge, which is precisely what `lib/right-rail/store.ts`
+ * exists to prevent, and a duplicate of `SupportContextDetailPanel`, which was
+ * already registering the same `SupportContextHub` correctly. The context now
+ * arrives through `RightRailHost` like every other record inspector; the host
+ * owns the geometry, so this shell holds none.
  *
  * THE CONTRACT THIS SHELL EXISTS TO ENFORCE: **the list stays mounted.**
  * `SupportTicketsWorkspace` used to return the board *or* the ticket focus, so
@@ -33,7 +42,6 @@ import { AnimatePresence, motion, motionRole, useMotionRole } from '@/design-sys
 
 
 import {
-  SERVICE_WORKSPACE_CONTEXT_CLASS,
   SERVICE_WORKSPACE_LIST_CLASS,
   SERVICE_WORKSPACE_ROOT_CLASS,
   SERVICE_WORKSPACE_THREAD_CLASS,
@@ -50,8 +58,6 @@ interface ServiceWorkspaceShellProps {
    */
   thread?: ReactNode;
   threadKey?: string | number | null;
-  /** Push column beside the thread. Only mounted when a thread is open. */
-  context?: ReactNode;
 }
 
 export function ServiceWorkspaceShell({
@@ -59,7 +65,6 @@ export function ServiceWorkspaceShell({
   listHidden = false,
   thread,
   threadKey,
-  context,
 }: ServiceWorkspaceShellProps) {
   const listRef = useRef<HTMLDivElement | null>(null);
 
@@ -109,13 +114,6 @@ export function ServiceWorkspaceShell({
             </motion.div>
           </AnimatePresence>
         </div>
-      ) : null}
-
-      {thread != null && context != null ? (
-        // In-flow: the context column PUSHES the thread, it never floats over it.
-        <aside className={SERVICE_WORKSPACE_CONTEXT_CLASS} aria-label="Ticket context">
-          {context}
-        </aside>
       ) : null}
     </div>
   );

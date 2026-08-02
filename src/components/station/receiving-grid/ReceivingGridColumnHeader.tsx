@@ -2,9 +2,10 @@
 
 import { Clock } from '@/components/Icons';
 import {
-  LedgerGridColumnHeader,
+  makeLedgerGridColumnHeader,
+  type GridColumnHeaderProps,
   type LedgerHeaderLayoutApi,
-} from '@/design-system/components/grid/LedgerGridColumnHeader';
+} from '@/design-system/components/grid';
 import {
   RECEIVING_GRID_COLUMNS,
   RECEIVING_GRID_FROZEN_CELL,
@@ -16,7 +17,6 @@ import {
   isReceivingGridSortable,
   type ReceivingGridColumn,
   type ReceivingGridColumnKey,
-  type ReceivingGridSortDir,
 } from '@/lib/receiving/receiving-grid-layout';
 
 const RECEIVING_HEADER_LAYOUT: LedgerHeaderLayoutApi<ReceivingGridColumn> = {
@@ -29,60 +29,40 @@ const RECEIVING_HEADER_LAYOUT: LedgerHeaderLayoutApi<ReceivingGridColumn> = {
   isSortable: isReceivingGridSortable,
 };
 
+const BaseReceivingGridColumnHeader = makeLedgerGridColumnHeader<
+  ReceivingGridColumn,
+  ReceivingGridColumnKey,
+  'prop'
+>({
+  layout: RECEIVING_HEADER_LAYOUT,
+  defaultColumns: RECEIVING_GRID_COLUMNS,
+  selectMode: 'prop',
+  glyphFor: (column) =>
+    column.key === 'stage' ? (
+      <Clock className="h-3 w-3 shrink-0 text-text-faint" aria-hidden />
+    ) : undefined,
+});
+
 /**
- * Sticky column header for Unbox / History / Testing LedgerGrid — thin adapter
- * over {@link LedgerGridColumnHeader}. Columns arrive already visibility-resolved
- * from `ReceivingGridView` / `useGridColumnVisibility`.
+ * Sticky column header for Unbox / History / Testing.
+ *
+ * This is the one family that keeps a hand-written wrapper, and the reason is
+ * `stageLabel`: the same `stage` TRACK renders as Unboxed / Scanned / Tested
+ * depending on which rail mounted it, so the label is per-MOUNT state, not a
+ * family constant like Repair's glyphs. The wrapper translates it into the
+ * factory's `labelFor` prop and forwards everything else untouched.
  */
 export function ReceivingGridColumnHeader({
-  isMobile = false,
-  selectMode = false,
-  selectionScope,
-  className,
-  columns = RECEIVING_GRID_COLUMNS,
-  /** Overrides the `stage` column header label (Unboxed / Scanned / Tested). */
   stageLabel = 'Stage',
-  activeSort = null,
-  sortDir = null,
-  onSortColumn,
-  onOpenColumnDetails,
-  columnDetailsOpen = false,
-}: {
-  isMobile?: boolean;
-  selectMode?: boolean;
-  selectionScope?: string;
-  className?: string;
-  columns?: readonly ReceivingGridColumn[];
+  ...rest
+}: GridColumnHeaderProps<ReceivingGridColumn, ReceivingGridColumnKey, 'prop'> & {
+  /** Overrides the `stage` column header label (Unboxed / Scanned / Tested). */
   stageLabel?: string;
-  activeSort?: ReceivingGridColumnKey | null;
-  sortDir?: ReceivingGridSortDir | null;
-  onSortColumn?: (key: ReceivingGridColumnKey) => void;
-  onOpenColumnDetails?: () => void;
-  columnDetailsOpen?: boolean;
 }) {
   return (
-    <LedgerGridColumnHeader
-      columns={columns}
-      layout={RECEIVING_HEADER_LAYOUT}
-      isMobile={isMobile}
-      selectMode={selectMode}
-      selectionScope={selectionScope}
-      className={className}
-      activeSort={activeSort}
-      sortDir={sortDir}
-      onSortColumn={
-        onSortColumn
-          ? (key) => onSortColumn(key as ReceivingGridColumnKey)
-          : undefined
-      }
-      onOpenColumnDetails={onOpenColumnDetails}
-      columnDetailsOpen={columnDetailsOpen}
+    <BaseReceivingGridColumnHeader
+      {...rest}
       labelFor={(column) => (column.key === 'stage' ? stageLabel : undefined)}
-      glyphFor={(column) =>
-        column.key === 'stage' ? (
-          <Clock className="h-3 w-3 shrink-0 text-text-faint" aria-hidden />
-        ) : undefined
-      }
     />
   );
 }

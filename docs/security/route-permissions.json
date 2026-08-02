@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "generatedAt": "2026-08-02T03:43:44Z",
-  "totalRoutes": 900,
+  "generatedAt": "2026-08-02T16:35:25Z",
+  "totalRoutes": 906,
   "summary": {
-    "permissionGated": 763,
-    "authenticatedNoPermission": 49,
+    "permissionGated": 767,
+    "authenticatedNoPermission": 51,
     "anonymousIntentional": 86,
     "serviceToService": 2,
     "ungatedRead": 0,
@@ -3870,6 +3870,15 @@
       "exemptReason": null
     },
     {
+      "path": "/api/org/gs1/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "print.label",
+      "exemptReason": null
+    },
+    {
       "path": "/api/org/invitations/[id]/route.ts",
       "methods": [
         "DELETE"
@@ -4084,6 +4093,15 @@
       ],
       "gate": "withAuth",
       "permission": "sku_stock.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/photos/[id]/aspect/route.ts",
+      "methods": [
+        "PATCH"
+      ],
+      "gate": "requireRoutePerm",
+      "permission": "receiving.upload_photo",
       "exemptReason": null
     },
     {
@@ -4694,6 +4712,15 @@
       "exemptReason": null
     },
     {
+      "path": "/api/receiving-lines/incoming/check-zoho-received/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "receiving.view",
+      "exemptReason": null
+    },
+    {
       "path": "/api/receiving-lines/incoming/delivered-not-unboxed/route.ts",
       "methods": [
         "GET"
@@ -5036,6 +5063,15 @@
         "PATCH"
       ],
       "gate": "requireRoutePerm",
+      "permission": "receiving.mark_received",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/receiving/lines/[id]/label-previewed/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withAuth",
       "permission": "receiving.mark_received",
       "exemptReason": null
     },
@@ -6866,6 +6902,24 @@
       "methods": [
         "DELETE",
         "POST"
+      ],
+      "gate": "withAuth (no permission)",
+      "permission": null,
+      "exemptReason": null
+    },
+    {
+      "path": "/api/staff/[id]/color/route.ts",
+      "methods": [
+        "PATCH"
+      ],
+      "gate": "withAuth (no permission)",
+      "permission": null,
+      "exemptReason": null
+    },
+    {
+      "path": "/api/staff/[id]/name/route.ts",
+      "methods": [
+        "PATCH"
       ],
       "gate": "withAuth (no permission)",
       "permission": null,

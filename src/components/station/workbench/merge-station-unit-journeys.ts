@@ -230,6 +230,14 @@ export function mergeStationUnitJourneys(buckets: SerialJourneyBucket[]): Timeli
     }
   }
 
+  // An identity chip exists to say WHICH unit a row is about. On a carton with
+  // exactly one serial there is nothing to disambiguate: the same last-8
+  // repeats on every row, adding a column of noise that says the same thing the
+  // band header already said. This is the rule the hoisted carton photo rows
+  // above already follow (`ref: undefined`) — applied to the case where the
+  // whole feed is one unit.
+  const singleUnitFeed = prepared.length === 1;
+
   for (const { serial, items } of prepared) {
     for (const item of items) {
       const sourceId = String(item.id);
@@ -241,8 +249,9 @@ export function mergeStationUnitJourneys(buckets: SerialJourneyBucket[]): Timeli
         ...item,
         id: `serial:${serial}:${item.id}`,
         // Always unit identity — never preserve put-away bin as the chip.
-        ref:
-          item.ref?.kind === 'serial' && item.ref.value.trim()
+        ref: singleUnitFeed
+          ? undefined
+          : item.ref?.kind === 'serial' && item.ref.value.trim()
             ? item.ref
             : { kind: 'serial', value: serial },
       });

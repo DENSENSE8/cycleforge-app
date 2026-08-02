@@ -64,7 +64,7 @@ export function BinLabelPrinter({ variant = 'main' }: BinLabelPrinterProps) {
             bay={c.bay}
             level={c.level}
             position={c.position}
-            gln={c.config.gln}
+            gln={c.gln}
           />
         </WorkspaceCard>
       )}
@@ -109,7 +109,7 @@ export function BinLabelPrinter({ variant = 'main' }: BinLabelPrinterProps) {
       {/* Print zone — hidden on screen, fills page on print */}
       <div className="label-print-zone">
         {c.bulkLabels?.map((seg, i) => (
-          <PrintLabel key={`${locationCode(seg)}-${i}`} segments={seg} roomName={c.selectedRoom ?? ''} gln={c.config.gln} />
+          <PrintLabel key={`${locationCode(seg)}-${i}`} segments={seg} roomName={c.selectedRoom ?? ''} gln={c.gln} />
         ))}
       </div>
     </div>

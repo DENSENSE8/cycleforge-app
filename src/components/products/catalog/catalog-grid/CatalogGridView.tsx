@@ -10,11 +10,11 @@ import {
   CATALOG_GRID_COLUMNS,
   type CatalogGridColumn,
   type CatalogGridColumnKey,
-  type CatalogGridSortDir,
 } from '@/lib/products/catalog-grid-layout';
 import { makeCatalogGridDescriptor } from './catalog-grid-descriptor';
 import { CatalogGridColumnHeader } from './CatalogGridColumnHeader';
 import { CatalogGridRow } from './CatalogGridRow';
+import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 
 /** Staff-prefs identity — one catalog spreadsheet, one Fields selection. */
 const CATALOG_TABLE_ID = 'catalog' as const;
@@ -29,8 +29,8 @@ interface CatalogGridViewProps {
   inventoryProviderLabel?: string | null;
   onOpenRow: (row: CatalogListRow) => void;
   sort: CatalogGridColumnKey | null;
-  dir: CatalogGridSortDir | null;
-  onSortChange: (key: CatalogGridColumnKey, dir: CatalogGridSortDir) => void;
+  dir: GridSortDir | null;
+  onSortChange: (key: CatalogGridColumnKey, dir: GridSortDir) => void;
   /** FULL canonical column list — visibility is resolved here, not by callers. */
   columns?: readonly CatalogGridColumn[];
   scrollRef?: RefObject<HTMLDivElement | null>;
@@ -119,15 +119,16 @@ export function CatalogGridView({
         scrollRef={scrollRef}
         className={className}
         testId="catalog-grid-body"
-        renderColumnHeader={({ toggleColumnSort }) => (
+        tableId={CATALOG_TABLE_ID}
+        columnDetails={{ open: columnDetailsOpen, onOpen: () => setColumnDetailsOpen(true) }}
+        renderColumnHeader={({ toggleColumnSort, onResizeColumn }) => (
           <CatalogGridColumnHeader
             selectionScope={selectionScope}
             columns={visible}
             activeSort={sort}
             sortDir={dir}
             onSortColumn={toggleColumnSort}
-            onOpenColumnDetails={() => setColumnDetailsOpen(true)}
-            columnDetailsOpen={columnDetailsOpen}
+            onResizeColumn={onResizeColumn}
           />
         )}
         renderGroup={(group) => renderLeaf(group.rows[0])}

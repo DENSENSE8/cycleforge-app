@@ -34,11 +34,12 @@ import { StaffAccountFooter } from './StaffAccountFooter';
 
 /**
  * The page list inside the sidebar spine — section drills (Analytics Monitor /
- * Scan Stations / the six business domains / Workflow Studio — the ordered SoT
- * is {@link SPINE_SECTIONS}) replace the
+ * Scan Stations / the six business domains — the ordered SoT is
+ * {@link SPINE_SECTIONS}) replace the
  * body with back + pages. Home / Search / Media / Chat stay top-pinned; a
- * footer-pinned {@link TechRailSearchBar} (same bottom band as station rails)
- * sits above Settings + Admin, then {@link StaffAccountFooter}. Always filters
+ * footer-pinned {@link TechRailSearchBar} (`density="row"`, so the band measures
+ * a nav row rather than a station rail's dock) sits above the footer band —
+ * Workflow Studio · Admin · Settings — then {@link StaffAccountFooter}. Always filters
  * the visible map (root sections or the open drill's pages). Multi-mode pages
  * show children always expanded with a pinned mode count (no accordion
  * chevron). Station subgroups (Receiving) reuse the same page-header chrome +
@@ -271,7 +272,7 @@ export function SidebarNavList({
             ),
           )}
         />
-        <span className="min-w-0 flex-1 truncate text-role-caption font-semibold">{opts.label}</span>
+        <span className="min-w-0 flex-1 truncate text-role-body font-semibold leading-tight">{opts.label}</span>
         {showCount ? (
           <span
             className={cn(
@@ -391,7 +392,7 @@ export function SidebarNavList({
                     ),
                   )}
                 />
-                <span className="min-w-0 flex-1 truncate text-role-caption font-semibold">
+                <span className="min-w-0 flex-1 truncate text-role-body font-semibold leading-tight">
                   {section.label}
                 </span>
                 <ChevronRight className="h-3.5 w-3.5 shrink-0 text-text-faint" aria-hidden />
@@ -424,7 +425,7 @@ export function SidebarNavList({
           className="ds-raw-button mb-1 grid w-full grid-cols-[1.25rem_1fr_1.25rem] items-center gap-2 rounded-lg px-2 py-1.5 transition-colors duration-150 hover:bg-surface-canvas"
         >
           <ChevronLeft className="h-3.5 w-3.5 shrink-0 justify-self-start text-text-muted" aria-hidden />
-          <span className="min-w-0 truncate text-center text-role-caption font-semibold">
+          <span className="min-w-0 truncate text-center text-role-body font-semibold leading-tight">
             {section.label}
           </span>
           <span className="h-3.5 w-3.5 shrink-0" aria-hidden />
@@ -539,7 +540,7 @@ export function SidebarNavList({
             )}
           />
           <span className="min-w-0 flex-1">
-            <span className="block truncate text-role-caption font-semibold">
+            <span className="block truncate text-role-body font-semibold leading-tight">
               {splitNavHighlight(destination.label, match.ranges).map((part, i) =>
                 part.hit ? (
                   // Marks the characters that justified the row. Underline, not
@@ -614,11 +615,16 @@ export function SidebarNavList({
             root and "Filter pages…" in a drill — two behaviours from one field,
             and the root one described filtering categories rather than finding
             a page. */}
+        {/* `density="row"` — the spine's band sits in a list of 30px rows, so
+            the station rails' 49px dock inset read as a separate surface. The
+            32px field is untouched (it is the floor's touch target); only the
+            band's own vertical padding goes. */}
         <TechRailSearchBar
           value={navFilter}
           onChange={handleNavFilter}
           onKeyDown={handleFilterKeyDown}
           placeholder="Go to…"
+          density="row"
         />
         {bottomPages.length > 0 ? (
           <div className="border-t border-border-soft p-1">

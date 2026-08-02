@@ -17,7 +17,7 @@ import {
  * procedure:
  *
  *   Arrival photos → Shipping label → The box → Packing material
- *   → Contents → Condition → Item photos → Serial
+ *   → Contents → Condition → Item photos → Serial → Label
  *
  * A sibling vocabulary over the same shared walk (`deriveLinearStepStates`),
  * beside the matched stepper (`derive-receiving-step-states`) and the unfound one
@@ -60,9 +60,18 @@ import {
  *
  * `contents` has the same shape and the same answer: nothing recorded that a
  * human had read the line list, so `receiving_unbox.contents_confirmed_at` is
- * that fact. Neither column is backfilled — a stamp asserts a person did
- * something at a time, so a pre-existing carton reads pending, which is honest
- * and is one tap away.
+ * that fact. `label` (2026-08-02) is the third of the same family — reading the
+ * face the carton is about to print leaves no evidence behind, so
+ * `receiving_line_testing.label_previewed_at` is the acknowledgement itself.
+ * None of the three is backfilled — a stamp asserts a person did something at a
+ * time, so a pre-existing carton reads pending, which is honest and is one tap
+ * away.
+ *
+ * These three are NOT the hand-ticked checklist deleted 2026-08-01. That list
+ * let an operator tick "photographed the packing material" — a claim about
+ * EVIDENCE, which the carton can answer for itself and therefore must. An
+ * acknowledgement that someone READ something is the one fact only a person can
+ * supply, and each column's name says exactly that and nothing more.
  */
 
 // Not exported until a consumer outside this module needs it — the knip ratchet
@@ -77,7 +86,8 @@ type CaptureStepKey =
   | 'contents'
   | 'condition'
   | 'item_photos'
-  | 'serial';
+  | 'serial'
+  | 'label';
 
 /** The receiving photo stage a step reads (and, from Phase 3, captures into). */
 type CaptureStepStage = 'arrival_package' | 'unbox_carton' | 'unbox_item';
@@ -124,6 +134,7 @@ const GATED_KEYS: Record<CaptureStepKey, true> = {
   condition: true,
   item_photos: true,
   serial: true,
+  label: true,
 };
 
 function isCaptureStepKey(key: string): key is CaptureStepKey {
@@ -217,8 +228,34 @@ export interface DeriveCaptureStepStatesInput
   conditionGradedAt: string | null;
   /** `receiving_unbox.contents_confirmed_at` — a human read the line list. */
   contentsConfirmedAt: string | null;
+  /**
+   * `receiving_line_testing.label_previewed_at` — a human read the printed face.
+   *
+   * NOT `label_note` (that answers "was the face customised", and is null on
+   * every carton whose default face was already right — gating on it parks the
+   * pointer on the last step forever) and NOT `label_printed_at` (the COMMIT act
+   * the terminal dock owns; gating a capture step on it inverts the phase order).
+   */
+  labelPreviewedAt: string | null;
   /** Unfound only — `isIntakeClassified(row)`. Ignored for matched cartons. */
   classified?: boolean;
+  /**
+   * When each step's evidence landed, by step key — a raw server instant, never
+   * a formatted string (this module is shared with a server read model, and
+   * formatting is the display layer's job).
+   *
+   * WHICH instant is the caller's fact-resolution job and differs by surface:
+   * the bench reads the photo payload it already holds, the receipt reads
+   * aggregate SQL. WHETHER that instant may be shown is this module's job, and
+   * it has exactly one answer — see {@link deriveProcedureSteps}.
+   *
+   * The three acknowledgement steps need no entry: for `condition`, `contents`
+   * and `label` the GATE FACT *is* the time, so {@link stepCompletedAt} reads it
+   * off the gate input rather than trusting two callers to pass the same instant
+   * twice. A caller that supplied one here would be silently ignored, which is
+   * the point — there is nothing to disagree about.
+   */
+  evidenceAt?: Readonly<Record<string, string | null | undefined>>;
 }
 
 /** Per-step completion gates. Every declared capture step has exactly one. */
@@ -261,6 +298,12 @@ export function deriveCaptureStepFlags(
         return { key: step.key, done: requiredItemAspectsShot(input) };
       case 'serial':
         return { key: step.key, done: base.serial };
+      case 'label':
+        // Reading a label leaves no evidence behind, so the acknowledgement is
+        // the only fact there is — the same shape as `contents`. It is not a
+        // hand-tick of the deleted-checklist kind: that let an operator claim
+        // EVIDENCE the carton itself could answer for.
+        return { key: step.key, done: !!input.labelPreviewedAt };
     }
   });
 }
@@ -324,6 +367,33 @@ interface ProcedureStepRow {
   position: number;
   /** Photo stage this step is evidenced by, when it is a photo step. */
   stage?: 'arrival_package' | 'unbox_carton' | 'unbox_item';
+  /**
+   * The instant this step's gate closed — a raw server instant, `null` unless
+   * the step is `done`. Display layers format it; this module never does.
+   */
+  at: string | null;
+}
+
+/**
+ * The instant a step's gate closed, before the done check.
+ *
+ * The three acknowledgement steps resolve off the gate input itself, because
+ * there the fact that closes the gate *is* an instant — reading it here is what
+ * makes "the time and the state agree" structural rather than a caller's
+ * promise. Every other step's evidence is a photo, a serial or an audit row,
+ * none of which this pure module can see, so those come from the caller.
+ */
+function stepCompletedAt(key: string, input: DeriveCaptureStepStatesInput): string | null {
+  switch (key) {
+    case 'condition':
+      return input.conditionGradedAt;
+    case 'contents':
+      return input.contentsConfirmedAt;
+    case 'label':
+      return input.labelPreviewedAt;
+    default:
+      return input.evidenceAt?.[key] ?? null;
+  }
 }
 
 /**
@@ -336,16 +406,29 @@ interface ProcedureStepRow {
  * needed two extra rules (an "ungated steps only join the ledger once the
  * pointer passes them" carve-out, and a position field divorced from the render
  * index) purely to undo its own reordering. A checklist needs neither.
+ *
+ * ## `at` rides ONLY on a done step, and that rule lives here alone
+ *
+ * A step can legitimately hold partial evidence and still be pending — one
+ * required item aspect out of two, say — and printing that evidence's timestamp
+ * beside a pending row reads as a completion. Both readers (the bench deck and
+ * the receipt) get the answer from this one line, so neither can decide it
+ * differently: that is the same reason the STATE is derived here rather than
+ * twice.
  */
 export function deriveProcedureSteps(
   input: DeriveCaptureStepStatesInput,
 ): ReadonlyArray<ProcedureStepRow> {
   const states = deriveCaptureStepStates(input);
-  return captureStepVocabulary(input.vocabulary).map((step, index) => ({
-    key: step.key,
-    label: step.label,
-    state: states[step.key] ?? 'pending',
-    position: index + 1,
-    stage: step.stage,
-  }));
+  return captureStepVocabulary(input.vocabulary).map((step, index) => {
+    const state = states[step.key] ?? 'pending';
+    return {
+      key: step.key,
+      label: step.label,
+      state,
+      position: index + 1,
+      stage: step.stage,
+      at: state === 'done' ? stepCompletedAt(step.key, input) : null,
+    };
+  });
 }

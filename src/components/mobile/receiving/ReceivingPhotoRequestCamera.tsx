@@ -3,8 +3,10 @@
 import { useCallback, useRef } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAblyChannel } from '@/hooks/useAblyChannel';
+import { useAblyClient } from '@/contexts/AblyContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { safeChannelName, getStaffStationBridgeChannelName } from '@/lib/realtime/channels';
+import { publishDeviceAck } from '@/lib/realtime/device-handshake';
 import {
   mobileCaptureHrefForRequest,
   normalizeReceivingPhotoRequest,
@@ -32,6 +34,7 @@ export function ReceivingPhotoRequestCamera() {
   const router = useRouter();
   const pathname = usePathname();
   const { user } = useAuth();
+  const { getClient } = useAblyClient();
   const orgId = user?.organizationId;
   const staffId = user?.staffId ?? 0;
   const stationBridgeChannel = safeChannelName(() => getStaffStationBridgeChannelName(orgId!, staffId));
@@ -51,6 +54,23 @@ export function ReceivingPhotoRequestCamera() {
       const request = normalizeReceivingPhotoRequest(msg?.data);
       if (!request) return;
 
+      // ACK as soon as the request PARSES — before every early return below.
+      // The desk is asking "did a phone hear me", not "did it navigate": a phone
+      // that is already on a capture surface (and so deliberately does not route)
+      // is still present and reachable, and reporting it unreachable would send
+      // the operator chasing a phone that is sitting there working.
+      if (request.requestId && stationBridgeChannel) {
+        void getClient()
+          .then((client) =>
+            publishDeviceAck(
+              client?.channels.get(stationBridgeChannel),
+              request.requestId,
+              'receiving_photo',
+            ),
+          )
+          .catch(() => {});
+      }
+
       if (request.requestId && lastRequestRef.current === request.requestId) return;
       lastRequestRef.current = request.requestId;
 
@@ -64,7 +84,7 @@ export function ReceivingPhotoRequestCamera() {
       // echo back to the desktop.
       router.push(mobileCaptureHrefForRequest(request));
     },
-    [router],
+    [router, getClient, stationBridgeChannel],
   );
 
   useAblyChannel(

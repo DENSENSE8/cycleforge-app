@@ -3,8 +3,10 @@
 import { useCallback, useRef } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAblyChannel } from '@/hooks/useAblyChannel';
+import { useAblyClient } from '@/contexts/AblyContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { safeChannelName, getPackerBridgeChannelName } from '@/lib/realtime/channels';
+import { publishDeviceAck } from '@/lib/realtime/device-handshake';
 
 interface PackerScanReadyPayload {
   type?: string;
@@ -34,6 +36,7 @@ export function PackerScanReadyCamera() {
   const router = useRouter();
   const pathname = usePathname();
   const { user } = useAuth();
+  const { getClient } = useAblyClient();
   const orgId = user?.organizationId;
   const staffId = user?.staffId ?? 0;
   const channel = safeChannelName(() => getPackerBridgeChannelName(orgId!, staffId));
@@ -48,6 +51,19 @@ export function PackerScanReadyCamera() {
       if (!data) return;
       const packerLogId = Number(data.packerLogId);
       if (!Number.isFinite(packerLogId) || packerLogId <= 0) return;
+
+      // ACK before the dedupe / already-capturing early returns below: the desk
+      // asks whether a phone HEARD it, and a phone that is already shooting is
+      // reachable. Only the manual re-send carries a `requestId`; the automatic
+      // server-published `scan_ready` has none and needs no ack (nothing is
+      // waiting on it).
+      if (data.requestId && channel) {
+        void getClient()
+          .then((client) =>
+            publishDeviceAck(client?.channels.get(channel), data.requestId, 'pack_scan'),
+          )
+          .catch(() => {});
+      }
 
       const key = data.requestId
         ? `req:${data.requestId}`
@@ -68,7 +84,7 @@ export function PackerScanReadyCamera() {
       const suffix = qs.toString();
       router.push(`/m/p/${packerLogId}/photos${suffix ? `?${suffix}` : ''}`);
     },
-    [router],
+    [router, getClient, channel],
   );
 
   useAblyChannel(channel, 'scan_ready', handleReady, !!channel && staffId > 0);

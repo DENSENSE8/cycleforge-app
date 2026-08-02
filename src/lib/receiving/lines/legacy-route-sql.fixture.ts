@@ -16,6 +16,14 @@
  * receiving_unbox ru / receiving_line_testing rlt / receiving_line_zoho rz,
  * and the dead `view=recent` + no-view ?week_start/?week_end arms are gone.
  * The parity guard is unchanged and still byte-exact.
+ *
+ * EDITED 2026-08-02 for a deliberate behavior change in build-sql.ts, per the
+ * contract above: `COALESCE(rt.pairing_state, 'UNFOUND') AS pairing_state` →
+ * `rt.pairing_state` at both call sites. The default invented an UNFOUND on
+ * every carton with no receiving_triage row (751 of 2790 on dogfood), so an
+ * un-triaged box reported a PO search that had failed. Rationale and the
+ * consumer audit live in build-sql.ts's header; this file carries the same two
+ * lines so the parity guard remains byte-exact.
  */
 /* eslint-disable */
 import {
@@ -92,6 +100,7 @@ export function legacyBuildLineByIdSql(id: number, orgId: string) {
                 rlt.condition_graded_at::text                         AS condition_graded_at,
                 ru.contents_confirmed_at::text                         AS contents_confirmed_at,
                 rlt.label_printed_at                         AS label_printed_at,
+                rlt.label_previewed_at::text                       AS label_previewed_at,
                 COALESCE(rlt.serial_absent, false)           AS serial_absent,
                 rlt.serial_absent_reason                     AS serial_absent_reason,
                 COALESCE(rlt.serial_projection, '[]'::jsonb)   AS serials,
@@ -124,7 +133,7 @@ export function legacyBuildLineByIdSql(id: number, orgId: string) {
                   ELSE loc.name
                 END AS staging_location_label,
                 rt.priority_lane,
-                COALESCE(rt.pairing_state, 'UNFOUND') AS pairing_state,
+                rt.pairing_state,
                 r.zoho_purchaseorder_number  AS receiving_zoho_purchaseorder_number,
                 r.support_notes              AS receiving_support_notes,
                 r.zoho_notes                 AS receiving_zoho_notes,
@@ -257,6 +266,7 @@ export function legacyBuildLinesByReceivingIdSql(receivingId: number, orgId: str
                 rlt.condition_graded_at::text                         AS condition_graded_at,
                 ru.contents_confirmed_at::text                         AS contents_confirmed_at,
                 rlt.label_printed_at                         AS label_printed_at,
+                rlt.label_previewed_at::text                       AS label_previewed_at,
                 COALESCE(rlt.serial_absent, false)           AS serial_absent,
                 rlt.serial_absent_reason                     AS serial_absent_reason,
                 COALESCE(rlt.serial_projection, '[]'::jsonb)   AS serials,
@@ -1136,6 +1146,7 @@ export function legacyBuildListSql(searchParams: URLSearchParams, opts: LegacySq
                 rlt.condition_graded_at::text                         AS condition_graded_at,
                 ru.contents_confirmed_at::text                         AS contents_confirmed_at,
                 rlt.label_printed_at                         AS label_printed_at,
+                rlt.label_previewed_at::text                       AS label_previewed_at,
                 COALESCE(rlt.serial_absent, false)           AS serial_absent,
                 rlt.serial_absent_reason                     AS serial_absent_reason,
                 COALESCE(rlt.serial_projection, '[]'::jsonb)   AS serials,
@@ -1182,7 +1193,7 @@ export function legacyBuildListSql(searchParams: URLSearchParams, opts: LegacySq
                   ELSE loc.name
                 END AS staging_location_label,
                 rt.priority_lane,
-                COALESCE(rt.pairing_state, 'UNFOUND') AS pairing_state,
+                rt.pairing_state,
                 r.zoho_purchaseorder_number  AS receiving_zoho_purchaseorder_number,
                 r.support_notes              AS receiving_support_notes,
                 r.zoho_notes                 AS receiving_zoho_notes,

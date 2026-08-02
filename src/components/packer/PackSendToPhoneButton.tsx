@@ -16,15 +16,16 @@
  * Unbox read identically in the identity row.
  */
 
-import { useCallback, useState } from 'react';
+import { useCallback } from 'react';
 import { Camera, Plus } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { STATION_CONTEXT_PHOTO_PILL_CLASS } from '@/components/station/entity-context/station-context-action-pill';
+import { useSendToDevice } from '@/components/station/send-to-device/useSendToDevice';
+import { SendToDeviceStatus } from '@/components/station/send-to-device/SendToDeviceStatus';
 import { useAblyClient } from '@/contexts/AblyContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { safeChannelName, getPackerBridgeChannelName } from '@/lib/realtime/channels';
-import { safeRandomUUID } from '@/lib/safe-uuid';
 import { useScopedPackerPhotos } from '@/hooks/useScopedPackerPhotos';
 import { usePackerPhotosRealtimeRefresh } from '@/hooks/usePackerPhotosRealtimeRefresh';
 import { toast } from '@/lib/toast';
@@ -49,41 +50,41 @@ export function PackSendToPhoneButton({
   usePackerPhotosRealtimeRefresh(packerLogId, () => void query.refetch());
   const count = query.data?.photos?.length ?? 0;
 
-  const [sending, setSending] = useState(false);
+  // Same handshake and same status card as the Unbox carton pill (P1 · D2):
+  // `scan_ready` used to publish blind, so a locked phone was indistinguishable
+  // from a delivered request.
+  const phone = useSendToDevice('pack_scan');
 
   const handleSend = useCallback(async () => {
     if (!channelName || staffId <= 0) {
       toast.error('Sign in on your phone to take photos');
       return;
     }
-    setSending(true);
-    try {
-      const client = await getClient();
-      if (!client) throw new Error('No realtime client');
-      await client.channels.get(channelName).publish('scan_ready', {
-        type: 'packer.scan_ready',
-        staffId,
-        packerLogId,
-        variant: 'order',
-        scannedValue: String(tracking || orderId || ''),
-        trackingType: 'ORDERS',
-        order: orderId ? { orderId } : null,
-        // Fresh per click — the phone keys its dedupe on this when present.
-        requestId: safeRandomUUID(),
-        source: 'pack-identity-bar',
-      });
-      toast.success('Sent to phone');
-    } catch (err) {
-      console.warn('pack-send-to-phone: publish failed', err);
-      toast.error('Could not send to phone');
-    } finally {
-      setSending(false);
-    }
-  }, [channelName, getClient, orderId, packerLogId, staffId, tracking]);
+    await phone.send({
+      channelName,
+      publish: async (requestId) => {
+        const client = await getClient();
+        if (!client) throw new Error('No realtime client');
+        await client.channels.get(channelName).publish('scan_ready', {
+          type: 'packer.scan_ready',
+          staffId,
+          packerLogId,
+          variant: 'order',
+          scannedValue: String(tracking || orderId || ''),
+          trackingType: 'ORDERS',
+          order: orderId ? { orderId } : null,
+          // Fresh per send — the phone keys its dedupe on this, AND echoes it
+          // back as the ack correlation id.
+          requestId,
+          source: 'pack-identity-bar',
+        });
+      },
+    });
+  }, [channelName, getClient, orderId, packerLogId, phone, staffId, tracking]);
 
   const hasPhotos = count > 0;
 
-  return (
+  const pill = (
     <HoverTooltip
       label={hasPhotos ? `${count} pack photo${count === 1 ? '' : 's'} · send to phone` : 'Send to phone'}
       asChild
@@ -93,7 +94,7 @@ export function PackSendToPhoneButton({
         variant="ghost"
         size="sm"
         onClick={() => void handleSend()}
-        disabled={sending}
+        disabled={phone.pending}
         ariaLabel={
           hasPhotos
             ? `${count} pack photo${count === 1 ? '' : 's'}; send capture request to phone`
@@ -106,5 +107,20 @@ export function PackSendToPhoneButton({
         {hasPhotos ? count : null}
       </Button>
     </HoverTooltip>
+  );
+
+  // No pairing state → render the bare pill, so the identity row keeps the exact
+  // geometry it had before this wrapper existed.
+  if (phone.state === 'idle') return pill;
+
+  return (
+    <div className="relative shrink-0">
+      {pill}
+      {/* Anchored under the pill — absolute, so an "unreachable" row cannot
+          grow the pack identity row mid-scan (mirrors the Unbox carton pill). */}
+      <div className="absolute right-0 top-full z-30 w-max max-w-[18rem] pt-1.5">
+        <SendToDeviceStatus state={phone.state} onRetry={phone.retry} />
+      </div>
+    </div>
   );
 }

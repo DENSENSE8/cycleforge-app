@@ -262,6 +262,48 @@ export const OrgSettingsSchema = z.object({
       cbvUriForm: z.enum(['urn', 'webUri']).default('urn'),
     })
     .default({ companyPrefix: '', gln: '', cbvUriForm: 'urn' }),
+  // What the tenant told us about their inventory and channels — the two facts
+  // that decide whether they need a licensed GS1 key at all.
+  //
+  // These are about PRODUCT identity (GTIN), not location identity (GLN).
+  // Amazon's strictness is a GTIN rule and only bites when you create a listing
+  // for a BRAND-NEW item; selling refurb against an existing ASIN needs no key
+  // of your own, and eBay accepts "does not apply" for used goods outright. So
+  // the honest default for a refurb reseller — the dogfood case — is "no" to
+  // both, and they never see a key prompt. `gs1.gln` is NOT gated on these:
+  // a GLN answers to an EDI / EPCIS partner, not to a marketplace.
+  //
+  // EVERY field is nullable and defaults to null, deliberately. "Has not
+  // answered" and "answered no" are different states: the first should prompt,
+  // the second must never prompt again. A `false` default collapses them and
+  // silently completes the onboarding step for a tenant who never saw it.
+  compliance: z
+    .object({
+      /** Stocks brand-new / industry-standard-new product, not only used/refurb. */
+      hasNewInventory: z.boolean().nullable().default(null),
+      /** Sells on Amazon, which enforces GTIN on new listings. */
+      sellsOnAmazon: z.boolean().nullable().default(null),
+      /**
+       * How the tenant gets GTINs, when they need them at all. A Company Prefix
+       * is not the only legal answer — GS1 sells individual GTINs, and a brand
+       * owner may be exempt. Both of those store nothing org-level (the values
+       * land per-SKU in `sku_catalog.gtin`), so a flow that only accepted a
+       * prefix would nag them forever. `'none'` is the only nag state.
+       */
+      gs1Status: z.enum(['prefix', 'per-item', 'exempt', 'none']).nullable().default(null),
+      /**
+       * ISO instant the questions were answered. Stamped SERVER-side only — a
+       * client-supplied value here is an onboarding-completion claim the client
+       * does not get to make. This is what the onboarding step derives off.
+       */
+      answeredAt: z.string().nullable().default(null),
+    })
+    .default({
+      hasNewInventory: null,
+      sellsOnAmazon: null,
+      gs1Status: null,
+      answeredAt: null,
+    }),
 }).passthrough();
 
 export type OrgSettings = z.infer<typeof OrgSettingsSchema>;
@@ -402,6 +444,34 @@ export function getGs1SettingsRaw(settings: OrgSettings): {
     companyPrefix: (gs1.companyPrefix || '').trim(),
     gln: (gs1.gln || '').trim(),
     cbvUriForm: gs1.cbvUriForm ?? 'urn',
+  };
+}
+
+type ComplianceAnswers = OrgSettings['compliance'];
+
+const UNANSWERED_COMPLIANCE: ComplianceAnswers = {
+  hasNewInventory: null,
+  sellsOnAmazon: null,
+  gs1Status: null,
+  answeredAt: null,
+};
+
+/**
+ * The tenant's persisted compliance answers, defaulted to "not asked yet".
+ *
+ * Every absent field reads `null`, never `false` — the whole point of the block
+ * is that "has not answered" is distinguishable from "answered no". The policy
+ * verdict lives in `resolveGs1Requirement` (`@/lib/interop/gs1-keys`), which is
+ * pure and client-safe; this accessor only reads the bag.
+ */
+export function getComplianceAnswers(settings: OrgSettings): ComplianceAnswers {
+  const c = settings.compliance;
+  if (!c) return UNANSWERED_COMPLIANCE;
+  return {
+    hasNewInventory: c.hasNewInventory ?? null,
+    sellsOnAmazon: c.sellsOnAmazon ?? null,
+    gs1Status: c.gs1Status ?? null,
+    answeredAt: (c.answeredAt || '').trim() || null,
   };
 }
 

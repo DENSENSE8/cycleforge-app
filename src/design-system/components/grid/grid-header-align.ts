@@ -57,6 +57,15 @@ export type GridColumnAlign = 'start' | 'end';
  * A column whose *type* is numeric-looking but whose *content* is prose (e.g.
  * receiving `stage`, typed `date` only for the clock glyph) sets
  * `align: 'start'` on the model — once, where the column is declared.
+ *
+ * **The one ROLE-based exception (ruled + shipped 2026-08-02):** an identifier
+ * that is the row's own **transaction identity** — a PO number, a sales-order
+ * number, `order` — aligns **start**. It is a name you read, and on an
+ * order-anchored surface it is the first thing scanned; a catalog SKU / serial /
+ * ticket is the opposite, an attribute *of* a row whose identity is its title,
+ * so it stays `end`. Same `type: 'id'`, different role — which is exactly why
+ * this is an `align` override on those two column models and **never** a change
+ * to `ALIGN_BY_TYPE.id`, which would drag SKU and serial left with it.
  */
 const ALIGN_BY_TYPE: Record<ColumnType, GridColumnAlign> = {
   number: 'end',

@@ -1,18 +1,35 @@
 'use client';
 
 /**
- * Slide-in flyout for a single bin. Lighter than full /bin/[barcode] —
- * preserves the user's filter state in the table behind it.
+ * Bin record inspector. Lighter than the full `/bin/[barcode]` page — it
+ * preserves the user's filter state in the table (or the floor plan) behind it.
+ *
+ * **It was a private `fixed inset-y-0 right-0` aside with its own
+ * `fixed inset-0 z-40` scrim until 2026-08-01** — a second owner of the right
+ * edge (`lib/right-rail/store.ts` exists to prevent exactly that) and a raw
+ * `z-40` outside the z-index scale.
+ *
+ * It is now a **non-modal** `RightRailHost` occupant: this is a pick-a-row-and-
+ * read-it surface, and the scrim was hiding the very floor plan / bin table the
+ * operator is comparing against. Modal is reserved for blocking wizards and
+ * destructive confirms — the delete here is already a two-step arm-then-confirm
+ * inside the panel, not a blocking dialog.
  */
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import type { BinsOverviewRow } from '@/hooks/useBinsOverview';
 import { AuditTimeline } from '@/components/audit/AuditTimeline';
+import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
+import {
+  PaneHeader,
+  PaneHeaderCloseButton,
+  PaneHeaderLabel,
+} from '@/components/ui/pane-header';
+import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { FillBar } from './FillBar';
 import { StatusChips } from './StatusChip';
-import { X, ExternalLink } from '@/components/Icons';
-import { IconButton } from '@/design-system/primitives';
+import { ExternalLink } from '@/components/Icons';
 import DeleteButton from '@/components/ui/DeleteButton';
 
 interface BinContentRow {
@@ -79,53 +96,58 @@ export function BinDetailFlyout({ row, onClose, onDeleted }: Props) {
 
   if (!row) return null;
 
+  const identity = row.barcode ?? row.name;
+
   return (
-    <>
-      {/* Backdrop */}
-      <div
-        className="fixed inset-0 z-40 bg-scrim/30 backdrop-blur-[1px]"
-        onClick={onClose}
-        aria-hidden
-      />
+    <DetailStackRailRegistrar
+      id={`detail:bin:${identity}`}
+      onClose={onClose}
+      modal={false}
+      ariaLabel={`Bin ${identity}`}
+    >
+      <div className="flex h-full min-h-0 flex-col overflow-hidden">
+        <PaneHeader
+          leftSlot={
+            <PaneHeaderLabel
+              eyebrow="Bin"
+              // Identifier → the mono cut, per the typeface SoT. It was
+              // `text-lg font-semibold` before, which is hero density on a rail.
+              valueClassName="truncate font-mono text-role-caption font-semibold text-text-default"
+              value={identity}
+              valueTitle={identity ?? undefined}
+            />
+          }
+          rightSlot={
+            <>
+              {row.barcode ? (
+                <HoverTooltip label="Open full bin page">
+                  <Link
+                    href={`/bin/${encodeURIComponent(row.barcode)}`}
+                    className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-text-soft hover:bg-surface-sunken"
+                    aria-label="Open full bin page"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                  </Link>
+                </HoverTooltip>
+              ) : null}
+              {/* Mandatory: non-modal, so there is no scrim to click off. */}
+              <PaneHeaderCloseButton
+                onClick={onClose}
+                ariaLabel="Close bin detail"
+                title="Close bin detail"
+              />
+            </>
+          }
+          belowSlot={
+            <p className="truncate border-b border-border-hairline px-3 pb-1.5 text-role-caption text-text-soft">
+              {row.room ?? '—'}
+              {row.zone_letter ? ` [${row.zone_letter}]` : ''} · Row {row.row_label ?? '—'} · Col{' '}
+              {row.col_label ?? '—'}
+            </p>
+          }
+        />
 
-      {/* Panel */}
-      <aside
-        role="dialog"
-        aria-label={`Bin ${row.barcode ?? row.name}`}
-        className="fixed inset-y-0 right-0 z-panel flex w-full max-w-md flex-col overflow-hidden bg-surface-card shadow-2xl"
-      >
-        <header className="flex items-start gap-3 border-b border-border-soft px-4 py-3">
-          <div className="min-w-0 flex-1">
-            <div className="text-role-micro uppercase tracking-wider text-text-soft">
-              Bin
-            </div>
-            <div className="truncate font-mono text-lg font-semibold text-text-default">
-              {row.barcode ?? row.name}
-            </div>
-            <div className="mt-0.5 text-role-caption text-text-soft">
-              {row.room ?? '—'}{row.zone_letter ? ` [${row.zone_letter}]` : ''} · Row {row.row_label ?? '—'} · Col {row.col_label ?? '—'}
-            </div>
-          </div>
-          {row.barcode && (
-            <Link
-              href={`/bin/${encodeURIComponent(row.barcode)}`}
-              className="flex h-9 w-9 items-center justify-center rounded-full text-text-soft hover:bg-surface-sunken"
-              aria-label="Open full bin page"
-              title="Open full bin page"
-            >
-              <ExternalLink className="h-4 w-4" />
-            </Link>
-          )}
-          <IconButton
-            type="button"
-            onClick={onClose}
-            ariaLabel="Close bin detail"
-            icon={<X className="h-4 w-4" />}
-            className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-surface-sunken"
-          />
-        </header>
-
-        <div className="flex-1 overflow-y-auto">
+        <div className="min-h-0 flex-1 overflow-y-auto">
           <div className="space-y-4 p-4">
             {/* Summary */}
             <section className="rounded-2xl border border-border-soft bg-surface-card p-3">
@@ -221,8 +243,8 @@ export function BinDetailFlyout({ row, onClose, onDeleted }: Props) {
             />
           </div>
         ) : null}
-      </aside>
-    </>
+      </div>
+    </DetailStackRailRegistrar>
   );
 }
 

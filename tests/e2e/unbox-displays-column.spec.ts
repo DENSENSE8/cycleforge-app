@@ -91,15 +91,14 @@ async function dockLabel(page: Page): Promise<string> {
 }
 
 /**
- * Switch display the way an operator does, from the strip OR the ⋯ menu.
- *
- * Which side of that split a display sits on is authored per carton lane
- * (`classifyOnStrip`) and gets re-tuned as displays earn or lose primacy —
- * Checklist moved strip-ward the moment it started deriving step states. Pinning
- * the placement here would make this spec fail on someone else's taste call,
- * when what it actually asserts is that the DOCK does not move.
+ * Switch display the way an operator does — from the strip, the ⋮ menu, or the
+ * scan-progress ring (Checklist is ring-only).
  */
 async function selectDisplay(page: Page, label: string) {
+  if (/^checklist$/i.test(label)) {
+    await page.getByTestId('unbox-displays-expand-button').click();
+    return;
+  }
   const displays = page.getByTestId('receiving-displays-push');
   const onStrip = displays.getByRole('button', { name: new RegExp(`^${label}\\b`, 'i') });
   if ((await onStrip.count()) > 0) {
@@ -130,6 +129,14 @@ test.describe('Unbox Displays column', () => {
     await expect(displays).toBeVisible({ timeout: 15_000 });
     await expect(displays).toHaveAttribute('role', 'region');
     await expect(displays.getByRole('group', { name: 'Unbox displays' })).toBeVisible();
+    // Checklist is ring-only — no strip cell for it.
+    await expect(
+      displays.getByRole('button', { name: /^checklist\b/i }),
+    ).toHaveCount(0);
+    await expect(page.getByTestId('unbox-displays-expand-button')).toHaveAttribute(
+      'data-selected',
+      'true',
+    );
     // The strip yields the edge while a column owns it.
     await expect(strip).toHaveCount(0);
   });

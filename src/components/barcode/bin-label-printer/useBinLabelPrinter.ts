@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from '@/lib/toast';
 import { useLocations } from '@/hooks/useLocations';
+import { useOrgGs1 } from '@/hooks/useOrgGs1';
 import {
   useLabelPrinterStore,
   patchLabelPrinterState,
@@ -27,6 +28,11 @@ export function useBinLabelPrinter() {
 
   const [config, setConfig] = useState<PrinterConfig>(DEFAULT_CONFIG);
   const [configOpen, setConfigOpen] = useState(false);
+
+  // The GLN is org-level, not part of `config` — see types.ts. Resolved, so a
+  // placeholder or malformed value on file arrives here as '' and the label
+  // falls back to the bare location code.
+  const { identity: orgGs1 } = useOrgGs1();
 
   const stored = useLabelPrinterStore();
   const selectedRoom = stored.room;
@@ -218,6 +224,8 @@ export function useBinLabelPrinter() {
     allRoomNames,
     zoneMap,
     config,
+    /** Workspace GLN for the printed matrix. '' = none on file. */
+    gln: orgGs1.gln,
     selectedRoom,
     aisle,
     bay,

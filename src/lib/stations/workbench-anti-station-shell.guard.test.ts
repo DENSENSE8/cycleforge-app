@@ -24,12 +24,18 @@ const SUPPORT_ROOT = join(ROOT, 'src/components/support');
  * Known debt — Station column shell still reachable from Support. Shrink only.
  *
  * **Two different kinds of debt live here, and they are not equally bad.**
- * `SupportOrdersWorkspace` genuinely mounts the column shell. The three
- * `service-workspace` / chat entries no longer do — as of 2026-08-01 they only
- * pull *shared utilities and types* out of that barrel (`buildSectionTabs`,
- * `WorkspaceTimelineTab`, `WorkspaceTimelineAnchor`, `STATION_WORKBENCH_COLUMN`),
- * which the `from '@/components/station/workbench'` pattern cannot distinguish
- * from a mount.
+ * `SupportOrdersWorkspace` genuinely mounts the column shell. The two remaining
+ * `service-workspace` / chat entries do not — they only pull *shared utilities
+ * and types* out of that barrel (`WorkspaceTimelineTab`,
+ * `WorkspaceTimelineAnchor`, `STATION_WORKBENCH_COLUMN`), which the
+ * `from '@/components/station/workbench'` pattern cannot distinguish from a
+ * mount.
+ *
+ * `SupportTicketFocus.tsx` left the list on 2026-08-02: the thread stopped
+ * building section tabs when the displays moved to the right rail, and with them
+ * went its last import of that barrel. `support-ticket-tabs.tsx` was deleted in
+ * the same change and its entry became `support-ticket-displays.tsx`, which
+ * still reaches for `WorkspaceTimelineTab`.
  *
  * The real fix is to move those four out of the Station barrel — section tabs
  * and a timeline tab are not Station anatomy, they are DS components that Unbox
@@ -37,9 +43,8 @@ const SUPPORT_ROOT = join(ROOT, 'src/components/support');
  * genuine mount back in, which is the wrong trade for a guard.
  */
 const STATION_SHELL_ALLOWLIST = new Set([
-  'src/components/support/service-workspace/SupportTicketFocus.tsx',
   'src/components/support/orders/SupportOrdersWorkspace.tsx',
-  'src/components/support/service-workspace/support-ticket-tabs.tsx',
+  'src/components/support/service-workspace/support-ticket-displays.tsx',
   'src/components/support/zendesk/chat/SupportTicketComposerDock.tsx',
 ]);
 
@@ -101,6 +106,6 @@ describe('Workbench anti–Station-column-shell (Support)', () => {
   it('ALLOWLIST is shrink-only pinned (count must not grow silently)', () => {
     // Pin cardinality so a drive-by add fails review. Update this number only
     // when shrinking after a migration — never when adding debt.
-    assert.equal(STATION_SHELL_ALLOWLIST.size, 4);
+    assert.equal(STATION_SHELL_ALLOWLIST.size, 3);
   });
 });

@@ -53,6 +53,17 @@ export interface CartonTriagePatch {
   stagingLocationId?: number | null;
   priorityLane?: string | null;
   pairingState?: string | null;
+  /**
+   * Never downgrade a real PO match.
+   *
+   * `pairingState` normally OVERWRITES (the pairing hub can change or clear an
+   * operator's answer). A background writer that only knows "this scan found
+   * nothing to pair to" must not use that door: on a carton already `MATCHED`
+   * to a PO, an unmatched *return* serial logged onto one of its lines would
+   * silently un-match the whole carton. With this flag the SET keeps `MATCHED`
+   * and applies the new value to every other state.
+   */
+  preserveMatchedPairing?: boolean;
   triageComplete?: boolean;
   triageCompletedAt?: string | Date | 'now' | null;
   triageCompletedBy?: number | null;
@@ -128,7 +139,14 @@ export async function upsertReceivingTriage(
     specs.push({ col: 'priority_lane', insertExpr: push(patch.priorityLane), updateExpr: 'EXCLUDED.priority_lane' });
   }
   if (patch.pairingState !== undefined) {
-    specs.push({ col: 'pairing_state', insertExpr: push(patch.pairingState), updateExpr: 'EXCLUDED.pairing_state' });
+    specs.push({
+      col: 'pairing_state',
+      insertExpr: push(patch.pairingState),
+      updateExpr: patch.preserveMatchedPairing
+        ? "CASE WHEN receiving_triage.pairing_state = 'MATCHED'" +
+          ' THEN receiving_triage.pairing_state ELSE EXCLUDED.pairing_state END'
+        : 'EXCLUDED.pairing_state',
+    });
   }
   if (patch.triageComplete !== undefined) {
     specs.push({ col: 'triage_complete', insertExpr: push(patch.triageComplete), updateExpr: 'EXCLUDED.triage_complete' });

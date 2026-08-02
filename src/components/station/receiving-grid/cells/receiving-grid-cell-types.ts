@@ -41,6 +41,8 @@ export type ReceivingGridCellCtx = {
   conditionLabel: string;
   condGrade: string;
   stageDisplay: string | null;
+  /** Human stage name from the workflow-stage registry — never a local map. */
+  stageLabel: string;
   stageTip: string;
   dateCell: ReceivingActivityDateCell;
   platformMeta: SourcePlatformMeta;

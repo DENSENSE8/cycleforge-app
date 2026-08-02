@@ -8,8 +8,10 @@ import {
 } from '@/components/layout/header-shell';
 import {
   SIDEBAR_SPINE_MENU_ACTION_CLASS,
+  SIDEBAR_SPINE_MENU_ACTION_LABEL_CLASS,
   SIDEBAR_SPINE_MENU_HEADER_CLASS,
   SIDEBAR_SPINE_MENU_PANEL_CLASS,
+  SIDEBAR_SPINE_MENU_TITLE_CLASS,
 } from '@/components/sidebar/sidebar-spine';
 import { ChevronDown, Settings } from '@/components/Icons';
 import { IdentityMark } from '@/components/identity';
@@ -34,7 +36,8 @@ import { cn } from '@/utils/_cn';
  * identity family, which is exactly what a hand-typed `rounded-md` here lost.
  *
  * Menu is a **child of the trigger**: `bottom-stretch` on the button (not the
- * full column), dense chrome + caption type — never a wider/chunkier twin.
+ * full column), dense chrome + caption type. No “Current” label — the open
+ * chevron is enough.
  */
 export function OrgWorkspaceControl({ className }: { className?: string }) {
   const { user, has } = useAuth();
@@ -106,13 +109,8 @@ export function OrgWorkspaceControl({ className }: { className?: string }) {
         >
           <div className={SIDEBAR_SPINE_MENU_HEADER_CLASS}>
             <IdentityMark initials={orgInitials(user.organizationName)} size="xs" />
-            <div className="min-w-0">
-              <div className="truncate text-role-eyebrow uppercase tracking-[0.14em] text-text-faint">
-                Current
-              </div>
-              <div className="truncate text-role-caption font-semibold leading-tight text-text-default">
-                {user.organizationName}
-              </div>
+            <div className={cn('min-w-0', SIDEBAR_SPINE_MENU_TITLE_CLASS)}>
+              {user.organizationName}
             </div>
           </div>
           {switchErr ? (
@@ -143,7 +141,7 @@ export function OrgWorkspaceControl({ className }: { className?: string }) {
                     className="bg-surface-strong text-text-muted"
                   />
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-role-caption font-semibold leading-tight text-text-default">
+                    <span className={cn('block', SIDEBAR_SPINE_MENU_TITLE_CLASS)}>
                       {m.organizationName}
                     </span>
                     <span className="block truncate text-role-micro text-text-soft">
@@ -168,7 +166,7 @@ export function OrgWorkspaceControl({ className }: { className?: string }) {
                 className={SIDEBAR_SPINE_MENU_ACTION_CLASS}
               >
                 <Settings className="h-3 w-3 shrink-0 text-text-muted" />
-                <span className="text-role-caption font-medium text-text-default">
+                <span className={SIDEBAR_SPINE_MENU_ACTION_LABEL_CLASS}>
                   Workspace settings
                 </span>
               </Link>

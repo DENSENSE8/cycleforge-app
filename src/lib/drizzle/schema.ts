@@ -1569,6 +1569,20 @@ export const receivingLineTesting = pgTable('receiving_line_testing', {
   conditionGradedAt: timestamp('condition_graded_at', { withTimezone: true }),
   conditionGradedBy: integer('condition_graded_by').references(() => staff.id, { onDelete: 'set null' }),
   /**
+   * The operator confirmed they read this line's printed label face — the gate
+   * for the Label procedure step (2026-08-02). Same shape and justification as
+   * `receiving_unbox.contents_confirmed_at`: reading a label leaves no evidence
+   * behind, so the acknowledgement is the only fact there is.
+   *
+   * Distinct from `labelPrintedAt`, which is the COMMIT act the terminal dock
+   * owns; gating a capture step on it would invert the phase order. Distinct
+   * from `receiving_line.label_note`, which answers "was the face customised"
+   * and is null on every carton whose default face was already right. A reopen
+   * sets this back to NULL. Never backfilled.
+   */
+  labelPreviewedAt: timestamp('label_previewed_at', { withTimezone: true }),
+  labelPreviewedBy: integer('label_previewed_by').references(() => staff.id, { onDelete: 'set null' }),
+  /**
    * Denormalized serial projection — a jsonb array of
    * `{ id, serial_number, condition_grade }` for the serials whose CURRENT
    * receiving line is this line. Fast-default for first-frame serial display;

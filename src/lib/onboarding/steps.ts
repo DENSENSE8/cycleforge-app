@@ -32,6 +32,17 @@ export interface OnboardingStats {
   firstScanDone: boolean;
   /** True once the org has an active workflow_definitions row (its ops SOP is chosen). */
   hasActiveWorkflow: boolean;
+  /**
+   * ISO instant the org answered the two GS1 compliance questions, or null.
+   *
+   * The one step whose completion is a persisted ANSWER rather than derived
+   * activity data — deliberately, because "we stock no new inventory and do not
+   * sell on Amazon" is a fact no row in this database can prove. It is still
+   * read-time derived like every sibling: the value lives in
+   * `organizations.settings.compliance.answeredAt`, stamped server-side by
+   * PATCH /api/admin/organization/settings, and this step only reads it.
+   */
+  complianceAnsweredAt: string | null;
 }
 
 /** All-zero stats — the degrade-not-fail fallback and the brand-new-org shape. */
@@ -42,9 +53,17 @@ export const EMPTY_ONBOARDING_STATS: OnboardingStats = {
   integrationsConnected: 0,
   firstScanDone: false,
   hasActiveWorkflow: false,
+  complianceAnsweredAt: null,
 };
 
-export type OnboardingStepId = 'workflow' | 'connect' | 'order' | 'receive' | 'scan' | 'invite';
+export type OnboardingStepId =
+  | 'workflow'
+  | 'connect'
+  | 'order'
+  | 'receive'
+  | 'scan'
+  | 'invite'
+  | 'compliance';
 
 export interface OnboardingStep {
   id: OnboardingStepId;
@@ -108,6 +127,15 @@ export const ONBOARDING_STEPS: readonly OnboardingStep[] = [
     doneWhen: (s) => s.staff > 1,
     // Hidden on a (hypothetical) single-seat plan; maxStaff 0 = unlimited.
     showWhen: (e) => e.maxStaff === 0 || e.maxStaff > 1,
+  },
+  {
+    id: 'compliance',
+    label: 'Answer two product-identity questions',
+    description: 'Tells us whether your labels need a licensed GS1 key. Most resellers: no.',
+    href: '/settings/organization#gs1',
+    // Derives off the SERVER-stamped answer, so "answered no" completes the step
+    // and "never asked" does not — the whole reason the field is nullable.
+    doneWhen: (s) => s.complianceAnsweredAt != null,
   },
 ];
 

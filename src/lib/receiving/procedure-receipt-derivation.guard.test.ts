@@ -75,7 +75,18 @@ const workedGates: DeriveCaptureStepStatesInput = {
   contentsConfirmedAt: '2026-08-01T10:00:00Z',
   conditionGradedAt: '2026-08-01T10:01:00Z',
   serialCount: 1,
+  // The last CAPTURE step (2026-08-02): the operator read the face the carton
+  // is about to print. Without it the bench pointer never leaves `label`, so a
+  // fixture that means "every capture step is worked" has to carry it.
+  labelPreviewedAt: '2026-08-01T10:02:00Z',
 };
+
+/**
+ * The steps whose GATE is itself a timestamp column. Their `at` is resolved from
+ * the gate input rather than from caller-supplied evidence, so they are the one
+ * set that legitimately reports a time with an empty evidence map.
+ */
+const ACKNOWLEDGEMENT_STEPS = new Set(['condition', 'contents', 'label']);
 
 /** Every carton shape the bench distinguishes, plus the pairs that co-occur. */
 const SHAPES = [
@@ -188,8 +199,57 @@ test('a done step with no recorded evidence reports no time — never a fabricat
   const done = receipt.steps.filter((s) => s.state === 'done');
   assert.ok(done.length > 0, 'the worked fixture must complete something');
   for (const step of done) {
+    // The three acknowledgement steps are exempt because for them there is no
+    // external evidence to be missing: the GATE fact is itself an instant
+    // (`condition_graded_at`, `contents_confirmed_at`, `label_previewed_at`),
+    // so `stepCompletedAt` reads the very column that made the step done.
+    // Reporting it is the opposite of fabricating one — a `condition` row that
+    // said "done" with no time would be the receipt withholding a fact it holds.
+    if (ACKNOWLEDGEMENT_STEPS.has(step.key)) {
+      assert.notEqual(
+        step.at,
+        null,
+        `"${step.key}" is gated on a timestamp column and must report it`,
+      );
+      continue;
+    }
     assert.equal(step.at, null, `"${step.key}" invented a time it was never given`);
   }
+});
+
+test('an acknowledgement step reports its OWN gate instant, not a caller-supplied one', () => {
+  // `evidenceAt` is ignored for these three on purpose. Two callers passing the
+  // "same" instant twice is two chances to pass different ones, and the column
+  // that decided `done` is the only defensible answer to "when".
+  const receipt = buildProcedureReceipt({
+    gates: {
+      ...workedGates,
+      evidenceAt: {
+        condition: '1999-01-01T00:00:00Z',
+        contents: '1999-01-01T00:00:00Z',
+        label: '1999-01-01T00:00:00Z',
+      },
+    },
+    evidence: {},
+    labelPrintedAt: null,
+    receivedAt: null,
+  });
+  const at = (key: string) => receipt.steps.find((s) => s.key === key)?.at;
+  assert.equal(at('condition'), workedGates.conditionGradedAt);
+  assert.equal(at('contents'), workedGates.contentsConfirmedAt);
+  assert.equal(at('label'), workedGates.labelPreviewedAt);
+});
+
+test('a caller-resolved instant reaches the receipt for every OTHER done step', () => {
+  const receipt = buildProcedureReceipt({
+    gates: { ...workedGates, evidenceAt: { arrival_check: '2026-08-01T09:30:00Z' } },
+    evidence: {},
+    labelPrintedAt: null,
+    receivedAt: null,
+  });
+  const arrival = receipt.steps.find((s) => s.key === 'arrival_check');
+  assert.equal(arrival?.state, 'done');
+  assert.equal(arrival?.at, '2026-08-01T09:30:00Z');
 });
 
 test('the commit steps are the receipt’s addition and never reach the bench', () => {

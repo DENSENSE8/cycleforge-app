@@ -36,9 +36,14 @@ export interface ShippedPanelEditorDockProps {
  * The Notes region used to be a `ShippedNotesComposer` bound to the legacy
  * scalar `orders.notes`. It now mounts {@link OrderNotesTrail}, the single
  * writable home for an order annotation — see that file's header for why the
- * scalar became read-only. Contexts that already mount the trail at the record
- * plane (the dashboard inspector, via `OrderTriageSection`) pass
- * `showNotes={false}` so one panel never carries two composers for one store.
+ * scalar became read-only.
+ *
+ * `showNotes={false}` means this dock carries no composer at all. Two reasons a
+ * host passes it, and they are different: a surface that already mounts the
+ * trail at the record plane would otherwise carry two composers for one store,
+ * and the right-rail order inspector deliberately offers **no** note-writing at
+ * all (handoff §3.2) — that capability lives on `/o/[orderId]`, which mounts
+ * this dock with notes ON.
  */
 export function ShippedPanelEditorDock({
   shipped,

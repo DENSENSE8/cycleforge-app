@@ -76,13 +76,21 @@ test('prod nav ships every unparked page; only redirect surfaces stay off', () =
   assert.equal(navIds.has('sourcing'), true, 'sourcing ships in Overview');
   assert.equal(navIds.has('ai-chat'), true, 'ai-chat ships top-pinned under Media');
   assert.equal(navIds.has('fba'), false, 'fba redirects into Shipping — no spine row');
-  // Studio was promoted out of the parked set — it is a live Library page now,
-  // so it must be present on prod nav rather than absent.
+  // Studio was promoted out of the parked set — it is a live page, footer-pinned
+  // above Admin since 2026-08-02, so it must be present on prod nav.
   assert.equal(navIds.has('studio'), true, 'studio ships as a live nav page');
   // Home is top-pinned; Operations stays an Overview page.
   assert.equal(navIds.has('home'), true, 'home ships as a top-pinned page');
   assert.equal(navIds.has('operations'), true, 'operations ships as a live Overview page');
-  assert.equal(navIds.has('studio-catalog'), true, 'its Catalog sub-route rides along');
+  // Its Catalog sub-route rides along as an L2 MODE, not a second flat row — a
+  // pinned footer row never draws children, so two rows there would have put
+  // `/studio/catalog` in the footer beside its own parent.
+  assert.equal(navIds.has('studio-catalog'), false, 'studio-catalog owns no spine row');
+  assert.equal(
+    getSidebarPageNav('studio')?.modes?.some((m) => m.id === 'catalog'),
+    true,
+    'studio/catalog survives as an L2 mode (⌘K + header Mode + URL)',
+  );
   // Stations + shipping + inventory + warehouse stay visible (receiving family
   // promoted to L1: Arrival / Unbox / Pickup / Repair + Incoming on Desk).
   for (const id of [

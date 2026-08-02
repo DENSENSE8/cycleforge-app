@@ -72,20 +72,36 @@ export const CONTEXT_PANEL_COLLAPSE = {
 
 /**
  * Outer margin between the context-panel card and the canvas host (`m-2` =
- * 8px). Station bookmark chrome (`stationContextBarHostClass` /
- * `stationMoreDetailsHostClass` in `station-bookmark.ts`) uses the same
- * top (+ right for more-details) so the floating identity shell lines up with
- * the sidebar card under GlobalHeader — one knob: change here and update the
- * bookmark `top-*` / `right-*` twins to match.
+ * 8px). **Station top-padding SoT twin:** bookmark chrome
+ * (`STATION_BOOKMARK_CANVAS_INSET_TOP` / `RIGHT` in `station-bookmark.ts`) and
+ * Unbox push vertical gutter ({@link CONTEXT_PANEL_OUTER_MARGIN_Y}) share this
+ * 8px so identity + sidebar + push cards share one top edge under GlobalHeader.
+ *
+ * Change the scale here, then update the bookmark `top-*` / `right-*` twins and
+ * the Y-only export to match. Guard:
+ * `unbox-push-gutter.guard.test.ts` (canvas gutter twins).
  */
-const CONTEXT_PANEL_OUTER_MARGIN = 'm-2';
+export const CONTEXT_PANEL_OUTER_MARGIN = 'm-2';
+
+/**
+ * Vertical-only twin of {@link CONTEXT_PANEL_OUTER_MARGIN}.
+ *
+ * Unbox right-edge push columns / expand strips use this when trailing gutter
+ * is host padding (`TICKET_PUSH_HOST_PAD_CLASS` = `pr-2`) — full `m-2` would
+ * double-inset the right edge. Never replace this with host `py-2`: that
+ * stacks under `StationContextBar`'s absolute `top-2` and drops the carton
+ * identity below the sidebar card.
+ */
+export const CONTEXT_PANEL_OUTER_MARGIN_Y = 'my-2';
 
 /**
  * Parked expand strip when the context panel is collapsed.
  * Canvas chrome only — not a second white card.
  */
 export const CONTEXT_PANEL_COLLAPSE_STRIP_CLASS = cn(
-  'relative m-2 flex w-8 shrink-0 flex-col items-center pt-3',
+  'relative',
+  CONTEXT_PANEL_OUTER_MARGIN,
+  'flex w-8 shrink-0 flex-col items-center pt-3',
 );
 
 /**
@@ -132,9 +148,11 @@ export const CONTEXT_PANEL_COLUMN_CLASS = cn(
  * children own their own internal scrollports.
  */
 export const CONTEXT_PANEL_HOST_CLASS = cn(
-  // No padding and no gap: the panel carries its own margin; bookmark chrome
-  // insets with the same gutter so identity + more-details share the panel’s
-  // top edge (see station-bookmark.ts).
+  // No padding and no gap: the panel carries its own margin
+  // ({@link CONTEXT_PANEL_OUTER_MARGIN}); bookmark chrome insets with
+  // `STATION_BOOKMARK_CANVAS_INSET_TOP` so identity + more-details share the
+  // panel’s top edge (see station-bookmark.ts — never stack host `py-*` under
+  // that absolute float).
   //
   // `min-w-0` is load-bearing since the right-rail push column became a flex
   // SIBLING of this host: without it the host's min-content width wins the row

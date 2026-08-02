@@ -49,8 +49,42 @@ import { parsePhotoAspectList, type PhotoAspect } from '@/lib/photos/photo-aspec
 import { isLocalPickupFulfillment } from '@/lib/receiving/fulfillment-mode';
 import { isReturnIntake, isIntakeClassified } from '@/lib/receiving/triage-intake-kind';
 import { conditionLabel } from '@/lib/conditions';
+import {
+  formatDateTimePST,
+  formatTime12hPST,
+  getCurrentPSTDateKey,
+  toPSTDateKey,
+} from '@/utils/date';
 import type { ProcedureStepRow } from '@/design-system/components/procedure';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+
+/**
+ * A settled step's completion instant, for the deck's history rows.
+ *
+ * Same-day work is the overwhelming case at a bench, and a date the operator
+ * already knows costs the row width it needs for the label — so today shows a
+ * clock and anything older shows the date too. Both go through `@/utils/date`
+ * against the warehouse zone: a raw `toLocaleTimeString` would render the
+ * viewer's zone, and a receipt read on a laptop in another state would then
+ * disagree with the bench about when the box was opened.
+ */
+function formatStepAt(at: string | null): string | undefined {
+  if (!at) return undefined;
+  const dayKey = toPSTDateKey(at);
+  if (!dayKey) return undefined;
+  return dayKey === getCurrentPSTDateKey() ? formatTime12hPST(at) : formatDateTimePST(at);
+}
+
+/** The LATER of two instants — the fold for a gate that spans several facts. */
+function later(a: string | null, b: string | null | undefined): string | null {
+  if (!a) return b ?? null;
+  if (!b) return a;
+  const ta = Date.parse(a);
+  const tb = Date.parse(b);
+  if (!Number.isFinite(tb)) return a;
+  if (!Number.isFinite(ta)) return b;
+  return tb > ta ? b : a;
+}
 
 /** Right-hand fact per step — what the operator scans the card for. */
 function stepSummary(
@@ -63,6 +97,7 @@ function stepSummary(
     quantityExpected: number;
     conditionGrade: string | null;
     classified: boolean;
+    labelPreviewed: boolean;
     aspect?: PhotoAspect;
   },
 ): string | undefined {
@@ -92,6 +127,11 @@ function stepSummary(
         : ctx.serialCount > 0
           ? 'Captured'
           : undefined;
+    case 'label':
+      // "Checked", not the label KIND: the kind lives on the station controller,
+      // and a summary that needed it would make this hook depend on that god
+      // object for one word.
+      return ctx.labelPreviewed ? 'Checked' : undefined;
     default:
       return undefined;
   }
@@ -102,20 +142,19 @@ interface UnboxProcedureStepsResult {
   steps: ProcedureStepRow[];
   /** The step the operator is on. `null` ⇒ every step settled. */
   activeKey: string | null;
-  /** What a skip would advance TO. NOT the column's next section — see `nextKey`. */
+  /** What a skip would advance TO — the skip target, not the next card. */
   nextStep: ProcedureStepRow | null;
   /**
-   * The column section BEFORE the active one, in vocabulary order, whatever its
-   * state. `null` at the head. Drives the `‹ back` chip.
-   */
-  prevKey: string | null;
-  /**
-   * The column section AFTER the active one, in vocabulary order, whatever its
-   * state. `null` at the tail. Drives the `next ›` chip.
+   * The active card's NEIGHBOURS in vocabulary order — what the pager pages to.
    *
-   * Distinct from {@link nextStep}, which skips settled steps.
+   * Deliberately NOT {@link UnboxProcedureStepsResult.nextStep}: that is the
+   * SKIP target, which walks past every settled step, so a pager wired to it
+   * would silently carry the operator beyond a completed step they can still
+   * reopen. Paging is positional; skipping is a decision. `null` at the ends —
+   * honest absence, never a disabled control that wraps.
    */
-  nextKey: string | null;
+  prevStep: ProcedureStepRow | null;
+  nextNeighbour: ProcedureStepRow | null;
   /** Declared photo aspect per step key — never inferred from the key. */
   aspectByKey: Record<string, PhotoAspect | undefined>;
   /** Evidence has arrived, so a zero means "nothing shot", not "not loaded". */
@@ -166,13 +205,71 @@ export function useUnboxProcedureSteps(row: ReceivingLineRow): UnboxProcedureSte
   const perUnitAbsentCount = (row.units ?? []).filter((u) => u.serial_absent).length;
   const classified = isIntakeClassified(row);
 
+  const vocabulary = useMemo(
+    () => ({
+      isUnfound: !row.zoho_purchaseorder_id,
+      isLocalPickup: isLocalPickupFulfillment(row),
+      isReturn: isReturnIntake(row),
+    }),
+    [row],
+  );
+
+  // Aspect + stage per step, straight off the declaration — never inferred from
+  // the key. Both the capture bodies and the evidence-time fold below read this,
+  // so a step's photo binding is stated once.
+  const stepMeta = useMemo(() => {
+    const map: Record<string, { aspect?: PhotoAspect; stage?: string }> = {};
+    for (const step of captureStepVocabulary(vocabulary)) {
+      map[step.key] = { aspect: step.aspect, stage: step.stage };
+    }
+    return map;
+  }, [vocabulary]);
+
+  const aspectByKey = useMemo(() => {
+    const map: Record<string, PhotoAspect | undefined> = {};
+    for (const [key, meta] of Object.entries(stepMeta)) map[key] = meta.aspect;
+    return map;
+  }, [stepMeta]);
+
+  /**
+   * When each photo step's gate closed — resolved from the payload the bench
+   * already holds, keyed off the declared stage/aspect rather than the step name.
+   *
+   * `classify` and `serial` are deliberately absent: neither leaves a client-side
+   * instant (classification's attested time is an audit row, and a serial row
+   * carries no timestamp on this read), so the deck renders honest absence rather
+   * than the nearest number to hand. The receipt, which can see both, still fills
+   * them — the two surfaces answer the same question with what each actually
+   * knows, never with a guess.
+   */
+  const evidenceAt = useMemo(() => {
+    const map: Record<string, string | null> = {};
+    for (const [key, meta] of Object.entries(stepMeta)) {
+      if (meta.stage === 'arrival_package') {
+        map[key] = counts.arrivalFirstAt;
+      } else if (meta.stage === 'unbox_carton') {
+        map[key] = meta.aspect ? (counts.cartonAspectFirstAt[meta.aspect] ?? null) : null;
+      } else if (meta.stage === 'unbox_item') {
+        // This gate spans a SET, so it closes when the LAST required aspect
+        // first got a shot — not when the first item photo landed. With no
+        // required aspects the org said "any item photo counts", and then the
+        // first one is exactly when it closed.
+        map[key] =
+          requiredItemAspects.length === 0
+            ? counts.itemFirstAt
+            : requiredItemAspects.reduce<string | null>(
+                (acc, aspect) => later(acc, counts.itemAspectFirstAt[aspect]),
+                null,
+              );
+      }
+    }
+    return map;
+  }, [stepMeta, counts, requiredItemAspects]);
+
   const input: DeriveCaptureStepStatesInput = useMemo(
     () => ({
-      vocabulary: {
-        isUnfound: !row.zoho_purchaseorder_id,
-        isLocalPickup: isLocalPickupFulfillment(row),
-        isReturn: isReturnIntake(row),
-      },
+      vocabulary,
+      evidenceAt,
       arrivalPhotoCount: counts.arrivalPackage,
       unboxCartonPhotoCount: counts.unboxCarton,
       itemPhotoCount: counts.item,
@@ -181,6 +278,7 @@ export function useUnboxProcedureSteps(row: ReceivingLineRow): UnboxProcedureSte
       requiredItemAspects,
       conditionGradedAt: row.condition_graded_at ?? null,
       contentsConfirmedAt: row.contents_confirmed_at ?? null,
+      labelPreviewedAt: row.label_previewed_at ?? null,
       classified,
       photoCount: counts.total,
       serialCount,
@@ -190,6 +288,8 @@ export function useUnboxProcedureSteps(row: ReceivingLineRow): UnboxProcedureSte
     }),
     [
       row,
+      vocabulary,
+      evidenceAt,
       counts,
       classified,
       serialCount,
@@ -198,15 +298,6 @@ export function useUnboxProcedureSteps(row: ReceivingLineRow): UnboxProcedureSte
       requiredItemAspects,
     ],
   );
-
-  // Aspect per step, straight off the declaration — never inferred from the key.
-  const aspectByKey = useMemo(() => {
-    const map: Record<string, PhotoAspect | undefined> = {};
-    for (const step of captureStepVocabulary(input.vocabulary)) {
-      map[step.key] = step.aspect;
-    }
-    return map;
-  }, [input.vocabulary]);
 
   const derived = useMemo(() => deriveProcedureSteps(input), [input]);
 
@@ -219,6 +310,7 @@ export function useUnboxProcedureSteps(row: ReceivingLineRow): UnboxProcedureSte
       quantityExpected,
       conditionGrade: row.condition_grade ?? null,
       classified,
+      labelPreviewed: !!row.label_previewed_at,
     };
     return derived.map((step) => ({
       key: step.key,
@@ -229,6 +321,10 @@ export function useUnboxProcedureSteps(row: ReceivingLineRow): UnboxProcedureSte
       state: step.state,
       position: step.position,
       summary: stepSummary(step.key, { ...ctx, aspect: aspectByKey[step.key] }),
+      // Formatted HERE, not in the derivation: that module is shared with a
+      // server read model whose consumers format for their own surface.
+      // `undefined` (not an empty string) so the row renders nothing at all.
+      at: formatStepAt(step.at),
     }));
   }, [
     derived,
@@ -236,6 +332,7 @@ export function useUnboxProcedureSteps(row: ReceivingLineRow): UnboxProcedureSte
     serialCount,
     quantityExpected,
     row.condition_grade,
+    row.label_previewed_at,
     classified,
     aspectByKey,
   ]);
@@ -253,20 +350,17 @@ export function useUnboxProcedureSteps(row: ReceivingLineRow): UnboxProcedureSte
     ? (steps.find((step) => step.key === skipTargetKey) ?? null)
     : null;
 
-  // COLUMN NEIGHBOURS — the sections either side of the active one in vocabulary
-  // order, whatever their state.
+  // Positional neighbours, for the pager pinned above the composer. They were
+  // cut on 2026-08-02 when the chips rendered as a trailer after the deck and
+  // landed mid-document; they came back the same day as pinned bottom chrome,
+  // which is where a pager belongs — beside the input, not after the content.
   //
-  // Deliberately NOT `nextStep`. That one is the SKIP target — the next step
-  // still unsettled — which is the right answer for "what does waiving this
-  // advance to" and the wrong one for a paging chip: it would send the operator
-  // straight past a settled step they can still scroll back to and reopen. The
-  // column is the vocabulary, so its neighbours are the vocabulary's.
+  // Vocabulary order, NOT `skipTargetKey`. That distinction is the whole reason
+  // these are separate values.
   const activeIndex = activeKey ? steps.findIndex((step) => step.key === activeKey) : -1;
-  const prevKey = activeIndex > 0 ? (steps[activeIndex - 1]?.key ?? null) : null;
-  const nextKey =
-    activeIndex >= 0 && activeIndex < steps.length - 1
-      ? (steps[activeIndex + 1]?.key ?? null)
-      : null;
+  const prevStep = activeIndex > 0 ? steps[activeIndex - 1] : null;
+  const nextNeighbour =
+    activeIndex >= 0 && activeIndex < steps.length - 1 ? steps[activeIndex + 1] : null;
 
   const focusStep = useCallback(
     (key: string | null) => setFocusedStep(cartonId, key),
@@ -276,9 +370,9 @@ export function useUnboxProcedureSteps(row: ReceivingLineRow): UnboxProcedureSte
   return {
     steps,
     activeKey,
-    prevKey,
-    nextKey,
     nextStep,
+    prevStep,
+    nextNeighbour,
     aspectByKey,
     settled: counts.settled,
     stepCount: captureStepVocabulary(input.vocabulary).length,

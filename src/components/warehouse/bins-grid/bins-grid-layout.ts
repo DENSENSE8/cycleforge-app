@@ -14,6 +14,7 @@ import { gridFrozenKeys } from '@/design-system/components/grid/grid-column-edit
 import { gridTemplate } from '@/design-system/components/grid/grid-column-geometry';
 import { ordersQueueColVar } from '@/lib/dashboard-order-row-layout';
 import type { ColumnType } from '@/lib/tables/table-columns';
+import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 
 export type BinsGridColumnKey =
   | 'select'
@@ -152,10 +153,9 @@ export function binsGridFrozenLeft(key: BinsGridColumnKey): string {
   return `calc(${parts.join(' + ')})`;
 }
 
-export type BinsGridSortDir = 'asc' | 'desc';
 
 /** Default direction on first activation — location A→Z; counted newest-first. */
-export function defaultDirForBinsGridSort(key: BinsGridColumnKey): BinsGridSortDir {
+export function defaultDirForBinsGridSort(key: BinsGridColumnKey): GridSortDir {
   if (key === 'last_counted') return 'desc';
   return 'asc';
 }

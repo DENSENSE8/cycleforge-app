@@ -9,9 +9,11 @@
  *
  * Placement: absolute overlay at the panel top
  * ({@link stationContextBarHostClass}) — no in-flow canvas band behind the
- * shell; top inset matches the context-panel card gutter. Hosts must reserve
- * top scroll clearance ({@link STATION_IDENTITY_SCROLL_CLEARANCE} via
- * StationWorkbench `reserveIdentityClearance`).
+ * shell; top inset is {@link STATION_BOOKMARK_CANVAS_INSET_TOP} (twin of
+ * `CONTEXT_PANEL_OUTER_MARGIN`) so identity shares the sidebar card’s top edge.
+ * Hosts must reserve top scroll clearance ({@link STATION_IDENTITY_SCROLL_CLEARANCE}
+ * via StationWorkbench `reserveIdentityClearance`). Never stack ancestor `py-*`
+ * under this float.
  *
  *   1. Identity — centered workbench column, full width of that column
  *   2. More details — {@link StationMoreDetails}, absolute at the

@@ -12,6 +12,7 @@ import { gridFrozenKeys } from '@/design-system/components/grid/grid-column-edit
 import { gridTemplate } from '@/design-system/components/grid/grid-column-geometry';
 import type { CatalogListRow } from '@/components/products/catalog/types';
 import type { ColumnType } from '@/lib/tables/table-columns';
+import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 
 export type CatalogGridColumnKey =
   | 'select'
@@ -152,9 +153,8 @@ export function isCatalogGridFrozen(key: string): boolean {
   return CATALOG_GRID_LOCKED_KEYS.includes(key as CatalogGridColumnKey);
 }
 
-export type CatalogGridSortDir = 'asc' | 'desc';
 
-export function defaultDirForCatalogGridSort(key: CatalogGridColumnKey): CatalogGridSortDir {
+export function defaultDirForCatalogGridSort(key: CatalogGridColumnKey): GridSortDir {
   return key === 'orders' || key === 'channels' || key === 'manuals' || key === 'qc'
     ? 'desc'
     : 'asc';
@@ -168,7 +168,7 @@ export function compareCatalogGridRows(
   a: CatalogListRow,
   b: CatalogListRow,
   key: CatalogGridColumnKey,
-  dir: CatalogGridSortDir,
+  dir: GridSortDir,
 ): number {
   const mul = dir === 'desc' ? -1 : 1;
   const cmpStr = (x: string, y: string) => x.localeCompare(y, undefined, { sensitivity: 'base' }) * mul;

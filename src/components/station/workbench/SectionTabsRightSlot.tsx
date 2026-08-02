@@ -1,10 +1,14 @@
 /**
- * SectionTabsSlider right-slot primitives — recessed-track pills that sit
- * beside the labeled TabSwitch strip (`solid` + accent rail chrome).
+ * SectionTabsSlider right-slot primitives — controls beside the display strip.
  *
- * Unbox and Testing both needed an Edit-PO / pairing pencil and a Zendesk
- * external-link pill on the tab bar `rightSlot`. Compose these instead of
- * forking the recessed-track markup per panel.
+ * Unbox Displays (`density="icon"`) and Testing both need an Edit-PO / pairing
+ * pencil and a Zendesk external-link on the tab bar `rightSlot`. The icon-rail
+ * contract is a **flat icon** (no circular track / shadow plate) so the pencil
+ * sits in the same quiet row as the vertical ⋮ overflow. Scan-progress ring
+ * stays pane-anchored — not in this slot.
+ *
+ * {@link SectionTabsRightTrack} remains for call sites that still want a
+ * recessed pill cluster (e.g. Testing external-link when not on an icon rail).
  */
 
 'use client';
@@ -12,6 +16,7 @@
 import type { ReactNode } from 'react';
 import { ExternalLink, Pencil } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { IconButton } from '@/design-system/primitives';
 import { operatorAccentClasses } from '@/utils/operator-accent';
 import { cn } from '@/utils/_cn';
 
@@ -54,13 +59,14 @@ export function SectionTabsRightPill({
 }) {
   return (
     <HoverTooltip label={label} placement="below" focusable={false} asChild>
+      {/* ds-raw-button: HoverTooltip asChild Slot — IconButton would disturb the clone */}
       <button
         type="button"
         aria-label={label}
         aria-expanded={ariaExpanded}
         onClick={onClick}
         className={cn(
-          'flex h-8 w-8 items-center justify-center rounded-full transition-colors',
+          'ds-raw-button flex h-8 w-8 items-center justify-center rounded-full transition-colors',
           active
             ? `${operatorAccentClasses.activePill} text-white`
             : filled
@@ -74,30 +80,36 @@ export function SectionTabsRightPill({
   );
 }
 
-/** Pairing / Edit-PO pencil toggle — used on Unbox overview + Testing pairing tabs. */
+/**
+ * Pairing / Edit-PO pencil — flat icon for the Displays icon-rail row
+ * (no circular plate). Active state tints accent; idle stays soft ink.
+ */
 export function PairingTogglePill({
   open,
   onToggle,
   openLabel = 'Hide package pairing',
   closedLabel = 'Show package pairing',
+  size = 'sm',
 }: {
   open: boolean;
   onToggle: () => void;
   openLabel?: string;
   closedLabel?: string;
+  size?: 'xs' | 'sm';
 }) {
+  const label = open ? openLabel : closedLabel;
   return (
-    <SectionTabsRightTrack>
-      <SectionTabsRightPill
-        label={open ? openLabel : closedLabel}
-        active={open}
-        filled={false}
+    <HoverTooltip label={label} placement="below" focusable={false} asChild>
+      <IconButton
+        size={size}
+        tone={open ? 'accent' : 'neutral'}
+        ariaLabel={label}
         aria-expanded={open}
         onClick={onToggle}
-      >
-        <Pencil className="h-4 w-4" />
-      </SectionTabsRightPill>
-    </SectionTabsRightTrack>
+        icon={<Pencil className={size === 'xs' ? 'h-3.5 w-3.5' : 'h-4 w-4'} />}
+        data-testid="section-tabs-pairing-pencil"
+      />
+    </HoverTooltip>
   );
 }
 

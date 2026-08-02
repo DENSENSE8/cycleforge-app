@@ -17,6 +17,7 @@ import { gridFrozenKeys } from '@/design-system/components/grid/grid-column-edit
 import { gridTemplate } from '@/design-system/components/grid/grid-column-geometry';
 import { ordersQueueColVar } from '@/lib/dashboard-order-row-layout';
 import type { ColumnType } from '@/lib/tables/table-columns';
+import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 
 export type ReadyGridColumnKey =
   | 'select'
@@ -145,10 +146,9 @@ export function readyGridFrozenLeft(key: ReadyGridColumnKey): string {
   return `calc(${parts.join(' + ')})`;
 }
 
-export type ReadyGridSortDir = 'asc' | 'desc';
 
 /** Default direction on first activation — tested history reads newest-first. */
-export function defaultDirForReadyGridSort(key: ReadyGridColumnKey): ReadyGridSortDir {
+export function defaultDirForReadyGridSort(key: ReadyGridColumnKey): GridSortDir {
   if (key === 'tested') return 'desc';
   return 'asc';
 }

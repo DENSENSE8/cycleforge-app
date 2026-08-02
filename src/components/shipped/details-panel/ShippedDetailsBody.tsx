@@ -17,11 +17,7 @@ import { ThreadPanel } from '@/components/threads/ThreadPanel';
 import { DeleteOrderControl } from '@/components/shipped/stacks/DeleteOrderControl';
 import { ShippedPanelEditorDock } from '@/components/shipped/details-panel/ShippedPanelEditorDock';
 import { OrderStationHandoff } from '@/components/shipped/details-panel/OrderStationHandoff';
-import { OrderTriageSection } from './OrderTriageSection';
-import type {
-  OrderInspectorDocumentsMode,
-  OrderInspectorRecordCta,
-} from '@/lib/selection-context/order-inspector-context';
+import type { OrderInspectorContext } from '@/lib/selection-context/order-inspector-context';
 
 export interface ShippedStackActionBar {
   onClose: () => void;
@@ -47,17 +43,14 @@ export interface ShippedEditableFields {
 
 export interface ShippedDetailsBodyProps {
   context: NonNullable<'dashboard' | 'queue' | 'fulfillment' | 'labels' | 'staged' | 'shipped' | 'station' | 'packer'>;
-  isFulfillmentPanel: boolean;
-  isLabelsPanel: boolean;
   /**
-   * Documents plane behaviour, resolved by the panel from
-   * `@/lib/selection-context/order-inspector-context` — `manage` is the full
-   * Labels tray, `preview` is read-only + the slide-over previewer.
+   * The ONE descriptor this body reads for plane availability — documents mode,
+   * record CTAs, dispatch extras, delete, editor dock. It used to be five
+   * separate props plus two locally-derived booleans (`showDashboardDelete`,
+   * `showEditorDock`), each re-deriving the lane from `context` in a slightly
+   * different way. `resolveOrderInspectorContext` owns that decision now.
    */
-  documentsMode?: OrderInspectorDocumentsMode;
-  /** Record-plane hand-offs this context offers (deep-links, never mutations). */
-  recordCtas?: readonly OrderInspectorRecordCta[];
-  showDashboardExtras: boolean;
+  inspectorContext: OrderInspectorContext;
   /** Slide-over: render Warranty/Customer quick-link rows instead of tabs. */
   showQuickLinks?: boolean;
   activeSection: ShippedActiveSection;
@@ -85,11 +78,7 @@ export interface ShippedDetailsBodyProps {
  */
 export function ShippedDetailsBody({
   context,
-  isFulfillmentPanel,
-  isLabelsPanel,
-  documentsMode = isLabelsPanel ? 'manage' : 'preview',
-  recordCtas = [],
-  showDashboardExtras,
+  inspectorContext,
   showQuickLinks,
   activeSection,
   shipped,
@@ -109,13 +98,8 @@ export function ShippedDetailsBody({
   isDeletingOrder,
   onDeleteOrder,
 }: ShippedDetailsBodyProps) {
-  const showDashboardDelete = context === 'dashboard' || isFulfillmentPanel || isLabelsPanel;
-  const showEditorDock =
-    showDashboardExtras
-    || context === 'staged'
-    || context === 'station'
-    || context === 'packer'
-    || context === 'shipped';
+  const { documentsMode, recordCtas, showDispatchExtras, showDelete, showEditorDock } =
+    inspectorContext;
 
   const orderSerials = [
     ...new Set(
@@ -177,7 +161,9 @@ export function ShippedDetailsBody({
       );
     }
 
-    if (context === 'dashboard' || isFulfillmentPanel || isLabelsPanel) {
+    // The dispatch lanes (dashboard / queue / fulfillment / labels) share one
+    // stack; station and packer have their own below.
+    if (showDispatchExtras) {
       return (
         <DashboardDetailsStack
           shipped={shipped}
@@ -261,7 +247,7 @@ export function ShippedDetailsBody({
     );
   })();
 
-  const deleteFooter = showDashboardDelete ? (
+  const deleteFooter = showDelete ? (
     <section className="mx-8 shrink-0 pb-8 pt-2 space-y-2">
       <DeleteOrderControl
         orderId={shipped.id}
@@ -295,30 +281,21 @@ export function ShippedDetailsBody({
     </section>
   ) : null;
 
-  const showTriage = showDashboardDelete && Number(shipped.id) > 0;
-
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="min-h-0 flex-1 overflow-y-auto no-scrollbar">
         {/*
-          Record-plane triage — the shared row flag + the attributed note
-          trail. ABOVE the tab body, not inside one tab: both are facts about
-          the record, and this panel's default tab is per-record
-          (`resolveOrderInspectorContext`), so a tab-scoped placement meant the
-          operator had to already know which tab to look under. The grid shows
-          that a row is flagged or annotated; this is the one place that says
-          which tag, why, and who wrote the notes.
+          NO triage block and NO note composer in this panel (handoff §3.2).
+          `OrderTriageSection` (row flag + attributed note trail) used to mount
+          here, with the dock reading `showNotes={!showTriage}` beneath it — so
+          turning the section off alone would have MOVED the composer into the
+          dock rather than removing it. Both are off.
+
+          Note-writing now lives only on `/o/[orderId]`, reached from the
+          open-full-page action in the header's icon row. The write path itself
+          is unchanged and still governed by `order-note-grain.guard.test.ts`:
+          `order_notes` via `POST /api/orders/[id]/notes`, one writable home.
         */}
-        {showTriage ? (
-          <div className="pt-4">
-            <OrderTriageSection
-              orderId={Number(shipped.id)}
-              flag={shipped.row_flag?.flag}
-              flagSetBy={shipped.row_flag?.by}
-              legacyNote={shipped.notes}
-            />
-          </div>
-        ) : null}
         {scrollContent}
       </div>
 
@@ -327,12 +304,12 @@ export function ShippedDetailsBody({
           shipped={shipped}
           activeInput={activeInput}
           setActiveInput={setActiveInput}
-          showMarkAsShipped={showDashboardExtras}
-          showOutOfStock={showDashboardExtras}
-          /* One composer per panel: when the triage section above already
-             mounts the trail, the dock must not mount a second one for the
-             same store. */
-          showNotes={!showTriage}
+          showMarkAsShipped={showDispatchExtras}
+          showOutOfStock={showDispatchExtras}
+          /* Hard off — see the §3.2 note above. This used to be
+             `!showTriage`, which is why removing the triage section alone
+             would have relocated the composer instead of removing it. */
+          showNotes={false}
           isOutOfStock={isOutOfStock}
           isSavingOutOfStock={isSavingOutOfStock}
           onSaveOutOfStock={onSaveOutOfStock}

@@ -3,7 +3,7 @@
 /**
  * OrderFullPageView — `/o/[orderId]`, the canonical order record (Week 1, D1).
  *
- * Chrome is `OrderIdentityHeader` (order # + status + platform + actions) over
+ * Chrome is `RecordPaneHeader` (order # + status + platform + actions) over
  * the concise `OrderRecordBody` — one vertical scroll, main column + right rail —
  * with the editor dock, delete, and assignment card unchanged.
  *
@@ -33,7 +33,7 @@ import {
 } from '@/components/shipped/details-panel/shipped-details-hooks';
 import { ShippedPanelEditorDock } from '@/components/shipped/details-panel/ShippedPanelEditorDock';
 import { DeleteOrderControl } from '@/components/shipped/stacks/DeleteOrderControl';
-import { OrderIdentityHeader } from '@/components/order-record/OrderIdentityHeader';
+import { RecordPaneHeader } from '@/components/order-record/RecordPaneHeader';
 import { OrderRecordBody } from '@/components/order-record/OrderRecordBody';
 import { resolveOrderInspectorContext } from '@/lib/selection-context/order-inspector-context';
 import {
@@ -258,7 +258,9 @@ function OrderFullPageLoaded({
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-surface-canvas">
-      <OrderIdentityHeader
+      {/* No `onOpenFullPage` / `onClose` / cursor — this IS the full page, and
+          navigation lives in the order sidebar rather than panel chrome. */}
+      <RecordPaneHeader
         orderIdDisplay={meta.orderIdDisplay}
         showExceptionsFallback={meta.showExceptionsFallback}
         statusLabel={meta.statusLabel}

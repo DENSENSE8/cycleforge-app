@@ -184,7 +184,16 @@ test('no CF Type role bakes a weight above the cap', () => {
   );
 });
 
-/* ─── Family binding (three cuts of ONE macro-family) ──────────────────────── */
+/* ─── Family binding (three cuts, ONE face per cut) ─────────────────────────
+ *
+ * The sans cut moved IBM Plex Sans → Inter on 2026-08-02 (small-size
+ * legibility; see `src/lib/fonts.ts`). Condensed + mono stayed Plex because
+ * Inter ships neither, and both of those cuts are load-bearing: condensed keeps
+ * 10–11px chrome inside a grid column, mono keeps a serial retypable.
+ *
+ * What is still banned is a FOURTH slot — a display / heading face on top of
+ * these. Pick a ROLE, not a family.
+ * ──────────────────────────────────────────────────────────────────────────── */
 
 test('families.ts exposes exactly sans / condensed / mono', () => {
   const src = readFileSync(join(SRC_ROOT, 'design-system/tokens/typography/families.ts'), 'utf8');
@@ -199,6 +208,53 @@ test('families.ts exposes exactly sans / condensed / mono', () => {
       `families.ts must not reintroduce the '${dead}' slot — pick a ROLE, not a family. ` +
         'Dense chrome is text-role-eyebrow/micro (condensed is bound intrinsically).',
     );
+  }
+});
+
+test('the families stack and its globals.css mirror do not drift', () => {
+  // families.ts and globals.css hold the SAME three stacks, by hand. A swap that
+  // updates one and not the other yields a UI where SSR/print paint a different
+  // face than the app — the exact failure mode the "mirror byte-for-byte" note
+  // in both files exists to prevent.
+  const families = readFileSync(
+    join(SRC_ROOT, 'design-system/tokens/typography/families.ts'),
+    'utf8',
+  );
+  const globals = readFileSync(join(SRC_ROOT, 'styles/globals.css'), 'utf8');
+
+  // Whatever the sans face is, both files must name the same CSS var and the
+  // same first fallback — asserting the VAR rather than a font name keeps this
+  // test from needing an edit every time the face changes.
+  const varName = families.match(/sans:\s*"var\((--[a-z0-9-]+)\)/)?.[1];
+  assert.ok(varName, 'families.ts sans stack must lead with a CSS var');
+  assert.ok(
+    globals.includes(`--font-sans: var(${varName})`),
+    `globals.css must resolve --font-sans from ${varName} (families.ts leads with it)`,
+  );
+
+  // The var must actually be produced by next/font, or every surface silently
+  // falls through to the system stack.
+  const fonts = readFileSync(join(SRC_ROOT, 'lib/fonts.ts'), 'utf8');
+  assert.ok(
+    fonts.includes(`variable: '${varName}'`),
+    `src/lib/fonts.ts must stamp ${varName} — nothing else sets it`,
+  );
+});
+
+test('the sans cut loads no weight above the 600 cap', () => {
+  // Inter is a VARIABLE font: requesting it without an explicit weight list
+  // ships the whole 100–900 axis, which would make a stray `font-bold` render
+  // at a real 700 and quietly defeat the cap. Discrete weights are what make
+  // the cap physical rather than advisory.
+  const fonts = readFileSync(join(SRC_ROOT, 'lib/fonts.ts'), 'utf8');
+  const weightLists = [...fonts.matchAll(/weight:\s*\[([^\]]*)\]/g)].map((m) => m[1]);
+  assert.ok(weightLists.length >= 3, 'every loaded cut must declare explicit weights');
+  for (const list of weightLists) {
+    for (const raw of list.split(',')) {
+      const n = Number(raw.replace(/['"\s]/g, ''));
+      if (!Number.isFinite(n)) continue;
+      assert.ok(n <= 600, `weight ${n} is above the 600 cap — do not load it`);
+    }
   }
 });
 

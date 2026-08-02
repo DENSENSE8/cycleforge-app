@@ -263,9 +263,9 @@ const defaultDeps: SubmitCounterTransactionDeps = {
 
   async stageOrder(orgId, lines, idempotencyKey) {
     if (lines.length === 0) return null;
-    // Same two line shapes salesCartStore already sends: a catalog line charges
-    // by variation id (the provider's price is authoritative at charge time), a
-    // manual line as an ad-hoc name + amount.
+    // Two line shapes: a catalog line charges by variation id (the provider's
+    // price is authoritative at charge time), a manual line as an ad-hoc name +
+    // amount.
     const line_items = lines.map((l) =>
       l.variationId
         ? { catalog_object_id: l.variationId, quantity: String(l.quantity) }

@@ -16,6 +16,15 @@ export interface InventoryTimelineRow {
   sku: string | null;
   prev_status: string | null;
   next_status: string | null;
+  /**
+   * `inventory_events.notes` — what a person actually wrote.
+   *
+   * The spine reader has always selected this; the adapter dropped it, so a
+   * NOTE row rendered as the literal word "Note" and the sentence someone
+   * recorded ("Unmatched return serial … — no order match") was visible
+   * nowhere on the journey. A note whose text you cannot read is not a note.
+   */
+  notes?: string | null;
   /** Bin barcode (locations.barcode) when the event carried a bin_id. */
   bin_barcode?: string | null;
   bin_name?: string | null;
@@ -60,6 +69,9 @@ const EVENT_MAP: Record<string, { title: string; tone: TimelineTone }> = {
 /** Events where the in-row chip should be the bin (serial stays in the band header). */
 const BIN_REF_EVENTS = new Set(['PUTAWAY', 'MOVED']);
 
+/** Events whose whole content is the operator's sentence — see the title note below. */
+const NOTE_TITLED_EVENTS = new Set(['NOTE', 'NOTE_ADDED']);
+
 function pretty(eventType: string): string {
   const s = eventType.replace(/[._-]+/g, ' ').trim();
   return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
@@ -81,8 +93,18 @@ function binHref(barcode: string): string {
 export function inventoryEventsToTimeline(rows: InventoryTimelineRow[]): TimelineItem[] {
   return rows.map((r) => {
     const mapped = EVENT_MAP[r.event_type];
-    const title = mapped?.title ?? pretty(r.event_type);
     const tone = mapped?.tone ?? 'muted';
+
+    // On a NOTE the text IS the event, so it is the title. The KIND is already
+    // said by the rail glyph (paper), so the word "Note" adds nothing and the
+    // sentence adds everything.
+    //
+    // Deliberately NOT applied to the other event types: their `notes` carry
+    // machine text ("Serial 049331F81860251AE" on a RECEIVED), and letting it
+    // win would replace the curated "Received" with a restatement of the chip
+    // beside it.
+    const noteText = NOTE_TITLED_EVENTS.has(r.event_type) ? r.notes?.trim() : null;
+    const title = noteText || mapped?.title || pretty(r.event_type);
 
     const statusTrail =
       r.prev_status && r.next_status && r.prev_status !== r.next_status

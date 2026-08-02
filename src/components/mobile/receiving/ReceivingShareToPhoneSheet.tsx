@@ -9,6 +9,7 @@ import { useAblyChannel } from '@/hooks/useAblyChannel';
 import { useAblyClient } from '@/contexts/AblyContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { safeChannelName, getStaffStationBridgeChannelName } from '@/lib/realtime/channels';
+import { publishDeviceAck } from '@/lib/realtime/device-handshake';
 
 interface SharePayload {
   receiving_id?: number;
@@ -44,11 +45,16 @@ export function ReceivingShareToPhoneSheet() {
     // the request_id lets the desktop match this reply to its exact request.
     const requestId = String(msg?.data?.request_id || '');
     if (requestId && stationBridgeChannel) {
-      getClient()
+      // Publishes the unified `station_device_ack` now. The desk waiter still
+      // accepts this path's original `receiving_share_ack`, so a phone running
+      // older code keeps working — one ack vocabulary, no flag day.
+      void getClient()
         .then((client) =>
-          client?.channels
-            .get(stationBridgeChannel)
-            .publish('receiving_share_ack', { request_id: requestId }),
+          publishDeviceAck(
+            client?.channels.get(stationBridgeChannel),
+            requestId,
+            'receiving_share',
+          ),
         )
         .catch(() => {});
     }

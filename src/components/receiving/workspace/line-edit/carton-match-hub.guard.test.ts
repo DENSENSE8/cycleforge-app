@@ -15,6 +15,11 @@ const PO = join(
   process.cwd(),
   'src/components/receiving/workspace/line-edit/POUnboxingSection.tsx',
 );
+/** Package Pairing's home since 2026-08-02 — the `pairing` Displays tab. */
+const UNBOX_TABS = join(
+  process.cwd(),
+  'src/components/receiving/workspace/line-edit/terminal/unbox-tabs.tsx',
+);
 const TRIAGE = join(
   process.cwd(),
   'src/components/receiving/triage/TriageLineMatchingSection.tsx',
@@ -48,11 +53,26 @@ describe('CartonMatchHub (P1)', () => {
     assert.doesNotMatch(hub, /PoSuggestBanner/);
   });
 
-  it('POUnboxingSection no longer mounts a sibling UnfoundMatchStrip', () => {
+  it('the pairing display mounts the hub with autoMatch — never a sibling UnfoundMatchStrip', () => {
+    // Package Pairing moved out of the `contents` step body and onto the right
+    // edge (2026-08-02), so the mount this protects moved with it. The
+    // invariant is unchanged: Auto-match embeds INSIDE the hub.
+    const src = readFileSync(UNBOX_TABS, 'utf8');
+    assert.doesNotMatch(src, /<UnfoundMatchStrip/);
+    assert.match(src, /<CartonMatchHub/);
+    assert.match(src, /autoMatch=/);
+    assert.match(src, /id: 'pairing'/);
+  });
+
+  it('POUnboxingSection is the PO line list only — no pairing, no strip', () => {
     const src = readFileSync(PO, 'utf8');
     assert.doesNotMatch(src, /<UnfoundMatchStrip/);
-    assert.match(src, /CartonMatchHub/);
-    assert.match(src, /autoMatch=/);
+    assert.doesNotMatch(
+      src,
+      /<CartonMatchHub/,
+      'pairing lives on the right edge — a control there must not open a surface in the centre',
+    );
+    assert.doesNotMatch(src, /pairingOpen/);
   });
 
   it('TriageLineMatchingSection is a thin arrival wrapper', () => {

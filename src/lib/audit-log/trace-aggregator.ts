@@ -21,6 +21,8 @@ import 'server-only';
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { readInventorySpine, type InventoryEventRecord } from './inventory-spine';
+// Type-only: erased at build, so the client adapter never enters this module's graph.
+import type { InventoryTimelineRow } from '@/lib/timeline/inventory-events';
 import {
   findShippedOrderForSerialUnit,
   findShippedOrderByTsnSerial,
@@ -58,17 +60,39 @@ export interface TraceOrder {
  * One trace event — a structural subset of the spine record, shaped so the
  * client can feed it straight through `inventoryEventsToTimeline` (which already
  * renders the full lifecycle vocabulary through the shared `EventTimeline`).
+ *
+ * "Structural subset" is a contract, not a comment: every field
+ * `InventoryTimelineRow` reads has to survive this projection, or the adapter
+ * silently renders less than the spine knows. Four did not until 2026-08-02 —
+ * the same projection defect the entity journey had — and each one costs a
+ * visible fact:
+ *
+ *   - `notes`          → a NOTE renders as the literal word "Note" instead of
+ *                        the sentence someone wrote (the whole content of the
+ *                        event).
+ *   - `actor_staff_id` → no avatar. The timeline resolves a face by staff id and
+ *                        never guesses one from a display name, so dropping the
+ *                        id is dropping the face.
+ *   - `bin_barcode` /
+ *     `bin_name`       → PUTAWAY / MOVED lose the bin chip and its deep link,
+ *                        which on a putaway is the only fact that matters.
+ *
+ * Add a field here whenever the adapter learns to read one.
  */
 export interface TraceEvent {
   id: number;
   occurred_at: string;
   event_type: string;
+  actor_staff_id: number | null;
   actor_name: string | null;
   station: string | null;
   serial_number: string | null;
   sku: string | null;
+  bin_barcode: string | null;
+  bin_name: string | null;
   prev_status: string | null;
   next_status: string | null;
+  notes: string | null;
   payload: Record<string, unknown>;
 }
 
@@ -79,17 +103,46 @@ export interface TraceResult {
   events: TraceEvent[];
 }
 
+/**
+ * Compile-time proof of the contract in {@link TraceEvent}'s docblock.
+ *
+ * `Missing` is `never` while the projection carries every field the timeline
+ * adapter reads, and a union of the gaps the moment it does not — at which
+ * point `Complete` becomes a tuple and the `= true` below stops compiling,
+ * naming the dropped keys in the error.
+ *
+ * Plain assignability would NOT catch this and did not: every field the adapter
+ * added is optional (`notes?`, `actor_staff_id?`, `bin_barcode?`, `bin_name?`)
+ * so that existing callers keep compiling — the same property that let this
+ * projection drop all four in silence. So the assertion is on the KEYS.
+ *
+ * It lives here rather than beside the adapter's tests because `**\/*.test.ts`
+ * is excluded from tsconfig and tsx strips types without checking them, so a
+ * type-level assertion in a test file is never evaluated by anything.
+ * `import type` erases, so naming the client shape costs this server-only
+ * module nothing at runtime — no bundle-altitude edge.
+ */
+type MissingFromTrace = Exclude<keyof InventoryTimelineRow, keyof TraceEvent>;
+const traceCarriesEveryAdapterField: [MissingFromTrace] extends [never]
+  ? true
+  : ['TraceEvent drops fields inventoryEventsToTimeline reads:', MissingFromTrace] = true;
+void traceCarriesEveryAdapterField;
+
 function toTraceEvent(r: InventoryEventRecord): TraceEvent {
   return {
     id: r.id,
     occurred_at: r.occurred_at,
     event_type: r.event_type,
+    actor_staff_id: r.actor_staff_id,
     actor_name: r.actor_name,
     station: r.station,
     serial_number: r.serial_number,
     sku: r.sku,
+    bin_barcode: r.bin_barcode,
+    bin_name: r.bin_name,
     prev_status: r.prev_status,
     next_status: r.next_status,
+    notes: r.notes,
     payload: r.payload ?? {},
   };
 }

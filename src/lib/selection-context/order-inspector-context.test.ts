@@ -75,3 +75,52 @@ test('export and copy hold on every lane — they only read the selected rows', 
     assert.ok(keys.includes('delete'), `${view} should offer delete`);
   }
 });
+
+test('dispatch / delete / dock are resolved here, not re-derived in the body', () => {
+  // These three used to live in `ShippedDetailsBody` as a prop plus two local
+  // expressions, each spelling the same lane set differently
+  // (`context === 'dashboard' || isFulfillmentPanel || isLabelsPanel`). One
+  // descriptor now answers all three, so a new context cannot answer two of
+  // them and forget the third.
+  const dispatchLanes = ['dashboard', 'queue', 'fulfillment', 'labels'] as const;
+  const observeLanes = ['staged', 'station', 'packer', 'shipped'] as const;
+
+  for (const panelContext of dispatchLanes) {
+    const ctx = resolveOrderInspectorContext({ panelContext });
+    assert.equal(ctx.showDispatchExtras, true, `${panelContext} dispatches`);
+    assert.equal(ctx.showDelete, true, `${panelContext} may delete`);
+  }
+
+  for (const panelContext of observeLanes) {
+    const ctx = resolveOrderInspectorContext({ panelContext });
+    assert.equal(
+      ctx.showDispatchExtras,
+      false,
+      `${panelContext} observes an order someone else dispatches`,
+    );
+    assert.equal(ctx.showDelete, false, `${panelContext} must not delete`);
+  }
+});
+
+test('every context mounts the editor dock — the old 5-way disjunction was a tautology', () => {
+  // `showEditorDock` read `showDashboardExtras || staged || station || packer ||
+  // shipped`, which unions to every context there is. Kept as a descriptor field
+  // so a future context has somewhere to say no; pinned so nobody "simplifies"
+  // it back into a hand-written disjunction that drifts.
+  for (const panelContext of [
+    'dashboard',
+    'queue',
+    'fulfillment',
+    'labels',
+    'staged',
+    'station',
+    'packer',
+    'shipped',
+  ] as const) {
+    assert.equal(
+      resolveOrderInspectorContext({ panelContext }).showEditorDock,
+      true,
+      `${panelContext} mounts the editor dock`,
+    );
+  }
+});

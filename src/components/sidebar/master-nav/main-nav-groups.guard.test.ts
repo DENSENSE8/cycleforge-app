@@ -1,9 +1,10 @@
 /**
  * Source guard: Spine L1 is section drills (Analytics Monitor / Scan Stations /
- * Inbound / Catalog / Inventory / Fulfillment / Sales / Support / Workflow
- * Studio) — root buttons replace the body with back + pages. Home is top-pinned
- * (house glyph + Home label) above Search. Modes stay always-visible under
- * multi-mode pages (pinned count, no accordion).
+ * Inbound / Catalog / Inventory / Fulfillment / Sales / Support) — root buttons
+ * replace the body with back + pages. Home is top-pinned (house glyph + Home
+ * label) above Search; **Workflow Studio is FOOTER-pinned above Admin**
+ * (2026-08-02). Modes stay always-visible under multi-mode pages (pinned count,
+ * no accordion) — except on a pinned row, which never draws children at all.
  *
  * The dead labels are load-bearing here: `Triage Desk` was "everything
  * pointer-driven", `Print Stations` was "everything that ends at a printer".
@@ -59,7 +60,6 @@ const SPINE_ORDER = [
   'fulfillment',
   'sales',
   'support',
-  'studio',
 ] as const;
 
 /** Flat L1 order inside each domain drill. */
@@ -85,7 +85,7 @@ const DEAD_SECTION_LABELS = [
   'Other',
 ] as const;
 
-const ALLOWED_MAIN: ReadonlySet<MainGroupId> = new Set(['monitor', 'studio']);
+const ALLOWED_MAIN: ReadonlySet<MainGroupId> = new Set(['monitor']);
 const ALLOWED_DOMAIN: ReadonlySet<string> = new Set(DOMAIN_GROUPS.map((g) => g.id));
 
 const LIST_SRC = code(sourceOf('./SidebarNavList.tsx'));
@@ -94,18 +94,18 @@ const MOTION_SRC = code(
   sourceOf('../../../design-system/foundations/motion-framer.ts'),
 );
 const ACCENT_SRC = code(sourceOf('../../../lib/nav/spine-section-accent.ts'));
+const SEARCH_BAR_SRC = code(sourceOf('../tech/TechRailSearchBar.tsx'));
 
-test('MAIN_GROUPS is Analytics Monitor then Workflow Studio', () => {
+test('MAIN_GROUPS is Analytics Monitor alone — Studio left for the footer', () => {
   assert.deepEqual(
     MAIN_GROUPS.map((g) => g.id),
-    ['monitor', 'studio'],
+    ['monitor'],
   );
   assert.deepEqual(
     MAIN_GROUPS.map((g) => g.label),
-    ['Analytics Monitor', 'Workflow Studio'],
+    ['Analytics Monitor'],
   );
   assert.equal(MAIN_GROUPS[0]!.icon, ChartPie, 'monitor section icon is ChartPie');
-  assert.equal(MAIN_GROUPS[1]!.icon, Workflow, 'studio section icon is Workflow');
 });
 
 test('DOMAIN_GROUPS is Inbound → Catalog → Inventory → Fulfillment → Sales → Support', () => {
@@ -122,7 +122,7 @@ test('DOMAIN_GROUPS is Inbound → Catalog → Inventory → Fulfillment → Sal
   }
 });
 
-test('SPINE_SECTIONS is Monitor → Scan Stations → the six domains → Studio', () => {
+test('SPINE_SECTIONS is Monitor → Scan Stations → the six domains, ending at Support', () => {
   assert.deepEqual(SPINE_SECTIONS.map((d) => d.id), [...SPINE_ORDER]);
   assert.deepEqual(
     SPINE_SECTIONS.map((d) => d.label),
@@ -135,8 +135,12 @@ test('SPINE_SECTIONS is Monitor → Scan Stations → the six domains → Studio
       'Fulfillment',
       'Sales',
       'Support',
-      'Workflow Studio',
     ],
+  );
+  assert.equal(
+    SPINE_SECTIONS.some((d) => String(d.id) === 'studio'),
+    false,
+    'Workflow Studio is a footer pin, not a root drill',
   );
   for (const d of SPINE_SECTIONS) {
     assert.equal(typeof d.icon, 'function', `${d.id} must declare a section icon`);
@@ -170,7 +174,6 @@ test('no residual grab-bag section survives under any name', () => {
 
 test('spineSectionIdForPage resolves main / station / domain, and nothing else', () => {
   assert.equal(spineSectionIdForPage({ kind: 'main', mainGroup: 'monitor' }), 'monitor');
-  assert.equal(spineSectionIdForPage({ kind: 'main', mainGroup: 'studio' }), 'studio');
   assert.equal(spineSectionIdForPage({ kind: 'station', stationGroup: 'floor' }), 'floor');
   for (const g of DOMAIN_GROUPS) {
     assert.equal(spineSectionIdForPage({ kind: 'domain', domainGroup: g.id }), g.id);
@@ -192,9 +195,9 @@ test('Home then Search then Media then Chat are kind top', () => {
   assert.equal(aiChat?.label, 'Chat');
 });
 
-test('every APP_SIDEBAR_NAV main declares mainGroup monitor|studio', () => {
+test('every APP_SIDEBAR_NAV main declares mainGroup monitor', () => {
   const mains = APP_SIDEBAR_NAV.filter((item) => item.kind === 'main');
-  assert.ok(mains.length >= 2, `expected ≥2 main rows, got ${mains.length}`);
+  assert.ok(mains.length >= 1, `expected ≥1 main row, got ${mains.length}`);
   for (const item of mains) {
     assert.equal(item.kind, 'main');
     assert.ok(
@@ -226,16 +229,56 @@ test('every SIDEBAR_PAGE_NAV main declares matching mainGroup', () => {
   }
 });
 
-test('Monitor mains are Operations only; Studio mains are Studio + Catalog', () => {
+test('Monitor mains are Operations only', () => {
   const monitorIds = APP_SIDEBAR_NAV.filter(
     (item) => item.kind === 'main' && item.mainGroup === 'monitor',
   ).map((item) => item.id);
   assert.deepEqual(monitorIds, ['operations']);
+});
 
-  const studioIds = APP_SIDEBAR_NAV.filter(
-    (item) => item.kind === 'main' && item.mainGroup === 'studio',
+/**
+ * Workflow Studio is a FOOTER PIN above Admin (2026-08-02), not a tenth root
+ * drill: defining the operation is a standing-back act, not one of the places an
+ * operator browses through in a shift.
+ *
+ * The reachability half is the load-bearing part. `renderRow` computes
+ * `showModes = !opts?.pinned && modeCount > 1`, so a pinned row NEVER draws
+ * children — moving Studio to the footer as a pair of flat rows would have put
+ * `/studio/catalog` on the spine twice or nowhere. It survives as an L2 mode, so
+ * ⌘K, the spine's flat search (`buildNavDestinations` emits modes) and the
+ * GlobalHeader Mode switcher all still name it.
+ */
+test('Workflow Studio is a footer pin above Admin; Catalog rides as its L2 mode', () => {
+  const footerIds = APP_SIDEBAR_NAV.filter(
+    (item) => (item.kind ?? 'bottom') === 'bottom',
   ).map((item) => item.id);
-  assert.deepEqual(studioIds, ['studio', 'studio-catalog']);
+  assert.deepEqual(footerIds, ['studio', 'admin', 'settings'], 'footer band order');
+
+  const studio = APP_SIDEBAR_NAV.find((item) => item.id === 'studio');
+  assert.ok(studio);
+  assert.equal(studio!.kind, 'bottom');
+  assert.equal(studio!.label, 'Workflow Studio');
+  assert.equal(studio!.icon, Workflow);
+  assert.equal(studio!.href, '/studio');
+  assert.equal(
+    (studio as { mainGroup?: string }).mainGroup,
+    undefined,
+    'a footer pin belongs to no section',
+  );
+
+  // The second flat row is gone — not relocated into the footer beside its parent.
+  assert.equal(
+    APP_SIDEBAR_NAV.some((item) => item.id === 'studio-catalog'),
+    false,
+    'studio-catalog must not own a spine row',
+  );
+
+  const page = SIDEBAR_PAGE_NAV.find((p) => p.id === 'studio');
+  assert.ok(page, 'studio needs a mode registry — it is the only thing naming /studio/catalog');
+  assert.deepEqual(page!.modes?.map((m) => m.id), ['graph', 'catalog']);
+  assert.equal(page!.modes?.find((m) => m.id === 'catalog')?.to().pathname, '/studio/catalog');
+  assert.equal(page!.resolveMode?.({ pathname: '/studio/catalog', params: new URLSearchParams() }), 'catalog');
+  assert.equal(page!.resolveMode?.({ pathname: '/studio', params: new URLSearchParams() }), 'graph');
 });
 
 test('every APP_SIDEBAR_NAV domain row declares a known domainGroup', () => {
@@ -388,14 +431,20 @@ test('SIDEBAR_PAGE_NAV domain pages declare a known domainGroup', () => {
   assert.equal(fba!.kind, 'domain');
 });
 
-test('Monitor mains precede Studio mains in APP_SIDEBAR_NAV', () => {
-  const mains = APP_SIDEBAR_NAV.filter((item) => item.kind === 'main');
-  const groups = mains.map((item) => item.mainGroup);
-  const rank: Record<MainGroupId, number> = { monitor: 0, studio: 1 };
-  for (let i = 1; i < groups.length; i++) {
+/**
+ * The footer renders in ARRAY ORDER (`bottomPages.map`), so placement here is
+ * placement on screen — there is no separate footer ordering registry to keep in
+ * sync, and none should be added.
+ */
+test('APP_SIDEBAR_NAV rows are grouped: top → sections → footer', () => {
+  const rank = (kind: string | undefined) =>
+    kind === 'top' ? 0 : (kind ?? 'bottom') === 'bottom' ? 2 : 1;
+  const ranks = APP_SIDEBAR_NAV.map((item) => rank(item.kind));
+  for (let i = 1; i < ranks.length; i++) {
     assert.ok(
-      rank[groups[i]!] >= rank[groups[i - 1]!],
-      `main row order regresses at ${mains[i]!.id} (${groups[i]} after ${groups[i - 1]})`,
+      ranks[i]! >= ranks[i - 1]!,
+      `row order regresses at ${APP_SIDEBAR_NAV[i]!.id} — top pins, then section ` +
+        `rows, then footer pins, in array order`,
     );
   }
 });
@@ -473,6 +522,34 @@ test('SidebarNavList: Home/Search/Media/Chat top pin; footer filter above Settin
   assert.doesNotMatch(LIST_SRC, /HeaderAi/);
 });
 
+/**
+ * The spine's filter band is a ROW, not a dock.
+ *
+ * `TechRailSearchBar` is shared: station rails (Testing / Shipping / Unbox) pin
+ * it under a scrollable carton list, where the taller `inset-field` inset reads
+ * correctly. In the spine it sits in a list of 30px rows, so the same 49px band
+ * read as a separate surface. The fix is a density variant on the COMPONENT —
+ * never a `className` with raw padding from the host, because `inset-field` is a
+ * Tier-2 intent and both survive `cn()` with the intent winning in CSS order, so
+ * the override would silently no-op.
+ *
+ * The 32px `SearchField size="compact"` control is untouched either way: that is
+ * the floor's touch target on a station rail, and it is not a navigator's 2px to
+ * spend. The 12px horizontal inset is shared so the search glyph keeps the nav
+ * rows' glyph column.
+ */
+test('spine search band is row-dense; station rails keep the dock inset', () => {
+  assert.match(SEARCH_BAR_SRC, /density\?: 'default' \| 'row'/);
+  assert.match(SEARCH_BAR_SRC, /density === 'row' \? 'px-3' : 'inset-field'/);
+  assert.match(SEARCH_BAR_SRC, /density = 'default'/, 'station rails must not opt in');
+  // The band owns its whole padding story — the host names a density and never
+  // reaches in with a className.
+  const mount = LIST_SRC.match(/<TechRailSearchBar[\s\S]*?\/>/)?.[0];
+  assert.ok(mount, 'SidebarNavList must mount TechRailSearchBar');
+  assert.match(mount, /density="row"/);
+  assert.doesNotMatch(mount, /className/);
+});
+
 test('SidebarNavList: a query flattens the body to ranked destinations', () => {
   // Tree at rest, FLAT while searching. The old filter narrowed the section
   // BUTTONS, so typing a page's exact name returned a category that did not
@@ -495,15 +572,43 @@ test('SidebarNavList: a query flattens the body to ranked destinations', () => {
   assert.match(LIST_SRC, /No destination matches/);
 });
 
+test('SidebarNavList: destinations sit one step above modes in the type ladder', () => {
+  // The spine had NO size hierarchy — every row was `role-caption` (12px) and
+  // pages differed from modes only by weight, which is the thinnest signal in
+  // the system. 12px also sat below every peer navigator (VS Code 13, Linear
+  // 13, Notion 14, Slack 15, Vercel 14).
+  //
+  // One size for "a destination" — section drills, L1 pages, the drill title
+  // and search results all `role-body` (14px). Modes stay `role-caption`, so
+  // they finally read as the nested tier rather than as a lighter sibling.
+  const destinationRows = LIST_SRC.match(/text-role-body font-semibold/g) ?? [];
+  assert.ok(
+    destinationRows.length >= 4,
+    `expected ≥4 role-body destination rows (page · section · drill title · ` +
+      `search result), found ${destinationRows.length}`,
+  );
+  // Modes must NOT be bumped with them — that would flatten the ladder again.
+  assert.match(LIST_SRC, /text-role-caption font-medium/);
+  // Counts stay micro; bumping them would compete with the label they annotate.
+  assert.match(LIST_SRC, /text-role-micro font-semibold tabular-nums/);
+});
+
 test('SidebarNavList: drill back header centers section label from SoT', () => {
   assert.match(LIST_SRC, /section\.label/);
-  assert.match(LIST_SRC, /text-center text-role-caption/);
+  assert.match(LIST_SRC, /text-center text-role-body/);
   assert.match(LIST_SRC, /grid-cols-\[1\.25rem_1fr_1\.25rem\]/);
 });
 
-test('SidebarNavList: page/mode destinations share caption; modes stay readable; no accordion', () => {
-  assert.match(LIST_SRC, /text-role-caption font-semibold/);
+test('SidebarNavList: pages lead, modes nest, no accordion', () => {
+  // Pages and modes no longer share a size — see "destinations sit one step
+  // above modes". Destinations are role-body; modes stay role-caption/medium.
+  assert.match(LIST_SRC, /text-role-body font-semibold/);
   assert.match(LIST_SRC, /text-role-caption font-medium/);
+  assert.doesNotMatch(
+    LIST_SRC,
+    /text-role-caption font-semibold/,
+    'a semibold caption row is the old flat ladder — destinations are role-body',
+  );
   assert.doesNotMatch(LIST_SRC, /text-role-eyebrow font-semibold/);
   assert.doesNotMatch(LIST_SRC, /ChevronDown/);
   assert.doesNotMatch(LIST_SRC, /aria-expanded/);
@@ -532,9 +637,8 @@ test('SidebarNavList: section accents come from SoT — no lone hardcoded bg-blu
   assert.match(SPINE_SECTION_ACCENTS.catalog.activePage, /emerald-/);
   assert.match(SPINE_SECTION_ACCENTS.inventory.activePage, /cyan-/);
   assert.match(SPINE_SECTION_ACCENTS.fulfillment.activePage, /indigo-/);
-  assert.match(SPINE_SECTION_ACCENTS.sales.activePage, /rose-/);
+  assert.match(SPINE_SECTION_ACCENTS.sales.activePage, /green-/);
   assert.match(SPINE_SECTION_ACCENTS.support.activePage, /orange-/);
-  assert.match(SPINE_SECTION_ACCENTS.studio.activePage, /violet-/);
   assert.match(SPINE_NEUTRAL_ACCENT.activePage, /blue-/);
   // Total map: a new section without a hue is a type error, and a stale one is
   // an extra key here.
@@ -641,9 +745,19 @@ test('SidebarNavList: icon-only CSS lift — no whileHover, no row scale, no wei
   assert.match(LIST_SRC, /ds-raw-button group flex w-full/);
   // Travel + the reduced-motion gate live in the SoT, not at the call site.
   assert.doesNotMatch(LIST_SRC, /group-hover:translate/);
-  assert.match(ACCENT_SRC, /motion-safe:group-hover:translate-x-0\.5/);
-  assert.match(ACCENT_SRC, /motion-safe:group-hover:-translate-y-px/);
-  assert.match(ACCENT_SRC, /motion-safe:group-active:translate-x-px/);
+  // Straight UP, 2px (2026-08-02). The old `translate-x-0.5` drifted the glyph
+  // toward the label it sits 8px from — the one direction it has no room in —
+  // and 1px of lift did not read at a glance.
+  assert.match(ACCENT_SRC, /motion-safe:group-hover:-translate-y-0\.5/);
+  assert.match(ACCENT_SRC, /motion-safe:group-active:translate-y-0/);
+  assert.doesNotMatch(
+    ACCENT_SRC,
+    /translate-x-/,
+    'spine glyph travel is vertical only — no horizontal drift toward the label',
+  );
+  // `motion-safe:` is load-bearing: the framer MotionConfig floor covers
+  // `motion.*` elements only, so a CSS transform needs its own gate.
+  assert.doesNotMatch(ACCENT_SRC, /(?<!motion-safe:)group-hover:-translate-y/);
 });
 
 /**
@@ -663,6 +777,15 @@ test('spine accents: active rows carry an inset hairline; amber clears WCAG AA',
   assert.match(SPINE_NEUTRAL_ACCENT.modeActive, /ring-1 ring-inset ring-/);
   assert.match(SPINE_SECTION_ACCENTS.floor.activePage, /bg-amber-700\b/);
   assert.doesNotMatch(SPINE_SECTION_ACCENTS.floor.activePage, /bg-amber-600\b/);
+  // Sales moved rose → green 2026-08-02. `green-600` is ≈3.2:1 on white, the
+  // same AA failure amber/orange/cyan/teal had at 600 — and every one of the 14
+  // fields must move together, or the row fills green while the ⌘K palette still
+  // highlights it rose (nothing type-checks that).
+  assert.match(SPINE_SECTION_ACCENTS.sales.activePage, /bg-green-700\b/);
+  assert.doesNotMatch(SPINE_SECTION_ACCENTS.sales.activePage, /bg-green-600\b/);
+  for (const [field, value] of Object.entries(SPINE_SECTION_ACCENTS.sales)) {
+    assert.doesNotMatch(value, /rose-/, `sales.${field} still carries the retired rose hue`);
+  }
 });
 
 /**

@@ -72,6 +72,20 @@ export const X = ({ className = "w-6 h-6" }: { className?: string }) => (
     </svg>
 );
 
+/**
+ * Arrow-right-to-line (`>|`) — "push this panel away to the right".
+ *
+ * The dismiss glyph for a right-edge PUSH surface. An `X` says "destroy /
+ * cancel"; a push column is not cancelled, it is parked back against the edge
+ * it came from, and the arrow says which way it goes. Same family as the
+ * collapse chevrons on the resize grips.
+ */
+export const ArrowRightToLine = ({ className = "w-6 h-6" }: { className?: string }) => (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 12h12m0 0-4-4m4 4-4 4M20 4v16" />
+    </svg>
+);
+
 export const Search = ({ className = "w-6 h-6" }: { className?: string }) => (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />

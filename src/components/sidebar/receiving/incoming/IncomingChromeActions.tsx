@@ -1,15 +1,16 @@
 'use client';
 
 /**
- * Incoming workbench-chrome CTAs — Import (blue platform picker) + Add (green).
- * Visual twin of {@link OutboundOrderChromeActions}; Import opens a popover to
- * choose the connected purchasing source (Zoho inventory POs / eBay marketplace),
+ * Incoming workbench-chrome CTAs — Check (Zoho received) · Import (blue platform
+ * picker) · Add (green). Visual twin of {@link OutboundOrderChromeActions};
+ * Check opens the paste→Zoho received rail; Import opens a popover to choose
+ * the connected purchasing source (Zoho inventory POs / eBay marketplace),
  * then runs that sync. Add opens manual eBay order entry.
  */
 
 import { useState } from 'react';
 import * as Popover from '@radix-ui/react-popover';
-import { Plus, RefreshCw, Loader2, Package } from '@/components/Icons';
+import { Plus, RefreshCw, Loader2, Package, ClipboardList } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
 import { PlatformMark } from '@/components/ui/PlatformMark';
 import {
@@ -19,20 +20,26 @@ import {
 import { cn } from '@/utils/_cn';
 
 export function IncomingChromeActions({
+  onCheckZoho,
   onImportZoho,
   onImportEbay,
   onAdd,
   importingZoho = false,
   importingEbay = false,
+  canCheckZoho = true,
   canImportZoho = true,
   canImportEbay = false,
   canAdd = true,
 }: {
+  /** Opens the paste → Zoho received check rail. */
+  onCheckZoho: () => void;
   onImportZoho: () => void;
   onImportEbay: () => void;
   onAdd: () => void;
   importingZoho?: boolean;
   importingEbay?: boolean;
+  /** Manual Zoho received check — default on for receiving.view surfaces. */
+  canCheckZoho?: boolean;
   /** Inventory / Zoho PO sync — default on for receiving orgs. */
   canImportZoho?: boolean;
   /** Marketplace eBay purchase sync — when Universal Incoming + ebay connected. */
@@ -51,6 +58,17 @@ export function IncomingChromeActions({
 
   return (
     <>
+      {canCheckZoho ? (
+        <Button
+          size="sm"
+          onClick={onCheckZoho}
+          ariaLabel="Check Zoho received by tracking"
+          icon={<ClipboardList />}
+          className="rounded-full font-semibold uppercase tracking-widest bg-slate-700 shadow-sm shadow-slate-700/25 hover:bg-slate-600 active:bg-slate-800"
+        >
+          Check
+        </Button>
+      ) : null}
       {hasAnyImport ? (
         <Popover.Root open={menuOpen} onOpenChange={setMenuOpen}>
           <Popover.Trigger asChild>

@@ -12,6 +12,7 @@ Golden: `receiving/workspace/LineEditPanel.tsx`. Full rule + tiers:
 
 ## Always
 - Identity: `StationContextBar` absolute-float over the canvas (`stationContextBarHostClass`) + entity-context adapter `density="bar"` **above** `StationWorkbench` (`reserveIdentityClearance`).
+- **Top padding SoT:** `STATION_BOOKMARK_CANVAS_INSET_TOP` (`top-2`) ↔ `CONTEXT_PANEL_OUTER_MARGIN` (`m-2`). Never host `py-*` under the identity; Unbox push vertical = `CONTEXT_PANEL_OUTER_MARGIN_Y`, trailing = `TICKET_PUSH_HOST_PAD_CLASS` (`pr-2`).
 - Outer shell: `StationPanelRoot` (owns `bg-surface-canvas` column + `StationAmbientWash`).
 - Column: `STATION_WORKBENCH_*` (720px + `px-4 sm:px-6`) from `workbench-layout.ts`.
 - Terminal: `useStationTerminalAction` + `STATION_TERMINAL_REGISTRY` (or `TERMINAL_HAND_VM_ALLOWLIST` + follow-up).

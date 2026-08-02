@@ -3,7 +3,9 @@
 import { useCallback, useMemo, type ReactNode, type RefObject } from 'react';
 import type { OnChangeFn, SortingState } from '@tanstack/react-table';
 import { SkeletonList } from '@/design-system/components/Skeletons';
+import { GridColumnGutter } from '@/design-system/components/grid/GridColumnDetailsTrigger';
 import { LedgerGrid } from '@/design-system/components/grid/LedgerGrid';
+import { useGridColumnWidths } from '@/components/ui/table-column-config/useGridColumnWidths';
 import { useGridSurface } from '@/design-system/components/grid/useGridSurface';
 import type { GridSurfaceDescriptor } from '@/design-system/components/grid/grid-surface-descriptor';
 import type { RowGroup } from '@/lib/group-rows';
@@ -37,8 +39,16 @@ interface LedgerGridSurfaceProps<Row, K extends string> {
   sort: K | null;
   dir: 'asc' | 'desc' | null;
   onSortChange: (key: K, dir: 'asc' | 'desc') => void;
-  /** Sticky column header; call `toggleColumnSort` from header clicks. */
-  renderColumnHeader: (api: { toggleColumnSort: (key: K) => void }) => ReactNode;
+  /**
+   * Sticky column header. Call `toggleColumnSort` from header clicks, and hand
+   * `onResizeColumn` straight to the generated header — it is `undefined` when
+   * no `tableId` is set, which is the honest "this surface has nowhere to
+   * persist a width" answer rather than a grip that silently forgets.
+   */
+  renderColumnHeader: (api: {
+    toggleColumnSort: (key: K) => void;
+    onResizeColumn?: (key: string, px: number) => void;
+  }) => ReactNode;
   renderGroup: (group: RowGroup<Row>, baseStripeIndex: number) => ReactNode;
   renderRow: (row: Row, stripeIndex: number) => ReactNode;
   loading: boolean;
@@ -74,6 +84,17 @@ interface LedgerGridSurfaceProps<Row, K extends string> {
   ariaLabel: string;
   /** Outer card testid; the scroll body gets `${testId}-scroll`. */
   testId: string;
+  /**
+   * Per-staff prefs key (`staff_preferences.tableColumns[tableId]`). Enables
+   * drag-resize persistence; the visibility rail is keyed by the same id.
+   */
+  tableId?: string;
+  /**
+   * Mounts the column-display control in a gutter to the RIGHT of the card.
+   * Outside the card by construction — inside the header band it either
+   * reserved a permanent track or covered the last column's label.
+   */
+  columnDetails?: { open: boolean; onOpen: () => void };
 }
 
 /** The house dashed teaching box — one shape for both settled-empty answers. */
@@ -105,6 +126,8 @@ export function LedgerGridSurface<Row, K extends string>({
   className,
   ariaLabel,
   testId,
+  tableId,
+  columnDetails,
 }: LedgerGridSurfaceProps<Row, K>) {
   // Controlled sort mirror → TanStack state; header clicks route through the
   // table column (`toggleSorting`: asc ↔ desc, desc-first per def) and land
@@ -130,6 +153,12 @@ export function LedgerGridSurface<Row, K extends string>({
     onSortingChange: handleSortingChange,
   });
 
+  // One style object drives header, rows, group summaries AND the frozen pane's
+  // sticky-left `calc()` — they all read the same `--cf-col-*` vars, which is
+  // what keeps a resized `title` from unpinning the identity pane.
+  const { columnVars, setWidth } = useGridColumnWidths(tableId);
+  const onResizeColumn = tableId ? setWidth : undefined;
+
   const toggleColumnSort = useCallback(
     (key: K) => {
       table.getColumn(key)?.toggleSorting();
@@ -144,39 +173,42 @@ export function LedgerGridSurface<Row, K extends string>({
   const dayHeadersActive = showDayHeaders && !(sort && dir);
 
   return (
-    <div
-      data-testid={testId}
-      data-table-surface=""
-      className={cn(
-        'flex h-full min-h-0 min-w-0 flex-1 flex-col',
-        TABLE_SURFACE_CLIP_CLASS,
-        className,
-      )}
-    >
-      {showSkeleton ? (
-        <div className="p-3">
-          <SkeletonList count={12} type="row" />
-        </div>
-      ) : (
-        <LedgerGrid<Row>
-          scrollX
-          contentMinWidthRem={descriptor.contentMinWidthRem}
-          gridSkin="airtable"
-          showDayHeaders={dayHeadersActive}
-          aria-label={ariaLabel}
-          data-testid={`${testId}-scroll`}
-          bodyRef={scrollRef}
-          orderGroupsByDate={orderGroupsByDate}
-          columnHeader={renderColumnHeader({ toggleColumnSort })}
-          renderGroup={renderGroup}
-          renderRow={renderRow}
-          emptyState={<GridEmptyBox message={emptyMessage} />}
-          isSearching={isSearching && Boolean(searchEmptyMessage)}
-          searchEmptyState={
-            searchEmptyMessage ? <GridEmptyBox message={searchEmptyMessage} /> : undefined
-          }
-        />
-      )}
-    </div>
+    <GridColumnGutter onOpen={columnDetails?.onOpen} open={columnDetails?.open}>
+      <div
+        data-testid={testId}
+        data-table-surface=""
+        className={cn(
+          'flex h-full min-h-0 min-w-0 flex-1 flex-col',
+          TABLE_SURFACE_CLIP_CLASS,
+          className,
+        )}
+      >
+        {showSkeleton ? (
+          <div className="p-3">
+            <SkeletonList count={12} type="row" />
+          </div>
+        ) : (
+          <LedgerGrid<Row>
+            scrollX
+            contentMinWidthRem={descriptor.contentMinWidthRem}
+            columnVars={columnVars}
+            gridSkin="airtable"
+            showDayHeaders={dayHeadersActive}
+            aria-label={ariaLabel}
+            data-testid={`${testId}-scroll`}
+            bodyRef={scrollRef}
+            orderGroupsByDate={orderGroupsByDate}
+            columnHeader={renderColumnHeader({ toggleColumnSort, onResizeColumn })}
+            renderGroup={renderGroup}
+            renderRow={renderRow}
+            emptyState={<GridEmptyBox message={emptyMessage} />}
+            isSearching={isSearching && Boolean(searchEmptyMessage)}
+            searchEmptyState={
+              searchEmptyMessage ? <GridEmptyBox message={searchEmptyMessage} /> : undefined
+            }
+          />
+        )}
+      </div>
+    </GridColumnGutter>
   );
 }

@@ -33,6 +33,7 @@ function code(src: string): string {
 /** Create / import / prefs overlays that may keep SidebarIntakeFormShell. */
 const INTAKE_SHELL_WITH_REGISTRAR_ALLOWLIST = new Set<string>([
   'src/components/sidebar/receiving/incoming/IncomingImportEbayOverlay.tsx',
+  'src/components/sidebar/receiving/incoming/IncomingZohoReceivedCheckRail.tsx',
   'src/components/ui/table-column-config/GridColumnDetailsPanel.tsx',
 ]);
 

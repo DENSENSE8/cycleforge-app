@@ -13,8 +13,8 @@ import {
   repairPriceSortValue,
   repairTicketValue,
   type RepairGridColumnKey,
-  type RepairGridSortDir,
 } from '@/lib/repair/repair-grid-layout';
+import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 
 function titleValue(repair: RSRecord): string {
   return String(repair.product_title || '').trim();
@@ -34,7 +34,7 @@ export function compareRepairGridRows(
   a: RSRecord,
   b: RSRecord,
   column: RepairGridColumnKey,
-  dir: RepairGridSortDir,
+  dir: GridSortDir,
 ): number {
   const sign = dir === 'asc' ? 1 : -1;
   let primary = 0;

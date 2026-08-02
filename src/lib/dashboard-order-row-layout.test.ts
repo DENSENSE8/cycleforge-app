@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
+import { gridTemplate } from '@/design-system/components/grid/grid-column-geometry';
 import {
   ORDERS_QUEUE_CELL_INSET,
   ORDERS_QUEUE_COLUMNS,
@@ -69,7 +70,10 @@ describe('ordersQueueRowShellClass / grid template', () => {
     // Fact tracks are content-hard minmax(X,X); only title carries 1fr.
     const template = ordersQueueGridTemplate();
     assert.equal((template.match(/1fr/g) ?? []).length, 1, 'only title flexes');
-    assert.ok(template.includes('minmax(12rem, 1fr)'), 'title is minmax(12rem, 1fr)');
+    assert.ok(
+      template.includes('minmax(var(--cf-col-title, 12rem), 1fr)'),
+      'title flex track wraps its min in the width CSS var',
+    );
   });
 });
 
@@ -80,10 +84,11 @@ describe('ORDERS_QUEUE_COLUMNS — the column model header + template share', ()
       ['select', 'order', 'title', 'sla', 'condition', 'qty', 'tracking'],
     );
     // Each track = its width CSS var with the model width as the fallback, so a
-    // persisted/resized width overrides with zero template rebuild.
+    // persisted/resized width overrides with zero template rebuild. Flex tracks
+    // wrap only the min in the var (`minmax(var(...), 1fr)`).
     assert.equal(
       ordersQueueGridTemplate(),
-      ORDERS_QUEUE_COLUMNS.map((c) => `var(--cf-col-${c.key}, ${c.width})`).join(' '),
+      gridTemplate(ORDERS_QUEUE_COLUMNS),
       'template drives each track from its width CSS var',
     );
   });
@@ -91,8 +96,8 @@ describe('ORDERS_QUEUE_COLUMNS — the column model header + template share', ()
   it('resize helpers: only data columns resize; widths → CSS vars', () => {
     assert.deepEqual(
       [...ORDERS_QUEUE_RESIZABLE_KEYS],
-      ['order', 'title', 'sla', 'condition', 'qty', 'tracking'],
-      'select control gutter is not resizable',
+      ['title', 'sla', 'condition'],
+      'select gutter and fixed-format id/number tracks are not resizable',
     );
     assert.equal(ordersQueueColVar('title'), '--cf-col-title');
     assert.deepEqual(ordersQueueColumnVars({ title: 320, qty: 60 }), {
@@ -208,7 +213,7 @@ describe('sanitizeOrdersQueueColumnOrder — persisted order → safe full order
     const template = ordersQueueGridTemplate(order);
     assert.ok(
       template.startsWith(
-        'var(--cf-col-select, minmax(2rem, 2rem)) var(--cf-col-order, minmax(4.5rem, 4.5rem)) var(--cf-col-title,',
+        'var(--cf-col-select, minmax(2rem, 2rem)) var(--cf-col-order, minmax(4.5rem, 4.5rem)) minmax(var(--cf-col-title,',
       ),
     );
     assert.ok(

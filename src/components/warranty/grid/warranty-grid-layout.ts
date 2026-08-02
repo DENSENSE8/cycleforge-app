@@ -24,6 +24,7 @@ import { gridFrozenKeys } from '@/design-system/components/grid/grid-column-edit
 import { gridTemplate } from '@/design-system/components/grid/grid-column-geometry';
 import { ordersQueueColVar } from '@/lib/dashboard-order-row-layout';
 import type { ColumnType } from '@/lib/tables/table-columns';
+import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 
 export type WarrantyGridColumnKey =
   | 'select'
@@ -149,7 +150,6 @@ export function warrantyGridFrozenLeft(key: WarrantyGridColumnKey): string {
   return `calc(${parts.join(' + ')})`;
 }
 
-export type WarrantyGridSortDir = 'asc' | 'desc';
 
 /**
  * Default direction when first activating a column sort.
@@ -159,7 +159,7 @@ export type WarrantyGridSortDir = 'asc' | 'desc';
  * claims about to fall out of cover at the top, which is the only reason to
  * sort that column at all.
  */
-export function defaultDirForWarrantyGridSort(key: WarrantyGridColumnKey): WarrantyGridSortDir {
+export function defaultDirForWarrantyGridSort(key: WarrantyGridColumnKey): GridSortDir {
   if (key === 'logged') return 'desc';
   return 'asc';
 }

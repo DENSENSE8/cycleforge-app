@@ -5,11 +5,10 @@
  * (`overview` IS the centre), so this vocabulary covers only the eight surfaces
  * that moved to {@link ReceivingDisplaysPushStack}.
  *
- * `checklist` leads the strip and is the DEFAULT display (2026-08-02). It is the
- * station's live "where am I": the operator's first question on every carton is
- * what is left on it, and an orienting display behind a ⋯ menu costs two clicks
- * per box. It is a second VIEW of the centre's work cards, never a second
- * derivation — both read `useUnboxProcedureSteps`, so they cannot disagree.
+ * `checklist` is a valid Displays body id and deep-link (`?display=checklist`) but
+ * is **ring-only** — it does not appear on the icon strip (2026-08-02). The pane
+ * scan-progress ring is the sole Checklist entry. It is a second VIEW of the centre's
+ * work cards, never a second derivation — both read `useUnboxProcedureSteps`.
  *
  * `null` means the Displays column is CLOSED — there is no separate open flag,
  * so there is nothing to keep in sync and no vestigial "active tab while
@@ -18,6 +17,7 @@
 
 export type UnboxSideTab =
   | 'classify'
+  | 'pairing'
   | 'listings'
   | 'units'
   | 'po-note'
@@ -26,10 +26,11 @@ export type UnboxSideTab =
   | 'tracking'
   | 'timeline';
 
-/** Strip order — matches the SectionTabsSlider tab list in `unbox-tabs.tsx`. */
+/** All display body ids — includes ring-only `checklist`. */
 export const UNBOX_SIDE_TAB_ORDER: readonly UnboxSideTab[] = [
   'checklist',
   'classify',
+  'pairing',
   'listings',
   'units',
   'po-note',
@@ -38,10 +39,20 @@ export const UNBOX_SIDE_TAB_ORDER: readonly UnboxSideTab[] = [
   'timeline',
 ];
 
+/** Strip-visible tabs only — `checklist` opens from the scan-progress ring. */
+export const UNBOX_STRIP_TAB_ORDER: readonly UnboxSideTab[] = UNBOX_SIDE_TAB_ORDER.filter(
+  (tab) => tab !== 'checklist',
+);
+
 /** Per-carton visibility gates (unfound vs matched, local pickup, serials, …). */
 export interface UnboxSideTabGates {
   /** Always true today — Classify is the SoT editor for both lanes. */
   hasClassifyTab: boolean;
+  /**
+   * Package Pairing needs a carton record to pair — without one the hub can
+   * only teach ("scan its tracking"), which is not a display worth a strip cell.
+   */
+  hasPairingTab: boolean;
   /** Matched cartons only (an unfound carton has no listing to link). */
   hasListingsTab: boolean;
   /** At least one serial scanned on the line. */
@@ -58,6 +69,8 @@ export function isUnboxSideTabVisible(tab: UnboxSideTab, gates: UnboxSideTabGate
   switch (tab) {
     case 'classify':
       return gates.hasClassifyTab;
+    case 'pairing':
+      return gates.hasPairingTab;
     case 'listings':
       return gates.hasListingsTab;
     case 'units':
@@ -88,5 +101,5 @@ export function resolveUnboxSideTab(
 ): UnboxSideTab | null {
   if (requested == null) return null;
   if (isUnboxSideTabVisible(requested, gates)) return requested;
-  return UNBOX_SIDE_TAB_ORDER.find((tab) => isUnboxSideTabVisible(tab, gates)) ?? null;
+  return UNBOX_STRIP_TAB_ORDER.find((tab) => isUnboxSideTabVisible(tab, gates)) ?? null;
 }

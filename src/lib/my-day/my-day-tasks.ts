@@ -34,10 +34,16 @@ export const MY_DAY_LANE_FILTERS: readonly MyDayLaneFilter[] = [
   'attention',
 ] as const;
 
+/**
+ * `assigned` is deliberately **not** "Assigned to me" — the surface is My Day,
+ * so every row on it is already this operator's. The qualifier was pure width
+ * (2026-08-01 chrome pass): it was the longest label in the tab strip, and the
+ * strip now has to seat the due-horizon chips the KPI band used to hold.
+ */
 const LANE_LABEL: Record<MyDayLaneFilter, string> = {
   all: 'Everything',
   do_next: 'Do next',
-  assigned: 'Assigned to me',
+  assigned: 'Assigned',
   attention: 'Needs attention',
 };
 
@@ -249,8 +255,23 @@ const DUE_HORIZON_LABEL: Record<MyDayDueHorizon, string> = {
   upcoming: 'Upcoming',
 };
 
+/**
+ * Chrome-band form. "Due today" → "Today": the three chips sit side by side, so
+ * the word they share carries no information and only costs band width — the
+ * same reason the grid's lane chips are shorter than the inspector's.
+ */
+const DUE_HORIZON_SHORT_LABEL: Record<MyDayDueHorizon, string> = {
+  overdue: 'Overdue',
+  due_today: 'Today',
+  upcoming: 'Upcoming',
+};
+
 export function myDayDueHorizonLabel(horizon: MyDayDueHorizon): string {
   return DUE_HORIZON_LABEL[horizon];
+}
+
+export function myDayDueHorizonShortLabel(horizon: MyDayDueHorizon): string {
+  return DUE_HORIZON_SHORT_LABEL[horizon];
 }
 
 /** `?filter=` → a horizon, or null for anything this surface does not own. */

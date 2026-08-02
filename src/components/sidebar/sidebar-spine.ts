@@ -48,3 +48,21 @@ export const SIDEBAR_SPINE_MENU_HEADER_CLASS =
 /** Dense action row inside an identity menu. */
 export const SIDEBAR_SPINE_MENU_ACTION_CLASS =
   'flex w-full items-center gap-2 rounded-md px-2 py-1 text-left transition hover:bg-surface-hover';
+
+/** Primary name inside an identity menu (org or staff). */
+export const SIDEBAR_SPINE_MENU_TITLE_CLASS =
+  'truncate text-role-caption font-semibold leading-tight text-text-default';
+
+/**
+ * Load-bearing org name in the staff ⋯ menu header — caption soft, never
+ * eyebrow (eyebrow is for status labels; the chevron is enough for “current”).
+ */
+export const SIDEBAR_SPINE_MENU_ORG_CLASS =
+  'truncate text-role-caption font-medium leading-tight text-text-soft';
+
+/** Tertiary meta line (slug · plan · role). */
+export const SIDEBAR_SPINE_MENU_META_CLASS = 'truncate text-role-micro text-text-soft';
+
+/** Action label inside an identity menu. */
+export const SIDEBAR_SPINE_MENU_ACTION_LABEL_CLASS =
+  'text-role-caption font-medium text-text-default';

@@ -8,16 +8,23 @@
  * 3–5m: wall-scale KpiStrip + SectionCards (composed from the Monitor block
  * registry; the hero scale is the additive `size="wall"` grow of KpiTile, not a
  * page-local twin). Live via `ops_plan.updated` (useOperationsTvBoard); a
- * network blip degrades to a "Reconnecting" pill over the last board, never a
- * blank freeze (§27 — reused OfflineBanner's semantics inline because the `tv=1`
- * takeover overlay sits above the global banner's z-band).
+ * network blip degrades to a status pill over the last board, never a blank
+ * freeze (§27 — the `tv=1` takeover overlay sits above the global banner's
+ * z-band, so the wall carries its own read-only pill rather than the band).
+ *
+ * The pill's *state* now comes from the shared connection-health hooks the
+ * banners use, so a wall reading "Live" while the station's realtime link is
+ * dead is no longer possible — but it stays **read-only** (D12): no retry
+ * button, no upload or pairing modal ever mounts on a Monitor surface.
  *
  * `blocked` has no first-class column until collab (Phase D); Overdue is the
  * honest stuck signal today and is what this shows.
  */
 
-import { useEffect, useState, type ReactNode } from 'react';
+import { type ReactNode } from 'react';
 import { motion } from '@/design-system/motion';
+import { REALTIME_DEGRADED_LABEL } from '@/lib/realtime/connection-health';
+import { useNetworkOnline, useRealtimeLink } from '@/hooks/useConnectionHealth';
 import { cn } from '@/utils/_cn';
 import {
   KpiStrip,
@@ -39,26 +46,10 @@ const SOURCE_LABEL: Record<TvPlanSource, string> = {
   authored: 'Floor plan',
 };
 
-/** navigator.onLine, tracked — the wall must show its own liveness. */
-function useOnline(): boolean {
-  const [online, setOnline] = useState(true);
-  useEffect(() => {
-    if (typeof navigator === 'undefined') return;
-    const update = () => setOnline(navigator.onLine);
-    update();
-    window.addEventListener('online', update);
-    window.addEventListener('offline', update);
-    return () => {
-      window.removeEventListener('online', update);
-      window.removeEventListener('offline', update);
-    };
-  }, []);
-  return online;
-}
-
 export function OperationsTvBoard() {
   const query = useOperationsTvBoard();
-  const online = useOnline();
+  const online = useNetworkOnline();
+  const { degraded: realtimeDegraded } = useRealtimeLink();
   const state = query.data;
   const board = state?.board ?? null;
   const notEnabled = !!state && !state.enabled;
@@ -100,9 +91,20 @@ export function OperationsTvBoard() {
 
   // We have a board — render it, degrading (not blanking) if the connection is
   // down or the latest refresh failed.
-  const degraded = !online || query.isError || (query.failureCount > 0 && !query.isFetching);
+  const degraded =
+    !online ||
+    realtimeDegraded ||
+    query.isError ||
+    (query.failureCount > 0 && !query.isFetching);
 
-  return <TvBoardBody board={board} online={online} degraded={degraded} />;
+  return (
+    <TvBoardBody
+      board={board}
+      online={online}
+      degraded={degraded}
+      realtimeDegraded={realtimeDegraded}
+    />
+  );
 }
 
 // ── Frame + header ───────────────────────────────────────────────────────────
@@ -116,12 +118,26 @@ function TvFrame({ children, header }: { children: React.ReactNode; header?: Rea
   );
 }
 
-function StatusPill({ online, degraded, updatedAt }: { online: boolean; degraded: boolean; updatedAt: string }) {
+function StatusPill({
+  online,
+  degraded,
+  realtimeDegraded,
+  updatedAt,
+}: {
+  online: boolean;
+  degraded: boolean;
+  realtimeDegraded: boolean;
+  updatedAt: string;
+}) {
+  // A dead realtime link and a failed refresh both read as "not live", but they
+  // are different problems — name the one we actually know about.
   const tone = !online
     ? { dot: 'bg-rose-500', text: 'text-text-danger', label: 'Offline' }
-    : degraded
-      ? { dot: 'bg-amber-500', text: 'text-text-warning', label: 'Reconnecting' }
-      : { dot: 'bg-emerald-500', text: 'text-text-success', label: 'Live' };
+    : realtimeDegraded
+      ? { dot: 'bg-amber-500', text: 'text-text-warning', label: REALTIME_DEGRADED_LABEL }
+      : degraded
+        ? { dot: 'bg-amber-500', text: 'text-text-warning', label: 'Reconnecting' }
+        : { dot: 'bg-emerald-500', text: 'text-text-success', label: 'Live' };
   return (
     <div className="flex items-center gap-3">
       <span className="inline-flex items-center gap-2 rounded-full border border-border-soft bg-surface-card px-3 py-1.5">
@@ -135,7 +151,17 @@ function StatusPill({ online, degraded, updatedAt }: { online: boolean; degraded
   );
 }
 
-function TvBoardBody({ board, online, degraded }: { board: TvBoard; online: boolean; degraded: boolean }) {
+function TvBoardBody({
+  board,
+  online,
+  degraded,
+  realtimeDegraded,
+}: {
+  board: TvBoard;
+  online: boolean;
+  degraded: boolean;
+  realtimeDegraded: boolean;
+}) {
   const header = (
     <motion.header
       variants={framerVariants.monitorStaggerItem}
@@ -152,7 +178,12 @@ function TvBoardBody({ board, online, degraded }: { board: TvBoard; online: bool
           </p>
         </div>
       </div>
-      <StatusPill online={online} degraded={degraded} updatedAt={board.generatedAt} />
+      <StatusPill
+        online={online}
+        degraded={degraded}
+        realtimeDegraded={realtimeDegraded}
+        updatedAt={board.generatedAt}
+      />
     </motion.header>
   );
 

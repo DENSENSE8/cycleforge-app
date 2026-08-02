@@ -68,7 +68,7 @@ export function RackLabelPrinter({ variant = 'main' }: RackLabelPrinterProps) {
             aisle={c.aisle}
             bay={c.bay}
             level={c.level}
-            gln={c.config.gln}
+            gln={c.gln}
           />
         </WorkspaceCard>
       )}
@@ -112,7 +112,7 @@ export function RackLabelPrinter({ variant = 'main' }: RackLabelPrinterProps) {
 
       <div className="label-print-zone">
         {c.bulkLabels?.map((seg, i) => (
-          <RackPrintLabel key={`${rackCode(seg)}-${i}`} segments={seg} roomName={c.selectedRoom ?? ''} gln={c.config.gln} />
+          <RackPrintLabel key={`${rackCode(seg)}-${i}`} segments={seg} roomName={c.selectedRoom ?? ''} gln={c.gln} />
         ))}
       </div>
     </div>

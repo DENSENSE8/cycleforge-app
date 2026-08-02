@@ -88,7 +88,16 @@ type ReceivingLogChangedPayload = {
 
 type ReceivingPhotoChangedPayload = {
   organizationId: string;
-  action: 'insert' | 'delete';
+  /**
+   * `update` = the photo neither arrived nor left; a FACT about it changed
+   * (today: its `photo_aspect` claim, via `PATCH /api/photos/[id]/aspect`).
+   * Added 2026-08-02, matching the DOM-event twin in `@/utils/events` which has
+   * carried it all along. Safe to widen because no subscriber branches on this
+   * field — every one of the three just invalidates — but keep it that way: a
+   * subscriber that starts switching here must handle all three, and an
+   * aspect change must not be counted as a photo arriving.
+   */
+  action: 'insert' | 'delete' | 'update';
   receivingId: number;
   receivingLineId?: number | null;
   photoId?: number | null;

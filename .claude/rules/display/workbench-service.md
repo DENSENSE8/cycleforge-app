@@ -13,6 +13,70 @@ restate the Workbench contract.
 
 ---
 
+## The middle is the work; the right side is the extras
+
+> **The middle is what must be done right now. The right side is the extras — the context and the
+> actions that help the middle.**
+
+This is the branch's **ranking rule**, and it settles arguments the composition table cannot. It is
+why Connections left the thread's tab strip: linkage *explains* the conversation, it is not the
+conversation, so making the agent swap the conversation out to read it inverted the ranking.
+Followed to its end (2026-08-02) it emptied the strip entirely — **the thread has no tab strip at
+all now**, and every display lives on the right edge.
+
+**It is also the entry test for every future right-rail tab — if it is the work, it belongs in the
+middle.** Worked verdicts:
+
+| Candidate | Verdict | Why |
+|---|---|---|
+| **The customer conversation** | **middle** | It *is* the work — the one thing the middle holds |
+| **Connections** (tracking / order / serial, link, unlink) | rail | Explains the thread; the agent reads it *while* replying |
+| **Timeline** (ticket activity / carrier / unit journeys) | rail | Read-only history of the record in the middle |
+| **Conversations** (internal team thread) | rail *(corrected 2026-08-02)* | See below |
+| **AI *suggestions*** (drafts a reply the agent still sends) | rail | It proposes; the composer in the middle commits |
+| **An AI panel that SENDS** | **middle** | Sending is the work |
+
+**Conversations moved to the rail, and the reason it was in the middle did not
+hold.** The stated ground was "a second composer in the rail would be two
+writers over one thread". The team thread and the customer ticket are two
+*different* threads with two different audiences, so their composers write to
+different stores — the collision the rule guards against cannot occur. What the
+old placement did cost was real and daily: writing an internal note about the
+conversation required taking the conversation off screen.
+
+**The rail's displays are exclusive, and the middle never swaps.** One display
+shows at a time, switched by a `density="icon"` strip — the Unbox Displays shape
+(`display/station-workbench.md`). Each display owns its own controls; the bottom
+dock stays **ticket-terminal** and is never re-labelled by a click on the right
+edge, because a control in one region rewriting a control in another is the
+cross-region action-at-a-distance the station law bans.
+
+**There is no separate "Updates" display.** It rendered
+`SupportContextHub onlySegment="activity"` — `bundle.timeline`, the exact array
+Timeline's Activity spine already shows. Timeline is the superset (Units ·
+Tracking · Activity), so it keeps the job; two homes for one fact is the thing
+being avoided, not the tab count.
+
+**A rail tab must be reachable and useful the moment it ships.** `SupportSuggestionPanel` exists but
+has zero consumers and no bridge into any composer, so the AI tab is **absent** rather than mounted
+empty — an empty tab that looks broken costs more trust than a missing one.
+
+**The right edge is `RightRailHost`'s, and the branch shell has two slots.** A `service-workspace`
+shell renders **list** and **thread** and nothing else; context is a rail occupant that registers
+itself. `ServiceWorkspaceShell` carried a private `<aside>` for one day (2026-08-01) — a second
+permanent consumer of the edge, and a duplicate of `SupportContextDetailPanel`, which was already
+registering the same `SupportContextHub` correctly. Deleted, not migrated. Guard:
+`service-workspace.guard.test.ts`.
+
+**The rail's `push` is decided by the HOST, not the panel.** `SupportContextDetailPanel` has two
+hosts with opposite answers — Unbox nests it inside an `UnboxPushColumn` (float, or two columns fight
+one edge), `/support` gives it the edge outright (push). So `push` is a **required prop with no
+default**: a default is a silent opt-out at every call site nobody visited
+(`backend-patterns.md` → a safety classification is a required parameter). Guard:
+`right-rail-push.guard.test.ts`.
+
+---
+
 ## The three layers, kept apart
 
 | Layer | Answer for Support |
@@ -56,22 +120,25 @@ plainly that a two-clause test admitted the surface.
 ## Composition
 
 ```text
-┌────────────────────┬──────────────────────────────────┬─────────────────────────┐
-│ LEFT — queue map   │ MIDDLE — thread (focus surface)  │ RIGHT — context         │
-│                    │                                  │                         │
-│ durable ?ticket=   │ conversation body                │ customer · order ·      │
-│ STAYS MOUNTED      │ crossfades on ticket id          │ warranty · linkage      │
-│ on selection       │ ──────────────────────────────── │                         │
-│                    │ OmnichannelComposerDock (bottom) │ push · resize · collapse│
-└────────────────────┴──────────────────────────────────┴─────────────────────────┘
+┌────────────────────┬──────────────────────────────────┐ ┌─────────────────────────┐
+│ LEFT — queue map   │ MIDDLE — thread (focus surface)  │ │ RIGHT — displays        │
+│                    │                                  │ │ ▣ ▣ ▣  icon strip       │
+│ durable ?ticket=   │ split header (PaneHeader blocks) │ │ Connections             │
+│ STAYS MOUNTED      │ conversation body — NO tab strip │ │ Conversations           │
+│ on selection       │ crossfades on ticket id          │ │ Timeline                │
+│                    │ ──────────────────────────────── │ │ push · resize · collapse│
+│                    │ OmnichannelComposerDock (bottom) │ │ SupportContextDetailPanel│
+└────────────────────┴──────────────────────────────────┘ └─────────────────────────┘
+      the SHELL's two slots — and only two            the RightRailHost's occupant
 ```
 
 | Slot | Owns | Never |
 |---|---|---|
 | **List** | The durable queue map — status tabs, search, pagination | Ephemeral selection; act-and-clear auto-advance; **being replaced by the thread** |
-| **Thread** | Conversation body; the singular focus crossfade, keyed on ticket id | Replacing the whole page with a Station focus card |
-| **Composer** | `OmnichannelComposerDock`, bottom-docked on the thread | A second sticky Support-only composer beside it |
-| **Context** | Customer / order / warranty / linkage — `SupportContextHub` | Floating over the thread; a Station push-column twin for CX |
+| **Thread** | The customer conversation, and only that; the singular focus crossfade, keyed on ticket id | **A display switcher in its body** — reaching the linkage must not take the conversation off screen; replacing the whole page with a Station focus card |
+| **Header** | The **split header** — an icon action row over dense identity, composed from the `PaneHeader` **blocks** onto a card shell whose radius/border/lift match the queue card. It is the subject's ONE home on this surface | `PaneHeader`'s own `mainStickyHeaderClass` (a full-bleed squared band — it seams against the rounded queue card); a wrapping hero title; `StationContextBar` / `CartonContextCard`; **the chat header restating the subject one row below it** |
+| **Composer** | `OmnichannelComposerDock`, bottom-docked on the thread, **ticket-terminal** | A second sticky Support-only composer beside it; a dock whose label changes with the rail's selected display |
+| **Displays** | `SupportContextDetailPanel` — a `RightRailHost` occupant mounted *beside* the shell, hosting `SectionTabsSlider density="icon"` | A private `<aside>` in the shell; floating over the thread; a Station push-column twin for CX; a nested scroll port inside the rail's own |
 
 ### The list must stay mounted — this is the branch's whole point
 
@@ -216,7 +283,10 @@ Context is a **push** column, not a float — the house right-edge law
 way it is resizable + collapsible, and it takes its width from the **left** (spine, then context
 rail) before it takes it from the thread.
 
-**A non-modal panel owns an explicit close control** — there is no scrim to click off.
+**A non-modal panel owns an explicit close control** — there is no scrim to click off. **And that
+close must lead somewhere**: the thread's action row carries a `Connections` toggle whose `active`
+state mirrors the rail, so dismissing the extras never strands the agent without a way back.
+Closing the rail must not close the ticket — the thread is the work.
 
 ---
 
@@ -261,6 +331,9 @@ that happens to sit in the Support domain.
 |---|---|
 | Keep the queue mounted; crossfade only the thread | Return list **or** thread from the same branch |
 | Write the ticket id to the URL (`?ticket=`) | Hold selection in `useState` |
+| Put every non-conversation display on the right edge | Mount a display switcher in the thread body |
+| Keep the dock ticket-terminal | Re-label the bottom dock from a right-edge click |
+| Render the subject once, in the split header | Restate it in the chat header below |
 | Compose one `OmnichannelComposerDock` | Fork a Support-only composer |
 | Push the context column; give it a close control | Float it over the thread |
 | Let a non-thread mode mount the shell with an honest middle | Force a composer onto a read-only call stream |

@@ -7,8 +7,8 @@
  * `useReceivingLineCore`); this file is pure composition.
  *
  * **The centre is the carton.** There is no tab strip in the workbench body:
- * `overview` (PO lines → label preview) IS the body, and the eight other
- * displays plus the PO-pairing pencil live in the right-edge
+ * `overview` (PO lines → label preview) IS the body, and every other display —
+ * Package Pairing included, since 2026-08-02 — lives in the right-edge
  * {@link ReceivingDisplaysPushStack} — a peer of Ticket / Claim / tool push, not
  * a `RightRailHost` occupant (the occupant slot stays single-occupancy and
  * `detail:receiving` keeps the float host). The station's procedure is not in
@@ -62,7 +62,6 @@ import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { dispatchLineUpdated } from '@/components/station/receiving-lines-table-helpers';
 import { useReturnOrderLinkage } from './line-edit/hooks/useReturnOrderLinkage';
 import { isLocalPickupFulfillment } from '@/lib/receiving/fulfillment-mode';
-import { useReceivingPhotoCount } from '@/hooks/useReceivingPhotoCount';
 import { invalidateSupportContextCaches } from '@/hooks';
 import {
   invalidateReceivingFeeds,
@@ -70,50 +69,39 @@ import {
 } from '@/lib/queries/receiving-queries';
 import {
   StationContextBar,
-  StationMoreDetails,
   stationMoreDetailsPaneHostClass,
 } from '@/components/station/entity-context';
 import { StationTerminalDock, useStationTerminalAction } from '@/components/station/terminal';
 import {
   StationWorkbench,
   StationPanelRoot,
-  PairingTogglePill,
   STATION_WORKBENCH_COLUMN,
 } from '@/components/station/workbench';
-import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { IconButton, slicedActionDockWrapperClass } from '@/design-system/primitives';
-import { GoalRing } from '@/components/layout/goal-chip/GoalRing';
-import { IDLE_TONE } from '@/components/layout/goal-chip/goal-chip-shared';
+import { slicedActionDockWrapperClass } from '@/design-system/primitives';
 import { usePoNoteTabState } from './line-edit/terminal/usePoNoteTabState';
-import { elevationClass } from '@/design-system/tokens/shadows';
-
 import { resolveUnboxTerminal } from './line-edit/terminal/unbox-terminal';
 import { buildUnboxOverview, buildUnboxSideTabs } from './line-edit/terminal/unbox-tabs';
 import { WorkspaceNotesCard } from './line-edit/WorkspaceNotesCard';
-import { useUnboxProcedureSteps } from './line-edit/useUnboxProcedureSteps';
+import { UnboxProcedurePager } from './line-edit/UnboxProcedurePager';
+import { UnboxScanProgressControl } from './UnboxScanProgressControl';
 import {
   resolveUnboxSideTab,
   type UnboxSideTab,
 } from './line-edit/unbox-side-tabs';
 import { hasRealZohoPoId } from '@/lib/receiving/intake-items-routing';
 import { dispatchReceivingOpenPairingPo } from '@/utils/events';
-
-const LABEL_PRINTED_KEY = (lineId: number) => `receiving-label-printed:${lineId}`;
-
-function readLabelPrinted(lineId: number): boolean {
-  if (typeof window === 'undefined') return false;
-  try {
-    return !!window.localStorage.getItem(LABEL_PRINTED_KEY(lineId));
-  } catch {
-    return false;
-  }
-}
+import { ArrowRightToLine, ChevronDown, ChevronUp } from '@/components/Icons';
+import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { IconButton } from '@/design-system/primitives';
 
 export function LineEditPanel({
   row,
   staffId,
   itemTotal,
   accordionBootstrap = 'default',
+  onPrevCarton,
+  onNextCarton,
+  onCloseCarton,
 }: {
   row: ReceivingLineRow;
   staffId: string;
@@ -124,6 +112,16 @@ export function LineEditPanel({
    * active PO-line body expanded and suppresses inactive fake chevrons.
    */
   accordionBootstrap?: 'default' | 'all';
+  /**
+   * Record cursor + dismiss for the CARTON, rendered in the pane-anchored
+   * utility row beside the progress ring. `ReceivingLineWorkspace` has carried
+   * these three since the workspace was built but only ever handed them to
+   * Triage — Unbox had no visible prev/next at all, and its only close was the
+   * identity bar's exit chip.
+   */
+  onPrevCarton?: () => void;
+  onNextCarton?: () => void;
+  onCloseCarton?: () => void;
 }) {
   // All state, effects, and handlers live in the controller — this panel is pure
   // composition. See useUnboxLineController / useReceivingLineCore.
@@ -136,54 +134,30 @@ export function LineEditPanel({
     [setClaimView],
   );
   const c = useUnboxLineController(row, staffId, { itemTotal, onOpenClaim });
-  // Same procedure derivation as Checklist / centre cards — ring % cannot drift.
-  const { steps: procedureSteps } = useUnboxProcedureSteps(row);
   const [actionFeedback, setActionFeedback] = useState<InlineActionFeedbackPayload | null>(null);
   // Shared PO-note save (overwrite + push to inventory) — used by the notes
   // composer's push button and the standalone inventory-notes tab dock.
   const { saveOverallNote } = useSyncedPoNote(row, setActionFeedback);
-  // Print step reads the durable `label_printed_at` stamp (receiving_line_testing)
-  // OR the localStorage optimistic hint — so the step survives a refresh / other
-  // device, while still flipping instantly on print before the refetch lands.
-  const [labelPrinted, setLabelPrinted] = useState(
-    () => !!row.label_printed_at || readLabelPrinted(row.id),
-  );
-
-  useEffect(() => {
-    setLabelPrinted(!!row.label_printed_at || readLabelPrinted(row.id));
-  }, [row.id, row.label_printed_at]);
-
-  useEffect(() => {
-    const onLabel = (e: Event) => {
-      const detail = (e as CustomEvent<{ line_id?: number }>).detail;
-      if (detail?.line_id === row.id) setLabelPrinted(true);
-    };
-    window.addEventListener('receiving-label-printed', onLabel);
-    return () => window.removeEventListener('receiving-label-printed', onLabel);
-  }, [row.id]);
-
-  // Live per-carton photo count (shared cache with the camera ×N badge), so the
-  // active-step logic agrees with the stepper and doesn't regress to Photos when
-  // a Condition update clobbers the denormalized `row.photo_count` snapshot.
-  const photoCount = useReceivingPhotoCount(
-    row.receiving_id,
-    Math.max(0, Number(row.photo_count ?? 0)),
-  );
   const rowSerials = Array.isArray(row.serials) ? row.serials : [];
   const serialCount = rowSerials.length;
-  const perUnitAbsentCount = (row.units ?? []).filter((u) => u.serial_absent).length;
   // Resolve the returned unit's OUTBOUND order (closed-loop linkage) from the
   // live scan input, falling back to the newest serial already on the line so
   // the identity persists after the scan bar clears. The resolved order# lands
   // in the top-row PO#/order chip (last-8) instead of a separate LINKAGE panel.
   const latestRowSerial = String(rowSerials[rowSerials.length - 1]?.serial_number ?? '').trim();
   const linkedOrder = useReturnOrderLinkage(c.serialInput.trim() || latestRowSerial);
-  // NOTE (2026-08-02): the `activeStep` memo that lived here is gone with the
-  // notes-composer auto-focus it existed to drive. It was also a SECOND pointer
-  // derivation — `activeReceivingStepKey` beside `resolveActiveStep` — and the
-  // two disagree the moment skips exist, which is the precise hazard
-  // `procedure-pointer.ts` was extracted to close. Anything needing the active
-  // step reads `useUnboxProcedureSteps`.
+  // REMOVED 2026-08-02 — the `activeStep` memo, and with it the `labelPrinted`
+  // state, the live `photoCount` and the per-unit absent tally that fed it.
+  //
+  // Two reasons, and the second is the one that matters. It drove the notes
+  // composer's print-step auto-focus, which is deleted (a derivation must never
+  // move the caret at a scan bench). And it was a SECOND pointer derivation —
+  // `activeReceivingStepKey` standing beside `resolveActiveStep` — which is the
+  // precise hazard `procedure-pointer.ts` was extracted to close: the two
+  // disagree the moment skips exist, and both look authoritative.
+  //
+  // Active-step / procedure %: `useUnboxProcedureSteps` (centre cards, checklist
+  // display, pane scan-progress control) — never a second pointer derivation.
 
   // Which right-edge display is showing, from `?display=`. `null` = the column
   // is closed — one piece of state, URL-durable like its Ticket / Claim
@@ -208,8 +182,12 @@ export function LineEditPanel({
   const hasClassifyTab = true;
   const classifyOnStrip = c.isUnfound;
   const hasListingsTab = !c.isUnfound;
+  // Package Pairing needs a carton to pair — without a record the hub can only
+  // teach ("scan its tracking"), which is not worth a strip cell.
+  const hasPairingTab = row.receiving_id != null;
   const activeSideTab = resolveUnboxSideTab(requestedSideTab, {
     hasClassifyTab,
+    hasPairingTab,
     hasListingsTab,
     hasUnits,
     hasPoNoteTab,
@@ -415,23 +393,23 @@ export function LineEditPanel({
     build: buildTerminal,
   });
 
-  // Package Pairing state. Pairing itself renders in the CENTRE (POUnboxingSection);
-  // its "Edit PO" pencil moved to the Displays strip's right slot with the tabs.
-  const [pairingOpen, setPairingOpen] = useState(false);
-  const togglePairing = useCallback(() => setPairingOpen((v) => !v), []);
-  const editPoControl = <PairingTogglePill open={pairingOpen} onToggle={togglePairing} />;
-
-  /** Carton `# ----` / Link PO → expand Package Pairing in the centre. Click
-   *  again while open closes it. Reachable without the Displays column, so an
-   *  unfound carton can be paired with the panel closed. */
+  /**
+   * Carton `# ----` / Link PO → open the `pairing` DISPLAY with its PO tab
+   * already selected. Click again while it is showing closes it.
+   *
+   * The `requestAnimationFrame` is load-bearing: `CartonMatchHub` subscribes to
+   * `RECEIVING_OPEN_PAIRING_PO_EVENT` on mount, so dispatching in the same tick
+   * as the display opens fires the event at a hub that does not exist yet and
+   * the PO tab silently stays unselected.
+   */
   const openPoPairing = useCallback(() => {
-    if (pairingOpen) {
-      setPairingOpen(false);
+    if (activeSideTab === 'pairing') {
+      closeDisplays();
       return;
     }
-    setPairingOpen(true);
+    openDisplays('pairing');
     requestAnimationFrame(() => dispatchReceivingOpenPairingPo());
-  }, [pairingOpen]);
+  }, [activeSideTab, openDisplays, closeDisplays]);
 
   useEffect(() => {
     setActionFeedback(null);
@@ -464,8 +442,6 @@ export function LineEditPanel({
         row,
         staffId,
         c,
-        pairingOpen,
-        onPairingToggle: togglePairing,
         onItemDescFeedback: handleItemDescFeedback,
         onItemDescSaved: handleItemDescSaved,
         accordionBootstrap,
@@ -474,8 +450,6 @@ export function LineEditPanel({
       row,
       staffId,
       c,
-      pairingOpen,
-      togglePairing,
       handleItemDescFeedback,
       handleItemDescSaved,
       accordionBootstrap,
@@ -496,11 +470,10 @@ export function LineEditPanel({
         hasListingsTab,
         hasClassifyTab,
         classifyOnStrip,
+        hasPairingTab,
         poIdForTracking,
         hasPoNoteTab,
         poNote,
-        pairingOpen,
-        onPairingToggle: togglePairing,
         onItemDescFeedback: handleItemDescFeedback,
         onItemDescSaved: handleItemDescSaved,
         accordionBootstrap,
@@ -520,11 +493,10 @@ export function LineEditPanel({
       hasListingsTab,
       hasClassifyTab,
       classifyOnStrip,
+      hasPairingTab,
       poIdForTracking,
       hasPoNoteTab,
       poNote,
-      pairingOpen,
-      togglePairing,
       handleItemDescFeedback,
       handleItemDescSaved,
       classifyExpand,
@@ -534,23 +506,116 @@ export function LineEditPanel({
   const showTicketExpand =
     !showClaimStack && !showTicketStack && !showToolPush && !showDisplays && ticketId != null;
   // Parked strip is ticket-restore only — Displays opens from the pane-anchored
-  // progress ring (StationMoreDetails), which stays put when a push column opens.
+  // progress ring, which stays put when a push column opens.
   const showExpandStrip = showTicketExpand;
   const showRightPushChrome =
     showClaimStack || showTicketStack || showToolPush || showDisplays || showExpandStrip;
 
-  const procedureDone = procedureSteps.filter((s) => s.state === 'done').length;
-  const procedureTotal = procedureSteps.length;
-  const procedurePercent =
-    procedureTotal > 0 ? Math.round((procedureDone / procedureTotal) * 100) : 0;
-  const displaysExpandLabel = showDisplays ? 'Hide displays' : 'Show displays';
-  const toggleDisplays = useCallback(() => {
-    if (showDisplays) {
-      closeDisplays();
-      return;
-    }
-    openDisplays(c.isUnfound ? 'classify' : 'listings');
-  }, [showDisplays, closeDisplays, openDisplays, c.isUnfound]);
+  const openChecklistDisplay = useCallback(
+    () => openDisplays('checklist'),
+    [openDisplays],
+  );
+
+  /**
+   * A push column actually occupies the right edge. ONE derivation — the ring
+   * suppresses its hover peek on it, and the carton cursor trio mounts on it.
+   * The parked ticket strip is deliberately NOT included: it is a restore
+   * affordance, not an open rail.
+   */
+  const railOpen = showClaimStack || showTicketStack || showToolPush || showDisplays;
+
+  const scanProgressControl = (
+    <UnboxScanProgressControl
+      row={row}
+      railOpen={railOpen}
+      checklistActive={showDisplays && activeSideTab === 'checklist'}
+      onOpenChecklist={openChecklistDisplay}
+      onCloseDisplays={closeDisplays}
+    />
+  );
+
+  /**
+   * The pane utility row — `close · up · down` on the LEFT, scan-progress ring
+   * pinned to the top-right corner, in one pane-anchored cluster.
+   *
+   * **The cursor trio mounts only while a push column is open** (`railOpen`).
+   * Closed, the ring is alone in the corner. Those three controls belong to the
+   * column: close parks it back against the edge it came from, and prev/next
+   * step the record the column is describing. With nothing open there is no
+   * column to park and nothing beside the carton to describe, so they would be
+   * three glyphs floating over the work canvas — chrome for a region that is
+   * not on screen. The ring is the exception by contract: it is the Displays
+   * toggle, so it must stay put whether the column is open or not.
+   *
+   * **Close leads** (`source-of-truth.md` → Panel header grammar, amended
+   * 2026-08-02). Dismiss is the one control an operator reaches for without
+   * looking, so it gets the stable end of the cluster: prev/next appear and
+   * disappear with the queue behind the carton, and a trailing close would
+   * shift under the cursor every time they did.
+   *
+   * **The glyph is `ArrowRightToLine` (`>|`), not an `X`.** This surface pushes
+   * to the right — it is parked back against the edge it came from, not
+   * cancelled — and the arrow says which way it goes. An `X` reads as "discard
+   * this work", which is the opposite of what closing a carton does.
+   *
+   * Honest absence throughout: a host that passes no cursor renders the ring
+   * alone, with no dead chevrons and no hairline.
+   */
+  const showCartonCursor =
+    railOpen && Boolean(onCloseCarton || onPrevCarton || onNextCarton);
+
+  const paneUtilityRow = (
+    <div className="flex items-center">
+      {/* One TIGHT trio, not three loose buttons. `xs` (24px) with no gap puts
+          ~8px between glyphs; `sm` + `gap-0.5` put ~14px there, which read as
+          three unrelated controls scattered beside the ring rather than one
+          cursor group. The hairline is what separates group from ring. */}
+      {showCartonCursor ? (
+        <>
+          <div className="flex items-center gap-0">
+            {onCloseCarton ? (
+              <HoverTooltip label="Close carton" asChild>
+                <IconButton
+                  size="xs"
+                  tone="neutral"
+                  ariaLabel="Close carton"
+                  icon={<ArrowRightToLine className="h-4 w-4" />}
+                  onClick={onCloseCarton}
+                  data-testid="unbox-carton-close"
+                />
+              </HoverTooltip>
+            ) : null}
+            {onPrevCarton ? (
+              <HoverTooltip label="Previous carton" asChild>
+                <IconButton
+                  size="xs"
+                  tone="neutral"
+                  ariaLabel="Previous carton"
+                  icon={<ChevronUp className="h-4 w-4" />}
+                  onClick={onPrevCarton}
+                  data-testid="unbox-carton-prev"
+                />
+              </HoverTooltip>
+            ) : null}
+            {onNextCarton ? (
+              <HoverTooltip label="Next carton" asChild>
+                <IconButton
+                  size="xs"
+                  tone="neutral"
+                  ariaLabel="Next carton"
+                  icon={<ChevronDown className="h-4 w-4" />}
+                  onClick={onNextCarton}
+                  data-testid="unbox-carton-next"
+                />
+              </HoverTooltip>
+            ) : null}
+          </div>
+          <span aria-hidden className="mx-1.5 h-4 w-px shrink-0 bg-border-hairline" />
+        </>
+      ) : null}
+      {scanProgressControl}
+    </div>
+  );
 
   // TODO(daily-triage F0→F1): mount MyDayRail here pending OQ1
   // (`docs/todo/daily-triage-FRONTEND-PLAN-VALIDATION.md`). Unbox has no free
@@ -587,7 +652,7 @@ export function LineEditPanel({
           onClassifyPillOpen={openClassifyFromHeader}
           trackingEditOpen={activeSideTab === 'tracking'}
           listingEditOpen={activeSideTab === 'listings'}
-          poEditOpen={pairingOpen && !hasRealZohoPoId(row)}
+          poEditOpen={activeSideTab === 'pairing' && !hasRealZohoPoId(row)}
           photoStage="unbox_carton"
         />
       }
@@ -599,40 +664,17 @@ export function LineEditPanel({
       <div
         className={cn(
           'relative flex h-full min-h-0 min-w-0 flex-1 overflow-hidden',
-          // Padding (not push-column margin): overflow-hidden clips trailing
-          // child margins so the Ticket/Claim card looked flush to the edge.
-          // Same 8px as the receiving recent-rail `m-2` gutter.
+          // Trailing padding only (`pr-2`): overflow-hidden clips child `mr-*`.
+          // Do not add `py-2` — vertical host pad stacks under StationContextBar's
+          // `top-2` and drops the carton identity below the context-panel card.
           showRightPushChrome && TICKET_PUSH_HOST_PAD_CLASS,
         )}
       >
-        {/* Pane-anchored — sibling of Unbox + push so Ticket/Displays do not slide it. */}
-        <div className={stationMoreDetailsPaneHostClass} data-testid="station-more-details-slot">
-          <StationMoreDetails className="min-h-0 rounded-full p-1">
-            <HoverTooltip label={displaysExpandLabel} asChild>
-              <IconButton
-                size="sm"
-                tone="neutral"
-                ariaLabel={displaysExpandLabel}
-                aria-expanded={showDisplays}
-                className={cn(
-                  'rounded-full bg-surface-card',
-                  elevationClass('raised', 'soft'),
-                )}
-                icon={
-                  <GoalRing
-                    percent={procedurePercent}
-                    color={IDLE_TONE.ring}
-                    size={18}
-                    strokeWidth={2}
-                    showValue={false}
-                  />
-                }
-                onClick={toggleDisplays}
-                data-testid="unbox-displays-expand-button"
-              />
-            </HoverTooltip>
-          </StationMoreDetails>
-        </div>
+        {/* Pane-anchored always — same top-right whether Displays/Ticket/Claim
+            is open. Not in the strip row (tabs · ⋮ · pencil are panel chrome).
+            The Displays strip clears it with a TOP inset, not a right one, so
+            its pencil can sit flush against the column's right edge. */}
+        <div className={stationMoreDetailsPaneHostClass}>{paneUtilityRow}</div>
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           <StationPanelRoot>
             <div className="relative flex min-h-0 flex-1 flex-col overflow-visible">
@@ -643,11 +685,19 @@ export function LineEditPanel({
                 // The notes composer floats over the canvas on every carton now
                 // that the centre is always `overview` — always reserve the
                 // clearance so scroll content is never hidden under it.
-                reserveScrollClearance
+                // `'pager'`: this dock also carries the step pager above the
+                // composer, which makes it ~28px taller than the shared default.
+                reserveScrollClearance="pager"
                 // Unbox identity is the two-row `bar-stacked` card (32px taller
                 // than the one-row bar), so the body needs the matching stacked
                 // top clearance.
                 reserveIdentityClearance="stacked"
+                // The procedure column is a WORK surface: it rests against the
+                // composer that commits it and grows upward as steps accumulate,
+                // rather than floating at the top of an empty canvas. Nothing is
+                // hidden or re-sorted to achieve it — the whole vocabulary stays
+                // mounted, in order; only the stack's resting position changes.
+                bodyAlign="end"
                 // `tabs` is deliberately EMPTY: the strip moved to the
                 // right-edge Displays column, so the carton owns the centre.
                 feedback={
@@ -702,6 +752,12 @@ export function LineEditPanel({
                           {terminalVm.disabledReason}
                         </p>
                       ) : null}
+                      {/* Step pager — pinned chrome directly above the composer,
+                          which is the one place a pager belongs (beside the
+                          input, not trailing the content). The deck exposes a
+                          single queued peek, so past the next step this and the
+                          right-edge checklist are the pointer paths. */}
+                      <UnboxProcedurePager row={row} />
                       <WorkspaceNotesCard
                         row={row}
                         c={c}
@@ -774,7 +830,6 @@ export function LineEditPanel({
             tabs={unboxSideTabs}
             activeTab={activeSideTab}
             onTabChange={(id) => setRequestedSideTab(id as UnboxSideTab)}
-            rightSlot={editPoControl}
             onClose={closeDisplays}
           />
         ) : showExpandStrip ? (

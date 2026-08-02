@@ -106,6 +106,16 @@ function attach(
   label: string,
   state: ProcedureStepState,
   evidence: Record<string, StepEvidence>,
+  /**
+   * The completion instant, already resolved and already done-gated.
+   *
+   * Capture steps take it straight from {@link deriveProcedureSteps}, so the
+   * rule "a time rides only on a done step" is decided in exactly one place for
+   * both readers rather than restated here. The `done` re-check below is a
+   * no-op for those and carries the commit steps, whose instants are this
+   * module's own.
+   */
+  at: string | null,
 ): ProcedureStepReceipt {
   const found = evidence[key] ?? {};
   // Evidence rides ONLY on a done step. A pending step with partial evidence
@@ -115,7 +125,7 @@ function attach(
     key,
     label,
     state,
-    at: done ? (found.at ?? null) : null,
+    at: done ? at : null,
     byStaffId: done ? (found.byStaffId ?? null) : null,
     byStaffName: done ? (found.byStaffName ?? null) : null,
     // The detail is a description of the evidence ("2 photos"), not a claim of
@@ -135,9 +145,11 @@ export function buildProcedureReceipt(input: ProcedureReceiptInput): ProcedureRe
   const unbox = getProcedure('unbox');
   if (!unbox) return { steps: [], closedAt: input.receivedAt };
 
-  // Capture — the shared derivation, verbatim. Never re-derived here.
+  // Capture — the shared derivation, verbatim. Never re-derived here, and that
+  // now covers `at` as well as the state: the caller hands its resolved
+  // instants in through `gates.evidenceAt` and reads them back off the step.
   const steps: ProcedureStepReceipt[] = deriveProcedureSteps(input.gates).map((step) =>
-    attach(step.key, step.label, step.state, input.evidence),
+    attach(step.key, step.label, step.state, input.evidence, step.at),
   );
 
   // Commit — the receipt's own two steps, in declaration order. `print` is done
@@ -160,11 +172,7 @@ export function buildProcedureReceipt(input: ProcedureReceiptInput): ProcedureRe
       state = 'active';
       firstIncompleteSeen = true;
     }
-    const evidence: Record<string, StepEvidence> = {
-      ...input.evidence,
-      [step.key]: { ...(input.evidence[step.key] ?? {}), at },
-    };
-    steps.push(attach(step.key, step.label, state, evidence));
+    steps.push(attach(step.key, step.label, state, input.evidence, at));
   }
 
   return { steps, closedAt: input.receivedAt };

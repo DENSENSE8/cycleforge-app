@@ -20,6 +20,15 @@ interface PhotoRow {
   receivingLineId?: number | null;
   /** `photos.photo_aspect` — WHAT the shot shows, within its stage. NULL = unclassified. */
   photoAspect?: string | null;
+  /**
+   * Server INSERT instant — when this evidence actually landed.
+   *
+   * NOT `clientCapturedAt`: that is the tablet's shutter wall clock and is not
+   * server-attested, so a drifted device yields a wrong-but-plausible time and a
+   * concealed-damage dispute turns on which of the two you read. The receipt
+   * read model makes the same call for the same reason.
+   */
+  createdAt?: string | null;
 }
 
 interface PhotosPayload {
@@ -52,6 +61,19 @@ interface ReceivingPhotoStageCounts {
   cartonAspect: Partial<Record<PhotoAspect, number>>;
   /** Per-aspect counts on the requested line; empty when no line was requested. */
   itemAspect: Partial<Record<PhotoAspect, number>>;
+  /**
+   * When each bucket's FIRST shot landed — the instant that bucket's step gate
+   * closed, because one photo of the right aspect satisfies it.
+   *
+   * FIRST, not last: a step is done the moment its evidence exists, and a
+   * re-shoot half an hour later did not make it done again. (The `item_photos`
+   * gate spans several aspects, so its closing instant is the LAST of these
+   * per-aspect firsts — that fold belongs to the gate's owner, not here.)
+   */
+  arrivalFirstAt: string | null;
+  itemFirstAt: string | null;
+  cartonAspectFirstAt: Partial<Record<PhotoAspect, string>>;
+  itemAspectFirstAt: Partial<Record<PhotoAspect, string>>;
 }
 
 const EMPTY_COUNTS: ReceivingPhotoStageCounts = {
@@ -62,7 +84,22 @@ const EMPTY_COUNTS: ReceivingPhotoStageCounts = {
   total: 0,
   cartonAspect: {},
   itemAspect: {},
+  arrivalFirstAt: null,
+  itemFirstAt: null,
+  cartonAspectFirstAt: {},
+  itemAspectFirstAt: {},
 };
+
+/** The earlier of two instants, tolerating a missing or unparseable one. */
+function earlier(a: string | null | undefined, b: string | null | undefined): string | null {
+  if (!a) return b ?? null;
+  if (!b) return a;
+  const ta = Date.parse(a);
+  const tb = Date.parse(b);
+  if (!Number.isFinite(ta)) return b;
+  if (!Number.isFinite(tb)) return a;
+  return tb < ta ? b : a;
+}
 
 /**
  * The shared carton-photos query. One cache entry per carton, shared by the
@@ -96,23 +133,14 @@ function useReceivingPhotosQuery(receivingId: number | null | undefined) {
   return { valid, data };
 }
 
-/**
- * Live per-carton photo count.
- *
- * Falls back to `fallbackCount` (the row snapshot) only until the live query
- * hydrates or when the carton id is unknown (pre-carton stub). Once the live
- * payload is present it is authoritative — a genuine 0 (all photos deleted)
- * correctly reads as Photos-not-done.
- */
-export function useReceivingPhotoCount(
-  receivingId: number | null | undefined,
-  fallbackCount = 0,
-): number {
-  const { valid, data } = useReceivingPhotosQuery(receivingId);
-
-  if (!valid || !data) return Math.max(0, fallbackCount);
-  return (data.photos ?? []).filter((p) => !!p.photoUrl?.trim()).length;
-}
+// REMOVED 2026-08-02 — `useReceivingPhotoCount`, the flat per-carton total.
+//
+// Its last consumer was LineEditPanel's `activeStep` memo, a second pointer
+// derivation deleted with the notes auto-focus it drove. A flat total cannot
+// answer the question the bench actually asks — WHICH evidence is missing —
+// which is why every live consumer reads `useReceivingPhotoStageCounts` below
+// and buckets through the stage SoT instead. Resurrecting a total here would
+// re-open the gap the stage split closed.
 
 /**
  * The same carton photos, bucketed by evidence stage — what the capture stack's
@@ -149,13 +177,23 @@ export function useReceivingPhotoStageCounts(
       settled: true,
       cartonAspect: {},
       itemAspect: {},
+      cartonAspectFirstAt: {},
+      itemAspectFirstAt: {},
     };
     // An UNKNOWN aspect string is dropped, never bucketed — same rule as the
     // server-side counts. A row whose aspect this build does not recognise is
     // unclassified evidence, not evidence of the nearest thing.
-    const bump = (into: Partial<Record<PhotoAspect, number>>, raw: string | null | undefined) => {
+    const bump = (
+      into: Partial<Record<PhotoAspect, number>>,
+      firstAt: Partial<Record<PhotoAspect, string>>,
+      raw: string | null | undefined,
+      at: string | null | undefined,
+    ) => {
       const aspect = parsePhotoAspect(raw);
-      if (aspect) into[aspect] = (into[aspect] ?? 0) + 1;
+      if (!aspect) return;
+      into[aspect] = (into[aspect] ?? 0) + 1;
+      const next = earlier(firstAt[aspect], at);
+      if (next) firstAt[aspect] = next;
     };
 
     for (const photo of data.photos ?? []) {
@@ -168,20 +206,23 @@ export function useReceivingPhotoStageCounts(
         // photos are exactly the rows carrying its id.
         if (wantLine != null && Number(photo.receivingLineId) === wantLine) {
           counts.item += 1;
-          bump(counts.itemAspect, photo.photoAspect);
+          counts.itemFirstAt = earlier(counts.itemFirstAt, photo.createdAt);
+          bump(counts.itemAspect, counts.itemAspectFirstAt, photo.photoAspect, photo.createdAt);
         }
         continue;
       }
 
       const stage = receivingStageFromPhotoType('RECEIVING', photo.caption);
-      if (stage === 'arrival_package') counts.arrivalPackage += 1;
-      else if (stage === 'unbox_carton') {
+      if (stage === 'arrival_package') {
+        counts.arrivalPackage += 1;
+        counts.arrivalFirstAt = earlier(counts.arrivalFirstAt, photo.createdAt);
+      } else if (stage === 'unbox_carton') {
         counts.unboxCarton += 1;
         // Aspect buckets only for the BENCH stage. An arrival shot may legally
         // carry `shipping_label`, and letting it into this bucket would satisfy
         // the bench's shipping-label step from a door photo — the same
         // stage-confusion the arrival split exists to prevent, one axis down.
-        bump(counts.cartonAspect, photo.photoAspect);
+        bump(counts.cartonAspect, counts.cartonAspectFirstAt, photo.photoAspect, photo.createdAt);
       }
     }
     return counts;

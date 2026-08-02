@@ -53,6 +53,11 @@ export type SpineAccentClasses = {
  * rescales breaks the baseline every dense surface beside it aligns to, so the
  * whole affordance is confined to the 14px icon.
  *
+ * **Travel is VERTICAL only.** It used to carry `translate-x-0.5` beside a 1px
+ * lift, which drifted the glyph toward the label it sits 8px from — the one
+ * direction it has no room in. 2px straight up reads at a glance where 1px did
+ * not, and press settles it back to rest.
+ *
  * `motion-safe:` is load-bearing: the framer `MotionConfig` reduced-motion
  * floor covers `motion.*` elements only, so a CSS transform needs its own gate.
  * Under reduce the row still answers with the accent wash + icon tint.
@@ -61,8 +66,8 @@ export type SpineAccentClasses = {
  */
 export const SPINE_ICON_LIFT_CLASS =
   'transition-transform duration-150 ease-out ' +
-  'motion-safe:group-hover:translate-x-0.5 motion-safe:group-hover:-translate-y-px ' +
-  'motion-safe:group-active:translate-x-px motion-safe:group-active:translate-y-0';
+  'motion-safe:group-hover:-translate-y-0.5 ' +
+  'motion-safe:group-active:translate-y-0';
 
 /** Neutral blue — top pin + footer (+ fallback). */
 export const SPINE_NEUTRAL_ACCENT: SpineAccentClasses = {
@@ -90,9 +95,8 @@ export const SPINE_NEUTRAL_ACCENT: SpineAccentClasses = {
  *   catalog     — emerald reference (inherits the retired `desk` hue)
  *   inventory   — cyan physical stock (inherits the retired `print` hue)
  *   fulfillment — indigo outbound
- *   sales       — rose front desk
+ *   sales       — green front desk
  *   support     — orange exception
- *   studio      — violet canvas
  *
  * **Every section MUST appear here** — `SPINE_SECTION_ACCENTS` is a total
  * `Record<SpineSectionId, …>`, so adding a section without a hue is a type
@@ -107,12 +111,18 @@ export const SPINE_NEUTRAL_ACCENT: SpineAccentClasses = {
  *
  * **A hue's SHADE is picked for contrast, not for symmetry.** These fills carry
  * white 12px caption text, so each one has to clear WCAG AA 4.5:1 on its own —
- * and the warm hues do not reach it at 600. `amber-600` on white is ≈2.9:1;
- * `amber-700` clears it at ≈4.7:1. Same for `orange` (support) and `cyan`
- * (inventory), which is why those three sit at 700 while sky / emerald / indigo
- * / rose / violet sit at 600–700 as noted per entry. Scan Stations is the
- * section a floor operator reads across a warehouse aisle; it is the last one
- * that may ship a contrast failure. Do not "restore" 600 for hue symmetry.
+ * and several hues do not reach it at 600. `amber-600` on white is ≈2.9:1;
+ * `amber-700` clears it at ≈4.7:1. Same for `orange` (support), `cyan`
+ * (inventory), `teal` (inbound) and `green` (sales, ≈3.2:1 at 600), which is why
+ * those five sit at 700 while sky / emerald / indigo sit at 600. Scan Stations
+ * is the section a floor operator reads across a warehouse aisle; it is the last
+ * one that may ship a contrast failure. Do not "restore" 600 for hue symmetry.
+ *
+ * **Three green-family hues now share the map** — `catalog` emerald-600,
+ * `inbound` teal-700, `sales` green-700. They are two rows apart in
+ * `SPINE_SECTIONS`, so at most one is a solid fill at a time. If they ever read
+ * as one colour, re-hue Catalog — do NOT darken Sales past 700, which starts
+ * reading black at 12px.
  */
 export const SPINE_SECTION_ACCENTS: Record<SpineSectionId, SpineAccentClasses> = {
   monitor: {
@@ -214,20 +224,24 @@ export const SPINE_SECTION_ACCENTS: Record<SpineSectionId, SpineAccentClasses> =
     cmdkSelectedIcon: 'group-data-[selected=true]:[&_svg]:text-indigo-600',
   },
   sales: {
-    activePage: 'bg-rose-600 text-white ring-1 ring-inset ring-rose-400/30',
+    // green-700, not green-600 (≈3.2:1 — the same AA failure amber/orange/cyan
+    // had at 600) and not emerald, which `catalog` already owns. `green` is a
+    // distinct hue on the ramp; the two sections sit two rows apart, so only
+    // one is ever a solid fill at a time.
+    activePage: 'bg-green-700 text-white ring-1 ring-inset ring-green-400/30',
     idlePage: 'text-text-default hover:bg-surface-canvas',
     activePageIcon: 'text-white',
     idlePageIcon: 'text-text-muted',
-    modeActive: 'bg-rose-600/15 text-rose-800 ring-1 ring-inset ring-rose-500/20',
+    modeActive: 'bg-green-700/15 text-green-900 ring-1 ring-inset ring-green-600/20',
     modeIdle: 'text-text-default hover:bg-surface-canvas',
-    modeActiveIcon: 'text-rose-600',
+    modeActiveIcon: 'text-green-700',
     modeIdleIcon: 'text-text-muted',
-    sectionActive: 'bg-rose-600/10 text-text-default',
-    sectionIdle: 'text-text-default hover:bg-rose-600/10',
-    sectionActiveIcon: 'text-rose-600',
-    sectionIdleIcon: 'text-text-muted group-hover:text-rose-600',
-    cmdkSelected: 'data-[selected=true]:bg-rose-600/15 data-[selected=true]:text-rose-800',
-    cmdkSelectedIcon: 'group-data-[selected=true]:[&_svg]:text-rose-600',
+    sectionActive: 'bg-green-700/10 text-text-default',
+    sectionIdle: 'text-text-default hover:bg-green-700/10',
+    sectionActiveIcon: 'text-green-700',
+    sectionIdleIcon: 'text-text-muted group-hover:text-green-700',
+    cmdkSelected: 'data-[selected=true]:bg-green-700/15 data-[selected=true]:text-green-900',
+    cmdkSelectedIcon: 'group-data-[selected=true]:[&_svg]:text-green-700',
   },
   support: {
     // orange-700: orange-600 on white is ≈3.6:1, under the AA floor for 12px.
@@ -246,22 +260,10 @@ export const SPINE_SECTION_ACCENTS: Record<SpineSectionId, SpineAccentClasses> =
     cmdkSelected: 'data-[selected=true]:bg-orange-700/15 data-[selected=true]:text-orange-900',
     cmdkSelectedIcon: 'group-data-[selected=true]:[&_svg]:text-orange-700',
   },
-  studio: {
-    activePage: 'bg-violet-700 text-white ring-1 ring-inset ring-violet-400/30',
-    idlePage: 'text-text-default hover:bg-surface-canvas',
-    activePageIcon: 'text-white',
-    idlePageIcon: 'text-text-muted',
-    modeActive: 'bg-violet-700/15 text-violet-800 ring-1 ring-inset ring-violet-500/20',
-    modeIdle: 'text-text-default hover:bg-surface-canvas',
-    modeActiveIcon: 'text-violet-700',
-    modeIdleIcon: 'text-text-muted',
-    sectionActive: 'bg-violet-700/10 text-text-default',
-    sectionIdle: 'text-text-default hover:bg-violet-700/10',
-    sectionActiveIcon: 'text-violet-700',
-    sectionIdleIcon: 'text-text-muted group-hover:text-violet-700',
-    cmdkSelected: 'data-[selected=true]:bg-violet-700/15 data-[selected=true]:text-violet-800',
-    cmdkSelectedIcon: 'group-data-[selected=true]:[&_svg]:text-violet-700',
-  },
+  // `studio` left this map 2026-08-02 with the section it belonged to: Workflow
+  // Studio is a footer pin now, and footer pins wear SPINE_NEUTRAL_ACCENT like
+  // Admin and Settings. Violet returned to the palette — do not re-add a key
+  // here for a row that is not a section.
 };
 
 /** Resolve accent for a drill / root section; null → neutral (top/footer). */

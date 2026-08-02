@@ -4,15 +4,14 @@
  * The Unbox checklist — the live "where am I" display, on the right edge.
  *
  * Mounted as the `checklist` display in the right-edge Displays push column
- * ({@link ReceivingDisplaysPushStack}), the station's right rail. It is the
- * PRIMARY display and the strip's default: the operator's first question on
- * every carton is what is left on it, and an orienting display behind a ⋯ menu
- * costs two clicks per box.
+ * ({@link ReceivingDisplaysPushStack}). Opened via the pane scan-progress ring
+ * (ring-only — no strip cell). It is the station's live "where am I": the
+ * operator's first question on every carton is what is left on it.
  *
  * ## It is a second VIEW, not a second derivation
  *
  * The centre renders the same procedure as work cards
- * ({@link UnboxProcedureColumn}). Both read {@link useUnboxProcedureSteps}, so
+ * ({@link UnboxProcedureDeck}). Both read {@link useUnboxProcedureSteps}, so
  * there is exactly one answer to "is this step done" and the two cannot drift.
  * The rule this replaced ("exactly ONE procedure surface in Unbox") was aimed at
  * a real hazard and named the wrong thing: the danger was two derivations, not
@@ -44,6 +43,15 @@ import { SkeletonBase } from '@/design-system/components/Skeletons';
 import { useUnboxProcedureSteps } from './useUnboxProcedureSteps';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 
+type UnboxProcedureChecklistProps = {
+  row: ReceivingLineRow;
+  /**
+   * Cap visible rows (scroll for the rest). Used by the scan-progress hover
+   * peek — pass {@link SCAN_STATION_CHECKLIST_PREVIEW_ROWS}.
+   */
+  maxVisibleRows?: number;
+};
+
 /**
  * Placeholder at the real geometry while the photo counts hydrate.
  *
@@ -64,11 +72,16 @@ function ProcedureSkeleton({ rows }: { rows: number }) {
   );
 }
 
-export function UnboxProcedureChecklist({ row }: { row: ReceivingLineRow }) {
+export function UnboxProcedureChecklist({
+  row,
+  maxVisibleRows,
+}: UnboxProcedureChecklistProps) {
   const { steps, settled, stepCount, focusStep } = useUnboxProcedureSteps(row);
 
   const doneCount = steps.reduce((n, step) => n + (step.state === 'done' ? 1 : 0), 0);
   const allDone = steps.length > 0 && doneCount === steps.length;
+  const skeletonRows =
+    maxVisibleRows != null ? Math.min(stepCount, maxVisibleRows) : stepCount;
 
   return (
     <div className="space-y-2">
@@ -92,9 +105,13 @@ export function UnboxProcedureChecklist({ row }: { row: ReceivingLineRow }) {
       {settled ? (
         // Clicking a row moves the CENTRE's pointer to that step — the checklist
         // is the map, the cards are the work, and the map is how you navigate.
-        <ProcedureChecklist steps={steps} onSelectStep={focusStep} />
+        <ProcedureChecklist
+          steps={steps}
+          onSelectStep={focusStep}
+          maxVisibleRows={maxVisibleRows}
+        />
       ) : (
-        <ProcedureSkeleton rows={stepCount} />
+        <ProcedureSkeleton rows={skeletonRows} />
       )}
     </div>
   );

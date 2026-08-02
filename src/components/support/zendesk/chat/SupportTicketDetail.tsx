@@ -86,6 +86,12 @@ export function SupportTicketDetail({
    * push rail passes `false` so a denser requester line stays visible.
    */
   hideRequesterBand,
+  /**
+   * Drop the editable subject title. `/support` sets it: the thread's split
+   * header already carries the subject in its identity row, and drawing it
+   * again here was the duplicate. Hosts with no such header leave it off.
+   */
+  hideTitle = false,
   /** Carton context for media library “Current carton” tab (unbox / testing). */
   receivingId,
   /** Hide linked-context strip (when already shown by SupportContextHub). */
@@ -106,6 +112,7 @@ export function SupportTicketDetail({
   hideExternalLink?: boolean;
   embedded?: boolean;
   hideRequesterBand?: boolean;
+  hideTitle?: boolean;
   receivingId?: number;
   hideLinkedContext?: boolean;
   /** Exposes the embedded composer to a station terminal dock. */
@@ -216,6 +223,7 @@ export function SupportTicketDetail({
         hideExternalLink={hideExternalLink}
         compact={embedded}
         hideRequesterBand={hideRequester}
+        hideTitle={hideTitle}
         onOpenContext={showContext ? () => setContextOpen(true) : undefined}
         contextOpen={contextOpen}
         contextBadge={showContext ? contextBadge : null}
@@ -249,6 +257,15 @@ export function SupportTicketDetail({
           open={contextOpen}
           onClose={() => setContextOpen(false)}
           embedded={embedded}
+          // FLOAT, not push. One of this component's hosts is
+          // `ReceivingTicketStack` — itself an `UnboxPushColumn` — so pushing
+          // would put two columns on one edge. The reason belongs to the HOST,
+          // which is why `push` is a required prop rather than a default baked
+          // into the panel.
+          push={false}
+          // No `tabs`: the Unbox "Links" rail keeps the linkage strip above the
+          // hub's own Customer | Team | Activity pills. It has no Conversations
+          // tab to fall back on, so Team must stay reachable here.
         />
       ) : null}
 

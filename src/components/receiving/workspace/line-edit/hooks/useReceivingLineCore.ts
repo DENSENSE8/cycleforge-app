@@ -6,6 +6,7 @@ import { useResourceMutation } from '@/hooks';
 import { useAblyClient } from '@/contexts/AblyContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { safeChannelName, getStaffStationBridgeChannelName } from '@/lib/realtime/channels';
+import { sendToDevice, type DeviceAckChannel } from '@/lib/realtime/device-handshake';
 import { copyToClipboard } from '@/utils/_dom';
 import { buildReceivingCopyInfo } from '@/utils/copy-all-receiving';
 import { useEntitySupportTicket } from '@/hooks/useEntitySupportTicket';
@@ -517,32 +518,22 @@ export function useReceivingLineCore(
       const requestId = randomId();
       const ch = client.channels.get(stationChannelName);
 
-      // Subscribe to the ACK BEFORE publishing so a fast phone can't reply
-      // before we're listening.
-      let onAck: ((msg: { data?: { request_id?: string } }) => void) | null = null;
-      const ackPromise = new Promise<boolean>((resolve) => {
-        const handler = (msg: { data?: { request_id?: string } }) => {
-          if (String(msg?.data?.request_id || '') === requestId) resolve(true);
-        };
-        onAck = handler;
-        ch.subscribe('receiving_share_ack', handler).catch(() => resolve(false));
+      // This inline subscribe-before-publish/race-a-timeout dance used to live
+      // here and nowhere else, which is why the photo-request and pack paths
+      // shipped without it. It now composes the shared handshake (P1 · D2) —
+      // one timeout, one ack vocabulary, one behaviour across every bench.
+      const acked = await sendToDevice({
+        channel: ch as DeviceAckChannel,
+        requestId,
+        publish: () =>
+          ch.publish('receiving_share_to_phone', {
+            receiving_id: row.receiving_id,
+            po_label: row.zoho_purchaseorder_number || `Package #${row.receiving_id}`,
+            tracking: (row.tracking_number || '').trim() || null,
+            request_id: requestId,
+            requested_by_staff_id: staffIdNum,
+          }),
       });
-
-      await ch.publish('receiving_share_to_phone', {
-        receiving_id: row.receiving_id,
-        po_label: row.zoho_purchaseorder_number || `Package #${row.receiving_id}`,
-        tracking: (row.tracking_number || '').trim() || null,
-        request_id: requestId,
-        requested_by_staff_id: staffIdNum,
-      });
-
-      const acked = await Promise.race([
-        ackPromise,
-        new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 6000)),
-      ]);
-      if (onAck) {
-        try { ch.unsubscribe('receiving_share_ack', onAck); } catch {}
-      }
 
       if (acked) {
         toast.success('Shared to your phone');

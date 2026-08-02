@@ -19,6 +19,7 @@ Make paired desk↔phone evidence capture **operator-visible and always-on** acr
 | [This INDEX](./station-realtime-capture-visibility-INDEX.md) | Human + agents | Program map, read order, Gemini→Claude gate |
 | [`station-realtime-capture-visibility-GEMINI-RESEARCH-BRIEFING.md`](./station-realtime-capture-visibility-GEMINI-RESEARCH-BRIEFING.md) | Gemini Pro | Industry research + force D1–D12 |
 | [`station-realtime-capture-visibility-CLAUDE-CODE-PROMPT.md`](./station-realtime-capture-visibility-CLAUDE-CODE-PROMPT.md) | Claude Code / Cursor Agent | **Paste-ready execution handoff** |
+| [`station-realtime-capture-visibility-SESSION-3-HANDOFF.md`](./station-realtime-capture-visibility-SESSION-3-HANDOFF.md) | Claude Code / Cursor Agent | **Session 3 (P2) start here** — measured code state + the two traps the prompt does not know about |
 
 ---
 
@@ -26,10 +27,9 @@ Make paired desk↔phone evidence capture **operator-visible and always-on** acr
 
 1. [`.claude/rules/display/station.md`](../../.claude/rules/display/station.md) — Station contract (pass/fail = big card, OfflineBanner singleton).
 2. **This INDEX** — ownership and gates.
-3. [`station-realtime-capture-visibility-GEMINI-RESEARCH-BRIEFING.md`](./station-realtime-capture-visibility-GEMINI-RESEARCH-BRIEFING.md) — paste to Gemini Pro (or skip and keep Engineering lean).
-4. Merge Gemini D1–D12 into Claude prompt **§Locked decisions** (Session 0), *or* keep provisional lean.
-5. Paste Claude Code **Session 1** from [`station-realtime-capture-visibility-CLAUDE-CODE-PROMPT.md`](./station-realtime-capture-visibility-CLAUDE-CODE-PROMPT.md) into a fresh agent session.
-6. Session 2 / Session 3 only after Session 1 `npm run verify` is green.
+3. [`station-realtime-capture-visibility-GEMINI-RESEARCH-BRIEFING.md`](./station-realtime-capture-visibility-GEMINI-RESEARCH-BRIEFING.md) — paste to Gemini Pro (or skip and keep Engineering lean). Historical: Session 0 locked lean without a Gemini run.
+4. [`station-realtime-capture-visibility-CLAUDE-CODE-PROMPT.md`](./station-realtime-capture-visibility-CLAUDE-CODE-PROMPT.md) — full program + Sessions 0–3 paste blocks.
+5. **Next implement:** [`station-realtime-capture-visibility-SESSION-3-HANDOFF.md`](./station-realtime-capture-visibility-SESSION-3-HANDOFF.md) — Session 3 (P2) only; do not rebuild P0/P1.
 
 ---
 
@@ -38,15 +38,14 @@ Make paired desk↔phone evidence capture **operator-visible and always-on** acr
 | Track | Status |
 |---|---|
 | Docs package (INDEX + Gemini brief + Claude prompt) | Ready 2026-08-01 |
-| Gemini research run | Pending operator paste |
+| Gemini research run | Still optional — Sessions 0–2 shipped on Engineering lean |
 | Claude Session 0 (lock decisions) | **Done 2026-08-01** — no Gemini run; lean = Locked (D5 annotated *deferred*) |
-| Claude Session 1 (P0 upload visibility) | In progress |
-| Claude Session 2 (P1 pairing UI) | Gated on Session 1 verify green |
-| Claude Session 3 (P2 OfflineBanner + Ably) | Gated on Session 2 verify green |
+| Claude Session 1 (P0 upload visibility) | **Done 2026-08-02** — `CaptureUploadStatus` + shell dock; toaster demoted to failure echo |
+| Claude Session 2 (P1 pairing UI) | **Done 2026-08-02** — `station_device_ack` handshake; Receiving + Pack waiting/unreachable |
+| Claude Session 3 (P2 OfflineBanner + Ably) | **Ready to paste** — start at [`SESSION-3-HANDOFF`](./station-realtime-capture-visibility-SESSION-3-HANDOFF.md) |
 | P3 durable photo requests | Ask-first — not in paste blocks |
 
-**Do not start Session 2 or Session 3 until Session 1 verify is green.**
-
+**Gate:** Session 1 and Session 2 are green. Only Session 3 (P2) remains in the paste path.
 ---
 
 ## Decision ownership
@@ -83,18 +82,19 @@ Make paired desk↔phone evidence capture **operator-visible and always-on** acr
 
 ---
 
-## Operator workflow (after docs land)
+## Operator workflow (current)
 
-1. Paste the Gemini briefing → Gemini Pro → get D1–D12 rulings + P0 Claude sketch.
-2. Merge rulings into Claude Code prompt §Locked (or accept Engineering lean if skipping Gemini).
-3. Paste Claude Code **Session 1** into a fresh agent session → implement P0.
-4. Later: Session 2 (pairing), Session 3 (connection chrome); P3 ask-first only.
+1. *(Optional)* Still paste the Gemini briefing anytime to amend D1–D12; merge into Claude prompt §Locked + amendment log before changing shipped P0/P1 behavior.
+2. **Now:** paste [`SESSION-3-HANDOFF`](./station-realtime-capture-visibility-SESSION-3-HANDOFF.md) into a fresh agent session → Session 3 (P2 OfflineBanner + Ably).
+3. P3 durable photo requests — ask-first only after P2.
+
+Historical (already done): Session 0 lean lock → Session 1 P0 → Session 2 P1.
 
 ---
 
-## Out of scope for this package
+## Out of scope / non-goals (still)
 
-- App code (starts when Session 1 is pasted)
 - DOC-CATALOG / portfolio index updates (unless separately asked)
-- Expanding `realtime_outbox` to photo requests
-- Replacing Ably with SSE
+- Expanding `realtime_outbox` to photo requests (P3 ask-first)
+- Replacing Ably with SSE / inventing a second realtime bus
+- Rebuilding Session 1–2 compounds in the Session 3 run

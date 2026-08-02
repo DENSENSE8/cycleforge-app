@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from '@/lib/toast';
 import { useLocations } from '@/hooks/useLocations';
+import { useOrgGs1 } from '@/hooks/useOrgGs1';
 import {
   useRackPrinterStore,
   patchRackPrinterState,
@@ -33,6 +34,11 @@ export function useRackLabelPrinter() {
 
   const [config, setConfig] = useState<PrinterConfig>(DEFAULT_CONFIG);
   const [configOpen, setConfigOpen] = useState(false);
+
+  // The GLN is org-level, not part of `config` — see rack-printer-config.ts.
+  // Resolved, so a placeholder or malformed value on file arrives here as ''
+  // and the label falls back to the bare rack code.
+  const { identity: orgGs1 } = useOrgGs1();
 
   const stored = useRackPrinterStore();
   const selectedRoom = stored.room;
@@ -211,6 +217,8 @@ export function useRackLabelPrinter() {
     allRoomNames,
     zoneMap,
     config,
+    /** Workspace GLN for the printed matrix. '' = none on file. */
+    gln: orgGs1.gln,
     // selection
     selectedRoom,
     aisle,
