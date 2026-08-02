@@ -132,6 +132,9 @@ export type PrintProductLabelsInput = {
   title?: string;
   serialNumbers: string[];
   gtin?: string;
+  /** Tenant slug — forwarded so a batch encodes the same string a single print
+   *  would. Dropping it here would re-create the per-path fork on the bulk lane. */
+  orgSlug?: string | null;
   qrPayloads?: Array<string | null | undefined>;
   condition?: string | null;
   color?: string | null;
@@ -159,6 +162,7 @@ export function printProductLabels(input: PrintProductLabelsInput): void {
         title: input.title,
         serialNumber,
         gtin: input.gtin,
+        orgSlug: input.orgSlug,
         qrPayload: payloads[i] ?? undefined,
         condition: input.condition,
         color: input.color,

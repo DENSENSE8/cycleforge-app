@@ -61,6 +61,13 @@ export const framerDuration = {
   sidebarRailRowMount: 0.2,
   /** Workbench right-pane / detail crossfade */
   workbenchPaneMount: 0.18,
+  /**
+   * Omnichannel composer dock mount. Equal to {@link workbenchPaneMount} today,
+   * and deliberately its own constant rather than a reference: the dock is
+   * region-plural chrome (Station Unbox notes + Workbench Support reply), so it
+   * must be tunable without retiming every focus-surface swap in the app.
+   */
+  composerDockMount: 0.18,
   /** Photo viewer details column — one symmetric drawer toggle (open == close reversed) */
   photoContextPanelMount: 0.22,
   /** Nav spine push column — one symmetric width toggle that reflows the frame */
@@ -117,6 +124,20 @@ export const framerTransition = {
   /** Workbench right-pane / detail crossfade — pair with `framerPresence.workbenchPane` */
   workbenchPaneMount: {
     duration: framerDuration.workbenchPaneMount,
+    ease: motionBezier.easeOut,
+  } satisfies Transition,
+
+  /**
+   * Omnichannel composer dock mount — pair with `framerPresence.composerDock`.
+   *
+   * `OmnichannelComposerDock` used to rebuild this inline from
+   * `framerDuration.workbenchPaneMount` + `motionBezier.easeOut` and then `void`
+   * the pane preset names so a text guard saw them referenced. It is named here
+   * instead: the dock is not a focus-surface swap (see the presence docblock),
+   * so it owns its own entry rather than borrowing the pane's.
+   */
+  composerDockMount: {
+    duration: framerDuration.composerDockMount,
     ease: motionBezier.easeOut,
   } satisfies Transition,
 
@@ -647,6 +668,37 @@ export const framerPresence = {
     initial: { opacity: 0, y: 6 },
     animate: { opacity: 1, y: 0 },
     exit: { opacity: 0, y: -6 },
+  },
+  /**
+   * Omnichannel composer dock mount — the "type a message here" shell arriving
+   * with its host surface. Single primitive consumer:
+   * `OmnichannelComposerDock` (Unbox carton notes · Support ticket reply).
+   *
+   * WHY THIS IS NOT `motionRole.swap.focus` / `workbenchPane`. Two reasons, and
+   * the second is the decisive one:
+   *
+   *   1. It is a CARD MOUNT, not a focus-surface swap. No consumer wraps the
+   *      dock in its own `AnimatePresence` keyed on a selection — it enters when
+   *      its host surface enters. Enter travel is therefore the house card-mount
+   *      idiom (`y: 8`, same as `stationCard` / `signInCard`), not the pane's 6.
+   *   2. The dock is REGION-PLURAL. It renders on the Unbox **station** bench
+   *      and in the Support **workbench** thread from one shell, and no role
+   *      spans both: `swap.focus` is declared `workbench | monitor | canvas`,
+   *      and `swap.scan` is scan-cadence with a zero-duration exit. Adopting
+   *      either would put a documented out-of-contract region on half the
+   *      call sites — a false intent claim, which is exactly why
+   *      `motionRole.feedback.pulse` ships with no consumers.
+   *
+   * The exit drifts DOWN (`y: 4`), toward the edge the dock sits on — same
+   * reasoning as {@link chatScrollToLatest}, and deliberately opposite to
+   * `workbenchPane`'s upward lift (which clears the way for the next pane to
+   * rise in). Pair with `framerTransition.composerDockMount`; consume via
+   * `useMotionPresence` / `useMotionTransition`.
+   */
+  composerDock: {
+    initial: { opacity: 0, y: 8 },
+    animate: { opacity: 1, y: 0 },
+    exit: { opacity: 0, y: 4 },
   },
   /**
    * AI chat "jump to latest" floating pill — rises from just below its rest

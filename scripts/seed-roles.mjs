@@ -98,6 +98,9 @@ const ADMIN_ONLY = [
   'integrations.zoho', 'integrations.ebay', 'integrations.ecwid', 'integrations.zendesk',
   'fba.manage_fnskus', 'fba.stage_shipments',
   'reports.export', 'print.silent',
+  // The standards interop projections expose the whole tenant's operational
+  // history to a partner. Read-only, but that breadth is an admin decision.
+  'interop.read',
   // Kiosk tablet enroll/revoke — admin short-circuit already grants this at
   // runtime; keep it in the seeded admin JSON so Roles UI stays honest.
   'walk_in.enroll_kiosk',

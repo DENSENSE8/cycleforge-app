@@ -1,4 +1,4 @@
-import { ticketHandle } from '@/lib/barcode-routing';
+import { encodePrintMatrix, type PrintMatrix } from '@/lib/qr/platform-link';
 import { buildFaceInfoHtml, type LabelFaceModel } from '@/lib/print/labelFace';
 
 /**
@@ -12,20 +12,33 @@ export interface TicketLabelPayload {
   context?: string | null;
   /** Optional platform for the bottom-right. */
   platform?: string | null;
+  /**
+   * Tenant slug, carried for the encode SoT. Unused today — a ticket resolves
+   * to `/support?ticket=`, which is staff-only, so there is nothing for an
+   * anonymous phone to land on and the bare `T-` handle stays correct.
+   */
+  orgSlug?: string | null;
   /** Override the encoded matrix value. */
   qrValue?: string | null;
 }
 
+/** Ticket matrix via the encode SoT ({@link encodePrintMatrix}). */
+export function ticketLabelMatrix(payload: TicketLabelPayload): PrintMatrix {
+  return encodePrintMatrix({
+    kind: 'ticket',
+    orgSlug: payload.orgSlug,
+    ticketDigits: payload.ticketDigits,
+    override: payload.qrValue,
+  });
+}
+
 export function resolveTicketQrValue(payload: TicketLabelPayload): string {
-  if (payload.qrValue && payload.qrValue.trim()) return payload.qrValue.trim();
-  const digits = String(payload.ticketDigits || '').replace(/\D/g, '');
-  return digits ? ticketHandle(digits) : '';
+  return ticketLabelMatrix(payload).value;
 }
 
 export function ticketPayloadToFace(payload: TicketLabelPayload): LabelFaceModel {
   const digits = String(payload.ticketDigits || '').replace(/\D/g, '');
-  const qrValue = resolveTicketQrValue(payload);
-  const hri = /^T-\d+$/i.test(qrValue) ? qrValue.toUpperCase() : undefined;
+  const { value, symbology, hri } = ticketLabelMatrix(payload);
   return {
     kind: 'receiving',
     topLeft: (payload.context || '').trim() || 'TICKET',
@@ -33,7 +46,7 @@ export function ticketPayloadToFace(payload: TicketLabelPayload): LabelFaceModel
     center: digits ? `#${digits}` : '',
     bottomLeft: '',
     bottomRight: (payload.platform || '').trim(),
-    matrix: { value: qrValue, symbology: 'datamatrix', scale: 4 },
+    matrix: { value, symbology, scale: 4 },
     hri,
   };
 }

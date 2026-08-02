@@ -19,7 +19,7 @@ import { IconButton } from '@/design-system/primitives';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { LinePoItemsSection } from './LinePoItemsSection';
 import { CartonMatchHub } from './CartonMatchHub';
-import type { ReceivingLineRow } from '@/components/station/ReceivingLinesTable';
+import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import type { InlineActionFeedbackPayload } from '../InlineActionFeedbackCard';
 import type { UnboxLineController } from './unbox-line-controller';
 import { shouldUseUnmatchedItemsSurface } from '@/lib/receiving/intake-items-routing';

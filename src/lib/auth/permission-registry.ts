@@ -209,6 +209,13 @@ export const PERMISSIONS = [
   { id: 'integrations.sheets',      category: 'integrations', label: 'Trigger Google Sheets sync' },
   { id: 'integrations.google_drive', category: 'integrations', label: 'Manage Google Drive photo backup' },
   { id: 'integrations.zendesk',     category: 'integrations', label: 'Manage Zendesk tickets' },
+  // Read-only standards projections (EPCIS event feed, EDI 856 ASN, lineage
+  // facets) over rows that already exist. Its own permission rather than
+  // `reports.export` because it is the whole tenant's operational history in a
+  // machine-readable form — the grant a customer makes to a PARTNER's service
+  // account, which is a different decision from letting a staffer download a
+  // report. Read-only, but broad, so it is ADMIN_ONLY in scripts/seed-roles.mjs.
+  { id: 'interop.read',             category: 'integrations', label: 'Read standards interop projections (EPCIS / ASN)' },
 
   // ─ Product manuals (cross-cutting, lives under "data sources" admin tab) ─
   { id: 'product_manuals.manage',   category: 'integrations', label: 'Manage product manuals (assign, upsert, sync)' },

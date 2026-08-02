@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import type { ReceivingLineRow } from '@/components/station/ReceivingLinesTable';
-import { dispatchSelectLine } from '@/components/station/ReceivingLinesTable';
+import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import { dispatchSelectLine } from '@/components/station/receiving-lines-table-helpers';
 import {
   setItemDescHandoff,
   takeItemDescHandoff,

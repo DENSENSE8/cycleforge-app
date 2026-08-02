@@ -8,6 +8,7 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { PageHeader } from '@/components/ui/pane-header';
 import { Button } from '@/design-system/primitives';
+import { DataTable, type DataTableColumn } from '@/design-system/components/DataTable';
 
 export const dynamic = 'force-dynamic';
 
@@ -107,6 +108,89 @@ export default async function CycleCountsAdminPage({
   const errorCode = params.error ?? null;
   const campaigns = await loadCampaigns(user.organizationId);
 
+  const campaignColumns: DataTableColumn<CampaignRow>[] = [
+    {
+      key: 'campaign',
+      header: 'Campaign',
+      type: 'text',
+      cell: (c) => (
+        <div>
+          <Link
+            href={`/admin/inventory/cycle-counts/${c.id}`}
+            className="font-semibold text-blue-600 hover:underline"
+          >
+            {c.name}
+          </Link>
+          <div className="text-role-caption text-text-soft">tol {c.variance_tol}</div>
+        </div>
+      ),
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      type: 'tag',
+      cell: (c) => (
+        <span
+          className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${
+            c.status === 'open' ? 'bg-blue-100 text-blue-700' : 'bg-surface-sunken text-text-muted'
+          }`}
+        >
+          {c.status}
+        </span>
+      ),
+    },
+    {
+      key: 'lines',
+      header: 'Lines',
+      type: 'number',
+      cell: (c) => <span className="tabular-nums">{c.total_lines}</span>,
+    },
+    {
+      key: 'counted',
+      header: 'Counted',
+      type: 'number',
+      cell: (c) => <span className="tabular-nums">{c.counted_lines}</span>,
+    },
+    {
+      key: 'review',
+      header: 'Review',
+      type: 'number',
+      cell: (c) => (
+        <span
+          className={`tabular-nums ${
+            c.pending_review_lines > 0 ? 'font-semibold text-amber-700' : ''
+          }`}
+        >
+          {c.pending_review_lines}
+        </span>
+      ),
+    },
+    {
+      key: 'approved',
+      header: 'Approved',
+      type: 'number',
+      cell: (c) => (
+        <span className="tabular-nums text-green-700">{c.approved_lines}</span>
+      ),
+    },
+    {
+      key: 'created',
+      header: 'Created',
+      type: 'date',
+      cell: (c) => (
+        <span className="text-xs text-text-soft">{new Date(c.created_at).toLocaleString()}</span>
+      ),
+    },
+    {
+      key: 'by',
+      header: 'By',
+      type: 'text',
+      cell: (c) => (
+        <span className="text-xs text-text-muted">{c.created_by_name ?? 'system'}</span>
+      ),
+    },
+  ];
+
   return (
     <div className="min-h-screen bg-surface-canvas">
       <PageHeader backHref="/admin/inventory" title="Cycle counts" maxWidth="6xl" />
@@ -167,56 +251,17 @@ export default async function CycleCountsAdminPage({
         </section>
 
         {/* Campaign list */}
-        <section className="rounded-lg border border-border-soft bg-surface-card shadow-sm">
-          <header className="flex items-center justify-between border-b border-border-hairline px-6 py-3">
+        <section className="space-y-3">
+          <header className="flex items-center justify-between">
             <h2 className="text-lg font-medium text-text-default">Campaigns</h2>
             <span className="text-xs text-text-soft">last 50</span>
           </header>
-          {campaigns.length === 0 ? (
-            <p className="px-6 py-8 text-sm text-text-muted">No campaigns yet. Use the form above to start one.</p>
-          ) : (
-            <table className="min-w-full divide-y divide-border-hairline text-sm">
-              <thead className="bg-surface-canvas text-xs uppercase tracking-wide text-text-soft">
-                <tr>
-                  <th className="px-4 py-2 text-left font-medium">Campaign</th>
-                  <th className="px-4 py-2 text-left font-medium">Status</th>
-                  <th className="px-4 py-2 text-right font-medium">Lines</th>
-                  <th className="px-4 py-2 text-right font-medium">Counted</th>
-                  <th className="px-4 py-2 text-right font-medium">Review</th>
-                  <th className="px-4 py-2 text-right font-medium">Approved</th>
-                  <th className="px-4 py-2 text-left font-medium">Created</th>
-                  <th className="px-4 py-2 text-left font-medium">By</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border-hairline">
-                {campaigns.map((c) => (
-                  <tr key={c.id}>
-                    <td className="px-4 py-2 text-sm">
-                      <Link href={`/admin/inventory/cycle-counts/${c.id}`} className="font-semibold text-blue-600 hover:underline">
-                        {c.name}
-                      </Link>
-                      <div className="text-role-caption text-text-soft">tol {c.variance_tol}</div>
-                    </td>
-                    <td className="px-4 py-2">
-                      <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                        c.status === 'open' ? 'bg-blue-100 text-blue-700' : 'bg-surface-sunken text-text-muted'
-                      }`}>
-                        {c.status}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2 text-right tabular-nums">{c.total_lines}</td>
-                    <td className="px-4 py-2 text-right tabular-nums">{c.counted_lines}</td>
-                    <td className={`px-4 py-2 text-right tabular-nums ${c.pending_review_lines > 0 ? 'font-semibold text-amber-700' : ''}`}>
-                      {c.pending_review_lines}
-                    </td>
-                    <td className="px-4 py-2 text-right tabular-nums text-green-700">{c.approved_lines}</td>
-                    <td className="px-4 py-2 text-xs text-text-soft">{new Date(c.created_at).toLocaleString()}</td>
-                    <td className="px-4 py-2 text-xs text-text-muted">{c.created_by_name ?? 'system'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+          <DataTable
+            columns={campaignColumns}
+            rows={campaigns}
+            rowKey={(c) => c.id}
+            emptyMessage="No campaigns yet. Use the form above to start one."
+          />
         </section>
       </div>
     </div>

@@ -16,9 +16,13 @@
  *   - IncomingGridView ............ Incoming POS → LedgerGrid spreadsheet
  *   - ReceivingGridView ........... Unbox / History → LedgerGrid spreadsheet
  *
- * The public exports below (types, dispatchers, the row component, the
- * synthetic-id helpers) are re-exported here so the ~50 existing importers of
- * `@/components/station/ReceivingLinesTable` keep working unchanged.
+ * Types + dispatchers live in leaf modules — import those, never this file,
+ * unless you are mounting the table:
+ *   - `receiving-line-row` ............. `ReceivingLineRow`
+ *   - `receiving-lines-table-helpers` ... dispatchers / selection scope
+ *   - `ReceivingLineOrderRow` .......... board-layout row (legacy)
+ *
+ * Re-exports below remain for accidental legacy imports; new code must use leaves.
  */
 
 import { useCallback, useRef, useState } from 'react';
@@ -95,11 +99,8 @@ const RECEIVING_HISTORY_LANES: SwimlaneLaneDef<ReceivingHistoryLane>[] = RECEIVI
   iconClass: l.iconClass,
 }));
 
-// ── Public re-exports (preserve the historical import surface) ──────────────
+// ── Legacy re-exports (prefer leaf modules; do not grow this list) ───────────
 export type { ReceivingView } from '@/lib/receiving/receiving-views';
-// `ReceivingLineRow` lives in a leaf module so low-level utils/lib helpers can
-// reference the shape without importing this heavy component. Re-exported so the
-// ~50 existing `from '@/components/station/ReceivingLinesTable'` importers work.
 export type { ReceivingLineRow } from './receiving-line-row';
 export {
   dispatchSelectLine,

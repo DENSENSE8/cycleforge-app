@@ -1,5 +1,6 @@
 import pool from '@/lib/db';
 import type { PhotoAspect } from '@/lib/photos/photo-aspects';
+import type { PhotoLinkRole } from '@/lib/photos/types';
 import {
   receivingPhotoIntentSql,
   type ReceivingPhotoListIntent,
@@ -10,6 +11,17 @@ const LINK_JOINS = `
   LEFT JOIN receiving_line rl
          ON l.entity_type = 'RECEIVING_LINE' AND rl.id = l.entity_id
 `;
+
+/**
+ * Secondary link roles surfaced as booleans.
+ *
+ * Typed against the `PhotoLinkRole` union so renaming a role in the SoT
+ * (`../types.ts`) is a compile error here rather than a silently-always-false
+ * column. Module-local on purpose — exporting them would add two names knip
+ * has to justify for one consumer.
+ */
+const CLAIM_EVIDENCE_ROLE: PhotoLinkRole = 'claim_evidence';
+const INSURANCE_SHARE_ROLE: PhotoLinkRole = 'insurance_share';
 
 export interface ReceivingPhotoListRow {
   id: number;
@@ -33,6 +45,29 @@ export interface ReceivingPhotoListRow {
    * and must never be read as "the photo is missing".
    */
   photoAspect: string | null;
+  /**
+   * `photos.photo_type` under its real name.
+   *
+   * The same value {@link ReceivingPhotoListRow.caption} carries — that alias is
+   * NOT a bug and must not be renamed out from under its readers. `photos` has
+   * no caption column, and five consumers read `caption` AS the stage, including
+   * the server-side receive gate (`@/lib/receiving/photo-policy` →
+   * `deriveReceivingPhotoStageCounts`). Migrating them is a separate change; new
+   * readers take this field, and `caption` retires once they are all moved.
+   */
+  photoType: string | null;
+  /**
+   * This photo also carries a `claim_evidence` link.
+   *
+   * Deliberately a BOOLEAN off an EXISTS, not `l.link_role`. `claim_evidence`
+   * lives on a SECOND `photo_entity_links` row whose `entity_type` is
+   * `ZENDESK_TICKET` (`../claim-link.ts`), while the join above is pinned to
+   * RECEIVING / RECEIVING_LINE — so selecting `l.link_role` would return the
+   * constant `'primary'` for every row: a field that looks answered and is not.
+   */
+  hasClaimEvidence: boolean;
+  /** Same shape for `insurance_share` (carrier / external share packs). */
+  hasInsuranceShare: boolean;
 }
 
 interface DbRow {
@@ -45,8 +80,14 @@ interface DbRow {
   created_at: string;
   client_captured_at: string | null;
   photo_aspect: string | null;
+  has_claim_evidence: boolean | null;
+  has_insurance_share: boolean | null;
 }
 
+/**
+ * `$2` / `$3` are the two link roles, bound ahead of every caller-dependent
+ * param so this list can stay a module const. Callers push from `$4` on.
+ */
 const SELECT = `
   DISTINCT ON (p.id)
   p.id,
@@ -61,7 +102,19 @@ const SELECT = `
   p.taken_by_staff_id AS uploaded_by,
   p.created_at,
   p.client_captured_at,
-  p.photo_aspect
+  p.photo_aspect,
+  EXISTS (
+    SELECT 1 FROM photo_entity_links cl
+     WHERE cl.photo_id = p.id
+       AND cl.organization_id = p.organization_id
+       AND cl.link_role = $2
+  ) AS has_claim_evidence,
+  EXISTS (
+    SELECT 1 FROM photo_entity_links il
+     WHERE il.photo_id = p.id
+       AND il.organization_id = p.organization_id
+       AND il.link_role = $3
+  ) AS has_insurance_share
 `;
 
 function mapRow(row: DbRow, contentUrl: (id: number) => string): ReceivingPhotoListRow {
@@ -77,6 +130,10 @@ function mapRow(row: DbRow, contentUrl: (id: number) => string): ReceivingPhotoL
     createdAt: row.created_at,
     clientCapturedAt: row.client_captured_at ?? null,
     photoAspect: row.photo_aspect ?? null,
+    // Same value as `caption` by construction — see the field docs above.
+    photoType: row.caption,
+    hasClaimEvidence: row.has_claim_evidence === true,
+    hasInsuranceShare: row.has_insurance_share === true,
   };
 }
 
@@ -98,7 +155,9 @@ export async function listReceivingPhotos(input: {
   contentUrl?: (id: number) => string;
 }): Promise<ReceivingPhotoListRow[]> {
   const toUrl = input.contentUrl ?? ((id: number) => `/api/photos/${id}/content`);
-  const params: unknown[] = [input.organizationId];
+  // $1 org, $2/$3 the link roles the SELECT's EXISTS clauses read. Everything
+  // caller-dependent pushes from $4 on via `params.length`.
+  const params: unknown[] = [input.organizationId, CLAIM_EVIDENCE_ROLE, INSURANCE_SHARE_ROLE];
   let where: string;
 
   if (input.lineId != null) {

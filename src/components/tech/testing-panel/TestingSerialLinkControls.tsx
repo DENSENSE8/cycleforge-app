@@ -8,7 +8,7 @@ import { Popover } from '@/design-system/primitives';
 import { toast } from '@/lib/toast';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 import { dispatchTestingLineUpdated } from '@/components/tech/testing-line-events';
-import type { ReceivingLineRow } from '@/components/station/ReceivingLinesTable';
+import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 
 interface SiblingLine {
   id: number;

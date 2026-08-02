@@ -13,7 +13,7 @@
 import { AnimatePresence, motion, motionRole, useMotionRole } from '@/design-system/motion';
 import { useSearchParams } from 'next/navigation';
 import ReceivingLinesTable from '@/components/station/ReceivingLinesTable';
-import { RECEIVING_SELECTION_SCOPE } from '@/components/station/ReceivingLinesTable';
+import { RECEIVING_SELECTION_SCOPE } from '@/components/station/receiving-lines-table-helpers';
 import { ContextualSelectionBar } from '@/design-system/components/ContextualSelectionBar';
 import { RightPaneOverlayHost } from '@/components/ui/RightPaneOverlay';
 import { UnboxLineWorkspace } from '@/components/receiving/unbox/UnboxLineWorkspace';
@@ -26,7 +26,7 @@ import { PickupWorkspace } from '@/components/receiving/pickup/PickupWorkspace';
 import { parseRepairTab } from '@/lib/walk-in/history-modes';
 import type { SelectionAction } from '@/lib/selection/selection-actions';
 import type { ScanIntakeSurface } from '@/lib/receiving/scan';
-import type { ReceivingLineRow } from '@/components/station/ReceivingLinesTable';
+import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import type {
   NavState,
   WorkspaceState,

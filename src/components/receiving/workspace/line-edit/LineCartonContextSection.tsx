@@ -14,10 +14,8 @@
 
 import { CartonContextCard } from '@/components/station/entity-context';
 import { dispatchReceivingWorkspaceClose } from '@/utils/events';
-import {
-  dispatchLineUpdated,
-  type ReceivingLineRow,
-} from '@/components/station/ReceivingLinesTable';
+import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import { dispatchLineUpdated } from '@/components/station/receiving-lines-table-helpers';
 import { isLocalPickupFulfillment } from '@/lib/receiving/fulfillment-mode';
 import {
   getReceivingStatusDot,

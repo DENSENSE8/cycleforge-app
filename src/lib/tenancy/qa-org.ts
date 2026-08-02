@@ -112,6 +112,71 @@ export const QA_FIXTURE_ORDERS = {
   packed: 'QA-TEST-PACKED',
 } as const;
 
+/**
+ * Product titles for the order fixtures. Exported so a spec can locate a row
+ * without re-typing prose that lives in the provisioner — `createFixtureOrder`
+ * is `ON CONFLICT DO NOTHING`, so these strings are effectively immutable once a
+ * QA org exists and a copy that drifts is a silently-unfindable row.
+ */
+export const QA_FIXTURE_ORDER_TITLES = {
+  awaiting: 'QA — Unshipped AWAITING (add tracking here)',
+  pending: 'QA — Unshipped PENDING (tracking assigned)',
+  pendingSecond: 'QA — Unshipped PENDING #2 (record→record navigation)',
+  pendingThird: 'QA — Unshipped PENDING #3 (focus-a-middle-row keyboard specs)',
+  packed: 'QA — PACKED (staged for the dock)',
+} as const;
+
+/**
+ * Today (`/`) fixtures — the `work_assignments` rows `aggregateMyDayFeed` reads.
+ *
+ * Before these existed, `my-day-today.spec.ts` had to stub the `GET /api/my-day`
+ * body outright: the QA org provisioned no `work_assignments`, so all four lanes
+ * and all three due horizons were empty. That stub stayed green through a real
+ * bug — `myDayTasksFromFeed` emitted the top work order TWICE on any real feed,
+ * because `doNext` is a POINTER into `assigned` (`topWorkOrderForStaff` ranks the
+ * same predicate `isMineRow` filters), and every hand-written fixture happened to
+ * give `doNext` an id no other row used.
+ *
+ * **Three TEST assignments, one per due horizon, on the three tracked pending
+ * orders.** Those three are the only order fixtures `getOrders` can return:
+ * `awaiting` has no `shipment_id`, and `packed` carries a `PACK_COMPLETED`
+ * station-activity row, both of which that query excludes.
+ *
+ * `doNext` is DERIVED, never seeded: with equal status and priority,
+ * `compareWorkOrderRows` breaks the tie on deadline, so the overdue row is both
+ * `doNext` and `assigned[0]` — which is exactly the pointer relationship the
+ * duplicate-row regression lives in, now reproduced against real data.
+ */
+export const QA_FIXTURE_MY_DAY = {
+  overdue: {
+    orderId: QA_FIXTURE_ORDERS.pending,
+    title: QA_FIXTURE_ORDER_TITLES.pending,
+    dueInDays: -2,
+  },
+  dueToday: {
+    orderId: QA_FIXTURE_ORDERS.pendingSecond,
+    title: QA_FIXTURE_ORDER_TITLES.pendingSecond,
+    dueInDays: 0,
+  },
+  upcoming: {
+    orderId: QA_FIXTURE_ORDERS.pendingThird,
+    title: QA_FIXTURE_ORDER_TITLES.pendingThird,
+    dueInDays: 3,
+  },
+  /**
+   * An UNDATED interrupt — a support follow-up assigned to the QA admin. It
+   * carries no `deadlineAt`, which is the point: `myDayDueHorizon` must return
+   * null rather than folding it into `upcoming` and claiming a due date the
+   * record does not have.
+   */
+  interruptTicketId: 9100,
+  /** `listSupportFollowupsForStaff` LEFT-JOINs `support_tickets`, so with no
+   *  cached subject the row titles itself from the ticket id. */
+  interruptTitle: 'Ticket #9100',
+  /** Lower than the default 100 so the fixtures outrank any incidental row. */
+  priority: 10,
+} as const;
+
 export const QA_FIXTURE_TRACKING_PENDING = '9400100000000000000199';
 export const QA_FIXTURE_TRACKING_PENDING_SECOND = '9400100000000000000205';
 export const QA_FIXTURE_TRACKING_PENDING_THIRD = '9400100000000000000229';

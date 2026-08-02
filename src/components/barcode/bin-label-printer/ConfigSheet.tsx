@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Check } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
-import { DEFAULT_GLN, QR_BASE_URL } from '@/lib/barcode-routing';
+import { QR_BASE_URL } from '@/lib/barcode-routing';
+import { isLicensedGln } from '@/lib/interop/gs1-keys';
 import { DEFAULT_CONFIG, type PrinterConfig } from './types';
 import { clampMax } from './storage';
 
@@ -22,7 +23,7 @@ export function ConfigSheet({ open, onClose, config, onSave }: ConfigSheetProps)
   }, [open, config]);
 
   const set = (k: keyof PrinterConfig) => (v: string) => {
-    if (k === 'gln') return setDraft({ ...draft, gln: v.trim() || DEFAULT_GLN });
+    if (k === 'gln') return setDraft({ ...draft, gln: v.trim() });
     setDraft({
       ...draft,
       [k]: clampMax(v, (DEFAULT_CONFIG as unknown as Record<string, number>)[k]),
@@ -35,7 +36,7 @@ export function ConfigSheet({ open, onClose, config, onSave }: ConfigSheetProps)
       maxBays: clampMax(draft.maxBays, DEFAULT_CONFIG.maxBays),
       maxLevels: clampMax(draft.maxLevels, DEFAULT_CONFIG.maxLevels),
       maxPositions: clampMax(draft.maxPositions, DEFAULT_CONFIG.maxPositions),
-      gln: draft.gln.trim() || DEFAULT_GLN,
+      gln: draft.gln.trim(),
     });
   };
 
@@ -65,8 +66,9 @@ export function ConfigSheet({ open, onClose, config, onSave }: ConfigSheetProps)
           className="mt-1 h-11 w-full rounded-2xl border border-border-default bg-surface-canvas px-4 font-mono text-sm font-semibold text-text-default outline-none focus:border-blue-500 focus:bg-surface-card focus:ring-2 focus:ring-blue-200"
         />
         <p className="mt-1 text-role-micro text-text-faint">
-          Default is the GS1 documentation placeholder ({DEFAULT_GLN}). Replace once registered with
-          GS1 US.
+          {isLicensedGln(draft.gln)
+            ? 'Licensed GLN — labels print as a GS1 DataMatrix carrying (414).'
+            : 'Optional. Leave blank until you register a GLN with GS1 — labels then carry the bare location code, which scans the same. An unlicensed number here is ignored: AI 414 means "GLN", so printing one you do not hold claims another company\u2019s identity.'}
         </p>
       </div>
 

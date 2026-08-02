@@ -3,6 +3,7 @@ import { queryRaw } from '@/lib/neon-client';
 import Link from 'next/link';
 import { PageHeader } from '@/components/ui/pane-header';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { DataTable, type DataTableColumn } from '@/design-system/components/DataTable';
 
 export const dynamic = 'force-dynamic';
 
@@ -150,6 +151,35 @@ export default async function ThroughputPage({
   const hourlyByCell = new Map(hourly.map((r) => [`${r.station}|${r.hour_bucket.toISOString()}`, r.count]));
   const hourlyBuckets = Array.from(new Set(hourly.map((r) => r.hour_bucket.toISOString()))).sort();
 
+  const actorColumns: DataTableColumn<ByActorRow>[] = [
+    {
+      key: 'actor',
+      header: 'Actor',
+      type: 'text',
+      cell: (a) => (
+        <span className="text-xs text-text-muted">
+          {a.actor_name ?? (a.actor_staff_id ? `#${a.actor_staff_id}` : 'system')}
+        </span>
+      ),
+    },
+    {
+      key: 'events',
+      header: 'Events',
+      type: 'number',
+      cell: (a) => <span className="font-semibold tabular-nums">{a.count}</span>,
+    },
+    {
+      key: 'last_active',
+      header: 'Last active',
+      type: 'date',
+      cell: (a) => (
+        <span className="text-xs text-text-soft">
+          {a.last_active ? new Date(a.last_active).toLocaleString() : '—'}
+        </span>
+      ),
+    },
+  ];
+
   return (
     <div className="min-h-screen bg-surface-canvas">
       <PageHeader
@@ -223,6 +253,11 @@ export default async function ThroughputPage({
                 Heatmap intensity ∝ count. Hover for tooltip; cells with 0 events are blank.
               </p>
             </header>
+            {/*
+              Intentional non-collection <table>: station × hour heatmap cells are a
+              matrix visualization (dynamic hour columns + intensity tiles), not a
+              row/column collection list. DataTable is the wrong primitive here.
+            */}
             <div className="overflow-x-auto px-6 py-4">
               <table className="text-xs">
                 <thead>
@@ -264,34 +299,16 @@ export default async function ThroughputPage({
         ) : null}
 
         {/* By actor */}
-        <section className="rounded-lg border border-border-soft bg-surface-card shadow-sm">
-          <header className="border-b border-border-hairline px-6 py-3">
+        <section className="space-y-3">
+          <header>
             <h2 className="text-lg font-medium text-text-default">By actor</h2>
           </header>
-          {byActor.length === 0 ? (
-            <p className="px-6 py-8 text-sm text-text-muted">No actors in this range.</p>
-          ) : (
-            <table className="min-w-full divide-y divide-border-hairline text-sm">
-              <thead className="bg-surface-canvas text-xs uppercase tracking-wide text-text-soft">
-                <tr>
-                  <th className="px-6 py-2 text-left font-medium">Actor</th>
-                  <th className="px-6 py-2 text-right font-medium">Events</th>
-                  <th className="px-6 py-2 text-left font-medium">Last active</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border-hairline">
-                {byActor.map((a) => (
-                  <tr key={String(a.actor_staff_id)}>
-                    <td className="px-6 py-2 text-xs text-text-muted">
-                      {a.actor_name ?? (a.actor_staff_id ? `#${a.actor_staff_id}` : 'system')}
-                    </td>
-                    <td className="px-6 py-2 text-right text-sm font-semibold tabular-nums">{a.count}</td>
-                    <td className="px-6 py-2 text-xs text-text-soft">{a.last_active ? new Date(a.last_active).toLocaleString() : '—'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+          <DataTable
+            columns={actorColumns}
+            rows={byActor}
+            rowKey={(a) => String(a.actor_staff_id)}
+            emptyMessage="No actors in this range."
+          />
         </section>
       </div>
     </div>

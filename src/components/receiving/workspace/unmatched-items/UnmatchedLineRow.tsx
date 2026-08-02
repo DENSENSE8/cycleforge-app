@@ -9,7 +9,7 @@ import {
   useSerialLookup,
   type SerialMatchedOrder,
 } from '@/components/receiving/workspace/SerialMatchResult';
-import { dispatchLineUpdated } from '@/components/station/ReceivingLinesTable';
+import { dispatchLineUpdated } from '@/components/station/receiving-lines-table-helpers';
 import {
   ConditionGradeChip,
   EmptySkuChipFace,

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Mail, Paperclip, Plus, X } from '@/components/Icons';
-import { IconButton, StationComposerDock } from '@/design-system/primitives';
+import { IconButton, OmnichannelComposerDock } from '@/design-system/primitives';
 import { VisibilityToggle } from '@/components/ui/VisibilityToggle';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { usePhotoDropzone } from '@/hooks/usePhotoDropzone';
@@ -29,7 +29,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
  * Internal notes auto-sign with the current staffer's name for attribution.
  * Posts through {@link useSupportReply} (the shared photo→ticket pipeline).
  *
- * Always uses {@link StationComposerDock} — same elevated white shell as carton
+ * Always uses {@link OmnichannelComposerDock} — same elevated white shell as carton
  * notes. Station compound docks pass `trailingAction` (terminal CTA replaces
  * blue Send; Enter still commits).
  */
@@ -310,7 +310,7 @@ export function SupportChatComposer({
       {ccStrip}
       {stagedThumbs}
       {libraryPicker}
-      <StationComposerDock
+      <OmnichannelComposerDock
         value={body}
         onChange={setBody}
         onCommit={submit}

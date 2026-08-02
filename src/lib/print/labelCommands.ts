@@ -6,16 +6,24 @@
  * `browserPrint.ts` where there is no driver/Chromium to rasterize HTML). Layout
  * adapts to the profile's paper size; tuned for 2"×1" but scales for larger
  * stock. ESC/POS targets 80mm receipt rolls and uses a QR code (DataMatrix
- * support is spotty on receipt firmware) carrying the same `R-{id}` value.
+ * support is spotty on receipt firmware).
+ *
+ * Every language here encodes the SAME string as the HTML face and the
+ * on-screen preview, because all of them read `resolveReceivingQrValue` →
+ * `encodePrintMatrix`. That string is the absolute platform Digital Link when
+ * the tenant slug is known and the bare `R-{id}` handle otherwise — this
+ * comment used to say "the same `R-{id}` value", which stopped being true when
+ * carton labels started minting URLs. The HRI printed under the code stays the
+ * typeable handle either way.
  */
 
 import type { ReceivingLabelPayload } from '@/lib/print/printReceivingLabel';
 import type { LabelLanguage, PaperSize } from '@/lib/print/browserPrint';
-import { receivingHandle } from '@/lib/barcode-routing';
 import bwipjs from 'bwip-js/browser';
 import {
   receivingLabelPlatformDisplay,
   receivingLabelPoCornerDisplay,
+  resolveReceivingQrValue,
 } from '@/lib/print/printReceivingLabel';
 import { conditionLabel } from '@/lib/conditions';
 
@@ -57,10 +65,7 @@ function wrap(text: string, maxChars: number, maxLines: number): string[] {
 }
 
 function qrValueFor(p: ReceivingLabelPayload): string {
-  if (p.receivingId != null && Number.isFinite(p.receivingId)) {
-    return receivingHandle(p.receivingId);
-  }
-  return String(p.scanValue ?? '').trim();
+  return resolveReceivingQrValue(p);
 }
 
 interface LabelFields {
@@ -337,7 +342,8 @@ function zpl(f: LabelFields, size: PaperSize, copies: number): string {
 }
 
 // ---------------------------------------------------------------------------
-// ESC/POS (80mm receipt). QR carries the same R-{id} value.
+// ESC/POS (80mm receipt). QR carries the same encoded value as every other
+// language — platform Digital Link when the slug is known, else `R-{id}`.
 // ---------------------------------------------------------------------------
 const GS = '\x1d';
 const ESC = '\x1b';

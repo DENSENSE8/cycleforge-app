@@ -20,7 +20,7 @@ import { ClaimTicketPicker } from './claim/components/ClaimTicketPicker';
 import { useClaimPhotos } from './claim/hooks/useClaimPhotos';
 import { ClaimPhotoPicker } from './claim/components/ClaimPhotoPicker';
 import { CcEmailField } from './claim/components/CcEmailField';
-import type { ReceivingLineRow } from '@/components/station/ReceivingLinesTable';
+import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import type { LinkCandidate } from './claim/claim-types';
 
 export function SendPhotoNotePanel({

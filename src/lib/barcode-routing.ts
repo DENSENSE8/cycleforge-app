@@ -30,6 +30,10 @@ export interface ScanRoute {
   redirect?: string;
 }
 
+// The one shared answer to "is this GLN real?" — see the note where
+// DEFAULT_GLN used to live. Pure + client-safe, so this stays a client module.
+import { isLicensedGln } from '@/lib/interop/gs1-keys';
+
 const MOBILE_PATH_RE = /\/m\/(r|l|u)\/([^/?#\s]+)/i;
 const SKU_STOCK_LOCATION_RE = /\/sku-stock\/location\/([^/?#\s]+)/i;
 // GS1 Digital Link — capture gtin and optional serial after /21/.
@@ -66,6 +70,12 @@ const GS1_AI_UNIT_PARENS_RE = /\(01\)(\d{14})\(21\)([^()]+)(?:\(10\)([^()]+))?/i
 // branch AND by the U-/S- handle guards so a zone-letter location (e.g.
 // `U-01-02-3`) is never swallowed by the unit/sku handle parsers above it.
 const DASHED_LOCATION_RE = /^([A-Z])-(\d{2})-(\d{2})-(\d{1,2})(?:-(\d{2}))?$/i;
+
+// Flat location code — the undashed form `locationCodeFlat()` emits and
+// `locations.barcode` stores: zone letter + aisle(2) + bay(2) + level(1–2) +
+// position(2) = a letter followed by 7 or 8 digits. This is the whole payload
+// of a non-GS1 location DataMatrix.
+const LOCATION_FLAT_RE = /^[A-Z]\d{7,8}$/i;
 
 function pathToRoute(path: string, value: string): ScanRoute | null {
   const m = MOBILE_PATH_RE.exec(path);
@@ -251,6 +261,25 @@ export function routeScan(raw: string): ScanRoute | null {
     return routeLocationCode(value, flat);
   }
 
+  // 5b. FLAT location code — `A0101101`, a zone letter then 7–8 digits. This
+  //     is what a location DataMatrix carries for a tenant with no licensed
+  //     GLN (locationLabelPayload → symbology 'datamatrix'), and it is also
+  //     exactly what `locations.barcode` stores.
+  //
+  //     Without this branch such a scan fell through to the letter fallback
+  //     below, which returns `{type:'bin'}` with NO redirect and NO
+  //     case-normalisation — so a RACK label (position=00) opened the bin
+  //     view instead of the rack view, and a lower-cased entry never matched
+  //     its row. Routing through `routeLocationCode` makes the bare-code label
+  //     resolve identically to the GS1 one, which is the precondition for
+  //     dropping the borrowed GLN.
+  //
+  //     Deliberately narrow: existing short bin barcodes (`A12`, `B04`) do not
+  //     match and keep their old behaviour.
+  if (LOCATION_FLAT_RE.test(value)) {
+    return routeLocationCode(value, value.toUpperCase());
+  }
+
   // 6. Bin (legacy fallback): starts with a letter.
   if (/^[A-Za-z]/.test(value)) return { type: 'bin', value };
 
@@ -344,16 +373,18 @@ export function mobileQrUrl(
   // route (l/u via the proxy rewrite + MOBILE_PATH_RE, b to inventory).
   kind: 'r' | 'l' | 'u' | 'b',
   id: string | number,
+  opts?: { baseUrl?: string },
 ): string {
   const encoded = encodeURIComponent(String(id));
   const path =
     kind === 'b'
       ? `/inventory?bin=${encoded}`
       : `/m/${kind}/${encoded}`;
+  const base = (opts?.baseUrl || QR_BASE_URL).replace(/\/$/, '');
   try {
-    return new URL(path, QR_BASE_URL).toString();
+    return new URL(path, base).toString();
   } catch {
-    return `${QR_BASE_URL.replace(/\/$/, '')}${path}`;
+    return `${base}${path}`;
   }
 }
 
@@ -370,9 +401,12 @@ export function gs1DigitalLinkUrl(opts: {
   gtin: string;
   serial?: string | null;
   batch?: string | null;
+  /** Override host (e.g. `staffOriginForSlug` for multi-tenant SaaS minting). */
+  baseUrl?: string;
 }): string {
+  const base = (opts.baseUrl || QR_BASE_URL).replace(/\/$/, '');
   const gtin = encodeURIComponent(String(opts.gtin || '').trim());
-  if (!gtin) return QR_BASE_URL;
+  if (!gtin) return base;
   let path = `/01/${gtin}`;
   if (opts.serial && opts.serial.trim()) {
     path += `/21/${encodeURIComponent(opts.serial.trim())}`;
@@ -381,19 +415,33 @@ export function gs1DigitalLinkUrl(opts: {
     path += `/10/${encodeURIComponent(opts.batch.trim())}`;
   }
   try {
-    return new URL(path, QR_BASE_URL).toString();
+    return new URL(path, base).toString();
   } catch {
-    return `${QR_BASE_URL.replace(/\/$/, '')}${path}`;
+    return `${base}${path}`;
   }
 }
 
 // ─── Warehouse-location helpers (Zone / Aisle / Bay / Level / Position) ────
 
 /**
- * Placeholder GLN used by GS1 in their documentation and sandbox examples.
- * Swap to your real GLN once registered with GS1 US.
+ * There is deliberately NO default GLN.
+ *
+ * This constant used to be `DEFAULT_GLN = '0614141000005'` — GS1's own
+ * documentation GLN, on GS1 US's example prefix `0614141` — and every bin and
+ * rack label printed since fell back to it. A GLN is a *licensed* identifier:
+ * those digits belong to whichever company actually holds that prefix, so the
+ * labels were asserting someone else's identity as the location of this
+ * warehouse. Internally harmless (only `routeScan` ever read them); a
+ * collision the moment a label is photographed by a partner's system, or the
+ * moment the same value reaches an EPCIS `bizLocation`.
+ *
+ * A tenant with no licensed GLN now prints the internal location code in a
+ * PLAIN DataMatrix instead of a false `(414)` — see {@link locationLabelPayload}.
+ * "No GLN" is a legal state; a borrowed GLN is not.
+ *
+ * The licensed/placeholder decision itself lives in
+ * `@/lib/interop/gs1-keys` (`isLicensedGln`) and is not re-implemented here.
  */
-export const DEFAULT_GLN = '0614141000005';
 
 /** Pad a numeric segment to 2 digits — 01, 02, 03 … */
 export function pad2(n: number | string): string {
@@ -513,16 +561,19 @@ export function bayHand(bay: number | string): 'Left' | 'Right' {
  * AI 414 = Identification of a physical location (GLN).
  * AI 254 = GLN extension component (our Z/A/B/L/P breakdown).
  *
- * @deprecated for new prints — location labels emit a GS1 DataMatrix with
- * the raw AI string instead (see {@link gs1LocationAi}). Kept exported so
- * the scan router can still parse any pre-DataMatrix labels in the wild.
+ * `gln` is REQUIRED and must already be licensed — there is no fallback. See
+ * the note where `DEFAULT_GLN` used to live.
+ *
+ * @deprecated for new prints — location labels emit a DataMatrix via
+ * {@link locationLabelPayload}. Kept exported so the scan router can still
+ * parse any pre-DataMatrix labels in the wild.
  */
 export function gs1LocationUrl(
   s: LocationSegments,
-  opts?: { gln?: string; baseUrl?: string },
+  opts: { gln: string; baseUrl?: string },
 ): string {
-  const gln = (opts?.gln || DEFAULT_GLN).trim();
-  const baseUrl = (opts?.baseUrl || QR_BASE_URL).replace(/\/$/, '');
+  const gln = opts.gln.trim();
+  const baseUrl = (opts.baseUrl || QR_BASE_URL).replace(/\/$/, '');
   const code = locationCodeFlat(s);
   const path = `/414/${encodeURIComponent(gln)}/254/${encodeURIComponent(code)}`;
   try {
@@ -535,21 +586,68 @@ export function gs1LocationUrl(
 /**
  * Raw GS1 AI string in human-readable parens form — `(414)gln(254)code`.
  *
- * Industry-standard payload for an internal warehouse-location label.
- * Encoded into a GS1 DataMatrix (symbology `gs1datamatrix`) which
- * automatically inserts the FNC1 control character on the wire; bwip-js
- * does this transparently when fed the parens form. A consumer phone
- * camera reads opaque text (no clickable URL), while industrial scanners
- * decode it into the FNC1-delimited form which {@link routeScan}
- * recognises and routes the same as the legacy URL labels.
+ * `gln` is REQUIRED and is assumed already validated by
+ * {@link locationLabelPayload}, which is the only thing that should call this.
+ * Emitting AI 414 is a claim that the digits are a licensed GLN, so there is
+ * deliberately no default and no fallback here.
  */
-export function gs1LocationAi(
+export function gs1LocationAi(s: LocationSegments, opts: { gln: string }): string {
+  return `(414)${opts.gln.trim()}(254)${locationCodeFlat(s)}`;
+}
+
+/**
+ * What to encode into a printed location label, and in which symbology.
+ *
+ * THE decision point for every bin and rack label. Two outcomes, and which
+ * one you get is decided by whether the tenant has a licensed GLN — never by
+ * a printer setting, a default, or a fallback string:
+ *
+ *   licensed GLN  → `gs1datamatrix` carrying `(414){gln}(254){code}`
+ *                   Proper GS1: any conformant scanner reads AI 414 as "this
+ *                   is a physical location with this GLN", which is TRUE.
+ *
+ *   anything else → `datamatrix` carrying the bare flat code (`A0101101`)
+ *                   Honest: an internal code, encoded as an internal code.
+ *                   `routeScan` resolves it through the same
+ *                   `routeLocationCode` path, so bin-vs-rack routing and
+ *                   case-normalisation are identical either way.
+ *
+ * **Why not just keep emitting AI 414 with some other number.** AI 414 *means*
+ * GLN. There is no "unofficial GLN" — a 13-digit value in that field is read
+ * by every conformant scanner as a licensed key belonging to whoever holds its
+ * prefix. Printing one you do not hold is not a placeholder, it is a false
+ * identity claim, and it is exactly what this repo did until now
+ * (`0614141000005`, GS1's documentation GLN).
+ *
+ * **Labels already on the racks keep working.** `routeScan` still parses the
+ * legacy `(414)…(254)…` forms — both FNC1 and parens — so a warehouse full of
+ * old stickers is unaffected. This changes what NEW prints emit, nothing else.
+ * No re-print is required; re-printing is what upgrades a location to real GS1
+ * once a prefix is licensed.
+ */
+export interface LocationLabelPayload {
+  /** Symbology to hand the DataMatrix renderer. */
+  symbology: 'gs1datamatrix' | 'datamatrix';
+  /** The payload string to encode. */
+  value: string;
+  /** The licensed GLN this label asserts, or `null` when it asserts none. */
+  gln: string | null;
+  /** The flat location code, always — useful for the human-readable line. */
+  code: string;
+}
+
+export function locationLabelPayload(
   s: LocationSegments,
-  opts?: { gln?: string },
-): string {
-  const gln = (opts?.gln || DEFAULT_GLN).trim();
+  opts?: { gln?: string | null },
+): LocationLabelPayload {
   const code = locationCodeFlat(s);
-  return `(414)${gln}(254)${code}`;
+  const gln = (opts?.gln ?? '').replace(/\D/g, '');
+
+  if (isLicensedGln(gln)) {
+    return { symbology: 'gs1datamatrix', value: gs1LocationAi(s, { gln }), gln, code };
+  }
+
+  return { symbology: 'datamatrix', value: code, gln: null, code };
 }
 
 // ─── Unit / serial product label ──────────────────────────────────────────

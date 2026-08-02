@@ -8,7 +8,6 @@ import { Search, X } from '@/components/Icons';
 import { getStaffColorHex } from '@/utils/staff-colors';
 import { useStaffColorVersion } from '@/contexts/StaffColorsProvider';
 import { useQuickAccess } from '@/lib/quick-access/use-quick-access';
-import { useQuickAccessHotkey } from '@/lib/quick-access/use-hotkey';
 import { QuickAccessPopover } from '@/components/quick-access/QuickAccessPopover';
 import { PhoneHistoryPopover } from '@/components/quick-access/PhoneHistoryPopover';
 import { FeedbackPopover } from '@/components/quick-access/FeedbackWidget';
@@ -80,7 +79,9 @@ export function QuickAccessButton({
     });
   }, []);
 
-  useQuickAccessHotkey(settings.hotkey === 'cmdk' && settings.enabled, toggleMenu);
+  // No ⌘K binding here — the palette owns that chord (one owner, one surface).
+  // This FAB mounts on station/mobile surfaces where a window-level keydown also
+  // competes with the scan bench's focus hotkey.
 
   const handleOpenHistory = useCallback(() => {
     setMenuOpen(false);
@@ -138,7 +139,7 @@ export function QuickAccessButton({
       </AnchoredLayer>
 
       <HoverTooltip
-        label={menuOpen ? 'Close' : staffChipActive && staffName ? `${staffName} — Quick access (⌘K)` : 'Quick access (⌘K)'}
+        label={menuOpen ? 'Close' : staffChipActive && staffName ? `${staffName} — Quick access` : 'Quick access'}
         asChild
       >
         <IconButton

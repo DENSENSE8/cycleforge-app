@@ -1,17 +1,27 @@
 'use client';
 
 /**
- * Support · Tickets focus pane router — Orders/Unbox recipe.
+ * Support · Tickets — the `service-workspace` branch mount.
  *
- * - No `?ticket=` → SupportTicketsBoard (full queue workbench)
- * - With `?ticket=` → SupportTicketFocus (Station Workbench)
+ *   list    = SupportTicketsBoard (the queue map, ALWAYS mounted)
+ *   thread  = SupportTicketFocus  (`?ticket=`, crossfades on ticket id)
+ *   context = ticket linkage / customer context, pushed at the right edge
  *
- * Sidebar owns the recently-selected dock (`SupportTicketsRecentRail`).
+ * Law: `.claude/rules/display/workbench-service.md`.
+ *
+ * Until 2026-08-01 this component returned the board **or** the focus pane, so
+ * opening a ticket unmounted the queue — losing its scroll position, page, and
+ * in-flight search every time an operator opened a row. The sidebar did not
+ * cover for it either: for Tickets it mounts the *recently selected* dock, not
+ * the queue. `ServiceWorkspaceShell` keeps the map mounted; the crossfade and
+ * the `AnimatePresence` now belong to the shell.
  */
 
+import { useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { AnimatePresence } from '@/design-system/motion';
-import { SupportTicketFocus } from '@/components/support/station/SupportTicketFocus';
+import { SupportTicketFocus } from '@/components/support/service-workspace/SupportTicketFocus';
+import { ServiceWorkspaceShell } from '@/components/support/service-workspace';
+import { buildSupportContextColumn } from '@/components/support/service-workspace/support-ticket-tabs';
 import { SupportTicketsBoard } from './SupportTicketsBoard';
 
 export function SupportTicketsWorkspace() {
@@ -28,17 +38,22 @@ export function SupportTicketsWorkspace() {
     router.replace(qs ? `/support?${qs}` : '/support', { scroll: false });
   };
 
-  if (!ticketId) {
-    return <SupportTicketsBoard />;
-  }
+  const anchor = useMemo(
+    () => (ticketId ? { ticket: String(ticketId) } : null),
+    [ticketId],
+  );
 
   return (
-    <AnimatePresence mode="wait" initial={false}>
-      <SupportTicketFocus
-        key={`ticket-${ticketId}`}
-        ticketId={ticketId}
-        onClose={clearTicket}
-      />
-    </AnimatePresence>
+    <ServiceWorkspaceShell
+      list={<SupportTicketsBoard />}
+      listHidden={ticketId != null}
+      threadKey={ticketId}
+      thread={
+        ticketId != null ? (
+          <SupportTicketFocus ticketId={ticketId} onClose={clearTicket} />
+        ) : null
+      }
+      context={anchor ? buildSupportContextColumn({ anchor }) : null}
+    />
   );
 }

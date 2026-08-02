@@ -1,4 +1,4 @@
-import type { ReceivingLineRow } from '@/components/station/ReceivingLinesTable';
+import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import type { ReceivingLineUnitView } from '@/components/station/receiving-line-row';
 
 // `id` is optional to stay structurally compatible with the chip menu's

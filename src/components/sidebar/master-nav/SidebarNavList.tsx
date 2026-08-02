@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from '@/design-system/motion';
 import { ChevronLeft, ChevronRight } from '@/components/Icons';
 import {
@@ -13,6 +13,8 @@ import {
   useMotionTransition,
 } from '@/design-system/foundations/motion-framer-hooks';
 import { navIconStrokeClass } from '@/components/icons/nav-weight';
+import { buildNavDestinations, type NavDestination } from '@/lib/nav/nav-destinations';
+import { searchNav, splitNavHighlight, type NavMatch } from '@/lib/nav/nav-search';
 import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
 import {
   SPINE_ICON_LIFT_CLASS,
@@ -74,26 +76,11 @@ function subgroupDef(id: StationSubgroupId | undefined) {
   return STATION_SUBGROUPS.find((g) => g.id === id) ?? null;
 }
 
-/** Case-insensitive match against page label + mode labels. */
-function pageMatchesDrillFilter(page: SidebarPageNav, query: string): boolean {
-  const q = query.trim().toLowerCase();
-  if (!q) return true;
-  if (page.label.toLowerCase().includes(q)) return true;
-  return (page.modes ?? []).some((mode) => mode.label.toLowerCase().includes(q));
-}
-
-/** Root map: section label hit, or any page/mode under that section. */
-function sectionMatchesNavFilter(
-  sectionId: SpineSectionId,
-  pages: SidebarPageNav[],
-  query: string,
-): boolean {
-  const q = query.trim().toLowerCase();
-  if (!q) return true;
-  const section = SPINE_SECTIONS.find((s) => s.id === sectionId);
-  if (section?.label.toLowerCase().includes(q)) return true;
-  return pagesForSection(pages, sectionId).some((page) => pageMatchesDrillFilter(page, query));
-}
+// There is deliberately NO local matcher here. A query switches the body to the
+// flat destination list, which ranks through `searchNav` — the one nav matcher.
+// Two unranked `includes()` helpers used to live at this spot: one narrowed the
+// root's section BUTTONS, the other the drill's pages. That split is what made
+// typing a page's exact name return a category.
 
 export function SidebarNavList({
   activePage,
@@ -142,6 +129,70 @@ export function SidebarNavList({
    * list they had just narrowed down. Clearing a filter is still filtering.
    */
   const rowStaggerInitial: 'hidden' | false = filterTouched ? false : 'hidden';
+
+  /**
+   * A non-empty query switches the body from HIERARCHY to a flat ranked list.
+   *
+   * Categories answer "what exists" (recognition); search answers "take me to
+   * the thing I named" (recall). Filtering the *category* buttons served
+   * neither: typing a page's exact name returned a section that did not contain
+   * the word, and the operator still had to drill and re-scan. Tree at rest,
+   * flat while searching — the same switch VS Code / Linear / Notion make.
+   */
+  const searching = navFilter.trim().length > 0;
+
+  const destinations = useMemo(
+    // `otherPages` is misnamed upstream — MasterNav passes the FULL page list,
+    // active page included. Merging by id rather than spreading keeps this
+    // correct under either contract; spreading duplicated every destination of
+    // the active page under an identical key, so the keyboard cursor lit two
+    // rows at once and React saw duplicate children.
+    () => {
+      const seen = new Set(otherPages.map((p) => p.id));
+      const pages = seen.has(activePage.id) ? otherPages : [activePage, ...otherPages];
+      return buildNavDestinations(pages);
+    },
+    [activePage, otherPages],
+  );
+  const results = useMemo(
+    () => (searching ? searchNav(destinations, navFilter) : []),
+    [searching, destinations, navFilter],
+  );
+
+  /** Keyboard cursor into `results`. Reset whenever the result set changes. */
+  const [cursor, setCursor] = useState(0);
+  useEffect(() => {
+    setCursor(0);
+  }, [navFilter]);
+  const activeResultKey = results[cursor]?.item.key ?? null;
+
+  const goToDestination = (destination: NavDestination) => {
+    onNavigate(destination.pageId, destination.modeId);
+  };
+
+  /**
+   * ↓/↑/Enter from the filter box. A filter with results and no keyboard makes
+   * the operator type, lift, and aim — which is the whole cost the box was
+   * meant to remove. Escape clears (and only then blurs), so one key gets back
+   * to the map.
+   */
+  const handleFilterKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (!searching || results.length === 0) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setCursor((i) => (i + 1) % results.length);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setCursor((i) => (i - 1 + results.length) % results.length);
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      const picked = results[cursor]?.item;
+      if (picked) {
+        goToDestination(picked);
+        handleNavFilter('');
+      }
+    }
+  };
 
   const topPages = otherPages.filter((p) => p.kind === 'top');
   const bottomPages = otherPages.filter((p) => (p.kind ?? 'bottom') === 'bottom');
@@ -308,15 +359,10 @@ export function SidebarNavList({
   };
 
   const renderRoot = () => {
-    const visibleSections = SPINE_SECTIONS.filter((section) =>
-      sectionMatchesNavFilter(section.id, otherPages, navFilter),
-    );
+    // The resting map is the WHOLE map — narrowing happens in the search body.
     return (
       <ul role="group" aria-label="Sections" className="list-none p-0">
-        {visibleSections.length === 0 ? (
-          <li className="px-2 py-2 text-role-caption text-text-muted">No matching sections</li>
-        ) : null}
-        {visibleSections.map((section, index) => {
+        {SPINE_SECTIONS.map((section, index) => {
           const groupPages = pagesForSection(otherPages, section.id);
           if (groupPages.length === 0) return null;
           const sectionActive = activeSectionId === section.id;
@@ -361,9 +407,7 @@ export function SidebarNavList({
     const section = SPINE_SECTIONS.find((d) => d.id === id);
     if (!section) return null;
     const accent = drillAccent;
-    const groupPages = pagesForSection(otherPages, id).filter((page) =>
-      pageMatchesDrillFilter(page, navFilter),
-    );
+    const groupPages = pagesForSection(otherPages, id);
     let lastSubgroup: StationSubgroupId | undefined;
 
     const subgroupMembers = (subgroup: StationSubgroupId) =>
@@ -453,6 +497,92 @@ export function SidebarNavList({
     );
   };
 
+  /**
+   * One flat destination row. Deliberately NOT the section/page/mode row chrome
+   * from the hierarchy: those encode depth (indent, mode count, chevron), and
+   * depth is exactly what a flat result list has thrown away. Reusing them here
+   * would draw a tree that no longer exists.
+   */
+  const renderResultRow = (destination: NavDestination, match: NavMatch) => {
+    const Icon = destination.icon;
+    const accent = spineAccentFor(destination.sectionId);
+    const isCursor = destination.key === activeResultKey;
+    return (
+      <li key={destination.key}>
+        <button
+          type="button"
+          role="option"
+          aria-selected={isCursor}
+          onClick={() => {
+            goToDestination(destination);
+            handleNavFilter('');
+          }}
+          onMouseEnter={() => {
+            const page = destination.pageId === activePage.id
+              ? activePage
+              : otherPages.find((pg) => pg.id === destination.pageId);
+            if (page) onRowHover?.(page);
+          }}
+          className={cn(
+            'ds-raw-button group flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left transition-colors duration-150',
+            isCursor ? accent.activePage : accent.idlePage,
+          )}
+        >
+          <Icon
+            className={navIconStrokeClass(
+              'page',
+              cn(
+                'h-3.5 w-3.5 shrink-0',
+                SPINE_ICON_LIFT_CLASS,
+                isCursor ? accent.activePageIcon : accent.idlePageIcon,
+              ),
+            )}
+          />
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-role-caption font-semibold">
+              {splitNavHighlight(destination.label, match.ranges).map((part, i) =>
+                part.hit ? (
+                  // Marks the characters that justified the row. Underline, not
+                  // a fill: a background chip inside a 12px label at this
+                  // density reads as a second chip beside the section eyebrow.
+                  <span key={i} className="underline decoration-2 underline-offset-2">
+                    {part.text}
+                  </span>
+                ) : (
+                  <span key={i}>{part.text}</span>
+                ),
+              )}
+            </span>
+            {destination.context ? (
+              <span
+                className={cn(
+                  'block truncate text-role-micro uppercase tracking-widest',
+                  isCursor ? 'text-white/70' : 'text-text-faint',
+                )}
+              >
+                {destination.context}
+              </span>
+            ) : null}
+          </span>
+        </button>
+      </li>
+    );
+  };
+
+  const renderSearchResults = () => (
+    <ul role="listbox" aria-label="Matching destinations" className="list-none p-0">
+      {results.length === 0 ? (
+        // Names the query back. "No results" leaves the operator unsure whether
+        // the place does not exist or the box simply is not working.
+        <li className="px-2 py-2 text-role-caption text-text-muted">
+          No destination matches “{navFilter.trim()}”
+        </li>
+      ) : (
+        results.map(({ item, match }) => renderResultRow(item, match))
+      )}
+    </ul>
+  );
+
   return (
     <div role="menu" aria-label="Pages" className={cn('flex h-full min-h-0 flex-col', className)}>
       {topPages.length > 0 ? (
@@ -463,23 +593,32 @@ export function SidebarNavList({
 
       <div className="min-h-0 flex-1 overflow-y-auto p-1">
         <AnimatePresence mode="wait" initial={false}>
+          {/* Keyed on the MODE, not the query: typing must update the list in
+              place, never replay the crossfade on every keystroke. The swap
+              animates once, when the body changes what kind of thing it is. */}
           <motion.div
-            key={drillId ?? 'root'}
+            key={searching ? 'search' : (drillId ?? 'root')}
             initial={drillPresence.initial}
             animate={drillPresence.animate}
             exit={drillPresence.exit}
             transition={drillTransition}
           >
-            {drillId ? renderDrill(drillId) : renderRoot()}
+            {searching ? renderSearchResults() : drillId ? renderDrill(drillId) : renderRoot()}
           </motion.div>
         </AnimatePresence>
       </div>
 
       <div className="shrink-0">
+        {/* One placeholder, because the box now does ONE thing everywhere: it
+            searches every destination. It used to say "Filter sections…" at the
+            root and "Filter pages…" in a drill — two behaviours from one field,
+            and the root one described filtering categories rather than finding
+            a page. */}
         <TechRailSearchBar
           value={navFilter}
           onChange={handleNavFilter}
-          placeholder={drillId ? 'Filter pages…' : 'Filter sections…'}
+          onKeyDown={handleFilterKeyDown}
+          placeholder="Go to…"
         />
         {bottomPages.length > 0 ? (
           <div className="border-t border-border-soft p-1">

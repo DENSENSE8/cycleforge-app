@@ -1,32 +1,21 @@
 'use client';
 
 /**
- * Unfound queue table — the flat presentation surface for v_unfound_queue.
+ * Unfound queue — thin data host over the Workbench spreadsheet SoT
+ * ({@link UnfoundGridView} → `LedgerGridSurface`).
  *
  * Toolbar (filter pills, search, Refresh) lives in the sidebar via
- * UnfoundQueueSidebarToolbar. The table reads filter state from URL search
- * params so both components share one source of truth — no prop drilling,
- * no shared store. Back/forward in the browser respects the operator's
- * filter selection.
- *
- * Filter tabs map to server-side filters as follows:
- *   • all                  → kind=all,                 checked=false
- *   • unmatched_receiving  → kind=unmatched_receiving, checked=false
- *   • email_po             → kind=email_po,            checked=false
- *   • checked              → kind=all,                 checked=true
- *
- * Inline edit pattern: each editable cell debounces a PATCH against
- * /api/receiving/unfound-queue/[kind]/[id]. Optimistic update first;
- * revert just that row on failure.
- *
- * Thin composition shell: data + mutations live in {@link useUnfoundQueueTable};
- * the inline-edit row is {@link QueueTableRow} under `./queue-table/`.
+ * UnfoundQueueSidebarToolbar. Filter state is URL-backed (`uf_kind` / `uf_q`)
+ * so both share one source of truth. Data + mutations live in
+ * {@link useUnfoundQueueTable}; in-cell edit PATCHes through `LedgerCellEditor`
+ * inside the grid row.
  */
 
+import { useSearchParams } from 'next/navigation';
 import { AnimatePresence } from '@/design-system/motion';
 import { UnfoundQueueDetailsPanel } from './UnfoundQueueDetailsPanel';
+import { UnfoundGridView } from './grid/UnfoundGridView';
 import { useUnfoundQueueTable } from './queue-table/useUnfoundQueueTable';
-import { QueueTableRow } from './queue-table/QueueTableRow';
 
 export {
   ENABLED_KINDS,
@@ -35,11 +24,18 @@ export {
 } from './queue-table/unfound-queue-shared';
 
 export function UnfoundQueueTable() {
+  const searchParams = useSearchParams();
   const {
     rows, loading, error, pushing, savedKeys,
     openRow, setOpenRow,
     patchRow, pushToZendesk, openSource, handleDeleted, handlePushedToZendesk,
   } = useUnfoundQueueTable();
+
+  // A filter is narrowing the list when search or a non-default kind tab is on —
+  // that is what picks "no matches" over "nothing in the queue".
+  const kind = searchParams.get('uf_kind');
+  const search = (searchParams.get('uf_q') ?? '').trim();
+  const isSearching = Boolean(search) || (Boolean(kind) && kind !== 'all');
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-surface-canvas">
@@ -51,65 +47,31 @@ export function UnfoundQueueTable() {
         </div>
       )}
 
-      {/* Table */}
-      <div className="min-h-0 flex-1 overflow-auto">
+      <div className="min-h-0 flex-1 overflow-hidden">
         {error && (
           <div className="mx-4 mt-4 rounded-md border border-red-200 bg-red-50 inset-field text-role-caption text-red-700">
             {error}
           </div>
         )}
 
-        <table className="w-full table-fixed text-sm">
-          {/* Explicit widths keep columns stable across filter changes —
-              without these, the table relayouts every time the content per
-              column changes (e.g. tracking chips vs. PO chips vs. empty). */}
-          <colgroup>
-            <col style={{ width: '108px' }} />
-            <col style={{ width: '32%' }} />
-            <col style={{ width: '26%' }} />
-            <col style={{ width: '26%' }} />
-            <col style={{ width: '88px' }} />
-            <col style={{ width: '96px' }} />
-          </colgroup>
-          <thead className="sticky top-0 z-10 bg-surface-card shadow-sm">
-            <tr className="text-left text-role-micro uppercase tracking-wider text-text-soft">
-              <th className="inset-field">Ticket</th>
-              <th className="inset-field">Product Title</th>
-              <th className="inset-field">USA Team Note</th>
-              <th className="inset-field">Vietnam Team Note</th>
-              <th className="inset-field text-center">Check</th>
-              <th className="inset-field" />
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border-hairline">
-            {!loading && rows.length === 0 && (
-              <tr>
-                <td colSpan={6} className="px-3 py-8 text-center text-role-caption text-text-soft">
-                  {error ? '—' : 'Nothing in the unfound queue. Nice.'}
-                </td>
-              </tr>
-            )}
-            {rows.map((row) => {
-              const rowKey = `${row.kind}:${row.source_id}`;
-              return (
-                <QueueTableRow
-                  key={rowKey}
-                  row={row}
-                  onPatch={patchRow}
-                  onPush={pushToZendesk}
-                  onOpen={openSource}
-                  pushing={pushing === rowKey}
-                  justSaved={savedKeys.has(rowKey)}
-                />
-              );
-            })}
-          </tbody>
-        </table>
+        <UnfoundGridView
+          rows={rows}
+          loading={loading}
+          openRow={openRow}
+          onOpen={openSource}
+          onPatch={patchRow}
+          onPush={pushToZendesk}
+          pushingKey={pushing}
+          savedKeys={savedKeys}
+          emptyMessage={error ? '—' : 'Nothing in the unfound queue. Nice.'}
+          searchEmptyMessage="No unfound items match these filters."
+          isSearching={isSearching && !error}
+        />
       </div>
 
       {/* Slide-in details panel (one mount at a time, AnimatePresence for the
           slide-out transition). Lives at the table root so the backdrop sits
-          above the table content but below any toaster. */}
+          above the grid content but below any toaster. */}
       <AnimatePresence>
         {openRow && (
           <UnfoundQueueDetailsPanel

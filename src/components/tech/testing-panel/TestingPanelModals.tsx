@@ -4,7 +4,8 @@ import { ReceivingClaimModal } from '@/components/receiving/workspace/ReceivingC
 import { ReceivingAuditRail } from '@/components/receiving/workspace/ReceivingAuditRail';
 import { SendPhotoNoteRail } from '@/components/receiving/workspace/SendPhotoNoteRail';
 import { MovePhotosBetweenPoRail } from '@/components/receiving/workspace/line-edit/MovePhotosBetweenPoRail';
-import { dispatchLineUpdated, type ReceivingLineRow } from '@/components/station/ReceivingLinesTable';
+import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import { dispatchLineUpdated } from '@/components/station/receiving-lines-table-helpers';
 import { invalidateSupportContextCaches } from '@/hooks';
 import {
   invalidateReceivingFeeds,

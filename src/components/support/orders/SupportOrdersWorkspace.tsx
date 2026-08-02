@@ -13,7 +13,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { AnimatePresence, motion } from '@/design-system/motion';
+import { AnimatePresence, motion, motionRole, useMotionRole } from '@/design-system/motion';
 import {
   AlertTriangle,
   ExternalLink,
@@ -26,11 +26,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { EmptyState, IconButton, Spinner } from '@/design-system/primitives';
 import { SectionTabsSlider } from '@/design-system/components';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
-import {
-  useMotionPresence,
-  useMotionTransition,
-} from '@/design-system/foundations/motion-framer-hooks';
+
 import {
   buildSectionTabs,
   StationWorkbench,
@@ -52,8 +48,8 @@ import { PaneHeaderCloseButton } from '@/components/ui/pane-header';
 import { dashboardOrderHref } from '@/components/sidebar/support/support-sidebar-shared';
 import { SupportOrderIdentity } from './SupportOrderIdentity';
 import { SupportOrdersBoard } from './SupportOrdersBoard';
-import { useSupportTicketClaimHost } from '@/components/support/station/useSupportTicketClaimHost';
-import { SupportCreateTicketModal } from '@/components/support/station/SupportCreateTicketModal';
+import { useSupportTicketClaimHost } from '@/components/support/service-workspace/useSupportTicketClaimHost';
+import { SupportCreateTicketModal } from '@/components/support/service-workspace/SupportCreateTicketModal';
 import {
   useInvalidateSupportOrderCaches,
   useSupportOrderDetail,
@@ -77,8 +73,9 @@ function SupportOrderFocus({
   const canCreateTicket = !isLoaded || has('integrations.zendesk');
   const claim = useSupportTicketClaimHost();
   const openCreateTicket = claim.openCreate;
-  const paneMotion = useMotionPresence(framerPresence.workbenchPane);
-  const paneTransition = useMotionTransition(framerTransition.workbenchPaneMount);
+  // `motionRole.swap.focus` — the pointer-driven focus-surface swap, taken as
+  // one pair so the presence can never drift onto another job's timing.
+  const { presence: paneMotion, transition: paneTransition } = useMotionRole(motionRole.swap.focus);
   const [view, setView] = useState<OrdersView>('order');
   const [activeInput, setActiveInput] = useState<ShippedActiveInput>('none');
 

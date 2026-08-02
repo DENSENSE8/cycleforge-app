@@ -19,7 +19,11 @@ import { PhotoPeekFan, type PeekCard } from './PhotoPeekFan';
 import { useReceivingPhotosRealtimeRefresh } from '@/hooks/useReceivingPhotosRealtimeRefresh';
 import { useAuth } from '@/contexts/AuthContext';
 import { receivingPhotosQueryKey, refreshReceivingPhotos } from '@/lib/queries/receiving-queries';
-import { receivingPhotoMeta } from '@/components/shipped/photo-gallery/photo-gallery-utils';
+import {
+  receivingPhotoMeta,
+  receivingPhotoStage,
+} from '@/components/shipped/photo-gallery/photo-gallery-utils';
+import { photoStageLabel } from '@/lib/photos/stages';
 import type { ReceivingPhotoListIntent } from '@/lib/receiving/photo-intent';
 
 interface PhotoRow {
@@ -107,12 +111,17 @@ export const ReceivingPhotoPeek = memo(function ReceivingPhotoPeek({
         .filter((p) => !!p.photoUrl?.trim())
         .slice()
         .sort((a, b) => (Date.parse(b.createdAt) || b.id) - (Date.parse(a.createdAt) || a.id))
-        .map((p) => ({
-          id: String(p.id),
-          imgUrl: p.photoUrl,
-          alt: p.caption || `Carton photo ${p.id}`,
-          meta: receivingPhotoMeta(p, { poRef: poRef ?? null }),
-        })),
+        .map((p) => {
+          // `caption` carries the photo_type, so using it here read "receiving_package"
+          // to a screen reader. Name the stage through the SoT, or say nothing.
+          const stage = receivingPhotoStage(p);
+          return {
+            id: String(p.id),
+            imgUrl: p.photoUrl,
+            alt: stage ? `${photoStageLabel(stage)} photo` : `Carton photo ${p.id}`,
+            meta: receivingPhotoMeta(p, { poRef: poRef ?? null }),
+          };
+        }),
     [data, poRef],
   );
 

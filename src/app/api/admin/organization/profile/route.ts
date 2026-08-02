@@ -79,6 +79,21 @@ export const PATCH = withAuth(async (req: NextRequest, ctx) => {
     if (typeof brand.attractMediaUrl === 'string' && brand.attractMediaUrl.trim()) {
       nextBrand.attractMediaUrl = brand.attractMediaUrl.trim();
     }
+    if (typeof brand.publicLandingUrl === 'string') {
+      const raw = brand.publicLandingUrl.trim();
+      if (!raw) {
+        nextBrand.publicLandingUrl = '';
+      } else {
+        try {
+          const parsed = new URL(raw);
+          if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+            nextBrand.publicLandingUrl = parsed.toString();
+          }
+        } catch {
+          /* skip invalid URL — leave unset so a bad paste doesn't wipe a good one */
+        }
+      }
+    }
     patch.brand = nextBrand;
   }
   if (b.letterhead != null && typeof b.letterhead === 'object' && !Array.isArray(b.letterhead)) {

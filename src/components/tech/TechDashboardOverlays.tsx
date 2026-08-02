@@ -10,7 +10,7 @@ import { AnimatePresence } from '@/design-system/motion';
 import { ReceivingClaimModal } from '@/components/receiving/workspace/ReceivingClaimModal';
 import { RepairDetailsPanel } from '@/components/repair/RepairDetailsPanel';
 import { toast } from '@/lib/toast';
-import type { ReceivingLineRow } from '@/components/station/ReceivingLinesTable';
+import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import type { TechRepairPanel } from '@/components/tech/useTechDetailOverlays';
 
 interface TechDashboardOverlaysProps {

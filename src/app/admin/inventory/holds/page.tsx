@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { PageHeader } from '@/components/ui/pane-header';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { Button } from '@/design-system/primitives';
+import { DataTable, type DataTableColumn } from '@/design-system/components/DataTable';
 
 export const dynamic = 'force-dynamic';
 
@@ -142,6 +143,89 @@ export default async function HoldsAdminPage({
   const errorCode = params.error ?? null;
   const held = await loadHeldUnits();
 
+  const heldColumns: DataTableColumn<HeldUnitRow>[] = [
+    {
+      key: 'unit',
+      header: 'Unit',
+      type: 'id',
+      cell: (h) => (
+        <Link
+          href={`/admin/inventory/units/${h.id}`}
+          className="font-mono text-xs text-blue-600 hover:underline"
+        >
+          #{h.id} · {h.serial_number}
+        </Link>
+      ),
+    },
+    {
+      key: 'sku',
+      header: 'SKU',
+      type: 'id',
+      cell: (h) => <span className="font-mono text-xs">{h.sku ?? '—'}</span>,
+    },
+    {
+      key: 'restore',
+      header: 'Restore to',
+      type: 'tag',
+      cell: (h) => (
+        <span className="font-mono text-xs text-text-muted">{h.restore_status ?? 'STOCKED'}</span>
+      ),
+    },
+    {
+      key: 'reason',
+      header: 'Reason',
+      type: 'longtext',
+      cell: (h) => <span className="text-xs text-text-muted">{h.hold_reason ?? '—'}</span>,
+    },
+    {
+      key: 'held_at',
+      header: 'Held at',
+      type: 'date',
+      cell: (h) => (
+        <span className="text-xs text-text-soft">
+          {h.held_at ? new Date(h.held_at).toLocaleString() : '—'}
+        </span>
+      ),
+    },
+    {
+      key: 'by',
+      header: 'By',
+      type: 'text',
+      cell: (h) => <span className="text-xs text-text-muted">{h.held_by_name ?? 'system'}</span>,
+    },
+    {
+      key: 'release',
+      header: 'Release',
+      align: 'right',
+      cell: (h) => (
+        <form action={releaseAction} className="flex items-center justify-end gap-2">
+          <input type="hidden" name="serialUnitId" value={h.id} />
+          <HoverTooltip label="Override the auto-recovered restore status (blank = auto)" asChild>
+            <select
+              name="forceStatus"
+              defaultValue=""
+              aria-label="Override the auto-recovered restore status (blank = auto)"
+              className="rounded border border-border-default px-2 py-1 text-xs"
+            >
+              {RESTORE_OPTIONS.map((s) => (
+                <option key={s || 'auto'} value={s}>
+                  {s || 'auto'}
+                </option>
+              ))}
+            </select>
+          </HoverTooltip>
+          {/* ds-raw-button: solid-green success CTA — no success variant in Button */}
+          <button
+            type="submit"
+            className="rounded-md bg-green-600 px-3 py-1 text-xs font-medium text-white hover:bg-green-700"
+          >
+            Release
+          </button>
+        </form>
+      ),
+    },
+  ];
+
   return (
     <div className="min-h-screen bg-surface-canvas">
       <PageHeader backHref="/admin/inventory" title="Holds" maxWidth="6xl" />
@@ -191,70 +275,17 @@ export default async function HoldsAdminPage({
         </section>
 
         {/* Held units */}
-        <section className="rounded-lg border border-border-soft bg-surface-card shadow-sm">
-          <header className="flex items-center justify-between border-b border-border-hairline px-6 py-3">
+        <section className="space-y-3">
+          <header className="flex items-center justify-between">
             <h2 className="text-lg font-medium text-text-default">Units on hold</h2>
             <span className="text-xs text-text-soft">{held.length} held</span>
           </header>
-          {held.length === 0 ? (
-            <p className="px-6 py-8 text-sm text-text-muted">No units currently on hold.</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-border-hairline text-sm">
-                <thead className="bg-surface-canvas text-xs uppercase tracking-wide text-text-soft">
-                  <tr>
-                    <th className="px-4 py-2 text-left font-medium">Unit</th>
-                    <th className="px-4 py-2 text-left font-medium">SKU</th>
-                    <th className="px-4 py-2 text-left font-medium">Restore to</th>
-                    <th className="px-4 py-2 text-left font-medium">Reason</th>
-                    <th className="px-4 py-2 text-left font-medium">Held at</th>
-                    <th className="px-4 py-2 text-left font-medium">By</th>
-                    <th className="px-4 py-2 text-right font-medium">Release</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border-hairline">
-                  {held.map((h) => (
-                    <tr key={h.id}>
-                      <td className="px-4 py-2 font-mono text-xs">
-                        <Link href={`/admin/inventory/units/${h.id}`} className="text-blue-600 hover:underline">
-                          #{h.id} · {h.serial_number}
-                        </Link>
-                      </td>
-                      <td className="px-4 py-2 font-mono text-xs">{h.sku ?? '—'}</td>
-                      <td className="px-4 py-2 font-mono text-xs text-text-muted">{h.restore_status ?? 'STOCKED'}</td>
-                      <td className="px-4 py-2 text-xs text-text-muted">{h.hold_reason ?? '—'}</td>
-                      <td className="px-4 py-2 text-xs text-text-soft">{h.held_at ? new Date(h.held_at).toLocaleString() : '—'}</td>
-                      <td className="px-4 py-2 text-xs text-text-muted">{h.held_by_name ?? 'system'}</td>
-                      <td className="px-4 py-2 text-right">
-                        <form action={releaseAction} className="flex items-center justify-end gap-2">
-                          <input type="hidden" name="serialUnitId" value={h.id} />
-                          <HoverTooltip label="Override the auto-recovered restore status (blank = auto)" asChild>
-                            <select
-                              name="forceStatus"
-                              defaultValue=""
-                              aria-label="Override the auto-recovered restore status (blank = auto)"
-                              className="rounded border border-border-default px-2 py-1 text-xs"
-                            >
-                              {RESTORE_OPTIONS.map((s) => (
-                                <option key={s || 'auto'} value={s}>{s || 'auto'}</option>
-                              ))}
-                            </select>
-                          </HoverTooltip>
-                          {/* ds-raw-button: solid-green success CTA — no success variant in Button */}
-                          <button
-                            type="submit"
-                            className="rounded-md bg-green-600 px-3 py-1 text-xs font-medium text-white hover:bg-green-700"
-                          >
-                            Release
-                          </button>
-                        </form>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+          <DataTable
+            columns={heldColumns}
+            rows={held}
+            rowKey={(h) => h.id}
+            emptyMessage="No units currently on hold."
+          />
         </section>
 
         <footer className="text-xs text-text-soft">

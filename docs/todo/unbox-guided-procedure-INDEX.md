@@ -166,11 +166,33 @@ no longer applies.
 
 The carton-terminal Print · Receive does not disappear — it becomes the **final step's** commit.
 
-### D9 — Still exactly ONE checklist
+### D9 — ~~Still exactly ONE checklist~~ → **SUPERSEDED 2026-08-02: two views, one derivation**
 
-`buildUnboxSideTabs`' `checklist` tab and `UnboxProcedureChecklist` are **deleted**. The DS
-`ProcedureChecklist` primitive survives for other stations. Two procedure surfaces in one station is
-the collision the last change closed; do not re-open it by keeping a mirror "for reference".
+> **Original:** `buildUnboxSideTabs`' `checklist` tab and `UnboxProcedureChecklist` are **deleted**.
+> Two procedure surfaces in one station is the collision the last change closed; do not re-open it by
+> keeping a mirror "for reference".
+
+**Reversed at the operator's direction.** The checklist is back as the **first and default** display
+in the right-edge Displays push column, and it must update **in real time** — at a scan station it is
+what tells the operator the scan landed, including a shot taken on the phone.
+
+The original rule was aimed at a real hazard and named the wrong thing. **The danger was never two
+VIEWS; it was two DERIVATIONS** — a mirror that computes its own answer and drifts. Both surfaces now
+read one hook, `useUnboxProcedureSteps`, so there is exactly one answer to "is this step done" and
+they cannot disagree by construction:
+
+| Where | Surface | Answers |
+|---|---|---|
+| Centre | `ProcedureCards` | *what do I do right now* |
+| Right edge | `ProcedureChecklist` (default display) | *where am I in the whole job* |
+
+Clicking a checklist row moves the centre's card — the map navigates the work. The focused step
+therefore lives in a shared store (`src/lib/receiving/procedure-focus-store.ts`), carton-keyed and
+ephemeral, never in either surface's `useState` and never in the URL.
+
+**What stays deleted:** the org-editable `checklist_templates` list and its `/api/checklists` CRUD.
+A hand-ticked list is the thing that must not come back — a box got ticked because someone remembered
+to tick it, not because the photo existed. Completion stays derived.
 
 ### D10 — Skip is a **waiver**, not a tick, and it never bypasses a server gate
 
@@ -227,7 +249,34 @@ Same discipline as the receipt guard: two readers, one answer. A pointer compute
 the UI is how the stack and the receipt start telling the operator different things about the same
 box.
 
-### D12 — The stack is a FLAT LEDGER. No depth pile, no scroll animation, no per-step timer.
+### D12a — **AMENDED 2026-08-02: the centre is a HORIZONTAL CARD RAIL**
+
+The flat vertical ledger below was replaced at the operator's direction with a horizontal card rail —
+one card per step on one axis, triaged left-to-right, Apple-Watch style. Anatomy: **big icon left ·
+label · quantity right**, on a **white card** with a coloured medallion and leading accent rail
+(`steps/step-face.tsx`, functional hues: evidence sky · identity violet · judgement amber ·
+traceability emerald).
+
+**What survives from D12 unchanged, and why the amendment is not a contradiction:**
+
+- **No depth pile.** The refused pattern was rows layered *behind* one another. The ban was on
+  **occlusion** — it hides the pending steps whose absence killed attempt #1, and covers the
+  completion times the receipt exists to show. A horizontal rail occludes nothing: every step is a
+  first-class sibling on one axis. Do not reintroduce a z-stacked pile.
+- **No scroll-linked animation** (`animation-timeline`, `useScroll`). Travel is CSS scroll-snap, which
+  is native scrolling, not an animation — and reduced motion is therefore the browser's problem,
+  handled correctly.
+- **No layout animation.** Card width changes are a plain reflow in one un-animated frame; only the
+  active card's *contents* crossfade (`stationCartonSwap`).
+- **No per-step duration, anywhere.** Underivable (`step_started_at` does not exist) and
+  evidence-corrupting (a timed operator has an incentive to waive steps).
+- **Neither surface takes focus.** The wedge owns it.
+
+The white card is load-bearing, not taste: depth comes from `elevationClass('raised')` against the
+canvas ground plane. A fully saturated card puts white-on-colour text at the bench's worst viewing
+angle, which is what a warehouse monitor renders worst.
+
+### D12 — ~~The stack is a FLAT LEDGER~~ (superseded by D12a; the refusals below still stand)
 
 Ruled 2026-08-01 against
 [`unbox-procedure-stack-MOTION-GEMINI-RESEARCH-BRIEFING.md`](./unbox-procedure-stack-MOTION-GEMINI-RESEARCH-BRIEFING.md).

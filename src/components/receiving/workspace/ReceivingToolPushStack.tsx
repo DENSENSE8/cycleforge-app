@@ -18,7 +18,7 @@ import { MovePhotosBetweenPoPanel } from './line-edit/MovePhotosBetweenPoPanel';
 import { SendPhotoNotePanel } from './SendPhotoNotePanel';
 import { ReceivingAuditPanel } from './ReceivingAuditPanel';
 import { UnboxPushColumn } from './UnboxPushColumn';
-import type { ReceivingLineRow } from '@/components/station/ReceivingLinesTable';
+import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 
 const TOOL_PUSH_STORAGE_KEY = 'unbox-tool-push-width';
 /** Wider than Ticket so photo pickers stay usable. */

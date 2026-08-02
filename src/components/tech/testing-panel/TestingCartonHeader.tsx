@@ -1,9 +1,6 @@
 import { CartonContextCard } from '@/components/station/entity-context';
-import {
-  dispatchLineUpdated,
-  dispatchSelectLine,
-  type ReceivingLineRow,
-} from '@/components/station/ReceivingLinesTable';
+import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import { dispatchLineUpdated, dispatchSelectLine } from '@/components/station/receiving-lines-table-helpers';
 import { isLocalPickupFulfillment } from '@/lib/receiving/fulfillment-mode';
 import type { TestingController } from './testing-panel-types';
 

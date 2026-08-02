@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { DataTable, type DataTableColumn } from '@/design-system/components/DataTable';
 import type {
   BackfillRow,
   FlagRow,
@@ -6,38 +7,52 @@ import type {
   SchemaRow,
 } from './inventory-admin-data';
 
+const FLAG_COLUMNS: DataTableColumn<FlagRow>[] = [
+  {
+    key: 'env',
+    header: 'Env var',
+    type: 'id',
+    cell: (f) => <span className="font-mono text-xs text-text-muted">{f.key}</span>,
+  },
+  {
+    key: 'phase',
+    header: 'Phase',
+    type: 'text',
+    cell: (f) => <span className="text-text-muted">{f.phase}</span>,
+  },
+  {
+    key: 'state',
+    header: 'State',
+    type: 'tag',
+    cell: (f) => (
+      <span
+        className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${
+          f.on ? 'bg-green-100 text-green-700' : 'bg-surface-sunken text-text-muted'
+        }`}
+      >
+        {f.on ? 'ON' : 'OFF'}
+      </span>
+    ),
+  },
+];
+
 /** Feature flag snapshot — documents the live (always-on) lifecycle phases. */
 export function FlagsSection({ flags, allFlagsOff }: { flags: FlagRow[]; allFlagsOff: boolean }) {
   return (
-    <section className="rounded-lg border border-border-soft bg-surface-card shadow-sm">
-      <header className="flex items-center justify-between border-b border-border-hairline px-6 py-4">
+    <section className="space-y-3">
+      <header className="flex items-center justify-between">
         <h2 className="text-lg font-medium text-text-default">Feature flags</h2>
-        <span className={`rounded-full px-3 py-1 text-xs font-medium ${allFlagsOff ? 'bg-surface-sunken text-text-muted' : 'bg-blue-50 text-blue-700'}`}>
-          {allFlagsOff ? 'All OFF — legacy paths active' : `${flags.filter((f) => f.on).length} of ${flags.length} ON`}
+        <span
+          className={`rounded-full px-3 py-1 text-xs font-medium ${
+            allFlagsOff ? 'bg-surface-sunken text-text-muted' : 'bg-blue-50 text-blue-700'
+          }`}
+        >
+          {allFlagsOff
+            ? 'All OFF — legacy paths active'
+            : `${flags.filter((f) => f.on).length} of ${flags.length} ON`}
         </span>
       </header>
-      <table className="min-w-full divide-y divide-border-hairline">
-        <thead className="bg-surface-canvas text-xs uppercase tracking-wide text-text-soft">
-          <tr>
-            <th className="px-6 py-2 text-left font-medium">Env var</th>
-            <th className="px-6 py-2 text-left font-medium">Phase</th>
-            <th className="px-6 py-2 text-left font-medium">State</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-border-hairline text-sm">
-          {flags.map((f) => (
-            <tr key={f.key}>
-              <td className="px-6 py-3 font-mono text-xs text-text-muted">{f.key}</td>
-              <td className="px-6 py-3 text-text-muted">{f.phase}</td>
-              <td className="px-6 py-3">
-                <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${f.on ? 'bg-green-100 text-green-700' : 'bg-surface-sunken text-text-muted'}`}>
-                  {f.on ? 'ON' : 'OFF'}
-                </span>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <DataTable columns={FLAG_COLUMNS} rows={flags} rowKey={(f) => f.key} />
     </section>
   );
 }

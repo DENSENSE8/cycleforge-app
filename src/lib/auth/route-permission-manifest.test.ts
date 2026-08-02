@@ -685,3 +685,35 @@ test('the packer verification submit is a packing.complete_order write', () => {
   assert.ok(r, 'the verification submit route should be in the manifest');
   assert.equal(r.permission, 'packing.complete_order');
 });
+
+test('interop.read gates every standards-projection route', () => {
+  // The interop projections read the whole tenant's operational history in a
+  // machine-readable form. That breadth is why they carry their own permission
+  // rather than riding on `reports.export`, and why every one of them must be
+  // gated — an ungated projection would be a full-history export behind a
+  // plain session.
+  assert.equal(isKnownPermission('interop.read'), true);
+
+  const paths = routesGatedBy('interop.read').map((r) => r.path);
+  for (const expected of [
+    '/api/interop/epcis/route.ts',
+    '/api/interop/asn/[shipmentId]/route.ts',
+    '/api/interop/lineage/route.ts',
+  ]) {
+    assert.ok(paths.includes(expected), `${expected} must be gated by interop.read`);
+  }
+
+  // And nothing under /api/interop is gated by anything else — this is the
+  // half that catches a NEW projection route added with a weaker gate.
+  const manifest = JSON.parse(
+    readFileSync(join(process.cwd(), 'docs/security/route-permissions.json'), 'utf8'),
+  ) as { routes: Array<{ path: string; permission: string | null }> };
+  for (const route of manifest.routes) {
+    if (!route.path.startsWith('/api/interop/')) continue;
+    assert.equal(
+      route.permission,
+      'interop.read',
+      `${route.path} is under /api/interop but is gated by ${route.permission ?? 'nothing'}`,
+    );
+  }
+});

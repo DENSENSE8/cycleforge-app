@@ -37,7 +37,7 @@ import {
   removeReceivingSiblingLine,
   writeReceivingSiblingLine,
 } from '@/lib/queries/receiving-queries';
-import { dispatchLineUpdated } from '@/components/station/ReceivingLinesTable';
+import { dispatchLineUpdated } from '@/components/station/receiving-lines-table-helpers';
 import { dispatchUnboxRailLineUpdated } from '@/components/sidebar/receiving/unbox-rail-events';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { refreshDomains } from '@/lib/refresh/bus';

@@ -1,7 +1,5 @@
-import {
-  dispatchLineUpdated,
-  type ReceivingLineRow,
-} from '@/components/station/ReceivingLinesTable';
+import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import { dispatchLineUpdated } from '@/components/station/receiving-lines-table-helpers';
 
 /**
  * Like {@link dispatchLineUpdated}, but for Unbox **workspace / accordion**

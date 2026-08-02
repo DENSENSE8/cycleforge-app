@@ -1,5 +1,5 @@
 import { getLast8 } from '@/components/ui/CopyChip';
-import { receivingHandle } from '@/lib/barcode-routing';
+import { encodePrintMatrix, type PrintMatrix } from '@/lib/qr/platform-link';
 import { type LabelFaceModel } from '@/lib/print/labelFace';
 import { conditionLabel } from '@/lib/conditions';
 // receivingLabelTypeDisplay moved to @/lib/receiving/receiving-type-display —
@@ -10,9 +10,15 @@ import { receivingLabelTypeDisplay } from '@/lib/receiving/receiving-type-displa
 export interface ReceivingLabelPayload {
   /** Numeric receiving id — used to build the QR URL when qrValue is not provided. */
   receivingId?: number | null;
+  /**
+   * Tenant slug for platform Digital Link minting
+   * (`https://{slug}.app.cycleforge.ai/m/r/{id}`). When missing, falls back to
+   * the bare `R-{id}` handle so previews still render offline.
+   */
+  orgSlug?: string | null;
   /** Human-readable PO/RCV id; corner shows last‑4 unless `zendeskTicket` yields a ticket #. */
   scanValue: string;
-  /** Override the encoded URL. Defaults to `${origin}/m/r/{receivingId}`. */
+  /** Override the encoded URL. Defaults to platform Digital Link when orgSlug is set. */
   qrValue?: string;
   platform: string;
   /** Sidebar Zendesk field — only an all‑digits ticket (# optional) replaces PO last‑4; URLs/other text uses PO shorthand. */
@@ -120,21 +126,30 @@ export function receivingLabelPoCornerDisplay(payload: ReceivingLabelPayload): s
 }
 
 /**
- * The string actually encoded in the carton DataMatrix. Prefers an
- * explicit qrValue override (legacy callsites still pass a full URL),
- * then derives the bare handle `R-{id}` via {@link receivingHandle},
- * then falls back to the human-readable scanValue for back-compat.
+ * Carton matrix — value + symbology + HRI, resolved by the encode SoT
+ * ({@link encodePrintMatrix}). Every carton print path (face preview, HTML,
+ * raw TSPL/ZPL) reads this, so none of them can encode a different string.
+ */
+export function receivingLabelMatrix(payload: ReceivingLabelPayload): PrintMatrix {
+  return encodePrintMatrix({
+    kind: 'carton',
+    orgSlug: payload.orgSlug,
+    receivingId: payload.receivingId,
+    override: payload.qrValue,
+    fallbackValue: payload.scanValue,
+  });
+}
+
+/**
+ * The string actually encoded in the carton DataMatrix — a platform Digital
+ * Link (`https://{slug}.app.cycleforge.ai/m/r/{id}`) when the slug is known,
+ * else the bare `R-{id}` handle.
  *
- * Industry-standard for internal warehouse handles: no URL, no host. The
- * internal scanner recognises the `R-{id}` prefix in `routeScan()` and
- * navigates to `/m/r/{id}`. Consumer phone cameras see opaque text.
+ * Staff wedge ignores the host and parses the path / bare handle in
+ * `routeScan()`. Consumer phones open the platform URL → public interstitial.
  */
 export function resolveReceivingQrValue(payload: ReceivingLabelPayload): string {
-  if (payload.qrValue && payload.qrValue.trim()) return payload.qrValue.trim();
-  if (payload.receivingId != null && Number.isFinite(payload.receivingId)) {
-    return receivingHandle(payload.receivingId);
-  }
-  return payload.scanValue.trim();
+  return receivingLabelMatrix(payload).value;
 }
 
 /**
@@ -143,17 +158,16 @@ export function resolveReceivingQrValue(payload: ReceivingLabelPayload): string 
  * on-screen `ReceivingPoLabelPreview` and every print path, so they can't drift.
  */
 export function receivingPayloadToFace(payload: ReceivingLabelPayload): LabelFaceModel {
-  const qrValue = resolveReceivingQrValue(payload);
-  // HRI = the typeable `R-{id}` handle, shown under the matrix the way a barcode
-  // prints its digits. Only for the internal receiving handle, not arbitrary URLs.
-  const hri = /^(?:R|RCV)-\d+$/i.test(qrValue) ? qrValue.toUpperCase() : undefined;
+  // HRI = the typeable `R-{id}` handle under the matrix (even when the matrix
+  // encodes the absolute platform Digital Link URL) — resolved by the SoT.
+  const { value, symbology, hri } = receivingLabelMatrix(payload);
   return {
     topLeft: receivingLabelPlatformDisplay(payload),
     topRight: payload.date,
     center: (payload.notes || '').trim(),
     bottomLeft: conditionLabel(payload.conditionCode, 'label'),
     bottomRight: receivingLabelPoCornerDisplay(payload),
-    matrix: { value: qrValue, symbology: 'datamatrix', scale: 4 },
+    matrix: { value, symbology, scale: 4 },
     hri,
   };
 }

@@ -1,4 +1,4 @@
-import { DEFAULT_GLN } from '@/lib/barcode-routing';
+import { isLicensedGln } from '@/lib/interop/gs1-keys';
 
 /**
  * Pure config + storage layer for the rack label printer. No React — the
@@ -17,7 +17,8 @@ export const DEFAULT_CONFIG: PrinterConfig = {
   maxAisles: 6,
   maxBays: 12,
   maxLevels: 5,
-  gln: DEFAULT_GLN,
+  // No default GLN — see the bin printer's types.ts for the full note.
+  gln: '',
 };
 
 const CONFIG_KEY = 'rackPrinter.config.v1';
@@ -30,6 +31,21 @@ export const STEPS: { id: Step; label: string }[] = [
   { id: 'bay',   label: 'Bay' },
   { id: 'level', label: 'Level' },
 ];
+
+/**
+ * A stored GLN is kept only when it is genuinely licensed.
+ *
+ * Every config written before 2026-08-02 carries `0614141000005` — GS1's
+ * documentation GLN, which used to be this printer's default. Those values are
+ * sitting in operators' localStorage right now, so dropping the default alone
+ * would not have stopped the next print. Sanitising on LOAD is what actually
+ * retires it: a stale placeholder resolves to "" and the label falls back to
+ * the bare location code (`locationLabelPayload`).
+ */
+export function sanitizeStoredGln(v: unknown): string {
+  const s = typeof v === 'string' ? v.trim() : '';
+  return isLicensedGln(s) ? s : '';
+}
 
 /** Clamp a count to a sane integer in [1, 99], falling back when invalid. */
 export function clampMax(v: unknown, fallback: number): number {
@@ -48,7 +64,7 @@ export function loadConfig(): PrinterConfig {
       maxAisles: clampMax(parsed?.maxAisles, DEFAULT_CONFIG.maxAisles),
       maxBays: clampMax(parsed?.maxBays, DEFAULT_CONFIG.maxBays),
       maxLevels: clampMax(parsed?.maxLevels, DEFAULT_CONFIG.maxLevels),
-      gln: typeof parsed?.gln === 'string' && parsed.gln.trim() ? parsed.gln.trim() : DEFAULT_GLN,
+      gln: sanitizeStoredGln(parsed?.gln),
     };
   } catch {
     return DEFAULT_CONFIG;

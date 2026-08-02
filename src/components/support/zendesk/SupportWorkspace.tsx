@@ -1,16 +1,12 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { AnimatePresence, motion } from '@/design-system/motion';
+import { AnimatePresence, motion, motionRole, useMotionRole } from '@/design-system/motion';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { EmptyState } from '@/design-system/primitives';
 import { Voicemail } from '@/components/Icons';
-import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
-import {
-  useMotionPresence,
-  useMotionTransition,
-} from '@/design-system/foundations/motion-framer-hooks';
+
 import { capabilityNoun } from '@/lib/integrations/capability-labels';
 import { parseSupportMode } from '@/components/sidebar/support/support-sidebar-shared';
 import { VoicemailQueue } from '@/components/support/voice/VoicemailQueue';
@@ -33,8 +29,8 @@ const WarrantyWorkspace = dynamic(
  * per-mode map (filters / recents); this body is the visual display and reacts
  * to the same `?mode=` URL param:
  *
- * - tickets   → full queue workbench (`SupportTicketsBoard`) + Station focus
- *   when `?ticket=` is set. Sidebar shows recently selected only.
+ * - tickets   → `service-workspace` shell (`SupportTicketsWorkspace`: board map
+ *   keep-alive + thread focus when `?ticket=`). Sidebar shows recently selected.
  * - orders    → Dashboard To Ship board (`UnshippedTable` / OrdersGridView) +
  *   Station order focus when `?openOrderId=` is set.
  * - voicemail → selected voicemail detail (`?vm=`), Workbench crossfade.
@@ -57,8 +53,9 @@ export function SupportWorkspace() {
   const canWarranty = !isLoaded || has('warranty.view');
   const canIssues = !isLoaded || has('support.issues.view');
 
-  const paneMotion = useMotionPresence(framerPresence.workbenchPane);
-  const paneTransition = useMotionTransition(framerTransition.workbenchPaneMount);
+  // `motionRole.swap.focus` — the pointer-driven focus-surface swap, taken as
+  // one pair so the presence can never drift onto another job's timing.
+  const { presence: paneMotion, transition: paneTransition } = useMotionRole(motionRole.swap.focus);
 
   if (isLoaded && !canTickets && !canWarranty && !canIssues && !canOrders) {
     return (

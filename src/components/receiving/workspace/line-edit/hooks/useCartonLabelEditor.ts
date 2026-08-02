@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
 import { labelCornerTicketDigits } from '@/lib/print/printReceivingLabel';
 import { formatLabelDateFromIso } from '@/components/labels/labelDate';
 import { usePlatformMeta, useReceivingTypeLabel } from '@/hooks/useCatalog';
@@ -45,6 +46,8 @@ export function useCartonLabelEditor(
     onPersistNotes?: (notes: string) => void;
   },
 ) {
+  const { user } = useAuth();
+  const orgSlug = user?.organizationSlug ?? null;
   const resolvePlatformMeta = usePlatformMeta();
   const resolveTypeLabel = useReceivingTypeLabel();
   // Label-only display choices (platform/date/corner), kept as a print-time
@@ -73,10 +76,11 @@ export function useCartonLabelEditor(
     (draft: LabelEditDraft) =>
       buildCartonLabelPayloadFromDraft(draft, {
         receivingId: row.receiving_id ?? null,
+        orgSlug,
         trackingHint,
         resolveTypeLabel,
       }),
-    [row.receiving_id, trackingHint, resolveTypeLabel],
+    [row.receiving_id, orgSlug, trackingHint, resolveTypeLabel],
   );
 
   const draftDefaults: LabelEditDraft = {

@@ -7,7 +7,7 @@
 **Companion (right inspector header + modal→rail):** [`right-rail-inspector-contract-CLAUDE-CODE-PROMPT.md`](./right-rail-inspector-contract-CLAUDE-CODE-PROMPT.md)  
 **Product frame:** Cycle Forge multi-tenant reseller-ops SaaS. USAV is dogfood only.
 
-> **2026-08-01 — Support carve-out:** Phase 1 “Support tickets → LedgerGrid middle” is **superseded**. Support is Workbench branch **`service-workspace`** (list \| thread \| context), not the Desk ops-queue recipe. Execute [`support-service-workspace-CLAUDE-CODE-PROMPT.md`](./support-service-workspace-CLAUDE-CODE-PROMPT.md) instead. This prompt still owns Labels / Products / warehouse locations / other pointer triage queues.
+> **2026-08-01 — Support carve-out:** Phase 1 “Support tickets → LedgerGrid middle” is **superseded**. Support is Workbench branch **`service-workspace`** (`SURFACE_REGISTRY.support.workbenchBranch`, list \| thread \| context), not the Desk **`ops-queue`** recipe ([`workbench-ops-queue.md`](../../.claude/rules/display/workbench-ops-queue.md)). Execute [`support-service-workspace-CLAUDE-CODE-PROMPT.md`](./support-service-workspace-CLAUDE-CODE-PROMPT.md) instead. This prompt still owns Labels / Products / warehouse locations / other pointer triage queues.
 
 ---
 

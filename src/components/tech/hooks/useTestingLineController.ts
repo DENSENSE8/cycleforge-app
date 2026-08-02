@@ -3,16 +3,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/lib/toast';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   unitStatusToVerdict,
   verdictToUnitStatus,
   type TestingVerdict,
 } from '@/components/receiving/workspace/TestingStatusPills';
 import { type UnitSlotSerial } from '@/components/tech/TestingUnitSlots';
-import {
-  dispatchSelectLine,
-  type ReceivingLineRow,
-} from '@/components/station/ReceivingLinesTable';
+import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import { dispatchSelectLine } from '@/components/station/receiving-lines-table-helpers';
 import { takeSerialEditHandoff } from '@/components/receiving/workspace/serialEditHandoff';
 import {
   buildUnitPayload,
@@ -72,6 +71,11 @@ export function useTestingLineController(
   const labelColor = opts?.labelColor ?? '';
   const core = useReceivingLineCore(row, staffId, { dispatchLine: dispatchTestingLineUpdated });
   const queryClient = useQueryClient();
+  // Tenant slug for platform Digital Link minting. Testing is the one unit-label
+  // caller that carries a real GTIN, so it is the one whose matrix changes from
+  // a GS1 element string to an absolute `{slug}.app…/01/…` URL.
+  const { user } = useAuth();
+  const orgSlug = user?.organizationSlug ?? null;
   // Editable carton label (default draft + preview payload + Save & print),
   // driving the label preview's pencil → editor CTA — same face as unbox.
   // Center text = the PRINTED face buffer (`label_note`), same as Unbox — a
@@ -488,8 +492,9 @@ export function useTestingLineController(
       serialNumber: activeSerial?.serial_number ?? null,
       qrPayload: allocation?.qrUrl ?? null,
       gtin: allocation?.gtin ?? null,
+      orgSlug,
     });
-  }, [row.sku, activeSerial, previewBySerialUnit]);
+  }, [row.sku, activeSerial, previewBySerialUnit, orgSlug]);
 
   const activeAllocation = activeSerial ? previewBySerialUnit[activeSerial.id] : undefined;
 
@@ -517,6 +522,7 @@ export function useTestingLineController(
         serialNumber: activeSerial.serial_number,
         qrPayload: allocation.qrUrl,
         gtin: allocation.gtin,
+        orgSlug,
       });
       try {
         await fetch('/api/post-multi-sn', {
@@ -543,6 +549,7 @@ export function useTestingLineController(
         title,
         serialNumber: activeSerial.serial_number,
         gtin: allocation.gtin ?? undefined,
+        orgSlug,
         qrPayload: allocation.qrUrl ?? undefined,
         condition,
         color,
@@ -554,7 +561,7 @@ export function useTestingLineController(
       });
       return true;
     },
-    [row.sku, row.condition_grade, lineTitle, activeSerial, previewBySerialUnit, allocateUnitId, notes, labelColor],
+    [row.sku, row.condition_grade, lineTitle, activeSerial, previewBySerialUnit, allocateUnitId, notes, labelColor, orgSlug],
   );
 
   const findNextOpenSibling = useCallback(

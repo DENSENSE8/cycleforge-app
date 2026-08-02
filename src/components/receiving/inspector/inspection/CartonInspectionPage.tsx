@@ -16,8 +16,16 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
-import { IconButton, Panel } from '@/design-system/primitives';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { AnimatePresence, motion } from '@/design-system/motion';
+import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
 import {
+  useMotionPresence,
+  useMotionTransition,
+} from '@/design-system/foundations/motion-framer-hooks';
+import { Button, IconButton, Panel } from '@/design-system/primitives';
+import {
+  Camera,
   ChevronRight,
   Copy,
   History,
@@ -39,7 +47,8 @@ import { CartonUnitJourneyHistory } from './CartonUnitJourneyHistory';
 import { ProgressBadge } from '@/components/receiving/workspace/PoLineBadges';
 import { PoLineMetaGrid } from '@/components/receiving/workspace/PoLineMetaGrid';
 import { ReceivingCartonPipeline } from '@/components/station/receiving/ReceivingCartonPipeline';
-import { ReceivingPhotosSection } from '@/components/station/receiving/ReceivingPhotosSection';
+import { CartonPhotoTriage } from './CartonPhotoTriage';
+import { useReceivingPhotos } from '@/hooks/useReceivingPhotos';
 import type { ReceivingDetailsLog } from '@/components/station/receiving-details-log';
 import { deriveCartonReadiness } from '@/lib/receiving/carton-readiness';
 import {
@@ -181,6 +190,35 @@ export function CartonInspectionPage({ receivingId }: { receivingId: number }) {
   const [auditOpen, setAuditOpen] = useState(false);
   const [copyingAll, setCopyingAll] = useState(false);
 
+  // Photo count for the CTA. Same cache entry the triage panel reads, so opening
+  // it costs no second fetch.
+  const { photos: cartonPhotos, settled: photosSettled } = useReceivingPhotos(receivingId, {
+    readOnly: true,
+  });
+
+  // `?photos=1` is durable on purpose: `/carton/[id]` exists to be the shareable
+  // read record (every search hit lands here), so "look at this box's photos" has
+  // to survive a reload and paste into a ticket. The lane and drill inside the
+  // panel stay local — they are a reading posture, not an address.
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const photosOpen = searchParams.get('photos') === '1';
+
+  const setPhotosOpen = useCallback(
+    (open: boolean) => {
+      const next = new URLSearchParams(searchParams.toString());
+      if (open) next.set('photos', '1');
+      else next.delete('photos');
+      const query = next.toString();
+      router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+    },
+    [router, pathname, searchParams],
+  );
+
+  const photosPresence = useMotionPresence(framerPresence.collapseHeight);
+  const photosTransition = useMotionTransition(framerTransition.stationCollapse);
+
   const handleShare = useCallback(async () => {
     const result = await shareCartonLink(
       receivingId,
@@ -209,6 +247,9 @@ export function CartonInspectionPage({ receivingId }: { receivingId: number }) {
         identity={headerIdentity}
         utilsDisabled={receiving == null}
         copyingAll={copyingAll}
+        photoCount={photosSettled ? cartonPhotos.length : null}
+        photosOpen={photosOpen}
+        onTogglePhotos={() => setPhotosOpen(!photosOpen)}
         onShare={() => void handleShare()}
         onCopy={() => void handleCopy()}
         onAudit={() => setAuditOpen(true)}
@@ -227,19 +268,57 @@ export function CartonInspectionPage({ receivingId }: { receivingId: number }) {
           </div>
         ) : (
           <div className="space-y-5 px-6 py-5 pb-16">
-            {/* Col 1: contents · activity · record; col 2: pipeline · photos · history · findings. */}
+            {/*
+              Photos open ABOVE the two columns, not beside them: an investigative
+              read means looking at a shot and the line it belongs to at the same
+              time, so the band must not cover Contents. The height tween is the
+              sanctioned layout animation — an explicit operator toggle, once.
+            */}
+            <AnimatePresence initial={false}>
+              {photosOpen ? (
+                <motion.div
+                  key="carton-photos"
+                  initial={photosPresence.initial}
+                  animate={photosPresence.animate}
+                  exit={photosPresence.exit}
+                  transition={photosTransition}
+                  className="overflow-hidden"
+                >
+                  <CartonPhotoTriage
+                    receivingId={receiving.id}
+                    poRef={
+                      receiving.zoho_purchaseorder_number ||
+                      receiving.zoho_purchaseorder_id ||
+                      null
+                    }
+                    onClose={() => setPhotosOpen(false)}
+                  />
+                </motion.div>
+              ) : null}
+            </AnimatePresence>
+
+            {/*
+              Col 1 is WHAT IS IN THE BOX — contents, then the sparse record.
+              Col 2 is WHAT HAPPENED TO IT — pipeline · activity · history ·
+              findings. Activity moved across (2026-08-02): it is an event
+              stream, and reading it next to the other two event streams beats
+              reading it under the line list it does not describe.
+            */}
             <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
               <ContentsColumn
                 receiving={receiving}
                 lines={lines ?? []}
                 totalsSummary={cartonContentsSummary(data?.totals)}
-                events={data?.events ?? []}
                 facts={facts}
                 recordMeta={recordMeta}
                 purchaseOrders={data?.purchase_orders}
                 hideEmptyContents={disposition.exceptions.some((e) => e.key === 'no_lines')}
               />
-              <ProgressRail receiving={receiving} disposition={disposition} />
+              <ProgressRail
+                receiving={receiving}
+                disposition={disposition}
+                events={data?.events ?? []}
+              />
             </div>
           </div>
         )}
@@ -268,6 +347,9 @@ function DispositionBar({
   identity,
   utilsDisabled,
   copyingAll,
+  photoCount,
+  photosOpen,
+  onTogglePhotos,
   onShare,
   onCopy,
   onAudit,
@@ -276,6 +358,10 @@ function DispositionBar({
   identity: CartonHeaderIdentity | null;
   utilsDisabled: boolean;
   copyingAll: boolean;
+  /** `null` until the photo query settles — a `0` that later jumps is a lie. */
+  photoCount: number | null;
+  photosOpen: boolean;
+  onTogglePhotos: () => void;
   onShare: () => void;
   onCopy: () => void;
   onAudit: () => void;
@@ -308,6 +394,29 @@ function DispositionBar({
         </div>
 
         <div className="flex shrink-0 items-center gap-2">
+          {/*
+            The primary look affordance leads, before the quiet utilities. This is
+            the one control the read surface exists for — "show me what this box
+            looked like" — and it used to be a card halfway down the right column.
+          */}
+          <Button
+            variant={photosOpen ? 'primary' : 'secondary'}
+            size="sm"
+            onClick={onTogglePhotos}
+            disabled={utilsDisabled}
+            aria-expanded={photosOpen}
+            ariaLabel={photosOpen ? 'Hide carton photos' : 'Show carton photos'}
+            icon={<Camera />}
+            className="shrink-0"
+          >
+            <span className="inline-flex items-center gap-1.5">
+              Photos
+              {photoCount != null ? (
+                <span className="tabular-nums opacity-70">{photoCount}</span>
+              ) : null}
+            </span>
+          </Button>
+
           <div className={HEADER_ICON_CLUSTER}>
             <div className={HEADER_ICON_WRAP}>
               <HoverTooltip label="Share receiving link" asChild>
@@ -369,7 +478,6 @@ function ContentsColumn({
   receiving,
   lines,
   totalsSummary,
-  events,
   facts,
   recordMeta,
   purchaseOrders,
@@ -378,7 +486,6 @@ function ContentsColumn({
   receiving: CartonInspectorReceiving;
   lines: CartonInspectorLine[];
   totalsSummary: string;
-  events: CartonInspectorEvent[];
   facts: CartonFact[];
   recordMeta: CartonFact[];
   purchaseOrders?: CartonInspectorPayload['purchase_orders'];
@@ -397,13 +504,6 @@ function ContentsColumn({
       ) : hideEmptyContents ? null : (
         <p className="text-role-caption text-text-muted">No lines on this carton yet.</p>
       )}
-
-      {events.length > 0 ? (
-        <div className="space-y-2">
-          <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">Activity</p>
-          <EventsList events={events} />
-        </div>
-      ) : null}
 
       {facts.length > 0 || recordMeta.length > 0 ? (
         <Panel padding="sm" radius="xl" elevation="none" className="space-y-4">
@@ -498,18 +598,11 @@ function ProgressRail({
 
   return (
     <section className="space-y-5">
-      <Panel padding="sm" radius="xl" elevation="none">
-        <ReceivingPhotosSection
-          receivingId={String(receiving.id)}
-          poRef={receiving.zoho_purchaseorder_number || receiving.zoho_purchaseorder_id || null}
-          downloadLabel={`recv-${receiving.id}`}
-          sectionTitle="Receiving photos"
-          launcherTitle="Photos"
-          readOnly
-          hideHeader
-        />
-      </Panel>
-
+      {/*
+        No photo card here any more. Photos are the DispositionBar's primary CTA
+        and open in-flow above both columns — a mid-rail launcher beside it would
+        be a second front door to one surface.
+      */}
       <div className="space-y-2">
         <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">Progress</p>
         <Panel padding="sm" radius="xl" elevation="none">

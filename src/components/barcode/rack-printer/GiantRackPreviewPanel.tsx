@@ -1,6 +1,6 @@
 import { Printer } from '@/components/Icons';
 import { LocationDataMatrix } from '../LocationDataMatrix';
-import { gs1LocationAi, rackCode, rackToLocation, type RackSegments } from '@/lib/barcode-routing';
+import { locationLabelPayload, rackCode, rackToLocation, type RackSegments } from '@/lib/barcode-routing';
 import { humanReadable, partialCode } from './rack-code-format';
 import { useAuth } from '@/contexts/AuthContext';
 import { orgWarehouseLabel } from '@/lib/branding/letterhead';
@@ -25,7 +25,7 @@ export function GiantRackPreviewPanel({ zoneLetter, aisle, bay, level, gln }: Gi
   const code = segments
     ? rackCode(segments)
     : partialCode({ zone: zoneLetter, aisle, bay, level });
-  const ai = segments ? gs1LocationAi(rackToLocation(segments), { gln }) : null;
+  const label = segments ? locationLabelPayload(rackToLocation(segments), { gln }) : null;
 
   return (
     <div className="rounded-2xl border border-border-soft bg-surface-card p-4">
@@ -46,8 +46,8 @@ export function GiantRackPreviewPanel({ zoneLetter, aisle, bay, level, gln }: Gi
           </p>
         </div>
         <div className="flex h-[132px] w-[132px] shrink-0 items-center justify-center rounded-lg bg-surface-card p-2 ring-1 ring-border-soft">
-          {ai ? (
-            <LocationDataMatrix value={ai} size={116} fgColor="#0F172A" />
+          {label ? (
+            <LocationDataMatrix value={label.value} symbology={label.symbology} size={116} fgColor="#0F172A" />
           ) : (
             <div className="flex h-full w-full flex-col items-center justify-center gap-1.5 text-center">
               <Printer className="h-5 w-5 text-text-faint" />

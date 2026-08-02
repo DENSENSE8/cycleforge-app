@@ -22,10 +22,8 @@ import { useRealtimeToasts } from '@/hooks/useRealtimeToasts';
 import { useAuth } from '@/contexts/AuthContext';
 import { dispatchReceivingWorkspaceClose } from '@/utils/events';
 import { emitReceiving } from '@/components/receiving/receiving-events';
-import {
-  RECEIVING_SELECTION_SCOPE,
-  type ReceivingLineRow,
-} from '@/components/station/ReceivingLinesTable';
+import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import { RECEIVING_SELECTION_SCOPE } from '@/components/station/receiving-lines-table-helpers';
 import { useReceivingLineBulkSelection } from '@/hooks/useReceivingLineBulkSelection';
 import { useReceivingDashboardMode } from '@/components/receiving/useReceivingDashboardMode';
 import { useReceivingWorkspacePane } from '@/components/receiving/useReceivingWorkspacePane';

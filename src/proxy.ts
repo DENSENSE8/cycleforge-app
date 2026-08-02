@@ -66,7 +66,12 @@ const PUBLIC_PATHS: ReadonlyArray<RegExp> = [
   // contextual redirects, anon callers bounce to the public storefront.
   /^\/gs1\/resolve(?:$|\/)/,
   /^\/01\/[0-9]+(?:$|\/)/,
+  // Generic anon landing for a scanned code that resolved to no entity —
+  // the tenant-branded interstitial, not a hardcoded storefront.
+  /^\/qr(?:$|\/)/,
   /^\/414\/[0-9]+\/254\/[A-Za-z0-9]+(?:$|\/)/,
+  // Platform carton Digital Link — anon → branded interstitial; staff → ops.
+  /^\/m\/r\/\d+(?:$|\/)/,
   /^\/_next\//,
   /^\/favicon\.ico$/,
   /^\/manifest\.(json|webmanifest)$/,

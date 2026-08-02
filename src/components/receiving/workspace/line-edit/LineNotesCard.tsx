@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { Check, Download, History, Loader2, DollarSign, User, Tag, Pencil } from '@/components/Icons';
 import type { ReceivingStepKey } from '../ReceivingProgressStepper';
-import { StationComposerDock } from '@/design-system/primitives';
+import { OmnichannelComposerDock } from '@/design-system/primitives';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/lib/toast';
 import { NoteComposerInsertRail, type NoteComposerInsertAction } from '../NoteComposerInsertRail';
@@ -33,7 +33,7 @@ import {
  * something about an item without it landing on the sticker.
  *
  * Hydrates from the row and saves on blur / Send. Built on
- * {@link StationComposerDock} (ChatGPT-style dock chrome).
+ * {@link OmnichannelComposerDock} (ChatGPT-style dock chrome).
  *
  * When a {@link trailingAction} (Unbox Receive) owns the footer, Enter acts
  * like Send-in-chat: save the note, then fire {@link onPrimaryAction}.
@@ -86,7 +86,7 @@ export function LineNotesCard({
   showSyncToPo?: boolean;
   /** Active workflow step — auto-focuses the composer on the print step. */
   activeStep?: ReceivingStepKey | null;
-  /** Pass-through to StationComposerDock mount motion. */
+  /** Pass-through to OmnichannelComposerDock mount motion. */
   animateMount?: boolean;
   /**
    * Terminal CTA rendered at the composer's trailing edge (Unbox overview
@@ -333,7 +333,7 @@ export function LineNotesCard({
   ) : null;
 
   return (
-    <StationComposerDock
+    <OmnichannelComposerDock
       value={notes}
       onChange={onNotesChange}
       onCommit={handleCommit}

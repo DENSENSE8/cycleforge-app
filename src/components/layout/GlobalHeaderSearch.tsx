@@ -2,8 +2,14 @@
 
 /**
  * GlobalHeaderSearch — icon-rail search for the global header. Resting state
- * matches sibling header IconButtons (search glyph only); hover / focus / click /
- * ⌘K expands a compact SearchField and focuses the cursor.
+ * matches sibling header IconButtons (search glyph only); hover / focus / click
+ * expands a compact SearchField and focuses the cursor.
+ *
+ * It does NOT own ⌘K, and its tooltip must not claim it. That chord belongs to
+ * the {@link CommandBar} palette — one chord, one surface. This component binds
+ * no keydown listener of its own; it only listens for
+ * `GLOBAL_SEARCH_FOCUS_EVENT`, which a caller may dispatch to hand focus here.
+ * Guard: `./cmdk-owner.guard.test.ts`.
  *
  * The Sparkles assistant control lives far-right in {@link GlobalHeaderActions}
  * ({@link GlobalHeaderAssistantButton}) — never nested here or beside Search.
@@ -542,7 +548,7 @@ export function GlobalHeaderSearch() {
           onMouseEnter={expandAndFocus}
           onFocusCapture={expandAndFocus}
         >
-          <HoverTooltip label="Search (⌘K)" asChild>
+          <HoverTooltip label="Search" asChild>
             <IconButton
               type="button"
               size="md"

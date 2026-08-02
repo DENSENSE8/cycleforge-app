@@ -1,24 +1,83 @@
-# Edge rewrites for usavshop.com → staff backend
+# Edge rewrites & platform Digital Link hosts
 
-## Why this exists
+## SaaS model (current)
 
-Every QR code printed by this app — warehouse location labels, receiving
-cartons, receiving lines, repair labels, unit/serial product labels,
-sign-in / staff invite QRs — anchors to `https://usavshop.com` (via
-`QR_BASE_URL` in `src/lib/barcode-routing.ts`). That keeps the Vercel
-deploy hostname off every printed sticker and out of every browser
-address bar.
+Printed QR / DataMatrix codes for receiving cartons mint on the **Cycle Forge
+platform host** for the tenant:
 
-For that to work end-to-end, the **usavshop.com Vercel project** has to
+```
+https://{slug}.app.cycleforge.ai/m/r/{id}
+```
+
+- **Staff wedge / in-app scan** — `routeScan()` ignores the host and opens
+  receiving / unbox locally (bare `R-{id}` stickers still work).
+- **Consumer phone camera** — hits `{slug}.app.cycleforge.ai`, which *is* this
+  app. Anonymous visitors see a branded **interstitial** with a button to the
+  tenant’s configured customer website (`brand.publicLandingUrl` in org
+  settings). Authed staff get the mobile carton ops page.
+- Tenants do **not** configure DNS or edge rewrites for QR. They only set the
+  outbound website URL under Settings → Organization → Branding.
+
+Unit GS1 Digital Links (`/01/{gtin}/…`) follow the same host when minted with
+an org slug.
+
+### The encode decision lives in exactly one module
+
+`encodePrintMatrix` (`src/lib/qr/platform-link.ts`) owns `{ value, symbology,
+hri }` for every printable matrix. Face adapters, HTML print, the raw
+TSPL/ZPL/ESC-POS builders and the on-screen previews are all thin callers, so
+preview and print cannot disagree. Pinned by
+`src/lib/qr/print-matrix-sot.guard.test.ts`.
+
+| Kind | Encodes | Anon landing |
+|---|---|---|
+| carton | `/m/r/{id}` on the slug host | `/m/r/[id]` → interstitial |
+| unit (GTIN known) | `/01/{gtin}[/21/{serial}]` on the slug host | `/01/…` → interstitial |
+| unit (no GTIN) | `(01)…(21)…` element string, `U-{serial}`, or the SKU | — |
+| as-listed | bare `L-{id}` / `R-{id}` | none yet — see below |
+| ticket | bare `T-{digits}` | none — `/support` is staff-only |
+| repair / handling unit / manifest | bare `REP-` / `H-` / `KIT-` | none — internal-only |
+
+**A kind stays bare until its path has an anonymous landing.** `/m/l/*` and
+`/m/u/*` are proxy *rewrites* onto staff pages, so minting a URL for them today
+would put a customer's phone on `/signin` — strictly worse than a handle the
+staff wedge still resolves. Ship the landing first, then flip the kind in
+`encodePrintMatrix`; that is the only edit needed.
+
+### Anonymous landings
+
+Every anon landing composes one helper — `PublicQrLanding`
+(`src/components/qr/public-qr-landing.tsx`) → `PublicQrInterstitial`. It reads
+the tenant from the `x-tenant-slug` header (set by the proxy from the host) and
+links out to that workspace's own `brand.publicLandingUrl`. An unknown or absent
+slug **fails closed**: the shell renders with no CTA rather than defaulting to
+some tenant's website.
+
+`/qr` is the catch-all for a scanned code that resolved to no entity, so
+`resolvePublic()` in `src/lib/gs1/resolver.ts` has a destination that is still
+the *tenant's* brand. That function used to return a hardcoded
+`NEXT_PUBLIC_STOREFRONT_URL ?? 'https://usavshop.com'` — a single-tenant
+assumption inside a multi-tenant resolver, which would have shipped one
+workspace's customers to another workspace's shop the moment labels started
+minting on `{slug}.app.cycleforge.ai`. It now echoes back the canonical Digital
+Link path and lets the landing page resolve the tenant.
+
+Behaviour is covered on the QA org by
+`tests/e2e/platform-digital-link.spec.ts`.
+
+## Legacy dogfood: usavshop.com → staff backend
+
+Older stickers and some env defaults still encode `https://usavshop.com/…`.
+For those to keep working end-to-end, the **usavshop.com** Vercel project can
 *rewrite* (not redirect) a handful of paths through to the staff backend.
 A 302 redirect would still leak the backend host in the browser bar —
 only a rewrite keeps the browser on `usavshop.com`.
 
 In-app scans don't need any of this; `routeScan()` parses the path and
-ignores the host, so the staff app routes locally with no network hop.
-This config only matters for **phone-camera scans by non-staff users**.
+ignores the host. This config only matters for **phone-camera scans of
+legacy brand-domain labels**.
 
-## What to paste into the usavshop.com project
+## What to paste into the usavshop.com project (legacy)
 
 Add this to `vercel.json` at the root of the usavshop.com Next.js
 project (the consumer storefront). Replace
@@ -80,26 +139,30 @@ export default {
 };
 ```
 
-## Smoke test after wiring up
+## Smoke test
 
-1. Print a bin label. Confirm the QR encodes
-   `(414)0614141000005(254)A0101101` (DataMatrix, no URL).
-2. Print a receiving carton label. Phone-camera scan should open
-   `https://usavshop.com/m/r/<id>` — and the browser bar should *stay*
-   on `usavshop.com`. If it flips to `*.vercel.app`, you have a redirect
-   instead of a rewrite — check the destination config.
-3. From the staff app, scan the same carton label. It should route to
-   the carton view locally without any network hop to usavshop.com.
+1. Print an unbox carton label while signed into `{slug}.app.cycleforge.ai`.
+   Confirm the matrix encodes
+   `https://{slug}.app.cycleforge.ai/m/r/<id>` and the HRI under it is `R-<id>`.
+2. Phone-camera scan (signed out) → branded interstitial; tap **Continue to
+   website** → org `publicLandingUrl`.
+3. Staff wedge scan of the same sticker → unbox / carton ops with no hop to
+   a customer storefront.
+4. Legacy bare `R-<id>` stickers still resolve in-app.
 
 ## Environment variables
 
-In the staff backend's Vercel project:
+Staff / platform app:
 
 ```
-NEXT_PUBLIC_APP_URL=https://usavshop.com
+NEXT_PUBLIC_APP_URL=https://app.cycleforge.ai
 ```
 
-In dev / staging, override per environment (e.g.
-`NEXT_PUBLIC_APP_URL=https://staging.usavshop.com` for the preview
-deploy). Leaving it unset falls back to `https://usavshop.com` — fine
-for prod.
+(`staffOriginForSlug` derives `{slug}.app.cycleforge.ai` from this hostname.)
+
+Optional legacy unit/public defaults (still read by older helpers):
+
+```
+NEXT_PUBLIC_STOREFRONT_URL=https://usavshop.com
+NEXT_PUBLIC_LABEL_QR_BASE_URL=https://usavshop.com
+```

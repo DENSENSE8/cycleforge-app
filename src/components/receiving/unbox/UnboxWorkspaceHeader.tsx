@@ -15,9 +15,10 @@ import {
   WorkbenchFilterPopover,
 } from '@/components/dashboard/workbench-filter-popover';
 import { StaffFilterButton } from '@/components/ui/StaffFilterButton';
-import { ToolbarSearchToggle } from '@/design-system/primitives/ToolbarSearchToggle';
+import { Button, ToolbarSearchToggle } from '@/design-system/primitives';
 import { GridFieldsMenu } from '@/components/ui/table-column-config/GridFieldsMenu';
 import { RECEIVING_GRID_COLUMNS } from '@/lib/receiving/receiving-grid-layout';
+import { ReceivingModeUnbox } from '@/components/icons/stations';
 import { parseStaffParam } from '@/hooks/useStaffFilter';
 import { useWorkbenchSearchParam } from '@/hooks/useWorkbenchSearchParam';
 import { useDebounce } from '@/hooks';
@@ -34,11 +35,13 @@ import {
   setReceivingHistoryUrlParams,
 } from '@/lib/receiving-history-search';
 import { TRIAGE_LANE_OPTS } from '@/lib/receiving/triage-lane-policy';
+import { fetchUnboxOpenedRows } from '@/lib/receiving/rail/feeds';
 import {
   UNBOX_WORKSPACE_TAB_LABEL,
   UNBOX_WORKSPACE_TABS,
   type UnboxWorkspaceTab,
 } from '@/utils/unbox-workspace-state';
+import { dispatchReceivingWorkspaceClose } from '@/utils/events';
 
 // Order is the SoT's (`UNBOX_WORKSPACE_TABS`): Recent · Queue · History, with
 // the archive tab last (emerald, dividerBefore) after the working tabs. Recent
@@ -59,7 +62,10 @@ export function UnboxWorkspaceHeader({
   className,
 }: {
   tab: UnboxWorkspaceTab;
-  onSelectTab: (tab: UnboxWorkspaceTab) => void;
+  onSelectTab: (
+    tab: UnboxWorkspaceTab,
+    opts?: { clearLine?: boolean },
+  ) => void;
   controlsSlotRef?: Ref<HTMLDivElement>;
   className?: string;
 }) {
@@ -70,6 +76,34 @@ export function UnboxWorkspaceHeader({
   const { searchQuery, setSearch } = useWorkbenchSearchParam();
   const isHistoryTab = tab === 'history';
   const isQueueTab = tab === 'queue';
+  // Return-to-scan CTA stays on every Unbox chrome tab (Recent · Queue ·
+  // History). Click always lands the Recent data table first — never the
+  // carton overlay — so the workbench map stays visible while the scan bar
+  // re-arms. SoT: display/workbench.md → Multi-region (every scan station).
+
+  const handleReturnToUnbox = useCallback(() => {
+    // 1) Close any carton overlay so UnboxWorkspaceView's data table is visible.
+    dispatchReceivingWorkspaceClose();
+    // 2) Recent is the first strip tab + the bench working set.
+    onSelectTab('recent');
+    void (async () => {
+      try {
+        // 3) Highlight the Unboxed-rail MRU in the Recent table when that row
+        // is present — table row highlight only (no select-line → no overlay).
+        const rows = await fetchUnboxOpenedRows({ staffId });
+        const mru = rows[0];
+        if (mru?.id != null) {
+          window.dispatchEvent(
+            new CustomEvent('receiving-highlight-line', { detail: mru.id }),
+          );
+        }
+      } finally {
+        setTimeout(() => {
+          window.dispatchEvent(new CustomEvent('receiving-focus-scan'));
+        }, 60);
+      }
+    })();
+  }, [onSelectTab, staffId]);
 
   const searchField = useMemo(
     () => normalizeReceivingHistorySearchField(searchParams.get(RECEIVING_HISTORY_URL_PARAMS.field)),
@@ -384,9 +418,23 @@ export function UnboxWorkspaceHeader({
       trailing={
         /* Fields in host trailing — not portaled from ReceivingLinesTable
            (table-action-bar-fields PLAN Phase 2). Prefs: tableId `receiving`
-           (History/Unbox); Incoming owns distinct `incoming`. */
+           (History/Unbox); Incoming owns distinct `incoming`.
+           Return-to-scan CTA: WorkbenchTrailingCluster.actions altitude
+           (SoT: display/workbench.md → Multi-region — every scan station). */
         <WorkbenchTrailingCluster
           fields={<GridFieldsMenu tableId="receiving" columns={RECEIVING_GRID_COLUMNS} />}
+          actions={
+            <Button
+              size="sm"
+              variant="primary"
+              icon={<ReceivingModeUnbox />}
+              ariaLabel="Unbox"
+              onClick={handleReturnToUnbox}
+              className="rounded-full font-semibold uppercase tracking-widest"
+            >
+              Unbox
+            </Button>
+          }
         />
       }
     />

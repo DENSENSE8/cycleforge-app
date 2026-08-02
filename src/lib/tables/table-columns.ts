@@ -77,6 +77,10 @@ export type TableId =
   | 'warranty'
   /** Outbound › Ready / recently-tested history (`READY_GRID_COLUMNS`). */
   | 'ready'
+  /** Warehouse › Bins overview spreadsheet (`BINS_GRID_COLUMNS`). */
+  | 'bins'
+  /** Admin › PO Mailbox / Unfound triage (`UNFOUND_GRID_COLUMNS`). */
+  | 'unfound'
   /** Home › Today task spreadsheet (`MY_DAY_GRID_COLUMNS`). */
   | 'my-day'
   /** Review › Catalog link chores (`CATALOG_LINK_GRID_COLUMNS`). */
@@ -87,7 +91,9 @@ export type TableId =
    * identity facts, so one bucket would mean hiding `source` on one tab
    * silently hid it on the other.
    */
-  | 'import-exception';
+  | 'import-exception'
+  /** Ops › Tracking Exceptions spreadsheet (`TRACKING_EXCEPTIONS_GRID_COLUMNS`). */
+  | 'tracking-exceptions';
 
 /** Canonical meta-slot keys (the left-side qty | condition | rest grid). */
 export const META_KEYS = {
@@ -189,6 +195,26 @@ export const TABLE_COLUMNS: Record<TableId, TableColumnSpec[]> = {
     GRID_COL('condition', 'Cond', 'tag'),
     GRID_COL('tested', 'Tested', 'date'),
   ],
+  // Keys are the `hideKey`s in
+  // `src/components/warehouse/bins-grid/bins-grid-layout.ts`. `select` /
+  // `barcode` are absent — frozen identity, structurally un-hideable.
+  bins: [
+    GRID_COL('location', 'Room / Location', 'location'),
+    GRID_COL('sku_count', 'SKUs', 'number'),
+    GRID_COL('total_qty', 'Qty', 'number'),
+    GRID_COL('fill', 'Fill', 'text'),
+    GRID_COL('last_counted', 'Counted', 'date'),
+    GRID_COL('status', 'Status', 'tag'),
+  ],
+  // Keys are the `hideKey`s in
+  // `src/components/receiving/unfound/grid/unfound-grid-layout.ts`. The `action`
+  // track (Push / Synced) has no `hideKey` — structural, never offered.
+  unfound: [
+    GRID_COL('ticket', 'Ticket', 'id'),
+    GRID_COL('usaNote', 'USA Team Note', 'longtext'),
+    GRID_COL('vietnamNote', 'Vietnam Team Note', 'longtext'),
+    GRID_COL('checked', 'Check', 'tag'),
+  ],
   // Keys are the `hideKey`s in `src/lib/my-day/my-day-grid-layout.ts`. `select`
   // and `task` are absent — frozen identity, structurally un-hideable. Labels
   // mirror the column SoT so the menu and the header read the same word.
@@ -219,6 +245,20 @@ export const TABLE_COLUMNS: Record<TableId, TableColumnSpec[]> = {
     GRID_COL('seen', 'Seen', 'number'),
     GRID_COL('first', 'First seen', 'date'),
     GRID_COL('last', 'Last seen', 'date'),
+  ],
+  // Keys are the `hideKey`s in
+  // `src/components/tracking-exceptions/grid/tracking-exceptions-grid-layout.ts`.
+  // The `actions` track has no hideKey — structural, never offered.
+  'tracking-exceptions': [
+    GRID_COL('carrier', 'Carrier', 'text'),
+    GRID_COL('source', 'Source', 'text'),
+    GRID_COL('staff', 'Staff', 'text'),
+    GRID_COL('reason', 'Reason', 'tag'),
+    GRID_COL('status', 'Status', 'tag'),
+    GRID_COL('retries', 'Retries', 'number'),
+    GRID_COL('lastCheck', 'Last check', 'date'),
+    GRID_COL('created', 'Created', 'date'),
+    GRID_COL('notes', 'Notes', 'longtext'),
   ],
 };
 

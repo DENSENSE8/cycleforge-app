@@ -36,10 +36,8 @@ import {
   NoSerialControl,
   type SerialAbsentState,
 } from '@/components/receiving/workspace/line-edit/NoSerialControl';
-import {
-  dispatchSelectLine,
-  type ReceivingLineRow,
-} from '@/components/station/ReceivingLinesTable';
+import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import { dispatchSelectLine } from '@/components/station/receiving-lines-table-helpers';
 import { receivingWorkspaceLineTitle } from '@/lib/receiving/po-group-title';
 import { ScannedBadge, ProgressBadge } from './PoLineBadges';
 import type {

@@ -19,6 +19,9 @@ const ADAPTERS = [
   'src/components/repair/repair-grid/RepairGridColumnHeader.tsx',
   'src/components/warranty/grid/WarrantyGridColumnHeader.tsx',
   'src/components/outbound/ready/grid/ReadyGridColumnHeader.tsx',
+  'src/components/tracking-exceptions/grid/TrackingExceptionsGridColumnHeader.tsx',
+  'src/components/receiving/unfound/grid/UnfoundGridColumnHeader.tsx',
+  'src/components/warehouse/bins-grid/BinsGridColumnHeader.tsx',
 ] as const;
 
 describe('LedgerGridColumnHeader composition', () => {

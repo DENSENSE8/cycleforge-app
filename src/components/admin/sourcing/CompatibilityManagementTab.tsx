@@ -11,9 +11,9 @@ import { useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { qk } from '@/queries/keys';
-import { AdminEmptyDetail } from '../shared';
 import { Layers } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
+import { DataTable, type DataTableColumn } from '@/design-system/components/DataTable';
 
 interface EdgeRow {
   id: number;
@@ -62,69 +62,100 @@ export function CompatibilityManagementTab() {
 
   const rows = useMemo(() => data?.items ?? [], [data]);
 
-  if (isLoading) return <div className="p-6 text-sm text-text-faint">Loading edges…</div>;
-  if (rows.length === 0) {
-    return (
-      <AdminEmptyDetail
-        icon={<Layers className="h-6 w-6" />}
-        title="No compatibility edges"
-        hint="Link parts to models in the Bose Models section, then audit them here."
-      />
-    );
-  }
+  const columns: DataTableColumn<EdgeRow>[] = useMemo(
+    () => [
+      {
+        key: 'model',
+        header: 'Model',
+        type: 'text',
+        cell: (r) => (
+          <div>
+            <div className="font-semibold text-text-default">{r.model_name}</div>
+            <div className="text-role-caption text-text-soft">{r.model_number}</div>
+          </div>
+        ),
+      },
+      {
+        key: 'part',
+        header: 'Part',
+        type: 'text',
+        cell: (r) => (
+          <div>
+            <div className="font-semibold text-text-default">{r.product_title}</div>
+            <div className="text-role-caption text-text-soft">{r.sku}</div>
+          </div>
+        ),
+      },
+      {
+        key: 'role',
+        header: 'Role',
+        type: 'tag',
+        cell: (r) => <span className="text-text-muted">{r.part_role}</span>,
+      },
+      {
+        key: 'fit',
+        header: 'Fit',
+        type: 'tag',
+        cell: (r) => (
+          <span className="rounded-full bg-surface-sunken px-2 py-0.5 text-role-micro font-semibold text-text-muted">
+            {r.is_oem ? 'OEM ' : ''}
+            {r.fit}
+          </span>
+        ),
+      },
+      {
+        key: 'source',
+        header: 'Source',
+        type: 'text',
+        cell: (r) => <span className="text-role-caption text-text-soft">{r.source}</span>,
+      },
+      {
+        key: 'actions',
+        header: '',
+        align: 'right',
+        cell: (r) => (
+          <Button
+            variant="ghost"
+            size="sm"
+            type="button"
+            onClick={() => remove.mutate(r.id)}
+            className="text-rose-600 hover:text-rose-700"
+          >
+            Remove
+          </Button>
+        ),
+      },
+    ],
+    [remove],
+  );
 
   return (
     <div className="flex h-full flex-col overflow-y-auto p-6">
-      <div className="mx-auto w-full max-w-4xl">
-        <h2 className="mb-4 text-lg font-semibold text-text-default">
-          Compatibility edges <span className="text-text-faint">({rows.length})</span>
+      <div className="mx-auto w-full max-w-4xl space-y-4">
+        <h2 className="text-lg font-semibold text-text-default">
+          Compatibility edges{' '}
+          {!isLoading ? <span className="text-text-faint">({rows.length})</span> : null}
         </h2>
-        <div className="overflow-hidden rounded-xl border border-border-soft bg-surface-card">
-          <table className="w-full text-sm">
-            <thead className="bg-surface-canvas text-role-caption uppercase tracking-wide text-text-soft">
-              <tr>
-                <th className="px-4 py-2 text-left font-semibold">Model</th>
-                <th className="px-4 py-2 text-left font-semibold">Part</th>
-                <th className="px-4 py-2 text-left font-semibold">Role</th>
-                <th className="px-4 py-2 text-left font-semibold">Fit</th>
-                <th className="px-4 py-2 text-left font-semibold">Source</th>
-                <th className="px-4 py-2" />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border-hairline">
-              {rows.map((r) => (
-                <tr key={r.id} className="hover:bg-surface-hover">
-                  <td className="px-4 py-2">
-                    <div className="font-semibold text-text-default">{r.model_name}</div>
-                    <div className="text-role-caption text-text-soft">{r.model_number}</div>
-                  </td>
-                  <td className="px-4 py-2">
-                    <div className="font-semibold text-text-default">{r.product_title}</div>
-                    <div className="text-role-caption text-text-soft">{r.sku}</div>
-                  </td>
-                  <td className="px-4 py-2 text-text-muted">{r.part_role}</td>
-                  <td className="px-4 py-2">
-                    <span className="rounded-full bg-surface-sunken px-2 py-0.5 text-role-micro font-semibold text-text-muted">
-                      {r.is_oem ? 'OEM ' : ''}{r.fit}
-                    </span>
-                  </td>
-                  <td className="px-4 py-2 text-role-caption text-text-soft">{r.source}</td>
-                  <td className="px-4 py-2 text-right">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      type="button"
-                      onClick={() => remove.mutate(r.id)}
-                      className="text-rose-600 hover:text-rose-700"
-                    >
-                      Remove
-                    </Button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <DataTable
+          columns={columns}
+          rows={rows}
+          rowKey={(r) => r.id}
+          loading={isLoading}
+          isSearching={Boolean(boseModelId)}
+          searchEmptyMessage="No compatibility edges for this model."
+          emptyMessage="Link parts to models in the Bose Models section, then audit them here."
+          empty={
+            boseModelId ? undefined : (
+              <div className="flex flex-col items-center gap-2 px-6 py-10 text-center">
+                <Layers className="h-6 w-6 text-text-faint" />
+                <p className="text-sm font-medium text-text-default">No compatibility edges</p>
+                <p className="text-xs text-text-muted">
+                  Link parts to models in the Bose Models section, then audit them here.
+                </p>
+              </div>
+            )
+          }
+        />
       </div>
     </div>
   );

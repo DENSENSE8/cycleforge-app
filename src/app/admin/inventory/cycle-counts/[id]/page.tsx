@@ -8,6 +8,7 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { Button } from '@/design-system/primitives';
+import { DataTable, type DataTableColumn } from '@/design-system/components/DataTable';
 
 export const dynamic = 'force-dynamic';
 
@@ -234,6 +235,147 @@ export default async function CycleCountDetailPage({
   const isOpen = campaign.status === 'open';
   const byStatus = new Map(statusCounts.map((s) => [s.status, s.count]));
   const totalLines = statusCounts.reduce((sum, s) => sum + s.count, 0);
+  const varianceTol = Number(campaign.variance_tol);
+
+  const lineColumns: DataTableColumn<LineRow>[] = [
+    {
+      key: 'bin',
+      header: 'Bin',
+      type: 'id',
+      cell: (l) => (
+        <span className="font-mono text-xs">{l.bin_name ?? `#${l.bin_id}`}</span>
+      ),
+    },
+    {
+      key: 'sku',
+      header: 'SKU',
+      type: 'id',
+      cell: (l) => (
+        <Link
+          href={`/admin/inventory/sku/${encodeURIComponent(l.sku)}`}
+          className="font-mono text-xs text-blue-600 hover:underline"
+        >
+          {l.sku}
+        </Link>
+      ),
+    },
+    {
+      key: 'expected',
+      header: 'Expected',
+      type: 'number',
+      cell: (l) => <span className="tabular-nums">{l.expected_qty}</span>,
+    },
+    {
+      key: 'counted',
+      header: 'Counted',
+      type: 'number',
+      cell: (l) => {
+        const isPending = l.status === 'pending';
+        if (isPending && isOpen) {
+          return (
+            <form action={submitCountAction} className="flex items-center justify-end gap-2">
+              <input type="hidden" name="campaignId" value={campaign.id} />
+              <input type="hidden" name="lineId" value={l.id} />
+              <input
+                type="number"
+                name="countedQty"
+                min="0"
+                step="1"
+                placeholder="qty"
+                className="w-20 rounded border border-border-default px-2 py-1 text-right font-mono text-xs"
+              />
+              <Button type="submit" variant="primary" size="sm">
+                Submit
+              </Button>
+            </form>
+          );
+        }
+        return <span className="tabular-nums">{l.counted_qty ?? '—'}</span>;
+      },
+    },
+    {
+      key: 'variance',
+      header: 'Δ',
+      type: 'number',
+      cell: (l) => (
+        <span
+          className={`tabular-nums ${
+            l.variance == null || l.variance === 0
+              ? 'text-text-faint'
+              : Math.abs(l.variance) > l.expected_qty * varianceTol
+                ? 'font-semibold text-red-700'
+                : 'text-amber-700'
+          }`}
+        >
+          {l.variance == null ? '—' : (l.variance > 0 ? '+' : '') + l.variance}
+        </span>
+      ),
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      type: 'tag',
+      cell: (l) => (
+        <span
+          className={`inline-flex rounded-full px-2 py-0.5 text-role-micro font-medium ${
+            l.status === 'pending'
+              ? 'bg-surface-sunken text-text-muted'
+              : l.status === 'counted'
+                ? 'bg-blue-100 text-blue-700'
+                : l.status === 'pending_review'
+                  ? 'bg-amber-100 text-amber-800'
+                  : l.status === 'approved'
+                    ? 'bg-green-100 text-green-700'
+                    : 'bg-red-100 text-red-700'
+          }`}
+        >
+          {l.status}
+        </span>
+      ),
+    },
+    {
+      key: 'action',
+      header: 'Action',
+      align: 'right',
+      cell: (l) => {
+        const isReview = l.status === 'pending_review';
+        const isCounted = l.status === 'counted';
+        if ((isReview || isCounted) && isOpen) {
+          return (
+            <div className="flex items-center justify-end gap-1">
+              <form action={approveAction}>
+                <input type="hidden" name="campaignId" value={campaign.id} />
+                <input type="hidden" name="lineId" value={l.id} />
+                {/* ds-raw-button: solid-green approve CTA — no DS Button variant maps to green */}
+                <button
+                  type="submit"
+                  className="rounded bg-green-600 px-2.5 py-1 text-role-caption font-medium text-white hover:bg-green-700"
+                >
+                  Approve
+                </button>
+              </form>
+              <form action={rejectAction}>
+                <input type="hidden" name="campaignId" value={campaign.id} />
+                <input type="hidden" name="lineId" value={l.id} />
+                <Button type="submit" variant="secondary" size="sm">
+                  Reject
+                </Button>
+              </form>
+            </div>
+          );
+        }
+        return (
+          <span className="text-role-caption text-text-soft">
+            {l.approved_by_name
+              ? `by ${l.approved_by_name}`
+              : l.counted_by_name
+                ? `counted by ${l.counted_by_name}`
+                : '—'}
+          </span>
+        );
+      },
+    },
+  ];
 
   return (
     <div className="min-h-screen bg-surface-canvas p-8">
@@ -298,117 +440,21 @@ export default async function CycleCountDetailPage({
         </nav>
 
         {/* Lines table */}
-        <section className="rounded-lg border border-border-soft bg-surface-card shadow-sm">
-          <header className="border-b border-border-hairline px-6 py-3">
+        <section className="space-y-3">
+          <header>
             <h2 className="text-base font-medium text-text-default">Lines</h2>
             <p className="mt-1 text-role-caption text-text-soft">
               Pending lines accept a count submission. Pending review needs an admin decision.
             </p>
           </header>
-          {lines.length === 0 ? (
-            <p className="px-6 py-8 text-sm text-text-muted">No lines in this view.</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-border-hairline text-sm">
-                <thead className="bg-surface-canvas text-xs uppercase tracking-wide text-text-soft">
-                  <tr>
-                    <th className="px-4 py-2 text-left font-medium">Bin</th>
-                    <th className="px-4 py-2 text-left font-medium">SKU</th>
-                    <th className="px-4 py-2 text-right font-medium">Expected</th>
-                    <th className="px-4 py-2 text-right font-medium">Counted</th>
-                    <th className="px-4 py-2 text-right font-medium">Δ</th>
-                    <th className="px-4 py-2 text-left font-medium">Status</th>
-                    <th className="px-4 py-2 text-right font-medium">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border-hairline">
-                  {lines.map((l) => {
-                    const isPending = l.status === 'pending';
-                    const isReview = l.status === 'pending_review';
-                    const isCounted = l.status === 'counted';
-                    return (
-                      <tr key={l.id}>
-                        <td className="px-4 py-2 font-mono text-xs">{l.bin_name ?? `#${l.bin_id}`}</td>
-                        <td className="px-4 py-2 font-mono text-xs">
-                          <Link href={`/admin/inventory/sku/${encodeURIComponent(l.sku)}`} className="text-blue-600 hover:underline">
-                            {l.sku}
-                          </Link>
-                        </td>
-                        <td className="px-4 py-2 text-right tabular-nums">{l.expected_qty}</td>
-                        <td className="px-4 py-2 text-right tabular-nums">
-                          {isPending && isOpen ? (
-                            <form action={submitCountAction} className="flex items-center justify-end gap-2">
-                              <input type="hidden" name="campaignId" value={campaign.id} />
-                              <input type="hidden" name="lineId" value={l.id} />
-                              <input
-                                type="number"
-                                name="countedQty"
-                                min="0"
-                                step="1"
-                                placeholder="qty"
-                                className="w-20 rounded border border-border-default px-2 py-1 text-right font-mono text-xs"
-                              />
-                              <Button type="submit" variant="primary" size="sm">
-                                Submit
-                              </Button>
-                            </form>
-                          ) : (
-                            l.counted_qty ?? '—'
-                          )}
-                        </td>
-                        <td className={`px-4 py-2 text-right tabular-nums ${
-                          l.variance == null || l.variance === 0
-                            ? 'text-text-faint'
-                            : Math.abs(l.variance) > l.expected_qty * Number(campaign.variance_tol)
-                              ? 'font-semibold text-red-700'
-                              : 'text-amber-700'
-                        }`}>
-                          {l.variance == null ? '—' : (l.variance > 0 ? '+' : '') + l.variance}
-                        </td>
-                        <td className="px-4 py-2">
-                          <span className={`inline-flex rounded-full px-2 py-0.5 text-role-micro font-medium ${
-                            l.status === 'pending' ? 'bg-surface-sunken text-text-muted' :
-                            l.status === 'counted' ? 'bg-blue-100 text-blue-700' :
-                            l.status === 'pending_review' ? 'bg-amber-100 text-amber-800' :
-                            l.status === 'approved' ? 'bg-green-100 text-green-700' :
-                            'bg-red-100 text-red-700'
-                          }`}>
-                            {l.status}
-                          </span>
-                        </td>
-                        <td className="px-4 py-2 text-right">
-                          {(isReview || isCounted) && isOpen ? (
-                            <div className="flex items-center justify-end gap-1">
-                              <form action={approveAction}>
-                                <input type="hidden" name="campaignId" value={campaign.id} />
-                                <input type="hidden" name="lineId" value={l.id} />
-                                {/* ds-raw-button: solid-green approve CTA — no DS Button variant maps to green */}
-                                <button type="submit" className="rounded bg-green-600 px-2.5 py-1 text-role-caption font-medium text-white hover:bg-green-700">
-                                  Approve
-                                </button>
-                              </form>
-                              <form action={rejectAction}>
-                                <input type="hidden" name="campaignId" value={campaign.id} />
-                                <input type="hidden" name="lineId" value={l.id} />
-                                <Button type="submit" variant="secondary" size="sm">
-                                  Reject
-                                </Button>
-                              </form>
-                            </div>
-                          ) : (
-                            <span className="text-role-caption text-text-soft">
-                              {l.approved_by_name ? `by ${l.approved_by_name}` :
-                                l.counted_by_name ? `counted by ${l.counted_by_name}` : '—'}
-                            </span>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
+          <DataTable
+            columns={lineColumns}
+            rows={lines}
+            rowKey={(l) => l.id}
+            isSearching={filter !== 'all'}
+            searchEmptyMessage="No lines in this view."
+            emptyMessage="No lines in this campaign yet."
+          />
         </section>
 
         <footer className="text-xs text-text-soft">

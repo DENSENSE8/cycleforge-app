@@ -43,6 +43,10 @@ const CLIENT_PUBLIC_PATHS: ReadonlyArray<RegExp> = [
   /^\/gs1\/resolve(?:$|\/)/,
   /^\/01\/[0-9]+(?:$|\/)/,
   /^\/414\/[0-9]+\/254\/[A-Za-z0-9]+(?:$|\/)/,
+  // Platform carton Digital Link — must match proxy.ts PUBLIC_PATHS.
+  /^\/m\/r\/\d+(?:$|\/)/,
+  // Generic anon QR landing — must match proxy.ts PUBLIC_PATHS.
+  /^\/qr(?:$|\/)/,
 ];
 
 export function isClientPublicPath(pathname: string | null): boolean {

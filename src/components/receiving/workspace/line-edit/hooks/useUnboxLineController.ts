@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/lib/toast';
 import { receivingPhotosQueryKey } from '@/lib/queries/receiving-queries';
 import {
@@ -390,6 +391,7 @@ export function useUnboxLineController(
     [ticketDigits, row.sku, core.poNumber, cartonLabel.derivedPlatform],
   );
 
+  const { user: authUser } = useAuth();
   const unitInput = useMemo(() => {
     const skuTrim = (row.sku || '').trim();
     if (!skuTrim) return null;
@@ -397,9 +399,10 @@ export function useUnboxLineController(
       sku: skuTrim,
       title: row.item_name ?? undefined,
       serialNumber: serialInput.trim() || undefined,
+      orgSlug: authUser?.organizationSlug ?? null,
       condition: labelConditionCode,
     };
-  }, [row.sku, row.item_name, serialInput, labelConditionCode]);
+  }, [row.sku, row.item_name, serialInput, labelConditionCode, authUser?.organizationSlug]);
 
   const labelCtx: WorkspaceLabelContext = useMemo(
     () => ({
@@ -540,12 +543,13 @@ export function useUnboxLineController(
         sku: skuTrim,
         title: draft.title,
         serialNumber: serialInput.trim() || undefined,
+        orgSlug: authUser?.organizationSlug ?? null,
         condition: draft.condition,
         color: draft.color,
       });
       markLabelPrinted();
     },
-    [row.sku, labelConditionCode, serialInput, core.patch, markLabelPrinted],
+    [row.sku, labelConditionCode, serialInput, core.patch, markLabelPrinted, authUser?.organizationSlug],
   );
 
   // Back-compat aliases for callers still using the old carton field names.

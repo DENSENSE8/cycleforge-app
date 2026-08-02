@@ -119,15 +119,17 @@ The bar is dumb; classification is a pure layer.
 ## 5. Single active-entity rule
 
 - **One card. The new scan's card replaces the previous one.**
-  **Scoped exception (2026-08-01) — the Unbox guided procedure.** *Within one
-  carton session* the step stack accumulates completed step rows above the one
-  active step card: the operator is working a single entity through an ordered
-  procedure, and the collapsed rows are that entity's own evidence trail, not a
-  browse list of other entities. A new **carton** still replaces the whole stack
-  (`UnboxProcedureStack` remounts on carton change), so the rule holds where it
-  means something — one transient entity at a time. The exception buys nothing
-  elsewhere: it does not license a scan bench to keep a list of previous scans,
-  which is the browse-list-in-a-station anti-pattern §1 bans.
+  **Scoped exception (2026-08-01, re-shaped 2026-08-02) — the Unbox guided
+  procedure.** *Within one carton session* the procedure renders as a vertical
+  **snap column**: one expanded step section plus a compact, dimmed face per
+  other step. Those faces are the SAME entity's ordered steps — that carton's own
+  evidence trail — not a browse list of other entities, so the "one transient
+  entity" contract holds. A new **carton** still replaces the whole column
+  (`UnboxProcedureColumn` remounts on carton change, and the focus store is
+  carton-keyed so a pointer cannot leak across a scan).
+  The exception buys nothing elsewhere: it does not license a scan bench to keep
+  a list of previous scans, which is the browse-list-in-a-station anti-pattern §1
+  bans. Recipe + geometry: [`station-workbench.md`](station-workbench.md).
   `StationPacking` and `ActiveOrderScanFeedback` render
   the active entity inside `AnimatePresence mode="wait"` keyed on the entity id (`activeOrder.tracking`,
   `activeFba.fnsku`). *Rationale: `mode="wait"` exits the old card before mounting the new one — there are never two
@@ -275,6 +277,12 @@ The phone station is **not a distinct archetype** — it is this same Station we
   gated scan (§8).
 - **Don't invent hex or hardcode `z-[NNN]`.** Color from `src/design-system/tokens/colors/semantic.ts`, z-index from the
   named scale, status tones from `workflowStageDot`.
+- **Don't ship a hybrid Station+Workbench page without a return-to-scan CTA.** When the page hosts a workbench strip
+  (Recent / Queue / History / …) beside a scan dock, chrome **must** expose a solid primary in
+  `WorkbenchTrailingCluster.actions` (top-right of the context bar, **above KPIs**) on every strip tab that closes the
+  focus overlay, lands the bench data table, and re-focuses the station scan bar. Unbox is the reference
+  (`UnboxWorkspaceHeader`); Testing / Pack / Shipping compose the same altitude. Detail:
+  [`workbench.md`](workbench.md) → Multi-region pages.
 
 ---
 
@@ -285,6 +293,7 @@ The phone station is **not a distinct archetype** — it is this same Station we
 | Driven by | a scanner / keyboard-wedge / camera |
 | Primary input | focus-locked `StationScanBar`, global hotkey target |
 | Selection | ephemeral, one at a time, **never** in the URL |
+| Hybrid exit | return-to-scan CTA in `WorkbenchTrailingCluster.actions` (every strip tab, above KPIs) |
 | What crossfades | the **active card** (`framerPresence.stationCard`, `mode="wait"`) |
 | Confirm model | scan-to-confirm (`PackChecklist`), optimistic + `clientEventId` idempotency |
 | Feedback | big card pass/fail (emerald Active vs amber No order vs rose fail) + audio/haptic; never toast/`alert()` |

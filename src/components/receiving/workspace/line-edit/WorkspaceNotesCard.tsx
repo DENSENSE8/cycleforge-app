@@ -17,7 +17,7 @@
  * It hydrates from the row and saves on blur / Send. With the overview Receive
  * CTA mounted, Enter saves then fires print+receive.
  *
- * Built on {@link StationComposerDock}. The full view / reload / overwrite of
+ * Built on {@link OmnichannelComposerDock}. The full view / reload / overwrite of
  * the synced PO note lives in the standalone "PO note" display tab
  * ({@link LinePoNoteCard}).
  */
@@ -26,7 +26,7 @@ import type { ReactNode } from 'react';
 import type { ReceivingStepKey } from '../ReceivingProgressStepper';
 import { LineNotesCard } from './LineNotesCard';
 import { useSyncedPoNote } from './hooks/useSyncedPoNote';
-import { type ReceivingLineRow } from '@/components/station/ReceivingLinesTable';
+import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import type { InlineActionFeedbackPayload } from '../InlineActionFeedbackCard';
 import type { UnboxLineController } from './unbox-line-controller';
 
@@ -35,7 +35,7 @@ interface WorkspaceNotesCardProps {
   c: UnboxLineController;
   onActionFeedback: (feedback: InlineActionFeedbackPayload | null) => void;
   activeStep?: ReceivingStepKey | null;
-  /** Pass-through to StationComposerDock mount motion. */
+  /** Pass-through to OmnichannelComposerDock mount motion. */
   animateMount?: boolean;
   /** Terminal CTA for the composer's trailing edge (Unbox overview receive). */
   trailingAction?: ReactNode;

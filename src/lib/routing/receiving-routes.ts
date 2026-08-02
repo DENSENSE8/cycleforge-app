@@ -236,6 +236,35 @@ export const HISTORY_ROUTE_PARAMS = defineRouteParams({
 });
 
 /**
+ * `/carton/[id]` — the durable READ record for one carton.
+ *
+ * Not a mode of the six surfaces above: it has no sidebar entry, no scan bar and
+ * no queue, so it owns a vocabulary of its own. The registry matches by prefix
+ * (`routeParamsFor` accepts `/carton/50354` for a `/carton` spec), so declaring
+ * it here is what lets the read record's URL survive the boundary parse rather
+ * than being dropped as an unknown key.
+ *
+ * `carries` is deliberately empty. Every other receiving route carries the scan
+ * / browse ambient set because an operator moves between them mid-task; a read
+ * record is somewhere you ARRIVE — from search, ⌘K, or a pasted link — so
+ * inheriting a previous surface's selection state would be the leak the whole
+ * registry exists to stop.
+ */
+const CARTON_READ_ROUTE_PARAMS = defineRouteParams({
+  route: '/carton',
+  owns: {
+    /**
+     * Photo triage open. Durable because `/carton/[id]` exists to be shareable —
+     * "look at this box's photos" has to survive a reload and paste into a
+     * ticket. The lane and drill INSIDE the panel stay local: those are a
+     * reading posture, not an address.
+     */
+    photos: paramFlag,
+  },
+  carries: [],
+});
+
+/**
  * Sidebar mode id → the spec for the route that mode lands on. The one mapping;
  * `useReceivingMode` reads its target route from here rather than keeping a
  * second `mode → path` ladder that could drift out of step with the specs.
@@ -261,4 +290,5 @@ export const RECEIVING_ROUTE_PARAMS: readonly RouteParamsSpec[] = [
   PICKUP_ROUTE_PARAMS,
   REPAIR_ROUTE_PARAMS,
   HISTORY_ROUTE_PARAMS,
+  CARTON_READ_ROUTE_PARAMS,
 ];

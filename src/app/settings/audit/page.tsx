@@ -18,6 +18,7 @@ import { requirePermission } from '@/lib/auth/page-guard';
 import pool from '@/lib/db';
 import { PageHeader } from '@/components/ui/pane-header';
 import { Button } from '@/design-system/primitives';
+import { DataTable, type DataTableColumn } from '@/design-system/components/DataTable';
 
 interface AuditRow {
   id: number;
@@ -43,6 +44,58 @@ function fmtTs(d: Date): string {
     hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true,
   });
 }
+
+const AUDIT_COLUMNS: DataTableColumn<AuditRow>[] = [
+  {
+    key: 'when',
+    header: 'When',
+    type: 'date',
+    cell: (row) => (
+      <span className="font-mono text-role-caption text-text-muted">{fmtTs(row.created_at)}</span>
+    ),
+  },
+  {
+    key: 'actor',
+    header: 'Actor',
+    type: 'text',
+    cell: (row) => (
+      <>
+        <div className="font-medium">{row.actor_name ?? `#${row.actor_staff_id ?? '—'}`}</div>
+        {row.actor_role && <div className="text-role-micro text-text-soft">{row.actor_role}</div>}
+      </>
+    ),
+  },
+  {
+    key: 'source_action',
+    header: 'Source · Action',
+    type: 'text',
+    cell: (row) => (
+      <>
+        <div className="font-medium">{row.action}</div>
+        <div className="text-role-micro text-text-soft">{row.source}</div>
+      </>
+    ),
+  },
+  {
+    key: 'entity',
+    header: 'Entity',
+    type: 'text',
+    cell: (row) => (
+      <>
+        <div className="font-medium">{row.entity_type}</div>
+        <div className="font-mono text-role-caption text-text-soft">{row.entity_id}</div>
+      </>
+    ),
+  },
+  {
+    key: 'ip',
+    header: 'IP',
+    type: 'text',
+    cell: (row) => (
+      <span className="font-mono text-role-caption text-text-soft">{row.ip_address ?? '—'}</span>
+    ),
+  },
+];
 
 interface PageProps {
   searchParams: Promise<{ source?: string; action?: string; cursor?: string }>;
@@ -80,6 +133,7 @@ export default async function AuditPage({ searchParams }: PageProps) {
   const rows = r.rows.slice(0, PAGE_SIZE);
   const hasMore = r.rows.length > PAGE_SIZE;
   const nextCursor = hasMore ? rows[rows.length - 1]?.id : null;
+  const isSearching = Boolean(source || action);
 
   return (
     <div className="min-h-screen bg-surface-canvas antialiased">
@@ -114,41 +168,14 @@ export default async function AuditPage({ searchParams }: PageProps) {
           )}
         </form>
 
-        <div className="overflow-hidden rounded-2xl border border-border-soft bg-surface-card shadow-sm">
-          <table className="min-w-full divide-y divide-border-hairline text-role-caption">
-            <thead className="bg-surface-canvas text-left text-role-caption font-medium uppercase tracking-[0.08em] text-text-soft">
-              <tr>
-                <th className="px-3 py-2">When</th>
-                <th className="px-3 py-2">Actor</th>
-                <th className="px-3 py-2">Source · Action</th>
-                <th className="px-3 py-2">Entity</th>
-                <th className="px-3 py-2">IP</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border-hairline">
-              {rows.length === 0 ? (
-                <tr><td colSpan={5} className="px-3 py-6 text-center text-text-faint">No audit entries match.</td></tr>
-              ) : rows.map((row) => (
-                <tr key={row.id} className="text-text-default">
-                  <td className="px-3 py-2 align-top font-mono text-role-caption text-text-muted">{fmtTs(row.created_at)}</td>
-                  <td className="px-3 py-2 align-top">
-                    <div className="font-medium">{row.actor_name ?? `#${row.actor_staff_id ?? '—'}`}</div>
-                    {row.actor_role && <div className="text-role-micro text-text-soft">{row.actor_role}</div>}
-                  </td>
-                  <td className="px-3 py-2 align-top">
-                    <div className="font-medium">{row.action}</div>
-                    <div className="text-role-micro text-text-soft">{row.source}</div>
-                  </td>
-                  <td className="px-3 py-2 align-top">
-                    <div className="font-medium">{row.entity_type}</div>
-                    <div className="font-mono text-role-caption text-text-soft">{row.entity_id}</div>
-                  </td>
-                  <td className="px-3 py-2 align-top font-mono text-role-caption text-text-soft">{row.ip_address ?? '—'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <DataTable
+          columns={AUDIT_COLUMNS}
+          rows={rows}
+          rowKey={(row) => row.id}
+          emptyMessage="No audit entries yet."
+          searchEmptyMessage="No audit entries match."
+          isSearching={isSearching}
+        />
 
         {nextCursor && (
           <div className="text-right">

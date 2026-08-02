@@ -15,9 +15,10 @@ import Link from 'next/link';
 import { requirePermission } from '@/lib/auth/page-guard';
 import { PageHeader } from '@/components/ui/pane-header';
 import { resolveOrgAiConfig, type OrgAiConfig } from '@/lib/ai/org-provider';
-import { getAiUsageMarginPercent, summarizeAiUsage } from '@/lib/ai/usage';
+import { getAiUsageMarginPercent, summarizeAiUsage, type AiUsageSummaryRow } from '@/lib/ai/usage';
 import { applyMarginMicrocents, microcentsToUsd } from '@/lib/ai/model-pricing';
 import type { OrgId } from '@/lib/tenancy/constants';
+import { DataTable, type DataTableColumn } from '@/design-system/components/DataTable';
 
 export const dynamic = 'force-dynamic';
 
@@ -32,6 +33,56 @@ const SOURCE_LABELS: Record<string, string> = {
 function sourceLabel(source: string): string {
   return SOURCE_LABELS[source] ?? source;
 }
+
+function contextLabel(context: string): string {
+  if (context === 'ask_ai') return 'Ask AI';
+  if (context === 'query_embed') return 'Search queries';
+  return 'Index embedding';
+}
+
+const USAGE_COLUMNS: DataTableColumn<AiUsageSummaryRow>[] = [
+  {
+    key: 'use',
+    header: 'Use',
+    type: 'text',
+    cell: (row) => <span className="font-semibold">{contextLabel(row.context)}</span>,
+  },
+  {
+    key: 'provider',
+    header: 'Provider',
+    type: 'text',
+    cell: (row) => sourceLabel(row.provider),
+  },
+  {
+    key: 'model',
+    header: 'Model',
+    type: 'id',
+    cell: (row) => <span className="font-mono text-role-micro">{row.model}</span>,
+  },
+  {
+    key: 'calls',
+    header: 'Calls',
+    type: 'number',
+    cell: (row) => row.calls.toLocaleString(),
+  },
+  {
+    key: 'tokens',
+    header: 'Tokens in / out',
+    type: 'number',
+    cell: (row) => `${row.inputTokens.toLocaleString()} / ${row.outputTokens.toLocaleString()}`,
+  },
+  {
+    key: 'cost',
+    header: 'Est. cost',
+    type: 'number',
+    cell: (row) => (
+      <span className="font-semibold">
+        {microcentsToUsd(row.costMicrocents)}
+        {row.unknownRateCalls > 0 ? ' *' : ''}
+      </span>
+    ),
+  },
+];
 
 function ProviderCard({ title, config, note }: { title: string; config: OrgAiConfig | null; note?: string }) {
   return (
@@ -140,49 +191,16 @@ export default async function AiSettingsPage() {
             </div>
           </div>
 
-          {summary.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-6 text-center text-role-caption font-medium text-text-soft">
-              No AI usage recorded in this window yet — usage appears here as staff search.
-            </div>
-          ) : (
-            <div className="overflow-x-auto rounded-xl border border-border-soft bg-surface-card">
-              <table className="w-full text-left text-role-caption">
-                <thead>
-                  <tr className="border-b border-border-hairline text-role-micro uppercase tracking-widest text-text-soft">
-                    <th className="px-4 py-2">Use</th>
-                    <th className="px-4 py-2">Provider</th>
-                    <th className="px-4 py-2">Model</th>
-                    <th className="px-4 py-2 text-right">Calls</th>
-                    <th className="px-4 py-2 text-right">Tokens in / out</th>
-                    <th className="px-4 py-2 text-right">Est. cost</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border-hairline">
-                  {summary.map((row) => (
-                    <tr key={`${row.context}:${row.provider}:${row.model}`} className="text-text-muted">
-                      <td className="px-4 py-2 font-semibold">
-                        {row.context === 'ask_ai'
-                          ? 'Ask AI'
-                          : row.context === 'query_embed'
-                            ? 'Search queries'
-                            : 'Index embedding'}
-                      </td>
-                      <td className="px-4 py-2">{sourceLabel(row.provider)}</td>
-                      <td className="px-4 py-2 font-mono text-role-micro">{row.model}</td>
-                      <td className="px-4 py-2 text-right">{row.calls.toLocaleString()}</td>
-                      <td className="px-4 py-2 text-right">
-                        {row.inputTokens.toLocaleString()} / {row.outputTokens.toLocaleString()}
-                      </td>
-                      <td className="px-4 py-2 text-right font-semibold">
-                        {microcentsToUsd(row.costMicrocents)}
-                        {row.unknownRateCalls > 0 ? ' *' : ''}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+          <DataTable
+            columns={USAGE_COLUMNS}
+            rows={summary}
+            rowKey={(row) => `${row.context}:${row.provider}:${row.model}`}
+            empty={
+              <div className="px-4 py-6 text-center text-role-caption font-medium text-text-soft">
+                No AI usage recorded in this window yet — usage appears here as staff search.
+              </div>
+            }
+          />
           {unknownRateCalls > 0 && (
             <p className="text-role-caption font-medium text-text-soft">
               * {unknownRateCalls.toLocaleString()} call(s) used a model without a published rate —

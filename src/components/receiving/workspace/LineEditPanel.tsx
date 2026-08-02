@@ -58,7 +58,8 @@ import {
   type UnboxToolPushId,
 } from './ReceivingToolPushStack';
 import { cn } from '@/utils/_cn';
-import { dispatchLineUpdated, type ReceivingLineRow } from '@/components/station/ReceivingLinesTable';
+import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import { dispatchLineUpdated } from '@/components/station/receiving-lines-table-helpers';
 import { useReturnOrderLinkage } from './line-edit/hooks/useReturnOrderLinkage';
 import { isLocalPickupFulfillment } from '@/lib/receiving/fulfillment-mode';
 import { useReceivingPhotoCount } from '@/hooks/useReceivingPhotoCount';
@@ -70,6 +71,8 @@ import {
 import { activeReceivingStepKey } from './ReceivingProgressStepper';
 import {
   StationContextBar,
+  StationMoreDetails,
+  stationMoreDetailsPaneHostClass,
 } from '@/components/station/entity-context';
 import { StationTerminalDock, useStationTerminalAction } from '@/components/station/terminal';
 import {
@@ -78,13 +81,15 @@ import {
   PairingTogglePill,
   STATION_WORKBENCH_COLUMN,
 } from '@/components/station/workbench';
-import { Layers } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { IconButton, slicedActionDockWrapperClass } from '@/design-system/primitives';
+import { GoalRing } from '@/components/layout/goal-chip/GoalRing';
+import { toneFor } from '@/components/layout/goal-chip/goal-chip-shared';
 import { usePoNoteTabState } from './line-edit/terminal/usePoNoteTabState';
 import { resolveUnboxTerminal } from './line-edit/terminal/unbox-terminal';
 import { buildUnboxOverview, buildUnboxSideTabs } from './line-edit/terminal/unbox-tabs';
 import { WorkspaceNotesCard } from './line-edit/WorkspaceNotesCard';
+import { useUnboxProcedureSteps } from './line-edit/useUnboxProcedureSteps';
 import {
   resolveUnboxSideTab,
   type UnboxSideTab,
@@ -130,6 +135,8 @@ export function LineEditPanel({
     [setClaimView],
   );
   const c = useUnboxLineController(row, staffId, { itemTotal, onOpenClaim });
+  // Same procedure derivation as Checklist / centre cards — ring % cannot drift.
+  const { steps: procedureSteps } = useUnboxProcedureSteps(row);
   const [actionFeedback, setActionFeedback] = useState<InlineActionFeedbackPayload | null>(null);
   // Shared PO-note save (overwrite + push to inventory) — used by the notes
   // composer's push button and the standalone inventory-notes tab dock.
@@ -531,12 +538,24 @@ export function LineEditPanel({
 
   const showTicketExpand =
     !showClaimStack && !showTicketStack && !showToolPush && !showDisplays && ticketId != null;
-  // The parked strip carries the Displays toggle whenever no push column owns
-  // the edge, plus the linked-ticket restore beneath it.
-  const showExpandStrip =
-    !showClaimStack && !showTicketStack && !showToolPush && !showDisplays;
+  // Parked strip is ticket-restore only — Displays opens from the pane-anchored
+  // progress ring (StationMoreDetails), which stays put when a push column opens.
+  const showExpandStrip = showTicketExpand;
   const showRightPushChrome =
     showClaimStack || showTicketStack || showToolPush || showDisplays || showExpandStrip;
+
+  const procedureDone = procedureSteps.filter((s) => s.state === 'done').length;
+  const procedureTotal = procedureSteps.length;
+  const procedurePercent =
+    procedureTotal > 0 ? Math.round((procedureDone / procedureTotal) * 100) : 0;
+  const displaysExpandLabel = showDisplays ? 'Hide displays' : 'Show displays';
+  const toggleDisplays = useCallback(() => {
+    if (showDisplays) {
+      closeDisplays();
+      return;
+    }
+    openDisplays(c.isUnfound ? 'classify' : 'listings');
+  }, [showDisplays, closeDisplays, openDisplays, c.isUnfound]);
 
   // TODO(daily-triage F0→F1): mount MyDayRail here pending OQ1
   // (`docs/todo/daily-triage-FRONTEND-PLAN-VALIDATION.md`). Unbox has no free
@@ -591,6 +610,29 @@ export function LineEditPanel({
           showRightPushChrome && TICKET_PUSH_HOST_PAD_CLASS,
         )}
       >
+        {/* Pane-anchored — sibling of Unbox + push so Ticket/Displays do not slide it. */}
+        <div className={stationMoreDetailsPaneHostClass} data-testid="station-more-details-slot">
+          <StationMoreDetails>
+            <HoverTooltip label={displaysExpandLabel} asChild>
+              <IconButton
+                size="sm"
+                tone="neutral"
+                ariaLabel={displaysExpandLabel}
+                aria-expanded={showDisplays}
+                icon={
+                  <GoalRing
+                    percent={procedurePercent}
+                    color={toneFor(procedurePercent, procedureDone).ring}
+                    size={16}
+                    strokeWidth={2}
+                  />
+                }
+                onClick={toggleDisplays}
+                data-testid="unbox-displays-expand-button"
+              />
+            </HoverTooltip>
+          </StationMoreDetails>
+        </div>
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           <StationPanelRoot>
             <div className="relative flex min-h-0 flex-1 flex-col overflow-visible">
@@ -737,24 +779,9 @@ export function LineEditPanel({
             onClose={closeDisplays}
           />
         ) : showExpandStrip ? (
-          // Nothing owns the edge — park the same expand strip the receiving
-          // recent-rail collapse uses (`CONTEXT_PANEL_COLLAPSE_STRIP_CLASS`).
-          // Displays first (it is the general secondary surface); a linked but
-          // closed ticket restores beneath it.
+          // Ticket restore only — Displays toggles from the pane progress ring.
           <ReceivingPushExpandStrip>
-            <HoverTooltip label="Show displays" asChild>
-              <IconButton
-                size="sm"
-                tone="neutral"
-                ariaLabel="Show displays"
-                icon={<Layers className="h-4 w-4" />}
-                onClick={() => openDisplays(c.isUnfound ? 'classify' : 'listings')}
-                data-testid="unbox-displays-expand-button"
-              />
-            </HoverTooltip>
-            {showTicketExpand ? (
-              <ReceivingTicketExpandControl onExpand={() => setTicketView(true)} />
-            ) : null}
+            <ReceivingTicketExpandControl onExpand={() => setTicketView(true)} />
           </ReceivingPushExpandStrip>
         ) : null}
       </div>

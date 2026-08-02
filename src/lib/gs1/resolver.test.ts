@@ -13,11 +13,9 @@ import {
   resolveGs1,
   resolveInternal,
   resolvePublic,
-  PUBLIC_LANDING_URL,
+  PUBLIC_QR_FALLBACK_PATH,
   type LookupDeps,
 } from './resolver';
-
-const STORE = PUBLIC_LANDING_URL;
 
 function deps(overrides: Partial<LookupDeps> = {}): LookupDeps {
   return {
@@ -28,7 +26,7 @@ function deps(overrides: Partial<LookupDeps> = {}): LookupDeps {
   };
 }
 
-test('public branch always lands on the storefront, no DB calls', async () => {
+test('public branch echoes the canonical landing path, no DB calls', async () => {
   let called = false;
   const result = await resolveGs1('/01/0614141000005/21/ABC', {
     isInternal: false,
@@ -40,14 +38,26 @@ test('public branch always lands on the storefront, no DB calls', async () => {
     }),
   });
   strictEqual(result.kind, 'public');
-  strictEqual(result.redirect, STORE);
+  // The canonical page, which renders the TENANT's interstitial — never a
+  // hardcoded storefront, which on a multi-tenant platform would show one
+  // workspace's customer another workspace's shop.
+  strictEqual(result.redirect, '/01/0614141000005/21/ABC');
   strictEqual(called, false);
+});
+
+test('public branch never mints an absolute foreign host', async () => {
+  for (const raw of ['/01/0614141000005', '/414/0614141000005/254/C0101101', 'not a url']) {
+    const result = await resolveGs1(raw, { isInternal: false });
+    strictEqual(result.kind, 'public');
+    ok(result.redirect.startsWith('/'), `${raw} should stay relative, got ${result.redirect}`);
+    ok(!/usavshop/.test(result.redirect));
+  }
 });
 
 test('public branch tolerates unparseable input', async () => {
   const result = await resolveGs1('not a url', { isInternal: false });
   strictEqual(result.kind, 'public');
-  strictEqual(result.redirect, STORE);
+  strictEqual(result.redirect, PUBLIC_QR_FALLBACK_PATH);
 });
 
 test('internal branch resolves a location code to /inventory?bin=...', async () => {
@@ -131,7 +141,7 @@ test('resolvePublic is pure — never throws', () => {
     aiMap: {},
   });
   strictEqual(result.kind, 'public');
-  ok(result.redirect.startsWith('http'));
+  strictEqual(result.redirect, PUBLIC_QR_FALLBACK_PATH);
 });
 
 test('SKU is URL-encoded so a slash in the SKU does not break the redirect', async () => {

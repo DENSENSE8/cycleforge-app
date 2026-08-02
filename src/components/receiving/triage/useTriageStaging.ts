@@ -9,7 +9,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/lib/toast';
-import { dispatchLineUpdated } from '@/components/station/ReceivingLinesTable';
+import { dispatchLineUpdated } from '@/components/station/receiving-lines-table-helpers';
 import { invalidateReceivingFeeds } from '@/lib/queries/receiving-queries';
 import { resolveTriageLane } from '@/lib/receiving/triage-lane-policy';
 import { isReturnIntake } from '@/lib/receiving/triage-intake-kind';

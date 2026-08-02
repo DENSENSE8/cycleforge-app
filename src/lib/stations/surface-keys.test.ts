@@ -11,9 +11,11 @@ import assert from 'node:assert/strict';
 import {
   SURFACE_KEYS,
   SURFACE_REGISTRY,
+  WORKBENCH_BRANCH_IDS,
   getSurface,
   listSurfaces,
   isSurfaceKey,
+  isWorkbenchBranchId,
   surfaceForRoute,
 } from './surface-keys';
 import { ARCHETYPE_IDS, pickArchetype, isArchetypeId } from './archetype';
@@ -34,6 +36,18 @@ test('registry: every SURFACE_KEY has a structurally complete entry', () => {
     assert.ok(def.pageKey.length > 0, `${key}: pageKey required (Option A: station_definitions.page_key)`);
     assert.ok(def.modeKey.length > 0, `${key}: modeKey required`);
     assert.ok(def.scan === null || def.scan === 'unbox' || def.scan === 'triage', `${key}: scan policy`);
+    if (def.archetype === 'workbench') {
+      assert.ok(
+        isWorkbenchBranchId(def.workbenchBranch),
+        `${key}: Workbench surfaces must declare a workbenchBranch`,
+      );
+    } else {
+      assert.equal(
+        def.workbenchBranch,
+        null,
+        `${key}: non-Workbench surfaces must keep workbenchBranch null`,
+      );
+    }
   }
 });
 
@@ -128,6 +142,7 @@ test('registry archetypes agree with the surface intent', () => {
 
 test('support: archetype is workbench (service-workspace branch), never station', () => {
   assert.equal(getSurface('support').archetype, 'workbench');
+  assert.equal(getSurface('support').workbenchBranch, 'service-workspace');
 });
 
 test('support: a Workbench surface declares no scan policy', () => {
@@ -144,6 +159,15 @@ test('a Workbench BRANCH is a composition, not a fifth archetype', () => {
   // ARCHETYPE_IDS is closed forever: four contracts, no per-domain slope.
   assert.equal(ARCHETYPE_IDS.length, 4);
   assert.deepEqual([...ARCHETYPE_IDS], ['station', 'workbench', 'monitor', 'canvas']);
+  assert.ok(WORKBENCH_BRANCH_IDS.includes('service-workspace'));
+  assert.ok(WORKBENCH_BRANCH_IDS.includes('ops-queue'));
+  assert.ok(!ARCHETYPE_IDS.includes('service-workspace' as (typeof ARCHETYPE_IDS)[number]));
+});
+
+test('incoming / pickup / repair declare ops-queue Workbench branch', () => {
+  assert.equal(getSurface('incoming').workbenchBranch, 'ops-queue');
+  assert.equal(getSurface('pickup').workbenchBranch, 'ops-queue');
+  assert.equal(getSurface('repair').workbenchBranch, 'ops-queue');
 });
 
 // ─── decideSurfaceRender (resolver decision core) ────────────────────────────

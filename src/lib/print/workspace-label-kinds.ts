@@ -21,7 +21,12 @@ import {
   receivingPayloadToFace,
   type ReceivingLabelPayload,
 } from '@/lib/print/printReceivingLabel';
-import { unitLabelToFace, printProductLabel, type PrintProductLabelInput } from '@/lib/print/printProductLabel';
+import {
+  buildUnitPayload,
+  unitLabelToFace,
+  printProductLabel,
+  type PrintProductLabelInput,
+} from '@/lib/print/printProductLabel';
 import { printHandlingUnitLabel, type HandlingUnitLabelPayload } from '@/lib/print/printHandlingUnitLabel';
 
 export type WorkspaceLabelKind =
@@ -179,9 +184,17 @@ export function workspaceLabelToFace(
     case 'unit': {
       const input = ctx.unitInput;
       if (!input?.sku?.trim()) return null;
+      // Preview ≡ print: this used to inline `qrPayload || serial || sku`, so
+      // the workspace showed a bare serial while the printer encoded a Digital
+      // Link. Both now resolve through the same encode SoT.
       const matrix = {
-        value: input.qrPayload?.trim() || input.serialNumber?.trim() || input.sku.trim(),
-        symbology: 'datamatrix' as const,
+        ...buildUnitPayload({
+          sku: input.sku.trim(),
+          serialNumber: input.serialNumber?.trim() || null,
+          qrPayload: input.qrPayload?.trim() || null,
+          gtin: input.gtin?.trim() || null,
+          orgSlug: input.orgSlug,
+        }),
         scale: 4,
       };
       return unitLabelToFace({

@@ -60,7 +60,14 @@ interface PhotoRow {
   receivingId: number | null;
   receivingLineId: number | null;
   photoUrl: string;
+  /**
+   * Legacy alias of {@link PhotoRow.photoType} — kept because five readers parse
+   * it AS the stage, including the server-side receive gate. See the field docs
+   * on `ReceivingPhotoListRow`. New readers take `photoType`.
+   */
   caption: string | null;
+  /** `photos.photo_type` under its real name — the stage half of stage × aspect. */
+  photoType: string | null;
   uploadedBy: number | null;
   createdAt: string;
   /** Shutter clock (`photos.client_captured_at`), beside the server-INSERT time. */
@@ -71,6 +78,10 @@ interface PhotoRow {
    * and never a reason to treat the photo as missing.
    */
   photoAspect: string | null;
+  /** Carries a secondary `claim_evidence` link (a filed Zendesk claim). */
+  hasClaimEvidence: boolean;
+  /** Carries a secondary `insurance_share` link (carrier / external share pack). */
+  hasInsuranceShare: boolean;
 }
 
 function mapRow(row: {
@@ -80,10 +91,13 @@ function mapRow(row: {
   receivingIdResolved: number | null;
   url: string;
   caption: string | null;
+  photoType: string | null;
   uploadedBy: number | null;
   createdAt: string;
   clientCapturedAt: string | null;
   photoAspect: string | null;
+  hasClaimEvidence: boolean;
+  hasInsuranceShare: boolean;
 }): PhotoRow {
   const isLine = row.entityType === 'RECEIVING_LINE';
   return {
@@ -92,10 +106,13 @@ function mapRow(row: {
     receivingLineId: isLine ? row.entityId : null,
     photoUrl: row.url,
     caption: row.caption || null,
+    photoType: row.photoType || null,
     uploadedBy: row.uploadedBy,
     createdAt: row.createdAt,
     clientCapturedAt: row.clientCapturedAt ?? null,
     photoAspect: row.photoAspect ?? null,
+    hasClaimEvidence: row.hasClaimEvidence,
+    hasInsuranceShare: row.hasInsuranceShare,
   };
 }
 
@@ -342,7 +359,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     // If this carton/line is under a claim, also link the photo to that claim
     // (best-effort) so a photo taken AFTER the claim was filed still lands under
     // the claim umbrella — not the PO only.
-    await linkReceivingPhotoToClaim({
+    const claimTicketId = await linkReceivingPhotoToClaim({
       organizationId: ctx.organizationId,
       photoId: attached.id,
       entityType,
@@ -355,12 +372,19 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       receivingLineId,
       photoUrl: attached.url,
       caption,
+      photoType,
       uploadedBy,
       createdAt: new Date().toISOString(),
       // Upload response has no client shutter clock until the client posts one —
       // null here matches the GET mapper's "unknown" sentinel.
       clientCapturedAt: null,
       photoAspect,
+      // The dual-link above is the only claim link this path can create, so its
+      // result IS the answer — never a hardcoded false the client has to refetch
+      // to correct.
+      hasClaimEvidence: claimTicketId != null,
+      // Nothing on the upload path writes a share-pack link.
+      hasInsuranceShare: false,
     };
     await publishReceivingPhotoChanged({
       organizationId: ctx.organizationId as OrgId,

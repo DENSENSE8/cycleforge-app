@@ -24,7 +24,7 @@ import {
  *   3. tabs          — SectionTabsSlider (bar + mounted panels) OR plain body
  *   4. children      — extra scroll-body content (triage card stack, siblings)
  *   5. feedback      — inline action / receive feedback bands
- *   6. dock          — StationComposerDock (optional) + StationTerminalDock
+ *   6. dock          — OmnichannelComposerDock (optional) + StationTerminalDock
  *
  * Station chrome (corner utilities · identity column synced to workbench
  * body via {@link STATION_WORKBENCH_IDENTITY_COLUMN}) lives in

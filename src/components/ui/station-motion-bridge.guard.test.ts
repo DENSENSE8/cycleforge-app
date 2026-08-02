@@ -24,6 +24,11 @@ const REQUIRED_BOTH = [
   // entrance motion, so the bridge must be inherited by consumers rather than
   // re-derived per station (capture-stack Phase 2).
   'src/design-system/components/capture-stack/CaptureStack.tsx',
+  // The capture-upload status card — the one compound every Station bench uses
+  // for upload completion/failure. It owns its own dock entrance, so the
+  // reduced-motion collapse must be inherited by every future consumer rather
+  // than re-derived per bench (station realtime + capture visibility, P0 · D10).
+  'src/components/station/capture-upload/CaptureUploadStatus.tsx',
 ] as const;
 
 /** Transition-only surfaces (progress bars, width anims). */

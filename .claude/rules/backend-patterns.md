@@ -3,6 +3,38 @@
 Conventions that recur across the inventory/workflow/tech modules and their API routes. Reuse them; they encode
 atomicity, tenant-safety, and audit guarantees that are easy to break by hand.
 
+## Expand → code → contract (the migration lands FIRST)
+
+**One line: the migration lands first (expand), the code that reads it second, the cleanup
+third.** A nullable `ADD COLUMN` is always safe to land ahead of its readers; the reverse never
+is, because between the two deploys every query naming that column throws.
+
+Twice on 2026-08-01 code shipped ahead of its column, and nothing caught either:
+
+| Column | Route | Symptom |
+|---|---|---|
+| `receiving_line_testing.condition_graded_at` (`2026-08-01c`) | `/api/receiving-lines` | loud 500 |
+| `staff.avatar_photo_id` (`2026-08-01e`) | `/api/auth/staff-picker` | **silent empty — sign-in down** |
+
+`npm run verify` was green on schema-drift the whole time: that guard compares the Drizzle model
+against the DB, not "does the SQL in this repo name a column that exists".
+
+- **Gate:** `src/lib/migrations/column-reference.guard.test.ts` — resolves every qualified
+  `alias.column` and every bare column in a single-table `SELECT` against the union of
+  `src/lib/migrations/*.sql` + `drizzle/schema.ts`. Precision over recall by design (it stays
+  quiet where its own DDL parse is unreliable); both allowlists are frozen and shrink-only.
+- **Slot discipline:** one `YYYY-MM-DD<letter>` per migration.
+  `src/lib/migrations/migration-slot-uniqueness.guard.test.ts` holds the line. Two files in one
+  slot are ordered by their *description*, which is alphabetical and therefore arbitrary — that
+  is how `2026-07-29f`'s `_contract` half came to sort **before** its `_expand` half, inverting
+  the very sequence the pair was split to guarantee. Applied filenames are immutable (the ledger
+  is keyed `(filename, sha256)`), so rename the **unapplied** file.
+- **Applying another lane's migration is ask-first.** The runner is all-or-nothing by default;
+  `node scripts/run-pending-migrations.mjs --only <file.sql>` applies exactly one, and refuses
+  when that would skip an earlier pending file.
+- **A CHECK constraint is REDEFINED with the full union, never appended to** — see
+  `polymorphic-tables.md` and the `reason_codes_flow_context_chk` regression.
+
 ## Status changes route through the state machine
 
 - **Never** `UPDATE serial_units SET current_status = …` directly. Call `transition()`

@@ -5,9 +5,11 @@
  * (`overview` IS the centre), so this vocabulary covers only the eight surfaces
  * that moved to {@link ReceivingDisplaysPushStack}.
  *
- * `checklist` was DELETED 2026-08-01: the procedure is the workbench centre now
- * (the guided step stack), and a mirror of it here would be a second procedure
- * surface in one station — the collision the previous change closed.
+ * `checklist` leads the strip and is the DEFAULT display (2026-08-02). It is the
+ * station's live "where am I": the operator's first question on every carton is
+ * what is left on it, and an orienting display behind a ⋯ menu costs two clicks
+ * per box. It is a second VIEW of the centre's work cards, never a second
+ * derivation — both read `useUnboxProcedureSteps`, so they cannot disagree.
  *
  * `null` means the Displays column is CLOSED — there is no separate open flag,
  * so there is nothing to keep in sync and no vestigial "active tab while
@@ -19,12 +21,14 @@ export type UnboxSideTab =
   | 'listings'
   | 'units'
   | 'po-note'
+  | 'checklist'
   | 'support'
   | 'tracking'
   | 'timeline';
 
 /** Strip order — matches the SectionTabsSlider tab list in `unbox-tabs.tsx`. */
 export const UNBOX_SIDE_TAB_ORDER: readonly UnboxSideTab[] = [
+  'checklist',
   'classify',
   'listings',
   'units',
@@ -64,7 +68,8 @@ export function isUnboxSideTabVisible(tab: UnboxSideTab, gates: UnboxSideTabGate
       return gates.hasTrackingTab;
     case 'timeline':
       return gates.hasTimelineTab;
-    // Support is always available on an open carton.
+    // Checklist + Support are always available on an open carton.
+    case 'checklist':
     case 'support':
       return true;
   }

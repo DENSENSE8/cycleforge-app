@@ -14,10 +14,8 @@ import { getExternalUrlByItemNumber } from '@/hooks/useExternalItemUrl';
 import { useSkuIdentity } from '@/hooks/useSkuIdentity';
 import { collectCartonListingLinks } from '@/lib/receiving/listing-links';
 import { displayTrackingNumber } from '@/lib/receiving/fulfillment-mode';
-import {
-  dispatchLineUpdated,
-  type ReceivingLineRow,
-} from '@/components/station/ReceivingLinesTable';
+import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import { dispatchLineUpdated } from '@/components/station/receiving-lines-table-helpers';
 import {
   patchUnboxRailQtyByCarton,
   patchUnboxRailTitleByCarton,

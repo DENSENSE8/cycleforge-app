@@ -30,7 +30,7 @@ export type NoteComposerInsertAction = {
  * surface + gray ring. Menu uses the house dropdownPanel motion.
  *
  * @param placement — `overlay` (default) absolute corner; `inline` for
- *   StationComposerDock footer rows (no absolute positioning).
+ *   OmnichannelComposerDock footer rows (no absolute positioning).
  * @param className — absolute inset override when `placement="overlay"`.
  *   Default is {@link WORKSPACE_NESTED_OVERLAY_CORNER}.
  */

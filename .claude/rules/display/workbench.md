@@ -4,11 +4,11 @@ The **pick+edit region contract**: pointer-driven navigation of records that are
 **durable, URL-addressable selection** and CRUD. This is the **default contract** — if a region isn't a scanner Station,
 a read-only Monitor, or a node-graph Canvas, it's a Workbench.
 
-Workbench is **not** “sidebar + right pane forever.” That is one **common recipe**. Data shape chooses primary surface
-(list / table / board / master–detail / fact stack). Density default: **`ops`**.
+Workbench is **not** “sidebar + right pane forever.” That is one **recipe**. Data shape chooses primary surface.
+Density default: **`ops`**.
 
 **Inherits:** ../ui-design-system.md (Kinetic Ledger, density, presentation kinds, one-row anatomy, chips, tokens).
-This doc only details what's *specific* to the Workbench contract.
+This doc only details what's *specific* to the Workbench **contract**. Recipes live in child files.
 
 > Rule of thumb: if the user **picks a record and edits it**, keep a **stable collection map** and a **singular focus
 > surface** for the selected record. Crossfade only the focus surface — never the map.
@@ -23,242 +23,101 @@ This doc only details what's *specific* to the Workbench contract.
 - **The signature is durable, URL-addressable selection + CRUD.** If the user picks a record, edits it, and the edit
   persists through a route — and a reload should land them back on the same record — it's a Workbench.
 - **Anti-mix:** never bolt Workbench edit onto a pure Monitor stream; never drop a browse list into a Station scan column.
-- A page may **host** a Workbench beside another contract (scan bench + inspector), but each *region* obeys exactly one.
+- A page may **host** a Workbench beside another contract (scan bench + collection map), but each *region* obeys exactly one.
+- **Code home:** `pickArchetype()` in `src/lib/stations/archetype.ts`; surface hints + **`workbenchBranch`** in
+  `SURFACE_REGISTRY` (`src/lib/stations/surface-keys.ts`).
 
 ---
 
-## Recipes (data shape chooses)
+## Recipes / branches (data shape chooses)
 
-| Recipe | Primary map | Focus surface | When |
+Typed ids: `WORKBENCH_BRANCH_IDS` in `surface-keys.ts`. Every `archetype: 'workbench'` surface declares one;
+Station / Monitor / Canvas keep `workbenchBranch: null`.
+
+| Branch id | Primary map | Focus surface | Law |
 |---|---|---|---|
-| **Master–detail** | Sidebar picker (`SidebarShell` / rail) | Right pane workspace | Mode-scoped catalogs, multi-mode pages (Products, many receiving modes) |
-| **Table / queue + context** | Dense table | Drawer / side panel / stack | Wide rows, multi-column ops (orders, shipments) |
-| **Board + detail** | Swimlanes / cards on lanes | Board detail panel | Pipeline states (FBA board) |
-| **Fact stack / form** | Optional thin list or none | Full-width record body | Single durable entity already selected |
-| **Service workspace** (thread-first) | Durable ticket/case queue — **stays mounted** | Thread + docked composer, context pushes at the right | Conversation-first CX. Formal branch **`service-workspace`** — law: [`workbench-service.md`](workbench-service.md) |
+| **`ops-queue`** | Saved views + dense `LedgerGrid` | Right-rail inspector (push) | [`workbench-ops-queue.md`](workbench-ops-queue.md) |
+| **`master-detail`** | Sidebar picker (`SidebarShell` / rail) | Right pane workspace | [`workbench-master-detail.md`](workbench-master-detail.md) |
+| **`board`** | Swimlanes / cards | Board detail panel | FBA board — compose board patterns; no separate law file yet |
+| **`fact-stack`** | Optional thin list or none | Full-width record body | Single durable entity already selected |
+| **`service-workspace`** | Durable ticket/case queue — **stays mounted** | Thread + composer; context pushes right | [`workbench-service.md`](workbench-service.md) |
 
-**Detail pane / right pane = optional secondary** in table/board recipes. Do not invent a dual pane to satisfy an old template when the collection is already the job.
+**Detail pane / right rail = optional secondary** in table/board recipes. Do not invent a dual pane to satisfy an old template when the collection is already the job.
 
-**A named BRANCH is a recipe that earned a law**, not a fifth contract. `service-workspace` (Support)
-is the only one, and the bar to mint another is deliberately high: the primary **data shape** must
-mandate a different composition axis (thread vs ledger) **and** the surface must need persistent
-chrome unique to that axis (SLA, presence, omnichannel source). Different business *entities* — SKUs
-vs Orders vs Quotes — buy an existing recipe, never a branch. Sales, Fulfillment Desk, and Inbound
-Desk are ops-queue; that is settled, not pending. Slope rule + worked verdicts:
-[`workbench-service.md`](workbench-service.md) → Branch slope rule.
+**A named BRANCH is a recipe that earned a law**, not a fifth contract. `service-workspace` (Support) is the only
+branch with a dedicated entry test today. The bar to mint another: primary **data shape** must mandate a different
+composition axis (e.g. thread vs ledger) **and** the surface must need persistent chrome unique to that axis
+(SLA, presence, omnichannel). Different business *entities* buy an existing recipe. Sales / Fulfillment Desk /
+Inbound Desk → **`ops-queue`**. Slope rule: [`workbench-service.md`](workbench-service.md).
+
+**Naming — do not confuse with Station column shell.** `@/components/station/workbench` /
+[`station-workbench.md`](station-workbench.md) is the **Station region** right-pane anatomy (Unbox-family column),
+**not** this Layer A Workbench contract. Prefer “Station column shell” in prose.
 
 ---
 
-## Anatomy — master–detail recipe (common)
+## Multi-region pages (Station + Workbench siblings)
 
-When using the sidebar map, three structural slots, in this order:
+Contracts are chosen **per region**, not per page. Unbox / Testing / Pack host **two** regions:
 
-| Slot | Owns | Reference |
+| Region | Contract | Role |
 |---|---|---|
-| **Sidebar picker** (the stable map) | searchable master list (filters / sub-tabs as needed) | `ProductsSidebarPanel.tsx` via `src/components/layout/SidebarShell.tsx` |
-| **L2 Mode + Recents** | page mode switcher + cross-page MRU | `GlobalHeader` → `HeaderModeSwitcher` / `HeaderRecentsSwitcher` (data = `SIDEBAR_PAGE_NAV` via `useSidebarModeNav`); pins = `HeaderPinsSwitcher` / `useQuickAccess` |
-| **Right pane** (the workspace) | the selected record's detail/editor; crossfades on selection change | `QcChecklistWorkspace.tsx`, `KitPartsWorkspace.tsx` |
+| Scan dock / active focus | **Station** | Ephemeral selection; act-and-clear |
+| Queue · Recent · History (collection map) | **Workbench** | Durable browse; chrome tabs; grid |
 
-- **Compose `src/components/layout/SidebarShell.tsx`; never hand-position search.** It owns the outer
-  `flex h-full flex-col overflow-hidden` column, renders `<SidebarSearchBar>` itself from the `search` prop (the
-  `sidebar-search-bar.guard.test.ts` guard keeps `SidebarSearchBar` out of other components — migration in progress),
-  and stacks `headerAbove` → search →
-  `headerRows[]` (sub-tabs / facet filters) → `children` (the single `flex-1 overflow-y-auto` body). The panel supplies slots, not
-  layout — that's what kept the 40px search band from drifting per page.
-- **L2 Mode lives in GlobalHeader, not the sidebar.** Closed = active-mode icon (32px);
-  open = `AnchoredLayer` listing that page's `SIDEBAR_PAGE_NAV` modes. Recents is the adjacent
-  History icon (collapsed by default) over `useRecentModes`. **Never** remount a full-width
-  `HorizontalButtonSlider` mode rail as a twin of the header control. Nested / secondary sliders
-  (pairing sort, sourcing status, FBA plan/combine, inventory triage filters) may stay in the
-  sidebar — those are not page L2. **Header pins** (`HeaderPinsSwitcher`) sit to the right of
-  Recents (hairline separator): pin-current + sortable icon stations from `useQuickAccess` /
-  `cf.quickAccess` — never a pin list in a staff / Quick Access menu. Desktop Quick Access
-  **actions** stay in `GlobalHeaderActions` (**search · clipboard · phone QR · kiosk ·
-  inbox · AI far-right**) — Sparkles opens the assistant right-rail at the edge it
-  owns (mirror of MasterNav collapse far-left). **No staff avatar on desktop**. Spine top band is
-  `OrgWorkspaceControl` (current workspace + switch when multi-org) — not a “name of
-  now” page label (selection is the body row). No MRU chips in the org band; column open
-  lives on `SidebarNavColumn`. Global search stays in GlobalHeader (`GlobalHeaderSearch`)
-  — never pin a search **control** twin in the spine. **Home** (house glyph + label) then
-  Search + Media + **Chat** **page** rows are top-pinned (`kind: 'top'`) above section
-  drills — same pin grammar as Settings/Admin footer (`kind: 'bottom'`). Below
-  Settings/Admin: `StaffAccountFooter` (avatar · name · role · more · sign-out). When the
-  spine collapses to 0 width, org + staff are unreachable (open via header toggle / edge
-  peek) — intentional, same as Admin/Settings. **Both ends of the spine wear the
-  same circular mark** — `IdentityMark` (org) / `StaffAvatar` (staff) from
-  `@/components/identity`, at the same `sm` density — and the org control is
-  **always** a dropdown trigger, single-org included. Never hand-roll a
-  `rounded-full` initials span or a local `initials()`; SoT:
-  `source-of-truth.md` → Identity mark · Staff profile photo.
-- **Section drills (spine L1).** Root shows **Analytics Monitor · Scan Stations · Inbound ·
-  Catalog · Inventory · Fulfillment · Sales · Support · Workflow Studio** as **drill buttons**
-  with leading icons (`SPINE_SECTIONS` in `sidebar-navigation.ts` — compose from
-  `MAIN_GROUPS` + `STATION_GROUPS` + `DOMAIN_GROUPS`; never twin labels). Drill replaces the
-  scroll body with centered back title + that section's pages. A footer-pinned
-  `TechRailSearchBar` (same band as station rails) sits above Settings/Admin (+ staff footer
-  below) and always filters the visible map — root sections (label or any child page/mode)
-  when at the root, pages inside the open drill when drilled. Membership: `mainGroup` /
-  `stationGroup` / `domainGroup` via `spineSectionIdForPage`.
-  **Declare membership identically in BOTH `APP_SIDEBAR_NAV` and `SIDEBAR_PAGE_NAV`**.
+```text
+Station focus ──Back to list──► Workbench map
+Workbench map ──Return-to-scan CTA──► Station primary work
+```
 
-  **The axis is deliberately mixed, and that is the ruling** (2026-08-01,
-  `docs/todo/desk-domain-spine-split-CLAUDE-CODE-PROMPT.md`): Monitor and Studio are
-  ALTITUDES (observe / define), Scan Stations is an INPUT MODEL, and the six between them are
-  BUSINESS DOMAINS. Insisting on one uniform axis is what produced `Triage Desk` — "not a
-  scanner, not a graph" is a leftover, not a place, and it collected seven unrelated pages
-  behind a label no operator could predict. `Print Stations` failed the same way from the
-  other side: printing is a task every domain performs, so its rows were aliases of URLs the
-  canonical pages already owned. Both are dead labels and must not return under a new name.
+### Placement (mandatory)
 
-  Members: Scan Stations (`floor`) = Receiving subgroup + Testing / Packing / Scan out —
-  **never** relocated into Inbound or Fulfillment; Inbound = Incoming + Receiving Board;
-  Catalog = Manage Products (Reference · Manuals · Labels · Pairing · Catalog link · QC ·
-  Kit Parts); Inventory = Inventory + Sourcing + Locations (ex-Warehouse, incl. the bin/rack
-  label printer); Fulfillment = Manage Shipping (Orders · Labels · Ready · FBA · Packing
-  Review) — **carrier postage stays here and never folds into a label workspace**; Sales =
-  Sales Board + Local Pickup History; Support = the 6 support modes; Analytics Monitor =
-  Operations only; Workflow Studio = Studio + Catalog canvas. Section icons come from
-  `MAIN_GROUPS` / `STATION_GROUPS` / `DOMAIN_GROUPS`. Accents: `spineAccentFor` /
-  `SPINE_SECTION_ACCENTS` (sky / amber / teal / emerald / cyan / indigo / rose / orange /
-  violet; top+footer neutral blue). **A section with no visible page renders nothing**, and a
-  page whose every mode was permission-filtered is dropped by `isSidebarPageReachable` —
-  hollow is forbidden at both altitudes. Auto-enters on cross-section navigation; manual Back
-  returns to the root map.
-  Swap uses `framerPresence.spineDrill` / `framerTransition.spineDrill` (opacity-only)
-  plus the named active-wash preset. **Page rows and mode rows share ONE
-  cascade** — `spineRowStagger*`, 15ms/row, keyed on the SECTION (never the filter);
-  the root map mounts instantly. Hover/press travel is CSS on the 14px glyph
-  (`SPINE_ICON_LIFT_CLASS`) — never `whileHover`, never a row `scale` or weight shift.
-  Active rows are a fill **plus** an inset hairline. Detail:
-  `motion-crossfade.md` → ONE MasterNav row cascade; `source-of-truth.md` → MasterNav
-  section accents / row hover-press travel. Modes stay always expanded; L2 Mode
-  also lives in GlobalHeader.
-  Guards: `main-nav-groups.guard.test.ts`, `station-nav-groups.guard.test.ts`.
-- **Anti-mix — never invert the sidebar.** Related/similar is progressive disclosure *below* the picker, never replacing the map.
-- **Responsive fallback is list-OR-detail, not both.** On a narrow viewport, show the picker *or* the detail, never a
-  cramped two-up. (M3 list-detail / WinUI List/Details patterns.)
+The return-to-scan CTA lives at the **top-right of the workbench context bar** — `WorkbenchChromeHeader`
+`trailing` → `WorkbenchTrailingCluster` **`actions`** — **above the KPI strip** (`WORKBENCH_CHROME_COLUMN` /
+`WORKBENCH_BODY_COLUMN`). Never in the GlobalHeader, never in the scan column, never below the KPI tiles,
+never as a quiet icon in `right` filters.
 
----
+```text
+┌─ WorkbenchChromeHeader (pinned) ──────────────────────────────┐
+│  [Recent] [Queue] [History]   …search…filters… │ Fields │ CTA │
+└───────────────────────────────────────────────────────────────┘
+┌─ KPI strip (scrolls with body) ───────────────────────────────┐
+│  UNFINISHED · VIEWED TODAY · …                                  │
+└───────────────────────────────────────────────────────────────┘
+┌─ Data table / collection map ─────────────────────────────────┐
+```
 
-## Compose the rail, never fork it
+### Return-to-scan contract (every scan station)
 
-- **The picker wraps shared infrastructure; it never re-implements list mechanics.** Two reuse tiers exist:
-  - **`src/components/layout/SidebarShell.tsx`** — the layout shell (header/search/rows/scroll-body). Every Workbench sidebar uses it.
-  - **`SidebarRailShell.tsx`** — the *recent-activity rail* engine (`useSidebarRail`): fetch + `queryKey`, optimistic
-    `updateEvent`/`deleteEvent`/`deleteGroupEvent` patching, query invalidation, top-N + pinned selection, package
-    grouping, keyboard nav, hover-preview popover positioning, stagger reveal. The domain wrapper supplies only
-    renderers.
-- **`RecentActivityRailBase.tsx` is the reference wrapper** — it passes `renderRowMain`, `renderPopover`,
-  `getStatusDot`, `getStatusDotLabel`, and hoists its callbacks (`getRowId`, `getRowActivityAt`) to module scope so
-  the shell's listener effect subscribes once instead of tearing down on every parent re-render.
-- **A simple catalog picker may be a plain list** (e.g. `QcSidebarPicker`/`KitPartsPicker` inside
-  `ProductsSidebarPanel.tsx` render a `divide-y` `<ul>` over `useSkuCatalogSearch`) — but it still **composes
-  `SidebarShell`** for the header/search band, and it still obeys the one-row anatomy and `bg-blue-50` selection rule.
-  Fork the *rows*, never the *shell*.
+Hybrid Station+Workbench pages **must** expose a solid primary CTA that rejoins Station scan actions:
 
-> Rule of thumb: new picker → wrap `SidebarShell` (+ `SidebarRailShell` if it's an activity rail) and supply
-> renderers. If you're writing fetch/selection/keyboard-nav code, you've forked something you should have composed.
+| Rule | Detail |
+|---|---|
+| **Where** | `WorkbenchTrailingCluster.actions` (trailing cluster, after Sort → Fields) |
+| **When** | On **every** strip tab (not honest-absence on the bench tab) |
+| **Look** | Solid `Button` `variant="primary"` + leading station glyph + short uppercase verb (Unbox: **“Unbox”**) |
+| **Click** | (1) Close carton/line overlay so the **data table** is visible · (2) Switch to the **bench tab** (strip-first / working set — Unbox: Recent) · (3) Best-effort highlight of the station’s MRU row in that table (`receiving-highlight-line` — no `select-line`, which would re-open the overlay) · (4) Focus the **station scan bar** (`receiving-focus-scan` / surface equivalent) |
+| **Reference** | `UnboxWorkspaceHeader` — compose the same altitude on Testing / Pack / Shipping with their own labels |
+
+### Back to list (the other exit)
+
+- **Back to list** — identity exit on the focused entity (`CartonContextCard` `onExitToList` /
+  `dispatchReceivingWorkspaceClose`). Clears Station focus; map stays mounted (prefer `display:none` keep-alive —
+  `ReceivingRightPane`).
+- **Never** put the browse list inside the scan column. **Never** treat “Back to list” as Station physics —
+  it is Workbench selection clear.
+
+References: `UnboxWorkspaceView`, `ReceivingRightPane`, `TestingWorkspaceView`, `PackerRightPane`.
 
 ---
 
 ## URL-as-state
 
-- **Selection and mode live in `searchParams`, not React state.** That's what makes every view deep-linkable and
-  reload-safe. The picker writes selection with `router.replace` (`?skuId=` in QC/Kit, `?sku=` in Pairing, `?id=` in
-  Manuals, `?historyId=` in Labels) and the right-pane workspace reads the *same* params — so no prop-drilling, no
-  context: `ProductsSidebarPanel` and `ProductsWorkspace` are coupled only through the URL. This is the nuqs
-  "search params as state" model (https://github.com/47ng/nuqs).
-- **Mode is a param too; the default mode drops out of the URL.** `parseView`/`handleViewChange` in
-  `ProductsSidebarPanel.tsx` set `?view=qc` but `updateParams({ view: null })` for the default (Manuals), keeping deep
-  links clean. Sub-views follow the same rule (`labelsView`, `pairingSort` drop their defaults).
-- **Mode-scoped params clear on mode change.** Switching the Labels sub-tab clears the stale unit selection
-  (`updateParams({ labelsView: …, historyId: null })`); `useReceivingMode.ts` `updateMode`/`updateUnboxView` clears
-  History params and fires `receiving-clear-line` so a new list starts at its own empty state instead of carrying a
-  dead selection. **A selection from mode A must never bleed into mode B.**
-- **Gap to close: filters/sort/search are only *partially* in the URL.** Today `?q=` and `?sort=` are URL-backed in
-  Products, but most filter/field state still lives in component `useState`. Push **all** durable filter/sort/search
-  state into `searchParams` so a shared link reproduces the exact view. (This is the cross-cutting "URL is the state
-  SoT for durable views" rule.)
-
----
-
-## The top axis is DIRECTION (+ front-desk commerce)
-
-Ratified 2026-07-29 (`docs/todo/dashboard-ia-rework-PLAN.md` §10.2 rows H + I); Sales domain
-amended 2026-07-30 (`docs/todo/sales-into-dashboard-PLAN.md`).
-
-A multi-domain Workbench page's top axis splits by **physical direction of flow**
-(`?mode=inbound` | bare outbound) **plus** front-desk commerce history when that collection has no
-other L1 home (`?mode=sales` | `?mode=pickup`). Never by entity type
-(`Orders · FBA · Repair · Sales` as peers of each other).
-
-**The predicate for what earns a top-axis slot** — all three, or it is not a slot:
-
-1. It **owns a distinct collection surface** (its own `LedgerGrid`/`GridSurfaceDescriptor` / feed),
-   not a filtered view of a sibling's.
-2. It is a **Workbench / Monitor browse region** — pointer-driven pick+edit or observe. A
-   scanner-driven Station fails here.
-3. It has **no home elsewhere**. A domain that already owns a page or an L2 mode does not get a
-   second front door.
-
-Worked verdicts: **Orders** passes. **Receiving** fails (2) — it is a scanner-driven Station at
-`/unbox`; the dashboard's `inbound` domain is its pointer-driven *counterpart*, not the Station
-itself, and merging them is the anti-mix regression this whole doc opens with. **FBA** and **Repair**
-fail (3) — FBA lives at `/shipping/fba` (legacy `/shipping?mode=fba` redirects there), Repair is a
-Receiving mode. **Sales** passes after its L1 `/walk-in` home is deleted — it owns the walk-in
-transaction feed, is Monitor browse, and lands as the dashboard `sales` domain
-(`?mode=sales` / `?mode=pickup`); counter intake stays on `/pickup` + `/repair`.
-
-**Why direction (+ commerce) beats a full entity axis.** An entity axis reads cleaner on a nav
-diagram and is the right default for a *catalog* console (Shopify, Linear), where every top-level
-value is the same kind of thing: a pointer-driven list you filter. This app's entities are not the
-same kind of thing — one of them is a scan bench. Direction matches what a 1–15 person floor
-physically switches between (the dock vs. the ship station); commerce history is the third browse
-collection that shared the Sales L1 page and now shares the dashboard shell without widening to
-FBA/Repair (they keep their homes).
-
-**Consequence — an axis value that stops owning a table is a deletion candidate, not a tab.**
-The vestigial `'fba'` member of `DashboardOrderView` was deleted 2026-07-29 (IA row L): FBA owns
-`/shipping/fba`, and no nav entry constructs `?fba`.
-
-## Tabs vs. saved views — the boundary rule
-
-Both ship, and they are not two ways to do one thing. The line is **who defines the set**:
-
-| | Hardcoded tabs | Saved views |
-|---|---|---|
-| Defined by | the **system** | the **operator** |
-| Represents | a mutually-exclusive lifecycle **state transition** | a named **facet combination** |
-| Example | Pending → Tested → Packed → Shipped | "late eBay units, oldest first" |
-| Cardinality | fixed, 3–5, same for every staffer | open-ended, per staffer |
-| Lives in | the lifecycle strip (`WorkbenchChromeHeader` left) | the sidebar filter map / table ⋮ menu |
-
-**The test:** if adding one more of them would require a **migration or a status-machine change**, it
-is a tab. If it is just a different combination of params the surface already reads, it is a saved
-view.
-
-- **Never ship a saved view that reproduces one lifecycle tab** ("all Packed orders") — that is the
-  duplication this rule exists to prevent, and it desyncs the moment the tab's query changes.
-- **Never grow the tab strip to hold a filter** ("Late", "eBay only"). A tab that is a filter is a
-  saved view wearing tab chrome, and it costs every staffer strip width to serve one workflow.
-- **One core, many faces.** `useSavedViews` (`src/hooks/useSavedViews.ts`) is the single
-  storage + URL-apply implementation; a surface supplies only `storageKey` + `paramKeys` and its own
-  UI. Exactly two consumers: `OutboundSavedViewsList` (dashboard sidebar) and `TableOptionsMenu`
-  (station + testing history ⋮). Never fork the apply-to-URL logic for a new surface.
-- **One store, three faces (the split-brain is CLOSED — 2026-07-29).** Every saved view, on every
-  surface, lives in the polymorphic **`saved_views`** table (org-scoped, `staff_id`-owned,
-  `is_shared`). `2026-07-29g_saved_views.sql` created it; `2026-07-29h` dropped the
-  `operations_saved_views` / `media_library_saved_views` duplicates. `useSavedViews` writes it
-  through `/api/saved-views` and **no longer touches localStorage** — a dashboard view now follows
-  a staffer to a second device.
-  - The `storageKey` prop kept its name for call-site stability; it resolves to a DB `surface`
-    discriminator via **`src/lib/saved-views/surfaces.ts`**. That module is the SoT for the
-    discriminator: **keep `SAVED_VIEW_SURFACES` in lockstep with the `saved_views_surface_chk`
-    CHECK** in the birth migration, or a new surface fails its first insert.
-  - Ops and Media Library keep their own hooks/routes (`useOperationsSavedViews`,
-    `useMediaLibrarySavedViews`) because their UIs differ. **Three client hooks over one store is
-    not a fork** — the thing that must never be duplicated is the storage and the apply-to-URL
-    logic, and there is exactly one of each. Do not "consolidate" the hooks for symmetry.
+- **Selection and mode live in `searchParams`, not React state.** Picker writes selection with `router.replace`;
+  focus surface reads the same params. nuqs model.
+- **Mode is a param too; the default mode drops out of the URL.** Mode-scoped params clear on mode change —
+  a selection from mode A must never bleed into mode B.
+- **Gap:** filters/sort/search are only *partially* in the URL. Push durable filter/sort/search into `searchParams`.
 
 ---
 
@@ -269,146 +128,33 @@ The collection map is stable; only the **focus surface** moves.
 1. **Row click → `router.replace`.** Write the selection id to the URL. Active row uses house selection ring only.
 2. **URL change → id-gated re-fetch.** Detail hooks gate on validity so empty selection never fires; teaching empty instead.
 3. **Crossfade the focus surface** (right pane, drawer, or stack), keyed on the selection id.
-4. **The map never animates.** Selection never size/height-shifts. List/accordion maps use `QUEUE_ROW.selectedClass` (fill + inset ring); airtable LedgerGrid maps use `QUEUE_ROW.selectedLedgerClass` / `ledgerRowStateClass` (fill only — ring fights cell rules).
+4. **The map never animates.** Selection never size/height-shifts. List/accordion maps use `QUEUE_ROW.selectedClass`;
+   airtable LedgerGrid maps use `QUEUE_ROW.selectedLedgerClass` / `ledgerRowStateClass`.
 
 ---
 
-## Sticky docking — one sticky layer per scroll port
+## Teaching empty + degrade-not-fail
 
-**Never stack two `sticky top-*` bands inside the same scroll port.** The lower band has to know the upper band's height to dock beneath it, and a hardcoded offset (`top-[var(--x,72px)]`, a guessed px) drifts the moment the upper band's real height differs — the seam/overlap bug. z-index orders *front-to-back*; it says nothing about *vertical docking*, so a second sticky band is never made safe by a higher `z-`.
-
-**House pattern (the fix): pinned chrome OUTSIDE the scroll port.** The single always-visible top bar (lifecycle tabs + filters) renders in a non-scrolling slot **above** the `overflow-y-auto` body; the body then has exactly one sticky layer — the day-band `DateGroupHeader`s at `top-0` — which docks directly under the chrome with **no offset math**.
-
-- Reference: `DashboardScrollShell`'s `chrome` prop (`src/components/dashboard/DashboardScrollShell.tsx`) — the chrome slot owns the `z-header` band as a non-scrolling sibling; `DashboardOrdersView` / `ShippingWorkspaceView` pass the workspace header there and keep the KPI strip **inside** the body.
-- Anything that is not always-visible chrome (KPI strips, banners) belongs in the body, never the chrome.
-- **In the body ≠ scrolls away.** On a lane whose table is a **bounded host**
-  (`workbenchTableViewportClass` → `h-[calc(100dvh-13rem)]`), the grid owns Y
-  scroll internally, so the body never grows with row count and an in-body KPI
-  strip effectively stays put. That is deliberate — an unbounded card grows past
-  the fold and loses the bottom edge that sells its elevation
-  (`WORKBENCH_TABLE_VIEWPORT` docblock). Do not "fix" a KPI that does not scroll
-  away on such a lane; the sticky layers that matter there live inside the
-  **grid's** port (column header at `top-0`, day bands), not the page's.
-  Pinned by `to-ship-pending-grid.spec.ts` → "the bounded host keeps the KPI
-  pinned and the card fully on screen".
-- Only reach for a **measured** offset (ResizeObserver → CSS var per layer) if a port genuinely needs 3+ dynamic-height sticky bars — the two-zone shell removes the need in every current surface. A fixed px offset is never the answer.
-- z bands stay from the SoT (`src/design-system/tokens/z-index.ts`): chrome/top bar = `z-header`, in-body pins = `z-raised`/`z-sticky`. Never hardcode `z-[NNN]`.
-
-**Chrome face density (`WorkbenchChromeHeader`).** Two densities on one SoT — never a page-local twin tab band. `default` is the content-driven raised card (`p-1.5` + md solid-hug tabs with their own rail) — escape only when a surface cannot use the band face. **`density="band"` is the house standard** for every lifecycle `WorkbenchChromeHeader` consumer (Outbound, Incoming, History, Unbox, Triage, Pack, Testing, Shipping, Labels, Ready, FBA, Walk-In, Repair, Support, Review, …): a **single-surface 40px face** (`h-10 p-0.5` + `TabSwitch size="sm"` on a **flat** rail — **2px inset required**; active pill uses `nestedCornerClass('card', 0.5)` / `rounded-xl` so it nests concentrically inside the card shell; no flush full-height active pill, no nested bordered track, no `rounded-full` mismatch). Nested TabSwitch cards under band are forbidden (Kinetic Ledger / Linear chrome). Lifecycle tabs are **text-only** (no leading icons for Queue · Viewed · History-style states). When beside a floated context panel / scan dock, wrap with `WORKBENCH_CHROME_BESIDE_SCAN` (`py-2` = panel `m-2`) so the band face shares a Y row with `receivingScanBandClass` — never flush with `py-0`. Guard: `workbench-chrome-band.guard.test.ts`.
-
-**Trailing Display & Actions (`WorkbenchTrailingCluster`).** Column visibility (`GridFieldsMenu` / Fields) and display sort (`QueueSortSwitch`) live in the **pinned page chrome trailing cluster**, not an in-card Sheets-like action bar (that would stack a second sticky band — forbidden above) and not GlobalHeader. Compose `WorkbenchTrailingCluster` as `WorkbenchChromeHeader`’s `trailing` prop with honest absence: **Sort → Fields → Import → Add** (`before` / `after` escapes for pagination / refresh only). Filters / refine stay in `right` (query ≠ display). Leading hairline only when `actions` (Import/Add) are present — Fields is an icon-rail peer of week/calendar/filters, not a walled second cluster. Fields trigger is icon-only (`ColumnsThree` + tooltip); dirty count stays in the accessible name, never a numeric badge on the glyph. Opening Fields is a detached listbox — no header-coupling mode. Multi-select triage stays on `ContextualSelectionBar` (bottom) — never morph the top bar. Guard: `workbench-trailing-cluster.guard.test.ts`. Plan: `docs/todo/table-action-bar-fields-PLAN.md`.
-
-## Teaching empty + typed states
-
-- **Branch the empty/error copy by *type*, not one generic "Nothing here."** Four distinct states, each with its own
-  copy and CTA (NN/g empty-state guidance: https://www.nngroup.com/articles/empty-state-interface-design/):
-  - **No selection (first-use prompt)** — teach the next action. `QcChecklistWorkspace` with no `skuId` renders a
-    centered icon tile + "Select a product from the sidebar to view and manage its QC checklist." `KitPartsWorkspace`
-    mirrors it.
-  - **Loaded-but-empty (no results)** — distinguish *no data yet* from *no matches*: `QcSidebarPicker` shows
-    `trimmedQuery ? 'No matches with a QC checklist.' : 'No products have a QC checklist yet.'` A no-results state with
-    an active filter should offer a **Clear filters** action; a first-use empty should offer the primary create action
-    inline, never a bare line.
-  - **Loading** — spinner + text: `<Loader2 className="h-4 w-4 animate-spin" /> Loading…` (the shared async rule).
-  - **Errored** — a **distinct, retryable** state, visually separate from empty (rose, not gray).
-- **The right pane's empty state is keyed to the mode.** `ReceivingRightPane.tsx`'s `RECEIVING_EMPTY_STATE` map keys
-  copy by `?mode=` so triage's "pick from the Unfound/Prioritize list" prompt never shows in Unbox — empty copy is
-  structurally tied to the mode that owns it.
-
-### The four settled states — a collection has more than "data or not"
-
-"Loading vs empty" is two states for what is really four, and collapsing them is how a
-surface tells the operator something false. Every collection surface answers:
-
-| State | Means | Renders |
-|---|---|---|
-| **Loading** | not settled yet | skeleton at the **real geometry** — never a spinner over a table |
-| **Empty — absence** | settled, nothing exists yet | teaching box + the create/next action |
-| **Empty — no match** | settled, a filter excluded everything | teaching box + **clear the filter** |
-| **Degraded** | a source failed | the surface still renders; the failed part shows empty, it never 500s the record |
-
-- **Reserve the geometry while loading, and gate on ALL sources together.** A band fed by two
-  queries that each render as they settle **reflows under the operator's cursor**.
-  `OutboundKpiStrip` holds one combined `isPending` gate for exactly this reason;
-  `LedgerGridSurface` renders `SkeletonList count={12} type="row"` inside the framed shell.
-- **Absence and no-match are different answers.** "No cartons yet" invites the create action;
-  "no cartons match" invites clearing the filter. Showing the first when the second is true
-  tells the operator their data is gone. Compose `LedgerGrid`'s `emptyState` /
-  `searchEmptyState` / `isSearching`, or `LedgerGridSurface`'s `emptyMessage` /
-  `searchEmptyMessage` / `isSearching`. *(The surface collapsed these to one message until
-  2026-07-29 — every descriptor-driven grid answered both questions identically.)*
-- **Settled-with-nothing can be a POSITIVE answer.** On a queue whose job is "what needs me",
-  zero is an all-clear, not an absence — say so in copy (e.g. "Nothing needs you right now").
-  Reserve the dashed teaching box for absence.
-- **Degraded is not empty.** A failed sibling fetch renders its own region empty and leaves the
-  rest of the surface working — see *Degrade-not-fail* above. Only the **primary** resource
-  earns the retryable rose error state.
+Four settled states for every collection: **Loading** (skeleton at real geometry) · **Empty — absence** ·
+**Empty — no match** · **Degraded** (sibling fetch fails → empty region, never 500 the record). Compose
+`LedgerGrid` / `LedgerGridSurface` empty + search-empty props. Primary resource errors → retryable rose; secondary
+degrades silently. Detail: recipe files + `OutboundKpiStrip` combined `isPending` gate.
 
 ---
 
-## Degrade-not-fail (per-sub-resource isolation)
+## Focus-surface crossfade
 
-- **Each right-pane sub-resource fetches in its own `try/catch` + error boundary; a failing sub-fetch renders empty,
-  it never 500s the whole record.** The SoT to mirror is `src/app/api/get-title-by-sku/route.ts`, which wraps the QC
-  and kit-parts lookups in independent `try/catch` blocks (the QC fetch failing returns empty checks, the title still
-  resolves) — a sub-resource is allowed to fail without taking down the record.
-- **On the client, the same law: a sibling fetch error degrades to empty, not a thrown pane.** `QcChecklistWorkspace`
-  loads its sibling kit-parts count via `useSkuKitParts(skuId)` but only renders `kit?.parts.length ?? 0` — if that
-  sibling query errors, the QC pane still fully renders; the cross-link chip just shows `0`. The *primary* resource
-  errors to the retryable error state; *secondary* resources degrade silently.
-- This is graceful degradation / mitigating interaction failure (AWS Well-Architected REL:
-  https://docs.aws.amazon.com/wellarchitected/latest/reliability-pillar/rel_mitigate_interaction_failure_graceful_degradation.html).
-
----
-
-## Focus-surface crossfade (right pane recipe)
-
-- **Crossfade the focus surface on selection change; keep the collection map mounted and still.** For master–detail, that surface is the right pane. `AnimatePresence mode="wait"`
-  keyed on the selection id, **opacity + small-y only**, `prefers-reduced-motion` honored. `ReceivingRightPane.tsx` is
-  the reference: the focused workspace is a `motion.div key={`workspace-${workspace.row.id}`}` with
-  `initial={prefersReducedMotion ? { opacity: 1 } : { opacity: 0, y: 6 }}` →
-  `animate={{ opacity: 1, y: 0 }}` → `exit … { opacity: 0, y: 4 }`, `transition={{ duration: 0.18, ease: motionBezier.easeOut }}`.
-- **Keep the table/list mounted, `display:none`, to preserve its cache + scroll.** `ReceivingRightPane.tsx` holds
-  `ReceivingLinesTable` `style={{ display: isTableOnlyMode ? 'block' : 'none' }}` (not unmounted) so its react-query
-  cache, in-flight search, and scroll position survive a tab flip — and so first-mount auto-select effects don't
-  re-fire on every close.
-- **Route motion through the reduced-motion wrappers.** Prefer `useMotionTransition` / `useMotionPresence`
-  (`src/design-system/foundations/motion-framer-hooks.ts`) so reduced motion automatically collapses y→0 and shrinks
-  the duration to ~0 — that's the "replace slides with crossfades" accessibility default, not "no motion." Pull
-  easings from `motionBezier` / `framerTransition` in `motion-framer.ts`; never hardcode a cubic-bezier. **Never
-  animate width/height/padding** — for height use `grid-template-rows`.
+Crossfade only the focus surface on selection change (`AnimatePresence mode="wait"`, opacity + small-y,
+`prefers-reduced-motion`). Keep the collection map mounted (`display:none` when overlaid) to preserve cache + scroll —
+`ReceivingRightPane` is the reference. Route motion through `useMotionTransition` / `useMotionPresence`; never animate
+width/height/padding. Full motion law: [`motion-crossfade.md`](motion-crossfade.md).
 
 ---
 
 ## Optimistic CRUD
 
-- **Edits persist through the house CRUD route pattern** (../backend-patterns.md): `withAuth(handler, { permission })`
-  → validate → domain helper → map 404/409/200 → `recordAudit()` → `after()` side-effects. The
-  `/api/sku-catalog/[id]/qc-checks` and `/api/sku-catalog/[id]/kit-parts` routes are the reference; the view stays
-  thin and dumb.
-- **Optimistic update, then reconcile.** The TanStack Query contract is `onMutate` (snapshot + apply) → `onError`
-  (rollback to snapshot) → `onSettled` (`invalidateQueries`) — https://tanstack.com/query/v4/docs/react/guides/optimistic-updates.
-  Thread a `clientEventId` so a retry on a flaky network is an idempotent no-op
-  (`UNIQUE(client_event_id)`, ../backend-patterns.md).
-- **Deletes are confirm-then-commit, never optimistic.** A removed row that resurrects on rollback is worse than a
-  half-second confirm.
-- **Gap to close: today's CRUD sections are refresh-after-mutation, not truly optimistic.** `QcChecklistSection`
-  (`handleRemove` / `togglePublish` / save) and `KitPartsSection` `await fetch(...)` then call `onRefresh()` (which
-  `invalidateQueries(['sku-qc-checks', skuId])`). Correct and safe, but it shows a spinner gap instead of an instant
-  edit. Migrating these to `onMutate`/rollback is the improvement; keep `onSettled → invalidate` either way.
-
----
-
-## Progressive disclosure of related / similar
-
-- **Siblings appear *below* the picker once a record is selected — they augment the map, never replace it.** Surface
-  related/similar (e.g. `/api/sku-catalog/[id]/similar`) as a "Similar" group that materializes under the picker on
-  selection, or a slim footer rail under the editor. This is textbook progressive disclosure
-  (https://www.interaction-design.org/literature/topics/progressive-disclosure) — the picker stays the primary
-  navigator; siblings are secondary, revealed only when there's a record to be similar *to*.
-- **Cross-links are inline, not a replacement.** `QcChecklistWorkspace` ↔ `KitPartsWorkspace` link to each other with
-  a header chip (`router.replace('/products?view=kit&skuId=…')`) showing the sibling's count — a contextual jump, not
-  an inverted sidebar.
+House CRUD route pattern (`../backend-patterns.md`). Optimistic update with rollback for add/edit; deletes are
+confirm-then-commit. Thread `clientEventId` for idempotency.
 
 ---
 
@@ -418,91 +164,31 @@ Every operator action on a collection surface belongs to exactly **one primary p
 
 | Plane | Mechanism | For |
 |---|---|---|
-| **In-cell** | cell-anchored editor / popover (`LedgerCellEditor`, house `Popover`) | single-value, highly-typed fields — qty, date, grade, short text |
-| **Row-scoped** | hover controls + the single-selected row info menu | one-click record affordances (notes, out-of-stock, open) |
-| **Multi-select** | `ContextualSelectionBar` + `SelectionAction[]` | anything meaningful on N records at once |
-| **Record** | the detail inspector / full record page | relational, multi-step, or side-effectful work |
+| **In-cell** | cell-anchored editor / popover | single-value typed fields |
+| **Row-scoped** | hover controls + single-selected row menu | one-click record affordances |
+| **Multi-select** | `ContextualSelectionBar` + `SelectionAction[]` | N records at once |
+| **Record** | detail inspector / full record page | relational, multi-step, side-effectful |
 
-- **Identity columns are collection-map read-only.** The frozen pane is declared
-  per surface on the column model (`frozen: true` → `gridFrozenKeys`; Orders adds
-  `order` to the house `select` · `title` default — see `source-of-truth.md` →
-  Grid identity pane). Its columns
-  (`GRID_IDENTITY_COLUMN_KEYS` / `isGridColumnInCellEditable` in
-  `src/design-system/components/grid/grid-column-editability.ts`) never mount
-  `LedgerCellEditor` or a cell focus ring. Title is the row's identity anchor
-  (and usually a catalog / listing fact); a caret armed by click / Enter / F2 /
-  printable put a destructive typo one keystroke away. Correction happens at the
-  **record** plane (rematch, catalog, order detail). Guard:
-  `grid-column-display.guard.test.ts` → "no grid row mounts an in-cell title editor".
-- **Plane redundancy is REQUIRED where the primary plane is conditionally unavailable.** In-cell editing on the
-  outbound grid is gated `gridSkin && !isMobile`, and the inspector body is shared with `/o/[orderId]`, so the
-  record plane must stay a **complete superset** of editable fields. Ship-by and condition appearing both in-cell
-  and in the inspector is the contract, **not** duplication to clean up. Only make a field plane-exclusive when its
-  plane is *unconditionally* available.
-- **Actions diverge by lifecycle stage; column layout and grid components diverge only by data domain.** All four
-  outbound tabs (Pending · Tested · Packed · Shipped) render one grid with one persisted column layout, but
-  "assign a tester" is meaningless on Shipped and "print a shipping label" is meaningless on Pending. Scope each
-  action with `SelectionAction.enabled` / `minSelected` / `maxSelected` — `ContextualSelectionBar` drops actions
-  that cannot fire, so lifecycle scoping needs no new chrome and never renders a dead button.
-- **A surface gets real selection OR a collapsed gutter — never an inert one** that consumes the 2rem track with
-  nothing wired to it.
-- **Bulk ≠ a batch-edit panel.** For per-record judgement over a set, compose the existing
-  `WorkOrderAssignmentCard` carousel (prev/next + confirm→advance). Reserve a true single-write bulk mutation
-  (one date onto N orders) for values that genuinely are identical across the set.
-
-## Keyboard ownership — the innermost overlay wins
-
-A collection surface usually has three live keyboard owners: a capture-phase queue listener, the detail
-inspector, and whatever popover is open. Capture beats bubble, and `stopPropagation()` in capture stops the
-bubble listeners from ever running — so an ambient owner can silently swallow Escape from the overlay that
-should have handled it.
-
-- **The innermost open editor or overlay owns Escape.** Not "any input" — a text editor holds focus so a
-  typing-target test hides the bug, but button/menu popovers do not.
-- Overlays register with `src/lib/overlay-stack/store.ts` (`useRegisterOverlay`, called by `AnchoredLayer`, so
-  every house Popover / DropdownMenu / ContextMenu / Calendar participates for free). Ambient owners stand down
-  while `hasOpenOverlay()` / `useAnyOverlayOpen()`.
-- **A capture-phase listener must not claim a key the focused element already handles.** Grid rows are
-  `tabIndex={0}` and handle Enter/Space for *their own* record; a queue-level Enter branch that only knows how to
-  open `records[0]` has to bail when the event target is inside a row.
+Identity columns are collection-map read-only (`GRID_IDENTITY_COLUMN_KEYS`). Plane redundancy is required where the
+primary plane is conditionally unavailable. Full decision table + keyboard ownership (innermost overlay wins Escape):
+see historical depth in git / grow here when a second consumer needs it — Escape SoT is `src/lib/overlay-stack/store.ts`.
 
 ---
 
 ## Receiving spreadsheet agent waist (Unbox / History / Testing)
 
-Unbox hosts **two** tables. Agents must not load both for a single cell edit.
-
-| Surface | Job | Primitive | Agent entry |
-|---|---|---|---|
-| **Workbench LedgerGrid** | Pick a carton/line from Queue · Viewed · History | `ReceivingGridView` → `LedgerGrid` | This section + skill `receiving-grid-cell` |
-| **Station PO accordion** | Expand/edit lines inside an open carton | `PoLineRow` / `PoLineMetaGrid` / `META_COL` | Only when the task names line chips / unbox edit |
-
-**When editing workbench spreadsheet display, open only:**
-
-1. Column SoT — `src/lib/receiving/receiving-grid-layout.ts` (`RECEIVING_GRID_COLUMNS`)
-2. The specific cell under `src/components/station/receiving-grid/cells/` (not the whole tree)
-3. Align helpers — `resolveGridColumnAlign` / `gridCellAlignClass` from `@/design-system/components/grid`
-4. Shared value atoms if needed — `src/components/ui/grid-cells.tsx`
-5. Header chrome (sort / select-all / frozen) — grow `LedgerGridColumnHeader`; Receiving adapter stays thin (`ReceivingGridColumnHeader`)
-
-**Do not open unless the task names them:** `PoLineRow`, `LineEditPanel`, `useUnboxLineController`,
-`OrdersQueueTableRow`, `incoming-grid/*` (except when adopting shared header/qty atoms), KPI strips,
-`ReceivingLinesTable` (wiring host only).
-
-Session paste / skill: `.claude/skills/receiving-grid-cell/SKILL.md`.
-Map + Phase B backlog: `docs/todo/unbox-receiving-grid-CONTEXT-MAP.md`.
+Unbox hosts **two** tables. Agents must not load both for a single cell edit. When editing workbench spreadsheet
+display, open only: `RECEIVING_GRID_COLUMNS`, the specific cell under `receiving-grid/cells/`, align helpers,
+`grid-cells.tsx`, `LedgerGridColumnHeader`. Skill: `.claude/skills/receiving-grid-cell/SKILL.md`.
 
 ---
 
 ## Gap notes (to close)
 
-- **Add a cmd-K launcher** that fuzzy-jumps to `?skuId=` and fires CRUD actions (command-palette pattern:
-  https://uxpatterns.dev/patterns/advanced/command-palette). **It must not collide with the scan focus hotkey**
-  (`src/lib/scan-hotkey/store.ts`, binding from `DEFAULT_FOCUS_SCAN_HOTKEY` — `Insert` today, rebindable to
-  `ScrollLock` or any of `F1`–`F12`, claimed by the last-registered scan target) — bind cmd-K / ctrl-K only, and never
-  grab `Insert`, `ScrollLock`, or a bare function key the Station archetype can be bound to.
-- **Push filters/sort/search fully into the URL** (see URL-as-state) so deep links survive a reload.
-- **Migrate CRUD sections from refresh-after to optimistic `onMutate`/rollback** (see Optimistic CRUD).
+- **cmd-K launcher** — must not collide with scan focus hotkey.
+- **Push filters/sort/search fully into the URL.**
+- **Migrate CRUD sections to optimistic `onMutate`/rollback** where still refresh-after.
+- **Support `service-workspace` UI** — list keep-alive + shell; see support-service-workspace execution prompt.
 
 ---
 
@@ -510,15 +196,13 @@ Map + Phase B backlog: `docs/todo/unbox-receiving-grid-CONTEXT-MAP.md`.
 
 | Do | Don't |
 |---|---|
-| Compose `SidebarShell` / `SidebarRailShell`; supply only renderers | Fork a new list component or hand-position the search band |
-| Write selection + mode to `searchParams` (`router.replace`) | Hold selection in local `useState` (breaks deep-link + reload) |
-| Crossfade the right pane keyed on selection id (opacity + small-y) | Crossfade the list/map — keep it mounted and still |
-| Keep the table mounted `display:none` to preserve cache + scroll | Unmount the list on selection (loses scroll + re-fires effects) |
-| Branch empty copy by type (first-use / no-results / loading / error) | Ship a bare "Nothing here" empty state |
-| Isolate each sub-resource in its own try/catch; degrade to empty | Let a failing sibling fetch 500 the whole record |
-| Surface similar/related *below* the picker on selection | Invert the sidebar to put related items where the picker belongs |
-| Confirm-then-commit deletes; optimistic for add/edit | Optimistically delete a row (resurrects on rollback) |
-| Route motion through `useMotionTransition`/`useMotionPresence` | Hardcode a cubic-bezier or animate width/height/padding |
+| Declare `workbenchBranch` on every Workbench surface | Invent a 5th archetype for chat / inbox / Support |
+| Keep the collection map mounted on selection | Unmount the queue when opening focus (Support gap) |
+| Crossfade only the focus surface | Crossfade / animate the map |
+| Host Station + Workbench as sibling regions | Drop a browse list into the scan column |
+| Expose Back to list **and** return-to-scan CTA on hybrid pages (CTA on every strip tab, trailing `actions`) | One-way exit only from focus → list; honest absence of the return CTA; CTA parked below KPIs or in GlobalHeader |
+| Compose `SidebarShell` / `LedgerGrid` / `WorkbenchTrailingCluster` | Fork page-local twins for the same job |
+| Write selection + mode to `searchParams` | Hold selection in local `useState` only |
 
 ---
 

@@ -1,6 +1,8 @@
 import { normalizePhotoDisplayUrl } from '@/lib/nas-photo-url';
 import { resolvePhotoDisplayUrl } from '@/lib/photos/display-url';
 import type { PhotoLibrarySourceScope } from '@/lib/photos/library-filter-state';
+import type { PhotoEvidenceStage } from '@/lib/photos/stages';
+import { receivingStageFromPhotoType } from '@/lib/receiving/photo-intent';
 
 /**
  * Source-scoped context for a single photo, surfaced by the fullscreen viewer's
@@ -28,6 +30,16 @@ export interface PhotoMeta {
   damageDetected?: boolean | null;
   hasAnalysis?: boolean | null;
   caption?: string | null;
+  /**
+   * Evidence stage (`@/lib/photos/stages`) — resolved from (entity × photo_type)
+   * by the builder, rendered as a label by the panel.
+   *
+   * This field exists because the receiving builders used to put the raw
+   * `photo_type` into {@link PhotoMeta.caption}, so the viewer's **Caption**
+   * field showed the literal string `receiving_package` to the operator. A stage
+   * is not a caption; it now has its own slot and its own SoT label.
+   */
+  stage?: PhotoEvidenceStage | null;
   /** Library source scope, for the source badge + "view all from source" link. */
   sourceScope?: PhotoLibrarySourceScope;
 }
@@ -45,6 +57,7 @@ export function unboxingPhotoMeta(fields: {
    */
   clientCapturedAt?: string | null;
   takenByStaffName?: string | null;
+  stage?: PhotoEvidenceStage | null;
 }): PhotoMeta {
   return {
     poRef: fields.poRef ?? null,
@@ -52,6 +65,7 @@ export function unboxingPhotoMeta(fields: {
     createdAt: fields.createdAt ?? null,
     clientCapturedAt: fields.clientCapturedAt ?? null,
     takenByStaffName: fields.takenByStaffName ?? null,
+    stage: fields.stage ?? null,
     photoType: 'RECEIVING',
     sourceScope: 'unboxing',
   };
@@ -61,7 +75,15 @@ export function unboxingPhotoMeta(fields: {
 export interface ReceivingPhotoRowLike {
   id: number;
   photoUrl: string;
+  /**
+   * The list route's legacy alias — it carries `photos.photo_type`, NOT display
+   * text (`photos` has no caption column). Read as the stage, never rendered.
+   */
   caption?: string | null;
+  /** `photos.photo_type` under its real name; falls back to {@link caption}. */
+  photoType?: string | null;
+  /** Present ⇒ item evidence, by the identity law. Decides the entity half. */
+  receivingLineId?: number | null;
   createdAt?: string | null;
   /** Shutter clock from `/api/receiving-photos`; null on desktop/legacy rows. */
   clientCapturedAt?: string | null;
@@ -76,15 +98,36 @@ export interface ReceivingPhotoRowLike {
  * drives the viewer's "Linked to PO …" readout + deep link.
  */
 export function receivingPhotoMeta(
-  row: Pick<ReceivingPhotoRowLike, 'caption' | 'createdAt' | 'clientCapturedAt'>,
+  row: Pick<
+    ReceivingPhotoRowLike,
+    'caption' | 'photoType' | 'receivingLineId' | 'createdAt' | 'clientCapturedAt'
+  >,
   ctx: { poRef: string | null },
 ): PhotoMeta {
   return unboxingPhotoMeta({
     poRef: ctx.poRef,
-    caption: row.caption,
+    // NOT `row.caption` — that alias carries the photo_type, and feeding it here
+    // is what printed `receiving_package` under the viewer's "Caption" heading.
+    // There is no caption to show, so the field stays absent.
+    caption: null,
+    stage: receivingPhotoStage(row),
     createdAt: row.createdAt,
     clientCapturedAt: row.clientCapturedAt,
   });
+}
+
+/**
+ * Evidence stage of a receiving photo row.
+ *
+ * Entity wins for lines (the identity law), and `photoType` falls back to the
+ * `caption` alias so a caller that has not migrated still resolves. Resolution
+ * itself is the SoT's — never a local map.
+ */
+export function receivingPhotoStage(
+  row: Pick<ReceivingPhotoRowLike, 'caption' | 'photoType' | 'receivingLineId'>,
+): PhotoEvidenceStage | null {
+  const entityType = row.receivingLineId != null ? 'RECEIVING_LINE' : 'RECEIVING';
+  return receivingStageFromPhotoType(entityType, row.photoType ?? row.caption);
 }
 
 /** Receiving photo row → `PhotoGallery` input `{id, url, meta}` (poRef required). */

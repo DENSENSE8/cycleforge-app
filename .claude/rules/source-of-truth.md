@@ -40,11 +40,14 @@ fields, pick the presentation kind and import from the SoT below (Kinetic Ledger
 | Grid column visibility (per-staff) | `@/design-system/components/grid` `useGridColumnVisibility` / `useGridFields` + `GridFieldsMenu` — see **Grid column visibility + sort** below |
 | Grid column sort (URL-durable) | `@/hooks/useUrlColumnSort` → `?colsort=` / `?coldir=` — see **Grid column visibility + sort** below |
 | Collection-surface action planes | `display/workbench.md` — in-cell · row-scoped · multi-select · record, one primary plane each |
-| Station Workbench shell / column / wash | `@/components/station/workbench` (`StationWorkbench`, `StationPanelRoot` + `StationAmbientWash`, `STATION_WORKBENCH_*`) — rule: `display/station-workbench.md` |
+| Workbench branch (Layer C recipe) | `SURFACE_REGISTRY.workbenchBranch` + `WORKBENCH_BRANCH_IDS` in `src/lib/stations/surface-keys.ts` — `ops-queue` · `master-detail` · `board` · `fact-stack` · `service-workspace`; null on Station/Monitor/Canvas. Law: `display/workbench.md` + child recipe files |
+| Collection map keep-alive | Prefer `display:none` over unmount when focus overlays the map — reference `ReceivingRightPane`. Service-workspace forbids unmounting the queue on ticket open — `display/workbench-service.md` |
+| Return-to-scan chrome CTA | **Every** scan-station hybrid page (Unbox · Testing · Pack · …): solid primary in `WorkbenchTrailingCluster.actions` — top-right of the workbench context bar (`WorkbenchChromeHeader` trailing), **above the KPI strip** — on **every** strip tab. Rejoins Station scan actions (close focus overlay → bench tab’s data table → focus station scan bar). Reference: Unbox `UnboxWorkspaceHeader` (“Unbox”). Law: `display/workbench.md` → Multi-region pages (+ `display/station.md` § hybrid) |
+| Station column shell / wash | `@/components/station/workbench` (`StationWorkbench`, `StationPanelRoot` + `StationAmbientWash`, `STATION_WORKBENCH_*`) — **Station region** shell, not Workbench contract. Rule: `display/station-workbench.md` |
 | Surface / box shell | `Panel` (generic) · `SectionCard` (monitor) · `CardShell` (rows) — never hand-roll |
 | Honest absence (missing fact) | `GridCellDash` / ledger `fallback` default `—` — never invent `"N/A"` on ledger/grid primitives |
 | Photo gallery viewer | `@/components/shipped/photo-gallery` — `usePhotoGallery` + `PhotoViewerPortal` → `PhotoViewerModal` (composed launcher: `PhotoGallery` / `launcherLayout`). Never a page-local lightbox or `createPortal`+`AnimatePresence` fork around the modal. Read surfaces pass `{ url }` only (omit numeric `id` / upload targets so delete/upload stay off). |
-| Carton read surface | `/carton/[id]` → `CartonInspector` → `inspection/CartonInspectionPage` + `carton-inspector-model.ts`. Read model + atoms only (D6 / `pattern-evolution.md`). Photos = `ReceivingPhotosSection` readOnly below pipeline (same component as details-stack Progress). Work escape = one quiet `openInUnboxHref` control — never `"Open in Unbox"` spam on findings/header. IA: disposition header; col1 contents·activity·record; col2 Panel+ReceivingCartonPipeline·photos·history·findings. Linked PO suppresses Unmatched. Not Station Workbench — recipe: `display/carton-read.md`. |
+| Carton read surface | `/carton/[id]` → `CartonInspector` → `inspection/CartonInspectionPage` + `carton-inspector-model.ts`. Read model + atoms only (D6 / `pattern-evolution.md`). Photos = `ReceivingPhotosSection` readOnly below pipeline (same component as details-stack Progress). Work escape = one quiet `openInUnboxHref` control — never `"Open in Unbox"` spam on findings/header. IA: disposition header; col1 contents·activity·record; col2 Panel+ReceivingCartonPipeline·photos·history·findings. Linked PO suppresses Unmatched. Not Station column shell — recipe: `display/carton-read.md`. |
 | Order note (annotation on an order) | `order_notes` **only**, via `POST /api/orders/[id]/notes` (`src/lib/orders/order-notes.ts` + `useOrderNotes` / `OrderNotesTrail`). The scalar `orders.notes` is **read-only legacy** — displayed, searched, counted, never written by the product. Guard: `order-note-grain.guard.test.ts` — see **Order note grain** below |
 | Receiving note vs label text (**per line item**) | `receiving_line.notes` = operator item note (**never printed**) · `receiving_line.label_note` = the printed face center · `receiving_line.zoho_notes` = Zoho line description · `receiving.zoho_notes` / `support_notes` = PO-header / carton. **All three line columns are per LINE ITEM — never hoist a label note to the carton.** Notes dock (`LineNotesCard`) writes `notes`; label editor (`LabelEditPopover` / As Listed) writes `label_note`. Guard: `label-note-grain.guard.test.ts` — see **Note vs label grain** below |
 | Label kind → grain (what the sticker goes on) | `src/lib/print/workspace-label-kinds.ts` — `KIND_META.grain` + `workspaceLabelGrainLabel(kind)` (`PO / carton` · `Per item` · `Container`), carried into every picker by `labelOptionsForSelect`. Never hand-type a kind's name or grain at a call site |
@@ -57,10 +60,12 @@ fields, pick the presentation kind and import from the SoT below (Kinetic Ledger
 | Right-edge slot occupancy + modality | `RightRailHost` + `src/lib/right-rail/store.ts` — THE right details-panel wrapper; see **Right-rail modality** below |
 | Right-rail record-inspector header | `PaneHeader` + blocks (`PaneHeaderLabel` · `PaneHeaderActionBar iconOnly` · `PaneHeaderCloseButton`) — dense identity + contextual icons; **never** `SidebarIntakeFormShell` on a record peek. Recipe: [`display/right-rail-inspector.md`](display/right-rail-inspector.md). Guard: `right-rail-inspector-header.guard.test.ts` |
 | Sidebar intake / create form chrome | `SidebarIntakeFormShell` — **create · import · prefs** overlays only (`detail:new-order`, Import eBay, FBA create, grid column display). Not a record-inspector header |
+| Nav search (type-to-jump over the nav registry) | `src/lib/nav/nav-search.ts` (ranked matcher) + `nav-destinations.ts` (pages **and** modes flattened) — the ⌘K palette and the MasterNav spine both compose it. NOT the cross-entity engine — see **Nav search** below |
+| ⌘K / Ctrl+K ownership | `src/components/CommandBar.tsx` — the ONLY binder. No other surface may bind it (a suppressor inside a focus trap is the one exception) or advertise it. Guard: `cmdk-owner.guard.test.ts` |
 | Keyboard ownership (Escape / ambient hotkeys) | `src/lib/overlay-stack/store.ts` (+ `useRegisterOverlay` / `useAnyOverlayOpen`) — see **Escape ownership** below |
 | Station entity-context header | `@/components/station/entity-context` (`CartonContextCard` + `StationContextBar`) — Unbox / Triage / Testing / Shipping active-order |
 | Workbench chrome scoped search | `@/design-system/primitives/ToolbarSearchToggle` — collapsed Search icon; expands on hover / focus / click (or when query non-empty); composes `SearchField`. Never mount an always-open `SearchField` in a `WorkbenchChromeHeader` `search` slot **when search refines an on-screen list**. **Entry-path exceptions:** `/ops/photos` (always-open chrome field) and `/search` (context-rail `SearchBar` in `SearchSidebarPanel`; header launcher hidden) — rationale in `ui-design-system.md` → Scoped search chrome. |
-| Station composer dock (chat-style notes) | `@/design-system/primitives` `StationComposerDock` — Unbox overview carton notes **and** all ticket reply chrome (`SupportChatComposer`: inline under thread **and** `variant="station-dock"` via `SupportTicketComposerDock`). Same elevated white shell + auto-grow height; ticket footer = VisibilityToggle · Library (`+`) · Attach (paperclip) · Send (or `trailingAction` as `<StationTerminalDock embedded>` — Send suppressed, Enter still commits). Placement SoT for floating docks: `slicedActionDockWrapperClass()`. Never hand-roll a second sticky/amber ticket composer beside this shell. |
+| Omnichannel / chat-style composer dock | `@/design-system/primitives` `OmnichannelComposerDock` (was `StationComposerDock` until 2026-08-01 — a birthplace name on a shared shell, corrected when Support became Workbench branch `service-workspace`; the dock is not Station-contract property) — Unbox overview carton notes **and** all ticket reply chrome (`SupportChatComposer`: inline under thread **and** `variant="station-dock"` via `SupportTicketComposerDock`). Same elevated white shell + auto-grow height; ticket footer = VisibilityToggle · Library (`+`) · Attach (paperclip) · Send (or `trailingAction` as `<StationTerminalDock embedded>` — Send suppressed, Enter still commits). Placement SoT for floating docks: `slicedActionDockWrapperClass()`. Never hand-roll a second sticky/amber ticket composer beside this shell. |
 | Resizable document PDF slide-over | `@/design-system/components/DocumentSlideOver` (+ `DocumentPreviewFrame`, `useHorizontalEdgeResize`) — Labels Print, Testing manuals |
 | Horizontal pane edge resize grip | `@/design-system/components/HorizontalEdgeResizeHandle` (+ `useHorizontalEdgeResize`) — context rails (`ContextPanelLayout`) + non-modal detail inspectors (`RightRailHost`); never hand-roll a second pill/strip for the same job |
 | Recent-rail scrollport / more-below lip | `@/components/sidebar/rail-shell/SidebarRailScrollport` (+ `useMoreBelow` / `SCROLL_MORE_BELOW_CLASS` in `tokens/scroll-edge.ts`) — station + SidebarShell-hosted recent feeds; never hand-roll a second bottom fade. `SidebarRailShell` is content-sized and does **not** own vertical scroll |
@@ -71,12 +76,12 @@ fields, pick the presentation kind and import from the SoT below (Kinetic Ledger
 | L2 Mode + Recents (page modes + cross-page MRU) | `HeaderModeSwitcher` + `HeaderRecentsSwitcher` in `GlobalHeader` — data = `SIDEBAR_PAGE_NAV` / `useSidebarModeNav` / `useRecentModes`. Never a sidebar pill-band twin; no MRU chips in the spine org band. |
 | Header pin stations (Quick Access pins) | `HeaderPinsSwitcher` in `GlobalHeader` (hairline after Recents → pin current → sortable icons → overflow) — data = `useQuickAccess` / `cf.quickAccess` cache; durable SoT = `staff_preferences.prefs.quickAccess` via `<QuickAccessSync/>`. Never remount a pin list in a Quick Access / staff menu. Desktop Quick Access **actions** stay in `GlobalHeaderActions` in order **search · clipboard · phone QR · kiosk · inbox · AI (far-right)** — Sparkles opens the assistant right-rail occupant at the edge it owns; no staff avatar on desktop. |
 | Identity mark (org + staff circle) | `@/components/identity` — `IdentityMark` (circle · ring · image-or-initials · `xs`…`2xl`) and `StaffAvatar` (photo → colour+initials, resolved by staff id). **Never hand-roll a `rounded-full` + initials span**, and never fork a local `initials()` — the SoT is `staffInitials` (`StaffBadge.tsx`). See **Staff profile photo** below |
-| Org / workspace switch (spine top) | `OrgWorkspaceControl` in the MasterNav 40px top band — current `organizationName` on a **circle `IdentityMark`** (same `sm` density as the staff footer) + an **always-mounted dropdown trigger**, single-org included: a control that is a button for some accounts and inert text for others teaches two affordances for one slot, and the single-org menu still names the workspace and routes to `admin.view`-gated Settings → Organization. Switch path = `useSwitchOrg` / `requestSwitchOrg` (`src/lib/identity/switch-org.ts`). Page selection is the selected spine body row — never a twin “name of now” label in the top band. Org does **not** use staff photos (org brand logo is a separate lane). Guard: `header-mode.guard.test.ts`. |
-| Staff account (spine footer) | `StaffAccountFooter` below Settings/Admin — `StaffAvatar` · name · role · more (phone history / feedback / QA settings) · sign-out. Mobile keeps a compact account avatar in `GlobalHeaderActions`. When the spine is collapsed (0 width), org + staff are unreachable — same as Admin/Settings; open via header toggle / edge peek. |
+| Org / workspace switch (spine top) | `OrgWorkspaceControl` in the MasterNav 40px top band — current `organizationName` on a **circle `IdentityMark`** (same `sm` density as the staff footer) + an **always-mounted dropdown trigger**, single-org included: a control that is a button for some accounts and inert text for others teaches two affordances for one slot, and the single-org menu still names the workspace and routes to `admin.view`-gated Settings → Organization. Switch path = `useSwitchOrg` / `requestSwitchOrg` (`src/lib/identity/switch-org.ts`). Page selection is the selected spine body row — never a twin “name of now” label in the top band. Org does **not** use staff photos (org brand logo is a separate lane). **Menu is a child of the trigger** — `AnchoredLayer` `bottom-stretch` on the button + dense `SIDEBAR_SPINE_MENU_*` chrome (`sidebar-spine.ts`); never a wider magic `w-[Npx]` or a chunkier twin of the band. Guard: `header-mode.guard.test.ts`. |
+| Staff account (spine footer) | `StaffAccountFooter` below Settings/Admin — `StaffAvatar` · name · role · more (phone history / feedback / QA settings) · sign-out. Mobile keeps a compact account avatar in `GlobalHeaderActions`. When the spine is collapsed (0 width), org + staff are unreachable — same as Admin/Settings; open via header toggle / edge peek. **⋯ menu is a child of the footer row** — `AnchoredLayer` `top-stretch` + dense `SIDEBAR_SPINE_MENU_*` chrome (same SoT as the org menu); never a wider magic `w-[Npx]`. Guard: `header-mode.guard.test.ts`. |
 | Staff profile photo | `staff.avatar_photo_id` → the photos platform (`STAFF` entity type). Read it with `<StaffAvatar>`, never a per-surface photo join — see **Staff profile photo** below |
 | Scan Stations (spine section drill) | `STATION_GROUPS` (+ `icon`) + required `stationGroup: 'floor'` on `kind: 'station'` rows in `sidebar-navigation.ts`; membership via `SPINE_SECTIONS` / `spineSectionIdForPage`. **`floor` is the only station group** — the `desk` twin died 2026-08-01 (see the domain row below). Members, in pipeline order: Receiving subgroup (Arrival / Unbox / Local Pickup / Repair Service) + Testing / Packing / Scan out. Subgroup header from `STATION_SUBGROUPS`. **Never move a scan bench into a domain drill** — an operator at the dock answers to their input model, not to the domain of the records they touch. Footer-pinned `TechRailSearchBar` above Settings/Admin (+ `StaffAccountFooter` below) filters root sections or the open drill's pages. Guard: `station-nav-groups.guard.test.ts` + `main-nav-groups.guard.test.ts`. |
-| Main Analytics Monitor / Workflow Studio (spine section drills) | `MAIN_GROUPS` (+ `icon`) + required `mainGroup` on `kind: 'main'` rows. **Analytics Monitor** = Operations only (Live / TV). **Workflow Studio** = Studio + Catalog. Home / Search / Media / Chat top-pinned. Guard: `main-nav-groups.guard.test.ts`. Law: `display/workbench.md`. |
-| MasterNav spine type ladder | Org band `OrgWorkspaceControl` = `text-role-body`; page/drill/mode/section labels = `text-role-caption` (pages semibold, modes medium); counts = `text-role-micro`; staff footer name = `text-role-caption`. Never sentence-case `text-role-eyebrow` for destinations. Idle page/section labels use default ink (icons stay muted); idle modes stay default ink. Law: `display/workbench.md`. Guard: `main-nav-groups.guard.test.ts` + `header-mode.guard.test.ts`. |
+| Main Analytics Monitor / Workflow Studio (spine section drills) | `MAIN_GROUPS` (+ `icon`) + required `mainGroup` on `kind: 'main'` rows. **Analytics Monitor** = Operations only (Live / TV). **Workflow Studio** = Studio + Catalog. Home / Search / Media / Chat top-pinned. Guard: `main-nav-groups.guard.test.ts`. Law: `display/workbench-master-detail.md` (spine context). |
+| MasterNav spine type ladder | Org band `OrgWorkspaceControl` trigger = `text-role-body`; **identity menus** (org switch + staff ⋯) = dense child — names + actions `text-role-caption`, meta `text-role-micro`, marks `xs`; page/drill/mode/section labels = `text-role-caption` (pages semibold, modes medium); counts = `text-role-micro`; staff footer name = `text-role-caption`. Never bare `text-sm` on these surfaces; never sentence-case `text-role-eyebrow` for destinations. Idle page/section labels use default ink (icons stay muted); idle modes stay default ink. Law: `display/workbench-master-detail.md`. Guard: `main-nav-groups.guard.test.ts` + `header-mode.guard.test.ts`. |
 | MasterNav section accents | `spineAccentFor` / `SPINE_SECTION_ACCENTS` in `src/lib/nav/spine-section-accent.ts` — monitor sky · floor **amber-700** · inbound **teal-700** · catalog emerald · inventory **cyan-700** · fulfillment indigo · sales rose · support **orange-700** · studio violet; top pin + footer = `SPINE_NEUTRAL_ACCENT` (blue). The map is a **total** `Record<SpineSectionId, …>`, so a new section without a hue is a type error. Active fill / mode wash / icon tint compose from the map — never hardcode `bg-blue-600` alone in `SidebarNavList`. **An active row is a fill PLUS `ring-1 ring-inset ring-{hue}-400/30`** (mode wash: `/20`) — a bare colour swatch has no seated edge. **A hue's SHADE is picked for contrast, not symmetry:** amber / cyan / orange fill at 700 because at 600 they sit under the AA 4.5:1 floor for the 12px caption these rows use (amber-600 ≈2.9:1). Do not "restore" 600 for hue symmetry. Guard: `main-nav-groups.guard.test.ts`. |
 | MasterNav row hover/press travel | `SPINE_ICON_LIFT_CLASS` (same module) — CSS-only `translate(2px, -1px)` hover / `(1px, 0)` press on the **14px leading glyph**, `motion-safe:`-gated because the framer `MotionConfig` floor does not cover CSS transforms. Requires `group` on the row button. **Never** a framer `whileHover` on a spine row (a re-render per mousemove across 20 rows for 2px the compositor gives free), **never** a row-level `scale` (breaks the baseline dense siblings align to), **never** a hover/active `font-*` shift (reflows text mid-pointer). Guard: `main-nav-groups.guard.test.ts`. |
 | Spine row membership (the TWO registries are one declaration) | `APP_SIDEBAR_NAV` (flat rows) + `SIDEBAR_PAGE_NAV` (mode registry) — `MasterNav`'s `toPageNav` merges them as `{ ...page, icon, label }`, so for any page owning a `SIDEBAR_PAGE_NAV` entry the mode registry **wins** every membership field (`kind` · `mainGroup` · `stationGroup` · `stationSubgroup` · `domainGroup` · `href` · `requires`) and the flat row's copy is inert. A disagreement does not error and does not double-render — it silently ships one answer while the other reads as documentation. Declare membership in both **identically**. Guard: `main-nav-groups.guard.test.ts` → "agree on every shared membership field". |
@@ -385,13 +390,23 @@ Two invariants live here because they are single-source mappings, not recipes:
   **There is no ambient, always-on right-edge region**, and one must not be
   rebuilt. One was built for the Unbox step procedure — `procedure-store.ts` +
   `RightRailProcedureRegion` + `useRegisterRightRailProcedure` +
-  `UnboxProcedureRail` — and retired within the day. It then lived as the
-  `checklist` display in the Displays push column, and as of **2026-08-01 the
-  procedure is not on the right edge at all**: it is the Unbox workbench CENTRE
-  (`UnboxProcedureStack`, `display/station-workbench.md`), and the `checklist`
-  display was deleted rather than kept as a mirror. Both retirements point the
-  same way — the procedure is the work, so it belongs on the work surface, and
-  the right edge stays for reference and exception surfaces the operator picks.
+  `UnboxProcedureRail` — and retired within the day.
+
+  **The live checklist that replaced it is a DISPLAY, which is the whole point.**
+  As of 2026-08-02 the Unbox procedure has two views: the work **step column** in
+  the workbench centre (`UnboxProcedureColumn`) and the live **checklist** as the
+  first/default tab of the Displays push column (`UnboxProcedureChecklist`). The
+  checklist is always-visible *because the operator picked that display and it
+  persisted* — it is not a region pinned beside the picker, it does not outrank
+  it, and it is mutually exclusive with Ticket / Claim / tool like every other
+  Displays tab. That is exactly the shape this section prescribes: *a surface
+  that should stay visible while the operator works is a display the operator
+  picks, not a second permanent consumer of the edge.* Do not "upgrade" it into
+  a region or a `RightRailHost` occupant.
+
+  Two views, ONE derivation: both read `useUnboxProcedureSteps`
+  (`display/station-workbench.md`). The hazard was never two views — it was two
+  derivations drifting.
 
   Why the door stays shut: `RightRailHost` renders exactly one occupant by
   construction (`getRightRailTop()`), so a region pinned beside it is a *second*
@@ -453,8 +468,12 @@ Two invariants live here because they are single-source mappings, not recipes:
   `detail:receiving` are mutually exclusive — opening any one clears/suspends
   the others; do not nest them as peers. Displays is **lowest precedence**: an
   exception surface (Claim / Ticket) or a just-launched tool outranks reference
-  reading. When none is open, the parked `ReceivingPushExpandStrip` restores
-  them.- **Do not "fix" a non-modal occupant by adding a focus trap.** The host has never
+  reading. Displays opens/closes from the pane-anchored `StationMoreDetails`
+  progress ring (`GoalRing` / `unbox-displays-expand-button`) — not the parked
+  strip — so the affordance stays put while a push column is open. When a linked
+  ticket is parked and no push owns the edge, `ReceivingPushExpandStrip` restores
+  the ticket only (`ReceivingTicketExpandControl`).
+- **Do not "fix" a non-modal occupant by adding a focus trap.** The host has never
   installed one, so `aria-modal="true"` was a claim the DOM did not honor; non-modal
   markup is the honest form.
 - **Non-modal occupants are resizable + collapsible** via `DETAIL_STACK_RESIZE` /
@@ -478,6 +497,55 @@ Two invariants live here because they are single-source mappings, not recipes:
   record→record navigation swaps content in place instead of playing exit-then-enter
   with an empty slot between. See `display/motion-crossfade.md`. (Ticket / Claim
   are push, not rail occupant ids.)
+
+## Nav search (type-to-jump)
+
+- **One matcher.** `src/lib/nav/nav-search.ts` ranks the static nav registry:
+  exact → prefix → word-prefix → substring → subsequence, multi-token AND, with
+  highlight offsets. `nav-destinations.ts` flattens pages **and their modes**
+  into the rows it ranks. The ⌘K palette and the spine both compose these — there
+  were two divergent `includes()` matchers before, disagreeing on both what was
+  searchable and what came back.
+- **A MODE is a destination.** `/products?view=qc` is a place. The spine used to
+  match mode labels but could only render pages and sections, so typing a mode's
+  name surfaced its parent — or its category.
+- **Tree at rest, FLAT while searching.** A non-empty query switches the spine
+  body to a ranked destination list with the parent (section for a page, page for
+  a mode) as row metadata. Categories answer "what exists"; search answers "take
+  me to what I named". Filtering the *category buttons* served neither — typing a
+  page's exact name returned a section that did not contain the word.
+- **Never highlight what did not match.** A keyword hit (href, section) carries
+  no label ranges, and ranks below any label match of the same tier — a row that
+  floats to the top with nothing marked is unexplainable.
+- **This is NOT the cross-entity engine.** `hybridSearch` / `SearchHit` stays the
+  SoT for orders / cartons / units. Nav search is ~40 static rows, no I/O, safe on
+  every keystroke.
+- Guards: `nav-search.test.ts` (the ladder) + `nav-destinations.test.ts` (the
+  LIVE registry — the old defect was invisible to fixtures because matching
+  worked and the renderer threw the answer away).
+
+## ⌘K has exactly one owner
+
+`CommandBar` binds ⌘K / Ctrl+K; nothing else may bind it **or advertise it**.
+
+- Three claimants shipped at once: `CommandBar`, `useQuickAccessHotkey` (gated on
+  a `hotkey: 'cmdk'` setting that **defaulted on**, so one keypress opened the
+  palette *and* the Quick Access menu — both `preventDefault`, so neither could
+  yield), and `GlobalHeaderSearch`, which bound nothing yet rendered
+  `label="Search (⌘K)"` over a chord that opened a different surface.
+- **A false shortcut hint is worse than no hint** — it teaches a chord that does
+  something else. The guard therefore pins both halves: one binding, no lying
+  labels (tooltip / aria-label / `<kbd>`).
+- **It fires from anywhere, text fields included.** The owner must NOT inspect
+  the focused element. Standing a hotkey down while typing is the right rule for
+  a BARE key (the user is producing that character) and the wrong one for a
+  modifier chord — nobody types ⌘K, so there is nothing to yield to, and the
+  bail made the palette dead exactly when an operator was mid-task in a field.
+- A **suppressor** is allowed and is the opposite of a claimant: a modal with a
+  focus trap may swallow the chord (`preventDefault` + `stopPropagation`, no
+  action) so an ambient global cannot yank focus out — same rule as
+  `overlay-stack/store.ts`. Allowlisted and asserted to really be suppressors.
+- Guard: `src/components/layout/cmdk-owner.guard.test.ts`.
 
 ## Escape ownership (overlay stack)
 
@@ -672,7 +740,7 @@ the two that live closest together were one column until 2026-07-31.
 
 | Field | Grain | Printed? | Written by |
 |---|---|---|---|
-| `receiving_line.notes` | **line item** | **never** | notes dock (`LineNotesCard` → `StationComposerDock`) |
+| `receiving_line.notes` | **line item** | **never** | notes dock (`LineNotesCard` → `OmnichannelComposerDock`) |
 | `receiving_line.label_note` | **line item** | yes — the face center | label editor (`LabelEditPopover`, As Listed) |
 | `receiving_line.zoho_notes` | line item | no | zoho sync (read-only import) |
 | `receiving.zoho_notes` / `.support_notes` | PO header / carton | no | PO sync / carton ops |

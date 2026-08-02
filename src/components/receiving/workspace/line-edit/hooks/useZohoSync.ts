@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { dispatchLineUpdated } from '@/components/station/ReceivingLinesTable';
+import { dispatchLineUpdated } from '@/components/station/receiving-lines-table-helpers';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { parseZendeskListingFromPoNotes } from '@/lib/zoho-po-prefill';
 import { refreshDomains } from '@/lib/refresh/bus';

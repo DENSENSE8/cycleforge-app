@@ -4,15 +4,16 @@ import type { ReactNode } from 'react';
 import { CartonUnitsRollupBody } from '../../CartonUnitsRollup';
 import { UnboxLabelPreview } from '../UnboxLabelPreview';
 import { POUnboxingSection } from '../POUnboxingSection';
-import { UnboxProcedureStack } from '../UnboxProcedureStack';
+import { UnboxProcedureCards } from '../UnboxProcedureCards';
 import { UnboxSerialStepSurface } from '../steps/UnboxSerialStepSurface';
+import { UnboxProcedureChecklist } from '../UnboxProcedureChecklist';
 import { ReceivingPhotoButton } from '../ReceivingPhotoButton';
 import { LinePoNoteCard } from '../LinePoNoteCard';
 import { SupportContextHub } from '@/components/support/context';
 import { SectionTabsSlider, WorkspaceCard, type SectionTab } from '@/design-system/components';
 import { buildSectionTabs, WorkspaceTimelineTab } from '@/components/station/workbench';
-import { Barcode, ExternalLink, FileText, History, MapPin, MessageSquare, SlidersHorizontal } from '@/components/Icons';
-import type { ReceivingLineRow } from '@/components/station/ReceivingLinesTable';
+import { Barcode, ClipboardList, ExternalLink, FileText, History, MapPin, MessageSquare, SlidersHorizontal } from '@/components/Icons';
+import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import type { InlineActionFeedbackPayload } from '../../InlineActionFeedbackCard';
 import type { PoNoteTabState } from './usePoNoteTabState';
 import type { UnboxSideTab } from '../unbox-side-tabs';
@@ -66,22 +67,23 @@ export interface BuildUnboxTabsInput {
 }
 
 /**
- * The Unbox CENTRE — the guided step stack. The carton and its capture work,
- * nothing else.
+ * The Unbox CENTRE — the horizontal procedure card rail. The carton and its
+ * capture work, nothing else.
  *
  * No tab strip above it: `overview` is the whole workbench body, and every other
  * display lives in the right-edge Displays push column ({@link buildUnboxSideTabs}).
  *
- * ## The procedure IS the centre now (reversed 2026-08-01)
+ * ## Cards in the centre, checklist on the right (2026-08-02)
  *
- * It used to be the `checklist` display in that column, on the reasoning that a
- * read-only status display must never take the work surface's seat. That
- * reasoning was right about a STATUS display and is why the checklist was moved
- * there — but the surface here is not a status display: it is the work itself,
- * one active step card carrying that step's own capture controls, directly above
- * the composer that commits it. The checklist display is deleted rather than
- * mirrored, because two procedure surfaces in one station is the collision the
- * last change closed.
+ * The centre answers *what do I do right now* — one expanded card per step,
+ * carrying that step's own capture controls, with its neighbours visible as
+ * compact faces either side. The right-edge `checklist` display answers *where
+ * am I in the whole job*, live.
+ *
+ * Two VIEWS, one derivation: both read `useUnboxProcedureSteps`. The earlier
+ * "exactly ONE procedure surface" rule was aimed at a real hazard and named the
+ * wrong thing — the danger was two derivations, not two views — so the checklist
+ * came back rather than staying deleted.
  */
 export function buildUnboxOverview(
   input: Pick<
@@ -111,11 +113,11 @@ export function buildUnboxOverview(
 
   return (
     <div className="space-y-4">
-    <UnboxProcedureStack
+    <UnboxProcedureCards
       // Remount on carton change: the focused-step pointer, and every body's
       // transient view state, belong to ONE carton. A new box starts at its own
       // first unsettled step, never wherever the last one was parked.
-      key={`unbox-stack-${receivingId}-${row.id}`}
+      key={`unbox-cards-${receivingId}-${row.id}`}
       row={row}
       staffId={staffId}
       // `contents` step body. `serialScan={false}` is the split: the accordion
@@ -275,12 +277,27 @@ export function buildUnboxSideTabs(input: BuildUnboxTabsInput): SectionTab[] {
         />
       ),
     },
-    // The `checklist` display was DELETED 2026-08-01, not moved. The procedure
-    // is the centre now ({@link buildUnboxOverview}), and two procedure surfaces
-    // in one station is the collision the previous change closed — a mirror
-    // "for reference" re-opens it, and the two would disagree the first time one
-    // of them learned about skips. The DS `ProcedureChecklist` primitive
-    // survives for other stations.
+    {
+      id: 'checklist',
+      label: 'Checklist',
+      icon: ClipboardList,
+      // FIRST and PRIMARY — the strip's default display. It is the station's
+      // live "where am I": every step, one line each, updating as scans land
+      // (including phone captures, via the realtime subscription in
+      // `useUnboxProcedureSteps`). The operator's first question on every carton
+      // is what is left on it, and two clicks to find that out is a cost paid on
+      // every box.
+      //
+      // It is a second VIEW of the centre's work cards, NOT a second procedure:
+      // both read `useUnboxProcedureSteps`, so there is one derivation and they
+      // cannot drift. Clicking a row moves the centre's card — the checklist is
+      // the map, the cards are the work.
+      content: (
+        <WorkspaceCard variant="glass" overflow="visible" bodyDensity="nested">
+          <UnboxProcedureChecklist row={row} />
+        </WorkspaceCard>
+      ),
+    },
     {
       id: 'support',
       label: 'Support',

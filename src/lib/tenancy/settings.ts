@@ -16,6 +16,13 @@ const BrandSchema = z.object({
   logoUrl: z.string().url().optional(),
   primaryColor: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
   attractMediaUrl: z.string().url().optional(),
+  /**
+   * Customer website opened from the public QR interstitial (phone-camera
+   * scans of platform Digital Links). Stickers always mint on the Cycle Forge
+   * host (`{slug}.app.cycleforge.ai`) — this field is outbound only.
+   * Empty / unset ⇒ interstitial shows brand but no continue button.
+   */
+  publicLandingUrl: z.string().url().or(z.literal('')).optional(),
 });
 
 // Tenant letterhead — drives the company block on printed repair paper and
@@ -233,6 +240,28 @@ export const OrgSettingsSchema = z.object({
       autoMergeSignals: ['tracking', 'order_number'],
       fuzzyMergeRequiresReview: true,
     }),
+  // The tenant's GS1 identity, for the interop projections (src/lib/interop).
+  // Wholly OPTIONAL and absent by default: almost no reseller has licensed a
+  // GS1 Company Prefix, and the projections are designed to be useful with
+  // internal identifiers and to UPGRADE per tenant when a prefix appears.
+  //
+  // `companyPrefix` is what makes minting an SSCC / GRAI / GIAI possible at
+  // all. Without it those keys are simply absent from a projection — never
+  // faked, because a GS1 key on an unlicensed prefix collides with whichever
+  // company really owns those digits (src/lib/interop/gs1-keys.ts explains the
+  // refusal at length, including the placeholder GLN this repo already prints
+  // on bin labels).
+  //
+  // `cbvUriForm` is per-partner in spirit: an EPCIS 1.2 consumer REJECTS the
+  // Web URI spelling of a CBV term, so the safe default is the legacy URN and
+  // a tenant opts into `webUri` only when it knows its partners are on 2.0.
+  gs1: z
+    .object({
+      companyPrefix: z.string().max(12).default(''),
+      gln: z.string().max(13).default(''),
+      cbvUriForm: z.enum(['urn', 'webUri']).default('urn'),
+    })
+    .default({ companyPrefix: '', gln: '', cbvUriForm: 'urn' }),
 }).passthrough();
 
 export type OrgSettings = z.infer<typeof OrgSettingsSchema>;
@@ -242,6 +271,22 @@ export function parseOrgSettings(raw: unknown): OrgSettings {
   // than crashing the request that needs them.
   const result = OrgSettingsSchema.safeParse(raw ?? {});
   return result.success ? result.data : OrgSettingsSchema.parse({});
+}
+
+/**
+ * Customer website for public QR interstitial CTA. Empty when unset / invalid
+ * — callers must not fall back to a dogfood storefront URL.
+ */
+export function getPublicLandingUrl(settings: OrgSettings | null | undefined): string {
+  const raw = String(settings?.brand?.publicLandingUrl ?? '').trim();
+  if (!raw) return '';
+  try {
+    const u = new URL(raw);
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') return '';
+    return u.toString();
+  } catch {
+    return '';
+  }
 }
 
 /**
@@ -335,6 +380,29 @@ const DEFAULT_INBOUND_SETTINGS: InboundOrgSettingsRaw = {
  */
 export function getInboundSettings(settings: OrgSettings): InboundOrgSettingsRaw {
   return settings.inbound ?? DEFAULT_INBOUND_SETTINGS;
+}
+
+/**
+ * Raw accessor for the persisted GS1 block — the digits exactly as an admin
+ * typed them, including a placeholder prefix or a malformed GLN.
+ *
+ * Do NOT read this in product code. `resolveGs1Identity`
+ * (`@/lib/interop/gs1-keys`) is the single resolution point: it drops
+ * placeholder prefixes, rejects wrong-length GLNs, and is what everything
+ * downstream gates minting on. Splitting it this way keeps the refusal logic
+ * beside the standard it enforces rather than in the settings bag.
+ */
+export function getGs1SettingsRaw(settings: OrgSettings): {
+  companyPrefix: string;
+  gln: string;
+  cbvUriForm: 'urn' | 'webUri';
+} {
+  const gs1 = settings.gs1 ?? { companyPrefix: '', gln: '', cbvUriForm: 'urn' as const };
+  return {
+    companyPrefix: (gs1.companyPrefix || '').trim(),
+    gln: (gs1.gln || '').trim(),
+    cbvUriForm: gs1.cbvUriForm ?? 'urn',
+  };
 }
 
 export type NasStorageTargetKey = keyof typeof DEFAULT_NAS_STORAGE_TARGETS;

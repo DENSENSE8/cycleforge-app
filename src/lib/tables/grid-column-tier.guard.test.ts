@@ -32,6 +32,9 @@ import { PICKUP_GRID_COLUMNS } from '@/components/receiving/pickup/grid/pickup-g
 import { REPAIR_GRID_COLUMNS } from '@/lib/repair/repair-grid-layout';
 import { WARRANTY_GRID_COLUMNS } from '@/components/warranty/grid/warranty-grid-layout';
 import { READY_GRID_COLUMNS } from '@/components/outbound/ready/grid/ready-grid-layout';
+import { TRACKING_EXCEPTIONS_GRID_COLUMNS } from '@/components/tracking-exceptions/grid/tracking-exceptions-grid-layout';
+import { UNFOUND_GRID_COLUMNS } from '@/components/receiving/unfound/grid/unfound-grid-layout';
+import { BINS_GRID_COLUMNS } from '@/components/warehouse/bins-grid/bins-grid-layout';
 import { MY_DAY_GRID_COLUMNS } from '@/lib/my-day/my-day-grid-layout';
 import { CATALOG_LINK_GRID_COLUMNS } from '@/features/review/catalog-link/grid/catalog-link-grid-layout';
 import { IMPORT_EXCEPTION_GRID_COLUMNS } from '@/features/review/catalog-link/grid/import-exception-grid-layout';
@@ -53,6 +56,10 @@ const FAMILIES: Record<string, readonly LedgerGridColumnModel[]> = {
   pickup: PICKUP_GRID_COLUMNS,
   repair: REPAIR_GRID_COLUMNS,
   warranty: WARRANTY_GRID_COLUMNS,
+  ready: READY_GRID_COLUMNS,
+  'tracking-exceptions': TRACKING_EXCEPTIONS_GRID_COLUMNS,
+  unfound: UNFOUND_GRID_COLUMNS,
+  bins: BINS_GRID_COLUMNS,
   'my-day': MY_DAY_GRID_COLUMNS,
   'catalog-link': CATALOG_LINK_GRID_COLUMNS,
   'import-exception': IMPORT_EXCEPTION_GRID_COLUMNS,
@@ -189,6 +196,53 @@ describe('default (core) column sets — change these deliberately', () => {
       'condition',
       'tested',
       'action',
+    ]);
+  });
+
+  // Unfound is the PO-mailbox triage map: what is it, which ticket, the two
+  // team notes, check state, and the Push escape. The hand-rolled table always
+  // showed the full set — keep that as the core default.
+  it('unfound ships the full triage set', () => {
+    assert.deepEqual(coreKeys(UNFOUND_GRID_COLUMNS), [
+      'select',
+      'title',
+      'ticket',
+      'usaNote',
+      'vietnamNote',
+      'checked',
+      'action',
+    ]);
+  });
+
+  // Bins is the warehouse floor map: which bin, where, how many SKUs/units,
+  // how full, when last counted, what flags. The hand-rolled table always
+  // showed the full set — keep that as the core default.
+  it('bins ships the full warehouse set', () => {
+    assert.deepEqual(coreKeys(BINS_GRID_COLUMNS), [
+      'select',
+      'barcode',
+      'location',
+      'sku_count',
+      'total_qty',
+      'fill',
+      'last_counted',
+      'status',
+    ]);
+  });
+
+  // Tracking Exceptions answers the ops triage questions: which tracking, which
+  // carrier, why unmatched, what state, when logged, and the row actions.
+  // Source / staff / retries / last check / notes are attribution or Zoho-sync
+  // detail — opt-in when investigating one row.
+  it('tracking-exceptions ships the lean triage set', () => {
+    assert.deepEqual(coreKeys(TRACKING_EXCEPTIONS_GRID_COLUMNS), [
+      'select',
+      'title',
+      'carrier',
+      'reason',
+      'status',
+      'created',
+      'actions',
     ]);
   });
 

@@ -7,6 +7,7 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { PageHeader } from '@/components/ui/pane-header';
 import { Button } from '@/design-system/primitives';
+import { DataTable, type DataTableColumn } from '@/design-system/components/DataTable';
 
 export const dynamic = 'force-dynamic';
 
@@ -122,6 +123,85 @@ export default async function ReturnsIntakeAdminPage({
   const missing = params.missing ?? null;
   const recent = await loadRecentReturns();
 
+  const returnColumns: DataTableColumn<RecentReturnRow>[] = [
+    {
+      key: 'when',
+      header: 'When',
+      type: 'date',
+      cell: (r) => (
+        <span className="whitespace-nowrap text-xs text-text-soft">
+          {new Date(r.occurred_at).toLocaleString()}
+        </span>
+      ),
+    },
+    {
+      key: 'unit',
+      header: 'Unit',
+      type: 'id',
+      cell: (r) =>
+        r.serial_unit_id ? (
+          <Link
+            href={`/admin/inventory/units/${r.serial_unit_id}`}
+            className="font-mono text-xs text-blue-600 hover:underline"
+          >
+            #{r.serial_unit_id}
+          </Link>
+        ) : (
+          '—'
+        ),
+    },
+    {
+      key: 'sku',
+      header: 'SKU',
+      type: 'id',
+      cell: (r) =>
+        r.sku ? (
+          <Link
+            href={`/admin/inventory/sku/${encodeURIComponent(r.sku)}`}
+            className="font-mono text-xs text-blue-600 hover:underline"
+          >
+            {r.sku}
+          </Link>
+        ) : (
+          '—'
+        ),
+    },
+    {
+      key: 'prev',
+      header: 'Prev',
+      type: 'tag',
+      cell: (r) => <span className="text-xs text-text-muted">{r.prev_status ?? '—'}</span>,
+    },
+    {
+      key: 'tracking',
+      header: 'Tracking',
+      type: 'id',
+      cell: (r) => (
+        <span className="font-mono text-role-caption text-text-muted">{r.scan_token ?? '—'}</span>
+      ),
+    },
+    {
+      key: 'reason',
+      header: 'Reason',
+      type: 'longtext',
+      cell: (r) => {
+        const orderId = (r.payload as { order_id?: number | null })?.order_id ?? null;
+        return (
+          <span className="text-xs text-text-muted">
+            {r.notes ?? '—'}
+            {orderId ? <span className="ml-1 text-text-faint">· ord#{orderId}</span> : null}
+          </span>
+        );
+      },
+    },
+    {
+      key: 'by',
+      header: 'By',
+      type: 'text',
+      cell: (r) => <span className="text-xs text-text-muted">{r.actor_name ?? 'system'}</span>,
+    },
+  ];
+
   return (
     <div className="min-h-screen bg-surface-canvas">
       <PageHeader backHref="/admin/inventory" title="Returns intake" maxWidth="6xl" />
@@ -217,61 +297,17 @@ export default async function ReturnsIntakeAdminPage({
         </section>
 
         {/* Recent returns */}
-        <section className="rounded-lg border border-border-soft bg-surface-card shadow-sm">
-          <header className="flex items-center justify-between border-b border-border-hairline px-6 py-3">
+        <section className="space-y-3">
+          <header className="flex items-center justify-between">
             <h2 className="text-lg font-medium text-text-default">Recent returns</h2>
             <span className="text-xs text-text-soft">last 50</span>
           </header>
-          {recent.length === 0 ? (
-            <p className="px-6 py-8 text-sm text-text-muted">No returns recorded yet.</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-border-hairline text-sm">
-                <thead className="bg-surface-canvas text-xs uppercase tracking-wide text-text-soft">
-                  <tr>
-                    <th className="px-4 py-2 text-left font-medium">When</th>
-                    <th className="px-4 py-2 text-left font-medium">Unit</th>
-                    <th className="px-4 py-2 text-left font-medium">SKU</th>
-                    <th className="px-4 py-2 text-left font-medium">Prev</th>
-                    <th className="px-4 py-2 text-left font-medium">Tracking</th>
-                    <th className="px-4 py-2 text-left font-medium">Reason</th>
-                    <th className="px-4 py-2 text-left font-medium">By</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border-hairline">
-                  {recent.map((r) => {
-                    const orderId = (r.payload as { order_id?: number | null })?.order_id ?? null;
-                    return (
-                      <tr key={r.id}>
-                        <td className="px-4 py-2 text-xs text-text-soft whitespace-nowrap">{new Date(r.occurred_at).toLocaleString()}</td>
-                        <td className="px-4 py-2 font-mono text-xs">
-                          {r.serial_unit_id ? (
-                            <Link href={`/admin/inventory/units/${r.serial_unit_id}`} className="text-blue-600 hover:underline">
-                              #{r.serial_unit_id}
-                            </Link>
-                          ) : '—'}
-                        </td>
-                        <td className="px-4 py-2 font-mono text-xs">
-                          {r.sku ? (
-                            <Link href={`/admin/inventory/sku/${encodeURIComponent(r.sku)}`} className="text-blue-600 hover:underline">
-                              {r.sku}
-                            </Link>
-                          ) : '—'}
-                        </td>
-                        <td className="px-4 py-2 text-xs text-text-muted">{r.prev_status ?? '—'}</td>
-                        <td className="px-4 py-2 font-mono text-role-caption text-text-muted">{r.scan_token ?? '—'}</td>
-                        <td className="px-4 py-2 text-xs text-text-muted">
-                          {r.notes ?? '—'}
-                          {orderId ? <span className="ml-1 text-text-faint">· ord#{orderId}</span> : null}
-                        </td>
-                        <td className="px-4 py-2 text-xs text-text-muted">{r.actor_name ?? 'system'}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
+          <DataTable
+            columns={returnColumns}
+            rows={recent}
+            rowKey={(r) => r.id}
+            emptyMessage="No returns recorded yet."
+          />
         </section>
 
         <footer className="text-xs text-text-soft">

@@ -25,7 +25,6 @@ export const QUICK_ACCESS_CHANGED_EVENT = 'cf.quickAccess.changed';
 export const DEFAULT_SETTINGS: QuickAccessSettings = {
   version: 1,
   enabled: true,
-  hotkey: 'cmdk',
   actions: {
     phoneHistory: true,
   },
@@ -123,9 +122,12 @@ export function sanitizePinned(pinned: PinnedPage[]): PinnedPage[] {
 export function getSettings(): QuickAccessSettings {
   if (typeof window === 'undefined') return DEFAULT_SETTINGS;
   const raw = readMigratedItem(window.localStorage, SETTINGS_KEY, LEGACY_SETTINGS_KEY);
-  const parsed = safeParse<Partial<QuickAccessSettings> & { showRecent?: boolean }>(raw, {});
-  // Drop legacy FAB-recents flag if present in older caches.
-  const { showRecent: _legacyShowRecent, ...rest } = parsed;
+  const parsed = safeParse<
+    Partial<QuickAccessSettings> & { showRecent?: boolean; hotkey?: string }
+  >(raw, {});
+  // Drop legacy FAB-recents flag, and the retired `hotkey` claim on ⌘K — the
+  // palette owns that chord now (see QuickAccessSettings' docblock).
+  const { showRecent: _legacyShowRecent, hotkey: _retiredHotkey, ...rest } = parsed;
   return {
     ...DEFAULT_SETTINGS,
     ...rest,

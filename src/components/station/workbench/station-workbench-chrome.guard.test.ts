@@ -145,22 +145,24 @@ test('Guard D: Tier A/B right panes compose StationWorkbench or StationPanelRoot
   }
 });
 
-// ── Guard F — the single sanctioned identity fork ─────────────────────────────
-test('Guard F: SupportTicketIdentity is the only sanctioned non-carton identity fork', () => {
-  // The one fork that does NOT compose CartonContextCard (ticket ≠ carton) must
-  // stay pinned to its home; new station identity composes the entity-context adapters.
-  for (const name of IDENTITY_FORK_ALLOWLIST) {
-    const focus = readFileSync(join(SRC_ROOT, 'components/support/station/SupportTicketFocus.tsx'), 'utf8');
-    assert.ok(focus.includes(name), `${name}: sanctioned identity fork must be mounted in SupportTicketFocus.tsx`);
-  }
+// ── Guard F — non-carton identity forks (ratchet: only ever shrinks) ──────────
+test('Guard F: no station surface forks condensed identity away from CartonContextCard', () => {
+  // Emptied 2026-08-01 when Support left the Station family for Workbench branch
+  // `service-workspace`. A new entry means someone needs non-carton identity on a
+  // station — check whether that surface is a Station at all before adding one.
+  assert.equal(
+    IDENTITY_FORK_ALLOWLIST.length,
+    0,
+    'IDENTITY_FORK_ALLOWLIST is a shrink-only ratchet — compose the entity-context adapters instead of forking identity.',
+  );
 });
 
 // ── Guard F2 — Support Ticket tab uses the Unbox composer compound ────────────
 test('Guard F2: SupportTicketFocus Ticket dock uses SupportTicketComposerDock', () => {
-  const focus = readFileSync(join(SRC_ROOT, 'components/support/station/SupportTicketFocus.tsx'), 'utf8');
+  const focus = readFileSync(join(SRC_ROOT, 'components/support/service-workspace/SupportTicketFocus.tsx'), 'utf8');
   assert.ok(
     focus.includes('SupportTicketComposerDock'),
-    'SupportTicketFocus must mount SupportTicketComposerDock (StationComposerDock + embedded Reply) on the Ticket tab — not a sticky composer stacked above a bare FAB',
+    'SupportTicketFocus must mount SupportTicketComposerDock (OmnichannelComposerDock + embedded Reply) on the Ticket tab — not a sticky composer stacked above a bare FAB',
   );
   assert.ok(
     focus.includes('TicketComposerStagingProvider'),

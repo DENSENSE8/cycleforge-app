@@ -2,8 +2,10 @@ import type { ReceivingLabelPayload } from '@/lib/print/printReceivingLabel';
 import type { LabelEditDraft } from './LabelEditPopover';
 
 export interface CartonPayloadContext {
-  /** Carton receiving id — drives the `R-{id}` DataMatrix + the `RCV-{id}` fallback. */
+  /** Carton receiving id — drives the Digital Link + the `RCV-{id}` fallback. */
   receivingId: number | null;
+  /** Tenant slug for platform Digital Link minting (`{slug}.app.cycleforge.ai`). */
+  orgSlug?: string | null;
   /** Carton primary tracking (`row.tracking_number` || `core.trackingEdit`). */
   trackingHint: string;
   /** useReceivingTypeLabel() resolver — type code → catalog label. */
@@ -16,7 +18,7 @@ export interface CartonPayloadContext {
  * and its Save & print. Mirrors the corner-mode branch of
  * `useUnboxLineController.buildLabelPayload`, and feeds the one
  * {@link receivingPayloadToFace} face SoT so every surface prints the identical
- * label (the on-wire DataMatrix is always the `R-{receivingId}` handle).
+ * label (matrix = platform Digital Link when orgSlug is set; HRI stays `R-{id}`).
  */
 export function buildCartonLabelPayloadFromDraft(
   draft: LabelEditDraft,
@@ -25,6 +27,7 @@ export function buildCartonLabelPayloadFromDraft(
   const rcv = ctx.receivingId != null ? `RCV-${ctx.receivingId}` : '';
   const base = {
     receivingId: ctx.receivingId ?? null,
+    orgSlug: ctx.orgSlug ?? null,
     platform: draft.platform,
     notes: draft.notes.trim(),
     conditionCode: draft.conditionCode,

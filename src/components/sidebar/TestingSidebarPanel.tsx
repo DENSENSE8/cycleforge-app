@@ -24,10 +24,8 @@ import {
   INITIAL_TESTING_SCAN_SESSION,
   testingScanSessionReducer,
 } from '@/lib/testing/testing-scan-session';
-import {
-  dispatchSelectLine,
-  type ReceivingLineRow,
-} from '@/components/station/ReceivingLinesTable';
+import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import { dispatchSelectLine } from '@/components/station/receiving-lines-table-helpers';
 import {
   readSelectLineDetail,
   type ReceivingSelectLineDetail,
