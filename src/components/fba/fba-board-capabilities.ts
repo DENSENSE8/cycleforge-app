@@ -14,7 +14,7 @@
  * drift on the first width change. The column model + descriptor are the
  * board's migration wave; the capabilities bag is what it needs now.
  *
- * `fieldsMenu: false` is the honest read: the board has no `GridFieldsMenu` and
+ * `fieldsMenu: false` is the honest read: the board has no column-display lip and
  * no `staff_preferences.tableColumns` entry, so every column is structural.
  */
 

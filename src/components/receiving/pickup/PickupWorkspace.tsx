@@ -20,15 +20,12 @@ import {
   WORKBENCH_BODY_COLUMN,
   WORKBENCH_CHROME_COLUMN,
   WorkbenchChromeHeader,
-  WorkbenchTrailingCluster,
 } from '@/components/dashboard/workbench-shell';
 import { ToolbarSearchToggle } from '@/design-system/primitives';
-import { GridFieldsMenu } from '@/components/ui/table-column-config/GridFieldsMenu';
 import { cn } from '@/utils/_cn';
 import { pickupOrderIsDone } from '@/lib/local-pickup/order-status';
 import { usePickupLines, type PickupLine } from './pickup-lines';
 import { PickupGridView } from './grid/PickupGridView';
-import { PICKUP_GRID_COLUMNS } from './grid/pickup-grid-layout';
 
 type PickupStatusTab = 'all' | 'draft' | 'done';
 
@@ -123,11 +120,6 @@ export function PickupWorkspace({ selectedOrderId = null }: PickupWorkspaceProps
                 onChange={(v) => setParam('q', v.trim() ? v : null)}
                 onClear={() => setParam('q', null)}
                 placeholder="Filter pickup items…"
-              />
-            }
-            trailing={
-              <WorkbenchTrailingCluster
-                fields={<GridFieldsMenu tableId="pickup" columns={PICKUP_GRID_COLUMNS} />}
               />
             }
           />

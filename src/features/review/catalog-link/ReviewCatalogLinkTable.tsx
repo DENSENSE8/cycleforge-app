@@ -8,7 +8,8 @@
  * Composed from the house shells, not hand-rolled:
  *
  *   chrome    → `WorkbenchChromeHeader` `density="band"` (tabs · collapsed
- *               search · Fields in the `WorkbenchTrailingCluster`)
+ *               search). Column display is the GRID's own top-right header
+ *               lip, not chrome — chrome Fields was retired 2026-08-02.
  *   collection→ `LedgerGridSurface` + a `GridSurfaceDescriptor`, via
  *               `ReviewCatalogLinkGridView` — two column models, one bag
  *   record    → `RightRailHost` (non-modal) via `CatalogLinkFormRail` /
@@ -34,22 +35,16 @@ import {
   WORKBENCH_CHROME_COLUMN,
   WORKBENCH_TABLE_VIEWPORT_NO_KPI,
   WorkbenchChromeHeader,
-  WorkbenchTrailingCluster,
 } from '@/components/dashboard/workbench-shell';
 import { DashboardScrollShell } from '@/components/dashboard/DashboardScrollShell';
-import { GridFieldsMenu } from '@/components/ui/table-column-config/GridFieldsMenu';
 import { ToolbarSearchToggle } from '@/design-system/primitives/ToolbarSearchToggle';
 import { GRID_COLUMN_DIR_PARAM, GRID_COLUMN_SORT_PARAM } from '@/lib/tables/grid-column-sort-params';
 import { CatalogLinkFormRail, ImportExceptionFormRail } from './CatalogLinkFormRail';
 import type { RailQueuePosition } from './CatalogLinkFormRail';
 import { CatalogLinkChoresGrid, ImportExceptionsGrid } from './grid/ReviewCatalogLinkGridView';
 import {
-  CATALOG_LINK_GRID_COLUMNS,
-  CATALOG_LINK_TABLE_ID,
 } from './grid/catalog-link-grid-layout';
 import {
-  IMPORT_EXCEPTION_GRID_COLUMNS,
-  IMPORT_EXCEPTION_TABLE_ID,
 } from './grid/import-exception-grid-layout';
 import type { CatalogLinkChoreRow } from '@/features/review/catalog-link/types';
 import type { ImportExceptionRow } from '@/features/review/catalog-link/import-exception-types';
@@ -248,28 +243,11 @@ export function ReviewCatalogLinkTable() {
                   tone="blue"
                 />
               }
-              // Sort → Fields → Import → Add, with honest absence: this surface
-              // renders only Fields. Sort IS the column sort (`?colsort=`) the
-              // grid header owns — a second vocabulary here would break the
-              // one-sort-param-per-surface rule. Nothing is created by hand:
-              // both queues are written by the sheet import.
-              trailing={
-                <WorkbenchTrailingCluster
-                  fields={
-                    isChoreTab ? (
-                      <GridFieldsMenu
-                        tableId={CATALOG_LINK_TABLE_ID}
-                        columns={CATALOG_LINK_GRID_COLUMNS}
-                      />
-                    ) : (
-                      <GridFieldsMenu
-                        tableId={IMPORT_EXCEPTION_TABLE_ID}
-                        columns={IMPORT_EXCEPTION_GRID_COLUMNS}
-                      />
-                    )
-                  }
-                />
-              }
+              // No trailing cluster. Display sort IS the grid's column sort
+              // (`?colsort=`) — a second vocabulary here would break the
+              // one-sort-param-per-surface rule — nothing is created by hand
+              // (both queues are written by the sheet import), and column
+              // display moved to the grid's own top-right lip (2026-08-02).
             />
           </div>
         }

@@ -140,11 +140,22 @@ export function withScopeDivider<T extends { id: string }>(
 }
 
 /**
- * Trailing Display & Actions cluster — the one SoT for sort / Fields / Import / Add.
+ * Trailing Display & Actions cluster — the one SoT for sort / Import / Add.
  *
- * Slot order (honest absence OK): `before` → Sort → Fields → `actions` → `after`.
- * Pass as {@link WorkbenchChromeHeader} `trailing`. Never park Fields in `right`
- * filters; never invent an in-card `TableActionBar` (sticky docking law).
+ * Slot order (honest absence OK): `before` → Sort → `actions` → `after`.
+ * Pass as {@link WorkbenchChromeHeader} `trailing`. Never invent an in-card
+ * `TableActionBar` (sticky docking law).
+ *
+ * **There is deliberately no `fields` slot** (retired 2026-08-02). Column
+ * visibility/display is reached from the grid's own top-right header lip
+ * (`LedgerGridColumnHeader` `onOpenColumnDetails` → `GridColumnDetailsPanel`):
+ * Fields mutates the column set of the card it sits on, so a page-chrome
+ * control acting on that card was an altitude mismatch, and seven surfaces
+ * shipped both doors onto one rail. Removing the slot — rather than merely
+ * asking callers not to use it — is what keeps chrome Fields from growing
+ * back. This is NOT the banned in-card action bar: the lip renders INSIDE the
+ * already-sticky `[data-grid-col-header]` band, so the scroll port still has
+ * exactly ONE sticky layer.
  *
  * Hybrid scan stations (Unbox / Testing / Pack): put the **return-to-scan CTA**
  * in `actions` — solid primary, every strip tab, top-right of the context bar
@@ -157,8 +168,6 @@ interface WorkbenchTrailingClusterProps {
   before?: ReactNode;
   /** Quiet display sort — {@link QueueSortSwitch}. */
   sort?: ReactNode;
-  /** Per-staff column picker — {@link GridFieldsMenu}. */
-  fields?: ReactNode;
   /** Solid CTAs — return-to-scan (hybrid Station+Workbench) / Import / Add. */
   actions?: ReactNode;
   /** Escapes that follow CTAs (e.g. Catalog Refresh). */
@@ -166,9 +175,9 @@ interface WorkbenchTrailingClusterProps {
   /**
    * Leading hairline before this cluster. Default **only when `actions` are
    * present** — solid Import/Add CTAs need a wall from the quiet icon rail
-   * (search / filters / week / Fields). Pure Fields (or Sort → Fields) sits
-   * flush with peer icon controls; a hairline between Calendar and Fields
-   * reads as a broken pair of display icons.
+   * (search / filters / week). A lone Sort sits flush with those peer icon
+   * controls; a hairline between Calendar and Sort reads as a broken pair of
+   * display icons.
    */
   divide?: boolean;
   className?: string;
@@ -177,13 +186,12 @@ interface WorkbenchTrailingClusterProps {
 export function WorkbenchTrailingCluster({
   before,
   sort,
-  fields,
   actions,
   after,
   divide,
   className,
 }: WorkbenchTrailingClusterProps) {
-  const hasContent = Boolean(before || sort || fields || actions || after);
+  const hasContent = Boolean(before || sort || actions || after);
   if (!hasContent) return null;
   const showDivide = divide ?? Boolean(actions);
   return (
@@ -196,7 +204,6 @@ export function WorkbenchTrailingCluster({
       ) : null}
       {before}
       {sort}
-      {fields}
       {actions}
       {after}
     </div>
@@ -220,14 +227,25 @@ export interface WorkbenchChromeHeaderProps {
    * `right`). Pass a `SearchField`; the ⌘K global header pill stays separate.
    */
   search?: ReactNode;
-  /** Right-aligned filters/controls, rendered left of the toolbar portal. */
+  /**
+   * Right-aligned filters/controls, rendered left of the toolbar portal.
+   *
+   * The REFINE cluster: controls that change WHICH ROWS are on screen (facet
+   * chips, staff pickers, a Filters popover — including a server-ordering
+   * `?sort=` group inside one). Display preferences go in {@link trailing};
+   * query and display are the two different questions this header answers.
+   */
   right?: ReactNode;
   /**
    * Far-right chrome slot — always after the table-controls portal (e.g. Import
-   * / Add CTAs). Pass {@link WorkbenchTrailingCluster} so Sort → Fields →
-   * Import → Add stays one skeleton with honest absence. Owned by the workspace
-   * so it stays top-right even before a table mounts or when the portal is
-   * empty. Row select lives in the table left gutter, not here.
+   * / Add CTAs). Pass {@link WorkbenchTrailingCluster} so Sort → Import → Add
+   * stays one skeleton with honest absence. Owned by the workspace so it stays
+   * top-right even before a table mounts or when the portal is empty. Row
+   * select lives in the table left gutter, not here.
+   *
+   * **Column display is NOT here** — it is the grid's own top-right header lip
+   * (`onOpenColumnDetails` → `GridColumnDetailsPanel`), retired from chrome
+   * 2026-08-02. See {@link WorkbenchTrailingCluster}.
    */
   trailing?: ReactNode;
   /**

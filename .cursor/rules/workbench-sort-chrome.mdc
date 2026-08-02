@@ -11,17 +11,19 @@ Display sort (`Priority` / `Newest` / `Deadline`, etc.) is a **quiet preference*
 ## Do
 
 - Render sort as a compact **dropdown** (`ToolbarButton` + `Popover` / listbox) — current value on the trigger.
-- Place it in the workbench chrome **trailing** cluster via `WorkbenchTrailingCluster` (`sort` slot), **immediately left of Fields** (then Import / Add) when those exist.
+- Place it in the workbench chrome **trailing** cluster via `WorkbenchTrailingCluster` (`sort` slot), **left of Import / Add** when those exist.
 - Reuse `QueueSortSwitch` for Pending / Testing queue sort; Labels’ ghost sort toggle stays in the same trailing slot.
-- Mount Fields (`GridFieldsMenu`) in the `fields` slot — never in `right` filters.
+- Reach column visibility/display from the grid's own **top-right header lip** (`onOpenColumnDetails` → `GridColumnDetailsPanel`). There is no `fields` slot: chrome Fields was retired 2026-08-02 because it acted on the card it sat above. Detail: `.claude/rules/display/workbench-ops-queue.md` → Trailing Display & Actions.
 
 ## Don’t
 
 - Don’t use a solid `TabSwitch` (or other primary segmented control) for display sort beside search.
 - Don’t park sort in the `right` filter cluster next to search / filter icons — that overweights a preference and competes with lifecycle tabs.
 - Don’t invent a second sort chrome; grow `QueueSortSwitch` or the Labels trailing pattern.
-- Don’t invent a Sheets-like in-card `TableActionBar` for Fields / sort — page chrome trailing is the altitude.
+- Don’t invent a Sheets-like in-card `TableActionBar` above the grid — that adds a SECOND sticky band. (The column-display lip is not this: it lives inside the already-sticky column-header band.)
 
 ## Chrome order (right cluster)
 
-`search` → `right` (filters / staff) → controls portal → `trailing` (`WorkbenchTrailingCluster`: **sort → Fields → Import → Add**, honest absence OK)
+`search` → `right` (filters / staff) → controls portal → `trailing` (`WorkbenchTrailingCluster`: **sort → Import → Add**, honest absence OK)
+
+Column display is not in this cluster — it is the grid header lip.

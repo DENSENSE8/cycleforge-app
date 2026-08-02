@@ -32,7 +32,7 @@ import {
  *    record, not in a cell that would write nowhere.
  *  • `dayBands` — Today is one civil day by definition.
  *
- * `fieldsMenu` is the one that is ON (2026-08-01): `GridFieldsMenu` mounts in the
+ * `fieldsMenu` is the one that is ON: the column-display lip mounts on the
  * chrome's `WorkbenchTrailingCluster`, `queue` and `status` ship `optional`, and
  * prefs persist per staff under `TableId` `'my-day'`. All of that landed
  * together — a flag without the menu, the `TABLE_COLUMNS` entry and the

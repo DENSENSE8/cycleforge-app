@@ -39,11 +39,15 @@ export function MyDayGridColumnHeader({
   activeSort = null,
   sortDir = null,
   onSortColumn,
+  onOpenColumnDetails,
+  columnDetailsOpen = false,
 }: {
   columns?: readonly MyDayGridColumn[];
   activeSort?: MyDayGridColumnKey | null;
   sortDir?: MyDayGridSortDir | null;
   onSortColumn?: (key: MyDayGridColumnKey) => void;
+  onOpenColumnDetails?: () => void;
+  columnDetailsOpen?: boolean;
 }) {
   return (
     <LedgerGridColumnHeader
@@ -52,6 +56,8 @@ export function MyDayGridColumnHeader({
       activeSort={activeSort}
       sortDir={sortDir}
       onSortColumn={onSortColumn ? (key) => onSortColumn(key as MyDayGridColumnKey) : undefined}
+      onOpenColumnDetails={onOpenColumnDetails}
+      columnDetailsOpen={columnDetailsOpen}
     />
   );
 }

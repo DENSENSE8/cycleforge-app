@@ -6,7 +6,7 @@
  *
  * Left:   purchasing-source tabs — All / Zoho / eBay.
  * Right:  [⌕ search] · [⫶ filters].
- * Trailing: [page] · [sort] · [fields] · Import · Add.
+ * Trailing: [page] · [sort] · Import · Add.
  *
  * POS ↔ Email lives in {@link IncomingSidebarPanel}. Delivery attention
  * (`?state=`) + PO date live in the filter popover. Search + refinements write
@@ -26,8 +26,6 @@ import {
 } from '@/components/dashboard/workbench-filter-popover';
 import { QueueSortSwitch } from '@/components/dashboard/QueueSortSwitch';
 import { PaneHeaderPagination } from '@/components/ui/pane-header';
-import { GridFieldsMenu } from '@/components/ui/table-column-config/GridFieldsMenu';
-import { INCOMING_GRID_COLUMNS } from '@/lib/receiving/incoming-grid-layout';
 import { ToolbarSearchToggle } from '@/components/ui/ToolbarSearchToggle';
 import { DateRangePickerField } from '@/design-system/components/DateRangePickerField';
 import { useDebounce } from '@/hooks';
@@ -250,7 +248,6 @@ export function IncomingWorkspaceHeader({
                 ariaLabel="Sort incoming POs"
               />
             }
-            fields={<GridFieldsMenu tableId="incoming" columns={INCOMING_GRID_COLUMNS} />}
             actions={
               <IncomingChromeActions
                 onImportZoho={() => {

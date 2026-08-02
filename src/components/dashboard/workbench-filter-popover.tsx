@@ -197,7 +197,7 @@ export function WorkbenchFilterDivider() {
 
 /**
  * One filter row. Composes {@link ToolbarListboxOption} — the same anatomy as
- * `QueueSortSwitch` / `GridFieldsMenu`, so all three trailing-cluster dropdowns
+ * `QueueSortSwitch`, so the trailing-cluster dropdowns
  * read as one control: an active row is a **leading blue check**, never a
  * `bg-surface-accent` fill. The status dot moves in beside the label; count and
  * shortcut ride the trailing slot.

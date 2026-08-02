@@ -26,7 +26,7 @@ import type { ColumnType, TableId } from '@/lib/tables/table-columns';
 
 /**
  * Per-staff column-prefs bucket + Fields-menu vocabulary key. Named once so the
- * grid's `useGridColumnVisibility` and the chrome's `GridFieldsMenu` cannot
+ * grid's `useGridColumnVisibility` and the column-display rail cannot
  * drift onto two different buckets — that split is invisible until a staffer's
  * toggle stops sticking.
  */

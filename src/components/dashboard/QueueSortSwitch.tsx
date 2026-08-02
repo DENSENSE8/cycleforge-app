@@ -8,7 +8,7 @@
  * Options grow from {@link QUEUE_DISPLAY_SORT_OPTIONS}.
  *
  * The panel composes `ToolbarListbox*` (`@/design-system/primitives`) — the
- * same rows as `GridFieldsMenu`, so the two trailing-cluster dropdowns read as
+ * same rows as the other trailing-cluster dropdowns, so they read as
  * one control. Selection is a leading checkmark, never a `bg-blue-50` fill.
  */
 

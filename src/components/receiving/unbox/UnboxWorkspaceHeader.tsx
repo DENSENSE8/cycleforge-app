@@ -16,8 +16,6 @@ import {
 } from '@/components/dashboard/workbench-filter-popover';
 import { StaffFilterButton } from '@/components/ui/StaffFilterButton';
 import { Button, ToolbarSearchToggle } from '@/design-system/primitives';
-import { GridFieldsMenu } from '@/components/ui/table-column-config/GridFieldsMenu';
-import { RECEIVING_GRID_COLUMNS } from '@/lib/receiving/receiving-grid-layout';
 import { ReceivingModeUnbox } from '@/components/icons/stations';
 import { parseStaffParam } from '@/hooks/useStaffFilter';
 import { useWorkbenchSearchParam } from '@/hooks/useWorkbenchSearchParam';
@@ -421,7 +419,6 @@ export function UnboxWorkspaceHeader({
            Return-to-scan CTA: WorkbenchTrailingCluster.actions altitude
            (SoT: display/workbench.md → Multi-region — every scan station). */
         <WorkbenchTrailingCluster
-          fields={<GridFieldsMenu tableId="receiving" columns={RECEIVING_GRID_COLUMNS} />}
           actions={
             <Button
               size="sm"

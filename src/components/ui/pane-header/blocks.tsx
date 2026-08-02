@@ -468,7 +468,7 @@ export function PaneHeaderActionBar({
 
 // ─── PaneHeaderPagination ─────────────────────────────────────────────────────
 // Compact workbench trailing control — icon + range label + chevron, sibling of
-// {@link QueueSortSwitch} / {@link GridFieldsMenu}. Prev/next live in the popover
+// {@link QueueSortSwitch}. Prev/next live in the popover
 // so the resting chrome stays one labeled pill.
 
 interface PaneHeaderPaginationProps {
