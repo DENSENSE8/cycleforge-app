@@ -530,3 +530,17 @@ export async function isOpsTvBoard(orgId: OrgId): Promise<boolean> {
 export async function isHomeInbox(orgId: OrgId): Promise<boolean> {
   return resolveForOrg(orgId, 'home_inbox', 'HOME_INBOX');
 }
+
+// ─── Flag lifecycle registry ──────────────────────────────────────────────────
+/**
+ * Lives in `./feature-flags-lifecycle` — a dependency-free sibling, because this
+ * module imports `@/lib/db` (which carries `server-only`) and anything that only
+ * wants the metadata must not be dragged through the Neon pool to read it.
+ * `build-gotchas.md` → bundle altitude.
+ *
+ * NOT re-exported from here. The house pattern re-exports a light module from
+ * its heavy sibling "so server callers keep their import path" — but there are
+ * no such callers yet, and a re-export nothing imports is the exact widened
+ * surface the hooks-barrel trim just removed. It earns a line here when a real
+ * call site wants it.
+ */

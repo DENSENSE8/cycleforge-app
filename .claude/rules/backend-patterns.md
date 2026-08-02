@@ -133,8 +133,23 @@ compiler stays quiet about exactly the sites you missed.
 
 ## Feature flags
 
-- Sync, env-only flag: `readBoolEnv(name, default)`. Per-tenant, staged rollout: `resolveForOrg(orgId, flag, envVar)`
-  (async, ~30s cache, DB → env fallback). Use the per-org form to roll out without an env redeploy.
+- **The call-site surface is the exported `isXxx()` predicates** in `src/lib/feature-flags.ts` — one
+  per flag. `readBoolEnv(name, default)` (sync, env-only) and `resolveForOrg(orgId, flag, envVar)`
+  (async, ~30s cache, DB → env fallback) are the **private** helpers behind them; reach for the
+  per-org form when a new flag needs to roll out without an env redeploy. *(This row used to name
+  the two helpers as the API, which is not what anything imports.)*
+- **Every flag declares an owner and an ending.** Add a `FLAG_LIFECYCLE` entry
+  (`src/lib/feature-flags-lifecycle.ts` — a dependency-free sibling; import it directly, not
+  through `feature-flags.ts`, which carries `server-only` via `@/lib/db`)
+  with `env`, `bornAt` (civil date), `area`, and a disposition: `permanent` (a real kill-switch,
+  with a reason), `rollout` (with a `plannedRemoval` date), or `undecided`.
+  `feature-flags.guard.test.ts` fails when a flag sits `undecided` past `FLAG_AGE_LIMIT_DAYS` (90),
+  when a `plannedRemoval` lapses, or when the registry and the exports disagree in either
+  direction.
+- **A flag keeps BOTH branches reachable**, so a permanent strangler is a fork that dead-code
+  tooling can never see. That is why "mid-strangler, not yet a hard requirement" needs a date
+  attached rather than an open end — the losing branch is zombie code the moment nobody is
+  scheduled to delete it.
 
 ## New polymorphic / typed-fact tables
 
