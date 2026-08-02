@@ -4,10 +4,16 @@
  * The refresh bus — emit a domain signal, subscribe to one.
  *
  * Deliberately still a DOM event rather than a shared react-query call: emitters
- * live in plain modules (`salesCartStore`, `utils/events`) with no `QueryClient`
- * in scope, and four of the ten listeners are hand-rolled `fetch` + `setState`
- * with no query key to invalidate. The event keeps every emitter callable from
- * anywhere; the domain payload is what removes the fan-out.
+ * live in plain modules (`utils/events`) with no `QueryClient` in scope, and
+ * four of the ten listeners are hand-rolled `fetch` + `setState` with no query
+ * key to invalidate. The event keeps every emitter callable from anywhere; the
+ * domain payload is what removes the fan-out.
+ *
+ * NOTE (2026-08-02): the `'replenish'` domain currently has NO emitter in the
+ * product. Its only one was `salesCartStore.checkout()`, which was unreachable
+ * dead code and was deleted — so `ReplenishSidebarPanel`'s
+ * `useRefreshSignal('replenish', …)` was already never firing. Re-emit it from
+ * whatever surface actually completes a sale, or retire the subscription.
  *
  * Migrating a hand-rolled listener onto react-query later is a local change —
  * it keeps the same `useRefreshSignal(domain, …)` subscription and swaps what

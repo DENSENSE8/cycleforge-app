@@ -12,7 +12,10 @@
  * would push cart and payment concerns into a surface that has neither.
  * `.claude/rules/pattern-evolution.md` is explicit that a genuinely different job
  * earns a new sibling **that composes the shared primitives** — which is what
- * this does: `ProductSelector` and `salesCartStore` are composed, never forked.
+ * this does for `ProductSelector`. It never did for the cart: this line used to
+ * name `salesCartStore` as composed-not-forked, but the counter has always held
+ * its own `CounterDraft.retailLines` and imported nothing from that store, which
+ * had zero consumers and was deleted 2026-08-02.
  *
  * ## This is a FORM, not a Station
  *
