@@ -59,7 +59,9 @@ const QUEUES = {
   unit: unitPhotoUploadQueue,
 } as const satisfies Record<CaptureUploadDomain, { retry(id: string): void; clearDone(): void }>;
 
-export interface CaptureUploadStatusModel {
+// Not exported for the same reason as `CaptureUploadStatusProps` — inferred at
+// the one call site today; name it publicly when a second one needs it.
+interface CaptureUploadStatusModel {
   entries: CaptureUploadEntry[];
   summary: CaptureUploadSummary;
   /** Re-run one failed upload. No-op if the entry already left the queue. */

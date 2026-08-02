@@ -45,7 +45,6 @@ import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { ReceivingAuditRail } from '@/components/receiving/workspace/ReceivingAuditRail';
 import { CartonUnitJourneyHistory } from './CartonUnitJourneyHistory';
 import { ProgressBadge } from '@/components/receiving/workspace/PoLineBadges';
-import { PoLineMetaGrid } from '@/components/receiving/workspace/PoLineMetaGrid';
 import { ReceivingCartonPipeline } from '@/components/station/receiving/ReceivingCartonPipeline';
 import { CartonPhotoTriage } from './CartonPhotoTriage';
 import { useReceivingPhotos } from '@/hooks/useReceivingPhotos';
@@ -589,9 +588,11 @@ function ContentsColumn({
 function ProgressRail({
   receiving,
   disposition,
+  events,
 }: {
   receiving: CartonInspectorReceiving;
   disposition: CartonDisposition;
+  events: CartonInspectorEvent[];
 }) {
   const readiness = useMemo(() => deriveCartonReadiness(receiving), [receiving]);
   const log = useMemo(() => toReceivingDetailsLog(receiving), [receiving]);
@@ -609,6 +610,14 @@ function ProgressRail({
           <ReceivingCartonPipeline log={log} readiness={readiness} />
         </Panel>
       </div>
+
+      {/* Three event streams read together: milestones → activity → journeys. */}
+      {events.length > 0 ? (
+        <div className="space-y-2">
+          <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">Activity</p>
+          <EventsList events={events} />
+        </div>
+      ) : null}
 
       <div className="space-y-2">
         <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">History</p>
@@ -641,10 +650,17 @@ function ProgressRail({
 }
 
 /**
- * CONTENTS items — same collapsed PO-row chrome as {@link PoLineRow} (title +
- * {@link PoLineMetaGrid} chips), without the active-row bottom body (condition
- * pills / serial adder). Shared atoms only — never mounts PoLinesAccordion /
- * PoLineRow (D6: no lobotomized work chrome).
+ * CONTENTS items — one card per line: title, then its meta atoms.
+ *
+ * Shared ATOMS only, never `PoLinesAccordion` / `PoLineRow` (D6: no lobotomized
+ * work chrome). It also deliberately does not mount `PoLineMetaGrid`: that is
+ * the Unbox accordion's FIXED-TRACK grid, and its whole job is keeping the
+ * condition chip at the same x across many stacked rows. On this surface there
+ * is no column to line up with — so it spread four chips across ~360px of
+ * nothing and, worse, applied `META_COL.indentWide`, the dot-track indent from a
+ * queue this card has no dot track for. The result read as centered.
+ *
+ * House one-row anatomy instead: left-aligned, title → meta, no stretch.
  */
 function ContentsList({ lines }: { lines: CartonInspectorLine[] }) {
   return (
@@ -660,38 +676,30 @@ function ContentsList({ lines }: { lines: CartonInspectorLine[] }) {
             key={line.id}
             className="relative min-w-0 overflow-hidden rounded-xl border border-border-soft bg-surface-card"
           >
-            <div className="w-full min-w-0 px-3 pb-1 pt-1 text-left">
+            <div className="w-full min-w-0 space-y-1 px-3 py-1.5 text-left">
               <p
                 className="min-w-0 truncate text-role-caption font-semibold text-text-default"
                 title={title}
               >
                 {title}
               </p>
-              <PoLineMetaGrid
-                qty={
+              <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 leading-none">
+                <span className="tabular-nums text-role-eyebrow uppercase tracking-widest">
                   <ProgressBadge
                     received={line.quantity_received ?? 0}
                     expected={line.quantity_expected}
                   />
-                }
-                sku={
-                  sku ? (
-                    <SkuScanRefChip value={sku} display={getLast8(sku)} dense />
-                  ) : (
-                    <EmptySkuChipFace dense />
-                  )
-                }
-                condition={<ConditionGradeChip grade={line.condition_grade} dense />}
-                serial={
-                  serials.length > 0 ? (
-                    <span className="flex min-w-0 flex-wrap items-center gap-1">
-                      {serials.map((sn) => (
-                        <SerialChip key={sn} value={sn} width="w-fit max-w-full" dense />
-                      ))}
-                    </span>
-                  ) : undefined
-                }
-              />
+                </span>
+                {sku ? (
+                  <SkuScanRefChip value={sku} display={getLast8(sku)} dense />
+                ) : (
+                  <EmptySkuChipFace dense />
+                )}
+                <ConditionGradeChip grade={line.condition_grade} dense />
+                {serials.map((sn) => (
+                  <SerialChip key={sn} value={sn} width="w-fit max-w-full" dense />
+                ))}
+              </div>
             </div>
           </li>
         );

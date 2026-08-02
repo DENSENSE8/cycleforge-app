@@ -54,7 +54,10 @@ const TONE_SHELL = {
   committed: 'border-border-soft',
 } as const;
 
-export interface CaptureUploadStatusProps {
+// Not exported: the only caller today is the dock in this folder, and an
+// exported-but-unimported props type is a knip finding. Export it the moment a
+// consumer outside this folder needs to name it (the P1 desk seam).
+interface CaptureUploadStatusProps {
   entries: CaptureUploadEntry[];
   summary: CaptureUploadSummary;
   onRetryAll: () => void;

@@ -97,7 +97,7 @@ function stepSummary(
   }
 }
 
-export interface UnboxProcedureStepsResult {
+interface UnboxProcedureStepsResult {
   /** Every step, in vocabulary order, with state + summary + time. */
   steps: ProcedureStepRow[];
   /** The step the operator is on. `null` ⇒ every step settled. */
@@ -276,6 +276,8 @@ export function useUnboxProcedureSteps(row: ReceivingLineRow): UnboxProcedureSte
   return {
     steps,
     activeKey,
+    prevKey,
+    nextKey,
     nextStep,
     aspectByKey,
     settled: counts.settled,

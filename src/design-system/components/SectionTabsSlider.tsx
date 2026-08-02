@@ -9,10 +9,11 @@
  *
  * - Primary tabs render as a labeled {@link TabSwitch} (`fit="hug"`,
  *   `variant="solid"` + `solidTone="accent"`) so the active pill follows
- *   staff / theme accent (`bg-accent-bg`).
+ *   staff / theme accent (`bg-accent-bg`). Opt-in `density="stacked"` stacks
+ *   icon over label (Unbox Displays).
  * - Tabs marked `priority: 'overflow'` collapse into a ⋯ trigger **inside**
- *   the same rail. When the active tab is in overflow, the ⋯ takes the
- *   accent fill and the active label shows beside the strip.
+ *   the same rail. When the active tab is in overflow (inline density), the ⋯
+ *   takes the accent fill and the active label shows beside the strip.
  * - With a single tab there is no bar — it renders exactly like the plain
  *   display, and the switcher only appears once a second display exists.
  */
@@ -74,6 +75,7 @@ export function SectionTabsSlider({
   className,
   rightSlot,
   showActiveLabel = false,
+  density = 'inline',
 }: {
   tabs: SectionTab[];
   value: string;
@@ -85,12 +87,20 @@ export function SectionTabsSlider({
   /**
    * Optional eyebrow naming the active display beside the strip.
    * Auto-enabled when the active tab lives in overflow (⋯ alone isn't enough).
+   * Suppressed for `density="stacked"` — each cell already names itself.
    */
   showActiveLabel?: boolean;
+  /**
+   * `inline` (default) — leading icon + label.
+   * `stacked` — icon above label. Opt-in (Unbox Displays first); see
+   * `record-cursor-unification-PLAN.md` Phase 5.
+   */
+  density?: 'inline' | 'stacked';
 }) {
   const menuListId = useId();
   const overflowTriggerRef = useRef<HTMLButtonElement>(null);
   const [overflowOpen, setOverflowOpen] = useState(false);
+  const stacked = density === 'stacked';
   const activeId = resolveActiveTabId(
     tabs.map((t) => t.id),
     value,
@@ -104,7 +114,9 @@ export function SectionTabsSlider({
     : undefined;
   const primaryActiveId =
     activeId && primary.some((t) => t.id === activeId) ? activeId : '';
-  const showLabel = showActiveLabel || overflowActive;
+  // Stacked cells already label themselves — the overflow eyebrow was a
+  // collision source on Unbox Displays (CLASSIFY over Checklist).
+  const showLabel = !stacked && (showActiveLabel || overflowActive);
 
   const closeOverflow = () => setOverflowOpen(false);
 
@@ -126,7 +138,8 @@ export function SectionTabsSlider({
           }
           onClick={() => setOverflowOpen((open) => !open)}
           className={cn(
-            'flex items-center justify-center rounded-full px-2.5 transition-colors',
+            'flex items-center justify-center px-2.5 transition-colors',
+            stacked ? 'self-stretch rounded-xl' : 'rounded-full',
             focusRing('control', 'accent'),
             overflowActive
               ? `${operatorAccentClasses.activePill} text-white`
@@ -193,7 +206,12 @@ export function SectionTabsSlider({
   return (
     <div className={className ? `space-y-4 ${className}` : 'space-y-4'}>
       {showPills || rightSlot ? (
-        <div className="flex min-h-9 items-center justify-between gap-3">
+        <div
+          className={cn(
+            'flex items-center justify-between gap-3',
+            stacked ? 'min-h-11' : 'min-h-9',
+          )}
+        >
           <div className="flex min-w-0 items-center gap-2.5">
             {showPills ? (
               <div role="group" aria-label={ariaLabel} className="min-w-0">
@@ -210,6 +228,7 @@ export function SectionTabsSlider({
                   solidTone="accent"
                   fit="hug"
                   countStyle="plain"
+                  density={density}
                   trailing={overflowTrailing}
                 />
               </div>

@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 import { CartonUnitsRollupBody } from '../../CartonUnitsRollup';
 import { UnboxLabelPreview } from '../UnboxLabelPreview';
 import { POUnboxingSection } from '../POUnboxingSection';
-import { UnboxProcedureCards } from '../UnboxProcedureCards';
+import { UnboxProcedureColumn } from '../UnboxProcedureColumn';
 import { UnboxSerialStepSurface } from '../steps/UnboxSerialStepSurface';
 import { UnboxProcedureChecklist } from '../UnboxProcedureChecklist';
 import { ReceivingPhotoButton } from '../ReceivingPhotoButton';
@@ -113,7 +113,7 @@ export function buildUnboxOverview(
 
   return (
     <div className="space-y-4">
-    <UnboxProcedureCards
+    <UnboxProcedureColumn
       // Remount on carton change: the focused-step pointer, and every body's
       // transient view state, belong to ONE carton. A new box starts at its own
       // first unsettled step, never wherever the last one was parked.
@@ -382,6 +382,7 @@ export function UnboxSectionTabs({
       onChange={onChange}
       ariaLabel="Unbox displays"
       rightSlot={rightSlot}
+      density="stacked"
     />
   );
 }

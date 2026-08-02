@@ -63,6 +63,7 @@ import { useTriagePanel } from '@/components/receiving/triage/useTriagePanel';
 import { useUnmatchedItems } from '@/components/receiving/workspace/unmatched-items/useUnmatchedItems';
 import { useReceivingCartonUnlink } from '@/components/receiving/workspace/unmatched-items/useReceivingCartonUnlink';
 import { isReturnIntake } from '@/lib/receiving/triage-intake-kind';
+import { emitReceiving } from '@/components/receiving/receiving-events';
 import { WorkspaceSectionTitle } from '../WorkspaceSectionLabel';
 import {
   RECEIVING_OPEN_PAIRING_PO_EVENT,
@@ -334,7 +335,7 @@ function MatchHubCard({
       invalidateReceivingFeeds(queryClient);
       setForcePicker(false);
       if (showOpenInUnbox) {
-        setTimeout(() => window.dispatchEvent(new CustomEvent('receiving-focus-scan')), 60);
+        setTimeout(() => emitReceiving('receiving-focus-scan'), 60);
       }
     },
   });

@@ -71,6 +71,10 @@ export interface ReceivingEventDetail {
    * The Unbox pane shows a read-only receipt over the editor.
    */
   'receiving-lookup-scan': UnboxLookupScanDetail;
+  /** Hand focus back to the scan wedge after a procedure face/chip click. */
+  'receiving-focus-scan': undefined;
+  /** Table row pulse after MRU / deep-link navigation. */
+  'receiving-highlight-line': number;
 }
 
 /** Payload of `receiving-lookup-scan`. */

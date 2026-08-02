@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { Check, Download, History, Loader2, DollarSign, User, Tag, Pencil } from '@/components/Icons';
-import type { ReceivingStepKey } from '../ReceivingProgressStepper';
 import { OmnichannelComposerDock } from '@/design-system/primitives';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/lib/toast';
@@ -55,7 +54,6 @@ export function LineNotesCard({
   onSaveNotes,
   onSaveOverallNote,
   showSyncToPo = true,
-  activeStep = null,
   animateMount = true,
   trailingAction,
   onPrimaryAction,
@@ -84,8 +82,6 @@ export function LineNotesCard({
   onSaveOverallNote: (text: string) => void | Promise<void>;
   /** Show the push-to-PO button — matched cartons only (unfound has no PO). */
   showSyncToPo?: boolean;
-  /** Active workflow step — auto-focuses the composer on the print step. */
-  activeStep?: ReceivingStepKey | null;
   /** Pass-through to OmnichannelComposerDock mount motion. */
   animateMount?: boolean;
   /**
@@ -108,11 +104,19 @@ export function LineNotesCard({
   const savedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { user } = useAuth();
 
-  useEffect(() => {
-    if (activeStep === 'print') {
-      requestAnimationFrame(() => focusTextEnd(textareaRef.current));
-    }
-  }, [activeStep]);
+  // DELETED 2026-08-02 — an auto-focus on the print step.
+  //
+  // It fired on DERIVED step advance, with no operator gesture: the carton
+  // reached `print`, the caret jumped into this textarea, and the next wedge
+  // scan was typed into the note instead of the scan bar. Nothing errored and
+  // nothing was shown — the operator scans a box, sees nothing happen, and
+  // scans again. That is the most expensive bug this bench can ship, and it is
+  // the one thing `display/station.md` §3 and the procedure surface's focus rule
+  // exist to prevent.
+  //
+  // A composer is focused because the operator CLICKED it, never because a
+  // derivation moved. Do not restore this, and do not re-add it for another
+  // step key.
 
   useEffect(
     () => () => {

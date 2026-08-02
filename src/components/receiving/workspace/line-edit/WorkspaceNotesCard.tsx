@@ -23,7 +23,6 @@
  */
 
 import type { ReactNode } from 'react';
-import type { ReceivingStepKey } from '../ReceivingProgressStepper';
 import { LineNotesCard } from './LineNotesCard';
 import { useSyncedPoNote } from './hooks/useSyncedPoNote';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
@@ -34,7 +33,6 @@ interface WorkspaceNotesCardProps {
   row: ReceivingLineRow;
   c: UnboxLineController;
   onActionFeedback: (feedback: InlineActionFeedbackPayload | null) => void;
-  activeStep?: ReceivingStepKey | null;
   /** Pass-through to OmnichannelComposerDock mount motion. */
   animateMount?: boolean;
   /** Terminal CTA for the composer's trailing edge (Unbox overview receive). */
@@ -49,7 +47,6 @@ export function WorkspaceNotesCard({
   row,
   c,
   onActionFeedback,
-  activeStep,
   animateMount = true,
   trailingAction,
   onPrimaryAction,
@@ -79,7 +76,6 @@ export function WorkspaceNotesCard({
         }}
         onSaveOverallNote={saveOverallNote}
         showSyncToPo={!c.isUnfound}
-        activeStep={activeStep}
         animateMount={animateMount}
         trailingAction={trailingAction}
         onPrimaryAction={onPrimaryAction}

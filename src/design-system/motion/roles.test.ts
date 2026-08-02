@@ -157,16 +157,6 @@ const RAW_ROLE_USE: ReadonlyArray<{ role: string; patterns: readonly string[] }>
   { role: 'gesture.press', patterns: ['framerGesture.tapPress'] },
 ];
 
-/**
- * Untracked, actively-being-written station surface from the in-flight Unbox
- * procedure refactor (2026-08-01). It is the ONE raw `swap.scan` pair left; it
- * was left alone deliberately rather than edited mid-authorship. Migrate it to
- * `motionRole.swap.scan` when that refactor settles, then delete this entry.
- */
-const ALLOWLIST: ReadonlyArray<string> = [
-  'design-system/components/procedure/ProcedureCards.tsx',
-];
-
 function walkTsx(dir: string, out: string[] = []): string[] {
   for (const entry of readdirSync(dir)) {
     if (entry === 'node_modules' || entry === '.next') continue;
@@ -181,7 +171,7 @@ test('no surface uses a role pair raw — roles are adopted, not optional', () =
   const offenders: string[] = [];
   for (const file of walkTsx(SRC)) {
     const rel = relative(SRC, file).split('\\').join('/');
-    if (rel.startsWith(EXEMPT_PREFIX) || ALLOWLIST.includes(rel)) continue;
+    if (rel.startsWith(EXEMPT_PREFIX)) continue;
     const text = readFileSync(file, 'utf8');
     for (const { role, patterns } of RAW_ROLE_USE) {
       for (const p of patterns) {
