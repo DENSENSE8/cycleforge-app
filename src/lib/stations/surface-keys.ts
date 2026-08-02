@@ -22,6 +22,28 @@
 import type { ArchetypeId } from './archetype';
 
 /**
+ * Workbench Layer C recipe / branch ids. Declared on every
+ * `archetype: 'workbench'` surface; null on Station / Monitor / Canvas.
+ * Law: `.claude/rules/display/workbench.md` + child recipe files.
+ * Never a fifth ARCHETYPE_IDS value.
+ */
+export const WORKBENCH_BRANCH_IDS = [
+  'ops-queue',
+  'master-detail',
+  'board',
+  'fact-stack',
+  'service-workspace',
+] as const;
+
+export type WorkbenchBranchId = (typeof WORKBENCH_BRANCH_IDS)[number];
+
+export function isWorkbenchBranchId(
+  value: string | null | undefined,
+): value is WorkbenchBranchId {
+  return value != null && (WORKBENCH_BRANCH_IDS as readonly string[]).includes(value);
+}
+
+/**
  * Every operator surface the app knows about. Stable string keys — human
  * readable, conventional, and durable across renames (Notion page types /
  * Linear concepts). NEVER a numeric hash for a primary operator surface.
@@ -71,6 +93,11 @@ export interface SurfaceDefinition {
   route: string;
   /** Display archetype hint. `pickArchetype()` returns this unless overridden per-region. */
   archetype: ArchetypeId;
+  /**
+   * Workbench recipe / branch when `archetype === 'workbench'`.
+   * Required (non-null) for Workbench surfaces; must be `null` otherwise.
+   */
+  workbenchBranch: WorkbenchBranchId | null;
   /** Permission gate (mirrors ROUTE_PERMISSIONS / the surface's data APIs). */
   permission: string;
   /**
@@ -111,6 +138,7 @@ export const SURFACE_REGISTRY: Record<SurfaceKey, SurfaceDefinition> = {
     label: 'Unbox',
     route: '/unbox',
     archetype: 'station',
+    workbenchBranch: null,
     permission: 'receiving.view',
     pageKey: 'receiving',
     modeKey: 'receive',
@@ -125,6 +153,7 @@ export const SURFACE_REGISTRY: Record<SurfaceKey, SurfaceDefinition> = {
     label: 'Arrival',
     route: '/triage',
     archetype: 'station',
+    workbenchBranch: null,
     permission: 'receiving.view',
     pageKey: 'receiving',
     modeKey: 'triage',
@@ -138,6 +167,7 @@ export const SURFACE_REGISTRY: Record<SurfaceKey, SurfaceDefinition> = {
     label: 'Incoming',
     route: '/incoming',
     archetype: 'workbench',
+    workbenchBranch: 'ops-queue',
     permission: 'receiving.view',
     pageKey: 'receiving',
     modeKey: 'incoming',
@@ -155,6 +185,7 @@ export const SURFACE_REGISTRY: Record<SurfaceKey, SurfaceDefinition> = {
     label: 'Local Pickup',
     route: '/pickup',
     archetype: 'workbench',
+    workbenchBranch: 'ops-queue',
     permission: 'receiving.view',
     pageKey: 'receiving',
     modeKey: 'pickup',
@@ -171,6 +202,7 @@ export const SURFACE_REGISTRY: Record<SurfaceKey, SurfaceDefinition> = {
     label: 'Repair',
     route: '/repair',
     archetype: 'workbench',
+    workbenchBranch: 'ops-queue',
     permission: 'receiving.view',
     pageKey: 'receiving',
     modeKey: 'repair',
@@ -184,6 +216,7 @@ export const SURFACE_REGISTRY: Record<SurfaceKey, SurfaceDefinition> = {
     label: 'Receiving History',
     route: '/receiving/history',
     archetype: 'monitor',
+    workbenchBranch: null,
     permission: 'receiving.view',
     pageKey: 'receiving',
     modeKey: 'history',
@@ -196,6 +229,7 @@ export const SURFACE_REGISTRY: Record<SurfaceKey, SurfaceDefinition> = {
     label: 'Packing',
     route: '/pack',
     archetype: 'station',
+    workbenchBranch: null,
     permission: 'packing.view',
     pageKey: 'packer',
     modeKey: 'standard',
@@ -210,6 +244,7 @@ export const SURFACE_REGISTRY: Record<SurfaceKey, SurfaceDefinition> = {
     label: 'Testing',
     route: '/test',
     archetype: 'station',
+    workbenchBranch: null,
     permission: 'tech.view',
     pageKey: 'tech',
     modeKey: 'testing',
@@ -224,6 +259,7 @@ export const SURFACE_REGISTRY: Record<SurfaceKey, SurfaceDefinition> = {
     label: 'Shipping',
     route: '/shipping',
     archetype: 'station',
+    workbenchBranch: null,
     permission: 'shipping.view',
     pageKey: 'outbound',
     modeKey: 'labels',
@@ -251,7 +287,7 @@ export const SURFACE_REGISTRY: Record<SurfaceKey, SurfaceDefinition> = {
   //
   // The branch is a Layer C composition on Workbench, NOT a fifth archetype:
   // `ARCHETYPE_IDS` stays four (`archetype.ts`). Branch law:
-  // `.claude/rules/display/workbench-service.md` (forthcoming — Phase 1).
+  // `.claude/rules/display/workbench-service.md`.
   //
   // Desktop console (mobile-restricted), no `workflowNodeType` (Support isn't
   // an engine step). Gated by `integrations.zendesk` — same as the
@@ -261,6 +297,7 @@ export const SURFACE_REGISTRY: Record<SurfaceKey, SurfaceDefinition> = {
     label: 'Support',
     route: '/support',
     archetype: 'workbench',
+    workbenchBranch: 'service-workspace',
     permission: 'integrations.zendesk',
     pageKey: 'support',
     modeKey: 'tickets',

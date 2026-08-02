@@ -116,8 +116,18 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     return NextResponse.json(payload, { headers: { 'x-cache': 'MISS', ...CACHE_HEADERS } });
   } catch (error) {
     console.error('Error in GET /api/orders/queue-counts:', error);
+    // SUB-RESOURCE: a sidebar count must not 500 the queue, so this stays 200 —
+    // but zero is a real answer here ("nothing needs you"), so the fallback
+    // carries `degraded` rather than passing itself off as an honest all-clear.
     return NextResponse.json(
-      { total: 0, byStage: { all: 0, tested: 0, pending: 0 }, urgent: 0, combos: [] },
+      {
+        total: 0,
+        byStage: { all: 0, tested: 0, pending: 0 },
+        urgent: 0,
+        combos: [],
+        degraded: true,
+        error: 'queue_counts_unavailable',
+      },
       { status: 200, headers: { 'x-db-fallback': 'error' } },
     );
   } finally {

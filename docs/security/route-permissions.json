@@ -1,9 +1,9 @@
 {
   "version": 1,
-  "generatedAt": "2026-08-02T02:26:13Z",
-  "totalRoutes": 897,
+  "generatedAt": "2026-08-02T03:43:44Z",
+  "totalRoutes": 900,
   "summary": {
-    "permissionGated": 760,
+    "permissionGated": 763,
     "authenticatedNoPermission": 49,
     "anonymousIntentional": 86,
     "serviceToService": 2,
@@ -2591,6 +2591,33 @@
       ],
       "gate": "withAuth (no permission)",
       "permission": null,
+      "exemptReason": null
+    },
+    {
+      "path": "/api/interop/asn/[shipmentId]/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "interop.read",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/interop/epcis/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "interop.read",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/interop/lineage/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "interop.read",
       "exemptReason": null
     },
     {

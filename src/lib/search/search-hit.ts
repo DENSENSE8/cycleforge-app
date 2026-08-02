@@ -37,6 +37,28 @@ export interface SearchHitAction {
   payload: unknown;
 }
 
+/**
+ * Standards identifiers for a hit, when it has any.
+ *
+ * Optional and usually absent. This exists so an external agent or a partner's
+ * system can reconcile a Cycle Forge record against its own by a key BOTH
+ * sides recognise, without this repo growing a second search engine — the
+ * AGENTS.md hard law ("never build a second search engine") is not relaxed by
+ * the word "interop".
+ *
+ * `internal` is always present, `gs1` only when the record really resolves to
+ * a licensed GS1 key. The split is the whole point: a consumer can trust
+ * anything under `gs1` as globally resolvable and must treat `internal` as
+ * meaningful only to this tenant. Populate via `@/lib/interop/gs1-keys`;
+ * never hand-format either string at a call site.
+ */
+export interface SearchHitIdentifiers {
+  /** `urn:cycleforge:{kind}:{value}` — always available. */
+  internal: string;
+  /** A real GS1 EPC URI (SGTIN / GTIN / GLN). Absent unless licensed. */
+  gs1?: string;
+}
+
 export interface SearchHit {
   id: number;
   entityType: SearchHitEntityType;
@@ -49,6 +71,12 @@ export interface SearchHit {
   /** Machine-readable facet values for follow-up filtering/tool calls. */
   facets?: Record<string, string | null>;
   actions?: SearchHitAction[];
+  /**
+   * Standards identifiers, when the record has them. Additive and optional —
+   * a hit without them behaves exactly as before, which is what keeps this a
+   * FIELD on the existing shape rather than a parallel result type.
+   */
+  identifiers?: SearchHitIdentifiers;
 }
 
 const DB_TO_UI: Record<SearchEntityType, SearchHitEntityType> = {

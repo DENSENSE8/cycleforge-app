@@ -11,7 +11,7 @@
  *   - `bottom` (default) — absolute float at host bottom
  *   - `bottom` + `docked` — in-flow band under other docked bands (receive feedback)
  *   - `embedded` — bare pill track inside another control's chrome (Unbox
- *     overview mounts it in the {@link StationComposerDock} footer)
+ *     overview mounts it in the {@link OmnichannelComposerDock} footer)
  *
  * Host must be `position: relative` + full-height; scroll body reserves
  * {@link STATION_TERMINAL_SCROLL_CLEARANCE} (`pb-32`) when absolute.

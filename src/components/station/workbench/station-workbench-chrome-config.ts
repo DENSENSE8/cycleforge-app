@@ -21,6 +21,15 @@
  * (A) / panel-root (C) / terminal-path (E) census walks these. The SoT
  * primitives under `components/station/**` are deliberately excluded — they
  * *define* the fingerprints these guards ratchet elsewhere.
+ *
+ * `components/support/service-workspace` is **not** Station family — Support is
+ * Workbench branch `service-workspace`
+ * (`.claude/rules/display/workbench-service.md`). It stays in this census only
+ * because `SupportTicketFocus` still mounts `StationTerminalDock`, so Guard E
+ * must keep seeing it. Dropping the row on the directory rename (it was
+ * `components/support/station`) would have silently retired that coverage —
+ * which is the failure mode a rename is most likely to cause. Remove it when
+ * the dock leaves, not before.
  */
 export const STATION_FAMILY_ROOTS = [
   'components/receiving',
@@ -29,7 +38,7 @@ export const STATION_FAMILY_ROOTS = [
   'components/outbound/labels',
   'components/repair',
   'components/work-orders',
-  'components/support/station',
+  'components/support/service-workspace',
   'components/support/orders',
   'features/review',
 ] as const;
@@ -97,17 +106,26 @@ export const STATION_WORKBENCH_ADOPTION_EXEMPT = [
  */
 export const TERMINAL_HAND_VM_ALLOWLIST = [
   'features/review/packer/PackerReviewMode.tsx',
-  'components/support/station/SupportTicketFocus.tsx',
+  'components/support/service-workspace/SupportTicketFocus.tsx',
   'components/outbound/labels/LabelsOrderWorkspace.tsx',
 ] as const;
 
 // ── Documented identity fork (rules-only, see station-workbench.md) ───────────
 /**
- * The single sanctioned condensed-identity fork that does NOT compose
- * `CartonContextCard` (ticket ≠ carton). Never add a second — new station
- * identity composes the entity-context adapters.
+ * Condensed-identity forks that do NOT compose `CartonContextCard`. Every
+ * station identity composes the entity-context adapters — this list only ever
+ * shrinks.
+ *
+ * **Emptied 2026-08-01.** Its one entry, `SupportTicketIdentity`, was allowlisted
+ * because "ticket ≠ carton". That was the right observation and the wrong remedy:
+ * a ticket is not a carton because `/support` is not a Station at all — it is
+ * Workbench branch `service-workspace`
+ * (`.claude/rules/display/workbench-service.md`). `SupportTicketFocus` now wears
+ * a `PaneHeader`, so the component is no longer a fork of anything and simply
+ * left this family. A future entry here should be read as the same smell: if a
+ * surface needs non-carton identity, check whether it is a Station first.
  */
-export const IDENTITY_FORK_ALLOWLIST = ['SupportTicketIdentity'] as const;
+export const IDENTITY_FORK_ALLOWLIST = [] as const;
 
 // ── Guard G — terminal modes without header chrome ────────────────────────────
 /**

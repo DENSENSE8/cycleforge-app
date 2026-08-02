@@ -107,7 +107,7 @@ const TONE_RAIL: Record<WorkspaceCardTone, string> = {
  * `bodyDensity="nested"`, and {@link WORKSPACE_NESTED_FIELD} /
  * {@link WORKSPACE_NESTED_FIELD_PAD} on the inner white field. Overlay chrome:
  * {@link WORKSPACE_NESTED_OVERLAY_CORNER}. Carton notes use
- * `StationComposerDock` in the Unbox dock band.
+ * `OmnichannelComposerDock` in the Unbox dock band.
  */
 export function WorkspaceCard({
   label,

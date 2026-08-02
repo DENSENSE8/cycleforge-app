@@ -1,5 +1,5 @@
 import { getLast8 } from '@/components/ui/CopyChip';
-import { receivingHandle, receivingLineHandle } from '@/lib/barcode-routing';
+import { encodePrintMatrix, type PrintMatrix } from '@/lib/qr/platform-link';
 import { buildFaceInfoHtml, type LabelFaceModel } from '@/lib/print/labelFace';
 import { conditionLabel } from '@/lib/conditions';
 
@@ -19,19 +19,31 @@ export interface AsListedLabelPayload {
   /** Prefer line handle `L-{id}` when set; else carton `R-{id}`; else corner text. */
   receivingLineId?: number | null;
   receivingId?: number | null;
+  /**
+   * Tenant slug, carried for the encode SoT. Unused today — `/m/l/*` is a proxy
+   * REWRITE onto a staff page, so it has no anonymous landing and minting a URL
+   * would send a consumer phone to `/signin`. The moment that path gets a
+   * dual-audience landing, this is already threaded.
+   */
+  orgSlug?: string | null;
   /** Override the encoded matrix value. */
   qrValue?: string | null;
 }
 
+/** As-Listed matrix via the encode SoT ({@link encodePrintMatrix}). */
+export function asListedLabelMatrix(payload: AsListedLabelPayload): PrintMatrix {
+  return encodePrintMatrix({
+    kind: 'as_listed',
+    orgSlug: payload.orgSlug,
+    receivingLineId: payload.receivingLineId,
+    receivingId: payload.receivingId,
+    override: payload.qrValue,
+    fallbackValue: payload.corner,
+  });
+}
+
 export function resolveAsListedQrValue(payload: AsListedLabelPayload): string {
-  if (payload.qrValue && payload.qrValue.trim()) return payload.qrValue.trim();
-  if (payload.receivingLineId != null && Number.isFinite(payload.receivingLineId)) {
-    return receivingLineHandle(payload.receivingLineId);
-  }
-  if (payload.receivingId != null && Number.isFinite(payload.receivingId)) {
-    return receivingHandle(payload.receivingId);
-  }
-  return (payload.corner || '').trim();
+  return asListedLabelMatrix(payload).value;
 }
 
 /**
@@ -39,8 +51,7 @@ export function resolveAsListedQrValue(payload: AsListedLabelPayload): string {
  * Preview and print both consume this — they can't drift.
  */
 export function asListedPayloadToFace(payload: AsListedLabelPayload): LabelFaceModel {
-  const qrValue = resolveAsListedQrValue(payload);
-  const hri = /^(?:L|R|RCV)-\d+$/i.test(qrValue) ? qrValue.toUpperCase() : undefined;
+  const { value, symbology, hri } = asListedLabelMatrix(payload);
   const corner = (payload.corner || '').trim();
   return {
     kind: 'receiving',
@@ -49,7 +60,7 @@ export function asListedPayloadToFace(payload: AsListedLabelPayload): LabelFaceM
     center: (payload.disclosure || '').trim(),
     bottomLeft: conditionLabel(payload.conditionCode, 'label'),
     bottomRight: corner.length > 8 ? getLast8(corner) : corner,
-    matrix: { value: qrValue, symbology: 'datamatrix', scale: 4 },
+    matrix: { value, symbology, scale: 4 },
     hri,
   };
 }

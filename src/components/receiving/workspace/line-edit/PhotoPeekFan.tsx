@@ -216,7 +216,7 @@ export function PhotoPeekFan({
   return (
     <>
       {/* Peek — right-edge corner → fan, parked just above the floating
-          notes/send (StationComposerDock) / terminal dock band. Fixed rem
+          notes/send (OmnichannelComposerDock) / terminal dock band. Fixed rem
           clearance (not %-of-pane) so Unbox / Triage / Testing stay
           dock-adjacent instead of drifting mid-canvas on tall panes.
           Hidden while expanded (no edge peek when the display is open). */}

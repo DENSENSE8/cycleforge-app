@@ -9,7 +9,7 @@ import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { openInUnboxHref } from '@/lib/receiving/surface-path';
 import { shouldUseUnmatchedItemsSurface } from '@/lib/receiving/intake-items-routing';
 import { CartonMatchHub } from '@/components/receiving/workspace/line-edit/CartonMatchHub';
-import type { ReceivingLineRow } from '@/components/station/ReceivingLinesTable';
+import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import type { TestingController } from './testing-panel-types';
 import { TestingPoItemsSection } from './TestingPoItemsSection';
 

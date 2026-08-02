@@ -30,6 +30,8 @@ import {
   QA_ADMIN_PIN,
   QA_FEATURE_FLAGS,
   QA_FIXTURE_INCOMING_POS,
+  QA_FIXTURE_MY_DAY,
+  QA_FIXTURE_ORDER_TITLES,
   QA_FIXTURE_ORDERS,
   QA_FIXTURE_PO_ID,
   QA_FIXTURE_PO_NUMBER,
@@ -494,14 +496,14 @@ async function seedOrderFixtures(client: PoolClient, orgId: string) {
     client,
     orgId,
     QA_FIXTURE_ORDERS.awaiting,
-    'QA — Unshipped AWAITING (add tracking here)',
+    QA_FIXTURE_ORDER_TITLES.awaiting,
     QA_FIXTURE_SKUS.speaker,
   );
   const pendingId = await createFixtureOrder(
     client,
     orgId,
     QA_FIXTURE_ORDERS.pending,
-    'QA — Unshipped PENDING (tracking assigned)',
+    QA_FIXTURE_ORDER_TITLES.pending,
     QA_FIXTURE_SKUS.earbuds,
   );
   // The Pending lane drops rows with no tracking, so `awaiting` never reaches
@@ -511,7 +513,7 @@ async function seedOrderFixtures(client: PoolClient, orgId: string) {
     client,
     orgId,
     QA_FIXTURE_ORDERS.pendingSecond,
-    'QA — Unshipped PENDING #2 (record→record navigation)',
+    QA_FIXTURE_ORDER_TITLES.pendingSecond,
     QA_FIXTURE_SKUS.speaker,
   );
 
@@ -539,14 +541,14 @@ async function seedOrderFixtures(client: PoolClient, orgId: string) {
     client,
     orgId,
     QA_FIXTURE_ORDERS.pendingThird,
-    'QA — Unshipped PENDING #3 (focus-a-middle-row keyboard specs)',
+    QA_FIXTURE_ORDER_TITLES.pendingThird,
     QA_FIXTURE_SKUS.earbuds,
   );
   const packedId = await createFixtureOrder(
     client,
     orgId,
     QA_FIXTURE_ORDERS.packed,
-    'QA — PACKED (staged for the dock)',
+    QA_FIXTURE_ORDER_TITLES.packed,
     QA_FIXTURE_SKUS.earbuds,
   );
 
@@ -588,6 +590,80 @@ async function seedOrderFixtures(client: PoolClient, orgId: string) {
     'Order fixtures',
     `awaiting id=${awaitId}, pending id=${pendingId}, pending#2 id=${pendingSecondId}, pending#3 id=${pendingThirdId}, packed id=${packedId}`,
   );
+
+  return { pendingId, pendingSecondId, pendingThirdId };
+}
+
+/**
+ * Today (`/`) fixtures — the `work_assignments` + support-follow-up rows behind
+ * `aggregateMyDayFeed`. Rationale, and why `doNext` is derived rather than
+ * seeded, live on `QA_FIXTURE_MY_DAY` in `src/lib/tenancy/qa-org.ts`.
+ */
+async function seedMyDayFixtures(
+  client: PoolClient,
+  orgId: string,
+  adminStaffId: number,
+  orderRowIds: { pendingId: number; pendingSecondId: number; pendingThirdId: number },
+) {
+  const lanes = [
+    { entityId: orderRowIds.pendingId, ...QA_FIXTURE_MY_DAY.overdue },
+    { entityId: orderRowIds.pendingSecondId, ...QA_FIXTURE_MY_DAY.dueToday },
+    { entityId: orderRowIds.pendingThirdId, ...QA_FIXTURE_MY_DAY.upcoming },
+  ];
+
+  for (const lane of lanes) {
+    // Deadline at 20:00Z — mid-afternoon Pacific on the same civil day all year,
+    // so the horizon bucket cannot flip with daylight saving. `myDayDueHorizon`
+    // compares CIVIL DAYS in the warehouse zone, not instants.
+    const deadlineSql = `(date_trunc('day', NOW() AT TIME ZONE 'UTC') + make_interval(days => $4) + interval '20 hours') AT TIME ZONE 'UTC'`;
+
+    // Idempotent by the natural key this LATERAL selects on (entity + work type
+    // + open status), not by id — a re-provision must refresh the deadline so
+    // "overdue" stays overdue relative to TODAY rather than to first seed day.
+    const updated = await client.query(
+      `UPDATE work_assignments
+          SET assigned_tech_id = $2,
+              deadline_at      = ${deadlineSql},
+              priority         = $5,
+              status           = 'ASSIGNED',
+              updated_at       = NOW()
+        WHERE organization_id = $1
+          AND entity_type = 'ORDER'
+          AND entity_id = $3
+          AND work_type = 'TEST'
+          AND status IN ('OPEN', 'ASSIGNED', 'IN_PROGRESS')`,
+      [orgId, adminStaffId, lane.entityId, lane.dueInDays, QA_FIXTURE_MY_DAY.priority],
+    );
+
+    if (updated.rowCount === 0) {
+      await client.query(
+        // `assigned_tech_id` only — the baseline's `assignee_staff_id` was
+        // RENAMED to it, so the old name no longer exists on this table.
+        `INSERT INTO work_assignments
+           (organization_id, entity_type, entity_id, work_type,
+            assigned_tech_id, status, priority, deadline_at, notes)
+         VALUES ($1, 'ORDER', $3, 'TEST', $2, 'ASSIGNED', $5, ${deadlineSql}, 'QA fixture — Today lane')`,
+        [orgId, adminStaffId, lane.entityId, lane.dueInDays, QA_FIXTURE_MY_DAY.priority],
+      );
+    }
+  }
+
+  // The undated interrupt. UNIQUE (organization_id, zendesk_ticket_id) makes the
+  // upsert the idempotency; no support_tickets row is seeded on purpose, so the
+  // subject stays null and the row titles itself from the ticket id.
+  await client.query(
+    `INSERT INTO support_ticket_assignments
+       (organization_id, zendesk_ticket_id, assigned_staff_id, assigned_by)
+     VALUES ($1, $2, $3, $3)
+     ON CONFLICT (organization_id, zendesk_ticket_id)
+     DO UPDATE SET assigned_staff_id = EXCLUDED.assigned_staff_id, updated_at = NOW()`,
+    [orgId, QA_FIXTURE_MY_DAY.interruptTicketId, adminStaffId],
+  );
+
+  log(
+    'Today fixtures',
+    `3 TEST assignments (overdue/due-today/upcoming) on staff #${adminStaffId} + 1 support follow-up`,
+  );
 }
 
 async function seedFixtures(pool: Pool, orgId: string, adminStaffId: number) {
@@ -598,7 +674,8 @@ async function seedFixtures(pool: Pool, orgId: string, adminStaffId: number) {
     await seedSkus(client, orgId);
     await seedReceivingFixture(client, orgId, adminStaffId);
     await seedIncomingFixture(client, orgId);
-    await seedOrderFixtures(client, orgId);
+    const orderRowIds = await seedOrderFixtures(client, orgId);
+    await seedMyDayFixtures(client, orgId, adminStaffId, orderRowIds);
     await client.query('COMMIT');
   } catch (err) {
     await client.query('ROLLBACK').catch(() => {});

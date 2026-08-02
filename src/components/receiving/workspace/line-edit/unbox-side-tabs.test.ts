@@ -48,12 +48,17 @@ test('a visible request is returned unchanged', () => {
 test('a request gated off falls back to the first visible tab, never an empty column', () => {
   // The operator had Units open and deleted the last serial: `hasUnits` flips
   // false under them. Painting an empty push column would read as a bug.
-  assert.equal(resolveUnboxSideTab('units', SPARSE), 'classify');
-  assert.equal(resolveUnboxSideTab('listings', SPARSE), 'classify');
-  assert.equal(resolveUnboxSideTab('tracking', SPARSE), 'classify');
+  //
+  // The fallback is `checklist` since 2026-08-02 (it leads the strip and is
+  // never gated off), and that is the better answer than the old `classify`:
+  // a display dropped out from under the operator should land on the one that
+  // always has something true to say about the carton.
+  assert.equal(resolveUnboxSideTab('units', SPARSE), 'checklist');
+  assert.equal(resolveUnboxSideTab('listings', SPARSE), 'checklist');
+  assert.equal(resolveUnboxSideTab('tracking', SPARSE), 'checklist');
 });
 
-test('support survives every gate — an open carton always has it', () => {
+test('checklist and support survive every gate — an open carton always has both', () => {
   const nothing: UnboxSideTabGates = {
     hasClassifyTab: false,
     hasListingsTab: false,
@@ -62,17 +67,18 @@ test('support survives every gate — an open carton always has it', () => {
     hasTrackingTab: false,
     hasTimelineTab: false,
   };
+  assert.equal(isUnboxSideTabVisible('checklist', nothing), true);
   assert.equal(isUnboxSideTabVisible('support', nothing), true);
-  // Was `checklist` until 2026-08-01 — with the procedure in the workbench
-  // centre, Support is the last ungated display and so the fallback.
-  assert.equal(resolveUnboxSideTab('units', nothing), 'support');
+  // Checklist leads the strip, so it is the fallback when everything else gates
+  // off — the display that always has something true to say about the carton.
+  assert.equal(resolveUnboxSideTab('units', nothing), 'checklist');
 });
 
-test('checklist is NOT a side tab — there is exactly ONE procedure surface', () => {
-  // Deleted, not moved. A mirror "for reference" is a second procedure surface
-  // in one station, and the two would disagree the first time one of them
-  // learned about skips.
-  assert.equal(UNBOX_SIDE_TAB_ORDER.includes('checklist' as never), false);
+test('checklist LEADS the strip — it is the default display', () => {
+  // The station's live "where am I". Two clicks to find out what is left on a
+  // carton is a cost paid on every box, so it is not behind the ⋯ menu and it is
+  // not second.
+  assert.equal(UNBOX_SIDE_TAB_ORDER[0], 'checklist');
 });
 
 test('overview is NOT a side tab — the carton owns the centre', () => {

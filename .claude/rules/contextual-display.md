@@ -118,11 +118,11 @@ Density defaults: Station → `floor`; Workbench collection edit → `ops`; Moni
 2. **Table or board + optional inspector** — collection is primary (orders queue, FBA board); context opens on selection.
 3. **Fact stack / form** — single durable record focused without a heavy dual pane.
 
-Do **not** force recipe (1) when the data is a board or wide table. When using a sidebar picker, **compose the rail, never fork**; **L2 Mode + Recents live in GlobalHeader** (`HeaderModeSwitcher` / `HeaderRecentsSwitcher`); related/similar is progressive disclosure below the map, never an inverted sidebar. Spine page list: Analytics Monitor / Scan Stations / Triage Desk / Workflow Studio section drills (`SPINE_SECTIONS` + `spineDrill` motion) — see `display/workbench.md`.
+Do **not** force recipe (1) when the data is a board or wide table. When using a sidebar picker, **compose the rail, never fork**; **L2 Mode + Recents live in GlobalHeader** (`HeaderModeSwitcher` / `HeaderRecentsSwitcher`); related/similar is progressive disclosure below the map, never an inverted sidebar. Spine section drills: Analytics Monitor · Scan Stations · Inbound · Catalog · Inventory · Fulfillment · Sales · Support · Workflow Studio (`SPINE_SECTIONS` + `spineDrill` motion) — see `display/workbench-master-detail.md` + `source-of-truth.md`. Hybrid Station+Workbench pages: both exits (Back to list · **return-to-scan CTA** in trailing `actions`, every strip tab, above KPIs) — `display/workbench.md` → Multi-region pages.
 
 References: `ProductsWorkspace.tsx`, `QcChecklistWorkspace.tsx`, `SidebarRailShell.tsx`, `ReceivingRightPane.tsx`, FBA/order boards.
 
-→ [display/workbench.md](display/workbench.md).
+→ [display/workbench.md](display/workbench.md) · [workbench-ops-queue.md](display/workbench-ops-queue.md) · [workbench-service.md](display/workbench-service.md).
 
 ### Monitor — `filter → stream → read`
 
@@ -232,11 +232,13 @@ Full recipe: [display/motion-crossfade.md](display/motion-crossfade.md). Auth st
 ## Index of child docs
 
 - **[`display/station.md`](display/station.md)** — Station contract + floor density recipes.
-- **[`display/station-workbench.md`](display/station-workbench.md)** — Unbox-family right-pane anatomy (toolbar → entity → tabs → dock).
-- **[`display/workbench.md`](display/workbench.md)** — Workbench contract; master–detail **and** table/board recipes.
+- **[`display/station-workbench.md`](display/station-workbench.md)** — **Station column shell** (Unbox-family right-pane anatomy) — not Layer A Workbench.
+- **[`display/workbench.md`](display/workbench.md)** — Workbench contract; recipe index; multi-region (list ↔ bench).
+- **[`display/workbench-ops-queue.md`](display/workbench-ops-queue.md)** — Workbench branch **`ops-queue`** (Desk): saved views \| chrome+KPI \| LedgerGrid \| right rail.
+- **[`display/workbench-master-detail.md`](display/workbench-master-detail.md)** — Workbench recipe **`master-detail`**: SidebarShell picker \| right workspace.
 - **[`display/workbench-service.md`](display/workbench-service.md)** — Workbench branch **`service-workspace`** (Support): list \| thread + composer \| context. Conversation-first, still Workbench physics — not a 5th contract, not a Station.
 - **[`display/right-rail-inspector.md`](display/right-rail-inspector.md)** — Right details panel: icon row · dense identity · contextual actions; never intake-shell hero titles on record peeks.
-- **[`display/carton-read.md`](display/carton-read.md)** — Durable carton **read** record (`/carton/[id]`): disposition · handling|findings · Photos → viewer SoT · quiet work escape. Not Station Workbench.
+- **[`display/carton-read.md`](display/carton-read.md)** — Durable carton **read** record (`/carton/[id]`): disposition · handling|findings · Photos → viewer SoT · quiet work escape. Not Station column shell.
 - **[`display/monitor-and-canvas.md`](display/monitor-and-canvas.md)** — Monitor observe + Canvas graph.
 - **[`display/monitor-rollup-blocks.md`](display/monitor-rollup-blocks.md)** — Rollup block registry (`rollup` density).
 - **[`display/motion-crossfade.md`](display/motion-crossfade.md)** — Motion / singular focus crossfade.
@@ -253,7 +255,7 @@ Full recipe: [display/motion-crossfade.md](display/motion-crossfade.md). Auth st
 - **URL-as-state partial in Workbench** — filters/sort/search often in-memory.
 - **Studio publish gate** — should publish validate contracts + Kinetic Ledger token rules?
 - **Monitor↔Workbench boundary** — insights chat and clickable rows must not grow silent durable edit.
-- **Durable read-record URLs** (e.g. `/carton/[id]`) — observe-first with a work escape; not Station Workbench and not classic Monitor rollup. Recipe: [`display/carton-read.md`](display/carton-read.md).
+- **Durable read-record URLs** (e.g. `/carton/[id]`) — observe-first with a work escape; not Station column shell and not classic Monitor rollup. Recipe: [`display/carton-read.md`](display/carton-read.md).
 - **`AuditTimeline` vs `EventTimeline`** — still a deliberate fork?
 - **Block registry** — Monitor Phase-1 done; promote Station/Workbench fact-stack / row blocks next.
 - **Presentation-kind registry** — SoTs exist; a single typed registry module is an emerging promote target (document first, code when 2+ consumers need it).

@@ -12,12 +12,18 @@
  * ## 2. It relapses into a second photo UI / Unbox CTA spam / lobotomized work chrome
  *
  * Intent pins (not frozen UI names): disposition truth; photos via the shared
- * `ReceivingPhotosSection` (readOnly — same component as ReceivingDetailsStack
- * Progress); never a page-local EvidenceStage / lightbox or hand-rolled “N photos”
- * count button; empty ≠ fetch error for photos; shared carton pipeline
+ * fetch SoT (`useReceivingPhotos`) with drill-in through the shared
+ * `PhotoViewerPortal`; never a page-local EvidenceStage / lightbox / receiving-photos
+ * query; empty ≠ fetch error for photos; shared carton pipeline
  * (`ReceivingCartonPipeline` + stage rows on a Panel); full width; one quiet
  * `openInUnboxHref` escape (no "Open in Unbox" marketing string). Never require
  * Unbox layout panels / CartonContextCard.
+ *
+ * The photo mount MOVED (2026-08-01): a mid-rail `ReceivingPhotosSection` card
+ * became the DispositionBar-launched `CartonPhotoTriage` panel, so the pins are
+ * on the hook and the viewer rather than on that component's name. What did not
+ * move — and must not — is that this surface cannot upload, delete, or reassign,
+ * and that a failed fetch never renders as "no photos".
  *
  * Run: `node --test --require ./scripts/register-server-only-shim.cjs --import tsx \
  *        src/components/receiving/inspector/carton-inspector.guard.test.ts`
@@ -73,7 +79,7 @@ test('the inspector never mounts the work editor or its terminal', () => {
     'ReceivingLineWorkspace',
     'UnboxWorkspaceView',
     'StationTerminalDock',
-    'StationComposerDock',
+    'OmnichannelComposerDock',
     'StationWorkbench',
     'CartonContextCard',
     'ReceivingDetailsStack',
@@ -111,14 +117,22 @@ test('disposition truth — exceptions outrank lifecycle.done', () => {
   );
 });
 
-test('photos use the shared details-stack section, read-only', () => {
+test('photos come from the shared fetch SoT, read-only', () => {
+  // Intent pin, not a component name. The mount moved from a mid-rail
+  // `ReceivingPhotosSection` card to the DispositionBar-launched triage panel;
+  // what must not move is the SHARED query and the read-only contract.
   assert.ok(
-    ALL.includes('ReceivingPhotosSection'),
-    'photos must reuse ReceivingPhotosSection (same component as ReceivingDetailsStack Progress)',
+    ALL.includes('useReceivingPhotos'),
+    'photos must come from the shared carton query hook — never a page-local useQuery against /api/receiving-photos',
+  );
+  assert.equal(
+    /useQuery[\s\S]{0,400}receiving-photos/.test(ALL),
+    false,
+    'a page-local receiving-photos query is a fourth fork of the shared cache entry',
   );
   assert.ok(
     ALL.includes('readOnly'),
-    'the look-up surface must mount ReceivingPhotosSection read-only (no upload/delete/reassign)',
+    'the look-up surface must read photos read-only (no upload/delete/reassign)',
   );
   assert.equal(
     ALL.includes('EvidenceStage'),
@@ -138,7 +152,32 @@ test('photos use the shared details-stack section, read-only', () => {
   assert.equal(
     /role=["']dialog["']/.test(ALL),
     false,
-    'never a local role="dialog" lightbox — PhotoGallery mounts PhotoViewerPortal',
+    'never a local role="dialog" lightbox — drill-in composes PhotoViewerPortal',
+  );
+  assert.ok(
+    ALL.includes('PhotoViewerPortal'),
+    'tile drill-in must compose the shared viewer SoT',
+  );
+});
+
+test('the read surface can never delete or upload a photo', () => {
+  // `usePhotoGallery` arms delete off a numeric `id` on the photo input, and
+  // upload off the `receivingId` PROP. Passing either here would hand a look-up
+  // surface the power to destroy the evidence it exists to show.
+  assert.equal(
+    /photos:\s*[\s\S]{0,200}?\bid:\s*(?:row|r|p)\./.test(ALL),
+    false,
+    'a numeric photo id in the gallery input arms the delete affordance',
+  );
+  assert.equal(
+    /<PhotoGallery[\s\S]{0,400}?receivingId=/.test(ALL),
+    false,
+    'a receivingId prop on the gallery derives an upload target',
+  );
+  assert.equal(
+    /usePhotoGallery\(\{[\s\S]{0,300}?receivingId/.test(ALL),
+    false,
+    'a receivingId in the gallery controller derives an upload target',
   );
 });
 
@@ -148,11 +187,46 @@ test('a failed photo load never borrows the "no photos" copy', () => {
     false,
     'the photo query swallows failure into an empty list — an outage then reads as "no evidence exists"',
   );
-  // Error branching lives in ReceivingPhotosSection when readOnly — inspector
-  // must pass that flag so the section throws instead of returning [].
+  // The triage panel must branch on isError with copy of its own; "no photos"
+  // and "photos unavailable" are different facts about the world.
   assert.ok(
-    ALL.includes('readOnly'),
-    'readOnly photos section owns empty ≠ fetch error for the look-up surface',
+    ALL.includes('isError'),
+    'the photo surface must branch on the error state, not collapse it into empty',
+  );
+  assert.ok(
+    /Photos unavailable/.test(ALL),
+    'the error branch needs copy that does not claim the carton has no evidence',
+  );
+});
+
+test('photo buckets resolve in the model, never in JSX', () => {
+  assert.ok(
+    ALL.includes('buildCartonPhotoTriage'),
+    'lane / bucket / readiness come from the pure triage model',
+  );
+  for (const smell of ['receiving_package', 'receiving_unbox_carton', 'receiving_item']) {
+    assert.equal(
+      ALL.includes(smell),
+      false,
+      `${smell} is a photo_type literal — bucket through the stage SoT instead`,
+    );
+  }
+  assert.equal(
+    ALL.includes('damage_detected') || ALL.includes('damageDetected'),
+    false,
+    'photo_analysis is empty and unwritten — a Damaged bucket keyed on it is a permanently empty tab',
+  );
+});
+
+test('the Photos CTA is the primary entry, and there is only one', () => {
+  assert.ok(
+    /aria-label=\{photosOpen \? 'Hide carton photos' : 'Show carton photos'\}/.test(ALL),
+    'the DispositionBar must carry the primary Photos control',
+  );
+  assert.equal(
+    ALL.includes('ReceivingPhotosSection'),
+    false,
+    'the mid-rail launcher card is a second front door to one surface — the CTA owns the entry',
   );
 });
 

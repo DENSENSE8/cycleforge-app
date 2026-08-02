@@ -42,12 +42,12 @@ const TICKET_PUSH_MAX_WIDTH_PX = 480;
 export const TICKET_PUSH_HOST_PAD_CLASS = 'py-2 pr-2';
 
 /**
- * Right-edge strip the Unbox host parks when no push column is open — the same
- * in-flow recipe as the receiving recent-rail expand
- * ({@link CONTEXT_PANEL_COLLAPSE_STRIP_CLASS}). Host already applies
- * {@link TICKET_PUSH_HOST_PAD_CLASS}, so strip margin is zeroed to avoid
- * double-inset. Holds the Displays toggle and, when a linked ticket is parked,
- * the ticket restore beneath it.
+ * Right-edge strip the Unbox host parks when a linked ticket is closed and no
+ * push column owns the edge — the same in-flow recipe as the receiving
+ * recent-rail expand ({@link CONTEXT_PANEL_COLLAPSE_STRIP_CLASS}). Host already
+ * applies {@link TICKET_PUSH_HOST_PAD_CLASS}, so strip margin is zeroed to avoid
+ * double-inset. Displays toggles from the pane-anchored progress ring
+ * (`StationMoreDetails`); this strip only restores the ticket.
  */
 export function ReceivingPushExpandStrip({ children }: { children: React.ReactNode }) {
   return (

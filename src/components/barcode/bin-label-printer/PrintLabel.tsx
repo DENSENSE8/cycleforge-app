@@ -4,7 +4,7 @@ import type React from 'react';
 import { LocationDataMatrix } from '../LocationDataMatrix';
 import {
   bayHand,
-  gs1LocationAi,
+  locationLabelPayload,
   locationCode,
   noPad,
   pad2,
@@ -26,7 +26,7 @@ interface PrintLabelProps {
 export function PrintLabel({ segments, roomName, gln }: PrintLabelProps) {
   const { user } = useAuth();
   const code = locationCode(segments);
-  const ai = gs1LocationAi(segments, { gln });
+  const label = locationLabelPayload(segments, { gln });
   return (
     <div className="label-print-card" style={labelCardStyle}>
       <div style={labelLeftStyle}>
@@ -40,7 +40,7 @@ export function PrintLabel({ segments, roomName, gln }: PrintLabelProps) {
         </div>
       </div>
       <div style={labelQrStyle}>
-        <LocationDataMatrix value={ai} size={110} />
+        <LocationDataMatrix value={label.value} symbology={label.symbology} size={110} />
       </div>
     </div>
   );

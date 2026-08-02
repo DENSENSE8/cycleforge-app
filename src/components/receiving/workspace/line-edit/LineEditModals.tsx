@@ -16,7 +16,7 @@
 import { ReceivingAuditRail } from '../ReceivingAuditRail';
 import { SendPhotoNoteRail } from '../SendPhotoNoteRail';
 import { MovePhotosBetweenPoRail } from './MovePhotosBetweenPoRail';
-import type { ReceivingLineRow } from '@/components/station/ReceivingLinesTable';
+import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import type { UnboxLineController } from './unbox-line-controller';
 
 interface LineEditModalsProps {

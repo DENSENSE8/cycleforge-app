@@ -297,6 +297,12 @@ export function PhotoContextPanel({
           {analysisNode}
         </Field>
 
+        {meta?.stage ? (
+          <Field icon={<Package className="h-3.5 w-3.5" />} label="Stage">
+            <span>{photoStageLabel(meta.stage)}</span>
+          </Field>
+        ) : null}
+
         {meta?.caption ? (
           <Field icon={<FileText className="h-3.5 w-3.5" />} label="Caption">
             <p className="whitespace-pre-wrap text-sm leading-snug text-stage-soft">{meta.caption}</p>

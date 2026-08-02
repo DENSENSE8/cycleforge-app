@@ -13,6 +13,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { StaffAvatar } from '@/components/identity';
+import { Button } from '@/design-system/primitives';
 import { getStaffTheme, type StationTheme } from '@/utils/staff-colors';
 import { SkeletonBase } from '@/design-system/components/Skeletons';
 
@@ -67,6 +68,12 @@ const THEME_ROW: Record<StationTheme, {
 export function StaffPickerList({ recent = [], recentReady = true, onPick, onMessage, onPolicy }: StaffPickerListProps) {
   const [staff, setStaff] = useState<StaffRow[]>([]);
   const [loading, setLoading] = useState(true);
+  // "The roster is empty" and "we could not load the roster" are DIFFERENT
+  // answers. Before 2026-08-02 a thrown query returned `{ staff: [] }` + 200
+  // and this list rendered "No active staff. Ask an admin to add you." — a
+  // legitimate-looking absence that hid a total sign-in outage. The route now
+  // answers 503 + `degraded`; render that as its own retryable state.
+  const [degraded, setDegraded] = useState(false);
   // When recent staff exist, keep the full roster collapsed behind a "More"
   // button so the 3 recent names stay the focused, one-tap choice.
   const [showAll, setShowAll] = useState(false);
@@ -77,24 +84,37 @@ export function StaffPickerList({ recent = [], recentReady = true, onPick, onMes
   const onPolicyRef = useRef(onPolicy);
   onPolicyRef.current = onPolicy;
 
+  // Bumped by the degraded state's Retry so the load effect re-runs.
+  const [reloadKey, setReloadKey] = useState(0);
+
   useEffect(() => {
     let cancelled = false;
     void (async () => {
       try {
         const r = await fetch('/api/auth/staff-picker', { cache: 'no-store' });
-        if (r.ok) {
-          const data = (await r.json()) as { staff: StaffRow[]; pinless?: boolean };
-          if (!cancelled) {
-            setStaff(data.staff || []);
-            onPolicyRef.current?.({ pinless: Boolean(data.pinless) });
-          }
+        const data = (await r.json().catch(() => null)) as
+          | { staff?: StaffRow[]; pinless?: boolean; degraded?: boolean }
+          | null;
+        if (cancelled) return;
+        // A non-OK status, an unparseable body, or an explicit `degraded` flag
+        // all mean the same thing to the operator: we do not know the roster.
+        if (!r.ok || !data || data.degraded) {
+          setDegraded(true);
+          setStaff([]);
+          return;
         }
+        setDegraded(false);
+        setStaff(data.staff || []);
+        onPolicyRef.current?.({ pinless: Boolean(data.pinless) });
+      } catch {
+        // Offline / DNS / abort — also "we do not know", never "nobody works here".
+        if (!cancelled) { setDegraded(true); setStaff([]); }
       } finally {
         if (!cancelled) setLoading(false);
       }
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [reloadKey]);
 
   const { recentRows, otherRows } = useMemo(() => {
     const map = new Map(staff.map((s) => [s.id, s] as const));
@@ -107,6 +127,30 @@ export function StaffPickerList({ recent = [], recentReady = true, onPick, onMes
   }, [staff, recent]);
 
   if (loading || !recentReady) return <StaffPickerSkeleton />;
+  // Degraded (could not load) is checked BEFORE absence — the two states share
+  // an empty `staff` array and only this flag tells them apart.
+  if (degraded) {
+    return (
+      <div
+        role="alert"
+        className="rounded-xl border border-dashed border-rose-200 bg-rose-50 px-6 py-10 text-center"
+      >
+        <p className="text-sm text-rose-900">Couldn’t load the staff list.</p>
+        <p className="mt-1 text-role-caption text-rose-700">
+          This is a connection problem, not an empty roster.
+        </p>
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          className="mt-4"
+          onClick={() => { setLoading(true); setReloadKey((n) => n + 1); }}
+        >
+          Try again
+        </Button>
+      </div>
+    );
+  }
   if (staff.length === 0) {
     return (
       <div className="rounded-xl border border-dashed border-border-default px-6 py-10 text-center text-sm text-text-soft">

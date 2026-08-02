@@ -27,3 +27,24 @@ export const SIDEBAR_SPINE_WIDTH = 'w-[240px]';
  * component, which is the trade this pair exists to avoid.)
  */
 export const SIDEBAR_SPINE_WIDTH_PX = 240;
+
+/**
+ * Chrome for MasterNav **identity menus** (org/workspace switch + staff ⋯ menu).
+ *
+ * Menus are a **child of the trigger**, not a second wider panel:
+ * `AnchoredLayer` `*-stretch` against the trigger/row anchor (inset by the
+ * band pad), so width ≤ {@link SIDEBAR_SPINE_WIDTH}. Dense chrome
+ * (`rounded-lg` · `shadow-md`) + caption type — never a chunkier twin of the
+ * band. Never fork `w-[260px]` / `w-[280px]` (or any wider literal) —
+ * guard: `header-mode.guard.test.ts`.
+ */
+export const SIDEBAR_SPINE_MENU_PANEL_CLASS =
+  'w-full overflow-hidden rounded-lg border border-border-soft bg-surface-card shadow-md';
+
+/** Dense header strip inside an identity menu (current workspace / staff card). */
+export const SIDEBAR_SPINE_MENU_HEADER_CLASS =
+  'flex min-w-0 items-center gap-2 border-b border-border-hairline px-2 py-1.5';
+
+/** Dense action row inside an identity menu. */
+export const SIDEBAR_SPINE_MENU_ACTION_CLASS =
+  'flex w-full items-center gap-2 rounded-md px-2 py-1 text-left transition hover:bg-surface-hover';

@@ -406,7 +406,10 @@ test('SidebarNavList: section drills via SPINE_SECTIONS; no label twins; icons +
   assert.match(LIST_SRC, /section\.icon/);
   assert.match(LIST_SRC, /TechRailSearchBar/);
   assert.match(LIST_SRC, /navFilter/);
-  assert.match(LIST_SRC, /sectionMatchesNavFilter/);
+  // The root map renders the WHOLE section list — narrowing is the search
+  // body's job now, so the local section matcher is gone rather than merely
+  // unused. See "a query flattens the body to ranked destinations".
+  assert.doesNotMatch(LIST_SRC, /sectionMatchesNavFilter|pageMatchesDrillFilter/);
   assert.doesNotMatch(LIST_SRC, /['"]Overview['"]/);
   assert.doesNotMatch(LIST_SRC, /['"]Library['"]/);
   assert.doesNotMatch(LIST_SRC, /['"]Analytics Monitor['"]/);
@@ -458,12 +461,38 @@ test('SidebarNavList: Home/Search/Media/Chat top pin; footer filter above Settin
   assert.match(LIST_SRC, /renderRow\(page, ['"]top['"]/);
   assert.match(LIST_SRC, /renderRow\(page, ['"]bottom['"]/);
   assert.match(LIST_SRC, /TechRailSearchBar/);
-  assert.match(LIST_SRC, /Filter pages/);
-  assert.match(LIST_SRC, /Filter sections/);
+  // ONE placeholder: the box searches every destination, everywhere. It used to
+  // say "Filter sections…" at the root and "Filter pages…" in a drill — two
+  // behaviours from one field, and the root one described narrowing CATEGORIES
+  // rather than reaching a page.
+  assert.match(LIST_SRC, /placeholder="Go to…"/);
+  assert.doesNotMatch(LIST_SRC, /Filter pages|Filter sections/);
   // Footer filter sits above the Admin/Settings pin — not inside the drill body.
   assert.doesNotMatch(LIST_SRC, /SearchField/);
   assert.doesNotMatch(LIST_SRC, /GlobalHeaderSearch/);
   assert.doesNotMatch(LIST_SRC, /HeaderAi/);
+});
+
+test('SidebarNavList: a query flattens the body to ranked destinations', () => {
+  // Tree at rest, FLAT while searching. The old filter narrowed the section
+  // BUTTONS, so typing a page's exact name returned a category that did not
+  // contain the word and the operator still had to drill and re-scan.
+  assert.match(LIST_SRC, /const searching = navFilter\.trim\(\)\.length > 0/);
+  assert.match(LIST_SRC, /buildNavDestinations/);
+  assert.match(LIST_SRC, /searchNav/);
+  assert.match(LIST_SRC, /renderSearchResults/);
+  // The shared matcher owns ranking + highlight offsets — no local includes().
+  assert.match(LIST_SRC, /splitNavHighlight/);
+  assert.doesNotMatch(LIST_SRC, /toLowerCase\(\)\.includes\(/);
+  // Keyed on the MODE, never the query: typing updates in place instead of
+  // replaying the crossfade on every keystroke.
+  assert.match(LIST_SRC, /key=\{searching \? ['"]search['"] : \(drillId \?\? ['"]root['"]\)\}/);
+  // Results are keyboard-reachable from the box that produced them.
+  assert.match(LIST_SRC, /handleFilterKeyDown/);
+  assert.match(LIST_SRC, /ArrowDown/);
+  assert.match(LIST_SRC, /ArrowUp/);
+  // Empty state names the query back.
+  assert.match(LIST_SRC, /No destination matches/);
 });
 
 test('SidebarNavList: drill back header centers section label from SoT', () => {

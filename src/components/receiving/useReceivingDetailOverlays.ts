@@ -18,10 +18,8 @@ import {
 } from '@/lib/receiving/receiving-details-overlay';
 import type { ReceivingDetailsLog } from '@/components/station/receiving-details-log';
 import type { ReceivingDetailsOverlayDetail } from '@/utils/events';
-import {
-  shipmentIdFromDeliveredUnscannedRow,
-  type ReceivingLineRow,
-} from '@/components/station/ReceivingLinesTable';
+import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import { shipmentIdFromDeliveredUnscannedRow } from '@/components/station/receiving-delivered-unscanned';
 
 export interface IncomingDetailsTarget {
   poId: string | null;

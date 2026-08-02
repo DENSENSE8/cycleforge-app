@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { LocationDataMatrix } from '../LocationDataMatrix';
-import { bayHand, gs1LocationAi, noPad, pad2, rackCode, rackToLocation, type RackSegments } from '@/lib/barcode-routing';
+import { bayHand, locationLabelPayload, noPad, pad2, rackCode, rackToLocation, type RackSegments } from '@/lib/barcode-routing';
 import { useAuth } from '@/contexts/AuthContext';
 import { orgWarehouseLabel } from '@/lib/branding/letterhead';
 
@@ -13,7 +13,7 @@ import { orgWarehouseLabel } from '@/lib/branding/letterhead';
 export function RackPrintLabel({ segments, roomName, gln }: { segments: RackSegments; roomName: string; gln: string }) {
   const { user } = useAuth();
   const code = rackCode(segments);
-  const ai = gs1LocationAi(rackToLocation(segments), { gln });
+  const label = locationLabelPayload(rackToLocation(segments), { gln });
   return (
     <div className="label-print-card" style={labelCardStyle}>
       <div style={labelLeftStyle}>
@@ -26,7 +26,7 @@ export function RackPrintLabel({ segments, roomName, gln }: { segments: RackSegm
         </div>
       </div>
       <div style={labelQrStyle}>
-        <LocationDataMatrix value={ai} size={115} />
+        <LocationDataMatrix value={label.value} symbology={label.symbology} size={115} />
       </div>
     </div>
   );

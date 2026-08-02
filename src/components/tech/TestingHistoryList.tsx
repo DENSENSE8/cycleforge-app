@@ -4,11 +4,9 @@ import { useCallback, useMemo, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useUIModeOptional } from '@/design-system/providers/UIModeProvider';
-import {
-  ReceivingLineOrderRow,
-  dispatchSelectLine,
-  type ReceivingLineRow,
-} from '@/components/station/ReceivingLinesTable';
+import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import { dispatchSelectLine } from '@/components/station/receiving-lines-table-helpers';
+import { ReceivingLineOrderRow } from '@/components/station/ReceivingLineOrderRow';
 import { useReceivingRowSelection } from '@/components/station/useReceivingRowSelection';
 import { ReceivingGridView } from '@/components/station/receiving-grid/ReceivingGridView';
 import { StationPipelineBoard } from '@/components/station/StationPipelineBoard';

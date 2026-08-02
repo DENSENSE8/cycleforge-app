@@ -146,6 +146,10 @@ export function withScopeDivider<T extends { id: string }>(
  * Pass as {@link WorkbenchChromeHeader} `trailing`. Never park Fields in `right`
  * filters; never invent an in-card `TableActionBar` (sticky docking law).
  *
+ * Hybrid scan stations (Unbox / Testing / Pack): put the **return-to-scan CTA**
+ * in `actions` — solid primary, every strip tab, top-right of the context bar
+ * above KPIs. SoT: `.claude/rules/display/workbench.md` → Multi-region pages.
+ *
  * @see docs/todo/table-action-bar-fields-PLAN.md
  */
 interface WorkbenchTrailingClusterProps {
@@ -155,7 +159,7 @@ interface WorkbenchTrailingClusterProps {
   sort?: ReactNode;
   /** Per-staff column picker — {@link GridFieldsMenu}. */
   fields?: ReactNode;
-  /** Solid CTAs — Import / Add (or surface chrome-actions composer). */
+  /** Solid CTAs — return-to-scan (hybrid Station+Workbench) / Import / Add. */
   actions?: ReactNode;
   /** Escapes that follow CTAs (e.g. Catalog Refresh). */
   after?: ReactNode;

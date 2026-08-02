@@ -11,6 +11,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button } from '@/design-system/primitives';
+import { DataTable, type DataTableColumn } from '@/design-system/components/DataTable';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { useAuth } from '@/contexts/AuthContext';
 import { kioskOriginForSlug } from '@/lib/tenancy/kiosk-host';
@@ -136,6 +137,48 @@ export function KioskDevicesSection() {
     await refresh();
   }, [refresh]);
 
+  const deviceColumns: DataTableColumn<KioskDeviceRow>[] = [
+    {
+      key: 'tablet',
+      header: 'Tablet',
+      type: 'text',
+      cell: (row) => <span className="font-medium text-text-default">{row.label}</span>,
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      type: 'tag',
+      cell: (row) => (
+        <span className={`rounded-full px-2 py-0.5 text-xs font-semibold uppercase tracking-widest ring-1 ring-inset ${STATUS_TONE[row.status]}`}>
+          {STATUS_LABEL[row.status]}
+        </span>
+      ),
+    },
+    {
+      key: 'last_seen',
+      header: 'Last seen',
+      type: 'date',
+      cell: (row) => <span className="text-xs text-text-soft">{fmtRelative(row.lastSeenAt)}</span>,
+    },
+    {
+      key: 'actions',
+      header: 'Actions',
+      align: 'right',
+      cell: (row) =>
+        row.status !== 'revoked' ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            type="button"
+            onClick={() => void revoke(row.id)}
+            className="border border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+          >
+            Revoke
+          </Button>
+        ) : null,
+    },
+  ];
+
   return (
     <section className="space-y-5">
       <header>
@@ -200,51 +243,13 @@ export function KioskDevicesSection() {
       </div>
 
       {/* List */}
-      {loading ? (
-        <div className="text-sm text-text-soft">Loading…</div>
-      ) : (
-        <div className="overflow-hidden rounded-xl border border-border-soft bg-surface-card">
-          <table className="w-full text-sm">
-            <thead className="bg-surface-canvas text-left text-role-caption uppercase tracking-wider text-text-soft">
-              <tr>
-                <th className="px-3 py-2">Tablet</th>
-                <th className="px-3 py-2">Status</th>
-                <th className="px-3 py-2">Last seen</th>
-                <th className="px-3 py-2 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border-hairline">
-              {rows.map((row) => (
-                <tr key={row.id}>
-                  <td className="px-3 py-2 font-medium text-text-default">{row.label}</td>
-                  <td className="px-3 py-2">
-                    <span className={`rounded-full px-2 py-0.5 text-xs font-semibold uppercase tracking-widest ring-1 ring-inset ${STATUS_TONE[row.status]}`}>
-                      {STATUS_LABEL[row.status]}
-                    </span>
-                  </td>
-                  <td className="px-3 py-2 text-xs text-text-soft">{fmtRelative(row.lastSeenAt)}</td>
-                  <td className="px-3 py-2 text-right">
-                    {row.status !== 'revoked' && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        type="button"
-                        onClick={() => void revoke(row.id)}
-                        className="border border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
-                      >
-                        Revoke
-                      </Button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-              {rows.length === 0 && (
-                <tr><td colSpan={4} className="px-3 py-8 text-center text-text-faint">No kiosk tablets enrolled yet.</td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <DataTable
+        columns={deviceColumns}
+        rows={rows}
+        rowKey={(row) => row.id}
+        loading={loading}
+        emptyMessage="No kiosk tablets enrolled yet."
+      />
     </section>
   );
 }

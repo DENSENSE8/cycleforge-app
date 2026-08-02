@@ -240,15 +240,30 @@ export function CommandBar() {
   }, []);
 
   // ── Keyboard shortcut: ⌘K / Ctrl+K → toggle palette ──
+  //
+  // Fires from ANYWHERE, text fields included. There used to be an
+  // `if (editable && !open) return` bail that stood the chord down whenever
+  // focus sat in an input, textarea, select or contenteditable — which is most
+  // of the time an operator is mid-task, and is precisely when jumping
+  // somewhere else is most useful. Typing in the sidebar filter and pressing
+  // ⌘K did nothing at all.
+  //
+  // The rule that guard was borrowed from is real but applies to BARE keys: a
+  // single-letter hotkey must yield while typing, because the user is trying to
+  // produce that character. ⌘K is not a character — nobody types it into a
+  // field — so there is nothing to yield to. Every peer palette (VS Code,
+  // Linear, Notion, Slack, Raycast) opens from inside a text field for the same
+  // reason. The old code half-knew this: `&& !open` already carved out the
+  // palette's own input so the chord could close it. The carve-out was just
+  // scoped to one input instead of to the chord.
+  //
+  // A surface that genuinely must keep the chord — a modal with a focus trap —
+  // suppresses it at its own level (`usePhotoGallery`), which is the right
+  // altitude for that decision. See `layout/cmdk-owner.guard.test.ts`.
   useEffect(() => {
     function handleKeyDown(e: globalThis.KeyboardEvent) {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-        const target = e.target as HTMLElement | null;
-        const tag = target?.tagName;
-        const editable =
-          tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' ||
-          target?.isContentEditable;
-        if (editable && !open) return;
+      // `toLowerCase` so Caps Lock / Shift still resolve to the same chord.
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
         setOpen((v) => !v);
       }

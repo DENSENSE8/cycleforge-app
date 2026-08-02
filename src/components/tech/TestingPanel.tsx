@@ -47,7 +47,7 @@ import {
   useSkuTestingData,
 } from '@/components/receiving/workspace/line-edit/LineTestingTabbedCard';
 import type { ProductLabelDraft } from '@/components/labels/ProductLabelEditPopover';
-import type { ReceivingLineRow } from '@/components/station/ReceivingLinesTable';
+import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { useTestingLineController } from '@/components/tech/hooks/useTestingLineController';
 import { useTestingPrimaryAction } from './testing-panel/useTestingPrimaryAction';
 import { TestingCartonHeader } from './testing-panel/TestingCartonHeader';

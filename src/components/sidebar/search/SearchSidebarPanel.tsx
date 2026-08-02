@@ -67,7 +67,8 @@ export function SearchSidebarPanel() {
     setSearchInput(q);
   }, [q]);
 
-  // ⌘K / re-click Search while already on `/search` — header is unmounted.
+  // Re-click Search while already on `/search` — the header launcher is
+  // unmounted here, so this panel owns the focus event. (⌘K opens the palette.)
   useEffect(() => {
     const focusInput = () => {
       inputRef.current?.focus();

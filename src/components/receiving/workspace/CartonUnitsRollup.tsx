@@ -23,7 +23,7 @@ import { WorkspaceCard } from '@/design-system/components/WorkspaceCard';
 import { SerialPreviewStrip, BoxMembershipHint } from '@/components/receiving/SerialPreviewStrip';
 import { PreboxWizard, type PreboxWizardSerial } from '@/components/receiving/PreboxWizard';
 import { receivingSiblingsQueryKey } from '@/lib/queries/receiving-queries';
-import type { ReceivingLineRow } from '@/components/station/ReceivingLinesTable';
+import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { receivingWorkspaceLineTitle } from '@/lib/receiving/po-group-title';
 
 interface ApiResponse {

@@ -1,516 +1,181 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Pencil, RefreshCw } from '@/components/Icons';
+import { useState } from 'react';
 import { Button } from '@/design-system/primitives';
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/design-system/components/Dialog';
-import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { TrackingChip, getLast8 } from '@/components/ui/CopyChip';
+import { TrackingExceptionEditDialog } from './TrackingExceptionEditDialog';
+import { TrackingExceptionsGridView } from './grid/TrackingExceptionsGridView';
+import type { TrackingExceptionRow, TrackingExceptionStatusFilter } from './types';
+import { useTrackingExceptions } from './useTrackingExceptions';
 
-type StatusFilter = 'open' | 'resolved' | 'discarded' | 'all';
-
-interface TrackingExceptionRow {
-  id: number;
-  tracking_number: string;
-  domain: 'orders' | 'receiving';
-  source_station: string;
-  staff_id: number | null;
-  staff_name: string | null;
-  staff_display_name: string | null;
-  exception_reason: string;
-  notes: string | null;
-  status: 'open' | 'resolved' | 'discarded';
-  shipment_id: number | null;
-  receiving_id: number | null;
-  last_zoho_check_at: string | null;
-  zoho_check_count: number;
-  last_error: string | null;
-  domain_metadata: Record<string, unknown> | null;
-  resolved_at: string | null;
-  created_at: string;
-  updated_at: string;
-  receiving_source: string | null;
-  receiving_zoho_po_id: string | null;
-  receiving_carrier: string | null;
-}
-
-const STATUS_TABS: Array<{ id: StatusFilter; label: string }> = [
+const STATUS_TABS: Array<{ id: TrackingExceptionStatusFilter; label: string }> = [
   { id: 'open', label: 'Open' },
   { id: 'resolved', label: 'Resolved' },
   { id: 'discarded', label: 'Discarded' },
   { id: 'all', label: 'All' },
 ];
 
-const STATUS_PILL: Record<TrackingExceptionRow['status'], string> = {
-  open: 'bg-amber-50 text-amber-700 ring-1 ring-amber-200',
-  resolved: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200',
-  discarded: 'bg-surface-sunken text-text-muted ring-1 ring-border-soft',
-};
-
-function formatRelative(iso: string | null): string {
-  if (!iso) return '—';
-  const ts = new Date(iso).getTime();
-  if (Number.isNaN(ts)) return iso;
-  const diffMs = Date.now() - ts;
-  const mins = Math.round(diffMs / 60000);
-  if (mins < 1) return 'just now';
-  if (mins < 60) return `${mins}m ago`;
-  const hrs = Math.round(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  const days = Math.round(hrs / 24);
-  if (days < 30) return `${days}d ago`;
-  return new Date(iso).toLocaleDateString();
-}
-
-function getCarrier(row: TrackingExceptionRow): string {
-  const fromJoin = (row.receiving_carrier || '').trim();
-  if (fromJoin && fromJoin.toUpperCase() !== 'UNKNOWN') return fromJoin;
-  const meta = row.domain_metadata as Record<string, unknown> | null;
-  const fromMeta = typeof meta?.carrier === 'string' ? (meta.carrier as string).trim() : '';
-  if (fromMeta) return fromMeta;
-  return 'Unknown';
-}
-
+/**
+ * Thin data host over the Tracking Exceptions Workbench spreadsheet
+ * ({@link TrackingExceptionsGridView} → `LedgerGridSurface`).
+ *
+ * Status tabs · search · reload · edit dialog stay here; the grid is the
+ * display map only. A failed fetch earns the retryable error state rather than
+ * an empty grid that would read as "no exceptions"
+ * (`display/workbench.md` settled states).
+ */
 export function TrackingExceptionsTable() {
-  const [rows, setRows] = useState<TrackingExceptionRow[]>([]);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [statusTab, setStatusTab] = useState<StatusFilter>('open');
+  const [statusTab, setStatusTab] = useState<TrackingExceptionStatusFilter>('open');
   const [search, setSearch] = useState('');
-  const [refreshingIds, setRefreshingIds] = useState<Set<number>>(new Set());
   const [editing, setEditing] = useState<TrackingExceptionRow | null>(null);
 
-  const fetchRows = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const params = new URLSearchParams();
-      params.set('domain', 'receiving');
-      params.set('status', statusTab);
-      params.set('limit', '200');
-      if (search.trim()) params.set('q', search.trim());
-      const res = await fetch(`/api/tracking-exceptions?${params.toString()}`, {
-        cache: 'no-store',
-      });
-      const data = await res.json();
-      if (!data?.success) throw new Error(data?.error || 'Failed to load');
-      setRows((data.rows || []) as TrackingExceptionRow[]);
-      setTotal(typeof data.total === 'number' ? data.total : (data.rows?.length || 0));
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load');
-    } finally {
-      setLoading(false);
-    }
-  }, [statusTab, search]);
+  const {
+    rows,
+    total,
+    loading,
+    error,
+    refreshingIds,
+    fetchRows,
+    refreshRow,
+    saveRow,
+    deleteRow,
+  } = useTrackingExceptions(statusTab, search);
 
-  useEffect(() => {
-    void fetchRows();
-  }, [fetchRows]);
+  if (error && rows.length === 0 && !loading) {
+    return (
+      <div className="flex h-full min-h-0 flex-col">
+        <FilterBar
+          statusTab={statusTab}
+          setStatusTab={setStatusTab}
+          search={search}
+          setSearch={setSearch}
+          loading={loading}
+          total={total}
+          onReload={() => void fetchRows()}
+        />
+        <div className="flex flex-1 items-center justify-center bg-surface-canvas p-8">
+          <div className="rounded-xl border border-dashed border-border-danger bg-surface-danger px-4 py-6 text-center">
+            <p className="text-sm font-semibold text-text-danger">{error}</p>
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              className="mt-3"
+              onClick={() => void fetchRows()}
+            >
+              Retry
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
-  const handleRefreshRow = useCallback(
-    async (row: TrackingExceptionRow) => {
-      setRefreshingIds((prev) => {
-        const next = new Set(prev);
-        next.add(row.id);
-        return next;
-      });
-      try {
-        const res = await fetch(`/api/tracking-exceptions/${row.id}/refresh`, {
-          method: 'POST',
-        });
-        const data = await res.json();
-        if (!data?.success) {
-          throw new Error(data?.error || 'Refresh failed');
-        }
-        await fetchRows();
-      } catch (e) {
-        setError(e instanceof Error ? e.message : 'Refresh failed');
-      } finally {
-        setRefreshingIds((prev) => {
-          const next = new Set(prev);
-          next.delete(row.id);
-          return next;
-        });
-      }
-    },
-    [fetchRows],
-  );
-
-  const handleSaveEdit = useCallback(
-    async (row: TrackingExceptionRow, patch: Partial<TrackingExceptionRow>) => {
-      const res = await fetch(`/api/tracking-exceptions/${row.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(patch),
-      });
-      const data = await res.json();
-      if (!data?.success) throw new Error(data?.error || 'Save failed');
-      setEditing(null);
-      await fetchRows();
-    },
-    [fetchRows],
-  );
-
-  const handleDelete = useCallback(
-    async (row: TrackingExceptionRow) => {
-      const res = await fetch(`/api/tracking-exceptions/${row.id}`, {
-        method: 'DELETE',
-      });
-      const data = await res.json();
-      if (!data?.success) throw new Error(data?.error || 'Delete failed');
-      setEditing(null);
-      await fetchRows();
-    },
-    [fetchRows],
-  );
-
-  const hasRows = rows.length > 0;
+  // Search is the only refinement that changes the empty answer — status tabs
+  // still mean "nothing in this view", not "clear your search".
+  const isSearching = Boolean(search.trim());
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      {/* Filter bar */}
-      <div className="sticky top-0 z-10 flex flex-wrap items-center gap-3 border-b border-border-soft bg-surface-card px-6 py-3">
-        <div className="flex items-center gap-1">
-          {STATUS_TABS.map((tab) => (
-            <Button
-              key={tab.id}
-              type="button"
-              size="sm"
-              variant={statusTab === tab.id ? 'brand' : 'secondary'}
-              onClick={() => setStatusTab(tab.id)}
-            >
-              {tab.label}
-            </Button>
-          ))}
-        </div>
-        <input
-          type="search"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search tracking…"
-          className="ml-auto w-64 rounded-md border border-border-soft bg-surface-card px-3 py-1.5 text-role-caption font-semibold text-text-default placeholder:text-text-faint focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500/10"
-        />
-        <Button
-          type="button"
-          size="sm"
-          variant="brand"
-          onClick={() => void fetchRows()}
-          disabled={loading}
-          aria-label="Reload list"
-        >
-          {loading ? 'Loading…' : 'Reload'}
-        </Button>
-        <span className="text-role-micro uppercase tracking-widest text-text-soft">
-          {total} {total === 1 ? 'row' : 'rows'}
-        </span>
-      </div>
+      <FilterBar
+        statusTab={statusTab}
+        setStatusTab={setStatusTab}
+        search={search}
+        setSearch={setSearch}
+        loading={loading}
+        total={total}
+        onReload={() => void fetchRows()}
+      />
 
-      {error && (
+      {error ? (
         <div className="border-b border-red-200 bg-red-50 px-6 py-2 text-role-caption font-semibold text-red-700">
           {error}
         </div>
-      )}
+      ) : null}
 
-      {/* Rows */}
-      <div className="min-h-0 flex-1 overflow-auto">
-        {!loading && !hasRows && (
-          <div className="flex flex-col items-center justify-center px-6 py-24 text-center">
-            <p className="text-sm font-semibold text-text-muted">No exceptions in this view.</p>
-            <p className="mt-1 text-role-caption font-semibold text-text-soft">
-              Unmatched receiving scans are logged here automatically.
-            </p>
-          </div>
-        )}
-
-        <table className="w-full border-collapse text-left text-role-caption">
-          <thead className="sticky top-0 bg-surface-canvas text-role-eyebrow uppercase tracking-widest text-text-soft">
-            <tr>
-              <th className="px-4 py-2">Tracking</th>
-              <th className="px-4 py-2">Carrier</th>
-              <th className="px-4 py-2">Source</th>
-              <th className="px-4 py-2">Staff</th>
-              <th className="px-4 py-2">Reason</th>
-              <th className="px-4 py-2">Status</th>
-              <th className="px-4 py-2">Retries</th>
-              <th className="px-4 py-2">Last check</th>
-              <th className="px-4 py-2">Created</th>
-              <th className="px-4 py-2">Notes</th>
-              <th className="px-4 py-2 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border-hairline bg-surface-card">
-            {rows.map((row) => {
-              const refreshing = refreshingIds.has(row.id);
-              return (
-                <tr key={row.id} className="hover:bg-surface-canvas/60">
-                  <td className="px-4 py-2">
-                    <TrackingChip
-                      value={row.tracking_number}
-                      display={getLast8(row.tracking_number) || row.tracking_number.slice(-8)}
-                    />
-                  </td>
-                  <td className="px-4 py-2 font-semibold text-text-muted">{getCarrier(row)}</td>
-                  <td className="px-4 py-2 text-text-muted">{row.source_station}</td>
-                  <td className="px-4 py-2 text-text-muted">
-                    {row.staff_display_name || row.staff_name || '—'}
-                  </td>
-                  <td className="px-4 py-2 font-semibold text-text-muted">
-                    {row.exception_reason}
-                  </td>
-                  <td className="px-4 py-2">
-                    <span
-                      className={`inline-flex items-center rounded-full px-2 py-0.5 text-role-eyebrow uppercase tracking-widest ${STATUS_PILL[row.status]}`}
-                    >
-                      {row.status}
-                    </span>
-                  </td>
-                  <td className="px-4 py-2 font-mono text-text-muted">{row.zoho_check_count}</td>
-                  <td className="px-4 py-2 text-text-muted">{formatRelative(row.last_zoho_check_at)}</td>
-                  <td className="px-4 py-2 text-text-muted">{formatRelative(row.created_at)}</td>
-                  {/* ds-allow-title: truncation-only on a non-interactive cell — native title surfaces the clipped notes */}
-                  <td className="px-4 py-2 max-w-[260px] truncate text-text-muted" title={row.notes ?? ''}>
-                    {row.notes || '—'}
-                  </td>
-                  <td className="px-4 py-2">
-                    <div className="flex items-center justify-end gap-1.5">
-                      <HoverTooltip
-                        label={
-                          row.status === 'open'
-                            ? 'Refresh: re-query Zoho with this tracking number'
-                            : 'Only open exceptions can be refreshed'
-                        }
-                        asChild
-                      >
-                        {/* ds-raw-button: HoverTooltip asChild clones a ref onto the child for positioning; IconButton is a plain fn component (no forwardRef), so the tooltip would stop showing. */}
-                        <button
-                          type="button"
-                          onClick={() => void handleRefreshRow(row)}
-                          disabled={refreshing || row.status !== 'open'}
-                          aria-label="Refresh from Zoho"
-                          className="rounded-md p-1.5 text-text-soft hover:bg-blue-50 hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-40"
-                        >
-                          <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-                        </button>
-                      </HoverTooltip>
-                      <HoverTooltip label="Edit — opens a dialog where you can update or delete this row" asChild>
-                        {/* ds-raw-button: HoverTooltip asChild clones a ref onto the child for positioning; IconButton is a plain fn component (no forwardRef), so the tooltip would stop showing. */}
-                        <button
-                          type="button"
-                          onClick={() => setEditing(row)}
-                          aria-label="Edit exception"
-                          className="rounded-md p-1.5 text-text-soft hover:bg-surface-sunken hover:text-text-default"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </button>
-                      </HoverTooltip>
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+      <div className="flex min-h-0 flex-1 flex-col bg-surface-canvas p-4">
+        <TrackingExceptionsGridView
+          rows={rows}
+          loading={loading}
+          editingId={editing?.id ?? null}
+          refreshingIds={refreshingIds}
+          onOpenEdit={setEditing}
+          onRefresh={(row) => void refreshRow(row)}
+          emptyMessage="No exceptions in this view."
+          searchEmptyMessage="No exceptions match this search."
+          isSearching={isSearching}
+        />
       </div>
 
-      {editing && (
+      {editing ? (
         <TrackingExceptionEditDialog
           row={editing}
           onClose={() => setEditing(null)}
-          onSave={handleSaveEdit}
-          onDelete={handleDelete}
+          onSave={async (row, patch) => {
+            await saveRow(row, patch);
+            setEditing(null);
+          }}
+          onDelete={async (row) => {
+            await deleteRow(row);
+            setEditing(null);
+          }}
         />
-      )}
+      ) : null}
     </div>
   );
 }
 
-interface EditDialogProps {
-  row: TrackingExceptionRow;
-  onClose: () => void;
-  onSave: (row: TrackingExceptionRow, patch: Partial<TrackingExceptionRow>) => Promise<void>;
-  onDelete: (row: TrackingExceptionRow) => Promise<void>;
-}
-
-function TrackingExceptionEditDialog({ row, onClose, onSave, onDelete }: EditDialogProps) {
-  const [trackingNumber, setTrackingNumber] = useState(row.tracking_number);
-  const [notes, setNotes] = useState(row.notes ?? '');
-  const [reason, setReason] = useState(row.exception_reason);
-  const [status, setStatus] = useState<TrackingExceptionRow['status']>(row.status);
-  const [saving, setSaving] = useState(false);
-  const [confirmingDelete, setConfirmingDelete] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
-
-  const dirty = useMemo(
-    () =>
-      trackingNumber !== row.tracking_number ||
-      (notes || '') !== (row.notes || '') ||
-      reason !== row.exception_reason ||
-      status !== row.status,
-    [trackingNumber, notes, reason, status, row],
-  );
-
-  const handleSave = async () => {
-    setSaving(true);
-    setErr(null);
-    try {
-      await onSave(row, {
-        tracking_number: trackingNumber.trim(),
-        notes: notes.trim() || null,
-        exception_reason: reason.trim() || 'not_found',
-        status,
-      });
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : 'Save failed');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleDelete = async () => {
-    setSaving(true);
-    setErr(null);
-    try {
-      await onDelete(row);
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : 'Delete failed');
-      setSaving(false);
-    }
-  };
-
+function FilterBar({
+  statusTab,
+  setStatusTab,
+  search,
+  setSearch,
+  loading,
+  total,
+  onReload,
+}: {
+  statusTab: TrackingExceptionStatusFilter;
+  setStatusTab: (tab: TrackingExceptionStatusFilter) => void;
+  search: string;
+  setSearch: (value: string) => void;
+  loading: boolean;
+  total: number;
+  onReload: () => void;
+}) {
   return (
-    <Dialog
-      open
-      onOpenChange={(next) => {
-        if (!next && !saving) onClose();
-      }}
-    >
-      <DialogContent hideClose className="max-w-lg gap-0 overflow-hidden p-0 sm:rounded-xl">
-        <DialogHeader className="space-y-0 border-b border-border-soft px-5 py-3">
-          <DialogTitle className="text-role-caption font-semibold uppercase tracking-widest text-text-default">
-            Edit exception #{row.id}
-          </DialogTitle>
-        </DialogHeader>
-
-        <div className="space-y-3 px-5 py-4">
-          <label className="block">
-            <span className="text-role-eyebrow uppercase tracking-widest text-text-soft">
-              Tracking number
-            </span>
-            <input
-              type="text"
-              value={trackingNumber}
-              onChange={(e) => setTrackingNumber(e.target.value)}
-              className="mt-1 w-full rounded-md border border-border-soft px-2 py-1.5 text-role-caption font-mono text-text-default focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500/10"
-            />
-          </label>
-          <label className="block">
-            <span className="text-role-eyebrow uppercase tracking-widest text-text-soft">
-              Reason
-            </span>
-            <input
-              type="text"
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              className="mt-1 w-full rounded-md border border-border-soft px-2 py-1.5 text-role-caption font-semibold text-text-default focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500/10"
-            />
-          </label>
-          <label className="block">
-            <span className="text-role-eyebrow uppercase tracking-widest text-text-soft">
-              Status
-            </span>
-            <select
-              value={status}
-              onChange={(e) => setStatus(e.target.value as TrackingExceptionRow['status'])}
-              className="mt-1 w-full rounded-md border border-border-soft bg-surface-card px-2 py-1.5 text-role-caption font-semibold text-text-default focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500/10"
-            >
-              <option value="open">Open</option>
-              <option value="resolved">Resolved</option>
-              <option value="discarded">Discarded</option>
-            </select>
-          </label>
-          <label className="block">
-            <span className="text-role-eyebrow uppercase tracking-widest text-text-soft">
-              Notes
-            </span>
-            <textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              rows={3}
-              className="mt-1 w-full rounded-md border border-border-soft px-2 py-1.5 text-role-caption font-semibold text-text-default focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500/10"
-            />
-          </label>
-
-          {err && (
-            <p className="rounded-md bg-red-50 px-3 py-2 text-role-caption font-semibold text-red-700">{err}</p>
-          )}
-        </div>
-
-        <DialogFooter className="flex-row items-center justify-between gap-2 border-t border-border-soft px-5 py-3 sm:justify-between">
-          {!confirmingDelete ? (
-            // ds-raw-button: low-emphasis destructive action — transparent bg with red text. No variant fits: `danger` is solid red-fill, `ghost` would drop the red affordance.
-            <button
-              type="button"
-              onClick={() => setConfirmingDelete(true)}
-              disabled={saving}
-              className="rounded-md px-2.5 py-1.5 text-role-micro uppercase tracking-widest text-red-600 hover:bg-red-50 disabled:opacity-50"
-            >
-              Delete
-            </button>
-          ) : (
-            <div className="flex items-center gap-2">
-              <span className="text-role-micro uppercase tracking-widest text-red-700">
-                Confirm delete?
-              </span>
-              <Button
-                type="button"
-                size="sm"
-                variant="danger"
-                onClick={() => void handleDelete()}
-                disabled={saving}
-              >
-                Yes, delete
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                onClick={() => setConfirmingDelete(false)}
-                disabled={saving}
-              >
-                Cancel
-              </Button>
-            </div>
-          )}
-
-          <div className="flex items-center gap-2">
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              onClick={onClose}
-              disabled={saving}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="brand"
-              onClick={() => void handleSave()}
-              disabled={saving || !dirty}
-            >
-              {saving ? 'Saving…' : 'Save'}
-            </Button>
-          </div>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <div className="sticky top-0 z-10 flex flex-wrap items-center gap-3 border-b border-border-soft bg-surface-card px-6 py-3">
+      <div className="flex items-center gap-1">
+        {STATUS_TABS.map((tab) => (
+          <Button
+            key={tab.id}
+            type="button"
+            size="sm"
+            variant={statusTab === tab.id ? 'brand' : 'secondary'}
+            onClick={() => setStatusTab(tab.id)}
+          >
+            {tab.label}
+          </Button>
+        ))}
+      </div>
+      <input
+        type="search"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        placeholder="Search tracking…"
+        className="ml-auto w-64 rounded-md border border-border-soft bg-surface-card px-3 py-1.5 text-role-caption font-semibold text-text-default placeholder:text-text-faint focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500/10"
+      />
+      <Button
+        type="button"
+        size="sm"
+        variant="brand"
+        onClick={onReload}
+        disabled={loading}
+        aria-label="Reload list"
+      >
+        {loading ? 'Loading…' : 'Reload'}
+      </Button>
+      <span className="text-role-micro uppercase tracking-widest text-text-soft">
+        {total} {total === 1 ? 'row' : 'rows'}
+      </span>
+    </div>
   );
 }

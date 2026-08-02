@@ -1,102 +1,42 @@
 import { test, expect, type Page } from '@playwright/test';
+import { QA_FIXTURE_MY_DAY } from '@/lib/tenancy/qa-org';
 
 /**
  * Home → Today (`/`, the `MyDayWorkspace` region) — the workbench contract.
  *
  * Covers the F0 rebuild's hand-checked invariants plus the four chrome-parity
  * controls added 2026-08-01 (saved-views rail · scoped search · Fields · KPI
- * band). Before this file those were verified by throwaway scripts that were
- * never committed, so every regression here was silent.
+ * band).
  *
- * **Why the feed is stubbed, and what that costs.** `verify.md`'s rule is about
- * which TENANT a spec asserts against — this runs on `qa-desktop`, so auth,
- * permissions and org scoping are the QA org's, and no dogfood row count can
- * drift under it. What is stubbed is the BFF's *response body*, because the QA
- * org provisions no `work_assignments` and Today's four lanes and three due
- * horizons cannot all be populated from fixtures that do not exist. Every
- * assertion below is about chrome, URL state and grid wiring, none of which
- * `aggregateMyDayFeed` participates in.
+ * **Runs against real QA fixtures — the BFF stub is gone (2026-08-02.)** This
+ * spec used to `page.route` `GET /api/my-day` and fulfil a hand-written feed,
+ * because the QA org provisioned no `work_assignments`. That stub stayed green
+ * through a real bug: `myDayTasksFromFeed` emitted the top work order TWICE on
+ * any genuine feed, because `doNext` is a POINTER into `assigned` rather than a
+ * disjoint bucket — and every hand-written fixture gave `doNext` an id no other
+ * row used, so the collision could not occur. It surfaced only as a React
+ * duplicate-key error on a dogfood run.
  *
- * What this therefore does NOT cover: the aggregator itself. The pure half —
- * lane assignment, the search predicate, the civil-day due horizon — is unit
- * tested in `src/lib/my-day/my-day-tasks.test.ts`. Seeding real
- * `work_assignments` into `scripts/provision-qa-org.ts` would close the rest and
- * is the honest follow-up; it is not done here.
+ * The general lesson, now enforced here: **a stubbed BFF response proves the
+ * chrome, never the read model.** `scripts/provision-qa-org.ts` seeds three TEST
+ * assignments (one per due horizon) plus an undated support follow-up; see
+ * `QA_FIXTURE_MY_DAY` for why `doNext` is derived rather than seeded.
+ *
+ * Assertions name specific rows rather than totals: the QA org's other fixtures
+ * may legitimately add work to the signed-in admin's lanes, and a count
+ * assertion would make this spec fail for someone else's seed. The one place a
+ * count IS the assertion is the duplicate-row check, which is the whole point.
  */
 
 const GRID = '[data-testid="my-day-grid-body"]';
 const INSPECTOR = '[role="region"][aria-label="Task details"]';
 
-/** Fixed civil days relative to the run, so the horizon buckets are deterministic. */
-function isoDaysFromNow(days: number): string {
-  const d = new Date();
-  d.setUTCDate(d.getUTCDate() + days);
-  // 20:00Z is mid-afternoon Pacific on the same civil day year-round, so the
-  // bucket does not flip with daylight saving.
-  d.setUTCHours(20, 0, 0, 0);
-  return d.toISOString();
-}
-
-const FEED = {
-  doNext: {
-    id: 'wo-next',
-    title: 'Pack the amplifier',
-    subtitle: 'Order QA-1001',
-    queueLabel: 'Orders',
-    recordLabel: 'QA-1001',
-    orderId: 'QA-1001',
-    status: 'pending',
-    deadlineAt: isoDaysFromNow(-2), // overdue
-    updatedAt: isoDaysFromNow(-2),
-    assignedAt: isoDaysFromNow(-2),
-  },
-  assigned: [
-    {
-      id: 'wo-mine-1',
-      title: 'Test the receiver',
-      subtitle: 'Bench 2',
-      queueLabel: 'Testing',
-      recordLabel: 'QA-1002',
-      orderId: 'QA-1002',
-      status: 'in_progress',
-      deadlineAt: isoDaysFromNow(0), // due today
-      updatedAt: isoDaysFromNow(0),
-      assignedAt: isoDaysFromNow(0),
-    },
-    {
-      id: 'wo-mine-2',
-      title: 'Label the pallet',
-      subtitle: 'Dock A',
-      queueLabel: 'Orders',
-      recordLabel: 'QA-1003',
-      orderId: 'QA-1003',
-      status: 'pending',
-      deadlineAt: isoDaysFromNow(3), // upcoming
-      updatedAt: isoDaysFromNow(0),
-      assignedAt: isoDaysFromNow(0),
-    },
-  ],
-  interrupts: [
-    {
-      id: 'int-1',
-      kind: 'support_followup',
-      title: 'Reply to the buyer',
-      subtitle: 'Ticket 5150',
-      href: '/support',
-      createdAtMs: Date.now(),
-      ticketId: 5150,
-    },
-  ],
-  queueCards: [
-    { key: 'orders', label: 'Orders', count: 7, href: '/dashboard', permission: 'orders.view' },
-  ],
-  counts: { assigned: 2, interrupts: 1, unassigned: 4 },
-};
+const OVERDUE = QA_FIXTURE_MY_DAY.overdue.title;
+const DUE_TODAY = QA_FIXTURE_MY_DAY.dueToday.title;
+const UPCOMING = QA_FIXTURE_MY_DAY.upcoming.title;
+const INTERRUPT = QA_FIXTURE_MY_DAY.interruptTitle;
 
 async function openToday(page: Page, search = '') {
-  await page.route('**/api/my-day', async (route) => {
-    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(FEED) });
-  });
   await page.goto(`/${search}`);
   await expect(page.locator(GRID).first()).toBeVisible({ timeout: 30_000 });
 }
@@ -104,27 +44,70 @@ async function openToday(page: Page, search = '') {
 const row = (page: Page, title: string) =>
   page.locator(`[role="button"][aria-label="Task ${title}"]`).first();
 
+/**
+ * The work-order id for a fixture title, read from the live feed.
+ *
+ * Ids are `ORDER:<row id>` — assigned by the database, so a spec cannot hardcode
+ * them the way it could with a stub. Reading them back from the same endpoint
+ * the page uses keeps the deep-link test honest about what it is reproducing.
+ */
+async function taskIdByTitle(page: Page, title: string): Promise<string> {
+  const res = await page.request.get('/api/my-day');
+  expect(res.ok(), `GET /api/my-day → ${res.status()}`).toBe(true);
+  const feed = (await res.json()) as {
+    doNext: { id: string; title: string } | null;
+    assigned: Array<{ id: string; title: string }>;
+  };
+  const hit = [feed.doNext, ...feed.assigned].find((r) => r && r.title === title);
+  expect(hit, `no work order titled "${title}" — re-run \`pnpm provision:qa-org\``).toBeTruthy();
+  return hit!.id;
+}
+
 test.describe('Home → Today workbench', () => {
   test.skip(({ browserName }) => browserName === 'webkit', 'desktop workbench chrome');
 
+  test('the do-next task appears EXACTLY once, not twice', async ({ page }) => {
+    // The regression the stub could never catch. `aggregateMyDayFeed` returns
+    // the same work order as `doNext` AND as `assigned[0]`, so a concat without
+    // a dedupe renders it twice — duplicate React key, doubled row, lane and
+    // due-horizon counts inflated by one.
+    const res = await page.request.get('/api/my-day');
+    expect(res.ok()).toBe(true);
+    const feed = (await res.json()) as {
+      doNext: { id: string; title: string } | null;
+      assigned: Array<{ id: string }>;
+    };
+
+    // Precondition: the fixtures really do put doNext inside assigned. If this
+    // ever stops holding, the test below is passing for the wrong reason.
+    expect(feed.doNext, 'no doNext — re-run `pnpm provision:qa-org`').toBeTruthy();
+    expect(feed.assigned.map((r) => r.id)).toContain(feed.doNext!.id);
+
+    await openToday(page);
+    await expect(
+      page.locator(`[role="button"][aria-label="Task ${feed.doNext!.title}"]`),
+    ).toHaveCount(1);
+  });
+
   test('lane tab writes ?scope= and changes the row count', async ({ page }) => {
     await openToday(page);
-    await expect(row(page, 'Pack the amplifier')).toBeVisible();
-    await expect(row(page, 'Reply to the buyer')).toBeVisible();
+    await expect(row(page, OVERDUE)).toBeVisible();
+    await expect(row(page, INTERRUPT)).toBeVisible();
 
     await page.getByRole('button', { name: /^Needs attention\b/ }).first().click();
     await expect(page).toHaveURL(/[?&]scope=attention\b/);
 
     // The lane is a real filter, not just a lit tab.
-    await expect(row(page, 'Reply to the buyer')).toBeVisible();
-    await expect(row(page, 'Pack the amplifier')).toHaveCount(0);
+    await expect(row(page, INTERRUPT)).toBeVisible();
+    await expect(row(page, OVERDUE)).toHaveCount(0);
   });
 
   test('row click writes ?task= and opens a non-modal region — never a dialog', async ({ page }) => {
+    const id = await taskIdByTitle(page, DUE_TODAY);
     await openToday(page);
-    await row(page, 'Test the receiver').click();
+    await row(page, DUE_TODAY).click();
 
-    await expect(page).toHaveURL(/[?&]task=wo-mine-1\b/);
+    await expect(page).toHaveURL(new RegExp(`[?&]task=${encodeURIComponent(id)}\\b`));
     await expect(page.locator(INSPECTOR)).toBeVisible();
     // Navigators push, inspectors float: the record plane must not claim modality
     // it does not enforce (`source-of-truth.md` → Right-rail modality).
@@ -132,14 +115,18 @@ test.describe('Home → Today workbench', () => {
   });
 
   test('a deep link reproduces lane, selection and column sort together', async ({ page }) => {
-    await openToday(page, '?scope=assigned&task=wo-mine-2&colsort=due&coldir=asc');
+    const id = await taskIdByTitle(page, UPCOMING);
+    await openToday(
+      page,
+      `?scope=assigned&task=${encodeURIComponent(id)}&colsort=due&coldir=asc`,
+    );
 
     // Assert the lane's EFFECT, not the tab's markup: the strip styles its
     // active pill rather than carrying aria-selected, so a markup assertion here
     // would be testing TabSwitch's internals instead of whether the deep link
     // reproduced the view.
-    await expect(row(page, 'Test the receiver')).toBeVisible();
-    await expect(row(page, 'Reply to the buyer')).toHaveCount(0);
+    await expect(row(page, DUE_TODAY)).toBeVisible();
+    await expect(row(page, INTERRUPT)).toHaveCount(0);
 
     await expect(page.locator(INSPECTOR)).toBeVisible();
     await expect(
@@ -149,8 +136,8 @@ test.describe('Home → Today workbench', () => {
 
   test('selection does not change a row’s height', async ({ page }) => {
     await openToday(page);
-    const target = row(page, 'Test the receiver');
-    const sibling = row(page, 'Label the pallet');
+    const target = row(page, DUE_TODAY);
+    const sibling = row(page, UPCOMING);
 
     const before = (await target.boundingBox())!.height;
     await target.click();
@@ -172,11 +159,16 @@ test.describe('Home → Today workbench', () => {
     await expect(trigger).toBeVisible();
 
     await trigger.click();
-    await page.getByPlaceholder('Filter tasks…').fill('amplifier');
+    // The needle is the ORDER ID — what an operator would actually type at a row
+    // they can see. It must be the `-3` suffixed one: the search is a substring
+    // match, and the unsuffixed `QA-TEST-UNSHIP-PENDING` is a PREFIX of the other
+    // two, so it would match all three and prove nothing.
+    const needle = QA_FIXTURE_MY_DAY.upcoming.orderId;
+    await page.getByPlaceholder('Filter tasks…').fill(needle);
 
-    await expect(page).toHaveURL(/[?&]q=amplifier\b/);
-    await expect(row(page, 'Pack the amplifier')).toBeVisible();
-    await expect(row(page, 'Label the pallet')).toHaveCount(0);
+    await expect(page).toHaveURL(new RegExp(`[?&]q=${encodeURIComponent(needle)}`));
+    await expect(row(page, UPCOMING)).toBeVisible();
+    await expect(row(page, OVERDUE)).toHaveCount(0);
   });
 
   test('no-match reads differently from no-data', async ({ page }) => {
@@ -199,14 +191,16 @@ test.describe('Home → Today workbench', () => {
     await expect(tile('Due today')).toBeVisible();
     await expect(tile('Upcoming')).toBeVisible();
 
-    // One overdue task in the fixture (`wo-next`) — clicking must produce
-    // exactly it, which is the promise a faceted count makes.
+    // The horizons must actually partition: the overdue fixture shows, and
+    // neither the upcoming one nor the undated interrupt leaks into the bucket.
     await tile('Overdue').click();
     await expect(page).toHaveURL(/[?&]filter=overdue\b/);
-    await expect(row(page, 'Pack the amplifier')).toBeVisible();
-    await expect(row(page, 'Label the pallet')).toHaveCount(0);
-    // The interrupt has no deadline, so it belongs to no horizon at all.
-    await expect(row(page, 'Reply to the buyer')).toHaveCount(0);
+    await expect(row(page, OVERDUE)).toBeVisible();
+    await expect(row(page, UPCOMING)).toHaveCount(0);
+    await expect(row(page, DUE_TODAY)).toHaveCount(0);
+    // The interrupt has no deadline, so it belongs to no horizon at all —
+    // `myDayDueHorizon` returns null rather than folding it into `upcoming`.
+    await expect(row(page, INTERRUPT)).toHaveCount(0);
 
     // The lit tile is its own escape hatch.
     await tile('Overdue').click();
@@ -302,7 +296,15 @@ test.describe('Home → Today workbench', () => {
 
   test('a queue link in the chrome leaves for that queue’s page', async ({ page }) => {
     await openToday(page);
-    await page.getByRole('link', { name: /Orders/ }).first().click();
+    // Locate by HREF, not by accessible name. The spine and the integrations
+    // settings both carry links whose names contain "Orders", and `first()` over
+    // a name regex picked one of those — the test navigated to
+    // /settings/integrations and failed for a reason that had nothing to do with
+    // the queue card. The href is the SoT (`QUEUE_SURFACE_LINKS` in
+    // `aggregate-my-day.ts`) and is unambiguous.
+    const ordersCard = page.locator('a[href="/dashboard?unshipped"]');
+    await expect(ordersCard).toHaveCount(1);
+    await ordersCard.click();
     await expect(page).toHaveURL(/\/dashboard/);
   });
 });

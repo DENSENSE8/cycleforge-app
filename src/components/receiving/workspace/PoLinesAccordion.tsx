@@ -4,7 +4,7 @@ import { useCallback, useRef, useState } from 'react';
 import { LayoutGroup, useInView } from '@/design-system/motion';
 import type { InlineActionFeedbackPayload } from './InlineActionFeedbackCard';
 import { WORKSPACE_SECTION_TITLE_CLASS } from './WorkspaceSectionLabel';
-import type { ReceivingLineRow } from '@/components/station/ReceivingLinesTable';
+import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { CartonAddAction } from './CartonAddAction';
 import { PoLineRow } from './PoLineRow';
 import { markReceivingSerialAbsent } from './receiving-label-helpers';

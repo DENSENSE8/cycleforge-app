@@ -10,8 +10,17 @@
  * error in practice; this just makes the message clearer).
  *
  * Usage:
- *   node scripts/run-pending-migrations.mjs           # apply all pending
- *   node scripts/run-pending-migrations.mjs --dry     # list pending, don't apply
+ *   node scripts/run-pending-migrations.mjs                    # apply all pending
+ *   node scripts/run-pending-migrations.mjs --dry              # list pending, don't apply
+ *   node scripts/run-pending-migrations.mjs --only <file.sql>  # apply just one
+ *
+ * --only exists because the default is ALL-OR-NOTHING, and the repo routinely
+ * has several lanes' migrations pending at once. Applying "all" to land your own
+ * silently lands someone else's schema change too — which is an ask-first action,
+ * not a side effect of your task. The ledger is just (filename, sha256), so a
+ * scoped apply plus its ledger row is exactly equivalent to the same file being
+ * picked up by a full run; ordering is the only thing you give up, so --only
+ * refuses to skip an EARLIER pending file (see the guard below).
  *
  * Drizzle's own migrator handles the generated migrations; this runner
  * exists for the hand-written SQL files (the team has used both since
@@ -36,6 +45,12 @@ try {
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const MIGRATIONS_DIR = join(__dirname, '..', 'src', 'lib', 'migrations');
 const isDry = process.argv.includes('--dry');
+const onlyIdx = process.argv.indexOf('--only');
+const onlyFile = onlyIdx >= 0 ? process.argv[onlyIdx + 1] : null;
+if (onlyIdx >= 0 && !onlyFile) {
+  console.error('--only requires a filename, e.g. --only 2026-08-01e_staff_avatar_photo.sql');
+  process.exit(2);
+}
 
 function sha256(s) {
   return createHash('sha256').update(s, 'utf8').digest('hex');
@@ -105,8 +120,37 @@ async function main() {
     return;
   }
 
-  console.log(`${pending.length} pending migration(s):`);
-  for (const m of pending) console.log(`  ${m.filename}`);
+  let toApply = pending;
+  if (onlyFile) {
+    const idx = pending.findIndex((m) => m.filename === onlyFile);
+    if (idx < 0) {
+      console.error(
+        `--only ${onlyFile} is not pending. Pending:\n` +
+          pending.map((m) => `  ${m.filename}`).join('\n'),
+      );
+      await pool.end();
+      process.exit(2);
+    }
+    // Refuse to reorder. Skipping an earlier pending file would apply this one
+    // out of sequence, which is exactly how an expand/contract pair gets
+    // inverted — the failure `2026-07-29f`'s two halves already demonstrate.
+    if (idx > 0) {
+      console.error(
+        `--only ${onlyFile} would skip ${idx} earlier pending migration(s):\n` +
+          pending.slice(0, idx).map((m) => `  ${m.filename}`).join('\n') +
+          '\nApply those first (they may be another lane\'s — that is an ask-first call).',
+      );
+      await pool.end();
+      process.exit(2);
+    }
+    toApply = [pending[idx]];
+  }
+
+  console.log(
+    `${pending.length} pending migration(s)` +
+      (onlyFile ? `, applying 1 (--only ${onlyFile}):` : ':'),
+  );
+  for (const m of toApply) console.log(`  ${m.filename}`);
 
   if (isDry) {
     console.log('(--dry: not applying)');
@@ -114,7 +158,7 @@ async function main() {
     return;
   }
 
-  for (const m of pending) {
+  for (const m of toApply) {
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
@@ -135,7 +179,7 @@ async function main() {
     }
   }
 
-  console.log(`applied ${pending.length} migration(s)`);
+  console.log(`applied ${toApply.length} migration(s)`);
   await pool.end();
 }
 

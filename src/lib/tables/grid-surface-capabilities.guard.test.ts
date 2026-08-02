@@ -55,6 +55,21 @@ import { WARRANTY_GRID_COLUMNS } from '@/components/warranty/grid/warranty-grid-
 import { READY_GRID_CAPABILITIES, makeReadyGridDescriptor } from '@/components/outbound/ready/grid/ready-grid-descriptor';
 import { READY_GRID_COLUMNS } from '@/components/outbound/ready/grid/ready-grid-layout';
 import {
+  TRACKING_EXCEPTIONS_GRID_CAPABILITIES,
+  makeTrackingExceptionsGridDescriptor,
+} from '@/components/tracking-exceptions/grid/tracking-exceptions-grid-descriptor';
+import { TRACKING_EXCEPTIONS_GRID_COLUMNS } from '@/components/tracking-exceptions/grid/tracking-exceptions-grid-layout';
+import {
+  UNFOUND_GRID_CAPABILITIES,
+  makeUnfoundGridDescriptor,
+} from '@/components/receiving/unfound/grid/unfound-grid-descriptor';
+import { UNFOUND_GRID_COLUMNS } from '@/components/receiving/unfound/grid/unfound-grid-layout';
+import {
+  BINS_GRID_CAPABILITIES,
+  makeBinsGridDescriptor,
+} from '@/components/warehouse/bins-grid/bins-grid-descriptor';
+import { BINS_GRID_COLUMNS } from '@/components/warehouse/bins-grid/bins-grid-layout';
+import {
   CATALOG_LINK_GRID_CAPABILITIES,
   makeCatalogLinkGridDescriptor,
   makeImportExceptionGridDescriptor,
@@ -89,6 +104,9 @@ const DECLARED_CAPABILITIES: Record<string, GridSurfaceCapabilities> = {
   warranty: WARRANTY_GRID_CAPABILITIES,
   'my-day': MY_DAY_GRID_CAPABILITIES,
   ready: READY_GRID_CAPABILITIES,
+  'tracking-exceptions': TRACKING_EXCEPTIONS_GRID_CAPABILITIES,
+  unfound: UNFOUND_GRID_CAPABILITIES,
+  bins: BINS_GRID_CAPABILITIES,
   // ONE bag for both Review · Catalog-link tabs: they differ in what their
   // columns MEAN, not in what the surface may do.
   'catalog-link': CATALOG_LINK_GRID_CAPABILITIES,
@@ -110,6 +128,9 @@ describe('grid surface capabilities', () => {
     assert.equal(PICKUP_GRID_CAPABILITIES.rowTriageFlags, false);
     assert.equal(WARRANTY_GRID_CAPABILITIES.rowTriageFlags, false);
     assert.equal(READY_GRID_CAPABILITIES.rowTriageFlags, false);
+    assert.equal(TRACKING_EXCEPTIONS_GRID_CAPABILITIES.rowTriageFlags, false);
+    assert.equal(UNFOUND_GRID_CAPABILITIES.rowTriageFlags, false);
+    assert.equal(BINS_GRID_CAPABILITIES.rowTriageFlags, false);
     assert.equal(CATALOG_LINK_GRID_CAPABILITIES.rowTriageFlags, false);
   });
 
@@ -162,6 +183,18 @@ describe('grid surface capabilities', () => {
       READY_GRID_CAPABILITIES,
     );
     assert.deepEqual(
+      makeTrackingExceptionsGridDescriptor(TRACKING_EXCEPTIONS_GRID_COLUMNS).capabilities,
+      TRACKING_EXCEPTIONS_GRID_CAPABILITIES,
+    );
+    assert.deepEqual(
+      makeUnfoundGridDescriptor(UNFOUND_GRID_COLUMNS).capabilities,
+      UNFOUND_GRID_CAPABILITIES,
+    );
+    assert.deepEqual(
+      makeBinsGridDescriptor(BINS_GRID_COLUMNS).capabilities,
+      BINS_GRID_CAPABILITIES,
+    );
+    assert.deepEqual(
       makeMyDayGridDescriptor(MY_DAY_GRID_COLUMNS).capabilities,
       MY_DAY_GRID_CAPABILITIES,
     );
@@ -202,12 +235,23 @@ describe('grid surface capabilities', () => {
     assert.equal(PICKUP_GRID_CAPABILITIES.multiSelect, false);
     assert.equal(WARRANTY_GRID_CAPABILITIES.multiSelect, false);
     assert.equal(READY_GRID_CAPABILITIES.multiSelect, false);
+    assert.equal(TRACKING_EXCEPTIONS_GRID_CAPABILITIES.multiSelect, false);
+    assert.equal(UNFOUND_GRID_CAPABILITIES.multiSelect, false);
   });
 
-  it('Orders keeps in-cell edit; Catalog / Receiving do not', () => {
+  it('Orders + Unfound keep in-cell edit; Catalog / Receiving do not', () => {
     assert.equal(ORDERS_GRID_CAPABILITIES.inCellEdit, true);
+    assert.equal(UNFOUND_GRID_CAPABILITIES.inCellEdit, true);
     assert.equal(CATALOG_GRID_CAPABILITIES.inCellEdit, false);
     assert.equal(RECEIVING_GRID_CAPABILITIES.inCellEdit, false);
+  });
+
+  it('Warehouse bins keeps multi-select for the bulk action bar', () => {
+    // Print-labels / cycle-count act on N bins — the left gutter is a live
+    // checkbox plane. Everything else on the surface stays browse-only.
+    assert.equal(BINS_GRID_CAPABILITIES.multiSelect, true);
+    assert.equal(BINS_GRID_CAPABILITIES.inCellEdit, false);
+    assert.equal(BINS_GRID_CAPABILITIES.rowTriageFlags, false);
   });
 });
 
@@ -240,6 +284,9 @@ const MOUNTS: Record<string, string> = {
   'src/components/receiving/pickup/grid/PickupGridView.tsx': 'pickup',
   'src/components/warranty/grid/WarrantyGridView.tsx': 'warranty',
   'src/components/outbound/ready/grid/ReadyGridView.tsx': 'ready',
+  'src/components/tracking-exceptions/grid/TrackingExceptionsGridView.tsx': 'tracking-exceptions',
+  'src/components/receiving/unfound/grid/UnfoundGridView.tsx': 'unfound',
+  'src/components/warehouse/bins-grid/BinsGridView.tsx': 'bins',
   'src/features/my-day/grid/MyDayGridView.tsx': 'my-day',
   // Both Review · Catalog-link tabs mount from ONE file under ONE bag.
   'src/features/review/catalog-link/grid/ReviewCatalogLinkGridView.tsx': 'catalog-link',

@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { DataTable, type DataTableColumn } from '@/design-system/components/DataTable';
 import type {
   AllocationRow,
   DriftAlertRow,
@@ -6,102 +7,147 @@ import type {
   RecentEventRow,
 } from './inventory-admin-data';
 
+const DRIFT_ALERT_COLUMNS: DataTableColumn<DriftAlertRow>[] = [
+  {
+    key: 'sku',
+    header: 'SKU',
+    type: 'id',
+    cell: (a) => (
+      <a
+        href={`/admin/inventory/sku/${encodeURIComponent(a.sku)}`}
+        className="font-mono text-xs text-red-700 hover:underline"
+      >
+        {a.sku}
+      </a>
+    ),
+  },
+  {
+    key: 'qty',
+    header: 'Worst |Δ|',
+    type: 'number',
+    cell: (a) => (
+      <span className="font-semibold text-red-700">{a.qty_at_trigger ?? '—'}</span>
+    ),
+  },
+  {
+    key: 'triggered',
+    header: 'Triggered',
+    type: 'date',
+    cell: (a) => (
+      <span className="text-xs text-red-700">{new Date(a.triggered_at).toLocaleString()}</span>
+    ),
+  },
+  {
+    key: 'detail',
+    header: 'Detail',
+    type: 'longtext',
+    cell: (a) => (
+      <span className="font-mono text-role-caption text-text-muted">{a.notes ?? '—'}</span>
+    ),
+  },
+];
+
 /** Open DRIFT alerts — surfaced by /api/cron/inventory/drift-check. */
 export function DriftAlertsSection({ openDriftAlerts }: { openDriftAlerts: DriftAlertRow[] }) {
   if (openDriftAlerts.length === 0) return null;
   return (
-    <section className="rounded-lg border border-red-200 bg-red-50 shadow-sm">
-      <header className="flex items-center justify-between border-b border-red-100 px-6 py-4">
+    <section className="space-y-3">
+      <header className="flex items-center justify-between rounded-xl border border-red-200 bg-red-50 px-6 py-4">
         <h2 className="text-lg font-medium text-red-900">Open DRIFT alerts</h2>
         <span className="rounded-full bg-red-200 px-3 py-1 text-xs font-medium text-red-800">
           {openDriftAlerts.length} open
         </span>
       </header>
-      <table className="min-w-full divide-y divide-red-100 text-sm">
-        <thead className="bg-red-100/50 text-xs uppercase tracking-wide text-red-700">
-          <tr>
-            <th className="px-6 py-2 text-left font-medium">SKU</th>
-            <th className="px-6 py-2 text-right font-medium">Worst |Δ|</th>
-            <th className="px-6 py-2 text-left font-medium">Triggered</th>
-            <th className="px-6 py-2 text-left font-medium">Detail</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-red-100">
-          {openDriftAlerts.map((a) => (
-            <tr key={a.id}>
-              <td className="px-6 py-2 font-mono text-xs">
-                <a href={`/admin/inventory/sku/${encodeURIComponent(a.sku)}`} className="text-red-700 hover:underline">
-                  {a.sku}
-                </a>
-              </td>
-              <td className="px-6 py-2 text-right font-semibold text-red-700">{a.qty_at_trigger ?? '—'}</td>
-              <td className="px-6 py-2 text-xs text-red-700">{new Date(a.triggered_at).toLocaleString()}</td>
-              <td className="px-6 py-2 font-mono text-role-caption text-text-muted">{a.notes ?? '—'}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <DataTable
+        columns={DRIFT_ALERT_COLUMNS}
+        rows={openDriftAlerts}
+        rowKey={(a) => a.id}
+      />
     </section>
   );
 }
 
+const DRIFT_COLUMNS: DataTableColumn<DriftRow>[] = [
+  {
+    key: 'sku',
+    header: 'SKU',
+    type: 'id',
+    cell: (d) => <span className="font-mono text-xs">{d.sku}</span>,
+  },
+  { key: 'stored_wh', header: 'Stored WH', type: 'number', cell: (d) => d.stored_stock },
+  { key: 'ledger_wh', header: 'Ledger WH', type: 'number', cell: (d) => d.ledger_warehouse },
+  {
+    key: 'delta_wh',
+    header: 'Δ WH',
+    type: 'number',
+    cell: (d) => (
+      <span className={`font-semibold ${d.warehouse_drift === 0 ? 'text-text-faint' : 'text-red-700'}`}>
+        {d.warehouse_drift > 0 ? '+' : ''}
+        {d.warehouse_drift}
+      </span>
+    ),
+  },
+  { key: 'stored_boxed', header: 'Stored Boxed', type: 'number', cell: (d) => d.stored_boxed },
+  { key: 'ledger_boxed', header: 'Ledger Boxed', type: 'number', cell: (d) => d.ledger_boxed },
+  {
+    key: 'delta_boxed',
+    header: 'Δ Boxed',
+    type: 'number',
+    cell: (d) => (
+      <span className={`font-semibold ${d.boxed_drift === 0 ? 'text-text-faint' : 'text-red-700'}`}>
+        {d.boxed_drift > 0 ? '+' : ''}
+        {d.boxed_drift}
+      </span>
+    ),
+  },
+];
+
 /** sku_stock ↔ ledger drift report. */
 export function DriftSection({ drift, driftClean }: { drift: DriftRow[]; driftClean: boolean }) {
   return (
-    <section className="rounded-lg border border-border-soft bg-surface-card shadow-sm">
-      <header className="flex items-center justify-between border-b border-border-hairline px-6 py-4">
+    <section className="space-y-3">
+      <header className="flex items-center justify-between">
         <h2 className="text-lg font-medium text-text-default">SKU stock drift</h2>
-        <span className={`rounded-full px-3 py-1 text-xs font-medium ${driftClean ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+        <span
+          className={`rounded-full px-3 py-1 text-xs font-medium ${
+            driftClean ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+          }`}
+        >
           {driftClean ? 'clean' : `${drift.length} SKUs out of sync`}
         </span>
       </header>
       {driftClean ? (
-        <p className="px-6 py-4 text-sm text-text-muted">
+        <p className="rounded-xl border border-border-soft bg-surface-card px-6 py-4 text-sm text-text-muted shadow-sm">
           sku_stock.stock equals SUM(sku_stock_ledger.delta) for every SKU. The trigger is working.
         </p>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-border-hairline text-sm">
-            <thead className="bg-surface-canvas text-xs uppercase tracking-wide text-text-soft">
-              <tr>
-                <th className="px-6 py-2 text-left font-medium">SKU</th>
-                <th className="px-6 py-2 text-right font-medium">Stored WH</th>
-                <th className="px-6 py-2 text-right font-medium">Ledger WH</th>
-                <th className="px-6 py-2 text-right font-medium">Δ WH</th>
-                <th className="px-6 py-2 text-right font-medium">Stored Boxed</th>
-                <th className="px-6 py-2 text-right font-medium">Ledger Boxed</th>
-                <th className="px-6 py-2 text-right font-medium">Δ Boxed</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border-hairline">
-              {drift.map((d) => (
-                <tr key={d.sku}>
-                  <td className="px-6 py-2 font-mono text-xs">{d.sku}</td>
-                  <td className="px-6 py-2 text-right">{d.stored_stock}</td>
-                  <td className="px-6 py-2 text-right">{d.ledger_warehouse}</td>
-                  <td className={`px-6 py-2 text-right font-semibold ${d.warehouse_drift === 0 ? 'text-text-faint' : 'text-red-700'}`}>
-                    {d.warehouse_drift > 0 ? '+' : ''}{d.warehouse_drift}
-                  </td>
-                  <td className="px-6 py-2 text-right">{d.stored_boxed}</td>
-                  <td className="px-6 py-2 text-right">{d.ledger_boxed}</td>
-                  <td className={`px-6 py-2 text-right font-semibold ${d.boxed_drift === 0 ? 'text-text-faint' : 'text-red-700'}`}>
-                    {d.boxed_drift > 0 ? '+' : ''}{d.boxed_drift}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <DataTable columns={DRIFT_COLUMNS} rows={drift} rowKey={(d) => d.sku} />
       )}
     </section>
   );
 }
 
+const ALLOCATION_COLUMNS: DataTableColumn<AllocationRow>[] = [
+  {
+    key: 'state',
+    header: 'State',
+    type: 'tag',
+    cell: (a) => <span className="font-mono text-xs">{a.state}</span>,
+  },
+  { key: 'count', header: 'Count', type: 'number', cell: (a) => a.count },
+  {
+    key: 'oldest',
+    header: 'Oldest',
+    type: 'date',
+    cell: (a) => <span className="text-xs text-text-soft">{a.oldest ?? '—'}</span>,
+  },
+];
+
 /** Open allocation summary by state. */
 export function AllocationsSection({ allocations }: { allocations: AllocationRow[] }) {
   return (
-    <section className="rounded-lg border border-border-soft bg-surface-card shadow-sm">
-      <header className="flex items-center justify-between border-b border-border-hairline px-6 py-4">
+    <section className="space-y-3">
+      <header className="flex items-center justify-between">
         <h2 className="text-lg font-medium text-text-default">Order unit allocations</h2>
         <Link
           href="/admin/inventory/bulk-allocate"
@@ -110,42 +156,94 @@ export function AllocationsSection({ allocations }: { allocations: AllocationRow
           Bulk allocate →
         </Link>
       </header>
-      {allocations.length === 0 ? (
-        <p className="px-6 py-4 text-sm text-text-muted">
-          No allocations yet. Orders auto-allocate against STOCKED units on intake.
-        </p>
-      ) : (
-        <table className="min-w-full divide-y divide-border-hairline text-sm">
-          <thead className="bg-surface-canvas text-xs uppercase tracking-wide text-text-soft">
-            <tr>
-              <th className="px-6 py-2 text-left font-medium">State</th>
-              <th className="px-6 py-2 text-right font-medium">Count</th>
-              <th className="px-6 py-2 text-left font-medium">Oldest</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border-hairline">
-            {allocations.map((a) => (
-              <tr key={a.state}>
-                <td className="px-6 py-2 font-mono text-xs">{a.state}</td>
-                <td className="px-6 py-2 text-right">{a.count}</td>
-                <td className="px-6 py-2 text-xs text-text-soft">{a.oldest ?? '—'}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
+      <DataTable
+        columns={ALLOCATION_COLUMNS}
+        rows={allocations}
+        rowKey={(a) => a.state}
+        emptyMessage="No allocations yet. Orders auto-allocate against STOCKED units on intake."
+      />
     </section>
   );
 }
 
+const RECENT_EVENT_COLUMNS: DataTableColumn<RecentEventRow>[] = [
+  {
+    key: 'when',
+    header: 'When',
+    type: 'date',
+    cell: (e) => (
+      <span className="text-xs text-text-soft">{new Date(e.occurred_at).toLocaleString()}</span>
+    ),
+  },
+  {
+    key: 'event',
+    header: 'Event',
+    type: 'tag',
+    cell: (e) => <span className="font-mono text-xs">{e.event_type}</span>,
+  },
+  {
+    key: 'station',
+    header: 'Station',
+    type: 'text',
+    cell: (e) => <span className="text-xs text-text-muted">{e.station ?? '—'}</span>,
+  },
+  {
+    key: 'unit_sku',
+    header: 'Unit / SKU',
+    type: 'id',
+    cell: (e) => (
+      <span className="text-xs">
+        {e.serial_unit_id ? (
+          <Link href={`/admin/inventory/units/${e.serial_unit_id}`} className="text-blue-600 hover:underline">
+            #{e.serial_unit_id}
+          </Link>
+        ) : null}
+        {e.serial_unit_id && e.sku ? <span className="px-1 text-text-faint">·</span> : null}
+        {e.sku ? (
+          <Link
+            href={`/admin/inventory/sku/${encodeURIComponent(e.sku)}`}
+            className="text-blue-600 hover:underline"
+          >
+            {e.sku}
+          </Link>
+        ) : null}
+      </span>
+    ),
+  },
+  {
+    key: 'status',
+    header: 'Status',
+    type: 'tag',
+    cell: (e) => (
+      <span className="text-xs text-text-muted">
+        {e.prev_status && e.next_status
+          ? `${e.prev_status} → ${e.next_status}`
+          : (e.next_status ?? '—')}
+      </span>
+    ),
+  },
+  {
+    key: 'actor',
+    header: 'Actor',
+    type: 'text',
+    cell: (e) => (
+      <span className="text-xs">
+        {e.actor_name ?? (e.actor_staff_id ? `#${e.actor_staff_id}` : 'system')}
+      </span>
+    ),
+  },
+];
+
 /** Recent inventory_events (last 50, with status diff + actor). */
 export function RecentEventsSection({ events }: { events: RecentEventRow[] }) {
   return (
-    <section className="rounded-lg border border-border-soft bg-surface-card shadow-sm">
-      <header className="flex items-center justify-between border-b border-border-hairline px-6 py-4">
+    <section className="space-y-3">
+      <header className="flex items-center justify-between">
         <div>
           <h2 className="text-lg font-medium text-text-default">Recent inventory events</h2>
-          <p className="mt-1 text-xs text-text-soft">Last 50 across all phases. Empty until a flagged path emits.</p>
+          <p className="mt-1 text-xs text-text-soft">
+            Last 50 across all phases. Empty until a flagged path emits.
+          </p>
         </div>
         <Link
           href="/admin/inventory/events"
@@ -154,56 +252,12 @@ export function RecentEventsSection({ events }: { events: RecentEventRow[] }) {
           Open explorer →
         </Link>
       </header>
-      {events.length === 0 ? (
-        <p className="px-6 py-4 text-sm text-text-muted">No events yet.</p>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-border-hairline text-sm">
-            <thead className="bg-surface-canvas text-xs uppercase tracking-wide text-text-soft">
-              <tr>
-                <th className="px-6 py-2 text-left font-medium">When</th>
-                <th className="px-6 py-2 text-left font-medium">Event</th>
-                <th className="px-6 py-2 text-left font-medium">Station</th>
-                <th className="px-6 py-2 text-left font-medium">Unit / SKU</th>
-                <th className="px-6 py-2 text-left font-medium">Status</th>
-                <th className="px-6 py-2 text-left font-medium">Actor</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border-hairline">
-              {events.map((e) => (
-                <tr key={e.id}>
-                  <td className="px-6 py-2 text-xs text-text-soft">
-                    {new Date(e.occurred_at).toLocaleString()}
-                  </td>
-                  <td className="px-6 py-2 font-mono text-xs">{e.event_type}</td>
-                  <td className="px-6 py-2 text-xs text-text-muted">{e.station ?? '—'}</td>
-                  <td className="px-6 py-2 text-xs">
-                    {e.serial_unit_id ? (
-                      <Link href={`/admin/inventory/units/${e.serial_unit_id}`} className="text-blue-600 hover:underline">
-                        #{e.serial_unit_id}
-                      </Link>
-                    ) : null}
-                    {e.serial_unit_id && e.sku ? <span className="px-1 text-text-faint">·</span> : null}
-                    {e.sku ? (
-                      <Link href={`/admin/inventory/sku/${encodeURIComponent(e.sku)}`} className="text-blue-600 hover:underline">
-                        {e.sku}
-                      </Link>
-                    ) : null}
-                  </td>
-                  <td className="px-6 py-2 text-xs text-text-muted">
-                    {e.prev_status && e.next_status
-                      ? `${e.prev_status} → ${e.next_status}`
-                      : e.next_status ?? '—'}
-                  </td>
-                  <td className="px-6 py-2 text-xs">
-                    {e.actor_name ?? (e.actor_staff_id ? `#${e.actor_staff_id}` : 'system')}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <DataTable
+        columns={RECENT_EVENT_COLUMNS}
+        rows={events}
+        rowKey={(e) => e.id}
+        emptyMessage="No events yet."
+      />
     </section>
   );
 }

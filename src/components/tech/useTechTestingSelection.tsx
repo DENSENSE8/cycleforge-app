@@ -14,7 +14,7 @@ import {
   useReceivingLineBulkSelection,
   type ReceivingLineBulkSelection,
 } from '@/hooks/useReceivingLineBulkSelection';
-import type { ReceivingLineRow } from '@/components/station/ReceivingLinesTable';
+import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 
 /** Copy line for a tested unit: SKU • serials • PO. */
 function formatTestingCopyRow(r: ReceivingLineRow): string {

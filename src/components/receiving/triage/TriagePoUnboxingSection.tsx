@@ -13,7 +13,7 @@
 import { WorkspaceCard } from '@/design-system/components';
 import { LinePoItemsSection } from '../workspace/line-edit/LinePoItemsSection';
 import { TriageLineMatchingSection } from './TriageLineMatchingSection';
-import type { ReceivingLineRow } from '@/components/station/ReceivingLinesTable';
+import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import type { InlineActionFeedbackPayload } from '../workspace/InlineActionFeedbackCard';
 import type { UnboxLineController } from '../workspace/line-edit/unbox-line-controller';
 import { shouldUseUnmatchedItemsSurface } from '@/lib/receiving/intake-items-routing';

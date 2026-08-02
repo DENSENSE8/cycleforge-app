@@ -100,12 +100,6 @@ export function QuickAccessSection() {
           checked={settings.enabled}
           onChange={(v) => updateSettings({ enabled: v })}
         />
-        <ToggleRow
-          label="Open with ⌘K / Ctrl+K shortcut"
-          description="Skipped automatically while typing in inputs."
-          checked={settings.hotkey === 'cmdk'}
-          onChange={(v) => updateSettings({ hotkey: v ? 'cmdk' : 'off' })}
-        />
       </div>
 
       <div className="rounded-2xl border border-border-soft bg-surface-card p-5 shadow-sm">

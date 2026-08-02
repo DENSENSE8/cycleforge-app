@@ -1,5 +1,20 @@
-import { DEFAULT_GLN } from '@/lib/barcode-routing';
+import { isLicensedGln } from '@/lib/interop/gs1-keys';
 import { CONFIG_KEY, DEFAULT_CONFIG, type PrinterConfig } from './types';
+
+/**
+ * A stored GLN is kept only when it is genuinely licensed.
+ *
+ * Every config written before 2026-08-02 carries `0614141000005` — GS1's
+ * documentation GLN, which used to be this printer's default. Those values are
+ * sitting in operators' localStorage right now, so dropping the default alone
+ * would not have stopped the next print. Sanitising on LOAD is what actually
+ * retires it: a stale placeholder resolves to "" and the label falls back to
+ * the bare location code (`locationLabelPayload`).
+ */
+export function sanitizeStoredGln(v: unknown): string {
+  const s = typeof v === 'string' ? v.trim() : '';
+  return isLicensedGln(s) ? s : '';
+}
 
 export function clampMax(v: unknown, fallback: number): number {
   const n = typeof v === 'number' ? v : parseInt(String(v ?? ''), 10);
@@ -18,8 +33,7 @@ export function loadConfig(): PrinterConfig {
       maxBays: clampMax(parsed?.maxBays, DEFAULT_CONFIG.maxBays),
       maxLevels: clampMax(parsed?.maxLevels, DEFAULT_CONFIG.maxLevels),
       maxPositions: clampMax(parsed?.maxPositions, DEFAULT_CONFIG.maxPositions),
-      gln:
-        typeof parsed?.gln === 'string' && parsed.gln.trim() ? parsed.gln.trim() : DEFAULT_GLN,
+      gln: sanitizeStoredGln(parsed?.gln),
     };
   } catch {
     return DEFAULT_CONFIG;

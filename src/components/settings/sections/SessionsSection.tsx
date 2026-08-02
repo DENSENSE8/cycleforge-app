@@ -7,6 +7,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { Button } from '@/design-system/primitives';
+import { DataTable, type DataTableColumn } from '@/design-system/components/DataTable';
 
 interface SessionRow {
   sid: string;
@@ -62,7 +63,53 @@ export function SessionsSection() {
     await refresh();
   }, [refresh]);
 
-  if (loading) return <div className="text-sm text-text-soft">Loading…</div>;
+  const columns: DataTableColumn<SessionRow>[] = [
+    {
+      key: 'staff',
+      header: 'Staff',
+      type: 'text',
+      cell: (row) => <span className="font-medium text-text-default">{row.staff_name}</span>,
+    },
+    {
+      key: 'device',
+      header: 'Device',
+      type: 'tag',
+      cell: (row) => (
+        <span className="text-xs">
+          <span className="mr-2 rounded-full bg-surface-sunken px-2 py-0.5">{row.device_kind}</span>
+          {row.device_label && <span className="text-text-soft">{row.device_label}</span>}
+        </span>
+      ),
+    },
+    {
+      key: 'ip',
+      header: 'IP',
+      type: 'text',
+      cell: (row) => <span className="text-xs text-text-soft">{row.ip || '—'}</span>,
+    },
+    {
+      key: 'last_activity',
+      header: 'Last activity',
+      type: 'date',
+      cell: (row) => <span className="text-xs text-text-soft">{fmtRelative(row.last_seen_at)}</span>,
+    },
+    {
+      key: 'actions',
+      header: 'Actions',
+      align: 'right',
+      cell: (row) => (
+        <Button
+          variant="ghost"
+          size="sm"
+          type="button"
+          onClick={() => void revoke(row.sid)}
+          className="border border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+        >
+          Revoke
+        </Button>
+      ),
+    },
+  ];
 
   return (
     <section className="space-y-4">
@@ -73,46 +120,13 @@ export function SessionsSection() {
 
       {err && <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div>}
 
-      <div className="rounded-xl border border-border-soft bg-surface-card overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-surface-canvas text-left text-role-caption uppercase tracking-wider text-text-soft">
-            <tr>
-              <th className="px-3 py-2">Staff</th>
-              <th className="px-3 py-2">Device</th>
-              <th className="px-3 py-2">IP</th>
-              <th className="px-3 py-2">Last activity</th>
-              <th className="px-3 py-2 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border-hairline">
-            {rows.map((row) => (
-              <tr key={row.sid}>
-                <td className="px-3 py-2 font-medium text-text-default">{row.staff_name}</td>
-                <td className="px-3 py-2 text-xs">
-                  <span className="rounded-full bg-surface-sunken px-2 py-0.5 mr-2">{row.device_kind}</span>
-                  {row.device_label && <span className="text-text-soft">{row.device_label}</span>}
-                </td>
-                <td className="px-3 py-2 text-xs text-text-soft">{row.ip || '—'}</td>
-                <td className="px-3 py-2 text-xs text-text-soft">{fmtRelative(row.last_seen_at)}</td>
-                <td className="px-3 py-2 text-right">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    type="button"
-                    onClick={() => void revoke(row.sid)}
-                    className="border border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
-                  >
-                    Revoke
-                  </Button>
-                </td>
-              </tr>
-            ))}
-            {rows.length === 0 && (
-              <tr><td colSpan={5} className="px-3 py-8 text-center text-text-faint">No active sessions.</td></tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+      <DataTable
+        columns={columns}
+        rows={rows}
+        rowKey={(row) => row.sid}
+        loading={loading}
+        emptyMessage="No active sessions."
+      />
     </section>
   );
 }

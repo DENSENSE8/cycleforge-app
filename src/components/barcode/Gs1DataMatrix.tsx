@@ -10,14 +10,23 @@
  *                       bwip-js inserts the FNC1 control character on the
  *                       wire so industrial scanners decode the AIs natively.
  *
- *   • `datamatrix`    — plain DataMatrix carrying an arbitrary string
- *                       (e.g. `R-1234`, `L-567`, `REP-89`). Used for
- *                       internal handles where there's no natural GS1 AI.
+ *   • `datamatrix`    — plain DataMatrix carrying an arbitrary string: either
+ *                       an absolute platform Digital Link
+ *                       (`https://{slug}.app.cycleforge.ai/m/r/1234`) or a
+ *                       bare internal handle (`R-1234`, `L-567`, `REP-89`)
+ *                       where the path has no anonymous landing.
  *
- * Either way the rendered symbol is opaque to consumer phone cameras —
- * no clickable URL, no backend hostname. The internal app's scanner
- * (`/m/scan` + `routeScan()`) is the only surface that turns it into
- * navigation.
+ * **A printed symbol is no longer necessarily opaque to a phone.** This
+ * comment used to claim "no clickable URL, no backend hostname" — true only
+ * while every payload was a bare handle. Since 2026-08-01 carton and unit
+ * labels encode an absolute URL on the tenant's own platform host, which a
+ * camera opens directly; that URL is dual-audience by design (staff → ops,
+ * anon → the tenant's branded interstitial). What is still never printed is a
+ * raw backend/IaaS hostname. Which kinds mint a URL vs. stay bare is decided
+ * in exactly one place — `encodePrintMatrix` (`@/lib/qr/platform-link`).
+ *
+ * The internal scanner (`/m/scan` + `routeScan()`) ignores the host either
+ * way and resolves the path or the handle locally.
  *
  * The bwip-js encoder (~250 KB gz) loads lazily on first render — statically
  * importing it here put the whole engine in every station bundle's critical

@@ -6,7 +6,7 @@ import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { RightPaneOverlay } from '@/components/ui/RightPaneOverlay';
 import { Button, IconButton, Popover } from '@/design-system/primitives';
 import { useSplitLineSerial } from '@/components/receiving/workspace/hooks/useSplitLineSerial';
-import type { ReceivingLineRow } from '@/components/station/ReceivingLinesTable';
+import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { receivingWorkspaceLineTitle } from '@/lib/receiving/po-group-title';
 
 export interface PoLineSerialSplitContext {

@@ -10,6 +10,15 @@
  *
  * Apex / unknown slug (fail-closed nil org) → `{ resolved: false }` (still lists
  * platform providers, which are host-independent).
+ *
+ * Failure class: **PARTIAL.** `resolved: false` is a legitimate state (apex
+ * host), so an unexpected throw must not borrow it silently — that is the
+ * `staff-picker` outage in a second costume. But unlike the picker this payload
+ * has a genuinely useful half: `platformProviders` is env-derived, so social
+ * sign-in still works while the DB is down. So the throw keeps **200** (to
+ * preserve that half) and adds `degraded: true` + `error`; a caller that needs
+ * to distinguish "no workspace here" from "we could not look it up" branches on
+ * the flag, not on `resolved`.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -63,7 +72,17 @@ export async function GET(req: NextRequest) {
       { resolved: true, name: row.name, slug: row.slug, platformProviders, sso, emailFirstSignin },
       { headers: NO_STORE },
     );
-  } catch {
-    return NextResponse.json({ resolved: false, platformProviders }, { headers: NO_STORE });
+  } catch (err) {
+    console.error('[/api/auth/workspace] error:', err);
+    // `degraded` is what separates this from the apex `resolved: false` above.
+    return NextResponse.json(
+      {
+        resolved: false,
+        platformProviders,
+        degraded: true,
+        error: 'workspace_lookup_unavailable',
+      },
+      { headers: NO_STORE },
+    );
   }
 }

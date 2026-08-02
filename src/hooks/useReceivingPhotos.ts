@@ -1,0 +1,147 @@
+'use client';
+
+import { useMemo } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { receivingPhotosQueryKey } from '@/lib/queries/receiving-queries';
+import { useReceivingPhotosRealtimeRefresh } from '@/hooks/useReceivingPhotosRealtimeRefresh';
+import { useAuth } from '@/contexts/AuthContext';
+
+/**
+ * One carton's photos, from `GET /api/receiving-photos`.
+ *
+ * ## Why this exists
+ *
+ * Three implementations used to query this endpoint on three different cache
+ * keys: `ReceivingPhotosSection`'s inline `useQuery` on
+ * `['receiving-photos', <STRING id>]`, `useReceivingPhotoCount`'s private query
+ * on `receivingPhotosQueryKey(<NUMBER id>)`, and `useScopedReceivingPhotos` on a
+ * three-element scope key. The first two are the same question asked twice, and
+ * because `"1234" !== 1234` they were two cache entries — so a delete that
+ * patched one left the other showing a photo that no longer existed, and any
+ * surface mounting both fetched the same rows twice.
+ *
+ * This hook is the carton-scoped answer, keyed through the shared
+ * {@link receivingPhotosQueryKey} (number), so it shares one cache entry with
+ * the camera badge and the progress stepper's stage counts.
+ *
+ * `useScopedReceivingPhotos` is deliberately NOT folded in: its key encodes a
+ * different question (PO vs line vs all scope) and it owns a delete path.
+ *
+ * ## The payload shape is load-bearing
+ *
+ * Entries under this key store the RAW `{ photos }` envelope, because
+ * `useReceivingPhotoCount` reads `data.photos` and
+ * `invalidateReceivingPhotoCaches` patches `old.photos`. Storing a bare array
+ * here would silently zero the camera badge.
+ *
+ * ## Errors always throw
+ *
+ * The fetch never swallows a failure into an empty list, whatever `readOnly`
+ * says. Two observers on one key can each be the one that runs the queryFn, so a
+ * queryFn whose error behaviour depended on its caller would give the OTHER
+ * caller whichever semantics happened to win the race. Read surfaces branch on
+ * `isError` at render time instead — an outage must never read as "no evidence
+ * exists".
+ */
+export interface ReceivingPhotoRow {
+  id: number;
+  receivingId: number | null;
+  receivingLineId: number | null;
+  photoUrl: string;
+  /**
+   * Legacy alias carrying `photos.photo_type`. Prefer {@link photoType}; this
+   * stays because the receive gate and three other readers still parse it.
+   */
+  caption: string | null;
+  /** `photos.photo_type` — the stage half of stage × aspect. */
+  photoType?: string | null;
+  /** `photos.photo_aspect` — WHAT the shot shows. NULL = unclassified, not missing. */
+  photoAspect?: string | null;
+  createdAt?: string;
+  /** Device shutter clock; null on desktop / legacy rows. */
+  clientCapturedAt?: string | null;
+  /** Carries a secondary `claim_evidence` link (a filed claim). */
+  hasClaimEvidence?: boolean;
+  /** Carries a secondary `insurance_share` link (carrier / share pack). */
+  hasInsuranceShare?: boolean;
+}
+
+interface ReceivingPhotosPayload {
+  photos: ReceivingPhotoRow[];
+}
+
+interface UseReceivingPhotosOptions {
+  /**
+   * Look-up / carton-read. Suppresses the background poll and the realtime
+   * subscription — a read surface has no capture happening behind it.
+   */
+  readOnly?: boolean;
+  enabled?: boolean;
+}
+
+interface UseReceivingPhotosResult {
+  queryKey: ReturnType<typeof receivingPhotosQueryKey>;
+  /** Rows with a usable URL, in server order. Empty while loading or on error. */
+  photos: ReceivingPhotoRow[];
+  isFetching: boolean;
+  isError: boolean;
+  /** True once a payload has arrived — so `photos.length === 0` means "none". */
+  settled: boolean;
+  invalidate: () => void;
+}
+
+export function useReceivingPhotos(
+  receivingId: number | string | null | undefined,
+  opts: UseReceivingPhotosOptions = {},
+): UseReceivingPhotosResult {
+  const { readOnly = false } = opts;
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const staffId = user?.staffId ?? 0;
+
+  const id = Number(receivingId);
+  const valid = Number.isFinite(id) && id > 0;
+  const enabled = (opts.enabled ?? true) && valid;
+  const queryKey = receivingPhotosQueryKey(valid ? id : 0);
+
+  const { data, isFetching, isError } = useQuery<ReceivingPhotosPayload>({
+    queryKey,
+    queryFn: async () => {
+      const res = await fetch(`/api/receiving-photos?receivingId=${id}`, { cache: 'no-store' });
+      if (!res.ok) throw new Error(`Failed to load photos for receiving ${id}`);
+      const json = await res.json().catch(() => null);
+      // Normalize the two shapes a cached/legacy payload can take into the ONE
+      // this key stores. A bare array here would break `data.photos` readers.
+      if (Array.isArray(json)) return { photos: json as ReceivingPhotoRow[] };
+      const photos = (json as ReceivingPhotosPayload | null)?.photos;
+      return { photos: Array.isArray(photos) ? photos : [] };
+    },
+    enabled,
+    // A read surface has no capture running behind it; the bench does.
+    refetchInterval: readOnly ? false : 30_000,
+    staleTime: 20_000,
+  });
+
+  useReceivingPhotosRealtimeRefresh(
+    valid ? id : null,
+    staffId,
+    () => queryClient.invalidateQueries({ queryKey }),
+    !readOnly && staffId > 0,
+  );
+
+  const photos = useMemo(
+    () => (data?.photos ?? []).filter((p) => !!p.photoUrl?.trim()),
+    [data?.photos],
+  );
+
+  return {
+    queryKey,
+    photos,
+    isFetching,
+    isError,
+    settled: data != null,
+    invalidate: () => {
+      void queryClient.invalidateQueries({ queryKey });
+    },
+  };
+}

@@ -18,8 +18,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/design-system/components/Dialog';
+import { DataTable, type DataTableColumn } from '@/design-system/components/DataTable';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { toast } from '@/lib/toast';
+import { cn } from '@/utils/_cn';
 
 interface StaffRow {
   id: number;
@@ -126,6 +128,94 @@ export function StaffTable({ initialStaff }: StaffTableProps) {
     );
   }, [staff, filter]);
 
+  const isSearching = filter.trim().length > 0;
+
+  const columns: DataTableColumn<StaffRow>[] = [
+    {
+      key: 'name',
+      header: 'Name',
+      type: 'text',
+      cell: (s) => (
+        <div className={cn('flex items-center gap-2.5', !s.active && 'text-text-faint')}>
+          <span className="inline-block h-2 w-2 rounded-full" style={{ background: s.color_hex }} />
+          <span className="font-medium">{s.name}</span>
+        </div>
+      ),
+    },
+    {
+      key: 'role',
+      header: 'Role',
+      type: 'tag',
+      cell: (s) => (
+        // Role is derived from staff_roles[0]. To edit, jump to the access
+        // detail page where the Roles card is the authoritative editor.
+        <HoverTooltip label="Edit roles in Settings → Access" asChild>
+          <a
+            href={`/settings/access?staffId=${s.id}`}
+            className={cn(
+              'inline-flex items-center gap-1 rounded-lg border border-transparent px-2 py-0.5 text-role-caption font-medium text-text-muted hover:border-border-soft hover:bg-surface-hover hover:text-text-default',
+              !s.active && 'text-text-faint',
+            )}
+          >
+            {s.role}
+            <span className="text-text-faint">›</span>
+          </a>
+        </HoverTooltip>
+      ),
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      type: 'tag',
+      cell: (s) => <StatusPill status={s.status} active={s.active} />,
+    },
+    {
+      key: 'pin',
+      header: 'PIN',
+      type: 'tag',
+      cell: (s) => (
+        <span className={cn('text-role-caption text-text-soft', !s.active && 'text-text-faint')}>
+          {s.has_pin ? 'Set' : '—'}
+        </span>
+      ),
+    },
+    {
+      key: 'auth',
+      header: 'Auth',
+      type: 'text',
+      cell: (s) => (
+        <AuthPolicyCell row={s} disabled={busy === s.id} onChange={updateAuthPolicy} />
+      ),
+    },
+    {
+      key: 'last_login',
+      header: 'Last login',
+      type: 'date',
+      cell: (s) => (
+        <span className={cn('text-role-caption text-text-soft', !s.active && 'text-text-faint')}>
+          {fmtLogin(s.last_login_at)}
+        </span>
+      ),
+    },
+    {
+      key: 'actions',
+      header: '',
+      align: 'right',
+      cell: (s) =>
+        s.active ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => deactivate(s.id, s.name)}
+            disabled={busy === s.id}
+            className="text-text-soft hover:text-red-600"
+          >
+            Deactivate
+          </Button>
+        ) : null,
+    },
+  ];
+
   return (
     <>
       <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-border-soft bg-surface-card p-3 shadow-sm">
@@ -140,70 +230,14 @@ export function StaffTable({ initialStaff }: StaffTableProps) {
         </Button>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-border-soft bg-surface-card shadow-sm">
-        <table className="min-w-full divide-y divide-border-hairline text-role-data">
-          <thead className="bg-surface-canvas text-left text-role-caption font-medium uppercase tracking-[0.08em] text-text-soft">
-            <tr>
-              <th className="px-4 py-2">Name</th>
-              <th className="px-4 py-2">Role</th>
-              <th className="px-4 py-2">Status</th>
-              <th className="px-4 py-2">PIN</th>
-              <th className="px-4 py-2">Auth</th>
-              <th className="px-4 py-2">Last login</th>
-              <th className="px-4 py-2" />
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border-hairline">
-            {filtered.length === 0 ? (
-              <tr><td colSpan={7} className="px-4 py-6 text-center text-text-faint">No teammates match.</td></tr>
-            ) : filtered.map((s) => (
-              <tr key={s.id} className={s.active ? 'text-text-default' : 'text-text-faint'}>
-                <td className="px-4 py-2">
-                  <div className="flex items-center gap-2.5">
-                    <span className="inline-block h-2 w-2 rounded-full" style={{ background: s.color_hex }} />
-                    <span className="font-medium">{s.name}</span>
-                  </div>
-                </td>
-                <td className="px-4 py-2">
-                  {/* Role is derived from staff_roles[0]. To edit, jump to
-                      the access detail page where the Roles card is the
-                      authoritative editor. */}
-                  <HoverTooltip label="Edit roles in Settings → Access" asChild>
-                    <a
-                      href={`/settings/access?staffId=${s.id}`}
-                      className="inline-flex items-center gap-1 rounded-lg border border-transparent px-2 py-0.5 text-role-caption font-medium text-text-muted hover:border-border-soft hover:bg-surface-hover hover:text-text-default"
-                    >
-                      {s.role}
-                      <span className="text-text-faint">›</span>
-                    </a>
-                  </HoverTooltip>
-                </td>
-                <td className="px-4 py-2">
-                  <StatusPill status={s.status} active={s.active} />
-                </td>
-                <td className="px-4 py-2 text-role-caption text-text-soft">{s.has_pin ? 'Set' : '—'}</td>
-                <td className="px-4 py-2">
-                  <AuthPolicyCell row={s} disabled={busy === s.id} onChange={updateAuthPolicy} />
-                </td>
-                <td className="px-4 py-2 text-role-caption text-text-soft">{fmtLogin(s.last_login_at)}</td>
-                <td className="px-4 py-2 text-right">
-                  {s.active && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => deactivate(s.id, s.name)}
-                      disabled={busy === s.id}
-                      className="text-text-soft hover:text-red-600"
-                    >
-                      Deactivate
-                    </Button>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <DataTable
+        columns={columns}
+        rows={filtered}
+        rowKey={(s) => s.id}
+        emptyMessage="No teammates yet."
+        searchEmptyMessage="No teammates match."
+        isSearching={isSearching}
+      />
 
       <InviteModal
         open={inviteOpen}

@@ -21,7 +21,7 @@ import { PoLinesAccordion } from '../PoLinesAccordion';
 import { UnmatchedItemsSection } from '../UnmatchedItemsSection';
 import { ActiveLineConditionSerial } from './ActiveLineConditionSerial';
 import { ReceivingPhotoButton } from './ReceivingPhotoButton';
-import type { ReceivingLineRow } from '@/components/station/ReceivingLinesTable';
+import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import type { InlineActionFeedbackPayload } from '../InlineActionFeedbackCard';
 import type { UnboxLineController } from './unbox-line-controller';
 import {

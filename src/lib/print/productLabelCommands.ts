@@ -94,6 +94,10 @@ function productFieldsFor(input: PrintProductLabelInput): ProductLabelFields {
       serialNumber: input.serialNumber?.trim() || null,
       qrPayload: input.qrPayload?.trim() || null,
       gtin: input.gtin?.trim() || null,
+      // Dropping orgSlug here made the raw thermal path encode a GS1 element
+      // string while the HTML/preview path encoded the platform Digital Link —
+      // the same sticker, two payloads, decided by which printer was paired.
+      orgSlug: input.orgSlug,
     }),
     scale: 4,
   };

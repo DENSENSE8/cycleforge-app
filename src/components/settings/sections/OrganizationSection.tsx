@@ -108,6 +108,7 @@ interface OrgProfileResponse {
     logoUrl?: string;
     primaryColor?: string;
     attractMediaUrl?: string;
+    publicLandingUrl?: string;
   };
   letterhead: {
     addressLine1: string;
@@ -325,6 +326,7 @@ function InvitationsSection() {
 }
 
 export function OrganizationSection() {
+  const { user } = useAuth();
   const [draft, setDraft] = useState<OrgProfileResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -558,6 +560,34 @@ export function OrganizationSection() {
             className={FIELD_CLS}
             placeholder="https://… (public image or muted video URL — Blob upload later)"
           />
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-xs font-medium text-text-muted">
+            Customer website for QR scans
+          </span>
+          <input
+            type="url"
+            value={draft.brand.publicLandingUrl ?? ''}
+            onChange={(e) =>
+              setDraft({ ...draft, brand: { ...draft.brand, publicLandingUrl: e.target.value } })
+            }
+            className={FIELD_CLS}
+            placeholder="https://your-store.com"
+          />
+          <span className="mt-1 block text-xs text-text-soft">
+            Printed carton QR codes always use your Cycle Forge host
+            {user?.organizationSlug ? (
+              <>
+                {' '}
+                (<code className="rounded bg-surface-sunken px-1">
+                  {user.organizationSlug}.app.cycleforge.ai
+                </code>
+                )
+              </>
+            ) : null}
+            . Phone scanners see a branded page here with a button to this website.
+            Staff wedge scans stay in receiving ops.
+          </span>
         </label>
       </div>
 

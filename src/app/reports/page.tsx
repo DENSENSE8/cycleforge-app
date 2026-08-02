@@ -4,6 +4,7 @@ import { Suspense, useCallback, useEffect, useState } from 'react';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { PageHeader } from '@/components/ui/pane-header';
 import { Button } from '@/design-system/primitives';
+import { DataTable, type DataTableColumn } from '@/design-system/components/DataTable';
 
 type Tab = 'utilization' | 'velocity' | 'dead';
 
@@ -13,9 +14,138 @@ const TABS: ReadonlyArray<{ id: Tab; label: string }> = [
   { id: 'dead', label: 'Dead Stock (90d+)' },
 ];
 
+type ReportRow = Record<string, unknown>;
+
+const UTILIZATION_COLUMNS: DataTableColumn<ReportRow>[] = [
+  {
+    key: 'bin',
+    header: 'Bin',
+    type: 'id',
+    cell: (r) => (
+      <span className="font-mono font-semibold">{String(r.barcode ?? r.bin_name ?? '')}</span>
+    ),
+  },
+  {
+    key: 'room',
+    header: 'Room',
+    type: 'text',
+    cell: (r) => <span className="text-text-muted">{String(r.room ?? '—')}</span>,
+  },
+  {
+    key: 'fill',
+    header: 'Fill',
+    type: 'number',
+    cell: (r) => (
+      <span className="font-mono">
+        {r.fill_ratio != null ? `${(Number(r.fill_ratio) * 100).toFixed(0)}%` : '—'}
+      </span>
+    ),
+  },
+  {
+    key: 'qty',
+    header: 'Qty',
+    type: 'number',
+    cell: (r) => <span className="font-mono font-semibold">{Number(r.in_bin)}</span>,
+  },
+  {
+    key: 'cap',
+    header: 'Cap',
+    type: 'number',
+    cell: (r) => (
+      <span className="font-mono text-text-muted">
+        {r.capacity != null ? Number(r.capacity) : '—'}
+      </span>
+    ),
+  },
+  {
+    key: 'skus',
+    header: 'SKUs',
+    type: 'number',
+    cell: (r) => <span className="font-mono text-text-muted">{Number(r.sku_count)}</span>,
+  },
+];
+
+const VELOCITY_COLUMNS: DataTableColumn<ReportRow>[] = [
+  {
+    key: 'tier',
+    header: 'Tier',
+    type: 'tag',
+    cell: (r) => <span className="font-semibold">{String(r.velocity_tier)}</span>,
+  },
+  {
+    key: 'sku',
+    header: 'SKU',
+    type: 'id',
+    cell: (r) => <span className="font-mono font-semibold">{String(r.sku)}</span>,
+  },
+  {
+    key: 'product',
+    header: 'Product',
+    type: 'longtext',
+    cell: (r) => (
+      <span className="max-w-md truncate text-text-muted">{String(r.product_title ?? '—')}</span>
+    ),
+  },
+  {
+    key: 'out',
+    header: 'Out',
+    type: 'number',
+    cell: (r) => (
+      <span className="font-mono font-semibold text-rose-600">{Number(r.out_qty)}</span>
+    ),
+  },
+  {
+    key: 'in',
+    header: 'In',
+    type: 'number',
+    cell: (r) => (
+      <span className="font-mono text-emerald-600">{Number(r.in_qty)}</span>
+    ),
+  },
+  {
+    key: 'stock',
+    header: 'Stock',
+    type: 'number',
+    cell: (r) => (
+      <span className="font-mono text-text-muted">{Number(r.current_stock ?? 0)}</span>
+    ),
+  },
+];
+
+const DEAD_COLUMNS: DataTableColumn<ReportRow>[] = [
+  {
+    key: 'sku',
+    header: 'SKU',
+    type: 'id',
+    cell: (r) => <span className="font-mono font-semibold">{String(r.sku)}</span>,
+  },
+  {
+    key: 'product',
+    header: 'Product',
+    type: 'longtext',
+    cell: (r) => (
+      <span className="max-w-md truncate text-text-muted">{String(r.product_title ?? '—')}</span>
+    ),
+  },
+  {
+    key: 'stock',
+    header: 'Stock',
+    type: 'number',
+    cell: (r) => <span className="font-mono font-semibold">{Number(r.stock)}</span>,
+  },
+  {
+    key: 'days_dormant',
+    header: 'Days dormant',
+    type: 'number',
+    cell: (r) => (
+      <span className="font-mono text-rose-600">{Number(r.days_dormant)}</span>
+    ),
+  },
+];
+
 function ReportsPageInner() {
   const [tab, setTab] = useState<Tab>('utilization');
-  const [rows, setRows] = useState<Array<Record<string, unknown>>>([]);
+  const [rows, setRows] = useState<ReportRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -78,127 +208,54 @@ function ReportsPageInner() {
       />
 
       <main className="min-h-0 flex-1 overflow-auto px-3 py-3">
-        {loading && (
-          <div className="flex h-32 items-center justify-center">
-            <LoadingSpinner size="md" className="text-blue-600" />
-          </div>
-        )}
         {error && (
           <p className="px-3 py-6 text-center text-sm font-semibold text-rose-600">{error}</p>
         )}
-        {!loading && !error && rows.length === 0 && (
-          <p className="px-3 py-10 text-center text-sm font-semibold text-text-soft">
-            No data — try the daily refresh cron, or write some movement.
-          </p>
-        )}
-        {!loading && !error && rows.length > 0 && (
-          <ReportTable tab={tab} rows={rows} />
-        )}
+        {!error && <ReportTable tab={tab} rows={rows} loading={loading} />}
       </main>
     </div>
   );
 }
 
-function ReportTable({ tab, rows }: { tab: Tab; rows: Array<Record<string, unknown>> }) {
+function ReportTable({
+  tab,
+  rows,
+  loading,
+}: {
+  tab: Tab;
+  rows: ReportRow[];
+  loading: boolean;
+}) {
   if (tab === 'utilization') {
     return (
-      <table className="w-full text-left text-role-caption">
-        <thead className="sticky top-0 bg-surface-canvas text-role-micro uppercase tracking-widest text-text-muted">
-          <tr>
-            <th className="px-3 py-2">Bin</th>
-            <th className="px-3 py-2">Room</th>
-            <th className="px-3 py-2 text-right">Fill</th>
-            <th className="px-3 py-2 text-right">Qty</th>
-            <th className="px-3 py-2 text-right">Cap</th>
-            <th className="px-3 py-2 text-right">SKUs</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r, i) => (
-            <tr key={String(r.bin_id)} className={i % 2 ? 'bg-surface-canvas/40' : ''}>
-              <td className="px-3 py-1.5 font-mono font-semibold">
-                {String(r.barcode ?? r.bin_name ?? '')}
-              </td>
-              <td className="px-3 py-1.5 text-text-muted">{String(r.room ?? '—')}</td>
-              <td className="px-3 py-1.5 text-right font-mono">
-                {r.fill_ratio != null
-                  ? `${(Number(r.fill_ratio) * 100).toFixed(0)}%`
-                  : '—'}
-              </td>
-              <td className="px-3 py-1.5 text-right font-mono font-semibold">{Number(r.in_bin)}</td>
-              <td className="px-3 py-1.5 text-right font-mono text-text-muted">
-                {r.capacity != null ? Number(r.capacity) : '—'}
-              </td>
-              <td className="px-3 py-1.5 text-right font-mono text-text-muted">
-                {Number(r.sku_count)}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <DataTable
+        columns={UTILIZATION_COLUMNS}
+        rows={rows}
+        rowKey={(r) => String(r.bin_id)}
+        loading={loading}
+        emptyMessage="No data — try the daily refresh cron, or write some movement."
+      />
     );
   }
   if (tab === 'velocity') {
     return (
-      <table className="w-full text-left text-role-caption">
-        <thead className="sticky top-0 bg-surface-canvas text-role-micro uppercase tracking-widest text-text-muted">
-          <tr>
-            <th className="px-3 py-2">Tier</th>
-            <th className="px-3 py-2">SKU</th>
-            <th className="px-3 py-2">Product</th>
-            <th className="px-3 py-2 text-right">Out</th>
-            <th className="px-3 py-2 text-right">In</th>
-            <th className="px-3 py-2 text-right">Stock</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r, i) => (
-            <tr key={String(r.sku)} className={i % 2 ? 'bg-surface-canvas/40' : ''}>
-              <td className="px-3 py-1.5 font-semibold">{String(r.velocity_tier)}</td>
-              <td className="px-3 py-1.5 font-mono font-semibold">{String(r.sku)}</td>
-              <td className="px-3 py-1.5 text-text-muted truncate max-w-md">
-                {String(r.product_title ?? '—')}
-              </td>
-              <td className="px-3 py-1.5 text-right font-mono font-semibold text-rose-600">
-                {Number(r.out_qty)}
-              </td>
-              <td className="px-3 py-1.5 text-right font-mono text-emerald-600">
-                {Number(r.in_qty)}
-              </td>
-              <td className="px-3 py-1.5 text-right font-mono text-text-muted">
-                {Number(r.current_stock ?? 0)}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <DataTable
+        columns={VELOCITY_COLUMNS}
+        rows={rows}
+        rowKey={(r) => String(r.sku)}
+        loading={loading}
+        emptyMessage="No data — try the daily refresh cron, or write some movement."
+      />
     );
   }
   return (
-    <table className="w-full text-left text-role-caption">
-      <thead className="sticky top-0 bg-surface-canvas text-role-micro uppercase tracking-widest text-text-muted">
-        <tr>
-          <th className="px-3 py-2">SKU</th>
-          <th className="px-3 py-2">Product</th>
-          <th className="px-3 py-2 text-right">Stock</th>
-          <th className="px-3 py-2 text-right">Days dormant</th>
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map((r, i) => (
-          <tr key={String(r.sku)} className={i % 2 ? 'bg-surface-canvas/40' : ''}>
-            <td className="px-3 py-1.5 font-mono font-semibold">{String(r.sku)}</td>
-            <td className="px-3 py-1.5 text-text-muted truncate max-w-md">
-              {String(r.product_title ?? '—')}
-            </td>
-            <td className="px-3 py-1.5 text-right font-mono font-semibold">{Number(r.stock)}</td>
-            <td className="px-3 py-1.5 text-right font-mono text-rose-600">
-              {Number(r.days_dormant)}
-            </td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
+    <DataTable
+      columns={DEAD_COLUMNS}
+      rows={rows}
+      rowKey={(r) => String(r.sku)}
+      loading={loading}
+      emptyMessage="No data — try the daily refresh cron, or write some movement."
+    />
   );
 }
 

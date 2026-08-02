@@ -2,7 +2,7 @@
 
 /**
  * Floating ticket reply shell — Unbox overview compound for Support / Testing
- * ticket tabs: {@link StationComposerDock} via {@link SupportChatComposer}
+ * ticket tabs: {@link OmnichannelComposerDock} via {@link SupportChatComposer}
  * `variant="station-dock"` + embedded {@link StationTerminalDock} as trailingAction.
  */
 

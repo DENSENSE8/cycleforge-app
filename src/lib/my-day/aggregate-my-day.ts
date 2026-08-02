@@ -148,24 +148,29 @@ export async function aggregateMyDayFeed(args: {
 }): Promise<MyDayFeed> {
   const { organizationId, staffId, permissions } = args;
 
-  const allRows = permissions.has('work_orders.view')
-    ? await fetchAllWorkOrderQueues(organizationId, { unified: true })
-    : [];
+  const canSeeWorkOrders = permissions.has('work_orders.view');
 
-  const assigned = permissions.has('work_orders.view')
+  // ONE concurrent wave, not three serial ones. The queue fan-out and the two
+  // interrupt queries are independent — nothing here reads another's result —
+  // yet this used to await the queues, then the interrupts. On the dogfood
+  // tenant each query costs 350ms–1.0s of round-trip largely independent of how
+  // many rows it returns, so every imposed wave was a full round-trip of pure
+  // latency on the first screen an operator sees each morning.
+  const [allRows, techItems, supportItems] = await Promise.all([
+    canSeeWorkOrders
+      ? fetchAllWorkOrderQueues(organizationId, { unified: true })
+      : Promise.resolve<WorkOrderRow[]>([]),
+    listTechQueueItemsForStaff(organizationId, staffId),
+    listSupportFollowupsForStaff(organizationId, staffId),
+  ]);
+
+  const assigned = canSeeWorkOrders
     ? [...allRows]
         .filter((row) => isMineRow(row, staffId))
         .sort(compareWorkOrderRows)
     : [];
 
-  const doNext = permissions.has('work_orders.view')
-    ? topWorkOrderForStaff(allRows, staffId)
-    : null;
-
-  const [techItems, supportItems] = await Promise.all([
-    listTechQueueItemsForStaff(organizationId, staffId),
-    listSupportFollowupsForStaff(organizationId, staffId),
-  ]);
+  const doNext = canSeeWorkOrders ? topWorkOrderForStaff(allRows, staffId) : null;
 
   const interrupts = [
     ...mapSupportInterrupts(supportItems),

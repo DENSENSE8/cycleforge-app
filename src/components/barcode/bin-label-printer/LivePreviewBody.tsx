@@ -1,6 +1,6 @@
 import { Printer } from '@/components/Icons';
 import { LocationDataMatrix } from '../LocationDataMatrix';
-import { gs1LocationAi, locationCode, type LocationSegments } from '@/lib/barcode-routing';
+import { locationLabelPayload, locationCode, type LocationSegments } from '@/lib/barcode-routing';
 import { humanReadable, partialCode } from './index';
 
 interface LivePreviewBodyProps {
@@ -45,7 +45,12 @@ export function LivePreviewBody({ zoneLetter, roomName, aisle, bay, level, posit
       </div>
       <div className="flex h-[160px] w-[160px] shrink-0 items-center justify-center rounded-lg bg-surface-card p-2 ring-1 ring-border-soft">
         {segments ? (
-          <LocationDataMatrix value={gs1LocationAi(segments, { gln })} size={144} fgColor="#0F172A" />
+          <LocationDataMatrix
+            value={locationLabelPayload(segments, { gln }).value}
+            symbology={locationLabelPayload(segments, { gln }).symbology}
+            size={144}
+            fgColor="#0F172A"
+          />
         ) : (
           <div className="flex h-full w-full flex-col items-center justify-center gap-1 text-center">
             <Printer className="h-5 w-5 text-text-faint" />

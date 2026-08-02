@@ -13,7 +13,7 @@ import { conditionGradeTableLabel, workflowStatusTableLabel, WORKFLOW_BADGE } fr
 import {
   OrderIdChip, TrackingChip, SkuScanRefChip, SerialChip, TicketChip, getLast8,
 } from '@/components/ui/CopyChip';
-import { dispatchSelectLine } from '@/components/station/ReceivingLinesTable';
+import { dispatchSelectLine } from '@/components/station/receiving-lines-table-helpers';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { railRelativeTime, type SidebarRailRowContext } from '@/components/sidebar/SidebarRailShell';
 import { SidebarRecentRailBase } from '@/components/sidebar/rail-shell/SidebarRecentRailBase';

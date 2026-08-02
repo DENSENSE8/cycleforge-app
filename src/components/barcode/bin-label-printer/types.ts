@@ -1,4 +1,3 @@
-import { DEFAULT_GLN } from '@/lib/barcode-routing';
 
 export interface PrinterConfig {
   maxAisles: number;
@@ -13,7 +12,11 @@ export const DEFAULT_CONFIG: PrinterConfig = {
   maxBays: 12,
   maxLevels: 5,
   maxPositions: 20,
-  gln: DEFAULT_GLN,
+  // No default GLN. A GLN is a LICENSED identifier — the old
+  // `DEFAULT_GLN` placeholder printed GS1's documentation number on every
+  // label. Empty means "this warehouse asserts no GLN", which is a legal
+  // state; the label then carries the bare location code.
+  gln: '',
 };
 
 export const CONFIG_KEY = 'binPrinter.config.v4';

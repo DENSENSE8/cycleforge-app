@@ -8,10 +8,13 @@
  * {@link StaffAccountFooter}. Desktop GlobalHeader has no staff avatar. Both
  * ends wear the SAME circular mark (`IdentityMark` / `StaffAvatar`), and the
  * org control is always a dropdown trigger — single-org accounts included.
+ * Identity menus (org + staff ⋯) are a **child of the trigger** via
+ * `SIDEBAR_SPINE_MENU_PANEL_CLASS` + `*-stretch` — never a wider magic width /
+ * bare `text-sm`. Menu type = caption/micro (trigger org name stays body).
  *
  * SoT: SIDEBAR_PAGE_NAV + useSidebarModeNav · HeaderModeSwitcher · HeaderRecentsSwitcher
  *      · HeaderPinsSwitcher / useQuickAccess · OrgWorkspaceControl · StaffAccountFooter
- *      · IdentityMark / StaffAvatar
+ *      · IdentityMark / StaffAvatar · sidebar-spine.ts
  * Display law: .claude/rules/display/workbench.md (L2 in GlobalHeader)
  *
  * Run: node --test --import tsx \
@@ -177,6 +180,40 @@ test('OrgWorkspaceControl left-justifies org label; multi-org may expand a menu'
   assert.doesNotMatch(MASTER_VIEW, /showNavToggle/);
   assert.doesNotMatch(MASTER_VIEW, /onOpen/);
   assert.doesNotMatch(MASTER_NAV, /onOpenNav/);
+});
+
+test('spine identity menus are a child of the trigger (SoT — never a wider magic w-[Npx])', () => {
+  // Org switch + staff ⋯ menus used to ship w-[260px] / w-[280px] — wider than
+  // the 240px spine. Width now comes from AnchoredLayer *-stretch against the
+  // trigger/row (inset by band pad) + SIDEBAR_SPINE_MENU_* chrome — a denser
+  // child of the control, not a full-column twin.
+  const SPINE = code(sourceOf('../sidebar/sidebar-spine.ts'));
+  assert.match(SPINE, /SIDEBAR_SPINE_MENU_PANEL_CLASS/);
+  assert.match(SPINE, /SIDEBAR_SPINE_MENU_HEADER_CLASS/);
+  assert.match(SPINE, /SIDEBAR_SPINE_MENU_ACTION_CLASS/);
+  assert.match(SPINE, /SIDEBAR_SPINE_WIDTH_PX = 240/);
+
+  assert.match(ORG_CONTROL, /SIDEBAR_SPINE_MENU_PANEL_CLASS/);
+  assert.match(ORG_CONTROL, /placement="bottom-stretch"/);
+  assert.match(ORG_CONTROL, /anchorRef=\{triggerRef\}/);
+  assert.match(STAFF_FOOTER, /SIDEBAR_SPINE_MENU_PANEL_CLASS/);
+  assert.match(STAFF_FOOTER, /placement="top-stretch"/);
+  assert.match(STAFF_FOOTER, /anchorRef=\{rowRef\}/);
+
+  // No second geometry — magic widths on these two files are a regression.
+  assert.doesNotMatch(ORG_CONTROL, /w-\[\d+px\]/);
+  assert.doesNotMatch(STAFF_FOOTER, /w-\[\d+px\]/);
+});
+
+test('spine identity menus use dense caption type (no bare text-sm; org trigger stays body)', () => {
+  // Trigger org name = text-role-body; menu names/actions = text-role-caption
+  // (+ micro meta). Staff footer + ⋯ menu stay caption. A raw text-sm twin is
+  // how menus drifted chunkier than the spine.
+  assert.match(ORG_CONTROL, /data-master-nav-org[\s\S]*?text-role-body font-semibold/);
+  assert.match(ORG_CONTROL, /SIDEBAR_SPINE_MENU_PANEL_CLASS[\s\S]*?text-role-caption font-semibold/);
+  assert.doesNotMatch(ORG_CONTROL, /\btext-sm\b/);
+  assert.match(STAFF_FOOTER, /text-role-caption font-semibold leading-tight/);
+  assert.doesNotMatch(STAFF_FOOTER, /\btext-sm\b/);
 });
 
 test('GlobalHeader and MasterNav spine share TOP_CHROME_BAND face (one hairline Y)', () => {

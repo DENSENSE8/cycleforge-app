@@ -2,6 +2,7 @@ import { requirePermission } from '@/lib/auth/page-guard';
 import { queryRaw, queryOne } from '@/lib/neon-client';
 import { unitStatusBadgeClass } from '@/lib/unit-status';
 import Link from 'next/link';
+import { DataTable, type DataTableColumn } from '@/design-system/components/DataTable';
 
 export const dynamic = 'force-dynamic';
 
@@ -257,6 +258,245 @@ export default async function SkuDetailPage({ params }: { params: Promise<{ sku:
 
   const totalUnits = statusCounts.reduce((sum, r) => sum + Number(r.count || 0), 0);
 
+  const binColumns: DataTableColumn<BinRow>[] = [
+    {
+      key: 'bin',
+      header: 'Bin',
+      type: 'id',
+      cell: (b) => (
+        <span className="font-mono text-xs">
+          {b.bin_name ?? b.bin_barcode ?? `#${b.location_id}`}
+        </span>
+      ),
+    },
+    {
+      key: 'qty',
+      header: 'Qty',
+      type: 'number',
+      cell: (b) => <span className="font-semibold">{b.qty}</span>,
+    },
+    {
+      key: 'min',
+      header: 'Min',
+      type: 'number',
+      cell: (b) => <span className="text-text-soft">{b.min_qty ?? '—'}</span>,
+    },
+    {
+      key: 'max',
+      header: 'Max',
+      type: 'number',
+      cell: (b) => <span className="text-text-soft">{b.max_qty ?? '—'}</span>,
+    },
+    {
+      key: 'last_counted',
+      header: 'Last counted',
+      type: 'date',
+      cell: (b) => (
+        <span className="text-xs text-text-soft">
+          {b.last_counted ? new Date(b.last_counted).toLocaleString() : '—'}
+        </span>
+      ),
+    },
+  ];
+
+  const unitColumns: DataTableColumn<RecentUnitRow>[] = [
+    {
+      key: 'serial',
+      header: 'Serial',
+      type: 'id',
+      cell: (u) => (
+        <Link
+          href={`/admin/inventory/units/${u.id}`}
+          className="font-mono text-xs text-blue-600 hover:underline"
+        >
+          {u.serial_number}
+        </Link>
+      ),
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      type: 'tag',
+      cell: (u) => <StatusBadge status={u.current_status} />,
+    },
+    {
+      key: 'grade',
+      header: 'Grade',
+      type: 'tag',
+      cell: (u) => <span className="text-xs text-text-muted">{u.condition_grade ?? '—'}</span>,
+    },
+    {
+      key: 'location',
+      header: 'Location',
+      type: 'location',
+      cell: (u) => <span className="text-xs text-text-muted">{u.current_location ?? '—'}</span>,
+    },
+    {
+      key: 'updated',
+      header: 'Updated',
+      type: 'date',
+      cell: (u) => (
+        <span className="text-xs text-text-soft">{new Date(u.updated_at).toLocaleString()}</span>
+      ),
+    },
+  ];
+
+  const allocationColumns: DataTableColumn<AllocationRow>[] = [
+    {
+      key: 'order',
+      header: 'Order',
+      type: 'id',
+      cell: (a) => <span className="font-mono text-xs">#{a.order_id}</span>,
+    },
+    {
+      key: 'unit',
+      header: 'Unit',
+      type: 'id',
+      cell: (a) => (
+        <Link
+          href={`/admin/inventory/units/${a.serial_unit_id}`}
+          className="font-mono text-xs text-blue-600 hover:underline"
+        >
+          #{a.serial_unit_id}
+        </Link>
+      ),
+    },
+    {
+      key: 'state',
+      header: 'State',
+      type: 'tag',
+      cell: (a) => <StatusBadge status={a.state} />,
+    },
+    {
+      key: 'allocated',
+      header: 'Allocated',
+      type: 'date',
+      cell: (a) => (
+        <span className="text-xs text-text-soft">{new Date(a.allocated_at).toLocaleString()}</span>
+      ),
+    },
+    {
+      key: 'by',
+      header: 'By',
+      type: 'text',
+      cell: (a) => (
+        <span className="text-xs text-text-muted">{a.allocated_by_name ?? 'system'}</span>
+      ),
+    },
+  ];
+
+  const ledgerColumns: DataTableColumn<LedgerRow>[] = [
+    {
+      key: 'when',
+      header: 'When',
+      type: 'date',
+      cell: (l) => (
+        <span className="text-xs text-text-soft">{new Date(l.created_at).toLocaleString()}</span>
+      ),
+    },
+    {
+      key: 'delta',
+      header: 'Δ',
+      type: 'number',
+      cell: (l) => (
+        <span
+          className={`font-semibold ${
+            l.delta > 0 ? 'text-green-700' : l.delta < 0 ? 'text-red-700' : 'text-text-soft'
+          }`}
+        >
+          {l.delta > 0 ? '+' : ''}
+          {l.delta}
+        </span>
+      ),
+    },
+    {
+      key: 'reason',
+      header: 'Reason',
+      type: 'tag',
+      cell: (l) => <span className="font-mono text-xs">{l.reason}</span>,
+    },
+    {
+      key: 'dim',
+      header: 'Dim',
+      type: 'tag',
+      cell: (l) => <span className="text-xs text-text-soft">{l.dimension}</span>,
+    },
+    {
+      key: 'refs',
+      header: 'Refs',
+      type: 'text',
+      cell: (l) => (
+        <span className="text-xs text-text-muted">
+          {[
+            l.ref_order_id ? `ord#${l.ref_order_id}` : null,
+            l.ref_receiving_line_id ? `rl#${l.ref_receiving_line_id}` : null,
+            l.ref_serial_unit_id ? `su#${l.ref_serial_unit_id}` : null,
+          ]
+            .filter(Boolean)
+            .join(' · ') || '—'}
+        </span>
+      ),
+    },
+    {
+      key: 'by',
+      header: 'By',
+      type: 'text',
+      cell: (l) => <span className="text-xs text-text-muted">{l.staff_name ?? 'system'}</span>,
+    },
+  ];
+
+  const eventColumns: DataTableColumn<EventRow>[] = [
+    {
+      key: 'when',
+      header: 'When',
+      type: 'date',
+      cell: (e) => (
+        <span className="text-xs text-text-soft">{new Date(e.occurred_at).toLocaleString()}</span>
+      ),
+    },
+    {
+      key: 'event',
+      header: 'Event',
+      type: 'tag',
+      cell: (e) => <span className="font-mono text-xs">{e.event_type}</span>,
+    },
+    {
+      key: 'unit',
+      header: 'Unit',
+      type: 'id',
+      cell: (e) =>
+        e.serial_unit_id ? (
+          <Link
+            href={`/admin/inventory/units/${e.serial_unit_id}`}
+            className="font-mono text-xs text-blue-600 hover:underline"
+          >
+            #{e.serial_unit_id}
+          </Link>
+        ) : (
+          '—'
+        ),
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      type: 'tag',
+      cell: (e) =>
+        e.prev_status && e.next_status ? (
+          <>
+            <StatusBadge status={e.prev_status} /> → <StatusBadge status={e.next_status} />
+          </>
+        ) : (
+          (e.next_status ?? '—')
+        ),
+    },
+    {
+      key: 'by',
+      header: 'By',
+      type: 'text',
+      cell: (e) => <span className="text-xs text-text-muted">{e.actor_name ?? 'system'}</span>,
+    },
+  ];
+
   return (
     <div className="min-h-screen bg-surface-canvas p-8">
       <div className="mx-auto max-w-5xl space-y-8">
@@ -311,7 +551,7 @@ export default async function SkuDetailPage({ params }: { params: Promise<{ sku:
             </div>
             <div>
               <dt className="text-xs uppercase tracking-wide text-text-soft">Boxed</dt>
-              <dd className="mt-1 text-2xl font-semibold text-purple-700">{stock?.boxed_stock ?? 0}</dd>
+              <dd className="mt-1 text-2xl font-semibold text-teal-700">{stock?.boxed_stock ?? 0}</dd>
             </div>
             <div>
               <dt className="text-xs uppercase tracking-wide text-text-soft">Serial units (any state)</dt>
@@ -334,198 +574,66 @@ export default async function SkuDetailPage({ params }: { params: Promise<{ sku:
         </section>
 
         {/* Bin distribution */}
-        <section className="rounded-lg border border-border-soft bg-surface-card shadow-sm">
-          <header className="flex items-center justify-between border-b border-border-hairline px-6 py-4">
+        <section className="space-y-3">
+          <header className="flex items-center justify-between">
             <h2 className="text-lg font-medium text-text-default">Bin distribution</h2>
             <span className="text-xs text-text-soft">{bins.length} bins</span>
           </header>
-          {bins.length === 0 ? (
-            <p className="px-6 py-4 text-sm text-text-muted">No bin assignments for this SKU.</p>
-          ) : (
-            <table className="min-w-full divide-y divide-border-hairline text-sm">
-              <thead className="bg-surface-canvas text-xs uppercase tracking-wide text-text-soft">
-                <tr>
-                  <th className="px-6 py-2 text-left font-medium">Bin</th>
-                  <th className="px-6 py-2 text-right font-medium">Qty</th>
-                  <th className="px-6 py-2 text-right font-medium">Min</th>
-                  <th className="px-6 py-2 text-right font-medium">Max</th>
-                  <th className="px-6 py-2 text-left font-medium">Last counted</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border-hairline">
-                {bins.map((b) => (
-                  <tr key={b.location_id}>
-                    <td className="px-6 py-2 font-mono text-xs">{b.bin_name ?? b.bin_barcode ?? `#${b.location_id}`}</td>
-                    <td className="px-6 py-2 text-right font-semibold">{b.qty}</td>
-                    <td className="px-6 py-2 text-right text-text-soft">{b.min_qty ?? '—'}</td>
-                    <td className="px-6 py-2 text-right text-text-soft">{b.max_qty ?? '—'}</td>
-                    <td className="px-6 py-2 text-xs text-text-soft">
-                      {b.last_counted ? new Date(b.last_counted).toLocaleString() : '—'}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+          <DataTable
+            columns={binColumns}
+            rows={bins}
+            rowKey={(b) => b.location_id}
+            emptyMessage="No bin assignments for this SKU."
+          />
         </section>
 
         {/* Recent serial units */}
         {recentUnits.length > 0 ? (
-          <section className="rounded-lg border border-border-soft bg-surface-card shadow-sm">
-            <header className="flex items-center justify-between border-b border-border-hairline px-6 py-4">
+          <section className="space-y-3">
+            <header className="flex items-center justify-between">
               <h2 className="text-lg font-medium text-text-default">Recent serial units</h2>
               <span className="text-xs text-text-soft">last 25 of {totalUnits}</span>
             </header>
-            <table className="min-w-full divide-y divide-border-hairline text-sm">
-              <thead className="bg-surface-canvas text-xs uppercase tracking-wide text-text-soft">
-                <tr>
-                  <th className="px-6 py-2 text-left font-medium">Serial</th>
-                  <th className="px-6 py-2 text-left font-medium">Status</th>
-                  <th className="px-6 py-2 text-left font-medium">Grade</th>
-                  <th className="px-6 py-2 text-left font-medium">Location</th>
-                  <th className="px-6 py-2 text-left font-medium">Updated</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border-hairline">
-                {recentUnits.map((u) => (
-                  <tr key={u.id}>
-                    <td className="px-6 py-2 font-mono text-xs">
-                      <Link href={`/admin/inventory/units/${u.id}`} className="text-blue-600 hover:underline">
-                        {u.serial_number}
-                      </Link>
-                    </td>
-                    <td className="px-6 py-2"><StatusBadge status={u.current_status} /></td>
-                    <td className="px-6 py-2 text-xs text-text-muted">{u.condition_grade ?? '—'}</td>
-                    <td className="px-6 py-2 text-xs text-text-muted">{u.current_location ?? '—'}</td>
-                    <td className="px-6 py-2 text-xs text-text-soft">{new Date(u.updated_at).toLocaleString()}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <DataTable columns={unitColumns} rows={recentUnits} rowKey={(u) => u.id} />
           </section>
         ) : null}
 
         {/* Open allocations */}
         {allocations.length > 0 ? (
-          <section className="rounded-lg border border-border-soft bg-surface-card shadow-sm">
-            <header className="border-b border-border-hairline px-6 py-4">
+          <section className="space-y-3">
+            <header>
               <h2 className="text-lg font-medium text-text-default">Open allocations</h2>
             </header>
-            <table className="min-w-full divide-y divide-border-hairline text-sm">
-              <thead className="bg-surface-canvas text-xs uppercase tracking-wide text-text-soft">
-                <tr>
-                  <th className="px-6 py-2 text-left font-medium">Order</th>
-                  <th className="px-6 py-2 text-left font-medium">Unit</th>
-                  <th className="px-6 py-2 text-left font-medium">State</th>
-                  <th className="px-6 py-2 text-left font-medium">Allocated</th>
-                  <th className="px-6 py-2 text-left font-medium">By</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border-hairline">
-                {allocations.map((a) => (
-                  <tr key={a.id}>
-                    <td className="px-6 py-2 font-mono text-xs">#{a.order_id}</td>
-                    <td className="px-6 py-2 font-mono text-xs">
-                      <Link href={`/admin/inventory/units/${a.serial_unit_id}`} className="text-blue-600 hover:underline">
-                        #{a.serial_unit_id}
-                      </Link>
-                    </td>
-                    <td className="px-6 py-2"><StatusBadge status={a.state} /></td>
-                    <td className="px-6 py-2 text-xs text-text-soft">{new Date(a.allocated_at).toLocaleString()}</td>
-                    <td className="px-6 py-2 text-xs text-text-muted">{a.allocated_by_name ?? 'system'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <DataTable columns={allocationColumns} rows={allocations} rowKey={(a) => a.id} />
           </section>
         ) : null}
 
         {/* Ledger */}
-        <section className="rounded-lg border border-border-soft bg-surface-card shadow-sm">
-          <header className="flex items-center justify-between border-b border-border-hairline px-6 py-4">
+        <section className="space-y-3">
+          <header className="flex items-center justify-between">
             <h2 className="text-lg font-medium text-text-default">Stock ledger</h2>
             <span className="text-xs text-text-soft">last 100</span>
           </header>
-          {ledger.length === 0 ? (
-            <p className="px-6 py-4 text-sm text-text-muted">No ledger entries for this SKU yet.</p>
-          ) : (
-            <table className="min-w-full divide-y divide-border-hairline text-sm">
-              <thead className="bg-surface-canvas text-xs uppercase tracking-wide text-text-soft">
-                <tr>
-                  <th className="px-6 py-2 text-left font-medium">When</th>
-                  <th className="px-6 py-2 text-right font-medium">Δ</th>
-                  <th className="px-6 py-2 text-left font-medium">Reason</th>
-                  <th className="px-6 py-2 text-left font-medium">Dim</th>
-                  <th className="px-6 py-2 text-left font-medium">Refs</th>
-                  <th className="px-6 py-2 text-left font-medium">By</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border-hairline">
-                {ledger.map((l) => (
-                  <tr key={l.id}>
-                    <td className="px-6 py-2 text-xs text-text-soft">{new Date(l.created_at).toLocaleString()}</td>
-                    <td className={`px-6 py-2 text-right font-semibold ${l.delta > 0 ? 'text-green-700' : l.delta < 0 ? 'text-red-700' : 'text-text-soft'}`}>
-                      {l.delta > 0 ? '+' : ''}{l.delta}
-                    </td>
-                    <td className="px-6 py-2 font-mono text-xs">{l.reason}</td>
-                    <td className="px-6 py-2 text-xs text-text-soft">{l.dimension}</td>
-                    <td className="px-6 py-2 text-xs text-text-muted">
-                      {[
-                        l.ref_order_id ? `ord#${l.ref_order_id}` : null,
-                        l.ref_receiving_line_id ? `rl#${l.ref_receiving_line_id}` : null,
-                        l.ref_serial_unit_id ? `su#${l.ref_serial_unit_id}` : null,
-                      ].filter(Boolean).join(' · ') || '—'}
-                    </td>
-                    <td className="px-6 py-2 text-xs text-text-muted">{l.staff_name ?? 'system'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+          <DataTable
+            columns={ledgerColumns}
+            rows={ledger}
+            rowKey={(l) => l.id}
+            emptyMessage="No ledger entries for this SKU yet."
+          />
         </section>
 
         {/* Events */}
-        <section className="rounded-lg border border-border-soft bg-surface-card shadow-sm">
-          <header className="flex items-center justify-between border-b border-border-hairline px-6 py-4">
+        <section className="space-y-3">
+          <header className="flex items-center justify-between">
             <h2 className="text-lg font-medium text-text-default">Recent inventory events</h2>
             <span className="text-xs text-text-soft">last 50</span>
           </header>
-          {events.length === 0 ? (
-            <p className="px-6 py-4 text-sm text-text-muted">No events recorded for this SKU yet.</p>
-          ) : (
-            <table className="min-w-full divide-y divide-border-hairline text-sm">
-              <thead className="bg-surface-canvas text-xs uppercase tracking-wide text-text-soft">
-                <tr>
-                  <th className="px-6 py-2 text-left font-medium">When</th>
-                  <th className="px-6 py-2 text-left font-medium">Event</th>
-                  <th className="px-6 py-2 text-left font-medium">Unit</th>
-                  <th className="px-6 py-2 text-left font-medium">Status</th>
-                  <th className="px-6 py-2 text-left font-medium">By</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border-hairline">
-                {events.map((e) => (
-                  <tr key={e.id}>
-                    <td className="px-6 py-2 text-xs text-text-soft">{new Date(e.occurred_at).toLocaleString()}</td>
-                    <td className="px-6 py-2 font-mono text-xs">{e.event_type}</td>
-                    <td className="px-6 py-2 font-mono text-xs">
-                      {e.serial_unit_id ? (
-                        <Link href={`/admin/inventory/units/${e.serial_unit_id}`} className="text-blue-600 hover:underline">
-                          #{e.serial_unit_id}
-                        </Link>
-                      ) : '—'}
-                    </td>
-                    <td className="px-6 py-2 text-xs text-text-muted">
-                      {e.prev_status && e.next_status
-                        ? <><StatusBadge status={e.prev_status} /> → <StatusBadge status={e.next_status} /></>
-                        : e.next_status ?? '—'}
-                    </td>
-                    <td className="px-6 py-2 text-xs text-text-muted">{e.actor_name ?? 'system'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+          <DataTable
+            columns={eventColumns}
+            rows={events}
+            rowKey={(e) => e.id}
+            emptyMessage="No events recorded for this SKU yet."
+          />
         </section>
       </div>
     </div>

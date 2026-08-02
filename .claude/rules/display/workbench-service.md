@@ -76,17 +76,26 @@ plainly that a two-clause test admitted the surface.
 ### The list must stay mounted — this is the branch's whole point
 
 `workbench.md` already says *"The collection map does not animate"* and *"keep the table mounted
-`display:none` to preserve cache + scroll."* Support violates that today at the structural level, not
-the cosmetic one: `SupportTicketsWorkspace` returns **either** `SupportTicketsBoard` (no `?ticket=`)
-**or** `SupportTicketFocus` (with `?ticket=`). The queue is *unmounted* when a ticket opens, so
-closing a ticket refetches the board and throws away scroll position and page — on the surface whose
-core loop is "work the queue."
+`display:none` to preserve cache + scroll."* Support violated that at the structural level, not the
+cosmetic one: `SupportTicketsWorkspace` returned **either** `SupportTicketsBoard` (no `?ticket=`)
+**or** `SupportTicketFocus` (with `?ticket=`). The queue was *unmounted* when a ticket opened, so
+closing a ticket refetched the board and threw away scroll position and page — on the surface whose
+core loop is "work the queue." The left rail did not compensate: for Tickets it mounts
+`SupportTicketsRecentRail`, a **recently-selected dock**, not the queue map.
 
-The left rail does not compensate: for Tickets it mounts `SupportTicketsRecentRail`, a
-**recently-selected dock**, not the queue map. So on a ticket open there is no queue on screen at all.
+**Fixed 2026-08-01.** `ServiceWorkspaceShell` renders `list` unconditionally and hides it with
+`display:none` + `inert` while the thread holds the surface. Pinned by
+`service-workspace.guard.test.ts` → *"the shell never unmounts the queue map"*, which also fails on a
+re-introduced `if (!ticketId) return <Board/>` early return.
 
-**The branch exists to fix that adjacency.** Everything else here — the composer name, the context
-rail, the Station chrome removal — is downstream of it.
+**Still staged: the thread COVERS the list, it does not yet sit beside it.** Side-by-side needs a
+compact queue list — the board's chrome (status tabs · search · sort · pagination) does not survive a
+~380px column, and standing up a second list before lifting the board's `sort`/`page` state would put
+two lists over one queue with independent state, which is the drift the house rules ban. When that
+state lifts, the adjacency is a slot swap: `list` takes the compact list and `listHidden` goes away.
+
+**The branch exists for that adjacency.** Everything else here — the composer name, the context rail,
+the Station chrome removal — is downstream of it.
 
 ---
 
@@ -133,7 +142,7 @@ Station scan UI, and never a new archetype.
 | `StationWorkbench` / `StationContextBar` as Support's **primary** shell | Unbox-family *carton* anatomy on a conversation. See below |
 | Unmounting the queue to show the thread | The defect the branch exists to fix |
 | A Support-only composer fork | One shared dock — see Composer SoT |
-| Forcing the Desk ops-queue recipe (LedgerGrid middle + right inspector) as the Support MVP | Right recipe, wrong data shape. That recipe stays for Sales / Fulfillment / Inbound |
+| Forcing the Desk **`ops-queue`** recipe (LedgerGrid middle + right inspector) as the Support MVP | Right recipe, wrong data shape — see [`workbench-ops-queue.md`](workbench-ops-queue.md). That recipe stays for Sales / Fulfillment / Inbound |
 
 ### Station chrome on Support — what actually has to go
 
@@ -226,9 +235,9 @@ A domain that only introduces different business **entities** (SKUs vs Orders vs
 | Domain | Branch? | Recipe |
 |---|---|---|
 | **Support** | **Yes — `service-workspace`** | list \| thread \| context |
-| **Sales** | No | ops-queue (grid \| inspector) |
-| **Fulfillment Desk** | No | ops-queue; Scan-out stays **Station** |
-| **Inbound Desk** | No | ops-queue / boards + inspector |
+| **Sales** | No | **`ops-queue`** (grid \| inspector) — law: [`workbench-ops-queue.md`](workbench-ops-queue.md) |
+| **Fulfillment Desk** | No | **`ops-queue`**; Scan-out stays **Station** |
+| **Inbound Desk** | No | **`ops-queue`** / boards + inspector |
 
 **The slope this blocks is real and named:** `SalesContract`, `FulfillmentContract`,
 `InboundContract` — a contract per nav domain. That is the same mistake as

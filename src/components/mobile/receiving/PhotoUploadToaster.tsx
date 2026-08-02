@@ -2,76 +2,52 @@
 
 import { useEffect, useRef } from 'react';
 import { toast } from '@/lib/toast';
-import { AnimatedCheck } from '@/components/ui/AnimatedCheck';
 import { useUploadQueue } from '@/components/mobile/receiving/PhotoUploadQueue';
-
-/** Turn a raw upload error into a human, actionable line. */
-function humanizeUploadError(raw: string): string {
-  const v = raw.trim();
-  if (/forbidden/i.test(v)) return "You don't have permission to add photos here.";
-  if (/^upload failed \(401\)/i.test(v) || /unauthor/i.test(v)) return 'Signed out — sign in and retry.';
-  if (/bucket/i.test(v) && /exist/i.test(v)) return 'Photo storage isn’t set up (bucket missing). Tell an admin.';
-  if (/network|failed to fetch|load failed/i.test(v)) return 'Network dropped — retry from the gallery.';
-  if (/storage|nas|adapter|gcs|blob|bucket/i.test(v)) return 'Storage is unreachable — retry shortly.';
-  return v || 'Upload failed';
-}
+// One copy of the error ladder, shared with the card that owns this job now.
+import { humanizeUploadError } from '@/components/station/capture-upload/capture-upload-model';
 
 /**
- * Mounted once in the mobile shell. Watches the receiving photo-upload queue and
- * surfaces the *real* outcome of each background upload:
- *   • done   → a top success toast with an animated checkmark.
- *   • failed → a top error toast carrying the server's reason (403, storage, …).
+ * **Demoted to a failure ECHO (P0, 2026-08-01).** The completion/failure SoT is
+ * now `CaptureUploadStatus` — the bottom-anchored card mounted by
+ * `CaptureUploadDock` in `m/(shell)`, which shows queued / uploading / failed /
+ * committed for all three capture domains and carries the **Retry** this file
+ * never could. Station law wanted that all along: pass/fail is a card the
+ * operator can read at ~3 ft, not a four-second corner toast
+ * (`.claude/rules/display/station.md` §6).
  *
- * The capture surface fires only an optimistic "Uploading…" toast and then
- * navigates away, so without this the actual result was never shown — a silent
- * failure read as "photos don't upload at all". This closes that loop and makes
- * any failure visible/diagnosable.
+ * What is left here, and why it is not a twin:
  *
- * Completions are coalesced over a short window so a burst of N photos yields a
- * single "N photos submitted" toast instead of N stacked toasts.
+ *   • **success toast — REMOVED.** The card now shows "N photos saved" and
+ *     holds it. Toasting the same fact beside it is two shapes for one job,
+ *     which is the drift the SoT rules exist to stop.
+ *   • **failure toast — KEPT.** It is the one thing the card cannot do: reach
+ *     an operator who has already walked away from the shell (or is deep in a
+ *     fullscreen `(immersive)` camera, where the dock deliberately does not
+ *     mount). The card remains the durable, retryable record; this is a nudge
+ *     toward it.
+ *
+ * If a later phase gives the immersive group its own status surface, delete
+ * this file rather than growing it back.
  */
 export function PhotoUploadToaster() {
   const entries = useUploadQueue();
 
-  // Per-entry terminal-state dedupe so each upload toasts exactly once.
-  const notifiedDone = useRef<Set<string>>(new Set());
+  // Per-entry terminal-state dedupe so each failure toasts exactly once.
   const notifiedFailed = useRef<Set<string>>(new Set());
 
-  // Coalesce buffers + flush timers.
-  const pendingDone = useRef(0);
+  // Coalesce buffer + flush timer.
   const pendingFailed = useRef<string[]>([]);
-  const doneTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const failTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    let sawDone = false;
     let sawFailed = false;
 
     for (const e of entries) {
-      if (e.state === 'done' && !notifiedDone.current.has(e.id)) {
-        notifiedDone.current.add(e.id);
-        pendingDone.current += 1;
-        sawDone = true;
-      } else if (e.state === 'failed' && !notifiedFailed.current.has(e.id)) {
+      if (e.state === 'failed' && !notifiedFailed.current.has(e.id)) {
         notifiedFailed.current.add(e.id);
         pendingFailed.current.push(e.error || 'Upload failed');
         sawFailed = true;
       }
-    }
-
-    if (sawDone) {
-      if (doneTimer.current) clearTimeout(doneTimer.current);
-      doneTimer.current = setTimeout(() => {
-        const n = pendingDone.current;
-        pendingDone.current = 0;
-        if (n <= 0) return;
-        toast.success(`${n} photo${n === 1 ? '' : 's'} submitted`, {
-          description: 'Saved successfully.',
-          icon: <AnimatedCheck size={18} />,
-          position: 'top-center',
-          duration: 3500,
-        });
-      }, 500);
     }
 
     if (sawFailed) {
@@ -93,10 +69,9 @@ export function PhotoUploadToaster() {
     }
   }, [entries]);
 
-  // Clear timers on unmount.
+  // Clear timer on unmount.
   useEffect(() => {
     return () => {
-      if (doneTimer.current) clearTimeout(doneTimer.current);
       if (failTimer.current) clearTimeout(failTimer.current);
     };
   }, []);

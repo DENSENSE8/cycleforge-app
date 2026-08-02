@@ -31,7 +31,7 @@ import { printProductLabel, printProductLabels } from '@/lib/print/printProductL
 import { Copy, Printer, TicketHelp, User, Smartphone } from '@/components/Icons';
 import { toast } from '@/lib/toast';
 import { safeRandomUUID } from '@/lib/safe-uuid';
-import type { ReceivingLineRow } from '@/components/station/ReceivingLinesTable';
+import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 
 interface UseReceivingLineBulkSelectionArgs {
   /** table-selection scope shared by the table and the action bar. */

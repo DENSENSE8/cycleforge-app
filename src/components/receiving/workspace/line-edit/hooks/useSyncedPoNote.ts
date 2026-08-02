@@ -1,7 +1,8 @@
 'use client';
 
 import { useCallback } from 'react';
-import { dispatchLineUpdated, type ReceivingLineRow } from '@/components/station/ReceivingLinesTable';
+import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import { dispatchLineUpdated } from '@/components/station/receiving-lines-table-helpers';
 import type { InlineActionFeedbackPayload } from '../../InlineActionFeedbackCard';
 
 function zohoPoNotesSkipNote(zoho?: { patched?: boolean; skipped?: string }): string | undefined {

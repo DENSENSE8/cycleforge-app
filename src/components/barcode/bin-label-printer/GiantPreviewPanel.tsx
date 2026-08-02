@@ -3,7 +3,7 @@
 import { Printer } from '@/components/Icons';
 import { LocationDataMatrix } from '../LocationDataMatrix';
 import {
-  gs1LocationAi,
+  locationLabelPayload,
   locationCode,
   type LocationSegments,
 } from '@/lib/barcode-routing';
@@ -39,7 +39,7 @@ export function GiantPreviewPanel({
   const code = segments
     ? locationCode(segments)
     : partialCode({ zone: zoneLetter, aisle, bay, level, position });
-  const ai = segments ? gs1LocationAi(segments, { gln }) : null;
+  const label = segments ? locationLabelPayload(segments, { gln }) : null;
 
   return (
     <div className="rounded-2xl border border-border-soft bg-surface-card p-4">
@@ -60,8 +60,8 @@ export function GiantPreviewPanel({
           </p>
         </div>
         <div className="flex h-[132px] w-[132px] shrink-0 items-center justify-center rounded-lg bg-surface-card p-2 ring-1 ring-border-soft">
-          {ai ? (
-            <LocationDataMatrix value={ai} size={116} fgColor="#0F172A" />
+          {label ? (
+            <LocationDataMatrix value={label.value} symbology={label.symbology} size={116} fgColor="#0F172A" />
           ) : (
             <div className="flex h-full w-full flex-col items-center justify-center gap-1.5 text-center">
               <Printer className="h-5 w-5 text-text-faint" />

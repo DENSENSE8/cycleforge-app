@@ -88,7 +88,8 @@ export interface AiChatConversationProps {
  * in both places. Light theme throughout.
  *
  * Keyboard: Enter / ⌘↵ send · Shift+Enter newline · Esc cancel-edit or stop ·
- * ↑ (empty input) edit last message · ⌘K / Ctrl+K focus the composer.
+ * ↑ (empty input) edit last message. NOT ⌘K — that chord opens the CommandBar
+ * palette and has exactly one owner; the composer auto-focuses instead.
  */
 export default function AiChatConversation({ variant = 'panel', chat }: AiChatConversationProps) {
   const { messages, status, step, send, stop, retry, editMessage } = chat;
@@ -484,7 +485,8 @@ export default function AiChatConversation({ variant = 'panel', chat }: AiChatCo
             )}
           </div>
           <div className="mt-1.5 flex items-center justify-between gap-2 px-0.5 text-role-micro text-text-faint">
-            <span>Enter to send · Shift+Enter newline{status === 'streaming' ? ' · Esc to stop' : ' · ⌘K to focus'}</span>
+            {/* No "⌘K to focus" — this composer never bound it; the palette owns ⌘K. */}
+            <span>Enter to send · Shift+Enter newline{status === 'streaming' ? ' · Esc to stop' : ''}</span>
             {status === 'streaming' ? <span className="text-blue-500">{step ?? 'Working'}{elapsed > 0 ? ` · ${elapsed}s` : ''}</span> : null}
           </div>
         </div>

@@ -2,7 +2,7 @@
 
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
 import { SendPhotoNotePanel } from './SendPhotoNotePanel';
-import type { ReceivingLineRow } from '@/components/station/ReceivingLinesTable';
+import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 
 /**
  * Send-photos-to-ticket for non-Unbox hosts (Testing, Triage, claim

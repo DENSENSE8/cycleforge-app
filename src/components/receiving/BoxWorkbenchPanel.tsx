@@ -29,7 +29,7 @@ import { conditionLabel } from '@/lib/conditions';
 import { printHandlingUnitLabel } from '@/lib/print/printHandlingUnitLabel';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 import { useHandlingUnitDetail } from '@/hooks/useHandlingUnitDetail';
-import type { ReceivingLineRow } from '@/components/station/ReceivingLinesTable';
+import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 
 export function BoxWorkbenchPanel({
   handlingUnitId,

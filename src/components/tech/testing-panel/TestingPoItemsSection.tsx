@@ -4,7 +4,7 @@ import { PoLinesAccordion } from '@/components/receiving/workspace/PoLinesAccord
 import { UnmatchedItemsSection } from '@/components/receiving/workspace/UnmatchedItemsSection';
 import { InlineNotice } from '@/design-system/components';
 import { type UnitSlotSerial } from '@/components/tech/TestingUnitSlots';
-import type { ReceivingLineRow } from '@/components/station/ReceivingLinesTable';
+import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import type { TestingController } from './testing-panel-types';
 import { TestingLineSlot, confirmDeleteSerial } from './TestingLineSlot';
 import { TestingSerialLinkControls } from './TestingSerialLinkControls';

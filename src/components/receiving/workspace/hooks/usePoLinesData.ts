@@ -9,7 +9,7 @@ import {
 } from '@/lib/queries/receiving-queries';
 import { readOptimisticFlag } from '@/lib/receiving/optimistic-serials';
 import { shouldPreserveCachedSerials } from '@/lib/receiving/optimistic-return-line';
-import type { ReceivingLineRow } from '@/components/station/ReceivingLinesTable';
+import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import type { LineSerial } from '@/lib/receiving/optimistic-serials';
 import { filterLinesByPoGroup } from '@/lib/receiving/po-group-title';
 import { useRefreshSignal } from '@/lib/refresh/bus';

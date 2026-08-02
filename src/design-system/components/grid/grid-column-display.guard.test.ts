@@ -53,6 +53,9 @@ const GRID_DIRS = [
   'src/components/dashboard/orders-queue',
   'src/components/warranty/grid',
   'src/components/outbound/ready/grid',
+  'src/components/tracking-exceptions/grid',
+  'src/components/receiving/unfound/grid',
+  'src/components/warehouse/bins-grid',
   'src/features/review/catalog-link/grid',
 ] as const;
 

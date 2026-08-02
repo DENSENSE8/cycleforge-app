@@ -6,6 +6,11 @@ import {
   SIDEBAR_MASTER_NAV_MODE_GAP,
   SIDEBAR_MASTER_NAV_MODE_PAD_X,
 } from '@/components/layout/header-shell';
+import {
+  SIDEBAR_SPINE_MENU_ACTION_CLASS,
+  SIDEBAR_SPINE_MENU_HEADER_CLASS,
+  SIDEBAR_SPINE_MENU_PANEL_CLASS,
+} from '@/components/sidebar/sidebar-spine';
 import { ChevronDown, Settings } from '@/components/Icons';
 import { IdentityMark } from '@/components/identity';
 import { AnchoredLayer } from '@/design-system';
@@ -27,12 +32,15 @@ import { cn } from '@/utils/_cn';
  * The mark is the shared circular {@link IdentityMark} at the same `sm`
  * density as {@link StaffAccountFooter} — the two ends of the spine read as one
  * identity family, which is exactly what a hand-typed `rounded-md` here lost.
+ *
+ * Menu is a **child of the trigger**: `bottom-stretch` on the button (not the
+ * full column), dense chrome + caption type — never a wider/chunkier twin.
  */
 export function OrgWorkspaceControl({ className }: { className?: string }) {
   const { user, has } = useAuth();
   const { switching, switchErr, switchTo } = useSwitchOrg();
   const [open, setOpen] = useState(false);
-  const anchorRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
 
   if (!user) return null;
 
@@ -43,7 +51,6 @@ export function OrgWorkspaceControl({ className }: { className?: string }) {
   return (
     <div className={cn('flex h-full w-full min-w-0 items-stretch', className)}>
       <div
-        ref={anchorRef}
         className={cn(
           'flex min-w-0 flex-1 items-center',
           SIDEBAR_MASTER_NAV_MODE_GAP,
@@ -51,6 +58,7 @@ export function OrgWorkspaceControl({ className }: { className?: string }) {
         )}
       >
         <button
+          ref={triggerRef}
           type="button"
           onClick={() => setOpen((v) => !v)}
           aria-label={
@@ -87,33 +95,33 @@ export function OrgWorkspaceControl({ className }: { className?: string }) {
       <AnchoredLayer
         open={open}
         onClose={() => setOpen(false)}
-        anchorRef={anchorRef}
-        placement="bottom-start"
+        anchorRef={triggerRef}
+        placement="bottom-stretch"
         gap={4}
       >
         <div
           role="listbox"
           aria-label="Switch workspace"
-          className="w-[260px] overflow-hidden rounded-xl border border-border-soft bg-surface-card shadow-xl"
+          className={SIDEBAR_SPINE_MENU_PANEL_CLASS}
         >
-          <div className="flex items-center gap-2.5 border-b border-border-hairline px-3 py-2">
-            <IdentityMark initials={orgInitials(user.organizationName)} size="sm" />
+          <div className={SIDEBAR_SPINE_MENU_HEADER_CLASS}>
+            <IdentityMark initials={orgInitials(user.organizationName)} size="xs" />
             <div className="min-w-0">
               <div className="truncate text-role-eyebrow uppercase tracking-[0.14em] text-text-faint">
                 Current
               </div>
-              <div className="truncate text-sm font-semibold text-text-default">
+              <div className="truncate text-role-caption font-semibold leading-tight text-text-default">
                 {user.organizationName}
               </div>
             </div>
           </div>
           {switchErr ? (
-            <div className="mx-2 mt-2 rounded-lg bg-rose-50 px-2.5 py-1.5 text-role-caption text-rose-700 ring-1 ring-inset ring-rose-200">
+            <div className="mx-1.5 mt-1 rounded-md bg-rose-50 px-2 py-1 text-role-micro text-rose-700 ring-1 ring-inset ring-rose-200">
               {switchErr}
             </div>
           ) : null}
           {canSwitch ? (
-            <div className="max-h-[240px] overflow-y-auto py-1">
+            <div className="max-h-[200px] overflow-y-auto py-0.5">
               {others.map((m) => (
                 <button
                   key={m.organizationId}
@@ -124,23 +132,26 @@ export function OrgWorkspaceControl({ className }: { className?: string }) {
                     setOpen(false);
                     void switchTo(m.organizationId, m.organizationName);
                   }}
-                  className="ds-raw-button flex w-full items-center gap-2.5 px-3 py-2 text-left transition hover:bg-surface-hover disabled:opacity-50"
+                  className={cn(
+                    'ds-raw-button disabled:opacity-50',
+                    SIDEBAR_SPINE_MENU_ACTION_CLASS,
+                  )}
                 >
                   <IdentityMark
                     initials={orgInitials(m.organizationName)}
-                    size="sm"
+                    size="xs"
                     className="bg-surface-strong text-text-muted"
                   />
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-semibold text-text-default">
+                    <span className="block truncate text-role-caption font-semibold leading-tight text-text-default">
                       {m.organizationName}
                     </span>
-                    <span className="block truncate text-role-caption text-text-soft">
+                    <span className="block truncate text-role-micro text-text-soft">
                       {m.organizationSlug ?? '—'}
                       {m.role ? ` · ${m.role.replace(/_/g, ' ')}` : ''}
                     </span>
                   </span>
-                  <span className="shrink-0 text-role-caption text-text-faint">
+                  <span className="shrink-0 text-role-micro text-text-faint">
                     {switching === m.organizationId ? '…' : 'Switch'}
                   </span>
                 </button>
@@ -150,14 +161,16 @@ export function OrgWorkspaceControl({ className }: { className?: string }) {
           {/* Settings → Organization is `admin.view`-gated, so a floor operator
               gets the naming half of this menu and no dead link. */}
           {has('admin.view') ? (
-            <div className="border-t border-border-hairline p-1.5">
+            <div className="border-t border-border-hairline p-1">
               <Link
                 href="/settings/organization"
                 onClick={() => setOpen(false)}
-                className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left transition hover:bg-surface-hover"
+                className={SIDEBAR_SPINE_MENU_ACTION_CLASS}
               >
-                <Settings className="h-3.5 w-3.5 shrink-0 text-text-muted" />
-                <span className="text-sm font-medium text-text-default">Workspace settings</span>
+                <Settings className="h-3 w-3 shrink-0 text-text-muted" />
+                <span className="text-role-caption font-medium text-text-default">
+                  Workspace settings
+                </span>
               </Link>
             </div>
           ) : null}

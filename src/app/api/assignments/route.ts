@@ -60,8 +60,11 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     return NextResponse.json({ success: true, assignments });
   } catch (error) {
     if (isTransientDbError(error)) {
+      // SUB-RESOURCE: a transient blip must not 500 the board. `fallback` was
+      // already an honest marker; `degraded` is the house-wide name for it so
+      // one client check covers every route in this class.
       return NextResponse.json(
-        { success: true, assignments: [], fallback: 'db_unavailable' },
+        { success: true, assignments: [], fallback: 'db_unavailable', degraded: true },
         { headers: { 'x-db-fallback': 'unavailable' } },
       );
     }

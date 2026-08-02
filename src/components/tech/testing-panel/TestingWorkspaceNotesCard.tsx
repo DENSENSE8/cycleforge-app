@@ -10,7 +10,7 @@ import { useCallback } from 'react';
 import { LineNotesCard } from '@/components/receiving/workspace/line-edit/LineNotesCard';
 import { useSyncedPoNote } from '@/components/receiving/workspace/line-edit/hooks/useSyncedPoNote';
 import { shouldUseUnmatchedItemsSurface } from '@/lib/receiving/intake-items-routing';
-import type { ReceivingLineRow } from '@/components/station/ReceivingLinesTable';
+import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import type { TestingController } from './testing-panel-types';
 
 export function TestingWorkspaceNotesCard({

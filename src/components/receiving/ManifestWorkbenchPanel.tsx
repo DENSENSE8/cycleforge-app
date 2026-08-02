@@ -17,7 +17,7 @@ import { unitStatusBadgeTone } from '@/components/station/receiving-constants';
 import { conditionLabel } from '@/lib/conditions';
 import { printManifestLabel } from '@/lib/print/printManifestLabel';
 import { useManifestDetail } from '@/hooks/useManifestDetail';
-import type { ReceivingLineRow } from '@/components/station/ReceivingLinesTable';
+import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 
 const MANIFEST_STATUS_TONE: Record<string, string> = {
   OPEN: 'bg-amber-100 text-amber-800',

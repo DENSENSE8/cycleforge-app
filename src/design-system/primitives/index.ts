@@ -14,7 +14,7 @@ export * from './DetailGrid';
 export * from './DropdownMenu';
 export * from './ExternalLinkButton';
 export * from './SlicedActionDock';
-export * from './StationComposerDock';
+export * from './OmnichannelComposerDock';
 export * from './IconButton';
 export * from './Layer';
 export * from './Panel';

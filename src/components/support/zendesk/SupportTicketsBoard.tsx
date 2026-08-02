@@ -40,8 +40,8 @@ import {
   type TicketListParams,
 } from '@/hooks/useZendeskQueries';
 import { useRecentTickets } from '@/hooks/useRecentTickets';
-import { SupportCreateTicketModal } from '@/components/support/station/SupportCreateTicketModal';
-import { useSupportTicketClaimHost } from '@/components/support/station/useSupportTicketClaimHost';
+import { SupportCreateTicketModal } from '@/components/support/service-workspace/SupportCreateTicketModal';
+import { useSupportTicketClaimHost } from '@/components/support/service-workspace/useSupportTicketClaimHost';
 import { cn } from '@/utils/_cn';
 import { ZendeskSelect } from './ZendeskSelect';
 import { SupportTicketChromeActions } from './SupportTicketChromeActions';

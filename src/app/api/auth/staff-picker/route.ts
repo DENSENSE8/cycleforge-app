@@ -17,6 +17,20 @@
  *
  * Public: the picker has to render before sign-in. We expose only id/name/
  * role/colour/avatar/hasPin — no email, employee_code, or sensitive columns.
+ *
+ * Failure class: **PRIMARY resource.** An empty `staff` array is a legitimate
+ * state (apex host / a tenant with no active staff), so an unexpected throw
+ * MUST NOT be answered with one — it renders as "No active staff. Ask an admin
+ * to add you." and nobody files a bug. On 2026-08-01 this route selected a
+ * column that did not exist, caught the throw, and returned `{ staff: [] }`
+ * with HTTP 200: sign-in was down on every tenant with nothing anywhere to
+ * explain it, while the staff rows were all present and healthy.
+ *
+ * There is no useful half of this payload to salvage — PIN sign-in is
+ * impossible without the roster — so an unexpected throw answers **503** with
+ * `degraded: true` + `error`. Callers must branch on it (`StaffPickerList`
+ * renders a distinct "couldn't load" state; `tests/e2e/global-setup.ts` and
+ * `tests/shot.mjs` already throw on a non-OK status).
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -68,6 +82,15 @@ export async function GET(req: NextRequest) {
     );
   } catch (err) {
     console.error('[/api/auth/staff-picker] error:', err);
-    return NextResponse.json({ staff: [], pinless: isPinlessEnabled() }, { status: 200 });
+    // NOT an empty 200 — see the failure-class note in the header docblock.
+    return NextResponse.json(
+      {
+        staff: [],
+        pinless: isPinlessEnabled(),
+        degraded: true,
+        error: 'staff_picker_unavailable',
+      },
+      { status: 503, headers: { 'cache-control': 'no-store' } },
+    );
   }
 }

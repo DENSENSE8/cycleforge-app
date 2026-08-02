@@ -1,21 +1,13 @@
 'use client';
 
+import { useMemo } from 'react';
 import { Camera } from '@/components/Icons';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { PhotoGallery } from '@/components/shipped/PhotoGallery';
-import { receivingPhotoToGalleryInput } from '@/components/shipped/photo-gallery/photo-gallery-utils';
-import { useReceivingPhotosRealtimeRefresh } from '@/hooks/useReceivingPhotosRealtimeRefresh';
-import { useAuth } from '@/contexts/AuthContext';
-
-interface ReceivingPhoto {
-  id: number;
-  receivingId: number;
-  photoUrl: string;
-  caption: string | null;
-  createdAt?: string;
-  /** Shutter clock from `/api/receiving-photos` — surfaced in the viewer panel. */
-  clientCapturedAt?: string | null;
-}
+import {
+  receivingPhotoMeta,
+  receivingPhotoToGalleryInput,
+} from '@/components/shipped/photo-gallery/photo-gallery-utils';
+import { useReceivingPhotos } from '@/hooks/useReceivingPhotos';
 
 interface ReceivingPhotosSectionProps {
   receivingId: string;
@@ -43,60 +35,34 @@ export function ReceivingPhotosSection({
   readOnly = false,
   hideHeader = false,
 }: ReceivingPhotosSectionProps) {
-  const queryClient = useQueryClient();
-  const { user } = useAuth();
-  const staffId = user?.staffId ?? 0;
-  const queryKey = ['receiving-photos', receivingId] as const;
-  const {
-    data: photos,
-    isFetching,
-    isError: photosError,
-  } = useQuery<ReceivingPhoto[]>({
-    queryKey,
-    queryFn: async () => {
-      const res = await fetch(`/api/receiving-photos?receivingId=${receivingId}`);
-      if (!res.ok) {
-        // Read surfaces must not collapse a failed fetch into "no photos".
-        if (readOnly) throw new Error(`Failed to load photos for receiving ${receivingId}`);
-        return [];
-      }
-      const data = await res.json().catch(() => null);
-      // Some routes return the array directly, others wrap it as `{ photos }`,
-      // and stale cached entries may have been a different shape. Normalize
-      // here so the consumer never has to type-check `photos.map`.
-      if (Array.isArray(data)) return data as ReceivingPhoto[];
-      if (data && Array.isArray((data as { photos?: unknown }).photos)) {
-        return (data as { photos: ReceivingPhoto[] }).photos;
-      }
-      return [];
-    },
-    // 30s poll is the pickup path for photos uploaded elsewhere (e.g. mobile
-    // packer). React Query pauses this while the tab is hidden by default.
-    refetchInterval: readOnly ? false : 30_000,
-    staleTime: 20_000,
+  // Shared carton query — same cache entry as the camera badge and the progress
+  // stepper's stage counts. It used to key on the STRING id, which made it a
+  // second entry for the same rows that no delete-patch could reach.
+  const { photos, isFetching, isError, invalidate } = useReceivingPhotos(receivingId, {
+    readOnly,
   });
 
-  useReceivingPhotosRealtimeRefresh(
-    Number(receivingId),
-    staffId,
-    () => queryClient.invalidateQueries({ queryKey }),
-    !readOnly && staffId > 0,
+  const galleryPhotos = useMemo(
+    () =>
+      photos.map((p) =>
+        readOnly
+          ? // No numeric `id` — that is what keeps delete off the look-up surface
+            // (`usePhotoGallery.canDeleteCurrent`). `meta` arms nothing: upload is
+            // gated on the `receivingId` PROP, which the read branch omits.
+            { url: p.photoUrl, meta: receivingPhotoMeta(p, { poRef }) }
+          : receivingPhotoToGalleryInput(
+              { ...p, createdAt: p.createdAt ?? null },
+              { poRef },
+            ),
+      ),
+    [photos, readOnly, poRef],
   );
 
-  // Defensive — `photos` should always be an array per the queryFn, but a
-  // stale React Query cache entry from an older shape could be non-array
-  // here. Guard against the crash; the queryFn will replace the cache on
-  // its next run.
-  const photosArr: ReceivingPhoto[] = Array.isArray(photos) ? photos : [];
-  const galleryPhotos = photosArr
-    .filter((p) => !!p.photoUrl)
-    .map((p) =>
-      readOnly
-        ? // URL-only — omit numeric ids so delete/upload stay off the look-up surface.
-          { url: p.photoUrl }
-        : receivingPhotoToGalleryInput(p, { poRef }),
-    );
-  const loadingEmpty = isFetching && galleryPhotos.length === 0;
+  // A read surface must never render a fetch failure as "no photos" — that is an
+  // outage reading as "no evidence exists". The bench keeps its quieter
+  // degrade-to-empty, since capture is still live behind it.
+  const showError = readOnly && isError;
+  const loadingEmpty = isFetching && galleryPhotos.length === 0 && !isError;
 
   return (
     <div className="space-y-3">
@@ -111,7 +77,7 @@ export function ReceivingPhotosSection({
         </div>
       )}
 
-      {photosError ? (
+      {showError ? (
         <p className="text-role-caption text-text-danger">Photos unavailable</p>
       ) : loadingEmpty ? (
         <div className="grid grid-cols-3 gap-2 rounded-xl border border-border-hairline bg-surface-canvas p-2">
@@ -130,9 +96,9 @@ export function ReceivingPhotosSection({
             : {
                 receivingId: Number(receivingId),
                 allowReassign: true,
-                onPhotoDeleted: () => queryClient.invalidateQueries({ queryKey }),
-                onPhotoReassigned: () => queryClient.invalidateQueries({ queryKey }),
-                onPhotoUploaded: () => queryClient.invalidateQueries({ queryKey }),
+                onPhotoDeleted: invalidate,
+                onPhotoReassigned: invalidate,
+                onPhotoUploaded: invalidate,
               })}
         />
       )}

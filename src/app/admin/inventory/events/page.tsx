@@ -3,6 +3,7 @@ import { queryRaw } from '@/lib/neon-client';
 import Link from 'next/link';
 import { PageHeader } from '@/components/ui/pane-header';
 import { Button } from '@/design-system/primitives';
+import { DataTable, type DataTableColumn } from '@/design-system/components/DataTable';
 
 export const dynamic = 'force-dynamic';
 
@@ -213,6 +214,98 @@ export default async function EventsExplorerPage({
     since,
     until,
   };
+  const isFiltering = Boolean(
+    eventType || station || sku || unitId != null || actorId != null || since || until,
+  );
+
+  const eventColumns: DataTableColumn<EventRow>[] = [
+    {
+      key: 'when',
+      header: 'When',
+      type: 'date',
+      cell: (e) => (
+        <span className="whitespace-nowrap text-xs text-text-soft">
+          {new Date(e.occurred_at).toLocaleString()}
+        </span>
+      ),
+    },
+    {
+      key: 'event',
+      header: 'Event',
+      type: 'tag',
+      cell: (e) => <span className="font-mono text-xs">{e.event_type}</span>,
+    },
+    {
+      key: 'station',
+      header: 'Station',
+      type: 'text',
+      cell: (e) => <span className="text-xs text-text-muted">{e.station ?? '—'}</span>,
+    },
+    {
+      key: 'unit',
+      header: 'Unit',
+      type: 'id',
+      cell: (e) =>
+        e.serial_unit_id ? (
+          <Link
+            href={`/admin/inventory/units/${e.serial_unit_id}`}
+            className="font-mono text-xs text-blue-600 hover:underline"
+          >
+            #{e.serial_unit_id}
+          </Link>
+        ) : (
+          '—'
+        ),
+    },
+    {
+      key: 'sku',
+      header: 'SKU',
+      type: 'id',
+      cell: (e) =>
+        e.sku ? (
+          <Link
+            href={`/admin/inventory/sku/${encodeURIComponent(e.sku)}`}
+            className="font-mono text-xs text-blue-600 hover:underline"
+          >
+            {e.sku}
+          </Link>
+        ) : (
+          '—'
+        ),
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      type: 'tag',
+      cell: (e) => (
+        <span className="text-xs text-text-muted">
+          {e.prev_status && e.next_status
+            ? `${e.prev_status} → ${e.next_status}`
+            : (e.next_status ?? '—')}
+        </span>
+      ),
+    },
+    {
+      key: 'bin',
+      header: 'Bin',
+      type: 'text',
+      cell: (e) => (
+        <span className="text-xs text-text-muted">
+          {e.bin_name ?? (e.bin_id ? `#${e.bin_id}` : '—')}
+        </span>
+      ),
+    },
+    {
+      key: 'actor',
+      header: 'Actor',
+      type: 'text',
+      cell: (e) => (
+        <span className="text-xs text-text-muted">
+          {e.actor_name ?? (e.actor_staff_id ? `#${e.actor_staff_id}` : 'system')}
+        </span>
+      ),
+    },
+  ];
 
   return (
     <div className="min-h-screen bg-surface-canvas">
@@ -270,8 +363,8 @@ export default async function EventsExplorerPage({
           </div>
         </form>
 
-        <section className="rounded-lg border border-border-soft bg-surface-card shadow-sm">
-          <header className="flex items-center justify-between border-b border-border-hairline px-6 py-3">
+        <section className="space-y-3">
+          <header className="flex items-center justify-between">
             <div className="text-sm text-text-muted">
               <span className="font-semibold">{total.toLocaleString()}</span> event{total === 1 ? '' : 's'} match
               {total > PAGE_SIZE ? <span className="text-text-soft"> · page {page + 1} of {totalPages}</span> : null}
@@ -287,54 +380,14 @@ export default async function EventsExplorerPage({
               </nav>
             ) : null}
           </header>
-          {rows.length === 0 ? (
-            <p className="px-6 py-8 text-sm text-text-muted">No events match the current filters.</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-border-hairline text-sm">
-                <thead className="bg-surface-canvas text-xs uppercase tracking-wide text-text-soft">
-                  <tr>
-                    <th className="px-4 py-2 text-left font-medium">When</th>
-                    <th className="px-4 py-2 text-left font-medium">Event</th>
-                    <th className="px-4 py-2 text-left font-medium">Station</th>
-                    <th className="px-4 py-2 text-left font-medium">Unit</th>
-                    <th className="px-4 py-2 text-left font-medium">SKU</th>
-                    <th className="px-4 py-2 text-left font-medium">Status</th>
-                    <th className="px-4 py-2 text-left font-medium">Bin</th>
-                    <th className="px-4 py-2 text-left font-medium">Actor</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border-hairline">
-                  {rows.map((e) => (
-                    <tr key={e.id}>
-                      <td className="px-4 py-2 text-xs text-text-soft whitespace-nowrap">{new Date(e.occurred_at).toLocaleString()}</td>
-                      <td className="px-4 py-2 font-mono text-xs">{e.event_type}</td>
-                      <td className="px-4 py-2 text-xs text-text-muted">{e.station ?? '—'}</td>
-                      <td className="px-4 py-2 font-mono text-xs">
-                        {e.serial_unit_id ? (
-                          <Link href={`/admin/inventory/units/${e.serial_unit_id}`} className="text-blue-600 hover:underline">
-                            #{e.serial_unit_id}
-                          </Link>
-                        ) : '—'}
-                      </td>
-                      <td className="px-4 py-2 font-mono text-xs">
-                        {e.sku ? (
-                          <Link href={`/admin/inventory/sku/${encodeURIComponent(e.sku)}`} className="text-blue-600 hover:underline">
-                            {e.sku}
-                          </Link>
-                        ) : '—'}
-                      </td>
-                      <td className="px-4 py-2 text-xs text-text-muted">
-                        {e.prev_status && e.next_status ? `${e.prev_status} → ${e.next_status}` : e.next_status ?? '—'}
-                      </td>
-                      <td className="px-4 py-2 text-xs text-text-muted">{e.bin_name ?? (e.bin_id ? `#${e.bin_id}` : '—')}</td>
-                      <td className="px-4 py-2 text-xs text-text-muted">{e.actor_name ?? (e.actor_staff_id ? `#${e.actor_staff_id}` : 'system')}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+          <DataTable
+            columns={eventColumns}
+            rows={rows}
+            rowKey={(e) => e.id}
+            isSearching={isFiltering}
+            searchEmptyMessage="No events match the current filters."
+            emptyMessage="No events yet."
+          />
         </section>
       </div>
     </div>

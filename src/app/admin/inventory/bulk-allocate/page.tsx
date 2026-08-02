@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { PageHeader } from '@/components/ui/pane-header';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { Button } from '@/design-system/primitives';
+import { DataTable, type DataTableColumn } from '@/design-system/components/DataTable';
 
 export const dynamic = 'force-dynamic';
 
@@ -106,6 +107,102 @@ export default async function BulkAllocatePage({
   const { rows, total } = await loadCandidates(page);
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
+  type CandidateView = CandidateRow & { qty: number; eligible: boolean };
+  const viewRows: CandidateView[] = rows.map((r) => {
+    const qty = Math.max(1, Math.floor(Number(r.quantity_str ?? '1') || 1));
+    return { ...r, qty, eligible: r.available_stocked >= qty };
+  });
+
+  const candidateColumns: DataTableColumn<CandidateView>[] = [
+    {
+      key: 'order_id',
+      header: 'Order id',
+      type: 'id',
+      cell: (r) => <span className="font-mono text-xs">#{r.order_id}</span>,
+    },
+    {
+      key: 'ext_id',
+      header: 'Ext id',
+      type: 'id',
+      cell: (r) => (
+        <span className="font-mono text-xs text-text-muted">{r.order_id_text ?? '—'}</span>
+      ),
+    },
+    {
+      key: 'sku',
+      header: 'SKU',
+      type: 'id',
+      cell: (r) => (
+        <Link
+          href={`/admin/inventory/sku/${encodeURIComponent(r.sku)}`}
+          className="font-mono text-xs text-blue-600 hover:underline"
+        >
+          {r.sku}
+        </Link>
+      ),
+    },
+    {
+      key: 'condition',
+      header: 'Condition',
+      type: 'tag',
+      cell: (r) => <span className="text-xs text-text-muted">{r.condition ?? '—'}</span>,
+    },
+    {
+      key: 'qty',
+      header: 'Qty',
+      type: 'number',
+      cell: (r) => r.qty,
+    },
+    {
+      key: 'available',
+      header: 'Available STOCKED',
+      type: 'number',
+      cell: (r) => (
+        <span
+          className={`font-semibold ${
+            r.eligible
+              ? 'text-green-700'
+              : r.available_stocked > 0
+                ? 'text-amber-700'
+                : 'text-red-700'
+          }`}
+        >
+          {r.available_stocked}
+        </span>
+      ),
+    },
+    {
+      key: 'action',
+      header: 'Action',
+      align: 'right',
+      cell: (r) => (
+        <form action={allocateOne}>
+          <input type="hidden" name="orderId" value={r.order_id} />
+          <HoverTooltip
+            label={
+              !r.eligible
+                ? `Need ${r.qty} stocked, only ${r.available_stocked} available`
+                : 'Allocate this order'
+            }
+            asChild
+          >
+            <Button
+              type="submit"
+              variant="primary"
+              size="sm"
+              disabled={!r.eligible}
+              className={
+                !r.eligible ? 'bg-surface-sunken text-text-faint hover:bg-surface-sunken' : undefined
+              }
+            >
+              {r.eligible ? 'Allocate' : 'Insufficient'}
+            </Button>
+          </HoverTooltip>
+        </form>
+      ),
+    },
+  ];
+
   return (
     <div className="min-h-screen bg-surface-canvas">
       <PageHeader backHref="/admin/inventory" title="Bulk allocate" maxWidth="6xl" />
@@ -114,8 +211,8 @@ export default async function BulkAllocatePage({
           Orders with a SKU and no open allocation. Click <em>Allocate</em> to reserve STOCKED units FIFO.
         </p>
 
-        <section className="rounded-lg border border-border-soft bg-surface-card shadow-sm">
-          <header className="flex items-center justify-between border-b border-border-hairline px-6 py-3">
+        <section className="space-y-3">
+          <header className="flex items-center justify-between">
             <div className="text-sm text-text-muted">
               <span className="font-semibold">{total.toLocaleString()}</span> order{total === 1 ? '' : 's'} awaiting allocation
               {total > PAGE_SIZE ? <span className="text-text-soft"> · page {page + 1} of {totalPages}</span> : null}
@@ -136,73 +233,12 @@ export default async function BulkAllocatePage({
             ) : null}
           </header>
 
-          {rows.length === 0 ? (
-            <p className="px-6 py-8 text-sm text-text-muted">
-              Every non-shipped order with a SKU already has an open allocation. Nothing to do.
-            </p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-border-hairline text-sm">
-                <thead className="bg-surface-canvas text-xs uppercase tracking-wide text-text-soft">
-                  <tr>
-                    <th className="px-4 py-2 text-left font-medium">Order id</th>
-                    <th className="px-4 py-2 text-left font-medium">Ext id</th>
-                    <th className="px-4 py-2 text-left font-medium">SKU</th>
-                    <th className="px-4 py-2 text-left font-medium">Condition</th>
-                    <th className="px-4 py-2 text-right font-medium">Qty</th>
-                    <th className="px-4 py-2 text-right font-medium">Available STOCKED</th>
-                    <th className="px-4 py-2 text-right font-medium">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border-hairline">
-                  {rows.map((r) => {
-                    const qty = Math.max(1, Math.floor(Number(r.quantity_str ?? '1') || 1));
-                    const eligible = r.available_stocked >= qty;
-                    return (
-                      <tr key={r.order_id}>
-                        <td className="px-4 py-2 font-mono text-xs">#{r.order_id}</td>
-                        <td className="px-4 py-2 font-mono text-xs text-text-muted">{r.order_id_text ?? '—'}</td>
-                        <td className="px-4 py-2 font-mono text-xs">
-                          <Link href={`/admin/inventory/sku/${encodeURIComponent(r.sku)}`} className="text-blue-600 hover:underline">
-                            {r.sku}
-                          </Link>
-                        </td>
-                        <td className="px-4 py-2 text-xs text-text-muted">{r.condition ?? '—'}</td>
-                        <td className="px-4 py-2 text-right text-sm">{qty}</td>
-                        <td className={`px-4 py-2 text-right text-sm font-semibold ${
-                          eligible ? 'text-green-700' : r.available_stocked > 0 ? 'text-amber-700' : 'text-red-700'
-                        }`}>
-                          {r.available_stocked}
-                        </td>
-                        <td className="px-4 py-2 text-right">
-                          <form action={allocateOne}>
-                            <input type="hidden" name="orderId" value={r.order_id} />
-                            <HoverTooltip
-                              label={
-                                !eligible ? `Need ${qty} stocked, only ${r.available_stocked} available` :
-                                'Allocate this order'
-                              }
-                              asChild
-                            >
-                              <Button
-                                type="submit"
-                                variant="primary"
-                                size="sm"
-                                disabled={!eligible}
-                                className={!eligible ? 'bg-surface-sunken text-text-faint hover:bg-surface-sunken' : undefined}
-                              >
-                                {eligible ? 'Allocate' : 'Insufficient'}
-                              </Button>
-                            </HoverTooltip>
-                          </form>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
+          <DataTable
+            columns={candidateColumns}
+            rows={viewRows}
+            rowKey={(r) => r.order_id}
+            emptyMessage="Every non-shipped order with a SKU already has an open allocation. Nothing to do."
+          />
         </section>
 
         <footer className="text-xs text-text-soft">

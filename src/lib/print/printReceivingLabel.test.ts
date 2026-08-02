@@ -4,6 +4,8 @@ import {
   labelCornerTicketDigits,
   receivingLabelPlatformDisplay,
   receivingLabelPoCornerDisplay,
+  receivingPayloadToFace,
+  resolveReceivingQrValue,
 } from './printReceivingLabel';
 
 test('labelCornerTicketDigits prefers Zendesk provider id over registry id', () => {
@@ -49,4 +51,34 @@ test('receivingLabelPoCornerDisplay shows provider ticket on label face', () => 
     }),
     '#9395',
   );
+});
+
+test('receivingPayloadToFace keeps R- HRI when matrix encodes platform URL', () => {
+  const prevApp = process.env.NEXT_PUBLIC_APP_URL;
+  process.env.NEXT_PUBLIC_APP_URL = 'https://app.cycleforge.ai';
+  try {
+    const face = receivingPayloadToFace({
+      receivingId: 12,
+      orgSlug: 'usav',
+      scanValue: 'RCV-12',
+      platform: 'eBay',
+      notes: '',
+      conditionCode: 'BRAND_NEW',
+      date: '8/1/26',
+    });
+    assert.equal(resolveReceivingQrValue({
+      receivingId: 12,
+      orgSlug: 'usav',
+      scanValue: 'RCV-12',
+      platform: 'eBay',
+      notes: '',
+      conditionCode: 'BRAND_NEW',
+      date: '8/1/26',
+    }), 'https://usav.app.cycleforge.ai/m/r/12');
+    assert.equal(face.hri, 'R-12');
+    assert.equal(face.matrix.value, 'https://usav.app.cycleforge.ai/m/r/12');
+  } finally {
+    if (prevApp === undefined) delete process.env.NEXT_PUBLIC_APP_URL;
+    else process.env.NEXT_PUBLIC_APP_URL = prevApp;
+  }
 });

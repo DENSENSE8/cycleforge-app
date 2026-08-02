@@ -6,6 +6,7 @@
  * second nav map or section labels.
  */
 
+import { searchNav } from '@/lib/nav/nav-search';
 import {
   spineAccentFor,
   type SpineAccentClasses,
@@ -167,24 +168,42 @@ export function buildCommandBarNavGroups(
 }
 
 /**
- * Filter page rows by label/href. Subgroup chrome is dropped while filtering
- * (browse-time IA); matching Receiving pages stay indented.
+ * Filter page rows through the shared nav matcher. Subgroup chrome is dropped
+ * while filtering (browse-time IA); matching Receiving pages stay indented.
+ *
+ * Ranking is applied WITHIN each band, not across them: the palette's bands are
+ * the spine's sections, and re-sorting bands by best-hit would make the group
+ * order jump around under the cursor while typing. Cross-band ranking is the
+ * flat-list job, which is what the spine does.
+ *
+ * `href` rides as a keyword, so it is searchable but can never outrank a label.
  */
 export function filterCommandBarNavGroups(
   groups: readonly CommandBarNavGroup[],
   query: string,
 ): CommandBarNavGroup[] {
-  const q = query.trim().toLowerCase();
-  if (!q) return [...groups];
+  if (!query.trim()) return [...groups];
 
   return groups.flatMap((group) => {
     const pages = group.rows.filter(
-      (row): row is CommandBarNavPageRow =>
-        row.type === 'page' &&
-        (row.label.toLowerCase().includes(q) ||
-          row.href.toLowerCase().includes(q)),
+      (row): row is CommandBarNavPageRow => row.type === 'page',
     );
-    if (pages.length === 0) return [];
-    return [{ ...group, rows: pages }];
+    const ranked = searchNav(
+      pages.map((row) => ({ ...row, keywords: [row.href] })),
+      query,
+    );
+    if (ranked.length === 0) return [];
+    // Drop the synthetic keyword field again — the row type is the palette's
+    // contract, and widening it for a value no consumer renders would be a
+    // second shape to keep in sync. Highlighting is the flat-list job.
+    return [
+      {
+        ...group,
+        rows: ranked.map(({ item }) => {
+          const { keywords: _keywords, ...row } = item;
+          return row;
+        }),
+      },
+    ];
   });
 }
