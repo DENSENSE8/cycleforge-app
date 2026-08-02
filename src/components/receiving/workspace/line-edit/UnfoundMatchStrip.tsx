@@ -32,12 +32,8 @@ import {
   type ComponentType,
   type SVGProps,
 } from 'react';
-import { AnimatePresence, motion } from '@/design-system/motion';
-import {
-  useMotionPresence,
-  useMotionTransition,
-} from '@/design-system/foundations/motion-framer-hooks';
-import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
+import { AnimatePresence, motion, motionRole, useMotionRole } from '@/design-system/motion';
+
 import {
   RefreshCw,
   Search,
@@ -145,8 +141,9 @@ export function UnfoundMatchStrip({
   // Crossfade the search bar ⇄ the action grid — one focus surface swaps for the
   // other. Opacity + small-y via the shared workbench-pane preset; reduced motion
   // collapses to opacity automatically through the hook bridge.
-  const stepPresence = useMotionPresence(framerPresence.workbenchPane);
-  const stepTransition = useMotionTransition(framerTransition.workbenchPaneMount);
+  // `motionRole.swap.focus` — the pointer-driven focus-surface swap, taken as
+  // one pair so the presence can never drift onto another job's timing.
+  const { presence: stepPresence, transition: stepTransition } = useMotionRole(motionRole.swap.focus);
 
   return (
     <div

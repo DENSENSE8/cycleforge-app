@@ -21,11 +21,27 @@ the physics the house already ships. New animated surfaces name the role; only a
 no role fitting its job reaches past it into the preset catalog.
 
 **The catalog is not deprecated — it is the implementation.** `framerPresence.*` /
-`framerTransition.*` remain the named physics, and the ~90 surfaces already on them are
-correct as written. Roles exist because the catalog answers *"which of these 60 literals do
-I use?"* with silence: it names the curve, never the job, so two siblings doing the same job
-picked different literals and neither was wrong. **Do not sweep existing call sites onto
-roles for symmetry** — migrate a surface when you are already editing its motion.
+`framerTransition.*` remain the named physics. Roles exist because the catalog answers
+*"which of these 60 literals do I use?"* with silence: it names the curve, never the job, so
+two siblings doing the same job picked different literals and neither was wrong.
+
+**A role, once adopted, is adopted EVERYWHERE its job occurs.** Half a vocabulary is worse
+than none: two spellings for one job is exactly the "which of these do I use?" question the
+role was introduced to close, now asked about the role instead of the literal. So a role
+migration finishes its job across the repo rather than landing surface-by-surface.
+
+Adoption status (2026-08-01):
+
+| Role | Raw call sites left |
+|---|---|
+| `swap.scan` · `swap.focus` · `push.rail` · `gesture.press` | **none** — fully swept |
+| `feedback.pulse` | none *(no site has the job yet — see below)* |
+
+`feedback.pulse` ships with **zero consumers**, deliberately. `InlinePillPicker` borrows
+`chipCopyFeedback`'s *duration* for a staggered option-chip reveal — a mount animation, not
+an acknowledgement flash. Mapping it to the pulse role because the curve matches would encode
+a false intent. **A shared curve is not a shared job**; that distinction is the whole product
+of this layer, so the role waits for a real flash site.
 
 | Role | Physics | Resolves to (unchanged) | Legal regions |
 |---|---|---|---|

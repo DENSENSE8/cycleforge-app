@@ -1,12 +1,10 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import { AnimatePresence, motion } from '@/design-system/motion';
+import { AnimatePresence, motion, motionRole, useMotionRole } from '@/design-system/motion';
 import { useMutation } from '@tanstack/react-query';
 import { Truck, Check, Loader2, RefreshCw, Clock, AlertTriangle, Trash2 } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
-import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
-import { useMotionPresence, useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
 import type { ShippingRateOption } from '@/lib/shipping/shipstation/types';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 
@@ -76,10 +74,10 @@ export function BuyLabelSection({ orderId, orderRef, onChange }: BuyLabelSection
   // One idempotency key per rate-shop session — a retried purchase is a no-op.
   const clientEventIdRef = useRef<string>('');
 
-  const paneMotion = {
-    ...useMotionPresence(framerPresence.workbenchPane),
-    transition: useMotionTransition(framerTransition.workbenchPaneMount),
-  };
+  // `motionRole.swap.focus` — the pointer-driven focus-surface swap, taken as
+  // one pair, then spread into the single props object this call site passes.
+  const { presence, transition } = useMotionRole(motionRole.swap.focus);
+  const paneMotion = { ...presence, transition };
 
   const ratesMutation = useMutation<RatesResponse, Error, void>({
     mutationFn: async () => {

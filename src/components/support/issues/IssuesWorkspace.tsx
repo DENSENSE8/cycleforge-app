@@ -5,16 +5,12 @@
  * Selection via `?issueId=`; crossfade only the focus surface.
  */
 
-import { AnimatePresence, motion } from '@/design-system/motion';
+import { AnimatePresence, motion, motionRole, useMotionRole } from '@/design-system/motion';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { MessageSquare } from '@/components/Icons';
 import { EmptyState } from '@/design-system/primitives';
 import { KpiStrip } from '@/design-system/components/monitor';
-import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
-import {
-  useMotionPresence,
-  useMotionTransition,
-} from '@/design-system/foundations/motion-framer-hooks';
+
 import { formatMedianDeployLabel } from '@/lib/user-issues/kpi';
 import { useReportedIssuesKpis } from '@/hooks/useReportedIssues';
 import { IssuesDetail } from './IssuesDetail';
@@ -25,8 +21,9 @@ export function IssuesWorkspace() {
   const searchParams = useSearchParams();
   const issueId = Number(searchParams.get('issueId')) || null;
 
-  const paneMotion = useMotionPresence(framerPresence.workbenchPane);
-  const paneTransition = useMotionTransition(framerTransition.workbenchPaneMount);
+  // `motionRole.swap.focus` — the pointer-driven focus-surface swap, taken as
+  // one pair so the presence can never drift onto another job's timing.
+  const { presence: paneMotion, transition: paneTransition } = useMotionRole(motionRole.swap.focus);
 
   const { data: kpis } = useReportedIssuesKpis();
 

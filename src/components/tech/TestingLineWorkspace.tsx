@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { AnimatePresence, motion } from '@/design-system/motion';
+import { AnimatePresence, motion, motionRole, useMotionRole } from '@/design-system/motion';
 import {
   dispatchSelectLine,
   type ReceivingLineRow,
@@ -12,14 +12,7 @@ import {
 } from '@/components/sidebar/receiving/receiving-sidebar-shared';
 import { TestingPanel } from '@/components/tech/TestingPanel';
 import { TestingWorkspaceView } from '@/components/tech/testing/TestingWorkspaceView';
-import {
-  framerPresence,
-  framerTransition,
-} from '@/design-system/foundations/motion-framer';
-import {
-  useMotionPresence,
-  useMotionTransition,
-} from '@/design-system/foundations/motion-framer-hooks';
+
 import { zIndex } from '@/design-system/tokens/z-index';
 
 /** Persisted last-open line — written on select for future session UX / e2e;
@@ -45,8 +38,9 @@ export function TestingLineWorkspace({
 }: Props) {
   const [row, setRow] = useState<ReceivingLineRow | null>(null);
   const lastSelectedRef = useRef<number | null>(null);
-  const panePresence = useMotionPresence(framerPresence.workbenchPane);
-  const paneTransition = useMotionTransition(framerTransition.workbenchPaneMount);
+  // `motionRole.swap.focus` — the pointer-driven focus-surface swap, taken as
+  // one pair so the presence can never drift onto another job's timing.
+  const { presence: panePresence, transition: paneTransition } = useMotionRole(motionRole.swap.focus);
 
   useEffect(() => {
     const handler = (event: Event) => {

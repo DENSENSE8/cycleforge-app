@@ -1,12 +1,8 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { AnimatePresence, motion } from '@/design-system/motion';
-import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
-import {
-  useMotionPresence,
-  useMotionTransition,
-} from '@/design-system/foundations/motion-framer-hooks';
+import { AnimatePresence, motion, motionRole, useMotionRole } from '@/design-system/motion';
+
 import {
   useReceivingClaimController,
   type ClaimModalProps,
@@ -58,8 +54,9 @@ export function ReceivingClaimPanel({
 
 /** Crossfades the active step body keyed on the step id; the stepper stays put. */
 function ClaimStepBody({ c }: { c: ReceivingClaimController }) {
-  const presence = useMotionPresence(framerPresence.workbenchPane);
-  const transition = useMotionTransition(framerTransition.workbenchPaneMount);
+  // `motionRole.swap.focus` — the pointer-driven focus-surface swap, taken as
+  // one pair so the presence can never drift onto another job's timing.
+  const { presence: presence, transition: transition } = useMotionRole(motionRole.swap.focus);
 
   let body: ReactNode;
   switch (c.step) {

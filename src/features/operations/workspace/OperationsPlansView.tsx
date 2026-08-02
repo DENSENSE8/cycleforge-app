@@ -12,15 +12,11 @@
 
 import { useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { AnimatePresence, motion } from '@/design-system/motion';
+import { AnimatePresence, motion, motionRole, useMotionRole } from '@/design-system/motion';
 import { useQuery } from '@tanstack/react-query';
 import { cn } from '@/utils/_cn';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import {
-  useMotionPresence,
-  useMotionTransition,
-} from '@/design-system/foundations/motion-framer-hooks';
-import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
+
 import { Loader2, ClipboardList } from '@/components/Icons';
 import type { PhaseWithTasks, TaskRow } from '@/lib/ops-plans/types';
 import { AgenticLoopLiveConsole } from '@/components/forge/AgenticLoopLiveConsole';
@@ -142,8 +138,9 @@ export function OperationsPlansView() {
   const planId = searchParams.get('open') ?? '';
   const isLiveView = searchParams.get('view') === 'live';
 
-  const presence = useMotionPresence(framerPresence.workbenchPane);
-  const transition = useMotionTransition(framerTransition.workbenchPaneMount);
+  // `motionRole.swap.focus` — the pointer-driven focus-surface swap, taken as
+  // one pair so the presence can never drift onto another job's timing.
+  const { presence: presence, transition: transition } = useMotionRole(motionRole.swap.focus);
 
   const setLiveView = useCallback(
     (live: boolean) => {

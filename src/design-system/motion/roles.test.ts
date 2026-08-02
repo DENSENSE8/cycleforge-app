@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { extname, join, relative } from 'node:path';
 import { test } from 'node:test';
 
 import {
@@ -112,4 +114,113 @@ test('reduced motion preserves the sanctioned height collapse', () => {
   const reduced = reducePresenceShape(framerPresence.collapseHeight);
   assert.ok('height' in reduced.initial, 'collapseHeight must still collapse under reduce');
   assert.ok('height' in reduced.animate, 'collapseHeight must still expand under reduce');
+});
+
+/**
+ * ADOPTION RATCHET — a role, once adopted, is adopted everywhere its job occurs.
+ *
+ * Half a vocabulary is worse than none: two spellings for one job re-asks the
+ * "which of these do I use?" question the role layer exists to close, only now
+ * about the role instead of the literal. So once a role's sweep lands, raw use
+ * of its underlying pair is a regression.
+ *
+ * The allowlist SHRINKS ONLY. Never add a path to make a change pass — migrate
+ * the call site to the role instead.
+ */
+const SRC = join(process.cwd(), 'src');
+
+/** The boundary owns the presets by definition; roles.ts references them. */
+const EXEMPT_PREFIX = 'design-system/motion/';
+
+const RAW_ROLE_USE: ReadonlyArray<{ role: string; patterns: readonly string[] }> = [
+  {
+    role: 'swap.scan',
+    patterns: [
+      'useMotionPresence(framerPresence.stationCartonSwap)',
+      'useMotionTransition(framerTransition.stationCartonSwapMount)',
+    ],
+  },
+  {
+    role: 'swap.focus',
+    patterns: [
+      'useMotionPresence(framerPresence.workbenchPane)',
+      'useMotionTransition(framerTransition.workbenchPaneMount)',
+    ],
+  },
+  {
+    role: 'push.rail',
+    patterns: [
+      'useMotionPresence(framerPresence.detailStackPush)',
+      'useMotionTransition(framerTransition.sidebarNavColumnMount)',
+    ],
+  },
+  { role: 'gesture.press', patterns: ['framerGesture.tapPress'] },
+];
+
+/**
+ * Untracked, actively-being-written station surface from the in-flight Unbox
+ * procedure refactor (2026-08-01). It is the ONE raw `swap.scan` pair left; it
+ * was left alone deliberately rather than edited mid-authorship. Migrate it to
+ * `motionRole.swap.scan` when that refactor settles, then delete this entry.
+ */
+const ALLOWLIST: ReadonlyArray<string> = [
+  'design-system/components/procedure/ProcedureCards.tsx',
+];
+
+function walkTsx(dir: string, out: string[] = []): string[] {
+  for (const entry of readdirSync(dir)) {
+    if (entry === 'node_modules' || entry === '.next') continue;
+    const full = join(dir, entry);
+    if (statSync(full).isDirectory()) walkTsx(full, out);
+    else if (extname(entry) === '.tsx') out.push(full);
+  }
+  return out;
+}
+
+test('no surface uses a role pair raw — roles are adopted, not optional', () => {
+  const offenders: string[] = [];
+  for (const file of walkTsx(SRC)) {
+    const rel = relative(SRC, file).split('\\').join('/');
+    if (rel.startsWith(EXEMPT_PREFIX) || ALLOWLIST.includes(rel)) continue;
+    const text = readFileSync(file, 'utf8');
+    for (const { role, patterns } of RAW_ROLE_USE) {
+      for (const p of patterns) {
+        if (text.includes(p)) offenders.push(`${rel}\n    ${p}  → use motionRole.${role}`);
+      }
+    }
+  }
+  assert.deepEqual(offenders, [], `Raw role-pair use:\n  ${offenders.join('\n  ')}`);
+});
+
+/**
+ * A no-op `void framerPresence.x;` exists only to make a TEXT-matching guard see
+ * a preset name that the component does not actually use — it defeats the guard
+ * rather than satisfying it. `OmnichannelComposerDock` shipped exactly that
+ * (comment: "Keep named presets referenced so ratchet/docs stay aligned") while
+ * hand-rebuilding `workbenchPaneMount` inline.
+ *
+ * Compose the preset (or a role) for real, or don't reference it.
+ */
+// EMPTY, and it stays that way. `OmnichannelComposerDock` was the sole entry
+// until 2026-08-01; it now composes the named `framerPresence.composerDock` /
+// `framerTransition.composerDockMount` pair instead of hand-rebuilding the pane
+// transition behind two `void`s. SHRINKS ONLY — a new entry here is a request to
+// keep faking adoption, which is the one thing this guard exists to catch.
+const VOID_ALLOWLIST: ReadonlyArray<string> = [];
+
+test('no void-statement references to motion presets', () => {
+  const offenders: string[] = [];
+  for (const file of walkTsx(SRC)) {
+    const rel = relative(SRC, file).split('\\').join('/');
+    if (rel.startsWith(EXEMPT_PREFIX) || VOID_ALLOWLIST.includes(rel)) continue;
+    const text = readFileSync(file, 'utf8');
+    if (/\bvoid\s+(framerPresence|framerTransition|framerGesture|motionRole)\./.test(text)) {
+      offenders.push(rel);
+    }
+  }
+  assert.deepEqual(
+    offenders,
+    [],
+    `A \`void <preset>\` statement fakes adoption for a text guard. Compose it for real:\n  ${offenders.join('\n  ')}`,
+  );
 });

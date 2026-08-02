@@ -15,7 +15,14 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { AnimatePresence, LayoutGroup, motion, useReducedMotion } from '@/design-system/motion';
+import {
+  AnimatePresence,
+  LayoutGroup,
+  motion,
+  motionRole,
+  useMotionPressRole,
+  useReducedMotion,
+} from '@/design-system/motion';
 import {
   AlertTriangle,
   Barcode,
@@ -26,7 +33,7 @@ import {
   Settings,
 } from '@/components/Icons';
 import { AnimatedStat } from '@/design-system/components/AnimatedStat';
-import { framerGesture, framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
+import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
 import {
   useMotionPresence,
   useMotionTransition,
@@ -253,6 +260,9 @@ function FeedbackBody({
 }) {
   const [undoBusy, setUndoBusy] = useState(false);
   const shouldReduce = useReducedMotion();
+  // `motionRole.gesture.press` — the role owns the reduce decision; the local
+  // conditions below stay local (nothing to undo yet / a write in flight).
+  const pressGesture = useMotionPressRole(motionRole.gesture.press);
   const cardPresence = useMotionPresence(framerPresence.stationCard);
   const cardTransition = useMotionTransition(framerTransition.stationCardMount);
   const chipTransition = useMotionTransition(framerTransition.quantityBump);
@@ -440,7 +450,7 @@ function FeedbackBody({
             disabled={undoBusy || scanned < 1}
             onClick={() => void handleUndoLastSerial()}
             whileTap={
-              shouldReduce || scanned < 1 || undoBusy ? undefined : framerGesture.tapPress
+              scanned < 1 || undoBusy ? undefined : pressGesture
             }
             transition={serialTransition}
             className="flex w-full min-h-[44px] items-center justify-center gap-2 rounded-lg text-role-caption font-semibold uppercase tracking-widest text-amber-800 transition-colors hover:bg-amber-50 active:bg-amber-100 disabled:pointer-events-none disabled:opacity-35 sm:min-h-0 sm:justify-start sm:py-1.5"

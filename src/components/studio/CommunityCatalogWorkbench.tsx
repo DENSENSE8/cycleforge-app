@@ -20,13 +20,11 @@
 
 import { useCallback, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { AnimatePresence, motion } from '@/design-system/motion';
+import { AnimatePresence, motion, motionRole, useMotionRole } from '@/design-system/motion';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Button } from '@/design-system/primitives/Button';
 import { AlertCircle, Boxes, Copy, Globe, Layers, Loader2, RefreshCw } from '@/components/Icons';
 import { toast } from '@/lib/toast';
-import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
-import { useMotionPresence, useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
 import type { StudioTemplateSummary } from '@/components/studio/studio-types';
 
 const CATALOG_KEY = ['studio-catalog'] as const;
@@ -91,8 +89,9 @@ export function CommunityCatalogWorkbench() {
     },
   });
 
-  const panePresence = useMotionPresence(framerPresence.workbenchPane);
-  const paneTransition = useMotionTransition(framerTransition.workbenchPaneMount);
+  // `motionRole.swap.focus` — the pointer-driven focus-surface swap, taken as
+  // one pair so the presence can never drift onto another job's timing.
+  const { presence: panePresence, transition: paneTransition } = useMotionRole(motionRole.swap.focus);
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col bg-surface-canvas">
