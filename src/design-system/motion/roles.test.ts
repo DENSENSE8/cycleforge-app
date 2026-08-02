@@ -124,8 +124,9 @@ test('reduced motion preserves the sanctioned height collapse', () => {
  * about the role instead of the literal. So once a role's sweep lands, raw use
  * of its underlying pair is a regression.
  *
- * The allowlist SHRINKS ONLY. Never add a path to make a change pass — migrate
- * the call site to the role instead.
+ * There is deliberately NO allowlist here — it briefly carried one entry during
+ * the Unbox procedure refactor and reached zero on 2026-08-01. Do not reintroduce
+ * one to make a change pass; migrate the call site to the role instead.
  */
 const SRC = join(process.cwd(), 'src');
 

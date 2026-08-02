@@ -64,11 +64,9 @@
  * that (it knows the station's event); this component stays domain-free.
  */
 
-import { AnimatePresence, motion } from '@/design-system/motion';
+import { AnimatePresence, motion, motionRole, useMotionRole } from '@/design-system/motion';
 import { useEffect, useRef, type ComponentType, type ReactNode } from 'react';
 import { Check, ChevronLeft, ChevronRight } from '@/components/Icons';
-import { motionRole } from '@/design-system/motion/roles';
-import { useMotionRole } from '@/design-system/motion/use-motion-role';
 import { Button } from '@/design-system/primitives';
 import { STATION_WORKBENCH_COLUMN } from '@/components/station/workbench';
 import { cornerClass } from '@/design-system/tokens/radius';

@@ -69,6 +69,35 @@ test('no file outside src/design-system/motion/** names a motion package', () =>
   );
 });
 
+/**
+ * The barrel is "the one motion import path" — which a package ban alone does
+ * not deliver. `@/design-system/motion/roles` and `.../use-motion-role` are house
+ * modules, so nothing stopped a surface reaching past `index.ts` into them, and
+ * `ProcedureColumn` did exactly that: two deep imports beside a barrel import of
+ * `motion` in the same file. Two spellings for one module is the drift the barrel
+ * exists to remove.
+ *
+ * `./plus` is the deliberate exception — `AnimateNumber` is kept OFF the barrel
+ * so `motion-plus` stays out of every consumer's module graph (bundle altitude,
+ * `.claude/rules/build-gotchas.md`), so reaching it directly is the only way.
+ */
+test('outside the boundary, motion is imported from the barrel — never a deep path', () => {
+  const DEEP_RE = /from\s+['"]@\/design-system\/motion\/(?!plus['"])([^'"]+)['"]/g;
+  const offenders: string[] = [];
+  for (const file of walk(SRC_ROOT)) {
+    const rel = relative(SRC_ROOT, file).split('\\').join('/');
+    if (rel.startsWith(BOUNDARY_PREFIX)) continue;
+    for (const m of readFileSync(file, 'utf8').matchAll(DEEP_RE)) {
+      offenders.push(`${rel} → @/design-system/motion/${m[1]}`);
+    }
+  }
+  assert.deepEqual(
+    offenders,
+    [],
+    `Import from '@/design-system/motion' instead:\n${offenders.join('\n')}`,
+  );
+});
+
 test('the boundary is exactly one file deep', () => {
   const namers: string[] = [];
   for (const file of walk(join(SRC_ROOT, 'design-system', 'motion'))) {
