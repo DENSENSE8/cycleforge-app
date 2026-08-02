@@ -1,7 +1,7 @@
 # DOC catalog — machine-generated SoT
 
 > **Do not hand-edit.** Regenerate: `node scripts/portfolio-sot-sync.mjs`  
-> Generated: `2026-08-02T05:20:03.419Z` · Files: **410** · Repo: `cycleforge-app`  
+> Generated: `2026-08-02T05:27:56.430Z` · Files: **412** · Repo: `cycleforge-app`  
 > Parent index: [INDEX.md](./INDEX.md)
 
 Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*** id  
@@ -13,7 +13,7 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 
 | WT-ID | Absolute path | Branch | HEAD (short) | Exists |
 |-------|---------------|--------|--------------|--------|
-| `main` | `/Users/icecube/repos/cycleforge-app` | `main` | `6581c6211` | yes |
+| `main` | `/Users/icecube/repos/cycleforge-app` | `main` | `fbcb98518` | yes |
 | `ai-chat` | `/Users/icecube/repos/cycleforge-ai-chat` | `topic/ai-chat` | `3f55b275e` | yes |
 | `fba` | `/Users/icecube/repos/cycleforge-fba` | `topic/fba` | `3f55b275e` | yes |
 | `glass` | `/Users/icecube/repos/cycleforge-glass` | `glass-design-system` | `a331b1247` | yes |
@@ -287,6 +287,7 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 | `DOC-TODO-MEDIA-LIBRARY-UX-GEMINI-RESEARCH-BRIEFING-7DD1` | `WS-TODO-MISC` | [`todo/media-library-ux-GEMINI-RESEARCH-BRIEFING.md`](../todo/media-library-ux-GEMINI-RESEARCH-BRIEFING.md) |
 | `DOC-TODO-MOBILE-UNBOX-PHOTO-FLOW-GEMINI-RESEARCH-BRIEFING-2BA6` | `WS-TODO-MISC` | [`todo/mobile-unbox-photo-flow-GEMINI-RESEARCH-BRIEFING.md`](../todo/mobile-unbox-photo-flow-GEMINI-RESEARCH-BRIEFING.md) |
 | `DOC-TODO-MOTION-REDUCE-STRATEGY-COSTING-50E3` | `WS-TODO-MISC` | [`todo/motion-reduce-strategy-COSTING.md`](../todo/motion-reduce-strategy-COSTING.md) |
+| `DOC-TODO-MOTION-ROLE-LAYER-HANDOFF-76E5` | `WS-TODO-MISC` | [`todo/motion-role-layer-HANDOFF.md`](../todo/motion-role-layer-HANDOFF.md) |
 | `DOC-TODO-NAV-ROUTING-REFACTOR-EXECUTION-PROMPT-1A0D` | `WS-TODO-MISC` | [`todo/nav-routing-refactor-EXECUTION-PROMPT.md`](../todo/nav-routing-refactor-EXECUTION-PROMPT.md) |
 | `DOC-TODO-NAV-ROUTING-REFACTOR-FINISH-PROMPT-3E0A` | `WS-TODO-MISC` | [`todo/nav-routing-refactor-FINISH-PROMPT.md`](../todo/nav-routing-refactor-FINISH-PROMPT.md) |
 | `DOC-TODO-NEXTIVA-VOICE-SUPPORT-MODE-PLAN-E13F` | `WS-VOICE` | [`todo/nextiva-voice-support-mode-plan.md`](../todo/nextiva-voice-support-mode-plan.md) |
@@ -368,6 +369,7 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 | `DOC-TODO-SOURCING-HUB-INTEGRATION-PLAN-ADB6` | `WS-SRC` | [`todo/sourcing-hub-integration-plan.md`](../todo/sourcing-hub-integration-plan.md) |
 | `DOC-TODO-SPACING-TOKEN-LEAKAGE-FIX-PLAN-2FE4` | `WS-TODO-MISC` | [`todo/spacing-token-leakage-fix-plan.md`](../todo/spacing-token-leakage-fix-plan.md) |
 | `DOC-TODO-SPINE-DRILL-IN-VERCEL-GEMINI-RESEARCH-BRIEFING-D3B7` | `WS-TODO-MISC` | [`todo/spine-drill-in-vercel-GEMINI-RESEARCH-BRIEFING.md`](../todo/spine-drill-in-vercel-GEMINI-RESEARCH-BRIEFING.md) |
+| `DOC-TODO-SPINE-NAV-SEARCH-CMDK-HANDOFF-5399` | `WS-TODO-MISC` | [`todo/spine-nav-search-cmdk-HANDOFF.md`](../todo/spine-nav-search-cmdk-HANDOFF.md) |
 | `DOC-TODO-STAFF-ORG-AVATAR-PHOTO-HANDOFF-F2C2` | `WS-TODO-MISC` | [`todo/staff-org-avatar-photo-HANDOFF.md`](../todo/staff-org-avatar-photo-HANDOFF.md) |
 | `DOC-TODO-STATION-COLUMN-ARCHETYPE-SPLIT-PLAN-964C` | `WS-TODO-MISC` | [`todo/station-column-archetype-split-plan.md`](../todo/station-column-archetype-split-plan.md) |
 | `DOC-TODO-STATION-COLUMN-POINT-AND-FIX-PROMPT-C524` | `WS-TODO-MISC` | [`todo/station-column-POINT-AND-FIX-PROMPT.md`](../todo/station-column-POINT-AND-FIX-PROMPT.md) |
@@ -708,7 +710,7 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 - `DOC-TEN-SLICE-TEMPLATE-5BE0` — [`tenancy/SLICE_TEMPLATE.md`](../tenancy/SLICE_TEMPLATE.md)
 - `DOC-TEN-TABLES-9F18` — [`tenancy/_analysis/tables.md`](../tenancy/_analysis/tables.md)
 
-### `WS-TODO-MISC` (240)
+### `WS-TODO-MISC` (242)
 
 - `DOC-TODO-00-INDEX-9E1E` — [`todo/kiosk-counter-transaction/00-INDEX.md`](../todo/kiosk-counter-transaction/00-INDEX.md)
 - `DOC-TODO-01-RECEIVING-BOH-SLIM-4C77` — [`todo/foh-boh-surface-split/01-receiving-boh-slim.md`](../todo/foh-boh-surface-split/01-receiving-boh-slim.md)
@@ -813,6 +815,7 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 - `DOC-TODO-MEDIA-LIBRARY-UX-GEMINI-RESEARCH-BRIEFING-7DD1` — [`todo/media-library-ux-GEMINI-RESEARCH-BRIEFING.md`](../todo/media-library-ux-GEMINI-RESEARCH-BRIEFING.md)
 - `DOC-TODO-MOBILE-UNBOX-PHOTO-FLOW-GEMINI-RESEARCH-BRIEFING-2BA6` — [`todo/mobile-unbox-photo-flow-GEMINI-RESEARCH-BRIEFING.md`](../todo/mobile-unbox-photo-flow-GEMINI-RESEARCH-BRIEFING.md)
 - `DOC-TODO-MOTION-REDUCE-STRATEGY-COSTING-50E3` — [`todo/motion-reduce-strategy-COSTING.md`](../todo/motion-reduce-strategy-COSTING.md)
+- `DOC-TODO-MOTION-ROLE-LAYER-HANDOFF-76E5` — [`todo/motion-role-layer-HANDOFF.md`](../todo/motion-role-layer-HANDOFF.md)
 - `DOC-TODO-NAV-ROUTING-REFACTOR-EXECUTION-PROMPT-1A0D` — [`todo/nav-routing-refactor-EXECUTION-PROMPT.md`](../todo/nav-routing-refactor-EXECUTION-PROMPT.md)
 - `DOC-TODO-NAV-ROUTING-REFACTOR-FINISH-PROMPT-3E0A` — [`todo/nav-routing-refactor-FINISH-PROMPT.md`](../todo/nav-routing-refactor-FINISH-PROMPT.md)
 - `DOC-TODO-NOTE-GRAIN-E2E-AND-FOLLOWUPS-EXECUTION-PROMPT-CAA2` — [`todo/note-grain-e2e-and-followups-EXECUTION-PROMPT.md`](../todo/note-grain-e2e-and-followups-EXECUTION-PROMPT.md)
@@ -880,6 +883,7 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 - `DOC-TODO-SIDEBAR-SPINE-VALIDATION-SIMPLIFICATION-HANDOFF-4DD7` — [`todo/sidebar-spine-validation-simplification-HANDOFF.md`](../todo/sidebar-spine-validation-simplification-HANDOFF.md)
 - `DOC-TODO-SPACING-TOKEN-LEAKAGE-FIX-PLAN-2FE4` — [`todo/spacing-token-leakage-fix-plan.md`](../todo/spacing-token-leakage-fix-plan.md)
 - `DOC-TODO-SPINE-DRILL-IN-VERCEL-GEMINI-RESEARCH-BRIEFING-D3B7` — [`todo/spine-drill-in-vercel-GEMINI-RESEARCH-BRIEFING.md`](../todo/spine-drill-in-vercel-GEMINI-RESEARCH-BRIEFING.md)
+- `DOC-TODO-SPINE-NAV-SEARCH-CMDK-HANDOFF-5399` — [`todo/spine-nav-search-cmdk-HANDOFF.md`](../todo/spine-nav-search-cmdk-HANDOFF.md)
 - `DOC-TODO-STAFF-ORG-AVATAR-PHOTO-HANDOFF-F2C2` — [`todo/staff-org-avatar-photo-HANDOFF.md`](../todo/staff-org-avatar-photo-HANDOFF.md)
 - `DOC-TODO-STATION-COLUMN-ARCHETYPE-SPLIT-PLAN-964C` — [`todo/station-column-archetype-split-plan.md`](../todo/station-column-archetype-split-plan.md)
 - `DOC-TODO-STATION-COLUMN-POINT-AND-FIX-PROMPT-C524` — [`todo/station-column-POINT-AND-FIX-PROMPT.md`](../todo/station-column-POINT-AND-FIX-PROMPT.md)
