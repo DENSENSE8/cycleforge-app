@@ -34,6 +34,9 @@ export function useRegisterRightPanel(opts: {
   modal?: boolean;
   /** Non-modal only: invisible dismiss layer so click-off closes. */
   closeOnOutsideClick?: boolean;
+  /** Defaults to `true` — pass `false` to keep this occupant floating.
+   *  See `RightRailPanel.push` for the three sanctioned reasons. */
+  push?: boolean;
   /** Accessible name for the aside — pass one when `modal` is false. */
   ariaLabel?: string;
   /** When false the component makes no claim (e.g. an unopened dock). */
@@ -47,6 +50,7 @@ export function useRegisterRightPanel(opts: {
     elevated,
     modal,
     closeOnOutsideClick,
+    push,
     ariaLabel,
     enabled = true,
   } = opts;
@@ -66,9 +70,10 @@ export function useRegisterRightPanel(opts: {
       elevated,
       modal,
       closeOnOutsideClick,
+      push,
       ariaLabel,
     });
-  }, [id, priority, enabled, elevated, modal, closeOnOutsideClick, ariaLabel]);
+  }, [id, priority, enabled, elevated, modal, closeOnOutsideClick, push, ariaLabel]);
 
   // Keep the live occupant's node fresh (no-ops if the claim isn't active).
   useEffect(() => {
@@ -80,7 +85,8 @@ export function useRegisterRightPanel(opts: {
       elevated,
       modal,
       closeOnOutsideClick,
+      push,
       ariaLabel,
     });
-  }, [id, node, onClose, elevated, modal, closeOnOutsideClick, ariaLabel, enabled]);
+  }, [id, node, onClose, elevated, modal, closeOnOutsideClick, push, ariaLabel, enabled]);
 }

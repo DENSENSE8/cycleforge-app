@@ -2,7 +2,7 @@
 
 import { Fragment, memo, type ReactNode } from 'react';
 import { Check } from '@/components/Icons';
-import { SourceOrderChip, TicketChip, getLast4 } from '@/components/ui/CopyChip';
+import { SourceOrderChip, TicketChip, getLast8 } from '@/components/ui/CopyChip';
 import { GridCellDash, GridDateCellValue } from '@/components/ui/grid-cells';
 import { ledgerRowFillClass } from '@/components/ui/queue-row-chrome';
 import { REPAIR_GRID_CAPABILITIES } from '@/components/repair/repair-grid/repair-grid-descriptor';
@@ -169,12 +169,12 @@ export const RepairGridRow = memo(function RepairGridRow({
           </div>
         );
       case 'order':
-        // Linked online order → `#`+last-4 copy chip; local/walk-in repairs
+        // Linked online order → `#`+last-8 copy chip; local/walk-in repairs
         // (no source order) read as a type label, not a broken order number.
         return (
           <div data-col="order" className={dataCell(col, rule)}>
             {orderValue ? (
-              <SourceOrderChip value={orderValue} display={getLast4(orderValue)} />
+              <SourceOrderChip value={orderValue} display={getLast8(orderValue)} />
             ) : (
               <span className="min-w-0 truncate text-role-caption font-semibold text-text-muted">
                 Walk-in
@@ -186,7 +186,7 @@ export const RepairGridRow = memo(function RepairGridRow({
         return (
           <div data-col="ticket" className={dataCell(col, rule)}>
             {ticketValue ? (
-              <TicketChip value={ticketValue} display={getLast4(ticketValue)} />
+              <TicketChip value={ticketValue} display={getLast8(ticketValue)} />
             ) : (
               <GridCellDash />
             )}

@@ -4,7 +4,7 @@
  * Support · Tickets identity — condensed bookmark for {@link StationContextBar}.
  *
  * Status · subject on the left; compact {@link SupportTicketIdMark} on the right
- * (last-4, no `#`). Open / details / close live in {@link StationMoreDetails}.
+ * (last-8, no `#`). Open / details / close live in {@link StationMoreDetails}.
  */
 
 import { useZendeskTicketBundle } from '@/hooks/useZendeskQueries';

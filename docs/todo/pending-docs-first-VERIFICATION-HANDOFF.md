@@ -9,6 +9,32 @@ history cleanup).
 **Written:** 2026-07-31. Numbers below are what this change produced on that day; the tree has moved
 since (see *Known red — not this change*).
 
+**Verified: 2026-08-01 — all six claims hold.** Details inline below; the short version:
+
+| Check | Result |
+|---|---|
+| Unit tests (§2) | **19 pass, 0 fail** — as documented |
+| `pnpm provision:qa-org` | clean; `pending#2 id=7948`, `pending#3 id=7978`, `packed id=7952` all present |
+| Playwright (§2) | **18/18, zero skips** — `to-ship-pending-grid` 8/8, `bulk-actions` 4/4, `selection-handoff` 1/1, `pending-docs-first` 5/5 |
+| `npm run verify` | red — **none of it this change's** (see §4b) |
+
+**The one thing a re-verifier must know: this suite is contention-sensitive.** The 18/18 above is the
+union of a clean first pass plus targeted reruns on a quiet tree. Mid-verification a second session
+was running Playwright against the *same* dev server, the *same* QA org, and the *same* per-staff
+column-order preference this spec's own `resetColumnOrder` docblock names as cross-run contaminating
+(it also wipes `test-results/` on start, so artifacts vanish mid-investigation). Under that load
+three different tests failed across three runs, each time on a **page-load timeout waiting for
+`pending-grid-body`** — never on the assertion the test exists for. Timing is the tell: the
+bounded-host test runs **8.8s quiet vs 35.2s contended**, a 4× spread.
+
+**Before chasing any red in this file, check for a concurrent run:**
+
+```bash
+pgrep -fl "playwright/lib/worker/workerProcessEntry.js|@playwright/test/cli.js test"
+```
+
+Non-empty ⇒ wait, don't debug. Do not kill it; it is another session's work.
+
 ---
 
 ## 0. Preconditions
@@ -104,14 +130,37 @@ At handoff: **6 vs 0**. It rewires selection so one checked row opens the inspec
 `dashboard-inspector-non-modal` 4/7 red and drops `pending-docs-first` to 3/5 — every failure is a
 selection↔inspector interaction test. The docs-first assertion itself still passes.
 
+> **2026-08-01:** still **6 vs 0**, still uncommitted — but the predicted damage did **not**
+> materialize: `pending-docs-first` ran **5/5**, not 3/5. Either the rework moved since, or the
+> 3/5 was itself contention (see the header note). Re-measure before trusting the 3/5 figure.
+
 **b) `npm run verify` fails on knip** — 5 dead-export findings in
 `src/components/receiving/workspace/derive-capture-step-states.ts` (untracked) and
 `src/hooks/useReceivingPhotoCount.ts`, from the receiving/capture session. Lint, typecheck, unit
 tests and the DS guards are green. **The pre-push hook runs `verify`, so pushing is blocked until
 that session lands.**
 
+> **2026-08-01 — this red has changed shape entirely.** Pushing is still blocked, but by different
+> sessions for different reasons. HEAD moved *during* verification (`d11507264` → `5c0ef6f91`).
+> Current state, all attributed **away** from this change:
+>
+> | Gate | Now | Attribution |
+> |---|---|---|
+> | Typecheck | ✗ 5 errors | all in generated `.next/types/validator.ts`, stale against another session's uncommitted `D src/app/operations/layout.tsx` + `D src/app/studio/layout.tsx`. **No source errors.** |
+> | Lint | ✗ 1 warning | `src/lib/documents/ensure-outbound-docs.ts:122` (`no-console`) — clean in tree, absent from `25d91e688`, introduced by `baa2243e0` (kiosk v2) |
+> | Knip | ✗ 84 unused files, 1156 unused exports | the doc's original 5 findings are **gone**. None of this commit's 22 files is flagged as an unused *file*; hits are exported types inside a repo-wide sweep. Scale + knip's own "add entry / refine project files" advice points at broken entry resolution from those deleted layouts |
+> | Route-permission drift | ✓ **passes** (`exit=0`) | only failed *inside* `verify` because the concurrent session was mid-edit |
+>
+> Unit tests + DS guards, route-auth enforce, and schema drift stay green.
+
 **c)** `to-ship-pending-grid` → *"renders as a gridlined spreadsheet"* flakes under sequential load
 and passes in isolation. Not investigated.
+
+> **2026-08-01 — investigated, and it is not one test.** The whole file is contention-sensitive:
+> across three contended runs the sort test, the dnd-kit reorder test, and the bounded-host test
+> each failed once and each passed on a quiet tree (bounded-host **3/3**). All failures were
+> page-load timeouts, not assertion failures. Cause and the pre-flight check are in the header note.
+> Treat a red in this file as "check for a concurrent run" before "debug the app".
 
 ---
 
@@ -133,7 +182,9 @@ and passes in isolation. Not investigated.
   `dir`; never add an entry to land a change.
 - **First header click occasionally no-ops** right after page load (dnd-kit's 6px drag activation
   swallowing it during hydration is the hypothesis). Did not reproduce in the committed spec; noted
-  rather than chased.
+  rather than chased. **2026-08-01:** reproduced once under a concurrent Playwright run and never on
+  a quiet tree, so slow hydration under contention is the better hypothesis than dnd-kit — the
+  6px-activation theory should not be treated as settled.
 
 ---
 

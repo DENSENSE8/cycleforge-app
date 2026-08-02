@@ -42,7 +42,7 @@ interface LineCartonContextSectionProps {
   photoStage: 'arrival_package' | 'unbox_carton';
   /**
    * Serial-resolved outbound (return) order#. When the carton has no PO# of its
-   * own, this fills the top-row PO#/order chip (last-4) — the lifted linkage
+   * own, this fills the top-row PO#/order chip (last-8) — the lifted linkage
    * identity that replaces the standalone LINKAGE panel.
    */
   linkedOrderNumber?: string | null;

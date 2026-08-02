@@ -17,6 +17,7 @@ export function DetailStackRailRegistrar({
   elevated,
   modal,
   closeOnOutsideClick,
+  push,
   ariaLabel,
   children,
 }: {
@@ -34,6 +35,9 @@ export function DetailStackRailRegistrar({
   /** Non-modal only: invisible dismiss layer so click-off closes (receiving).
    *  Leave off for live-queue inspectors (dashboard). */
   closeOnOutsideClick?: boolean;
+  /** Defaults to `true` (the panel reflows the work surface). Pass `false` only
+   *  with a reason — see `RightRailPanel.push`. */
+  push?: boolean;
   /** Accessible name for the aside — pass one whenever `modal` is false. */
   ariaLabel?: string;
   children: ReactNode;
@@ -46,6 +50,7 @@ export function DetailStackRailRegistrar({
     elevated,
     modal,
     closeOnOutsideClick,
+    push,
     ariaLabel,
     enabled,
   });

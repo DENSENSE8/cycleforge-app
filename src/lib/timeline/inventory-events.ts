@@ -10,6 +10,8 @@ export interface InventoryTimelineRow {
   occurred_at: string | null;
   event_type: string;
   actor_name: string | null;
+  /** `inventory_events.actor_staff_id` — resolves the actor's avatar. */
+  actor_staff_id?: number | null;
   serial_number: string | null;
   sku: string | null;
   prev_status: string | null;
@@ -109,6 +111,7 @@ export function inventoryEventsToTimeline(rows: InventoryTimelineRow[]): Timelin
       subtitle,
       ref,
       actor: r.actor_name ?? undefined,
+      actorStaffId: r.actor_staff_id ?? null,
       sourceEventType: r.event_type,
     };
   });

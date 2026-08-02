@@ -12,6 +12,11 @@ export function isDetailsReopen(selectedDetailId: number | null, clickedDetailId
  * Resolve the next record for up/down keyboard navigation. Returns null when
  * there is no open selection, the list is empty, the selection isn't found, or
  * stepping would run off either end.
+ *
+ * @deprecated Superseded by `resolveRecordCursor` in
+ * `src/lib/record-cursor/cursor-model.ts`, which answers both directions at
+ * once, tolerates a string-vs-number id, and knows about collapsed folds. This
+ * one survives only until its remaining call site migrates (plan Phase 3).
  */
 export function resolveDetailsNavigation<T>(
   orderedRecords: T[],

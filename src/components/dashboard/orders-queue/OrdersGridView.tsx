@@ -49,7 +49,16 @@ import { useOrdersQueueRows } from './useOrdersQueueRows';
 import { useOrdersQueueSelection } from './useOrdersQueueSelection';
 import { AddTrackingPopover } from '@/components/outbound/labels/AddTrackingPopover';
 import { useViewportForcedHidden } from './ViewportForcedHidden';
+import { dispatchCloseShippedDetails } from '@/utils/events';
 import { resolveRailOccupancy } from '@/lib/right-rail/selection-occupancy';
+import {
+  useFoldState,
+  useGroupFoldKeys,
+  usePublishRecordCursor,
+} from '@/lib/record-cursor/useRecordCursor';
+import { recordIdKey } from '@/lib/record-cursor/cursor-model';
+import type { CursorIntent } from '@/lib/record-cursor/cursor-model';
+import { RECORD_CURSOR_PRIORITY } from '@/lib/record-cursor/store';
 
 interface OrdersGridViewProps {
   records: ShippedOrder[];
@@ -122,6 +131,33 @@ interface OrdersGridViewProps {
 }
 
 /**
+ * Bring a stepped-to row into view.
+ *
+ * A DOM query, and deferred two frames — both deliberate:
+ *
+ *  - `LedgerGrid`'s `scrollToKey` cannot serve this. It matches `r:<key>` items,
+ *    and in GROUPED mode `VirtualGroupedSections` emits only `group` items, so a
+ *    leaf inside a fold is unreachable through it. Teaching it grouped-mode leaf
+ *    keys is a public change to a shared grid primitive — *Ask first*.
+ *  - A step may REVEAL a collapsed fold, so the row it lands on is not in the
+ *    DOM yet: one frame for React to flush the fold state, one for
+ *    `CollapsibleGroupRow` to mount its children. A single frame lands on the
+ *    exact rows the operator most needs moved to.
+ *
+ * Best-effort by design: a row outside the virtualizer's window has no element,
+ * and a missing scroll is a far smaller failure than a thrown step.
+ */
+function scrollQueueRowIntoView(id: number | string) {
+  if (typeof document === 'undefined' || typeof requestAnimationFrame === 'undefined') return;
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      const el = document.querySelector(`[data-order-row-id="${String(id)}"]`);
+      if (el instanceof HTMLElement) el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    });
+  });
+}
+
+/**
  * **Outbound orders spreadsheet** — composed from {@link LedgerGrid}.
  *
  * Shared by Pending, Packed, Labels, Staged, Review, and Shipped. Frozen
@@ -180,7 +216,6 @@ export function OrdersGridView({
 
   const { selectedRecord, handleRowClick, openRecord, closeRecord } = useOrdersQueueSelection({
     visibleRecords: displayedRecords,
-    displayedRecords,
     onOpenRecord,
     onCloseRecord,
   });
@@ -221,6 +256,17 @@ export function OrdersGridView({
    * record during the one commit before the set adopts it.
    */
   const railOpenedIdRef = useRef<number | null>(null);
+  /**
+   * A record whose close the rail has ALREADY dispatched but which has not
+   * flushed back yet. Closing is not synchronous here — it round-trips through
+   * the global detail-stack event and the queue hook's bridge — so for a commit
+   * or two `selectedRecordId` still names a record the rail has decided is
+   * gone. `railOpenedIdRef` is null by then (the close branch nulls it), which
+   * makes that record look EXTERNALLY opened to the adopt effect below: clear
+   * the selection inside that window and it re-checked the row it had just
+   * cleared, leaving one row selected after a Clear (a D4 violation).
+   */
+  const railClosingIdRef = useRef<number | null>(null);
 
   // Derive the open record from the set.
   useEffect(() => {
@@ -257,19 +303,133 @@ export function OrdersGridView({
     // that window is what broke `?openOrderId=` on reload.
     if (railOpenedIdRef.current !== selectedRecordId) return;
     railOpenedIdRef.current = null;
+    railClosingIdRef.current = selectedRecordId;
     closeRecord();
+    // …and close the GLOBAL panel, not just this hook's state.
+    //
+    // The rail opens a record through the detail-stack EVENT (`onOpenRecord` →
+    // `dispatchOpenShippedDetails`), so `closeRecord()` — which only clears
+    // local state, since no caller on this surface passes `onCloseRecord` —
+    // left `detail:order` registered and merely OUTRANKED by the 2+ occupant.
+    // It then re-announced itself onto `selectedRecord` through the event
+    // bridge, rebuilding exactly the state this branch had just torn down
+    // (`selectedRecordId` set, ref null) — which the guard above declines to
+    // touch a second time. The operator saw it on the next Clear: the multi
+    // occupant unregistered, the stale inspector surfaced underneath, and the
+    // adopt effect below read it as an external open and re-checked its row.
+    // Clearing the rail left one row selected — the precise D4 violation the
+    // close branch exists to prevent. Guarded by the ref check above, so the
+    // `?openOrderId=` boot window is still never closed from here.
+    dispatchCloseShippedDetails();
   }, [railOccupancy, selectedRecordId, displayedRecords, openRecord, closeRecord, clear]);
 
   // Adopt an externally-opened record into the set, so every entry path lands on
   // the same single selection SoT. Guarded by the ref, not by set size: an
   // external jump SHOULD replace a live multi-select, but a clear must not
   // resurrect the row it just closed.
+  //
+  // Also skip when the set ALREADY contains the open id. Without that, the
+  // 1→2 checkbox path races: derive-open closes the inspector and nulls the
+  // ref, then this effect still sees selectedRecordId for one commit and
+  // selectOnly-collapses the multi-set back to one row (Set ship-by "Applies
+  // to 1"). True external opens (deep link / search / Recents) land with the
+  // id absent from the set, so they still adopt.
   useEffect(() => {
-    if (!railSelection || selectedRecordId == null) return;
+    if (!railSelection) return;
+    if (selectedRecordId == null) {
+      // The close the rail dispatched has landed — stop suppressing that id.
+      railClosingIdRef.current = null;
+      return;
+    }
     if (railOpenedIdRef.current === selectedRecordId) return;
+    if (selectedIds.has(selectedRecordId)) return;
+    // A record the rail is in the middle of closing is not an external open.
+    // Without this, Clear during the close round-trip re-adopted the record and
+    // left its row checked. See `railClosingIdRef`.
+    if (railClosingIdRef.current === selectedRecordId) return;
     railOpenedIdRef.current = selectedRecordId;
     selectOnly(selectedRecordId);
-  }, [railSelection, selectedRecordId, selectOnly]);
+  }, [railSelection, selectedRecordId, selectOnly, selectedIds]);
+
+  // ─── Fold state + the record cursor ────────────────────────────────────────
+  // `dataTestId` is the surface identity, not `selectionScope`: six of the seven
+  // hosts pass the same `DASHBOARD_ORDERS_SELECTION_SCOPE` (see the prop
+  // docblock), so scoping on it would let Labels and Pending overwrite each
+  // other's claim and share each other's expanded folds.
+  const fold = useFoldState(dataTestId, 'default-collapsed');
+  const foldKeys = useGroupFoldKeys(orderGroupsByDate);
+  const { reveal: revealFold } = fold;
+
+  /**
+   * Open a record on behalf of the cursor — reveal, open, then scroll.
+   *
+   * **The `railSelection` branch is load-bearing.** On the three dashboard
+   * outbound lanes the CHECK-SET is the single selection SoT and the open record
+   * is derived from it (see `resolveRailOccupancy` above). Calling `openRecord`
+   * directly here would bypass the set: `railOpenedIdRef` would stay stale and
+   * the adopt effect would fire `selectOnly` a commit later — the exact race the
+   * two refs above exist to arbitrate. A step must go through the same door a
+   * click does.
+   *
+   * `ctx.intent` is unused on this surface because a dashboard row click has no
+   * side effect a step needs to dodge (no `scanMatchedRows` here). It is carried
+   * anyway, undefaulted, because the receiving family in Phase 2 does — and a
+   * default there re-creates the bug the second event name was minted to avoid.
+   */
+  const handleCursorOpen = useCallback(
+    (record: ShippedOrder, ctx: { intent: CursorIntent; revealFoldKey: string | null }) => {
+      if (ctx.revealFoldKey) revealFold(ctx.revealFoldKey);
+      if (railSelection) selectOnly(Number(record.id));
+      else openRecord(record);
+      scrollQueueRowIntoView(record.id);
+    },
+    [revealFold, railSelection, selectOnly, openRecord],
+  );
+
+  const cursor = usePublishRecordCursor<ShippedOrder>({
+    surfaceId: dataTestId,
+    scope: 'record',
+    // This grid is the primary collection wherever it mounts; it never hands the
+    // scope to a sibling rail, so the claim is unconditional.
+    enabled: true,
+    priority: RECORD_CURSOR_PRIORITY.grid,
+    order: orderGroupsByDate,
+    folds: fold.folds,
+    openId: selectedRecordId,
+    getId: getRowId,
+    onOpen: handleCursorOpen,
+  });
+
+  /**
+   * Reveal the fold around an ALREADY-open record — a deep link (`?openOrderId=`)
+   * or a search jump that lands inside a collapsed multi-line order.
+   *
+   * Fires **once per opened record**, tracked by id. Re-running it on every
+   * change of `openRevealFoldKey` would fight the operator: collapsing the fold
+   * that holds the open record would immediately re-expand it, and a fold the
+   * operator shut is a decision, not a state to repair.
+   *
+   * The latch is claimed only once the cursor has ACTUALLY LOCATED the record
+   * (`position !== null`). Claiming it earlier is the deep-link boot bug: a
+   * `?openOrderId=` resolves and opens before the queue's own fetch lands
+   * (see `railOpenedIdRef` below and `useOrdersQueueSelection.ts:73-79`), so on
+   * that first commit the order is empty, `openRevealFoldKey` is null, and a
+   * latch taken there makes the effect bail forever — leaving the record behind
+   * a still-collapsed fold, which is plan §2.2 in new clothes.
+   */
+  const revealedForIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    const key = recordIdKey(selectedRecordId);
+    if (key === null) {
+      revealedForIdRef.current = null;
+      return;
+    }
+    if (revealedForIdRef.current === key) return;
+    // Not found in the published order yet — no answer to latch.
+    if (cursor.position === null) return;
+    revealedForIdRef.current = key;
+    if (cursor.openRevealFoldKey) revealFold(cursor.openRevealFoldKey);
+  }, [selectedRecordId, cursor.position, cursor.openRevealFoldKey, revealFold]);
 
   const { order: persistedOrder, setOrder, resetOrder } = useColumnOrder(tableId);
   const sanitizedOrder = useMemo(
@@ -375,9 +535,16 @@ export function OrdersGridView({
   }, [resetOrder]);
 
   const handleRowAction = useCallback(
-    (record: ShippedOrder, event?: { shiftKey: boolean }) => {
+    (record: ShippedOrder, event?: { shiftKey: boolean; target?: EventTarget | null }) => {
       if (!railSelection) {
         handleRowClick(record);
+        return;
+      }
+      // Checkbox lives inside the row; if a click somehow reaches here from the
+      // select gutter, bail — toggle already ran, and selectOnly would REPLACE
+      // the set (multi-check collapses to the last row).
+      const target = event?.target;
+      if (target instanceof Element && target.closest('[data-select-gutter]')) {
         return;
       }
       const id = Number(record.id);
@@ -484,18 +651,25 @@ export function OrdersGridView({
       group: Parameters<typeof QueueGroupRow>[0]['group'],
       baseStripeIndex: number,
       rowIndex?: number,
-    ) => (
-      <QueueGroupRow
-        group={group}
-        baseStripeIndex={baseStripeIndex}
-        rowIndex={rowIndex}
-        isMobile={isMobile}
-        gridSkin
-        columns={displayColumns}
-        renderRow={renderRow}
-      />
-    ),
-    [isMobile, renderRow, displayColumns],
+    ) => {
+      // Band-qualified — a multi-line order whose lines straddle two date bands
+      // is two folds sharing one `group.key`, and they must toggle separately.
+      const key = foldKeys.get(group);
+      return (
+        <QueueGroupRow
+          group={group}
+          baseStripeIndex={baseStripeIndex}
+          rowIndex={rowIndex}
+          isMobile={isMobile}
+          gridSkin
+          columns={displayColumns}
+          expanded={key === undefined ? undefined : fold.isOpen(key)}
+          onToggleExpanded={key === undefined ? undefined : (next) => fold.toggle(key, next)}
+          renderRow={renderRow}
+        />
+      );
+    },
+    [isMobile, renderRow, displayColumns, foldKeys, fold],
   );
 
   return (

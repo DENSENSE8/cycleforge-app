@@ -21,9 +21,7 @@ test('getSidebarNavItems returns the full sidebar list by default', () => {
   assert.deepEqual(getSidebarNavItems(), APP_SIDEBAR_NAV);
 });
 
-test('Home is top-pinned; Sourcing / Operations ship in Overview; AI Chat under Media', () => {
-  // All four were unparked (the same promotion Studio took into Library).
-  // Re-parking any of them, or moving Home off the top pin, breaks this.
+test('Home is top-pinned; Operations in Monitor; Sourcing under Inventory; Chat under Media', () => {
   const items = getSidebarNavItems();
 
   const home = items.find((item) => item.id === 'home');
@@ -33,16 +31,26 @@ test('Home is top-pinned; Sourcing / Operations ship in Overview; AI Chat under 
   const aiChat = items.find((item) => item.id === 'ai-chat');
   assert.ok(aiChat, 'ai-chat should ship on prod nav');
   assert.equal(aiChat.kind, 'top', 'ai-chat is top-pinned under Media');
+  assert.equal(aiChat.label, 'Chat');
 
-  for (const id of ['operations', 'sourcing']) {
-    const row = items.find((item) => item.id === id);
-    assert.ok(row, `${id} should ship on prod nav`);
-    assert.equal(
-      row.kind === 'main' ? row.mainGroup : null,
-      'overview',
-      `${id} belongs to the Overview drill`,
-    );
-  }
+  const operations = items.find((item) => item.id === 'operations');
+  assert.ok(operations, 'operations should ship on prod nav');
+  assert.equal(
+    operations.kind === 'main' ? operations.mainGroup : null,
+    'monitor',
+    'operations belongs to the Monitor drill',
+  );
+
+  // Sourcing is acquisition — it belongs to the Inventory domain (D9), not to a
+  // page-shape bucket. `kind: 'stock'` was the latter and is retired.
+  const sourcing = items.find((item) => item.id === 'sourcing');
+  assert.ok(sourcing, 'sourcing should ship on prod nav');
+  assert.equal(sourcing.kind, 'domain');
+  assert.equal(
+    sourcing.kind === 'domain' ? sourcing.domainGroup : null,
+    'inventory',
+    'sourcing belongs to the Inventory drill',
+  );
 });
 
 test('getSidebarNavItems omits mobile-restricted routes in mobile mode', () => {
@@ -51,7 +59,9 @@ test('getSidebarNavItems omits mobile-restricted routes in mobile mode', () => {
   assert.equal(navIds.includes('operations'), false);
   assert.equal(navIds.includes('support'), false);
   assert.equal(navIds.includes('admin'), false);
-  assert.equal(navIds.includes('dashboard'), true);
+  // `dashboard` owns no L1 row — its boards are domain modes (D5).
+  assert.equal(navIds.includes('dashboard'), false);
+  assert.equal(navIds.includes('incoming'), true);
   // /fba is a permanent redirect into Shipping — it owns no spine row.
   assert.equal(navIds.includes('fba'), false);
   // Sales history folded into Dashboard L2 — no separate L1 nav row.
@@ -60,7 +70,7 @@ test('getSidebarNavItems omits mobile-restricted routes in mobile mode', () => {
 
 test('prod nav ships every unparked page; only redirect surfaces stay off', () => {
   const navIds = new Set(getSidebarNavItems().map((item) => item.id));
-  // Dogfood parking is retired: Sourcing ships in Overview; AI Chat is top-pinned
+  // Dogfood parking is retired: Sourcing ships in Overview; Chat is top-pinned
   // under Media. `fba` stays off the spine because /fba is a permanent redirect
   // into Shipping, which already owns that surface (no second front door).
   assert.equal(navIds.has('sourcing'), true, 'sourcing ships in Overview');
@@ -76,7 +86,6 @@ test('prod nav ships every unparked page; only redirect surfaces stay off', () =
   // Stations + shipping + inventory + warehouse stay visible (receiving family
   // promoted to L1: Arrival / Unbox / Pickup / Repair + Incoming on Desk).
   for (const id of [
-    'dashboard',
     'triage',
     'receive',
     'pickup',
@@ -93,6 +102,12 @@ test('prod nav ships every unparked page; only redirect surfaces stay off', () =
     assert.equal(navIds.has(id), true, `${id} should stay on dogfood nav`);
   }
   assert.equal(navIds.has('receiving'), false, 'parent Receiving L1 is gone — modes are L1');
+  // Dashboard + the print hub dissolved into domain homes (D2 / D5): the routes
+  // still resolve, the L1 rows do not exist.
+  for (const id of ['dashboard', 'print-labels', 'print-documents']) {
+    assert.equal(navIds.has(id), false, `${id} must not own a spine row`);
+  }
+  assert.equal(navIds.has('sales'), true, 'Sales is its own root section (D4)');
 });
 
 test('isSidebarRouteMobileRestricted only flags mobile-blocked routes', () => {
@@ -183,22 +198,29 @@ test('mode round-trip resolves, preserving unrelated params only on un-migrated 
   }
 });
 
-// A dashboard L2 switch emits only its own delta, so a retired Search handoff
-// (`openOrderId`/`map`/`q`) can never ride along into a domain that has no use
-// for it — the guarantee that let the hand-written clear lists be deleted.
-test('dashboard modes clear Search-scoped openOrderId/map/q', () => {
-  const page = SIDEBAR_PAGE_NAV.find((p) => p.id === 'dashboard');
-  assert.ok(page?.modes);
+// A switch onto a dashboard board emits only its own delta, so a retired Search
+// handoff (`openOrderId`/`map`/`q`) can never ride along into a domain that has
+// no use for it — the guarantee that let the hand-written clear lists be
+// deleted. The boards now hang off three different domain pages (D5), so the
+// assertion walks every mode that targets `/dashboard`.
+test('every dashboard-board mode clears Search-scoped openOrderId/map/q', () => {
   const seed = new URLSearchParams(
     'mode=search&openOrderId=42&map=search&q=05-14897-15602&sort=scanned_newest',
   );
-  for (const mode of page!.modes!) {
-    const { search } = applyModeTarget({ pathname: '/dashboard', params: seed }, mode.to());
-    const params = new URLSearchParams(search);
-    assert.equal(params.get('openOrderId'), null, `${mode.id} should clear openOrderId`);
-    assert.equal(params.get('map'), null, `${mode.id} should clear map`);
-    assert.equal(params.get('q'), null, `${mode.id} should clear q`);
+  let checked = 0;
+  for (const page of SIDEBAR_PAGE_NAV) {
+    for (const mode of page.modes ?? []) {
+      if (mode.to().pathname !== '/dashboard') continue;
+      checked += 1;
+      const { search } = applyModeTarget({ pathname: '/dashboard', params: seed }, mode.to());
+      const params = new URLSearchParams(search);
+      assert.equal(params.get('openOrderId'), null, `${page.id}/${mode.id} should clear openOrderId`);
+      assert.equal(params.get('map'), null, `${page.id}/${mode.id} should clear map`);
+      assert.equal(params.get('q'), null, `${page.id}/${mode.id} should clear q`);
+    }
   }
+  // Receiving Board + Orders + Sales Board + Local Pickup History.
+  assert.equal(checked, 4, `expected 4 dashboard-board modes, found ${checked}`);
 });
 
 // A page's bare href must resolve to one of its declared modes (its default).
@@ -352,6 +374,18 @@ test('resolver matches existing panel derivations for known deep-links', () => {
   assert.equal(getSidebarNavPageId('/repair'), 'repair');
   assert.equal(getSidebarNavPageId('/receiving'), 'receive');
   assert.equal(getSidebarNavPageId('/receiving/history'), 'receive');
+  // Catalog owns Products → Labels. It used to resolve to a `print-labels` row
+  // so the Print Stations drill would stick — a nav id that was not the page it
+  // opened. One URL, one page.
+  assert.equal(
+    getSidebarNavPageId('/products', new URLSearchParams('view=labels')),
+    'products',
+  );
+  assert.equal(getSidebarNavPageId('/products'), 'products');
+  assert.equal(resolveSidebarMode('products', at('/products', 'view=labels')), 'labels');
+  assert.equal(resolveSidebarMode('products', at('/products')), 'manuals');
+  assert.equal(getSidebarPageNav('print-labels'), undefined);
+  assert.equal(getSidebarPageNav('print-documents'), undefined);
   assert.equal(resolveSidebarMode('receive', at('/unbox')), null);
   // FBA sub-modes live under Shipping as fbaMode (legacy mode=plan still works).
   assert.equal(resolveSidebarMode('fba', at('/shipping', 'mode=fba')), 'combine');
@@ -379,15 +413,38 @@ test('resolver matches existing panel derivations for known deep-links', () => {
   // rides `?mode=inbound` (canonical) or the `?mode=receiving` alias. Sales /
   // Local Pickup are the front-desk history domain (`?mode=sales|pickup`).
   // Warranty Logger moved to Support; Search graduated to `/search`.
-  assert.equal(resolveSidebarMode('dashboard', at('/dashboard', 'shipped=')), 'outbound');
-  assert.equal(resolveSidebarMode('dashboard', at('/dashboard')), 'outbound');
-  assert.equal(resolveSidebarMode('dashboard', at('/dashboard', 'pending=')), 'outbound');
-  assert.equal(resolveSidebarMode('dashboard', at('/dashboard', 'warranty=')), 'outbound');
-  assert.equal(resolveSidebarMode('dashboard', at('/dashboard', 'mode=search')), 'outbound');
-  assert.equal(resolveSidebarMode('dashboard', at('/dashboard', 'mode=inbound')), 'receiving');
-  assert.equal(resolveSidebarMode('dashboard', at('/dashboard', 'mode=receiving')), 'receiving');
-  assert.equal(resolveSidebarMode('dashboard', at('/dashboard', 'mode=sales')), 'sales');
-  assert.equal(resolveSidebarMode('dashboard', at('/dashboard', 'mode=pickup')), 'pickup');
+  // Dashboard dissolved (D5): the `?mode=` DOMAIN picks the owning domain page,
+  // and every board URL still resolves — only the nav identity moved.
+  const dashPage = (search = '') =>
+    getSidebarNavPageId('/dashboard', new URLSearchParams(search));
+  assert.equal(dashPage(), 'outbound');
+  assert.equal(dashPage('shipped='), 'outbound');
+  assert.equal(dashPage('pending='), 'outbound');
+  assert.equal(dashPage('mode=search'), 'outbound');
+  assert.equal(dashPage('mode=inbound'), 'incoming');
+  assert.equal(dashPage('mode=receiving'), 'incoming');
+  assert.equal(dashPage('mode=sales'), 'sales');
+  assert.equal(dashPage('mode=pickup'), 'sales');
+  assert.equal(getSidebarPageNav('dashboard'), undefined, 'no dashboard L1 page nav');
+  // Review split (D10): packing QA is Fulfillment, pairing / catalog-link are
+  // Catalog. Every `/review` URL still resolves — the page never moved.
+  const reviewPage = (search = '') =>
+    getSidebarNavPageId('/review', new URLSearchParams(search));
+  assert.equal(reviewPage(), 'outbound');
+  assert.equal(reviewPage('rtab=flagged'), 'outbound');
+  assert.equal(reviewPage('mode=pairing'), 'products');
+  assert.equal(reviewPage('mode=catalog-link'), 'products');
+  assert.equal(getSidebarPageNav('review'), undefined, 'no review L1 page nav');
+  assert.equal(resolveSidebarMode('outbound', at('/review')), 'review');
+  assert.equal(resolveSidebarMode('products', at('/review', 'mode=pairing')), 'pairing');
+  assert.equal(resolveSidebarMode('products', at('/review', 'mode=catalog-link')), 'catalog-link');
+  // The route key is untouched, so the Review surface still mounts its own panel.
+  assert.equal(getSidebarRouteKey('/review'), 'review');
+  assert.equal(resolveSidebarMode('outbound', at('/dashboard')), 'orders');
+  assert.equal(resolveSidebarMode('incoming', at('/dashboard', 'mode=inbound')), 'board');
+  assert.equal(resolveSidebarMode('incoming', at('/incoming')), 'incoming');
+  assert.equal(resolveSidebarMode('sales', at('/dashboard', 'mode=sales')), 'sales');
+  assert.equal(resolveSidebarMode('sales', at('/dashboard', 'mode=pickup')), 'pickup');
   assert.equal(resolveSidebarMode('support', at('/support', 'mode=warranty')), 'warranty');
   assert.equal(resolveSidebarMode('support', at('/support', 'mode=orders')), 'orders');
   assert.equal(resolveSidebarMode('support', at('/support')), 'tickets');
@@ -416,6 +473,16 @@ test('getSidebarRouteKey maps the dedicated order workspace to order', () => {
 
 // `/search` is Workbench master–detail: hit list in the context rail, selected
 // entity detail in the main pane (`?q=` + `?sel=`).
+test('Home reserves a context column for its saved-views rail', () => {
+  assert.equal(getSidebarRouteKey('/'), 'home');
+  // The set is the DECLARED contract for whether the spine pins a 360px column.
+  // `SidebarContextPanel` gained a `home` branch (HomeContextPanel) on
+  // 2026-08-01; a panel that renders without being declared here paints over
+  // the workspace instead of landing on a reserved column, and a key declared
+  // without a panel reserves 360px of empty chrome.
+  assert.equal(hasSidebarContextPanel('/'), true);
+});
+
 test('/search declares its own route key and reserves a context column', () => {
   assert.equal(getSidebarRouteKey('/search'), 'search');
   assert.equal(getSidebarRouteKey('/search/anything'), 'search');

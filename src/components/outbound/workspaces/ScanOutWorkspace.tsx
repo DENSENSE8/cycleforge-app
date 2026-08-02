@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback } from 'react';
-import { AnimatePresence } from 'framer-motion';
+import { AnimatePresence } from '@/design-system/motion';
 import { StagedQueueTable } from '@/components/outbound/scan-out/StagedQueueTable';
 import { StagedOrderDetail } from '@/components/outbound/shared/StagedOrderDetail';
 import { WorkbenchTablePane } from '@/components/dashboard/workbench-shell';

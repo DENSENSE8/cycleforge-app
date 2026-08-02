@@ -56,7 +56,7 @@ Phase 4 (industry actions) is **not** started and must not be until the human ap
 
 ---
 
-## A. On the pin — descriptor + capabilities declared (6 families)
+## A. On the pin — descriptor + capabilities declared (8 families)
 
 | Route / host | Composer | Descriptor | Caps `T/M/E/F/D` | Row entity | Grouping | Header | Selection | Mutations | Horizon A | Horizon B candidates |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -66,8 +66,10 @@ Phase 4 (industry actions) is **not** started and must not be until the human ap
 | `/products?view=catalog` | [`CatalogGridView.tsx`](../../src/components/products/catalog/catalog-grid/CatalogGridView.tsx) | `catalog-grid-descriptor.ts` | `T✗ M✓ E✗ F✓ D✗` | `CatalogListRow` | flat | `CatalogGridColumnHeader` (thin) | multi-check | record only | `keep` | **must stay display-safe** — no triage, no dispatch |
 | `/repair` | [`RepairGridView.tsx`](../../src/components/repair/repair-grid/RepairGridView.tsx) (host `RepairTable.tsx`) | `repair-grid-descriptor.ts` | `T✗ M✓ E✗ F✓ D✗` | `RSRecord` | flat | `RepairGridColumnHeader` (thin) | multi-check + bar | inspector | `keep` | status via `transition()` · assign · ticket |
 | `/pickup` (Local Pickup) | [`PickupGridView.tsx`](../../src/components/receiving/pickup/grid/PickupGridView.tsx) | `pickup-grid-descriptor.ts` | `T✗ M✗ E✗ F✓ D✗` | `PickupLine` | order fold | `PickupGridColumnHeader` (thin) | none (read map) | read-only | `keep` | — (read surface; do not grow `multiSelect` without a reason) |
+| `/support?mode=warranty` **(new 2026-08-01)** | [`WarrantyGridView.tsx`](../../src/components/warranty/grid/WarrantyGridView.tsx) | `warranty-grid-descriptor.ts` | `T✗ M✗ E✗ F✓ D✗` | `WarrantyClaimListRow` | flat | `WarrantyGridColumnHeader` (thin) | record plane (`?open=`) | ticket link (row-scoped) | `keep` | assign · status via `transition()` — **not** multi-select without a reason |
+| `/shipping/ready` **(new 2026-08-01)** | [`ReadyGridView.tsx`](../../src/components/outbound/ready/grid/ReadyGridView.tsx) | `ready-grid-descriptor.ts` | `T✗ M✗ E✗ F✓ D✗` | `AllocationHit` | flat | `ReadyGridColumnHeader` (thin) | none (history) | Stage-FBA link (row-scoped) | `keep` | — append-only `testing_results`; there is no record to correct here |
 
-**Shell split:** 5 mount `LedgerGridSurface`; **Orders** mounts `LedgerGrid` + `useGridSurface`
+**Shell split:** 7 mount `LedgerGridSurface`; **Orders** mounts `LedgerGrid` + `useGridSurface`
 directly (deferred header/resize recipe).
 
 ---
@@ -94,10 +96,10 @@ These were on the handoff's "likely fork" list. All confirmed **already composin
 | Route / host | Composer | Family today | Row entity | Selection | Mutations | Horizon A | Notes / risk |
 |---|---|---|---|---|---|---|---|
 | `/receiving/unfound` | [`UnfoundQueueTable.tsx`](../../src/components/receiving/unfound/UnfoundQueueTable.tsx) (+ `queue-table/QueueTableRow`) | hand-rolled `<table class="table-fixed">` | `v_unfound_queue` (unmatched receiving · email PO) | open-highlight only | **debounced in-cell PATCH** per field | **`migrate-to-LedgerGrid`** | Highest-value wave: it is a genuine ops queue *and* already has in-cell edit — it would light up `inCellEdit: true` + `multiSelect`. Filter state already URL-backed. |
-| `/shipping/ready` | [`ReadyQueueTable.tsx`](../../src/components/outbound/ready/ReadyQueueTable.tsx) (host `ReadyWorkspaceView`) | hand-rolled `<table>` | `AllocationHit` (channel allocation) | none | read + link-out | **`migrate-to-LedgerGrid`** | Pure display queue; low blast radius. Good second wave. |
+| ~~`/shipping/ready`~~ | ~~`ReadyQueueTable.tsx`~~ → [`ReadyGridView.tsx`](../../src/components/outbound/ready/grid/ReadyGridView.tsx) | **MIGRATED 2026-08-01** — `LedgerGridSurface` + `outbound.ready` descriptor | `AllocationHit` | none (history) | Stage-FBA link | ✅ `done` | Wave 2. See [Phase 3 wave log](#phase-3-wave-log). |
 | `/warehouse` (bins) | [`BinsTable.tsx`](../../src/components/warehouse/BinsTable.tsx) (host `WarehouseShell`) | hand-rolled `<table>` + **local `SortKey`/`SortDir` state machine** | `BinsOverviewRow` | multi-check (parent-controlled `Set<number>`) | flyout (record) | **`migrate-to-LedgerGrid`** | Hand-rolled sort toggle = a second sort state machine (SoT ban). Already has selection + bulk bar semantics → `multiSelect: true`. |
 | `/tracking-exceptions` | [`TrackingExceptionsTable.tsx`](../../src/components/tracking-exceptions/TrackingExceptionsTable.tsx) | hand-rolled `<table>` (516 lines) | `tracking_exceptions` | none | Dialog edit | **`migrate-to-LedgerGrid`** | Ops triage queue. Big file — split data/mutations out first. |
-| `/warranty` | [`WarrantyClaimsTable.tsx`](../../src/components/warranty/WarrantyClaimsTable.tsx) (host `WarrantyWorkspace`) | hand-rolled `<table>` | warranty claims | none (URL `openClaimId`) | ticket popover | **`migrate-to-LedgerGrid`** | Small (113 lines) — cheap wave, good pilot for the *thin* migration recipe. |
+| ~~`/support?mode=warranty`~~ | ~~`WarrantyClaimsTable.tsx`~~ → [`WarrantyGridView.tsx`](../../src/components/warranty/grid/WarrantyGridView.tsx) | **MIGRATED 2026-08-01** — `LedgerGridSurface` + `support.warranty` descriptor | `WarrantyClaimListRow` | record plane (`?open=`) | ticket popover (row-scoped) | ✅ `done` | Wave 1. See [Phase 3 wave log](#phase-3-wave-log). |
 | `/review?mode=catalog-link` | [`ReviewCatalogLinkTable.tsx`](../../src/features/review/catalog-link/ReviewCatalogLinkTable.tsx) | `divide-y <ul>` lists (621 lines) | unmatched listings / missing item-number sheet rows | none | link/resolve actions | **`migrate-to-LedgerGrid`** *(ask-first)* | Named "Table" but is a two-pane resolve UI. Confirm with human whether the job is *browse-a-queue* (migrate) or *resolve-one-at-a-time* (keep-sibling). |
 
 ---
@@ -307,14 +309,128 @@ feature-free" message. A guard that cannot fail proves nothing.
 
 **Phase 3 (migration waves — one family each, verify + Playwright per wave):**
 
-1. `WarrantyClaimsTable` (113 lines — proves the thin recipe)
-2. `ReadyQueueTable`
+1. ~~`WarrantyClaimsTable`~~ — **DONE 2026-08-01** (proved the thin recipe)
+2. ~~`ReadyQueueTable`~~ — **DONE 2026-08-01**
 3. `BinsTable` (retires a hand-rolled sort state machine)
 4. `UnfoundQueueTable` (highest value — lights up `inCellEdit`)
 5. `TrackingExceptionsTable`
 6. `/admin/inventory/**` → `DataTable`
 7. `/settings` + `/reports` → `DataTable`
 8. `ReviewCatalogLinkTable` — **ask human first** (job classification unresolved)
+
+---
+
+## Phase 3 wave log
+
+### Wave 1 — `/support?mode=warranty` (2026-08-01)
+
+Retired the 113-line hand-rolled `<table>` for `LedgerGridSurface` + a
+`support.warranty` descriptor. New family under `src/components/warranty/grid/`:
+`warranty-grid-layout.ts` · `warranty-grid-descriptor.ts` ·
+`WarrantyGridColumnHeader.tsx` (thin adapter) · `WarrantyGridRow.tsx` ·
+`WarrantyGridView.tsx`. `WarrantyClaimsTable` stays as the ~55-line data host.
+
+**What the surface gained** (none of it existed on the old table): per-staff
+Fields + column visibility, URL-durable `?colsort=`/`?coldir=` sort,
+virtualization, the frozen identity pane, adaptive typed headers, and the
+absence-vs-no-match empty split.
+
+**Drift the migration retired.** The old row painted selection as
+`bg-blue-50 ring-1 ring-inset ring-blue-400` — the LIST recipe. Under the
+airtable skin this surface now uses, that inset ring fights the cell rules; the
+row composes `ledgerRowFillClass` (fill only). Same class of bug as the FBA
+board's in Phase 2.
+
+**Capabilities:** `rowTriageFlags:false · multiSelect:false · inCellEdit:false ·
+fieldsMenu:true · dayBands:false`. `multiSelect` is false because nothing acts
+on N claims at once — an inert gutter is the thing the workbench law bans. The
+`ticket` column is an ACTION track with no `hideKey`, so it is structural and
+the Fields menu can never hide a row control.
+
+**Two decisions worth keeping:**
+- `warranty` sorts on `daysRemaining` with **null last in both directions**. A
+  claim with no computed clock is an *unknown*, not "expired" and not "maximum
+  cover"; folding it to a number would park those rows at whichever end the
+  operator is actually reading. Pinned by an E2E case.
+- The clock column is typed `tag`, not `number` — the chip reads "14d left" /
+  "Expired", a category, not a figure compared digit-by-digit. It start-aligns
+  beside Status; sorting still runs on the number.
+
+**Guard scope widened** (each was hand-listed despite claiming discovery):
+`grid-surface-capabilities` (MOUNTS + bag), `grid-column-tier` (FAMILIES + lean
+set), `grid-column-display` (`GRID_DIRS`), `ledger-grid-column-header`
+(`ADAPTERS`). Also registered `warranty` in `TableId` + `TABLE_COLUMNS`.
+
+**Shared-shell bug found by this wave — FIXED 2026-08-01 (approved).**
+`LedgerGrid` decides `empty` from the **band count**
+(`orderGroupsByDate?.length === 0 && daySections?.length === 0`), not from the
+row count — even though `countGridRows` already sits three lines below it. So a
+surface that always emits one band renders a **headers-only grid with no
+teaching box** when it has no rows: column titles over a void, where the
+operator should read "nothing logged yet" or "nothing matches".
+
+`LedgerGridSurface` disagrees with its own child here — its `isEmpty` uses
+`.every(([, g]) => g.length === 0)` — but that value only gates the skeleton and
+day bands, never the empty box, so the disagreement is invisible until a surface
+hits zero rows.
+
+**`PickupGridView` had this bug too** — it returns `[['', groups]]`
+unconditionally, so `/pickup` with no matching lines showed bare headers.
+
+**Fixed in the shell**, not per surface: `LedgerGrid.empty` is now
+`!hasGridRows({...})` — a new pure helper in `grid-row-index.ts` that counts
+LEAVES. `countGridRows` could not answer this itself: it starts at
+`GRID_HEADER_ROW_INDEX` and adds a row per day band, so its floor moves with the
+chrome. Warranty's local workaround was removed with it (two answers to one
+question is the thing the SoT rule bans). `/pickup` is repaired for free.
+Pinned by six cases in `grid-row-index.test.ts`.
+
+**E2E:** `tests/e2e/warranty-grid.spec.ts` — 7 cases, route-mocked because the
+QA org ships no warranty fixtures and `test.skip`-ing around missing data hides
+the coverage (`verify.md`). Covers: no `<table>` left, named table role, every
+core column owns a labelled track, `serial` stays opt-in, row → `?open=`,
+`?colsort=` durable across reload (and never `?sort=`), null-clock sort, the
+row-scoped ticket control not opening the record, and both empty answers.
+
+### Wave 2 — `/shipping/ready` (2026-08-01)
+
+Retired the second hand-rolled `<table>` for `LedgerGridSurface` + an
+`outbound.ready` descriptor. New family under
+`src/components/outbound/ready/grid/`; `ReadyQueueTable` stays as a ~60-line host.
+
+**Capabilities are all-false except `fieldsMenu`, and that is the finding**: an
+`AllocationHit` is an append-only `testing_results` row. There is no record to
+correct, nothing to transition, and nothing to act on in bulk — the work happens
+on the FBA board the action cell links to. Declaring that explicitly is what
+stops the surface drifting into a work queue later.
+
+**The row is deliberately not interactive.** No `role="button"`, no pointer
+cursor — `ledgerRowFillClass` bakes in `cursor-pointer` for pickable rows, so the
+row overrides it with `cursor-default` rather than promising a detail plane that
+does not exist.
+
+**Two sort decisions:**
+- `destination` orders by what the CELL SHOWS, not `hit.disposition`. A hit with
+  no disposition renders its allocation state instead ("In FBA", "Not ready"), so
+  ordering on the raw field would scatter those rows against a column the
+  operator can see is grouped.
+- `tested` parks null instants **last in both directions** — same shape as
+  warranty's null clock. Empty-string compare would have sorted them as "oldest".
+- `reasons` is explicitly `sortable: false`: a chip list has no single value to
+  order by, so sorting it would compare whichever reason happened to be first.
+
+**Lean default** drops `reasons` + `velocity` to `optional` — they are the WHY
+behind `destination`, rationale you open rather than a column you scan, and
+`reasons` is the widest thing on the row.
+
+**E2E:** `tests/e2e/ready-grid.spec.ts` — 7 route-mocked cases covering the
+disposition fallback, the three action-cell states, `?colsort=` durability, the
+null-instant sort, and both empty answers.
+
+**Process note:** a `python .replace()` anchor silently missed because a
+concurrent session had edited the same guard file, and the guard then failed on
+an undefined import. Anchored edits in a shared tree need `assert anchor in s` —
+a no-op replace is indistinguishable from a successful one.
 
 ---
 
@@ -331,6 +447,8 @@ feature-free" message. A guard that cannot fail proves nothing.
 - `DataTable` likely needs sort + selection parity before it can absorb 15 admin files — grow it once, then migrate.
 
 **Deferred / ask-first**
+- ~~**`LedgerGrid.empty` counts bands, not rows**~~ — **DONE 2026-08-01**: now `hasGridRows`, which repaired `/pickup` for free.
+- Two other guards claim discovery but hand-list their scope: `grid-column-display` (`GRID_DIRS`) and `ledger-grid-column-header` (`ADAPTERS`). Widened for warranty this wave; making them walk the tree the way the capabilities guard now does would stop the next family being silently unguarded.
 - Orders header resize/reorder onto `LedgerGridColumnHeader` (A2).
 - TanStack grouping Phase E on day-band surfaces.
 - `PoLinesAccordion` / `PoLineMetaGrid` → LedgerGrid (locked decision #5).
@@ -348,3 +466,16 @@ feature-free" message. A guard that cannot fail proves nothing.
   `app/admin`, `app/reports`.
 - Classification is from source reading — `npm run verify` and the Playwright grid suite were
   **not** run in this phase (nothing changed to verify). Both are required per migration wave.
+
+---
+
+## Horizon C implications (pointer only — 2026-08-01)
+
+Long-term multi-tenant extensibility (custom fields / optional custom tables / importable
+displays) is **out of scope for this inventory’s A/B classifications**. It must still mount the
+same pin (`LedgerGrid` / `LedgerGridSurface` + descriptor + capabilities + RightRailHost) and
+must **not** delay Phase 3 migrations (Unfound, bins, tracking-exceptions, DataTable admin wave).
+
+- Research briefing (Gemini — no repo access; facts embedded): [`tenant-table-extensibility-HORIZON-C-GEMINI-RESEARCH-BRIEFING.md`](tenant-table-extensibility-HORIZON-C-GEMINI-RESEARCH-BRIEFING.md)
+- Plan (landed later from Gemini’s report by a repo-capable agent — do not invent content here): [`tenant-table-extensibility-HORIZON-C-PLAN.md`](tenant-table-extensibility-HORIZON-C-PLAN.md)
+- Sequencing home: [`ledgergrid-unified-table-sot-RESEARCH-HANDOFF.md`](ledgergrid-unified-table-sot-RESEARCH-HANDOFF.md)

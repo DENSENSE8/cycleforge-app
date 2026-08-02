@@ -11,7 +11,7 @@
  *
  * Station two-line anatomy (`metaTrail` + `refInline`):
  *   1. Primary — event outcome ("Tested — Fail")
- *   2. Secondary — SerialChip last-4 · clock · actor
+ *   2. Secondary — SerialChip last-8 · clock · actor
  * Raw PREV → NEXT machine trails are omitted (duplicate the title dialect).
  */
 
@@ -19,6 +19,7 @@ import { useMemo } from 'react';
 import { useQueries } from '@tanstack/react-query';
 import { Loader2 } from '@/components/Icons';
 import { TimelineSection } from '@/components/ui/TimelineSection';
+import type { PhotoGalleryInput } from '@/components/shipped/photo-gallery/photo-gallery-utils';
 import { operationsJourneyFocusedQuery } from '@/lib/queries/operations-journey-queries';
 import { unitTimelinePhotosQuery } from '@/lib/timeline/journey-photos';
 import { serialJourneyFilters } from '@/lib/serial/serial-journey';
@@ -27,9 +28,14 @@ import { mergeStationUnitJourneys } from './merge-station-unit-journeys';
 export function StationUnitJourneys({
   serials,
   loading: serialsLoading = false,
+  galleryPhotos,
+  galleryMatchIds,
 }: {
   serials: string[];
   loading?: boolean;
+  /** Optional lightbox override (e.g. full carton/PO receiving photos). */
+  galleryPhotos?: PhotoGalleryInput[];
+  galleryMatchIds?: Array<number | null | undefined>;
 }) {
   const list = useMemo(
     () => [...new Set(serials.map((s) => s.trim()).filter(Boolean))],
@@ -108,6 +114,8 @@ export function StationUnitJourneys({
       metaTrail
       refInline
       emptyMessage="No unit events yet."
+      galleryPhotos={galleryPhotos}
+      galleryMatchIds={galleryMatchIds}
       headerRight={
         !loading && count > 0 ? (
           <span className="tabular-nums">

@@ -11,7 +11,7 @@ import {
   OrderIdChip,
   TrackingChip,
   TrackingCountChip,
-  getLast4,
+  getLast8,
 } from '@/components/ui/CopyChip';
 import { GridRowCheckbox } from '@/components/ui/GridRowCheckbox';
 import { usePlatformMeta } from '@/hooks/useCatalog';
@@ -264,7 +264,7 @@ export function IncomingGridGroupSummary({
           <div data-col="order" className={dataCell(col, rule)}>
             <OrderIdChip
               value={poValue}
-              display={getLast4(poValue)}
+              display={getLast8(poValue)}
               plain
               truncateDisplay={false}
               fitDisplayWidth

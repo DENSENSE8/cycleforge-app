@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion } from '@/design-system/motion';
 import confetti from 'canvas-confetti';
 import { Check } from '@/components/Icons';
 import { framerTransition } from '@/design-system/foundations/motion-framer';

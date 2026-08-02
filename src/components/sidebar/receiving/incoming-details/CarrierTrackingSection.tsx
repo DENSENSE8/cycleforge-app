@@ -10,7 +10,7 @@ import { useState, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { RefreshCw } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
-import { TrackingChip, getLast4 } from '@/components/ui/CopyChip';
+import { TrackingChip, getLast8 } from '@/components/ui/CopyChip';
 import { EventTimeline } from '@/components/ui/EventTimeline';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { carrierEventsToTimeline, type CarrierEvent } from '@/lib/timeline';
@@ -121,7 +121,7 @@ export function CarrierTrackingSection({
                     <span aria-hidden>·</span>
                     <TrackingChip
                       value={shipment.tracking_number}
-                      display={getLast4(shipment.tracking_number)}
+                      display={getLast8(shipment.tracking_number)}
                       dense
                     />
                   </>

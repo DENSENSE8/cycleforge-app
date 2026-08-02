@@ -7,7 +7,7 @@
  * presentational components under `./active-shipments/`.
  */
 
-import { LayoutGroup } from 'framer-motion';
+import { LayoutGroup } from '@/design-system/motion';
 import { SIDEBAR_GUTTER } from '@/components/layout/header-shell';
 import { FbaShipmentEditorForm } from '@/components/fba/sidebar/FbaShipmentEditorForm';
 import { sectionLabel, SkeletonList } from '@/design-system';

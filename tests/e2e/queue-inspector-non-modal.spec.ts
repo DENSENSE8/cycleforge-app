@@ -19,22 +19,20 @@ import { test, expect } from '@playwright/test';
  * Both cases skip cleanly when the tenant has no rows on that lane — the
  * assertion is about the OVERLAY contract, not about seeded row counts.
  *
- * NOT covered here, and WHY (both are pre-existing reachability gaps, not
- * modality gaps — measured 2026-07-31):
+ * The Incoming cases below used to skip on a live tenant: `/incoming` is an
+ * `isTableOnlyMode` surface, so `useReceivingLineBulkSelection` pinned
+ * `selectMode` ON and `handleSelectRow` always took the bulk-toggle early
+ * return — no `dispatchSelectLine`, no `incomingDetails`, no panel. Fixed
+ * 2026-08-01 by splitting the planes (`rowClickOpens`): the row body opens the
+ * record and the gutter checkbox owns bulk membership. They assert for real now.
+ *
+ * NOT covered here, and WHY (a pre-existing reachability gap, not a modality
+ * gap — measured 2026-07-31):
  *
  *   • `detail:inventory-sync` — its only trigger (`ShippedActionsButton`) has
  *     zero mounts in the app; both files sit in `knip-baseline.json` as unused.
  *     There is no page that can open it. The port matches `OrderSyncDialog`
  *     exactly; coverage lands when the button is remounted.
- *
- *   • `detail:incoming` row-click — `/incoming` is a `isTableOnlyMode` surface,
- *     so `useReceivingLineBulkSelection` pins `selectMode` ON
- *     (`const selectMode = active`), and `handleSelectRow` therefore always
- *     takes the bulk-toggle early return and never calls `dispatchSelectLine`.
- *     No event → `useReceivingDetailOverlays` never sets `incomingDetails` →
- *     the panel never mounts. The Incoming cases below consequently skip on a
- *     live tenant; they are kept (not deleted) so they start asserting the
- *     moment that wiring is repaired.
  */
 
 /** Both backdrop variants carry their z-band token in the class string. */
@@ -55,6 +53,26 @@ async function expectNonModalRegion(
     .not.toBe('hidden');
 }
 
+/**
+ * The first Incoming row that carries a PO / source-order identity.
+ *
+ * A row with none of those toasts ("No linked PO for this row yet") instead of
+ * opening — a deliberate no-op path, not a failure — so picking blind would
+ * make the panel assertions flaky on a live tenant.
+ */
+async function poLinkedRowIndex(
+  page: import('@playwright/test').Page,
+  rows: import('@playwright/test').Locator,
+  from = 0,
+): Promise<number | null> {
+  const total = await rows.count();
+  for (let i = from; i < total; i += 1) {
+    const order = await rows.nth(i).locator('[data-col="order"]').first().innerText().catch(() => '');
+    if (order.trim().replace(/[—-]/g, '')) return i;
+  }
+  return null;
+}
+
 test.describe('Queue inspectors — non-modal right rail', () => {
   test.skip(({ browserName }) => browserName === 'webkit', 'queue grids are a desktop layout');
 
@@ -72,22 +90,15 @@ test.describe('Queue inspectors — non-modal right rail', () => {
       .catch(() => false);
     if (!hasRows) test.skip(true, 'no Incoming rows on this tenant');
 
-    await rows.first().click();
+    const target = await poLinkedRowIndex(page, rows);
+    if (target == null) test.skip(true, 'no PO-linked Incoming rows on this tenant');
+
+    // The ROW BODY is the record plane — this click must open the inspector.
+    // (It used to hit the bulk-toggle early return and do nothing at all.)
+    await rows.nth(target!).click();
 
     const inspector = page.locator('aside[role="region"]');
-    // A PO-less / unlinked row toasts instead of opening — a valid no-op path.
-    const opened = await inspector
-      .first()
-      .waitFor({ state: 'visible', timeout: 5_000 })
-      .then(() => true)
-      .catch(() => false);
-    if (!opened) {
-      test.skip(
-        true,
-        'Incoming row click did not open the panel — either a PO-less row (toast path) ' +
-          'or the pinned-selectMode wiring gap noted in the file header.',
-      );
-    }
+    await expect(inspector).toBeVisible({ timeout: 10_000 });
 
     await expectNonModalRegion(page, inspector, /^Incoming .*details$/);
 
@@ -124,20 +135,14 @@ test.describe('Queue inspectors — non-modal right rail', () => {
       .catch(() => false);
     if (!hasRows) test.skip(true, 'needs at least two Incoming rows');
 
-    await rows.nth(0).click();
+    const firstTarget = await poLinkedRowIndex(page, rows);
+    const secondTarget =
+      firstTarget == null ? null : await poLinkedRowIndex(page, rows, firstTarget + 1);
+    if (secondTarget == null) test.skip(true, 'needs two PO-linked Incoming rows');
+
+    await rows.nth(firstTarget!).click();
     const inspector = page.locator('aside[role="region"]');
-    const opened = await inspector
-      .first()
-      .waitFor({ state: 'visible', timeout: 5_000 })
-      .then(() => true)
-      .catch(() => false);
-    if (!opened) {
-      test.skip(
-        true,
-        'Incoming row click did not open the panel — either a PO-less row (toast path) ' +
-          'or the pinned-selectMode wiring gap noted in the file header.',
-      );
-    }
+    await expect(inspector).toBeVisible({ timeout: 10_000 });
 
     // Watch for the occupant being torn out of the DOM. Under the old per-record
     // occupant ids (`detail:incoming:<poId>`) this fired on every row step:
@@ -157,7 +162,7 @@ test.describe('Queue inspectors — non-modal right rail', () => {
       obs.observe(document.body, { childList: true, subtree: true });
     });
 
-    await rows.nth(1).click();
+    await rows.nth(secondTarget!).click();
     await expect(inspector).toBeVisible();
     // Still exactly one right-edge region — store single-slot exclusivity.
     await expect(page.locator('aside[role="region"]')).toHaveCount(1);

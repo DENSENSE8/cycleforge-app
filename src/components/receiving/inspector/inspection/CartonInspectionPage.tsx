@@ -34,8 +34,8 @@ import {
   TrackingChip,
 } from '@/components/ui/CopyChip';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { WorkspaceTimelineTab } from '@/components/station/workbench';
 import { ReceivingAuditRail } from '@/components/receiving/workspace/ReceivingAuditRail';
+import { CartonUnitJourneyHistory } from './CartonUnitJourneyHistory';
 import { ProgressBadge } from '@/components/receiving/workspace/PoLineBadges';
 import { PoLineMetaGrid } from '@/components/receiving/workspace/PoLineMetaGrid';
 import { ReceivingCartonPipeline } from '@/components/station/receiving/ReceivingCartonPipeline';
@@ -66,7 +66,7 @@ import { focusRing } from '@/design-system/tokens/focus-ring';
 import { formatDateTimePST } from '@/utils/date';
 import { copyToClipboard } from '@/utils/_dom';
 import { toast } from '@/lib/toast';
-import { getLast4 } from '@/lib/copy-chip-format';
+import { getLast8 } from '@/lib/copy-chip-format';
 import { cn } from '@/utils/_cn';
 import {
   cartonContentsSummary,
@@ -74,7 +74,6 @@ import {
   cartonFacts,
   cartonHeaderIdentity,
   cartonRecordMeta,
-  cartonTimelineAnchor,
   type CartonDisposition,
   type CartonException,
   type CartonFact,
@@ -302,8 +301,8 @@ function DispositionBar({
           <span className="truncate text-role-title text-text-default">{title}</span>
           {tracking || poNumber ? (
             <div className="flex min-w-0 flex-wrap items-center gap-2 border-l border-border-soft pl-3">
+              {poNumber ? <PoChip value={poNumber} display={getLast8(poNumber)} /> : null}
               {tracking ? <TrackingChip value={tracking} /> : null}
-              {poNumber ? <PoChip value={poNumber} display={getLast4(poNumber)} /> : null}
             </div>
           ) : null}
         </div>
@@ -521,7 +520,7 @@ function ProgressRail({
       <div className="space-y-2">
         <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">History</p>
         <Panel padding="sm" radius="xl" elevation="none">
-          <WorkspaceTimelineTab {...cartonTimelineAnchor(receiving)} />
+          <CartonUnitJourneyHistory receivingId={receiving.id} />
         </Panel>
       </div>
 
@@ -584,7 +583,7 @@ function ContentsList({ lines }: { lines: CartonInspectorLine[] }) {
                 }
                 sku={
                   sku ? (
-                    <SkuScanRefChip value={sku} display={getLast4(sku)} dense />
+                    <SkuScanRefChip value={sku} display={getLast8(sku)} dense />
                   ) : (
                     <EmptySkuChipFace dense />
                   )

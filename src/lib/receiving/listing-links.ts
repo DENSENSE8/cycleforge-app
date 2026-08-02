@@ -143,7 +143,7 @@ export interface ListingLinkMenuOption {
 }
 
 /**
- * Stable listing identity key for chip last-4 faces — prefers marketplace item
+ * Stable listing identity key for chip last-8 faces — prefers marketplace item
  * ids embedded in the URL (eBay `/itm/`, Amazon `/dp/`, Goodwill `/item/`),
  * then a cleaned last path segment / query id. Empty when nothing useful parses.
  */

@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useRef, useState } from 'react';
-import { LayoutGroup, useInView } from 'framer-motion';
+import { LayoutGroup, useInView } from '@/design-system/motion';
 import type { InlineActionFeedbackPayload } from './InlineActionFeedbackCard';
 import { WORKSPACE_SECTION_TITLE_CLASS } from './WorkspaceSectionLabel';
 import type { ReceivingLineRow } from '@/components/station/ReceivingLinesTable';

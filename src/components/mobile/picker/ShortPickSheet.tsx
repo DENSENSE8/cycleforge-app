@@ -43,7 +43,7 @@ interface ShortPickSheetProps {
   pickedQty: number;
   /** Quantity the order line called for. */
   plannedQty: number;
-  /** Product display (title, SKU, last-4 tracking). */
+  /** Product display (title, SKU, last-8 tracking). */
   productLabel: string;
   /** Called with the captured reason; parent persists the result. */
   onConfirm: (result: ShortPickResult) => void;

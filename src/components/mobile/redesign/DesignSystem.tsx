@@ -1,6 +1,6 @@
 'use client';
 
-import { motion } from 'framer-motion';
+import { motion } from '@/design-system/motion';
 import { Button, type ButtonVariant } from '@/design-system/primitives';
 import { cn } from '@/utils/_cn';
 

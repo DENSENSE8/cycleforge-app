@@ -79,7 +79,13 @@ const historySortParam = () =>
 export const UNBOX_ROUTE_PARAMS = defineRouteParams({
   route: UNBOX_SURFACE_ROUTE,
   owns: {
-    /** Workbench tab. `recent` is the default and is omitted from the URL. */
+    /**
+     * Workbench tab, on the WIRE. History is the default and omits the param;
+     * `viewed` carries the Recent tab (the server-side name for that feed — see
+     * `utils/unbox-workspace-state.ts` on the two vocabularies). `recent` is the
+     * pre-2026-08-01 wire value for History, kept in the enum so an old link is
+     * tolerated rather than stripped; the parser maps it back to History.
+     */
     unboxview: paramEnum(['recent', 'queue', 'viewed'] as const),
     /** Inline support-ticket editor toggle — line-scoped, never rides a mode switch. */
     ticketView: paramFlag,

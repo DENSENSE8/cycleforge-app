@@ -5,6 +5,8 @@ export interface Staff {
   employee_id: string | null;
   active: boolean;
   color_hex: string;
+  /** Profile photo id (`staff.avatar_photo_id`); null ⇒ colour + initials. */
+  avatar_photo_id?: number | null;
   default_home_path: string | null;
   created_at?: string | null;
 }

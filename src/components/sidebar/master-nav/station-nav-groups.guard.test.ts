@@ -1,9 +1,16 @@
 /**
- * Source guard: Stations membership is Scan Stations / Desk via SoT `stationGroup`.
- * Pins — every APP station declares a group; Scan Stations stay pipeline-ordered
- * (Receiving subgroup + Testing / Packing / Scan out); Desk is Incoming + Review +
- * Support + Shipping. Spine renders Scan Stations/Desk as section drills via
- * SPINE_SECTIONS (no label twin). Receiving page-style header from STATION_SUBGROUPS.
+ * Source guard: Scan Stations is the ONLY station group, and it stays
+ * scan-first. Every `kind: 'station'` row is `stationGroup: 'floor'`, pipeline-
+ * ordered (Receiving subgroup → Testing → Packing → Scan out), and the Receiving
+ * page-style header comes from STATION_SUBGROUPS.
+ *
+ * The retired `desk` group is the point of this file now. "Everything
+ * pointer-driven" is not a place, so it accumulated Incoming, Review, Support,
+ * Shipping, Dashboard, Stock and Products behind one unpredictable label; those
+ * pages are domain rows (`kind: 'domain'`) as of 2026-08-01. The inverse must
+ * also hold: a scan bench must NEVER be moved into a domain drill — an operator
+ * standing at the dock cannot be asked which business domain their scanner
+ * belongs to.
  *
  * SoT: STATION_GROUPS + STATION_SUBGROUPS + SPINE_SECTIONS + APP_SIDEBAR_NAV /
  *      SIDEBAR_PAGE_NAV
@@ -22,8 +29,10 @@ import {
   SIDEBAR_PAGE_NAV,
   STATION_GROUPS,
   STATION_SUBGROUPS,
+  spineSectionIdForPage,
   type StationGroupId,
 } from '@/lib/sidebar-navigation';
+import { ScanBarcode } from '@/components/Icons';
 
 function sourceOf(relative: string): string {
   return readFileSync(fileURLToPath(new URL(relative, import.meta.url)), 'utf8');
@@ -42,26 +51,26 @@ const FLOOR_PIPELINE = [
   'packer',
   'scan-out',
 ] as const;
-const DESK_IDS = ['incoming', 'review', 'support', 'outbound'] as const;
 const RECEIVING_SUBGROUP = ['triage', 'receive', 'pickup', 'repair'] as const;
-const ALLOWED: ReadonlySet<StationGroupId> = new Set(['floor', 'desk']);
+const ALLOWED: ReadonlySet<StationGroupId> = new Set(['floor']);
 
 const LIST_SRC = code(sourceOf('./SidebarNavList.tsx'));
 
-test('STATION_GROUPS is Scan Stations then Desk', () => {
+test('STATION_GROUPS is Scan Stations only — the desk twin stays retired', () => {
   assert.deepEqual(
     STATION_GROUPS.map((g) => g.id),
-    ['floor', 'desk'],
+    ['floor'],
   );
   assert.deepEqual(
     STATION_GROUPS.map((g) => g.label),
-    ['Scan Stations', 'Desk'],
+    ['Scan Stations'],
   );
+  assert.equal(STATION_GROUPS[0]!.icon, ScanBarcode, 'floor section icon is ScanBarcode');
 });
 
-test('every APP_SIDEBAR_NAV station declares stationGroup floor|desk', () => {
+test('every APP_SIDEBAR_NAV station declares stationGroup floor', () => {
   const stations = APP_SIDEBAR_NAV.filter((item) => item.kind === 'station');
-  assert.ok(stations.length >= 10, `expected ≥10 stations, got ${stations.length}`);
+  assert.equal(stations.length, FLOOR_PIPELINE.length, 'only the scan benches are stations');
   for (const item of stations) {
     assert.equal(item.kind, 'station');
     assert.ok(
@@ -99,11 +108,29 @@ test('Scan Stations appear in pipeline order in APP_SIDEBAR_NAV', () => {
   assert.deepEqual(floorIds, [...FLOOR_PIPELINE]);
 });
 
-test('Desk stations are incoming then review then support then Shipping in APP_SIDEBAR_NAV', () => {
-  const deskIds = APP_SIDEBAR_NAV.filter(
-    (item) => item.kind === 'station' && item.stationGroup === 'desk',
-  ).map((item) => item.id);
-  assert.deepEqual(deskIds, [...DESK_IDS]);
+/**
+ * D-rulings: Arrival / Unbox / Local Pickup / Repair Service / Testing / Packing
+ * / Scan out stay on the floor. Moving any of them under Inbound or Fulfillment
+ * is an instant fail — a scanner bench answers to its input model, not to the
+ * domain of the records it happens to touch.
+ */
+test('no scan bench leaks into a domain drill', () => {
+  for (const id of FLOOR_PIPELINE) {
+    const item = APP_SIDEBAR_NAV.find((i) => i.id === id);
+    assert.ok(item, `${id} missing from APP_SIDEBAR_NAV`);
+    assert.equal(item!.kind, 'station', `${id} must stay kind station`);
+    assert.equal(
+      spineSectionIdForPage(item),
+      'floor',
+      `${id} must resolve to the Scan Stations drill`,
+    );
+  }
+  // Scan out is a floor bench; carrier Labels is Fulfillment. Different jobs,
+  // different sections, same `/shipping` route family.
+  const scanOut = APP_SIDEBAR_NAV.find((i) => i.id === 'scan-out');
+  const outbound = APP_SIDEBAR_NAV.find((i) => i.id === 'outbound');
+  assert.equal(spineSectionIdForPage(scanOut), 'floor');
+  assert.equal(spineSectionIdForPage(outbound), 'fulfillment');
 });
 
 test('Receiving subgroup covers Arrival → Unbox → Local Pickup → Repair Service', () => {
@@ -125,34 +152,37 @@ test('Receiving subgroup covers Arrival → Unbox → Local Pickup → Repair Se
   assert.equal(repair?.label, 'Repair Service');
 });
 
-test('Scan out is floor modeless; Desk Shipping has Labels Ready FBA only', () => {
+test('Scan out is floor modeless; Fulfillment Shipping owns the carrier modes', () => {
   const scanOut = APP_SIDEBAR_NAV.find((i) => i.id === 'scan-out');
   assert.ok(scanOut && scanOut.kind === 'station');
   assert.equal(scanOut.stationGroup, 'floor');
   assert.equal(getSidebarPageNavModes('scan-out'), undefined);
 
   const outbound = SIDEBAR_PAGE_NAV.find((p) => p.id === 'outbound');
-  assert.ok(outbound && outbound.kind === 'station');
-  assert.equal(outbound.stationGroup, 'desk');
-  assert.deepEqual(
-    outbound.modes?.map((m) => m.id),
-    ['labels', 'ready', 'fba'],
-  );
+  assert.ok(outbound && outbound.kind === 'domain');
+  assert.equal(outbound.domainGroup, 'fulfillment');
+  for (const id of ['labels', 'ready', 'fba']) {
+    assert.ok(
+      outbound.modes?.some((m) => m.id === id),
+      `Shipping lost its ${id} carrier mode`,
+    );
+  }
 });
 
 function getSidebarPageNavModes(id: string) {
   return SIDEBAR_PAGE_NAV.find((p) => p.id === id)?.modes;
 }
 
-test('SidebarNavList imports SPINE_SECTIONS and does not twin Scan Stations/Desk labels', () => {
+test('SidebarNavList imports SPINE_SECTIONS and does not twin section labels', () => {
   assert.match(LIST_SRC, /SPINE_SECTIONS/);
   assert.doesNotMatch(LIST_SRC, /['"]Scan Stations['"]/);
   assert.doesNotMatch(LIST_SRC, /['"]Floor['"]/);
   assert.doesNotMatch(LIST_SRC, /['"]Desk['"]/);
+  assert.doesNotMatch(LIST_SRC, /['"]Triage Desk['"]/);
   assert.match(LIST_SRC, /role=["']group["']/);
 });
 
-test('Scan Stations/Desk are section drills — Receiving subgroup comes from SoT only', () => {
+test('Section drills read STATION_SUBGROUPS — Receiving header comes from SoT only', () => {
   // Free-form uppercase eyebrow twins remain banned; Receiving page-style header
   // reads STATION_SUBGROUPS (label + icon; no hardcoded "Receiving" string in list).
   assert.doesNotMatch(LIST_SRC, /text-role-micro uppercase tracking-widest text-text-faint/);

@@ -10,7 +10,7 @@ import type { CarrierCode, NormalizedShipmentStatus } from '@/lib/shipping/types
 /** One shipment's outcome from a single re-poll. */
 export interface CarrierSyncShipmentDetail {
   shipmentId: number;
-  /** Normalized tracking number (the dialog shows only the last 4). */
+  /** Normalized tracking number (the dialog shows only the last 8). */
   tracking: string;
   /** Status category before this poll (null when never polled). */
   previousStatus: NormalizedShipmentStatus | null;

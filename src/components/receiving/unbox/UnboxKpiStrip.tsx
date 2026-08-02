@@ -132,7 +132,7 @@ function viewedCounts(rows: ReceivingLineRow[]): UnboxViewedCounts {
 
 function emptyCopy(mode: UnboxWorkspaceTab): string {
   if (mode === 'queue') return 'No door-scanned cartons are waiting to unbox.';
-  if (mode === 'viewed') return 'You have not opened any lines yet.';
+  if (mode === 'recent') return 'You have not opened any lines yet.';
   return 'No cartons have been opened on Unbox yet.';
 }
 
@@ -164,9 +164,13 @@ export function UnboxKpiStrip({ mode }: { mode: UnboxWorkspaceTab }) {
 
   const metrics = resolveUnboxMetrics({
     mode,
-    recent: mode === 'recent' ? recentCounts(rows) : ZERO_UNBOX_RECENT,
+    // `recent` here is the METRIC bag for the History tab (whole-station
+    // activity); `viewed` is the metric bag for the Recent tab (this operator's
+    // own opens). The bag names follow the API feeds, the tab ids follow the
+    // labels — see `unbox-workspace-state.ts` on the two vocabularies.
+    recent: mode === 'history' ? recentCounts(rows) : ZERO_UNBOX_RECENT,
     queue,
-    viewed: mode === 'viewed' ? viewedCounts(rows) : ZERO_UNBOX_VIEWED,
+    viewed: mode === 'recent' ? viewedCounts(rows) : ZERO_UNBOX_VIEWED,
   });
   const { attention, rest } = splitUnboxAttention(metrics);
   const tiles = [...attention, ...rest];

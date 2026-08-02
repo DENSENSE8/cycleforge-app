@@ -18,7 +18,7 @@
  */
 
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
-import { motion } from 'framer-motion';
+import { motion } from '@/design-system/motion';
 import { Check, ChevronDown, Loader2 } from '@/components/Icons';
 import { cn } from '@/utils/_cn';
 import { operatorAccentClasses } from '@/utils/operator-accent';

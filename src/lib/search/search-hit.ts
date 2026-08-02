@@ -15,7 +15,7 @@
  */
 
 import type { SearchEntityType } from '@/lib/search/build-search-text';
-import { getLast4 } from '@/lib/copy-chip-format';
+import { getLast8 } from '@/lib/copy-chip-format';
 import {
   buildOrderJourneyHref,
   buildSerialJourneyHref,
@@ -151,7 +151,7 @@ export function looksLikeIdentifier(query: string): boolean {
 /**
  * Narrow-rail title display (header dropdown + sidebar AI matches). Long
  * tracking/PO/serial-shaped titles share a prefix and truncate to identical
- * `94…` crumbs — show last-4 instead and keep the full value for a tooltip.
+ * `94…` crumbs — show last-8 instead and keep the full value for a tooltip.
  * Product titles (spaces) and short ids stay intact.
  */
 interface NarrowSearchTitleDisplay {
@@ -160,18 +160,18 @@ interface NarrowSearchTitleDisplay {
   abbreviated: boolean;
 }
 
-/** Min length before an identifier-shaped title is abbreviated to last-4. */
+/** Min length before an identifier-shaped title is abbreviated to last-8. */
 const NARROW_ID_TITLE_MIN = 12;
 
 export function narrowSearchTitleDisplay(title: string): NarrowSearchTitleDisplay {
   const full = String(title ?? '').trim();
   if (!full) return { display: title ?? '', full: title ?? '', abbreviated: false };
-  // Product / prose titles have spaces — never crush them to last-4.
+  // Product / prose titles have spaces — never crush them to last-8.
   if (/\s/.test(full)) return { display: full, full, abbreviated: false };
   if (!looksLikeIdentifier(full) || full.length < NARROW_ID_TITLE_MIN) {
     return { display: full, full, abbreviated: false };
   }
-  return { display: getLast4(full), full, abbreviated: true };
+  return { display: getLast8(full), full, abbreviated: true };
 }
 
 /**

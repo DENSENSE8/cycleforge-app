@@ -9,7 +9,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { AnimatePresence, motion, Reorder, useReducedMotion } from 'framer-motion';
+import { AnimatePresence, motion, Reorder, useReducedMotion } from '@/design-system/motion';
 import { toast } from '@/lib/toast';
 import { useLocations } from '@/hooks/useLocations';
 import { shouldClearUnknownRoomSelection } from '@/hooks/locations-cache';
@@ -310,7 +310,7 @@ export function RoomsSidebarList() {
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              className="mt-2 overflow-hidden rounded-lg bg-blue-50/70 px-2.5 py-1.5 text-[10.5px] leading-snug text-blue-700 ring-1 ring-blue-100"
+              className="mt-2 overflow-hidden rounded-lg bg-blue-50/70 px-2.5 py-1.5 text-role-micro leading-snug text-blue-700 ring-1 ring-blue-100"
             >
               Drag rooms to reorder · trash deletes (bins preserved). Tap any
               room to open it in the form on the right.
@@ -407,10 +407,10 @@ function RoomRow({ summary, selected, editMode, mutating, onSelect, onDelete }: 
         >
           <ZoneTile letter={summary.letter} active={selected} />
           <div className="min-w-0 flex-1">
-            <p className="truncate text-[13.5px] font-semibold leading-snug tracking-tight text-text-default">
+            <p className="truncate text-role-body font-semibold leading-snug tracking-tight text-text-default">
               {summary.room}
             </p>
-            <p className="mt-0.5 truncate text-[10.5px] font-medium text-text-soft">
+            <p className="mt-0.5 truncate text-role-micro text-text-soft">
               {summary.binCount} bin{summary.binCount === 1 ? '' : 's'} · {summary.totalQty} unit{summary.totalQty === 1 ? '' : 's'}
               {summary.alerts > 0 ? (
                 <span className="ml-1 font-semibold text-amber-600">· {summary.alerts} alert{summary.alerts === 1 ? '' : 's'}</span>
@@ -476,7 +476,7 @@ function EmptyState({ query, onAdd }: { query: string; onAdd: () => void }) {
         <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-surface-canvas ring-1 ring-border-soft">
           <X className="h-5 w-5 text-text-faint" />
         </div>
-        <p className="text-[12.5px] font-semibold text-text-muted">No rooms match “{query}”</p>
+        <p className="text-role-caption font-semibold text-text-muted">No rooms match “{query}”</p>
         <p className="max-w-[240px] text-role-caption text-text-soft">
           Try a different name or zone letter.
         </p>
@@ -488,7 +488,7 @@ function EmptyState({ query, onAdd }: { query: string; onAdd: () => void }) {
       <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-50 to-blue-100 ring-1 ring-blue-200">
         <Plus className="h-5 w-5 text-blue-500" />
       </div>
-      <p className="text-[12.5px] font-semibold text-text-muted">No rooms yet</p>
+      <p className="text-role-caption font-semibold text-text-muted">No rooms yet</p>
       <p className="max-w-[240px] text-role-caption text-text-soft">
         Add your first room. Each room gets a zone letter that prints on every
         label.

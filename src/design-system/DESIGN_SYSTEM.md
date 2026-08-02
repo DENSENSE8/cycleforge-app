@@ -147,7 +147,7 @@ Token density presets also exist as `compact` / `standard` / `spacious` in `toke
 - **Re-exported from `components/ui/`:**
   - `CopyChip.tsx` — semantic chip family (TrackingChip, FnskuChip, SerialChip, OrderIdChip, TicketChip, SourceOrderChip)
   - `TabSwitch.tsx` — universal tab switcher with variant support
-- Sidebar intake chrome: `sidebar-intake/` (intakeFormClasses, SidebarIntakeFormShell, SidebarIntakeFormField)
+- Sidebar intake chrome: `sidebar-intake/` (intakeFormClasses, SidebarIntakeFormShell) — **create / import / prefs only**. Record right-rail peeks use `PaneHeader` + `PaneHeaderLabel` (see `.claude/rules/display/right-rail-inspector.md`).
 
 ## CopyChip Semantic Rules
 

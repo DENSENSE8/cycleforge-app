@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion } from '@/design-system/motion';
 import {
   isNotConfigured,
   isRateLimited,
@@ -49,7 +49,7 @@ function contextBadgeFromBundle(bundle: SupportContextBundle | undefined): strin
   if (!bundle) return 'Links';
   const order = bundle.linkage.order?.orderId?.trim();
   if (order) {
-    return order.length > 8 ? `…${order.slice(-4)}` : order;
+    return order.length > 8 ? `…${order.slice(-8)}` : order;
   }
   const tracking =
     bundle.linkage.trackings.find((t) => t.isPrimary)?.tracking ??
@@ -58,7 +58,7 @@ function contextBadgeFromBundle(bundle: SupportContextBundle | undefined): strin
     null;
   if (tracking?.trim()) {
     const t = tracking.trim();
-    return t.length > 8 ? `…${t.slice(-4)}` : t;
+    return t.length > 8 ? `…${t.slice(-8)}` : t;
   }
   return 'Unlinked';
 }

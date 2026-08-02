@@ -58,9 +58,14 @@ test.describe('Incoming click-to-open (no details on load)', () => {
     );
 
     const firstRow = page.locator('[data-line-row-id]').first();
-    // Skip cleanly when the seed org has no Incoming rows.
-    if ((await firstRow.count()) === 0) test.skip(true, 'no Incoming rows seeded');
-    await firstRow.waitFor({ state: 'visible' });
+    // Wait for the row to RENDER before deciding to skip — `count()` does not
+    // auto-wait, so checking it straight after the fetch skipped this case even
+    // on a tenant that has rows (it did, until the QA Incoming fixture landed).
+    const hasRows = await firstRow
+      .waitFor({ state: 'visible', timeout: 20_000 })
+      .then(() => true)
+      .catch(() => false);
+    if (!hasRows) test.skip(true, 'no Incoming rows seeded');
 
     // A row can be a PO group header or a leaf line — click and expect the panel.
     await firstRow.click();

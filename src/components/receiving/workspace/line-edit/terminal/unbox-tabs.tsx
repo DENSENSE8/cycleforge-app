@@ -4,12 +4,14 @@ import type { ReactNode } from 'react';
 import { CartonUnitsRollupBody } from '../../CartonUnitsRollup';
 import { UnboxLabelPreview } from '../UnboxLabelPreview';
 import { POUnboxingSection } from '../POUnboxingSection';
-import { UnboxProcedureChecklist } from '../UnboxProcedureChecklist';
+import { UnboxProcedureStack } from '../UnboxProcedureStack';
+import { UnboxSerialStepSurface } from '../steps/UnboxSerialStepSurface';
+import { ReceivingPhotoButton } from '../ReceivingPhotoButton';
 import { LinePoNoteCard } from '../LinePoNoteCard';
 import { SupportContextHub } from '@/components/support/context';
 import { SectionTabsSlider, WorkspaceCard, type SectionTab } from '@/design-system/components';
 import { buildSectionTabs, WorkspaceTimelineTab } from '@/components/station/workbench';
-import { Barcode, ClipboardList, ExternalLink, FileText, History, MapPin, MessageSquare, SlidersHorizontal } from '@/components/Icons';
+import { Barcode, ExternalLink, FileText, History, MapPin, MessageSquare, SlidersHorizontal } from '@/components/Icons';
 import type { ReceivingLineRow } from '@/components/station/ReceivingLinesTable';
 import type { InlineActionFeedbackPayload } from '../../InlineActionFeedbackCard';
 import type { PoNoteTabState } from './usePoNoteTabState';
@@ -64,13 +66,22 @@ export interface BuildUnboxTabsInput {
 }
 
 /**
- * The Unbox CENTRE — PO lines → label preview. The carton and its capture work,
+ * The Unbox CENTRE — the guided step stack. The carton and its capture work,
  * nothing else.
  *
  * No tab strip above it: `overview` is the whole workbench body, and every other
- * display moved to the right-edge Displays push column ({@link buildUnboxSideTabs}).
- * The step procedure is not here either — it is the `checklist` display in that
- * column, so a read-only status display never takes the work surface's seat.
+ * display lives in the right-edge Displays push column ({@link buildUnboxSideTabs}).
+ *
+ * ## The procedure IS the centre now (reversed 2026-08-01)
+ *
+ * It used to be the `checklist` display in that column, on the reasoning that a
+ * read-only status display must never take the work surface's seat. That
+ * reasoning was right about a STATUS display and is why the checklist was moved
+ * there — but the surface here is not a status display: it is the work itself,
+ * one active step card carrying that step's own capture controls, directly above
+ * the composer that commits it. The checklist display is deleted rather than
+ * mirrored, because two procedure surfaces in one station is the collision the
+ * last change closed.
  */
 export function buildUnboxOverview(
   input: Pick<
@@ -96,24 +107,72 @@ export function buildUnboxOverview(
     accordionBootstrap = 'default',
   } = input;
 
+  const receivingId = row.receiving_id ?? 0;
+
   return (
     <div className="space-y-4">
-      <POUnboxingSection
-        row={row}
-        staffId={staffId}
-        poItems
-        matching
-        openInUnbox={false}
-        editLines
-        serialScan
-        c={c}
-        suppressItemsHeader
-        pairingOpen={pairingOpen}
-        onPairingToggle={onPairingToggle}
-        onItemDescFeedback={onItemDescFeedback}
-        onItemDescSaved={onItemDescSaved}
-        accordionBootstrap={accordionBootstrap}
-      />
+    <UnboxProcedureStack
+      // Remount on carton change: the focused-step pointer, and every body's
+      // transient view state, belong to ONE carton. A new box starts at its own
+      // first unsettled step, never wherever the last one was parked.
+      key={`unbox-stack-${receivingId}-${row.id}`}
+      row={row}
+      staffId={staffId}
+      // `contents` step body. `serialScan={false}` is the split: the accordion
+      // renders the line LIST and nothing else, while condition · serial · item
+      // photos are their own steps below. That inline three-in-one body is what
+      // made the flow un-steppable.
+      contentsSlot={
+        <POUnboxingSection
+          row={row}
+          staffId={staffId}
+          poItems
+          matching
+          openInUnbox={false}
+          editLines
+          serialScan={false}
+          c={c}
+          suppressItemsHeader
+          pairingOpen={pairingOpen}
+          onPairingToggle={onPairingToggle}
+          onItemDescFeedback={onItemDescFeedback}
+          onItemDescSaved={onItemDescSaved}
+          accordionBootstrap={accordionBootstrap}
+        />
+      }
+      classifySlot={<TriageClassifySection row={row} c={c} />}
+      condition={{
+        value: c.cond,
+        onChange: (next: string) => {
+          c.setCond(next);
+          void c.patch({ condition_grade: next });
+        },
+      }}
+      serialSlot={<UnboxSerialStepSurface row={row} c={c} />}
+      itemPhotoSlot={
+        receivingId > 0 && row.id > 0 ? (
+          <ReceivingPhotoButton
+            receivingId={receivingId}
+            staffId={Number(staffId) || 0}
+            poRef={row.zoho_purchaseorder_number ?? null}
+            // `unbox_item` + `receivingLineId` writes RECEIVING_LINE /
+            // `receiving_item`. `arrival_package` is not reachable from a bench
+            // mount, by construction — a defaulted safety classification is what
+            // let bench photos become arrival evidence once already.
+            photoStage="unbox_item"
+            receivingLineId={row.id}
+            poRouteRef={
+              row.zoho_purchaseorder_id ?? row.zoho_purchaseorder_number ?? null
+            }
+            galleryPlacement="above"
+          />
+        ) : null
+      }
+    />
+      {/* The printed face stays below the stack. `print` is a COMMIT-phase step
+          the bench deliberately never renders (the terminal dock owns it), so
+          folding the preview into a step body would remove the operator's only
+          chance to read the label before it prints. */}
       <UnboxLabelPreview row={row} c={c} />
     </div>
   );
@@ -216,22 +275,12 @@ export function buildUnboxSideTabs(input: BuildUnboxTabsInput): SectionTab[] {
         />
       ),
     },
-    {
-      id: 'checklist',
-      label: 'Checklist',
-      icon: ClipboardList,
-      // PRIMARY (the default), not overflow: the checklist IS the derived
-      // procedure — the station's "where am I", ticked by the carton's own
-      // evidence rather than by hand. A hand-ticked list was reference material
-      // and earned the ⋯ menu; an orienting display that answers "what is left
-      // on this carton" does not, because two clicks to find out where you are
-      // is the cost paid on every carton.
-      content: (
-        <WorkspaceCard variant="glass" overflow="visible" bodyDensity="nested">
-          <UnboxProcedureChecklist row={row} />
-        </WorkspaceCard>
-      ),
-    },
+    // The `checklist` display was DELETED 2026-08-01, not moved. The procedure
+    // is the centre now ({@link buildUnboxOverview}), and two procedure surfaces
+    // in one station is the collision the previous change closed — a mirror
+    // "for reference" re-opens it, and the two would disagree the first time one
+    // of them learned about skips. The DS `ProcedureChecklist` primitive
+    // survives for other stations.
     {
       id: 'support',
       label: 'Support',

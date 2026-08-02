@@ -20,6 +20,10 @@ const REQUIRED_BOTH = [
   'src/components/station/ActiveOrderScanFeedback.tsx',
   'src/components/station/StationPacking.tsx',
   'src/components/station/OfflineBanner.tsx',
+  // The bottom-anchored capture stack every station migrates onto. It owns row
+  // entrance motion, so the bridge must be inherited by consumers rather than
+  // re-derived per station (capture-stack Phase 2).
+  'src/design-system/components/capture-stack/CaptureStack.tsx',
 ] as const;
 
 /** Transition-only surfaces (progress bars, width anims). */
@@ -30,17 +34,25 @@ const REQUIRED_TRANSITION = [
 const HOOKS_IMPORT_RE =
   /from ['"]@?\/?\.?\.?\/?.*motion-framer-hooks['"]|from ['"]@\/design-system\/foundations\/motion-framer-hooks['"]|from ['"]\.\.\/foundations\/motion-framer-hooks['"]/;
 
+/**
+ * Match a CALL, not a mention. A bare /useMotionPresence/ also matches a
+ * docblock or a TODO promising the migration — which is exactly what the
+ * pre-Phase-2 `CaptureStack.tsx` carried, so the loose form passed on the very
+ * file it was meant to reject.
+ */
+const callRe = (hook: string) => new RegExp(`${hook}\\s*\\(`);
+
 test('station card primitives use the reduced-motion bridge', () => {
   for (const rel of REQUIRED_BOTH) {
     const src = readFileSync(join(ROOT, rel), 'utf8');
     assert.match(
       src,
-      /useMotionTransition/,
+      callRe('useMotionTransition'),
       `${rel} must call useMotionTransition (WCAG 2.3.3 bridge)`,
     );
     assert.match(
       src,
-      /useMotionPresence/,
+      callRe('useMotionPresence'),
       `${rel} must call useMotionPresence (WCAG 2.3.3 bridge)`,
     );
     assert.match(
@@ -54,7 +66,7 @@ test('station card primitives use the reduced-motion bridge', () => {
     const src = readFileSync(join(ROOT, rel), 'utf8');
     assert.match(
       src,
-      /useMotionTransition/,
+      callRe('useMotionTransition'),
       `${rel} must call useMotionTransition (WCAG 2.3.3 bridge)`,
     );
     assert.match(

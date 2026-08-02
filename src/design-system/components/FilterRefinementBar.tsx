@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, type ReactNode } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from '@/design-system/motion';
 import { AnchoredLayer } from '@/design-system/primitives/AnchoredLayer';
 import { Layer } from '@/design-system/primitives/Layer';
 import { Filter, X, ChevronDown } from '@/components/Icons';

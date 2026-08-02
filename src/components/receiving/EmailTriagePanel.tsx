@@ -21,7 +21,7 @@
  */
 
 import { useCallback, useMemo, useState } from 'react';
-import { motion, useReducedMotion } from 'framer-motion';
+import { motion, useReducedMotion } from '@/design-system/motion';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Archive,

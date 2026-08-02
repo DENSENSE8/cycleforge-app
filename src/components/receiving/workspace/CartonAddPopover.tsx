@@ -24,7 +24,7 @@
 
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from '@/design-system/motion';
 import { motionBezier } from '@/design-system/foundations/motion-framer';
 import { X } from '@/components/Icons';
 import { IconButton } from '@/design-system/primitives';

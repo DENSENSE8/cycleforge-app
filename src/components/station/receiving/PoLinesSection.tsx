@@ -6,7 +6,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   SkuScanRefChip,
   SerialChip,
-  getLast4,
+  getLast8,
 } from '@/components/ui/CopyChip';
 import {
   conditionGradeTableLabel,
@@ -118,7 +118,7 @@ function PoLineRow({ line }: { line: ReceivingLine }) {
         </div>
         <div className="flex shrink-0 items-center gap-1">
           {skuValue ? (
-            <SkuScanRefChip value={skuValue} display={getLast4(skuValue)} />
+            <SkuScanRefChip value={skuValue} display={getLast8(skuValue)} />
           ) : null}
           {serialsCsv ? (
             <SerialChip value={serialsCsv} />

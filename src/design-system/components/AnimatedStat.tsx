@@ -1,7 +1,7 @@
 'use client';
 
 import type { ComponentProps } from 'react';
-import { useReducedMotion } from 'framer-motion';
+import { useReducedMotion } from '@/design-system/motion';
 import { cn } from '@/utils/_cn';
 import { framerTransition } from '@/design-system/foundations/motion-framer';
 import { AnimateNumber } from '@/design-system/motion/plus';

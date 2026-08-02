@@ -1,6 +1,6 @@
 'use client';
 
-import { motion } from 'framer-motion';
+import { motion } from '@/design-system/motion';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   History,

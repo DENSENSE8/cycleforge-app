@@ -1,6 +1,6 @@
 'use client';
 
-import { type ComponentProps, type RefObject } from 'react';
+import { type ComponentProps, type ReactNode, type RefObject } from 'react';
 import { ConditionPills } from '../ConditionPills';
 import { SerialCard } from '../SerialCard';
 import { SerialMatchResult, type SerialMatchedOrder } from '../SerialMatchResult';
@@ -28,6 +28,16 @@ type SerialLookupView = Pick<
  * Purely presentational: every mutation is delegated to the parent's existing
  * handlers. The `requestConfirm` guards on delete are gated by the
  * `receiving.confirmSerialRemoval` org setting (Settings Registry; default on).
+ *
+ * ## Why item photos hang here
+ *
+ * `itemPhotoSlot` is the desktop's only item-evidence affordance. Item photos →
+ * condition → serial are three consecutive steps of the unbox procedure
+ * (`derive-capture-step-states.ts`), and the last two already live on this card;
+ * the first had no desktop surface at all until 2026-08-01 — the phone could
+ * shoot `unbox_item`, the bench could not even upload one. It is a SLOT, not a
+ * mounted pill, so this component stays presentational and each lane decides
+ * for itself whether it has item evidence to capture.
  */
 export function ActiveLineConditionSerial({
   serials,
@@ -52,6 +62,7 @@ export function ActiveLineConditionSerial({
   requireSerialConfirmation,
   serialInputRef,
   units = null,
+  itemPhotoSlot,
 }: {
   serials: ActiveRowSerial[];
   lineId: number;
@@ -73,6 +84,12 @@ export function ActiveLineConditionSerial({
   onFileReturnClaim?: (matchedOrder: SerialMatchedOrder | null) => void;
   /** Programmatic focus target for the dock Add serial handoff. */
   serialInputRef?: RefObject<HTMLInputElement | null>;
+  /**
+   * Item-evidence control for THIS line — the desktop `unbox_item` pill. Omit
+   * on a lane with no item evidence to capture; the labeled step row is not
+   * rendered at all when absent (honest absence beats a dead affordance).
+   */
+  itemPhotoSlot?: ReactNode;
   onSubmitSerial: (raw?: string, conditionGrade?: string | null) => void | Promise<void>;
   onDeleteSerialUnit: (serialUnitId: number, lineId?: number) => void;
   onReplaceSerialUnit: (
@@ -109,6 +126,21 @@ export function ActiveLineConditionSerial({
 
   return (
     <div className="min-w-0 space-y-2">
+      {/* Item photos — house eyebrow header + right action slot. Labeled, so the
+          step the checklist points at is legible on the work surface itself. */}
+      {itemPhotoSlot ? (
+        <div
+          className="flex min-w-0 items-center justify-between gap-2"
+          data-unbox-item-photos
+        >
+          <p className="truncate text-role-eyebrow uppercase tracking-widest text-text-soft">
+            Item photos
+          </p>
+          {/* Bleed the pill's hit-box so it cannot grow the row. */}
+          <div className="-my-0.5 shrink-0">{itemPhotoSlot}</div>
+        </div>
+      ) : null}
+
       {isMultiQty ? (
         // Multi-qty same-product line: split into one selectable row per
         // physical unit, each with its own condition grade and serial. The

@@ -7,6 +7,7 @@ import { getPrimaryPhotoStorage } from '@/lib/photos/storage/resolve-primary';
 import { getStorageAdapter } from '@/lib/photos/storage/registry';
 import { readPhotoBytesById } from '@/lib/photos/read-bytes';
 import { normalizePhotoDisplayUrl } from '@/lib/nas-photo-url';
+import { resolveOrgIdFromRequest, NIL_ORG_ID } from '@/lib/tenancy/resolve-org-from-request';
 
 export const dynamic = 'force-dynamic';
 
@@ -46,6 +47,21 @@ export async function GET(
       // Allow entity-scoped viewers without photos.view — fall through to legacy URL redirect
       organizationId = actor.organizationId;
     }
+  }
+
+  // Anonymous branch — sign-in staff-photo ONLY.
+  //
+  // The sign-in picker renders before any session exists, and it already
+  // discloses this exact set of people (name + role + colour) to anyone who can
+  // reach the tenant's host — see /api/auth/staff-picker, which is public by
+  // construction. `resolveCurrentStaffAvatarOrg` matches that set exactly: it
+  // resolves an org ONLY when the photo is the CURRENT `avatar_photo_id` of an
+  // active staffer in the tenant this request's host resolves to. Anything
+  // else — evidence photos, a replaced avatar, another tenant's staffer —
+  // falls through to the 401 below, unchanged.
+  if (!organizationId) {
+    const anonOrgId = await resolveCurrentStaffAvatarOrg(request, photoId);
+    if (anonOrgId) organizationId = anonOrgId;
   }
 
   const photoRes = organizationId
@@ -158,4 +174,39 @@ export async function GET(
   }
 
   return NextResponse.json({ error: 'Photo content unavailable' }, { status: 404 });
+}
+
+/**
+ * Resolve the org for an ANONYMOUS request, and only for a photo that is the
+ * current profile photo of an active staffer in the tenant this request's host
+ * resolves to. Returns null for everything else — including a staff avatar in a
+ * DIFFERENT tenant, so a photo id cannot be walked across orgs.
+ *
+ * Scoped deliberately to `staff.avatar_photo_id` rather than "any STAFF-linked
+ * photo": a replaced avatar keeps its `photo_entity_links` row until the delete
+ * lands, and a superseded face should stop being publicly readable the moment
+ * it stops being the current one.
+ */
+async function resolveCurrentStaffAvatarOrg(
+  request: NextRequest,
+  photoId: number,
+): Promise<string | null> {
+  try {
+    const hostOrgId = await resolveOrgIdFromRequest(request);
+    if (!hostOrgId || hostOrgId === NIL_ORG_ID) return null;
+    const r = await tenantQuery<{ organization_id: string }>(
+      hostOrgId,
+      `SELECT organization_id
+         FROM staff
+        WHERE avatar_photo_id = $1
+          AND organization_id = $2
+          AND COALESCE(status, 'active') IN ('active', 'invited')
+          AND COALESCE(active, true) = true
+        LIMIT 1`,
+      [photoId, hostOrgId],
+    );
+    return r.rows[0]?.organization_id ?? null;
+  } catch {
+    return null;
+  }
 }

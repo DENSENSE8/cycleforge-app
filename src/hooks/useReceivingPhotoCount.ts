@@ -4,6 +4,7 @@ import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { receivingPhotosQueryKey } from '@/lib/queries/receiving-queries';
 import { receivingStageFromPhotoType } from '@/lib/receiving/photo-intent';
+import { parsePhotoAspect, type PhotoAspect } from '@/lib/photos/photo-aspects';
 
 interface PhotoRow {
   photoUrl?: string | null;
@@ -17,6 +18,8 @@ interface PhotoRow {
    */
   caption?: string | null;
   receivingLineId?: number | null;
+  /** `photos.photo_aspect` — WHAT the shot shows, within its stage. NULL = unclassified. */
+  photoAspect?: string | null;
 }
 
 interface PhotosPayload {
@@ -41,6 +44,14 @@ interface ReceivingPhotoStageCounts {
   item: number;
   /** Every photo on the carton, whatever the stage. */
   total: number;
+  /**
+   * Per-aspect counts of the bench's own carton shots (`unbox_carton`). The
+   * three carton steps share that stage and are told apart by aspect alone, so
+   * a stage count cannot answer them.
+   */
+  cartonAspect: Partial<Record<PhotoAspect, number>>;
+  /** Per-aspect counts on the requested line; empty when no line was requested. */
+  itemAspect: Partial<Record<PhotoAspect, number>>;
 }
 
 const EMPTY_COUNTS: ReceivingPhotoStageCounts = {
@@ -49,6 +60,8 @@ const EMPTY_COUNTS: ReceivingPhotoStageCounts = {
   unboxCarton: 0,
   item: 0,
   total: 0,
+  cartonAspect: {},
+  itemAspect: {},
 };
 
 /**
@@ -131,7 +144,20 @@ export function useReceivingPhotoStageCounts(
     if (!valid) return { ...EMPTY_COUNTS, settled: true };
     if (!data) return EMPTY_COUNTS;
 
-    const counts = { ...EMPTY_COUNTS, settled: true };
+    const counts: ReceivingPhotoStageCounts = {
+      ...EMPTY_COUNTS,
+      settled: true,
+      cartonAspect: {},
+      itemAspect: {},
+    };
+    // An UNKNOWN aspect string is dropped, never bucketed — same rule as the
+    // server-side counts. A row whose aspect this build does not recognise is
+    // unclassified evidence, not evidence of the nearest thing.
+    const bump = (into: Partial<Record<PhotoAspect, number>>, raw: string | null | undefined) => {
+      const aspect = parsePhotoAspect(raw);
+      if (aspect) into[aspect] = (into[aspect] ?? 0) + 1;
+    };
+
     for (const photo of data.photos ?? []) {
       if (!photo.photoUrl?.trim()) continue;
       counts.total += 1;
@@ -140,13 +166,23 @@ export function useReceivingPhotoStageCounts(
       if (onLine) {
         // Item evidence primary-links the RECEIVING_LINE, so a line's item
         // photos are exactly the rows carrying its id.
-        if (wantLine != null && Number(photo.receivingLineId) === wantLine) counts.item += 1;
+        if (wantLine != null && Number(photo.receivingLineId) === wantLine) {
+          counts.item += 1;
+          bump(counts.itemAspect, photo.photoAspect);
+        }
         continue;
       }
 
       const stage = receivingStageFromPhotoType('RECEIVING', photo.caption);
       if (stage === 'arrival_package') counts.arrivalPackage += 1;
-      else if (stage === 'unbox_carton') counts.unboxCarton += 1;
+      else if (stage === 'unbox_carton') {
+        counts.unboxCarton += 1;
+        // Aspect buckets only for the BENCH stage. An arrival shot may legally
+        // carry `shipping_label`, and letting it into this bucket would satisfy
+        // the bench's shipping-label step from a door photo — the same
+        // stage-confusion the arrival split exists to prevent, one axis down.
+        bump(counts.cartonAspect, photo.photoAspect);
+      }
     }
     return counts;
   }, [valid, data, wantLine]);

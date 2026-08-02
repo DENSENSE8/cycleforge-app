@@ -1,7 +1,7 @@
 'use client';
 
 import { useId, useMemo } from 'react';
-import { motion } from 'framer-motion';
+import { motion } from '@/design-system/motion';
 import { cn } from '@/utils/_cn';
 import { useMeasuredWidth } from './use-measured-width';
 

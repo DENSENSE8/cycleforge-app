@@ -338,7 +338,8 @@ export async function readJourneyEntity(
     const stationFilter = filters.stations?.length ? mapStationsToSpines(filters.stations).sal : null;
     const typeFilter = filters.types?.length ? filters.types : null;
     const sal = await client.query<StationActivityRow>(
-      `SELECT sal.id, sal.created_at, sal.station, sal.activity_type, s.name AS actor_name,
+      `SELECT sal.id, sal.created_at, sal.station, sal.activity_type,
+              s.name AS actor_name, sal.staff_id AS actor_staff_id,
               sal.scan_ref, sal.tech_serial_number_id,
               COALESCE(NULLIF(BTRIM(tsn.serial_number), ''), NULLIF(BTRIM(sal.metadata->>'serial'), '')) AS serial_number,
               tsn.serial_type, sal.metadata
@@ -361,6 +362,7 @@ export async function readJourneyEntity(
         station: r.station,
         activity_type: r.activity_type,
         actor_name: r.actor_name,
+        actor_staff_id: r.actor_staff_id ?? null,
         scan_ref: r.scan_ref,
         tech_serial_number_id: r.tech_serial_number_id,
         serial_number: r.serial_number,
@@ -394,6 +396,7 @@ export async function readJourneyEntity(
         occurred_at: r.occurred_at,
         event_type: r.event_type,
         actor_name: r.actor_name,
+        actor_staff_id: r.actor_staff_id ?? null,
         serial_number: r.serial_number,
         sku: r.sku,
         prev_status: r.prev_status,
@@ -415,7 +418,8 @@ export async function readJourneyEntity(
   // 3) audit_logs — order-anchored edits.
   if (want('audit') && anchors.orderId != null) {
     const audit = await client.query<OrderAuditRow>(
-      `SELECT al.id, al.created_at, al.action, al.before_data, al.after_data, al.metadata, s.name AS actor_name
+      `SELECT al.id, al.created_at, al.action, al.before_data, al.after_data, al.metadata,
+              s.name AS actor_name, al.actor_staff_id
          FROM audit_logs al
          LEFT JOIN staff s ON s.id = al.actor_staff_id
         WHERE lower(al.entity_type) = 'order' AND al.entity_id = $1 AND al.organization_id = $2

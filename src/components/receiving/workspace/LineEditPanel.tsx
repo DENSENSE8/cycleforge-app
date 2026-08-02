@@ -13,7 +13,7 @@
  * a `RightRailHost` occupant (the occupant slot stays single-occupancy and
  * `detail:receiving` keeps the float host). The station's procedure is not in
  * the centre either — it IS the Checklist display in that same column
- * ({@link UnboxProcedureChecklist}).
+ * (the guided step stack in the workbench centre).
  *
  * The bottom dock is **carton-terminal**: always Print · Receive. It does not
  * change with the Displays selection — a right-panel click re-labelling the
@@ -26,7 +26,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { motion, useReducedMotion, type Variants } from 'framer-motion';
+import { motion, useReducedMotion, type Variants } from '@/design-system/motion';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   staggerRevealContainer,
@@ -167,7 +167,7 @@ export function LineEditPanel({
   // Resolve the returned unit's OUTBOUND order (closed-loop linkage) from the
   // live scan input, falling back to the newest serial already on the line so
   // the identity persists after the scan bar clears. The resolved order# lands
-  // in the top-row PO#/order chip (last-4) instead of a separate LINKAGE panel.
+  // in the top-row PO#/order chip (last-8) instead of a separate LINKAGE panel.
   const latestRowSerial = String(rowSerials[rowSerials.length - 1]?.serial_number ?? '').trim();
   const linkedOrder = useReturnOrderLinkage(c.serialInput.trim() || latestRowSerial);
   const activeStep = useMemo(
@@ -539,9 +539,12 @@ export function LineEditPanel({
     showClaimStack || showTicketStack || showToolPush || showDisplays || showExpandStrip;
 
   // TODO(daily-triage F0→F1): mount MyDayRail here pending OQ1
-  // (`docs/todo/daily-triage-FRONTEND-PLAN-VALIDATION.md`) — Unbox is
-  // scanner-driven (`display/station.md`), so a personal triage rail beside the
-  // bench may read as noise competing with scan focus. F0 changes nothing here.
+  // (`docs/todo/daily-triage-FRONTEND-PLAN-VALIDATION.md`). Unbox has no free
+  // slot for it: the left context column already renders the Queue/Viewed/
+  // History rail, and the right edge is a mutually-exclusive stack (Displays /
+  // Ticket / Claim / tool / `detail:receiving`). Mounting a personal triage rail
+  // here means evicting an occupant or adding a region — an explicit decision,
+  // not a default. F0 changes nothing here.
   const stationContextBar = (
     <StationContextBar
       identity={

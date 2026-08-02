@@ -23,6 +23,14 @@
  * the dataset" auto-clear, and the bulk-selection broadcast wiring
  * (emitSelection / emitSelectionTotal / onToggleAll). Refs let the handlers and
  * listeners read current values without stale closures.
+ *
+ * **Every table that renders `ReceivingGridView` selects through THIS hook.**
+ * Testing History kept a private re-implementation until 2026-08-01, differing
+ * only in the selection-bus scope (now the `selectionScope` arg) — and that copy
+ * still carried the pre-split `selectMode swallows the click` early return, so
+ * the Testing browse could not open a line by click at all. A second copy of a
+ * contract this file has now changed twice is the thing to avoid, not the
+ * parameter.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -53,6 +61,41 @@ interface UseReceivingRowSelectionArgs {
    * collapsed gutter — never an inert one".
    */
   rowClickOpens?: boolean;
+  /**
+   * What "open this record" MEANS on this surface. Default: dispatch
+   * `receiving-select-line`, which the receiving pane turns into the Incoming
+   * inspector / the Unbox workspace.
+   *
+   * History overrides it. Its `receiving-select-line` branch does
+   * `router.replace('/unbox?openReceivingId=…')` — so reusing the default there
+   * would make a plain click on a week-of-cartons BROWSE table teleport the
+   * operator into the scan bench, mixing a Workbench map with a Station
+   * (`contextual-display.md` → one contract per region). The durable read record
+   * is `/carton/[id]` (`cartonReadHref`), which is what History opens instead.
+   */
+  openRow?: (row: ReceivingLineRow) => void;
+  /**
+   * Whether opening from THIS table stamps the operator's recents (the Recent
+   * tab's feed). Default true — the historical dispatchers all mean "I am
+   * working this carton".
+   *
+   * Unbox passes false: its feed is a 117-row browse map, and a click there is
+   * navigation. If every click counted, Recent would converge on a copy of the
+   * feed and stop answering which cartons the operator actually opened.
+   */
+  recordViewOnOpen?: boolean;
+  /**
+   * Which selection bus this table broadcasts on
+   * (`src/lib/selection/table-selection.ts`). Defaults to receiving.
+   *
+   * Testing History passes `TESTING_SELECTION_SCOPE`: it renders the same
+   * `ReceivingGridView` over the same `ReceivingLineRow`, but its bulk bar is
+   * the tech dashboard's, not the receiving pane's. The scope was the ONLY
+   * thing its private copy of this hook varied — every handler and every bus
+   * effect below was a byte-level duplicate that then missed the two-plane
+   * split when it landed here.
+   */
+  selectionScope?: string;
   localRows: ReceivingLineRow[];
   orderedVisibleRows: ReceivingLineRow[];
 }
@@ -74,6 +117,9 @@ export interface ReceivingRowSelection {
 export function useReceivingRowSelection({
   selectMode,
   rowClickOpens = false,
+  openRow,
+  recordViewOnOpen = true,
+  selectionScope = RECEIVING_SELECTION_SCOPE,
   localRows,
   orderedVisibleRows,
 }: UseReceivingRowSelectionArgs): ReceivingRowSelection {
@@ -149,11 +195,25 @@ export function useReceivingRowSelection({
     });
   }, []);
 
+  const openRowRef = useRef(openRow);
+  useEffect(() => { openRowRef.current = openRow; }, [openRow]);
+
+  const recordViewOnOpenRef = useRef(recordViewOnOpen);
+  useEffect(() => { recordViewOnOpenRef.current = recordViewOnOpen; }, [recordViewOnOpen]);
+
   /** Open the record — single-select; re-clicking the open row closes it. */
   const handleOpenRow = useCallback((row: ReceivingLineRow) => {
+    const override = openRowRef.current;
+    if (override) {
+      // A navigating surface (History → `/carton/[id]`) has nothing to toggle
+      // shut: every activate goes somewhere, so it marks the row and leaves.
+      setSelectedId(row.id);
+      override(row);
+      return;
+    }
     const next = selectedIdRef.current === row.id ? null : row.id;
     setSelectedId(next);
-    dispatchSelectLine(next ? row : null);
+    dispatchSelectLine(next ? row : null, { recordView: recordViewOnOpenRef.current });
   }, []);
 
   const handleSelectRow = useCallback(
@@ -194,31 +254,28 @@ export function useReceivingRowSelection({
       const row = byId.get(id);
       if (row) rows.push(row);
     }
-    emitSelection(RECEIVING_SELECTION_SCOPE, rows);
-  }, [selectMode, selectedIds, localRows]);
+    emitSelection(selectionScope, rows);
+  }, [selectMode, selectedIds, localRows, selectionScope]);
 
   // Leaving select mode clears the selection (and notifies listeners).
   useEffect(() => {
     if (selectMode) return;
     setSelectedIds((prev) => (prev.size ? new Set() : prev));
-    emitSelection(RECEIVING_SELECTION_SCOPE, []);
-  }, [selectMode]);
+    emitSelection(selectionScope, []);
+  }, [selectMode, selectionScope]);
 
   // Header "Select all" / "Clear" → toggle every currently-visible row.
   useEffect(() => {
-    return onToggleAll(RECEIVING_SELECTION_SCOPE, (toggle) => {
+    return onToggleAll(selectionScope, (toggle) => {
       setSelectedIds(toggle === 'all' ? new Set(orderedVisibleRows.map((r) => r.id)) : new Set());
     });
-  }, [orderedVisibleRows]);
+  }, [orderedVisibleRows, selectionScope]);
 
   // Publish the selectable total so the action bar's select-all ring can fill.
   // Zero outside select mode so a stale "all selected" never lingers.
   useEffect(() => {
-    emitSelectionTotal(
-      RECEIVING_SELECTION_SCOPE,
-      selectMode ? orderedVisibleRows.length : 0,
-    );
-  }, [selectMode, orderedVisibleRows]);
+    emitSelectionTotal(selectionScope, selectMode ? orderedVisibleRows.length : 0);
+  }, [selectMode, orderedVisibleRows, selectionScope]);
 
   return {
     selectedId,

@@ -38,6 +38,12 @@ export interface WorkspaceState {
   row: ReceivingLineRow;
   accordionBootstrap: 'default' | 'all';
   scanDriven: boolean;
+  /**
+   * Whether this open stamps the operator's recents (the Recent tab's feed).
+   * Absent = true; only a browse-feed click opts out. See
+   * `readSelectLineDetail`.
+   */
+  recordView?: boolean;
 }
 
 export interface NavState {

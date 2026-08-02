@@ -14,6 +14,7 @@
  *   RECEIVING_LINE  → receiving_item
  *   SERIAL_UNIT     → testing_photo | packer_photo | prepack
  *   PACKER_LOG      → packer_photo | box_label
+ *   STAFF           → staff_avatar          (identity chrome, not evidence)
  *
  * Every other entity (SKU, SKU_STOCK, BIN_ADJUSTMENT, SHARE_PACK,
  * ZENDESK_TICKET) is deliberately unconstrained — those surfaces carry their
@@ -32,6 +33,7 @@ import {
   PACK_BOX_PHOTO_TYPE,
   PACK_SLIP_PHOTO_TYPE,
   PACKER_BOX_LABEL_PHOTO_TYPE,
+  STAFF_AVATAR_PHOTO_TYPE,
   UNIT_PACKING_PHOTO_TYPE,
   UNIT_PREPACK_PHOTO_TYPE,
   UNIT_TESTING_PHOTO_TYPE,
@@ -76,6 +78,10 @@ const WRITE_MATRIX: Partial<Record<PhotoEntityType, readonly string[]>> = {
     PACK_SLIP_PHOTO_TYPE,
     PACK_BOX_PHOTO_TYPE,
   ],
+  // A profile photo is identity chrome, not evidence — one legal type, so no
+  // capture surface can stamp an evidence type onto a person, and a face never
+  // lands in the buckets the library and claim exports read.
+  STAFF: [STAFF_AVATAR_PHOTO_TYPE],
 };
 
 /** Allowed photo_type values for an entity, or null when unconstrained. */

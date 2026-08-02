@@ -1,4 +1,4 @@
-import { PoChip, getLast4 } from '@/components/ui/CopyChip';
+import { PoChip, getLast8 } from '@/components/ui/CopyChip';
 import { type DetailsResponse, fmtDate, fmtDateTime, fmtMoney } from './incoming-details-shared';
 import { Row, Empty } from './incoming-details-primitives';
 
@@ -9,7 +9,7 @@ export function PoTab({ data }: { data: DetailsResponse }) {
     <div>
       <Row
         label="PO #"
-        value={<PoChip value={po.zoho_purchaseorder_number} display={getLast4(po.zoho_purchaseorder_number)} />}
+        value={<PoChip value={po.zoho_purchaseorder_number} display={getLast8(po.zoho_purchaseorder_number)} />}
       />
       <Row label="Status" value={po.status ?? '—'} />
       <Row label="Vendor" value={po.vendor_name ?? '—'} />

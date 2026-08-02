@@ -37,20 +37,12 @@
  */
 
 import { useRef } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion, motionRole, useMotionRole } from '@/design-system/motion';
 import { ReceivingLineWorkspace } from '@/components/receiving/workspace/ReceivingLineWorkspace';
 import { ReceivingWorkspaceSkeleton } from '@/components/receiving/workspace/ReceivingWorkspaceSkeleton';
 import { UnboxWorkspaceView } from '@/components/receiving/unbox/UnboxWorkspaceView';
 import { UnboxLookupReceipt } from '@/components/receiving/unbox/UnboxLookupReceipt';
 import type { UnboxLookupScanDetail } from '@/components/receiving/receiving-events';
-import {
-  framerPresence,
-  framerTransition,
-} from '@/design-system/foundations/motion-framer';
-import {
-  useMotionPresence,
-  useMotionTransition,
-} from '@/design-system/foundations/motion-framer-hooks';
 import {
   resolveWorkspacePaneSlot,
   type WorkspacePaneSlot,
@@ -85,8 +77,11 @@ export function UnboxLineWorkspace({
   onClearLookupReceipt,
   onCloseWorkspace,
 }: UnboxLineWorkspaceProps) {
-  const panePresence = useMotionPresence(framerPresence.stationCartonSwap);
-  const paneTransition = useMotionTransition(framerTransition.stationCartonSwapMount);
+  // `motionRole.swap.scan` — the station-cadence swap, carried as one pair so
+  // the carton→carton exit can never drift off its zero-duration contract.
+  const { presence: panePresence, transition: paneTransition } = useMotionRole(
+    motionRole.swap.scan,
+  );
   const row = workspace?.row ?? null;
   const showOverlay = !!workspace;
   // Deep-link load (`?openReceivingId=`): the carton is being fetched but the
@@ -179,6 +174,10 @@ export function UnboxLineWorkspace({
               accordionBootstrap={workspace.accordionBootstrap}
               nav={nav}
               variant="unbox"
+              // Absent = a path that predates the feed's click-to-open (scan,
+              // recent rail, sibling PO line, deep-link restore) — every one of
+              // those is a deliberate open of one carton, so it records.
+              recordView={workspace.recordView !== false}
               onPrev={() => {
                 window.dispatchEvent(
                   new CustomEvent('receiving-navigate-table', { detail: 'prev' }),

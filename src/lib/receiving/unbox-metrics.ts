@@ -84,7 +84,7 @@ function metric(
 const UNBOX_METRICS: UnboxMetricDef[] = [
   {
     id: 'opened-today',
-    modes: ['recent'],
+    modes: ['history'],
     compute: ({ recent }) =>
       recent.openedToday > 0
         ? metric(
@@ -102,7 +102,7 @@ const UNBOX_METRICS: UnboxMetricDef[] = [
   },
   {
     id: 'awaiting-test',
-    modes: ['recent'],
+    modes: ['history'],
     compute: ({ recent }) =>
       recent.awaitingTest > 0
         ? metric(
@@ -120,7 +120,7 @@ const UNBOX_METRICS: UnboxMetricDef[] = [
   },
   {
     id: 'stuck',
-    modes: ['recent'],
+    modes: ['history'],
     compute: ({ recent }) =>
       recent.stuck > 0
         ? metric(
@@ -194,7 +194,7 @@ const UNBOX_METRICS: UnboxMetricDef[] = [
   },
   {
     id: 'viewed-today',
-    modes: ['viewed'],
+    modes: ['recent'],
     compute: ({ viewed }) =>
       viewed.viewedToday > 0
         ? metric(
@@ -212,7 +212,7 @@ const UNBOX_METRICS: UnboxMetricDef[] = [
   },
   {
     id: 'unfinished',
-    modes: ['viewed'],
+    modes: ['recent'],
     compute: ({ viewed }) =>
       viewed.unfinished > 0
         ? metric(

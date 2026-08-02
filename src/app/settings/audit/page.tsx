@@ -115,7 +115,7 @@ export default async function AuditPage({ searchParams }: PageProps) {
         </form>
 
         <div className="overflow-hidden rounded-2xl border border-border-soft bg-surface-card shadow-sm">
-          <table className="min-w-full divide-y divide-border-hairline text-[12.5px]">
+          <table className="min-w-full divide-y divide-border-hairline text-role-caption">
             <thead className="bg-surface-canvas text-left text-role-caption font-medium uppercase tracking-[0.08em] text-text-soft">
               <tr>
                 <th className="px-3 py-2">When</th>
@@ -130,20 +130,20 @@ export default async function AuditPage({ searchParams }: PageProps) {
                 <tr><td colSpan={5} className="px-3 py-6 text-center text-text-faint">No audit entries match.</td></tr>
               ) : rows.map((row) => (
                 <tr key={row.id} className="text-text-default">
-                  <td className="px-3 py-2 align-top font-mono text-[11.5px] text-text-muted">{fmtTs(row.created_at)}</td>
+                  <td className="px-3 py-2 align-top font-mono text-role-caption text-text-muted">{fmtTs(row.created_at)}</td>
                   <td className="px-3 py-2 align-top">
                     <div className="font-medium">{row.actor_name ?? `#${row.actor_staff_id ?? '—'}`}</div>
-                    {row.actor_role && <div className="text-[10.5px] text-text-soft">{row.actor_role}</div>}
+                    {row.actor_role && <div className="text-role-micro text-text-soft">{row.actor_role}</div>}
                   </td>
                   <td className="px-3 py-2 align-top">
                     <div className="font-medium">{row.action}</div>
-                    <div className="text-[10.5px] text-text-soft">{row.source}</div>
+                    <div className="text-role-micro text-text-soft">{row.source}</div>
                   </td>
                   <td className="px-3 py-2 align-top">
                     <div className="font-medium">{row.entity_type}</div>
-                    <div className="font-mono text-[10.5px] text-text-soft">{row.entity_id}</div>
+                    <div className="font-mono text-role-caption text-text-soft">{row.entity_id}</div>
                   </td>
-                  <td className="px-3 py-2 align-top font-mono text-[10.5px] text-text-soft">{row.ip_address ?? '—'}</td>
+                  <td className="px-3 py-2 align-top font-mono text-role-caption text-text-soft">{row.ip_address ?? '—'}</td>
                 </tr>
               ))}
             </tbody>

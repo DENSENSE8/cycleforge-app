@@ -1,6 +1,6 @@
 'use client';
 
-import { motion } from 'framer-motion';
+import { motion } from '@/design-system/motion';
 import { Loader2, Trash2, X } from '@/components/Icons';
 import { useWarrantyClaim } from '@/hooks/useWarrantyClaims';
 import { useWarrantyMutations } from '@/hooks/useWarrantyMutations';

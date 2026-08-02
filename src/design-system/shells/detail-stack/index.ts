@@ -3,6 +3,8 @@ export {
   DETAIL_STACK_RESIZE,
   DETAIL_STACK_COLLAPSE,
   DETAIL_STACK_ASIDE_SURFACE,
+  DETAIL_STACK_PUSH_COLUMN_CLASS,
+  DETAIL_STACK_PUSH_STRIP_CLASS,
   assistantDockAsideClassName,
   assistantDockAsideStyle,
   detailStackAsideClassName,

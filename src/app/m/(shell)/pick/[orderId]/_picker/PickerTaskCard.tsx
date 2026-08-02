@@ -1,6 +1,6 @@
 'use client';
 
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from '@/design-system/motion';
 import { ScanSurface } from '@/components/mobile/ScanSurface';
 import { SkuIdentity } from '@/components/inventory/SkuIdentity';
 import {

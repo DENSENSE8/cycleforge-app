@@ -112,7 +112,7 @@ export function MissingMode({
                       <span className="truncate text-sm font-medium text-text-default">{row.email_subject || '(no subject)'}</span>
                       <span className="truncate text-role-caption text-text-soft">{row.email_from}</span>
                     </div>
-                    <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[11.5px] text-text-soft">
+                    <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-role-caption text-text-soft">
                       <span>{new Date(row.scanned_at).toLocaleString()}</span>
                       <span aria-hidden>·</span>
                       <StatusChip status={row.status} />
@@ -120,7 +120,7 @@ export function MissingMode({
                         <span key={p} className="rounded bg-amber-50 px-1.5 py-0.5 font-mono text-amber-700">{p}</span>
                       ))}
                     </div>
-                    {row.notes && <p className="mt-1 text-[11.5px] italic text-text-soft">{row.notes}</p>}
+                    {row.notes && <p className="mt-1 text-role-caption italic text-text-soft">{row.notes}</p>}
                   </div>
                   <div className="flex shrink-0 items-center gap-1">
                     {row.gmail_msg_id && (
@@ -128,7 +128,7 @@ export function MissingMode({
                         href={`https://mail.google.com/mail/u/0/#all/${row.gmail_msg_id}`}
                         target="_blank"
                         rel="noreferrer"
-                        className="rounded-md border border-border-soft px-2 py-1 text-[11.5px] text-text-muted hover:bg-surface-hover"
+                        className="rounded-md border border-border-soft px-2 py-1 text-role-caption text-text-muted hover:bg-surface-hover"
                       >
                         Open ↗
                       </a>

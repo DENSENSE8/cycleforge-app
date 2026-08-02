@@ -5,19 +5,23 @@
  *
  * Cardinality decides the rail body (`selection-occupancy.ts`): one row is the
  * existing `detail:order` inspector, which `GlobalDetailStackHost` already
- * mounts and which this component deliberately does not touch. Two or more is
- * this shell.
+ * mounts and which this component deliberately does not touch; exactly two is
+ * `OrderRailCompare`; three or more is this shell.
  *
- * Phase 2 ships the roster read-only. Phase 3 splits the exactly-two case into
- * a divergence-first compare pane (`detail:order-compare`); Phase 4 gives each
- * roster row a `[×]` so the set can be refined against the rows on screen.
+ * Phase 3 took the exactly-two case away from here — comparing two orders is a
+ * divergence read, and a roster that just lists them answers a different
+ * question. Phase 4 gives each roster row a `[×]` so the set can be refined
+ * against the rows on screen.
  * Plan: `docs/todo/order-rail-selection-plane-PLAN.md`.
  */
 
 import { useCallback, useMemo } from 'react';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
 import { emitToggleAll } from '@/lib/selection/table-selection';
-import { resolveRailOccupancy } from '@/lib/right-rail/selection-occupancy';
+import {
+  isRailOccupantActive,
+  resolveRailOccupancy,
+} from '@/lib/right-rail/selection-occupancy';
 import {
   RailActionRegion,
   RailSelectionBand,
@@ -56,8 +60,9 @@ export function OrderRailShell() {
     if (scope) emitToggleAll(scope, 'none');
   }, [scope]);
 
-  // Phases 3 + 4 split this; until then two rows and six rows share the roster.
-  const active = occupancy.kind === 'compare' || occupancy.kind === 'attention';
+  // 3+ only — exactly two is `OrderRailCompare`. Gated through the resolver's
+  // own helper so the two registrars can never both claim the slot.
+  const active = isRailOccupantActive(occupancy, 'attention');
 
   return (
     <DetailStackRailRegistrar
@@ -71,7 +76,7 @@ export function OrderRailShell() {
       ariaLabel={`${rows.length} orders selected`}
     >
       <div className="flex h-full min-h-0 flex-col overflow-hidden bg-surface-card">
-        <RailSelectionBand />
+        <RailSelectionBand onClose={handleClose} />
 
         <div className="min-h-0 flex-1 overflow-y-auto">
           <ul className="divide-y divide-border-soft">

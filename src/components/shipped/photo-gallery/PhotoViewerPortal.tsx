@@ -2,7 +2,7 @@
 
 import { useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { AnimatePresence } from 'framer-motion';
+import { AnimatePresence } from '@/design-system/motion';
 import { useBodyScrollLock } from '@/design-system/hooks';
 import { PhotoViewerModal } from './PhotoViewerModal';
 import type { PhotoGalleryController } from './usePhotoGallery';

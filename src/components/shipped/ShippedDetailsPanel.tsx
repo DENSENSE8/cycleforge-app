@@ -1,16 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { AnimatePresence } from 'framer-motion';
+import { AnimatePresence } from '@/design-system/motion';
 import { ShippedOrder } from '@/lib/neon/orders-queries';
 import { dispatchNavigateShippedDetails } from '@/utils/events';
+import { useRecordCursor } from '@/lib/record-cursor/useRecordCursor';
 import { usePanelActions } from '@/hooks/usePanelActions';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
-import { RailActionRegion } from '@/components/dashboard/rail/OrderRailActions';
+import { useRailHeaderActions } from '@/components/dashboard/rail/OrderRailActions';
 
-/** Kill switch for the 1-row rail action region — see the mount site below. */
-const RAIL_ACTION_REGION_IN_INSPECTOR = false;
 import { WorkOrderAssignmentCard } from '@/components/work-orders/WorkOrderAssignmentCard';
 import { type PaneHeaderActionBarAction } from '@/components/ui/pane-header';
 import type { DetailsStackDurationData, ShippedActiveInput } from './stacks/types';
@@ -172,16 +171,68 @@ export function ShippedDetailsPanel({
     ...(action.key === 'status' ? { title: 'Mark as shipped' } : {}),
     ...(action.key === 'urgent' ? { title: isUrgent ? 'Clear urgent' : 'Mark urgent' } : {}),
   }));
+  // Selection actions live in the SAME header icon bar as the panel's own
+  // actions — never a second labelled block at the foot of the panel. See
+  // `useRailHeaderActions`.
+  const railHeaderActions = useRailHeaderActions();
   const headerBarActions: PaneHeaderActionBarAction[] = showDashboardExtras
-    ? buildShippedHeaderQuickActions(
-        mappedPanelActions.filter((action) => action.key !== 'goals'),
-      )
-    : [];
+    ? [
+        ...buildShippedHeaderQuickActions(
+          mappedPanelActions.filter((action) => action.key !== 'goals'),
+        ),
+        ...railHeaderActions,
+      ]
+    : railHeaderActions;
+
+  /**
+   * Where this record sits in the collection behind it, and what ↑ / ↓ open.
+   *
+   * This panel used to dispatch `navigate-shipped-details` and hope something
+   * was listening. Three listeners were, over three different row shapes, each
+   * with its own copy of `findIndex → ±1 → open` — and on the Shipped lane two
+   * of them ran on the same keypress, so one press stepped twice. Now the
+   * collection publishes its order once and this reads it
+   * (`record-cursor-unification-PLAN.md` §1.1–1.2, §3.5).
+   *
+   * **The legacy dispatch stays as the fallback, deliberately.** This one
+   * component has six mount sites and only the dashboard lanes publish a cursor
+   * in Phase 1; the Tech / Packer station tables still listen on the event via
+   * `useStationDetailsSelection`. Reading the cursor unconditionally would make
+   * their chevrons dead-but-enabled — §2.1's exact defect, moved onto two more
+   * surfaces. `cursor.available` is the discriminator, and the fallback is
+   * deleted in Phase 3 together with the event.
+   */
+  const cursor = useRecordCursor('record');
+
+  const handleMoveUp = useCallback(() => {
+    if (cursor.available) {
+      cursor.onPrev?.();
+      return;
+    }
+    dispatchNavigateShippedDetails('up');
+  }, [cursor]);
+
+  const handleMoveDown = useCallback(() => {
+    if (cursor.available) {
+      cursor.onNext?.();
+      return;
+    }
+    dispatchNavigateShippedDetails('down');
+  }, [cursor]);
+
+  // Ends-of-list state and the `n / m` readout only exist when a cursor is
+  // published. Left undefined otherwise, so a non-publishing surface keeps its
+  // always-enabled chevrons and renders no readout at all (honest absence)
+  // rather than a "1 / 1" that claims a queue it does not have.
+  const cursorPosition = cursor.available ? cursor.position : null;
+  const cursorTotal = cursor.available ? cursor.total : undefined;
+  const cursorPrevDisabled = cursor.available ? cursor.prevDisabled : undefined;
+  const cursorNextDisabled = cursor.available ? cursor.nextDisabled : undefined;
 
   const stackActionBar = {
     onClose,
-    onMoveUp: () => dispatchNavigateShippedDetails('up'),
-    onMoveDown: () => dispatchNavigateShippedDetails('down'),
+    onMoveUp: handleMoveUp,
+    onMoveDown: handleMoveDown,
     onAssign: meta.canEditAssignment ? openAssignmentCard : undefined,
   };
 
@@ -223,7 +274,12 @@ export function ShippedDetailsPanel({
             actions={headerBarActions}
             onMoveUp={stackActionBar.onMoveUp}
             onMoveDown={stackActionBar.onMoveDown}
+            prevDisabled={cursorPrevDisabled}
+            nextDisabled={cursorNextDisabled}
+            position={cursorPosition}
+            total={cursorTotal}
             onOpenFullPage={() => router.push(`/o/${shipped.id}`)}
+            onClose={onClose}
             compact
           />
         ) : (
@@ -236,6 +292,10 @@ export function ShippedDetailsPanel({
             actions={headerBarActions}
             onMoveUp={stackActionBar.onMoveUp}
             onMoveDown={stackActionBar.onMoveDown}
+            prevDisabled={cursorPrevDisabled}
+            nextDisabled={cursorNextDisabled}
+            position={cursorPosition}
+            total={cursorTotal}
             showCustomerTab={false}
             showWarrantyTab={false}
             showDocumentsTab={showDocumentsTab}
@@ -295,20 +355,6 @@ export function ShippedDetailsPanel({
               }}
             />
 
-            {/* Rail action region — the bottom capsule's replacement for a
-                1-row selection.
-                DISABLED: mounting it here makes the record open and then close
-                itself (URL goes `?openOrderId=N` → back to `?unshipped`), which
-                red-lined 4 specs. Bisected to this mount: with it removed they
-                pass. The 2+ path (`OrderRailShell`) is unaffected. Cause is not
-                yet root-caused — prime suspect is `selectionActions` churning
-                identity each render (its `useMemo` deps include callbacks from
-                `useWorkOrderAssignment`), so `publishRailActions` emits on every
-                render and the store notification lands mid-open.
-                Do NOT re-enable without re-running:
-                  npx playwright test dashboard-bulk-actions dashboard-inspector-non-modal --project=qa-desktop
-                Tracked: docs/todo/order-rail-selection-plane-PLAN.md §Phase 2 status. */}
-            {RAIL_ACTION_REGION_IN_INSPECTOR ? <RailActionRegion /> : null}
           </>
         ) : (
         <ShippedDetailsBody
@@ -356,6 +402,17 @@ export function ShippedDetailsPanel({
           onDeleteOrder={handleDelete}
         />
         )}
+
+        {/* No action region at the foot of this panel. The 1-row selection's
+            actions render as ICONS in the pane header's action bar
+            (`useRailHeaderActions` → `headerBarActions`), because a second
+            full-width block of labelled buttons down here duplicated the header
+            bar — and duplicated real controls, not just chrome: this panel
+            already owns a Delete, so the footer's Delete put two red buttons on
+            one record. One action surface per panel.
+            The header actions self-gate on the rail-actions store, so every
+            panel context is safe: only a publishing surface
+            (`useOrderRailSelection` on `/dashboard`) lights them up. */}
 
         <AnimatePresence>
           {showAssignmentCard && meta.canEditAssignment ? (

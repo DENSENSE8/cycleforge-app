@@ -26,6 +26,7 @@ import {
   type ReceivingHistorySearchScope,
 } from '@/lib/receiving-history-search';
 import type { ReceivingView } from '@/lib/receiving/receiving-views';
+import type { UnboxWorkspaceTab } from '@/utils/unbox-workspace-state';
 
 /** Server-side page size for the Incoming list (other modes use a long scroll). */
 export const INCOMING_PAGE_SIZE = 50;
@@ -60,12 +61,19 @@ export function resolveReceivingTableMode(raw: string | null | undefined): Recei
   return raw === 'incoming' ? 'incoming' : raw === 'history' ? 'history' : 'receive';
 }
 
-/** Unbox workbench tab → lines-table mode (`recent` = History tab). */
+/**
+ * Unbox workbench tab → lines-table mode.
+ *
+ * The two vocabularies meet here: the UI tab `recent` (this operator's opens)
+ * resolves to the `unbox_viewed` mode, whose `apiView` is `viewed` and whose
+ * feed is `receiving_line_views`. `viewed` stays the server-side name; `Recent`
+ * is what the operator reads (`utils/unbox-workspace-state.ts`).
+ */
 export function resolveUnboxReceivingTableMode(
-  tab: 'recent' | 'queue' | 'viewed',
+  tab: UnboxWorkspaceTab,
 ): ReceivingTableMode {
   if (tab === 'queue') return 'unbox_queue';
-  if (tab === 'viewed') return 'unbox_viewed';
+  if (tab === 'recent') return 'unbox_viewed';
   return 'history';
 }
 

@@ -21,7 +21,7 @@ import {
   type MutableRefObject,
   type Ref,
 } from 'react';
-import { motion } from 'framer-motion';
+import { motion } from '@/design-system/motion';
 import { cn } from '@/utils/_cn';
 import { elevationClass } from '@/design-system/tokens/shadows';
 import { focusRing } from '@/design-system/tokens/focus-ring';

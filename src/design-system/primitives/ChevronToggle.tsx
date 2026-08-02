@@ -1,6 +1,6 @@
 'use client';
 
-import { motion } from 'framer-motion';
+import { motion } from '@/design-system/motion';
 import { useUIModeOptional } from '../providers/UIModeProvider';
 import { framerTransition } from '../foundations/motion-framer';
 import { ChevronDown } from '@/components/Icons';

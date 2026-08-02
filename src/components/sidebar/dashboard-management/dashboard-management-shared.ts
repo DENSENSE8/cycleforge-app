@@ -1,4 +1,4 @@
-import type { Transition } from 'framer-motion';
+import type { Transition } from '@/design-system/motion';
 import type { SyncPhase, TransferOrderDetails } from '@/lib/orders-sync/types';
 
 export interface SearchHistory {

@@ -1,7 +1,7 @@
 'use client';
 
 import { MapPin, Pencil, Barcode } from '@/components/Icons';
-import { getLast4 } from '@/components/ui/CopyChip';
+import { getLast8 } from '@/components/ui/CopyChip';
 import { SerialPreviewStrip } from '@/components/receiving/SerialPreviewStrip';
 import type { TestingScanSession } from '@/lib/testing/testing-scan-session';
 import { sessionSerials } from '@/lib/testing/testing-scan-session';
@@ -39,7 +39,7 @@ export function TestingScanSessionFeedback({
         {tracking ? (
           <span className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-2 py-1 text-role-eyebrow uppercase tracking-widest text-blue-700 ring-1 ring-inset ring-blue-200">
             <MapPin className="h-3 w-3 shrink-0" />
-            TRK …{getLast4(tracking)}
+            TRK …{getLast8(tracking)}
           </span>
         ) : null}
         {sku ? (
@@ -51,7 +51,7 @@ export function TestingScanSessionFeedback({
         {session.unitKey ? (
           <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-1 text-role-eyebrow uppercase tracking-widest text-emerald-700 ring-1 ring-inset ring-emerald-200">
             <Barcode className="h-3 w-3 shrink-0" />
-            Unit …{getLast4(session.unitKey)}
+            Unit …{getLast8(session.unitKey)}
           </span>
         ) : (
           <span className="text-role-eyebrow uppercase tracking-widest text-blue-600">

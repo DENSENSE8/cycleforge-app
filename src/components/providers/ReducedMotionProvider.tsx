@@ -1,6 +1,6 @@
 'use client';
 
-import { MotionConfig } from 'framer-motion';
+import { MotionConfig } from '@/design-system/motion';
 
 /**
  * App-wide `prefers-reduced-motion` floor for every framer `motion.*` component.
@@ -29,6 +29,27 @@ import { MotionConfig } from 'framer-motion';
  * `useMotionPresence` / `useMotionTransition` remain available for surfaces that
  * need STRONGER-than-default reduction (suppressing an animation outright rather
  * than crossfading it) — they are no longer the compliance mechanism.
+ *
+ * ── What each motion ROLE reduces to (`@/design-system/motion` → `motionRole`)
+ *
+ *   swap.scan      → crossfade; the zero-duration EXIT survives, so a carton
+ *                    still swaps with no empty-canvas gap at scan cadence.
+ *   swap.focus     → crossfade; the y translate snaps to 0.
+ *   push.rail      → crossfade; the column's `width` is a positional key, so the
+ *                    push lands instantly instead of tweening. The panel still
+ *                    makes room — it just stops travelling.
+ *   gesture.press  → SUPPRESSED, not reduced. `useMotionPressRole` returns
+ *                    `undefined`: a `scale: 0.9` that snaps (transforms get
+ *                    `{ type: false }`) reads as a glitch, not as feedback.
+ *   feedback.pulse → unchanged. An opacity flash IS the reduced form; there is
+ *                    no vestibular component to remove.
+ *
+ * These are DESCRIPTIONS of what the floor already produces, not a second
+ * reduction path. `MotionConfig` takes no role map, and installing a parallel
+ * per-role reducer beside it would be two mechanisms for one job — the exact
+ * fork `.claude/rules/pattern-evolution.md` bans. The forms above are pinned by
+ * `src/design-system/motion/roles.test.ts`, so this comment cannot quietly drift
+ * from the shipped behaviour.
  */
 export function ReducedMotionProvider({ children }: { children: React.ReactNode }) {
     return <MotionConfig reducedMotion="user">{children}</MotionConfig>;

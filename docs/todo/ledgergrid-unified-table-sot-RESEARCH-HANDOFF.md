@@ -10,18 +10,19 @@
 
 # Cycle Forge — Unified Workbench data-table SoT
 
-You are an implementation agent in the Cycle Forge monorepo. Your job is **not** to invent a second table library. It is to **inventory every database-backed collection table in the product**, classify each against the existing Kinetic Ledger spreadsheet SoT, then execute a **two-horizon** program:
+You are an implementation agent in the Cycle Forge monorepo. Your job is **not** to invent a second table library. It is to **inventory every database-backed collection table in the product**, classify each against the existing Kinetic Ledger spreadsheet SoT, then execute a **three-horizon** program:
 
 1. **Horizon A — One excellent display SoT first.** Every ops/workbench spreadsheet must contract onto `LedgerGrid` / `LedgerGridSurface` + `GridSurfaceDescriptor` (+ `GridSurfaceCapabilities`), with Excel/Sheets/Airtable-grade interaction for *display, selection, sort, fields, frozen identity, row fill*. No foreign UI grids (AG Grid / MUI / Glide / shadcn DataGrid).
-2. **Horizon B — Only after Horizon A is dogfood-strong:** grow **industry-standard row / multi-select / record actions** on that same SoT (assign to staff, open/create support ticket for this item, exact status transitions via `transition()`, ticket linkages, bulk flag/ship-by patterns already on Orders, etc.). Actions are **capability-gated** — Catalog must never grow Orders triage row paint or dispatch actions just because the shell can.
+2. **Horizon B — Only after Horizon A is dogfood-strong:** grow **industry-standard row / multi-select / record actions** on that same SoT (assign to staff, open/create support ticket for this item, exact status transitions via `transition()`, ticket linkages, bulk flag/ship-by patterns already on Orders, etc.). Actions are **capability-gated** — Catalog must never grow Orders triage row paint or dispatch actions just because the shell can. Plan: [`grid-industry-actions-HORIZON-B-PLAN.md`](grid-industry-actions-HORIZON-B-PLAN.md).
+3. **Horizon C — Multi-tenant extensibility (after A display pin is real; does not skip B):** long-term shape for **saved views / vocab / custom fields / optional custom tables** on the **same** LedgerGrid + RightRailHost kernel — sell one reseller-ops kernel, not N tenant databases. Gemini research briefing (**no repo access** — facts embedded; returns a paste-ready report): [`tenant-table-extensibility-HORIZON-C-GEMINI-RESEARCH-BRIEFING.md`](tenant-table-extensibility-HORIZON-C-GEMINI-RESEARCH-BRIEFING.md). Plan file (landed by a repo-capable agent from that report): [`tenant-table-extensibility-HORIZON-C-PLAN.md`](tenant-table-extensibility-HORIZON-C-PLAN.md).
 
-**Do not skip Horizon A to build action menus.** A mediocre forked table with great actions is worse than one excellent shell that every surface mounts.
+**Do not skip Horizon A to build action menus or custom tables.** A mediocre forked table with great actions is worse than one excellent shell that every surface mounts.
 
 ---
 
 ## Mission (one line)
 
-Deep-search the codebase, produce a complete inventory of every table/grid/list that displays DB-backed rows, then migrate / grow until **one pin SoT** (`LedgerGrid` family + capabilities) owns Workbench spreadsheet display — and only then extend that SoT with industry action planes.
+Deep-search the codebase, produce a complete inventory of every table/grid/list that displays DB-backed rows, then migrate / grow until **one pin SoT** (`LedgerGrid` family + capabilities) owns Workbench spreadsheet display — then extend that SoT with industry action planes (Horizon B) and, separately, multi-tenant extensibility research/plan (Horizon C).
 
 ---
 
@@ -73,7 +74,7 @@ Also run: `pnpm worklog:tail` (last ~15) before starting.
 
 ---
 
-## Horizon A vs Horizon B (strict sequencing)
+## Horizon A vs Horizon B vs Horizon C (strict sequencing)
 
 ```mermaid
 flowchart LR
@@ -82,7 +83,9 @@ flowchart LR
   sot[Phase2_SoT_Excellence]
   migrate[Phase3_Migrate_Forks]
   actions[Phase4_Industry_Actions]
+  extensibility[HorizonC_Tenant_Extensibility]
   research --> classify --> sot --> migrate --> actions
+  migrate --> extensibility
 ```
 
 | Phase | Goal | Exit criteria |
@@ -92,8 +95,10 @@ flowchart LR
 | **2 — SoT excellence** | Make the pin display *excellent* (Excel-grade) on the golden adopters before mass migration | Golden surfaces dogfood-ready; capabilities + header + fill + Fields + sort proven |
 | **3 — Migrate forks** | Collapse hand-rolled / twin tables onto the SoT | No ops hand-rolled `<table>` for the same job; guards updated |
 | **4 — Industry actions** | Shared action vocabulary on capabilities | Assign / ticket / status / linkages available where capability allows; Catalog stays display-safe |
+| **Horizon C** | Multi-tenant views / custom fields / optional custom tables on the same kernel | Plan from [`tenant-table-extensibility-HORIZON-C-GEMINI-RESEARCH-BRIEFING.md`](tenant-table-extensibility-HORIZON-C-GEMINI-RESEARCH-BRIEFING.md); **do not start C2+ custom-field product work while Phase 3 ops forks remain** |
 
-**Stop and ask the human** before starting Phase 4 if Phase 2–3 are incomplete.
+**Stop and ask the human** before starting Phase 4 if Phase 2–3 are incomplete.  
+**Horizon C research** may run in parallel (docs only); **Horizon C implementation** waits on the A display pin and must not reopen B’s action-plane decisions.
 
 ---
 

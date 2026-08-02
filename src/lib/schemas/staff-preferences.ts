@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { THEME_NAMES, type ThemeName } from '@/design-system/themes/registry';
+import { MAX_PINS } from '@/lib/quick-access/types';
 
 /**
  * Bindable focus-scan hotkey. The listener is GLOBAL, so printable letters /
@@ -77,6 +78,33 @@ const BOARD_PREFS = z
   .strict();
 
 /**
+ * Header pin stations — ordered bookmarks with display label + exact href
+ * (path + search). Mirrored to localStorage `cf.quickAccess` for flash-free
+ * reads; this bag is the durable cross-device SoT. Visit MRU stays device-local.
+ */
+const QUICK_ACCESS_PINNED_PAGE = z
+  .object({
+    id: z.string().min(1).max(64),
+    /** Display name shown in tooltips / Settings. */
+    label: z.string().min(1).max(120),
+    /** Exact route, e.g. `/unbox?openReceivingId=50297`. Must be app-relative. */
+    href: z
+      .string()
+      .min(1)
+      .max(2000)
+      .refine((s) => s.startsWith('/'), 'href must start with /'),
+    iconKey: z.string().max(64).optional(),
+    addedAt: z.number().int().nonnegative(),
+  })
+  .strict();
+
+const QUICK_ACCESS_PREFS = z
+  .object({
+    pinned: z.array(QUICK_ACCESS_PINNED_PAGE).max(MAX_PINS),
+  })
+  .strict();
+
+/**
  * PUT body for /api/staff-preferences — a partial patch. Only the keys present
  * are changed (server merges into the JSONB bag). `focusScanHotkey: null`
  * clears the binding back to the default; `theme: null` resets to light.
@@ -144,11 +172,33 @@ export const StaffPreferencesPutBody = z
             /** Drag-reordered column-key order (sanitized on read; locked keys
              *  re-front themselves — a stale/hostile list is harmless). */
             order: z.array(z.string().max(64)).max(64).optional(),
+            /**
+             * Per-hideKey display prefs (highlight wash + cell chrome).
+             * Keyed by the same `hideKey` vocabulary as `hidden` / `shown`.
+             */
+            display: z
+              .record(
+                z.string().max(64),
+                z
+                  .object({
+                    highlight: z
+                      .enum(['none', 'blue', 'amber', 'rose', 'emerald'])
+                      .optional(),
+                    cell: z.enum(['default', 'chip']).optional(),
+                  })
+                  .strict(),
+              )
+              .optional(),
           })
           .strict(),
       )
       .nullable()
       .optional(),
+    /**
+     * GlobalHeader pin stations (display label + exact href routing). `null`
+     * clears pins; absent leaves them unchanged. Device visit-MRU stays local.
+     */
+    quickAccess: QUICK_ACCESS_PREFS.nullable().optional(),
   })
   .strict();
 

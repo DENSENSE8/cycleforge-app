@@ -6,6 +6,10 @@ import { evaluateKitReadiness, type PackingEnforcement } from '@/lib/packing/kit
 import type { PackChecklistLineDto } from '@/lib/packing/order-pack-checklist';
 import { usePackingCheckPersist } from '@/hooks/usePackingCheckPersist';
 import { ReturnScanCard } from '@/components/receiving/workspace/unmatched-items/ReturnScanCard';
+import {
+  DocumentSlideOver,
+  type DocumentSlideItem,
+} from '@/design-system/components/DocumentSlideOver';
 import { PackChecklistLineRow } from './PackChecklistLineRow';
 
 interface OrderPackChecklistProps {
@@ -51,6 +55,7 @@ export function OrderPackChecklist({
   const [tickedKitParts, setTickedKitParts] = useState<Set<number>>(new Set());
   const [tickedChecks, setTickedChecks] = useState<Set<number>>(new Set());
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
+  const [openDocumentPartId, setOpenDocumentPartId] = useState<number | null>(null);
   const { persistTick } = usePackingCheckPersist();
 
   const setInSet = (
@@ -70,6 +75,8 @@ export function OrderPackChecklist({
     setTickedKitParts(new Set());
     setTickedChecks(new Set());
     setExpandedKey(null);
+    // A new order must not inherit the previous order's open insert.
+    setOpenDocumentPartId(null);
   }, [resetKey]);
 
   useEffect(() => {
@@ -105,6 +112,34 @@ export function OrderPackChecklist({
     onBlockedChange?.(readiness.blocked);
   }, [readiness.blocked, onBlockedChange]);
 
+  /**
+   * Every insert on this ORDER, not just the one clicked — `DocumentSlideOver`
+   * lists all types for a context in its switcher, so a packer comparing two
+   * papers flips between them without going back to the list.
+   *
+   * `src` is the part's own Blob url. It is NEVER `/api/documents/:id/content`:
+   * `packing.*` does not imply `orders.view`, so that proxy 403s the packer
+   * (see 2026-08-01d_kit_part_reference_document.sql).
+   */
+  const documentItems: DocumentSlideItem[] = useMemo(
+    () =>
+      lines.flatMap((line) =>
+        line.kitParts
+          .filter((part) => part.document)
+          .map((part) => ({
+            id: `part-${part.id}`,
+            title: part.document!.title,
+            src: part.document!.url,
+            mimeHint: part.document!.mime,
+            emptyTitle: 'Insert unavailable',
+            emptyHint: 'This part has no readable document attached.',
+          })),
+      ),
+    [lines],
+  );
+
+  const hasDocuments = documentItems.length > 0;
+
   const doneCount = tickedLines.size;
   const totalCount = lines.length;
 
@@ -133,84 +168,148 @@ export function OrderPackChecklist({
   }
 
   return (
-    <div
-      className={`rounded-2xl border border-border-soft bg-surface-card overflow-hidden ${className ?? ''}`}
-    >
-      <div className="flex items-center justify-between gap-3 border-b border-border-hairline bg-surface-canvas px-3 py-2">
-        <p className="text-role-micro uppercase tracking-widest text-text-soft">Pack checklist</p>
-        <span
-          className={`text-role-eyebrow tabular-nums ${
-            doneCount === totalCount ? 'text-emerald-600' : 'text-text-soft'
-          }`}
-        >
-          {doneCount}/{totalCount} lines verified
-        </span>
+    <>
+      {/* The card clips its children (rounded-2xl + overflow-hidden), so the
+          slide-over is its SIBLING — nested, it would be cropped to the card. */}
+      <div
+        className={`rounded-2xl border border-border-soft bg-surface-card overflow-hidden ${className ?? ''}`}
+      >
+        <div className="flex items-center justify-between gap-3 border-b border-border-hairline bg-surface-canvas px-3 py-2">
+          <p className="text-role-micro uppercase tracking-widest text-text-soft">Pack checklist</p>
+          <span
+            className={`text-role-eyebrow tabular-nums ${
+              doneCount === totalCount ? 'text-emerald-600' : 'text-text-soft'
+            }`}
+          >
+            {doneCount}/{totalCount} lines verified
+          </span>
+        </div>
+
+        <ul>
+          {lines.map((line) => {
+            const key = lineKey(line);
+            return (
+              <PackChecklistLineRow
+                key={key}
+                line={line}
+                checked={tickedLines.has(key)}
+                expanded={expandedKey === key}
+                onToggleCheck={() => toggleLine(key)}
+                onToggleExpand={() => setExpandedKey((prev) => (prev === key ? null : key))}
+                tickedKitParts={tickedKitParts}
+                onToggleKitPart={(partId) => {
+                  // Optimistic apply → quiet revert on persist failure (Phase 2).
+                  // Tap on a document-bearing part is the advisory acknowledgement
+                  // override (step-document-reveal-RULING §3); Print on the strip
+                  // is the durable path and uses origin='print' below.
+                  const nowChecked = !tickedKitParts.has(partId);
+                  setInSet(setTickedKitParts, partId, nowChecked);
+                  void persistTick(
+                    line.orderRowId,
+                    'KIT_PART',
+                    partId,
+                    nowChecked,
+                    'acknowledgement',
+                  ).then((ok) => {
+                    if (!ok) setInSet(setTickedKitParts, partId, !nowChecked);
+                  });
+                }}
+                tickedChecks={tickedChecks}
+                onToggleCheckItem={(checkId) => {
+                  const nowChecked = !tickedChecks.has(checkId);
+                  setInSet(setTickedChecks, checkId, nowChecked);
+                  void persistTick(line.orderRowId, 'PACKING_CHECK', checkId, nowChecked).then((ok) => {
+                    if (!ok) setInSet(setTickedChecks, checkId, !nowChecked);
+                  });
+                }}
+                variant={variant}
+                onOpenPartDocument={hasDocuments ? setOpenDocumentPartId : undefined}
+                onPrintPartDocument={
+                  hasDocuments
+                    ? (partId) => {
+                        const part = line.kitParts.find((p) => p.id === partId);
+                        const src = part?.document?.url;
+                        // Open the slide-over so the packer can confirm the
+                        // paper, and fire the browser spool in parallel — the
+                        // print intent is the durable evidence for an insert.
+                        setOpenDocumentPartId(partId);
+                        if (src) {
+                          const w = window.open(src, '_blank', 'noopener,noreferrer');
+                          w?.addEventListener('load', () => {
+                            try {
+                              w.print();
+                            } catch {
+                              /* cross-origin — operator uses browser print */
+                            }
+                          });
+                        }
+                        if (!tickedKitParts.has(partId)) {
+                          setInSet(setTickedKitParts, partId, true);
+                          void persistTick(
+                            line.orderRowId,
+                            'KIT_PART',
+                            partId,
+                            true,
+                            'print',
+                          ).then((ok) => {
+                            if (!ok) setInSet(setTickedKitParts, partId, false);
+                          });
+                        }
+                      }
+                    : undefined
+                }
+              />
+            );
+          })}
+        </ul>
+
+        {readiness.requiredTotal > 0 ? (
+          <div
+            className={`flex items-center gap-1.5 border-t px-3 py-2 text-role-eyebrow font-semibold ${
+              readiness.allRequiredIn
+                ? 'border-emerald-100 bg-emerald-50 text-emerald-700'
+                : readiness.blocked
+                  ? 'border-indigo-200 bg-indigo-50 text-indigo-700'
+                  : 'border-amber-100 bg-amber-50 text-amber-700'
+            }`}
+          >
+            {readiness.allRequiredIn ? (
+              <>
+                <Check className="h-3.5 w-3.5 shrink-0" />
+                All required items in the box
+              </>
+            ) : readiness.blocked ? (
+              <>
+                <Info className="h-3.5 w-3.5 shrink-0" />
+                {readiness.missingRequiredIds.length} required{' '}
+                {readiness.missingRequiredIds.length === 1 ? 'item' : 'items'} to include
+              </>
+            ) : (
+              <>
+                <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                {readiness.missingRequiredIds.length} required{' '}
+                {readiness.missingRequiredIds.length === 1 ? 'item' : 'items'} not yet confirmed
+              </>
+            )}
+          </div>
+        ) : null}
       </div>
 
-      <ul>
-        {lines.map((line) => {
-          const key = lineKey(line);
-          return (
-            <PackChecklistLineRow
-              key={key}
-              line={line}
-              checked={tickedLines.has(key)}
-              expanded={expandedKey === key}
-              onToggleCheck={() => toggleLine(key)}
-              onToggleExpand={() => setExpandedKey((prev) => (prev === key ? null : key))}
-              tickedKitParts={tickedKitParts}
-              onToggleKitPart={(partId) => {
-                // Optimistic apply → quiet revert on persist failure (Phase 2).
-                const nowChecked = !tickedKitParts.has(partId);
-                setInSet(setTickedKitParts, partId, nowChecked);
-                void persistTick(line.orderRowId, 'KIT_PART', partId, nowChecked).then((ok) => {
-                  if (!ok) setInSet(setTickedKitParts, partId, !nowChecked);
-                });
-              }}
-              tickedChecks={tickedChecks}
-              onToggleCheckItem={(checkId) => {
-                const nowChecked = !tickedChecks.has(checkId);
-                setInSet(setTickedChecks, checkId, nowChecked);
-                void persistTick(line.orderRowId, 'PACKING_CHECK', checkId, nowChecked).then((ok) => {
-                  if (!ok) setInSet(setTickedChecks, checkId, !nowChecked);
-                });
-              }}
-              variant={variant}
-            />
-          );
-        })}
-      </ul>
-
-      {readiness.requiredTotal > 0 ? (
-        <div
-          className={`flex items-center gap-1.5 border-t px-3 py-2 text-role-eyebrow font-semibold ${
-            readiness.allRequiredIn
-              ? 'border-emerald-100 bg-emerald-50 text-emerald-700'
-              : readiness.blocked
-                ? 'border-indigo-200 bg-indigo-50 text-indigo-700'
-                : 'border-amber-100 bg-amber-50 text-amber-700'
-          }`}
-        >
-          {readiness.allRequiredIn ? (
-            <>
-              <Check className="h-3.5 w-3.5 shrink-0" />
-              All required items in the box
-            </>
-          ) : readiness.blocked ? (
-            <>
-              <Info className="h-3.5 w-3.5 shrink-0" />
-              {readiness.missingRequiredIds.length} required{' '}
-              {readiness.missingRequiredIds.length === 1 ? 'item' : 'items'} to include
-            </>
-          ) : (
-            <>
-              <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-              {readiness.missingRequiredIds.length} required{' '}
-              {readiness.missingRequiredIds.length === 1 ? 'item' : 'items'} not yet confirmed
-            </>
-          )}
-        </div>
+      {hasDocuments ? (
+        <DocumentSlideOver
+          open={openDocumentPartId != null}
+          onClose={() => setOpenDocumentPartId(null)}
+          title="Inserts"
+          items={documentItems}
+          activeId={openDocumentPartId != null ? `part-${openDocumentPartId}` : undefined}
+          onActiveIdChange={(id) => {
+            const partId = Number(id.replace('part-', ''));
+            if (Number.isFinite(partId)) setOpenDocumentPartId(partId);
+          }}
+          storageKey="pack-inserts-slide-over-width"
+          aria-label="Pack inserts preview"
+        />
       ) : null}
-    </div>
+    </>
   );
 }

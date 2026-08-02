@@ -28,7 +28,7 @@ import { Button, Panel } from '@/design-system/primitives';
 import { PoChip, TrackingChip } from '@/components/ui/CopyChip';
 import { PackageOpen, Search } from '@/components/Icons';
 import { formatDateTimePST } from '@/utils/date';
-import { getLast4 } from '@/lib/copy-chip-format';
+import { getLast8 } from '@/lib/copy-chip-format';
 import { globalSearchHref } from '@/lib/search/search-hit';
 import {
   STATION_WORKBENCH_COLUMN,
@@ -127,7 +127,7 @@ export function UnboxLookupReceipt({
               <Fact label="Purchase order">
                 {/* Last-4 preview like every other PoChip call site (and like
                     the TrackingChip beside it) — the full number still copies. */}
-                <PoChip value={poNumber} display={getLast4(poNumber)} />
+                <PoChip value={poNumber} display={getLast8(poNumber)} />
               </Fact>
             ) : null}
             <Fact label="Tracking">

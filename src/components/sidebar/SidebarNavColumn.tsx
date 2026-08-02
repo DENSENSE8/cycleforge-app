@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, type ReactNode } from 'react';
-import { motion } from 'framer-motion';
+import { motion } from '@/design-system/motion';
 import { useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
 import { framerTransition } from '@/design-system/foundations/motion-framer';
 import { appChromeClass } from '@/design-system/tokens/app-surface';

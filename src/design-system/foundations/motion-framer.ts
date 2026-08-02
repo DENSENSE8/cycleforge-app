@@ -1,4 +1,4 @@
-import type { Transition, Variants } from 'framer-motion';
+import type { Transition, Variants } from '../motion/framer';
 
 /**
  * Cubic-bezier tuples for Framer Motion `ease`.
@@ -25,6 +25,14 @@ export const framerDuration = {
   upNextCollapseOpacity: 0.14,
   stationSerialRow: 0.22,
   stationAddedBadge: 0.18,
+  /**
+   * Capture-stack row EXIT — the vacated height collapses as the row fades, so
+   * the rows above settle into the gap instead of jumping. Deliberately shorter
+   * than the spring mount: a departing ledger line should not hold the eye.
+   */
+  captureStackRowExit: 0.18,
+  /** Capture-stack fresh-arrival ring pulse (one shot, expanded row only) */
+  captureStackFreshPulse: 1.8,
   /** Modal scrim fade — aligns with CSS `motionDurations.fast` */
   overlayScrim: 0.15,
   /**
@@ -33,6 +41,20 @@ export const framerDuration = {
    * repetitive enterprise jumps. Pair with `framerPresence.spineDrill`.
    */
   spineDrill: 0.12,
+  /** Master-nav drill filter field mount — opacity fade on enter. */
+  spineDrillFilter: 0.14,
+  /**
+   * Master-nav row cascade step — ONE ladder for drill page rows AND mode rows.
+   * 15ms × index: an 8-row section finishes its last row's 120ms mount at
+   * 225ms, so the whole list resolves inside a quarter second. The old 40ms
+   * step applied only to modes, which made a 6-mode page feel slower than the
+   * 12-page section it lived in — the cascade read as lag, not as order.
+   */
+  spineRowStagger: 0.015,
+  /** Master-nav row mount (paired with {@link spineRowStagger}). */
+  spineRowMount: 0.12,
+  /** Master-nav active page wash settle. */
+  spineActiveWash: 0.15,
   /** Table row enter/exit */
   tableRowMount: 0.22,
   /** Sidebar rail CRUD enter/exit — small left slide (scan in / dismiss out) */
@@ -101,6 +123,18 @@ export const framerTransition = {
   /** Master-nav Stock drill list swap — pair with `framerPresence.spineDrill` */
   spineDrill: {
     duration: framerDuration.spineDrill,
+    ease: motionBezier.easeOut,
+  } satisfies Transition,
+
+  /** Master-nav drill filter mount — pair with `framerPresence.spineDrillFilter` */
+  spineDrillFilter: {
+    duration: framerDuration.spineDrillFilter,
+    ease: motionBezier.easeOut,
+  } satisfies Transition,
+
+  /** Master-nav active page wash — pair with `framerPresence.spineActiveWash` */
+  spineActiveWash: {
+    duration: framerDuration.spineActiveWash,
     ease: motionBezier.easeOut,
   } satisfies Transition,
 
@@ -206,6 +240,30 @@ export const framerTransition = {
     ease: motionBezier.easeOut,
   } satisfies Transition,
 
+  /**
+   * Capture-stack row push-up. A SPRING, not a tween, and deliberately so: rows
+   * arrive at scan cadence and every arrival reflows its siblings under
+   * `layout="position"`, which is a physical settle rather than a discrete view
+   * swap. Pair with `framerPresence.captureStackRow*`.
+   */
+  captureStackRowMount: {
+    type: 'spring' as const,
+    damping: 28,
+    stiffness: 340,
+    mass: 0.55,
+  } satisfies Transition,
+
+  /**
+   * Capture-stack fresh-arrival ring pulse. Suppressed outright under reduced
+   * motion (a decorative attention pulse is exactly what 2.3.3 removes), so this
+   * never routes through the bridge.
+   */
+  captureStackFreshPulse: {
+    type: 'tween' as const,
+    duration: framerDuration.captureStackFreshPulse,
+    ease: motionBezier.easeOut,
+  } satisfies Transition,
+
   stationAddedBadge: {
     type: 'tween' as const,
     duration: framerDuration.stationAddedBadge,
@@ -224,6 +282,18 @@ export const framerTransition = {
     damping: 26,
     stiffness: 400,
     mass: 0.4,
+  } satisfies Transition,
+
+  /**
+   * ⌘K command palette dialog — top-anchored slide-down (negative y), unlike
+   * centered `workOrderModalSpring` which rises from below. Pair with
+   * `framerPresence.commandBarDialog`.
+   */
+  commandBarDialog: {
+    type: 'spring' as const,
+    damping: 28,
+    stiffness: 360,
+    mass: 0.7,
   } satisfies Transition,
 
   /** Horizontal slide between rows inside the modal */
@@ -467,6 +537,43 @@ export const framerPresence = {
     animate: { opacity: 1, y: 0 },
     exit: { opacity: 0, y: -4 },
   },
+  /**
+   * Capture-stack rows — two shapes, one per row variant.
+   *
+   * The EXPANDED row is the current task: it rises further and scales in, so a
+   * new active card reads as arriving. A COLLAPSED ledger line only slides up —
+   * it is history, and history must not compete with the task above the input.
+   *
+   * `exit` carries its OWN transition deliberately. The mount is a spring, but a
+   * departing row should collapse its vacated height on a short fixed tween so
+   * the gap closes predictably instead of settling. Under reduced motion the
+   * bridge strips y/scale and the `MotionConfig` floor snaps `height` (a
+   * positional key), leaving the house-correct reduced form — an opacity
+   * crossfade, not a hard cut.
+   */
+  captureStackRowExpanded: {
+    initial: { opacity: 0, y: 24, scale: 0.98 },
+    animate: { opacity: 1, y: 0, scale: 1 },
+    exit: {
+      opacity: 0,
+      height: 0,
+      transition: { duration: framerDuration.captureStackRowExit },
+    },
+  },
+  captureStackRowCollapsed: {
+    initial: { opacity: 0, y: 10, scale: 1 },
+    animate: { opacity: 1, y: 0, scale: 1 },
+    exit: {
+      opacity: 0,
+      height: 0,
+      transition: { duration: framerDuration.captureStackRowExit },
+    },
+  },
+  /** Capture-stack fresh-arrival ring pulse — one shot, no exit. */
+  captureStackFreshPulse: {
+    initial: { opacity: 0.55, scale: 1 },
+    animate: { opacity: 0, scale: 1.04 },
+  },
   stationAddedBadge: {
     initial: { opacity: 0, x: 6 },
     animate: { opacity: 1, x: 0 },
@@ -512,6 +619,16 @@ export const framerPresence = {
     animate: { opacity: 1, scale: 1, y: 0 },
     exit: { opacity: 0, scale: 0.94, y: 8 },
   },
+  /**
+   * ⌘K command palette dialog — top-anchored (y: -8). Pair with
+   * `framerTransition.commandBarDialog`. Reduced-motion callers strip
+   * transform (opacity-only) at the consumer.
+   */
+  commandBarDialog: {
+    initial: { opacity: 0, scale: 0.96, y: -8 },
+    animate: { opacity: 1, scale: 1, y: 0 },
+    exit: { opacity: 0, scale: 0.96, y: -8 },
+  },
   /** Inline status / feedback message — fade + slight slide from top */
   statusMessage: {
     initial: { opacity: 0, y: -10 },
@@ -556,6 +673,24 @@ export const framerPresence = {
     exit: { opacity: 0 },
   },
   /**
+   * Master-nav drill filter field — fade in when entering a section drill.
+   * Pair with `framerTransition.spineDrillFilter` + `useMotionPresence`.
+   */
+  spineDrillFilter: {
+    initial: { opacity: 0 },
+    animate: { opacity: 1 },
+    exit: { opacity: 0 },
+  },
+  /**
+   * Master-nav active page wash — soft opacity settle instead of a hard pop.
+   * Pair with `framerTransition.spineActiveWash` + `useMotionPresence`.
+   */
+  spineActiveWash: {
+    initial: { opacity: 0.72 },
+    animate: { opacity: 1 },
+    exit: { opacity: 0.72 },
+  },
+  /**
    * Global detail-stack overlay — floating card near the top-right edge.
    * Slides IN from the right (translating left into view) and OUT back to the
    * right; opacity + x transform only (GPU-composited). Pair with
@@ -566,6 +701,24 @@ export const framerPresence = {
     initial: { opacity: 0, x: 48 },
     animate: { opacity: 1, x: 0 },
     exit: { opacity: 0, x: 48 },
+  },
+  /**
+   * Detail stack in PUSH mode (`RightRailHost` as an in-flow column).
+   *
+   * Opacity-only, deliberately: the column's own width tween owns arrive and
+   * leave, so an `x` translate here — the 48px the overlay preset above uses
+   * correctly — would slide the card out of the very slot it just reserved in
+   * the flow, leaving a visible empty gutter beside the work surface.
+   *
+   * Pair with `framerTransition.sidebarNavColumnMount` (the sanctioned push
+   * tween, never a spring), exactly as `ContextPanelLayout` does on the left
+   * edge. See `.claude/rules/display/motion-crossfade.md` → the deliberate PUSH
+   * toggle.
+   */
+  detailStackPush: {
+    initial: { opacity: 0 },
+    animate: { opacity: 1 },
+    exit: { opacity: 0 },
   },
   /**
    * Heavy right-pane WORKSPACE overlay crossfade (the receiving line workspace
@@ -954,6 +1107,42 @@ export const framerVariants: Record<string, Variants> = {
       y: 0,
       transition: {
         duration: framerDuration.stationCardMount,
+        ease: motionBezier.easeOut,
+      },
+    },
+  },
+  /**
+   * Master-nav row cascade — ONE ladder for BOTH drill page rows and the mode
+   * rows nested under them. Two different steps for two altitudes of the same
+   * list read as two different systems; 15ms × index resolves an 8-row section
+   * at 225ms and a 4-mode page at 165ms, so both feel like one motion.
+   *
+   * Parent: `initial={staggerInitial} animate="visible"` and a `key` bound to
+   * the SECTION id — never to the filter query or the filtered array. Typing in
+   * the drill filter must update rows in place; a container that remounts per
+   * keystroke replays the whole cascade under the operator's cursor. Pass
+   * `initial={false}` while a filter is active so rows that mount mid-type
+   * inherit `visible` instead of fading in one at a time.
+   *
+   * `y: 2` is the entire travel — under the `MotionConfig` reduced-motion floor
+   * the transform snaps and the opacity fade survives, which is the correct
+   * reduced form (crossfade, not cut).
+   */
+  spineRowStaggerContainer: {
+    hidden: {},
+    visible: {
+      transition: {
+        staggerChildren: framerDuration.spineRowStagger,
+      },
+    },
+  },
+  spineRowStaggerItem: {
+    hidden: { opacity: 0, y: 2 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        duration: framerDuration.spineRowMount,
         ease: motionBezier.easeOut,
       },
     },

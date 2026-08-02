@@ -1,7 +1,12 @@
 'use client';
 
-import { useMemo, type RefObject } from 'react';
-import { LedgerGridSurface, useGridColumnVisibility } from '@/design-system/components/grid';
+import { useMemo, useState, type RefObject } from 'react';
+import {
+  LedgerGridSurface,
+  useGridColumnDisplay,
+  useGridColumnVisibility,
+} from '@/design-system/components/grid';
+import { GridColumnDetailsPanel } from '@/components/ui/table-column-config/GridColumnDetailsPanel';
 import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
 import type { TableId } from '@/lib/tables/table-columns';
 import { groupRowsBy, type RowGroup } from '@/lib/group-rows';
@@ -41,7 +46,15 @@ interface ReceivingGridViewProps {
   selectMode: boolean;
   selectedId: number | null;
   selectedIds: Set<number>;
+  /** Row-body click. Opens the record on surfaces that split the two planes. */
   handleSelectRow: (row: ReceivingLineRow) => void;
+  /**
+   * Select-gutter click — bulk membership only. Present ONLY where the row body
+   * has been handed to the record plane (History). Omitted → the legacy
+   * single-gesture row: the click ticks the box and the gutter stays a painted
+   * span (Unbox workbench, Testing history, Pickup).
+   */
+  handleToggleRow?: (row: ReceivingLineRow) => void;
   handleSelectGroup: (ids: readonly number[]) => void;
   /** Stage clock axis — drives column header + cell stamps. */
   activityAxis?: ReceivingActivityAxis;
@@ -90,6 +103,7 @@ export function ReceivingGridView({
   selectedId,
   selectedIds,
   handleSelectRow,
+  handleToggleRow,
   handleSelectGroup,
   activityAxis = 'unboxed',
   isHistory = false,
@@ -115,6 +129,7 @@ export function ReceivingGridView({
   });
 
   const resolvedStageLabel = stageLabel ?? receivingStageColumnLabel(activityAxis);
+  const [columnDetailsOpen, setColumnDetailsOpen] = useState(false);
 
   // ONE visibility resolution: descriptor default tier + this staffer's delta.
   // Header, rows, group summaries and the grid template all read `visible` —
@@ -123,6 +138,7 @@ export function ReceivingGridView({
     columns,
     tableId,
   });
+  const { displayByKey } = useGridColumnDisplay(tableId);
 
   const descriptor = useMemo(() => makeReceivingGridDescriptor(visible), [visible]);
 
@@ -168,62 +184,76 @@ export function ReceivingGridView({
   }, [filteredGroupedRecords, daySections, serverSorted, columnSort, sortDir, activityAxis]);
 
   return (
-    <LedgerGridSurface<ReceivingLineRow, ReceivingGridColumnKey>
-      ariaLabel="Receiving carton lines"
-      descriptor={descriptor}
-      orderGroupsByDate={orderGroupsByDate}
-      rows={flatRows}
-      sort={columnSort}
-      dir={sortDir}
-      onSortChange={setSort}
-      loading={loading}
-      emptyMessage={emptyMessage}
-      showDayHeaders={showDayHeaders}
-      scrollRef={scrollRef}
-      className={className}
-      testId={testId}
-      renderColumnHeader={({ toggleColumnSort }) => (
-        <ReceivingGridColumnHeader
-          isMobile={isMobile}
-          selectMode={selectMode}
-          selectionScope={selectionScope}
-          columns={visible}
-          stageLabel={resolvedStageLabel}
-          activeSort={columnSort}
-          sortDir={sortDir}
-          onSortColumn={toggleColumnSort}
-        />
-      )}
-      renderGroup={(group, baseStripeIndex) => (
-        <ReceivingGridGroupRow
-          group={group}
-          baseStripeIndex={baseStripeIndex}
-          isMobile={isMobile}
-          selectMode={selectMode}
-          selectedId={selectedId}
-          selectedIds={selectedIds}
-          handleSelectRow={handleSelectRow}
-          handleSelectGroup={handleSelectGroup}
-          activityAxis={activityAxis}
-          isHistory={isHistory}
-          columns={visible}
-        />
-      )}
-      renderRow={(row, stripeIndex) => (
-        <ReceivingGridGroupRow
-          group={{ key: `k:${row.id}`, rows: [row] }}
-          baseStripeIndex={stripeIndex}
-          isMobile={isMobile}
-          selectMode={selectMode}
-          selectedId={selectedId}
-          selectedIds={selectedIds}
-          handleSelectRow={handleSelectRow}
-          handleSelectGroup={handleSelectGroup}
-          activityAxis={activityAxis}
-          isHistory={isHistory}
-          columns={visible}
-        />
-      )}
-    />
+    <>
+      <LedgerGridSurface<ReceivingLineRow, ReceivingGridColumnKey>
+        ariaLabel="Receiving carton lines"
+        descriptor={descriptor}
+        orderGroupsByDate={orderGroupsByDate}
+        rows={flatRows}
+        sort={columnSort}
+        dir={sortDir}
+        onSortChange={setSort}
+        loading={loading}
+        emptyMessage={emptyMessage}
+        showDayHeaders={showDayHeaders}
+        scrollRef={scrollRef}
+        className={className}
+        testId={testId}
+        renderColumnHeader={({ toggleColumnSort }) => (
+          <ReceivingGridColumnHeader
+            isMobile={isMobile}
+            selectMode={selectMode}
+            selectionScope={selectionScope}
+            columns={visible}
+            stageLabel={resolvedStageLabel}
+            activeSort={columnSort}
+            sortDir={sortDir}
+            onSortColumn={toggleColumnSort}
+            onOpenColumnDetails={() => setColumnDetailsOpen(true)}
+            columnDetailsOpen={columnDetailsOpen}
+          />
+        )}
+        renderGroup={(group, baseStripeIndex) => (
+          <ReceivingGridGroupRow
+            group={group}
+            baseStripeIndex={baseStripeIndex}
+            isMobile={isMobile}
+            selectMode={selectMode}
+            selectedId={selectedId}
+            selectedIds={selectedIds}
+            handleSelectRow={handleSelectRow}
+            handleToggleRow={handleToggleRow}
+            handleSelectGroup={handleSelectGroup}
+            activityAxis={activityAxis}
+            isHistory={isHistory}
+            columns={visible}
+            columnDisplay={displayByKey}
+          />
+        )}
+        renderRow={(row, stripeIndex) => (
+          <ReceivingGridGroupRow
+            group={{ key: `k:${row.id}`, rows: [row] }}
+            baseStripeIndex={stripeIndex}
+            isMobile={isMobile}
+            selectMode={selectMode}
+            selectedId={selectedId}
+            selectedIds={selectedIds}
+            handleSelectRow={handleSelectRow}
+            handleToggleRow={handleToggleRow}
+            handleSelectGroup={handleSelectGroup}
+            activityAxis={activityAxis}
+            isHistory={isHistory}
+            columns={visible}
+            columnDisplay={displayByKey}
+          />
+        )}
+      />
+      <GridColumnDetailsPanel
+        open={columnDetailsOpen}
+        onClose={() => setColumnDetailsOpen(false)}
+        tableId={tableId}
+        columns={columns}
+      />
+    </>
   );
 }

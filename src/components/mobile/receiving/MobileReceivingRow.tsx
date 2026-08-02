@@ -53,7 +53,7 @@ interface MobileReceivingRowProps {
  * Uses the SAME primitives so the two can't drift: {@link RowTitle} (status dot
  * + product title), {@link RowMetaColumns} (qty · condition · stage clock),
  * and {@link ReceivingIdentityChips} (PO / SKU / tracking / serial, always
- * rendered as fixed columns — empties read as '----'). The bottom-pinned
+ * rendered as fixed columns — empties read as '--------'). The bottom-pinned
  * expanded card adds capture CTA; collapsed rows show gallery + camera buttons on
  * the right (gallery left, capture right).
  */

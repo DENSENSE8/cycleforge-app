@@ -52,6 +52,23 @@ const config: KnipConfig = {
 
     // JIT pack Phase 3 — manual→documents projection (wired next; keep SoT file)
     'src/lib/documents/manual-documents.ts',
+
+    // Mid-wire WIP (My Day grid + Order rail) — imported once composition lands;
+    // keep SoT files out of the dead-code gate until the mount is reviewed.
+    'src/features/my-day/MyDaySidebarPanel.tsx',
+    'src/features/my-day/MyDayTaskInspector.tsx',
+    'src/features/my-day/useMyDayView.ts',
+    'src/features/my-day/grid/**',
+    'src/lib/my-day/my-day-grid-layout.ts',
+    'src/lib/my-day/my-day-tasks.ts',
+    'src/lib/work-orders/work-status-display.ts',
+    'src/components/dashboard/rail/OrderRailShell.tsx',
+    'src/components/dashboard/rail/OrderRailActions.tsx',
+
+    // Mid-wire WIP (photo aspect helpers) — ASPECTS_BY_STAGE is already composed
+    // from photo-aspects; remaining helpers mount next.
+    'src/lib/photos/photo-aspects.ts',
+    'src/lib/receiving/photo-aspect-counts.ts',
   ],
 
   ignoreDependencies: [
@@ -67,6 +84,12 @@ const config: KnipConfig = {
     'lighthouse',
     'chrome-launcher',
     '@next/bundle-analyzer',
+    // The motion engine is imported as `motion/react` from the single boundary
+    // file `src/design-system/motion/framer.ts`. `framer-motion` is the legacy
+    // alias for the SAME v12 package (and `motion`'s own dependency), kept as a
+    // direct dep so `pnpm why framer-motion` — the dual-major canary in
+    // `motion-major.guard.test.ts` — has a stable anchor.
+    'framer-motion',
   ],
 
   // Be stricter about exports in the future (uncomment after baseline clean)

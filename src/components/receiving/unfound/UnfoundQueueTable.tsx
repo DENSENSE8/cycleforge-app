@@ -23,7 +23,7 @@
  * the inline-edit row is {@link QueueTableRow} under `./queue-table/`.
  */
 
-import { AnimatePresence } from 'framer-motion';
+import { AnimatePresence } from '@/design-system/motion';
 import { UnfoundQueueDetailsPanel } from './UnfoundQueueDetailsPanel';
 import { useUnfoundQueueTable } from './queue-table/useUnfoundQueueTable';
 import { QueueTableRow } from './queue-table/QueueTableRow';

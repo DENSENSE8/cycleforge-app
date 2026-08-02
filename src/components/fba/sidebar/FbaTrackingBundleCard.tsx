@@ -2,12 +2,12 @@
 
 import { useState } from 'react';
 import { useDroppable } from '@dnd-kit/core';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion } from '@/design-system/motion';
 import { ChevronDown, ChevronUp, Pencil, Trash2 } from '@/components/Icons';
 import { FbaDraggableLineRow } from '@/components/fba/sidebar/FbaDraggableLineRow';
 import { FbaQtyStepper } from '@/components/fba/sidebar/FbaQtyStepper';
 import { PrintTableCheckbox } from '@/components/fba/table/Checkbox';
-import { TrackingChip, getLast4 } from '@/components/ui/CopyChip';
+import { TrackingChip, getLast8 } from '@/components/ui/CopyChip';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { IconButton } from '@/design-system/primitives';
 import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
@@ -98,7 +98,7 @@ export function FbaTrackingBundleCard({
         {/* Col 2: tracking chip or input */}
         {showChip ? (
           <div className="flex min-w-0 items-center gap-1">
-            <TrackingChip value={bundle.tracking_number} display={getLast4(bundle.tracking_number)} />
+            <TrackingChip value={bundle.tracking_number} display={getLast8(bundle.tracking_number)} />
             <HoverTooltip label="Edit tracking number" asChild>
               <IconButton
                 type="button"

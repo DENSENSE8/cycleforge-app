@@ -21,6 +21,16 @@ export type {
 // module, not the barrel — they exist for the guard tests and for anything that
 // needs the rule without React. Surfaces compose the two hooks.
 export { useGridColumnVisibility, useGridFields } from './useGridColumnVisibility';
+export { useGridColumnDisplay } from './useGridColumnDisplay';
+export {
+  GRID_COLUMN_CHIP_VALUE_CLASS,
+  gridColumnHighlightClass,
+} from './grid-column-display';
+export type {
+  GridColumnCellMode,
+  GridColumnDisplayPref,
+  GridColumnHighlight,
+} from './grid-column-display';
 export {
   gridCellAlignClass,
   gridHeaderCellAlignClass,

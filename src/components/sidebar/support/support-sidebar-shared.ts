@@ -11,7 +11,7 @@
 
 import {
   Bell,
-  CheckCircle,
+  Check,
   Clock,
   Inbox,
   Layers,
@@ -106,7 +106,7 @@ export const TICKET_STATUS_ITEMS: HorizontalSliderItem[] = [
   { id: 'open', label: 'Open', icon: Inbox },
   { id: 'pending', label: 'Pending', icon: Clock },
   { id: 'hold', label: 'Hold', icon: Lock },
-  { id: 'solved', label: 'Solved', icon: CheckCircle },
+  { id: 'solved', label: 'Solved', icon: Check },
   { id: 'all', label: 'All', icon: Layers },
 ];
 
@@ -124,7 +124,7 @@ export type VoicemailStatusFilter = 'open' | 'snoozed' | 'done' | 'all';
 export const VOICEMAIL_STATUS_ITEMS: HorizontalSliderItem[] = [
   { id: 'open', label: 'Open', icon: Bell },
   { id: 'snoozed', label: 'Snoozed', icon: Clock },
-  { id: 'done', label: 'Done', icon: CheckCircle },
+  { id: 'done', label: 'Done', icon: Check },
   { id: 'all', label: 'All', icon: Layers },
 ];
 

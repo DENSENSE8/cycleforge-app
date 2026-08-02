@@ -36,6 +36,7 @@
  * org actually publishes stays DATA in `station_definitions`.
  */
 
+import { ASPECTS_BY_STAGE, type PhotoAspect } from '@/lib/photos/photo-aspects';
 import type { TableRef } from './contract';
 import type { SurfaceKey } from './surface-keys';
 
@@ -95,16 +96,25 @@ export interface ProcedureStep {
    * before the grade, because the scan names the unit the grade applies to.
    */
   moveBefore?: { when: VariantFlag; step: string };
-  /**
-   * Satisfied by default — renders as done and the active pointer skips it.
-   * `condition_grade` is NOT NULL with a default, so the grade always exists;
-   * gating on it would stall every carton on a decision already answered.
-   */
-  ungated?: boolean;
   /** Repeats per unit on a multi-quantity line, so the row carries `n of N`. */
   perUnit?: boolean;
   /** Receiving photo stage this step is evidenced by, when it is a photo step. */
   photoStage?: 'arrival_package' | 'unbox_carton' | 'unbox_item';
+  /**
+   * Photo ASPECT this step is evidenced by, when its evidence is one specific
+   * shot (`@/lib/photos/photo-aspects`). Refines WITHIN `photoStage` — the two
+   * are orthogonal axes, so both are declared. Three capture steps share
+   * `unbox_carton` and are told apart by this alone.
+   */
+  photoAspect?: PhotoAspect;
+  /**
+   * The step is evidenced by a SET of aspects, each of which is its own sub-row
+   * (`item_photos`). Which of them are REQUIRED is org policy resolved at read
+   * time (`receiving.requiredItemPhotoAspects`) — never a constant here, or a
+   * six-shot minimum ships to a two-person reseller and the step becomes
+   * un-completable for them.
+   */
+  photoAspectSet?: readonly PhotoAspect[];
   /**
    * True when the station registry drives this step (a composed block bound to
    * a registered source/action). False when it is hand-coded UI over a
@@ -210,9 +220,31 @@ export function resolveProcedureSteps(
 
 // ─── Unbox ───────────────────────────────────────────────────
 //
-// The pilot. Seven acts, one of which (the queue) is registry-composed today;
-// the other six are hand-coded and say so. Reading this file top to bottom is
-// meant to be the same experience as watching someone work the bench.
+// The pilot, and every act is hand-coded today — each one says so. Reading this
+// file top to bottom is meant to be the same experience as watching someone work
+// the bench: scan it, read the door's shot, photograph the label, the box and
+// the dunnage, confirm the contents, grade it, shoot the unit, capture the
+// serial, print, receive.
+
+/**
+ * The read/write triple every `/api/receiving-photos` step shares. Declared
+ * once because five steps now drive that one route: restating it per step is
+ * how a lineage declaration drifts from the SQL it describes, which is the
+ * exact failure `data-lineage.guard.test.ts` exists to catch.
+ */
+const RECEIVING_PHOTO_READS: TableRef[] = [
+  { table: 'receiving_carton' },
+  { table: 'receiving_scans' },
+  { table: 'receiving_triage' },
+  { table: 'photos', via: '@/lib/photos/service' },
+  { table: 'photo_storage', via: '@/lib/photos/service' },
+];
+
+const RECEIVING_PHOTO_WRITES: TableRef[] = [
+  { table: 'photos', via: '@/lib/photos/service' },
+  { table: 'photo_storage', via: '@/lib/photos/service' },
+  { table: 'photo_entity_links', via: '@/lib/photos/claim-link' },
+];
 
 const unboxProcedure: ProcedureDefinition = {
   surface: 'unbox',
@@ -276,83 +308,97 @@ const unboxProcedure: ProcedureDefinition = {
       writes: [{ table: 'receiving_carton' }],
     },
     {
-      key: 'po_photos',
-      label: 'PO / box photos',
+      key: 'arrival_check',
+      label: 'Arrival photos',
       summary:
-        'Read the door\u2019s pre-opening shot. A VERIFY step, never a capture: a bench photo stamped here would satisfy the receive gate with a post-opening image and void the control.',
+        'Read the door\u2019s pre-opening shot. A VERIFY step, never a capture: a bench photo stamped here would satisfy the receive gate with a post-opening image and void the control \u2014 which is why its endpoint is the GET, not the POST.',
       phase: 'capture',
       photoStage: 'arrival_package',
       composed: false,
+      // GET, deliberately. This step READS what Triage already shot; it has no
+      // capture affordance and must never grow one. A POST here would be the
+      // documentation half of the bug the summary describes.
+      endpoint: { method: 'GET', path: '/api/receiving-photos' },
+      reads: RECEIVING_PHOTO_READS,
+    },
+    {
+      key: 'shipping_label_photo',
+      label: 'Shipping label',
+      summary:
+        'Photograph the carrier label on the unopened box \u2014 the tracking, the sender and the service, in one shot a claim can be argued from.',
+      phase: 'capture',
+      photoStage: 'unbox_carton',
+      photoAspect: 'shipping_label',
+      omitWhen: 'isLocalPickup',
+      composed: false,
       endpoint: { method: 'POST', path: '/api/receiving-photos' },
-      reads: [
-        { table: 'receiving_carton' },
-        { table: 'receiving_scans' },
-        { table: 'receiving_triage' },
-        { table: 'photos', via: '@/lib/photos/service' },
-        { table: 'photo_storage', via: '@/lib/photos/service' },
-      ],
-      writes: [
-        { table: 'photos', via: '@/lib/photos/service' },
-        { table: 'photo_storage', via: '@/lib/photos/service' },
-        { table: 'photo_entity_links', via: '@/lib/photos/claim-link' },
-      ],
+      reads: RECEIVING_PHOTO_READS,
+      writes: RECEIVING_PHOTO_WRITES,
+    },
+    {
+      key: 'box_photo',
+      label: 'The box',
+      summary:
+        'Photograph the box itself \u2014 crush, punctures, water, tape tampering. Bench evidence, so it stamps unbox_carton and never the arrival stage.',
+      phase: 'capture',
+      photoStage: 'unbox_carton',
+      photoAspect: 'box_exterior',
+      omitWhen: 'isLocalPickup',
+      composed: false,
+      endpoint: { method: 'POST', path: '/api/receiving-photos' },
+      reads: RECEIVING_PHOTO_READS,
+      writes: RECEIVING_PHOTO_WRITES,
     },
     {
       key: 'packing_material',
       label: 'Packing material',
-      summary: 'Photograph the opened box and its dunnage \u2014 the same evidentiary moment as the carton itself.',
+      summary:
+        'Photograph the dunnage inside the opened box \u2014 what the shipper did or did not protect the unit with.',
       phase: 'capture',
       photoStage: 'unbox_carton',
+      photoAspect: 'packing_material',
       omitWhen: 'isLocalPickup',
       composed: false,
       endpoint: { method: 'POST', path: '/api/receiving-photos' },
-      reads: [
-        { table: 'receiving_carton' },
-        { table: 'receiving_scans' },
-        { table: 'receiving_triage' },
-        { table: 'photos', via: '@/lib/photos/service' },
-        { table: 'photo_storage', via: '@/lib/photos/service' },
-      ],
-      writes: [
-        { table: 'photos', via: '@/lib/photos/service' },
-        { table: 'photo_storage', via: '@/lib/photos/service' },
-        { table: 'photo_entity_links', via: '@/lib/photos/claim-link' },
-      ],
+      reads: RECEIVING_PHOTO_READS,
+      writes: RECEIVING_PHOTO_WRITES,
     },
     {
-      key: 'item_photos',
-      label: 'Item photos',
-      summary: 'Photograph each unit as received \u2014 the evidence a claim is later argued from.',
+      key: 'contents',
+      label: 'Contents',
+      summary:
+        'Confirm what is actually in this box against the line list. Nothing recorded that a human had read the manifest before working it \u2014 this step is that fact.',
       phase: 'capture',
-      photoStage: 'unbox_item',
-      perUnit: true,
       composed: false,
-      endpoint: { method: 'POST', path: '/api/receiving-photos' },
-      reads: [
-        { table: 'receiving_carton' },
-        { table: 'receiving_scans' },
-        { table: 'receiving_triage' },
-        { table: 'photos', via: '@/lib/photos/service' },
-        { table: 'photo_storage', via: '@/lib/photos/service' },
-      ],
-      writes: [
-        { table: 'photos', via: '@/lib/photos/service' },
-        { table: 'photo_storage', via: '@/lib/photos/service' },
-        { table: 'photo_entity_links', via: '@/lib/photos/claim-link' },
-      ],
+      endpoint: { method: 'POST', path: '/api/receiving/:id/contents-confirm' },
+      reads: [{ table: 'receiving_unbox', via: '@/lib/receiving/streets/carton-street-write' }],
+      writes: [{ table: 'receiving_unbox', via: '@/lib/receiving/streets/carton-street-write' }],
     },
     {
       key: 'condition',
       label: 'Condition',
       summary:
-        'Grade the unit. Defaults to A and is only overridden for exceptions, so it renders already-satisfied and the pointer skips it.',
+        'Grade the unit \u2014 one tap or one scanned condition code. The stored default pre-selects the chip, so this is a confirmation rather than a decision from scratch; it is still an explicit act, and `condition_graded_at` is what records that it happened.',
       phase: 'capture',
-      ungated: true,
       perUnit: true,
       composed: false,
       endpoint: { method: 'POST', path: '/api/receiving/lines/:id/condition' },
       reads: [{ table: 'receiving_line' }],
       writes: [{ table: 'receiving_line_testing' }],
+    },
+    {
+      key: 'item_photos',
+      label: 'Item photos',
+      summary:
+        'Photograph each unit as received \u2014 the evidence a claim is later argued from. Which of the six aspects are REQUIRED is org policy, not a constant.',
+      phase: 'capture',
+      photoStage: 'unbox_item',
+      photoAspectSet: ASPECTS_BY_STAGE.unbox_item,
+      perUnit: true,
+      composed: false,
+      endpoint: { method: 'POST', path: '/api/receiving-photos' },
+      reads: RECEIVING_PHOTO_READS,
+      writes: RECEIVING_PHOTO_WRITES,
     },
     {
       key: 'serial',

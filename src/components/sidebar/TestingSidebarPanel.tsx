@@ -32,7 +32,7 @@ import {
   readSelectLineDetail,
   type ReceivingSelectLineDetail,
 } from '@/components/sidebar/receiving/receiving-sidebar-shared';
-import { SerialPreviewStrip, BoxMembershipHint, serialLast4 } from '@/components/receiving/SerialPreviewStrip';
+import { SerialPreviewStrip, BoxMembershipHint, serialLast8 } from '@/components/receiving/SerialPreviewStrip';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
 import { BoxWorkbenchPanel } from '@/components/receiving/BoxWorkbenchPanel';
 import { ManifestWorkbenchPanel } from '@/components/receiving/ManifestWorkbenchPanel';
@@ -394,7 +394,7 @@ export function TestingSidebarPanel({
                   <span className="block truncate">{row.item_name || row.sku || `Line #${row.id}`}</span>
                   <span className="block text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
                     {row.quantity_received}/{row.quantity_expected ?? '?'} · {row.workflow_status || 'EXPECTED'}
-                    {row.tracking_number ? ` · TRK …${serialLast4(String(row.tracking_number))}` : ''}
+                    {row.tracking_number ? ` · TRK …${serialLast8(String(row.tracking_number))}` : ''}
                   </span>
                   {row.serials && row.serials.length > 0 ? (
                     <span className="mt-1 flex flex-wrap items-center gap-1">
@@ -448,6 +448,10 @@ export function TestingSidebarPanel({
       {boxPanel ? (
         <DetailStackRailRegistrar
           id={`box:${boxPanel.id}`}
+          // Scan-opened on a Station bench: a width tween that reflows the bench at
+          // the instant a barcode fires is not the explicit gesture the push
+          // mechanism requires, and `UnboxPushColumn` already owns this edge here.
+          push={false}
           onClose={() => setBoxPanel(null)}
           modal={false}
           ariaLabel={`Box H-${boxPanel.id} workbench`}
@@ -463,6 +467,10 @@ export function TestingSidebarPanel({
       {manifestPanel ? (
         <DetailStackRailRegistrar
           id={`manifest:${manifestPanel.ref}`}
+          // Scan-opened on a Station bench: a width tween that reflows the bench at
+          // the instant a barcode fires is not the explicit gesture the push
+          // mechanism requires, and `UnboxPushColumn` already owns this edge here.
+          push={false}
           onClose={() => setManifestPanel(null)}
           modal={false}
           ariaLabel={`Kit manifest ${manifestPanel.ref} workbench`}

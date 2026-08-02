@@ -2,7 +2,7 @@
 
 import type { ReactNode } from 'react';
 import type { PaintSurface } from '@/lib/observability/paint-timing';
-import { motion } from 'framer-motion';
+import { motion } from '@/design-system/motion';
 import { motionBezier } from '@/design-system/foundations/motion-framer';
 import { getStaffName } from '@/utils/staff';
 import { getStaffThemeById, stationThemeColors } from '@/utils/staff-colors';
@@ -11,7 +11,7 @@ import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { Button } from '@/design-system/primitives';
 import { conditionGradeTableLabel, workflowStatusTableLabel, WORKFLOW_BADGE } from '@/components/station/receiving-constants';
 import {
-  OrderIdChip, TrackingChip, SkuScanRefChip, SerialChip, TicketChip, getLast4,
+  OrderIdChip, TrackingChip, SkuScanRefChip, SerialChip, TicketChip, getLast8,
 } from '@/components/ui/CopyChip';
 import { dispatchSelectLine } from '@/components/station/ReceivingLinesTable';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
@@ -409,7 +409,7 @@ function ReceivingPopoverContent({
         <div className="flex items-start gap-2">
           <p className="flex-1 text-sm font-semibold leading-snug text-text-default">{title}</p>
           {groupSize > 1 ? (
-            <span className="shrink-0 rounded bg-indigo-100 inset-chip text-[8.5px] font-semibold uppercase tracking-widest text-indigo-700">PKG · {groupSize}</span>
+            <span className="shrink-0 rounded bg-indigo-100 inset-chip text-role-micro uppercase tracking-widest text-indigo-700">PKG · {groupSize}</span>
           ) : null}
         </div>
         <div className="mt-1.5 flex flex-wrap items-center gap-1">
@@ -476,16 +476,16 @@ function ReceivingPopoverContent({
           and drops the overflow chip to a second line; justify-between still
           spreads the common 4-chip row edge-to-edge (PO left · serial right). */}
       <div className="flex flex-wrap items-center justify-between gap-x-1.5 gap-y-2 border-t border-border-hairline pt-3 [&>*]:shrink-0">
-        <OrderIdChip value={poValue} display={getLast4(poValue)} />
-        <SkuScanRefChip value={skuValue} display={getLast4(skuValue)} />
+        <OrderIdChip value={poValue} display={getLast8(poValue)} />
+        <SkuScanRefChip value={skuValue} display={getLast8(skuValue)} />
         {isPickup ? (
           <FulfillmentPickupPill />
         ) : (
-          <TrackingChip value={displayTrk ?? ''} display={getLast4(displayTrk ?? '')} />
+          <TrackingChip value={displayTrk ?? ''} display={getLast8(displayTrk ?? '')} />
         )}
         {/* Always render the serial chip — even with no serial it shows the
             `----` placeholder (resolveSerialDisplay) so the column stays put and
-            lines up across rows. Content-fit width (not the default w-[84px])
+            lines up across rows. Content-fit width (not the default w-[120px])
             so the value hugs the right edge of this justify-end row instead of
             leaving dead space to its right. */}
         <SerialChip value={serialsCsv} width="w-fit shrink-0" />

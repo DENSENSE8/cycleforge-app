@@ -4,8 +4,17 @@
  * Inline condition_grade update from the per-line pill row. Used by the
  * UnfoundLineEditPanel — equally valid for Zoho-sourced lines.
  *
- * Scoped narrowly to a single column so the surface stays small and the
+ * Scoped narrowly to the condition facts so the surface stays small and the
  * existing lines/[id]/status (workflow events) endpoint isn't disturbed.
+ *
+ * Also the writer of `condition_graded_at` / `condition_graded_by` — the GATE
+ * for the Condition procedure step (2026-08-01c). `condition_grade` is NOT NULL
+ * with a default, so it exists on a line nobody has touched and can never say
+ * whether an operator graded it; this route is the only place that act happens,
+ * so this is the only place that records it.
+ *
+ * `{ reopen: true }` retracts the act (stamp → NULL) without asserting a grade,
+ * which is what makes the receipt's "open again to edit" bar honest.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -43,8 +52,14 @@ export const PATCH = withAuth(async (request: NextRequest, ctx) => {
     return NextResponse.json({ success: false, error: 'invalid JSON body' }, { status: 400 });
   }
 
-  const grade = normalizeGrade(body.condition_grade);
-  if (!grade) {
+  // Reopen: retract the grading claim without asserting a new grade. The stored
+  // grade itself is deliberately left alone — it is NOT NULL and pre-selects the
+  // chip when the operator comes back, so a reopen returns them to a
+  // confirmation, never to a decision from scratch.
+  const reopen = body.reopen === true;
+
+  const grade = reopen ? null : normalizeGrade(body.condition_grade);
+  if (!reopen && !grade) {
     return NextResponse.json(
       {
         success: false,
@@ -69,20 +84,60 @@ export const PATCH = withAuth(async (request: NextRequest, ctx) => {
     );
     const line = lineRes.rows[0];
     if (!line) return null;
+
+    if (reopen) {
+      // Retract the grading act, keep the grade. `condition_set_at` is
+      // deliberately untouched: it is the COALESCE-once "first explicit set"
+      // stamp and answers a historical question, where `condition_graded_at`
+      // answers "does the Condition step currently stand".
+      const cleared = await client.query<{
+        condition_grade: Grade;
+        condition_set_at: string | null;
+      }>(
+        `UPDATE receiving_line_testing
+            SET condition_graded_at = NULL,
+                condition_graded_by = NULL,
+                updated_at          = now()
+          WHERE receiving_line_id = $1 AND organization_id = $2
+        RETURNING condition_grade::text AS condition_grade,
+                  condition_set_at::text AS condition_set_at`,
+        [lineId, ctx.organizationId],
+      );
+      // No testing row means nothing was ever graded — reopening is a no-op,
+      // not a 404: the caller's desired end state (not graded) already holds.
+      return {
+        id: line.id,
+        receiving_id: line.receiving_id,
+        condition_grade: cleared.rows[0]?.condition_grade ?? null,
+        condition_set_at: cleared.rows[0]?.condition_set_at ?? null,
+        condition_graded_at: null,
+      };
+    }
+
     const upsert = await client.query<{
       condition_grade: Grade;
       condition_set_at: string | null;
+      condition_graded_at: string | null;
     }>(
+      // `condition_graded_at` overwrites (NOW() every time) while
+      // `condition_set_at` stays COALESCE-once. They are two different
+      // questions: "when was a grade FIRST chosen for this line" vs "is the
+      // Condition step satisfied right now". The second must be re-stampable
+      // after a reopen, or the step could never be completed twice.
       `INSERT INTO receiving_line_testing (
-          receiving_line_id, organization_id, condition_grade, condition_set_at)
-       VALUES ($1, $2, $3::condition_grade_enum, NOW())
+          receiving_line_id, organization_id, condition_grade, condition_set_at,
+          condition_graded_at, condition_graded_by)
+       VALUES ($1, $2, $3::condition_grade_enum, NOW(), NOW(), $4)
        ON CONFLICT (receiving_line_id) DO UPDATE SET
-         condition_grade  = EXCLUDED.condition_grade,
-         condition_set_at = COALESCE(receiving_line_testing.condition_set_at, EXCLUDED.condition_set_at),
-         updated_at       = now()
+         condition_grade     = EXCLUDED.condition_grade,
+         condition_set_at    = COALESCE(receiving_line_testing.condition_set_at, EXCLUDED.condition_set_at),
+         condition_graded_at = EXCLUDED.condition_graded_at,
+         condition_graded_by = EXCLUDED.condition_graded_by,
+         updated_at          = now()
        RETURNING condition_grade::text AS condition_grade,
-                 condition_set_at::text AS condition_set_at`,
-      [lineId, ctx.organizationId, grade],
+                 condition_set_at::text AS condition_set_at,
+                 condition_graded_at::text AS condition_graded_at`,
+      [lineId, ctx.organizationId, grade, ctx.staffId ?? null],
     );
     // Operator explicitly set the condition — set-once stamp the carton's
     // "Unboxed" milestone (evidence the unit was opened & acknowledged). COALESCE
@@ -93,6 +148,7 @@ export const PATCH = withAuth(async (request: NextRequest, ctx) => {
       receiving_id: line.receiving_id,
       condition_grade: upsert.rows[0].condition_grade,
       condition_set_at: upsert.rows[0].condition_set_at,
+      condition_graded_at: upsert.rows[0].condition_graded_at,
     };
   });
   if (!updated) {

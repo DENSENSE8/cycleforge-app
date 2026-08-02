@@ -1,3 +1,4 @@
+import type { PhotoAspect } from '@/lib/photos/photo-aspects';
 import {
   getProcedure,
   registerBuiltinProcedures,
@@ -12,43 +13,56 @@ import {
 } from './derive-receiving-step-states';
 
 /**
- * Capture-stack step vocabulary — the operator-facing unbox procedure:
+ * Capture-stack step gates — the bench half of the operator-facing unbox
+ * procedure:
  *
- *   PO / box photos → Packing material → Item photos → Condition → Serial
+ *   Arrival photos → Shipping label → The box → Packing material
+ *   → Contents → Condition → Item photos → Serial
  *
- * A THIRD sibling vocabulary over the same shared walk (`deriveLinearStepStates`),
+ * A sibling vocabulary over the same shared walk (`deriveLinearStepStates`),
  * beside the matched stepper (`derive-receiving-step-states`) and the unfound one
- * (`derive-unfound-step-states`). It is longer and photo-stage-aware because the
- * capture stack renders one card per step, where the 3-dot progress bar rendered
+ * (`derive-unfound-step-states`). It is longer and photo-aware because the
+ * procedure renders one row per step, where the 3-dot progress bar rendered
  * one dot for "Photos" as a whole. Same primitive, different job — not a fork
  * (AGENTS.md → compose → grow the SoT → compound).
  *
- * ## Photo stages (blocker B2, decided 2026-08-01)
+ * ## Photo stage AND aspect — two axes, both gated
  *
- * The three photo steps map ONE-TO-ONE onto the three receiving stages that
- * already exist (`@/lib/receiving/photo-intent`). "Packing material" is FOLDED
- * into `unbox_carton` — the opened box and its dunnage are the same evidentiary
- * moment — so no stage was added.
+ * `photoStage` says which evidentiary moment (`@/lib/receiving/photo-intent`);
+ * `photoAspect` says which shot of that moment (`@/lib/photos/photo-aspects`).
+ * They are orthogonal, so the carton steps that share `unbox_carton` are told
+ * apart by aspect alone:
  *
- *   po_photos        → arrival_package   (door / Triage evidence)
- *   packing_material → unbox_carton      (the bench's own carton capture)
- *   item_photos      → unbox_item        (RECEIVING_LINE)
+ *   arrival_check        → arrival_package                      (door / Triage)
+ *   shipping_label_photo → unbox_carton · shipping_label        (the bench's own
+ *   box_photo            → unbox_carton · box_exterior           carton capture,
+ *   packing_material     → unbox_carton · packing_material       three shots)
+ *   item_photos          → unbox_item   · required aspect set   (RECEIVING_LINE)
  *
- * **`po_photos` is a VERIFY step on the bench, never a capture step.** Its stage
- * is the pre-opening insurance shot, and the `require_one` receive gate counts
- * only that stage (`photo-policy.ts:149` — it even names the confusion in its
+ * **`arrival_check` is a VERIFY step on the bench, never a capture step.** Its
+ * stage is the pre-opening insurance shot, and the `require_one` receive gate
+ * counts only that stage (`photo-policy.ts` — it even names the confusion in its
  * blocker string). A bench capture that stamped `arrival_package` would silently
  * satisfy the gate with a post-opening photo and void the control. Bench captures
  * land on `unbox_carton` / `unbox_item`; step 1 reads what the door already shot.
  *
- * ## Condition is not a gate
+ * ## Condition IS a gate now (reversed 2026-08-01)
  *
- * `condition_grade` is NOT NULL with a default, so the pill always shows a grade
- * (the auto-A UX). The condition step therefore renders as ALREADY SATISFIED with
- * that default and the active pointer skips over it — the operator taps it (or
- * scans a condition token) to change the grade. Making it block would stall every
- * carton on a decision that already has a correct answer. Same reasoning that
- * kept `condition` out of the 3-dot bar (`derive-receiving-step-states` doc).
+ * It used to be `ungated`: `condition_grade` is NOT NULL with a default, so a
+ * grade always exists and "graded" was indistinguishable from "never touched" —
+ * gating on the grade would have stalled every carton on a decision that already
+ * had a correct answer. The fix was not to keep skipping it but to record the
+ * ACT: `receiving_line_testing.condition_graded_at` is stamped when an operator
+ * explicitly grades. The stored default still pre-selects the chip, so satisfying
+ * the step is one tap or one scanned condition code — a confirmation, never a
+ * decision from scratch. The old reasoning is respected by that pre-selection,
+ * not by skipping the step.
+ *
+ * `contents` has the same shape and the same answer: nothing recorded that a
+ * human had read the line list, so `receiving_unbox.contents_confirmed_at` is
+ * that fact. Neither column is backfilled — a stamp asserts a person did
+ * something at a time, so a pre-existing carton reads pending, which is honest
+ * and is one tap away.
  */
 
 // Not exported until a consumer outside this module needs it — the knip ratchet
@@ -56,10 +70,13 @@ import {
 // reject. Consumers reach these through `CaptureStepDef` / `ProcedureStepRow`.
 type CaptureStepKey =
   | 'classify'
-  | 'po_photos'
+  | 'arrival_check'
+  | 'shipping_label_photo'
+  | 'box_photo'
   | 'packing_material'
-  | 'item_photos'
+  | 'contents'
   | 'condition'
+  | 'item_photos'
   | 'serial';
 
 /** The receiving photo stage a step reads (and, from Phase 3, captures into). */
@@ -76,12 +93,10 @@ interface CaptureStepDef {
   label: string;
   /** Photo stage this step is evidenced by, when it is a photo step. */
   stage?: CaptureStepStage;
-  /**
-   * The step is satisfied by default and the active pointer skips it (condition).
-   * It still renders — as a done row showing the current value — because the
-   * operator must be able to see and change it.
-   */
-  ungated?: boolean;
+  /** The single shot this step is evidenced by, within {@link stage}. */
+  aspect?: PhotoAspect;
+  /** The aspect SET this step is evidenced by — `item_photos`. */
+  aspectSet?: readonly PhotoAspect[];
   /**
    * Step repeats per unit on a multi-qty line, so the row carries `n of N`.
    * The loop itself is Phase 3; Phase 2 only reports progress.
@@ -101,10 +116,13 @@ interface CaptureStepDef {
  */
 const GATED_KEYS: Record<CaptureStepKey, true> = {
   classify: true,
-  po_photos: true,
+  arrival_check: true,
+  shipping_label_photo: true,
+  box_photo: true,
   packing_material: true,
-  item_photos: true,
+  contents: true,
   condition: true,
+  item_photos: true,
   serial: true,
 };
 
@@ -157,7 +175,8 @@ export function captureStepVocabulary(
     key: step.key,
     label: step.label,
     stage: step.photoStage,
-    ungated: step.ungated,
+    aspect: step.photoAspect,
+    aspectSet: step.photoAspectSet,
     perUnit: step.perUnit,
   }));
 }
@@ -176,14 +195,33 @@ export interface DeriveCaptureStepStatesInput
   unboxCartonPhotoCount: number;
   /** Photos stamped `unbox_item` on THIS line. */
   itemPhotoCount: number;
+  /**
+   * Per-aspect photo counts on THIS carton (`unbox_carton` stage). A missing key
+   * is zero — the three carton shots are told apart by aspect alone, so a stage
+   * count cannot answer them.
+   */
+  cartonAspectCounts: Partial<Record<PhotoAspect, number>>;
+  /** Per-aspect photo counts on THIS line (`unbox_item` stage). */
+  itemAspectCounts: Partial<Record<PhotoAspect, number>>;
+  /**
+   * Org policy — which item aspects BLOCK the step
+   * (`receiving.requiredItemPhotoAspects`, default `included` + `serial`).
+   *
+   * Required rather than defaulted here on purpose: an empty list is a real,
+   * legal answer ("no aspect is mandatory") and a defaulted six-shot minimum
+   * would make `item_photos` un-completable for a two-person reseller. The
+   * caller resolves the org's answer; this module only applies it.
+   */
+  requiredItemAspects: readonly PhotoAspect[];
+  /** `receiving_line_testing.condition_graded_at` — the grading ACT, not the grade. */
+  conditionGradedAt: string | null;
+  /** `receiving_unbox.contents_confirmed_at` — a human read the line list. */
+  contentsConfirmedAt: string | null;
   /** Unfound only — `isIntakeClassified(row)`. Ignored for matched cartons. */
   classified?: boolean;
 }
 
-/**
- * Per-step completion gates. `condition` is absent by design — it is `ungated`
- * and always reads done (see the module doc).
- */
+/** Per-step completion gates. Every declared capture step has exactly one. */
 export function deriveCaptureStepFlags(
   input: DeriveCaptureStepStatesInput,
 ): ReadonlyArray<LinearStepFlag> {
@@ -203,19 +241,55 @@ export function deriveCaptureStepFlags(
     switch (step.key) {
       case 'classify':
         return { key: step.key, done: !!input.classified };
-      case 'po_photos':
+      case 'arrival_check':
         return { key: step.key, done: input.arrivalPhotoCount > 0 };
+      // The three bench carton shots share one stage and are told apart by
+      // aspect. Gating any of them on the STAGE count would let one photo
+      // satisfy all three — the same over-counting `sqlCartonStagePhotoCount`
+      // exists to stop one level up.
+      case 'shipping_label_photo':
+      case 'box_photo':
       case 'packing_material':
-        return { key: step.key, done: input.unboxCartonPhotoCount > 0 };
-      case 'item_photos':
-        return { key: step.key, done: input.itemPhotoCount > 0 };
+        return { key: step.key, done: cartonAspectShot(input, step.aspect) };
+      case 'contents':
+        return { key: step.key, done: !!input.contentsConfirmedAt };
       case 'condition':
-        // Ungated: always done, so the active pointer lands on the next real job.
-        return { key: step.key, done: true };
+        // The GRADE is never the gate — it is NOT NULL with a default, so it
+        // exists on a carton nobody has touched. The stamp is the act.
+        return { key: step.key, done: !!input.conditionGradedAt };
+      case 'item_photos':
+        return { key: step.key, done: requiredItemAspectsShot(input) };
       case 'serial':
         return { key: step.key, done: base.serial };
     }
   });
+}
+
+/**
+ * One carton shot of `aspect` exists. A step that declares no aspect falls back
+ * to the stage count — never to `true`: an un-aspected photo step is a
+ * declaration bug, and reading it as satisfied would hide the bug behind a
+ * green row.
+ */
+function cartonAspectShot(
+  input: DeriveCaptureStepStatesInput,
+  aspect: PhotoAspect | undefined,
+): boolean {
+  if (!aspect) return input.unboxCartonPhotoCount > 0;
+  return (input.cartonAspectCounts[aspect] ?? 0) > 0;
+}
+
+/**
+ * Every REQUIRED item aspect has at least one shot.
+ *
+ * With no required aspects the org has said "any item photo will do", so this
+ * falls back to the line's stage count rather than reading vacuously true —
+ * `[].every()` is `true`, which would mark the step done on a line with no
+ * photos at all.
+ */
+function requiredItemAspectsShot(input: DeriveCaptureStepStatesInput): boolean {
+  if (input.requiredItemAspects.length === 0) return input.itemPhotoCount > 0;
+  return input.requiredItemAspects.every((a) => (input.itemAspectCounts[a] ?? 0) > 0);
 }
 
 /**

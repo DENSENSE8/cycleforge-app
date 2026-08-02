@@ -1,7 +1,7 @@
 'use client';
 
 import { forwardRef, type ReactNode } from 'react';
-import { motion, useReducedMotion } from 'framer-motion';
+import { motion, useReducedMotion } from '@/design-system/motion';
 import { useUIModeOptional } from '../providers/UIModeProvider';
 import {
   framerPresence,

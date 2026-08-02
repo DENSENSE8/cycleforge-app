@@ -182,12 +182,31 @@ test('mergeStationUnitJourneys: single-serial carton photos stay on the serial c
   assert.deepEqual(arrival?.ref, { kind: 'serial', value: 'SN-ONLY' });
 });
 
-test('mergeStationUnitJourneys: batch put-away with colliding last-4 → one row', () => {
-  // Real carton case: two Bose units whose serials both end in 82AE — last-4
-  // chips looked like the same put-away twice. Must NOT fall back to the bin
-  // chip (PARTS → ARTS).
-  const a = '070315F60590882AE';
-  const b = '070214960600582AE';
+test('mergeStationUnitJourneys: keeps full stage media (display cap is the strip)', () => {
+  const photos = [1, 2, 3, 4, 5, 6].map((n) => ({
+    photoId: n,
+    at: `2026-07-15T14:4${n}:00.000Z`,
+    source: 'arrival' as const,
+    thumbUrl: `/t/${n}.jpg`,
+    fullUrl: `/f/${n}.jpg`,
+  }));
+  const items = mergeStationUnitJourneys([
+    {
+      serial: 'SN-ONLY',
+      events: [invReceived(1, 'SN-ONLY', '2026-07-15T14:46:00.000Z')],
+      photos,
+    },
+  ]);
+  const arrival = items.find((i) => String(i.id).includes('unit-photos-arrival'));
+  assert.equal(arrival?.media?.length, 6);
+  assert.equal(arrival?.subtitle, '6 photos');
+});
+
+test('mergeStationUnitJourneys: batch put-away with colliding last-8 → one row', () => {
+  // Two units that share a last-8 suffix must still fold into one batch row
+  // with disambiguated serial displays (not fall back to the bin chip).
+  const a = 'XX0590882AE';
+  const b = 'YY0590882AE';
   // Same displayed clock (4:47pm) but different ms — must still fold.
   const atA = '2026-07-30T23:47:00.120Z';
   const atB = '2026-07-30T23:47:00.890Z';
@@ -207,10 +226,10 @@ test('mergeStationUnitJourneys: batch put-away with colliding last-4 → one row
     new Set(items[0]?.refs?.map((r) => r.value)),
     new Set([a, b]),
   );
-  // Colliding last-4 → longer disambiguating displays (not both 82AE).
-  const displays = items[0]?.refs?.map((r) => r.display ?? r.value.slice(-4)) ?? [];
+  // Colliding last-8 → longer disambiguating displays.
+  const displays = items[0]?.refs?.map((r) => r.display ?? r.value.slice(-8)) ?? [];
   assert.equal(new Set(displays).size, 2);
-  assert.ok(displays.every((d) => d.length > 4));
+  assert.ok(displays.every((d) => d.length > 8));
   assert.match(items[0]?.subtitle ?? '', /2 units/);
   assert.match(items[0]?.subtitle ?? '', /RECEIVED → STOCKED/);
   assert.match(items[0]?.subtitle ?? '', /Tech Room — Parts/);

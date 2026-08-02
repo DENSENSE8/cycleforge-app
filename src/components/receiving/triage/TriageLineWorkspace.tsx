@@ -6,7 +6,7 @@
  * `workbenchPaneSettle` preset for carton→carton swaps.
  */
 
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion } from '@/design-system/motion';
 import { ReceivingLineWorkspace } from '@/components/receiving/workspace/ReceivingLineWorkspace';
 import { TriageWorkspaceSkeleton } from '@/components/receiving/triage/TriageWorkspaceSkeleton';
 import { TriageWorkspaceView } from '@/components/receiving/triage/TriageWorkspaceView';
@@ -85,6 +85,10 @@ export function TriageLineWorkspace({
               accordionBootstrap={workspace.accordionBootstrap}
               nav={nav}
               variant="triage"
+              // Absent = a path that predates the feed's click-to-open (scan,
+              // recent rail, sibling PO line, deep-link restore) — every one of
+              // those is a deliberate open of one carton, so it records.
+              recordView={workspace.recordView !== false}
               onPrev={() => {
                 window.dispatchEvent(
                   new CustomEvent('receiving-navigate-table', { detail: 'prev' }),

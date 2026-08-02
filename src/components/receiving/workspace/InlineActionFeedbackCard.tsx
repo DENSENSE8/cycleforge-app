@@ -8,7 +8,7 @@
  */
 
 import type { ReactNode } from 'react';
-import { motion, useReducedMotion, type Variants } from 'framer-motion';
+import { motion, useReducedMotion, type Variants } from '@/design-system/motion';
 import { AlertTriangle, Check, X } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { IconButton } from '@/design-system/primitives';

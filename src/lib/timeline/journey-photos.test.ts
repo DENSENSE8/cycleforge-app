@@ -73,6 +73,15 @@ test('mediaLimit caps thumbnails but keeps the true count in the subtitle', () =
   assert.equal(row!.subtitle, '6 photos');
 });
 
+test('without mediaLimit, full stage media is preserved for the strip +N path', () => {
+  const photos = [1, 2, 3, 4, 5, 6].map((n) =>
+    photo({ photoId: n, at: `2026-06-15T0${n}:00:00.000Z`, thumbUrl: `/t/${n}`, fullUrl: `/f/${n}` }),
+  );
+  const [row] = mergeJourneyWithUnitPhotos([], photos);
+  assert.equal(row!.media?.length, 6);
+  assert.equal(row!.subtitle, '6 photos');
+});
+
 test('does not mutate its inputs', () => {
   const events = [ev('e1', '2026-06-15T10:00:00.000Z')];
   const snapshot = JSON.stringify(events);

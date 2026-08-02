@@ -27,7 +27,7 @@ export const SIDEBAR_TITLES: Record<string, string> = {
   packer: 'Packing',
   outbound: 'Shipping',
   support: 'Support',
-  'ai-chat': 'AI Chat',
+  'ai-chat': 'Chat',
   admin: 'Admin',
   'audit-log': 'Audit Log',
   settings: 'Settings',

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
-import { motion, useReducedMotion } from 'framer-motion';
+import { motion, useReducedMotion } from '@/design-system/motion';
 import {
   MobileSwipePhotoViewer,
   type SwipePhotoSlide,

@@ -1,8 +1,8 @@
 'use client';
 
 import { useCallback, useState } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
-import { Plus, Loader2, Trash2, Pencil } from '@/components/Icons';
+import { AnimatePresence, motion } from '@/design-system/motion';
+import { Plus, Loader2, Trash2, Pencil, FileText } from '@/components/Icons';
 import { Button, IconButton } from '@/design-system/primitives';
 import { microBadge } from '@/design-system/tokens/typography/presets';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
@@ -17,6 +17,9 @@ interface KitPartRow {
   required_for: string[] | null;
   is_critical: boolean;
   sort_order: number;
+  document_url?: string | null;
+  document_title?: string | null;
+  document_mime?: string | null;
 }
 
 interface KitPartsSectionProps {
@@ -54,6 +57,9 @@ export function KitPartsSection({ catalogId, kitParts, onRefresh }: KitPartsSect
   const [qtyRequired, setQtyRequired] = useState('1');
   const [requiredForText, setRequiredForText] = useState('');
   const [isCritical, setIsCritical] = useState(true);
+  const [documentUrl, setDocumentUrl] = useState('');
+  const [documentTitle, setDocumentTitle] = useState('');
+  const [documentMime, setDocumentMime] = useState<'pdf' | 'image' | 'unknown' | ''>('');
   const [saving, setSaving] = useState(false);
   const [removing, setRemoving] = useState<number | null>(null);
 
@@ -63,6 +69,9 @@ export function KitPartsSection({ catalogId, kitParts, onRefresh }: KitPartsSect
     setQtyRequired('1');
     setRequiredForText('');
     setIsCritical(true);
+    setDocumentUrl('');
+    setDocumentTitle('');
+    setDocumentMime('');
     setShowAdd(false);
     setEditingId(null);
   };
@@ -74,6 +83,13 @@ export function KitPartsSection({ catalogId, kitParts, onRefresh }: KitPartsSect
     setQtyRequired(String(part.qty_required));
     setRequiredForText((part.required_for ?? []).join(', '));
     setIsCritical(part.is_critical);
+    setDocumentUrl(part.document_url ?? '');
+    setDocumentTitle(part.document_title ?? '');
+    setDocumentMime(
+      part.document_mime === 'pdf' || part.document_mime === 'image' || part.document_mime === 'unknown'
+        ? part.document_mime
+        : '',
+    );
     setShowAdd(true);
   };
 
@@ -83,13 +99,18 @@ export function KitPartsSection({ catalogId, kitParts, onRefresh }: KitPartsSect
       .map((s) => s.trim().toUpperCase())
       .filter(Boolean);
     const qty = Number(qtyRequired);
+    const url = documentUrl.trim();
     return {
       componentType,
       qtyRequired: Number.isFinite(qty) && qty >= 1 ? Math.floor(qty) : 1,
       requiredFor: requiredFor.length ? requiredFor : null,
       isCritical,
+      // Always send documentUrl on save so an edit can clear it (empty → null).
+      documentUrl: url || '',
+      documentTitle: url ? documentTitle.trim() || null : null,
+      documentMime: url && documentMime ? documentMime : null,
     };
-  }, [componentType, qtyRequired, requiredForText, isCritical]);
+  }, [componentType, qtyRequired, requiredForText, isCritical, documentUrl, documentTitle, documentMime]);
 
   const handleSave = useCallback(async () => {
     if (!componentName.trim()) return;
@@ -167,6 +188,14 @@ export function KitPartsSection({ catalogId, kitParts, onRefresh }: KitPartsSect
                 REQUIRED
               </span>
             )}
+            {part.document_url ? (
+              <HoverTooltip label={part.document_title || 'Insert attached'} asChild>
+                <span className={`shrink-0 inline-flex items-center gap-0.5 rounded-full border border-blue-200 bg-blue-50 px-1.5 py-0.5 text-blue-700 ${microBadge}`}>
+                  <FileText className="h-2.5 w-2.5" aria-hidden />
+                  INSERT
+                </span>
+              </HoverTooltip>
+            ) : null}
             <span className={`shrink-0 rounded-full border px-1.5 py-0.5 ${microBadge} ${typeBadgeClass(part.component_type)}`}>
               {part.component_type}
             </span>
@@ -243,6 +272,46 @@ export function KitPartsSection({ catalogId, kitParts, onRefresh }: KitPartsSect
                 />
                 Required item — drives the &ldquo;all items in the box&rdquo; pack signal
               </label>
+
+              <div className="space-y-1.5 rounded-lg border border-border-hairline bg-surface-canvas p-2">
+                <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">
+                  Insert (optional)
+                </p>
+                <HoverTooltip label="Direct Blob url for the paper that goes in the box. Never an /api/documents path." asChild>
+                  <input
+                    type="url"
+                    value={documentUrl}
+                    onChange={(e) => setDocumentUrl(e.target.value)}
+                    placeholder="https://… insert PDF or image"
+                    className="w-full rounded-lg border border-border-soft bg-surface-card px-2.5 py-1.5 text-role-caption font-semibold text-text-default placeholder:text-text-faint"
+                    aria-label="Insert document url"
+                  />
+                </HoverTooltip>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={documentTitle}
+                    onChange={(e) => setDocumentTitle(e.target.value)}
+                    placeholder="Insert name (defaults to item name)"
+                    disabled={!documentUrl.trim()}
+                    className="min-w-0 flex-1 rounded-lg border border-border-soft bg-surface-card px-2.5 py-1.5 text-role-caption font-semibold text-text-default placeholder:text-text-faint disabled:opacity-50"
+                    aria-label="Insert title"
+                  />
+                  <select
+                    value={documentMime}
+                    onChange={(e) =>
+                      setDocumentMime(e.target.value as 'pdf' | 'image' | 'unknown' | '')
+                    }
+                    disabled={!documentUrl.trim()}
+                    className="w-28 rounded-lg border border-border-soft bg-surface-card px-2 py-1.5 text-role-caption font-semibold text-text-default disabled:opacity-50"
+                    aria-label="Insert mime"
+                  >
+                    <option value="">Auto</option>
+                    <option value="pdf">PDF</option>
+                    <option value="image">Image</option>
+                  </select>
+                </div>
+              </div>
 
               <div className="flex items-center gap-2">
                 <Button

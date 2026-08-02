@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion } from '@/design-system/motion';
 import { usePathname } from 'next/navigation';
 import { useDebounce } from '@/hooks';
 import { useAiQuickJump } from '@/hooks/useAiQuickJump';

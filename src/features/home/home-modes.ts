@@ -6,32 +6,13 @@
  * The five modes map to the home-ops-tv-collab-surfaces plan §3.1:
  *   today | tasks | collab | forge | brief
  *
- * Pure data only — no JSX. Mirrors `operations-sidebar-shared.ts` so the Home
- * rail and the Operations rail stay one pattern.
+ * Pure data only — no JSX. The mode LABELS and ICONS live in `SIDEBAR_PAGE_NAV`
+ * (the house L2 SoT that `HeaderModeSwitcher` renders); this module keeps only
+ * the vocabulary + its parser, which that registry's `resolveMode` imports so
+ * the two can never disagree.
  */
-
-import { Activity, ClipboardList, Inbox, MessageSquare, Zap, Sparkles } from '@/components/Icons';
-import type { HorizontalSliderItem } from '@/components/ui/HorizontalButtonSlider';
 
 export type HomeMode = 'today' | 'inbox' | 'tasks' | 'collab' | 'forge' | 'brief';
-
-/**
- * The top-level mode rail. `today` is the default and stays on the bare `/`
- * path (no `?mode=`); the other modes flip `?mode=`. Labels follow the plan's
- * staff mental model (§1.1): "Plan" is the operator-facing label for the forge
- * (live product plan) mode.
- */
-export const HOME_MODE_ITEMS: HorizontalSliderItem[] = [
-  { id: 'today', label: 'Today', icon: Activity },
-  // Inbox sits second: it is the "what changed on things I follow" companion to
-  // Today's "what should I do next", so the two personal-triage modes are
-  // adjacent rather than split by the structured-work modes.
-  { id: 'inbox', label: 'Inbox', icon: Inbox },
-  { id: 'tasks', label: 'Tasks', icon: ClipboardList },
-  { id: 'collab', label: 'Collab', icon: MessageSquare },
-  { id: 'forge', label: 'Plan', icon: Zap },
-  { id: 'brief', label: 'Brief', icon: Sparkles },
-];
 
 export const DEFAULT_HOME_MODE: HomeMode = 'today';
 
@@ -43,10 +24,6 @@ export function parseHomeMode(raw: string | null | undefined): HomeMode {
     raw === 'brief'
     ? raw
     : 'today';
-}
-
-export function homeModeLabel(mode: HomeMode): string {
-  return HOME_MODE_ITEMS.find((item) => item.id === mode)?.label ?? 'Today';
 }
 
 /**

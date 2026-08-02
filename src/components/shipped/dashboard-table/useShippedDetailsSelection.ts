@@ -7,11 +7,6 @@ import { toDetailRecord, getDetailId } from '@/components/shipped/shipped-record
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
 import type { DerivedPackerRecord } from '@/lib/shipped-records';
 
-export interface UseShippedDetailsSelectionOptions {
-  /** Flat on-screen order, for up/down keyboard navigation. */
-  orderedRecords: DerivedPackerRecord[];
-}
-
 export interface ShippedDetailsSelection {
   /** Detail id of the currently open row, or null. */
   selectedDetailId: number | null;
@@ -22,12 +17,21 @@ export interface ShippedDetailsSelection {
 /**
  * Owns the open-detail selection for the shipped table. Tracks which row's
  * detail is open (by detail id), and wires the cross-pane window-event bridge
- * (`open` / `close` / `navigate` shipped-details) that the detail panel and
- * keyboard shortcuts drive — dispatching open/close back out for siblings.
+ * (`open` / `close` shipped-details) that the detail panel drives — dispatching
+ * open/close back out for siblings.
+ *
+ * **Stepping is no longer here, and the double-step went with it.** This hook
+ * carried a `navigate-shipped-details` listener over `orderedRecords`
+ * (`DerivedPackerRecord[]`) while the `OrdersGridView` this table mounts runs
+ * `useOrdersQueueSelection`, which listened to the SAME event over the same rows
+ * in a different shape (`ShippedOrder[]`). One keypress therefore ran two
+ * independent steps on this lane. Both branches are deleted in favour of the one
+ * cursor the grid publishes (`record-cursor-unification-PLAN.md` §1.1–1.2); a
+ * spec that encoded the double-step was encoding the bug.
+ *
+ * Takes no arguments — `orderedRecords` had no other reader here.
  */
-export function useShippedDetailsSelection({
-  orderedRecords,
-}: UseShippedDetailsSelectionOptions): ShippedDetailsSelection {
+export function useShippedDetailsSelection(): ShippedDetailsSelection {
   const [selectedDetailId, setSelectedDetailId] = useState<number | null>(null);
 
   const handleRowClick = useCallback((record: DerivedPackerRecord) => {
@@ -41,7 +45,7 @@ export function useShippedDetailsSelection({
   }, [selectedDetailId]);
 
   // Handlers are held in a ref by useEventBridge, so they always read the
-  // latest selectedDetailId / orderedRecords without re-subscribing.
+  // latest selectedDetailId without re-subscribing.
   useEventBridge({
     'open-shipped-details': (e) => {
       const payload = getOpenShippedDetailsPayload((e as CustomEvent<ShippedOrder>).detail);
@@ -49,16 +53,6 @@ export function useShippedDetailsSelection({
       setSelectedDetailId(Number.isFinite(nextId) ? nextId : null);
     },
     'close-shipped-details': () => setSelectedDetailId(null),
-    'navigate-shipped-details': (e) => {
-      const direction = (e as CustomEvent<{ direction?: 'up' | 'down' }>).detail?.direction;
-      if (selectedDetailId === null || orderedRecords.length === 0) return;
-      const currentIndex = orderedRecords.findIndex((record) => getDetailId(record) === selectedDetailId);
-      if (currentIndex < 0) return;
-      const step = direction === 'up' ? -1 : 1;
-      const nextRecord = orderedRecords[currentIndex + step];
-      if (!nextRecord) return;
-      dispatchOpenShippedDetails(toDetailRecord(nextRecord), 'shipped');
-    },
   });
 
   return { selectedDetailId, handleRowClick };

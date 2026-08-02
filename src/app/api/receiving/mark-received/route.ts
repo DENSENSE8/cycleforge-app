@@ -464,7 +464,6 @@ export const POST = withAuth(async (request, ctx) => {
       );
     }
     const qaFailCode = isQaFailExceptionCode(rawQaFailCode) ? rawQaFailCode : null;
-    const qaFailReason = String(body?.exception_reason || '').trim() || null;
 
     // The reason and the verdict are ONE fact at two grains, so the code decides
     // the verdict. (The sheet posted a hardcoded FAILED_FUNCTIONAL for every fail
@@ -809,7 +808,10 @@ export const POST = withAuth(async (request, ctx) => {
           receivingLineId,
           receivingId: beforeRow?.line_receiving_id ?? receivingId,
           exceptionCode: qaFailCode,
-          reason: qaFailReason,
+          // No free text: the reason IS the code (see qa-fail-reason-wire.ts).
+          // Prose about the item lives in the operator's item note, which this
+          // path deliberately no longer touches.
+          reason: null,
           createdBy: staffId,
         });
       } catch (err) {

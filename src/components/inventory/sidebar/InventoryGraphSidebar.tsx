@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion } from '@/design-system/motion';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useDebounce } from '@/hooks';
 import { useSkuCatalogSearch } from '@/hooks/useSkuCatalogSearch';

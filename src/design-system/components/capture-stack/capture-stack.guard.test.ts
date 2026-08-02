@@ -70,7 +70,37 @@ test('the capture stack honors prefers-reduced-motion', () => {
     assert.match(
       read(rel),
       /useReducedMotion/,
-      `${rel} must branch on reduced motion (WCAG 2.3.3) — TODO(capture-stack): Phase 2 moves this onto useMotionPresence / useMotionTransition and joins station-motion-bridge.guard.test.ts`,
+      `${rel} must branch on reduced motion (WCAG 2.3.3) — CaptureStack for the layout prop (the bridge has no layout equivalent), CaptureStackRow to suppress the decorative fresh pulse`,
+    );
+  }
+});
+
+test('CaptureStack routes row motion through the reduced-motion bridge', () => {
+  const src = read('CaptureStack.tsx');
+  for (const hook of ['useMotionPresence', 'useMotionTransition']) {
+    // Match a CALL, not a mention. The pre-Phase-2 file carried a
+    // `TODO(capture-stack)` docblock naming both hooks verbatim, so a bare
+    // /useMotionPresence/ passed on the very code it was meant to reject.
+    assert.match(
+      src,
+      new RegExp(`${hook}\\s*\\(`),
+      `CaptureStack must CALL ${hook} — every station that mounts the stack inherits its reduced-motion compliance from here (station-motion-bridge.guard.test.ts)`,
+    );
+  }
+});
+
+test('the capture stack inlines no motion literal — presets live in the SoT', () => {
+  for (const rel of ['CaptureStack.tsx', 'CaptureStackRow.tsx']) {
+    const src = read(rel);
+    assert.doesNotMatch(
+      src,
+      /type:\s*'spring'|damping:|stiffness:/,
+      `${rel} must not inline a spring — it belongs in framerTransition (motion-framer.ts), or the next consumer forks the timing`,
+    );
+    assert.doesNotMatch(
+      src,
+      /duration:\s*[\d.]+/,
+      `${rel} must not inline a duration — name it in framerDuration (motion-framer.ts)`,
     );
   }
 });

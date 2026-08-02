@@ -6,11 +6,11 @@
  * Logic lives in focused hooks:
  *   - useDashboardSearchController .. URL ⇄ active view + search (existing)
  *   - useDashboardSelectedOrder ..... selected order + details context (existing)
- *   - useDashboardBulkSelection ..... always-on multi-select + Copy/Print/Delete
+ *   - useOrderRailSelection ......... always-on multi-select + rail publish
  *   - useDashboardViewWarmup ........ React Query prefetch warm-up
  *   - useDashboardRealtime .......... realtime invalidation + toasts
  *
- * Render is pure composition: <DashboardOrdersView> (table + selection bar) and
+ * Render is pure composition: <DashboardOrdersView> (table + rail) and
  * <DashboardOrderDetails> (the slide-in panel). The sign-in BootGate reuses the
  * shared `warmActiveView` warm-up so the splash holds until data is painted.
  */
@@ -25,7 +25,7 @@ import { consumeBootSplash } from '@/lib/boot-flag';
 import { warmActiveView } from '@/lib/queries/dashboard-warm';
 import { useDashboardSearchController } from '@/hooks/useDashboardSearchController';
 import { useDashboardSelectedOrder } from '@/hooks/useDashboardSelectedOrder';
-import { useDashboardBulkSelection } from '@/hooks/useDashboardBulkSelection';
+import { useOrderRailSelection } from '@/hooks/useOrderRailSelection';
 import { useDashboardViewWarmup } from '@/hooks/useDashboardViewWarmup';
 import { useDashboardRealtime } from '@/hooks/useDashboardRealtime';
 import { DashboardOrdersView } from '@/components/dashboard/DashboardOrdersView';
@@ -76,17 +76,13 @@ function DashboardPageContent() {
 
   const isOutbound = domain === 'outbound';
 
-  // `publishToRail` stays OFF until the rail action region is fixed — nothing
-  // consumes the store while the capsule is mounted, so publishing would be
-  // dead work every render. See DashboardOrdersView's revert note.
-  const {
-    selectionEnabled,
-    selectMode,
-    selectedRows,
-    selectionActions,
-    selectionOverlays,
-    bulkBarVisible,
-  } = useDashboardBulkSelection(orderView);
+  // Rail publish path — separate from Pack/Shipping's capsule path
+  // (`useDashboardBulkSelection`). The bottom capsule is gone here (plan D2),
+  // so the rail IS the selection plane — and the store is the only path to it,
+  // because both rail bodies (`ShippedDetailsPanel` at 1 row, `OrderRailShell`
+  // at 2+) are mounted off the ROOT layout rather than under this page.
+  // Plan: docs/todo/order-rail-selection-plane-PLAN.md
+  const { selectionEnabled, selectMode, selectionOverlays } = useOrderRailSelection(orderView);
 
   // Only the outbound (Shipping) mode resolves/opens the order panel — receiving
   // rows are cartons, sales rows are transactions, and search rows are hits.
@@ -133,10 +129,7 @@ function DashboardPageContent() {
         onSelectView={setOrderView}
         selectMode={selectMode}
         selectionEnabled={selectionEnabled}
-        selectedRows={selectedRows}
-        selectionActions={selectionActions}
         selectionOverlays={selectionOverlays}
-        bulkBarVisible={bulkBarVisible}
         />
       </div>
 

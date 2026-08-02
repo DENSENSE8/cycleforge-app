@@ -11,7 +11,7 @@
  */
 
 import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion } from '@/design-system/motion';
 import { Search } from '@/components/Icons';
 import { SearchResultRow, type SearchRowDensity } from '@/components/search/SearchResultRow';
 import { SearchResultRowSkeleton } from '@/components/search/SearchResultRowSkeleton';

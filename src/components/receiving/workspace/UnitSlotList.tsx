@@ -92,9 +92,9 @@ interface Props {
   overflowSlot?: ReactNode;
 }
 
-function last4(sn: string): string {
+function last8(sn: string): string {
   const v = (sn || '').trim();
-  return v.length > 4 ? v.slice(-4) : v;
+  return v.length > 8 ? v.slice(-8) : v;
 }
 
 function resolveSerialForUnit(
@@ -335,7 +335,7 @@ function CollapsedRow({
         trailing={
           serial ? (
             <span className="font-mono text-sm font-semibold tracking-tight text-text-default underline decoration-emerald-500 decoration-2 underline-offset-2">
-              {last4(serial.serial_number)}
+              {last8(serial.serial_number)}
             </span>
           ) : waived ? (
             <span className="text-role-caption font-semibold uppercase tracking-widest text-emerald-700">

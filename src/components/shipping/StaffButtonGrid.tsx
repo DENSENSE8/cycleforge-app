@@ -1,8 +1,7 @@
 'use client';
 
-import { motion } from 'framer-motion';
+import { motion, motionRole, useMotionPressRole } from '@/design-system/motion';
 import { getStaffThemeById, stationThemeClasses } from '@/utils/staff-colors';
-import { framerGesture } from '@/design-system/foundations/motion-framer';
 import { fieldLabel } from '@/design-system/tokens/typography/presets';
 
 export interface StaffOption {
@@ -29,6 +28,10 @@ export function StaffButtonGrid({
   emptyMessage = 'None available',
   className,
 }: StaffButtonGridProps) {
+  // `motionRole.gesture.press` — suppressed, not reduced, under prefers-reduced-motion.
+  // This grid used to pass the tap target unguarded, so the floor SNAPPED the 0.9
+  // scale (transforms are positional keys) and the press read as a glitch.
+  const pressGesture = useMotionPressRole(motionRole.gesture.press);
   const cols = Math.min(columns ?? options.length, options.length);
 
   return (
@@ -46,7 +49,7 @@ export function StaffButtonGrid({
               <motion.button
                 key={m.id}
                 type="button"
-                whileTap={framerGesture.tapPress}
+                whileTap={pressGesture}
                 onClick={() => onSelect(m.id)}
                 className={[
                   'touch-manipulation flex h-11 w-full min-w-0 flex-col items-center justify-center rounded-lg border-2 px-2 transition-all active:scale-[0.98]',

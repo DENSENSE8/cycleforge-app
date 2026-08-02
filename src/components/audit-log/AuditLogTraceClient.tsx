@@ -6,7 +6,7 @@ import { Search, MapPin, ShoppingCart, PackageCheck } from '@/components/Icons';
 import { AuditCenterMessage } from './AuditEventCard';
 import { EventTimeline, type TimelineGroupMode } from '@/components/ui/EventTimeline';
 import { inventoryEventsToTimeline, type InventoryTimelineRow } from '@/lib/timeline';
-import { SerialChip, SkuSerialChip, OrderIdChip, TrackingChip, getLast4 } from '@/components/ui/CopyChip';
+import { SerialChip, SkuSerialChip, OrderIdChip, TrackingChip, getLast8 } from '@/components/ui/CopyChip';
 import { timeAgo } from '@/utils/_date';
 
 interface TraceUnit {
@@ -246,7 +246,7 @@ export function AuditLogTraceClient() {
                   {order.tracking_number ? (
                     <TrackingChip
                       value={order.tracking_number}
-                      display={getLast4(order.tracking_number)}
+                      display={getLast8(order.tracking_number)}
                       dense
                       fitDisplayWidth
                     />

@@ -251,10 +251,10 @@ async function fetchLinesBySku(sku: string): Promise<ReceivingLineRow[]> {
 
 /**
  * Find receiving lines whose serial ENDS WITH the scanned value — the
- * "last 4 of the serial / PO" quick lookup. Uses the receiving-lines default
+ * "last 8 of the serial / PO" quick lookup. Uses the receiving-lines default
  * search (ILIKE `%value%` across PO#, serial, sku, tracking) once, then splits
  * the hits into true SUFFIX matches on a serial vs. on the PO number/id — so a
- * short code behaves like "ends with", matching the last-4 chips elsewhere.
+ * short code behaves like "ends with", matching the last-8 chips elsewhere.
  *
  * Returns the two buckets separately so the caller can apply the precedence
  * "serial first, then PO".
@@ -420,7 +420,7 @@ export async function resolveTestingScan(
 
   try {
     // Armed mode — the operator picked a specific search type in the scan bar.
-    // Skip auto-detection and search only that type (full value or last-4).
+    // Skip auto-detection and search only that type (full value or last-8).
     if (opts?.forcedType) {
       return resolveForcedTestingScan(value, opts.forcedType);
     }
@@ -451,7 +451,7 @@ export async function resolveTestingScan(
       return { kind: 'multi', rows, receivingId, via: 'tracking' };
     }
 
-    // Partial scan — the "last 4" quick lookup. Restricted to short alphanumeric
+    // Partial scan — the "last 8" quick lookup. Restricted to short alphanumeric
     // scans (3–24 chars) so it can't swallow long codes. Precedence: serial
     // first, then PO. >1 hit in a bucket → picker so the tech chooses the line.
     if (/^[A-Za-z0-9-]{3,24}$/.test(value)) {
@@ -505,7 +505,7 @@ function linesToResult(
 /**
  * Forced single-type resolution for the scan-bar mode buttons. Searches ONLY
  * the armed type — tracking, PO#, or serial — accepting either the full value
- * or the last-4 (suffix). No auto-detection fallthrough.
+ * or the last-8 (suffix). No auto-detection fallthrough.
  */
 async function resolveForcedTestingScan(
   value: string,
@@ -519,7 +519,7 @@ async function resolveForcedTestingScan(
     // line(s) so the panel prefills from the pre-packed state. Read-only.
     return linesToResult(await fetchLinesBySku(value), 'sku', value);
   }
-  // serial + PO share one search; pick the matching bucket (full or last-4).
+  // serial + PO share one search; pick the matching bucket (full or last-8).
   const { serialRows, poRows } = await fetchLinesByPartial(value);
   return type === 'serial'
     ? linesToResult(serialRows, 'serial', value)
@@ -620,7 +620,7 @@ export async function resolveReceivingCodeToLine(
     // A bare number is NOT treated as a carton id — cartons are only ever
     // referenced by their `R-{id}` handle (resolved by routeScan above). Bare
     // short codes fall through to the serial-then-PO partial match instead, so
-    // "last 4 of the PO" (e.g. 7001) isn't shadowed by a carton-id guess.
+    // "last 8 of the PO" (e.g. 7001) isn't shadowed by a carton-id guess.
     return null;
   } catch (err) {
     return {

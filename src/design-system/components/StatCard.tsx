@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { motion } from 'framer-motion';
+import { motion } from '@/design-system/motion';
 import { AnimatedStat } from '@/design-system/components/AnimatedStat';
 
 export type StatCategory = 'all' | 'tested' | 'repair' | 'outOfStock' | 'pendingLate' | 'fba';

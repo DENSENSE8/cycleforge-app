@@ -11,7 +11,7 @@ import {
   DialogTitle,
 } from '@/design-system/components/Dialog';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { TrackingChip, getLast4 } from '@/components/ui/CopyChip';
+import { TrackingChip, getLast8 } from '@/components/ui/CopyChip';
 
 type StatusFilter = 'open' | 'resolved' | 'discarded' | 'all';
 
@@ -253,7 +253,7 @@ export function TrackingExceptionsTable() {
                   <td className="px-4 py-2">
                     <TrackingChip
                       value={row.tracking_number}
-                      display={getLast4(row.tracking_number) || row.tracking_number.slice(-4)}
+                      display={getLast8(row.tracking_number) || row.tracking_number.slice(-8)}
                     />
                   </td>
                   <td className="px-4 py-2 font-semibold text-text-muted">{getCarrier(row)}</td>

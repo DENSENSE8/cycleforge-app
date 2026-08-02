@@ -16,7 +16,7 @@ import {
   SerialChip,
   OrderIdChip,
   SkuScanRefChip,
-  getLast4,
+  getLast8,
 } from '@/components/ui/CopyChip';
 import { supportTicketIdFace } from '@/lib/support/ticket-refs';
 import { useAuth } from '@/contexts/AuthContext';
@@ -378,7 +378,7 @@ function ConnectionsStrip({
   );
 }
 
-/** House CopyChip face for linked tracking / ticket / serial / order / sku — last-4. */
+/** House CopyChip face for linked tracking / ticket / serial / order / sku — last-8. */
 function ConnectionChip({ connection: c }: { connection: ThreadConnectionRow }) {
   const type = c.entityType.toUpperCase();
   const hint = (c.hint ?? '').toLowerCase();
@@ -392,16 +392,16 @@ function ConnectionChip({ connection: c }: { connection: ThreadConnectionRow }) 
   } else if (type === 'SERIAL_UNIT' || hint === 'serial') {
     chip = <SerialChip value={c.label} dense disableTooltip />;
   } else if (type === 'ORDER') {
-    chip = <OrderIdChip value={c.label} display={getLast4(c.label)} dense />;
+    chip = <OrderIdChip value={c.label} display={getLast8(c.label)} dense />;
   } else if (type === 'SKU' || hint === 'sku') {
-    chip = <SkuScanRefChip value={c.label} display={getLast4(c.label)} dense />;
+    chip = <SkuScanRefChip value={c.label} display={getLast8(c.label)} dense />;
   } else {
     const Icon = CONNECTION_ICON[c.entityType] ?? Tag;
     chip = (
       <span className="inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-role-eyebrow uppercase tracking-wide text-text-muted ring-1 ring-inset ring-border-soft">
         <Icon className="h-3 w-3" />
         <span className="max-w-[9rem] truncate normal-case tracking-normal font-mono">
-          {getLast4(c.label)}
+          {getLast8(c.label)}
         </span>
         {c.href ? <ExternalLink className="h-2.5 w-2.5 opacity-60" /> : null}
       </span>

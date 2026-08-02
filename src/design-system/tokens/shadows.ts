@@ -83,10 +83,13 @@ export const ELEVATION_CLASS = {
  *
  * Never hand-roll a `shadow-* shadow-scrim/*` pair for this — add the side here.
  */
-export function elevationCastClass(side: 'left'): string {
-  // Only `left` exists today (the station panel). A `right` sibling is a var in
-  // globals.css + a case here — widen this union when a surface needs it.
-  return side === 'left' ? 'shadow-elev-overlay-left' : '';
+export function elevationCastClass(side: 'left' | 'right'): string {
+  // Both sides now exist: `left` for the context panel (pinned left of centre)
+  // and `right` for the right-rail push column (pinned right of it). The vars
+  // are mirrors — same ink, same zero-offset ambient layer, only the sign of the
+  // key + cast x flips — so the whole frame reads as lit from the middle of the
+  // screen rather than one card casting back toward the other.
+  return side === 'left' ? 'shadow-elev-overlay-left' : 'shadow-elev-overlay-right';
 }
 
 export function elevationClass(role: 'flat' | 'overlay'): string;

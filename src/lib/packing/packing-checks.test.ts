@@ -131,3 +131,53 @@ test('404 when the step row is missing in the org', async () => {
   );
   assert.deepEqual(res, { ok: false, status: 404, error: 'kit part not found' });
 });
+
+test('print origin stamps valueText; acknowledgement is the default', async () => {
+  const { deps, state } = fakes({
+    orderRow: { id: 5, sku_catalog_id: null },
+    stepRow: { sku_catalog_id: 77 },
+  });
+  const printed = await recordPackingTick(
+    ORG,
+    {
+      orderRowId: 5,
+      kind: 'KIT_PART',
+      stepId: 9,
+      checked: true,
+      verifiedBy: 3,
+      origin: 'print',
+    },
+    deps,
+  );
+  assert.equal(printed.ok, true);
+  assert.equal(state.upserts[0].valueText, 'print');
+
+  const tapped = await recordPackingTick(
+    ORG,
+    { orderRowId: 5, kind: 'KIT_PART', stepId: 9, checked: true, verifiedBy: 3 },
+    deps,
+  );
+  assert.equal(tapped.ok, true);
+  assert.equal(state.upserts[1].valueText, 'acknowledgement');
+});
+
+test('untick clears valueText so a re-tick cannot inherit a stale print stamp', async () => {
+  const { deps, state } = fakes({
+    orderRow: { id: 5, sku_catalog_id: 12 },
+    stepRow: { sku_catalog_id: 77 },
+  });
+  await recordPackingTick(
+    ORG,
+    {
+      orderRowId: 5,
+      kind: 'KIT_PART',
+      stepId: 9,
+      checked: false,
+      verifiedBy: 3,
+      origin: 'print',
+    },
+    deps,
+  );
+  assert.equal(state.upserts[0].passed, null);
+  assert.equal(state.upserts[0].valueText, null);
+});

@@ -10,6 +10,10 @@
  * by the page from `selectionActions`; overlays those actions open (the
  * assignment carousel, the ship-by picker) come back as `selectionOverlays`.
  *
+ * Capsule consumers only: Pack and Shipping still mount `ContextualSelectionBar`.
+ * The dashboard outbound grid publishes to the right rail via
+ * {@link useOrderRailSelection} instead — do not add a publish flag here.
+ *
  * **Actions diverge by lifecycle stage, layout does not** (the house rule these
  * lanes are built on). All four outbound tabs render one grid component with one
  * persisted column layout, but "assign a tester" is meaningless on Shipped and
@@ -26,11 +30,6 @@ import { useDeleteOrderRow } from '@/hooks/useDeleteOrderRow';
 import { useOrderAssignment } from '@/hooks/useOrderAssignment';
 import { useWorkOrderAssignment } from '@/hooks/useWorkOrderAssignment';
 import { emitToggleAll } from '@/lib/selection/table-selection';
-import { useTableSelectionTotal } from '@/hooks/useTableSelection';
-import {
-  clearRailActions,
-  publishRailActions,
-} from '@/lib/right-rail/rail-actions-store';
 import { DASHBOARD_ORDERS_SELECTION_SCOPE } from '@/lib/selection/dashboard-scopes';
 import { getDashboardDomainFromSearch } from '@/lib/dashboard/dashboard-domains';
 import { isPdfOutboundDocument } from '@/lib/documents/outbound-document-display';
@@ -120,20 +119,7 @@ export interface DashboardBulkSelection {
 
 export function useDashboardBulkSelection(
   orderView: DashboardOrderView,
-  opts: {
-    /**
-     * Publish the selection + actions to the rail action store, so the right
-     * rail can render the action region instead of the bottom capsule.
-     *
-     * Opt-in, and it must stay that way: Pack (`PackWorkspaceView`) and
-     * Shipping (`ShippingWorkspaceView`) call this same hook and still run the
-     * capsule. Publishing unconditionally would give their inspectors a second
-     * copy of every action while the capsule kept the first.
-     */
-    publishToRail?: boolean;
-  } = {},
 ): DashboardBulkSelection {
-  const { publishToRail = false } = opts;
   const searchParams = useSearchParams();
   const domain = getDashboardDomainFromSearch(searchParams);
   const selectionEnabled = true;
@@ -522,28 +508,6 @@ export function useDashboardBulkSelection(
       />
     </>
   );
-
-  // Publish the live selection so the RAIL can render the action region. The
-  // rail's 1-row body (`ShippedDetailsPanel`) is mounted by
-  // `GlobalDetailStackHost` off the root layout, not under this page, so a
-  // module store is the only path between them — see `rail-actions-store.ts`.
-  const selectableTotal = useTableSelectionTotal(DASHBOARD_ORDERS_SELECTION_SCOPE);
-  useEffect(() => {
-    if (!publishToRail) return;
-    publishRailActions({
-      scope: DASHBOARD_ORDERS_SELECTION_SCOPE,
-      rows: selectedRows,
-      actions: selectionActions,
-      total: selectableTotal,
-    });
-  }, [publishToRail, selectedRows, selectionActions, selectableTotal]);
-  // Leaving the dashboard must not leave a stale action set published — the
-  // rail would keep offering "print a shipping label" over rows that are no
-  // longer on screen.
-  useEffect(() => {
-    if (!publishToRail) return undefined;
-    return () => clearRailActions(DASHBOARD_ORDERS_SELECTION_SCOPE);
-  }, [publishToRail]);
 
   // Mirrors ContextualSelectionBar's own mount condition (`visible` defaults to
   // count > 0, and it renders null when no action can fire).

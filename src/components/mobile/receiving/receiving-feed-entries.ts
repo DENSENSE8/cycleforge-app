@@ -113,7 +113,7 @@ export function groupReceivingEntries(rows: ReadonlyArray<ReceivingLineRow>): Re
  * Config-driven *non-identifier* detail fields for a unit. Order here is render
  * order; the detail panel loops this and never names a field in JSX. Identifiers
  * (PO / SKU / tracking / serial) are NOT included — those render through the
- * shared CopyChip family (last-4 + copy-on-tap), the SoT for identifier display.
+ * shared CopyChip family (last-8 + copy-on-tap), the SoT for identifier display.
  */
 export function buildUnitFields(row: ReceivingLineRow): ReceivingFeedField[] {
   const fields: ReceivingFeedField[] = [];

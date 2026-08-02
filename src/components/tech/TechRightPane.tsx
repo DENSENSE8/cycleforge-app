@@ -11,7 +11,7 @@
  */
 
 import React from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion } from '@/design-system/motion';
 import { framerPresence } from '@/design-system/foundations/motion-framer';
 import { useMotionPresence } from '@/design-system/foundations/motion-framer-hooks';
 import { ShippingWorkspaceView } from '@/components/tech/shipping/ShippingWorkspaceView';

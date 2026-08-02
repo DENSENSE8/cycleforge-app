@@ -5,6 +5,26 @@
 **Date:** 2026-07-31 · `main` @ `1c226847d`
 **Depends on:** `unbox-capture-stack-PLAN.md` Phases 0–2 (the `CaptureStack` primitive must exist)
 
+> ## SUPERSEDED IN PART — 2026-08-01
+>
+> **The step-vocabulary half shipped; the restructure half is dead on the operator's verdict.**
+>
+> - **Shipped:** the data-driven vocabulary (`derive-capture-step-states.ts`), B2's `unbox_carton`
+>   fold, the ungated condition step, and 5 of the 8 coverage rows
+>   (`tests/e2e/unbox-procedure-checklist.spec.ts`). The procedure renders as the **Checklist
+>   display** in the Displays push column (`UnboxProcedureChecklist`), and replaced the
+>   org-editable checklist outright.
+> - **Rejected:** the bottom-anchored capture stack in the work surface (*"completely terrible"*,
+>   `UnboxCaptureStack` deleted `33a3eb609`) and the ambient right-rail card (*"an absolutely
+>   terrible display"*). Everything below about one-card-above-the-input, push-up collapse, and
+>   the back/forward pager describes a surface that will not be built.
+> - **Permanently out of scope** with it: back/forward, the multi-qty `n of N` **loop** (`n of N`
+>   survives as a row summary), and the 50-row scroll-depth assertion.
+> - **What remains** is two slices — the desktop item-photo affordance (B1) and three Playwright
+>   rows — carried by the rewritten
+>   [`unbox-B-step-procedure-EXECUTION-PROMPT.md`](./unbox-B-step-procedure-EXECUTION-PROMPT.md).
+>   That prompt wins over this plan on every conflict.
+
 ---
 
 ## The requested step sequence
@@ -92,18 +112,24 @@ Compose `deriveLinearStepStates` (`derive-receiving-step-states.ts:97-113`) — 
 **Extend, do not orphan, the existing specs** (24 receiving/unbox specs exist):
 `receiving-scan-resolution.spec.ts` · `receiving-serial-absent.spec.ts` · `unbox-nas-photos.spec.ts` · `unit-photo-scan.spec.ts` · `receiving-silent-print.spec.ts` · `unbox-receive-zoho-push.spec.ts` · `unbox-open-purges-arrival.spec.ts`
 
-New coverage required:
+New coverage required — **settled 2026-08-01**. Five rows landed against the Checklist display, three
+are permanently out of scope (they assert behavior of the deleted capture stack — a passing test for
+a surface that does not exist is worse than none), and the last two landed with the item pill:
 
-| Spec | Asserts |
-|---|---|
-| Step order | The stack renders the intake type's vocabulary in order; current step is expanded and last |
-| Push-up | Completing a step collapses it to one line and appends the next above the input |
-| Back/forward | Navigating back and returning preserves captured data |
-| Multi-qty loop | `n of N` advances per unit; the loop completes only at N |
-| Photo stage integrity | Carton captures write `unbox_carton`, item captures write `unbox_item`; **no bench capture writes `arrival_package`** |
-| Condition skip | A default-grade carton's active pointer lands on the serial step, not condition |
-| Scroll | The current step stays one row above the input with 50 history rows |
-| Focus | Wedge scan lands in the input after every submit; F2 returns focus |
+| Spec | Asserts | Outcome |
+|---|---|---|
+| Step order | The intake type's vocabulary renders in order; exactly one step is active | ✅ `unbox-procedure-checklist.spec.ts` |
+| Push-up | Completing a step advances the pointer without reordering the list | ✅ same spec (restated for a list, not a stack) |
+| ~~Back/forward~~ | ~~Navigating back and returning preserves captured data~~ | ❌ out of scope — no pager exists |
+| ~~Multi-qty loop~~ | ~~`n of N` advances per unit; the loop completes only at N~~ | ❌ out of scope — `n of N` is a row summary, not an iterating step |
+| Photo stage integrity | Carton captures write `unbox_carton`, item captures write `unbox_item`; **no bench capture writes `arrival_package`** | ✅ carton leg in `unbox-procedure-checklist.spec.ts`; item leg in `unbox-item-photo-capture.spec.ts` + source guard `item-photo-wiring.guard.test.ts` |
+| Condition skip | A default-grade carton's active pointer lands on the serial step, not condition | ✅ `unbox-procedure-checklist.spec.ts` |
+| ~~Scroll~~ | ~~The current step stays one row above the input with 50 history rows~~ | ❌ out of scope — no bottom-anchored stack |
+| Focus | Wedge scan lands in the input after every submit; the focus hotkey returns focus to the scan bar | ✅ `unbox-scan-focus.spec.ts` |
+
+**The focus hotkey is read from `DEFAULT_FOCUS_SCAN_HOTKEY`, never typed.** This table said "F2" for
+months while the code has always defaulted to `Insert`; the spec imports the constant so it tracks the
+binding instead of restating a guess (`.claude/rules/display/station.md` §3).
 
 Assert on **invariants, not samples** — for a virtualized/windowed stack the last DOM row may be outside the render window; measure the scrollport edge.
 
@@ -118,5 +144,6 @@ Assert on **invariants, not samples** — for a virtualized/windowed stack the l
 ## Verification
 
 - `npm run verify` green; no baseline raised.
-- `station.md` amended **before** the input moves (§5 of the capture-stack plan: the top-pinned scan bar and card-replaces-card contract both change).
+- ~~`station.md` amended **before** the input moves~~ — **not needed.** §2 (scan bar pinned top) and
+  §5 (card replaces, never accumulates) were only threatened by the capture stack, which never landed.
 - Desktop wedge + mobile keyboard both verified against `:3050` (attach only).

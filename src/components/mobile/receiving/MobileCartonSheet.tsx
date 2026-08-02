@@ -13,7 +13,7 @@ import { invalidateReceivingFeeds } from '@/lib/queries/receiving-queries';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { MobileReceivingPhotoStrip } from '@/components/mobile/receiving/MobileReceivingPhotoStrip';
 import { UnfoundMatchStrip } from '@/components/receiving/workspace/line-edit/UnfoundMatchStrip';
-import { OrderIdChip, TrackingChip, getLast4 } from '@/components/ui/CopyChip';
+import { OrderIdChip, TrackingChip, getLast8 } from '@/components/ui/CopyChip';
 import { operatorAccentClasses } from '@/utils/operator-accent';
 import {
   conditionGradeTableLabel,
@@ -305,8 +305,8 @@ export function MobileCartonSheet({ row, staffId, open, onClose }: MobileCartonS
                 value, so a multi-unit carton blows the row out. Serials stay on
                 the surfaces that show them per unit. */}
             <div className="ml-auto flex shrink-0 items-center gap-2">
-              <OrderIdChip value={poValue} display={getLast4(poValue)} />
-              <TrackingChip value={trackingValue} display={getLast4(trackingValue)} />
+              <OrderIdChip value={poValue} display={getLast8(poValue)} />
+              <TrackingChip value={trackingValue} display={getLast8(trackingValue)} />
             </div>
           </div>
         </div>

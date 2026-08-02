@@ -45,6 +45,8 @@ export function ReceivingGridColumnHeader({
   activeSort = null,
   sortDir = null,
   onSortColumn,
+  onOpenColumnDetails,
+  columnDetailsOpen = false,
 }: {
   isMobile?: boolean;
   selectMode?: boolean;
@@ -55,6 +57,8 @@ export function ReceivingGridColumnHeader({
   activeSort?: ReceivingGridColumnKey | null;
   sortDir?: ReceivingGridSortDir | null;
   onSortColumn?: (key: ReceivingGridColumnKey) => void;
+  onOpenColumnDetails?: () => void;
+  columnDetailsOpen?: boolean;
 }) {
   return (
     <LedgerGridColumnHeader
@@ -71,6 +75,8 @@ export function ReceivingGridColumnHeader({
           ? (key) => onSortColumn(key as ReceivingGridColumnKey)
           : undefined
       }
+      onOpenColumnDetails={onOpenColumnDetails}
+      columnDetailsOpen={columnDetailsOpen}
       labelFor={(column) => (column.key === 'stage' ? stageLabel : undefined)}
       glyphFor={(column) =>
         column.key === 'stage' ? (

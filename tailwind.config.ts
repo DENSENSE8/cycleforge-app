@@ -222,6 +222,7 @@ const config = {
                 'elev-raised': 'var(--ds-elev-raised)',
                 'elev-overlay': 'var(--ds-elev-overlay)',
                 'elev-overlay-left': 'var(--ds-elev-overlay-left)',
+                'elev-overlay-right': 'var(--ds-elev-overlay-right)',
             },
             zIndex: zIndexScale,
         },

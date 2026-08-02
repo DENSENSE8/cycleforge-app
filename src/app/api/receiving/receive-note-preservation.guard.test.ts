@@ -132,6 +132,30 @@ test('NO receive-side writer assigns receiving_line.notes unconditionally', () =
   );
 });
 
+test('the mobile QA sheet sends no note at all', () => {
+  // The other end of the same law. That sheet is where the erasure came from: it
+  // posted a `notes` field on every verdict, so a phone-side pass sent null (and
+  // wiped the note) while its FAIL path was one wired input away from sending a
+  // reason that would overwrite it. A QA fail reason now travels as an
+  // `exception_code` and lands in `receiving_exceptions`; nothing on this path
+  // writes prose. Source-checked for the same reason as the sweep above — the
+  // regression is a field reappearing in a request body, which no type catches.
+  const SHEET = code(
+    sourceOf('../../../components/mobile/receiving/ReceivingQaActionSheet.tsx'),
+  );
+  assert.doesNotMatch(
+    SHEET,
+    /\bnotes\b/,
+    'the mobile QA action sheet must not carry a note field — the item note is the ' +
+      'desktop composer\'s, and a receive may not speak for it',
+  );
+  assert.match(
+    SHEET,
+    /qaFailReasonFields\(/,
+    'the fail path must name a reason CODE (qa-fail-reason-wire), not free text',
+  );
+});
+
 test('NO receive-side writer appends machine text to the operator note', () => {
   // `receiving_line.notes` is a HUMAN field. Provenance ("who unboxed this"),
   // reason codes, and lifecycle facts have structured homes — audit_logs,

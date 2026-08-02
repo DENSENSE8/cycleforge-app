@@ -16,7 +16,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { motion } from 'framer-motion';
+import { motion } from '@/design-system/motion';
 import { openInUnboxHref, TRIAGE_SURFACE_ROUTE } from '@/lib/receiving/surface-path';
 import { useQueryClient } from '@tanstack/react-query';
 import {
@@ -47,7 +47,7 @@ import {
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { SearchBar } from '@/components/ui/SearchBar';
 import { Button, IconButton } from '@/design-system/primitives';
-import { OrderIdChip, getLast4 } from '@/components/ui/CopyChip';
+import { OrderIdChip, getLast8 } from '@/components/ui/CopyChip';
 import {
   HorizontalButtonSlider,
   type HorizontalSliderItem,
@@ -634,7 +634,7 @@ function ZendeskMatchTab({ t }: { t: ReturnType<typeof useTriagePanel> }) {
                 <Mail className="h-3.5 w-3.5 shrink-0 text-violet-500" />
                 <span className="flex min-w-0 flex-1 items-center gap-1.5 text-xs text-text-muted">
                   Order
-                  <OrderIdChip value={sig.orderNumber} display={getLast4(sig.orderNumber)} dense />
+                  <OrderIdChip value={sig.orderNumber} display={getLast8(sig.orderNumber)} dense />
                   {sig.deliveredAt ? (
                     <span className="truncate text-text-faint">· delivered {relativeTime(sig.deliveredAt)}</span>
                   ) : null}

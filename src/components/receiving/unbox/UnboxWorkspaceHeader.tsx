@@ -3,7 +3,11 @@
 import { useCallback, useEffect, useMemo, useState, type Ref } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useQuery, useIsFetching } from '@tanstack/react-query';
-import { WorkbenchChromeHeader, WorkbenchTrailingCluster } from '@/components/dashboard/workbench-shell';
+import {
+  WorkbenchChromeHeader,
+  WorkbenchTrailingCluster,
+  withScopeDivider,
+} from '@/components/dashboard/workbench-shell';
 import {
   WorkbenchFilterDivider,
   WorkbenchFilterGroupLabel,
@@ -32,12 +36,15 @@ import {
 import { TRIAGE_LANE_OPTS } from '@/lib/receiving/triage-lane-policy';
 import {
   UNBOX_WORKSPACE_TAB_LABEL,
+  UNBOX_WORKSPACE_TABS,
   type UnboxWorkspaceTab,
 } from '@/utils/unbox-workspace-state';
 
-// Order mirrors TestingWorkspaceHeader — the history-like tab (History) sits
-// rightmost (emerald, dividerBefore) after the active-work tabs (Queue, Viewed).
-const TABS: UnboxWorkspaceTab[] = ['queue', 'viewed', 'recent'];
+// Order is the SoT's (`UNBOX_WORKSPACE_TABS`): Recent · Queue · History, with
+// the archive tab last (emerald, dividerBefore) after the working tabs. Recent
+// leads because it is the operator's own set — same placement Labels gives its
+// recents tab.
+const TABS: readonly UnboxWorkspaceTab[] = UNBOX_WORKSPACE_TABS;
 
 const QUEUE_STAGE_OPTS = [
   { id: null, label: 'All' },
@@ -61,7 +68,7 @@ export function UnboxWorkspaceHeader({
   const searchParams = useSearchParams();
   const staffId = parseStaffParam(searchParams.get('staff') ?? searchParams.get('staffId'));
   const { searchQuery, setSearch } = useWorkbenchSearchParam();
-  const isHistoryTab = tab === 'recent';
+  const isHistoryTab = tab === 'history';
   const isQueueTab = tab === 'queue';
 
   const searchField = useMemo(
@@ -182,6 +189,27 @@ export function UnboxWorkspaceHeader({
     staleTime: 20_000,
   });
 
+  // Recent depth for the Recent tab badge. Same shape as the queue badge above
+  // (limit=1, read `total`) and the same reason it is a separate key: the KPI
+  // strip's 200-row metrics fetch must not be re-keyed by a badge.
+  //
+  // `view=viewed` is the per-STAFF recents feed — scoped server-side by session,
+  // which is why no staff param rides along. It is also why this badge moves on
+  // its own: after 2026-08-01 a browse click on the feed no longer stamps a
+  // view, so the number counts cartons the operator actually opened.
+  const { data: recentCount } = useQuery({
+    queryKey: ['unbox-recent-badge'],
+    queryFn: async () => {
+      const params = new URLSearchParams({ limit: '1', offset: '0', view: 'viewed' });
+      const res = await fetch(`/api/receiving-lines?${params.toString()}`, { cache: 'no-store' });
+      if (!res.ok) return 0;
+      const body = (await res.json()) as { total?: number; receiving_lines?: unknown[] };
+      if (typeof body.total === 'number') return body.total;
+      return Array.isArray(body.receiving_lines) ? body.receiving_lines.length : 0;
+    },
+    staleTime: 20_000,
+  });
+
   const tableFetching =
     useIsFetching({
       predicate: (u) => Array.isArray(u.queryKey) && u.queryKey[0] === 'receiving-lines-table',
@@ -191,16 +219,27 @@ export function UnboxWorkspaceHeader({
   const historyFilterHot = isHistoryTab && (searchField !== 'all' || historySort !== HISTORY_DEFAULT_SORT);
   const queueFilterHot = isQueueTab && (queueStage != null || queueLane != null);
 
-  const tabs = TABS.map((id) => ({
-    id,
-    label: UNBOX_WORKSPACE_TAB_LABEL[id],
-    count: id === 'queue' && typeof queueCount === 'number' && queueCount > 0 ? queueCount : undefined,
-    color: (id === 'queue' ? 'orange' : id === 'viewed' ? 'blue' : 'emerald') as
-      | 'blue'
-      | 'orange'
-      | 'emerald',
-    dividerBefore: id === 'recent',
-  }));
+  const tabCount = (id: UnboxWorkspaceTab): number | undefined => {
+    const n = id === 'queue' ? queueCount : id === 'recent' ? recentCount : undefined;
+    // History is the whole station's archive — a count there is a database size,
+    // not a workload, so it stays bare.
+    return typeof n === 'number' && n > 0 ? n : undefined;
+  };
+
+  // The hairline belongs to Recent's RIGHT edge: Recent is the operator's own
+  // scope and Queue · History are the station's lists. `withScopeDivider` owns
+  // that placement so Home's strip reads the same way.
+  const tabs = withScopeDivider(
+    TABS.map((id) => ({
+      id,
+      label: UNBOX_WORKSPACE_TAB_LABEL[id],
+      count: tabCount(id),
+      color: (id === 'queue' ? 'orange' : id === 'recent' ? 'blue' : 'emerald') as
+        | 'blue'
+        | 'orange'
+        | 'emerald',
+    })),
+  );
 
   return (
     <WorkbenchChromeHeader
@@ -237,7 +276,7 @@ export function UnboxWorkspaceHeader({
       }
       right={
         <>
-          {tab !== 'viewed' ? <StaffFilterButton iconOnly align="end" /> : null}
+          {tab !== 'recent' ? <StaffFilterButton iconOnly align="end" /> : null}
           {isQueueTab ? (
             <WorkbenchFilterPopover
               open={filterOpen}

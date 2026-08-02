@@ -7,7 +7,7 @@
  * and Add stay secondary chrome — ghost icon buttons, never saturated fills.
  */
 
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion } from '@/design-system/motion';
 import { motionBezier } from '@/design-system/foundations/motion-framer';
 import { AlertTriangle, Check, ChevronRight, Loader2, Pencil, Plus, Trash2, X } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';

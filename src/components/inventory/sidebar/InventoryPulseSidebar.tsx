@@ -1,12 +1,12 @@
 'use client';
 
 import { useCallback, useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion } from '@/design-system/motion';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { useDebounce } from '@/hooks';
 import { SidebarShell } from '@/components/layout/SidebarShell';
-import { getLast4, SerialChip, SkuScanRefChip } from '@/components/ui/CopyChip';
+import { getLast8, SerialChip, SkuScanRefChip } from '@/components/ui/CopyChip';
 import { microBadge } from '@/design-system/tokens/typography/presets';
 import { unitStatusBadgeClass } from '@/lib/unit-status';
 import type { UnitListRow, UnitListResponse } from '@/components/inventory/types';
@@ -153,7 +153,7 @@ export function InventoryPulseSidebar() {
                                         {meta}
                                     </span>
                                     <div className="flex shrink-0 items-center gap-1.5">
-                                        {row.sku ? <SkuScanRefChip value={row.sku} display={getLast4(row.sku)} /> : null}
+                                        {row.sku ? <SkuScanRefChip value={row.sku} display={getLast8(row.sku)} /> : null}
                                         <SerialChip value={row.serial_number} />
                                     </div>
                                 </div>

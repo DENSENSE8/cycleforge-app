@@ -1,24 +1,28 @@
 'use client';
 
 /**
- * Bottom-anchored client-side filter for the tech station rails (Testing +
- * Shipping). Mirrors {@link TriageCartonSearchBar} — a compact band pinned
- * below the scrollable rail — a compact station-style filter, not the global
- * header search (which is the only "search the app" surface).
+ * Bottom-anchored client-side filter band. Station rails (Testing / Shipping /
+ * Unbox) pin it below the scrollable carton list; MasterNav spine pins the
+ * same component above Settings/Admin to filter root sections or the open
+ * drill's pages. Compact station-style filter — not the global header search
+ * (which is the only "search the app" surface).
  */
 
 import { useEffect, useState } from 'react';
 import { Search } from '@/components/Icons';
 import { SearchBar } from '@/components/ui/SearchBar';
+import { cn } from '@/utils/_cn';
 
 export function TechRailSearchBar({
   value,
   onChange,
   placeholder = 'Filter lines…',
+  className,
 }: {
   value: string;
   onChange: (next: string) => void;
   placeholder?: string;
+  className?: string;
 }) {
   const [draft, setDraft] = useState(value);
   useEffect(() => {
@@ -32,7 +36,12 @@ export function TechRailSearchBar({
   }, [draft, value, onChange]);
 
   return (
-    <div className="shrink-0 border-t border-border-hairline bg-surface-card inset-field">
+    <div
+      className={cn(
+        'shrink-0 border-t border-border-hairline bg-surface-card inset-field',
+        className,
+      )}
+    >
       <SearchBar
         value={draft}
         onChange={setDraft}

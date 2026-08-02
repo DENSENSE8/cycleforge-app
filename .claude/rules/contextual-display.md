@@ -118,7 +118,7 @@ Density defaults: Station → `floor`; Workbench collection edit → `ops`; Moni
 2. **Table or board + optional inspector** — collection is primary (orders queue, FBA board); context opens on selection.
 3. **Fact stack / form** — single durable record focused without a heavy dual pane.
 
-Do **not** force recipe (1) when the data is a board or wide table. When using a sidebar picker, **compose the rail, never fork**; **L2 Mode + Recents live in GlobalHeader** (`HeaderModeSwitcher` / `HeaderRecentsSwitcher`); related/similar is progressive disclosure below the map, never an inverted sidebar. Spine page list: Stations/Main static nests; Stock is the sole drill-in (`STOCK_DRILL` + `spineDrill` motion) — see `display/workbench.md`.
+Do **not** force recipe (1) when the data is a board or wide table. When using a sidebar picker, **compose the rail, never fork**; **L2 Mode + Recents live in GlobalHeader** (`HeaderModeSwitcher` / `HeaderRecentsSwitcher`); related/similar is progressive disclosure below the map, never an inverted sidebar. Spine page list: Analytics Monitor / Scan Stations / Triage Desk / Workflow Studio section drills (`SPINE_SECTIONS` + `spineDrill` motion) — see `display/workbench.md`.
 
 References: `ProductsWorkspace.tsx`, `QcChecklistWorkspace.tsx`, `SidebarRailShell.tsx`, `ReceivingRightPane.tsx`, FBA/order boards.
 
@@ -157,7 +157,7 @@ References: `ProductsWorkspace.tsx`, `QcChecklistWorkspace.tsx`, `SidebarRailShe
 
 ### Station — `scan → resolve → set-active → re-focus → act → clear`
 
-1. **MOUNT:** scan bar auto-focuses (last-registered scan target wins F2, `src/lib/scan-hotkey/store.ts`). Active-card empty; HUD ambient.
+1. **MOUNT:** scan bar auto-focuses (last-registered scan target wins the focus hotkey — binding from `DEFAULT_FOCUS_SCAN_HOTKEY`, `src/lib/scan-hotkey/store.ts`). Active-card empty; HUD ambient.
 2. **SCAN:** wedge/camera → Enter → classify (`station-scan-routing.ts`) → domain handler.
 3. **RESOLVE → SET ACTIVE:** active card mounts via `AnimatePresence mode="wait"` keyed on entity id — opacity + small-y. Previous exits first.
 4. **RE-FOCUS:** clear + re-focus; watchdog on blur/visibilitychange.
@@ -218,7 +218,11 @@ One engine: `src/design-system/foundations/motion-framer.ts`. **Opacity + transf
 Route every preset through `useMotionTransition`/`useMotionPresence` so reduced motion collapses to opacity.
 Full recipe: [display/motion-crossfade.md](display/motion-crossfade.md). Auth steps: [display/auth-step-panel.md](display/auth-step-panel.md).
 
-- Library: **Motion** (`motion/react` v12 and legacy `framer-motion` v11 — one import path per file).
+- Library: **Motion** v12, imported **only** through `@/design-system/motion` — one path for the
+  whole repo, not "one path per file". (Corrected 2026-08-01: there is no v11 in the tree, and
+  `framer-motion` is the legacy alias for `motion`, not a second library.)
+- **Pick a `motionRole.*` first** (`swap.scan` · `swap.focus` · `push.rail` · `gesture.press` ·
+  `feedback.pulse`); reach into the preset catalog only when no role fits the job.
 - Prefer the `/motion` skill before inventing animation APIs.
 - Springs for gesture/physical; ease-out tween sub-300ms for discrete focus swaps.
 - `layoutId` only for genuine shared-element continuity — never list→detail *replace*.
@@ -230,6 +234,8 @@ Full recipe: [display/motion-crossfade.md](display/motion-crossfade.md). Auth st
 - **[`display/station.md`](display/station.md)** — Station contract + floor density recipes.
 - **[`display/station-workbench.md`](display/station-workbench.md)** — Unbox-family right-pane anatomy (toolbar → entity → tabs → dock).
 - **[`display/workbench.md`](display/workbench.md)** — Workbench contract; master–detail **and** table/board recipes.
+- **[`display/workbench-service.md`](display/workbench-service.md)** — Workbench branch **`service-workspace`** (Support): list \| thread + composer \| context. Conversation-first, still Workbench physics — not a 5th contract, not a Station.
+- **[`display/right-rail-inspector.md`](display/right-rail-inspector.md)** — Right details panel: icon row · dense identity · contextual actions; never intake-shell hero titles on record peeks.
 - **[`display/carton-read.md`](display/carton-read.md)** — Durable carton **read** record (`/carton/[id]`): disposition · handling|findings · Photos → viewer SoT · quiet work escape. Not Station Workbench.
 - **[`display/monitor-and-canvas.md`](display/monitor-and-canvas.md)** — Monitor observe + Canvas graph.
 - **[`display/monitor-rollup-blocks.md`](display/monitor-rollup-blocks.md)** — Rollup block registry (`rollup` density).

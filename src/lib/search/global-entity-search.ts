@@ -41,7 +41,7 @@ export interface GlobalSearchResult {
     tracking_number?: string | null;
     carrier?: string | null;
     serial_number?: string | null;
-    /** Marketplace order id — powers the leading OrderIdChip last-4. */
+    /** Marketplace order id — powers the leading OrderIdChip last-8. */
     order_id?: string | null;
     /** Receiving carton Zoho PO# (when order_id not set). */
     po_number?: string | null;

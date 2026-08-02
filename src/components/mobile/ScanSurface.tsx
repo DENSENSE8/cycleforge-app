@@ -16,7 +16,7 @@
  */
 
 import { useEffect, useRef, useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion } from '@/design-system/motion';
 import { ScanLine } from 'lucide-react';
 import { Button } from '@/design-system/primitives';
 import type { UseBarcodeScanner } from '@/hooks/useBarcodeScanner';

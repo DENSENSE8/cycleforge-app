@@ -267,12 +267,12 @@ test('facetChips: one chip per present facet, tones from the semantic families',
   assert.deepEqual(facetChips({}), []);
 });
 
-test('narrowSearchTitleDisplay: long tracking-shaped titles abbreviate to last-4', () => {
+test('narrowSearchTitleDisplay: long tracking-shaped titles abbreviate to last-8', () => {
   const tracking = '9434608101234567890123';
   const out = narrowSearchTitleDisplay(tracking);
   assert.equal(out.abbreviated, true);
   assert.equal(out.full, tracking);
-  assert.equal(out.display, '0123');
+  assert.equal(out.display, '67890123');
 });
 
 test('narrowSearchTitleDisplay: product titles with spaces stay full', () => {
@@ -296,11 +296,11 @@ test('narrowSearchTitleDisplay: human order ids under the min length stay full',
   assert.equal(out.display, '27-14721-28');
 });
 
-test('narrowSearchTitleDisplay: long human order ids abbreviate to last-4', () => {
+test('narrowSearchTitleDisplay: long human order ids abbreviate to last-8', () => {
   const id = '27-14721-28101';
   const out = narrowSearchTitleDisplay(id);
   assert.equal(out.abbreviated, true);
-  assert.equal(out.display, '8101');
+  assert.equal(out.display, '21-28101');
   assert.equal(out.full, id);
 });
 

@@ -1,4 +1,4 @@
-import { motion } from 'framer-motion';
+import { motion } from '@/design-system/motion';
 
 /** Header / chrome progress ring — stroke matches house icon brush (2). */
 const DEFAULT_STROKE = 2;

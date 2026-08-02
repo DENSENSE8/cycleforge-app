@@ -14,12 +14,15 @@ import { IconButton } from '@/design-system/primitives';
 import {
   PaneHeader,
   PaneHeaderIconBadge,
+  PaneHeaderCloseButton,
   PaneHeaderLabel,
   PaneHeaderTabs,
   PaneHeaderActionBar,
+  CursorPositionReadout,
   type PaneHeaderActionBarAction,
 } from '@/components/ui/pane-header';
 import type { ShippedActiveSection } from '@/components/shipped/ShippedDetailsPanelContent';
+
 
 export interface ShippedDetailsHeaderProps {
   orderIdDisplay: string;
@@ -31,6 +34,20 @@ export interface ShippedDetailsHeaderProps {
   actions: PaneHeaderActionBarAction[];
   onMoveUp?: () => void;
   onMoveDown?: () => void;
+  /**
+   * Ends-of-list state, from the record cursor. Left undefined by a host with no
+   * published cursor, which keeps today's always-enabled chevrons for the
+   * surfaces still on the legacy event bridge (station / packer).
+   */
+  prevDisabled?: boolean;
+  nextDisabled?: boolean;
+  /**
+   * 1-based position + length of the published cursor. `null` / omitted → the
+   * readout is not rendered at all (honest absence): a panel opened from search
+   * has no queue behind it, and a bare "1 / 1" would claim one.
+   */
+  position?: number | null;
+  total?: number;
   showCustomerTab: boolean;
   /** Outbound documents (label + slip) get their own tab on labels/fulfillment/staged contexts. */
   showDocumentsTab: boolean;
@@ -57,10 +74,14 @@ export function ShippedDetailsHeader({
   showExceptionsFallback,
   copiedOrderId,
   onCopyOrderId,
-  onClose: _onClose,
+  onClose,
   actions,
   onMoveUp,
   onMoveDown,
+  prevDisabled,
+  nextDisabled,
+  position,
+  total,
   showCustomerTab,
   showDocumentsTab,
   showWarrantyTab,
@@ -69,8 +90,6 @@ export function ShippedDetailsHeader({
   onOpenFullPage,
   showTabs = true,
 }: ShippedDetailsHeaderProps) {
-  // Close lives on RightRailHost (backdrop / Esc); prop retained for call sites.
-  void _onClose;
   return (
     <PaneHeader
       className="shrink-0 border-b-0 bg-surface-card/90 backdrop-blur-xl"
@@ -99,15 +118,26 @@ export function ShippedDetailsHeader({
         </>
       }
       rightSlot={
-        onOpenFullPage ? (
-          <HoverTooltip label="Open full order page" asChild>
-            <IconButton
-              icon={<ExternalLink className="h-4 w-4" />}
-              onClick={onOpenFullPage}
-              ariaLabel="Open full order page"
-              className="rounded-md p-1.5 hover:bg-surface-sunken"
-            />
-          </HoverTooltip>
+        onOpenFullPage || onClose ? (
+          <div className="flex items-center gap-1">
+            {onOpenFullPage ? (
+              <HoverTooltip label="Open full order page" asChild>
+                <IconButton
+                  icon={<ExternalLink className="h-4 w-4" />}
+                  onClick={onOpenFullPage}
+                  ariaLabel="Open full order page"
+                  className="rounded-md p-1.5 hover:bg-surface-sunken"
+                />
+              </HoverTooltip>
+            ) : null}
+            {/* This header used to SWALLOW `onClose` ("close lives on
+                RightRailHost (backdrop / Esc)"). That stopped being true when
+                the dashboard inspector went non-modal: there is no backdrop to
+                click any more, so on the lane an operator actually works
+                (Pending / Tested) the panel had no visible dismiss at all.
+                SoT: source-of-truth.md → Right-rail modality. */}
+            {onClose ? <PaneHeaderCloseButton onClick={onClose} /> : null}
+          </div>
         ) : undefined
       }
       belowSlot={
@@ -119,6 +149,9 @@ export function ShippedDetailsHeader({
               actions={actions}
               onPrev={onMoveUp}
               onNext={onMoveDown}
+              prevDisabled={prevDisabled}
+              nextDisabled={nextDisabled}
+              rightSlot={<CursorPositionReadout position={position} total={total} />}
               prevTitle="Move up a row"
               nextTitle="Move down a row"
             />

@@ -4,16 +4,17 @@
  * Sticky LedgerGrid column-header row — shared outer chrome for Receiving /
  * Incoming / Pickup / Catalog / Repair. Inner label/chevron lives in
  * {@link GridHeaderLabel}; this owns select-all, frozen tracks, sort click,
- * aria-sort, and HoverTooltip tips.
+ * aria-sort, HoverTooltip tips, and the optional top-right column-display lip
+ * (visual twin of the select gutter — opens the right-rail details panel).
  *
  * Domain wrappers supply a {@link LedgerHeaderLayoutApi} + optional glyph /
- * label overrides. Resize / reorder / Fields menu stay out of v1 (Orders
- * deferred — that fork is a different recipe).
+ * label overrides. Resize / reorder stay out of v1 (Orders deferred).
  */
 
 import { type ReactNode } from 'react';
-import { Check } from '@/components/Icons';
+import { Check, ColumnsThree } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { ToolbarButton } from '@/components/ui/ToolbarButton';
 import { tableHeader } from '@/design-system/tokens/typography/presets';
 import { emitToggleAll } from '@/lib/selection/table-selection';
 import { useTableSelection, useTableSelectionTotal } from '@/hooks/useTableSelection';
@@ -50,6 +51,13 @@ export type LedgerGridColumnHeaderProps<C extends LedgerGridColumnModel> = {
   glyphFor?: (column: C) => ReactNode;
   /** Runtime label override (e.g. Unbox stage → Unboxed / Scanned / Tested). */
   labelFor?: (column: C) => string | undefined;
+  /**
+   * When set, mounts the sticky top-right column-display lip (mirror of the
+   * select-all corner). Header-only — no body track.
+   */
+  onOpenColumnDetails?: () => void;
+  /** Active fill on the lip while the details rail is open. */
+  columnDetailsOpen?: boolean;
 };
 
 export function LedgerGridColumnHeader<C extends LedgerGridColumnModel>({
@@ -64,6 +72,8 @@ export function LedgerGridColumnHeader<C extends LedgerGridColumnModel>({
   onSortColumn,
   glyphFor,
   labelFor,
+  onOpenColumnDetails,
+  columnDetailsOpen = false,
 }: LedgerGridColumnHeaderProps<C>) {
   const scope = selectionScope ?? '__idle__';
   const selectedRows = useTableSelection<{ id?: number | string }>(scope, (r) => Number(r.id));
@@ -85,75 +95,101 @@ export function LedgerGridColumnHeader<C extends LedgerGridColumnModel>({
   };
 
   return (
-    <div
-      role="row"
-      className={cn(
-        'group/hrow grid min-h-11 border-b border-border-default bg-surface-card px-0 py-0',
-        layout.rowShellClass(false, { scrollMinContent: true }),
-        className,
-      )}
-      style={{ gridTemplateColumns: template }}
-    >
+    <>
       <div
+        role="row"
         className={cn(
-          layout.cellClass({ inset: 'none', rule: true }),
-          'justify-center',
-          layout.frozenCellClass,
+          'group/hrow grid min-h-11 border-b border-border-default bg-surface-card px-0 py-0',
+          layout.rowShellClass(false, { scrollMinContent: true }),
+          // Room for the absolute top-right lip so the last header label isn't
+          // painted under the control.
+          onOpenColumnDetails && 'pr-9',
+          className,
         )}
-        style={{ left: layout.frozenLeft('select') }}
+        style={{ gridTemplateColumns: template }}
       >
-        {selectActive ? (
-          <button
-            type="button"
-            onClick={onToggleAll}
-            aria-label={allSelected ? 'Deselect all' : 'Select all'}
-            aria-checked={allSelected ? true : someSelected ? 'mixed' : false}
-            role="checkbox"
-            className={cn(
-              'ds-raw-button flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors',
-              allSelected
-                ? 'border-accent-bg bg-accent-bg text-text-inverse'
-                : someSelected
-                  ? 'border-accent-bg bg-accent-bg/20 text-accent-bg'
-                  : 'border-border-default bg-surface-card hover:border-border-strong',
-            )}
-          >
-            {allSelected ? (
-              <Check className="h-3 w-3" />
-            ) : someSelected ? (
-              <span className="h-0.5 w-2 rounded-full bg-current" />
-            ) : null}
-          </button>
-        ) : (
-          <span className="h-4 w-4 shrink-0" aria-hidden />
-        )}
+        <div
+          className={cn(
+            layout.cellClass({ inset: 'none', rule: true }),
+            'justify-center',
+            layout.frozenCellClass,
+          )}
+          style={{ left: layout.frozenLeft('select') }}
+        >
+          {selectActive ? (
+            <button
+              type="button"
+              onClick={onToggleAll}
+              aria-label={allSelected ? 'Deselect all' : 'Select all'}
+              aria-checked={allSelected ? true : someSelected ? 'mixed' : false}
+              role="checkbox"
+              className={cn(
+                'ds-raw-button flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors',
+                allSelected
+                  ? 'border-accent-bg bg-accent-bg text-text-inverse'
+                  : someSelected
+                    ? 'border-accent-bg bg-accent-bg/20 text-accent-bg'
+                    : 'border-border-default bg-surface-card hover:border-border-strong',
+              )}
+            >
+              {allSelected ? (
+                <Check className="h-3 w-3" />
+              ) : someSelected ? (
+                <span className="h-0.5 w-2 rounded-full bg-current" />
+              ) : null}
+            </button>
+          ) : (
+            <span className="h-4 w-4 shrink-0" aria-hidden />
+          )}
+        </div>
+
+        {dataColumns.map((column, i) => {
+          const last = i === dataColumns.length - 1;
+          const sortable = Boolean(onSortColumn) && layout.isSortable(column.key);
+          const isActiveSort = activeSort === column.key;
+          const labelOverride = labelFor?.(column);
+          const headerColumn =
+            labelOverride != null
+              ? ({ ...column, label: labelOverride, gridLabel: labelOverride } as C)
+              : column;
+          return (
+            <LedgerHeaderCell
+              key={column.key}
+              column={headerColumn}
+              last={last}
+              layout={layout}
+              frozenEdgeKey={frozenEdgeKey}
+              sortActive={sortable}
+              isActiveSort={isActiveSort}
+              sortDir={isActiveSort ? sortDir : null}
+              onSort={sortable ? () => onSortColumn?.(column.key) : undefined}
+              glyph={glyphFor?.(column)}
+            />
+          );
+        })}
       </div>
 
-      {dataColumns.map((column, i) => {
-        const last = i === dataColumns.length - 1;
-        const sortable = Boolean(onSortColumn) && layout.isSortable(column.key);
-        const isActiveSort = activeSort === column.key;
-        const labelOverride = labelFor?.(column);
-        const headerColumn =
-          labelOverride != null
-            ? ({ ...column, label: labelOverride, gridLabel: labelOverride } as C)
-            : column;
-        return (
-          <LedgerHeaderCell
-            key={column.key}
-            column={headerColumn}
-            last={last}
-            layout={layout}
-            frozenEdgeKey={frozenEdgeKey}
-            sortActive={sortable}
-            isActiveSort={isActiveSort}
-            sortDir={isActiveSort ? sortDir : null}
-            onSort={sortable ? () => onSortColumn?.(column.key) : undefined}
-            glyph={glyphFor?.(column)}
-          />
-        );
-      })}
-    </div>
+      {onOpenColumnDetails ? (
+        <div
+          data-grid-column-details-lip=""
+          className="absolute inset-y-0 right-0 z-sticky flex w-9 items-center justify-center border-b border-l border-border-default bg-surface-card"
+        >
+          <HoverTooltip label="Column display" asChild>
+            <ToolbarButton
+              type="button"
+              iconOnly
+              active={columnDetailsOpen}
+              aria-label="Column display"
+              aria-haspopup="dialog"
+              aria-expanded={columnDetailsOpen}
+              onClick={onOpenColumnDetails}
+            >
+              <ColumnsThree className="h-3.5 w-3.5 shrink-0" />
+            </ToolbarButton>
+          </HoverTooltip>
+        </div>
+      ) : null}
+    </>
   );
 }
 

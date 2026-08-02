@@ -112,6 +112,9 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       requiredFor: parsed.requiredFor ?? null,
       isCritical: parsed.isCritical,
       sortOrder: parsed.sortOrder,
+      documentUrl: parsed.documentUrl,
+      documentTitle: parsed.documentTitle,
+      documentMime: parsed.documentMime,
     }, ctx.organizationId);
 
     await recordAudit(pool, ctx, req, {
@@ -171,6 +174,9 @@ export const PUT = withAuth(async (req: NextRequest, ctx) => {
       requiredFor: parsed.requiredFor,
       isCritical: parsed.isCritical,
       sortOrder: parsed.sortOrder,
+      documentUrl: parsed.documentUrl,
+      documentTitle: parsed.documentTitle,
+      documentMime: parsed.documentMime,
     }, ctx.organizationId);
     if (!updated) {
       return NextResponse.json({ success: false, error: 'No changes' }, { status: 400 });

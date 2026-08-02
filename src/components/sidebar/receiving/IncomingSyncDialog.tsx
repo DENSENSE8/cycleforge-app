@@ -1,6 +1,6 @@
 'use client';
 
-import { motion } from 'framer-motion';
+import { motion } from '@/design-system/motion';
 import { AlertTriangle, Check, Loader2, Package, RefreshCw, X } from '@/components/Icons';
 import { Button, IconButton } from '@/design-system/primitives';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';

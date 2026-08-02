@@ -11,7 +11,7 @@ import {
   type ReactNode,
 } from 'react';
 import { createPortal } from 'react-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from '@/design-system/motion';
 import { motionBezier } from '@/design-system/foundations/motion-framer';
 import { cn } from '@/utils/_cn';
 import {

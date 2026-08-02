@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { motion, useReducedMotion } from 'framer-motion';
+import { motion, useReducedMotion } from '@/design-system/motion';
 import { framerTransition } from '@/design-system/foundations/motion-framer';
 import { useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
 import { zIndex } from '@/design-system/tokens/z-index';
@@ -130,7 +130,7 @@ export function PhotoThumb({
       {status === 'error' ? (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-surface-canvas text-text-faint">
           <ImageIcon className="h-5 w-5" />
-          <span className="text-[8.5px] font-semibold uppercase tracking-widest">Unavailable</span>
+          <span className="text-role-micro uppercase tracking-widest">Unavailable</span>
         </div>
       ) : shouldLoad ? (
         /* eslint-disable-next-line @next/next/no-img-element */

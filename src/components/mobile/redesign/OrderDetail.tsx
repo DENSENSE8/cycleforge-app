@@ -17,7 +17,7 @@ import {
   SectionHeader,
   GlassButton,
 } from '@/components/mobile/redesign/DesignSystem';
-import { OrderIdChip, getLast4 } from '@/components/ui/CopyChip';
+import { OrderIdChip, getLast8 } from '@/components/ui/CopyChip';
 import { IconButton } from '@/design-system/primitives';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { getExternalUrlByItemNumber } from '@/hooks/useExternalItemUrl';
@@ -207,7 +207,7 @@ export default function RedesignedMobileOrderDetail({ orderId }: { orderId: stri
 
       <header className="px-1 pt-1 pb-3">
         <div className="flex items-center gap-1.5">
-          <OrderIdChip value={order.orderId} display={getLast4(order.orderId)} />
+          <OrderIdChip value={order.orderId} display={getLast8(order.orderId)} />
           {(() => {
             const extUrl = getExternalUrlByItemNumber(order.sku);
             return (

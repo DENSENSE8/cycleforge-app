@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import { AnimatePresence, motion, useReducedMotion } from '@/design-system/motion';
 import { Check, ChevronDown, ChevronUp } from '@/components/Icons';
 import { IconButton } from '@/design-system/primitives';
 import { noPad, pad2 } from '@/lib/barcode-routing';

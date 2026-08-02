@@ -32,6 +32,10 @@ export function SupportContextDetailPanel({
   return (
     <DetailStackRailRegistrar
       id={`detail:support-context:${ticketId}`}
+      // Registers from inside `SupportTicketDetail`, one of whose hosts is
+      // `ReceivingTicketStack` — itself an `UnboxPushColumn`. Today they nest
+      // (float over push); pushing would make them two columns fighting one edge.
+      push={false}
       onClose={onClose}
       enabled={open}
       modal={false}

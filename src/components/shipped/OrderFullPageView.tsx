@@ -14,7 +14,7 @@
 
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { AnimatePresence } from 'framer-motion';
+import { AnimatePresence } from '@/design-system/motion';
 import { ExternalLink, Package, Loader2 } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
 import type { ShippedOrder } from '@/types/orders';

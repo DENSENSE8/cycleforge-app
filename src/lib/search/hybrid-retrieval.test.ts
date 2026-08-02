@@ -262,7 +262,7 @@ test('hits map facets to chips and carry machine-readable facets', async () => {
   assert.deepEqual(hit.chips.map((c) => c.label).sort(), ['ACTIVE', 'USED_GOOD', 'ebay'].sort());
   assert.equal(hit.facets?.condition_grade, 'USED_GOOD');
   // Phase E: tracking/carrier pass through to the machine-readable facets so
-  // the row can render the carrier + last-4 tracking chip (CopyChip SoT).
+  // the row can render the carrier + last-8 tracking chip (CopyChip SoT).
   assert.equal(hit.facets?.tracking_number, '9400111899561234567890');
   assert.equal(hit.facets?.carrier, 'USPS');
 });

@@ -1,8 +1,7 @@
 /**
- * Types for the Quick Access bottom-right popover. All data lives in
- * localStorage on the user's device for now; the `version` field on the
- * settings record lets us migrate to account-bound sync later without
- * breaking existing installs.
+ * Types for Quick Access. Settings + pins hydrate from localStorage for
+ * flash-free chrome; pins also sync to `staff_preferences.prefs.quickAccess`
+ * (cross-device).
  */
 
 export interface ActionToggles {
@@ -29,7 +28,6 @@ export interface QuickAccessSettings {
   version: 1;
   enabled: boolean;
   hotkey: 'cmdk' | 'off';
-  showRecent: boolean;
   /**
    * When true (default), the FAB shows the signed-in staff's initials in their
    * theme colour. When false, the FAB always renders the Zap icon — useful for
@@ -40,13 +38,6 @@ export interface QuickAccessSettings {
   pinned: PinnedPage[];
 }
 
-export interface RecentVisit {
-  href: string;
-  label: string;
-  visitedAt: number;
-}
-
 export const MAX_PINS = 30;
 /** Always-visible pin icons in GlobalHeader; extras go behind the overflow menu. */
 export const MAX_HEADER_PIN_ICONS = 5;
-export const MAX_RECENTS = 12;

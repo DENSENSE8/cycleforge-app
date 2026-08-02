@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { motion } from 'framer-motion';
+import { motion } from '@/design-system/motion';
 import { Loader2 } from '@/components/Icons';
 import { sectionLabel, fieldLabel } from '@/design-system/tokens/typography/presets';
 import { mainStickyHeaderClass, mainStickyHeaderRowClass } from '@/components/layout/header-shell';

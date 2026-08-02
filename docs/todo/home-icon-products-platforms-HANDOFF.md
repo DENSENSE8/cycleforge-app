@@ -1,5 +1,19 @@
 # Handoff — Home icon + Products out of Stock (platform listings)
 
+> **⚠️ Spine claims below are STALE as of 2026-08-01. Phase 2 (Channels) is still open — take it.**
+> Current spine map + SoT: [`sidebar-spine-validation-simplification-HANDOFF.md`](sidebar-spine-validation-simplification-HANDOFF.md).
+>
+> | This doc says | Reality (validated on `:3050`, 2026-08-01) |
+> |---|---|
+> | Root = Overview \| Scan Stations \| Desk \| Stock \| Products \| Library | **Labels** sits between Stock and Products (7 sections) |
+> | Stock = Inventory, Warehouse | Stock = **Sourcing → Inventory → Warehouse** |
+> | Products `kind: 'products'` after Stock, before Library | After **Labels**, before Library |
+> | Home = quiet top-pin **icon** (not a word row) | Home ships as an **icon + "Home" label** row, like its Search / Media / Chat peers |
+> | Top pin = Home · Search · Media | Home · Search · Media · **Chat** |
+>
+> Its §2.2 / Phase 1 verdicts (Products earns its own section; do **not** put Products back under
+> Stock, do **not** collapse Receiving L1 pages into an accordion) still hold.
+
 **For:** implementing agent (Cursor / Claude Code)
 **From:** Cycle Forge engineering
 **Date:** 2026-07-31

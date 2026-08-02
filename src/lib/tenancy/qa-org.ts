@@ -39,6 +39,56 @@ export const QA_FIXTURE_TRACKING = 'QA-MOCK-TRK-PO';
 export const QA_FIXTURE_PO_ID = 'QA-MOCK-PO-8001';
 export const QA_FIXTURE_PO_NUMBER = 'QA-PO-MOCK-001';
 
+/**
+ * Two INCOMING purchase orders — issued in Zoho, untouched by the warehouse
+ * (`workflow_status = 'EXPECTED'`, `quantity_received = 0`, no dock scan), which
+ * is exactly what `view=incoming` selects.
+ *
+ * Two of them, on DISTINCT POs, because `/incoming` folds lines by PO: one
+ * multi-line PO renders as a single collapsed group, and the row→row inspector
+ * spec needs two independently-clickable rows. Without these the QA org showed
+ * "No incoming POs" and every `/incoming` spec skipped — the coverage gap
+ * `verify.md` says to seed away rather than skip around.
+ */
+export const QA_FIXTURE_INCOMING_POS = [
+  { id: 'QA-MOCK-PO-8101', number: 'QA-PO-MOCK-INC-1', lineId: 'QA-MOCK-INC-LINE-1' },
+  { id: 'QA-MOCK-PO-8102', number: 'QA-PO-MOCK-INC-2', lineId: 'QA-MOCK-INC-LINE-2' },
+] as const;
+
+/**
+ * A THIRD line on the receiving carton, physically received and still flagged
+ * `needs_test` — which is exactly what `view=needs-test` selects, so the
+ * Testing workbench's Pending tab has deterministic rows on this tenant.
+ *
+ * Its own line, not a mutation of `QA-MOCK-LINE-1`/`-2`: those two carry the
+ * note-vs-label grain walk (`receiving-note-label-grain.spec.ts`) and the
+ * receive-to-Zoho burn, and marking either one received would rewrite the state
+ * those specs assert from. `needs-test` is un-tester-scoped (unlike History,
+ * which defaults to the signed-in tester), so any QA admin sees it.
+ */
+export const QA_FIXTURE_TESTING_LINE = {
+  itemId: 'QA-MOCK-ITEM-3',
+  lineId: 'QA-MOCK-LINE-3',
+  title: 'QA Sony WH-1000XM4 (awaiting test)',
+  sku: QA_FIXTURE_SKUS.speaker,
+} as const;
+
+/**
+ * A fourth line carrying a recorded `testing_results` verdict by the QA ADMIN,
+ * which is what the Testing workbench's History tab (`view=testing`) selects.
+ *
+ * Attributed to the admin on purpose: History defaults to the signed-in tester,
+ * and `?staff=all` cannot rescue a spec here — the route's ambient `staff` param
+ * is `paramPositiveInt`, so the literal `all` token `useStaffFilter({ allToken:
+ * 'all' })` writes is dropped at the boundary before the list ever reads it.
+ */
+export const QA_FIXTURE_TESTED_LINE = {
+  itemId: 'QA-MOCK-ITEM-4',
+  lineId: 'QA-MOCK-LINE-4',
+  title: 'QA Bose SoundLink Mini II (tested)',
+  sku: QA_FIXTURE_SKUS.speaker,
+} as const;
+
 export const QA_FIXTURE_ORDERS = {
   awaiting: 'QA-TEST-UNSHIP-AWAIT',
   pending: 'QA-TEST-UNSHIP-PENDING',

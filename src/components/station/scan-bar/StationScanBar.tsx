@@ -8,7 +8,7 @@ import {
   type ReactNode,
   type Ref,
 } from 'react';
-import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion } from '@/design-system/motion';
 import { motionBezier } from '@/design-system/foundations/motion-framer';
 import { Barcode, Clipboard, ClipboardList, Pencil } from '@/components/Icons';
 import { ScanHotkeyControl } from '@/components/scan/ScanHotkeyControl';
@@ -204,6 +204,10 @@ export function StationScanBar({
     <input
       ref={setInputRef}
       type="text"
+      // Stable hook for the focus-lock assertions (§3 of display/station.md):
+      // the bar is the scan hotkey's target, and a spec must be able to say
+      // "focus came back HERE" without matching on a per-station placeholder.
+      data-station-scan-input={showHotkeyGear ? '' : undefined}
       value={value}
       onChange={(event) => onChange(event.target.value)}
       onBlur={onInputBlur}

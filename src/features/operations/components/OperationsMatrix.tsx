@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { motion } from 'framer-motion';
+import { motion } from '@/design-system/motion';
 import { ChevronRight } from '@/components/Icons';
 import {
   Truck,

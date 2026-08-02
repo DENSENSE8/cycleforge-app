@@ -15,7 +15,7 @@
  */
 
 import Link from 'next/link';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion } from '@/design-system/motion';
 import {
   Check,
   Loader2,
@@ -30,7 +30,7 @@ import { framerTransition } from '@/design-system/foundations/motion-framer';
 import { Button } from '@/design-system/primitives';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
 import { sectionLabel, fieldLabel, microBadge, dataValue } from '@/design-system/tokens/typography/presets';
-import { TrackingChip, OrderIdChip, SkuScanRefChip, getLast4 } from '@/components/ui/CopyChip';
+import { TrackingChip, OrderIdChip, SkuScanRefChip, getLast8 } from '@/components/ui/CopyChip';
 
 // ─── Shared report shape (mirrors the API's SyncRunReport / OrderSyncResult) ──
 
@@ -195,7 +195,7 @@ function DetailTable({ rows }: { rows: InventoryOrderResult[] }) {
                 </td>
                 <td className="px-3 py-2 align-top">
                   {r.referenceNumber ? (
-                    <OrderIdChip value={r.referenceNumber} display={getLast4(r.referenceNumber)} />
+                    <OrderIdChip value={r.referenceNumber} display={getLast8(r.referenceNumber)} />
                   ) : (
                     <span className="font-mono text-xs text-text-faint">—</span>
                   )}
@@ -209,7 +209,7 @@ function DetailTable({ rows }: { rows: InventoryOrderResult[] }) {
                   {first?.sku || first?.itemNumber ? (
                     <SkuScanRefChip
                       value={(first?.sku || first?.itemNumber) as string}
-                      display={getLast4(first?.sku || first?.itemNumber)}
+                      display={getLast8(first?.sku || first?.itemNumber)}
                     />
                   ) : (
                     <span className="font-mono text-xs text-text-faint">—</span>
@@ -217,7 +217,7 @@ function DetailTable({ rows }: { rows: InventoryOrderResult[] }) {
                 </td>
                 <td className="px-3 py-2 align-top">
                   {r.trackingNumber ? (
-                    <TrackingChip value={r.trackingNumber} display={getLast4(r.trackingNumber)} />
+                    <TrackingChip value={r.trackingNumber} display={getLast8(r.trackingNumber)} />
                   ) : (
                     <span className="font-mono text-xs text-text-faint">—</span>
                   )}

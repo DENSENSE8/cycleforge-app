@@ -70,7 +70,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 // ─── Identity summary ────────────────────────────────────────────────────────
 
-/** One labeled id row: tiny gray eyebrow + a copy chip (last-4, copies full). */
+/** One labeled id row: tiny gray eyebrow + a copy chip (last-8, copies full). */
 function ChipRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex items-center gap-2">
@@ -84,7 +84,7 @@ function ChipRow({ label, children }: { label: string; children: React.ReactNode
 
 /**
  * Top-of-body summary — product title is the PRIMARY (large, dark) line, with
- * the SKU on top and the serial below it as copy chips (last-4 display, copy
+ * the SKU on top and the serial below it as copy chips (last-8 display, copy
  * the full value on click). The serial is the one LINKED to the QR label (from
  * tech_serial_numbers lineage), not the raw label text.
  */

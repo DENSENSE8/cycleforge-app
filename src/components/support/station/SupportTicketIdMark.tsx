@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Compact ticket id mark for Support station chrome — last-4 digits, no `#`,
+ * Compact ticket id mark for Support station chrome — last-8 digits, no `#`,
  * full id on copy. Lives in {@link StationMoreDetails} (top-right), not the
  * identity subject row.
  */

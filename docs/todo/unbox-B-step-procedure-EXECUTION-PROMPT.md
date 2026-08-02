@@ -1,70 +1,134 @@
-# EXECUTION PROMPT — Lane B · Unbox step procedure + Playwright
+# EXECUTION PROMPT — Lane B · the two slices that survived
+
+> ## COMPLETE — 2026-08-01
+>
+> Both slices landed. **Slice 1:** the desktop item pill mounts on the active PO line's work body
+> (`ActiveLineConditionSerial` `itemPhotoSlot`) in **both** lanes — matched
+> ([`LinePoItemsSection`](../../src/components/receiving/workspace/line-edit/LinePoItemsSection.tsx))
+> and unfound/return
+> ([`UnmatchedAccordionSurface`](../../src/components/receiving/workspace/unmatched-items/UnmatchedAccordionSurface.tsx)) —
+> with `photoStage="unbox_item"` + `receivingLineId` threaded explicitly and pinned by
+> [`item-photo-wiring.guard.test.ts`](../../src/components/receiving/workspace/line-edit/item-photo-wiring.guard.test.ts).
+> **Slice 2:** [`unbox-item-photo-capture.spec.ts`](../../tests/e2e/unbox-item-photo-capture.spec.ts)
+> (2) + [`unbox-scan-focus.spec.ts`](../../tests/e2e/unbox-scan-focus.spec.ts) (2), all green on
+> `qa-desktop` alongside the 5 existing `unbox-procedure-checklist.spec.ts` rows.
+> `station.md` needed no amendment, as predicted below. Lane B is closed.
 
 > Paste below the line into a fresh session at `/Users/icecube/repos/cycleforge-app`.
-> **Plan SoT:** [`docs/todo/unbox-B-step-procedure-PLAN.md`](./unbox-B-step-procedure-PLAN.md) — the plan wins on conflict.
-> **Prerequisite:** `unbox-capture-stack-PLAN.md` Phases 0–2 complete (`CaptureStack` exists and is mounted read-only).
-> **Parallel lane:** B — the restructure lane. Land after lanes A and C.
+> **Plan SoT:** [`docs/todo/unbox-B-step-procedure-PLAN.md`](./unbox-B-step-procedure-PLAN.md) — **superseded in part**, see below.
+> **Rewritten 2026-08-01.** The original prompt asked for a surface the operator rejected twice.
 
 ---
 
-# Cycle Forge — Lane B: the unbox step procedure
+## Why this prompt is a third of its former self
 
-You are Claude Code in the Cycle Forge monorepo. This lane restructures how an operator captures a carton. **Stop and ask before writing code** if either blocker below is unresolved.
+Lane B was written as *the restructure lane*: a bottom-anchored capture stack in the Unbox work
+surface, one expanded step card above the scan input, completed steps collapsing and pushing up,
+a horizontal pager for back/forward.
 
-## Mission
+**That surface is dead, on the operator's verdict, not on a technicality.**
 
-Drive the Unbox capture stack from a **data-driven step vocabulary** — PO/box photos → packing material → item photos → condition → serial — with back/forward navigation and full Playwright coverage against the QA org.
+- Placement #1 — capture stack mid-canvas above the PO accordion: *"completely terrible."*
+  `UnboxCaptureStack` deleted (`33a3eb609`).
+- Placement #2 — procedure as a floating card on an ambient `RightRailHost` region: *"an absolutely
+  terrible display."* Region retired the same day; `.claude/rules/source-of-truth.md` now closes the
+  door on a third right-edge grammar.
+- Placement #3 — **shipped**: the procedure IS the Checklist display in the Displays push column
+  ([`UnboxProcedureChecklist`](../../src/components/receiving/workspace/line-edit/UnboxProcedureChecklist.tsx)),
+  and the org-editable `checklist_templates` UI + `/api/checklists` were deleted with it.
 
-## Read first
+So the **vocabulary half of Plan B shipped** — data-driven steps
+([`derive-capture-step-states.ts`](../../src/components/receiving/workspace/derive-capture-step-states.ts)),
+B2's `unbox_carton` fold, the ungated condition step, and 5 of the 8 required Playwright rows
+([`unbox-procedure-checklist.spec.ts`](../../tests/e2e/unbox-procedure-checklist.spec.ts)).
 
-1. `docs/todo/unbox-B-step-procedure-PLAN.md` — SoT for this run.
-2. `docs/todo/unbox-capture-stack-PLAN.md` — the primitive you build on.
-3. `.claude/rules/display/station.md` — §3 focus lock, §5 single active entity, §7 idempotency.
-4. `.claude/rules/verify.md` — E2E runs on the **QA org**, never dogfood.
-5. `docs/todo/dock-receiving-vs-unbox-GEMINI-RESEARCH-BRIEFING.md` — why photo stages are dangerous to default.
+**Three of Plan B's coverage rows are permanently out of scope**, because the behavior they assert
+does not exist and is not coming back: back/forward navigation, the multi-qty `n of N` *loop*
+(`n of N` survives as a row summary, not an iterating step), and "current step one row above the
+input at 50 rows". Do not stub them. A passing test for behavior that does not exist is worse
+than none.
 
-## STOP — two blockers to resolve with the human first
+**Two slices remain.** They are independent; do them in order.
 
-**B1 — step 3 has no desktop capture surface.** `LineEditPanel.tsx:620-626` says so in the code; `ReceivingPhotoButton:5-8, 88-93` documents an item mode no call site uses. Building the desktop item camera is **in scope for this lane and must be scoped explicitly.** Confirm before starting.
+---
 
-**B2 — "packing material" is not a photo stage.** `stages.ts:42-59` has exactly `arrival_package · unbox_carton · unbox_item · testing · packing`. Recommend folding packing material into `unbox_carton`. Adding a stage is Ask-first and touches six modules. **Never reuse `arrival_package`** — the `require_one` receive gate counts only that stage (`photo-policy.ts:150-164`) and contaminating it voids the insurance control.
+# Cycle Forge — Lane B, remaining work
 
-Get an answer on both. Do not guess.
+You are Claude Code in the Cycle Forge monorepo. Two slices, both small, both real.
 
-## Build rules
+## Slice 1 — the desktop has no item-photo surface (blocker B1)
 
-- **Step vocabulary is data, not code.** Compose `deriveLinearStepStates` (`derive-receiving-step-states.ts:97-113`); each intake type supplies its own `LinearStepFlag[]`. Hardcoding five steps breaks unfound, local pickup, returns, and multi-qty.
-- **Condition is not a gate.** It renders as satisfied with the default grade; the active pointer skips it (`derive-receiving-step-states.ts:47-55` explains why). Tap or condition-token to change.
-- **Multi-qty is a loop, not a step.** `ActiveLineConditionSerial.tsx:94` branches on `quantityExpected > 1`. Steps 3–5 iterate units with an explicit `n of N`.
-- **Write through the existing waist** — `c.enqueueSerial`, `c.patch({ condition_grade })`, `c.commitSerialAbsent`. Create **no** new write path.
-- **Motion from the SoT only** — `tabPagerVariants` + `framerTransition.tabPager` for back/forward, `framerPresence.stationSerialRow` for push-up, `collapseHeight` for collapse. Route through `useMotionPresence` / `useMotionTransition` (guard-enforced). **No GSAP, no `motion/react`** — `motion-major.guard.test.ts` fails CI.
-- **Back must not discard data.** Steps view durable state; they are not a wizard buffer.
-- **Amend `.claude/rules/display/station.md` in its own commit** before the input moves. §2 (scan bar pinned top) and §5 (card replaces, never accumulates) both change. Do not let a guard discover this for you.
+`LineEditPanel` said it in the code and it is still true: **item evidence (`RECEIVING_LINE` +
+`receiving_item`) has no desktop capture surface.** The phone can shoot item photos
+(`/m/receiving/po/{ref}/item/{line}/photos`); the desktop cannot even upload one.
 
-## Playwright
+The mechanism already exists and is unused:
+[`ReceivingPhotoButton`](../../src/components/receiving/workspace/line-edit/ReceivingPhotoButton.tsx)
+documents an item mode — `photoStage="unbox_item"` + `receivingLineId` — that resolves a
+line-scoped upload target, count, gallery and phone route. **No Unbox call site passes
+`receivingLineId`**; `CartonContextCard` passes carton scope only.
 
-`pnpm provision:qa-org` → `npx playwright test <spec> --project=qa-desktop`. Assert on `QA_FIXTURE_*` (`src/lib/tenancy/qa-org.ts`). **Extend** the existing 24 receiving/unbox specs — never orphan them.
+**Operator resolution (2026-08-01): no desktop camera.** The phone stays the capture device. The
+desktop gets **upload-from-computer scoped to the line** — the pill's existing hover strip, not a
+viewfinder.
 
-Cover: step order · push-up collapse · back/forward preserves data · multi-qty `n of N` · **photo stage integrity (no bench capture writes `arrival_package`)** · condition-skip · scroll depth (current step one row above input at 50 rows) · wedge focus + F2.
+**Placement — this is the one judgement call, so make it deliberately.** The original resolution
+said "the desktop *step card* gets a `+`". Step cards died with the capture stack. Their successor
+is *not* the Checklist row: that display is derived, read-only, and has now been rejected twice for
+taking work's seat. Mount it where the item's other two capture steps already live — the **active PO
+line's work body** ([`ActiveLineConditionSerial`](../../src/components/receiving/workspace/line-edit/ActiveLineConditionSerial.tsx)),
+beside condition and serial. Item photos → condition → serial are consecutive steps in the
+vocabulary; two of the three are already on that card.
 
-Assert on invariants, not samples — measure the scrollport edge, not the last DOM row.
+Requirements:
+
+- Thread the stage **explicitly** at the call site. `.claude/rules/backend-patterns.md` — a safety
+  classification is a required parameter, never a defaulted one. This is the exact axis that let
+  bench photos become arrival evidence once already.
+- `poRouteRef` is what enables the phone leg (`/api/receiving/po/{ref}` must resolve it). Without
+  it the pill stays hoverable for device upload and the phone leg is click-inert — never `disabled`,
+  which would swallow the hover the upload strip needs.
+- The unfound / return lanes mount the same body
+  (`UnmatchedLineRow`, `UnmatchedAccordionSurface`). Decide explicitly whether they get the pill and
+  say which, rather than letting a shared component decide for you.
+- **Add a wiring guard** that walks the call sites and fails when one mounts item scope without a
+  line id, or stamps `arrival_package` from the bench. Plan B asked for this; the sibling to copy is
+  `lookup-scan-wiring.guard.test.ts`.
+
+## Slice 2 — three Playwright rows the shipped surface can honestly carry
+
+Against the **QA org** (`.claude/rules/verify.md`): `pnpm provision:qa-org` →
+`npx playwright test <spec> --project=qa-desktop`. **Extend** the existing receiving/unbox specs;
+never orphan them.
+
+| Row | Asserts | Note |
+|---|---|---|
+| Item-stage integrity | A desktop item capture writes `unbox_item` (line-scoped) and **never** `arrival_package` | The last uncovered cell of Plan B's photo-stage matrix — the carton leg is already pinned |
+| Wedge focus | Focus returns to the serial field after every Enter, so serial-after-serial needs no click | Pins behavior `SerialCard.submit()` already implements |
+| Focus hotkey | It returns the operator to the Unbox scan bar from anywhere on the bench | `ReceivingUnboxScanBar` → `useRegisterScanTarget`. **Read the key from `DEFAULT_FOCUS_SCAN_HOTKEY`** — the rules said "F2" for months and the code has always defaulted to `Insert` |
+
+Assert on **invariants, not samples**.
 
 ## Do NOT
 
-- Touch labels or per-item notes (**lane C**) or the identity header (**lane A**).
-- Raise any ratchet baseline.
-- `test.skip` around missing data — seed the QA fixtures instead.
+- Rebuild the capture stack, a step pager, or any bottom-anchored step card. Three placements,
+  two rejections, one shipped answer — the question is closed.
+- Add a capture control to `ProcedureChecklist`. It is dumb by construction and learns no domain.
+- Touch labels / per-item notes (**lane C, shipped**) or the identity header (**lane A**).
+- Raise a ratchet baseline, or `test.skip` around missing data — seed the QA fixtures.
 - Start, restart, or kill the dev server. It runs on **`:3050`** — attach.
 
 ## Done when
 
-`npm run verify` green; all new + existing specs pass on `qa-desktop`; `station.md` amended; desktop wedge and mobile keyboard both verified.
+`npm run verify` green; the new specs pass on `qa-desktop`; the existing unbox specs still pass.
+
+`station.md` needs **no** amendment — its §2 (scan bar pinned top) and §5 (card replaces, never
+accumulates) contracts were only threatened by the capture stack, which never landed.
 
 ## Report back
 
-1. B1 and B2 resolutions as agreed.
-2. The step vocabularies you authored, per intake type.
-3. Specs added vs extended.
-4. Anything in the plan you believe is wrong.
+1. Where you mounted the item pill, and which lanes got it.
+2. Specs added vs extended, with the run output.
+3. Anything above you believe is wrong.
 
 Commit only when asked. Stage only files you changed.

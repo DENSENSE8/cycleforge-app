@@ -44,6 +44,7 @@ import {
   receivingPhotoListIntentForScope,
   resolveReceivingPhotoTarget,
 } from '@/lib/receiving/photo-scope';
+import type { PhotoAspect } from '@/lib/photos/photo-aspects';
 
 interface PhotoRow {
   id: number;
@@ -69,6 +70,7 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
   staffId,
   poRef,
   photoStage,
+  photoAspect = null,
   receivingLineId = null,
   poRouteRef = null,
   galleryPlacement = 'below',
@@ -89,6 +91,23 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
    * `receivingLineId`.
    */
   photoStage: ReceivingPhotoStage;
+  /**
+   * What this pill's shot SHOWS, within {@link photoStage} — the second axis.
+   * A procedure step that asks for one specific frame ("the shipping label")
+   * passes it, so the capture satisfies that step and only that step; the three
+   * bench carton shots share one stage and are told apart by this alone.
+   *
+   * Omit on a general-purpose pill: null is *unclassified evidence*, which is
+   * both legal and the honest answer when the surface did not ask for a
+   * particular frame. Never defaulted to a concrete aspect — an aspect is a
+   * claim about what the operator pointed the camera at, and this component is
+   * not in a position to make one.
+   *
+   * Scoping is total: when set, the pill's COUNT and gallery show only shots of
+   * this aspect, so "1 photo" on the shipping-label step never means a photo of
+   * the box.
+   */
+  photoAspect?: PhotoAspect | null;
   /**
    * Active receiving line — makes this pill the ITEM camera (RECEIVING_LINE +
    * `receiving_item`): line-scoped count/gallery/upload, and phone requests
@@ -139,16 +158,30 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
     baseListIntent === 'unbox_carton' ? RECEIVING_PHOTO_LIST_INTENT_CARTON : baseListIntent;
   const uploadTarget = useMemo(() => {
     try {
-      return resolveReceivingPhotoTarget({ receivingId, receivingLineId: lineId, stage });
+      return resolveReceivingPhotoTarget({
+        receivingId,
+        receivingLineId: lineId,
+        stage,
+        aspect: photoAspect,
+      });
     } catch {
       return null; // incoherent scope — the query below is disabled too
     }
-  }, [receivingId, lineId, stage]);
+  }, [receivingId, lineId, stage, photoAspect]);
 
-  // Scope the cache key: a line pill must not share an entry with its carton.
+  // Scope the cache key: a line pill must not share an entry with its carton,
+  // and an aspect-scoped pill must not share one with the unscoped pill above it
+  // — otherwise the shipping-label step would read the whole carton's count and
+  // report itself satisfied by a photo of the box.
   const queryKey = useMemo(
-    () => [...receivingPhotosQueryKey(receivingId), listIntent, lineId ?? 'carton'] as const,
-    [receivingId, listIntent, lineId],
+    () =>
+      [
+        ...receivingPhotosQueryKey(receivingId),
+        listIntent,
+        lineId ?? 'carton',
+        photoAspect ?? 'any',
+      ] as const,
+    [receivingId, listIntent, lineId, photoAspect],
   );
 
   const { data } = useQuery<PhotosPayload>({
@@ -159,6 +192,7 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
         photoIntent: listIntent,
       });
       if (lineId != null) params.set('receivingLineId', String(lineId));
+      if (photoAspect) params.set('photoAspect', photoAspect);
       const res = await fetch(`/api/receiving-photos?${params.toString()}`, {
         cache: 'no-store',
       });

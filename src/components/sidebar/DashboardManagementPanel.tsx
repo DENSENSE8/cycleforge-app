@@ -1,7 +1,7 @@
 'use client';
 
 import { ReactNode } from 'react';
-import { motion } from 'framer-motion';
+import { motion } from '@/design-system/motion';
 import { SidebarShell } from '@/components/layout/SidebarShell';
 import { useAuth } from '@/contexts/AuthContext';
 import { OrderSyncDialog } from '@/components/sidebar/OrderSyncDialog';

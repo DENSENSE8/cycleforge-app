@@ -16,7 +16,7 @@ export function RoomPicker({ rooms, zoneMap, loading, selectedRoom, onSelect }: 
     return (
       <div className="rounded-2xl border border-dashed border-border-soft px-5 py-10 text-center">
         <p className="text-sm font-semibold text-text-muted">No rooms yet</p>
-        <p className="mt-1 text-[11.5px] text-text-soft">
+        <p className="mt-1 text-role-caption text-text-soft">
           Open the <span className="font-semibold">Rooms</span> tab and add one — it'll show up here.
         </p>
       </div>

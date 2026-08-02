@@ -5,6 +5,7 @@ import {
   GRID_HEADER_ROW_INDEX,
   countGridRows,
   groupRowSpan,
+  hasGridRows,
 } from './grid-row-index';
 
 type Row = { id: string };
@@ -84,5 +85,45 @@ describe('countGridRows', () => {
   it('an empty grid is just the header row', () => {
     assert.equal(countGridRows<Row>({ orderGroupsByDate: [] }), 1);
     assert.equal(countGridRows<Row>({}), 1);
+  });
+});
+
+describe('hasGridRows — emptiness is about ROWS, not bands', () => {
+  it('a band holding no groups is EMPTY', () => {
+    // The regression this exists for: a flat list emits one unnamed band
+    // (`[['', groups]]`). Testing the band COUNT made that read as non-empty
+    // with zero rows, so LedgerGrid drew its column headers over a void instead
+    // of the caller's teaching box. `/pickup` shipped that way.
+    assert.equal(hasGridRows<Row>({ orderGroupsByDate: [['', []]] }), false);
+  });
+
+  it('a band holding a group with no rows is EMPTY', () => {
+    assert.equal(
+      hasGridRows<Row>({ orderGroupsByDate: [['', [{ key: 'k', rows: [] } as RowGroup<Row>]]] }),
+      false,
+    );
+  });
+
+  it('one row anywhere is enough to be non-empty', () => {
+    assert.equal(hasGridRows<Row>({ orderGroupsByDate: [['', [group('a', 1)]]] }), true);
+    assert.equal(hasGridRows<Row>({ orderGroupsByDate: [['x', []], ['y', [group('b', 3)]]] }), true);
+  });
+
+  it('day sections follow the same rule', () => {
+    assert.equal(hasGridRows<Row>({ daySections: [['2026-07-01', []]] }), false);
+    assert.equal(hasGridRows<Row>({ daySections: [['2026-07-01', [{ id: 'x' }]]] }), true);
+  });
+
+  it('nothing passed at all is empty', () => {
+    assert.equal(hasGridRows<Row>({}), false);
+    assert.equal(hasGridRows<Row>({ orderGroupsByDate: [] }), false);
+  });
+
+  it('does NOT reuse countGridRows — its floor moves with the chrome', () => {
+    // countGridRows starts at the header row and adds one per day band, so
+    // "is it empty" cannot be `countGridRows(...) === 0` for any surface.
+    const banded = { orderGroupsByDate: [['', []]] as [string, RowGroup<Row>[]][], showDayHeaders: true };
+    assert.equal(countGridRows<Row>(banded), GRID_HEADER_ROW_INDEX + 1);
+    assert.equal(hasGridRows<Row>(banded), false);
   });
 });

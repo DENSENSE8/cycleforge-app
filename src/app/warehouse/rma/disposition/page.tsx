@@ -25,10 +25,10 @@
 import { useCallback, useEffect, useRef, useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion } from '@/design-system/motion';
 import {
   Barcode,
-  CheckCircle,
+  Check,
   Lock,
   RotateCcw,
   AlertTriangle,
@@ -52,14 +52,14 @@ const DISPOSITIONS: Array<{
   code: DispositionCode;
   label: string;
   hint: string;
-  icon: typeof CheckCircle;
+  icon: typeof Check;
   activeClass: string;
 }> = [
   {
     code: 'ACCEPT',
     label: 'Accept',
     hint: 'Sellable — restocks the unit (RETURNED → STOCKED)',
-    icon: CheckCircle,
+    icon: Check,
     activeClass: 'bg-emerald-600 hover:bg-emerald-700',
   },
   {

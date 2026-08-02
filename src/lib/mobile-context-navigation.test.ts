@@ -11,7 +11,10 @@ test('getMobileAppTitle resolves receiving-family route labels', () => {
   assert.equal(getMobileAppTitle('/receiving/lines/42'), 'Unbox');
   assert.equal(getMobileAppTitle('/unbox'), 'Unbox');
   assert.equal(getMobileAppTitle('/triage'), 'Arrival');
-  assert.equal(getMobileAppTitle('/incoming'), 'Incoming');
+  // `/incoming` is the Inbound L1's default lane (its other mode is the
+  // Receiving Board), so the row-1 title is the PAGE name — same rule as every
+  // other route here: the mobile title mirrors the sidebar nav label.
+  assert.equal(getMobileAppTitle('/incoming'), 'Inbound');
   assert.equal(getMobileAppTitle('/pickup'), 'Local Pickup');
   assert.equal(getMobileAppTitle('/repair'), 'Repair Service');
 });

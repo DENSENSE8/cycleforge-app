@@ -14,7 +14,7 @@ import {
   ConditionGradeChip,
   EmptySkuChipFace,
   SkuScanRefChip,
-  getLast4,
+  getLast8,
 } from '@/components/ui/CopyChip';
 import { ProgressBadge } from '@/components/receiving/workspace/PoLinesAccordion';
 import type { ActiveRowSerial } from '@/components/receiving/workspace/PoLinesAccordion';
@@ -252,7 +252,7 @@ export function UnmatchedLineRow({
             }
             sku={
               (line.sku || '').trim() ? (
-                <SkuScanRefChip value={line.sku as string} display={getLast4(line.sku)} dense />
+                <SkuScanRefChip value={line.sku as string} display={getLast8(line.sku)} dense />
               ) : (
                 <EmptySkuChipFace dense />
               )

@@ -3,7 +3,7 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { History, Loader2, MapPin, Package } from '@/components/Icons';
-import { getLast4, SerialChip, SkuScanRefChip } from '@/components/ui/CopyChip';
+import { getLast8, SerialChip, SkuScanRefChip } from '@/components/ui/CopyChip';
 import { EventRow } from './EventRow';
 import { unitStatusBadgeClass } from '@/lib/unit-status';
 import type { PulseEventRow, PulseEventsResponse } from './types';
@@ -87,13 +87,13 @@ export function PulseWorkspace({ unitId }: PulseWorkspaceProps) {
                         </div>
                         <div className="min-w-0 space-y-2">
                             {/* Product title on top; serial + SKU are copy chips
-                                (last-4, click to copy the full value) below. */}
+                                (last-8, click to copy the full value) below. */}
                             <h1 className="truncate text-2xl font-semibold tracking-tight text-text-default">
                                 {heroTitle}
                             </h1>
                             <div className="flex flex-wrap items-center gap-2 text-sm">
                                 {sku ? (
-                                    <SkuScanRefChip value={sku} display={getLast4(sku)} />
+                                    <SkuScanRefChip value={sku} display={getLast8(sku)} />
                                 ) : null}
                                 {serial ? (
                                     <SerialChip value={serial} width="w-auto shrink-0" />

@@ -20,7 +20,7 @@
  * ────────────────────────────────────────────────────────────────────────── */
 
 import { useEffect, useState } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion } from '@/design-system/motion';
 import { Check, ChevronDown, Loader2 } from '@/components/Icons';
 import { WorkspaceCard } from '@/design-system/components';
 import { Button } from '@/design-system/primitives';

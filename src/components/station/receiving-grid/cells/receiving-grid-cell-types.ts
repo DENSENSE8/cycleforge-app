@@ -5,7 +5,11 @@
 
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import type { ReceivingActivityAxis } from '@/components/station/receiving-lines-table-helpers';
-import { gridCellAlignClass } from '@/design-system/components/grid';
+import {
+  gridCellAlignClass,
+  gridColumnHighlightClass,
+  type GridColumnDisplayPref,
+} from '@/design-system/components/grid';
 import {
   receivingGridCell,
   type ReceivingGridColumn,
@@ -21,7 +25,16 @@ export type ReceivingActivityDateCell = {
 export type ReceivingGridCellCtx = {
   row: ReceivingLineRow;
   selectMode: boolean;
+  /** Either plane is live on this row — used for the row fill only. */
   isSelected: boolean;
+  /** Bulk membership (the gutter plane). Drives the checkbox alone. */
+  isChecked: boolean;
+  /**
+   * Toggle bulk membership. Present only on surfaces that split the two planes
+   * (Incoming / History); absent on the legacy single-gesture rows, where the
+   * gutter stays a painted span and the ROW click does the ticking.
+   */
+  onToggle?: () => void;
   activityAxis: ReceivingActivityAxis;
   isHistory: boolean;
   productTitle: string;
@@ -38,6 +51,8 @@ export type ReceivingGridCellCtx = {
   trackingValue: string;
   serialsCsv: string;
   statusDot: string;
+  /** Per-hideKey display prefs from staff column-display panel. */
+  columnDisplay?: Readonly<Record<string, GridColumnDisplayPref>>;
 };
 
 export type ReceivingGridCellProps = {
@@ -47,6 +62,17 @@ export type ReceivingGridCellProps = {
   ctx: ReceivingGridCellCtx;
 };
 
-export function receivingDataCellClass(col: ReceivingGridColumn, rule = true): string {
-  return cn(receivingGridCell({ rule, inset: 'grid' }), gridCellAlignClass(col));
+export function receivingDataCellClass(col: ReceivingGridColumn, rule = true, ctx?: ReceivingGridCellCtx): string {
+  const pref = col.hideKey && ctx?.columnDisplay ? ctx.columnDisplay[col.hideKey] : undefined;
+  return cn(
+    receivingGridCell({ rule, inset: 'grid' }),
+    gridCellAlignClass(col),
+    gridColumnHighlightClass(pref?.highlight),
+  );
+}
+
+/** True when this column should wrap its primary value in chip chrome. */
+export function receivingCellWantsChip(col: ReceivingGridColumn, ctx: ReceivingGridCellCtx): boolean {
+  if (!col.hideKey || col.frozen) return false;
+  return ctx.columnDisplay?.[col.hideKey]?.cell === 'chip';
 }

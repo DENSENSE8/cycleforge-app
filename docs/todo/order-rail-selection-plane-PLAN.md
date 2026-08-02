@@ -1,62 +1,119 @@
 # Order rail selection plane — the right rail replaces the bottom capsule
 
-**Status (2026-08-01):** Phases 0–1 landed and green. **Phase 2 steps A+B built
-  but UNMOUNTED; step C reverted — the capsule is back.** Mounting the rail
-  action region inside the inspector makes the record open and immediately close
-  itself, which left a 1-row selection with no actions at all. Reverted rather
-  than shipped: `dashboard-bulk-actions` (4) and `dashboard-bulk-bar-inset` (3)
-  are green again. Phase 2 resumes at the bug below. Phases 3–5 open.
+**Status (2026-08-01):** Phases 0–2 LANDED and RE-VERIFIED. The capsule is gone
+  from `/dashboard`; the right rail is the selection plane (1 row → inspector +
+  action region, 2+ → `OrderRailShell`). The publish bridge is split out of
+  `useDashboardBulkSelection` into `useOrderRailSelection` (Pack / Shipping keep
+  the plain hook + capsule). Phases 3–5 (compare pane, batch roster `[×]`,
+  change band) open.
+
+**Re-verification (2026-08-01, independent session):** `dashboard-bulk-actions`
+  + `dashboard-selection-handoff` on `qa-desktop` — **6/6 green on two
+  consecutive full runs**, plus the `-g "Set ship-by"` slice green twice on its
+  own ("Applies to all 2 selected orders."). No code change was needed; both
+  fixes were already in the tree. `npm run verify`: every gate green except
+  **Doc catalog drift**, which is NOT this work — it is a new doc another
+  session added (`todo/sidebar-master-nav-kinetic-grain-HANDOFF.md`) that the
+  generated catalog has not indexed yet. Tenancy-isolation static is advisory,
+  not blocking. `dashboard-inspector-non-modal` was not re-run (known-red,
+  unscoped `edge-resize-collapse` locator — see §4).
+
+## OPEN BUG — checkbox multi-select collapses to one row
+
+**Status (2026-08-01):** FIXED. Root cause was the adopt-effect race on the
+1→2 transition (`selectOnly` after derive-open nulled `railOpenedIdRef`), not
+only the checkbox bubble (`stopPropagation` was already present). Fix: gate
+adopt when the set already contains the open id + `data-select-gutter` bail in
+`handleRowAction`. Regression: `checkbox multi-select keeps both rows in the
+set`. Verified twice via Set ship-by → "Applies to all 2 selected orders."
+
+<details><summary>Original bug notes (kept for history)</summary>
+
+**Symptom:** `dashboard-bulk-actions` → *Set ship-by opens a date picker scoped
+to the selection* fails every run. The dialog reads **"Applies to 1 selected
+order."** after the spec checks TWO checkboxes.
+
+**Cause:** the checkbox sits inside the row, so its click bubbles to the row's
+`onClick` → `handleRowAction` → (Phase 1) `selectOnly(id)`, which REPLACES the
+set. Sequence: check A → `{A}`; check B → `toggle` adds B → bubbled row click
+`selectOnly(B)` → `{B}`. Pre-Phase-1 the row handler only toggled the inspector,
+so the bubble was harmless — that is why this appeared only now, and why every
+single-row spec still passes.
+
+**Fix (one of, pick the first that holds):**
+1. Stop the bubble at the source — `stopPropagation()` in the select-gutter
+   checkbox handler in `OrdersQueueTableRow.tsx` (search `onToggleSelect`).
+   Cheapest and most local.
+2. Or make `handleRowAction` ignore events whose target is inside the select
+   gutter (`event.target.closest('[data-select-gutter]')`), mirroring the
+   existing rule that a row-level Enter must bail when the target is inside a
+   row control.
+
+**Verify with:** `npx playwright test dashboard-bulk-actions --project=qa-desktop -g "Set ship-by"`
+— it must read "Applies to all 2 selected orders."
+
+</details>
 
 ## HANDOFF — start here
 
-**The one open bug.** `RailActionRegion` (`components/dashboard/rail/OrderRailActions.tsx`)
-mounted inside `ShippedDetailsPanel` makes the open record close itself: the URL
-goes `?openOrderId=N` → back to `?unshipped`. Bisected to exactly that mount —
-removing it turns 4 red specs green. Root cause NOT found.
+### FIXED — the wrong-mount-branch bug (2026-08-01)
 
-**Prime suspect RULED OUT (checked 2026-08-01).** The theory was that
-`selectionActions` churns identity every render, firing the publish effect on
-every render. It does not: `loadStaff` is `useCallback(…, [])`, `confirmAssignment`
-is `useCallback(…, [onAssigned])` and `useDashboardBulkSelection` calls
-`useWorkOrderAssignment()` with no args so `onAssigned` is always `undefined`.
-The other seven handlers are `useCallback` with empty/primitive deps and
-`laneActionKeys` is `useMemo([orderView])`. **Do not re-run this check.**
+`RailActionRegion` is mounted in `ShippedDetailsPanel`'s **`isOrderRecord`**
+branch, which requires `context === 'dashboard'`. The **Pending lane opens with
+the FULFILLMENT context** (that is why *Pending opens on Documents* passes), so
+on the lane that matters the region never renders — a selection has ZERO
+actions. Invisible while the capsule was up, because the labels came from the
+capsule.
 
-**Remaining candidates, in order:**
-1. `deleteOrderRow` (`useDeleteOrderRow()`) is a React Query mutation result and
-   changes identity when mutation state changes; `handleDelete` depends on it, so
-   `selectionActions` CAN churn — just not every render. Verify by logging the
-   publish rate before theorising further.
-2. Not identity churn at all: instrument what actually strips `openOrderId`.
-   `closeRecord` → `onCloseRecord` → `dispatchCloseShippedDetails` is one path;
-   `useOrdersQueueSelection`'s seen-in-this-queue guard (lines ~46-70) is the
-   other, and it fires when the record leaves `visibleRecords`. A store
-   notification that re-renders the grid mid-fetch could empty that list for one
-   commit. **Put a breakpoint / console trace on both before changing code** —
-   this bug has already survived two plausible-sounding theories.
+**Fixed:** the region is now mounted ABOVE the branch split in
+`ShippedDetailsPanel`, so it renders for every panel context. It self-gates on
+the rail-actions store, so mounting it everywhere is safe — only a surface
+calling `useOrderRailSelection` lights it up.
 
-Unrelated but noticed: `technicianOptions` / `packerOptions` in
-`useWorkOrderAssignment` are rebuilt with bare `.filter().map().sort()` on every
-render (no `useMemo`). Not this bug — they are not in `selectionActions`' deps —
-but they churn for every consumer that does read them.
+**Two failures survive and neither is caused by step C** (both reproduce with the
+capsule restored): `dashboard-bulk-actions` → *Set ship-by opens a date picker
+scoped to the selection* (`toContainText`), and `dashboard-inspector-non-modal` →
+*resizable, clamps to the derived cap* (the A/B-confirmed strict-mode locator).
+Two others flaked one run each (*Export CSV*, *Pending → Testing hand-off*) and
+passed in the other.
+Proof it is reproducible: two identical runs, `dashboard-bulk-actions` 1/2/3 red
+with `Received array: []` for the action labels.
 
-**Reproduce:**
-1. Set `RAIL_ACTION_REGION_IN_INSPECTOR = true` in `ShippedDetailsPanel.tsx`.
-2. In `app/dashboard/page.tsx` pass `{ publishToRail: true }` to the hook.
-3. `npx playwright test dashboard-inspector-non-modal --project=qa-desktop -g "Enter on a focused row"`
-   — red with the mount, green without.
+### The earlier "openOrderId gets stripped" theory was WRONG (disproved 2026-08-01)
 
-**Then, and only then**, re-do step C (remove the capsule) — the removal is
-mechanical and documented in the revert note in `DashboardOrdersView.tsx`.
+It was a **misattribution**. Every path that can strip the param was
+instrumented (`replaceOpenOrderId(null)`, `closeRecord`, the seen-in-queue
+guard, the occupancy effect's close/clear branches) and both repro paths were
+driven with a console-capturing spec. Result: the record opens, `?openOrderId=`
+sticks, the aside mounts, **nothing closes it**. The specs were then re-run with
+the action region MOUNTED: `dashboard-bulk-actions` 4/4 green and *Enter on a
+focused row* green.
 
-**Do not trust a single run of `dashboard-inspector-non-modal`.** It oscillates:
-across four runs the failing subset moved between the Escape test, the
-record→record swap, and the scrim test, with 14–34s timings on a tree another
-session is actively editing. Only ONE failure there is A/B-confirmed
-pre-existing (*resizable, clamps to the derived cap* — a strict-mode violation
-where `getByTestId('edge-resize-collapse')` matches both the context rail's
-handle and the inspector's). A/B any other failure with `railSelection` off
-before attributing it.
+The original "bisect" was coincidence. Those runs happened while another session
+was mid-edit in this tree — the same window where a rename broke the dev build
+and `customerName` type errors appeared and vanished between two typechecks.
+
+**These dashboard specs are FLAKY on a busy tree.** `dashboard-bulk-actions`
+alone has gone 4/4 -> 0/4 -> 4/4 -> 3/4 across runs, with no code change between
+some of them. `dashboard-inspector-non-modal`'s failing subset moves run to run.
+Never attribute a failure here from a single run; A/B it with `railSelection`
+off, or run it twice.
+
+**Consequence: Phase 2 steps A+B are believed GOOD and step C's revert was
+unnecessary.** The capsule is currently restored (as asked) with the Phase 2
+mounts off. Re-applying step C is now a decision, not a bug fix:
+
+1. `RAIL_ACTION_REGION_IN_INSPECTOR = true` in `ShippedDetailsPanel.tsx`
+2. `useOrderRailSelection(orderView)` in `app/dashboard/page.tsx`
+3. swap the capsule block for `<OrderRailShell />` in `DashboardOrdersView.tsx`
+   (its revert note says exactly what to undo) and drop `bulkBarInset`
+4. delete `tests/e2e/dashboard-bulk-bar-inset.spec.ts` — a capsule-only guarantee
+5. run the dashboard specs **twice** before believing either result
+
+Still genuinely pre-existing and unrelated: *the inspector is resizable, clamps
+to the derived cap* — `getByTestId('edge-resize-collapse')` matches both the
+context rail's handle and the inspector's (strict-mode violation). A/B-confirmed.
+
 **Lane:** current checkout (`main`) — no ad-hoc branch.
 **Surface:** `/dashboard` outbound orders grid (Pending · Tested · Packed · Shipped).
 **Product frame:** Cycle Forge multi-tenant reseller-ops SaaS. USAV is dogfood only.
@@ -221,7 +278,7 @@ sequencing gap strands multi-select without actions.
 - Wire `onClose → emitToggleAll(scope, 'none')` (D4) and `useRegisterOverlay`
   for Escape ownership (the grid's capture-phase listener beats bubble).
 
-### Phase 2 status — code-complete, RE-RUN E2E BEFORE TRUSTING
+### Phase 2 status — ✅ DONE, E2E verified twice (2026-08-01)
 
 Built in three additive steps so each stopping point is safe:
 
@@ -229,8 +286,15 @@ Built in three additive steps so each stopping point is safe:
   grid's selection to the rail. Needed because the 1-row body
   (`ShippedDetailsPanel`) is mounted by `GlobalDetailStackHost` off the **root
   layout**, not under the dashboard page — there is no prop path between them.
-  Publishing is **opt-in** (`useDashboardBulkSelection(view, { publishToRail })`)
-  because Pack and Shipping call the same hook and still run the capsule.
+  Publishing is a **separate hook**, `useOrderRailSelection` — a thin wrapper
+  that calls `useDashboardBulkSelection` and owns the publish + unmount-clear
+  effects. It is a wrapper rather than an option flag because Pack and Shipping
+  call the same base hook and still run the capsule: a surface opts in by
+  importing the wrapper, so there is no boolean to pass wrongly and no dead
+  publish branch inside the shared hook. `publishRailActions` keeps its
+  element-wise `rows` identity guard — `selectedRows` can retain identity across
+  publishes while scope/total/actions stay equal, so without it the rail's
+  footer churns on unrelated grid renders.
 - **B.** `rail/OrderRailActions.tsx` (selection band + action region, self-gating
   on an empty store) and `rail/OrderRailShell.tsx` (occupant
   `detail:order-batch`, 2+ rows, roster body). The action region mounts in BOTH
@@ -242,20 +306,20 @@ Built in three additive steps so each stopping point is safe:
   **deleted**: it existed only to prove the capsule's reserve on this display,
   and that guarantee no longer exists here.
 
-**Verified:** `tsc --noEmit` clean, eslint clean, resolver unit tests 12/12.
-**Not verified:** Playwright. The run that mattered went red 5/12 while the dev
-server was degrading and then refusing connections, so those failures cannot be
-attributed. Re-run once :3050 is back:
+**Verified:** `tsc --noEmit` clean, eslint clean, resolver unit tests 12/12,
+and `dashboard-bulk-actions` + `dashboard-selection-handoff` **6/6 green on two
+consecutive `qa-desktop` runs** (2026-08-01). `npm run verify` green except the
+pre-existing doc-catalog drift noted at the top of this file.
 
 ```
-npx playwright test dashboard-bulk-actions dashboard-inspector-non-modal dashboard-selection-handoff --project=qa-desktop
+npx playwright test dashboard-bulk-actions dashboard-selection-handoff --project=qa-desktop
 ```
 
-Suspect first if `dashboard-bulk-actions` is genuinely red: it checks a row and
-then reads action `aria-label`s off the page. Under Phase 1 that check now also
-opens the inspector, so (a) the labels moved into the inspector footer and may
-need scrolling into view, and (b) the panel may overlap the row the test then
-interacts with — the same grip-occlusion class of problem as §5.
+Suspect first if `dashboard-bulk-actions` ever goes red again: it checks a row
+and then reads action `aria-label`s off the page. Under Phase 1 that check now
+also opens the inspector, so (a) the labels moved into the inspector footer and
+may need scrolling into view, and (b) the panel may overlap the row the test
+then interacts with — the same grip-occlusion class of problem as §5.
 
 ### Phase 3 — compare (2 rows)
 
@@ -320,11 +384,15 @@ part of this plan without confirming they are still red on a clean tree:**
 
 ## 5. Accepted risks (named, not solved)
 
-- **Occlusion becomes constant.** The rail covered the trailing columns only when
-  someone opened a record; now it is up whenever anything is selected. The frozen
-  identity pane (`select · order · title`) stays visible and the rail is
-  resizable + collapsible, but at 1440px the trailing columns sit behind it most
-  of the time. Watch it once live; the collapse strip is the escape hatch.
+- **Occlusion becomes constant.** ✅ **RESOLVED 2026-08-01 — this risk landed, and
+  it is why the panel now PUSHES.** The rail covered the trailing columns only
+  when someone opened a record; under D1 it is up whenever anything is selected,
+  so the occlusion this bullet accepted as a watch-item became the operator's
+  first complaint. Ruling: the right edge pushes and takes its width from the
+  LEFT (spine → context rail) before it overlaps the grid. Laws amended in
+  `AGENTS.md` + `.claude/rules/source-of-truth.md` → Right-rail modality;
+  implementation is §3.3 of `docs/todo/right-panel-display-HANDOFF.md`.
+  The frozen identity pane (`select · order · title`) stays visible either way.
 
   **Already observed, and it is not hypothetical.** `dashboard-inspector-non-modal`
   → *the innermost open overlay owns Escape* times out because the inspector's

@@ -10,6 +10,9 @@
  * server-side fuzzy search via /api/global-search, recents in localStorage,
  * and an "Ask AI" affordance that deep-links into /ai-chat with the query.
  *
+ * Page destinations mirror the MasterNav spine contract (Pin →
+ * SPINE_SECTIONS → Footer) via `buildCommandBarNavGroups` — never a twin map.
+ *
  * `shouldFilter={false}` because we mix two filtering sources:
  *  - static nav items (filtered manually below by query.includes)
  *  - server search results (already filtered server-side)
@@ -19,8 +22,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Command } from 'cmdk';
-import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
-import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
+import { motion, AnimatePresence, useReducedMotion } from '@/design-system/motion';
+import {
+  framerPresence,
+  framerTransition,
+  framerVariants,
+} from '@/design-system/foundations/motion-framer';
 import { useRouter, usePathname } from 'next/navigation';
 import {
   Search,
@@ -31,13 +38,7 @@ import {
   Tool,
   PackageCheck,
   ClipboardList,
-  Wrench,
-  Packer,
   Box,
-  Zap,
-  FileText,
-  AlertCircle,
-  ShieldCheck,
   ChevronRight,
   MessageSquare,
 } from '@/components/Icons';
@@ -48,8 +49,12 @@ import {
   getSidebarNavItems,
   getSidebarPageNav,
   type SidebarIconComponent,
-  type SidebarNavItem,
 } from '@/lib/sidebar-navigation';
+import {
+  buildCommandBarNavGroups,
+  filterCommandBarNavGroups,
+  type CommandBarNavGroup,
+} from '@/lib/nav/command-bar-nav-groups';
 import { useSidebarModeNav } from '@/components/sidebar/master-nav/useSidebarModeNav';
 import { looksLikeIdentifier, searchScopeHref, searchScopeLabel } from '@/lib/search/search-hit';
 import { isSearchEntityType } from '@/lib/search/build-search-text';
@@ -57,7 +62,7 @@ import { isSearchEntityType } from '@/lib/search/build-search-text';
 // (src/lib/search/ai-search-client.ts) so CommandBar and the workbench
 // quick-jumps stay on one implementation.
 import { fetchAiSearchEnabled, postAiRetrieve } from '@/lib/search/ai-search-client';
-import { dispatchGlobalSearchFocus } from '@/lib/global-search-focus';
+import { COMMAND_BAR_OPEN_EVENT } from '@/lib/app-events';
 import { useAuth } from '@/contexts/AuthContext';
 
 // ── Types ─────────────────────────────────────────────────────────────────
@@ -102,20 +107,8 @@ const ENTITY_ICONS: Record<string, IconComponent> = {
   unit: PackageCheck,
 };
 
-const NAV_ICON_MAP: Record<string, IconComponent> = {
-  dashboard: LayoutDashboard,
-  fba: Package,
-  repair: Tool,
-  'work-orders': PackageCheck,
-  receiving: ClipboardList,
-  tech: Wrench,
-  packer: Packer,
-  'sku-stock': Box,
-  ai: Zap,
-  manuals: FileText,
-  support: AlertCircle,
-  admin: ShieldCheck,
-};
+const GROUP_HEADING_CLASS =
+  '[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:py-2 [&_[cmdk-group-heading]]:text-role-micro [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-widest [&_[cmdk-group-heading]]:text-text-faint';
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -143,23 +136,6 @@ function saveRecent(item: RecentItem): RecentItem[] {
   }
 }
 
-interface NavOption {
-  id: string;
-  label: string;
-  href: string;
-  icon: IconComponent;
-}
-
-function buildNavItems(permissions?: ReadonlySet<string>): NavOption[] {
-  const items = permissions ? getSidebarNavItems({ permissions }) : APP_SIDEBAR_NAV;
-  return items.map((nav: SidebarNavItem) => ({
-    id: nav.id,
-    label: nav.label,
-    href: nav.href,
-    icon: NAV_ICON_MAP[nav.id] || ChevronRight,
-  }));
-}
-
 /** One L2 mode row in the palette (e.g. `Receiving · Arrival`). */
 interface ModeOption {
   pageId: string;
@@ -172,13 +148,10 @@ interface ModeOption {
 }
 
 /**
- * Flatten every reachable L2 mode into palette rows. Before this, the master-nav
- * dropdown was the ONLY surface that could reach a mode — ⌘K listed pages only,
- * so `/shipping?mode=scan-out` and friends were URL-typing territory.
- *
- * Gating mirrors the master nav exactly: page-level `requires` via
- * `getSidebarNavItems`, per-mode `requires` via the shared `filterPageModes`.
- * Single-mode pages are omitted — the page row already goes there.
+ * Flatten every reachable L2 mode into palette rows. Gating mirrors the master
+ * nav: page-level `requires` via `getSidebarNavItems`, per-mode `requires` via
+ * `filterPageModes`. Single-mode pages are omitted — the page row already goes
+ * there.
  */
 function buildModeItems(permissions?: ReadonlySet<string>): ModeOption[] {
   const items = permissions ? getSidebarNavItems({ permissions }) : APP_SIDEBAR_NAV;
@@ -189,9 +162,6 @@ function buildModeItems(permissions?: ReadonlySet<string>): ModeOption[] {
     const modes = filterPageModes(page, permissions).modes ?? [];
     if (modes.length < 2) continue;
     for (const mode of modes) {
-      // Fresh params, not the live ones — the sub-label must read the same
-      // regardless of which page the palette was opened from. Actual navigation
-      // goes through `useSidebarModeNav`, which preserves params on same-page flips.
       const { pathname, search } = applyModeTarget(
         { pathname: page.href, params: new URLSearchParams() },
         mode.to(),
@@ -199,8 +169,6 @@ function buildModeItems(permissions?: ReadonlySet<string>): ModeOption[] {
       out.push({
         pageId: page.id,
         modeId: mode.id,
-        // The flat item's label, so a per-org nav rename survives (same reason
-        // `toPageNav` carries it in MasterNav).
         pageLabel: item.label,
         modeLabel: mode.label,
         icon: mode.icon,
@@ -213,9 +181,7 @@ function buildModeItems(permissions?: ReadonlySet<string>): ModeOption[] {
 
 /**
  * Merge AI-retrieve hits with classic global-search rows, deduped by
- * (entityType, id). AI hits lead (they carry score + facet chips); a
- * duplicated classic row only contributes its subtitle when the AI hit
- * lacks one. Classic-only rows follow in their original order.
+ * (entityType, id). AI hits lead; classic-only rows follow.
  */
 function mergeSearchResults(
   aiHits: SearchResult[],
@@ -254,14 +220,10 @@ export function CommandBar() {
   const [mounted, setMounted] = useState(false);
   const [recents, setRecents] = useState<RecentItem[]>([]);
   const [aiEnabled, setAiEnabled] = useState(false);
-  // Phase 2b: inline Ask-AI results (mode:'ask' — one forced LLM tool call
-  // distills the question, same hybrid engine returns the hits). `forQuery`
-  // pins results to the question they answered; typing resets to idle.
   const [askAi, setAskAi] = useState<{
     status: 'idle' | 'loading' | 'done';
     hits: SearchResult[];
     forQuery: string;
-    /** LLM-distilled scope from mode:'ask' — drives the "View all in …" action. */
     toolArgs?: { query: string; entityTypes?: string[] };
   }>({ status: 'idle', hits: [], forQuery: '' });
 
@@ -277,19 +239,18 @@ export function CommandBar() {
     setRecents(getRecent());
   }, []);
 
-  // ── Keyboard shortcut: ⌘K / Ctrl+K → focus header search ──
+  // ── Keyboard shortcut: ⌘K / Ctrl+K → toggle palette ──
   useEffect(() => {
     function handleKeyDown(e: globalThis.KeyboardEvent) {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         const target = e.target as HTMLElement | null;
-        // Don't fight typing in editable surfaces.
         const tag = target?.tagName;
         const editable =
           tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' ||
           target?.isContentEditable;
         if (editable && !open) return;
         e.preventDefault();
-        dispatchGlobalSearchFocus();
+        setOpen((v) => !v);
       }
       if (e.key === 'Escape' && open) {
         setOpen(false);
@@ -299,16 +260,13 @@ export function CommandBar() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [open]);
 
-  // Legacy external trigger — quick-access surfaces that still dispatch the old
-  // event name; redirect to the inline header search field.
+  // External trigger (quick-access / legacy dispatchers).
   useEffect(() => {
-    const onOpen = () => dispatchGlobalSearchFocus();
-    window.addEventListener('app-command-bar-open', onOpen);
-    return () => window.removeEventListener('app-command-bar-open', onOpen);
+    const onOpen = () => setOpen(true);
+    window.addEventListener(COMMAND_BAR_OPEN_EVENT, onOpen);
+    return () => window.removeEventListener(COMMAND_BAR_OPEN_EVENT, onOpen);
   }, []);
 
-  // Reset state on open / close on route change. Opening also resolves the
-  // AI-search rollout flag (memoized per session — one probe, ever).
   useEffect(() => {
     if (open) {
       setQuery('');
@@ -320,10 +278,6 @@ export function CommandBar() {
   }, [open]);
   useEffect(() => { setOpen(false); }, [pathname]);
 
-  // Debounced server search. Flag off → the classic global-search fetch,
-  // unchanged. Flag on → global-search AND /api/ai/retrieve race in parallel
-  // under one AbortController; hits merge deduped by (entityType, id). Either
-  // source failing degrades to the other — never a broken palette.
   useEffect(() => {
     if (!query.trim()) {
       setSearchResults([]);
@@ -338,8 +292,6 @@ export function CommandBar() {
       abortRef.current = controller;
       const q = query.trim();
       try {
-        // Classic-only path: flag off, or sub-2-char input (too short for the
-        // hybrid pipeline to add value over a cached ILIKE pass).
         if (!aiEnabled || q.length < 2) {
           const res = await fetch(
             `/api/global-search?q=${encodeURIComponent(q)}&limit=12`,
@@ -364,15 +316,9 @@ export function CommandBar() {
               return { rows: [] };
             });
 
-        // pageContext = the surface ⌘K was opened from; the server
-        // soft-boosts that surface's entity types (never filters).
         const fetchRetrieve = () =>
           postAiRetrieve(q, { limit: 12, pageContext: pathname, signal: controller.signal });
 
-        // Identifier-shaped queries: retrieve's exact bypass runs the SAME
-        // parent-table searchers as global-search, so firing both would run
-        // the 5-table fan-out twice per keystroke. Retrieve only; fall back
-        // to global-search when retrieve itself errors.
         if (looksLikeIdentifier(q)) {
           const aiData = await fetchRetrieve();
           let rows: SearchResult[] = [];
@@ -399,26 +345,22 @@ export function CommandBar() {
     return () => clearTimeout(debounceRef.current);
   }, [query, aiEnabled, pathname]);
 
-  // Build nav items (perm-aware) and filter manually by query.
   const authPermissions = useMemo<ReadonlySet<string> | undefined>(() => {
     if (!authLoaded || !authUser) return undefined;
     return new Set(authUser.permissions);
   }, [authLoaded, authUser]);
-  const navItems = useMemo(() => buildNavItems(authPermissions), [authPermissions]);
-  const filteredNav = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return navItems;
-    return navItems.filter((n) =>
-      n.label.toLowerCase().includes(q) || n.href.toLowerCase().includes(q),
-    );
-  }, [navItems, query]);
 
-  // L2 modes — matched on page OR mode label so "triage" and "receiving" both
-  // surface Receiving · Arrival.
-  //
-  // Query-gated on purpose: there are ~51 modes, so listing them at rest would
-  // bury the ~19 page rows under a wall. The master-nav dropdown stays the
-  // browsable index; the palette owns depth (type a name, get the mode).
+  const navGroups = useMemo(
+    () => buildCommandBarNavGroups(authPermissions),
+    [authPermissions],
+  );
+  const filteredNavGroups = useMemo(
+    () => filterCommandBarNavGroups(navGroups, query),
+    [navGroups, query],
+  );
+  /** Stagger page rows only at empty-query rest — typing must not replay cascade. */
+  const staggerNavAppear = open && !query.trim();
+
   const modeItems = useMemo(() => buildModeItems(authPermissions), [authPermissions]);
   const filteredModes = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -429,8 +371,6 @@ export function CommandBar() {
     );
   }, [modeItems, query]);
 
-  // ── Selection handlers ──
-
   const navigate = useCallback(
     (item: RecentItem) => {
       if (item.href) router.push(item.href);
@@ -440,9 +380,6 @@ export function CommandBar() {
     [router],
   );
 
-  // Mode jumps go through the nav SoT, NOT `navigate` — that one hard-pushes a
-  // bare href, which would drop every mode search param. `useSidebarModeNav`
-  // owns push-vs-replace and param preservation (`applyModeTarget`).
   const navigateMode = useSidebarModeNav();
   const selectMode = useCallback(
     (m: ModeOption) => {
@@ -466,9 +403,6 @@ export function CommandBar() {
     setOpen(false);
   }, [query, router]);
 
-  // Flag on → run Ask-AI inline (audited + rate-limited server-side) and
-  // render the hits in place; any failure falls back to the classic chat
-  // deep-link. Flag off → the pre-AI behavior, unchanged.
   const handleAskAi = useCallback(async () => {
     if (!aiEnabled) {
       openAiChat();
@@ -482,9 +416,6 @@ export function CommandBar() {
     setAskAi({ status: 'loading', hits: [], forQuery: q });
     const data = await postAiRetrieve(q, { mode: 'ask', limit: 8, pageContext: pathname });
     if (data) {
-      // Staleness guard: commit only if this response still answers the
-      // question we're loading — typing resets to idle, and a slow response
-      // for an old question must not resurrect over it (or over a newer ask).
       setAskAi((prev) =>
         prev.status === 'loading' && prev.forQuery === q
           ? { status: 'done', hits: data.hits || [], forQuery: q, toolArgs: data.toolArgs }
@@ -503,9 +434,6 @@ export function CommandBar() {
     }
   }, [aiEnabled, query, pathname, openAiChat]);
 
-  // §8.4 "AI-suggested filter application": when the LLM scoped the question
-  // to one entity type that has a URL-searchable list surface, offer to open
-  // that surface with the distilled query applied as its own filter.
   const askAiScopeAction = useMemo(() => {
     if (askAi.status !== 'done' || !askAi.toolArgs) return null;
     const types = (askAi.toolArgs.entityTypes ?? []).filter(isSearchEntityType);
@@ -516,7 +444,6 @@ export function CommandBar() {
     return { href, label, query: askAi.toolArgs.query };
   }, [askAi]);
 
-  // Typing a new question invalidates the previous inline answer.
   useEffect(() => {
     setAskAi((prev) =>
       prev.status === 'idle' || prev.forQuery === query.trim()
@@ -531,11 +458,23 @@ export function CommandBar() {
   const showSearchGroup = Boolean(query.trim());
   const showRecentGroup = !query.trim() && recents.length > 0;
 
+  const dialogInitial = shouldReduceMotion
+    ? { opacity: 0 }
+    : framerPresence.commandBarDialog.initial;
+  const dialogAnimate = shouldReduceMotion
+    ? { opacity: 1 }
+    : framerPresence.commandBarDialog.animate;
+  const dialogExit = shouldReduceMotion
+    ? { opacity: 0 }
+    : framerPresence.commandBarDialog.exit;
+  const dialogTransition = shouldReduceMotion
+    ? { duration: 0 }
+    : framerTransition.commandBarDialog;
+
   return createPortal(
     <AnimatePresence>
       {open && (
         <>
-          {/* Backdrop */}
           <motion.div
             key="cmdk-scrim"
             initial={framerPresence.workOrderScrim.initial}
@@ -547,20 +486,13 @@ export function CommandBar() {
             aria-hidden
           />
 
-          {/* Dialog — top-anchored command palette. Slides down from above
-              (negative y), unlike the centered workOrderModal which rises from
-              below. Kept inline because the direction is distinct. */}
           <motion.div
             key="cmdk-dialog"
-            initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.96, y: -8 }}
-            animate={shouldReduceMotion ? { opacity: 1 } : { opacity: 1, scale: 1, y: 0 }}
-            exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.96, y: -8 }}
-            transition={shouldReduceMotion ? { duration: 0 } : { type: 'spring', damping: 28, stiffness: 360, mass: 0.7 }}
+            initial={dialogInitial}
+            animate={dialogAnimate}
+            exit={dialogExit}
+            transition={dialogTransition}
             className="fixed inset-x-0 top-0 z-command flex justify-center px-4 pt-[12vh] md:pt-[16vh]"
-            // Click-off to dismiss: the dialog container overlaps the backdrop
-            // (empty space above / beside the palette), so a click that lands on
-            // the container itself — not on the Command palette inside it —
-            // closes the menu, matching the backdrop's behavior.
             onClick={(e) => {
               if (e.target === e.currentTarget) setOpen(false);
             }}
@@ -571,7 +503,6 @@ export function CommandBar() {
               loop
               className="w-full max-w-[560px] overflow-hidden rounded-2xl border border-border-soft bg-surface-card shadow-2xl shadow-gray-900/30 ring-1 ring-black/[0.04] flex flex-col max-h-[70vh]"
             >
-              {/* Input row */}
               <div className="flex items-center gap-3 border-b border-border-hairline px-4 py-3">
                 {searching ? (
                   <Loader2 className="h-4 w-4 shrink-0 animate-spin text-text-faint" />
@@ -590,19 +521,13 @@ export function CommandBar() {
                 </kbd>
               </div>
 
-              {/* List */}
-              <Command.List
-                className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 py-2"
-              >
+              <Command.List className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 py-2">
                 <Command.Empty className="px-4 py-10 text-center text-sm text-text-soft">
                   {searching ? 'Searching…' : query.trim() ? `No matches for "${query}"` : 'Type to search'}
                 </Command.Empty>
 
                 {showRecentGroup && (
-                  <Command.Group
-                    heading="Recent"
-                    className="[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:py-2 [&_[cmdk-group-heading]]:text-role-micro [&_[cmdk-group-heading]]:[&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-widest [&_[cmdk-group-heading]]:text-text-faint"
-                  >
+                  <Command.Group heading="Recent" className={GROUP_HEADING_CLASS}>
                     {recents.map((r) => {
                       const Icon = r.entityType
                         ? ENTITY_ICONS[r.entityType] || Clock
@@ -621,32 +546,24 @@ export function CommandBar() {
                   </Command.Group>
                 )}
 
-                {filteredNav.length > 0 && (
-                  <Command.Group
-                    heading="Pages"
-                    className="[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:py-2 [&_[cmdk-group-heading]]:text-role-micro [&_[cmdk-group-heading]]:[&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-widest [&_[cmdk-group-heading]]:text-text-faint"
-                  >
-                    {filteredNav.map((n) => {
-                      return (
-                        <CmdRow
-                          key={`nav:${n.id}`}
-                          value={`page ${n.label} ${n.href}`}
-                          label={n.label}
-                          subLabel={n.href}
-                          onSelect={() =>
-                            navigate({ id: `nav:${n.id}`, label: n.label, href: n.href })
-                          }
-                        />
-                      );
-                    })}
-                  </Command.Group>
-                )}
+                {filteredNavGroups.map((group) => (
+                  <SpineNavGroup
+                    key={group.id}
+                    group={group}
+                    stagger={staggerNavAppear}
+                    openKey={open}
+                    onSelectPage={(page) =>
+                      navigate({
+                        id: `nav:${page.id}`,
+                        label: page.label,
+                        href: page.href,
+                      })
+                    }
+                  />
+                ))}
 
                 {filteredModes.length > 0 && (
-                  <Command.Group
-                    heading="Modes"
-                    className="[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:py-2 [&_[cmdk-group-heading]]:text-role-micro [&_[cmdk-group-heading]]:[&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-widest [&_[cmdk-group-heading]]:text-text-faint"
-                  >
+                  <Command.Group heading="Modes" className={GROUP_HEADING_CLASS}>
                     {filteredModes.map((m) => {
                       const Icon = m.icon;
                       return (
@@ -664,10 +581,7 @@ export function CommandBar() {
                 )}
 
                 {showSearchGroup && searchResults.length > 0 && (
-                  <Command.Group
-                    heading="Search results"
-                    className="[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:py-2 [&_[cmdk-group-heading]]:text-role-micro [&_[cmdk-group-heading]]:[&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-widest [&_[cmdk-group-heading]]:text-text-faint"
-                  >
+                  <Command.Group heading="Search results" className={GROUP_HEADING_CLASS}>
                     <CmdRow
                       value={`search all results ${query}`}
                       icon={<Search className="h-4 w-4 text-text-faint" />}
@@ -710,7 +624,7 @@ export function CommandBar() {
                 {showAskAi && (
                   <Command.Group
                     heading={askAi.status === 'done' ? 'AI results' : 'AI'}
-                    className="[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:py-2 [&_[cmdk-group-heading]]:text-role-micro [&_[cmdk-group-heading]]:[&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-widest [&_[cmdk-group-heading]]:text-text-faint"
+                    className={GROUP_HEADING_CLASS}
                   >
                     {askAi.status === 'loading' && (
                       <CmdRow
@@ -773,7 +687,7 @@ export function CommandBar() {
                       <CmdRow
                         value={`ai ask ${query}`}
                         icon={
-                          <span className="flex h-5 w-5 items-center justify-center rounded-md bg-gradient-to-br from-violet-500 to-indigo-600 text-white">
+                          <span className="flex h-5 w-5 items-center justify-center rounded-md bg-blue-600 text-white">
                             <MessageSquare className="h-3 w-3" />
                           </span>
                         }
@@ -796,7 +710,6 @@ export function CommandBar() {
                 )}
               </Command.List>
 
-              {/* Footer */}
               <div className="flex items-center justify-between gap-3 border-t border-border-hairline bg-surface-canvas/70 px-4 py-2 text-role-micro text-text-soft">
                 <div className="flex items-center gap-3">
                   <span className="inline-flex items-center gap-1">
@@ -826,22 +739,114 @@ export function CommandBar() {
   );
 }
 
+// ── Spine page group ──────────────────────────────────────────────────────
+
+function SpineNavGroup({
+  group,
+  stagger,
+  openKey,
+  onSelectPage,
+}: {
+  group: CommandBarNavGroup;
+  stagger: boolean;
+  openKey: boolean;
+  onSelectPage: (page: {
+    id: string;
+    label: string;
+    href: string;
+  }) => void;
+}) {
+  const SectionIcon = group.sectionIcon;
+  const heading = (
+    <span className="inline-flex items-center gap-1.5">
+      {SectionIcon ? (
+        <SectionIcon className={`h-3 w-3 ${group.accent.sectionActiveIcon}`} />
+      ) : null}
+      {group.label}
+    </span>
+  );
+
+  const idleIconClass = group.accent.modeIdleIcon;
+
+  const rows = group.rows.map((row) => {
+    if (row.type === 'subgroup') {
+      const Icon = row.icon;
+      return (
+        <div
+          key={`subgroup:${group.id}:${row.id}`}
+          className="mx-1 flex items-center gap-2 px-3 py-1.5 text-role-caption font-semibold text-text-muted"
+          aria-hidden
+        >
+          <Icon className={`h-3.5 w-3.5 ${idleIconClass}`} />
+          <span>{row.label}</span>
+        </div>
+      );
+    }
+
+    const Icon = row.icon;
+    const pageRow = (
+      <CmdRow
+        key={`nav:${row.id}`}
+        value={`page ${row.label} ${row.href} ${group.label}`}
+        icon={<Icon className={`h-4 w-4 ${idleIconClass}`} />}
+        iconSelectedClassName={group.accent.cmdkSelectedIcon}
+        label={row.label}
+        subLabel={row.href}
+        selectedClassName={group.accent.cmdkSelected}
+        className={row.indented ? 'pl-7' : undefined}
+        onSelect={() =>
+          onSelectPage({ id: row.id, label: row.label, href: row.href })
+        }
+      />
+    );
+
+    if (!stagger) return pageRow;
+
+    return (
+      <motion.div
+        key={`nav-stagger:${row.id}`}
+        variants={framerVariants.spineRowStaggerItem}
+      >
+        {pageRow}
+      </motion.div>
+    );
+  });
+
+  return (
+    <Command.Group heading={heading} className={GROUP_HEADING_CLASS}>
+      {stagger ? (
+        <motion.div
+          key={`spine-stagger-${group.id}-${openKey}`}
+          initial="hidden"
+          animate="visible"
+          variants={framerVariants.spineRowStaggerContainer}
+        >
+          {rows}
+        </motion.div>
+      ) : (
+        rows
+      )}
+    </Command.Group>
+  );
+}
+
 // ── Row primitive ─────────────────────────────────────────────────────────
 
 interface CmdRowProps {
   value: string;
-  /** Omitted for page jumps — pages are text in nav chrome. */
   icon?: React.ReactNode;
   label: string;
   subLabel?: string;
   badge?: string;
-  /** Facet chips from AI-retrieve SearchHits (status / condition / platform). */
   chips?: SearchResultChip[];
   onSelect: () => void;
+  /** Soft accent wash when cmdk-selected — full `data-[selected=true]:*` tokens from spine SoT. */
+  selectedClassName?: string;
+  /** Icon tint when selected — full `group-data-[selected=true]:*` tokens from spine SoT. */
+  iconSelectedClassName?: string;
+  className?: string;
 }
 
-// House 3-layer chip tones (bg-x-50 / text-x-700 / ring-x-200) — the same
-// families every triage chip uses; tone keys come from SearchHitChip.
 const CHIP_TONE_CLASSES: Record<string, string> = {
   gray: 'bg-surface-canvas text-text-muted ring-border-soft',
   blue: 'bg-blue-50 text-blue-700 ring-blue-200',
@@ -850,14 +855,43 @@ const CHIP_TONE_CLASSES: Record<string, string> = {
   rose: 'bg-rose-50 text-rose-700 ring-rose-200',
 };
 
-function CmdRow({ value, icon, label, subLabel, badge, chips, onSelect }: CmdRowProps) {
+function CmdRow({
+  value,
+  icon,
+  label,
+  subLabel,
+  badge,
+  chips,
+  onSelect,
+  selectedClassName,
+  iconSelectedClassName,
+  className,
+}: CmdRowProps) {
   return (
     <Command.Item
       value={value}
       onSelect={onSelect}
-      className="group mx-1 flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-text-default transition-colors data-[selected=true]:bg-surface-sunken data-[selected=true]:text-text-default aria-selected:bg-surface-sunken"
+      className={[
+        'group mx-1 flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-text-default transition-colors',
+        'data-[selected=true]:bg-surface-sunken data-[selected=true]:text-text-default aria-selected:bg-surface-sunken',
+        selectedClassName ?? '',
+        className ?? '',
+      ]
+        .filter(Boolean)
+        .join(' ')}
     >
-      {icon ? <span className="flex h-5 w-5 shrink-0 items-center justify-center">{icon}</span> : null}
+      {icon ? (
+        <span
+          className={[
+            'flex h-5 w-5 shrink-0 items-center justify-center [&_svg]:transition-colors',
+            iconSelectedClassName ?? '',
+          ]
+            .filter(Boolean)
+            .join(' ')}
+        >
+          {icon}
+        </span>
+      ) : null}
       <span className="min-w-0 flex-1">
         <span className="block truncate font-semibold">{label}</span>
         {subLabel && (

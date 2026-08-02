@@ -11,10 +11,10 @@ import {
   Upload,
   FileText,
   Check,
-  CheckCircle,
   AlertTriangle,
   Loader2,
 } from '@/components/Icons';
+import { AnimatedCheck } from '@/components/ui/AnimatedCheck';
 
 // ── Canonical fields ─────────────────────────────────────────────────────────
 // Must match the route's CANONICAL_FIELDS. order_number is required.
@@ -175,7 +175,7 @@ export function CsvOrderImport() {
     return (
       <div className="space-y-4">
         <div className="flex items-center gap-2">
-          <CheckCircle className="h-5 w-5 text-emerald-600" />
+          <AnimatedCheck size={20} />
           <h3 className="text-role-caption font-semibold text-text-default">Import complete</h3>
         </div>
         <div className="divide-y divide-border-hairline rounded-xl border border-border-soft">

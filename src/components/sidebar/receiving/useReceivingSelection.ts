@@ -44,6 +44,11 @@ export interface ReceivingSelectionState {
   /** True when a scan (not a row click) opened the line → LineEditPanel compact. */
   scanDriven: boolean;
   setScanDriven: React.Dispatch<React.SetStateAction<boolean>>;
+  /**
+   * Whether the open that produced `selectedLine` should stamp the operator's
+   * recents. False only for a browse-feed click — see `readSelectLineDetail`.
+   */
+  recordView: boolean;
 }
 
 export function useReceivingSelection({
@@ -56,6 +61,7 @@ export function useReceivingSelection({
     'default',
   );
   const [scanDriven, setScanDriven] = useState(false);
+  const [recordView, setRecordView] = useState(true);
   const [scanMatchedRows, setScanMatchedRows] = useState<ReceivingLineRow[]>([]);
 
   // Refs the handlers read so the single subscription never re-binds on
@@ -110,7 +116,8 @@ export function useReceivingSelection({
     // a History-mode click has no workspace mount, so deep-link into Unbox
     // (same contract as cmd+k / search hits).
     'receiving-select-line': (detail) => {
-      const { row, expandFlowSections } = readSelectLineDetail(detail);
+      const { row, expandFlowSections, recordView: shouldRecordView } =
+        readSelectLineDetail(detail);
       const liveMode =
         typeof window !== 'undefined'
           ? resolveLiveReceivingMode(
@@ -132,6 +139,9 @@ export function useReceivingSelection({
       setSelectedLine(row);
       // Row clicks always open the full LineEditPanel (scan-driven → compact).
       setScanDriven(false);
+      // Clearing (row === null) must not leave a stale "don't record" behind for
+      // the next scan — reset to the default whenever the selection empties.
+      setRecordView(row == null ? true : shouldRecordView);
       setScanMatchedRows([]);
     },
     'receiving-line-updated': (updated) => {
@@ -182,6 +192,7 @@ export function useReceivingSelection({
     setSelectedLine(null);
     setLineAccordionBootstrap('default');
     setScanDriven(false);
+    setRecordView(true);
     setScanMatchedRows([]);
     clearScanSession();
     emitReceiving('receiving-clear-line');
@@ -196,5 +207,6 @@ export function useReceivingSelection({
     setLineAccordionBootstrap,
     scanDriven,
     setScanDriven,
+    recordView,
   };
 }

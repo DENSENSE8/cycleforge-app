@@ -93,6 +93,9 @@ export function ReadyWorkspaceView() {
           isError={query.isError}
           isFetching={query.isFetching}
           onRetry={() => void query.refetch()}
+          // Both refinements narrow the list, so both must flip the empty answer
+          // from "nothing tested yet" to "nothing matches this view".
+          isFiltered={Boolean(q.trim()) || readyTab !== 'all'}
         />
       </div>
     </DashboardScrollShell>

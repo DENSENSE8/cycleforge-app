@@ -15,7 +15,15 @@
  *     `SET col = COALESCE(<table>.col, EXCLUDED.col)`.
  *   - Overwrite fields (picker-editable; a present key overwrites, incl. null):
  *     stagingLocationId, priorityLane, pairingState, triageComplete,
- *     triageCompletedAt, triageCompletedBy, triageClientEventId.
+ *     triageCompletedAt, triageCompletedBy, triageClientEventId,
+ *     contentsConfirmedAt, contentsConfirmedBy.
+ *
+ *     The split is "can this un-happen?", not "is it a timestamp". A door scan
+ *     and an unboxing are events in the world and never un-happen, so they are
+ *     COALESCE-once. A triage completion and a contents confirmation are
+ *     ASSERTIONS the operator can retract by reopening the carton, so they must
+ *     be clearable — a stamp that cannot be cleared makes the "open again to
+ *     edit" affordance a lie.
  *   - `undefined` (key omitted) = leave the column untouched — the SET list is
  *     built from provided keys only, so an upsert never clobbers a sibling
  *     street's fields.
@@ -56,6 +64,13 @@ export interface CartonUnboxPatch {
   openedBy?: number | null;
   unboxedAt?: string | Date | 'now' | null;
   unboxedBy?: number | null;
+  /**
+   * Operator confirmed the carton contents against the line list — the gate for
+   * the Contents procedure step. OVERWRITE, not set-once: pass `null` to
+   * retract it when the operator reopens the carton to edit.
+   */
+  contentsConfirmedAt?: string | Date | 'now' | null;
+  contentsConfirmedBy?: number | null;
   deriveIntakePath?: boolean;
 }
 
@@ -164,6 +179,27 @@ export async function upsertReceivingUnbox(
   }
   if (patch.unboxedBy !== undefined) {
     specs.push({ col: 'unboxed_by', insertExpr: push(patch.unboxedBy), updateExpr: once('unboxed_by') });
+  }
+  // OVERWRITE, not COALESCE-once — the same shape as `triage_completed_at`,
+  // and for the same reason. `contents_confirmed_at` is the gate for a
+  // procedure step the operator can REOPEN to edit, and a reopen writes NULL.
+  // A COALESCE-once column can never be cleared, so it could report "contents
+  // confirmed" for a carton the operator had explicitly re-opened — the
+  // receipt's "open again to edit" bar would be a lie. The set-once milestones
+  // above (opened / unboxed) genuinely never un-happen; this one does.
+  if (patch.contentsConfirmedAt !== undefined) {
+    specs.push({
+      col: 'contents_confirmed_at',
+      insertExpr: ts(patch.contentsConfirmedAt),
+      updateExpr: 'EXCLUDED.contents_confirmed_at',
+    });
+  }
+  if (patch.contentsConfirmedBy !== undefined) {
+    specs.push({
+      col: 'contents_confirmed_by',
+      insertExpr: push(patch.contentsConfirmedBy),
+      updateExpr: 'EXCLUDED.contents_confirmed_by',
+    });
   }
   if (patch.deriveIntakePath) {
     // Scalar subquery in VALUES (allowed) computes the derived path once; the

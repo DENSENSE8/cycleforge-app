@@ -185,6 +185,7 @@ Views assemble **resolved** facts. Do not invent maps in components:
 | Lifecycle / status dots | lifecycle tone registries / `workflowStageDot` |
 | Identifiers (serial, FNSKU, tracking, …) | typed `CopyChip` variants |
 | Capabilities / providers | `capabilityNoun` / runtime provider label |
+| Staff / org identity mark | `StaffAvatar` / `IdentityMark` (`@/components/identity`) — never a page-local circle or `initials()` |
 | Cross-entity search rows | `SearchHit` + `searchHitHref` |
 
 Full waist: [source-of-truth.md](source-of-truth.md).
@@ -208,9 +209,11 @@ Full waist: [source-of-truth.md](source-of-truth.md).
   `header-shell.ts`); keep mode stroke ≤ 2.25 (`nav-weight.tsx`); 2.75 muddies dense glyphs.
   Cross-page MRU is the GlobalHeader Recents popover (`HeaderRecentsSwitcher`) — never spine chips.
   Quick Access **pins** are `HeaderPinsSwitcher` (hairline after Recents) — never a pin list in the avatar menu.
-  **Stock drill-in:** root shows one `STOCK_DRILL` row (chevron); drill body is back + Products →
-  Inventory → Warehouse. Stations/Main stay static nests. Swap via `framerPresence.spineDrill`
-  (opacity-only) — never a page-local `x` slide. Detail: `display/workbench.md`.
+  **Section drills:** root shows Analytics Monitor / Scan Stations / Inbound / Catalog / Inventory /
+  Fulfillment / Sales / Support / Workflow Studio (`SPINE_SECTIONS`); drill body is back + that
+  section's pages. No `Triage Desk` / `Print Stations` grab-bag, and no scan bench inside a domain.
+  Swap via `framerPresence.spineDrill` (opacity-only) — never a page-local `x` slide.
+  Detail: `display/workbench.md`.
 - Size by context: row dot `h-2 w-2` · field/inline `h-3.5 w-3.5` · button/loader `h-4 w-4` (`Loader2 animate-spin`).
 - **Icon buttons own their box via `IconButton size`** (`xs` 24 · `sm` 28 · `md` 32 · `lg` 36 · `touch` 44px —
   `src/design-system/primitives/IconButton.tsx`), never a hand-set `h-N w-N` on the button. Omit `size` only for a

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { motion } from 'framer-motion';
+import { motion } from '@/design-system/motion';
 import { zIndex as zLayer } from '@/design-system/tokens/z-index';
 
 /**

@@ -1,6 +1,6 @@
 'use client';
 
-import { OrderIdChip, TrackingChip, getLast4 } from '@/components/ui/CopyChip';
+import { OrderIdChip, TrackingChip, getLast8 } from '@/components/ui/CopyChip';
 import { getDaysLateNullable, getDaysLateTone } from '@/utils/date';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
 import { CaptureStackRow } from '@/design-system/components/capture-stack';
@@ -61,7 +61,7 @@ export function PendingOrderRow({
           <RowTitle dot={dotTone(daysLate)} dotTrack={META_COL.dotTrackWide} title={productTitle} />
         </div>
         {row.account_source && (
-          <span className="shrink-0 rounded-full border border-blue-100/60 bg-blue-50 px-2 py-0.5 text-[8.5px] font-semibold uppercase tracking-[0.1em] text-blue-500">
+          <span className="shrink-0 rounded-full border border-blue-100/60 bg-blue-50 px-2 py-0.5 text-role-micro uppercase tracking-widest text-blue-500">
             {row.account_source}
           </span>
         )}
@@ -82,8 +82,8 @@ export function PendingOrderRow({
         />
 
         <div className="ml-auto flex min-w-0 items-center gap-2 pointer-events-auto">
-          {orderId && <OrderIdChip value={orderId} display={getLast4(orderId)} />}
-          {trackingValue && <TrackingChip value={trackingValue} display={getLast4(trackingValue)} />}
+          {orderId && <OrderIdChip value={orderId} display={getLast8(orderId)} />}
+          {trackingValue && <TrackingChip value={trackingValue} display={getLast8(trackingValue)} />}
         </div>
       </div>
     </CaptureStackRow>

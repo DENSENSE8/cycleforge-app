@@ -20,7 +20,6 @@ import {
   cartonHeaderIdentity,
   cartonLifecycle,
   cartonRecordMeta,
-  cartonTimelineAnchor,
   type CartonInspectorReceiving,
 } from './carton-inspector-model';
 import { formatDateTimePST } from '@/utils/date';
@@ -115,19 +114,6 @@ test('milestone stamps render as WAREHOUSE wall-clock, not re-shifted instants',
   assert.equal(formatDateTimePST('2026-07-28 14:26:58'), '07/28/2026 2:26:58 PM');
   // And the events spine, which really is an instant, still lands on 14:26 PDT.
   assert.equal(formatDateTimePST('2026-07-28T21:26:58.201Z'), '07/28/2026 2:26:58 PM');
-});
-
-test('cartonTimelineAnchor feeds the SHARED WorkspaceTimelineTab', () => {
-  assert.deepEqual(cartonTimelineAnchor(RECEIVING), {
-    receivingId: 49929,
-    tracking: '874847124243',
-    poId: '5623409000003125066',
-  });
-  // An unfound carton has no PO — the timeline falls back to the tracking spine.
-  assert.deepEqual(
-    cartonTimelineAnchor({ ...RECEIVING, zoho_purchaseorder_id: null, tracking: '  ' }),
-    { receivingId: 49929, tracking: null, poId: null },
-  );
 });
 
 test('cartonContentsSummary reads as progress, not raw counts', () => {

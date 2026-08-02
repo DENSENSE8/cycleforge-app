@@ -1,7 +1,7 @@
 import { ExternalLink } from '@/components/Icons';
 import { zendeskTicketUrl } from '@/lib/zendesk-ticket-url';
 import { formatDateTimePST } from '@/utils/date';
-import { PoChip, TrackingChip, SerialChip, getLast4 } from '@/components/ui/CopyChip';
+import { PoChip, TrackingChip, SerialChip, getLast8 } from '@/components/ui/CopyChip';
 import type { TriageDetail } from '@/components/po-triage/types';
 import type { UnfoundQueueDetailsRow } from '../unfound-triage-types';
 import { Section, Row } from './details-primitives';
@@ -30,7 +30,7 @@ export function OverviewTab({
         <Section title="PO numbers">
           <div className="flex flex-wrap items-center gap-1.5">
             {poNumbers.map((po) => (
-              <PoChip key={po} value={po} display={getLast4(po)} />
+              <PoChip key={po} value={po} display={getLast8(po)} />
             ))}
           </div>
         </Section>
@@ -44,7 +44,7 @@ export function OverviewTab({
                 ? row.context.split(' · ')[0]!
                 : row.context
             }
-            display={getLast4(
+            display={getLast8(
               row.kind === 'station_exception'
                 ? row.context.split(' · ')[0]!
                 : row.context,

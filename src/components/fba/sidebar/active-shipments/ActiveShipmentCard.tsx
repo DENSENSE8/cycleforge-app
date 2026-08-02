@@ -1,6 +1,6 @@
 'use client';
 
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from '@/design-system/motion';
 import { Package, Pencil } from '@/components/Icons';
 import { FBA_BOARD_INJECT_ITEM, FBA_OPEN_SHIPMENT_EDITOR } from '@/lib/fba/events';
 import { shipmentItemToBoardItem } from '@/lib/fba/board-item';

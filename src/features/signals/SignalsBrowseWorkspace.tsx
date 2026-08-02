@@ -14,7 +14,7 @@
 
 import { useMemo } from 'react';
 import Link from 'next/link';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion } from '@/design-system/motion';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { operationsHistoryTraceHref } from '@/lib/operations/history-links';

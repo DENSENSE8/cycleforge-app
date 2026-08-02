@@ -53,7 +53,7 @@ export type TicketLinkAnchorInput =
   | { type: 'repair'; repairId: number };
 
 export interface ResolvedTicketLinkAnchor extends TicketLinkAnchor {
-  /** Human label for the anchor (tracking last-4, receiving id, …). */
+  /** Human label for the anchor (tracking last-8, receiving id, …). */
   label: string;
 }
 

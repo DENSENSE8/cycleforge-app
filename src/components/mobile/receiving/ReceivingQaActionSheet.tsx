@@ -25,12 +25,17 @@ import { toast } from '@/lib/toast';
 import { BottomSheet, ConfirmSheet } from '@/components/ui/BottomSheet';
 import { Button } from '@/design-system/primitives';
 import { PhotoPolicyOverrideSheet } from '@/components/receiving/PhotoPolicyOverrideSheet';
+import { ReceivingQaFailSheet } from '@/components/receiving/ReceivingQaFailSheet';
 import {
   photoPolicyOverrideField,
   readPhotoPolicyBlock,
   readPhotoPolicyWaiver,
 } from '@/lib/receiving/photo-policy-override-wire';
-import type { PhotoPolicyOverrideCode } from '@/lib/receiving/exception-codes';
+import { qaFailReasonFields } from '@/lib/receiving/qa-fail-reason-wire';
+import type {
+  PhotoPolicyOverrideCode,
+  QaFailExceptionCode,
+} from '@/lib/receiving/exception-codes';
 
 export interface ReceivingLineLite {
   id: number;
@@ -47,11 +52,22 @@ interface Props {
   onMutated?: () => void;
 }
 
+/**
+ * The verdict this pass writes. A discriminated union rather than a
+ * `(qaStatus, dispositionCode, notes)` triple, because those three were free to
+ * disagree: the FAIL path posted a hardcoded `FAILED_FUNCTIONAL` for every
+ * failure mode and carried the real reason as free text in `notes` — the
+ * operator's ITEM note (`.claude/rules/source-of-truth.md` → Note vs label
+ * grain). A fail now names a code, the route derives the `qa_status` from it,
+ * and nothing on this path writes a note at all.
+ */
+type QaVerdict =
+  | { kind: 'pass' }
+  | { kind: 'fail'; code: QaFailExceptionCode };
+
 async function markAllLines(
   lines: ReceivingLineLite[],
-  qaStatus: 'PASSED' | 'FAILED_FUNCTIONAL' | 'FAILED_DAMAGED' | 'FAILED_INCOMPLETE',
-  dispositionCode: 'ACCEPT' | 'RTV' | 'HOLD',
-  notes: string | null,
+  verdict: QaVerdict,
   /**
    * Photo-policy waiver for this whole pass, or null for none. REQUIRED at
    * every call site — no default — so adding a third verdict action can't
@@ -81,10 +97,15 @@ async function markAllLines(
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           receiving_line_id: line.id,
-          qa_status: qaStatus,
-          disposition_code: dispositionCode,
-          condition_grade: qaStatus === 'PASSED' ? 'USED_A' : 'PARTS',
-          notes,
+          // PASS states its verdict; FAIL states its REASON and lets the route
+          // derive the verdict, so the two can never disagree on the wire.
+          ...(verdict.kind === 'pass'
+            ? { qa_status: 'PASSED', disposition_code: 'ACCEPT', condition_grade: 'USED_A' }
+            : {
+                ...qaFailReasonFields(verdict.code),
+                disposition_code: 'RTV',
+                condition_grade: 'PARTS',
+              }),
           client_event_id: safeRandomUUID(),
           ...(photoPolicyOverride ? photoPolicyOverrideField(photoPolicyOverride) : null),
         }),
@@ -109,7 +130,7 @@ async function markAllLines(
 }
 
 export function ReceivingQaActionSheet({ open, onClose, receivingId, lines, onMutated }: Props) {
-  const [confirmFail, setConfirmFail] = useState<null | { reason: string }>(null);
+  const [confirmFail, setConfirmFail] = useState(false);
   const [confirmPass, setConfirmPass] = useState(false);
   const [busy, setBusy] = useState(false);
   /**
@@ -135,9 +156,7 @@ export function ReceivingQaActionSheet({ open, onClose, receivingId, lines, onMu
     setBusy(true);
     const { ok, failed, photoBlockers, waived, blockedLines } = await markAllLines(
       targetLines,
-      'PASSED',
-      'ACCEPT',
-      null,
+      { kind: 'pass' },
       photoPolicyOverride,
     );
     setBusy(false);
@@ -161,20 +180,18 @@ export function ReceivingQaActionSheet({ open, onClose, receivingId, lines, onMu
     onMutated?.();
   };
 
-  // `reason` is threaded as an argument, not read from `confirmFail`: the
-  // ConfirmSheet clears that state the moment it fires, so a waived RETRY would
-  // otherwise find it null and silently do nothing.
+  // `failCode` is threaded as an argument, not read from state: the fail sheet
+  // clears its selection the moment it fires, so a waived RETRY would otherwise
+  // find it null and silently do nothing.
   const runFail = async (
-    reason: string | null,
+    failCode: QaFailExceptionCode,
     targetLines: ReceivingLineLite[] = lines,
     photoPolicyOverride: PhotoPolicyOverrideCode | null = null,
   ) => {
     setBusy(true);
     const { ok, failed, photoBlockers, waived, blockedLines } = await markAllLines(
       targetLines,
-      'FAILED_FUNCTIONAL',
-      'RTV',
-      reason,
+      { kind: 'fail', code: failCode },
       photoPolicyOverride,
     );
     setBusy(false);
@@ -183,12 +200,12 @@ export function ReceivingQaActionSheet({ open, onClose, receivingId, lines, onMu
         blockers: photoBlockers,
         retry: (code) => {
           setPhotoBlock(null);
-          void runFail(reason, blockedLines, code);
+          void runFail(failCode, blockedLines, code);
         },
       });
       return;
     }
-    setConfirmFail(null);
+    setConfirmFail(false);
     onClose();
     if (failed > 0) toast.error(`Returned ${ok} · ${failed} failed`);
     else if (waived > 0) toast.warning(`Returned ${ok} · photos waived`);
@@ -212,7 +229,7 @@ export function ReceivingQaActionSheet({ open, onClose, receivingId, lines, onMu
           {/* ds-raw-button: vibrant rose gradient CTA, designed twin of the emerald PASS CTA above */}
           <button
             type="button"
-            onClick={() => setConfirmFail({ reason: '' })}
+            onClick={() => setConfirmFail(true)}
             disabled={busy || lineCount === 0}
             className="ds-raw-button flex h-14 w-full items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 to-rose-700 text-sm font-semibold uppercase tracking-wider text-white shadow-md shadow-rose-600/30 transition-transform active:scale-[0.98] disabled:opacity-40"
           >
@@ -233,17 +250,15 @@ export function ReceivingQaActionSheet({ open, onClose, receivingId, lines, onMu
         onConfirm={() => void runPass()}
       />
 
-      {confirmFail && (
-        <ConfirmSheet
-          open={!!confirmFail}
-          onClose={() => setConfirmFail(null)}
-          title="Mark FAILED — return"
-          message="Marks every line tested-FAIL with disposition RTV (return to vendor). Use the note field below to capture the reason."
-          confirmLabel={busy ? 'Working…' : 'Yes, return all'}
-          destructive
-          onConfirm={() => void runFail(confirmFail.reason || null)}
-        />
-      )}
+      {/* Level 1 — above the action sheet, below a stacked photo-policy waiver. */}
+      <ReceivingQaFailSheet
+        open={confirmFail}
+        onClose={() => setConfirmFail(false)}
+        lineCount={lineCount}
+        busy={busy}
+        level={1}
+        onConfirm={(code) => void runFail(code)}
+      />
 
       {/* Level 2 — above both the action sheet and a stacked ConfirmSheet. */}
       <PhotoPolicyOverrideSheet

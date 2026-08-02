@@ -6,9 +6,9 @@
  * (Monitor feed — no headers, no sort, no selection.)
  *
  * Glyph = Package (order) / PackageOpen (receiving), both blue.
- * Id = OrderIdChip / Po last-4 (never tracking).
+ * Id = OrderIdChip / Po last-8 (never tracking).
  * Match = title only.
- * Tracking = TrackingChip last-4 on the right.
+ * Tracking = TrackingChip last-8 on the right.
  * Age = `auto` so an empty age/journey cell collapses and Match keeps the fr.
  */
 

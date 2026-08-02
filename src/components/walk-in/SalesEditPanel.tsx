@@ -12,7 +12,7 @@
  */
 
 import { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion } from '@/design-system/motion';
 import { ChevronDown, ChevronUp, Package, Plus, ShoppingCart, X } from '@/components/Icons';
 import {
   PaneHeader,

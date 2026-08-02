@@ -5,7 +5,8 @@
  * action region.
  *
  * WHY A STORE AND NOT PROPS
- * The dashboard's selection lives in `useOrderRailSelection`, mounted under
+ * The dashboard's selection lives in `useOrderRailSelection` (which wraps
+ * `useDashboardBulkSelection` and publishes here), mounted under
  * `DashboardOrdersView`. The 1-row body it acts on — `ShippedDetailsPanel` —
  * is mounted by `GlobalDetailStackHost`, which hangs off the ROOT layout
  * (`AssistantProvider` → host), not off the dashboard page. The two are
@@ -51,12 +52,14 @@ function emit(): void {
 
 /**
  * Publish the live selection + its actions. Called from an effect on the
- * collection surface.
+ * collection surface (`useOrderRailSelection`).
  *
  * Identity-stable when nothing changed: the region re-renders on every
  * `useSyncExternalStore` notification, and the grid re-broadcasts its selection
  * on each change, so a naive always-replace would churn the rail's footer on
- * unrelated grid renders.
+ * unrelated grid renders. The element-wise `rows` compare still earns its keep
+ * after the publish/capsule split — `selectedRows` can retain object identity
+ * across publishes while scope/total/actions stay equal.
  */
 export function publishRailActions<T>(next: RailActionSnapshot<T>): void {
   const prev = snapshot;

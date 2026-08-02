@@ -11,7 +11,7 @@ import { ThemedStationScanBar } from '@/components/station/scan-bar';
 import { ScanBandShell } from '@/components/station/scan-bar';
 import { Button } from '@/design-system/primitives';
 import { Barcode, Check, AlertTriangle } from '@/components/Icons';
-import { getLast4 } from '@/components/ui/CopyChip';
+import { getLast8 } from '@/components/ui/CopyChip';
 import { useScanOutStation, type ActiveScanOut } from '@/components/outbound/scan-out/useScanOutStation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStationTheme } from '@/hooks/useStationTheme';
@@ -32,9 +32,9 @@ export function ScanOutStationBar({ autoFocus = true }: { autoFocus?: boolean } 
   const station = useScanOutStation();
   const active = station.active;
   const label = active?.result?.orderId
-    ? `#${getLast4(active.result.orderId)}`
+    ? `#${getLast8(active.result.orderId)}`
     : active?.result?.tracking
-      ? `…${getLast4(active.result.tracking)}`
+      ? `…${getLast8(active.result.tracking)}`
       : '';
   const text =
     active?.status === 'ok' && active.result?.productTitle ? active.result.productTitle : active?.text ?? '';

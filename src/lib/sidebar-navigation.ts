@@ -5,6 +5,7 @@ import {
   Barcode,
   BarChart3,
   Boxes,
+  ChartPie,
   Images,
   DoorOpen,
   Check,
@@ -25,6 +26,7 @@ import {
   PackageCheck,
   PackageOpen,
   Printer,
+  ScanBarcode,
   Search,
   Settings,
   SalesPrice,
@@ -36,6 +38,7 @@ import {
   Tags,
   TrendingUp,
   Send,
+  Workflow,
   Zap,
   Warehouse,
   ShelvingUnit,
@@ -53,6 +56,7 @@ import {
   STATION_PAGE_ICONS,
   TECH_MODE_ICONS,
 } from '@/lib/nav/station-nav-icons';
+import { parseHomeMode } from '@/features/home/home-modes';
 import { parseProductsView } from '@/components/products/products-view';
 import { OUTBOUND_MODE_PATHS, outboundModeFromPath } from '@/components/outbound/outbound-sidebar-shared';
 import { routeParamsFor } from '@/lib/routing/registry';
@@ -88,42 +92,48 @@ export type SidebarRouteKey =
 
 export type SidebarIconComponent = (props: { className?: string }) => JSX.Element;
 
-/** Stations category under the spine (`SidebarNavList` + guard). */
-export type StationGroupId = 'floor' | 'desk';
+/**
+ * Stations category under the spine (`SidebarNavList` + guard).
+ *
+ * **`floor` is the only station group.** The old `desk` twin was a grab-bag —
+ * "everything pointer-driven" is not a domain, so it collected Incoming, Review,
+ * Support, Shipping, Dashboard, Stock and Products behind one label an operator
+ * could not predict. Those pages moved to {@link DOMAIN_GROUPS} (2026-08-01,
+ * `docs/todo/desk-domain-spine-split-CLAUDE-CODE-PROMPT.md`). Scan Stations
+ * stays a group of its own because it is not a domain either: it is the
+ * scanner-driven INPUT MODEL, and a bench must never be reachable only by way
+ * of the domain whose records it happens to touch.
+ */
+export type StationGroupId = 'floor';
 
 /**
- * Ordered Scan Stations → Desk registry. Spine list imports this — never
- * hard-code those labels in the render path.
+ * Scan Stations registry. Spine list imports this — never hard-code the label
+ * in the render path. Render order on the spine is {@link SPINE_SECTIONS}.
  */
 export const STATION_GROUPS = [
-  { id: 'floor', label: 'Scan Stations' },
-  { id: 'desk', label: 'Desk' },
-] as const satisfies ReadonlyArray<{ id: StationGroupId; label: string }>;
+  { id: 'floor', label: 'Scan Stations', icon: ScanBarcode },
+] as const satisfies ReadonlyArray<{
+  id: StationGroupId;
+  label: string;
+  icon: SidebarIconComponent;
+}>;
 
-/** Main category ids (Overview / Library) under the spine. */
-export type MainGroupId = 'overview' | 'library';
+/** Main category ids (Monitor / Studio) under the spine. */
+export type MainGroupId = 'monitor' | 'studio';
 
 /**
- * Ordered Overview → Library registry. Spine list imports this — never
+ * Ordered Monitor → Studio registry. Spine list imports this — never
  * hard-code those labels in the render path. Parallel to {@link STATION_GROUPS}.
- * Render order on the spine is {@link SPINE_SECTIONS} (Library is last).
+ * Render order on the spine is {@link SPINE_SECTIONS}.
  */
 export const MAIN_GROUPS = [
-  { id: 'overview', label: 'Overview' },
-  { id: 'library', label: 'Library' },
-] as const satisfies ReadonlyArray<{ id: MainGroupId; label: string }>;
-
-/**
- * Stock category — Inventory → Warehouse (physical stock). Not a Main nest;
- * not a Scan Stations / Desk peer. Products is its own spine section.
- */
-export const STOCK_DRILL = { id: 'stock', label: 'Stock' } as const;
-
-/**
- * Products category — sellable catalog + channel commerce. Own spine section
- * after Stock, before Library.
- */
-export const PRODUCTS_SECTION = { id: 'products', label: 'Products' } as const;
+  { id: 'monitor', label: 'Analytics Monitor', icon: ChartPie },
+  { id: 'studio', label: 'Workflow Studio', icon: Workflow },
+] as const satisfies ReadonlyArray<{
+  id: MainGroupId;
+  label: string;
+  icon: SidebarIconComponent;
+}>;
 
 /**
  * Subgroup headers inside a station section drill (Scan Stations Receiving).
@@ -141,17 +151,66 @@ export const STATION_SUBGROUPS = [
 }>;
 
 /**
- * Spine section drills — Overview → Scan Stations → Desk → Stock → Products →
- * Library. Root shows these as buttons; drill replaces the body with back +
- * that section's pages. Compose from {@link MAIN_GROUPS} + {@link STATION_GROUPS}
- * + {@link STOCK_DRILL} + {@link PRODUCTS_SECTION}; never twin labels in render.
+ * Business-domain sections — the spine's middle band (2026-08-01).
+ *
+ * These replace the `desk` grab-bag AND the `print` task slice. Two rulings are
+ * baked in and must not be re-litigated:
+ *
+ * • **Print is not a section.** Printing is a task every domain performs, not a
+ *   place: product labels belong to Catalog, bin/rack labels to Inventory
+ *   (Locations), carton stickers to the Unbox bench. A root "Print Stations"
+ *   drill forced an operator to leave the record they were working to find the
+ *   printer for it, and it minted a second front door for `/products?view=labels`
+ *   and `/warehouse` that the canonical rows already owned.
+ * • **Carrier postage is NOT a print destination.** `/shipping/labels` stays
+ *   Fulfillment → Labels forever; folding it into Catalog/Inventory labels would
+ *   merge "buy postage for an order" with "print a barcode for a shelf".
+ *
+ * Each id is a domain an operator names out loud, so a page has exactly one
+ * honest home. Aliases (a mode pointing at another domain's canonical URL) are
+ * allowed; cloning a workspace is not.
+ */
+export type DomainGroupId =
+  | 'inbound'
+  | 'catalog'
+  | 'inventory'
+  | 'fulfillment'
+  | 'sales'
+  | 'support';
+
+export const DOMAIN_GROUPS = [
+  { id: 'inbound', label: 'Inbound', icon: Inbox },
+  { id: 'catalog', label: 'Catalog', icon: Tags },
+  { id: 'inventory', label: 'Inventory', icon: ShelvingUnit },
+  { id: 'fulfillment', label: 'Fulfillment', icon: Send },
+  { id: 'sales', label: 'Sales', icon: SalesPrice },
+  { id: 'support', label: 'Support', icon: AlertCircle },
+] as const satisfies ReadonlyArray<{
+  id: DomainGroupId;
+  label: string;
+  icon: SidebarIconComponent;
+}>;
+
+/**
+ * Spine section drills — Analytics Monitor → Scan Stations → the six business
+ * domains → Workflow Studio. Root shows these as buttons (icon + label); drill
+ * replaces the body with back + filter + that section's pages. Compose from
+ * {@link MAIN_GROUPS} + {@link STATION_GROUPS} + {@link DOMAIN_GROUPS}; never
+ * twin labels in render.
+ *
+ * The axis is deliberately mixed: Monitor and Studio are ALTITUDES (observe /
+ * define), Scan Stations is an INPUT MODEL, and the six in between are DOMAINS.
+ * A single uniform axis is what produced `desk` — "not a scanner, not a graph"
+ * is a leftover, not a place.
+ *
+ * A section with no visible page renders nothing (permission-filtered or empty),
+ * so a hollow domain can never appear on the root map.
  */
 export const SPINE_SECTIONS = [
-  MAIN_GROUPS[0],
-  ...STATION_GROUPS,
-  STOCK_DRILL,
-  PRODUCTS_SECTION,
-  MAIN_GROUPS[1],
+  MAIN_GROUPS[0], // Analytics Monitor
+  ...STATION_GROUPS, // Scan Stations
+  ...DOMAIN_GROUPS, // Inbound → Catalog → Inventory → Fulfillment → Sales → Support
+  MAIN_GROUPS[1], // Workflow Studio
 ] as const;
 
 export type SpineSectionId = (typeof SPINE_SECTIONS)[number]['id'];
@@ -160,18 +219,18 @@ export type SpineSectionId = (typeof SPINE_SECTIONS)[number]['id'];
 export function spineSectionIdForPage(
   page:
     | {
-        kind?: 'main' | 'station' | 'stock' | 'products' | 'top' | 'bottom';
+        kind?: 'main' | 'station' | 'domain' | 'top' | 'bottom';
         mainGroup?: MainGroupId;
         stationGroup?: StationGroupId;
+        domainGroup?: DomainGroupId;
       }
     | null
     | undefined,
 ): SpineSectionId | null {
   if (!page) return null;
-  if (page.kind === 'stock') return 'stock';
-  if (page.kind === 'products') return 'products';
   if (page.kind === 'main') return page.mainGroup ?? null;
   if (page.kind === 'station') return page.stationGroup ?? null;
+  if (page.kind === 'domain') return page.domainGroup ?? null;
   return null;
 }
 
@@ -191,12 +250,16 @@ type SidebarNavItemFields = {
 };
 
 /**
- * Flat spine row. `kind: 'top'` = Home/Search/Media/AI Chat header pin; `kind: 'bottom'` =
- * Settings/Admin footer pin; `kind: 'main'` requires `mainGroup` (Overview /
- * Library); `kind: 'station'` requires `stationGroup` (Scan Stations / Desk)
- * and may set `stationSubgroup` (Receiving page-style header); `kind: 'stock'` =
- * Inventory → Warehouse; `kind: 'products'` = Products spine section.
+ * Flat spine row. `kind: 'top'` = Home/Search/Media/Chat header pin; `kind: 'bottom'` =
+ * Settings/Admin footer pin; `kind: 'main'` requires `mainGroup` (Monitor /
+ * Studio); `kind: 'station'` requires `stationGroup` (Scan Stations) and may set
+ * `stationSubgroup` (Receiving page-style header); `kind: 'domain'` requires
+ * `domainGroup` (Inbound · Catalog · Inventory · Fulfillment · Sales · Support).
  * Section order: {@link SPINE_SECTIONS}.
+ *
+ * The retired `stock` / `products` / `labels` / `documents` kinds were membership
+ * by *page shape* rather than by domain, which is why they all had to be
+ * special-cased in `spineSectionIdForPage`. One field answers it now.
  */
 export type SidebarNavItem =
   | (SidebarNavItemFields & { kind: 'top' })
@@ -207,8 +270,7 @@ export type SidebarNavItem =
       stationGroup: StationGroupId;
       stationSubgroup?: StationSubgroupId;
     })
-  | (SidebarNavItemFields & { kind: 'stock' })
-  | (SidebarNavItemFields & { kind: 'products' });
+  | (SidebarNavItemFields & { kind: 'domain'; domainGroup: DomainGroupId });
 
 const MOBILE_RESTRICTED_SIDEBAR_IDS = new Set<SidebarRouteKey>([
   'operations',
@@ -256,27 +318,20 @@ export function isMobileAllowedPath(pathname: string | null | undefined): boolea
  * promoted back or archived):
  *   home (`/`), operations, sourcing, fba, ai-chat
  *
- * Studio was promoted OUT of that set (it ships as a Library page); its
+ * Studio was promoted OUT of that set (it ships as a Studio section page); its
  * sub-route `studio-catalog` therefore no longer rides a `parkedSurface`.
  * Same pattern as Data Wipe: absent from nav, route can remain live.
  */
 export const APP_SIDEBAR_NAV: SidebarNavItem[] = [
-  // Top pin — Home → Search → Media → AI Chat (always above scroll categories;
+  // Top pin — Home → Search → Media → Chat (always above scroll categories;
   // modeless). GlobalHeaderSearch stays in GlobalHeader — these are page rows.
   { id: 'home',              label: 'Home',        href: '/',                   icon: Home,            kind: 'top' },
   { id: 'search',            label: 'Search',      href: '/search',             icon: Search,          kind: 'top' },
   { id: 'ops-photos',        label: 'Media',       href: '/ops/photos',         icon: Images,          kind: 'top', requires: 'photos.view' },
-  // AI Chat — streaming assistant workspace under Media; `/ai` shares it.
-  { id: 'ai-chat',           label: 'AI Chat',     href: '/ai-chat',            icon: MessageSquare,   kind: 'top', requires: 'dashboard.view' },
-  // Overview: day boards — Dashboard, Operations (Home is top-pinned).
-  { id: 'dashboard',         label: 'Dashboard',   href: '/dashboard',          icon: LayoutDashboard, kind: 'main', mainGroup: 'overview', requires: 'dashboard.view' },
-  // Operations (Live / Analytics / Insights / History / Signals). Unparked —
-  // a live Overview page, same promotion Studio took into Library.
-  { id: 'operations',        label: 'Operations',  href: '/operations',         icon: Monitor,         kind: 'main', mainGroup: 'overview', requires: 'operations.view' },
-  // Sourcing (demand → scour → acquire). Unparked. Its stand-in declared
-  // `kind: 'stock'`, but the Stock drill is a pinned three-row pipeline
-  // (Products → Inventory → Warehouse), so it lands in Overview instead.
-  { id: 'sourcing',          label: 'Sourcing',    href: '/sourcing',           icon: ShoppingCart,    kind: 'main', mainGroup: 'overview', requires: 'sourcing.view' },
+  // Chat — streaming assistant workspace under Media; `/ai` shares it.
+  { id: 'ai-chat',           label: 'Chat',        href: '/ai-chat',            icon: MessageSquare,   kind: 'top', requires: 'dashboard.view' },
+  // Monitor — TV / observe-only Operations Live (+ Analytics / History / …).
+  { id: 'operations',        label: 'Operations',  href: '/operations',         icon: Monitor,         kind: 'main', mainGroup: 'monitor', requires: 'operations.view' },
   // Scan Stations — scan-first benches (former Receiving modes + Testing /
   // Packing / Scan out). Route key still resolves to 'receiving' for the
   // receiving family so panels/station chrome stay shared.
@@ -296,35 +351,44 @@ export const APP_SIDEBAR_NAV: SidebarNavItem[] = [
   // Ready / FBA live under Desk › Shipping. Route key still resolves to
   // 'outbound' for panel chrome across every shipping mode.
   { id: 'scan-out',          label: 'Scan out',    href: OUTBOUND_MODE_PATHS['scan-out'], icon: SHIPPING_MODE_ICONS['scan-out'], kind: 'station', stationGroup: 'floor', requires: 'shipping.view' },
-  // Desk — table/triage + pointer-first gate/ticket work + desk Shipping.
-  { id: 'incoming',          label: 'Incoming',    href: '/incoming',           icon: RECEIVING_MODE_ICONS.incoming, kind: 'station', stationGroup: 'desk', requires: 'receiving.view' },
-  // Packer Review Station — desktop Workbench for approving/flagging packed
-  // orders + serial/SKU pairing (WS-REVIEW). Gated on `packing.review` at birth;
-  // when tech/receiving/shipping review modes land, widen this to any-of
-  // (see SIDEBAR_PAGE_NAV note).
-  { id: 'review',            label: 'Review',      href: '/review',             icon: ClipboardList,                kind: 'station', stationGroup: 'desk', requires: 'packing.review' },
-  // Visible with Zendesk tickets *or* warranty (Warranty Logger lives under Support).
-  // Support is a Desk station: `/support` mounts SurfaceGate + RouteShell like
-  // the other stations. Stays desktop-only (mobile-restricted); no floor-station
-  // glyph, so it keeps a plain lucide icon (same precedent as Review).
-  { id: 'support',           label: 'Support',     href: '/support',            icon: AlertCircle,     kind: 'station', stationGroup: 'desk', requires: 'integrations.zendesk' },
-  // Desk Shipping — Labels / Ready / FBA (Scan out stays on Scan Stations).
-  { id: 'outbound',          label: 'Shipping',    href: OUTBOUND_MODE_PATHS.labels, icon: STATION_PAGE_ICONS.outbound,  kind: 'station', stationGroup: 'desk', requires: 'shipping.view' },
-  // Stock — Inventory → Warehouse (physical stock). Products is its own section.
-  // Sales history folded into Dashboard (`?mode=sales` / `?mode=pickup`) —
-  // see `docs/todo/sales-into-dashboard-PLAN.md`. `/walk-in` redirects there;
-  // counter intake stays on `/pickup` + `/repair`.
-  { id: 'products',          label: 'Products',    href: '/products',           icon: Tags,            kind: 'products', requires: 'sku_stock.view' },
-  // Inventory workbench — promoted back to dogfood prod nav (was parked).
-  { id: 'inventory',         label: 'Inventory',   href: '/inventory',          icon: ShelvingUnit,    kind: 'stock', requires: 'sku_stock.view' },
-  // Warehouse map / bins — promoted back to dogfood prod nav (was parked).
-  { id: 'warehouse',         label: 'Warehouse',   href: '/warehouse',          icon: Warehouse,       kind: 'stock', requires: 'sku_stock.view' },
-  // Library at bottom of scroll body (Media lives in the top pin).
-  // Studio is a live production surface — the operations graph the owner builds,
-  // observes and lints. Desktop-only (it is a pan/zoom canvas), which
-  // MOBILE_RESTRICTED_SIDEBAR_IDS already enforces.
-  { id: 'studio',            label: 'Studio',      href: '/studio',             icon: Share2,          kind: 'main', mainGroup: 'library', requires: 'studio.view' },
-  { id: 'studio-catalog',    label: 'Catalog',     href: '/studio/catalog',     icon: Layers,          kind: 'main', mainGroup: 'library', requires: 'studio.view' },
+  // ── Inbound ───────────────────────────────────────────────────────────────
+  // The pointer-driven COUNTERPART of the receiving benches: what is on its way
+  // and what landed. The benches themselves stay on Scan Stations (D6) — a
+  // scanner surface must never be reachable only through the domain it feeds.
+  { id: 'incoming',          label: 'Inbound',     href: '/incoming',           icon: RECEIVING_MODE_ICONS.incoming, kind: 'domain', domainGroup: 'inbound', requires: 'receiving.view' },
+  // ── Catalog ───────────────────────────────────────────────────────────────
+  // Manage Products. Label is "Catalog" (D11); the browse mode inside it is
+  // "Reference" so the section and its default mode don't answer to one word.
+  // Absorbs the former Print Labels (product) + Print Documents (manuals) rows —
+  // both were aliases of `/products` views that this page already owned.
+  { id: 'products',          label: 'Catalog',     href: '/products',           icon: Tags,            kind: 'domain', domainGroup: 'catalog', requires: 'sku_stock.view' },
+  // ── Inventory ─────────────────────────────────────────────────────────────
+  // Physical stock: what we hold, what we owe, where it sits. Sourcing (acquire)
+  // and Locations (ex-Warehouse — racks, rooms, bins, map + the bin/rack label
+  // printer) merge in here (D8 / D9); they keep their own L1 rows so their
+  // sub-tabs stay addressable from the spine.
+  { id: 'inventory',         label: 'Inventory',   href: '/inventory',          icon: ShelvingUnit,    kind: 'domain', domainGroup: 'inventory', requires: 'sku_stock.view' },
+  { id: 'sourcing',          label: 'Sourcing',    href: '/sourcing',           icon: ShoppingCart,    kind: 'domain', domainGroup: 'inventory', requires: 'sourcing.view' },
+  { id: 'warehouse',         label: 'Locations',   href: '/warehouse',          icon: Warehouse,       kind: 'domain', domainGroup: 'inventory', requires: 'sku_stock.view' },
+  // ── Fulfillment ───────────────────────────────────────────────────────────
+  // Orders leaving the building. Carrier postage (Labels / Ready / FBA) lives
+  // here and NOWHERE else — it is not a print task (D7). Scan out stays Floor.
+  { id: 'outbound',          label: 'Shipping',    href: OUTBOUND_MODE_PATHS.labels, icon: STATION_PAGE_ICONS.outbound,  kind: 'domain', domainGroup: 'fulfillment', requires: 'shipping.view' },
+  // ── Sales ─────────────────────────────────────────────────────────────────
+  // Own root (D4) — front-desk transaction history, not a fulfillment lane.
+  // Both feeds still live on `/dashboard` (`?mode=sales|pickup`); the row is
+  // gated on the ROUTE permission because a nav row that 403s is worse than an
+  // absent one, and the two feeds carry the front-desk gate as mode `requires`.
+  { id: 'sales',             label: 'Sales',       href: `/dashboard?mode=${DASHBOARD_SALES_MODE}`, icon: SalesPrice, kind: 'domain', domainGroup: 'sales', requires: 'dashboard.view' },
+  // ── Support ───────────────────────────────────────────────────────────────
+  // Own root (D3). Visible with Zendesk tickets *or* warranty (Warranty Logger
+  // lives under Support). `/support` mounts SurfaceGate + RouteShell like the
+  // stations do, and stays desktop-only (mobile-restricted).
+  { id: 'support',           label: 'Support',     href: '/support',            icon: AlertCircle,     kind: 'domain', domainGroup: 'support', requires: 'integrations.zendesk' },
+  // Studio — Canvas definition graph + catalog (Media lives in the top pin).
+  // Desktop-only (pan/zoom canvas); MOBILE_RESTRICTED_SIDEBAR_IDS enforces.
+  { id: 'studio',            label: 'Studio',      href: '/studio',             icon: Share2,          kind: 'main', mainGroup: 'studio', requires: 'studio.view' },
+  { id: 'studio-catalog',    label: 'Catalog',     href: '/studio/catalog',     icon: Layers,          kind: 'main', mainGroup: 'studio', requires: 'studio.view' },
   // Audit Log is no longer a top-level sidebar row — it lives under Admin › Logs
   // (AdminLogsTab, with the Audit filter). The /settings/audit and /audit-log/*
   // routes still resolve directly; only the nav row was removed.
@@ -406,6 +470,10 @@ export function isStationSurfaceRoute(pathname: string | null): boolean {
  * going blank, so this set never has to model params.
  */
 const CONTEXT_PANEL_ROUTE_KEYS = new Set<SidebarRouteKey>([
+  // Home → Today holds the operator's saved views (`HomeContextPanel`). Its
+  // lanes, queue links and search are chrome by rule, so the rail carries only
+  // the one thing the system cannot define for them.
+  'home',
   'dashboard',
   'order',
   'admin',
@@ -505,8 +573,15 @@ export function getSidebarRouteKey(pathname: string | null): SidebarRouteKey {
  * MasterNav L1 page id for the current path. Receiving-family routes resolve to
  * their promoted station pages (`triage` / `receive` / …); everything else
  * matches {@link getSidebarRouteKey}.
+ *
+ * `/products?view=labels` resolves to **`products`** (Catalog). It used to
+ * resolve to a `print-labels` row so a Print Stations drill would stick — that
+ * row is gone, and Catalog → Labels is the one home for product label work.
  */
-export function getSidebarNavPageId(pathname: string | null): string {
+export function getSidebarNavPageId(
+  pathname: string | null,
+  searchParams?: Pick<URLSearchParams, 'get'> | null,
+): string {
   if (!pathname) return 'unknown';
   if (pathname === '/unbox' || pathname.startsWith('/unbox/')) return 'receive';
   if (pathname === '/triage' || pathname.startsWith('/triage/')) return 'triage';
@@ -515,7 +590,26 @@ export function getSidebarNavPageId(pathname: string | null): string {
   if (pathname === '/repair' || pathname.startsWith('/repair/')) return 'repair';
   // Legacy `/receiving` (+ history) lands on Unbox — same default as before.
   if (pathname === '/receiving' || pathname.startsWith('/receiving/')) return 'receive';
-  // Shipping: Scan out is its own Scan Stations L1; Labels/Ready/FBA are Desk Shipping.
+  // Dashboard boards dissolved into their domain homes (D5): `/dashboard` has no
+  // L1 row of its own, so the `?mode=` DOMAIN decides which page owns the URL.
+  // The route + its `?mode=` wire values are untouched — every bookmark still
+  // opens the same board; only the nav identity moved.
+  if (pathname === '/dashboard' || pathname.startsWith('/dashboard/')) {
+    const domain = String(searchParams?.get('mode') ?? '').trim().toLowerCase();
+    if (domain === 'inbound' || domain === 'receiving') return 'incoming';
+    if (domain === 'sales' || domain === 'pickup') return 'sales';
+    // Bare / `?unshipped` / `?shipped` / legacy `?pending` = the outbound orders
+    // queue, which Fulfillment owns.
+    return 'outbound';
+  }
+  // Review splits by `?mode=` (D10): packing QA is Fulfillment work, pairing and
+  // catalog-link are Catalog work. The `/review` page and its three modes are
+  // untouched — only which domain claims the URL in the spine moved.
+  if (pathname === '/review' || pathname.startsWith('/review/')) {
+    const mode = String(searchParams?.get('mode') ?? '').trim().toLowerCase();
+    return mode === 'pairing' || mode === 'catalog-link' ? 'products' : 'outbound';
+  }
+  // Shipping: Scan out is its own Scan Stations L1; Labels/Ready/FBA are Fulfillment.
   const outboundMode = outboundModeFromPath(pathname);
   if (outboundMode === 'scan-out') return 'scan-out';
   if (outboundMode) return 'outbound';
@@ -704,36 +798,53 @@ const PACK = '/pack';
 const REVIEW = '/review';
 
 export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
-  // ── Dashboard ─────────────────────────────────────────────────────────────
-  // THREE domains on `?mode=` (SoT `getDashboardDomainFromSearch`):
-  //   • Receiving(`?mode=inbound`) — inbound cartons; Triage / Unbox tabs.
-  //   • Shipping (bare / `?unshipped` / `?shipped`) — outbound orders (default).
-  //   • Sales (`?mode=sales`) · Local Pickup (`?mode=pickup`) — front-desk
-  //     history (former `/walk-in` L1). Both resolve to the `sales` domain;
-  //     counter intake stays on `/pickup` + `/repair`.
+  // ── Home ──────────────────────────────────────────────────────────────────
+  // `?mode=` — Today (default, bare `/`) · Inbox · Tasks · Collab · Plan · Brief.
   //
-  // Search (`?mode=search`) left for `/search` (IA Phase 1). A mode switch emits
-  // only its own delta (`applyModeTarget` + DASHBOARD_ROUTE_PARAMS).
+  // Home carried these as a full-width `HorizontalButtonSlider` band inside its
+  // own page shell, which is the exact twin `display/workbench.md` forbids:
+  // "L2 Mode lives in GlobalHeader, not the sidebar… never remount a full-width
+  // mode rail as a twin of the header control". The band also stacked a second
+  // pinned row above every Home region, costing 60px of vertical space on the
+  // one screen an operator opens first. Registering here is what the page's own
+  // docblock called the house-final placement; `HeaderModeSwitcher` +
+  // `HeaderRecentsSwitcher` now serve them like every other modeful page.
   {
-    id: 'dashboard', label: 'Dashboard', href: DASHBOARD, icon: LayoutDashboard, kind: 'main', mainGroup: 'overview', requires: 'dashboard.view',
+    id: 'home', label: 'Home', href: '/', icon: Home, kind: 'top',
     modes: [
-      // Lands on the Triage tab (scanned order) — `sort=scanned_newest` keeps the
-      // header tab + the table's day-band axis in lockstep (both read `?sort`).
-      // `requires` (C10): a domain the operator can't see is ABSENT, not a
-      // disabled pill that opens onto a denial state.
-      { id: 'receiving', label: 'Receiving', icon: Inbox, requires: DASHBOARD_INBOUND_PERMISSION, to: () => ({ pathname: DASHBOARD, params: { mode: 'inbound', sort: 'scanned_newest' } }) },
-      { id: 'outbound', label: 'Shipping', icon: Send,   to: () => ({ pathname: DASHBOARD, params: { unshipped: '' } }) },
-      { id: 'sales', label: 'Sales', icon: SalesPrice, requires: DASHBOARD_SALES_PERMISSION, to: () => ({ pathname: DASHBOARD, params: { mode: DASHBOARD_SALES_MODE } }) },
-      { id: 'pickup', label: 'Local Pickup', icon: ShoppingCart, requires: DASHBOARD_SALES_PERMISSION, to: () => ({ pathname: DASHBOARD, params: { mode: 'pickup' } }) },
+      { id: 'today',  label: 'Today',  icon: Activity,        to: () => ({ pathname: '/', params: { mode: null } }) },
+      // Inbox sits second: "what changed on things I follow" is the companion to
+      // Today's "what should I do next", so the two personal-triage modes stay
+      // adjacent rather than split by the structured-work modes.
+      { id: 'inbox',  label: 'Inbox',  icon: Inbox,           to: () => ({ pathname: '/', params: { mode: 'inbox' } }) },
+      { id: 'tasks',  label: 'Tasks',  icon: ClipboardList,   to: () => ({ pathname: '/', params: { mode: 'tasks' } }) },
+      { id: 'collab', label: 'Collab', icon: MessageSquare,   to: () => ({ pathname: '/', params: { mode: 'collab' } }) },
+      // "Plan" is the operator-facing label for the forge (live product plan).
+      { id: 'forge',  label: 'Plan',   icon: Zap,             to: () => ({ pathname: '/', params: { mode: 'forge' } }) },
+      { id: 'brief',  label: 'Brief',  icon: Sparkles,        to: () => ({ pathname: '/', params: { mode: 'brief' } }) },
     ],
-    resolveMode: ({ params }) => {
-      const m = String(params.get('mode') || '').trim().toLowerCase();
-      if (m === 'inbound' || m === 'receiving') return 'receiving';
-      if (m === 'sales') return 'sales';
-      if (m === 'pickup') return 'pickup';
-      // `?unshipped`, `?shipped`, legacy `?pending`, or nothing → Shipping.
-      return 'outbound';
-    },
+    // One parser, not a second copy of the vocabulary — same discipline as
+    // `parseProductsView` / `outboundModeFromPath` above.
+    resolveMode: ({ params }) => parseHomeMode(params.get('mode')),
+  },
+  // ── Sales (front-desk history) ────────────────────────────────────────────
+  // The `/dashboard` sales domain, promoted to its own root section (D4). The
+  // page and its `?mode=sales|pickup` wire values are unchanged — this is a nav
+  // identity, not a second surface.
+  //
+  // The row is gated on `dashboard.view` (the ROUTE gate) while the two feeds
+  // carry `walk_in.view` (the FRONT-DESK gate), because no single `requires`
+  // can express both. A page whose every mode is filtered away is dropped
+  // wholesale by {@link isSidebarPageReachable} rather than shown as a dead
+  // header — that is C10 ("absent, not a disabled pill") one level up.
+  {
+    id: 'sales', label: 'Sales', href: `${DASHBOARD}?mode=${DASHBOARD_SALES_MODE}`, icon: SalesPrice,
+    kind: 'domain', domainGroup: 'sales', requires: 'dashboard.view',
+    modes: [
+      { id: 'sales', label: 'Sales Board', icon: SalesPrice, requires: DASHBOARD_SALES_PERMISSION, to: () => ({ pathname: DASHBOARD, params: { mode: DASHBOARD_SALES_MODE } }) },
+      { id: 'pickup', label: 'Local Pickup History', icon: ShoppingCart, requires: DASHBOARD_SALES_PERMISSION, to: () => ({ pathname: DASHBOARD, params: { mode: 'pickup' } }) },
+    ],
+    resolveMode: ({ params }) => (params.get('mode') === 'pickup' ? 'pickup' : 'sales'),
   },
   // ── Operations ────────────────────────────────────────────────────────────
   // `?mode=analytics|insights|history|signals`; bare /operations = the Live
@@ -744,7 +855,7 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
   // the mode-scoped params (search, selection, range, section…) so each mode
   // opens clean — matches Inventory.
   {
-    id: 'operations', label: 'Operations', href: OPERATIONS, icon: Monitor, kind: 'main', mainGroup: 'overview', requires: 'operations.view',
+    id: 'operations', label: 'Operations', href: OPERATIONS, icon: Monitor, kind: 'main', mainGroup: 'monitor', requires: 'operations.view',
     modes: [
       // Each target used to null twelve sibling keys by hand — the largest of the
       // nine deleted denylists, re-stated once per mode. `/operations` declares
@@ -789,9 +900,21 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
     id: 'repair', label: 'Repair Service', href: REPAIR, icon: RECEIVING_MODE_ICONS.repair,
     kind: 'station', stationGroup: 'floor', stationSubgroup: 'receiving', requires: 'receiving.view',
   },
+  // ── Inbound (Manage Inbound) ──────────────────────────────────────────────
+  // Incoming (what is on its way) + the Receiving Board (what landed) — the
+  // former `/dashboard?mode=inbound` L2. The dock BENCHES stay on Scan Stations
+  // (D6); this is their pointer-driven counterpart, not a second door to them.
   {
-    id: 'incoming', label: 'Incoming', href: INCOMING, icon: RECEIVING_MODE_ICONS.incoming,
-    kind: 'station', stationGroup: 'desk', requires: 'receiving.view',
+    id: 'incoming', label: 'Inbound', href: INCOMING, icon: RECEIVING_MODE_ICONS.incoming,
+    kind: 'domain', domainGroup: 'inbound', requires: 'receiving.view',
+    modes: [
+      { id: 'incoming', label: 'Incoming', icon: RECEIVING_MODE_ICONS.incoming, to: () => ({ pathname: INCOMING, params: {} }) },
+      // Lands on the Triage tab (scanned order) — `sort=scanned_newest` keeps the
+      // header tab + the table's day-band axis in lockstep (both read `?sort`).
+      { id: 'board', label: 'Receiving Board', icon: LayoutDashboard, requires: DASHBOARD_INBOUND_PERMISSION, to: () => ({ pathname: DASHBOARD, params: { mode: 'inbound', sort: 'scanned_newest' } }) },
+    ],
+    resolveMode: ({ pathname }) =>
+      pathname === DASHBOARD || pathname.startsWith(`${DASHBOARD}/`) ? 'board' : 'incoming',
   },
   // Legacy family entry — not in APP_SIDEBAR_NAV; resolves modes for deep-links
   // and callers that still use page id `receiving`.
@@ -824,7 +947,7 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
   // `?mode=scout|watchlist`; bare /sourcing = the Queue (demand) surface (default).
   // Legacy keys aliased: `alerts`→queue, `lookup`→scout.
   {
-    id: 'sourcing', label: 'Sourcing', href: SOURCING, icon: Search, kind: 'stock', requires: 'sourcing.view',
+    id: 'sourcing', label: 'Sourcing', href: SOURCING, icon: Search, kind: 'domain', domainGroup: 'inventory', requires: 'sourcing.view',
     modes: [
       // Each target used to null `q` and `status` by hand — and forgot `by` and
       // `range`, so Scout's field toggle and the Analytics window leaked into
@@ -850,7 +973,7 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
   // ── FBA prep (legacy page nav — surface split hosts under Shipping) ─────
   // Deep-links still resolve; primary UX is `/shipping?mode=fba&fbaMode=…`.
   {
-    id: 'fba', label: 'FBA prep', href: SHIPPING, icon: Boxes, kind: 'stock', requires: 'fba.view',
+    id: 'fba', label: 'FBA prep', href: SHIPPING, icon: Boxes, kind: 'domain', domainGroup: 'fulfillment', requires: 'fba.view',
     modes: [
       { id: 'plan',    label: 'Plan',    icon: ClipboardList, to: () => ({ pathname: SHIPPING, params: { mode: 'fba', fbaMode: 'plan' } }) },
       { id: 'combine', label: 'Combine', icon: Package,       to: () => ({ pathname: SHIPPING, params: { mode: 'fba', fbaMode: null } }) },
@@ -861,17 +984,32 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
       return v === 'plan' || v === 'shipped' ? v : 'combine';
     },
   },
-  // ── Shipping station (Desk) ───────────────────────────────────────────────
-  // Labels / Ready / FBA on Desk. Scan out is its own Scan Stations L1 below.
+  // ── Shipping (Manage Shipping — Fulfillment) ──────────────────────────────
+  // Orders · Labels · Ready · FBA. Scan out is its own Scan Stations L1 below.
   // Nav id stays `outbound` for bookmark/test stability (route is `/shipping`).
+  //
+  // **Orders is the former `/dashboard` outbound board.** The Shipping modes did
+  // NOT already cover it: Labels/Ready/FBA are carrier-postage lanes, while the
+  // board is the Pending · Tested · Packed · Shipped order queue. Dissolving
+  // Dashboard (D5) therefore had to land it somewhere, and Fulfillment is the
+  // domain that owns orders leaving the building.
   {
-    id: 'outbound', label: 'Shipping', href: OUTBOUND_MODE_PATHS.labels, icon: STATION_PAGE_ICONS.outbound, kind: 'station', stationGroup: 'desk', requires: 'shipping.view',
+    id: 'outbound', label: 'Shipping', href: OUTBOUND_MODE_PATHS.labels, icon: STATION_PAGE_ICONS.outbound, kind: 'domain', domainGroup: 'fulfillment', requires: 'shipping.view',
     modes: [
+      { id: 'orders',   label: 'Orders',   icon: LayoutDashboard,              requires: 'dashboard.view', to: () => ({ pathname: DASHBOARD, params: {} }) },
       { id: 'labels',   label: 'Labels',   icon: SHIPPING_MODE_ICONS.labels,   to: () => ({ pathname: OUTBOUND_MODE_PATHS.labels }) },
       { id: 'ready',    label: 'Ready',    icon: SHIPPING_MODE_ICONS.ready,    to: () => ({ pathname: OUTBOUND_MODE_PATHS.ready }) },
       { id: 'fba',      label: 'FBA',      icon: SHIPPING_MODE_ICONS.fba,      to: () => ({ pathname: OUTBOUND_MODE_PATHS.fba }) },
+      // Packing QA — the former Review L1's default (bare `/review`). Its other
+      // two modes are Catalog work and hang off the Catalog page instead (D10).
+      // Empty delta, not `{ mode: null }`: `/review` declares a param spec, so
+      // `applyModeTarget` CONSTRUCTS the URL and a null would be dead weight.
+      // Packing is the bare-URL lane, so omitting `mode` IS selecting it.
+      { id: 'review',   label: 'Packing Review', icon: ClipboardList,           requires: 'packing.review', to: () => ({ pathname: REVIEW, params: {} }) },
     ],
     resolveMode: ({ pathname, params }) => {
+      if (pathname === REVIEW || pathname.startsWith(`${REVIEW}/`)) return 'review';
+      if (pathname === DASHBOARD || pathname.startsWith(`${DASHBOARD}/`)) return 'orders';
       const fromPath = outboundModeFromPath(pathname);
       if (fromPath === 'ready' || fromPath === 'fba' || fromPath === 'labels') return fromPath;
       const m = params.get('mode');
@@ -890,35 +1028,32 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
   {
     id: 'packer', label: 'Packing', href: PACK, icon: STATION_PAGE_ICONS.packer, kind: 'station', stationGroup: 'floor', requires: 'packing.view',
   },
-  // ── Review (Packer Review Station) ─────────────────────────────────────────
-  // The `?mode=` axis = WHICH station's work you're reviewing. Packing (photo/
-  // item decide) is the default (param cleared); Pairing allocates serial/SKU to
-  // outbound lines; Catalog link pairs unmatched import listings to Zoho/catalog.
-  // Tech / receiving / shipping review land later as pills on the SAME page —
-  // never new routes. When a non-packing review mode ships, widen the
-  // APP_SIDEBAR_NAV `requires` gate to any-of (packing.review OR …).
-  {
-    id: 'review', label: 'Review', href: REVIEW, icon: ClipboardList, kind: 'station', stationGroup: 'desk', requires: 'packing.review',
-    modes: [
-      // Each target used to null `rtab`/`packerLogId`/`orderId`/`choreId` inline —
-      // the widest of the remaining clear lists, re-stated once per mode.
-      // `/review` declares REVIEW_ROUTE_PARAMS, so `applyModeTarget` CONSTRUCTS
-      // from the delta and carries only `staff`; the nulls could not affect the
-      // result. Verified byte-identical before and after removal for all three.
-      { id: 'packer', label: 'Packing', icon: PackageCheck, to: () => ({ pathname: REVIEW, params: { mode: null } }) },
-      { id: 'pairing', label: 'Pairing', icon: Link2, to: () => ({ pathname: REVIEW, params: { mode: 'pairing' } }) },
-      { id: 'catalog-link', label: 'Catalog link', icon: Tags, to: () => ({ pathname: REVIEW, params: { mode: 'catalog-link' } }) },
-    ],
-    resolveMode: ({ params }) => {
-      const m = params.get('mode');
-      if (m === 'pairing' || m === 'catalog-link') return m;
-      return 'packer';
-    },
-  },
-  // ── Products ──────────────────────────────────────────────────────────────
-  // Own spine section (after Stock). `?view=manuals|catalog|labels|
-  // pairing|qc|kit`; default `manuals` (param cleared). Vocabulary SoT:
-  // `@/components/products/products-view`.
+  // ── Review (Packer Review Station) — SPLIT, no page entry of its own ──────
+  //
+  // `/review`'s `?mode=` axis is WHICH station's work you're reviewing, and the
+  // three answers are not one job: Packing is a photo/item QA decision on an
+  // outbound order, while Pairing (serial/SKU → outbound line) and Catalog link
+  // (unmatched import listing → catalog SoT) are catalog work. Under one L1 they
+  // shared a nav home purely because they shared a route (D10).
+  //
+  // So the modes hang off the DOMAIN that owns each job — Packing Review on
+  // Manage Shipping, Pairing / Catalog link on Catalog — and `review` keeps no
+  // page-nav entry at all. `getSidebarNavPageId` reads `?mode=` to decide which
+  // domain claims the URL. The page, its route, its param spec and its three
+  // workspaces are UNCHANGED; only the nav identity split. Merging the Review
+  // pairing workspace into the Catalog pairing workspace is a separate,
+  // deliberately out-of-scope job (they are different LedgerGrid surfaces over
+  // different row types) — see `desk-contract-unification-CLAUDE-CODE-PROMPT.md`.
+  // ── Catalog (Manage Products) ─────────────────────────────────────────────
+  // Catalog L1. `?view=manuals|catalog|labels|pairing|qc|kit`; default `manuals`
+  // (param cleared). Vocabulary SoT: `@/components/products/products-view`.
+  //
+  // The former Print Stations rows (`print-labels` / `print-documents`) were
+  // deleted here, not moved: every mode they carried was an ALIAS of a URL some
+  // canonical row already owned — `?view=labels` is this page, Warehouse labels
+  // are the Locations page's own default tab, and receiving stickers are printed
+  // at the Unbox bench. Two rows resolving one URL is how `/products?view=labels`
+  // ended up with a nav id (`print-labels`) that was not the page it opened.
   //
   // The targets used to null `platform` / `linkFilter` by hand — a two-key
   // denylist that only ever covered the Catalog chrome, which is why `?skuId=`,
@@ -926,21 +1061,36 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
   // constructs from PRODUCTS_ROUTE_PARAMS, so a view emits its own delta and
   // there is nothing left to remember to clear.
   {
-    id: 'products', label: 'Products', href: PRODUCTS, icon: Tags, kind: 'products', requires: 'sku_stock.view',
+    id: 'products', label: 'Catalog', href: PRODUCTS, icon: Tags, kind: 'domain', domainGroup: 'catalog', requires: 'sku_stock.view',
     modes: [
-      { id: 'catalog', label: 'Catalog', icon: Tags, to: () => ({ pathname: PRODUCTS, params: { view: 'catalog' } }) },
+      // Mode id stays `catalog` (the `?view=` wire value + every bookmark); only
+      // the LABEL changed, so the section and its browse mode stop answering to
+      // one word (D11).
+      { id: 'catalog', label: 'Reference', icon: Tags, to: () => ({ pathname: PRODUCTS, params: { view: 'catalog' } }) },
       { id: 'manuals', label: 'Manuals', icon: FileText, to: () => ({ pathname: PRODUCTS, params: { view: null } }) },
       { id: 'labels',  label: 'Labels',  icon: Barcode,  to: () => ({ pathname: PRODUCTS, params: { view: 'labels' } }) },
       { id: 'pairing', label: 'Pairing', icon: Link2,    to: () => ({ pathname: PRODUCTS, params: { view: 'pairing' } }) },
+      // Absorbed from the Review station (D10). An ALIAS, not a clone: the mode
+      // navigates to `/review?mode=catalog-link`, which is where the chore
+      // workspace lives. Catalog is simply its nav home now.
+      { id: 'catalog-link', label: 'Catalog link', icon: Link2, requires: 'packing.review', to: () => ({ pathname: REVIEW, params: { mode: 'catalog-link' } }) },
       { id: 'qc',      label: 'QC',      icon: Check,     to: () => ({ pathname: PRODUCTS, params: { view: 'qc' } }) },
       { id: 'kit',     label: 'Kit Parts', icon: PackageOpen, to: () => ({ pathname: PRODUCTS, params: { view: 'kit' } }) },
     ],
-    resolveMode: ({ params }) => parseProductsView(params.get('view')),
+    resolveMode: ({ pathname, params }) => {
+      // Catalog is the nav home for the Review station's catalog work (D10), so
+      // a `/review` pairing / catalog-link URL highlights a Catalog mode rather
+      // than leaving the spine pointing at Fulfillment's packing lane.
+      if (pathname === REVIEW || pathname.startsWith(`${REVIEW}/`)) {
+        return params.get('mode') === 'pairing' ? 'pairing' : 'catalog-link';
+      }
+      return parseProductsView(params.get('view'));
+    },
   },
   // ── Inventory ─────────────────────────────────────────────────────────────
   // `?mode=triage|pulse` or `?section=replenish`; default `ledger`.
   {
-    id: 'inventory', label: 'Inventory', href: INVENTORY, icon: ShelvingUnit, kind: 'stock', requires: 'sku_stock.view',
+    id: 'inventory', label: 'Inventory', href: INVENTORY, icon: ShelvingUnit, kind: 'domain', domainGroup: 'inventory', requires: 'sku_stock.view',
     modes: [
       // `open: null` on every switch so a selection (exception/unit id) from one
       // mode never leaks into another's right pane.
@@ -976,7 +1126,7 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
   // ── Warehouse ─────────────────────────────────────────────────────────────
   // `?tab=labels|racks|rooms|bins|map`; default `labels` (param cleared).
   {
-    id: 'warehouse', label: 'Warehouse', href: WAREHOUSE, icon: Warehouse, kind: 'stock', requires: 'sku_stock.view',
+    id: 'warehouse', label: 'Locations', href: WAREHOUSE, icon: Warehouse, kind: 'domain', domainGroup: 'inventory', requires: 'sku_stock.view',
     modes: [
       // `{ tab: null }` on the default mode reads as "drop the switch", not as a
       // clear list — and now that /warehouse declares a spec, every sibling's
@@ -1020,7 +1170,7 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
   // Every switch clears mode-scoped params so each mode opens clean — see
   // the /support param spec.
   {
-    id: 'support', label: 'Support', href: SUPPORT, icon: AlertCircle, kind: 'station', stationGroup: 'desk', requires: 'integrations.zendesk',
+    id: 'support', label: 'Support', href: SUPPORT, icon: AlertCircle, kind: 'domain', domainGroup: 'support', requires: 'integrations.zendesk',
     modes: [
       {
         id: 'tickets',
@@ -1118,6 +1268,27 @@ export function filterPageModes(
     (mode) => !mode.requires || (permissions?.has(mode.requires) ?? false),
   );
   return modes.length === page.modes.length ? page : { ...page, modes };
+}
+
+/**
+ * False when a page DECLARED modes and permission filtering removed every one —
+ * the page is unreachable, so it must be absent rather than rendered as a dead
+ * header that opens onto a denial state.
+ *
+ * This is the hollow-domain law one level down. It exists because a nav row can
+ * carry only ONE `requires`, while a page can genuinely need two gates: Sales is
+ * gated on `dashboard.view` (the route) and its feeds on `walk_in.view` (the
+ * front desk), so a packer — who holds the first and not the second — would
+ * otherwise see a "Sales" row leading nowhere. Widening `requires` to an all-of
+ * list would touch the admin access matrix, the role editor, and the landing-page
+ * card, none of which have a second permission to express; this predicate is the
+ * narrow fix.
+ *
+ * A genuinely modeless page (Operations, Admin, a scan bench) is always
+ * reachable — `undefined` modes is not the same as "all modes filtered".
+ */
+export function isSidebarPageReachable(page: SidebarPageNav): boolean {
+  return page.modes === undefined || page.modes.length > 0;
 }
 
 /**

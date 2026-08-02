@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import { useDroppable } from '@dnd-kit/core';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion } from '@/design-system/motion';
 import { ChevronDown, ChevronUp, Trash2 } from '@/components/Icons';
 import { FbaDraggableLineRow } from '@/components/fba/sidebar/FbaDraggableLineRow';
 import { FbaQtyStepper } from '@/components/fba/sidebar/FbaQtyStepper';

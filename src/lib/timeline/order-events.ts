@@ -16,6 +16,8 @@ export interface OrderAuditRow {
   after_data: Record<string, unknown> | null;
   metadata: Record<string, unknown> | null;
   actor_name: string | null;
+  /** `audit_logs.actor_staff_id` — resolves the actor's avatar. */
+  actor_staff_id?: number | null;
 }
 
 const ACTION_MAP: Record<string, { title: string; tone: TimelineTone }> = {
@@ -79,7 +81,7 @@ export function orderAuditToTimeline(rows: OrderAuditRow[]): TimelineItem[] {
     let ref: TimelineItem['ref'];
     if (r.action === 'orders.tracking.added') {
       const t = String((r.after_data?.trackingNumber as string | undefined) ?? '').trim();
-      if (t) ref = { value: t, kind: 'tracking' }; // last-4 CopyChip, copy-on-click
+      if (t) ref = { value: t, kind: 'tracking' }; // last-8 CopyChip, copy-on-click
     } else if (r.action === 'ORDER_ASSIGNMENT_UPDATED' && changedKeys.length > 0) {
       if (
         changedKeys.length === 1 &&
@@ -106,6 +108,7 @@ export function orderAuditToTimeline(rows: OrderAuditRow[]): TimelineItem[] {
       subtitle,
       ref,
       actor: r.actor_name ?? undefined,
+      actorStaffId: r.actor_staff_id ?? null,
       changes: changes.length ? changes : undefined,
       sourceEventType: r.action,
     });

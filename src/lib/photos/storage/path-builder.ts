@@ -5,6 +5,12 @@ export function buildGcsObjectKey(opts: {
   organizationId: string;
   entityType: PhotoEntityType;
   photoId: number;
+  /**
+   * The polymorphic parent id. Only STAFF files under it today
+   * (`staff/{id}/avatar/…`) — every other flow partitions by date, PO, or unit
+   * uid, so passing it is optional and ignored elsewhere.
+   */
+  entityId?: number | null;
   poRef?: string | null;
   unitUid?: string | null;
   /**
@@ -45,6 +51,12 @@ export function buildGcsObjectKey(opts: {
       break;
     case 'SERIAL_UNIT':
       segment = `serial-units/${sanitizePathSegment(opts.unitUid || String(opts.photoId))}/${baseName}`;
+      break;
+    case 'STAFF':
+      // Person-partitioned, not date-partitioned: a profile photo is replaced
+      // in place over a career, so grouping by staffer keeps every version of
+      // one face in one prefix instead of scattered across months.
+      segment = `staff/${sanitizePathSegment(String(opts.entityId ?? opts.photoId))}/avatar/${baseName}`;
       break;
     default:
       segment = `misc/${yyyy}/${mm}/${baseName}`;

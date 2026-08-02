@@ -13,7 +13,7 @@
  * compose this shell; they must not re-declare band geometry.
  */
 
-import { motion } from 'framer-motion';
+import { motion } from '@/design-system/motion';
 import { cn } from '@/utils/_cn';
 import { receivingScanBandClass } from '@/components/layout/header-shell';
 import { ScanBandGlowHost } from '@/components/station/scan-bar/ScanBandGlowHost';

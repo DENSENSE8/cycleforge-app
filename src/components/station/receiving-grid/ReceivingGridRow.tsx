@@ -31,6 +31,7 @@ import { sourcePlatformMetaFromLabel } from '@/lib/source-platform';
 import { useTimeFormat } from '@/lib/time-format/useTimeFormat';
 import { formatOpsStageTime } from '@/utils/date';
 import { cn } from '@/utils/_cn';
+import type { GridColumnDisplayPref } from '@/design-system/components/grid';
 import {
   displayReceivingProductTitle,
   receivingStageTooltip,
@@ -44,13 +45,26 @@ interface ReceivingGridRowProps {
   index: number;
   isMobile: boolean;
   selectMode: boolean;
-  isSelected: boolean;
+  /** This row is the focused record (workspace / read page). */
+  isOpen: boolean;
+  /** This row is checked into the bulk selection (gutter plane). */
+  isChecked: boolean;
+  /** Row-body activate — opens the record where the planes are split. */
   onSelect: () => void;
+  /**
+   * Gutter checkbox — bulk membership only. Its PRESENCE is what says this
+   * surface splits the two planes: the gutter becomes a real control and the
+   * row stops claiming `role="checkbox"`. Omitted (Unbox workbench, Testing
+   * history, Pickup) → the legacy single-gesture row, where the click ticks the
+   * box and the gutter is a painted span.
+   */
+  onToggle?: () => void;
   /** History / Unbox axis for the stage clock column. */
   activityAxis?: ReceivingActivityAxis;
   /** History reads the status dot as uniform received-green. */
   isHistory?: boolean;
   columns?: readonly ReceivingGridColumn[];
+  columnDisplay?: Readonly<Record<string, GridColumnDisplayPref>>;
 }
 
 /**
@@ -66,14 +80,19 @@ export const ReceivingGridRow = memo(function ReceivingGridRow({
   index,
   isMobile,
   selectMode,
-  isSelected,
+  isOpen,
+  isChecked,
   onSelect,
+  onToggle,
   activityAxis = 'unboxed',
   isHistory = false,
   columns = RECEIVING_GRID_COLUMNS,
+  columnDisplay,
 }: ReceivingGridRowProps) {
   useTimeFormat();
   const resolvePlatformMeta = usePlatformMeta();
+  /** A gutter handler IS the signal that this surface split the two planes. */
+  const splitPlanes = Boolean(onToggle);
 
   if (isMobile) {
     return (
@@ -84,8 +103,10 @@ export const ReceivingGridRow = memo(function ReceivingGridRow({
         isHistory={isHistory}
         activityAxis={activityAxis}
         selectMode={selectMode}
-        isSelected={isSelected}
+        isSelected={isOpen || isChecked}
+        isChecked={isChecked}
         onSelect={onSelect}
+        onToggleSelect={onToggle}
       />
     );
   }
@@ -99,7 +120,9 @@ export const ReceivingGridRow = memo(function ReceivingGridRow({
   const ctx: ReceivingGridCellCtx = {
     row,
     selectMode,
-    isSelected,
+    isSelected: isOpen || isChecked,
+    isChecked,
+    onToggle,
     activityAxis,
     isHistory,
     productTitle: displayReceivingProductTitle(row),
@@ -118,17 +141,27 @@ export const ReceivingGridRow = memo(function ReceivingGridRow({
     statusDot: isHistory
       ? 'bg-emerald-500'
       : getStatusDotBg(row.workflow_status, row.quantity_received, row.quantity_expected),
+    columnDisplay,
   };
 
   return (
     <div
       data-line-row-id={row.id}
       data-order-row-id={String(row.id)}
-      role={selectMode ? 'checkbox' : 'button'}
+      // Semantics follow the gesture, and the gesture depends on whether this
+      // surface splits the planes (`onToggle` present). Split → the body is the
+      // RECORD plane and the checkbox role lives on the gutter cell where the
+      // affordance actually is. Not split → the click still ticks the box, so
+      // announcing a button would be a lie.
+      role={splitPlanes ? 'button' : selectMode ? 'checkbox' : 'button'}
       tabIndex={0}
-      aria-checked={selectMode ? isSelected : undefined}
-      aria-pressed={selectMode ? undefined : isSelected}
-      aria-label={`Select receiving line ${row.id}`}
+      aria-checked={!splitPlanes && selectMode ? isChecked : undefined}
+      aria-pressed={splitPlanes ? isOpen : selectMode ? undefined : isOpen}
+      aria-label={
+        splitPlanes || !selectMode
+          ? `Open receiving line ${row.id}`
+          : `Select receiving line ${row.id}`
+      }
       onClick={() => {
         onSelect();
       }}
@@ -140,8 +173,9 @@ export const ReceivingGridRow = memo(function ReceivingGridRow({
       }}
       className={cn(
         receivingGridRowShellClass(false, { scrollMinContent: true }),
+        // Either plane fills the row; the gutter checkbox disambiguates which.
         ledgerRowFillClass({
-          selected: isSelected,
+          selected: isOpen || isChecked,
           capabilities: RECEIVING_GRID_CAPABILITIES,
         }),
       )}

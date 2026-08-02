@@ -6,7 +6,7 @@
  * single-line support-claim modal from the bulk bar.
  */
 
-import { AnimatePresence } from 'framer-motion';
+import { AnimatePresence } from '@/design-system/motion';
 import { ReceivingClaimModal } from '@/components/receiving/workspace/ReceivingClaimModal';
 import { ReceivingDetailsStack } from '@/components/station/ReceivingDetailsStack';
 import { toast } from '@/lib/toast';

@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { motion } from 'framer-motion';
+import { motion } from '@/design-system/motion';
 import { Package, AlertCircle, TrendingUp, Activity } from '@/components/Icons';
 import { sectionLabel } from '@/design-system/tokens/typography/presets';
 

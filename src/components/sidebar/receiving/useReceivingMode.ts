@@ -30,9 +30,23 @@ import {
   resolveTriageView,
   type TriageWorkspaceTab,
 } from '@/utils/triage-workspace-state';
+import {
+  getUnboxWorkspaceTabFromSearch,
+  normalizeUnboxWorkspaceTabParams,
+  type UnboxWorkspaceTab,
+} from '@/utils/unbox-workspace-state';
 
-/** Unbox sub-view from `?unboxview=` — internal to this hook (URL ↔ state). */
-type UnboxView = 'recent' | 'queue' | 'viewed';
+/**
+ * Unbox sub-view from `?unboxview=`. Reads the tab SoT
+ * (`utils/unbox-workspace-state.ts`) instead of re-deriving the param — this
+ * hook used to carry its own `'recent' | 'queue' | 'viewed'` union with its own
+ * parse and its own write, i.e. a second copy of one URL contract. That was
+ * survivable while the two agreed; it stopped being survivable when the UI
+ * vocabulary moved to Recent · Queue · History and the wire kept `viewed`,
+ * because `updateUnboxView('recent')` then read as the Recent tab in one file
+ * and the History tab in the other.
+ */
+type UnboxView = UnboxWorkspaceTab;
 
 export interface ReceivingModeState {
   /** Active sidebar mode parsed from `?mode=` (defaults to `receive`). */
@@ -113,12 +127,7 @@ export function useReceivingMode(): ReceivingModeState {
   // with the Unbox workspace (`receive`); only the right pane differs.
   const isScanSurface = mode === 'receive' || mode === 'triage';
 
-  const unboxView: UnboxView =
-    searchParams.get('unboxview') === 'queue'
-      ? 'queue'
-      : searchParams.get('unboxview') === 'viewed'
-        ? 'viewed'
-        : 'recent';
+  const unboxView: UnboxView = getUnboxWorkspaceTabFromSearch(searchParams);
 
   const triageView = resolveTriageView(searchParams.get('triview'));
   const triageQuery = searchParams.get('triq') ?? '';
@@ -185,8 +194,7 @@ export function useReceivingMode(): ReceivingModeState {
       window.dispatchEvent(new CustomEvent('receiving-clear-line'));
     }
     const nextParams = surfaceParams();
-    if (next === 'recent') nextParams.delete('unboxview');
-    else nextParams.set('unboxview', next);
+    normalizeUnboxWorkspaceTabParams(nextParams, next);
     replaceOnSurface(nextParams);
   };
 

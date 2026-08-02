@@ -49,7 +49,7 @@ export function SupportDetailsStack({
   const sb = statusBadge(ticket.status);
   const pb = priorityBadge(ticket.priority ?? null);
   const tagCount = ticket.tags?.length ?? 0;
-  // Same last-4 / no-`#` face as {@link SupportTicketIdMark}.
+  // Same last-8 / no-`#` face as {@link SupportTicketIdMark}.
   const ticketFace = supportTicketIdFace(String(ticket.id));
 
   const trigger =

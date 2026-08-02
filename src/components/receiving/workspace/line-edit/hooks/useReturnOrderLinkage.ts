@@ -5,7 +5,7 @@
  * via the closed-loop linkage SoT (`/api/order-linkage`, backed by
  * `src/lib/order-linkage.ts`). When the unit was previously shipped (i.e. it is a
  * return), this returns the outbound order number so the unbox identity row can
- * show it in the PO#/order chip — as last-4, exactly like an imported-return
+ * show it in the PO#/order chip — as last-8, exactly like an imported-return
  * order#. Silent (`null`) for normal, never-shipped units.
  *
  * This is the replacement for the standalone LINKAGE panel: the resolved order

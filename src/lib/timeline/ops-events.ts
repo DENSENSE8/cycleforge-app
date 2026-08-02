@@ -16,6 +16,8 @@ export interface OpsEventRow {
   entity_type: string;
   entity_id: number;
   actor_name?: string | null;
+  /** `ops_events.actor_staff_id` — resolves the actor's avatar. */
+  actor_staff_id?: number | null;
 }
 
 /**
@@ -68,6 +70,7 @@ export function opsEventsToTimeline(rows: OpsEventRow[]): TimelineItem[] {
       title,
       tone,
       actor: r.actor_name ?? undefined,
+      actorStaffId: r.actor_staff_id ?? null,
       sourceEventType: r.event_type,
       href: opsEventHref(r),
     };

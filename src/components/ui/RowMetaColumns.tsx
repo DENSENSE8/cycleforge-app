@@ -86,10 +86,10 @@ export const META_COL = {
    * "PARTS" → "PAR"), so it stays a separate PoLineMetaGrid-only token. */
   poCondCol: '3.75rem',
   /**
-   * PO line accordion — SKU last-4 chip column. Content-width, NOT a fixed
+   * PO line accordion — SKU last-8 chip column. Content-width, NOT a fixed
    * 2.75rem: `SkuScanRefChip` truncates itself inside a fixed track, so the
-   * 4-char last-4 was clipping to "0…". `max-content` sizes the track to the
-   * full last-4 (mono → consistent across rows). Only PoLineMetaGrid uses this.
+   * 4-char last-8 was clipping to "0…". `max-content` sizes the track to the
+   * full last-8 (mono → consistent across rows). Only PoLineMetaGrid uses this.
    */
   skuCol: 'max-content',
   /** PO line accordion — serial chip column (the flex track that absorbs slack). */

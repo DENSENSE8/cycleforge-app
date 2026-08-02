@@ -64,7 +64,8 @@ import { useOutboundStatusFilter } from '@/components/shipped/useOutboundStatusF
 import { useToShipFilterActions } from '@/components/dashboard/OutboundFilterStrip';
 import { useGatedOperationsRoi } from '@/features/operations/workspace/useGatedOperationsRoi';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { CheckCircle, RefreshCw } from '@/components/Icons';
+import { RefreshCw } from '@/components/Icons';
+import { AnimatedCheck } from '@/components/ui/AnimatedCheck';
 import { cn } from '@/utils/_cn';
 import type { FulfillmentState } from '@/lib/unshipped-state';
 import {
@@ -236,7 +237,7 @@ function OutboundStripAllClear({ mode }: { mode: 'shipped' | 'unshipped' }) {
       : { title: 'The queue is clear.', hint: 'Pending, urgent, and out-of-stock counts surface here.' };
   return (
     <div className="flex items-center gap-3 rounded-xl border border-dashed border-border-soft bg-surface-card px-4 py-5">
-      <CheckCircle className="h-5 w-5 shrink-0 text-text-success" />
+      <AnimatedCheck size={20} />
       <div className="min-w-0">
         <p className="text-role-caption font-semibold text-text-default">{copy.title}</p>
         <p className="mt-0.5 text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint">{copy.hint}</p>

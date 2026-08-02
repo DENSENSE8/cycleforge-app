@@ -1,5 +1,20 @@
 # MasterNav section-drill spine — handoff
 
+> **⚠️ SUPERSEDED 2026-08-01 → [`sidebar-spine-validation-simplification-HANDOFF.md`](sidebar-spine-validation-simplification-HANDOFF.md).**
+> The spine it describes shipped, then moved on. **Do not follow the symbols or the map below** —
+> they no longer match the code:
+>
+> | This doc says | Reality |
+> |---|---|
+> | `SPINE_DRILLS` / `spineDrillIdForPage` | **Deleted symbols** — now `SPINE_SECTIONS` / `spineSectionIdForPage` |
+> | Root = Overview / Library / Floor / Desk / Stock | Overview → **Scan Stations** → Desk → Stock → **Labels** → **Products** → Library (Library is last) |
+> | “Floor” | **Scan Stations** (the `id` is still `floor`) |
+> | Stock drill = Products → Inventory → Warehouse | Stock = **Sourcing → Inventory → Warehouse**; Products is its own spine section |
+> | (no Receiving subgroup) | Scan Stations nests a **Receiving** page-style subgroup header (icon + count; 4 members) |
+>
+> Kept only as lineage for *why* the drill grammar exists (opacity-only `spineDrill`, no
+> horizontal slide on a push spine; auto-drill must not steal focus) — those decisions still hold.
+
 **Paste into a new session:**
 
 ```

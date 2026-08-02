@@ -1,6 +1,7 @@
 'use client';
 
-import { CheckCircle, ExternalLink } from '@/components/Icons';
+import { ExternalLink } from '@/components/Icons';
+import { AnimatedCheck } from '@/components/ui/AnimatedCheck';
 import { Button } from '@/design-system/primitives';
 import type { ClaimResult } from './claim-types';
 
@@ -9,17 +10,7 @@ export function ClaimSuccessView({ result, onClose }: { result: ClaimResult; onC
   const verb = result.mode === 'create' ? 'created' : 'updated';
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-6 px-8 py-14 text-center">
-      <div className="relative">
-        {/* one-shot reveal ring — not a looping ping */}
-        <span
-          aria-hidden
-          className="absolute inset-0 animate-ping rounded-full bg-emerald-200/70"
-          style={{ animationIterationCount: 1, animationDuration: '650ms' }}
-        />
-        <span className="relative flex h-20 w-20 items-center justify-center rounded-full bg-emerald-50 ring-1 ring-inset ring-emerald-200">
-          <CheckCircle className="h-11 w-11 text-emerald-600" />
-        </span>
-      </div>
+      <AnimatedCheck size={56} />
 
       <div className="space-y-1.5">
         <h3 className="text-lg font-semibold tracking-tight text-text-default">Ticket {verb}</h3>

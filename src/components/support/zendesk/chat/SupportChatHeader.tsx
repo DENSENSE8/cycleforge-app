@@ -59,7 +59,7 @@ export function SupportChatHeader({
   onOpenContext?: () => void;
   /** Whether the context slide-over is open (pressed chrome). */
   contextOpen?: boolean;
-  /** Short linked-state hint under the Links control (e.g. order last-4 / Unlinked). */
+  /** Short linked-state hint under the Links control (e.g. order last-8 / Unlinked). */
   contextBadge?: string | null;
   /** When the ticket is linked to an order — open Support · Orders for that pk. */
   ordersHref?: string | null;

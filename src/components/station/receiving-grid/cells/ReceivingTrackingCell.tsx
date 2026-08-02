@@ -7,7 +7,7 @@ import { receivingDataCellClass, type ReceivingGridCellProps } from './receiving
 export function ReceivingTrackingCell({ col, rule, ctx }: ReceivingGridCellProps) {
   const { isPickup, pickupLabel, trackingValue } = ctx;
   return (
-    <div data-col="tracking" className={receivingDataCellClass(col, rule)}>
+    <div data-col="tracking" className={receivingDataCellClass(col, rule, ctx)}>
       {isPickup && pickupLabel ? (
         <FulfillmentPickupPill dense />
       ) : (

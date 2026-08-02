@@ -12,7 +12,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion } from '@/design-system/motion';
 import { ExternalLink, Loader2, Package, Search } from '@/components/Icons';
 import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
 import {

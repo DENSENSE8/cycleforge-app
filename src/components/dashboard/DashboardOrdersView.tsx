@@ -18,14 +18,12 @@ import {
   WORKBENCH_BODY_COLUMN,
   WORKBENCH_CHROME_COLUMN,
 } from '@/components/dashboard/workbench-shell';
-import { ContextualSelectionBar } from '@/design-system/components/ContextualSelectionBar';
-import { DASHBOARD_ORDERS_SELECTION_SCOPE } from '@/lib/selection/dashboard-scopes';
-import type { SelectionAction } from '@/lib/selection/selection-actions';
+import { OrderRailCompare } from '@/components/dashboard/rail/OrderRailCompare';
+import { OrderRailShell } from '@/components/dashboard/rail/OrderRailShell';
 import {
   isPrePackOrderView,
   type DashboardOrderView,
 } from '@/utils/dashboard-search-state';
-import type { DashSelectableRow } from '@/hooks/useDashboardBulkSelection';
 
 // Phase 4 (bundle deferral): non-default order views are code-split so their
 // chunks load only when the user switches tabs — the default Pending view
@@ -45,24 +43,24 @@ interface DashboardOrdersViewProps {
   onSelectView: (view: DashboardOrderView) => void;
   selectMode: boolean;
   selectionEnabled: boolean;
-  selectedRows: DashSelectableRow[];
-  selectionActions: SelectionAction<DashSelectableRow>[];
   /** Modal surfaces the bulk actions open (assignment carousel, ship-by picker). */
   selectionOverlays?: ReactNode;
-  /** The pinned capsule is on screen — the bounded table host reserves its
-   *  height so the last row is not stranded underneath it. */
-  bulkBarVisible?: boolean;
 }
 
+/**
+ * No `selectedRows` / `selectionActions` / `bulkBarVisible` here any more: the
+ * capsule they fed is gone, and the rail reads the live selection from
+ * `rail-actions-store` instead of taking it down the prop tree (the rail bodies
+ * mount off the root layout, so there is no prop path). Publish lives in
+ * `useOrderRailSelection`; `bulkBarVisible` still exists on
+ * `useDashboardBulkSelection` for Pack / Shipping, which keep their capsule.
+ */
 export function DashboardOrdersView({
   orderView,
   onSelectView,
   selectMode,
   selectionEnabled,
-  selectedRows,
-  selectionActions,
   selectionOverlays,
-  bulkBarVisible = false,
 }: DashboardOrdersViewProps) {
   const showOutboundChrome =
     isPrePackOrderView(orderView) || orderView === 'packed' || orderView === 'shipped';
@@ -116,14 +114,12 @@ export function DashboardOrdersView({
             {orderView === 'shipped' ? (
               <DashboardShippedTable
                 selectMode={selectMode}
-                bulkBarInset={bulkBarVisible}
                 railSelection
                 toolbarPortalTarget={outboundControlsEl}
               />
             ) : orderView === 'packed' ? (
               <PackedOrdersTable
                 selectMode={selectMode}
-                bulkBarInset={bulkBarVisible}
                 railSelection
                 toolbarPortalTarget={outboundControlsEl}
               />
@@ -131,7 +127,6 @@ export function DashboardOrdersView({
               <UnshippedTable
                 strictSearchScope
                 selectMode={selectMode}
-                bulkBarInset={bulkBarVisible}
                 railSelection
                 toolbarPortalTarget={outboundControlsEl}
                 fulfillmentLane={orderView === 'tested' ? 'tested' : 'pending'}
@@ -141,22 +136,28 @@ export function DashboardOrdersView({
         </div>
       </div>
 
-      {/* REVERTED 2026-08-01 (plan step C). The capsule is back because its
-          replacement is not proven: mounting the rail action region inside the
-          inspector makes the record open and immediately close, so a 1-row
-          selection was left with NO actions at all. Phase 2's files
-          (`rail/OrderRailActions`, `rail/OrderRailShell`, `rail-actions-store`)
-          are on disk but unmounted. Re-remove this ONLY after that bug is fixed
-          and `dashboard-bulk-actions` is green.
-          Plan: docs/todo/order-rail-selection-plane-PLAN.md §Phase 2 status. */}
+      {/* No bottom capsule on this display (plan D2). The right rail IS the
+          selection plane: 1 row opens the inspector, whose footer carries
+          `RailActionRegion`; 2+ open `OrderRailShell`. `selectionOverlays`
+          stays — Assign is a per-record carousel and remains a modal the rail
+          launches.
+
+          The two earlier reverts were both caused by the region being mounted
+          on `ShippedDetailsPanel`'s `isOrderRecord` branch: the Pending/Tested
+          lanes open with the FULFILLMENT context, so it rendered on no
+          dashboard lane and a selection had zero actions once the capsule went
+          away. That mount now sits above the branch split, verified against the
+          QA org — one checked row renders Copy details / Export CSV / … in the
+          inspector footer. Re-check THAT before ever restoring this capsule.
+          Plan: docs/todo/order-rail-selection-plane-PLAN.md (D1, D2). */}
       {selectionEnabled ? (
         <>
-          <ContextualSelectionBar
-            scope={DASHBOARD_ORDERS_SELECTION_SCOPE}
-            rows={selectedRows}
-            actions={selectionActions}
-            pinToViewport
-          />
+          {/* Cardinality picks exactly one of these (`selection-occupancy.ts`):
+              1 row → the inspector's own footer, 2 → compare, 3+ → the roster.
+              Both registrars gate on `isRailOccupantActive`, so mounting them
+              side by side never puts two claims on the single rail slot. */}
+          <OrderRailCompare />
+          <OrderRailShell />
           {selectionOverlays}
         </>
       ) : null}

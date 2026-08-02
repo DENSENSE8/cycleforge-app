@@ -2,7 +2,7 @@
 
 import { type ReactNode, useState, useCallback, useEffect, useRef } from 'react';
 import { Suspense } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion } from '@/design-system/motion';
 import { usePathname, useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { ErrorBoundary } from '@/components/error/ErrorBoundary';
@@ -13,12 +13,13 @@ import { Button, IconButton } from '@/design-system/primitives';
 import { isMobileAllowedPath } from '@/lib/sidebar-navigation';
 import { SIDEBAR_SPINE_WIDTH } from '@/components/sidebar/sidebar-spine';
 import { ContextPanelLayout } from '@/components/sidebar/ContextPanelLayout';
+import { RightRailHost } from '@/components/right-rail/RightRailHost';
+import { setRightRailFrameWidth } from '@/lib/right-rail/frame';
 import { isClientPublicPath } from '@/contexts/AuthContext';
 import { GlobalHeader } from '@/components/layout/GlobalHeader';
 import { appContentShellClass } from '@/components/layout/header-shell';
 import { appChromeClass } from '@/design-system/tokens/app-surface';
 import { cn } from '@/utils/_cn';
-import { QuickAccessVisitRecorder } from '@/lib/quick-access/QuickAccessVisitRecorder';
 import { usePhoneScanBridge } from '@/hooks/usePhoneScanBridge';
 import { useGlobalWedgeScanner } from '@/hooks/useGlobalWedgeScanner';
 
@@ -165,6 +166,12 @@ export function ResponsiveLayout({ children, kioskHost = false }: ResponsiveLayo
   const peekTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [edgeArming, setEdgeArming] = useState(false);
   const drawerRef = useRef<HTMLDivElement>(null);
+  // The CONTENT ROW, measured for the right rail's push/overlay decision. This
+  // element and not a descendant: its width is invariant under everything the
+  // resolver decides (parking the route rail and growing the panel both
+  // redistribute space INSIDE it), so the measurement can never chase its own
+  // consequence. See `lib/right-rail/frame.ts`.
+  const contentRowRef = useRef<HTMLDivElement>(null);
   // Mobile devices may only reach a narrow allowlist of routes (see
   // isMobileAllowedPath() in sidebar-navigation.ts). Any other path on a
   // phone bounces to /m/home — the scan-first cockpit — so the device
@@ -204,6 +211,20 @@ export function ResponsiveLayout({ children, kioskHost = false }: ResponsiveLayo
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Publish the content row's width to the right-rail frame store. `useEffect`
+  // (not layout) is fine: the store starts at 0, which resolves to overlay, so
+  // the pre-measurement frame degrades to today's behavior rather than flashing
+  // a push it cannot afford.
+  useEffect(() => {
+    const el = contentRowRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return undefined;
+    const publish = () => setRightRailFrameWidth(Math.round(el.getBoundingClientRect().width));
+    publish();
+    const ro = new ResizeObserver(publish);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [mounted, isMobile, onMobileRoute, chromeless]);
 
   // Allow any component to open the mobile drawer via a global event
   useEffect(() => {
@@ -336,9 +357,29 @@ export function ResponsiveLayout({ children, kioskHost = false }: ResponsiveLayo
           <main className={cn(chromeless ? 'flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden' : appContentShellClass)}>
             {/* The route's own sidebar rides HERE, beside the workspace — one
                 wrapper for every route, benches included. See
-                `ContextPanelLayout`. */}
-            {chromeless ? children : <ContextPanelLayout>{children}</ContextPanelLayout>}
+                `ContextPanelLayout`.
+
+                The right rail is its mirror on the trailing edge: a flex-row
+                sibling, so a non-modal inspector PUSHES the workspace instead of
+                floating over it (`source-of-truth.md` → Right-rail modality).
+                It lives inside `<main>` rather than beside the header+content
+                column on purpose — `appContentShellClass` already paints the
+                canvas + wash its card needs as a ground plane, and GlobalHeader
+                stays full width, which keeps the header's own right-rail slot
+                geometry true. */}
+            {chromeless ? (
+              children
+            ) : (
+              <div ref={contentRowRef} className="flex min-h-0 min-w-0 flex-1 overflow-hidden">
+                <ContextPanelLayout>{children}</ContextPanelLayout>
+                <RightRailHost />
+              </div>
+            )}
           </main>
+          {/* Chromeless (auth / enroll / offline): no content row to push, so
+              the host mounts bare and its occupants — if any ever register —
+              resolve to the float. */}
+          {chromeless ? <RightRailHost /> : null}
         </div>
 
         {/* Left-edge reveal — rest the pointer against the far-left edge for
@@ -382,9 +423,6 @@ export function ResponsiveLayout({ children, kioskHost = false }: ResponsiveLayo
         <Suspense fallback={null}>
           <GlobalDesktopSkuScanner />
         </Suspense>
-        <Suspense fallback={null}>
-          <QuickAccessVisitRecorder />
-        </Suspense>
         {drawerOverlay}
       </div>
     );
@@ -413,6 +451,11 @@ export function ResponsiveLayout({ children, kioskHost = false }: ResponsiveLayo
       <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         {children}
       </main>
+
+      {/* Mobile keeps the FLOAT: a phone has no room to push, and the frame
+          store's width stays 0 here (no content row is observed), which
+          `resolveRightRailFrame` resolves to overlay by construction. */}
+      <RightRailHost />
     </div>
   );
 }

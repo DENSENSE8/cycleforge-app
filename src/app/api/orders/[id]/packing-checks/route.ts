@@ -25,6 +25,12 @@ const PackingCheckBody = z.object({
   kind: z.enum(['KIT_PART', 'PACKING_CHECK']),
   stepId: z.number().int().positive(),
   checked: z.boolean(),
+  /**
+   * How the tick was earned (step-document-reveal-RULING §3). `print` is the
+   * durable path for an insert; `acknowledgement` is the advisory tap. Defaults
+   * server-side to acknowledgement when omitted so older clients stay valid.
+   */
+  origin: z.enum(['print', 'acknowledgement']).optional(),
   /** Client-minted idempotency/trace id — recorded in the audit trail. */
   clientEventId: z.string().trim().min(8).max(64).optional(),
 });
@@ -53,6 +59,7 @@ export const POST = withAuth(async (request, ctx) => {
       stepId: parsed.stepId,
       checked: parsed.checked,
       verifiedBy,
+      origin: parsed.origin,
     });
 
     if (!result.ok) {
@@ -64,12 +71,14 @@ export const POST = withAuth(async (request, ctx) => {
       action: AUDIT_ACTION.QC_RESULT_RECORD,
       entityType: AUDIT_ENTITY.ORDER,
       entityId: orderRowId,
-      method: 'manual',
+      // Print is a system-adjacent confirmation; the tap is the human override.
+      method: parsed.origin === 'print' ? 'system' : 'manual',
       extra: {
         kind: parsed.kind,
         step_type: result.stepType,
         step_id: parsed.stepId,
         checked: parsed.checked,
+        origin: parsed.origin ?? 'acknowledgement',
         client_event_id: parsed.clientEventId ?? null,
       },
     });

@@ -1,7 +1,7 @@
 'use client';
 
 import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from '@/design-system/motion';
 import { framerPresenceMobile, framerTransitionMobile } from '../../foundations/motion-framer';
 import { useBarcodeScanner } from '@/hooks/useBarcodeScanner';
 import { MobileScanConfirmation } from '@/components/mobile/station/MobileScanConfirmation';

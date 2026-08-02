@@ -42,6 +42,8 @@ export function RepairGridColumnHeader({
   activeSort = null,
   sortDir = null,
   onSortColumn,
+  onOpenColumnDetails,
+  columnDetailsOpen = false,
 }: {
   selectionScope: string;
   className?: string;
@@ -49,6 +51,8 @@ export function RepairGridColumnHeader({
   activeSort?: RepairGridColumnKey | null;
   sortDir?: RepairGridSortDir | null;
   onSortColumn?: (key: RepairGridColumnKey) => void;
+  onOpenColumnDetails?: () => void;
+  columnDetailsOpen?: boolean;
 }) {
   return (
     <LedgerGridColumnHeader
@@ -64,6 +68,8 @@ export function RepairGridColumnHeader({
           ? (key) => onSortColumn(key as RepairGridColumnKey)
           : undefined
       }
+      onOpenColumnDetails={onOpenColumnDetails}
+      columnDetailsOpen={columnDetailsOpen}
       glyphFor={(column) =>
         column.key === 'date' ? (
           <Calendar className="h-3 w-3 shrink-0 text-text-faint" aria-hidden />

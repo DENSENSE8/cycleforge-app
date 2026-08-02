@@ -17,10 +17,11 @@
  */
 
 import { useMemo, useState } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion } from '@/design-system/motion';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/design-system/primitives/Button';
-import { AlertCircle, Boxes, Check, CheckCircle, ClipboardList, Clock, Inbox, Loader2, X } from '@/components/Icons';
+import { AlertCircle, Boxes, Check, ClipboardList, Clock, Inbox, Loader2, X } from '@/components/Icons';
+import { AnimatedCheck } from '@/components/ui/AnimatedCheck';
 import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
 import { useMotionPresence, useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
 
@@ -207,7 +208,7 @@ export function CatalogReviewWorkbench() {
                     type="button"
                     variant="primary"
                     size="md"
-                    icon={<CheckCircle />}
+                    icon={<AnimatedCheck size={18} />}
                     loading={review.isPending && review.variables?.decision === 'approve'}
                     disabled={review.isPending}
                     onClick={() => review.mutate({ id: selected.id, decision: 'approve' })}

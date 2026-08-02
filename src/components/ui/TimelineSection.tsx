@@ -3,6 +3,7 @@
 import type { ReactNode } from 'react';
 import { EventTimeline, type TimelineGroupMode, type TimelineGroupView } from './EventTimeline';
 import type { TimelineItem, TimelineGroupKey } from '@/lib/timeline/types';
+import type { PhotoGalleryInput } from '@/components/shipped/photo-gallery/photo-gallery-utils';
 import { sectionLabel, microBadge } from '@/design-system/tokens/typography/presets';
 
 /**
@@ -48,6 +49,12 @@ export interface TimelineSectionProps {
   renderGroupHeader?: (group: TimelineGroupView) => ReactNode;
   /** Opt-in row activation (Monitor→detail drill), forwarded to {@link EventTimeline}. */
   onSelectItem?: (item: TimelineItem) => void;
+  /** Lightbox override for media strips, forwarded to {@link EventTimeline}. */
+  galleryPhotos?: PhotoGalleryInput[];
+  /** Parallel ids for URL-only {@link galleryPhotos}, forwarded to {@link EventTimeline}. */
+  galleryMatchIds?: Array<number | null | undefined>;
+  /** Max preview thumbs before `+N`, forwarded to {@link EventTimeline}. */
+  mediaThumbLimit?: number;
   /** Outer wrapper classes — spacing/divider live with the caller. */
   className?: string;
 }
@@ -87,6 +94,9 @@ export function TimelineSection({
   collapsibleGroups = false,
   renderGroupHeader,
   onSelectItem,
+  galleryPhotos,
+  galleryMatchIds,
+  mediaThumbLimit,
   className = 'mx-8 mt-2 border-t border-border-hairline pt-4 pb-8',
 }: TimelineSectionProps) {
   return (
@@ -110,6 +120,9 @@ export function TimelineSection({
           collapsibleGroups={collapsibleGroups}
           renderGroupHeader={renderGroupHeader}
           onSelectItem={onSelectItem}
+          galleryPhotos={galleryPhotos}
+          galleryMatchIds={galleryMatchIds}
+          mediaThumbLimit={mediaThumbLimit}
         />
       )}
     </section>

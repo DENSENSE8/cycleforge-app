@@ -1,4 +1,4 @@
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion } from '@/design-system/motion';
 import { Check, Plus, Trash2, X } from '@/components/Icons';
 import { cn } from '@/utils/_cn';
 import { Button, IconButton } from '@/design-system/primitives';

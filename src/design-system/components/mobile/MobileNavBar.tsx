@@ -1,7 +1,7 @@
 'use client';
 
 import { type ReactNode } from 'react';
-import { motion } from 'framer-motion';
+import { motion } from '@/design-system/motion';
 import { framerTransitionMobile } from '../../foundations/motion-framer';
 
 // ─── Types ───────────────────────────────────────────────────────────────────

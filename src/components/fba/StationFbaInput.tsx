@@ -1,6 +1,6 @@
 'use client';
 
-import { motion } from 'framer-motion';
+import { motion } from '@/design-system/motion';
 import { AlertCircle, Loader2, Package } from '@/components/Icons';
 import { StationScanBar } from '@/components/station/StationScanBar';
 import { ThemedStationScanBar } from '@/components/station/scan-bar';

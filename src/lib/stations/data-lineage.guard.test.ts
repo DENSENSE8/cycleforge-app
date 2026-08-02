@@ -82,6 +82,8 @@ const INFRA_MODULE_PREFIXES = [
 const UNRESOLVABLE_SQL_MODULES: Record<string, string> = {
   '@/lib/receiving/facts/narrow':
     'partial upsert dispatched over the NarrowTable union (receiving_line_zoho | _testing | _return | _putaway)',
+  '@/lib/receiving/streets/carton-street-write':
+    'dynamic upsert builder — table name is a parameter to buildUpsertSql, not a static SQL literal',
 };
 
 // ─── Known relations (derived, never hand-listed) ────────────────────────────

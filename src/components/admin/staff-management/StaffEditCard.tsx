@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { Button } from '@/design-system/primitives';
 import { StaffColorWheel } from '../StaffColorWheel';
+import { StaffAvatar } from '@/components/identity';
 import { getStaffColorHex } from '@/utils/staff-colors';
 import type { Staff } from '../types';
 import { STAFF_HOME_OPTIONS, type StaffRole, type StaffUpdatePayload } from './constants';
@@ -10,7 +11,7 @@ import { STAFF_HOME_OPTIONS, type StaffRole, type StaffUpdatePayload } from './c
 function FieldGroup({ label, children }: { label: string; children: ReactNode }) {
   return (
     <label className="block space-y-1.5">
-      <span className="block text-[10.5px] font-semibold uppercase tracking-[0.16em] text-text-soft">{label}</span>
+      <span className="block text-role-eyebrow uppercase tracking-widest text-text-soft">{label}</span>
       {children}
     </label>
   );
@@ -77,12 +78,15 @@ export function StaffEditCard({
         {/* Identity header: large initials chip in the live edit color next to
             the name/role badge. */}
         <div className="mb-6 flex items-center gap-4">
-          <div
-            className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-full text-xl font-semibold text-white shadow-lg shadow-gray-900/15 ring-4 ring-white transition-colors"
-            style={{ backgroundColor: editColorHex }}
-          >
-            {member.name.split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]?.toUpperCase() ?? '').join('')}
-          </div>
+          <StaffAvatar
+            staffId={member.id}
+            name={member.name}
+            colorHex={editColorHex}
+            avatarPhotoId={member.avatar_photo_id ?? null}
+            size="xl"
+            ring={false}
+            className="flex-shrink-0 shadow-lg shadow-gray-900/15 ring-4 ring-white transition-colors"
+          />
           <div className="min-w-0 flex-1">
             <h3 className="truncate text-xl font-semibold tracking-tight text-text-default">{member.name}</h3>
             <div className="mt-1 flex flex-wrap items-center gap-1.5">
@@ -139,7 +143,7 @@ export function StaffEditCard({
             lands on it immediately. */}
         <div className="mt-5 flex items-center gap-4 rounded-3xl border border-border-soft bg-surface-card px-5 py-4">
           <div className="min-w-0 flex-1">
-            <p className="text-[10.5px] font-semibold uppercase tracking-[0.16em] text-text-soft">Identity color</p>
+            <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">Identity color</p>
             <p className="mt-1 text-role-caption text-text-soft">Tap the wheel — picks up on the sidebar, sign-in picker, and FAB.</p>
           </div>
           <StaffColorWheel value={editColorHex} onChange={setEditColorHex} />
@@ -150,7 +154,7 @@ export function StaffEditCard({
             STAFF_HOME_OPTIONS so admins can't typo a 404 path. */}
         <div className="mt-4 flex items-center gap-4 rounded-3xl border border-border-soft bg-surface-card px-5 py-4">
           <div className="min-w-0 flex-1">
-            <p className="text-[10.5px] font-semibold uppercase tracking-[0.16em] text-text-soft">Default home page</p>
+            <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">Default home page</p>
             <p className="mt-1 text-role-caption text-text-soft">
               Where this staffer lands after sign-in. Use role default keeps the current behavior.
             </p>

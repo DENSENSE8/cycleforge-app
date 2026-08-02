@@ -1,13 +1,10 @@
 'use client';
 
-import { getStaffColorHex, getStaffTheme } from '@/utils/staff-colors';
+import { StaffAvatar } from '@/components/identity';
+import { getStaffTheme } from '@/utils/staff-colors';
 
 interface StaffSigningInProps {
-  staff: { name: string; color_hex?: string };
-}
-
-function initials(name: string): string {
-  return name.split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]?.toUpperCase() ?? '').join('');
+  staff: { id?: number; name: string; color_hex?: string; avatar_photo_id?: number | null };
 }
 
 /** Shown after a pinless tap while the session is being created. */
@@ -25,12 +22,15 @@ export function StaffSigningIn({ staff }: StaffSigningInProps) {
 
   return (
     <div className="flex w-full max-w-md flex-col items-center gap-5 text-center">
-      <div
-        className={`flex h-16 w-16 items-center justify-center rounded-full text-lg font-semibold text-white ring-4 ${ring}`}
-        style={{ backgroundColor: getStaffColorHex(staff) }}
-      >
-        {initials(staff.name)}
-      </div>
+      <StaffAvatar
+        staffId={staff.id ?? null}
+        name={staff.name}
+        colorHex={staff.color_hex ?? undefined}
+        avatarPhotoId={staff.avatar_photo_id ?? null}
+        size="xl"
+        ring={false}
+        className={`ring-4 ${ring}`}
+      />
       <div>
         <p className="text-lg font-semibold tracking-tight text-text-default">Signing in as {staff.name}</p>
         <p className="mt-1.5 text-sm text-text-soft">One moment…</p>

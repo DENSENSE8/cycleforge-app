@@ -10,10 +10,11 @@
 
 import { useCallback, useState } from 'react';
 import { Button } from '@/design-system/primitives';
-import { getStaffTheme, getStaffColorHex, type StationTheme } from '@/utils/staff-colors';
+import { StaffAvatar } from '@/components/identity';
+import { getStaffTheme, type StationTheme } from '@/utils/staff-colors';
 
 interface StaffPinPadProps {
-  staff: { id: number; name: string; role: string; color_hex?: string };
+  staff: { id: number; name: string; role: string; color_hex?: string; avatar_photo_id?: number | null };
   /** Submit handler. Resolve/reject controls error display + re-entry. */
   onSubmit: (pin: string) => Promise<{ ok: true } | { ok: false; error?: string }>;
   /** Optional passkey shortcut, e.g. /signin's passkey button. */
@@ -24,10 +25,6 @@ interface StaffPinPadProps {
   onBack?: () => void;
   /** Initial error to display (e.g. after a router refresh). */
   initialError?: string | null;
-}
-
-function initials(name: string): string {
-  return name.split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]?.toUpperCase() ?? '').join('');
 }
 
 const THEME_NUMPAD: Record<StationTheme, {
@@ -99,12 +96,15 @@ export function StaffPinPad({ staff, onSubmit, onPasskey, submitLabel, onBack, i
 
       <div className="relative">
         <div className={`absolute -inset-3 rounded-full bg-gradient-radial ${t.haloFrom} to-transparent blur-2xl opacity-70`} aria-hidden />
-        <div
-          className="relative flex h-20 w-20 items-center justify-center rounded-full text-2xl font-semibold text-white shadow-lg shadow-gray-900/10 ring-4 ring-white"
-          style={{ backgroundColor: getStaffColorHex(staff) }}
-        >
-          {initials(staff.name)}
-        </div>
+        <StaffAvatar
+          staffId={staff.id}
+          name={staff.name}
+          colorHex={staff.color_hex ?? undefined}
+          avatarPhotoId={staff.avatar_photo_id ?? null}
+          size="2xl"
+          ring={false}
+          className="relative shadow-lg shadow-gray-900/10 ring-4 ring-white"
+        />
       </div>
       <div className="mt-5 text-2xl font-semibold tracking-tight text-text-default">{staff.name}</div>
       <div className={`mt-0.5 text-role-caption font-medium uppercase tracking-[0.18em] ${t.accentText}`}>

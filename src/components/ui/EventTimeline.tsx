@@ -3,7 +3,7 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { format, formatDistanceToNow, parseISO } from 'date-fns';
-import { motion, useReducedMotion, type Variants } from 'framer-motion';
+import { motion, useReducedMotion, type Variants } from '@/design-system/motion';
 import { motionBezier } from '@/design-system/foundations/motion-framer';
 import type {
   TimelineItem,
@@ -16,6 +16,7 @@ import { TIMELINE_OTHER_BAND_KEY } from '@/lib/timeline/types';
 import { isRawStatusTrailSubtitle } from '@/lib/timeline/station-subtitle';
 import { resolveTimelineGlyph } from '@/lib/timeline/timeline-glyphs';
 import { ChevronRight } from '@/components/Icons';
+import { StaffAvatar } from '@/components/identity';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { TIMELINE_GLYPH_ICONS } from '@/components/ui/timeline-glyph-icons';
 import {
@@ -26,11 +27,18 @@ import {
   SkuScanRefChip,
   TicketChip,
   BinChip,
-  getLast4,
+  getLast8,
 } from '@/components/ui/CopyChip';
 import { usePhotoGallery } from '@/components/shipped/photo-gallery/usePhotoGallery';
 import { PhotoViewerPortal } from '@/components/shipped/photo-gallery/PhotoViewerPortal';
 import type { PhotoGalleryInput } from '@/components/shipped/photo-gallery/photo-gallery-utils';
+import {
+  resolveTimelineGalleryIndex,
+  timelineMediaStripPreview,
+} from '@/lib/timeline/timeline-media-strip';
+
+/** Station / journey density: max preview slots (last becomes `+N` when more). */
+const DEFAULT_MEDIA_THUMB_LIMIT = 4;
 
 /**
  * Shared, domain-agnostic event timeline — the vertical day-banded trail used by
@@ -41,7 +49,7 @@ import type { PhotoGalleryInput } from '@/components/shipped/photo-gallery/photo
  *
  * Visual language: quiet fading rail, **mode glyphs + HoverTooltip** (not color
  * dots), refined type hierarchy, hover row, restrained stagger. Identifiers
- * reuse the app-wide {@link CopyChip} family (last-4 + copy-on-click).
+ * reuse the app-wide {@link CopyChip} family (last-8 + copy-on-click).
  */
 
 const BADGE_TONE: Record<TimelineTone, string> = {
@@ -61,26 +69,80 @@ const DENSITY: Record<Density, { pb: string; day: string; glyphTop: string }> = 
 
 /**
  * Inline timeline thumbs → shared photo-gallery SoT (never a new browser tab).
- * Read surface: `{ url, thumbUrl }` only so delete/upload stay off.
+ * Preview is capped (`thumbLimit`); full `media` (or optional `galleryPhotos`
+ * override — e.g. carton/PO set) feeds the lightbox. Read surface: `{ url,
+ * thumbUrl }` only so delete/upload stay off.
  */
-function TimelineMediaStrip({ media }: { media: TimelineMedia[] }) {
-  const photos = useMemo<PhotoGalleryInput[]>(
+function TimelineMediaStrip({
+  media,
+  thumbLimit = DEFAULT_MEDIA_THUMB_LIMIT,
+  galleryPhotos,
+  galleryMatchIds,
+}: {
+  media: TimelineMedia[];
+  thumbLimit?: number;
+  galleryPhotos?: PhotoGalleryInput[];
+  /** Parallel to `galleryPhotos` for id→index resolve when inputs are URL-only. */
+  galleryMatchIds?: Array<number | null | undefined>;
+}) {
+  const stagePhotos = useMemo<PhotoGalleryInput[]>(
     () => media.map((m) => ({ url: m.fullUrl, thumbUrl: m.thumbUrl })),
     [media],
   );
+  const photos = galleryPhotos && galleryPhotos.length > 0 ? galleryPhotos : stagePhotos;
   const gallery = usePhotoGallery({ photos });
   const { openViewer } = gallery;
+
+  const galleryPhotoIds = useMemo(() => {
+    if (galleryMatchIds && galleryMatchIds.length === photos.length) {
+      return galleryMatchIds.map((id) =>
+        typeof id === 'number' && Number.isFinite(id) ? id : null,
+      );
+    }
+    return photos.map((p) =>
+      typeof p === 'object' && typeof p.id === 'number' && Number.isFinite(p.id) ? p.id : null,
+    );
+  }, [galleryMatchIds, photos]);
+  const galleryUrls = useMemo(
+    () =>
+      photos.map((p) => (typeof p === 'string' ? p.trim() : (p.url ?? '').trim())),
+    [photos],
+  );
+
+  const { visibleCount, overflowCount } = timelineMediaStripPreview(media.length, thumbLimit);
+  const visible = media.slice(0, visibleCount);
+
+  const openAtMedia = (m: TimelineMedia, previewIndex: number) => {
+    openViewer(
+      resolveTimelineGalleryIndex({
+        photoId: m.photoId,
+        url: m.fullUrl,
+        galleryPhotoIds,
+        galleryUrls,
+        fallbackIndex: previewIndex,
+      }),
+    );
+  };
+
+  const openOverflow = () => {
+    const firstHidden = media[visibleCount];
+    if (firstHidden) {
+      openAtMedia(firstHidden, visibleCount);
+      return;
+    }
+    openViewer(0);
+  };
 
   return (
     <>
       <div className="mt-1.5 flex gap-1.5 overflow-x-auto pb-0.5">
-        {media.map((m, index) => (
+        {visible.map((m, index) => (
           <button
             key={m.photoId}
             type="button"
             // ds-raw-button: photo thumb open — not a DS Button surface
             className="ds-raw-button block shrink-0 overflow-hidden rounded-md ring-1 ring-inset ring-border-hairline transition-opacity hover:opacity-90"
-            onClick={() => openViewer(index)}
+            onClick={() => openAtMedia(m, index)}
             aria-label={m.caption ? `View ${m.caption} photo` : 'View photo'}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -92,6 +154,17 @@ function TimelineMediaStrip({ media }: { media: TimelineMedia[] }) {
             />
           </button>
         ))}
+        {overflowCount > 0 ? (
+          <button
+            type="button"
+            // ds-raw-button: +N overflow open — not a DS Button surface
+            className="ds-raw-button flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-surface-sunken text-role-caption font-semibold tabular-nums text-text-muted ring-1 ring-inset ring-border-hairline transition-opacity hover:opacity-90"
+            onClick={openOverflow}
+            aria-label={`View ${overflowCount} more photos`}
+          >
+            +{overflowCount}
+          </button>
+        ) : null}
       </div>
       {photos.length > 0 ? <PhotoViewerPortal g={gallery} /> : null}
     </>
@@ -179,14 +252,34 @@ function itemIdentityRefs(item: TimelineItem): TimelineRef[] {
   return item.ref ? [item.ref] : [];
 }
 
-/** Render an identifier through the shared CopyChip family (last-4 + copy). */
+/**
+ * Actor cell — name, prefixed by the staffer's photo when the adapter resolved
+ * a staff id. An `xs` mark keeps the meta line's height unchanged, so adding a
+ * face never re-flows a dense journey.
+ *
+ * No id ⇒ name only. An avatar is never guessed from a display name: two people
+ * share one, and the row would then attribute the work to the wrong face.
+ */
+function ActorLabel({ item }: { item: TimelineItem }) {
+  const staffId = item.actorStaffId;
+  return (
+    <span className="inline-flex min-w-0 items-center gap-1 align-middle">
+      {staffId ? (
+        <StaffAvatar staffId={staffId} name={item.actor} size="xs" ring={false} />
+      ) : null}
+      <span className="truncate text-text-soft">{item.actor}</span>
+    </span>
+  );
+}
+
+/** Render an identifier through the shared CopyChip family (last-8 + copy). */
 function TimelineRefChip({ refItem }: { refItem: TimelineRef }) {
   const v = String(refItem.value || '').trim();
   if (!v) return null;
   let chip: ReactNode;
   switch (refItem.kind) {
     case 'tracking':
-      chip = <TrackingChip value={v} display={getLast4(v)} dense fitDisplayWidth />;
+      chip = <TrackingChip value={v} display={getLast8(v)} dense fitDisplayWidth />;
       break;
     case 'serial':
       chip = (
@@ -202,13 +295,13 @@ function TimelineRefChip({ refItem }: { refItem: TimelineRef }) {
       chip = <FnskuChip value={v} width="w-fit max-w-full" />;
       break;
     case 'sku':
-      chip = <SkuScanRefChip value={v} display={getLast4(v)} dense />;
+      chip = <SkuScanRefChip value={v} display={getLast8(v)} dense />;
       break;
     case 'bin':
       chip = <BinChip value={v} dense />;
       break;
     case 'ticket':
-      chip = <TicketChip value={v} display={getLast4(v)} />;
+      chip = <TicketChip value={v} display={getLast8(v)} />;
       break;
     case 'id':
     default:
@@ -275,7 +368,7 @@ export interface EventTimelineProps {
   metaTrail?: boolean;
   /**
    * With {@link metaTrail}: Station two-line anatomy — id {@link CopyChip}
-   * (serial last-4) on the secondary meta line, not beside the title.
+   * (serial last-8) on the secondary meta line, not beside the title.
    * Without metaTrail: legacy inline-on-title-row behavior.
    */
   refInline?: boolean;
@@ -303,6 +396,18 @@ export interface EventTimelineProps {
    * browse feed to drill a row into that record's Trace.
    */
   onSelectItem?: (item: TimelineItem) => void;
+  /**
+   * Optional lightbox set for every media strip on this timeline (e.g. full
+   * carton/PO receiving photos). Omit ⇒ each strip opens its own stage `media`.
+   * Preview thumbs still come from the row; only the viewer source changes.
+   * Prefer URL-only inputs on read surfaces so delete stays off; pass
+   * {@link galleryMatchIds} when click-to-index needs photo ids.
+   */
+  galleryPhotos?: PhotoGalleryInput[];
+  /** Parallel photo ids for {@link galleryPhotos} (URL-only read galleries). */
+  galleryMatchIds?: Array<number | null | undefined>;
+  /** Max preview thumbs before a `+N` tile (default 4). */
+  mediaThumbLimit?: number;
 }
 
 /** A serial-view band: an identifier header + that identifier's rows. */
@@ -410,6 +515,9 @@ export function EventTimeline({
   collapsibleGroups = false,
   renderGroupHeader,
   onSelectItem,
+  galleryPhotos,
+  galleryMatchIds,
+  mediaThumbLimit = DEFAULT_MEDIA_THUMB_LIMIT,
 }: EventTimelineProps) {
   const reduce = useReducedMotion();
   const d = DENSITY[density];
@@ -455,6 +563,10 @@ export function EventTimeline({
               richTime={richTime}
               metaTrail={metaTrail}
               refInline={refInline}
+              galleryPhotos={galleryPhotos}
+              galleryMatchIds={galleryMatchIds}
+              mediaThumbLimit={mediaThumbLimit}
+              onSelectItem={onSelectItem}
             />
           );
 
@@ -568,7 +680,7 @@ export function EventTimeline({
             <span className="shrink-0 whitespace-nowrap">
               {timeNode}
               {item.actor ? <span className="text-text-faint"> · </span> : null}
-              {item.actor ? <span className="text-text-soft">{item.actor}</span> : null}
+              {item.actor ? <ActorLabel item={item} /> : null}
             </span>
           </span>
         );
@@ -693,7 +805,7 @@ export function EventTimeline({
                     <span className="shrink-0 whitespace-nowrap text-role-micro font-medium tabular-nums text-text-faint">
                       {timeNode}
                       {item.actor ? <span className="text-text-faint"> · </span> : null}
-                      {item.actor ? <span className="text-text-soft">{item.actor}</span> : null}
+                      {item.actor ? <ActorLabel item={item} /> : null}
                     </span>
                   </div>
                 )}
@@ -737,7 +849,14 @@ export function EventTimeline({
                   </div>
                 ) : null}
 
-                {item.media?.length ? <TimelineMediaStrip media={item.media} /> : null}
+                {item.media?.length ? (
+                  <TimelineMediaStrip
+                    media={item.media}
+                    thumbLimit={mediaThumbLimit}
+                    galleryPhotos={galleryPhotos}
+                    galleryMatchIds={galleryMatchIds}
+                  />
+                ) : null}
               </div>
             </div>
           </motion.li>

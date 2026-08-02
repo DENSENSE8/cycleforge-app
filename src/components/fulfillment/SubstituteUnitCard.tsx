@@ -78,7 +78,7 @@ export function SubstituteUnitCard({
                     )}
                   >
                     {t.sku}
-                    {t.serialNumber ? ` · ${t.serialNumber.slice(-4)}` : ''}
+                    {t.serialNumber ? ` · ${t.serialNumber.slice(-8)}` : ''}
                   </button>
                 );
               })}

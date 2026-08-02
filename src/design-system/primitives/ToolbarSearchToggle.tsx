@@ -34,7 +34,10 @@ export function ToolbarSearchToggle({
   onClear?: () => void;
   placeholder?: string;
   tone?: SearchFieldTone;
-  /** Spins the SearchField trailing loader while a fetch is in flight. */
+  /**
+   * Spins the SearchField trailing loader while a query fetch is in flight.
+   * Empty expand never shows a spinner — SearchField gates on non-empty value.
+   */
   isSearching?: boolean;
   className?: string;
 }) {

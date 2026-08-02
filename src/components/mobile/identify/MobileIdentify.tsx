@@ -18,7 +18,7 @@
  * {@link useMobileIdentify}; the candidate card + session list are presentational
  * components under `./`.
  */
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from '@/design-system/motion';
 import { Camera, Check, X, RotateCcw, Loader2, AlertTriangle, Search, Zap } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
 import { RETICLE_TINT } from './mobile-identify-shared';

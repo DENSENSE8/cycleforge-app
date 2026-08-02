@@ -28,9 +28,9 @@ export interface TimelineChange {
 /**
  * An identifier attached to an event (tracking #, serial, FNSKU, order/PO id,
  * SKU). The {@link EventTimeline} renders it through the shared `CopyChip`
- * family — last-4 preview, copy-on-click, tone+icon — so timeline ids look and
+ * family — last-8 preview, copy-on-click, tone+icon — so timeline ids look and
  * behave exactly like ids everywhere else in the app. Adapters pass the raw
- * value + kind; the chip owns the last-4 formatting.
+ * value + kind; the chip owns the last-8 formatting.
  */
 export type TimelineRefKind =
   | 'tracking'
@@ -50,8 +50,8 @@ export interface TimelineRef {
    */
   href?: string;
   /**
-   * Optional chip label override. Serial chips normally derive last-4 from
-   * `value`; set this when a longer suffix is needed (sibling last-4 collision
+   * Optional chip label override. Serial chips normally derive last-8 from
+   * `value`; set this when a longer suffix is needed (sibling last-8 collision
    * on a batch journey row — see `disambiguateSerialDisplays`).
    */
   display?: string;
@@ -118,7 +118,7 @@ export interface TimelineItem {
    * ⇒ no diff block (every existing consumer is unaffected).
    */
   changes?: TimelineChange[];
-  /** Identifier shown as a last-4 CopyChip under the title (tracking/serial/…). */
+  /** Identifier shown as a last-8 CopyChip under the title (tracking/serial/…). */
   ref?: TimelineRef;
   /**
    * Optional chip cluster (e.g. multi-serial batch put-away). When set,
@@ -128,6 +128,17 @@ export interface TimelineItem {
   refs?: TimelineRef[];
   /** Actor name — rendered after the time as "· {actor}". */
   actor?: string;
+  /**
+   * The actor's `staff.id`, when the source row carries one. Purely additive to
+   * {@link actor}, which stays the display copy.
+   *
+   * {@link EventTimeline} renders the staffer's profile photo (via
+   * `<StaffAvatar>`) beside the name when this is present. An adapter whose
+   * query resolved only a NAME must leave it undefined — an avatar is never
+   * guessed from a display name, because two people share one and the row would
+   * then attribute work to the wrong face.
+   */
+  actorStaffId?: number | null;
   /** Optional pills below the title (signed-by, exception, …). */
   badges?: TimelineItemBadge[];
   /**

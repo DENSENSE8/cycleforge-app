@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { motion } from 'framer-motion';
+import { motion } from '@/design-system/motion';
 import { Cpu, Camera, Zap, ExternalLink, RefreshCw } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
 import { sectionLabel } from '@/design-system/tokens/typography/presets';

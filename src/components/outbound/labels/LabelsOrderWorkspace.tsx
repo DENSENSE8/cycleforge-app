@@ -34,7 +34,8 @@ import { OrderTimelineSection } from '@/components/shipped/OrderTimelineSection'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { isPdfOutboundDocument } from '@/lib/documents/outbound-document-display';
 import { Button, Panel } from '@/design-system/primitives';
-import { CheckCircle, FileText, History, Printer } from '@/components/Icons';
+import { FileText, History, Printer } from '@/components/Icons';
+import { AnimatedCheck } from '@/components/ui/AnimatedCheck';
 import { sourcePlatformLabel } from '@/lib/source-platform';
 import {
   printOutboundDocuments,
@@ -99,7 +100,7 @@ function DocTypeStatusRow({
         </span>
       ) : attached ? (
         <span className="inline-flex items-center gap-1 text-role-micro uppercase tracking-wider text-emerald-600">
-          <CheckCircle className="h-3.5 w-3.5" />
+          <AnimatedCheck size={14} />
           Attached
         </span>
       ) : (

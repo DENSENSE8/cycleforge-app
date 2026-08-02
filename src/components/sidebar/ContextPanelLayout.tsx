@@ -1,9 +1,9 @@
 'use client';
 
-import { type ReactNode } from 'react';
+import { useEffect, useSyncExternalStore, type ReactNode } from 'react';
 import dynamic from 'next/dynamic';
 import { usePathname } from 'next/navigation';
-import { motion } from 'framer-motion';
+import { motion } from '@/design-system/motion';
 import { ErrorBoundary } from '@/components/error/ErrorBoundary';
 import { ChevronRight } from '@/components/Icons';
 import { useHasSidebarContext } from '@/components/sidebar/useHasSidebarContext';
@@ -20,6 +20,13 @@ import { framerTransition } from '@/design-system/foundations/motion-framer';
 import { useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
 import { useHorizontalEdgeResize } from '@/design-system/hooks';
 import { IconButton } from '@/design-system/primitives';
+import {
+  contextRailCostPx,
+  getRightRailFrame,
+  getServerRightRailFrame,
+  setRightRailContextRail,
+  subscribeRightRailFrame,
+} from '@/lib/right-rail/frame';
 import { useLocalStorage } from '@/hooks';
 import { isStationSurfaceRoute } from '@/lib/sidebar-navigation';
 import { cn } from '@/utils/_cn';
@@ -88,7 +95,29 @@ export function ContextPanelLayout({ children }: { children: ReactNode }) {
     CONTEXT_PANEL_COLLAPSE.storageKey,
     false,
   );
-  const isCollapsed = hasPanel && collapsed;
+
+  // Publish what this rail would COST IF OPEN — never a measurement of the
+  // current DOM. The push resolver has to be able to ask "what would I get back
+  // by parking it", which is unanswerable from a width that is already 0.
+  useEffect(() => {
+    setRightRailContextRail({
+      railCostOpenPx: hasPanel ? contextRailCostPx(width) : 0,
+      railOperatorCollapsed: collapsed,
+    });
+  }, [hasPanel, width, collapsed]);
+
+  // The right-rail push may PARK this rail to make room. That is an EPHEMERAL
+  // MASK over the operator's own preference, never a write to it: `setCollapsed`
+  // is not called from here, so closing the inspector restores the rail to
+  // whatever the operator had chosen — and a stale `context-panel-collapsed` in
+  // localStorage can never be a side effect of opening a record.
+  const { parkRail } = useSyncExternalStore(
+    subscribeRightRailFrame,
+    getRightRailFrame,
+    getServerRightRailFrame,
+  );
+
+  const isCollapsed = hasPanel && (collapsed || parkRail);
   const transition = useMotionTransition(framerTransition.sidebarNavColumnMount);
 
   if (!hasPanel) return <>{children}</>;
@@ -134,7 +163,13 @@ export function ContextPanelLayout({ children }: { children: ReactNode }) {
 
   return (
     <div className={cn(CONTEXT_PANEL_HOST_CLASS, 'relative')}>
-      {isCollapsed ? (
+      {/* The strip is the OPERATOR's restore control, so it renders only for a
+          collapse they chose. A push-park renders none: the rail returns on its
+          own when the panel closes, and a restore button that cannot restore
+          (the mask would immediately re-apply) is worse than no button. That is
+          also why a push-park costs 0 in `resolveRightRailFrame`, not 32 — the
+          arithmetic matches what actually renders. */}
+      {isCollapsed && collapsed ? (
         <div
           className={CONTEXT_PANEL_COLLAPSE_STRIP_CLASS}
           data-context-panel-collapsed

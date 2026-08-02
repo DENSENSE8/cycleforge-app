@@ -12,6 +12,7 @@
  * gated value — see the resolver (./resolve.ts) which the API uses for UI.
  */
 
+import { parsePhotoAspectList, type PhotoAspect } from '@/lib/photos/photo-aspects';
 import type { OrgSettings } from '@/lib/tenancy/settings';
 
 function readOrg<T extends string | number | boolean>(
@@ -54,6 +55,17 @@ export const getReceivingScanSoundsEnabled = (s: OrgSettings): boolean =>
 /** When true, Receive is gated on a captured serial OR an explicit no-serial waiver. */
 export const getReceivingRequireSerialConfirmation = (s: OrgSettings): boolean =>
   readOrg<boolean>(s, 'receiving.requireSerialConfirmation', false);
+
+/**
+ * Which item photo aspects BLOCK the `item_photos` procedure step.
+ *
+ * Stored as a comma list (see the registry row); parsed through the aspect SoT,
+ * which drops unknown tokens rather than defaulting them. An empty result is a
+ * legal answer — "any item photo counts" — and is what a two-person reseller
+ * wants; the gate falls back to the line's photo count in that case.
+ */
+export const getReceivingRequiredItemPhotoAspects = (s: OrgSettings): PhotoAspect[] =>
+  parsePhotoAspectList(readOrg<string>(s, 'receiving.requiredItemPhotoAspects', 'included,serial'));
 
 export const getReceivingVisionConsensus = (s: OrgSettings): number =>
   readOrg<number>(s, 'receiving.vision.consensusNeeded', 2);

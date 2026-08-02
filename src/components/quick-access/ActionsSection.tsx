@@ -16,7 +16,7 @@ interface ActionsSectionProps {
 }
 
 /**
- * Secondary quick actions — kept minimal. Navigation lives in Pinned/Recent;
+ * Secondary quick actions — kept minimal. Page pins / MRU live in GlobalHeader;
  * system tools (sync, warranty) live in their own surfaces.
  */
 export function ActionsSection({

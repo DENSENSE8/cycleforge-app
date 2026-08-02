@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { getLast4, OrderIdChip, SerialChip, SkuScanRefChip } from '@/components/ui/CopyChip';
+import { getLast8, OrderIdChip, SerialChip, SkuScanRefChip } from '@/components/ui/CopyChip';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import type { PulseEventRow } from './types';
 import { unitStatusBadgeClass } from '@/lib/unit-status';
@@ -85,12 +85,12 @@ export function EventRow({ event }: EventRowProps) {
                     + internal unit id + serial — instead of dumping raw strings. */}
                 <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
                     {event.sku ? (
-                        <SkuScanRefChip value={event.sku} display={getLast4(event.sku)} />
+                        <SkuScanRefChip value={event.sku} display={getLast8(event.sku)} />
                     ) : null}
                     {event.serial_unit_id != null ? (
                         <OrderIdChip
                             value={String(event.serial_unit_id)}
-                            display={getLast4(String(event.serial_unit_id))}
+                            display={getLast8(String(event.serial_unit_id))}
                         />
                     ) : null}
                     {event.serial_number ? (

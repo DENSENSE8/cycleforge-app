@@ -23,8 +23,22 @@ export interface ApiResponse {
   offset: number;
 }
 
-export function dispatchSelectLine(row: ReceivingLineRow | null) {
-  window.dispatchEvent(new CustomEvent('receiving-select-line', { detail: row }));
+export function dispatchSelectLine(
+  row: ReceivingLineRow | null,
+  opts?: {
+    /**
+     * Whether this open stamps the operator's recents. Omitted = true, which
+     * keeps every historical dispatcher (scan, recent rail, sibling PO line)
+     * byte-identical. The browse FEED passes false — see `readSelectLineDetail`.
+     */
+    recordView?: boolean;
+  },
+) {
+  // Bare row when there is nothing to add, so the ~15 existing dispatchers keep
+  // emitting the exact payload shape their listeners have always received.
+  const detail =
+    opts?.recordView === false ? { row, recordView: false } : row;
+  window.dispatchEvent(new CustomEvent('receiving-select-line', { detail }));
 }
 
 export function dispatchLineUpdated(row: Partial<ReceivingLineRow> & { id: number }) {

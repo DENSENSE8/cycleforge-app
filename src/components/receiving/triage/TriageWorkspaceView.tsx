@@ -57,7 +57,7 @@ export function TriageWorkspaceView({
   } = useRailEditMode({
     isScanSurface: true,
     mode: 'triage',
-    unboxView: 'recent',
+    unboxView: 'history',
     triageView,
   });
 

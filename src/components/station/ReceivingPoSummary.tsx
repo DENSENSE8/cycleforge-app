@@ -28,7 +28,7 @@ import {
   SerialChip,
   SkuCountChip,
   SerialCountChip,
-  getLast4,
+  getLast8,
 } from '@/components/ui/CopyChip';
 import { ChipColumns, CHIP_COL, type ChipColumn } from '@/components/ui/ChipColumns';
 import { usePlatformMeta } from '@/hooks/useCatalog';
@@ -157,7 +157,7 @@ export function ReceivingPoSummary({
 
   // Mirror the per-line ChipColumns grid exactly, column-for-column.
   const columns: ChipColumn[] = [
-    { key: 'po', width: CHIP_COL.id, node: <OrderIdChip value={poValue} display={getLast4(poValue)} /> },
+    { key: 'po', width: CHIP_COL.id, node: <OrderIdChip value={poValue} display={getLast8(poValue)} /> },
     { key: 'sku', width: CHIP_COL.id, node: <SkuCountChip count={skuCount} /> },
     {
       key: 'tracking',
@@ -167,7 +167,7 @@ export function ReceivingPoSummary({
       node: isPickup
         ? <FulfillmentPickupPill />
         : trackingValue
-        ? <TrackingChip value={trackingValue} display={getLast4(trackingValue)} />
+        ? <TrackingChip value={trackingValue} display={getLast8(trackingValue)} />
         : isIncoming && uniformDeliveryState === 'AWAITING_TRACKING' && (first?.zoho_purchaseorder_id || '').trim()
           ? (
             <IncomingAttachTrackingButton
@@ -230,9 +230,9 @@ export function ReceivingPoSummary({
       </div>
       {isMobile ? (
         <div className={dashboardOrderRowChipsClass(true)}>
-          <OrderIdChip value={poValue} display={getLast4(poValue)} dense />
+          <OrderIdChip value={poValue} display={getLast8(poValue)} dense />
           <SkuCountChip count={skuCount} dense />
-          {trackingValue && !isPickup ? <TrackingChip value={trackingValue} display={getLast4(trackingValue)} dense /> : null}
+          {trackingValue && !isPickup ? <TrackingChip value={trackingValue} display={getLast8(trackingValue)} dense /> : null}
           {isPickup ? <FulfillmentPickupPill dense /> : null}
           {allSerials.length === 1 ? (
             <SerialChip value={allSerials[0]} width="w-fit max-w-full" dense />

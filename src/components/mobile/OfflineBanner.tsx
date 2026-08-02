@@ -15,7 +15,7 @@
  */
 
 import { useEffect, useState, useSyncExternalStore } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion } from '@/design-system/motion';
 import { WifiOff, Wifi } from 'lucide-react';
 
 function subscribe(listener: () => void): () => void {

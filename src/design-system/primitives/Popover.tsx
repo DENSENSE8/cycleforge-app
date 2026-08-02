@@ -1,7 +1,7 @@
 'use client';
 
 import { useLayoutEffect, useState, type ComponentPropsWithoutRef, type ReactNode, type RefObject } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion } from '@/design-system/motion';
 import { cn } from '@/utils/_cn';
 import { AnchoredLayer, type AnchoredPlacement } from './AnchoredLayer';
 import { framerPresence, framerTransition } from '../foundations/motion-framer';

@@ -7,7 +7,7 @@ import {
   TicketChip,
   TrackingChip,
   TrackingOrSkuScanChip,
-  getLast4,
+  getLast8,
 } from '@/components/ui/CopyChip';
 
 export function WorkOrderInfoChips({ row }: { row: WorkOrderRow }) {
@@ -19,8 +19,8 @@ export function WorkOrderInfoChips({ row }: { row: WorkOrderRow }) {
       const trackingValue = String(row.trackingNumber || '').trim();
       return (
         <>
-          <OrderIdChip value={orderValue} display={getLast4(orderValue)} />
-          <TrackingChip value={trackingValue} display={getLast4(trackingValue)} />
+          <OrderIdChip value={orderValue} display={getLast8(orderValue)} />
+          <TrackingChip value={trackingValue} display={getLast8(trackingValue)} />
         </>
       );
     }
@@ -28,8 +28,8 @@ export function WorkOrderInfoChips({ row }: { row: WorkOrderRow }) {
       const ticket = String(row.recordLabel || '').trim();
       return (
         <>
-          <TicketChip value={ticket} display={getLast4(ticket)} />
-          <OrderIdChip value={idStr} display={getLast4(idStr)} />
+          <TicketChip value={ticket} display={getLast8(ticket)} />
+          <OrderIdChip value={idStr} display={getLast8(idStr)} />
         </>
       );
     }
@@ -38,7 +38,7 @@ export function WorkOrderInfoChips({ row }: { row: WorkOrderRow }) {
       return (
         <>
           <FnskuChip value={ref} />
-          <OrderIdChip value={idStr} display={getLast4(idStr)} />
+          <OrderIdChip value={idStr} display={getLast8(idStr)} />
         </>
       );
     }
@@ -47,7 +47,7 @@ export function WorkOrderInfoChips({ row }: { row: WorkOrderRow }) {
       return (
         <>
           <FnskuChip value={sku} />
-          <OrderIdChip value={idStr} display={getLast4(idStr)} />
+          <OrderIdChip value={idStr} display={getLast8(idStr)} />
         </>
       );
     }
@@ -56,7 +56,7 @@ export function WorkOrderInfoChips({ row }: { row: WorkOrderRow }) {
       return (
         <>
           <TrackingOrSkuScanChip value={track} />
-          <OrderIdChip value={idStr} display={getLast4(idStr)} />
+          <OrderIdChip value={idStr} display={getLast8(idStr)} />
         </>
       );
     }

@@ -28,6 +28,9 @@ const STATION_ROUTES = ['/unbox', '/triage', '/shipping/labels', '/test', '/pack
  * scope + capture day), so it is no longer the panel-less case.
  */
 const SIDEBAR_ROUTES = [
+  // `/` (Home → Today) joined 2026-08-01: the Today workbench grew a saved-views
+  // rail, so it reserves a column like any other panel route.
+  '/',
   '/dashboard',
   '/products',
   '/operations',

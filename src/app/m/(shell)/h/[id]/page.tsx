@@ -24,7 +24,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { unitStatusBadgeTone } from '@/components/station/receiving-constants';
 import { conditionLabel } from '@/lib/conditions';
 import { handlingUnitStatusChipClass } from '@/lib/handling-unit-status';
-import { getLast4 } from '@/components/ui/CopyChip';
+import { getLast8 } from '@/components/ui/CopyChip';
 import { printHandlingUnitLabel } from '@/lib/print/printHandlingUnitLabel';
 import { HandlingUnitChip } from '@/components/receiving/HandlingUnitChip';
 import { ChevronLeft, Check, X, Printer, Plus, Package } from '@/components/Icons';
@@ -267,7 +267,7 @@ export default function MobileHandlingUnitPage() {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1.5">
                     <span className="font-mono text-sm font-semibold text-text-default">
-                      …{getLast4(u.serial_number)}
+                      …{getLast8(u.serial_number)}
                     </span>
                     <span className={`rounded px-1.5 py-0.5 text-role-micro ${unitStatusBadgeTone(u.current_status)}`}>
                       {u.current_status}

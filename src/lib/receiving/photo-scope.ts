@@ -11,6 +11,7 @@
  * photo_type mappings here.
  */
 
+import { isAspectLegalForStage, type PhotoAspect } from '@/lib/photos/photo-aspects';
 import {
   photoIntentFromStage,
   receivingEntityTypeForStage,
@@ -38,6 +39,13 @@ interface ReceivingPhotoWriteTarget {
   entityType: 'RECEIVING' | 'RECEIVING_LINE';
   entityId: number;
   photoType: string;
+  /**
+   * What this shot SHOWS, within the stage (`@/lib/photos/photo-aspects`).
+   * `null` when the surface cannot name it — legal, and means *unclassified
+   * evidence*. Passed through rather than inferred: an aspect is a claim, and
+   * this resolver is not in a position to make one on the caller's behalf.
+   */
+  aspect: PhotoAspect | null;
 }
 
 /** Parse a raw stage string (URL `?stage=`, Ably payload). Unknown → null. */
@@ -100,14 +108,30 @@ export function resolveReceivingPhotoTarget(scope: {
   receivingId: number;
   receivingLineId?: number | null;
   stage: ReceivingPhotoStage;
+  /**
+   * Optional. Omitted → `null` (unclassified evidence). An aspect ILLEGAL for
+   * the scope's stage throws, like every other incoherence here — this is the
+   * strict resolver new capture wiring composes, so a mis-wired surface must
+   * fail in dev and tests rather than send a body the server would 400.
+   */
+  aspect?: PhotoAspect | null;
 }): ReceivingPhotoWriteTarget {
   const entityType = receivingEntityTypeForStage(scope.stage);
+  const aspect = scope.aspect ?? null;
+  if (aspect && !isAspectLegalForStage(aspect, scope.stage)) {
+    throw new Error(`photo aspect "${aspect}" is not legal at the ${scope.stage} stage`);
+  }
   if (entityType === 'RECEIVING_LINE') {
     const lineId = scope.receivingLineId;
     if (lineId == null || !Number.isFinite(lineId) || lineId <= 0) {
       throw new Error('unbox_item photo scope requires a receivingLineId');
     }
-    return { entityType, entityId: lineId, photoType: receivingPhotoTypeForStage(scope.stage) };
+    return {
+      entityType,
+      entityId: lineId,
+      photoType: receivingPhotoTypeForStage(scope.stage),
+      aspect,
+    };
   }
   if (scope.receivingLineId != null) {
     throw new Error(`${scope.stage} photo scope must not carry a receivingLineId`);
@@ -119,6 +143,7 @@ export function resolveReceivingPhotoTarget(scope: {
     entityType,
     entityId: scope.receivingId,
     photoType: receivingPhotoTypeForStage(scope.stage),
+    aspect,
   };
 }
 

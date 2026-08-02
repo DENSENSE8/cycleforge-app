@@ -9,7 +9,8 @@ import {
   MONITOR_KPI_TILE_CLASS,
 } from '@/design-system/components/monitor';
 import { Button } from '@/design-system/primitives';
-import { CheckCircle, RefreshCw } from '@/components/Icons';
+import { RefreshCw } from '@/components/Icons';
+import { AnimatedCheck } from '@/components/ui/AnimatedCheck';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { STAFF_FILTER_PARAM, useStaffFilter } from '@/hooks/useStaffFilter';
 import {
@@ -81,7 +82,7 @@ function StripEmpty({ mode }: { mode: TestingWorkspaceTab }) {
         : 'No testing history is in this staff scope.';
   return (
     <div className="flex items-center gap-3 rounded-xl border border-dashed border-border-soft bg-surface-card px-4 py-5">
-      <CheckCircle className="h-5 w-5 shrink-0 text-text-success" />
+      <AnimatedCheck size={20} />
       <div className="min-w-0">
         <p className="text-role-caption font-semibold text-text-default">All clear.</p>
         <p className="mt-0.5 text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint">

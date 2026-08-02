@@ -4,7 +4,7 @@ import { useCallback, useRef } from 'react';
 import { ExternalLink } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { Button } from '@/design-system/primitives';
-import { PoChip, TrackingChip, SerialChip, getLast4 } from '@/components/ui/CopyChip';
+import { PoChip, TrackingChip, SerialChip, getLast8 } from '@/components/ui/CopyChip';
 import { DEBOUNCE_MS, splitPoContext, type PatchBody, type QueueRow } from './unfound-queue-shared';
 
 interface QueueTableRowProps {
@@ -89,7 +89,7 @@ export function QueueTableRow({
                   // wins over opening the panel.
                   <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
                     {poNumbers.map((po) => (
-                      <PoChip key={po} value={po} display={getLast4(po)} />
+                      <PoChip key={po} value={po} display={getLast8(po)} />
                     ))}
                   </div>
                 )}
@@ -116,7 +116,7 @@ export function QueueTableRow({
                   {row.kind === 'unmatched_receiving' ? (
                     <TrackingChip
                       value={row.context}
-                      display={getLast4(row.context)}
+                      display={getLast8(row.context)}
                     />
                   ) : (
                     <span className="truncate">{row.context}</span>

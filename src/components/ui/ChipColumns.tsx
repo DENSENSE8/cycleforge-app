@@ -1,7 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { AnimatePresence, LayoutGroup, motion } from 'framer-motion';
+import { AnimatePresence, LayoutGroup, motion } from '@/design-system/motion';
 import { cn } from '@/utils/_cn';
 import { useIsColumnHidden } from '@/components/ui/table-column-config/TableColumnConfig';
 import { framerTransition } from '@/design-system/foundations/motion-framer';
@@ -14,22 +14,22 @@ import { useMotionTransition } from '@/design-system/foundations/motion-framer-h
  * the way a real table does — instead of the old right-packed flex where a
  * column only aligned when its values happened to be the same width.
  *
- * Values are last-4 previews (or a short platform label), so these are sized to
- * fit "icon + 4 mono chars" snugly; the serial keeps the slightly wider box it
- * has always used across tables.
+ * Values are last-8 previews (or a short platform label), so these are sized to
+ * fit "icon + 8 mono chars" snugly; the serial keeps the same box as the other
+ * id columns so inter-column gaps stay even.
  */
 export const CHIP_COL = {
   /** PlatformChip (amazon / ebay / walmart …). */
   platform: 'w-[92px]',
   /** Hash-style id chips: OrderIdChip, PoChip, SkuScanRefChip. */
-  id: 'w-[64px]',
+  id: 'w-[96px]',
   /** TrackingChip / TrackingOrSkuScanChip / FnskuChip. */
-  tracking: 'w-[64px]',
-  /** SerialChip — same width as the other last-4 columns so the gap between
+  tracking: 'w-[96px]',
+  /** SerialChip — same width as the other last-8 columns so the gap between
    *  the tracking and serial values matches every other inter-column gap.
-   *  (Render the SerialChip content-width, not its default fixed 84px box, so
+   *  (Render the SerialChip content-width, not its default fixed box, so
    *  it doesn't reserve empty space on the left of this column.) */
-  serial: 'w-[64px]',
+  serial: 'w-[96px]',
 } as const;
 
 export interface ChipColumn {

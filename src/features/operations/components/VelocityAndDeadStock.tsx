@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { motion } from 'framer-motion';
+import { motion } from '@/design-system/motion';
 import { sectionLabel } from '@/design-system/tokens/typography/presets';
 import { velocityTierMeta } from '@/lib/velocity-tier-tone';
 

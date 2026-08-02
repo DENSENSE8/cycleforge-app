@@ -7,6 +7,7 @@ import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { getKitParts, getQcChecks } from '@/lib/neon/sku-catalog-queries';
 import { evaluateKitReadiness, type PackingEnforcement } from '@/lib/packing/kit-readiness';
+import { kitPartDocument, type KitPartDocument } from '@/lib/packing/kit-part-document';
 import { getPackingEnforcement } from '@/lib/tenancy/settings';
 import { getOrganization } from '@/lib/tenancy/organizations';
 
@@ -16,6 +17,13 @@ export interface PackKitPartDto {
   type: string;
   qty: number;
   critical: boolean;
+  /**
+   * The paper this part puts in the box, when it has one. Null for the
+   * overwhelming majority of parts, and a null renders byte-identically to
+   * before the column existed. Resolved once by `kitPartDocument()` so no view
+   * re-interprets the three nullable columns behind it.
+   */
+  document: KitPartDocument | null;
 }
 
 export interface PackCheckDto {
@@ -189,6 +197,7 @@ async function enrichLine(
       type: p.component_type,
       qty: p.qty_required,
       critical: p.is_critical,
+      document: kitPartDocument(p),
     }));
     qcFlags = checks.map((c) => ({
       id: c.id,

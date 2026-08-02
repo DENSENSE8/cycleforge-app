@@ -29,6 +29,7 @@ import { del as delBlob } from '@vercel/blob';
 import { enqueuePhotoJob } from './jobs';
 import { isAnalyzeOnUploadEnabled } from './analyze';
 import { validatePhotoWrite } from './stages';
+import type { PhotoAspect } from './photo-aspects';
 import { ApiError } from '@/lib/api';
 
 const MAX_BYTES = Number(process.env.PHOTOS_UPLOAD_MAX_BYTES || 8 * 1024 * 1024);
@@ -63,6 +64,17 @@ export interface AttachLegacyPhotoInput {
    * and correctly leave it null.
    */
   clientCapturedAt?: Date | null;
+  /**
+   * What this shot SHOWS, within its stage (`./photo-aspects.ts`). Optional and
+   * nullable everywhere: NULL means *unclassified evidence*, never *missing
+   * evidence*, and is what every pre-2026-08-01b row carries.
+   *
+   * Legality (aspect × stage) is decided at the route edge against the stage
+   * the ENTITY resolves to — not here — because only the route knows the
+   * caller's claimed stage, and validating against a claim rather than the
+   * resolved value is how a mis-claimed stage gets to mis-claim an aspect too.
+   */
+  photoAspect?: PhotoAspect | null;
 }
 
 /**
@@ -121,6 +133,7 @@ export async function attachPhotoWithLegacyUrl(
       photoType: input.photoType ?? null,
       poRef,
       clientCapturedAt: input.clientCapturedAt ?? null,
+      photoAspect: input.photoAspect ?? null,
     });
 
     await createPhotoEntityLink(client, {
@@ -163,6 +176,7 @@ async function uploadPhotoLegacyUrl(input: UploadPhotoInput): Promise<UploadPhot
     linkRole: input.linkRole,
     contentType: input.contentType,
     clientCapturedAt: input.clientCapturedAt ?? null,
+    photoAspect: input.photoAspect ?? null,
     idempotent: false,
   });
   return result;
@@ -197,12 +211,16 @@ async function uploadPhotoToAdapter(input: UploadPhotoInput): Promise<UploadPhot
       // mobile capture path already stripped EXIF client-side before the bytes
       // ever reached us (see ./capture-provenance.ts).
       clientCapturedAt: input.clientCapturedAt ?? null,
+      // Aspect legality was decided at the route edge against the RESOLVED
+      // stage; by here it is a value to persist, not a claim to re-check.
+      photoAspect: input.photoAspect ?? null,
     });
 
     const { objectKey, thumbObjectKey } = buildGcsObjectKey({
       organizationId: input.organizationId,
       entityType: input.entityType,
       photoId,
+      entityId: input.entityId,
       poRef,
       // SERIAL_UNIT photos file under `serial-units/{unit_uid}/…`; the uploader
       // passes the unit_uid as poRef, so hand it to the path builder's unitUid

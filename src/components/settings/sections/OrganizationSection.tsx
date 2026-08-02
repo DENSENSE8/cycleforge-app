@@ -7,70 +7,29 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { Button } from '@/design-system/primitives';
-import { requestConfirm } from '@/design-system/components/confirm';
 import { FILTER_DROPDOWN_SELECT_CLASS } from '@/design-system/components/FilterDropdownSelect';
 import { useAuth } from '@/contexts/AuthContext';
+import { orgInitials } from '@/lib/identity/switch-org';
+import { useSwitchOrg } from '@/lib/identity/use-switch-org';
 import { WorkspaceSwitcher } from './WorkspaceSwitcher';
 
-function orgInitials(name: string): string {
-  return name.split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]?.toUpperCase() ?? '').join('') || 'W';
-}
-
 /**
- * "Which workspace am I in" card + deliberate org switcher. The active tenant is
- * fixed for the session and switching is infrequent — so this lives in Settings
- * rather than as an always-on header switcher (which would collide with the
- * master-nav dropdown and risk resetting per-page mode/unbox state).
+ * "Which workspace am I in" card + deliberate org switcher. Always-on switching
+ * lives on the MasterNav spine top (`OrgWorkspaceControl`); this Settings card
+ * remains the fuller management surface (current badge, slug/plan, inline list).
  *
  * The switch list renders every membership from the auth envelope. Pre-identity-
  * migration that's always a single entry (the current org), so only the
  * read-only header shows. Once an account belongs to >1 org, the others become
- * switchable rows.
+ * switchable rows. Switch path = {@link useSwitchOrg} (shared with the spine).
  */
 function ActiveWorkspaceCard() {
   const { user } = useAuth();
-  const [switching, setSwitching] = useState<string | null>(null);
-  const [switchErr, setSwitchErr] = useState<string | null>(null);
+  const { switching, switchErr, switchTo } = useSwitchOrg();
   if (!user) return null;
 
   const memberships = user.memberships ?? [];
   const others = memberships.filter((m) => !m.isCurrent);
-
-  const switchTo = async (organizationId: string, name: string) => {
-    if (switching) return;
-    const ok = await requestConfirm({
-      description: `Switch to ${name}? Your current view and any unsaved scan state will close.`,
-      tone: 'primary',
-      confirmLabel: 'Switch',
-    });
-    if (!ok) return;
-    setSwitching(organizationId);
-    setSwitchErr(null);
-    try {
-      const r = await fetch('/api/auth/switch-org', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ organizationId }),
-      });
-      if (!r.ok) {
-        const data = await r.json().catch(() => ({}));
-        setSwitchErr(
-          (data as { error?: string }).error === 'NOT_A_MEMBER'
-            ? "You're not a member of that workspace."
-            : "Couldn't switch workspace.",
-        );
-        setSwitching(null);
-        return;
-      }
-      // Hard reload so caches / realtime subscriptions / RLS context reset
-      // cleanly to the new tenant. NOT router.push.
-      window.location.assign('/dashboard');
-    } catch {
-      setSwitchErr("Couldn't switch workspace.");
-      setSwitching(null);
-    }
-  };
 
   return (
     <div className="space-y-3 rounded-2xl border border-border-soft bg-surface-card p-5 shadow-sm">

@@ -269,4 +269,74 @@ test.describe('receiving — a receive never erases the operator item note', () 
     expect(afterNote.notes, 'a receive that supplied a note did not set it').toBe(RECEIVE_NOTE);
     expect(afterNote.label_note, 'a receive rewrote the printed face').toBe(FACE_SEED);
   });
+
+  /**
+   * The QA-fail reason's new home. It used to be free text posted as `notes`
+   * (see `ReceivingQaFailSheet.tsx`); it is now a code from the narrow QA-fail
+   * slice that lands in `receiving_exceptions` and DECIDES the qa_status.
+   */
+  test('a fail reason writes an exception row, sets the verdict, and leaves both notes alone', async ({
+    request,
+  }) => {
+    test.skip(!receiveLineId, 'QA receiving fixture missing — run pnpm provision:qa-org');
+
+    await seedGrain(receiveLineId!, ITEM_SEED, FACE_SEED);
+
+    const failed = await request.post('/api/receiving/mark-received', {
+      data: {
+        receiving_line_id: receiveLineId,
+        exception_code: 'DAMAGED',
+        disposition_code: 'RTV',
+        condition_grade: 'PARTS',
+        client_event_id: `e2e-grain-${RUN}-fail`,
+      },
+    });
+    expect(failed.ok(), `fail receive failed (${failed.status()}): ${await failed.text()}`)
+      .toBeTruthy();
+
+    const after = await readGrain(receiveLineId!);
+    expect(after.notes, 'a fail reason overwrote the operator item note').toBe(ITEM_SEED);
+    expect(after.label_note, 'a fail reason rewrote the printed face').toBe(FACE_SEED);
+
+    // The reason lives in its own home…
+    const exceptions = await pool.query<{ exception_code: string; reason: string | null }>(
+      `SELECT exception_code, reason FROM receiving_exceptions
+        WHERE organization_id = $1 AND receiving_line_id = $2 AND status = 'OPEN'
+        ORDER BY id DESC LIMIT 1`,
+      [resolveQaOrgId(), receiveLineId],
+    );
+    expect(exceptions.rows[0]?.exception_code, 'no receiving_exceptions row for the fail').toBe(
+      'DAMAGED',
+    );
+
+    // …and the verdict is derived from it, not hardcoded.
+    const verdict = await pool.query<{ qa_status: string }>(
+      `SELECT qa_status FROM receiving_line_testing
+        WHERE organization_id = $1 AND receiving_line_id = $2`,
+      [resolveQaOrgId(), receiveLineId],
+    );
+    expect(verdict.rows[0]?.qa_status, 'DAMAGED must land as FAILED_DAMAGED').toBe(
+      'FAILED_DAMAGED',
+    );
+  });
+
+  test('a fail reason outside the QA slice is rejected, and so is a contradicting verdict', async ({
+    request,
+  }) => {
+    test.skip(!receiveLineId, 'QA receiving fixture missing — run pnpm provision:qa-org');
+
+    // A write-off code is not a QA verdict; an OS&D shipment code is not either.
+    for (const code of ['LOST_IN_TRANSIT', 'NO_PO', 'PHOTO_WAIVED_DEFERRED', 'NOPE']) {
+      const res = await request.post('/api/receiving/mark-received', {
+        data: { receiving_line_id: receiveLineId, exception_code: code },
+      });
+      expect(res.status(), `${code} should not be accepted as a QA-fail reason`).toBe(400);
+    }
+
+    // Reason and verdict are one fact — a body that disagrees is a caller bug.
+    const conflict = await request.post('/api/receiving/mark-received', {
+      data: { receiving_line_id: receiveLineId, exception_code: 'DEFECTIVE', qa_status: 'PASSED' },
+    });
+    expect(conflict.status(), 'DEFECTIVE + PASSED must not resolve silently').toBe(400);
+  });
 });

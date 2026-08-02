@@ -82,6 +82,14 @@ land a port** ([verify.md](../verify.md)).
 
 - **`SupportTicketIdentity`** (`support/station/SupportTicketFocus.tsx`) — forked
   identity for a ticket entity; keeps the motion root, composes `StationAmbientWash`.
+  **Support's entries here are a MIGRATION state, not a settled tier.** Ratified
+  2026-08-01: `/support` is Workbench branch **`service-workspace`**
+  ([`workbench-service.md`](workbench-service.md)), so its primary shell leaves
+  this family entirely — `SupportTicketFocus` stops composing `StationWorkbench` /
+  `StationContextBar`, and these rows retire rather than graduate. The reason
+  `SupportTicketIdentity` needed a fork in the first place — *a ticket is not a
+  carton* — was the early evidence for that ruling. **Do not port more
+  Unbox-family chrome onto Support to "finish" the tier.**
 - **Hand-built terminal VMs** (`TERMINAL_HAND_VM_ALLOWLIST`): `PackerReviewMode`,
   `SupportTicketFocus`, `LabelsOrderWorkspace` — registry slices are port follow-ups.
 - **`StationWorkbench` adoption gaps** (`STATION_WORKBENCH_ADOPTION_EXEMPT`):
@@ -102,35 +110,51 @@ Unbox, Testing, Shipping, and Packing expose a **Timeline** section tab via
 1. **Spine switcher at top** — house [`SectionTabsSlider`](../../../src/design-system/components/SectionTabsSlider.tsx)
    (**Units** default · **Tracking**). Single-spine cases hide the bar.
 2. **Units** — [`StationUnitJourneys`](../../../src/components/station/workbench/StationUnitJourneys.tsx)
-   only (two-line anatomy; SerialChip last-4 · clock · actor; raw `PREV → NEXT` omitted).
+   only (two-line anatomy; SerialChip last-8 · clock · actor; raw `PREV → NEXT` omitted).
 3. **Tracking** — full [`CarrierTrackingSection`](../../../src/components/sidebar/receiving/incoming-details/CarrierTrackingSection.tsx)
    (`stationCompact`: hero + events). Not shown on the Units spine.
 
 PO path uses Incoming details; order/shipping uses journey `dim=tracking|order`.
 Serials: explicit list or carton fetch via `useCartonSerials`.
 
-**Unbox has NO tab strip in the workbench body.** The centre is the carton —
-PO lines → label preview (`buildUnboxOverview`) — and the `tabs` slot is
-deliberately empty. The step procedure is not in the centre either: it **IS**
-the `checklist` display (`UnboxProcedureChecklist`), so a read-only status
-display never takes the work surface's seat. Every other
-display moved to the right-edge
-**Displays** push column (`ReceivingDisplaysPushStack`): strip order
-**Classify (unfound) | Listings (matched) · Units · Zoho · Checklist** (po-note
-label from `providerCatalogLabel('zoho')` brand token) + ⋯ for Support /
-Tracking / Timeline, with the `PairingTogglePill` pencil in the strip's
-`rightSlot`. Tab list SoT = `buildUnboxSideTabs`; which one is showing (and
-whether the column is open at all) = `resolveUnboxSideTab` — `null` IS closed,
-so there is no second open flag to drift.
+**Unbox has NO tab strip in the workbench body.** The centre is the carton, and
+**the procedure IS the centre** (amended 2026-08-01): `buildUnboxOverview`
+returns the guided step stack (`UnboxProcedureStack` → DS `ProcedureStack`) with
+the label preview beneath it, and the `tabs` slot stays deliberately empty. Every
+other display lives in the right-edge **Displays** push column
+(`ReceivingDisplaysPushStack`): strip order **Classify (unfound) | Listings
+(matched) · Units · Zoho** (po-note label from `providerCatalogLabel('zoho')`
+brand token) + ⋯ for Support / Tracking / Timeline, with the `PairingTogglePill`
+pencil in the strip's `rightSlot`. Tab list SoT = `buildUnboxSideTabs`; which one
+is showing (and whether the column is open at all) = `resolveUnboxSideTab` —
+`null` IS closed, so there is no second open flag to drift.
 
-**Checklist is PRIMARY, not ⋯.** It was overflow while it was a hand-ticked
-reference list; it derives the station's step states now, which makes it the
-orienting "where am I" display, and an orienting display behind a menu costs two
-clicks on every carton. **There is exactly ONE checklist in Unbox** — the
+**The `checklist` display is DELETED, not moved** (2026-08-01). The previous rule
+said the procedure must not take the work surface's seat because it was a
+*read-only status display* — correct about a status display, and exactly why the
+checklist was parked in the Displays column. The stack is not that: it is the
+work itself, one active step card carrying that step's own capture controls,
+directly above the composer that commits it. So the reason expired with the
+surface it described.
+
+**There is still exactly ONE procedure surface in Unbox.** Do not re-add a
+checklist "for reference" — two of them is the collision the previous change
+closed, and they would disagree the first time one learned about skips. The
 org-editable `checklist_templates` list and its `/api/checklists` CRUD were
-deleted 2026-08-01. Do not add a second checklist surface, and do not re-derive
-step order in a view: `deriveProcedureSteps` is the vocabulary SoT (hardcoding
-the five steps breaks unfound, local pickup, returns and multi-qty).
+deleted 2026-08-01 and stay deleted. Do not re-derive step order in a view:
+`deriveProcedureSteps` is the vocabulary SoT (hardcoding the steps breaks
+unfound, local pickup, returns and multi-qty), and the POINTER is
+`resolveActiveStep` (`src/lib/receiving/procedure-pointer.ts`), shared with the
+receipt read model — never a local "first pending" scan.
+
+**The stack is a FLAT LEDGER.** Every step renders as a row in vocabulary order;
+`done` · `skipped` · `pending` collapse to one line, `active` expands to the one
+card. Nothing overlaps, nothing is hidden. A depth pile, a scroll-linked
+animation, and per-step durations were each evaluated and refused — they are not
+missing work. Motion is opacity only (`framerPresence.stationCartonSwap`, the
+station-cadence preset); row positions and the card's height snap in one
+un-animated frame. The stack never takes focus: the wedge owns it, and a step
+card that steals it drops scans silently.
 
 **Every Unbox right-edge surface is a station-scoped push column, never a
 `RightRailHost` occupant.** Displays / Ticket (`ReceivingTicketStack`) / Claim

@@ -235,17 +235,32 @@ export const SURFACE_REGISTRY: Record<SurfaceKey, SurfaceDefinition> = {
     // Key stays `outbound` for composition stability; URL graduated to `/shipping`.
     legacy: { pathname: '/outbound', bareResolves: true },
   },
-  // Support — the helpdesk/ticket station. Promoted More → Stations: `/support`
-  // now mounts SurfaceGate + RouteShell like the other floor stations, and the
-  // Tickets mode focus pane adopts Unbox Station Workbench anatomy. It is a
-  // desktop console (mobile-restricted), not a scan floor — `scan: null`, and no
-  // `workflowNodeType` (Support isn't an engine step). Gated by
-  // `integrations.zendesk` (same as the /api/zendesk/* routes it calls).
+  // Support — the helpdesk/ticket console. **Workbench, branch
+  // `service-workspace`** (ratified 2026-08-01, `docs/todo/
+  // support-service-workspace-PLAN.md`): an agent workspace composed
+  // list | thread + composer | context, on Workbench pick+persist physics —
+  // durable URL ticket selection, CRUD (reply / assign / resolve), density
+  // `ops`, pointer-driven.
+  //
+  // It read `archetype: 'station'` until 2026-08-01. That was a CATEGORY ERROR,
+  // not a nuance: `scan` was already `null`, so nothing about the surface was
+  // scanner-driven, and Q1 of the `pickArchetype` discriminator — the only
+  // question that returns Station — never applied. What the row actually
+  // recorded was the nav promotion (More → Stations); a spine SECTION is a
+  // domain, and a domain is not a region contract.
+  //
+  // The branch is a Layer C composition on Workbench, NOT a fifth archetype:
+  // `ARCHETYPE_IDS` stays four (`archetype.ts`). Branch law:
+  // `.claude/rules/display/workbench-service.md` (forthcoming — Phase 1).
+  //
+  // Desktop console (mobile-restricted), no `workflowNodeType` (Support isn't
+  // an engine step). Gated by `integrations.zendesk` — same as the
+  // /api/zendesk/* routes it calls.
   support: {
     key: 'support',
     label: 'Support',
     route: '/support',
-    archetype: 'station',
+    archetype: 'workbench',
     permission: 'integrations.zendesk',
     pageKey: 'support',
     modeKey: 'tickets',

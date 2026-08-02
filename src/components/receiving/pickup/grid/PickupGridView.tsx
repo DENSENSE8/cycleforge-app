@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { LedgerGridSurface, useGridColumnVisibility } from '@/design-system/components/grid';
+import { GridColumnDetailsPanel } from '@/components/ui/table-column-config/GridColumnDetailsPanel';
 import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
 import { groupRowsBy, type RowGroup } from '@/lib/group-rows';
 import type { PickupLine } from '../pickup-lines';
@@ -100,6 +101,8 @@ export function PickupGridView({
     defaultDir: defaultDirForPickupGridSort,
   });
 
+  const [columnDetailsOpen, setColumnDetailsOpen] = useState(false);
+
   // ONE visibility resolution: descriptor default tier + this staffer's delta.
   // Header, rows and the grid template all read `visible` — a hidden column
   // loses its TRACK rather than rendering an empty ruled cell.
@@ -137,47 +140,57 @@ export function PickupGridView({
   }, [rows, columnSort, sortDir]);
 
   return (
-    <LedgerGridSurface<PickupLine, PickupGridColumnKey>
-      ariaLabel="Local pickup order lines"
-      descriptor={descriptor}
-      orderGroupsByDate={orderGroupsByDate}
-      rows={rows}
-      getRowId={(r) => String(r.id)}
-      sort={columnSort}
-      dir={sortDir}
-      onSortChange={setSort}
-      loading={loading}
-      emptyMessage={emptyMessage}
-      searchEmptyMessage={searchEmptyMessage}
-      isSearching={isSearching}
-      scrollRef={scrollRef}
-      testId="pickup-grid-body"
-      renderColumnHeader={({ toggleColumnSort }) => (
-        <PickupGridColumnHeader
-          columns={visible}
-          activeSort={columnSort}
-          sortDir={sortDir}
-          onSortColumn={toggleColumnSort}
-        />
-      )}
-      renderGroup={(group, baseStripeIndex) => (
-        <PickupGridGroupRow
-          group={group}
-          baseStripeIndex={baseStripeIndex}
-          selectedOrderId={selectedOrderId}
-          onSelectOrder={onSelectOrder}
-          columns={visible}
-        />
-      )}
-      renderRow={(row, stripeIndex) => (
-        <PickupGridGroupRow
-          group={{ key: `k:${row.id}`, rows: [row] }}
-          baseStripeIndex={stripeIndex}
-          selectedOrderId={selectedOrderId}
-          onSelectOrder={onSelectOrder}
-          columns={visible}
-        />
-      )}
-    />
+    <>
+      <LedgerGridSurface<PickupLine, PickupGridColumnKey>
+        ariaLabel="Local pickup order lines"
+        descriptor={descriptor}
+        orderGroupsByDate={orderGroupsByDate}
+        rows={rows}
+        getRowId={(r) => String(r.id)}
+        sort={columnSort}
+        dir={sortDir}
+        onSortChange={setSort}
+        loading={loading}
+        emptyMessage={emptyMessage}
+        searchEmptyMessage={searchEmptyMessage}
+        isSearching={isSearching}
+        scrollRef={scrollRef}
+        testId="pickup-grid-body"
+        renderColumnHeader={({ toggleColumnSort }) => (
+          <PickupGridColumnHeader
+            columns={visible}
+            activeSort={columnSort}
+            sortDir={sortDir}
+            onSortColumn={toggleColumnSort}
+            onOpenColumnDetails={() => setColumnDetailsOpen(true)}
+            columnDetailsOpen={columnDetailsOpen}
+          />
+        )}
+        renderGroup={(group, baseStripeIndex) => (
+          <PickupGridGroupRow
+            group={group}
+            baseStripeIndex={baseStripeIndex}
+            selectedOrderId={selectedOrderId}
+            onSelectOrder={onSelectOrder}
+            columns={visible}
+          />
+        )}
+        renderRow={(row, stripeIndex) => (
+          <PickupGridGroupRow
+            group={{ key: `k:${row.id}`, rows: [row] }}
+            baseStripeIndex={stripeIndex}
+            selectedOrderId={selectedOrderId}
+            onSelectOrder={onSelectOrder}
+            columns={visible}
+          />
+        )}
+      />
+      <GridColumnDetailsPanel
+        open={columnDetailsOpen}
+        onClose={() => setColumnDetailsOpen(false)}
+        tableId={PICKUP_TABLE_ID}
+        columns={columns}
+      />
+    </>
   );
 }

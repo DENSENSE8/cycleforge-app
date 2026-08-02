@@ -71,6 +71,13 @@ export interface AuthSessionUser {
   role: string;
   permissions: string[];
   mobileDisplayConfig?: MobileDisplayConfig;
+  /**
+   * Profile photo id (`staff.avatar_photo_id`), or null when the staffer has
+   * none — every surface then renders colour + initials via <StaffAvatar>.
+   * <StaffColorsProvider> seeds this into the staff identity cache on boot so a
+   * feed carrying only an actor's staff id can resolve the same face.
+   */
+  avatarPhotoId?: number | null;
   session: {
     sid: string;
     deviceKind: 'station' | 'personal' | 'phone';

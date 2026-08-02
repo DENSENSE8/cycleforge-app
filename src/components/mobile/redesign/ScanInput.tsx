@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from '@/design-system/motion';
 import { Camera } from '@/components/Icons';
 import { ThemedStationScanBar } from '@/components/station/scan-bar';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';

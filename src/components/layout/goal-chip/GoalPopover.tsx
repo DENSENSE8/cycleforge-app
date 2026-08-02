@@ -1,4 +1,4 @@
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion } from '@/design-system/motion';
 import { Bell, Check, Clock, RotateCcw, Barcode } from '@/components/Icons';
 import { cn } from '@/utils/_cn';
 import { Button } from '@/design-system/primitives';
@@ -47,7 +47,7 @@ export function GoalPopover({
                 <AnimatedStat value={chipCount.value} speed="fast" className="inline" /> /{' '}
                 <AnimatedStat value={chipCount.total} speed="fast" className="inline" />
               </span>
-              <span className={cn('rounded-full px-1.5 py-px text-[8.5px] font-semibold uppercase tracking-wider ring-1', tone.chip)}>
+              <span className={cn('rounded-full px-1.5 py-px text-role-micro uppercase ring-1', tone.chip)}>
                 {tone.label}
               </span>
             </p>
@@ -93,9 +93,9 @@ export function GoalPopover({
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-role-caption font-semibold text-text-default">
                       {STATION_LABEL[gg.station]}
-                      {gg.isPrimary && <span className="ml-1.5 text-[8.5px] font-semibold uppercase tracking-wider text-blue-500">primary</span>}
+                      {gg.isPrimary && <span className="ml-1.5 text-role-micro uppercase text-blue-500">primary</span>}
                     </span>
-                    <span className="text-[9.5px] font-semibold tabular-nums text-text-soft">{gg.scanCount}/{gg.target} scans</span>
+                    <span className="text-role-micro tabular-nums text-text-soft">{gg.scanCount}/{gg.target} scans</span>
                   </span>
                   {on && <Check className="h-3.5 w-3.5 text-blue-600" />}
                 </button>
@@ -149,11 +149,11 @@ export function GoalPopover({
                     transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
                   />
                 </div>
-                <p className="mt-2 flex items-center gap-1 text-[10.5px] font-semibold text-text-soft">
+                <p className="mt-2 flex items-center gap-1 text-role-micro text-text-soft">
                   <Barcode className="h-3 w-3" />
                   Live deduped scans for this station.
                 </p>
-                <p className="mt-1 text-[10.5px] font-semibold tabular-nums" style={{ color: tone.ring }}>
+                <p className="mt-1 text-role-micro tabular-nums" style={{ color: tone.ring }}>
                   <AnimatedStat value={Math.max(0, view.target - view.scanCount)} className="inline" /> scans left to hit goal
                 </p>
               </div>
@@ -183,7 +183,7 @@ export function GoalPopover({
                 </div>
 
                 {g.recurDue && (
-                  <p className="mt-1.5 flex items-center gap-1 px-3.5 text-[10.5px] font-semibold text-rose-600">
+                  <p className="mt-1.5 flex items-center gap-1 px-3.5 text-role-micro text-rose-600">
                     <Bell className="h-3 w-3" /> Due now — re-check these tasks.
                   </p>
                 )}

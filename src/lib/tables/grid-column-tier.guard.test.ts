@@ -30,6 +30,11 @@ import { ORDERS_QUEUE_COLUMNS } from '@/lib/dashboard-order-row-layout';
 import { CATALOG_GRID_COLUMNS } from '@/lib/products/catalog-grid-layout';
 import { PICKUP_GRID_COLUMNS } from '@/components/receiving/pickup/grid/pickup-grid-layout';
 import { REPAIR_GRID_COLUMNS } from '@/lib/repair/repair-grid-layout';
+import { WARRANTY_GRID_COLUMNS } from '@/components/warranty/grid/warranty-grid-layout';
+import { READY_GRID_COLUMNS } from '@/components/outbound/ready/grid/ready-grid-layout';
+import { MY_DAY_GRID_COLUMNS } from '@/lib/my-day/my-day-grid-layout';
+import { CATALOG_LINK_GRID_COLUMNS } from '@/features/review/catalog-link/grid/catalog-link-grid-layout';
+import { IMPORT_EXCEPTION_GRID_COLUMNS } from '@/features/review/catalog-link/grid/import-exception-grid-layout';
 
 /**
  * Structural columns are the family's FROZEN IDENTITY PANE, read off the model's
@@ -47,6 +52,10 @@ const FAMILIES: Record<string, readonly LedgerGridColumnModel[]> = {
   catalog: CATALOG_GRID_COLUMNS,
   pickup: PICKUP_GRID_COLUMNS,
   repair: REPAIR_GRID_COLUMNS,
+  warranty: WARRANTY_GRID_COLUMNS,
+  'my-day': MY_DAY_GRID_COLUMNS,
+  'catalog-link': CATALOG_LINK_GRID_COLUMNS,
+  'import-exception': IMPORT_EXCEPTION_GRID_COLUMNS,
 };
 
 const coreKeys = (columns: readonly LedgerGridColumnModel[]) =>
@@ -147,6 +156,67 @@ describe('default (core) column sets — change these deliberately', () => {
       'date',
       'customer',
       'ticket',
+    ]);
+  });
+
+  // Warranty answers the five questions a support operator on a phone call asks:
+  // what is it, which claim, whose is it, what state, how much cover is left,
+  // and when was it logged. `serial` opts in because it is the key you arrive
+  // BY (the sidebar search already matches it), not one you scan down a column.
+  it('warranty ships the lean support set', () => {
+    assert.deepEqual(coreKeys(WARRANTY_GRID_COLUMNS), [
+      'select',
+      'title',
+      'claim',
+      'customer',
+      'status',
+      'warranty',
+      'logged',
+      'ticket',
+    ]);
+  });
+
+  // Ready is tested HISTORY: which unit, did it pass, where is it going, what
+  // grade, when, anything to do. `reasons` / `velocity` are the WHY behind
+  // `destination` — rationale you open, not a column you scan (and `reasons` is
+  // a chip list, the widest thing on the row).
+  it('ready ships the lean history set', () => {
+    assert.deepEqual(coreKeys(READY_GRID_COLUMNS), [
+      'select',
+      'title',
+      'verdict',
+      'destination',
+      'condition',
+      'tested',
+      'action',
+    ]);
+  });
+
+  // Review · Catalog link asks four questions per tab without a click. `sku` is
+  // null on most chore rows (a chore exists BECAUSE nothing resolved) and
+  // `sheet` is a debugging pointer into the source spreadsheet; `first` and
+  // `last` answer the same question at two ends, so only `last` — "is this
+  // still happening" — ships.
+  it('catalog-link ships the lean triage set', () => {
+    assert.deepEqual(coreKeys(CATALOG_LINK_GRID_COLUMNS), [
+      'select',
+      'title',
+      'item',
+      'source',
+      'orders',
+      'last',
+    ]);
+  });
+
+  it('import-exception ships the lean lookup set', () => {
+    assert.deepEqual(coreKeys(IMPORT_EXCEPTION_GRID_COLUMNS), [
+      'select',
+      'title',
+      'order',
+      'source',
+      'tracking',
+      'seen',
+      'last',
     ]);
   });
 

@@ -20,7 +20,7 @@ import { useCallback, useMemo, useRef, useState } from 'react';
 import { toast } from '@/lib/toast';
 import { X, Package, Printer, Loader2, History } from '@/components/Icons';
 import { IconButton } from '@/design-system/primitives';
-import { getLast4 } from '@/components/ui/CopyChip';
+import { getLast8 } from '@/components/ui/CopyChip';
 import { UnitPrintHistory } from '@/components/receiving/UnitPrintHistory';
 import { HandlingUnitChip } from '@/components/receiving/HandlingUnitChip';
 import { handlingUnitStatusChipClass } from '@/lib/handling-unit-status';
@@ -212,7 +212,7 @@ export function BoxWorkbenchPanel({
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-1.5">
                         <span className="font-mono text-role-caption font-semibold text-text-default">
-                          …{getLast4(u.serial_number)}
+                          …{getLast8(u.serial_number)}
                         </span>
                         <span
                           className={`rounded inset-chip text-role-eyebrow uppercase tracking-widest ${unitStatusBadgeTone(u.current_status)}`}

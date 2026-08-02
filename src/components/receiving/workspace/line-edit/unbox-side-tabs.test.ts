@@ -53,7 +53,7 @@ test('a request gated off falls back to the first visible tab, never an empty co
   assert.equal(resolveUnboxSideTab('tracking', SPARSE), 'classify');
 });
 
-test('checklist and support survive every gate — an open carton always has both', () => {
+test('support survives every gate — an open carton always has it', () => {
   const nothing: UnboxSideTabGates = {
     hasClassifyTab: false,
     hasListingsTab: false,
@@ -62,9 +62,17 @@ test('checklist and support survive every gate — an open carton always has bot
     hasTrackingTab: false,
     hasTimelineTab: false,
   };
-  assert.equal(isUnboxSideTabVisible('checklist', nothing), true);
   assert.equal(isUnboxSideTabVisible('support', nothing), true);
-  assert.equal(resolveUnboxSideTab('units', nothing), 'checklist');
+  // Was `checklist` until 2026-08-01 — with the procedure in the workbench
+  // centre, Support is the last ungated display and so the fallback.
+  assert.equal(resolveUnboxSideTab('units', nothing), 'support');
+});
+
+test('checklist is NOT a side tab — there is exactly ONE procedure surface', () => {
+  // Deleted, not moved. A mirror "for reference" is a second procedure surface
+  // in one station, and the two would disagree the first time one of them
+  // learned about skips.
+  assert.equal(UNBOX_SIDE_TAB_ORDER.includes('checklist' as never), false);
 });
 
 test('overview is NOT a side tab — the carton owns the centre', () => {

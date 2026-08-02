@@ -87,6 +87,26 @@ export interface RightRailPanel {
    * so the grid stays live; receiving details turns it on.
    */
   closeOnOutsideClick?: boolean;
+  /**
+   * Whether this occupant may PUSH the work surface (reflow beside it) rather
+   * than float over it. **Defaults to `true`** — the house ruling is that every
+   * resident edge pushes (`source-of-truth.md` → Right-rail modality), so an
+   * occupant that floats has to say why.
+   *
+   * `false` is a greppable per-occupant freeze, and today it means one of three
+   * things, each recorded at its call site:
+   *  - the occupant is ambient chat with its own flush-right dock (`assistant`);
+   *  - the occupant opens on a STATION page whose right edge is already pushed
+   *    by `UnboxPushColumn`, and two push mechanisms on one edge is exactly what
+   *    this store exists to prevent;
+   *  - the occupant configures the surface it would be squeezing, so a push
+   *    would make its own effect indistinguishable from the reflow
+   *    (`detail:grid-column-details`).
+   *
+   * The actual push/overlay decision is `resolveRightRailFrame`
+   * (`src/lib/right-rail/frame.ts`) — this flag only says whether to ask.
+   */
+  push?: boolean;
   /** Accessible name for the aside. Required in spirit for non-modal occupants
    *  (`role="region"` needs a name); the host falls back to a generic label. */
   ariaLabel?: string;
@@ -137,6 +157,7 @@ export function registerRightRailPanel(input: {
   elevated?: boolean;
   modal?: boolean;
   closeOnOutsideClick?: boolean;
+  push?: boolean;
   ariaLabel?: string;
 }): () => void {
   seq += 1;
@@ -149,6 +170,7 @@ export function registerRightRailPanel(input: {
     elevated: input.elevated,
     modal: input.modal,
     closeOnOutsideClick: input.closeOnOutsideClick,
+    push: input.push,
     ariaLabel: input.ariaLabel,
     seq: mySeq,
   });
@@ -177,9 +199,10 @@ export function updateRightRailPanelNode(input: {
   elevated?: boolean;
   modal?: boolean;
   closeOnOutsideClick?: boolean;
+  push?: boolean;
   ariaLabel?: string;
 }): void {
-  const { id, node, onClose, elevated, modal, closeOnOutsideClick, ariaLabel } = input;
+  const { id, node, onClose, elevated, modal, closeOnOutsideClick, push, ariaLabel } = input;
   const current = panels.get(id);
   if (
     !current ||
@@ -188,6 +211,9 @@ export function updateRightRailPanelNode(input: {
       current.elevated === elevated &&
       current.modal === modal &&
       current.closeOnOutsideClick === closeOnOutsideClick &&
+      // `push` participates in change detection: an occupant that flipped its
+      // policy must re-emit, or the host would keep rendering the old geometry.
+      current.push === push &&
       current.ariaLabel === ariaLabel)
   )
     return;
@@ -198,6 +224,7 @@ export function updateRightRailPanelNode(input: {
     elevated,
     modal,
     closeOnOutsideClick,
+    push,
     ariaLabel,
   });
   recomputeTop();
