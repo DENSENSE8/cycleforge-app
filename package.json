@@ -6,6 +6,7 @@
   "scripts": {
     "verify": "node scripts/verify.mjs",
     "debt": "node scripts/debt-ledger.mjs",
+    "debt:surfaces": "node scripts/dead-surface-probe.mjs",
     "verify:fast": "node scripts/verify.mjs --fast",
     "prepare": "git config core.hooksPath .githooks || true",
     "dev": "next dev --turbopack -p 3050",
