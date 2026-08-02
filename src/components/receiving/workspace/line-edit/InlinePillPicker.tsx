@@ -340,5 +340,3 @@ export function InlinePillPicker({
     </div>
   );
 }
-
-export default InlinePillPicker;

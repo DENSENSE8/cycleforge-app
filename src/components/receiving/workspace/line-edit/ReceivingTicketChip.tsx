@@ -248,5 +248,3 @@ export function ReceivingTicketChip({
     </div>
   );
 }
-
-export default ReceivingTicketChip;

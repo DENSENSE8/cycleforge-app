@@ -119,5 +119,3 @@ export function SelectionActionBar<T>({
     </AnimatePresence>
   );
 }
-
-export default SelectionActionBar;

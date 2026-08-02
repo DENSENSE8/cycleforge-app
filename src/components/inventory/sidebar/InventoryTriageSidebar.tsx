@@ -197,5 +197,3 @@ export function InventoryTriageSidebar() {
         </SidebarShell>
     );
 }
-
-export default InventoryTriageSidebar;

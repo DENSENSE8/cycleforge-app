@@ -672,5 +672,3 @@ export function EmailTriagePanel({ emails, onLinkTracking, className }: EmailTri
     </section>
   );
 }
-
-export default EmailTriagePanel;

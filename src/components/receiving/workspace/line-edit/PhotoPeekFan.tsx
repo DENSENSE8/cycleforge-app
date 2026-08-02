@@ -338,5 +338,3 @@ export function PhotoPeekFan({
     </>
   );
 }
-
-export default PhotoPeekFan;

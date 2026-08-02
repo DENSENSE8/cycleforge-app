@@ -145,5 +145,3 @@ export const ReceivingPhotoPeek = memo(function ReceivingPhotoPeek({
     />
   );
 });
-
-export default ReceivingPhotoPeek;

@@ -369,5 +369,3 @@ export function IdentityLinkChip({
     </div>
   );
 }
-
-export default IdentityLinkChip;
