@@ -73,7 +73,9 @@ Rails are a **recipe** for workbench pickers — not proof that every Workbench 
   staff as a delta). Column display is never page chrome — see
   `display/workbench-ops-queue.md` → Trailing Display & Actions. **Never** call `useIsColumnHidden()` from a grid family —
   it is the retired cell-granularity path that left an empty ruled band instead
-  of removing the track; it survives only for `ChipColumns`/`RowMetaColumns`.
+  of removing the track. It survives on four surfaces, pinned shrink-only by
+  `use-is-column-hidden.guard.test.ts` — full list in
+  [source-of-truth.md](source-of-truth.md) → Grid column visibility + sort.
   **Column sort** is URL-durable via `useUrlColumnSort` (`?colsort=`/`?coldir=`,
   never `?sort=` on station routes — that is server ordering).
 - **Hand-rolling the card shell** — never re-type `rounded-2xl border border-border-soft
