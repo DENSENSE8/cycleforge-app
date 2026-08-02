@@ -1,21 +1,41 @@
 /**
- * Hooks barrel export.
+ * Hooks barrel export — the CATEGORY hooks only.
  *
- * Always import hooks from '@/hooks' — never from the internal _*.ts files.
+ * Import the cross-cutting category hooks from '@/hooks'; never reach into the
+ * internal `_*.ts` files directly.
  *
  * Category files (internal):
  *   _lifecycle.ts  useMount, useUnmount, usePrevious, useDebounce, useThrottle, useIsMounted
  *   _storage.ts    useLocalStorage, useSessionStorage
  *   _ui.ts         useScrollPosition, useWindowSize, useToggle, useInView, useClickOutside, useMediaQuery, useIsMobile, useDeviceMode
- *   useKeyboard.ts useKeyboard (mobile virtual keyboard detection via Visual Viewport API)
  *   _auth.ts       useAuthToken, usePermissions
  *   _cache.ts      useCache
  *   _form.ts       useAutoSaveForm, useUnsavedWarning
  *   _mutations.ts  useResourceMutation, useConfirmedAction, jsonOrThrow, HttpError (TanStack)
  *   _events.ts     useEventBridge, emitAppEvent (window CustomEvent bus)
+ *
+ * ## Domain hooks import from their own module, not from here
+ *
+ * This file used to say "always import hooks from '@/hooks'" and re-export ~27
+ * domain hooks to back that up. The codebase had already voted the other way:
+ * every one of those re-exports had **zero** barrel consumers while the same
+ * hooks were imported by path 150+ times (`useAblyChannel` 33, `usePackerLogs`
+ * 17, `useTechLogs` 16, …). A convention stated here and contradicted
+ * everywhere is not a convention, so the rule now matches the code.
+ *
+ * The re-exports were not merely noise. `export *`-style aliasing made five
+ * hook files reachable from an entry point, so file-level dead-code detection
+ * could never see them: `useUnifiedKeyboard`, `useTodayStaffAvailability`,
+ * `useStationHistory`, `useInfiniteScroll` and `useRepairQueries` had no
+ * consumer at all and were deleted with this trim (638 LOC). A barrel that
+ * re-exports something nothing imports doesn't just widen the public surface —
+ * it hides the corpse.
+ *
+ * So: a domain hook earns a line here when two or more surfaces import it
+ * through the barrel. Otherwise it lives at `@/hooks/<name>`.
  */
 
-// ─── New consolidated category hooks ──────────────────────────────────────────
+// ─── Consolidated category hooks ──────────────────────────────────────────────
 export * from './_lifecycle';
 export * from './_storage';
 export * from './_ui';
@@ -25,79 +45,13 @@ export * from './_form';
 export * from './_mutations';
 export * from './_events';
 
-// ─── Existing domain hooks ─────────────────────────────────────────────────────
-export { useCamera } from './useCamera';
-export type { CameraConfig, CameraHook } from './useCamera';
-
+// ─── Domain hooks with real barrel consumers ──────────────────────────────────
 export { useChipTooltip, useCopyChip } from './useCopyChip';
-export type { ChipTooltipAnchor, CopyChipBehavior } from './useCopyChip';
 
 export {
   invalidateSupportContextCaches,
   useLinkTicketTrackingReference,
 } from './useLinkTicketTrackingReference';
 
-export { useInfiniteScroll } from './useInfiniteScroll';
-export type { InfiniteScrollOptions, InfiniteScrollResult } from './useInfiniteScroll';
-
-export { useStationTheme } from './useStationTheme';
-export type { StationTheme, StationThemeColors, StationInputThemeClasses, ResolvedTheme } from './useStationTheme';
-
-
-export { useStationHistory } from './useStationHistory';
-export type {
-  HistoryLog,
-  StationHistoryResult,
-  StationHistoryOptions,
-} from './useStationHistory';
-
-export {
-  useRepairs,
-  useRepair,
-  useUpdateRepairStatus,
-  useUpdateRepairNotes,
-  useUpdateRepairField,
-} from './useRepairQueries';
-
-export { useStaffNameMap } from './useStaffNameMap';
-export { useTodayStaffAvailability } from './useTodayStaffAvailability';
 export { useOrderAssignment } from './useOrderAssignment';
-export type { OrderAssignPayload } from './useOrderAssignment';
 export { useDeleteOrderRow } from './useDeleteOrderRow';
-export type { DeleteOrderRowPayload } from './useDeleteOrderRow';
-export { useStationTestingController, getOrderIdLast8 } from './useStationTestingController';
-export type {
-  ActiveStationOrder,
-  StationThemeColor,
-} from './useStationTestingController';
-export { useUnifiedKeyboard } from './useUnifiedKeyboard';
-export type { UnifiedKeyboardTarget } from './useUnifiedKeyboard';
-
-export { useKeyboard } from './useKeyboard';
-export type { KeyboardState } from './useKeyboard';
-
-export { useBarcodeScanner } from './useBarcodeScanner';
-export type { BarcodeScanStatus } from './useBarcodeScanner';
-
-export { usePanelActions } from './usePanelActions';
-export type { PanelAction, PanelActionContext, PanelEntityType } from './usePanelActions';
-
-export { useAblyChannel } from './useAblyChannel';
-export { useReceivingPhotosRealtimeRefresh } from './useReceivingPhotosRealtimeRefresh';
-export { useExternalItemUrl } from './useExternalItemUrl';
-export { useLast8TrackingSearch } from './useLast8TrackingSearch';
-export { useOrderFieldSave } from './useOrderFieldSave';
-export { usePackerLogs } from './usePackerLogs';
-export type { PackerRecord, UsePackerLogsOptions } from './usePackerLogs';
-export { useRealtimeInvalidation } from './useRealtimeInvalidation';
-export {
-  useRepairsTable,
-} from './useRepairs';
-export { useTechLogs } from './useTechLogs';
-export { useLocations } from './useLocations';
-export type {
-  LocationRecord,
-  CreateLocationPayload,
-  UseLocationsResult,
-  BulkBinRangePayload,
-} from './useLocations';

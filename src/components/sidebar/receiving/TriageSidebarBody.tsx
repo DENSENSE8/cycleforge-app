@@ -36,5 +36,3 @@ export function TriageSidebarBody({
     />
   );
 }
-
-export default TriageSidebarBody;

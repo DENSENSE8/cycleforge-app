@@ -201,5 +201,3 @@ export function LinkedTicketsPanel({
     </section>
   );
 }
-
-export default LinkedTicketsPanel;

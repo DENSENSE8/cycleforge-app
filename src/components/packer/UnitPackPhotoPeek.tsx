@@ -60,5 +60,3 @@ export const UnitPackPhotoPeek = memo(function UnitPackPhotoPeek({
 
   return <PhotoPeekFan cards={cards} />;
 });
-
-export default UnitPackPhotoPeek;

@@ -3,7 +3,7 @@
 /**
  * Data layer for the native Zendesk console (/support). Thin TanStack Query
  * wrappers over the existing /api/zendesk/* routes. The optimistic mutation
- * shape mirrors useUpdateRepairStatus in src/hooks/useRepairQueries.ts.
+ * shape mirrors the repair status mutation (`useRepairQueries.ts`, deleted 2026-08-02 as dead).
  *
  * Types are imported `import type` from src/lib/zendesk.ts so none of that
  * module's server-only code is bundled into the client.

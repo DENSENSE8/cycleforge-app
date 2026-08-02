@@ -177,6 +177,3 @@ function handleDbError(err: unknown, context: string): void {
     console.error(`[DB Error] ${context}: ${message}`);
   }
 }
-
-// ─── Default export (backwards-compatible with existing imports) ───────────────
-export default pool;
