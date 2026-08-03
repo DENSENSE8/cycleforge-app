@@ -1,7 +1,7 @@
 'use client';
 
 import { TOP_CHROME_BAND_FACE } from '@/components/layout/header-shell';
-import type { SidebarPageNav, SpineSectionId } from '@/lib/sidebar-navigation';
+import type { SidebarPageNav } from '@/lib/sidebar-navigation';
 import { cn } from '@/utils/_cn';
 import { OrgWorkspaceControl } from './OrgWorkspaceControl';
 import { SidebarNavList } from './SidebarNavList';
@@ -18,7 +18,7 @@ import { SidebarNavList } from './SidebarNavList';
  * ## Stack (top → bottom)
  *
  * 1. **Org / workspace** — current tenant (+ switch when multi-org).
- * 2. **Body** — Home/Search/Media/Chat top pin → section drills → footer
+ * 2. **Body** — Home/Search/Media/Chat top pin → sections → footer
  *    {@link TechRailSearchBar} → Settings/Admin pin → staff account footer.
  *
  * Global search + AI stay in GlobalHeader (`GlobalHeaderSearch`). L2 Mode +
@@ -27,22 +27,18 @@ import { SidebarNavList } from './SidebarNavList';
  */
 export function MasterNavView({
   activePage,
-  activeModeId,
+  activeChildId,
   otherPages,
   onNavigate,
   onRowHover,
-  drillId,
-  onDrillChange,
   className,
 }: {
   activePage: SidebarPageNav;
-  activeModeId: string | null;
+  activeChildId: string | null;
   otherPages: SidebarPageNav[];
-  onNavigate: (pageId: string, modeId?: string) => void;
+  onNavigate: (pageId: string, childId?: string) => void;
   /** Hover hook per page row — warms the destination's data. */
   onRowHover?: (page: SidebarPageNav) => void;
-  drillId: SpineSectionId | null;
-  onDrillChange: (id: SpineSectionId | null) => void;
   className?: string;
 }) {
   return (
@@ -52,16 +48,14 @@ export function MasterNavView({
         <OrgWorkspaceControl />
       </div>
 
-      {/* One body: top pin + section drills + pinned Settings/Admin + staff. */}
+      {/* One body: top pin + sections + pinned Settings/Admin + staff. */}
       <div className="min-h-0 flex-1">
         <SidebarNavList
           activePage={activePage}
-          activeModeId={activeModeId}
+          activeChildId={activeChildId}
           otherPages={otherPages}
           onNavigate={onNavigate}
           onRowHover={onRowHover}
-          drillId={drillId}
-          onDrillChange={onDrillChange}
         />
       </div>
     </div>

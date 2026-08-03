@@ -1,34 +1,32 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   APP_SIDEBAR_NAV,
-  filterPageModes,
+  filterPageChildren,
   getSidebarPageNav,
   isSidebarPageReachable,
-  spineSectionIdForPage,
   type SidebarNavItem,
   type SidebarPageNav,
-  type SpineSectionId,
 } from '@/lib/sidebar-navigation';
 import { useOrgNavItems } from '@/hooks/useOrgNavItems';
 import { prefetchNavData } from '@/lib/nav/nav-data-prefetch';
-import { useActiveSidebarMode } from './useActiveSidebarMode';
-import { useSidebarModeNav } from './useSidebarModeNav';
+import { useActiveSidebarChild } from './useActiveSidebarChild';
+import { useSidebarChildNav } from './useSidebarChildNav';
 import { MasterNavView } from './MasterNavView';
 
-/** Merge a flat nav item with its mode metadata (if the page has modes). */
+/** Merge a flat nav item with its child-page metadata (if the page has any). */
 function toPageNav(item: SidebarNavItem): SidebarPageNav {
   const page = getSidebarPageNav(item.id);
   // Carry the flat item's icon AND label so a per-org nav override (which
-  // renames via the flat item) survives the merge for modeful pages too.
+  // renames via the flat item) survives the merge for pages with children too.
   return page ? { ...page, icon: item.icon, label: item.label } : item;
 }
 
 /**
- * Router-wired master nav container. Reads the active page+mode from the URL,
- * writes navigation through `useSidebarModeNav`. L2 Mode + Recents live in
+ * Router-wired master nav container. Reads the active page + child from the URL,
+ * writes navigation through `useSidebarChildNav`. The page switcher + Recents live in
  * GlobalHeader — this spine is page-list identity only (no MRU chips).
  */
 export function MasterNav({
@@ -39,14 +37,12 @@ export function MasterNav({
 }: {
   permissions?: ReadonlySet<string>;
   mobileRestricted?: boolean;
-  /** Fired after a page/mode pick (e.g. to close the slide-over). */
+  /** Fired after a page/child pick (e.g. to close the slide-over). */
   onNavigate?: () => void;
   className?: string;
 }) {
-  const { pageId, modeId } = useActiveSidebarMode();
-  const navigate = useSidebarModeNav();
-
-  const [drillId, setDrillId] = useState<SpineSectionId | null>(null);
+  const { pageId, childId } = useActiveSidebarChild();
+  const navigate = useSidebarChildNav();
 
   // Per-org nav override applied (Phase 4). Falls back to the static defaults
   // when no override is published — behavior is unchanged until an org opts in.
@@ -55,8 +51,8 @@ export function MasterNav({
     () =>
       navItems
         .map(toPageNav)
-        .map((page) => filterPageModes(page, permissions))
-        // A page whose every mode was permission-filtered is unreachable — drop
+        .map((page) => filterPageChildren(page, permissions))
+        // A page whose every child was permission-filtered is unreachable — drop
         // it rather than render a dead header (see `isSidebarPageReachable`).
         .filter(isSidebarPageReachable),
     [navItems, permissions],
@@ -70,7 +66,7 @@ export function MasterNav({
     if (fallbackItem) return toPageNav(fallbackItem);
 
     // Some surfaces are addressable by URL without owning a spine row (e.g.
-    // `/fba`, which redirects into Shipping). Prefer their mode registry entry
+    // `/fba`, which redirects into Shipping). Prefer their child registry entry
     // so the header shows the real label — never fall through to pages[0],
     // which used to show "Operations" on /fba.
     return getSidebarPageNav(pageId) ?? pages[0]!;
@@ -78,25 +74,14 @@ export function MasterNav({
 
   const otherPages = useMemo(() => pages, [pages]);
 
-  const activeSection = spineSectionIdForPage(activePage);
-
-  // Enter the matching section drill when navigating onto a page from another
-  // section (or from a top/footer pin). Manual Back leaves the root map while the
-  // URL can stay in-section — do not force-reopen until the next cross-section
-  // transition.
-  const prevSectionRef = useRef<SpineSectionId | null>(null);
-  useEffect(() => {
-    if (activeSection && activeSection !== prevSectionRef.current) {
-      setDrillId(activeSection);
-    } else if (!activeSection) {
-      setDrillId(null);
-    }
-    prevSectionRef.current = activeSection;
-  }, [activeSection]);
+  // There is no drill state here any more (2026-08-02). The spine body is one
+  // flat map, so there is nothing to auto-enter on a cross-section navigation
+  // and nothing for a Back button to leave — which also retires the whole
+  // "auto-drill must not steal focus" hazard the effect that lived here carried.
 
   const handleNavigate = useCallback(
-    (nextPageId: string, nextModeId?: string) => {
-      navigate(nextPageId, nextModeId);
+    (nextPageId: string, nextChildId?: string) => {
+      navigate(nextPageId, nextChildId);
       onNavigate?.();
     },
     [navigate, onNavigate],
@@ -116,12 +101,10 @@ export function MasterNav({
   return (
     <MasterNavView
       activePage={activePage}
-      activeModeId={modeId}
+      activeChildId={childId}
       otherPages={otherPages}
       onNavigate={handleNavigate}
       onRowHover={handleRowHover}
-      drillId={drillId}
-      onDrillChange={setDrillId}
       className={className}
     />
   );

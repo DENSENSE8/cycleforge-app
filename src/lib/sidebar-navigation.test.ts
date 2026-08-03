@@ -10,8 +10,8 @@ import {
   getSidebarRouteKey,
   getSidebarNavPageId,
   hasSidebarContextPanel,
-  applyModeTarget,
-  resolveSidebarMode,
+  applyChildTarget,
+  resolveSidebarChild,
 } from '@/lib/sidebar-navigation';
 import { routeParamsFor } from '@/lib/routing/registry';
 
@@ -87,7 +87,7 @@ test('prod nav ships every unparked page; only redirect surfaces stay off', () =
   // `/studio/catalog` in the footer beside its own parent.
   assert.equal(navIds.has('studio-catalog'), false, 'studio-catalog owns no spine row');
   assert.equal(
-    getSidebarPageNav('studio')?.modes?.some((m) => m.id === 'catalog'),
+    getSidebarPageNav('studio')?.children?.some((m) => m.id === 'catalog'),
     true,
     'studio/catalog survives as an L2 mode (⌘K + header Mode + URL)',
   );
@@ -131,18 +131,18 @@ test('isSidebarRouteMobileRestricted only flags mobile-blocked routes', () => {
 
 // The invariant that lets the master nav trust the config: navigating to a mode
 // (the WRITE path, `to()`) and reading the active mode back from the resulting
-// URL (the READ path, `resolveMode`) must agree for EVERY mode on EVERY page.
+// URL (the READ path, `resolveChild`) must agree for EVERY mode on EVERY page.
 // If a page's URL convention drifts on one side only, this fails loudly.
-test('every mode round-trips: resolveMode(apply(to(mode))) === mode', () => {
+test('every mode round-trips: resolveChild(apply(to(mode))) === mode', () => {
   for (const page of SIDEBAR_PAGE_NAV) {
-    if (!page.modes || page.modes.length === 0) continue;
-    for (const mode of page.modes) {
+    if (!page.children || page.children.length === 0) continue;
+    for (const mode of page.children) {
       // Start from the page's bare href with no params — the cold-link case.
-      const { pathname, search } = applyModeTarget(
+      const { pathname, search } = applyChildTarget(
         { pathname: page.href, params: new URLSearchParams() },
         mode.to(),
       );
-      const resolved = resolveSidebarMode(page.id, {
+      const resolved = resolveSidebarChild(page.id, {
         pathname,
         params: new URLSearchParams(search),
       });
@@ -165,18 +165,18 @@ test('every mode round-trips: resolveMode(apply(to(mode))) === mode', () => {
 // still resolve.
 test('mode round-trip resolves, preserving unrelated params only on un-migrated routes', () => {
   for (const page of SIDEBAR_PAGE_NAV) {
-    if (!page.modes || page.modes.length === 0) continue;
-    for (const mode of page.modes) {
+    if (!page.children || page.children.length === 0) continue;
+    for (const mode of page.children) {
       const target = mode.to();
       // A mode legitimately sets/clears its OWN params (e.g. Review's Pairing
-      // clears `rtab`/`packerLogId`). `applyModeTarget` only preserves params
+      // clears `rtab`/`packerLogId`). `applyChildTarget` only preserves params
       // the mode's delta doesn't touch — so assert preservation for those keys
       // only. Such a clear list is load-bearing ONLY while the route has no
       // spec; `route-mode-registry.guard.test.ts` fails the moment one graduates
       // while keeping it.
       const delta = target.params ?? {};
       const seed = new URLSearchParams('openOrderId=42&q=widget');
-      const { pathname, search } = applyModeTarget({ pathname: page.href, params: seed }, target);
+      const { pathname, search } = applyChildTarget({ pathname: page.href, params: seed }, target);
       const params = new URLSearchParams(search);
       const spec = routeParamsFor(target.pathname);
 
@@ -201,7 +201,7 @@ test('mode round-trip resolves, preserving unrelated params only on un-migrated 
         );
       }
 
-      assert.equal(resolveSidebarMode(page.id, { pathname, params }), mode.id);
+      assert.equal(resolveSidebarChild(page.id, { pathname, params }), mode.id);
     }
   }
 });
@@ -217,10 +217,10 @@ test('every dashboard-board mode clears Search-scoped openOrderId/map/q', () => 
   );
   let checked = 0;
   for (const page of SIDEBAR_PAGE_NAV) {
-    for (const mode of page.modes ?? []) {
+    for (const mode of page.children ?? []) {
       if (mode.to().pathname !== '/dashboard') continue;
       checked += 1;
-      const { search } = applyModeTarget({ pathname: '/dashboard', params: seed }, mode.to());
+      const { search } = applyChildTarget({ pathname: '/dashboard', params: seed }, mode.to());
       const params = new URLSearchParams(search);
       assert.equal(params.get('openOrderId'), null, `${page.id}/${mode.id} should clear openOrderId`);
       assert.equal(params.get('map'), null, `${page.id}/${mode.id} should clear map`);
@@ -238,15 +238,15 @@ test('every dashboard-board mode clears Search-scoped openOrderId/map/q', () => 
 // resolve to null.
 test("a page's bare href resolves to a declared mode (its default)", () => {
   for (const page of SIDEBAR_PAGE_NAV) {
-    const resolved = resolveSidebarMode(page.id, {
+    const resolved = resolveSidebarChild(page.id, {
       pathname: page.href,
       params: new URLSearchParams(),
     });
-    if (!page.modes || page.modes.length === 0) {
+    if (!page.children || page.children.length === 0) {
       assert.equal(resolved, null, `${page.id} is modeless but resolved "${resolved}"`);
       continue;
     }
-    const ids = page.modes.map((m) => m.id);
+    const ids = page.children.map((m) => m.id);
     assert.ok(resolved && ids.includes(resolved), `${page.id} bare href resolved to "${resolved}", not a declared mode`);
   }
 });
@@ -254,8 +254,8 @@ test("a page's bare href resolves to a declared mode (its default)", () => {
 // Mode ids must be unique within a page (the dropdown + L2 rail key on them).
 test('mode ids are unique within each page', () => {
   for (const page of SIDEBAR_PAGE_NAV) {
-    if (!page.modes) continue;
-    const ids = page.modes.map((m) => m.id);
+    if (!page.children) continue;
+    const ids = page.children.map((m) => m.id);
     assert.equal(new Set(ids).size, ids.length, `${page.id} has duplicate mode ids`);
   }
 });
@@ -274,8 +274,8 @@ test('SIDEBAR_PAGE_NAV pages are prod-nav or URL-only, with resolvers when modef
       navIds.has(page.id) || URL_ONLY_PAGE_IDS.has(page.id),
       `${page.id} is neither in APP_SIDEBAR_NAV nor a known URL-only surface`,
     );
-    if (page.modes && page.modes.length > 0) {
-      assert.equal(typeof page.resolveMode, 'function', `${page.id} missing resolveMode`);
+    if (page.children && page.children.length > 0) {
+      assert.equal(typeof page.resolveChild, 'function', `${page.id} missing resolveChild`);
     }
   }
 });
@@ -297,42 +297,42 @@ test('getSidebarHref resolves every sidebar page to its real route', () => {
   assert.equal(getSidebarHref('nope'), null);
 });
 
-// resolveSidebarMode returns null for single-surface pages (no mode row).
+// resolveSidebarChild returns null for single-surface pages (no mode row).
 // NB: `support` gained tickets/voicemail/calls modes in SIDEBAR_PAGE_NAV, so it
 // is no longer modeless — use `ai-chat`, which lives only in APP_SIDEBAR_NAV.
-test('resolveSidebarMode returns null for pages without modes', () => {
+test('resolveSidebarChild returns null for pages without modes', () => {
   assert.equal(getSidebarPageNav('ai-chat'), undefined);
-  assert.equal(resolveSidebarMode('ai-chat', { pathname: '/ai-chat', params: new URLSearchParams() }), null);
-  assert.equal(resolveSidebarMode('settings', { pathname: '/settings', params: new URLSearchParams() }), null);
+  assert.equal(resolveSidebarChild('ai-chat', { pathname: '/ai-chat', params: new URLSearchParams() }), null);
+  assert.equal(resolveSidebarChild('settings', { pathname: '/settings', params: new URLSearchParams() }), null);
   // Search is modeless (APP_SIDEBAR_NAV only) — no SIDEBAR_PAGE_NAV entry.
   assert.equal(getSidebarPageNav('search'), undefined);
-  assert.equal(resolveSidebarMode('search', { pathname: '/search', params: new URLSearchParams() }), null);
+  assert.equal(resolveSidebarChild('search', { pathname: '/search', params: new URLSearchParams() }), null);
 });
 
 // Operations is modeful: bare /operations is Live; ?mode= drives the rest.
-test('resolveSidebarMode reads the operations mode', () => {
+test('resolveSidebarChild reads the operations mode', () => {
   const at = (search = '') => ({ pathname: '/operations', params: new URLSearchParams(search) });
-  assert.equal(resolveSidebarMode('operations', at()), 'live');
-  assert.equal(resolveSidebarMode('operations', at('mode=analytics')), 'analytics');
-  assert.equal(resolveSidebarMode('operations', at('mode=insights')), 'insights');
-  assert.equal(resolveSidebarMode('operations', at('mode=history')), 'history');
-  assert.equal(resolveSidebarMode('operations', at('mode=signals')), 'signals');
+  assert.equal(resolveSidebarChild('operations', at()), 'live');
+  assert.equal(resolveSidebarChild('operations', at('mode=analytics')), 'analytics');
+  assert.equal(resolveSidebarChild('operations', at('mode=insights')), 'insights');
+  assert.equal(resolveSidebarChild('operations', at('mode=history')), 'history');
+  assert.equal(resolveSidebarChild('operations', at('mode=signals')), 'signals');
   // `plans` is no longer an Operations mode (forge/plans moved to Home, HOME-OPS
   // §3.2) — a stale `?mode=plans` link resolves to the Live default here and is
   // redirected to Home by OperationsWorkspace.
-  assert.equal(resolveSidebarMode('operations', at('mode=plans')), 'live');
-  assert.equal(resolveSidebarMode('operations', at('mode=bogus')), 'live');
+  assert.equal(resolveSidebarChild('operations', at('mode=plans')), 'live');
+  assert.equal(resolveSidebarChild('operations', at('mode=bogus')), 'live');
 });
 
 // Packing is modeless Standard-only in MasterNav. Legacy `?packMode=` may still
-// hit the pack surface; resolveSidebarMode returns null without modes.
-test('resolveSidebarMode returns null for modeless packer', () => {
+// hit the pack surface; resolveSidebarChild returns null without modes.
+test('resolveSidebarChild returns null for modeless packer', () => {
   const at = (search = '') => ({ pathname: '/pack', params: new URLSearchParams(search) });
-  assert.equal(getSidebarPageNav('packer')?.modes, undefined);
-  assert.equal(resolveSidebarMode('packer', at()), null);
-  assert.equal(resolveSidebarMode('packer', at('packMode=fragile')), null);
+  assert.equal(getSidebarPageNav('packer')?.children, undefined);
+  assert.equal(resolveSidebarChild('packer', at()), null);
+  assert.equal(resolveSidebarChild('packer', at('packMode=fragile')), null);
   assert.equal(
-    resolveSidebarMode('packer', { pathname: '/packer', params: new URLSearchParams() }),
+    resolveSidebarChild('packer', { pathname: '/packer', params: new URLSearchParams() }),
     null,
   );
 });
@@ -353,24 +353,24 @@ test('resolver matches existing panel derivations for known deep-links', () => {
 
   // Receiving: mode param drives it; default receive. (The former unfound
   // sub-path was relocated to Admin › PO Mailbox.)
-  assert.equal(resolveSidebarMode('receiving', at('/receiving', 'mode=incoming')), 'incoming');
-  assert.equal(resolveSidebarMode('receiving', at('/receiving', 'mode=pickup')), 'pickup');
-  assert.equal(resolveSidebarMode('receiving', at('/receiving')), 'receive');
+  assert.equal(resolveSidebarChild('receiving', at('/receiving', 'mode=incoming')), 'incoming');
+  assert.equal(resolveSidebarChild('receiving', at('/receiving', 'mode=pickup')), 'pickup');
+  assert.equal(resolveSidebarChild('receiving', at('/receiving')), 'receive');
   // Unbox + Triage are now their own first-class surface routes — resolved
   // path-based, even with a deep-link param present.
-  assert.equal(resolveSidebarMode('receiving', at('/unbox')), 'receive');
-  assert.equal(resolveSidebarMode('receiving', at('/unbox', 'recvId=123')), 'receive');
-  assert.equal(resolveSidebarMode('receiving', at('/triage')), 'triage');
-  assert.equal(resolveSidebarMode('receiving', at('/triage', 'triview=unfound')), 'triage');
-  assert.equal(resolveSidebarMode('receiving', at('/incoming')), 'incoming');
-  assert.equal(resolveSidebarMode('receiving', at('/incoming', 'state=IN_TRANSIT')), 'incoming');
+  assert.equal(resolveSidebarChild('receiving', at('/unbox')), 'receive');
+  assert.equal(resolveSidebarChild('receiving', at('/unbox', 'recvId=123')), 'receive');
+  assert.equal(resolveSidebarChild('receiving', at('/triage')), 'triage');
+  assert.equal(resolveSidebarChild('receiving', at('/triage', 'triview=unfound')), 'triage');
+  assert.equal(resolveSidebarChild('receiving', at('/incoming')), 'incoming');
+  assert.equal(resolveSidebarChild('receiving', at('/incoming', 'state=IN_TRANSIT')), 'incoming');
   // Pickup + History graduated to their own routes (Phase 9) — resolved path-based
   // (`/receiving/history` must beat the `/receiving` params fall-through), while the
   // legacy `?mode=` deep-links still resolve for back-compat.
   // Local Pickup + Repair are receiving modes, each on its own graduated route.
-  assert.equal(resolveSidebarMode('receiving', at('/pickup')), 'pickup');
-  assert.equal(resolveSidebarMode('receiving', at('/repair')), 'repair');
-  assert.equal(resolveSidebarMode('receiving', at('/receiving', 'mode=repair')), 'repair');
+  assert.equal(resolveSidebarChild('receiving', at('/pickup')), 'pickup');
+  assert.equal(resolveSidebarChild('receiving', at('/repair')), 'repair');
+  assert.equal(resolveSidebarChild('receiving', at('/receiving', 'mode=repair')), 'repair');
   assert.equal(getSidebarRouteKey('/pickup'), 'receiving');
   assert.equal(getSidebarRouteKey('/repair'), 'receiving');
   assert.equal(getSidebarRouteKey('/receiving/history'), 'receiving');
@@ -390,24 +390,24 @@ test('resolver matches existing panel derivations for known deep-links', () => {
     'products',
   );
   assert.equal(getSidebarNavPageId('/products'), 'products');
-  assert.equal(resolveSidebarMode('products', at('/products', 'view=labels')), 'labels');
-  assert.equal(resolveSidebarMode('products', at('/products')), 'manuals');
+  assert.equal(resolveSidebarChild('products', at('/products', 'view=labels')), 'labels');
+  assert.equal(resolveSidebarChild('products', at('/products')), 'manuals');
   assert.equal(getSidebarPageNav('print-labels'), undefined);
   assert.equal(getSidebarPageNav('print-documents'), undefined);
-  assert.equal(resolveSidebarMode('receive', at('/unbox')), null);
+  assert.equal(resolveSidebarChild('receive', at('/unbox')), null);
   // FBA sub-modes live under Shipping as fbaMode (legacy mode=plan still works).
-  assert.equal(resolveSidebarMode('fba', at('/shipping', 'mode=fba')), 'combine');
-  assert.equal(resolveSidebarMode('fba', at('/shipping', 'mode=fba&fbaMode=plan')), 'plan');
-  assert.equal(resolveSidebarMode('fba', at('/fba', 'mode=plan')), 'plan');
-  // Desk Shipping modes: Labels / Ready / FBA. Scan out is its own floor L1.
-  assert.equal(resolveSidebarMode('outbound', at('/shipping')), 'labels');
-  assert.equal(resolveSidebarMode('outbound', at('/shipping', 'mode=ready')), 'ready');
-  assert.equal(resolveSidebarMode('outbound', at('/shipping', 'mode=fba')), 'fba');
-  assert.equal(resolveSidebarMode('outbound', at('/shipping/labels')), 'labels');
-  assert.equal(resolveSidebarMode('outbound', at('/shipping/ready')), 'ready');
-  assert.equal(resolveSidebarMode('outbound', at('/shipping/fba')), 'fba');
+  assert.equal(resolveSidebarChild('fba', at('/shipping', 'mode=fba')), 'combine');
+  assert.equal(resolveSidebarChild('fba', at('/shipping', 'mode=fba&fbaMode=plan')), 'plan');
+  assert.equal(resolveSidebarChild('fba', at('/fba', 'mode=plan')), 'plan');
+  // Desk Shipping children: Labels / Ready / FBA. Scan out is its own floor L1.
+  assert.equal(resolveSidebarChild('outbound', at('/shipping')), 'labels');
+  assert.equal(resolveSidebarChild('outbound', at('/shipping', 'mode=ready')), 'ready');
+  assert.equal(resolveSidebarChild('outbound', at('/shipping', 'mode=fba')), 'fba');
+  assert.equal(resolveSidebarChild('outbound', at('/shipping/labels')), 'labels');
+  assert.equal(resolveSidebarChild('outbound', at('/shipping/ready')), 'ready');
+  assert.equal(resolveSidebarChild('outbound', at('/shipping/fba')), 'fba');
   // Redirect-window: legacy path still resolves nav key until the edge 308 lands.
-  assert.equal(resolveSidebarMode('outbound', at('/outbound', 'mode=ready')), 'ready');
+  assert.equal(resolveSidebarChild('outbound', at('/outbound', 'mode=ready')), 'ready');
   assert.equal(getSidebarRouteKey('/shipping'), 'outbound');
   assert.equal(getSidebarRouteKey('/outbound'), 'outbound');
   assert.equal(getSidebarRouteKey('/shipping/scan-out'), 'outbound');
@@ -415,7 +415,7 @@ test('resolver matches existing panel derivations for known deep-links', () => {
   assert.equal(getSidebarNavPageId('/shipping/ready'), 'outbound');
   assert.equal(getSidebarNavPageId('/shipping/fba'), 'outbound');
   assert.equal(getSidebarNavPageId('/shipping/scan-out'), 'scan-out');
-  assert.equal(resolveSidebarMode('scan-out', at('/shipping/scan-out')), null);
+  assert.equal(resolveSidebarChild('scan-out', at('/shipping/scan-out')), null);
   // Dashboard: Shipping (id `outbound`) is the default — `?shipped`,
   // `?unshipped`, legacy `?pending`, and bare all resolve to it. Receiving
   // rides `?mode=inbound` (canonical) or the `?mode=receiving` alias. Sales /
@@ -443,26 +443,26 @@ test('resolver matches existing panel derivations for known deep-links', () => {
   assert.equal(reviewPage('mode=pairing'), 'products');
   assert.equal(reviewPage('mode=catalog-link'), 'products');
   assert.equal(getSidebarPageNav('review'), undefined, 'no review L1 page nav');
-  assert.equal(resolveSidebarMode('outbound', at('/review')), 'review');
-  assert.equal(resolveSidebarMode('products', at('/review', 'mode=pairing')), 'pairing');
-  assert.equal(resolveSidebarMode('products', at('/review', 'mode=catalog-link')), 'catalog-link');
+  assert.equal(resolveSidebarChild('outbound', at('/review')), 'review');
+  assert.equal(resolveSidebarChild('products', at('/review', 'mode=pairing')), 'pairing');
+  assert.equal(resolveSidebarChild('products', at('/review', 'mode=catalog-link')), 'catalog-link');
   // The route key is untouched, so the Review surface still mounts its own panel.
   assert.equal(getSidebarRouteKey('/review'), 'review');
-  assert.equal(resolveSidebarMode('outbound', at('/dashboard')), 'orders');
-  assert.equal(resolveSidebarMode('incoming', at('/dashboard', 'mode=inbound')), 'board');
-  assert.equal(resolveSidebarMode('incoming', at('/incoming')), 'incoming');
-  assert.equal(resolveSidebarMode('sales', at('/dashboard', 'mode=sales')), 'sales');
-  assert.equal(resolveSidebarMode('sales', at('/dashboard', 'mode=pickup')), 'pickup');
-  assert.equal(resolveSidebarMode('support', at('/support', 'mode=warranty')), 'warranty');
-  assert.equal(resolveSidebarMode('support', at('/support', 'mode=orders')), 'orders');
-  assert.equal(resolveSidebarMode('support', at('/support')), 'tickets');
+  assert.equal(resolveSidebarChild('outbound', at('/dashboard')), 'orders');
+  assert.equal(resolveSidebarChild('incoming', at('/dashboard', 'mode=inbound')), 'board');
+  assert.equal(resolveSidebarChild('incoming', at('/incoming')), 'incoming');
+  assert.equal(resolveSidebarChild('sales', at('/dashboard', 'mode=sales')), 'sales');
+  assert.equal(resolveSidebarChild('sales', at('/dashboard', 'mode=pickup')), 'pickup');
+  assert.equal(resolveSidebarChild('support', at('/support', 'mode=warranty')), 'warranty');
+  assert.equal(resolveSidebarChild('support', at('/support', 'mode=orders')), 'orders');
+  assert.equal(resolveSidebarChild('support', at('/support')), 'tickets');
   // Tech: top-mode switch only — view=testing flips to Testing, else Shipping.
   // The surface graduated /tech → /test (operator-surfaces Phase 8); the mode is
   // param-based so it resolves identically on the canonical route + legacy alias.
   // Legacy view=testing-history still resolves to Testing (history browse is inline).
-  assert.equal(resolveSidebarMode('tech', at('/test', 'view=testing')), 'testing');
-  assert.equal(resolveSidebarMode('tech', at('/test', 'staffId=7')), 'shipping');
-  assert.equal(resolveSidebarMode('tech', at('/tech', 'view=testing')), 'testing');
+  assert.equal(resolveSidebarChild('tech', at('/test', 'view=testing')), 'testing');
+  assert.equal(resolveSidebarChild('tech', at('/test', 'staffId=7')), 'shipping');
+  assert.equal(resolveSidebarChild('tech', at('/tech', 'view=testing')), 'testing');
 });
 
 // The Test surface + its legacy alias both resolve to the `tech` nav key so the

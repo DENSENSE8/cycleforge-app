@@ -2,7 +2,7 @@
  * Param ownership for the surfaces that still switch mode via `?mode=`.
  *
  * These routes have NOT moved to segments, and they do not need to in order to
- * be isolated — Slice 1's whole point. A spec here is enough: `applyModeTarget`
+ * be isolated — Slice 1's whole point. A spec here is enough: `applyChildTarget`
  * constructs the destination for any route it can resolve a spec for, so the
  * mode delta is all that survives a switch and the per-surface "clear these
  * fifteen keys" literals become dead weight.

@@ -7,7 +7,7 @@
 //   • *Mode*       — L2 mode chrome (rails, dropdowns, MRU, header “now”)
 //
 // Hard law: every MODE glyph key must be unique across floor stations
-// (see MODE_ICON_GLYPH_KEYS in station-nav-icons.ts). Pages may share a glyph
+// (see STATION_GLYPH_KEYS in station-nav-icons.ts). Pages may share a glyph
 // with their default mode. Primitives stay generic for timelines / badges
 // unless aliased here.
 //

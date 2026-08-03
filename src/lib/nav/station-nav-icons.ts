@@ -1,13 +1,18 @@
 /**
- * Station nav icon registry — maps sidebar page / mode ids to semantic icon
- * components from `@/components/Icons`. Single write path for SIDEBAR_PAGE_NAV
- * data, receiving mode pills, tech top-mode pills, shipping modes, and packing
- * modes.
+ * Station nav icon registry — maps sidebar page / child-page ids to semantic
+ * icon components from `@/components/Icons`. Single write path for
+ * SIDEBAR_PAGE_NAV data, the receiving rail, tech top pills, and shipping.
  *
- * MasterNav L1 renders {@link STATION_PAGE_ICONS} (and other page SoT icons).
- * Mode stroke is heavier than page (see icons/stations.tsx + icons/nav-weight.tsx).
- * Mode *glyphs* must be unique across floor stations — enforced via
- * {@link MODE_ICON_GLYPH_KEYS}.
+ * MasterNav renders {@link STATION_PAGE_ICONS} (and other page SoT icons).
+ * **Every spine row draws its glyph at the same 1.5 page stroke — parent rows
+ * and child rows alike** (reversed 2026-08-02: at 2.25 a child glyph out-drew
+ * its own parent, inverting the ladder it was meant to express). The heavier
+ * 2.25 survives only where a glyph is the WHOLE control — the GlobalHeader page
+ * switcher, header "now" identity, scan rails, `HorizontalButtonSlider`. See
+ * icons/stations.tsx + icons/nav-weight.tsx.
+ *
+ * Glyphs must stay unique across floor stations — enforced via
+ * {@link STATION_GLYPH_KEYS}.
  */
 
 import {
@@ -46,8 +51,8 @@ export const STATION_PAGE_ICONS: Record<StationPageId, NavIconComponent> = {
   packer: StationPacking,
 };
 
-/** Receiving sidebar / header mode rail (`RECEIVING_MODE_ITEMS`, SIDEBAR_PAGE_NAV). */
-export const RECEIVING_MODE_ICONS = {
+/** Receiving spine rows + the receiving rail (`RECEIVING_MODE_ITEMS`, SIDEBAR_PAGE_NAV). */
+export const RECEIVING_NAV_ICONS = {
   incoming: ReceivingModeIncoming,
   triage: ReceivingModeArrival,
   receive: ReceivingModeUnbox,
@@ -55,21 +60,29 @@ export const RECEIVING_MODE_ICONS = {
   repair: ReceivingModeRepair,
 } as const satisfies Record<string, NavIconComponent>;
 
-/** Testing sidebar body mode (`TechSidebarTopMode`; L2 lives in GlobalHeader). */
-export const TECH_MODE_ICONS = {
+/** Testing's child pages (`TechSidebarTopMode`; the switcher lives in GlobalHeader). */
+export const TECH_NAV_ICONS = {
   testing: TechModeTesting,
   shipping: TechModeShippingQueue,
 } as const satisfies Record<string, NavIconComponent>;
 
-/** Shipping station L2 modes (`SIDEBAR_PAGE_NAV` outbound modes). */
-export const SHIPPING_MODE_ICONS = {
+/**
+ * Shipping's child pages (`SIDEBAR_PAGE_NAV` outbound children) — plus
+ * `scan-out`, which is a floor station L1 row of its own and only borrows this
+ * map for its glyph.
+ */
+export const SHIPPING_NAV_ICONS = {
   labels: ShippingModeLabels,
   ready: ShippingModeReady,
   fba: ShippingModeFba,
   'scan-out': ShippingModeScanOut,
 } as const satisfies Record<string, NavIconComponent>;
 
-/** Packing station L2 modes. */
+/**
+ * Packing STYLES — standard / fragile / multi. Deliberately not renamed with
+ * the nav maps above (2026-08-03): these are a genuine mode vocabulary, not
+ * child pages (`/pack` declares no `children`), and nothing consumes them today.
+ */
 export const PACKING_MODE_ICONS = {
   standard: PackingModeStandard,
   fragile: PackingModeFragile,
@@ -81,7 +94,7 @@ export const PACKING_MODE_ICONS = {
  * Uniqueness is the hard law — Arrival Truck ≠ Tech Shipping Send, etc.
  * Pages may reuse a glyph with their default mode (data only — chrome renders modes).
  */
-export const MODE_ICON_GLYPH_KEYS = {
+export const STATION_GLYPH_KEYS = {
   'receiving.incoming': 'Inbox',
   'receiving.triage': 'Truck',
   'receiving.receive': 'PackageOpen',

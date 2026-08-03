@@ -13,7 +13,7 @@ import {
 } from '@/lib/nav/spine-section-accent';
 import {
   APP_SIDEBAR_NAV,
-  filterPageModes,
+  filterPageChildren,
   getSidebarNavItems,
   getSidebarPageNav,
   isSidebarPageReachable,
@@ -107,7 +107,7 @@ function buildFloorRows(items: readonly SidebarNavItem[]): CommandBarNavRow[] {
 }
 
 /**
- * Ordered palette groups mirroring MasterNav pin / section drills / footer.
+ * Ordered palette groups mirroring MasterNav pin / sections / footer.
  * Empty groups (permission-filtered) are omitted.
  */
 export function buildCommandBarNavGroups(
@@ -120,7 +120,7 @@ export function buildCommandBarNavGroups(
   const items = permissions
     ? base.filter((item) => {
         const page = getSidebarPageNav(item.id);
-        return !page || isSidebarPageReachable(filterPageModes(page, permissions));
+        return !page || isSidebarPageReachable(filterPageChildren(page, permissions));
       })
     : base;
   const groups: CommandBarNavGroup[] = [];

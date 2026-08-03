@@ -12,7 +12,7 @@
  * `SIDEBAR_SPINE_MENU_PANEL_CLASS` + `*-stretch` — never a wider magic width /
  * bare `text-sm`. Menu type = caption/micro (trigger org name stays body).
  *
- * SoT: SIDEBAR_PAGE_NAV + useSidebarModeNav · HeaderModeSwitcher · HeaderRecentsSwitcher
+ * SoT: SIDEBAR_PAGE_NAV + useSidebarChildNav · HeaderPageSwitcher · HeaderRecentsSwitcher
  *      · HeaderPinsSwitcher / useQuickAccess · OrgWorkspaceControl · StaffAccountFooter
  *      · IdentityMark / StaffAvatar · sidebar-spine.ts
  * Display law: .claude/rules/display/workbench.md (L2 in GlobalHeader)
@@ -37,7 +37,7 @@ function code(src: string): string {
 
 const HEADER = code(sourceOf('./GlobalHeader.tsx'));
 const HEADER_ACTIONS = code(sourceOf('./GlobalHeaderActions.tsx'));
-const MODE = code(sourceOf('./HeaderModeSwitcher.tsx'));
+const MODE = code(sourceOf('./HeaderPageSwitcher.tsx'));
 const RECENTS = code(sourceOf('./HeaderRecentsSwitcher.tsx'));
 const PINS = code(sourceOf('./HeaderPinsSwitcher.tsx'));
 const HEADER_SHELL = code(sourceOf('./header-shell.ts'));
@@ -63,38 +63,38 @@ const PANEL_SOURCES = [
 ] as const;
 
 test('SIDEBAR_PAGE_NAV has multiple modeful pages for the header Mode control', () => {
-  const modeful = SIDEBAR_PAGE_NAV.filter((p) => (p.modes?.length ?? 0) > 1);
+  const modeful = SIDEBAR_PAGE_NAV.filter((p) => (p.children?.length ?? 0) > 1);
   assert.ok(modeful.length >= 8, `expected ≥8 modeful pages, got ${modeful.length}`);
   // Receiving family L1 pages are modeless; legacy `receiving` keeps mode
   // resolution for deep-links. Shipping stays modeful in the header.
-  assert.equal(getSidebarPageNav('receive')?.modes, undefined);
-  assert.ok(getSidebarPageNav('receiving')?.modes?.some((m) => m.id === 'receive'));
-  assert.ok(getSidebarPageNav('outbound')?.modes?.some((m) => m.id === 'labels'));
+  assert.equal(getSidebarPageNav('receive')?.children, undefined);
+  assert.ok(getSidebarPageNav('receiving')?.children?.some((m) => m.id === 'receive'));
+  assert.ok(getSidebarPageNav('outbound')?.children?.some((m) => m.id === 'labels'));
   assert.equal(
-    getSidebarPageNav('outbound')?.modes?.some((m) => m.id === 'scan-out'),
+    getSidebarPageNav('outbound')?.children?.some((m) => m.id === 'scan-out'),
     false,
   );
-  assert.equal(getSidebarPageNav('packer')?.modes, undefined);
-  assert.equal(getSidebarPageNav('scan-out')?.modes, undefined);
+  assert.equal(getSidebarPageNav('packer')?.children, undefined);
+  assert.equal(getSidebarPageNav('scan-out')?.children, undefined);
 });
 
 test('GlobalHeader always mounts Mode + Recents + Pins (Mode nulls itself when modeless)', () => {
-  assert.match(HEADER, /HeaderModeSwitcher/);
+  assert.match(HEADER, /HeaderPageSwitcher/);
   assert.match(HEADER, /HeaderRecentsSwitcher/);
   assert.match(HEADER, /HeaderPinsSwitcher/);
   assert.doesNotMatch(HEADER, /isReceivingHeaderModeRoute/);
 });
 
-test('HeaderModeSwitcher navigates via SIDEBAR_PAGE_NAV + useSidebarModeNav', () => {
+test('HeaderPageSwitcher navigates via SIDEBAR_PAGE_NAV + useSidebarChildNav', () => {
   assert.match(MODE, /getSidebarPageNav/);
-  assert.match(MODE, /useSidebarModeNav/);
-  assert.match(MODE, /useActiveSidebarMode/);
+  assert.match(MODE, /useSidebarChildNav/);
+  assert.match(MODE, /useActiveSidebarChild/);
   assert.match(MODE, /AnchoredLayer/);
 });
 
-test('HeaderRecentsSwitcher reuses useRecentModes + useSidebarModeNav', () => {
-  assert.match(RECENTS, /useRecentModes/);
-  assert.match(RECENTS, /useSidebarModeNav/);
+test('HeaderRecentsSwitcher reuses useRecentPages + useSidebarChildNav', () => {
+  assert.match(RECENTS, /useRecentPages/);
+  assert.match(RECENTS, /useSidebarChildNav/);
   assert.match(RECENTS, /AnchoredLayer/);
 });
 
@@ -137,7 +137,7 @@ test('OrgWorkspaceControl is the spine top band (not name-of-now page label)', (
   assert.match(MASTER_VIEW, /OrgWorkspaceControl/);
   assert.doesNotMatch(MASTER_VIEW, /MasterNavHeader/);
   assert.doesNotMatch(MASTER_VIEW, /headerLabel|leadingIcon=\{headerIcon\}/);
-  assert.doesNotMatch(MASTER_NAV, /useRecentModes/);
+  assert.doesNotMatch(MASTER_NAV, /useRecentPages/);
   assert.doesNotMatch(MASTER_NAV, /recentModes/);
   assert.match(ORG_CONTROL, /data-master-nav-org/);
   assert.match(ORG_CONTROL, /text-role-body font-semibold leading-tight/);

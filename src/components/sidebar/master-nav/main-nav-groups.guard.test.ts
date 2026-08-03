@@ -1,10 +1,12 @@
 /**
- * Source guard: Spine L1 is section drills (Analytics Monitor / Scan Stations /
- * Inbound / Catalog / Inventory / Fulfillment / Sales / Support) — root buttons
- * replace the body with back + pages. Home is top-pinned (house glyph + Home
- * label) above Search; **Workflow Studio is FOOTER-pinned above Admin**
- * (2026-08-02). Modes stay always-visible under multi-mode pages (pinned count,
- * no accordion) — except on a pinned row, which never draws children at all.
+ * Source guard: the spine body is ONE FLAT MAP (2026-08-02). Sections
+ * (Live Ops / Scan Stations / Inbound / Catalog / Inventory /
+ * Outbound / Sales / Support) contribute a `border-t` and an accessible
+ * name — never a header row, which would duplicate the page name beneath it.
+ * The drill they used to open is deleted. Home is top-pinned (house glyph +
+ * Home label) above Search; **Workflow Studio is FOOTER-pinned above Admin**.
+ * A multi-mode page draws its children only while it is the ACTIVE page (the
+ * count chip is shown regardless); a pinned row never draws children at all.
  *
  * The dead labels are load-bearing here: `Triage Desk` was "everything
  * pointer-driven", `Print Stations` was "everything that ends at a printer".
@@ -36,11 +38,7 @@ import {
   type MainGroupId,
 } from '@/lib/sidebar-navigation';
 import { ChartPie, Home, Workflow } from '@/components/Icons';
-import {
-  SPINE_NEUTRAL_ACCENT,
-  SPINE_SECTION_ACCENTS,
-  spineAccentFor,
-} from '@/lib/nav/spine-section-accent';
+import { SPINE_NEUTRAL_ACCENT, spineAccentFor } from '@/lib/nav/spine-section-accent';
 
 function sourceOf(relative: string): string {
   return readFileSync(fileURLToPath(new URL(relative, import.meta.url)), 'utf8');
@@ -94,28 +92,29 @@ const MOTION_SRC = code(
   sourceOf('../../../design-system/foundations/motion-framer.ts'),
 );
 const ACCENT_SRC = code(sourceOf('../../../lib/nav/spine-section-accent.ts'));
+const VIEW_SRC = code(sourceOf('./MasterNavView.tsx'));
 const SEARCH_BAR_SRC = code(sourceOf('../tech/TechRailSearchBar.tsx'));
 
-test('MAIN_GROUPS is Analytics Monitor alone — Studio left for the footer', () => {
+test('MAIN_GROUPS is Live Ops alone — Studio left for the footer', () => {
   assert.deepEqual(
     MAIN_GROUPS.map((g) => g.id),
     ['monitor'],
   );
   assert.deepEqual(
     MAIN_GROUPS.map((g) => g.label),
-    ['Analytics Monitor'],
+    ['Live Ops'],
   );
   assert.equal(MAIN_GROUPS[0]!.icon, ChartPie, 'monitor section icon is ChartPie');
 });
 
-test('DOMAIN_GROUPS is Inbound → Catalog → Inventory → Fulfillment → Sales → Support', () => {
+test('DOMAIN_GROUPS is Inbound → Catalog → Inventory → Outbound → Sales → Support', () => {
   assert.deepEqual(
     DOMAIN_GROUPS.map((g) => g.id),
     ['inbound', 'catalog', 'inventory', 'fulfillment', 'sales', 'support'],
   );
   assert.deepEqual(
     DOMAIN_GROUPS.map((g) => g.label),
-    ['Inbound', 'Catalog', 'Inventory', 'Fulfillment', 'Sales', 'Support'],
+    ['Inbound', 'Catalog', 'Inventory', 'Outbound', 'Sales', 'Support'],
   );
   for (const g of DOMAIN_GROUPS) {
     assert.equal(typeof g.icon, 'function', `${g.id} must declare a section icon`);
@@ -127,12 +126,12 @@ test('SPINE_SECTIONS is Monitor → Scan Stations → the six domains, ending at
   assert.deepEqual(
     SPINE_SECTIONS.map((d) => d.label),
     [
-      'Analytics Monitor',
+      'Live Ops',
       'Scan Stations',
       'Inbound',
       'Catalog',
       'Inventory',
-      'Fulfillment',
+      'Outbound',
       'Sales',
       'Support',
     ],
@@ -242,7 +241,7 @@ test('Monitor mains are Operations only', () => {
  * operator browses through in a shift.
  *
  * The reachability half is the load-bearing part. `renderRow` computes
- * `showModes = !opts?.pinned && modeCount > 1`, so a pinned row NEVER draws
+ * `showChildren = !opts?.pinned && modeCount > 1`, so a pinned row NEVER draws
  * children — moving Studio to the footer as a pair of flat rows would have put
  * `/studio/catalog` on the spine twice or nowhere. It survives as an L2 mode, so
  * ⌘K, the spine's flat search (`buildNavDestinations` emits modes) and the
@@ -275,10 +274,10 @@ test('Workflow Studio is a footer pin above Admin; Catalog rides as its L2 mode'
 
   const page = SIDEBAR_PAGE_NAV.find((p) => p.id === 'studio');
   assert.ok(page, 'studio needs a mode registry — it is the only thing naming /studio/catalog');
-  assert.deepEqual(page!.modes?.map((m) => m.id), ['graph', 'catalog']);
-  assert.equal(page!.modes?.find((m) => m.id === 'catalog')?.to().pathname, '/studio/catalog');
-  assert.equal(page!.resolveMode?.({ pathname: '/studio/catalog', params: new URLSearchParams() }), 'catalog');
-  assert.equal(page!.resolveMode?.({ pathname: '/studio', params: new URLSearchParams() }), 'graph');
+  assert.deepEqual(page!.children?.map((m) => m.id), ['graph', 'catalog']);
+  assert.equal(page!.children?.find((m) => m.id === 'catalog')?.to().pathname, '/studio/catalog');
+  assert.equal(page!.resolveChild?.({ pathname: '/studio/catalog', params: new URLSearchParams() }), 'catalog');
+  assert.equal(page!.resolveChild?.({ pathname: '/studio', params: new URLSearchParams() }), 'graph');
 });
 
 test('every APP_SIDEBAR_NAV domain row declares a known domainGroup', () => {
@@ -321,7 +320,7 @@ test('Catalog owns the product-label + manuals URLs — no second print row', ()
   const page = SIDEBAR_PAGE_NAV.find((p) => p.id === 'products');
   assert.ok(page);
   // Reference (not "Catalog") so the section and its browse mode differ (D11).
-  const catalogMode = page!.modes?.find((m) => m.id === 'catalog');
+  const catalogMode = page!.children?.find((m) => m.id === 'catalog');
   assert.ok(catalogMode, 'products keeps the stable `catalog` mode id');
   assert.equal(catalogMode!.label, 'Reference');
 });
@@ -330,22 +329,22 @@ test('Catalog owns the product-label + manuals URLs — no second print row', ()
  * Carrier postage is not a print destination and never merges into a label
  * workspace. `/shipping/labels` is the ONE home for buying postage.
  */
-test('carrier Labels stays Fulfillment → Shipping, never Catalog/Inventory labels', () => {
+test('carrier Postage stays Outbound → Shipping, never Catalog/Inventory labels', () => {
   const outbound = APP_SIDEBAR_NAV.find((item) => item.id === 'outbound');
   assert.ok(outbound && outbound.kind === 'domain');
   assert.equal(outbound.domainGroup, 'fulfillment');
   assert.ok(outbound.href.startsWith('/shipping/'), 'Shipping L1 lands on a /shipping route');
 
   const products = SIDEBAR_PAGE_NAV.find((p) => p.id === 'products');
-  for (const mode of products?.modes ?? []) {
+  for (const mode of products?.children ?? []) {
     assert.equal(
       mode.to().pathname.startsWith('/shipping'),
       false,
-      `Catalog mode ${mode.id} must not point at a carrier route`,
+      `Catalog child ${mode.id} must not point at a carrier route`,
     );
   }
   const warehouse = SIDEBAR_PAGE_NAV.find((p) => p.id === 'warehouse');
-  for (const mode of warehouse?.modes ?? []) {
+  for (const mode of warehouse?.children ?? []) {
     assert.equal(
       mode.to().pathname.startsWith('/shipping'),
       false,
@@ -360,7 +359,7 @@ test('carrier Labels stays Fulfillment → Shipping, never Catalog/Inventory lab
  * would give packing QA two nav homes, which is the duplication the split exists
  * to remove.
  */
-test('Review splits: packing → Fulfillment mode, pairing / catalog-link → Catalog', () => {
+test('Review splits: packing → Outbound child, pairing / catalog-link → Catalog', () => {
   assert.equal(
     APP_SIDEBAR_NAV.some((i) => i.id === 'review'),
     false,
@@ -373,7 +372,7 @@ test('Review splits: packing → Fulfillment mode, pairing / catalog-link → Ca
   );
 
   const outbound = SIDEBAR_PAGE_NAV.find((p) => p.id === 'outbound');
-  const packingReview = outbound?.modes?.find((m) => m.id === 'review');
+  const packingReview = outbound?.children?.find((m) => m.id === 'review');
   assert.ok(packingReview, 'Manage Shipping is missing the Packing Review mode');
   assert.equal(packingReview!.label, 'Packing Review');
   assert.equal(packingReview!.requires, 'packing.review');
@@ -384,21 +383,21 @@ test('Review splits: packing → Fulfillment mode, pairing / catalog-link → Ca
   assert.equal(packingReview!.to().params?.mode, undefined);
 
   const products = SIDEBAR_PAGE_NAV.find((p) => p.id === 'products');
-  const pairing = products?.modes?.find((m) => m.id === 'pairing');
-  const catalogLink = products?.modes?.find((m) => m.id === 'catalog-link');
+  const pairing = products?.children?.find((m) => m.id === 'pairing');
+  const catalogLink = products?.children?.find((m) => m.id === 'catalog-link');
   assert.ok(pairing, 'Catalog owns Pairing');
   assert.equal(pairing!.to().pathname, '/products');
   assert.ok(catalogLink, 'Catalog absorbed Review catalog-link');
   assert.equal(catalogLink!.to().pathname, '/review');
   assert.equal(catalogLink!.to().params?.mode, 'catalog-link');
 
-  // Neither Review lane may reappear on a Fulfillment mode.
-  for (const mode of outbound?.modes ?? []) {
+  // Neither Review lane may reappear on an Outbound child.
+  for (const mode of outbound?.children ?? []) {
     if (mode.id === 'review') continue;
     assert.equal(
       mode.to().pathname.startsWith('/review'),
       false,
-      `Fulfillment mode ${mode.id} must not target the Review station`,
+      `Outbound child ${mode.id} must not target the Review station`,
     );
   }
 });
@@ -410,7 +409,7 @@ test('Inventory absorbs Sourcing + Locations (ex-Warehouse)', () => {
   assert.equal(warehouse.label, 'Locations', 'Warehouse relabels to Locations (D8)');
   // The bin/rack label printer is the Locations default tab — do not lose it.
   const page = SIDEBAR_PAGE_NAV.find((p) => p.id === 'warehouse');
-  assert.deepEqual(page?.modes?.map((m) => m.id), ['labels', 'racks', 'rooms', 'bins', 'map']);
+  assert.deepEqual(page?.children?.map((m) => m.id), ['labels', 'racks', 'rooms', 'bins', 'map']);
 
   const sourcing = APP_SIDEBAR_NAV.find((item) => item.id === 'sourcing');
   assert.ok(sourcing && sourcing.kind === 'domain');
@@ -449,10 +448,9 @@ test('APP_SIDEBAR_NAV rows are grouped: top → sections → footer', () => {
   }
 });
 
-test('SidebarNavList: section drills via SPINE_SECTIONS; no label twins; icons + ChevronRight', () => {
+test('SidebarNavList: the flat map is built from SPINE_SECTIONS; no label twins', () => {
   assert.match(LIST_SRC, /SPINE_SECTIONS/);
   assert.match(LIST_SRC, /spineSectionIdForPage/);
-  assert.match(LIST_SRC, /section\.icon/);
   assert.match(LIST_SRC, /TechRailSearchBar/);
   assert.match(LIST_SRC, /navFilter/);
   // The root map renders the WHOLE section list — narrowing is the search
@@ -462,6 +460,7 @@ test('SidebarNavList: section drills via SPINE_SECTIONS; no label twins; icons +
   assert.doesNotMatch(LIST_SRC, /['"]Overview['"]/);
   assert.doesNotMatch(LIST_SRC, /['"]Library['"]/);
   assert.doesNotMatch(LIST_SRC, /['"]Analytics Monitor['"]/);
+  assert.doesNotMatch(LIST_SRC, /['"]Live Ops['"]/);
   assert.doesNotMatch(LIST_SRC, /['"]Triage Desk['"]/);
   assert.doesNotMatch(LIST_SRC, /['"]Print Stations['"]/);
   assert.doesNotMatch(LIST_SRC, /['"]Workflow Studio['"]/);
@@ -483,10 +482,30 @@ test('SidebarNavList: section drills via SPINE_SECTIONS; no label twins; icons +
   // The page-id-keyed print alias predicate is gone with the print rows.
   assert.doesNotMatch(LIST_SRC, /isPrintAliasActive|printLabelsAliasModeId/);
   assert.doesNotMatch(LIST_SRC, /['"]print-labels['"]|['"]print-documents['"]/);
-  assert.match(LIST_SRC, /ChevronRight/);
-  assert.match(LIST_SRC, /ChevronLeft/);
-  assert.match(LIST_SRC, /onDrillChange/);
   assert.match(LIST_SRC, /role=["']group["']/);
+});
+
+/**
+ * THE DRILL IS GONE (2026-08-02) — one flat scrolling map.
+ *
+ * Six of the eight sections held exactly one page, so the drill charged a click
+ * to reveal a row carrying the section's own name (`Catalog › Catalog`). This
+ * asserts the removal at both ends: no state, no chrome, and — the part a
+ * reader is most likely to undo by accident — **no section HEADER row**, which
+ * would re-create that duplicate anywhere a section shares a name with a page
+ * beneath it.
+ */
+test('SidebarNavList: no drill — no state, no chrome, no section header row', () => {
+  for (const src of [LIST_SRC, MASTER_SRC, VIEW_SRC]) {
+    assert.doesNotMatch(src, /drillId|onDrillChange|setDrillId|renderDrill|renderRoot/);
+  }
+  // The back / disclosure chevrons went with the affordance they belonged to.
+  assert.doesNotMatch(LIST_SRC, /ChevronLeft|ChevronRight/);
+  // A section contributes a RULE and an accessible name, never a visible row —
+  // `section.icon` rendering again is the header coming back.
+  assert.doesNotMatch(LIST_SRC, /section\.icon|SectionIcon/);
+  assert.match(LIST_SRC, /border-t border-border-soft/);
+  assert.match(LIST_SRC, /aria-label=\{section\.label\}/);
 });
 
 /**
@@ -496,12 +515,14 @@ test('SidebarNavList: section drills via SPINE_SECTIONS; no label twins; icons +
  * that opens onto a denial state.
  */
 test('SidebarNavList: a section with no visible page renders nothing', () => {
-  assert.match(LIST_SRC, /groupPages\.length === 0\) return null/);
+  // Hollow stays forbidden through the flatten: a section whose every page was
+  // permission-filtered contributes no rows AND no divider.
+  assert.match(LIST_SRC, /\.filter\(\(g\) => g\.pages\.length > 0\)/);
   assert.match(MASTER_SRC, /isSidebarPageReachable/);
   // A modeless page is always reachable; only "declared modes, all filtered" drops.
-  assert.equal(isSidebarPageReachable({ modes: undefined } as never), true);
-  assert.equal(isSidebarPageReachable({ modes: [] } as never), false);
-  assert.equal(isSidebarPageReachable({ modes: [{ id: 'x' }] } as never), true);
+  assert.equal(isSidebarPageReachable({ children: undefined } as never), true);
+  assert.equal(isSidebarPageReachable({ children: [] } as never), false);
+  assert.equal(isSidebarPageReachable({ children: [{ id: 'x' }] } as never), true);
 });
 
 test('SidebarNavList: Home/Search/Media/Chat top pin; footer filter above Settings/Admin', () => {
@@ -563,7 +584,8 @@ test('SidebarNavList: a query flattens the body to ranked destinations', () => {
   assert.doesNotMatch(LIST_SRC, /toLowerCase\(\)\.includes\(/);
   // Keyed on the MODE, never the query: typing updates in place instead of
   // replaying the crossfade on every keystroke.
-  assert.match(LIST_SRC, /key=\{searching \? ['"]search['"] : \(drillId \?\? ['"]root['"]\)\}/);
+  // Two KINDS of body, and only two — the map or the ranked results.
+  assert.match(LIST_SRC, /key=\{searching \? ['"]search['"] : ['"]map['"]\}/);
   // Results are keyboard-reachable from the box that produced them.
   assert.match(LIST_SRC, /handleFilterKeyDown/);
   assert.match(LIST_SRC, /ArrowDown/);
@@ -581,11 +603,15 @@ test('SidebarNavList: destinations sit one step above modes in the type ladder',
   // One size for "a destination" — section drills, L1 pages, the drill title
   // and search results all `role-body` (14px). Modes stay `role-caption`, so
   // they finally read as the nested tier rather than as a lighter sibling.
+  //
+  // The count dropped 4 → 2 when the drill went: the section-button row and the
+  // drill title were two of the four, and both are deleted rather than restyled.
+  // What survives is the page/subgroup header and the search-result row.
   const destinationRows = LIST_SRC.match(/text-role-body font-semibold/g) ?? [];
   assert.ok(
-    destinationRows.length >= 4,
-    `expected ≥4 role-body destination rows (page · section · drill title · ` +
-      `search result), found ${destinationRows.length}`,
+    destinationRows.length >= 2,
+    `expected ≥2 role-body destination rows (page header · search result), ` +
+      `found ${destinationRows.length}`,
   );
   // Modes must NOT be bumped with them — that would flatten the ladder again.
   assert.match(LIST_SRC, /text-role-caption font-medium/);
@@ -593,10 +619,10 @@ test('SidebarNavList: destinations sit one step above modes in the type ladder',
   assert.match(LIST_SRC, /text-role-micro font-semibold tabular-nums/);
 });
 
-test('SidebarNavList: drill back header centers section label from SoT', () => {
-  assert.match(LIST_SRC, /section\.label/);
-  assert.match(LIST_SRC, /text-center text-role-body/);
-  assert.match(LIST_SRC, /grid-cols-\[1\.25rem_1fr_1\.25rem\]/);
+test('SidebarNavList: the drill back header is deleted, not restyled', () => {
+  assert.doesNotMatch(LIST_SRC, /text-center text-role-body/);
+  assert.doesNotMatch(LIST_SRC, /grid-cols-\[1\.25rem_1fr_1\.25rem\]/);
+  assert.doesNotMatch(LIST_SRC, /Back to pages/);
 });
 
 test('SidebarNavList: pages lead, modes nest, no accordion', () => {
@@ -614,8 +640,39 @@ test('SidebarNavList: pages lead, modes nest, no accordion', () => {
   assert.doesNotMatch(LIST_SRC, /aria-expanded/);
   assert.doesNotMatch(LIST_SRC, /onToggleRow/);
   assert.match(LIST_SRC, /spineAccentFor/);
-  assert.match(LIST_SRC, /accent\.modeActive/);
-  assert.match(LIST_SRC, /accent\.modeActiveIcon/);
+  assert.match(LIST_SRC, /accent\.childActive/);
+});
+
+/**
+ * EVERY spine row carries its glyph — and every one of them at the SAME light
+ * page stroke (2026-08-02).
+ *
+ * This half-reverses the Nav chrome law's "L2 modes keep glyphs with a heavier
+ * stroke". The glyph stays, because a child row is the switch between one
+ * page's siblings (Reference ⇄ Manuals ⇄ Labels) and the GlobalHeader Mode menu
+ * draws that same switch with the same icon set — two doors onto one
+ * destination must not disagree about whether it has a face. What goes is the
+ * heavier WEIGHT: a child glyph at 2.25 out-draws its own parent at 1.5, which
+ * inverts the ladder it was meant to express. Hierarchy is the indent, the
+ * caption/medium type, and the muted ink.
+ */
+test('SidebarNavList: child rows keep their glyph, at the parent-light page stroke', () => {
+  const modeRow = LIST_SRC.match(
+    /const renderChildLikeRow[\s\S]*?\n {2}\};\n/,
+  )?.[0];
+  assert.ok(modeRow, 'renderChildLikeRow block missing');
+  assert.match(modeRow, /<RowIcon/);
+  assert.match(modeRow, /navIconStrokeClass\(\s*'page'/);
+  // The indent + type ladder is what carries subordination now, so neither may
+  // quietly go away in place of the stroke that used to do it.
+  assert.match(modeRow, /pl-7/);
+  assert.match(modeRow, /text-role-caption font-medium/);
+  assert.match(modeRow, /accent\.childActiveIcon/);
+  assert.match(modeRow, /accent\.childIdleIcon/);
+  // Nothing in the spine asks for the heavier L2 weight — it belongs to the
+  // GlobalHeader Mode switcher and HorizontalButtonSlider, where the glyph is
+  // the whole control rather than a label's companion.
+  assert.doesNotMatch(LIST_SRC, /navIconStrokeClass\(\s*'mode'/);
 });
 
 test('SidebarNavList: idle page/section rows use default ink (type comfort); icons stay muted', () => {
@@ -625,43 +682,67 @@ test('SidebarNavList: idle page/section rows use default ink (type comfort); ico
   assert.doesNotMatch(LIST_SRC, /text-text-muted hover:bg-surface-canvas hover:text-text-default/);
 });
 
-test('SidebarNavList: section accents come from SoT — no lone hardcoded bg-blue-600 active fill', () => {
-  assert.match(LIST_SRC, /spineAccentFor/);
-  assert.match(LIST_SRC, /accent\.activePage/);
-  assert.doesNotMatch(LIST_SRC, /bg-blue-600 text-white/);
-  assert.equal(spineAccentFor(null), SPINE_NEUTRAL_ACCENT);
-  assert.equal(spineAccentFor('monitor'), SPINE_SECTION_ACCENTS.monitor);
-  assert.match(SPINE_SECTION_ACCENTS.monitor.activePage, /sky-/);
-  assert.match(SPINE_SECTION_ACCENTS.floor.activePage, /amber-/);
-  assert.match(SPINE_SECTION_ACCENTS.inbound.activePage, /teal-/);
-  assert.match(SPINE_SECTION_ACCENTS.catalog.activePage, /emerald-/);
-  assert.match(SPINE_SECTION_ACCENTS.inventory.activePage, /cyan-/);
-  assert.match(SPINE_SECTION_ACCENTS.fulfillment.activePage, /indigo-/);
-  assert.match(SPINE_SECTION_ACCENTS.sales.activePage, /green-/);
-  assert.match(SPINE_SECTION_ACCENTS.support.activePage, /orange-/);
-  assert.match(SPINE_NEUTRAL_ACCENT.activePage, /blue-/);
-  // Total map: a new section without a hue is a type error, and a stale one is
-  // an extra key here.
-  assert.deepEqual(
-    Object.keys(SPINE_SECTION_ACCENTS).sort(),
-    SPINE_SECTIONS.map((s) => String(s.id)).sort(),
+/**
+ * The spine is NEUTRAL — the eight section hues are deleted (2026-08-02).
+ *
+ * This assertion is the inverse of the one it replaces, and deliberately
+ * stronger: the old test pinned eight specific hues, so it could only fail if
+ * someone changed a colour. This one fails the moment anyone re-adds ANY colour,
+ * including a ninth section's.
+ *
+ * Colour was never what identified a section — the label and the row's position
+ * in `SPINE_SECTIONS` were — and the ⌘K palette groups by labelled bands, so
+ * nothing had to be built to replace it.
+ */
+const CHROMATIC_HUE_RE =
+  /\b(?:bg|text|ring|border|from|to|via|fill|stroke|decoration|outline|shadow|accent|caret|divide)-(?:slate|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-\d{2,3}\b/;
+
+test('spine accents: no chromatic hue survives anywhere in the accent SoT', () => {
+  assert.doesNotMatch(
+    code(ACCENT_SRC),
+    CHROMATIC_HUE_RE,
+    'the spine accent SoT is neutral — resolve fills from surface/text tokens, never a Tailwind hue',
   );
+  for (const [field, value] of Object.entries(SPINE_NEUTRAL_ACCENT)) {
+    assert.doesNotMatch(value, CHROMATIC_HUE_RE, `SPINE_NEUTRAL_ACCENT.${field} carries a hue`);
+  }
+  // Deleted outright, not left standing beside the neutral one.
+  assert.doesNotMatch(ACCENT_SRC, /SPINE_SECTION_ACCENTS/);
 });
 
-test('SidebarNavList: section drills use named spineDrill SoT (opacity-only; no inline x slide)', () => {
-  assert.match(LIST_SRC, /framerPresence\.spineDrill/);
-  assert.match(LIST_SRC, /framerTransition\.spineDrill/);
+test('SidebarNavList: every row resolves its treatment through the accent SoT', () => {
+  assert.match(LIST_SRC, /spineAccentFor/);
+  assert.match(LIST_SRC, /accent\.activePage/);
+  // One answer for every section — the seam stays so a future NON-colour
+  // per-section distinction has somewhere to live.
+  for (const section of SPINE_SECTIONS) {
+    assert.equal(spineAccentFor(section.id), SPINE_NEUTRAL_ACCENT, String(section.id));
+  }
+  assert.equal(spineAccentFor(null), SPINE_NEUTRAL_ACCENT);
+  // No page-local fill beside the SoT — the bug the accent module exists to stop.
+  assert.doesNotMatch(LIST_SRC, /bg-blue-600 text-white/);
+  assert.doesNotMatch(code(LIST_SRC), CHROMATIC_HUE_RE);
+});
+
+test('SidebarNavList: body swap uses the named spineBodySwap SoT (opacity-only; no inline x slide)', () => {
+  assert.match(LIST_SRC, /framerPresence\.spineBodySwap/);
+  assert.match(LIST_SRC, /framerTransition\.spineBodySwap/);
   assert.match(LIST_SRC, /useMotionPresence/);
   assert.match(LIST_SRC, /framerPresence\.spineActiveWash/);
   assert.match(LIST_SRC, /framerVariants\.spineRowStaggerContainer/);
-  // Filter lives in the footer TechRailSearchBar — not a drill-mount motion slot.
+  // Renamed from `spineDrill` with the drill's deletion — a preset named for a
+  // surface that no longer exists is a comment that lies. Deleted rather than
+  // left dead: the body still swaps between two KINDS of list at the same
+  // physics, so there is a real consumer, just not the one it was named for.
+  assert.doesNotMatch(MOTION_SRC, /spineDrill:/);
+  assert.doesNotMatch(MOTION_SRC, /spineDrillFilter/);
   assert.doesNotMatch(LIST_SRC, /framerPresence\.spineDrillFilter/);
   assert.doesNotMatch(LIST_SRC, /x:\s*drillId/);
   assert.doesNotMatch(LIST_SRC, /x:\s*-?12/);
   const presenceMatches = [
-    ...MOTION_SRC.matchAll(/spineDrill:\s*\{[\s\S]*?\n\s*\},?/g),
+    ...MOTION_SRC.matchAll(/spineBodySwap:\s*\{[\s\S]*?\n\s*\},?/g),
   ];
-  assert.ok(presenceMatches.length >= 1, 'spineDrill blocks missing');
+  assert.ok(presenceMatches.length >= 1, 'spineBodySwap blocks missing');
   const presenceBlock = presenceMatches[presenceMatches.length - 1]![0];
   assert.match(presenceBlock, /initial:\s*\{\s*opacity:\s*0\s*\}/);
   assert.match(presenceBlock, /animate:\s*\{\s*opacity:\s*1\s*\}/);
@@ -702,8 +783,11 @@ test('SidebarNavList: page rows and mode rows share ONE 15ms row cascade', () =>
  * array. Keying on either replays the whole cascade on every keystroke, under
  * the operator's cursor, in a list they are actively reading.
  */
-test('SidebarNavList: drill cascade keys on the section, not the filter', () => {
-  assert.match(LIST_SRC, /key=\{`drill-rows-\$\{section\.id\}`\}/);
+test('SidebarNavList: the row cascade never keys on the filter', () => {
+  // The drill's `drill-rows-${section.id}` container is gone with the drill.
+  // The one surviving cascade belongs to the ACTIVE page's children, which
+  // genuinely mount on navigation; the map itself paints instantly.
+  assert.doesNotMatch(LIST_SRC, /drill-rows-/);
   assert.doesNotMatch(LIST_SRC, /key=\{[^}]*navFilter/);
   assert.doesNotMatch(LIST_SRC, /key=\{[^}]*drillFilter/);
   assert.doesNotMatch(LIST_SRC, /key=\{[^}]*groupPages/);
@@ -718,20 +802,32 @@ test('SidebarNavList: drill cascade keys on the section, not the filter', () => 
   // empty → cascade; non-empty → skip so root→drill keeps the narrowed list.
   assert.match(
     LIST_SRC,
-    /setFilterTouched\(Boolean\(navFilterRef\.current\.trim\(\)\)\)[\s\S]{0,40}\}, \[drillId\]\)/,
+    /setFilterTouched\(Boolean\(navFilterRef\.current\.trim\(\)\)\)[\s\S]{0,40}\}, \[activePage\.id\]\)/,
   );
 });
 
 /**
- * Hover/press travel is CSS on the 14px glyph — never JS, never the row.
+ * Nothing in the spine TRAVELS — and nothing ever animates from JS.
  *
- * A framer `whileHover` on a spine row re-renders React on every mousemove
- * across a 20-row list for 2px of travel a compositor transform gives free; a
- * row-level scale breaks the baseline every dense surface beside it aligns to;
- * and a weight shift on hover/active reflows text mid-pointer.
+ * The 14px glyph carried a 2px `motion-safe:` CSS lift until 2026-08-02. It was
+ * correctly built (the framer `MotionConfig` floor cannot see a Tailwind
+ * transform, so the gate was doing real work) and it is deleted anyway, on its
+ * own merit: a structural anchor in a 20-row column should not move under the
+ * pointer, and the neutral wash that landed with the de-chroming answers hover
+ * on its own. Two answers to one question is one too many.
+ *
+ * The three older bans survive unchanged, because they are about COST, not
+ * taste: a framer `whileHover` here re-renders React on every mousemove across
+ * the list; a row-level `scale` breaks the baseline every dense surface beside
+ * it aligns to; a hover weight shift reflows text mid-pointer.
  */
-test('SidebarNavList: icon-only CSS lift — no whileHover, no row scale, no weight shift', () => {
-  assert.match(LIST_SRC, /SPINE_ICON_LIFT_CLASS/);
+test('SidebarNavList: no transform travel at all — no whileHover, no row scale, no weight shift', () => {
+  assert.doesNotMatch(LIST_SRC, /SPINE_ICON_LIFT_CLASS/);
+  assert.doesNotMatch(ACCENT_SRC, /SPINE_ICON_LIFT_CLASS/);
+  // Deleted at BOTH ends — an exported constant with a live importer is
+  // invisible to knip, so only this assertion can see a half-finished removal.
+  assert.doesNotMatch(LIST_SRC, /translate-|scale-|rotate-/);
+  assert.doesNotMatch(ACCENT_SRC, /translate-|scale-|rotate-/);
   assert.doesNotMatch(LIST_SRC, /whileHover|whileTap/);
   assert.doesNotMatch(LIST_SRC, /hover:scale|active:scale|group-hover:scale/);
   assert.doesNotMatch(LIST_SRC, /hover:font-|group-hover:font-/);
@@ -741,51 +837,40 @@ test('SidebarNavList: icon-only CSS lift — no whileHover, no row scale, no wei
     LIST_SRC,
     new RegExp(`font-${'bold'}|font-${'extrabold'}|font-${'black'}`),
   );
-  // A page/mode row that carries the lift must own the `group` hook.
-  assert.match(LIST_SRC, /ds-raw-button group flex w-full/);
-  // Travel + the reduced-motion gate live in the SoT, not at the call site.
-  assert.doesNotMatch(LIST_SRC, /group-hover:translate/);
-  // Straight UP, 2px (2026-08-02). The old `translate-x-0.5` drifted the glyph
-  // toward the label it sits 8px from — the one direction it has no room in —
-  // and 1px of lift did not read at a glance.
-  assert.match(ACCENT_SRC, /motion-safe:group-hover:-translate-y-0\.5/);
-  assert.match(ACCENT_SRC, /motion-safe:group-active:translate-y-0/);
-  assert.doesNotMatch(
-    ACCENT_SRC,
-    /translate-x-/,
-    'spine glyph travel is vertical only — no horizontal drift toward the label',
-  );
-  // `motion-safe:` is load-bearing: the framer MotionConfig floor covers
-  // `motion.*` elements only, so a CSS transform needs its own gate.
-  assert.doesNotMatch(ACCENT_SRC, /(?<!motion-safe:)group-hover:-translate-y/);
+  // Hover is a colour change and nothing else.
+  assert.match(LIST_SRC, /transition-colors duration-150/);
+  assert.doesNotMatch(LIST_SRC, /transition-transform|transition-all/);
 });
 
 /**
- * An active destination is a fill PLUS an inset hairline — the "seated chip"
- * grain, not a bare colour swatch.
+ * The neutral ladder has THREE separable rungs on a white spine, and the inset
+ * hairline is what keeps rung 2 (a child / owning row) apart from rung 1 (a
+ * plain hover), since they share a fill.
  *
- * And `floor` fills at amber-700: amber-600 on white is ~2.9:1, below the WCAG
- * AA 4.5:1 floor for the 12px caption these rows use. Scan Stations is read
- * across a warehouse aisle; it is the last section that may ship that.
+ * Rung 3 stays a SOLID inverse fill rather than a pale grey: the hue map's
+ * active row was a solid chip with white text, and de-chroming it into a wash
+ * would have demoted the one row whose job is to be found without looking.
+ * Inverse ink on `surface-inverse` (#0f172a) is ≈17:1 — past the WCAG AA 4.5:1
+ * floor these 12–14px rows need, and past what several retired hues cleared.
  */
-test('spine accents: active rows carry an inset hairline; amber clears WCAG AA', () => {
-  for (const [id, accent] of Object.entries(SPINE_SECTION_ACCENTS)) {
-    assert.match(accent.activePage, /ring-1 ring-inset ring-/, `${id} activePage ring`);
-    assert.match(accent.modeActive, /ring-1 ring-inset ring-/, `${id} modeActive ring`);
-  }
+test('spine accents: three separable neutral rungs, each active row a seated chip', () => {
+  // Rung 3 — the active destination.
+  assert.match(SPINE_NEUTRAL_ACCENT.activePage, /bg-surface-inverse\b/);
+  assert.match(SPINE_NEUTRAL_ACCENT.activePage, /text-text-inverse\b/);
   assert.match(SPINE_NEUTRAL_ACCENT.activePage, /ring-1 ring-inset ring-/);
-  assert.match(SPINE_NEUTRAL_ACCENT.modeActive, /ring-1 ring-inset ring-/);
-  assert.match(SPINE_SECTION_ACCENTS.floor.activePage, /bg-amber-700\b/);
-  assert.doesNotMatch(SPINE_SECTION_ACCENTS.floor.activePage, /bg-amber-600\b/);
-  // Sales moved rose → green 2026-08-02. `green-600` is ≈3.2:1 on white, the
-  // same AA failure amber/orange/cyan/teal had at 600 — and every one of the 14
-  // fields must move together, or the row fills green while the ⌘K palette still
-  // highlights it rose (nothing type-checks that).
-  assert.match(SPINE_SECTION_ACCENTS.sales.activePage, /bg-green-700\b/);
-  assert.doesNotMatch(SPINE_SECTION_ACCENTS.sales.activePage, /bg-green-600\b/);
-  for (const [field, value] of Object.entries(SPINE_SECTION_ACCENTS.sales)) {
-    assert.doesNotMatch(value, /rose-/, `sales.${field} still carries the retired rose hue`);
+  // Rung 2 — child / section-owning rows: same fill as hover, plus the hairline.
+  for (const field of ['childActive', 'sectionActive'] as const) {
+    assert.match(SPINE_NEUTRAL_ACCENT[field], /bg-surface-strong\b/, field);
+    assert.match(SPINE_NEUTRAL_ACCENT[field], /ring-1 ring-inset ring-/, `${field} hairline`);
   }
+  // Rung 1 — hover. Every idle row answers the pointer, or the deleted glyph
+  // lift leaves the row with no hover affordance at all.
+  for (const field of ['idlePage', 'childIdle', 'sectionIdle'] as const) {
+    assert.match(SPINE_NEUTRAL_ACCENT[field], /hover:bg-surface-/, `${field} hover wash`);
+  }
+  // The rungs must not collapse into each other.
+  assert.notEqual(SPINE_NEUTRAL_ACCENT.activePage, SPINE_NEUTRAL_ACCENT.childActive);
+  assert.notEqual(SPINE_NEUTRAL_ACCENT.childActive, SPINE_NEUTRAL_ACCENT.childIdle);
 });
 
 /**
@@ -840,9 +925,14 @@ test('MasterNav merges the registries as { ...page } — the parity guard above 
   assert.match(MASTER_SRC, /\{\s*\.\.\.page,\s*icon:\s*item\.icon,\s*label:\s*item\.label\s*\}/);
 });
 
-test('MasterNav: auto-drill on section change does not steal focus', () => {
-  assert.match(MASTER_SRC, /spineSectionIdForPage/);
-  assert.match(MASTER_SRC, /setDrillId\(activeSection\)/);
+/**
+ * The auto-drill effect is gone, and with it the focus hazard it carried: a
+ * spine that re-entered a section on every cross-section navigation had to be
+ * pinned against stealing focus from the page it had just opened. A flat map
+ * has nothing to enter.
+ */
+test('MasterNav: no drill state, and still never steals focus', () => {
+  assert.doesNotMatch(MASTER_SRC, /setDrillId|drillId|prevSectionRef/);
   assert.doesNotMatch(MASTER_SRC, /\.focus\s*\(/);
   assert.doesNotMatch(MASTER_SRC, /autoFocus/);
 });

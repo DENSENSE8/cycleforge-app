@@ -7,8 +7,8 @@
  *   today | tasks | collab | forge | brief
  *
  * Pure data only — no JSX. The mode LABELS and ICONS live in `SIDEBAR_PAGE_NAV`
- * (the house L2 SoT that `HeaderModeSwitcher` renders); this module keeps only
- * the vocabulary + its parser, which that registry's `resolveMode` imports so
+ * (the house L2 SoT that `HeaderPageSwitcher` renders); this module keeps only
+ * the vocabulary + its parser, which that registry's `resolveChild` imports so
  * the two can never disagree.
  */
 

@@ -107,8 +107,6 @@
     "exports|src/components/sidebar/audit-log-panel/useAuditSectionList.ts|useSharedFilterQS",
     "exports|src/components/sidebar/favorites/favorites-search.ts|normalizeSearchText",
     "exports|src/components/sidebar/master-nav/index.ts|MasterNavView",
-    "exports|src/components/sidebar/master-nav/index.ts|useActiveSidebarMode",
-    "exports|src/components/sidebar/master-nav/index.ts|useSidebarModeNav",
     "exports|src/components/sidebar/operations/operations-sidebar-shared.ts|DEFAULT_OPERATIONS_MODE",
     "exports|src/components/sidebar/operations/plans-shared.ts|MASTER_PLAN_OPS_TITLE",
     "exports|src/components/sidebar/operations/plans-shared.ts|OPS_PLANS_LIST_KEY",

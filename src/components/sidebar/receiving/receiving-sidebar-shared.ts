@@ -9,7 +9,7 @@
  */
 
 import type { HorizontalSliderItem } from '@/components/ui/HorizontalButtonSlider';
-import { RECEIVING_MODE_ICONS } from '@/lib/nav/station-nav-icons';
+import { RECEIVING_NAV_ICONS } from '@/lib/nav/station-nav-icons';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { SOURCE_PLATFORMS } from '@/lib/source-platform';
@@ -48,11 +48,11 @@ export type ReceivingMode = 'incoming' | 'triage' | 'receive' | 'history' | 'pic
 // off automatically when the operator scans / marks-received (workflow
 // advances past EXPECTED or quantity_received goes positive).
 export const RECEIVING_MODE_ITEMS: HorizontalSliderItem[] = [
-  { id: 'incoming', label: 'Incoming',     icon: RECEIVING_MODE_ICONS.incoming },
-  { id: 'triage',   label: 'Arrival',    icon: RECEIVING_MODE_ICONS.triage },
-  { id: 'receive',  label: 'Unbox',        icon: RECEIVING_MODE_ICONS.receive },
-  { id: 'pickup',   label: 'Local Pickup', icon: RECEIVING_MODE_ICONS.pickup },
-  { id: 'repair',   label: 'Repair',       icon: RECEIVING_MODE_ICONS.repair },
+  { id: 'incoming', label: 'Incoming',     icon: RECEIVING_NAV_ICONS.incoming },
+  { id: 'triage',   label: 'Arrival',    icon: RECEIVING_NAV_ICONS.triage },
+  { id: 'receive',  label: 'Unbox',        icon: RECEIVING_NAV_ICONS.receive },
+  { id: 'pickup',   label: 'Local Pickup', icon: RECEIVING_NAV_ICONS.pickup },
+  { id: 'repair',   label: 'Repair',       icon: RECEIVING_NAV_ICONS.repair },
 ];
 
 // ── Carton scratch (localStorage) ───────────────────────────────────────────

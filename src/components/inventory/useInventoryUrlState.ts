@@ -173,7 +173,7 @@ export function useInventoryUrlState() {
                     // the state/condition multi-selects rode a mode switch.
                     //
                     // That made the two paths to the same job DISAGREE: the nav
-                    // rail's `applyModeTarget` already constructed and carried only
+                    // rail's `applyChildTarget` already constructed and carried only
                     // `staff`, while this in-app switch carried the selection. Two
                     // shapes for one job is the fork the contract bans, so this
                     // side moves to match the nav — a mode switch opens clean.
