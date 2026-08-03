@@ -2,8 +2,8 @@
 
 /**
  * Cross-page MRU jump control for GlobalHeader (house SoT).
- * Closed = History icon; open = {@link useRecentModes} list. Navigates via
- * {@link useSidebarModeNav}. Collapsed by default — no always-visible chips
+ * Closed = History icon; open = {@link useRecentPages} list. Navigates via
+ * {@link useSidebarChildNav}. Collapsed by default — no always-visible chips
  * in the spine header (those were removed; this popover is the only MRU face).
  */
 
@@ -18,17 +18,17 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useOrgNavItems } from '@/hooks/useOrgNavItems';
 import { prefetchNavData } from '@/lib/nav/nav-data-prefetch';
 import {
-  filterPageModes,
+  filterPageChildren,
   getSidebarPageNav,
   type SidebarNavItem,
   type SidebarPageNav,
 } from '@/lib/sidebar-navigation';
-import { useActiveSidebarMode } from '@/components/sidebar/master-nav/useActiveSidebarMode';
-import { useSidebarModeNav } from '@/components/sidebar/master-nav/useSidebarModeNav';
+import { useActiveSidebarChild } from '@/components/sidebar/master-nav/useActiveSidebarChild';
+import { useSidebarChildNav } from '@/components/sidebar/master-nav/useSidebarChildNav';
 import {
-  MAX_RECENT_MODES,
-  useRecentModes,
-} from '@/components/sidebar/master-nav/useRecentModes';
+  MAX_RECENT_PAGES,
+  useRecentPages,
+} from '@/components/sidebar/master-nav/useRecentPages';
 import { cn } from '@/utils/_cn';
 import {
   HEADER_ICON_BTN_CLASS,
@@ -48,9 +48,9 @@ export function HeaderRecentsSwitcher() {
     () => (user?.permissions ? new Set(user.permissions) : undefined),
     [user?.permissions],
   );
-  const { pageId, modeId } = useActiveSidebarMode();
-  const navigate = useSidebarModeNav();
-  const { recents: recentModeRefs, pushRecent } = useRecentModes();
+  const { pageId, childId } = useActiveSidebarChild();
+  const navigate = useSidebarChildNav();
+  const { recents: recentPageRefs, pushRecent } = useRecentPages();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -58,59 +58,59 @@ export function HeaderRecentsSwitcher() {
   // Header is always-visible chrome — keep MRU fresh even when the spine is
   // collapsed (MasterNav no longer owns pushRecent).
   useEffect(() => {
-    pushRecent(pageId, modeId);
-  }, [pageId, modeId, pushRecent]);
+    pushRecent(pageId, childId);
+  }, [pageId, childId, pushRecent]);
 
   const navItems = useOrgNavItems({ permissions });
   const pages = useMemo(
-    () => navItems.map(toPageNav).map((page) => filterPageModes(page, permissions)),
+    () => navItems.map(toPageNav).map((page) => filterPageChildren(page, permissions)),
     [navItems, permissions],
   );
 
-  const isModeful = Boolean(
-    pages.find((p) => p.id === pageId)?.modes &&
-      (pages.find((p) => p.id === pageId)?.modes?.length ?? 0) > 1,
+  const hasChildPages = Boolean(
+    pages.find((p) => p.id === pageId)?.children &&
+      (pages.find((p) => p.id === pageId)?.children?.length ?? 0) > 1,
   );
 
   const entries = useMemo(() => {
-    const currentKey = `${pageId}:${modeId ?? ''}`;
+    const currentKey = `${pageId}:${childId ?? ''}`;
     const out: {
       key: string;
       label: string;
       icon: SidebarPageNav['icon'];
       pageId: string;
-      modeId: string | null;
+      childId: string | null;
       href: string;
     }[] = [];
-    for (const ref of recentModeRefs) {
-      if (out.length >= MAX_RECENT_MODES) break;
-      const key = `${ref.pageId}:${ref.modeId ?? ''}`;
+    for (const ref of recentPageRefs) {
+      if (out.length >= MAX_RECENT_PAGES) break;
+      const key = `${ref.pageId}:${ref.childId ?? ''}`;
       if (key === currentKey) continue;
-      if (isModeful && ref.pageId === pageId) continue;
+      if (hasChildPages && ref.pageId === pageId) continue;
       const page = pages.find((p) => p.id === ref.pageId);
       if (!page) continue;
-      const mode = ref.modeId ? page.modes?.find((m) => m.id === ref.modeId) : undefined;
-      if (ref.modeId && !mode && page.modes && page.modes.length > 0) continue;
+      const child = ref.childId ? page.children?.find((c) => c.id === ref.childId) : undefined;
+      if (ref.childId && !child && page.children && page.children.length > 0) continue;
       const label =
-        mode && page.modes && page.modes.length > 1
-          ? `${page.label} · ${mode.label}`
-          : mode?.label ?? page.label;
+        child && page.children && page.children.length > 1
+          ? `${page.label} · ${child.label}`
+          : child?.label ?? page.label;
       out.push({
         key,
         label,
-        icon: mode?.icon ?? page.icon,
+        icon: child?.icon ?? page.icon,
         pageId: ref.pageId,
-        modeId: ref.modeId,
+        childId: ref.childId,
         href: page.href,
       });
     }
     return out;
-  }, [isModeful, recentModeRefs, pages, pageId, modeId]);
+  }, [hasChildPages, recentPageRefs, pages, pageId, childId]);
 
   const select = useCallback(
     (entry: (typeof entries)[number]) => {
       setOpen(false);
-      navigate(entry.pageId, entry.modeId ?? undefined);
+      navigate(entry.pageId, entry.childId ?? undefined);
     },
     [navigate],
   );
@@ -138,11 +138,11 @@ export function HeaderRecentsSwitcher() {
       >
         <div
           role="menu"
-          aria-label="Recent modes"
+          aria-label="Recent pages"
           className="min-w-[12rem] overflow-hidden rounded-xl border border-border-soft bg-surface-card p-1 shadow-[0_12px_40px_rgba(20,30,55,0.16)]"
         >
           {entries.length === 0 ? (
-            <p className="px-2.5 py-2 text-role-caption text-text-faint">No recent modes</p>
+            <p className="px-2.5 py-2 text-role-caption text-text-faint">No recent pages</p>
           ) : (
             entries.map((entry) => {
               const Icon = entry.icon;

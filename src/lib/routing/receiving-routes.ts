@@ -3,7 +3,7 @@
  *
  * These routes graduated to first-class paths (`/unbox`, `/triage`, `/incoming`,
  * `/pickup`, `/repair`, `/receiving/history`) — the URL names the operator's job.
- * What they did NOT get is isolation: `applyModeTarget` / `updateMode` copied the
+ * What they did NOT get is isolation: `applyChildTarget` / `updateMode` copied the
  * whole query string across a mode switch and hand-deleted the keys someone had
  * remembered to list, which is what `MODE_SCOPED_PARAMS` was. This registry
  * replaces the remembering with a declaration.
@@ -29,6 +29,8 @@ import { isRepairColumnSort } from '@/lib/repair/repair-display-sort';
 import { parseRepairTab } from '@/lib/walk-in/history-modes';
 import { resolveTriageView } from '@/utils/triage-workspace-state';
 import type { ReceivingMode } from '@/components/sidebar/receiving/receiving-sidebar-shared';
+// Dependency-free vocabulary module (no React, no imports) — safe at this altitude.
+import { UNBOX_SIDE_TAB_ORDER } from '@/components/receiving/workspace/line-edit/unbox-side-tabs';
 import {
   defineRouteParams,
   paramDateKey,
@@ -75,6 +77,22 @@ const historySortParam = () =>
     HISTORY_SORT_OPTIONS.some((option) => option.id === raw) ? raw : null,
   );
 
+/**
+ * `?display=` — round-tripped against `UNBOX_SIDE_TAB_ORDER`, never re-typed.
+ *
+ * This was a hand-copied `paramEnum([...])` until 2026-08-02, and it drifted the
+ * first time the vocabulary grew: `pairing` was added to the side-tab SoT when
+ * Package Pairing became a display, but not here — so surface hygiene stripped
+ * `?display=pairing` on the very next pass. Every layer above was correct (the
+ * chip fired, `setDisplay` built the right URL), and the column simply never
+ * opened, from the `# ----` chip, the strip cell, or a shared link alike.
+ *
+ * That is the exact failure `paramRoundTrip` exists to prevent — a duplicated
+ * list is a second SoT.
+ */
+const unboxDisplayParam = () =>
+  paramRoundTrip((raw) => UNBOX_SIDE_TAB_ORDER.find((tab) => tab === raw) ?? null);
+
 /** `/unbox` — the Unbox workspace. */
 export const UNBOX_ROUTE_PARAMS = defineRouteParams({
   route: UNBOX_SURFACE_ROUTE,
@@ -98,16 +116,7 @@ export const UNBOX_ROUTE_PARAMS = defineRouteParams({
      * closed (no separate flag). Mutually exclusive with ticketView / claimView.
      * NOT `unboxview`, which is the queue/viewed BROWSE tab on this same route.
      */
-    display: paramEnum([
-      'classify',
-      'listings',
-      'units',
-      'po-note',
-      'checklist',
-      'support',
-      'tracking',
-      'timeline',
-    ] as const),
+    display: unboxDisplayParam(),
     /** Server ORDER BY for the History tab (`UnboxWorkspaceHeader` reads + writes it). */
     sort: historySortParam(),
     /** Stock-image preview for the photo peek — no NAS captures needed. */
@@ -143,8 +152,14 @@ export const TRIAGE_ROUTE_PARAMS = defineRouteParams({
 export const INCOMING_ROUTE_PARAMS = defineRouteParams({
   route: INCOMING_SURFACE_ROUTE,
   owns: {
-    /** Right-pane sub-view (`pos` default | `email`). */
-    incview: paramEnum(['pos', 'email'] as const),
+    /** Right-pane sub-view (`pos` default | `email` | `removed`). */
+    incview: paramEnum(['pos', 'email', 'removed'] as const),
+    /**
+     * Bulk tracking paste filter — canonical keys, comma-joined. Names specific
+     * rows, so it deliberately relaxes the lane's own predicate; written only by
+     * the bulk-tracking panel.
+     */
+    tracking_in: paramText,
     /** Delivery-state tile filter. */
     state: paramEnumUpper([
       'DELIVERED_UNOPENED',

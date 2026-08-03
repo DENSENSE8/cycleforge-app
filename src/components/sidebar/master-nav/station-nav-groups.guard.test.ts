@@ -163,14 +163,14 @@ test('Scan out is floor modeless; Fulfillment Shipping owns the carrier modes', 
   assert.equal(outbound.domainGroup, 'fulfillment');
   for (const id of ['labels', 'ready', 'fba']) {
     assert.ok(
-      outbound.modes?.some((m) => m.id === id),
+      outbound.children?.some((m) => m.id === id),
       `Shipping lost its ${id} carrier mode`,
     );
   }
 });
 
 function getSidebarPageNavModes(id: string) {
-  return SIDEBAR_PAGE_NAV.find((p) => p.id === id)?.modes;
+  return SIDEBAR_PAGE_NAV.find((p) => p.id === id)?.children;
 }
 
 test('SidebarNavList imports SPINE_SECTIONS and does not twin section labels', () => {
@@ -182,7 +182,7 @@ test('SidebarNavList imports SPINE_SECTIONS and does not twin section labels', (
   assert.match(LIST_SRC, /role=["']group["']/);
 });
 
-test('Section drills read STATION_SUBGROUPS — Receiving header comes from SoT only', () => {
+test('The flat map reads STATION_SUBGROUPS — Receiving header comes from SoT only', () => {
   // Free-form uppercase eyebrow twins remain banned; Receiving page-style header
   // reads STATION_SUBGROUPS (label + icon; no hardcoded "Receiving" string in list).
   assert.doesNotMatch(LIST_SRC, /text-role-micro uppercase tracking-widest text-text-faint/);
@@ -193,12 +193,24 @@ test('Section drills read STATION_SUBGROUPS — Receiving header comes from SoT 
   assert.match(LIST_SRC, /stationSubgroup/);
   assert.match(LIST_SRC, /subgroupDef/);
   assert.match(LIST_SRC, /renderPageHeader/);
-  assert.match(LIST_SRC, /ChevronRight/);
-  assert.match(LIST_SRC, /onDrillChange/);
+  // The Receiving SUBGROUP header survives the 2026-08-02 flatten while the
+  // SECTION header does not, and the difference is not arbitrary: `Receiving`
+  // is a real page-shaped destination whose name matches none of the stations
+  // beneath it (Arrival · Unbox · Local Pickup · Repair Service), so it adds a
+  // name rather than repeating one. A section header repeated the page under it.
+  assert.doesNotMatch(LIST_SRC, /onDrillChange|drillId/);
 });
 
-test('Section drills share one quiet list — no L1 hairline between nests', () => {
-  assert.doesNotMatch(LIST_SRC, /groupIndex > 0 && 'mt-1\.5 border-t border-border-soft pt-1\.5'/);
-  assert.match(LIST_SRC, /border-t border-border-soft/);
+/**
+ * The flatten INVERTED this one, and the reason is worth keeping.
+ *
+ * Inside a drill only one section was ever on screen, so a rule between its
+ * nests was noise — that is what the old assertion banned. Flat, the rule
+ * between SECTIONS is the only thing left saying the root axis is deliberately
+ * mixed (Scan Stations is an INPUT MODEL among business DOMAINS), because the
+ * section labels that used to say it are gone.
+ */
+test('the flat map separates sections with a hairline; nests inside one stay quiet', () => {
+  assert.match(LIST_SRC, /index > 0 && 'mt-1 border-t border-border-soft pt-1'/);
   assert.match(LIST_SRC, /border-b border-border-soft/);
 });

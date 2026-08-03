@@ -5,7 +5,7 @@
  *
  * `?mode=` is the single source of truth so a refresh / deep-link is preserved.
  * There is no `updateMode` here any more: writing the mode is the GlobalHeader
- * control's job (`HeaderModeSwitcher` → `applyModeTarget` over the page's
+ * control's job (`HeaderPageSwitcher` → `applyChildTarget` over the page's
  * `SIDEBAR_PAGE_NAV` entry), and a second writer is how a surface ends up with
  * two mode SoTs that disagree. This hook only reads.
  */

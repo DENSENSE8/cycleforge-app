@@ -37,6 +37,7 @@ const DEFAULT_UNBOX_CONTEXT: ReceivingModeContext = {
   incomingPoTo: '',
   incomingPage: 1,
   incomingSource: 'all',
+  trackingIn: [],
   isDeliveredUnscannedFacet: false,
   isDeliveredNotUnboxedFacet: false,
   staffFilterId: null,

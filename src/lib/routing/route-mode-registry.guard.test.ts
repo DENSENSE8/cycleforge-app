@@ -52,7 +52,7 @@ test('every mode target is in the spec list', () => {
  * shape this refactor deleted nine of. On a route WITHOUT a spec it is still
  * load-bearing (navigation copies the query string forward, so the nulls are the
  * only thing stopping a leak). On a route WITH a spec it is **dead**:
- * `applyModeTarget` constructs from the delta and carries only `staff`, so the
+ * `applyChildTarget` constructs from the delta and carries only `staff`, so the
  * nulls cannot affect the result — they are just a list someone must maintain
  * and will eventually forget to extend.
  *
@@ -65,7 +65,7 @@ test('a spec-backed route carries no dead param-clear list', () => {
   const offenders: string[] = [];
 
   for (const page of SIDEBAR_PAGE_NAV) {
-    const modes = page.modes ?? [];
+    const modes = page.children ?? [];
 
     // The page's SWITCH key — the param its modes use to say which one is
     // active. Derived, not assumed: `/dashboard` and `/support` switch on

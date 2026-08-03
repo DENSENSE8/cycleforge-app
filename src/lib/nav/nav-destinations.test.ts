@@ -37,20 +37,20 @@ test('the screenshot case: "incoming" returns the Incoming destination', () => {
 
   // …and it is a real place, addressable by page + mode.
   assert.equal(first.pageId, 'incoming');
-  assert.equal(first.modeId, 'incoming');
+  assert.equal(first.childId, 'incoming');
   // The parent rides as metadata so the operator still knows where it lives.
   assert.equal(first.context, 'Inbound');
 });
 
 test('modes are first-class destinations, not just parents', () => {
   // Every mode of every page is reachable by its own name.
-  const modeCount = SIDEBAR_PAGE_NAV.reduce((n, p) => n + (p.modes?.length ?? 0), 0);
-  const emitted = DESTINATIONS.filter((d) => d.modeId).length;
+  const modeCount = SIDEBAR_PAGE_NAV.reduce((n, p) => n + (p.children?.length ?? 0), 0);
+  const emitted = DESTINATIONS.filter((d) => d.childId).length;
   assert.equal(emitted, modeCount, 'every registered mode must emit a destination');
 
   // …and a modeful page still emits its own row, or its name goes unsearchable
   // whenever no mode happens to share it.
-  const pageRows = DESTINATIONS.filter((d) => !d.modeId).length;
+  const pageRows = DESTINATIONS.filter((d) => !d.childId).length;
   assert.equal(pageRows, SIDEBAR_PAGE_NAV.length);
 });
 

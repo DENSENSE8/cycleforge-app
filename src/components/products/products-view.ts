@@ -3,7 +3,7 @@
  *
  * The view list was previously re-typed in four places (`ProductsSidebarPanel`'s
  * `parseView`, `ProductsWorkspace`'s render chain, `SIDEBAR_PAGE_NAV`'s
- * `resolveMode`, and the route param spec), so adding a view meant remembering
+ * `resolveChild`, and the route param spec), so adding a view meant remembering
  * all four. Compose this instead.
  *
  * `manuals` is the default and stays OUT of the URL — a mode target writes

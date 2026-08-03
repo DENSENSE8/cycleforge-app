@@ -44,8 +44,8 @@ import {
 } from '@/components/Icons';
 import {
   APP_SIDEBAR_NAV,
-  applyModeTarget,
-  filterPageModes,
+  applyChildTarget,
+  filterPageChildren,
   getSidebarNavItems,
   getSidebarPageNav,
   type SidebarIconComponent,
@@ -55,7 +55,7 @@ import {
   filterCommandBarNavGroups,
   type CommandBarNavGroup,
 } from '@/lib/nav/command-bar-nav-groups';
-import { useSidebarModeNav } from '@/components/sidebar/master-nav/useSidebarModeNav';
+import { useSidebarChildNav } from '@/components/sidebar/master-nav/useSidebarChildNav';
 import { looksLikeIdentifier, searchScopeHref, searchScopeLabel } from '@/lib/search/search-hit';
 import { isSearchEntityType } from '@/lib/search/build-search-text';
 // AI-search rollout flag probe + retrieve POST — shared client bridge
@@ -137,11 +137,11 @@ function saveRecent(item: RecentItem): RecentItem[] {
 }
 
 /** One L2 mode row in the palette (e.g. `Receiving · Arrival`). */
-interface ModeOption {
+interface ChildPageOption {
   pageId: string;
-  modeId: string;
+  childId: string;
   pageLabel: string;
-  modeLabel: string;
+  childLabel: string;
   icon: SidebarIconComponent;
   /** Display-only href (fresh params) for the row sub-label + the recents entry. */
   href: string;
@@ -150,28 +150,28 @@ interface ModeOption {
 /**
  * Flatten every reachable L2 mode into palette rows. Gating mirrors the master
  * nav: page-level `requires` via `getSidebarNavItems`, per-mode `requires` via
- * `filterPageModes`. Single-mode pages are omitted — the page row already goes
+ * `filterPageChildren`. Single-mode pages are omitted — the page row already goes
  * there.
  */
-function buildModeItems(permissions?: ReadonlySet<string>): ModeOption[] {
+function buildChildPageItems(permissions?: ReadonlySet<string>): ChildPageOption[] {
   const items = permissions ? getSidebarNavItems({ permissions }) : APP_SIDEBAR_NAV;
-  const out: ModeOption[] = [];
+  const out: ChildPageOption[] = [];
   for (const item of items) {
     const page = getSidebarPageNav(item.id);
-    if (!page?.modes) continue;
-    const modes = filterPageModes(page, permissions).modes ?? [];
-    if (modes.length < 2) continue;
-    for (const mode of modes) {
-      const { pathname, search } = applyModeTarget(
+    if (!page?.children) continue;
+    const children = filterPageChildren(page, permissions).children ?? [];
+    if (children.length < 2) continue;
+    for (const child of children) {
+      const { pathname, search } = applyChildTarget(
         { pathname: page.href, params: new URLSearchParams() },
-        mode.to(),
+        child.to(),
       );
       out.push({
         pageId: page.id,
-        modeId: mode.id,
+        childId: child.id,
         pageLabel: item.label,
-        modeLabel: mode.label,
-        icon: mode.icon,
+        childLabel: child.label,
+        icon: child.icon,
         href: search ? `${pathname}?${search}` : pathname,
       });
     }
@@ -376,15 +376,15 @@ export function CommandBar() {
   /** Stagger page rows only at empty-query rest — typing must not replay cascade. */
   const staggerNavAppear = open && !query.trim();
 
-  const modeItems = useMemo(() => buildModeItems(authPermissions), [authPermissions]);
-  const filteredModes = useMemo(() => {
+  const childPageItems = useMemo(() => buildChildPageItems(authPermissions), [authPermissions]);
+  const filteredChildPages = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return [];
-    return modeItems.filter(
+    return childPageItems.filter(
       (m) =>
-        m.modeLabel.toLowerCase().includes(q) || m.pageLabel.toLowerCase().includes(q),
+        m.childLabel.toLowerCase().includes(q) || m.pageLabel.toLowerCase().includes(q),
     );
-  }, [modeItems, query]);
+  }, [childPageItems, query]);
 
   const navigate = useCallback(
     (item: RecentItem) => {
@@ -395,20 +395,20 @@ export function CommandBar() {
     [router],
   );
 
-  const navigateMode = useSidebarModeNav();
-  const selectMode = useCallback(
-    (m: ModeOption) => {
-      navigateMode(m.pageId, m.modeId);
+  const navigateChild = useSidebarChildNav();
+  const selectChildPage = useCallback(
+    (m: ChildPageOption) => {
+      navigateChild(m.pageId, m.childId);
       setRecents(
         saveRecent({
-          id: `mode:${m.pageId}:${m.modeId}`,
-          label: `${m.pageLabel} · ${m.modeLabel}`,
+          id: `child:${m.pageId}:${m.childId}`,
+          label: `${m.pageLabel} · ${m.childLabel}`,
           href: m.href,
         }),
       );
       setOpen(false);
     },
-    [navigateMode],
+    [navigateChild],
   );
 
   const openAiChat = useCallback(() => {
@@ -577,18 +577,18 @@ export function CommandBar() {
                   />
                 ))}
 
-                {filteredModes.length > 0 && (
-                  <Command.Group heading="Modes" className={GROUP_HEADING_CLASS}>
-                    {filteredModes.map((m) => {
+                {filteredChildPages.length > 0 && (
+                  <Command.Group heading="Child pages" className={GROUP_HEADING_CLASS}>
+                    {filteredChildPages.map((m) => {
                       const Icon = m.icon;
                       return (
                         <CmdRow
-                          key={`mode:${m.pageId}:${m.modeId}`}
-                          value={`mode ${m.pageLabel} ${m.modeLabel}`}
+                          key={`child:${m.pageId}:${m.childId}`}
+                          value={`child ${m.pageLabel} ${m.childLabel}`}
                           icon={<Icon className="h-4 w-4 text-text-faint" />}
-                          label={`${m.pageLabel} · ${m.modeLabel}`}
+                          label={`${m.pageLabel} · ${m.childLabel}`}
                           subLabel={m.href}
-                          onSelect={() => selectMode(m)}
+                          onSelect={() => selectChildPage(m)}
                         />
                       );
                     })}
@@ -781,7 +781,7 @@ function SpineNavGroup({
     </span>
   );
 
-  const idleIconClass = group.accent.modeIdleIcon;
+  const idleIconClass = group.accent.childIdleIcon;
 
   const rows = group.rows.map((row) => {
     if (row.type === 'subgroup') {

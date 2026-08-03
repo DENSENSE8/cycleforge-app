@@ -5,7 +5,7 @@ import { useHeader } from '@/contexts/HeaderContext';
 import { useAuth, isClientPublicPath } from '@/contexts/AuthContext';
 import { GlobalHeaderActions } from './GlobalHeaderActions';
 import { HeaderGoalChip } from './HeaderGoalChip';
-import { HeaderModeSwitcher } from './HeaderModeSwitcher';
+import { HeaderPageSwitcher } from './HeaderPageSwitcher';
 import { HeaderPinsSwitcher } from './HeaderPinsSwitcher';
 import { HeaderRecentsSwitcher } from './HeaderRecentsSwitcher';
 import { HeaderTopWorkOrderChip } from './HeaderTopWorkOrderChip';
@@ -29,9 +29,9 @@ import { cn } from '@/utils/_cn';
  * Zone contract (left → right) — facts drive chrome; empty middle is OK when
  * the station/workbench band below already owns surface context:
  *   - **Toggle** — sidebar collapse (route-gated)
- *   - **Mode / Recents** — house L2 + MRU ({@link HeaderModeSwitcher} /
+ *   - **Mode / Recents** — house L2 + MRU ({@link HeaderPageSwitcher} /
  *     {@link HeaderRecentsSwitcher}); Mode returns null on modeless pages.
- *     Data = {@link SIDEBAR_PAGE_NAV} via `useSidebarModeNav` — never a
+ *     Data = {@link SIDEBAR_PAGE_NAV} via `useSidebarChildNav` — never a
  *     sidebar pill twin.
  *   - **Pins** — {@link HeaderPinsSwitcher} (hairline after Recents → pin
  *     current → sortable icons → overflow); data = `useQuickAccess` /
@@ -112,7 +112,7 @@ export function GlobalHeader({
             </HoverTooltip>
           </div>
         )}
-        <HeaderModeSwitcher />
+        <HeaderPageSwitcher />
         <HeaderRecentsSwitcher />
         <HeaderPinsSwitcher />
         <HeaderTopWorkOrderChip />

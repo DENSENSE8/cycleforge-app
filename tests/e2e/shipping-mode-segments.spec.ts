@@ -9,7 +9,7 @@ import { test, expect, type Page } from '@playwright/test';
  */
 
 const MODES = [
-  { path: '/shipping/labels', label: 'Labels' },
+  { path: '/shipping/labels', label: 'Postage' },
   { path: '/shipping/ready', label: 'Ready' },
   { path: '/shipping/fba', label: 'FBA' },
   { path: '/shipping/scan-out', label: 'Scan out' },
